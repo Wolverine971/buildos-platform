@@ -199,7 +199,7 @@
 						alt="Selected preview"
 						class="max-h-48 w-full rounded object-contain"
 					/>
-					<p class="mt-1 truncate text-[11px] text-muted-foreground">
+					<p class="mt-1 truncate text-2xs text-muted-foreground">
 						{selectedFile?.name}
 					</p>
 				</div>

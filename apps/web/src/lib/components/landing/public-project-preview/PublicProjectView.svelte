@@ -292,7 +292,7 @@
 				>
 					<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 					<span
-						class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground font-semibold"
+						class="text-2xs uppercase tracking-[0.2em] text-muted-foreground font-semibold"
 					>
 						Read-only example
 					</span>
@@ -305,9 +305,7 @@
 						>
 							<GitBranch class="w-4 h-4 text-accent" />
 						</div>
-						<span
-							class="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground"
-						>
+						<span class="text-2xs uppercase tracking-[0.2em] text-muted-foreground">
 							Example project
 						</span>
 					</div>

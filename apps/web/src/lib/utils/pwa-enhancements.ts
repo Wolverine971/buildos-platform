@@ -7,11 +7,6 @@
 
 import { browser } from '$app/environment';
 
-const THEME_COLORS = {
-	light: '#f9fafb',
-	dark: '#0f172a'
-} as const;
-
 const BADGE_SYNC_MIN_INTERVAL_MS = 15000;
 let lastBadgeSyncAt = 0;
 
@@ -52,22 +47,18 @@ export function updateThemeColors(isDarkMode: boolean) {
 	if (!browser) return;
 
 	// Update meta theme-color tags
-	const lightThemeMetaTag = document.querySelector(
+	const lightThemeMetaTag = document.querySelector<HTMLMetaElement>(
 		'meta[name="theme-color"][media="(prefers-color-scheme: light)"]'
 	);
-	const darkThemeMetaTag = document.querySelector(
+	const darkThemeMetaTag = document.querySelector<HTMLMetaElement>(
 		'meta[name="theme-color"][media="(prefers-color-scheme: dark)"]'
 	);
-	const defaultThemeMetaTag = document.querySelector('meta[name="theme-color"]:not([media])');
-	const themeColor = isDarkMode ? THEME_COLORS.dark : THEME_COLORS.light;
+	const defaultThemeMetaTag = document.querySelector<HTMLMetaElement>(
+		'meta[name="theme-color"]:not([media])'
+	);
+	const themeColor = (isDarkMode ? darkThemeMetaTag : lightThemeMetaTag)?.content;
 
-	if (lightThemeMetaTag) {
-		lightThemeMetaTag.setAttribute('content', THEME_COLORS.light);
-	}
-	if (darkThemeMetaTag) {
-		darkThemeMetaTag.setAttribute('content', THEME_COLORS.dark);
-	}
-	if (defaultThemeMetaTag) {
+	if (defaultThemeMetaTag && themeColor) {
 		defaultThemeMetaTag.setAttribute('content', themeColor);
 	}
 
@@ -115,23 +106,24 @@ export function isInstalledPWA(): boolean {
 export function initializePWAEnhancements(): (() => void) | void {
 	if (!browser) return;
 
-	// Handle theme changes
-	const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-	// Initial setup
-	updateThemeColors(darkModeMediaQuery.matches);
-
-	// Store handler references for cleanup
-	const handleDarkModeChange = (e: MediaQueryListEvent) => {
-		updateThemeColors(e.matches);
+	// ModeWatcher owns theme resolution (system + explicit user choice). Observe
+	// its resolved `.dark` class so theme chrome always matches the rendered UI,
+	// including same-tab toggles that do not emit a storage event.
+	const syncResolvedTheme = () => {
+		updateThemeColors(document.documentElement.classList.contains('dark'));
 	};
+	const themeObserver = new MutationObserver(syncResolvedTheme);
+	themeObserver.observe(document.documentElement, {
+		attributes: true,
+		attributeFilter: ['class']
+	});
+	syncResolvedTheme();
 
-	// Also listen for manual theme changes if you have a theme toggle
-	// This assumes you store theme preference in localStorage
-	const handleStorageChange = () => {
-		const theme = localStorage.getItem('theme');
-		if (theme) {
-			updateThemeColors(theme === 'dark');
+	// Cross-tab preference changes are normally reflected by ModeWatcher; this
+	// immediate sync also keeps browser chrome current while that update settles.
+	const handleStorageChange = (event: StorageEvent) => {
+		if (event.key === 'mode-watcher-mode') {
+			queueMicrotask(syncResolvedTheme);
 		}
 	};
 
@@ -146,7 +138,6 @@ export function initializePWAEnhancements(): (() => void) | void {
 	};
 
 	// Add event listeners
-	darkModeMediaQuery.addEventListener('change', handleDarkModeChange);
 	window.addEventListener('storage', handleStorageChange);
 	window.addEventListener('focus', handleWindowFocus);
 	document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -161,7 +152,7 @@ export function initializePWAEnhancements(): (() => void) | void {
 
 	// Return cleanup function
 	return () => {
-		darkModeMediaQuery.removeEventListener('change', handleDarkModeChange);
+		themeObserver.disconnect();
 		window.removeEventListener('storage', handleStorageChange);
 		window.removeEventListener('focus', handleWindowFocus);
 		document.removeEventListener('visibilitychange', handleVisibilityChange);

@@ -100,7 +100,7 @@
 					<span class="sr-only">{group.title}</span>
 				{:else}
 					<p
-						class="mb-2 px-3 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-muted-foreground"
+						class="mb-2 px-3 text-2xs font-bold uppercase tracking-[0.2em] text-muted-foreground"
 					>
 						{group.title}
 					</p>
@@ -177,7 +177,7 @@
 												<li>
 													<a
 														href={child.href}
-														class={`flex items-center rounded-lg px-3 py-2 text-[0.8rem] font-medium transition-all duration-200 pressable ${
+														class={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 pressable ${
 															childActive
 																? 'bg-accent/10 text-accent'
 																: 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -240,7 +240,7 @@
 											<span class="truncate leading-tight">{item.title}</span>
 											{#if item.description}
 												<span
-													class={`mt-0.5 truncate text-[0.7rem] leading-tight transition-colors ${
+													class={`mt-0.5 truncate text-2xs leading-tight transition-colors ${
 														active
 															? 'text-accent/80'
 															: 'text-muted-foreground/70 group-hover:text-muted-foreground'
@@ -253,7 +253,7 @@
 
 										{#if item.badge}
 											<span
-												class={`ml-2 inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[0.65rem] font-bold ${
+												class={`ml-2 inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-2xs font-bold ${
 													active
 														? 'bg-accent/20 text-accent'
 														: 'bg-muted text-muted-foreground'
@@ -289,7 +289,7 @@
 											<li>
 												<a
 													href={child.href}
-													class={`flex items-center rounded-lg px-2.5 py-2 text-[0.8rem] font-medium transition-all duration-200 pressable ${
+													class={`flex items-center rounded-lg px-2.5 py-2 text-sm font-medium transition-all duration-200 pressable ${
 														childActive
 															? 'bg-accent/10 text-accent'
 															: 'text-muted-foreground hover:bg-muted hover:text-foreground'

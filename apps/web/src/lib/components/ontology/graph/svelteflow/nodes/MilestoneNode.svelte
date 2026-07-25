@@ -38,7 +38,7 @@
 	</div>
 
 	{#if dueDate}
-		<div class="text-[10px] text-success/70">
+		<div class="text-2xs text-success/70">
 			Due: {dueDate}
 		</div>
 	{/if}

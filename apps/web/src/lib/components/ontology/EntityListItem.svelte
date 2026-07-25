@@ -255,10 +255,10 @@
 	.entity-list-item[data-entity-type='project'] {
 		--entity-color: var(--color-emerald-500, #10b981);
 		border-color: var(--entity-color);
-		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='project']:hover {
-		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 10%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='project'] .entity-icon {
 		color: var(--entity-color);
@@ -268,10 +268,10 @@
 	.entity-list-item[data-entity-type='goal'] {
 		--entity-color: var(--color-amber-500, #f59e0b);
 		border-color: var(--entity-color);
-		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='goal']:hover {
-		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 10%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='goal'] .entity-icon {
 		color: var(--entity-color);
@@ -283,7 +283,7 @@
 		border-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
 	}
 	.entity-list-item[data-entity-type='milestone']:hover {
-		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='milestone'] .entity-icon {
 		color: var(--entity-color);
@@ -293,10 +293,10 @@
 	.entity-list-item[data-entity-type='plan'] {
 		--entity-color: var(--color-indigo-500, #6366f1);
 		border-color: var(--entity-color);
-		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='plan']:hover {
-		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 10%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='plan'] .entity-icon {
 		color: var(--entity-color);
@@ -307,7 +307,7 @@
 		--entity-color: var(--color-slate-400, #94a3b8);
 	}
 	.entity-list-item[data-entity-type='task']:hover {
-		background-color: var(--color-muted, hsl(var(--muted)));
+		background-color: hsl(var(--muted));
 	}
 	.entity-list-item[data-entity-type='task'] .entity-icon {
 		color: var(--entity-color);
@@ -317,30 +317,30 @@
 	.entity-list-item[data-entity-type='task'][data-entity-state='active'] {
 		--entity-color: var(--color-amber-500, #f59e0b);
 		border-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
-		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='task'][data-entity-state='active']:hover {
-		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 10%, hsl(var(--card)));
 	}
 
 	/* Task - completed state */
 	.entity-list-item[data-entity-type='task'][data-entity-state='completed'] {
 		--entity-color: var(--color-emerald-500, #10b981);
 		border-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
-		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='task'][data-entity-state='completed']:hover {
-		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 10%, hsl(var(--card)));
 	}
 
 	/* Risk - red (danger, blockers) */
 	.entity-list-item[data-entity-type='risk'] {
 		--entity-color: var(--color-red-500, #ef4444);
 		border-color: color-mix(in srgb, var(--entity-color) 40%, transparent);
-		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='risk']:hover {
-		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 10%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='risk'] .entity-icon {
 		color: var(--entity-color);
@@ -349,20 +349,20 @@
 	/* Risk - high severity */
 	.entity-list-item[data-entity-type='risk'][data-entity-severity='high'] {
 		border-color: var(--entity-color);
-		background-color: color-mix(in srgb, var(--entity-color) 8%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 8%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='risk'][data-entity-severity='high']:hover {
-		background-color: color-mix(in srgb, var(--entity-color) 15%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 15%, hsl(var(--card)));
 	}
 
 	/* Requirement - violet (dependencies) */
 	.entity-list-item[data-entity-type='requirement'] {
 		--entity-color: var(--color-violet-500, #8b5cf6);
 		border-color: color-mix(in srgb, var(--entity-color) 40%, transparent);
-		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='requirement']:hover {
-		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 10%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='requirement'] .entity-icon {
 		color: var(--entity-color);
@@ -372,10 +372,10 @@
 	.entity-list-item[data-entity-type='document'] {
 		--entity-color: var(--color-sky-500, #0ea5e9);
 		border-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
-		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='document']:hover {
-		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 10%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='document'] .entity-icon {
 		color: var(--entity-color);
@@ -385,20 +385,12 @@
 	.entity-list-item[data-entity-type='event'] {
 		--entity-color: var(--color-blue-500, #3b82f6);
 		border-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
-		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='event']:hover {
-		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 10%, hsl(var(--card)));
 	}
 	.entity-list-item[data-entity-type='event'] .entity-icon {
 		color: var(--entity-color);
-	}
-
-	/* Dark mode adjustments */
-	:global(.dark) .entity-list-item {
-		background-color: color-mix(in srgb, var(--entity-color) 8%, transparent);
-	}
-	:global(.dark) .entity-list-item:hover {
-		background-color: color-mix(in srgb, var(--entity-color) 15%, transparent);
 	}
 </style>

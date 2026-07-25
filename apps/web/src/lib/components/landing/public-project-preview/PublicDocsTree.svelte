@@ -92,7 +92,7 @@
 			</div>
 			<div class="text-left">
 				<p class="text-xs sm:text-sm font-semibold text-foreground">Documents</p>
-				<p class="text-[10px] sm:text-xs text-muted-foreground">
+				<p class="text-2xs sm:text-xs text-muted-foreground">
 					{documents?.length ?? 0}
 					{(documents?.length ?? 0) === 1 ? 'doc' : 'docs'}
 				</p>
@@ -127,14 +127,14 @@
 									{doc.title || 'Untitled'}
 								</p>
 								{#if doc.description}
-									<p class="text-[10px] text-muted-foreground line-clamp-1">
+									<p class="text-2xs text-muted-foreground line-clamp-1">
 										{doc.description}
 									</p>
 								{/if}
 							</div>
 							{#if doc.type_key}
 								<span
-									class="text-[10px] uppercase tracking-widest text-muted-foreground/70 shrink-0"
+									class="text-2xs uppercase tracking-widest text-muted-foreground/70 shrink-0"
 								>
 									{doc.type_key}
 								</span>
@@ -179,7 +179,7 @@
 			<div class="min-w-0 flex-1">
 				<p class="text-xs sm:text-sm text-foreground line-clamp-1">{title}</p>
 				{#if description}
-					<p class="text-[10px] text-muted-foreground line-clamp-1">{description}</p>
+					<p class="text-2xs text-muted-foreground line-clamp-1">{description}</p>
 				{/if}
 			</div>
 		</div>

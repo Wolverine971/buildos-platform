@@ -1,5 +1,12 @@
 // apps/web/src/lib/server/project-audit-chat-session.service.ts
 import type { Json } from '@buildos/shared-types';
+import {
+	compactSeedText as compactText,
+	isRecord,
+	normalizeRecordArray as normalizeArray,
+	readFiniteNumber as readNumber,
+	readTrimmedString as readString
+} from './chat-session-seed-formatters';
 
 type AnySupabase = any;
 
@@ -11,33 +18,6 @@ export type ProjectAuditChatSessionResult = {
 	audit: Record<string, unknown>;
 	project: Record<string, unknown> | null;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function readString(value: unknown): string | null {
-	return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function readNumber(value: unknown): number | null {
-	return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function compactText(value: unknown, maxLength: number): string | null {
-	if (typeof value !== 'string') return null;
-	const normalized = value.replace(/\s+/g, ' ').trim();
-	if (!normalized) return null;
-	return normalized.length <= maxLength
-		? normalized
-		: `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
-}
-
-function normalizeArray(value: unknown): Record<string, unknown>[] {
-	return Array.isArray(value)
-		? value.filter((item): item is Record<string, unknown> => isRecord(item))
-		: [];
-}
 
 function auditTitle(projectName: string | null): string {
 	return projectName ? `Chat: ${projectName} audit` : 'Chat: Project audit';

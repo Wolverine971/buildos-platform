@@ -816,7 +816,7 @@
 											Next Move
 										</span>
 										{#if nextStepSource && nextStepTimeAgo}
-											<span class="text-[10px] text-muted-foreground">
+											<span class="text-2xs text-muted-foreground">
 												{nextStepSource === 'ai' ? 'AI' : 'You'} · {nextStepTimeAgo}
 											</span>
 										{/if}
@@ -893,7 +893,7 @@
 												class="mt-2 p-2.5 rounded-md bg-muted border border-border"
 											>
 												<span
-													class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider block mb-1.5"
+													class="text-2xs font-medium text-muted-foreground uppercase tracking-wider block mb-1.5"
 												>
 													Preview
 												</span>

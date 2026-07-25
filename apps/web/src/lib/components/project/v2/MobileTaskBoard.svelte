@@ -383,7 +383,7 @@
 			</div>
 			<div class="min-w-0">
 				<p class="text-xs sm:text-sm font-semibold text-foreground">Tasks</p>
-				<p class="text-[10px] sm:text-xs text-muted-foreground">
+				<p class="text-2xs sm:text-xs text-muted-foreground">
 					{activeCount} active
 				</p>
 			</div>
@@ -451,7 +451,7 @@
 								<span>{bucket.shortLabel}</span>
 								{#if count > 0 || isActive}
 									<span
-										class="text-[10px] tabular-nums rounded-full px-1.5 py-0.5 min-w-[18px] text-center font-semibold
+										class="text-2xs tabular-nums rounded-full px-1.5 py-0.5 min-w-[18px] text-center font-semibold
 									{isActive
 											? 'bg-background/80 text-foreground border border-border/40'
 											: isPopulated && bucket.populatedAccent
@@ -501,7 +501,7 @@
 								<button
 									type="button"
 									onclick={() => void loadArchived()}
-									class="w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-medium text-foreground/80 hover:text-foreground bg-muted/30 hover:bg-muted/60 border border-border/60 rounded-md px-2 py-1.5 transition-colors pressable"
+									class="w-full inline-flex items-center justify-center gap-1.5 text-2xs font-medium text-foreground/80 hover:text-foreground bg-muted/30 hover:bg-muted/60 border border-border/60 rounded-md px-2 py-1.5 transition-colors pressable"
 								>
 									<RefreshCw class="w-3 h-3" /> Retry
 								</button>
@@ -545,13 +545,13 @@
 										>
 											{#if prio && !isArchivedCard}
 												<span
-													class="text-[11px] font-semibold {prio.className}"
+													class="text-2xs font-semibold {prio.className}"
 													>{prio.label}</span
 												>
 											{/if}
 											{#if due}
 												<span
-													class="text-[11px] font-medium inline-flex items-center gap-1 {due.isOverdue
+													class="text-2xs font-medium inline-flex items-center gap-1 {due.isOverdue
 														? 'text-destructive'
 														: 'text-muted-foreground'}"
 												>
@@ -565,7 +565,7 @@
 											{/if}
 											{#if assignee && !isArchivedCard}
 												<span
-													class="inline-flex items-center gap-1 text-[11px] text-muted-foreground"
+													class="inline-flex items-center gap-1 text-2xs text-muted-foreground"
 												>
 													<User class="w-3 h-3" />
 													{assignee}
@@ -573,7 +573,7 @@
 											{/if}
 											{#if archivedAt}
 												<span
-													class="text-[11px] text-muted-foreground/70 italic"
+													class="text-2xs text-muted-foreground/70 italic"
 												>
 													archived {archivedAt}
 												</span>

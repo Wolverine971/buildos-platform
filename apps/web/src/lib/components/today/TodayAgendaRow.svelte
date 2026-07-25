@@ -47,7 +47,7 @@
 <div class="flex items-stretch gap-2 sm:gap-3">
 	<!-- Time rail -->
 	<div
-		class="w-12 sm:w-16 flex-shrink-0 pt-2.5 sm:pt-3 text-right text-[10px] sm:text-xs tabular-nums {current
+		class="w-12 sm:w-16 flex-shrink-0 pt-2.5 sm:pt-3 text-right text-2xs sm:text-xs tabular-nums {current
 			? 'font-semibold text-accent'
 			: 'text-muted-foreground'}"
 	>
@@ -94,19 +94,19 @@
 					</p>
 					{#if current}
 						<span
-							class="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold uppercase tracking-wide bg-accent/10 text-accent border border-accent/20"
+							class="flex-shrink-0 px-1.5 py-0.5 rounded text-2xs font-bold uppercase tracking-wide bg-accent/10 text-accent border border-accent/20"
 						>
 							Now
 						</span>
 					{:else if !done && stateKey === 'in_progress'}
 						<span
-							class="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium bg-accent/10 text-accent border border-accent/20"
+							class="flex-shrink-0 px-1.5 py-0.5 rounded text-2xs font-medium bg-accent/10 text-accent border border-accent/20"
 						>
 							In progress
 						</span>
 					{:else if !done && stateKey === 'blocked'}
 						<span
-							class="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium bg-warning/10 text-warning border border-warning/20"
+							class="flex-shrink-0 px-1.5 py-0.5 rounded text-2xs font-medium bg-warning/10 text-warning border border-warning/20"
 						>
 							Blocked
 						</span>
@@ -114,7 +114,7 @@
 				</div>
 				{#if metaLabel || (projectHref && projectName)}
 					<div
-						class="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground sm:text-xs"
+						class="mt-0.5 flex min-w-0 items-center gap-1.5 text-2xs text-muted-foreground sm:text-xs"
 					>
 						{#if metaLabel}
 							<span class="min-w-0 truncate">{metaLabel}</span>

@@ -202,13 +202,13 @@
 			<div class="space-y-3">
 				<div class="grid grid-cols-2 gap-3">
 					<div class="space-y-0.5">
-						<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+						<p class="text-2xs uppercase tracking-wider text-muted-foreground">
 							Error ID
 						</p>
 						<p class="text-xs text-foreground font-mono truncate">{error.id}</p>
 					</div>
 					<div class="space-y-0.5">
-						<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+						<p class="text-2xs uppercase tracking-wider text-muted-foreground">
 							Occurred
 						</p>
 						<p class="text-xs text-foreground">
@@ -240,7 +240,7 @@
 
 				{#if error.user || error.user_id}
 					<div class="bg-info/5 border border-info/20 rounded-lg p-3">
-						<p class="text-[0.65rem] uppercase tracking-wider text-info mb-2">
+						<p class="text-2xs uppercase tracking-wider text-info mb-2">
 							User Information
 						</p>
 						{#if error.user}
@@ -279,16 +279,14 @@
 
 				{#if error.endpoint || error.http_method || error.request_id || error.ip_address || error.user_agent || routeId !== undefined || responseStatus !== undefined}
 					<div class="bg-muted/50 border border-border rounded-lg p-3">
-						<p
-							class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-2"
-						>
+						<p class="text-2xs uppercase tracking-wider text-muted-foreground mb-2">
 							Request Context
 						</p>
 						<div class="grid grid-cols-2 gap-2 text-xs">
 							{#if error.request_id}
 								<div class="col-span-2">
 									<span class="text-muted-foreground">Request ID:</span>
-									<p class="text-foreground font-mono text-[0.65rem] break-all">
+									<p class="text-foreground font-mono text-2xs break-all">
 										{error.request_id}
 									</p>
 								</div>
@@ -296,7 +294,7 @@
 							{#if error.endpoint}
 								<div class="col-span-2">
 									<span class="text-muted-foreground">Endpoint:</span>
-									<p class="text-foreground font-mono text-[0.65rem]">
+									<p class="text-foreground font-mono text-2xs">
 										{error.endpoint}
 									</p>
 								</div>
@@ -304,7 +302,7 @@
 							{#if routeId !== undefined}
 								<div class="col-span-2">
 									<span class="text-muted-foreground">Route ID:</span>
-									<p class="text-foreground font-mono text-[0.65rem]">
+									<p class="text-foreground font-mono text-2xs">
 										{formatMetadataValue(routeId)}
 									</p>
 								</div>
@@ -336,7 +334,7 @@
 							{#if error.user_agent}
 								<div class="col-span-2">
 									<span class="text-muted-foreground">User Agent:</span>
-									<p class="text-foreground text-[0.65rem] break-words">
+									<p class="text-foreground text-2xs break-words">
 										{error.user_agent}
 									</p>
 								</div>
@@ -347,20 +345,20 @@
 
 				{#if chatSessionId || streamRunId || clientTurnId || turnRunId || contextType || entityId || metadataProjectId || activeTurnConflict !== undefined}
 					<div class="bg-accent/5 border border-accent/20 rounded-lg p-3">
-						<p class="text-[0.65rem] uppercase tracking-wider text-accent mb-2">
+						<p class="text-2xs uppercase tracking-wider text-accent mb-2">
 							Chat Correlation
 						</p>
 						<div class="grid grid-cols-2 gap-2 text-xs">
 							{#if chatSessionId}
 								<div class="col-span-2">
 									<span class="text-muted-foreground">Session ID:</span>
-									<p class="text-foreground font-mono text-[0.65rem] break-all">
+									<p class="text-foreground font-mono text-2xs break-all">
 										{formatMetadataValue(chatSessionId)}
 									</p>
 									{#if chatSessionHref}
 										<a
 											href={chatSessionHref}
-											class="mt-1 inline-flex items-center gap-1 text-[0.65rem] font-medium text-accent hover:underline"
+											class="mt-1 inline-flex items-center gap-1 text-2xs font-medium text-accent hover:underline"
 										>
 											<span>Open chat audit</span>
 											<ArrowUpRight class="w-3 h-3" />
@@ -371,7 +369,7 @@
 							{#if turnRunId}
 								<div>
 									<span class="text-muted-foreground">Turn Run:</span>
-									<p class="text-foreground font-mono text-[0.65rem] truncate">
+									<p class="text-foreground font-mono text-2xs truncate">
 										{formatMetadataValue(turnRunId)}
 									</p>
 								</div>
@@ -379,7 +377,7 @@
 							{#if streamRunId}
 								<div>
 									<span class="text-muted-foreground">Stream Run:</span>
-									<p class="text-foreground font-mono text-[0.65rem] truncate">
+									<p class="text-foreground font-mono text-2xs truncate">
 										{formatMetadataValue(streamRunId)}
 									</p>
 								</div>
@@ -387,7 +385,7 @@
 							{#if clientTurnId}
 								<div>
 									<span class="text-muted-foreground">Client Turn:</span>
-									<p class="text-foreground font-mono text-[0.65rem] truncate">
+									<p class="text-foreground font-mono text-2xs truncate">
 										{formatMetadataValue(clientTurnId)}
 									</p>
 								</div>
@@ -403,7 +401,7 @@
 							{#if entityId}
 								<div>
 									<span class="text-muted-foreground">Entity:</span>
-									<p class="text-foreground font-mono text-[0.65rem] truncate">
+									<p class="text-foreground font-mono text-2xs truncate">
 										{formatMetadataValue(entityId)}
 									</p>
 								</div>
@@ -422,14 +420,12 @@
 											<ArrowUpRight class="h-3 w-3 shrink-0" />
 										</a>
 										<p
-											class="font-mono text-[0.65rem] text-muted-foreground truncate"
+											class="font-mono text-2xs text-muted-foreground truncate"
 										>
 											{displayProjectId}
 										</p>
 									{:else}
-										<p
-											class="text-foreground font-mono text-[0.65rem] truncate"
-										>
+										<p class="text-foreground font-mono text-2xs truncate">
 											{formatMetadataValue(displayProjectId)}
 										</p>
 									{/if}
@@ -448,7 +444,7 @@
 				{/if}
 
 				<div class="space-y-1">
-					<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+					<p class="text-2xs uppercase tracking-wider text-muted-foreground">
 						Error Message
 					</p>
 					<div class="bg-background border border-border rounded-lg p-3 shadow-ink-inner">
@@ -462,7 +458,7 @@
 
 				{#if originalErrorCode || originalErrorDetails || originalErrorHint}
 					<div class="bg-destructive/5 border border-destructive/20 rounded-lg p-3">
-						<p class="text-[0.65rem] uppercase tracking-wider text-destructive mb-2">
+						<p class="text-2xs uppercase tracking-wider text-destructive mb-2">
 							Original Error
 						</p>
 						<div class="grid grid-cols-2 gap-2 text-xs">
@@ -477,7 +473,7 @@
 							{#if originalErrorDetails}
 								<div class="col-span-2">
 									<span class="text-muted-foreground">Details:</span>
-									<p class="text-foreground font-mono text-[0.65rem]">
+									<p class="text-foreground font-mono text-2xs">
 										{formatMetadataValue(originalErrorDetails)}
 									</p>
 								</div>
@@ -485,7 +481,7 @@
 							{#if originalErrorHint}
 								<div class="col-span-2">
 									<span class="text-muted-foreground">Hint:</span>
-									<p class="text-foreground font-mono text-[0.65rem]">
+									<p class="text-foreground font-mono text-2xs">
 										{formatMetadataValue(originalErrorHint)}
 									</p>
 								</div>
@@ -496,7 +492,7 @@
 
 				{#if isToolExecution}
 					<div class="bg-info/5 border border-info/20 rounded-lg p-3">
-						<p class="text-[0.65rem] uppercase tracking-wider text-info mb-2">
+						<p class="text-2xs uppercase tracking-wider text-info mb-2">
 							Tool Execution
 						</p>
 						<div class="grid grid-cols-2 gap-2 text-xs">
@@ -525,7 +521,7 @@
 							{#if toolCallId}
 								<div>
 									<span class="text-muted-foreground">Tool Call ID:</span>
-									<p class="text-foreground font-mono text-[0.65rem] truncate">
+									<p class="text-foreground font-mono text-2xs truncate">
 										{formatMetadataValue(toolCallId)}
 									</p>
 								</div>
@@ -533,7 +529,7 @@
 							{#if toolSessionId}
 								<div>
 									<span class="text-muted-foreground">Session ID:</span>
-									<p class="text-foreground font-mono text-[0.65rem] truncate">
+									<p class="text-foreground font-mono text-2xs truncate">
 										{formatMetadataValue(toolSessionId)}
 									</p>
 								</div>
@@ -549,7 +545,7 @@
 							{#if toolEntityId}
 								<div>
 									<span class="text-muted-foreground">Entity ID:</span>
-									<p class="text-foreground font-mono text-[0.65rem] truncate">
+									<p class="text-foreground font-mono text-2xs truncate">
 										{formatMetadataValue(toolEntityId)}
 									</p>
 								</div>
@@ -583,7 +579,7 @@
 							<div class="mt-2">
 								<span class="text-muted-foreground text-xs">Arguments:</span>
 								<pre
-									class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{formatJson(
+									class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-2xs overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{formatJson(
 										toolArgs
 									)}</pre>
 							</div>
@@ -593,13 +589,11 @@
 
 				{#if !isToolExecution && operationPayload}
 					<div class="bg-muted/50 border border-border rounded-lg p-3">
-						<p
-							class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-2"
-						>
+						<p class="text-2xs uppercase tracking-wider text-muted-foreground mb-2">
 							Operation Payload
 						</p>
 						<pre
-							class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{formatJson(
+							class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-2xs overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{formatJson(
 								operationPayload
 							)}</pre>
 					</div>
@@ -607,13 +601,11 @@
 
 				{#if hasMetadata(metadata)}
 					<div class="bg-muted/30 border border-border rounded-lg p-3">
-						<p
-							class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-2"
-						>
+						<p class="text-2xs uppercase tracking-wider text-muted-foreground mb-2">
 							Metadata
 						</p>
 						<pre
-							class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-48 leading-relaxed">{formatJson(
+							class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-2xs overflow-x-auto text-foreground/80 max-h-48 leading-relaxed">{formatJson(
 								metadata
 							)}</pre>
 					</div>
@@ -621,17 +613,17 @@
 
 				{#if error.error_stack}
 					<div class="space-y-1">
-						<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+						<p class="text-2xs uppercase tracking-wider text-muted-foreground">
 							Stack Trace
 						</p>
 						<pre
-							class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{error.error_stack}</pre>
+							class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-2xs overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{error.error_stack}</pre>
 					</div>
 				{/if}
 
 				{#if !isToolExecution && (error.operation_type || error.table_name || error.record_id || error.project_id || error.brain_dump_id)}
 					<div class="bg-warning/5 border border-warning/20 rounded-lg p-3">
-						<p class="text-[0.65rem] uppercase tracking-wider text-warning mb-2">
+						<p class="text-2xs uppercase tracking-wider text-warning mb-2">
 							Operation Context
 						</p>
 						<div class="grid grid-cols-2 gap-2 text-xs">
@@ -654,7 +646,7 @@
 							{#if error.record_id}
 								<div>
 									<span class="text-muted-foreground">Record:</span>
-									<p class="text-foreground font-mono text-[0.65rem] truncate">
+									<p class="text-foreground font-mono text-2xs truncate">
 										{error.record_id}
 									</p>
 								</div>
@@ -673,14 +665,12 @@
 											<ArrowUpRight class="h-3 w-3 shrink-0" />
 										</a>
 										<p
-											class="font-mono text-[0.65rem] text-muted-foreground truncate"
+											class="font-mono text-2xs text-muted-foreground truncate"
 										>
 											{displayProjectId}
 										</p>
 									{:else}
-										<p
-											class="text-foreground font-mono text-[0.65rem] truncate"
-										>
+										<p class="text-foreground font-mono text-2xs truncate">
 											{formatMetadataValue(displayProjectId)}
 										</p>
 									{/if}
@@ -689,7 +679,7 @@
 							{#if error.brain_dump_id}
 								<div>
 									<span class="text-muted-foreground">Brain Dump:</span>
-									<p class="text-foreground font-mono text-[0.65rem] truncate">
+									<p class="text-foreground font-mono text-2xs truncate">
 										{error.brain_dump_id}
 									</p>
 								</div>
@@ -700,7 +690,7 @@
 
 				{#if error.llm_provider}
 					<div class="bg-success/5 border border-success/20 rounded-lg p-3">
-						<p class="text-[0.65rem] uppercase tracking-wider text-success mb-2">
+						<p class="text-2xs uppercase tracking-wider text-success mb-2">
 							LLM Details
 						</p>
 						<div class="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
@@ -730,9 +720,7 @@
 
 				{#if error.environment || error.app_version || error.browser_info}
 					<div class="bg-muted/40 border border-border rounded-lg p-3">
-						<p
-							class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-2"
-						>
+						<p class="text-2xs uppercase tracking-wider text-muted-foreground mb-2">
 							Runtime
 						</p>
 						<div class="grid grid-cols-2 gap-2 text-xs">
@@ -745,7 +733,7 @@
 							{#if error.app_version}
 								<div>
 									<span class="text-muted-foreground">App Version:</span>
-									<p class="text-foreground font-mono text-[0.65rem]">
+									<p class="text-foreground font-mono text-2xs">
 										{error.app_version}
 									</p>
 								</div>
@@ -755,7 +743,7 @@
 							<div class="mt-2">
 								<span class="text-muted-foreground text-xs">Browser Info:</span>
 								<pre
-									class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-32 leading-relaxed">{formatJson(
+									class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-2xs overflow-x-auto text-foreground/80 max-h-32 leading-relaxed">{formatJson(
 										error.browser_info
 									)}</pre>
 							</div>

@@ -120,13 +120,13 @@
 			<!-- Spec label -->
 			<div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
 				<span
-					class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+					class="font-mono text-2xs uppercase tracking-[0.15em] text-muted-foreground"
 				>
 					DOC-DS-001 • Rev 1.0
 				</span>
 				<span class="w-1 h-1 rounded-full bg-muted-foreground/50 hidden sm:block"></span>
 				<span
-					class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+					class="font-mono text-2xs uppercase tracking-[0.15em] text-muted-foreground"
 				>
 					Design System Reference
 				</span>
@@ -157,7 +157,7 @@
 		<section>
 			<div class="flex items-center gap-2 mb-4">
 				<span
-					class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-accent"
+					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
 				>
 					Overview
 				</span>
@@ -200,7 +200,7 @@
 		<section>
 			<div class="flex items-center gap-2 mb-4">
 				<span
-					class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-accent"
+					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
 				>
 					Section 01
 				</span>
@@ -223,7 +223,7 @@
 						<div class="flex items-center gap-2">
 							<Cpu class="w-4 h-4 text-muted-foreground" />
 							<span
-								class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								class="font-mono text-2xs uppercase tracking-[0.15em] text-muted-foreground"
 							>
 								SYS-STATUS
 							</span>
@@ -305,13 +305,12 @@
 						<div class="flex items-center gap-2">
 							<Activity class="w-4 h-4 text-muted-foreground" />
 							<span
-								class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								class="font-mono text-2xs uppercase tracking-[0.15em] text-muted-foreground"
 							>
 								METRICS
 							</span>
 						</div>
-						<span
-							class="font-mono text-[0.55rem] sm:text-[0.6rem] text-muted-foreground"
+						<span class="font-mono text-2xs text-muted-foreground"
 							>Last 24h</span
 						>
 					</div>
@@ -319,7 +318,7 @@
 					<div class="p-4 grid grid-cols-2 gap-4">
 						<div class="space-y-1">
 							<span
-								class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-wider text-muted-foreground"
+								class="font-mono text-2xs uppercase tracking-wider text-muted-foreground"
 								>Requests</span
 							>
 							<p class="font-mono text-xl sm:text-2xl text-foreground">847K</p>
@@ -329,7 +328,7 @@
 						</div>
 						<div class="space-y-1">
 							<span
-								class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-wider text-muted-foreground"
+								class="font-mono text-2xs uppercase tracking-wider text-muted-foreground"
 								>Latency P99</span
 							>
 							<p class="font-mono text-xl sm:text-2xl text-foreground">142ms</p>
@@ -339,7 +338,7 @@
 						</div>
 						<div class="space-y-1">
 							<span
-								class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-wider text-muted-foreground"
+								class="font-mono text-2xs uppercase tracking-wider text-muted-foreground"
 								>Error Rate</span
 							>
 							<p class="font-mono text-xl sm:text-2xl text-foreground">0.02%</p>
@@ -349,7 +348,7 @@
 						</div>
 						<div class="space-y-1">
 							<span
-								class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-wider text-muted-foreground"
+								class="font-mono text-2xs uppercase tracking-wider text-muted-foreground"
 								>Active Users</span
 							>
 							<p class="font-mono text-xl sm:text-2xl text-foreground">1,247</p>
@@ -366,7 +365,7 @@
 		<section>
 			<div class="flex items-center gap-2 mb-4">
 				<span
-					class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-accent"
+					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
 				>
 					Section 02
 				</span>
@@ -381,7 +380,7 @@
 				<!-- Table header - Hidden on mobile -->
 				<div class="hidden sm:block px-4 py-3 bg-muted/50 border-b border-border">
 					<div
-						class="grid grid-cols-12 gap-4 font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+						class="grid grid-cols-12 gap-4 font-mono text-2xs uppercase tracking-[0.15em] text-muted-foreground"
 					>
 						<div class="col-span-2">ID</div>
 						<div class="col-span-1">Type</div>
@@ -531,7 +530,7 @@
 					class="px-4 py-2 bg-muted/30 border-t border-border flex items-center justify-between"
 				>
 					<span
-						class="font-mono text-[0.55rem] sm:text-[0.6rem] text-muted-foreground uppercase tracking-wider"
+						class="font-mono text-2xs text-muted-foreground uppercase tracking-wider"
 					>
 						{entities.length} entities indexed
 					</span>
@@ -548,7 +547,7 @@
 		<section>
 			<div class="flex items-center gap-2 mb-4">
 				<span
-					class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-accent"
+					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
 				>
 					Section 03
 				</span>
@@ -568,7 +567,7 @@
 						<div class="flex items-center gap-2">
 							<GitBranch class="w-4 h-4 text-muted-foreground" />
 							<span
-								class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								class="font-mono text-2xs uppercase tracking-[0.15em] text-muted-foreground"
 							>
 								DEPENDENCY GRAPH
 							</span>
@@ -592,7 +591,7 @@
 								<!-- Arrow with type -->
 								<div class="flex items-center gap-2 sm:flex-col sm:gap-1 sm:px-4">
 									<span
-										class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-wider text-muted-foreground"
+										class="font-mono text-2xs uppercase tracking-wider text-muted-foreground"
 									>
 										{dep.type}
 									</span>
@@ -619,7 +618,7 @@
 				<div class="bg-card border border-border rounded-lg shadow-ink overflow-hidden">
 					<div class="px-4 py-3 border-b border-border bg-muted/30">
 						<span
-							class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+							class="font-mono text-2xs uppercase tracking-[0.15em] text-muted-foreground"
 						>
 							RELATIONSHIP TYPES
 						</span>
@@ -632,7 +631,7 @@
 							></div>
 							<div>
 								<span class="font-mono text-xs text-foreground block">blocks</span>
-								<span class="text-[0.6rem] sm:text-[0.65rem] text-muted-foreground"
+								<span class="text-2xs text-muted-foreground"
 									>Prevents progress</span
 								>
 							</div>
@@ -645,7 +644,7 @@
 								<span class="font-mono text-xs text-foreground block"
 									>belongs_to</span
 								>
-								<span class="text-[0.6rem] sm:text-[0.65rem] text-muted-foreground"
+								<span class="text-2xs text-muted-foreground"
 									>Parent relationship</span
 								>
 							</div>
@@ -658,7 +657,7 @@
 								<span class="font-mono text-xs text-foreground block"
 									>threatens</span
 								>
-								<span class="text-[0.6rem] sm:text-[0.65rem] text-muted-foreground"
+								<span class="text-2xs text-muted-foreground"
 									>Risk association</span
 								>
 							</div>
@@ -669,7 +668,7 @@
 							></div>
 							<div>
 								<span class="font-mono text-xs text-foreground block">enables</span>
-								<span class="text-[0.6rem] sm:text-[0.65rem] text-muted-foreground"
+								<span class="text-2xs text-muted-foreground"
 									>Unlocks capability</span
 								>
 							</div>
@@ -683,7 +682,7 @@
 		<section>
 			<div class="flex items-center gap-2 mb-4">
 				<span
-					class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-accent"
+					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
 				>
 					Section 04
 				</span>
@@ -719,7 +718,7 @@
 										v{release.version}
 									</span>
 									<span
-										class="px-1.5 py-0.5 rounded text-[0.55rem] sm:text-[0.6rem] font-mono uppercase {release.type ===
+										class="px-1.5 py-0.5 rounded text-2xs font-mono uppercase {release.type ===
 										'minor'
 											? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
 											: 'bg-muted text-muted-foreground'}"
@@ -728,7 +727,7 @@
 									</span>
 									{#if i === 0}
 										<span
-											class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-[0.55rem] sm:text-[0.6rem] font-mono uppercase text-emerald-600 dark:text-emerald-400"
+											class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-2xs font-mono uppercase text-emerald-600 dark:text-emerald-400"
 										>
 											Latest
 										</span>
@@ -759,7 +758,7 @@
 		<section>
 			<div class="flex items-center gap-2 mb-4">
 				<span
-					class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-accent"
+					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
 				>
 					Section 05
 				</span>
@@ -780,7 +779,7 @@
 					</div>
 					<div class="pl-4">
 						<span
-							class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-wider text-blue-600 dark:text-blue-400"
+							class="font-mono text-2xs uppercase tracking-wider text-blue-600 dark:text-blue-400"
 						>
 							Note
 						</span>
@@ -789,7 +788,7 @@
 							indicate information type.
 						</p>
 						<span
-							class="font-mono text-[0.55rem] sm:text-[0.6rem] text-muted-foreground mt-2 block"
+							class="font-mono text-2xs text-muted-foreground mt-2 block"
 						>
 							Ref: DS-ANNOT-001
 						</span>
@@ -805,7 +804,7 @@
 					</div>
 					<div class="pl-4">
 						<span
-							class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-wider text-amber-600 dark:text-amber-400"
+							class="font-mono text-2xs uppercase tracking-wider text-amber-600 dark:text-amber-400"
 						>
 							Warning
 						</span>
@@ -814,7 +813,7 @@
 							require attention.
 						</p>
 						<span
-							class="font-mono text-[0.55rem] sm:text-[0.6rem] text-muted-foreground mt-2 block"
+							class="font-mono text-2xs text-muted-foreground mt-2 block"
 						>
 							Ref: DS-ANNOT-002
 						</span>
@@ -830,7 +829,7 @@
 					</div>
 					<div class="pl-4">
 						<span
-							class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-wider text-emerald-600 dark:text-emerald-400"
+							class="font-mono text-2xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400"
 						>
 							Tip
 						</span>
@@ -839,7 +838,7 @@
 							optimal results.
 						</p>
 						<span
-							class="font-mono text-[0.55rem] sm:text-[0.6rem] text-muted-foreground mt-2 block"
+							class="font-mono text-2xs text-muted-foreground mt-2 block"
 						>
 							Ref: DS-ANNOT-003
 						</span>
@@ -855,7 +854,7 @@
 					</div>
 					<div class="pl-4">
 						<span
-							class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-wider text-purple-600 dark:text-purple-400"
+							class="font-mono text-2xs uppercase tracking-wider text-purple-600 dark:text-purple-400"
 						>
 							Technical
 						</span>
@@ -864,7 +863,7 @@
 							system specifications.
 						</p>
 						<span
-							class="font-mono text-[0.55rem] sm:text-[0.6rem] text-muted-foreground mt-2 block"
+							class="font-mono text-2xs text-muted-foreground mt-2 block"
 						>
 							Ref: DS-ANNOT-004
 						</span>
@@ -877,7 +876,7 @@
 		<section>
 			<div class="flex items-center gap-2 mb-4">
 				<span
-					class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-accent"
+					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
 				>
 					Section 06
 				</span>
@@ -896,8 +895,7 @@
 					<div class="flex items-center gap-2 sm:gap-3 min-w-0">
 						<FileText class="w-4 h-4 text-muted-foreground shrink-0" />
 						<span class="font-mono text-xs text-foreground truncate">inkprint.css</span>
-						<span
-							class="font-mono text-[0.55rem] sm:text-[0.6rem] text-muted-foreground shrink-0"
+						<span class="font-mono text-2xs text-muted-foreground shrink-0"
 							>:42-58</span
 						>
 					</div>
@@ -948,7 +946,7 @@
 		<section>
 			<div class="flex items-center gap-2 mb-4">
 				<span
-					class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.15em] text-accent"
+					class="font-mono text-2xs uppercase tracking-[0.15em] text-accent"
 				>
 					Section 07
 				</span>
@@ -1007,17 +1005,13 @@
 				class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-muted-foreground"
 			>
 				<div class="flex items-center gap-2 sm:gap-4">
-					<span
-						class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-wider"
-					>
+					<span class="font-mono text-2xs uppercase tracking-wider">
 						DOC-DS-001 • Tech Spec Aesthetic
 					</span>
 				</div>
 				<div class="flex items-center gap-2 sm:gap-4">
-					<span class="font-mono text-[0.55rem] sm:text-[0.6rem]">Page 1 of 1</span>
-					<span class="font-mono text-[0.55rem] sm:text-[0.6rem]"
-						>Generated 2026-02-01</span
-					>
+					<span class="font-mono text-2xs">Page 1 of 1</span>
+					<span class="font-mono text-2xs">Generated 2026-02-01</span>
 				</div>
 			</div>
 		</footer>

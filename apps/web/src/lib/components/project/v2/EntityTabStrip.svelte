@@ -537,12 +537,12 @@
 				>
 					<div class="flex items-center gap-1.5 min-w-0">
 						<tab.icon class="w-3.5 h-3.5 shrink-0 {tab.accent}" />
-						<span class="text-[11px] sm:text-xs font-semibold text-foreground truncate">
+						<span class="text-2xs sm:text-xs font-semibold text-foreground truncate">
 							{tab.label}
 						</span>
 						{#if tab.count !== null}
 							<span
-								class="text-[10px] tabular-nums text-muted-foreground shrink-0 min-w-[1.1rem] text-center"
+								class="text-2xs tabular-nums text-muted-foreground shrink-0 min-w-[1.1rem] text-center"
 							>
 								{tab.count}
 							</span>
@@ -563,12 +563,12 @@
 				>
 					<div class="flex items-center gap-1.5 min-w-0">
 						<tab.icon class="w-3.5 h-3.5 shrink-0 {tab.accent}" />
-						<span class="text-[11px] sm:text-xs font-semibold text-foreground truncate">
+						<span class="text-2xs sm:text-xs font-semibold text-foreground truncate">
 							{tab.label}
 						</span>
 						{#if tab.count !== null}
 							<span
-								class="text-[10px] tabular-nums text-muted-foreground shrink-0 min-w-[1.1rem] text-center"
+								class="text-2xs tabular-nums text-muted-foreground shrink-0 min-w-[1.1rem] text-center"
 							>
 								{tab.count}
 							</span>
@@ -623,7 +623,7 @@
 												</p>
 												{#if preview}
 													<p
-														class="text-[11px] text-muted-foreground line-clamp-1 mt-0.5"
+														class="text-2xs text-muted-foreground line-clamp-1 mt-0.5"
 													>
 														{preview}
 													</p>
@@ -694,7 +694,7 @@
 									<button
 										type="button"
 										onclick={onAddGoal}
-										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-foreground/80 hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-2xs font-medium text-foreground/80 hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 									>
 										<Plus class="w-3 h-3" /> New goal
 									</button>
@@ -735,7 +735,7 @@
 													</p>
 													{#if goal.goal && goal.goal !== goal.name}
 														<p
-															class="text-[11px] text-muted-foreground line-clamp-1 mt-0.5"
+															class="text-2xs text-muted-foreground line-clamp-1 mt-0.5"
 														>
 															{goal.goal}
 														</p>
@@ -745,13 +745,13 @@
 													>
 														{#if chip}
 															<span
-																class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border {chip.className}"
+																class="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-medium border {chip.className}"
 																>{chip.label}</span
 															>
 														{/if}
 														{#if goalMilestones.length > 0}
 															<span
-																class="text-[10px] text-muted-foreground inline-flex items-center gap-1"
+																class="text-2xs text-muted-foreground inline-flex items-center gap-1"
 															>
 																<Flag class="w-2.5 h-2.5" />
 																{completedCount}/{goalMilestones.length}
@@ -764,7 +764,7 @@
 															)}
 															{#if due}
 																<span
-																	class="text-[10px] inline-flex items-center gap-1 {due.isOverdue
+																	class="text-2xs inline-flex items-center gap-1 {due.isOverdue
 																		? 'text-destructive font-medium'
 																		: 'text-muted-foreground'}"
 																>
@@ -804,7 +804,7 @@
 																	: 'text-muted-foreground'}"
 															/>
 															<span
-																class="text-[11px] text-foreground truncate {mState ===
+																class="text-2xs text-foreground truncate {mState ===
 																'completed'
 																	? 'line-through text-muted-foreground'
 																	: ''}">{m.title}</span
@@ -815,7 +815,7 @@
 														>
 															{#if mDue}
 																<span
-																	class="text-[10px] {mDue.isOverdue
+																	class="text-2xs {mDue.isOverdue
 																		? 'text-destructive font-medium'
 																		: 'text-muted-foreground'}"
 																	>{mDue.label}</span
@@ -823,7 +823,7 @@
 															{/if}
 															{#if mChip}
 																<span
-																	class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium border {mChip.className}"
+																	class="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-medium border {mChip.className}"
 																	>{mChip.label}</span
 																>
 															{/if}
@@ -838,7 +838,7 @@
 																goal.id,
 																goal.name
 															)}
-														class="w-full text-left px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/40 border-t border-border/40 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset inline-flex items-center gap-1"
+														class="w-full text-left px-3 py-1.5 text-2xs text-muted-foreground hover:text-foreground hover:bg-muted/40 border-t border-border/40 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset inline-flex items-center gap-1"
 													>
 														<Plus class="w-2.5 h-2.5" /> Add milestone
 													</button>
@@ -894,13 +894,13 @@
 												<div class="flex items-center gap-2 mt-1 flex-wrap">
 													{#if mChip}
 														<span
-															class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border {mChip.className}"
+															class="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-medium border {mChip.className}"
 															>{mChip.label}</span
 														>
 													{/if}
 													{#if mDue}
 														<span
-															class="text-[10px] inline-flex items-center gap-1 {mDue.isOverdue
+															class="text-2xs inline-flex items-center gap-1 {mDue.isOverdue
 																? 'text-destructive font-medium'
 																: 'text-muted-foreground'}"
 														>
@@ -910,7 +910,7 @@
 													{/if}
 													{#if standalone}
 														<span
-															class="text-[10px] text-muted-foreground/70 italic"
+															class="text-2xs text-muted-foreground/70 italic"
 															>standalone</span
 														>
 													{/if}
@@ -928,7 +928,7 @@
 									<button
 										type="button"
 										onclick={onAddPlan}
-										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-foreground/80 hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-2xs font-medium text-foreground/80 hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 									>
 										<Plus class="w-3 h-3" /> New plan
 									</button>
@@ -963,7 +963,7 @@
 												</div>
 												{#if plan.description}
 													<p
-														class="text-[11px] text-muted-foreground line-clamp-1 mt-0.5"
+														class="text-2xs text-muted-foreground line-clamp-1 mt-0.5"
 													>
 														{plan.description}
 													</p>
@@ -971,7 +971,7 @@
 												{#if chip}
 													<div class="mt-1">
 														<span
-															class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border {chip.className}"
+															class="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-medium border {chip.className}"
 															>{chip.label}</span
 														>
 													</div>
@@ -989,7 +989,7 @@
 									<button
 										type="button"
 										onclick={onAddRisk}
-										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-foreground/80 hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-2xs font-medium text-foreground/80 hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 									>
 										<Plus class="w-3 h-3" /> New risk
 									</button>
@@ -1025,7 +1025,7 @@
 												</div>
 												{#if risk.content}
 													<p
-														class="text-[11px] text-muted-foreground line-clamp-1 mt-0.5"
+														class="text-2xs text-muted-foreground line-clamp-1 mt-0.5"
 													>
 														{risk.content}
 													</p>
@@ -1033,7 +1033,7 @@
 												{#if chip}
 													<div class="mt-1">
 														<span
-															class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border {chip.className}"
+															class="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-medium border {chip.className}"
 															>{chip.label}</span
 														>
 													</div>

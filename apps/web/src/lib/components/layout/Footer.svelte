@@ -246,12 +246,3 @@
 		{/if}
 	</div>
 </footer>
-
-<style>
-	@media (max-width: 768px) {
-		a,
-		button {
-			-webkit-tap-highlight-color: transparent;
-		}
-	}
-</style>

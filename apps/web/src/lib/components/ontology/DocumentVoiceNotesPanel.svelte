@@ -127,7 +127,7 @@
 					VOICE RECORDINGS
 					{#if noteCount > 0}
 						<span
-							class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-[0.6rem] font-semibold bg-muted text-foreground rounded-full"
+							class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-2xs font-semibold bg-muted text-foreground rounded-full"
 							>{noteCount}</span
 						>
 					{/if}
@@ -143,7 +143,7 @@
 				<RefreshCw class={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
 			</button>
 		</div>
-		<p class="text-[0.65rem] text-muted-foreground/70 mt-0.5 leading-tight">
+		<p class="text-2xs text-muted-foreground/70 mt-0.5 leading-tight">
 			Audio captured while editing this document.
 		</p>
 	</CardHeader>
@@ -158,11 +158,11 @@
 			<!-- Error state with static texture -->
 			<div class="px-2 py-3 text-center tx tx-static tx-weak rounded-lg">
 				<AlertCircle class="w-4 h-4 text-destructive mx-auto mb-1.5" />
-				<p class="text-[0.7rem] text-destructive mb-1.5">{errorMessage}</p>
+				<p class="text-2xs text-destructive mb-1.5">{errorMessage}</p>
 				<button
 					type="button"
 					onclick={handleRetry}
-					class="inline-flex items-center gap-1 text-[0.6rem] text-accent hover:underline pressable"
+					class="inline-flex items-center gap-1 text-2xs text-accent hover:underline pressable"
 				>
 					<RefreshCw class="w-3 h-3" />
 					Retry

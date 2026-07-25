@@ -179,9 +179,9 @@
 	</div>
 
 	{#if loading}
-		<p class="text-[12px] text-muted-foreground">Loading…</p>
+		<p class="text-xs text-muted-foreground">Loading…</p>
 	{:else if error}
-		<div class="text-[12px] text-destructive">
+		<div class="text-xs text-destructive">
 			{error}
 			<button type="button" class="ml-2 underline underline-offset-2" onclick={fetchComments}>
 				Retry
@@ -189,7 +189,7 @@
 		</div>
 	{:else}
 		{#if rootComments.length === 0}
-			<p class="text-[12px] text-muted-foreground italic">
+			<p class="text-xs text-muted-foreground italic">
 				No comments yet. {currentUser
 					? 'Be the first to share feedback.'
 					: 'Sign in to be the first to share feedback.'}
@@ -202,13 +202,13 @@
 					<article class="flex gap-2.5">
 						<span
 							aria-hidden="true"
-							class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-accent text-[10px] font-bold shrink-0 mt-0.5"
+							class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-accent text-2xs font-bold shrink-0 mt-0.5"
 						>
 							{authorInitials(root.author)}
 						</span>
 						<div class="min-w-0 flex-1">
 							<div
-								class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[12px]"
+								class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs"
 							>
 								<span class="font-semibold text-foreground">
 									{root.author?.name || 'Someone'}
@@ -226,7 +226,7 @@
 							>
 								{root.body}
 							</p>
-							<div class="mt-1.5 flex items-center gap-3 text-[11px]">
+							<div class="mt-1.5 flex items-center gap-3 text-2xs">
 								{#if currentUser}
 									<button
 										type="button"
@@ -252,13 +252,13 @@
 								<article class="mt-3 flex gap-2.5 pl-3 border-l border-border">
 									<span
 										aria-hidden="true"
-										class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-accent/10 text-accent text-[9px] font-bold shrink-0 mt-0.5"
+										class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-accent/10 text-accent text-2xs font-bold shrink-0 mt-0.5"
 									>
 										{authorInitials(reply.author)}
 									</span>
 									<div class="min-w-0 flex-1">
 										<div
-											class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px]"
+											class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-2xs"
 										>
 											<span class="font-semibold text-foreground">
 												{reply.author?.name || 'Someone'}
@@ -269,7 +269,7 @@
 											</span>
 										</div>
 										<p
-											class="mt-0.5 text-[13px] leading-relaxed text-foreground whitespace-pre-wrap break-words"
+											class="mt-0.5 text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words"
 										>
 											{reply.body}
 										</p>
@@ -277,7 +277,7 @@
 											<button
 												type="button"
 												onclick={() => handleDelete(reply)}
-												class="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive transition-colors"
+												class="mt-1 inline-flex items-center gap-1 text-2xs text-muted-foreground hover:text-destructive transition-colors"
 											>
 												<Trash2 class="w-3 h-3" />
 												Delete
@@ -298,7 +298,7 @@
 			<form onsubmit={handleSubmit} class="space-y-2">
 				{#if composerReplyTo}
 					<div
-						class="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-[11px] text-muted-foreground"
+						class="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-2xs text-muted-foreground"
 					>
 						<span>
 							Replying to

@@ -41,7 +41,7 @@
 				<!-- Metadata Bar -->
 				{#if brief.metadata}
 					<div
-						class="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-muted-foreground"
+						class="flex flex-wrap items-center gap-2 sm:gap-3 text-2xs sm:text-xs text-muted-foreground"
 					>
 						{#if brief.metadata.task_count}
 							<span class="flex items-center gap-1">
@@ -102,7 +102,7 @@
 			<div
 				class="flex items-center justify-between gap-3 px-3 sm:px-4 py-3 border-t border-border bg-muted/30"
 			>
-				<p class="text-[10px] sm:text-xs text-muted-foreground truncate">
+				<p class="text-2xs sm:text-xs text-muted-foreground truncate">
 					Generated {new Date(brief.created_at || brief.brief_date).toLocaleDateString(
 						undefined,
 						{ month: 'short', day: 'numeric', year: 'numeric' }
@@ -111,7 +111,7 @@
 				{#if projectId}
 					<a
 						href="/projects/{projectId}"
-						class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] sm:text-xs font-medium rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition-colors pressable shrink-0"
+						class="inline-flex items-center gap-1 px-2.5 py-1.5 text-2xs sm:text-xs font-medium rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition-colors pressable shrink-0"
 					>
 						<ExternalLink class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
 						View Project

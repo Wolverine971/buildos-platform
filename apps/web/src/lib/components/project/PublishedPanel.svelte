@@ -152,7 +152,7 @@
 			<span class="text-sm font-semibold text-foreground">Published</span>
 			{#if displayedLiveCount > 0}
 				<span
-					class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-success/10 text-success text-[10px] font-semibold"
+					class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-success/10 text-success text-2xs font-semibold"
 				>
 					{displayedLiveCount}
 				</span>
@@ -205,23 +205,23 @@
 										{row.title}
 									</p>
 									<p
-										class="mt-0.5 text-[11px] text-muted-foreground font-mono truncate"
+										class="mt-0.5 text-2xs text-muted-foreground font-mono truncate"
 									>
 										{row.url_path}
 									</p>
 									<div
-										class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground"
+										class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-2xs text-muted-foreground"
 									>
 										{#if row.public_status !== 'live'}
 											<span
-												class="inline-flex items-center rounded px-1 py-0.5 bg-warning/10 text-warning font-semibold text-[9px] uppercase tracking-wide"
+												class="inline-flex items-center rounded px-1 py-0.5 bg-warning/10 text-warning font-semibold text-2xs uppercase tracking-wide"
 											>
 												{row.public_status.replace('_', ' ')}
 											</span>
 										{/if}
 										{#if row.visibility === 'unlisted'}
 											<span
-												class="inline-flex items-center rounded px-1 py-0.5 bg-muted/50 text-muted-foreground font-semibold text-[9px] uppercase tracking-wide"
+												class="inline-flex items-center rounded px-1 py-0.5 bg-muted/50 text-muted-foreground font-semibold text-2xs uppercase tracking-wide"
 											>
 												Unlisted
 											</span>

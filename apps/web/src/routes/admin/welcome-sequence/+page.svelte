@@ -280,7 +280,7 @@
 			<span class="text-foreground font-medium">Copy lives in source.</span>
 			<span>Supabase stores state, schedule, and stats only.</span>
 			<code
-				class="ml-auto max-w-full truncate rounded-md border border-border bg-background px-2 py-1 font-mono text-[11px]"
+				class="ml-auto max-w-full truncate rounded-md border border-border bg-background px-2 py-1 font-mono text-2xs"
 				title={data.copySourcePath}
 			>
 				{data.copySourcePath}
@@ -888,7 +888,7 @@
 						</div>
 						<div class="flex flex-wrap justify-end gap-1.5">
 							<span
-								class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide {actionBadgeClasses(
+								class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-2xs font-medium uppercase tracking-wide {actionBadgeClasses(
 									preview.action
 								)}"
 							>
@@ -901,7 +901,7 @@
 							</span>
 							{#if preview.branchKey}
 								<span
-									class="rounded-md bg-info/10 px-2 py-0.5 text-[11px] font-medium text-info"
+									class="rounded-md bg-info/10 px-2 py-0.5 text-2xs font-medium text-info"
 								>
 									{preview.branchKey}
 								</span>
@@ -913,7 +913,7 @@
 						<div class="mt-3 space-y-2">
 							<div>
 								<p
-									class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+									class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 								>
 									Subject
 								</p>
@@ -923,15 +923,14 @@
 							</div>
 							<div>
 								<p
-									class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+									class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 								>
 									CTA
 								</p>
 								<p class="mt-0.5 text-xs text-foreground">
 									<span class="font-medium">{preview.content.ctaLabel}</span>
 									<span class="text-muted-foreground"> → </span>
-									<span
-										class="break-all font-mono text-[11px] text-muted-foreground"
+									<span class="break-all font-mono text-2xs text-muted-foreground"
 										>{preview.content.ctaUrl}</span
 									>
 								</p>
@@ -970,9 +969,7 @@
 							<SkipForward class="h-4 w-4 text-muted-foreground" />
 							<p class="text-xs text-muted-foreground">
 								No email body renders for this branch — it is skipped or waiting.
-								<span class="mt-0.5 block text-[11px]"
-									>Reason: {preview.reason}</span
-								>
+								<span class="mt-0.5 block text-2xs">Reason: {preview.reason}</span>
 							</p>
 						</div>
 					{/if}

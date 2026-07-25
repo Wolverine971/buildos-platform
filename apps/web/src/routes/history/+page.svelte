@@ -480,7 +480,7 @@
 							)}
 						</span>
 					</div>
-					<div class="truncate text-[10px] text-muted-foreground sm:text-sm">Total</div>
+					<div class="truncate text-2xs text-muted-foreground sm:text-sm">Total</div>
 				</div>
 				<div
 					class="min-w-0 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-4"
@@ -494,9 +494,7 @@
 							{compactHistoryCount(stats.totalBraindumps, 999)}
 						</span>
 					</div>
-					<div class="truncate text-[10px] text-muted-foreground sm:text-sm">
-						Captures
-					</div>
+					<div class="truncate text-2xs text-muted-foreground sm:text-sm">Captures</div>
 				</div>
 				<div
 					class="min-w-0 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-4"
@@ -510,7 +508,7 @@
 							{compactHistoryCount(stats.totalChatSessions, 999)}
 						</span>
 					</div>
-					<div class="truncate text-[10px] text-muted-foreground sm:text-sm">Chats</div>
+					<div class="truncate text-2xs text-muted-foreground sm:text-sm">Chats</div>
 				</div>
 				<div
 					class="min-w-0 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-frame tx-weak sm:p-4"
@@ -528,7 +526,7 @@
 							)}
 						</span>
 					</div>
-					<div class="truncate text-[10px] text-muted-foreground sm:text-sm">Done</div>
+					<div class="truncate text-2xs text-muted-foreground sm:text-sm">Done</div>
 				</div>
 			</div>
 
@@ -547,7 +545,7 @@
 				>
 					<span class="min-w-0 truncate">All</span>
 					<span
-						class="shrink-0 rounded-full bg-muted px-1 py-0.5 text-[10px] text-muted-foreground sm:px-1.5 sm:text-xs"
+						class="shrink-0 rounded-full bg-muted px-1 py-0.5 text-2xs text-muted-foreground sm:px-1.5 sm:text-xs"
 					>
 						{compactHistoryCount(stats.totalBraindumps + stats.totalChatSessions)}
 					</span>
@@ -567,7 +565,7 @@
 					<Lightbulb class="hidden h-3 w-3 shrink-0 sm:block sm:h-4 sm:w-4" />
 					<span class="min-w-0 truncate">Captures</span>
 					<span
-						class="shrink-0 rounded-full bg-info/15 px-1 py-0.5 text-[10px] text-info sm:px-1.5 sm:text-xs"
+						class="shrink-0 rounded-full bg-info/15 px-1 py-0.5 text-2xs text-info sm:px-1.5 sm:text-xs"
 					>
 						{compactHistoryCount(stats.totalBraindumps)}
 					</span>
@@ -587,7 +585,7 @@
 					<MessagesSquare class="hidden h-3 w-3 shrink-0 sm:block sm:h-4 sm:w-4" />
 					<span class="min-w-0 truncate">Chats</span>
 					<span
-						class="shrink-0 rounded-full bg-accent/15 px-1 py-0.5 text-[10px] text-accent sm:px-1.5 sm:text-xs"
+						class="shrink-0 rounded-full bg-accent/15 px-1 py-0.5 text-2xs text-accent sm:px-1.5 sm:text-xs"
 					>
 						{compactHistoryCount(stats.totalChatSessions)}
 					</span>
@@ -711,7 +709,7 @@
 								<!-- Header: Type badge and status -->
 								<div class="mb-1 sm:mb-2 flex items-center justify-between">
 									<span
-										class="inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-medium {getTypeColor(
+										class="inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-2xs sm:text-xs font-medium {getTypeColor(
 											item.type
 										)}"
 									>
@@ -729,7 +727,7 @@
 												onclick={() => classifyChatSession(item)}
 												disabled={classifyStatus === 'loading' ||
 													classifyStatus === 'queued'}
-												class="pointer-events-auto relative z-[2] inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-70"
+												class="pointer-events-auto relative z-[2] inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-muted-foreground transition pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-70"
 												aria-label="Summarize chat session"
 											>
 												{#if classifyStatus === 'error'}
@@ -744,7 +742,7 @@
 											</button>
 										{/if}
 										<span
-											class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium {getStatusBadgeClass(
+											class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-2xs font-medium {getStatusBadgeClass(
 												displayStatus
 											)}"
 										>
@@ -770,7 +768,7 @@
 								<!-- Preview / Summary - clamped to one line on mobile (compact,
 							     don't hide: this is the card's most informative field) -->
 								<p
-									class="mb-1.5 sm:mb-3 line-clamp-1 sm:line-clamp-3 flex-1 text-[11px] sm:text-sm text-muted-foreground"
+									class="mb-1.5 sm:mb-3 line-clamp-1 sm:line-clamp-3 flex-1 text-2xs sm:text-sm text-muted-foreground"
 								>
 									{item.preview}
 								</p>
@@ -780,13 +778,13 @@
 									<div class="mb-1.5 sm:mb-3 flex flex-wrap gap-0.5 sm:gap-1">
 										{#each item.topics.slice(0, 2) as topic}
 											<span
-												class="inline-flex items-center rounded-full bg-muted px-1 sm:px-1.5 py-0.5 text-[10px] text-muted-foreground truncate max-w-[60px] sm:max-w-none"
+												class="inline-flex items-center rounded-full bg-muted px-1 sm:px-1.5 py-0.5 text-2xs text-muted-foreground truncate max-w-[60px] sm:max-w-none"
 											>
 												{topic}
 											</span>
 										{/each}
 										{#if item.topics.length > 2}
-											<span class="text-[10px] text-muted-foreground">
+											<span class="text-2xs text-muted-foreground">
 												+{item.topics.length - 2}
 											</span>
 										{/if}
@@ -795,7 +793,7 @@
 
 								<!-- Footer: Metadata - compact on mobile -->
 								<div
-									class="mt-auto flex items-center justify-between border-t border-border pt-1.5 text-[10px] text-muted-foreground sm:pt-3 sm:text-xs"
+									class="mt-auto flex items-center justify-between border-t border-border pt-1.5 text-2xs text-muted-foreground sm:pt-3 sm:text-xs"
 								>
 									<span class="flex items-center gap-0.5 sm:gap-1 truncate">
 										<Clock class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />

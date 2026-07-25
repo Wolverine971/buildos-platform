@@ -49,7 +49,7 @@
 				</div>
 				<div>
 					<p class="text-xs sm:text-sm font-semibold text-foreground">Documents</p>
-					<p class="text-[10px] sm:text-xs text-muted-foreground">
+					<p class="text-2xs sm:text-xs text-muted-foreground">
 						{documentCount}
 						{documentCount === 1 ? 'document' : 'documents'}
 					</p>
@@ -113,7 +113,7 @@
 					{/each}
 					{#if documentCount > 5}
 						<div
-							class="px-2 py-1 text-[10px] sm:text-xs text-muted-foreground text-center"
+							class="px-2 py-1 text-2xs sm:text-xs text-muted-foreground text-center"
 						>
 							+{documentCount - 5} more…
 						</div>

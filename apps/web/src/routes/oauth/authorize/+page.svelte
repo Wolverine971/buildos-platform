@@ -129,7 +129,7 @@
 								<Lock class="h-4 w-4 text-muted-foreground" />
 								<span class="font-medium text-foreground">Read only</span>
 								<span
-									class="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+									class="ml-auto rounded-full bg-muted px-2 py-0.5 text-2xs font-medium uppercase tracking-wider text-muted-foreground"
 								>
 									Recommended
 								</span>

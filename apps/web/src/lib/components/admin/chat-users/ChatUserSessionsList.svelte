@@ -129,7 +129,7 @@
 						<div class="mt-3 flex flex-wrap gap-1.5">
 							{#each sessionBadges as badge}
 								<span
-									class={`rounded border px-2 py-0.5 text-[11px] font-semibold ${alertBadgeClass(badge.tone)}`}
+									class={`rounded border px-2 py-0.5 text-2xs font-semibold ${alertBadgeClass(badge.tone)}`}
 									title={badge.title}
 								>
 									{badge.label}
@@ -142,7 +142,7 @@
 							class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
 						>
 							<span
-								class={`rounded border px-2 py-0.5 text-[11px] font-semibold ${classificationJobStatusClass(session.classification_job)}`}
+								class={`rounded border px-2 py-0.5 text-2xs font-semibold ${classificationJobStatusClass(session.classification_job)}`}
 							>
 								{classificationJobStatusLabel(session.classification_job) ??
 									'Job status'}
@@ -184,7 +184,7 @@
 										{href}
 										target="_blank"
 										rel="noopener noreferrer"
-										class="inline-flex max-w-[14rem] items-center gap-1 rounded border border-border bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+										class="inline-flex max-w-[14rem] items-center gap-1 rounded border border-border bg-muted px-2 py-0.5 text-2xs font-semibold text-muted-foreground hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
 									>
 										<span class="truncate">
 											{session.project_names[index] ?? projectId}

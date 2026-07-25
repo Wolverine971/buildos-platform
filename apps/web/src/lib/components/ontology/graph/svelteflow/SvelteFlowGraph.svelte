@@ -199,7 +199,7 @@
 		<MiniMap
 			position="bottom-right"
 			nodeColor={getMinimapNodeColor}
-			maskColor="rgba(0,0,0,0.1)"
+			maskColor="hsl(var(--foreground) / 0.1)"
 			class="!bg-card"
 		/>
 	</SvelteFlow>
@@ -207,37 +207,26 @@
 
 <style>
 	.svelte-flow-container {
-		--xy-background-color: #f9fafb;
-		--xy-minimap-background-color: #ffffff;
-	}
-
-	:global(.dark) .svelte-flow-container {
-		--xy-background-color: #111827;
-		--xy-minimap-background-color: #1f2937;
+		--xy-background-color: hsl(var(--background));
+		--xy-minimap-background-color: hsl(var(--card));
 	}
 
 	.svelte-flow-container :global(.svelte-flow__controls) {
-		background: white;
+		background: hsl(var(--card));
 		border-radius: 8px;
-		box-shadow:
-			0 1px 3px rgba(0, 0, 0, 0.12),
-			0 1px 2px rgba(0, 0, 0, 0.24);
-	}
-
-	:global(.dark) .svelte-flow-container :global(.svelte-flow__controls) {
-		background: #374151;
+		box-shadow: var(--shadow-ink-strong);
 	}
 
 	.svelte-flow-container :global(.svelte-flow__controls-button) {
 		border: none;
 	}
 
-	:global(.dark) .svelte-flow-container :global(.svelte-flow__controls-button) {
-		background: #374151;
-		fill: #9ca3af;
+	.svelte-flow-container :global(.svelte-flow__controls-button) {
+		background: hsl(var(--card));
+		fill: hsl(var(--muted-foreground));
 	}
 
-	:global(.dark) .svelte-flow-container :global(.svelte-flow__controls-button:hover) {
-		background: #4b5563;
+	.svelte-flow-container :global(.svelte-flow__controls-button:hover) {
+		background: hsl(var(--muted));
 	}
 </style>

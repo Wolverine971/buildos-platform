@@ -105,7 +105,7 @@
 			<span class="truncate">{projectName ?? 'Project'}</span>
 			{#if loaded && total > 0}
 				<span
-					class="shrink-0 rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px]"
+					class="shrink-0 rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-2xs"
 				>
 					{total}
 				</span>
@@ -167,7 +167,7 @@
 									</p>
 								{/if}
 								<div
-									class="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground"
+									class="mt-2 flex flex-wrap items-center gap-2 text-2xs text-muted-foreground"
 								>
 									<span class="inline-flex items-center gap-1">
 										<Clock class="h-2.5 w-2.5" />
@@ -188,7 +188,7 @@
 									<div class="mt-2 flex flex-wrap gap-1">
 										{#each chat.chat_topics.slice(0, 3) as topic}
 											<span
-												class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+												class="rounded-full bg-muted px-1.5 py-0.5 text-2xs text-muted-foreground"
 											>
 												{topic}
 											</span>

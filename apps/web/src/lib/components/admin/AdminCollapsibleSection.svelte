@@ -79,7 +79,7 @@
 			<div class="flex items-baseline gap-2 min-w-0">
 				<span class="text-sm font-semibold text-foreground truncate">{title}</span>
 				{#if subtitle}
-					<span class="text-[10px] text-muted-foreground hidden sm:inline">
+					<span class="text-2xs text-muted-foreground hidden sm:inline">
 						{subtitle}
 					</span>
 				{/if}
@@ -88,9 +88,7 @@
 		<div class="flex items-center gap-2 shrink-0">
 			{#if badge !== null && badge !== undefined}
 				<span
-					class="rounded px-1.5 py-0.5 text-[10px] font-semibold {badgeColors[
-						badgeColor
-					]}"
+					class="rounded px-1.5 py-0.5 text-2xs font-semibold {badgeColors[badgeColor]}"
 				>
 					{badge}
 				</span>

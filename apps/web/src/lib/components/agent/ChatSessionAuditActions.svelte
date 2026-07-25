@@ -134,7 +134,7 @@
 			href={adminSessionHref}
 			target="_blank"
 			rel="noopener noreferrer"
-			class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
+			class="flex w-full items-center gap-2 px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
 			role="menuitem"
 			onclick={() => {
 				mobileMenuOpen = false;
@@ -154,7 +154,7 @@
 				void exportAudit('markdown');
 			}}
 			disabled={isExporting}
-			class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+			class="flex w-full items-center gap-2 px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 			role="menuitem"
 		>
 			<Download class="h-3.5 w-3.5 shrink-0" />
@@ -168,7 +168,7 @@
 				void exportAudit('bundle');
 			}}
 			disabled={isExporting}
-			class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+			class="flex w-full items-center gap-2 px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 			role="menuitem"
 		>
 			<FileArchive class="h-3.5 w-3.5 shrink-0" />
@@ -188,8 +188,7 @@
 				href={adminSessionHref}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				style="-webkit-tap-highlight-color: transparent;"
+				class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-2xs font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				title="Open this chat session in admin audit logs"
 			>
 				<ExternalLink class="h-3.5 w-3.5 shrink-0" />
@@ -204,8 +203,7 @@
 					type="button"
 					onclick={() => toggleExportMenu()}
 					disabled={isExporting}
-					class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
-					style="-webkit-tap-highlight-color: transparent;"
+					class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-2xs font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
 					title="Export this chat session"
 					aria-haspopup="menu"
 					aria-expanded={exportMenuOpen}
@@ -241,7 +239,7 @@
 									void exportAudit('markdown');
 								}}
 								disabled={isExporting}
-								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+								class="flex w-full items-center gap-2 px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 								role="menuitem"
 								title="Export this chat session as a single markdown file"
 							>
@@ -255,7 +253,7 @@
 									void exportAudit('bundle');
 								}}
 								disabled={isExporting}
-								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+								class="flex w-full items-center gap-2 px-3 py-2 text-left text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 								role="menuitem"
 								title="Export this chat session as a multi-file zip bundle (README gist + transcript + raw JSON)"
 							>
@@ -276,7 +274,6 @@
 				type="button"
 				onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
 				class="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				style="-webkit-tap-highlight-color: transparent;"
 				aria-label="Open session actions"
 				aria-haspopup="menu"
 				aria-expanded={mobileMenuOpen}

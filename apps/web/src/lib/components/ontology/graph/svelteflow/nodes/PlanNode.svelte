@@ -50,9 +50,7 @@
 
 	{#if data.state}
 		<div class="mt-1">
-			<span
-				class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-accent/15 text-accent"
-			>
+			<span class="px-1.5 py-0.5 text-2xs font-medium rounded-full bg-accent/15 text-accent">
 				{data.state}
 			</span>
 		</div>

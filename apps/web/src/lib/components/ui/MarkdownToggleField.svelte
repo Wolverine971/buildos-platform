@@ -158,7 +158,7 @@
 				aria-labelledby={ariaLabelledby}
 			/>
 			<!-- Helper text for edit mode - responsive -->
-			<div class="mt-1 text-[10px] sm:text-xs text-muted-foreground">
+			<div class="mt-1 text-2xs sm:text-xs text-muted-foreground">
 				<span class="hidden sm:inline">Press Ctrl+Enter to save • ESC to cancel</span>
 				<span class="sm:hidden">Ctrl+↵ save • ESC cancel</span>
 			</div>

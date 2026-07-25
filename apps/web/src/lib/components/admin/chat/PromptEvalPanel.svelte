@@ -78,12 +78,12 @@
 						<div class="min-w-0 flex-1">
 							<div class="flex flex-wrap items-center gap-1.5">
 								<span
-									class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-foreground/80"
+									class="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-medium bg-muted text-foreground/80"
 								>
 									{evalRun.scenario_slug}
 								</span>
 								<span
-									class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium {evalRun.status ===
+									class="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-medium {evalRun.status ===
 									'passed'
 										? 'bg-success/10 text-success'
 										: evalRun.status === 'failed'

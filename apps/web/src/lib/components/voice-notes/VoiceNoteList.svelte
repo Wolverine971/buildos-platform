@@ -111,7 +111,7 @@
 </script>
 
 {#if voiceNotes.length === 0}
-	<p class="text-[0.7rem] italic text-muted-foreground">No voice notes yet.</p>
+	<p class="text-2xs italic text-muted-foreground">No voice notes yet.</p>
 {:else}
 	<div class={compact ? 'space-y-1.5' : 'space-y-2'}>
 		{#each voiceNotes as voiceNote (voiceNote.id)}
@@ -123,7 +123,7 @@
 			>
 				<!-- Header row: timestamp + status + delete -->
 				<div class="flex items-center justify-between gap-2">
-					<div class="flex items-center gap-2 text-[0.6rem] text-muted-foreground">
+					<div class="flex items-center gap-2 text-2xs text-muted-foreground">
 						<span class="font-medium uppercase tracking-wide">
 							{formatTimestamp(getTimestampValue(voiceNote))}
 						</span>
@@ -133,13 +133,13 @@
 						>
 						{#if voiceNote.transcription_status === 'pending'}
 							<span
-								class="rounded-full bg-accent/10 px-1.5 py-0.5 text-[0.55rem] font-medium text-accent"
+								class="rounded-full bg-accent/10 px-1.5 py-0.5 text-2xs font-medium text-accent"
 							>
 								Transcribing...
 							</span>
 						{:else if voiceNote.transcription_status === 'failed'}
 							<span
-								class="rounded-full border border-destructive/20 bg-destructive/10 px-1.5 py-0.5 text-[0.55rem] font-medium text-destructive"
+								class="rounded-full border border-destructive/20 bg-destructive/10 px-1.5 py-0.5 text-2xs font-medium text-destructive"
 							>
 								Failed
 							</span>
@@ -193,14 +193,14 @@
 					<div>
 						<span class="font-semibold text-foreground">Transcript:</span>
 						<p
-							class="mt-0.5 rounded-md border border-border bg-muted/50 p-1.5 text-[0.65rem] text-foreground line-clamp-3"
+							class="mt-0.5 rounded-md border border-border bg-muted/50 p-1.5 text-2xs text-foreground line-clamp-3"
 						>
 							{deleteTarget.transcript}
 						</p>
 					</div>
 				{/if}
 				{#if deleteError}
-					<p class="text-[0.65rem] text-destructive">{deleteError}</p>
+					<p class="text-2xs text-destructive">{deleteError}</p>
 				{/if}
 			</div>
 		{/if}

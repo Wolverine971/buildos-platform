@@ -139,7 +139,7 @@
 		<span>Filter</span>
 		{#if activeFilterCount > 0}
 			<span
-				class="ml-0.5 px-1 py-0.5 min-w-[16px] text-[10px] font-semibold rounded bg-accent/20 text-accent"
+				class="ml-0.5 px-1 py-0.5 min-w-[16px] text-2xs font-semibold rounded bg-accent/20 text-accent"
 			>
 				{activeFilterCount}
 			</span>
@@ -177,7 +177,7 @@
 									<button
 										type="button"
 										onclick={() => selectAll(group.id)}
-										class="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+										class="text-2xs text-muted-foreground hover:text-foreground transition-colors"
 									>
 										All
 									</button>
@@ -185,7 +185,7 @@
 									<button
 										type="button"
 										onclick={() => clearGroup(group.id)}
-										class="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+										class="text-2xs text-muted-foreground hover:text-foreground transition-colors"
 									>
 										None
 									</button>
@@ -246,7 +246,7 @@
 				<button
 					type="button"
 					onclick={resetFilters}
-					class="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+					class="text-2xs text-muted-foreground hover:text-foreground transition-colors"
 				>
 					Reset
 				</button>
@@ -254,7 +254,7 @@
 					<button
 						type="button"
 						onclick={() => (isOpen = false)}
-						class="px-2 py-1 text-[10px] font-medium rounded
+						class="px-2 py-1 text-2xs font-medium rounded
 							text-muted-foreground hover:text-foreground
 							hover:bg-muted transition-colors"
 					>
@@ -263,7 +263,7 @@
 					<button
 						type="button"
 						onclick={applyFilters}
-						class="px-2 py-1 text-[10px] font-medium rounded
+						class="px-2 py-1 text-2xs font-medium rounded
 							bg-accent text-accent-foreground
 							hover:bg-accent/90 transition-colors pressable"
 					>

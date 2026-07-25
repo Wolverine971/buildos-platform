@@ -410,7 +410,7 @@
 							>
 						{/if}
 					</div>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-1">
+					<p class="text-2xs sm:text-xs text-muted-foreground mt-1">
 						{#if risk?.created_at}Created {new Date(risk.created_at).toLocaleDateString(
 								undefined,
 								{ month: 'short', day: 'numeric' }
@@ -690,11 +690,7 @@
 									<section class="px-3 py-3 sm:px-4" aria-label="Risk score">
 										<div class="flex items-center gap-2">
 											<Shield class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-											>
-												Risk Score
-											</p>
+											<p class="micro-label font-semibold">Risk Score</p>
 										</div>
 										<div class="mt-2 text-center">
 											<p
@@ -713,7 +709,7 @@
 														? 'Medium Priority'
 														: 'Low Priority'}
 											</p>
-											<p class="text-[10px] text-muted-foreground mt-1">
+											<p class="text-2xs text-muted-foreground mt-1">
 												Impact ({riskImpactScore}) x Probability ({Math.round(
 													riskProb * 100
 												)}%)
@@ -721,21 +717,13 @@
 										</div>
 										<div class="mt-3 grid grid-cols-2 gap-2 text-sm">
 											<div>
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Impact
-												</p>
+												<p class="micro-label font-semibold">Impact</p>
 												<p class="mt-0.5 font-semibold text-foreground">
 													{impactBadge?.label ?? impact}
 												</p>
 											</div>
 											<div>
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Probability
-												</p>
+												<p class="micro-label font-semibold">Probability</p>
 												<p class="mt-0.5 font-semibold text-foreground">
 													{Math.round(riskProb * 100)}%
 												</p>
@@ -748,11 +736,7 @@
 										<section class="px-3 py-3 sm:px-4" aria-label="Owner">
 											<div class="flex items-center gap-2">
 												<User class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Owner
-												</p>
+												<p class="micro-label font-semibold">Owner</p>
 											</div>
 											<p class="mt-2 text-sm text-foreground">{owner}</p>
 										</section>
@@ -763,11 +747,7 @@
 										<div class="flex items-center justify-between gap-2">
 											<div class="flex items-center gap-2">
 												<FileText class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Status
-												</p>
+												<p class="micro-label font-semibold">Status</p>
 											</div>
 											<Badge variant={stateMeta.variant} size="sm"
 												>{stateMeta.label}</Badge
@@ -779,11 +759,7 @@
 									<section class="px-3 py-3 sm:px-4">
 										<div class="flex items-center gap-2">
 											<Clock class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-											>
-												Record
-											</p>
+											<p class="micro-label font-semibold">Record</p>
 										</div>
 										<div class="mt-2 space-y-1.5 text-sm">
 											<div class="flex items-center justify-between gap-3">
@@ -822,11 +798,7 @@
 										<section class="px-3 py-3 sm:px-4">
 											<div class="flex items-center gap-2 mb-2">
 												<TagIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Tags
-												</p>
+												<p class="micro-label font-semibold">Tags</p>
 											</div>
 											<TagsDisplay
 												props={risk.props}
@@ -847,9 +819,7 @@
 										>
 											<div class="flex items-center gap-2">
 												<LinkIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
+												<p class="micro-label font-semibold">
 													Linked Entities
 												</p>
 											</div>
@@ -882,11 +852,7 @@
 										>
 											<div class="flex items-center gap-2">
 												<ImageIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Images
-												</p>
+												<p class="micro-label font-semibold">Images</p>
 											</div>
 											<ChevronDown
 												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
@@ -921,11 +887,7 @@
 										>
 											<div class="flex items-center gap-2">
 												<Activity class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Activity
-												</p>
+												<p class="micro-label font-semibold">Activity</p>
 											</div>
 											<ChevronDown
 												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog

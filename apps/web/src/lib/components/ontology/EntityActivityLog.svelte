@@ -293,15 +293,13 @@
 									</div>
 									<div class="flex items-center gap-1.5 mt-0.5">
 										{#if actor}
-											<span
-												class="text-[10px] text-muted-foreground truncate"
-											>
+											<span class="text-2xs text-muted-foreground truncate">
 												{actor}
 											</span>
 										{/if}
 										{#if sourceBadge}
 											<span
-												class="text-[10px] px-1 py-0.5 rounded bg-muted/50 text-muted-foreground/70"
+												class="text-2xs px-1 py-0.5 rounded bg-muted/50 text-muted-foreground/70"
 											>
 												{sourceBadge}
 											</span>
@@ -318,7 +316,7 @@
 						</button>
 						{#if expandedLogId === log.id}
 							{@const exactTimestamp = formatExactLocalTimestamp(log.created_at)}
-							<div class="px-8 pb-2 pr-3 text-[10px] text-muted-foreground">
+							<div class="px-8 pb-2 pr-3 text-2xs text-muted-foreground">
 								{#if exactTimestamp}
 									<div
 										class="mb-2 flex max-w-full flex-wrap items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-1 shadow-sm"
@@ -361,7 +359,7 @@
 					<button
 						onclick={handleLoadMore}
 						disabled={isLoadingMore}
-						class="w-full text-[10px] text-muted-foreground hover:text-accent py-1.5 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 rounded hover:bg-accent/5 pressable"
+						class="w-full text-2xs text-muted-foreground hover:text-accent py-1.5 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 rounded hover:bg-accent/5 pressable"
 					>
 						{#if isLoadingMore}
 							<LoaderCircle class="w-3 h-3 animate-spin" />

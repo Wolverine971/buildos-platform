@@ -1,4 +1,6 @@
 // apps/web/src/lib/components/chat/project-selector-browser.ts
+import { bindAbortSignal } from '$lib/utils/bind-abort-signal';
+
 export interface ProjectSelectionSummary {
 	id: string;
 	name: string;
@@ -25,42 +27,6 @@ export const PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS = 180;
 
 const PROJECT_SELECTION_CACHE_TTL_MS = 60_000;
 const projectSelectionCache = new Map<string, ProjectSelectionCacheEntry>();
-
-function createAbortError(): Error {
-	try {
-		return new DOMException('The operation was aborted.', 'AbortError');
-	} catch (_error) {
-		const error = new Error('The operation was aborted.');
-		error.name = 'AbortError';
-		return error;
-	}
-}
-
-function bindAbortSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
-	if (!signal) return promise;
-	if (signal.aborted) {
-		return Promise.reject(createAbortError());
-	}
-
-	return new Promise<T>((resolve, reject) => {
-		const onAbort = () => {
-			signal.removeEventListener('abort', onAbort);
-			reject(createAbortError());
-		};
-
-		signal.addEventListener('abort', onAbort, { once: true });
-		promise.then(
-			(value) => {
-				signal.removeEventListener('abort', onAbort);
-				resolve(value);
-			},
-			(error) => {
-				signal.removeEventListener('abort', onAbort);
-				reject(error);
-			}
-		);
-	});
-}
 
 function isFresh(timestamp: number): boolean {
 	return Date.now() - timestamp <= PROJECT_SELECTION_CACHE_TTL_MS;

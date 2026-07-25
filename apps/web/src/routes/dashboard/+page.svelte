@@ -1,6 +1,6 @@
+<!-- apps/web/src/routes/dashboard/+page.svelte -->
 <!-- Authenticated dashboard entry point. -->
 <script lang="ts">
-	import '../dashboard.css';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { invalidate, replaceState } from '$app/navigation';

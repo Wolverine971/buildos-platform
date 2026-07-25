@@ -362,7 +362,6 @@
 			<button
 				type="button"
 				class="inline-flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition touch-manipulation pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				style="-webkit-tap-highlight-color: transparent;"
 				onclick={onBack}
 				disabled={isStreaming}
 				aria-label="Go back"
@@ -441,7 +440,7 @@
 
 				{#if contextUsageCounter}
 					<span
-						class={`inline-flex h-7 items-center gap-1 rounded-lg border px-1.5 sm:px-2.5 text-[0.65rem] font-semibold ${contextUsageCounter.className}`}
+						class={`inline-flex h-7 items-center gap-1 rounded-lg border px-1.5 sm:px-2.5 text-2xs font-semibold ${contextUsageCounter.className}`}
 						title={contextUsageCounter.title}
 					>
 						{#if contextUsageCounter.showWarningIcon}
@@ -472,7 +471,6 @@
 				onclick={() => void action.onClick()}
 				disabled={action.disabled || action.loading}
 				class={`hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border px-2.5 micro-label font-semibold shadow-ink transition-all touch-manipulation pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${headerActionClass(action)}`}
-				style="-webkit-tap-highlight-color: transparent;"
 				title={action.title ?? action.label}
 				aria-label={action.title ?? action.label}
 			>
@@ -496,7 +494,6 @@
 				target="_blank"
 				rel="noopener noreferrer"
 				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 micro-label font-semibold text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				style="-webkit-tap-highlight-color: transparent;"
 				title="Open project in new tab"
 			>
 				<ExternalLink class="h-3.5 w-3.5 shrink-0" />
@@ -517,7 +514,6 @@
 							? closeDesktopExportMenu()
 							: (desktopExportMenuOpen = true)}
 					class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 micro-label font-semibold text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					style="-webkit-tap-highlight-color: transparent;"
 					aria-haspopup="menu"
 					aria-expanded={desktopExportMenuOpen}
 				>
@@ -564,7 +560,6 @@
 					type="button"
 					onclick={() => (mobileMenuOpen ? closeMobileMenu() : (mobileMenuOpen = true))}
 					class="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="More actions"
 					aria-haspopup="menu"
 					aria-expanded={mobileMenuOpen}
@@ -646,7 +641,6 @@
 				type="button"
 				onclick={onMinimize}
 				class="flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				style="-webkit-tap-highlight-color: transparent;"
 				aria-label="Minimize chat"
 				title="Minimize — keeps working in the background"
 			>
@@ -660,7 +654,6 @@
 				type="button"
 				onclick={onClose}
 				class="flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				style="-webkit-tap-highlight-color: transparent;"
 				aria-label="Close modal"
 			>
 				<X class="h-4 w-4" />

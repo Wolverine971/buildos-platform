@@ -188,40 +188,9 @@
 </button>
 
 <style>
-	/* ==================== GPU-Optimized Button Animations ==================== */
-
 	button {
-		/* Ensure touch targets meet accessibility standards */
-		-webkit-tap-highlight-color: transparent;
-
-		/* GPU acceleration for smooth animations */
-		transform: translateZ(0);
-		backface-visibility: hidden;
-
-		/* Only animate GPU-friendly properties */
-		transition-property: border-color, box-shadow, opacity, color;
-		transition-duration: 200ms;
-		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-
-		/* Pre-warm GPU for hover transitions */
-		will-change: border-color, box-shadow;
-	}
-
-	/* Remove will-change when not hovering for better performance */
-	button:not(:hover):not(:focus-visible) {
-		will-change: auto;
-	}
-
-	/* Ensure proper focus ring offset - Inkprint design */
-	button:focus-visible {
+		/* Shared global CSS owns tap highlighting and the utility classes own
+		   transitions. Keep only the component-specific ring offset here. */
 		--tw-ring-offset-color: hsl(var(--background));
-	}
-
-	/* Respect reduced motion preferences */
-	@media (prefers-reduced-motion: reduce) {
-		button {
-			transition: none !important;
-			will-change: auto !important;
-		}
 	}
 </style>

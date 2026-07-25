@@ -34,14 +34,14 @@
 	<div class="mt-2 flex flex-wrap items-center gap-1.5">
 		{#if isTraceToolPayload(payload)}
 			<span
-				class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-foreground/70"
+				class="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-medium bg-muted text-foreground/70"
 			>
 				Trace
 			</span>
 		{/if}
 		{#if toolError}
 			<span
-				class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-destructive/10 text-destructive"
+				class="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-medium bg-destructive/10 text-destructive"
 			>
 				Error
 			</span>

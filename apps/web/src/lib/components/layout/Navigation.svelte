@@ -791,7 +791,7 @@
 						>
 							<span class="sr-only">BuildOS</span>
 							<span
-								class="inline-flex items-baseline gap-[0.08em] font-black tracking-tight text-[clamp(1.5rem,4vw,2.1rem)] sm:text-[clamp(1.75rem,2.5vw,2.1rem)] leading-none"
+								class="inline-flex items-baseline gap-[0.08em] font-black tracking-tight text-2xl sm:text-3xl leading-none"
 								aria-hidden="true"
 							>
 								<span
@@ -818,7 +818,7 @@
 							/>
 							<div>
 								<div
-									class="text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground"
+									class="text-2xs uppercase tracking-[0.22em] text-muted-foreground"
 								>
 									BuildOS
 								</div>
@@ -924,7 +924,7 @@
 						{/if}
 						{#if $aiInboxCountStore.total > 0}
 							<span
-								class="pointer-events-none absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-black leading-none text-accent-foreground shadow-ink"
+								class="pointer-events-none absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-2xs font-black leading-none text-accent-foreground shadow-ink"
 								aria-hidden="true"
 							>
 								{aiInboxBadgeLabel}
@@ -996,7 +996,7 @@
 							     flow so it doesn't clip against the nav edge or neighboring controls. -->
 						{#if $workingAgentRunCount > 0 && !showChatModal}
 							<span
-								class="pointer-events-none inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-black leading-none text-accent-foreground shadow-ink"
+								class="pointer-events-none inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-2xs font-black leading-none text-accent-foreground shadow-ink"
 								aria-hidden="true"
 								title={`${$workingAgentRunCount} agent${$workingAgentRunCount === 1 ? '' : 's'} working in the background`}
 							>
@@ -1075,7 +1075,7 @@
 						{#if needsOnboarding && !showMobileMenu}
 							<!-- Mobile onboarding cue: percentage chip (far more visible than a 10px dot) -->
 							<span
-								class="absolute -top-1.5 -right-1.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-accent px-1 py-0.5 text-[0.625rem] font-black leading-none tracking-tight text-accent-foreground shadow-ink"
+								class="absolute -top-1.5 -right-1.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-accent px-1 py-0.5 text-2xs font-black leading-none tracking-tight text-accent-foreground shadow-ink"
 								aria-hidden="true"
 							>
 								{onboardingProgress}%
@@ -1182,7 +1182,7 @@
 										>
 											<span class="ml-7">Project invites</span>
 											<span
-												class="ml-auto inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[0.6rem] font-bold text-accent"
+												class="ml-auto inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-2xs font-bold text-accent"
 											>
 												{pendingInviteCount}
 											</span>
@@ -1453,7 +1453,7 @@
 							<span>Agent Work</span>
 							{#if $agentWorkAttentionCount > 0}
 								<span
-									class="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-accent/10 px-1.5 py-0.5 text-[0.65rem] font-bold text-accent"
+									class="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-accent/10 px-1.5 py-0.5 text-2xs font-bold text-accent"
 								>
 									{$agentWorkAttentionCount}
 								</span>
@@ -1481,7 +1481,7 @@
 							>
 								<span class="ml-8">Project invites</span>
 								<span
-									class="ml-auto inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[0.65rem] font-bold text-accent"
+									class="ml-auto inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-2xs font-bold text-accent"
 								>
 									{pendingInviteCount}
 								</span>

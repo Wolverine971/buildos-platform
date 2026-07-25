@@ -135,7 +135,7 @@
 					<div class="mb-3 flex items-center gap-2">
 						<span
 							aria-hidden="true"
-							class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-accent/15 text-accent text-[11px] font-bold shrink-0"
+							class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-accent/15 text-accent text-2xs font-bold shrink-0"
 						>
 							{authorInitials || '?'}
 						</span>
@@ -153,7 +153,7 @@
 								</p>
 							{/if}
 							{#if formattedDate}
-								<p class="text-[11px] text-muted-foreground">{formattedDate}</p>
+								<p class="text-2xs text-muted-foreground">{formattedDate}</p>
 							{/if}
 						</div>
 					</div>
@@ -234,11 +234,11 @@
 						href="https://build-os.com/?utm_source=public-page&utm_medium=attribution&utm_campaign=made-with"
 						target="_blank"
 						rel="noopener"
-						class="group inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground hover:text-foreground transition-colors"
+						class="group inline-flex items-center gap-1.5 text-2xs font-medium tracking-wide uppercase text-muted-foreground hover:text-foreground transition-colors"
 					>
 						<span
 							aria-hidden="true"
-							class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm bg-foreground text-[8px] font-bold leading-none text-background group-hover:bg-accent transition-colors"
+							class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm bg-foreground text-2xs font-bold leading-none text-background group-hover:bg-accent transition-colors"
 						>
 							B
 						</span>

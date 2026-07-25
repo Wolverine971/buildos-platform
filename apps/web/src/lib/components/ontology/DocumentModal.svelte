@@ -3318,7 +3318,7 @@
 												>
 												{#if isLiveDocument}
 													<span
-														class="inline-flex items-center gap-1 rounded-full px-1.5 h-4 text-[0.6rem] font-semibold {liveDocumentNeedsAttention
+														class="inline-flex items-center gap-1 rounded-full px-1.5 h-4 text-2xs font-semibold {liveDocumentNeedsAttention
 															? 'bg-warning/20 text-warning'
 															: 'bg-success/20 text-success'}"
 													>
@@ -3333,7 +3333,7 @@
 													</span>
 												{:else if publicPageState?.public_status === 'unpublished'}
 													<span
-														class="inline-flex items-center rounded-full px-1.5 h-4 text-[0.6rem] font-semibold bg-muted text-muted-foreground"
+														class="inline-flex items-center rounded-full px-1.5 h-4 text-2xs font-semibold bg-muted text-muted-foreground"
 														>UNPUBLISHED</span
 													>
 												{/if}
@@ -3374,7 +3374,7 @@
 														>
 														{#if linkedCount > 0}
 															<span
-																class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-[0.6rem] font-semibold bg-accent/20 text-accent rounded-full"
+																class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-2xs font-semibold bg-accent/20 text-accent rounded-full"
 															>
 																{linkedCount}
 															</span>
@@ -3675,7 +3675,7 @@
 												onclick={() => toggleMobileTab(tab.id)}
 												onkeydown={(event) =>
 													handleMobileTabKeydown(event, i)}
-												class="inline-flex min-h-[36px] items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
+												class="inline-flex min-h-[36px] items-center gap-1.5 px-2.5 py-1.5 rounded-md text-2xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
 												tab.id
 													? 'bg-card shadow-ink text-foreground'
 													: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
@@ -3684,7 +3684,7 @@
 												{tab.label}
 												{#if tab.badge > 0}
 													<span
-														class="inline-flex items-center justify-center min-w-[1rem] h-3.5 px-1 text-[0.55rem] font-bold bg-accent/20 text-accent rounded-full"
+														class="inline-flex items-center justify-center min-w-[1rem] h-3.5 px-1 text-2xs font-bold bg-accent/20 text-accent rounded-full"
 													>
 														{tab.badge}
 													</span>
@@ -3904,7 +3904,7 @@
 								<span class="micro-label text-foreground">COMMENTS</span>
 								{#if commentsCount > 0}
 									<span
-										class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-[0.6rem] font-semibold bg-accent/20 text-accent rounded-full"
+										class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-2xs font-semibold bg-accent/20 text-accent rounded-full"
 									>
 										{commentsCount}
 									</span>

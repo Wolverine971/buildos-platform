@@ -3,7 +3,7 @@
 # SPEC - Complete Project Audit Tracker
 
 **Status:** Core implemented; retained as the product/architecture contract. Current
-verification work lives in `tasker/14-complete-project-audit-build.md`.
+verification work lives in `tasker/38-live-verification-debt.md` §3.
 **Date:** 2026-07-01
 **Owner:** DJ + Codex
 **Related:**

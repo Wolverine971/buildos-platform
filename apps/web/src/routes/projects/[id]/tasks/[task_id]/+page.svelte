@@ -896,7 +896,7 @@
 					</h1>
 					<a
 						href="/projects/{project?.id}"
-						class="text-[10px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors truncate block"
+						class="text-2xs sm:text-xs text-muted-foreground hover:text-foreground transition-colors truncate block"
 					>
 						{project?.name || 'Project'}
 					</a>
@@ -946,7 +946,7 @@
 						Workspace
 						{#if connectedDocuments.length > 0}
 							<span
-								class="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full bg-accent/20 text-accent"
+								class="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-2xs font-bold rounded-full bg-accent/20 text-accent"
 								>{connectedDocuments.length}</span
 							>
 						{/if}
@@ -1111,8 +1111,7 @@
 										>Docs</span
 									>
 									{#if connectedDocuments.length > 0}
-										<span
-											class="text-[10px] font-semibold text-muted-foreground"
+										<span class="text-2xs font-semibold text-muted-foreground"
 											>({connectedDocuments.length})</span
 										>
 									{/if}
@@ -1165,7 +1164,7 @@
 															{doc.document.title || 'Untitled'}
 														</span>
 														<span
-															class="text-[9px] text-muted-foreground capitalize"
+															class="text-2xs text-muted-foreground capitalize"
 														>
 															{doc.document.state_key || 'draft'}
 														</span>
@@ -1175,7 +1174,7 @@
 										</ul>
 									{:else}
 										<div class="px-2.5 py-3 text-center">
-											<p class="text-[10px] text-muted-foreground mb-1.5">
+											<p class="text-2xs text-muted-foreground mb-1.5">
 												No documents yet
 											</p>
 											<button
@@ -1316,13 +1315,13 @@
 												<span class="hidden xs:inline">Promote</span>
 											</button>
 										{:else}
-											<span class="text-[10px] text-muted-foreground"
+											<span class="text-2xs text-muted-foreground"
 												>Promoted</span
 											>
 										{/if}
 										{#if hasUnsavedChanges}
 											<span
-												class="flex items-center gap-1 text-[10px] text-warning"
+												class="flex items-center gap-1 text-2xs text-warning"
 											>
 												<span
 													class="w-1.5 h-1.5 rounded-full bg-warning animate-pulse"
@@ -1481,7 +1480,7 @@
 
 				<!-- Project Context Label -->
 				<p
-					class="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground px-1 mt-3 mb-1"
+					class="text-2xs uppercase tracking-wide font-semibold text-muted-foreground px-1 mt-3 mb-1"
 				>
 					Project Context
 				</p>
@@ -1501,7 +1500,7 @@
 								<Calendar class="w-3 h-3 text-warning" />
 							</div>
 							<span class="text-xs font-semibold text-foreground">Events</span>
-							<span class="text-[10px] text-muted-foreground">({events.length})</span>
+							<span class="text-2xs text-muted-foreground">({events.length})</span>
 						</div>
 						<div class="flex items-center gap-1">
 							<span
@@ -1550,7 +1549,7 @@
 														>{taskEvent.title || 'Untitled event'}</span
 													>
 													<span
-														class="text-[10px] text-muted-foreground truncate block"
+														class="text-2xs text-muted-foreground truncate block"
 													>
 														{formatEventDate(taskEvent)}
 													</span>
@@ -1561,14 +1560,14 @@
 								</ul>
 								{#if events.length > 8}
 									<div
-										class="px-2.5 py-1.5 text-[10px] text-muted-foreground border-t border-border"
+										class="px-2.5 py-1.5 text-2xs text-muted-foreground border-t border-border"
 									>
 										+{events.length - 8} more
 									</div>
 								{/if}
 							{:else}
 								<div class="px-2.5 py-3 text-center">
-									<p class="text-[10px] text-muted-foreground mb-1.5">
+									<p class="text-2xs text-muted-foreground mb-1.5">
 										No events yet
 									</p>
 									<button
@@ -1600,9 +1599,7 @@
 									<Target class="w-3 h-3 text-warning" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Goals</span>
-								<span class="text-[10px] text-muted-foreground"
-									>({goals.length})</span
-								>
+								<span class="text-2xs text-muted-foreground">({goals.length})</span>
 							</div>
 							<ChevronDown
 								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.goals
@@ -1649,9 +1646,7 @@
 									<Calendar class="w-3 h-3 text-info" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Plans</span>
-								<span class="text-[10px] text-muted-foreground"
-									>({plans.length})</span
-								>
+								<span class="text-2xs text-muted-foreground">({plans.length})</span>
 							</div>
 							<ChevronDown
 								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.plans
@@ -1698,7 +1693,7 @@
 									<FileText class="w-3 h-3 text-accent" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Docs</span>
-								<span class="text-[10px] text-muted-foreground"
+								<span class="text-2xs text-muted-foreground"
 									>({documents.length})</span
 								>
 							</div>
@@ -1728,7 +1723,7 @@
 								</ul>
 								{#if documents.length > 8}
 									<div
-										class="px-2.5 py-1.5 text-[10px] text-muted-foreground border-t border-border"
+										class="px-2.5 py-1.5 text-2xs text-muted-foreground border-t border-border"
 									>
 										+{documents.length - 8} more
 									</div>
@@ -1755,7 +1750,7 @@
 								</div>
 								<span class="text-xs font-semibold text-foreground">Milestones</span
 								>
-								<span class="text-[10px] text-muted-foreground"
+								<span class="text-2xs text-muted-foreground"
 									>({milestones.length})</span
 								>
 							</div>
@@ -1782,8 +1777,7 @@
 														>{milestone.title}</span
 													>
 													{#if milestone.due_at}
-														<span
-															class="text-[10px] text-muted-foreground"
+														<span class="text-2xs text-muted-foreground"
 															>{formatDueDate(milestone.due_at)}</span
 														>
 													{/if}
@@ -1813,7 +1807,7 @@
 									<ListChecks class="w-3 h-3 text-muted-foreground" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Tasks</span>
-								<span class="text-[10px] text-muted-foreground"
+								<span class="text-2xs text-muted-foreground"
 									>({otherTasks.length})</span
 								>
 							</div>
@@ -1846,7 +1840,7 @@
 								</ul>
 								{#if otherTasks.length > 8}
 									<div
-										class="px-2.5 py-1.5 text-[10px] text-muted-foreground border-t border-border"
+										class="px-2.5 py-1.5 text-2xs text-muted-foreground border-t border-border"
 									>
 										+{otherTasks.length - 8} more
 									</div>
@@ -1995,7 +1989,7 @@
 							<Calendar class="w-3 h-3 text-warning" />
 						</div>
 						<span class="text-xs font-semibold text-foreground">Events</span>
-						<span class="text-[10px] text-muted-foreground">({events.length})</span>
+						<span class="text-2xs text-muted-foreground">({events.length})</span>
 					</div>
 					<ul class="divide-y divide-border/50 max-h-40 overflow-y-auto">
 						{#each events.slice(0, 10) as taskEvent}
@@ -2013,7 +2007,7 @@
 										<span class="text-xs text-foreground truncate block"
 											>{taskEvent.title || 'Untitled event'}</span
 										>
-										<span class="text-[10px] text-muted-foreground">
+										<span class="text-2xs text-muted-foreground">
 											{formatEventDate(taskEvent)}
 										</span>
 									</div>
@@ -2023,7 +2017,7 @@
 					</ul>
 					{#if events.length > 10}
 						<div
-							class="px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/50"
+							class="px-3 py-1.5 text-2xs text-muted-foreground border-t border-border/50"
 						>
 							+{events.length - 10} more
 						</div>
@@ -2042,7 +2036,7 @@
 							<Target class="w-3 h-3 text-warning" />
 						</div>
 						<span class="text-xs font-semibold text-foreground">Goals</span>
-						<span class="text-[10px] text-muted-foreground">({goals.length})</span>
+						<span class="text-2xs text-muted-foreground">({goals.length})</span>
 					</div>
 					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
 						{#each goals as goal}
@@ -2074,7 +2068,7 @@
 							<Calendar class="w-3 h-3 text-info" />
 						</div>
 						<span class="text-xs font-semibold text-foreground">Plans</span>
-						<span class="text-[10px] text-muted-foreground">({plans.length})</span>
+						<span class="text-2xs text-muted-foreground">({plans.length})</span>
 					</div>
 					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
 						{#each plans as plan}
@@ -2108,7 +2102,7 @@
 							<FileText class="w-3 h-3 text-accent" />
 						</div>
 						<span class="text-xs font-semibold text-foreground">Documents</span>
-						<span class="text-[10px] text-muted-foreground">({documents.length})</span>
+						<span class="text-2xs text-muted-foreground">({documents.length})</span>
 					</div>
 					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
 						{#each documents.slice(0, 10) as doc}
@@ -2130,7 +2124,7 @@
 					</ul>
 					{#if documents.length > 10}
 						<div
-							class="px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/50"
+							class="px-3 py-1.5 text-2xs text-muted-foreground border-t border-border/50"
 						>
 							+{documents.length - 10} more
 						</div>
@@ -2147,7 +2141,7 @@
 							<ListChecks class="w-3 h-3 text-muted-foreground" />
 						</div>
 						<span class="text-xs font-semibold text-foreground">Other Tasks</span>
-						<span class="text-[10px] text-muted-foreground">({otherTasks.length})</span>
+						<span class="text-2xs text-muted-foreground">({otherTasks.length})</span>
 					</div>
 					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
 						{#each otherTasks.slice(0, 10) as otherTask}
@@ -2169,7 +2163,7 @@
 					</ul>
 					{#if otherTasks.length > 10}
 						<div
-							class="px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/50"
+							class="px-3 py-1.5 text-2xs text-muted-foreground border-t border-border/50"
 						>
 							+{otherTasks.length - 10} more
 						</div>
@@ -2188,7 +2182,7 @@
 							<Flag class="w-3 h-3 text-success" />
 						</div>
 						<span class="text-xs font-semibold text-foreground">Milestones</span>
-						<span class="text-[10px] text-muted-foreground">({milestones.length})</span>
+						<span class="text-2xs text-muted-foreground">({milestones.length})</span>
 					</div>
 					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
 						{#each milestones as milestone}
@@ -2207,7 +2201,7 @@
 											>{milestone.title}</span
 										>
 										{#if milestone.due_at}
-											<span class="text-[10px] text-muted-foreground"
+											<span class="text-2xs text-muted-foreground"
 												>{formatDueDate(milestone.due_at)}</span
 											>
 										{/if}

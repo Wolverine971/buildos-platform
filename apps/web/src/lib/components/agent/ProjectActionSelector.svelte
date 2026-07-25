@@ -93,7 +93,7 @@
 			</span>
 			<span class="h-px flex-1 bg-border"></span>
 		</div>
-		<p class="mb-3 text-[0.7rem] text-muted-foreground sm:text-xs">
+		<p class="mb-3 text-2xs text-muted-foreground sm:text-xs">
 			Scope the chat to a specific task, goal, plan, document, milestone, or risk.
 		</p>
 

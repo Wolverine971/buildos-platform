@@ -404,14 +404,12 @@
 				{node?.label ?? 'Untitled'}
 			</h2>
 			<div class="flex items-center gap-2 mt-0.5">
-				<span
-					class="text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground font-medium"
-				>
+				<span class="micro-label font-medium">
 					{config.label}
 				</span>
 				{#if state !== 'unknown'}
 					<span
-						class="inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-medium {stateStyle.bgColor} {stateStyle.color}"
+						class="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-medium {stateStyle.bgColor} {stateStyle.color}"
 					>
 						{stateStyle.label}
 					</span>
@@ -433,14 +431,12 @@
 		<div class="flex-1 flex items-center gap-2 px-4 py-2.5 border-r border-border">
 			<Link2 class="w-3.5 h-3.5 text-muted-foreground" />
 			<span class="text-sm font-semibold text-foreground">{node?.connectedEdges ?? 0}</span>
-			<span class="text-[0.65rem] text-muted-foreground uppercase tracking-wide">edges</span>
+			<span class="text-2xs text-muted-foreground uppercase tracking-wide">edges</span>
 		</div>
 		<div class="flex-1 flex items-center gap-2 px-4 py-2.5">
 			<Users class="w-3.5 h-3.5 text-muted-foreground" />
 			<span class="text-sm font-semibold text-foreground">{node?.neighbors ?? 0}</span>
-			<span class="text-[0.65rem] text-muted-foreground uppercase tracking-wide"
-				>neighbors</span
-			>
+			<span class="text-2xs text-muted-foreground uppercase tracking-wide">neighbors</span>
 		</div>
 	</div>
 
@@ -450,7 +446,7 @@
 		{#if description}
 			<div class="px-4 py-3 border-b border-border/50">
 				<p
-					class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+					class="text-2xs uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
 				>
 					Description
 				</p>
@@ -467,7 +463,7 @@
 				<div class="px-4 py-3 space-y-3 border-b border-border/50">
 					<div>
 						<p
-							class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-2"
+							class="text-2xs uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-2"
 						>
 							Facets
 						</p>
@@ -507,7 +503,7 @@
 					{#if goalText}
 						<div>
 							<p
-								class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+								class="text-2xs uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
 							>
 								Goal Statement
 							</p>
@@ -523,7 +519,7 @@
 									<CalendarDays class="w-3.5 h-3.5 text-warning" />
 									<div>
 										<p
-											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+											class="text-2xs uppercase tracking-wide text-muted-foreground"
 										>
 											Target
 										</p>
@@ -538,7 +534,7 @@
 									<CheckCircle2 class="w-3.5 h-3.5 text-success" />
 									<div>
 										<p
-											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+											class="text-2xs uppercase tracking-wide text-muted-foreground"
 										>
 											Achieved
 										</p>
@@ -559,7 +555,7 @@
 					{#if milestoneText}
 						<div>
 							<p
-								class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+								class="text-2xs uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
 							>
 								Milestone Details
 							</p>
@@ -575,7 +571,7 @@
 									<Clock class="w-3.5 h-3.5 text-warning" />
 									<div>
 										<p
-											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+											class="text-2xs uppercase tracking-wide text-muted-foreground"
 										>
 											Due
 										</p>
@@ -590,7 +586,7 @@
 									<CheckCircle2 class="w-3.5 h-3.5 text-success" />
 									<div>
 										<p
-											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+											class="text-2xs uppercase tracking-wide text-muted-foreground"
 										>
 											Completed
 										</p>
@@ -610,7 +606,7 @@
 				<div class="px-4 py-3 space-y-3 border-b border-border/50">
 					<div>
 						<p
-							class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+							class="text-2xs uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
 						>
 							Plan Content
 						</p>
@@ -630,7 +626,7 @@
 								<Lightbulb class="w-3.5 h-3.5 text-accent" />
 								<div>
 									<p
-										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+										class="text-2xs uppercase tracking-wide text-muted-foreground"
 									>
 										Priority
 									</p>
@@ -643,7 +639,7 @@
 								<Clock class="w-3.5 h-3.5 text-warning" />
 								<div>
 									<p
-										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+										class="text-2xs uppercase tracking-wide text-muted-foreground"
 									>
 										Due
 									</p>
@@ -658,7 +654,7 @@
 								<Calendar class="w-3.5 h-3.5 text-info" />
 								<div>
 									<p
-										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+										class="text-2xs uppercase tracking-wide text-muted-foreground"
 									>
 										Started
 									</p>
@@ -673,7 +669,7 @@
 								<CheckCircle2 class="w-3.5 h-3.5 text-success" />
 								<div>
 									<p
-										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+										class="text-2xs uppercase tracking-wide text-muted-foreground"
 									>
 										Completed
 									</p>
@@ -692,7 +688,7 @@
 				<div class="px-4 py-3 space-y-3 border-b border-border/50">
 					<div>
 						<p
-							class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+							class="text-2xs uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
 						>
 							Content Preview
 						</p>
@@ -715,7 +711,7 @@
 									<Target class="w-3.5 h-3.5 text-warning" />
 									<div>
 										<p
-											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+											class="text-2xs uppercase tracking-wide text-muted-foreground"
 										>
 											Probability
 										</p>
@@ -730,7 +726,7 @@
 									<AlertTriangle class="w-3.5 h-3.5 text-destructive" />
 									<div>
 										<p
-											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+											class="text-2xs uppercase tracking-wide text-muted-foreground"
 										>
 											Impact
 										</p>
@@ -745,7 +741,7 @@
 									<Shield class="w-3.5 h-3.5 text-success" />
 									<div>
 										<p
-											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+											class="text-2xs uppercase tracking-wide text-muted-foreground"
 										>
 											Mitigated
 										</p>
@@ -760,7 +756,7 @@
 					{#if riskContent}
 						<div>
 							<p
-								class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+								class="text-2xs uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
 							>
 								Risk Details
 							</p>
@@ -778,10 +774,7 @@
 			<div
 				class="px-4 py-2.5 border-b border-border/50 flex items-center justify-between gap-2"
 			>
-				<span
-					class="text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground shrink-0 font-medium"
-					>Type</span
-				>
+				<span class="micro-label shrink-0 font-medium">Type</span>
 				<code
 					class="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border"
 				>
@@ -811,7 +804,7 @@
 			{#if displayProps.length > 0}
 				<div class="px-4 py-3 border-b border-border/50">
 					<p
-						class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-2"
+						class="text-2xs uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-2"
 					>
 						Additional Info
 					</p>
@@ -837,12 +830,9 @@
 
 		<!-- Node ID -->
 		<div class="px-4 py-2.5 flex flex-col gap-1">
-			<span
-				class="text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground font-medium"
-				>ID</span
-			>
+			<span class="micro-label font-medium">ID</span>
 			<code
-				class="text-[0.6rem] font-mono text-muted-foreground bg-muted px-2 py-1 rounded border border-border break-all select-all"
+				class="text-2xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded border border-border break-all select-all"
 			>
 				{node?.id ?? ''}
 			</code>

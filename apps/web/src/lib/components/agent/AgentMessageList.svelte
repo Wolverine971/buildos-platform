@@ -244,7 +244,6 @@
 							<button
 								type="button"
 								class="group flex w-full items-start gap-2 rounded-lg border border-border bg-background/60 px-2.5 py-2 text-left text-sm font-medium text-muted-foreground shadow-ink transition pressable hover:border-accent hover:bg-accent/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
-								style="-webkit-tap-highlight-color: transparent;"
 								disabled={!onSelectSuggestion}
 								onclick={() => onSelectSuggestion?.(suggestion)}
 							>
@@ -288,7 +287,7 @@
 											/>
 										{:else}
 											<div
-												class="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-[0.65rem] font-bold uppercase text-muted-foreground"
+												class="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-2xs font-bold uppercase text-muted-foreground"
 											>
 												IMG
 											</div>
@@ -298,7 +297,7 @@
 												{attachment.file_name ?? 'Attached image'}
 											</p>
 											<p
-												class="mt-1 truncate text-[0.7rem] text-muted-foreground"
+												class="mt-1 truncate text-2xs text-muted-foreground"
 											>
 												{attachment.attachment_kind === 'temporary_file'
 													? 'Ready for visual analysis'
@@ -409,7 +408,7 @@
 						</div>
 					{/if}
 					<span
-						class="clear-both mt-1 block text-right text-[0.65rem] leading-none tabular-nums text-muted-foreground/70"
+						class="clear-both mt-1 block text-right text-2xs leading-none tabular-nums text-muted-foreground/70"
 					>
 						{formatTime(message.timestamp)}
 					</span>
@@ -435,7 +434,7 @@
 							</div>
 						{/if}
 						<span
-							class="mt-1 block text-right text-[0.65rem] leading-none tabular-nums text-muted-foreground/70"
+							class="mt-1 block text-right text-2xs leading-none tabular-nums text-muted-foreground/70"
 						>
 							{formatTime(message.timestamp)}
 						</span>
@@ -469,7 +468,7 @@
 									<li class="flex gap-2 font-medium leading-relaxed sm:gap-2.5">
 										<!-- INKPRINT number badge -->
 										<span
-											class="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-foreground text-[0.65rem] font-bold text-background shadow-ink"
+											class="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-foreground text-2xs font-bold text-background shadow-ink"
 										>
 											{i + 1}
 										</span>
@@ -484,7 +483,7 @@
 							Share the answers in your next message to continue
 						</p>
 						<span
-							class="mt-1 block text-right text-[0.65rem] leading-none tabular-nums text-accent/60"
+							class="mt-1 block text-right text-2xs leading-none tabular-nums text-accent/60"
 						>
 							{formatTime(message.timestamp)}
 						</span>
@@ -503,7 +502,7 @@
 					</div>
 				{/if}
 				<!-- Legacy activity with INKPRINT styling -->
-				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
+				<div class="flex gap-1.5 text-2xs text-muted-foreground">
 					<div class="w-12 shrink-0 pt-1 font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
@@ -515,7 +514,7 @@
 				</div>
 			{:else}
 				<!-- Default message with INKPRINT styling -->
-				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
+				<div class="flex gap-1.5 text-2xs text-muted-foreground">
 					<div class="w-12 shrink-0 pt-1 font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>

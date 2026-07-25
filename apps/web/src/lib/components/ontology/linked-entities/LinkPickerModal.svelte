@@ -124,7 +124,7 @@
 								<span class="text-xs sm:text-sm text-foreground truncate block">
 									{getEntityDisplayName(entity)}
 								</span>
-								<span class="text-[10px] sm:text-xs text-muted-foreground"
+								<span class="text-2xs sm:text-xs text-muted-foreground"
 									>Already linked</span
 								>
 							</div>
@@ -156,7 +156,7 @@
 									{getEntityDisplayName(entity)}
 								</span>
 								{#if entity.state_key}
-									<span class="text-[10px] sm:text-xs text-muted-foreground"
+									<span class="text-2xs sm:text-xs text-muted-foreground"
 										>{entity.state_key}</span
 									>
 								{/if}
@@ -168,7 +168,7 @@
 
 			<!-- Footer Info -->
 			<div
-				class="px-3 sm:px-4 py-1.5 sm:py-2 border-t border-border bg-muted text-[10px] sm:text-xs text-muted-foreground"
+				class="px-3 sm:px-4 py-1.5 sm:py-2 border-t border-border bg-muted text-2xs sm:text-xs text-muted-foreground"
 			>
 				{selectedCount} of {availableCount} available selected
 			</div>

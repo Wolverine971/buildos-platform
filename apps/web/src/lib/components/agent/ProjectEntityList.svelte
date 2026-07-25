@@ -392,7 +392,7 @@
 								<!-- State badge -->
 								{#if entity.metadata?.state_key}
 									<span
-										class={`inline-flex items-center rounded border px-1.5 py-0.5 text-[0.65rem] font-semibold capitalize ${stateClasses(entity.metadata.state_key)}`}
+										class={`inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-semibold capitalize ${stateClasses(entity.metadata.state_key)}`}
 									>
 										{formatState(entity.metadata.state_key)}
 									</span>
@@ -401,7 +401,7 @@
 								<!-- Task: priority -->
 								{#if selectedType === 'task' && entity.metadata?.priority != null}
 									<span
-										class={`inline-flex items-center rounded border px-1.5 py-0.5 text-[0.65rem] font-semibold ${priorityClasses(entity.metadata.priority)}`}
+										class={`inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-semibold ${priorityClasses(entity.metadata.priority)}`}
 									>
 										P{entity.metadata.priority}
 									</span>
@@ -410,7 +410,7 @@
 								<!-- Risk: impact level -->
 								{#if selectedType === 'risk' && entity.metadata?.impact}
 									<span
-										class={`inline-flex items-center rounded border px-1.5 py-0.5 text-[0.65rem] font-semibold capitalize ${impactClasses(entity.metadata.impact)}`}
+										class={`inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-semibold capitalize ${impactClasses(entity.metadata.impact)}`}
 									>
 										{entity.metadata.impact}
 									</span>
@@ -419,7 +419,7 @@
 								<!-- Goal/Plan: type family -->
 								{#if (selectedType === 'goal' || selectedType === 'plan') && entity.metadata?.type_key}
 									<span
-										class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground"
+										class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
 									>
 										{formatTypeFamily(entity.metadata.type_key)}
 									</span>
@@ -427,7 +427,7 @@
 
 								<!-- Due date (tasks, milestones, goals) -->
 								{#if entity.metadata?.due_at}
-									<span class="text-[0.65rem] font-medium text-muted-foreground">
+									<span class="text-2xs font-medium text-muted-foreground">
 										Due {new Date(entity.metadata.due_at).toLocaleDateString(
 											'en-US',
 											{

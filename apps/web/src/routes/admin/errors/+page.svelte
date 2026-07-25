@@ -462,7 +462,7 @@
 	<!-- Summary Cards -->
 	<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
 		<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
-			<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
+			<p class="text-2xs uppercase tracking-wider text-muted-foreground mb-0.5">
 				Visible Errors
 			</p>
 			<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
@@ -472,7 +472,7 @@
 		</div>
 
 		<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
-			<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
+			<p class="text-2xs uppercase tracking-wider text-muted-foreground mb-0.5">
 				Open Errors
 			</p>
 			<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
@@ -485,7 +485,7 @@
 		</div>
 
 		<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
-			<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
+			<p class="text-2xs uppercase tracking-wider text-muted-foreground mb-0.5">
 				Critical Open
 			</p>
 			<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
@@ -498,7 +498,7 @@
 		</div>
 
 		<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
-			<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
+			<p class="text-2xs uppercase tracking-wider text-muted-foreground mb-0.5">
 				Last 24 Hours
 			</p>
 			<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
@@ -686,42 +686,42 @@
 							</div>
 						</th>
 						<th
-							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-2xs font-semibold text-muted-foreground uppercase tracking-wider"
 						>
 							Time
 						</th>
 						<th
-							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-2xs font-semibold text-muted-foreground uppercase tracking-wider"
 						>
 							Severity
 						</th>
 						<th
-							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell"
+							class="px-3 py-2 text-left text-2xs font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell"
 						>
 							Type
 						</th>
 						<th
-							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-2xs font-semibold text-muted-foreground uppercase tracking-wider"
 						>
 							Message
 						</th>
 						<th
-							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell"
+							class="px-3 py-2 text-left text-2xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell"
 						>
 							User
 						</th>
 						<th
-							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell"
+							class="px-3 py-2 text-left text-2xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell"
 						>
 							Project
 						</th>
 						<th
-							class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider w-16"
+							class="px-3 py-2 text-left text-2xs font-semibold text-muted-foreground uppercase tracking-wider w-16"
 						>
 							Status
 						</th>
 						<th
-							class="px-3 py-2 text-right text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider w-20"
+							class="px-3 py-2 text-right text-2xs font-semibold text-muted-foreground uppercase tracking-wider w-20"
 						>
 							Actions
 						</th>
@@ -755,7 +755,7 @@
 							</td>
 							<td class="px-3 py-2">
 								<span
-									class="{styles.badge} inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[0.65rem] font-medium"
+									class="{styles.badge} inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs font-medium"
 								>
 									<span class="w-1.5 h-1.5 rounded-full {styles.dot}"></span>
 									{error.severity}
@@ -784,7 +784,7 @@
 										</p>
 									</div>
 								{:else if error.user_id}
-									<span class="font-mono text-[0.65rem] text-muted-foreground">
+									<span class="font-mono text-2xs text-muted-foreground">
 										{truncate(error.user_id, 8)}
 									</span>
 								{:else}

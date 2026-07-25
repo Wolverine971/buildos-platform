@@ -442,7 +442,7 @@
 		<div class="flex gap-2">
 			<div class="flex-1">
 				<span
-					class="block text-[0.65rem] uppercase tracking-wider font-bold text-muted-foreground mb-1"
+					class="block text-2xs uppercase tracking-wider font-bold text-muted-foreground mb-1"
 					id="view-label"
 				>
 					View
@@ -459,7 +459,7 @@
 			{#if features.layout}
 				<div class="flex-1">
 					<span
-						class="block text-[0.65rem] uppercase tracking-wider font-bold text-muted-foreground mb-1"
+						class="block text-2xs uppercase tracking-wider font-bold text-muted-foreground mb-1"
 						id="layout-label"
 					>
 						Layout
@@ -482,7 +482,7 @@
 			<div class="border border-border rounded-lg overflow-hidden bg-card">
 				<button
 					type="button"
-					class="w-full flex items-center justify-between px-2.5 py-2 text-[0.65rem] uppercase tracking-wider font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="w-full flex items-center justify-between px-2.5 py-2 text-2xs uppercase tracking-wider font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					onclick={() => (scopeExpanded = !scopeExpanded)}
 					aria-expanded={scopeExpanded}
 				>
@@ -500,14 +500,14 @@
 					>
 						<div>
 							<p
-								class="mb-1 text-[0.62rem] font-bold uppercase tracking-wider text-muted-foreground"
+								class="mb-1 text-2xs font-bold uppercase tracking-wider text-muted-foreground"
 							>
 								Tasks
 							</p>
 							<div class="grid grid-cols-2 gap-1.5">
 								{#each taskScopeToggles as toggle}
 									<label
-										class="flex min-h-11 sm:min-h-0 min-w-0 items-center gap-1.5 py-1 sm:py-0 text-[0.65rem] text-muted-foreground hover:text-foreground"
+										class="flex min-h-11 sm:min-h-0 min-w-0 items-center gap-1.5 py-1 sm:py-0 text-2xs text-muted-foreground hover:text-foreground"
 										title={getScopeCountTitle(toggle)}
 									>
 										<input
@@ -534,14 +534,14 @@
 
 						<div class="border-t border-border/50 pt-2">
 							<p
-								class="mb-1 text-[0.62rem] font-bold uppercase tracking-wider text-muted-foreground"
+								class="mb-1 text-2xs font-bold uppercase tracking-wider text-muted-foreground"
 							>
 								Other
 							</p>
 							<div class="grid grid-cols-2 gap-1.5">
 								{#each entityScopeToggles as toggle}
 									<label
-										class="flex min-h-11 sm:min-h-0 min-w-0 items-center gap-1.5 py-1 sm:py-0 text-[0.65rem] text-muted-foreground hover:text-foreground"
+										class="flex min-h-11 sm:min-h-0 min-w-0 items-center gap-1.5 py-1 sm:py-0 text-2xs text-muted-foreground hover:text-foreground"
 										title={getScopeCountTitle(toggle)}
 									>
 										<input
@@ -568,14 +568,14 @@
 
 						<div class="border-t border-border/50 pt-2">
 							<p
-								class="mb-1 text-[0.62rem] font-bold uppercase tracking-wider text-muted-foreground"
+								class="mb-1 text-2xs font-bold uppercase tracking-wider text-muted-foreground"
 							>
 								Structure
 							</p>
 							<div class="grid grid-cols-2 gap-1.5">
 								{#each structureScopeToggles as toggle}
 									<label
-										class="flex min-h-11 sm:min-h-0 min-w-0 items-center gap-1.5 py-1 sm:py-0 text-[0.65rem] text-muted-foreground hover:text-foreground"
+										class="flex min-h-11 sm:min-h-0 min-w-0 items-center gap-1.5 py-1 sm:py-0 text-2xs text-muted-foreground hover:text-foreground"
 										title={getScopeCountTitle(toggle)}
 									>
 										<input
@@ -672,7 +672,7 @@
 		<div class="border-t border-border pt-3">
 			<button
 				type="button"
-				class="w-full flex items-center justify-between text-[0.65rem] uppercase tracking-wider font-bold text-muted-foreground hover:text-foreground transition motion-reduce:transition-none mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="w-full flex items-center justify-between text-2xs uppercase tracking-wider font-bold text-muted-foreground hover:text-foreground transition motion-reduce:transition-none mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				onclick={() => (legendExpanded = !legendExpanded)}
 				aria-expanded={legendExpanded}
 			>
@@ -837,7 +837,7 @@
 		<!-- Library Notice -->
 		{#if !features.search && !features.filter}
 			<div
-				class="text-[0.65rem] text-muted-foreground bg-muted border border-border rounded-lg px-2 py-1.5"
+				class="text-2xs text-muted-foreground bg-muted border border-border rounded-lg px-2 py-1.5"
 			>
 				<span class="font-bold text-foreground">Note:</span> Full controls require Cytoscape.
 			</div>

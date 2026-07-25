@@ -104,7 +104,7 @@
 		<section class="space-y-4">
 			<h2 class="text-xl font-semibold text-foreground">Weight Tokens</h2>
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-				{#each weights as weight}
+				{#each weights as weight (weight.id)}
 					<div class="wt-{weight.id} p-4 tx tx-frame tx-weak">
 						<div class="flex items-center justify-between mb-2">
 							<span class="font-mono text-sm font-medium text-foreground"
@@ -122,7 +122,7 @@
 		<section class="space-y-4">
 			<h2 class="text-xl font-semibold text-foreground">Texture Tokens</h2>
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-				{#each textures as texture}
+				{#each textures as texture (texture.id)}
 					<div class="wt-paper p-4 tx tx-{texture.id} tx-weak">
 						<span class="font-mono text-sm font-medium text-foreground"
 							>tx-{texture.id}</span
@@ -140,18 +140,28 @@
 				Green badges indicate recommended semantic combinations. Gray cells are valid but
 				less common.
 			</p>
+			<p id="matrix-scroll-help" class="micro-label flex items-center gap-1 sm:hidden">
+				Scroll horizontally to compare weights <span aria-hidden="true">→</span>
+			</p>
 
-			<div class="overflow-x-auto">
+			<!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable data regions need a keyboard focus target) -->
+			<div
+				class="matrix-scroll overflow-x-auto rounded-lg border border-border bg-muted/20 p-2"
+				role="region"
+				aria-label="Texture and weight comparison matrix"
+				aria-describedby="matrix-scroll-help"
+				tabindex="0"
+			>
 				<div class="min-w-[800px]">
 					<!-- Header row -->
 					<div class="grid grid-cols-5 gap-2 mb-2">
 						<div class="p-2"></div>
-						{#each weights as weight}
+						{#each weights as weight (weight.id)}
 							<div class="p-2 text-center">
 								<span class="font-mono text-xs font-medium text-foreground"
 									>wt-{weight.id}</span
 								>
-								<p class="text-[10px] text-muted-foreground mt-0.5">
+								<p class="text-2xs text-muted-foreground mt-0.5">
 									{weight.duration}
 								</p>
 							</div>
@@ -159,7 +169,7 @@
 					</div>
 
 					<!-- Texture rows -->
-					{#each textures as texture}
+					{#each textures as texture (texture.id)}
 						<div class="grid grid-cols-5 gap-2 mb-2">
 							<!-- Texture label -->
 							<div class="p-2 flex items-center">
@@ -169,7 +179,7 @@
 							</div>
 
 							<!-- Weight columns -->
-							{#each weights as weight}
+							{#each weights as weight (weight.id)}
 								{@const recommended = isRecommended(texture.id, weight.id)}
 								<div
 									class="wt-{weight.id} p-3 tx tx-{texture.id} tx-weak min-h-[80px] flex flex-col justify-between"
@@ -179,7 +189,7 @@
 									</div>
 									{#if recommended}
 										<span
-											class="mt-2 inline-block px-1.5 py-0.5 text-[10px] font-medium bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded"
+											class="mt-2 inline-block px-1.5 py-0.5 text-2xs font-medium bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded"
 										>
 											{recommended}
 										</span>
@@ -331,3 +341,25 @@
 		</footer>
 	</div>
 </div>
+
+<style>
+	.matrix-scroll {
+		overscroll-behavior-x: contain;
+		scrollbar-gutter: stable;
+		scrollbar-width: thin;
+		scrollbar-color: hsl(var(--muted-foreground) / 0.45) hsl(var(--muted));
+	}
+
+	.matrix-scroll::-webkit-scrollbar {
+		height: 0.5rem;
+	}
+
+	.matrix-scroll::-webkit-scrollbar-track {
+		background: hsl(var(--muted));
+	}
+
+	.matrix-scroll::-webkit-scrollbar-thumb {
+		border-radius: 9999px;
+		background: hsl(var(--muted-foreground) / 0.45);
+	}
+</style>

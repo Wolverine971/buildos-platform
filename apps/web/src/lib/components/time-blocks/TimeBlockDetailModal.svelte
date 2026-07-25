@@ -305,7 +305,7 @@
 						>
 							<div class="space-y-2">
 								<p
-									class="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+									class="text-2xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
 								>
 									Session Overview
 								</p>
@@ -405,7 +405,7 @@
 						>
 							<div>
 								<p
-									class="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+									class="text-2xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
 								>
 									Focus Suggestions
 								</p>
@@ -451,7 +451,7 @@
 														</h4>
 														{#if suggestionMeta(suggestion)}
 															<span
-																class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-foreground ring-1 ring-border shadow-ink"
+																class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-2xs font-semibold uppercase tracking-wide text-foreground ring-1 ring-border shadow-ink"
 															>
 																{suggestionMeta(suggestion)}
 															</span>
@@ -503,7 +503,7 @@
 							class="rounded-2xl border border-border bg-card shadow-ink px-5 py-5 text-sm leading-relaxed text-foreground tx tx-frame tx-weak"
 						>
 							<p
-								class="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground"
+								class="mb-2 text-2xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
 							>
 								AI Summary
 							</p>
@@ -523,7 +523,7 @@
 								Session Controls
 							</h3>
 							<span
-								class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-foreground shadow-ink"
+								class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-2xs font-semibold uppercase tracking-wide text-foreground shadow-ink"
 							>
 								{isEditMode ? 'Editing' : 'Viewing'}
 							</span>

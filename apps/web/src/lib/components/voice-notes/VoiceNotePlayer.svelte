@@ -235,7 +235,7 @@
 	<div class="flex items-center gap-1.5">
 		<!-- Segment indicator (if in multi-note group) -->
 		{#if segmentIndex !== undefined && segmentTotal !== undefined}
-			<span class="shrink-0 text-[0.55rem] font-medium tabular-nums text-muted-foreground/70">
+			<span class="shrink-0 text-2xs font-medium tabular-nums text-muted-foreground/70">
 				{segmentIndex + 1}/{segmentTotal}
 			</span>
 		{/if}
@@ -278,14 +278,14 @@
 		</div>
 
 		<!-- Time display -->
-		<span class="shrink-0 text-[0.6rem] tabular-nums text-muted-foreground">
+		<span class="shrink-0 text-2xs tabular-nums text-muted-foreground">
 			{formattedCurrentTime}/{formattedDuration}
 		</span>
 
 		<!-- Speed button -->
 		<button
 			type="button"
-			class="shrink-0 rounded border border-border/60 bg-muted/50 px-1 py-0.5 text-[0.55rem] font-bold tabular-nums text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent pressable"
+			class="shrink-0 rounded border border-border/60 bg-muted/50 px-1 py-0.5 text-2xs font-bold tabular-nums text-muted-foreground transition-colors hover:border-accent/50 hover:text-accent pressable"
 			onclick={cycleSpeed}
 			aria-label="Change playback speed"
 		>
@@ -310,14 +310,14 @@
 
 	<!-- Compact transcript (optional, single line with ellipsis) -->
 	{#if showTranscript && voiceNote.transcript}
-		<p class="mt-1 text-[0.6rem] leading-tight text-muted-foreground line-clamp-2">
+		<p class="mt-1 text-2xs leading-tight text-muted-foreground line-clamp-2">
 			{voiceNote.transcript}
 		</p>
 	{/if}
 
 	<!-- Error display -->
 	{#if errorMessage}
-		<p class="mt-1 flex items-center gap-1 text-[0.6rem] text-destructive">
+		<p class="mt-1 flex items-center gap-1 text-2xs text-destructive">
 			<AlertCircle class="h-2.5 w-2.5" />
 			<span class="truncate">{errorMessage}</span>
 		</p>
@@ -336,9 +336,7 @@
 				class="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted"
 				aria-label="Playback progress"
 			/>
-			<div
-				class="mt-0.5 flex items-center justify-between text-[0.65rem] text-muted-foreground"
-			>
+			<div class="mt-0.5 flex items-center justify-between text-2xs text-muted-foreground">
 				<span class="tabular-nums">{formattedCurrentTime}</span>
 				<span class="tabular-nums">{formattedDuration}</span>
 			</div>
@@ -358,20 +356,20 @@
 
 			<button
 				type="button"
-				class="pressable rounded-md border border-border bg-muted px-2 py-0.5 text-[0.65rem] font-semibold tabular-nums text-foreground"
+				class="pressable rounded-md border border-border bg-muted px-2 py-0.5 text-2xs font-semibold tabular-nums text-foreground"
 				onclick={cycleSpeed}
 				aria-label="Change playback speed"
 			>
 				{playbackSpeed}x
 			</button>
 
-			<div class="flex flex-wrap items-center gap-1.5 text-[0.65rem] text-muted-foreground">
+			<div class="flex flex-wrap items-center gap-1.5 text-2xs text-muted-foreground">
 				<span class="tabular-nums">{formattedRemainingTime} left</span>
 				<div class="hidden sm:flex gap-0.5">
 					{#each PLAYBACK_SPEEDS as speed}
 						<button
 							type="button"
-							class="rounded px-1.5 py-0.5 text-[0.6rem] tabular-nums transition-colors pressable {playbackSpeed ===
+							class="rounded px-1.5 py-0.5 text-2xs tabular-nums transition-colors pressable {playbackSpeed ===
 							speed
 								? 'bg-accent text-accent-foreground'
 								: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
@@ -386,15 +384,15 @@
 
 		{#if showTranscript && voiceNote.transcript}
 			<div class="rounded-md border border-border bg-muted/50 p-2 text-sm text-foreground">
-				<p class="mb-0.5 text-[0.6rem] uppercase tracking-wide text-muted-foreground">
+				<p class="mb-0.5 text-2xs uppercase tracking-wide text-muted-foreground">
 					Transcript
 				</p>
-				<p class="text-[0.75rem] leading-relaxed">{voiceNote.transcript}</p>
+				<p class="text-xs leading-relaxed">{voiceNote.transcript}</p>
 			</div>
 		{/if}
 
 		{#if errorMessage}
-			<div class="flex items-center gap-1.5 text-[0.7rem] text-destructive">
+			<div class="flex items-center gap-1.5 text-2xs text-destructive">
 				<AlertCircle class="h-3 w-3" />
 				<span>{errorMessage}</span>
 			</div>

@@ -25,7 +25,7 @@
 			class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%]"
 		>
 			<div
-				class="mb-1 flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-accent"
+				class="mb-1 flex items-center justify-between gap-2 text-2xs font-semibold uppercase tracking-wide text-accent"
 			>
 				<span>{message.roleLabel}</span>
 				<span class="font-normal normal-case tracking-normal text-accent/60">
@@ -40,7 +40,7 @@
 						>
 							{truncateText(message.content || '(empty message)', 420)}
 						</div>
-						<div class="text-[11px] font-semibold uppercase tracking-wide text-accent">
+						<div class="text-2xs font-semibold uppercase tracking-wide text-accent">
 							Expand message
 						</div>
 					</summary>
@@ -58,7 +58,7 @@
 				</div>
 			{/if}
 			{#if message.errorMessage || message.totalTokens > 0}
-				<div class="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-foreground/60">
+				<div class="mt-2 flex flex-wrap items-center gap-2 text-2xs text-foreground/60">
 					{#if message.totalTokens > 0}
 						<span>{formatNumber(message.totalTokens)} tokens</span>
 					{/if}
@@ -72,7 +72,7 @@
 {:else if variant === 'assistant'}
 	<div class="flex min-w-0 gap-2 sm:gap-3">
 		<div
-			class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-wide text-background shadow-ink sm:h-9 sm:w-9"
+			class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-2xs font-semibold uppercase tracking-wide text-background shadow-ink sm:h-9 sm:w-9"
 		>
 			OS
 		</div>
@@ -80,7 +80,7 @@
 			class="max-w-[90%] min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:max-w-[88%]"
 		>
 			<div
-				class="mb-1 flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+				class="mb-1 flex items-center justify-between gap-2 text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
 			>
 				<span>{message.roleLabel}</span>
 				<span class="font-normal normal-case tracking-normal text-muted-foreground/60">
@@ -96,7 +96,7 @@
 							{truncateText(message.content || '(empty message)', 420)}
 						</div>
 						<div
-							class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+							class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
 						>
 							Expand message
 						</div>
@@ -111,9 +111,7 @@
 				</div>
 			{/if}
 			{#if message.errorMessage || message.totalTokens > 0}
-				<div
-					class="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"
-				>
+				<div class="mt-2 flex flex-wrap items-center gap-2 text-2xs text-muted-foreground">
 					{#if message.totalTokens > 0}
 						<span>{formatNumber(message.totalTokens)} tokens</span>
 					{/if}

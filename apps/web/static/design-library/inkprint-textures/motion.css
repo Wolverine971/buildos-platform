@@ -1,40 +1,40 @@
-/* ============================================
-   Motion - Ink Set Animation
-   ============================================
-
-   Printmaking-inspired entrance/exit animations.
-
-   Usage:
-   <div class="animate-ink-in">Entering element</div>
-   <div class="animate-ink-out">Exiting element</div>
+/* AUTO-GENERATED from src/lib/styles/inkprint.css — do not edit.
+   Module: motion.css
 */
 
-@keyframes ink-in {
-	from {
+@keyframes inkIn {
+	0% {
 		opacity: 0;
 		transform: translateY(4px);
 	}
-	to {
+	100% {
 		opacity: 1;
 		transform: translateY(0);
 	}
 }
 
-@keyframes ink-out {
-	from {
+@keyframes inkOut {
+	0% {
 		opacity: 1;
 		transform: translateY(0);
 	}
-	to {
+	100% {
 		opacity: 0;
 		transform: translateY(-4px);
 	}
 }
 
 .animate-ink-in {
-	animation: ink-in 180ms cubic-bezier(0.4, 0, 0.2, 1);
+	animation: inkIn 180ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .animate-ink-out {
-	animation: ink-out 120ms cubic-bezier(0.4, 0, 0.2, 1);
+	animation: inkOut 120ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.animate-ink-in,
+	.animate-ink-out {
+		animation: none;
+	}
 }

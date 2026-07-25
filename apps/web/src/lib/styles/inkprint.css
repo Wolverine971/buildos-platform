@@ -1,5 +1,7 @@
 /* apps/web/src/lib/styles/inkprint.css */
-/* BuildOS "Inkprint" Design System - Synesthetic texture layer */
+/* BuildOS "Inkprint" Design System - canonical runtime source.
+   The public modular package in static/design-library/inkprint-textures is
+   generated from this file by scripts/sync-inkprint-design-library.mjs. */
 
 /* ============================================
    CSS Variables - Inkprint Color System
@@ -44,6 +46,9 @@
 	/* Info (status indicator - informational/neutral states) */
 	--info: 200 60% 40%; /* teal-leaning blue; L40 = 4.6:1 as text on bg (was L52 = 2.9) */
 	--info-foreground: 0 0% 100%; /* 5.2:1 on L40 */
+
+	/* Foreground for fixed external/data-series colors that do not theme-shift. */
+	--data-foreground: 0 0% 100%;
 
 	/* Inkprint texture base color */
 	--tx-ink: 240 10% 10%;
@@ -504,22 +509,6 @@
 	transform: translateY(1px);
 }
 
-/* ============================================
-   Shadow Utilities
-   ============================================ */
-
-.shadow-ink {
-	box-shadow: var(--shadow-ink);
-}
-
-.shadow-ink-strong {
-	box-shadow: var(--shadow-ink-strong);
-}
-
-.shadow-ink-inner {
-	box-shadow: var(--shadow-ink-inner);
-}
-
 /* Motion: ink-in/ink-out animations live in tailwind.config.js
    (animation + keyframes) — single source of truth. */
 
@@ -527,11 +516,11 @@
    Utility Classes
    ============================================ */
 
-/* Micro-label pattern for metadata: the 0.65rem uppercase tracked label scale.
+/* Micro-label pattern for metadata: the 0.6875rem uppercase tracked label scale.
    Single source of truth — components compose `micro-label` + an optional
    `text-*` color override + `font-*` weight rather than re-inlining the longhand. */
 .micro-label {
-	font-size: 0.65rem;
+	font-size: 0.6875rem;
 	line-height: 1.1;
 	text-transform: uppercase;
 	letter-spacing: 0.15em;

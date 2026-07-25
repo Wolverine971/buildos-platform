@@ -251,7 +251,7 @@
 								{count}
 							</div>
 							<div
-								class="text-[0.65rem] uppercase tracking-wide text-muted-foreground capitalize"
+								class="text-2xs uppercase tracking-wide text-muted-foreground capitalize"
 							>
 								{type}s
 							</div>

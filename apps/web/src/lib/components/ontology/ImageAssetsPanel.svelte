@@ -316,7 +316,7 @@
 								{/if}
 							</div>
 						</div>
-						<p class="text-[10px] text-muted-foreground mt-0.5">
+						<p class="text-2xs text-muted-foreground mt-0.5">
 							{asset.ocr_status === 'complete'
 								? 'OCR complete'
 								: asset.ocr_status || 'pending'}

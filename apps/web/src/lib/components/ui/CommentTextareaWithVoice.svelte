@@ -1043,7 +1043,7 @@
 		>
 			<div class="flex items-start gap-2 px-2.5 py-1.5">
 				<span
-					class="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[0.65rem] font-medium text-accent"
+					class="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-2xs font-medium text-accent"
 				>
 					<span class="h-1.5 w-1.5 animate-pulse rounded-full bg-accent"></span>
 					Live
@@ -1073,7 +1073,7 @@
 	<!-- Footer: Status, hints, and action buttons -->
 	<div class="flex flex-wrap items-center justify-between gap-2">
 		<!-- Left side: Status indicators and hints -->
-		<div class="flex flex-wrap items-center gap-1.5 text-[0.65rem] text-muted-foreground/80">
+		<div class="flex flex-wrap items-center gap-1.5 text-2xs text-muted-foreground/80">
 			{#if enableVoice && isRecording}
 				<!-- Recording indicator -->
 				<span class="flex items-center gap-1.5 text-destructive">
@@ -1087,7 +1087,7 @@
 					<span class="font-semibold">Listening</span>
 					<span class="font-bold tabular-nums">{formatDuration(recordingDuration)}</span>
 					<kbd
-						class="hidden rounded border border-destructive/30 bg-destructive/10 px-1 py-0.5 font-mono text-[0.6rem] font-medium text-destructive md:inline-flex"
+						class="hidden rounded border border-destructive/30 bg-destructive/10 px-1 py-0.5 font-mono text-2xs font-medium text-destructive md:inline-flex"
 					>
 						Enter
 					</kbd>
@@ -1122,7 +1122,7 @@
 			<!-- Live transcript badge during recording -->
 			{#if enableVoice && _canUseLiveTranscript && isRecording}
 				<span
-					class="hidden rounded-md border border-accent/30 bg-accent/10 px-1 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-accent xs:inline-flex"
+					class="hidden rounded-md border border-accent/30 bg-accent/10 px-1 py-0.5 text-2xs font-bold uppercase tracking-wider text-accent xs:inline-flex"
 				>
 					Live
 				</span>
@@ -1134,7 +1134,7 @@
 			{#if enableVoice && voiceError}
 				<span
 					role="alert"
-					class="max-w-[120px] truncate text-destructive text-[0.65rem] font-medium px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/20"
+					class="max-w-[120px] truncate text-destructive text-2xs font-medium px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/20"
 				>
 					{voiceError}
 				</span>
@@ -1146,7 +1146,6 @@
 				<button
 					type="button"
 					class={`flex h-10 w-10 xs:h-9 xs:w-9 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
-					style="-webkit-tap-highlight-color: transparent;"
 					onclick={toggleVoiceRecording}
 					aria-label={voiceButtonState.label}
 					title={voiceButtonState.label}

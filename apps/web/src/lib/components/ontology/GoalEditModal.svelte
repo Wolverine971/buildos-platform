@@ -480,7 +480,7 @@
 						<Badge variant={stateMeta.variant} size="sm">{stateMeta.label}</Badge>
 						<Badge variant={priorityMeta.variant} size="sm">{priorityMeta.label}</Badge>
 					</div>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-1">
+					<p class="text-2xs sm:text-xs text-muted-foreground mt-1">
 						{#if goal?.created_at}Created {new Date(goal.created_at).toLocaleDateString(
 								undefined,
 								{ month: 'short', day: 'numeric' }
@@ -800,11 +800,7 @@
 										<div class="flex items-center justify-between gap-2">
 											<div class="flex items-center gap-2">
 												<Target class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													State
-												</p>
+												<p class="micro-label font-semibold">State</p>
 											</div>
 											<Badge variant={stateMeta.variant} size="sm"
 												>{stateMeta.label}</Badge
@@ -823,11 +819,7 @@
 										<div class="flex items-center justify-between gap-2">
 											<div class="flex items-center gap-2">
 												<Flag class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Priority
-												</p>
+												<p class="micro-label font-semibold">Priority</p>
 											</div>
 											<Badge variant={priorityMeta.variant} size="sm"
 												>{priorityMeta.label}</Badge
@@ -842,11 +834,7 @@
 									<section class="px-3 py-3 sm:px-4">
 										<div class="flex items-center gap-2">
 											<CalendarRange class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-											>
-												Timeline
-											</p>
+											<p class="micro-label font-semibold">Timeline</p>
 										</div>
 										<div class="mt-2 space-y-1.5 text-sm">
 											<div class="flex items-center justify-between gap-3">
@@ -870,11 +858,7 @@
 									<section class="px-3 py-3 sm:px-4">
 										<div class="flex items-center gap-2">
 											<Clock class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-											>
-												Record
-											</p>
+											<p class="micro-label font-semibold">Record</p>
 										</div>
 										<div class="mt-2 space-y-1.5 text-sm">
 											<div class="flex items-center justify-between gap-3">
@@ -913,11 +897,7 @@
 										<section class="px-3 py-3 sm:px-4">
 											<div class="flex items-center gap-2 mb-2">
 												<TagIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Tags
-												</p>
+												<p class="micro-label font-semibold">Tags</p>
 											</div>
 											<TagsDisplay
 												props={goal.props}
@@ -938,9 +918,7 @@
 										>
 											<div class="flex items-center gap-2">
 												<LinkIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
+												<p class="micro-label font-semibold">
 													Linked Entities
 												</p>
 											</div>
@@ -975,11 +953,7 @@
 										>
 											<div class="flex items-center gap-2">
 												<ImageIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Images
-												</p>
+												<p class="micro-label font-semibold">Images</p>
 											</div>
 											<ChevronDown
 												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
@@ -1014,11 +988,7 @@
 										>
 											<div class="flex items-center gap-2">
 												<Activity class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Activity
-												</p>
+												<p class="micro-label font-semibold">Activity</p>
 											</div>
 											<ChevronDown
 												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog

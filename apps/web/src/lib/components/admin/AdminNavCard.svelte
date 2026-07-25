@@ -62,13 +62,13 @@
 				</span>
 				{#if stat !== null && stat !== undefined && stat !== ''}
 					<span
-						class="flex-shrink-0 rounded px-1 py-0.5 text-[10px] font-bold bg-muted text-foreground"
+						class="flex-shrink-0 rounded px-1 py-0.5 text-2xs font-bold bg-muted text-foreground"
 					>
 						{stat}
 					</span>
 				{/if}
 				{#if badge}
-					<Badge variant="info" size="sm" class="px-1.5 py-0 text-[10px]">{badge}</Badge>
+					<Badge variant="info" size="sm" class="px-1.5 py-0 text-2xs">{badge}</Badge>
 				{/if}
 				<ChevronRight class="h-3 w-3 text-muted-foreground shrink-0" />
 			</div>
@@ -91,7 +91,7 @@
 						</p>
 						{#if stat !== null && stat !== undefined && stat !== ''}
 							<span
-								class="flex-shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-semibold leading-none text-foreground"
+								class="flex-shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-2xs font-semibold leading-none text-foreground"
 							>
 								{stat}
 							</span>
@@ -100,7 +100,7 @@
 					<div class="mt-0.5 flex min-w-0 items-center gap-2">
 						{#if description}
 							<p
-								class="min-w-0 flex-1 truncate text-[0.7rem] leading-tight text-muted-foreground"
+								class="min-w-0 flex-1 truncate text-2xs leading-tight text-muted-foreground"
 							>
 								{description}
 							</p>
@@ -109,7 +109,7 @@
 							<Badge
 								variant="info"
 								size="sm"
-								class="ml-auto flex-shrink-0 px-1.5 py-0 text-[10px]"
+								class="ml-auto flex-shrink-0 px-1.5 py-0 text-2xs"
 							>
 								{badge}
 							</Badge>
@@ -131,7 +131,7 @@
 					{/if}
 					{#if stat !== null && stat !== undefined && stat !== ''}
 						<span
-							class="flex-shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-semibold text-foreground"
+							class="flex-shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-2xs font-semibold text-foreground"
 						>
 							{stat}
 						</span>

@@ -48,7 +48,7 @@
 
 	// Inkprint: Badges are small elements - use rounded-md (0.375rem) consistently
 	const sizeClasses: Record<BadgeSize, string> = {
-		xs: 'px-1.5 py-0.5 text-[0.65rem] rounded-md',
+		xs: 'px-1.5 py-0.5 text-2xs rounded-md',
 		sm: 'px-2 py-0.5 text-xs rounded-md',
 		md: 'px-2.5 py-1 text-xs rounded-md',
 		lg: 'px-3 py-1.5 text-sm rounded-md' // Changed from rounded-lg for consistency

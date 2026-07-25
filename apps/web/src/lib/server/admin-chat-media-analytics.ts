@@ -1,5 +1,7 @@
 // apps/web/src/lib/server/admin-chat-media-analytics.ts
 
+import { fetchAllRows } from '$lib/services/admin/analytics-primitives';
+
 export type ChatMediaTimeframe = '24h' | '7d' | '30d' | '90d' | '365d';
 
 export type ChatMediaEventType =
@@ -113,8 +115,7 @@ export type ChatMediaUsageAnalytics = {
 	};
 };
 
-const PAGE_SIZE = 1000;
-const MAX_PAGES = 10;
+const MAX_ROWS_PER_TABLE = 10_000;
 
 function parseTimeframe(value: string | null | undefined): ChatMediaTimeframe {
 	if (
@@ -169,24 +170,6 @@ function incrementCounter(
 function checksumSuffix(value: string | null | undefined): string | null {
 	if (!value || value.length < 8) return value ?? null;
 	return value.slice(-8);
-}
-
-async function fetchAllRows<T>(
-	buildQuery: (from: number, to: number) => PromiseLike<{ data?: unknown; error?: unknown }>
-): Promise<{ rows: T[]; truncated: boolean }> {
-	const rows: T[] = [];
-	for (let page = 0; page < MAX_PAGES; page += 1) {
-		const from = page * PAGE_SIZE;
-		const to = from + PAGE_SIZE - 1;
-		const { data, error } = await buildQuery(from, to);
-		if (error) throw error;
-		const pageRows = Array.isArray(data) ? (data as T[]) : [];
-		rows.push(...pageRows);
-		if (pageRows.length < PAGE_SIZE) {
-			return { rows, truncated: false };
-		}
-	}
-	return { rows, truncated: true };
 }
 
 export function buildChatMediaUsageAnalytics(params: {
@@ -381,25 +364,31 @@ export async function getAdminChatMediaUsageAnalytics(
 	const endIso = endDate.toISOString();
 
 	const [eventResult, assetResult] = await Promise.all([
-		fetchAllRows<ChatMediaEventRow>((from, to) =>
-			supabase
-				.from('agent_chat_media_events')
-				.select(
-					'id, user_id, project_id, session_id, message_id, asset_id, external_agent_caller_id, source, event_type, media_type, content_type, file_size_bytes, checksum_sha256, metadata, created_at'
-				)
-				.gte('created_at', startIso)
-				.lte('created_at', endIso)
-				.order('created_at', { ascending: false })
-				.range(from, to)
+		fetchAllRows<ChatMediaEventRow>(
+			(from, to) =>
+				supabase
+					.from('agent_chat_media_events')
+					.select(
+						'id, user_id, project_id, session_id, message_id, asset_id, external_agent_caller_id, source, event_type, media_type, content_type, file_size_bytes, checksum_sha256, metadata, created_at'
+					)
+					.gte('created_at', startIso)
+					.lte('created_at', endIso)
+					.order('created_at', { ascending: false })
+					.range(from, to),
+			{ maxRows: MAX_ROWS_PER_TABLE }
 		),
-		fetchAllRows<ChatMediaAssetRow>((from, to) =>
-			supabase
-				.from('onto_assets')
-				.select('id, project_id, kind, file_size_bytes, ocr_status, created_at, deleted_at')
-				.eq('kind', 'image')
-				.is('deleted_at', null)
-				.order('created_at', { ascending: false })
-				.range(from, to)
+		fetchAllRows<ChatMediaAssetRow>(
+			(from, to) =>
+				supabase
+					.from('onto_assets')
+					.select(
+						'id, project_id, kind, file_size_bytes, ocr_status, created_at, deleted_at'
+					)
+					.eq('kind', 'image')
+					.is('deleted_at', null)
+					.order('created_at', { ascending: false })
+					.range(from, to),
+			{ maxRows: MAX_ROWS_PER_TABLE }
 		)
 	]);
 

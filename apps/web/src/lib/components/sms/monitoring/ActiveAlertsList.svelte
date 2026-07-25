@@ -177,10 +177,10 @@
 <style>
 	.active-alerts-list {
 		background: hsl(var(--card));
-		border: 1px solid var(--border-color, #e5e7eb);
+		border: 1px solid hsl(var(--border));
 		border-radius: 12px;
 		padding: 2rem;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		box-shadow: var(--shadow-ink);
 	}
 
 	.alerts-header {
@@ -194,13 +194,13 @@
 		margin: 0 0 0.25rem 0;
 		font-size: 1.25rem;
 		font-weight: 600;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 	}
 
 	.subtitle {
 		margin: 0;
 		font-size: 0.875rem;
-		color: var(--text-secondary, #666);
+		color: hsl(var(--muted-foreground));
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
@@ -208,8 +208,8 @@
 
 	.critical-badge {
 		padding: 0.125rem 0.5rem;
-		background: var(--error-100, #fee2e2);
-		color: var(--error-700, #b91c1c);
+		background: hsl(var(--destructive) / 0.15);
+		color: hsl(var(--destructive));
 		border-radius: 4px;
 		font-size: 0.75rem;
 		font-weight: 600;
@@ -229,14 +229,14 @@
 	.no-alerts .icon {
 		width: 3rem;
 		height: 3rem;
-		color: var(--success-500, #10b981);
+		color: hsl(var(--success));
 		margin-bottom: 1rem;
 	}
 
 	.no-alerts p {
 		margin: 0;
 		font-size: 1rem;
-		color: var(--text-secondary, #666);
+		color: hsl(var(--muted-foreground));
 	}
 
 	/* Alerts Grid */
@@ -254,22 +254,22 @@
 	}
 
 	.alert-card:hover {
-		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+		box-shadow: var(--shadow-ink-strong);
 	}
 
 	.alert-card[data-severity='critical'] {
-		background: var(--error-50, #fef2f2);
-		border-color: var(--error-200, #fecaca);
+		background: hsl(var(--destructive) / 0.1);
+		border-color: hsl(var(--destructive) / 0.3);
 	}
 
 	.alert-card[data-severity='warning'] {
-		background: var(--warning-50, #fffbeb);
-		border-color: var(--warning-200, #fde68a);
+		background: hsl(var(--warning) / 0.1);
+		border-color: hsl(var(--warning) / 0.3);
 	}
 
 	.alert-card[data-severity='info'] {
-		background: var(--info-50, #eff6ff);
-		border-color: var(--info-200, #bfdbfe);
+		background: hsl(var(--info) / 0.1);
+		border-color: hsl(var(--info) / 0.3);
 	}
 
 	.alert-header {
@@ -294,7 +294,7 @@
 	.alert-type {
 		font-size: 1rem;
 		font-weight: 600;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 		text-transform: capitalize;
 	}
 
@@ -307,30 +307,30 @@
 	}
 
 	.severity-badge[data-severity='critical'] {
-		background: var(--error-100, #fee2e2);
-		color: var(--error-700, #b91c1c);
+		background: hsl(var(--destructive) / 0.15);
+		color: hsl(var(--destructive));
 	}
 
 	.severity-badge[data-severity='warning'] {
-		background: var(--warning-100, #fef3c7);
-		color: var(--warning-700, #a16207);
+		background: hsl(var(--warning) / 0.15);
+		color: hsl(var(--foreground));
 	}
 
 	.severity-badge[data-severity='info'] {
-		background: var(--info-100, #dbeafe);
-		color: var(--info-700, #1d4ed8);
+		background: hsl(var(--info) / 0.15);
+		color: hsl(var(--info));
 	}
 
 	.alert-time {
 		font-size: 0.875rem;
-		color: var(--text-secondary, #666);
+		color: hsl(var(--muted-foreground));
 		white-space: nowrap;
 	}
 
 	.alert-message {
 		margin: 0 0 1rem 0;
 		font-size: 0.875rem;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 		line-height: 1.5;
 	}
 
@@ -349,7 +349,7 @@
 
 	.detail-label {
 		font-size: 0.75rem;
-		color: var(--text-secondary, #666);
+		color: hsl(var(--muted-foreground));
 		text-transform: uppercase;
 		letter-spacing: 0.5px;
 	}
@@ -357,14 +357,14 @@
 	.detail-value {
 		font-size: 0.875rem;
 		font-weight: 600;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 	}
 
 	.btn-resolve {
 		width: 100%;
 		padding: 0.625rem 1rem;
 		background: hsl(var(--card));
-		border: 1px solid var(--border-color, #e5e7eb);
+		border: 1px solid hsl(var(--border));
 		border-radius: 6px;
 		font-size: 0.875rem;
 		font-weight: 500;
@@ -373,8 +373,8 @@
 	}
 
 	.btn-resolve:hover:not(:disabled) {
-		background: var(--bg-hover, #f9fafb);
-		border-color: var(--border-hover, #d1d5db);
+		background: hsl(var(--muted));
+		border-color: hsl(var(--border-strong));
 	}
 
 	.btn-resolve:disabled {

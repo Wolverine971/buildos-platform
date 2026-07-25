@@ -255,7 +255,7 @@
 						</div>
 						<div class="min-w-0 flex-1">
 							<div
-								class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+								class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 							>
 								Connector
 							</div>
@@ -279,7 +279,7 @@
 					>
 						<div class="min-w-0">
 							<div
-								class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+								class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 							>
 								Caller key
 							</div>
@@ -289,7 +289,7 @@
 						</div>
 						<div class="min-w-0">
 							<div
-								class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+								class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 							>
 								Prefix
 							</div>
@@ -299,7 +299,7 @@
 						</div>
 						<div class="min-w-0">
 							<div
-								class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+								class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 							>
 								Last activity
 							</div>
@@ -309,7 +309,7 @@
 						</div>
 						<div class="min-w-0">
 							<div
-								class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+								class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 							>
 								Range
 							</div>
@@ -329,7 +329,7 @@
 				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
 			>
 				<div
-					class="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 				>
 					<Activity class="h-3.5 w-3.5" />
 					Sessions
@@ -347,7 +347,7 @@
 				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
 			>
 				<div
-					class="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 				>
 					<Terminal class="h-3.5 w-3.5" />
 					Tool Calls
@@ -363,7 +363,7 @@
 				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
 			>
 				<div
-					class="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 				>
 					<Zap class="h-3.5 w-3.5" />
 					Writes
@@ -379,7 +379,7 @@
 				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
 			>
 				<div
-					class="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 				>
 					<AlertTriangle class="h-3.5 w-3.5" />
 					Errors
@@ -395,7 +395,7 @@
 				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
 			>
 				<div
-					class="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 				>
 					<ShieldAlert class="h-3.5 w-3.5" />
 					Denied
@@ -411,7 +411,7 @@
 				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
 			>
 				<div
-					class="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 				>
 					<Clock class="h-3.5 w-3.5" />
 					Latency
@@ -476,9 +476,7 @@
 										></div>
 									{/if}
 								</div>
-								<div
-									class="truncate text-center text-[0.65rem] text-muted-foreground"
-								>
+								<div class="truncate text-center text-2xs text-muted-foreground">
 									{dayLabel(bucket)}
 								</div>
 							</div>
@@ -531,7 +529,7 @@
 									></div>
 								</div>
 								<div
-									class="mt-1 flex flex-wrap gap-2 text-[0.7rem] text-muted-foreground"
+									class="mt-1 flex flex-wrap gap-2 text-2xs text-muted-foreground"
 								>
 									<span>{formatNumber(op.write_count)} writes</span>
 									<span>{formatNumber(op.failed_count)} failed</span>
@@ -586,7 +584,7 @@
 									></div>
 								</div>
 								<div
-									class="mt-1 flex flex-wrap gap-2 text-[0.7rem] text-muted-foreground"
+									class="mt-1 flex flex-wrap gap-2 text-2xs text-muted-foreground"
 								>
 									<span>{formatNumber(project.write_count)} writes</span>
 									<span>{formatNumber(project.failed_count)} failed</span>

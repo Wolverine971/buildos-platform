@@ -249,7 +249,7 @@
 					<FileImage class="h-3.5 w-3.5" />
 					Images {imageAttachments.length}/{attachmentLimit}
 				</div>
-				<span class="text-[0.7rem] font-medium text-muted-foreground">
+				<span class="text-2xs font-medium text-muted-foreground">
 					OCR starts after upload
 				</span>
 			</div>
@@ -272,7 +272,7 @@
 									<p class="truncate text-xs font-semibold text-foreground">
 										{attachment.fileName}
 									</p>
-									<p class="mt-0.5 text-[0.7rem] text-muted-foreground">
+									<p class="mt-0.5 text-2xs text-muted-foreground">
 										{Math.max(1, Math.round(attachment.fileSizeBytes / 1024))} KB
 									</p>
 								</div>
@@ -286,7 +286,7 @@
 								</button>
 							</div>
 							<div
-								class={`mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold ${attachmentStatusClass(attachment)}`}
+								class={`mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-2xs font-semibold ${attachmentStatusClass(attachment)}`}
 							>
 								<StatusIcon
 									class={`h-3 w-3 ${attachment.status === 'hashing' || attachment.status === 'uploading' || attachment.status === 'processing' ? 'animate-spin motion-reduce:animate-none' : ''}`}
@@ -349,7 +349,6 @@
 				<button
 					type="button"
 					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
-					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="Attach image"
 					title="Attach image"
 					{disabled}
@@ -361,7 +360,6 @@
 					<button
 						type="button"
 						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
-						style="-webkit-tap-highlight-color: transparent;"
 						aria-label="Attach existing project image"
 						title="Attach existing project image"
 						{disabled}
@@ -376,7 +374,6 @@
 				<button
 					type="button"
 					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-destructive bg-destructive text-destructive-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-destructive/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
-					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="Stop response"
 					onclick={onStop}
 				>
@@ -387,7 +384,6 @@
 					<button
 						type="submit"
 						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:cursor-not-allowed disabled:shadow-none sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
-						style="-webkit-tap-highlight-color: transparent;"
 						aria-label="Send & stop"
 						title="Send & stop"
 						disabled={disabled || isSendDisabled}
@@ -400,7 +396,6 @@
 				<button
 					type="submit"
 					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:cursor-not-allowed disabled:shadow-none sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
-					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="Send message"
 					disabled={disabled || isSendDisabled}
 				>

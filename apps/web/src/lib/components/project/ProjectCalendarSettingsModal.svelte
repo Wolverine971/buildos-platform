@@ -721,7 +721,7 @@
 					>
 						Calendar
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5">
 						View and manage calendar details for {project?.name || 'this project'}
 					</p>
 				</div>
@@ -922,7 +922,7 @@
 														<div class="mt-1 space-y-1.5">
 															{#if event.targets.length === 0}
 																<p
-																	class="text-[11px] text-muted-foreground"
+																	class="text-2xs text-muted-foreground"
 																>
 																	No sync targets recorded yet
 																</p>
@@ -935,13 +935,13 @@
 																	>
 																		<div class="min-w-0 flex-1">
 																			<p
-																				class="text-[11px] font-medium text-foreground truncate"
+																				class="text-2xs font-medium text-foreground truncate"
 																			>
 																				{target.display_name}
 																			</p>
 																			{#if target.sync_error || target.queue_error}
 																				<p
-																					class="text-[10px] text-destructive truncate"
+																					class="text-2xs text-destructive truncate"
 																				>
 																					{target.sync_error ||
 																						target.queue_error}
@@ -949,7 +949,7 @@
 																			{/if}
 																			{#if target.queue_max_attempts !== null && target.queue_attempts !== null}
 																				<p
-																					class="text-[10px] text-muted-foreground"
+																					class="text-2xs text-muted-foreground"
 																				>
 																					Attempts: {target.queue_attempts}/{target.queue_max_attempts}
 																				</p>
@@ -959,14 +959,14 @@
 																			class="flex flex-col items-end gap-1"
 																		>
 																			<span
-																				class={`shrink-0 rounded px-2 py-0.5 text-[10px] font-medium ${statusBadge.className}`}
+																				class={`shrink-0 rounded px-2 py-0.5 text-2xs font-medium ${statusBadge.className}`}
 																			>
 																				{statusBadge.label}
 																			</span>
 																			{#if target.can_retry && target.user_id}
 																				<button
 																					type="button"
-																					class="inline-flex items-center rounded border border-border bg-card px-2 py-1 text-[10px] font-medium text-foreground hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+																					class="inline-flex items-center rounded border border-border bg-card px-2 py-1 text-2xs font-medium text-foreground hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
 																					disabled={isRetryingTarget(
 																						event.event_id,
 																						target.user_id
@@ -1077,14 +1077,14 @@
 																{/if}
 															</p>
 															<p
-																class="text-[11px] text-muted-foreground truncate"
+																class="text-2xs text-muted-foreground truncate"
 															>
 																{member.calendar_name ||
 																	'No calendar linked'}
 															</p>
 														</div>
 														<span
-															class={`shrink-0 rounded px-2 py-0.5 text-[10px] font-medium ${badge.className}`}
+															class={`shrink-0 rounded px-2 py-0.5 text-2xs font-medium ${badge.className}`}
 														>
 															{badge.label}
 														</span>
@@ -1101,19 +1101,19 @@
 																{invite.invitee_email}
 															</p>
 															<p
-																class="text-[11px] text-muted-foreground truncate"
+																class="text-2xs text-muted-foreground truncate"
 															>
 																Invite pending, not linked yet
 															</p>
 														</div>
 														<div class="flex flex-col items-end gap-1">
 															<span
-																class="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium bg-warning/10 text-warning border border-warning/30"
+																class="shrink-0 rounded px-2 py-0.5 text-2xs font-medium bg-warning/10 text-warning border border-warning/30"
 															>
 																Pending invite
 															</span>
 															<span
-																class="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground border border-border"
+																class="shrink-0 rounded px-2 py-0.5 text-2xs font-medium bg-muted text-muted-foreground border border-border"
 															>
 																Not linked
 															</span>
@@ -1199,7 +1199,7 @@
 									</div>
 									<div class="mt-2 text-center">
 										<p
-											class="text-[10px] uppercase tracking-wide text-muted-foreground"
+											class="text-2xs uppercase tracking-wide text-muted-foreground"
 										>
 											Selected: <span class="font-semibold text-foreground"
 												>{GOOGLE_CALENDAR_COLORS[formData.selectedColorId]

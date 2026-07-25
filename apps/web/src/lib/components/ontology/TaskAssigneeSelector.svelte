@@ -259,7 +259,7 @@
 			{/each}
 			<button
 				type="button"
-				class="text-[11px] text-muted-foreground hover:text-foreground px-1 disabled:opacity-50"
+				class="text-2xs text-muted-foreground hover:text-foreground px-1 disabled:opacity-50"
 				{disabled}
 				onclick={clearSelection}
 			>
@@ -289,7 +289,7 @@
 			{#if canAssignToMe}
 				<button
 					type="button"
-					class="text-[11px] font-medium text-accent hover:underline shrink-0 disabled:opacity-50"
+					class="text-2xs font-medium text-accent hover:underline shrink-0 disabled:opacity-50"
 					{disabled}
 					onclick={assignToMe}
 				>
@@ -317,7 +317,7 @@
 						onclick={() => toggleAssignee(member.actorId)}
 					>
 						<span
-							class="h-3.5 w-3.5 shrink-0 rounded border flex items-center justify-center text-[9px] font-bold {checked
+							class="h-3.5 w-3.5 shrink-0 rounded border flex items-center justify-center text-2xs font-bold {checked
 								? 'bg-accent border-accent text-accent-foreground'
 								: 'border-border text-transparent'}"
 						>
@@ -327,7 +327,7 @@
 							>{getDisplayLabel(member, member.actorId)}</span
 						>
 						{#if member.email}
-							<span class="text-[11px] text-muted-foreground truncate ml-auto"
+							<span class="text-2xs text-muted-foreground truncate ml-auto"
 								>{member.email}</span
 							>
 						{/if}

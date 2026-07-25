@@ -288,7 +288,7 @@
 					>
 						{name || 'New Plan'}
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5">
 						Type will be auto-classified
 					</p>
 				</div>
@@ -668,7 +668,7 @@
 													</p>
 													<p>
 														Type key: <span
-															class="font-mono text-[11px] text-muted-foreground"
+															class="font-mono text-2xs text-muted-foreground"
 															>{selectedTemplate?.type_key ||
 																'plan.process.base'}</span
 														>

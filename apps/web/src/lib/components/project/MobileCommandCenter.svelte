@@ -228,15 +228,13 @@
 							<span class="text-xs text-foreground truncate">{goal.name}</span>
 							<div class="flex items-center gap-2 shrink-0">
 								{#if goalMilestones.length > 0}
-									<span class="text-[10px] text-muted-foreground">
+									<span class="text-2xs text-muted-foreground">
 										<Flag class="w-2.5 h-2.5 inline-block mr-0.5" />
 										{completedCount}/{goalMilestones.length}
 									</span>
 								{/if}
 								<span
-									class="text-[10px] capitalize {getGoalStateColor(
-										goal.state_key
-									)}"
+									class="text-2xs capitalize {getGoalStateColor(goal.state_key)}"
 								>
 									{goal.state_key}
 								</span>
@@ -301,9 +299,8 @@
 					<div class="flex items-center justify-between gap-2">
 						<span class="text-xs text-foreground truncate">{plan.name}</span>
 						<span
-							class="text-[10px] capitalize shrink-0 {getPlanStateColor(
-								plan.state_key
-							)}">{plan.state_key}</span
+							class="text-2xs capitalize shrink-0 {getPlanStateColor(plan.state_key)}"
+							>{plan.state_key}</span
 						>
 					</div>
 				</button>
@@ -345,9 +342,8 @@
 					<div class="flex items-center justify-between gap-2">
 						<span class="text-xs text-foreground truncate">{risk.title}</span>
 						<span
-							class="text-[10px] capitalize shrink-0 {getRiskStateColor(
-								risk.state_key
-							)}">{risk.state_key}</span
+							class="text-2xs capitalize shrink-0 {getRiskStateColor(risk.state_key)}"
+							>{risk.state_key}</span
 						>
 					</div>
 				</button>
@@ -393,7 +389,7 @@
 					<div class="flex items-center justify-between gap-2">
 						<span class="text-xs text-foreground truncate">{event.title}</span>
 						<span
-							class="text-[10px] capitalize shrink-0 {getEventStateColor(
+							class="text-2xs capitalize shrink-0 {getEventStateColor(
 								event.state_key
 							)}">{(event.state_key || 'scheduled').replace(/_/g, ' ')}</span
 						>

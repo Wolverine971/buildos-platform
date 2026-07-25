@@ -226,7 +226,7 @@
 			</div>
 			<div class="min-w-0">
 				<p class="text-xs sm:text-sm font-semibold text-foreground">Activity Log</p>
-				<p class="text-[10px] sm:text-xs text-muted-foreground">
+				<p class="text-2xs sm:text-xs text-muted-foreground">
 					{#if hasLoaded}
 						{total} {total === 1 ? 'entry' : 'entries'}
 					{:else}
@@ -264,9 +264,7 @@
 						<Clock class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
 					</div>
 					<p class="text-xs sm:text-sm text-muted-foreground">No activity yet</p>
-					<p
-						class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
-					>
+					<p class="text-2xs sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block">
 						Changes will appear here
 					</p>
 				</div>
@@ -305,13 +303,13 @@
 										>
 									</span>
 									<span
-										class="block truncate text-[10px] sm:text-xs text-muted-foreground/70"
+										class="block truncate text-2xs sm:text-xs text-muted-foreground/70"
 									>
 										{summary.title}
 									</span>
 								</span>
 								<span
-									class="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums whitespace-nowrap mt-0.5"
+									class="shrink-0 text-2xs text-muted-foreground/60 tabular-nums whitespace-nowrap mt-0.5"
 								>
 									{formatTimestamp(log.created_at)}
 								</span>
@@ -324,7 +322,7 @@
 							</button>
 							{#if expandedLogId === log.id}
 								<div
-									class="px-8 sm:px-10 pb-2 sm:pb-3 pr-3 sm:pr-4 text-[10px] sm:text-xs text-muted-foreground"
+									class="px-8 sm:px-10 pb-2 sm:pb-3 pr-3 sm:pr-4 text-2xs sm:text-xs text-muted-foreground"
 								>
 									<p class="leading-relaxed">{summary.description}</p>
 									{#if summary.changes.length > 0}
@@ -346,7 +344,7 @@
 									{#if canOpenEntity}
 										<button
 											type="button"
-											class="mt-2 text-[10px] sm:text-xs text-accent hover:text-accent/80 transition-colors pressable"
+											class="mt-2 text-2xs sm:text-xs text-accent hover:text-accent/80 transition-colors pressable"
 											onclick={() => handleEntityClick(log)}
 										>
 											Open {formatEntityType(log.entity_type)}
@@ -364,7 +362,7 @@
 						<button
 							onclick={handleLoadMore}
 							disabled={isLoadingMore}
-							class="w-full text-[10px] sm:text-xs text-muted-foreground hover:text-accent py-1.5 sm:py-2 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 sm:gap-2 rounded-md hover:bg-accent/5 pressable"
+							class="w-full text-2xs sm:text-xs text-muted-foreground hover:text-accent py-1.5 sm:py-2 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 sm:gap-2 rounded-md hover:bg-accent/5 pressable"
 						>
 							{#if isLoadingMore}
 								<LoaderCircle class="w-3 h-3 animate-spin" />

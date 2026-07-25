@@ -8,68 +8,16 @@
 
 /* Prevent text selection on UI elements in PWA */
 .pwa-installed button,
-.pwa-installed .btn,
 .pwa-installed nav {
 	-webkit-user-select: none;
 	user-select: none;
 	-webkit-touch-callout: none;
 }
 
-/* Smooth transitions for theme changes */
-@media (prefers-color-scheme: dark) {
-	:root {
-		color-scheme: dark;
-	}
-}
-
-@media (prefers-color-scheme: light) {
-	:root {
-		color-scheme: light;
-	}
-}
-
 /* iOS-specific overscroll behavior */
 .pwa-installed {
 	overscroll-behavior-y: contain;
 }
-
-/* Hide scrollbars on iOS PWA for cleaner look */
-.pwa-installed::-webkit-scrollbar {
-	display: none;
-}
-
-.pwa-installed {
-	-ms-overflow-style: none;
-	scrollbar-width: none;
-}
-
-/* Optimize for iOS rubber band scrolling */
-.pwa-installed .scrollable {
-	-webkit-overflow-scrolling: touch;
-}
-
-/* Loading states optimized for PWA - uses Inkprint semantic tokens */
-.pwa-installed .loading-skeleton {
-	background: linear-gradient(
-		90deg,
-		hsl(var(--muted)) 25%,
-		hsl(var(--border)) 50%,
-		hsl(var(--muted)) 75%
-	);
-	background-size: 400% 100%;
-	animation: pwa-skeleton-loading 1.5s ease-in-out infinite;
-}
-
-@keyframes pwa-skeleton-loading {
-	0% {
-		background-position: 100% 0;
-	}
-	100% {
-		background-position: -100% 0;
-	}
-}
-
-/* Dark mode handled automatically by CSS variables */
 
 /* Pull-to-refresh keeps the gesture page-scoped by moving only opted-in page content. */
 .pwa-pull-to-refresh-surface {
@@ -130,19 +78,13 @@
 	}
 }
 
-/* iOS bounce effect containment */
-.pwa-installed .modal,
-.pwa-installed .drawer {
-	overscroll-behavior: contain;
-}
+@media (prefers-reduced-motion: reduce) {
+	.pwa-pull-to-refresh-surface.settling,
+	.pwa-pull-to-refresh {
+		transition: none;
+	}
 
-/* Optimize touch feedback */
-.pwa-installed button:active,
-.pwa-installed a:active,
-.pwa-installed .clickable:active {
-	transform: scale(0.98);
-	opacity: 0.9;
-	transition:
-		transform 0.1s ease,
-		opacity 0.1s ease;
+	.pwa-pull-to-refresh.refreshing .pwa-pull-to-refresh__spinner {
+		animation: none;
+	}
 }

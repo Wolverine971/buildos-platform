@@ -581,7 +581,7 @@
 								<div class="mt-2 flex flex-wrap gap-1">
 									{#each row.domain_ids as domainId}
 										<span
-											class="rounded-md bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground break-all"
+											class="rounded-md bg-muted px-2 py-0.5 font-mono text-2xs text-muted-foreground break-all"
 										>
 											{domainId}
 										</span>
@@ -728,7 +728,7 @@
 											<div class="mt-2 flex flex-wrap gap-1">
 												{#each row.domain_ids as domainId}
 													<span
-														class="rounded-md bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground break-all"
+														class="rounded-md bg-muted px-2 py-0.5 font-mono text-2xs text-muted-foreground break-all"
 													>
 														{domainId}
 													</span>

@@ -17,15 +17,12 @@
 	Design: INKPRINT texture-based design language
 -->
 <script lang="ts">
-	import { fade } from 'svelte/transition';
-	import { onDestroy, untrack } from 'svelte';
-	import { browser } from '$app/environment';
+	import { untrack } from 'svelte';
 	import { X, FileText, MessageCircle } from 'lucide-svelte';
-	import { portal } from '$lib/actions/portal';
-	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 	import ChatSessionAuditActions from '$lib/components/agent/ChatSessionAuditActions.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import type { DailyBrief } from '$lib/types/daily-brief';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 
@@ -39,7 +36,7 @@
 	}
 
 	let {
-		isOpen = false,
+		isOpen = $bindable(false),
 		brief,
 		title,
 		initialTab = 'chat',
@@ -48,27 +45,12 @@
 	}: Props = $props();
 
 	let activeTab = $state<'brief' | 'chat'>('chat');
-	let modalContentEl = $state<HTMLDivElement | undefined>(undefined);
-	let scrollLockHeld = $state(false);
 	let lastSummary = $state<DataMutationSummary | undefined>(undefined);
 	// Active chat session id, mirrored up from the embedded AgentChatModal so
 	// session actions (Logs / Export) can live in this modal's header bar.
 	let chatSessionId = $state<string | null>(untrack(() => initialChatSessionId));
 	let briefChatEntityId = $derived(brief.chat_brief_id || brief.id);
 	let displayTitle = $derived(title ?? `Daily Brief — ${formatBriefDate(brief.brief_date)}`);
-
-	// Touch gesture state
-	let isDragging = $state(false);
-	let dragStartY = $state(0);
-	let dragTranslateY = $state(0);
-
-	// Auto-detect touch device
-	const isTouchDevice = $derived(
-		browser &&
-			('ontouchstart' in window ||
-				navigator.maxTouchPoints > 0 ||
-				(navigator as any).msMaxTouchPoints > 0)
-	);
 
 	// Tab badge state
 	let chatTabHasUnread = $state(false);
@@ -77,31 +59,6 @@
 	function handleChatClose(summary?: DataMutationSummary) {
 		lastSummary = summary;
 		onClose?.(summary);
-	}
-
-	/**
-	 * Outside-click dismissal, mirroring base Modal: the topmost full-screen
-	 * layer owns the click and anything outside the dialog element dismisses.
-	 * Click only — touchend alongside click double-fires onClose on mobile
-	 * (see the note in ui/Modal.svelte).
-	 */
-	function handleOutsideClick(event: MouseEvent) {
-		if (!modalContentEl) return;
-		const target = event.target as Node | null;
-		if (target && !modalContentEl.contains(target)) {
-			requestClose();
-		}
-	}
-
-	function handleKeydown(event: KeyboardEvent) {
-		if (!isOpen) return;
-		if (event.key !== 'Escape') return;
-		// Base Modals (confirmations etc.) stack above this fork and route
-		// Escape to their topmost instance; if any is open, this one must not
-		// also close underneath it.
-		if (document.querySelector('.modal-root')) return;
-		event.preventDefault();
-		requestClose();
 	}
 
 	function requestClose() {
@@ -132,76 +89,6 @@
 		}
 	}
 
-	// Touch gesture handlers (mobile only, downward swipe to dismiss)
-	function handleTouchStart(e: TouchEvent) {
-		if (!isTouchDevice) return;
-		const target = e.target as HTMLElement;
-		// Only allow drag from the drag handle area or header
-		const isDragHandle = target.closest('.brief-drag-handle');
-		if (!isDragHandle) return;
-
-		const touch = e.touches[0];
-		if (!touch) return;
-		isDragging = true;
-		dragStartY = touch.clientY;
-		dragTranslateY = 0;
-	}
-
-	function handleTouchMove(e: TouchEvent) {
-		if (!isDragging) return;
-		const currentY = e.touches?.[0]?.clientY;
-		if (currentY === undefined) return;
-		const deltaY = currentY - dragStartY;
-		// Only allow downward drag
-		if (deltaY > 0) {
-			e.preventDefault();
-			dragTranslateY = deltaY;
-		}
-	}
-
-	function handleTouchEnd() {
-		if (!isDragging) return;
-		const dismissed = dragTranslateY > 120;
-		if (dismissed) {
-			requestClose();
-		} else {
-			dragTranslateY = 0;
-		}
-		isDragging = false;
-		dragStartY = 0;
-	}
-
-	// Svelte action: attach non-passive touch listeners for swipe gesture
-	function touchGesture(node: HTMLElement) {
-		if (!isTouchDevice) return;
-
-		const onStart = (e: TouchEvent) => handleTouchStart(e);
-		const onMove = (e: TouchEvent) => handleTouchMove(e);
-		const onEnd = () => handleTouchEnd();
-
-		node.addEventListener('touchstart', onStart, { passive: false });
-		node.addEventListener('touchmove', onMove, { passive: false });
-		node.addEventListener('touchend', onEnd, { passive: false });
-
-		return {
-			destroy() {
-				node.removeEventListener('touchstart', onStart);
-				node.removeEventListener('touchmove', onMove);
-				node.removeEventListener('touchend', onEnd);
-			}
-		};
-	}
-
-	$effect(() => {
-		if (browser && isOpen && !scrollLockHeld) {
-			lockBodyScroll();
-			scrollLockHeld = true;
-		} else if (browser && !isOpen && scrollLockHeld) {
-			unlockBodyScroll();
-			scrollLockHeld = false;
-		}
-	});
-
 	// Reset state when modal opens
 	$effect(() => {
 		if (isOpen) {
@@ -209,287 +96,128 @@
 			activeTab = initialTab;
 			chatTabHasUnread = false;
 			briefTabHasUpdates = false;
-			dragTranslateY = 0;
-			isDragging = false;
 			chatSessionId = initialChatSessionId;
-		}
-	});
-
-	onDestroy(() => {
-		if (browser && scrollLockHeld) {
-			unlockBodyScroll();
-			scrollLockHeld = false;
 		}
 	});
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
-{#if isOpen}
-	<div use:portal class="brief-chat-root" transition:fade={{ duration: 100 }} role="presentation">
-		<!-- Backdrop (visual only — the container layer above owns outside clicks) -->
+<Modal
+	bind:isOpen
+	onClose={requestClose}
+	size="full"
+	variant="bottom-sheet"
+	presentation="immersive"
+	contentScrollable={false}
+	ariaLabel="Brief Chat"
+>
+	{#snippet header()}
 		<div
-			class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998]"
-			style="touch-action: none;"
-			aria-hidden="true"
-		></div>
-
-		<!-- Modal container — owns outside-click dismissal since it covers the backdrop -->
-		<div
-			class="fixed inset-0 z-[9999] overflow-hidden"
-			style="touch-action: none;"
-			onclick={handleOutsideClick}
-			role="presentation"
-		>
-			<div
-				class="flex h-full justify-center
-					items-end md:items-center
-					p-0 md:p-4"
-				role="presentation"
-			>
-				<!-- Modal content -->
-				<div
-					bind:this={modalContentEl}
-					use:touchGesture
-					class="brief-modal-container w-full max-w-7xl
-						bg-card border border-border shadow-ink-strong
-						flex flex-col overflow-hidden
-						tx tx-frame tx-weak
-						rounded-t-lg md:rounded-lg
-						brief-animate-slide-up md:brief-animate-scale"
-					style="
-						transform: translateY({dragTranslateY}px) translateZ(0);
-						transition: {isDragging ? 'none' : 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)'};
-					"
-					role="dialog"
-					aria-modal="true"
-					aria-label="Brief Chat"
-				>
-					<!-- Drag handle (mobile only) -->
-					<div
-						class="brief-drag-handle flex md:hidden items-center justify-center pt-2 pb-1 flex-shrink-0"
-						style="touch-action: none; cursor: grab;"
-					>
-						<div class="w-8 h-1 rounded-full bg-muted-foreground/30"></div>
-					</div>
-
-					<!-- Header bar -->
-					<div
-						class="brief-header flex h-11 md:h-12 items-center justify-between gap-3 px-3 md:px-4
+			class="brief-header flex h-11 md:h-12 items-center justify-between gap-3 px-3 md:px-4
 							border-b border-border bg-muted flex-shrink-0"
-					>
-						<h2 class="text-sm font-semibold text-foreground truncate">
-							{displayTitle}
-						</h2>
-						<div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
-							<ChatSessionAuditActions sessionId={chatSessionId} />
-							<button
-								type="button"
-								onclick={requestClose}
-								class="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg
+		>
+			<h2 class="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+				{displayTitle}
+			</h2>
+			<div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
+				<ChatSessionAuditActions sessionId={chatSessionId} />
+				<button
+					type="button"
+					onclick={requestClose}
+					class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg
 									border border-border bg-card text-muted-foreground shadow-ink
 									transition-all pressable tx-button
 									hover:border-destructive/50 hover:text-destructive
 									focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-								aria-label="Close dialog"
-							>
-								<X class="h-4 w-4" />
-							</button>
-						</div>
-					</div>
+					aria-label="Close dialog"
+				>
+					<X class="h-4 w-4" />
+				</button>
+			</div>
+		</div>
+	{/snippet}
 
-					<!-- Mobile tab selector -->
-					<div
-						class="brief-tabs flex md:hidden border-b border-border bg-muted/50 flex-shrink-0"
-					>
-						<button
-							type="button"
-							class="brief-tab flex-1 flex items-center justify-center gap-1.5 h-11 text-sm font-semibold transition-colors relative
+	<!-- Mobile tab selector -->
+	<div class="brief-tabs flex md:hidden border-b border-border bg-muted/50 flex-shrink-0">
+		<button
+			type="button"
+			class="brief-tab flex-1 flex items-center justify-center gap-1.5 h-11 text-sm font-semibold transition-colors relative
 								{activeTab === 'brief'
-								? 'text-foreground border-b-2 border-accent'
-								: 'text-muted-foreground hover:text-foreground'}"
-							onclick={() => switchTab('brief')}
-						>
-							<FileText class="h-4 w-4 landscape-only-icon" />
-							<span>Brief</span>
-							{#if briefTabHasUpdates}
-								<span
-									class="absolute top-2 right-[calc(50%-24px)] w-2 h-2 rounded-full bg-accent"
-								></span>
-							{/if}
-						</button>
-						<button
-							type="button"
-							class="brief-tab flex-1 flex items-center justify-center gap-1.5 h-11 text-sm font-semibold transition-colors relative
+				? 'text-foreground border-b-2 border-accent'
+				: 'text-muted-foreground hover:text-foreground'}"
+			onclick={() => switchTab('brief')}
+		>
+			<FileText class="h-4 w-4 landscape-only-icon" />
+			<span>Brief</span>
+			{#if briefTabHasUpdates}
+				<span class="absolute top-2 right-[calc(50%-24px)] w-2 h-2 rounded-full bg-accent"
+				></span>
+			{/if}
+		</button>
+		<button
+			type="button"
+			class="brief-tab flex-1 flex items-center justify-center gap-1.5 h-11 text-sm font-semibold transition-colors relative
 								{activeTab === 'chat'
-								? 'text-foreground border-b-2 border-accent'
-								: 'text-muted-foreground hover:text-foreground'}"
-							onclick={() => switchTab('chat')}
-						>
-							<MessageCircle class="h-4 w-4 landscape-only-icon" />
-							<span>Chat</span>
-							{#if chatTabHasUnread}
-								<span
-									class="absolute top-2 right-[calc(50%-20px)] w-2 h-2 rounded-full bg-accent"
-								></span>
-							{/if}
-						</button>
-					</div>
+				? 'text-foreground border-b-2 border-accent'
+				: 'text-muted-foreground hover:text-foreground'}"
+			onclick={() => switchTab('chat')}
+		>
+			<MessageCircle class="h-4 w-4 landscape-only-icon" />
+			<span>Chat</span>
+			{#if chatTabHasUnread}
+				<span class="absolute top-2 right-[calc(50%-20px)] w-2 h-2 rounded-full bg-accent"
+				></span>
+			{/if}
+		</button>
+	</div>
 
-					<!-- Content area: two panes -->
-					<div class="flex flex-1 min-h-0 overflow-hidden">
-						<!-- Left pane: Brief content -->
-						<div
-							class="flex-col overflow-y-auto border-r border-border bg-card
+	<!-- Content area: two panes -->
+	<div class="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+		<!-- Left pane: Brief content -->
+		<div
+			class="min-w-0 flex-col overflow-y-auto border-border bg-card md:border-r
 								brief-scroll brief-pane
 								{activeTab === 'brief' ? 'flex' : 'hidden'} md:flex
 								md:flex-1"
-							style="touch-action: pan-y;"
-						>
-							<div class="px-3 py-3 md:px-4 md:py-4">
-								<div
-									class="prose prose-sm max-w-none overflow-x-auto break-words
+			style="touch-action: pan-y;"
+		>
+			<div class="px-3 py-3 md:px-4 md:py-4">
+				<div
+					class="prose prose-sm max-w-none overflow-x-auto break-words
 										prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground
 										prose-strong:text-foreground prose-a:text-accent prose-blockquote:text-muted-foreground
 										prose-blockquote:border-border prose-code:bg-muted prose-code:text-foreground
 										prose-pre:bg-muted prose-pre:text-foreground prose-hr:border-border"
-								>
-									{@html renderMarkdown(brief.summary_content)}
-								</div>
-							</div>
-						</div>
-
-						<!-- Right pane: Chat -->
-						<div
-							class="flex-col min-h-0 brief-pane
-								{activeTab === 'chat' ? 'flex' : 'hidden'} md:flex
-								w-full md:w-[340px] lg:w-[420px] md:flex-shrink-0"
-							style="touch-action: pan-y;"
-						>
-							<AgentChatModal
-								embedded={true}
-								{isOpen}
-								contextType="daily_brief"
-								entityId={briefChatEntityId}
-								{initialChatSessionId}
-								onClose={handleChatClose}
-								onSessionChange={(sessionId) => (chatSessionId = sessionId)}
-							/>
-						</div>
-					</div>
+				>
+					{@html renderMarkdown(brief.summary_content)}
 				</div>
 			</div>
 		</div>
+
+		<!-- Right pane: Chat -->
+		<div
+			class="brief-pane min-h-0 min-w-0 flex-col
+								{activeTab === 'chat' ? 'flex' : 'hidden'} md:flex
+								w-full md:w-[340px] lg:w-[420px] md:flex-shrink-0"
+			style="touch-action: pan-y;"
+		>
+			<AgentChatModal
+				embedded={true}
+				{isOpen}
+				contextType="daily_brief"
+				entityId={briefChatEntityId}
+				{initialChatSessionId}
+				onClose={handleChatClose}
+				onSessionChange={(sessionId) => (chatSessionId = sessionId)}
+			/>
+		</div>
 	</div>
-{/if}
+</Modal>
 
 <style>
-	/* ==================== Root & Containment ==================== */
-
-	.brief-chat-root {
-		overscroll-behavior: contain;
-		z-index: 9999;
-		position: relative;
-	}
-
-	/* ==================== Modal Container ==================== */
-
-	.brief-modal-container {
-		/* GPU acceleration */
-		transform: translateZ(0);
-		backface-visibility: hidden;
-		will-change: transform, opacity;
-
-		/* Disable tap highlight */
-		-webkit-tap-highlight-color: transparent;
-		-webkit-touch-callout: none;
-		touch-action: manipulation;
-
-		/* Mobile: near-full height with safe area subtraction.
-		   The embedded AgentChatModal sets --keyboard-height (visualViewport) on
-		   <html>; iOS doesn't shrink dvh for the keyboard, so subtract it here
-		   AND lift with margin-bottom — the layout-viewport bottom this sheet is
-		   anchored to sits behind the keyboard (same pattern as
-		   .agent-chat-keyboard-modal in AgentChatModal.svelte). */
-		height: calc(100dvh - env(safe-area-inset-top, 0px) - 0.5rem - var(--keyboard-height, 0px));
-		margin-bottom: var(--keyboard-height, 0px);
-	}
-
-	/* Desktop: fixed 90dvh centered */
-	@media (min-width: 768px) {
-		.brief-modal-container {
-			height: 90dvh;
-			margin-bottom: 0;
-			will-change: auto;
-		}
-	}
-
-	/* ==================== GPU-Optimized Animations ==================== */
-
-	/* Mobile: slide up from bottom */
-	@keyframes brief-slide-up {
-		from {
-			transform: translateY(100%) translateZ(0);
-			opacity: 0;
-		}
-		to {
-			transform: translateY(0) translateZ(0);
-			opacity: 1;
-		}
-	}
-
-	/* Desktop: scale from center */
-	@keyframes brief-scale {
-		from {
-			transform: scale(0.95) translateZ(0);
-			opacity: 0;
-		}
-		to {
-			transform: scale(1) translateZ(0);
-			opacity: 1;
-		}
-	}
-
-	:global(.brief-animate-slide-up) {
-		animation: brief-slide-up 300ms cubic-bezier(0.4, 0, 0.2, 1);
-	}
-
-	:global(.brief-animate-scale) {
-		animation: brief-scale 200ms cubic-bezier(0.4, 0, 0.2, 1);
-	}
-
-	/* Desktop overrides slide-up to scale */
-	@media (min-width: 768px) {
-		:global(.brief-animate-slide-up) {
-			animation: brief-scale 200ms cubic-bezier(0.4, 0, 0.2, 1);
-		}
-	}
-
-	/* ==================== Drag Handle ==================== */
-
-	.brief-drag-handle:active {
-		cursor: grabbing;
-	}
-
-	.brief-drag-handle:active > div {
-		background: hsl(var(--foreground) / 0.5);
-		width: 2.5rem;
-	}
-
-	/* ==================== Header Safe Area ==================== */
-
-	@supports (padding-top: env(safe-area-inset-top)) {
-		/* On iOS, the drag handle area absorbs the safe area top */
-		.brief-drag-handle {
-			padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
-		}
-	}
-
 	/* ==================== Tab Styling ==================== */
 
 	.brief-tab {
 		touch-action: manipulation;
-		-webkit-tap-highlight-color: transparent;
 	}
 
 	/* In landscape with short viewport, hide tab text and show icons only */
@@ -537,30 +265,9 @@
 		background: hsl(var(--muted-foreground) / 0.5);
 	}
 
-	/* ==================== iOS Safe Area Support ==================== */
-
-	@supports (-webkit-touch-callout: none) {
-		.brief-modal-container {
-			/* Account for notch, home indicator, and the software keyboard */
-			max-height: calc(
-				100dvh - env(safe-area-inset-top, 0px) -
-					max(env(safe-area-inset-bottom, 0px), 0.5rem) - var(--keyboard-height, 0px)
-			);
-		}
-	}
-
 	/* ==================== Landscape Optimization ==================== */
 
 	@media (orientation: landscape) and (max-height: 500px) {
-		.brief-modal-container {
-			/* Maximize space in landscape */
-			height: calc(
-				100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) -
-					var(--keyboard-height, 0px)
-			);
-			border-radius: 0.5rem;
-		}
-
 		.brief-header {
 			/* Compact header in landscape */
 			height: 2.5rem;
@@ -574,17 +281,5 @@
 		.brief-tab {
 			height: 2.5rem;
 		}
-
-		.brief-drag-handle {
-			/* Minimal drag handle in landscape */
-			padding-top: 0.125rem;
-			padding-bottom: 0.125rem;
-		}
-	}
-
-	/* ==================== Body Scroll Lock ==================== */
-
-	:global(body:has(.brief-chat-root)) {
-		overflow: hidden;
 	}
 </style>

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { GmailSchemaClient } from '../gmail-database.types';
 import { GmailOAuthError, GmailReadOAuthService } from '../gmail-read-oauth.service';
+import { mapWithConcurrency, readJsonBounded } from '../gmail-gateway-infrastructure';
 import {
 	normalizeEmailRelevanceMetadata,
 	type EmailRelevanceProviderMetadata,
@@ -65,6 +66,13 @@ export class GmailRelevanceMetadataGatewayError extends Error {
 	}
 }
 
+const GMAIL_RELEVANCE_JSON_POLICY = {
+	emptyBody: () => ({}),
+	responseTooLargeError: () =>
+		new GmailRelevanceMetadataGatewayError('provider_response_too_large'),
+	invalidJsonError: () => new GmailRelevanceMetadataGatewayError('invalid_provider_response')
+};
+
 function pageToken(value: string | null | undefined): string | undefined {
 	if (value === null || value === undefined) return undefined;
 	if (value.length < 1 || value.length > MAX_PAGE_TOKEN_CHARACTERS || /\p{Cc}/u.test(value)) {
@@ -82,57 +90,6 @@ function compileQuery(windowStart: string, windowEnd: string): string {
 	return `{in:inbox in:sent} -in:spam -in:trash -in:drafts after:${Math.floor(
 		start / 1_000
 	)} before:${Math.floor(end / 1_000)}`;
-}
-
-async function readJsonBounded(response: Response, maxBytes: number): Promise<unknown> {
-	const contentLength = Number(response.headers.get('content-length'));
-	if (Number.isFinite(contentLength) && contentLength > maxBytes) {
-		throw new GmailRelevanceMetadataGatewayError('provider_response_too_large');
-	}
-	if (!response.body) return {};
-	const reader = response.body.getReader();
-	const chunks: Uint8Array[] = [];
-	let received = 0;
-	while (true) {
-		const { done, value } = await reader.read();
-		if (done) break;
-		received += value.byteLength;
-		if (received > maxBytes) {
-			await reader.cancel();
-			throw new GmailRelevanceMetadataGatewayError('provider_response_too_large');
-		}
-		chunks.push(value);
-	}
-	const bytes = new Uint8Array(received);
-	let offset = 0;
-	for (const chunk of chunks) {
-		bytes.set(chunk, offset);
-		offset += chunk.byteLength;
-	}
-	try {
-		return JSON.parse(new TextDecoder().decode(bytes));
-	} catch {
-		throw new GmailRelevanceMetadataGatewayError('invalid_provider_response');
-	}
-}
-
-async function mapWithConcurrency<T, R>(
-	items: T[],
-	concurrency: number,
-	mapper: (item: T) => Promise<R>,
-	signal?: AbortSignal
-): Promise<R[]> {
-	const results = new Array<R>(items.length);
-	let nextIndex = 0;
-	const workers = Array.from({ length: Math.min(items.length, concurrency) }, async () => {
-		while (nextIndex < items.length) {
-			if (signal?.aborted) break;
-			const index = nextIndex++;
-			results[index] = await mapper(items[index]!);
-		}
-	});
-	await Promise.all(workers);
-	return results;
 }
 
 async function awaitWithAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -212,7 +169,7 @@ export class GmailRelevanceMetadataGateway {
 				throw new GmailRelevanceMetadataGatewayError('provider_timeout');
 			}
 			if (!response.ok) throw new GmailRelevanceMetadataGatewayError('provider_rejected');
-			return await readJsonBounded(response, maxBytes);
+			return await readJsonBounded(response, maxBytes, GMAIL_RELEVANCE_JSON_POLICY);
 		} catch (error) {
 			if (error instanceof GmailRelevanceMetadataGatewayError) throw error;
 			throw new GmailRelevanceMetadataGatewayError(
@@ -381,7 +338,7 @@ export class GmailRelevanceMetadataGateway {
 						return null;
 					}
 				},
-				operationController.signal
+				{ signal: operationController.signal }
 			);
 		} finally {
 			clearTimeout(operationTimeout);

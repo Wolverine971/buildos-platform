@@ -942,7 +942,7 @@
 										<p class="text-sm font-semibold text-foreground truncate">
 											{batch.project_name}
 										</p>
-										<p class="mt-1 text-[11px] text-muted-foreground">
+										<p class="mt-1 text-2xs text-muted-foreground">
 											{batch.overdue_count} overdue
 											{#if batch.assigned_to_me_count > 0}
 												· {batch.assigned_to_me_count} mine
@@ -951,7 +951,7 @@
 									</div>
 									{#if batch.project_is_collaborative}
 										<span
-											class="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent shrink-0"
+											class="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs font-medium text-accent shrink-0"
 										>
 											<Users class="h-2.5 w-2.5" />
 											Shared
@@ -959,7 +959,7 @@
 									{/if}
 								</div>
 								{#if batch.oldest_due_at}
-									<p class="mt-1.5 text-[11px] text-muted-foreground">
+									<p class="mt-1.5 text-2xs text-muted-foreground">
 										Oldest {overdueLabel(batch.oldest_due_at)}
 									</p>
 								{/if}
@@ -970,7 +970,7 @@
 					{#if completedBatches.length > 0}
 						<div class="rounded-lg border border-border bg-card p-2.5 space-y-2">
 							<p
-								class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+								class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
 							>
 								Cleared
 							</p>
@@ -1001,7 +1001,7 @@
 										</p>
 										{#if activeBatch.project_is_collaborative}
 											<span
-												class="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent"
+												class="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs font-medium text-accent"
 											>
 												<Share2 class="h-2.5 w-2.5" />
 												Collaborative
@@ -1162,14 +1162,14 @@
 												</a>
 												{#if task.is_assigned_to_me}
 													<span
-														class="inline-flex items-center rounded-full border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success"
+														class="inline-flex items-center rounded-full border border-success/30 bg-success/10 px-1.5 py-0.5 text-2xs font-medium text-success"
 													>
 														Mine
 													</span>
 												{/if}
 											</div>
 											<div
-												class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"
+												class="mt-1 flex flex-wrap items-center gap-2 text-2xs text-muted-foreground"
 											>
 												<span class="inline-flex items-center gap-1">
 													<CalendarDays class="h-3 w-3" />
@@ -1198,7 +1198,7 @@
 										>
 											<button
 												type="button"
-												class="min-h-9 rounded-md border border-success/30 bg-success/10 px-2 py-1.5 text-[11px] font-semibold text-success transition-colors hover:bg-success/15 disabled:opacity-50"
+												class="min-h-9 rounded-md border border-success/30 bg-success/10 px-2 py-1.5 text-2xs font-semibold text-success transition-colors hover:bg-success/15 disabled:opacity-50"
 												disabled={isProjectActionRunning ||
 													isTaskBusy(task.id)}
 												onclick={() => handleSetTaskState(task.id, 'done')}
@@ -1207,7 +1207,7 @@
 											</button>
 											<button
 												type="button"
-												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-2xs font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
 												disabled={isProjectActionRunning ||
 													isTaskBusy(task.id)}
 												onclick={() =>
@@ -1217,7 +1217,7 @@
 											</button>
 											<button
 												type="button"
-												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-2xs font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
 												disabled={isProjectActionRunning ||
 													isTaskBusy(task.id)}
 												onclick={() =>
@@ -1227,7 +1227,7 @@
 											</button>
 											<button
 												type="button"
-												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted"
+												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-2xs font-semibold text-foreground transition-colors hover:bg-muted"
 												disabled={isProjectActionRunning ||
 													isTaskBusy(task.id)}
 												aria-expanded={expandedTaskId === task.id}
@@ -1311,7 +1311,7 @@
 														{#each RESCHEDULE_PRESETS as preset}
 															<button
 																type="button"
-																class="rounded-md border px-2 py-1.5 text-[11px] font-semibold transition-colors {activeSlotPreset ===
+																class="rounded-md border px-2 py-1.5 text-2xs font-semibold transition-colors {activeSlotPreset ===
 																preset
 																	? 'border-accent/40 bg-accent/10 text-accent'
 																	: 'border-border bg-card text-foreground hover:bg-muted'}"
@@ -1335,7 +1335,7 @@
 															]}
 														{#if loadingSlotKey === `${task.id}:${activeSlotPreset}`}
 															<div
-																class="flex items-center gap-2 text-[11px] text-muted-foreground"
+																class="flex items-center gap-2 text-2xs text-muted-foreground"
 															>
 																<LoaderCircle
 																	class="h-3.5 w-3.5 animate-spin"
@@ -1365,7 +1365,7 @@
 																				)}
 																			</p>
 																			<p
-																				class="mt-0.5 text-[11px] text-muted-foreground"
+																				class="mt-0.5 text-2xs text-muted-foreground"
 																			>
 																				{formatSlotTimeRange(
 																					slot.start_at,
@@ -1374,7 +1374,7 @@
 																			</p>
 																		</div>
 																		<span
-																			class="text-[11px] font-medium text-accent"
+																			class="text-2xs font-medium text-accent"
 																		>
 																			Use slot
 																		</span>
@@ -1383,7 +1383,7 @@
 															</div>
 														{:else}
 															<p
-																class="text-[11px] text-muted-foreground"
+																class="text-2xs text-muted-foreground"
 															>
 																{slotErrorsByTask[task.id] ||
 																	activePlan?.note ||

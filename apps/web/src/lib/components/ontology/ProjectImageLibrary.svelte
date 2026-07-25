@@ -137,7 +137,7 @@
 							<p class="truncate text-xs font-medium text-foreground">
 								{assetTitle(asset)}
 							</p>
-							<p class="text-[11px] text-muted-foreground">
+							<p class="text-2xs text-muted-foreground">
 								OCR: {asset.ocr_status || 'pending'}
 							</p>
 						</div>
@@ -156,7 +156,7 @@
 							<Button
 								size="sm"
 								variant="secondary"
-								class="h-6 px-2 text-[11px]"
+								class="h-6 px-2 text-2xs"
 								onclick={() => onSelectAsset?.(asset)}
 							>
 								{selectLabel}

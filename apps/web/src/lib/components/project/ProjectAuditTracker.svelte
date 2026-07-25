@@ -695,7 +695,7 @@
 						<div class="flex flex-wrap items-center gap-2">
 							<h2 class="text-sm font-semibold text-foreground">Audit</h2>
 							<span
-								class="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold {stateClass(
+								class="inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-semibold {stateClass(
 									latestAudit
 								)}"
 							>
@@ -703,7 +703,7 @@
 							</span>
 							{#if latestAudit?.delivery_confidence}
 								<span
-									class="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold {confidenceClass(
+									class="inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-semibold {confidenceClass(
 										latestAudit.delivery_confidence
 									)}"
 								>
@@ -711,13 +711,13 @@
 								</span>
 							{/if}
 							{#if latestAudit?.finished_at || latestAudit?.created_at}
-								<span class="text-[10px] font-medium text-muted-foreground">
+								<span class="text-2xs font-medium text-muted-foreground">
 									{formatDate(latestAudit.finished_at ?? latestAudit.created_at)}
 								</span>
 							{/if}
 							{#if generatedFollowUps > 0}
 								<span
-									class="inline-flex items-center rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground"
+									class="inline-flex items-center rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs font-semibold text-muted-foreground"
 								>
 									{unresolvedFollowUps > 0
 										? `${unresolvedFollowUps} open follow-up${unresolvedFollowUps === 1 ? '' : 's'}`
@@ -826,9 +826,7 @@
 					<dl class="grid gap-x-4 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
 						{#each auditContextItems as item (item.label)}
 							<div class="min-w-0 border-l border-border pl-2">
-								<dt
-									class="text-[10px] font-semibold uppercase text-muted-foreground"
-								>
+								<dt class="text-2xs font-semibold uppercase text-muted-foreground">
 									{item.label}
 								</dt>
 								<dd
@@ -861,7 +859,7 @@
 			>
 				{#if topFindings.length}
 					<div class="min-w-0">
-						<p class="text-[10px] font-semibold uppercase text-muted-foreground">
+						<p class="text-2xs font-semibold uppercase text-muted-foreground">
 							Findings
 						</p>
 						<div class="mt-2 space-y-1.5">
@@ -890,13 +888,13 @@
 
 				{#if dimensions.length}
 					<div class="min-w-0">
-						<p class="text-[10px] font-semibold uppercase text-muted-foreground">
+						<p class="text-2xs font-semibold uppercase text-muted-foreground">
 							Dimensions
 						</p>
 						<div class="mt-2 flex flex-wrap gap-1.5">
 							{#each dimensions as item, index (item.key ?? item.name ?? index)}
 								<span
-									class="inline-flex max-w-full items-center gap-1.5 rounded border border-border bg-muted/30 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+									class="inline-flex max-w-full items-center gap-1.5 rounded border border-border bg-muted/30 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
 									title={item.summary}
 								>
 									<span class="h-1.5 w-1.5 rounded-full {ratingDot(item.rating)}"
@@ -952,7 +950,7 @@
 			<div class="space-y-2">
 				<div class="flex flex-wrap items-center gap-2">
 					<span
-						class="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold {chipClass(
+						class="inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-semibold {chipClass(
 							auditDetail.status
 						)}"
 					>
@@ -960,7 +958,7 @@
 					</span>
 					{#if auditDetail.delivery_confidence}
 						<span
-							class="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold {confidenceClass(
+							class="inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-semibold {confidenceClass(
 								auditDetail.delivery_confidence
 							)}"
 						>
@@ -968,12 +966,12 @@
 						</span>
 					{/if}
 					{#if auditDetail.trigger_reason}
-						<span class="text-[10px] font-medium text-muted-foreground">
+						<span class="text-2xs font-medium text-muted-foreground">
 							{formatTriggerReason(auditDetail.trigger_reason)}
 						</span>
 					{/if}
 					{#if auditDetail.finished_at || auditDetail.created_at}
-						<span class="text-[10px] font-medium text-muted-foreground">
+						<span class="text-2xs font-medium text-muted-foreground">
 							{formatDate(auditDetail.finished_at ?? auditDetail.created_at)}
 						</span>
 					{/if}
@@ -1004,7 +1002,7 @@
 									</p>
 									{#if recommendation.priority}
 										<span
-											class="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold {chipClass(
+											class="inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-semibold {chipClass(
 												recommendation.priority
 											)}"
 										>
@@ -1021,7 +1019,7 @@
 									</p>
 								{/if}
 								{#if recommendationMeta(recommendation)}
-									<p class="mt-1 text-[10px] uppercase text-muted-foreground">
+									<p class="mt-1 text-2xs uppercase text-muted-foreground">
 										{recommendationMeta(recommendation)}
 									</p>
 								{/if}
@@ -1072,7 +1070,7 @@
 									</p>
 									{#if dimension.rating}
 										<span
-											class="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold {chipClass(
+											class="inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-semibold {chipClass(
 												dimension.rating
 											)}"
 										>
@@ -1118,7 +1116,7 @@
 										)}
 									</p>
 									<span
-										class="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold {chipClass(
+										class="inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-semibold {chipClass(
 											suggestion?.status
 										)}"
 									>
@@ -1154,7 +1152,7 @@
 											</p>
 											{#if risk.severity}
 												<span
-													class="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold {chipClass(
+													class="inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-semibold {chipClass(
 														risk.severity
 													)}"
 												>
@@ -1208,7 +1206,7 @@
 								<p class="truncate text-xs font-semibold text-foreground">
 									{compactLabel(evidence.label, `Evidence ${index + 1}`)}
 								</p>
-								<p class="mt-0.5 text-[10px] uppercase text-muted-foreground">
+								<p class="mt-0.5 text-2xs uppercase text-muted-foreground">
 									{displayLabel(evidence.entity_type, 'evidence')}
 								</p>
 								{#if evidence.reason}

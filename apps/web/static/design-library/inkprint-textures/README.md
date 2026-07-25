@@ -2,6 +2,11 @@
 
 A comprehensive collection of printmaking-inspired textures and design tokens for the BuildOS Inkprint Design System.
 
+The CSS files in this directory are generated from the app's canonical
+`src/lib/styles/inkprint.css` source. Run `pnpm --filter @buildos/web styles:sync`
+after changing the runtime design system; CI verifies that the public package
+has not drifted.
+
 ## 📦 What's Included
 
 This library contains all the texture classes, color systems, and design utilities from the Inkprint design system, organized into modular CSS files for easy integration.
@@ -11,7 +16,7 @@ This library contains all the texture classes, color systems, and design utiliti
 | File                       | Description                                     | Use When                              |
 | -------------------------- | ----------------------------------------------- | ------------------------------------- |
 | `color-system.css`         | Semantic color tokens for light/dark mode       | Setting up color palette              |
-| `textures-core.css`        | All 7 texture types + button texture            | Adding texture to surfaces            |
+| `textures-core.css`        | All 8 texture types + button texture            | Adding texture to surfaces            |
 | `textures-intensities.css` | Weak/medium/strong intensity modifiers          | Controlling texture opacity           |
 | `shadows.css`              | Inkprint shadow system                          | Adding depth and elevation            |
 | `atmosphere.css`           | Atmospheric background layer                    | Creating depth in marketing/editorial |
@@ -50,6 +55,7 @@ This library contains all the texture classes, color systems, and design utiliti
 | **Thread** | Relationships, collaboration, dependencies | `tx tx-thread tx-weak` | Dependency views, collaboration |
 | **Frame**  | Canon, structure, decisions, officialness  | `tx tx-frame tx-weak`  | Cards, panels, containers       |
 | **Strip**  | Header band, separator, printed label      | `tx tx-strip tx-weak`  | Headers, separators             |
+| **Grid**   | Writable, editable input surface           | `tx tx-grid tx-weak`   | Forms and editable panels       |
 | **Button** | Brushed aluminum tactile texture           | `tx-button`            | Buttons, interactive elements   |
 
 ### Texture Intensities
@@ -145,22 +151,22 @@ No additional code needed - just add the `.dark` class to your root element.
 ### Light Mode (Paper Studio)
 
 ```css
---background: 40 20% 98%; /* Warm paper white */
+--background: 40 15% 98%; /* Warm paper white */
 --foreground: 240 10% 10%; /* Deep ink black */
---card: 40 15% 96%;
---muted: 40 10% 92%;
---border: 40 10% 85%;
---accent: 24 80% 55%; /* Warm orange-amber */
+--card: 40 12% 94%;
+--muted: 40 12% 90%;
+--border: 40 10% 82%;
+--accent: 24 80% 40%; /* Contrast-safe burnt orange */
 ```
 
 ### Dark Mode (Ink Room)
 
 ```css
---background: 240 10% 6%; /* Near-black */
+--background: 32 4% 11%; /* Warm charcoal */
 --foreground: 40 10% 92%; /* Off-white */
---card: 240 10% 10%;
---muted: 240 10% 14%;
---border: 240 10% 18%;
+--card: 32 5% 15%;
+--muted: 32 5% 19%;
+--border: 32 5% 24%;
 --accent: 24 85% 58%;
 ```
 

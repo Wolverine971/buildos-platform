@@ -297,7 +297,7 @@ Content-Type: application/json
 			<!-- Provider chips — mirrors the "Works with" row in /landing-v2 -->
 			<div class="mx-auto max-w-3xl mb-10">
 				<div
-					class="text-center text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground mb-3"
+					class="text-center text-2xs uppercase tracking-[0.22em] text-muted-foreground mb-3"
 				>
 					Works with
 				</div>

@@ -42,7 +42,7 @@
 					class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 group-hover:opacity-0"
 				/>
 				<div>
-					<div class="text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
+					<div class="text-2xs uppercase tracking-[0.22em] text-muted-foreground">
 						BuildOS
 					</div>
 					<div class="text-xs text-muted-foreground">
@@ -80,7 +80,7 @@
 					class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 tx tx-static tx-weak"
 				>
 					<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-					<span class="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground"
+					<span class="text-2xs uppercase tracking-[0.2em] text-muted-foreground"
 						>Built for chaotic brains</span
 					>
 				</div>
@@ -119,7 +119,7 @@
 				class="rounded-3xl border border-border bg-card shadow-ink-strong tx tx-frame tx-weak ink-frame overflow-hidden"
 			>
 				<div
-					class="h-10 border-b border-border tx tx-strip tx-med flex items-center px-4 text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground"
+					class="h-10 border-b border-border tx tx-strip tx-med flex items-center px-4 text-2xs uppercase tracking-[0.2em] text-muted-foreground"
 				>
 					Project: Raise Seed & Ship v1
 				</div>
@@ -129,11 +129,11 @@
 							class="rounded-2xl border border-border bg-background tx tx-static tx-weak p-3"
 						>
 							<div
-								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
+								class="text-2xs uppercase tracking-[0.15em] text-muted-foreground mb-2"
 							>
 								Raw project context
 							</div>
-							<p class="text-[0.8rem] text-muted-foreground leading-relaxed">
+							<p class="text-sm text-muted-foreground leading-relaxed">
 								“Schedule investor calls, fix landing copy, ship onboarding. Also
 								want a content plan tied to signups…”
 							</p>
@@ -142,11 +142,11 @@
 							class="rounded-2xl border border-border bg-background tx tx-grain tx-weak p-3"
 						>
 							<div
-								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
+								class="text-2xs uppercase tracking-[0.15em] text-muted-foreground mb-2"
 							>
 								Structured by BuildOS
 							</div>
-							<ul class="text-[0.8rem] leading-relaxed">
+							<ul class="text-sm leading-relaxed">
 								<li>▸ Goal: Close 3–5 angel checks</li>
 								<li>▸ Plan: Weekly content engine</li>
 								<li>▸ Milestone: Landing page clarity</li>
@@ -158,7 +158,7 @@
 					<div
 						class="rounded-2xl border border-border bg-background tx tx-thread tx-weak p-3 flex items-center justify-between gap-3"
 					>
-						<p class="text-[0.85rem]">
+						<p class="text-sm">
 							<span class="text-muted-foreground">Next move:</span> Follow up with the
 							4 investors who opened your deck twice.
 						</p>
@@ -191,13 +191,11 @@
 					<article
 						class={`rounded-3xl border border-border bg-card shadow-ink tx ${s.texture} tx-weak ink-frame p-5`}
 					>
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
-						>
+						<div class="text-2xs uppercase tracking-[0.18em] text-muted-foreground">
 							{s.label}
 						</div>
 						<h3 class="mt-2 text-sm font-semibold">{s.title}</h3>
-						<p class="mt-2 text-[0.85rem] text-muted-foreground leading-relaxed">
+						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
 							{s.body}
 						</p>
 					</article>

@@ -407,7 +407,7 @@
 								<p class="mt-1 line-clamp-2 text-xs text-muted-foreground">
 									{message.snippet || 'No preview available'}
 								</p>
-								<p class="mt-2 text-[11px] text-muted-foreground">
+								<p class="mt-2 text-2xs text-muted-foreground">
 									{message.emailAddress} · Read only
 								</p>
 							</button>

@@ -408,7 +408,7 @@
 					</h1>
 					<a
 						href={`/projects/${project?.id}`}
-						class="text-[10px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors truncate block"
+						class="text-2xs sm:text-xs text-muted-foreground hover:text-foreground transition-colors truncate block"
 					>
 						{project?.name || 'Project'}
 					</a>
@@ -517,13 +517,13 @@
 					>
 						<div class="flex items-center gap-2 min-w-0">
 							{#if hasUnsavedChanges}
-								<span class="flex items-center gap-1 text-[10px] text-warning">
+								<span class="flex items-center gap-1 text-2xs text-warning">
 									<span class="w-1.5 h-1.5 rounded-full bg-warning animate-pulse"
 									></span>
 									Unsaved changes
 								</span>
 							{:else}
-								<span class="text-[10px] text-muted-foreground">
+								<span class="text-2xs text-muted-foreground">
 									Updated {formatDate(document?.updated_at)}
 								</span>
 							{/if}
@@ -664,7 +664,7 @@
 							</button>
 						{/if}
 					</div>
-					<div class="px-3 pb-3 text-[10px] text-muted-foreground">
+					<div class="px-3 pb-3 text-2xs text-muted-foreground">
 						Created {formatDate(document?.created_at)} · Updated {formatDate(
 							document?.updated_at
 						)}
@@ -672,7 +672,7 @@
 				</section>
 
 				<p
-					class="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground px-1 mt-3 mb-1"
+					class="text-2xs uppercase tracking-wide font-semibold text-muted-foreground px-1 mt-3 mb-1"
 				>
 					Project Context
 				</p>
@@ -693,8 +693,7 @@
 									<Calendar class="w-3 h-3 text-warning" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Events</span>
-								<span class="text-[10px] text-muted-foreground"
-									>({events.length})</span
+								<span class="text-2xs text-muted-foreground">({events.length})</span
 								>
 							</div>
 							<ChevronDown
@@ -718,7 +717,7 @@
 														>{event.title || 'Untitled event'}</span
 													>
 													<span
-														class="text-[10px] text-muted-foreground truncate block"
+														class="text-2xs text-muted-foreground truncate block"
 														>{formatEventDate(event)}</span
 													>
 												</div>
@@ -747,7 +746,7 @@
 									<FileText class="w-3 h-3 text-accent" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Documents</span>
-								<span class="text-[10px] text-muted-foreground"
+								<span class="text-2xs text-muted-foreground"
 									>({otherDocuments.length})</span
 								>
 							</div>
@@ -795,9 +794,7 @@
 									<ListChecks class="w-3 h-3 text-muted-foreground" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Tasks</span>
-								<span class="text-[10px] text-muted-foreground"
-									>({tasks.length})</span
-								>
+								<span class="text-2xs text-muted-foreground">({tasks.length})</span>
 							</div>
 							<ChevronDown
 								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.tasks
@@ -845,9 +842,7 @@
 									<Target class="w-3 h-3 text-warning" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Goals</span>
-								<span class="text-[10px] text-muted-foreground"
-									>({goals.length})</span
-								>
+								<span class="text-2xs text-muted-foreground">({goals.length})</span>
 							</div>
 							<ChevronDown
 								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.goals
@@ -888,9 +883,7 @@
 									<Calendar class="w-3 h-3 text-info" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Plans</span>
-								<span class="text-[10px] text-muted-foreground"
-									>({plans.length})</span
-								>
+								<span class="text-2xs text-muted-foreground">({plans.length})</span>
 							</div>
 							<ChevronDown
 								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.plans
@@ -932,7 +925,7 @@
 								</div>
 								<span class="text-xs font-semibold text-foreground">Milestones</span
 								>
-								<span class="text-[10px] text-muted-foreground"
+								<span class="text-2xs text-muted-foreground"
 									>({milestones.length})</span
 								>
 							</div>
@@ -975,9 +968,7 @@
 									<AlertTriangle class="w-3 h-3 text-destructive" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Risks</span>
-								<span class="text-[10px] text-muted-foreground"
-									>({risks.length})</span
-								>
+								<span class="text-2xs text-muted-foreground">({risks.length})</span>
 							</div>
 							<ChevronDown
 								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.risks

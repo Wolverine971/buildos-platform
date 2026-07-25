@@ -57,7 +57,7 @@
 				<ProjectStateChip state={project.state_key} size="xs" />
 				{#if project.is_shared}
 					<span
-						class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent border border-accent/20"
+						class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-semibold bg-accent/15 text-accent border border-accent/20"
 					>
 						<Share2 class="h-2.5 w-2.5" aria-hidden="true" />
 						<span class="hidden sm:inline">
@@ -71,7 +71,7 @@
 		<div class="shrink-0 flex items-center gap-1.5">
 			<time
 				datetime={project.updated_at}
-				class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+				class="text-2xs sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
 			>
 				{formatUpdatedAt(project.updated_at)}
 			</time>
@@ -91,7 +91,7 @@
 
 	{#if project.next_step_short && !isSecondary}
 		<p
-			class="mt-1.5 text-[11px] sm:text-xs font-medium text-accent/90 truncate"
+			class="mt-1.5 text-2xs sm:text-xs font-medium text-accent/90 truncate"
 			title={project.next_step_long ?? project.next_step_short}
 		>
 			Next: {project.next_step_short}
@@ -99,7 +99,7 @@
 	{/if}
 
 	<p
-		class="mt-1 text-[11px] sm:text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis {isSecondary
+		class="mt-1 text-2xs sm:text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis {isSecondary
 			? 'text-muted-foreground/80'
 			: 'text-muted-foreground/90'}"
 	>

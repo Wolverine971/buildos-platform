@@ -1,0 +1,962 @@
+{
+	"schema_version": 1,
+	"corpus_version": "phase-a-frozen-v1",
+	"lane": "control-agentic-chat-v2",
+	"generated_at": "2026-07-24T22:23:20.529Z",
+	"runs": [
+		{
+			"scenarioId": "a0-c01-in-sync-explanation",
+			"scenarioClass": "simple_read",
+			"expectedRoute": "direct",
+			"expectedReasonCode": "simple_read",
+			"runIndex": 1,
+			"requestStartedAt": "2026-07-24T22:05:37.960Z",
+			"timing": {
+				"requestStartedAt": "2026-07-24T22:05:37.960Z",
+				"responseHeadersMs": 444.1819579999992,
+				"firstSseEventMs": 445.5863330000011,
+				"ttftMs": 8860.336375,
+				"terminalEventMs": 32763.2935,
+				"totalDurationMs": 33141.53375
+			},
+			"usage": {
+				"requestCount": 5,
+				"promptTokens": 59384,
+				"completionTokens": 1103,
+				"totalTokens": 60487,
+				"totalCostUsd": 0.0039856,
+				"models": ["deepseek/deepseek-v4-flash"],
+				"providers": ["deepinfra"],
+				"profiles": ["balanced"],
+				"operations": ["agentic_chat_v2_stream"]
+			},
+			"completed": true,
+			"finishedReason": "stop",
+			"errors": [],
+			"toolCalls": [
+				"get_document_outline",
+				"get_document_outline",
+				"search_project",
+				"get_onto_document_details",
+				"get_onto_task_details"
+			],
+			"acceptance": [
+				{
+					"validatorId": "answer.contains_all",
+					"required": true,
+					"passed": false,
+					"detail": "missing: correlation"
+				},
+				{
+					"validatorId": "answer.excludes_all",
+					"required": true,
+					"passed": true,
+					"detail": "excluded all 2 terms"
+				}
+			],
+			"allRequiredChecksPassed": false,
+			"assistantText": "I'll look that up in BuildOS and gather the relevant details.\n\nHere's what the **in-sync score** is all about in this project:\n\nIt's defined in the **Measurement & Telemetry Protocol** document.\n\n### How it works\n\n- **Scale:** 1–10, where 1 would feel completely out of sorts and 10 would feel razor-sharp and fully coordinated.\n\n- **What it captures:** A holistic sense of being \"in sync\" — your coordination, mental clarity, focus, and overall readiness.\n\nIt's the feeling of everything clicking.\n\n- **When it's logged:** During the **weekly Sunday telemetry review**, alongside objective metrics like PVT median reaction time, pitch time-to-first-word, filler count, sprint times, fixed practice par times, resting heart rate/HRV, and sleep.\n\n### Why it matters\n\nThe document is explicit that this is **not a clinical measure**.\n\nOver time, that helps you understand what conditions produce your best performance.\n\n### The project name connection\n\nThe project's full name — **AE2E · Phase A a0-c01-in-sync-explanation-1 · 41ac950a** — includes \"in-sync-explanation-1,\" which suggests this is the first artifact in a series explaining the concept.\n\n**Bottom line:** Think of it as a quick gut-check on how dialed-in you feel — a subjective signal to pair with the hard numbers, so you can spot what actually drives your best response times."
+		},
+		{
+			"scenarioId": "a0-c01-in-sync-explanation",
+			"scenarioClass": "simple_read",
+			"expectedRoute": "direct",
+			"expectedReasonCode": "simple_read",
+			"runIndex": 2,
+			"requestStartedAt": "2026-07-24T22:06:24.495Z",
+			"timing": {
+				"requestStartedAt": "2026-07-24T22:06:24.495Z",
+				"responseHeadersMs": 406.9654999999984,
+				"firstSseEventMs": 407.3945420000018,
+				"ttftMs": 4471.959791999994,
+				"terminalEventMs": 49689.048417,
+				"totalDurationMs": 49999.67320800001
+			},
+			"usage": {
+				"requestCount": 7,
+				"promptTokens": 88883,
+				"completionTokens": 1470,
+				"totalTokens": 90353,
+				"totalCostUsd": 0.0057849699999999995,
+				"models": ["deepseek/deepseek-v4-flash"],
+				"providers": ["deepinfra"],
+				"profiles": ["balanced"],
+				"operations": ["agentic_chat_v2_stream"]
+			},
+			"completed": true,
+			"finishedReason": "stop",
+			"errors": [],
+			"toolCalls": [
+				"get_document_outline",
+				"get_document_outline",
+				"read_document_section",
+				"read_document_section",
+				"read_document_section",
+				"read_document_section",
+				"get_onto_project_details",
+				"get_document_outline",
+				"get_onto_document_details"
+			],
+			"acceptance": [
+				{
+					"validatorId": "answer.contains_all",
+					"required": true,
+					"passed": true,
+					"detail": "found all 4 terms"
+				},
+				{
+					"validatorId": "answer.excludes_all",
+					"required": true,
+					"passed": true,
+					"detail": "excluded all 2 terms"
+				}
+			],
+			"allRequiredChecksPassed": true,
+			"assistantText": "Let me pull in the relevant documents to explain what \"in sync\" means in this project's context.\n\nGreat question — the \"in-sync score\" is one of the tracking metrics in this training program. Here's what it is:\n\n**The in-sync score is a subjective 1–10 rating** of how coordinated and mentally sharp you felt during the week. It's logged as part of the weekly Sunday telemetry review alongside objective metrics like PVT reaction time, pitch time-to-first-word, filler count, sprint times, and resting heart rate/HRV.\n\nA few key points from the **Measurement & Telemetry Protocol** document:\n\n- **It's not a clinical measure** — it's purely your own felt sense of whether you were \"in sync\" that week.\n- **The value is in the correlation** — over time, tracking it alongside the objective numbers lets you see patterns: *\"When I felt like a 7, my PVT was actually fine, but when I felt like a 4, my pitch time-to-first-word was noticeably slower.\"*\n- **It's one of the success criteria** for the whole program — the primary goal lists \"a visible trend in… the in-sync score\" as part of what defines success.\n\nSo think of it as a simple gut-check metric: *On a scale of 1 to 10, how dialed-in did you feel this week?* The idea is that over the course of the program, both the subjective feeling and the objective numbers should trend upward together."
+		},
+		{
+			"scenarioId": "a0-c01-in-sync-explanation",
+			"scenarioClass": "simple_read",
+			"expectedRoute": "direct",
+			"expectedReasonCode": "simple_read",
+			"runIndex": 3,
+			"requestStartedAt": "2026-07-24T22:07:29.738Z",
+			"timing": {
+				"requestStartedAt": "2026-07-24T22:07:29.738Z",
+				"responseHeadersMs": 292.29766699999163,
+				"firstSseEventMs": 292.63124999999127,
+				"ttftMs": 9848.823499999984,
+				"terminalEventMs": 34545.740166999996,
+				"totalDurationMs": 34839.77995899999
+			},
+			"usage": {
+				"requestCount": 4,
+				"promptTokens": 47818,
+				"completionTokens": 1086,
+				"totalTokens": 48904,
+				"totalCostUsd": 0.0025084499999999997,
+				"models": ["deepseek/deepseek-v4-flash"],
+				"providers": ["deepinfra"],
+				"profiles": ["balanced"],
+				"operations": ["agentic_chat_v2_stream"]
+			},
+			"completed": true,
+			"finishedReason": "stop",
+			"errors": [],
+			"toolCalls": [
+				"get_document_outline",
+				"get_document_outline",
+				"get_onto_project_details",
+				"get_onto_document_details"
+			],
+			"acceptance": [
+				{
+					"validatorId": "answer.contains_all",
+					"required": true,
+					"passed": true,
+					"detail": "found all 4 terms"
+				},
+				{
+					"validatorId": "answer.excludes_all",
+					"required": true,
+					"passed": true,
+					"detail": "excluded all 2 terms"
+				}
+			],
+			"allRequiredChecksPassed": true,
+			"assistantText": "I'll look that up in BuildOS and gather the relevant details.\n\nGreat question — the \"in-sync score\" is a **subjective self-rating** that's part of your weekly telemetry review for this training program.\n\nHere's the full picture:\n\n**What it is:** A 1–10 rating of how *coordinated and mentally sharp* you felt on a given day or week.\n\nIt's entirely subjective — not a clinical or objective measure.\n\n**Why it matters:** The value isn't in the number itself — it's in **tracking correlations** with the objective metrics over time.\n\nFor example, you might notice that when your in-sync score dips below a 5, your PVT reaction time also degrades, or that a good sleep week consistently predicts a 7+ score.\n\nOver weeks and months, those patterns tell you more than any single data point.\n\n**How it's used in the program:** The primary goal of the project is to \"improve measurable response speed across communication, precision skills, and reaction time,\" and success is defined as a visible trend in *all* the tracked metrics — including the in-sync score — plus qualitative improvement under pressure.\n\nSo the in-sync score is one of the key signals the program uses to gauge whether the training is working holistically, not just on isolated benchmarks."
+		},
+		{
+			"scenarioId": "a0-c02-next-actions",
+			"scenarioClass": "simple_read",
+			"expectedRoute": "direct",
+			"expectedReasonCode": "simple_read",
+			"runIndex": 1,
+			"requestStartedAt": "2026-07-24T22:08:17.331Z",
+			"timing": {
+				"requestStartedAt": "2026-07-24T22:08:17.331Z",
+				"responseHeadersMs": 265.26691700000083,
+				"firstSseEventMs": 265.8679590000247,
+				"ttftMs": 9437.661833999999,
+				"terminalEventMs": 50768.841042000015,
+				"totalDurationMs": 51057.214125
+			},
+			"usage": {
+				"requestCount": 4,
+				"promptTokens": 56111,
+				"completionTokens": 2140,
+				"totalTokens": 58251,
+				"totalCostUsd": 0.00351827,
+				"models": ["deepseek/deepseek-v4-flash"],
+				"providers": ["deepinfra"],
+				"profiles": ["balanced"],
+				"operations": ["agentic_chat_v2_stream"]
+			},
+			"completed": true,
+			"finishedReason": "stop",
+			"errors": [],
+			"toolCalls": [
+				"list_onto_tasks",
+				"list_onto_tasks",
+				"get_onto_task_details",
+				"get_onto_task_details",
+				"get_onto_task_details",
+				"get_onto_task_details"
+			],
+			"acceptance": [
+				{
+					"validatorId": "answer.contains_all",
+					"required": true,
+					"passed": true,
+					"detail": "found all 3 terms"
+				},
+				{
+					"validatorId": "answer.excludes_all",
+					"required": true,
+					"passed": true,
+					"detail": "excluded all 3 terms"
+				}
+			],
+			"allRequiredChecksPassed": true,
+			"assistantText": "Let me pull up the full task list to see everything that needs attention.\n\nHere's the full picture of what needs action in this project.\n\nI've organized it by what's most pressing.\n\n- **Start the caffeine protocol** — done\n\n- **Buy creatine monohydrate and L-theanine** — done\n\n- **Complete the daily core-stability routine** — done\n\nThese are all past due and still in **todo** state:\n\n| Priority | Task | Pillar | Due |\n\n|:--------:|------|--------|:---:|\n\n| **5** | **Run the first hostile-pitch dry-fire session** — Answer rapid objections aloud for 15 min, record, and log time-to-first-word + filler count | Software | Jul 11 (13 days ago) |\n\n| **4** | **Choose a PVT reaction-time app and log a baseline** — Pick an iPhone PVT app, test same time each week, record baseline before changing caffeine | Pressure & Feedback | Jul 12 (12 days ago) |\n\n| **4** | **Complete the weekly telemetry review** — Log PVT median, pitch time-to-first-word, filler count, sprint/practice times, resting metrics, in-sync score | Pressure & Feedback | Jul 13 (11 days ago) |\n\n| **3** | **Enroll in a full improv class series** — Practice spontaneous structured speech under social pressure | Software | Jul 14 (10 days ago) |\n\n| **3** | **Run the first submaximal hinge session** — Rebuild hinge tolerance after core-stability warmup | Hardware | Jul 15 (9 days ago) |\n\n| Priority | Task | Pillar |\n\n|:--------:|------|--------|\n\n| **4** | **Ship training equipment to the specialist workshop for setup** — Gateway task for the precision-skill domain; live practice can't start until this is done | Software |\n\n| **3** | **Review the existing processing-speed course material** — Capture drills and mental models for the precision-skill domain | Software |\n\n| **3** | **Watch long-range precision training material** — Build mental model for environmental reading, position fundamentals, ballistics | Software |\n\n## My take on what to tackle first\n\nThe **hostile-pitch dry-fire session** (priority 5, 13 days overdue) and **PVT app baseline** (priority 4, 12 days overdue) are the most urgent — they're the highest-priority items and have been sitting the longest.\n\nThe **equipment shipping** is also critical since it's a gateway task blocking the entire precision-skill domain from getting off the ground.\n\nWould you like me to mark any of these as started or in progress, or do you want to adjust priorities or due dates?"
+		},
+		{
+			"scenarioId": "a0-c02-next-actions",
+			"scenarioClass": "simple_read",
+			"expectedRoute": "direct",
+			"expectedReasonCode": "simple_read",
+			"runIndex": 2,
+			"requestStartedAt": "2026-07-24T22:09:22.323Z",
+			"timing": {
+				"requestStartedAt": "2026-07-24T22:09:22.323Z",
+				"responseHeadersMs": 319.016208999994,
+				"firstSseEventMs": 319.31762499999604,
+				"ttftMs": 9006.466249999998,
+				"terminalEventMs": 105510.883042,
+				"totalDurationMs": 105803.39770899998
+			},
+			"usage": {
+				"requestCount": 6,
+				"promptTokens": 93653,
+				"completionTokens": 2877,
+				"totalTokens": 96530,
+				"totalCostUsd": 0.0061449799999999995,
+				"models": ["deepseek/deepseek-v4-flash"],
+				"providers": ["deepinfra"],
+				"profiles": ["balanced"],
+				"operations": ["agentic_chat_v2_stream"]
+			},
+			"completed": true,
+			"finishedReason": "stop",
+			"errors": [],
+			"toolCalls": [
+				"list_onto_tasks",
+				"list_onto_tasks",
+				"get_onto_task_details",
+				"list_onto_tasks",
+				"search_project"
+			],
+			"acceptance": [
+				{
+					"validatorId": "answer.contains_all",
+					"required": true,
+					"passed": true,
+					"detail": "found all 3 terms"
+				},
+				{
+					"validatorId": "answer.excludes_all",
+					"required": true,
+					"passed": true,
+					"detail": "excluded all 3 terms"
+				}
+			],
+			"allRequiredChecksPassed": true,
+			"assistantText": "Let me pull up the full task list to give you a complete picture.\n\nHere's a clear picture of what needs action in this project.\n\nOut of **11 tasks**, **3 are already done** (caffeine protocol, supplement purchase, core-stability routine) and **6 are still in \"todo\"** — all of them overdue or waiting.\n\nHere's the priority order:\n\nRun the first hostile-pitch dry-fire session** — Priority 5\n\nDue July 11 (13 days overdue).\n\nThe core software-layer task: 15 minutes of rapid objection practice, recorded, with after-action review.\n\nThis is the highest-priority item in the project.\n\nShip training equipment to the specialist workshop for setup** — Priority 4\n\nUntil this ships, live practice and match prep can't begin.\n\nKnowledge prep can continue in the meantime.\n\nChoose a PVT reaction-time app and log a baseline** — Priority 4\n\nDue July 12 (12 days overdue).\n\nNeeded before you can start measuring reaction time changes, and it's a prerequisite for the telemetry review.\n\nComplete the weekly telemetry review** — Priority 4\n\nDue July 13 (11 days overdue).\n\nLog PVT median, pitch time-to-first-word, filler count, sprint times, and resting metrics.\n\nThis is how you track whether the training is working.\n\n### 🟡 Important but lower urgency\n\nEnroll in a full improv class series** — Priority 3\n\nDue July 14 (10 days overdue).\n\nSpontaneous structured speech under social pressure — a software-layer stimulus.\n\nRun the first submaximal hinge session** — Priority 3\n\nDue July 15 (9 days overdue).\n\nRebuild hinge tolerance after the core-stability warmup.\n\nHardware-layer rehab/prehab.\n\n**The two highest-leverage moves right now:** the **hostile-pitch dry-fire** (highest priority, most overdue) and **shipping the equipment** (unblocks the entire precision-skill domain).\n\nWant me to mark any of these as started or update their due dates?"
+		},
+		{
+			"scenarioId": "a0-c02-next-actions",
+			"scenarioClass": "simple_read",
+			"expectedRoute": "direct",
+			"expectedReasonCode": "simple_read",
+			"runIndex": 3,
+			"requestStartedAt": "2026-07-24T22:11:19.642Z",
+			"timing": {
+				"requestStartedAt": "2026-07-24T22:11:19.642Z",
+				"responseHeadersMs": 337.41820800001733,
+				"firstSseEventMs": 337.5378330000094,
+				"ttftMs": 6189.665791000007,
+				"terminalEventMs": 72634.929,
+				"totalDurationMs": 72932.90779100003
+			},
+			"usage": {
+				"requestCount": 7,
+				"promptTokens": 93580,
+				"completionTokens": 2891,
+				"totalTokens": 96471,
+				"totalCostUsd": 0.00650034,
+				"models": ["deepseek/deepseek-v4-flash"],
+				"providers": ["deepinfra"],
+				"profiles": ["balanced"],
+				"operations": ["agentic_chat_v2_stream"]
+			},
+			"completed": true,
+			"finishedReason": "stop",
+			"errors": [],
+			"toolCalls": [
+				"list_onto_tasks",
+				"list_onto_tasks",
+				"get_onto_task_details",
+				"search_project",
+				"search_project",
+				"list_onto_tasks"
+			],
+			"acceptance": [
+				{
+					"validatorId": "answer.contains_all",
+					"required": true,
+					"passed": false,
+					"detail": "missing: hostile-pitch"
+				},
+				{
+					"validatorId": "answer.excludes_all",
+					"required": true,
+					"passed": true,
+					"detail": "excluded all 3 terms"
+				}
+			],
+			"allRequiredChecksPassed": false,
+			"assistantText": "Let me pull up the full task list to get a complete picture.\n\n**Complete the weekly telemetry review** – Due July 13, 2026.\n\nRequires logging PVT median reaction time, pitch time-to-first-word, filler count, sprint and practice times, resting metrics, and the subjective in-sync score.\n\n**Choose a PVT reaction-time app and log a baseline** – Due July 12, 2026.\n\nInvolves selecting a psychomotor vigilance task app for iPhone, testing at the same time each week, and recording a baseline before changing the caffeine protocol.\n\n**Ship training equipment to the specialist workshop for setup** – No due date listed.\n\nThis is described as the gateway task for the precision-skill domain; setup must be completed before other work in that area can continue.\n\n**Run the first...** – The full title was cut off in the available data, but this task also remains in a \"todo\" state.\n\nOne task, **Complete the daily core-stability routine**, has already been marked done."
+		},
+		{
+			"scenarioId": "a0-c04-five-bullet-status",
+			"scenarioClass": "status_summary",
+			"expectedRoute": "direct",
+			"expectedReasonCode": "status_summary",
+			"runIndex": 1,
+			"requestStartedAt": "2026-07-24T22:12:44.300Z",
+			"timing": {
+				"requestStartedAt": "2026-07-24T22:12:44.300Z",
+				"responseHeadersMs": 304.6680000000051,
+				"firstSseEventMs": 305.02183300000615,
+				"ttftMs": 7972.658832999994,
+				"terminalEventMs": 39177.30987499998,
+				"totalDurationMs": 39464.445999999996
+			},
+			"usage": {
+				"requestCount": 4,
+				"promptTokens": 37093,
+				"completionTokens": 1352,
+				"totalTokens": 38445,
+				"totalCostUsd": 0.0031929399999999996,
+				"models": ["deepseek/deepseek-v4-flash"],
+				"providers": ["deepinfra", "siliconflow"],
+				"profiles": ["balanced"],
+				"operations": ["agentic_chat_v2_stream"]
+			},
+			"completed": true,
+			"finishedReason": "stop",
+			"errors": [],
+			"toolCalls": [
+				"get_document_outline",
+				"get_document_outline",
+				"get_document_outline",
+				"get_document_outline",
+				"get_document_outline",
+				"tool_search",
+				"get_onto_document_details",
+				"get_onto_document_details",
+				"get_onto_document_details",
+				"get_onto_document_details",
+				"get_onto_document_details"
+			],
+			"acceptance": [
+				{
+					"validatorId": "answer.bullet_count",
+					"required": true,
+					"passed": false,
+					"detail": "expected 5, found 4 top-level bullets"
+				},
+				{
+					"validatorId": "answer.contains_all",
+					"required": true,
+					"passed": false,
+					"detail": "missing: Hardware, Software, Pressure & Feedback"
+				}
+			],
+			"allRequiredChecksPassed": false,
+			"assistantText": "Let me pull in the key documents to ground the summary in the actual content.\n\nHere is a 5-bullet summary of Project Alpha based on the five documents loaded:\n\nThe immediate hard gate is shipping training equipment to a specialist workshop for setup; knowledge preparation can continue in the meantime.\n\n*(Source: \"Project Alpha — Program Context\")*\n\n- **Training Philosophy** – Processing speed is treated as a compressed perception-to-decision-to-action loop built through chunking and automaticity.\n\n*(Source: \"Training Program — Full Synthesis & Weekly Template\")*\n\n- **Evidence-Based Approach** – Commercial brain-training games, dual n-back, and generic sports-vision training are excluded due to weak transfer evidence.\n\nThe program instead prioritizes aerobic work, sleep consistency, domain-specific deliberate practice, timers, and feedback loops.\n\n*(Source: \"Research Notes — What Works and What Doesn't\")*\n\n- **Measurement & Telemetry** – A weekly Sunday review tracks PVT median reaction time, pitch time-to-first-word, filler count, sprint time, fixed practice par time, resting heart rate/HRV, sleep, and a subjective 1–10 \"in-sync\" score.\n\nA baseline should be captured before the caffeine reset.\n\n*(Source: \"Measurement & Telemetry Protocol\")*\n\n- **Caffeine & Supplement Protocol** – The current high daily dose is likely maintaining tolerance and reducing sleep quality.\n\nThe protocol calls for the first dose 60–90 minutes after waking, a hard noon cutoff, and a maximum of 300 mg/day.\n\nCreatine and L-theanine are optional; sleep consistency and caffeine timing are treated as higher-leverage than supplements.\n\n*(Source: \"Caffeine & Supplement Protocol\")*"
+		},
+		{
+			"scenarioId": "a0-c06-single-source-article",
+			"scenarioClass": "single_source_lookup",
+			"expectedRoute": "workflow",
+			"expectedReasonCode": "single_source_research",
+			"runIndex": 1,
+			"requestStartedAt": "2026-07-24T22:13:35.332Z",
+			"timing": {
+				"requestStartedAt": "2026-07-24T22:13:35.332Z",
+				"responseHeadersMs": 239.72000000003027,
+				"firstSseEventMs": 240.08050000004005,
+				"ttftMs": 12461.108125000028,
+				"terminalEventMs": 96340.63491700002,
+				"totalDurationMs": 96662.32033299998
+			},
+			"usage": {
+				"requestCount": 7,
+				"promptTokens": 103811,
+				"completionTokens": 2276,
+				"totalTokens": 106087,
+				"totalCostUsd": 0.00860374,
+				"models": ["deepseek/deepseek-v4-flash"],
+				"providers": ["deepinfra", "digitalocean"],
+				"profiles": ["balanced"],
+				"operations": ["agentic_chat_v2_stream"]
+			},
+			"completed": true,
+			"finishedReason": "stop",
+			"errors": [],
+			"toolCalls": [
+				"read_document_section",
+				"read_document_section",
+				"get_onto_document_details",
+				"get_onto_document_details",
+				"skill_load",
+				"get_onto_document_details",
+				"get_onto_document_details",
+				"skill_load",
+				"web_visit",
+				"search_project",
+				"search_project"
+			],
+			"acceptance": [
+				{
+					"validatorId": "artifact.citations.include_url",
+					"required": true,
+					"passed": false,
+					"detail": "missing citation: https://taskandpurpose.com/news/marines-scouts-primary-pmos/"
+				},
+				{
+					"validatorId": "answer.contains_all",
+					"required": true,
+					"passed": false,
+					"detail": "missing: mission"
+				},
+				{
+					"validatorId": "artifact.claims.cited",
+					"required": true,
+					"passed": false,
+					"detail": "no external citation found"
+				}
+			],
+			"allRequiredChecksPassed": false,
+			"assistantText": "I'll look that up in BuildOS and gather the relevant task details.\n\nGreat, I've reviewed everything you've shared.\n\nHere's a summary of what I found and where things stand.\n\n**What was completed:**\n\n- I loaded the full content of your project documents: the research notes on what works and what doesn't in training, the Project Alpha program context, the full training program synthesis, and the measurement/telemetry protocol.\n\nThat article is highly relevant to your sniper video idea — it shows the Corps is actively rethinking scout roles, which ties directly into future skill sets and team structure.\n\n- I loaded two relevant skills: \"YouTube Channel Craft For Founders\" (channel-level strategy, packaging, phase-appropriate growth) and \"Content Strategy Beyond Blogging\" (intent, identity, distribution, durable point of view).\n\n- I searched your project for \"YouTube video ideas\" and \"sniper\" — neither search returned existing documents or notes in the project.\n\n**What was found:**\n\n- The article confirms a real-world shift: Scouts moving from an additional MOS to a primary MOS, which is a concrete hook for your \"future snipers\" video.\n\nYou can use that as a news peg to open the video.\n\n- The YouTube and content strategy skills are loaded and ready to apply to your growing list of ideas.\n\n**What could not be completed:**\n\n- I was unable to find any existing document or note in your project containing your \"growing list of YouTube ideas.\n\n\" That list wasn't stored in the project yet, so I couldn't review or organize it.\n\n**Next step from you:**\n\nPlease share that list of YouTube ideas — either paste it here or tell me where it's saved — and I can help you prioritize, structure, and develop them, starting with the future snipers concept."
+		},
+		{
+			"scenarioId": "a0-c07-campaign-workflow-research",
+			"scenarioClass": "multi_source_research",
+			"expectedRoute": "workflow",
+			"expectedReasonCode": "multi_source_research",
+			"runIndex": 1,
+			"requestStartedAt": "2026-07-24T22:15:23.611Z",
+			"timing": {
+				"requestStartedAt": "2026-07-24T22:15:23.611Z",
+				"responseHeadersMs": 241.95637499995064,
+				"firstSseEventMs": 242.18999999994412,
+				"ttftMs": 9481.419666999951,
+				"terminalEventMs": 148577.43820900004,
+				"totalDurationMs": 148868.782
+			},
+			"usage": {
+				"requestCount": 4,
+				"promptTokens": 81716,
+				"completionTokens": 2998,
+				"totalTokens": 84714,
+				"totalCostUsd": 0.00782778,
+				"models": ["deepseek/deepseek-v4-flash"],
+				"providers": ["deepinfra"],
+				"profiles": ["balanced"],
+				"operations": ["agentic_chat_v2_stream"]
+			},
+			"completed": true,
+			"finishedReason": "error",
+			"errors": ["An error occurred while streaming."],
+			"toolCalls": [
+				"skill_load",
+				"skill_load",
+				"get_document_outline",
+				"skill_reference_load",
+				"skill_reference_load",
+				"get_document_tree"
+			],
+			"acceptance": [
+				{
+					"validatorId": "answer.contains_all",
+					"required": true,
+					"passed": false,
+					"detail": "missing: offer, ICP, proof, deliverability, accessibility, user testing"
+				},
+				{
+					"validatorId": "answer.has_sections",
+					"required": true,
+					"passed": false,
+					"detail": "missing: workflow, interface, risks, testing"
+				},
+				{
+					"validatorId": "artifact.citations.resolve",
+					"required": true,
+					"passed": true,
+					"detail": "no citations used; original-design allowance applied"
+				}
+			],
+			"allRequiredChecksPassed": false,
+			"assistantText": "Let me load the full playbooks for both lenses and check what's already in the project documents."
+		},
+		{
+			"scenarioId": "a0-c08-context-app-recommendation",
+			"scenarioClass": "context_research_recommendation",
+			"expectedRoute": "workflow",
+			"expectedReasonCode": "context_research_recommendation",
+			"runIndex": 1,
+			"requestStartedAt": "2026-07-24T22:20:50.756Z",
+			"timing": {
+				"requestStartedAt": "2026-07-24T22:20:50.756Z",
+				"responseHeadersMs": 431.1007919999538,
+				"firstSseEventMs": 431.5693339999998,
+				"ttftMs": 10026.48333399999,
+				"terminalEventMs": 53192.82487499993,
+				"totalDurationMs": 53501.11604200001
+			},
+			"usage": {
+				"requestCount": 7,
+				"promptTokens": 88146,
+				"completionTokens": 1453,
+				"totalTokens": 89599,
+				"totalCostUsd": 0.006047359999999999,
+				"models": ["deepseek/deepseek-v4-flash"],
+				"providers": ["deepinfra"],
+				"profiles": ["balanced"],
+				"operations": ["agentic_chat_v2_stream"]
+			},
+			"completed": true,
+			"finishedReason": "stop",
+			"errors": [],
+			"toolCalls": [
+				"get_document_outline",
+				"get_document_outline",
+				"get_document_outline",
+				"read_document_section",
+				"read_document_section",
+				"get_onto_project_details",
+				"get_onto_document_details",
+				"get_onto_document_details",
+				"tool_search",
+				"web_search"
+			],
+			"acceptance": [
+				{
+					"validatorId": "answer.contains_all",
+					"required": true,
+					"passed": false,
+					"detail": "missing: psychomotor vigilance, baseline"
+				},
+				{
+					"validatorId": "answer.excludes_all",
+					"required": true,
+					"passed": true,
+					"detail": "excluded all 1 terms"
+				},
+				{
+					"validatorId": "artifact.citations.resolve",
+					"required": true,
+					"passed": false,
+					"detail": "expected at least 2 citations, found 0"
+				}
+			],
+			"allRequiredChecksPassed": false,
+			"assistantText": "Let me check what's already been researched in the project docs and look into the best options for iPhone.\n\nBased on the research conducted, the **NASA PVT+** app is the recommended choice for your iPhone."
+		},
+		{
+			"scenarioId": "a0-c09-missing-content-scope",
+			"scenarioClass": "ambiguous",
+			"expectedRoute": "clarify",
+			"expectedReasonCode": "missing_required_context",
+			"runIndex": 1,
+			"requestStartedAt": "2026-07-24T22:21:57.062Z",
+			"timing": {
+				"requestStartedAt": "2026-07-24T22:21:57.062Z",
+				"responseHeadersMs": 279.98325000004843,
+				"firstSseEventMs": 280.13274999998976,
+				"ttftMs": 5485.160249999957,
+				"terminalEventMs": 43216.645334,
+				"totalDurationMs": 43623.12716699997
+			},
+			"usage": {
+				"requestCount": 5,
+				"promptTokens": 72712,
+				"completionTokens": 1490,
+				"totalTokens": 74202,
+				"totalCostUsd": 0.005475959999999999,
+				"models": ["deepseek/deepseek-v4-flash"],
+				"providers": ["deepinfra"],
+				"profiles": ["balanced"],
+				"operations": ["agentic_chat_v2_stream"]
+			},
+			"completed": true,
+			"finishedReason": "stop",
+			"errors": [],
+			"toolCalls": [
+				"list_onto_tasks",
+				"get_document_outline",
+				"get_document_outline",
+				"list_onto_tasks",
+				"get_onto_project_details",
+				"get_onto_task_details",
+				"get_onto_task_details",
+				"get_onto_document_details",
+				"get_onto_document_details",
+				"list_onto_tasks"
+			],
+			"acceptance": [
+				{
+					"validatorId": "route.asks_question",
+					"required": true,
+					"passed": false,
+					"detail": "question=false; missing: which project"
+				},
+				{
+					"validatorId": "answer.excludes_all",
+					"required": true,
+					"passed": true,
+					"detail": "excluded all 2 terms"
+				}
+			],
+			"allRequiredChecksPassed": false,
+			"assistantText": "Let me pull up the full task list and scan the key documents to see what's planned and what might be missing.\n\n- **Run the first hostile-pitch dry-fire session** (due July 11) — Answer rapid objections aloud for 15 minutes, record, and log an after-action review with time-to-first-word and filler count.\n\n- **Complete the weekly telemetry review** (due July 13) — Log PVT median reaction time, pitch time-to-first-word, filler count, sprint and practice times, resting metrics, and the subjective in-sync score.\n\n- **Ship training equipment to the specialist workshop for setup** — This is the gateway task for the precision-skill domain; live practice can't begin until this is done, but knowledge prep can continue.\n\n- **Watch long-range precision training material** — Build the mental model for environmental reading, position fundamentals, and ballistics before equipment is ready.\n\n- Begin the noon caffeine cutoff\n\n- Complete daily core stability\n\n- Enroll in improv\n\n- Obtain the documented supplements\n\n- Log a PVT baseline\n\n**What's missing:** The project has 11 tasks total, but only a few have been surfaced with full details.\n\nIf you want to batch content production today or this week, I'd recommend starting with those overdue tasks and the week-one launch items that haven't been started yet."
+		},
+		{
+			"scenarioId": "a0-c12-email-capability-gap",
+			"scenarioClass": "unsupported_capability",
+			"expectedRoute": "capability_gap",
+			"expectedReasonCode": "unsupported_capability",
+			"runIndex": 1,
+			"requestStartedAt": "2026-07-24T22:22:52.916Z",
+			"timing": {
+				"requestStartedAt": "2026-07-24T22:22:52.916Z",
+				"responseHeadersMs": 241.253958000103,
+				"firstSseEventMs": 241.3536660000682,
+				"ttftMs": 4471.9127910002135,
+				"terminalEventMs": 24226.264708000002,
+				"totalDurationMs": 24622.777625000104
+			},
+			"usage": {
+				"requestCount": 3,
+				"promptTokens": 39886,
+				"completionTokens": 679,
+				"totalTokens": 40565,
+				"totalCostUsd": 0.00319126,
+				"models": ["deepseek/deepseek-v4-flash"],
+				"providers": ["deepinfra"],
+				"profiles": ["balanced"],
+				"operations": ["agentic_chat_v2_stream"]
+			},
+			"completed": true,
+			"finishedReason": "stop",
+			"errors": [],
+			"toolCalls": ["tool_search", "libri_search_capabilities", "tool_search"],
+			"acceptance": [
+				{
+					"validatorId": "route.reports_gap",
+					"required": true,
+					"passed": true,
+					"detail": "reported the capability gap"
+				},
+				{
+					"validatorId": "answer.excludes_all",
+					"required": true,
+					"passed": true,
+					"detail": "excluded all 2 terms"
+				}
+			],
+			"allRequiredChecksPassed": true,
+			"assistantText": "Let me check what tools are available for accessing your email inbox.\n\nI'm afraid I don't have the ability to check your email inbox directly — BuildOS doesn't currently have a connected email/inbox reader tool available in my tool surface.\n\nHere's what I **can** tell you about Project Alpha in this context:\n\nThe project you're in — **AE2E · Phase A a0-c12-email-capability-gap-1** (fixture alias: **Project Alpha**) — is a response-speed training program, not a traditional project with email correspondence. Its focus is on improving measurable response speed across three layers: **communication**, **precision skills**, and **reaction time**.\n\nThat said, the \"email-capability-gap\" in the project name and the preloaded **Cold Email Deliverability Readiness** skill suggest there may be a cold email outreach angle to this phase. If you'd like, I can:\n\n1. **Search within the project** for any documents or tasks related to email setup, sending domains, or inbox readiness.\n2. **Look into your contacts** to see if there are any relevant email contacts stored.\n3. **Load the full cold email deliverability playbook** if you're trying to assess sender readiness for an outbound campaign.\n\nWhich direction would be most useful?"
+		}
+	],
+	"summary": {
+		"overall": {
+			"runCount": 12,
+			"completedCount": 12,
+			"cleanSuccessCount": 11,
+			"errorRunCount": 1,
+			"ttftSampleCount": 12,
+			"ttftP50Ms": 8860.336375,
+			"ttftP95Ms": 12461.108125000028,
+			"totalDurationP50Ms": 49999.67320800001,
+			"totalDurationP95Ms": 148868.782,
+			"costMeanUsd": 0.005232,
+			"costP50Usd": 0.005475959999999999,
+			"costP95Usd": 0.00860374,
+			"totalCostUsd": 0.062782,
+			"acceptancePassCount": 5,
+			"acceptancePassRate": 0.416667
+		},
+		"byClass": {
+			"simple_read": {
+				"runCount": 6,
+				"completedCount": 6,
+				"cleanSuccessCount": 6,
+				"errorRunCount": 0,
+				"ttftSampleCount": 6,
+				"ttftP50Ms": 8860.336375,
+				"ttftP95Ms": 9848.823499999984,
+				"totalDurationP50Ms": 49999.67320800001,
+				"totalDurationP95Ms": 105803.39770899998,
+				"costMeanUsd": 0.00474,
+				"costP50Usd": 0.0039856,
+				"costP95Usd": 0.00650034,
+				"totalCostUsd": 0.028443,
+				"acceptancePassCount": 4,
+				"acceptancePassRate": 0.666667
+			},
+			"status_summary": {
+				"runCount": 1,
+				"completedCount": 1,
+				"cleanSuccessCount": 1,
+				"errorRunCount": 0,
+				"ttftSampleCount": 1,
+				"ttftP50Ms": 7972.658832999994,
+				"ttftP95Ms": 7972.658832999994,
+				"totalDurationP50Ms": 39464.445999999996,
+				"totalDurationP95Ms": 39464.445999999996,
+				"costMeanUsd": 0.003193,
+				"costP50Usd": 0.0031929399999999996,
+				"costP95Usd": 0.0031929399999999996,
+				"totalCostUsd": 0.003193,
+				"acceptancePassCount": 0,
+				"acceptancePassRate": 0
+			},
+			"single_source_lookup": {
+				"runCount": 1,
+				"completedCount": 1,
+				"cleanSuccessCount": 1,
+				"errorRunCount": 0,
+				"ttftSampleCount": 1,
+				"ttftP50Ms": 12461.108125000028,
+				"ttftP95Ms": 12461.108125000028,
+				"totalDurationP50Ms": 96662.32033299998,
+				"totalDurationP95Ms": 96662.32033299998,
+				"costMeanUsd": 0.008604,
+				"costP50Usd": 0.00860374,
+				"costP95Usd": 0.00860374,
+				"totalCostUsd": 0.008604,
+				"acceptancePassCount": 0,
+				"acceptancePassRate": 0
+			},
+			"multi_source_research": {
+				"runCount": 1,
+				"completedCount": 1,
+				"cleanSuccessCount": 0,
+				"errorRunCount": 1,
+				"ttftSampleCount": 1,
+				"ttftP50Ms": 9481.419666999951,
+				"ttftP95Ms": 9481.419666999951,
+				"totalDurationP50Ms": 148868.782,
+				"totalDurationP95Ms": 148868.782,
+				"costMeanUsd": 0.007828,
+				"costP50Usd": 0.00782778,
+				"costP95Usd": 0.00782778,
+				"totalCostUsd": 0.007828,
+				"acceptancePassCount": 0,
+				"acceptancePassRate": 0
+			},
+			"context_research_recommendation": {
+				"runCount": 1,
+				"completedCount": 1,
+				"cleanSuccessCount": 1,
+				"errorRunCount": 0,
+				"ttftSampleCount": 1,
+				"ttftP50Ms": 10026.48333399999,
+				"ttftP95Ms": 10026.48333399999,
+				"totalDurationP50Ms": 53501.11604200001,
+				"totalDurationP95Ms": 53501.11604200001,
+				"costMeanUsd": 0.006047,
+				"costP50Usd": 0.006047359999999999,
+				"costP95Usd": 0.006047359999999999,
+				"totalCostUsd": 0.006047,
+				"acceptancePassCount": 0,
+				"acceptancePassRate": 0
+			},
+			"ambiguous": {
+				"runCount": 1,
+				"completedCount": 1,
+				"cleanSuccessCount": 1,
+				"errorRunCount": 0,
+				"ttftSampleCount": 1,
+				"ttftP50Ms": 5485.160249999957,
+				"ttftP95Ms": 5485.160249999957,
+				"totalDurationP50Ms": 43623.12716699997,
+				"totalDurationP95Ms": 43623.12716699997,
+				"costMeanUsd": 0.005476,
+				"costP50Usd": 0.005475959999999999,
+				"costP95Usd": 0.005475959999999999,
+				"totalCostUsd": 0.005476,
+				"acceptancePassCount": 0,
+				"acceptancePassRate": 0
+			},
+			"unsupported_capability": {
+				"runCount": 1,
+				"completedCount": 1,
+				"cleanSuccessCount": 1,
+				"errorRunCount": 0,
+				"ttftSampleCount": 1,
+				"ttftP50Ms": 4471.9127910002135,
+				"ttftP95Ms": 4471.9127910002135,
+				"totalDurationP50Ms": 24622.777625000104,
+				"totalDurationP95Ms": 24622.777625000104,
+				"costMeanUsd": 0.003191,
+				"costP50Usd": 0.00319126,
+				"costP95Usd": 0.00319126,
+				"totalCostUsd": 0.003191,
+				"acceptancePassCount": 1,
+				"acceptancePassRate": 1
+			}
+		},
+		"byScenario": {
+			"a0-c01-in-sync-explanation": {
+				"runCount": 3,
+				"completedCount": 3,
+				"cleanSuccessCount": 3,
+				"errorRunCount": 0,
+				"ttftSampleCount": 3,
+				"ttftP50Ms": 8860.336375,
+				"ttftP95Ms": 9848.823499999984,
+				"totalDurationP50Ms": 34839.77995899999,
+				"totalDurationP95Ms": 49999.67320800001,
+				"costMeanUsd": 0.004093,
+				"costP50Usd": 0.0039856,
+				"costP95Usd": 0.0057849699999999995,
+				"totalCostUsd": 0.012279,
+				"acceptancePassCount": 2,
+				"acceptancePassRate": 0.666667
+			},
+			"a0-c02-next-actions": {
+				"runCount": 3,
+				"completedCount": 3,
+				"cleanSuccessCount": 3,
+				"errorRunCount": 0,
+				"ttftSampleCount": 3,
+				"ttftP50Ms": 9006.466249999998,
+				"ttftP95Ms": 9437.661833999999,
+				"totalDurationP50Ms": 72932.90779100003,
+				"totalDurationP95Ms": 105803.39770899998,
+				"costMeanUsd": 0.005388,
+				"costP50Usd": 0.0061449799999999995,
+				"costP95Usd": 0.00650034,
+				"totalCostUsd": 0.016164,
+				"acceptancePassCount": 2,
+				"acceptancePassRate": 0.666667
+			},
+			"a0-c04-five-bullet-status": {
+				"runCount": 1,
+				"completedCount": 1,
+				"cleanSuccessCount": 1,
+				"errorRunCount": 0,
+				"ttftSampleCount": 1,
+				"ttftP50Ms": 7972.658832999994,
+				"ttftP95Ms": 7972.658832999994,
+				"totalDurationP50Ms": 39464.445999999996,
+				"totalDurationP95Ms": 39464.445999999996,
+				"costMeanUsd": 0.003193,
+				"costP50Usd": 0.0031929399999999996,
+				"costP95Usd": 0.0031929399999999996,
+				"totalCostUsd": 0.003193,
+				"acceptancePassCount": 0,
+				"acceptancePassRate": 0
+			},
+			"a0-c06-single-source-article": {
+				"runCount": 1,
+				"completedCount": 1,
+				"cleanSuccessCount": 1,
+				"errorRunCount": 0,
+				"ttftSampleCount": 1,
+				"ttftP50Ms": 12461.108125000028,
+				"ttftP95Ms": 12461.108125000028,
+				"totalDurationP50Ms": 96662.32033299998,
+				"totalDurationP95Ms": 96662.32033299998,
+				"costMeanUsd": 0.008604,
+				"costP50Usd": 0.00860374,
+				"costP95Usd": 0.00860374,
+				"totalCostUsd": 0.008604,
+				"acceptancePassCount": 0,
+				"acceptancePassRate": 0
+			},
+			"a0-c07-campaign-workflow-research": {
+				"runCount": 1,
+				"completedCount": 1,
+				"cleanSuccessCount": 0,
+				"errorRunCount": 1,
+				"ttftSampleCount": 1,
+				"ttftP50Ms": 9481.419666999951,
+				"ttftP95Ms": 9481.419666999951,
+				"totalDurationP50Ms": 148868.782,
+				"totalDurationP95Ms": 148868.782,
+				"costMeanUsd": 0.007828,
+				"costP50Usd": 0.00782778,
+				"costP95Usd": 0.00782778,
+				"totalCostUsd": 0.007828,
+				"acceptancePassCount": 0,
+				"acceptancePassRate": 0
+			},
+			"a0-c08-context-app-recommendation": {
+				"runCount": 1,
+				"completedCount": 1,
+				"cleanSuccessCount": 1,
+				"errorRunCount": 0,
+				"ttftSampleCount": 1,
+				"ttftP50Ms": 10026.48333399999,
+				"ttftP95Ms": 10026.48333399999,
+				"totalDurationP50Ms": 53501.11604200001,
+				"totalDurationP95Ms": 53501.11604200001,
+				"costMeanUsd": 0.006047,
+				"costP50Usd": 0.006047359999999999,
+				"costP95Usd": 0.006047359999999999,
+				"totalCostUsd": 0.006047,
+				"acceptancePassCount": 0,
+				"acceptancePassRate": 0
+			},
+			"a0-c09-missing-content-scope": {
+				"runCount": 1,
+				"completedCount": 1,
+				"cleanSuccessCount": 1,
+				"errorRunCount": 0,
+				"ttftSampleCount": 1,
+				"ttftP50Ms": 5485.160249999957,
+				"ttftP95Ms": 5485.160249999957,
+				"totalDurationP50Ms": 43623.12716699997,
+				"totalDurationP95Ms": 43623.12716699997,
+				"costMeanUsd": 0.005476,
+				"costP50Usd": 0.005475959999999999,
+				"costP95Usd": 0.005475959999999999,
+				"totalCostUsd": 0.005476,
+				"acceptancePassCount": 0,
+				"acceptancePassRate": 0
+			},
+			"a0-c12-email-capability-gap": {
+				"runCount": 1,
+				"completedCount": 1,
+				"cleanSuccessCount": 1,
+				"errorRunCount": 0,
+				"ttftSampleCount": 1,
+				"ttftP50Ms": 4471.9127910002135,
+				"ttftP95Ms": 4471.9127910002135,
+				"totalDurationP50Ms": 24622.777625000104,
+				"totalDurationP95Ms": 24622.777625000104,
+				"costMeanUsd": 0.003191,
+				"costP50Usd": 0.00319126,
+				"costP95Usd": 0.00319126,
+				"totalCostUsd": 0.003191,
+				"acceptancePassCount": 1,
+				"acceptancePassRate": 1
+			}
+		}
+	}
+}

@@ -130,8 +130,8 @@
 	<button
 		type="button"
 		class="inline-flex items-center border font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:bg-accent/5 hover:text-accent pressable {inline
-			? 'h-4 gap-0.5 rounded-full border-accent/20 bg-background/35 px-1.5 text-[0.6rem] leading-none tracking-normal'
-			: 'gap-1 rounded-md border-border/60 bg-muted/50 px-1.5 py-0.5 text-[0.6rem] uppercase tracking-[0.1em]'}"
+			? 'h-4 gap-0.5 rounded-full border-accent/20 bg-background/35 px-1.5 text-2xs leading-none tracking-normal'
+			: 'gap-1 rounded-md border-border/60 bg-muted/50 px-1.5 py-0.5 text-2xs uppercase tracking-[0.1em]'}"
 		onclick={toggleExpanded}
 		aria-expanded={isExpanded}
 		aria-label={isExpanded ? 'Collapse voice notes' : 'Expand voice notes'}
@@ -158,20 +158,20 @@
 {#snippet expandedPanel()}
 	<!-- Controls row: count on left, play all on right -->
 	<div class="flex items-center justify-between gap-2">
-		<span class="text-[0.6rem] font-medium tabular-nums text-muted-foreground">
+		<span class="text-2xs font-medium tabular-nums text-muted-foreground">
 			{voiceNotes.length} note{voiceNotes.length !== 1 ? 's' : ''} · {formatDuration(
 				totalDuration
 			)}
 		</span>
 		<div class="flex items-center gap-1.5">
 			{#if isPlayingAll && playAllIndex !== null}
-				<span class="text-[0.55rem] tabular-nums text-accent">
+				<span class="text-2xs tabular-nums text-accent">
 					{playAllIndex + 1}/{voiceNotes.length}
 				</span>
 			{/if}
 			<button
 				type="button"
-				class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-[0.6rem] font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:bg-accent/5 pressable disabled:opacity-50"
+				class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-2xs font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:bg-accent/5 pressable disabled:opacity-50"
 				disabled={voiceNotes.length === 0}
 				onclick={handlePlayAll}
 			>
@@ -188,7 +188,7 @@
 
 	<!-- Voice notes list (ultra-compact, delete integrated in player) -->
 	{#if voiceNotes.length === 0}
-		<p class="mt-1.5 text-[0.65rem] italic text-muted-foreground">Voice notes uploading...</p>
+		<p class="mt-1.5 text-2xs italic text-muted-foreground">Voice notes uploading...</p>
 	{:else}
 		<div class="mt-1.5 space-y-1">
 			{#each voiceNotes as voiceNote, index (voiceNote.id)}
@@ -264,14 +264,14 @@
 					<div>
 						<span class="font-semibold text-foreground">Transcript:</span>
 						<p
-							class="mt-0.5 rounded-md border border-border bg-muted/50 p-1.5 text-[0.65rem] text-foreground line-clamp-3"
+							class="mt-0.5 rounded-md border border-border bg-muted/50 p-1.5 text-2xs text-foreground line-clamp-3"
 						>
 							{deleteTarget.transcript}
 						</p>
 					</div>
 				{/if}
 				{#if deleteError}
-					<p class="text-[0.65rem] text-destructive">{deleteError}</p>
+					<p class="text-2xs text-destructive">{deleteError}</p>
 				{/if}
 			</div>
 		{/if}

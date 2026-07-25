@@ -56,7 +56,7 @@
 						<Icon class="w-3.5 h-3.5" />
 						<span>{option.label}</span>
 						<span
-							class="hidden sm:inline text-[0.65rem] px-1.5 py-0.5 rounded-full
+							class="hidden sm:inline text-2xs px-1.5 py-0.5 rounded-full
 							{graphLibrary === option.value
 								? 'bg-accent-foreground/20 text-accent-foreground'
 								: 'bg-muted text-muted-foreground'}"

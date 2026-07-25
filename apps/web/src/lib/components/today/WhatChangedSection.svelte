@@ -125,11 +125,11 @@
 			aria-expanded={!collapsed}
 		>
 			<h2
-				class="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground"
+				class="text-2xs sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground"
 			>
 				What changed
 			</h2>
-			<span class="text-[10px] sm:text-xs text-muted-foreground/70">
+			<span class="text-2xs sm:text-xs text-muted-foreground/70">
 				{feed.entries.length}
 				{feed.entries.length === 1 ? 'update' : 'updates'} · {sinceLabel}
 			</span>
@@ -155,9 +155,7 @@
 							>
 								{group.projectName}
 							</a>
-							<span
-								class="flex-shrink-0 text-[10px] sm:text-xs text-muted-foreground"
-							>
+							<span class="flex-shrink-0 text-2xs sm:text-xs text-muted-foreground">
 								{group.entries.length}
 								{group.entries.length === 1 ? 'change' : 'changes'}
 							</span>
@@ -186,21 +184,21 @@
 										<a
 											{href}
 											onclick={() => trackEntityOpen(entry)}
-											class="min-w-0 truncate text-[11px] sm:text-xs text-foreground hover:text-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+											class="min-w-0 truncate text-2xs sm:text-xs text-foreground hover:text-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
 											title={entry.entity_name}
 										>
 											{entry.entity_name}
 										</a>
 									{:else}
 										<span
-											class="min-w-0 truncate text-[11px] sm:text-xs text-foreground"
+											class="min-w-0 truncate text-2xs sm:text-xs text-foreground"
 											title={entry.entity_name}
 										>
 											{entry.entity_name}
 										</span>
 									{/if}
 									<span
-										class="flex-shrink-0 text-[10px] sm:text-[11px] text-muted-foreground"
+										class="flex-shrink-0 text-2xs text-muted-foreground"
 									>
 										{entityLabel(entry)}
 										{#if entry.occurrences > 1}
@@ -208,7 +206,7 @@
 										{/if}
 									</span>
 									<span
-										class="ml-auto flex min-w-0 items-center gap-1 text-[10px] sm:text-[11px] text-muted-foreground"
+										class="ml-auto flex min-w-0 items-center gap-1 text-2xs text-muted-foreground"
 									>
 										{#if entry.actor_kind === 'agent' || entry.actor_kind === 'external_agent'}
 											<Bot class="h-3 w-3 flex-shrink-0 text-accent/80" />
@@ -241,7 +239,7 @@
 						{#if group.entries.length > VISIBLE_PER_PROJECT}
 							<button
 								onclick={() => toggleProject(group.projectId)}
-								class="mt-1.5 sm:mt-2 text-[10px] sm:text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+								class="mt-1.5 sm:mt-2 text-2xs sm:text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
 							>
 								{isExpanded
 									? 'Show less'
@@ -252,7 +250,7 @@
 				{/each}
 			</div>
 			{#if feed.truncated}
-				<p class="mt-1.5 text-[10px] sm:text-xs text-muted-foreground/70">
+				<p class="mt-1.5 text-2xs sm:text-xs text-muted-foreground/70">
 					Showing the most recent changes — older ones in this window were cut off.
 				</p>
 			{/if}

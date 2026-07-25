@@ -23,7 +23,7 @@
 	</div>
 
 	{#if data.metadata?.typeKey}
-		<div class="mt-1 text-[10px] text-warning/70 truncate">
+		<div class="mt-1 text-2xs text-warning/70 truncate">
 			{data.metadata.typeKey}
 		</div>
 	{/if}

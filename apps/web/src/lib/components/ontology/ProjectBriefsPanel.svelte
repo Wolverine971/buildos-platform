@@ -188,7 +188,7 @@
 			</div>
 			<div class="min-w-0">
 				<p class="text-xs sm:text-sm font-semibold text-foreground">Daily Briefs</p>
-				<p class="text-[10px] sm:text-xs text-muted-foreground">
+				<p class="text-2xs sm:text-xs text-muted-foreground">
 					{#if hasLoaded}
 						{total} {total === 1 ? 'brief' : 'briefs'}
 					{:else}
@@ -226,9 +226,7 @@
 						<Sparkles class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
 					</div>
 					<p class="text-xs sm:text-sm text-muted-foreground">No daily briefs yet</p>
-					<p
-						class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
-					>
+					<p class="text-2xs sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block">
 						Briefs are generated automatically
 					</p>
 				</div>
@@ -250,14 +248,14 @@
 										{formatBriefDate(brief.brief_date)}
 									</span>
 									<span
-										class="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline"
+										class="text-2xs sm:text-xs text-muted-foreground hidden sm:inline"
 									>
 										{formatRelativeDate(brief.brief_date)}
 									</span>
 								</div>
 								<!-- Preview as markdown (limited to 2 lines) -->
 								<div
-									class="text-[10px] sm:text-xs text-muted-foreground line-clamp-2 prose prose-xs prose-neutral dark:prose-invert max-w-none [&_*]:!text-muted-foreground [&_*]:!m-0 [&_*]:!p-0 [&_p]:!leading-snug hidden sm:block"
+									class="text-2xs sm:text-xs text-muted-foreground line-clamp-2 prose prose-xs prose-neutral dark:prose-invert max-w-none [&_*]:!text-muted-foreground [&_*]:!m-0 [&_*]:!p-0 [&_p]:!leading-snug hidden sm:block"
 								>
 									<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 									{@html renderMarkdown(
@@ -279,7 +277,7 @@
 						<button
 							onclick={handleLoadMore}
 							disabled={isLoadingMore}
-							class="w-full text-[10px] sm:text-xs text-muted-foreground hover:text-accent py-1.5 sm:py-2 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 sm:gap-2 rounded-md hover:bg-accent/5 pressable"
+							class="w-full text-2xs sm:text-xs text-muted-foreground hover:text-accent py-1.5 sm:py-2 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 sm:gap-2 rounded-md hover:bg-accent/5 pressable"
 						>
 							{#if isLoadingMore}
 								<LoaderCircle class="w-3 h-3 animate-spin" />

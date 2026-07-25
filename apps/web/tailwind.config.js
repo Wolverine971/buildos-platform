@@ -3,6 +3,7 @@
 
 import forms from '@tailwindcss/forms';
 import typography from '@tailwindcss/typography';
+import { inkprintAnimation, inkprintKeyframes } from './inkprint-motion.js';
 
 /**
  * Modern color helper: uses Tailwind's <alpha-value> placeholder
@@ -109,8 +110,7 @@ export default {
 			// ============================================
 			animation: {
 				// Core ink animations
-				'ink-in': 'inkIn 180ms cubic-bezier(0.4, 0, 0.2, 1)',
-				'ink-out': 'inkOut 120ms cubic-bezier(0.4, 0, 0.2, 1)',
+				...inkprintAnimation,
 
 				// Utility animations
 				'fade-in': 'fadeIn 200ms ease-out',
@@ -122,14 +122,7 @@ export default {
 
 			keyframes: {
 				// Ink set motion (quick settle, minimal bounce)
-				inkIn: {
-					'0%': { opacity: '0', transform: 'translateY(4px)' },
-					'100%': { opacity: '1', transform: 'translateY(0)' }
-				},
-				inkOut: {
-					'0%': { opacity: '1', transform: 'translateY(0)' },
-					'100%': { opacity: '0', transform: 'translateY(-4px)' }
-				},
+				...inkprintKeyframes,
 				fadeIn: {
 					'0%': { opacity: '0' },
 					'100%': { opacity: '1' }

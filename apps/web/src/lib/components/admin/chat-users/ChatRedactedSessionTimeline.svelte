@@ -105,7 +105,7 @@
 						</p>
 					</div>
 				</div>
-				<div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+				<div class="mt-3 flex flex-wrap gap-2 text-2xs">
 					<span
 						class="rounded border border-border bg-muted px-2 py-0.5 text-muted-foreground"
 						>Content hidden</span
@@ -143,7 +143,7 @@
 									</p>
 								</div>
 								<span
-									class={`rounded border px-2 py-0.5 text-[11px] ${
+									class={`rounded border px-2 py-0.5 text-2xs ${
 										turn.error_summaries.length > 0
 											? 'border-destructive/30 bg-destructive/10 text-destructive'
 											: 'border-success/30 bg-success/10 text-success'
@@ -166,7 +166,7 @@
 								<span>{formatMs(turn.duration_ms)} duration</span>
 							</div>
 							{#if turn.first_lane || turn.first_skill_path || turn.first_canonical_op || turn.cache_source || turn.prepared_prompt_hit !== null}
-								<div class="mt-3 flex flex-wrap gap-1 text-[11px]">
+								<div class="mt-3 flex flex-wrap gap-1 text-2xs">
 									{#if turn.first_lane}
 										<span
 											class="rounded border border-border bg-muted px-2 py-0.5 text-muted-foreground"
@@ -229,7 +229,7 @@
 													{href}
 													target="_blank"
 													rel="noopener noreferrer"
-													class="inline-flex max-w-[16rem] items-center gap-1 rounded border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground hover:border-accent/50 hover:text-accent"
+													class="inline-flex max-w-[16rem] items-center gap-1 rounded border border-border bg-muted px-2 py-0.5 text-2xs text-muted-foreground hover:border-accent/50 hover:text-accent"
 												>
 													<span class="truncate">
 														{change.action}
@@ -240,7 +240,7 @@
 												</a>
 											{:else}
 												<span
-													class="rounded border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+													class="rounded border border-border bg-muted px-2 py-0.5 text-2xs text-muted-foreground"
 													>{change.action}
 													{change.entity_type}
 													{change.entity_title ?? change.entity_id}</span

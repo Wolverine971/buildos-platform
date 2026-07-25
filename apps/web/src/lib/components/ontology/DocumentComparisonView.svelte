@@ -393,31 +393,31 @@
 							: `Version ${fromVersionNumber}`}
 					</p>
 					{#if fromVersion}
-						<p class="text-[10px] text-muted-foreground">
+						<p class="text-2xs text-muted-foreground">
 							{fromVersion.created_by_name || 'Unknown'} ·
 							{formatDate(fromVersion.window?.ended_at || fromVersion.created_at)}
 						</p>
 						<div class="flex items-center gap-1.5 mt-0.5">
 							{#if formatWindowLabel(fromVersion.window)}
-								<span class="text-[10px] text-muted-foreground/50"
+								<span class="text-2xs text-muted-foreground/50"
 									>{formatWindowLabel(fromVersion.window)}</span
 								>
 							{/if}
 							{#if fromVersion.is_merged && fromVersion.change_count > 1}
-								<span class="text-[10px] px-1 py-0.5 rounded bg-info/10 text-info">
+								<span class="text-2xs px-1 py-0.5 rounded bg-info/10 text-info">
 									{fromVersion.change_count} edits
 								</span>
 							{/if}
 							{#if getSourceLabel(fromVersion.change_source)}
 								<span
-									class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground/70"
+									class="text-2xs px-1 py-0.5 rounded bg-muted text-muted-foreground/70"
 								>
 									{getSourceLabel(fromVersion.change_source)}
 								</span>
 							{/if}
 						</div>
 					{:else if fromVersionNumber === null}
-						<p class="text-[10px] text-muted-foreground/50">No previous version</p>
+						<p class="text-2xs text-muted-foreground/50">No previous version</p>
 					{/if}
 				</div>
 
@@ -425,29 +425,29 @@
 				<div class="px-3 py-2 rounded-lg bg-success/10 border border-success/30">
 					{#if toVersionNumber === 'current'}
 						<p class="text-xs font-medium text-success mb-0.5">Current document</p>
-						<p class="text-[10px] text-muted-foreground/50">Live editor state</p>
+						<p class="text-2xs text-muted-foreground/50">Live editor state</p>
 					{:else if toVersion}
 						<p class="text-xs font-medium text-success mb-0.5">
 							Version {toVersion.number}
 						</p>
-						<p class="text-[10px] text-muted-foreground">
+						<p class="text-2xs text-muted-foreground">
 							{toVersion.created_by_name || 'Unknown'} ·
 							{formatDate(toVersion.window?.ended_at || toVersion.created_at)}
 						</p>
 						<div class="flex items-center gap-1.5 mt-0.5">
 							{#if formatWindowLabel(toVersion.window)}
-								<span class="text-[10px] text-muted-foreground/50"
+								<span class="text-2xs text-muted-foreground/50"
 									>{formatWindowLabel(toVersion.window)}</span
 								>
 							{/if}
 							{#if toVersion.is_merged && toVersion.change_count > 1}
-								<span class="text-[10px] px-1 py-0.5 rounded bg-info/10 text-info">
+								<span class="text-2xs px-1 py-0.5 rounded bg-info/10 text-info">
 									{toVersion.change_count} edits
 								</span>
 							{/if}
 							{#if getSourceLabel(toVersion.change_source)}
 								<span
-									class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground/70"
+									class="text-2xs px-1 py-0.5 rounded bg-muted text-muted-foreground/70"
 								>
 									{getSourceLabel(toVersion.change_source)}
 								</span>
@@ -460,7 +460,7 @@
 			<!-- Summary stats bar -->
 			{#if totalStats.added > 0 || totalStats.removed > 0 || totalStats.modified > 0}
 				<div
-					class="flex items-center gap-3 px-3 py-1.5 mb-3 rounded bg-muted/50 border border-border/50 text-[10px] tabular-nums"
+					class="flex items-center gap-3 px-3 py-1.5 mb-3 rounded bg-muted/50 border border-border/50 text-2xs tabular-nums"
 				>
 					{#if totalStats.added > 0}
 						<span class="text-success">

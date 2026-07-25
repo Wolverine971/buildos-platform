@@ -170,7 +170,7 @@
 					>
 						Make Task Recurring
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
+					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5 truncate">
 						{task?.title || 'Create recurring schedule'}
 					</p>
 				</div>

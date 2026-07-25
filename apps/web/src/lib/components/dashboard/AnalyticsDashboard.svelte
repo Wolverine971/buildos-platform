@@ -1012,7 +1012,7 @@
 												{invite.project_name}
 											</p>
 											<p
-												class="mt-0.5 text-[11px] text-muted-foreground truncate"
+												class="mt-0.5 text-2xs text-muted-foreground truncate"
 											>
 												Invited by {invite.invited_by_name ||
 													invite.invited_by_email ||
@@ -1020,7 +1020,7 @@
 											</p>
 										</div>
 										<span
-											class="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold text-foreground"
+											class="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-2xs font-semibold text-foreground"
 										>
 											{formatInviteRole(invite.role_key)}
 										</span>
@@ -1029,7 +1029,7 @@
 									<div
 										class="mt-2 flex flex-wrap items-center justify-between gap-2"
 									>
-										<p class="text-[11px] text-muted-foreground">
+										<p class="text-2xs text-muted-foreground">
 											{#if invite.status === 'declined'}
 												Declined · recoverable until {formatInviteDate(
 													invite.recoverable_until
@@ -1207,7 +1207,7 @@
 										</p>
 										{#if project.is_shared}
 											<span
-												class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-accent/15 text-accent border border-accent/20"
+												class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-2xs font-medium bg-accent/15 text-accent border border-accent/20"
 											>
 												<Share2 class="h-2.5 w-2.5" />
 												Shared
@@ -1215,7 +1215,7 @@
 										{/if}
 										{#if !isActiveProjectState(project.state_key)}
 											<span
-												class="shrink-0 text-[10px] font-medium text-muted-foreground"
+												class="shrink-0 text-2xs font-medium text-muted-foreground"
 											>
 												{formatStateLabel(project.state_key)}
 											</span>
@@ -1223,7 +1223,7 @@
 									</div>
 									<div class="flex items-center gap-1 shrink-0">
 										<span
-											class="text-[11px] text-muted-foreground whitespace-nowrap"
+											class="text-2xs text-muted-foreground whitespace-nowrap"
 										>
 											{formatRelativeTime(project.updated_at)}
 										</span>
@@ -1234,7 +1234,7 @@
 								</div>
 								<div class="mt-0.5 flex min-w-0 items-center gap-2 pl-[22px]">
 									<p
-										class="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
+										class="min-w-0 flex-1 truncate text-2xs text-muted-foreground"
 									>
 										{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
 										docs
@@ -1263,7 +1263,7 @@
 								Shared with me
 							</h2>
 							<span
-								class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-accent/15 text-accent border border-accent/20"
+								class="inline-flex items-center px-1.5 py-0.5 rounded-full text-2xs font-medium bg-accent/15 text-accent border border-accent/20"
 							>
 								{sharedNotActive.length}
 							</span>
@@ -1303,14 +1303,14 @@
 											{project.name}
 										</p>
 										<span
-											class="shrink-0 text-[10px] font-medium text-muted-foreground"
+											class="shrink-0 text-2xs font-medium text-muted-foreground"
 										>
 											{formatStateLabel(project.state_key)}
 										</span>
 									</div>
 									<div class="flex items-center gap-1 shrink-0">
 										<span
-											class="text-[11px] text-muted-foreground whitespace-nowrap"
+											class="text-2xs text-muted-foreground whitespace-nowrap"
 										>
 											{formatRelativeTime(project.updated_at)}
 										</span>
@@ -1321,7 +1321,7 @@
 								</div>
 								<div class="mt-0.5 flex min-w-0 items-center gap-2 pl-[22px]">
 									<p
-										class="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
+										class="min-w-0 flex-1 truncate text-2xs text-muted-foreground"
 									>
 										{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
 										docs
@@ -1384,7 +1384,7 @@
 											</p>
 											{#if item.kind === 'task'}
 												<span
-													class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border {getTaskStateBadgeClass(
+													class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-2xs font-medium border {getTaskStateBadgeClass(
 														item.state_key
 													)}"
 												>
@@ -1396,7 +1396,7 @@
 											class="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden"
 										>
 											<span
-												class="text-[11px] font-medium {item.action_label ===
+												class="text-2xs font-medium {item.action_label ===
 												'Created'
 													? 'text-success'
 													: item.action_label === 'Completed'
@@ -1404,20 +1404,20 @@
 														: 'text-muted-foreground'}"
 												>{item.action_label} {item.kind}</span
 											>
-											<span class="text-[11px] text-muted-foreground">·</span>
+											<span class="text-2xs text-muted-foreground">·</span>
 											<span
-												class="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
+												class="min-w-0 flex-1 truncate text-2xs text-muted-foreground"
 												>{item.project_name}</span
 											>
 											{#if item.kind === 'task' && item.due_at}
 												<span
-													class="hidden shrink-0 text-[11px] text-muted-foreground sm:inline"
+													class="hidden shrink-0 text-2xs text-muted-foreground sm:inline"
 													>· due {formatDueDate(item.due_at)}</span
 												>
 											{/if}
 											{#if item.kind === 'goal' && item.target_date}
 												<span
-													class="hidden shrink-0 text-[11px] text-muted-foreground sm:inline"
+													class="hidden shrink-0 text-2xs text-muted-foreground sm:inline"
 													>· target {formatDueDate(
 														item.target_date
 													)}</span
@@ -1426,14 +1426,14 @@
 										</div>
 										{#if item.kind === 'task' && item.due_at}
 											<p
-												class="mt-0.5 text-[11px] text-muted-foreground sm:hidden"
+												class="mt-0.5 text-2xs text-muted-foreground sm:hidden"
 											>
 												Due {formatDueDate(item.due_at)}
 											</p>
 										{/if}
 										{#if item.kind === 'goal' && item.target_date}
 											<p
-												class="mt-0.5 text-[11px] text-muted-foreground sm:hidden"
+												class="mt-0.5 text-2xs text-muted-foreground sm:hidden"
 											>
 												Target {formatDueDate(item.target_date)}
 											</p>
@@ -1442,7 +1442,7 @@
 
 									<div class="flex items-center gap-1 shrink-0">
 										<span
-											class="text-[11px] text-muted-foreground whitespace-nowrap"
+											class="text-2xs text-muted-foreground whitespace-nowrap"
 										>
 											{formatRelativeTime(item.updated_at)}
 										</span>
@@ -1505,7 +1505,7 @@
 													{session.title}
 												</p>
 												<p
-													class="text-[11px] text-muted-foreground truncate mt-0.5"
+													class="text-2xs text-muted-foreground truncate mt-0.5"
 												>
 													{#if session.project_name}
 														{session.project_name}
@@ -1517,7 +1517,7 @@
 										</div>
 										<div class="flex items-center gap-1 shrink-0">
 											<span
-												class="text-[11px] text-muted-foreground whitespace-nowrap"
+												class="text-2xs text-muted-foreground whitespace-nowrap"
 											>
 												{formatRelativeTime(session.last_activity_at)}
 											</span>

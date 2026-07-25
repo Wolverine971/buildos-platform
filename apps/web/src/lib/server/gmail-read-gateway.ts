@@ -8,6 +8,7 @@ import {
 	MAX_GMAIL_READ_CURSOR_PAGE
 } from './gmail-read-cursor';
 import { GmailOAuthError, GmailReadOAuthService } from './gmail-read-oauth.service';
+import { mapWithConcurrency, readJsonBounded } from './gmail-gateway-infrastructure';
 import type {
 	GmailMessageDetail,
 	GmailMessageSearchPayload,
@@ -93,6 +94,22 @@ export class GmailReadGatewayError extends Error {
 		this.name = 'GmailReadGatewayError';
 	}
 }
+
+const GMAIL_READ_JSON_POLICY = {
+	emptyBody: () => null,
+	responseTooLargeError: () =>
+		new GmailReadGatewayError(
+			'provider_response_too_large',
+			'Google returned more Gmail data than BuildOS allows for one request'
+		),
+	invalidJsonError: () =>
+		new GmailReadGatewayError(
+			'provider_error',
+			'Google returned an invalid Gmail response',
+			undefined,
+			'response_json_invalid'
+		)
+};
 
 function uniqueStrings(values: string[]): string[] {
 	return Array.from(new Set(values));
@@ -254,69 +271,6 @@ function parseMessageBody(payload: GmailMessagePart | undefined): {
 	};
 }
 
-async function readJsonBounded(response: Response, maxBytes: number): Promise<unknown> {
-	const contentLength = Number(response.headers.get('content-length'));
-	if (Number.isFinite(contentLength) && contentLength > maxBytes) {
-		throw new GmailReadGatewayError(
-			'provider_response_too_large',
-			'Google returned more Gmail data than BuildOS allows for one request'
-		);
-	}
-
-	if (!response.body) return null;
-	const reader = response.body.getReader();
-	const chunks: Uint8Array[] = [];
-	let received = 0;
-	while (true) {
-		const { done, value } = await reader.read();
-		if (done) break;
-		received += value.byteLength;
-		if (received > maxBytes) {
-			await reader.cancel();
-			throw new GmailReadGatewayError(
-				'provider_response_too_large',
-				'Google returned more Gmail data than BuildOS allows for one request'
-			);
-		}
-		chunks.push(value);
-	}
-
-	const bytes = new Uint8Array(received);
-	let offset = 0;
-	for (const chunk of chunks) {
-		bytes.set(chunk, offset);
-		offset += chunk.byteLength;
-	}
-
-	try {
-		return JSON.parse(new TextDecoder().decode(bytes));
-	} catch {
-		throw new GmailReadGatewayError(
-			'provider_error',
-			'Google returned an invalid Gmail response',
-			undefined,
-			'response_json_invalid'
-		);
-	}
-}
-
-async function mapWithConcurrency<T, R>(
-	items: T[],
-	concurrency: number,
-	mapper: (item: T) => Promise<R>
-): Promise<R[]> {
-	const results = new Array<R>(items.length);
-	let cursor = 0;
-	const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
-		while (cursor < items.length) {
-			const index = cursor++;
-			results[index] = await mapper(items[index]!);
-		}
-	});
-	await Promise.all(workers);
-	return results;
-}
-
 export class GmailReadGateway {
 	private readonly admin: GmailSchemaClient;
 	private readonly oauthService: Pick<GmailReadOAuthService, 'getAuthorizedReadAccessToken'>;
@@ -449,7 +403,7 @@ export class GmailReadGateway {
 					response.status
 				);
 			}
-			return await readJsonBounded(response, maxBytes);
+			return await readJsonBounded(response, maxBytes, GMAIL_READ_JSON_POLICY);
 		} catch (error) {
 			if (error instanceof GmailReadGatewayError) throw error;
 			throw new GmailReadGatewayError(

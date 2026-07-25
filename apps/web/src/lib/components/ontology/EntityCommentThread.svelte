@@ -106,11 +106,7 @@
 				>
 				<span class="text-muted-foreground/80">{formatTimestamp(comment.created_at)}</span>
 				{#if comment.edited_at}
-					<span
-						class="text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground/60"
-					>
-						edited
-					</span>
+					<span class="micro-label/60"> edited </span>
 				{/if}
 			</div>
 			<div class="flex items-center gap-0.5">

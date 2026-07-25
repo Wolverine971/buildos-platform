@@ -313,17 +313,17 @@
 				<h2 class="text-sm font-semibold text-foreground truncate">
 					{user.name || 'User'}
 				</h2>
-				<p class="text-[0.65rem] text-muted-foreground truncate">{user.email}</p>
+				<p class="text-2xs text-muted-foreground truncate">{user.email}</p>
 			</div>
 			<div class="flex items-center gap-1.5 shrink-0">
 				<span
-					class="px-1.5 py-0.5 text-[0.6rem] rounded border {user.onboarding_completed_at
+					class="px-1.5 py-0.5 text-2xs rounded border {user.onboarding_completed_at
 						? 'bg-success/10 text-success border-success/30'
 						: 'bg-warning/10 text-warning border-warning/30'}"
 				>
 					{user.onboarding_completed_at ? 'Onboarded' : 'Pending'}
 				</span>
-				<span class="text-[0.6rem] text-muted-foreground">
+				<span class="text-2xs text-muted-foreground">
 					{formatLastVisit(user.last_visit)}
 				</span>
 			</div>
@@ -337,55 +337,49 @@
 					<p class="text-sm font-bold text-foreground">
 						{activityStats.total_projects || 0}
 					</p>
-					<p class="text-[0.55rem] text-muted-foreground uppercase tracking-wide">Proj</p>
+					<p class="text-2xs text-muted-foreground uppercase tracking-wide">Proj</p>
 				</div>
 				<div class="bg-card rounded border border-border p-1.5 text-center shadow-ink">
 					<p class="text-sm font-bold text-foreground">
 						{activityStats.total_tasks || 0}
 					</p>
-					<p class="text-[0.55rem] text-muted-foreground uppercase tracking-wide">
-						Tasks
-					</p>
+					<p class="text-2xs text-muted-foreground uppercase tracking-wide">Tasks</p>
 				</div>
 				<div class="bg-card rounded border border-border p-1.5 text-center shadow-ink">
 					<p class="text-sm font-bold text-info">
 						{activityStats.open_tasks || 0}
 					</p>
-					<p class="text-[0.55rem] text-muted-foreground uppercase tracking-wide">Open</p>
+					<p class="text-2xs text-muted-foreground uppercase tracking-wide">Open</p>
 				</div>
 				<div class="bg-card rounded border border-border p-1.5 text-center shadow-ink">
 					<p class="text-sm font-bold text-success">
 						{activityStats.completed_tasks || 0}
 					</p>
-					<p class="text-[0.55rem] text-muted-foreground uppercase tracking-wide">Done</p>
+					<p class="text-2xs text-muted-foreground uppercase tracking-wide">Done</p>
 				</div>
 				<div class="bg-card rounded border border-border p-1.5 text-center shadow-ink">
 					<p class="text-sm font-bold text-foreground">
 						{activityStats.total_documents || activityStats.total_notes || 0}
 					</p>
-					<p class="text-[0.55rem] text-muted-foreground uppercase tracking-wide">Docs</p>
+					<p class="text-2xs text-muted-foreground uppercase tracking-wide">Docs</p>
 				</div>
 				<div class="bg-card rounded border border-border p-1.5 text-center shadow-ink">
 					<p class="text-sm font-bold text-foreground">
 						{activityStats.total_chat_sessions || 0}
 					</p>
-					<p class="text-[0.55rem] text-muted-foreground uppercase tracking-wide">
-						Chats
-					</p>
+					<p class="text-2xs text-muted-foreground uppercase tracking-wide">Chats</p>
 				</div>
 				<div class="bg-card rounded border border-border p-1.5 text-center shadow-ink">
 					<p class="text-sm font-bold text-foreground">
 						{activityStats.total_chat_messages || 0}
 					</p>
-					<p class="text-[0.55rem] text-muted-foreground uppercase tracking-wide">Msgs</p>
+					<p class="text-2xs text-muted-foreground uppercase tracking-wide">Msgs</p>
 				</div>
 				<div class="bg-card rounded border border-border p-1.5 text-center shadow-ink">
 					<p class="text-sm font-bold text-destructive">
 						{activityStats.total_errors || 0}
 					</p>
-					<p class="text-[0.55rem] text-muted-foreground uppercase tracking-wide">
-						Errors
-					</p>
+					<p class="text-2xs text-muted-foreground uppercase tracking-wide">Errors</p>
 				</div>
 			</div>
 
@@ -424,18 +418,18 @@
 					class="px-2 py-1.5 border-b border-border bg-muted/30 flex items-center justify-between"
 				>
 					<h3
-						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1"
+						class="text-2xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1"
 					>
 						<FolderOpen class="h-3 w-3 text-accent flex-shrink-0" />
 						Projects
 					</h3>
-					<span class="text-[0.6rem] text-muted-foreground">{projects.length} total</span>
+					<span class="text-2xs text-muted-foreground">{projects.length} total</span>
 				</div>
 
 				<div class="p-2 space-y-2">
 					<div>
 						<h4
-							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1"
+							class="text-2xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1"
 						>
 							<BarChart3 class="h-3 w-3 text-accent flex-shrink-0" />
 							Project Usage
@@ -465,29 +459,27 @@
 													</p>
 													{#if index === 0}
 														<span
-															class="px-1.5 py-0.5 rounded border text-[0.6rem] bg-accent/10 text-accent border-accent/30"
+															class="px-1.5 py-0.5 rounded border text-2xs bg-accent/10 text-accent border-accent/30"
 														>
 															Most recent
 														</span>
 													{/if}
 													<span
-														class="px-1.5 py-0.5 rounded border text-[0.6rem] {getProjectBadgeClass(
+														class="px-1.5 py-0.5 rounded border text-2xs {getProjectBadgeClass(
 															project.status
 														)}"
 													>
 														{humanizeLabel(project.status)}
 													</span>
 													<span
-														class="px-1.5 py-0.5 rounded border text-[0.6rem] bg-muted text-muted-foreground border-border"
+														class="px-1.5 py-0.5 rounded border text-2xs bg-muted text-muted-foreground border-border"
 													>
 														{project.access_type === 'owned'
 															? 'Owned'
 															: 'Shared'}
 													</span>
 												</div>
-												<p
-													class="text-[0.65rem] text-muted-foreground mt-1"
-												>
+												<p class="text-2xs text-muted-foreground mt-1">
 													Last active {formatRelativeDate(
 														project.last_activity_at
 													)}
@@ -526,12 +518,12 @@
 														{metric.value}
 													</div>
 													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+														class="text-2xs uppercase tracking-wide text-muted-foreground"
 													>
 														{metric.label}
 													</div>
 													<div
-														class="truncate text-[0.6rem] text-muted-foreground"
+														class="truncate text-2xs text-muted-foreground"
 													>
 														{metric.detail}
 													</div>
@@ -547,7 +539,7 @@
 											{#if project.description_preview}
 												<div>
 													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+														class="text-2xs uppercase tracking-wide text-muted-foreground"
 													>
 														Project Context
 													</div>
@@ -568,12 +560,12 @@
 															{metric.value}
 														</div>
 														<div
-															class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+															class="text-2xs uppercase tracking-wide text-muted-foreground"
 														>
 															{metric.label}
 														</div>
 														<div
-															class="truncate text-[0.6rem] text-muted-foreground"
+															class="truncate text-2xs text-muted-foreground"
 														>
 															{metric.detail}
 														</div>
@@ -586,7 +578,7 @@
 													class="rounded border border-border bg-card px-2 py-1.5"
 												>
 													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+														class="text-2xs uppercase tracking-wide text-muted-foreground"
 													>
 														Next Step
 													</div>
@@ -600,7 +592,7 @@
 											<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
 												<div class="space-y-2">
 													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+														class="text-2xs uppercase tracking-wide text-muted-foreground"
 													>
 														Recent Tasks
 													</div>
@@ -620,7 +612,7 @@
 																				{task.title}
 																			</p>
 																			<p
-																				class="text-[0.65rem] text-muted-foreground mt-0.5"
+																				class="text-2xs text-muted-foreground mt-0.5"
 																			>
 																				Updated {formatRelativeDate(
 																					task.updated_at ||
@@ -629,7 +621,7 @@
 																			</p>
 																		</div>
 																		<span
-																			class="px-1.5 py-0.5 rounded border text-[0.6rem] shrink-0 {getTaskBadgeClass(
+																			class="px-1.5 py-0.5 rounded border text-2xs shrink-0 {getTaskBadgeClass(
 																				task.state_key
 																			)}"
 																		>
@@ -650,7 +642,7 @@
 
 												<div class="space-y-2">
 													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+														class="text-2xs uppercase tracking-wide text-muted-foreground"
 													>
 														Recent Documents
 													</div>
@@ -673,7 +665,7 @@
 																				{document.title}
 																			</p>
 																			<p
-																				class="text-[0.65rem] text-muted-foreground mt-0.5"
+																				class="text-2xs text-muted-foreground mt-0.5"
 																			>
 																				{humanizeLabel(
 																					document.type_key
@@ -698,7 +690,7 @@
 											<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
 												<div class="space-y-2">
 													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+														class="text-2xs uppercase tracking-wide text-muted-foreground"
 													>
 														Goals
 													</div>
@@ -724,7 +716,7 @@
 																					{goal.name}
 																				</p>
 																				<p
-																					class="mt-0.5 text-[0.65rem] text-muted-foreground"
+																					class="mt-0.5 text-2xs text-muted-foreground"
 																				>
 																					Target {formatDateOnly(
 																						goal.target_date
@@ -733,7 +725,7 @@
 																			</div>
 																		</div>
 																		<span
-																			class="shrink-0 rounded border px-1.5 py-0.5 text-[0.6rem] {getEntityStateBadgeClass(
+																			class="shrink-0 rounded border px-1.5 py-0.5 text-2xs {getEntityStateBadgeClass(
 																				goal.state_key
 																			)}"
 																		>
@@ -754,7 +746,7 @@
 
 												<div class="space-y-2">
 													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+														class="text-2xs uppercase tracking-wide text-muted-foreground"
 													>
 														Plans
 													</div>
@@ -780,7 +772,7 @@
 																					{plan.name}
 																				</p>
 																				<p
-																					class="mt-0.5 text-[0.65rem] text-muted-foreground"
+																					class="mt-0.5 text-2xs text-muted-foreground"
 																				>
 																					{humanizeLabel(
 																						plan.facet_stage ||
@@ -794,7 +786,7 @@
 																			</div>
 																		</div>
 																		<span
-																			class="shrink-0 rounded border px-1.5 py-0.5 text-[0.6rem] {getEntityStateBadgeClass(
+																			class="shrink-0 rounded border px-1.5 py-0.5 text-2xs {getEntityStateBadgeClass(
 																				plan.state_key
 																			)}"
 																		>
@@ -817,7 +809,7 @@
 											<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
 												<div class="space-y-2">
 													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+														class="text-2xs uppercase tracking-wide text-muted-foreground"
 													>
 														Recent BuildOS Chats
 													</div>
@@ -840,7 +832,7 @@
 																					{session.title}
 																				</p>
 																				<span
-																					class="rounded border px-1.5 py-0.5 text-[0.58rem] {getChatSourceClass(
+																					class="rounded border px-1.5 py-0.5 text-2xs {getChatSourceClass(
 																						session.source
 																					)}"
 																				>
@@ -849,7 +841,7 @@
 																				</span>
 																			</div>
 																			<p
-																				class="text-[0.65rem] text-muted-foreground mt-0.5"
+																				class="text-2xs text-muted-foreground mt-0.5"
 																			>
 																				{session.message_count}
 																				messages · {formatRelativeDate(
@@ -860,7 +852,7 @@
 																		{#if session.admin_url}
 																			<a
 																				href={session.admin_url}
-																				class="inline-flex items-center gap-1 text-[0.65rem] text-accent hover:underline shrink-0"
+																				class="inline-flex items-center gap-1 text-2xs text-accent hover:underline shrink-0"
 																			>
 																				Open
 																				<ExternalLink
@@ -881,14 +873,14 @@
 																						class="mb-0.5 flex items-center justify-between gap-2"
 																					>
 																						<span
-																							class="text-[0.58rem] font-medium uppercase tracking-wide text-muted-foreground"
+																							class="text-2xs font-medium uppercase tracking-wide text-muted-foreground"
 																						>
 																							{humanizeLabel(
 																								message.role
 																							)}
 																						</span>
 																						<span
-																							class="shrink-0 text-[0.58rem] text-muted-foreground"
+																							class="shrink-0 text-2xs text-muted-foreground"
 																						>
 																							{formatRelativeDate(
 																								message.created_at
@@ -896,7 +888,7 @@
 																						</span>
 																					</div>
 																					<p
-																						class="line-clamp-2 text-[0.68rem] leading-snug text-foreground"
+																						class="line-clamp-2 text-2xs leading-snug text-foreground"
 																					>
 																						{message.content}
 																					</p>
@@ -905,7 +897,7 @@
 																		</div>
 																	{:else}
 																		<p
-																			class="mt-2 rounded border border-dashed border-border px-2 py-1.5 text-[0.65rem] text-muted-foreground"
+																			class="mt-2 rounded border border-dashed border-border px-2 py-1.5 text-2xs text-muted-foreground"
 																		>
 																			No message rows found
 																			for this chat session.
@@ -923,7 +915,7 @@
 
 												<div class="space-y-2">
 													<div
-														class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+														class="text-2xs uppercase tracking-wide text-muted-foreground"
 													>
 														Recent Activity
 													</div>
@@ -942,7 +934,7 @@
 																		{humanizeLabel(item.action)}
 																	</p>
 																	<p
-																		class="text-[0.65rem] text-muted-foreground mt-0.5"
+																		class="text-2xs text-muted-foreground mt-0.5"
 																	>
 																		{item.object_name} · {formatRelativeDate(
 																			item.created_at
@@ -950,7 +942,7 @@
 																	</p>
 																	{#if item.details}
 																		<p
-																			class="text-[0.65rem] text-muted-foreground mt-0.5 truncate"
+																			class="text-2xs text-muted-foreground mt-0.5 truncate"
 																		>
 																			{item.details}
 																		</p>
@@ -985,12 +977,12 @@
 					class="px-2 py-1.5 border-b border-border bg-muted/30 flex items-center justify-between"
 				>
 					<h3
-						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1"
+						class="text-2xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1"
 					>
 						<MessageSquare class="h-3 w-3 text-accent flex-shrink-0" />
 						BuildOS Chat
 					</h3>
-					<span class="text-[0.6rem] text-muted-foreground">
+					<span class="text-2xs text-muted-foreground">
 						{activityStats.total_chat_sessions || 0} sessions
 					</span>
 				</div>
@@ -1001,9 +993,7 @@
 							<div class="text-sm font-semibold text-foreground">
 								{activityStats.total_chat_sessions || 0}
 							</div>
-							<div
-								class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-							>
+							<div class="text-2xs uppercase tracking-wide text-muted-foreground">
 								Chats
 							</div>
 						</div>
@@ -1011,9 +1001,7 @@
 							<div class="text-sm font-semibold text-foreground">
 								{activityStats.total_chat_messages || 0}
 							</div>
-							<div
-								class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-							>
+							<div class="text-2xs uppercase tracking-wide text-muted-foreground">
 								Messages
 							</div>
 						</div>
@@ -1021,9 +1009,7 @@
 							<div class="text-sm font-semibold text-foreground">
 								{activityStats.total_project_chat_sessions || 0}
 							</div>
-							<div
-								class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-							>
+							<div class="text-2xs uppercase tracking-wide text-muted-foreground">
 								Project Chats
 							</div>
 						</div>
@@ -1033,9 +1019,7 @@
 									? formatRelativeDate(chatSessions[0].last_activity_at)
 									: 'Never'}
 							</div>
-							<div
-								class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-							>
+							<div class="text-2xs uppercase tracking-wide text-muted-foreground">
 								Last Chat
 							</div>
 						</div>
@@ -1054,33 +1038,33 @@
 													{session.title}
 												</p>
 												<span
-													class="px-1.5 py-0.5 rounded border text-[0.6rem] {getChatSourceClass(
+													class="px-1.5 py-0.5 rounded border text-2xs {getChatSourceClass(
 														session.source
 													)}"
 												>
 													{session.source_label || 'Chat'}
 												</span>
 												<span
-													class="px-1.5 py-0.5 rounded border text-[0.6rem] {getSessionStatusClass(
+													class="px-1.5 py-0.5 rounded border text-2xs {getSessionStatusClass(
 														session.status
 													)}"
 												>
 													{humanizeLabel(session.status)}
 												</span>
 												<span
-													class="px-1.5 py-0.5 rounded border text-[0.6rem] bg-muted text-muted-foreground border-border"
+													class="px-1.5 py-0.5 rounded border text-2xs bg-muted text-muted-foreground border-border"
 												>
 													{humanizeLabel(session.context_type)}
 												</span>
 												{#if session.project_name}
 													<span
-														class="px-1.5 py-0.5 rounded border text-[0.6rem] bg-muted text-muted-foreground border-border"
+														class="px-1.5 py-0.5 rounded border text-2xs bg-muted text-muted-foreground border-border"
 													>
 														{session.project_name}
 													</span>
 												{/if}
 											</div>
-											<p class="text-[0.7rem] text-muted-foreground mt-1">
+											<p class="text-2xs text-muted-foreground mt-1">
 												{session.message_count} messages
 												{#if session.tool_call_count}
 													· {session.tool_call_count} tool calls
@@ -1094,7 +1078,7 @@
 										{#if session.admin_url}
 											<a
 												href={session.admin_url}
-												class="inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-[0.7rem] text-foreground hover:bg-muted transition-colors shrink-0"
+												class="inline-flex items-center gap-1 px-2 py-1 rounded border border-border text-2xs text-foreground hover:bg-muted transition-colors shrink-0"
 											>
 												Open session
 												<ExternalLink class="w-3 h-3" />
@@ -1112,18 +1096,18 @@
 														class="mb-1 flex items-center justify-between gap-2"
 													>
 														<span
-															class="text-[0.6rem] font-medium uppercase tracking-wide text-muted-foreground"
+															class="text-2xs font-medium uppercase tracking-wide text-muted-foreground"
 														>
 															{humanizeLabel(message.role)}
 														</span>
 														<span
-															class="shrink-0 text-[0.6rem] text-muted-foreground"
+															class="shrink-0 text-2xs text-muted-foreground"
 														>
 															{formatRelativeDate(message.created_at)}
 														</span>
 													</div>
 													<p
-														class="line-clamp-2 text-[0.72rem] leading-snug text-foreground"
+														class="line-clamp-2 text-xs leading-snug text-foreground"
 													>
 														{message.content}
 													</p>
@@ -1132,7 +1116,7 @@
 										</div>
 									{:else}
 										<div
-											class="mt-2 rounded border border-dashed border-border px-2.5 py-2 text-[0.7rem] text-muted-foreground"
+											class="mt-2 rounded border border-dashed border-border px-2.5 py-2 text-2xs text-muted-foreground"
 										>
 											No message rows found for this chat session.
 										</div>
@@ -1155,12 +1139,12 @@
 					class="px-2 py-1.5 border-b border-border bg-muted/30 flex items-center justify-between"
 				>
 					<h3
-						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1"
+						class="text-2xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1"
 					>
 						<CircleAlert class="h-3 w-3 text-destructive flex-shrink-0" />
 						User Errors
 					</h3>
-					<span class="text-[0.6rem] text-muted-foreground">
+					<span class="text-2xs text-muted-foreground">
 						{errorSummary.total_errors || 0} visible
 					</span>
 				</div>
@@ -1171,9 +1155,7 @@
 							<div class="text-sm font-semibold text-foreground">
 								{errorSummary.total_errors || 0}
 							</div>
-							<div
-								class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-							>
+							<div class="text-2xs uppercase tracking-wide text-muted-foreground">
 								Total
 							</div>
 						</div>
@@ -1181,9 +1163,7 @@
 							<div class="text-sm font-semibold text-destructive">
 								{errorSummary.unresolved_errors || 0}
 							</div>
-							<div
-								class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-							>
+							<div class="text-2xs uppercase tracking-wide text-muted-foreground">
 								Open
 							</div>
 						</div>
@@ -1191,9 +1171,7 @@
 							<div class="text-sm font-semibold text-destructive">
 								{errorSummary.critical_errors || 0}
 							</div>
-							<div
-								class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-							>
+							<div class="text-2xs uppercase tracking-wide text-muted-foreground">
 								Critical
 							</div>
 						</div>
@@ -1201,9 +1179,7 @@
 							<div class="text-sm font-semibold text-foreground">
 								{errorSummary.errors_last_24h || 0}
 							</div>
-							<div
-								class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-							>
+							<div class="text-2xs uppercase tracking-wide text-muted-foreground">
 								Last 24h
 							</div>
 						</div>
@@ -1229,19 +1205,19 @@
 										<div class="min-w-0 flex-1">
 											<div class="flex items-center gap-2 flex-wrap">
 												<span
-													class="px-1.5 py-0.5 rounded border text-[0.6rem] {getErrorSeverityClass(
+													class="px-1.5 py-0.5 rounded border text-2xs {getErrorSeverityClass(
 														error.severity
 													)}"
 												>
 													{humanizeLabel(error.severity)}
 												</span>
 												<span
-													class="px-1.5 py-0.5 rounded border text-[0.6rem] bg-muted text-muted-foreground border-border"
+													class="px-1.5 py-0.5 rounded border text-2xs bg-muted text-muted-foreground border-border"
 												>
 													{humanizeLabel(error.error_type)}
 												</span>
 												<span
-													class="px-1.5 py-0.5 rounded border text-[0.6rem] {error.resolved
+													class="px-1.5 py-0.5 rounded border text-2xs {error.resolved
 														? 'bg-success/10 text-success border-success/30'
 														: 'bg-destructive/10 text-destructive border-destructive/30'}"
 												>
@@ -1251,7 +1227,7 @@
 											<p class="text-sm font-medium text-foreground mt-1">
 												{error.error_message}
 											</p>
-											<p class="text-[0.7rem] text-muted-foreground mt-1">
+											<p class="text-2xs text-muted-foreground mt-1">
 												{error.endpoint ||
 													error.operation_type ||
 													'Unknown source'}
@@ -1260,15 +1236,15 @@
 												{/if}
 											</p>
 											{#if error.resolution_notes}
-												<p class="text-[0.7rem] text-muted-foreground mt-1">
+												<p class="text-2xs text-muted-foreground mt-1">
 													Resolution: {error.resolution_notes}
 												</p>
 											{/if}
-											<p class="text-[0.7rem] text-accent mt-1">
+											<p class="text-2xs text-accent mt-1">
 												Open details
 											</p>
 										</div>
-										<div class="text-[0.7rem] text-muted-foreground shrink-0">
+										<div class="text-2xs text-muted-foreground shrink-0">
 											{formatRelativeDate(error.created_at)}
 										</div>
 									</div>
@@ -1287,7 +1263,7 @@
 
 			<div class="bg-card rounded border border-border p-2 shadow-ink">
 				<h3
-					class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1"
+					class="text-2xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1"
 				>
 					<Activity class="h-3 w-3 text-success flex-shrink-0" />
 					Activity Timeline

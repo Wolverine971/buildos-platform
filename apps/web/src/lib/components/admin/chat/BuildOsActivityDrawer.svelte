@@ -16,7 +16,7 @@
 			<div class="flex flex-wrap items-center justify-between gap-2">
 				<div class="flex min-w-0 items-center gap-2">
 					<span
-						class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-[10px] font-semibold uppercase text-background"
+						class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-2xs font-semibold uppercase text-background"
 					>
 						OS
 					</span>
@@ -29,7 +29,7 @@
 						</div>
 					</div>
 				</div>
-				<div class="flex flex-wrap items-center gap-1.5 text-[11px] font-medium">
+				<div class="flex flex-wrap items-center gap-1.5 text-2xs font-medium">
 					{#if turn.toolCalls.length > 0}
 						<span class="rounded-full bg-muted px-2 py-0.5 text-foreground/80">
 							{formatNumber(turn.toolCalls.length)}
@@ -80,7 +80,7 @@
 			{/if}
 
 			{#if turn.llmCalls.length > 0 || turn.promptSnapshots.length > 0 || turn.operations.length > 0 || turn.evalRuns.length > 0}
-				<div class="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
+				<div class="flex flex-wrap gap-1.5 text-2xs text-muted-foreground">
 					{#if turn.llmCalls.length > 0}
 						<span class="rounded-full bg-background px-2 py-0.5">
 							{formatNumber(turn.llmCalls.length)}

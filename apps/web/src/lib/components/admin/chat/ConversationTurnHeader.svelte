@@ -11,7 +11,7 @@
 	let { turn }: { turn: ConversationTurn } = $props();
 </script>
 
-<div class="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+<div class="flex flex-wrap items-center gap-1.5 text-2xs font-medium text-muted-foreground">
 	<span class="rounded-full bg-background px-2 py-0.5 text-foreground/80">
 		{turn.turnIndex === null ? 'Session' : `Turn ${turn.turnIndex}`}
 	</span>

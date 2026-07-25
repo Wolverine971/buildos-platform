@@ -1143,7 +1143,7 @@
 										<div class="mb-2 flex flex-wrap items-center gap-2">
 											{#each issue.issue_types as type}
 												<span
-													class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium {skillGateIssueClass(
+													class="inline-flex items-center rounded-full border px-2 py-0.5 text-2xs font-medium {skillGateIssueClass(
 														type
 													)}"
 												>
@@ -1152,7 +1152,7 @@
 											{/each}
 											{#if issue.skill_gate_violation_repaired}
 												<span
-													class="inline-flex items-center rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success"
+													class="inline-flex items-center rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-2xs font-medium text-success"
 												>
 													Repaired
 												</span>

@@ -75,12 +75,10 @@
 		align-items: center;
 		gap: 8px;
 		padding: 8px 12px;
-		background: var(--color-card, hsl(var(--card)));
-		border: 2px solid var(--color-accent, hsl(var(--accent)));
+		background: hsl(var(--card));
+		border: 2px solid hsl(var(--accent));
 		border-radius: 8px;
-		box-shadow:
-			0 4px 12px rgba(0, 0, 0, 0.15),
-			0 0 0 1px rgba(0, 0, 0, 0.05);
+		box-shadow: var(--shadow-ink-strong);
 		max-width: 220px;
 		transform: rotate(2deg);
 		opacity: 0.95;
@@ -88,13 +86,13 @@
 
 	.doc-tree-ghost-icon {
 		flex-shrink: 0;
-		color: var(--color-accent, hsl(var(--accent)));
+		color: hsl(var(--accent));
 	}
 
 	.doc-tree-ghost-title {
 		font-size: 0.875rem;
 		font-weight: 500;
-		color: var(--color-foreground, hsl(var(--foreground)));
+		color: hsl(var(--foreground));
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -112,11 +110,11 @@
 
 	.doc-tree-drop-hint {
 		padding: 8px 16px;
-		background: var(--color-muted, hsl(var(--muted)));
-		border: 1px solid var(--color-border, hsl(var(--border)));
+		background: hsl(var(--muted));
+		border: 1px solid hsl(var(--border));
 		border-radius: 6px;
 		font-size: 0.75rem;
-		color: var(--color-muted-foreground, hsl(var(--muted-foreground)));
+		color: hsl(var(--muted-foreground));
 		white-space: nowrap;
 	}
 

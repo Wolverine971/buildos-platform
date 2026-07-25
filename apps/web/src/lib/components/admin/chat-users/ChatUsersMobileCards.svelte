@@ -50,7 +50,7 @@
 							{user.name ?? user.email}
 						</p>
 						<p class="truncate text-xs text-muted-foreground">{user.email}</p>
-						<p class="truncate font-mono text-[11px] text-muted-foreground">
+						<p class="truncate font-mono text-2xs text-muted-foreground">
 							{user.user_id}
 						</p>
 					</div>
@@ -63,7 +63,7 @@
 					<div class="mt-3 flex flex-wrap gap-1">
 						{#each userBadges.slice(0, 3) as badge}
 							<span
-								class={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${alertBadgeClass(badge.tone)}`}
+								class={`rounded border px-1.5 py-0.5 text-2xs font-semibold ${alertBadgeClass(badge.tone)}`}
 								title={badge.title}
 							>
 								{badge.label}
@@ -123,7 +123,7 @@
 					<div class="mt-3 flex flex-wrap gap-1">
 						{#each user.top_topics.slice(0, 3) as topic}
 							<span
-								class="rounded border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+								class="rounded border border-border bg-muted px-2 py-0.5 text-2xs text-muted-foreground"
 							>
 								{topic.topic}
 							</span>

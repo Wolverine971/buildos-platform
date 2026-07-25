@@ -228,7 +228,7 @@
 			</div>
 			<div class="relative flex justify-center">
 				<span
-					class="bg-background px-3 text-[10px] font-medium text-muted-foreground/70 uppercase tracking-widest"
+					class="bg-background px-3 text-2xs font-medium text-muted-foreground/70 uppercase tracking-widest"
 				>
 					History
 				</span>

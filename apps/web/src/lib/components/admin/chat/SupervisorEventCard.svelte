@@ -31,7 +31,7 @@
 					</div>
 				</div>
 			</div>
-			<div class="flex flex-wrap items-center gap-1.5 text-[11px] font-medium">
+			<div class="flex flex-wrap items-center gap-1.5 text-2xs font-medium">
 				{#if payloadField(payload, 'supervisor_action')}
 					<span class="rounded-full bg-background px-2 py-0.5 text-foreground/80">
 						{stringValue(payloadField(payload, 'supervisor_action'))}

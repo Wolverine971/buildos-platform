@@ -132,10 +132,10 @@
 <style>
 	.delivery-rate-chart {
 		background: hsl(var(--card));
-		border: 1px solid var(--border-color, #e5e7eb);
+		border: 1px solid hsl(var(--border));
 		border-radius: 12px;
 		padding: 1.5rem;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		box-shadow: var(--shadow-ink);
 	}
 
 	.chart-header {
@@ -149,7 +149,7 @@
 		margin: 0;
 		font-size: 1.125rem;
 		font-weight: 600;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 	}
 
 	.rate-badge {
@@ -160,18 +160,18 @@
 	}
 
 	.rate-badge.healthy {
-		background: var(--success-100, #dcfce7);
-		color: var(--success-700, #15803d);
+		background: hsl(var(--success) / 0.15);
+		color: hsl(var(--success));
 	}
 
 	.rate-badge.degraded {
-		background: var(--warning-100, #fef3c7);
-		color: var(--warning-700, #a16207);
+		background: hsl(var(--warning) / 0.15);
+		color: hsl(var(--foreground));
 	}
 
 	.rate-badge.critical {
-		background: var(--error-100, #fee2e2);
-		color: var(--error-700, #b91c1c);
+		background: hsl(var(--destructive) / 0.15);
+		color: hsl(var(--destructive));
 	}
 
 	/* Progress Bar */
@@ -180,7 +180,7 @@
 		height: 2.5rem;
 		border-radius: 8px;
 		overflow: hidden;
-		background: var(--bg-secondary, #f9fafb);
+		background: hsl(var(--muted));
 		margin-bottom: 1rem;
 	}
 
@@ -195,15 +195,27 @@
 	}
 
 	.bar-segment.delivered {
-		background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+		background: linear-gradient(
+			135deg,
+			hsl(var(--success)) 0%,
+			hsl(var(--success) / 0.72) 100%
+		);
 	}
 
 	.bar-segment.failed {
-		background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+		background: linear-gradient(
+			135deg,
+			hsl(var(--destructive)) 0%,
+			hsl(var(--destructive) / 0.72) 100%
+		);
 	}
 
 	.bar-segment.pending {
-		background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+		background: linear-gradient(
+			135deg,
+			hsl(var(--muted-foreground)) 0%,
+			hsl(var(--muted-foreground) / 0.72) 100%
+		);
 	}
 
 	/* Legend */
@@ -227,26 +239,26 @@
 	}
 
 	.legend-dot.delivered {
-		background: #10b981;
+		background: hsl(var(--success));
 	}
 
 	.legend-dot.failed {
-		background: #ef4444;
+		background: hsl(var(--destructive));
 	}
 
 	.legend-dot.pending {
-		background: #6b7280;
+		background: hsl(var(--muted-foreground));
 	}
 
 	.legend-label {
 		font-size: 0.875rem;
-		color: var(--text-secondary, #666);
+		color: hsl(var(--muted-foreground));
 	}
 
 	.legend-value {
 		font-size: 0.875rem;
 		font-weight: 600;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 	}
 
 	/* Health Message */
@@ -258,20 +270,20 @@
 	}
 
 	.health-message.success {
-		background: var(--success-50, #f0fdf4);
-		color: var(--success-700, #15803d);
-		border: 1px solid var(--success-200, #bbf7d0);
+		background: hsl(var(--success) / 0.1);
+		color: hsl(var(--success));
+		border: 1px solid hsl(var(--success) / 0.3);
 	}
 
 	.health-message.warning {
-		background: var(--warning-50, #fffbeb);
-		color: var(--warning-700, #a16207);
-		border: 1px solid var(--warning-200, #fde68a);
+		background: hsl(var(--warning) / 0.1);
+		color: hsl(var(--foreground));
+		border: 1px solid hsl(var(--warning) / 0.3);
 	}
 
 	.health-message.error {
-		background: var(--error-50, #fef2f2);
-		color: var(--error-700, #b91c1c);
-		border: 1px solid var(--error-200, #fecaca);
+		background: hsl(var(--destructive) / 0.1);
+		color: hsl(var(--destructive));
+		border: 1px solid hsl(var(--destructive) / 0.3);
 	}
 </style>

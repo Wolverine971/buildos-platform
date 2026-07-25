@@ -1800,7 +1800,7 @@
 								<span class="text-xs font-semibold text-foreground truncate"
 									>Goals</span
 								>
-								<span class="text-[10px] text-muted-foreground shrink-0"
+								<span class="text-2xs text-muted-foreground shrink-0"
 									>({skeletonCounts?.goal_count ?? 0})</span
 								>
 							</div>
@@ -1816,7 +1816,7 @@
 									<span class="text-xs font-semibold text-foreground truncate"
 										>Tasks</span
 									>
-									<span class="text-[10px] text-muted-foreground shrink-0"
+									<span class="text-2xs text-muted-foreground shrink-0"
 										>({skeletonCounts?.task_count ?? 0})</span
 									>
 								</div>
@@ -1830,7 +1830,7 @@
 									<span class="text-xs font-semibold text-foreground truncate"
 										>Plans</span
 									>
-									<span class="text-[10px] text-muted-foreground shrink-0"
+									<span class="text-2xs text-muted-foreground shrink-0"
 										>({skeletonCounts?.plan_count ?? 0})</span
 									>
 								</div>
@@ -1847,7 +1847,7 @@
 									<span class="text-xs font-semibold text-foreground truncate"
 										>Risks</span
 									>
-									<span class="text-[10px] text-muted-foreground shrink-0"
+									<span class="text-2xs text-muted-foreground shrink-0"
 										>({skeletonCounts?.risk_count ?? 0})</span
 									>
 								</div>
@@ -1861,7 +1861,7 @@
 									<span class="text-xs font-semibold text-foreground truncate"
 										>Documents</span
 									>
-									<span class="text-[10px] text-muted-foreground shrink-0"
+									<span class="text-2xs text-muted-foreground shrink-0"
 										>({skeletonCounts?.document_count ?? 0})</span
 									>
 								</div>
@@ -1877,7 +1877,7 @@
 								<span class="text-xs font-semibold text-foreground truncate"
 									>Events</span
 								>
-								<span class="text-[10px] text-muted-foreground shrink-0">(0)</span>
+								<span class="text-2xs text-muted-foreground shrink-0">(0)</span>
 							</div>
 							<ChevronDown class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
 						</div>

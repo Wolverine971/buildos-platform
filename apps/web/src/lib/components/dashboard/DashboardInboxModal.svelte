@@ -962,11 +962,11 @@
 					{/if}
 				</p>
 				{#if changedCount > 0}
-					<p class="mt-0.5 text-[11px] text-muted-foreground">
+					<p class="mt-0.5 text-2xs text-muted-foreground">
 						{changedCount} handled this session
 					</p>
 				{:else if items.length && totalActionable !== items.length}
-					<p class="mt-0.5 text-[11px] text-muted-foreground">
+					<p class="mt-0.5 text-2xs text-muted-foreground">
 						{totalActionable} actionable
 					</p>
 				{/if}
@@ -1091,7 +1091,7 @@
 								</p>
 								{#if activeGroup.actionableCount !== activeGroup.items.length}
 									<p
-										class="mt-0.5 hidden text-[11px] text-muted-foreground lg:block"
+										class="mt-0.5 hidden text-2xs text-muted-foreground lg:block"
 									>
 										{activeGroup.actionableCount} actionable
 									</p>
@@ -1153,7 +1153,7 @@
 											</p>
 											<div class="mt-1.5 flex flex-wrap items-center gap-2">
 												<span
-													class="inline-flex min-w-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold {tier.cls}"
+													class="inline-flex min-w-0 items-center gap-1 rounded border px-1.5 py-0.5 text-2xs font-semibold {tier.cls}"
 												>
 													<Icon class="h-3 w-3 shrink-0" />
 													{tier.label}
@@ -1168,7 +1168,7 @@
 												{/if}
 												{#if reviewRunText}
 													<span
-														class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+														class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
 													>
 														{reviewRunText}
 													</span>
@@ -1176,14 +1176,14 @@
 											</div>
 											{#if payload?.why_now}
 												<p
-													class="mt-1 line-clamp-3 break-words text-[12px] text-foreground/80"
+													class="mt-1 line-clamp-3 break-words text-xs text-foreground/80"
 												>
 													<span class="font-semibold">Why now:</span>
 													{payload.why_now}
 												</p>
 											{:else if item.summary || payload?.rationale || agent?.goal}
 												<p
-													class="mt-1 line-clamp-3 break-words text-[12px] text-muted-foreground"
+													class="mt-1 line-clamp-3 break-words text-xs text-muted-foreground"
 												>
 													{item.summary ??
 														payload?.rationale ??
@@ -1192,7 +1192,7 @@
 											{/if}
 											{#if payload?.preview?.summary}
 												<p
-													class="mt-1.5 line-clamp-3 break-words border-l-2 border-accent/30 pl-2 text-[12px] text-muted-foreground"
+													class="mt-1.5 line-clamp-3 break-words border-l-2 border-accent/30 pl-2 text-xs text-muted-foreground"
 												>
 													<span class="font-semibold text-foreground/80">
 														Preview:
@@ -1205,7 +1205,7 @@
 													<div class="flex flex-wrap gap-1.5">
 														{#if calendar.event_count}
 															<span
-																class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+																class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
 															>
 																{calendar.event_count} event{calendar.event_count ===
 																1
@@ -1215,7 +1215,7 @@
 														{/if}
 														{#if taskPreview.length}
 															<span
-																class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+																class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
 															>
 																{taskPreview.length} task{taskPreview.length ===
 																1
@@ -1225,14 +1225,14 @@
 														{/if}
 														{#if dateRange}
 															<span
-																class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+																class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
 															>
 																{dateRange}
 															</span>
 														{/if}
 														{#if confidence}
 															<span
-																class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] text-accent"
+																class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs text-accent"
 															>
 																{confidence}
 															</span>
@@ -1240,7 +1240,7 @@
 													</div>
 													{#if calendar.suggested_description || calendar.suggested_context}
 														<p
-															class="line-clamp-3 break-words text-[12px] text-muted-foreground"
+															class="line-clamp-3 break-words text-xs text-muted-foreground"
 														>
 															{calendar.suggested_description ??
 																calendar.suggested_context}
@@ -1258,7 +1258,7 @@
 															<div class="mt-1.5 space-y-1">
 																{#each taskPreview.slice(0, 3) as task}
 																	<div
-																		class="flex items-start justify-between gap-2 text-[11px]"
+																		class="flex items-start justify-between gap-2 text-2xs"
 																	>
 																		<div class="min-w-0">
 																			<p
@@ -1279,7 +1279,7 @@
 																		</div>
 																		{#if task.priority}
 																			<span
-																				class="shrink-0 rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground"
+																				class="shrink-0 rounded border border-border bg-card px-1.5 py-0.5 text-2xs text-muted-foreground"
 																			>
 																				{task.priority}
 																			</span>
@@ -1289,7 +1289,7 @@
 															</div>
 															{#if taskPreview.length > 3}
 																<p
-																	class="mt-1.5 text-[10px] text-muted-foreground"
+																	class="mt-1.5 text-2xs text-muted-foreground"
 																>
 																	+{taskPreview.length - 3} more
 																</p>
@@ -1302,14 +1302,14 @@
 												<div class="mt-2 flex flex-wrap gap-1.5">
 													{#if auditRecommendations}
 														<span
-															class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+															class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
 														>
 															{auditRecommendations}
 														</span>
 													{/if}
 													{#if audit.delivery_confidence}
 														<span
-															class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] text-accent"
+															class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs text-accent"
 														>
 															{audit.delivery_confidence} confidence
 														</span>
@@ -1321,7 +1321,7 @@
 													{#each evidence as ref}
 														{@const label = evidenceLabel(ref)}
 														<span
-															class="inline-block max-w-full truncate rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground sm:max-w-[18rem]"
+															class="inline-block max-w-full truncate rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground sm:max-w-[18rem]"
 															title={label}
 														>
 															{label}
@@ -1335,7 +1335,7 @@
 													preview={payload?.preview ?? null}
 												/>
 											{:else if changes}
-												<p class="mt-1.5 text-[11px] text-muted-foreground">
+												<p class="mt-1.5 text-2xs text-muted-foreground">
 													{changes} proposed change{changes === 1
 														? ''
 														: 's'}

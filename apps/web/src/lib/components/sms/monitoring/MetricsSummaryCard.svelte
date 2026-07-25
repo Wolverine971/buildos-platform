@@ -190,10 +190,10 @@
 <style>
 	.metrics-summary-card {
 		background: hsl(var(--card));
-		border: 1px solid var(--border-color, #e5e7eb);
+		border: 1px solid hsl(var(--border));
 		border-radius: 12px;
 		padding: 2rem;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		box-shadow: var(--shadow-ink);
 	}
 
 	/* Health Status */
@@ -202,24 +202,24 @@
 		align-items: center;
 		gap: 1rem;
 		padding: 1.5rem;
-		background: var(--bg-secondary, #f9fafb);
+		background: hsl(var(--muted));
 		border-radius: 8px;
 		margin-bottom: 2rem;
 	}
 
 	.health-status[data-status='healthy'] {
-		background: var(--success-50, #f0fdf4);
-		border: 1px solid var(--success-200, #bbf7d0);
+		background: hsl(var(--success) / 0.1);
+		border: 1px solid hsl(var(--success) / 0.3);
 	}
 
 	.health-status[data-status='degraded'] {
-		background: var(--warning-50, #fffbeb);
-		border: 1px solid var(--warning-200, #fde68a);
+		background: hsl(var(--warning) / 0.1);
+		border: 1px solid hsl(var(--warning) / 0.3);
 	}
 
 	.health-status[data-status='critical'] {
-		background: var(--error-50, #fef2f2);
-		border: 1px solid var(--error-200, #fecaca);
+		background: hsl(var(--destructive) / 0.1);
+		border: 1px solid hsl(var(--destructive) / 0.3);
 	}
 
 	.health-icon {
@@ -234,25 +234,25 @@
 	}
 
 	.health-icon[data-color='green'] {
-		background: var(--success-100, #dcfce7);
-		color: var(--success-700, #15803d);
+		background: hsl(var(--success) / 0.15);
+		color: hsl(var(--success));
 	}
 
 	.health-icon[data-color='yellow'] {
-		background: var(--warning-100, #fef3c7);
-		color: var(--warning-700, #a16207);
+		background: hsl(var(--warning) / 0.15);
+		color: hsl(var(--foreground));
 	}
 
 	.health-icon[data-color='red'] {
-		background: var(--error-100, #fee2e2);
-		color: var(--error-700, #b91c1c);
+		background: hsl(var(--destructive) / 0.15);
+		color: hsl(var(--destructive));
 	}
 
 	.health-text h2 {
 		margin: 0 0 0.25rem 0;
 		font-size: 1.25rem;
 		font-weight: 600;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 	}
 
 	.status-label {
@@ -262,15 +262,15 @@
 	}
 
 	.status-label[data-color='green'] {
-		color: var(--success-700, #15803d);
+		color: hsl(var(--success));
 	}
 
 	.status-label[data-color='yellow'] {
-		color: var(--warning-700, #a16207);
+		color: hsl(var(--foreground));
 	}
 
 	.status-label[data-color='red'] {
-		color: var(--error-700, #b91c1c);
+		color: hsl(var(--destructive));
 	}
 
 	/* Metrics Grid */
@@ -284,9 +284,9 @@
 		margin: 0 0 1rem 0;
 		font-size: 1rem;
 		font-weight: 600;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 		padding-bottom: 0.5rem;
-		border-bottom: 2px solid var(--border-color, #e5e7eb);
+		border-bottom: 2px solid hsl(var(--border));
 	}
 
 	.metric-items {
@@ -303,21 +303,21 @@
 
 	.metric-label {
 		font-size: 0.875rem;
-		color: var(--text-secondary, #666);
+		color: hsl(var(--muted-foreground));
 	}
 
 	.metric-value {
 		font-size: 1rem;
 		font-weight: 600;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 	}
 
 	.metric-value.success {
-		color: var(--success-600, #16a34a);
+		color: hsl(var(--success));
 	}
 
 	.metric-value.error {
-		color: var(--error-600, #dc2626);
+		color: hsl(var(--destructive));
 	}
 
 	/* Responsive */

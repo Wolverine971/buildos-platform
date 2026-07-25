@@ -340,9 +340,7 @@
 			<MessageSquare class="w-4 h-4 text-accent" />
 			<h3 class="text-sm font-semibold text-foreground">Comments</h3>
 		</div>
-		<span class="text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground"
-			>{commentCount}</span
-		>
+		<span class="micro-label">{commentCount}</span>
 	</CardHeader>
 	<CardBody padding="sm" class="space-y-3">
 		<div class="space-y-1.5">

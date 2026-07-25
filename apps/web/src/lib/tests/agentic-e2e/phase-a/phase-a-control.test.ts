@@ -72,80 +72,84 @@ phaseADescribe('Phase A frozen-corpus control baseline (paid, real endpoint)', (
 	for (const scenario of frozenPhaseACorpus.scenarios) {
 		const repetitions = scenario.class === 'simple_read' ? 3 : 1;
 
-		it(`[${scenario.class}] ${scenario.scenario_id} ×${repetitions}`, async () => {
-			const c = requireCtx();
+		it(
+			`[${scenario.class}] ${scenario.scenario_id} ×${repetitions}`,
+			{ retry: 0, timeout: 600_000 },
+			async () => {
+				const c = requireCtx();
 
-			for (let runIndex = 1; runIndex <= repetitions; runIndex += 1) {
-				const seed = await seedPhaseAProject(c, `${scenario.scenario_id}-${runIndex}`);
-				let sessionId: string | undefined;
-				try {
-					const result = await runTurn({
-						baseUrl: c.baseUrl,
-						cookie: c.cookie,
-						message: scenario.request_text,
-						contextType: scenario.context_type,
-						entityId: seed.projectId
-					});
-					sessionId = result.sessionId ?? undefined;
-
-					const acceptance = await evaluateAcceptanceChecks(
-						scenario.acceptance_checks,
-						result.assistantText,
-						{ resolveUrl: urlResolves }
-					);
-					const usage = result.streamRunId
-						? await waitForUsageSummary(c.db.admin, result.streamRunId)
-						: {
-								requestCount: 0,
-								promptTokens: 0,
-								completionTokens: 0,
-								totalTokens: 0,
-								totalCostUsd: 0,
-								models: [],
-								providers: [],
-								profiles: [],
-								operations: []
-							};
-					const allRequiredChecksPassed = acceptance
-						.filter((check) => check.required)
-						.every((check) => check.passed);
-
-					completedRuns.push({
-						scenarioId: scenario.scenario_id,
-						scenarioClass: scenario.class,
-						expectedRoute: scenario.expected_route,
-						expectedReasonCode: scenario.expected_reason_code,
-						runIndex,
-						requestStartedAt: result.timing.requestStartedAt,
-						timing: result.timing,
-						usage,
-						completed: result.completed,
-						finishedReason: result.finishedReason,
-						errors: result.errors.map((error) => error.error),
-						toolCalls: result.toolCalls.map((call) => call.function.name),
-						acceptance,
-						allRequiredChecksPassed,
-						assistantText: result.assistantText
-					});
-
-					assertTurnSucceeded(result);
-					assertNoMutationToolCalls(result);
-					expect(
-						result.timing.ttftMs,
-						'control baseline requires a client-observed SSE text event'
-					).not.toBeNull();
-					expect(
-						usage.requestCount,
-						'control baseline requires stream-correlated llm_usage_logs'
-					).toBeGreaterThan(0);
-				} finally {
+				for (let runIndex = 1; runIndex <= repetitions; runIndex += 1) {
+					const seed = await seedPhaseAProject(c, `${scenario.scenario_id}-${runIndex}`);
+					let sessionId: string | undefined;
 					try {
-						await teardownChatSession(c.db.admin, c.db.userId, sessionId);
+						const result = await runTurn({
+							baseUrl: c.baseUrl,
+							cookie: c.cookie,
+							message: scenario.request_text,
+							contextType: scenario.context_type,
+							entityId: seed.projectId
+						});
+						sessionId = result.sessionId ?? undefined;
+
+						const acceptance = await evaluateAcceptanceChecks(
+							scenario.acceptance_checks,
+							result.assistantText,
+							{ resolveUrl: urlResolves }
+						);
+						const usage = result.streamRunId
+							? await waitForUsageSummary(c.db.admin, result.streamRunId)
+							: {
+									requestCount: 0,
+									promptTokens: 0,
+									completionTokens: 0,
+									totalTokens: 0,
+									totalCostUsd: 0,
+									models: [],
+									providers: [],
+									profiles: [],
+									operations: []
+								};
+						const allRequiredChecksPassed = acceptance
+							.filter((check) => check.required)
+							.every((check) => check.passed);
+
+						completedRuns.push({
+							scenarioId: scenario.scenario_id,
+							scenarioClass: scenario.class,
+							expectedRoute: scenario.expected_route,
+							expectedReasonCode: scenario.expected_reason_code,
+							runIndex,
+							requestStartedAt: result.timing.requestStartedAt,
+							timing: result.timing,
+							usage,
+							completed: result.completed,
+							finishedReason: result.finishedReason,
+							errors: result.errors.map((error) => error.error),
+							toolCalls: result.toolCalls.map((call) => call.function.name),
+							acceptance,
+							allRequiredChecksPassed,
+							assistantText: result.assistantText
+						});
+
+						assertTurnSucceeded(result);
+						assertNoMutationToolCalls(result);
+						expect(
+							result.timing.ttftMs,
+							'control baseline requires a client-observed SSE text event'
+						).not.toBeNull();
+						expect(
+							usage.requestCount,
+							'control baseline requires stream-correlated llm_usage_logs'
+						).toBeGreaterThan(0);
 					} finally {
-						await teardownProject(c.db, seed.projectId);
+						try {
+							await teardownChatSession(c.db.admin, c.db.userId, sessionId);
+						} finally {
+							await teardownProject(c.db, seed.projectId);
+						}
 					}
 				}
 			}
-		}, 600_000);
+		);
 	}
 });

@@ -286,7 +286,7 @@
 					<!-- Informational preview — clearly NOT clickable (no shadow, no card bg) -->
 					<div class="w-full max-w-xl px-1">
 						<p
-							class="mb-2 text-center text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+							class="mb-2 text-center text-2xs font-semibold uppercase tracking-[0.15em] text-muted-foreground"
 						>
 							Once a project exists, you can also
 						</p>
@@ -299,7 +299,7 @@
 								/>
 								<div>
 									<dt class="font-semibold text-foreground">General chat</dt>
-									<dd class="text-[11px] leading-snug">
+									<dd class="text-2xs leading-snug">
 										Ask workspace-wide questions.
 									</dd>
 								</div>
@@ -310,7 +310,7 @@
 								/>
 								<div>
 									<dt class="font-semibold text-foreground">Project chat</dt>
-									<dd class="text-[11px] leading-snug">
+									<dd class="text-2xs leading-snug">
 										Focused help inside one project.
 									</dd>
 								</div>
@@ -541,7 +541,7 @@
 							</div>
 							{#if project.stateKey || project.typeKey}
 								<div
-									class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-[11px]"
+									class="mt-1.5 flex flex-wrap items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground sm:text-2xs"
 								>
 									{#if project.stateKey}
 										<span
@@ -556,7 +556,7 @@
 								</div>
 							{/if}
 							{#if facetSummary}
-								<p class="mt-1 text-[11px] text-muted-foreground sm:text-xs">
+								<p class="mt-1 text-2xs text-muted-foreground sm:text-xs">
 									{facetSummary}
 								</p>
 							{/if}
@@ -568,7 +568,7 @@
 								</p>
 							{/if}
 							<div
-								class="mt-2 flex items-center justify-between gap-2 border-t border-border pt-1.5 text-[11px] text-muted-foreground sm:text-xs"
+								class="mt-2 flex items-center justify-between gap-2 border-t border-border pt-1.5 text-2xs text-muted-foreground sm:text-xs"
 							>
 								<span>
 									{project.taskCount} task{project.taskCount !== 1 ? 's' : ''}

@@ -277,7 +277,7 @@
 				type="button"
 				aria-selected={mobileTab === 'recent'}
 				onclick={() => (mobileTab = 'recent')}
-				class="flex-1 px-3 py-2 flex items-center justify-center gap-1.5 text-[11px] font-semibold transition-colors {mobileTab ===
+				class="flex-1 px-3 py-2 flex items-center justify-center gap-1.5 text-2xs font-semibold transition-colors {mobileTab ===
 				'recent'
 					? 'text-foreground bg-muted/40 border-b-2 border-foreground/50 -mb-px'
 					: 'text-muted-foreground hover:text-foreground hover:bg-muted/40'}"
@@ -289,7 +289,7 @@
 				/>
 				<span>Recent</span>
 				{#if recentTiles.length > 0}
-					<span class="text-[10px] text-muted-foreground/70">({recentTiles.length})</span>
+					<span class="text-2xs text-muted-foreground/70">({recentTiles.length})</span>
 				{/if}
 			</button>
 			<button
@@ -297,7 +297,7 @@
 				type="button"
 				aria-selected={mobileTab === 'next'}
 				onclick={() => (mobileTab = 'next')}
-				class="flex-1 px-3 py-2 flex items-center justify-center gap-1.5 text-[11px] font-semibold transition-colors {mobileTab ===
+				class="flex-1 px-3 py-2 flex items-center justify-center gap-1.5 text-2xs font-semibold transition-colors {mobileTab ===
 				'next'
 					? 'text-foreground bg-accent/5 border-b-2 border-accent -mb-px'
 					: 'text-muted-foreground hover:text-foreground hover:bg-muted/40'}"
@@ -307,9 +307,7 @@
 				/>
 				<span>Up next</span>
 				{#if upcomingItems.length > 0}
-					<span class="text-[10px] text-muted-foreground/70"
-						>({upcomingItems.length})</span
-					>
+					<span class="text-2xs text-muted-foreground/70">({upcomingItems.length})</span>
 				{/if}
 			</button>
 		</div>
@@ -317,7 +315,7 @@
 		<div class="p-2 space-y-1.5">
 			{#if mobileTab === 'recent'}
 				{#if recentTiles.length === 0}
-					<p class="text-[11px] text-muted-foreground px-2 py-3 text-center italic">
+					<p class="text-2xs text-muted-foreground px-2 py-3 text-center italic">
 						Nothing recent yet.
 					</p>
 				{:else}
@@ -328,10 +326,10 @@
 						>
 							<Icon class="w-3.5 h-3.5 mt-0.5 shrink-0 {accentFor(tile.kind)}" />
 							<div class="min-w-0 flex-1">
-								<p class="text-[12px] font-medium text-foreground line-clamp-1">
+								<p class="text-xs font-medium text-foreground line-clamp-1">
 									{tile.title}
 								</p>
-								<p class="text-[10px] text-muted-foreground mt-0.5">
+								<p class="text-2xs text-muted-foreground mt-0.5">
 									<span>{tile.action}</span>
 									<span class="mx-1 text-muted-foreground/50">·</span>
 									<span class="capitalize">{tile.kind}</span>
@@ -343,7 +341,7 @@
 					{/each}
 				{/if}
 			{:else if upcomingItems.length === 0}
-				<p class="text-[11px] text-muted-foreground px-2 py-3 text-center italic">
+				<p class="text-2xs text-muted-foreground px-2 py-3 text-center italic">
 					Nothing scheduled.
 				</p>
 			{:else}
@@ -355,10 +353,10 @@
 					>
 						<Icon class="w-3.5 h-3.5 mt-0.5 shrink-0 {accentFor(item.kind)}" />
 						<div class="min-w-0 flex-1">
-							<p class="text-[12px] font-medium text-foreground line-clamp-1">
+							<p class="text-xs font-medium text-foreground line-clamp-1">
 								{item.title}
 							</p>
-							<p class="text-[10px] mt-0.5 flex items-center gap-1.5 flex-wrap">
+							<p class="text-2xs mt-0.5 flex items-center gap-1.5 flex-wrap">
 								<span class="capitalize text-muted-foreground">{item.kind}</span>
 								<span class="text-muted-foreground/50">·</span>
 								<span
@@ -393,12 +391,12 @@
 						<p class="text-xs sm:text-sm font-semibold text-foreground">
 							Recent activity
 						</p>
-						<p class="text-[10px] sm:text-xs text-muted-foreground">
+						<p class="text-2xs sm:text-xs text-muted-foreground">
 							What's moved most recently
 						</p>
 					</div>
 				</div>
-				<span class="text-[10px] uppercase tracking-widest text-muted-foreground/70">
+				<span class="text-2xs uppercase tracking-widest text-muted-foreground/70">
 					{recentTiles.length}
 				</span>
 			</header>
@@ -421,7 +419,7 @@
 								>
 									{tile.title}
 								</p>
-								<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+								<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5">
 									<span>{tile.action}</span>
 									<span class="mx-1 text-muted-foreground/50">·</span>
 									<span class="capitalize">{tile.kind}</span>
@@ -448,13 +446,13 @@
 					</div>
 					<div>
 						<p class="text-xs sm:text-sm font-semibold text-foreground">Up next</p>
-						<p class="text-[10px] sm:text-xs text-muted-foreground">
+						<p class="text-2xs sm:text-xs text-muted-foreground">
 							Scheduled tasks, milestones, goals &amp; events
 						</p>
 					</div>
 				</div>
 				{#if upcomingItems.length > 0}
-					<span class="text-[10px] uppercase tracking-widest text-muted-foreground/70">
+					<span class="text-2xs uppercase tracking-widest text-muted-foreground/70">
 						{upcomingItems.length}
 					</span>
 				{/if}
@@ -479,7 +477,7 @@
 								>
 									{item.title}
 								</p>
-								<p class="text-[10px] sm:text-xs mt-0.5 flex items-center gap-1.5">
+								<p class="text-2xs sm:text-xs mt-0.5 flex items-center gap-1.5">
 									<span class="capitalize text-muted-foreground">{item.kind}</span
 									>
 									<span class="text-muted-foreground/50">·</span>

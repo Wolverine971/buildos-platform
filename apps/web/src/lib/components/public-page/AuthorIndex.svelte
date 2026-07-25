@@ -79,7 +79,7 @@
 				<h1 class="text-xl font-bold leading-tight text-foreground sm:text-2xl">
 					{displayName}
 				</h1>
-				<p class="text-[12px] text-muted-foreground mt-0.5">
+				<p class="text-xs text-muted-foreground mt-0.5">
 					{author.page_count}
 					{author.page_count === 1 ? 'public page' : 'public pages'}
 				</p>
@@ -99,12 +99,12 @@
 								{page.title}
 							</p>
 							{#if page.summary}
-								<p class="text-[12px] text-muted-foreground mt-0.5 line-clamp-2">
+								<p class="text-xs text-muted-foreground mt-0.5 line-clamp-2">
 									{page.summary}
 								</p>
 							{/if}
 							<div
-								class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground"
+								class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-2xs text-muted-foreground"
 							>
 								{#if page.project_name}
 									<span>{page.project_name}</span>
@@ -129,11 +129,11 @@
 				href="https://build-os.com/?utm_source=author-index&utm_medium=attribution&utm_campaign=made-with"
 				target="_blank"
 				rel="noopener"
-				class="group inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground hover:text-foreground transition-colors"
+				class="group inline-flex items-center gap-1.5 text-2xs font-medium tracking-wide uppercase text-muted-foreground hover:text-foreground transition-colors"
 			>
 				<span
 					aria-hidden="true"
-					class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm bg-foreground text-[8px] font-bold leading-none text-background group-hover:bg-accent transition-colors"
+					class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm bg-foreground text-2xs font-bold leading-none text-background group-hover:bg-accent transition-colors"
 				>
 					B
 				</span>

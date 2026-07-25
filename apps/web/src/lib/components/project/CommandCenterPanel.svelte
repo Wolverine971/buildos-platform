@@ -105,7 +105,7 @@
 		<div class="flex items-center gap-2 min-w-0">
 			<Icon class="w-4 h-4 shrink-0 {iconColor}" />
 			<span class="text-xs font-semibold text-foreground truncate">{label}</span>
-			<span class="text-[10px] text-muted-foreground shrink-0">({count})</span>
+			<span class="text-2xs text-muted-foreground shrink-0">({count})</span>
 		</div>
 		<ChevronDown
 			class="w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform duration-[120ms] {expanded
@@ -144,7 +144,7 @@
 				<button
 					type="button"
 					onclick={onAdd}
-					class="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-accent hover:bg-accent/10 rounded transition-colors pressable shrink-0"
+					class="flex items-center gap-1 px-2 py-1 text-2xs font-medium text-accent hover:bg-accent/10 rounded transition-colors pressable shrink-0"
 				>
 					<Plus class="w-3 h-3" />
 					<span>Add</span>

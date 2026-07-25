@@ -73,7 +73,7 @@
 							{/if}
 						</div>
 						<span
-							class="text-[11px] sm:text-xs text-center leading-tight whitespace-nowrap transition-colors duration-300
+							class="text-2xs sm:text-xs text-center leading-tight whitespace-nowrap transition-colors duration-300
 								{isCurrent
 								? 'text-foreground font-semibold'
 								: isCompleted

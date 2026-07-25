@@ -1,5 +1,6 @@
 // apps/web/src/lib/components/agent/project-entity-browser.ts
 import type { FocusEntitySummary } from '@buildos/shared-types';
+import { bindAbortSignal } from '$lib/utils/bind-abort-signal';
 
 export type FocusEntityType = FocusEntitySummary['type'];
 
@@ -22,42 +23,6 @@ export interface FetchProjectEntitiesParams {
 	search?: string;
 	limit?: number;
 	signal?: AbortSignal;
-}
-
-function createAbortError(): Error {
-	try {
-		return new DOMException('The operation was aborted.', 'AbortError');
-	} catch (_error) {
-		const error = new Error('The operation was aborted.');
-		error.name = 'AbortError';
-		return error;
-	}
-}
-
-function bindAbortSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
-	if (!signal) return promise;
-	if (signal.aborted) {
-		return Promise.reject(createAbortError());
-	}
-
-	return new Promise<T>((resolve, reject) => {
-		const onAbort = () => {
-			signal.removeEventListener('abort', onAbort);
-			reject(createAbortError());
-		};
-
-		signal.addEventListener('abort', onAbort, { once: true });
-		promise.then(
-			(value) => {
-				signal.removeEventListener('abort', onAbort);
-				resolve(value);
-			},
-			(error) => {
-				signal.removeEventListener('abort', onAbort);
-				reject(error);
-			}
-		);
-	});
 }
 
 function buildProjectEntityCacheKey(params: {

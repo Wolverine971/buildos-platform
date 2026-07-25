@@ -52,7 +52,7 @@
 	{#if data.state}
 		<div class="mt-1.5 flex items-center gap-1.5">
 			<span
-				class="px-1.5 py-0.5 text-[10px] font-medium rounded-full
+				class="px-1.5 py-0.5 text-2xs font-medium rounded-full
 					{data.state === 'active'
 					? 'bg-success/15 text-success'
 					: data.state === 'complete'
@@ -62,7 +62,7 @@
 				{data.state}
 			</span>
 			{#if data.metadata?.scale}
-				<span class="text-[10px] text-muted-foreground">
+				<span class="text-2xs text-muted-foreground">
 					{data.metadata.scale}
 				</span>
 			{/if}

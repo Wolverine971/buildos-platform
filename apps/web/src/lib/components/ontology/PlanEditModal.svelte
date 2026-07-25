@@ -483,7 +483,7 @@
 					<div class="mt-1 flex flex-wrap items-center gap-1.5">
 						<Badge variant={stateMeta.variant} size="sm">{stateMeta.label}</Badge>
 					</div>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-1">
+					<p class="text-2xs sm:text-xs text-muted-foreground mt-1">
 						{#if plan?.created_at}Created {new Date(plan.created_at).toLocaleDateString(
 								undefined,
 								{ month: 'short', day: 'numeric' }
@@ -650,11 +650,7 @@
 									>
 										<div class="flex items-center gap-2">
 											<FileText class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-											>
-												Workflow
-											</p>
+											<p class="micro-label font-semibold">Workflow</p>
 										</div>
 
 										<div class="mt-2 space-y-2">
@@ -705,11 +701,7 @@
 												<CalendarRange
 													class="h-4 w-4 text-muted-foreground"
 												/>
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Timeline
-												</p>
+												<p class="micro-label font-semibold">Timeline</p>
 											</div>
 											{#if timelineMeta}
 												<Badge variant={timelineMeta.variant} size="sm"
@@ -775,11 +767,7 @@
 									<section class="px-3 py-3 sm:px-4">
 										<div class="flex items-center gap-2">
 											<Clock class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-											>
-												Record
-											</p>
+											<p class="micro-label font-semibold">Record</p>
 										</div>
 										<div class="mt-2 space-y-1.5 text-sm">
 											<div class="flex items-center justify-between gap-3">
@@ -808,11 +796,7 @@
 										<section class="px-3 py-3 sm:px-4">
 											<div class="flex items-center gap-2 mb-2">
 												<TagIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Tags
-												</p>
+												<p class="micro-label font-semibold">Tags</p>
 											</div>
 											<TagsDisplay
 												props={plan.props}
@@ -833,9 +817,7 @@
 										>
 											<div class="flex items-center gap-2">
 												<LinkIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
+												<p class="micro-label font-semibold">
 													Linked Entities
 												</p>
 											</div>
@@ -870,11 +852,7 @@
 										>
 											<div class="flex items-center gap-2">
 												<ImageIcon class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Images
-												</p>
+												<p class="micro-label font-semibold">Images</p>
 											</div>
 											<ChevronDown
 												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
@@ -909,11 +887,7 @@
 										>
 											<div class="flex items-center gap-2">
 												<Activity class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Activity
-												</p>
+												<p class="micro-label font-semibold">Activity</p>
 											</div>
 											<ChevronDown
 												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog

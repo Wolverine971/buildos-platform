@@ -156,11 +156,11 @@
 			>
 				<div class="flex items-center gap-1.5 min-w-0">
 					<tab.icon class="w-3.5 h-3.5 shrink-0 {tab.accent}" />
-					<span class="text-[11px] sm:text-xs font-semibold text-foreground truncate">
+					<span class="text-2xs sm:text-xs font-semibold text-foreground truncate">
 						{tab.label}
 					</span>
 					{#if tab.count !== null}
-						<span class="text-[10px] text-muted-foreground shrink-0">
+						<span class="text-2xs text-muted-foreground shrink-0">
 							{tab.count}
 						</span>
 					{/if}
@@ -206,7 +206,7 @@
 											{/if}
 											{#if due}
 												<p
-													class="text-[10px] mt-0.5 {due.isOverdue
+													class="text-2xs mt-0.5 {due.isOverdue
 														? 'text-destructive font-medium'
 														: 'text-muted-foreground'}"
 												>
@@ -216,7 +216,7 @@
 										</div>
 										{#if formatState(g.state_key)}
 											<span
-												class="text-[10px] uppercase tracking-wider text-muted-foreground border border-border rounded-full px-1.5 py-0.5 shrink-0"
+												class="text-2xs uppercase tracking-wider text-muted-foreground border border-border rounded-full px-1.5 py-0.5 shrink-0"
 											>
 												{formatState(g.state_key)}
 											</span>
@@ -249,7 +249,7 @@
 											{/if}
 											{#if due}
 												<p
-													class="text-[10px] mt-0.5 {due.isOverdue
+													class="text-2xs mt-0.5 {due.isOverdue
 														? 'text-destructive font-medium'
 														: 'text-muted-foreground'}"
 												>
@@ -259,7 +259,7 @@
 										</div>
 										{#if formatState(m.state_key)}
 											<span
-												class="text-[10px] uppercase tracking-wider text-muted-foreground border border-border rounded-full px-1.5 py-0.5 shrink-0"
+												class="text-2xs uppercase tracking-wider text-muted-foreground border border-border rounded-full px-1.5 py-0.5 shrink-0"
 											>
 												{formatState(m.state_key)}
 											</span>
@@ -292,7 +292,7 @@
 										</div>
 										{#if formatState(p.state_key)}
 											<span
-												class="text-[10px] uppercase tracking-wider text-muted-foreground border border-border rounded-full px-1.5 py-0.5 shrink-0"
+												class="text-2xs uppercase tracking-wider text-muted-foreground border border-border rounded-full px-1.5 py-0.5 shrink-0"
 											>
 												{formatState(p.state_key)}
 											</span>
@@ -327,7 +327,7 @@
 										</div>
 										{#if formatState(r.state_key)}
 											<span
-												class="text-[10px] uppercase tracking-wider text-muted-foreground border border-border rounded-full px-1.5 py-0.5 shrink-0"
+												class="text-2xs uppercase tracking-wider text-muted-foreground border border-border rounded-full px-1.5 py-0.5 shrink-0"
 											>
 												{formatState(r.state_key)}
 											</span>
@@ -350,7 +350,7 @@
 											<p class="text-sm text-foreground leading-snug">
 												{e.title}
 											</p>
-											<p class="text-[11px] text-muted-foreground mt-0.5">
+											<p class="text-2xs text-muted-foreground mt-0.5">
 												{eventDateLabel(e.start_at, e.all_day)}
 												{#if e.location}
 													<span class="text-muted-foreground/50 mx-1"

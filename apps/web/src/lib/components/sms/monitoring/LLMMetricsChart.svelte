@@ -147,10 +147,10 @@
 <style>
 	.llm-metrics-chart {
 		background: hsl(var(--card));
-		border: 1px solid var(--border-color, #e5e7eb);
+		border: 1px solid hsl(var(--border));
 		border-radius: 12px;
 		padding: 1.5rem;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		box-shadow: var(--shadow-ink);
 	}
 
 	.chart-header {
@@ -164,7 +164,7 @@
 		margin: 0;
 		font-size: 1.125rem;
 		font-weight: 600;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 	}
 
 	.rate-badge {
@@ -175,18 +175,18 @@
 	}
 
 	.rate-badge.healthy {
-		background: var(--success-100, #dcfce7);
-		color: var(--success-700, #15803d);
+		background: hsl(var(--success) / 0.15);
+		color: hsl(var(--success));
 	}
 
 	.rate-badge.degraded {
-		background: var(--warning-100, #fef3c7);
-		color: var(--warning-700, #a16207);
+		background: hsl(var(--warning) / 0.15);
+		color: hsl(var(--foreground));
 	}
 
 	.rate-badge.critical {
-		background: var(--error-100, #fee2e2);
-		color: var(--error-700, #b91c1c);
+		background: hsl(var(--destructive) / 0.15);
+		color: hsl(var(--destructive));
 	}
 
 	/* Progress Bar */
@@ -195,7 +195,7 @@
 		height: 2.5rem;
 		border-radius: 8px;
 		overflow: hidden;
-		background: var(--bg-secondary, #f9fafb);
+		background: hsl(var(--muted));
 		margin-bottom: 1rem;
 	}
 
@@ -210,11 +210,15 @@
 	}
 
 	.bar-segment.llm {
-		background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+		background: linear-gradient(135deg, hsl(var(--info)) 0%, hsl(var(--info) / 0.72) 100%);
 	}
 
 	.bar-segment.template {
-		background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+		background: linear-gradient(
+			135deg,
+			hsl(var(--warning)) 0%,
+			hsl(var(--warning) / 0.72) 100%
+		);
 	}
 
 	/* Legend */
@@ -238,22 +242,22 @@
 	}
 
 	.legend-dot.llm {
-		background: #3b82f6;
+		background: hsl(var(--info));
 	}
 
 	.legend-dot.template {
-		background: #f59e0b;
+		background: hsl(var(--warning));
 	}
 
 	.legend-label {
 		font-size: 0.875rem;
-		color: var(--text-secondary, #666);
+		color: hsl(var(--muted-foreground));
 	}
 
 	.legend-value {
 		font-size: 0.875rem;
 		font-weight: 600;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 	}
 
 	/* Cost Metrics */
@@ -261,7 +265,7 @@
 		display: flex;
 		gap: 2rem;
 		padding: 1rem;
-		background: var(--bg-secondary, #f9fafb);
+		background: hsl(var(--muted));
 		border-radius: 6px;
 		margin-bottom: 1rem;
 	}
@@ -274,7 +278,7 @@
 
 	.cost-label {
 		font-size: 0.75rem;
-		color: var(--text-secondary, #666);
+		color: hsl(var(--muted-foreground));
 		text-transform: uppercase;
 		letter-spacing: 0.5px;
 	}
@@ -282,7 +286,7 @@
 	.cost-value {
 		font-size: 1.125rem;
 		font-weight: 600;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 	}
 
 	/* Health Message */
@@ -294,21 +298,21 @@
 	}
 
 	.health-message.success {
-		background: var(--success-50, #f0fdf4);
-		color: var(--success-700, #15803d);
-		border: 1px solid var(--success-200, #bbf7d0);
+		background: hsl(var(--success) / 0.1);
+		color: hsl(var(--success));
+		border: 1px solid hsl(var(--success) / 0.3);
 	}
 
 	.health-message.warning {
-		background: var(--warning-50, #fffbeb);
-		color: var(--warning-700, #a16207);
-		border: 1px solid var(--warning-200, #fde68a);
+		background: hsl(var(--warning) / 0.1);
+		color: hsl(var(--foreground));
+		border: 1px solid hsl(var(--warning) / 0.3);
 	}
 
 	.health-message.error {
-		background: var(--error-50, #fef2f2);
-		color: var(--error-700, #b91c1c);
-		border: 1px solid var(--error-200, #fecaca);
+		background: hsl(var(--destructive) / 0.1);
+		color: hsl(var(--destructive));
+		border: 1px solid hsl(var(--destructive) / 0.3);
 	}
 
 	/* Responsive */

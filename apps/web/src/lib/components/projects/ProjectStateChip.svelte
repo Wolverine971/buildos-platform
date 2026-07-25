@@ -13,9 +13,7 @@
 
 	const normalized = $derived(normalizeProjectState(state));
 	const meta = $derived(PROJECT_STATE_META[normalized]);
-	const sizeClass = $derived(
-		size === 'xs' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-[11px]'
-	);
+	const sizeClass = $derived(size === 'xs' ? 'px-1.5 py-0.5 text-2xs' : 'px-2 py-0.5 text-2xs');
 </script>
 
 <span

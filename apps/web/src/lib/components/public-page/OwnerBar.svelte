@@ -166,14 +166,14 @@
 	<div class="mx-auto flex items-center gap-2 px-4 py-2 sm:px-8">
 		<!-- Status pill -->
 		<span
-			class={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusColor}`}
+			class={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide ${statusColor}`}
 		>
 			<Globe class="w-2.5 h-2.5" />
 			{statusLabel}
 		</span>
 
 		{#if currentPage.view_count_all > 0}
-			<span class="hidden sm:inline text-[11px] text-muted-foreground">
+			<span class="hidden sm:inline text-2xs text-muted-foreground">
 				{currentPage.view_count_all.toLocaleString()} views
 			</span>
 		{/if}
@@ -185,7 +185,7 @@
 			<button
 				type="button"
 				onclick={handleCopyLink}
-				class="inline-flex min-h-[32px] items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-foreground hover:bg-accent/10 transition-colors pressable"
+				class="inline-flex min-h-[32px] items-center gap-1 rounded-md border border-border px-2 py-1 text-2xs font-medium text-foreground hover:bg-accent/10 transition-colors pressable"
 			>
 				<Link class="w-3 h-3" />
 				Copy link
@@ -193,7 +193,7 @@
 			<button
 				type="button"
 				onclick={handleEditOriginal}
-				class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-foreground hover:bg-accent/10 transition-colors pressable"
+				class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-2xs font-medium text-foreground hover:bg-accent/10 transition-colors pressable"
 			>
 				<Pencil class="w-3 h-3" />
 				Edit original
@@ -201,7 +201,7 @@
 			<button
 				type="button"
 				onclick={handleOpenInProject}
-				class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-foreground hover:bg-accent/10 transition-colors pressable"
+				class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-2xs font-medium text-foreground hover:bg-accent/10 transition-colors pressable"
 			>
 				<ArrowLeft class="w-3 h-3" />
 				View in project
@@ -211,7 +211,7 @@
 					type="button"
 					onclick={handleToggleLiveSync}
 					disabled={actionLoading}
-					class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium hover:bg-accent/10 transition-colors pressable disabled:opacity-50 {currentPage.live_sync_enabled
+					class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-2xs font-medium hover:bg-accent/10 transition-colors pressable disabled:opacity-50 {currentPage.live_sync_enabled
 						? 'text-success'
 						: 'text-muted-foreground'}"
 				>
@@ -221,7 +221,7 @@
 					type="button"
 					onclick={handleUnpublish}
 					disabled={actionLoading}
-					class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10 transition-colors pressable disabled:opacity-50"
+					class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-2xs font-medium text-destructive hover:bg-destructive/10 transition-colors pressable disabled:opacity-50"
 				>
 					Unpublish
 				</button>

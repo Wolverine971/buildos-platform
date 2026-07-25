@@ -2,6 +2,17 @@
 
 All notable changes to the Inkprint Texture Library will be documented in this file.
 
+## [1.1.0] - 2026-07-24
+
+### Changed
+
+- Generated every public CSS module from the app's canonical Inkprint runtime source
+- Added drift checks to the web lint pipeline and automatic sync before builds
+- Updated light/dark tokens to the current warm, contrast-tested palette
+- Added `tx-grid` and renamed float helpers to `ink-float-left` / `ink-float-right`
+- Added reduced-motion and hover-capability guards to interactive and motion utilities
+- Kept public shadow utilities while removing their duplicate runtime definitions
+
 ## [1.0.0] - 2026-01-25
 
 ### Added

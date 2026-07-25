@@ -284,7 +284,7 @@
 						<div class="space-y-1">
 							<label
 								for="asset-caption"
-								class="text-[11px] font-medium text-muted-foreground">Caption</label
+								class="text-2xs font-medium text-muted-foreground">Caption</label
 							>
 							<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
 								<input
@@ -300,8 +300,7 @@
 						<div class="space-y-1">
 							<label
 								for="asset-alt"
-								class="text-[11px] font-medium text-muted-foreground"
-								>Alt text</label
+								class="text-2xs font-medium text-muted-foreground">Alt text</label
 							>
 							<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
 								<input
@@ -317,7 +316,7 @@
 						<div class="space-y-1">
 							<label
 								for="asset-summary"
-								class="text-[11px] font-medium text-muted-foreground">Summary</label
+								class="text-2xs font-medium text-muted-foreground">Summary</label
 							>
 							<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
 								<textarea
@@ -332,7 +331,7 @@
 						<div class="space-y-1">
 							<label
 								for="asset-extracted"
-								class="text-[11px] font-medium text-muted-foreground"
+								class="text-2xs font-medium text-muted-foreground"
 								>Extracted text</label
 							>
 							<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">

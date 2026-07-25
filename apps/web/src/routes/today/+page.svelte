@@ -690,7 +690,7 @@
 			<div class="flex items-start justify-between gap-3">
 				<div class="min-w-0">
 					<p
-						class="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground"
+						class="flex items-center gap-1.5 text-2xs sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground"
 					>
 						<Sun class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-warning" />
 						Today
@@ -714,7 +714,7 @@
 				{#if inboxCount > 0}
 					<button
 						onclick={openInbox}
-						class="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-[11px] sm:text-xs font-medium text-accent hover:bg-accent/20 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-2xs sm:text-xs font-medium text-accent hover:bg-accent/20 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						<Inbox class="h-3 w-3 sm:h-3.5 sm:w-3.5" />
 						{inboxCount} to review
@@ -723,7 +723,7 @@
 				{#if feed && feed.overdueCount > 0}
 					<button
 						onclick={openOverdue}
-						class="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-2.5 py-1 text-[11px] sm:text-xs font-medium text-warning hover:bg-warning/20 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-2.5 py-1 text-2xs sm:text-xs font-medium text-warning hover:bg-warning/20 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						<AlertCircle class="h-3 w-3 sm:h-3.5 sm:w-3.5" />
 						{feed.overdueCount} overdue
@@ -731,7 +731,7 @@
 				{/if}
 				<a
 					href="/dashboard"
-					class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] sm:text-xs font-medium text-muted-foreground hover:border-accent hover:text-accent transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-2xs sm:text-xs font-medium text-muted-foreground hover:border-accent hover:text-accent transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				>
 					Full dashboard
 				</a>
@@ -862,7 +862,7 @@
 						<p class="text-xs font-medium text-foreground sm:text-sm">
 							Some of your day couldn't be loaded.
 						</p>
-						<p class="mt-0.5 text-[11px] text-muted-foreground sm:text-xs">
+						<p class="mt-0.5 text-2xs text-muted-foreground sm:text-xs">
 							{degradedDetail}
 						</p>
 					</div>
@@ -879,7 +879,7 @@
 							{@const eventTitle = event.title ?? 'Untitled event'}
 							{@const eventProjectName = projectNameFor(event.project_id)}
 							<span
-								class="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border border-accent/20 bg-accent/5 px-2.5 py-1 text-[11px] text-foreground sm:text-xs"
+								class="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border border-accent/20 bg-accent/5 px-2.5 py-1 text-2xs text-foreground sm:text-xs"
 								title={eventProjectName
 									? `${eventTitle} · ${eventProjectName}`
 									: eventTitle}
@@ -903,7 +903,7 @@
 			{#if agenda.schedule.length > 0}
 				<section class="mt-5 sm:mt-6" aria-label="Today's schedule">
 					<h2
-						class="mb-2 sm:mb-3 text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground"
+						class="mb-2 sm:mb-3 text-2xs sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground"
 					>
 						Schedule
 					</h2>
@@ -912,7 +912,7 @@
 							{#if index === nowMarkerIndex}
 								<div class="flex items-center gap-2 sm:gap-3" aria-hidden="true">
 									<div
-										class="w-12 sm:w-16 flex-shrink-0 text-right text-[10px] sm:text-xs font-semibold tabular-nums text-destructive"
+										class="w-12 sm:w-16 flex-shrink-0 text-right text-2xs sm:text-xs font-semibold tabular-nums text-destructive"
 									>
 										{fmtTime(new Date(nowMs).toISOString())}
 									</div>
@@ -963,7 +963,7 @@
 						{#if nowMarkerIndex === agenda.schedule.length}
 							<div class="flex items-center gap-2 sm:gap-3" aria-hidden="true">
 								<div
-									class="w-12 sm:w-16 flex-shrink-0 text-right text-[10px] sm:text-xs font-semibold tabular-nums text-destructive"
+									class="w-12 sm:w-16 flex-shrink-0 text-right text-2xs sm:text-xs font-semibold tabular-nums text-destructive"
 								>
 									{fmtTime(new Date(nowMs).toISOString())}
 								</div>
@@ -977,7 +977,7 @@
 			{#if agenda.anytime.length > 0}
 				<section class="mt-5 sm:mt-6" aria-label="Tasks without a set time">
 					<h2
-						class="mb-2 sm:mb-3 text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground"
+						class="mb-2 sm:mb-3 text-2xs sm:text-xs font-semibold uppercase tracking-widest text-muted-foreground"
 					>
 						Anytime today
 					</h2>
@@ -1032,7 +1032,7 @@
 												project.name}
 										>
 											<span
-												class="mt-0.5 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-accent"
+												class="mt-0.5 shrink-0 text-2xs font-semibold uppercase tracking-wide text-accent"
 											>
 												Next
 											</span>
@@ -1043,7 +1043,7 @@
 													{project.next_step_short}
 												</span>
 												<span
-													class="block truncate text-[11px] text-muted-foreground"
+													class="block truncate text-2xs text-muted-foreground"
 												>
 													{project.name}
 												</span>

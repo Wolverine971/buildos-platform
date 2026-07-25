@@ -265,11 +265,11 @@
 						{title || 'New Milestone'}
 					</h2>
 					{#if selectedGoalName}
-						<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
+						<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5 truncate">
 							For goal: <span class="text-foreground/80">{selectedGoalName}</span>
 						</p>
 					{:else}
-						<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+						<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5">
 							Select a goal to add this milestone to
 						</p>
 					{/if}

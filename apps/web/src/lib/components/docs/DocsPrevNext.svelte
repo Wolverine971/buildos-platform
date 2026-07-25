@@ -12,7 +12,7 @@
 			href={'/docs/' + prev.slug}
 			class="group block bg-card border border-border rounded-lg p-4 hover:shadow-ink hover:border-accent/40 transition-all duration-200 pressable"
 		>
-			<span class="flex items-center gap-1 text-[11px] text-muted-foreground mb-1">
+			<span class="flex items-center gap-1 text-2xs text-muted-foreground mb-1">
 				<ArrowLeft class="w-3 h-3" />
 				Previous
 			</span>
@@ -32,7 +32,7 @@
 			class="group block bg-card border border-border rounded-lg p-4 hover:shadow-ink hover:border-accent/40 transition-all duration-200 pressable sm:text-right"
 		>
 			<span
-				class="flex items-center gap-1 text-[11px] text-muted-foreground mb-1 sm:justify-end"
+				class="flex items-center gap-1 text-2xs text-muted-foreground mb-1 sm:justify-end"
 			>
 				Next
 				<ArrowRight class="w-3 h-3" />

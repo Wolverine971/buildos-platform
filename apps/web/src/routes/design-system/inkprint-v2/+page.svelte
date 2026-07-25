@@ -221,8 +221,8 @@
 								class:object-contain={getTextureSize(tex.file) === 'repeat'}
 							/>
 						</div>
-						<span class="text-[10px] text-muted-foreground text-center">{tex.id}</span>
-						<span class="text-[9px] text-accent">{getTextureSize(tex.file)}</span>
+						<span class="text-2xs text-muted-foreground text-center">{tex.id}</span>
+						<span class="text-2xs text-accent">{getTextureSize(tex.file)}</span>
 					</div>
 				{/each}
 			</div>
@@ -238,10 +238,8 @@
 								class:object-contain={getTextureSize(mat.file) === 'repeat'}
 							/>
 						</div>
-						<span class="text-[10px] text-muted-foreground text-center"
-							>{mat.weight}</span
-						>
-						<span class="text-[9px] text-accent">{getTextureSize(mat.file)}</span>
+						<span class="text-2xs text-muted-foreground text-center">{mat.weight}</span>
+						<span class="text-2xs text-accent">{getTextureSize(mat.file)}</span>
 					</div>
 				{/each}
 			</div>
@@ -314,12 +312,12 @@
 								<span class="font-mono text-sm font-medium text-foreground">
 									tx-{texture.id}
 								</span>
-								<span class="text-[10px] text-accent font-mono">
+								<span class="text-2xs text-accent font-mono">
 									{sizing}
 								</span>
 							</div>
 							<p class="text-sm text-muted-foreground">{texture.meaning}</p>
-							<p class="text-[10px] text-muted-foreground mt-1 font-mono">
+							<p class="text-2xs text-muted-foreground mt-1 font-mono">
 								{textureFile}
 							</p>
 
@@ -371,13 +369,13 @@
 								<span class="font-mono text-sm font-medium text-foreground">
 									wt-{material.weight}
 								</span>
-								<span class="text-[10px] text-accent font-mono">{sizing}</span>
+								<span class="text-2xs text-accent font-mono">{sizing}</span>
 							</div>
 							<p class="text-xs text-accent font-medium mb-2">{material.material}</p>
 							<p class="text-sm text-muted-foreground">{material.meaning}</p>
 
 							<div class="mt-3 pt-3 border-t border-border/50">
-								<span class="text-[10px] font-mono text-muted-foreground">
+								<span class="text-2xs font-mono text-muted-foreground">
 									{textureFile}
 								</span>
 							</div>
@@ -422,7 +420,7 @@
 					></div>
 					<div class="relative z-10">
 						<span
-							class="text-[10px] uppercase tracking-wider text-muted-foreground font-medium"
+							class="text-2xs uppercase tracking-wider text-muted-foreground font-medium"
 						>
 							AI Suggestion
 						</span>
@@ -458,7 +456,7 @@
 					></div>
 					<div class="relative z-10">
 						<span
-							class="text-[10px] uppercase tracking-wider text-muted-foreground font-medium"
+							class="text-2xs uppercase tracking-wider text-muted-foreground font-medium"
 						>
 							Active Task
 						</span>
@@ -493,9 +491,7 @@
 						class:mix-blend-overlay={darkModeTest}
 					></div>
 					<div class="relative z-10">
-						<span
-							class="text-[10px] uppercase tracking-wider text-amber-600 font-medium"
-						>
+						<span class="text-2xs uppercase tracking-wider text-amber-600 font-medium">
 							Due Today
 						</span>
 						<p class="text-sm font-medium text-foreground mt-1">Submit proposal</p>
@@ -529,7 +525,7 @@
 						class:mix-blend-overlay={darkModeTest}
 					></div>
 					<div class="relative z-10">
-						<span class="text-[10px] uppercase tracking-wider text-red-600 font-medium">
+						<span class="text-2xs uppercase tracking-wider text-red-600 font-medium">
 							Error
 						</span>
 						<p class="text-sm font-medium text-foreground mt-1">Connection failed</p>
@@ -564,7 +560,7 @@
 					></div>
 					<div class="relative z-10">
 						<span
-							class="text-[10px] uppercase tracking-wider text-muted-foreground font-medium"
+							class="text-2xs uppercase tracking-wider text-muted-foreground font-medium"
 						>
 							Linked
 						</span>
@@ -600,7 +596,7 @@
 					></div>
 					<div class="relative z-10">
 						<span
-							class="text-[10px] uppercase tracking-wider text-muted-foreground font-medium"
+							class="text-2xs uppercase tracking-wider text-muted-foreground font-medium"
 						>
 							Confirm
 						</span>
@@ -639,8 +635,8 @@
 						></div>
 						<div class="relative z-10">
 							<span class="text-xs font-mono text-foreground">{tex.file}</span>
-							<span class="text-[9px] text-accent ml-2">{sizing}</span>
-							<p class="text-[10px] text-muted-foreground mt-1">{tex.note}</p>
+							<span class="text-2xs text-accent ml-2">{sizing}</span>
+							<p class="text-2xs text-muted-foreground mt-1">{tex.note}</p>
 						</div>
 					</div>
 				{/each}

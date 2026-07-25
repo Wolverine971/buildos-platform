@@ -24,6 +24,8 @@ export interface PhaseAControlRun {
 export interface BaselineAggregate {
 	runCount: number;
 	completedCount: number;
+	cleanSuccessCount: number;
+	errorRunCount: number;
 	ttftSampleCount: number;
 	ttftP50Ms: number | null;
 	ttftP95Ms: number | null;
@@ -75,6 +77,8 @@ export function aggregateControlRuns(runs: PhaseAControlRun[]): BaselineAggregat
 	return {
 		runCount: runs.length,
 		completedCount: runs.filter((run) => run.completed).length,
+		cleanSuccessCount: runs.filter((run) => run.completed && run.errors.length === 0).length,
+		errorRunCount: runs.filter((run) => run.errors.length > 0).length,
 		ttftSampleCount: ttft.length,
 		ttftP50Ms: percentile(ttft, 0.5),
 		ttftP95Ms: percentile(ttft, 0.95),

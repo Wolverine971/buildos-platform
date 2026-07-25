@@ -1044,7 +1044,6 @@
 
 <div
 	class="layout-root flex min-h-screen min-h-[100dvh] w-full flex-col overflow-x-hidden bg-background text-foreground transition-colors"
-	style="padding-left: max(0px, env(safe-area-inset-left)); padding-right: max(0px, env(safe-area-inset-right));"
 >
 	<!-- Skip to main content link for accessibility -->
 	<a

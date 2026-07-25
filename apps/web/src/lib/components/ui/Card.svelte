@@ -115,15 +115,9 @@
 </div>
 
 <style>
-	/* Card-specific transitions - complements weight system */
 	div {
-		/* GPU acceleration for smooth animations */
-		transform: translateZ(0);
-		backface-visibility: hidden;
-	}
-
-	/* Focus ring offset - matches Inkprint background */
-	div {
+		/* Focus ring offset - matches the Inkprint background. Cards stay on the
+		   normal compositor path until an interaction actually transforms them. */
 		--tw-ring-offset-color: hsl(var(--background));
 	}
 </style>

@@ -212,7 +212,7 @@
 					>
 						{title || 'New Event'}
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5">
 						Schedule time tied to this project
 					</p>
 				</div>

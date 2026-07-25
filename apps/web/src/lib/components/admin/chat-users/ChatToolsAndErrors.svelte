@@ -37,7 +37,7 @@
 					<p class="line-clamp-2 text-xs text-muted-foreground">
 						{item.error_message}
 					</p>
-					<p class="mt-1 text-[11px] text-muted-foreground">
+					<p class="mt-1 text-2xs text-muted-foreground">
 						{formatDate(item.created_at)}
 					</p>
 				</div>

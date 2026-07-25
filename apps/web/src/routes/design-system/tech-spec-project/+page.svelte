@@ -261,14 +261,12 @@
 						<!-- Spec reference line -->
 						<div class="flex items-center gap-1.5 sm:gap-2 mb-0.5">
 							<span
-								class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-[0.1em] text-accent"
+								class="font-mono text-2xs uppercase tracking-[0.1em] text-accent"
 							>
 								{project.id}
 							</span>
 							<span class="text-muted-foreground/40 hidden sm:inline">•</span>
-							<span
-								class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-[0.1em] text-muted-foreground hidden sm:inline"
-							>
+							<span class="font-mono text-2xs sm:micro-label hidden sm:inline">
 								Rev {project.version}
 							</span>
 						</div>
@@ -293,8 +291,7 @@
 						class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/50 border border-border mr-1"
 					>
 						<span class="w-1.5 h-1.5 rounded-full {projectStatus.color}"></span>
-						<span
-							class="font-mono text-[0.55rem] uppercase tracking-wide text-foreground"
+						<span class="font-mono text-2xs uppercase tracking-wide text-foreground"
 							>{projectStatus.label}</span
 						>
 					</span>
@@ -321,7 +318,7 @@
 				<!-- Mobile: State + 3-dot menu -->
 				<div class="flex items-center gap-1.5 sm:hidden">
 					<span
-						class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-[0.5rem]"
+						class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-2xs"
 					>
 						<span class="w-1.5 h-1.5 rounded-full {projectStatus.color}"></span>
 						<span class="font-mono uppercase text-foreground"
@@ -342,39 +339,36 @@
 				>
 					<div>
 						<span
-							class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-muted-foreground block"
+							class="font-mono text-2xs uppercase tracking-wider text-muted-foreground block"
 							>Type</span
 						>
-						<span class="font-mono text-[0.65rem] sm:text-xs text-foreground capitalize"
+						<span class="font-mono text-2xs sm:text-xs text-foreground capitalize"
 							>{project.type_key}</span
 						>
 					</div>
 					<div>
 						<span
-							class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-muted-foreground block"
+							class="font-mono text-2xs uppercase tracking-wider text-muted-foreground block"
 							>Owner</span
 						>
-						<span class="font-mono text-[0.65rem] sm:text-xs text-accent"
+						<span class="font-mono text-2xs sm:text-xs text-accent"
 							>@{project.owner}</span
 						>
 					</div>
 					<div>
 						<span
-							class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-muted-foreground block"
+							class="font-mono text-2xs uppercase tracking-wider text-muted-foreground block"
 							>Created</span
 						>
-						<span class="font-mono text-[0.65rem] sm:text-xs text-foreground"
-							>2026-01-15</span
+						<span class="font-mono text-2xs sm:text-xs text-foreground">2026-01-15</span
 						>
 					</div>
 					<div>
 						<span
-							class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-muted-foreground block"
+							class="font-mono text-2xs uppercase tracking-wider text-muted-foreground block"
 							>Updated</span
 						>
-						<span class="font-mono text-[0.65rem] sm:text-xs text-foreground"
-							>2h ago</span
-						>
+						<span class="font-mono text-2xs sm:text-xs text-foreground">2h ago</span>
 					</div>
 
 					<!-- Next Step Display -->
@@ -388,7 +382,7 @@
 						</div>
 						<div class="min-w-0">
 							<p
-								class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-accent"
+								class="font-mono text-2xs uppercase tracking-wider text-accent"
 							>
 								Next Action
 							</p>
@@ -410,8 +404,7 @@
 				<!-- Documents Section -->
 				<section>
 					<div class="flex items-center gap-2 mb-3">
-						<span
-							class="font-mono text-[0.6rem] uppercase tracking-[0.12em] text-accent"
+						<span class="font-mono text-2xs uppercase tracking-[0.12em] text-accent"
 							>Section 01</span
 						>
 						<div class="flex-1 h-px bg-border"></div>
@@ -428,11 +421,11 @@
 							>
 								<FileText class="w-4 h-4 text-muted-foreground" />
 								<span
-									class="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-foreground"
+									class="font-mono text-2xs uppercase tracking-[0.12em] text-foreground"
 								>
 									Documents
 								</span>
-								<span class="font-mono text-[0.6rem] text-muted-foreground"
+								<span class="font-mono text-2xs text-muted-foreground"
 									>({documents.length})</span
 								>
 							</button>
@@ -457,7 +450,7 @@
 							<div transition:slide={{ duration: 120 }}>
 								<!-- Table header -->
 								<div
-									class="hidden sm:grid grid-cols-12 gap-3 px-4 py-2 bg-muted/20 border-b border-border font-mono text-[0.55rem] uppercase tracking-wider text-muted-foreground"
+									class="hidden sm:grid grid-cols-12 gap-3 px-4 py-2 bg-muted/20 border-b border-border font-mono text-2xs uppercase tracking-wider text-muted-foreground"
 								>
 									<div class="col-span-2">ID</div>
 									<div class="col-span-6">Title</div>
@@ -505,7 +498,7 @@
 													class="w-1.5 h-1.5 rounded-full {projectStatus.color}"
 												></span>
 												<span
-													class="font-mono text-[0.6rem] uppercase text-muted-foreground"
+													class="font-mono text-2xs uppercase text-muted-foreground"
 													>{projectStatus.label}</span
 												>
 											</div>
@@ -518,7 +511,7 @@
 											<div class="flex items-start justify-between gap-2">
 												<div>
 													<span
-														class="font-mono text-[0.6rem] text-accent block"
+														class="font-mono text-2xs text-accent block"
 														>{doc.id}</span
 													>
 													<span class="text-sm text-foreground"
@@ -542,8 +535,7 @@
 				<!-- Dependency Graph Section -->
 				<section>
 					<div class="flex items-center gap-2 mb-3">
-						<span
-							class="font-mono text-[0.6rem] uppercase tracking-[0.12em] text-accent"
+						<span class="font-mono text-2xs uppercase tracking-[0.12em] text-accent"
 							>Section 02</span
 						>
 						<div class="flex-1 h-px bg-border"></div>
@@ -555,11 +547,11 @@
 						>
 							<GitBranch class="w-4 h-4 text-muted-foreground" />
 							<span
-								class="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-foreground"
+								class="font-mono text-2xs uppercase tracking-[0.12em] text-foreground"
 							>
 								Dependencies
 							</span>
-							<span class="font-mono text-[0.6rem] text-muted-foreground"
+							<span class="font-mono text-2xs text-muted-foreground"
 								>({dependencies.length})</span
 							>
 						</div>
@@ -570,8 +562,7 @@
 									class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-muted/20 rounded-lg border border-border/50"
 								>
 									<div class="flex-1">
-										<span
-											class="font-mono text-[0.55rem] text-muted-foreground block"
+										<span class="font-mono text-2xs text-muted-foreground block"
 											>Source</span
 										>
 										<span class="font-mono text-sm text-accent">{dep.from}</span
@@ -579,14 +570,13 @@
 									</div>
 									<div class="flex items-center gap-2 sm:px-4">
 										<span
-											class="font-mono text-[0.55rem] uppercase tracking-wider text-muted-foreground"
+											class="font-mono text-2xs uppercase tracking-wider text-muted-foreground"
 											>{dep.type.replace(/_/g, ' ')}</span
 										>
 										<ChevronRight class="w-3 h-3 text-muted-foreground" />
 									</div>
 									<div class="flex-1 sm:text-right">
-										<span
-											class="font-mono text-[0.55rem] text-muted-foreground block"
+										<span class="font-mono text-2xs text-muted-foreground block"
 											>Target</span
 										>
 										<span class="font-mono text-sm text-accent">{dep.to}</span>
@@ -600,8 +590,7 @@
 				<!-- Log Section -->
 				<section>
 					<div class="flex items-center gap-2 mb-3">
-						<span
-							class="font-mono text-[0.6rem] uppercase tracking-[0.12em] text-accent"
+						<span class="font-mono text-2xs uppercase tracking-[0.12em] text-accent"
 							>Section 03</span
 						>
 						<div class="flex-1 h-px bg-border"></div>
@@ -651,10 +640,10 @@
 						>
 							<Target class="w-4 h-4 text-amber-500" />
 							<span
-								class="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-foreground"
+								class="font-mono text-2xs uppercase tracking-[0.12em] text-foreground"
 								>Goals</span
 							>
-							<span class="font-mono text-[0.6rem] text-muted-foreground"
+							<span class="font-mono text-2xs text-muted-foreground"
 								>({goals.length})</span
 							>
 						</button>
@@ -682,7 +671,7 @@
 								<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
 									<div class="flex items-start justify-between gap-2 mb-2">
 										<div>
-											<span class="font-mono text-[0.55rem] text-accent block"
+											<span class="font-mono text-2xs text-accent block"
 												>{goal.id}</span
 											>
 											<span class="text-sm text-foreground">{goal.name}</span>
@@ -702,7 +691,7 @@
 												style="width: {goal.progress}%"
 											></div>
 										</div>
-										<span class="font-mono text-[0.55rem] text-muted-foreground"
+										<span class="font-mono text-2xs text-muted-foreground"
 											>{goal.progress}%</span
 										>
 									</div>
@@ -723,10 +712,10 @@
 						>
 							<Flag class="w-4 h-4 text-emerald-500" />
 							<span
-								class="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-foreground"
+								class="font-mono text-2xs uppercase tracking-[0.12em] text-foreground"
 								>Milestones</span
 							>
-							<span class="font-mono text-[0.6rem] text-muted-foreground"
+							<span class="font-mono text-2xs text-muted-foreground"
 								>({milestones.length})</span
 							>
 						</button>
@@ -754,14 +743,14 @@
 								<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
 									<div class="flex items-start justify-between gap-2">
 										<div>
-											<span class="font-mono text-[0.55rem] text-accent block"
+											<span class="font-mono text-2xs text-accent block"
 												>{milestone.id}</span
 											>
 											<span class="text-sm text-foreground"
 												>{milestone.title}</span
 											>
 											<span
-												class="font-mono text-[0.55rem] text-muted-foreground block mt-1"
+												class="font-mono text-2xs text-muted-foreground block mt-1"
 												>Due: {milestone.due_at}</span
 											>
 										</div>
@@ -787,10 +776,10 @@
 						>
 							<ListChecks class="w-4 h-4 text-blue-500" />
 							<span
-								class="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-foreground"
+								class="font-mono text-2xs uppercase tracking-[0.12em] text-foreground"
 								>Tasks</span
 							>
-							<span class="font-mono text-[0.6rem] text-muted-foreground"
+							<span class="font-mono text-2xs text-muted-foreground"
 								>({tasks.length})</span
 							>
 						</button>
@@ -830,11 +819,11 @@
 										/>
 										<div class="min-w-0 flex-1">
 											<div class="flex items-center gap-2">
-												<span class="font-mono text-[0.55rem] text-accent"
+												<span class="font-mono text-2xs text-accent"
 													>{task.id}</span
 												>
 												<span
-													class="font-mono text-[0.5rem] uppercase {getPriorityColor(
+													class="font-mono text-2xs uppercase {getPriorityColor(
 														task.priority
 													)}">{task.priority}</span
 												>
@@ -844,7 +833,7 @@
 											>
 											{#if task.assignee}
 												<span
-													class="font-mono text-[0.55rem] text-muted-foreground"
+													class="font-mono text-2xs text-muted-foreground"
 													>@{task.assignee}</span
 												>
 											{/if}
@@ -867,10 +856,10 @@
 						>
 							<AlertCircle class="w-4 h-4 text-red-500" />
 							<span
-								class="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-foreground"
+								class="font-mono text-2xs uppercase tracking-[0.12em] text-foreground"
 								>Risks</span
 							>
-							<span class="font-mono text-[0.6rem] text-muted-foreground"
+							<span class="font-mono text-2xs text-muted-foreground"
 								>({risks.length})</span
 							>
 						</button>
@@ -898,19 +887,19 @@
 								<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
 									<div class="flex items-start justify-between gap-2">
 										<div>
-											<span class="font-mono text-[0.55rem] text-accent block"
+											<span class="font-mono text-2xs text-accent block"
 												>{risk.id}</span
 											>
 											<span class="text-sm text-foreground">{risk.title}</span
 											>
 											<div class="flex items-center gap-2 mt-1">
 												<span
-													class="font-mono text-[0.5rem] uppercase text-red-500"
+													class="font-mono text-2xs uppercase text-red-500"
 													>{risk.impact} impact</span
 												>
 												<span class="text-muted-foreground/50">·</span>
 												<span
-													class="font-mono text-[0.5rem] uppercase text-muted-foreground"
+													class="font-mono text-2xs uppercase text-muted-foreground"
 													>{risk.likelihood} likelihood</span
 												>
 											</div>
@@ -929,7 +918,7 @@
 				<!-- Quick Reference Card -->
 				<div class="bg-card border border-border rounded-lg shadow-ink p-4">
 					<span
-						class="font-mono text-[0.6rem] uppercase tracking-wider text-muted-foreground block mb-3"
+						class="font-mono text-2xs uppercase tracking-wider text-muted-foreground block mb-3"
 						>Quick Reference</span
 					>
 					<div class="space-y-2 font-mono text-xs">
@@ -969,10 +958,10 @@
 			<div
 				class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-muted-foreground"
 			>
-				<span class="font-mono text-[0.55rem] uppercase tracking-wider">
+				<span class="font-mono text-2xs uppercase tracking-wider">
 					{project.id} • Tech Spec Project Demo
 				</span>
-				<span class="font-mono text-[0.55rem]"> Last synced: 2026-02-01 14:32 UTC </span>
+				<span class="font-mono text-2xs"> Last synced: 2026-02-01 14:32 UTC </span>
 			</div>
 		</footer>
 	</div>

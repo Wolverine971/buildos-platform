@@ -173,7 +173,7 @@
 					: undefined}
 				aria-label={count === null ? tab.label : `${tab.label}, ${count} entries`}
 				tabindex={activeTab === tab.id ? 0 : -1}
-				class={`inline-flex min-w-0 items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-[0.65rem] font-semibold transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:shrink-0 sm:gap-1.5 sm:rounded-lg sm:px-3 sm:text-xs ${
+				class={`inline-flex min-w-0 items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-2xs font-semibold transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:shrink-0 sm:gap-1.5 sm:rounded-lg sm:px-3 sm:text-xs ${
 					activeTab === tab.id
 						? 'border-accent bg-accent text-accent-foreground shadow-ink'
 						: 'border-border bg-background/70 text-muted-foreground hover:border-accent hover:text-foreground'
@@ -184,7 +184,7 @@
 				<span class="min-w-0 truncate">{tab.label}</span>
 				{#if count !== null}
 					<span
-						class={`shrink-0 rounded-full px-1 py-0.5 text-[0.65rem] sm:px-1.5 ${
+						class={`shrink-0 rounded-full px-1 py-0.5 text-2xs sm:px-1.5 ${
 							activeTab === tab.id
 								? 'bg-accent-foreground/15 text-accent-foreground'
 								: 'bg-muted text-muted-foreground'
@@ -258,7 +258,7 @@
 												{item.title}
 											</h3>
 											<span
-												class="text-[0.65rem] font-medium text-muted-foreground"
+												class="text-2xs font-medium text-muted-foreground"
 											>
 												{formatTime(item.timestamp)}
 											</span>
@@ -266,7 +266,7 @@
 										{#if onAskAboutItem}
 											<button
 												type="button"
-												class="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background/70 px-2 py-1 text-[0.7rem] font-semibold text-muted-foreground transition hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+												class="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background/70 px-2 py-1 text-2xs font-semibold text-muted-foreground transition hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 												title={`Ask about ${item.title}`}
 												aria-label={`Ask about ${item.title}`}
 												onclick={() => onAskAboutItem?.(item)}
@@ -284,7 +284,7 @@
 									{/if}
 
 									{#if item.tool}
-										<div class="flex flex-wrap gap-1.5 text-[0.65rem]">
+										<div class="flex flex-wrap gap-1.5 text-2xs">
 											<span
 												class="rounded-md border border-border bg-muted px-1.5 py-0.5 font-semibold text-muted-foreground"
 											>
@@ -332,7 +332,7 @@
 																class="mt-2 rounded-md border border-border bg-card"
 															>
 																<summary
-																	class="cursor-pointer px-2.5 py-1.5 text-[0.7rem] font-semibold text-muted-foreground hover:text-foreground"
+																	class="cursor-pointer px-2.5 py-1.5 text-2xs font-semibold text-muted-foreground hover:text-foreground"
 																>
 																	Full JSON
 																</summary>
@@ -359,7 +359,7 @@
 																class="mt-2 rounded-md border border-border bg-card"
 															>
 																<summary
-																	class="cursor-pointer px-2.5 py-1.5 text-[0.7rem] font-semibold text-muted-foreground hover:text-foreground"
+																	class="cursor-pointer px-2.5 py-1.5 text-2xs font-semibold text-muted-foreground hover:text-foreground"
 																>
 																	Full JSON
 																</summary>

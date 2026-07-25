@@ -113,7 +113,7 @@
 					class="bg-muted px-3 py-1.5 border-b border-border flex items-center justify-between"
 				>
 					<span class="micro-label text-foreground">{field.label.toUpperCase()}</span>
-					<span class="text-[10px] text-muted-foreground/60 tabular-nums">
+					<span class="text-2xs text-muted-foreground/60 tabular-nums">
 						{#if field.stats.modified > 0}
 							<span class="text-warning">~{field.stats.modified}</span>
 						{/if}
@@ -129,10 +129,10 @@
 				<!-- Column headers -->
 				<div class="grid grid-cols-2 divide-x divide-border border-b border-border">
 					<div class="px-3 py-1">
-						<span class="text-[10px] font-medium text-destructive">{fromLabel}</span>
+						<span class="text-2xs font-medium text-destructive">{fromLabel}</span>
 					</div>
 					<div class="px-3 py-1">
-						<span class="text-[10px] font-medium text-success">{toLabel}</span>
+						<span class="text-2xs font-medium text-success">{toLabel}</span>
 					</div>
 				</div>
 
@@ -142,7 +142,7 @@
 						{#if row.left?.type === 'separator'}
 							<!-- Separator spans both columns -->
 							<div
-								class="flex items-center gap-2 px-3 py-1 bg-muted/50 border-y border-border/30 text-[10px] text-muted-foreground/60"
+								class="flex items-center gap-2 px-3 py-1 bg-muted/50 border-y border-border/30 text-2xs text-muted-foreground/60"
 							>
 								<ChevronDown class="w-3 h-3 shrink-0" />
 								<span>
@@ -157,7 +157,7 @@
 								<!-- Left (from) cell -->
 								<div class="flex {getCellBgClass(row.left)}">
 									<span
-										class="w-8 shrink-0 text-right pr-1.5 select-none text-[10px] tabular-nums {getGutterClass(
+										class="w-8 shrink-0 text-right pr-1.5 select-none text-2xs tabular-nums {getGutterClass(
 											row.left
 										)} py-px"
 									>
@@ -187,7 +187,7 @@
 								<!-- Right (to) cell -->
 								<div class="flex {getCellBgClass(row.right)}">
 									<span
-										class="w-8 shrink-0 text-right pr-1.5 select-none text-[10px] tabular-nums {getGutterClass(
+										class="w-8 shrink-0 text-right pr-1.5 select-none text-2xs tabular-nums {getGutterClass(
 											row.right
 										)} py-px"
 									>

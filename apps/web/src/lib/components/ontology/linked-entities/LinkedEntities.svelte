@@ -565,18 +565,18 @@
 						/>
 						<span class="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-accent rounded-full"></span>
 						<span
-							class="truncate text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+							class="truncate text-2xs sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide"
 						>
 							Linked Entities
 						</span>
 					</span>
-					<span class="mt-0.5 block truncate text-[11px] text-muted-foreground">
+					<span class="mt-0.5 block truncate text-2xs text-muted-foreground">
 						{isLoading ? 'Loading links...' : linkedTypeSummary}
 					</span>
 				</button>
 			{:else}
 				<h3
-					class="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 sm:gap-2"
+					class="text-2xs sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 sm:gap-2"
 				>
 					<span class="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-accent rounded-full"></span>
 					Linked Entities
@@ -586,7 +586,7 @@
 			{#if compactEditToggle && !readOnly && contentVisible}
 				<button
 					type="button"
-					class="inline-flex h-7 items-center gap-1 rounded border border-border bg-card px-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
+					class="inline-flex h-7 items-center gap-1 rounded border border-border bg-card px-2 text-2xs font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
 					onclick={() => (linksEditMode = !linksEditMode)}
 					aria-pressed={linksEditMode}
 				>
@@ -635,7 +635,7 @@
 					<p class="text-xs sm:text-sm text-destructive">{error}</p>
 					<button
 						type="button"
-						class="mt-2 text-[10px] sm:text-xs text-accent hover:underline pressable"
+						class="mt-2 text-2xs sm:text-xs text-accent hover:underline pressable"
 						onclick={() => loadData()}
 					>
 						Try again

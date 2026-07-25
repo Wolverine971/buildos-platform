@@ -61,6 +61,8 @@ describe('Phase A baseline report', () => {
 		expect(aggregate).toMatchObject({
 			runCount: 3,
 			completedCount: 3,
+			cleanSuccessCount: 3,
+			errorRunCount: 0,
 			ttftP50Ms: 200,
 			ttftP95Ms: 300,
 			costMeanUsd: 0.02,

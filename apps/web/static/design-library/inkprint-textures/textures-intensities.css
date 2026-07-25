@@ -1,14 +1,10 @@
+/* AUTO-GENERATED from src/lib/styles/inkprint.css — do not edit.
+   Module: textures-intensities.css
+*/
+
 /* ============================================
    Texture Intensities
-   ============================================
-
-   Control texture opacity with semantic intensity tokens.
-
-   Usage:
-   <div class="tx tx-frame tx-weak">Subtle texture</div>
-   <div class="tx tx-grain tx-med">Balanced texture</div>
-   <div class="tx tx-bloom tx-strong">Bold texture</div>
-*/
+   ============================================ */
 
 .tx-weak {
 	--tx-opacity: 0.03;

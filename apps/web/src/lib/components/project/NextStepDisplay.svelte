@@ -191,11 +191,11 @@
 		<!-- Label row -->
 		<div class="flex items-center gap-1.5 mb-1">
 			<Zap class="w-3 h-3 text-accent shrink-0" />
-			<span class="text-[10px] font-semibold uppercase tracking-wider text-accent">
+			<span class="text-2xs font-semibold uppercase tracking-wider text-accent">
 				Suggested Next Move
 			</span>
 			{#if nextStepSourceLabel || updatedTimeAgo}
-				<span class="text-[10px] text-muted-foreground hidden sm:inline">
+				<span class="text-2xs text-muted-foreground hidden sm:inline">
 					· {nextStepSourceLabel ?? updatedTimeAgo}
 					{#if nextStepSourceLabel && updatedTimeAgo}
 						· {updatedTimeAgo}
@@ -283,7 +283,7 @@
 			class="w-full flex items-center gap-1.5 hover:bg-muted/30 active:bg-muted/50 -mx-1 px-1 py-1 rounded-md transition-colors disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-ring pressable"
 		>
 			<Zap class="w-3 h-3 text-muted-foreground shrink-0" />
-			<span class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+			<span class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
 				Suggested Next Move
 			</span>
 			<span class="text-xs text-muted-foreground">

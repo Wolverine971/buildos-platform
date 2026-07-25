@@ -103,7 +103,7 @@
 			</div>
 			<div>
 				<p class="text-sm font-semibold text-foreground">Project graph</p>
-				<p class="text-[10px] sm:text-xs text-muted-foreground">
+				<p class="text-2xs sm:text-xs text-muted-foreground">
 					Click a node to see how it connects.
 				</p>
 			</div>
@@ -221,7 +221,7 @@
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<span class="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
+					<span class="text-2xs uppercase tracking-wide text-muted-foreground">
 						{mobileDetailsExpanded ? 'Hide' : 'Tap for details'}
 					</span>
 					<ChevronDown

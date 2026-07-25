@@ -315,15 +315,11 @@
 		<div class="flex items-center justify-between gap-2">
 			<div class="flex items-center gap-2">
 				<Users class="h-4 w-4 text-muted-foreground" />
-				<p
-					class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-				>
-					Collaborate
-				</p>
+				<p class="micro-label font-semibold">Collaborate</p>
 			</div>
 			{#if currentOwner}
 				<span
-					class="max-w-28 truncate text-[11px] font-medium text-foreground"
+					class="max-w-28 truncate text-2xs font-medium text-foreground"
 					title={currentOwner}
 				>
 					Owner: {currentOwner}
@@ -486,11 +482,7 @@
 		<div class="space-y-4 p-4 text-sm">
 			<div class="grid gap-3 rounded-md border border-border bg-card p-3 tx tx-frame tx-weak">
 				<div>
-					<p
-						class="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-					>
-						To
-					</p>
+					<p class="micro-label font-semibold">To</p>
 					<p class="mt-1 truncate text-foreground" title={selectedMember?.email ?? ''}>
 						{selectedMemberLabel}
 						{#if selectedMember?.email}
@@ -500,11 +492,7 @@
 					</p>
 				</div>
 				<div>
-					<p
-						class="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-					>
-						Subject
-					</p>
+					<p class="micro-label font-semibold">Subject</p>
 					<p class="mt-1 text-foreground">{emailPreviewSubject}</p>
 				</div>
 			</div>

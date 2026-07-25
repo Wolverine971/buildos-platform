@@ -82,9 +82,7 @@
 	<div class="border-b border-border bg-card px-3 py-2.5 tx tx-strip tx-weak sm:p-4">
 		<div class="flex items-start justify-between gap-3">
 			<div class="min-w-0 flex-1">
-				<p
-					class="mb-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-accent"
-				>
+				<p class="mb-0.5 text-2xs font-semibold uppercase tracking-[0.15em] text-accent">
 					Automation loop · Step {stepIndex + 1} of {steps.length}
 				</p>
 				<h2 class="text-base font-semibold text-foreground sm:text-lg">
@@ -96,7 +94,7 @@
 			</div>
 			<button
 				type="button"
-				class="shrink-0 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="shrink-0 rounded-lg border border-border bg-card px-2.5 py-1.5 text-2xs font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				onclick={onExit}
 			>
 				Exit
@@ -121,7 +119,7 @@
 								class="flex h-1.5 w-1.5 rounded-full bg-accent/60 transition-colors group-hover:bg-accent"
 							></span>
 							<span
-								class="text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground transition-colors group-hover:text-accent"
+								class="text-2xs font-semibold uppercase tracking-[0.1em] text-muted-foreground transition-colors group-hover:text-accent"
 							>
 								{s.label}
 							</span>
@@ -134,7 +132,7 @@
 							aria-current={isActive ? 'step' : undefined}
 						></span>
 						<span
-							class={`text-[0.65rem] font-semibold uppercase tracking-[0.1em] ${
+							class={`text-2xs font-semibold uppercase tracking-[0.1em] ${
 								isActive ? 'text-accent' : 'text-muted-foreground/50'
 							}`}
 						>
@@ -250,7 +248,7 @@
 							<button
 								type="button"
 								onclick={() => jumpToStepIfBack('agent')}
-								class="inline-flex items-center gap-1 rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-accent transition pressable hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								class="inline-flex items-center gap-1 rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.15em] text-accent transition pressable hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								aria-label="Change helper"
 								title="Tap to change helper"
 							>
@@ -260,7 +258,7 @@
 							</button>
 						{:else}
 							<span
-								class="inline-flex items-center rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-accent"
+								class="inline-flex items-center rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.15em] text-accent"
 							>
 								Helper: {selectedAgentLabel}
 							</span>
@@ -269,7 +267,7 @@
 							<button
 								type="button"
 								onclick={() => jumpToStepIfBack('project')}
-								class="inline-flex items-center gap-1 rounded-lg border border-success/30 bg-success/10 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-success transition pressable hover:bg-success/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								class="inline-flex items-center gap-1 rounded-lg border border-success/30 bg-success/10 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.15em] text-success transition pressable hover:bg-success/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								aria-label="Change project"
 								title="Tap to change project"
 							>
@@ -306,7 +304,7 @@
 						<div class="mt-3 flex items-center gap-2">
 							<label
 								for="agent-turn-budget"
-								class="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+								class="text-2xs font-semibold uppercase tracking-[0.15em] text-muted-foreground"
 							>
 								Turn limit
 							</label>
@@ -323,11 +321,11 @@
 									)}
 								aria-describedby="agent-turn-budget-hint"
 							/>
-							<span class="text-[0.65rem] text-muted-foreground">turns max</span>
+							<span class="text-2xs text-muted-foreground">turns max</span>
 						</div>
 						<p
 							id="agent-turn-budget-hint"
-							class="mt-1.5 text-[0.65rem] leading-snug text-muted-foreground"
+							class="mt-1.5 text-2xs leading-snug text-muted-foreground"
 						>
 							5 is a good starting point — most loops resolve in 3–5 turns. Bump it up
 							for more open-ended work.

@@ -2695,14 +2695,15 @@
 	<Modal
 		isOpen={isOpen && !hidden}
 		onClose={handleClose}
-		size="xl"
+		size="full"
 		variant="bottom-sheet"
+		presentation="immersive"
 		enableGestures={false}
 		showDragHandle={false}
 		closeOnBackdrop={false}
 		showCloseButton={false}
 		ariaLabel="BuildOS chat assistant dialog"
-		customClasses="agent-chat-keyboard-modal lg:!max-w-6xl xl:!max-w-7xl !h-[100dvh] !max-h-[100dvh] sm:!h-[90dvh] sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg !overscroll-none"
+		customClasses="overscroll-none"
 	>
 		{#snippet header()}
 			<!-- INKPRINT header bar with Frame texture -->
@@ -2907,7 +2908,7 @@
 										type="number"
 										min="1"
 										max="50"
-										class="w-16 rounded-lg border border-border bg-background px-2 py-1 text-[0.65rem] font-semibold text-foreground shadow-ink-inner focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										class="w-16 rounded-lg border border-border bg-background px-2 py-1 text-2xs font-semibold text-foreground shadow-ink-inner focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 										value={shellRouter.agentTurnBudget}
 										disabled={shellRouter.agentLoopActive ||
 											shellRouter.agentMessageLoading ||
@@ -2921,7 +2922,7 @@
 								{#if shellRouter.agentTurnsRemaining <= 0}
 									<!-- INKPRINT warning badge with Static texture -->
 									<span
-										class="rounded-lg bg-warning/10 px-2.5 py-1.5 text-[0.65rem] font-semibold text-warning tx tx-static tx-weak"
+										class="rounded-lg bg-warning/10 px-2.5 py-1.5 text-2xs font-semibold text-warning tx tx-static tx-weak"
 									>
 										Turn limit reached — adjust and resume.
 									</span>
@@ -2942,44 +2943,3 @@
 		{/snippet}
 	</Modal>
 {/if}
-
-<style>
-	@media (max-width: 639px) {
-		:global(.agent-chat-keyboard-modal) {
-			height: calc(100dvh - var(--keyboard-height, 0px)) !important;
-			max-height: calc(100dvh - var(--keyboard-height, 0px)) !important;
-			min-height: calc(100dvh - var(--keyboard-height, 0px)) !important;
-			margin-bottom: var(--keyboard-height, 0px) !important;
-			border-bottom-left-radius: 0 !important;
-			border-bottom-right-radius: 0 !important;
-		}
-
-		:global(.agent-chat-keyboard-modal .modal-content) {
-			min-height: 0;
-			flex: 1 1 auto;
-		}
-
-		@supports (padding-bottom: env(safe-area-inset-bottom, 0px)) {
-			:global(.agent-chat-keyboard-modal) {
-				height: calc(
-					100dvh + env(safe-area-inset-bottom, 0px) - var(--keyboard-height, 0px)
-				) !important;
-				max-height: calc(
-					100dvh + env(safe-area-inset-bottom, 0px) - var(--keyboard-height, 0px)
-				) !important;
-				min-height: calc(
-					100dvh + env(safe-area-inset-bottom, 0px) - var(--keyboard-height, 0px)
-				) !important;
-				margin-bottom: calc(
-					var(--keyboard-height, 0px) - env(safe-area-inset-bottom, 0px)
-				) !important;
-			}
-		}
-	}
-
-	@media (min-width: 640px) {
-		:global(.agent-chat-keyboard-modal) {
-			margin-bottom: 1rem !important;
-		}
-	}
-</style>

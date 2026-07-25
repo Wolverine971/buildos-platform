@@ -45,7 +45,7 @@
 							<p class="mt-1 line-clamp-2 text-xs text-muted-foreground">
 								{cluster.message}
 							</p>
-							<p class="mt-1 text-[11px] text-muted-foreground">
+							<p class="mt-1 text-2xs text-muted-foreground">
 								Latest {formatDate(cluster.latest_at)}
 							</p>
 						</div>

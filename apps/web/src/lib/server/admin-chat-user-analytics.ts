@@ -1,4 +1,10 @@
 // apps/web/src/lib/server/admin-chat-user-analytics.ts
+import {
+	dateMs,
+	numberValue,
+	roundedPercentileOrNull as percentile,
+	textValue
+} from '$lib/services/admin/analytics-primitives';
 import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
 import { resolveBillableTokenTotal } from '$lib/services/admin/chat-session-metrics';
 import { chunkArray } from '$lib/utils/chunk-array';
@@ -118,19 +124,6 @@ type DetailBuild = {
 const PAGE_SIZE = 1000;
 const MAX_ROWS_PER_SOURCE = 50_000;
 const ID_CHUNK_SIZE = 250;
-function numberValue(value: unknown): number {
-	if (typeof value === 'number' && Number.isFinite(value)) return value;
-	if (typeof value === 'string' && value.trim().length > 0) {
-		const parsed = Number(value);
-		return Number.isFinite(parsed) ? parsed : 0;
-	}
-	return 0;
-}
-
-function textValue(value: unknown): string | null {
-	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
-}
-
 function timeframeToMs(timeframe: AdminChatUserAnalyticsTimeframe): number {
 	switch (timeframe) {
 		case '24h':
@@ -143,12 +136,6 @@ function timeframeToMs(timeframe: AdminChatUserAnalyticsTimeframe): number {
 		default:
 			return 7 * 24 * 60 * 60 * 1000;
 	}
-}
-
-function dateMs(value: string | null | undefined): number | null {
-	if (!value) return null;
-	const parsed = new Date(value).getTime();
-	return Number.isFinite(parsed) ? parsed : null;
 }
 
 function isoOrNull(value: string | null | undefined): string | null {
@@ -178,13 +165,6 @@ function dayKey(value: string | null | undefined): string | null {
 	const parsed = dateMs(value);
 	if (parsed === null) return null;
 	return new Date(parsed).toISOString().slice(0, 10);
-}
-
-function percentile(values: number[], target: number): number | null {
-	const filtered = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
-	if (filtered.length === 0) return null;
-	const index = Math.min(filtered.length - 1, Math.ceil((target / 100) * filtered.length) - 1);
-	return Math.round(filtered[index] ?? 0);
 }
 
 function consecutiveDayStreak(days: Set<string>): number {

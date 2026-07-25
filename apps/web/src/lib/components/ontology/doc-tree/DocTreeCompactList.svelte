@@ -116,9 +116,9 @@
 			case 1:
 				return { text: 'text-xs', icon: 'w-3.5 h-3.5', padding: 20 };
 			case 2:
-				return { text: 'text-[11px]', icon: 'w-3 h-3', padding: 32 };
+				return { text: 'text-2xs', icon: 'w-3 h-3', padding: 32 };
 			default:
-				return { text: 'text-[10px]', icon: 'w-2.5 h-2.5', padding: 40 };
+				return { text: 'text-2xs', icon: 'w-2.5 h-2.5', padding: 40 };
 		}
 	}
 
@@ -192,7 +192,7 @@
 
 					<!-- Child count for collapsed folders -->
 					{#if isFolder && !isExpanded && hasChildren}
-						<span class="text-[9px] text-muted-foreground shrink-0 tabular-nums">
+						<span class="text-2xs text-muted-foreground shrink-0 tabular-nums">
 							{node.children?.length}
 						</span>
 					{/if}
@@ -217,7 +217,7 @@
 			<button
 				type="button"
 				onclick={() => onCreateDocument(null)}
-				class="w-full flex items-center gap-1.5 px-2 py-1.5 text-left text-[10px] text-muted-foreground hover:text-accent hover:bg-accent/5 transition-colors"
+				class="w-full flex items-center gap-1.5 px-2 py-1.5 text-left text-2xs text-muted-foreground hover:text-accent hover:bg-accent/5 transition-colors"
 			>
 				<Plus class="w-3 h-3" />
 				<span>Add document</span>

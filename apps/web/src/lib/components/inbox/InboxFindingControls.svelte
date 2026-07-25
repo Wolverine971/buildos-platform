@@ -60,7 +60,7 @@
 			aria-describedby={`${idPrefix}-note-help`}
 			class="mt-1 h-11 w-full rounded-md border border-border-strong bg-background px-3 text-xs text-foreground shadow-ink-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-accent focus:ring-1 focus:ring-accent/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60"
 		/>
-		<p id={`${idPrefix}-note-help`} class="mt-1 text-[10px] text-muted-foreground">
+		<p id={`${idPrefix}-note-help`} class="mt-1 text-2xs text-muted-foreground">
 			Required to address; optional to dismiss.
 		</p>
 	</div>

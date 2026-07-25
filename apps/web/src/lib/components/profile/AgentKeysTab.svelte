@@ -1174,7 +1174,7 @@
 				<p class="max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
 					Generate a BuildOS Agent Key, store it in the client config, then authenticate
 					with
-					<code class="rounded-md bg-muted px-1 py-0.5 text-[0.72rem] text-foreground"
+					<code class="rounded-md bg-muted px-1 py-0.5 text-xs text-foreground"
 						>Authorization: Bearer &lt;BUILDOS_AGENT_TOKEN&gt;</code
 					>. Use one key per tool so you can rotate or revoke access without touching
 					other agents.
@@ -1193,9 +1193,7 @@
 			class="grid divide-y divide-border text-xs text-muted-foreground lg:grid-cols-3 lg:divide-x lg:divide-y-0"
 		>
 			<div class="space-y-2 px-4 py-4 sm:px-5">
-				<div
-					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
-				>
+				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
 					Claude Code
 				</div>
 				<p class="leading-relaxed">
@@ -1224,9 +1222,7 @@
 			</div>
 
 			<div class="space-y-2 px-4 py-4 sm:px-5">
-				<div
-					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
-				>
+				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
 					OpenClaw
 				</div>
 				<p class="leading-relaxed">
@@ -1255,9 +1251,7 @@
 			</div>
 
 			<div class="space-y-2 px-4 py-4 sm:px-5">
-				<div
-					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
-				>
+				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
 					Browser or remote clients
 				</div>
 				<p class="leading-relaxed">
@@ -1290,7 +1284,7 @@
 		<div class="border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5">
 			<span class="font-medium text-foreground">Connection check:</span>
 			Ask the agent to connect to BuildOS, list your projects, and call
-			<code class="rounded-md bg-muted px-1 py-0.5 text-[0.72rem] text-foreground"
+			<code class="rounded-md bg-muted px-1 py-0.5 text-xs text-foreground"
 				>get_onto_project_status</code
 			>
 			before changing an existing project.
@@ -1316,9 +1310,7 @@
 			class="grid gap-3 border-t border-border px-4 sm:px-5 py-4 sm:grid-cols-2 text-xs sm:text-sm text-muted-foreground"
 		>
 			<div>
-				<div
-					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
-				>
+				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
 					What
 				</div>
 				<p class="mt-1 leading-relaxed">
@@ -1327,9 +1319,7 @@
 				</p>
 			</div>
 			<div>
-				<div
-					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
-				>
+				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
 					Why
 				</div>
 				<p class="mt-1 leading-relaxed">
@@ -1338,9 +1328,7 @@
 				</p>
 			</div>
 			<div>
-				<div
-					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
-				>
+				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
 					How
 				</div>
 				<p class="mt-1 leading-relaxed">
@@ -1349,9 +1337,7 @@
 				</p>
 			</div>
 			<div>
-				<div
-					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
-				>
+				<div class="text-2xs font-semibold uppercase tracking-wider text-foreground/70">
 					Safety
 				</div>
 				<p class="mt-1 leading-relaxed">
@@ -1375,7 +1361,7 @@
 				</div>
 				<div class="min-w-0">
 					<div
-						class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+						class="text-2xs font-semibold uppercase tracking-wider text-muted-foreground"
 					>
 						Your agent handle
 					</div>
@@ -1675,11 +1661,11 @@
 													{periodLabel(period)}
 												</div>
 												<div
-													class="mt-1 text-[0.7rem] text-muted-foreground"
+													class="mt-1 text-2xs text-muted-foreground"
 												>
 													{trend?.session_count ?? 0} sessions
 												</div>
-												<div class="text-[0.7rem] text-muted-foreground">
+												<div class="text-2xs text-muted-foreground">
 													{trend?.write_count ?? 0} writes
 												</div>
 											</div>
@@ -1745,7 +1731,7 @@
 									class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground min-h-[44px] py-2"
 								>
 									<span>Project Scope</span>
-									<span class="text-[0.7rem] normal-case tracking-normal">
+									<span class="text-2xs normal-case tracking-normal">
 										{scopeLabel(caller)}
 									</span>
 								</summary>
@@ -1777,7 +1763,7 @@
 									class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground min-h-[44px] py-2"
 								>
 									<span>Write Permissions</span>
-									<span class="text-[0.7rem] normal-case tracking-normal">
+									<span class="text-2xs normal-case tracking-normal">
 										{writePermissionLabels(caller).length} write op{writePermissionLabels(
 											caller
 										).length === 1

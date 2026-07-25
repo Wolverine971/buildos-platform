@@ -336,7 +336,7 @@
 			</button>
 		</div>
 		{#if lastUpdated}
-			<p class="text-[10px] text-muted-foreground/70 mt-0.5">
+			<p class="text-2xs text-muted-foreground/70 mt-0.5">
 				Last updated {formatTimestamp(lastUpdated)}
 			</p>
 		{/if}
@@ -349,7 +349,7 @@
 				<button
 					type="button"
 					onclick={() => handleTimeFilterChange('24h')}
-					class="px-2 py-1 text-[10px] rounded transition-colors {timeFilter === '24h'
+					class="px-2 py-1 text-2xs rounded transition-colors {timeFilter === '24h'
 						? 'bg-accent text-accent-foreground'
 						: 'bg-muted text-muted-foreground hover:bg-muted'}"
 				>
@@ -358,7 +358,7 @@
 				<button
 					type="button"
 					onclick={() => handleTimeFilterChange('7d')}
-					class="px-2 py-1 text-[10px] rounded transition-colors {timeFilter === '7d'
+					class="px-2 py-1 text-2xs rounded transition-colors {timeFilter === '7d'
 						? 'bg-accent text-accent-foreground'
 						: 'bg-muted text-muted-foreground hover:bg-muted'}"
 				>
@@ -367,7 +367,7 @@
 				<button
 					type="button"
 					onclick={() => handleTimeFilterChange('all')}
-					class="px-2 py-1 text-[10px] rounded transition-colors {timeFilter === 'all'
+					class="px-2 py-1 text-2xs rounded transition-colors {timeFilter === 'all'
 						? 'bg-accent text-accent-foreground'
 						: 'bg-muted text-muted-foreground hover:bg-muted'}"
 				>
@@ -383,7 +383,7 @@
 					type="text"
 					bind:value={searchQuery}
 					placeholder="Search versions..."
-					class="w-full pl-6 pr-2 py-1 text-[10px] bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-accent/50"
+					class="w-full pl-6 pr-2 py-1 text-2xs bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-accent/50"
 				/>
 			</div>
 		</div>
@@ -401,7 +401,7 @@
 				<button
 					type="button"
 					onclick={handleRetry}
-					class="inline-flex items-center gap-1 text-[10px] text-accent hover:underline"
+					class="inline-flex items-center gap-1 text-2xs text-accent hover:underline"
 				>
 					<RefreshCw class="w-3 h-3" />
 					Retry
@@ -411,7 +411,7 @@
 			<div class="px-3 py-4 text-center">
 				<Clock class="w-5 h-5 text-muted-foreground/50 mx-auto mb-1.5" />
 				<p class="text-xs text-muted-foreground">No versions yet</p>
-				<p class="text-[10px] text-muted-foreground/70 mt-1">
+				<p class="text-2xs text-muted-foreground/70 mt-1">
 					First save creates version history
 				</p>
 			</div>
@@ -432,7 +432,7 @@
 						<div class="flex items-start gap-2">
 							<!-- Version number -->
 							<span
-								class="shrink-0 text-[10px] font-mono font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded"
+								class="shrink-0 text-2xs font-mono font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded"
 							>
 								v{version.number}
 							</span>
@@ -451,7 +451,7 @@
 										{/if}
 									</span>
 									<span
-										class="text-[10px] text-muted-foreground/70 shrink-0 tabular-nums"
+										class="text-2xs text-muted-foreground/70 shrink-0 tabular-nums"
 									>
 										{formatTimestamp(
 											version.window?.ended_at || version.created_at
@@ -461,27 +461,27 @@
 								<div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
 									{#if version.is_merged && version.change_count > 1}
 										<span
-											class="text-[10px] px-1 py-0.5 rounded bg-info/10 text-info"
+											class="text-2xs px-1 py-0.5 rounded bg-info/10 text-info"
 										>
 											{version.change_count} edits
 										</span>
 									{/if}
 									{#if version.is_restore}
 										<span
-											class="text-[10px] px-1 py-0.5 rounded bg-warning/10 text-warning"
+											class="text-2xs px-1 py-0.5 rounded bg-warning/10 text-warning"
 										>
 											Restored from v{version.restore_of_version}
 										</span>
 									{/if}
 									{#if sourceLabel}
 										<span
-											class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground/70"
+											class="text-2xs px-1 py-0.5 rounded bg-muted text-muted-foreground/70"
 										>
 											{sourceLabel}
 										</span>
 									{/if}
 									{#if windowLabel}
-										<span class="text-[10px] text-muted-foreground/50"
+										<span class="text-2xs text-muted-foreground/50"
 											>{windowLabel}</span
 										>
 									{/if}
@@ -499,7 +499,7 @@
 						type="button"
 						onclick={handleLoadMore}
 						disabled={isLoadingMore}
-						class="w-full text-[10px] text-muted-foreground hover:text-accent py-1.5 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 rounded hover:bg-accent/5 pressable"
+						class="w-full text-2xs text-muted-foreground hover:text-accent py-1.5 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 rounded hover:bg-accent/5 pressable"
 					>
 						{#if isLoadingMore}
 							<LoaderCircle class="w-3 h-3 animate-spin" />
@@ -514,7 +514,7 @@
 			<!-- Selected version actions -->
 			{#if selectedVersion}
 				<div class="px-3 py-2 border-t border-border bg-muted/50 space-y-1.5">
-					<div class="text-[10px] text-muted-foreground flex items-center gap-1.5">
+					<div class="text-2xs text-muted-foreground flex items-center gap-1.5">
 						<span class="font-medium text-foreground">v{selectedVersion.number}</span>
 						{#if selectedVersion.snapshot_hash}
 							<span class="font-mono text-muted-foreground/40" title="Snapshot hash">
@@ -527,7 +527,7 @@
 							<button
 								type="button"
 								onclick={handleCompare}
-								class="flex-1 inline-flex items-center justify-center gap-1.5 h-7 px-2.5 text-[10px] font-medium rounded-md border border-border bg-card text-foreground shadow-ink pressable transition-all hover:border-accent/50 hover:text-accent"
+								class="flex-1 inline-flex items-center justify-center gap-1.5 h-7 px-2.5 text-2xs font-medium rounded-md border border-border bg-card text-foreground shadow-ink pressable transition-all hover:border-accent/50 hover:text-accent"
 							>
 								<GitCompare class="w-3 h-3" />
 								See Changes
@@ -538,7 +538,7 @@
 								size="sm"
 								onclick={() => handleViewDiff('previous')}
 								disabled={selectedVersion.number === 1}
-								class="text-[10px] h-7 px-2 flex-1"
+								class="text-2xs h-7 px-2 flex-1"
 							>
 								<GitCompare class="w-3 h-3 mr-1" />
 								vs Previous
@@ -548,7 +548,7 @@
 								size="sm"
 								onclick={() => handleViewDiff('current')}
 								disabled={selectedVersion.number === versions[0]?.number}
-								class="text-[10px] h-7 px-2 flex-1"
+								class="text-2xs h-7 px-2 flex-1"
 							>
 								<GitCompare class="w-3 h-3 mr-1" />
 								vs Current
@@ -559,7 +559,7 @@
 						<button
 							type="button"
 							onclick={handleRestore}
-							class="w-full inline-flex items-center justify-center gap-1.5 h-7 px-2 text-[10px] font-medium rounded-md text-warning hover:bg-warning/10 transition-colors pressable"
+							class="w-full inline-flex items-center justify-center gap-1.5 h-7 px-2 text-2xs font-medium rounded-md text-warning hover:bg-warning/10 transition-colors pressable"
 						>
 							<RotateCcw class="w-3 h-3" />
 							Restore this version

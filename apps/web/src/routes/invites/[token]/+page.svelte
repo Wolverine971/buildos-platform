@@ -280,9 +280,7 @@
 						<AlertCircle class="w-5 h-5 text-destructive" />
 					</div>
 					<div class="min-w-0 flex-1">
-						<p
-							class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-1"
-						>
+						<p class="text-2xs uppercase tracking-[0.15em] text-muted-foreground mb-1">
 							Invite Error
 						</p>
 						<h1 class="text-base font-semibold text-foreground">Invite unavailable</h1>
@@ -308,9 +306,7 @@
 						<UserPlus class="w-5 h-5 text-accent" />
 					</div>
 					<div class="min-w-0 flex-1">
-						<p
-							class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-1"
-						>
+						<p class="text-2xs uppercase tracking-[0.15em] text-muted-foreground mb-1">
 							Project Invite
 						</p>
 						<h1 class="text-base font-semibold text-foreground">

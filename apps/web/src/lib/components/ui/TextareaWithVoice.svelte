@@ -1064,7 +1064,6 @@
 			<button
 				type="button"
 				class={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
-				style="-webkit-tap-highlight-color: transparent;"
 				onclick={toggleVoiceRecording}
 				aria-label={voiceButtonState.label}
 				title={voiceButtonState.label}
@@ -1109,7 +1108,7 @@
 							>
 							<!-- Keyboard hint to stop recording (desktop only) -->
 							<kbd
-								class="hidden rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem] font-medium text-destructive md:inline-flex"
+								class="hidden rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 font-mono text-2xs font-medium text-destructive md:inline-flex"
 							>
 								Enter
 							</kbd>
@@ -1146,13 +1145,13 @@
 							class="hidden text-xs text-muted-foreground md:inline-flex md:items-center"
 						>
 							<kbd
-								class="rounded border border-border bg-background px-1 py-0.5 font-mono text-[0.65rem] font-medium text-foreground"
+								class="rounded border border-border bg-background px-1 py-0.5 font-mono text-2xs font-medium text-foreground"
 								>Enter</kbd
 							>
 							<span class="mx-1">send</span>
 							<span class="text-muted-foreground/50">·</span>
 							<kbd
-								class="ml-1 rounded border border-border bg-background px-1 py-0.5 font-mono text-[0.65rem] font-medium text-foreground"
+								class="ml-1 rounded border border-border bg-background px-1 py-0.5 font-mono text-2xs font-medium text-foreground"
 								>Shift+Enter</kbd
 							>
 							<span class="ml-1">new line</span>
@@ -1166,7 +1165,7 @@
 					<!-- Live transcript badge: accent styling, micro-label -->
 					{#if enableVoice && canUseLiveTranscript && isRecording}
 						<span
-							class="hidden rounded-md border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-accent xs:inline-flex"
+							class="hidden rounded-md border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs font-bold uppercase tracking-wider text-accent xs:inline-flex"
 						>
 							{liveTranscriptLabel}
 						</span>
@@ -1207,7 +1206,6 @@
 							<button
 								type="button"
 								class={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
-								style="-webkit-tap-highlight-color: transparent;"
 								onclick={toggleVoiceRecording}
 								aria-label={voiceButtonState.label}
 								title={voiceButtonState.label}

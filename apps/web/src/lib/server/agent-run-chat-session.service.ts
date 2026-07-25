@@ -1,5 +1,13 @@
 // apps/web/src/lib/server/agent-run-chat-session.service.ts
 import type { Json } from '@buildos/shared-types';
+import {
+	appendSeedSection as appendSection,
+	compactSeedText as compactText,
+	isRecord,
+	normalizeRecordArray as normalizeArray,
+	readFiniteNumber as readNumber,
+	readTrimmedString as readString
+} from './chat-session-seed-formatters';
 
 type AnySupabase = any;
 
@@ -41,27 +49,6 @@ const SEED_CONTEXT_VERSION = 1;
 const MAX_CHANGE_SUMMARIES = 12;
 const MAX_FIELD_SUMMARIES = 8;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function readString(value: unknown): string | null {
-	return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function readNumber(value: unknown): number | null {
-	return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function compactText(value: unknown, maxLength: number): string | null {
-	if (typeof value !== 'string') return null;
-	const normalized = value.replace(/\s+/g, ' ').trim();
-	if (!normalized) return null;
-	return normalized.length <= maxLength
-		? normalized
-		: `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
-}
-
 function compactTitle(value: unknown): string {
 	const title = compactText(value, 80) ?? 'Agent proposal';
 	return title;
@@ -76,22 +63,6 @@ function formatValue(value: unknown): string {
 	} catch {
 		return 'object';
 	}
-}
-
-function appendSection(
-	lines: string[],
-	title: string,
-	body: string | string[] | null | undefined
-): void {
-	const values = Array.isArray(body) ? body.filter(Boolean) : body ? [body] : [];
-	if (values.length === 0) return;
-	lines.push('', `## ${title}`, ...values);
-}
-
-function normalizeArray(value: unknown): Record<string, unknown>[] {
-	return Array.isArray(value)
-		? value.filter((item): item is Record<string, unknown> => isRecord(item))
-		: [];
 }
 
 function resolveRunId(run: Record<string, unknown>): string {

@@ -17,6 +17,42 @@ export const GOOGLE_CALENDAR_COLOR_MAP: Record<string, string> = {
 
 export const BUILD_BLOCK_COLOR_HEX = '#f97316';
 export const DEFAULT_PROJECT_COLOR_HEX = '#4c6ef5';
+export const DATA_DARK_FOREGROUND_HEX = '#18181b';
+export const DATA_LIGHT_FOREGROUND_HEX = '#ffffff';
+
+function relativeLuminance(hex: string): number | null {
+	const normalized = /^#[\da-f]{3}$/i.test(hex)
+		? `#${[...hex.slice(1)].map((channel) => channel.repeat(2)).join('')}`
+		: hex;
+	const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(normalized);
+	if (!match) return null;
+
+	const channels = match.slice(1, 4).map((channel) => {
+		const value = Number.parseInt(channel, 16) / 255;
+		return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+	});
+	const [red = 0, green = 0, blue = 0] = channels;
+
+	return red * 0.2126 + green * 0.7152 + blue * 0.0722;
+}
+
+function contrastRatio(first: number, second: number): number {
+	const lighter = Math.max(first, second);
+	const darker = Math.min(first, second);
+	return (lighter + 0.05) / (darker + 0.05);
+}
+
+/** Pick the higher-contrast fixed foreground for an external hex data color. */
+export function getDataColorForeground(backgroundHex: string): string {
+	const background = relativeLuminance(backgroundHex);
+	const dark = relativeLuminance(DATA_DARK_FOREGROUND_HEX);
+	const light = 1;
+	if (background === null || dark === null) return DATA_LIGHT_FOREGROUND_HEX;
+
+	return contrastRatio(background, dark) >= contrastRatio(background, light)
+		? DATA_DARK_FOREGROUND_HEX
+		: DATA_LIGHT_FOREGROUND_HEX;
+}
 
 export function getProjectColorHex(colorId?: string | null): string {
 	if (!colorId) {

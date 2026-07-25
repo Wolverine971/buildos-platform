@@ -78,7 +78,7 @@
 		{#if onClearFocus && focus.focusType !== 'project-wide'}
 			<button
 				type="button"
-				class="rounded-lg px-3 py-2 text-[0.65rem] font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="rounded-lg px-3 py-2 text-2xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				onclick={() => onClearFocus?.()}
 				aria-label="Clear focus"
 			>

@@ -22,8 +22,9 @@
 	- isOpen: boolean - Controls visibility (bindable)
 	- onClose: () => void - Close callback
 	- title?: string - Header title
-	- size?: 'sm' | 'md' | 'lg' | 'xl' - Modal width
+	- size?: 'sm' | 'md' | 'lg' | 'xl' | 'full' - Modal width
 	- variant?: 'center' | 'bottom-sheet' - Layout variant
+	- presentation?: 'default' | 'immersive' - Viewport-height presentation
 	- showCloseButton?: boolean - Show X button (default: true)
 	- closeOnBackdrop?: boolean - Click outside to close (default: true)
 	- closeOnEscape?: boolean - Escape key to close (default: true)
@@ -32,6 +33,7 @@
 	- showDragHandle?: boolean - Show drag handle (default: auto on mobile)
 	- dismissThreshold?: number - Pixels to drag before dismiss (default: 120)
 	- customClasses?: string - Additional CSS classes
+	- contentScrollable?: boolean - Let the shared content region scroll (default: true)
 	- ariaLabel?: string - Accessibility label
 	- ariaDescribedBy?: string - Accessibility description
 
@@ -92,8 +94,10 @@
 		isOpen?: boolean;
 		onClose?: () => void;
 		title?: string;
-		size?: 'sm' | 'md' | 'lg' | 'xl';
+		size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 		variant?: 'center' | 'bottom-sheet';
+		/** Full-viewport mobile shell with a tall desktop workspace. */
+		presentation?: 'default' | 'immersive';
 		/** ARIA role. Use 'alertdialog' for destructive confirmations so SR announces immediately. */
 		role?: 'dialog' | 'alertdialog';
 		showCloseButton?: boolean;
@@ -104,6 +108,7 @@
 		showDragHandle?: boolean;
 		dismissThreshold?: number;
 		customClasses?: string;
+		contentScrollable?: boolean;
 		ariaLabel?: string;
 		ariaDescribedBy?: string;
 		onOpen?: () => void;
@@ -125,6 +130,7 @@
 		title = '',
 		size = 'md',
 		variant = 'center',
+		presentation = 'default',
 		role = 'dialog',
 		showCloseButton = true,
 		closeOnBackdrop = true,
@@ -134,6 +140,7 @@
 		showDragHandle = $bindable(undefined),
 		dismissThreshold = 120,
 		customClasses = '',
+		contentScrollable = true,
 		ariaLabel = '',
 		ariaDescribedBy = '',
 		onOpen,
@@ -150,8 +157,13 @@
 		sm: 'w-full max-w-md xs:max-w-md sm:max-w-md',
 		md: 'w-full max-w-full xs:max-w-xl sm:max-w-2xl md:max-w-2xl',
 		lg: 'w-full max-w-full xs:max-w-2xl sm:max-w-3xl md:max-w-4xl',
-		xl: 'w-full max-w-full xs:max-w-3xl sm:max-w-4xl md:max-w-6xl'
+		xl: 'w-full max-w-full xs:max-w-3xl sm:max-w-4xl md:max-w-6xl',
+		full: 'w-full max-w-full lg:max-w-6xl xl:max-w-7xl'
 	};
+
+	const presentationClass = $derived(
+		presentation === 'immersive' ? 'modal-container--immersive' : ''
+	);
 
 	// Variant-specific classes - Inkprint styling
 	const variantClasses = $derived.by(() => {
@@ -648,6 +660,7 @@
 						{variantClasses.animation}
 						{animationComplete ? 'animation-complete' : ''}
 						modal-container
+						{presentationClass}
 						tx tx-frame tx-weak
 						ink-frame"
 					style="
@@ -696,7 +709,7 @@
 								<button
 									type="button"
 									onclick={attemptClose}
-									class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable tx-button hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable tx-button hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									aria-label="Close dialog"
 								>
 									<X class="h-4 w-4" />
@@ -708,7 +721,9 @@
 					<!-- Content (scrollable, compact spacing) -->
 					<div
 						id={contentId}
-						class="modal-content overflow-y-auto flex-1 min-h-0 overscroll-contain"
+						class="modal-content {contentScrollable
+							? 'overflow-y-auto'
+							: 'flex flex-col overflow-hidden'} flex-1 min-h-0 overscroll-contain"
 						style="touch-action: pan-y;"
 					>
 						{#if children}
@@ -861,7 +876,6 @@
 	/* Disable tap highlight on all modal elements */
 	.modal-container,
 	.modal-container * {
-		-webkit-tap-highlight-color: transparent;
 		-webkit-touch-callout: none;
 	}
 
@@ -882,6 +896,18 @@
 		.modal-container {
 			margin-bottom: var(--keyboard-height, 0px);
 		}
+
+		.modal-container--immersive {
+			height: calc(100dvh - var(--keyboard-height, 0px));
+			min-height: calc(100dvh - var(--keyboard-height, 0px));
+			max-height: calc(100dvh - var(--keyboard-height, 0px));
+			border-radius: 0;
+		}
+
+		.modal-container--immersive .modal-content {
+			min-height: 0;
+			flex: 1 1 auto;
+		}
 	}
 
 	/* ==================== Enhanced Breakpoints (xs: 480px) ==================== */
@@ -901,6 +927,12 @@
 			margin-left: 1rem;
 			margin-right: 1rem;
 		}
+
+		.modal-container--immersive {
+			height: 90dvh;
+			max-height: 95dvh;
+			margin-bottom: 1rem;
+		}
 	}
 
 	/* ==================== iOS Safe Area Support ==================== */
@@ -916,9 +948,30 @@
 			);
 		}
 
+		@media (max-width: 639px) {
+			.modal-container--immersive {
+				height: calc(
+					100dvh + env(safe-area-inset-bottom, 0px) - var(--keyboard-height, 0px)
+				);
+				min-height: calc(
+					100dvh + env(safe-area-inset-bottom, 0px) - var(--keyboard-height, 0px)
+				);
+				max-height: calc(
+					100dvh + env(safe-area-inset-bottom, 0px) - var(--keyboard-height, 0px)
+				);
+				margin-bottom: calc(var(--keyboard-height, 0px) - env(safe-area-inset-bottom, 0px));
+			}
+		}
+
 		.modal-footer {
 			/* Ensure footer clears home indicator */
 			padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+		}
+
+		@media (max-width: 639px) {
+			.modal-container--immersive .drag-handle-wrapper {
+				padding-top: max(0.625rem, env(safe-area-inset-top, 0px));
+			}
 		}
 	}
 

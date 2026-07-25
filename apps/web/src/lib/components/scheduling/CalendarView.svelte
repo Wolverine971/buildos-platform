@@ -799,7 +799,7 @@
 												<div class="flex min-w-0 items-center gap-2">
 													{#if markerKind}
 														<span
-															class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+															class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-2xs font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
 														>
 															{#if markerKind === 'range'}
 																<CalendarRange class="h-3 w-3" />
@@ -854,7 +854,7 @@
 									<div class="flex min-w-0 items-center gap-2">
 										{#if markerKind}
 											<span
-												class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+												class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-2xs font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
 											>
 												{#if markerKind === 'range'}
 													<CalendarRange class="h-3 w-3" />
@@ -914,7 +914,7 @@
 					</div>
 					{#each Array(parseInt(workingHours.work_end_time.split(':')[0] ?? '17') - parseInt(workingHours.work_start_time.split(':')[0] ?? '9')) as _, i}
 						<div
-							class="h-16 px-1.5 py-1 text-[10px] text-muted-foreground border-b border-border tabular-nums"
+							class="h-16 px-1.5 py-1 text-2xs text-muted-foreground border-b border-border tabular-nums"
 						>
 							{parseInt(workingHours.work_start_time.split(':')[0] ?? '9') + i}:00
 						</div>
@@ -949,7 +949,7 @@
 								{@const markerKind = getTaskMarkerKind(event)}
 								<button
 									onclick={() => handleEventClick(event)}
-									class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-[10px] leading-tight transition-colors hover:opacity-90 hover:shadow-ink motion-reduce:transition-none pressable {event.color} {getContinuationClass(
+									class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-2xs leading-tight transition-colors hover:opacity-90 hover:shadow-ink motion-reduce:transition-none pressable {event.color} {getContinuationClass(
 										event
 									)}"
 									title={`${event.title} - ${getEventDayLabel(event)}`}
@@ -980,7 +980,7 @@
 								<button
 									type="button"
 									onclick={() => openDayView(date)}
-									class="block w-full truncate rounded-sm px-1 text-left text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
+									class="block w-full truncate rounded-sm px-1 text-left text-2xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
 									aria-label={getOpenDayAriaLabel(date, allDayEvents.length - 2)}
 								>
 									+{allDayEvents.length - 2} more
@@ -1002,7 +1002,7 @@
 									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="absolute px-1 py-0.5 rounded-sm text-[10px] leading-tight overflow-hidden transition-colors hover:opacity-90 hover:shadow-ink motion-reduce:transition-none pressable border border-transparent {event.color}"
+										class="absolute px-1 py-0.5 rounded-sm text-2xs leading-tight overflow-hidden transition-colors hover:opacity-90 hover:shadow-ink motion-reduce:transition-none pressable border border-transparent {event.color}"
 										style="left: {left + 2}%; right: {100 -
 											(left + width + 2)}%; top: {getTimePosition(
 											event.start
@@ -1072,7 +1072,7 @@
 							</div>
 							{#if isToday}
 								<span
-									class="inline-block rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-foreground"
+									class="inline-block rounded-full bg-accent px-2 py-0.5 text-2xs font-semibold text-accent-foreground"
 								>
 									Today
 								</span>
@@ -1092,7 +1092,7 @@
 											<div class="flex min-w-0 items-center gap-2">
 												{#if markerKind}
 													<span
-														class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+														class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-2xs font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
 													>
 														{#if markerKind === 'range'}
 															<CalendarRange class="h-3 w-3" />
@@ -1126,7 +1126,7 @@
 							</div>
 						{:else}
 							<div
-								class="border-t border-border pt-1.5 text-center text-[10px] text-muted-foreground"
+								class="border-t border-border pt-1.5 text-center text-2xs text-muted-foreground"
 							>
 								No events
 							</div>
@@ -1187,7 +1187,7 @@
 											<button
 												type="button"
 												onclick={() => openDayView(date)}
-												class="block w-full truncate rounded-sm px-1 text-left text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
+												class="block w-full truncate rounded-sm px-1 text-left text-2xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
 												aria-label={getOpenDayAriaLabel(
 													date,
 													hiddenSegments
@@ -1200,7 +1200,7 @@
 											{@const markerKind = getTaskMarkerKind(event)}
 											<button
 												onclick={() => handleEventClick(event)}
-												class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-[10px] leading-tight transition-colors hover:bg-muted motion-reduce:transition-none pressable"
+												class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-2xs leading-tight transition-colors hover:bg-muted motion-reduce:transition-none pressable"
 												title={`${event.title} - ${getEventDayLabel(event)}`}
 											>
 												{#if markerKind}
@@ -1241,7 +1241,7 @@
 											<button
 												type="button"
 												onclick={() => openDayView(date)}
-												class="block w-full truncate rounded-sm px-1 text-left text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
+												class="block w-full truncate rounded-sm px-1 text-left text-2xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
 												aria-label={getOpenDayAriaLabel(
 													date,
 													timedEvents.length - 2
@@ -1258,7 +1258,7 @@
 								{@const markerKind = getTaskMarkerKind(segment.event)}
 								<button
 									onclick={() => handleEventClick(segment.event)}
-									class="absolute z-10 flex h-5 items-center gap-1 overflow-hidden px-1.5 text-left text-[10px] font-semibold leading-5 text-foreground shadow-sm transition-colors hover:brightness-95 hover:shadow-ink motion-reduce:transition-none pressable {segment
+									class="absolute z-10 flex h-5 items-center gap-1 overflow-hidden px-1.5 text-left text-2xs font-semibold leading-5 text-foreground shadow-sm transition-colors hover:brightness-95 hover:shadow-ink motion-reduce:transition-none pressable {segment
 										.event.color}"
 									style={getMonthSegmentStyle(segment)}
 									title={`${segment.event.title} - ${getEventRangeLabel(segment.event)}`}
@@ -1313,7 +1313,7 @@
 								</div>
 								{#if isToday}
 									<span
-										class="inline-block rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-foreground"
+										class="inline-block rounded-full bg-accent px-2 py-0.5 text-2xs font-semibold text-accent-foreground"
 									>
 										Today
 									</span>
@@ -1332,7 +1332,7 @@
 											<div class="flex min-w-0 items-center gap-2">
 												{#if markerKind}
 													<span
-														class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+														class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-2xs font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
 													>
 														{#if markerKind === 'range'}
 															<CalendarRange class="h-3 w-3" />
@@ -1351,7 +1351,7 @@
 													{event.title}
 												</div>
 											</div>
-											<div class="text-[10px] text-muted-foreground">
+											<div class="text-2xs text-muted-foreground">
 												{#if getContinuationLabel(event)}
 													<span class="font-medium"
 														>{getContinuationLabel(event)}</span
@@ -1367,7 +1367,7 @@
 									<button
 										type="button"
 										onclick={() => openDayView(date)}
-										class="block w-full truncate rounded-sm px-1.5 pt-0.5 text-left text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
+										class="block w-full truncate rounded-sm px-1.5 pt-0.5 text-left text-2xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none"
 										aria-label={getOpenDayAriaLabel(date, dayEvents.length - 3)}
 									>
 										+{dayEvents.length - 3} more

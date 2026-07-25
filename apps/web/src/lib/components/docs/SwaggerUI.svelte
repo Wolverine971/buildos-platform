@@ -110,8 +110,8 @@
 	}
 
 	.swagger-header {
-		background: linear-gradient(135deg, #1e40af 0%, #3730a3 100%);
-		color: white;
+		background: hsl(var(--accent));
+		color: hsl(var(--accent-foreground));
 		padding: 2rem;
 		margin-bottom: 2rem;
 		border-radius: 0.5rem;
@@ -141,8 +141,8 @@
 	.loading-spinner {
 		width: 40px;
 		height: 40px;
-		border: 3px solid #f3f4f6;
-		border-top: 3px solid #3b82f6;
+		border: 3px solid hsl(var(--muted));
+		border-top: 3px solid hsl(var(--accent));
 		border-radius: 50%;
 		animation: spin 1s linear infinite;
 		margin-bottom: 1rem;
@@ -167,14 +167,14 @@
 	}
 
 	.error-message {
-		color: #dc2626;
+		color: hsl(var(--destructive));
 		font-size: 1.125rem;
 		margin-bottom: 1rem;
 	}
 
 	.retry-button {
-		background: #3b82f6;
-		color: white;
+		background: hsl(var(--accent));
+		color: hsl(var(--accent-foreground));
 		border: none;
 		padding: 0.5rem 1rem;
 		border-radius: 0.375rem;
@@ -184,7 +184,7 @@
 	}
 
 	.retry-button:hover {
-		background: #2563eb;
+		background: hsl(var(--accent) / 0.9);
 	}
 
 	.hidden {
@@ -201,7 +201,7 @@
 	}
 
 	:global(.swagger-ui .scheme-container) {
-		background: #f8fafc;
+		background: hsl(var(--muted) / 0.45);
 		padding: 1rem;
 		border-radius: 0.5rem;
 		margin-bottom: 1rem;
@@ -210,26 +210,26 @@
 	:global(.swagger-ui .opblock-tag) {
 		font-size: 1.25rem;
 		font-weight: 600;
-		color: #1f2937;
+		color: hsl(var(--foreground));
 	}
 
 	:global(.swagger-ui .opblock.opblock-get .opblock-summary-method) {
-		background: #10b981;
+		background: hsl(var(--success));
 	}
 
 	:global(.swagger-ui .opblock.opblock-post .opblock-summary-method) {
-		background: #3b82f6;
+		background: hsl(var(--info));
 	}
 
 	:global(.swagger-ui .opblock.opblock-put .opblock-summary-method) {
-		background: #f59e0b;
+		background: hsl(var(--warning));
 	}
 
 	:global(.swagger-ui .opblock.opblock-delete .opblock-summary-method) {
-		background: #ef4444;
+		background: hsl(var(--destructive));
 	}
 
 	:global(.swagger-ui .opblock.opblock-patch .opblock-summary-method) {
-		background: #8b5cf6;
+		background: hsl(var(--accent));
 	}
 </style>

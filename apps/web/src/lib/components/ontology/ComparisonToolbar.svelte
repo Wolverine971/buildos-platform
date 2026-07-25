@@ -104,7 +104,7 @@
 			type="button"
 			onclick={() => onToggleTarget('previous')}
 			disabled={isLoading}
-			class="px-2 py-1 text-[10px] font-medium rounded-l-md transition-colors {compareTarget ===
+			class="px-2 py-1 text-2xs font-medium rounded-l-md transition-colors {compareTarget ===
 			'previous'
 				? 'bg-accent text-accent-foreground'
 				: 'text-muted-foreground hover:text-foreground hover:bg-muted'}"
@@ -115,7 +115,7 @@
 			type="button"
 			onclick={() => onToggleTarget('current')}
 			disabled={isLoading}
-			class="px-2 py-1 text-[10px] font-medium rounded-r-md transition-colors {compareTarget ===
+			class="px-2 py-1 text-2xs font-medium rounded-r-md transition-colors {compareTarget ===
 			'current'
 				? 'bg-accent text-accent-foreground'
 				: 'text-muted-foreground hover:text-foreground hover:bg-muted'}"
@@ -135,7 +135,7 @@
 			type="button"
 			onclick={onToggleViewMode}
 			disabled={isLoading}
-			class="px-2 py-1 text-[10px] font-medium rounded-l-md transition-colors flex items-center gap-1 {viewMode ===
+			class="px-2 py-1 text-2xs font-medium rounded-l-md transition-colors flex items-center gap-1 {viewMode ===
 			'unified'
 				? 'bg-accent text-accent-foreground'
 				: 'text-muted-foreground hover:text-foreground hover:bg-muted'}"
@@ -148,7 +148,7 @@
 			type="button"
 			onclick={onToggleViewMode}
 			disabled={isLoading}
-			class="px-2 py-1 text-[10px] font-medium rounded-r-md transition-colors flex items-center gap-1 {viewMode ===
+			class="px-2 py-1 text-2xs font-medium rounded-r-md transition-colors flex items-center gap-1 {viewMode ===
 			'split'
 				? 'bg-accent text-accent-foreground'
 				: 'text-muted-foreground hover:text-foreground hover:bg-muted'}"
@@ -168,6 +168,6 @@
 		title="Exit comparison"
 	>
 		<X class="w-3.5 h-3.5" />
-		<span class="text-[10px] font-medium hidden sm:inline">Exit</span>
+		<span class="text-2xs font-medium hidden sm:inline">Exit</span>
 	</button>
 </div>

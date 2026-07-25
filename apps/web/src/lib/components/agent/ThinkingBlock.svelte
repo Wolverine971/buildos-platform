@@ -177,7 +177,7 @@
 				{/if}
 
 				<span
-					class="min-w-0 truncate font-mono text-[0.7rem] font-semibold tracking-normal text-foreground {hasDisplayedActivities
+					class="min-w-0 truncate font-mono text-2xs font-semibold tracking-normal text-foreground {hasDisplayedActivities
 						? 'uppercase sm:text-xs'
 						: ''}"
 				>
@@ -219,7 +219,7 @@
 				<div
 					bind:this={logContainer}
 					onscroll={handleLogScroll}
-					class="thinking-log thinking-log-height space-y-0.5 overflow-y-auto rounded-md bg-background/55 p-1.5 font-mono text-[0.65rem] shadow-ink-inner sm:text-[0.7rem]"
+					class="thinking-log thinking-log-height space-y-0.5 overflow-y-auto rounded-md bg-background/55 p-1.5 font-mono text-2xs shadow-ink-inner sm:text-2xs"
 					class:thinking-log-expanded={isExpanded}
 					role="log"
 					aria-label="BuildOS thinking log"

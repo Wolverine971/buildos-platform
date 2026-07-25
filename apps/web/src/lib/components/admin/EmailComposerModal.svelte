@@ -735,7 +735,7 @@ Guidelines:
 								>
 									Instructions
 								</label>
-								<span class="text-[10px] text-muted-foreground"
+								<span class="text-2xs text-muted-foreground"
 									>{instructions.length}/5000</span
 								>
 							</div>
@@ -778,7 +778,7 @@ Guidelines:
 									</label>
 									<button
 										onclick={() => (customSystemPrompt = defaultSystemPrompt)}
-										class="text-[10px] text-accent hover:underline"
+										class="text-2xs text-accent hover:underline"
 									>
 										Reset
 									</button>

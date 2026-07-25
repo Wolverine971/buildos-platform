@@ -70,7 +70,7 @@
 				</h3>
 				{#if stateLabel}
 					<span
-						class="text-[0.6rem] uppercase tracking-[0.15em] text-muted-foreground border border-border rounded-full px-1.5 py-0.5"
+						class="text-2xs uppercase tracking-[0.15em] text-muted-foreground border border-border rounded-full px-1.5 py-0.5"
 					>
 						{stateLabel}
 					</span>
@@ -78,7 +78,7 @@
 			</div>
 
 			<div
-				class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-[11px] sm:text-xs text-muted-foreground"
+				class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-2xs sm:text-xs text-muted-foreground"
 			>
 				{#if commander}
 					<span>Led by {commander}</span>
@@ -107,7 +107,7 @@
 		>
 			<Sparkles class="w-3.5 h-3.5 text-accent mt-0.5 shrink-0" />
 			<div class="min-w-0">
-				<div class="text-[0.6rem] uppercase tracking-[0.18em] text-accent/80 mb-0.5">
+				<div class="text-2xs uppercase tracking-[0.18em] text-accent/80 mb-0.5">
 					Next step
 				</div>
 				<p class="text-xs sm:text-sm text-foreground leading-snug">

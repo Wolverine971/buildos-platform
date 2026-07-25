@@ -1,3 +1,7 @@
+/* AUTO-GENERATED from src/lib/styles/inkprint.css — do not edit.
+   Module: atmosphere.css
+*/
+
 /* ============================================
    Atmosphere Layer - Depth / Context (Opt-in)
    ============================================
@@ -8,11 +12,6 @@
    How it works:
    - Adds a subtle background "field" behind content
    - Uses ::after so it doesn't collide with .tx::before texture grammar
-
-   Usage:
-   <div class="atmo atmo-weak">Subtle atmospheric depth</div>
-   <div class="atmo atmo-med">Balanced atmosphere</div>
-   <div class="atmo atmo-strong">Strong atmosphere</div>
 */
 
 .atmo {

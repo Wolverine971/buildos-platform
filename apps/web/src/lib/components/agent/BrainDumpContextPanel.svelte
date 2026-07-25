@@ -51,7 +51,7 @@
 						{context.title || 'Brain Dump'}
 					</h2>
 					<div
-						class="mt-1 inline-flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+						class="mt-1 inline-flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"
 					>
 						{#if context.status === 'processing' || context.status === 'pending'}
 							<LoaderCircle class="h-3 w-3 animate-spin" />
@@ -73,7 +73,7 @@
 				{#if context.topics?.length}
 					<section>
 						<div
-							class="mb-1.5 flex items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+							class="mb-1.5 flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"
 						>
 							<Tag class="h-3 w-3" />
 							<span>Topics</span>
@@ -93,7 +93,7 @@
 				{#if projectId}
 					<section>
 						<div
-							class="mb-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+							class="mb-1.5 text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"
 						>
 							Linked project
 						</div>
@@ -111,7 +111,7 @@
 
 				<section>
 					<div
-						class="mb-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+						class="mb-1.5 text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"
 					>
 						Original dump
 					</div>
@@ -131,7 +131,7 @@
 
 				<section>
 					<div
-						class="mb-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+						class="mb-1.5 text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"
 					>
 						Change history
 					</div>
@@ -160,7 +160,7 @@
 													href={ref.url}
 													target="_blank"
 													rel="noopener noreferrer"
-													class="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[0.65rem] font-semibold text-foreground hover:border-accent hover:text-accent"
+													class="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-muted px-1.5 py-0.5 text-2xs font-semibold text-foreground hover:border-accent hover:text-accent"
 												>
 													<span class="truncate"
 														>{ref.title || ref.id}</span

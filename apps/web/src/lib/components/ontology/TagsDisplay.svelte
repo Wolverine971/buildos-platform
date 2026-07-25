@@ -58,7 +58,7 @@
 				<Tag class="w-3 h-3" />
 				<span class="font-medium uppercase tracking-wide">Tags</span>
 				{#if classificationInfo?.confidence}
-					<span class="text-[10px] opacity-70">
+					<span class="text-2xs opacity-70">
 						({Math.round((classificationInfo.confidence as number) * 100)}% confidence)
 					</span>
 				{/if}

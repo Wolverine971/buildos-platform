@@ -509,7 +509,7 @@
 				<span>Filters &amp; Sort</span>
 				{#if activeFilterCount > 0}
 					<span
-						class="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[0.65rem] font-semibold text-accent-foreground"
+						class="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-2xs font-semibold text-accent-foreground"
 					>
 						{activeFilterCount}
 					</span>
@@ -830,7 +830,7 @@
 					<thead class="bg-muted/50">
 						<tr>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
+								class="px-3 py-2 text-left text-2xs font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
 								<button
 									type="button"
@@ -862,7 +862,7 @@
 								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
+								class="px-3 py-2 text-left text-2xs font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
 								<button
 									type="button"
@@ -894,7 +894,7 @@
 								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
+								class="px-3 py-2 text-left text-2xs font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
 								<button
 									type="button"
@@ -926,7 +926,7 @@
 								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
+								class="px-3 py-2 text-left text-2xs font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
 								<button
 									type="button"
@@ -958,7 +958,7 @@
 								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
+								class="px-3 py-2 text-left text-2xs font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
 								<button
 									type="button"
@@ -990,7 +990,7 @@
 								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
+								class="px-3 py-2 text-left text-2xs font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
 								<button
 									type="button"
@@ -1022,7 +1022,7 @@
 								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
+								class="px-3 py-2 text-left text-2xs font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
 								<button
 									type="button"
@@ -1054,7 +1054,7 @@
 								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
+								class="px-3 py-2 text-left text-2xs font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
 								<button
 									type="button"
@@ -1086,7 +1086,7 @@
 								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
+								class="px-3 py-2 text-left text-2xs font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
 								<button
 									type="button"
@@ -1118,7 +1118,7 @@
 								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider select-none"
+								class="px-3 py-2 text-left text-2xs font-medium text-muted-foreground uppercase tracking-wider select-none"
 							>
 								<button
 									type="button"
@@ -1150,7 +1150,7 @@
 								</button>
 							</th>
 							<th
-								class="px-3 py-2 text-right text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider"
+								class="px-3 py-2 text-right text-2xs font-medium text-muted-foreground uppercase tracking-wider"
 							>
 								Actions
 							</th>
@@ -1262,13 +1262,13 @@
 										<div class="font-medium text-foreground">
 											{user.ontology_entity_total || 0} total
 										</div>
-										<div class="text-[0.65rem] text-muted-foreground">
+										<div class="text-2xs text-muted-foreground">
 											T {user.ontology_counts?.tasks || 0} • G {user
 												.ontology_counts?.goals || 0} • P {user
 												.ontology_counts?.plans || 0} • D {user
 												.ontology_counts?.documents || 0}
 										</div>
-										<div class="text-[0.65rem] text-muted-foreground">
+										<div class="text-2xs text-muted-foreground">
 											Mi {user.ontology_counts?.milestones || 0} • Rk {user
 												.ontology_counts?.risks || 0} • Req {user
 												.ontology_counts?.requirements || 0}
@@ -1408,18 +1408,14 @@
 		<div class="p-4">
 			<div class="space-y-3">
 				<div>
-					<div
-						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-					>
+					<div class="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
 						Email
 					</div>
 					<p class="text-sm text-foreground">{selectedUser.email}</p>
 				</div>
 
 				<div>
-					<div
-						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-					>
+					<div class="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
 						Name
 					</div>
 					<p class="text-sm text-foreground">
@@ -1428,9 +1424,7 @@
 				</div>
 
 				<div>
-					<div
-						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-					>
+					<div class="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
 						Admin Status
 					</div>
 					<span
@@ -1443,9 +1437,7 @@
 				</div>
 
 				<div>
-					<div
-						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-					>
+					<div class="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
 						Onboarding
 					</div>
 					<div class="flex items-center gap-1.5 mt-0.5">
@@ -1460,9 +1452,7 @@
 				</div>
 
 				<div>
-					<div
-						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-					>
+					<div class="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
 						Activity
 					</div>
 					<p class="text-xs text-foreground">
@@ -1474,9 +1464,7 @@
 				</div>
 
 				<div>
-					<div
-						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
-					>
+					<div class="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
 						Calendar
 					</div>
 					<div class="flex items-center gap-1.5 mt-0.5">
@@ -1493,7 +1481,7 @@
 				<div class="grid grid-cols-2 gap-3">
 					<div>
 						<div
-							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+							class="text-2xs font-medium uppercase tracking-wide text-muted-foreground"
 						>
 							Last Visit
 						</div>
@@ -1504,7 +1492,7 @@
 
 					<div>
 						<div
-							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+							class="text-2xs font-medium uppercase tracking-wide text-muted-foreground"
 						>
 							Joined
 						</div>
@@ -1517,7 +1505,7 @@
 				{#if selectedUser.bio}
 					<div>
 						<div
-							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+							class="text-2xs font-medium uppercase tracking-wide text-muted-foreground"
 						>
 							Bio
 						</div>

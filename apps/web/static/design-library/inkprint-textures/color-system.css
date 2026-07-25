@@ -1,76 +1,112 @@
-/* ============================================
-   Inkprint Color System
-   ============================================
-
-   Semantic color tokens for light and dark mode.
-   These colors work with the Inkprint texture system.
-
-   Usage:
-   - bg-background, bg-card, bg-muted, bg-accent
-   - text-foreground, text-muted-foreground, text-accent
-   - border-border
+/* AUTO-GENERATED from src/lib/styles/inkprint.css — do not edit.
+   Module: color-system.css
 */
+
+/* ============================================
+   CSS Variables - Inkprint Color System
+   ============================================ */
 
 :root {
 	/* Paper & Ink base (light mode = paper studio) */
-	--background: 40 20% 98%; /* warm paper white */
+	--background: 40 15% 98%; /* warm paper white — saturation pulled in from 20 */
 	--foreground: 240 10% 10%; /* deep ink black */
 
 	/* Card surfaces */
-	--card: 40 15% 96%;
+	--card: 40 12% 94%; /* darker (was L96) so cards have presence without the old peach */
 	--card-foreground: 240 10% 10%;
 
 	/* Muted surfaces */
-	--muted: 40 10% 92%;
-	--muted-foreground: 240 5% 45%;
+	--muted: 40 12% 90%; /* nudged darker to keep tier separation from card */
+	--muted-foreground: 240 5% 42%; /* L42 clears 4.5:1 on card AND muted (was L45 = 4.1 on muted) */
 
 	/* Border */
-	--border: 40 10% 85%;
+	--border: 40 10% 82%; /* decorative edges only — fails 3:1 by design, use border-strong for controls */
+	--border-strong: 40 10% 52%; /* input/control boundaries: 3.3:1 on bg, 3.1:1 on card (WCAG 1.4.11) */
 
 	/* Accent (BuildOS signal color) */
-	--accent: 24 80% 55%; /* warm orange-amber */
-	--accent-foreground: 0 0% 100%;
+	--accent: 24 80% 40%; /* deep burnt orange (was L55); text-accent on bg = 4.6:1 (was 2.8) */
+	--accent-foreground: 0 0% 100%; /* white = 4.8:1 on L40 (ink fails below ~L48 — no L passes both) */
 
 	/* Ring for focus states */
-	--ring: 24 80% 55%;
+	--ring: 24 80% 40%;
 
 	/* Destructive (danger/error states) */
-	--destructive: 0 72% 51%; /* red-600 equivalent */
-	--destructive-foreground: 0 0% 100%;
+	--destructive: 6 70% 47%; /* terracotta red; L47 = 4.9:1 as text on bg + luminance gap vs accent for CVD */
+	--destructive-foreground: 0 0% 100%; /* 5.1:1 on L47 */
+
+	/* Warning (caution/alert states) */
+	--warning: 45 88% 38%; /* goldenrod (was L52 highlighter-yellow, 1.6:1 on bg); 3.0:1 = passes for icons/large text/UI; luminance stays ~1.7x accent for CVD separation. Body-size warning text: pair with icon or use foreground. */
+	--warning-foreground: 30 10% 12%; /* dark ink = 5.3:1 on goldenrod */
+
+	/* Success (positive/completed states) */
+	--success: 150 55% 33%; /* warm-shifted sage green; L33 = 4.6:1 as text on bg (was L42 = 3.0) */
+	--success-foreground: 0 0% 100%; /* 4.7:1 on L33 */
+
+	/* Info (status indicator - informational/neutral states) */
+	--info: 200 60% 40%; /* teal-leaning blue; L40 = 4.6:1 as text on bg (was L52 = 2.9) */
+	--info-foreground: 0 0% 100%; /* 5.2:1 on L40 */
+
+	/* Foreground for fixed external/data-series colors that do not theme-shift. */
+	--data-foreground: 0 0% 100%;
 
 	/* Inkprint texture base color */
 	--tx-ink: 240 10% 10%;
 	--tx-ink-rgb: 24, 24, 27;
+
+	/* Inkprint shadows */
+	--shadow-ink: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+	--shadow-ink-strong: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+	--shadow-ink-inner: inset 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .dark {
-	/* Ink room (dark mode) */
-	--background: 240 10% 6%; /* near-black */
+	/* Ink room (dark mode) - warm charcoal to match light mode's warm paper */
+	--background: 32 4% 11%; /* dialed saturation down so textures + accent pop clearer */
 	--foreground: 40 10% 92%; /* off-white */
 
 	/* Card surfaces */
-	--card: 240 10% 10%;
+	--card: 32 5% 15%;
 	--card-foreground: 40 10% 92%;
 
 	/* Muted surfaces */
-	--muted: 240 10% 14%;
-	--muted-foreground: 40 5% 55%;
+	--muted: 32 5% 19%;
+	--muted-foreground: 40 5% 62%; /* L62 clears 4.5:1 on muted (was L58 = 4.4) */
 
 	/* Border */
-	--border: 240 10% 18%;
+	--border: 32 5% 24%; /* decorative edges only */
+	--border-strong: 32 5% 45%; /* input/control boundaries: 3.6:1 on bg, 3.2:1 on card */
 
 	/* Accent (glows slightly in dark) */
 	--accent: 24 85% 58%;
-	--accent-foreground: 240 10% 6%;
+	--accent-foreground: 30 6% 11%;
 
 	/* Ring */
 	--ring: 24 85% 58%;
 
+	/* Status foregrounds: uniform rule — any status surface at L>=50 takes ink, not white */
+
 	/* Destructive (brighter in dark mode for visibility) */
-	--destructive: 0 72% 55%;
-	--destructive-foreground: 0 0% 100%;
+	--destructive: 6 72% 58%;
+	--destructive-foreground: 30 6% 11%; /* ink = 4.6:1 (white was 3.7:1) */
+
+	/* Warning (brighter in dark mode) */
+	--warning: 45 90% 58%;
+	--warning-foreground: 30 6% 11%;
+
+	/* Success (brighter in dark mode) */
+	--success: 150 50% 50%;
+	--success-foreground: 30 6% 11%; /* ink = 7.3:1 (white was 2.3:1) */
+
+	/* Info (brighter in dark mode) */
+	--info: 200 55% 60%;
+	--info-foreground: 30 6% 11%; /* ink = 6.7:1 (white was 2.5:1) */
 
 	/* Dark mode texture ink */
 	--tx-ink: 40 10% 92%;
 	--tx-ink-rgb: 235, 233, 228;
+
+	/* Dark mode shadows */
+	--shadow-ink: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);
+	--shadow-ink-strong: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+	--shadow-ink-inner: inset 0 1px 2px rgba(0, 0, 0, 0.15);
 }

@@ -248,7 +248,7 @@
 			{:else}
 				<div class="flex flex-wrap items-stretch gap-2">
 					<div
-						class="inline-flex items-center rounded-md border border-border bg-muted/40 px-2 text-[13px] font-mono text-muted-foreground"
+						class="inline-flex items-center rounded-md border border-border bg-muted/40 px-2 text-sm font-mono text-muted-foreground"
 					>
 						build-os.com/p/
 					</div>
@@ -286,7 +286,7 @@
 						Skip for now
 					</button>
 				</div>
-				<p class="mt-2 text-[11px] text-muted-foreground">
+				<p class="mt-2 text-2xs text-muted-foreground">
 					3–24 characters, lowercase letters, numbers, and hyphens. If you skip, your URL
 					defaults to <span class="font-mono text-foreground">{derivedFallback}</span>.
 				</p>
@@ -316,7 +316,7 @@
 		</div>
 
 		<!-- Tool chips -->
-		<div class="mb-3 flex flex-wrap gap-1.5 text-[11px] font-medium text-muted-foreground">
+		<div class="mb-3 flex flex-wrap gap-1.5 text-2xs font-medium text-muted-foreground">
 			<span class="rounded-full border border-border px-2 py-0.5">Claude Code</span>
 			<span class="rounded-full border border-border px-2 py-0.5">Cursor</span>
 			<span class="rounded-full border border-border px-2 py-0.5">ChatGPT</span>

@@ -32,7 +32,7 @@
 					</div>
 				</div>
 			</div>
-			<div class="flex flex-wrap items-center gap-1.5 text-[11px] font-medium">
+			<div class="flex flex-wrap items-center gap-1.5 text-2xs font-medium">
 				<span
 					class="rounded-full px-2 py-0.5 {tool.success === false
 						? 'bg-destructive/10 text-destructive'

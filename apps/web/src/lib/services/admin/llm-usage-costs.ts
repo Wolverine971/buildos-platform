@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/admin/llm-usage-costs.ts
 import { resolveModelPricingProfile } from '@buildos/smart-llm';
+import { numberValue } from './analytics-primitives';
 
 type UsageCostRow = {
 	model_used?: string | null;
@@ -11,15 +12,6 @@ type UsageCostRow = {
 	total_cost_usd?: number | string | null;
 	openrouter_usage_cost_usd?: number | string | null;
 	metadata?: unknown;
-};
-
-const numberValue = (value: unknown): number => {
-	if (typeof value === 'number' && Number.isFinite(value)) return value;
-	if (typeof value === 'string' && value.trim().length > 0) {
-		const parsed = Number(value);
-		return Number.isFinite(parsed) ? parsed : 0;
-	}
-	return 0;
 };
 
 const objectValue = (value: unknown): Record<string, unknown> =>

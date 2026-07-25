@@ -247,7 +247,7 @@
 						aria-label={seekLabel}
 					/>
 					<div
-						class="mt-1 flex items-center justify-between gap-2 text-[0.68rem] leading-none text-muted-foreground"
+						class="mt-1 flex items-center justify-between gap-2 text-2xs leading-none text-muted-foreground"
 					>
 						<span class="tabular-nums"
 							>{formattedCurrentTime} / {formattedDuration}</span

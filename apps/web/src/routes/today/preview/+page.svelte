@@ -133,7 +133,7 @@
 										project.name}
 								>
 									<span
-										class="mt-0.5 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-accent"
+										class="mt-0.5 shrink-0 text-2xs font-semibold uppercase tracking-wide text-accent"
 									>
 										Next
 									</span>
@@ -143,9 +143,7 @@
 										>
 											{project.next_step_short}
 										</span>
-										<span
-											class="block truncate text-[11px] text-muted-foreground"
-										>
+										<span class="block truncate text-2xs text-muted-foreground">
 											{project.name}
 										</span>
 									</span>

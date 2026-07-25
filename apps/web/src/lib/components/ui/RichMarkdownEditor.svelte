@@ -1404,7 +1404,7 @@
 				<div
 					class="{mode === 'edit'
 						? 'hidden sm:flex'
-						: 'flex'} items-center gap-2 text-[10px] sm:text-xs text-muted-foreground ml-auto pl-2 shrink-0"
+						: 'flex'} items-center gap-2 text-2xs sm:text-xs text-muted-foreground ml-auto pl-2 shrink-0"
 				>
 					<span class="tabular-nums">{stats.words}w</span>
 					<span class="hidden sm:inline text-border">·</span>
@@ -1497,15 +1497,15 @@
 									class="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive"
 								></span>
 							</span>
-							<span class="font-semibold text-[11px]">Recording</span>
-							<span class="font-bold tabular-nums text-[11px]"
+							<span class="font-semibold text-2xs">Recording</span>
+							<span class="font-bold tabular-nums text-2xs"
 								>{formatDuration(recordingDuration)}</span
 							>
 						</span>
 						<!-- Live transcript preview (multi-line on mobile) -->
 						{#if liveTranscriptPreview}
 							<div
-								class="text-accent text-[10px] sm:text-[11px] px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 max-w-[200px] sm:max-w-[300px] line-clamp-2 break-words leading-tight"
+								class="text-accent text-2xs px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 max-w-[200px] sm:max-w-[300px] line-clamp-2 break-words leading-tight"
 							>
 								{liveTranscriptPreview}
 							</div>
@@ -1526,31 +1526,31 @@
 									clip-rule="evenodd"
 								/>
 							</svg>
-							<span class="font-medium text-[11px]">Text added</span>
+							<span class="font-medium text-2xs">Text added</span>
 						</span>
 					{:else if isInitializingRecording}
 						<!-- Initializing state -->
 						<span class="flex items-center gap-1.5 text-muted-foreground">
 							<LoaderCircle class="h-3 w-3 animate-spin shrink-0" />
-							<span class="text-[11px]">Preparing mic...</span>
+							<span class="text-2xs">Preparing mic...</span>
 						</span>
 					{:else if isTranscribing}
 						<!-- Transcribing state -->
 						<span class="flex items-center gap-1.5 text-accent">
 							<LoaderCircle class="h-3 w-3 animate-spin shrink-0" />
-							<span class="font-medium text-[11px]">{transcribingStatusLabel}</span>
+							<span class="font-medium text-2xs">{transcribingStatusLabel}</span>
 						</span>
 					{:else if voiceError}
 						<!-- Error state -->
 						<span
 							role="alert"
-							class="truncate text-destructive text-[11px] font-medium px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/20 max-w-[200px]"
+							class="truncate text-destructive text-2xs font-medium px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/20 max-w-[200px]"
 						>
 							{voiceError}
 						</span>
 					{:else}
 						<!-- Ready state hint -->
-						<span class="text-[10px] text-muted-foreground/60 hidden sm:inline">
+						<span class="text-2xs text-muted-foreground/60 hidden sm:inline">
 							Tap mic to record voice note
 						</span>
 					{/if}
@@ -1561,7 +1561,6 @@
 				<button
 					type="button"
 					class={`flex h-10 w-10 xs:h-9 xs:w-9 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
-					style="-webkit-tap-highlight-color: transparent;"
 					onclick={toggleVoiceRecording}
 					onmousedown={(event) => event.preventDefault()}
 					onmouseenter={handleVoiceButtonMouseEnter}

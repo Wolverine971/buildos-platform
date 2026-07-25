@@ -210,7 +210,7 @@
 						<Zap class="w-4 h-4 text-accent" />
 					</div>
 					<div>
-						<p class="text-[10px] uppercase tracking-wider text-accent font-medium">
+						<p class="text-2xs uppercase tracking-wider text-accent font-medium">
 							Next Step
 						</p>
 						<p class="text-sm text-foreground">{project.next_step_short}</p>
@@ -320,7 +320,7 @@
 									<p class="text-xs sm:text-sm font-semibold text-foreground">
 										Documents
 									</p>
-									<p class="text-[10px] sm:text-xs text-muted-foreground">
+									<p class="text-2xs sm:text-xs text-muted-foreground">
 										{documents.length}
 										{documents.length === 1 ? 'document' : 'documents'}
 									</p>
@@ -378,13 +378,13 @@
 														{doc.title}
 													</p>
 													<p
-														class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block capitalize"
+														class="text-2xs sm:text-xs text-muted-foreground hidden sm:block capitalize"
 													>
 														{doc.type_key}
 													</p>
 												</div>
 												<span
-													class="flex-shrink-0 text-[9px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-card border border-border capitalize"
+													class="flex-shrink-0 text-2xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-card border border-border capitalize"
 												>
 													{getStateLabel(doc.state_key)}
 												</span>
@@ -532,7 +532,7 @@
 										>
 									</p>
 									<p
-										class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+										class="text-2xs sm:text-xs text-muted-foreground hidden sm:block"
 									>
 										What success looks like
 									</p>
@@ -580,7 +580,7 @@
 														{goal.name}
 													</p>
 													<p
-														class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block capitalize"
+														class="text-2xs sm:text-xs text-muted-foreground hidden sm:block capitalize"
 													>
 														{getStateLabel(goal.state_key)}
 													</p>
@@ -617,7 +617,7 @@
 										>
 									</p>
 									<p
-										class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+										class="text-2xs sm:text-xs text-muted-foreground hidden sm:block"
 									>
 										Checkpoints and dates
 									</p>
@@ -665,7 +665,7 @@
 														{milestone.title}
 													</p>
 													<p
-														class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+														class="text-2xs sm:text-xs text-muted-foreground hidden sm:block"
 													>
 														Due: {milestone.due_at}
 													</p>
@@ -702,7 +702,7 @@
 										>
 									</p>
 									<p
-										class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+										class="text-2xs sm:text-xs text-muted-foreground hidden sm:block"
 									>
 										What needs to move
 									</p>
@@ -753,7 +753,7 @@
 														{task.title}
 													</p>
 													<p
-														class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+														class="text-2xs sm:text-xs text-muted-foreground hidden sm:block"
 													>
 														<span class="capitalize"
 															>{getStateLabel(task.state_key)}</span
@@ -798,7 +798,7 @@
 										>
 									</p>
 									<p
-										class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+										class="text-2xs sm:text-xs text-muted-foreground hidden sm:block"
 									>
 										What could go wrong
 									</p>
@@ -846,7 +846,7 @@
 														{risk.title}
 													</p>
 													<p
-														class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+														class="text-2xs sm:text-xs text-muted-foreground hidden sm:block"
 													>
 														<span class="capitalize"
 															>{risk.state_key?.replace(/_/g, ' ') ||

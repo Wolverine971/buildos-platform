@@ -237,36 +237,6 @@
 		padding: 2rem;
 		color: hsl(var(--foreground));
 		background: hsl(var(--background));
-		--text-primary: hsl(var(--foreground));
-		--text-secondary: hsl(var(--muted-foreground));
-		--border-color: hsl(var(--border));
-		--border-hover: hsl(var(--border-strong));
-		--bg-hover: hsl(var(--muted));
-		--bg-secondary: hsl(var(--muted));
-		--primary-50: hsl(var(--accent) / 0.1);
-		--primary-300: hsl(var(--accent) / 0.35);
-		--primary-500: hsl(var(--accent));
-		--primary-700: hsl(var(--accent));
-		--error-50: hsl(var(--destructive) / 0.1);
-		--error-100: hsl(var(--destructive) / 0.15);
-		--error-200: hsl(var(--destructive) / 0.3);
-		--error-500: hsl(var(--destructive));
-		--error-600: hsl(var(--destructive));
-		--error-700: hsl(var(--foreground));
-		--warning-50: hsl(var(--warning) / 0.1);
-		--warning-100: hsl(var(--warning) / 0.15);
-		--warning-200: hsl(var(--warning) / 0.3);
-		--warning-700: hsl(var(--foreground));
-		--success-50: hsl(var(--success) / 0.1);
-		--success-100: hsl(var(--success) / 0.15);
-		--success-200: hsl(var(--success) / 0.3);
-		--success-500: hsl(var(--success));
-		--success-600: hsl(var(--success));
-		--success-700: hsl(var(--foreground));
-		--info-50: hsl(var(--info) / 0.1);
-		--info-100: hsl(var(--info) / 0.15);
-		--info-200: hsl(var(--info) / 0.3);
-		--info-700: hsl(var(--foreground));
 	}
 
 	/* Header */
@@ -282,12 +252,12 @@
 		font-size: 2rem;
 		font-weight: 600;
 		margin: 0 0 0.5rem 0;
-		color: var(--text-primary, #1a1a1a);
+		color: hsl(var(--foreground));
 	}
 
 	.subtitle {
 		font-size: 1rem;
-		color: var(--text-secondary, #666);
+		color: hsl(var(--muted-foreground));
 		margin: 0;
 	}
 
@@ -300,7 +270,7 @@
 
 	.refresh-info {
 		font-size: 0.875rem;
-		color: var(--text-secondary, #666);
+		color: hsl(var(--muted-foreground));
 	}
 
 	.btn-refresh,
@@ -309,7 +279,7 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0.625rem 1rem;
-		border: 1px solid var(--border-color, #e5e7eb);
+		border: 1px solid hsl(var(--border));
 		border-radius: 6px;
 		min-height: 2.75rem;
 		background: hsl(var(--card));
@@ -322,8 +292,8 @@
 
 	.btn-refresh:hover:not(:disabled),
 	.btn-auto-refresh:hover {
-		background: var(--bg-hover, #f9fafb);
-		border-color: var(--border-hover, #d1d5db);
+		background: hsl(var(--muted));
+		border-color: hsl(var(--border-strong));
 	}
 
 	.btn-refresh:focus-visible,
@@ -339,9 +309,9 @@
 	}
 
 	.btn-auto-refresh.active {
-		background: var(--primary-50, #eff6ff);
-		border-color: var(--primary-300, #93c5fd);
-		color: var(--primary-700, #1d4ed8);
+		background: hsl(var(--accent) / 0.1);
+		border-color: hsl(var(--accent) / 0.35);
+		color: hsl(var(--accent));
 	}
 
 	.icon {
@@ -369,8 +339,8 @@
 		align-items: center;
 		gap: 1rem;
 		padding: 1rem;
-		background: var(--error-50, #fef2f2);
-		border: 1px solid var(--error-200, #fecaca);
+		background: hsl(var(--destructive) / 0.1);
+		border: 1px solid hsl(var(--destructive) / 0.3);
 		border-radius: 8px;
 		margin-bottom: 2rem;
 	}
@@ -379,26 +349,26 @@
 		flex-shrink: 0;
 		width: 1.5rem;
 		height: 1.5rem;
-		color: var(--error-500, #ef4444);
+		color: hsl(var(--destructive));
 	}
 
 	.error-banner strong {
 		display: block;
 		margin-bottom: 0.25rem;
-		color: var(--error-700, #b91c1c);
+		color: hsl(var(--destructive));
 	}
 
 	.error-banner p {
 		margin: 0;
 		font-size: 0.875rem;
-		color: var(--error-600, #dc2626);
+		color: hsl(var(--destructive));
 	}
 
 	.btn-retry {
 		margin-left: auto;
 		padding: 0.5rem 1rem;
-		background: var(--error-500, #ef4444);
-		color: white;
+		background: hsl(var(--destructive));
+		color: hsl(var(--destructive-foreground));
 		border: none;
 		border-radius: 6px;
 		cursor: pointer;
@@ -408,7 +378,7 @@
 	}
 
 	.btn-retry:hover {
-		background: var(--error-600, #dc2626);
+		background: hsl(var(--destructive));
 	}
 
 	/* Loading State */
@@ -424,15 +394,15 @@
 	.spinner {
 		width: 3rem;
 		height: 3rem;
-		border: 3px solid var(--border-color, #e5e7eb);
-		border-top-color: var(--primary-500, #3b82f6);
+		border: 3px solid hsl(var(--border));
+		border-top-color: hsl(var(--accent));
 		border-radius: 50%;
 		animation: spin 0.8s linear infinite;
 	}
 
 	.loading-state p {
 		font-size: 1rem;
-		color: var(--text-secondary, #666);
+		color: hsl(var(--muted-foreground));
 	}
 
 	/* Dashboard Content */
@@ -450,7 +420,7 @@
 
 	.dashboard-footer {
 		padding: 1.5rem;
-		background: var(--bg-secondary, #f9fafb);
+		background: hsl(var(--muted));
 		border-radius: 8px;
 		text-align: center;
 	}
@@ -458,7 +428,7 @@
 	.info-text {
 		margin: 0;
 		font-size: 0.875rem;
-		color: var(--text-secondary, #666);
+		color: hsl(var(--muted-foreground));
 	}
 
 	/* Responsive */

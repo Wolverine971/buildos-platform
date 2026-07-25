@@ -1,17 +1,6 @@
-/* ============================================
-   Utility Classes
-   ============================================
-
-   Layout, spacing, and semantic utilities.
+/* AUTO-GENERATED from src/lib/styles/inkprint.css — do not edit.
+   Module: utilities.css
 */
-
-/* Micro-label pattern for metadata */
-.micro-label {
-	font-size: 0.65rem;
-	text-transform: uppercase;
-	letter-spacing: 0.15em;
-	color: hsl(var(--muted-foreground));
-}
 
 /* ============================================
    Spatial Emphasis - Layout Permission Layer
@@ -86,14 +75,36 @@
 	margin-top: -0.75rem;
 }
 
-/* "Float" for callouts / hero blocks (Mode B only) */
-.float-left {
+/* “Float” for callouts / hero blocks (Mode B only).
+   Named ink-float-* to avoid shadowing Tailwind's float-left/float-right utilities. */
+.ink-float-left {
 	float: left;
 	margin-right: 0.75rem;
 	margin-bottom: 0.5rem;
 }
-.float-right {
+.ink-float-right {
 	float: right;
 	margin-left: 0.75rem;
 	margin-bottom: 0.5rem;
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+/* Micro-label pattern for metadata: the 0.6875rem uppercase tracked label scale.
+   Single source of truth — components compose `micro-label` + an optional
+   `text-*` color override + `font-*` weight rather than re-inlining the longhand. */
+.micro-label {
+	font-size: 0.6875rem;
+	line-height: 1.1;
+	text-transform: uppercase;
+	letter-spacing: 0.15em;
+	color: hsl(var(--muted-foreground));
+}
+
+/* Ensure text remains readable over textures */
+.tx > * {
+	position: relative;
+	z-index: 2;
 }

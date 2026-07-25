@@ -61,7 +61,7 @@
 			{displayName}
 		</span>
 		<div
-			class="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground mt-0.5"
+			class="flex items-center gap-1 sm:gap-1.5 text-2xs sm:text-xs text-muted-foreground mt-0.5"
 		>
 			<span class="truncate max-w-[80px] sm:max-w-none">{relationshipLabel}</span>
 			{#if entity.state_key}

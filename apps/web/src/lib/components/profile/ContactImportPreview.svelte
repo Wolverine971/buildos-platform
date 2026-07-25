@@ -86,7 +86,7 @@
 		>
 			<div class="flex min-w-0 items-start gap-2">
 				<span
-					class="shrink-0 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground"
+					class="shrink-0 rounded-md border border-border bg-muted px-1.5 py-0.5 text-2xs font-semibold tabular-nums text-muted-foreground"
 				>
 					#{row.row_number}
 				</span>
@@ -103,7 +103,7 @@
 					</p>
 				</div>
 				<span
-					class="shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold {statusBadgeClass(
+					class="shrink-0 rounded-full border px-1.5 py-0.5 text-2xs font-semibold {statusBadgeClass(
 						row.status
 					)}"
 				>

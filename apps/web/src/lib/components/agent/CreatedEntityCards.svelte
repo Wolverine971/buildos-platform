@@ -42,7 +42,7 @@
 
 <div class="flex flex-col gap-1.5">
 	<div
-		class="flex items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+		class="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.15em] text-muted-foreground"
 	>
 		<Sparkles class="h-3 w-3 text-accent" />
 		<span>{entities.length === 1 ? 'Created' : `Created ${entities.length}`}</span>
@@ -69,7 +69,7 @@
 							>{entity.name}</span
 						>
 						<span
-							class="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+							class="text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"
 							>{meta.label}</span
 						>
 					</span>
@@ -90,7 +90,7 @@
 							>{entity.name}</span
 						>
 						<span
-							class="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+							class="text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"
 							>{meta.label}</span
 						>
 					</span>

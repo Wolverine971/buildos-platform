@@ -368,43 +368,25 @@
 	.g6-container {
 		position: relative;
 		overflow: hidden;
-		background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-	}
-
-	:global(.dark) .g6-container {
-		background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+		background: hsl(var(--background));
 	}
 
 	/* Style the minimap */
 	.g6-container :global(.g6-minimap) {
-		background: rgba(255, 255, 255, 0.95) !important;
-		border: 1px solid #e5e7eb !important;
+		background: hsl(var(--card) / 0.95) !important;
+		border: 1px solid hsl(var(--border)) !important;
 		border-radius: 10px !important;
-		box-shadow:
-			0 4px 6px -1px rgba(0, 0, 0, 0.1),
-			0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+		box-shadow: var(--shadow-ink-strong) !important;
 		overflow: hidden;
-	}
-
-	:global(.dark) .g6-container :global(.g6-minimap) {
-		background: rgba(31, 41, 55, 0.95) !important;
-		border-color: #374151 !important;
 	}
 
 	/* Style the toolbar if present */
 	.g6-container :global(.g6-toolbar) {
-		background: white !important;
+		background: hsl(var(--card)) !important;
 		border-radius: 10px !important;
-		border: 1px solid #e5e7eb !important;
-		box-shadow:
-			0 4px 6px -1px rgba(0, 0, 0, 0.1),
-			0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+		border: 1px solid hsl(var(--border)) !important;
+		box-shadow: var(--shadow-ink-strong) !important;
 		padding: 4px !important;
-	}
-
-	:global(.dark) .g6-container :global(.g6-toolbar) {
-		background: #374151 !important;
-		border-color: #4b5563 !important;
 	}
 
 	.g6-container :global(.g6-toolbar-item) {
@@ -413,15 +395,11 @@
 	}
 
 	.g6-container :global(.g6-toolbar-item:hover) {
-		background-color: #f3f4f6 !important;
-	}
-
-	:global(.dark) .g6-container :global(.g6-toolbar-item:hover) {
-		background-color: #4b5563 !important;
+		background-color: hsl(var(--muted)) !important;
 	}
 
 	/* Grid line styling for dark mode */
-	:global(.dark) .g6-container :global(.g6-grid-line line) {
-		stroke: #374151 !important;
+	.g6-container :global(.g6-grid-line line) {
+		stroke: hsl(var(--border)) !important;
 	}
 </style>

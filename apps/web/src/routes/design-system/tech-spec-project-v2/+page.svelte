@@ -425,13 +425,13 @@
 						<div class="min-w-0">
 							<div class="flex items-center gap-1.5">
 								<span
-									class="font-mono text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.08em] text-accent font-medium"
+									class="font-mono text-2xs uppercase tracking-[0.08em] text-accent font-medium"
 								>
 									{project.id}
 								</span>
 								<span class="text-muted-foreground/30">·</span>
 								<span
-									class="font-mono text-[0.55rem] sm:text-[0.6rem] text-muted-foreground uppercase tracking-wider"
+									class="font-mono text-2xs text-muted-foreground uppercase tracking-wider"
 								>
 									Rev {project.version}
 								</span>
@@ -454,11 +454,11 @@
 						{#each systemMetrics as metric}
 							<div class="flex items-center gap-1.5">
 								<span
-									class="font-mono text-[0.5rem] uppercase tracking-wider text-muted-foreground"
+									class="font-mono text-2xs uppercase tracking-wider text-muted-foreground"
 									>{metric.label}</span
 								>
 								<span
-									class="font-mono text-[0.6rem] {metric.status === 'ok'
+									class="font-mono text-2xs {metric.status === 'ok'
 										? 'text-foreground'
 										: 'text-amber-500'}">{metric.value}</span
 								>
@@ -501,7 +501,7 @@
 				<!-- Right: Mobile Actions -->
 				<div class="flex items-center gap-1 lg:hidden">
 					<span
-						class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-[0.5rem]"
+						class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-2xs"
 					>
 						<span class="w-1.5 h-1.5 rounded-full {projectStatus.color}"></span>
 						<span class="font-mono uppercase text-foreground"
@@ -531,8 +531,7 @@
 					class="flex items-center gap-2 px-2.5 py-1.5 bg-accent/5 border border-accent/20 rounded-lg tx tx-bloom tx-weak"
 				>
 					<Zap class="w-3.5 h-3.5 text-accent" />
-					<span class="font-mono text-[0.55rem] uppercase tracking-wider text-accent"
-						>Next</span
+					<span class="font-mono text-2xs uppercase tracking-wider text-accent">Next</span
 					>
 					<span class="text-xs text-foreground max-w-[180px] sm:max-w-none truncate"
 						>{project.next_step_short}</span
@@ -562,13 +561,10 @@
 					<!-- Section Header with Spec Numbering -->
 					<div class="flex items-center gap-2 mb-2">
 						<span
-							class="font-mono text-[0.55rem] uppercase tracking-[0.15em] text-accent font-medium"
+							class="font-mono text-2xs uppercase tracking-[0.15em] text-accent font-medium"
 							>§01</span
 						>
-						<span
-							class="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted-foreground"
-							>Specifications</span
-						>
+						<span class="font-mono micro-label">Specifications</span>
 						<div class="flex-1 h-px bg-border"></div>
 					</div>
 
@@ -585,10 +581,10 @@
 							>
 								<FileText class="w-4 h-4 text-muted-foreground" />
 								<span
-									class="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-foreground font-medium"
+									class="font-mono text-2xs uppercase tracking-[0.1em] text-foreground font-medium"
 									>Tech Specifications</span
 								>
-								<span class="font-mono text-[0.55rem] text-muted-foreground"
+								<span class="font-mono text-2xs text-muted-foreground"
 									>({specSections.length})</span
 								>
 							</button>
@@ -620,7 +616,7 @@
 										<!-- Spec Header -->
 										<div class="flex items-center justify-between gap-2 mb-2">
 											<div class="flex items-center gap-2 min-w-0">
-												<span class="font-mono text-[0.55rem] text-accent"
+												<span class="font-mono text-2xs text-accent"
 													>{spec.id}</span
 												>
 												<span
@@ -630,7 +626,7 @@
 											</div>
 											<div class="flex items-center gap-2 shrink-0">
 												<span
-													class="font-mono text-[0.5rem] text-muted-foreground"
+													class="font-mono text-2xs text-muted-foreground"
 													>v{spec.version}</span
 												>
 												<span
@@ -640,7 +636,7 @@
 														class="w-1.5 h-1.5 rounded-full {status.color}"
 													></span>
 													<span
-														class="font-mono text-[0.5rem] uppercase {status.textColor}"
+														class="font-mono text-2xs uppercase {status.textColor}"
 														>{status.label}</span
 													>
 												</span>
@@ -654,18 +650,18 @@
 													class="px-2 py-1.5 bg-muted/20 rounded border border-border/50"
 												>
 													<span
-														class="font-mono text-[0.5rem] uppercase tracking-wider text-muted-foreground block"
+														class="font-mono text-2xs uppercase tracking-wider text-muted-foreground block"
 														>{item.key}</span
 													>
 													<div
 														class="flex items-center justify-between gap-1"
 													>
 														<span
-															class="font-mono text-[0.6rem] text-foreground"
+															class="font-mono text-2xs text-foreground"
 															>{item.value}</span
 														>
 														<span
-															class="font-mono text-[0.45rem] text-accent/60"
+															class="font-mono text-2xs text-accent/60"
 															>{item.ref}</span
 														>
 													</div>
@@ -685,13 +681,10 @@
 				<section>
 					<div class="flex items-center gap-2 mb-2">
 						<span
-							class="font-mono text-[0.55rem] uppercase tracking-[0.15em] text-accent font-medium"
+							class="font-mono text-2xs uppercase tracking-[0.15em] text-accent font-medium"
 							>§02</span
 						>
-						<span
-							class="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted-foreground"
-							>Work Items</span
-						>
+						<span class="font-mono micro-label">Work Items</span>
 						<div class="flex-1 h-px bg-border"></div>
 					</div>
 
@@ -707,17 +700,17 @@
 							>
 								<ListChecks class="w-4 h-4 text-blue-500" />
 								<span
-									class="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-foreground font-medium"
+									class="font-mono text-2xs uppercase tracking-[0.1em] text-foreground font-medium"
 									>Tasks</span
 								>
-								<span class="font-mono text-[0.55rem] text-muted-foreground"
+								<span class="font-mono text-2xs text-muted-foreground"
 									>({tasks.length})</span
 								>
 							</button>
 							<div class="flex items-center gap-1.5">
 								<!-- Task Stats Inline -->
 								<div
-									class="hidden sm:flex items-center gap-2 mr-2 text-[0.5rem] font-mono"
+									class="hidden sm:flex items-center gap-2 mr-2 text-2xs font-mono"
 								>
 									<span class="text-emerald-500"
 										>{tasks.filter((t) => t.state_key === 'done').length} done</span
@@ -752,7 +745,7 @@
 							<div transition:slide={{ duration: 120 }}>
 								<!-- Table Header -->
 								<div
-									class="hidden sm:grid grid-cols-12 gap-2 px-3 py-1.5 bg-muted/10 border-b border-border font-mono text-[0.5rem] uppercase tracking-wider text-muted-foreground"
+									class="hidden sm:grid grid-cols-12 gap-2 px-3 py-1.5 bg-muted/10 border-b border-border font-mono text-2xs uppercase tracking-wider text-muted-foreground"
 								>
 									<div class="col-span-1">Status</div>
 									<div class="col-span-2">ID</div>
@@ -775,7 +768,7 @@
 												<TaskIcon class="w-4 h-4 {status.textColor}" />
 											</div>
 											<div class="col-span-2 flex items-center gap-1">
-												<span class="font-mono text-[0.6rem] text-accent"
+												<span class="font-mono text-2xs text-accent"
 													>{task.id}</span
 												>
 												<button
@@ -800,20 +793,19 @@
 												>
 												{#if task.state_key === 'blocked' && task.blockedBy}
 													<span
-														class="font-mono text-[0.5rem] text-red-500 ml-1"
+														class="font-mono text-2xs text-red-500 ml-1"
 														>← {task.blockedBy}</span
 													>
 												{/if}
 											</div>
 											<div class="col-span-2">
 												{#if task.assignee}
-													<span
-														class="font-mono text-[0.6rem] text-accent"
+													<span class="font-mono text-2xs text-accent"
 														>@{task.assignee}</span
 													>
 												{:else}
 													<span
-														class="font-mono text-[0.55rem] text-muted-foreground italic"
+														class="font-mono text-2xs text-muted-foreground italic"
 														>unassigned</span
 													>
 												{/if}
@@ -824,14 +816,14 @@
 														class="w-1.5 h-1.5 rounded-full {priority.color}"
 													></span>
 													<span
-														class="font-mono text-[0.5rem] uppercase {priority.text}"
+														class="font-mono text-2xs uppercase {priority.text}"
 														>{task.priority}</span
 													>
 												</span>
 											</div>
 											<div class="col-span-1">
 												<span
-													class="font-mono text-[0.55rem] text-muted-foreground"
+													class="font-mono text-2xs text-muted-foreground"
 													>{task.eta}</span
 												>
 											</div>
@@ -847,8 +839,7 @@
 												/>
 												<div class="flex-1 min-w-0">
 													<div class="flex items-center gap-1.5 mb-0.5">
-														<span
-															class="font-mono text-[0.55rem] text-accent"
+														<span class="font-mono text-2xs text-accent"
 															>{task.id}</span
 														>
 														<span
@@ -859,7 +850,7 @@
 														>{task.title}</span
 													>
 													<div
-														class="flex items-center gap-2 mt-1 text-[0.55rem]"
+														class="flex items-center gap-2 mt-1 text-2xs"
 													>
 														{#if task.assignee}
 															<span class="font-mono text-accent"
@@ -887,13 +878,10 @@
 				<section>
 					<div class="flex items-center gap-2 mb-2">
 						<span
-							class="font-mono text-[0.55rem] uppercase tracking-[0.15em] text-accent font-medium"
+							class="font-mono text-2xs uppercase tracking-[0.15em] text-accent font-medium"
 							>§03</span
 						>
-						<span
-							class="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted-foreground"
-							>Dependencies</span
-						>
+						<span class="font-mono micro-label">Dependencies</span>
 						<div class="flex-1 h-px bg-border"></div>
 					</div>
 
@@ -909,10 +897,10 @@
 							>
 								<GitBranch class="w-4 h-4 text-muted-foreground" />
 								<span
-									class="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-foreground font-medium"
+									class="font-mono text-2xs uppercase tracking-[0.1em] text-foreground font-medium"
 									>Dependency Graph</span
 								>
-								<span class="font-mono text-[0.55rem] text-muted-foreground"
+								<span class="font-mono text-2xs text-muted-foreground"
 									>({dependencies.length})</span
 								>
 							</button>
@@ -942,8 +930,7 @@
 											<FromIcon
 												class="w-3.5 h-3.5 text-muted-foreground shrink-0"
 											/>
-											<span
-												class="font-mono text-[0.6rem] text-accent truncate"
+											<span class="font-mono text-2xs text-accent truncate"
 												>{dep.from.id}</span
 											>
 										</div>
@@ -956,7 +943,7 @@
 													: 'bg-border'}"
 											></span>
 											<span
-												class="font-mono text-[0.45rem] uppercase tracking-wider {dep.status ===
+												class="font-mono text-2xs uppercase tracking-wider {dep.status ===
 												'blocking'
 													? 'text-red-500'
 													: 'text-muted-foreground'}"
@@ -974,8 +961,7 @@
 										<div
 											class="flex items-center gap-1.5 min-w-0 flex-1 justify-end"
 										>
-											<span
-												class="font-mono text-[0.6rem] text-accent truncate"
+											<span class="font-mono text-2xs text-accent truncate"
 												>{dep.to.id}</span
 											>
 											<ToIcon
@@ -1002,13 +988,10 @@
 				<section>
 					<div class="flex items-center gap-2 mb-2">
 						<span
-							class="font-mono text-[0.55rem] uppercase tracking-[0.15em] text-accent font-medium"
+							class="font-mono text-2xs uppercase tracking-[0.15em] text-accent font-medium"
 							>§04</span
 						>
-						<span
-							class="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted-foreground"
-							>System Log</span
-						>
+						<span class="font-mono micro-label">System Log</span>
 						<div class="flex-1 h-px bg-border"></div>
 					</div>
 
@@ -1026,7 +1009,7 @@
 									<div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
 								</div>
 								<Terminal class="w-3.5 h-3.5 text-muted-foreground" />
-								<span class="font-mono text-[0.6rem] text-muted-foreground"
+								<span class="font-mono text-2xs text-muted-foreground"
 									>activity.log</span
 								>
 							</div>
@@ -1045,7 +1028,7 @@
 						{#if expandedPanels.activity}
 							<div
 								transition:slide={{ duration: 120 }}
-								class="p-3 font-mono text-[0.65rem] space-y-1 max-h-36 overflow-y-auto"
+								class="p-3 font-mono text-2xs space-y-1 max-h-36 overflow-y-auto"
 							>
 								{#each activityLog as entry}
 									<div
@@ -1083,14 +1066,14 @@
 					class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak"
 				>
 					<span
-						class="font-mono text-[0.55rem] uppercase tracking-wider text-muted-foreground block mb-2"
+						class="font-mono text-2xs uppercase tracking-wider text-muted-foreground block mb-2"
 						>Project Context</span
 					>
 					<p class="text-sm text-foreground leading-relaxed mb-3">
 						{project.description}
 					</p>
 					<!-- Key-Value Metadata -->
-					<div class="space-y-1.5 font-mono text-[0.6rem]">
+					<div class="space-y-1.5 font-mono text-2xs">
 						<div
 							class="flex items-center justify-between py-1 border-b border-dashed border-border"
 						>
@@ -1131,10 +1114,10 @@
 						>
 							<Target class="w-4 h-4 text-amber-500" />
 							<span
-								class="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-foreground font-medium"
+								class="font-mono text-2xs uppercase tracking-[0.1em] text-foreground font-medium"
 								>Goals</span
 							>
-							<span class="font-mono text-[0.55rem] text-muted-foreground"
+							<span class="font-mono text-2xs text-muted-foreground"
 								>({goals.length})</span
 							>
 						</button>
@@ -1162,7 +1145,7 @@
 								<div class="px-3 py-2.5 hover:bg-muted/20 transition-colors">
 									<div class="flex items-start justify-between gap-2 mb-1.5">
 										<div class="min-w-0">
-											<span class="font-mono text-[0.5rem] text-accent block"
+											<span class="font-mono text-2xs text-accent block"
 												>{goal.id}</span
 											>
 											<span class="text-sm text-foreground">{goal.name}</span>
@@ -1180,12 +1163,12 @@
 												style="width: {goal.progress}%"
 											></div>
 										</div>
-										<span class="font-mono text-[0.5rem] text-muted-foreground"
+										<span class="font-mono text-2xs text-muted-foreground"
 											>{goal.progress}%</span
 										>
 									</div>
 									<span
-										class="font-mono text-[0.5rem] text-muted-foreground block mt-1"
+										class="font-mono text-2xs text-muted-foreground block mt-1"
 										>Target: {goal.target}</span
 									>
 								</div>
@@ -1207,10 +1190,10 @@
 						>
 							<Flag class="w-4 h-4 text-emerald-500" />
 							<span
-								class="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-foreground font-medium"
+								class="font-mono text-2xs uppercase tracking-[0.1em] text-foreground font-medium"
 								>Milestones</span
 							>
-							<span class="font-mono text-[0.55rem] text-muted-foreground"
+							<span class="font-mono text-2xs text-muted-foreground"
 								>({milestones.length})</span
 							>
 						</button>
@@ -1233,14 +1216,14 @@
 								<div class="px-3 py-2.5 hover:bg-muted/20 transition-colors">
 									<div class="flex items-start justify-between gap-2">
 										<div class="min-w-0">
-											<span class="font-mono text-[0.5rem] text-accent block"
+											<span class="font-mono text-2xs text-accent block"
 												>{milestone.id}</span
 											>
 											<span class="text-sm text-foreground"
 												>{milestone.title}</span
 											>
 											<div
-												class="flex items-center gap-2 mt-1 font-mono text-[0.5rem]"
+												class="flex items-center gap-2 mt-1 font-mono text-2xs"
 											>
 												<span class="text-muted-foreground"
 													>Due: {milestone.due_at}</span
@@ -1257,7 +1240,7 @@
 											<span class="w-1.5 h-1.5 rounded-full {status.color}"
 											></span>
 											<span
-												class="font-mono text-[0.45rem] uppercase {status.textColor}"
+												class="font-mono text-2xs uppercase {status.textColor}"
 												>{status.label}</span
 											>
 										</span>
@@ -1283,10 +1266,10 @@
 						>
 							<AlertTriangle class="w-4 h-4 text-red-500" />
 							<span
-								class="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-foreground font-medium"
+								class="font-mono text-2xs uppercase tracking-[0.1em] text-foreground font-medium"
 								>Risks</span
 							>
-							<span class="font-mono text-[0.55rem] text-muted-foreground"
+							<span class="font-mono text-2xs text-muted-foreground"
 								>({risks.length})</span
 							>
 						</button>
@@ -1309,7 +1292,7 @@
 								<div class="px-3 py-2.5 hover:bg-muted/20 transition-colors">
 									<div class="flex items-start justify-between gap-2 mb-1.5">
 										<div class="min-w-0">
-											<span class="font-mono text-[0.5rem] text-accent block"
+											<span class="font-mono text-2xs text-accent block"
 												>{risk.id}</span
 											>
 											<span class="text-sm text-foreground">{risk.title}</span
@@ -1320,7 +1303,7 @@
 										></span>
 									</div>
 									<div
-										class="flex items-center gap-2 font-mono text-[0.5rem] mb-1.5"
+										class="flex items-center gap-2 font-mono text-2xs mb-1.5"
 									>
 										<span class="text-red-500 uppercase"
 											>{risk.impact} impact</span
@@ -1330,9 +1313,9 @@
 											>{risk.likelihood} likelihood</span
 										>
 									</div>
-									<div class="text-[0.55rem] text-muted-foreground">
+									<div class="text-2xs text-muted-foreground">
 										<span
-											class="font-mono uppercase text-[0.45rem] tracking-wider"
+											class="font-mono uppercase text-2xs tracking-wider"
 											>Mitigation:</span
 										>
 										{risk.mitigation}
@@ -1348,18 +1331,18 @@
 				━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 				<div class="bg-card border border-border rounded-lg shadow-ink p-3">
 					<span
-						class="font-mono text-[0.55rem] uppercase tracking-wider text-muted-foreground block mb-2"
+						class="font-mono text-2xs uppercase tracking-wider text-muted-foreground block mb-2"
 						>Quick Reference</span
 					>
-					<div class="grid grid-cols-2 gap-2 font-mono text-[0.6rem]">
+					<div class="grid grid-cols-2 gap-2 font-mono text-2xs">
 						<div class="px-2 py-1.5 bg-muted/20 rounded border border-border/50">
-							<span class="text-muted-foreground block text-[0.5rem] uppercase"
+							<span class="text-muted-foreground block text-2xs uppercase"
 								>Total Tasks</span
 							>
 							<span class="text-foreground text-sm font-medium">{tasks.length}</span>
 						</div>
 						<div class="px-2 py-1.5 bg-muted/20 rounded border border-border/50">
-							<span class="text-muted-foreground block text-[0.5rem] uppercase"
+							<span class="text-muted-foreground block text-2xs uppercase"
 								>Completed</span
 							>
 							<span class="text-emerald-500 text-sm font-medium"
@@ -1367,7 +1350,7 @@
 							>
 						</div>
 						<div class="px-2 py-1.5 bg-muted/20 rounded border border-border/50">
-							<span class="text-muted-foreground block text-[0.5rem] uppercase"
+							<span class="text-muted-foreground block text-2xs uppercase"
 								>Blocked</span
 							>
 							<span class="text-red-500 text-sm font-medium"
@@ -1375,7 +1358,7 @@
 							>
 						</div>
 						<div class="px-2 py-1.5 bg-muted/20 rounded border border-border/50">
-							<span class="text-muted-foreground block text-[0.5rem] uppercase"
+							<span class="text-muted-foreground block text-2xs uppercase"
 								>Open Risks</span
 							>
 							<span class="text-amber-500 text-sm font-medium">{risks.length}</span>
@@ -1390,7 +1373,7 @@
 		═══════════════════════════════════════════════════════════════════════ -->
 		<footer class="mt-4 pt-3 border-t border-border">
 			<div
-				class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-muted-foreground font-mono text-[0.5rem] uppercase tracking-wider"
+				class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-muted-foreground font-mono text-2xs uppercase tracking-wider"
 			>
 				<div class="flex items-center gap-2">
 					<span>{project.id}</span>

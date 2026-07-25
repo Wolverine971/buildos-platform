@@ -1032,7 +1032,7 @@
 										>
 										{#if depTask.state_key}
 											<span
-												class="ml-auto inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium {getStateColor(
+												class="ml-auto inline-flex items-center rounded-full px-1.5 py-0.5 text-2xs font-medium {getStateColor(
 													depTask.state_key
 												)}"
 											>
@@ -1062,7 +1062,7 @@
 							</div>
 							<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
 								<span
-									class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium {getStateColor(
+									class="inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium {getStateColor(
 										detail.project.state_key
 									)}"
 								>
@@ -1070,14 +1070,14 @@
 								</span>
 								{#if detail.project.facet_stage}
 									<span
-										class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground"
+										class="inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium bg-muted text-muted-foreground"
 									>
 										{getStageLabel(detail.project.facet_stage)}
 									</span>
 								{/if}
 								{#if detail.project.facet_scale}
 									<span
-										class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground"
+										class="inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium bg-muted text-muted-foreground"
 									>
 										{getScaleLabel(detail.project.facet_scale)}
 									</span>

@@ -89,7 +89,7 @@
 					class="bg-muted px-3 py-1.5 border-b border-border flex items-center justify-between"
 				>
 					<span class="micro-label text-foreground">{field.label}</span>
-					<span class="text-[10px] text-muted-foreground/60 tabular-nums">
+					<span class="text-2xs text-muted-foreground/60 tabular-nums">
 						{#if field.stats.modified > 0}
 							<span class="text-warning">~{field.stats.modified}</span>
 						{/if}
@@ -114,7 +114,7 @@
 								onclick={() => toggleSeparator(fieldIndex, lineIndex)}
 								aria-expanded={expanded}
 								aria-controls={`diff-hidden-${separatorKey}`}
-								class="flex min-h-[44px] w-full cursor-pointer items-center gap-2 border-y border-border/30 bg-muted/50 px-3 py-1 text-[10px] text-muted-foreground/60 transition-colors hover:bg-muted hover:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none"
+								class="flex min-h-[44px] w-full cursor-pointer items-center gap-2 border-y border-border/30 bg-muted/50 px-3 py-1 text-2xs text-muted-foreground/60 transition-colors hover:bg-muted hover:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none"
 							>
 								<ChevronDown
 									class="h-3 w-3 shrink-0 transition-transform motion-reduce:transition-none {expanded
@@ -137,7 +137,7 @@
 											)} {getLineBorderClass(hidden.type)}"
 										>
 											<span
-												class="w-10 shrink-0 text-right pr-2 select-none text-[10px] tabular-nums {getGutterClass(
+												class="w-10 shrink-0 text-right pr-2 select-none text-2xs tabular-nums {getGutterClass(
 													hidden.type
 												)} py-px"
 											>
@@ -167,7 +167,7 @@
 							>
 								<!-- Line number gutter -->
 								<span
-									class="w-10 shrink-0 text-right pr-2 select-none text-[10px] tabular-nums {getGutterClass(
+									class="w-10 shrink-0 text-right pr-2 select-none text-2xs tabular-nums {getGutterClass(
 										line.type
 									)} py-px"
 								>

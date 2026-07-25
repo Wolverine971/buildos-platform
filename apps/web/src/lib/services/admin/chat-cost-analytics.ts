@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/admin/chat-cost-analytics.ts
+import { averageValues as average, dateMs, percentile } from './analytics-primitives';
 import { resolveUsageLogCostBreakdown } from './llm-usage-costs';
 
 type Attribution = 'exact' | 'inferred';
@@ -156,25 +157,6 @@ const previewText = (value: string | null | undefined, maxChars = 180): string =
 };
 
 const safeDate = (value: string | null | undefined): string | null => value ?? null;
-
-const dateMs = (value: string | null | undefined): number | null => {
-	if (!value) return null;
-	const ms = new Date(value).getTime();
-	return Number.isFinite(ms) ? ms : null;
-};
-
-const percentile = (values: number[], p: number): number => {
-	const sorted = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
-	if (sorted.length === 0) return 0;
-	const index = Math.min(
-		sorted.length - 1,
-		Math.max(0, Math.ceil((p / 100) * sorted.length) - 1)
-	);
-	return sorted[index] ?? 0;
-};
-
-const average = (values: number[]): number =>
-	values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 
 const sessionTitle = (session: ChatCostSessionRow | undefined): string => {
 	if (!session) return 'Unknown Chat';

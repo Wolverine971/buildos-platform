@@ -34,6 +34,8 @@ The repeated guards are a good low-risk first extraction because their contracts
 
 The report correctly distinguishes an important detail: the inbox version of `compactText` does not call `trimEnd()` after slicing, while the other two do. That difference should be resolved intentionally before extraction. A focused `chat-session-seed-formatters` module is more appropriate than a global string utility.
 
+Resolved on 2026-07-24. The three services now share the record, string, number, array, section, and compact-text primitives through `chat-session-seed-formatters.ts`. Contract tests lock both truncation modes: agent-run and project-audit trim the truncated prefix, while inbox explicitly opts into its historical whitespace-preserving boundary.
+
 ### Admin analytics primitives
 
 The admin dashboard, user analytics, LLM-usage analytics, and chat-cost analytics code repeats exact or near-exact implementations of:
@@ -46,11 +48,15 @@ The admin dashboard, user analytics, LLM-usage analytics, and chat-cost analytic
 
 This is both duplication and consistency risk: small changes to percentile boundaries or coercion behavior can make dashboards disagree. Shared, pure analytics primitives plus focused tests would establish one definition for each metric.
 
+Resolved on 2026-07-24. Dashboard, per-user, LLM-usage, chat-cost, usage-cost, and media analytics now share exact numeric/text/date readers, average and percentile policies, and bounded pagination where their contracts match. The per-user percentile adapter intentionally preserves its `null` empty-set and rounded-result behavior, chat-cost keeps its broader `parseFloat` coercion, and media analytics keeps its prior 10,000-row-per-table cap.
+
 ### Gmail response and concurrency infrastructure
 
 `gmail-read-gateway.ts` and `gmail-relevance/metadata-gateway.ts` have near-duplicate `readJsonBounded` implementations and closely related `mapWithConcurrency` implementations.
 
 The response reader differs in domain error types and the value returned for an empty body. The concurrency mapper in the metadata gateway also accepts an abort signal. The reusable seam is therefore a lower-level bounded-body reader and concurrency scheduler with injected error mapping and optional cancellation—not directly moving either function unchanged.
+
+Resolved on 2026-07-24. Both gateways now use `gmail-gateway-infrastructure.ts`. The bounded reader accepts policy factories so Gmail Read still returns `null` for a missing body and emits `GmailReadGatewayError`, while Gmail Relevance still returns a fresh object and emits its own error class. The shared scheduler preserves input ordering and adds optional stop-scheduling-on-abort behavior without cancelling work already in flight.
 
 ### Ontology migration state resolution
 
@@ -74,6 +80,18 @@ Resolved on 2026-07-24:
 - Seven authored non-route array-chunking implementations now use one `chunkArray` utility that rejects non-positive or non-integer sizes instead of risking an invalid loop.
 
 The focused regression suite passed 75 tests. The regenerated inventory moved from 178 to 173 clone families, removing the expected JSON conversion, tokenization, confidence mapping, allowed-op normalization, and chunking families.
+
+## Completed follow-up cleanup batch
+
+Resolved on 2026-07-24:
+
+- The previously extracted task-to-goal edge mapper was reverified with its eight orientation, relationship, invalid-edge, and deduplication tests.
+- The two browser data loaders now use one exact `bindAbortSignal` implementation. Tests verify pre-abort behavior, consumer-only cancellation, underlying-work continuity, normal settlement, and listener cleanup.
+- The three chat-session seed services now use the shared formatters described above, with both historical truncation policies locked in tests before consolidation.
+- Admin analytics now use the shared primitives described above, including one tested paginated-fetch implementation with explicit per-caller row ceilings.
+- Gmail Read and Gmail Relevance now use shared bounded-response and concurrency infrastructure while retaining gateway-specific policies and abort semantics.
+
+The focused web regression suite passed 76 tests across 15 files, the task-goal suite passed 8 tests, and `pnpm --filter @buildos/web check` completed with zero errors and zero warnings. The regenerated inventory moved from 173 to 163 clone families; the service-local browser abort, seed formatting, admin analytics, and Gmail infrastructure families no longer appear in the duplicate-candidate report.
 
 ## Smaller utility families
 
@@ -103,9 +121,9 @@ Parameterization may reduce line count but could make the domain policy harder t
 ## Suggested cleanup order
 
 1. Extract and test the exact unknown-value guards with an explicit `null`/`undefined` policy.
-2. Consolidate the three chat-session seed-formatting toolkits inside the server boundary.
-3. Establish shared admin analytics primitives, especially percentile and paginated fetching.
-4. Extract Gmail bounded-response and concurrency infrastructure while preserving domain errors.
+2. Completed: consolidate the three chat-session seed-formatting toolkits inside the server boundary.
+3. Completed: establish shared admin analytics primitives, especially percentile and paginated fetching.
+4. Completed: extract Gmail bounded-response and concurrency infrastructure while preserving domain errors.
 5. Resolve the ontology phase-state policy discrepancy, then consolidate the shared portion.
 6. Completed: move task-goal edge interpretation behind one narrow ontology helper.
 

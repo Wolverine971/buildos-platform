@@ -663,9 +663,7 @@
 					<div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-3">
 						<!-- Current work = planning + active -->
 						<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
-							<p
-								class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground"
-							>
+							<p class="micro-label text-muted-foreground">
 								CURRENT WORK
 							</p>
 							{#if showSkeletons}
@@ -680,9 +678,7 @@
 						</div>
 						<!-- Tasks across current work only -->
 						<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
-							<p
-								class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground"
-							>
+							<p class="micro-label text-muted-foreground">
 								TASKS
 							</p>
 							{#if showSkeletons}
@@ -697,9 +693,7 @@
 						</div>
 						<!-- Docs across current work only -->
 						<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
-							<p
-								class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground"
-							>
+							<p class="micro-label text-muted-foreground">
 								DOCS
 							</p>
 							{#if showSkeletons}
@@ -716,9 +710,7 @@
 						<div
 							class="wt-paper p-3 sm:p-4 tx tx-pulse tx-weak border-accent/30 bg-accent/5"
 						>
-							<p class="micro-label text-[9px] sm:text-[0.65rem] text-accent">
-								ACTIVE
-							</p>
+							<p class="micro-label text-accent">ACTIVE</p>
 							{#if showSkeletons}
 								<div
 									class="h-6 sm:h-8 w-10 sm:w-14 bg-accent/20 rounded-md mt-1 animate-pulse motion-reduce:animate-none"
@@ -812,7 +804,7 @@
 								<!-- Ownership filter - available to all users -->
 								<div class="space-y-1.5">
 									<p
-										class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground"
+										class="micro-label text-muted-foreground"
 									>
 										OWNERSHIP
 									</p>

@@ -185,13 +185,13 @@
 					role="tab"
 					aria-selected={activeTab === tab.key}
 					onclick={() => (activeTab = tab.key)}
-					class="flex min-w-0 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors pressable {activeTab ===
+					class="flex min-w-0 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-2xs font-medium transition-colors pressable {activeTab ===
 					tab.key
 						? 'bg-card text-foreground shadow-ink'
 						: 'text-muted-foreground hover:bg-card/60 hover:text-foreground'}"
 				>
 					<span class="truncate">{tab.label}</span>
-					<span class="text-[10px] opacity-75">{tab.count}</span>
+					<span class="text-2xs opacity-75">{tab.count}</span>
 				</button>
 			{/each}
 		</div>
@@ -240,19 +240,19 @@
 								<div class="mt-2 flex flex-wrap items-center gap-1.5">
 									{#if chip}
 										<span
-											class="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium {chip.className}"
+											class="inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-medium {chip.className}"
 											>{chip.label}</span
 										>
 									{/if}
 									{#if event.location}
 										<span
-											class="inline-flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground"
+											class="inline-flex min-w-0 items-center gap-1 text-2xs text-muted-foreground"
 										>
 											<MapPin class="w-2.5 h-2.5 shrink-0" />
 											<span class="truncate">{event.location}</span>
 										</span>
 									{/if}
-									<span class="text-[10px] text-muted-foreground">{meta}</span>
+									<span class="text-2xs text-muted-foreground">{meta}</span>
 								</div>
 							</div>
 							<ExternalLink

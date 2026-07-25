@@ -109,7 +109,7 @@
 			/>
 			<IconComponent class="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 {config.iconColor}" />
 			<span class="text-xs sm:text-sm text-foreground">{config.labelPlural}</span>
-			<span class="text-[10px] sm:text-xs text-muted-foreground">({linkedCount})</span>
+			<span class="text-2xs sm:text-xs text-muted-foreground">({linkedCount})</span>
 		</button>
 
 		<!-- Right side: add button or loading indicator -->

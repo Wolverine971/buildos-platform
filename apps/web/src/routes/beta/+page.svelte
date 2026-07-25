@@ -337,7 +337,7 @@
 					<div class="relative flex h-full flex-col">
 						<div class="flex items-start justify-between gap-4">
 							<div
-								class="inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+								class="inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/85 px-3 py-1 text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 							>
 								<Sparkles class="h-3.5 w-3.5 text-accent" aria-hidden="true" />
 								Fast beta signup

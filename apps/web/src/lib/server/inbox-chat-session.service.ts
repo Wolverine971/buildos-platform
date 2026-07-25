@@ -7,6 +7,14 @@ import { createAgentRunChatSession } from './agent-run-chat-session.service';
 import { createOrReuseProjectAuditChatSession } from './project-audit-chat-session.service';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 import type { Json } from '@buildos/shared-types';
+import {
+	appendSeedSection as appendSection,
+	compactSeedText,
+	isRecord,
+	normalizeRecordArray as normalizeArray,
+	readFiniteNumber as readNumber,
+	readTrimmedString as readString
+} from './chat-session-seed-formatters';
 
 type AnySupabase = any;
 
@@ -63,25 +71,8 @@ const SOURCE_LABEL_BY_TYPE: Record<SupportedInboxSourceType, string> = {
 	calendar_suggestion: 'Calendar project suggestion'
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function readString(value: unknown): string | null {
-	return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function readNumber(value: unknown): number | null {
-	return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
 function compactText(value: unknown, maxLength: number): string | null {
-	if (typeof value !== 'string') return null;
-	const normalized = value.replace(/\s+/g, ' ').trim();
-	if (!normalized) return null;
-	return normalized.length <= maxLength
-		? normalized
-		: `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
+	return compactSeedText(value, maxLength, { trimTruncatedEnd: false });
 }
 
 function compactVisibleText(value: unknown, maxLength: number): string | null {
@@ -115,22 +106,6 @@ function formatPercent(value: unknown): string | null {
 	const score = readNumber(value);
 	if (score === null) return null;
 	return `${Math.round(score * 100)}% confidence`;
-}
-
-function appendSection(
-	lines: string[],
-	title: string,
-	body: string | string[] | null | undefined
-): void {
-	const values = Array.isArray(body) ? body.filter(Boolean) : body ? [body] : [];
-	if (values.length === 0) return;
-	lines.push('', `## ${title}`, ...values);
-}
-
-function normalizeArray(value: unknown): Record<string, unknown>[] {
-	return Array.isArray(value)
-		? value.filter((item): item is Record<string, unknown> => isRecord(item))
-		: [];
 }
 
 function summarizeCalendarTask(task: Record<string, unknown>, index: number): string {

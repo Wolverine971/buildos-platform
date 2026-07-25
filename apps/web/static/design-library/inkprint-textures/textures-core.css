@@ -1,22 +1,10 @@
-/* ============================================
-   Inkprint Texture System - Core Textures
-   ============================================
-
-   Seven semantic texture types plus button texture.
-
-   Semantic Meanings:
-   - Bloom  : ideation, newness, creative expansion
-   - Grain  : execution, steady progress, craftsmanship
-   - Pulse  : urgency, sprints, deadlines, momentum
-   - Static : blockers, noise, overwhelm, risk
-   - Thread : relationships, collaboration, dependencies
-   - Frame  : canon, structure, decisions, officialness
-   - Strip  : header band, separator, printed label strip
-   - Button : brushed aluminum tactile texture
-
-   Usage:
-   <div class="tx tx-frame tx-weak">...</div>
+/* AUTO-GENERATED from src/lib/styles/inkprint.css — do not edit.
+   Module: textures-core.css
 */
+
+/* ============================================
+   Texture System - Base Classes
+   ============================================ */
 
 /* Base texture class - enables texture layer */
 .tx {
@@ -37,15 +25,19 @@
 	mix-blend-mode: screen;
 }
 
-/* Ensure text remains readable over textures */
-.tx > * {
-	position: relative;
-	z-index: 2;
-}
-
 /* ============================================
-   Texture Types
-   ============================================ */
+   Texture Types - Semantic Meanings
+   ============================================
+
+   Bloom  - ideation, newness, creative expansion
+   Grain  - execution, steady progress, craftsmanship
+   Pulse  - urgency, sprints, deadlines, momentum
+   Static - blockers, noise, overwhelm, risk
+   Thread - relationships, collaboration, dependencies
+   Frame  - canon, structure, decisions, officialness
+   Strip  - header band, separator, printed label strip
+   Grid   - input, editable, writable (form fields)
+*/
 
 /* Bloom - radial halftone pattern */
 .tx-bloom::before {
@@ -129,6 +121,22 @@
 		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 1px,
 		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 2px
 	);
+}
+
+/* Grid - graph-paper pattern (writable, editable surface) */
+.tx-grid::before {
+	background-image:
+		linear-gradient(
+			to right,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.035)) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			to bottom,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.035)) 1px,
+			transparent 1px
+		);
+	background-size: 20px 20px;
 }
 
 /* ============================================

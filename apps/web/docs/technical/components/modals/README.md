@@ -2,7 +2,7 @@
 
 # Modal Components Documentation
 
-**Last Updated**: November 21, 2025
+**Last Updated**: July 24, 2026
 **Location**: `/apps/web/docs/technical/components/modals/`
 
 ## Overview
@@ -112,7 +112,7 @@ This directory contains comprehensive analysis and documentation of the BuildOS 
 - **Bottom Sheet Variant**: Native mobile UX pattern
 - **Touch Gestures**: Swipe-to-dismiss with custom Svelte action
 - **Enhanced Breakpoints**: 4-tier system (xs: 480px, sm: 640px, md: 768px, lg: 1024px)
-- **Compact Spacing**: High information density (36px touch targets vs 48px standard)
+- **Compact Spacing**: High information density with 44px primary touch targets
 - **GPU Optimized**: transform/opacity animations only
 - **Non-passive Events**: Proper preventDefault() for gesture control
 
@@ -126,7 +126,10 @@ This directory contains comprehensive analysis and documentation of the BuildOS 
 ### New Props
 
 ```typescript
+size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 variant?: 'center' | 'bottom-sheet';
+presentation?: 'default' | 'immersive';
+contentScrollable?: boolean;
 enableGestures?: boolean;
 showDragHandle?: boolean;
 dismissThreshold?: number;

@@ -334,7 +334,7 @@
 					{#if !sidebarCollapsed}
 						<span class="min-w-0">
 							<span
-								class="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-muted-foreground"
+								class="block text-2xs font-bold uppercase tracking-[0.2em] text-muted-foreground"
 							>
 								BuildOS
 							</span>
@@ -475,7 +475,7 @@
 						</div>
 						<div>
 							<p
-								class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-muted-foreground"
+								class="text-2xs font-bold uppercase tracking-[0.2em] text-muted-foreground"
 							>
 								BuildOS
 							</p>

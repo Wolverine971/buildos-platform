@@ -1225,7 +1225,7 @@
 									<div class="flex items-center justify-between px-2.5 py-1.5">
 										<div class="flex items-center gap-2 min-w-0">
 											<span
-												class="text-[10px] font-bold text-muted-foreground w-4"
+												class="text-2xs font-bold text-muted-foreground w-4"
 											>
 												{index + 1}
 											</span>
@@ -1444,14 +1444,14 @@
 							{#each feedbackStats as stat (stat.label)}
 								<div class="px-2 py-2 text-center">
 									<p
-										class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+										class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
 									>
 										{stat.label}
 									</p>
 									<p class="mt-1 text-base font-bold text-foreground">
 										{stat.value}
 									</p>
-									<p class="mt-0.5 truncate text-[10px] text-muted-foreground">
+									<p class="mt-0.5 truncate text-2xs text-muted-foreground">
 										{stat.detail}
 									</p>
 								</div>
@@ -1461,7 +1461,7 @@
 						{#if feedbackCategoryEntries.length > 0}
 							<div class="space-y-1.5">
 								<p
-									class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+									class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
 								>
 									Categories
 								</p>
@@ -1485,13 +1485,13 @@
 									<div class="px-2.5 py-2">
 										<div class="flex items-center justify-between gap-2">
 											<span
-												class="text-[10px] font-medium capitalize {getCategoryColor(
+												class="text-2xs font-medium capitalize {getCategoryColor(
 													feedback.category
 												)}"
 											>
 												{feedback.category}
 											</span>
-											<span class="text-[10px] text-muted-foreground">
+											<span class="text-2xs text-muted-foreground">
 												{feedback.rating
 													? `${feedback.rating}/5`
 													: feedback.status}
@@ -1683,7 +1683,7 @@
 						<div class="divide-y divide-border/50">
 							{#each dailyActiveUsers.slice(-7) as day (day.date)}
 								<div class="flex items-center justify-between px-2.5 py-1.5">
-									<span class="text-[10px] text-muted-foreground">
+									<span class="text-2xs text-muted-foreground">
 										{new Date(day.date).toLocaleDateString('en-US', {
 											weekday: 'short',
 											month: 'short',
@@ -1707,7 +1707,7 @@
 											></div>
 										</div>
 										<span
-											class="text-[10px] font-bold text-foreground w-5 text-right"
+											class="text-2xs font-bold text-foreground w-5 text-right"
 										>
 											{day.active_users}
 										</span>
@@ -1892,7 +1892,7 @@
 										</span>
 									</div>
 									<span
-										class="text-[10px] text-muted-foreground capitalize shrink-0"
+										class="text-2xs text-muted-foreground capitalize shrink-0"
 									>
 										{typedActivity.status}
 									</span>
@@ -2067,11 +2067,11 @@
 								>
 									<div class="flex-1 min-w-0">
 										<div
-											class="text-[11px] font-medium text-foreground truncate"
+											class="text-2xs font-medium text-foreground truncate"
 										>
 											{typedUser.email}
 										</div>
-										<div class="text-[10px] text-muted-foreground">
+										<div class="text-2xs text-muted-foreground">
 											{typedUser.last_activity
 												? new Date(
 														typedUser.last_activity
@@ -2079,7 +2079,7 @@
 												: 'Never'}
 										</div>
 									</div>
-									<div class="text-[10px] font-bold text-accent ml-2 shrink-0">
+									<div class="text-2xs font-bold text-accent ml-2 shrink-0">
 										{typedUser.activity_count}
 									</div>
 								</div>
@@ -2087,7 +2087,7 @@
 						</div>
 						<a
 							href="/admin/users"
-							class="mt-2 text-[10px] text-accent hover:text-accent/80 flex items-center justify-center gap-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							class="mt-2 text-2xs text-accent hover:text-accent/80 flex items-center justify-center gap-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							View All <ExternalLink class="h-2.5 w-2.5" />
 						</a>
@@ -2119,7 +2119,7 @@
 										class="h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5"
 									/>
 									<div class="flex-1 min-w-0">
-										<div class="text-[10px] text-foreground">
+										<div class="text-2xs text-foreground">
 											<span class="font-medium"
 												>{activity.user_email?.split('@')[0]}</span
 											>
@@ -2130,7 +2130,7 @@
 												)}
 											</span>
 										</div>
-										<div class="text-[9px] text-muted-foreground">
+										<div class="text-2xs text-muted-foreground">
 											{new Date(activity.created_at).toLocaleTimeString([], {
 												hour: '2-digit',
 												minute: '2-digit'

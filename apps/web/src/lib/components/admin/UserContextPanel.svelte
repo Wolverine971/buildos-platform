@@ -503,25 +503,19 @@
 				<div class="text-lg font-bold text-foreground">
 					{userContext.activity.project_count}
 				</div>
-				<div class="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
-					Projects
-				</div>
+				<div class="text-2xs uppercase tracking-wide text-muted-foreground">Projects</div>
 			</div>
 			<div class="text-center">
 				<div class="text-lg font-bold text-foreground">
 					{userContext.activity.tasks_created}
 				</div>
-				<div class="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
-					Tasks
-				</div>
+				<div class="text-2xs uppercase tracking-wide text-muted-foreground">Tasks</div>
 			</div>
 			<div class="text-center">
 				<div class="text-lg font-bold text-foreground">
 					{userContext.activity.agentic_sessions_count}
 				</div>
-				<div class="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
-					Agentic
-				</div>
+				<div class="text-2xs uppercase tracking-wide text-muted-foreground">Agentic</div>
 			</div>
 			<div class="text-center">
 				<div
@@ -531,14 +525,14 @@
 				>
 					{userContext.activity.tasks_completed}
 				</div>
-				<div class="text-[0.65rem] uppercase tracking-wide text-muted-foreground">Done</div>
+				<div class="text-2xs uppercase tracking-wide text-muted-foreground">Done</div>
 			</div>
 		</div>
 
 		<!-- Quick Actions -->
 		{#if showActions}
 			<div class="px-3 py-2 border-b border-border">
-				<div class="text-[0.65rem] uppercase tracking-wide text-muted-foreground mb-1.5">
+				<div class="text-2xs uppercase tracking-wide text-muted-foreground mb-1.5">
 					Quick Email
 				</div>
 				<div class="flex flex-wrap gap-1.5">
@@ -604,8 +598,7 @@
 					<span class="text-xs font-medium text-foreground">Account</span>
 					{#if true}
 						{@const badge = getSubscriptionBadge(userContext.basic.subscription_status)}
-						<span
-							class="ml-auto px-1.5 py-0.5 text-[0.65rem] rounded border {badge.class}"
+						<span class="ml-auto px-1.5 py-0.5 text-2xs rounded border {badge.class}"
 							>{badge.label}</span
 						>
 					{/if}
@@ -652,7 +645,7 @@
 						<span class="text-xs font-medium text-foreground">Beta Program</span>
 						{#if userContext.beta.beta_tier}
 							<span
-								class="ml-auto px-1.5 py-0.5 text-[0.65rem] rounded bg-accent/10 text-accent border border-accent/30"
+								class="ml-auto px-1.5 py-0.5 text-2xs rounded bg-accent/10 text-accent border border-accent/30"
 							>
 								{userContext.beta.beta_tier}
 							</span>
@@ -667,19 +660,19 @@
 									<div class="text-sm font-semibold text-foreground">
 										{userContext.beta.total_feedback_submitted || 0}
 									</div>
-									<div class="text-[0.6rem] text-muted-foreground">Feedback</div>
+									<div class="text-2xs text-muted-foreground">Feedback</div>
 								</div>
 								<div class="text-center p-1.5 rounded-md bg-muted">
 									<div class="text-sm font-semibold text-foreground">
 										{userContext.beta.total_calls_attended || 0}
 									</div>
-									<div class="text-[0.6rem] text-muted-foreground">Calls</div>
+									<div class="text-2xs text-muted-foreground">Calls</div>
 								</div>
 								<div class="text-center p-1.5 rounded-md bg-muted">
 									<div class="text-sm font-semibold text-foreground">
 										{userContext.beta.total_features_requested || 0}
 									</div>
-									<div class="text-[0.6rem] text-muted-foreground">Requests</div>
+									<div class="text-2xs text-muted-foreground">Requests</div>
 								</div>
 							</div>
 
@@ -715,19 +708,19 @@
 							<div class="flex flex-wrap gap-1">
 								{#if userContext.beta.wants_community_access}
 									<span
-										class="px-1.5 py-0.5 text-[0.6rem] rounded bg-muted text-muted-foreground"
+										class="px-1.5 py-0.5 text-2xs rounded bg-muted text-muted-foreground"
 										>Community</span
 									>
 								{/if}
 								{#if userContext.beta.wants_weekly_calls}
 									<span
-										class="px-1.5 py-0.5 text-[0.6rem] rounded bg-muted text-muted-foreground"
+										class="px-1.5 py-0.5 text-2xs rounded bg-muted text-muted-foreground"
 										>Weekly Calls</span
 									>
 								{/if}
 								{#if userContext.beta.wants_feature_updates}
 									<span
-										class="px-1.5 py-0.5 text-[0.6rem] rounded bg-muted text-muted-foreground"
+										class="px-1.5 py-0.5 text-2xs rounded bg-muted text-muted-foreground"
 										>Updates</span
 									>
 								{/if}
@@ -739,7 +732,7 @@
 									class="p-2 rounded-md bg-warning/5 border border-warning/20 tx tx-static tx-weak"
 								>
 									<div
-										class="text-[0.65rem] uppercase tracking-wide text-warning mb-0.5"
+										class="text-2xs uppercase tracking-wide text-warning mb-0.5"
 									>
 										Challenge
 									</div>
@@ -766,7 +759,7 @@
 					{/if}
 					<Activity class="w-3.5 h-3.5 text-info" />
 					<span class="text-xs font-medium text-foreground">Activity</span>
-					<span class="ml-auto text-[0.65rem] text-muted-foreground">30 days</span>
+					<span class="ml-auto text-2xs text-muted-foreground">30 days</span>
 				</button>
 
 				{#if expandedSections.has('activity')}
@@ -830,7 +823,7 @@
 						<BookOpen class="w-3.5 h-3.5 text-success" />
 						<span class="text-xs font-medium text-foreground">Onboarding</span>
 						{#if userContext.onboarding.completedAt}
-							<span class="ml-auto text-[0.65rem] text-success">
+							<span class="ml-auto text-2xs text-success">
 								<CheckCircle class="w-3 h-3 inline -mt-0.5" /> Done
 							</span>
 						{/if}
@@ -844,9 +837,7 @@
 						<div class="px-3 pb-2 space-y-2">
 							{#if ob.projects}
 								<div class="p-2 rounded-md bg-info/5 border border-info/20">
-									<div
-										class="text-[0.65rem] uppercase tracking-wide text-info mb-0.5"
-									>
+									<div class="text-2xs uppercase tracking-wide text-info mb-0.5">
 										Projects
 									</div>
 									<p class="text-xs text-foreground whitespace-pre-wrap">
@@ -857,7 +848,7 @@
 							{#if ob.workStyle}
 								<div class="p-2 rounded-md bg-success/5 border border-success/20">
 									<div
-										class="text-[0.65rem] uppercase tracking-wide text-success mb-0.5"
+										class="text-2xs uppercase tracking-wide text-success mb-0.5"
 									>
 										Work Style
 									</div>
@@ -869,7 +860,7 @@
 							{#if ob.challenges}
 								<div class="p-2 rounded-md bg-warning/5 border border-warning/20">
 									<div
-										class="text-[0.65rem] uppercase tracking-wide text-warning mb-0.5"
+										class="text-2xs uppercase tracking-wide text-warning mb-0.5"
 									>
 										Challenges
 									</div>
@@ -881,7 +872,7 @@
 							{#if ob.helpFocus}
 								<div class="p-2 rounded-md bg-accent/5 border border-accent/20">
 									<div
-										class="text-[0.65rem] uppercase tracking-wide text-accent mb-0.5"
+										class="text-2xs uppercase tracking-wide text-accent mb-0.5"
 									>
 										Focus
 									</div>
@@ -917,7 +908,7 @@
 						<Mail class="w-3.5 h-3.5 text-accent" />
 						<span class="text-xs font-medium text-foreground">Email History</span>
 						<span
-							class="ml-auto px-1.5 py-0.5 text-[0.65rem] rounded bg-muted text-muted-foreground"
+							class="ml-auto px-1.5 py-0.5 text-2xs rounded bg-muted text-muted-foreground"
 						>
 							{userContext.emailHistory.length}
 						</span>
@@ -955,14 +946,14 @@
 														email.recipient_status
 													)}
 													<span
-														class="px-1.5 py-0.5 text-[0.6rem] rounded border shrink-0 {badge.class}"
+														class="px-1.5 py-0.5 text-2xs rounded border shrink-0 {badge.class}"
 													>
 														{badge.label}
 													</span>
 												{/if}
 											</div>
 											<div
-												class="flex items-center gap-2 text-[0.65rem] text-muted-foreground"
+												class="flex items-center gap-2 text-2xs text-muted-foreground"
 											>
 												<span
 													>{formatRelativeDate(
@@ -1004,8 +995,7 @@
 												</div>
 												<div class="flex justify-between">
 													<span class="text-muted-foreground">To</span>
-													<span
-														class="text-foreground font-mono text-[0.65rem]"
+													<span class="text-foreground font-mono text-2xs"
 														>{email.recipient_email}</span
 													>
 												</div>
@@ -1053,13 +1043,13 @@
 											<div class="p-3">
 												<div class="flex items-center justify-between mb-2">
 													<span
-														class="text-[0.65rem] uppercase tracking-wide text-muted-foreground"
+														class="text-2xs uppercase tracking-wide text-muted-foreground"
 														>Preview</span
 													>
 													<button
 														onclick={() =>
 															copyEmailContent(email.content)}
-														class="px-1.5 py-0.5 text-[0.65rem] rounded bg-muted hover:bg-muted text-muted-foreground transition-colors pressable flex items-center gap-1"
+														class="px-1.5 py-0.5 text-2xs rounded bg-muted hover:bg-muted text-muted-foreground transition-colors pressable flex items-center gap-1"
 													>
 														<Copy class="w-3 h-3" />
 														Copy text
@@ -1098,7 +1088,7 @@
 								</div>
 							{/each}
 							{#if userContext.emailHistory.length > 5}
-								<p class="text-[0.65rem] text-center text-muted-foreground pt-1">
+								<p class="text-2xs text-center text-muted-foreground pt-1">
 									+{userContext.emailHistory.length - 5} more emails
 								</p>
 							{/if}

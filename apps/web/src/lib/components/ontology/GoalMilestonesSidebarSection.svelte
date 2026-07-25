@@ -206,7 +206,7 @@
 				Milestones
 			</span>
 			{#if totalCount > 0}
-				<span class="text-[10px] text-muted-foreground/70 tabular-nums">
+				<span class="text-2xs text-muted-foreground/70 tabular-nums">
 					{completedCount}/{totalCount}
 				</span>
 			{/if}
@@ -231,7 +231,7 @@
 								style="width: {progressPercent}%"
 							></div>
 						</div>
-						<span class="text-[10px] text-muted-foreground tabular-nums"
+						<span class="text-2xs text-muted-foreground tabular-nums"
 							>{progressPercent}%</span
 						>
 					</div>
@@ -252,7 +252,7 @@
 				<div class="px-3 py-6 text-center tx tx-bloom tx-weak">
 					<Flag class="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />
 					<p class="text-xs text-muted-foreground">No milestones yet</p>
-					<p class="text-[10px] text-muted-foreground/70 mt-0.5">
+					<p class="text-2xs text-muted-foreground/70 mt-0.5">
 						Break this goal into measurable checkpoints
 					</p>
 					{#if canEdit && !isGoalTerminal}
@@ -289,7 +289,7 @@
 								</p>
 								{#if m.due_at}
 									<p
-										class="text-[10px] {isPastDue(m)
+										class="text-2xs {isPastDue(m)
 											? 'text-destructive'
 											: 'text-muted-foreground'}"
 									>
@@ -322,7 +322,7 @@
 							onclick={() => (showCompleted = !showCompleted)}
 							class="w-full flex items-center justify-between px-3 py-1.5 text-left hover:bg-muted/30 transition-colors pressable"
 						>
-							<span class="text-[10px] text-muted-foreground">
+							<span class="text-2xs text-muted-foreground">
 								Completed ({completedMilestones.length})
 							</span>
 							<ChevronDown
@@ -378,7 +378,7 @@
 					</div>
 				{:else if isGoalTerminal}
 					<div class="px-3 py-2 border-t border-border/50">
-						<p class="text-[10px] text-muted-foreground/70 text-center">
+						<p class="text-2xs text-muted-foreground/70 text-center">
 							Goal is {goalState} - milestones locked
 						</p>
 					</div>

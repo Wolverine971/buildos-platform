@@ -29,8 +29,8 @@
 		<div class="relative flex justify-center">
 			<span
 				class={compact
-					? 'bg-background px-2 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-widest'
-					: 'bg-background px-2 sm:px-3 text-[9px] sm:text-[10px] font-medium text-muted-foreground/70 uppercase tracking-widest'}
+					? 'bg-background px-2 text-2xs font-medium text-muted-foreground/70 uppercase tracking-widest'
+					: 'bg-background px-2 sm:px-3 text-2xs font-medium text-muted-foreground/70 uppercase tracking-widest'}
 			>
 				History
 			</span>

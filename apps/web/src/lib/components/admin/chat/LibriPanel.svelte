@@ -99,18 +99,18 @@
 							</div>
 							<div class="flex flex-wrap justify-end gap-1">
 								<span
-									class="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/70"
+									class="rounded-full bg-muted px-2 py-0.5 text-2xs font-medium text-foreground/70"
 								>
 									{formatLibriLabel(candidate.entityType)}
 								</span>
 								<span
-									class="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/70"
+									class="rounded-full bg-muted px-2 py-0.5 text-2xs font-medium text-foreground/70"
 								>
 									{formatConfidence(candidate.confidence)}
 								</span>
 							</div>
 						</div>
-						<div class="mt-2 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
+						<div class="mt-2 flex flex-wrap gap-1.5 text-2xs text-muted-foreground">
 							<span class="rounded-full bg-background px-2 py-0.5">
 								{formatLibriLabel(candidate.action)}
 							</span>

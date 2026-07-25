@@ -2,7 +2,6 @@
 <script lang="ts">
 	import type { ComponentType, Snippet } from 'svelte';
 	import { TrendingUp, TrendingDown } from 'lucide-svelte';
-	import { twMerge } from 'tailwind-merge';
 	import AdminCard from './AdminCard.svelte';
 
 	type Direction = 'up' | 'down' | 'neutral';
@@ -88,25 +87,20 @@
 		}
 	});
 
-	let labelClasses = $derived(
-		twMerge(
-			'font-semibold uppercase tracking-[0.15em] text-muted-foreground',
-			ultraCompact ? 'text-[0.55rem]' : compact ? 'text-[0.65rem]' : 'text-[0.7rem]'
-		)
-	);
+	const labelClasses = 'micro-label font-semibold text-muted-foreground';
 
 	let valueClasses = $derived(
 		ultraCompact
 			? 'text-lg font-bold text-foreground'
 			: compact
-				? 'text-2xl font-semibold text-foreground sm:text-[1.7rem]'
-				: 'text-[2rem] font-semibold text-foreground sm:text-[2.35rem]'
+				? 'text-2xl font-semibold text-foreground sm:text-3xl'
+				: 'text-3xl font-semibold text-foreground sm:text-4xl'
 	);
 
 	let iconWrapperClasses = $derived(
 		ultraCompact
 			? 'flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground'
-			: `flex ${compact ? 'h-10 w-10' : 'h-11 w-11'} items-center justify-center rounded-xl bg-muted text-muted-foreground ${iconColor ?? ''}`
+			: `flex ${compact ? 'h-10 w-10' : 'h-11 w-11'} items-center justify-center rounded-lg bg-muted text-muted-foreground ${iconColor ?? ''}`
 	);
 
 	let iconSize = $derived(ultraCompact ? 'h-3.5 w-3.5' : compact ? 'h-5 w-5' : 'h-6 w-6');
@@ -131,9 +125,7 @@
 				</p>
 			</div>
 			{#if displayFootnote}
-				<p
-					class="text-[10px] text-muted-foreground shrink-0 max-w-[80px] text-right truncate"
-				>
+				<p class="text-2xs text-muted-foreground shrink-0 max-w-[80px] text-right truncate">
 					{displayFootnote}
 				</p>
 			{/if}

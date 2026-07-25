@@ -310,11 +310,11 @@
 				</div>
 				<div class="flex-1 min-w-0">
 					<p class="text-xs sm:text-sm font-medium text-foreground">Generating brief</p>
-					<p class="text-[10px] sm:text-xs text-muted-foreground truncate">
+					<p class="text-2xs sm:text-xs text-muted-foreground truncate">
 						{statusMessage}
 					</p>
 				</div>
-				<span class="text-[10px] sm:text-xs font-bold text-accent">{progress}%</span>
+				<span class="text-2xs sm:text-xs font-bold text-accent">{progress}%</span>
 			</div>
 			<!-- Progress bar -->
 			<div class="h-0.5 sm:h-1 bg-accent/20 rounded-full overflow-hidden">
@@ -335,7 +335,7 @@
 			</div>
 			<button
 				onclick={generateBrief}
-				class="rounded-sm text-[10px] sm:text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+				class="rounded-sm text-2xs sm:text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
 			>
 				Retry
 			</button>
@@ -363,7 +363,7 @@
 							</h3>
 							{#if brief.priority_actions && brief.priority_actions.length > 0}
 								<span
-									class="inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded bg-accent/10 text-accent border border-accent/20"
+									class="inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-2xs font-bold rounded bg-accent/10 text-accent border border-accent/20"
 									title="{brief.priority_actions.length} priority action{brief
 										.priority_actions.length === 1
 										? ''
@@ -393,7 +393,7 @@
 						/>
 					</div>
 					<p
-						class="mt-0.5 sm:mt-1 w-full min-w-0 truncate text-[11px] sm:text-xs text-muted-foreground leading-snug sm:leading-relaxed"
+						class="mt-0.5 sm:mt-1 w-full min-w-0 truncate text-2xs sm:text-xs text-muted-foreground leading-snug sm:leading-relaxed"
 					>
 						{briefSnippet || 'Your daily brief is ready'}
 					</p>
@@ -416,7 +416,7 @@
 			</div>
 			<div class="flex-1 text-left min-w-0">
 				<h3 class="text-xs sm:text-sm font-semibold text-foreground">Generate Brief</h3>
-				<p class="text-[11px] sm:text-xs text-muted-foreground line-clamp-1">
+				<p class="text-2xs sm:text-xs text-muted-foreground line-clamp-1">
 					See what matters today — so nothing slips
 				</p>
 			</div>

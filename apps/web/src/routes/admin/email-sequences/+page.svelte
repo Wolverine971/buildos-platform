@@ -929,7 +929,7 @@
 										</p>
 									</div>
 									<span
-										class="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold uppercase {statusClasses(
+										class="shrink-0 rounded-md px-2 py-1 text-2xs font-semibold uppercase {statusClasses(
 											option.status
 										)}"
 									>
@@ -994,7 +994,7 @@
 					</div>
 					<div class="grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted-foreground">
 						<div class="min-w-0">
-							<p class="text-[10px] font-semibold uppercase">Next</p>
+							<p class="text-2xs font-semibold uppercase">Next</p>
 							<p class="truncate text-foreground">{recipient.stepKey ?? 'none'}</p>
 							{#if recipient.variantKey}
 								<p class="truncate">{recipient.variantKey}</p>
@@ -1004,7 +1004,7 @@
 							</p>
 						</div>
 						<div class="min-w-0">
-							<p class="text-[10px] font-semibold uppercase">Engagement</p>
+							<p class="text-2xs font-semibold uppercase">Engagement</p>
 							<div class="flex flex-wrap gap-2 text-foreground">
 								<span class="inline-flex items-center gap-1">
 									<Eye class="h-3.5 w-3.5" />
@@ -1022,7 +1022,7 @@
 							{/if}
 						</div>
 						<div class="min-w-0">
-							<p class="text-[10px] font-semibold uppercase">Activity</p>
+							<p class="text-2xs font-semibold uppercase">Activity</p>
 							<p>{formatCompactDate(recipient.lastActivityAt)}</p>
 							{#if recipient.firstActionAt}
 								<p class="text-success">
@@ -1031,7 +1031,7 @@
 							{/if}
 						</div>
 						<div class="min-w-0">
-							<p class="text-[10px] font-semibold uppercase">Sent</p>
+							<p class="text-2xs font-semibold uppercase">Sent</p>
 							<p class="text-foreground">{recipient.sentCount} sent</p>
 						</div>
 					</div>
@@ -1222,7 +1222,7 @@
 				<div class="min-w-0">
 					<div class="flex flex-wrap items-center gap-2">
 						<span
-							class="rounded-md px-2 py-1 text-[11px] font-semibold uppercase {statusClasses(
+							class="rounded-md px-2 py-1 text-2xs font-semibold uppercase {statusClasses(
 								modalCopy.status
 							)}"
 						>
@@ -1309,7 +1309,7 @@
 								<div class="mt-2 flex flex-wrap gap-1.5">
 									{#each data.tokens as token}
 										<code
-											class="rounded-md bg-background px-2 py-1 text-[11px] text-foreground break-all"
+											class="rounded-md bg-background px-2 py-1 text-2xs text-foreground break-all"
 										>
 											{token}
 										</code>
@@ -1504,7 +1504,7 @@
 											</p>
 											{#if item.afterFirstSend}
 												<span
-													class="rounded-md bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success"
+													class="rounded-md bg-success/10 px-2 py-0.5 text-2xs font-semibold text-success"
 												>
 													after email
 												</span>

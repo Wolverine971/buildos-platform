@@ -86,7 +86,7 @@
 		<button
 			type="button"
 			onclick={() => (open = !open)}
-			class="-ml-2 inline-flex min-h-[44px] items-center gap-1 rounded-md px-2 text-[11px] font-semibold text-accent transition-colors hover:bg-accent/10 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none"
+			class="-ml-2 inline-flex min-h-[44px] items-center gap-1 rounded-md px-2 text-2xs font-semibold text-accent transition-colors hover:bg-accent/10 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none"
 			aria-expanded={open}
 			aria-controls={detailsId}
 		>
@@ -106,7 +106,7 @@
 					<div class="rounded-md border border-border bg-muted/20 p-2">
 						<div class="flex flex-wrap items-center gap-1.5">
 							<span
-								class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold {actionMeta[
+								class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-2xs font-semibold {actionMeta[
 									op.action
 								].cls}"
 							>
@@ -116,7 +116,7 @@
 							</span>
 							{#if op.target}
 								<span
-									class="block min-w-0 max-w-full truncate text-[11px] font-medium text-foreground"
+									class="block min-w-0 max-w-full truncate text-2xs font-medium text-foreground"
 								>
 									{op.target}
 								</span>
@@ -124,7 +124,7 @@
 						</div>
 
 						{#if op.summary}
-							<p class="mt-1 break-words text-[11px] text-muted-foreground">
+							<p class="mt-1 break-words text-2xs text-muted-foreground">
 								{op.summary}
 							</p>
 						{/if}
@@ -132,7 +132,7 @@
 						{#if op.changes.length}
 							<div class="mt-1.5 space-y-0.5">
 								{#each op.changes as change, changeIndex (changeIndex)}
-									<div class="flex items-baseline gap-1.5 text-[11px]">
+									<div class="flex items-baseline gap-1.5 text-2xs">
 										<span class="shrink-0 font-medium text-muted-foreground">
 											{change.label}:
 										</span>
@@ -149,7 +149,7 @@
 				{#if hasPreviewDetail}
 					<div class="rounded-md border border-border bg-muted/10 p-2">
 						{#if preview?.before?.length || preview?.after?.length}
-							<div class="flex flex-wrap items-start gap-2 text-[11px]">
+							<div class="flex flex-wrap items-start gap-2 text-2xs">
 								{#if preview?.before?.length}
 									<div class="min-w-0 flex-1">
 										<p class="micro-label text-muted-foreground">Before</p>
@@ -182,7 +182,7 @@
 							</div>
 						{/if}
 						{#if preview?.impact}
-							<p class="mt-1.5 break-words text-[11px] text-muted-foreground">
+							<p class="mt-1.5 break-words text-2xs text-muted-foreground">
 								<span class="font-semibold text-foreground/80">Impact:</span>
 								{preview.impact}
 							</p>

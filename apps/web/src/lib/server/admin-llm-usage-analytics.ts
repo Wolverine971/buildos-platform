@@ -2,6 +2,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@buildos/shared-types';
 import { resolveModelPricingProfile } from '@buildos/smart-llm';
+import {
+	averageTotal as average,
+	fetchAllRows,
+	numberValue,
+	percentile,
+	textValue as stringValue
+} from '$lib/services/admin/analytics-primitives';
 import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
 
 type Supabase = SupabaseClient<Database>;
@@ -88,22 +95,6 @@ type NumericSummary = {
 
 export type AdminLlmUsageStats = Awaited<ReturnType<typeof getAdminLlmUsageStats>>;
 
-const PAGE_SIZE = 1000;
-const MAX_ROWS_PER_TABLE = 50_000;
-
-function numberValue(value: unknown): number {
-	if (typeof value === 'number' && Number.isFinite(value)) return value;
-	if (typeof value === 'string' && value.trim().length > 0) {
-		const parsed = Number(value);
-		return Number.isFinite(parsed) ? parsed : 0;
-	}
-	return 0;
-}
-
-function stringValue(value: unknown): string | null {
-	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
-}
-
 function dateKey(value: string | null | undefined): string {
 	if (!value) return 'unknown';
 	return value.split('T')[0] ?? 'unknown';
@@ -111,17 +102,6 @@ function dateKey(value: string | null | undefined): string {
 
 function percent(part: number, total: number): number {
 	return total > 0 ? (part / total) * 100 : 0;
-}
-
-function average(total: number, count: number): number {
-	return count > 0 ? total / count : 0;
-}
-
-function percentile(values: number[], target: number): number {
-	const filtered = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
-	if (filtered.length === 0) return 0;
-	const index = Math.min(filtered.length - 1, Math.ceil((target / 100) * filtered.length) - 1);
-	return filtered[index] ?? 0;
 }
 
 function addNumeric(summary: NumericSummary, value: unknown): void {
@@ -158,28 +138,6 @@ function getModelCost(model: string, promptTokens: number, completionTokens: num
 function getProvider(model: string, fallback?: string | null): string {
 	const modelConfig = resolveModelPricingProfile(model)?.profile;
 	return fallback || modelConfig?.provider || model.split('/')[0] || 'unknown';
-}
-
-async function fetchAllRows<T>(
-	queryFactory: (
-		from: number,
-		to: number
-	) => PromiseLike<{ data: unknown[] | null; error: unknown }>
-): Promise<{ rows: T[]; truncated: boolean }> {
-	const rows: T[] = [];
-	for (let from = 0; from < MAX_ROWS_PER_TABLE; from += PAGE_SIZE) {
-		const to = from + PAGE_SIZE - 1;
-		const { data, error } = await queryFactory(from, to);
-		if (error) throw error;
-
-		const batch = (data ?? []) as T[];
-		rows.push(...batch);
-		if (batch.length < PAGE_SIZE) {
-			return { rows, truncated: false };
-		}
-	}
-
-	return { rows, truncated: true };
 }
 
 function buildDateSeries(startDate: Date, endDate: Date) {

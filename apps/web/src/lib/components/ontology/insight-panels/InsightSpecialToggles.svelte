@@ -40,7 +40,7 @@
 					class="w-3 h-3 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
 				/>
 				<span
-					class="text-[10px] sm:text-xs text-muted-foreground group-hover:text-foreground transition-colors"
+					class="text-2xs sm:text-xs text-muted-foreground group-hover:text-foreground transition-colors"
 				>
 					{toggle.label}
 					{#if count > 0}

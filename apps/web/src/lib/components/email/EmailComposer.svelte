@@ -669,7 +669,7 @@
 				</h2>
 				{#if emailData.status && emailData.status !== 'draft'}
 					<span
-						class="inline-flex px-1.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.15em] rounded shrink-0 {emailData.status ===
+						class="inline-flex px-1.5 py-0.5 micro-label font-medium rounded shrink-0 {emailData.status ===
 						'sent'
 							? 'bg-success/10 text-success'
 							: emailData.status === 'scheduled'
@@ -802,7 +802,7 @@
 								disabled={!aiGeneratedContent ||
 									aiGeneratedContent ===
 										'<p>AI-generated email will appear here...</p>'}
-								class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded text-success hover:bg-success/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+								class="inline-flex items-center gap-1 px-2 py-1 text-2xs font-medium rounded text-success hover:bg-success/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 								title="Use AI content in main editor"
 							>
 								<ArrowRight class="h-3.5 w-3.5" />
@@ -811,7 +811,7 @@
 							<button
 								onclick={copyToAi}
 								disabled={!emailData.content || emailData.content === ''}
-								class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded text-accent hover:bg-accent/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+								class="inline-flex items-center gap-1 px-2 py-1 text-2xs font-medium rounded text-accent hover:bg-accent/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 								title="Copy manual content to AI editor"
 							>
 								<Copy class="h-3.5 w-3.5" />
@@ -867,16 +867,14 @@
 				<!-- Recipients - inline label with action -->
 				<div class="space-y-1.5">
 					<div class="flex items-center justify-between">
-						<span
-							class="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em]"
-						>
+						<span class="micro-label font-medium">
 							Recipients
 							<span class="text-foreground ml-1">{emailData.recipients.length}</span>
 						</span>
 						<button
 							onclick={() => (showRecipientModal = true)}
 							disabled={isEmailSent}
-							class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded text-accent hover:bg-accent/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+							class="inline-flex items-center gap-1 px-1.5 py-0.5 text-2xs font-medium rounded text-accent hover:bg-accent/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 						>
 							<Users class="h-3.5 w-3.5" />
 							{emailData.recipients.length > 0 ? 'Edit' : 'Add'}
@@ -889,7 +887,7 @@
 							<div class="flex flex-wrap gap-1">
 								{#each emailData.recipients.slice(0, 10) as recipient}
 									<span
-										class="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium bg-accent/10 text-accent rounded"
+										class="inline-flex items-center px-1.5 py-0.5 text-2xs font-medium bg-accent/10 text-accent rounded"
 									>
 										{recipient.recipient_name ||
 											recipient.name ||
@@ -899,7 +897,7 @@
 								{/each}
 								{#if emailData.recipients.length > 10}
 									<span
-										class="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium bg-muted text-muted-foreground rounded"
+										class="inline-flex items-center px-1.5 py-0.5 text-2xs font-medium bg-muted text-muted-foreground rounded"
 									>
 										+{emailData.recipients.length - 10}
 									</span>
@@ -957,7 +955,7 @@
 						<div class="flex items-center gap-1.5 mb-3">
 							<Bot class="h-4 w-4 text-accent" />
 							<span
-								class="text-[0.65rem] font-medium text-accent uppercase tracking-[0.15em]"
+								class="text-2xs font-medium text-accent uppercase tracking-[0.15em]"
 							>
 								AI Generation
 							</span>
@@ -968,8 +966,7 @@
 								<div class="flex-1 min-w-[100px]">
 									<label
 										for="email-type"
-										class="block text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em] mb-1"
-										>Type</label
+										class="block micro-label font-medium mb-1">Type</label
 									>
 									<Select id="email-type" bind:value={emailType} size="sm">
 										<option value="custom">Custom</option>
@@ -982,8 +979,7 @@
 								<div class="flex-1 min-w-[100px]">
 									<label
 										for="email-tone"
-										class="block text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em] mb-1"
-										>Tone</label
+										class="block micro-label font-medium mb-1">Tone</label
 									>
 									<Select id="email-tone" bind:value={emailTone} size="sm">
 										<option value="friendly">Friendly</option>
@@ -1017,7 +1013,7 @@
 							</div>
 							{#if emailData.recipients.length === 0}
 								<div
-									class="flex items-center gap-1.5 text-[11px] text-warning bg-warning/10 px-2 py-1.5 rounded-lg tx tx-static tx-weak"
+									class="flex items-center gap-1.5 text-2xs text-warning bg-warning/10 px-2 py-1.5 rounded-lg tx tx-static tx-weak"
 								>
 									<Users class="h-3.5 w-3.5 shrink-0" />
 									<span>Add recipients first</span>
@@ -1060,7 +1056,7 @@
 							<!-- Headings -->
 							<button
 								onclick={() => insertHeading(1)}
-								class="px-1.5 h-7 flex items-center justify-center rounded text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors {editor?.isActive(
+								class="px-1.5 h-7 flex items-center justify-center rounded text-2xs font-semibold text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors {editor?.isActive(
 									'heading',
 									{ level: 1 }
 								)
@@ -1072,7 +1068,7 @@
 							</button>
 							<button
 								onclick={() => insertHeading(2)}
-								class="px-1.5 h-7 flex items-center justify-center rounded text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors {editor?.isActive(
+								class="px-1.5 h-7 flex items-center justify-center rounded text-2xs font-semibold text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors {editor?.isActive(
 									'heading',
 									{ level: 2 }
 								)
@@ -1199,10 +1195,7 @@
 									class="bg-muted/30 px-2.5 py-1.5 border-b border-border flex items-center gap-1.5"
 								>
 									<PenTool class="h-3.5 w-3.5 text-muted-foreground" />
-									<span
-										class="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em]"
-										>Manual</span
-									>
+									<span class="micro-label font-medium">Manual</span>
 								</div>
 							{/if}
 							<div class="bg-card min-h-[320px] tx tx-grid tx-weak">
@@ -1218,7 +1211,7 @@
 								>
 									<Bot class="h-3.5 w-3.5 text-accent" />
 									<span
-										class="text-[0.65rem] font-medium text-accent uppercase tracking-[0.15em]"
+										class="text-2xs font-medium text-accent uppercase tracking-[0.15em]"
 										>AI</span
 									>
 								</div>
@@ -1259,11 +1252,7 @@
 		</p>
 		{#if emailData.recipients.length > 0}
 			<div class="mt-3">
-				<p
-					class="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em] mb-2"
-				>
-					Recipients
-				</p>
+				<p class="micro-label font-medium mb-2">Recipients</p>
 				<ul class="space-y-1">
 					{#each emailData.recipients.slice(0, 5) as recipient}
 						<li class="flex items-center text-sm text-muted-foreground">
@@ -1276,7 +1265,7 @@
 							</span>
 							{#if recipient.recipient_type === 'custom' || recipient.type === 'custom'}
 								<span
-									class="ml-2 text-[0.65rem] bg-muted text-muted-foreground px-1 py-0.5 rounded uppercase tracking-[0.15em] shrink-0"
+									class="ml-2 text-2xs bg-muted text-muted-foreground px-1 py-0.5 rounded uppercase tracking-[0.15em] shrink-0"
 									>Custom</span
 								>
 							{/if}
@@ -1294,27 +1283,18 @@
 	{#snippet details()}
 		<div class="mt-4 pt-3 border-t border-border space-y-1.5">
 			<div class="flex items-baseline gap-2 text-sm">
-				<span
-					class="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em] w-16 shrink-0"
-					>Subject</span
-				>
+				<span class="micro-label font-medium w-16 shrink-0">Subject</span>
 				<span class="text-foreground truncate">{emailData.subject}</span>
 			</div>
 			<div class="flex items-baseline gap-2 text-sm">
-				<span
-					class="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em] w-16 shrink-0"
-					>From</span
-				>
+				<span class="micro-label font-medium w-16 shrink-0">From</span>
 				<span class="text-foreground"
 					>{emailData.from_name} &lt;{emailData.from_email}&gt;</span
 				>
 			</div>
 			{#if isScheduled && scheduleDate && scheduleTime}
 				<div class="flex items-baseline gap-2 text-sm">
-					<span
-						class="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em] w-16 shrink-0"
-						>Scheduled</span
-					>
+					<span class="micro-label font-medium w-16 shrink-0">Scheduled</span>
 					<span class="text-foreground">{scheduleDate} at {scheduleTime}</span>
 				</div>
 			{/if}

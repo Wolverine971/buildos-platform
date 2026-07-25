@@ -574,7 +574,7 @@
 					<button
 						type="button"
 						onclick={() => appendChip(chip)}
-						class="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:border-accent/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-2xs font-medium text-muted-foreground hover:text-foreground hover:border-accent/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						{chip}
 					</button>
@@ -592,7 +592,7 @@
 				<Sparkles class="w-5 h-5 mr-2" />
 				Shape my first project
 			</Button>
-			<p class="mt-2 text-center text-[11px] text-muted-foreground">
+			<p class="mt-2 text-center text-2xs text-muted-foreground">
 				BuildOS reads your dump and builds a structured project — you'll see exactly what it
 				understood before you continue.
 			</p>
@@ -633,7 +633,7 @@
 									{/if}
 									{#if (project.task_count ?? 0) > 0}
 										<span
-											class="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground"
+											class="mt-2 inline-flex items-center gap-1 text-2xs text-muted-foreground"
 										>
 											<ListChecks class="w-3 h-3" />
 											{project.task_count}
@@ -769,7 +769,7 @@
 										class="inline-block w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0"
 									></span>
 									<span class="truncate">{entity.name}</span>
-									<span class="text-[10px] uppercase text-muted-foreground/70"
+									<span class="text-2xs uppercase text-muted-foreground/70"
 										>{entity.kind}</span
 									>
 								</li>
@@ -858,7 +858,7 @@
 						<h3 class="text-base font-bold text-foreground flex items-center gap-2">
 							Google Calendar connected
 							<span
-								class="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium"
+								class="text-2xs bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium"
 							>
 								{showConnectionSuccess ? 'Connected just now' : 'Ready'}
 							</span>
