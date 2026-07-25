@@ -6,6 +6,7 @@ export * from './capability-gap';
 export * from './context-packet';
 export * from './direct-action';
 export * from './limits';
+export * from './model-usage';
 export * from './permission-grant';
 export * from './primitives';
 export * from './project-scope';

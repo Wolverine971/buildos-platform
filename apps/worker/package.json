@@ -21,6 +21,7 @@
 		"test:scheduler": "vitest run tests/scheduler.test.ts",
 		"test:integration": "vitest run tests/integration",
 		"test:deep-research:integration": "vitest run --config vitest.integration.config.ts",
+		"test:phase-a-workflow": "AGENTIC_PHASE_A_WORKFLOW=true vitest run tests/phase-a/phaseAWorkflowEval.test.ts --retry=0",
 		"guardrails:http-modules": "node ./scripts/check-worker-http-module-size.cjs",
 		"backfill:start-here": "tsx src/scripts/backfillStartHereDocuments.ts",
 		"cost-reconciliation:report": "tsx src/scripts/reportAgentRunCostReconciliation.ts"

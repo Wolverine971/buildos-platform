@@ -68,6 +68,7 @@ interface PhaseAProjectSnapshot {
 	snapshot_id: string;
 	as_of: string;
 	project: {
+		id: string;
 		name: string;
 		description: string;
 		state: string;

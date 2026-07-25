@@ -31,7 +31,10 @@ const contents = new Map(
 const arbitraryFontSize = /text-\[[^\]]+\]/;
 for (const [file, content] of contents) {
 	if (file.endsWith('.svelte') && arbitraryFontSize.test(content)) {
-		fail(file, 'use the canonical Tailwind/Inkprint type scale instead of an arbitrary font size');
+		fail(
+			file,
+			'use the canonical Tailwind/Inkprint type scale instead of an arbitrary font size'
+		);
 	}
 	if (file.endsWith('.svelte') && content.includes('-webkit-tap-highlight-color: transparent')) {
 		fail(file, 'tap-highlight behavior is owned by app.css');
@@ -61,7 +64,10 @@ if (/\.pwa-installed\s+(?:button|a|\.clickable):active/.test(pwa)) {
 if (pwa.includes('color-scheme:')) {
 	fail(pwaPath, 'ModeWatcher owns color-scheme resolution');
 }
-if (/\.pwa-installed(?:::?-webkit-scrollbar)?\s*\{[^}]*scrollbar-(?:width|style)/s.test(pwa)) {
+if (
+	/\.pwa-installed::-webkit-scrollbar\s*\{[^}]*display:\s*none/s.test(pwa) ||
+	/\.pwa-installed\s*\{[^}]*(?:scrollbar-width:\s*none|-ms-overflow-style:\s*none)/s.test(pwa)
+) {
 	fail(pwaPath, 'keep the installed-PWA page scrollbar visible as a scroll affordance');
 }
 

@@ -9,6 +9,9 @@ export interface PhaseAControlRun {
 	expectedRoute: string;
 	expectedReasonCode: string;
 	runIndex: number;
+	replacementIndex?: number;
+	scored?: boolean;
+	infrastructureInvalidReason?: string | null;
 	requestStartedAt: string;
 	timing: TurnTiming;
 	usage: StreamUsageSummary;
@@ -23,6 +26,8 @@ export interface PhaseAControlRun {
 
 export interface BaselineAggregate {
 	runCount: number;
+	scoredRunCount: number;
+	infrastructureInvalidCount: number;
 	completedCount: number;
 	cleanSuccessCount: number;
 	errorRunCount: number;
@@ -35,6 +40,7 @@ export interface BaselineAggregate {
 	costP50Usd: number | null;
 	costP95Usd: number | null;
 	totalCostUsd: number;
+	totalOperationalCostUsd: number;
 	acceptancePassCount: number;
 	acceptancePassRate: number;
 }
@@ -66,19 +72,24 @@ export function percentile(values: number[], percentileValue: number): number | 
 }
 
 export function aggregateControlRuns(runs: PhaseAControlRun[]): BaselineAggregate {
-	const ttft = runs.flatMap((run) => (run.timing.ttftMs === null ? [] : [run.timing.ttftMs]));
-	const durations = runs.flatMap((run) =>
+	const scored = runs.filter((run) => run.scored !== false);
+	const ttft = scored.flatMap((run) =>
+		run.timing.ttftMs === null ? [] : [run.timing.ttftMs]
+	);
+	const durations = scored.flatMap((run) =>
 		run.timing.totalDurationMs === null ? [] : [run.timing.totalDurationMs]
 	);
-	const costs = runs.map((run) => run.usage.totalCostUsd);
-	const acceptancePassCount = runs.filter((run) => run.allRequiredChecksPassed).length;
+	const costs = scored.map((run) => run.usage.totalCostUsd);
+	const acceptancePassCount = scored.filter((run) => run.allRequiredChecksPassed).length;
 	const totalCostUsd = costs.reduce((total, cost) => total + cost, 0);
 
 	return {
 		runCount: runs.length,
-		completedCount: runs.filter((run) => run.completed).length,
-		cleanSuccessCount: runs.filter((run) => run.completed && run.errors.length === 0).length,
-		errorRunCount: runs.filter((run) => run.errors.length > 0).length,
+		scoredRunCount: scored.length,
+		infrastructureInvalidCount: runs.length - scored.length,
+		completedCount: scored.filter((run) => run.completed).length,
+		cleanSuccessCount: scored.filter((run) => run.completed && run.errors.length === 0).length,
+		errorRunCount: scored.filter((run) => run.errors.length > 0).length,
 		ttftSampleCount: ttft.length,
 		ttftP50Ms: percentile(ttft, 0.5),
 		ttftP95Ms: percentile(ttft, 0.95),
@@ -88,8 +99,11 @@ export function aggregateControlRuns(runs: PhaseAControlRun[]): BaselineAggregat
 		costP50Usd: percentile(costs, 0.5),
 		costP95Usd: percentile(costs, 0.95),
 		totalCostUsd: round(totalCostUsd),
+		totalOperationalCostUsd: round(
+			runs.reduce((total, run) => total + run.usage.totalCostUsd, 0)
+		),
 		acceptancePassCount,
-		acceptancePassRate: runs.length > 0 ? round(acceptancePassCount / runs.length) : 0
+		acceptancePassRate: scored.length > 0 ? round(acceptancePassCount / scored.length) : 0
 	};
 }
 

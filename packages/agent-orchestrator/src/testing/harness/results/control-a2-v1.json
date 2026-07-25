@@ -1,0 +1,822 @@
+{
+  "schema_version": 1,
+  "corpus_version": "phase-a-frozen-v1",
+  "lane": "control-agentic-chat-v2",
+  "generated_at": "2026-07-25T04:59:28.538Z",
+  "runs": [
+    {
+      "scenarioId": "a0-c06-single-source-article",
+      "scenarioClass": "single_source_lookup",
+      "expectedRoute": "workflow",
+      "expectedReasonCode": "single_source_research",
+      "runIndex": 1,
+      "replacementIndex": 0,
+      "scored": true,
+      "infrastructureInvalidReason": null,
+      "requestStartedAt": "2026-07-25T04:43:05.845Z",
+      "timing": {
+        "requestStartedAt": "2026-07-25T04:43:05.845Z",
+        "responseHeadersMs": 273.49474999999984,
+        "firstSseEventMs": 274.7030829999985,
+        "ttftMs": 14744.414040999998,
+        "terminalEventMs": 104699.743416,
+        "totalDurationMs": 105109.319541
+      },
+      "usage": {
+        "requestCount": 7,
+        "promptTokens": 118269,
+        "completionTokens": 3724,
+        "totalTokens": 121993,
+        "totalCostUsd": 0.00747606,
+        "models": [
+          "deepseek/deepseek-v4-flash"
+        ],
+        "providers": [
+          "deepinfra"
+        ],
+        "profiles": [
+          "balanced"
+        ],
+        "operations": [
+          "agentic_chat_v2_stream"
+        ]
+      },
+      "completed": true,
+      "finishedReason": "stop",
+      "errors": [],
+      "toolCalls": [
+        "get_document_outline",
+        "get_document_outline",
+        "get_document_outline",
+        "read_document_section",
+        "get_onto_project_details",
+        "web_visit",
+        "skill_load",
+        "search_project"
+      ],
+      "acceptance": [
+        {
+          "validatorId": "artifact.citations.include_url",
+          "required": true,
+          "passed": false,
+          "detail": "missing citation: https://taskandpurpose.com/news/marines-scouts-primary-pmos/"
+        },
+        {
+          "validatorId": "answer.contains_all",
+          "required": true,
+          "passed": true,
+          "detail": "found all 3 terms"
+        },
+        {
+          "validatorId": "artifact.claims.cited",
+          "required": true,
+          "passed": false,
+          "detail": "no external citation found"
+        }
+      ],
+      "allRequiredChecksPassed": false,
+      "assistantText": "Let me grab the article and also check what's already in the project documents so I can ground the video idea in your existing research.\n\nGreat article — this is a rich piece of source material.\n\nThe Marine Corps is actively moving from Scout Snipers to dedicated Infantry Scout PMOS, with a new training pipeline that overlaps with Recon.\n\nThat shift is exactly the kind of real-world signal that makes a future-looking video land hard.\n\nLet me work through this using the content strategy framework, then start structuring the video.\n\n## Content Strategy — \"Future Snipers\" Video\n\nPick the Content Game\n\nYou're not trying to go mainstream-viral — you're building a reputation in the military/defense/future-warfare niche where the audience already cares about doctrine, tech, and skill evolution.\n\nThat means the video needs to be *substantive enough to be cited*, not just watched.\n\nAudience Identity\n\n**Primary:** Military enthusiasts, current/former SOF and infantry, defense tech professionals, and future-warfare hobbyists who already know what a sniper does today and want to know where the role is going.\n\n**Secondary:** Broader \"future of warfare\" audience — think Perun, Covert Cabal, Battle Order viewers — who care about organizational change and capability evolution.\n\n**What they believe about themselves:** \"I understand the real picture, not the Hollywood version.\n\nI can spot when someone is faking expertise.\n\nDesired Emotion\n\n**Recognition** — \"Yes, this is the real conversation happening inside the Marine Corps right now.\n\n\" Mixed with **anticipation** — \"I didn't see that coming, but it makes perfect sense.\n\nDesired Action\n\n**Save and share** — this is a reference-grade video people send to friends who ask \"what's happening with snipers?\n\n\" Also: **subscribe** because you're the channel that tracks these shifts before they hit the mainstream news.\n\nFormat Recommendation\n\nA short-form version could work as a teaser, but the meat lives in long-form.\n\nLead with the **contradiction**: \"The Marine Corps just killed the Scout Sniper.\n\nHere's what they're building instead — and why it tells us everything about where snipers are headed across every military.\n\nThe article is your *permission to speak* — it's happening right now.\n\nContent Hierarchy\n\nHere's how I'd structure the argument:\n\n| Section | What it covers |\n\n|---|---|\n\n| **Why this matters** | The sniper role has been drifting for 20 years — this is the first formal acknowledgment that the old model is breaking |\n\n| **Skill set shift** | From \"one shot, one kill\" marksman to sensor/platform manager, data interpreter, drone operator, small-team leader |\n\n| **Mission set shift** | From precision engagement to battlefield shaping, reconnaissance, sensor fusion, and targeting |\n\n| **Team structure shift** | From 2-man sniper teams to 26-man Scout Platoons with organic drone, EW, and SIGINT capability |\n\n| **Where this goes next** | AI-assisted targeting, loitering munition integration, the sniper as a \"sensor node\" in a kill web |\n\n| **The take** | The future sniper isn't a better shooter — they're a better *thinker* who happens to be able to shoot |\n\nDistribution Path\n\n- **Short-form teaser** — the \"Marines just killed Scout Snipers\" hook as a 60s vertical\n\n- **LinkedIn/X thread** — the 5 key shifts as a text thread linking to the video\n\n- **Newsletter** — expanded version with sources and links\n\nOne-Sentence Word-of-Mouth Phrase\n\n*\"The video that explains why the Marine Corps replaced snipers with scouts — and what every sniper in the world will look like in 10 years.\n\nMeasurement Plan\n\n| Metric | Target |\n\n| Save rate | >5% of viewers |\n\n| Share rate | >3% of viewers |\n\n## Next Step: Lock the Title\n\nBefore we go any further into the script structure, let's lock the title.\n\nThe `viral_video_script_structure` skill is strict about this — no drafting before the title is locked.\n\nSome candidates based on the material:\n\n**\"The Marine Corps Just Killed the Sniper.\n\nHere's What Comes Next.\n\n\"** (high curiosity, news-anchored)\n\n**\"What Snipers Will Look Like in 2035\"** (direct, searchable, future-forward)\n\n**\"Why the Marine Corps Replaced Snipers With Scouts\"** (explainer, article-anchored)\n\n**\"The End of the Sniper as You Know It\"** (dramatic, broad appeal)\n\nWhich direction feels right?\n\nAnd do you want to dump the rest of your YouTube idea list into a document so we can build the full content strategy?"
+    },
+    {
+      "scenarioId": "a0-c06-single-source-article",
+      "scenarioClass": "single_source_lookup",
+      "expectedRoute": "workflow",
+      "expectedReasonCode": "single_source_research",
+      "runIndex": 2,
+      "replacementIndex": 0,
+      "scored": true,
+      "infrastructureInvalidReason": null,
+      "requestStartedAt": "2026-07-25T04:45:08.125Z",
+      "timing": {
+        "requestStartedAt": "2026-07-25T04:45:08.125Z",
+        "responseHeadersMs": 289.17399999999907,
+        "firstSseEventMs": 289.7272079999966,
+        "ttftMs": 5394.1110409999965,
+        "terminalEventMs": 53413.674,
+        "totalDurationMs": 53920.98112500002
+      },
+      "usage": {
+        "requestCount": 7,
+        "promptTokens": 90774,
+        "completionTokens": 1386,
+        "totalTokens": 92160,
+        "totalCostUsd": 0.00413829,
+        "models": [
+          "deepseek/deepseek-v4-flash"
+        ],
+        "providers": [
+          "deepinfra"
+        ],
+        "profiles": [
+          "balanced"
+        ],
+        "operations": [
+          "agentic_chat_v2_stream"
+        ]
+      },
+      "completed": true,
+      "finishedReason": "stop",
+      "errors": [],
+      "toolCalls": [
+        "get_document_outline",
+        "get_document_outline",
+        "get_document_outline",
+        "read_document_section",
+        "read_document_section",
+        "get_onto_project_details",
+        "get_onto_document_details",
+        "get_onto_document_details",
+        "search_project",
+        "list_onto_tasks"
+      ],
+      "acceptance": [
+        {
+          "validatorId": "artifact.citations.include_url",
+          "required": true,
+          "passed": false,
+          "detail": "missing citation: https://taskandpurpose.com/news/marines-scouts-primary-pmos/"
+        },
+        {
+          "validatorId": "answer.contains_all",
+          "required": true,
+          "passed": false,
+          "detail": "missing: team structure"
+        },
+        {
+          "validatorId": "artifact.claims.cited",
+          "required": true,
+          "passed": false,
+          "detail": "no external citation found"
+        }
+      ],
+      "allRequiredChecksPassed": false,
+      "assistantText": "Let me pull in the article and see what's already in the project before we shape this.\n\nI can see you're working on a personal performance training project called **Project Alpha — Response-Speed Training**, which focuses on improving measurable response speed across communication, precision skills, and reaction time. The project is in the execution stage, with the next step being to ship training equipment to a specialist workshop for setup.\n\nHowever, I don't have any information in the loaded project data about YouTube video content ideas, sniper skill sets, future mission structures, or team configurations. The search for \"YouTube video content ideas sniper\" within this project returned no results, and the documents I have access to cover research notes on brain-training limitations and program context for response-speed training — not sniper-related content.\n\nTo help you with your specific video ideas about future snipers, I'd need you to point me to the right document or project where that research lives. Could you share which document or project contains your growing list of YouTube ideas and the sniper research you've done?"
+    },
+    {
+      "scenarioId": "a0-c06-single-source-article",
+      "scenarioClass": "single_source_lookup",
+      "expectedRoute": "workflow",
+      "expectedReasonCode": "single_source_research",
+      "runIndex": 3,
+      "replacementIndex": 0,
+      "scored": true,
+      "infrastructureInvalidReason": null,
+      "requestStartedAt": "2026-07-25T04:46:14.033Z",
+      "timing": {
+        "requestStartedAt": "2026-07-25T04:46:14.033Z",
+        "responseHeadersMs": 285.66445799998473,
+        "firstSseEventMs": 286.24254099998507,
+        "ttftMs": 9336.27666599999,
+        "terminalEventMs": 116316.99220800001,
+        "totalDurationMs": 116684.910833
+      },
+      "usage": {
+        "requestCount": 4,
+        "promptTokens": 54419,
+        "completionTokens": 3808,
+        "totalTokens": 58226,
+        "totalCostUsd": 0.00546135,
+        "models": [
+          "deepseek/deepseek-v4-flash"
+        ],
+        "providers": [
+          "deepinfra"
+        ],
+        "profiles": [
+          "balanced"
+        ],
+        "operations": [
+          "agentic_chat_v2_stream"
+        ]
+      },
+      "completed": true,
+      "finishedReason": "stop",
+      "errors": [],
+      "toolCalls": [
+        "web_visit",
+        "get_document_outline",
+        "get_document_outline",
+        "list_onto_documents"
+      ],
+      "acceptance": [
+        {
+          "validatorId": "artifact.citations.include_url",
+          "required": true,
+          "passed": false,
+          "detail": "missing citation: https://taskandpurpose.com/news/marines-scouts-primary-pmos/"
+        },
+        {
+          "validatorId": "answer.contains_all",
+          "required": true,
+          "passed": false,
+          "detail": "missing: skill, mission"
+        },
+        {
+          "validatorId": "artifact.claims.cited",
+          "required": true,
+          "passed": false,
+          "detail": "no external citation found"
+        }
+      ],
+      "allRequiredChecksPassed": false,
+      "assistantText": "I'll look that up in BuildOS and gather the relevant task details.\n\nGreat article — and it's a perfect anchor for this video idea.\n\nLet me connect what you shared with the content strategy workflow.\n\n## The Article Connection\n\nThis is the next chapter after the 2023 decision to replace Scout Sniper platoons with 26-member Scout Platoons.\n\nBrooks is talking about merging the Scout and Recon training pipelines — Scouts would attend the same Ground Reconnaissance Course as Recon Marines.\n\nThis directly feeds your video's tension: **the sniper role is being unbundled and re-specialized.** The old \"lone wolf with a rifle\" model is dead.\n\nWhat replaces it is the question.\n\n## Applying the Content Strategy Workflow\n\nPick the Content Game\n\nThis feels like **Game #4 — Explanatory Products** (if your channel is military/defense focused) or **Game #2 — Category Fame** (if you're building authority as *the* person who explains where precision warfare is going).\n\nThe video isn't trying to go viral for virality's sake — it's earning trust through analysis.\n\nThat means the hook and structure should reward *attention*, not just thumb-stopping.\n\nAudience Identity\n\nWho's this for, and what do they believe about themselves?\n\n- **Casual:** Military enthusiasts, veterans adjacent, people who watch Defense News / Covert Cabal — they know the *mythology* of snipers but not the institutional reality.\n\n- **New:** People who clicked because \"future sniper\" sounds cool — they've seen *American Sniper* and *Shooter*.\n\nDesired Emotion\n\n**Recognition + Anticipation.** The viewer should feel: *\"I knew the old model was dying, but I didn't realize the new one was already this defined.\n\n\"* Not anger at change — the satisfaction of seeing the future clearly before most people do.\n\nDesired Action\n\n**Save + Subscribe.** This is a reference-grade video.\n\nThe action isn't \"buy something\" — it's \"I want to come back to this when I'm debating this topic.\n\n\" That means the title and thumbnail need to signal *definitive analysis*, not hot take.\n\nFormat & CCN Sanity Check\n\nThis is not a Short.\n\n**CCN Check:**\n\n- **Core** ✅ — They'll argue with your takes in the comments, which is engagement gold.\n\n- **Casual** ✅ — \"Wait, snipers aren't a thing anymore?\n\n\" is a natural curiosity hook.\n\n- **New** ✅ — If you open with the *myth vs.\n\nreality* tension, anyone can follow.\n\n**Verdict:** Passes all three.\n\nThis can break out of the niche.\n\nChoose One Storyline\n\nDon't lead with \"here are three things.\n\n\" Lead with the **one story** that makes the rest necessary:\n\n> **\"In 2023, the Marine Corps eliminated the Scout Sniper MOS.\n\nMost people thought that was the end of the story.\n\nIt wasn't — it was the beginning of a much bigger one.\n\nThen layer: the Scout Platoon experiment → the new PMOS proposal → the Recon pipeline merger → what this means for every branch → what the future sniper actually looks like.\n\nDistribution Path\n\n- **YouTube** (primary): Long-form with chapters\n\n- **Short-form clips:** The \"myth vs.\n\nreality\" opener as a Short; the team structure reveal as a second clip\n\n- **Community post:** \"What do you think — should Scout be a primary MOS?\n\n\" to drive comments before publish\n\n- **Cross-post to Reddit** (r/WarCollege, r/USMC, r/CredibleDefense) as a text post linking to the video\n\nMemorable Phrase\n\n> *\"The future sniper isn't a lone marksman — they're a sensor fusion operator who can also shoot.\n\nMeasurement Plan\n\n| Metric | Target | Why |\n\n|---|---|---|\n\nView Duration | >55% | Signals the analysis is solid, not clickbait |\n\n| Like/View Ratio | >6% | Niche audiences are generous when you get it right |\n\n| Comment Quality | >20 substantive comments | Debate in comments = algorithm boost |\n\n| Save Rate | Top 10% of channel | Reference content should be saved, not just watched |\n\n## Your Turn — A Few Questions\n\n**What's your channel?** Is this a military/defense channel, a broader \"future of warfare\" angle, or something else?\n\nThat changes the game tag and the framing.\n\n**What other ideas are on your list?** You mentioned a growing list — I'd love to hear the rest so we can see which ones form a series, which are one-offs, and which should be killed.\n\n**Do you want me to capture this first idea** (and the article reference) as a document in the project so we can build out the full script outline?"
+    },
+    {
+      "scenarioId": "a0-c07-campaign-workflow-research",
+      "scenarioClass": "multi_source_research",
+      "expectedRoute": "workflow",
+      "expectedReasonCode": "multi_source_research",
+      "runIndex": 1,
+      "replacementIndex": 0,
+      "scored": true,
+      "infrastructureInvalidReason": null,
+      "requestStartedAt": "2026-07-25T04:48:23.115Z",
+      "timing": {
+        "requestStartedAt": "2026-07-25T04:48:23.115Z",
+        "responseHeadersMs": 294.2209579999908,
+        "firstSseEventMs": 294.4572920000064,
+        "ttftMs": 6808.239583000017,
+        "terminalEventMs": 198099.83741699997,
+        "totalDurationMs": 198425.02666700003
+      },
+      "usage": {
+        "requestCount": 6,
+        "promptTokens": 133108,
+        "completionTokens": 10728,
+        "totalTokens": 143835,
+        "totalCostUsd": 0.011548520000000001,
+        "models": [
+          "deepseek/deepseek-v4-flash"
+        ],
+        "providers": [
+          "deepinfra"
+        ],
+        "profiles": [
+          "balanced"
+        ],
+        "operations": [
+          "agentic_chat_v2_stream"
+        ]
+      },
+      "completed": true,
+      "finishedReason": "error",
+      "errors": [
+        "An error occurred while streaming."
+      ],
+      "toolCalls": [
+        "skill_load",
+        "skill_load",
+        "skill_reference_load",
+        "skill_reference_load",
+        "skill_load",
+        "skill_load"
+      ],
+      "acceptance": [
+        {
+          "validatorId": "answer.contains_all",
+          "required": true,
+          "passed": false,
+          "detail": "missing: offer, ICP, proof, deliverability, accessibility, user testing"
+        },
+        {
+          "validatorId": "answer.has_sections",
+          "required": true,
+          "passed": false,
+          "detail": "missing: workflow, interface, risks, testing"
+        },
+        {
+          "validatorId": "artifact.citations.resolve",
+          "required": true,
+          "passed": true,
+          "detail": "no citations used; original-design allowance applied"
+        }
+      ],
+      "allRequiredChecksPassed": false,
+      "assistantText": "Let me load the full playbooks for both skill areas so I can ground this review properly."
+    },
+    {
+      "scenarioId": "a0-c07-campaign-workflow-research",
+      "scenarioClass": "multi_source_research",
+      "expectedRoute": "workflow",
+      "expectedReasonCode": "multi_source_research",
+      "runIndex": 2,
+      "replacementIndex": 0,
+      "scored": true,
+      "infrastructureInvalidReason": null,
+      "requestStartedAt": "2026-07-25T04:51:56.027Z",
+      "timing": {
+        "requestStartedAt": "2026-07-25T04:51:56.027Z",
+        "responseHeadersMs": 306.34983299998567,
+        "firstSseEventMs": 306.720290999976,
+        "ttftMs": 4659.911165999947,
+        "terminalEventMs": 130261.85216599994,
+        "totalDurationMs": 130524.930666
+      },
+      "usage": {
+        "requestCount": 4,
+        "promptTokens": 78248,
+        "completionTokens": 7579,
+        "totalTokens": 85827,
+        "totalCostUsd": 0.0072093,
+        "models": [
+          "deepseek/deepseek-v4-flash"
+        ],
+        "providers": [
+          "deepinfra"
+        ],
+        "profiles": [
+          "balanced"
+        ],
+        "operations": [
+          "agentic_chat_v2_stream"
+        ]
+      },
+      "completed": true,
+      "finishedReason": "error",
+      "errors": [
+        "An error occurred while streaming."
+      ],
+      "toolCalls": [
+        "skill_load",
+        "skill_load",
+        "skill_reference_load"
+      ],
+      "acceptance": [
+        {
+          "validatorId": "answer.contains_all",
+          "required": true,
+          "passed": false,
+          "detail": "missing: offer, ICP, proof, deliverability, accessibility, user testing"
+        },
+        {
+          "validatorId": "answer.has_sections",
+          "required": true,
+          "passed": false,
+          "detail": "missing: workflow, interface, risks, testing"
+        },
+        {
+          "validatorId": "artifact.citations.resolve",
+          "required": true,
+          "passed": true,
+          "detail": "no citations used; original-design allowance applied"
+        }
+      ],
+      "allRequiredChecksPassed": false,
+      "assistantText": "Let me load the full playbooks for both lenses — the cold email outreach workflow and the UI/UX quality review — so I can ground the analysis in the actual skill frameworks."
+    },
+    {
+      "scenarioId": "a0-c07-campaign-workflow-research",
+      "scenarioClass": "multi_source_research",
+      "expectedRoute": "workflow",
+      "expectedReasonCode": "multi_source_research",
+      "runIndex": 3,
+      "replacementIndex": 0,
+      "scored": true,
+      "infrastructureInvalidReason": null,
+      "requestStartedAt": "2026-07-25T04:54:19.402Z",
+      "timing": {
+        "requestStartedAt": "2026-07-25T04:54:19.402Z",
+        "responseHeadersMs": 339.3731249999255,
+        "firstSseEventMs": 339.6679999999469,
+        "ttftMs": 3557.6449579999316,
+        "terminalEventMs": 132862.112708,
+        "totalDurationMs": 133122.71170799993
+      },
+      "usage": {
+        "requestCount": 4,
+        "promptTokens": 97775,
+        "completionTokens": 5947,
+        "totalTokens": 103721,
+        "totalCostUsd": 0.00975587,
+        "models": [
+          "deepseek/deepseek-v4-flash"
+        ],
+        "providers": [
+          "deepinfra"
+        ],
+        "profiles": [
+          "balanced"
+        ],
+        "operations": [
+          "agentic_chat_v2_stream"
+        ]
+      },
+      "completed": true,
+      "finishedReason": "error",
+      "errors": [
+        "An error occurred while streaming."
+      ],
+      "toolCalls": [
+        "skill_load",
+        "skill_load",
+        "skill_reference_load",
+        "skill_load",
+        "skill_load"
+      ],
+      "acceptance": [
+        {
+          "validatorId": "answer.contains_all",
+          "required": true,
+          "passed": false,
+          "detail": "missing: offer, ICP, proof, deliverability, accessibility, user testing"
+        },
+        {
+          "validatorId": "answer.has_sections",
+          "required": true,
+          "passed": false,
+          "detail": "missing: workflow, interface, risks, testing"
+        },
+        {
+          "validatorId": "artifact.citations.resolve",
+          "required": true,
+          "passed": true,
+          "detail": "no citations used; original-design allowance applied"
+        }
+      ],
+      "allRequiredChecksPassed": false,
+      "assistantText": "Let me load the full playbooks for both lenses before I build the review."
+    },
+    {
+      "scenarioId": "a0-c08-context-app-recommendation",
+      "scenarioClass": "context_research_recommendation",
+      "expectedRoute": "workflow",
+      "expectedReasonCode": "context_research_recommendation",
+      "runIndex": 1,
+      "replacementIndex": 0,
+      "scored": true,
+      "infrastructureInvalidReason": null,
+      "requestStartedAt": "2026-07-25T04:56:44.851Z",
+      "timing": {
+        "requestStartedAt": "2026-07-25T04:56:44.851Z",
+        "responseHeadersMs": 303.2895829998888,
+        "firstSseEventMs": 303.8937909998931,
+        "ttftMs": 6084.171290999977,
+        "terminalEventMs": 50520.34512499999,
+        "totalDurationMs": 50837.60916599992
+      },
+      "usage": {
+        "requestCount": 11,
+        "promptTokens": 184692,
+        "completionTokens": 1792,
+        "totalTokens": 186484,
+        "totalCostUsd": 0.012507349999999999,
+        "models": [
+          "deepseek/deepseek-v4-flash"
+        ],
+        "providers": [
+          "deepinfra"
+        ],
+        "profiles": [
+          "balanced"
+        ],
+        "operations": [
+          "agentic_chat_v2_stream"
+        ]
+      },
+      "completed": true,
+      "finishedReason": "stop",
+      "errors": [],
+      "toolCalls": [
+        "get_document_outline",
+        "get_document_outline",
+        "get_document_outline",
+        "get_onto_project_details",
+        "get_onto_document_details",
+        "get_onto_document_details",
+        "get_onto_document_details",
+        "get_onto_document_details",
+        "libri_search_capabilities",
+        "tool_search",
+        "web_search",
+        "web_search",
+        "web_search",
+        "web_visit",
+        "web_visit",
+        "web_search"
+      ],
+      "acceptance": [
+        {
+          "validatorId": "answer.contains_all",
+          "required": true,
+          "passed": false,
+          "detail": "missing: iPhone, baseline"
+        },
+        {
+          "validatorId": "answer.excludes_all",
+          "required": true,
+          "passed": true,
+          "detail": "excluded all 1 terms"
+        },
+        {
+          "validatorId": "artifact.citations.resolve",
+          "required": true,
+          "passed": false,
+          "detail": "expected at least 2 citations, found 0"
+        }
+      ],
+      "allRequiredChecksPassed": false,
+      "assistantText": "Let me pull in the relevant project documents to understand exactly what kind of app you're looking for, then I'll research the best options.\n\nBased on the research, the best app for you to download is **NASA PVT+**.\n\nIt is the official, validated Psychomotor Vigilance Test app from NASA, designed specifically for measuring reaction time, alertness, and fatigue.\n\nA second option is **Vigilance Buddy**, which also runs the classic PVT, allows you to configure test parameters, and lets you export results to CSV.\n\nHowever, NASA PVT+ is the more authoritative choice given its direct validation and use in research settings."
+    },
+    {
+      "scenarioId": "a0-c08-context-app-recommendation",
+      "scenarioClass": "context_research_recommendation",
+      "expectedRoute": "workflow",
+      "expectedReasonCode": "context_research_recommendation",
+      "runIndex": 2,
+      "replacementIndex": 0,
+      "scored": true,
+      "infrastructureInvalidReason": null,
+      "requestStartedAt": "2026-07-25T04:57:46.981Z",
+      "timing": {
+        "requestStartedAt": "2026-07-25T04:57:46.981Z",
+        "responseHeadersMs": 255.2577080000192,
+        "firstSseEventMs": 255.5350000000326,
+        "ttftMs": 6556.289666000055,
+        "terminalEventMs": 55997.71475000004,
+        "totalDurationMs": 56320.20795800001
+      },
+      "usage": {
+        "requestCount": 9,
+        "promptTokens": 156379,
+        "completionTokens": 2392,
+        "totalTokens": 158771,
+        "totalCostUsd": 0.009302250000000001,
+        "models": [
+          "deepseek/deepseek-v4-flash"
+        ],
+        "providers": [
+          "deepinfra"
+        ],
+        "profiles": [
+          "balanced"
+        ],
+        "operations": [
+          "agentic_chat_v2_stream"
+        ]
+      },
+      "completed": true,
+      "finishedReason": "stop",
+      "errors": [],
+      "toolCalls": [
+        "get_document_outline",
+        "get_document_outline",
+        "get_document_outline",
+        "read_document_section",
+        "read_document_section",
+        "read_document_section",
+        "get_onto_project_details",
+        "tool_search",
+        "web_search",
+        "get_onto_document_details",
+        "web_visit",
+        "web_visit",
+        "web_search",
+        "get_onto_document_details"
+      ],
+      "acceptance": [
+        {
+          "validatorId": "answer.contains_all",
+          "required": true,
+          "passed": false,
+          "detail": "missing: psychomotor vigilance"
+        },
+        {
+          "validatorId": "answer.excludes_all",
+          "required": true,
+          "passed": true,
+          "detail": "excluded all 1 terms"
+        },
+        {
+          "validatorId": "artifact.citations.resolve",
+          "required": true,
+          "passed": false,
+          "detail": "expected at least 2 citations, found 0"
+        }
+      ],
+      "allRequiredChecksPassed": false,
+      "assistantText": "Let me check what's already documented in the project about app needs before I go searching.\n\nGreat question — this ties directly into the task **\"Choose a PVT reaction-time app and log a baseline\"** that's been sitting overdue.\n\nHere's what I found:\n\n## What you need\n\nThe plan is to test at the same time each week and record a baseline before the caffeine protocol changes.\n\n## Top iPhone options\n\n🥇 **NASA PVT+** — *My recommendation*\n\n- **Free** on the App Store\n\n- The official NASA app — validated against the original lab-grade PVT-192 hardware\n\n- Built specifically for sleep/alertness/performance research\n\n- **Why it's the pick:** Your program is about measurable, research-backed tracking.\n\nUsing the same tool NASA uses for fatigue studies gives you confidence the numbers mean something.\n\n**Vigilance Buddy** (by Research Buddies)\n\n- Configurable trial count and timing parameters\n\n- Data stays on-device — privacy-first\n\n- Good alternative if you want more control over test length and trial settings\n\n**PVT Research Tool** (Texas A&M University)\n\n- Also research-grade, designed for fatigue-related data collection\n\n- Less polished UI but functionally solid\n\n## My recommendation\n\n**Go with NASA PVT+.** It's the most validated option, it's free, and it directly supports the kind of weekly baseline tracking your Measurement & Telemetry Protocol describes.\n\nWant me to mark the \"Choose a PVT reaction-time app\" task as done once you've downloaded it, or would you like me to create a subtask for running the first baseline test?"
+    },
+    {
+      "scenarioId": "a0-c08-context-app-recommendation",
+      "scenarioClass": "context_research_recommendation",
+      "expectedRoute": "workflow",
+      "expectedReasonCode": "context_research_recommendation",
+      "runIndex": 3,
+      "replacementIndex": 0,
+      "scored": true,
+      "infrastructureInvalidReason": null,
+      "requestStartedAt": "2026-07-25T04:58:54.600Z",
+      "timing": {
+        "requestStartedAt": "2026-07-25T04:58:54.600Z",
+        "responseHeadersMs": 300.6778329999652,
+        "firstSseEventMs": 300.9152499999618,
+        "ttftMs": 10120.318582999986,
+        "terminalEventMs": 30676.698875000002,
+        "totalDurationMs": 31000.289916999987
+      },
+      "usage": {
+        "requestCount": 5,
+        "promptTokens": 53445,
+        "completionTokens": 1531,
+        "totalTokens": 54976,
+        "totalCostUsd": 0.0026848600000000003,
+        "models": [
+          "deepseek/deepseek-v4-flash"
+        ],
+        "providers": [
+          "deepinfra"
+        ],
+        "profiles": [
+          "balanced"
+        ],
+        "operations": [
+          "agentic_chat_v2_stream"
+        ]
+      },
+      "completed": true,
+      "finishedReason": "stop",
+      "errors": [],
+      "toolCalls": [
+        "get_document_outline",
+        "get_document_outline",
+        "get_document_outline",
+        "read_document_section",
+        "read_document_section",
+        "read_document_section",
+        "read_document_section",
+        "get_onto_project_details",
+        "get_onto_document_details",
+        "get_onto_document_details",
+        "get_onto_document_details"
+      ],
+      "acceptance": [
+        {
+          "validatorId": "answer.contains_all",
+          "required": true,
+          "passed": false,
+          "detail": "missing: psychomotor vigilance, baseline"
+        },
+        {
+          "validatorId": "answer.excludes_all",
+          "required": true,
+          "passed": true,
+          "detail": "excluded all 1 terms"
+        },
+        {
+          "validatorId": "artifact.citations.resolve",
+          "required": true,
+          "passed": false,
+          "detail": "expected at least 2 citations, found 0"
+        }
+      ],
+      "allRequiredChecksPassed": false,
+      "assistantText": "I'll look that up in BuildOS and gather the relevant details.\n\nBased on the available project documents, I can tell you what the training program involves, but I cannot recommend a specific iPhone app from the evidence provided.\n\nThe program, **Project Alpha — Response-Speed Training**, focuses on improving measurable response speed across three areas: executive communication, a precision skill domain, and general reaction time.\n\nThe key metrics tracked include:\n\n- **Pitch time-to-first-word** and filler word count\n\n- **Sprint time** and fixed practice par time\n\n- **Resting heart rate / HRV** and sleep\n\n- An **in-sync score** (subjective 1–10 rating)\n\nThe research notes explicitly state that commercial brain-training games and generic sports-vision training have weak evidence for real-world skill transfer.\n\nThe program favors **aerobic work, sleep consistency, domain-specific deliberate practice, timers, and feedback loops** instead.\n\nHowever, the project documents do not name or link to any specific iPhone app for these purposes.\n\n**What I cannot do:** I cannot search the App Store or browse the web to find a compatible app for you.\n\nTo get a specific recommendation, you would need to check the App Store for apps that support PVT testing, interval timers, and habit/health logging, or ask the project owner which app they use."
+    }
+  ],
+  "summary": {
+    "overall": {
+      "runCount": 9,
+      "scoredRunCount": 9,
+      "infrastructureInvalidCount": 0,
+      "completedCount": 9,
+      "cleanSuccessCount": 6,
+      "errorRunCount": 3,
+      "ttftSampleCount": 9,
+      "ttftP50Ms": 6556.289666000055,
+      "ttftP95Ms": 14744.414040999998,
+      "totalDurationP50Ms": 105109.319541,
+      "totalDurationP95Ms": 198425.02666700003,
+      "costMeanUsd": 0.007787,
+      "costP50Usd": 0.00747606,
+      "costP95Usd": 0.012507349999999999,
+      "totalCostUsd": 0.070084,
+      "totalOperationalCostUsd": 0.070084,
+      "acceptancePassCount": 0,
+      "acceptancePassRate": 0
+    },
+    "byClass": {
+      "single_source_lookup": {
+        "runCount": 3,
+        "scoredRunCount": 3,
+        "infrastructureInvalidCount": 0,
+        "completedCount": 3,
+        "cleanSuccessCount": 3,
+        "errorRunCount": 0,
+        "ttftSampleCount": 3,
+        "ttftP50Ms": 9336.27666599999,
+        "ttftP95Ms": 14744.414040999998,
+        "totalDurationP50Ms": 105109.319541,
+        "totalDurationP95Ms": 116684.910833,
+        "costMeanUsd": 0.005692,
+        "costP50Usd": 0.00546135,
+        "costP95Usd": 0.00747606,
+        "totalCostUsd": 0.017076,
+        "totalOperationalCostUsd": 0.017076,
+        "acceptancePassCount": 0,
+        "acceptancePassRate": 0
+      },
+      "multi_source_research": {
+        "runCount": 3,
+        "scoredRunCount": 3,
+        "infrastructureInvalidCount": 0,
+        "completedCount": 3,
+        "cleanSuccessCount": 0,
+        "errorRunCount": 3,
+        "ttftSampleCount": 3,
+        "ttftP50Ms": 4659.911165999947,
+        "ttftP95Ms": 6808.239583000017,
+        "totalDurationP50Ms": 133122.71170799993,
+        "totalDurationP95Ms": 198425.02666700003,
+        "costMeanUsd": 0.009505,
+        "costP50Usd": 0.00975587,
+        "costP95Usd": 0.011548520000000001,
+        "totalCostUsd": 0.028514,
+        "totalOperationalCostUsd": 0.028514,
+        "acceptancePassCount": 0,
+        "acceptancePassRate": 0
+      },
+      "context_research_recommendation": {
+        "runCount": 3,
+        "scoredRunCount": 3,
+        "infrastructureInvalidCount": 0,
+        "completedCount": 3,
+        "cleanSuccessCount": 3,
+        "errorRunCount": 0,
+        "ttftSampleCount": 3,
+        "ttftP50Ms": 6556.289666000055,
+        "ttftP95Ms": 10120.318582999986,
+        "totalDurationP50Ms": 50837.60916599992,
+        "totalDurationP95Ms": 56320.20795800001,
+        "costMeanUsd": 0.008165,
+        "costP50Usd": 0.009302250000000001,
+        "costP95Usd": 0.012507349999999999,
+        "totalCostUsd": 0.024494,
+        "totalOperationalCostUsd": 0.024494,
+        "acceptancePassCount": 0,
+        "acceptancePassRate": 0
+      }
+    },
+    "byScenario": {
+      "a0-c06-single-source-article": {
+        "runCount": 3,
+        "scoredRunCount": 3,
+        "infrastructureInvalidCount": 0,
+        "completedCount": 3,
+        "cleanSuccessCount": 3,
+        "errorRunCount": 0,
+        "ttftSampleCount": 3,
+        "ttftP50Ms": 9336.27666599999,
+        "ttftP95Ms": 14744.414040999998,
+        "totalDurationP50Ms": 105109.319541,
+        "totalDurationP95Ms": 116684.910833,
+        "costMeanUsd": 0.005692,
+        "costP50Usd": 0.00546135,
+        "costP95Usd": 0.00747606,
+        "totalCostUsd": 0.017076,
+        "totalOperationalCostUsd": 0.017076,
+        "acceptancePassCount": 0,
+        "acceptancePassRate": 0
+      },
+      "a0-c07-campaign-workflow-research": {
+        "runCount": 3,
+        "scoredRunCount": 3,
+        "infrastructureInvalidCount": 0,
+        "completedCount": 3,
+        "cleanSuccessCount": 0,
+        "errorRunCount": 3,
+        "ttftSampleCount": 3,
+        "ttftP50Ms": 4659.911165999947,
+        "ttftP95Ms": 6808.239583000017,
+        "totalDurationP50Ms": 133122.71170799993,
+        "totalDurationP95Ms": 198425.02666700003,
+        "costMeanUsd": 0.009505,
+        "costP50Usd": 0.00975587,
+        "costP95Usd": 0.011548520000000001,
+        "totalCostUsd": 0.028514,
+        "totalOperationalCostUsd": 0.028514,
+        "acceptancePassCount": 0,
+        "acceptancePassRate": 0
+      },
+      "a0-c08-context-app-recommendation": {
+        "runCount": 3,
+        "scoredRunCount": 3,
+        "infrastructureInvalidCount": 0,
+        "completedCount": 3,
+        "cleanSuccessCount": 3,
+        "errorRunCount": 0,
+        "ttftSampleCount": 3,
+        "ttftP50Ms": 6556.289666000055,
+        "ttftP95Ms": 10120.318582999986,
+        "totalDurationP50Ms": 50837.60916599992,
+        "totalDurationP95Ms": 56320.20795800001,
+        "costMeanUsd": 0.008165,
+        "costP50Usd": 0.009302250000000001,
+        "costP95Usd": 0.012507349999999999,
+        "totalCostUsd": 0.024494,
+        "totalOperationalCostUsd": 0.024494,
+        "acceptancePassCount": 0,
+        "acceptancePassRate": 0
+      }
+    }
+  }
+}

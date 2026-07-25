@@ -1,0 +1,625 @@
+{
+  "schema_version": 1,
+  "corpus_version": "phase-a-frozen-v1",
+  "lane": "phase-a-in-process-workflow",
+  "generated_at": "2026-07-25T04:40:32.511Z",
+  "model_pins": {
+    "route_primary": "google/gemini-3.1-flash-lite",
+    "route_reviewer": "z-ai/glm-5.2",
+    "researcher": "deepseek/deepseek-v4-pro",
+    "transition": "z-ai/glm-5.2",
+    "synthesis": "z-ai/glm-5.2"
+  },
+  "runs": [
+    {
+      "scenarioId": "a0-c06-single-source-article",
+      "scenarioClass": "single_source_lookup",
+      "runIndex": 1,
+      "replacementIndex": 0,
+      "scored": false,
+      "infrastructureInvalidReason": "Provider rejected a model request before inference.",
+      "expectedRoute": "workflow",
+      "expectedReasonCode": "single_source_research",
+      "actualRoute": "workflow",
+      "actualReasonCode": "context_research_recommendation",
+      "status": "partial",
+      "startedAt": "2026-07-25T04:39:26.710Z",
+      "routeDurationMs": 1601,
+      "totalDurationMs": 39977,
+      "stageCount": 2,
+      "replanCount": 0,
+      "usage": [
+        {
+          "model": "google/gemini-3.1-flash-lite",
+          "provider": "Google",
+          "promptTokens": 1434,
+          "completionTokens": 182,
+          "totalTokens": 1616,
+          "totalCostUsd": 0.0006315,
+          "billingDisposition": "settled"
+        },
+        {
+          "model": "z-ai/glm-5.2",
+          "provider": "AtlasCloud",
+          "promptTokens": 1024,
+          "completionTokens": 197,
+          "totalTokens": 1221,
+          "totalCostUsd": 0.00207036,
+          "billingDisposition": "settled"
+        },
+        {
+          "model": "z-ai/glm-5.2",
+          "provider": "Inceptron",
+          "promptTokens": 1190,
+          "completionTokens": 166,
+          "totalTokens": 1356,
+          "totalCostUsd": 0.0016,
+          "billingDisposition": "settled"
+        },
+        {
+          "model": "deepseek/deepseek-v4-pro",
+          "provider": null,
+          "promptTokens": 0,
+          "completionTokens": 0,
+          "totalTokens": 0,
+          "totalCostUsd": 0,
+          "billingDisposition": "released"
+        },
+        {
+          "model": "z-ai/glm-5.2",
+          "provider": "AtlasCloud",
+          "promptTokens": 1163,
+          "completionTokens": 474,
+          "totalTokens": 1637,
+          "totalCostUsd": 0.00334242,
+          "billingDisposition": "settled"
+        },
+        {
+          "model": "z-ai/glm-5.2",
+          "provider": "Decart",
+          "promptTokens": 1356,
+          "completionTokens": 112,
+          "totalTokens": 1468,
+          "totalCostUsd": 0.0008222,
+          "billingDisposition": "settled"
+        },
+        {
+          "model": "z-ai/glm-5.2",
+          "provider": "Decart",
+          "promptTokens": 2914,
+          "completionTokens": 1737,
+          "totalTokens": 4651,
+          "totalCostUsd": 0.0055073,
+          "billingDisposition": "settled"
+        }
+      ],
+      "modelCostUsd": 0.01397378,
+      "toolCostUsd": 0,
+      "totalCostUsd": 0.01397378,
+      "toolCalls": [],
+      "artifacts": [
+        {
+          "artifactId": "61dd5270-b58d-4c45-8e31-aed0c90788ae",
+          "envelope": {
+            "schema_version": 1,
+            "artifact_type": "context_packet",
+            "artifact_version": 1,
+            "run_id": "a8b925e0-1781-40e3-82de-766df3f5096a",
+            "producer_step_id": "50378be2-dbfe-4b3d-85e4-0f92af6c35db",
+            "supersedes_artifact_id": null,
+            "summary": "Bounded project context for: Amazing. Now here are some specific video ideas that I want to do. First idea is about what snipers in the future are going to look like. What skill sets do they need? What mission sets will they do? What is the team structure going to look like. Also this article is highly relevant: https://taskan…",
+            "payload": {
+              "schema_version": 1,
+              "objective": "Amazing. Now here are some specific video ideas that I want to do. First idea is about what snipers in the future are going to look like. What skill sets do they need? What mission sets will they do? What is the team structure going to look like. Also this article is highly relevant: https://taskandpurpose.com/news/marines-scouts-primary-pmos/ I also did some heavy research and I have a growing list of YouTube ideas.",
+              "project_scope": [
+                {
+                  "project_id": "10000000-0000-4000-8000-000000000001",
+                  "project_name": "Project Alpha — Response-Speed Training",
+                  "role": "primary",
+                  "reason": "The workflow request is scoped to this active project snapshot."
+                }
+              ],
+              "facts": [
+                {
+                  "fact_id": "4bbb289d-9091-4a7f-87e9-505300e4b544",
+                  "statement": "Project \"Project Alpha — Response-Speed Training\" is active in stage execution. Its next step is: Ship the training equipment to the specialist workshop for setup.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "project:10000000-0000-4000-8000-000000000001",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "as_of": "2026-07-13T04:16:04.162Z",
+                  "confidence": 1
+                },
+                {
+                  "fact_id": "311420da-513a-4caf-80b1-1944b8ec3816",
+                  "statement": "Task \"Review the existing processing-speed course material\" is todo, priority 3. Capture drills and mental models relevant to the precision-skill domain.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "task:40000000-0000-4000-8000-000000000004",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "as_of": "2026-07-13T04:16:04.162Z",
+                  "confidence": 1
+                },
+                {
+                  "fact_id": "eb5413b4-a46d-4a38-845d-85129f9589da",
+                  "statement": "Task \"Ship training equipment to the specialist workshop for setup\" is todo, priority 4. This is the gateway task for the precision-skill domain. Until setup is complete, live practice and match preparation cannot begin; knowledge preparation may continue.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "task:40000000-0000-4000-8000-000000000002",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "as_of": "2026-07-13T04:16:04.162Z",
+                  "confidence": 1
+                },
+                {
+                  "fact_id": "6acdbff9-5d58-4b5b-833c-c32c79b76ba5",
+                  "statement": "Task \"Start the caffeine protocol\" is done, priority 5, due 2026-07-10T21:00:00.000Z. Take the first dose 60–90 minutes after waking, stop at noon, and keep the daily total at or below 300 mg.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "task:40000000-0000-4000-8000-000000000006",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "as_of": "2026-07-13T04:16:04.162Z",
+                  "confidence": 1
+                },
+                {
+                  "fact_id": "c56f75f0-7daf-4cbf-85bf-514ef5fb0820",
+                  "statement": "Task \"Run the first submaximal hinge session\" is todo, priority 3, due 2026-07-15T21:00:00.000Z. Rebuild hinge tolerance gradually after the core-stability warmup and stop if symptoms flare.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "task:40000000-0000-4000-8000-000000000008",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "as_of": "2026-07-13T04:16:04.162Z",
+                  "confidence": 1
+                }
+              ],
+              "excerpts": [
+                {
+                  "excerpt_id": "ad7ec6e1-0e97-45b7-8f36-f30f54ec462a",
+                  "text": "The program treats processing speed as a compressed perception-to-decision-to-action loop built through chunking and automaticity. Its three layers are Hardware (sleep, aerobic capacity, regulation, physical consistency), Software (domain-specific practice such as pitch dry fire and precision-skill reps), and Pressure + Feedback (timers, stress exposure, and after-action reviews). The week-one launch list is: begin the noon caffeine cutoff, complete daily core stability, run the first hostile-pitch session, enroll in improv, obtain the documented supplements, and log a PVT baseline.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "document:50000000-0000-4000-8000-000000000001",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "locator": "Training Program — Full Synthesis & Weekly Template"
+                },
+                {
+                  "excerpt_id": "f2d794f1-99e2-405b-8d39-1aa9ed9a8e0f",
+                  "text": "State: active. Stage: execution. Snapshot status: eight open tasks and two overdue tasks. Next step: ship the training equipment to the specialist workshop for setup. The equipment setup is the hard gate for live precision-skill practice. Knowledge preparation can continue before setup. The program's operating rules are: protect consistency, time and review meaningful practice, train each target domain directly, and treat external task capture as a way to reduce working-memory load.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "document:50000000-0000-4000-8000-000000000005",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "locator": "Project Alpha — Program Context"
+                },
+                {
+                  "excerpt_id": "88c34325-fc5b-4eed-8c99-928c1dc2aa0d",
+                  "text": "The current high daily caffeine dose is likely maintaining tolerance while later intake reduces sleep quality. The protocol is: first dose 60–90 minutes after waking, a hard cutoff at noon, and no more than 300 mg total per day. Creatine and L-theanine are optional supporting interventions; the document explicitly treats sleep consistency and caffeine timing as higher-leverage than supplements.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "document:50000000-0000-4000-8000-000000000002",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "locator": "Caffeine & Supplement Protocol"
+                },
+                {
+                  "excerpt_id": "a22750ac-241c-4a9e-8b9a-4383e17dbb0b",
+                  "text": "Commercial brain-training games can improve performance on their own games but have weak evidence for transfer to unrelated real-world skills. Dual n-back and generic sports-vision training have similar transfer limitations. A psychomotor vigilance task is retained as a measurement tool, not a broad training claim. The program favors aerobic work, sleep consistency, domain-specific deliberate practice, timers, and feedback loops.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "document:50000000-0000-4000-8000-000000000004",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "locator": "Research Notes — What Works and What Doesn't"
+                }
+              ],
+              "artifact_refs": [],
+              "constraints": [
+                "Read-only Phase A evaluation: do not mutate project data.",
+                "Treat snapshot facts as current only at the recorded as-of timestamp."
+              ],
+              "intentionally_excluded": [
+                "7 lower-relevance tasks were excluded.",
+                "1 lower-relevance documents were excluded.",
+                "4 goals and plans were excluded from this bounded packet."
+              ],
+              "retrieval_options": [
+                {
+                  "option_id": "research.current.web",
+                  "kind": "web_search",
+                  "operation": "web.search",
+                  "label": "Research current external evidence",
+                  "reason": "Current product availability and external claims require fresh web evidence.",
+                  "arguments": {
+                    "objective": "Amazing. Now here are some specific video ideas that I want to do. First idea is about what snipers in the future are going to look like. What skill sets do they need? What mission sets will they do? What is the team structure going to look like. Also this article is highly relevant: https://taskandpurpose.com/news/marines-scouts-primary-pmos/ I also did some heavy research and I have a growing list of YouTube ideas."
+                  }
+                }
+              ],
+              "as_of": "2026-07-13T04:16:04.162Z"
+            },
+            "provenance": [
+              {
+                "relationship": "generated_from",
+                "source": {
+                  "source_type": "buildos_entity",
+                  "source_id": "project:10000000-0000-4000-8000-000000000001",
+                  "source_uri": null,
+                  "project_id": "10000000-0000-4000-8000-000000000001",
+                  "captured_at": "2026-07-13T04:16:04.162Z"
+                }
+              }
+            ],
+            "created_at": "2026-07-25T04:39:28.334Z"
+          }
+        }
+      ],
+      "acceptance": [
+        {
+          "validatorId": "artifact.citations.include_url",
+          "required": true,
+          "passed": true,
+          "detail": "supplied URL cited"
+        },
+        {
+          "validatorId": "answer.contains_all",
+          "required": true,
+          "passed": true,
+          "detail": "found all 3 terms"
+        },
+        {
+          "validatorId": "artifact.claims.cited",
+          "required": true,
+          "passed": true,
+          "detail": "1 external URL(s) cited"
+        }
+      ],
+      "allRequiredChecksPassed": true,
+      "assistantText": "## Future Sniper Video Concepts — Analysis\n\n### Objective Recap\n\nYou want to develop a video (or video series) exploring what snipers in the future will look like, covering:\n\n1. **Skill sets** they will need\n2. **Mission sets** they will perform\n3. **Team structure** and organization\n\nYou flagged a highly relevant article: the Task & Purpose piece on Marines establishing a primary MOS for scouts (https://taskandpurpose.com/news/marines-scouts-primary-pmos/). You also mention a growing list of YouTube ideas from heavy research.\n\n---\n\n### What the Provided Artifacts Support\n\nThe supplied project context is scoped to **Project Alpha — Response-Speed Training**, a precision/performance-training program. It contains useful conceptual scaffolding for the *training and skill-development* angle of a future-sniper video, but it does **not** contain military doctrine, force-structure data, or sourced analysis of future sniper roles.\n\n**Relevant transferable concepts from the project:**\n\n- **Processing-speed model:** The program treats performance as a compressed *perception → decision → action* loop built through chunking and automaticity. This is a strong framing device for explaining how future snipers will train cognitive speed under pressure.\n  - Source: Project Alpha training program synthesis (internal document, no external URL)\n- **Three-layer training architecture:**\n  1. *Hardware* — sleep, aerobic capacity, regulation, physical consistency\n  2. *Software* — domain-specific deliberate practice (e.g., dry fire, precision-skill reps)\n  3. *Pressure + Feedback* — timers, stress exposure, after-action reviews\n  - This maps cleanly onto a video segment on \"how future snipers will train.\"\n  - Source: Project Alpha training program synthesis (internal document)\n- **Evidence-based skepticism on \"brain training\":** Commercial brain-training games, dual n-back, and generic sports-vision training show weak transfer to real-world skills. A psychomotor vigilance task (PVT) is retained as a *measurement* tool, not a training claim. The program favors aerobic work, sleep consistency, domain-specific deliberate practice, timers, and feedback loops.\n  - This is useful if your video addresses the hype around cognitive-training apps for shooters.\n  - Source: Project Alpha research notes (internal document)\n- **Caffeine/supplement protocol as a micro-example:** First dose 60–90 min after waking, hard noon cutoff, ≤300 mg/day; sleep consistency and caffeine timing treated as higher-leverage than supplements.\n  - Could illustrate the \"lifestyle engineering\" side of future sniper preparation.\n  - Source: Project Alpha caffeine protocol (internal document)\n\n---\n\n### Material Evidence Gaps (Disclosed)\n\nThis is a **partial** response. The following evidence was **not available** in the provided artifacts and would be needed for a complete video treatment:\n\n1. **Content of the Task & Purpose article** — The URL (https://taskandpurpose.com/news/marines-scouts-primary-pmos/) was flagged as highly relevant, but no excerpt, summary, or fetched content from that article is present in the artifacts. Any claims about Marine scout MOS changes must be sourced directly from that article or equivalent reporting; I cannot paraphrase or infer its contents.\n2. **Your growing list of YouTube ideas** — Mentioned in the objective but not included in the artifacts. I cannot reconcile, prioritize, or build on ideas that weren't supplied.\n3. **Military doctrine / force-structure sources** — No sourced material on future sniper team composition, mission sets, or skill requirements from military publications, doctrinal manuals, or defense analysis was provided.\n4. **External web research** — No fresh web search results were retrieved. The context packet offered a retrieval option for current external evidence, but none was executed/supplied.\n\n---\n\n### Inferred Video Framework (Clearly Labeled as Inference)\n\nBased *only* on the objective's three questions and the transferable training concepts above, here is a suggested structure. All substantive claims about future sniper roles below are **inference / editorial framing**, not sourced facts:\n\n**Segment 1 — The Future Skill Set (Inference + Project-Supported Training Model)**\n- Frame around the perception→decision→action loop from Project Alpha.\n- Argue (as your editorial thesis) that future snipers will need to blend traditional marksmanship with:\n  - Faster cognitive processing under uncertainty\n  - Drone/UAS awareness and counter-UAS skills\n  - Data literacy (working with sensor feeds, ballistic computers, networked targeting)\n  - Physical regulation (sleep, aerobic base, caffeine/supplement discipline — using the Project Alpha protocol as a concrete example)\n- *Caveat:* The specific skill mix should be validated against sourced doctrine or expert interviews before publishing as fact.\n\n**Segment 2 — Future Mission Sets (Inference — Needs Sourcing)**\n- Likely themes to research: reconnaissance-strike complexes, peer/near-peer conflict, urban and subterranean operations, integrated air-ground operations, and the scout-sniper role in distributed operations.\n- The Marine scout MOS article likely speaks to institutional recognition of scout skills as a distinct specialty — but I cannot confirm its specifics without the article content.\n\n**Segment 3 — Team Structure (Inference — Needs Sourcing)**\n- Potential angles: smaller, more distributed teams; integration with drone operators and sensor/ISR specialists; the scout-sniper team as a node in a broader kill/recon network.\n- Again, this must be grounded in the Task & Purpose article and/or doctrinal sources before being presented as authoritative.\n\n**Segment 4 — How They Train (Project-Supported)**\n- This is where your Project Alpha material is strongest and most defensible:\n  - Three-layer model (Hardware / Software / Pressure + Feedback)\n  - Deliberate practice over generic brain games\n  - PVT as measurement, not magic training\n  - Caffeine/sleep protocol as a lifestyle-engineering case study\n\n---\n\n### Recommended Next Steps\n\n1. **Retrieve the Task & Purpose article content** so its specific claims about the Marine scout primary MOS can be cited accurately.\n2. **Supply your growing YouTube idea list** so concepts can be reconciled and prioritized rather than developed in isolation.\n3. **Pull 1–2 doctrinal or defense-analysis sources** on future sniper/scout roles to ground the mission-set and team-structure segments.\n4. **Decide whether this is one video or a series** — the three questions plus the training angle could sustain 2–4 videos.\n\n---\n\n### Source Summary\n\n| Claim | Source Type | URL / Locator |\n|---|---|---|\n| Perception→decision→action loop; three-layer training model | Internal project document | Project Alpha — Training Program Full Synthesis (no external URL) |\n| Brain-training games have weak transfer; PVT is measurement only | Internal project document | Project Alpha — Research Notes (no external URL) |\n| Caffeine protocol: 60–90 min after waking, noon cutoff, ≤300 mg/day | Internal project document | Project Alpha — Caffeine & Supplement Protocol (no external URL) |\n| Marine scouts primary MOS article (flagged relevant, content not supplied) | External article | https://taskandpurpose.com/news/marines-scouts-primary-pmos/ |\n| Future sniper skill/mission/team specifics | **Not sourced** — inference only | N/A |\n\n---\n\n### Bottom Line\n\nYour future-sniper video concept is well-posed around three clear questions. The Project Alpha context gives you a defensible, evidence-grounded *training* segment (cognitive-speed loop, deliberate practice, lifestyle protocol) and a useful skeptical frame against brain-training hype. However, the core military-substance questions — what future snipers will do and how teams will be structured — require the Task & Purpose article content and additional doctrinal sourcing that were not available in this bounded review.",
+      "error": null
+    },
+    {
+      "scenarioId": "a0-c06-single-source-article",
+      "scenarioClass": "single_source_lookup",
+      "runIndex": 1,
+      "replacementIndex": 1,
+      "scored": false,
+      "infrastructureInvalidReason": "Provider rejected a model request before inference.",
+      "expectedRoute": "workflow",
+      "expectedReasonCode": "single_source_research",
+      "actualRoute": "workflow",
+      "actualReasonCode": "context_research_recommendation",
+      "status": "partial",
+      "startedAt": "2026-07-25T04:40:06.687Z",
+      "routeDurationMs": 1553,
+      "totalDurationMs": 25823,
+      "stageCount": 2,
+      "replanCount": 0,
+      "usage": [
+        {
+          "model": "google/gemini-3.1-flash-lite",
+          "provider": "Google",
+          "promptTokens": 1434,
+          "completionTokens": 188,
+          "totalTokens": 1622,
+          "totalCostUsd": 0.0006405,
+          "billingDisposition": "settled"
+        },
+        {
+          "model": "z-ai/glm-5.2",
+          "provider": "Decart",
+          "promptTokens": 1034,
+          "completionTokens": 73,
+          "totalTokens": 1107,
+          "totalCostUsd": 0.0005953,
+          "billingDisposition": "settled"
+        },
+        {
+          "model": "z-ai/glm-5.2",
+          "provider": "Decart",
+          "promptTokens": 1204,
+          "completionTokens": 74,
+          "totalTokens": 1278,
+          "totalCostUsd": 0.0006058,
+          "billingDisposition": "settled"
+        },
+        {
+          "model": "deepseek/deepseek-v4-pro",
+          "provider": null,
+          "promptTokens": 0,
+          "completionTokens": 0,
+          "totalTokens": 0,
+          "totalCostUsd": 0,
+          "billingDisposition": "released"
+        },
+        {
+          "model": "z-ai/glm-5.2",
+          "provider": "Decart",
+          "promptTokens": 1173,
+          "completionTokens": 116,
+          "totalTokens": 1289,
+          "totalCostUsd": 0.0007586,
+          "billingDisposition": "settled"
+        },
+        {
+          "model": "z-ai/glm-5.2",
+          "provider": "Decart",
+          "promptTokens": 1373,
+          "completionTokens": 127,
+          "totalTokens": 1500,
+          "totalCostUsd": 0.0008131,
+          "billingDisposition": "settled"
+        },
+        {
+          "model": "z-ai/glm-5.2",
+          "provider": "Decart",
+          "promptTokens": 2919,
+          "completionTokens": 2108,
+          "totalTokens": 5027,
+          "totalCostUsd": 0.0064368,
+          "billingDisposition": "settled"
+        }
+      ],
+      "modelCostUsd": 0.0098501,
+      "toolCostUsd": 0,
+      "totalCostUsd": 0.0098501,
+      "toolCalls": [],
+      "artifacts": [
+        {
+          "artifactId": "01b9b64f-de1b-4110-8f6a-6845b01d9b31",
+          "envelope": {
+            "schema_version": 1,
+            "artifact_type": "context_packet",
+            "artifact_version": 1,
+            "run_id": "6c75ae2a-5cf9-4d79-8714-0b711ada9048",
+            "producer_step_id": "09d4f3d3-d7fd-4e48-8c41-18a54de5184f",
+            "supersedes_artifact_id": null,
+            "summary": "Bounded project context for: Amazing. Now here are some specific video ideas that I want to do. First idea is about what snipers in the future are going to look like. What skill sets do they need? What mission sets will they do? What is the team structure going to look like. Also this article is highly relevant: https://taskan…",
+            "payload": {
+              "schema_version": 1,
+              "objective": "Amazing. Now here are some specific video ideas that I want to do. First idea is about what snipers in the future are going to look like. What skill sets do they need? What mission sets will they do? What is the team structure going to look like. Also this article is highly relevant: https://taskandpurpose.com/news/marines-scouts-primary-pmos/ I also did some heavy research and I have a growing list of YouTube ideas.",
+              "project_scope": [
+                {
+                  "project_id": "10000000-0000-4000-8000-000000000001",
+                  "project_name": "Project Alpha — Response-Speed Training",
+                  "role": "primary",
+                  "reason": "The workflow request is scoped to this active project snapshot."
+                }
+              ],
+              "facts": [
+                {
+                  "fact_id": "4bbb289d-9091-4a7f-87e9-505300e4b544",
+                  "statement": "Project \"Project Alpha — Response-Speed Training\" is active in stage execution. Its next step is: Ship the training equipment to the specialist workshop for setup.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "project:10000000-0000-4000-8000-000000000001",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "as_of": "2026-07-13T04:16:04.162Z",
+                  "confidence": 1
+                },
+                {
+                  "fact_id": "311420da-513a-4caf-80b1-1944b8ec3816",
+                  "statement": "Task \"Review the existing processing-speed course material\" is todo, priority 3. Capture drills and mental models relevant to the precision-skill domain.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "task:40000000-0000-4000-8000-000000000004",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "as_of": "2026-07-13T04:16:04.162Z",
+                  "confidence": 1
+                },
+                {
+                  "fact_id": "eb5413b4-a46d-4a38-845d-85129f9589da",
+                  "statement": "Task \"Ship training equipment to the specialist workshop for setup\" is todo, priority 4. This is the gateway task for the precision-skill domain. Until setup is complete, live practice and match preparation cannot begin; knowledge preparation may continue.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "task:40000000-0000-4000-8000-000000000002",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "as_of": "2026-07-13T04:16:04.162Z",
+                  "confidence": 1
+                },
+                {
+                  "fact_id": "6acdbff9-5d58-4b5b-833c-c32c79b76ba5",
+                  "statement": "Task \"Start the caffeine protocol\" is done, priority 5, due 2026-07-10T21:00:00.000Z. Take the first dose 60–90 minutes after waking, stop at noon, and keep the daily total at or below 300 mg.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "task:40000000-0000-4000-8000-000000000006",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "as_of": "2026-07-13T04:16:04.162Z",
+                  "confidence": 1
+                },
+                {
+                  "fact_id": "c56f75f0-7daf-4cbf-85bf-514ef5fb0820",
+                  "statement": "Task \"Run the first submaximal hinge session\" is todo, priority 3, due 2026-07-15T21:00:00.000Z. Rebuild hinge tolerance gradually after the core-stability warmup and stop if symptoms flare.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "task:40000000-0000-4000-8000-000000000008",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "as_of": "2026-07-13T04:16:04.162Z",
+                  "confidence": 1
+                }
+              ],
+              "excerpts": [
+                {
+                  "excerpt_id": "ad7ec6e1-0e97-45b7-8f36-f30f54ec462a",
+                  "text": "The program treats processing speed as a compressed perception-to-decision-to-action loop built through chunking and automaticity. Its three layers are Hardware (sleep, aerobic capacity, regulation, physical consistency), Software (domain-specific practice such as pitch dry fire and precision-skill reps), and Pressure + Feedback (timers, stress exposure, and after-action reviews). The week-one launch list is: begin the noon caffeine cutoff, complete daily core stability, run the first hostile-pitch session, enroll in improv, obtain the documented supplements, and log a PVT baseline.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "document:50000000-0000-4000-8000-000000000001",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "locator": "Training Program — Full Synthesis & Weekly Template"
+                },
+                {
+                  "excerpt_id": "f2d794f1-99e2-405b-8d39-1aa9ed9a8e0f",
+                  "text": "State: active. Stage: execution. Snapshot status: eight open tasks and two overdue tasks. Next step: ship the training equipment to the specialist workshop for setup. The equipment setup is the hard gate for live precision-skill practice. Knowledge preparation can continue before setup. The program's operating rules are: protect consistency, time and review meaningful practice, train each target domain directly, and treat external task capture as a way to reduce working-memory load.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "document:50000000-0000-4000-8000-000000000005",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "locator": "Project Alpha — Program Context"
+                },
+                {
+                  "excerpt_id": "88c34325-fc5b-4eed-8c99-928c1dc2aa0d",
+                  "text": "The current high daily caffeine dose is likely maintaining tolerance while later intake reduces sleep quality. The protocol is: first dose 60–90 minutes after waking, a hard cutoff at noon, and no more than 300 mg total per day. Creatine and L-theanine are optional supporting interventions; the document explicitly treats sleep consistency and caffeine timing as higher-leverage than supplements.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "document:50000000-0000-4000-8000-000000000002",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "locator": "Caffeine & Supplement Protocol"
+                },
+                {
+                  "excerpt_id": "a22750ac-241c-4a9e-8b9a-4383e17dbb0b",
+                  "text": "Commercial brain-training games can improve performance on their own games but have weak evidence for transfer to unrelated real-world skills. Dual n-back and generic sports-vision training have similar transfer limitations. A psychomotor vigilance task is retained as a measurement tool, not a broad training claim. The program favors aerobic work, sleep consistency, domain-specific deliberate practice, timers, and feedback loops.",
+                  "source": {
+                    "source_type": "buildos_entity",
+                    "source_id": "document:50000000-0000-4000-8000-000000000004",
+                    "source_uri": null,
+                    "project_id": "10000000-0000-4000-8000-000000000001",
+                    "captured_at": "2026-07-13T04:16:04.162Z"
+                  },
+                  "locator": "Research Notes — What Works and What Doesn't"
+                }
+              ],
+              "artifact_refs": [],
+              "constraints": [
+                "Read-only Phase A evaluation: do not mutate project data.",
+                "Treat snapshot facts as current only at the recorded as-of timestamp."
+              ],
+              "intentionally_excluded": [
+                "7 lower-relevance tasks were excluded.",
+                "1 lower-relevance documents were excluded.",
+                "4 goals and plans were excluded from this bounded packet."
+              ],
+              "retrieval_options": [
+                {
+                  "option_id": "research.current.web",
+                  "kind": "web_search",
+                  "operation": "web.search",
+                  "label": "Research current external evidence",
+                  "reason": "Current product availability and external claims require fresh web evidence.",
+                  "arguments": {
+                    "objective": "Amazing. Now here are some specific video ideas that I want to do. First idea is about what snipers in the future are going to look like. What skill sets do they need? What mission sets will they do? What is the team structure going to look like. Also this article is highly relevant: https://taskandpurpose.com/news/marines-scouts-primary-pmos/ I also did some heavy research and I have a growing list of YouTube ideas."
+                  }
+                }
+              ],
+              "as_of": "2026-07-13T04:16:04.162Z"
+            },
+            "provenance": [
+              {
+                "relationship": "generated_from",
+                "source": {
+                  "source_type": "buildos_entity",
+                  "source_id": "project:10000000-0000-4000-8000-000000000001",
+                  "source_uri": null,
+                  "project_id": "10000000-0000-4000-8000-000000000001",
+                  "captured_at": "2026-07-13T04:16:04.162Z"
+                }
+              }
+            ],
+            "created_at": "2026-07-25T04:40:08.250Z"
+          }
+        }
+      ],
+      "acceptance": [
+        {
+          "validatorId": "artifact.citations.include_url",
+          "required": true,
+          "passed": true,
+          "detail": "supplied URL cited"
+        },
+        {
+          "validatorId": "answer.contains_all",
+          "required": true,
+          "passed": true,
+          "detail": "found all 3 terms"
+        },
+        {
+          "validatorId": "artifact.claims.cited",
+          "required": true,
+          "passed": true,
+          "detail": "1 external URL(s) cited"
+        }
+      ],
+      "allRequiredChecksPassed": true,
+      "assistantText": "## Future Sniper Concepts: Research Synthesis & Content Strategy Integration\n\n### Objective Status\n**Partial completion — material evidence gaps disclosed below.**\n\nThe project context packet supplies rich internal training-program material (Project Alpha — Response-Speed Training) and a clearly stated video concept about future snipers, but it does **not** contain any fetched external research about future sniper concepts, skill sets, mission sets, or team structure. The referenced Task & Purpose article (https://taskandpurpose.com/news/marines-scouts-primary-pmos/) was identified as highly relevant by the user, but no artifact includes its content or any web-research results. Accordingly, the sections below distinguish what is **sourced from project artifacts** from what is **inference or user-stated intent**, and I flag where external evidence is missing.\n\n---\n\n### 1. User-Stated Video Concept (from objective)\n\nThe user wants a YouTube video analyzing:\n- What snipers in the future will look like\n- Required skill sets\n- Mission sets they will perform\n- Team structure\n\nThe user flagged one external article as highly relevant:\n- **Source URL (user-provided, not independently retrieved):** https://taskandpurpose.com/news/marines-scouts-primary-pmos/\n\n> **Evidence gap:** No web content from this article or any other external source was supplied in the artifacts. Claims about Marine scout PMOS changes, future sniper doctrine, or force-design trends cannot be cited here without inventing sources. The URL is preserved exactly as provided for the user to reference, but I do not paraphrase or summarize its content because I have no retrieved text to draw from.\n\n---\n\n### 2. What the Project Artifacts Do Provide (sourced)\n\nThe artifacts are internal to **Project Alpha — Response-Speed Training**, an active execution-stage project focused on compressed perception-to-decision-to-action loops. While not about snipers per se, several elements are directly transferable to a future-sniper content strategy:\n\n#### 2.1 Processing-Speed Framework (sourced from project document)\n> \"The program treats processing speed as a compressed perception-to-decision-to-action loop built through chunking and automaticity. Its three layers are Hardware (sleep, aerobic capacity, regulation, physical consistency), Software (domain-specific practice such as pitch dry fire and precision-skill reps), and Pressure + Feedback (timers, stress exposure, and after-action reviews).\"\n— Project Alpha, \"Training Program — Full Synthesis & Weekly Template\"\n\n**Content-strategy application:** This three-layer model (Hardware / Software / Pressure + Feedback) can structure a video segment on future sniper skill sets — e.g., physical conditioning and sleep as the hardware layer, marksmanship and sensor-fusion drills as the software layer, and timed/stressed scenarios with AARs as the pressure layer.\n\n#### 2.2 Operating Rules (sourced from project document)\n> \"The program's operating rules are: protect consistency, time and review meaningful practice, train each target domain directly, and treat external task capture as a way to reduce working-memory load.\"\n— Project Alpha, \"Program Context\"\n\n**Content-strategy application:** These rules map cleanly onto how future snipers might train for high-tempo, data-rich environments — consistency under irregular schedules, deliberate practice per domain (precision, observation, communications), and offloading cognitive load to external tools (target data sheets, ballistic apps, team SOPs).\n\n#### 2.3 Evidence-Based Training Notes (sourced from project document)\n> \"Commercial brain-training games can improve performance on their own games but have weak evidence for transfer to unrelated real-world skills. Dual n-back and generic sports-vision training have similar transfer limitations. A psychomotor vigilance task is retained as a measurement tool, not a broad training claim. The program favors aerobic work, sleep consistency, domain-specific deliberate practice, timers, and feedback loops.\"\n— Project Alpha, \"Research Notes — What Works and What Doesn't\"\n\n**Content-strategy application:** This is a credibility lever for the video. A future-sniper segment can explicitly reject \"brain game\" hype and instead emphasize domain-specific deliberate practice, aerobic base, and sleep — aligning the channel with evidence-based training rather than gimmicks.\n\n#### 2.4 Caffeine & Supplement Protocol (sourced from project document)\n> \"The protocol is: first dose 60–90 minutes after waking, a hard cutoff at noon, and no more than 300 mg total per day. Creatine and L-theanine are optional supporting interventions; the document explicitly treats sleep consistency and caffeine timing as higher-leverage than supplements.\"\n— Project Alpha, \"Caffeine & Supplement Protocol\"\n\n**Content-strategy application:** A minor but concrete detail for a \"future sniper lifestyle/human performance\" segment — pharmacological management for sustained alertness without sleep disruption.\n\n#### 2.5 Project Status Relevant to Content Production\n- **Project Alpha is active, stage: execution.**\n- **Next step:** Ship the training equipment to the specialist workshop for setup (gateway task for live precision-skill practice).\n- **Knowledge preparation can continue before setup is complete** — meaning research and scripting for the future-sniper video can proceed now, even while live practice is gated.\n- **Open task:** \"Review the existing processing-speed course material\" (todo, priority 3) — \"Capture drills and mental models relevant to the precision-skill domain.\"\n- **Caffeine protocol task:** Done (first dose 60–90 min after waking, noon cutoff, ≤300 mg/day).\n- **Submaximal hinge session:** Todo, due 2026-07-15.\n\n---\n\n### 3. Inferred Content Strategy (not directly sourced — inference)\n\nBased on the user's stated video idea and the project's training framework, the following structure is **inferred**, not sourced from external research:\n\n| Video Segment | Project Alpha Hook | External Research Needed |\n|---|---|---|\n| Future sniper skill sets | Hardware/Software/Pressure model | Doctrine documents, PMOS changes, sensor/UAV integration trends |\n| Mission sets | Domain-specific deliberate practice principle | Multi-domain operations, counter-UAS, overwatch in contested EM spectrum |\n| Team structure | \"Reduce working-memory load via external task capture\" | Squad-level sniper/recon integration, Marine Force Design updates |\n| Human performance | Caffeine protocol, sleep consistency, aerobic base | Military sleep/performance studies |\n\n> **Evidence gap:** Every cell in the \"External Research Needed\" column is currently unfilled. No web search results, doctrine PDFs, or news articles were supplied beyond the single user-provided URL.\n\n---\n\n### 4. Material Evidence Gaps (disclosed)\n\n1. **No external content retrieved.** The Task & Purpose article URL is preserved (https://taskandpurpose.com/news/marines-scouts-primary-pmos/) but its text was not supplied in any artifact. I do not summarize content I have not retrieved.\n2. **No future-sniper doctrine or force-design sources.** Claims about Marine scout PMOS changes, future sniper team structure, or emerging mission sets require external sourcing that is absent here.\n3. **No technical trend data.** Sensor integration, counter-UAS, electronic warfare, and precision-guidance trends are not represented in the artifacts.\n4. **No competitive/content landscape analysis.** The user mentions \"a growing list of YouTube ideas\" but no list content was supplied.\n\n---\n\n### 5. Recommended Next Actions (inference)\n\n1. **Run the web research option** flagged in the packet (`research.current.web`) to retrieve content from the Task & Purpose article and supplementary sources on future sniper concepts, Marine scout PMOS changes, and multi-domain sniper/recon team structure.\n2. **Complete the open task** \"Review the existing processing-speed course material\" — its output (drills and mental models) can directly feed the video script's training segments.\n3. **Script the video now** using the Project Alpha framework as the human-performance spine, with placeholders for external doctrine/fact-checking once web research is retrieved.\n4. **Ship the training equipment** (the project's current next step) to unblock live precision-skill practice, which can later generate B-roll and demonstration footage for the channel.\n\n---\n\n### Source Summary\n\n| Claim | Source | Type |\n|---|---|---|\n| Project Alpha active, execution stage, next step = ship equipment | buildos_entity project:10000000-0000-4000-8000-000000000001 | Sourced |\n| Three-layer processing-speed model (Hardware/Software/Pressure) | Project Alpha \"Training Program — Full Synthesis & Weekly Template\" | Sourced |\n| Operating rules (consistency, timed practice, direct domain training, external task capture) | Project Alpha \"Program Context\" | Sourced |\n| Brain-training games have weak transfer evidence | Project Alpha \"Research Notes\" | Sourced |\n| Caffeine protocol (60–90 min after waking, noon cutoff, ≤300 mg) | Project Alpha \"Caffeine & Supplement Protocol\" | Sourced |\n| Task & Purpose article is highly relevant | User objective, URL preserved | User-stated, not retrieved |\n| Future sniper skill/mission/team structure concepts | — | Inference / unfilled |\n\n---\n\n**Bottom line:** The project artifacts give you a strong, evidence-based human-performance framework to anchor the future-sniper video, but the core external research on future sniper doctrine, mission sets, and team structure has not yet been retrieved. The single user-provided URL is preserved but not summarized because its content was not supplied. Recommend executing the flagged web-research option before finalizing the script.",
+      "error": null
+    }
+  ],
+  "summary": {
+    "overall": {
+      "runCount": 2,
+      "scoredRunCount": 0,
+      "completedCount": 0,
+      "requiredAcceptancePassCount": 0,
+      "mutationCallCount": 0,
+      "durationP50Ms": null,
+      "durationP95Ms": null,
+      "meanCostUsd": 0,
+      "totalScoredCostUsd": 0,
+      "totalOperationalCostUsd": 0.023824
+    },
+    "byScenario": {
+      "a0-c06-single-source-article": {
+        "runCount": 2,
+        "scoredRunCount": 0,
+        "completedCount": 0,
+        "requiredAcceptancePassCount": 0,
+        "mutationCallCount": 0,
+        "durationP50Ms": null,
+        "durationP95Ms": null,
+        "meanCostUsd": 0,
+        "totalScoredCostUsd": 0,
+        "totalOperationalCostUsd": 0.023824
+      }
+    },
+    "costBoundPassed": true,
+    "latencyP50BoundPassed": false,
+    "latencyP95BoundPassed": false,
+    "safetyPassed": true
+  }
+}
