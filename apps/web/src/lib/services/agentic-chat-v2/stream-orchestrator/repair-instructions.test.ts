@@ -17,6 +17,8 @@ import {
 	didWriteWithoutDurableRecord,
 	extractStatedFutureClause,
 	buildReadLoopRepairInstruction,
+	buildOrganizeCommissionRepairInstruction,
+	collectDocumentInventoryFromReads,
 	shouldRepairOrganizeCommissionNoExecution,
 	shouldRepairSkillGateNoLoad
 } from './repair-instructions';
@@ -1202,6 +1204,46 @@ describe('shouldRepairOrganizeCommissionNoExecution', () => {
 				repairAlreadyInjected: true
 			})
 		).toBe(false);
+	});
+});
+
+describe('collectDocumentInventoryFromReads', () => {
+	const TREE_RESULT = {
+		structure: {
+			root: [{ id: '11111111-1111-4111-8111-111111111111', title: 'notes', children: [] }]
+		},
+		documents: {
+			'22222222-2222-4222-8222-222222222222': {
+				id: '22222222-2222-4222-8222-222222222222',
+				title: 'pricing ideas v2 FINAL'
+			}
+		},
+		unlinked: []
+	};
+
+	it('collects id/title pairs from document read results only', () => {
+		const inventory = collectDocumentInventoryFromReads([
+			createExecution({ name: 'get_document_tree', args: {}, result: TREE_RESULT }),
+			createExecution({
+				name: 'list_onto_tasks',
+				args: {},
+				result: {
+					tasks: [{ id: '33333333-3333-4333-8333-333333333333', title: 'a task' }]
+				}
+			})
+		]);
+		const ids = inventory.map((doc) => doc.id);
+		expect(ids).toContain('11111111-1111-4111-8111-111111111111');
+		expect(ids).toContain('22222222-2222-4222-8222-222222222222');
+		expect(ids).not.toContain('33333333-3333-4333-8333-333333333333');
+	});
+
+	it('feeds the inventory into the organize repair instruction', () => {
+		const instruction = buildOrganizeCommissionRepairInstruction([
+			createExecution({ name: 'get_document_tree', args: {}, result: TREE_RESULT })
+		]);
+		expect(instruction).toContain('11111111-1111-4111-8111-111111111111');
+		expect(instruction).toContain('NEVER invent an id');
 	});
 });
 

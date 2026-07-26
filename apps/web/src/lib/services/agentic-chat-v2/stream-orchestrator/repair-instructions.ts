@@ -588,15 +588,73 @@ export function shouldRepairOrganizeCommissionNoExecution(params: {
 	return !wrote;
 }
 
-export function buildOrganizeCommissionRepairInstruction(): string {
+const DOCUMENT_READ_TOOL_NAMES = new Set([
+	'get_document_tree',
+	'list_onto_documents',
+	'get_document_outline',
+	'get_onto_document_details',
+	'read_document_section'
+]);
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The document inventory the turn has actually seen, from its own read results. Measured
+ * 2026-07-26: told to "use the document UUIDs from your earlier reads", the model instead
+ * FABRICATED four parent UUIDs for folder-style parents it wished existed — every move failed the
+ * entity-scope guard and the retry supervisor locked the turn. Weak models invent ids the moment
+ * a plan needs an entity that does not exist; the countermeasure is handing them the real
+ * inventory, not asking them to remember it.
+ */
+export function collectDocumentInventoryFromReads(
+	toolExecutions: FastToolExecution[]
+): Array<{ id: string; title: string }> {
+	const found = new Map<string, string>();
+	const sweep = (value: unknown, depth: number): void => {
+		if (depth > 6 || found.size >= 40 || value == null) return;
+		if (Array.isArray(value)) {
+			for (const item of value) sweep(item, depth + 1);
+			return;
+		}
+		if (typeof value !== 'object') return;
+		const record = value as Record<string, unknown>;
+		const id = typeof record.id === 'string' ? record.id : undefined;
+		const title = typeof record.title === 'string' ? record.title : undefined;
+		if (id && title && UUID_PATTERN.test(id)) {
+			if (!found.has(id)) found.set(id, title);
+		}
+		for (const item of Object.values(record)) sweep(item, depth + 1);
+	};
+	for (const execution of toolExecutions) {
+		const name = execution.toolCall.function?.name?.trim() ?? '';
+		if (!DOCUMENT_READ_TOOL_NAMES.has(name)) continue;
+		if (execution.result.success !== true) continue;
+		sweep(execution.result.result, 0);
+	}
+	return Array.from(found, ([id, title]) => ({ id, title }));
+}
+
+export function buildOrganizeCommissionRepairInstruction(
+	toolExecutions: FastToolExecution[] = []
+): string {
+	const inventory = collectDocumentInventoryFromReads(toolExecutions);
+	const inventoryLines =
+		inventory.length > 0
+			? `The ONLY valid document ids in this project are: ${inventory
+					.map((doc) => `${doc.id} ("${doc.title}")`)
+					.join('; ')}. Any other id will be rejected.`
+			: null;
 	return [
 		'The user commissioned a reorganization and this turn has not changed anything yet — a structure proposed in prose is not a reorganization.',
 		'Execute it now: call move_document_in_tree once per document that should live under a parent; multiple calls in this one response are expected.',
 		'Every call MUST set new_parent_id to the UUID of the parent document — a move without new_parent_id goes to the root and organizes nothing.',
-		'Pick 1-2 existing documents as the parents (the most substantial one per theme) and move the related documents under them, using the document UUIDs from your earlier reads.',
-		'Do not re-read documents you have already read, and do not restate the plan.',
-		'Then state exactly what changed, briefly.'
-	].join(' ');
+		inventoryLines,
+		'Pick 1-2 of those existing documents as the parents (the most substantial one per theme) and move the related documents under them.',
+		'NEVER invent an id. If a grouping needs a parent that does not exist yet, call create_onto_document first and use the id from its RESULT in a later call.',
+		'Do not restate the plan. Then state exactly what changed, briefly.'
+	]
+		.filter((line): line is string => Boolean(line))
+		.join(' ');
 }
 
 export function buildResearchNoPersistRepairInstruction(

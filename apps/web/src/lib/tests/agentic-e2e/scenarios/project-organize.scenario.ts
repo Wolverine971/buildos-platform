@@ -135,10 +135,21 @@ export const projectOrganizeScenario: Scenario = {
 						.filter((call) => call.function.name === 'move_document_in_tree')
 						.map((call) => `  - move_document_in_tree(${call.function.arguments})`)
 						.join('\n');
+					const moveResults = turn.toolResults
+						.filter((result) => {
+							const name = String(
+								(result.tool_name ?? result.name ?? result.tool ?? '') as string
+							);
+							const blob = name || JSON.stringify(result);
+							return blob.includes('move_document_in_tree');
+						})
+						.map((result) => `  - ${JSON.stringify(result).slice(0, 400)}`)
+						.join('\n');
 					throw new Error(
 						`[assert] only ${nestedOriginals.length} original document(s) were nested; expected at least 2.\n` +
 							(moveCalls
-								? `Moves the model actually made (a move without new_parent_id goes to root and nests nothing):\n${moveCalls}`
+								? `Moves the model actually made (a move without new_parent_id goes to root and nests nothing):\n${moveCalls}\n` +
+									`Move results (server side):\n${moveResults || '  (no move results captured)'}`
 								: 'No move_document_in_tree calls were made.')
 					);
 				}

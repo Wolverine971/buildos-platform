@@ -274,7 +274,7 @@ export async function runNoToolCallFinalization(params: {
 		return {
 			action: 'repair',
 			kind: 'organize_commission',
-			instruction: buildOrganizeCommissionRepairInstruction()
+			instruction: buildOrganizeCommissionRepairInstruction(params.toolExecutions)
 		};
 	}
 
