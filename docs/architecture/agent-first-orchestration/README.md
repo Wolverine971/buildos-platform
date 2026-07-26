@@ -2,15 +2,17 @@
 
 # Agent-First Orchestration System
 
-**Status:** Proposed
-**Date:** 2026-07-24 (Phase A status updated 2026-07-25)
+**Status:** Proposed — **Phase A closed 2026-07-26**
+**Date:** 2026-07-24 (Phase A closed 2026-07-26)
 **Owner:** BuildOS
-**Implementation state:** Phase A falsification harness built and partly measured; no durable
-system exists. A0 is complete. The fact-classification/code-decision A1 mitigation returned
-**Change** at 61/72 frozen routes; a cold direct/capability holdout scored 15/15 but did not invoke
-the scope classifier. The failed route gate still blocks A2, which has zero scored outputs. Phase
-B is not authorized. See [NEXT_ITERATION.md](./NEXT_ITERATION.md) and the
-[post-mitigation independent-review handoff](./PHASE_A_POST_MITIGATION_HANDOFF_2026-07-25.md).
+**Implementation state:** Phase A is **closed**; the recorded decision is in
+[PHASE_A_RESULTS.md](./PHASE_A_RESULTS.md). The routing gate was recorded as
+**instrument-limited**: the 65/72 bound was arithmetically unreachable (3 of 13 corpus labels
+contested; two depend on snapshot facts the router cannot see), so the track was closed rather
+than restated. Final scored state: A1 mitigation v2 = Change at 61/72; A2 built but never scored.
+The architecture hypothesis is neither corroborated nor falsified; the quality question moves to
+the [open-brief instrument](./OPEN_BRIEF_EVAL_METHODOLOGY.md). No durable system exists and Phase
+B is not authorized.
 
 ## Purpose
 

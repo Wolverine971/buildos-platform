@@ -4,11 +4,13 @@
 
 **Created 2026-07-24.** Owner: agent-first orchestration implementer.
 **Type:** bounded falsification build — model-behavior evidence before any durable engineering.
-**Status:** A0 complete. Routing mitigation v2 returned **Change** at 61/72 frozen routes; the cold
-holdout scored 15/15 on the fast path only. Direct latency passed. The reason-driven plan variance
-has been removed with feature-derived workflow topology, but the failed route score still blocks
-A2. A2 code, the fresh control cohort, and the evaluation-only non-ZDR transport are complete.
-Zero workflow outputs have entered the score.
+**Status: CLOSED 2026-07-26.** DJ closed the routing-gate track after the A1 label exercise showed
+the 65/72 gate arithmetically unreachable (3/13 labels contested; two depend on post-route
+knowledge). Recorded decision: `docs/architecture/agent-first-orchestration/PHASE_A_RESULTS.md`.
+Final scored state: A1 mitigation v2 = Change (61/72); holdout 15/15 fast-path only; A2 built,
+never scored. Carry-forward: peek-then-decide router design, a `context-then-decide` route, the
+contracts package. The quality question continues in the open-brief instrument
+(`OPEN_BRIEF_EVAL_METHODOLOGY.md` + `corpus/open-brief-v1.json`, Blocks B/C folded 2026-07-26).
 
 **Architecture:** `docs/architecture/agent-first-orchestration/README.md` (system rationale),
 `V0_ARCHITECTURE_PLAN.md` (contracts, state machines, phases — revised 2026-07-24),

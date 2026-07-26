@@ -2,9 +2,11 @@
 
 # Phase A: Falsification Plan
 
-**Status:** A0 complete; A1 routing mitigation v2 = **Change** (61/72 frozen routes; cold holdout
-15/15 on the fast path only); A2 built but blocked and not scored
-**Date:** 2026-07-25 (amended after [Phase A Audit](./PHASE_A_AUDIT_2026-07-25.md))
+**Status:** **CLOSED 2026-07-26 — routing gate recorded as instrument-limited; decision in
+[PHASE_A_RESULTS.md](./PHASE_A_RESULTS.md).** Final scored state: A0 complete; A1 routing
+mitigation v2 = **Change** (61/72 frozen routes; cold holdout 15/15 on the fast path only); A2
+built but never scored. See Amendment 5 below.
+**Date:** 2026-07-25 (amended after [Phase A Audit](./PHASE_A_AUDIT_2026-07-25.md); closed 2026-07-26)
 **Depends on:** [README](./README.md), [V0 Architecture Plan](./V0_ARCHITECTURE_PLAN.md),
 [Audit 2026-07-24](./AUDIT_2026-07-24.md), [Phase A Audit](./PHASE_A_AUDIT_2026-07-25.md)
 **Runbook for the next iteration:** [NEXT_ITERATION.md](./NEXT_ITERATION.md)
@@ -178,6 +180,36 @@ instead of failing a check; agents self-report against the criterion ids their s
 bytes so their recorded SHA-256 values reproduce again; the results, corpus, and fixture
 directories are in `.prettierignore`; and `results-manifest.test.ts` now fails if any recorded hash
 stops reproducing.
+
+### Amendment 5 — 2026-07-26, CLOSURE: routing gate recorded as instrument-limited
+
+DJ closed the routing-gate track on 2026-07-26 after the A1 human-label exercise
+([`A1_HUMAN_LABEL_PACKET.md`](./A1_HUMAN_LABEL_PACKET.md), agent-labeled at DJ's direction with
+labels locked before the frozen corpus was opened). The full recorded decision is in
+[`PHASE_A_RESULTS.md`](./PHASE_A_RESULTS.md); the rule-relevant facts:
+
+1. **The 65/72 gate was never cleanly reachable.** The label exercise found **3 of 13 items
+   contested** (C09, C10 week-planning, C01 in-sync score). By this plan's own arithmetic, two
+   genuinely 50/50 items cap the achievable score at 63/72 — below the gate with a perfect
+   router. The reanalysis independently showed max reachable = 63/72 with C09 counted as an
+   error. The gate's unreachability is a property of the instrument that was true before any
+   scoring, so closing on it is legitimate and is not outcome-driven gate-shopping.
+
+2. **Two frozen labels depend on post-route knowledge.** C09=`clarify` and C01=`direct` are each
+   justified by snapshot contents the router cannot see from the world card (entity counts only).
+   Scoring a router against answers that require having already looked measures priors, not
+   routing. Carried forward as a design requirement: peek-then-decide, or an explicit
+   `context-then-decide` route.
+
+3. **The taxonomy cannot hold context → recommendation.** "Help me plan this week" fits neither
+   `direct` nor `workflow` as defined; both fence votes in the label exercise came from exactly
+   this hole.
+
+4. **No further routing cohorts are authorized.** The recorded scored state stands as measured
+   (mitigation v2 = Change, 61/72; holdout 15/15 fast-path only). The quality half of the Phase A
+   hypothesis (A2, never scored) moves to the open-brief instrument
+   ([`OPEN_BRIEF_EVAL_METHODOLOGY.md`](./OPEN_BRIEF_EVAL_METHODOLOGY.md)), which also carries
+   DJ's captured acceptance bar. Phase B remains unauthorized.
 
 ### Scored sample and invalid-run rule
 
