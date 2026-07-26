@@ -634,6 +634,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					'Supervisor note: the user commissioned a document reorganization and no write has happened yet.',
 					`For the next response, use only these write tools: ${toolNames.join(', ')}.`,
 					'Execute the reorganization now — call move_document_in_tree once per document that needs a new parent; multiple calls in this one response are expected.',
+					'Every call MUST set new_parent_id to the UUID of the parent document — a move without new_parent_id goes to the root and organizes nothing.',
 					'Group related documents under a sensible existing parent document.',
 					'Do not call reads, searches, schemas, skills, or any other discovery tools in this pass.'
 				].join(' ')

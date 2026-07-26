@@ -131,8 +131,15 @@ export const projectOrganizeScenario: Scenario = {
 					originalIds.has(childId)
 				);
 				if (nestedOriginals.length < 2) {
+					const moveCalls = turn.toolCalls
+						.filter((call) => call.function.name === 'move_document_in_tree')
+						.map((call) => `  - move_document_in_tree(${call.function.arguments})`)
+						.join('\n');
 					throw new Error(
-						`[assert] only ${nestedOriginals.length} original document(s) were nested; expected at least 2`
+						`[assert] only ${nestedOriginals.length} original document(s) were nested; expected at least 2.\n` +
+							(moveCalls
+								? `Moves the model actually made (a move without new_parent_id goes to root and nests nothing):\n${moveCalls}`
+								: 'No move_document_in_tree calls were made.')
 					);
 				}
 				const childrenPerParent = new Map<string, number>();

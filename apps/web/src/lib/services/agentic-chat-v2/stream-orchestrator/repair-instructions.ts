@@ -592,7 +592,8 @@ export function buildOrganizeCommissionRepairInstruction(): string {
 	return [
 		'The user commissioned a reorganization and this turn has not changed anything yet — a structure proposed in prose is not a reorganization.',
 		'Execute it now: call move_document_in_tree once per document that should live under a parent; multiple calls in this one response are expected.',
-		'Group related documents under a sensible existing parent document.',
+		'Every call MUST set new_parent_id to the UUID of the parent document — a move without new_parent_id goes to the root and organizes nothing.',
+		'Pick 1-2 existing documents as the parents (the most substantial one per theme) and move the related documents under them, using the document UUIDs from your earlier reads.',
 		'Do not re-read documents you have already read, and do not restate the plan.',
 		'Then state exactly what changed, briefly.'
 	].join(' ');
