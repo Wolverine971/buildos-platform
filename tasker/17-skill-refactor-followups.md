@@ -1,36 +1,52 @@
 <!-- tasker/17-skill-refactor-followups.md -->
 
-# 17 — Skill ontology refactor: post-commit review debt + DJ decision queue
+# 17 — Skill ontology refactor: verification debt + DJ decision queue
 
-**Priority:** P2 — refactor is committed and green; this is quality debt + rulings
+**Priority:** P3 — the refactor is committed, green, and in daily use; this is quality debt
 **Type:** Engineering review + DJ decisions
-**Sources:** committed skill ontology implementation, collapsed 7/02 routing assessment handoffs, and local diff review against the skill definitions
+**Live-test runbook:** `docs/testing/SKILL_ONTOLOGY_LIVE_TEST_PROMPTS.md` (moved out of `tasker/`
+2026-07-24 — it is a runbook, not a tracker)
 
-## State
+## State (refreshed 2026-07-24)
 
-All 52 SKILL.md files migrated to the canonical block ontology; validator live; 55/55 skills tests green; typecheck clean. **Committed in `2655b199` — but the planned adversarial review did not happen before commit.** The commit shipped anyway, so the review debt is now post-hoc.
+All SKILL.md files were migrated to the canonical block ontology; the validator is live; the skills
+test suite and typecheck are green. Committed in `2655b199`. The planned adversarial review never
+happened before that commit, so the review debt below is post-hoc.
 
-## Routing assessment status (collapsed 2026-07-03)
+The routing/enforcement fix wave — skill-load gate in domain sensing, broader lite-prompt skill
+policy, current-date anchoring for project creation, alias word-boundary matching (the `ui`-inside-
+"BuildOS" false positive), story/narrative recall terms, and deterministic finalization repair when
+a gated turn answers without a loaded skill — **is committed and deployed.** The old "local/
+uncommitted" caveat is stale.
 
-The first live test did not verify the refactored skills: project creation ran, but the script and hook turns produced base-model output with zero `skill_load` calls, and "end of July" persisted as `2025-07-31`.
-
-The follow-up local fix wave added: a skill-load gate in domain sensing, broader lite-prompt skill policy, current-date anchoring for project creation, alias word-boundary matching (fixing the `ui` inside "BuildOS" false positive), story/narrative recall terms, and a deterministic finalization repair when a gated turn tries to answer without a loaded skill. The partial rerun proved the date fix plus script/hook skill loading, but content fidelity was uneven and the full suite was not rerun after the second fix wave. These fixes are local/uncommitted until [15](15-commit-staged-work.md) lands.
+A partial rerun of the live suite proved the date fix and script/hook skill loading. Content
+fidelity was uneven and the **full suite has never been rerun** against the fixed environment.
 
 ## Loose ends
 
-1. **Run the full post-fix live suite** in [17a](17-skill-live-test-prompts.md), using fresh project-scoped chats and treating no `skill_load` on a gated turn as a failure. Confirm whether the local fixes were active before scoring.
-2. **Five skills still need fidelity verification**: `sensory_double_tap`, `ui_ux_quality_review`, `usability_quick_research`, `viral_video_script_structure`, `youtube_channel_craft_for_founders`. The auto-verifier has a known blind spot — `project_creation` passed it while actually dropping rendered content. Sample-diff these five against pre-refactor.
-3. **Script/hook content contract fidelity is still weak** even when the correct skill loads. Add eval/contract checks or manually score against [17a](17-skill-live-test-prompts.md)'s pass signals before calling the skills verified.
-4. **Cold-email sensing recall remains open**: "cold-emailed" can still return null because the scorer lacks stemming/alias coverage, so the gate may not fire for that family.
-5. **DJ decision queue:** DRY single-owner rulings (`calendar_management`↔`google_calendar`, UI-review ×8, cold-email ×11, content/lens ×9, ontology entity-chain dupes); merge candidate `project_audit`↔`project_forecast`; reference-extraction candidates (`viral_video_script_structure` 342 lines, `cold_email_learning_review`); ratify the synthesized `google_calendar` Contract.
-6. **Validator soundness questions:** orphan_dependency relaxation, `migrated_requires_preserve_markdown` invariant, alias-map collisions, `stripReferenceFrontmatter` regex, `internal-default` vs `(internal default)` spelling.
-
-## Next action
-
-1. Commit the local routing/enforcement fixes with [15](15-commit-staged-work.md), then rerun the [17a](17-skill-live-test-prompts.md) suite against the environment that contains those fixes.
-2. Run the fidelity sample-diff on the 5 unverified skills (highest risk: `viral_video_script_structure`, largest file).
-3. Schedule a 30-minute DJ pass on the §13.3 decision queue — the rulings unblock the DRY dedup work.
+1. **Run the full post-fix live suite** — `docs/testing/SKILL_ONTOLOGY_LIVE_TEST_PROMPTS.md`.
+   Fresh project-scoped chat per prompt; **no `skill_load` on a gated turn = routing failure, stop
+   scoring that turn's content.** Confirm the fixes are active first: look for `Skill-load gate:
+ACTIVE` in the prompt snapshot and a `Current date:` line in project-create turns.
+2. **Five skills still need fidelity verification** — `sensory_double_tap`,
+   `ui_ux_quality_review`, `usability_quick_research`, `viral_video_script_structure`,
+   `youtube_channel_craft_for_founders`. All five still exist (verified 2026-07-24). The
+   auto-verifier's known blind spot is _silently dropped rendered content_ — `project_creation`
+   passed it while dropping content — so sample-diff these against pre-refactor rather than
+   trusting the verifier. Highest risk: `viral_video_script_structure` (largest file, 342 lines).
+3. **Cold-email sensing recall** — "cold-emailed" can still return null because the scorer lacks
+   stemming/alias coverage, so the gate may not fire for that family.
+4. **DJ decision queue** — DRY single-owner rulings (`calendar_management` ↔ `google_calendar`,
+   UI-review ×8, cold-email ×11, content/lens ×9, ontology entity-chain dupes); merge candidate
+   `project_audit` ↔ `project_forecast`; reference-extraction candidates
+   (`viral_video_script_structure`, `cold_email_learning_review`); ratify the synthesized
+   `google_calendar` Contract. **Note:** the skill set has churned since this queue was written
+   (7/03) — re-derive the duplicate list before spending DJ time on stale pairs.
+5. **Validator soundness questions** — orphan_dependency relaxation,
+   `migrated_requires_preserve_markdown` invariant, alias-map collisions,
+   `stripReferenceFrontmatter` regex, `internal-default` vs `(internal default)` spelling.
 
 ## Done when
 
-Full live suite rerun logged, 5 skills verified or fixed, DJ rulings recorded, and validator questions answered or dismissed.
+Full live suite rerun and logged, the 5 skills verified or fixed, DJ rulings recorded, and the
+validator questions answered or dismissed.

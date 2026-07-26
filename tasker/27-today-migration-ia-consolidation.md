@@ -5,9 +5,18 @@
 **Created 2026-07-11.** Owner: next product/engineering agent.
 **Type:** scoped build handoff, derived from the full-platform audit
 (`docs/technical/reviews/BUILDOS_FULL_PLATFORM_AUDIT_2026-07-11.md`).
-**Prereqs / relations:** continues [25](25-today-view-dashboard-v2-handoff.md) and
-[26](26-phase1-onboarding-activation-slice.md); the daily-brief items overlap the 7/06 daily-brief
-cleanup plan; the chat-security item is tracked separately in [20](20-agentic-chat-wave3-security-brief.md).
+**Prereqs / relations:** continues the `/today` build (`apps/web/docs/features/today-view/TODAY_VIEW_2026-07-09.md`)
+and the Phase 1 onboarding activation slice (shipped in `3ab66905`; its remaining live checks are in
+[38](38-live-verification-debt.md) §4). The daily-brief items overlap the 7/06 daily-brief cleanup
+plan; the chat-security item is tracked separately in [20](20-agentic-chat-wave3-security-brief.md).
+
+**Carried in from the closed `/today` handoff (tasker 25, deleted 2026-07-24) — remaining polish,
+all small and independent:** inline capture processing state (needs a headless turn or run
+dispatch — consider an `agent_run` rather than chat), run-level receipts (fold
+`agent_runs.result.entities_touched` / `agent_tool_executions` into What Changed), reschedule /
+push-to-tomorrow row action, multi-day peek, capture `@project` targeting hints, and a **real-phone
+mobile check** (code-hardened, never pixel-verified; browser automation cannot do this on DJ's
+machine — his zoom pins the automation viewport at desktop width).
 
 ## Why this build, in one paragraph
 
@@ -27,7 +36,7 @@ fixes so consolidating onto RPC-backed feeds is safe.
   things to fix this week", §Surfaces, and the §"Recommended sequence" are this tasker's spec.
 - `apps/web/docs/technical/audits/DASHBOARD_RESPONSIVENESS_FIX_PLAN_2026-07-07.md` — what the
   dashboard already is; don't re-polish what's headed for deletion.
-- `tasker/26-phase1-onboarding-activation-slice.md` §Decisions — decision 1 scoped the flip to
+- the Phase 1 onboarding slice (tasker 26, deleted 2026-07-24; see `3ab66905`) scoped the flip to
   exactly `/` and `ReadyStep`; this tasker extends it to the auth funnel (a deliberate follow-on,
   not a bug in 26).
 
@@ -108,7 +117,7 @@ Acceptance: fresh password login, Google login, and Google register all land on 
 
 The `/`→`/today` flip has no onboarding-completion check, and `/today` has no onboarding gate, so a
 mid-onboarding user hitting the bare domain or logo is dropped onto an empty `/today` — bypassing
-the tasker/26 forcing function.
+the Phase 1 onboarding forcing function.
 
 - Add an `onboarding_completed_at` check to the `/`→`/today` flip (`hooks.server.ts:509-515`)
   and/or `routes/today/+page.server.ts`: incomplete non-explore users → `/onboarding` (or

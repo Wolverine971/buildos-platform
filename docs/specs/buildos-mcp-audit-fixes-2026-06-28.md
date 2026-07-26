@@ -133,17 +133,17 @@ confirmed the core properties hold (read-only enforcement is double-layered, `pr
 filtering covers every gateway handler examined, RFC 8707 / PKCE / refresh-family-burn all
 verified) and produced a second fix round:
 
-| #   | Sev   | Item                                                                                   | Status             |
-| --- | ----- | -------------------------------------------------------------------------------------- | ------------------ |
-| 10  | 🔴 P1 | `extractAllowedOpsFromPolicy` failed **open**: malformed/stale stored allowlist fell back to the full mode-default op surface. Now narrows per-entry, never widens. | ✅ DONE 2026-07-01 |
+| #   | Sev   | Item                                                                                                                                                                                                                                 | Status             |
+| --- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
+| 10  | 🔴 P1 | `extractAllowedOpsFromPolicy` failed **open**: malformed/stale stored allowlist fell back to the full mode-default op surface. Now narrows per-entry, never widens.                                                                  | ✅ DONE 2026-07-01 |
 | 11  | 🔴 P1 | OAuth token scope derived from the shared caller policy (overwritten on every re-consent) instead of the grant. Now grant-bound + clamped by the token's immutable scope string — a read-only-era token can never become read_write. | ✅ DONE 2026-07-01 |
-| 12  | 🟡 P2 | Only `notifications/initialized` got the spec's 202; `notifications/cancelled` etc. got a 400 error. All id-less `notifications/*` → 202. | ✅ DONE 2026-07-01 |
-| 13  | 🟡 P2 | `general` profile hid discovery tools from `tools/list` but still executed them via `tools/call`. Now blocked at call time. | ✅ DONE 2026-07-01 |
-| 14  | 🟡 P2 | Bridge README instructed `npx -y @buildos/mcp-server`, which cannot resolve while the package is `private`. Local-build setup documented. | ✅ DONE 2026-07-01 |
-| 15  | 🟢 P3 | `resources/read` miss returned `-32003`; MCP reserves `-32002` for resource-not-found. | ✅ DONE 2026-07-01 |
-| 16  | 🟢 P3 | Bridge: no fetch timeout (hung remote hung the client); plain `http://` accepted for non-loopback hosts (cleartext key). 60s timeout + https enforcement. | ✅ DONE 2026-07-01 |
-| 17  | 🟢 P3 | Repro gaps: notifications→202 and authenticated GET→405 unprobed; batch probe asserted only the status; `tools/call` fallback could invoke an arbitrary (write) tool. All fixed; non-read tools are never invoked. | ✅ DONE 2026-07-01 |
-| 18  | 🟢 P3 | Auth-failure security events logged 7 chars of secret key body (`credentialPrefix: token.slice(0,12)`). Now logs only the scheme prefix. | ✅ DONE 2026-07-01 |
+| 12  | 🟡 P2 | Only `notifications/initialized` got the spec's 202; `notifications/cancelled` etc. got a 400 error. All id-less `notifications/*` → 202.                                                                                            | ✅ DONE 2026-07-01 |
+| 13  | 🟡 P2 | `general` profile hid discovery tools from `tools/list` but still executed them via `tools/call`. Now blocked at call time.                                                                                                          | ✅ DONE 2026-07-01 |
+| 14  | 🟡 P2 | Bridge README instructed `npx -y @buildos/mcp-server`, which cannot resolve while the package is `private`. Local-build setup documented.                                                                                            | ✅ DONE 2026-07-01 |
+| 15  | 🟢 P3 | `resources/read` miss returned `-32003`; MCP reserves `-32002` for resource-not-found.                                                                                                                                               | ✅ DONE 2026-07-01 |
+| 16  | 🟢 P3 | Bridge: no fetch timeout (hung remote hung the client); plain `http://` accepted for non-loopback hosts (cleartext key). 60s timeout + https enforcement.                                                                            | ✅ DONE 2026-07-01 |
+| 17  | 🟢 P3 | Repro gaps: notifications→202 and authenticated GET→405 unprobed; batch probe asserted only the status; `tools/call` fallback could invoke an arbitrary (write) tool. All fixed; non-read tools are never invoked.                   | ✅ DONE 2026-07-01 |
+| 18  | 🟢 P3 | Auth-failure security events logged 7 chars of secret key body (`credentialPrefix: token.slice(0,12)`). Now logs only the scheme prefix.                                                                                             | ✅ DONE 2026-07-01 |
 
 Newly catalogued, deferred with rationale:
 

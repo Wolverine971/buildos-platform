@@ -33,8 +33,8 @@ origin-validated, self-audited, with a one-command repro. We are at the former, 
 | Phase 1    | Remote MCP hardening (hand-rolled) | **DONE (2026-06-12)** | Validated-origin CORS, origin allow-list (403), GET→405/401, Content-Type/Accept/protocol-version checks, security events. 25 connector tests green.       |
 | Phase 2    | Productized tool surface           | **DONE (2026-06-13)** | Connector profiles (general/chatgpt_data_app/local_admin via `?profile=`), read-only `search`/`fetch`, discovery off by default. 32 connector tests green. |
 | Phase 3    | Local stdio bridge package         | **DONE (2026-06-13)** | `packages/buildos-mcp-server` (`@buildos/mcp-server`) ships: SDK-free core + stdio entrypoint. 12 tests, typecheck + build + stdio smoke all green.        |
-| Self-audit | Lethal-trifecta threat model       | **DONE (2026-06-28)** | `buildos-mcp-lethal-trifecta-self-audit-2026-06-28.md`.                                                                                                           |
-| Repro      | One-command repro                  | **DONE (2026-06-28)** | `apps/web/scripts/mcp-connector-repro.mjs` (`pnpm --filter @buildos/web mcp:repro`).                                                                                                                                     |
+| Self-audit | Lethal-trifecta threat model       | **DONE (2026-06-28)** | `buildos-mcp-lethal-trifecta-self-audit-2026-06-28.md`.                                                                                                    |
+| Repro      | One-command repro                  | **DONE (2026-06-28)** | `apps/web/scripts/mcp-connector-repro.mjs` (`pnpm --filter @buildos/web mcp:repro`).                                                                       |
 
 ### What is actually true in code today
 

@@ -4,12 +4,13 @@
 
 **Created 2026-07-22.** Owner: Email relevance / product engineer.  
 **Type:** bounded internal evaluation build.  
-**Status:** A0, Slice 1, and the synthetic Slice 2 control plane are complete. Slice 3 now has a
-tested metadata-only gateway, deterministic A/B scorer, direct bounded driver, and deployed
-exact-file migration `20260723223402`. The physical schema passes its read-only production checks,
-the migration ledger is aligned, and production types are regenerated. Both Phase A flags remain
-default off, no scan queue or production invocation route is registered, and no real Gmail or model
-call has been run.
+**Status:** A0, Slice 1, Slice 2, and the bounded Slice 3 live pilot are complete. The pilot processed
+2,148 observations across three read-only Gmail connections and produced content-free A/B
+candidates with no model, mailbox write, queue, watch, polling loop, or project mutation. The scan
+gate was returned to default off. Slice 4 review/evaluation is implemented behind its own
+default-off exact-user gate; its production schema, forward reconciliation, retention enforcement,
+physical verifier, migration ledger, fresh production types, and shared-types build are complete.
+The web deployment, 300 human decisions, aggregate decision, and retention receipt remain.
 
 **Handoff:** `apps/web/docs/technical/email/HANDOFF-PHASE-A-PROJECT-RELEVANCE.md`  
 **Slice 2 handoff:**
@@ -94,18 +95,18 @@ and cost whether daily-brief ingestion is warranted.
 - [x] Implement B: structured-profile lexical score plus negative evidence.
 - [x] Store evidence/hashes/provenance only; never body or attachment content.
 - [x] Add wrong-user/account, budget, retry, disconnect, and content-leak tests.
-- [ ] Complete the synthetic three-connection lifecycle.
+- [x] Complete the synthetic three-connection lifecycle.
 - [x] Apply the reviewed exact-file migration through the forward protocol, verify the physical
       schema read-only, align only its ledger version, and regenerate production types.
-- [ ] Wire the reviewed private invocation before recording the explicitly authorized exact-user
+- [x] Wire the reviewed private invocation before recording the explicitly authorized exact-user
       pilot receipt with flags otherwise off.
 
 ## Slice 4 — Review and evaluation
 
-- [ ] Add candidate review with account, project, and evidence provenance.
-- [ ] Add link/other-project/not-relevant/always-link/never-suggest decisions.
-- [ ] Sample all positives plus stratified apparent negatives.
-- [ ] Produce versioned quality, review-burden, Gmail-quota, latency, and cost reports.
+- [x] Add candidate review with account, project, and evidence provenance locally.
+- [x] Add correct/wrong/other-project/not-relevant/ambiguous and always/never proposal decisions.
+- [x] Build a deterministic, variant-aware 100-item-per-account sample without A/B double-counting.
+- [x] Produce versioned quality, review-burden, Gmail-quota, latency, and cost metrics locally.
 - [ ] Collect at least 300 decisions, with at least 100 per account.
 
 ## Slice 5 — Optional C/D bakeoff
@@ -128,10 +129,11 @@ and cost whether daily-brief ingestion is warranted.
 
 ## Immediate next task
 
-Execute `HANDOFF-PHASE-A-SLICE-3-PILOT-COMPLETION.md`: complete the synthetic three-connection
-lifecycle, then wire the reviewed exact-user private invocation and separately authorize a pilot.
-Keep both flags off by default; do not add a model, mailbox body/attachment read, watch, recurring
-poll, queue secret, or Gmail mutation.
+Execute the remaining sequence in `HANDOFF-PHASE-A-SLICE-4-REVIEW-EVALUATION.md`: deploy the web
+revision with review off, verify the route stays 404 and the retention job remains content-free,
+then prepare and adjudicate the 300-item exact-user sample before source retention expires. Keep
+scan and model flags off; do not rerun ingestion, read bodies/attachments, add a queue/watch/poll,
+mutate Gmail, or mutate projects.
 
 ## Current verification
 
@@ -158,3 +160,22 @@ poll, queue secret, or Gmail mutation.
   `gmail_relevance_scan_control_plane_ok` on the extended schema.
 - Slice 3 focused Gmail plus Phase A suites: 83/83 passing across 19 files; focused lint passing.
 - Full `@buildos/web` check: zero errors and zero warnings at the local Slice 3 checkpoint.
+- Slice 3 live pilot: 2,148/2,148 observations processed across three scopes; 1,724 A candidates,
+  731 B candidates, 2,170 provider calls, 43,070 Gmail units, and no retries or provider errors.
+- Temporary Slice 3 production flags were removed and the private pilot route returned to 404.
+- Slice 4 plus the full Gmail relevance/admin/retention-route suite: 145/145 passing across 28
+  files.
+- Slice 4 disposable PostgreSQL harness returns `gmail_relevance_review_evaluation_ok`; the
+  read-only production physical verifier reports all 16 checks plus the aggregate installation
+  check `ok`.
+- Current `@buildos/web` check: zero errors and zero warnings; review Svelte autofixer has no
+  findings.
+- Production Slice 4 preflight found an older, unledgered draft with zero samples and zero
+  adjudications. Forward migration `20260724040000` reconciled it without dropping data; retention
+  `20260724030000` and reconciliation were exact-file applied, and exact versions `20260724020000`,
+  `20260724030000`, and `20260724040000` now align locally/remotely.
+- Fresh production types report 245 tables and 14 views; derived schema and
+  `@buildos/shared-types` build pass.
+- Production now has Vercel's reserved `CRON_SECRET`; Phase A scan/review variables remain absent.
+  The current review and retention routes both return 404, and the pending production web build
+  passes locally.

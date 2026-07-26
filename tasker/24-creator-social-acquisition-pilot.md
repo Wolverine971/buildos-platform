@@ -95,7 +95,9 @@ Carry no more than three unexecuted social items between sessions.
 
 ## Activation Coordination
 
-Coordinate with [`22-activation-as-strategy-assessment.md`](22-activation-as-strategy-assessment.md). The social pilot specifically needs:
+Coordinate with the activation assessment
+(`docs/product/activation-as-strategy-assessment-2026-07-07.md`). The social pilot specifically
+needs:
 
 - audience and campaign preserved in attribution;
 - first real capture observed;
