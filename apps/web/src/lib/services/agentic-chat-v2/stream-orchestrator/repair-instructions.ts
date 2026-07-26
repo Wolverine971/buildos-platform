@@ -552,8 +552,11 @@ export function shouldRepairResearchNoPersist(params: {
 	) {
 		return false;
 	}
-	// A turn that stopped to ask produced no work product to persist yet.
-	if (looksLikePureClarifyingQuestion(params.finalText.trim())) return false;
+	// Deliberately NO looksLikePureClarifyingQuestion waiver (removed 2026-07-26, DJ call, after
+	// the same waiver measurably dropped stated futures 2/5 on the sibling gate). A turn that ran
+	// two or more web searches has findings worth keeping regardless of how its reply ends, and a
+	// trailing "want me to save this?" is the needless-confirmation anti-pattern, not a genuine
+	// blocker. The repair instruction still permits a real blocking question — after persisting.
 	return true;
 }
 
@@ -568,6 +571,7 @@ export function buildResearchNoPersistRepairInstruction(
 		'Include a Sources section listing the URLs used, and a short section naming anything you looked for and could not resolve.',
 		'Then write the final reply as 3-5 bottom-line-up-front takeaways plus one line naming the document the detail lives in.',
 		'Do not paste the document body into the reply.',
+		'If you still need an answer from the user before going further, persist first, then ask — an unanswered question must not cost the research.',
 		'If the user explicitly asked you not to save anything, say so in one line instead of writing.'
 	].join(' ');
 }

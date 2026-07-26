@@ -135,7 +135,8 @@ function resolveProjectSurfaceProfileForTurn(
 	const text = latestUserMessage?.trim().toLowerCase() ?? '';
 	if (!text) return null;
 
-	const documentWriteTurn = looksLikeProjectDocumentWriteTurn(text);
+	const documentWriteTurn =
+		looksLikeProjectDocumentWriteTurn(text) || looksLikeProjectDocumentOrganizeTurn(text);
 	const mutationTurn = looksLikeProjectMutationTurn(text);
 
 	// Mixed turns (e.g. "Chapter 2 complete — draft chapter 3 and save progress
@@ -157,6 +158,22 @@ function resolveProjectSurfaceProfileForTurn(
 
 function looksLikeProjectDocumentWriteTurn(text: string): boolean {
 	return /\b(?:append|capture|save|add|create|make|build|update|revise|draft|write|organize|move)\b[\s\S]{0,80}\b(?:document|doc|notes?|research|outline|brief|context|summary|log|chapter|scene)\b/i.test(
+		text
+	);
+}
+
+/**
+ * Document-ORGANIZATION turns, order-free. The verb-then-noun regex above misses the way this
+ * request is actually said: "this project's documents are a mess ... help me get it organized" —
+ * nouns first, verb last, and "organized" (past participle) fails `\borganize\b`. Measured
+ * 2026-07-26: that message resolved `project_basic` (zero write tools), so `project-organize`
+ * failed 0/3 with the model reading six documents and never holding `move_document_in_tree`.
+ * A doc-noun plus an organization verb anywhere in the message mounts the document surface; a
+ * false positive costs surface tokens, never a write — restraint is owned by the model and gates.
+ */
+function looksLikeProjectDocumentOrganizeTurn(text: string): boolean {
+	if (!/\b(?:documents?|docs?|notes?|files?)\b/i.test(text)) return false;
+	return /\b(?:re)?organiz\w*\b|\brestructur\w*\b|\btid(?:y|ie)\w*\b|\bclean\s+(?:it\s+|this\s+|things\s+)?up\b|\bsort\s+(?:out|these|them|it|the)\b|\bgroup\s+(?:these|them|the|related)\b/i.test(
 		text
 	);
 }

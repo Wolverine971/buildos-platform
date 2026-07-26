@@ -425,6 +425,39 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('move_document_in_tree');
 	});
 
+	it('routes noun-first organize requests to the document profile', () => {
+		// The project-organize e2e message verbatim. Measured 2026-07-26: this resolved
+		// project_basic (no write tools) because "organized" is a past participle AFTER the
+		// nouns, and the verb-then-noun regex missed it — 0/3 with the model never holding
+		// move_document_in_tree.
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+
+		const names = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage:
+				"This project's documents are a mess — loose notes, raw meeting dumps, half-baked " +
+				'ideas, all piled at the top level. Help me get it organized into something sensible.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).toContain('get_document_tree');
+		expect(names).toContain('move_document_in_tree');
+	});
+
+	it('does not mount the document surface for a plain document question', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+
+		const names = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage: 'Which documents do we have in this project?'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).not.toContain('move_document_in_tree');
+	});
+
 	it('routes mixed task+document turns to the union write/document profile', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 

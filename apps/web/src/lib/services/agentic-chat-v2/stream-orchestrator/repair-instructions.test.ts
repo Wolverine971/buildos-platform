@@ -959,14 +959,16 @@ describe('shouldRepairResearchNoPersist', () => {
 		).toBe(true);
 	});
 
-	it('allows a turn that stopped to ask a clarifying question', () => {
+	it('fires even when the final text is a question — findings must not cost an unanswered ask', () => {
+		// The '?' waiver was removed 2026-07-26 (DJ call): four searches produced real findings,
+		// and the repair instruction tells the model to persist first, THEN ask.
 		expect(
 			shouldRepairResearchNoPersist({
 				finalText: 'Which market should I compare against — US or UK?',
 				toolExecutions: research(4),
 				repairAlreadyInjected: false
 			})
-		).toBe(false);
+		).toBe(true);
 	});
 
 	it('never injects twice in one turn', () => {
