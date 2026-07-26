@@ -21,6 +21,7 @@ import {
 	isWriteLikeOperation
 } from './tool-classification';
 import { extractGatewayRequiredFieldFailuresFromValidationIssues } from './round-analysis';
+import { looksLikeProjectDocumentOrganizeTurn } from '../tool-selector';
 import {
 	classifyToolFailure,
 	isNotFoundFailure,
@@ -558,6 +559,43 @@ export function shouldRepairResearchNoPersist(params: {
 	// trailing "want me to save this?" is the needless-confirmation anti-pattern, not a genuine
 	// blocker. The repair instruction still permits a real blocking question — after persisting.
 	return true;
+}
+
+/**
+ * Organize-commission floor (2026-07-26).
+ *
+ * "Help me get these documents organized" is a commission, and the failure mode is a turn that
+ * reads everything, proposes a structure in prose, and moves nothing. Measured on
+ * `project-organize`: 0/3 with a read-only surface (router fix), then 0/3 with the surface
+ * mounted and the read-loop ladder steering to execute — the model batches its reads into a few
+ * rounds, never trips the ladder, and finalizes voluntarily with a plan. So the floor lives at
+ * finalization, like the stated-future gate: a commissioned reorganization may not end with zero
+ * writes and no repair round.
+ *
+ * Deliberately no clarifying-question waiver — that escape hatch measurably gets taken (twice
+ * this week).
+ */
+export function shouldRepairOrganizeCommissionNoExecution(params: {
+	latestUserText: string;
+	toolExecutions: FastToolExecution[];
+	repairAlreadyInjected: boolean;
+}): boolean {
+	if (params.repairAlreadyInjected) return false;
+	if (!looksLikeProjectDocumentOrganizeTurn(params.latestUserText)) return false;
+	const wrote = params.toolExecutions.some(
+		(execution) => isWriteLedgerToolExecution(execution) && execution.result.success === true
+	);
+	return !wrote;
+}
+
+export function buildOrganizeCommissionRepairInstruction(): string {
+	return [
+		'The user commissioned a reorganization and this turn has not changed anything yet — a structure proposed in prose is not a reorganization.',
+		'Execute it now: call move_document_in_tree once per document that should live under a parent; multiple calls in this one response are expected.',
+		'Group related documents under a sensible existing parent document.',
+		'Do not re-read documents you have already read, and do not restate the plan.',
+		'Then state exactly what changed, briefly.'
+	].join(' ');
 }
 
 export function buildResearchNoPersistRepairInstruction(

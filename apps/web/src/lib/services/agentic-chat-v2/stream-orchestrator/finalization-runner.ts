@@ -13,9 +13,11 @@ import {
 	collectGatewayWriteIntentOps,
 	enforceMutationOutcomeIntegrity,
 	looksLikeExplicitMutationRequest,
+	buildOrganizeCommissionRepairInstruction,
 	buildResearchNoPersistRepairInstruction,
 	buildStatedFutureRepairInstruction,
 	shouldRepairGatewayMutationNoExecution,
+	shouldRepairOrganizeCommissionNoExecution,
 	shouldRepairResearchNoPersist,
 	shouldRepairStatedFutureNotRecorded,
 	shouldRepairProjectCreateNoExecution,
@@ -159,7 +161,8 @@ export type NoToolCallFinalizationResult =
 				| 'gateway_mutation'
 				| 'skill_gate'
 				| 'research_no_persist'
-				| 'stated_future';
+				| 'stated_future'
+				| 'organize_commission';
 			instruction: string;
 	  }
 	| { action: 'finalized'; finalAssistantText: string };
@@ -178,6 +181,7 @@ export async function runNoToolCallFinalization(params: {
 	skillGateStopRepairInjected: boolean;
 	researchNoPersistStopRepairInjected: boolean;
 	statedFutureStopRepairInjected: boolean;
+	organizeCommissionStopRepairInjected: boolean;
 	skillGate?: {
 		required: boolean;
 		recommendedSkillIds: string[];
@@ -255,6 +259,22 @@ export async function runNoToolCallFinalization(params: {
 			action: 'repair',
 			kind: 'research_no_persist',
 			instruction: buildResearchNoPersistRepairInstruction(params.toolExecutions)
+		};
+	}
+
+	// A commissioned reorganization may not end with zero writes: the failure mode is a turn that
+	// reads everything, proposes a structure in prose, and moves nothing.
+	if (
+		shouldRepairOrganizeCommissionNoExecution({
+			latestUserText: params.latestUserText,
+			toolExecutions: params.toolExecutions,
+			repairAlreadyInjected: params.organizeCommissionStopRepairInjected
+		})
+	) {
+		return {
+			action: 'repair',
+			kind: 'organize_commission',
+			instruction: buildOrganizeCommissionRepairInstruction()
 		};
 	}
 

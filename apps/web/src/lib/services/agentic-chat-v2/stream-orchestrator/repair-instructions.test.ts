@@ -17,6 +17,7 @@ import {
 	didWriteWithoutDurableRecord,
 	extractStatedFutureClause,
 	buildReadLoopRepairInstruction,
+	shouldRepairOrganizeCommissionNoExecution,
 	shouldRepairSkillGateNoLoad
 } from './repair-instructions';
 import type { FastToolExecution } from './shared';
@@ -1146,6 +1147,60 @@ describe('didWriteWithoutDurableRecord', () => {
 				}),
 				createExecution({ name: 'create_onto_task', args: { title: 'Follow up' } })
 			])
+		).toBe(false);
+	});
+});
+
+describe('shouldRepairOrganizeCommissionNoExecution', () => {
+	const ORGANIZE_MESSAGE =
+		"This project's documents are a mess — loose notes, raw meeting dumps, half-baked ideas, " +
+		'all piled at the top level. Help me get it organized into something sensible.';
+
+	it('fires when an organize commission ends with zero writes', () => {
+		expect(
+			shouldRepairOrganizeCommissionNoExecution({
+				latestUserText: ORGANIZE_MESSAGE,
+				toolExecutions: [
+					createExecution({ name: 'get_document_tree', args: {} }),
+					createExecution({ name: 'get_document_outline', args: { document_id: 'd1' } })
+				],
+				repairAlreadyInjected: false
+			})
+		).toBe(true);
+	});
+
+	it('is cleared by a successful move', () => {
+		expect(
+			shouldRepairOrganizeCommissionNoExecution({
+				latestUserText: ORGANIZE_MESSAGE,
+				toolExecutions: [
+					createExecution({
+						name: 'move_document_in_tree',
+						args: { document_id: 'd1', parent_id: 'd4' }
+					})
+				],
+				repairAlreadyInjected: false
+			})
+		).toBe(false);
+	});
+
+	it('does not fire on a non-organize message', () => {
+		expect(
+			shouldRepairOrganizeCommissionNoExecution({
+				latestUserText: 'Which documents do we have in this project?',
+				toolExecutions: [],
+				repairAlreadyInjected: false
+			})
+		).toBe(false);
+	});
+
+	it('never injects twice in one turn', () => {
+		expect(
+			shouldRepairOrganizeCommissionNoExecution({
+				latestUserText: ORGANIZE_MESSAGE,
+				toolExecutions: [],
+				repairAlreadyInjected: true
+			})
 		).toBe(false);
 	});
 });

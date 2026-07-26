@@ -326,6 +326,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let skillGateStopRepairInjected = false;
 	let researchNoPersistStopRepairInjected = false;
 	let statedFutureStopRepairInjected = false;
+	let organizeCommissionStopRepairInjected = false;
 	let readOnlyRoundCount = 0;
 	let researchRoundCount = 0;
 	let researchPayloadChars = 0;
@@ -393,6 +394,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		skillGateStopRepair: skillGateStopRepairInjected,
 		researchNoPersistRepair: researchNoPersistStopRepairInjected,
 		statedFutureRepair: statedFutureStopRepairInjected,
+		organizeCommissionRepair: organizeCommissionStopRepairInjected,
 		gatewaySchemaRepair: gatewaySchemaRepairInjected,
 		gatewayCreateFieldRepair: gatewayCreateFieldNoProgressRepairInjected,
 		validationRepairRounds,
@@ -1296,6 +1298,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					skillGateStopRepairInjected,
 					researchNoPersistStopRepairInjected,
 					statedFutureStopRepairInjected,
+					organizeCommissionStopRepairInjected,
 					skillGate: params.skillGate,
 					assistantText,
 					finishedReason,
@@ -1311,6 +1314,15 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						researchNoPersistStopRepairInjected = true;
 					} else if (noToolCallFinalization.kind === 'stated_future') {
 						statedFutureStopRepairInjected = true;
+					} else if (noToolCallFinalization.kind === 'organize_commission') {
+						organizeCommissionStopRepairInjected = true;
+						// Restrict the repair pass to the commissioned write tools so it cannot
+						// be satisfied with more reading or another prose proposal.
+						const organizePass = buildNearBudgetWriteIntentToolPass();
+						if (organizePass) {
+							writeIntentCarveOutUsed = true;
+							forceWriteIntentToolPass = organizePass;
+						}
 					} else {
 						skillGateStopRepairInjected = true;
 					}
