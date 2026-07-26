@@ -312,6 +312,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let gatewayMutationStopRepairInjected = false;
 	let skillGateStopRepairInjected = false;
 	let researchNoPersistStopRepairInjected = false;
+	let statedFutureStopRepairInjected = false;
 	let readOnlyRoundCount = 0;
 	let researchRoundCount = 0;
 	let researchPayloadChars = 0;
@@ -378,6 +379,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		gatewayMutationStopRepair: gatewayMutationStopRepairInjected,
 		skillGateStopRepair: skillGateStopRepairInjected,
 		researchNoPersistRepair: researchNoPersistStopRepairInjected,
+		statedFutureRepair: statedFutureStopRepairInjected,
 		gatewaySchemaRepair: gatewaySchemaRepairInjected,
 		gatewayCreateFieldRepair: gatewayCreateFieldNoProgressRepairInjected,
 		validationRepairRounds,
@@ -1258,6 +1260,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					gatewayMutationStopRepairInjected,
 					skillGateStopRepairInjected,
 					researchNoPersistStopRepairInjected,
+					statedFutureStopRepairInjected,
 					skillGate: params.skillGate,
 					assistantText,
 					finishedReason,
@@ -1271,6 +1274,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						gatewayMutationStopRepairInjected = true;
 					} else if (noToolCallFinalization.kind === 'research_no_persist') {
 						researchNoPersistStopRepairInjected = true;
+					} else if (noToolCallFinalization.kind === 'stated_future') {
+						statedFutureStopRepairInjected = true;
 					} else {
 						skillGateStopRepairInjected = true;
 					}

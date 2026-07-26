@@ -49,7 +49,12 @@ export const researchLogReadbackScenario: Scenario = {
 	id: 'research-log-readback',
 	title: 'Research captured in one session is found again in a cold session',
 	category: 'document',
-	seed: async (ctx) => seedScenarioProject(ctx, spec()),
+	seed: async (ctx) => {
+		const seeded = await seedScenarioProject(ctx, spec());
+		const docs = await listDocuments(ctx.db.admin, seeded.projectId!);
+		seeded.notes.seededDocIds = docs.map((doc) => doc.id);
+		return seeded;
+	},
 	turns: [
 		// Turn 1 — do real research. Deterministic capture should leave a Research Log behind.
 		{
@@ -100,7 +105,14 @@ export const researchLogReadbackScenario: Scenario = {
 							`Content: "${content.slice(0, 300)}"`
 					);
 				}
+				// Turn 2 may legitimately read EITHER the raw log or a document the model
+				// synthesized this turn — both prove the research survived the session, and the
+				// model's own write is the better artifact when it exists.
+				const seededDocIds = new Set((seed.notes.seededDocIds as string[]) ?? []);
 				seed.notes.researchLogId = log.id;
+				seed.notes.researchDocIds = documents
+					.filter((doc) => !seededDocIds.has(doc.id))
+					.map((doc) => doc.id);
 			}
 		},
 		// Turn 2 — COLD. No session id, no continuity context. The only way to answer is the log.
@@ -114,33 +126,37 @@ export const researchLogReadbackScenario: Scenario = {
 				assertNonEmptyAssistantText(turn);
 				assertTurnRunCompleted(await waitForTurnRun(ctx.db.admin, turn.streamRunId!));
 
+				const researchDocIds = (seed.notes.researchDocIds as string[]) ?? [];
 				const logId = String(seed.notes.researchLogId ?? '');
 				const names = toolCallNames(turn);
 				const argsBlob = toolCallArgsBlob(turn);
 
-				// The load-bearing assertion: it went to the stored research, not back to the web.
-				const openedTheLog = logId.length > 0 && argsBlob.includes(logId);
+				const openedIds = researchDocIds.filter((id) => argsBlob.includes(id));
 				const readADocument = names.some(
 					(name) => name === 'get_document_outline' || name === 'read_document_section'
 				);
 
-				if (!openedTheLog) {
+				// The load-bearing assertion: it went to durable project storage, not back to the
+				// web. Which document it opened is diagnostic, not the pass condition — the raw
+				// log and the model's own synthesis both prove the research outlived the session.
+				if (openedIds.length === 0 || !readADocument) {
 					const research = researchToolCalls(turn);
 					throw new Error(
-						'[assert] the cold turn never opened the Research Log. ' +
-							`Tools called: [${names.join(', ')}]. Research calls this turn: ${research.length}. ` +
+						'[assert] the cold turn did not read back any research written in turn 1. ' +
+							`Tools called: [${names.join(', ')}]. ` +
+							`Turn-1 research documents: [${researchDocIds.join(', ')}]. ` +
+							`Web research calls this turn: ${research.length}. ` +
 							(research.length > 0
-								? 'It re-searched the web instead of reading what was already captured — ' +
-									'the log is write-only, which is exactly the regression this scenario guards.'
-								: 'It answered without consulting the stored research at all.')
+								? 'It re-searched the web instead of reading what was already stored — ' +
+									'stored research is unreachable, which is exactly the regression ' +
+									'this scenario guards.'
+								: 'It answered without consulting stored research at all.')
 					);
 				}
-				if (!readADocument) {
-					throw new Error(
-						`[assert] the Research Log id was referenced but no document read tool ran. ` +
-							`Tools called: [${names.join(', ')}]`
-					);
-				}
+
+				seed.notes.readBackVia = openedIds.includes(logId)
+					? 'research_log'
+					: 'model_authored_document';
 			}
 		}
 	]

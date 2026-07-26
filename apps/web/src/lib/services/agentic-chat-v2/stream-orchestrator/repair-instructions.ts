@@ -392,6 +392,96 @@ export function countWebResearchCalls(toolExecutions: FastToolExecution[]): numb
 	).length;
 }
 
+/**
+ * Forward-carry floor (2026-07-26).
+ *
+ * A user who says "that's done, I'm just waiting to hear back from them" has stated two things: an
+ * outcome and a future. The agent reliably records the first and drops the second — measured
+ * **0/17** on `task-complete-cold-reference` across every intervention tried:
+ *   - no rule at all: 0/2
+ *   - rule added mid-list (position 14 of 20): 0/5
+ *   - after the research-budget fix: 0/5
+ *   - rule moved to the Final Response Contract, the best boundary position available: 0/5
+ *
+ * Three placements, zero effect. Instruction cannot carry this one, so it becomes a gate.
+ *
+ * Unlike the research floor, the trigger cannot be read off tool calls — "the user stated a durable
+ * future" is a language judgment. So detection is deliberately conservative AND the repair is
+ * model-judged: it asks the model to consider recording, and explicitly permits declining. A false
+ * positive therefore costs one extra round, never a spurious write — which matters because
+ * `restraint-noop-and-ambiguity` asserts zero writes on a passing mention.
+ */
+const STATED_FUTURE_PATTERNS: RegExp[] = [
+	/\bwaiting (?:to hear|on|for|back)\b/i,
+	/\bhear(?:ing)? back\b/i,
+	/\bnext (?:step|thing|up) is\b/i,
+	/\bblocked (?:on|by)\b/i,
+	/\bfollow(?:ing)? up\b/i,
+	/\bonce (?:they|he|she|we|it|that|this)\b.*\b(?:then|i'?ll|we'?ll)\b/i,
+	/\bi'?ll\b.*\b(?:tomorrow|next week|next month|later this week|by (?:mon|tue|wed|thu|fri|sat|sun))/i,
+	/\bsupposed to\b/i,
+	/\bstill (?:need|needs|have) to\b/i
+];
+
+export function looksLikeStatedFuture(text: string): boolean {
+	const normalized = (text ?? '').trim();
+	if (!normalized) return false;
+	return STATED_FUTURE_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+/**
+ * A durable record of something NEW, as opposed to a state change on an entity that already existed.
+ * Closing a task is not carrying its follow-up forward, which is the whole failure being gated.
+ * Mirrors the four surfaces the scenario accepts: task, document, event, or START HERE edit.
+ */
+export function didCreateDurableRecord(toolExecutions: FastToolExecution[]): boolean {
+	return toolExecutions.some((execution) => {
+		if (execution.result.success !== true) return false;
+		const name = execution.toolCall.function?.name?.trim() ?? '';
+		if (!name) return false;
+		if (name.startsWith('create_onto_')) return true;
+		if (name === 'create_calendar_event') return true;
+		// A document edit is how "update START HERE" lands.
+		if (name === 'update_onto_document') return true;
+		return false;
+	});
+}
+
+export function shouldRepairStatedFutureNotRecorded(params: {
+	latestUserText: string;
+	finalText: string;
+	toolExecutions: FastToolExecution[];
+	repairAlreadyInjected: boolean;
+}): boolean {
+	if (params.repairAlreadyInjected) return false;
+	if (!looksLikeStatedFuture(params.latestUserText)) return false;
+	// Only gate turns that already acted. A pure question or a turn that wrote nothing at all is a
+	// different failure, and the other floors own it.
+	const wrote = params.toolExecutions.some(
+		(execution) => isWriteLedgerToolExecution(execution) && execution.result.success === true
+	);
+	if (!wrote) return false;
+	if (didCreateDurableRecord(params.toolExecutions)) return false;
+	if (looksLikePureClarifyingQuestion(params.finalText.trim())) return false;
+	return true;
+}
+
+export function buildStatedFutureRepairInstruction(): string {
+	// Measured 2026-07-26: an earlier version of this instruction offered the model two ways out —
+	// "already recorded" OR "it was a passing remark not worth recording". It took the second one
+	// on 5/5 runs and wrote nothing. The gate's own preconditions already rule that reading out:
+	// it only fires when the user stated a future AND the agent acted AND created no new record.
+	// A turn that merely heard a passing mention never reaches here, because it never wrote.
+	// So the only legitimate escape left is "it already exists", and it must be evidenced.
+	return [
+		'The user told you what happens next — what they are waiting on, a decision, a constraint, or a deadline — and this turn changed an existing record without creating anything to hold that future.',
+		'Create that record now. Pick exactly one, the smallest that fits: a task if it is work to do, an event if it has a time, or an update to the relevant document or the project START HERE if it is context. One record, not several.',
+		'Base it on the user\'s own words — for "waiting to hear back from them", the record is the waiting, not a restatement of what you already closed.',
+		'The only reason to skip this is that the future is ALREADY captured in a specific existing record. If you believe that, name that record by title in one short line instead of writing.',
+		'Do not re-do the change you already made, do not restate the whole turn, and do not simply confirm the future back to the user in prose — prose is not a record.'
+	].join(' ');
+}
+
 export function shouldRepairResearchNoPersist(params: {
 	finalText: string;
 	toolExecutions: FastToolExecution[];

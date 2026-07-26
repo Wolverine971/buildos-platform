@@ -14,8 +14,10 @@ import {
 	enforceMutationOutcomeIntegrity,
 	looksLikeExplicitMutationRequest,
 	buildResearchNoPersistRepairInstruction,
+	buildStatedFutureRepairInstruction,
 	shouldRepairGatewayMutationNoExecution,
 	shouldRepairResearchNoPersist,
+	shouldRepairStatedFutureNotRecorded,
 	shouldRepairProjectCreateNoExecution,
 	shouldRepairSkillGateNoLoad
 } from './repair-instructions';
@@ -152,7 +154,12 @@ export async function runNoToolSynthesisFinalization(params: {
 export type NoToolCallFinalizationResult =
 	| {
 			action: 'repair';
-			kind: 'project_create' | 'gateway_mutation' | 'skill_gate' | 'research_no_persist';
+			kind:
+				| 'project_create'
+				| 'gateway_mutation'
+				| 'skill_gate'
+				| 'research_no_persist'
+				| 'stated_future';
 			instruction: string;
 	  }
 	| { action: 'finalized'; finalAssistantText: string };
@@ -170,6 +177,7 @@ export async function runNoToolCallFinalization(params: {
 	gatewayMutationStopRepairInjected: boolean;
 	skillGateStopRepairInjected: boolean;
 	researchNoPersistStopRepairInjected: boolean;
+	statedFutureStopRepairInjected: boolean;
 	skillGate?: {
 		required: boolean;
 		recommendedSkillIds: string[];
@@ -247,6 +255,22 @@ export async function runNoToolCallFinalization(params: {
 			action: 'repair',
 			kind: 'research_no_persist',
 			instruction: buildResearchNoPersistRepairInstruction(params.toolExecutions)
+		};
+	}
+
+	// Last gate: the turn acted, but a future the user stated in the same breath was not recorded.
+	if (
+		shouldRepairStatedFutureNotRecorded({
+			latestUserText: params.latestUserText,
+			finalText: candidateFinalText,
+			toolExecutions: params.toolExecutions,
+			repairAlreadyInjected: params.statedFutureStopRepairInjected
+		})
+	) {
+		return {
+			action: 'repair',
+			kind: 'stated_future',
+			instruction: buildStatedFutureRepairInstruction()
 		};
 	}
 

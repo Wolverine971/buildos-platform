@@ -39,7 +39,8 @@ import {
 	assertResearchPersisted,
 	assertTurnRunCompleted,
 	assertTurnSucceeded,
-	buildTranscript
+	buildTranscript,
+	excludeSystemDocuments
 } from '../harness/assertions';
 import { listDocuments, waitForTurnRun } from '../harness/telemetry';
 
@@ -104,7 +105,10 @@ export const documentFromVagueDescriptionScenario: Scenario = {
 
 				const seededIds = new Set(seed.notes.seededDocIds as string[]);
 				const allDocs = await listDocuments(ctx.db.admin, seed.projectId!);
-				const created = allDocs.filter((d) => !seededIds.has(d.id));
+				// Auto-captured Research Log entries are system output, not the model's work
+				// product — counting them here would let a turn that wrote nothing look like it
+				// created a document.
+				const created = excludeSystemDocuments(allDocs.filter((d) => !seededIds.has(d.id)));
 				// Appending research to the existing overview is also "building
 				// context" — the principle is that it lands somewhere durable, not
 				// that it lands in a NEW document specifically.

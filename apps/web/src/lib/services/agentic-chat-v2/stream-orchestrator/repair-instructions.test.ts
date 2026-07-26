@@ -11,6 +11,8 @@ import {
 	shouldRepairGatewayMutationNoExecution,
 	shouldRepairProjectCreateNoExecution,
 	shouldRepairResearchNoPersist,
+	shouldRepairStatedFutureNotRecorded,
+	looksLikeStatedFuture,
 	shouldRepairSkillGateNoLoad
 } from './repair-instructions';
 import type { FastToolExecution } from './shared';
@@ -972,5 +974,119 @@ describe('shouldRepairResearchNoPersist', () => {
 				repairAlreadyInjected: true
 			})
 		).toBe(false);
+	});
+});
+
+describe('shouldRepairStatedFutureNotRecorded', () => {
+	const closedATask = [
+		createExecution({ name: 'update_onto_task', args: { task_id: 't1', state_key: 'done' } })
+	];
+
+	it('fires when the user stated a future and the turn only changed existing records', () => {
+		expect(
+			shouldRepairStatedFutureNotRecorded({
+				latestUserText:
+					"just talked to them, it went well. now i'm just waiting to hear back from them",
+				finalText: 'Marked the Northwind intro call done.',
+				toolExecutions: closedATask,
+				repairAlreadyInjected: false
+			})
+		).toBe(true);
+	});
+
+	it('does not fire when a new durable record was created', () => {
+		expect(
+			shouldRepairStatedFutureNotRecorded({
+				latestUserText: "that's done, i'm waiting to hear back",
+				finalText: 'Closed it and added a follow-up.',
+				toolExecutions: [
+					...closedATask,
+					createExecution({ name: 'create_onto_task', args: { title: 'Follow up' } })
+				],
+				repairAlreadyInjected: false
+			})
+		).toBe(false);
+	});
+
+	it('counts a document update as recording the future (START HERE edit)', () => {
+		expect(
+			shouldRepairStatedFutureNotRecorded({
+				latestUserText: "done — i'm waiting on their reply",
+				finalText: 'Closed it and noted the wait in START HERE.',
+				toolExecutions: [
+					...closedATask,
+					createExecution({ name: 'update_onto_document', args: { document_id: 'd1' } })
+				],
+				repairAlreadyInjected: false
+			})
+		).toBe(false);
+	});
+
+	it('does not fire on a turn that wrote nothing at all', () => {
+		// A passing mention with no action is the restraint scenario's territory, not this gate's.
+		expect(
+			shouldRepairStatedFutureNotRecorded({
+				latestUserText: 'i think we are still waiting to hear back on that one',
+				finalText: 'Yes, that one is still open.',
+				toolExecutions: [],
+				repairAlreadyInjected: false
+			})
+		).toBe(false);
+	});
+
+	it('does not fire when the message states no future', () => {
+		expect(
+			shouldRepairStatedFutureNotRecorded({
+				latestUserText: 'mark the northwind call done',
+				finalText: 'Done.',
+				toolExecutions: closedATask,
+				repairAlreadyInjected: false
+			})
+		).toBe(false);
+	});
+
+	it('allows a turn that stopped to ask', () => {
+		expect(
+			shouldRepairStatedFutureNotRecorded({
+				latestUserText: 'done, waiting to hear back',
+				finalText: 'Which Northwind task did you mean?',
+				toolExecutions: closedATask,
+				repairAlreadyInjected: false
+			})
+		).toBe(false);
+	});
+
+	it('never injects twice in one turn', () => {
+		expect(
+			shouldRepairStatedFutureNotRecorded({
+				latestUserText: "done, i'm waiting to hear back from them",
+				finalText: 'Marked it done.',
+				toolExecutions: closedATask,
+				repairAlreadyInjected: true
+			})
+		).toBe(false);
+	});
+
+	it('recognizes the common forward-looking phrasings', () => {
+		for (const text of [
+			"i'm just waiting to hear back from them",
+			'next step is to send the deck',
+			'this is blocked on Ana',
+			"i'll send it tomorrow",
+			'still need to book the room'
+		]) {
+			expect(looksLikeStatedFuture(text)).toBe(true);
+		}
+	});
+
+	it('does not treat ordinary completion talk as a stated future', () => {
+		for (const text of [
+			'mark that done',
+			'i finished the resume edits',
+			'that call went well',
+			'close out the halcyon task'
+		]) {
+			expect(looksLikeStatedFuture(text)).toBe(false);
+		}
 	});
 });

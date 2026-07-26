@@ -36,6 +36,7 @@ import {
 	assertToolCalled,
 	assertTurnRunCompleted,
 	assertTurnSucceeded,
+	excludeSystemDocuments,
 	buildTranscript,
 	normalizeComparableText
 } from '../harness/assertions';
@@ -198,9 +199,12 @@ export const taskCompleteColdReferenceScenario: Scenario = {
 				});
 
 				const seededDocIds = new Set(seed.notes.seededDocIds as string[]);
-				const newDocs = (await listDocuments(ctx.db.admin, seed.projectId!)).filter(
-					(d) => !seededDocIds.has(d.id)
-				);
+				// An auto-captured Research Log must not count as a forward-carry surface — that
+				// would turn this real 0/12 failure green without the stated next step ever being
+				// recorded.
+				const newDocs = excludeSystemDocuments(
+					await listDocuments(ctx.db.admin, seed.projectId!)
+				).filter((d) => !seededDocIds.has(d.id));
 
 				const events = await listEvents(ctx.db.admin, seed.projectId!);
 

@@ -294,6 +294,27 @@ export function assertNarratedBeforeActing(turn: TurnResult): void {
  */
 const RESEARCH_TOOL_PATTERN = /^(web_|search_web|browse_|fetch_url)/;
 
+/**
+ * Titles of documents the SYSTEM creates on its own, not the model.
+ *
+ * `Research Log` is written by deterministic research capture on any turn with >=2 web research
+ * calls (`$lib/server/research-log.service`). It must never count as "the model created a
+ * document" — otherwise it silently satisfies assertions about model output. The sharp case is
+ * `task-complete-cold-reference`, whose forward-carry check passes when ANY of four surfaces
+ * changed, one being "a new document exists": an auto-captured log there would turn a real failure
+ * green while the user's stated next step was still dropped.
+ */
+const SYSTEM_DOCUMENT_TITLES = new Set(['Research Log', 'Research Log (Archive)']);
+
+export function isSystemGeneratedDocument(doc: { title?: string | null }): boolean {
+	return SYSTEM_DOCUMENT_TITLES.has((doc.title ?? '').trim());
+}
+
+/** Drop system-generated documents so an assertion measures what the model actually authored. */
+export function excludeSystemDocuments<T extends { title?: string | null }>(docs: T[]): T[] {
+	return docs.filter((doc) => !isSystemGeneratedDocument(doc));
+}
+
 export function researchToolCalls(turn: TurnResult): string[] {
 	return toolNames(turn).filter((name) => RESEARCH_TOOL_PATTERN.test(name));
 }
