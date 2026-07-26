@@ -28,6 +28,7 @@ import {
 	getWriteToolNamesForTurnIntent,
 	type FastChatTurnIntent
 } from '../turn-intent';
+import { looksLikeProjectDocumentOrganizeTurn } from '../tool-selector';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
@@ -301,6 +302,18 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const maxValidationRepairRounds = gatewayModeActive ? 3 : 2;
 	const allowAutonomousRecovery = Boolean(params.allowAutonomousRecovery);
 	const allowForcedSynthesis = params.allowForcedSynthesis !== false;
+	// A commissioned document reorganization ("help me get these documents organized"). The
+	// read-loop ladder must steer this turn toward EXECUTING, not answering: measured 2026-07-26,
+	// the model correctly read all six documents, the ladder then said "answer from existing
+	// results", and it obeyed — prose plan, zero moves, 0/3 — while move_document_in_tree sat
+	// mounted and untouched. The tool names are re-checked against allowedToolNames at use time.
+	const docOrganizeCommission = looksLikeProjectDocumentOrganizeTurn(message ?? '');
+	const commissionWriteToolNames = (): string[] =>
+		docOrganizeCommission
+			? ['move_document_in_tree', 'create_onto_document'].filter((name) =>
+					allowedToolNames.has(name)
+				)
+			: [];
 	let toolRounds = 0;
 	let toolCallsMade = 0;
 	let toolCallsExecuted = 0;
@@ -505,11 +518,15 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		const nextRank = readLoopEscalation.READ_LOOP_REPAIR_RANK[level];
 		if (nextRank <= readLoopRepairRank) return;
 		readLoopRepairRank = nextRank;
+		const commissionToolNames =
+			framing === 'read_loop' && !hasWriteAttempt ? commissionWriteToolNames() : [];
 		queueRepairInstruction(
 			buildReadLoopRepairInstruction(readOps, {
 				level,
 				roundsRemaining,
-				framing
+				framing,
+				pendingWriteCommission:
+					commissionToolNames.length > 0 ? { toolNames: commissionToolNames } : undefined
 			})
 		);
 		if (level === 'must_synthesize') {
@@ -601,7 +618,25 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			);
 			if (allowedToolNames.has(toolName)) writeToolNames.add(toolName);
 		}
-		if (writeToolNames.size === 0) return null;
+		if (writeToolNames.size === 0) {
+			// Third source: a commissioned document reorganization with the doc surface mounted
+			// but no write op attempted yet. Without this, the toolless synthesis pass fires and
+			// the system confiscates the tools at exactly the moment the writes would start.
+			const organizeToolNames = commissionWriteToolNames();
+			if (organizeToolNames.length === 0) return null;
+			for (const toolName of organizeToolNames) writeToolNames.add(toolName);
+			const toolNames = Array.from(writeToolNames);
+			return {
+				toolNames,
+				instruction: [
+					'Supervisor note: the user commissioned a document reorganization and no write has happened yet.',
+					`For the next response, use only these write tools: ${toolNames.join(', ')}.`,
+					'Execute the reorganization now — call move_document_in_tree once per document that needs a new parent; multiple calls in this one response are expected.',
+					'Group related documents under a sensible existing parent document.',
+					'Do not call reads, searches, schemas, skills, or any other discovery tools in this pass.'
+				].join(' ')
+			};
+		}
 
 		const toolNames = Array.from(writeToolNames);
 		return {

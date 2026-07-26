@@ -1063,6 +1063,15 @@ export function buildReadLoopRepairInstruction(
 		 * with "I hit a read loop" — misdescribing a healthy research turn.
 		 */
 		framing?: 'read_loop' | 'research_budget';
+		/**
+		 * The turn is a commissioned write (e.g. "help me get these documents organized") whose
+		 * write tools are mounted but unused. Without this, every ladder level steers to "answer
+		 * from existing results" — on a commission that instruction produces a prose plan instead
+		 * of the requested change. Measured 2026-07-26 on project-organize: the model read six
+		 * documents (correct), then the ladder told it to answer, and it obeyed — 0/3 with the
+		 * write tools sitting mounted and untouched.
+		 */
+		pendingWriteCommission?: { toolNames: string[] };
 	} = {}
 ): string {
 	const opsLabel = readOps.length > 0 ? readOps.join(', ') : 'read-only ops';
@@ -1093,7 +1102,22 @@ export function buildReadLoopRepairInstruction(
 			.join(' ');
 	}
 
+	const commissionTools = options.pendingWriteCommission?.toolNames ?? [];
+	const commissionToolsLabel = commissionTools.join(', ');
+
 	if (level === 'must_synthesize') {
+		if (commissionTools.length > 0) {
+			return [
+				'Context gathering is over — execute the requested change now.',
+				roundsRemainingLine,
+				'Do not call more read tools.',
+				`Use only these write tools: ${commissionToolsLabel}.`,
+				'Multiple calls to the same write tool in this one response are expected — for a reorganization, one move call per document that needs a new parent.',
+				'Then give a short final answer stating exactly what changed.'
+			]
+				.filter((line): line is string => Boolean(line))
+				.join(' ');
+		}
 		return [
 			'Read-loop hard stop: synthesize now.',
 			`Repeated ops: ${opsLabel}.`,
@@ -1106,12 +1130,36 @@ export function buildReadLoopRepairInstruction(
 	}
 
 	if (level === 'stop_and_answer') {
+		if (commissionTools.length > 0) {
+			return [
+				'Read-loop escalation: stop broad context gathering.',
+				`Repeated ops: ${opsLabel}.`,
+				roundsRemainingLine,
+				'Only call another read tool if one specific missing fact blocks the write.',
+				`Otherwise begin executing the requested change now with ${commissionToolsLabel}.`,
+				'Do not end the turn with only a proposal — the user asked for the change to be made.'
+			]
+				.filter((line): line is string => Boolean(line))
+				.join(' ');
+		}
 		return [
 			'Read-loop escalation: stop broad context gathering.',
 			`Repeated ops: ${opsLabel}.`,
 			roundsRemainingLine,
 			'Only call another read tool if one specific missing fact blocks the answer.',
 			'Otherwise answer from the existing results now.'
+		]
+			.filter((line): line is string => Boolean(line))
+			.join(' ');
+	}
+
+	if (commissionTools.length > 0) {
+		return [
+			'Read-loop nudge: you are repeating read-only tool calls without making progress.',
+			`Repeated ops: ${opsLabel}.`,
+			roundsRemainingLine,
+			`You already have enough context to start the requested change — begin executing it now with ${commissionToolsLabel}.`,
+			'If required IDs are still missing, ask one concise clarification question instead of repeating the same reads.'
 		]
 			.filter((line): line is string => Boolean(line))
 			.join(' ');

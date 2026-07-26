@@ -16,6 +16,7 @@ import {
 	looksLikeConservativeStatedFuture,
 	didWriteWithoutDurableRecord,
 	extractStatedFutureClause,
+	buildReadLoopRepairInstruction,
 	shouldRepairSkillGateNoLoad
 } from './repair-instructions';
 import type { FastToolExecution } from './shared';
@@ -1146,6 +1147,50 @@ describe('didWriteWithoutDurableRecord', () => {
 				createExecution({ name: 'create_onto_task', args: { title: 'Follow up' } })
 			])
 		).toBe(false);
+	});
+});
+
+describe('buildReadLoopRepairInstruction — pending write commission', () => {
+	const commission = { toolNames: ['move_document_in_tree', 'create_onto_document'] };
+
+	it('must_synthesize steers to executing the change, not answering', () => {
+		const text = buildReadLoopRepairInstruction(['get_document_outline'], {
+			level: 'must_synthesize',
+			roundsRemaining: 2,
+			pendingWriteCommission: commission
+		});
+		expect(text).toContain('execute the requested change');
+		expect(text).toContain('move_document_in_tree');
+		expect(text).toContain('Multiple calls to the same write tool');
+		expect(text).not.toContain('Answer from the existing tool results');
+	});
+
+	it('stop_and_answer forbids ending with only a proposal', () => {
+		const text = buildReadLoopRepairInstruction(['get_document_outline'], {
+			level: 'stop_and_answer',
+			roundsRemaining: 5,
+			pendingWriteCommission: commission
+		});
+		expect(text).toContain('Do not end the turn with only a proposal');
+		expect(text).toContain('move_document_in_tree');
+	});
+
+	it('without a commission the original answer-framed texts are unchanged', () => {
+		const text = buildReadLoopRepairInstruction(['get_document_outline'], {
+			level: 'must_synthesize',
+			roundsRemaining: 2
+		});
+		expect(text).toContain('Answer from the existing tool results now');
+		expect(text).not.toContain('move_document_in_tree');
+	});
+
+	it('research_budget framing is untouched by the commission option', () => {
+		const text = buildReadLoopRepairInstruction(['web_search'], {
+			level: 'must_synthesize',
+			roundsRemaining: 2,
+			framing: 'research_budget'
+		});
+		expect(text).toContain('Research budget reached');
 	});
 });
 
