@@ -251,7 +251,50 @@ Scoreboard correction to §4: **Forward-carry ✅ 5/5 by construction.** The ope
 fold-in (D3) also landed the same evening — see `corpus/open-brief-v1.json` `design_corrections`
 and methodology §6.4.
 
-## 9. Related
+## 9. Addendum 2 — the project-organize excavation (late evening)
+
+DJ asked for a root-cause assessment of the two remaining failures. `document-from-vague-description`
+got the research-gate `?` waiver removed (`df5cb647`) — post-fix valid sample 1/3, band unchanged,
+model-bound; the same conclusion as before, now with the waiver hole closed on principle.
+
+`project-organize` produced a **five-layer causal chain**, each layer verified by re-measurement
+before fixing the next (commits `df5cb647`, `93dc8dd8`, `859e9b49`, `745d36f5`, `9b241a7b`):
+
+1. **Surface router miss.** "Help me get it organized" resolved `project_basic` — zero write
+   tools. The verb-then-noun regex cannot see noun-first/past-participle phrasing. Fixed:
+   order-free organize detector mounts the document surface.
+2. **The ladder steered commissions to prose.** `stop_and_answer` / `must_synthesize` said
+   "answer from existing results," and the toolless synthesis pass confiscated the mounted write
+   tools (no prior write attempt = no carve-out). Fixed: all ladder levels steer commissioned
+   writes to execute; the carve-out gains an organize source.
+3. **Voluntary prose finalization had no floor.** The model batches reads into few rounds, never
+   trips the ladder, ends with a plan. Fixed: `organize_commission` finalization gate — a
+   commissioned reorganization may not end with zero writes; repair pass restricted to the write
+   tools.
+4. **Moves without parents.** With the floor firing, the model moved documents to the root.
+   Fixed: instructions state `new_parent_id` semantics; scenario failure output now prints the
+   actual move calls AND server-side results (never diagnose this blind again).
+5. **Fabricated parent UUIDs — the residual.** The model then made *perfect-shaped* moves, every
+   one with `new_parent_id` — pointing at four parents that do not exist. It wants folder-parents,
+   and instead of creating them (allowed and instructed), it invents ids. The entity-scope guard
+   correctly rejects them; the retry supervisor locks the turn. **Handing it the exact valid-id
+   inventory in the repair did not stop the fabrication.**
+
+Layer 5 is a **model-capability bound** on `deepseek-v4-flash`: a two-phase write plan
+(create parent → use returned id → move) that it will not execute and will not substitute with
+existing parents. The four shipped fixes are correct regardless — each moved the failure to a
+deeper, more real layer — and layers 1–3 fix organize-commission behavior for ALL models.
+
+**Open fork (DJ):** route organize-commission turns to a stronger model tier (the
+`modelTiering` hook exists), or bank this as a known model-bound gap pending the tasker/39 WP-9
+model A/B. The scenario is now the measuring instrument either way.
+
+Also recorded: the entity-scope guard resolves ids only from PRELOADED context, not from
+in-turn tool reads — today the preloaded highlights covered the real docs so it never bit, but
+any entity first seen through an in-turn read cannot be mutated in the same turn. Filed as a
+known trap.
+
+## 10. Related
 
 - `tasker/39-prompt-instruction-architecture-audit.md` · `tasker/40-working-notes-artifacts.md`
 - `docs/specs/WORKING_NOTES_RESEARCH_LOG_SPEC_2026-07-26.md`
