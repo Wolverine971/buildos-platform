@@ -13,6 +13,9 @@ import {
 	shouldRepairResearchNoPersist,
 	shouldRepairStatedFutureNotRecorded,
 	looksLikeStatedFuture,
+	looksLikeConservativeStatedFuture,
+	didWriteWithoutDurableRecord,
+	extractStatedFutureClause,
 	shouldRepairSkillGateNoLoad
 } from './repair-instructions';
 import type { FastToolExecution } from './shared';
@@ -1045,15 +1048,17 @@ describe('shouldRepairStatedFutureNotRecorded', () => {
 		).toBe(false);
 	});
 
-	it('allows a turn that stopped to ask', () => {
+	it('fires even when the final text is a question — the turn already acted', () => {
+		// "Closed it — want me to set a follow-up?" is prose instead of a record. The '?' waiver
+		// the sibling floors use let 2/5 battery runs (2026-07-26) drop the future entirely.
 		expect(
 			shouldRepairStatedFutureNotRecorded({
 				latestUserText: 'done, waiting to hear back',
-				finalText: 'Which Northwind task did you mean?',
+				finalText: 'Marked it done. Want me to set a follow-up reminder?',
 				toolExecutions: closedATask,
 				repairAlreadyInjected: false
 			})
-		).toBe(false);
+		).toBe(true);
 	});
 
 	it('never injects twice in one turn', () => {
@@ -1088,5 +1093,82 @@ describe('shouldRepairStatedFutureNotRecorded', () => {
 		]) {
 			expect(looksLikeStatedFuture(text)).toBe(false);
 		}
+	});
+});
+
+describe('looksLikeConservativeStatedFuture', () => {
+	it('accepts unambiguous waiting-state declarations', () => {
+		for (const text of [
+			"i'm just waiting to hear back from them",
+			'still waiting on legal',
+			'this is blocked on Ana',
+			'next step is the demo video'
+		]) {
+			expect(looksLikeConservativeStatedFuture(text)).toBe(true);
+		}
+	});
+
+	it('rejects instruction-shaped phrasings the broad list accepts', () => {
+		// Each of these trips looksLikeStatedFuture (model-judged, cheap to be wrong) but must not
+		// trip the deterministic write (every false positive becomes a user-visible task).
+		for (const text of [
+			"rename the task to 'follow up with vendors'",
+			'still need to book the room',
+			"i'll send it tomorrow"
+		]) {
+			expect(looksLikeConservativeStatedFuture(text)).toBe(false);
+		}
+	});
+});
+
+describe('didWriteWithoutDurableRecord', () => {
+	it('is true for a state change with no new record', () => {
+		expect(
+			didWriteWithoutDurableRecord([
+				createExecution({
+					name: 'update_onto_task',
+					args: { task_id: 't1', state_key: 'done' }
+				})
+			])
+		).toBe(true);
+	});
+
+	it('is false when nothing was written or when a record was created', () => {
+		expect(didWriteWithoutDurableRecord([])).toBe(false);
+		expect(
+			didWriteWithoutDurableRecord([
+				createExecution({
+					name: 'update_onto_task',
+					args: { task_id: 't1', state_key: 'done' }
+				}),
+				createExecution({ name: 'create_onto_task', args: { title: 'Follow up' } })
+			])
+		).toBe(false);
+	});
+});
+
+describe('extractStatedFutureClause', () => {
+	it('returns the sentence containing the future, not the whole message', () => {
+		expect(
+			extractStatedFutureClause(
+				"just talked to them, it went well. now i'm just waiting to hear back from them"
+			)
+		).toBe("now i'm just waiting to hear back from them");
+	});
+
+	it('handles newline-separated dictation', () => {
+		expect(
+			extractStatedFutureClause('marked the call done\nstill need to book the room')
+		).toBe('still need to book the room');
+	});
+
+	it('falls back to the whole message when the pattern spans sentences', () => {
+		const text = "once they sign off. then i'll ship it";
+		expect(extractStatedFutureClause(text)).toBe(text);
+	});
+
+	it('returns null when no future is stated', () => {
+		expect(extractStatedFutureClause('mark the northwind call done')).toBeNull();
+		expect(extractStatedFutureClause('')).toBeNull();
 	});
 });

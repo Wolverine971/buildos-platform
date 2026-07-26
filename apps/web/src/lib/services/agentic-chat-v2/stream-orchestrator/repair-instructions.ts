@@ -430,6 +430,25 @@ export function looksLikeStatedFuture(text: string): boolean {
 }
 
 /**
+ * The user's own words for the stated future — the first sentence-ish segment that trips a
+ * stated-future pattern — so deterministic capture can title the record verbatim instead of
+ * paraphrasing. Falls back to the whole message for patterns that span sentence boundaries
+ * ("once they sign off ... then I'll ..."). Null means "nothing matched, do not capture".
+ */
+export function extractStatedFutureClause(text: string): string | null {
+	const normalized = (text ?? '').trim();
+	if (!normalized) return null;
+	const segments = normalized
+		.split(/(?<=[.!?])\s+|\n+/g)
+		.map((segment) => segment.trim())
+		.filter(Boolean);
+	for (const segment of segments) {
+		if (STATED_FUTURE_PATTERNS.some((pattern) => pattern.test(segment))) return segment;
+	}
+	return looksLikeStatedFuture(normalized) ? normalized : null;
+}
+
+/**
  * A durable record of something NEW, as opposed to a state change on an entity that already existed.
  * Closing a task is not carrying its follow-up forward, which is the whole failure being gated.
  * Mirrors the four surfaces the scenario accepts: task, document, event, or START HERE edit.
@@ -462,8 +481,43 @@ export function shouldRepairStatedFutureNotRecorded(params: {
 	);
 	if (!wrote) return false;
 	if (didCreateDurableRecord(params.toolExecutions)) return false;
-	if (looksLikePureClarifyingQuestion(params.finalText.trim())) return false;
+	// Deliberately NO looksLikePureClarifyingQuestion waiver, unlike the sibling floors. This gate
+	// only reaches here when the turn ALREADY acted on the message — a trailing "want me to set a
+	// follow-up?" after acting is exactly the prose-instead-of-record failure being gated, and in
+	// the 2026-07-26 battery 2/5 runs dropped the future without the gate ever firing. Any '?' in
+	// the final text was one of the two code paths that allowed that.
 	return true;
+}
+
+/**
+ * The subset of stated-future phrasings safe to act on DETERMINISTICALLY (the server-side
+ * last-resort write in the stream route). The broad STATED_FUTURE_PATTERNS list is fine for the
+ * model-judged gate — a false positive there costs one extra round — but a deterministic write
+ * turns every false positive into a user-visible task. So this list keeps only unambiguous
+ * waiting-state declarations and drops the patterns that routinely appear inside instructions
+ * ("follow up", "still need to", "i'll ... tomorrow"), where the stated work is usually the very
+ * thing the user just asked the agent to do.
+ */
+const CONSERVATIVE_STATED_FUTURE_PATTERNS: RegExp[] = [
+	/\bwaiting (?:to hear|on|for|back)\b/i,
+	/\bhear(?:ing)? back\b/i,
+	/\bblocked (?:on|by)\b/i,
+	/\bnext (?:step|thing|up) is\b/i
+];
+
+export function looksLikeConservativeStatedFuture(text: string): boolean {
+	const normalized = (text ?? '').trim();
+	if (!normalized) return false;
+	return CONSERVATIVE_STATED_FUTURE_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+/** True when the turn made a successful write yet created no new durable record — the
+ * forward-carry failure condition, computed from ground truth rather than model output. */
+export function didWriteWithoutDurableRecord(toolExecutions: FastToolExecution[]): boolean {
+	const wrote = toolExecutions.some(
+		(execution) => isWriteLedgerToolExecution(execution) && execution.result.success === true
+	);
+	return wrote && !didCreateDurableRecord(toolExecutions);
 }
 
 export function buildStatedFutureRepairInstruction(): string {

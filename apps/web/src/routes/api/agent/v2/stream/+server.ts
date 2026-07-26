@@ -134,6 +134,12 @@ import {
 	persistToolExecutionRows
 } from '$lib/services/agentic-chat-v2/turn-persistence';
 import { appendResearchEntry, buildResearchEntryFromCalls } from '$lib/server/research-log.service';
+import { createStatedFutureTask } from '$lib/server/stated-future.service';
+import {
+	didWriteWithoutDurableRecord,
+	extractStatedFutureClause,
+	looksLikeConservativeStatedFuture
+} from '$lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions';
 import {
 	applyActiveDomainSignalsOverlay,
 	buildLitePromptEnvelope,
@@ -3501,6 +3507,46 @@ export const POST: RequestHandler = async ({
 							researchLogError instanceof Error
 								? researchLogError.message
 								: String(researchLogError),
+						streamRunId
+					});
+				}
+			}
+
+			// Deterministic forward-carry capture (D1, 2026-07-26). The stated-future repair gate
+			// gives the model first refusal; this is the floor beneath it — measured lifetime 1/27
+			// without it. Triggered from ground truth (user text + actual executions), NOT the
+			// gate's fired flag: coupling to the flag let 2/5 battery runs drop the future when
+			// finalization took a path the gate never saw. The conservative pattern subset keeps
+			// regex false positives from becoming user-visible tasks. Awaited for the same reason
+			// as research capture: a fire-and-forget write races end-of-turn assertions.
+			const statedFutureProjectId = effectiveProjectIdForTools ?? projectIdForLogs;
+			if (
+				statedFutureProjectId &&
+				!cancelled &&
+				looksLikeConservativeStatedFuture(message) &&
+				didWriteWithoutDurableRecord(normalizedExecutions)
+			) {
+				try {
+					// Extract from the raw user message, not messageForModel — attachment
+					// boilerplate must never become a task title. No clause here means the
+					// gate matched only appended context; skip rather than title it wrong.
+					const clause = extractStatedFutureClause(message);
+					if (clause) {
+						await createStatedFutureTask(supabase, {
+							projectId: statedFutureProjectId,
+							userId,
+							streamRunId,
+							clause,
+							userMessage: message
+						});
+					}
+				} catch (statedFutureError) {
+					// Capture must never fail a turn that otherwise succeeded.
+					logger.warn('Stated-future capture failed', {
+						error:
+							statedFutureError instanceof Error
+								? statedFutureError.message
+								: String(statedFutureError),
 						streamRunId
 					});
 				}
