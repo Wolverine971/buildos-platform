@@ -34,7 +34,7 @@ Review, and retired Tree Agent runtimes.
 ### 2.1 Separate control plane for cognition
 
 Use a new runtime namespace for cognition and control flow: contracts, prompts, routing,
-scheduling policy, state machines, and projection logic. The existing systems' *reasoning layers*
+scheduling policy, state machines, and projection logic. The existing systems' _reasoning layers_
 are comparison lanes, not libraries to extend. The durable-execution substrate is different: it is
 reused or schema-copied, not redesigned (§2.9). Whether orchestration state lives in new
 `orchestrator_*` tables or extends `agent_runs` scaffolding is settled by a one-day spike at the
@@ -64,13 +64,13 @@ can be added without changing the orchestration domain.
 
 Several ports already have production implementations to wrap rather than design:
 
-| Port | Existing implementation |
-| --- | --- |
-| `WebResearchPort` | Exists under this exact name: interface in `packages/shared-agent-ops/src/gateway/op-execution.ts`; hardened Tavily-backed implementation in `apps/worker/src/workers/agent-run/webResearchPort.ts` (SSRF-safe fetch, size caps, untrusted-content notice). Reuse it; do not define a competing type. |
-| `ModelPort` | Thin wrapper over `packages/smart-llm` (`SmartLLMService`), which already provides complexity-based model selection and per-user USD usage logging (`llm_usage_logs`). |
-| `BuildosReadPort` / `BuildosOperationPort` | Wrap the `shared-agent-ops` gateway: `executeGatewayOp` for reads/commits; `stageGatewayWriteOp` → `ProposedChange` (approved/rejected/pending) for propose/stage modes. The staged-mutation mechanism already exists in production. |
-| `QueuePort` | Wrap the existing Supabase queue RPCs (`add_queue_job` dedup, claim/complete/fail, stalled reclaim). |
-| `EventSinkPort` | Schema-copy of `agent_run_events` semantics. |
+| Port                                       | Existing implementation                                                                                                                                                                                                                                                                               |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WebResearchPort`                          | Exists under this exact name: interface in `packages/shared-agent-ops/src/gateway/op-execution.ts`; hardened Tavily-backed implementation in `apps/worker/src/workers/agent-run/webResearchPort.ts` (SSRF-safe fetch, size caps, untrusted-content notice). Reuse it; do not define a competing type. |
+| `ModelPort`                                | Thin wrapper over `packages/smart-llm` (`SmartLLMService`), which already provides complexity-based model selection and per-user USD usage logging (`llm_usage_logs`).                                                                                                                                |
+| `BuildosReadPort` / `BuildosOperationPort` | Wrap the `shared-agent-ops` gateway: `executeGatewayOp` for reads/commits; `stageGatewayWriteOp` → `ProposedChange` (approved/rejected/pending) for propose/stage modes. The staged-mutation mechanism already exists in production.                                                                  |
+| `QueuePort`                                | Wrap the existing Supabase queue RPCs (`add_queue_job` dedup, claim/complete/fail, stalled reclaim).                                                                                                                                                                                                  |
+| `EventSinkPort`                            | Schema-copy of `agent_run_events` semantics.                                                                                                                                                                                                                                                          |
 
 Genuinely new port implementations: `WorkflowRepositoryPort`, `ArtifactStorePort`, and
 `AgentExecutorPort`.
@@ -388,11 +388,11 @@ type StepSpec = {
 };
 ```
 
-| Field | Authored by |
-| --- | --- |
+| Field                                                                                                                            | Authored by        |
+| -------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | `goal`, `non_goals`, `agent_id`, `deliverable_type`, `acceptance_criteria`, `input_artifact_ids`, `depends_on_step_keys`, labels | Model (`StepSpec`) |
-| `step_id`, dependency edges (including previous-stage edges) | Compiler |
-| `permission_grant` (§10 intersection), `budget` (USD, §2.11), `timeout_ms` (agent-manifest policy) | Policy |
+| `step_id`, dependency edges (including previous-stage edges)                                                                     | Compiler           |
+| `permission_grant` (§10 intersection), `budget` (USD, §2.11), `timeout_ms` (agent-manifest policy)                               | Policy             |
 
 ### 6.3 StepAssignment
 
@@ -605,14 +605,14 @@ Scheduling requirements:
 
 For V0, joins and failure policies resolve deterministically:
 
-| join_policy | Settled outcome | failure_policy | Stage result |
-| --- | --- | --- | --- |
-| `all` | every step completed | — | `completed` → decision gate |
-| `all` | any step failed or unacceptably partial | `replan` | `failed` → decision gate with replan context (counts against `max_replans_per_run`) |
-| `all` | any step failed or unacceptably partial | `complete_partial` | `partial` → decision gate with surviving artifacts |
-| `all` | any step failed or unacceptably partial | `fail` | `failed` → run `failed`; CEO wakes once for failure synthesis |
-| `best_effort` | at least one step completed | — | `completed` (partials/failures visible in the digest) → decision gate |
-| `best_effort` | zero steps completed | `replan` / `complete_partial` / `fail` | treated as stage failure; resolves per the three `all`-failure rows above |
+| join_policy   | Settled outcome                         | failure_policy                         | Stage result                                                                        |
+| ------------- | --------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------- |
+| `all`         | every step completed                    | —                                      | `completed` → decision gate                                                         |
+| `all`         | any step failed or unacceptably partial | `replan`                               | `failed` → decision gate with replan context (counts against `max_replans_per_run`) |
+| `all`         | any step failed or unacceptably partial | `complete_partial`                     | `partial` → decision gate with surviving artifacts                                  |
+| `all`         | any step failed or unacceptably partial | `fail`                                 | `failed` → run `failed`; CEO wakes once for failure synthesis                       |
+| `best_effort` | at least one step completed             | —                                      | `completed` (partials/failures visible in the digest) → decision gate               |
+| `best_effort` | zero steps completed                    | `replan` / `complete_partial` / `fail` | treated as stage failure; resolves per the three `all`-failure rows above           |
 
 Both policies wait for every step to settle before joining; `best_effort` never joins early.
 
@@ -723,7 +723,7 @@ Prompt-injection containment is architectural, not merely an evaluation scenario
   with its provenance; researcher output is never concatenated bare into CEO instructions.
 - The user's original `objective` is immutable for the life of the run. No transition, artifact,
   or digest content can rewrite it.
-- The server-side grant intersection above is *the* escalation defense: injected text that
+- The server-side grant intersection above is _the_ escalation defense: injected text that
   persuades a model changes nothing about what the runtime permits.
 - Web content enters only through the hardened `WebResearchPort` implementation (SSRF-safe
   fetch, size caps, injected untrusted-content notice).
@@ -1008,8 +1008,8 @@ Locked by the 2026-07-24 revision (previously open):
    single-table queue pattern.
 2. **Artifact storage:** JSONB with a hard 256 KB cap and ≤1 KB summaries; object storage
    deferred (§9).
-4. **Concurrency caps:** 3 concurrent steps per run, 1 active run per user (§8).
-6. **User guidance timing:** guidance waits for the next declared checkpoint — this is already
+3. **Concurrency caps:** 3 concurrent steps per run, 1 active run per user (§8).
+4. **User guidance timing:** guidance waits for the next declared checkpoint — this is already
    how production signals drain between iterations; V0 additionally defers guidance entirely
    (cancel only).
 
@@ -1022,9 +1022,9 @@ Still open — resolve as small ADRs before the affected slice:
 
 3. **Exact low-risk direct operations for the CEO V0 fast lane** (ADR before Slice B2, informed
    by Phase A route labels).
-5. **Pinned model for CEO route and transition evaluations** (decide at Slice A0 so Phase A and
+4. **Pinned model for CEO route and transition evaluations** (decide at Slice A0 so Phase A and
    Phase B measure the same brain).
-7. **Substrate spike outcome** — reuse `agent_runs` scaffolding vs. a separate namespace (ADR at
+5. **Substrate spike outcome** — reuse `agent_runs` scaffolding vs. a separate namespace (ADR at
    Slice B0).
 
 These questions must not block Phase A. Their answers become small ADRs before the affected

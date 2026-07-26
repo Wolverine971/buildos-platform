@@ -3,9 +3,14 @@
 # Agent-First Orchestration System
 
 **Status:** Proposed
-**Date:** 2026-07-24
+**Date:** 2026-07-24 (Phase A status updated 2026-07-25)
 **Owner:** BuildOS
-**Implementation state:** Planning only
+**Implementation state:** Phase A falsification harness built and partly measured; no durable
+system exists. A0 is complete. The fact-classification/code-decision A1 mitigation returned
+**Change** at 61/72 frozen routes; a cold direct/capability holdout scored 15/15 but did not invoke
+the scope classifier. The failed route gate still blocks A2, which has zero scored outputs. Phase
+B is not authorized. See [NEXT_ITERATION.md](./NEXT_ITERATION.md) and the
+[post-mitigation independent-review handoff](./PHASE_A_POST_MITIGATION_HANDOFF_2026-07-25.md).
 
 ## Purpose
 
@@ -215,7 +220,7 @@ durable, versioned artifacts. The CEO wakes at explicit decision gates with a co
 digest, reasons about what should happen next, and either creates another stage, asks the user,
 finishes, or records a capability gap.
 
-This is the target experience for the *adopted* system. During V0 evaluation, this progress view
+This is the target experience for the _adopted_ system. During V0 evaluation, this progress view
 renders only on an internal admin/debug surface; no new end-user surface ships until the
 evaluation shows the architecture wins (see Non-Goals).
 
@@ -554,6 +559,9 @@ gated on Phase A's recorded go/change/stop decision.
 - [Audit 2026-07-24](./AUDIT_2026-07-24.md) — pre-implementation audit; source of the Phase A/B
   restructure, the substrate-reuse boundary, and the contract fixes
 - [Phase A Falsification Plan](./PHASE_A_FALSIFICATION_PLAN.md) — the executable first step
+- [Phase A Audit 2026-07-25](./PHASE_A_AUDIT_2026-07-25.md) — independent audit of the built A0–A2
+  work; source of the amended decision rule and the eval-validity fixes
+- [Next Iteration Runbook](./NEXT_ITERATION.md) — the ordered, costed steps that remain
 - [Agentic Chat Operating Model](../../specs/agentic-chat-operating-model.md) — existing-system
   control, not a dependency of the new runtime
 - [Tree Agent LLM Orchestration Spec](../../specs/tree-agent/tree-agent-llm-orchestration-spec.md) —

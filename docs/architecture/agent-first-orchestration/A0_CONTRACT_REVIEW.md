@@ -2,7 +2,7 @@
 
 # Slice A0 Contract Review
 
-**Status:** Awaiting DJ gate 2
+**Status:** Approved by DJ (gate 2 passed)
 **Date:** 2026-07-24
 **Implementation:** `packages/agent-orchestrator/src/contracts/`
 
@@ -50,4 +50,9 @@
 3. Confirm that `ProjectScope.project_name` is useful denormalized display context; authorization
    remains keyed only by `project_id`.
 
-No corpus queries, LLM calls, or baseline runs proceed until this gate is resolved.
+## Decision
+
+DJ approved the draft on 2026-07-24. The implemented leaf shapes and denormalized
+`ProjectScope.project_name` remain as drafted. `ArtifactEnvelope` continues to match §6.6 for
+Phase A; adding a self-identifying `artifact_id` remains a recommendation to revisit before the
+durable persistence slice.
