@@ -12,6 +12,8 @@ export interface PageData {
 	user: {
 		id: string;
 		email: string;
+		/** From the `public.users` row — where the Account tab's name actually lands. */
+		name?: string | null;
 		user_metadata?: {
 			name?: string;
 		};
@@ -27,7 +29,6 @@ export interface PageData {
 		categoryCompletion: Record<string, boolean>;
 		missingCategories: string[];
 	};
-	projectTemplates: Database['public']['Tables']['project_brief_templates']['Row'][];
 	completedOnboarding: boolean;
 	isAdmin: boolean;
 	voiceNarrationEnabled: boolean;

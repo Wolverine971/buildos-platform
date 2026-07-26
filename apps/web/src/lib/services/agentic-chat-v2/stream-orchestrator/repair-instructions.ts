@@ -16,6 +16,8 @@ import {
 	didSuccessfulGatewayOpExecute,
 	getGatewayExecOp,
 	isDuplicateWriteSkippedExecution,
+	isWebResearchToolName,
+	isWriteLedgerToolExecution,
 	isWriteLikeOperation
 } from './tool-classification';
 import { extractGatewayRequiredFieldFailuresFromValidationIssues } from './round-analysis';
@@ -362,6 +364,67 @@ export function buildSkillGateNoLoadRepairInstruction(recommendedSkillIds: strin
 		"If none of those candidates fits the user's actual ask, call skill_search to find the right skill and then skill_load it.",
 		"After the skill is loaded, write the final answer by applying that skill's playbook and output contract.",
 		"If you already created or updated an entity this turn (for example a document rewrite), re-apply the loaded skill's contract to that content and update the entity again before finalizing — do not leave un-skill-grounded content as the persisted result."
+	].join(' ');
+}
+
+/**
+ * Research-capture floor (2026-07-25).
+ *
+ * A turn that runs real web research and persists nothing loses everything it learned the moment
+ * the session ends, and the user cannot see that it happened — the reply looks complete.
+ *
+ * This is enforced in code rather than by prompt guidance because guidance was measured and did
+ * not hold. Baseline on the `document-from-vague-description` e2e scenario was 3/5 turns
+ * persisting; after explicit prompt instruction it was 1/6, with research volume going UP and
+ * document writes going DOWN. `task-complete-cold-reference` is 0/7 lifetime. A skill cannot carry
+ * this either: `activation: always_on` is a dead enum (parsed, never acted on), all runtime skills
+ * are `progressive`, and across those 10 measured turns the model made exactly one `skill_load`
+ * call — none for the research skill.
+ *
+ * The bar is deliberately low. One durable write of any kind satisfies it; this asks "did anything
+ * survive the turn," not "was the right thing written."
+ */
+const RESEARCH_CAPTURE_MINIMUM_CALLS = 2;
+
+export function countWebResearchCalls(toolExecutions: FastToolExecution[]): number {
+	return toolExecutions.filter((execution) =>
+		isWebResearchToolName(execution.toolCall.function?.name ?? '')
+	).length;
+}
+
+export function shouldRepairResearchNoPersist(params: {
+	finalText: string;
+	toolExecutions: FastToolExecution[];
+	repairAlreadyInjected: boolean;
+}): boolean {
+	if (params.repairAlreadyInjected) return false;
+	if (countWebResearchCalls(params.toolExecutions) < RESEARCH_CAPTURE_MINIMUM_CALLS) return false;
+	// Any successful durable write clears the floor, whatever it wrote.
+	if (
+		params.toolExecutions.some(
+			(execution) =>
+				isWriteLedgerToolExecution(execution) && execution.result.success === true
+		)
+	) {
+		return false;
+	}
+	// A turn that stopped to ask produced no work product to persist yet.
+	if (looksLikePureClarifyingQuestion(params.finalText.trim())) return false;
+	return true;
+}
+
+export function buildResearchNoPersistRepairInstruction(
+	toolExecutions: FastToolExecution[]
+): string {
+	const researchCalls = countWebResearchCalls(toolExecutions);
+	return [
+		`You ran ${researchCalls} web research calls this turn and saved none of it.`,
+		'Those findings exist only in this reply and are lost when the session ends.',
+		'Before you finalize, persist what you learned: append to the project document the research was for, or create one if nothing fits.',
+		'Include a Sources section listing the URLs used, and a short section naming anything you looked for and could not resolve.',
+		'Then write the final reply as 3-5 bottom-line-up-front takeaways plus one line naming the document the detail lives in.',
+		'Do not paste the document body into the reply.',
+		'If the user explicitly asked you not to save anything, say so in one line instead of writing.'
 	].join(' ');
 }
 
@@ -866,11 +929,17 @@ export function buildReadLoopRepairInstruction(
 	const level = options.level ?? 'nudge';
 
 	if (level === 'must_synthesize' && options.framing === 'research_budget') {
+		// This instruction previously said "do not call more tools" outright, which forbade the
+		// one write that keeps the research. Measured effect: turns that researched hardest were
+		// structurally prevented from saving anything, and the harder the turn researched, the
+		// more reliably it lost everything. Stopping *research* is the intent; blocking the
+		// capture write was collateral. See research_capture floor in this file.
 		return [
 			'Research budget reached: you have gathered enough web evidence for this turn.',
 			roundsRemainingLine,
-			'Do not call more tools in the next response.',
-			'Write the final answer now from the pages and search results already collected, citing their source URLs; state any remaining gaps concisely.'
+			'Do not run any more searches or page visits.',
+			'First persist what you learned in a single write: append to the project document this research was for, or create one if nothing fits, including a Sources section listing the URLs used. That one write is the only tool call allowed.',
+			'Then write the final answer from the evidence already collected as bottom-line-up-front takeaways, naming the document the detail lives in; state any remaining gaps concisely.'
 		]
 			.filter((line): line is string => Boolean(line))
 			.join(' ');

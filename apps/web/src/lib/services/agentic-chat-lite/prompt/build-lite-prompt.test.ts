@@ -104,11 +104,17 @@ describe('buildLitePromptEnvelope', () => {
 		});
 
 		expect(envelope.promptVariant).toBe('lite_seed_v1');
-		// project_knowledge_map and project_start_here are project-only; a global
-		// seed renders every canonical section except those.
+		// project_knowledge_map and project_start_here are project-only; the
+		// per-turn overlay sections (active_domain_signals, situational_rules)
+		// render only when their signal is live. A global seed without a matching
+		// message or turn situation renders every other canonical section.
 		expect(envelope.sections.map((section) => section.id)).toEqual(
 			LITE_PROMPT_SECTION_ORDER.filter(
-				(id) => id !== 'project_knowledge_map' && id !== 'project_start_here'
+				(id) =>
+					id !== 'project_knowledge_map' &&
+					id !== 'project_start_here' &&
+					id !== 'active_domain_signals' &&
+					id !== 'situational_rules'
 			)
 		);
 		expect(
@@ -141,13 +147,14 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain(
 			'assistant content only for final user-visible prose, never reasoning, scratchpad, prompt analysis, rubric checks, or tool-result bookkeeping'
 		);
-		// Current order (2026-04-17 reorder): identity → capabilities → tool_surface →
-		// operating_strategy → safety_data_rules → focus_purpose → …. Describe what we
-		// can do before telling the agent how to use it.
-		expect(capabilityHeadingIndex).toBeLessThan(toolHeadingIndex);
-		expect(toolHeadingIndex).toBeLessThan(operatingHeadingIndex);
+		// Current order (tasker/39 stage 4 reorder): identity → capabilities →
+		// operating_strategy → safety_data_rules → tool_surface → per-turn
+		// overlays → focus_purpose → …. Statics lead so the cacheable prompt
+		// prefix survives past the rules sections on every turn.
+		expect(capabilityHeadingIndex).toBeLessThan(operatingHeadingIndex);
 		expect(operatingHeadingIndex).toBeLessThan(safetyHeadingIndex);
-		expect(safetyHeadingIndex).toBeLessThan(focusHeadingIndex);
+		expect(safetyHeadingIndex).toBeLessThan(toolHeadingIndex);
+		expect(toolHeadingIndex).toBeLessThan(focusHeadingIndex);
 		expect(focusHeadingIndex).toBeLessThan(retrievalHeadingIndex);
 		// WP-7 (2026-07-10): H1 carries no internal build naming, and the
 		// "Prompt variant:" metadata line is telemetry-only, not model input.
@@ -187,25 +194,25 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain(
 			'Pre-tool lead-ins are intent only: say what you will attempt, not that it already happened.'
 		);
-		expect(envelope.systemPrompt).toContain('Root skills are the default depth.');
-		expect(envelope.systemPrompt).toContain(
+		// tasker/39 stage 2 (2026-07-26): the discovery-navigation bullets
+		// (domain_search, outcome cards/resources, skill_search, gate handling,
+		// ledger, root-vs-child depth) left the static strategy list — they are
+		// situational and now arrive via the Active Domain Signals rendering and
+		// tool descriptions. Negative assertions keep the dedupe from regressing.
+		expect(envelope.systemPrompt).not.toContain('Root skills are the default depth.');
+		expect(envelope.systemPrompt).not.toContain(
 			'Treat skills in the loaded-skills ledger as already discovered.'
 		);
 		expect(envelope.systemPrompt).toContain(
 			'Routing signals arrive in the Active Domain Signals section'
 		);
-		// The full 13-domain index is no longer inlined (2026-06-14 Tier 2 item 6):
-		// it is replaced by a domain_search pointer; the relevant domain is still
-		// injected on demand via the Active Domain Signals section.
-		expect(envelope.systemPrompt).toContain(
-			'call `domain_search` to browse subject areas when routing is unclear'
-		);
+		// One compact domain_search pointer survives in the capabilities section.
+		expect(envelope.systemPrompt).toContain('`domain_search` browses subject areas');
 		expect(envelope.systemPrompt).not.toContain(
 			'Compact domain index (load domain details only when relevant):'
 		);
 		expect(envelope.systemPrompt).not.toContain('Coverage: partial.');
-		// WP-5: outcome-card and resource policy merged into one strategy bullet.
-		expect(envelope.systemPrompt).toContain(
+		expect(envelope.systemPrompt).not.toContain(
 			'load a resource (resource_search, then resource_load) when source detail'
 		);
 		expect(envelope.systemPrompt).toContain('Root skill catalog');
@@ -216,10 +223,13 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain('Some root skills expose child skills');
 		expect(envelope.systemPrompt).not.toContain('Registered child skills');
 		expect(envelope.systemPrompt).not.toContain('| `task_state_updates` | `task_management` |');
-		expect(envelope.systemPrompt).toContain(
+		// tasker/39 stage 2: skill_reference_load mechanics and the
+		// recommended_load_format micro-rule moved onto the skill_load /
+		// skill_reference_load tool descriptions.
+		expect(envelope.systemPrompt).not.toContain(
 			'skill_reference_load takes reference_modules entries returned by skill_load'
 		);
-		expect(envelope.systemPrompt).toContain(
+		expect(envelope.systemPrompt).not.toContain(
 			"the runtime picks the skill's recommended_load_format"
 		);
 		expect(envelope.systemPrompt).not.toContain('Default to format: short');
@@ -1467,16 +1477,23 @@ describe('buildLitePromptEnvelope', () => {
 		// But the underlying guidance must still be present inline.
 		expect(strategy?.content).toContain('1-2 sentence lead-in');
 		expect(strategy?.content).toContain('intent only');
-		expect(strategy?.content).toContain('Resolve entity targets');
-		expect(strategy?.content).toContain('reuse exact IDs');
+		// tasker/39 stage 3: the entity-resolution order moved to the
+		// situational_rules write block — it renders only on turns that can
+		// actually write (see situational-rules.test.ts).
+		expect(strategy?.content).not.toContain('Resolve entity targets');
 		expect(strategy?.content).toContain('skill_load');
 		// 2026-07-02 routing fix: the old "two or more related writes" rule made
 		// skill loading look write-only, so craft/review/research prompts were
 		// answered from base knowledge without loading the skill.
 		expect(strategy?.content).not.toContain('two or more related writes');
-		expect(strategy?.content).toContain('craft/judgment work a registered skill covers');
-		expect(strategy?.content).toContain('skill-load gate as ACTIVE');
-		expect(strategy?.content).toContain(
+		// tasker/39 stage 2 (2026-07-26): the skill_load rule stays (compressed —
+		// the craft enumeration duplicated the catalog rows); gate/ledger handling
+		// moved to the Active Domain Signals rendering; the scratch-private bullet
+		// was the third statement of the assistant-content contract (preamble +
+		// safety anti-echo) and the durables rule moved to final_response_contract.
+		expect(strategy?.content).toContain('routing failure, not a shortcut');
+		expect(strategy?.content).not.toContain('skill-load gate as ACTIVE');
+		expect(strategy?.content).not.toContain(
 			'not a plan, checklist, or paraphrase of these instructions'
 		);
 	});
@@ -1517,7 +1534,10 @@ describe('buildLitePromptEnvelope', () => {
 
 		const safety = envelope.sections.find((section) => section.id === 'safety_data_rules');
 		expect(safety?.content).toContain('See the document_workspace skill');
-		expect(safety?.content).toContain('See the task_management skill');
+		// tasker/39 stage 3: the task-state rule (with its task_management
+		// pointer) moved to the situational_rules write block.
+		expect(safety?.content).not.toContain('See the task_management skill');
+		expect(safety?.content).not.toContain('exact full IDs');
 		// The older 5-line document placement paragraph is gone.
 		expect(safety?.content).not.toContain(
 			'named research notes, specs, worldbuilding, outlines'

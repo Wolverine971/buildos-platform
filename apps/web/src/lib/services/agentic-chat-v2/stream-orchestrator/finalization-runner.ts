@@ -13,7 +13,9 @@ import {
 	collectGatewayWriteIntentOps,
 	enforceMutationOutcomeIntegrity,
 	looksLikeExplicitMutationRequest,
+	buildResearchNoPersistRepairInstruction,
 	shouldRepairGatewayMutationNoExecution,
+	shouldRepairResearchNoPersist,
 	shouldRepairProjectCreateNoExecution,
 	shouldRepairSkillGateNoLoad
 } from './repair-instructions';
@@ -150,7 +152,7 @@ export async function runNoToolSynthesisFinalization(params: {
 export type NoToolCallFinalizationResult =
 	| {
 			action: 'repair';
-			kind: 'project_create' | 'gateway_mutation' | 'skill_gate';
+			kind: 'project_create' | 'gateway_mutation' | 'skill_gate' | 'research_no_persist';
 			instruction: string;
 	  }
 	| { action: 'finalized'; finalAssistantText: string };
@@ -167,6 +169,7 @@ export async function runNoToolCallFinalization(params: {
 	projectCreateStopRepairInjected: boolean;
 	gatewayMutationStopRepairInjected: boolean;
 	skillGateStopRepairInjected: boolean;
+	researchNoPersistStopRepairInjected: boolean;
 	skillGate?: {
 		required: boolean;
 		recommendedSkillIds: string[];
@@ -228,6 +231,22 @@ export async function runNoToolCallFinalization(params: {
 			instruction: buildSkillGateNoLoadRepairInstruction(
 				params.skillGate?.recommendedSkillIds ?? []
 			)
+		};
+	}
+	// Runs after the skill gate: if a skill is still owed, load it first — the skill's contract
+	// shapes what gets written, so repairing the write before the skill would persist
+	// un-skill-grounded content and then have to rewrite it.
+	if (
+		shouldRepairResearchNoPersist({
+			finalText: candidateFinalText,
+			toolExecutions: params.toolExecutions,
+			repairAlreadyInjected: params.researchNoPersistStopRepairInjected
+		})
+	) {
+		return {
+			action: 'repair',
+			kind: 'research_no_persist',
+			instruction: buildResearchNoPersistRepairInstruction(params.toolExecutions)
 		};
 	}
 

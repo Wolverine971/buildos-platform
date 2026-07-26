@@ -12,6 +12,7 @@ import {
 	getWriteToolNamesForTurnIntent,
 	type FastChatTurnIntent
 } from './turn-intent';
+import { looksLikeWebResearchTurn } from '$lib/services/agentic-chat-lite/prompt/situational-rules';
 
 export function selectFastChatTools(params: {
 	contextType: ChatContextType;
@@ -73,10 +74,17 @@ export function selectFastChatTools(params: {
 	)
 		? ['delegate_task']
 		: [];
+	// tasker/39 stage 3: turns that plainly ask for web research get web tools
+	// at launch (and with them the situational research rules), instead of
+	// spending a discovery round finding web_search first.
+	const webResearchTools = looksLikeWebResearchTurn(params.latestUserMessage)
+		? ['web_search', 'web_visit']
+		: [];
 	return materializeGatewayTools(tools, [
 		...autonomousWriteTools,
 		...crossProjectTools,
-		...delegatedResearchTools
+		...delegatedResearchTools,
+		...webResearchTools
 	]).tools;
 }
 

@@ -274,6 +274,26 @@ export async function waitForUsageSummary(
 	return summarizeUsageLogs(lastRows);
 }
 
+export interface EventRow {
+	id: string;
+	project_id: string | null;
+	title: string;
+	start_at: string;
+}
+
+/** All live events under a project — one of the four forward-carry surfaces. */
+export async function listEvents(
+	admin: TypedSupabaseClient,
+	projectId: string
+): Promise<EventRow[]> {
+	const { data } = await admin
+		.from('onto_events')
+		.select('id, project_id, title, start_at')
+		.eq('project_id', projectId)
+		.is('deleted_at', null);
+	return (data as EventRow[] | null) ?? [];
+}
+
 /** All live (non-deleted) documents under a project. */
 export async function listDocuments(
 	admin: TypedSupabaseClient,

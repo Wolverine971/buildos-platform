@@ -8,6 +8,15 @@ import { projectOrganizeScenario } from './project-organize.scenario';
 import { taskCreateScenario } from './task-create.scenario';
 import { calendarMoveScenario } from './calendar-move.scenario';
 import { emailReadScenario } from './email-read.scenario';
+// Tier 1 breadth, added 2026-07-25 from DJ's failure-mode interview.
+import { taskCompleteColdReferenceScenario } from './task-complete-cold-reference.scenario';
+import { entityResolutionMisspelledScenario } from './entity-resolution-misspelled.scenario';
+import { researchTurnFinalizesScenario } from './research-turn-finalizes.scenario';
+import { restraintNoopAndAmbiguityScenario } from './restraint-noop-and-ambiguity.scenario';
+import { taskRescheduleColdReferenceScenario } from './task-reschedule-cold-reference.scenario';
+import { taskMultiUpdateScenario } from './task-multi-update.scenario';
+import { documentFromVagueDescriptionScenario } from './document-from-vague-description.scenario';
+import { researchLogReadbackScenario } from './research-log-readback.scenario';
 
 export const scenarioCatalog: Scenario[] = [
 	documentCreateScenario,
@@ -15,5 +24,13 @@ export const scenarioCatalog: Scenario[] = [
 	projectOrganizeScenario,
 	taskCreateScenario,
 	calendarMoveScenario,
-	emailReadScenario
+	emailReadScenario,
+	taskCompleteColdReferenceScenario,
+	entityResolutionMisspelledScenario,
+	researchTurnFinalizesScenario,
+	restraintNoopAndAmbiguityScenario,
+	taskRescheduleColdReferenceScenario,
+	taskMultiUpdateScenario,
+	documentFromVagueDescriptionScenario,
+	researchLogReadbackScenario
 ];

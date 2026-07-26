@@ -3,7 +3,6 @@
 	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
-	import Modal from '$lib/components/ui/Modal.svelte';
 	import { userContextStore } from '$lib/stores/userContext';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -14,6 +13,7 @@
 		Key,
 		Sparkles,
 		Calendar,
+		Coffee,
 		Mail,
 		AlertCircle,
 		Bell,
@@ -21,16 +21,11 @@
 		CreditCard
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
-	import { enhance } from '$app/forms';
 	import { browser } from '$app/environment';
-	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TabNav from '$lib/components/ui/TabNav.svelte';
 	import type { Tab as TabNavTab } from '$lib/components/ui/TabNav.svelte';
-	import Textarea from '$lib/components/ui/Textarea.svelte';
-	import FormField from '$lib/components/ui/FormField.svelte';
 
-	// Import the new components
 	import BriefsTab from '$lib/components/profile/BriefsTab.svelte';
 	import CalendarTab from '$lib/components/profile/CalendarTab.svelte';
 	import EmailTab from '$lib/components/profile/EmailTab.svelte';
@@ -56,17 +51,11 @@
 		return data.activeTab || 'account';
 	}
 
-	function getInitialProgressData() {
-		return (
-			data.progressData || {
-				completed: false,
-				progress: 0,
-				missingFields: [] as string[],
-				completedFields: [] as string[],
-				missingRequiredFields: [] as string[],
-				categoryProgress: {} as Record<string, boolean>
-			}
-		);
+	/** Onboarding categories that still block a "complete" state. */
+	const REQUIRED_ONBOARDING_CATEGORIES = ['projects', 'work_style', 'challenges'];
+
+	function getInitialMissingRequired(): string[] {
+		return data.progressData?.missingRequiredFields ?? [];
 	}
 
 	// State
@@ -90,12 +79,11 @@
 		data.stripeEnabled ? [...baseProfileTabIds, 'billing'] : baseProfileTabIds
 	);
 
-	// Template management state
-	let editingTemplate = $state<any>(null);
-	let creatingTemplate = $state<'project' | null>(null);
-
-	// Progress data from server
-	let progressData = $state(getInitialProgressData());
+	/**
+	 * Only drives which label the onboarding button shows ("Complete" vs "Start"),
+	 * so the required categories are all this page needs from onboarding progress.
+	 */
+	let missingRequiredFields = $state<string[]>(getInitialMissingRequired());
 
 	// Handle form submission results
 	$effect(() => {
@@ -103,8 +91,6 @@
 			saveSuccess = true;
 			successMessage = 'Changes saved successfully.';
 			saveError = false;
-			editingTemplate = null;
-			creatingTemplate = null;
 
 			setTimeout(() => {
 				saveSuccess = false;
@@ -129,7 +115,10 @@
 		{ id: 'account', label: 'Account', icon: User },
 		{ id: 'contacts', label: 'Contacts', icon: Users },
 		{ id: 'preferences', label: 'AI Preferences', icon: Sparkles },
-		{ id: 'briefs', label: 'Brief Settings', icon: Bell },
+		// Coffee, not Bell: Notifications owns Bell, and two tabs sharing one icon
+		// made them indistinguishable in the tab bar. Matches the brief icon used
+		// on the activity timeline.
+		{ id: 'briefs', label: 'Brief Settings', icon: Coffee },
 		{ id: 'calendar', label: 'Calendar', icon: Calendar },
 		{ id: 'email', label: 'Email', icon: Mail },
 		{ id: 'notifications', label: 'Notifications', icon: Bell },
@@ -199,11 +188,6 @@
 		}, 5000);
 	}
 
-	function closeTemplateEditor() {
-		editingTemplate = null;
-		creatingTemplate = null;
-	}
-
 	// Handle success messages from child components
 	function handleComponentSuccess(event: { message?: string }) {
 		showSuccess(event?.message || 'Changes saved successfully!');
@@ -224,33 +208,12 @@
 		}
 	});
 
-	// Update progress data from store
+	// Keep the onboarding-button label in sync with live progress from the store.
 	$effect(() => {
 		if (storeState?.progress) {
-			progressData = {
-				completed: storeState.completedOnboarding,
-				progress: storeState.progress.percentage,
-				missingFields: storeState.progress.missingCategories,
-				completedFields: storeState.progress.completedCategories,
-				missingRequiredFields: storeState.progress.missingCategories.filter((cat: string) =>
-					['projects', 'work_style', 'challenges'].includes(cat)
-				),
-				categoryProgress: storeState.progress.completedCategories.reduce(
-					(acc: Record<string, boolean>, cat: string) => {
-						acc[cat] = true;
-						return acc;
-					},
-					{} as Record<string, boolean>
-				),
-				categoryCompletion: storeState.progress.completedCategories.reduce(
-					(acc: Record<string, boolean>, cat: string) => {
-						acc[cat] = true;
-						return acc;
-					},
-					{} as Record<string, boolean>
-				),
-				missingCategories: storeState.progress.missingCategories
-			};
+			missingRequiredFields = storeState.progress.missingCategories.filter((cat: string) =>
+				REQUIRED_ONBOARDING_CATEGORIES.includes(cat)
+			);
 		}
 	});
 </script>
@@ -259,12 +222,12 @@
 	<title>Profile & Settings - BuildOS</title>
 	<meta
 		name="description"
-		content="Manage your BuildOS profile, work preferences, and AI prompt templates for personalized productivity assistance."
+		content="Manage your BuildOS profile, work preferences, notifications, calendar, and connected agents."
 	/>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="min-h-screen bg-background rounded-md">
+<div class="min-h-screen bg-background">
 	<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4">
 		<!-- Success Banner -->
 		{#if showOnboardingComplete}
@@ -340,7 +303,12 @@
 					</div>
 					<div class="min-w-0">
 						<h1 class="text-base sm:text-lg font-bold text-foreground truncate">
-							{data.user?.user_metadata?.name || 'Your Profile'}
+							<!--
+								`user.name` (the public.users row) is where the name set on the
+								Account tab actually lands; without it the header reads
+								"Your Profile" for everyone. Matches AccountTab's lookup.
+							-->
+							{data.user?.user_metadata?.name || data.user?.name || 'Your Profile'}
 						</h1>
 						<div
 							class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5"
@@ -368,7 +336,7 @@
 						size="sm"
 						class="bg-accent hover:bg-accent/90 shadow-ink pressable flex-shrink-0"
 					>
-						{#if progressData.missingRequiredFields?.length > 0}
+						{#if missingRequiredFields.length > 0}
 							<AlertCircle class="w-3.5 h-3.5 mr-1" />
 							<span class="hidden sm:inline">Complete Onboarding</span>
 							<span class="sm:hidden">Setup</span>
@@ -431,121 +399,6 @@
 			<AgentKeysTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
 		{:else if activeTab === 'billing' && data.stripeEnabled}
 			<BillingTab subscriptionDetails={data.subscriptionDetails} />
-		{/if}
-
-		<!-- Template Editor/Preview Modal (base Modal: portal, scroll lock,
-		     dvh sizing, Escape/backdrop stack handling) -->
-		{#if editingTemplate}
-			<Modal
-				isOpen={true}
-				onClose={closeTemplateEditor}
-				size="lg"
-				title={editingTemplate.preview
-					? `Preview Template: ${editingTemplate.name}`
-					: editingTemplate.id
-						? 'Edit Template'
-						: 'Create New Template'}
-			>
-				{#if editingTemplate.preview}
-					<!-- Preview Mode -->
-					<div class="p-4">
-						<div class="space-y-4">
-							<div>
-								<h4 class="text-sm font-medium text-foreground mb-2">
-									Description
-								</h4>
-								<p class="text-muted-foreground">
-									{editingTemplate.description || 'No description provided'}
-								</p>
-							</div>
-							<div>
-								<h4 class="text-sm font-medium text-foreground mb-2">
-									Template Content
-								</h4>
-								<pre
-									class="bg-muted p-4 rounded-lg text-sm font-mono whitespace-pre-wrap break-words overflow-x-auto border border-border text-foreground">{editingTemplate.template_content}</pre>
-							</div>
-						</div>
-					</div>
-				{:else}
-					<!-- Edit Mode -->
-					<form
-						method="POST"
-						action={editingTemplate.id ? '?/updateTemplate' : '?/createTemplate'}
-						use:enhance
-						class="contents"
-					>
-						{#if editingTemplate.id}
-							<input type="hidden" name="id" value={editingTemplate.id} />
-						{/if}
-						<input type="hidden" name="type" value={creatingTemplate} />
-
-						<div class="p-4">
-							<div class="space-y-4">
-								<FormField label="Name" labelFor="templateName" required>
-									<TextInput
-										id="templateName"
-										name="name"
-										bind:value={editingTemplate.name}
-										type="text"
-										required
-										placeholder="Template name"
-										size="md"
-									/>
-								</FormField>
-								<FormField label="Description" labelFor="templateDescription">
-									<TextInput
-										id="templateDescription"
-										name="description"
-										bind:value={editingTemplate.description}
-										type="text"
-										placeholder="What this template is used for"
-										size="md"
-									/>
-								</FormField>
-								<FormField
-									label="Template Content"
-									labelFor="template_content"
-									required
-									hint=""
-								>
-									<Textarea
-										name="template_content"
-										bind:value={editingTemplate.template_content}
-										rows={12}
-										size="md"
-										required
-										class="font-mono text-base sm:text-sm"
-										placeholder="Enter your template content."
-									/>
-								</FormField>
-							</div>
-						</div>
-
-						<div
-							class="sticky bottom-0 bg-card px-4 py-3 border-t border-border flex justify-end space-x-3"
-						>
-							<Button
-								type="button"
-								onclick={closeTemplateEditor}
-								variant="ghost"
-								size="md"
-								class="pressable"
-							>
-								Cancel
-							</Button>
-							<Button
-								type="submit"
-								variant="primary"
-								size="md"
-								class="shadow-ink pressable"
-							>
-								{editingTemplate.id ? 'Update' : 'Create'} Template
-							</Button>
-						</div>
-					</form>
-				{/if}
-			</Modal>
 		{/if}
 	</div>
 </div>

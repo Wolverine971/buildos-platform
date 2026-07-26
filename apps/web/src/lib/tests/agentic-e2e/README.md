@@ -157,6 +157,33 @@ omit model/provider/role, resolved scaffold configuration, or fingerprint. Set
 | `task-create`           | requires high priority and the exact requested Friday due date        |
 | `calendar-move`         | **disabled stub** until it owns external event seed/readback/delete   |
 
+## Scenarios (Tier 1 breadth, 2026-07-25)
+
+Sourced from DJ's failure-mode interview rather than invented. All seven use
+**dictated** phrasing — he speaks nearly every message rather than typing it, so
+the real input distribution is run-on, lowercase, and states an outcome plus a
+next step in one breath.
+
+| id                                | what it proves                                                                                                                            |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `task-complete-cold-reference`    | resolves a task named only by company in a **cold** session (no history), closes it, creates the stated follow-up, and updates START HERE |
+| `entity-resolution-misspelled`    | survives voice-transcription corruption of a project name — resolves the near-match **or** names it and asks; never forks a new project   |
+| `research-turn-finalizes`         | a multi-tool synthesis turn narrates before acting and still returns a real answer (budget-exhaustion guard)                              |
+| `restraint-noop-and-ambiguity`    | writes **nothing** on a passing mention, and on an ambiguous referent asks while listing the candidates and writing nothing               |
+| `task-reschedule-cold-reference`  | cold resolution + a date mutation; catches treating a reschedule as a completion, or forking a duplicate instead of moving the task       |
+| `task-multi-update`               | three operations from one dictated sentence all land; catches partial application reported as success                                     |
+| `document-from-vague-description` | non-imperative phrasing produces a real document, with structure and substance floors against empty compliance                            |
+
+Some of these are expected to fail. A scenario that fails because the product is
+broken is doing its job — record the finding, do not tune it green.
+
+New assertion helpers backing them (`harness/assertions.ts`, unit-tested in
+`harness/assertions.test.ts`): `assertNoMutations`, `assertRowsUnchanged` /
+`rowFingerprint`, `assertQuestionAsked`, `assertNonEmptyAssistantText`,
+`assertNarratedBeforeActing`, `assertToolNotCalled`, `assertTaskState`.
+Scenarios may also declare an optional `teardown` hook for fixtures beyond the
+single `seed.projectId` the runner deletes automatically.
+
 † The prior `project-organize` result is not comparable: it inspected obsolete
 `onto_edges` instead of `onto_projects.doc_structure`. Rerun the paid scenario
 before drawing a current model-quality conclusion from this case.

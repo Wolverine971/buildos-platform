@@ -5,6 +5,7 @@ import type { FastToolExecution, LLMStreamPassMetadata } from './shared';
 import {
 	resolveLengthContinuation,
 	runCancellationFinalization,
+	runNoToolCallFinalization,
 	runNoToolSynthesisFinalization,
 	runTerminalFinalization
 } from './finalization-runner';
@@ -350,5 +351,50 @@ describe('runTerminalFinalization', () => {
 
 		expect(result.finishedReason).toBe('length');
 		expect(result.finalAssistantText).toBe('Partial answer');
+	});
+});
+
+describe('runNoToolCallFinalization research-capture floor', () => {
+	const base = {
+		assistantBuffer: 'Here is what I found about competitor pricing across five vendors.',
+		carriedTruncatedText: '',
+		contextType: 'project' as const,
+		latestUserText: 'i think we need to figure out the research on pricing',
+		gatewayModeActive: true,
+		projectCreateStopRepairInjected: false,
+		gatewayMutationStopRepairInjected: false,
+		skillGateStopRepairInjected: false,
+		researchNoPersistStopRepairInjected: false,
+		skillGate: null,
+		assistantText: '',
+		emitAssistantRemainder: async () => {},
+		observeSupervisor: async () => {}
+	};
+
+	it('returns a research_no_persist repair when research persisted nothing', async () => {
+		const result = await runNoToolCallFinalization({
+			...base,
+			toolExecutions: Array.from({ length: 6 }, (_, i) =>
+				execution({ call: toolCall('web_search', { query: `q${i}` }, `ws-${i}`) })
+			)
+		});
+		expect(result.action).toBe('repair');
+		if (result.action === 'repair') {
+			expect(result.kind).toBe('research_no_persist');
+			expect(result.instruction).toContain('saved none of it');
+		}
+	});
+
+	it('finalizes normally once a document write succeeded', async () => {
+		const result = await runNoToolCallFinalization({
+			...base,
+			toolExecutions: [
+				...Array.from({ length: 6 }, (_, i) =>
+					execution({ call: toolCall('web_search', { query: `q${i}` }, `ws-${i}`) })
+				),
+				execution({ call: toolCall('create_onto_document', { title: 'Pricing' }, 'doc-1') })
+			]
+		});
+		expect(result.action).toBe('finalized');
 	});
 });

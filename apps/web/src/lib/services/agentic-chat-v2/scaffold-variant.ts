@@ -10,7 +10,8 @@ export const FASTCHAT_SCAFFOLD_VARIANT_IDS = [
 	'model-led-skill-discovery',
 	'no-server-skill-routing',
 	'no-soft-forced-synthesis',
-	'no-autonomous-recovery'
+	'no-autonomous-recovery',
+	'no-situational-rules'
 ] as const;
 
 export type FastChatScaffoldVariant = (typeof FASTCHAT_SCAFFOLD_VARIANT_IDS)[number];
@@ -70,7 +71,8 @@ export function resolveFastChatScaffoldConfig(
 			staticSkillCatalog: true,
 			skillRoutingCoaching: true,
 			retiredModelCoaching: true,
-			domainSensing: true
+			domainSensing: true,
+			situationalRules: true
 		},
 		routing: {
 			domainSensing: true,
@@ -116,6 +118,9 @@ export function resolveFastChatScaffoldConfig(
 			break;
 		case 'no-autonomous-recovery':
 			config.recovery.autonomousRecovery = false;
+			break;
+		case 'no-situational-rules':
+			config.prompt.situationalRules = false;
 			break;
 		case 'baseline':
 			break;

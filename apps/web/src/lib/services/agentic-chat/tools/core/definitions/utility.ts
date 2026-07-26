@@ -558,6 +558,7 @@ Use list_corsair_mcp_tools first to discover the exact tool name and argument sc
 			name: 'web_search',
 			description: `Perform a live web search using the Tavily API for current or external information not present in BuildOS.
 Use this to discover sources or answer broad research questions. If the user provides a specific URL, use web_visit instead.
+Prefer primary sources — official sites, vendor pricing pages, documentation — over aggregator or SEO listicle blogs, and verify specific claims (prices, dates, quotes) by visiting the page with web_visit rather than trusting a search snippet.
 Return the concise answer plus the most relevant sources so the assistant can cite URLs in its reply.`,
 			parameters: {
 				type: 'object',

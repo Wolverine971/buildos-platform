@@ -17,7 +17,10 @@ import {
 	type FastChatModelTieringConfig,
 	type FastChatPassModelRouting
 } from '../model-tiering';
-import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
+import {
+	buildLitePromptEnvelope,
+	buildMidTurnSituationalNotice
+} from '$lib/services/agentic-chat-lite/prompt';
 import { FASTCHAT_LIMITS } from '../limits';
 import { buildLiveSnapshotFromTokens, FASTCHAT_TOKEN_BUDGETS } from '../context-usage';
 import {
@@ -62,6 +65,7 @@ import {
 	buildGatewayRequiredFieldRepairInstruction,
 	buildReadLoopRepairInstruction,
 	buildToolRoundBudgetSynthesisInstruction,
+	countWebResearchCalls,
 	buildToolValidationRepairInstruction,
 	collectGatewayWriteIntentOps,
 	hasGatewayCreateFieldNoProgressFailure
@@ -307,6 +311,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let projectCreateStopRepairInjected = false;
 	let gatewayMutationStopRepairInjected = false;
 	let skillGateStopRepairInjected = false;
+	let researchNoPersistStopRepairInjected = false;
 	let readOnlyRoundCount = 0;
 	let researchRoundCount = 0;
 	let researchPayloadChars = 0;
@@ -372,6 +377,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		projectCreateStopRepair: projectCreateStopRepairInjected,
 		gatewayMutationStopRepair: gatewayMutationStopRepairInjected,
 		skillGateStopRepair: skillGateStopRepairInjected,
+		researchNoPersistRepair: researchNoPersistStopRepairInjected,
 		gatewaySchemaRepair: gatewaySchemaRepairInjected,
 		gatewayCreateFieldRepair: gatewayCreateFieldNoProgressRepairInjected,
 		validationRepairRounds,
@@ -545,7 +551,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		allowedToolNames = new Set(
 			tools.map((tool) => tool.function?.name).filter((name): name is string => Boolean(name))
 		);
-		const notice = `${reason} Additional tools now available for the rest of this turn: ${materialized.addedToolNames.join(', ')}. Call them directly by name.`;
+		// tasker/39 stage 3: write/web rules moved out of the always-on strategy
+		// list into situational blocks. When those tools materialize mid-turn,
+		// their rules ride the same notice so they arrive exactly when the
+		// situation becomes live, in the recency position.
+		const situationalNotice = buildMidTurnSituationalNotice(materialized.addedToolNames);
+		const notice = `${reason} Additional tools now available for the rest of this turn: ${materialized.addedToolNames.join(', ')}. Call them directly by name.${
+			situationalNotice ? `\n\n${situationalNotice}` : ''
+		}`;
 		if (!pendingMaterializationNotices.includes(notice)) {
 			pendingMaterializationNotices.push(notice);
 		}
@@ -1244,6 +1257,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					projectCreateStopRepairInjected,
 					gatewayMutationStopRepairInjected,
 					skillGateStopRepairInjected,
+					researchNoPersistStopRepairInjected,
 					skillGate: params.skillGate,
 					assistantText,
 					finishedReason,
@@ -1255,6 +1269,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						projectCreateStopRepairInjected = true;
 					} else if (noToolCallFinalization.kind === 'gateway_mutation') {
 						gatewayMutationStopRepairInjected = true;
+					} else if (noToolCallFinalization.kind === 'research_no_persist') {
+						researchNoPersistStopRepairInjected = true;
 					} else {
 						skillGateStopRepairInjected = true;
 					}
@@ -1263,6 +1279,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 							'[stream-orchestrator] skill-load gate active with no matching skill loaded; injecting repair round',
 							{
 								recommendedSkillIds: params.skillGate?.recommendedSkillIds ?? []
+							}
+						);
+					}
+					if (noToolCallFinalization.kind === 'research_no_persist') {
+						console.info(
+							'[stream-orchestrator] research ran with no durable write; injecting capture repair round',
+							{
+								researchCalls: countWebResearchCalls(toolExecutions)
 							}
 						);
 					}

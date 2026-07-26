@@ -133,13 +133,16 @@ import {
 	persistIncrementalToolExecutionRow,
 	persistToolExecutionRows
 } from '$lib/services/agentic-chat-v2/turn-persistence';
+import { appendResearchEntry, buildResearchEntryFromCalls } from '$lib/server/research-log.service';
 import {
 	applyActiveDomainSignalsOverlay,
 	buildLitePromptEnvelope,
 	LITE_PROMPT_VARIANT,
 	type LitePromptEnvelope,
 	type LitePromptSection,
-	type LitePromptVariant
+	type LitePromptVariant,
+	hasActiveSituation,
+	resolveLitePromptTurnSituation
 } from '$lib/services/agentic-chat-lite/prompt';
 import {
 	getSkillGateCandidateSkillLoadFormats,
@@ -2240,6 +2243,16 @@ export const POST: RequestHandler = async ({
 				promptContext.entityResolutionHint =
 					buildEntityResolutionHint(requestLastTurnContext);
 
+				// tasker/39 stage 3: situational rule blocks key off the turn's
+				// actual write/web capability (plus intent), so compute the
+				// situation from the final tool surface — preload/turn-intent
+				// materializations have already landed in `tools` by this point.
+				const turnSituation = resolveLitePromptTurnSituation({
+					toolNames: extractToolNamesFromDefinitions(tools),
+					turnIntentRequiresWrite: turnIntent.requiresWrite,
+					latestUserMessage: messageForModel
+				});
+
 				if (!systemPrompt) {
 					litePromptEnvelope = buildLitePromptEnvelope({
 						...promptContext,
@@ -2252,7 +2265,16 @@ export const POST: RequestHandler = async ({
 					systemPrompt = litePromptEnvelope.systemPrompt;
 				}
 
-				if (!litePromptEnvelope && systemPrompt && turnDomainSensing) {
+				// Rebuild the prepared-prompt envelope when this turn carries any
+				// per-turn overlay content. The old `turnDomainSensing`-only guard
+				// dropped the write block on exactly the turns that need it most:
+				// pure native writes bypass domain sensing (turn-preparation), so
+				// a prepared-prompt hit skipped the overlay entirely.
+				if (
+					!litePromptEnvelope &&
+					systemPrompt &&
+					(turnDomainSensing || hasActiveSituation(turnSituation))
+				) {
 					litePromptEnvelope = buildLitePromptEnvelope({
 						...promptContext,
 						tools,
@@ -2271,6 +2293,7 @@ export const POST: RequestHandler = async ({
 						priorOutcomeCardIds,
 						domainSensingResult: turnDomainSensing,
 						skillGatePreload,
+						turnSituation,
 						scaffold: FASTCHAT_SCAFFOLD.prompt
 					});
 					systemPrompt = litePromptEnvelope.systemPrompt;
@@ -3442,6 +3465,47 @@ export const POST: RequestHandler = async ({
 				}
 			}
 			const normalizedExecutions = toolExecutions ?? [];
+
+			// Deterministic research capture (spec: WORKING_NOTES_RESEARCH_LOG_SPEC_2026-07-26).
+			// The model is separately steered to write a real synthesized document; this is the
+			// floor beneath that, so a turn that researched and saved nothing still leaves a record.
+			// Awaited on purpose — a fire-and-forget write races end-of-turn assertions.
+			const researchLogProjectId = effectiveProjectIdForTools ?? projectIdForLogs;
+			if (researchLogProjectId) {
+				try {
+					const researchEntry = buildResearchEntryFromCalls(
+						normalizedExecutions.map((execution) => ({
+							name: execution.toolCall?.function?.name ?? '',
+							args: parseToolArgumentsForPersistence(
+								execution.toolCall?.function?.arguments
+							) as Record<string, unknown> | null,
+							result: execution.result?.result
+						})),
+						{
+							streamRunId,
+							userMessage: message,
+							capturedAt: new Date().toISOString()
+						}
+					);
+					if (researchEntry) {
+						await appendResearchEntry(supabase, {
+							projectId: researchLogProjectId,
+							userId,
+							entry: researchEntry
+						});
+					}
+				} catch (researchLogError) {
+					// Capture must never fail a turn that otherwise succeeded.
+					logger.warn('Research log capture failed', {
+						error:
+							researchLogError instanceof Error
+								? researchLogError.message
+								: String(researchLogError),
+						streamRunId
+					});
+				}
+			}
+
 			const turnOutcome = resolveFastChatTurnOutcome({
 				intent: turnIntent,
 				toolExecutions: normalizedExecutions,

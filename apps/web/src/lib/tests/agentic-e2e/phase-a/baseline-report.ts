@@ -50,6 +50,15 @@ export interface PhaseAControlBaselineReport {
 	corpus_version: string;
 	lane: 'control-agentic-chat-v2';
 	generated_at: string;
+	/**
+	 * The model pin this cohort was validated against. Optional so pre-Tier-1
+	 * artifacts (written before the pin was parameterizable) still satisfy the
+	 * type; the builder always sets it, so every new artifact records it.
+	 *
+	 * Without this, an artifact cannot tell a later reader which lane it was a
+	 * control FOR — which is the entire point of the Tier 1 confound fix.
+	 */
+	expected_model_pin?: string;
 	runs: PhaseAControlRun[];
 	summary: {
 		overall: BaselineAggregate;
@@ -122,13 +131,15 @@ function groupRuns(runs: PhaseAControlRun[], key: (run: PhaseAControlRun) => str
 export function buildControlBaselineReport(
 	corpusVersion: string,
 	runs: PhaseAControlRun[],
-	generatedAt = new Date().toISOString()
+	generatedAt = new Date().toISOString(),
+	expectedModelPin = 'deepseek/deepseek-v4-flash'
 ): PhaseAControlBaselineReport {
 	return {
 		schema_version: 1,
 		corpus_version: corpusVersion,
 		lane: 'control-agentic-chat-v2',
 		generated_at: generatedAt,
+		expected_model_pin: expectedModelPin,
 		runs,
 		summary: {
 			overall: aggregateControlRuns(runs),

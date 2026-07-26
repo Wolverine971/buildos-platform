@@ -117,9 +117,17 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		},
 		priority: {
 			type: 'number',
-			description: 'Optional numeric priority (1-5). Higher numbers mean more important.',
+			// This previously read "Higher numbers mean more important", which is
+			// backwards: the UI renders priority <= 2 as High
+			// (insight-panel-config.ts:594). The wrong description taught the model
+			// the inverted scale — asked to make a task "top priority" it wrote 5
+			// and demoted the task. Caught 2026-07-25 by the `task-multi-update`
+			// e2e scenario; see TIER_1_RESULTS_2026-07-25.md.
+			description:
+				'Optional numeric priority (1-5). LOWER numbers mean more important: ' +
+				'1 is the highest priority, 5 is the lowest. "Top priority" or "urgent" means 1.',
 			required: false,
-			example: '4'
+			example: '1'
 		},
 		start_at: {
 			type: 'date',

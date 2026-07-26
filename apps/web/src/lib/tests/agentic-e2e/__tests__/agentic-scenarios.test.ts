@@ -55,8 +55,30 @@ afterAll(async () => {
 	}
 });
 
+// Every scenario costs real model spend, so allow running a subset:
+//   AGENTIC_SCENARIOS=task-multi-update,restraint-noop-and-ambiguity
+// Unset runs the whole catalog. Unknown ids fail loudly rather than silently
+// running nothing — a typo that quietly passes zero scenarios reads as success.
+function selectedScenarios() {
+	const raw = process.env.AGENTIC_SCENARIOS?.trim();
+	if (!raw) return scenarioCatalog;
+	const wanted = raw
+		.split(',')
+		.map((id) => id.trim())
+		.filter(Boolean);
+	const known = new Set(scenarioCatalog.map((s) => s.id));
+	const unknown = wanted.filter((id) => !known.has(id));
+	if (unknown.length > 0) {
+		throw new Error(
+			`[agentic-e2e] AGENTIC_SCENARIOS names unknown scenario(s): [${unknown.join(', ')}]. ` +
+				`Known ids: [${[...known].join(', ')}]`
+		);
+	}
+	return scenarioCatalog.filter((s) => wanted.includes(s.id));
+}
+
 describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
-	for (const scenario of scenarioCatalog) {
+	for (const scenario of selectedScenarios()) {
 		const skipped = scenario.skip?.() ?? false;
 		const runner = skipped ? it.skip : it;
 
@@ -75,6 +97,15 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 					let lastTurnContext: LastTurnContext | null = null;
 					for (const [turnIndex, turn] of scenario.turns.entries()) {
 						const entityId = turn.entityIdFromSeed?.(seed);
+						// A cold turn deliberately forgets the conversation so the assertion can
+						// only pass on durable project state, not on recall from history.
+						if (turn.coldSession) {
+							if (sessionId) {
+								await teardownChatSession(c.db.admin, c.db.userId, sessionId);
+							}
+							sessionId = undefined;
+							lastTurnContext = null;
+						}
 						const result = await runTurn({
 							baseUrl: c.baseUrl,
 							cookie: c.cookie,
@@ -185,6 +216,19 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 					try {
 						await teardownChatSession(c.db.admin, c.db.userId, sessionId);
 					} finally {
+						// Extra cleanup first (multi-project fixtures, agent-created
+						// projects the AE2E-prefix sweep cannot see), then the primary.
+						if (scenario.teardown) {
+							try {
+								await scenario.teardown(c, seed);
+							} catch (error) {
+								console.warn(
+									`[agentic-e2e] scenario teardown failed for ${scenario.id}: ${
+										error instanceof Error ? error.message : String(error)
+									}`
+								);
+							}
+						}
 						if (scenario.seed) {
 							await teardownProject(c.db, seed.projectId);
 						}

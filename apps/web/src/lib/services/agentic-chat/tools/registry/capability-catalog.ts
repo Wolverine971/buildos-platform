@@ -239,12 +239,13 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 		whatYouCanDo: [
 			'Run web searches',
 			'Visit URLs and inspect page content',
-			'Use current external information when the user asks for it'
+			'Use current external information when the user asks for it',
+			'Save what the research found into a project document instead of losing it in chat'
 		],
-		skillIds: [],
+		skillIds: ['research_capture'],
 		directPaths: ['util.web'],
 		notes: [
-			'No dedicated skill exists yet. Go straight to util.web unless a future research skill is added.'
+			'util.web covers a single quick lookup. Load research_capture for anything larger: it owns when findings must be written down, where they land, and how to report them back without pasting the document.'
 		]
 	},
 	{

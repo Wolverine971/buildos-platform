@@ -2,6 +2,7 @@
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
 import type { DomainSensingResult } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import type { SkillGatePreload } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
+import type { LitePromptTurnSituation } from './situational-rules';
 
 /**
  * Shared context shape used by both the Lite prompt builder and the data loaders
@@ -39,6 +40,7 @@ export type LitePromptSectionId =
 	| 'safety_data_rules'
 	| 'capabilities_skills_tools'
 	| 'active_domain_signals'
+	| 'situational_rules'
 	| 'project_start_here'
 	| 'focus_purpose'
 	| 'location_loaded_context'
@@ -154,6 +156,7 @@ export type LitePromptScaffoldOptions = {
 	skillRoutingCoaching?: boolean;
 	retiredModelCoaching?: boolean;
 	domainSensing?: boolean;
+	situationalRules?: boolean;
 };
 
 export type LitePromptInput = MasterPromptContext & {
@@ -168,6 +171,7 @@ export type LitePromptInput = MasterPromptContext & {
 	priorOutcomeCardIds?: string[] | null;
 	domainSensingResult?: DomainSensingResult | null;
 	skillGatePreload?: SkillGatePreload | null;
+	turnSituation?: LitePromptTurnSituation | null;
 	retrievalMap?: LitePromptRetrievalMapInput | null;
 	tools?: ChatToolDefinition[] | null;
 	scaffold?: LitePromptScaffoldOptions | null;

@@ -1637,27 +1637,14 @@ export class ToolExecutionService implements BaseService {
 			return directName === toolName || functionName === toolName;
 		});
 
-		if (!match) {
-			return undefined;
-		}
-
-		// Normalize the tool definition to ensure it has both direct properties and function properties
-		const normalized = match as any;
-
-		// Copy from function object to root level if needed
-		if (!normalized.name && normalized.function?.name) {
-			normalized.name = normalized.function.name;
-		}
-
-		if (!normalized.description && normalized.function?.description) {
-			normalized.description = normalized.function.description;
-		}
-
-		if (!normalized.parameters && normalized.function?.parameters) {
-			normalized.parameters = normalized.function.parameters;
-		}
-
-		return match;
+		// Never mutate the match: definitions are shared module singletons
+		// (extractTools / gateway surfaces return them by reference), so copying
+		// function.name/description/parameters onto the root here permanently
+		// doubled the serialized definition for every tool that executed —
+		// ~9KB of phantom payload per turn in prompt dumps (tasker/39 §0.1).
+		// Every consumer already reads both shapes defensively
+		// (`function?.parameters || parameters`).
+		return match ?? undefined;
 	}
 
 	/**

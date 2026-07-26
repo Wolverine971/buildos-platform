@@ -213,11 +213,6 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte",
 			"type": "component",
 			"components": [
@@ -261,6 +256,11 @@
 				"MobileTaskBoard",
 				"ProjectDocumentsSection"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",

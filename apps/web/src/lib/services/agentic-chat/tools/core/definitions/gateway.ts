@@ -203,7 +203,7 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'skill_load',
 			description:
-				'Load one BuildOS skill playbook by skill id. Use this when the task is multi-step, stateful, or easy to get wrong and you need workflow guidance before choosing tools.',
+				'Load one BuildOS skill playbook by skill id. Use this when the task is multi-step, stateful, or easy to get wrong and you need workflow guidance before choosing tools. Skills already reported as loaded this session count as loaded — reload one only when this turn needs its full markdown or examples. Root skills are the default depth; load a child skill only when its niche clearly matches.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -216,11 +216,12 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						type: 'string',
 						enum: ['short', 'full'],
 						description:
-							'Short returns a compact summary; full returns the full playbook.'
+							"Short returns a compact summary; full returns the full playbook. Omit so the runtime picks the skill's recommended format."
 					},
 					include_examples: {
 						type: 'boolean',
-						description: 'Include examples when available.'
+						description:
+							'Include examples when available. Request true after a prior failure on the same operation.'
 					}
 				},
 				required: ['skill']
@@ -232,7 +233,7 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'skill_reference_load',
 			description:
-				'Load one reference module declared by a BuildOS skill. Use only after skill_load exposes reference_modules and the current task needs deeper source, template, example, or edge-case detail.',
+				'Load one reference module declared by a BuildOS skill. Use only after skill_load exposes reference_modules and the current task needs deeper source, template, example, or edge-case detail — niche, mode-specific, or high-context guidance the root playbook defers.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -352,29 +353,26 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					query: {
 						type: 'string',
 						description:
-							'Natural-language description of the operation you need, not project/task content. Good examples: "workspace overview", "update existing task state", or "move document in tree". Bad example: "chapter 3 plans" when you are trying to find project data.'
+							'Natural-language description of the operation you need (e.g. "update existing task state"), not project/task content.'
 					},
 					capability: {
 						type: 'string',
 						description:
-							'Optional BuildOS capability id or path such as "overview", "project_creation", or "capabilities.calendar". Prefer this when the capability family is already clear.'
+							'Optional BuildOS capability id or path such as "overview" or "capabilities.calendar".'
 					},
 					group: {
 						type: 'string',
 						enum: ['onto', 'util', 'cal'],
-						description:
-							'Optional top-level tool family filter. Use this to narrow the search space once you know the tool family.'
+						description: 'Optional top-level tool family filter.'
 					},
 					kind: {
 						type: 'string',
 						enum: ['read', 'write'],
-						description:
-							'Optional read/write filter. Prefer this when you know whether you need a mutation or a lookup.'
+						description: 'Optional read/write filter.'
 					},
 					entity: {
 						type: 'string',
-						description:
-							'Optional entity filter such as "task", "project", or "document". For example: entity="task" with kind="write" for task mutations.'
+						description: 'Optional entity filter such as "task", "project", "document".'
 					},
 					limit: {
 						type: 'integer',

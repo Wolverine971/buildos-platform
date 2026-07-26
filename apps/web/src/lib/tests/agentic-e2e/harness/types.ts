@@ -92,6 +92,13 @@ export interface TurnSpec {
 	contextType: HarnessContextType;
 	/** Resolve the project/entity id to scope this turn to, from the seed result. */
 	entityIdFromSeed?: (seed: SeedResult) => string | undefined;
+	/**
+	 * Start this turn in a brand-new chat session, dropping the threaded session id and
+	 * continuity context. Use for anything that must be proven to survive OUTSIDE the
+	 * conversation — durable project state rather than recall from history. Without this,
+	 * a "does it remember?" assertion can pass purely on conversation context.
+	 */
+	coldSession?: boolean;
 	/** Deterministic assertions over the turn + DB + seed. Throw to fail. */
 	assert: (turn: TurnResult, ctx: ScenarioContext, seed: SeedResult) => Promise<void> | void;
 	/** Optional fuzzy-quality judge for this turn. */
@@ -110,6 +117,13 @@ export interface Scenario {
 	skip?: () => boolean;
 	/** Create fixtures. Omit for global/project_create scenarios. */
 	seed?: (ctx: ScenarioContext) => Promise<SeedResult>;
+	/**
+	 * Extra cleanup beyond `seed.projectId`, which the runner always deletes.
+	 * Needed by scenarios that seed several projects, or that may provoke the
+	 * agent into creating an un-prefixed project the orphan sweep cannot find.
+	 * Runs before the primary teardown; failures are logged, never fatal.
+	 */
+	teardown?: (ctx: ScenarioContext, seed: SeedResult) => Promise<void>;
 	/** Turns run sequentially, reusing the session id across turns. */
 	turns: TurnSpec[];
 }

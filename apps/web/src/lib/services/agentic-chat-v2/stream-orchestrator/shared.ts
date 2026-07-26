@@ -137,6 +137,8 @@ export type FastChatOrchestrationInterventions = {
 	projectCreateStopRepair: boolean;
 	gatewayMutationStopRepair: boolean;
 	skillGateStopRepair: boolean;
+	/** A turn ran >=2 web research calls and persisted nothing; a capture round was injected. */
+	researchNoPersistRepair: boolean;
 	gatewaySchemaRepair: boolean;
 	gatewayCreateFieldRepair: boolean;
 	validationRepairRounds: number;

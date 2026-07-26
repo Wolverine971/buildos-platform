@@ -46,6 +46,7 @@ import {
 } from './sales-growth.skill';
 import { planSkill } from './plan.skill';
 import { projectCreateSkill } from './project-create.skill';
+import { researchCaptureSkill } from './research-capture.skill';
 import { taskStateUpdatesSkill } from './task-state-updates.skill';
 import { taskSkill } from './task.skill';
 import type { SkillDefinition } from './types';
@@ -71,6 +72,7 @@ const ALL_SKILLS: SkillDefinition[] = [
 	projectCreateSkill,
 	taskSkill,
 	taskStateUpdatesSkill,
+	researchCaptureSkill,
 	peopleSkill,
 	buildQualityUiUxSkill,
 	uiUxQualityReviewSkill,

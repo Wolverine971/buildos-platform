@@ -3,11 +3,18 @@ import { describe, expect, it } from 'vitest';
 import {
 	assertIsoDate,
 	assertMarkdownSectionBullets,
+	assertNarratedBeforeActing,
+	assertNoMutations,
+	assertNonEmptyAssistantText,
 	assertNumericPriorityAtMost,
+	assertRowsUnchanged,
 	extractMarkdownSection,
+	mutatingToolCalls,
 	nextWeekdayDate,
-	normalizeComparableText
+	normalizeComparableText,
+	rowFingerprint
 } from './assertions';
+import type { TurnResult } from './types';
 
 describe('scenario assertion helpers', () => {
 	it('computes this Friday without rolling an existing Friday forward', () => {
@@ -38,5 +45,98 @@ describe('scenario assertion helpers', () => {
 
 	it('normalizes text for preservation comparisons', () => {
 		expect(normalizeComparableText(' A\n  B ')).toBe('a b');
+	});
+});
+
+// A restraint assertion that never fires would pass every scenario silently, so
+// the instrument itself is tested. These are free — no server, no model.
+describe('restraint assertion helpers', () => {
+	function turn(overrides: Partial<TurnResult> = {}): TurnResult {
+		return {
+			sessionId: 's',
+			streamRunId: 'r',
+			clientTurnId: 'c',
+			lastTurnContext: null,
+			assistantText: '',
+			toolCalls: [],
+			toolResults: [],
+			skillActivity: [],
+			errors: [],
+			finishedReason: 'stop',
+			usage: null,
+			completed: true,
+			rawEvents: [],
+			timing: {
+				requestStartedAt: '',
+				responseHeadersMs: null,
+				firstSseEventMs: null,
+				ttftMs: null,
+				terminalEventMs: null,
+				totalDurationMs: null
+			},
+			...overrides
+		};
+	}
+
+	function call(name: string) {
+		return { id: name, type: 'function', function: { name, arguments: '{}' } } as never;
+	}
+
+	it('classifies ontology writes as mutations and reads as not', () => {
+		const t = turn({
+			toolCalls: [
+				call('search_onto_tasks'),
+				call('update_onto_task'),
+				call('get_onto_project')
+			]
+		});
+		expect(mutatingToolCalls(t)).toEqual(['update_onto_task']);
+		expect(() => assertNoMutations(t, 'test')).toThrow('update_onto_task');
+		expect(() =>
+			assertNoMutations(turn({ toolCalls: [call('search_onto_tasks')] }), 'test')
+		).not.toThrow();
+	});
+
+	it('flags an empty final response after tool work', () => {
+		expect(() => assertNonEmptyAssistantText(turn({ toolCalls: [call('x')] }))).toThrow(
+			'budget-exhaustion'
+		);
+		expect(() =>
+			assertNonEmptyAssistantText(turn({ assistantText: 'x'.repeat(40) }))
+		).not.toThrow();
+	});
+
+	it('requires text before the first tool call', () => {
+		const narrated = turn({
+			rawEvents: [
+				{ type: 'text', content: 'Let me look that up.' },
+				{ type: 'tool_call' },
+				{ type: 'done' }
+			]
+		});
+		const silent = turn({
+			rawEvents: [{ type: 'tool_call' }, { type: 'text', content: 'Here you go.' }]
+		});
+		expect(() => assertNarratedBeforeActing(narrated)).not.toThrow();
+		expect(() => assertNarratedBeforeActing(silent)).toThrow('acted before saying anything');
+		// Whitespace-only text does not count as narration.
+		expect(() =>
+			assertNarratedBeforeActing(
+				turn({ rawEvents: [{ type: 'text', content: '  ' }, { type: 'tool_call' }] })
+			)
+		).toThrow('acted before saying anything');
+	});
+
+	it('detects row changes regardless of ordering', () => {
+		const a = [
+			{ id: '2', updated_at: 't2', state_key: 'todo' },
+			{ id: '1', updated_at: 't1', state_key: 'todo' }
+		];
+		const reordered = [...a].reverse();
+		expect(rowFingerprint(a)).toBe(rowFingerprint(reordered));
+		const mutated = [{ ...a[0]!, state_key: 'done' }, a[1]!];
+		expect(() =>
+			assertRowsUnchanged(rowFingerprint(a), rowFingerprint(mutated), 'tasks')
+		).toThrow('changed during a turn');
 	});
 });

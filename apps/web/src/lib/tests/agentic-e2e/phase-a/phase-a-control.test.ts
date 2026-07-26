@@ -60,6 +60,22 @@ async function urlResolves(url: string): Promise<boolean> {
 	}
 }
 
+// The model the control lane is expected to have actually run on. Defaults to the
+// original frozen deepseek pin, so every historical run and any re-run of the
+// original cohort behaves exactly as before.
+//
+// Tier 1 overrides this to the workflow lane's synthesis model to kill the model
+// confound (research/SYNTHESIS.md §2.1): the control ran a cheap model while the
+// workflow lane ended with GLM 5.2 writing the text the judge reads, so the
+// measured contrast included "which model wrote the answer."
+//
+// This MUST remain a real check. Per-role pin verification is audit fix S4 — a run
+// on a substituted model is not a scoreable run. Parameterizing the expected value
+// is not the same as weakening the check: set it to whatever you pinned the dev
+// server to, and it still fails every run that drifted off that pin.
+export const CONTROL_EXPECTED_MODEL =
+	process.env.PHASE_A_CONTROL_EXPECTED_MODEL?.trim() || 'deepseek/deepseek-v4-flash';
+
 function controlInfrastructureInvalidReason(usage: {
 	requestCount: number;
 	models: string[];
@@ -67,10 +83,11 @@ function controlInfrastructureInvalidReason(usage: {
 	if (usage.requestCount === 0) return 'No stream-correlated model usage was observed.';
 	const mismatch = usage.models.find(
 		(model) =>
-			model !== 'deepseek/deepseek-v4-flash' &&
-			!model.startsWith('deepseek/deepseek-v4-flash-')
+			model !== CONTROL_EXPECTED_MODEL && !model.startsWith(`${CONTROL_EXPECTED_MODEL}-`)
 	);
-	return mismatch ? `Actual control model ${mismatch} is outside the frozen pin.` : null;
+	return mismatch
+		? `Actual control model ${mismatch} is outside the pin ${CONTROL_EXPECTED_MODEL}.`
+		: null;
 }
 
 async function executeControlRun(params: {
@@ -174,7 +191,12 @@ phaseADescribe('Phase A frozen-corpus control baseline (paid, real endpoint)', (
 	}, 60_000);
 
 	afterAll(async () => {
-		const report = buildControlBaselineReport(frozenPhaseACorpus.corpus_version, completedRuns);
+		const report = buildControlBaselineReport(
+			frozenPhaseACorpus.corpus_version,
+			completedRuns,
+			undefined,
+			CONTROL_EXPECTED_MODEL
+		);
 		writeFileSync(BASELINE_OUTPUT_PATH, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 		console.info(
 			'[phase-a-control] baseline summary',

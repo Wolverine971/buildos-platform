@@ -102,9 +102,9 @@ describe('buildLitePromptPreview', () => {
 		expect(preview.lite.sections.map((section) => section.id)).toEqual([
 			'identity_mission',
 			'capabilities_skills_tools',
-			'tool_surface_dynamic',
 			'operating_strategy',
 			'safety_data_rules',
+			'tool_surface_dynamic',
 			'focus_purpose',
 			'location_loaded_context',
 			'timeline_recent_activity',

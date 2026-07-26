@@ -1,0 +1,253 @@
+{
+	"schema_version": 1,
+	"snapshot_id": "open-brief-project-beta-v1",
+	"source": {
+		"kind": "anonymized_production_project",
+		"project_ref_hash": "f7824d94",
+		"captured_at": "2026-07-25T20:00:00.000Z",
+		"anonymization_notes": [
+			"Replaced the product and operator names with stable fixture aliases.",
+			"Replaced third-party people, organizations, competitions, and URLs with role descriptions.",
+			"Replaced every production entity UUID with a deterministic fixture UUID.",
+			"Condensed 121 tasks to 11 and 26 documents to 5, matching project-alpha's density so the swap test compares like with like.",
+			"Retained the specific facts a grounded plan should reference: the daily-active-user target and its date, the open/overdue task counts, the stated non-goals, the one-person-team constraint, the pricing and unit economics, the named audience wedge, and the demo-video dependency."
+		],
+		"swap_test_pair": "project-alpha.snapshot.json"
+	},
+	"as_of": "2026-07-24T04:30:07.684Z",
+	"project": {
+		"id": "20000000-0000-4000-8000-000000000001",
+		"name": "Project Beta — Thinking Environment Platform",
+		"description": "A personal operating system that turns messy stream-of-consciousness input into structured projects, tasks, and connected context. Positioned as a thinking environment for people making complex things, not as a task manager and not as an AI wrapper. Built and operated by a single founder.",
+		"state": "active",
+		"scale": "small",
+		"stage": "execution",
+		"now": "84 open tasks, 8 overdue. Next milestone: 10 daily active users by 2026-09-30.",
+		"non_goals": [
+			"Another task manager — not competing on features with mainstream todo apps. The differentiator is how context is connected, not how todos are listed.",
+			"AI wrapper — not positioning as 'AI that does your work'. The moat is the structure and the thinking environment, not agent automation.",
+			"Consumption app — not built for passive scrolling. It is for people who make things.",
+			"ADHD-only positioning — the ADHD angle is real and resonant but too narrowing as the primary category."
+		],
+		"constraints": [
+			"One-person team. Bandwidth, not ideas, is the binding constraint.",
+			"No paid acquisition budget; organic and outreach only.",
+			"Founder is simultaneously running a job search, so platform work is on a maintenance ration."
+		],
+		"economics": {
+			"pricing": "$20 per user per month, freemium with a 14-day trial",
+			"model_cost_per_user_month": "~$6",
+			"notes": "Unit economics were estimated in a founder interview, not measured from a paying cohort."
+		}
+	},
+	"goals": [
+		{
+			"id": "30000000-0000-4000-8000-000000000001",
+			"name": "Get 10+ daily active users",
+			"description": "Define the conditions that lead to needing this product. Target 10 daily users by Q3 2026 via demos, guides, campaigns, and beta outreach.",
+			"state": "draft",
+			"target_date": "2026-09-30T00:00:00.000Z"
+		},
+		{
+			"id": "30000000-0000-4000-8000-000000000002",
+			"name": "Build a creator-driven acquisition flywheel",
+			"description": "Establish a pipeline of creator partnerships and value-first content that drives organic signups, where creator-sourced content fuels further distribution.",
+			"state": "draft",
+			"target_date": null
+		},
+		{
+			"id": "30000000-0000-4000-8000-000000000003",
+			"name": "Be helpful",
+			"description": "Focus on being genuinely useful to users and encouraging collaborative work rather than feature consumption.",
+			"state": "draft",
+			"target_date": null
+		}
+	],
+	"plans": [
+		{
+			"id": "50000000-0000-4000-8000-000000000001",
+			"name": "30-Day User Launch Campaign",
+			"state": "draft",
+			"start_date": "2026-07-19",
+			"end_date": "2026-08-18",
+			"summary": "Drive signups by making one market association obvious: this is a thinking environment that turns messy thinking into structured work. Primary audiences are authors and video creators — the most legible workflows and the easiest before/after demos. Channels: one professional network, one short-form text platform, one visual platform, same thesis adapted per platform. Priority when time is tight: hero proof asset first, then text posts, then visual. Tone leads with relief, not hype; demonstration, not abstraction. Open questions remain on weekly themes, the first hero asset, and signup attribution."
+		},
+		{
+			"id": "50000000-0000-4000-8000-000000000002",
+			"name": "Creator Outreach & Content Flywheel",
+			"state": "active",
+			"start_date": null,
+			"end_date": null,
+			"summary": "Value-first outreach to 10-15 target creators, executing against the top 3-5. Deliver workflow teardowns rather than product pitches. Success criteria: 3+ partnerships in 60 days, 10+ distributed pieces, measurable signup attribution, and a documented repeatable process. Named risk: one-person bandwidth limits outreach volume; mitigation is quality over quantity."
+		},
+		{
+			"id": "50000000-0000-4000-8000-000000000003",
+			"name": "Core Product Development",
+			"state": "active",
+			"start_date": null,
+			"end_date": null,
+			"summary": "Improve the stream-of-consciousness capture and context accumulation features, including calendar integration."
+		}
+	],
+	"tasks": [
+		{
+			"id": "60000000-0000-4000-8000-000000000001",
+			"title": "Record demo video for reactivation emails",
+			"description": "Record a demo video showing the reactivation email sequence, the setup, and the workflow. This is the final piece blocking the reactivation campaign.",
+			"state": "todo",
+			"priority": 3,
+			"start_at": "2026-07-25T00:00:00.000Z",
+			"due_at": "2026-07-25T23:59:59.000Z",
+			"workstream": "marketing"
+		},
+		{
+			"id": "60000000-0000-4000-8000-000000000002",
+			"title": "Email ingestion feature — research and plan",
+			"description": "Design the ability for users to forward or sync email into their workspace so conversation context becomes part of the graph instead of living in a separate inbox. Open scope questions: what ingestion means, how messages are represented in the ontology, and what the minimal version that delivers relief actually is.",
+			"state": "todo",
+			"priority": 3,
+			"start_at": null,
+			"due_at": null,
+			"workstream": "product"
+		},
+		{
+			"id": "60000000-0000-4000-8000-000000000003",
+			"title": "Screen-by-screen engagement and onboarding audit",
+			"description": "Walk every screen — landing page, onboarding, and post-onboarding — to find engagement friction, so new users reach value fast and stay.",
+			"state": "todo",
+			"priority": 4,
+			"start_at": null,
+			"due_at": null,
+			"workstream": "activation"
+		},
+		{
+			"id": "60000000-0000-4000-8000-000000000004",
+			"title": "Clean up public-page language to lead with the thinking-environment category",
+			"description": "Update public copy to lead with 'thinking environment for people making complex things' and 'turn messy thinking into structured work'. De-emphasize the ADHD-first framing per the brand guide.",
+			"state": "todo",
+			"priority": 3,
+			"start_at": null,
+			"due_at": "2026-05-15T23:59:00.000Z",
+			"workstream": "marketing"
+		},
+		{
+			"id": "60000000-0000-4000-8000-000000000005",
+			"title": "Build case studies via free pilot work",
+			"description": "Acquire users by offering free help solving real problems with the product, then turn the results into case studies. A deliberate shift in acquisition strategy alongside the content flywheel.",
+			"state": "todo",
+			"priority": 4,
+			"start_at": null,
+			"due_at": null,
+			"workstream": "acquisition"
+		},
+		{
+			"id": "60000000-0000-4000-8000-000000000006",
+			"title": "Create value-first outreach content",
+			"description": "Build a workflow-teardown template for creator-specific demos, three personalized examples for top-priority creators, and a no-ask value message framework.",
+			"state": "todo",
+			"priority": 4,
+			"start_at": null,
+			"due_at": null,
+			"workstream": "acquisition"
+		},
+		{
+			"id": "60000000-0000-4000-8000-000000000007",
+			"title": "Execute creator outreach to the first three targets",
+			"description": "Send personalized outreach, follow up with engaged creators, and iterate messaging based on response patterns.",
+			"state": "todo",
+			"priority": 4,
+			"start_at": null,
+			"due_at": null,
+			"workstream": "acquisition"
+		},
+		{
+			"id": "60000000-0000-4000-8000-000000000008",
+			"title": "Build content flywheel infrastructure and attribution",
+			"description": "Create a distribution calendar for creator-sourced content and a feedback loop tracking which content drives signups.",
+			"state": "todo",
+			"priority": 3,
+			"start_at": null,
+			"due_at": null,
+			"workstream": "acquisition"
+		},
+		{
+			"id": "60000000-0000-4000-8000-000000000009",
+			"title": "Fix integration flow with third-party browser AI assistants",
+			"description": "Users need browser-based AI assistants to read from and write to the workspace directly. The flow is currently unreliable.",
+			"state": "todo",
+			"priority": 5,
+			"start_at": null,
+			"due_at": null,
+			"workstream": "product"
+		},
+		{
+			"id": "60000000-0000-4000-8000-000000000010",
+			"title": "Finish the collaborative planning feature, including its spec",
+			"description": "Backlogged rather than killed. The decision to ship, kill, or formally shelve it has not been made, and several downstream content pieces depend on that call.",
+			"state": "todo",
+			"priority": 3,
+			"start_at": null,
+			"due_at": null,
+			"workstream": "product"
+		},
+		{
+			"id": "60000000-0000-4000-8000-000000000011",
+			"title": "Demo to a first outside test user and onboard them",
+			"description": "Run a live demo using the current product and the podcast-style onboarding flow. Capture their projects, log feedback, count as user 1 of 10.",
+			"state": "todo",
+			"priority": 4,
+			"start_at": "2026-05-11T00:00:00.000Z",
+			"due_at": null,
+			"workstream": "activation"
+		}
+	],
+	"documents": [
+		{
+			"id": "70000000-0000-4000-8000-000000000001",
+			"title": "START HERE — Project Beta",
+			"state": "draft",
+			"content": "## What this is\n\nA personal operating system that minimizes cognitive load by structuring information effectively.\n\n**Core promise:** relief from the cognitive overhead of managing your own work.\n**Strategic enemy:** fragmented context and the tools that create it.\n\n## Current state\n\nPrimary goal: 10+ daily active users by 2026-09-30. 84 open tasks, 8 overdue.\n\n**Next step:** record the demo video for the reactivation emails. It is the final piece blocking that campaign.\n\n## Standing decisions\n\n- Lead with the thinking-environment category, not with AI.\n- ADHD is a supporting wedge, never the headline.\n- One-person team: prefer things that compound over things that need staffing."
+		},
+		{
+			"id": "70000000-0000-4000-8000-000000000002",
+			"title": "Brand Guide",
+			"state": "ready",
+			"content": "Category: thinking environment for people making complex things. Promise: turn messy thinking into structured work. Differentiator: the project remembers. Moat: context compounds over time. Strategic enemies: tool sprawl, stateless chat, blank-page chaos, productivity theater. Voice: humble but direct; lead with relief rather than hype, demonstration rather than abstraction, replacement rather than addition. Explicitly anti-AI-leading in all public copy."
+		},
+		{
+			"id": "70000000-0000-4000-8000-000000000003",
+			"title": "Marketing Strategy",
+			"state": "ready",
+			"content": "Operating strategy for a one-person marketing function. Primary audiences are authors and video creators — the most legible workflows, the easiest before/after demonstrations, and the strongest emotional pain around losing threads of work. Secondary: podcasters, newsletter operators, course creators. Guidance covers what not to spend time on as much as what to do."
+		},
+		{
+			"id": "70000000-0000-4000-8000-000000000004",
+			"title": "Guerrilla Content Doctrine",
+			"state": "ready",
+			"content": "Operating doctrine for one-person marketing: what story to tell, what not to tell, and how to publish consistently without a team. Assumes no budget and no staff; every recommended motion must survive a week where the founder has three hours total."
+		},
+		{
+			"id": "70000000-0000-4000-8000-000000000005",
+			"title": "Target Audience & Business Model",
+			"state": "draft",
+			"content": "Ideal early users: people managing complex self-directed work, writers, product people. Pain points: rebuilding context repeatedly, disorganization across tools, re-explaining the same background to AI assistants. Pricing: $20 per user per month, freemium with a 14-day trial. Estimated model cost ~$6 per user per month. Churned beta users indicate the personas still need refinement — the numbers here came from a founder interview, not a paying cohort."
+		}
+	],
+	"edges": [
+		{
+			"from": "60000000-0000-4000-8000-000000000001",
+			"to": "50000000-0000-4000-8000-000000000001",
+			"rel": "advances"
+		},
+		{
+			"from": "50000000-0000-4000-8000-000000000002",
+			"to": "30000000-0000-4000-8000-000000000002",
+			"rel": "advances"
+		},
+		{
+			"from": "60000000-0000-4000-8000-000000000011",
+			"to": "30000000-0000-4000-8000-000000000001",
+			"rel": "advances"
+		}
+	]
+}

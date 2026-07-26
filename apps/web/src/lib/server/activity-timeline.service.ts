@@ -34,6 +34,18 @@ import type {
 
 /** Rows pulled per source per page. Merged, then cut at the saturation watermark. */
 const FETCH_PER_SOURCE = 40;
+/**
+ * Every entry should open the thing it is about, not merely the project that
+ * contains it — a brief ping opens the brief, a chat opens its transcript. These
+ * build the deep links the timeline hands to the client as `href`.
+ */
+const DEEP_LINK = {
+	brief: (briefDate: string | null) =>
+		briefDate ? `/briefs?date=${encodeURIComponent(briefDate)}` : '/briefs',
+	historyItem: (id: string, itemType: 'braindump' | 'chat_session') =>
+		`/history?id=${encodeURIComponent(id)}&itemType=${itemType}`,
+	project: (projectId: string) => `/projects/${encodeURIComponent(projectId)}`
+};
 /** Project logs are the highest-volume source and collapse hard, so they get more. */
 const LOG_FETCH_LIMIT = 200;
 /** Default entries returned to the client after grouping. */
@@ -236,6 +248,14 @@ async function fetchNotifications(
 			(projectId ? projectNameById.get(projectId) : null) ??
 			asString(eventPayload.project_name);
 
+		// Adapters write `brief_date` at the payload root on some events and nested
+		// under `data` on others, so both shapes are tried before giving up on a date.
+		const nestedPayload = isRecord(eventPayload.data) ? eventPayload.data : {};
+		const briefDate =
+			asString(eventPayload.brief_date) ??
+			asString(nestedPayload.brief_date) ??
+			asString(deliveryPayload.brief_date);
+
 		const stats: ActivityStat[] = [];
 		const channelList = Array.from(channels).sort();
 		stats.push({
@@ -269,7 +289,13 @@ async function fetchNotifications(
 			actor_label: 'BuildOS',
 			status: notificationStatus(eventType, statuses),
 			stats,
-			href: projectId ? `/projects/${projectId}` : null,
+			// A brief ping is about the brief, not the project it happens to mention,
+			// so it opens the brief itself — otherwise these pings link nowhere at all.
+			href: eventType.startsWith('brief.')
+				? DEEP_LINK.brief(briefDate)
+				: projectId
+					? DEEP_LINK.project(projectId)
+					: null,
 			children: [],
 			count: statuses.length
 		});
@@ -360,7 +386,7 @@ async function fetchProjectAudits(
 			actor_label: `Audit agent · ${triggerCopy}`,
 			status,
 			stats,
-			href: row.project_id ? `/projects/${row.project_id}` : null,
+			href: row.project_id ? DEEP_LINK.project(row.project_id) : null,
 			children,
 			count: 1
 		};
@@ -485,7 +511,9 @@ async function fetchLoopRuns(
 			status: failed ? 'error' : waiting ? 'warn' : 'ok',
 			stats,
 			href:
-				bucket.length === 1 && newest.project_id ? `/projects/${newest.project_id}` : null,
+				bucket.length === 1 && newest.project_id
+					? DEEP_LINK.project(newest.project_id)
+					: null,
 			children: bucket.length > 1 ? children : [],
 			count: bucket.length
 		});
@@ -557,7 +585,7 @@ async function fetchAgentRuns(
 			actor_label: 'Agent run',
 			status,
 			stats,
-			href: row.project_id ? `/projects/${row.project_id}` : null,
+			href: row.project_id ? DEEP_LINK.project(row.project_id) : null,
 			children: [],
 			count: 1
 		};
@@ -742,7 +770,7 @@ async function fetchProjectLogs(
 			actor_label: group.actor.label,
 			status: 'ok',
 			stats: [],
-			href: `/projects/${group.projectId}`,
+			href: DEEP_LINK.project(group.projectId),
 			children,
 			count: group.logs.length
 		};
@@ -804,7 +832,9 @@ async function fetchChatSessions(
 			actor_label: projectName ? `Chat · ${projectName}` : 'Chat',
 			status: 'ok',
 			stats,
-			href: projectId ? `/projects/${projectId}` : null,
+			// The transcript is the thing this entry is about; the project it ran
+			// against is still reachable from the card's project link.
+			href: DEEP_LINK.historyItem(row.id, 'chat_session'),
 			children: [],
 			count: 1
 		};
@@ -851,7 +881,7 @@ async function fetchBraindumps(
 			status:
 				row.status === 'failed' ? 'error' : row.status === 'processed' ? 'ok' : 'pending',
 			stats: topics.length ? [{ label: 'Topics', value: topics.slice(0, 3).join(', ') }] : [],
-			href: '/history',
+			href: DEEP_LINK.historyItem(row.id, 'braindump'),
 			children: [],
 			count: 1
 		};
@@ -904,7 +934,8 @@ async function fetchVoiceNotes(
 			actor_label: 'Voice note',
 			status: failed ? 'error' : row.transcription_status === 'completed' ? 'ok' : 'pending',
 			stats: seconds ? [{ label: 'Length', value: `${Math.round(seconds)}s` }] : [],
-			href: '/history',
+			// /history has no voice-note view; the dedicated page is where they live.
+			href: '/voice-notes',
 			children: [],
 			count: 1
 		};
@@ -960,7 +991,7 @@ async function fetchBriefFailures(
 			actor_label: 'Daily brief',
 			status: 'error',
 			stats: row.brief_date ? [{ label: 'For', value: row.brief_date }] : [],
-			href: '/briefs',
+			href: DEEP_LINK.brief(row.brief_date),
 			children: [],
 			count: 1
 		};

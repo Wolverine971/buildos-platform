@@ -1,0 +1,141 @@
+{
+	"schema_version": 1,
+	"corpus_version": "open-brief-v1",
+	"status": "incomplete_pending_dj_input",
+	"status_note": "Structure, snapshots, and the swap-test pair are settled. The briefs below are the seed set from OPEN_BRIEF_EVAL_METHODOLOGY.md section 4.1 — they are placeholders in the spec's voice, NOT DJ's. Every `acceptance_bar` is empty and every `clarification_label.status` is `proposed`. This corpus MUST NOT be run as an instrument until Blocks B and C of the interview are captured: for an open brief DJ's taste IS the ground truth, so scoring against author-invented briefs and an author-invented rubric would measure the author, not the user.",
+	"created_at": "2026-07-25",
+	"related": ["../OPEN_BRIEF_EVAL_METHODOLOGY.md", "../SCENARIO_AUTHORING_HANDOFF_2026-07-25.md"],
+
+	"swap_test": {
+		"status": "decided",
+		"decided_by": "DJ",
+		"decided_at": "2026-07-25",
+		"anchor_brief_id": "ob-04-four-week-plan",
+		"pair": [
+			{
+				"snapshot_ref": "./fixtures/project-alpha.snapshot.json",
+				"snapshot_sha256": "be9feaeade4134285f891f857ca02aad0a74cd1c890ba774c2b9ea1fa398af6c",
+				"real_project": "Spooky Good — Processing Speed Training",
+				"domain": "personal cognitive/physical performance",
+				"provenance": "Copied unmodified from packages/agent-orchestrator/src/testing/harness/fixtures/. That directory is off-limits for edits (another agent owns Tier 0 work there) and its corpus is SHA-256 pinned, so this is a copy with the source hash recorded. If the hashes ever diverge, the source changed and this copy should be re-verified rather than silently trusted."
+			},
+			{
+				"snapshot_ref": "./fixtures/project-beta.snapshot.json",
+				"real_project": "BuildOS",
+				"domain": "SaaS product, one-person team",
+				"provenance": "Captured 2026-07-25 from the live project (121 tasks, 26 documents, 6 plans) and condensed to project-alpha's density so the two sides of the swap test are comparable."
+			}
+		],
+		"why_this_pair": "The swap test runs the SAME brief against both snapshots, so both must be able to receive it — which disqualifies pairs where one side cannot (a marketing brief is meaningless for a personal training program). These two maximize range because the CORRECT answers share almost no structure: training blocks across hardware/software/pressure layers versus product and GTM workstreams. A plan that reads plausibly for both is, by construction, a template.",
+		"runner_up": "The Cadre — DJ Internal × Beyond Exit Planning. Set aside because two marketing engagements may legitimately share structure, compressing specificity_delta. Worth revisiting if marketing briefs need a dedicated pair; Beyond Exit Planning's compliance constraint (no promissory or investment-guarantee language) makes a template plan not merely generic but legally wrong."
+	},
+
+	"label_definitions": {
+		"clarification_label": {
+			"blocked": "Missing information no amount of project context can supply — a budget, an audience, a deadline only DJ knows. Ask-rate on these should be HIGH.",
+			"proceedable": "Underspecified, but a reasonable practitioner would make assumptions and start. Needless-ask rate on these should be LOW.",
+			"source": "OPEN_BRIEF_EVAL_METHODOLOGY.md section 6.1. Without these labels neither rate is computable."
+		},
+		"status_values": {
+			"proposed": "Authored as a starting point. Not yet confirmed by DJ and not valid for scoring.",
+			"dj_confirmed": "Confirmed by DJ. Valid for scoring."
+		}
+	},
+
+	"briefs": [
+		{
+			"brief_id": "ob-01-marketing-plan",
+			"text": "Build me a marketing plan for this project.",
+			"source": { "kind": "spec_seed", "ref": "OPEN_BRIEF_EVAL_METHODOLOGY.md#4.1" },
+			"applicable_snapshots": ["project-beta"],
+			"not_applicable_note": "project-alpha has an audience of one; a marketing plan is meaningless there.",
+			"clarification_label": {
+				"value": "proceedable",
+				"status": "proposed",
+				"rationale": "The snapshot carries the category, the promise, the named audience wedge, the anti-AI stance, the no-budget constraint, and the one-person-team limit. A competent practitioner has enough to start and should surface assumptions rather than stall."
+			},
+			"acceptance_bar": { "status": "PENDING_DJ_BLOCK_C", "in_djs_words": null },
+			"grounding_hooks": [
+				"authors and video creators as the primary wedge",
+				"lead with relief, not hype; never lead with AI",
+				"ADHD is a supporting wedge, not the headline",
+				"one-person team, no paid budget",
+				"10 daily active users by 2026-09-30"
+			]
+		},
+		{
+			"brief_id": "ob-02-whats-blocking",
+			"text": "What's blocking this project? Propose a recovery plan.",
+			"source": { "kind": "spec_seed", "ref": "OPEN_BRIEF_EVAL_METHODOLOGY.md#4.1" },
+			"applicable_snapshots": ["project-alpha", "project-beta"],
+			"clarification_label": {
+				"value": "proceedable",
+				"status": "proposed",
+				"rationale": "Both snapshots contain overdue work, stalled decisions, and explicit dependencies. The blockers are readable from the data."
+			},
+			"acceptance_bar": { "status": "PENDING_DJ_BLOCK_C", "in_djs_words": null },
+			"grounding_hooks": [
+				"project-beta: 8 overdue tasks; the ship/kill/shelve decision on the collaborative planning feature is unmade and gates downstream content",
+				"project-beta: the demo video is the single item blocking the reactivation campaign",
+				"project-beta: platform work is on a maintenance ration because of a concurrent job search"
+			]
+		},
+		{
+			"brief_id": "ob-03-domain-research",
+			"text": "Research this domain and tell me what I'm missing.",
+			"source": { "kind": "spec_seed", "ref": "OPEN_BRIEF_EVAL_METHODOLOGY.md#4.1" },
+			"applicable_snapshots": ["project-alpha", "project-beta"],
+			"clarification_label": {
+				"value": "proceedable",
+				"status": "proposed",
+				"rationale": "Research-bearing, so the citation floor in L0 applies. Nothing here requires information only DJ holds."
+			},
+			"acceptance_bar": { "status": "PENDING_DJ_BLOCK_C", "in_djs_words": null },
+			"instrument_note": "This is the brief most likely to reproduce the Tier 1 finding where six web searches were run and nothing was persisted. Worth checking research-persistence here too, not just citation count."
+		},
+		{
+			"brief_id": "ob-04-four-week-plan",
+			"text": "Turn this project into a four-week execution plan.",
+			"source": { "kind": "spec_seed", "ref": "OPEN_BRIEF_EVAL_METHODOLOGY.md#4.1" },
+			"applicable_snapshots": ["project-alpha", "project-beta"],
+			"is_swap_test_anchor": true,
+			"clarification_label": {
+				"value": "proceedable",
+				"status": "proposed",
+				"rationale": "Both snapshots carry enough state to sequence four weeks of work. This is the anchor brief precisely because it is answerable on both sides while the correct answers look nothing alike."
+			},
+			"acceptance_bar": { "status": "PENDING_DJ_BLOCK_C", "in_djs_words": null }
+		},
+		{
+			"brief_id": "ob-05-underspecified",
+			"text": "PENDING — an intentionally underspecified brief, to exercise clarification behavior.",
+			"source": { "kind": "spec_seed", "ref": "OPEN_BRIEF_EVAL_METHODOLOGY.md#4.1" },
+			"applicable_snapshots": [],
+			"clarification_label": {
+				"value": "blocked",
+				"status": "proposed",
+				"rationale": "This brief exists to be blocked — it is the positive control for ask-rate. But it cannot be written generically: it has to be missing something only DJ knows (a budget, an audience, a deadline). Authoring it without him would make it blocked on information the author invented, which tests nothing."
+			},
+			"acceptance_bar": { "status": "PENDING_DJ_BLOCK_C", "in_djs_words": null },
+			"blocking_note": "Needs Block B: 'is there something only you know that a smart contractor would have to ask for first?'"
+		}
+	],
+
+	"pending_from_dj": [
+		{
+			"item": "Block B — the briefs in DJ's own words",
+			"why": "The seed briefs above are the spec author's phrasing. DJ dictates rather than types, so his real commissions are run-on, multi-clause, and state context the tidy versions omit. Tier 1 already showed the register gap matters: real dictated phrasing surfaced three failures that clean phrasing would not have.",
+			"blocks": "corpus validity"
+		},
+		{
+			"item": "Block B — blocked vs proceedable, confirmed per brief",
+			"why": "Every label above is `proposed`. Ask-rate on blocked briefs and needless-ask rate on proceedable briefs are the two real numbers section 6.1 promises, and both are uncomputable until the labels are DJ's.",
+			"blocks": "L0 silent-guessing metric"
+		},
+		{
+			"item": "Block C — the acceptance bar, close to verbatim",
+			"why": "L3 asks one question: would you execute this? The rubric behind that question is DJ's taste and has no other valid source. Two questions carry the most weight: what would make you trust it actually read your project (this is the grounding ratio in human terms), and what could a plan say that would make you go 'oh, it gets this project' (this is the swap test in human terms).",
+			"blocks": "L3 and L4 entirely"
+		}
+	]
+}

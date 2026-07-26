@@ -1948,6 +1948,31 @@ describe('ToolExecutionService', () => {
 
 			expect(definition).toBeUndefined();
 		});
+
+		it('does not mutate nested-format definitions (tasker/39 double-serialization regression)', () => {
+			const nestedDefinition = {
+				type: 'function',
+				function: {
+					name: 'update_onto_task',
+					description: 'Update an existing task',
+					parameters: {
+						type: 'object',
+						properties: { task_id: { type: 'string' } },
+						required: ['task_id']
+					}
+				}
+			} as unknown as ChatToolDefinition;
+			const serializedBefore = JSON.stringify(nestedDefinition);
+
+			const definition = service.getToolDefinition('update_onto_task', [nestedDefinition]);
+
+			expect(definition).toBe(nestedDefinition);
+			// The old normalizer copied function.name/description/parameters onto
+			// the root of the shared singleton, doubling its serialized size for
+			// every later prompt payload. The definition must round-trip untouched.
+			expect(JSON.stringify(nestedDefinition)).toBe(serializedBefore);
+			expect(Object.keys(nestedDefinition)).toEqual(['type', 'function']);
+		});
 	});
 
 	describe('formatToolResult', () => {

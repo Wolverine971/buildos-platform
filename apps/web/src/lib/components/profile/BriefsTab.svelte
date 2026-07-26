@@ -9,6 +9,7 @@
 	import {
 		Bell,
 		Calendar,
+		Coffee,
 		Clock,
 		Edit3,
 		Save,
@@ -299,7 +300,7 @@
 
 <div class="space-y-4 sm:space-y-5">
 	<TabHeader
-		icon={Bell}
+		icon={Coffee}
 		title="Brief Settings"
 		description="Configure when and how you receive daily briefs."
 	/>
@@ -419,12 +420,27 @@
 								</span>
 							{/if}
 						</div>
-						{#if briefPreferences.is_active && hasEmailOptIn}
-							<div class="flex items-center space-x-2">
-								<Mail class="w-4 h-4 text-accent" />
+						{#if briefPreferences.is_active}
+							<!--
+								The toggle for this lives on the Notifications tab, so state it
+								either way and link there — otherwise "off" looks like nothing
+								at all and there is no route to the control.
+							-->
+							<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+								<Mail
+									class="w-4 h-4 {hasEmailOptIn
+										? 'text-accent'
+										: 'text-muted-foreground'}"
+								/>
 								<span class="text-sm text-muted-foreground">
-									Email delivery enabled
+									Email delivery {hasEmailOptIn ? 'enabled' : 'off'}
 								</span>
+								<a
+									href="/profile?tab=notifications"
+									class="rounded text-sm font-medium text-accent underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								>
+									Change
+								</a>
 							</div>
 						{/if}
 					</div>

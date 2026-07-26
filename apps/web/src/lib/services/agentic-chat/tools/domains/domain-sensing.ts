@@ -113,7 +113,7 @@ const PROJECT_FORECAST_DIRECT_PATTERN =
 	/\b(project|initiative|roadmap|milestone|milestones|deadline|timeline|schedule)\b.*\b(slip|slipping|delays?|delayed|late|on track|miss)\b|\b(slip|slipping|delays?|delayed|late|on track|miss)\b.*\b(project|initiative|roadmap|milestone|milestones|deadline|timeline|schedule)\b/i;
 
 const ADVISORY_NEXT_STEP =
-	'Use these domains and outcome cards as routing hints. Load an outcome card when output contract or quality criteria would help; load a skill only when the user needs workflow depth.';
+	'Use these domains and outcome cards as routing hints. Load an outcome card when output contract or quality criteria would help; load a skill only when the user needs workflow depth. If none of these fit, skill_search finds others.';
 const GATED_NEXT_STEP =
 	'Skill-load gate is ACTIVE for this turn: the request matches skill-covered work. Before drafting the final answer, pick the best-matching id from the ranked Skill-load candidates and call skill_load for it. Skip the load only when that skill is already in the loaded-skills ledger, or the message is a clarification/acknowledgment that produces no new work product.';
 const PRELOADED_NEXT_STEP =
@@ -689,6 +689,23 @@ export function renderDomainSensingPromptContent(
 	const skillGateCandidateSkillIds = getSkillGateCandidateSkillIds(result);
 	const preloadedSkillPromptContent = options.preloadedSkillPromptContent?.trim() || null;
 
+	// Preload-satisfied turns drop the candidate/recommended/gap routing
+	// metadata entirely (tasker/39 stage 4): the preload already resolved the
+	// route, and the old rendering spent ~300 tokens listing entries whose own
+	// next-step line told the model to ignore them. The preload block itself
+	// still names alternate candidates if the skill does not fit.
+	if (result.skill_load_required && preloadedSkillPromptContent) {
+		return [
+			`Source: ${result.source}.`,
+			'',
+			'Skill-load gate: SATISFIED BY PRELOAD.',
+			'',
+			preloadedSkillPromptContent,
+			'',
+			`Next step: ${PRELOADED_NEXT_STEP}`
+		].join('\n');
+	}
+
 	const domainLines = result.active_domains.map((domain) => {
 		const details = [
 			`${domain.coverage_status} coverage`,
@@ -730,17 +747,10 @@ export function renderDomainSensingPromptContent(
 
 	return [
 		`Source: ${result.source}.`,
-		...(result.skill_load_required && preloadedSkillPromptContent
-			? ['', 'Skill-load gate: SATISFIED BY PRELOAD.', '', preloadedSkillPromptContent]
-			: []),
-		...(result.skill_load_required && !preloadedSkillPromptContent
+		...(result.skill_load_required
 			? [
 					'',
-					'Skill-load gate: ACTIVE. Do not draft the final answer until you have called skill_load for the best-matching skill below or confirmed it is already in the loaded-skills ledger. Answering skill-covered work from base knowledge is a routing failure.'
-				]
-			: []),
-		...(result.skill_load_required && !preloadedSkillPromptContent
-			? [
+					'Skill-load gate: ACTIVE. Do not draft the final answer until you have called skill_load for the best-matching skill below or confirmed it is already in the loaded-skills ledger. Answering skill-covered work from base knowledge is a routing failure.',
 					'',
 					'Skill-load candidates (ranked, max 3):',
 					`- ${skillGateCandidateSkillIds.length ? skillGateCandidateSkillIds.join(', ') : 'none'}`
@@ -762,10 +772,7 @@ export function renderDomainSensingPromptContent(
 		'Coverage gap resource ids:',
 		`- ${result.coverage_gap_resource_ids.length ? result.coverage_gap_resource_ids.join(', ') : 'none'}`,
 		'',
-		// A preload-satisfied gate must not keep the gated next step: it demands
-		// a skill_load call the preload already made redundant, and the outcome
-		// card hop is a pure pass-through once the default skill is in-context.
-		`Next step: ${result.skill_load_required && preloadedSkillPromptContent ? PRELOADED_NEXT_STEP : result.next_step}`
+		`Next step: ${result.next_step}`
 	].join('\n');
 }
 

@@ -52,13 +52,90 @@ describe('/notifications activity timeline', () => {
 	it('renders an entry with its actor, body, stats, and link', () => {
 		render(NotificationsPage, { props: { data: { page: page(), error: null } } });
 
-		expect(screen.getByText('Project audit — BuildOS')).toBeInTheDocument();
 		expect(screen.getByText('Audit agent · scheduled pass')).toBeInTheDocument();
 		expect(screen.getByText('Docs are drifting from the plan.')).toBeInTheDocument();
 		expect(screen.getByText('Unresolved')).toBeInTheDocument();
-		expect(screen.getByRole('link', { name: 'Open BuildOS' })).toHaveAttribute(
+		// The title is the card's click target, so the whole card opens the entry.
+		expect(screen.getByRole('link', { name: 'Project audit — BuildOS' })).toHaveAttribute(
 			'href',
 			'/projects/project-1'
+		);
+	});
+
+	it('links the project separately when the card opens something else', () => {
+		render(NotificationsPage, {
+			props: {
+				data: {
+					page: page({
+						entries: [
+							entry({
+								kind: 'chat_session',
+								lane: 'you',
+								title: 'Reactivation planning',
+								actor_label: 'Chat · BuildOS',
+								href: '/history?id=chat-1&itemType=chat_session'
+							})
+						]
+					}),
+					error: null
+				}
+			}
+		});
+
+		expect(screen.getByRole('link', { name: 'Reactivation planning' })).toHaveAttribute(
+			'href',
+			'/history?id=chat-1&itemType=chat_session'
+		);
+		expect(screen.getByRole('link', { name: 'BuildOS' })).toHaveAttribute(
+			'href',
+			'/projects/project-1'
+		);
+		// The project has its own link, so it is not repeated in the actor line.
+		expect(screen.getByText('Chat')).toBeInTheDocument();
+	});
+
+	it('does not offer a second link to a project the card already opens', () => {
+		render(NotificationsPage, { props: { data: { page: page(), error: null } } });
+
+		expect(screen.queryByRole('link', { name: 'BuildOS' })).not.toBeInTheDocument();
+	});
+
+	it('links review-pass children to their project even without an entity', () => {
+		render(NotificationsPage, {
+			props: {
+				data: {
+					page: page({
+						entries: [
+							entry({
+								kind: 'loop_run',
+								title: 'Reviewed 3 projects',
+								href: null,
+								project_id: null,
+								project_name: null,
+								children: [
+									{
+										id: 'loop:1',
+										label: 'BuildOS',
+										detail: '4 suggestions',
+										at: new Date().toISOString(),
+										project_id: 'project-9'
+									}
+								]
+							})
+						]
+					}),
+					error: null
+				}
+			}
+		});
+
+		fireEvent.click(screen.getByRole('button', { name: /1 detail/ }));
+
+		return waitFor(() =>
+			expect(screen.getByRole('link', { name: 'BuildOS' })).toHaveAttribute(
+				'href',
+				'/projects/project-9'
+			)
 		);
 	});
 

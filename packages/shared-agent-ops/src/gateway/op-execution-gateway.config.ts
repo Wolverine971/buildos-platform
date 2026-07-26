@@ -328,7 +328,13 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			priority: {
 				type: 'number',
-				description: 'Optional priority from 1-5.'
+				// The scale is INVERTED relative to the intuitive reading, and models
+				// get it backwards without being told: asked to make a task "top
+				// priority", the production model wrote 5 (the lowest) and demoted it.
+				// Verified 2026-07-25 by the `task-multi-update` e2e scenario.
+				description:
+					'Optional priority, 1-5, where 1 is the HIGHEST priority and 5 is the LOWEST. ' +
+					'"top priority" / "urgent" / "most important" means 1, not 5.'
 			},
 			start_at: {
 				type: ['string', 'null'],
@@ -471,7 +477,12 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			priority: {
 				type: ['number', 'null'],
-				description: 'Optional priority from 1-5. Use null to clear.'
+				// See the create-task note: 1 is highest. Raising priority means
+				// moving the number DOWN.
+				description:
+					'Optional priority, 1-5, where 1 is the HIGHEST priority and 5 is the LOWEST. ' +
+					'Raising a task\'s priority means giving it a LOWER number ("make this top ' +
+					'priority" -> 1). Use null to clear.'
 			},
 			start_at: {
 				type: ['string', 'null'],

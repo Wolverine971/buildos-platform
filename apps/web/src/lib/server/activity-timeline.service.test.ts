@@ -322,6 +322,121 @@ describe('loadActivityTimeline', () => {
 		});
 	});
 
+	describe('deep links', () => {
+		const briefDelivery = (eventPayload: Record<string, unknown>) => ({
+			id: 'd-1',
+			channel: 'email',
+			status: 'sent',
+			created_at: '2026-07-24T15:00:00.000Z',
+			payload: { title: 'Daily brief ready' },
+			event_id: 'event-1',
+			notification_events: {
+				id: 'event-1',
+				event_type: 'brief.completed',
+				event_source: 'worker_job',
+				payload: eventPayload,
+				created_at: '2026-07-24T15:00:00.000Z'
+			}
+		});
+
+		it('points a brief ping at the brief rather than a project', async () => {
+			const supabase = makeSupabase({
+				notification_deliveries: [
+					briefDelivery({ brief_date: '2026-07-24', project_id: 'project-1' })
+				]
+			});
+
+			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
+
+			expect(page.entries[0].href).toBe('/briefs?date=2026-07-24');
+		});
+
+		it('reads a brief date nested under `data`', async () => {
+			const supabase = makeSupabase({
+				notification_deliveries: [briefDelivery({ data: { brief_date: '2026-07-20' } })]
+			});
+
+			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
+
+			expect(page.entries[0].href).toBe('/briefs?date=2026-07-20');
+		});
+
+		it('falls back to the briefs list when the ping carries no date', async () => {
+			const supabase = makeSupabase({ notification_deliveries: [briefDelivery({})] });
+
+			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
+
+			expect(page.entries[0].href).toBe('/briefs');
+		});
+
+		it('opens a chat transcript instead of only its project', async () => {
+			const supabase = makeSupabase({
+				chat_sessions: [
+					{
+						id: 'chat-1',
+						title: 'Planning',
+						auto_title: null,
+						summary: null,
+						context_type: 'project',
+						entity_id: 'project-1',
+						message_count: 4,
+						tool_call_count: 0,
+						status: 'active',
+						created_at: '2026-07-24T10:00:00.000Z',
+						last_message_at: '2026-07-24T10:05:00.000Z'
+					}
+				]
+			});
+
+			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
+
+			expect(page.entries[0].href).toBe('/history?id=chat-1&itemType=chat_session');
+			// The project is still carried so the card can link it separately.
+			expect(page.entries[0].project_id).toBe('project-1');
+		});
+
+		it('opens the specific brain dump rather than the history list', async () => {
+			const supabase = makeSupabase({
+				onto_braindumps: [
+					{
+						id: 'bd-1',
+						title: 'Morning dump',
+						summary: 'Notes',
+						topics: [],
+						status: 'processed',
+						error_message: null,
+						created_at: '2026-07-24T09:00:00.000Z',
+						processed_at: '2026-07-24T09:01:00.000Z'
+					}
+				]
+			});
+
+			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
+
+			expect(page.entries[0].href).toBe('/history?id=bd-1&itemType=braindump');
+		});
+
+		it('sends a failed brief to that day rather than the list', async () => {
+			const supabase = makeSupabase({
+				ontology_daily_briefs: [
+					{
+						id: 'brief-1',
+						brief_date: '2026-07-22',
+						generation_status: 'failed',
+						generation_error: 'timeout',
+						audio_status: null,
+						audio_error: null,
+						created_at: '2026-07-22T08:00:00.000Z'
+					}
+				]
+			});
+
+			const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
+
+			expect(page.entries[0].href).toBe('/briefs?date=2026-07-22');
+		});
+	});
+
 	it('collapses multi-channel deliveries of one event into a single ping', async () => {
 		const delivery = (id: string, channel: string) => ({
 			id,

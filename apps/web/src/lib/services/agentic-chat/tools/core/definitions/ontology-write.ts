@@ -75,6 +75,12 @@ Load task_management for complex task flows.`,
 						type: 'string',
 						description: 'Optional milestone UUID'
 					},
+					// `parents`/`connections` dropped from the chat definition
+					// (tasker/39 stage 6, 2026-07-26): 0 of the recorded chat
+					// executions ever passed them, plan_id/goal_id/
+					// supporting_milestone_id cover the common links, and
+					// link_onto_entities is the canonical post-create path for the
+					// rest. The executor and ops layer still accept them.
 					parent: {
 						type: 'object',
 						description: 'Optional primary containment parent',
@@ -82,31 +88,6 @@ Load task_management for complex task flows.`,
 							kind: { type: 'string' },
 							id: { type: 'string' },
 							is_primary: { type: 'boolean' }
-						}
-					},
-					parents: {
-						type: 'array',
-						description: 'Optional containment parents',
-						items: {
-							type: 'object',
-							properties: {
-								kind: { type: 'string' },
-								id: { type: 'string' },
-								is_primary: { type: 'boolean' }
-							}
-						}
-					},
-					connections: {
-						type: 'array',
-						description: 'Optional semantic or containment links',
-						items: {
-							type: 'object',
-							properties: {
-								kind: { type: 'string' },
-								id: { type: 'string' },
-								intent: { type: 'string', enum: ['containment', 'semantic'] },
-								rel: { type: 'string' }
-							}
 						}
 					},
 					start_at: {
@@ -319,28 +300,11 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 					position: {
 						type: 'number',
 						description: 'Position among siblings (0-indexed). Omit to place at end.'
-					},
-					parent: {
-						type: 'object',
-						description: 'Optional parent reference for semantic linking (legacy)',
-						properties: {
-							kind: { type: 'string' },
-							id: { type: 'string' },
-							is_primary: { type: 'boolean' }
-						}
-					},
-					parents: {
-						type: 'array',
-						description: 'Optional multiple semantic parents (legacy)',
-						items: {
-							type: 'object',
-							properties: {
-								kind: { type: 'string' },
-								id: { type: 'string' },
-								is_primary: { type: 'boolean' }
-							}
-						}
 					}
+					// Legacy `parent`/`parents` semantic-linking params dropped from
+					// the chat definition (tasker/39 stage 6, 2026-07-26):
+					// parent_id/position are the placement API, and the executor
+					// still accepts the legacy fields for non-chat callers.
 				},
 				required: ['project_id', 'title', 'description']
 			}
@@ -1084,7 +1048,9 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 					},
 					priority: {
 						type: 'number',
-						description: 'New priority (1-5)'
+						description:
+							'New priority (1-5), where 1 is the HIGHEST priority and 5 is the ' +
+							'LOWEST. "Make this top priority" means 1.'
 					},
 					assignee_actor_ids: {
 						type: 'array',

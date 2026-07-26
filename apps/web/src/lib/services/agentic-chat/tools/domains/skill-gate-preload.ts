@@ -28,6 +28,7 @@ export type SkillGatePreload = {
 };
 
 const PRELOAD_LIST_LIMIT = 6;
+const PRELOAD_WHEN_TO_USE_LIMIT = 3;
 
 export function resolveSkillGatePreload(
 	sensing: DomainSensingResult | null | undefined,
@@ -70,8 +71,15 @@ function renderPreloadedSkillPromptContent(
 		`Preloaded skill: ${payload.id} (${payload.name}) — loaded at short format. It counts as loaded; do NOT call skill_load for it again. Apply its workflow to this turn's work.`
 	];
 
+	// When-to-use is capped harder than the other lists (tasker/39 stage 4):
+	// on a preload-satisfied turn routing already happened, so these lines are
+	// confirmation, not selection — the workflow is the part that earns tokens.
 	if (payload.when_to_use.length) {
-		lines.push('', 'When to use:', ...clip(payload.when_to_use).map((item) => `- ${item}`));
+		lines.push(
+			'',
+			'When to use:',
+			...payload.when_to_use.slice(0, PRELOAD_WHEN_TO_USE_LIMIT).map((item) => `- ${item}`)
+		);
 	}
 	if (payload.workflow.length) {
 		lines.push('', 'Workflow:', ...payload.workflow.map((step) => `- ${step}`));

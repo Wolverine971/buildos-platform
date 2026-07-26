@@ -157,6 +157,183 @@ export function assertMutationRecorded(
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Mutation / restraint assertions
+//
+// Added 2026-07-25 for the Tier 1 breadth scenarios. Nothing in the suite could
+// previously assert that a turn wrote NOTHING, which is the eager-agent failure
+// mode, nor that a turn wrote something instead of stalling on a confirmation
+// question, which is the failure DJ actually reports hitting.
+// ---------------------------------------------------------------------------
+
+/**
+ * Every ontology write tool follows `{create,update,delete}_onto_*`. Classifying
+ * by name keeps this list from drifting as tools are added — a new write tool is
+ * caught automatically, which is the safe direction for a restraint assertion.
+ */
+const MUTATING_TOOL_PATTERN = /^(create|update|delete)_onto_/;
+
+/** Write-tool calls observed on the stream this turn. */
+export function mutatingToolCalls(turn: TurnResult): string[] {
+	return toolNames(turn).filter((name) => MUTATING_TOOL_PATTERN.test(name));
+}
+
+/** The model did NOT call `name` this turn. */
+export function assertToolNotCalled(turn: TurnResult, name: string): void {
+	if (toolNames(turn).includes(name)) {
+		throw new Error(
+			`[assert] tool "${name}" was called but must not have been. ` +
+				`All calls: [${toolNames(turn).join(', ')}]. ` +
+				`Assistant text: "${turn.assistantText.slice(0, 300)}"`
+		);
+	}
+}
+
+/**
+ * The turn wrote nothing. Used by the no-op and ambiguous-referent scenarios,
+ * where any write at all is the failure regardless of how good it looks.
+ */
+export function assertNoMutations(turn: TurnResult, why: string): void {
+	const writes = mutatingToolCalls(turn);
+	if (writes.length > 0) {
+		throw new Error(
+			`[assert] expected zero mutations (${why}) but the agent called [${writes.join(', ')}]. ` +
+				`Assistant text: "${turn.assistantText.slice(0, 300)}"`
+		);
+	}
+}
+
+/** Stable fingerprint of a row set, for before/after "nothing changed" checks. */
+export function rowFingerprint(
+	rows: Array<{ id: string; updated_at: string; state_key?: string }>
+): string {
+	return rows
+		.map((row) => `${row.id}:${row.state_key ?? ''}:${row.updated_at}`)
+		.sort()
+		.join('|');
+}
+
+/**
+ * Ground-truth restraint check: the DB row set is byte-identical to the
+ * pre-turn snapshot. Stronger than `assertNoMutations`, which only sees the
+ * stream — this catches a write that landed without a visible tool call.
+ */
+export function assertRowsUnchanged(before: string, after: string, label: string): void {
+	if (before !== after) {
+		throw new Error(
+			`[assert] ${label} changed during a turn that must not have written.\n` +
+				`  before: ${before}\n  after:  ${after}`
+		);
+	}
+}
+
+/**
+ * The assistant asked the user something. Paired with `assertNoMutations` for
+ * the ambiguous-referent case: asking is only correct if it also held off.
+ */
+export function assertQuestionAsked(turn: TurnResult): void {
+	if (!turn.assistantText.includes('?')) {
+		throw new Error(
+			`[assert] expected a clarifying question; assistant text contained no question mark. ` +
+				`Text: "${turn.assistantText.slice(0, 300)}"`
+		);
+	}
+}
+
+/**
+ * The turn produced a real user-facing answer. Guards DJ's reported failure
+ * where a research-heavy turn burns its tool budget and returns nothing — the
+ * stream can still reach `done` with an empty body, so `assertTurnSucceeded`
+ * alone does not catch it.
+ */
+export function assertNonEmptyAssistantText(turn: TurnResult, minimumChars = 40): void {
+	const text = turn.assistantText.trim();
+	if (text.length < minimumChars) {
+		throw new Error(
+			`[assert] assistant returned ${text.length} chars of text (need >= ${minimumChars}) ` +
+				`after ${turn.toolCalls.length} tool call(s). This is the budget-exhaustion / ` +
+				`dropped-final-response failure. finished_reason=${turn.finishedReason}. ` +
+				`Text: "${text}"`
+		);
+	}
+}
+
+/**
+ * The agent said what it was about to do before it started doing it. SSE events
+ * are ordered, so "narrate before acting" is mechanically checkable: some text
+ * must precede the first tool_call. Guards the long-silent-pause failure.
+ */
+export function assertNarratedBeforeActing(turn: TurnResult): void {
+	const firstText = turn.rawEvents.findIndex(
+		(ev) =>
+			(ev.type === 'text' || ev.type === 'text_delta') &&
+			typeof ev.content === 'string' &&
+			ev.content.trim().length > 0
+	);
+	const firstToolCall = turn.rawEvents.findIndex((ev) => ev.type === 'tool_call');
+	if (firstToolCall < 0) {
+		throw new Error('[assert] no tool call was made, so narration order is unverifiable');
+	}
+	if (firstText < 0 || firstText > firstToolCall) {
+		throw new Error(
+			`[assert] the agent acted before saying anything: first tool_call at event ` +
+				`${firstToolCall}, first text at ${firstText < 0 ? 'never' : firstText}. ` +
+				`The user watches a silent pause while tools run.`
+		);
+	}
+}
+
+/**
+ * Research-shaped tool calls — web search/fetch and the like.
+ *
+ * Backs the "learn through each chat" principle (DJ, 2026-07-25): "We want to
+ * build context. We don't want bloat, but we do want to build context." Research
+ * the agent performs is expensive and perishable; if it lands only in the chat
+ * reply it is gone the moment the session ends. A turn that searched the web six
+ * times and wrote nothing durable did the work and threw it away.
+ */
+const RESEARCH_TOOL_PATTERN = /^(web_|search_web|browse_|fetch_url)/;
+
+export function researchToolCalls(turn: TurnResult): string[] {
+	return toolNames(turn).filter((name) => RESEARCH_TOOL_PATTERN.test(name));
+}
+
+/**
+ * If the turn did substantive research, something durable must have changed.
+ * `persisted` is the scenario's own evidence (new or materially updated
+ * documents), since where context should land is scenario-specific.
+ */
+export function assertResearchPersisted(
+	turn: TurnResult,
+	persisted: string[],
+	options: { minimumResearchCalls?: number } = {}
+): void {
+	const minimum = options.minimumResearchCalls ?? 2;
+	const research = researchToolCalls(turn);
+	if (research.length < minimum) return; // not a research turn; nothing to persist
+	if (persisted.length === 0) {
+		throw new Error(
+			`[assert] the agent ran ${research.length} research call(s) ([${research.join(', ')}]) ` +
+				'and persisted none of it. The findings exist only in the chat reply and are lost ' +
+				'when the session ends. BuildOS should learn from each chat, not re-research. ' +
+				`Assistant text: "${turn.assistantText.slice(0, 300)}"`
+		);
+	}
+}
+
+/** A task row is in the expected lifecycle state. */
+export function assertTaskState(
+	actual: string | null | undefined,
+	expected: string,
+	label: string
+): void {
+	if (actual !== expected) {
+		throw new Error(
+			`[assert] ${label} state_key was "${actual ?? 'unset'}"; expected "${expected}"`
+		);
+	}
+}
+
 /** Compact transcript for the LLM judge: what the assistant said + did. */
 export function buildTranscript(turn: TurnResult, extra?: Record<string, unknown>): string {
 	const parts: string[] = [];

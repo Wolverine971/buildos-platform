@@ -739,11 +739,13 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'write'
 	},
 	web_search: {
-		summary: 'Live web research via Tavily with synthesized answer and cited sources.',
+		summary:
+			'Live web research via Tavily with synthesized answer and cited sources. Results are NOT persisted — save what you learn into a document or it is lost when the session ends.',
 		capabilities: [
 			'Searches current web content',
 			'Optional domain allow/deny lists',
-			'Returns ranked sources plus Tavily short answer'
+			'Returns ranked sources plus Tavily short answer',
+			'Stores nothing on its own — unlike web_visit, pair it with a document write to keep findings'
 		],
 		contexts: ['base', 'global', 'project_create', 'project'],
 		timeoutMs: 60000,

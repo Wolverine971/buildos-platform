@@ -10,6 +10,7 @@ import {
 	looksLikeExplicitMutationRequest,
 	shouldRepairGatewayMutationNoExecution,
 	shouldRepairProjectCreateNoExecution,
+	shouldRepairResearchNoPersist,
 	shouldRepairSkillGateNoLoad
 } from './repair-instructions';
 import type { FastToolExecution } from './shared';
@@ -877,5 +878,99 @@ describe('skill-load gate repair', () => {
 			skill_gate_satisfied: true,
 			skill_contract_present: null
 		});
+	});
+});
+
+describe('shouldRepairResearchNoPersist', () => {
+	const research = (n: number) =>
+		Array.from({ length: n }, (_, i) =>
+			createExecution({ name: 'web_search', args: { query: `q${i}` } })
+		);
+
+	it('fires when research ran and nothing durable was written', () => {
+		expect(
+			shouldRepairResearchNoPersist({
+				finalText: 'Here is what I found about competitor pricing.',
+				toolExecutions: research(6),
+				repairAlreadyInjected: false
+			})
+		).toBe(true);
+	});
+
+	it('does not fire below the two-call threshold', () => {
+		expect(
+			shouldRepairResearchNoPersist({
+				finalText: 'It is called date-fns.',
+				toolExecutions: research(1),
+				repairAlreadyInjected: false
+			})
+		).toBe(false);
+	});
+
+	it('is cleared by any successful durable write', () => {
+		expect(
+			shouldRepairResearchNoPersist({
+				finalText: 'Saved the pricing research.',
+				toolExecutions: [
+					...research(6),
+					createExecution({
+						name: 'create_onto_document',
+						args: { title: 'Pricing Landscape' }
+					})
+				],
+				repairAlreadyInjected: false
+			})
+		).toBe(false);
+	});
+
+	it('is not cleared by a failed write', () => {
+		expect(
+			shouldRepairResearchNoPersist({
+				finalText: 'Here is what I found.',
+				toolExecutions: [
+					...research(4),
+					createExecution({
+						name: 'create_onto_document',
+						args: { title: 'Pricing' },
+						success: false,
+						error: 'permission denied'
+					})
+				],
+				repairAlreadyInjected: false
+			})
+		).toBe(true);
+	});
+
+	it('counts web_visit toward the threshold', () => {
+		expect(
+			shouldRepairResearchNoPersist({
+				finalText: 'Read both vendor pages.',
+				toolExecutions: [
+					createExecution({ name: 'web_search', args: { query: 'vendors' } }),
+					createExecution({ name: 'web_visit', args: { url: 'https://example.com' } })
+				],
+				repairAlreadyInjected: false
+			})
+		).toBe(true);
+	});
+
+	it('allows a turn that stopped to ask a clarifying question', () => {
+		expect(
+			shouldRepairResearchNoPersist({
+				finalText: 'Which market should I compare against — US or UK?',
+				toolExecutions: research(4),
+				repairAlreadyInjected: false
+			})
+		).toBe(false);
+	});
+
+	it('never injects twice in one turn', () => {
+		expect(
+			shouldRepairResearchNoPersist({
+				finalText: 'Here is what I found.',
+				toolExecutions: research(6),
+				repairAlreadyInjected: true
+			})
+		).toBe(false);
 	});
 });
