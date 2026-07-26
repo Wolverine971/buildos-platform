@@ -13,9 +13,22 @@
 > turn) emitted from server-side signals, scaffold-flagged for A/B. Verified: 1,097 unit tests
 > green, typecheck clean, 3-scenario live smoke (2 pass; `task-complete-cold-reference` still fails
 > on the pre-existing forward-carry gap — unchanged, owned by the scratchpad mechanism work).
-> **Owed: the ≥5×, --retry=0 Tier-1 battery — run it AFTER the scratchpad agent lands, so one
-> battery validates both changes without a mid-run moving target.** Out of scope per DJ: Libri
-> (outdated, untouched) and §5 scratchpad (separate agent).
+> ~~**Owed: the ≥5×, --retry=0 Tier-1 battery.**~~ **PAID 2026-07-26 (evening) — full catalog,
+> --retry=0, on the settled tree (restructure + research capture + D1 forward-carry all landed):**
+> task-create 5/5 · task-multi-update 5/5 · calendar-move 5/5 · task-reschedule-cold-reference 5/5
+> · document-create 5/5 · document-edit-context 5/5 · research-turn-finalizes 5/5 ·
+> research-log-readback 5/5 · entity-resolution-misspelled 5/5 · task-complete-cold-reference 5/5
+> · restraint-noop-and-ambiguity 5/5 (last two measured same day under the D1 work). Two
+> non-regressions, both pre-existing and documented: **document-from-vague-description 2/5**
+> (1 stream-infra crash; 2/4 valid = bottom of the known ~2–4/5 model-bound band for
+> model-AUTHORED research docs — the deterministic Research Log still captures server-side, and
+> the assertion rightly excludes it) and **project-organize 0/3, signature unchanged** (reads all
+> six documents, never calls `move_document_in_tree`; stopped at 3 rather than re-buying a stable
+> known failure). email-read env-skipped (`AGENTIC_TEST_EMAIL_READY` unset). **Verdict: the
+> restructure (strategy 4,656 → 964 chars + situational_rules) regresses nothing.** Lead for the
+> research-doc band: `shouldRepairResearchNoPersist` still carries the `?` waiver that was removed
+> from the stated-future gate for measured cause. Out of scope per DJ: Libri (outdated, untouched)
+> and §5 scratchpad (separate agent).
 
 **Created 2026-07-25.** DJ's framing, verbatim:
 
