@@ -156,6 +156,9 @@ A template scores near zero specificity no matter how well it reads. **This is t
 catches the actual failure mode of open-ended orchestration**: not wrong answers, but confident
 generic output that could belong to any project.
 
+> **2026-07-26 correction (§6.4):** DJ's C5 answer demotes specificity from headline metric to
+> anti-template detector. The swap test stays, but it no longer decides — see §6.4.
+
 No published equivalent was found across ~150 sources. Two consequences:
 
 - Do **not** pre-register a threshold on the first cohort. The first run's job is to establish what
@@ -169,6 +172,9 @@ One question per output, 4-point:
 
 > **Would you execute this?**
 > 1 — no · 2 — after heavy edits · 3 — after light edits · 4 — as-is
+
+> **2026-07-26 (§6.4):** add a second question per output — *did it know whether it could be
+> executed?* — per DJ's C5 answer.
 
 Plus one free-text: _what's missing._ Blind across lanes, counterbalanced ordering, scored before any
 lane identity is revealed. Reuse the existing counterbalanced blind mechanic
@@ -291,9 +297,39 @@ marketing engagements may legitimately share structure, compressing the metric.
 1. **Does specificity become a runtime guardrail** after the first cohort, or stay eval-only?
 2. **What DJ sees on screen while a brief runs** — visible team assembly and progress, or just the
    result. Unanswered, and it shapes what "good" means beyond the artifact itself.
-3. **The briefs themselves and the acceptance bar (L3 rubric).** Blocks B and C of the interview.
-   These cannot be authored on DJ's behalf: for an open brief his taste _is_ the ground truth, so
-   inventing them would produce an instrument that measures the author rather than the user.
+3. ~~**The briefs themselves and the acceptance bar (L3 rubric).** Blocks B and C of the
+   interview.~~ **Captured 2026-07-25, folded 2026-07-26 — see §6.4.** Still outstanding within it:
+   dictated phrasing for three of five briefs, per-brief label sign-off, and the Tacemus snapshot
+   decision (`corpus/open-brief-v1.json` → `pending_from_dj`).
+
+### 6.4 Blocks B & C captured — 2026-07-26
+
+DJ answered Blocks B and C on 2026-07-25 (`BLOCKS_B_C_QUESTIONS_2026-07-25.md`); the answers are
+folded into `corpus/open-brief-v1.json` (`design_corrections`, `output_contract`,
+`clarification_policy_rule`, `acceptance_bar_global`). Two answers **change this spec's design**
+and must not be lost:
+
+1. **Artifact shape: steps, not schedules.** Both sample plans in the interview — including the
+   deliberately-strong Plan B — were rejected for week-by-week framing. A plan is a sequence of
+   steps with per-step effort estimates and explicit knowns/unknowns; calendar blocks are an L0
+   rubric violation even when the content is good. This is code-checkable and applies to
+   `ob-04-four-week-plan` despite its name: the brief scopes the work, it does not license
+   calendar framing.
+
+2. **The quality bar is self-assessed feasibility, not specificity.** C5 — "what would make you go
+   *oh, it gets this project*" — turned out to mean: the plan knows whether there is enough context
+   to achieve it, stress-tests itself, weighs its own difficulty, and asks for what it needs.
+   Specificity (what L1 grounding ratio and the L2 swap test measure) is a supporting anti-template
+   signal, not the bar. Consequences: the instrument needs a feasibility-self-assessment check
+   (does the artifact contain an explicit doability/stress-test section; are context requests
+   targeted at real gaps), and L3 should ask both "would you execute this?" and "did it know
+   whether it could be executed?". Relatedly, C6 confirms unasked judgment calls of Plan B's kind
+   are *wanted* — a rubric that penalizes them trains the wrong behavior.
+
+Also settled: the output contract (durable one-pager doc + bottom-line-up-front takeaways in chat
+— either alone fails), and the blocked/proceedable line is **snapshot-conditional**: a
+direction-setting brief is blocked exactly when the project holds no direction doc to build from,
+which finally makes the ob-05 blocked control authorable without inventing information.
 
 ---
 

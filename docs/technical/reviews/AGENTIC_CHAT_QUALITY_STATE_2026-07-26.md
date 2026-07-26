@@ -217,7 +217,41 @@ fixable without rewriting history; worth knowing before anyone bisects.
 
 ---
 
-## 8. Related
+## 8. Addendum — D1 shipped same day (evening)
+
+DJ decided **ship narrow**. Built, measured, committed (`b155b909`).
+
+**Forward-carry: 1/5 → 5/5. Restraint: 5/5, no regression.**
+
+The first attempt (deterministic write triggered by the gate's fired-flag) measured **3/5**, and the
+two failures were both §5's lesson again — escape hatches in *code* this time, not instructions:
+
+1. The gate waived itself whenever the final text contained a `?`
+   (`looksLikePureClarifyingQuestion`), so "Closed it — want me to set a follow-up?" dropped the
+   future with no repair, no flag, no fallback.
+2. The fallback was coupled to the gate's flag, so any finalization path the gate never saw also
+   bypassed the floor.
+
+Fix: the route now triggers the last-resort write from **ground truth only** — conservative
+waiting-state patterns on the user's words plus wrote-without-durable-record on actual tool
+executions. The `?` waiver is removed from this gate (its preconditions mean the turn already
+acted). The model keeps first refusal via the repair round; when it declines, the server creates
+the task titled from the user's verbatim words (`stated-future.service.ts`, idempotent per turn
+via `onto_task_create_atomic`).
+
+Notably, once the `?` waiver was gone the model recorded the future ITSELF in most runs (follow-up
+task + event, or START HERE). The deterministic write fired in one of five passes. The floor works
+mostly by making the gate inescapable, not by writing.
+
+Known residual: `didCreateDurableRecord` credits an `update_onto_document` on any document, while
+the scenario credits only START HERE among seeded docs. If a future failure shows a doc-update
+signature with no scenario surface, that mismatch is the next tightening.
+
+Scoreboard correction to §4: **Forward-carry ✅ 5/5 by construction.** The open-brief corpus
+fold-in (D3) also landed the same evening — see `corpus/open-brief-v1.json` `design_corrections`
+and methodology §6.4.
+
+## 9. Related
 
 - `tasker/39-prompt-instruction-architecture-audit.md` · `tasker/40-working-notes-artifacts.md`
 - `docs/specs/WORKING_NOTES_RESEARCH_LOG_SPEC_2026-07-26.md`
