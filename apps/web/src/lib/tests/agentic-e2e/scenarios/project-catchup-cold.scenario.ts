@@ -44,7 +44,9 @@ function spec(): ProjectSpec {
 		project: {
 			name: harnessProjectName('Catchup Cold'),
 			type_key: 'project.business.product_launch',
-			description: 'A product launch mid-flight with a stale START HERE.'
+			// Neutral on purpose — the first version said "with a stale START HERE", which
+			// leaked the test's premise into the model's context.
+			description: 'Product launch for Meridian Retail.'
 		},
 		entities: [
 			{
@@ -122,11 +124,17 @@ export const projectCatchupColdScenario: Scenario = {
 				}
 
 				// Anti-parrot: the stale START HERE's claims must not survive as current fact.
-				if (/(still drafting|nothing has gone out|undecided)/.test(text)) {
+				// A reply carrying ALL THREE fresh facts that also mentions a stale phrase has
+				// almost certainly surfaced the contradiction (good behavior) — only fail when a
+				// stale claim appears WITHOUT full fresh grounding, i.e. it is being repeated as
+				// the truth rather than corrected.
+				const staleMatch = text.match(/(still drafting|nothing has gone out|undecided)/);
+				if (staleMatch && hits.length < freshSignals.length) {
 					throw new Error(
-						'[assert] the catch-up parrots the stale START HERE ("still drafting" / ' +
-							'"undecided") instead of the live state. Assistant text: ' +
-							`"${turn.assistantText.slice(0, 400)}"`
+						`[assert] the catch-up repeats the stale START HERE claim "${staleMatch[1]}" ` +
+							'as current fact without full fresh grounding ' +
+							`(fresh signals: [${hits.map((h) => h.label).join(', ')}]). ` +
+							`Assistant text: "${turn.assistantText.slice(0, 1200)}"`
 					);
 				}
 			},
