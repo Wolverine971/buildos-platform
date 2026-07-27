@@ -13,6 +13,13 @@ than restated. Final scored state: A1 mitigation v2 = Change at 61/72; A2 built 
 The architecture hypothesis is neither corroborated nor falsified; the quality question moves to
 the [open-brief instrument](./OPEN_BRIEF_EVAL_METHODOLOGY.md). No durable system exists and Phase
 B is not authorized.
+**Active workstream (2026-07-27):** the first three-lane open-brief cohort — control (v2 chat) vs
+Phase A workflow lane vs single strong agent — ending in a DJ blind pass. Handoff:
+[OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md](./OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md). Corpus
+status: Blocks B/C folded; 3 briefs + 5 label sign-offs + the Tacemus call pending as a DJ veto
+packet (see the corpus file's `pending_from_dj`). Note the control lane is materially stronger
+than during Phase A (deterministic floors + organize-commission fixes + verified prompt
+restructure, 2026-07-26) — a workflow win against it means more.
 
 ## Purpose
 

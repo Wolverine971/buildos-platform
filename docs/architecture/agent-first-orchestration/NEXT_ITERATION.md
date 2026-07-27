@@ -2,6 +2,12 @@
 
 # Phase A — next iteration runbook
 
+> **SUPERSEDED 2026-07-27.** Phase A was closed 2026-07-26 as instrument-limited — recorded
+> decision in [`PHASE_A_RESULTS.md`](./PHASE_A_RESULTS.md). Nothing in this runbook should be
+> run. The active workstream is the open-brief cohort:
+> [`OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md`](./OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md).
+> This file is preserved as the historical record of the post-mitigation state.
+
 **Date:** 2026-07-25
 **Reason this exists:** the [Phase A audit](./PHASE_A_AUDIT_2026-07-25.md) found four conditions
 that would have made a scored A2 cohort uninterpretable. DJ authorized the recommended changes.
