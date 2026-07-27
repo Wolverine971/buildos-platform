@@ -1128,6 +1128,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					passMessages,
 					tools: passTools,
 					hasTools: passTools.length > 0,
+					forcedToolChoice: writeIntentToolPass ? 'required' : undefined,
 					noToolSynthesisPass,
 					passNumber,
 					usage,

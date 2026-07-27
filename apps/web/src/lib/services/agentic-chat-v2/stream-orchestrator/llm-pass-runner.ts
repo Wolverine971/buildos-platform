@@ -77,6 +77,13 @@ export async function runLlmStreamPass(params: {
 	tools: ChatToolDefinition[];
 	hasTools: boolean;
 	noToolSynthesisPass: boolean;
+	/**
+	 * Force the model to call a tool this pass ('required'). Set on the forced write-intent
+	 * pass: measured 2026-07-26 (project-organize), a weak model handed a write-tools-only
+	 * pass still NARRATED the moves in prose 3/5 runs — tool_choice is the only lever that
+	 * makes a text-only response impossible.
+	 */
+	forcedToolChoice?: 'required';
 	passNumber: number;
 	usage?: FastAgentStreamUsage;
 	userId: string;
@@ -181,7 +188,7 @@ export async function runLlmStreamPass(params: {
 				tool_choice: params.noToolSynthesisPass
 					? 'none'
 					: params.hasTools
-						? 'auto'
+						? (params.forcedToolChoice ?? 'auto')
 						: undefined,
 				temperature: params.noToolSynthesisPass ? 0.1 : params.hasTools ? 0.2 : undefined,
 				userId: params.userId,

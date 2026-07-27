@@ -2347,7 +2347,9 @@ describe('streamFastChat direct tool orchestration', () => {
 			maxToolRounds: 2
 		});
 
-		expect(streamParams[1]?.toolChoice).toBe('auto');
+		// The forced write-intent pass demands a tool call: measured 2026-07-26, a weak model
+		// handed a write-tools-only pass still narrated the writes in prose under 'auto'.
+		expect(streamParams[1]?.toolChoice).toBe('required');
 		expect(streamParams[1]?.toolNames).toEqual(['update_onto_task']);
 		expect(streamParams[1]?.messages.map((message) => message.content).join('\n')).toContain(
 			'requested mutation is still pending'
