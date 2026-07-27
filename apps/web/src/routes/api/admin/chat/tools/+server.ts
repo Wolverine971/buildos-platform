@@ -30,6 +30,8 @@ const TOOL_EXECUTION_SELECT = `
 	help_path,
 	execution_time_ms,
 	tokens_consumed,
+	result_count,
+	zero_result,
 	success,
 	error_message,
 	requires_user_action,

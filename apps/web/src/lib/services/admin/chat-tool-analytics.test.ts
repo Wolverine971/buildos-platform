@@ -20,6 +20,8 @@ const row = (
 	help_path: null,
 	execution_time_ms: null,
 	tokens_consumed: null,
+	result_count: null,
+	zero_result: null,
 	success: true,
 	error_message: null,
 	requires_user_action: null,
@@ -241,5 +243,34 @@ describe('buildChatToolAnalytics', () => {
 			tool_category: 'gateway_discovery'
 		});
 		expect(payload.filter_options.categories).toContain('gateway_discovery');
+	});
+
+	it('surfaces the gateway discovery zero-result rate', () => {
+		const payload = buildChatToolAnalytics([
+			row({
+				id: 'exec-1',
+				tool_name: 'tool_search',
+				result_count: 0,
+				zero_result: true
+			}),
+			row({
+				id: 'exec-2',
+				tool_name: 'tool_schema',
+				result_count: 1,
+				zero_result: false
+			}),
+			row({
+				id: 'exec-3',
+				tool_name: 'skill_load'
+			})
+		]);
+
+		expect(
+			payload.by_category.find((category) => category.category === 'gateway_discovery')
+		).toMatchObject({
+			search_execution_count: 2,
+			zero_result_count: 1,
+			zero_result_rate: 50
+		});
 	});
 });

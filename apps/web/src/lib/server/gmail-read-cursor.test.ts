@@ -54,7 +54,11 @@ describe('Gmail read pagination cursor', () => {
 			{ ...context, pageToken: 'provider-page-2', page: 1, now },
 			{ secret }
 		);
-		const tampered = `${cursor.slice(0, -1)}${cursor.endsWith('A') ? 'B' : 'A'}`;
+		const payloadStart = cursor.indexOf('.') + 1;
+		const tamperIndex = payloadStart + Math.floor((cursor.length - payloadStart) / 2);
+		const tampered = `${cursor.slice(0, tamperIndex)}${
+			cursor[tamperIndex] === 'A' ? 'B' : 'A'
+		}${cursor.slice(tamperIndex + 1)}`;
 
 		expect(() =>
 			consumeGmailReadCursor({ ...context, cursor: tampered, now }, { secret })

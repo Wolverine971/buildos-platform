@@ -33,7 +33,13 @@ import { ensureActorId } from '$lib/services/ontology/ontology-projects.service'
 import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
 import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
-import { searchToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-search';
+import {
+	buildToolSearchNoMatchesPayload,
+	computeToolMatchScore,
+	searchToolRegistry,
+	toolSearchQueryHasWriteIntent,
+	type ToolSearchOptions
+} from '$lib/services/agentic-chat/tools/registry/tool-search';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { loadSkill } from '$lib/services/agentic-chat/tools/skills/skill-load';
 import {
@@ -239,7 +245,7 @@ function buildDirectToolGatewayArguments(
 
 function normalizeToolSearchFilterArgs(args: Record<string, unknown> | undefined): {
 	query: string;
-	group?: 'onto' | 'util' | 'cal';
+	group?: ToolSearchOptions['group'];
 	kind?: 'read' | 'write';
 	entity?: string;
 	capability?: string;
@@ -252,8 +258,13 @@ function normalizeToolSearchFilterArgs(args: Record<string, unknown> | undefined
 				? args.capability.trim()
 				: undefined,
 		group:
-			args?.group === 'onto' || args?.group === 'util' || args?.group === 'cal'
-				? (args.group as 'onto' | 'util' | 'cal')
+			args?.group === 'onto' ||
+			args?.group === 'util' ||
+			args?.group === 'cal' ||
+			args?.group === 'email' ||
+			args?.group === 'search' ||
+			args?.group === 'x'
+				? args.group
 				: undefined,
 		kind:
 			args?.kind === 'read' || args?.kind === 'write'
@@ -263,35 +274,6 @@ function normalizeToolSearchFilterArgs(args: Record<string, unknown> | undefined
 			typeof args?.entity === 'string' && args.entity.trim() ? args.entity.trim() : undefined,
 		limit: clampLimit(args?.limit, 8, 1, 25)
 	};
-}
-
-function scoreExternalRegistryEntry(entry: RegistryOp, query: string): number {
-	const normalizedQuery = query.trim().toLowerCase();
-	if (!normalizedQuery) return 1;
-
-	const haystack = [
-		entry.op,
-		entry.tool_name,
-		entry.description,
-		entry.group,
-		entry.kind,
-		entry.entity,
-		entry.action
-	]
-		.filter((value): value is string => typeof value === 'string' && value.length > 0)
-		.join(' ')
-		.toLowerCase();
-	const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
-	let score = 0;
-
-	if (entry.op.toLowerCase() === normalizedQuery) score += 200;
-	if (entry.op.toLowerCase().includes(normalizedQuery)) score += 100;
-	if (entry.tool_name.toLowerCase().includes(normalizedQuery)) score += 60;
-	for (const token of tokens) {
-		if (haystack.includes(token)) score += 20;
-	}
-
-	return score;
 }
 
 function buildExternalToolSearchMatch(
@@ -315,6 +297,7 @@ function mergeScopedToolSearchMatches(params: {
 	args: Record<string, unknown> | undefined;
 }): Record<string, unknown>[] {
 	const filters = normalizeToolSearchFilterArgs(params.args);
+	const prefersWrites = toolSearchQueryHasWriteIntent(filters.query);
 	const internalRegistry = getToolRegistry();
 	const scopedInternalMatches = params.payloadMatches.filter((match) => {
 		const op =
@@ -340,13 +323,14 @@ function mergeScopedToolSearchMatches(params: {
 				})
 				.map((entry) => ({
 					entry,
-					score: scoreExternalRegistryEntry(entry, filters.query)
+					score: computeToolMatchScore(entry, filters.query)
 				}))
 				.filter(({ score }) => score > 0)
 				.sort((a, b) => {
 					if (b.score !== a.score) return b.score - a.score;
-					if (a.entry.kind !== b.entry.kind)
-						return a.entry.kind.localeCompare(b.entry.kind);
+					if (prefersWrites && a.entry.kind !== b.entry.kind) {
+						return a.entry.kind === 'write' ? -1 : 1;
+					}
 					return a.entry.op.localeCompare(b.entry.op);
 				})
 				.map(({ entry }) => buildExternalToolSearchMatch(entry));
@@ -490,11 +474,21 @@ export async function executeBuildosAgentGatewayTool(params: {
 				registry,
 				args: params.arguments
 			});
+			const { no_matches: _internalNoMatches, ...basePayload } = payload;
 			return {
-				...payload,
+				...basePayload,
 				version: registry.version,
 				total_matches: matches.length,
-				matches
+				matches,
+				...(matches.length === 0
+					? {
+							no_matches: buildToolSearchNoMatchesPayload(Object.values(registry.ops))
+						}
+					: {}),
+				next_step:
+					matches.length > 0
+						? 'Pick the best candidate op/tool. Call tool_schema before first-time or complex writes, then call the direct tool by name.'
+						: payload.next_step
 			};
 		}
 		case 'tool_schema': {

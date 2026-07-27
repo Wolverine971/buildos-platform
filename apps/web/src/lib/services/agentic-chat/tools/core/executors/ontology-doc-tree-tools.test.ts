@@ -25,6 +25,7 @@ describe('Ontology document tree tools', () => {
 	const userId = 'user-123';
 	const sessionId = 'session-456';
 	const actorId = 'actor-789';
+	const parentDocumentId = '11111111-1111-4111-8111-111111111111';
 
 	let mockSupabase: SupabaseClient<Database>;
 	let mockFetch: typeof fetch;
@@ -145,14 +146,14 @@ describe('Ontology document tree tools', () => {
 		await executor.moveDocumentInTree({
 			project_id: 'project-1',
 			document_id: 'doc-unlinked',
-			new_parent_id: 'parent-123',
+			new_parent_id: parentDocumentId,
 			new_position: 1
 		});
 
 		const lastBody = (mockFetch as any).lastMoveBody();
 		expect(lastBody).toEqual({
 			document_id: 'doc-unlinked',
-			new_parent_id: 'parent-123',
+			new_parent_id: parentDocumentId,
 			new_position: 1
 		});
 	});

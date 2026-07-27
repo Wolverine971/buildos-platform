@@ -1,6 +1,7 @@
 ---
 name: instagram
 description: Browser automation for Instagram web. Use when navigating feed, stories, reels, profiles, hashtags, comments, likes, DMs, or running Instagram warmup tasks. Web covers everything needed for engagement; story creation and some Reels features are mobile-only.
+path: .claude/skills/instagram/SKILL.md
 ---
 
 # Instagram
@@ -9,7 +10,8 @@ Load this when interacting with Instagram via browser automation. Detailed flows
 
 ## Prerequisites
 
-- User is logged into Instagram in Chrome.
+- **Select the right browser first.** BuildOS/@djwayne3 work runs in Chrome profile directory `Default`, display name "djwayne35" (DJ's main profile, which has its own Claude extension instance). Call `list_connected_browsers` and `select_browser` the matching one before navigating — never the 9takes.com or thecadretraining.com browsers. This profile is shared with DJ's personal accounts, so switching to @djwayne3 *within it* is sanctioned; switching accounts in any other profile is not. Machine-level mapping: `/Users/djwayne/9takes/docs/instagram/instagram-cron-browser-setup.md`.
+- User is logged into Instagram in that profile's Chrome.
 - Start at `https://www.instagram.com`.
 - Instagram web covers likes, comments, saves, story viewing, DMs, and search. Story creation and some Reels features are **mobile-only**.
 

@@ -15,20 +15,9 @@ export interface CapabilityDefinition {
 	notes?: string[];
 }
 
-export interface CapabilityHelpPayload {
-	type: 'capability';
-	path: string;
+export type CapabilityDirectoryItem = {
 	id: string;
-	name: string;
-	status: CapabilityStatus;
-	summary: string;
-	what_you_can_do: string[];
-	skill_entrypoints: string[];
-	direct_paths: string[];
-	notes?: string[];
-}
-
-type CapabilityDirectoryItem = {
+	path: string;
 	name: string;
 	type: 'capability';
 	summary: string;
@@ -295,7 +284,9 @@ export function listCapabilities(status?: CapabilityStatus): CapabilityDefinitio
 
 export function listCapabilityDirectoryItems(status?: CapabilityStatus): CapabilityDirectoryItem[] {
 	return listCapabilities(status).map((capability) => ({
-		name: capability.path,
+		id: capability.id,
+		path: capability.path,
+		name: capability.name,
 		type: 'capability' as const,
 		summary: capability.summary
 	}));
@@ -305,27 +296,4 @@ export function getCapabilityByPath(path: string): CapabilityDefinition | undefi
 	const capability = ALL_CAPABILITIES.find((entry) => entry.path === path);
 	if (!capability || !isCapabilityEnabled(capability)) return undefined;
 	return capability;
-}
-
-export function buildCapabilityHelpPayload(
-	capability: CapabilityDefinition,
-	format: 'short' | 'full'
-): CapabilityHelpPayload {
-	const payload: CapabilityHelpPayload = {
-		type: 'capability',
-		path: capability.path,
-		id: capability.id,
-		name: capability.name,
-		status: capability.status,
-		summary: capability.summary,
-		what_you_can_do: capability.whatYouCanDo,
-		skill_entrypoints: capability.skillIds,
-		direct_paths: capability.directPaths
-	};
-
-	if (format === 'full' && capability.notes?.length) {
-		payload.notes = capability.notes;
-	}
-
-	return payload;
 }

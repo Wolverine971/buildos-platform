@@ -1,10 +1,7 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.types.ts
 //
 // Public type surface for the gateway execution facade.
-import type {
-	AgentCallScope,
-	BuildosAgentScopeMode
-} from '@buildos/shared-types';
+import type { AgentCallScope, BuildosAgentScopeMode } from '@buildos/shared-types';
 import type { ActivityLogActorContext } from '../ops/async-activity-logger';
 
 /**
@@ -17,7 +14,7 @@ export type RegistryOp = {
 	tool_name: string;
 	description: string;
 	parameters_schema: Record<string, any>;
-	group: 'onto' | 'util' | 'cal' | 'x';
+	group: 'onto' | 'util' | 'cal' | 'email' | 'search' | 'x';
 	kind: 'read' | 'write';
 	entity?: string;
 	action?: string;

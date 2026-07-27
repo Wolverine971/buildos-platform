@@ -1063,7 +1063,12 @@ export class ToolExecutionService implements BaseService {
 				query: typeof args.query === 'string' ? args.query : undefined,
 				capability: typeof args.capability === 'string' ? args.capability : undefined,
 				group:
-					args.group === 'onto' || args.group === 'util' || args.group === 'cal'
+					args.group === 'onto' ||
+					args.group === 'util' ||
+					args.group === 'cal' ||
+					args.group === 'email' ||
+					args.group === 'search' ||
+					args.group === 'x'
 						? args.group
 						: undefined,
 				kind: args.kind === 'read' || args.kind === 'write' ? args.kind : undefined,

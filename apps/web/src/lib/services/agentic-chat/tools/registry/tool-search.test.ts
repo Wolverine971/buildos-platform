@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../core/definitions';
 import { buildToolRegistry, getToolRegistry, resetToolRegistryCache } from './tool-registry';
 import { searchToolRegistry } from './tool-search';
+import { configureEmailRuntimeEnv } from '../email';
 
 const CHAT_HIDDEN_LEGACY_SEARCH_TOOLS = [
 	'search_onto_goals',
@@ -20,6 +21,7 @@ function toolNames(result: Record<string, unknown>): string[] {
 }
 
 afterEach(() => {
+	configureEmailRuntimeEnv(null);
 	resetToolRegistryCache();
 });
 
@@ -98,5 +100,101 @@ describe('searchToolRegistry discovery surfaces', () => {
 				})
 			)
 		).toContain('move_onto_task');
+	});
+
+	it('keeps direct calendar, move, and delete searches high quality', () => {
+		const calendarMatches = searchToolRegistry({ query: 'calendar', limit: 7 });
+		expect(
+			(calendarMatches.matches as Array<{ group: string }>).every(
+				(match) => match.group === 'cal'
+			)
+		).toBe(true);
+		expect(toolNames(searchToolRegistry({ query: 'move task to another project' }))[0]).toBe(
+			'move_onto_task'
+		);
+		expect(toolNames(searchToolRegistry({ query: 'delete document' }))[0]).toBe(
+			'delete_onto_document'
+		);
+	});
+
+	it('expands reschedule and meeting language to the calendar event update op', () => {
+		const names = toolNames(searchToolRegistry({ query: 'reschedule meeting tomorrow' }));
+		expect(names.indexOf('update_calendar_event')).toBeGreaterThanOrEqual(0);
+		expect(names.indexOf('update_calendar_event')).toBeLessThan(3);
+		expect(names).not.toContain('update_onto_document');
+	});
+
+	it('prefers the task update write for a batch-shaped update query', () => {
+		const names = toolNames(searchToolRegistry({ query: 'batch update many tasks' }));
+		expect(names.indexOf('update_onto_task')).toBeGreaterThanOrEqual(0);
+		expect(names.indexOf('update_onto_task')).toBeLessThan(5);
+	});
+
+	it('discovers all email reads under the first-class email group when enabled', () => {
+		configureEmailRuntimeEnv({ EMAIL_CHAT_TOOLS_ENABLED: 'true' });
+		resetToolRegistryCache();
+
+		const registry = getToolRegistry();
+		expect(registry.ops['email.accounts.list']).toMatchObject({
+			group: 'email',
+			entity: 'account'
+		});
+		expect(registry.ops['email.messages.search']).toMatchObject({
+			group: 'email',
+			entity: 'message'
+		});
+		expect(toolNames(searchToolRegistry({ query: 'gmail', group: 'email' })).sort()).toEqual(
+			['get_email_message', 'list_email_accounts', 'search_email_messages'].sort()
+		);
+
+		const wrongGroup = searchToolRegistry({
+			query: 'gmail inbox read messages email',
+			group: 'util',
+			limit: 25
+		});
+		expect(toolNames(wrongGroup)).toEqual([]);
+		expect(wrongGroup).toMatchObject({
+			total_matches: 0,
+			no_matches: {
+				tool_directory: {
+					groups: expect.arrayContaining([expect.objectContaining({ id: 'email' })])
+				}
+			}
+		});
+	});
+
+	it('puts cross-project search operations in a browsable search group', () => {
+		const registry = getToolRegistry();
+		expect(registry.ops['x.search.all_projects'].group).toBe('search');
+		expect(registry.ops['x.search.project'].group).toBe('search');
+		expect(registry.ops['onto.search'].group).toBe('search');
+
+		const result = searchToolRegistry({ group: 'search', limit: 25 });
+		expect(toolNames(result)).toEqual(
+			expect.arrayContaining(['search_all_projects', 'search_project', 'search_ontology'])
+		);
+	});
+
+	it('controls stop-word noise and returns the directory on no matches', () => {
+		const result = searchToolRegistry({ query: 'what is on my plate this week' });
+		expect(toolNames(result)).toEqual([]);
+		expect(result).toMatchObject({
+			total_matches: 0,
+			no_matches: {
+				tool_directory: {
+					groups: expect.arrayContaining([
+						expect.objectContaining({ id: 'onto' }),
+						expect.objectContaining({ id: 'util' })
+					])
+				},
+				capabilities: expect.arrayContaining([
+					expect.objectContaining({ id: 'calendar', path: 'capabilities.calendar' })
+				])
+			}
+		});
+	});
+
+	it('does not revive partial-word substring matches', () => {
+		expect(toolNames(searchToolRegistry({ query: 'tas' }))).toEqual([]);
 	});
 });

@@ -45,6 +45,7 @@ describe('email tools — registry gating', () => {
 		for (const op of EMAIL_READ_OPS) {
 			expect(registry.ops[op]).toBeDefined();
 			expect(registry.ops[op].kind).toBe('read');
+			expect(registry.ops[op].group).toBe('email');
 			expect(registry.ops[op].chat_discoverable).toBe(true);
 		}
 		for (const name of EMAIL_TOOL_NAMES) {

@@ -26,6 +26,15 @@ describe('extractSearchResultCount', () => {
 		expect(extractSearchResultCount('search_project', { results: [] })).toBe(0);
 	});
 
+	it('counts gateway discovery matches and schema lookup misses', () => {
+		expect(
+			extractSearchResultCount('tool_search', { total_matches: 3, matches: [{}, {}] })
+		).toBe(3);
+		expect(extractSearchResultCount('skill_search', { matches: [{}, {}] })).toBe(2);
+		expect(extractSearchResultCount('tool_schema', { type: 'tool_schema' })).toBe(1);
+		expect(extractSearchResultCount('tool_schema', { type: 'not_found' })).toBe(0);
+	});
+
 	it('falls back to total_returned / total when the array is missing', () => {
 		expect(extractSearchResultCount('search_ontology', { total_returned: 7 })).toBe(7);
 		expect(extractSearchResultCount('search_onto_tasks', { total: 2 })).toBe(2);
@@ -85,6 +94,30 @@ describe('searchTelemetryColumns', () => {
 				result: { documents: [] }
 			})
 		).toEqual({ result_count: 0, zero_result: true });
+	});
+
+	it('populates discovery health for tool search, schema, and skill search', () => {
+		expect(
+			searchTelemetryColumns({
+				toolName: 'tool_search',
+				success: true,
+				result: { total_matches: 0, matches: [] }
+			})
+		).toEqual({ result_count: 0, zero_result: true });
+		expect(
+			searchTelemetryColumns({
+				toolName: 'tool_schema',
+				success: true,
+				result: { type: 'not_found' }
+			})
+		).toEqual({ result_count: 0, zero_result: true });
+		expect(
+			searchTelemetryColumns({
+				toolName: 'skill_search',
+				success: true,
+				result: { total_matches: 2, matches: [{}, {}] }
+			})
+		).toEqual({ result_count: 2, zero_result: false });
 	});
 
 	it('leaves both columns null for a non-search tool', () => {

@@ -1,10 +1,9 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/search-telemetry.ts
 //
-// Search telemetry helpers. The agent's search tools each return their matches
-// under a different key (results/tasks/projects/documents/...). To make search
-// outcomes queryable (result_count / zero_result on chat_tool_executions) without
-// teaching every executor about telemetry, ChatToolExecutor derives the count from
-// the tool name + result here.
+// Search telemetry helpers. Registry discovery tools and data-search tools return
+// counts in different shapes. To make their outcomes queryable (result_count /
+// zero_result on chat_tool_executions) without teaching every executor about
+// telemetry, ChatToolExecutor derives the count from the tool name + result here.
 
 /**
  * Search tools and the key under which each returns its result array.
@@ -22,6 +21,8 @@ export const SEARCH_RESULT_ARRAY_KEYS: Record<string, string> = {
 	search_onto_milestones: 'milestones',
 	search_onto_risks: 'risks'
 };
+
+const DISCOVERY_SEARCH_TOOLS = new Set(['tool_search', 'skill_search']);
 
 /** True when the given tool is one of the agent's search tools. */
 export function isSearchTool(toolName: string): boolean {
@@ -68,12 +69,24 @@ export function searchTelemetryColumns(params: {
 }
 
 /**
- * How many rows a search tool returned, or null when the tool is not a search
- * tool. Reads the per-tool result array, falling back to total_returned / total
- * when the array is absent. A non-search tool returns null so callers can leave
- * the telemetry columns empty for it.
+ * How many matches a discovery/data-search tool returned, or null when the tool
+ * does not expose search health. A tool_schema hit counts as one and not_found as
+ * zero. Data-search tools read their per-tool result arrays, falling back to
+ * total_returned / total when the array is absent.
  */
 export function extractSearchResultCount(toolName: string, result: unknown): number | null {
+	if (toolName === 'tool_schema') {
+		if (!result || typeof result !== 'object') return 0;
+		return (result as Record<string, unknown>).type === 'tool_schema' ? 1 : 0;
+	}
+
+	if (DISCOVERY_SEARCH_TOOLS.has(toolName)) {
+		if (!result || typeof result !== 'object') return 0;
+		const record = result as Record<string, unknown>;
+		if (typeof record.total_matches === 'number') return record.total_matches;
+		return Array.isArray(record.matches) ? record.matches.length : 0;
+	}
+
 	const key = SEARCH_RESULT_ARRAY_KEYS[toolName];
 	if (!key) return null;
 	if (!result || typeof result !== 'object') return 0;

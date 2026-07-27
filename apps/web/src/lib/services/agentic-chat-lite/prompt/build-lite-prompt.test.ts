@@ -39,7 +39,7 @@ describe('buildLitePromptEnvelope', () => {
 		expect(strategy?.content).not.toContain('Call skill_load before answering');
 		expect(strategy?.content).not.toContain('1-2 sentence lead-in');
 		expect(safety?.content).not.toContain('internal machinery');
-		expect(envelope.systemPrompt).not.toContain('project_audit');
+		expect(envelope.systemPrompt).not.toContain('| `project_audit` |');
 		expect(envelope.systemPrompt).not.toContain('Pre-tool lead-ins');
 		expect(envelope.sections.some((section) => section.id === 'active_domain_signals')).toBe(
 			false
@@ -170,6 +170,7 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).not.toContain('Optional accelerator:');
 		expect(envelope.systemPrompt).not.toContain('Do not use capability to mean outcome card');
 		expect(envelope.systemPrompt).toContain('BuildOS runtime capabilities:');
+		expect(envelope.systemPrompt).toContain('Calendar management (capabilities.calendar)');
 		expect(envelope.systemPrompt).toContain('Loaded scope:');
 		expect(envelope.systemPrompt).not.toContain('## Active Domain Signals');
 		expect(envelope.systemPrompt).toContain('Actionable loaded context index (bounded):');

@@ -14,6 +14,8 @@ export interface ToolExecutionAnalyticsRow {
 	help_path: string | null;
 	execution_time_ms: number | string | null;
 	tokens_consumed: number | string | null;
+	result_count: number | string | null;
+	zero_result: boolean | null;
 	success: boolean | null;
 	error_message: string | null;
 	requires_user_action: boolean | null;
@@ -78,6 +80,9 @@ export interface ToolGroupMetric {
 	duration_sample_count: number;
 	total_tokens: number;
 	avg_tokens_per_execution: number | null;
+	search_execution_count: number;
+	zero_result_count: number;
+	zero_result_rate: number | null;
 	unique_sessions: number;
 	unique_turns: number;
 	last_used_at: string | null;
@@ -212,6 +217,8 @@ type NormalizedToolExecution = {
 	contextType: string | null;
 	executionTimeMs: number | null;
 	tokensConsumed: number;
+	resultCount: number | null;
+	zeroResult: boolean | null;
 	success: boolean;
 	errorMessage: string | null;
 	requiresUserAction: boolean;
@@ -226,6 +233,8 @@ type MutableGroup = {
 	failed: number;
 	durations: number[];
 	totalTokens: number;
+	searchExecutions: number;
+	zeroResults: number;
 	sessionIds: Set<string>;
 	turnRunIds: Set<string>;
 	lastUsedAt: string | null;
@@ -290,6 +299,8 @@ const createGroup = (key: string, label = key): MutableGroup => ({
 	failed: 0,
 	durations: [],
 	totalTokens: 0,
+	searchExecutions: 0,
+	zeroResults: 0,
 	sessionIds: new Set<string>(),
 	turnRunIds: new Set<string>(),
 	lastUsedAt: null,
@@ -312,6 +323,12 @@ const pushIntoGroup = (group: MutableGroup, row: NormalizedToolExecution): void 
 		group.durations.push(row.executionTimeMs);
 	}
 	group.totalTokens += row.tokensConsumed;
+	if (row.resultCount !== null || row.zeroResult !== null) {
+		group.searchExecutions += 1;
+		if (row.zeroResult === true || (row.zeroResult === null && row.resultCount === 0)) {
+			group.zeroResults += 1;
+		}
+	}
 	if (row.sessionId) {
 		group.sessionIds.add(row.sessionId);
 	}
@@ -340,6 +357,10 @@ const toGroupMetric = (group: MutableGroup, totalExecutions: number): ToolGroupM
 	duration_sample_count: group.durations.length,
 	total_tokens: group.totalTokens,
 	avg_tokens_per_execution: group.total > 0 ? group.totalTokens / group.total : null,
+	search_execution_count: group.searchExecutions,
+	zero_result_count: group.zeroResults,
+	zero_result_rate:
+		group.searchExecutions > 0 ? percentage(group.zeroResults, group.searchExecutions) : null,
 	unique_sessions: group.sessionIds.size,
 	unique_turns: group.turnRunIds.size,
 	last_used_at: group.lastUsedAt
@@ -385,6 +406,7 @@ const normalizeToolCategory = (row: ToolExecutionAnalyticsRow): string => {
 	if (
 		toolName === 'tool_search' ||
 		toolName === 'tool_schema' ||
+		toolName === 'skill_search' ||
 		toolName === 'outcome_card_search' ||
 		toolName === 'outcome_card_load' ||
 		toolName === 'work_capability_search' ||
@@ -406,6 +428,13 @@ const normalizeRows = (
 		const session = row.session_id ? sessionsById.get(row.session_id) : undefined;
 		const duration = asNumber(row.execution_time_ms);
 		const tokensConsumed = asNumber(row.tokens_consumed) ?? 0;
+		const resultCount = asNumber(row.result_count);
+		const zeroResult =
+			typeof row.zero_result === 'boolean'
+				? row.zero_result
+				: resultCount === null
+					? null
+					: resultCount === 0;
 
 		return {
 			id: row.id,
@@ -421,6 +450,8 @@ const normalizeRows = (
 				asOptionalText(turnRun?.context_type) ?? asOptionalText(session?.context_type),
 			executionTimeMs: duration !== null && duration >= 0 ? duration : null,
 			tokensConsumed: tokensConsumed >= 0 ? tokensConsumed : 0,
+			resultCount: resultCount !== null && resultCount >= 0 ? resultCount : null,
+			zeroResult,
 			success: row.success !== false,
 			errorMessage: asOptionalText(row.error_message),
 			requiresUserAction: row.requires_user_action === true,

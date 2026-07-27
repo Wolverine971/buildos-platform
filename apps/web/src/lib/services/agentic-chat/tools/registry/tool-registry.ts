@@ -16,7 +16,7 @@ export type RegistryOp = {
 	tool_name: string;
 	description: string;
 	parameters_schema: Record<string, any>;
-	group: 'onto' | 'util' | 'cal' | 'x';
+	group: 'onto' | 'util' | 'cal' | 'email' | 'search' | 'x';
 	kind: 'read' | 'write';
 	entity?: string;
 	action?: string;
@@ -198,6 +198,8 @@ function deriveOpFromToolName(toolName: string): string | null {
 }
 
 function resolveGroup(op: string): RegistryOp['group'] {
+	if (op.startsWith('email.')) return 'email';
+	if (op.startsWith('x.search.') || op === 'onto.search') return 'search';
 	if (op.startsWith('onto.')) return 'onto';
 	if (op.startsWith('util.')) return 'util';
 	if (op.startsWith('cal.')) return 'cal';
@@ -219,6 +221,10 @@ function resolveEntity(op: string, group: RegistryOp['group']): string | undefin
 	if (group === 'cal') {
 		if (parts.length < 3) return undefined;
 		return parts[1];
+	}
+	if (group === 'email') {
+		if (parts[1] === 'accounts') return 'account';
+		if (parts[1] === 'messages') return 'message';
 	}
 	return undefined;
 }
@@ -244,7 +250,19 @@ function computeRegistryVersion(
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([key, meta]) => ({ key, meta: metadataForRegistryVersion(meta) }));
 
-	const input = JSON.stringify({ tools: toolPayload, metadata: metaPayload, opMap });
+	const taxonomyPayload = Object.keys(opMap)
+		.sort((a, b) => a.localeCompare(b))
+		.map((op) => {
+			const group = resolveGroup(op);
+			return { op, group, entity: resolveEntity(op, group) };
+		});
+
+	const input = JSON.stringify({
+		tools: toolPayload,
+		metadata: metaPayload,
+		opMap,
+		taxonomy: taxonomyPayload
+	});
 	return `tool-registry/${fnv1a(input)}`;
 }
 

@@ -2025,6 +2025,41 @@ describe('external tool gateway', () => {
 		});
 	});
 
+	it('returns scoped directory guidance when ungranted matches are filtered out', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const scope = {
+			mode: 'read_only' as const,
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS]
+		};
+		const admin = createAdminMock({
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		});
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin,
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope,
+			toolName: 'tool_search',
+			arguments: { query: 'create project', kind: 'write' }
+		});
+
+		expect(result).toMatchObject({
+			type: 'tool_search_results',
+			total_matches: 0,
+			matches: [],
+			no_matches: {
+				tool_directory: {
+					groups: expect.any(Array),
+					entities: expect.any(Array)
+				}
+			}
+		});
+	});
+
 	it('keeps legacy ontology search tools discoverable for scoped external callers', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
 		const scope = {

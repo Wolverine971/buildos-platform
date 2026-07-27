@@ -346,7 +346,7 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'tool_search',
 			description:
-				'Discover candidate BuildOS tools on demand. Use this only when the exact op is still unknown after context and skill guidance. Search for the operation you need, not workspace data.',
+				'Discover candidate BuildOS tools on demand. Use this only when the exact op is still unknown after context and skill guidance. Search for the operation you need, not workspace data. To browse a whole category, omit query and pass group or entity.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -362,7 +362,7 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					group: {
 						type: 'string',
-						enum: ['onto', 'util', 'cal'],
+						enum: ['onto', 'util', 'cal', 'email', 'search', 'x'],
 						description: 'Optional top-level tool family filter.'
 					},
 					kind: {

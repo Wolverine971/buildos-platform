@@ -932,10 +932,10 @@ function buildCapabilitiesSkillsToolsSection(
 	// disambiguate its own jargon; domains/outcome cards/resources are now
 	// framed as runtime signals that arrive with imperative next steps in the
 	// Active Domain Signals section. Capability summaries collapsed to one
-	// dynamic name line (the per-capability steering lives in tool descriptions
+	// dynamic name/ID line (the per-capability steering lives in tool descriptions
 	// and workflow hints).
 	const capabilityNames = listCapabilities('available')
-		.map((capability) => capability.name)
+		.map((capability) => `${capability.name} (${capability.path})`)
 		.join(', ');
 	// Catalog rows are Level-1 metadata: a short trigger line, not the full
 	// routing description (prompt audit WP-2, 2026-07-10 — the old summaries ran

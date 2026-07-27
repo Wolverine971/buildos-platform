@@ -104,6 +104,12 @@ vi.mock('$lib/services/agentic-chat-lite/prompt', () => ({
 		contextInventory: null,
 		toolsSummary: null
 	}),
+	resolveLitePromptTurnSituation: () => ({
+		writeIntent: false,
+		webResearch: false
+	}),
+	hasActiveSituation: (situation: Row | null | undefined) =>
+		Boolean(situation && (situation.writeIntent || situation.webResearch)),
 	applyActiveDomainSignalsOverlay: mocks.applyActiveDomainSignalsOverlay
 }));
 
@@ -486,7 +492,7 @@ function buildCheckpointRow(overrides: Row = {}): Row {
 
 function buildPreparedPromptRow(overrides: Row = {}): { key: string; row: Row } {
 	const id = overrides.id ?? '11111111-1111-4111-8111-111111111111';
-	const createdAt = overrides.created_at ?? '2026-06-22T00:00:00.000Z';
+	const createdAt = overrides.created_at ?? new Date().toISOString();
 	const contextPayload = overrides.context_payload ?? {
 		contextType: 'global',
 		data: {}
