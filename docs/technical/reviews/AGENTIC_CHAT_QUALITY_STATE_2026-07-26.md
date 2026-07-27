@@ -285,9 +285,22 @@ Layer 5 is a **model-capability bound** on `deepseek-v4-flash`: a two-phase writ
 existing parents. The four shipped fixes are correct regardless — each moved the failure to a
 deeper, more real layer — and layers 1–3 fix organize-commission behavior for ALL models.
 
-**Open fork (DJ):** route organize-commission turns to a stronger model tier (the
-`modelTiering` hook exists), or bank this as a known model-bound gap pending the tasker/39 WP-9
-model A/B. The scenario is now the measuring instrument either way.
+**RESOLVED same night — DJ rejected tier-up, chose fixing the tool. Final: 4/4 valid runs**
+(one stream-infra flake), from a lifetime of zero:
+
+6. **`move_document_in_tree` accepts `new_parent_title`** (`b74291ec`): resolves to the existing
+   document with that title or creates the parent atomically, in the chat executor AND the
+   shared-agent-ops gateway op. Grouping became single-phase and id-free — the entire fabrication
+   surface is gone, for every model. Titles misplaced in `new_parent_id` also resolve.
+   Result: 2/5, with the two passes being complete real reorganizations.
+7. **`tool_choice: 'required'` on the forced write-intent pass** (`b1f2d94a`): the remaining
+   failures were the model NARRATING the moves in prose on a write-tools-only pass — 'auto' lets
+   a text-only response through; 'required' does not. Result: 4/4 valid.
+
+The general lessons: when a weak model's plan needs an entity that doesn't exist, it fabricates
+the id — id inventories don't cure it, existence does (title-resolving tools beat two-phase
+create-then-reference); and a "write-tools-only pass" is not a write floor until `tool_choice`
+makes prose impossible.
 
 Also recorded: the entity-scope guard resolves ids only from PRELOADED context, not from
 in-turn tool reads — today the preloaded highlights covered the real docs so it never bit, but
