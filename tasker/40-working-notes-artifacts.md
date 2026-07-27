@@ -15,6 +15,16 @@
 > **Measuring stick:** `project-catchup-cold` e2e scenario (added 2026-07-26) — a cold session
 > must deliver an accurate catch-up past a stale START HERE. If the read side already passes,
 > the async refresh is an efficiency play; if it fails, this build is the fix.
+>
+> **MEASURED 2026-07-26 (night): 3/3 PASS.** (An earlier 0/3 was instrument error — the seed
+> description leaked the premise and the anti-parrot check punished surfaced contradictions;
+> both fixed before the verdict run.) The cold agent reads the live surfaces, reports the fresh
+> facts (proposal sent / waiting on reply / monthly decided), and does not repeat stale claims
+> as current. **Verdict: the async refresh is NOT needed for agent-side catch-up correctness.**
+> What it still buys, and why this tasker stays open at lower priority: the HUMAN-facing START
+> HERE document itself remains stale on screen — the agent compensates, the UI does not. Build
+> the mechanical channel-agnostic refresh for the human surface when prioritized; agent
+> correctness no longer depends on it.
 
 **Created 2026-07-25.** DJ:
 
