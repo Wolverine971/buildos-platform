@@ -2,6 +2,20 @@
 
 # 40 — Working notes / artifacts: durable intermediate memory
 
+> **DJ DIRECTION 2026-07-26 (constrains every design below): START HERE freshness must be
+> MECHANICAL and CHANNEL-AGNOSTIC.** His reasoning, near-verbatim: a project gets updated through
+> the agentic chat, manual edits in the project, someone's third-party agent (OpenClaw / Claude /
+> Codex via the agent-call gateway), and loops — "there are multiple ways a project could be
+> updated, so the START HERE document does need to be asynchronously updated... it should be
+> partially updated from this running log... this should be more mechanical." Consequence: the
+> refresh trigger is project ACTIVITY from any source (the activity substrate already records all
+> four channels), the owner is asynchronous (the project-loop family, not a chat-side behavior),
+> and the running log is an input to START HERE, not a chat artifact. Chat-side floors (Research
+> Log, stated-future capture) stay as deterministic FEEDERS.
+> **Measuring stick:** `project-catchup-cold` e2e scenario (added 2026-07-26) — a cold session
+> must deliver an accurate catch-up past a stale START HERE. If the read side already passes,
+> the async refresh is an efficiency play; if it fails, this build is the fix.
+
 **Created 2026-07-25.** DJ:
 
 > "The artifacts are the same idea as a scratch pad in my mind... Scratch pad for notes is like

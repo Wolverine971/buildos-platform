@@ -17,6 +17,7 @@ import { taskRescheduleColdReferenceScenario } from './task-reschedule-cold-refe
 import { taskMultiUpdateScenario } from './task-multi-update.scenario';
 import { documentFromVagueDescriptionScenario } from './document-from-vague-description.scenario';
 import { researchLogReadbackScenario } from './research-log-readback.scenario';
+import { projectCatchupColdScenario } from './project-catchup-cold.scenario';
 
 export const scenarioCatalog: Scenario[] = [
 	documentCreateScenario,
@@ -32,5 +33,6 @@ export const scenarioCatalog: Scenario[] = [
 	taskRescheduleColdReferenceScenario,
 	taskMultiUpdateScenario,
 	documentFromVagueDescriptionScenario,
-	researchLogReadbackScenario
+	researchLogReadbackScenario,
+	projectCatchupColdScenario
 ];
