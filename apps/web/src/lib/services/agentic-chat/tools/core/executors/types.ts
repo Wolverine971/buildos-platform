@@ -375,6 +375,12 @@ export interface MoveDocumentInTreeArgs {
 	document_id: string;
 	/** New parent document ID (null places at root). */
 	new_parent_id?: string | null;
+	/**
+	 * Parent by TITLE: resolves to the existing document with that title, or creates a new
+	 * parent document when none matches. The reliable path for grouping — models fabricate
+	 * UUIDs for parents that do not exist yet (measured 2026-07-26); titles they get right.
+	 */
+	new_parent_title?: string | null;
 	/** Position among siblings (0-indexed). */
 	new_position?: number;
 }

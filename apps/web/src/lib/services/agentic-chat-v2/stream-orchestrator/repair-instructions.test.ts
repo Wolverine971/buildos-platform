@@ -1243,7 +1243,8 @@ describe('collectDocumentInventoryFromReads', () => {
 			createExecution({ name: 'get_document_tree', args: {}, result: TREE_RESULT })
 		]);
 		expect(instruction).toContain('11111111-1111-4111-8111-111111111111');
-		expect(instruction).toContain('NEVER invent an id');
+		expect(instruction).toContain('NEVER invent a UUID');
+		expect(instruction).toContain('new_parent_title');
 	});
 });
 

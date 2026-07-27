@@ -483,8 +483,9 @@ Risks capture potential issues and mitigation planning.`,
 			name: 'move_document_in_tree',
 			description: `Move or insert an existing document within the project's doc_structure.
 Use this to nest existing or unlinked documents under a parent or reorder siblings.
-If new_parent_id is null or omitted, the document is placed at root level.
-Always pass the exact document_id from get_document_tree/list_onto_documents (do not pass document titles).`,
+To group under a parent, prefer new_parent_title with a short name (e.g. "Pricing") — it reuses the existing document with that title or creates the parent. Only pass new_parent_id when you have the parent's exact UUID from a read; NEVER invent a UUID.
+If neither parent field is set, the document is placed at root level.
+Always pass the exact document_id from get_document_tree/list_onto_documents (do not pass document titles as document_id).`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -499,7 +500,12 @@ Always pass the exact document_id from get_document_tree/list_onto_documents (do
 					new_parent_id: {
 						type: ['string', 'null'],
 						description:
-							'New parent document ID (null or omitted places the document at root level).'
+							'New parent document UUID, only if already known from a read (null or omitted with no new_parent_title places the document at root level). Never invent one.'
+					},
+					new_parent_title: {
+						type: ['string', 'null'],
+						description:
+							'Parent by title: reuses the existing document with this title or creates a new parent document. The reliable way to group documents.'
 					},
 					new_position: {
 						type: 'number',

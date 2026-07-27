@@ -647,10 +647,9 @@ export function buildOrganizeCommissionRepairInstruction(
 	return [
 		'The user commissioned a reorganization and this turn has not changed anything yet — a structure proposed in prose is not a reorganization.',
 		'Execute it now: call move_document_in_tree once per document that should live under a parent; multiple calls in this one response are expected.',
-		'Every call MUST set new_parent_id to the UUID of the parent document — a move without new_parent_id goes to the root and organizes nothing.',
+		'For each move, set new_parent_title to a short category name (e.g. "Pricing", "Meeting notes") — the server reuses the existing document with that title or creates the parent. A move with neither parent field goes to the root and organizes nothing.',
 		inventoryLines,
-		'Pick 1-2 of those existing documents as the parents (the most substantial one per theme) and move the related documents under them.',
-		'NEVER invent an id. If a grouping needs a parent that does not exist yet, call create_onto_document first and use the id from its RESULT in a later call.',
+		'Use new_parent_id only for a UUID that appears in that list. NEVER invent a UUID — an unknown id is rejected.',
 		'Do not restate the plan. Then state exactly what changed, briefly.'
 	]
 		.filter((line): line is string => Boolean(line))

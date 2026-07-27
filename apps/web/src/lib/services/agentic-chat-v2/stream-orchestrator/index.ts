@@ -636,13 +636,12 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					'Supervisor note: the user commissioned a document reorganization and no write has happened yet.',
 					`For the next response, use only these write tools: ${toolNames.join(', ')}.`,
 					'Execute the reorganization now — call move_document_in_tree once per document that needs a new parent; multiple calls in this one response are expected.',
-					'Every call MUST set new_parent_id to the UUID of the parent document — a move without new_parent_id goes to the root and organizes nothing.',
+					'For each move, set new_parent_title to a short category name (e.g. "Pricing", "Meeting notes") — the server reuses the existing document with that title or creates the parent. A move with neither parent field goes to the root and organizes nothing.',
 					inventory.length > 0
 						? `The ONLY valid document ids in this project are: ${inventory
 								.map((doc) => `${doc.id} ("${doc.title}")`)
-								.join('; ')}. Any other id will be rejected — NEVER invent an id.`
+								.join('; ')}. Use new_parent_id only for a UUID from that list — NEVER invent one.`
 						: null,
-					'Group related documents under a sensible existing parent document.',
 					'Do not call reads, searches, schemas, skills, or any other discovery tools in this pass.'
 				]
 					.filter((line): line is string => Boolean(line))

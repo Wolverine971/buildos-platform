@@ -1165,10 +1165,66 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			args.new_parent_id ??
 			(argsRecord.parent_id as string | null | undefined) ??
 			(argsRecord.parentId as string | null | undefined);
+		const rawParentTitle =
+			args.new_parent_title ??
+			(argsRecord.parent_title as string | null | undefined) ??
+			(argsRecord.new_parent_name as string | null | undefined);
+
+		// Parent resolution. UUIDs pass through (the scope guard already vetted them). A title —
+		// whether in new_parent_title or misplaced in new_parent_id — resolves to the existing
+		// document with that name, or creates the parent when none matches. This makes grouping
+		// single-phase: measured 2026-07-26, weak models FABRICATE parent UUIDs for groupings
+		// that do not exist yet rather than create-then-reference, so parents-by-title is the
+		// path that actually executes.
+		let resolvedParentId: string | null = null;
+		let parentTitleToResolve: string | null = null;
+		if (typeof rawParentId === 'string' && rawParentId.trim().length > 0) {
+			if (isValidUUID(rawParentId.trim())) {
+				resolvedParentId = rawParentId.trim();
+			} else {
+				parentTitleToResolve = rawParentId.trim();
+			}
+		}
+		if (
+			!resolvedParentId &&
+			!parentTitleToResolve &&
+			typeof rawParentTitle === 'string' &&
+			rawParentTitle.trim().length > 0
+		) {
+			parentTitleToResolve = rawParentTitle.trim();
+		}
+		let parentCreated = false;
+		if (!resolvedParentId && parentTitleToResolve) {
+			const projectDocuments = await this.fetchProjectDocumentDirectory(projectId);
+			const matched = this.resolveDocumentIdByName(projectDocuments, parentTitleToResolve);
+			if (matched && matched.id !== resolvedDocumentId) {
+				resolvedParentId = matched.id;
+			} else {
+				const created = await this.createOntoDocument({
+					project_id: projectId,
+					title: parentTitleToResolve,
+					type_key: 'document.default',
+					description: 'Grouping document created while organizing the project.'
+				} as CreateOntoDocumentArgs);
+				const createdId =
+					typeof created.document?.id === 'string' ? created.document.id : null;
+				if (!createdId) {
+					throw new Error(
+						`Failed to create parent document "${parentTitleToResolve}" for the move`
+					);
+				}
+				resolvedParentId = createdId;
+				parentCreated = true;
+			}
+		}
+		if (resolvedParentId && resolvedParentId === resolvedDocumentId) {
+			throw new Error('A document cannot be moved under itself.');
+		}
+
 		const rawPosition = args.new_position ?? (argsRecord.position as number | undefined);
 		const payload = {
 			document_id: resolvedDocumentId,
-			new_parent_id: rawParentId ?? null,
+			new_parent_id: resolvedParentId,
 			new_position: typeof rawPosition === 'number' ? rawPosition : 0
 		};
 		let data: { structure: any };
@@ -1193,7 +1249,11 @@ export class OntologyWriteExecutor extends BaseExecutor {
 
 		return {
 			structure: data.structure,
-			message: `Moved document ${resolvedDocumentId} in doc structure.`
+			message: parentTitleToResolve
+				? `Moved document ${resolvedDocumentId} under "${parentTitleToResolve}"${
+						parentCreated ? ' (parent document created)' : ''
+					}.`
+				: `Moved document ${resolvedDocumentId} in doc structure.`
 		};
 	}
 

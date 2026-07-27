@@ -1205,10 +1205,7 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 		throw new ExternalToolGatewayError('NOT_FOUND', 'Document not found');
 	}
 
-	const newParentId = normalizeOptionalUuid(
-		args.new_parent_id ?? args.parent_id,
-		'new_parent_id'
-	);
+	let newParentId = normalizeOptionalUuid(args.new_parent_id ?? args.parent_id, 'new_parent_id');
 	if (newParentId) {
 		const { data: parent, error: parentError } = await context.admin
 			.from('onto_documents')
@@ -1226,6 +1223,63 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 		if (!parent) {
 			throw new ExternalToolGatewayError('NOT_FOUND', 'Parent document not found');
 		}
+	}
+
+	// Parent by TITLE: reuse the existing document with that title or create the parent.
+	// Mirrors the chat executor (2026-07-26): models fabricate parent UUIDs for groupings that
+	// do not exist yet; a title path makes grouping single-phase and id-free.
+	const rawParentTitle =
+		typeof (args.new_parent_title ?? args.parent_title) === 'string'
+			? String(args.new_parent_title ?? args.parent_title).trim()
+			: '';
+	if (!newParentId && rawParentTitle) {
+		const { data: titledParent, error: titledParentError } = await context.admin
+			.from('onto_documents')
+			.select('id')
+			.eq('project_id', project.id)
+			.ilike('title', rawParentTitle)
+			.is('archived_at', null)
+			.limit(1)
+			.maybeSingle();
+		if (titledParentError) {
+			throw new ExternalToolGatewayError(
+				'INTERNAL',
+				titledParentError.message || 'Failed to resolve parent document by title'
+			);
+		}
+		if (titledParent && titledParent.id !== documentId) {
+			newParentId = titledParent.id;
+		} else {
+			const creatorActorId = await ensureActorId(context.admin, context.userId);
+			const { data: createdParent, error: createParentError } = await context.admin
+				.from('onto_documents')
+				.insert({
+					project_id: project.id,
+					title: rawParentTitle,
+					type_key: 'document.default',
+					state_key: 'draft',
+					description: 'Grouping document created while organizing the project.',
+					content: '',
+					props: {},
+					created_by: creatorActorId
+				})
+				.select('id')
+				.single();
+			if (createParentError || !createdParent) {
+				throw new ExternalToolGatewayError(
+					'INTERNAL',
+					createParentError?.message ||
+						`Failed to create parent document "${rawParentTitle}"`
+				);
+			}
+			newParentId = createdParent.id;
+		}
+	}
+	if (newParentId && newParentId === documentId) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'A document cannot be moved under itself.'
+		);
 	}
 	const position =
 		normalizeDocumentPosition(args.new_position ?? args.position, 'new_position') ?? 0;
