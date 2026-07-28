@@ -56,8 +56,11 @@ const QUERY_SYNONYMS: Record<string, string[]> = {
 	appointment: ['event'],
 	change: ['update'],
 	deadline: ['milestone', 'due'],
+	display: ['list', 'get', 'search'],
 	edit: ['update'],
 	email: ['gmail', 'message'],
+	find: ['search', 'list', 'get'],
+	lookup: ['search', 'get', 'list'],
 	mail: ['gmail', 'message'],
 	meeting: ['event'],
 	modify: ['update'],
@@ -65,7 +68,9 @@ const QUERY_SYNONYMS: Record<string, string[]> = {
 	remove: ['delete'],
 	rename: ['update'],
 	reschedule: ['update'],
-	todo: ['task']
+	show: ['list', 'get', 'search'],
+	todo: ['task'],
+	view: ['get', 'list', 'search']
 };
 
 const WRITE_QUERY_TERMS = new Set([

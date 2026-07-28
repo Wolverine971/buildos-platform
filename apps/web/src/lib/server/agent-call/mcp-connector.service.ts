@@ -1,6 +1,10 @@
 // apps/web/src/lib/server/agent-call/mcp-connector.service.ts
 import { json } from '@sveltejs/kit';
-import type { AgentCallScope, ExternalAgentCallerRecord } from '@buildos/shared-types';
+import type {
+	AgentCallScope,
+	BuildosAgentProjectScopeMode,
+	ExternalAgentCallerRecord
+} from '@buildos/shared-types';
 import {
 	getSecurityRequestContext,
 	logSecurityEventAsync,
@@ -22,11 +26,14 @@ import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import {
 	extractAllowedOpsFromPolicy,
+	extractProjectScopeModeFromPolicy,
 	extractScopeModeFromPolicy,
 	isWriteOp,
+	normalizeProjectScopeMode,
 	requiredScopeModeForOp
 } from './agent-call-policy';
 import { authenticateExternalAgentCaller, AgentCallAuthError } from './caller-auth';
+import { resolveEffectiveAgentProjectScope } from './project-access.service';
 
 type JsonRpcId = string | number | null;
 
@@ -318,7 +325,12 @@ async function authenticateBuildosMcpRequest(params: {
 	request: Request;
 	url: URL;
 	securityEventOptions?: SecurityEventLogOptions;
-}): Promise<{ caller: ExternalAgentCallerRecord; scope: AgentCallScope }> {
+}): Promise<{
+	caller: ExternalAgentCallerRecord;
+	scope: AgentCallScope;
+	oauthGrantId?: string;
+	projectScopeMode: BuildosAgentProjectScopeMode;
+}> {
 	try {
 		const oauth = await authenticateOAuthMcpRequest({
 			admin: params.admin,
@@ -326,7 +338,19 @@ async function authenticateBuildosMcpRequest(params: {
 			resource: mcpResourceUrl(params.url.origin),
 			securityEventOptions: params.securityEventOptions
 		});
-		return { caller: oauth.caller, scope: oauth.scope };
+		return {
+			caller: oauth.caller,
+			oauthGrantId: oauth.grant.id,
+			projectScopeMode: oauth.grant.project_scope_mode,
+			scope: await resolveEffectiveAgentProjectScope({
+				admin: params.admin,
+				userId: oauth.caller.user_id,
+				callerId: oauth.caller.id,
+				oauthGrantId: oauth.grant.id,
+				projectScopeMode: oauth.grant.project_scope_mode,
+				scope: oauth.scope
+			})
+		};
 	} catch (oauthError) {
 		// Only fall back for "unrecognized token" (401). Explicit OAuth denials
 		// (403 insufficient_scope / revoked grant) must not be retried as a key.
@@ -340,7 +364,22 @@ async function authenticateBuildosMcpRequest(params: {
 				params.request,
 				params.securityEventOptions
 			);
-			return { caller, scope: scopeFromCallerPolicy(caller) };
+			const legacyScope = scopeFromCallerPolicy(caller);
+			const projectScopeMode = normalizeProjectScopeMode(
+				caller.project_scope_mode,
+				extractProjectScopeModeFromPolicy(caller.policy)
+			);
+			return {
+				caller,
+				projectScopeMode,
+				scope: await resolveEffectiveAgentProjectScope({
+					admin: params.admin,
+					userId: caller.user_id,
+					callerId: caller.id,
+					projectScopeMode,
+					scope: legacyScope
+				})
+			};
 		} catch (callerError) {
 			// The static key also failed to authenticate. Surface the original OAuth
 			// 401 so MCP clients still receive the WWW-Authenticate challenge and can
@@ -888,6 +927,8 @@ async function dispatchMcpMethod(params: {
 				admin: params.admin,
 				userId: auth.caller.user_id,
 				callerId: auth.caller.id,
+				oauthGrantId: auth.oauthGrantId,
+				projectScopeMode: auth.projectScopeMode,
 				callSessionId,
 				scope: auth.scope,
 				toolName,

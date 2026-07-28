@@ -163,7 +163,7 @@ export async function loadEntityForAccess(
 		if (!project) throw error;
 	}
 	if (access === 'write') {
-		assertProjectWriteAccess(project);
+		assertProjectWriteAccess(project, context.scope);
 	}
 
 	return {

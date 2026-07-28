@@ -419,6 +419,7 @@
 			{project}
 			{contextDocument}
 			{canDeleteProject}
+			canManageExternalAgentAccess={canAdmin}
 			onClose={onCloseProjectEditModal}
 			onSaved={onProjectSaved}
 		/>

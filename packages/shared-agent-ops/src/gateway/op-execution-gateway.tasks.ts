@@ -181,7 +181,7 @@ export async function getTask(context: ToolExecutionContext, args: Record<string
 export async function createTask(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
-	assertProjectWriteAccess(project);
+	assertProjectWriteAccess(project, context.scope);
 
 	const title = requireTrimmedString(args.title, 'title');
 	const description =
@@ -298,7 +298,7 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 	}
 
 	const project = assertVisibleEntityProject(visible.projectMap, existingTask.project_id);
-	assertProjectWriteAccess(project);
+	assertProjectWriteAccess(project, context.scope);
 	const actorId = await ensureActorId(context.admin, context.userId);
 
 	const updateData: Record<string, unknown> = {

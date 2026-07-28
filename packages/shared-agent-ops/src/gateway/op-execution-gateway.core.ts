@@ -444,7 +444,7 @@ async function resolveExternalDocumentContentWithStrategy(params: {
 async function createDocument(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
-	assertProjectWriteAccess(project);
+	assertProjectWriteAccess(project, context.scope);
 
 	const title = requireTrimmedString(args.title, 'title');
 	const description =
@@ -659,7 +659,7 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 	}
 
 	const project = assertVisibleEntityProject(visible.projectMap, existingDocument.project_id);
-	assertProjectWriteAccess(project);
+	assertProjectWriteAccess(project, context.scope);
 	const actorId = await ensureActorId(context.admin, context.userId);
 
 	const updateData: Record<string, unknown> = {
@@ -914,14 +914,9 @@ async function createProject(context: ToolExecutionContext, args: Record<string,
 }
 
 /**
- * After a project-scoped caller creates a project, add it to that caller's scope
- * so the same key can immediately read and write the project it just made.
- *
- * - Unscoped callers (project_ids absent) already see all projects — no-op.
- * - The in-memory scope is updated so later calls in this same session work.
- * - The caller policy is persisted so future sessions keep the access. Runtime
- *   auth (both static keys and OAuth) derives scope from external_agent_callers.
- *   policy, so updating it here is sufficient.
+ * Add a connector-created project to the active authorization boundary.
+ * Dynamic connectors inherit it automatically; selected connectors receive an
+ * explicit grant and keep the legacy allowlist mirror in sync.
  */
 async function grantCallerProjectAccess(
 	context: ToolExecutionContext,
@@ -933,14 +928,55 @@ async function grantCallerProjectAccess(
 
 	// Update the in-session scope immediately.
 	context.scope.project_ids = [...context.scope.project_ids, projectId];
+	if (context.scope.mode === 'read_write' && Array.isArray(context.scope.write_project_ids)) {
+		context.scope.write_project_ids = [...context.scope.write_project_ids, projectId];
+	}
+	// Older in-process callers do not yet pass projectScopeMode. Their explicit
+	// project array keeps the legacy selected-scope behavior during rollout.
+	if (context.projectScopeMode === 'all_unrestricted') return;
 
 	try {
+		if (context.oauthGrantId) {
+			const { data: grant, error: grantLoadError } = await context.admin
+				.from('agent_oauth_grants')
+				.select('allowed_project_ids')
+				.eq('id', context.oauthGrantId)
+				.maybeSingle();
+			if (grantLoadError) throw grantLoadError;
+			const grantProjectIds = Array.isArray(grant?.allowed_project_ids)
+				? grant.allowed_project_ids.filter(
+						(id: unknown): id is string => typeof id === 'string'
+					)
+				: [];
+			if (!grantProjectIds.includes(projectId)) {
+				const { error } = await context.admin
+					.from('agent_oauth_grants')
+					.update({ allowed_project_ids: [...grantProjectIds, projectId] })
+					.eq('id', context.oauthGrantId);
+				if (error) throw error;
+			}
+		}
+
+		const { error: permissionError } = await context.admin
+			.from('external_agent_project_permissions')
+			.insert({
+				user_id: context.userId,
+				external_agent_caller_id: context.callerId,
+				agent_oauth_grant_id: context.oauthGrantId ?? null,
+				project_id: projectId,
+				access_mode: context.scope.mode,
+				source: 'connector_created',
+				granted_by: context.userId
+			});
+		if (permissionError) throw permissionError;
+
+		// Keep the legacy caller-policy mirror in sync only after the authoritative
+		// OAuth grant / explicit permission has been persisted.
 		const { data: caller } = await context.admin
 			.from('external_agent_callers')
 			.select('policy')
 			.eq('id', context.callerId)
 			.maybeSingle();
-
 		const policy = ((caller?.policy as Record<string, unknown> | null) ?? {}) as Record<
 			string,
 			unknown
@@ -950,18 +986,20 @@ async function grantCallerProjectAccess(
 					(id): id is string => typeof id === 'string'
 				)
 			: null;
-
-		// A null stored allowlist means the key is unscoped in storage; don't
-		// narrow it to a single project. Only append when an explicit list exists.
-		if (!existing || existing.includes(projectId)) return;
-
-		await context.admin
-			.from('external_agent_callers')
-			.update({ policy: { ...policy, allowed_project_ids: [...existing, projectId] } })
-			.eq('id', context.callerId);
-	} catch {
-		// Persisting the scope expansion is best-effort. The project was created and
-		// is usable for the rest of this session even if the policy write fails.
+		if (existing && !existing.includes(projectId)) {
+			const { error } = await context.admin
+				.from('external_agent_callers')
+				.update({ policy: { ...policy, allowed_project_ids: [...existing, projectId] } })
+				.eq('id', context.callerId);
+			if (error) throw error;
+		}
+	} catch (error) {
+		console.error('[External Tool Gateway] Failed to persist created-project access:', {
+			callerId: context.callerId,
+			oauthGrantId: context.oauthGrantId,
+			projectId,
+			error
+		});
 	}
 }
 
@@ -1185,7 +1223,7 @@ async function createTaskDocument(context: ToolExecutionContext, args: Record<st
 async function moveDocumentInTree(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
-	assertProjectWriteAccess(project);
+	assertProjectWriteAccess(project, context.scope);
 	const documentId = assertValidId(args.document_id, 'document_id');
 	const { data: document, error: documentError } = await context.admin
 		.from('onto_documents')
@@ -1836,6 +1874,8 @@ export async function executeGatewayOp(params: {
 	admin: GatewaySupabaseClient;
 	userId: string;
 	callerId?: string;
+	oauthGrantId?: string;
+	projectScopeMode?: import('@buildos/shared-types').BuildosAgentProjectScopeMode;
 	callSessionId?: string;
 	scope: AgentCallScope;
 	arguments?: Record<string, unknown>;
@@ -2075,6 +2115,8 @@ export async function executeGatewayOp(params: {
 				admin: params.admin,
 				userId: params.userId,
 				callerId: params.callerId,
+				oauthGrantId: params.oauthGrantId,
+				projectScopeMode: params.projectScopeMode,
 				callSessionId: params.callSessionId,
 				scope: params.scope,
 				calendar: params.calendar,
@@ -2275,7 +2317,7 @@ export async function loadStageBeforeSnapshot(params: {
 	if (!project) {
 		throw new ExternalToolGatewayError('NOT_FOUND', `${params.entityKind} not found`);
 	}
-	assertProjectWriteAccess(project);
+	assertProjectWriteAccess(project, params.scope);
 
 	return { entityId, before };
 }

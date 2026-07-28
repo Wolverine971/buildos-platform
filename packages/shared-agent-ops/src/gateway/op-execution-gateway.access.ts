@@ -81,7 +81,17 @@ export async function loadVisibleProjects(
 	};
 }
 
-export function assertProjectWriteAccess(project: OntologyProjectSummary): void {
+export function assertProjectWriteAccess(
+	project: OntologyProjectSummary,
+	scope?: AgentCallScope
+): void {
+	if (Array.isArray(scope?.write_project_ids) && !scope.write_project_ids.includes(project.id)) {
+		throw new ExternalToolGatewayError(
+			'FORBIDDEN',
+			'Write access is not granted to this project for the connected agent',
+			{ project_id: project.id, project_name: project.name }
+		);
+	}
 	if (project.access_level !== 'write' && project.access_level !== 'admin') {
 		throw new ExternalToolGatewayError(
 			'FORBIDDEN',

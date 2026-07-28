@@ -35,6 +35,7 @@
 		RefreshCw,
 		LoaderCircle,
 		Tag as TagIcon,
+		ShieldCheck,
 		Eye,
 		Edit
 	} from 'lucide-svelte';
@@ -66,6 +67,7 @@
 		project: Project | null;
 		contextDocument?: Document | null;
 		canDeleteProject?: boolean;
+		canManageExternalAgentAccess?: boolean;
 		onClose?: () => void;
 		onSaved?: (project: Project) => void;
 		onDeleted?: () => void;
@@ -99,6 +101,7 @@
 		project,
 		contextDocument = null,
 		canDeleteProject = false,
+		canManageExternalAgentAccess = false,
 		onClose,
 		onSaved,
 		onDeleted,
@@ -115,6 +118,7 @@
 	let facetStage = $state('');
 	let startDate = $state('');
 	let endDate = $state('');
+	let externalAgentAccess = $state<'standard' | 'restricted'>('standard');
 	let isSaving = $state(false);
 	let isDeleting = $state(false);
 	let showDeleteConfirm = $state(false);
@@ -267,6 +271,7 @@
 		facetStage = project.facet_stage ?? '';
 		startDate = toDateInput(project.start_at);
 		endDate = toDateInput(project.end_at);
+		externalAgentAccess = project.external_agent_access ?? 'standard';
 		contextDocumentBody = initialContextBody;
 		nextStepShort = initialNextStepShort;
 		nextStepLong = initialNextStepLong;
@@ -435,8 +440,11 @@
 		// Check if context document changed
 		const hasContextDocChanges = contextDocument && contextDocumentBody !== initialContextBody;
 		const hasProjectChanges = Object.keys(payload).length > 0;
+		const hasExternalAgentAccessChanges =
+			canManageExternalAgentAccess &&
+			externalAgentAccess !== (project.external_agent_access ?? 'standard');
 
-		if (!hasProjectChanges && !hasContextDocChanges) {
+		if (!hasProjectChanges && !hasContextDocChanges && !hasExternalAgentAccessChanges) {
 			toastService.info('No changes to save');
 			return;
 		}
@@ -478,6 +486,21 @@
 				if (result.data?.project) {
 					updatedProject = result.data.project as Project;
 				}
+			}
+
+			if (hasExternalAgentAccessChanges) {
+				lastEndpoint = `/api/onto/projects/${project.id}/external-agent-access`;
+				lastMethod = 'PATCH';
+				const accessResponse = await fetch(lastEndpoint, {
+					method: lastMethod,
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ external_agent_access: externalAgentAccess })
+				});
+				const accessResult = await accessResponse.json().catch(() => ({}));
+				if (!accessResponse.ok) {
+					throw new Error(accessResult.error ?? 'Failed to update connected AI access');
+				}
+				updatedProject = { ...updatedProject, external_agent_access: externalAgentAccess };
 			}
 
 			// Update context document if it exists and changed
@@ -522,7 +545,11 @@
 				entityType: 'project',
 				entityId: project?.id,
 				operation: 'project_update',
-				metadata: { hasProjectChanges, hasContextDocChanges }
+				metadata: {
+					hasProjectChanges,
+					hasContextDocChanges,
+					hasExternalAgentAccessChanges
+				}
 			});
 			error = message;
 			toastService.error(message);
@@ -1229,6 +1256,37 @@
 											</div>
 										</div>
 									</section>
+
+									{#if canManageExternalAgentAccess}
+										<section class="px-2.5 py-2.5 sm:px-4 sm:py-3">
+											<div class="flex items-center gap-2">
+												<ShieldCheck
+													class="h-4 w-4 text-muted-foreground"
+												/>
+												<p class="micro-label">Connected AI access</p>
+											</div>
+											<div class="mt-2 space-y-1.5">
+												<Select
+													id="external-agent-access"
+													form={projectEditFormId}
+													bind:value={externalAgentAccess}
+													size="sm"
+													disabled={isSaving}
+												>
+													<option value="standard">Standard access</option
+													>
+													<option value="restricted">Restricted</option>
+												</Select>
+												<p
+													class="text-2xs leading-relaxed text-muted-foreground"
+												>
+													{externalAgentAccess === 'restricted'
+														? 'Every connector must be granted access to this project explicitly.'
+														: 'Connectors set to all standard projects include this project automatically.'}
+												</p>
+											</div>
+										</section>
+									{/if}
 
 									<!-- Quiet read-only metadata -->
 									{#if createdDateLong || updatedDateLong}

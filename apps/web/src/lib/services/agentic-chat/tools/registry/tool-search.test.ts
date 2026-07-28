@@ -130,6 +130,15 @@ describe('searchToolRegistry discovery surfaces', () => {
 		expect(names.indexOf('update_onto_task')).toBeLessThan(5);
 	});
 
+	it('keeps common read phrasing discoverable after stop-word filtering', () => {
+		expect(toolNames(searchToolRegistry({ query: 'show tasks', limit: 10 }))).toEqual(
+			expect.arrayContaining(['list_onto_tasks', 'search_onto_tasks'])
+		);
+		expect(toolNames(searchToolRegistry({ query: 'find documents', limit: 10 }))).toEqual(
+			expect.arrayContaining(['list_onto_documents', 'search_onto_documents'])
+		);
+	});
+
 	it('discovers all email reads under the first-class email group when enabled', () => {
 		configureEmailRuntimeEnv({ EMAIL_CHAT_TOOLS_ENABLED: 'true' });
 		resetToolRegistryCache();

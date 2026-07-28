@@ -210,7 +210,7 @@ export async function unlinkOntoEdge(context: ToolExecutionContext, args: Record
 
 	const visible = await loadVisibleProjects(context);
 	const project = assertVisibleEntityProject(visible.projectMap, edge.project_id);
-	assertProjectWriteAccess(project);
+	assertProjectWriteAccess(project, context.scope);
 
 	const { error: deleteError } = await context.admin.from('onto_edges').delete().eq('id', edgeId);
 	if (deleteError) {

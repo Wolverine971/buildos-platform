@@ -14,7 +14,7 @@
 
 	let { data, form }: { data: PageData; form?: ActionData } = $props();
 	let scopeMode = $state<'read_only' | 'read_write'>('read_only');
-	let projectScope = $state<'all' | 'selected'>('all');
+	let projectScope = $state<'all_unrestricted' | 'selected'>('all_unrestricted');
 
 	const hiddenFields = $derived([
 		['client_id', data.authorization.client_id],
@@ -87,7 +87,7 @@
 		</div>
 
 		<form method="POST" action="?/authorize" class="space-y-6">
-			{#each hiddenFields as [name, value]}
+			{#each hiddenFields as [name, value] (name)}
 				<input type="hidden" {name} {value} />
 			{/each}
 
@@ -185,28 +185,31 @@
 				<div class="space-y-3">
 					<label
 						class="flex cursor-pointer gap-3 rounded-lg border p-4 transition-colors"
-						class:border-accent={projectScope === 'all'}
-						class:bg-muted={projectScope === 'all'}
-						class:border-border={projectScope !== 'all'}
-						class:bg-background={projectScope !== 'all'}
+						class:border-accent={projectScope === 'all_unrestricted'}
+						class:bg-muted={projectScope === 'all_unrestricted'}
+						class:border-border={projectScope !== 'all_unrestricted'}
+						class:bg-background={projectScope !== 'all_unrestricted'}
 					>
 						<input
 							type="radio"
 							name="project_scope"
-							value="all"
+							value="all_unrestricted"
 							bind:group={projectScope}
 							class="mt-1 h-4 w-4 shrink-0 accent-foreground"
 						/>
 						<span class="min-w-0 flex-1">
 							<span class="flex items-center gap-2">
 								<FolderOpen class="h-4 w-4 text-muted-foreground" />
-								<span class="font-medium text-foreground">All my projects</span>
+								<span class="font-medium text-foreground"
+									>All standard projects</span
+								>
 							</span>
 							<span
 								class="mt-1.5 block text-sm leading-relaxed text-muted-foreground"
 							>
-								Projects where you are an owner or collaborator. Public project
-								pages are not included automatically.
+								Includes standard projects you own now or create later. Shared and
+								restricted projects require explicit connector access, and public
+								pages never count as permission.
 							</span>
 						</span>
 					</label>
@@ -256,7 +259,7 @@
 							</div>
 						{:else}
 							<ul class="space-y-1">
-								{#each data.projects as project}
+								{#each data.projects as project (project.id)}
 									<li>
 										<label
 											class="flex cursor-pointer items-start gap-3 rounded-md p-2.5 transition-colors hover:bg-muted/60"

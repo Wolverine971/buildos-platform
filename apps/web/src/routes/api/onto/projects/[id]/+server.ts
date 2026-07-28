@@ -44,6 +44,7 @@ const PROJECT_PAGE_PROJECT_COLUMNS = [
 	'description',
 	'doc_structure',
 	'end_at',
+	'external_agent_access',
 	'facet_context',
 	'facet_scale',
 	'facet_stage',

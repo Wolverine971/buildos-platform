@@ -9,6 +9,7 @@ import type {
 	AgentOAuthRefreshTokenRecord,
 	BuildosAgentAllowedOp,
 	BuildosAgentOAuthScope,
+	BuildosAgentProjectScopeMode,
 	ExternalAgentCallerRecord
 } from '@buildos/shared-types';
 import { BUILDOS_AGENT_READ_OPS, OPENCLAW_DEFAULT_WRITE_OPS } from '@buildos/shared-types';
@@ -17,9 +18,15 @@ import {
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
 import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
-import { buildCallerPolicy, isWriteOp } from './agent-call-policy';
+import {
+	buildCallerPolicy,
+	extractProjectScopeModeFromPolicy,
+	isWriteOp,
+	normalizeProjectScopeMode
+} from './agent-call-policy';
 import { ensureUserBuildosAgent } from './callee-resolution';
 import { hashAgentCallerToken } from './caller-auth';
+import { replaceExplicitProjectPermissions } from './project-access.service';
 
 export const BUILDOS_MCP_PATH = '/mcp/buildos';
 export const BUILDOS_MCP_CLIENT_PROFILE_ID = 'claude-browser';
@@ -364,6 +371,10 @@ function mapGrantRecord(record: Record<string, unknown>): AgentOAuthGrantRecord 
 	const grant = record as unknown as AgentOAuthGrantRecord;
 	return {
 		...grant,
+		project_scope_mode: normalizeProjectScopeMode(
+			record.project_scope_mode,
+			Array.isArray(grant.allowed_project_ids) ? 'selected' : 'all_unrestricted'
+		),
 		allowed_ops: Array.isArray(grant.allowed_ops)
 			? grant.allowed_ops
 			: ([] as BuildosAgentAllowedOp[]),
@@ -630,6 +641,7 @@ async function createOrUpdateOAuthCaller(params: {
 	client: AgentOAuthClientRecord;
 	scope: AgentCallScope;
 	scopes: BuildosAgentOAuthScope[];
+	projectScopeMode: BuildosAgentProjectScopeMode;
 }): Promise<ExternalAgentCallerRecord> {
 	const provider = inferOAuthClientProvider(params.client);
 	const callerKey = callerKeyForOAuthClient(params.client);
@@ -660,10 +672,12 @@ async function createOrUpdateOAuthCaller(params: {
 			.from('external_agent_callers')
 			.update({
 				status: 'trusted',
+				project_scope_mode: params.projectScopeMode,
 				policy: buildCallerPolicy({
 					scopeMode: params.scope.mode,
 					allowedProjectIds: params.scope.project_ids,
-					allowedOps: params.scope.allowed_ops
+					allowedOps: params.scope.allowed_ops,
+					projectScopeMode: params.projectScopeMode
 				}),
 				metadata: {
 					...((existing.metadata as Record<string, unknown> | null) ?? {}),
@@ -690,10 +704,12 @@ async function createOrUpdateOAuthCaller(params: {
 			token_prefix: 'oauth',
 			token_hash: hashAgentCallerToken(internalCredential),
 			status: 'trusted',
+			project_scope_mode: params.projectScopeMode,
 			policy: buildCallerPolicy({
 				scopeMode: params.scope.mode,
 				allowedProjectIds: params.scope.project_ids,
-				allowedOps: params.scope.allowed_ops
+				allowedOps: params.scope.allowed_ops,
+				projectScopeMode: params.projectScopeMode
 			}),
 			metadata
 		})
@@ -715,6 +731,7 @@ async function createOrUpdateOAuthGrant(params: {
 	resource: string;
 	scopes: BuildosAgentOAuthScope[];
 	scope: AgentCallScope;
+	projectScopeMode: BuildosAgentProjectScopeMode;
 }): Promise<AgentOAuthGrantRecord> {
 	const { data: existing, error: existingError } = await params.admin
 		.from('agent_oauth_grants')
@@ -739,6 +756,7 @@ async function createOrUpdateOAuthGrant(params: {
 		scope_mode: params.scope.mode,
 		allowed_ops: params.scope.allowed_ops ?? allowedOpsForScopes(params.scopes),
 		allowed_project_ids: params.scope.project_ids ?? null,
+		project_scope_mode: params.projectScopeMode,
 		status: 'active'
 	};
 
@@ -779,9 +797,13 @@ export async function approveOAuthAuthorization(params: {
 	authorizationRequest: OAuthAuthorizationRequest;
 	scopeMode: AgentCallScope['mode'];
 	allowedProjectIds?: string[];
+	projectScopeMode?: BuildosAgentProjectScopeMode;
 	securityEventOptions?: SecurityEventLogOptions;
 	request?: Request;
 }): Promise<{ code: string; grant: AgentOAuthGrantRecord; caller: ExternalAgentCallerRecord }> {
+	const projectScopeMode =
+		params.projectScopeMode ??
+		(Array.isArray(params.allowedProjectIds) ? 'selected' : 'all_unrestricted');
 	const scopes = scopesForOAuthApproval(params.authorizationRequest.scopes, params.scopeMode);
 	const normalizedScopes = parseOAuthScopes(
 		scopeString(scopes),
@@ -818,7 +840,8 @@ export async function approveOAuthAuthorization(params: {
 		userId: params.userId,
 		client: params.authorizationRequest.client,
 		scope,
-		scopes: normalizedScopes
+		scopes: normalizedScopes,
+		projectScopeMode
 	});
 	const grant = await createOrUpdateOAuthGrant({
 		admin: params.admin,
@@ -827,7 +850,17 @@ export async function approveOAuthAuthorization(params: {
 		caller,
 		resource: params.authorizationRequest.resource,
 		scopes: normalizedScopes,
-		scope
+		scope,
+		projectScopeMode
+	});
+	await replaceExplicitProjectPermissions({
+		admin: params.admin,
+		userId: params.userId,
+		callerId: caller.id,
+		oauthGrantId: grant.id,
+		projectIds: projectScopeMode === 'selected' ? (allowedProjectIds ?? []) : [],
+		accessMode: scope.mode,
+		source: 'selected'
 	});
 	const code = randomToken('bo_code');
 	const { error } = await params.admin.from('agent_oauth_authorization_codes').insert({
@@ -1317,6 +1350,10 @@ export async function authenticateOAuthMcpRequest(params: {
 	}
 	const grant = mapGrantRecord(grantData as Record<string, unknown>);
 	const caller = callerData as ExternalAgentCallerRecord;
+	caller.project_scope_mode = normalizeProjectScopeMode(
+		callerData.project_scope_mode,
+		extractProjectScopeModeFromPolicy(caller.policy)
+	);
 	if (grant.status !== 'active' || caller.status !== 'trusted') {
 		throw new OAuthConnectorError('OAuth grant is revoked', 403, 'insufficient_scope');
 	}

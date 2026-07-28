@@ -28,6 +28,10 @@ vi.mock('./oauth-connector.service', async (importActual) => {
 	};
 });
 
+vi.mock('./project-access.service', () => ({
+	resolveEffectiveAgentProjectScope: vi.fn(async ({ scope }) => scope)
+}));
+
 import {
 	handleBuildosMcpGet,
 	handleBuildosMcpPost,

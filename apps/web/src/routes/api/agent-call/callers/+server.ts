@@ -104,6 +104,31 @@ export const POST: RequestHandler = async (event) => {
 	}
 };
 
+export const PATCH: RequestHandler = async (event) => {
+	const {
+		request,
+		platform,
+		locals: { safeGetSession }
+	} = event;
+	const { user } = await safeGetSession();
+	if (!user) return ApiResponse.unauthorized('Not authenticated');
+
+	const body = await request.json().catch(() => null);
+	const callerId =
+		body && typeof body === 'object' && 'caller_id' in body ? body.caller_id : null;
+	if (typeof callerId !== 'string') return ApiResponse.badRequest('caller_id is required');
+
+	try {
+		const service = new CallerProvisioningService(
+			undefined,
+			getSecurityEventLogOptions(platform)
+		);
+		return ApiResponse.success(await service.updatePermissionsForUser(user.id, callerId, body));
+	} catch (error) {
+		return provisioningErrorResponse(event, error, 'agent_call.callers.permissions.update');
+	}
+};
+
 export const DELETE: RequestHandler = async (event) => {
 	const {
 		request,

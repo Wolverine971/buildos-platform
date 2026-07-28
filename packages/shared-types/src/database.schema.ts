@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-07-27T19:37:28.802Z
+// Generated on: 2026-07-28T22:08:20.569Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -207,6 +207,7 @@ export type DatabaseSchema = {
 		external_agent_caller_id: string;
 		id: string;
 		last_used_at: string | null;
+		project_scope_mode: string;
 		resource: string;
 		scope: string;
 		scope_mode: string;
@@ -1641,10 +1642,26 @@ export type DatabaseSchema = {
 		last_used_at: string | null;
 		metadata: Json;
 		policy: Json;
+		project_scope_mode: string;
 		provider: string;
 		status: string;
 		token_hash: string;
 		token_prefix: string;
+		updated_at: string;
+		user_id: string;
+	};
+	external_agent_project_permissions: {
+		access_mode: string;
+		agent_oauth_grant_id: string | null;
+		created_at: string;
+		external_agent_caller_id: string;
+		granted_at: string;
+		granted_by: string | null;
+		id: string;
+		metadata: Json;
+		project_id: string;
+		revoked_at: string | null;
+		source: string;
 		updated_at: string;
 		user_id: string;
 	};
@@ -2404,6 +2421,7 @@ export type DatabaseSchema = {
 		description: string | null;
 		doc_structure: Json | null;
 		end_at: string | null;
+		external_agent_access: string;
 		facet_context: string | null;
 		facet_scale: string | null;
 		facet_stage: string | null;
@@ -4149,6 +4167,7 @@ export const tableNames = [
 	'emails',
 	'error_logs',
 	'external_agent_callers',
+	'external_agent_project_permissions',
 	'failed_payments',
 	'feature_flags',
 	'feedback',

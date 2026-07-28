@@ -1787,6 +1787,7 @@
 <ProjectWorkspaceEntityModals
 	{project}
 	{contextDocument}
+	canAdmin={access.canAdmin}
 	{goals}
 	{tasks}
 	tasksComplete={tasksCoverage.complete}

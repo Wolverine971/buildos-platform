@@ -22,10 +22,12 @@ import {
 import {
 	defaultAllowedOpsForMode,
 	extractAllowedOpsFromPolicy,
+	extractProjectScopeModeFromPolicy,
 	extractScopeModeFromPolicy,
 	intersectAllowedOps,
 	minimumScopeMode,
 	normalizeAllowedOps,
+	normalizeProjectScopeMode,
 	normalizeScopeMode,
 	requiredScopeModeForOp
 } from './agent-call-policy';
@@ -38,6 +40,7 @@ import {
 	logSecurityEvent,
 	type SecurityEventLogOptions
 } from '$lib/server/security-event-logger';
+import { resolveEffectiveAgentProjectScope } from './project-access.service';
 
 const READ_ONLY_SCOPE: AgentCallScope = {
 	mode: 'read_only'
@@ -99,10 +102,15 @@ function normalizeScope(value: unknown, fieldName: string): AgentCallScope {
 	}
 
 	const projectIds = normalizeProjectIds(value.project_ids, `${fieldName}.project_ids`);
+	const writeProjectIds = normalizeProjectIds(
+		value.write_project_ids,
+		`${fieldName}.write_project_ids`
+	);
 
 	return {
 		mode,
 		...(projectIds === undefined ? {} : { project_ids: projectIds }),
+		...(writeProjectIds === undefined ? {} : { write_project_ids: writeProjectIds }),
 		...(allowedOps === undefined ? {} : { allowed_ops: allowedOps })
 	};
 }
@@ -408,10 +416,18 @@ export class BuildosAgentCallService {
 
 		const requestedScope = normalizeScope(params.requested_scope, 'requested_scope');
 		const visibleProjects = await this.loadVisibleProjects(caller.user_id);
+		const projectScopeMode = normalizeProjectScopeMode(
+			caller.project_scope_mode,
+			extractProjectScopeModeFromPolicy(caller.policy)
+		);
+		const callerPolicyForNegotiation =
+			projectScopeMode === 'all_unrestricted'
+				? { ...caller.policy, allowed_project_ids: null }
+				: caller.policy;
 		const scopeResolution = normalizeGrantedScope({
 			requestedScope,
 			visibleProjectIds: visibleProjects.map((project) => project.id),
-			callerPolicy: caller.policy,
+			callerPolicy: callerPolicyForNegotiation,
 			agentPolicy: buildosAgent.default_policy
 		});
 
@@ -459,7 +475,28 @@ export class BuildosAgentCallService {
 			};
 		}
 
-		const grantedScope = scopeResolution.grantedScope;
+		const negotiatedScope = scopeResolution.grantedScope;
+		const resolvedScope = await resolveEffectiveAgentProjectScope({
+			admin: this.admin,
+			userId: caller.user_id,
+			callerId: caller.id,
+			projectScopeMode,
+			scope: negotiatedScope
+		});
+		const negotiatedProjectFence = Array.isArray(negotiatedScope.project_ids)
+			? new Set(negotiatedScope.project_ids)
+			: null;
+		const grantedScope: AgentCallScope = negotiatedProjectFence
+			? {
+					...resolvedScope,
+					project_ids: resolvedScope.project_ids.filter((id) =>
+						negotiatedProjectFence.has(id)
+					),
+					write_project_ids: resolvedScope.write_project_ids.filter((id) =>
+						negotiatedProjectFence.has(id)
+					)
+				}
+			: resolvedScope;
 
 		const acceptedCall = await this.insertCallSession({
 			userId: caller.user_id,
@@ -512,7 +549,7 @@ export class BuildosAgentCallService {
 			ensureCallId(params.call_id),
 			'tools/list'
 		);
-		const grantedScope = normalizeScope(session.granted_scope, 'granted_scope');
+		const grantedScope = await this.resolveCurrentSessionScope(caller, session);
 
 		return {
 			tools: getPublicBuildosAgentTools(grantedScope)
@@ -532,12 +569,17 @@ export class BuildosAgentCallService {
 			'tools/call'
 		);
 		const toolName = ensureToolName(params.name);
+		const currentScope = await this.resolveCurrentSessionScope(caller, session);
 		const result = await executeBuildosAgentGatewayTool({
 			admin: this.admin,
 			userId: session.user_id,
 			callerId: caller.id,
+			projectScopeMode: normalizeProjectScopeMode(
+				caller.project_scope_mode,
+				extractProjectScopeModeFromPolicy(caller.policy)
+			),
 			callSessionId: session.id,
-			scope: normalizeScope(session.granted_scope, 'granted_scope'),
+			scope: currentScope,
 			toolName,
 			arguments: normalizeToolArguments(params.arguments),
 			...(hasSecurityEventOptions(this.securityEventOptions)
@@ -614,6 +656,32 @@ export class BuildosAgentCallService {
 	private async loadVisibleProjects(userId: string) {
 		const actorId = await ensureActorId(this.admin, userId);
 		return fetchProjectSummaries(this.admin, actorId);
+	}
+
+	private async resolveCurrentSessionScope(
+		caller: ExternalAgentCallerRecord,
+		session: AgentCallSessionRecord
+	): Promise<AgentCallScope> {
+		const storedScope = normalizeScope(session.granted_scope, 'granted_scope');
+		const projectScopeMode = normalizeProjectScopeMode(
+			caller.project_scope_mode,
+			extractProjectScopeModeFromPolicy(caller.policy)
+		);
+		const resolvedScope = await resolveEffectiveAgentProjectScope({
+			admin: this.admin,
+			userId: caller.user_id,
+			callerId: caller.id,
+			projectScopeMode,
+			scope: storedScope
+		});
+		if (!Array.isArray(storedScope.project_ids)) return resolvedScope;
+
+		const sessionFence = new Set(storedScope.project_ids);
+		return {
+			...resolvedScope,
+			project_ids: resolvedScope.project_ids.filter((id) => sessionFence.has(id)),
+			write_project_ids: resolvedScope.write_project_ids.filter((id) => sessionFence.has(id))
+		};
 	}
 
 	private async insertCallSession(params: {

@@ -21,6 +21,7 @@ import type {
 	BuildosAgentUsageEvent,
 	BuildosAgentUsagePeriod,
 	BuildosAgentUsageTrend,
+	BuildosAgentProjectScopeMode,
 	ExternalAgentCallerRecord
 } from '@buildos/shared-types';
 import {
@@ -32,15 +33,18 @@ import {
 	buildCallerPolicy,
 	defaultAllowedOpsForMode,
 	extractAllowedOpsFromPolicy,
+	extractProjectScopeModeFromPolicy,
 	extractScopeModeFromPolicy,
 	isWriteOp,
 	normalizeAllowedOps,
+	normalizeProjectScopeMode,
 	normalizeScopeMode
 } from './agent-call-policy';
 import { AgentCallBootstrapLinkService } from './bootstrap-link.service';
 import { ensureUserBuildosAgent } from './callee-resolution';
 import { hashAgentCallerToken } from './caller-auth';
 import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
+import { replaceExplicitProjectPermissions } from './project-access.service';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -119,6 +123,20 @@ function normalizeAllowedProjectIds(value: unknown): string[] | undefined {
 	return ids;
 }
 
+function normalizeRequestedProjectScopeMode(
+	value: unknown,
+	fallback: BuildosAgentProjectScopeMode
+): BuildosAgentProjectScopeMode {
+	if (value === undefined || value === null) return fallback;
+	if (value !== 'all_unrestricted' && value !== 'selected') {
+		throw new CallerProvisioningError(
+			'project_scope_mode must be all_unrestricted or selected',
+			400
+		);
+	}
+	return value;
+}
+
 function parseProvisionRequest(body: unknown): BuildosAgentCallerProvisionRequest {
 	if (!isRecord(body)) {
 		throw new CallerProvisioningError('Request body must be an object', 400);
@@ -137,12 +155,19 @@ function parseProvisionRequest(body: unknown): BuildosAgentCallerProvisionReques
 		);
 	}
 
+	const allowedProjectIds = normalizeAllowedProjectIds(body.allowed_project_ids);
+	const projectScopeMode = normalizeRequestedProjectScopeMode(
+		body.project_scope_mode,
+		allowedProjectIds === undefined ? 'all_unrestricted' : 'selected'
+	);
+
 	return {
 		provider: normalizeProviderField(body.provider),
 		caller_key: validateStringField(body.caller_key, 'caller_key', 255),
 		scope_mode: scopeMode,
 		allowed_ops: allowedOps,
-		allowed_project_ids: normalizeAllowedProjectIds(body.allowed_project_ids),
+		allowed_project_ids: allowedProjectIds,
+		project_scope_mode: projectScopeMode,
 		metadata: normalizeMetadata(body.metadata)
 	};
 }
@@ -162,6 +187,10 @@ function mapCallerSummary(
 	usage?: BuildosAgentCallerUsageSummary
 ): BuildosAgentCallerSummary {
 	const scopeMode = extractScopeModeFromPolicy(record.policy);
+	const projectScopeMode = normalizeProjectScopeMode(
+		record.project_scope_mode,
+		extractProjectScopeModeFromPolicy(record.policy)
+	);
 	const allowedOps = extractAllowedOpsFromPolicy(record.policy, scopeMode);
 	const storedAllowedProjectIds = Array.isArray(record.policy?.allowed_project_ids)
 		? record.policy.allowed_project_ids.filter(
@@ -184,6 +213,7 @@ function mapCallerSummary(
 		status: record.status,
 		token_prefix: record.token_prefix,
 		scope_mode: scopeMode,
+		project_scope_mode: projectScopeMode,
 		allowed_ops: allowedOps,
 		allowed_project_ids: allowedProjectIds,
 		...(unavailableProjectCount > 0
@@ -803,13 +833,17 @@ export class CallerProvisioningService {
 			request.allowed_project_ids
 		);
 		const scopeMode = request.scope_mode ?? 'read_only';
+		const projectScopeMode: BuildosAgentProjectScopeMode =
+			request.project_scope_mode ??
+			(allowedProjectIds === undefined ? 'all_unrestricted' : 'selected');
 		const allowedOps = request.allowed_ops ?? defaultAllowedOpsForMode(scopeMode);
 		const { token, tokenPrefix } = generateBearerToken();
 		const tokenHash = hashAgentCallerToken(token);
 		const policy = buildCallerPolicy({
 			scopeMode,
 			allowedProjectIds,
-			allowedOps
+			allowedOps,
+			projectScopeMode
 		});
 
 		const { data, error } = await this.admin
@@ -822,6 +856,7 @@ export class CallerProvisioningService {
 					token_prefix: tokenPrefix,
 					token_hash: tokenHash,
 					status: 'trusted',
+					project_scope_mode: projectScopeMode,
 					policy,
 					metadata: request.metadata ?? {}
 				},
@@ -841,6 +876,14 @@ export class CallerProvisioningService {
 		}
 
 		const caller = data as ExternalAgentCallerRecord;
+		await replaceExplicitProjectPermissions({
+			admin: this.admin,
+			userId,
+			callerId: caller.id,
+			projectIds: allowedProjectIds ?? [],
+			accessMode: scopeMode,
+			source: 'selected'
+		});
 		const bootstrap =
 			typeof options?.baseUrl === 'string' && options.baseUrl.trim()
 				? await new AgentCallBootstrapLinkService(this.admin).createBootstrap({
@@ -911,6 +954,39 @@ export class CallerProvisioningService {
 		}
 
 		const callerRecords = (data ?? []) as ExternalAgentCallerRecord[];
+		const hasOAuthCallers = callerRecords.some(
+			(caller) =>
+				caller.metadata?.auth_scheme === 'oauth' || caller.caller_key.startsWith('oauth:')
+		);
+		const { data: oauthGrantRows, error: oauthGrantError } = hasOAuthCallers
+			? await this.admin
+					.from('agent_oauth_grants')
+					.select(
+						'external_agent_caller_id, scope_mode, allowed_ops, allowed_project_ids, project_scope_mode'
+					)
+					.eq('user_id', userId)
+					.eq('status', 'active')
+			: { data: [], error: null };
+		if (oauthGrantError) {
+			throw new CallerProvisioningError(
+				'Failed to list OAuth connector grants',
+				500,
+				oauthGrantError.message
+			);
+		}
+		type OAuthGrantSummary = {
+			external_agent_caller_id: string;
+			scope_mode: unknown;
+			allowed_ops: unknown;
+			allowed_project_ids: unknown;
+			project_scope_mode: unknown;
+		};
+		const oauthGrantByCaller = new Map<string, OAuthGrantSummary>(
+			(oauthGrantRows ?? []).map((grant: OAuthGrantSummary) => [
+				String(grant.external_agent_caller_id),
+				grant
+			])
+		);
 		const usageByCallerId = await this.loadUsageForCallers(
 			userId,
 			callerRecords,
@@ -923,15 +999,171 @@ export class CallerProvisioningService {
 				handle: buildosAgent.agent_handle,
 				status: buildosAgent.status
 			},
-			callers: callerRecords.map((caller) =>
-				mapCallerSummary(caller, visibleProjectIds, usageByCallerId.get(caller.id))
-			),
+			callers: callerRecords.map((caller) => {
+				const grant = oauthGrantByCaller.get(caller.id);
+				if (!grant) {
+					return mapCallerSummary(
+						caller,
+						visibleProjectIds,
+						usageByCallerId.get(caller.id)
+					);
+				}
+				const scopeMode = grant.scope_mode === 'read_write' ? 'read_write' : 'read_only';
+				const grantProjectIds = Array.isArray(grant.allowed_project_ids)
+					? grant.allowed_project_ids.filter(
+							(value: unknown): value is string => typeof value === 'string'
+						)
+					: undefined;
+				return mapCallerSummary(
+					{
+						...caller,
+						project_scope_mode: normalizeProjectScopeMode(
+							grant.project_scope_mode,
+							grantProjectIds ? 'selected' : 'all_unrestricted'
+						),
+						policy: buildCallerPolicy({
+							scopeMode,
+							allowedProjectIds: grantProjectIds,
+							allowedOps: Array.isArray(grant.allowed_ops)
+								? (grant.allowed_ops as BuildosAgentCallerProvisionRequest['allowed_ops'])
+								: [],
+							projectScopeMode: normalizeProjectScopeMode(grant.project_scope_mode)
+						})
+					},
+					visibleProjectIds,
+					usageByCallerId.get(caller.id)
+				);
+			}),
 			available_projects: visibleProjects.map((project) => ({
 				id: project.id,
 				name: project.name,
 				description: project.description ?? null
 			}))
 		};
+	}
+
+	async updatePermissionsForUser(
+		userId: string,
+		callerId: string,
+		body: unknown
+	): Promise<{ caller: BuildosAgentCallerSummary }> {
+		if (!isValidUUID(callerId)) {
+			throw new CallerProvisioningError('caller_id must be a valid UUID', 400);
+		}
+		if (!isRecord(body))
+			throw new CallerProvisioningError('Request body must be an object', 400);
+
+		const { data: callerData, error: callerError } = await this.admin
+			.from('external_agent_callers')
+			.select('*')
+			.eq('id', callerId)
+			.eq('user_id', userId)
+			.maybeSingle();
+		if (callerError) throw new CallerProvisioningError('Failed to load connector', 500);
+		if (!callerData) throw new CallerProvisioningError('Connector not found', 404);
+		const caller = callerData as ExternalAgentCallerRecord;
+
+		let scopeMode;
+		let allowedOps;
+		try {
+			scopeMode = normalizeScopeMode(body.scope_mode, 'scope_mode');
+			allowedOps = normalizeAllowedOps(body.allowed_ops, 'allowed_ops', scopeMode);
+		} catch (error) {
+			throw new CallerProvisioningError(
+				error instanceof Error ? error.message : 'Invalid connector permissions',
+				400
+			);
+		}
+		const requestedProjectIds = normalizeAllowedProjectIds(body.allowed_project_ids) ?? [];
+		const projectScopeMode = normalizeRequestedProjectScopeMode(
+			body.project_scope_mode,
+			extractProjectScopeModeFromPolicy(caller.policy)
+		);
+		const allowedProjectIds =
+			(await this.resolveAllowedProjectIds(userId, requestedProjectIds)) ?? [];
+		const effectiveAllowedOps = allowedOps ?? defaultAllowedOpsForMode(scopeMode);
+		const isOAuth =
+			caller.metadata?.auth_scheme === 'oauth' || caller.caller_key.startsWith('oauth:');
+		let oauthGrants: Array<{ id: string; scope_mode: string }> = [];
+		if (isOAuth) {
+			const { data: grants, error: grantsError } = await this.admin
+				.from('agent_oauth_grants')
+				.select('id, scope_mode')
+				.eq('user_id', userId)
+				.eq('external_agent_caller_id', callerId)
+				.eq('status', 'active');
+			if (grantsError) throw new CallerProvisioningError('Failed to load OAuth grants', 500);
+			oauthGrants = (grants ?? []) as Array<{ id: string; scope_mode: string }>;
+			if (oauthGrants.length === 0) {
+				throw new CallerProvisioningError(
+					'This OAuth connector has no active grant. Reconnect it to change access.',
+					409
+				);
+			}
+			if (
+				scopeMode === 'read_write' &&
+				oauthGrants.some((grant) => grant.scope_mode !== 'read_write')
+			) {
+				throw new CallerProvisioningError(
+					'Reconnect this OAuth connector to approve write access. Existing tokens can be narrowed here but cannot be widened.',
+					409
+				);
+			}
+		}
+		const policy = buildCallerPolicy({
+			scopeMode,
+			allowedOps: effectiveAllowedOps,
+			allowedProjectIds,
+			projectScopeMode
+		});
+
+		const { data: updatedCaller, error: updateError } = await this.admin
+			.from('external_agent_callers')
+			.update({ project_scope_mode: projectScopeMode, policy })
+			.eq('id', callerId)
+			.eq('user_id', userId)
+			.select('*')
+			.single();
+		if (updateError || !updatedCaller) {
+			throw new CallerProvisioningError('Failed to update connector permissions', 500);
+		}
+
+		if (isOAuth) {
+			for (const grant of oauthGrants) {
+				const { error } = await this.admin
+					.from('agent_oauth_grants')
+					.update({
+						scope_mode: scopeMode,
+						scope:
+							scopeMode === 'read_write'
+								? 'buildos.read buildos.write offline_access'
+								: 'buildos.read offline_access',
+						allowed_ops: effectiveAllowedOps,
+						allowed_project_ids: allowedProjectIds ?? null,
+						project_scope_mode: projectScopeMode
+					})
+					.eq('id', grant.id);
+				if (error) throw new CallerProvisioningError('Failed to update OAuth grant', 500);
+				await replaceExplicitProjectPermissions({
+					admin: this.admin,
+					userId,
+					callerId,
+					oauthGrantId: grant.id,
+					projectIds: allowedProjectIds ?? [],
+					accessMode: scopeMode
+				});
+			}
+		} else {
+			await replaceExplicitProjectPermissions({
+				admin: this.admin,
+				userId,
+				callerId,
+				projectIds: allowedProjectIds ?? [],
+				accessMode: scopeMode
+			});
+		}
+
+		return { caller: mapCallerSummary(updatedCaller as ExternalAgentCallerRecord) };
 	}
 
 	async getUsageDetailForUser(

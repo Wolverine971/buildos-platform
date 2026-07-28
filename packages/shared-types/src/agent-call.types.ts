@@ -112,10 +112,15 @@ export const LEGACY_OPENCLAW_DEFAULT_WRITE_OPS = [
 export type BuildosAgentReadOp = (typeof BUILDOS_AGENT_READ_OPS)[number];
 export type BuildosAgentWriteOp = (typeof BUILDOS_AGENT_WRITE_OPS)[number];
 export type BuildosAgentAllowedOp = (typeof BUILDOS_AGENT_SUPPORTED_OPS)[number];
+export type BuildosAgentProjectScopeMode = 'all_unrestricted' | 'selected';
+export type BuildosAgentProjectAccessMode = 'read_only' | 'read_write';
+export type BuildosProjectExternalAgentAccess = 'standard' | 'restricted';
 
 export interface AgentCallScope {
 	mode: BuildosAgentScopeMode;
 	project_ids?: string[];
+	/** Projects where writes remain permitted after per-project policy is applied. */
+	write_project_ids?: string[];
 	allowed_ops?: BuildosAgentAllowedOp[];
 }
 
@@ -227,6 +232,7 @@ export interface BuildosAgentCallerProvisionRequest {
 	scope_mode?: BuildosAgentScopeMode;
 	allowed_ops?: BuildosAgentAllowedOp[];
 	allowed_project_ids?: string[];
+	project_scope_mode?: BuildosAgentProjectScopeMode;
 	metadata?: Record<string, unknown>;
 }
 
@@ -239,6 +245,7 @@ export interface BuildosAgentCallerSummary {
 	scope_mode: BuildosAgentScopeMode;
 	allowed_ops?: BuildosAgentAllowedOp[];
 	allowed_project_ids?: string[];
+	project_scope_mode: BuildosAgentProjectScopeMode;
 	unavailable_project_count?: number;
 	metadata: Record<string, unknown>;
 	last_used_at: string | null;
@@ -257,6 +264,8 @@ export interface BuildosAgentAvailableProject {
 	id: string;
 	name: string;
 	description: string | null;
+	is_shared?: boolean;
+	external_agent_access?: BuildosProjectExternalAgentAccess;
 }
 
 export type BuildosAgentUsagePeriod = 'day' | 'week' | 'month';
@@ -525,6 +534,7 @@ export interface ExternalAgentCallerRecord {
 	token_prefix: string;
 	token_hash: string;
 	status: ExternalAgentCallerStatus;
+	project_scope_mode: BuildosAgentProjectScopeMode;
 	policy: Record<string, unknown>;
 	metadata: Record<string, unknown>;
 	last_used_at: string | null;
@@ -588,6 +598,7 @@ export interface AgentOAuthGrantRecord {
 	scope_mode: BuildosAgentScopeMode;
 	allowed_ops: BuildosAgentAllowedOp[];
 	allowed_project_ids: string[] | null;
+	project_scope_mode: BuildosAgentProjectScopeMode;
 	status: BuildosAgentOAuthGrantStatus;
 	last_used_at: string | null;
 	created_at: string;

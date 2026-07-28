@@ -52,6 +52,17 @@ vi.mock('./external-tool-gateway', () => ({
 	getBuildosAgentGatewayTools: getBuildosAgentGatewayToolsMock
 }));
 
+vi.mock('./project-access.service', () => ({
+	resolveEffectiveAgentProjectScope: vi.fn(async ({ scope }) => ({
+		...scope,
+		project_ids: scope.project_ids ?? ['44444444-4444-4444-4444-444444444444'],
+		write_project_ids:
+			scope.mode === 'read_write'
+				? (scope.project_ids ?? ['44444444-4444-4444-4444-444444444444'])
+				: []
+	}))
+}));
+
 type SessionState = {
 	sessions: Record<string, AgentCallSessionRecord>;
 	nextId: number;
@@ -467,7 +478,7 @@ describe('BuildosAgentCallService', () => {
 		});
 	});
 
-	it('preserves all-project read_write grants as unscoped so project creation can be listed', async () => {
+	it('materializes all-project read_write grants so project creation can be listed safely', async () => {
 		const state: SessionState = { sessions: {}, nextId: 1 };
 		const admin = createAdminMock(state);
 		authenticateExternalAgentCallerMock.mockResolvedValue(
@@ -506,12 +517,13 @@ describe('BuildosAgentCallService', () => {
 			status: 'accepted',
 			granted_scope: {
 				mode: 'read_write',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
 			}
 		});
-		expect('project_ids' in response.call.granted_scope).toBe(false);
 		expect(Object.values(state.sessions)[0]?.granted_scope).toMatchObject({
 			mode: 'read_write',
+			project_ids: ['44444444-4444-4444-4444-444444444444'],
 			allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
 		});
 		expect(
@@ -519,7 +531,7 @@ describe('BuildosAgentCallService', () => {
 				Object.values(state.sessions)[0]?.granted_scope ?? {},
 				'project_ids'
 			)
-		).toBe(false);
+		).toBe(true);
 	});
 
 	it('activates an accepted session when listing tools', async () => {
@@ -576,10 +588,12 @@ describe('BuildosAgentCallService', () => {
 			admin,
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			callerId: '11111111-1111-1111-1111-111111111111',
+			projectScopeMode: 'all_unrestricted',
 			callSessionId: '33333333-3333-3333-3333-333333333333',
 			scope: {
 				mode: 'read_only',
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				write_project_ids: [],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
 			},
 			toolName: 'list_onto_projects',

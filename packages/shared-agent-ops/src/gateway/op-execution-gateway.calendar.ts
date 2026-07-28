@@ -78,7 +78,7 @@ async function assertCalendarProjectAccess(
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, projectId);
 	if (access === 'write') {
-		assertProjectWriteAccess(project);
+		assertProjectWriteAccess(project, context.scope);
 	}
 	return project;
 }

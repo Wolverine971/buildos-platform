@@ -13,7 +13,11 @@ import {
 	LEGACY_OPENCLAW_DEFAULT_WRITE_OPS,
 	OPENCLAW_DEFAULT_WRITE_OPS
 } from '@buildos/shared-types';
-import type { BuildosAgentAllowedOp, BuildosAgentScopeMode } from '@buildos/shared-types';
+import type {
+	BuildosAgentAllowedOp,
+	BuildosAgentProjectScopeMode,
+	BuildosAgentScopeMode
+} from '@buildos/shared-types';
 
 const READ_OP_SET = new Set<BuildosAgentAllowedOp>(BUILDOS_AGENT_READ_OPS);
 const WRITE_OP_SET = new Set<BuildosAgentAllowedOp>(BUILDOS_AGENT_WRITE_OPS);
@@ -168,12 +172,34 @@ export function buildCallerPolicy(params: {
 	scopeMode: BuildosAgentScopeMode;
 	allowedProjectIds?: string[];
 	allowedOps?: BuildosAgentAllowedOp[];
+	projectScopeMode?: BuildosAgentProjectScopeMode;
 }): Record<string, unknown> {
 	return {
 		scope_mode: params.scopeMode,
+		project_scope_mode:
+			params.projectScopeMode ??
+			(Array.isArray(params.allowedProjectIds) ? 'selected' : 'all_unrestricted'),
 		allowed_project_ids: params.allowedProjectIds ?? null,
 		allowed_ops: params.allowedOps ?? defaultAllowedOpsForMode(params.scopeMode)
 	};
+}
+
+export function normalizeProjectScopeMode(
+	value: unknown,
+	fallback: BuildosAgentProjectScopeMode = 'all_unrestricted'
+): BuildosAgentProjectScopeMode {
+	return value === 'selected' || value === 'all_unrestricted' ? value : fallback;
+}
+
+export function extractProjectScopeModeFromPolicy(policy: unknown): BuildosAgentProjectScopeMode {
+	if (!isRecord(policy)) return 'all_unrestricted';
+	if (
+		policy.project_scope_mode === 'selected' ||
+		policy.project_scope_mode === 'all_unrestricted'
+	) {
+		return policy.project_scope_mode;
+	}
+	return Array.isArray(policy.allowed_project_ids) ? 'selected' : 'all_unrestricted';
 }
 
 export function intersectAllowedOps(

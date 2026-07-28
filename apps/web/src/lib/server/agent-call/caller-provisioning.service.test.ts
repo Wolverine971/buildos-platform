@@ -25,6 +25,10 @@ vi.mock('./caller-auth', () => ({
 	hashAgentCallerToken: hashAgentCallerTokenMock
 }));
 
+vi.mock('./project-access.service', () => ({
+	replaceExplicitProjectPermissions: vi.fn()
+}));
+
 type State = {
 	callerRows: ExternalAgentCallerRecord[];
 	bootstrapRows: AgentCallBootstrapLinkRecord[];
@@ -427,6 +431,22 @@ describe('CallerProvisioningService', () => {
 			service.provisionForUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', {
 				provider: 'OpenClaw Main',
 				caller_key: 'openclaw:workspace:test'
+			})
+		).rejects.toBeInstanceOf(CallerProvisioningError);
+	});
+
+	it('rejects an invalid project scope mode instead of silently widening access', async () => {
+		const state: State = { callerRows: [], bootstrapRows: [] };
+		const { CallerProvisioningService, CallerProvisioningError } = await import(
+			'./caller-provisioning.service'
+		);
+		const service = new CallerProvisioningService(createAdminMock(state));
+
+		await expect(
+			service.provisionForUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', {
+				provider: 'openclaw',
+				caller_key: 'openclaw:workspace:test',
+				project_scope_mode: 'everything'
 			})
 		).rejects.toBeInstanceOf(CallerProvisioningError);
 	});

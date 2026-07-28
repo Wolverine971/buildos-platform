@@ -547,6 +547,7 @@ export const ProjectSchema = z.object({
 	facet_stage: z.string().nullable().optional(),
 	start_at: z.string().datetime().nullable().optional(),
 	end_at: z.string().datetime().nullable().optional(),
+	external_agent_access: z.enum(['standard', 'restricted']).default('standard'),
 	// Next step fields for "BuildOS surfaces next moves" feature
 	next_step_short: z.string().nullable().optional(),
 	next_step_long: z.string().nullable().optional(),

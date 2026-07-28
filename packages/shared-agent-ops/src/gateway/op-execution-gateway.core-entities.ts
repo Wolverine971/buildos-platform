@@ -173,7 +173,7 @@ async function getCoreEntity(
 export async function createGoal(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
-	assertProjectWriteAccess(project);
+	assertProjectWriteAccess(project, context.scope);
 	const actorId = await ensureActorId(context.admin, context.userId);
 	const name = requireTrimmedString(args.name, 'name');
 	const stateKey = normalizeStateValue(args.state_key, 'state_key', GOAL_STATES, 'draft');
@@ -285,7 +285,7 @@ export async function updateGoal(context: ToolExecutionContext, args: Record<str
 export async function createPlan(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
-	assertProjectWriteAccess(project);
+	assertProjectWriteAccess(project, context.scope);
 	const actorId = await ensureActorId(context.admin, context.userId);
 	const name = requireTrimmedString(args.name, 'name');
 	const description = normalizeOptionalText(args.description, 'description', { allowNull: true });
@@ -403,7 +403,7 @@ export async function createMilestone(
 ) {
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
-	assertProjectWriteAccess(project);
+	assertProjectWriteAccess(project, context.scope);
 	const goalId = normalizeOptionalUuid(args.goal_id, 'goal_id');
 	if (!goalId) {
 		throw new ExternalToolGatewayError(
@@ -496,7 +496,7 @@ export async function updateMilestone(
 export async function createRisk(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
-	assertProjectWriteAccess(project);
+	assertProjectWriteAccess(project, context.scope);
 	const actorId = await ensureActorId(context.admin, context.userId);
 	const title = requireTrimmedString(args.title, 'title');
 	const impact = requireTrimmedString(args.impact, 'impact') ?? '';

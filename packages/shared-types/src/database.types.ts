@@ -928,6 +928,7 @@ export type Database = {
           external_agent_caller_id: string
           id: string
           last_used_at: string | null
+          project_scope_mode: string
           resource: string
           scope: string
           scope_mode: string
@@ -944,6 +945,7 @@ export type Database = {
           external_agent_caller_id: string
           id?: string
           last_used_at?: string | null
+          project_scope_mode?: string
           resource: string
           scope?: string
           scope_mode?: string
@@ -960,6 +962,7 @@ export type Database = {
           external_agent_caller_id?: string
           id?: string
           last_used_at?: string | null
+          project_scope_mode?: string
           resource?: string
           scope?: string
           scope_mode?: string
@@ -6724,6 +6727,7 @@ export type Database = {
           last_used_at: string | null
           metadata: Json
           policy: Json
+          project_scope_mode: string
           provider: string
           status: string
           token_hash: string
@@ -6738,6 +6742,7 @@ export type Database = {
           last_used_at?: string | null
           metadata?: Json
           policy?: Json
+          project_scope_mode?: string
           provider: string
           status?: string
           token_hash: string
@@ -6752,6 +6757,7 @@ export type Database = {
           last_used_at?: string | null
           metadata?: Json
           policy?: Json
+          project_scope_mode?: string
           provider?: string
           status?: string
           token_hash?: string
@@ -6762,6 +6768,90 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "external_agent_callers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      external_agent_project_permissions: {
+        Row: {
+          access_mode: string
+          agent_oauth_grant_id: string | null
+          created_at: string
+          external_agent_caller_id: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          metadata: Json
+          project_id: string
+          revoked_at: string | null
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_mode?: string
+          agent_oauth_grant_id?: string | null
+          created_at?: string
+          external_agent_caller_id: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          metadata?: Json
+          project_id: string
+          revoked_at?: string | null
+          source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_mode?: string
+          agent_oauth_grant_id?: string | null
+          created_at?: string
+          external_agent_caller_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          metadata?: Json
+          project_id?: string
+          revoked_at?: string | null
+          source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_agent_project_permissions_agent_oauth_grant_id_fkey"
+            columns: ["agent_oauth_grant_id"]
+            isOneToOne: false
+            referencedRelation: "agent_oauth_grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_agent_project_permissions_external_agent_caller_id_fkey"
+            columns: ["external_agent_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_agent_project_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "external_agent_project_permissions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_agent_project_permissions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_migration_stats"
@@ -9931,6 +10021,7 @@ export type Database = {
           description: string | null
           doc_structure: Json | null
           end_at: string | null
+          external_agent_access: string
           facet_context: string | null
           facet_scale: string | null
           facet_stage: string | null
@@ -9962,6 +10053,7 @@ export type Database = {
           description?: string | null
           doc_structure?: Json | null
           end_at?: string | null
+          external_agent_access?: string
           facet_context?: string | null
           facet_scale?: string | null
           facet_stage?: string | null
@@ -9993,6 +10085,7 @@ export type Database = {
           description?: string | null
           doc_structure?: Json | null
           end_at?: string | null
+          external_agent_access?: string
           facet_context?: string | null
           facet_scale?: string | null
           facet_stage?: string | null

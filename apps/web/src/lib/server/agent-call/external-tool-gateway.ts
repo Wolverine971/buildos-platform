@@ -12,6 +12,7 @@
 //   - wiring the web tool registry into the shared dispatcher
 import type {
 	AgentCallScope,
+	BuildosAgentProjectScopeMode,
 	BuildosAgentDiscoveryToolName,
 	BuildosAgentToolDefinition
 } from '@buildos/shared-types';
@@ -133,6 +134,8 @@ function runGatewayOp(params: {
 	admin: any;
 	userId: string;
 	callerId?: string;
+	oauthGrantId?: string;
+	projectScopeMode?: BuildosAgentProjectScopeMode;
 	callSessionId?: string;
 	scope: AgentCallScope;
 	arguments?: Record<string, unknown>;
@@ -430,6 +433,8 @@ export async function executeBuildosAgentGatewayTool(params: {
 	admin: any;
 	userId: string;
 	callerId?: string;
+	oauthGrantId?: string;
+	projectScopeMode?: BuildosAgentProjectScopeMode;
 	callSessionId?: string;
 	scope: AgentCallScope;
 	toolName: string;

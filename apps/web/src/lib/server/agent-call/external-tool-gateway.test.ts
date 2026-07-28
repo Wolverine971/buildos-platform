@@ -211,6 +211,8 @@ type State = {
 	securityEvents?: Array<Record<string, unknown>>;
 	projectLogs?: Array<Record<string, unknown>>;
 	callerPolicy?: Record<string, unknown> | null;
+	oauthGrantProjectIds?: string[];
+	projectPermissions?: Array<Record<string, unknown>>;
 	nextTaskId: number;
 	nextToolExecutionId: number;
 };
@@ -1413,6 +1415,37 @@ function createAdminMock(state: State) {
 						if (patch && 'policy' in patch) {
 							state.callerPolicy = patch.policy as Record<string, unknown>;
 						}
+						return builder;
+					},
+					then: (resolve: (value: unknown) => unknown) =>
+						resolve({ data: null, error: null })
+				};
+				return builder;
+			}
+
+			if (table === 'agent_oauth_grants') {
+				const builder: any = {
+					select: () => builder,
+					eq: () => builder,
+					maybeSingle: async () => ({
+						data: { allowed_project_ids: state.oauthGrantProjectIds ?? [] },
+						error: null
+					}),
+					update: (patch: { allowed_project_ids?: string[] }) => {
+						if (patch.allowed_project_ids)
+							state.oauthGrantProjectIds = patch.allowed_project_ids;
+						return builder;
+					},
+					then: (resolve: (value: unknown) => unknown) =>
+						resolve({ data: null, error: null })
+				};
+				return builder;
+			}
+
+			if (table === 'external_agent_project_permissions') {
+				const builder: any = {
+					insert: (row: Record<string, unknown>) => {
+						state.projectPermissions = [...(state.projectPermissions ?? []), row];
 						return builder;
 					},
 					then: (resolve: (value: unknown) => unknown) =>
@@ -2974,7 +3007,7 @@ describe('external tool gateway', () => {
 		});
 	});
 
-	it('lets a project-scoped read_write caller create a project and auto-adds it to scope', async () => {
+	it('persists an OAuth-created project so a fresh request keeps access', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
 		const newProjectId = '88888888-8888-8888-8888-888888888888';
 		const state: State = {
@@ -3004,6 +3037,8 @@ describe('external tool gateway', () => {
 				allowed_project_ids: ['44444444-4444-4444-4444-444444444444'],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
 			},
+			oauthGrantProjectIds: ['44444444-4444-4444-4444-444444444444'],
+			projectPermissions: [],
 			nextTaskId: 1,
 			nextToolExecutionId: 1
 		};
@@ -3025,6 +3060,8 @@ describe('external tool gateway', () => {
 			admin: createAdminMock(state),
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			callerId: '11111111-1111-1111-1111-111111111111',
+			oauthGrantId: '99999999-9999-4999-8999-999999999999',
+			projectScopeMode: 'selected',
 			callSessionId: '22222222-2222-2222-2222-222222222222',
 			scope,
 			toolName: 'create_onto_project',
@@ -3048,6 +3085,14 @@ describe('external tool gateway', () => {
 		expect(scope.project_ids).toContain(newProjectId);
 		// ...and persisted to the caller policy for future sessions.
 		expect(state.callerPolicy?.allowed_project_ids).toContain(newProjectId);
+		expect(state.oauthGrantProjectIds).toContain(newProjectId);
+		expect(state.projectPermissions).toContainEqual(
+			expect.objectContaining({
+				agent_oauth_grant_id: '99999999-9999-4999-8999-999999999999',
+				project_id: newProjectId,
+				source: 'connector_created'
+			})
+		);
 		expect(state.toolExecutions[0]).toMatchObject({
 			op: 'onto.project.create',
 			status: 'succeeded',

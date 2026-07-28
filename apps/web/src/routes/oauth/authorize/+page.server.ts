@@ -111,7 +111,8 @@ export const actions: Actions = {
 			} else {
 				const scopeMode =
 					form.get('scope_mode') === 'read_write' ? 'read_write' : 'read_only';
-				const projectScope = form.get('project_scope') === 'selected' ? 'selected' : 'all';
+				const projectScope =
+					form.get('project_scope') === 'selected' ? 'selected' : 'all_unrestricted';
 				const selectedProjectIds = form
 					.getAll('project_ids')
 					.filter(
@@ -127,6 +128,7 @@ export const actions: Actions = {
 					authorizationRequest,
 					scopeMode,
 					allowedProjectIds,
+					projectScopeMode: projectScope,
 					securityEventOptions: getSecurityEventLogOptions(platform),
 					request
 				});

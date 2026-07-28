@@ -1,7 +1,11 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.types.ts
 //
 // Public type surface for the gateway execution facade.
-import type { AgentCallScope, BuildosAgentScopeMode } from '@buildos/shared-types';
+import type {
+	AgentCallScope,
+	BuildosAgentProjectScopeMode,
+	BuildosAgentScopeMode
+} from '@buildos/shared-types';
 import type { ActivityLogActorContext } from '../ops/async-activity-logger';
 
 /**
@@ -60,6 +64,8 @@ export type ToolExecutionContext = {
 	admin: any;
 	userId: string;
 	callerId?: string;
+	oauthGrantId?: string;
+	projectScopeMode?: BuildosAgentProjectScopeMode;
 	callSessionId?: string;
 	scope: AgentCallScope;
 	calendar?: CalendarPort;

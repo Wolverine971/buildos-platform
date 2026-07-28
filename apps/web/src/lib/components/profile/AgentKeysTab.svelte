@@ -28,7 +28,8 @@
 		BuildosAgentIdentitySummary,
 		BuildosAgentUsageEvent,
 		BuildosAgentUsagePeriod,
-		BuildosAgentScopeMode
+		BuildosAgentScopeMode,
+		BuildosAgentProjectScopeMode
 	} from '@buildos/shared-types';
 	import {
 		BUILDOS_AGENT_READ_OPS,
@@ -241,6 +242,7 @@
 	let customProvider = $state('');
 	let installationName = $state('');
 	let selectedProjectIds = $state<string[]>([]);
+	let projectScopeMode = $state<BuildosAgentProjectScopeMode>('all_unrestricted');
 	let scopeMode = $state<BuildosAgentScopeMode>('read_only');
 	let selectedWriteOps = $state<BuildosAgentAllowedOp[]>([]);
 	let showAdvancedPermissions = $state(false);
@@ -412,10 +414,17 @@
 	function scopeLabel(caller: BuildosAgentCallerSummary): string {
 		const unavailableSuffix = unavailableProjectSuffix(caller);
 
+		if (caller.project_scope_mode === 'all_unrestricted') {
+			const explicitCount = caller.allowed_project_ids?.length ?? 0;
+			return explicitCount > 0
+				? `All standard + ${projectCountLabel(explicitCount)} explicit`
+				: 'All standard projects';
+		}
+
 		if (!caller.allowed_project_ids || caller.allowed_project_ids.length === 0) {
 			return unavailableProjectCount(caller) > 0
 				? `${projectCountLabel(unavailableProjectCount(caller))} unavailable`
-				: 'All projects';
+				: 'No projects';
 		}
 
 		if (caller.allowed_project_ids.length === 1) {
@@ -482,6 +491,7 @@
 		editingCaller = null;
 		installationName = '';
 		selectedProjectIds = [];
+		projectScopeMode = 'all_unrestricted';
 		selectedProfileId = 'custom-http';
 		customProvider = '';
 		const defaultBundle = PERMISSION_BUNDLES.find(
@@ -508,6 +518,7 @@
 		customProvider = selectedProfileId === 'custom-http' ? caller.provider : '';
 		installationName = installationDisplayName(caller);
 		selectedProjectIds = filterAvailableProjectIds(caller.allowed_project_ids ?? []);
+		projectScopeMode = caller.project_scope_mode;
 		scopeMode = caller.scope_mode;
 		selectedWriteOps = enabledWriteOps(caller);
 		showGenerateModal = true;
@@ -521,10 +532,8 @@
 			caller_key: caller.caller_key,
 			scope_mode: caller.scope_mode,
 			allowed_ops: caller.scope_mode === 'read_write' ? caller.allowed_ops : undefined,
-			allowed_project_ids:
-				caller.allowed_project_ids && caller.allowed_project_ids.length > 0
-					? filterAvailableProjectIds(caller.allowed_project_ids)
-					: undefined,
+			project_scope_mode: caller.project_scope_mode,
+			allowed_project_ids: filterAvailableProjectIds(caller.allowed_project_ids ?? []),
 			metadata: {
 				...(caller.metadata ?? {}),
 				client_profile_id: inferAgentClientProfileId(caller.provider, caller.metadata)
@@ -931,8 +940,7 @@
 			}
 
 			const availableSelectedProjectIds = filterAvailableProjectIds(selectedProjectIds);
-			allowedProjectIds =
-				availableSelectedProjectIds.length > 0 ? availableSelectedProjectIds : undefined;
+			allowedProjectIds = availableSelectedProjectIds;
 
 			if (scopeMode === 'read_write' && selectedWriteOps.length === 0) {
 				throw new Error(
@@ -951,33 +959,42 @@
 		saving = true;
 
 		try {
+			const editingOAuthConnector = existingCaller && isOAuthConnectorCaller(existingCaller);
 			const response = await fetch('/api/agent-call/callers', {
-				method: 'POST',
+				method: editingOAuthConnector ? 'PATCH' : 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
+					...(editingOAuthConnector ? { caller_id: existingCaller.id } : {}),
 					provider,
 					caller_key: callerKey,
 					scope_mode: scopeMode,
 					allowed_ops: allowedOps,
+					project_scope_mode: projectScopeMode,
 					allowed_project_ids: allowedProjectIds,
 					metadata
 				})
 			});
 
-			const payload = await parseResponse<BuildosAgentCallerProvisionResponse>(response);
-			latestProvisioned = payload;
+			if (!editingOAuthConnector) {
+				latestProvisioned =
+					await parseResponse<BuildosAgentCallerProvisionResponse>(response);
+			} else {
+				await parseResponse<{ caller: BuildosAgentCallerSummary }>(response);
+			}
 			await loadCallers();
 			await refreshAgentConnectionStatus();
 
-			const message = existingCaller
-				? `Updated permissions and rotated the BuildOS key for ${installationDisplayName(existingCaller)}.`
-				: 'Generated a new BuildOS agent key.';
+			const message = editingOAuthConnector
+				? `Updated connector permissions for ${installationDisplayName(existingCaller)}.`
+				: existingCaller
+					? `Updated permissions and rotated the BuildOS key for ${installationDisplayName(existingCaller)}.`
+					: 'Generated a new BuildOS agent key.';
 			toastService.success(message);
 			onsuccess?.({ message });
 			showGenerateModal = false;
-			showKeyCreatedModal = true;
+			showKeyCreatedModal = !editingOAuthConnector;
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : 'Failed to provision agent key';
@@ -1585,6 +1602,17 @@
 										{caller.status === 'revoked' ? 'Reissue Key' : 'Edit'}
 									</Button>
 								{/if}
+								{#if isOAuthConnectorCaller(caller) && caller.status === 'trusted'}
+									<Button
+										variant="outline"
+										size="sm"
+										icon={RefreshCw}
+										disabled={saving || rotatingCallerId !== null}
+										onclick={() => openEditModal(caller)}
+									>
+										Edit access
+									</Button>
+								{/if}
 								{#if caller.status !== 'revoked'}
 									<Button
 										variant="danger"
@@ -1994,8 +2022,56 @@
 				</div>
 
 				<div class="space-y-2">
-					<div class="flex items-center justify-between gap-3">
-						<h4 class="text-sm font-semibold text-foreground">Allowed Projects</h4>
+					<h4 class="text-sm font-semibold text-foreground">Project access</h4>
+					<div class="grid gap-2 sm:grid-cols-2">
+						<label
+							class="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3 hover:bg-muted/40"
+						>
+							<input
+								type="radio"
+								name="agent-project-scope"
+								value="all_unrestricted"
+								bind:group={projectScopeMode}
+								class="mt-0.5 h-3.5 w-3.5"
+							/>
+							<span>
+								<span class="block text-sm font-medium text-foreground"
+									>All standard projects</span
+								>
+								<span class="block text-xs text-muted-foreground"
+									>Includes owned standard projects you create later. Shared and
+									restricted projects still need an explicit grant.</span
+								>
+							</span>
+						</label>
+						<label
+							class="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3 hover:bg-muted/40"
+						>
+							<input
+								type="radio"
+								name="agent-project-scope"
+								value="selected"
+								bind:group={projectScopeMode}
+								class="mt-0.5 h-3.5 w-3.5"
+							/>
+							<span>
+								<span class="block text-sm font-medium text-foreground"
+									>Only selected projects</span
+								>
+								<span class="block text-xs text-muted-foreground"
+									>Keeps a fixed list. Projects created by this connector are
+									added automatically.</span
+								>
+							</span>
+						</label>
+					</div>
+
+					<div class="flex items-center justify-between gap-3 pt-1">
+						<p class="text-xs text-muted-foreground">
+							{projectScopeMode === 'selected'
+								? 'Choose every project this connector may use.'
+								: 'Optionally add shared or restricted projects explicitly.'}
+						</p>
 						<div class="flex items-center gap-2">
 							{#if availableProjects.length > 0}
 								<Button variant="ghost" size="sm" onclick={toggleAllProjects}>
@@ -2013,9 +2089,6 @@
 							{/if}
 						</div>
 					</div>
-					<p class="text-xs text-muted-foreground">
-						Leave unchecked to allow access to all your projects.
-					</p>
 
 					{#if editingCaller && unavailableProjectCount(editingCaller) > 0}
 						<div
@@ -2031,7 +2104,9 @@
 						<div
 							class="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground"
 						>
-							No projects found. The key will cover future projects.
+							{projectScopeMode === 'all_unrestricted'
+								? 'No projects found. Standard projects you create later will be included.'
+								: 'No projects found. This connector will start with no project access.'}
 						</div>
 					{:else}
 						<div
