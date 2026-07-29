@@ -191,7 +191,7 @@ You will receive:
     {
       "question": "Specific question text - should help them think through their project",
       "category": "situation|purpose|scope|approach|coordination|knowledge",
-      "priority": "highest|high|medium",
+      "priority": "high|medium|low",
       "context": "Why we're asking based on their input",
       "expected_outcome": "What kind of project thinking this should trigger",
       "source": "onboarding_analysis",

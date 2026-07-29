@@ -15,6 +15,7 @@
  *   ALERT_COOLDOWN_MINUTES       default 60 (per alert code)
  */
 import type { createServiceClient } from '@buildos/supabase-client';
+import { logWorkerError } from './errorLogger';
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
@@ -125,6 +126,14 @@ export async function emitQueueAlerts(alerts: QueueAlert[]): Promise<void> {
 			`🚨 [QUEUE ALERT] ${alert.severity.toUpperCase()} ${alert.code}: ${alert.message}`,
 			JSON.stringify(alert.details)
 		);
+		await logWorkerError(new Error(alert.message), {
+			operationType: 'queue_alert',
+			severity: alert.severity,
+			metadata: {
+				alertCode: alert.code,
+				...alert.details
+			}
+		});
 	}
 
 	const webhookUrl = process.env.ALERT_WEBHOOK_URL;

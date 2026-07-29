@@ -3,6 +3,7 @@
 // loop must turn /health unhealthy, and silent failure streaks (the 220
 // send_sms corpses) must trip an alert.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { logWorkerError } from '../src/lib/errorLogger';
 import { SupabaseQueue } from '../src/lib/supabaseQueue';
 import {
 	__resetQueueAlertCooldowns,
@@ -15,6 +16,10 @@ vi.mock('../src/lib/supabase', () => ({
 		rpc: vi.fn(async () => ({ data: [], error: null })),
 		from: vi.fn()
 	}
+}));
+
+vi.mock('../src/lib/errorLogger', () => ({
+	logWorkerError: vi.fn(async () => undefined)
 }));
 
 describe('SupabaseQueue.getHealth', () => {
@@ -76,6 +81,7 @@ describe('SupabaseQueue.getHealth', () => {
 describe('queue alerts', () => {
 	beforeEach(() => {
 		__resetQueueAlertCooldowns();
+		vi.mocked(logWorkerError).mockReset();
 	});
 
 	function fakeAlertClient(options: {
@@ -176,6 +182,15 @@ describe('queue alerts', () => {
 			String(call[0]).includes('[QUEUE ALERT]')
 		);
 		expect(alertLogs).toHaveLength(1);
+		expect(logWorkerError).toHaveBeenCalledTimes(1);
+		expect(logWorkerError).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'test' }),
+			expect.objectContaining({
+				operationType: 'queue_alert',
+				severity: 'critical',
+				metadata: expect.objectContaining({ alertCode: 'failed_jobs:send_sms' })
+			})
+		);
 		errorSpy.mockRestore();
 	});
 });

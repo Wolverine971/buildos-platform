@@ -17,6 +17,30 @@ interface OnboardingAnalysisLLMResponse {
 	insights?: any;
 }
 
+export type OnboardingQuestionPriority = 'high' | 'medium' | 'low';
+
+/**
+ * Keep model output inside project_questions_priority_check. Older prompts
+ * advertised "highest", which is not a database value and caused the entire
+ * onboarding insert to fail when the model followed that instruction.
+ */
+export function normalizeOnboardingQuestionPriority(
+	value: unknown
+): OnboardingQuestionPriority {
+	if (typeof value !== 'string') return 'medium';
+
+	switch (value.trim().toLowerCase()) {
+		case 'highest':
+		case 'high':
+			return 'high';
+		case 'low':
+			return 'low';
+		case 'medium':
+		default:
+			return 'medium';
+	}
+}
+
 export class OnboardingAnalysisService {
 	private supabase: TypedSupabaseClient;
 	private llmService: SmartLLMService;
@@ -89,7 +113,7 @@ export class OnboardingAnalysisService {
 			user_id: userId,
 			question: q.question,
 			category: q.category,
-			priority: q.priority,
+			priority: normalizeOnboardingQuestionPriority(q.priority),
 			context: q.context,
 			expected_outcome: q.expected_outcome,
 			source: 'onboarding' as const,

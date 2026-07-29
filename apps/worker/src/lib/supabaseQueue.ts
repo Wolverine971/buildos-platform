@@ -1,6 +1,7 @@
 // apps/worker/src/lib/supabaseQueue.ts
 import type { Database, Json, QueueJobStatus, QueueJobType } from '@buildos/shared-types';
 import { queueConfig, resolveWorkerTimeout } from '../config/queueConfig';
+import { logWorkerError } from './errorLogger';
 import { updateJobProgress } from './progressTracker';
 import { ensureQueueCorrelationMetadata, getQueueCorrelationId } from './queueCorrelation';
 import { classifyQueueError } from './queueErrors';
@@ -552,6 +553,26 @@ export class SupabaseQueue {
 				console.warn(
 					`⚠️ Failure ignored for job ${job.queue_job_id} ${trace}; processing token no longer owns this job`
 				);
+			} else if (!shouldRetry) {
+				// Individual processors may add richer domain-specific telemetry, but
+				// the queue is the only layer that knows a failure is terminal. Persist
+				// that boundary centrally so a processor that only throws cannot leave
+				// its final failure visible solely in console output / queue_jobs.
+				await logWorkerError(error, {
+					userId: job.user_id ?? undefined,
+					operationType: 'queue_job_terminal_failure',
+					recordId: job.id,
+					severity: 'error',
+					metadata: {
+						jobType: job.job_type,
+						queueJobId: job.queue_job_id,
+						correlationId,
+						failureKind: failure.kind,
+						failureCode: failure.code,
+						attemptsConsumed: (job.attempts || 0) + 1,
+						maxAttempts: maxRetries
+					}
+				});
 			}
 		} finally {
 			stopHeartbeat();

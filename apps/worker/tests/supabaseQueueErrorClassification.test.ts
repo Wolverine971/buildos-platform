@@ -5,6 +5,7 @@ import {
 	TransientQueueError,
 	classifyQueueError
 } from '../src/lib/queueErrors';
+import { logWorkerError } from '../src/lib/errorLogger';
 import { SupabaseQueue } from '../src/lib/supabaseQueue';
 import { supabase } from '../src/lib/supabase';
 import { validateBriefJobData } from '../src/workers/shared/queueUtils';
@@ -14,6 +15,10 @@ vi.mock('../src/lib/supabase', () => ({
 		rpc: vi.fn(),
 		from: vi.fn()
 	}
+}));
+
+vi.mock('../src/lib/errorLogger', () => ({
+	logWorkerError: vi.fn(async () => undefined)
 }));
 
 function claimedJob(attempts = 0, maxAttempts = 3) {
@@ -77,6 +82,7 @@ async function captureFailArgs(error: unknown, attempts = 0, maxAttempts = 3) {
 describe('queue processor error classification', () => {
 	beforeEach(() => {
 		vi.mocked(supabase.rpc).mockReset();
+		vi.mocked(logWorkerError).mockReset();
 		vi.spyOn(console, 'error').mockImplementation(() => undefined);
 	});
 
@@ -93,6 +99,22 @@ describe('queue processor error classification', () => {
 			p_error_message: 'Malformed metadata',
 			p_retry: false
 		});
+		expect(logWorkerError).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'Malformed metadata' }),
+			expect.objectContaining({
+				userId: 'user-1',
+				operationType: 'queue_job_terminal_failure',
+				recordId: 'row-1',
+				metadata: expect.objectContaining({
+					jobType: 'send_notification',
+					queueJobId: 'job-1',
+					failureKind: 'permanent',
+					failureCode: 'invalid_job_payload',
+					attemptsConsumed: 1,
+					maxAttempts: 3
+				})
+			})
+		);
 	});
 
 	it('retries explicit transient and unclassified failures while attempts remain', async () => {
@@ -104,6 +126,7 @@ describe('queue processor error classification', () => {
 
 		expect(explicit.p_retry).toBe(true);
 		expect(unclassified.p_retry).toBe(true);
+		expect(logWorkerError).not.toHaveBeenCalled();
 		expect(classifyQueueError(new Error('Connection reset'))).toMatchObject({
 			kind: 'transient',
 			code: 'unclassified'

@@ -175,20 +175,33 @@ If a same-day warmup already exists, create a suffixed variant and preserve that
 
 Use the Stage 1 template in this file and keep it updated as you work.
 
-## Phase 0.5: Verify Active Instagram Account
+## Phase 0.5: Select the Right Chrome Profile + Verify Account
 
-The user has multiple Instagram accounts. Confirm you are on **@djwayne3** before scanning.
+The BuildOS warmup runs in Chrome profile directory `Default`, display name **"djwayne35"** — DJ's main profile, which has its own Claude extension instance. Note this profile is **shared** with DJ's personal Instagram accounts, so unlike the 9takes/Cadre setups, @djwayne3 may not be the active account when you arrive; switching to @djwayne3 **within this profile** is sanctioned. Never run the scan from a different account. (Machine-level mapping: `/Users/djwayne/9takes/docs/instagram/instagram-cron-browser-setup.md`.)
 
-1. Navigate to `https://www.instagram.com/`
-2. Check the active username from at least two signals: avatar alt text (`djwayne3's profile picture`), profile link `/djwayne3/`, or sidebar/top-right widget text.
+1. Call `list_connected_browsers`. This is an unattended/cron command: do **not** ask the user to pick — this mapping is the standing instruction. `select_browser` the one whose name matches the djwayne35 profile (NOT the 9takes.com or thecadretraining.com browsers).
+2. Navigate to `https://www.instagram.com/` and verify the active username from at least two signals: avatar alt text (`djwayne3's profile picture`), profile link `/djwayne3/`, or sidebar/top-right widget text.
 3. If the account is not `@djwayne3`, switch accounts using the Instagram skill's account-switching playbook:
    - Preferred logged-in path: Settings gear -> **Switch accounts** -> `djwayne3` row (`div[role="button"]`).
    - Fallback logged-out picker path: click the visible `djwayne3` account row/span directly.
-4. After switching, reload once and verify the same two account signals before scanning.
-5. If `djwayne3` is not visible in the picker, stop and log `browser_limitation: instagram_account_not_in_picker`.
-6. If `djwayne3` appears but `/notifications/` or another protected route redirects to `/accounts/login/`, stop and log `browser_limitation: instagram_session_logged_out`; DJ must refresh the session manually.
+   After switching, reload once and re-verify the same two signals before scanning.
+4. If `djwayne3` is not visible in the picker, stop and log `browser_limitation: instagram_account_not_in_picker`.
+5. If `djwayne3` appears but a protected route redirects to `/accounts/login/`, stop and log `browser_limitation: instagram_session_logged_out`.
+6. If no connected browser matches the djwayne35 profile, stop and log `browser_limitation: djwayne35_chrome_profile_not_connected` — do NOT scan from the 9takes or Cadre browsers.
 
-Do not continue until the active account is confirmed.
+When blocked, your final message is delivered to DJ's Telegram — put the action first:
+
+```text
+🔑 ACTION NEEDED — @djwayne3 warmup BLOCKED [date]. No scan performed.
+
+Fix (2 min): Open Chrome → "djwayne35" profile (Default) → instagram.com →
+log in as @djwayne3 → CHECK "Save login info" →
+confirm the Claude extension is signed in and instagram.com is allowed.
+
+Reason: [browser_limitation code + one line of detail]
+```
+
+Do not continue until the active account is confirmed as `@djwayne3`.
 
 ## Phase 1: Load Context
 
