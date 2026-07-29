@@ -273,8 +273,19 @@
 		}
 	}
 
+	let projectChoices = $derived(
+		projectScopeMode === 'selected'
+			? availableProjects
+			: availableProjects.filter(
+					(project) =>
+						project.is_shared ||
+						project.external_agent_access === 'restricted' ||
+						selectedProjectIds.includes(project.id)
+				)
+	);
 	let allProjectsSelected = $derived(
-		availableProjects.length > 0 && selectedProjectIds.length === availableProjects.length
+		projectChoices.length > 0 &&
+			projectChoices.every((project) => selectedProjectIds.includes(project.id))
 	);
 
 	onMount(() => {
@@ -481,9 +492,12 @@
 
 	function toggleAllProjects() {
 		if (allProjectsSelected) {
-			selectedProjectIds = [];
+			const choiceIds = new Set(projectChoices.map((project) => project.id));
+			selectedProjectIds = selectedProjectIds.filter((id) => !choiceIds.has(id));
 		} else {
-			selectedProjectIds = availableProjects.map((p) => p.id);
+			selectedProjectIds = Array.from(
+				new Set([...selectedProjectIds, ...projectChoices.map((project) => project.id)])
+			);
 		}
 	}
 
@@ -2073,7 +2087,7 @@
 								: 'Optionally add shared or restricted projects explicitly.'}
 						</p>
 						<div class="flex items-center gap-2">
-							{#if availableProjects.length > 0}
+							{#if projectChoices.length > 0}
 								<Button variant="ghost" size="sm" onclick={toggleAllProjects}>
 									{allProjectsSelected ? 'Deselect All' : 'Select All'}
 								</Button>
@@ -2100,19 +2114,19 @@
 						</div>
 					{/if}
 
-					{#if availableProjects.length === 0}
+					{#if projectChoices.length === 0}
 						<div
 							class="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground"
 						>
 							{projectScopeMode === 'all_unrestricted'
-								? 'No projects found. Standard projects you create later will be included.'
+								? 'No shared or restricted projects need an explicit grant.'
 								: 'No projects found. This connector will start with no project access.'}
 						</div>
 					{:else}
 						<div
 							class="grid gap-2 sm:grid-cols-2 max-h-48 overflow-y-auto rounded-lg border border-border p-2"
 						>
-							{#each availableProjects as project (project.id)}
+							{#each projectChoices as project (project.id)}
 								<label
 									class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
 								>

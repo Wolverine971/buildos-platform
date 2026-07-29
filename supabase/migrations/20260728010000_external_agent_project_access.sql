@@ -11,27 +11,51 @@ ALTER TABLE public.onto_projects
 	ADD COLUMN IF NOT EXISTS external_agent_access text NOT NULL DEFAULT 'standard'
 		CHECK (external_agent_access IN ('standard', 'restricted'));
 
-ALTER TABLE public.external_agent_callers
-	ADD COLUMN IF NOT EXISTS project_scope_mode text NOT NULL DEFAULT 'all_unrestricted'
-		CHECK (project_scope_mode IN ('all_unrestricted', 'selected'));
-
-ALTER TABLE public.agent_oauth_grants
-	ADD COLUMN IF NOT EXISTS project_scope_mode text NOT NULL DEFAULT 'all_unrestricted'
-		CHECK (project_scope_mode IN ('all_unrestricted', 'selected'));
-
 -- Preserve the meaning of existing connector records. A JSON array was the
 -- legacy selected-project allowlist; null/missing meant all visible projects.
-UPDATE public.external_agent_callers
-SET project_scope_mode = CASE
-	WHEN jsonb_typeof(policy -> 'allowed_project_ids') = 'array' THEN 'selected'
-	ELSE 'all_unrestricted'
-END;
+-- Run each backfill only when its column is first introduced. This matters when
+-- retrying a partially applied migration: new all_unrestricted records may use
+-- an array for explicit shared/restricted exceptions and must not be reclassified
+-- as selected on a later retry.
+DO $migration$
+BEGIN
+	IF NOT EXISTS (
+		SELECT 1
+		FROM information_schema.columns
+		WHERE table_schema = 'public'
+			AND table_name = 'external_agent_callers'
+			AND column_name = 'project_scope_mode'
+	) THEN
+		ALTER TABLE public.external_agent_callers
+			ADD COLUMN project_scope_mode text NOT NULL DEFAULT 'all_unrestricted'
+				CHECK (project_scope_mode IN ('all_unrestricted', 'selected'));
 
-UPDATE public.agent_oauth_grants
-SET project_scope_mode = CASE
-	WHEN jsonb_typeof(allowed_project_ids) = 'array' THEN 'selected'
-	ELSE 'all_unrestricted'
-END;
+		UPDATE public.external_agent_callers
+		SET project_scope_mode = CASE
+			WHEN jsonb_typeof(policy -> 'allowed_project_ids') = 'array' THEN 'selected'
+			ELSE 'all_unrestricted'
+		END;
+	END IF;
+
+	IF NOT EXISTS (
+		SELECT 1
+		FROM information_schema.columns
+		WHERE table_schema = 'public'
+			AND table_name = 'agent_oauth_grants'
+			AND column_name = 'project_scope_mode'
+	) THEN
+		ALTER TABLE public.agent_oauth_grants
+			ADD COLUMN project_scope_mode text NOT NULL DEFAULT 'all_unrestricted'
+				CHECK (project_scope_mode IN ('all_unrestricted', 'selected'));
+
+		UPDATE public.agent_oauth_grants
+		SET project_scope_mode = CASE
+			WHEN jsonb_typeof(allowed_project_ids) = 'array' THEN 'selected'
+			ELSE 'all_unrestricted'
+		END;
+	END IF;
+END
+$migration$;
 
 CREATE TABLE IF NOT EXISTS public.external_agent_project_permissions (
 	id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -114,7 +138,6 @@ INNER JOIN public.onto_projects existing_project
 	AND existing_project.deleted_at IS NULL
 WHERE g.project_scope_mode = 'selected'
 	AND jsonb_typeof(g.allowed_project_ids) = 'array'
-	AND project_id.value ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.external_agent_project_permissions (
@@ -148,7 +171,7 @@ INNER JOIN public.onto_projects existing_project
 WHERE c.project_scope_mode = 'selected'
 	AND jsonb_typeof(c.policy -> 'allowed_project_ids') = 'array'
 	AND COALESCE(c.metadata ->> 'auth_scheme', '') <> 'oauth'
-	AND project_id.value ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+	AND c.caller_key NOT LIKE 'oauth:%'
 	AND NOT EXISTS (
 		SELECT 1
 		FROM public.external_agent_project_permissions permission

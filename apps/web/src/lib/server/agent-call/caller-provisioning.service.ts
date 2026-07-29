@@ -936,6 +936,38 @@ export class CallerProvisioningService {
 		const buildosAgent = await ensureUserBuildosAgent(this.admin, userId);
 		const visibleProjects = await this.loadVisibleProjects(userId);
 		const visibleProjectIds = new Set(visibleProjects.map((project) => project.id));
+		const { data: projectAccessRows, error: projectAccessError } =
+			visibleProjects.length > 0
+				? await this.admin
+						.from('onto_projects')
+						.select('id, external_agent_access')
+						.in(
+							'id',
+							visibleProjects.map((project) => project.id)
+						)
+				: { data: [], error: null };
+		if (projectAccessError) {
+			throw new CallerProvisioningError(
+				'Failed to load project connector settings',
+				500,
+				projectAccessError.message
+			);
+		}
+		const externalAccessByProjectId = new Map<string, 'standard' | 'restricted'>(
+			(projectAccessRows ?? []).flatMap(
+				(row: { id?: unknown; external_agent_access?: unknown }) =>
+					typeof row.id === 'string'
+						? [
+								[
+									row.id,
+									row.external_agent_access === 'standard'
+										? 'standard'
+										: 'restricted'
+								] as const
+							]
+						: []
+			)
+		);
 		const visibleProjectNames = new Map(
 			visibleProjects.map((project) => [project.id, project.name])
 		);
@@ -1037,7 +1069,9 @@ export class CallerProvisioningService {
 			available_projects: visibleProjects.map((project) => ({
 				id: project.id,
 				name: project.name,
-				description: project.description ?? null
+				description: project.description ?? null,
+				is_shared: project.is_shared,
+				external_agent_access: externalAccessByProjectId.get(project.id) ?? 'restricted'
 			}))
 		};
 	}

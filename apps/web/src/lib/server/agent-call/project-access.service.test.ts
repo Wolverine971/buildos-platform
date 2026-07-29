@@ -63,7 +63,7 @@ describe('external agent project access policy', () => {
 		expect(scope.write_project_ids).toEqual(['owned-standard', 'shared-standard']);
 	});
 
-	it('keeps selected connectors fixed and honors the legacy mirror during migration', () => {
+	it('keeps selected connectors fixed and does not authorize stale legacy mirror entries', () => {
 		const scope = computeEffectiveAgentProjectScope({
 			scope: { mode: 'read_only', project_ids: ['owned-restricted'] },
 			projectScopeMode: 'selected',
@@ -71,7 +71,7 @@ describe('external agent project access policy', () => {
 			permissions: [{ project_id: 'shared-standard', access_mode: 'read_only' }]
 		});
 
-		expect(scope.project_ids).toEqual(['owned-restricted', 'shared-standard']);
+		expect(scope.project_ids).toEqual(['shared-standard']);
 		expect(scope.write_project_ids).toEqual([]);
 	});
 });

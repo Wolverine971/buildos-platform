@@ -32,6 +32,7 @@ vi.mock('./project-access.service', () => ({
 type State = {
 	callerRows: ExternalAgentCallerRecord[];
 	bootstrapRows: AgentCallBootstrapLinkRecord[];
+	projectAccessRows?: Array<{ id: string; external_agent_access: 'standard' | 'restricted' }>;
 	sessionRows?: Array<Record<string, unknown>>;
 	executionRows?: Array<Record<string, unknown>>;
 	securityEventRows?: Array<Record<string, unknown>>;
@@ -321,6 +322,23 @@ class AgentCallUsageQueryBuilderMock {
 function createAdminMock(state: State) {
 	return {
 		from: vi.fn((table: string) => {
+			if (table === 'onto_projects') {
+				const builder = {
+					select: () => builder,
+					in: (_field: string, ids: string[]) =>
+						Promise.resolve({
+							data:
+								state.projectAccessRows ??
+								ids.map((id) => ({
+									id,
+									external_agent_access: 'standard' as const
+								})),
+							error: null
+						})
+				};
+				return builder;
+			}
+
 			if (table === 'external_agent_callers') {
 				return new ExternalAgentCallersQueryBuilderMock(state);
 			}
@@ -370,7 +388,8 @@ describe('CallerProvisioningService', () => {
 		fetchProjectSummariesMock.mockResolvedValue([
 			{
 				id: '44444444-4444-4444-4444-444444444444',
-				name: 'Project One'
+				name: 'Project One',
+				is_shared: false
 			}
 		]);
 		hashAgentCallerTokenMock.mockReturnValue('hashed-token');
@@ -488,7 +507,14 @@ describe('CallerProvisioningService', () => {
 		]);
 	});
 
-	it('lists existing callers without returning bearer tokens', async () => {
+	it('lists callers and includes project access metadata without returning bearer tokens', async () => {
+		fetchProjectSummariesMock.mockResolvedValueOnce([
+			{
+				id: '44444444-4444-4444-4444-444444444444',
+				name: 'Project One',
+				is_shared: true
+			}
+		]);
 		const state: State = {
 			callerRows: [
 				{
@@ -506,6 +532,12 @@ describe('CallerProvisioningService', () => {
 					last_used_at: null,
 					created_at: '2026-04-28T00:00:00.000Z',
 					updated_at: '2026-04-28T00:00:00.000Z'
+				}
+			],
+			projectAccessRows: [
+				{
+					id: '44444444-4444-4444-4444-444444444444',
+					external_agent_access: 'restricted'
 				}
 			],
 			bootstrapRows: []
@@ -528,7 +560,9 @@ describe('CallerProvisioningService', () => {
 			{
 				id: '44444444-4444-4444-4444-444444444444',
 				name: 'Project One',
-				description: null
+				description: null,
+				is_shared: true,
+				external_agent_access: 'restricted'
 			}
 		]);
 		expect(JSON.stringify(response)).not.toContain('bearer_token');

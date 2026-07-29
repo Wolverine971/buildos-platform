@@ -40,21 +40,9 @@ export function computeEffectiveAgentProjectScope(params: {
 	projects: ProjectAccessRecord[];
 	permissions: ExplicitProjectPermission[];
 }): EffectiveAgentProjectScope {
-	const legacySelectedIds = new Set(uniqueStrings(params.scope.project_ids));
 	const permissionByProject = new Map<string, BuildosAgentProjectAccessMode>();
 	for (const permission of params.permissions) {
 		permissionByProject.set(permission.project_id, permission.access_mode);
-	}
-
-	// During the compatibility window, a selected connector's legacy array is
-	// also an explicit grant. The migration materializes the same rows, so this
-	// fallback can be removed after all environments have completed the rollout.
-	if (params.projectScopeMode === 'selected') {
-		for (const projectId of legacySelectedIds) {
-			if (!permissionByProject.has(projectId)) {
-				permissionByProject.set(projectId, params.scope.mode);
-			}
-		}
 	}
 
 	const projectIds: string[] = [];
