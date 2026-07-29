@@ -86,6 +86,7 @@ const mocks = vi.hoisted(() => {
 	}
 
 	const sendEmailNotification = vi.fn();
+	const sendSMSNotification = vi.fn();
 
 	const noopLogger: any = {
 		child: () => noopLogger,
@@ -96,7 +97,14 @@ const mocks = vi.hoisted(() => {
 		fatal: () => {}
 	};
 
-	return { state, updates, createFakeClient, sendEmailNotification, noopLogger };
+	return {
+		state,
+		updates,
+		createFakeClient,
+		sendEmailNotification,
+		sendSMSNotification,
+		noopLogger
+	};
 });
 
 vi.mock('@buildos/supabase-client', () => ({
@@ -114,7 +122,7 @@ vi.mock('../src/workers/notification/emailAdapter.js', () => ({
 }));
 
 vi.mock('../src/workers/notification/smsAdapter.js', () => ({
-	sendSMSNotification: vi.fn()
+	sendSMSNotification: mocks.sendSMSNotification
 }));
 
 vi.mock('../src/workers/notification/preferenceChecker.js', () => ({
@@ -168,6 +176,7 @@ function makeJob(): any {
 beforeEach(() => {
 	resetDelivery();
 	mocks.sendEmailNotification.mockReset();
+	mocks.sendSMSNotification.mockReset();
 });
 
 describe('notification retry semantics', () => {
@@ -200,6 +209,29 @@ describe('notification retry semantics', () => {
 		expect(mocks.state.delivery.status).toBe('sent');
 		expect(mocks.state.delivery.attempts).toBe(2);
 		expect(mocks.state.delivery.external_id).toBe('ext-1');
+	});
+
+	it('keeps an accepted SMS pending until the provider callback confirms it was sent', async () => {
+		resetDelivery({
+			channel: 'sms',
+			channel_identifier: '+12125550123'
+		});
+		mocks.sendSMSNotification.mockResolvedValueOnce({
+			success: true,
+			external_id: 'sms-message-1',
+			outcome: 'queued'
+		});
+		const job = makeJob();
+		job.data.channel = 'sms';
+
+		await processNotification(job);
+
+		expect(mocks.sendSMSNotification).toHaveBeenCalledTimes(1);
+		expect(mocks.state.delivery.status).toBe('pending');
+		expect(mocks.state.delivery.attempts).toBe(1);
+		expect(mocks.state.delivery.external_id).toBe('sms-message-1');
+		expect(mocks.state.delivery.sent_at).toBeNull();
+		expect(mocks.state.delivery.last_error).toBeNull();
 	});
 
 	it('failure on the final attempt marks the delivery terminally failed', async () => {

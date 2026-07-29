@@ -334,6 +334,7 @@ interface DeliveryResult {
 	success: boolean;
 	external_id?: string;
 	error?: string;
+	outcome?: 'sent' | 'queued';
 }
 
 async function getUnreadPushCount(
@@ -986,16 +987,29 @@ export async function processNotification(
 		};
 
 		if (result.success) {
-			updateData.status = 'sent';
-			updateData.sent_at = new Date().toISOString();
+			const isQueuedForProvider = result.outcome === 'queued';
+			updateData.status = isQueuedForProvider ? 'pending' : 'sent';
+			if (isQueuedForProvider) {
+				updateData.sent_at = null;
+				updateData.delivered_at = null;
+				updateData.failed_at = null;
+				updateData.last_error = null;
+			} else {
+				updateData.sent_at = new Date().toISOString();
+			}
 			if (result.external_id) {
 				updateData.external_id = result.external_id;
 			}
 
-			jobLogger.info('Notification sent successfully', {
-				durationMs,
-				externalId: result.external_id
-			});
+			jobLogger.info(
+				isQueuedForProvider
+					? 'Notification queued for provider delivery'
+					: 'Notification sent successfully',
+				{
+					durationMs,
+					externalId: result.external_id
+				}
+			);
 		} else if (attemptsExhausted) {
 			updateData.status = 'failed';
 			updateData.failed_at = new Date().toISOString();

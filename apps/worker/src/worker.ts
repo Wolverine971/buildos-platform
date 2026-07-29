@@ -116,7 +116,7 @@ async function processSMS(job: ProcessingJob<SendSMSJobMetadata>) {
 		const legacyJob = createLegacyJob(job);
 
 		await processSMSJob(legacyJob);
-		await job.log('✅ SMS sent successfully');
+		await job.log('✅ SMS processing completed');
 
 		return { success: true };
 	} catch (error) {

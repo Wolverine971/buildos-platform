@@ -55,10 +55,11 @@ BEGIN
     v_job_id := add_queue_job(
       p_user_id := p_user_id,
       p_job_type := 'send_sms',
-      p_metadata := jsonb_build_object(
+      p_metadata := COALESCE(p_metadata, '{}'::jsonb) || jsonb_build_object(
         'message_id', v_message_id,
         'phone_number', p_phone_number,
         'message', p_message,
+        'user_id', p_user_id,
         'priority', p_priority
       ),
       p_scheduled_for := COALESCE(p_scheduled_for, NOW()),

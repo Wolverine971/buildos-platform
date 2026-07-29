@@ -1,16 +1,10 @@
 // apps/worker/src/workers/smsWorker.ts
 /**
- * ⚠️ DORMANT CHANNEL — SMS is staged but NOT integrated (2026-07-23 audit).
+ * SMS delivery worker.
  *
- * No send_sms job has ever completed in production (220/220 failed all-time).
- * Known blocker to fix BEFORE enabling: the `queue_sms_message` SQL function
- * (migration 20260421000000_notification_risk_cleanup.sql) builds job metadata
- * WITHOUT `user_id`, while `validateSMSJobData` requires it — every job fails
- * validation. Other pre-launch findings are documented in
- * docs/operations/worker/queue-architecture-audit-verification-2026-07-23.md
- * (N1–N3, N21): daily-SMS timezone day-boundary bug, non-idempotent retries,
- * no Twilio idempotency, and notification status reporting 'sent' on queue.
- * Keep this code staged; do not delete.
+ * The notification-to-SMS payload contract was repaired on 2026-07-29. The
+ * daily calendar SMS scheduler still has separate pre-launch findings tracked
+ * in docs/operations/worker/queue-architecture-audit-verification-2026-07-23.md.
  */
 import type { Json } from '@buildos/shared-types';
 import type { LegacyJob } from './shared/jobAdapter';
@@ -62,7 +56,7 @@ if (twilioConfig.accountSid && twilioConfig.authToken && twilioConfig.messagingS
 
 export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 	// Validate job data immediately to catch errors early
-	const validatedData = validateSMSJobData(job.data);
+	const validatedData = validateSMSJobData(job.data, job.data.userId);
 
 	// Check if SMS service is available
 	if (!twilioClient || !smsService) {
@@ -286,6 +280,14 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 				scheduled_sms_id: scheduled_sms_id || undefined
 			}
 		});
+		const providerStatus = String(twilioMessage.status || 'queued');
+		const providerAcceptedAt = new Date().toISOString();
+		const initialMessageStatus =
+			providerStatus === 'delivered'
+				? 'delivered'
+				: providerStatus === 'sending' || providerStatus === 'sent'
+					? 'sent'
+					: 'queued';
 
 		await job.updateProgress({
 			current: scheduled_sms_id ? 3 : 2,
@@ -297,9 +299,11 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 		await supabase
 			.from('sms_messages')
 			.update({
-				status: 'sent',
+				status: initialMessageStatus,
 				twilio_sid: twilioMessage.sid,
-				sent_at: new Date().toISOString()
+				twilio_status: providerStatus,
+				sent_at: initialMessageStatus === 'queued' ? null : providerAcceptedAt,
+				delivered_at: initialMessageStatus === 'delivered' ? providerAcceptedAt : null
 			})
 			.eq('id', message_id);
 

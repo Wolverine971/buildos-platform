@@ -219,7 +219,7 @@ export function validateBriefJobData(data: unknown): BriefJobData {
  * Validate SMSJobData and throw if invalid
  * Ensures data integrity before SMS job processing
  */
-export function validateSMSJobData(data: unknown): SMSJobData {
+export function validateSMSJobData(data: unknown, queueUserId?: string): SMSJobData {
 	if (!data || typeof data !== 'object') {
 		throw new PermanentQueueError(
 			'invalid_job_payload',
@@ -250,11 +250,11 @@ export function validateSMSJobData(data: unknown): SMSJobData {
 		);
 	}
 
-	if (!d.user_id || typeof d.user_id !== 'string') {
-		// KNOWN MISMATCH (SMS is dormant): the `queue_sms_message` SQL function
-		// never puts user_id in the job metadata, so every job it enqueues dies
-		// here. When integrating SMS, add user_id to that function's
-		// jsonb_build_object (or fall back to the queue row's user_id column).
+	// The queue row is the canonical owner identity. Prefer it over duplicated
+	// metadata so legacy payloads without user_id remain processable and a stale
+	// metadata value cannot send on behalf of a different user.
+	const userId = queueUserId || d.user_id;
+	if (!userId || typeof userId !== 'string') {
 		throw new PermanentQueueError(
 			'invalid_job_payload',
 			'Invalid SMS job data: user_id is required and must be string'
@@ -286,7 +286,7 @@ export function validateSMSJobData(data: unknown): SMSJobData {
 		);
 	}
 
-	return data as SMSJobData;
+	return { ...d, user_id: userId } as unknown as SMSJobData;
 }
 
 /**

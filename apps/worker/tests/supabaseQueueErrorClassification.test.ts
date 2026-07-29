@@ -8,7 +8,7 @@ import {
 import { logWorkerError } from '../src/lib/errorLogger';
 import { SupabaseQueue } from '../src/lib/supabaseQueue';
 import { supabase } from '../src/lib/supabase';
-import { validateBriefJobData } from '../src/workers/shared/queueUtils';
+import { validateBriefJobData, validateSMSJobData } from '../src/workers/shared/queueUtils';
 
 vi.mock('../src/lib/supabase', () => ({
 	supabase: {
@@ -145,10 +145,40 @@ describe('queue processor error classification', () => {
 
 	it('marks shared payload validation failures as permanent', () => {
 		expect(() => validateBriefJobData(null)).toThrow(PermanentQueueError);
+		expect(() =>
+			validateSMSJobData({
+				message_id: 'message-1',
+				phone_number: '+12125550123',
+				message: 'Hello'
+			})
+		).toThrow(PermanentQueueError);
 		expect(classifyQueueError(catchValidationError())).toMatchObject({
 			kind: 'permanent',
 			code: 'invalid_job_payload'
 		});
+	});
+
+	it('normalizes the canonical queue user ID into legacy SMS payloads', () => {
+		const legacyPayload = validateSMSJobData(
+			{
+				message_id: 'message-1',
+				phone_number: '+12125550123',
+				message: 'Hello'
+			},
+			'canonical-queue-user'
+		);
+		const stalePayload = validateSMSJobData(
+			{
+				message_id: 'message-1',
+				phone_number: '+12125550123',
+				message: 'Hello',
+				user_id: 'stale-metadata-user'
+			},
+			'canonical-queue-user'
+		);
+
+		expect(legacyPayload.user_id).toBe('canonical-queue-user');
+		expect(stalePayload.user_id).toBe('canonical-queue-user');
 	});
 });
 

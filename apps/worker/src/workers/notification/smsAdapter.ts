@@ -1,12 +1,5 @@
 // apps/worker/src/workers/notification/smsAdapter.ts
 /**
- * ⚠️ DORMANT CHANNEL — SMS is staged but NOT integrated (2026-07-23 audit).
- * `queue_sms_message` (SQL) omits `user_id` from the send_sms job metadata, so
- * every queued SMS fails worker validation — this adapter's "success" only
- * means "queued", never "delivered". Fix list before enabling:
- * docs/operations/worker/queue-architecture-audit-verification-2026-07-23.md
- * (N1, N21). Keep staged; do not delete.
- *
  * SMS Adapter for Notification System
  *
  * Sends notification SMS messages via existing Twilio infrastructure
@@ -27,6 +20,8 @@ export interface DeliveryResult {
 	success: boolean;
 	external_id?: string;
 	error?: string;
+	/** The adapter completed, but provider delivery is still asynchronous. */
+	outcome?: 'sent' | 'queued';
 }
 
 type SMSPriority = 'low' | 'normal' | 'high' | 'urgent';
@@ -760,7 +755,8 @@ export async function sendSMSNotification(
 			p_metadata: {
 				notification_delivery_id: delivery.id,
 				event_type: delivery.payload.event_type || delivery.payload.eventType,
-				event_id: delivery.event_id
+				event_id: delivery.event_id,
+				correlationId: delivery.payload.correlationId
 			}
 		});
 
@@ -794,7 +790,8 @@ export async function sendSMSNotification(
 
 		return {
 			success: true,
-			external_id: messageId // Use sms_messages ID as external reference
+			external_id: messageId, // Use sms_messages ID as external reference
+			outcome: 'queued'
 		};
 	} catch (error: any) {
 		smsLogger.error('Failed to send SMS notification', error, {

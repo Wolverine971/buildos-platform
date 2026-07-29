@@ -23,6 +23,18 @@ describe('queue SQL contracts', () => {
 		expect(sql).toContain('v_metadata');
 	});
 
+	it('includes the canonical user ID and caller trace context in send_sms metadata', () => {
+		const sourceSql = readRepoFile('packages/shared-types/src/functions/queue_sms_message.sql');
+		const migrationSql = readRepoFile(
+			'supabase/migrations/20260729010000_fix_sms_job_payload_contract.sql'
+		);
+
+		for (const sql of [sourceSql, migrationSql]) {
+			expect(sql).toContain("COALESCE(p_metadata, '{}'::jsonb) || jsonb_build_object(");
+			expect(sql).toContain("'user_id', p_user_id");
+		}
+	});
+
 	it('claims lower numeric priority jobs first and assigns a processing token', () => {
 		const sql = readRepoFile('packages/shared-types/src/functions/claim_pending_jobs.sql');
 
