@@ -70,6 +70,7 @@ import {
 	buildToolValidationRepairInstruction,
 	collectDocumentInventoryFromReads,
 	collectGatewayWriteIntentOps,
+	countDistinctSuccessfulWriteTargets,
 	hasGatewayCreateFieldNoProgressFailure
 } from './repair-instructions';
 import {
@@ -322,13 +323,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		commissionedWriteToolNames.length > 0
 			? Math.max(1, Math.floor(params.commissionedWriteMinimumCount ?? 1))
 			: 0;
+	// Count distinct durable targets, not raw successful calls: two updates to
+	// the same document are one projection and must not satisfy a 2-write floor.
 	const countSuccessfulCommissionedWrites = (): number =>
-		toolExecutions.filter(
-			(execution) =>
-				commissionedWriteToolNames.includes(execution.toolCall.function?.name ?? '') &&
-				!isDuplicateWriteSkippedExecution(execution) &&
-				didGatewayExecSucceed(execution)
-		).length;
+		countDistinctSuccessfulWriteTargets(toolExecutions, commissionedWriteToolNames);
 	const mutationRequested =
 		params.turnIntent?.requiresWrite === true || commissionedWriteToolNames.length > 0;
 	const expectedWriteToolNames = getWriteToolNamesForTurnIntent(
@@ -1373,6 +1371,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					expectedWriteToolNames,
 					allowClarifyingQuestionWithoutWrite: commissionedWriteToolNames.length === 0,
 					minimumSuccessfulWrites: commissionedWriteMinimumCount,
+					commissionedWriteToolNames,
 					gatewayModeActive,
 					projectCreateStopRepairInjected,
 					gatewayMutationStopRepairInjected,
@@ -1393,11 +1392,16 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						gatewayMutationStopRepairInjected = true;
 						// A prose-only stop cannot satisfy a server-owned mutation commission.
 						// Restrict the repair pass to the pending write alternatives and require
-						// a tool call, just as the near-budget write carve-out does.
-						const mutationPass = buildNearBudgetWriteIntentToolPass();
-						if (mutationPass) {
-							writeIntentCarveOutUsed = true;
-							forceWriteIntentToolPass = mutationPass;
+						// a tool call, just as the near-budget write carve-out does. Only
+						// commission turns get the forced no-prose pass; an ordinary mutation
+						// stop keeps the instruction-only repair so the model can still ask a
+						// blocker question instead of being forced into a guessed write.
+						if (commissionedWriteToolNames.length > 0) {
+							const mutationPass = buildNearBudgetWriteIntentToolPass();
+							if (mutationPass) {
+								writeIntentCarveOutUsed = true;
+								forceWriteIntentToolPass = mutationPass;
+							}
 						}
 					} else if (noToolCallFinalization.kind === 'research_no_persist') {
 						researchNoPersistStopRepairInjected = true;

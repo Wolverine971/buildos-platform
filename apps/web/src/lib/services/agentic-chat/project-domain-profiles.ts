@@ -126,6 +126,12 @@ function shouldEnableLivingReference(
 
 const ADVICE_OR_PROPOSAL_PATTERN =
 	/\?|\b(?:what\s+should|what\s+happens?|how\s+should|give\s+me|show\s+me|tell\s+me|explain|summari[sz]e|recap|compare|analy[sz]e|evaluate|critique|suggest|brainstorm|options?|possibilities|help\s+me\s+decide|could\s+(?:happen|be)|would\s+it)\b/i;
+// Musings phrased without a question mark are still questions, not canon:
+// "Do you think Mara would forgive him", "I wonder if Ilyan should betray
+// Mara", "Maybe Ilyan should refuse". Never convert speculation into a
+// commissioned durable write.
+const SPECULATION_PATTERN =
+	/\b(?:do\s+you\s+think|don'?t\s+you\s+think|i\s+wonder|i'?m\s+wondering|what\s+if|should\s+(?:i|we)\b)|^\s*(?:maybe|perhaps|possibly)\b/i;
 const GENERATED_CONTENT_REQUEST_PATTERN =
 	/\b(?:draft|write|generate|compose|continue|outline)\b[\s\S]{0,45}\b(?:scene|chapter|passage|paragraph|dialogue|prose|version|draft|outline)\b/i;
 const CASUAL_ACKNOWLEDGEMENT_PATTERN =
@@ -141,6 +147,7 @@ export function looksLikeLivingWorkspaceCaptureTurn(message: string | null | und
 	if (!normalized || normalized.length < 3) return false;
 	return !(
 		ADVICE_OR_PROPOSAL_PATTERN.test(normalized) ||
+		SPECULATION_PATTERN.test(normalized) ||
 		GENERATED_CONTENT_REQUEST_PATTERN.test(normalized) ||
 		CASUAL_ACKNOWLEDGEMENT_PATTERN.test(normalized)
 	);
@@ -397,8 +404,16 @@ type FictionStructureSourceSentence = {
 	sentence: string;
 };
 
-const FICTION_CHARACTER_SOURCE_SENTENCE =
-	/\b(\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2})\s+(?:is|was)\s+(?:an?|the)\s+[^.!?]+[.!?]?/u;
+// "Full Name is a/an ..." introductions only. Multi-word proper nouns led by
+// or preceded by a determiner ("The Salt Archive is a vault", "the Iron
+// Council was the ruling body") describe places, objects, and institutions —
+// never demand a character sheet for those.
+const CHARACTER_NAME_DETERMINER_EXCLUSION =
+	/(?:The|A|An|This|That|These|Those|Our|My|Your|Their|His|Her|Its|In|On|At|If|When|While|After|Before)/;
+const FICTION_CHARACTER_SOURCE_SENTENCE = new RegExp(
+	String.raw`(?<!\b(?:[Tt]he|[Aa]n?|[Tt]his|[Tt]hat|[Tt]hese|[Tt]hose|[Oo]ur|[Mm]y|[Yy]our|[Tt]heir|[Hh]is|[Hh]er|[Ii]ts)\s+)\b(?!${CHARACTER_NAME_DETERMINER_EXCLUSION.source}\b)(\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2})\s+(?:is|was)\s+(?:an?|the)\s+[^.!?]+[.!?]?`,
+	'u'
+);
 const FICTION_STRUCTURE_SOURCE_INTRO =
 	/\b(?:the\s+)?(?:book|story|novel|screenplay|plot)\s+(?:has|uses|follows|contains|is\s+(?:divided|organized|structured)\s+into)\b/i;
 const FICTION_NAMED_STRUCTURE_UNIT =
@@ -491,6 +506,14 @@ export function applyFictionStructureUpdateSourceDefault<T extends JsonRecord>(
 ): T {
 	const sourceMessage = normalizeText(userMessage);
 	if (!sourceMessage || !FICTION_STRUCTURE_UNIT_SIGNAL.test(sourceMessage)) return args;
+	// Augment only when the model's content sits in a top-level field this
+	// helper writes back to. If the content arrived under a nested alias the
+	// caller failed to hoist, skipping is a safe no-op — augmenting would
+	// build a canon-only body that replaces the model's actual update.
+	const hasTopLevelContent =
+		(typeof args.content === 'string' && args.content.trim().length > 0) ||
+		(typeof args.body_markdown === 'string' && args.body_markdown.trim().length > 0);
+	if (!hasTopLevelContent) return args;
 	return addAuthorCanonSentences(args, [sourceMessage]) as T;
 }
 

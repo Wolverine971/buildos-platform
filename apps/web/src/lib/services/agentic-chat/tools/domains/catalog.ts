@@ -760,20 +760,27 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 		name: 'Fiction Writing',
 		parentIds: ['writing'],
 		aliases: [
+			// Alias matching is order-free bag-of-words, so every alias must
+			// carry an unambiguous fiction token. Generic phrases ("story
+			// development", "character development", "story beats", "what
+			// happens next", "character options") hit marketing and coaching
+			// messages constantly and would preload fiction_story_craft over the
+			// correct skill. Established fiction projects route via their
+			// persisted workspace affinity, not these aliases.
 			'fiction writing',
 			'novel writing',
 			'book writing',
 			'screenplay writing',
-			'story development',
+			'novel character',
+			'novel chapter',
+			'novel plot',
+			'protagonist',
+			'antagonist',
 			'character arc',
-			'character development',
-			'character options',
 			'plot development',
-			'story beats',
 			'chapter planning',
 			'scene writing',
 			'story continuity',
-			'what happens next',
 			'worldbuilding',
 			'story bible'
 		],

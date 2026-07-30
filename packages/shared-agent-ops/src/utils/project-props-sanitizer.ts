@@ -42,10 +42,29 @@ export function sanitizeProjectForClient<T extends { props?: unknown }>(project:
 	};
 }
 
+/**
+ * Server-owned props that user- or model-originated PATCH payloads may never
+ * set or overwrite. `agent_workspace` is written once by project creation and
+ * read back as trusted routing state (living-reference mode, domain profile) —
+ * a props merge must not be able to promote it. Unlike HIDDEN keys, these stay
+ * visible on reads because the agent runtime needs them.
+ */
+const PATCH_BLOCKED_PROJECT_PROP_KEYS = new Set(['agent_workspace']);
+
 export function sanitizeProjectPropsPatchInput(props: unknown): Record<string, unknown> | null {
 	if (!isPlainObject(props)) {
 		return null;
 	}
 
-	return sanitizeProjectPropsForClient(props) as Record<string, unknown>;
+	const base = sanitizeProjectPropsForClient(props) as Record<string, unknown>;
+	let next = base;
+	for (const key of PATCH_BLOCKED_PROJECT_PROP_KEYS) {
+		if (key in next) {
+			if (next === base) {
+				next = { ...base };
+			}
+			delete next[key];
+		}
+	}
+	return next;
 }

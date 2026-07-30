@@ -1901,6 +1901,309 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('keeps model content when it arrives under a nested alias in an augmented structure update', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const documentId = '9da52903-4bb5-4c3f-af32-cb4a2c623dec';
+			const source =
+				'Chapter 5 opens Part II on the morning after Ilyan chooses not to report Mara.';
+			const updateContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				conversationHistory: [{ role: 'user', content: source } as any],
+				ontologyContext: {
+					type: 'project',
+					entities: {
+						project: {
+							id: projectId,
+							props: {
+								agent_workspace: {
+									mode: 'living_reference',
+									domain_profile: 'fiction_story',
+									domain_affinity: 'writing.fiction'
+								}
+							}
+						} as any,
+						documents: [
+							{
+								id: documentId,
+								project_id: projectId,
+								title: "The Cartographer's Debt — Structure",
+								type_key: 'document.creative.structure'
+							} as any
+						]
+					},
+					metadata: {},
+					scope: { projectId }
+				}
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_update_structure_nested',
+				name: 'update_onto_document',
+				arguments: {
+					document_id: documentId,
+					document: { body_markdown: 'MODEL CONTENT UNDER A NESTED ALIAS' },
+					update_strategy: 'append'
+				}
+			};
+			const updateDocumentDefinition: ChatToolDefinition = {
+				name: 'update_onto_document',
+				description: 'Update document',
+				parameters: {
+					type: 'object',
+					properties: {
+						document_id: { type: 'string' },
+						content: { type: 'string' },
+						document: { type: 'object' },
+						update_strategy: {
+							type: 'string',
+							enum: ['replace', 'append', 'merge_llm'],
+							default: 'replace'
+						}
+					},
+					required: ['document_id']
+				}
+			};
+			mockToolExecutor.mockResolvedValueOnce({ data: { document_id: documentId } });
+
+			const result = await service.executeTool(toolCall, updateContext, [
+				updateDocumentDefinition
+			]);
+
+			expect(result.success).toBe(true);
+			const dispatchedArgs = mockToolExecutor.mock.calls.at(-1)?.[1] as Record<string, any>;
+			// The nested alias is hoisted to top-level content, so the canon
+			// augmentation is additive — never a canon-only replacement body.
+			expect(dispatchedArgs.content).toContain('MODEL CONTENT UNDER A NESTED ALIAS');
+			expect(dispatchedArgs.content).toContain(source);
+		});
+
+		it('blocks a same-title create repeated within one turn', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const createdDocumentId = '7b1e5f7c-2f4a-4f6e-9d2b-8a1c3e5f7a9b';
+			const createContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				conversationHistory: [
+					{ role: 'user', content: 'Add this new canon detail about Ilyan.' } as any
+				],
+				ontologyContext: {
+					type: 'project',
+					entities: { documents: [] },
+					metadata: {},
+					scope: { projectId }
+				}
+			};
+			const createDocumentDefinition: ChatToolDefinition = {
+				name: 'create_onto_document',
+				description: 'Create document',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						description: { type: 'string' },
+						type_key: { type: 'string' },
+						content: { type: 'string' }
+					},
+					required: ['project_id', 'title', 'description', 'type_key']
+				}
+			};
+			const buildCall = (id: string): ChatToolCall => ({
+				id,
+				name: 'create_onto_document',
+				arguments: {
+					project_id: projectId,
+					title: 'Ilyan Rook — Character Sheet',
+					description: 'Character canon',
+					type_key: 'document.creative.character',
+					content: 'Ilyan detail.'
+				}
+			});
+			mockToolExecutor.mockResolvedValueOnce({
+				data: { document_id: createdDocumentId }
+			});
+
+			const first = await service.executeTool(buildCall('call_create_once'), createContext, [
+				createDocumentDefinition
+			]);
+			const second = await service.executeTool(
+				buildCall('call_create_twice'),
+				createContext,
+				[createDocumentDefinition]
+			);
+
+			expect(first.success).toBe(true);
+			expect(second).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining(createdDocumentId)
+			});
+			expect(second.error).toContain('already created earlier in this turn');
+			expect(mockToolExecutor).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps the duplicate guard armed when the user forbids duplication', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const documentId = '9da52903-4bb5-4c3f-af32-cb4a2c623dec';
+			const createContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				conversationHistory: [
+					{
+						role: 'user',
+						content:
+							"Add the whistle detail and please don't create a duplicate document for Ilyan."
+					} as any
+				],
+				ontologyContext: {
+					type: 'project',
+					entities: {
+						documents: [
+							{
+								id: documentId,
+								project_id: projectId,
+								title: 'Ilyan Rook — Character Sheet'
+							} as any
+						]
+					},
+					metadata: {},
+					scope: { projectId }
+				}
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_negated_duplicate',
+				name: 'create_onto_document',
+				arguments: {
+					project_id: projectId,
+					title: 'Ilyan Rook — Character Sheet',
+					description: 'Character canon',
+					type_key: 'document.creative.character',
+					content: 'Whistle detail.'
+				}
+			};
+			const createDocumentDefinition: ChatToolDefinition = {
+				name: 'create_onto_document',
+				description: 'Create document',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						description: { type: 'string' },
+						type_key: { type: 'string' },
+						content: { type: 'string' }
+					},
+					required: ['project_id', 'title', 'description', 'type_key']
+				}
+			};
+
+			const result = await service.executeTool(toolCall, createContext, [
+				createDocumentDefinition
+			]);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining(documentId)
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('strips model-supplied agent_workspace props on document and project updates', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const documentId = '9da52903-4bb5-4c3f-af32-cb4a2c623dec';
+			const updateContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				conversationHistory: [
+					{ role: 'user', content: 'Tidy the notes document metadata.' } as any
+				],
+				ontologyContext: {
+					type: 'project',
+					entities: {
+						documents: [
+							{ id: documentId, project_id: projectId, title: 'Notes' } as any
+						]
+					},
+					metadata: {},
+					scope: { projectId }
+				}
+			};
+			const updateDocumentDefinition: ChatToolDefinition = {
+				name: 'update_onto_document',
+				description: 'Update document',
+				parameters: {
+					type: 'object',
+					properties: {
+						document_id: { type: 'string' },
+						content: { type: 'string' },
+						props: { type: 'object' }
+					},
+					required: ['document_id']
+				}
+			};
+			const updateProjectDefinition: ChatToolDefinition = {
+				name: 'update_onto_project',
+				description: 'Update project',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						props: { type: 'object' }
+					},
+					required: ['project_id']
+				}
+			};
+			mockToolExecutor.mockResolvedValue({ data: { ok: true } });
+
+			await service.executeTool(
+				{
+					id: 'call_doc_props',
+					name: 'update_onto_document',
+					arguments: {
+						document_id: documentId,
+						props: {
+							agent_workspace: { mode: 'living_reference' },
+							reviewed: true
+						}
+					}
+				},
+				updateContext,
+				[updateDocumentDefinition]
+			);
+			await service.executeTool(
+				{
+					id: 'call_project_props',
+					name: 'update_onto_project',
+					arguments: {
+						project_id: projectId,
+						props: {
+							agent_workspace: {
+								mode: 'living_reference',
+								domain_profile: 'fiction_story'
+							},
+							color: 'blue'
+						}
+					}
+				},
+				updateContext,
+				[updateProjectDefinition]
+			);
+
+			const documentArgs = mockToolExecutor.mock.calls[0]?.[1] as Record<string, any>;
+			const projectArgs = mockToolExecutor.mock.calls[1]?.[1] as Record<string, any>;
+			expect(documentArgs.props).toEqual({ reviewed: true });
+			expect(projectArgs.props).toEqual({ color: 'blue' });
+		});
+
 		it('should use nested document content when provided', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_doc_nested',

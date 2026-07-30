@@ -27,8 +27,12 @@ export type LivingWorkspaceToolSelection = {
 	commissionedWriteMinimumCount: number;
 };
 
+// A structural projection needs a genuine story-position signal, not a bare
+// common word: "part of her legacy", "makes a scene", and "skips a beat" are
+// ordinary facts with one durable home. Require a numbered/qualified unit or
+// an explicit story-structure compound before demanding a second projection.
 const FICTION_STRUCTURE_PROJECTION_SIGNAL =
-	/\b(?:act|part|chapter|scene|beat|plot\s+(?:point|turn|beat)|story\s+(?:arc|structure))\b/i;
+	/\b(?:part|act|chapter|scene)\s+(?:[ivxlcdm]{1,7}|\d{1,4}|one|two|three|four|five|six|seven|eight|nine|ten)\b|\b(?:next|final|last|first|new|opening|closing)\s+(?:part|act|chapter|scene)\b|\b(?:story|chapter|plot)\s+beats?\b|\bplot\s+(?:point|turn)\b|\bstory\s+(?:arc|structure)\b/i;
 
 /**
  * A living-reference project turns a plain declarative message into an

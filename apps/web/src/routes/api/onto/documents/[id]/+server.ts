@@ -586,6 +586,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		const propsPayload =
 			typeof props === 'object' && props !== null ? (props as Record<string, unknown>) : {};
+		// agent_workspace is server-owned routing state written once at project
+		// creation; a PATCH props merge must never set or overwrite it.
+		delete propsPayload.agent_workspace;
 
 		let shouldUpdateProps = Object.keys(propsPayload).length > 0;
 		let mergedProps = shouldUpdateProps

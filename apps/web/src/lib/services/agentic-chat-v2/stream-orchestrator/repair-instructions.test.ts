@@ -634,6 +634,149 @@ describe('repair instruction policy', () => {
 	});
 });
 
+// 2026-07-30 review: the commission floor had two holes. (1) A failure-word
+// match on model prose ("Ilyan didn't report Mara") waived the floor without
+// any write actually failing — the looksLike* escape-hatch class. (2) The
+// floor counted successful write calls, so two updates to the same document
+// (or a stray non-commissioned write) satisfied a two-projection commission.
+describe('commissioned write floor', () => {
+	const COMMISSIONED_DOC_TOOLS = ['create_onto_document', 'update_onto_document'];
+	const STRUCTURE_DOC_ID = '3f0a26a1-92c8-45f7-8a9f-0d3c6f9f61aa';
+	const ILYAN_SHEET_ID = '9c2a41d7-55e3-4b7c-9e21-6a8b1f2c3d4e';
+
+	function successfulDocumentUpdate(documentId: string, content: string): FastToolExecution {
+		return createExecution({
+			name: 'update_onto_document',
+			args: { document_id: documentId, content },
+			success: true,
+			result: { document: { id: documentId } }
+		});
+	}
+
+	it('does not let canon prose containing failure words waive an unmet floor', () => {
+		const toolExecutions = [
+			successfulDocumentUpdate(STRUCTURE_DOC_ID, 'Chapter 4: the catch on the night dock.')
+		];
+
+		expect(
+			shouldRepairGatewayMutationNoExecution({
+				gatewayModeActive: true,
+				contextType: 'project',
+				finalText:
+					"Ilyan didn't report Mara — I captured that beat in the story structure document.",
+				toolExecutions,
+				repairAlreadyInjected: false,
+				explicitMutationRequested: true,
+				allowClarifyingQuestionWithoutWrite: false,
+				minimumSuccessfulWrites: 2,
+				commissionedWriteToolNames: COMMISSIONED_DOC_TOOLS
+			})
+		).toBe(true);
+	});
+
+	it('still waives repair when a write actually failed and the model disclosed it', () => {
+		const toolExecutions = [
+			successfulDocumentUpdate(STRUCTURE_DOC_ID, 'Chapter 4 beat.'),
+			createExecution({
+				name: 'update_onto_document',
+				args: { document_id: ILYAN_SHEET_ID, content: 'Motivation shift.' },
+				success: false,
+				error: 'Document not found'
+			})
+		];
+
+		expect(
+			shouldRepairGatewayMutationNoExecution({
+				gatewayModeActive: true,
+				contextType: 'project',
+				finalText:
+					'I recorded the structure beat but was unable to update the character sheet. Nothing else changed.',
+				toolExecutions,
+				repairAlreadyInjected: false,
+				explicitMutationRequested: true,
+				allowClarifyingQuestionWithoutWrite: false,
+				minimumSuccessfulWrites: 2,
+				commissionedWriteToolNames: COMMISSIONED_DOC_TOOLS
+			})
+		).toBe(false);
+	});
+
+	it('two successful writes to the same document do not satisfy a two-write floor', () => {
+		const toolExecutions = [
+			successfulDocumentUpdate(STRUCTURE_DOC_ID, 'Chapter 4: the catch.'),
+			successfulDocumentUpdate(STRUCTURE_DOC_ID, 'Chapter 5 opens Part II.')
+		];
+
+		expect(
+			shouldRepairGatewayMutationNoExecution({
+				gatewayModeActive: true,
+				contextType: 'project',
+				finalText: 'Both structure beats are recorded.',
+				toolExecutions,
+				repairAlreadyInjected: false,
+				explicitMutationRequested: true,
+				allowClarifyingQuestionWithoutWrite: false,
+				minimumSuccessfulWrites: 2,
+				commissionedWriteToolNames: COMMISSIONED_DOC_TOOLS
+			})
+		).toBe(true);
+		expect(
+			buildGatewayMutationNoExecutionRepairInstruction(
+				toolExecutions,
+				2,
+				COMMISSIONED_DOC_TOOLS
+			)
+		).toContain('needs 1 additional successful write');
+	});
+
+	it('two distinct document projections satisfy the floor', () => {
+		const toolExecutions = [
+			successfulDocumentUpdate(STRUCTURE_DOC_ID, 'Chapter 5 opens Part II.'),
+			successfulDocumentUpdate(ILYAN_SHEET_ID, 'Ilyan now protects Mara for leverage.')
+		];
+
+		expect(
+			shouldRepairGatewayMutationNoExecution({
+				gatewayModeActive: true,
+				contextType: 'project',
+				finalText: 'Updated the structure and the Ilyan sheet.',
+				toolExecutions,
+				repairAlreadyInjected: false,
+				explicitMutationRequested: true,
+				allowClarifyingQuestionWithoutWrite: false,
+				minimumSuccessfulWrites: 2,
+				commissionedWriteToolNames: COMMISSIONED_DOC_TOOLS
+			})
+		).toBe(false);
+	});
+
+	it('a non-commissioned write cannot satisfy the commissioned floor', () => {
+		const toolExecutions = [
+			successfulDocumentUpdate(STRUCTURE_DOC_ID, 'Chapter 5 opens Part II.'),
+			createExecution({
+				name: 'update_onto_task',
+				args: { task_id: 'ccbbc592-7138-46a5-9aa9-7d4549e1fa50', state_key: 'done' },
+				success: true,
+				result: { task: { id: 'ccbbc592-7138-46a5-9aa9-7d4549e1fa50' } }
+			})
+		];
+
+		expect(
+			shouldRepairGatewayMutationNoExecution({
+				gatewayModeActive: true,
+				contextType: 'project',
+				finalText: 'Structure updated and the task is done.',
+				toolExecutions,
+				repairAlreadyInjected: false,
+				explicitMutationRequested: true,
+				allowClarifyingQuestionWithoutWrite: false,
+				minimumSuccessfulWrites: 2,
+				commissionedWriteToolNames: COMMISSIONED_DOC_TOOLS
+			})
+		).toBe(true);
+	});
+});
+
 // 2026-07-02 live rerun: a turn had "Skill-load gate: ACTIVE" in its prompt and
 // the model still rewrote a document with zero skill_load calls. This guard is
 // the deterministic backstop the prompt-level gate lacked.
@@ -1302,9 +1445,9 @@ describe('extractStatedFutureClause', () => {
 	});
 
 	it('handles newline-separated dictation', () => {
-		expect(
-			extractStatedFutureClause('marked the call done\nstill need to book the room')
-		).toBe('still need to book the room');
+		expect(extractStatedFutureClause('marked the call done\nstill need to book the room')).toBe(
+			'still need to book the room'
+		);
 	});
 
 	it('falls back to the whole message when the pattern spans sentences', () => {

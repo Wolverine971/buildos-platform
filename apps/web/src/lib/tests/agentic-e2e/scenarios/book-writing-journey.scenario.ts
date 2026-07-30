@@ -13,7 +13,7 @@ import { harnessProjectName, teardownProject } from '../harness/seed';
 import {
 	assertAnyToolCalled,
 	assertCleanText,
-	assertMinimumDistinctOptions,
+	assertExactVisiblyLabeledOptions,
 	assertNoMutations,
 	assertNonEmptyAssistantText,
 	assertToolCalled,
@@ -71,6 +71,32 @@ function requireFacts(
 	if (missing.length > 0) {
 		throw new Error(`[assert] ${label} is missing canon: [${missing.join(', ')}]`);
 	}
+}
+
+/**
+ * Remove `## Author canon` sections so an assertion can look at what the model
+ * itself wrote. The runtime deterministically injects the author's source
+ * sentences under that heading, so canon-section content proves nothing about
+ * model propagation.
+ */
+function stripAuthorCanonSections(content: string): string {
+	const kept: string[] = [];
+	let inCanonSection = false;
+	for (const line of content.split('\n')) {
+		if (/^#{1,6}\s/.test(line)) {
+			inCanonSection = /^#{1,6}\s*author canon\s*$/i.test(line);
+			if (inCanonSection) continue;
+		}
+		if (!inCanonSection) kept.push(line);
+	}
+	return kept.join('\n');
+}
+
+function changedDocuments(beforeDocs: DocumentRow[], afterDocs: DocumentRow[]): DocumentRow[] {
+	const before = new Map(beforeDocs.map((doc) => [doc.id, doc.content ?? '']));
+	return afterDocs.filter(
+		(doc) => !before.has(doc.id) || before.get(doc.id) !== (doc.content ?? '')
+	);
 }
 
 function documentFingerprint(docs: DocumentRow[]): string {
@@ -386,19 +412,58 @@ export const bookWritingJourneyScenario: Scenario = {
 				);
 				seed.notes.turn3Docs = docs;
 				seed.notes.beforeAdviceFingerprint = documentFingerprint(docs);
+				const [goals, plans, tasks, milestones] = await Promise.all([
+					listGoals(ctx.db.admin, seed.projectId!),
+					listPlans(ctx.db.admin, seed.projectId!),
+					listTasks(ctx.db.admin, seed.projectId!),
+					listMilestones(ctx.db.admin, seed.projectId!)
+				]);
+				seed.notes.turn3OperationalScaffolding = { goals, plans, tasks, milestones };
 			},
 			checkpoints: [
 				{
-					name: 'chapter beat triggered durable updates',
-					check: (turn) => {
-						const writeCalls = turn.toolCalls.filter(
-							(call) =>
-								call.function.name === 'update_onto_document' ||
-								call.function.name === 'create_onto_document'
+					// Ground truth from the hosted rows, not tool-call counting: a
+					// rejected create plus one update is two calls but one durable
+					// projection, and that must fail here.
+					name: 'chapter beat produced two distinct durable projections',
+					check: (_turn, _ctx, seed) => {
+						const changed = changedDocuments(
+							docsFrom(seed, 'turn2Docs'),
+							docsFrom(seed, 'turn3Docs')
 						);
-						if (writeCalls.length < 2) {
+						if (changed.length < 2) {
 							throw new Error(
-								`[assert] chapter beat produced ${writeCalls.length} document write call(s); expected character and structure updates`
+								`[assert] chapter beat changed ${changed.length} durable document(s) ` +
+									`[${changed.map((doc) => doc.title).join(', ')}]; expected the character sheet and the story structure`
+							);
+						}
+					}
+				},
+				{
+					// The runtime injects the author's sentences under `## Author
+					// canon`, so the structure-content checkpoint below can be
+					// satisfied by the server alone. This checkpoint looks only at
+					// model-authored content: if the model stopped projecting beats
+					// entirely and shipped bare canon dumps, this catches it.
+					name: 'model-authored beat projection beyond injected author canon',
+					check: (_turn, _ctx, seed) => {
+						const changedStory = changedDocuments(
+							docsFrom(seed, 'turn2Docs'),
+							docsFrom(seed, 'turn3Docs')
+						).filter((doc) => storyDocs([doc]).length > 0);
+						const authored = normalizeComparableText(
+							changedStory
+								.map((doc) => stripAuthorCanonSections(doc.content ?? ''))
+								.join('\n')
+						);
+						const beatSignals = [
+							/chapter 5/,
+							/not report|doesn.t report|chooses not to/,
+							/mara.*(loyal|misread)|loyal.*mara/
+						];
+						if (!beatSignals.some((pattern) => pattern.test(authored))) {
+							throw new Error(
+								'[assert] no model-authored beat projection found outside the injected Author canon sections — the deterministic server floor is doing all of the structure work'
 							);
 						}
 					}
@@ -431,6 +496,10 @@ export const bookWritingJourneyScenario: Scenario = {
 					}
 				},
 				{
+					// Server-floor regression checkpoint: these facts are also
+					// guaranteed by the deterministic Author-canon augmentation, so
+					// this asserts the shipped preservation feature end-to-end. The
+					// model-authored checkpoint above covers the model's own share.
 					name: 'chapter and part structure stayed current',
 					check: (_turn, _ctx, seed) => {
 						const candidates = storyDocs(docsFrom(seed, 'turn3Docs'));
@@ -478,6 +547,26 @@ export const bookWritingJourneyScenario: Scenario = {
 						if (currentCount > openingCount + 2) {
 							throw new Error(
 								`[assert] two canon additions grew the workspace from ${openingCount} to ${currentCount} documents`
+							);
+						}
+					}
+				},
+				{
+					// Creation-time restraint is checked on turn 1; this extends the
+					// same floor across the follow-up turns so a later beat cannot
+					// quietly become a milestone or task.
+					name: 'later canon turns invented no operational scaffolding',
+					check: (_turn, _ctx, seed) => {
+						const scaffolding = seed.notes.turn3OperationalScaffolding as Record<
+							string,
+							unknown[]
+						>;
+						const invented = Object.entries(scaffolding)
+							.filter(([, rows]) => rows.length > 0)
+							.map(([kind, rows]) => `${kind}=${rows.length}`);
+						if (invented.length > 0) {
+							throw new Error(
+								`[assert] follow-up canon turns created unrequested operational scaffolding: ${invented.join(', ')}`
 							);
 						}
 					}
@@ -548,9 +637,13 @@ export const bookWritingJourneyScenario: Scenario = {
 				{
 					name: 'three grounded character-arc options',
 					check: (turn) => {
-						assertMinimumDistinctOptions(turn, 3);
+						// The request says exactly three — a 1-option card with three
+						// field bullets or a 5-option sprawl must both fail.
+						assertExactVisiblyLabeledOptions(turn, 3);
 						const text = normalizeComparableText(turn.assistantText);
-						if (!text.includes('ilyan') || !text.includes('chapter 5')) {
+						// "Chapter Five" and "Chapter V" are explicit framing too —
+						// match the runtime's number-form equivalence, not one literal.
+						if (!text.includes('ilyan') || !/chapter (?:5|five|v)\b/.test(text)) {
 							throw new Error(
 								'[assert] guidance did not explicitly frame Ilyan in Chapter 5'
 							);

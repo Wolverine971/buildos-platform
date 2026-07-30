@@ -691,6 +691,7 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 	explicitMutationRequested?: boolean;
 	allowClarifyingQuestionWithoutWrite?: boolean;
 	minimumSuccessfulWrites?: number;
+	commissionedWriteToolNames?: readonly string[];
 }): boolean {
 	if (!params.gatewayModeActive) return false;
 	if (params.contextType === 'project_create') return false;
@@ -701,7 +702,14 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 
 	const mutationOutcomes = summarizeMutationOutcomes(params.toolExecutions);
 	const minimumSuccessfulWrites = Math.max(1, Math.floor(params.minimumSuccessfulWrites ?? 1));
-	if (mutationOutcomes.succeeded >= minimumSuccessfulWrites) return false;
+	const floorSatisfyingWrites =
+		minimumSuccessfulWrites > 1
+			? countDistinctSuccessfulWriteTargets(
+					params.toolExecutions,
+					params.commissionedWriteToolNames
+				)
+			: mutationOutcomes.succeeded;
+	if (floorSatisfyingWrites >= minimumSuccessfulWrites) return false;
 
 	const writeIntentOps = collectGatewayWriteIntentOps(params.toolExecutions);
 	const explicitUserWriteIntent =
@@ -722,23 +730,32 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 	) {
 		return false;
 	}
-	if (mutationOutcomes.attempted > 0 && looksLikeWriteFailureDisclosure(finalText)) return false;
+	// A failure disclosure only waives repair when a write actually failed.
+	// Gating on the prose alone is an escape hatch: fiction canon routinely
+	// contains "didn't"/"could not" ("Ilyan didn't report Mara"), and that must
+	// not silently cancel an outstanding commissioned write.
+	if (mutationOutcomes.failed > 0 && looksLikeWriteFailureDisclosure(finalText)) return false;
 
 	return true;
 }
 
 export function buildGatewayMutationNoExecutionRepairInstruction(
 	toolExecutions: FastToolExecution[],
-	minimumSuccessfulWrites = 1
+	minimumSuccessfulWrites = 1,
+	commissionedWriteToolNames?: readonly string[]
 ): string {
 	const plannedWriteOps = collectGatewayWriteIntentOps(toolExecutions);
 	const mutationOutcomes = summarizeMutationOutcomes(toolExecutions);
+	const completedFloorWrites =
+		Math.floor(minimumSuccessfulWrites) > 1
+			? countDistinctSuccessfulWriteTargets(toolExecutions, commissionedWriteToolNames)
+			: mutationOutcomes.succeeded;
 	const remainingSuccessfulWrites = Math.max(
 		1,
-		Math.floor(minimumSuccessfulWrites) - mutationOutcomes.succeeded
+		Math.floor(minimumSuccessfulWrites) - completedFloorWrites
 	);
 	const lines = [
-		mutationOutcomes.succeeded > 0
+		completedFloorWrites > 0
 			? `The durable-capture commission still needs ${remainingSuccessfulWrites} additional successful write call${remainingSuccessfulWrites === 1 ? '' : 's'} to distinct affected documents.`
 			: `You have not completed any write yet.${minimumSuccessfulWrites > 1 ? ` This commission requires ${minimumSuccessfulWrites} successful writes to distinct affected documents.` : ''}`,
 		'Do not stop after schema discovery or failed writes without either retrying correctly or asking a concise blocker question.',
@@ -1509,6 +1526,71 @@ function summarizeMutationOutcomes(toolExecutions: FastToolExecution[]): Mutatio
 		failed,
 		writeOps
 	};
+}
+
+function getWriteTargetIdentityKey(execution: FastToolExecution, writeOp: string): string {
+	const { args } = parseToolArguments(execution.toolCall.function?.arguments);
+	const record =
+		args && typeof args === 'object' && !Array.isArray(args)
+			? (args as Record<string, unknown>)
+			: {};
+	const entityKind = writeOp
+		.toLowerCase()
+		.replace(/^(?:create|update|delete)_onto_/, '')
+		.replace(/\.(?:create|update|delete)$/, '');
+	const idKeys = [
+		'document_id',
+		'task_id',
+		'goal_id',
+		'plan_id',
+		'milestone_id',
+		'event_id',
+		'note_id',
+		'entity_id',
+		'project_id'
+	];
+	for (const key of idKeys) {
+		const value = record[key];
+		if (typeof value === 'string' && value.trim()) {
+			return `${entityKind}|id:${value.trim().toLowerCase()}`;
+		}
+	}
+	const title = record.title ?? record.name;
+	if (typeof title === 'string' && title.trim()) {
+		const normalizedTitle = title
+			.normalize('NFKC')
+			.toLocaleLowerCase()
+			.replace(/[^\p{L}\p{N}]+/gu, ' ')
+			.trim();
+		return `${entityKind}|title:${normalizedTitle}`;
+	}
+	try {
+		return `${entityKind}|args:${JSON.stringify(record)}`;
+	} catch {
+		return `${entityKind}|args:unknown`;
+	}
+}
+
+/**
+ * A multi-write commission means "N distinct durable projections", not "N
+ * successful write calls". Two updates to the same document, or a duplicate
+ * projection into an unrelated entity, must not satisfy the floor.
+ */
+export function countDistinctSuccessfulWriteTargets(
+	toolExecutions: FastToolExecution[],
+	toolNames?: readonly string[]
+): number {
+	const nameFilter = toolNames && toolNames.length > 0 ? new Set(toolNames) : null;
+	const targets = new Set<string>();
+	for (const execution of toolExecutions) {
+		if (nameFilter && !nameFilter.has(execution.toolCall.function?.name ?? '')) continue;
+		if (isDuplicateWriteSkippedExecution(execution)) continue;
+		const writeOp = getWriteOperationName(execution);
+		if (!writeOp) continue;
+		if (!didWriteExecutionSucceed(execution)) continue;
+		targets.add(getWriteTargetIdentityKey(execution, writeOp));
+	}
+	return targets.size;
 }
 
 type FailedWriteDisclosure = {

@@ -265,13 +265,60 @@ export function assertNonEmptyAssistantText(turn: TurnResult, minimumChars = 40)
 export function assertMinimumDistinctOptions(turn: TurnResult, minimum = 3): void {
 	const text = turn.assistantText.trim();
 	const labeled = text.match(
-		/^\s*(?:#{1,6}\s*)?(?:\*\*)?(?:option\s+)?(?:\d+|one|two|three|four|five)\s*(?:[.):-]|\*\*)/gim
+		/^\s*(?:#{1,6}\s*)?(?:\*\*)?(?:option\s+)?(?:\d+|one|two|three|four|five)\s*(?:[.):—–-]|\*\*)/gim
 	);
 	const bullets = text.match(/^\s*[-*+]\s+\S/gm);
 	const count = Math.max(labeled?.length ?? 0, bullets?.length ?? 0);
 	if (count < minimum) {
 		throw new Error(
 			`[assert] assistant presented ${count} visibly distinct option(s); expected at least ${minimum}. ` +
+				`Text: "${text.slice(0, 500)}"`
+		);
+	}
+}
+
+const OPTION_LABEL_COUNT_WORDS: Record<string, number> = {
+	one: 1,
+	two: 2,
+	three: 3,
+	four: 4,
+	five: 5,
+	six: 6,
+	seven: 7,
+	eight: 8,
+	nine: 9,
+	ten: 10
+};
+
+/**
+ * Count distinct visibly labeled options the same way the runtime's synthesis
+ * constraint does: `Option N` labels anywhere in the text (em-dash safe), with
+ * a top-level numbered list as the only fallback. Deliberately NO generic
+ * bullet fallback — an "exactly N options" request must not be satisfiable by
+ * one option card whose fields happen to render as N bullets.
+ */
+export function assertExactVisiblyLabeledOptions(turn: TurnResult, expected: number): void {
+	const text = turn.assistantText.trim();
+	const optionNumbers = new Set<number>();
+	for (const match of text.matchAll(
+		/\boption\s*(?:#\s*)?(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\b/gi
+	)) {
+		const rawNumber = match[1]?.toLowerCase() ?? '';
+		const number = OPTION_LABEL_COUNT_WORDS[rawNumber] ?? Number.parseInt(rawNumber, 10);
+		if (Number.isInteger(number) && number > 0) optionNumbers.add(number);
+	}
+	let count = optionNumbers.size;
+	if (count === 0) {
+		const listNumbers = new Set<number>();
+		for (const match of text.matchAll(/^[ \t]{0,3}(?:\*\*)?(\d{1,2})[.)](?:\*\*)?[ \t]+/gm)) {
+			const number = Number.parseInt(match[1] ?? '', 10);
+			if (Number.isInteger(number) && number > 0) listNumbers.add(number);
+		}
+		count = listNumbers.size;
+	}
+	if (count !== expected) {
+		throw new Error(
+			`[assert] assistant presented ${count} visibly labeled option(s); expected exactly ${expected}. ` +
 				`Text: "${text.slice(0, 500)}"`
 		);
 	}

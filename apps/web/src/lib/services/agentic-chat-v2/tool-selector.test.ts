@@ -67,6 +67,64 @@ describe('selectFastChatTools', () => {
 		);
 	});
 
+	it('keeps ordinary facts using structural common words on the one-write floor', () => {
+		const baseTools = selectFastChatTools({
+			contextType: 'project',
+			surfaceProfile: 'project_basic'
+		});
+		const fictionWorkspace = {
+			mode: 'living_reference',
+			domain_profile: 'fiction_story',
+			domain_affinity: 'writing.fiction'
+		} as const;
+		const ordinaryFacts = [
+			"Mara's locket is part of her mother's legacy.",
+			'Her heart skips a beat whenever the customs whistle sounds.',
+			'He makes a scene at the customs office when rattled.',
+			'Ilyan has to act fast when the tide turns.'
+		];
+		for (const message of ordinaryFacts) {
+			const selection = applyLivingWorkspaceToolProfile({
+				tools: baseTools,
+				workspace: fictionWorkspace,
+				latestUserMessage: message
+			});
+			expect(selection.implicitCapture).toBe(true);
+			expect(selection.commissionedWriteMinimumCount).toBe(1);
+		}
+		const structural = applyLivingWorkspaceToolProfile({
+			tools: baseTools,
+			workspace: fictionWorkspace,
+			latestUserMessage: 'The final chapter reveals who rang the Bellwether.'
+		});
+		expect(structural.commissionedWriteMinimumCount).toBe(2);
+	});
+
+	it('keeps speculation without a question mark read-only', () => {
+		const baseTools = selectFastChatTools({
+			contextType: 'project',
+			surfaceProfile: 'project_basic'
+		});
+		const speculations = [
+			'Do you think Mara would forgive him',
+			'I wonder if Ilyan should betray Mara',
+			'Maybe Ilyan should refuse the mission'
+		];
+		for (const message of speculations) {
+			const selection = applyLivingWorkspaceToolProfile({
+				tools: baseTools,
+				workspace: {
+					mode: 'living_reference',
+					domain_profile: 'fiction_story',
+					domain_affinity: 'writing.fiction'
+				},
+				latestUserMessage: message
+			});
+			expect(selection.implicitCapture).toBe(false);
+			expect(selection.commissionedWriteMinimumCount).toBe(0);
+		}
+	});
+
 	it('keeps living-reference questions read-only and explicit mutations on their normal surface', () => {
 		const baseTools = selectFastChatTools({
 			contextType: 'project',

@@ -36,6 +36,55 @@ describe('project domain profiles', () => {
 		expect(result.content).toContain('Part II begins the next morning.');
 	});
 
+	it('skips structure-source augmentation when the model content is not top-level', () => {
+		const source = 'Chapter 5 opens Part II on the morning after that choice.';
+		const args = {
+			document_id: 'structure-doc',
+			document: { body_markdown: 'MODEL CONTENT UNDER A NESTED ALIAS' }
+		};
+		// Augmenting would fabricate a canon-only top-level body that replaces
+		// the model's nested content under the default replace strategy.
+		expect(applyFictionStructureUpdateSourceDefault(args, source)).toBe(args);
+	});
+
+	it('never demands a character sheet for determiner-led places or objects', () => {
+		const args = {
+			project: { name: 'Bellwether', type_key: 'project.creative.book' },
+			entities: [
+				{
+					kind: 'document',
+					type_key: 'document.creative.character',
+					title: 'Mara Venn — Character',
+					content: 'Mara Venn is a smuggler who works the night docks.'
+				}
+			]
+		};
+		const errors = validateFictionCharacterSourceCoverage(
+			args,
+			'I want an ongoing workspace for my novel. Mara Venn is a smuggler who works the night docks. ' +
+				'The Salt Archive is a forbidden vault beneath the customs house. ' +
+				'The Iron Council is the governing body of the port.'
+		);
+		expect(errors).toEqual([]);
+	});
+
+	it('treats question-mark-free speculation as read-only, not capture', () => {
+		expect(looksLikeLivingWorkspaceCaptureTurn('Do you think Mara would forgive him')).toBe(
+			false
+		);
+		expect(looksLikeLivingWorkspaceCaptureTurn('I wonder if Ilyan should betray Mara')).toBe(
+			false
+		);
+		expect(looksLikeLivingWorkspaceCaptureTurn('Maybe Ilyan should refuse the mission')).toBe(
+			false
+		);
+		expect(
+			looksLikeLivingWorkspaceCaptureTurn(
+				'Ilyan keeps a contraband brass whistle in his evidence drawer.'
+			)
+		).toBe(true);
+	});
+
 	it('recognizes fiction projects without treating ordinary booking language as fiction', () => {
 		expect(
 			resolveProjectDomainProfile({

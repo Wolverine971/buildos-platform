@@ -38,6 +38,18 @@ export function resolveExplicitOptionCountRequest(text: string): number | null {
 	) {
 		return null;
 	}
+	// "chapter 12 options" is a story position, and "the two options" refers to
+	// options that already exist — neither is an exact-count request. Stay
+	// conservative: a dropped constraint is recoverable, a wrong forced count
+	// actively rewrites a valid answer.
+	if (
+		/\b(?:chapter|scene|part|act|section|episode|version|page|day|week|level|grade|tier|phase|step|round)\s*$/.test(
+			qualifier
+		) ||
+		/\b(?:the|those|these|both|either|of|your|my)\s*$/.test(qualifier)
+	) {
+		return null;
+	}
 	const rawCount = match[1]?.toLowerCase() ?? '';
 	const count = OPTION_COUNT_WORDS[rawCount] ?? Number.parseInt(rawCount, 10);
 	return Number.isInteger(count) && count >= 1 && count <= 20 ? count : null;
@@ -71,7 +83,19 @@ export function resolveExplicitOptionResponseAnchors(text: string): string[] {
 		const match = pattern.exec(text);
 		addAnchor(match?.[1]);
 	}
-	for (const match of text.matchAll(
+	// Only positions inside the asking sentences anchor the answer. "I'm at
+	// the end of chapter 4. What should happen in chapter 5?" requests chapter
+	// 5 — the chapter 4 mention is the author's current position, and a valid
+	// answer never has to repeat it.
+	const requestSentences = text
+		.split(/(?<=[.!?])\s+/)
+		.filter((sentence) =>
+			/\?|\b(?:what\s+should|what\s+happens?|what\s+comes\s+next|give\s+me|show\s+me|offer|suggest|recommend|options?)\b/i.test(
+				sentence
+			)
+		);
+	const positionScanText = requestSentences.length > 0 ? requestSentences.join(' ') : text;
+	for (const match of positionScanText.matchAll(
 		/\b(?:chapter|scene|part|act|episode|section)\s+(?:\d{1,3}|[ivxlcdm]+|one|two|three|four|five|six|seven|eight|nine|ten)\b/gi
 	)) {
 		addAnchor(match[0]);
@@ -80,14 +104,91 @@ export function resolveExplicitOptionResponseAnchors(text: string): string[] {
 	return anchors.slice(0, 4);
 }
 
+const POSITION_ANCHOR_UNIT_PATTERN =
+	/^(chapter|scene|part|act|episode|section)\s+(\d{1,3}|[ivxlcdm]{1,7}|one|two|three|four|five|six|seven|eight|nine|ten)$/i;
+const ROMAN_NUMERAL_VALUES: Array<[string, number]> = [
+	['x', 10],
+	['ix', 9],
+	['v', 5],
+	['iv', 4],
+	['i', 1]
+];
+
+function parseSmallRomanNumeral(value: string): number | null {
+	let remaining = value.toLowerCase();
+	let total = 0;
+	for (const [numeral, numeralValue] of ROMAN_NUMERAL_VALUES) {
+		while (remaining.startsWith(numeral)) {
+			total += numeralValue;
+			remaining = remaining.slice(numeral.length);
+		}
+	}
+	return remaining.length === 0 && total > 0 && total <= 20 ? total : null;
+}
+
+function toSmallRomanNumeral(value: number): string | null {
+	if (value < 1 || value > 20) return null;
+	let remaining = value;
+	let result = '';
+	for (const [numeral, numeralValue] of ROMAN_NUMERAL_VALUES) {
+		while (remaining >= numeralValue) {
+			result += numeral;
+			remaining -= numeralValue;
+		}
+	}
+	return result;
+}
+
+function isPositionAnchorSatisfied(normalizedAnswer: string, normalizedAnchor: string): boolean {
+	const match = POSITION_ANCHOR_UNIT_PATTERN.exec(normalizedAnchor);
+	if (!match) return normalizedAnswer.includes(normalizedAnchor);
+	const unit = match[1]?.toLowerCase() ?? '';
+	const rawNumber = match[2]?.toLowerCase() ?? '';
+	const numeric =
+		OPTION_COUNT_WORDS[rawNumber] ??
+		(/^\d+$/.test(rawNumber) ? Number.parseInt(rawNumber, 10) : null) ??
+		parseSmallRomanNumeral(rawNumber);
+	if (!Number.isInteger(numeric)) return normalizedAnswer.includes(normalizedAnchor);
+	const numberForms = new Set<string>([rawNumber, String(numeric)]);
+	const wordForm = Object.entries(OPTION_COUNT_WORDS).find(([, value]) => value === numeric)?.[0];
+	if (wordForm) numberForms.add(wordForm);
+	const romanForm = toSmallRomanNumeral(numeric as number);
+	if (romanForm) numberForms.add(romanForm);
+	return [...numberForms].some((form) => normalizedAnswer.includes(`${unit} ${form}`));
+}
+
 export function findMissingExplicitOptionResponseAnchors(
 	requestText: string,
 	answerText: string
 ): string[] {
 	const normalizedAnswer = normalizeResponseAnchor(answerText);
-	return resolveExplicitOptionResponseAnchors(requestText).filter(
+	const anchors = resolveExplicitOptionResponseAnchors(requestText);
+	const subjectAnchors: string[] = [];
+	const positionAnchors: string[] = [];
+	for (const anchor of anchors) {
+		if (POSITION_ANCHOR_UNIT_PATTERN.test(normalizeResponseAnchor(anchor))) {
+			positionAnchors.push(anchor);
+		} else {
+			subjectAnchors.push(anchor);
+		}
+	}
+
+	const missing = subjectAnchors.filter(
 		(anchor) => !normalizedAnswer.includes(normalizeResponseAnchor(anchor))
 	);
+	// A request often mentions several story positions ("I'm at the end of
+	// chapter 4 — what should happen in chapter 5?"). Naming any one of them
+	// anchors the answer; requiring every mentioned position rejects valid
+	// answers that are wholly about the asked-for position.
+	if (
+		positionAnchors.length > 0 &&
+		!positionAnchors.some((anchor) =>
+			isPositionAnchorSatisfied(normalizedAnswer, normalizeResponseAnchor(anchor))
+		)
+	) {
+		missing.push(...positionAnchors);
+	}
+	return missing;
 }
 
 export function countVisiblyLabeledOptions(text: string): number {
@@ -99,7 +200,17 @@ export function countVisiblyLabeledOptions(text: string): number {
 		const number = OPTION_COUNT_WORDS[rawNumber] ?? Number.parseInt(rawNumber, 10);
 		if (Number.isInteger(number) && number > 0) optionNumbers.add(number);
 	}
-	return optionNumbers.size;
+	if (optionNumbers.size > 0) return optionNumbers.size;
+
+	// A top-level numbered list ("1. …" / "2) …") is also a visibly numbered
+	// option set; without this fallback a valid list answer is forced through a
+	// pointless format-only retry.
+	const listNumbers = new Set<number>();
+	for (const match of text.matchAll(/^[ \t]{0,3}(?:\*\*)?(\d{1,2})[.)](?:\*\*)?[ \t]+/gm)) {
+		const number = Number.parseInt(match[1] ?? '', 10);
+		if (Number.isInteger(number) && number > 0) listNumbers.add(number);
+	}
+	return listNumbers.size;
 }
 
 export function buildForcedSynthesisMessages(params: {

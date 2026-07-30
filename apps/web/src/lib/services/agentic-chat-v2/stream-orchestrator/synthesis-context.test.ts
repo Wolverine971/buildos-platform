@@ -62,11 +62,9 @@ describe('buildForcedSynthesisMessages', () => {
 			runtimeBudgetMessage: 'Tools are unavailable.'
 		});
 
-		expect(resolveExplicitOptionResponseAnchors(request)).toEqual([
-			'Ilyan',
-			'chapter 4',
-			'chapter 5'
-		]);
+		// Only the asked-about position anchors the answer: chapter 4 is the
+		// author's current position stated outside the request sentence.
+		expect(resolveExplicitOptionResponseAnchors(request)).toEqual(['Ilyan', 'chapter 5']);
 		expect(messages[0]?.content).toContain('Explicit request anchors');
 		expect(messages[0]?.content).toContain('"Ilyan"');
 		expect(messages[0]?.content).toContain('"chapter 5"');
@@ -76,6 +74,44 @@ describe('buildForcedSynthesisMessages', () => {
 				'Ilyan has three paths after Chapter 4.'
 			)
 		).toEqual(['chapter 5']);
+		// An answer wholly about the requested chapter is fully anchored.
+		expect(
+			findMissingExplicitOptionResponseAnchors(
+				request,
+				'In chapter 5, Ilyan can confess, double down, or disappear.'
+			)
+		).toEqual([]);
+		// Number-word forms satisfy a digit position anchor.
+		expect(
+			findMissingExplicitOptionResponseAnchors(
+				request,
+				'Chapter Five gives Ilyan three distinct openings.'
+			)
+		).toEqual([]);
+	});
+
+	it('ignores positional and referential numbers that are not count requests', () => {
+		expect(
+			resolveExplicitOptionCountRequest('Give me chapter 12 options for the ending.')
+		).toBeNull();
+		expect(
+			resolveExplicitOptionCountRequest('Which of the two options do you prefer?')
+		).toBeNull();
+		expect(
+			resolveExplicitOptionCountRequest('Compare the three options you gave me earlier.')
+		).toBeNull();
+		expect(
+			resolveExplicitOptionCountRequest("Let's revisit the chapter 3 options.")
+		).toBeNull();
+		expect(resolveExplicitOptionCountRequest('version 2 options are fine')).toBeNull();
+		expect(resolveExplicitOptionCountRequest('Give me three grounded options.')).toBe(3);
+		expect(resolveExplicitOptionCountRequest('I want 4 options.')).toBe(4);
+	});
+
+	it('counts top-level numbered list items when no Option labels exist', () => {
+		expect(countVisiblyLabeledOptions('1. Confess\n2. Double down\n3. Disappear')).toBe(3);
+		expect(countVisiblyLabeledOptions('**1.** Confess\n**2.** Double down')).toBe(2);
+		expect(countVisiblyLabeledOptions('No options here, just prose.')).toBe(0);
 	});
 });
 

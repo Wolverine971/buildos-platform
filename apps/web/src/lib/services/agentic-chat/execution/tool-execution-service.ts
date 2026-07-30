@@ -59,6 +59,7 @@ import {
 	isAppendOrMergeUpdateStrategy
 } from '../shared/update-value-validation';
 import {
+	AGENT_WORKSPACE_PROP,
 	applyFictionStructureUpdateSourceDefault,
 	applyProjectCreationProfileDefaults,
 	looksLikeLivingWorkspaceCaptureTurn,
@@ -168,6 +169,13 @@ export type VirtualToolHandler = (params: {
  * Service for executing tools
  */
 export class ToolExecutionService implements BaseService {
+	// Same-turn duplicate protection: the ontology context is a turn-start
+	// snapshot, so documents created during the turn are registered here (the
+	// service is instantiated per stream request).
+	private readonly sameTurnCreatedDocuments = new Map<
+		string,
+		{ id: string | null; title: string }
+	>();
 	private static readonly DEFAULT_TIMEOUT = 30000; // 30 seconds
 	private static readonly DEFAULT_RETRY_COUNT = 0;
 	private static readonly DEFAULT_RETRY_DELAY = 1000;
@@ -436,6 +444,7 @@ export class ToolExecutionService implements BaseService {
 		args = this.applyContextDefaults(toolName, args, context, validationTools);
 		args = this.applyArgumentAliases(toolName, args, validationTools);
 		args = this.normalizeIdFields(args);
+		args = this.stripServerOwnedWorkspaceProps(toolName, args);
 		const projectScopeGuard = this.guardProjectIdMatchesContextScope(
 			toolName,
 			args,
@@ -695,6 +704,10 @@ export class ToolExecutionService implements BaseService {
 
 			// Clean up internal properties
 			const cleanedResult = this.cleanResult(result);
+
+			if (toolName === 'create_onto_document') {
+				this.registerSameTurnCreatedDocument(args, { data: cleanedResult });
+			}
 
 			return finalizeResult({
 				success: true,
@@ -2768,7 +2781,11 @@ export class ToolExecutionService implements BaseService {
 					'markdown',
 					'body',
 					'text',
-					'document.content'
+					'document.content',
+					'document.body_markdown',
+					'document.markdown',
+					'document.body',
+					'document.text'
 				]);
 				break;
 			case 'link_onto_entities':
@@ -3112,6 +3129,51 @@ export class ToolExecutionService implements BaseService {
 		return null;
 	}
 
+	private registerSameTurnCreatedDocument(
+		args: Record<string, any>,
+		executionResult: { data?: unknown; result?: unknown }
+	): void {
+		const title = typeof args.title === 'string' ? args.title.trim() : '';
+		const normalizedTitle = this.normalizeDocumentTitleIdentity(title);
+		if (!normalizedTitle) return;
+
+		const findDocumentId = (value: unknown, depth: number): string | null => {
+			if (!value || typeof value !== 'object' || depth > 3) return null;
+			if (Array.isArray(value)) {
+				for (const entry of value) {
+					const found = findDocumentId(entry, depth + 1);
+					if (found) return found;
+				}
+				return null;
+			}
+			const record = value as Record<string, unknown>;
+			for (const key of ['document_id', 'documentId']) {
+				if (typeof record[key] === 'string' && isValidUUID(record[key] as string)) {
+					return record[key] as string;
+				}
+			}
+			if (
+				typeof record.id === 'string' &&
+				isValidUUID(record.id) &&
+				(typeof record.title === 'string' || typeof record.type_key === 'string')
+			) {
+				return record.id;
+			}
+			for (const entry of Object.values(record)) {
+				const found = findDocumentId(entry, depth + 1);
+				if (found) return found;
+			}
+			return null;
+		};
+
+		this.sameTurnCreatedDocuments.set(normalizedTitle, {
+			id:
+				findDocumentId(executionResult.data, 0) ??
+				findDocumentId(executionResult.result, 0),
+			title
+		});
+	}
+
 	private guardDuplicateDocumentCreate(
 		toolName: string,
 		args: Record<string, any>,
@@ -3160,6 +3222,23 @@ export class ToolExecutionService implements BaseService {
 		};
 		addTreeCandidates(tree?.root);
 
+		// Documents created earlier in this same turn are not in the turn-start
+		// context snapshot; without this, a weak model can create the same sheet
+		// twice in one turn and sail past the guard.
+		const sameTurnCreated = this.sameTurnCreatedDocuments.get(requestedTitle);
+		if (sameTurnCreated) {
+			return {
+				success: false,
+				error:
+					`A document titled "${sameTurnCreated.title}" was already created earlier in this turn` +
+					(sameTurnCreated.id ? ` (document_id: ${sameTurnCreated.id})` : '') +
+					`. Do not create it again. Use update_onto_document${sameTurnCreated.id ? ` with document_id "${sameTurnCreated.id}"` : ' with that document ID from the earlier create result'} to add the remaining content.`,
+				errorType: 'validation_error',
+				toolName,
+				toolCallId
+			};
+		}
+
 		const duplicate = [...candidates.values()].find(
 			(document) => this.normalizeDocumentTitleIdentity(document.title) === requestedTitle
 		);
@@ -3176,6 +3255,51 @@ export class ToolExecutionService implements BaseService {
 			toolName,
 			toolCallId
 		};
+	}
+
+	/**
+	 * The agent_workspace contract is server-owned: project creation derives and
+	 * persists it, and every later read treats it as trusted routing state. No
+	 * model-supplied props may set or change it — otherwise a single props merge
+	 * on any document/project update flips the project into a living-reference
+	 * workspace with forced write commissions.
+	 */
+	private stripServerOwnedWorkspaceProps(
+		toolName: string,
+		args: Record<string, any>
+	): Record<string, any> {
+		if (
+			toolName !== 'update_onto_project' &&
+			toolName !== 'update_onto_document' &&
+			toolName !== 'create_onto_document'
+		) {
+			return args;
+		}
+		let next = args;
+		const stripAt = (containerKey: string | null): void => {
+			const container = containerKey ? next[containerKey] : next;
+			if (!container || typeof container !== 'object' || Array.isArray(container)) return;
+			const props = (container as Record<string, unknown>).props;
+			if (!props || typeof props !== 'object' || Array.isArray(props)) return;
+			if (!(AGENT_WORKSPACE_PROP in (props as Record<string, unknown>))) return;
+			const { [AGENT_WORKSPACE_PROP]: _discarded, ...safeProps } = props as Record<
+				string,
+				unknown
+			>;
+			if (containerKey) {
+				next = {
+					...next,
+					[containerKey]: { ...(container as Record<string, unknown>), props: safeProps }
+				};
+			} else {
+				next = { ...next, props: safeProps };
+			}
+		};
+		stripAt(null);
+		stripAt('document');
+		stripAt('project');
+		stripAt('updates');
+		return next;
 	}
 
 	private applyFictionLivingReferenceDocumentUpdateDefaults(
@@ -3258,11 +3382,27 @@ export class ToolExecutionService implements BaseService {
 
 	private hasExplicitDuplicateDocumentIntent(context: ServiceContext): boolean {
 		const message = this.getLatestUserMessageText(context);
+		// "Don't create a duplicate document" is a prohibition, not permission.
+		// When the duplication vocabulary appears in a negated context, keep the
+		// guard armed — a blocked create is repairable; a silent duplicate is not.
+		if (
+			/\b(?:don'?t|do\s+not|never|avoid|without|no|shouldn'?t|should\s+not|won'?t|not)\s+(?:\w+\s+){0,3}(?:duplicate|duplicating|clone|cloning|copies|copy)\b/i.test(
+				message
+			)
+		) {
+			return false;
+		}
 		return (
-			/\b(?:duplicate|clone|copy)\b[\s\S]{0,60}\b(?:document|doc|page|version|copy)\b|\b(?:document|doc|page|version)\b[\s\S]{0,60}\b(?:duplicate|clone|copy)\b/i.test(
+			/\b(?:duplicate|clone)\b[\s\S]{0,60}\b(?:document|doc|page|version|sheet|note)\b|\b(?:document|doc|page|version|sheet|note)\b[\s\S]{0,60}\b(?:duplicate|clone)\b/i.test(
 				message
 			) ||
-			/\b(?:another|second|separate)\s+(?:copy|version|document|doc|page)\b/i.test(message)
+			// "copy" alone is too common ("copy the tagline from the landing
+			// page") — require it phrased as producing a copy of a document.
+			/\b(?:another|second|separate|extra)\s+(?:copy|version|document|doc|page)\b/i.test(
+				message
+			) ||
+			/\b(?:a|one|the)\s+copy\s+of\s+(?:this|that|the|my)\b/i.test(message) ||
+			/\bmake\s+(?:a\s+)?cop(?:y|ies)\b/i.test(message)
 		);
 	}
 

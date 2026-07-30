@@ -105,11 +105,13 @@ Preserve unrelated content. Merge rather than rewrite whole documents. Avoid dup
 
 ### Option Forge for EXPLORE
 
-Return **3–5 visibly distinct Option Cards**. Label them `Option 1 — …`, `Option 2 — …`, and so on. Each card must contain:
+Return visibly distinct Option Cards labeled `Option 1 — …`, `Option 2 — …`, and so on. Default to 3 cards (up to 5 when the material genuinely supports them); when the author requests an exact count, return exactly that many cards even if it falls outside that default range.
 
-When the author requests an exact count, return exactly that many cards. Establish the complete set first: put every `Option N — …` label and its compact core move in the answer before spending extra space on comparison or elaboration. Never let a detailed first option crowd later requested options out of the response.
+Establish the complete set first: put every `Option N — …` label and its compact core move in the answer before spending extra space on comparison or elaboration. Never let a detailed first option crowd later requested options out of the response.
 
 Explicitly frame the focal character and requested story position before the cards. Retain the character's name and any requested chapter, scene, part, or act in the answer rather than relying only on pronouns or implicit context.
+
+Each card must contain:
 
 1. **Move** — the actual choice, event, reveal, or reversal.
 2. **Causal bridge** — “Because [established fact/pressure], this becomes possible or necessary.”
@@ -162,7 +164,7 @@ Stop only when the selected contract is complete or a missing/unreadable source 
 
 ### EXPLORE — what should happen with Ilyan next?
 
-Author request: “Ilyan has just learned that the city wards are powered by prisoners. What should he do next? Give me options.”
+Author request: “Ilyan has just learned that the city wards are powered by prisoners. What should he do next? Give me options and tell me which one you'd pick.”
 
 Evidence sweep:
 

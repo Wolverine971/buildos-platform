@@ -221,6 +221,7 @@ export async function runNoToolCallFinalization(params: {
 	expectedWriteToolNames?: string[];
 	allowClarifyingQuestionWithoutWrite?: boolean;
 	minimumSuccessfulWrites?: number;
+	commissionedWriteToolNames?: readonly string[];
 	gatewayModeActive: boolean;
 	projectCreateStopRepairInjected: boolean;
 	gatewayMutationStopRepairInjected: boolean;
@@ -266,7 +267,8 @@ export async function runNoToolCallFinalization(params: {
 			latestUserText: params.latestUserText,
 			explicitMutationRequested: params.mutationRequested,
 			allowClarifyingQuestionWithoutWrite: params.allowClarifyingQuestionWithoutWrite,
-			minimumSuccessfulWrites: params.minimumSuccessfulWrites
+			minimumSuccessfulWrites: params.minimumSuccessfulWrites,
+			commissionedWriteToolNames: params.commissionedWriteToolNames
 		})
 	) {
 		return {
@@ -274,7 +276,8 @@ export async function runNoToolCallFinalization(params: {
 			kind: 'gateway_mutation',
 			instruction: buildGatewayMutationNoExecutionRepairInstruction(
 				params.toolExecutions,
-				params.minimumSuccessfulWrites
+				params.minimumSuccessfulWrites,
+				params.commissionedWriteToolNames
 			)
 		};
 	}
