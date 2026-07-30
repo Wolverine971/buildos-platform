@@ -24,7 +24,11 @@ const REDUNDANT_DIRECT_WRITE_DISCOVERY_TOOLS = new Set(['tool_search', 'tool_sch
 export type LivingWorkspaceToolSelection = {
 	tools: ChatToolDefinition[];
 	implicitCapture: boolean;
+	commissionedWriteMinimumCount: number;
 };
+
+const FICTION_STRUCTURE_PROJECTION_SIGNAL =
+	/\b(?:act|part|chapter|scene|beat|plot\s+(?:point|turn|beat)|story\s+(?:arc|structure))\b/i;
 
 /**
  * A living-reference project turns a plain declarative message into an
@@ -46,8 +50,17 @@ export function applyLivingWorkspaceToolProfile(params: {
 			looksLikeLivingWorkspaceCaptureTurn(params.latestUserMessage)
 	);
 	if (!implicitCapture) {
-		return { tools: params.tools, implicitCapture: false };
+		return {
+			tools: params.tools,
+			implicitCapture: false,
+			commissionedWriteMinimumCount: 0
+		};
 	}
+	const storyStructureProjection = Boolean(
+		(params.workspace?.domain_profile === 'fiction_story' ||
+			params.workspace?.domain_affinity === 'writing.fiction') &&
+			FICTION_STRUCTURE_PROJECTION_SIGNAL.test(params.latestUserMessage ?? '')
+	);
 
 	const materialized = materializeGatewayTools(params.tools, [
 		'create_onto_document',
@@ -57,7 +70,11 @@ export function applyLivingWorkspaceToolProfile(params: {
 		tools: materialized.filter(
 			(tool) => !REDUNDANT_DIRECT_WRITE_DISCOVERY_TOOLS.has(tool.function?.name ?? '')
 		),
-		implicitCapture: true
+		implicitCapture: true,
+		// A plain canon addition needs one durable home. A fiction beat that also
+		// changes narrative structure has two affected projections: the relevant
+		// reference sheet and the story/chapter structure.
+		commissionedWriteMinimumCount: storyStructureProjection ? 2 : 1
 	};
 }
 

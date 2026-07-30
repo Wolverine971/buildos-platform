@@ -857,7 +857,7 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
-		it('blocks project milestones whose dates were not grounded in the user message', async () => {
+		it('removes fiction milestones whose dates were not grounded in the user message', async () => {
 			const createContext: ServiceContext = {
 				...mockContext,
 				contextType: 'project_create',
@@ -865,7 +865,7 @@ describe('ToolExecutionService', () => {
 				conversationHistory: [
 					{
 						role: 'user',
-						content: 'The novel has Part I, Part II, and Part III.'
+						content: 'Create an ongoing workspace for my novel.'
 					} as any
 				]
 			};
@@ -901,17 +901,76 @@ describe('ToolExecutionService', () => {
 					required: ['project', 'entities', 'relationships']
 				}
 			};
+			mockToolExecutor.mockResolvedValueOnce({ data: { project_id: 'project-1' } });
 
 			const result = await service.executeTool(toolCall, createContext, [
 				createProjectDefinition
 			]);
 
-			expect(result).toMatchObject({
-				success: false,
-				errorType: 'validation_error',
-				error: expect.stringContaining('require schedule evidence')
-			});
-			expect(mockToolExecutor).not.toHaveBeenCalled();
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'create_onto_project',
+				expect.objectContaining({ entities: [], relationships: [] }),
+				contextLike(createContext)
+			);
+		});
+
+		it('removes unrequested operational scaffolding in a canon-only fiction project', async () => {
+			const createContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project_create',
+				entityId: undefined,
+				conversationHistory: [
+					{
+						role: 'user',
+						content:
+							'Create an ongoing novel workspace. Part I is The Missing Street and Part II is The Salt Archive.'
+					} as any
+				]
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_create_with_invented_goal',
+				name: 'create_onto_project',
+				arguments: {
+					project: {
+						name: 'The Glass Harbor',
+						type_key: 'project.creative.novel'
+					},
+					entities: [
+						{
+							kind: 'goal',
+							temp_id: 'finish-book',
+							name: 'Complete the first draft'
+						}
+					],
+					relationships: []
+				}
+			};
+			const createProjectDefinition: ChatToolDefinition = {
+				name: 'create_onto_project',
+				description: 'Create project',
+				parameters: {
+					type: 'object',
+					properties: {
+						project: { type: 'object' },
+						entities: { type: 'array' },
+						relationships: { type: 'array' }
+					},
+					required: ['project', 'entities', 'relationships']
+				}
+			};
+			mockToolExecutor.mockResolvedValueOnce({ data: { project_id: 'project-1' } });
+
+			const result = await service.executeTool(toolCall, createContext, [
+				createProjectDefinition
+			]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'create_onto_project',
+				expect.objectContaining({ entities: [], relationships: [] }),
+				contextLike(createContext)
+			);
 		});
 
 		it('should warn before creating a second project from an existing project turn', async () => {
@@ -1622,6 +1681,223 @@ describe('ToolExecutionService', () => {
 					type_key: 'document.context.brief'
 				}),
 				contextLike(mockContext)
+			);
+		});
+
+		it('blocks an accidental duplicate document and returns the exact update target', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const documentId = '9da52903-4bb5-4c3f-af32-cb4a2c623dec';
+			const createContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				conversationHistory: [
+					{ role: 'user', content: 'Add this new canon detail about Ilyan.' } as any
+				],
+				ontologyContext: {
+					type: 'project',
+					entities: {
+						documents: [
+							{
+								id: documentId,
+								project_id: projectId,
+								title: 'Ilyan Rook — Character Sheet'
+							} as any
+						]
+					},
+					metadata: {},
+					scope: { projectId }
+				}
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_duplicate_doc',
+				name: 'create_onto_document',
+				arguments: {
+					project_id: projectId,
+					title: 'Ilyan Rook - Character Sheet',
+					description: 'Character canon',
+					type_key: 'document.creative.character',
+					content: 'New Ilyan detail.'
+				}
+			};
+			const createDocumentDefinition: ChatToolDefinition = {
+				name: 'create_onto_document',
+				description: 'Create document',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						description: { type: 'string' },
+						type_key: { type: 'string' },
+						content: { type: 'string' }
+					},
+					required: ['project_id', 'title', 'description', 'type_key']
+				}
+			};
+
+			const result = await service.executeTool(toolCall, createContext, [
+				createDocumentDefinition
+			]);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining(documentId)
+			});
+			expect(result.error).toContain('use update_onto_document');
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('allows a same-title document when the user explicitly requests a duplicate', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const createContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				conversationHistory: [
+					{
+						role: 'user',
+						content: 'Create a duplicate copy of the Ilyan character sheet.'
+					} as any
+				],
+				ontologyContext: {
+					type: 'project',
+					entities: {
+						documents: [
+							{
+								id: '9da52903-4bb5-4c3f-af32-cb4a2c623dec',
+								project_id: projectId,
+								title: 'Ilyan Rook — Character Sheet'
+							} as any
+						]
+					},
+					metadata: {},
+					scope: { projectId }
+				}
+			};
+			const args = {
+				project_id: projectId,
+				title: 'Ilyan Rook — Character Sheet',
+				description: 'Explicit duplicate',
+				type_key: 'document.creative.character',
+				content: 'Duplicate content.'
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_explicit_duplicate_doc',
+				name: 'create_onto_document',
+				arguments: args
+			};
+			const createDocumentDefinition: ChatToolDefinition = {
+				name: 'create_onto_document',
+				description: 'Create document',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						description: { type: 'string' },
+						type_key: { type: 'string' },
+						content: { type: 'string' }
+					},
+					required: ['project_id', 'title', 'description', 'type_key']
+				}
+			};
+			mockToolExecutor.mockResolvedValueOnce({ data: { document_id: 'doc-copy' } });
+
+			const result = await service.executeTool(toolCall, createContext, [
+				createDocumentDefinition
+			]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'create_onto_document',
+				args,
+				contextLike(createContext)
+			);
+		});
+
+		it('preserves the full author source in a living-fiction structure update', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const documentId = '9da52903-4bb5-4c3f-af32-cb4a2c623dec';
+			const source =
+				'I think the last beat of Part I happens at the end of chapter 4: Ilyan catches Mara hiding a forbidden map and chooses not to report her. Mara reads that as loyalty, but privately he is using her to reach the Salt Archive. Chapter 5 opens Part II on the morning after that choice.';
+			const updateContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				conversationHistory: [{ role: 'user', content: source } as any],
+				ontologyContext: {
+					type: 'project',
+					entities: {
+						project: {
+							id: projectId,
+							props: {
+								agent_workspace: {
+									mode: 'living_reference',
+									domain_profile: 'fiction_story',
+									domain_affinity: 'writing.fiction'
+								}
+							}
+						} as any,
+						documents: [
+							{
+								id: documentId,
+								project_id: projectId,
+								title: "The Cartographer's Debt — Structure",
+								type_key: 'document.creative.structure'
+							} as any
+						]
+					},
+					metadata: {},
+					scope: { projectId }
+				}
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_update_structure',
+				name: 'update_onto_document',
+				arguments: {
+					document_id: documentId,
+					content:
+						'## Chapter 4\n\nMara interprets Ilyan as loyal.\n\n## Chapter 5\n\nPart II begins the next morning.',
+					update_strategy: 'append'
+				}
+			};
+			const updateDocumentDefinition: ChatToolDefinition = {
+				name: 'update_onto_document',
+				description: 'Update document',
+				parameters: {
+					type: 'object',
+					properties: {
+						document_id: { type: 'string' },
+						content: { type: 'string' },
+						update_strategy: {
+							type: 'string',
+							enum: ['replace', 'append', 'merge_llm'],
+							default: 'replace'
+						}
+					},
+					required: ['document_id']
+				}
+			};
+			mockToolExecutor.mockResolvedValueOnce({ data: { document_id: documentId } });
+
+			const result = await service.executeTool(toolCall, updateContext, [
+				updateDocumentDefinition
+			]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'update_onto_document',
+				expect.objectContaining({
+					document_id: documentId,
+					update_strategy: 'append',
+					content: expect.stringContaining(source)
+				}),
+				contextLike(updateContext)
 			);
 		});
 

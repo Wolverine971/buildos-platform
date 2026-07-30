@@ -4,6 +4,7 @@
 // (chat_turn_runs / chat_tool_executions), and ground-truth onto_* rows.
 // All reads use the service-role admin client (bypasses RLS).
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import { STATED_FUTURE_SOURCE } from '$lib/server/stated-future.service';
 
 export interface TurnRunRow {
 	id: string;
@@ -88,6 +89,20 @@ export interface MilestoneRow {
 	project_id: string;
 	title: string;
 	due_at: string | null;
+	state_key: string;
+}
+
+export interface GoalRow {
+	id: string;
+	project_id: string;
+	name: string;
+	state_key: string;
+}
+
+export interface PlanRow {
+	id: string;
+	project_id: string;
+	name: string;
 	state_key: string;
 }
 
@@ -372,6 +387,61 @@ export async function listTasks(admin: TypedSupabaseClient, projectId: string): 
 		.is('deleted_at', null)
 		.order('updated_at', { ascending: false });
 	return (data as TaskRow[] | null) ?? [];
+}
+
+export interface StatedFutureTaskRow {
+	id: string;
+	project_id: string;
+	title: string;
+	description: string | null;
+	state_key: string;
+	props: Record<string, unknown> | null;
+}
+
+/**
+ * Tasks written by the deterministic stated-future floor
+ * (`$lib/server/stated-future.service`, D1 2026-07-26), identified by ground-truth
+ * provenance (`props.source === 'stated_future_capture'`) — never by title or
+ * description text, which would be exactly the looksLike* escape hatch this
+ * harness bans. The floor also stamps `props.source_stream_run_id` with the turn
+ * that produced the capture; scenarios assert that linkage.
+ */
+export async function listStatedFutureTasks(
+	admin: TypedSupabaseClient,
+	projectId: string
+): Promise<StatedFutureTaskRow[]> {
+	const { data, error } = await admin
+		.from('onto_tasks')
+		.select('id, project_id, title, description, state_key, props')
+		.eq('project_id', projectId)
+		.is('deleted_at', null);
+	if (error) {
+		throw new Error(`[agentic-e2e] failed to read stated-future tasks: ${error.message}`);
+	}
+	const rows = (data as StatedFutureTaskRow[] | null) ?? [];
+	return rows.filter(
+		(row) => (row.props as { source?: unknown } | null)?.source === STATED_FUTURE_SOURCE
+	);
+}
+
+/** All live goals under a project. */
+export async function listGoals(admin: TypedSupabaseClient, projectId: string): Promise<GoalRow[]> {
+	const { data } = await admin
+		.from('onto_goals')
+		.select('id, project_id, name, state_key')
+		.eq('project_id', projectId)
+		.is('deleted_at', null);
+	return (data as GoalRow[] | null) ?? [];
+}
+
+/** All live plans under a project. */
+export async function listPlans(admin: TypedSupabaseClient, projectId: string): Promise<PlanRow[]> {
+	const { data } = await admin
+		.from('onto_plans')
+		.select('id, project_id, name, state_key')
+		.eq('project_id', projectId)
+		.is('deleted_at', null);
+	return (data as PlanRow[] | null) ?? [];
 }
 
 /** All live milestones under a project. */

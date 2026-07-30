@@ -1,7 +1,7 @@
 // packages/shared-types/src/agentic-chat-worker-contract.ts
 export const AGENTIC_CHAT_WORKER_CONTRACT_VERSION = 'agentic_chat_worker_v1' as const;
-export const AGENTIC_CHAT_REQUEST_HASH_VERSION = 'agentic_chat_request_hash_v1' as const;
-export const AGENTIC_CHAT_INPUT_ARTIFACT_VERSION = 'agentic_chat_input_v1' as const;
+export const AGENTIC_CHAT_REQUEST_HASH_VERSION = 'agentic_chat_request_hash_v2' as const;
+export const AGENTIC_CHAT_INPUT_ARTIFACT_VERSION = 'agentic_chat_input_v2' as const;
 
 export type JsonObject = { [key: string]: JsonValue | undefined };
 export type JsonValue = null | boolean | number | string | JsonObject | JsonValue[];
@@ -25,20 +25,25 @@ export type NormalizedChatAttachmentV1 = {
 	extracted_text_preview: string | null;
 };
 
+/**
+ * The hashed semantic command covers only user-authored/user-chosen fields.
+ * Client-recomputed state (session id, last-turn context, project focus) is
+ * deliberately excluded — hash v2 — so a legitimate retry of the same
+ * `(user_id, client_turn_id)` cannot become a false idempotency conflict.
+ * Those excluded fields are validated against the stored turn at admission
+ * instead: a supplied session id must equal the stored `session_id`.
+ */
 export type CanonicalAdmissionRequestV1 = {
 	version: typeof AGENTIC_CHAT_REQUEST_HASH_VERSION;
-	sessionId: string;
 	clientTurnId: string;
 	streamRunId: string;
 	context: {
 		type: string;
 		entityId: string | null;
 		projectId: string | null;
-		projectFocus: JsonObject | null;
 	};
 	message: string;
 	attachments: NormalizedChatAttachmentV1[];
-	lastTurnContext: JsonObject | null;
 	voiceNoteGroupId: string | null;
 	preparedPromptLineage: {
 		id: string | null;
@@ -57,6 +62,8 @@ export type FrozenHistoryMessageV1 = {
 
 export type TurnInputArtifactContentV1 = {
 	artifactVersion: typeof AGENTIC_CHAT_INPUT_ARTIFACT_VERSION;
+	/** which mechanism produced the frozen history; prepared-prompt history has no source message ids */
+	historySource: 'admission_window' | 'prepared_prompt';
 	history: FrozenHistoryMessageV1[];
 	prepared: {
 		sourcePreparedPromptId: string | null;
@@ -117,6 +124,7 @@ export type AgentStreamEventV1<TPayload extends { type: string } = { type: strin
 	event_id: string;
 	stream_run_id: string;
 	client_turn_id: string;
+	session_id: string;
 	turn_run_id: string;
 	execution_generation: number;
 	sequence_index: number;
@@ -128,7 +136,8 @@ export type AgentStreamEventV1<TPayload extends { type: string } = { type: strin
 export type TurnSnapshotV1 = {
 	contract_version: typeof AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
 	turn_run_id: string;
-	execution_mode: 'worker_realtime';
+	/** both transports implement reconcile(); legacy snapshots carry 'legacy_sse' */
+	execution_mode: 'worker_realtime' | 'legacy_sse';
 	execution_generation: number;
 	status: ChatTurnStatusV1;
 	text: string;
@@ -253,17 +262,12 @@ export function canonicalizeAdmissionRequestV1(
 ): CanonicalAdmissionRequestV1 {
 	return {
 		version: AGENTIC_CHAT_REQUEST_HASH_VERSION,
-		sessionId: request.sessionId,
 		clientTurnId: request.clientTurnId,
 		streamRunId: request.streamRunId,
 		context: {
 			type: request.context.type,
 			entityId: request.context.entityId,
-			projectId: request.context.projectId,
-			projectFocus:
-				request.context.projectFocus === null
-					? null
-					: cloneCanonicalJson(request.context.projectFocus)
+			projectId: request.context.projectId
 		},
 		message: normalizeAgenticChatText(request.message),
 		attachments: request.attachments
@@ -274,8 +278,6 @@ export function canonicalizeAdmissionRequestV1(
 					left.inputOrder - right.inputOrder
 			)
 			.map(({ attachment }) => canonicalizeAttachmentV1(attachment)),
-		lastTurnContext:
-			request.lastTurnContext === null ? null : cloneCanonicalJson(request.lastTurnContext),
 		voiceNoteGroupId: request.voiceNoteGroupId,
 		preparedPromptLineage: {
 			id: request.preparedPromptLineage.id,
@@ -303,6 +305,7 @@ export function normalizeTurnInputArtifactContentV1(
 ): TurnInputArtifactContentV1 {
 	return {
 		artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+		historySource: artifact.historySource,
 		history: freezeTurnInputHistoryV1(artifact.history),
 		prepared: {
 			sourcePreparedPromptId: artifact.prepared.sourcePreparedPromptId,

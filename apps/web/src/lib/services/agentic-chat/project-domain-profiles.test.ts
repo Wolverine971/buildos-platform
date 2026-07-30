@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	AGENT_WORKSPACE_PROP,
+	applyFictionStructureUpdateSourceDefault,
 	applyProjectCreationProfileDefaults,
 	hasExplicitProjectScheduleSignal,
 	looksLikeFictionStoryCraftTurn,
@@ -10,10 +11,31 @@ import {
 	resolveAgentWorkspaceFromContextData,
 	resolveProjectDomainRuntimeSkillId,
 	resolveProjectDomainProfile,
+	renderProjectCreationProfileGuidance,
+	validateFictionCharacterSourceCoverage,
+	validateFictionOperationalScaffoldingGrounding,
+	validateFictionStructureSourceCoverage,
 	validateProjectCreationMilestoneGrounding
 } from './project-domain-profiles';
 
 describe('project domain profiles', () => {
+	it('retains the complete author source in an incremental fiction structure update', () => {
+		const source =
+			'Ilyan catches Mara hiding a forbidden map and chooses not to report her. Mara reads that as loyalty, but he is using her to reach the Salt Archive. Chapter 5 opens Part II on the morning after that choice.';
+		const result = applyFictionStructureUpdateSourceDefault(
+			{
+				document_id: 'structure-doc',
+				content: '## Chapter 5\n\nPart II begins the next morning.',
+				update_strategy: 'append'
+			},
+			source
+		);
+
+		expect(result.content).toContain('## Author canon');
+		expect(result.content).toContain(source);
+		expect(result.content).toContain('Part II begins the next morning.');
+	});
+
 	it('recognizes fiction projects without treating ordinary booking language as fiction', () => {
 		expect(
 			resolveProjectDomainProfile({
@@ -134,6 +156,194 @@ describe('project domain profiles', () => {
 		expect(hasExplicitProjectScheduleSignal('Finish Part I by March 1, 2027.')).toBe(true);
 		expect(
 			validateProjectCreationMilestoneGrounding(args, 'Finish Part I by March 1, 2027.')
+		).toEqual([]);
+	});
+
+	it('requires complete character sheets and keeps story structure out of project plans', () => {
+		const guidance = renderProjectCreationProfileGuidance(
+			'Create an ongoing workspace for my novel and keep its characters and parts organized.'
+		)?.content;
+
+		expect(guidance).toContain('Do not rely on START HERE');
+		expect(guidance).toContain('complete source sentence verbatim');
+		expect(guidance).toContain(
+			'Do not create BuildOS goals, plans, tasks, milestones, or dates'
+		);
+	});
+
+	it('strips invented project dates from an idea-only fiction workspace', () => {
+		const result = applyProjectCreationProfileDefaults(
+			{
+				project: {
+					name: 'The Glass Harbor',
+					type_key: 'project.creative.novel',
+					start_at: '2026-07-29T00:00:00Z',
+					end_at: '2026-10-29T00:00:00Z'
+				},
+				entities: [],
+				relationships: []
+			},
+			'Create an ongoing workspace for my novel; it has three narrative parts.'
+		);
+
+		expect(result.project).not.toHaveProperty('start_at');
+		expect(result.project).not.toHaveProperty('end_at');
+	});
+
+	it('deterministically grounds a fiction workspace without replacing creative judgment', () => {
+		const characterSentence =
+			'Mara Venn is an apprentice cartographer who alone remembers the erased Drowned Ward.';
+		const structureSentence =
+			'The book has three parts: Part I, The Missing Street; Part II, The Salt Archive; and Part III, A Map That Refuses to Burn.';
+		const result = applyProjectCreationProfileDefaults(
+			{
+				project: { name: 'The Glass Harbor', type_key: 'project.creative.novel' },
+				entities: [
+					{ kind: 'goal', temp_id: 'finish-book', name: 'Complete the first draft' },
+					{ kind: 'plan', temp_id: 'part-one', name: 'Part I' },
+					{
+						kind: 'document',
+						temp_id: 'mara',
+						title: 'Mara Venn',
+						type_key: 'document.creative.character',
+						body_markdown: '## Role\n\nMara maps the harbor.'
+					},
+					{
+						kind: 'document',
+						temp_id: 'structure',
+						title: 'Story Structure',
+						type_key: 'document.creative.structure',
+						content: '## Parts\n\nThree escalating movements.'
+					}
+				],
+				relationships: [
+					[
+						{ temp_id: 'finish-book', kind: 'goal' },
+						{ temp_id: 'mara', kind: 'document' }
+					],
+					[
+						{ temp_id: 'mara', kind: 'document' },
+						{ temp_id: 'structure', kind: 'document' }
+					]
+				]
+			},
+			`Create an ongoing novel workspace. ${characterSentence} ${structureSentence}`
+		);
+
+		expect(result.entities.map((entity) => entity.kind)).toEqual(['document', 'document']);
+		expect(result.relationships).toHaveLength(1);
+		expect(result.entities[0].body_markdown).toContain(characterSentence);
+		expect(result.entities[0].body_markdown).toContain('## Author canon');
+		expect(result.entities[1].content).toContain(structureSentence);
+		expect(result.entities[1].content).toContain('## Author canon');
+		expect(validateFictionCharacterSourceCoverage(result, characterSentence)).toEqual([]);
+		expect(validateFictionStructureSourceCoverage(result, structureSentence)).toEqual([]);
+	});
+
+	it('rejects invented operational scaffolding for a canon-only fiction opening', () => {
+		const args = {
+			project: { name: 'The Glass Harbor', type_key: 'project.creative.novel' },
+			entities: [
+				{ kind: 'goal', temp_id: 'draft-goal', name: 'Complete the novel' },
+				{ kind: 'plan', temp_id: 'part-one', name: 'Part I' }
+			],
+			relationships: []
+		};
+
+		expect(
+			validateFictionOperationalScaffoldingGrounding(
+				args,
+				'Create an ongoing workspace for my novel; Part I is The Missing Street.'
+			)
+		).toEqual([expect.stringContaining('does not request project-management scaffolding')]);
+		expect(
+			validateFictionOperationalScaffoldingGrounding(
+				args,
+				'Create a novel workspace and add a writing plan with tasks for the first draft.'
+			)
+		).toEqual([]);
+	});
+
+	it('requires the author source sentence in each unambiguously introduced character sheet', () => {
+		const userMessage =
+			'Mara Venn is an apprentice cartographer who alone remembers the erased Drowned Ward. Ilyan Rook is a harbor customs clerk whose brother disappeared.';
+		const baseArgs = {
+			project: { name: 'The Glass Harbor', type_key: 'project.creative.novel' },
+			entities: [
+				{
+					kind: 'document',
+					temp_id: 'mara',
+					title: 'Mara Venn',
+					type_key: 'document.creative.character',
+					content: '## Role\n\nMara wants to recover a lost part of the city.'
+				},
+				{
+					kind: 'document',
+					temp_id: 'ilyan',
+					title: 'Ilyan Rook',
+					type_key: 'document.creative.character',
+					content:
+						'## Author canon\n\nIlyan Rook is a harbor customs clerk whose brother disappeared.'
+				}
+			],
+			relationships: []
+		};
+
+		expect(validateFictionCharacterSourceCoverage(baseArgs, userMessage)).toEqual([
+			expect.stringContaining("Mara Venn's character sheet")
+		]);
+		expect(
+			validateFictionCharacterSourceCoverage(
+				{
+					...baseArgs,
+					entities: baseArgs.entities.map((entity) =>
+						entity.temp_id === 'mara'
+							? {
+									...entity,
+									content:
+										'## Author canon\n\nMara Venn is an apprentice cartographer who alone remembers the erased Drowned Ward.'
+								}
+							: entity
+					)
+				},
+				userMessage
+			)
+		).toEqual([]);
+	});
+
+	it('requires an explicitly named story sequence in the creative structure artifact', () => {
+		const userMessage =
+			'The book has three parts: Part I, The Missing Street; Part II, The Salt Archive; and Part III, A Map That Refuses to Burn.';
+		const baseArgs = {
+			project: { name: 'The Glass Harbor', type_key: 'project.creative.novel' },
+			entities: [
+				{
+					kind: 'document',
+					temp_id: 'structure',
+					title: 'Story Structure',
+					type_key: 'document.creative.structure',
+					content: '## Parts\n\nThe story unfolds in three escalating movements.'
+				}
+			],
+			relationships: []
+		};
+
+		expect(validateFictionStructureSourceCoverage(baseArgs, userMessage)).toEqual([
+			expect.stringContaining('complete author source sentence')
+		]);
+		expect(
+			validateFictionStructureSourceCoverage(
+				{
+					...baseArgs,
+					entities: [
+						{
+							...baseArgs.entities[0],
+							content: `## Author canon\n\n${userMessage}\n\n## Parts`
+						}
+					]
+				},
+				userMessage
+			)
 		).toEqual([]);
 	});
 

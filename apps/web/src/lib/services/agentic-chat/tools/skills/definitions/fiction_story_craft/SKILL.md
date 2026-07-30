@@ -105,7 +105,11 @@ Preserve unrelated content. Merge rather than rewrite whole documents. Avoid dup
 
 ### Option Forge for EXPLORE
 
-Return **3–5 Option Cards**. Each card must contain:
+Return **3–5 visibly distinct Option Cards**. Label them `Option 1 — …`, `Option 2 — …`, and so on. Each card must contain:
+
+When the author requests an exact count, return exactly that many cards. Establish the complete set first: put every `Option N — …` label and its compact core move in the answer before spending extra space on comparison or elaboration. Never let a detailed first option crowd later requested options out of the response.
+
+Explicitly frame the focal character and requested story position before the cards. Retain the character's name and any requested chapter, scene, part, or act in the answer rather than relying only on pronouns or implicit context.
 
 1. **Move** — the actual choice, event, reveal, or reversal.
 2. **Causal bridge** — “Because [established fact/pressure], this becomes possible or necessary.”
@@ -114,7 +118,7 @@ Return **3–5 Option Cards**. Each card must contain:
 5. **Cost / risk** — what gets harder, is lost, or becomes dangerous.
 6. **Next beat** — the immediate scene consequence, not a vague future promise.
 
-Across the set, vary the causal mechanism and the cost. Include a recommendation only after the comparison, label it **best-fit proposal**, and explain why it best serves the project's already established direction. It is still not canon.
+Across the set, vary the causal mechanism and the cost. Include a recommendation only when the author asks for one or permits you to choose; omit it when the author says not to choose. When included, place it after the comparison, label it **best-fit proposal**, and explain why it best serves the project's already established direction. It is still not canon.
 
 ### Draft frame for DRAFT
 
@@ -128,7 +132,7 @@ For each conflict show: **Claim A + source**, **Claim B + source**, **why both c
 
 Return the shape for the selected mode:
 
-- **EXPLORE:** grounded read; relevant canon and open pressure; 3–5 Option Cards, each containing Move, Causal bridge, Arc effect, Continuity fit, Cost/risk, and Next beat; comparison; one clearly labelled best-fit proposal; continuity/assumption note; explicit **No project facts changed** status.
+- **EXPLORE:** grounded read; relevant canon and open pressure; 3–5 visibly numbered Option Cards, each containing Move, Causal bridge, Arc effect, Continuity fit, Cost/risk, and Next beat; comparison; a best-fit proposal only when requested or permitted; continuity/assumption note; explicit **No project facts changed** status.
 - **CAPTURE:** update traits/backstory/motivation/relationships in the existing character sheet; update plot/chapter/scene beats in the existing structure artifact; update world rules in the world document; propagate only when motivation, knowledge, relationship, choice, arc position, or beat structure changes. Return a write receipt naming each updated or created document, conflicts or open questions left unresolved, and explicit confirmation that no proposal was promoted and no schedule/milestone was invented.
 - **DRAFT:** five-field draft frame; controlling canon anchors; requested prose; continuity notes; proposed new details; explicit saved/not-saved status.
 - **RECONCILE:** conflict table with source evidence; affected story surfaces; 2–3 resolution choices and tradeoffs; explicit **No canon changed pending decision** status unless the author already authorized the correction.

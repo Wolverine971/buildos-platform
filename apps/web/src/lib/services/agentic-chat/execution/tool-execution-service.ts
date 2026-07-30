@@ -59,8 +59,11 @@ import {
 	isAppendOrMergeUpdateStrategy
 } from '../shared/update-value-validation';
 import {
+	applyFictionStructureUpdateSourceDefault,
 	applyProjectCreationProfileDefaults,
-	validateProjectCreationMilestoneGrounding
+	looksLikeLivingWorkspaceCaptureTurn,
+	readAgentWorkspaceMetadata,
+	validateProjectCreationProfileGrounding
 } from '../project-domain-profiles';
 
 const logger = createLogger('ToolExecutionService');
@@ -452,11 +455,20 @@ export class ToolExecutionService implements BaseService {
 		if (entityScopeGuard) {
 			return finalizeResult(entityScopeGuard);
 		}
+		const duplicateDocumentGuard = this.guardDuplicateDocumentCreate(
+			toolName,
+			args,
+			context,
+			toolCall.id
+		);
+		if (duplicateDocumentGuard) {
+			return finalizeResult(duplicateDocumentGuard);
+		}
 		if (toolName === 'create_onto_project') {
 			const sourceMessage = this.getRecentUserMessageEvidence(context);
 			args = applyProjectCreationProfileDefaults(args, sourceMessage);
 			args = normalizeProjectCreateArgs(args);
-			const groundingErrors = validateProjectCreationMilestoneGrounding(args, sourceMessage);
+			const groundingErrors = validateProjectCreationProfileGrounding(args, sourceMessage);
 			if (groundingErrors.length > 0) {
 				return finalizeResult({
 					success: false,
@@ -467,6 +479,7 @@ export class ToolExecutionService implements BaseService {
 				});
 			}
 		}
+		args = this.applyFictionLivingReferenceDocumentUpdateDefaults(toolName, args, context);
 		const projectCreateContextGuard = this.guardProjectCreateFromProjectContext(
 			toolName,
 			args,
@@ -3097,6 +3110,160 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		return null;
+	}
+
+	private guardDuplicateDocumentCreate(
+		toolName: string,
+		args: Record<string, any>,
+		context: ServiceContext,
+		toolCallId: string
+	): ToolExecutionResult | null {
+		if (toolName !== 'create_onto_document') return null;
+		if (this.hasExplicitDuplicateDocumentIntent(context)) return null;
+
+		const requestedTitle = this.normalizeDocumentTitleIdentity(args.title);
+		if (!requestedTitle) return null;
+		const requestedProjectId =
+			typeof args.project_id === 'string' ? args.project_id.trim() : '';
+		const contextProjectId = this.resolveProjectIdFromContext(context);
+		const candidates = new Map<string, { id: string; title: string }>();
+		const addCandidate = (value: unknown): void => {
+			if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+			const document = value as Record<string, unknown>;
+			const id = typeof document.id === 'string' ? document.id.trim() : '';
+			const title = typeof document.title === 'string' ? document.title.trim() : '';
+			if (!id || !title) return;
+			const projectId =
+				typeof document.project_id === 'string'
+					? document.project_id.trim()
+					: typeof document.projectId === 'string'
+						? document.projectId.trim()
+						: contextProjectId;
+			if (requestedProjectId && projectId && projectId !== requestedProjectId) return;
+			candidates.set(id, { id, title });
+		};
+
+		const entities = context.ontologyContext?.entities;
+		addCandidate(entities?.document);
+		if (Array.isArray(entities?.documents)) {
+			for (const document of entities.documents) addCandidate(document);
+		}
+		const tree = context.ontologyContext?.metadata?.document_tree;
+		const addTreeCandidates = (nodes: unknown): void => {
+			if (!Array.isArray(nodes)) return;
+			for (const node of nodes) {
+				addCandidate(node);
+				if (node && typeof node === 'object' && !Array.isArray(node)) {
+					addTreeCandidates((node as Record<string, unknown>).children);
+				}
+			}
+		};
+		addTreeCandidates(tree?.root);
+
+		const duplicate = [...candidates.values()].find(
+			(document) => this.normalizeDocumentTitleIdentity(document.title) === requestedTitle
+		);
+		if (!duplicate) return null;
+
+		return {
+			success: false,
+			error:
+				`A document titled "${duplicate.title}" already exists in the current project ` +
+				`(document_id: ${duplicate.id}). Do not create a duplicate. Read that document if needed, ` +
+				`then use update_onto_document with document_id "${duplicate.id}" to merge the new content ` +
+				`while preserving existing content. Create another copy only when the user explicitly requests a duplicate or separate version.`,
+			errorType: 'validation_error',
+			toolName,
+			toolCallId
+		};
+	}
+
+	private applyFictionLivingReferenceDocumentUpdateDefaults(
+		toolName: string,
+		args: Record<string, any>,
+		context: ServiceContext
+	): Record<string, any> {
+		if (toolName !== 'update_onto_document') return args;
+		const userMessage = this.getLatestUserMessageText(context);
+		if (!looksLikeLivingWorkspaceCaptureTurn(userMessage)) return args;
+
+		const project = context.ontologyContext?.entities?.project;
+		const workspace = readAgentWorkspaceMetadata(project?.props);
+		if (
+			workspace?.mode !== 'living_reference' ||
+			workspace.domain_profile !== 'fiction_story'
+		) {
+			return args;
+		}
+
+		const documentId = typeof args.document_id === 'string' ? args.document_id.trim() : '';
+		if (!documentId || !getDocumentUpdateContentCandidate(args)) return args;
+		const document = this.findContextDocument(context, documentId);
+		const documentIdentity = this.normalizeDocumentTitleIdentity(
+			`${typeof document?.type_key === 'string' ? document.type_key : ''} ${typeof document?.title === 'string' ? document.title : ''}`
+		);
+		if (
+			!/document creative structure|\b(?:story|plot|structure|chapter)\b/.test(
+				documentIdentity
+			)
+		) {
+			return args;
+		}
+
+		return applyFictionStructureUpdateSourceDefault(args, userMessage);
+	}
+
+	private findContextDocument(
+		context: ServiceContext,
+		documentId: string
+	): Record<string, unknown> | null {
+		const entities = context.ontologyContext?.entities;
+		const directCandidates = [
+			entities?.document,
+			...(Array.isArray(entities?.documents) ? entities.documents : [])
+		];
+		for (const candidate of directCandidates) {
+			if (
+				candidate &&
+				typeof candidate === 'object' &&
+				!Array.isArray(candidate) &&
+				(candidate as Record<string, unknown>).id === documentId
+			) {
+				return candidate as Record<string, unknown>;
+			}
+		}
+
+		const findInTree = (nodes: unknown): Record<string, unknown> | null => {
+			if (!Array.isArray(nodes)) return null;
+			for (const node of nodes) {
+				if (!node || typeof node !== 'object' || Array.isArray(node)) continue;
+				const record = node as Record<string, unknown>;
+				if (record.id === documentId) return record;
+				const childMatch = findInTree(record.children);
+				if (childMatch) return childMatch;
+			}
+			return null;
+		};
+		return findInTree(context.ontologyContext?.metadata?.document_tree?.root);
+	}
+
+	private normalizeDocumentTitleIdentity(value: unknown): string {
+		if (typeof value !== 'string') return '';
+		return value
+			.normalize('NFKC')
+			.toLocaleLowerCase()
+			.replace(/[^\p{L}\p{N}]+/gu, ' ')
+			.trim();
+	}
+
+	private hasExplicitDuplicateDocumentIntent(context: ServiceContext): boolean {
+		const message = this.getLatestUserMessageText(context);
+		return (
+			/\b(?:duplicate|clone|copy)\b[\s\S]{0,60}\b(?:document|doc|page|version|copy)\b|\b(?:document|doc|page|version)\b[\s\S]{0,60}\b(?:duplicate|clone|copy)\b/i.test(
+				message
+			) ||
+			/\b(?:another|second|separate)\s+(?:copy|version|document|doc|page)\b/i.test(message)
+		);
 	}
 
 	private requiresKnownProjectForEntityIdMutation(toolName: string): boolean {

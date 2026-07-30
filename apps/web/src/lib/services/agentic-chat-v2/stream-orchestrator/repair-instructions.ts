@@ -689,6 +689,8 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 	repairAlreadyInjected: boolean;
 	latestUserText?: string;
 	explicitMutationRequested?: boolean;
+	allowClarifyingQuestionWithoutWrite?: boolean;
+	minimumSuccessfulWrites?: number;
 }): boolean {
 	if (!params.gatewayModeActive) return false;
 	if (params.contextType === 'project_create') return false;
@@ -698,7 +700,8 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 	if (!finalText) return true;
 
 	const mutationOutcomes = summarizeMutationOutcomes(params.toolExecutions);
-	if (mutationOutcomes.succeeded > 0) return false;
+	const minimumSuccessfulWrites = Math.max(1, Math.floor(params.minimumSuccessfulWrites ?? 1));
+	if (mutationOutcomes.succeeded >= minimumSuccessfulWrites) return false;
 
 	const writeIntentOps = collectGatewayWriteIntentOps(params.toolExecutions);
 	const explicitUserWriteIntent =
@@ -706,7 +709,11 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 		looksLikeExplicitMutationRequest(params.latestUserText ?? '');
 	if (writeIntentOps.length === 0 && !explicitUserWriteIntent) return false;
 
-	if (looksLikePureClarifyingQuestion(finalText)) return false;
+	if (
+		params.allowClarifyingQuestionWithoutWrite !== false &&
+		looksLikePureClarifyingQuestion(finalText)
+	)
+		return false;
 	if (
 		explicitUserWriteIntent &&
 		writeIntentOps.length === 0 &&
@@ -721,11 +728,19 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 }
 
 export function buildGatewayMutationNoExecutionRepairInstruction(
-	toolExecutions: FastToolExecution[]
+	toolExecutions: FastToolExecution[],
+	minimumSuccessfulWrites = 1
 ): string {
 	const plannedWriteOps = collectGatewayWriteIntentOps(toolExecutions);
+	const mutationOutcomes = summarizeMutationOutcomes(toolExecutions);
+	const remainingSuccessfulWrites = Math.max(
+		1,
+		Math.floor(minimumSuccessfulWrites) - mutationOutcomes.succeeded
+	);
 	const lines = [
-		'You have not completed any write yet.',
+		mutationOutcomes.succeeded > 0
+			? `The durable-capture commission still needs ${remainingSuccessfulWrites} additional successful write call${remainingSuccessfulWrites === 1 ? '' : 's'} to distinct affected documents.`
+			: `You have not completed any write yet.${minimumSuccessfulWrites > 1 ? ` This commission requires ${minimumSuccessfulWrites} successful writes to distinct affected documents.` : ''}`,
 		'Do not stop after schema discovery or failed writes without either retrying correctly or asking a concise blocker question.',
 		'If you cannot execute the requested write after trying, say "I was unable to <requested action>" and briefly explain what blocked it. Make clear that nothing changed.'
 	];

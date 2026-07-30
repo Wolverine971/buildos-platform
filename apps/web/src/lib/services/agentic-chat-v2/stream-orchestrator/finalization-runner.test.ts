@@ -131,6 +131,75 @@ describe('runNoToolSynthesisFinalization', () => {
 		);
 	});
 
+	it('retries a forced synthesis pass that misses an exact option count', async () => {
+		const result = await runNoToolSynthesisFinalization({
+			assistantBuffer: 'Option 1 — Hide the map. This protects Mara for now.',
+			carriedTruncatedText: '',
+			suppressedNoToolSynthesisToolCallCount: 0,
+			noToolSynthesisRetryCount: 0,
+			contextType: 'project',
+			toolExecutions: [],
+			latestUserText: 'Give me three distinct options for Ilyan.',
+			assistantText: '',
+			emitAssistantRemainder: vi.fn(),
+			observeSupervisor: vi.fn()
+		});
+
+		expect(result).toMatchObject({
+			action: 'retry',
+			nextRetryCount: 1,
+			forceNoToolSynthesisPass: true
+		});
+		expect(result.action === 'retry' ? result.systemMessage : '').toContain(
+			'exactly 3 compact'
+		);
+	});
+
+	it('retries a complete option set that omits the named subject and story position', async () => {
+		const result = await runNoToolSynthesisFinalization({
+			assistantBuffer:
+				'Option 1 — Hide the map.\nOption 2 — Confess.\nOption 3 — Delay the hearing.',
+			carriedTruncatedText: '',
+			suppressedNoToolSynthesisToolCallCount: 0,
+			noToolSynthesisRetryCount: 0,
+			contextType: 'project',
+			toolExecutions: [],
+			latestUserText:
+				'What should happen with Ilyan in chapter 5? Give me three distinct options.',
+			assistantText: '',
+			emitAssistantRemainder: vi.fn(),
+			observeSupervisor: vi.fn()
+		});
+
+		expect(result).toMatchObject({
+			action: 'retry',
+			nextRetryCount: 1,
+			forceNoToolSynthesisPass: true
+		});
+		const systemMessage = result.action === 'retry' ? result.systemMessage : '';
+		expect(systemMessage).toContain('"Ilyan"');
+		expect(systemMessage).toContain('"chapter 5"');
+	});
+
+	it('finalizes an exact option set that retains its explicit request anchors', async () => {
+		const result = await runNoToolSynthesisFinalization({
+			assistantBuffer:
+				'For Ilyan in Chapter 5:\nOption 1 — Hide the map.\nOption 2 — Confess.\nOption 3 — Delay the hearing.',
+			carriedTruncatedText: '',
+			suppressedNoToolSynthesisToolCallCount: 0,
+			noToolSynthesisRetryCount: 0,
+			contextType: 'project',
+			toolExecutions: [],
+			latestUserText:
+				'What should happen with Ilyan in chapter 5? Give me three distinct options.',
+			assistantText: '',
+			emitAssistantRemainder: vi.fn(),
+			observeSupervisor: vi.fn()
+		});
+
+		expect(result).toMatchObject({ action: 'finalized', finishedReason: 'stop' });
+	});
+
 	it('reports synthesis_failed instead of a false tool-round limit after retry exhaustion', async () => {
 		const result = await runNoToolSynthesisFinalization({
 			assistantBuffer: '',

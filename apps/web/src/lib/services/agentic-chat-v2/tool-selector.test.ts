@@ -36,6 +36,7 @@ describe('selectFastChatTools', () => {
 		const names = selection.tools.map((tool) => tool.function?.name).filter(Boolean);
 
 		expect(selection.implicitCapture).toBe(true);
+		expect(selection.commissionedWriteMinimumCount).toBe(1);
 		expect(names).toContain('create_onto_document');
 		expect(names).toContain('update_onto_document');
 		expect(names).not.toContain('tool_search');
@@ -60,6 +61,7 @@ describe('selectFastChatTools', () => {
 		const names = selection.tools.map((tool) => tool.function?.name).filter(Boolean);
 
 		expect(selection.implicitCapture).toBe(true);
+		expect(selection.commissionedWriteMinimumCount).toBe(2);
 		expect(names).toEqual(
 			expect.arrayContaining(['create_onto_document', 'update_onto_document'])
 		);
@@ -91,8 +93,16 @@ describe('selectFastChatTools', () => {
 			turnIntent: explicitIntent
 		});
 
-		expect(adviceSelection).toEqual({ tools: baseTools, implicitCapture: false });
-		expect(mutationSelection).toEqual({ tools: baseTools, implicitCapture: false });
+		expect(adviceSelection).toEqual({
+			tools: baseTools,
+			implicitCapture: false,
+			commissionedWriteMinimumCount: 0
+		});
+		expect(mutationSelection).toEqual({
+			tools: baseTools,
+			implicitCapture: false,
+			commissionedWriteMinimumCount: 0
+		});
 		expect(explicitIntent.requiresWrite).toBe(true);
 	});
 

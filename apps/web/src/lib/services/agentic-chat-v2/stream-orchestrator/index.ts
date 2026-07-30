@@ -166,6 +166,14 @@ type StreamFastChatParams = {
 	/** Server-only eval override. When set, every pass uses this ordered model list. */
 	pinnedModels?: string[];
 	turnIntent?: FastChatTurnIntent | null;
+	/**
+	 * Trusted, server-derived write alternatives for an implicit durable-capture
+	 * commission. Unlike explicit turn intent, this requires at least one
+	 * successful write from the set rather than every listed tool.
+	 */
+	commissionedWriteToolNames?: string[];
+	/** Minimum successful calls needed to fulfill the server-owned commission. */
+	commissionedWriteMinimumCount?: number;
 	debugContext?: FastChatDebugContext;
 	/**
 	 * Deterministic skill-load enforcement (2026-07-02). When domain sensing
@@ -302,6 +310,29 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let tools = params.tools ?? [];
 	let allowedToolNames = new Set(
 		tools.map((tool) => tool.function?.name).filter((name): name is string => Boolean(name))
+	);
+	const commissionedWriteToolNames = Array.from(
+		new Set(
+			(params.commissionedWriteToolNames ?? [])
+				.map((name) => name.trim())
+				.filter((name) => name.length > 0 && allowedToolNames.has(name))
+		)
+	);
+	const commissionedWriteMinimumCount =
+		commissionedWriteToolNames.length > 0
+			? Math.max(1, Math.floor(params.commissionedWriteMinimumCount ?? 1))
+			: 0;
+	const countSuccessfulCommissionedWrites = (): number =>
+		toolExecutions.filter(
+			(execution) =>
+				commissionedWriteToolNames.includes(execution.toolCall.function?.name ?? '') &&
+				!isDuplicateWriteSkippedExecution(execution) &&
+				didGatewayExecSucceed(execution)
+		).length;
+	const mutationRequested =
+		params.turnIntent?.requiresWrite === true || commissionedWriteToolNames.length > 0;
+	const expectedWriteToolNames = getWriteToolNamesForTurnIntent(
+		params.turnIntent ?? emptyTurnIntent
 	);
 	// "Gateway mode" arms on-demand tool materialization (on-miss + discover-then-load)
 	// and the gateway recovery/repair machinery. It must key off discovery tools that
@@ -639,6 +670,15 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			);
 			if (allowedToolNames.has(toolName)) writeToolNames.add(toolName);
 		}
+		const commissionedWriteDeficit = Math.max(
+			0,
+			commissionedWriteMinimumCount - countSuccessfulCommissionedWrites()
+		);
+		if (commissionedWriteDeficit > 0) {
+			for (const toolName of commissionedWriteToolNames) {
+				if (allowedToolNames.has(toolName)) writeToolNames.add(toolName);
+			}
+		}
 		if (writeToolNames.size === 0) {
 			// Third source: a commissioned document reorganization with the doc surface mounted
 			// but no write op attempted yet. Without this, the toolless synthesis pass fires and
@@ -670,12 +710,17 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		}
 
 		const toolNames = Array.from(writeToolNames);
+		const commissionedInstruction =
+			commissionedWriteDeficit > 0
+				? `Make ${commissionedWriteDeficit} additional durable document write call${commissionedWriteDeficit === 1 ? '' : 's'} to distinct affected reference documents. Do not repeat an already-successful update to the same document with the same content.`
+				: null;
 		return {
 			toolNames,
 			instruction: [
 				'Supervisor note: a requested mutation is still pending after context gathering.',
 				`For the next response, you may use only these write tools: ${toolNames.join(', ')}.`,
-				'Make at most one attempt per required write tool if the target and fields are known.',
+				commissionedInstruction ??
+					'Make at most one attempt per required write tool if the target and fields are known.',
 				'If required arguments are missing, ask one concise clarifying question instead of guessing.',
 				'Do not call reads, searches, schemas, skills, or any other discovery tools in this pass.'
 			].join(' ')
@@ -1294,10 +1339,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					contextType: normalizedContext,
 					toolExecutions,
 					latestUserText: message,
-					mutationRequested: params.turnIntent?.requiresWrite === true,
-					expectedWriteToolNames: getWriteToolNamesForTurnIntent(
-						params.turnIntent ?? emptyTurnIntent
-					),
+					mutationRequested,
+					expectedWriteToolNames,
 					assistantText,
 					emitAssistantRemainder,
 					observeSupervisor
@@ -1326,10 +1369,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					contextType: normalizedContext,
 					toolExecutions,
 					latestUserText: message,
-					mutationRequested: params.turnIntent?.requiresWrite === true,
-					expectedWriteToolNames: getWriteToolNamesForTurnIntent(
-						params.turnIntent ?? emptyTurnIntent
-					),
+					mutationRequested,
+					expectedWriteToolNames,
+					allowClarifyingQuestionWithoutWrite: commissionedWriteToolNames.length === 0,
+					minimumSuccessfulWrites: commissionedWriteMinimumCount,
 					gatewayModeActive,
 					projectCreateStopRepairInjected,
 					gatewayMutationStopRepairInjected,
@@ -1348,6 +1391,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						projectCreateStopRepairInjected = true;
 					} else if (noToolCallFinalization.kind === 'gateway_mutation') {
 						gatewayMutationStopRepairInjected = true;
+						// A prose-only stop cannot satisfy a server-owned mutation commission.
+						// Restrict the repair pass to the pending write alternatives and require
+						// a tool call, just as the near-budget write carve-out does.
+						const mutationPass = buildNearBudgetWriteIntentToolPass();
+						if (mutationPass) {
+							writeIntentCarveOutUsed = true;
+							forceWriteIntentToolPass = mutationPass;
+						}
 					} else if (noToolCallFinalization.kind === 'research_no_persist') {
 						researchNoPersistStopRepairInjected = true;
 					} else if (noToolCallFinalization.kind === 'stated_future') {
@@ -2080,10 +2131,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		toolLimitNotice,
 		answerTruncated,
 		latestUserText: message,
-		mutationRequested: params.turnIntent?.requiresWrite === true,
-		expectedWriteToolNames: getWriteToolNamesForTurnIntent(
-			params.turnIntent ?? emptyTurnIntent
-		),
+		mutationRequested,
+		expectedWriteToolNames,
 		synthesisTransportFailure: synthesisTransportRecovery !== undefined,
 		toolExecutions,
 		emitAssistantDelta,

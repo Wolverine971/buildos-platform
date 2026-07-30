@@ -171,6 +171,23 @@ export interface BlindMapping {
 	digest: string;
 }
 
+export function createCounterbalanceRotation(params: {
+	policyVersion: string;
+	corpusVersion: string;
+	modulo: number;
+}): { digest: string; rotation: number } {
+	if (!Number.isInteger(params.modulo) || params.modulo < 1) {
+		throw new Error('Counterbalance modulo must be a positive integer');
+	}
+	const digest = createHash('sha256')
+		.update([params.policyVersion, params.corpusVersion].join('\n'))
+		.digest('hex');
+	return {
+		digest,
+		rotation: Number.parseInt(digest.slice(0, 2), 16) % params.modulo
+	};
+}
+
 /**
  * Counterbalanced A/B assignment.
  *
@@ -195,10 +212,11 @@ export function createBlindMapping(params: {
 		throw new Error(`Scenario ${params.scenarioId} is not part of the blind comparison set`);
 	}
 
-	const digest = createHash('sha256')
-		.update([BLIND_JUDGE_POLICY_VERSION, params.corpusVersion].join('\n'))
-		.digest('hex');
-	const rotation = Number.parseInt(digest.slice(0, 2), 16) % 2;
+	const { digest, rotation } = createCounterbalanceRotation({
+		policyVersion: BLIND_JUDGE_POLICY_VERSION,
+		corpusVersion: params.corpusVersion,
+		modulo: 2
+	});
 	const workflowIsAOnOddRuns = (scenarioIndex + rotation) % 2 === 0;
 	const runIsOdd = params.runIndex % 2 === 1;
 	const workflowSide: BlindSide = runIsOdd === workflowIsAOnOddRuns ? 'A' : 'B';

@@ -25,8 +25,11 @@ import {
 import {
 	getProjectDocumentTree,
 	listDocuments,
+	listGoals,
 	listMilestones,
+	listPlans,
 	listProjectsByExactName,
+	listTasks,
 	waitForTurnRun
 } from '../harness/telemetry';
 
@@ -196,7 +199,13 @@ export const bookWritingJourneyScenario: Scenario = {
 				const docs = excludeSystemDocuments(await listDocuments(ctx.db.admin, projectId));
 				seed.notes.turn1Docs = docs;
 				seed.notes.turn1Tree = await getProjectDocumentTree(ctx.db.admin, projectId);
-				seed.notes.turn1Milestones = await listMilestones(ctx.db.admin, projectId);
+				const [goals, plans, tasks, milestones] = await Promise.all([
+					listGoals(ctx.db.admin, projectId),
+					listPlans(ctx.db.admin, projectId),
+					listTasks(ctx.db.admin, projectId),
+					listMilestones(ctx.db.admin, projectId)
+				]);
+				seed.notes.turn1OperationalScaffolding = { goals, plans, tasks, milestones };
 			},
 			checkpoints: [
 				{
@@ -275,21 +284,18 @@ export const bookWritingJourneyScenario: Scenario = {
 					}
 				},
 				{
-					name: 'no invented schedule for story parts',
+					name: 'no invented operational scaffolding for story canon',
 					check: (_turn, _ctx, seed) => {
-						const milestones = seed.notes.turn1Milestones as Array<{
-							title: string;
-							due_at: string | null;
-						}>;
-						const invented = milestones.filter(
-							(milestone) =>
-								/^part (i|ii|iii)\b/i.test(milestone.title) && milestone.due_at
-						);
+						const scaffolding = seed.notes.turn1OperationalScaffolding as Record<
+							string,
+							unknown[]
+						>;
+						const invented = Object.entries(scaffolding)
+							.filter(([, rows]) => rows.length > 0)
+							.map(([kind, rows]) => `${kind}=${rows.length}`);
 						if (invented.length > 0) {
 							throw new Error(
-								`[assert] the brain dump gave no deadlines, but story parts received due dates: ${invented
-									.map((milestone) => `${milestone.title}=${milestone.due_at}`)
-									.join(', ')}`
+								`[assert] the canon-only brain dump created unrequested operational scaffolding: ${invented.join(', ')}`
 							);
 						}
 					}
@@ -418,7 +424,8 @@ export const bookWritingJourneyScenario: Scenario = {
 							{ label: 'Salt Archive', pattern: /salt archive/ },
 							{
 								label: 'using Mara / concealed motive',
-								pattern: /using her|use mara|private|conceal|motive/
+								pattern:
+									/using (?:her|mara)|use mara|private|conceal|motive|secret agenda/
 							}
 						]);
 					}

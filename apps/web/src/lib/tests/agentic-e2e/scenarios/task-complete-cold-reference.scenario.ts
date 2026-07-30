@@ -24,6 +24,14 @@
 //      follow-ups often surface later, and the project review cycle backfills
 //      some of this outside chat. The real failure is the future landing
 //      NOWHERE.)
+//   3. The stated-future PATH itself is verifiable (added 2026-07-29 for the
+//      Phase 0 baseline gate). If the model authored no surface, the
+//      deterministic D1 floor (`$lib/server/stated-future.service`) must have
+//      fired, and any capture row it wrote must carry correct ground-truth
+//      provenance: props.source = 'stated_future_capture',
+//      props.source_stream_run_id = this turn's stream run, verbatim title,
+//      at most one row per turn (idempotency). All checked against DB rows and
+//      the user's own words — never model-output text patterns.
 //
 // Assertion order is deliberate: cheapest/most fundamental first, so a failure
 // message tells you HOW FAR it got.
@@ -45,6 +53,7 @@ import {
 	getDocumentByTitle,
 	listDocuments,
 	listEvents,
+	listStatedFutureTasks,
 	listTasks,
 	waitForTurnRun
 } from '../harness/telemetry';
@@ -237,6 +246,100 @@ export const taskCompleteColdReferenceScenario: Scenario = {
 					);
 				}
 				console.info(`[agentic-e2e] forward-carry satisfied by: ${satisfiedBy.join(', ')}`);
+
+				// ---------------------------------------------------------------
+				// STATED-FUTURE PATH (added 2026-07-29 — Phase 0 baseline gate,
+				// AGENTIC_CHAT_WORKER_PHASE_0_BASELINE_2026-07-29). The four-surface
+				// check above proves the future landed SOMEWHERE but cannot see WHICH
+				// mechanism carried it: a task written by the deterministic D1 floor
+				// (`stated-future.service`) satisfies the `task` surface exactly like a
+				// model-authored one. So a run where the floor wrote a broken record —
+				// linked to the wrong stream run, paraphrased instead of verbatim, or
+				// double-fired past its idempotency key — still went green. This block
+				// asserts the path itself, entirely from ground truth (onto_tasks.props
+				// provenance + the user's own words), never model-output text.
+				//
+				// The model keeps first refusal (D1): when it authored a durable record
+				// the floor correctly stays silent, so a missing capture row is only a
+				// failure when the model ALSO carried nothing.
+				// ---------------------------------------------------------------
+				const statedFutureTasks = await listStatedFutureTasks(
+					ctx.db.admin,
+					seed.projectId!
+				);
+
+				// One turn ran, and the capture is keyed `stated_future_capture:<streamRunId>`
+				// through onto_task_create_atomic — a second row means idempotency broke.
+				if (statedFutureTasks.length > 1) {
+					throw new Error(
+						`[assert] found ${statedFutureTasks.length} stated-future capture tasks after a ` +
+							'single turn; the idempotent replay contract allows at most one: ' +
+							statedFutureTasks.map((t) => `"${t.title}"`).join(', ')
+					);
+				}
+				const capture = statedFutureTasks[0] ?? null;
+				if (capture) {
+					const capturedStreamRunId = capture.props?.source_stream_run_id;
+					if (capturedStreamRunId !== turn.streamRunId) {
+						throw new Error(
+							`[assert] stated-future capture "${capture.title}" has ` +
+								`props.source_stream_run_id="${String(capturedStreamRunId ?? 'unset')}"; ` +
+								`expected this turn's stream run "${turn.streamRunId}". The record must be ` +
+								'auditable back to the turn that produced it.'
+						);
+					}
+					// The service titles from the user's verbatim clause, never a paraphrase
+					// — for this message the clause necessarily contains "waiting to hear
+					// back" (asserted against the user's words, not model output).
+					if (!/waiting to hear back/i.test(capture.title)) {
+						throw new Error(
+							`[assert] stated-future capture title "${capture.title}" does not contain ` +
+								'the user\'s verbatim words ("waiting to hear back"); the deterministic ' +
+								'write must title from what the user actually said'
+						);
+					}
+					assertTaskState(
+						capture.state_key,
+						'todo',
+						`stated-future capture "${capture.title}"`
+					);
+				}
+
+				// Which mechanism carried the future: any surface NOT written by the floor
+				// is model-authored. (Docs are already system-filtered above; tasks are
+				// classified here by provenance props, not by title.)
+				const statedFutureIds = new Set(statedFutureTasks.map((t) => t.id));
+				const modelForwardTask = newTasks.find((t) => {
+					if (statedFutureIds.has(t.id)) return false;
+					const text = normalizeComparableText(`${t.title} ${t.description ?? ''}`);
+					return /wait|hear back|follow.?up|response/.test(text);
+				});
+				const modelCarried =
+					Boolean(modelForwardTask) ||
+					newDocs.length > 0 ||
+					events.length > 0 ||
+					startHereChanged;
+
+				if (!modelCarried && !capture) {
+					throw new Error(
+						'[assert] the model authored no forward-carry surface AND the deterministic ' +
+							'stated-future floor never fired: no onto_tasks row with ' +
+							'props.source="stated_future_capture" exists for this project. The D1 ' +
+							'last-resort write is the guarantee that a stated future cannot land ' +
+							'nowhere; it did not run, or it wrote without provenance.'
+					);
+				}
+
+				seed.notes.statedFutureCapture = capture
+					? {
+							taskId: capture.id,
+							title: capture.title,
+							carriedBy: modelCarried ? 'model_and_floor' : 'deterministic_floor'
+						}
+					: { taskId: null, title: null, carriedBy: 'model' };
+				console.info(
+					`[agentic-e2e] stated-future path: ${JSON.stringify(seed.notes.statedFutureCapture)}`
+				);
 			},
 			judge: async (turn, _ctx, seed) => ({
 				rubric:
@@ -252,7 +355,10 @@ export const taskCompleteColdReferenceScenario: Scenario = {
 					'next step only in chat prose, with nothing recorded anywhere, is the core failure.',
 				threshold: 3,
 				transcript: buildTranscript(turn, {
-					forwardCarrySurfaces: seed.notes.forwardCarrySurfaces ?? '(none)'
+					forwardCarrySurfaces: seed.notes.forwardCarrySurfaces ?? '(none)',
+					// WHICH mechanism carried the future (model vs deterministic floor) is
+					// the interesting signal for the judge, not just that one did.
+					statedFutureCapture: seed.notes.statedFutureCapture ?? '(none)'
 				})
 			})
 		}

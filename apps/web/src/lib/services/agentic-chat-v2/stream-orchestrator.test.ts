@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
+import { OPENROUTER_V2_TOOL_MODELS } from '@buildos/smart-llm';
 import { streamFastChat } from './stream-orchestrator/index';
 import { REDACTED_DURABLE_TEXT } from './stream-orchestrator/tool-arguments';
 import type { FastChatHistoryMessage } from './types';
@@ -262,7 +263,7 @@ describe('streamFastChat direct tool orchestration', () => {
 		});
 		expect(streamParams[1]).toEqual({
 			profile: 'balanced',
-			models: undefined
+			models: [...OPENROUTER_V2_TOOL_MODELS]
 		});
 		expect(result.llmPasses?.[0]).toMatchObject({
 			passRole: 'initial_plan',
@@ -273,6 +274,7 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.llmPasses?.[1]).toMatchObject({
 			passRole: 'tool_followup',
 			requestedProfile: 'balanced',
+			requestedModels: [...OPENROUTER_V2_TOOL_MODELS],
 			modelTieringVariant: 'fast_initial_plan'
 		});
 	});
@@ -2591,6 +2593,200 @@ describe('streamFastChat direct tool orchestration', () => {
 		]);
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toBe('Created the Implementation Handoff document.');
+	});
+
+	it('forces a server-commissioned living-workspace capture after a prose-only stop', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		const characterDocumentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
+		let streamInvocation = 0;
+		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					toolNames: (params.tools ?? [])
+						.map((tool: ChatToolDefinition) => tool.function?.name)
+						.filter((name: string | undefined): name is string => Boolean(name))
+				});
+
+				if (streamInvocation === 1) {
+					yield {
+						type: 'text',
+						content:
+							'Would you like me to record Ilyan’s private agenda in his character sheet?'
+					};
+					yield { type: 'done', finished_reason: 'stop' };
+					return;
+				}
+
+				if (streamInvocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_document',
+							{
+								document_id: characterDocumentId,
+								update_strategy: 'merge',
+								content:
+									'## Secret Agenda\n\nIlyan is using Mara to reach the sealed archive.',
+								merge_instructions: 'Merge this fact into Ilyan’s character sheet.'
+							},
+							'update:ilyan-capture'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'I recorded Ilyan’s private agenda.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				result: {
+					ok: true,
+					op: 'onto.document.update',
+					result: { document: { id: characterDocumentId, title: 'Ilyan' } }
+				},
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Ilyan is secretly using Mara to reach the sealed archive.',
+			tools: tools(['skill_search', 'update_onto_document', 'create_onto_document']),
+			commissionedWriteToolNames: ['update_onto_document', 'create_onto_document'],
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(streamParams[1]).toEqual({
+			toolChoice: 'required',
+			toolNames: ['update_onto_document', 'create_onto_document']
+		});
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(toolExecutor.mock.calls[0]?.[0].function.name).toBe('update_onto_document');
+		expect(result.finalAssistantText).toBe('I recorded Ilyan’s private agenda.');
+		expect(result.orchestrationInterventions.gatewayMutationStopRepair).toBe(true);
+		expect(result.orchestrationInterventions.writeIntentCarveOut).toBe(true);
+	});
+
+	it('repairs a partially completed story-beat commission with a second document projection', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		const structureDocumentId = 'd60dd8bf-d7f1-4025-989c-ecaaa0b2cb63';
+		const characterDocumentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
+		let streamInvocation = 0;
+		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					toolNames: (params.tools ?? [])
+						.map((tool: ChatToolDefinition) => tool.function?.name)
+						.filter((name: string | undefined): name is string => Boolean(name))
+				});
+
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_document',
+							{
+								document_id: structureDocumentId,
+								update_strategy: 'merge',
+								content: 'Chapter 5 opens Part II after Ilyan spares Mara.'
+							},
+							'update:structure'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (streamInvocation === 2) {
+					yield { type: 'text', content: 'I recorded the new chapter beat.' };
+					yield { type: 'done', finished_reason: 'stop' };
+					return;
+				}
+
+				if (streamInvocation === 3) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_document',
+							{
+								document_id: characterDocumentId,
+								update_strategy: 'merge',
+								content: 'Ilyan is secretly using Mara to reach the Salt Archive.'
+							},
+							'update:character'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'I updated both the story structure and Ilyan.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			const args = JSON.parse(call.function.arguments || '{}') as Record<string, unknown>;
+			return {
+				tool_call_id: call.id,
+				result: {
+					ok: true,
+					op: 'onto.document.update',
+					result: { document: { id: args.document_id } }
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message:
+				'At the end of chapter 4, Ilyan spares Mara while secretly using her to reach the Salt Archive.',
+			tools: tools(['skill_search', 'update_onto_document', 'create_onto_document']),
+			commissionedWriteToolNames: ['update_onto_document', 'create_onto_document'],
+			commissionedWriteMinimumCount: 2,
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 3
+		});
+
+		expect(streamParams[2]).toEqual({
+			toolChoice: 'required',
+			toolNames: ['update_onto_document', 'create_onto_document']
+		});
+		expect(toolExecutor).toHaveBeenCalledTimes(2);
+		expect(
+			toolExecutor.mock.calls.map(
+				([call]) =>
+					(JSON.parse(call.function.arguments || '{}') as Record<string, unknown>)
+						.document_id
+			)
+		).toEqual([structureDocumentId, characterDocumentId]);
+		expect(result.finalAssistantText).toBe('I updated both the story structure and Ilyan.');
+		expect(result.orchestrationInterventions.gatewayMutationStopRepair).toBe(true);
+		expect(result.orchestrationInterventions.writeIntentCarveOut).toBe(true);
 	});
 
 	it('stops document organization recovery when the tool-call limit fires mid-recovery', async () => {

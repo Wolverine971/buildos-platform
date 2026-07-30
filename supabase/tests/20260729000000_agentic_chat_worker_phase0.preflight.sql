@@ -5,6 +5,15 @@
 -- Phase 2 adds RPC-only writes, duplicate-first admission, generation fencing,
 -- and terminal compare-and-set finalization. It performs no writes and is safe to
 -- repeat against local, staging, or production databases.
+--
+-- Reading the retained JSON:
+--   * `authenticated_effective_table_privileges` (has_table_privilege) is the
+--     AUTHORITATIVE grant section. `direct_table_grants`/`direct_routine_grants`
+--     read information_schema, which only shows grants visible to enabled roles.
+--   * `missing_target_tables` lists targets absent from this database; row counts
+--     for those report null rather than aborting the statement.
+--   * Probes over chat_turn_runs itself (duplicate keys, id formats) require that
+--     table; it is the migration's core relation, so its absence is fatal by design.
 
 with target_tables(table_name) as (
 	values
@@ -12,7 +21,10 @@ with target_tables(table_name) as (
 		('chat_turn_events'),
 		('chat_turn_checkpoints'),
 		('chat_prompt_snapshots'),
-		('agentic_chat_prepared_prompts')
+		('agentic_chat_prepared_prompts'),
+		('chat_messages'),
+		('chat_sessions'),
+		('queue_jobs')
 ),
 target_routines(routine_name) as (
 	values
@@ -21,7 +33,12 @@ target_routines(routine_name) as (
 		('merge_chat_session_agent_metadata'),
 		('ensure_actor_for_user'),
 		('current_actor_has_project_member_access'),
-		('build_fastchat_project_intelligence')
+		('build_fastchat_project_intelligence'),
+		('add_queue_job'),
+		('claim_pending_jobs'),
+		('complete_queue_job'),
+		('fail_queue_job'),
+		('reset_stalled_jobs')
 ),
 duplicate_client_turn_keys as (
 	select count(*)::bigint as duplicate_key_count,
@@ -31,6 +48,19 @@ duplicate_client_turn_keys as (
 		from public.chat_turn_runs
 		where client_turn_id is not null
 		group by session_id, client_turn_id
+		having count(*) > 1
+	) grouped
+),
+duplicate_user_client_turn_keys as (
+	-- rev .3 admission key is (user_id, client_turn_id): strictly coarser than the
+	-- per-session key, so rows unique per session can still collide per user.
+	select count(*)::bigint as duplicate_key_count,
+		coalesce(sum(grouped.row_count - 1), 0)::bigint as excess_row_count
+	from (
+		select user_id, client_turn_id, count(*)::bigint as row_count
+		from public.chat_turn_runs
+		where client_turn_id is not null
+		group by user_id, client_turn_id
 		having count(*) > 1
 	) grouped
 ),
@@ -44,17 +74,51 @@ duplicate_running_sessions as (
 		group by session_id
 		having count(*) > 1
 	) grouped
+),
+duplicate_active_sessions as (
+	-- the replacement unique index covers status in ('queued','running')
+	select count(*)::bigint as duplicate_session_count,
+		coalesce(sum(grouped.row_count - 1), 0)::bigint as excess_active_row_count
+	from (
+		select session_id, count(*)::bigint as row_count
+		from public.chat_turn_runs
+		where status in ('queued', 'running')
+		group by session_id
+		having count(*) > 1
+	) grouped
 )
 select jsonb_build_object(
 	'contract_family', 'agentic_chat_worker_v1',
 	'captured_at', statement_timestamp(),
+	'missing_target_tables', (
+		-- absence is reported, never fatal: every table-driven section below tolerates it
+		select coalesce(
+			jsonb_agg(targets.table_name order by targets.table_name),
+			'[]'::jsonb
+		)
+		from target_tables targets
+		where to_regclass(format('public.%I', targets.table_name)) is null
+	),
 	'legacy_row_inventory', jsonb_build_object(
-		'chat_turn_runs', (select count(*) from public.chat_turn_runs),
-		'chat_turn_events', (select count(*) from public.chat_turn_events),
-		'chat_turn_checkpoints', (select count(*) from public.chat_turn_checkpoints),
-		'chat_prompt_snapshots', (select count(*) from public.chat_prompt_snapshots),
-		'agentic_chat_prepared_prompts', (
-			select count(*) from public.agentic_chat_prepared_prompts
+		'row_counts', (
+			-- counted dynamically so a target table that does not exist yet reports
+			-- null instead of aborting the whole statement with a parse error
+			select coalesce(jsonb_object_agg(targets.table_name, counts.row_count), '{}'::jsonb)
+			from target_tables targets
+			cross join lateral (
+				select case
+						when to_regclass(format('public.%I', targets.table_name)) is null then null
+						else (
+							xpath(
+								'/row/cnt/text()',
+								query_to_xml(
+									format('select count(*) as cnt from public.%I', targets.table_name),
+									false, true, ''
+								)
+							)
+						)[1]::text::bigint
+					end as row_count
+			) counts
 		),
 		'turn_statuses', (
 			select coalesce(
@@ -76,8 +140,44 @@ select jsonb_build_object(
 		'duplicate_client_turn_keys', (
 			select to_jsonb(duplicate_client_turn_keys) from duplicate_client_turn_keys
 		),
+		'duplicate_user_client_turn_keys', (
+			select to_jsonb(duplicate_user_client_turn_keys) from duplicate_user_client_turn_keys
+		),
 		'duplicate_running_sessions', (
 			select to_jsonb(duplicate_running_sessions) from duplicate_running_sessions
+		),
+		'duplicate_active_sessions', (
+			select to_jsonb(duplicate_active_sessions) from duplicate_active_sessions
+		),
+		'client_turn_id_formats', (
+			-- P37: non-UUID programmatic ids (e.g. admin_replay:<slug>:<uuid>) are a
+			-- precondition hazard for the (user_id, client_turn_id) unique key.
+			select coalesce(jsonb_object_agg(fmt, row_count order by fmt), '{}'::jsonb)
+			from (
+				select case
+						when client_turn_id is null then 'null'
+						when client_turn_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+							then 'uuid'
+						when position(':' in client_turn_id) > 0 then 'colon_prefixed'
+						else 'other'
+					end as fmt,
+					count(*) as row_count
+				from public.chat_turn_runs
+				group by 1
+			) formats
+		),
+		'duplicate_key_samples', (
+			-- bounded id samples so duplicates can be resolved deterministically
+			select coalesce(jsonb_agg(to_jsonb(sample) order by sample.user_id), '[]'::jsonb)
+			from (
+				select user_id, session_id, client_turn_id, count(*) as row_count,
+					(array_agg(id order by created_at))[1:5] as sample_turn_ids
+				from public.chat_turn_runs
+				where client_turn_id is not null
+				group by user_id, session_id, client_turn_id
+				having count(*) > 1
+				limit 25
+			) sample
 		)
 	),
 	'row_level_security', (
@@ -235,6 +335,8 @@ select jsonb_build_object(
 		'No authenticated direct prepared-prompt content read/update',
 		'No authenticated cleanup execution for referenced prepared inputs',
 		'All worker writes use relationship-validating, generation-fenced RPCs',
-		'Existing duplicate command keys are resolved before adding the unique key'
+		'Existing duplicate command keys are resolved before adding the unique keys',
+		'No authenticated INSERT on queue_jobs; add_queue_job definer-gated with a job-type allowlist',
+		'chat_prompt_snapshots writes move behind the server-only observability writer'
 	)
 ) as agentic_chat_worker_phase0_preflight;

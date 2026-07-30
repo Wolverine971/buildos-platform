@@ -97,6 +97,19 @@ describe('domain sensing', () => {
 		expect(getSkillGateCandidateSkillIds(result)[0]).toBe('fiction_story_craft');
 	});
 
+	it('routes a chapter-specific character-arc option request through fiction craft', () => {
+		const result = senseDomains({
+			currentUserMessage:
+				"I'm at the end of chapter 4. What should happen with Ilyan in chapter 5? Give me three distinct options and explain how each one moves his character arc without breaking what we've already established. Don't choose one for me yet."
+		});
+
+		expect(result?.active_domains[0]).toMatchObject({
+			id: 'writing.fiction',
+			coverage_status: 'strong'
+		});
+		expect(getSkillGateCandidateSkillIds(result)[0]).toBe('fiction_story_craft');
+	});
+
 	it('does not route a nonfiction article through fiction craft', () => {
 		const result = senseDomains({
 			currentUserMessage: 'Help me revise this nonfiction article.'

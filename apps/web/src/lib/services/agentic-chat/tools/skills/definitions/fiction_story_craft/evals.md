@@ -10,7 +10,7 @@ Golden tasks per `../../EVALS_GUIDE.md`. The runtime preloads this skill in shor
 
 ### Task prompt
 
-> This is my novel workspace. Ilyan has just learned that the city wards are powered by prisoners. What should he do next? Give me options.
+> This is my novel workspace. Ilyan has just learned that the city wards are powered by prisoners. What should he do next? Give me exactly three distinct options, but don't choose one for me yet.
 >
 > Character canon: Ilyan wants to belong to the Council, refuses to become coercive like his father, and is protective of Mara.
 >
@@ -25,12 +25,12 @@ Golden tasks per `../../EVALS_GUIDE.md`. The runtime preloads this skill in shor
 1. **M1 (mode boundary):** Selects EXPLORE and makes zero durable writes; ends with an explicit “No project facts changed” status.
 2. **M2 (evidence sweep):** Uses the focal character, structure/arc, current chapter, and relevant world rule; does not ask for or inventory unrelated project documents.
 3. **M3 (canon ledger):** Separates supplied canon, unresolved pressure, assumptions, and assistant proposals; no generated detail is stated as established fact.
-4. **M4 (option count and shape):** Returns 3–5 Option Cards, each with Move, Causal bridge, Arc effect, Continuity fit, Cost/risk, and Next beat.
+4. **M4 (option count and shape):** Returns exactly three visibly numbered Option Cards, each with Move, Causal bridge, Arc effect, Continuity fit, Cost/risk, and Next beat.
 5. **M5 (grounding):** Every option grounds itself in at least two fixture facts or one fixture fact plus the central unresolved pressure.
 6. **M6 (causal diversity):** Options differ across at least two causal levers (choice, pressure, information, relationship, cost); they are not cosmetic versions of one event.
 7. **M7 (arc integration):** Every option names how Ilyan's want, anti-father belief, protective relationship, or arc position changes.
 8. **M8 (continuity gate):** Preserves the ward-destruction constraint or explicitly labels a needed new rule as an assumption; does not casually destroy a ward.
-9. **M9 (best-fit is not canon):** Recommends at most one best-fit proposal after comparison and explicitly says it remains a proposal until chosen.
+9. **M9 (choice restraint):** Compares the three options but makes no best-fit recommendation because the author explicitly said not to choose; all options remain proposals.
 10. **M10 (framework restraint):** Does not impose Hero's Journey, Save the Cat, or three-act terminology not present in the fixture.
 
 ### Expected load path
@@ -41,7 +41,7 @@ Golden tasks per `../../EVALS_GUIDE.md`. The runtime preloads this skill in shor
 
 ### Discovery probe
 
-“Given this novel, what should happen with this character next? Give me three options.” → `writing.fiction` and `fiction_story_craft`.
+“I'm at the end of chapter 4. What should happen with Ilyan in chapter 5? Give me three distinct options, but don't choose one.” → `writing.fiction` and `fiction_story_craft`.
 
 ---
 

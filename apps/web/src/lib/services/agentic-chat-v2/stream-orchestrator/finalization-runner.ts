@@ -24,6 +24,11 @@ import {
 	shouldRepairSkillGateNoLoad
 } from './repair-instructions';
 import type { FastToolExecution, LLMStreamPassMetadata } from './shared';
+import {
+	countVisiblyLabeledOptions,
+	findMissingExplicitOptionResponseAnchors,
+	resolveExplicitOptionCountRequest
+} from './synthesis-context';
 import { classifyToolExecution, didGatewayExecSucceed } from './tool-classification';
 
 const LENGTH_CONTINUATION_MESSAGE =
@@ -34,6 +39,26 @@ const NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE =
 
 const NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE =
 	'The previous synthesis attempt produced no visible answer. Write the final user-facing answer now from the existing tool results. Include the concrete entities you found (with their titles and states) and directly answer any definition question the user asked. Do not call tools.';
+
+function buildNoToolSynthesisConstraintRetryMessage(
+	required: number,
+	actual: number,
+	missingAnchors: string[]
+): string {
+	const issues = [
+		...(actual !== required
+			? [
+					`it contained ${actual} visibly labeled option${actual === 1 ? '' : 's'}, but ${required} were requested`
+				]
+			: []),
+		...(missingAnchors.length > 0
+			? [
+					`it omitted the user's explicit request anchor${missingAnchors.length === 1 ? '' : 's'} ${missingAnchors.map((anchor) => `"${anchor}"`).join(', ')}`
+				]
+			: [])
+	];
+	return `The previous synthesis attempt did not satisfy the user's response constraints: ${issues.join('; ')}. Rewrite the complete answer with exactly ${required} compact, substantively distinct items labeled Option 1 through Option ${required}. Explicitly frame the focal subject and requested story/work position, retaining the named anchors above instead of relying only on pronouns or implicit context. Present all ${required} options before any extended comparison. Do not call tools.`;
+}
 
 function shouldAdoptFinalizationGuardFinishedReason(
 	currentFinishedReason: string | undefined,
@@ -113,8 +138,21 @@ export async function runNoToolSynthesisFinalization(params: {
 	);
 	const noToolPassStillRequestedTools = params.suppressedNoToolSynthesisToolCallCount > 0;
 	const noToolPassProducedNoAnswer = !candidateFinalText;
+	const requiredOptionCount = resolveExplicitOptionCountRequest(params.latestUserText);
+	const actualOptionCount = requiredOptionCount
+		? countVisiblyLabeledOptions(candidateFinalText)
+		: 0;
+	const noToolPassMissedExactOptionCount = Boolean(
+		requiredOptionCount && actualOptionCount !== requiredOptionCount
+	);
+	const missingOptionResponseAnchors = requiredOptionCount
+		? findMissingExplicitOptionResponseAnchors(params.latestUserText, candidateFinalText)
+		: [];
 	if (
-		(noToolPassStillRequestedTools || noToolPassProducedNoAnswer) &&
+		(noToolPassStillRequestedTools ||
+			noToolPassProducedNoAnswer ||
+			noToolPassMissedExactOptionCount ||
+			missingOptionResponseAnchors.length > 0) &&
 		params.noToolSynthesisRetryCount < 1
 	) {
 		return {
@@ -122,7 +160,13 @@ export async function runNoToolSynthesisFinalization(params: {
 			nextRetryCount: params.noToolSynthesisRetryCount + 1,
 			systemMessage: noToolPassStillRequestedTools
 				? NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE
-				: NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE,
+				: noToolPassProducedNoAnswer
+					? NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE
+					: buildNoToolSynthesisConstraintRetryMessage(
+							requiredOptionCount ?? 0,
+							actualOptionCount,
+							missingOptionResponseAnchors
+						),
 			forceNoToolSynthesisPass: true
 		};
 	}
@@ -175,6 +219,8 @@ export async function runNoToolCallFinalization(params: {
 	latestUserText: string;
 	mutationRequested?: boolean;
 	expectedWriteToolNames?: string[];
+	allowClarifyingQuestionWithoutWrite?: boolean;
+	minimumSuccessfulWrites?: number;
 	gatewayModeActive: boolean;
 	projectCreateStopRepairInjected: boolean;
 	gatewayMutationStopRepairInjected: boolean;
@@ -218,13 +264,18 @@ export async function runNoToolCallFinalization(params: {
 			toolExecutions: params.toolExecutions,
 			repairAlreadyInjected: params.gatewayMutationStopRepairInjected,
 			latestUserText: params.latestUserText,
-			explicitMutationRequested: params.mutationRequested
+			explicitMutationRequested: params.mutationRequested,
+			allowClarifyingQuestionWithoutWrite: params.allowClarifyingQuestionWithoutWrite,
+			minimumSuccessfulWrites: params.minimumSuccessfulWrites
 		})
 	) {
 		return {
 			action: 'repair',
 			kind: 'gateway_mutation',
-			instruction: buildGatewayMutationNoExecutionRepairInstruction(params.toolExecutions)
+			instruction: buildGatewayMutationNoExecutionRepairInstruction(
+				params.toolExecutions,
+				params.minimumSuccessfulWrites
+			)
 		};
 	}
 	if (

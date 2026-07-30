@@ -588,9 +588,40 @@ export function getSkillGateCandidateSkillIds(
 	if (!result) return [];
 	const candidates = new Map<string, RankedSkillGateCandidate>();
 	const outcomeCards = [...result.candidate_outcome_cards].sort(compareOutcomeCardsForSkillGate);
-	const primaryOutcomeCard = outcomeCards.find((card) => card.default_skill_id?.trim());
+	const primaryDomain = result.active_domains[0];
+	const primaryDomainOutcomeCard = primaryDomain
+		? outcomeCards.find(
+				(card) =>
+					card.default_skill_id?.trim() && card.domain_ids.includes(primaryDomain.id)
+			)
+		: undefined;
+	// A strong subject domain's own skill must not be displaced by an outcome
+	// card discovered through a weaker secondary domain. Fiction option prompts
+	// can also resemble generic content-strategy requests, and no fiction outcome
+	// card exists yet, so the old global "first outcome default" rule preloaded a
+	// marketing skill even while writing.fiction ranked first.
+	const primaryDomainSkillId =
+		primaryDomain?.coverage_status === 'strong'
+			? primaryDomain.skill_ids.find((skillId) => skillId.trim())
+			: undefined;
+	const preferPrimaryDomainSkill = Boolean(primaryDomainSkillId && !primaryDomainOutcomeCard);
+	const primaryOutcomeCard =
+		primaryDomainOutcomeCard ??
+		(preferPrimaryDomainSkill
+			? undefined
+			: outcomeCards.find((card) => card.default_skill_id?.trim()));
 	const domainSkillConfidenceById = getDomainSkillConfidenceById(result.active_domains);
 	let sequence = 0;
+
+	if (preferPrimaryDomainSkill) {
+		upsertSkillGateCandidate(candidates, {
+			id: primaryDomainSkillId,
+			confidence: primaryDomain?.confidence,
+			isPrimaryDefault: true,
+			sourceRank: 0,
+			sequence: sequence++
+		});
+	}
 
 	upsertSkillGateCandidate(candidates, {
 		id: primaryOutcomeCard?.default_skill_id,

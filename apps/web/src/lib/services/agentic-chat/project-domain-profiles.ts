@@ -58,10 +58,12 @@ export const FICTION_STORY_PROFILE: ProjectDomainProfile = {
 		FICTION_CRAFT_CLUSTER.test(message),
 	creationGuidance: [
 		'Treat parts, acts, chapters, scenes, and beats as narrative structure. They are not milestones or delivery dates unless the user explicitly supplied a writing schedule.',
-		'When the user supplies parts, acts, chapter beats, or a plot spine, create one lightweight `document.creative.structure` artifact that preserves every supplied part name and controlling beat, premise, or story pressure.',
+		'When the user supplies parts, acts, chapter beats, or a plot spine, create one lightweight `document.creative.structure` artifact that preserves every supplied part name and controlling beat, premise, or story pressure. When one source sentence names multiple structural units, include that complete source sentence verbatim under an `Author canon` heading before organizing it.',
 		'Create `document.creative.character` sheets only for central or meaningfully described characters; keep incidental names together until they earn a dedicated sheet. Each dedicated sheet must contain the confirmed role, desire, conflict, backstory, relationship, and other details the user supplied for that character—never create a title-only placeholder.',
+		'Do not rely on START HERE, the project description, or another document as a substitute for a dedicated character sheet. For every clearly introduced central character, include the author’s complete source sentence verbatim under an `Author canon` heading in that character’s own sheet, then organize or expand it without changing its meaning. This preserves every supplied fact even when the same fact also appears elsewhere.',
 		'Use `document.creative.world` for durable setting or world rules. Do not route fiction artifacts to product, software, or business document types.',
 		'Every initial creative document must contain the relevant confirmed facts from the opening brain dump. Do not trade content completeness for a larger number of documents.',
+		'For an idea-only story brain dump, keep narrative parts and character objectives in the creative documents. Do not create BuildOS goals, plans, tasks, milestones, or dates merely to represent a protagonist’s desire, a story part, an act, a chapter, or an implied future drafting schedule.',
 		'Prefer useful canonical documents over empty category containers. Initial documents may remain at the root; hierarchy can emerge later when document density makes grouping useful.'
 	]
 };
@@ -271,10 +273,19 @@ export function applyProjectCreationProfileDefaults<T extends JsonRecord>(
 		...(livingReference ? { mode: LIVING_REFERENCE_MODE } : {})
 	};
 
+	const projectWithGroundedSchedule = { ...args.project };
+	if (
+		profile?.id === FICTION_STORY_PROFILE.id &&
+		!hasExplicitProjectScheduleSignal(userMessage)
+	) {
+		delete projectWithGroundedSchedule.start_at;
+		delete projectWithGroundedSchedule.end_at;
+	}
+
 	const nextArgs: JsonRecord = {
 		...args,
 		project: {
-			...args.project,
+			...projectWithGroundedSchedule,
 			props: {
 				...safeProjectProps,
 				[AGENT_WORKSPACE_PROP]: agentWorkspace
@@ -292,7 +303,11 @@ export function applyProjectCreationProfileDefaults<T extends JsonRecord>(
 		};
 	}
 
-	return nextArgs as T;
+	return (
+		profile?.id === FICTION_STORY_PROFILE.id
+			? applyFictionCreationProfileDefaults(nextArgs, userMessage)
+			: nextArgs
+	) as T;
 }
 
 const CALENDAR_DATE_PATTERN =
@@ -332,7 +347,335 @@ export function validateProjectCreationMilestoneGrounding(
 	if (milestones.length === 0 || hasExplicitProjectScheduleSignal(userMessage)) return [];
 
 	return [
-		'Project milestones require schedule evidence from the user. The source message contains no project deadline or delivery schedule, so remove the milestone entities and represent undated phases as plans or documents. Never invent due_at values to satisfy the milestone schema.'
+		'Project milestones require schedule evidence from the user. The source message contains no project deadline or delivery schedule, so remove the milestone entities and keep undated phases in an appropriate non-milestone artifact for this project domain. Never invent due_at values to satisfy the milestone schema.'
+	];
+}
+
+const EXPLICIT_PROJECT_SCAFFOLDING_PATTERN =
+	/\b(?:create|add|include|set\s+up|track|make|organize)\b[\s\S]{0,60}\b(?:project\s+goals?|writing\s+goals?|tasks?|to-?dos?|milestones?|writing\s+plan|project\s+plan|writing\s+schedule|deadlines?)\b|\b(?:project\s+goals?|writing\s+goals?|tasks?|to-?dos?|milestones?|writing\s+plan|project\s+plan|writing\s+schedule|deadlines?)\b[\s\S]{0,60}\b(?:create|add|include|set\s+up|track|make|organize)\b/i;
+
+export function validateFictionOperationalScaffoldingGrounding(
+	args: JsonRecord,
+	userMessage: string | null | undefined
+): string[] {
+	const profile = resolveProjectDomainProfile({
+		userMessage,
+		projectTypeKey: isRecord(args.project) ? normalizeText(args.project.type_key) : null
+	});
+	if (profile?.id !== FICTION_STORY_PROFILE.id || !Array.isArray(args.entities)) return [];
+	const sourceMessage = normalizeText(userMessage);
+	if (
+		hasExplicitProjectScheduleSignal(sourceMessage) ||
+		EXPLICIT_PROJECT_SCAFFOLDING_PATTERN.test(sourceMessage)
+	) {
+		return [];
+	}
+
+	const operationalKinds = [
+		...new Set(
+			args.entities
+				.filter(
+					(entity: unknown): entity is JsonRecord =>
+						isRecord(entity) &&
+						/^(?:goal|plan|task|milestone)$/.test(normalizeText(entity.kind))
+				)
+				.map((entity) => normalizeText(entity.kind))
+		)
+	];
+	if (operationalKinds.length === 0) return [];
+	return [
+		`The fiction opening is an idea/canon brain dump and does not request project-management scaffolding. Remove the ${operationalKinds.join(', ')} entities; keep narrative parts, character objectives, and story pressures in creative documents. Add goals, plans, tasks, or milestones only when the user explicitly asks for operational tracking.`
+	];
+}
+
+type FictionCharacterSourceSentence = {
+	name: string;
+	sentence: string;
+};
+
+type FictionStructureSourceSentence = {
+	sentence: string;
+};
+
+const FICTION_CHARACTER_SOURCE_SENTENCE =
+	/\b(\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2})\s+(?:is|was)\s+(?:an?|the)\s+[^.!?]+[.!?]?/u;
+const FICTION_STRUCTURE_SOURCE_INTRO =
+	/\b(?:the\s+)?(?:book|story|novel|screenplay|plot)\s+(?:has|uses|follows|contains|is\s+(?:divided|organized|structured)\s+into)\b/i;
+const FICTION_NAMED_STRUCTURE_UNIT =
+	/\b(?:part|act|chapter|scene)\s+(?:[ivxlcdm]+|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/gi;
+const FICTION_STRUCTURE_UNIT_SIGNAL =
+	/\b(?:part|act|chapter|scene)\s+(?:[ivxlcdm]+|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i;
+
+function normalizeSourceCoverageText(value: unknown): string {
+	return normalizeText(value)
+		.toLocaleLowerCase()
+		.normalize('NFKD')
+		.replace(/[^\p{L}\p{N}]+/gu, ' ')
+		.trim();
+}
+
+function extractFictionCharacterSourceSentences(
+	userMessage: string | null | undefined
+): FictionCharacterSourceSentence[] {
+	const message = normalizeText(userMessage);
+	if (!message) return [];
+	return message
+		.split(/(?<=[.!?])\s+/u)
+		.map((sentence) => sentence.match(FICTION_CHARACTER_SOURCE_SENTENCE))
+		.filter((match): match is RegExpMatchArray => Boolean(match))
+		.map((match) => ({
+			name: match[1]?.trim() ?? '',
+			sentence: match[0]?.trim() ?? ''
+		}))
+		.filter((entry) => entry.name.length > 0 && entry.sentence.length > 0);
+}
+
+function extractFictionStructureSourceSentences(
+	userMessage: string | null | undefined
+): FictionStructureSourceSentence[] {
+	const message = normalizeText(userMessage);
+	if (!message) return [];
+	return message
+		.split(/(?<=[.!?])\s+/u)
+		.map((sentence) => sentence.trim())
+		.filter((sentence) => {
+			const namedUnits = sentence.match(FICTION_NAMED_STRUCTURE_UNIT) ?? [];
+			return FICTION_STRUCTURE_SOURCE_INTRO.test(sentence) && namedUnits.length >= 2;
+		})
+		.map((sentence) => ({ sentence }));
+}
+
+function relationshipReferencesTempIds(value: unknown, tempIds: Set<string>): boolean {
+	if (typeof value === 'string') return tempIds.has(value.trim());
+	if (Array.isArray(value)) {
+		return value.some((entry) => relationshipReferencesTempIds(entry, tempIds));
+	}
+	if (!isRecord(value)) return false;
+
+	const directRef = normalizeText(value.temp_id) || normalizeText(value.id);
+	if (directRef && tempIds.has(directRef)) return true;
+	return Object.values(value).some((entry) => relationshipReferencesTempIds(entry, tempIds));
+}
+
+function addAuthorCanonSentences(entity: JsonRecord, sentences: string[]): JsonRecord {
+	const combinedBody = `${normalizeText(entity.content)} ${normalizeText(entity.body_markdown)}`;
+	const normalizedBody = normalizeSourceCoverageText(combinedBody);
+	const missing = sentences.filter(
+		(sentence) => !normalizedBody.includes(normalizeSourceCoverageText(sentence))
+	);
+	if (missing.length === 0) return entity;
+
+	const bodyKey = typeof entity.content === 'string' ? 'content' : 'body_markdown';
+	const body = typeof entity[bodyKey] === 'string' ? entity[bodyKey] : '';
+	const canonLines = missing.join('\n\n');
+	const headingMatch = /^## Author canon[ \t]*$/im.exec(body);
+	let nextBody: string;
+	if (headingMatch?.index !== undefined) {
+		const insertionPoint = headingMatch.index + headingMatch[0].length;
+		nextBody = `${body.slice(0, insertionPoint)}\n\n${canonLines}${body.slice(insertionPoint)}`;
+	} else {
+		nextBody = `## Author canon\n\n${canonLines}${body.trim() ? `\n\n${body}` : ''}`;
+	}
+
+	return { ...entity, [bodyKey]: nextBody };
+}
+
+/**
+ * Keep an author's complete structural capture inspectable in an incremental
+ * structure-document update. The caller owns domain/workspace/target routing;
+ * this helper only performs a lossless content augmentation.
+ */
+export function applyFictionStructureUpdateSourceDefault<T extends JsonRecord>(
+	args: T,
+	userMessage: string | null | undefined
+): T {
+	const sourceMessage = normalizeText(userMessage);
+	if (!sourceMessage || !FICTION_STRUCTURE_UNIT_SIGNAL.test(sourceMessage)) return args;
+	return addAuthorCanonSentences(args, [sourceMessage]) as T;
+}
+
+/**
+ * Apply the small, lossless parts of the fiction creation contract on the
+ * server. Weak models still decide which useful creative documents to make and
+ * how to organize them; the server only removes unrequested project-management
+ * scaffolding and copies clearly recognized author source sentences into the
+ * dedicated artifacts the model already supplied.
+ */
+function applyFictionCreationProfileDefaults(
+	args: JsonRecord,
+	userMessage: string | null | undefined
+): JsonRecord {
+	const sourceMessage = normalizeText(userMessage);
+	let entities = Array.isArray(args.entities) ? args.entities : null;
+	let relationships = Array.isArray(args.relationships) ? args.relationships : null;
+
+	if (
+		entities &&
+		!hasExplicitProjectScheduleSignal(sourceMessage) &&
+		!EXPLICIT_PROJECT_SCAFFOLDING_PATTERN.test(sourceMessage)
+	) {
+		const removedTempIds = new Set<string>();
+		entities = entities.filter((entity: unknown) => {
+			if (
+				!isRecord(entity) ||
+				!/^(?:goal|plan|task|milestone)$/.test(normalizeText(entity.kind))
+			) {
+				return true;
+			}
+			const tempId = normalizeText(entity.temp_id);
+			if (tempId) removedTempIds.add(tempId);
+			return false;
+		});
+		if (relationships && removedTempIds.size > 0) {
+			relationships = relationships.filter(
+				(relationship) => !relationshipReferencesTempIds(relationship, removedTempIds)
+			);
+		}
+	}
+
+	if (entities) {
+		const characterSources = extractFictionCharacterSourceSentences(sourceMessage);
+		const structureSources = extractFictionStructureSourceSentences(sourceMessage).map(
+			(source) => source.sentence
+		);
+		let structureSourceApplied = false;
+
+		entities = entities.map((entity: unknown) => {
+			if (!isRecord(entity) || entity.kind !== 'document') return entity;
+			const typeKey = normalizeText(entity.type_key);
+			if (/^document\.creative\.character(?:\.|$)/i.test(typeKey)) {
+				const identity = normalizeSourceCoverageText(
+					`${normalizeText(entity.title)} ${normalizeText(entity.name)} ${normalizeText(entity.content)} ${normalizeText(entity.body_markdown)}`
+				);
+				const matchingSources = characterSources
+					.filter((source) => identity.includes(normalizeSourceCoverageText(source.name)))
+					.map((source) => source.sentence);
+				return addAuthorCanonSentences(entity, matchingSources);
+			}
+			if (
+				!structureSourceApplied &&
+				/^document\.creative\.structure(?:\.|$)/i.test(typeKey)
+			) {
+				structureSourceApplied = true;
+				return addAuthorCanonSentences(entity, structureSources);
+			}
+			return entity;
+		});
+	}
+
+	return {
+		...args,
+		...(entities ? { entities } : {}),
+		...(relationships ? { relationships } : {})
+	};
+}
+
+/**
+ * Weak creation models sometimes preserve a character fact in START HERE but
+ * omit it from the dedicated sheet. For unambiguous "Full Name is a/an ..."
+ * introductions, require the model to retain the author's complete sentence in
+ * that sheet. This is bounded, inspectable source coverage rather than NLP
+ * inference about which paraphrase is equivalent.
+ */
+export function validateFictionCharacterSourceCoverage(
+	args: JsonRecord,
+	userMessage: string | null | undefined
+): string[] {
+	const profile = resolveProjectDomainProfile({
+		userMessage,
+		projectTypeKey: isRecord(args.project) ? normalizeText(args.project.type_key) : null
+	});
+	if (profile?.id !== FICTION_STORY_PROFILE.id || !Array.isArray(args.entities)) return [];
+
+	const characterDocuments = args.entities.filter(
+		(entity): entity is JsonRecord =>
+			isRecord(entity) &&
+			entity.kind === 'document' &&
+			/^document\.creative\.character(?:\.|$)/i.test(normalizeText(entity.type_key))
+	);
+	const errors: string[] = [];
+	for (const source of extractFictionCharacterSourceSentences(userMessage)) {
+		const normalizedName = normalizeSourceCoverageText(source.name);
+		const document = characterDocuments.find((entity) => {
+			const identity = normalizeSourceCoverageText(
+				`${normalizeText(entity.title)} ${normalizeText(entity.name)} ${normalizeText(entity.content)} ${normalizeText(entity.body_markdown)}`
+			);
+			return identity.includes(normalizedName);
+		});
+		if (!document) {
+			errors.push(
+				`Create one document.creative.character sheet for ${source.name}; the opening brain dump clearly introduces this character.`
+			);
+			continue;
+		}
+		const body = normalizeSourceCoverageText(
+			`${normalizeText(document.content)} ${normalizeText(document.body_markdown)}`
+		);
+		if (!body.includes(normalizeSourceCoverageText(source.sentence))) {
+			errors.push(
+				`${source.name}'s character sheet must include this complete author source sentence under an Author canon heading: "${source.sentence}"`
+			);
+		}
+	}
+	return errors;
+}
+
+/**
+ * Preserve explicitly named structural sequences as one inspectable source
+ * statement. This prevents weak creation models from producing a generic plot
+ * page while dropping the user's act or part titles during summarization.
+ */
+export function validateFictionStructureSourceCoverage(
+	args: JsonRecord,
+	userMessage: string | null | undefined
+): string[] {
+	const profile = resolveProjectDomainProfile({
+		userMessage,
+		projectTypeKey: isRecord(args.project) ? normalizeText(args.project.type_key) : null
+	});
+	if (profile?.id !== FICTION_STORY_PROFILE.id || !Array.isArray(args.entities)) return [];
+
+	const sources = extractFictionStructureSourceSentences(userMessage);
+	if (sources.length === 0) return [];
+	const structureDocuments = args.entities.filter(
+		(entity): entity is JsonRecord =>
+			isRecord(entity) &&
+			entity.kind === 'document' &&
+			/^document\.creative\.structure(?:\.|$)/i.test(normalizeText(entity.type_key))
+	);
+	if (structureDocuments.length === 0) {
+		return [
+			'Create one document.creative.structure artifact for the explicitly named story parts, acts, chapters, or scenes in the opening brain dump.'
+		];
+	}
+
+	const structureBodies = structureDocuments.map((document) =>
+		normalizeSourceCoverageText(
+			`${normalizeText(document.content)} ${normalizeText(document.body_markdown)}`
+		)
+	);
+	return sources
+		.filter(
+			(source) =>
+				!structureBodies.some((body) =>
+					body.includes(normalizeSourceCoverageText(source.sentence))
+				)
+		)
+		.map(
+			(source) =>
+				`The document.creative.structure artifact must include this complete author source sentence under an Author canon heading: "${source.sentence}"`
+		);
+}
+
+export function validateProjectCreationProfileGrounding(
+	args: JsonRecord,
+	userMessage: string | null | undefined
+): string[] {
+	return [
+		...validateFictionOperationalScaffoldingGrounding(args, userMessage),
+		...validateProjectCreationMilestoneGrounding(args, userMessage),
+		...validateFictionCharacterSourceCoverage(args, userMessage),
+		...validateFictionStructureSourceCoverage(args, userMessage)
 	];
 }
 

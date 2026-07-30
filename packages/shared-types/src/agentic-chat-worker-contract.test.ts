@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
+	canonicalizeAdmissionRequestV1,
 	canonicalizeAgenticChatJson,
 	createAgentStreamEventIdV1,
 	decideTerminalFinalizationV1,
 	freezeTurnInputHistoryV1,
 	hashCanonicalAdmissionRequestV1,
 	hashTurnInputArtifactContentV1,
+	normalizeTurnInputArtifactContentV1,
 	parseAgentStreamEventIdV1,
 	type CanonicalAdmissionRequestV1,
 	type NormalizedChatAttachmentV1,
@@ -45,18 +47,15 @@ const ATTACHMENT_B: NormalizedChatAttachmentV1 = {
 function admissionFixture(overrides: Partial<CanonicalAdmissionRequestV1> = {}) {
 	return {
 		version: AGENTIC_CHAT_REQUEST_HASH_VERSION,
-		sessionId: '30000000-0000-4000-8000-000000000001',
 		clientTurnId: '40000000-0000-4000-8000-000000000001',
 		streamRunId: '50000000-0000-4000-8000-000000000001',
 		context: {
 			type: 'project',
 			entityId: '20000000-0000-4000-8000-000000000001',
-			projectId: '20000000-0000-4000-8000-000000000001',
-			projectFocus: { title: 'Launch', state: { lane: 2, active: true } }
+			projectId: '20000000-0000-4000-8000-000000000001'
 		},
 		message: '  Re\u0301sume\r\nthis plan.  ',
 		attachments: [ATTACHMENT_A, ATTACHMENT_B],
-		lastTurnContext: { selected: ['timeline', 'risks'], count: 2 },
 		voiceNoteGroupId: null,
 		preparedPromptLineage: {
 			id: '60000000-0000-4000-8000-000000000001',
@@ -69,6 +68,7 @@ function admissionFixture(overrides: Partial<CanonicalAdmissionRequestV1> = {}) 
 function artifactFixture(): TurnInputArtifactV1 {
 	return {
 		artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+		historySource: 'admission_window',
 		history: [
 			{
 				sourceMessageId: '70000000-0000-4000-8000-000000000001',
@@ -121,7 +121,6 @@ describe('agentic chat worker v1 contract fixtures', () => {
 			message: 'R\u00e9sume\nthis plan.',
 			attachments: [ATTACHMENT_B, ATTACHMENT_A],
 			context: {
-				projectFocus: { state: { active: true, lane: 2 }, title: 'Launch' },
 				type: 'project',
 				projectId: '20000000-0000-4000-8000-000000000001',
 				entityId: '20000000-0000-4000-8000-000000000001'
@@ -138,12 +137,113 @@ describe('agentic chat worker v1 contract fixtures', () => {
 				correlationId: 'excluded-correlation'
 			} as CanonicalAdmissionRequestV1)
 		).toBe(hash);
-		expect(hash).toBe('36a2bed38e61d91d942887c3fb82e18b9a49fa666d143cc3e546f2801b5e4b3e');
+		expect(hash).toBe('7c29017bba32b451f7529519ab0191bf67947ade1ea0e27258d3fd9bfa71e72b');
 		expect(
 			await hashCanonicalAdmissionRequestV1(
 				admissionFixture({ message: 'Resume another plan.' })
 			)
 		).not.toBe(hash);
+	});
+
+	it('excludes client-recomputed state from the v2 admission hash (F1)', async () => {
+		const hash = await hashCanonicalAdmissionRequestV1(admissionFixture());
+		const withClientRecomputedState = {
+			...admissionFixture(),
+			sessionId: '30000000-0000-4000-8000-000000000001',
+			lastTurnContext: { selected: ['timeline', 'risks'], timestamp: '2026-07-29T20:00:00Z' },
+			context: {
+				...admissionFixture().context,
+				projectFocus: { title: 'Launch', state: { lane: 2, active: true } }
+			}
+		} as unknown as CanonicalAdmissionRequestV1;
+
+		expect(await hashCanonicalAdmissionRequestV1(withClientRecomputedState)).toBe(hash);
+	});
+
+	it('pins the canonicalizer field sets so a type change cannot silently escape the hash (F13/S2)', () => {
+		const admission = canonicalizeAdmissionRequestV1(admissionFixture());
+
+		// Compare against the FIXTURE's own key sets, so adding a field to the type
+		// (and therefore to the fixture) fails here unless the canonicalizer copies it.
+		expect(Object.keys(admission).sort()).toEqual(Object.keys(admissionFixture()).sort());
+		expect(Object.keys(admission.context).sort()).toEqual(
+			Object.keys(admissionFixture().context).sort()
+		);
+		expect(Object.keys(admission.preparedPromptLineage).sort()).toEqual(
+			Object.keys(admissionFixture().preparedPromptLineage).sort()
+		);
+		expect(Object.keys(admission.attachments[0]!).sort()).toEqual(
+			Object.keys(ATTACHMENT_A).sort()
+		);
+
+		const artifactSource = artifactFixture();
+		const normalized = normalizeTurnInputArtifactContentV1(artifactSource);
+		expect(Object.keys(normalized.prepared).sort()).toEqual(
+			Object.keys(artifactSource.prepared).sort()
+		);
+		expect(Object.keys(normalized.history[0]!).sort()).toEqual(
+			Object.keys(artifactSource.history[0]!).sort()
+		);
+
+		// Absolute pins, so a field silently dropped from BOTH type and canonicalizer still fails.
+		expect(Object.keys(admission).sort()).toEqual([
+			'attachments',
+			'clientTurnId',
+			'context',
+			'message',
+			'preparedPromptLineage',
+			'streamRunId',
+			'version',
+			'voiceNoteGroupId'
+		]);
+		expect(Object.keys(admission.context).sort()).toEqual(['entityId', 'projectId', 'type']);
+		expect(Object.keys(admission.preparedPromptLineage).sort()).toEqual([
+			'acceptedSurfaceProfile',
+			'id'
+		]);
+		expect(Object.keys(admission.attachments[0]!).sort()).toEqual([
+			'asset_id',
+			'attachment_kind',
+			'checksum_sha256',
+			'content_type',
+			'display_order',
+			'extracted_text_preview',
+			'extraction_summary',
+			'file_name',
+			'file_size_bytes',
+			'height',
+			'media_type',
+			'ocr_status',
+			'project_id',
+			'role',
+			'temporary_attachment_id',
+			'width'
+		]);
+
+		const artifact = normalizeTurnInputArtifactContentV1(artifactFixture());
+		expect(Object.keys(artifact).sort()).toEqual([
+			'artifactVersion',
+			'history',
+			'historySource',
+			'prepared'
+		]);
+		expect(Object.keys(artifact.prepared).sort()).toEqual([
+			'contextPayload',
+			'conversationSummary',
+			'promptSections',
+			'sourcePreparedPromptId',
+			'surfaceProfile',
+			'systemPrompt',
+			'toolSurface'
+		]);
+		expect(Object.keys(artifact.history[0]!).sort()).toEqual([
+			'attachments',
+			'content',
+			'role',
+			'sourceMessageId',
+			'toolCallId',
+			'toolCalls'
+		]);
 	});
 
 	it('hashes immutable execution inputs without retention metadata', async () => {
@@ -157,7 +257,7 @@ describe('agentic chat worker v1 contract fixtures', () => {
 		};
 
 		expect(await hashTurnInputArtifactContentV1(sameContentDifferentRetention)).toBe(hash);
-		expect(hash).toBe('d60cad10bd8031720251e36c91cbe685ca79198b2cc59dafec1a7286b8430e2f');
+		expect(hash).toBe('8c7fcdbdb7e4135ab27e6ce869e90221fbfe456d27f1dfecaf5b0ff705dfd69e');
 
 		const changedHistory = artifactFixture();
 		changedHistory.history[0]!.content = 'Source history changed after admission.';

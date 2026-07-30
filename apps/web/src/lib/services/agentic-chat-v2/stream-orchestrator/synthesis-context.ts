@@ -12,6 +12,95 @@ const MAX_ARGUMENT_CHARS = 500;
 const MAX_RESULT_CHARS = 1600;
 const MAX_DIRECTIVES = 6;
 const MAX_DIRECTIVE_CHARS = 900;
+const OPTION_COUNT_WORDS: Record<string, number> = {
+	one: 1,
+	two: 2,
+	three: 3,
+	four: 4,
+	five: 5,
+	six: 6,
+	seven: 7,
+	eight: 8,
+	nine: 9,
+	ten: 10
+};
+const EXPLICIT_OPTION_COUNT_PATTERN =
+	/\b(one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2})\s+(?:(?:visibly|clearly)\s+)?(?:(?:distinct|different|grounded)\s+)?options?\b/i;
+
+export function resolveExplicitOptionCountRequest(text: string): number | null {
+	const match = EXPLICIT_OPTION_COUNT_PATTERN.exec(text);
+	if (!match || match.index === undefined) return null;
+	const qualifier = text.slice(Math.max(0, match.index - 18), match.index).toLowerCase();
+	if (
+		/\b(?:at\s+least|at\s+most|up\s+to|no\s+more\s+than|about|around|roughly)\s*$/.test(
+			qualifier
+		)
+	) {
+		return null;
+	}
+	const rawCount = match[1]?.toLowerCase() ?? '';
+	const count = OPTION_COUNT_WORDS[rawCount] ?? Number.parseInt(rawCount, 10);
+	return Number.isInteger(count) && count >= 1 && count <= 20 ? count : null;
+}
+
+export function resolveExplicitOptionResponseAnchors(text: string): string[] {
+	if (!resolveExplicitOptionCountRequest(text)) return [];
+
+	const anchors: string[] = [];
+	const addAnchor = (value: string | undefined): void => {
+		const anchor = value?.trim();
+		if (!anchor) return;
+		const normalized = normalizeResponseAnchor(anchor);
+		if (!normalized || anchors.some((item) => normalizeResponseAnchor(item) === normalized)) {
+			return;
+		}
+		anchors.push(anchor);
+	};
+	const properName = String.raw`[\p{Lu}][\p{L}\p{M}'’.-]*(?:\s+[\p{Lu}][\p{L}\p{M}'’.-]*){0,2}`;
+	const subjectPatterns = [
+		new RegExp(
+			String.raw`\b(?:[Ww]hat\s+should\s+happen\s+(?:with|to)|[Oo]ptions?\s+(?:for|about))\s+(${properName})\b`,
+			'gu'
+		),
+		new RegExp(
+			String.raw`\b(?:[Gg]ive|[Ss]how|[Oo]ffer)(?:\s+me)?\s+(?:\w+\s+){0,4}options?\s+(?:for|about)\s+(${properName})\b`,
+			'gu'
+		)
+	];
+	for (const pattern of subjectPatterns) {
+		const match = pattern.exec(text);
+		addAnchor(match?.[1]);
+	}
+	for (const match of text.matchAll(
+		/\b(?:chapter|scene|part|act|episode|section)\s+(?:\d{1,3}|[ivxlcdm]+|one|two|three|four|five|six|seven|eight|nine|ten)\b/gi
+	)) {
+		addAnchor(match[0]);
+	}
+
+	return anchors.slice(0, 4);
+}
+
+export function findMissingExplicitOptionResponseAnchors(
+	requestText: string,
+	answerText: string
+): string[] {
+	const normalizedAnswer = normalizeResponseAnchor(answerText);
+	return resolveExplicitOptionResponseAnchors(requestText).filter(
+		(anchor) => !normalizedAnswer.includes(normalizeResponseAnchor(anchor))
+	);
+}
+
+export function countVisiblyLabeledOptions(text: string): number {
+	const optionNumbers = new Set<number>();
+	for (const match of text.matchAll(
+		/\boption\s*(?:#\s*)?(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\b/gi
+	)) {
+		const rawNumber = match[1]?.toLowerCase() ?? '';
+		const number = OPTION_COUNT_WORDS[rawNumber] ?? Number.parseInt(rawNumber, 10);
+		if (Number.isInteger(number) && number > 0) optionNumbers.add(number);
+	}
+	return optionNumbers.size;
+}
 
 export function buildForcedSynthesisMessages(params: {
 	latestUserText: string;
@@ -31,7 +120,16 @@ export function buildForcedSynthesisMessages(params: {
 			: null;
 	const retryLine =
 		params.retryCount > 0
-			? 'The prior synthesis attempt incorrectly emitted a tool call. This retry must contain ordinary user-facing prose only.'
+			? 'The prior synthesis attempt was incomplete or invalid. This retry must contain a complete answer in ordinary user-facing prose only.'
+			: null;
+	const explicitOptionCount = resolveExplicitOptionCountRequest(params.latestUserText);
+	const responseConstraint = explicitOptionCount
+		? `Explicit response constraint: provide exactly ${explicitOptionCount} visibly labeled options (Option 1 through Option ${explicitOptionCount}). Present every requested option before any extended comparison or elaboration, and keep each compact enough that the complete set fits in this answer.`
+		: null;
+	const responseAnchors = resolveExplicitOptionResponseAnchors(params.latestUserText);
+	const responseAnchorConstraint =
+		responseAnchors.length > 0
+			? `Explicit request anchors: retain ${responseAnchors.map((anchor) => `"${anchor}"`).join(', ')} verbatim or near-verbatim in the answer. Explicitly frame the focal subject and requested story/work position instead of relying only on pronouns or implicit context.`
 			: null;
 	const evidence = params.toolExecutions.slice(-MAX_EVIDENCE_ITEMS).map((execution, index) => ({
 		index: index + 1,
@@ -61,6 +159,8 @@ export function buildForcedSynthesisMessages(params: {
 				intentLine,
 				originalRequest,
 				retryLine,
+				responseConstraint,
+				responseAnchorConstraint,
 				params.runtimeBudgetMessage
 			]
 				.filter((line): line is string => Boolean(line))
@@ -94,6 +194,14 @@ export function collectForcedSynthesisDirectives(
 			)
 		)
 		.slice(-MAX_DIRECTIVES);
+}
+
+function normalizeResponseAnchor(value: string): string {
+	return value
+		.normalize('NFKC')
+		.toLocaleLowerCase()
+		.replace(/[^\p{L}\p{N}]+/gu, ' ')
+		.trim();
 }
 
 function safeStringify(value: unknown): string {

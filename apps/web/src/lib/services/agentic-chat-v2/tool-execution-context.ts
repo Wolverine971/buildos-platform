@@ -5,6 +5,7 @@ import type {
 	ContextShiftPayload
 } from '@buildos/shared-types';
 import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
+import { readAgentWorkspaceMetadata } from '$lib/services/agentic-chat/project-domain-profiles';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 
 export type FastChatResolvedPromptContext = {
@@ -304,6 +305,19 @@ export function buildToolExecutionOntologyContext(params: {
 			id: projectId,
 			name: projectName
 		});
+	}
+
+	// The prompt loader already reduced the reserved workspace contract to its
+	// server-approved fields on START HERE. Carry that same bounded contract into
+	// tool execution so write guards can enforce the active project behavior.
+	const startHere = data && isPlainRecord(data.start_here) ? data.start_here : null;
+	const agentWorkspace = readAgentWorkspaceMetadata(startHere?.agent_workspace);
+	if (agentWorkspace && isPlainRecord(entities.project)) {
+		const projectProps = isPlainRecord(entities.project.props) ? entities.project.props : {};
+		entities.project = {
+			...entities.project,
+			props: { ...projectProps, agent_workspace: agentWorkspace }
+		};
 	}
 
 	const docStructure = data && isPlainRecord(data.doc_structure) ? data.doc_structure : null;

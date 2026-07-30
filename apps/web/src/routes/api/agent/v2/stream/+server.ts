@@ -1714,6 +1714,8 @@ export const POST: RequestHandler = async ({
 				selectedSurfaceProfile
 			} = turnPreparation;
 			let tools = turnPreparation.tools;
+			let livingWorkspaceCommissionedWriteToolNames: string[] = [];
+			let livingWorkspaceCommissionedWriteMinimumCount = 0;
 			let latestDomainState = previousDomainState;
 			let domainStateMetadataUpdatePromise: Promise<boolean> | null = null;
 			observabilityWriter.recordEvent('prompt', 'turn_intent_resolved', {
@@ -2266,6 +2268,14 @@ export const POST: RequestHandler = async ({
 					tools = livingWorkspaceToolSelection.tools;
 					toolsRequiringProjectId = getToolsRequiringProjectId(tools);
 				}
+				livingWorkspaceCommissionedWriteToolNames =
+					livingWorkspaceToolSelection.implicitCapture
+						? ['update_onto_document', 'create_onto_document'].filter((name) =>
+								extractToolNamesFromDefinitions(tools).includes(name)
+							)
+						: [];
+				livingWorkspaceCommissionedWriteMinimumCount =
+					livingWorkspaceToolSelection.commissionedWriteMinimumCount;
 				if (livingWorkspaceToolSelection.implicitCapture) {
 					observabilityWriter.recordEvent(
 						'prompt',
@@ -2288,22 +2298,26 @@ export const POST: RequestHandler = async ({
 					latestUserMessage: messageForModel,
 					implicitCapture: livingWorkspaceToolSelection.implicitCapture
 				});
-				if (
-					!skillGatePreload &&
-					FASTCHAT_SCAFFOLD.routing.skillPreload &&
-					projectDomainRuntimeSkillId
-				) {
-					skillGatePreload = resolveSkillPreloadById(projectDomainRuntimeSkillId, {
-						alreadyLoadedSkillIds: historyLoadedSkillIdsForTurn
-					});
-					if (skillGatePreload?.materializedToolNames.length) {
-						tools = materializeGatewayTools(
-							tools,
-							skillGatePreload.materializedToolNames
-						).tools;
-						toolsRequiringProjectId = getToolsRequiringProjectId(tools);
-					}
-					if (skillGatePreload) {
+				if (FASTCHAT_SCAFFOLD.routing.skillPreload && projectDomainRuntimeSkillId) {
+					const projectDomainSkillPreload = resolveSkillPreloadById(
+						projectDomainRuntimeSkillId,
+						{
+							alreadyLoadedSkillIds: historyLoadedSkillIdsForTurn
+						}
+					);
+					if (projectDomainSkillPreload) {
+						// Persisted affinity only activates through a high-confidence,
+						// project-specific matcher. Prefer it over a conflicting lexical
+						// preload from a secondary domain (for example, a fiction
+						// "character arc" prompt that also resembles content strategy).
+						skillGatePreload = projectDomainSkillPreload;
+						if (skillGatePreload.materializedToolNames.length) {
+							tools = materializeGatewayTools(
+								tools,
+								skillGatePreload.materializedToolNames
+							).tools;
+							toolsRequiringProjectId = getToolsRequiringProjectId(tools);
+						}
 						observabilityWriter.recordEvent(
 							'prompt',
 							'project_domain_skill_preloaded',
@@ -2913,6 +2927,8 @@ export const POST: RequestHandler = async ({
 				forcedSynthesisRouting,
 				pinnedModels: FASTCHAT_EVAL_PINNED_MODELS,
 				turnIntent,
+				commissionedWriteToolNames: livingWorkspaceCommissionedWriteToolNames,
+				commissionedWriteMinimumCount: livingWorkspaceCommissionedWriteMinimumCount,
 				skillGate,
 				tools,
 				// Live orchestration-budget snapshot from provider-reported tokens.
