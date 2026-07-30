@@ -154,7 +154,10 @@ import {
 	getSkillGateCandidateSkillLoadFormats,
 	getSkillGateCandidateSkillIds
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
-import { resolveSkillGatePreload } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
+import {
+	resolveSkillGatePreload,
+	resolveSkillPreloadById
+} from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { extractToolNamesFromDefinitions } from '$lib/services/agentic-chat/tools/core/tools.config';
 import {
@@ -167,6 +170,11 @@ import {
 } from '$lib/services/agentic-chat/tools/domains/domain-session-state';
 import { deriveUsedDomainSignalsFromToolExecutions } from '$lib/services/agentic-chat/tools/domains/domain-used-signals';
 import { buildEntityResolutionHint } from '$lib/services/agentic-chat-v2/entity-resolution';
+import { applyLivingWorkspaceToolProfile } from '$lib/services/agentic-chat-v2/tool-selector';
+import {
+	resolveAgentWorkspaceFromContextData,
+	resolveProjectDomainRuntimeSkillId
+} from '$lib/services/agentic-chat/project-domain-profiles';
 import {
 	buildLastTurnContext,
 	buildLastTurnContinuityHint
@@ -1880,10 +1888,8 @@ export const POST: RequestHandler = async ({
 			// Runs AFTER consumePreparedPrompt so the prepared-surface hash check
 			// still compares launch tools (preload must not inflate stale_harness),
 			// and after history composition so an already-loaded skill is skipped.
-			const historyLoadedSkillIdsForTurn = turnDomainSensing
-				? extractLoadedSkillIdsFromHistory(historyForModel)
-				: [];
-			const skillGatePreload = FASTCHAT_SCAFFOLD.routing.skillPreload
+			const historyLoadedSkillIdsForTurn = extractLoadedSkillIdsFromHistory(historyForModel);
+			let skillGatePreload = FASTCHAT_SCAFFOLD.routing.skillPreload
 				? resolveSkillGatePreload(turnDomainSensing, {
 						alreadyLoadedSkillIds: historyLoadedSkillIdsForTurn
 					})
@@ -2034,7 +2040,7 @@ export const POST: RequestHandler = async ({
 				.catch(() => {
 					// User message persistence is already handled later in the route.
 				});
-			const toolsRequiringProjectId = getToolsRequiringProjectId(tools);
+			let toolsRequiringProjectId = getToolsRequiringProjectId(tools);
 			let effectiveContextType: ChatContextType = contextType;
 			let effectiveEntityId: string | null = entityId ?? null;
 			let latestContextShift: ContextShiftPayload | null = null;
@@ -2249,6 +2255,68 @@ export const POST: RequestHandler = async ({
 				promptContext.entityResolutionHint =
 					buildEntityResolutionHint(requestLastTurnContext);
 
+				const agentWorkspace = resolveAgentWorkspaceFromContextData(promptContext.data);
+				const livingWorkspaceToolSelection = applyLivingWorkspaceToolProfile({
+					tools,
+					workspace: agentWorkspace,
+					latestUserMessage: messageForModel,
+					turnIntent
+				});
+				if (livingWorkspaceToolSelection.tools !== tools) {
+					tools = livingWorkspaceToolSelection.tools;
+					toolsRequiringProjectId = getToolsRequiringProjectId(tools);
+				}
+				if (livingWorkspaceToolSelection.implicitCapture) {
+					observabilityWriter.recordEvent(
+						'prompt',
+						'living_workspace_capture_activated',
+						{
+							workspace_mode: agentWorkspace?.mode ?? null,
+							domain_profile: agentWorkspace?.domain_profile ?? null,
+							domain_affinity: agentWorkspace?.domain_affinity ?? null,
+							tool_names: extractToolNamesFromDefinitions(tools)
+						} as Json
+					);
+				}
+
+				// The current message is sensed before project context is loaded, so
+				// terse continuation turns ("give me three options") cannot name their
+				// domain lexically. Persisted, server-owned project affinity can fill
+				// that gap without making the skill global or spending an LLM round.
+				const projectDomainRuntimeSkillId = resolveProjectDomainRuntimeSkillId({
+					workspace: agentWorkspace,
+					latestUserMessage: messageForModel,
+					implicitCapture: livingWorkspaceToolSelection.implicitCapture
+				});
+				if (
+					!skillGatePreload &&
+					FASTCHAT_SCAFFOLD.routing.skillPreload &&
+					projectDomainRuntimeSkillId
+				) {
+					skillGatePreload = resolveSkillPreloadById(projectDomainRuntimeSkillId, {
+						alreadyLoadedSkillIds: historyLoadedSkillIdsForTurn
+					});
+					if (skillGatePreload?.materializedToolNames.length) {
+						tools = materializeGatewayTools(
+							tools,
+							skillGatePreload.materializedToolNames
+						).tools;
+						toolsRequiringProjectId = getToolsRequiringProjectId(tools);
+					}
+					if (skillGatePreload) {
+						observabilityWriter.recordEvent(
+							'prompt',
+							'project_domain_skill_preloaded',
+							{
+								domain_profile: agentWorkspace?.domain_profile ?? null,
+								domain_affinity: agentWorkspace?.domain_affinity ?? null,
+								skill_id: skillGatePreload.skillId,
+								materialized_tool_names: skillGatePreload.materializedToolNames
+							} as Json
+						);
+					}
+				}
+
 				// tasker/39 stage 3: situational rule blocks key off the turn's
 				// actual write/web capability (plus intent), so compute the
 				// situation from the final tool surface — preload/turn-intent
@@ -2256,7 +2324,11 @@ export const POST: RequestHandler = async ({
 				const turnSituation = resolveLitePromptTurnSituation({
 					toolNames: extractToolNamesFromDefinitions(tools),
 					turnIntentRequiresWrite: turnIntent.requiresWrite,
-					latestUserMessage: messageForModel
+					latestUserMessage: messageForModel,
+					livingWorkspace: agentWorkspace?.mode === 'living_reference',
+					livingWorkspaceCapture: livingWorkspaceToolSelection.implicitCapture,
+					domainProfile: agentWorkspace?.domain_profile ?? null,
+					domainAffinity: agentWorkspace?.domain_affinity ?? null
 				});
 
 				if (!systemPrompt) {
@@ -2265,6 +2337,7 @@ export const POST: RequestHandler = async ({
 						tools,
 						productSurface: FASTCHAT_STREAM_ENDPOINT,
 						conversationPosition: `live stream turn ${streamRunId}`,
+						currentUserMessage: messageForModel,
 						domainSensingResult: null,
 						scaffold: FASTCHAT_SCAFFOLD.prompt
 					});
@@ -2279,13 +2352,17 @@ export const POST: RequestHandler = async ({
 				if (
 					!litePromptEnvelope &&
 					systemPrompt &&
-					(turnDomainSensing || hasActiveSituation(turnSituation))
+					(turnDomainSensing ||
+						skillGatePreload ||
+						hasActiveSituation(turnSituation) ||
+						contextType === 'project_create')
 				) {
 					litePromptEnvelope = buildLitePromptEnvelope({
 						...promptContext,
 						tools,
 						productSurface: FASTCHAT_STREAM_ENDPOINT,
 						conversationPosition: `live stream turn ${streamRunId}`,
+						currentUserMessage: messageForModel,
 						domainSensingResult: null,
 						scaffold: FASTCHAT_SCAFFOLD.prompt
 					});

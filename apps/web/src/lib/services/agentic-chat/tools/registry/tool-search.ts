@@ -311,7 +311,7 @@ export function searchToolRegistry(options: ToolSearchOptions = {}): Record<stri
 		...(noMatches ? { no_matches: noMatches } : {}),
 		next_step:
 			matches.length > 0
-				? 'Pick the best candidate op/tool. If it is not already loaded, this search makes the direct tool available for the next response. Call tool_schema({ op: "<canonical op>" }) before first-time or complex writes, then call the direct tool by name.'
+				? 'Pick the best candidate op/tool. If it is not already loaded, this search makes the direct tool available for the next response. If the direct tool is already loaded, call it directly because its tool definition is the schema. Use tool_schema only when the direct op is not loaded or validation exposed a genuine schema ambiguity.'
 				: 'Use the returned group/entity directory or capability IDs to browse with a narrower follow-up search. Omit query and pass group/entity to list a category.'
 	};
 }

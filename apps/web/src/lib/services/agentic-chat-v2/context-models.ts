@@ -91,6 +91,11 @@ export type ProjectStartHereDocument = {
 	content: string;
 	content_truncated: boolean;
 	updated_at: string | null;
+	agent_workspace?: {
+		mode?: string;
+		domain_profile?: string;
+		domain_affinity?: string;
+	} | null;
 };
 
 export type LightEvent = {

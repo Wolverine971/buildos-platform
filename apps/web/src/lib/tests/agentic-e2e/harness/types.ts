@@ -86,8 +86,20 @@ export interface JudgeSpec {
 	threshold?: number;
 }
 
+/**
+ * A quality invariant that should be measured without aborting a long journey.
+ * Checkpoint failures are accumulated by the runner and reported after every
+ * turn has run. Keep hard preconditions in `TurnSpec.assert` instead.
+ */
+export interface TurnCheckpoint {
+	name: string;
+	check: (turn: TurnResult, ctx: ScenarioContext, seed: SeedResult) => Promise<void> | void;
+}
+
 /** One turn in a (possibly multi-turn) scenario. */
 export interface TurnSpec {
+	/** Human-readable phase name used in journey diagnostics. */
+	label?: string;
 	message: string;
 	contextType: HarnessContextType;
 	/** Resolve the project/entity id to scope this turn to, from the seed result. */
@@ -101,6 +113,8 @@ export interface TurnSpec {
 	coldSession?: boolean;
 	/** Deterministic assertions over the turn + DB + seed. Throw to fail. */
 	assert: (turn: TurnResult, ctx: ScenarioContext, seed: SeedResult) => Promise<void> | void;
+	/** Non-fatal quality checks accumulated until the scenario finishes. */
+	checkpoints?: TurnCheckpoint[];
 	/** Optional fuzzy-quality judge for this turn. */
 	judge?: (
 		turn: TurnResult,
@@ -112,7 +126,9 @@ export interface TurnSpec {
 export interface Scenario {
 	id: string;
 	title: string;
-	category: 'document' | 'task' | 'organization' | 'calendar' | 'email';
+	category: 'document' | 'task' | 'organization' | 'calendar' | 'email' | 'creative';
+	/** Override for long, multi-turn journeys. Defaults to the runner's 5 minutes. */
+	timeoutMs?: number;
 	/** Return true to skip (e.g. calendar without a connected test calendar). */
 	skip?: () => boolean;
 	/** Create fixtures. Omit for global/project_create scenarios. */

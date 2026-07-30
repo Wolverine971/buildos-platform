@@ -723,6 +723,197 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).not.toHaveBeenCalled();
 		});
 
+		it('adds the server-selected fiction workspace profile before project creation', async () => {
+			const createContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project_create',
+				entityId: undefined,
+				conversationHistory: [
+					{
+						role: 'user',
+						content:
+							'Create an ongoing workspace for my novel and keep it organized whenever I add story details.'
+					} as any
+				]
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_create_fiction_workspace',
+				name: 'create_onto_project',
+				arguments: {
+					project: {
+						name: 'The Glass Harbor',
+						type_key: 'project.creative.novel',
+						props: { facets: { stage: 'discovery' } }
+					},
+					entities: [],
+					relationships: []
+				}
+			};
+			const createProjectDefinition: ChatToolDefinition = {
+				name: 'create_onto_project',
+				description: 'Create project',
+				parameters: {
+					type: 'object',
+					properties: {
+						project: { type: 'object' },
+						entities: { type: 'array' },
+						relationships: { type: 'array' }
+					},
+					required: ['project', 'entities', 'relationships']
+				}
+			};
+			mockToolExecutor.mockResolvedValueOnce({ data: { project_id: 'project-1' } });
+
+			const result = await service.executeTool(toolCall, createContext, [
+				createProjectDefinition
+			]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'create_onto_project',
+				expect.objectContaining({
+					project: expect.objectContaining({
+						props: expect.objectContaining({
+							facets: { stage: 'discovery' },
+							agent_workspace: {
+								mode: 'living_reference',
+								domain_profile: 'fiction_story',
+								domain_affinity: 'writing.fiction'
+							}
+						})
+					})
+				}),
+				contextLike(createContext)
+			);
+		});
+
+		it('retains creation evidence across a multi-turn project-create clarification', async () => {
+			const createContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project_create',
+				entityId: undefined,
+				conversationHistory: [
+					{
+						role: 'user',
+						content:
+							'Create an ongoing workspace for my novel. Finish Part I by March 1, 2027.'
+					} as any,
+					{ role: 'assistant', content: 'What should I call it?' } as any,
+					{ role: 'user', content: 'The Glass Harbor.' } as any
+				]
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_create_after_clarification',
+				name: 'create_onto_project',
+				arguments: {
+					project: {
+						name: 'The Glass Harbor',
+						type_key: 'project.creative.novel'
+					},
+					entities: [
+						{
+							kind: 'milestone',
+							temp_id: 'part-one',
+							title: 'Part I',
+							due_at: '2027-03-01T17:00:00Z'
+						}
+					],
+					relationships: []
+				}
+			};
+			const createProjectDefinition: ChatToolDefinition = {
+				name: 'create_onto_project',
+				description: 'Create project',
+				parameters: {
+					type: 'object',
+					properties: {
+						project: { type: 'object' },
+						entities: { type: 'array' },
+						relationships: { type: 'array' }
+					},
+					required: ['project', 'entities', 'relationships']
+				}
+			};
+			mockToolExecutor.mockResolvedValueOnce({ data: { project_id: 'project-1' } });
+
+			const result = await service.executeTool(toolCall, createContext, [
+				createProjectDefinition
+			]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'create_onto_project',
+				expect.objectContaining({
+					project: expect.objectContaining({
+						props: expect.objectContaining({
+							agent_workspace: expect.objectContaining({
+								mode: 'living_reference',
+								domain_profile: 'fiction_story'
+							})
+						})
+					})
+				}),
+				contextLike(createContext)
+			);
+		});
+
+		it('blocks project milestones whose dates were not grounded in the user message', async () => {
+			const createContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project_create',
+				entityId: undefined,
+				conversationHistory: [
+					{
+						role: 'user',
+						content: 'The novel has Part I, Part II, and Part III.'
+					} as any
+				]
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_create_with_invented_milestone',
+				name: 'create_onto_project',
+				arguments: {
+					project: {
+						name: 'The Glass Harbor',
+						type_key: 'project.creative.novel'
+					},
+					entities: [
+						{
+							kind: 'milestone',
+							temp_id: 'part-one',
+							title: 'Part I',
+							due_at: '2027-03-01T17:00:00Z'
+						}
+					],
+					relationships: []
+				}
+			};
+			const createProjectDefinition: ChatToolDefinition = {
+				name: 'create_onto_project',
+				description: 'Create project',
+				parameters: {
+					type: 'object',
+					properties: {
+						project: { type: 'object' },
+						entities: { type: 'array' },
+						relationships: { type: 'array' }
+					},
+					required: ['project', 'entities', 'relationships']
+				}
+			};
+
+			const result = await service.executeTool(toolCall, createContext, [
+				createProjectDefinition
+			]);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('require schedule evidence')
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
 		it('should warn before creating a second project from an existing project turn', async () => {
 			const projectId = '06691c72-8c01-4f77-a79f-d0ef7f40124a';
 			const guardedContext: ServiceContext = {

@@ -21,6 +21,9 @@ export * from './chat.types';
 // Export agent types
 export * from './agent.types';
 
+// Export Agentic Chat worker migration contracts
+export * from './agentic-chat-worker-contract';
+
 // Export OCR transition helpers
 export * from './asset-ocr';
 

@@ -7,7 +7,11 @@ import {
 	materializeGatewayTools
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
-import { resolveFastChatSurfaceProfileForTurn, selectFastChatTools } from './tool-selector';
+import {
+	applyLivingWorkspaceToolProfile,
+	resolveFastChatSurfaceProfileForTurn,
+	selectFastChatTools
+} from './tool-selector';
 import { resolveFastChatTurnIntent } from './turn-intent';
 
 afterEach(() => {
@@ -15,6 +19,83 @@ afterEach(() => {
 });
 
 describe('selectFastChatTools', () => {
+	it('mounts direct document writes for living-reference capture without redundant discovery', () => {
+		const baseTools = selectFastChatTools({
+			contextType: 'project',
+			surfaceProfile: 'project_basic'
+		});
+		const selection = applyLivingWorkspaceToolProfile({
+			tools: baseTools,
+			workspace: {
+				mode: 'living_reference',
+				domain_profile: 'fiction_story',
+				domain_affinity: 'writing.fiction'
+			},
+			latestUserMessage: 'Ilyan hides the brass key because it belonged to his sister.'
+		});
+		const names = selection.tools.map((tool) => tool.function?.name).filter(Boolean);
+
+		expect(selection.implicitCapture).toBe(true);
+		expect(names).toContain('create_onto_document');
+		expect(names).toContain('update_onto_document');
+		expect(names).not.toContain('tool_search');
+		expect(names).not.toContain('tool_schema');
+	});
+
+	it('treats a declarative chapter beat as living-reference capture', () => {
+		const baseTools = selectFastChatTools({
+			contextType: 'project',
+			surfaceProfile: 'project_basic'
+		});
+		const selection = applyLivingWorkspaceToolProfile({
+			tools: baseTools,
+			workspace: {
+				mode: 'living_reference',
+				domain_profile: 'fiction_story',
+				domain_affinity: 'writing.fiction'
+			},
+			latestUserMessage:
+				'I think the last beat of Part I happens at the end of chapter 4: Ilyan catches Mara hiding a forbidden map and chooses not to report her.'
+		});
+		const names = selection.tools.map((tool) => tool.function?.name).filter(Boolean);
+
+		expect(selection.implicitCapture).toBe(true);
+		expect(names).toEqual(
+			expect.arrayContaining(['create_onto_document', 'update_onto_document'])
+		);
+	});
+
+	it('keeps living-reference questions read-only and explicit mutations on their normal surface', () => {
+		const baseTools = selectFastChatTools({
+			contextType: 'project',
+			surfaceProfile: 'project_basic'
+		});
+		const workspace = {
+			mode: 'living_reference',
+			domain_profile: 'fiction_story',
+			domain_affinity: 'writing.fiction'
+		};
+		const adviceSelection = applyLivingWorkspaceToolProfile({
+			tools: baseTools,
+			workspace,
+			latestUserMessage: 'What should happen to Ilyan next? Give me three options.'
+		});
+		const explicitIntent = resolveFastChatTurnIntent({
+			contextType: 'project',
+			latestUserMessage: 'Delete the Ilyan character document.'
+		});
+		const mutationSelection = applyLivingWorkspaceToolProfile({
+			tools: baseTools,
+			workspace,
+			latestUserMessage: 'Delete the Ilyan character document.',
+			turnIntent: explicitIntent
+		});
+
+		expect(adviceSelection).toEqual({ tools: baseTools, implicitCapture: false });
+		expect(mutationSelection).toEqual({ tools: baseTools, implicitCapture: false });
+		expect(explicitIntent.requiresWrite).toBe(true);
+	});
+
 	it('can disable the legacy message-regex surface fallback', () => {
 		expect(
 			resolveFastChatSurfaceProfileForTurn({

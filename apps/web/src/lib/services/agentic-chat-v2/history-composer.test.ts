@@ -102,6 +102,40 @@ describe('composeFastChatHistory', () => {
 		expect(result.continuityHintUsed).toBe(true);
 	});
 
+	it('pins the exact compressed history projection used by the legacy runtime', () => {
+		const result = composeFastChatHistory({
+			history: makeHistory(6),
+			continuityHint: 'Conversation continuity hint: launch owner is Ana.',
+			sessionSummary: 'The launch plan is being finalized.',
+			settings: {
+				compressionThresholdMessages: 4,
+				tailMessagesWhenCompressed: 2
+			}
+		});
+
+		expect(result).toEqual({
+			historyForModel: [
+				{
+					role: 'system',
+					content: [
+						'Conversation memory (compressed):',
+						'Session summary: The launch plan is being finalized.',
+						'Conversation continuity hint: launch owner is Ana.',
+						'Earlier messages summarized: 4.',
+						'Prioritize the latest user message. Ask a clarifying question if compressed memory is ambiguous.'
+					].join('\n')
+				},
+				{ role: 'user', content: 'message-5' },
+				{ role: 'assistant', content: 'message-6' }
+			],
+			compressed: true,
+			strategy: 'compressed_history',
+			rawHistoryCount: 6,
+			tailMessagesKept: 2,
+			continuityHintUsed: true
+		});
+	});
+
 	it('truncates long tail messages when compressing', () => {
 		const long = 'a'.repeat(300);
 		const history: FastChatHistoryMessage[] = [

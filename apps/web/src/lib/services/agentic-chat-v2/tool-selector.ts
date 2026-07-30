@@ -13,6 +13,53 @@ import {
 	type FastChatTurnIntent
 } from './turn-intent';
 import { looksLikeWebResearchTurn } from '$lib/services/agentic-chat-lite/prompt/situational-rules';
+import {
+	LIVING_REFERENCE_MODE,
+	looksLikeLivingWorkspaceCaptureTurn,
+	type AgentWorkspaceMetadata
+} from '$lib/services/agentic-chat/project-domain-profiles';
+
+const REDUNDANT_DIRECT_WRITE_DISCOVERY_TOOLS = new Set(['tool_search', 'tool_schema']);
+
+export type LivingWorkspaceToolSelection = {
+	tools: ChatToolDefinition[];
+	implicitCapture: boolean;
+};
+
+/**
+ * A living-reference project turns a plain declarative message into an
+ * implicit document capture. Mount the two document writes directly and drop
+ * operation/schema discovery for that turn; their full schemas are already in
+ * the model tool definitions. Explicit mutation intents keep their normal
+ * surface because deletes, cross-entity work, and ambiguous targets may still
+ * need discovery.
+ */
+export function applyLivingWorkspaceToolProfile(params: {
+	tools: ChatToolDefinition[];
+	workspace: AgentWorkspaceMetadata | null | undefined;
+	latestUserMessage?: string | null;
+	turnIntent?: FastChatTurnIntent | null;
+}): LivingWorkspaceToolSelection {
+	const implicitCapture = Boolean(
+		params.workspace?.mode === LIVING_REFERENCE_MODE &&
+			!params.turnIntent?.requiresWrite &&
+			looksLikeLivingWorkspaceCaptureTurn(params.latestUserMessage)
+	);
+	if (!implicitCapture) {
+		return { tools: params.tools, implicitCapture: false };
+	}
+
+	const materialized = materializeGatewayTools(params.tools, [
+		'create_onto_document',
+		'update_onto_document'
+	]).tools;
+	return {
+		tools: materialized.filter(
+			(tool) => !REDUNDANT_DIRECT_WRITE_DISCOVERY_TOOLS.has(tool.function?.name ?? '')
+		),
+		implicitCapture: true
+	};
+}
 
 export function selectFastChatTools(params: {
 	contextType: ChatContextType;

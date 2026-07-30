@@ -17,6 +17,11 @@ import { judgeQuality } from '../harness/judge';
 import { checkTurnBeforeFollowupRelease } from '../harness/turn-sequencing';
 import { readTurnAttribution } from '../harness/attribution';
 import { scenarioCatalog } from '../scenarios/catalog';
+import {
+	evaluateTurnCheckpoints,
+	formatCheckpointFailures,
+	type CheckpointFailure
+} from '../harness/checkpoints';
 import type { ScenarioContext, SeedResult } from '../harness/types';
 import type { LastTurnContext } from '@buildos/shared-types';
 
@@ -88,6 +93,7 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 				const c = requireCtx();
 				let seed: SeedResult = { entityIds: {}, notes: {} };
 				let sessionId: string | undefined;
+				const checkpointFailures: CheckpointFailure[] = [];
 
 				try {
 					if (scenario.seed) {
@@ -123,6 +129,21 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 							hasFollowup: turnIndex < scenario.turns.length - 1,
 							assertTurn: async () => {
 								await turn.assert(result, c, seed);
+								const failures = await evaluateTurnCheckpoints({
+									checkpoints: turn.checkpoints ?? [],
+									turn: result,
+									ctx: c,
+									seed,
+									turnNumber: turnIndex + 1,
+									turnLabel: turn.label
+								});
+								checkpointFailures.push(...failures);
+								for (const failure of failures) {
+									console.warn(
+										`[agentic-e2e] checkpoint miss: ${scenario.id} / ${failure.turnLabel} / ` +
+											`${failure.checkpoint}: ${failure.message}`
+									);
+								}
 								if (!result.streamRunId) {
 									if (process.env.AGENTIC_ASSERT_TELEMETRY === 'true') {
 										throw new Error(
@@ -212,6 +233,10 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 								releaseTurnForFollowup(c.db.admin, result.streamRunId)
 						});
 					}
+
+					if (checkpointFailures.length > 0) {
+						throw new Error(formatCheckpointFailures(scenario.id, checkpointFailures));
+					}
 				} finally {
 					try {
 						await teardownChatSession(c.db.admin, c.db.userId, sessionId);
@@ -235,7 +260,7 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 					}
 				}
 			},
-			300000
+			scenario.timeoutMs ?? 300000
 		);
 	}
 });

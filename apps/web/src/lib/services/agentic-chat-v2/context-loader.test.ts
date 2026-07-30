@@ -1575,7 +1575,14 @@ describe('loadFastChatPromptContext project event window', () => {
 							title: 'START HERE - Project One',
 							content:
 								'# START HERE - Project One\n\n## What this is\nExplicit orientation.',
-							props: { origin: 'start_here_template' },
+							props: {
+								origin: 'start_here_template',
+								agent_workspace: {
+									mode: 'living_reference',
+									domain_profile: 'fiction_story',
+									domain_affinity: 'writing.fiction'
+								}
+							},
 							created_at: '2026-02-14T00:00:00.000Z',
 							updated_at: '2026-02-14T00:00:00.000Z'
 						}
@@ -1595,7 +1602,12 @@ describe('loadFastChatPromptContext project event window', () => {
 		const data = context.data as Record<string, any>;
 		expect(data.start_here).toMatchObject({
 			id: 'start-here-1',
-			title: 'START HERE - Project One'
+			title: 'START HERE - Project One',
+			agent_workspace: {
+				mode: 'living_reference',
+				domain_profile: 'fiction_story',
+				domain_affinity: 'writing.fiction'
+			}
 		});
 		expect(data.start_here.content).toContain('Explicit orientation.');
 	});

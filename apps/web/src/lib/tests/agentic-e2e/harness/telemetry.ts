@@ -83,6 +83,14 @@ export interface TaskRow {
 	updated_at: string;
 }
 
+export interface MilestoneRow {
+	id: string;
+	project_id: string;
+	title: string;
+	due_at: string | null;
+	state_key: string;
+}
+
 export interface DocumentTreeNode {
 	id: string;
 	title: string | null;
@@ -93,6 +101,30 @@ export interface DocumentTreeNode {
 export interface ProjectDocumentTree {
 	version: number;
 	root: DocumentTreeNode[];
+}
+
+export interface ProjectRow {
+	id: string;
+	name: string;
+	type_key: string;
+	description: string | null;
+}
+
+/** Exact-name lookup used to capture a project created during a project_create turn. */
+export async function listProjectsByExactName(
+	admin: TypedSupabaseClient,
+	actorId: string,
+	name: string
+): Promise<ProjectRow[]> {
+	const { data, error } = await admin
+		.from('onto_projects')
+		.select('id, name, type_key, description')
+		.eq('created_by', actorId)
+		.eq('name', name);
+	if (error) {
+		throw new Error(`[agentic-e2e] failed to find created project "${name}": ${error.message}`);
+	}
+	return (data as ProjectRow[] | null) ?? [];
 }
 
 /** The single turn row for a stream_run_id (may be null if not yet persisted). */
@@ -340,6 +372,20 @@ export async function listTasks(admin: TypedSupabaseClient, projectId: string): 
 		.is('deleted_at', null)
 		.order('updated_at', { ascending: false });
 	return (data as TaskRow[] | null) ?? [];
+}
+
+/** All live milestones under a project. */
+export async function listMilestones(
+	admin: TypedSupabaseClient,
+	projectId: string
+): Promise<MilestoneRow[]> {
+	const { data } = await admin
+		.from('onto_milestones')
+		.select('id, project_id, title, due_at, state_key')
+		.eq('project_id', projectId)
+		.is('deleted_at', null)
+		.order('due_at', { ascending: true });
+	return (data as MilestoneRow[] | null) ?? [];
 }
 
 export async function getProjectDocumentTree(

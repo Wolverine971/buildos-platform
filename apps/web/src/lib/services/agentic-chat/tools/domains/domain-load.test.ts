@@ -43,6 +43,26 @@ describe('domain discovery', () => {
 		expect(result.matches[0]?.outcome_card_ids).toContain('linkedin_company_page_growth_plan');
 	});
 
+	it('routes novel character and plot work to the fiction child domain', () => {
+		const result = searchDomains({
+			query: 'Given this novel, what should happen with this character next? Give me options.',
+			limit: 3
+		});
+
+		expect(result.matches[0]).toMatchObject({
+			domain_id: 'writing.fiction',
+			coverage_status: 'strong'
+		});
+		expect(result.matches[0]?.skill_ids).toContain('fiction_story_craft');
+
+		const writing = loadDomain('writing');
+		if (writing.type !== 'domain') throw new Error('Expected writing domain payload');
+		expect(writing.child_domains).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'writing.fiction' })])
+		);
+		expect(writing.skills.map((skill) => skill.id)).not.toContain('fiction_story_craft');
+	});
+
 	it('loads a compact domain card with linked skills and gaps', () => {
 		const result = loadDomain('sales_and_growth.cold_email');
 

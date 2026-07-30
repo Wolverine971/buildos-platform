@@ -346,7 +346,7 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'tool_search',
 			description:
-				'Discover candidate BuildOS tools on demand. Use this only when the exact op is still unknown after context and skill guidance. Search for the operation you need, not workspace data. To browse a whole category, omit query and pass group or entity.',
+				'Discover candidate BuildOS tools on demand. Use this only when the exact op is still unknown after context and skill guidance. Never use it to rediscover a direct tool already present in your tool surface; that direct tool definition is already its schema. Search for the operation you need, not workspace data. To browse a whole category, omit query and pass group or entity.',
 			parameters: {
 				type: 'object',
 				properties: {

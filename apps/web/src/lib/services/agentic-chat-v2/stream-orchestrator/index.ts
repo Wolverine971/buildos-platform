@@ -221,6 +221,24 @@ type ForcedWriteIntentToolPass = {
 	instruction: string;
 };
 
+const VAGUE_PROJECT_CREATE_REQUEST =
+	/^(?:(?:hi|hello|hey)[,!. ]*)?(?:(?:please\s+)?(?:help\s+me\s+)?|i\s+(?:want|need|would\s+like)\s+to\s+)?(?:create|start|set\s+up|make)?\s*(?:me\s+)?(?:a\s+)?(?:new\s+)?project(?:\s+please)?[?!. ]*$/i;
+
+function hasActionableProjectCreateInput(message: string | null | undefined): boolean {
+	const normalized = typeof message === 'string' ? message.trim().replace(/\s+/g, ' ') : '';
+	if (normalized.length < 8 || VAGUE_PROJECT_CREATE_REQUEST.test(normalized)) return false;
+	const isInformationQuestion =
+		normalized.endsWith('?') &&
+		/^(?:what|which|how|why|when|where|who|can|could|would|should|do|does|is|are)\b/i.test(
+			normalized
+		);
+	const isDirectCreateQuestion =
+		/^(?:can|could|would)\s+you\s+(?:please\s+)?(?:create|start|set\s+up|make)\b/i.test(
+			normalized
+		);
+	return !isInformationQuestion || isDirectCreateQuestion;
+}
+
 export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	assistantText: string;
 	finalAssistantText: string;
@@ -640,7 +658,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					inventory.length > 0
 						? `The ONLY valid document ids in this project are: ${inventory
 								.map((doc) => `${doc.id} ("${doc.title}")`)
-								.join('; ')}. Use new_parent_id only for a UUID from that list — NEVER invent one.`
+								.join(
+									'; '
+								)}. Use new_parent_id only for a UUID from that list — NEVER invent one.`
 						: null,
 					'Do not call reads, searches, schemas, skills, or any other discovery tools in this pass.'
 				]
@@ -1087,6 +1107,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			const noToolSynthesisPass = writeIntentToolPass ? false : forceNoToolSynthesisPass;
 			forceNoToolSynthesisPass = false;
 			const passNumber = llmStreamPasses.length + 1;
+			const forceProjectCreateToolCall =
+				normalizedContext === 'project_create' &&
+				passNumber === 1 &&
+				toolRounds === 0 &&
+				passTools.length === 1 &&
+				passTools[0]?.function?.name === 'create_onto_project' &&
+				hasActionableProjectCreateInput(message);
 			const modelRouting = resolveFastChatPassModelRouting({
 				passNumber,
 				hasTools: passTools.length > 0,
@@ -1128,7 +1155,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					passMessages,
 					tools: passTools,
 					hasTools: passTools.length > 0,
-					forcedToolChoice: writeIntentToolPass ? 'required' : undefined,
+					forcedToolChoice:
+						writeIntentToolPass || forceProjectCreateToolCall ? 'required' : undefined,
 					noToolSynthesisPass,
 					passNumber,
 					usage,
@@ -1780,6 +1808,20 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			const writeLedgerMessage = buildWriteLedgerMessage(toolExecutions);
 			if (writeLedgerMessage) {
 				messages.push({ role: 'system', content: writeLedgerMessage });
+			}
+
+			// Project creation has a single legitimate write. Once it succeeds,
+			// finish on a tool-free synthesis pass so the model cannot repeat the
+			// creation call and transport recovery can safely retry the final text.
+			if (
+				normalizedContext === 'project_create' &&
+				roundExecutions.some(
+					(execution) =>
+						execution.toolCall.function.name === 'create_onto_project' &&
+						didGatewayExecSucceed(execution)
+				)
+			) {
+				forceNoToolSynthesisPass = true;
 			}
 
 			const roundPattern = buildRoundToolPattern(pendingToolCalls);

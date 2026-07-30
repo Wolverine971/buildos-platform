@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	assertIsoDate,
 	assertMarkdownSectionBullets,
+	assertMinimumDistinctOptions,
 	assertNarratedBeforeActing,
 	assertNoMutations,
 	assertNonEmptyAssistantText,
@@ -125,6 +126,25 @@ describe('restraint assertion helpers', () => {
 				turn({ rawEvents: [{ type: 'text', content: '  ' }, { type: 'tool_call' }] })
 			)
 		).toThrow('acted before saying anything');
+	});
+
+	it('recognizes numbered, option-heading, and bulleted alternatives', () => {
+		expect(() =>
+			assertMinimumDistinctOptions(
+				turn({ assistantText: '1. Confess\n2. Deflect\n3. Investigate' })
+			)
+		).not.toThrow();
+		expect(() =>
+			assertMinimumDistinctOptions(
+				turn({
+					assistantText:
+						'### Option One: Confess\n### Option Two: Deflect\n### Option Three: Investigate'
+				})
+			)
+		).not.toThrow();
+		expect(() =>
+			assertMinimumDistinctOptions(turn({ assistantText: '- Confess\n- Deflect' }))
+		).toThrow('expected at least 3');
 	});
 
 	it('detects row changes regardless of ordering', () => {

@@ -254,7 +254,7 @@ Families: timebox, pipeline, campaign, roadmap, process, phase. Default: plan.ph
 		function: {
 			name: 'create_onto_document',
 			description: `Create a new document in the ontology system.
-Use for briefs, specs, context docs, or research artifacts linked to a project.
+Use for briefs, specs, context docs, research artifacts, or creative reference material linked to a project.
 Documents are organized in a hierarchical tree structure. Use parent_id to place the document under a parent folder.`,
 			parameters: {
 				type: 'object',
@@ -275,8 +275,8 @@ Documents are organized in a hierarchical tree structure. Use parent_id to place
 						type: 'string',
 						default: 'document.default',
 						description: `Document type taxonomy (required): document.{family}[.{variant}]
-Families: context (project/brief), knowledge (research), notes (meeting_notes/rfc), spec (product/technical), reference (handbook/sop), intake (client/project).
-Examples: document.context.project, document.knowledge.research, document.spec.technical`
+Families: context (project/brief), knowledge (research), notes (meeting_notes/rfc), spec (product/technical), reference (handbook/sop), intake (client/project), creative (structure/character/world/chapter).
+Examples: document.context.project, document.knowledge.research, document.spec.technical, document.creative.character`
 					},
 					state_key: {
 						type: 'string',
@@ -721,9 +721,9 @@ IMPORTANT: Do not include documents. Documents are flat and managed only via ont
 		function: {
 			name: 'create_onto_project',
 			description: `Create a project from a ProjectSpec. Always include project, entities, relationships; use [] when empty.
-Hard rules: project.type_key starts with project. e.g. project.creative.novel. Entity labels: goal/plan/metric name; task/milestone/document/risk title; requirement text; source uri. Milestone needs due_at.
+Hard rules: project.type_key starts with project. e.g. project.creative.novel. Entity labels: goal/plan/metric name; task/milestone/document/risk title; requirement text; source uri. A milestone requires due_at grounded in an explicit user schedule; use plans or documents for undated phases and never invent a date.
 Use project.state_key for status values: planning, active, paused, completed, cancelled. Use props.facets.stage only for lifecycle stage: discovery, planning, execution, launch, maintenance, complete. Never put active/paused/completed/cancelled in props.facets.stage.
-Infer name/type_key when clear; ask one clarification only if too vague. Start minimal: one goal for an explicit outcome, tasks for explicit actions, plans/milestones only for phases, dates, or workstreams.
+Infer name/type_key when clear; ask one clarification only if too vague. Start minimal: one goal for an explicit outcome, tasks for explicit actions, plans for explicit phases or workstreams, and milestones only for explicitly dated checkpoints.
 Extract concrete details into description/props. Use temp_id + kind refs for relationships.`,
 			parameters: {
 				type: 'object',

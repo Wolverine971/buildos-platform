@@ -5,7 +5,7 @@ import {
 	renderDomainSensingPromptContent,
 	senseDomains
 } from './domain-sensing';
-import { resolveSkillGatePreload } from './skill-gate-preload';
+import { resolveSkillGatePreload, resolveSkillPreloadById } from './skill-gate-preload';
 
 function senseColdEmailTurn() {
 	return senseDomains({
@@ -23,6 +23,7 @@ describe('resolveSkillGatePreload', () => {
 
 		expect(preload).not.toBeNull();
 		expect(preload?.format).toBe('short');
+		expect(preload?.source).toBe('domain_sensing');
 		expect(preload?.skillId).toBe(getSkillGateCandidateSkillIds(sensing)[0]);
 		expect(preload?.payload.markdown).toBeUndefined();
 		expect(preload?.promptContent).toContain('Workflow:');
@@ -56,7 +57,76 @@ describe('resolveSkillGatePreload', () => {
 	});
 });
 
+describe('resolveSkillPreloadById', () => {
+	it('preloads a trusted project-affinity skill without lexical sensing', () => {
+		const preload = resolveSkillPreloadById('fiction_story_craft');
+
+		expect(preload).not.toBeNull();
+		expect(preload?.skillId).toBe('fiction_story_craft');
+		expect(preload?.source).toBe('project_domain_affinity');
+		expect(preload?.format).toBe('short');
+		expect(preload?.payload.markdown).toBeUndefined();
+		expect(preload?.promptContent.length).toBeLessThan(9_000);
+		expect(preload?.promptContent).toContain('Character–Arc–Scene Sweep');
+		expect(preload?.promptContent).toContain('traits, backstory, wants, fears');
+		expect(preload?.promptContent).toContain('Causal bridge');
+		expect(preload?.promptContent).toContain('No project facts changed');
+		expect(preload?.materializedToolNames).toEqual(
+			expect.arrayContaining([
+				'get_document_outline',
+				'read_document_section',
+				'search_project'
+			])
+		);
+		expect(preload?.materializedToolNames).not.toEqual(
+			expect.arrayContaining(['create_onto_document', 'update_onto_document'])
+		);
+		expect(preload?.payload.write_ops).toEqual(
+			expect.arrayContaining(['onto.document.create', 'onto.document.update'])
+		);
+	});
+
+	it('skips an affinity preload already present in the history ledger', () => {
+		expect(
+			resolveSkillPreloadById('fiction_story_craft', {
+				alreadyLoadedSkillIds: ['FICTION_STORY_CRAFT']
+			})
+		).toBeNull();
+	});
+});
+
 describe('renderDomainSensingPromptContent with a preload', () => {
+	it('renders a persisted-affinity preload even when lexical sensing found no domain', () => {
+		const preload = resolveSkillPreloadById('fiction_story_craft');
+		expect(preload).not.toBeNull();
+
+		const content = renderDomainSensingPromptContent(null, {
+			preloadedSkillPromptContent: preload!.promptContent,
+			preloadSource: preload!.source
+		});
+
+		expect(content).toContain('Source: persisted_project_domain_affinity.');
+		expect(content).toContain('Skill-load gate: SATISFIED BY PRELOAD.');
+		expect(content).toContain('Preloaded skill: fiction_story_craft');
+	});
+
+	it('lets persisted affinity override a weak, ungated lexical signal', () => {
+		const weakSensing = senseDomains({
+			currentUserMessage: 'Which option feels strongest?'
+		});
+		expect(weakSensing?.skill_load_required ?? false).toBe(false);
+		const preload = resolveSkillPreloadById('fiction_story_craft');
+
+		const content = renderDomainSensingPromptContent(weakSensing, {
+			preloadedSkillPromptContent: preload!.promptContent,
+			preloadSource: preload!.source
+		});
+
+		expect(content).toContain('Source: persisted_project_domain_affinity.');
+		expect(content).toContain('Preloaded skill: fiction_story_craft');
+		expect(content).not.toContain('Skill-load gate: ACTIVE.');
+	});
+
 	it('replaces the active gate directive with the preloaded skill block', () => {
 		const sensing = senseColdEmailTurn();
 		const preload = resolveSkillGatePreload(sensing);

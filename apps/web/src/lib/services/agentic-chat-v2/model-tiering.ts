@@ -1,6 +1,11 @@
 // apps/web/src/lib/services/agentic-chat-v2/model-tiering.ts
 import type { TextProfile } from '$lib/services/smart-llm-service';
-import { DEEPSEEK_V4_PRO_MODEL, GLM_52_MODEL, MINIMAX_M3_MODEL } from '@buildos/smart-llm';
+import {
+	DEEPSEEK_V4_PRO_MODEL,
+	GLM_52_MODEL,
+	MINIMAX_M3_MODEL,
+	OPENROUTER_V2_TOOL_MODELS
+} from '@buildos/smart-llm';
 
 export const FASTCHAT_INITIAL_PLAN_FAST_MODELS = [
 	'tencent/hy3',
@@ -259,6 +264,27 @@ export function resolveFastChatPassModelRouting(params: {
 		!params.pinnedModels?.length &&
 		params.noToolSynthesisPass &&
 		forcedSynthesisRouting?.variant === 'dedicated';
+	// OpenRouter can accept a streaming request and then hang after choosing the
+	// primary provider/model. Its server-side fallback list cannot help once the
+	// response has started, so give ordinary tool passes the same candidate list
+	// explicitly and rotate it on the application-level retry. Attempt one keeps
+	// the existing default order; only a transient retry changes the primary.
+	const ordinaryToolModels =
+		!params.pinnedModels?.length &&
+		params.hasTools &&
+		!useDedicatedForcedSynthesis &&
+		!useFastInitialPlan
+			? [...OPENROUTER_V2_TOOL_MODELS]
+			: [];
+	const selectedModels = params.pinnedModels?.length
+		? [...params.pinnedModels]
+		: useDedicatedForcedSynthesis
+			? [...forcedSynthesisRouting.models]
+			: useFastInitialPlan
+				? [...fastInitialPlanModels]
+				: ordinaryToolModels;
+	const retryModelRotation =
+		!params.pinnedModels?.length && selectedModels.length > 1 && params.hasTools;
 
 	return {
 		passRole,
@@ -269,13 +295,7 @@ export function resolveFastChatPassModelRouting(params: {
 				: useFastInitialPlan
 					? 'speed'
 					: 'balanced',
-		...(params.pinnedModels?.length
-			? { models: [...params.pinnedModels] }
-			: useDedicatedForcedSynthesis
-				? { models: [...forcedSynthesisRouting.models] }
-				: useFastInitialPlan
-					? { models: fastInitialPlanModels }
-					: {}),
+		...(selectedModels.length > 0 ? { models: selectedModels } : {}),
 		...(modelTieringVariant && !params.pinnedModels?.length ? { modelTieringVariant } : {}),
 		...(params.noToolSynthesisPass && forcedSynthesisRouting && !params.pinnedModels?.length
 			? { forcedSynthesisRoutingVariant: forcedSynthesisRouting.variant }
@@ -286,7 +306,9 @@ export function resolveFastChatPassModelRouting(params: {
 					maxTokens: forcedSynthesisRouting.maxTokens,
 					retryModelRotation: true
 				}
-			: {})
+			: retryModelRotation
+				? { retryModelRotation: true }
+				: {})
 	};
 }
 

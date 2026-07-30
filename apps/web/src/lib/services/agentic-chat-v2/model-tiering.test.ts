@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/model-tiering.test.ts
 import { describe, expect, it } from 'vitest';
+import { OPENROUTER_V2_TOOL_MODELS } from '@buildos/smart-llm';
 import {
 	FASTCHAT_FORCED_SYNTHESIS_IGNORED_PROVIDER_SLUGS,
 	FASTCHAT_FORCED_SYNTHESIS_MODELS,
@@ -155,7 +156,8 @@ describe('fast chat model tiering', () => {
 			passRole: 'initial_plan',
 			profile: 'speed',
 			models: ['fast/model', 'fallback/model'],
-			modelTieringVariant: 'fast_initial_plan'
+			modelTieringVariant: 'fast_initial_plan',
+			retryModelRotation: true
 		});
 
 		expect(
@@ -169,7 +171,9 @@ describe('fast chat model tiering', () => {
 		).toEqual({
 			passRole: 'tool_followup',
 			profile: 'balanced',
-			modelTieringVariant: 'fast_initial_plan'
+			models: [...OPENROUTER_V2_TOOL_MODELS],
+			modelTieringVariant: 'fast_initial_plan',
+			retryModelRotation: true
 		});
 
 		expect(
@@ -199,6 +203,22 @@ describe('fast chat model tiering', () => {
 			passRole: 'forced_synthesis',
 			profile: 'quality',
 			modelTieringVariant: 'fast_initial_plan'
+		});
+	});
+
+	it('rotates the ordinary tool lane after a transient stream failure', () => {
+		expect(
+			resolveFastChatPassModelRouting({
+				passNumber: 1,
+				hasTools: true,
+				noToolSynthesisPass: false,
+				writeIntentToolPass: false
+			})
+		).toEqual({
+			passRole: 'initial_plan',
+			profile: 'balanced',
+			models: [...OPENROUTER_V2_TOOL_MODELS],
+			retryModelRotation: true
 		});
 	});
 

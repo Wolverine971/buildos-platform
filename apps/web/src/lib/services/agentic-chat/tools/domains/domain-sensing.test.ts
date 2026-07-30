@@ -83,6 +83,29 @@ function buildSkillGateFixture(): DomainSensingResult {
 }
 
 describe('domain sensing', () => {
+	it('gates explicit fiction development through the story craft skill', () => {
+		const result = senseDomains({
+			currentUserMessage:
+				'Given this novel, what should happen with this character next? Give me three options.'
+		});
+
+		expect(result?.active_domains[0]).toMatchObject({
+			id: 'writing.fiction',
+			coverage_status: 'strong'
+		});
+		expect(result?.skill_load_required).toBe(true);
+		expect(getSkillGateCandidateSkillIds(result)[0]).toBe('fiction_story_craft');
+	});
+
+	it('does not route a nonfiction article through fiction craft', () => {
+		const result = senseDomains({
+			currentUserMessage: 'Help me revise this nonfiction article.'
+		});
+
+		expect(result?.active_domains[0]?.id).toBe('writing');
+		expect(getSkillGateCandidateSkillIds(result)).not.toContain('fiction_story_craft');
+	});
+
 	it('does not force an unrelated craft domain for a native document action', () => {
 		const result = senseDomains({
 			currentUserMessage:

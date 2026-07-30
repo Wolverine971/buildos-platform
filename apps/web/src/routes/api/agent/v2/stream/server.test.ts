@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	attachVoiceNoteGroup: vi.fn(),
+	composeFastChatHistory: vi.fn(),
 	loadPromptContext: vi.fn(),
 	loadRecentMessages: vi.fn(),
 	logError: vi.fn(),
@@ -91,6 +92,10 @@ vi.mock('$lib/services/agentic-chat-v2/turn-intent', () => ({
 }));
 
 vi.mock('$lib/services/agentic-chat-v2/tool-selector', () => ({
+	applyLivingWorkspaceToolProfile: ({ tools }: { tools: unknown[] }) => ({
+		tools,
+		implicitCapture: false
+	}),
 	resolveFastChatSurfaceProfileForTurn: () => 'general',
 	selectFastChatTools: mocks.selectFastChatTools
 }));
@@ -153,14 +158,7 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 	buildLiveVisionContentParts: ({ text }: { text: string }) => text,
 	buildFastChatPendingTurnIntent: () => null,
 	buildPendingTurnIntentSystemMessage: () => null,
-	composeFastChatHistory: () => ({
-		historyForModel: [],
-		compressed: false,
-		strategy: 'raw_history',
-		rawHistoryCount: 0,
-		tailMessagesKept: 0,
-		continuityHintUsed: false
-	}),
+	composeFastChatHistory: mocks.composeFastChatHistory,
 	createChatAttachmentRefFromAsset: vi.fn(),
 	createFastChatSessionService: () => ({
 		attachVoiceNoteGroup: mocks.attachVoiceNoteGroup,
@@ -557,6 +555,14 @@ beforeEach(() => {
 		}
 	});
 	mocks.loadRecentMessages.mockResolvedValue([]);
+	mocks.composeFastChatHistory.mockImplementation(({ history }: { history: Row[] }) => ({
+		historyForModel: history,
+		compressed: false,
+		strategy: 'raw_history',
+		rawHistoryCount: history.length,
+		tailMessagesKept: history.length,
+		continuityHintUsed: false
+	}));
 	mocks.readFastChatPendingTurnIntent.mockReturnValue(null);
 	mocks.resolveFastChatTurnIntent.mockReturnValue({
 		version: 1,
@@ -670,6 +676,67 @@ describe('/api/agent/v2/stream', () => {
 		} as any);
 
 		expect(response.status).toBe(401);
+	});
+
+	it('passes frozen prior history and the current user message exactly once to the runtime', async () => {
+		const priorHistory = [
+			{ role: 'user', content: 'Earlier question' },
+			{ role: 'assistant', content: 'Earlier answer' }
+		];
+		mocks.loadRecentMessages.mockResolvedValueOnce(priorHistory);
+		let capturedHistory: Row[] = [];
+		let capturedMessage = '';
+		mocks.streamFastChat.mockImplementationOnce(async ({ history, message, onDelta }: Row) => {
+			capturedHistory = history;
+			capturedMessage = message;
+			await onDelta('Current answer');
+			return {
+				assistantText: 'Current answer',
+				finalAssistantText: 'Current answer',
+				usage: { total_tokens: 12 },
+				finishedReason: 'stop',
+				toolExecutions: [],
+				llmPasses: [],
+				toolRounds: 0,
+				toolCallsMade: 0,
+				supervisorDecisions: [],
+				finalizationGuard: undefined,
+				cancelled: false,
+				peakPromptTokens: undefined,
+				finalContextUsage: undefined
+			};
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Current command',
+					context_type: 'global',
+					stream_run_id: 'stream-run-exact-once',
+					client_turn_id: 'client-turn-exact-once'
+				})
+			}),
+			locals: {
+				supabase: createStreamingSupabase(),
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		await response.text();
+		expect(mocks.composeFastChatHistory).toHaveBeenCalledWith(
+			expect.objectContaining({ history: priorHistory })
+		);
+		expect(capturedHistory).toEqual(priorHistory);
+		expect(capturedHistory).not.toContainEqual({ role: 'user', content: 'Current command' });
+		expect(capturedMessage).toBe('Current command');
+		expect(
+			[...capturedHistory.map((entry) => entry.content), capturedMessage].filter(
+				(content) => content === 'Current command'
+			)
+		).toHaveLength(1);
 	});
 
 	it('ignores the legacy prompt_variant request field and does not consult the admin gate', async () => {

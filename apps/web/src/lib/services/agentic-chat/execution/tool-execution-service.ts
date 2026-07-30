@@ -58,6 +58,10 @@ import {
 	hasMeaningfulUpdateValue,
 	isAppendOrMergeUpdateStrategy
 } from '../shared/update-value-validation';
+import {
+	applyProjectCreationProfileDefaults,
+	validateProjectCreationMilestoneGrounding
+} from '../project-domain-profiles';
 
 const logger = createLogger('ToolExecutionService');
 const PROJECT_CREATE_FROM_PROJECT_CONTEXT_WARNING =
@@ -449,7 +453,19 @@ export class ToolExecutionService implements BaseService {
 			return finalizeResult(entityScopeGuard);
 		}
 		if (toolName === 'create_onto_project') {
+			const sourceMessage = this.getRecentUserMessageEvidence(context);
+			args = applyProjectCreationProfileDefaults(args, sourceMessage);
 			args = normalizeProjectCreateArgs(args);
+			const groundingErrors = validateProjectCreationMilestoneGrounding(args, sourceMessage);
+			if (groundingErrors.length > 0) {
+				return finalizeResult({
+					success: false,
+					error: groundingErrors.join('; '),
+					errorType: 'validation_error',
+					toolName,
+					toolCallId: toolCall.id
+				});
+			}
 		}
 		const projectCreateContextGuard = this.guardProjectCreateFromProjectContext(
 			toolName,
@@ -812,6 +828,18 @@ export class ToolExecutionService implements BaseService {
 			return typeof message.content === 'string' ? message.content : '';
 		}
 		return '';
+	}
+
+	private getRecentUserMessageEvidence(context: ServiceContext): string {
+		const messages = context.conversationHistory
+			.filter(
+				(message): message is typeof message & { content: string } =>
+					message?.role === 'user' && typeof message.content === 'string'
+			)
+			.slice(-6)
+			.map((message) => message.content.trim())
+			.filter(Boolean);
+		return messages.join('\n\n').slice(-12_000);
 	}
 
 	private getPreviousAssistantMessageText(context: ServiceContext): string {

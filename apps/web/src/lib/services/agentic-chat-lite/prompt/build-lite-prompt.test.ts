@@ -386,6 +386,30 @@ describe('buildLitePromptEnvelope', () => {
 		expect(overlaid.systemPrompt).not.toContain('Skill-load gate: ACTIVE.');
 	});
 
+	it('renders a project-affinity skill preload when lexical domain sensing is empty', async () => {
+		const { resolveSkillPreloadById } = await import(
+			'$lib/services/agentic-chat/tools/domains/skill-gate-preload'
+		);
+		const preload = resolveSkillPreloadById('fiction_story_craft');
+		expect(preload).not.toBeNull();
+
+		const base = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-fiction',
+			projectId: 'project-fiction',
+			domainSensingResult: null
+		});
+		const overlaid = applyActiveDomainSignalsOverlay(base, {
+			currentUserMessage: 'Give me three options for what Mara does next.',
+			domainSensingResult: null,
+			skillGatePreload: preload
+		});
+
+		expect(overlaid.systemPrompt).toContain('persisted_project_domain_affinity');
+		expect(overlaid.systemPrompt).toContain('Preloaded skill: fiction_story_craft');
+		expect(overlaid.sections.map((section) => section.id)).toContain('active_domain_signals');
+	});
+
 	it('removes stale active-domain signals when the current turn has none', () => {
 		const stale = buildLitePromptEnvelope({
 			contextType: 'global',
@@ -1196,6 +1220,42 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).not.toContain(
 			'Tool schemas are supplied through model tool definitions'
 		);
+	});
+
+	it('adds a compact fiction starter profile only when the creation message warrants it', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project_create',
+			entityId: null,
+			projectId: null,
+			currentUserMessage:
+				'Create an ongoing room for the novel I am writing. Keep it organized as I add characters, plot beats, and chapters.'
+		});
+		const starter = envelope.sections.find(
+			(section) => section.source === 'lite.project_create_domain_profile'
+		);
+
+		expect(starter?.id).toBe('situational_rules');
+		expect(starter?.content).toContain('Fiction story workspace (fiction_story)');
+		expect(starter?.content).toContain('parts, acts, chapters, scenes, and beats');
+		expect(starter?.content).toContain('They are not milestones or delivery dates');
+		expect(starter?.content).toContain('document.creative.structure');
+		expect(starter?.content).toContain('document.creative.character');
+		expect(starter?.content).toContain('every supplied part name');
+		expect(starter?.content).toContain('never create a title-only placeholder');
+		expect(starter?.content).toContain('content completeness');
+		expect(starter?.content).toContain('agent_workspace.mode to `living_reference`');
+		expect(envelope.systemPrompt).not.toContain('Skill-load gate');
+		expect(envelope.systemPrompt).not.toContain('domain_search');
+
+		const safetyIndex = envelope.sections.findIndex(
+			(section) => section.id === 'safety_data_rules'
+		);
+		const starterIndex = envelope.sections.findIndex(
+			(section) => section.source === 'lite.project_create_domain_profile'
+		);
+		const focusIndex = envelope.sections.findIndex((section) => section.id === 'focus_purpose');
+		expect(starterIndex).toBeGreaterThan(safetyIndex);
+		expect(starterIndex).toBeLessThan(focusIndex);
 	});
 
 	it('renders the trimmed context_inventory_retrieval section as counts + one fetch rule', () => {

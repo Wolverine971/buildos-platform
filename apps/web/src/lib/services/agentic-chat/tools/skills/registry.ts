@@ -13,6 +13,7 @@ import {
 	coldEmailTasteReviewSkill
 } from './cold-email-outreach.skill';
 import { documentSkill } from './document.skill';
+import { fictionStoryCraftSkill } from './fiction-writing.skill';
 import { projectForecastSkill } from './forecast.skill';
 import {
 	aiEraCraftAndQualityMoatSkill,
@@ -68,6 +69,7 @@ const ALL_SKILLS: SkillDefinition[] = [
 	calendarSkill,
 	googleCalendarSkill,
 	documentSkill,
+	fictionStoryCraftSkill,
 	planSkill,
 	projectCreateSkill,
 	taskSkill,

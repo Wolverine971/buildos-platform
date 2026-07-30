@@ -2,17 +2,18 @@
 /**
  * Skill-gate preload (WP-7, speed audit 2026-07-08).
  *
- * Domain sensing already knows the top skill candidate before the first LLM
- * pass; making the model call skill_load costs a full pass (and up to three
- * when the post-hoc gate repair fires). When the gate is active, the server
- * loads the top candidate in short format and injects it into the prompt
- * instead — mirroring the existing project_create preload precedent. The
- * gate repair machinery stays as the fallback for sensing misses.
+ * Domain sensing can know the top skill candidate before the first LLM pass,
+ * and a persisted project-domain profile can supply it after project context
+ * loads. Making the model call skill_load costs a full pass (and up to three
+ * when post-hoc gate repair fires). The server loads the trusted candidate in
+ * short format and injects it into the prompt instead — mirroring the existing
+ * project_create preload precedent. Gate repair stays as the fallback for
+ * sensing misses that have no trusted project affinity.
  *
- * Short format only: workflow, guardrails, and output contract cost a few
- * hundred tokens. Full markdown (3.5k-8k tokens) would re-create the prompt
- * bloat the audit is trying to shrink; the model can still call skill_load
- * with format 'full' when it needs the deeper playbook.
+ * Short format only: workflow, guardrails, and output contract keep the prompt
+ * bounded. Full markdown would re-create the prompt bloat the audit is trying
+ * to shrink; the model can still call skill_load with format 'full' when it
+ * needs the deeper playbook.
  */
 
 import { loadSkill } from '../skills/skill-load';
@@ -21,6 +22,7 @@ import { getSkillGateCandidateSkillIds, type DomainSensingResult } from './domai
 
 export type SkillGatePreload = {
 	skillId: string;
+	source: 'domain_sensing' | 'project_domain_affinity';
 	format: 'short';
 	payload: SkillHelpPayload;
 	promptContent: string;
@@ -30,9 +32,13 @@ export type SkillGatePreload = {
 const PRELOAD_LIST_LIMIT = 6;
 const PRELOAD_WHEN_TO_USE_LIMIT = 3;
 
+type SkillPreloadOptions = {
+	alreadyLoadedSkillIds?: string[];
+};
+
 export function resolveSkillGatePreload(
 	sensing: DomainSensingResult | null | undefined,
-	options: { alreadyLoadedSkillIds?: string[] } = {}
+	options: SkillPreloadOptions = {}
 ): SkillGatePreload | null {
 	if (!sensing || sensing.skill_load_required !== true) {
 		return null;
@@ -42,23 +48,47 @@ export function resolveSkillGatePreload(
 	if (!topCandidate) {
 		return null;
 	}
+	return resolveSkillPreload(topCandidate, candidates.slice(1), 'domain_sensing', options);
+}
+
+/**
+ * Preload a trusted skill selected by persisted project-domain affinity rather
+ * than lexical sensing. The same loaded-skill ledger and short-format contract
+ * apply, so affinity activation does not add an extra agent round trip.
+ */
+export function resolveSkillPreloadById(
+	skillId: string | null | undefined,
+	options: SkillPreloadOptions = {}
+): SkillGatePreload | null {
+	const normalizedSkillId = skillId?.trim();
+	if (!normalizedSkillId) return null;
+	return resolveSkillPreload(normalizedSkillId, [], 'project_domain_affinity', options);
+}
+
+function resolveSkillPreload(
+	skillId: string,
+	remainingCandidates: string[],
+	source: SkillGatePreload['source'],
+	options: SkillPreloadOptions
+): SkillGatePreload | null {
 	const alreadyLoaded = new Set(
 		(options.alreadyLoadedSkillIds ?? []).map((id) => id.trim().toLowerCase())
 	);
-	if (alreadyLoaded.has(topCandidate.toLowerCase())) {
+	if (alreadyLoaded.has(skillId.toLowerCase())) {
 		return null;
 	}
 
-	const payload = loadSkill(topCandidate, { format: 'short', surface: 'chat_internal' });
+	const payload = loadSkill(skillId, { format: 'short', surface: 'chat_internal' });
 	if (!isSkillHelpPayload(payload)) {
 		return null;
 	}
 
 	return {
 		skillId: payload.id,
+		source,
 		format: 'short',
 		payload,
-		promptContent: renderPreloadedSkillPromptContent(payload, candidates.slice(1)),
+		promptContent: renderPreloadedSkillPromptContent(payload, remainingCandidates),
 		materializedToolNames: payload.materialized_tools ?? []
 	};
 }
@@ -68,7 +98,7 @@ function renderPreloadedSkillPromptContent(
 	remainingCandidates: string[]
 ): string {
 	const lines: string[] = [
-		`Preloaded skill: ${payload.id} (${payload.name}) — loaded at short format. It counts as loaded; do NOT call skill_load for it again. Apply its workflow to this turn's work.`
+		`Preloaded skill: ${payload.id} (${payload.name}) — loaded at short format. It counts as loaded; do NOT call skill_load for it again at short format. Apply its workflow to this turn's work.`
 	];
 
 	// When-to-use is capped harder than the other lists (tasker/39 stage 4):

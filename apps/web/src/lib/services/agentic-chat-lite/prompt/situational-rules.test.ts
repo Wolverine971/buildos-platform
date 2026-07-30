@@ -87,6 +87,40 @@ describe('renderSituationalRulesContent', () => {
 		expect(content).toContain('This turn can write to project data:');
 		expect(content).toContain('This turn involves web research:');
 	});
+
+	it('renders the living-reference agreement without turning brainstorming into canon', () => {
+		const content = renderSituationalRulesContent({
+			writeIntent: true,
+			webResearch: false,
+			livingWorkspace: true,
+			domainProfile: 'fiction_story',
+			domainAffinity: 'writing.fiction'
+		});
+		expect(content).toContain('active living-reference agreement');
+		expect(content).toContain('Domain affinity: writing.fiction (fiction_story)');
+		expect(content).toContain('updates to the project reference');
+		expect(content).toContain('assistant-generated options are proposals, not durable facts');
+		expect(content).toContain('add hierarchy only when document density makes grouping useful');
+		expect(content).not.toContain('This is an implicit capture turn');
+	});
+
+	it('requires a durable write on a living-reference capture turn', () => {
+		const situation = resolveLitePromptTurnSituation({
+			toolNames: ['get_document_outline', 'update_onto_document'],
+			turnIntentRequiresWrite: false,
+			latestUserMessage: 'Mara stops trusting Ilyan after she finds the ledger.',
+			livingWorkspace: true,
+			livingWorkspaceCapture: true,
+			domainProfile: 'fiction_story',
+			domainAffinity: 'writing.fiction'
+		});
+		const content = renderSituationalRulesContent(situation);
+
+		expect(situation.livingWorkspaceCapture).toBe(true);
+		expect(content).toContain('This is an implicit capture turn');
+		expect(content).toContain('perform the smallest relevant durable document write');
+		expect(content).toContain('Do not merely acknowledge or promise an update');
+	});
 });
 
 describe('buildMidTurnSituationalNotice', () => {

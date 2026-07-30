@@ -53,6 +53,7 @@ pnpm dev --filter=@buildos/web
 
 # terminal 2
 pnpm --filter @buildos/web test:agentic          # run once
+pnpm --filter @buildos/web test:agentic:book     # four-turn book journey only
 pnpm --filter @buildos/web test:agentic:watch    # watch mode
 pnpm --filter @buildos/web test:agentic:modal:wiring # browser wiring, no model calls
 pnpm --filter @buildos/web test:agentic:modal:live   # paid real-model browser smoke
@@ -91,6 +92,11 @@ Per turn, up to three surfaces:
 Fuzzy scenarios (e.g. "get organized") add an **LLM judge** (strong `powerful`
 JSON route) that scores the outcome 1–5 against a rubric; the turn fails below
 the threshold.
+
+Long journeys can also declare **checkpoints**. Unlike hard preconditions, a
+checkpoint miss does not abort the next turn. The runner completes the journey
+and then reports all misses together, so weak opening organization does not hide
+whether later canon updates or cold-session retrieval also failed.
 
 ## Model/scaffold comparisons
 
@@ -188,6 +194,36 @@ single `seed.projectId` the runner deletes automatically.
 `onto_edges` instead of `onto_projects.doc_structure`. Rerun the paid scenario
 before drawing a current model-quality conclusion from this case.
 
+## Book-writing journey
+
+`book-writing-journey` is the first long-form creative-work evaluation. It uses
+the normal production model already selected by agentic chat; it does not pin a
+more capable writing model and does not add a separate LLM judge. Its four turns
+measure:
+
+1. Starting in `project_create`, turn a novel brain dump into a bounded set of
+   durable character and story-reference documents with a useful hierarchy.
+2. Fold a new Ilyan detail into the existing character sheet without creating a
+   duplicate or dropping earlier canon.
+3. Propagate a Chapter 4 beat into both Ilyan's reference sheet and the book's
+   plot/chapter structure while avoiding document bloat.
+4. Start a **cold chat**, read both character and story documents, and offer
+   three grounded Chapter 5 options without prematurely saving any as canon.
+
+Run it against a normal dev server:
+
+```bash
+# terminal 1 — no eval model pinning required
+pnpm dev --filter=@buildos/web
+
+# terminal 2
+pnpm --filter @buildos/web test:agentic:book
+```
+
+The scenario has hard gates for stream completion, project capture, and DB
+readback. Creative-work expectations are accumulated checkpoints, producing one
+diagnostic report after all four turns.
+
 ## Layout
 
 ```
@@ -201,7 +237,8 @@ __tests__/   agentic-scenarios.test.ts — the runner
 
 1. Create `scenarios/<id>.scenario.ts` exporting a `Scenario` (see
    `document-create.scenario.ts` for the simplest shape, or
-   `document-edit-context.scenario.ts` for multi-turn + judge).
+   `document-edit-context.scenario.ts` for multi-turn + judge, and
+   `book-writing-journey.scenario.ts` for accumulated journey checkpoints).
 2. Register it in `scenarios/catalog.ts`.
 3. Seed fixtures with `seedProject` / `seedScenarioProject` (name projects via
    `harnessProjectName(...)` so the orphan sweep can find them); assert with the

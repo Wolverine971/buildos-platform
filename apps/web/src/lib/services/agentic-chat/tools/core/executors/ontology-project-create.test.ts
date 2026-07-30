@@ -155,6 +155,33 @@ describe('OntologyWriteExecutor project creation normalization', () => {
 		expect(body.project.props.facets.stage).toBe('planning');
 	});
 
+	it('copies agent workspace metadata into the generated START HERE document', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await executor.createOntoProject({
+			project: {
+				name: 'The Glass Harbor',
+				type_key: 'project.creative.novel',
+				props: {
+					agent_workspace: {
+						mode: 'living_reference',
+						domain_profile: 'fiction_story',
+						domain_affinity: 'writing.fiction'
+					}
+				}
+			},
+			entities: [],
+			relationships: []
+		});
+
+		const body = (mockFetch as any).lastInstantiateBody();
+		expect(body.context_document.props.agent_workspace).toEqual({
+			mode: 'living_reference',
+			domain_profile: 'fiction_story',
+			domain_affinity: 'writing.fiction'
+		});
+	});
+
 	it('normalizes capitalized risk impact values before instantiate', async () => {
 		const executor = new OntologyWriteExecutor(context);
 

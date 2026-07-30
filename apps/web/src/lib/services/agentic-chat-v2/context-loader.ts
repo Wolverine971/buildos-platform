@@ -41,6 +41,7 @@ import {
 	START_HERE_DOCUMENT_TYPE_KEY
 } from '@buildos/shared-agent-ops/ontology/start-here';
 import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
+import { readAgentWorkspaceMetadata } from '$lib/services/agentic-chat/project-domain-profiles';
 
 const logger = createLogger('FastChatContext');
 
@@ -755,7 +756,8 @@ function mapStartHereDocument(row: ProjectStartHereDocumentRow): ProjectStartHer
 		title: row.title ?? 'START HERE',
 		content: truncatedContent,
 		content_truncated: truncatedContent.length < content.length,
-		updated_at: row.updated_at
+		updated_at: row.updated_at,
+		agent_workspace: readAgentWorkspaceMetadata(row.props)
 	};
 }
 

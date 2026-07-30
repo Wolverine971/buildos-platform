@@ -35,6 +35,7 @@ import {
 	START_HERE_PROMPT_MAX_CHARS
 } from '@buildos/shared-agent-ops/ontology/start-here';
 import { renderSituationalRulesContent, type LitePromptTurnSituation } from './situational-rules';
+import { renderProjectCreationProfileGuidance } from '$lib/services/agentic-chat/project-domain-profiles';
 
 // work_capability_* dropped 2026-07-10 (WP-7): normalizeGatewayToolName maps
 // the legacy names to outcome_card_* before definitions materialize, so tool
@@ -114,7 +115,8 @@ const PROJECT_CREATE_WORKFLOW_LITE = [
 	'- Keep project status separate from lifecycle stage: project.state_key is planning / active / paused / completed / cancelled; props.facets.stage is discovery / planning / execution / launch / maintenance / complete. Never put active, paused, completed, or cancelled in props.facets.stage.',
 	'- A START HERE context document is created automatically for new projects. Include context_document only when the user supplied durable orientation prose that should seed it.',
 	'- Always include entities: [] and relationships: [] arrays even when empty.',
-	'- If the user stated an outcome, add one goal. If they listed concrete actions, add only those task entities. Add plans or milestones only when they clearly described workstreams, phases, or date-driven structure.',
+	'- If the user stated an outcome, add one goal. If they listed concrete actions, add only those task entities. Use plans for explicitly described undated phases or workstreams.',
+	'- Create milestones only for dated checkpoints grounded in an explicit project schedule or deadline from the user. Never invent `due_at` to turn an undated phase, narrative part, or conceptual stage into a milestone.',
 	'- Entity labels: goal / plan / metric use `name`; task / milestone / document / risk use `title`; requirement uses `text`; source uses `uri`. Milestones also require `due_at`.',
 	"- For goal entities, use dedicated fields like target_date and measurement_criteria instead of burying them only in props. If the user gives a month/day without a year, infer the next plausible future date in the user's locale.",
 	'- **Connect the graph.** When the user has both a goal and tasks, emit containment relationships linking every task (child) to that goal (parent). A project with 1 goal + N tasks should produce exactly N goal-task containment edges; leaving tasks unlinked defeats the graph model.',
@@ -187,6 +189,10 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 		: null;
 	const knowledgeMapSection = buildProjectKnowledgeMapSection(focus, input.data);
 	const startHereSection = buildProjectStartHereSection(focus, input.data);
+	const projectCreateDomainProfileSection =
+		input.contextType === 'project_create'
+			? buildProjectCreateDomainProfileSection(input.currentUserMessage)
+			: null;
 
 	// project_create fork (prompt audit WP-3): this context exposes exactly one
 	// tool (create_onto_project), so the shared static frame — skill catalog,
@@ -202,6 +208,9 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 					buildToolSurfaceDynamicSection(toolsSummary),
 					buildProjectCreateStrategySection(scaffold),
 					buildProjectCreateSafetySection(scaffold),
+					...(projectCreateDomainProfileSection
+						? [projectCreateDomainProfileSection]
+						: []),
 					buildFocusPurposeSection(
 						focus,
 						projectDigest,
@@ -264,10 +273,11 @@ export function applyActiveDomainSignalsOverlay(
 		| 'scaffold'
 	>
 ): LitePromptEnvelope {
-	// Mirrors the seed-build rule: project_create never carries domain signals
-	// (no skill_load/domain tools in its surface to satisfy a gate).
+	// project_create still skips the skill/domain gate, but it can receive one
+	// compact server-selected starter profile. This keeps the one-tool surface
+	// while avoiding a universal creative-project prompt.
 	if (envelope.contextInventory.focus.contextType === 'project_create') {
-		return envelope;
+		return applyProjectCreateDomainProfileOverlay(envelope, input.currentUserMessage);
 	}
 	const scaffold = resolvePromptScaffold(input.scaffold);
 	const domainSignalSection = scaffold.domainSensing
@@ -334,6 +344,48 @@ function insertSectionAfter(
 	const anchorIndex = sections.findIndex((item) => item.id === anchorId);
 	if (anchorIndex < 0) return [section, ...sections];
 	return [...sections.slice(0, anchorIndex + 1), section, ...sections.slice(anchorIndex + 1)];
+}
+
+function buildProjectCreateDomainProfileSection(
+	currentUserMessage: string | null | undefined
+): LitePromptSection | null {
+	const guidance = renderProjectCreationProfileGuidance(currentUserMessage);
+	if (!guidance) return null;
+	return makeSection({
+		id: 'situational_rules',
+		title: 'Project Starter Profile',
+		kind: 'dynamic',
+		source: 'lite.project_create_domain_profile',
+		slots: {
+			profileId: guidance.profile.id,
+			domainAffinity: guidance.profile.domainAffinity
+		},
+		content: guidance.content
+	});
+}
+
+function applyProjectCreateDomainProfileOverlay(
+	envelope: LitePromptEnvelope,
+	currentUserMessage: string | null | undefined
+): LitePromptEnvelope {
+	const nextProfileSection = buildProjectCreateDomainProfileSection(currentUserMessage);
+	const sectionsWithoutProfile = envelope.sections.filter(
+		(section) => section.source !== 'lite.project_create_domain_profile'
+	);
+	const sections = nextProfileSection
+		? insertSectionAfter(sectionsWithoutProfile, nextProfileSection, 'safety_data_rules')
+		: sectionsWithoutProfile;
+	if (
+		sections.length === envelope.sections.length &&
+		sections.every((section, index) => section === envelope.sections[index])
+	) {
+		return envelope;
+	}
+	return {
+		...envelope,
+		sections,
+		systemPrompt: renderSystemPrompt(sections)
+	};
 }
 
 function buildIdentityMissionSection(): LitePromptSection {
@@ -906,7 +958,10 @@ function buildActiveDomainSignalsSection(input: LitePromptInput): LitePromptSect
 					priorOutcomeCardIds: input.priorOutcomeCardIds ?? input.priorWorkCapabilityIds,
 					limit: 3
 				}),
-		{ preloadedSkillPromptContent: input.skillGatePreload?.promptContent ?? null }
+		{
+			preloadedSkillPromptContent: input.skillGatePreload?.promptContent ?? null,
+			preloadSource: input.skillGatePreload?.source ?? null
+		}
 	);
 	if (!content) return null;
 

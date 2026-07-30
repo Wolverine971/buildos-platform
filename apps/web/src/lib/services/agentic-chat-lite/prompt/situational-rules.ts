@@ -23,6 +23,10 @@ import { isWriteToolName } from '$lib/services/agentic-chat/tools/core/tools.con
 export type LitePromptTurnSituation = {
 	writeIntent: boolean;
 	webResearch: boolean;
+	livingWorkspace?: boolean;
+	livingWorkspaceCapture?: boolean;
+	domainProfile?: string | null;
+	domainAffinity?: string | null;
 };
 
 const WEB_TOOL_NAMES = new Set(['web_search', 'web_visit']);
@@ -38,6 +42,16 @@ export const WEB_RESEARCH_RULE_LINES = [
 	'- Issuing several web_search or web_visit calls in one response lets them run concurrently. Visit URLs that came from search results or the user, not guessed addresses. When you answer from web results, cite the source URLs.',
 	'- Research you do not write down is lost when this session ends. If this turn runs two or more web_search or web_visit calls, save what you learned into a project document before you finish — create one, or append to the document the research was for — with a Sources section listing the URLs used. Then tell the user the takeaways and where you put the detail; do not paste the whole document into the reply. Answering from research without saving it is a failure, not a shortcut.'
 ];
+
+export const LIVING_WORKSPACE_RULE_LINES = [
+	'- Treat explicit durable additions from the user as updates to the project reference, not as facts that should remain only in chat.',
+	'- Prefer the existing canonical document for the subject. Create the smallest useful new document only when no suitable home exists; preserve unrelated content and avoid duplicate reference sheets.',
+	'- Questions, brainstorming, and assistant-generated options are proposals, not durable facts. Do not write them unless the user chooses one or explicitly asks to save them.',
+	'- Keep initial organization lightweight. Stable homes and retrievability matter first; add hierarchy only when document density makes grouping useful.'
+];
+
+export const LIVING_WORKSPACE_CAPTURE_RULE_LINE =
+	'- This is an implicit capture turn: perform the smallest relevant durable document write before replying. Do not merely acknowledge or promise an update. Stop for clarification only when a contradiction or genuinely ambiguous target makes a safe write impossible.';
 
 // Conservative on purpose: web-tool mounting is the primary trigger, this
 // regex only buys the block (and early web-tool mount, via the tool selector)
@@ -60,17 +74,31 @@ export function resolveLitePromptTurnSituation(params: {
 	toolNames: string[];
 	turnIntentRequiresWrite?: boolean | null;
 	latestUserMessage?: string | null;
+	livingWorkspace?: boolean | null;
+	livingWorkspaceCapture?: boolean | null;
+	domainProfile?: string | null;
+	domainAffinity?: string | null;
 }): LitePromptTurnSituation {
 	const webToolsMounted = params.toolNames.some((name) => WEB_TOOL_NAMES.has(name));
 	const writeToolsMounted = params.toolNames.some((name) => isWriteToolName(name));
 	return {
 		writeIntent: Boolean(params.turnIntentRequiresWrite) || writeToolsMounted,
-		webResearch: webToolsMounted || looksLikeWebResearchTurn(params.latestUserMessage)
+		webResearch: webToolsMounted || looksLikeWebResearchTurn(params.latestUserMessage),
+		livingWorkspace: params.livingWorkspace === true,
+		livingWorkspaceCapture: params.livingWorkspaceCapture === true,
+		domainProfile: params.domainProfile ?? null,
+		domainAffinity: params.domainAffinity ?? null
 	};
 }
 
 export function hasActiveSituation(situation: LitePromptTurnSituation | null | undefined): boolean {
-	return Boolean(situation && (situation.writeIntent || situation.webResearch));
+	return Boolean(
+		situation &&
+			(situation.writeIntent ||
+				situation.webResearch ||
+				situation.livingWorkspace ||
+				situation.livingWorkspaceCapture)
+	);
 }
 
 /**
@@ -88,6 +116,20 @@ export function renderSituationalRulesContent(
 	}
 	if (situation?.webResearch) {
 		blocks.push(['This turn involves web research:', ...WEB_RESEARCH_RULE_LINES].join('\n'));
+	}
+	if (situation?.livingWorkspace) {
+		const affinity = situation.domainAffinity
+			? ` Domain affinity: ${situation.domainAffinity}${
+					situation.domainProfile ? ` (${situation.domainProfile})` : ''
+				}.`
+			: '';
+		blocks.push(
+			[
+				`This project has an active living-reference agreement.${affinity}`,
+				...(situation.livingWorkspaceCapture ? [LIVING_WORKSPACE_CAPTURE_RULE_LINE] : []),
+				...LIVING_WORKSPACE_RULE_LINES
+			].join('\n')
+		);
 	}
 	return blocks.join('\n\n');
 }

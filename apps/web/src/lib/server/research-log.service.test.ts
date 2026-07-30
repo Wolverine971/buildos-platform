@@ -5,6 +5,7 @@ import {
 	RESEARCH_LOG_MAX_BYTES,
 	RESEARCH_LOG_MAX_ENTRIES,
 	buildLogDescription,
+	buildResearchEntryFromCalls,
 	hasEntryForRun,
 	planRotation,
 	prependEntry,
@@ -74,6 +75,64 @@ describe('renderResearchEntry', () => {
 		);
 		expect(rendered.match(/same query/g)).toHaveLength(1);
 		expect(rendered.match(/https:\/\/a\.com/g)).toHaveLength(1);
+	});
+});
+
+describe('buildResearchEntryFromCalls legacy parity fixture', () => {
+	it('captures the exact deterministic research input from qualifying tool calls', () => {
+		expect(
+			buildResearchEntryFromCalls(
+				[
+					{
+						name: 'web_search',
+						args: { query: 'competitor pricing' },
+						result: {
+							answer: 'Calendly publishes tiered pricing.',
+							results: [{ url: 'https://calendly.com/pricing' }]
+						}
+					},
+					{
+						name: 'util.web.visit',
+						args: { url: 'https://acuityscheduling.com/pricing' },
+						result: { final_url: 'https://acuityscheduling.com/pricing' }
+					},
+					{
+						name: 'onto_project_read',
+						args: { project_id: 'project-1' },
+						result: { url: 'https://ignored.example/project' }
+					}
+				],
+				{
+					streamRunId: 'stream-research-1',
+					userMessage: 'Research scheduling competitors.',
+					capturedAt: '2026-07-29T20:00:00.000Z'
+				}
+			)
+		).toEqual({
+			streamRunId: 'stream-research-1',
+			userMessage: 'Research scheduling competitors.',
+			queries: ['competitor pricing'],
+			visitedUrls: [
+				'https://calendly.com/pricing',
+				'https://acuityscheduling.com/pricing',
+				'https://acuityscheduling.com/pricing'
+			],
+			findings: ['Calendly publishes tiered pricing.'],
+			capturedAt: '2026-07-29T20:00:00.000Z'
+		});
+	});
+
+	it('does not capture fewer than two research calls', () => {
+		expect(
+			buildResearchEntryFromCalls(
+				[{ name: 'web_search', args: { query: 'one query' }, result: {} }],
+				{
+					streamRunId: 'stream-research-2',
+					userMessage: 'Research this.',
+					capturedAt: '2026-07-29T20:00:00.000Z'
+				}
+			)
+		).toBeNull();
 	});
 });
 

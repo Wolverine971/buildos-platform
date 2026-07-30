@@ -683,20 +683,19 @@ export function getSkillGateCandidateSkillLoadFormats(
 
 export function renderDomainSensingPromptContent(
 	result: DomainSensingResult | null,
-	options: { preloadedSkillPromptContent?: string | null } = {}
+	options: {
+		preloadedSkillPromptContent?: string | null;
+		preloadSource?: 'domain_sensing' | 'project_domain_affinity' | null;
+	} = {}
 ): string | null {
-	if (!result) return null;
-	const skillGateCandidateSkillIds = getSkillGateCandidateSkillIds(result);
 	const preloadedSkillPromptContent = options.preloadedSkillPromptContent?.trim() || null;
-
-	// Preload-satisfied turns drop the candidate/recommended/gap routing
-	// metadata entirely (tasker/39 stage 4): the preload already resolved the
-	// route, and the old rendering spent ~300 tokens listing entries whose own
-	// next-step line told the model to ignore them. The preload block itself
-	// still names alternate candidates if the skill does not fit.
-	if (result.skill_load_required && preloadedSkillPromptContent) {
+	if (preloadedSkillPromptContent) {
+		const source =
+			options.preloadSource === 'project_domain_affinity' || !result
+				? 'persisted_project_domain_affinity'
+				: result.source;
 		return [
-			`Source: ${result.source}.`,
+			`Source: ${source}.`,
 			'',
 			'Skill-load gate: SATISFIED BY PRELOAD.',
 			'',
@@ -705,7 +704,14 @@ export function renderDomainSensingPromptContent(
 			`Next step: ${PRELOADED_NEXT_STEP}`
 		].join('\n');
 	}
+	if (!result) return null;
+	const skillGateCandidateSkillIds = getSkillGateCandidateSkillIds(result);
 
+	// Preload-satisfied turns drop the candidate/recommended/gap routing
+	// metadata entirely (tasker/39 stage 4): the preload already resolved the
+	// route, and the old rendering spent ~300 tokens listing entries whose own
+	// next-step line told the model to ignore them. The preload block itself
+	// still names alternate candidates if the skill does not fit.
 	const domainLines = result.active_domains.map((domain) => {
 		const details = [
 			`${domain.coverage_status} coverage`,

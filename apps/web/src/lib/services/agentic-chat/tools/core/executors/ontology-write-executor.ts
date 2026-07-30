@@ -54,6 +54,10 @@ import {
 import { assertNoDurableTextViolations } from '$lib/services/agentic-chat/shared/durable-text-validation';
 import { normalizeProjectCreateArgs, validateProjectCreateArgs } from '../project-create-args';
 import { TASK_STATES } from '$lib/types/onto';
+import {
+	AGENT_WORKSPACE_PROP,
+	readAgentWorkspaceMetadata
+} from '$lib/services/agentic-chat/project-domain-profiles';
 
 const logger = createLogger('OntologyWriteExecutor');
 
@@ -301,6 +305,16 @@ function buildContextDocumentSpec(
 	args: CreateOntoProjectArgs
 ): CreateOntoProjectArgs['context_document'] {
 	const provided = args.context_document;
+	const agentWorkspace = readAgentWorkspaceMetadata(args.project.props);
+	const withWorkspaceMetadata = (
+		props: Record<string, unknown> | undefined
+	): Record<string, unknown> | undefined => {
+		if (!agentWorkspace) return props;
+		return {
+			...(props ?? {}),
+			[AGENT_WORKSPACE_PROP]: agentWorkspace
+		};
+	};
 	// Support both content (new) and body_markdown (legacy) parameters
 	const providedContent = provided?.content ?? provided?.body_markdown;
 	if (provided?.title?.trim() && providedContent?.trim()) {
@@ -309,7 +323,8 @@ function buildContextDocumentSpec(
 			content: providedContent,
 			body_markdown: providedContent, // Keep for backwards compat
 			type_key: provided.type_key ?? 'document.context.project',
-			state_key: provided.state_key ?? 'draft'
+			state_key: provided.state_key ?? 'draft',
+			props: withWorkspaceMetadata(provided.props)
 		};
 	}
 
@@ -355,7 +370,8 @@ function buildContextDocumentSpec(
 		props: {
 			source: 'agent_project_creation',
 			generated_at: new Date().toISOString(),
-			source_notes: spark || undefined
+			source_notes: spark || undefined,
+			...(agentWorkspace ? { [AGENT_WORKSPACE_PROP]: agentWorkspace } : {})
 		}
 	};
 }

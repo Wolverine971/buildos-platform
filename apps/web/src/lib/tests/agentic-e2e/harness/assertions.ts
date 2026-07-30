@@ -259,6 +259,25 @@ export function assertNonEmptyAssistantText(turn: TurnResult, minimumChars = 40)
 }
 
 /**
+ * Require a response to present a requested set of alternatives as visibly
+ * distinct numbered/options headings or top-level bullets.
+ */
+export function assertMinimumDistinctOptions(turn: TurnResult, minimum = 3): void {
+	const text = turn.assistantText.trim();
+	const labeled = text.match(
+		/^\s*(?:#{1,6}\s*)?(?:\*\*)?(?:option\s+)?(?:\d+|one|two|three|four|five)\s*(?:[.):-]|\*\*)/gim
+	);
+	const bullets = text.match(/^\s*[-*+]\s+\S/gm);
+	const count = Math.max(labeled?.length ?? 0, bullets?.length ?? 0);
+	if (count < minimum) {
+		throw new Error(
+			`[assert] assistant presented ${count} visibly distinct option(s); expected at least ${minimum}. ` +
+				`Text: "${text.slice(0, 500)}"`
+		);
+	}
+}
+
+/**
  * The agent said what it was about to do before it started doing it. SSE events
  * are ordered, so "narrate before acting" is mechanically checkable: some text
  * must precede the first tool_call. Guards the long-silent-pause failure.

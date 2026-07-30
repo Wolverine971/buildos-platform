@@ -986,12 +986,13 @@ export function generateDocumentTypeKeyGuidance(mode: 'full' | 'short' = 'short'
 
 **Format**: \`document.{family}\` or \`document.{family}.{variant}\`
 
-**5 Families**:
+**6 Families**:
 - **context** — Big picture, intent, constraints (project briefs)
 - **knowledge** — Research, findings, raw learning
 - **spec** — Formalized "what/how" specifications
 - **reference** — Reusable guides/handbooks
 - **intake** — Information gathered at start
+- **creative** — Story structure and durable creative reference material
 
 **Examples**:
 - context: \`document.context.project\`, \`document.context.brief\`, \`document.context.vision\`
@@ -999,20 +1000,22 @@ export function generateDocumentTypeKeyGuidance(mode: 'full' | 'short' = 'short'
 - spec: \`document.spec.product\`, \`document.spec.technical\`, \`document.spec.api\`
 - reference: \`document.reference.handbook\`, \`document.reference.playbook\`, \`document.reference.guide\`
 - intake: \`document.intake.client\`, \`document.intake.project\`, \`document.intake.requirements\`
+- creative: \`document.creative.structure\`, \`document.creative.character\`, \`document.creative.world\`
 
 **Selection Guide**:
 - "Project context doc" → \`document.context.project\`
 - "Competitor research" → \`document.knowledge.research\`
 - "Product spec" → \`document.spec.product\`
 - "Team handbook" → \`document.reference.handbook\`
-- "Client intake form" → \`document.intake.client\``;
+- "Client intake form" → \`document.intake.client\`
+- "Character reference sheet" → \`document.creative.character\``;
 	}
 
 	return `## Document Type Key Classification
 
 **Format**: \`document.{family}\` or \`document.{family}.{variant}\`
 
-### 5 Document Families
+### 6 Document Families
 
 | Family | Base Type Key | Purpose | Use When |
 |--------|---------------|---------|----------|
@@ -1021,6 +1024,7 @@ export function generateDocumentTypeKeyGuidance(mode: 'full' | 'short' = 'short'
 | **spec** | \`document.spec\` | Formalized "what/how" | PRDs, technical specs, API docs |
 | **reference** | \`document.reference\` | Reusable guides/handbooks | Handbooks, playbooks, SOPs |
 | **intake** | \`document.intake\` | Information gathered at start | Client intake, project intake |
+| **creative** | \`document.creative\` | Story structure and creative canon | Plot maps, character sheets, world bibles |
 
 ### Common Variants
 
@@ -1048,6 +1052,12 @@ export function generateDocumentTypeKeyGuidance(mode: 'full' | 'short' = 'short'
 - \`document.intake.client\` — Client intake form
 - \`document.intake.project\` — Project intake
 - \`document.intake.requirements\` — Requirements gathering
+
+**Creative** (story craft/reference):
+- \`document.creative.structure\` — Plot spine, acts, parts, chapters, and beats
+- \`document.creative.character\` — Character reference sheet and arc
+- \`document.creative.world\` — Setting, lore, rules, and continuity
+- \`document.creative.chapter\` — Draft or outline for a specific chapter
 
 ### Special Note: Context Documents
 

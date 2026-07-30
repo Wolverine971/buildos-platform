@@ -18,6 +18,7 @@ import { taskMultiUpdateScenario } from './task-multi-update.scenario';
 import { documentFromVagueDescriptionScenario } from './document-from-vague-description.scenario';
 import { researchLogReadbackScenario } from './research-log-readback.scenario';
 import { projectCatchupColdScenario } from './project-catchup-cold.scenario';
+import { bookWritingJourneyScenario } from './book-writing-journey.scenario';
 
 export const scenarioCatalog: Scenario[] = [
 	documentCreateScenario,
@@ -34,5 +35,6 @@ export const scenarioCatalog: Scenario[] = [
 	taskMultiUpdateScenario,
 	documentFromVagueDescriptionScenario,
 	researchLogReadbackScenario,
-	projectCatchupColdScenario
+	projectCatchupColdScenario,
+	bookWritingJourneyScenario
 ];

@@ -24,6 +24,130 @@ function toolCall(name: string, args: Record<string, unknown>, id = name): ChatT
 }
 
 describe('streamFastChat direct tool orchestration', () => {
+	it('forces the one project-create tool, then finishes with tool-free synthesis', async () => {
+		let streamInvocation = 0;
+		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					toolNames: (params.tools ?? [])
+						.map((tool: ChatToolDefinition) => tool.function?.name)
+						.filter((name: string | undefined): name is string => Boolean(name))
+				});
+
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall('create_onto_project', {
+							project: {
+								name: 'The Glass Harbor',
+								type_key: 'project.creative.novel',
+								description: 'A fiction writing workspace.',
+								state_key: 'planning',
+								props: {}
+							},
+							entities: [],
+							relationships: []
+						})
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Your fiction workspace is ready.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				result: { project: { id: 'project-1', name: 'The Glass Harbor' } },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project_create',
+			history: [],
+			message: 'Create an ongoing workspace for my novel.',
+			tools: tools(['create_onto_project']),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 3,
+			maxToolCalls: 3
+		});
+
+		expect(streamParams).toEqual([
+			{ toolChoice: 'required', toolNames: ['create_onto_project'] },
+			{ toolChoice: 'none', toolNames: [] }
+		]);
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(result.finalAssistantText).toBe('Your fiction workspace is ready.');
+		expect(result.llmPasses?.[1]?.forcedNoToolSynthesis).toBe(true);
+	});
+
+	it('leaves the project-create tool optional when the user has not supplied a project idea', async () => {
+		const streamParams: Array<{ toolChoice?: string }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamParams.push({ toolChoice: params.tool_choice });
+				yield {
+					type: 'text',
+					content: 'What would you like this project to accomplish?'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project_create',
+			history: [],
+			message: 'Create a project.',
+			tools: tools(['create_onto_project']),
+			toolExecutor: vi.fn(),
+			onDelta: async () => {}
+		});
+
+		expect(streamParams[0]?.toolChoice).toBe('auto');
+		expect(result.finalAssistantText).toBe('What would you like this project to accomplish?');
+	});
+
+	it('does not force project creation for an informational question in the create surface', async () => {
+		const streamParams: Array<{ toolChoice?: string }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamParams.push({ toolChoice: params.tool_choice });
+				yield {
+					type: 'text',
+					content: 'BuildOS can organize several kinds of projects.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project_create',
+			history: [],
+			message: 'What kinds of projects can BuildOS create?',
+			tools: tools(['create_onto_project']),
+			toolExecutor: vi.fn(),
+			onDelta: async () => {}
+		});
+
+		expect(streamParams[0]?.toolChoice).toBe('auto');
+	});
+
 	it('adds dynamic tool budget guidance to each LLM pass', async () => {
 		let streamInvocation = 0;
 		const passMessages: FastChatHistoryMessage[][] = [];

@@ -723,7 +723,8 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 			'Planning, drafting, editing, and organizing written work, from project notes to essays, articles, books, and fiction.',
 		boundaries: [
 			'Use BuildOS document tools for capture and organization.',
-			'Use story-driven content craft only for nonfiction content structure, not all writing craft.'
+			'Use story-driven content craft only for nonfiction content structure, not all writing craft.',
+			'Use writing.fiction for novels, screenplays, character arcs, story beats, scenes, and continuity.'
 		],
 		coverageStatus: 'partial',
 		capabilityIds: ['planning', 'documents'],
@@ -739,13 +740,62 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 					'the user wants an essay or blog post written from their own experience and voice, or wants a generic or AI-flavored draft rebuilt around a real speaker'
 			}
 		],
-		relatedDomainIds: ['marketing.content_strategy', 'marketing.short_form_video'],
+		relatedDomainIds: [
+			'writing.fiction',
+			'marketing.content_strategy',
+			'marketing.short_form_video'
+		],
 		gaps: [
 			{
 				missingSkillId: 'writing_craft',
-				userNeed: 'guide writing strategy, structure, revision, or craft decisions',
-				summary: 'No dedicated writing craft skill exists yet.'
+				userNeed:
+					'guide general-purpose writing strategy, line editing, or craft outside fiction and lived-experience nonfiction',
+				summary:
+					'Fiction and lived-experience nonfiction are covered, but no general-purpose writing craft skill exists yet.'
 			}
+		]
+	},
+	{
+		id: 'writing.fiction',
+		name: 'Fiction Writing',
+		parentIds: ['writing'],
+		aliases: [
+			'fiction writing',
+			'novel writing',
+			'book writing',
+			'screenplay writing',
+			'story development',
+			'character arc',
+			'character development',
+			'character options',
+			'plot development',
+			'story beats',
+			'chapter planning',
+			'scene writing',
+			'story continuity',
+			'what happens next',
+			'worldbuilding',
+			'story bible'
+		],
+		summary:
+			'Canon-aware development of novels, screenplays, and other fiction: characters, arcs, plots, beats, chapters, scenes, worlds, prose, and continuity.',
+		boundaries: [
+			'Use this domain for fictional narrative projects; use nonfiction writing skills for essays, posts, founder narratives, and reported work.',
+			'Assistant-generated options and prose are proposals until the author confirms or explicitly saves them.',
+			'Use BuildOS document tools to persist confirmed canon in the project’s existing character, structure, chapter, and world references.'
+		],
+		coverageStatus: 'strong',
+		capabilityIds: ['planning', 'documents'],
+		skills: [
+			{
+				id: 'fiction_story_craft',
+				useWhen:
+					'the author asks what happens next, wants character or plot options, develops or revises story structure, drafts scenes or prose, checks continuity, or adds confirmed canon to a fiction workspace'
+			}
+		],
+		relatedDomainIds: ['writing'],
+		notes: [
+			'Use specific fiction phrases instead of the bare word “story” so marketing storytelling requests remain in their content domains.'
 		]
 	},
 	{
