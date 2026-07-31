@@ -1,3 +1,6 @@
+// apps/worker/src/config/sms.ts
+import 'dotenv/config';
+
 /**
  * Global, fail-closed SMS delivery switch.
  *
