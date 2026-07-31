@@ -255,7 +255,8 @@ import {
 	emitContextUsage,
 	emitSkillActivity,
 	emitToolCall,
-	extractContextShiftPayload
+	extractContextShiftPayload,
+	type AgentChatEventPayload
 } from '$lib/services/agentic-chat-v2/stream-events';
 import {
 	buildCheckpointResumeSystemMessage,
@@ -1284,7 +1285,7 @@ export const POST: RequestHandler = async ({
 		);
 	}, 30_000);
 	const sendTimedMessage = async (
-		payload: Record<string, unknown> & { type: string },
+		payload: AgentChatEventPayload,
 		errorContext: {
 			operationType: string;
 			projectId?: string;
@@ -1319,7 +1320,7 @@ export const POST: RequestHandler = async ({
 		}
 	};
 	const sendTimedMessageDetached = (
-		payload: Record<string, unknown> & { type: string },
+		payload: AgentChatEventPayload,
 		errorContext: {
 			operationType: string;
 			projectId?: string;
@@ -3522,6 +3523,7 @@ export const POST: RequestHandler = async ({
 							{
 								type: 'agent_state',
 								state: 'thinking',
+								contextType: effectiveContextType,
 								details: decision.message
 							},
 							{
@@ -3589,6 +3591,7 @@ export const POST: RequestHandler = async ({
 							{
 								type: 'agent_state',
 								state: 'waiting_on_user',
+								contextType: effectiveContextType,
 								details: 'Waiting on your direction to continue.'
 							},
 							{

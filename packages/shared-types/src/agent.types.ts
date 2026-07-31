@@ -524,7 +524,7 @@ export type AgentSSEMessage = AgentStreamEventMeta &
 					completion_tokens?: number;
 				};
 				finished_reason?: string;
-				completion_status?: 'completed' | 'completed_degraded';
+				completion_status?: 'completed' | 'completed_degraded' | 'failed';
 				answer_source?:
 					| 'model'
 					| 'partial_model'

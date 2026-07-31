@@ -57,8 +57,15 @@ describe('stream-events', () => {
 			getTurnRunId: () => 'turn-run-1'
 		});
 
-		await eventSink.emit({ type: 'text_delta', text: 'hello' });
-		await eventSink.emit({ type: 'tool_call', tool_call: { id: 'call-1' } });
+		await eventSink.emit({ type: 'text_delta', content: 'hello' });
+		await eventSink.emit({
+			type: 'tool_call',
+			tool_call: {
+				id: 'call-1',
+				type: 'function',
+				function: { name: 'get_workspace_overview', arguments: '{}' }
+			}
+		});
 		expect(eventSink.response).toBe(fake.stream.response);
 		await eventSink.close();
 		expect(fake.stream.close).toHaveBeenCalledOnce();
@@ -66,7 +73,7 @@ describe('stream-events', () => {
 		expect(fake.messages).toEqual([
 			expect.objectContaining({
 				type: 'text_delta',
-				text: 'hello',
+				content: 'hello',
 				event_id: 'stream-1:1',
 				stream_run_id: 'stream-1',
 				client_turn_id: 'client-turn-1',

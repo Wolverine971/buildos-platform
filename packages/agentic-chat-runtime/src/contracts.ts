@@ -1,4 +1,6 @@
 import type {
+	AgentSSEMessage,
+	AgentStreamEventV1,
 	ChatTurnTerminalStatusV1,
 	JsonObject,
 	NormalizedChatAttachmentV1,
@@ -46,10 +48,16 @@ export type AgenticChatTurnOutcome<TMetadata extends JsonObject = JsonObject> = 
 	metadata: TMetadata;
 };
 
-/** Minimum public-event shape. A later slice specializes this with the full payload union. */
-export type AgenticChatRuntimeEvent = {
-	type: string;
-};
+/**
+ * Runtime event payloads derive from the current public chat union so extraction
+ * cannot omit a legacy variant. The generic remains open for a reviewed host
+ * extension without weakening the default contract to an untyped record.
+ */
+export type AgenticChatRuntimeEvent<TPayload extends { type: string } = AgentSSEMessage> = TPayload;
+
+export type AgenticChatStreamEvent<
+	TPayload extends AgenticChatRuntimeEvent = AgenticChatRuntimeEvent
+> = AgentStreamEventV1<TPayload>;
 
 export function isAdmittedTurnHandle(handle: TurnHandleV1): handle is AdmittedTurnHandleV1 {
 	return Boolean(handle.sessionId?.trim() && handle.turnRunId?.trim());

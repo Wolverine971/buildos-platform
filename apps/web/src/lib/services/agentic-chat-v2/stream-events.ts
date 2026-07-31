@@ -1,6 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-events.ts
 import type {
-	AgentSSEMessage,
 	ChatContextType,
 	ChatToolCall,
 	ChatToolResult,
@@ -20,9 +19,7 @@ const logger = createLogger('API:AgentStreamV2');
 
 export type AgentStreamEventPhase = 'prompt' | 'llm' | 'tool' | 'stream' | 'finalize';
 export type AgentChatSSEStream = ReturnType<typeof SSEResponse.createChatStream>;
-export type AgentChatEventPayload =
-	| AgentSSEMessage
-	| (Record<string, unknown> & AgenticChatRuntimeEvent);
+export type AgentChatEventPayload = AgenticChatRuntimeEvent;
 export type AgentChatEventSink = AgenticChatEventSinkPort<AgentChatEventPayload> & {
 	response: AgentChatSSEStream['response'];
 	close(): Promise<void>;

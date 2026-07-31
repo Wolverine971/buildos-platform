@@ -152,7 +152,7 @@ export type FastAgentStreamEvent =
 			type: 'done';
 			usage?: FastAgentStreamUsage;
 			finished_reason?: string;
-			completion_status?: 'completed' | 'completed_degraded';
+			completion_status?: 'completed' | 'completed_degraded' | 'failed';
 			answer_source?:
 				| 'model'
 				| 'partial_model'

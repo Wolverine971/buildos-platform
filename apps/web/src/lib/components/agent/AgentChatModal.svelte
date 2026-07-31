@@ -2442,7 +2442,7 @@
 	}
 
 	function markAssistantCompletion(
-		completionStatus?: 'completed' | 'completed_degraded',
+		completionStatus?: 'completed' | 'completed_degraded' | 'failed',
 		answerSource?: 'model' | 'partial_model' | 'deterministic_evidence' | 'precise_no_evidence'
 	) {
 		if (!currentAssistantMessageId || completionStatus !== 'completed_degraded') return;

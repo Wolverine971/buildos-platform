@@ -192,7 +192,7 @@ export function sanitizeToolResultForActivityMetadata(
 
 export function resolveDoneFinalization(
 	finishedReason: string | null | undefined,
-	completionStatus?: 'completed' | 'completed_degraded',
+	completionStatus?: 'completed' | 'completed_degraded' | 'failed',
 	answerSource?: 'model' | 'partial_model' | 'deterministic_evidence' | 'precise_no_evidence'
 ): {
 	status?: 'completed' | 'interrupted' | 'cancelled' | 'error';
@@ -377,7 +377,7 @@ export interface SSEHandlerDeps {
 	bufferAssistantText(content: unknown): void;
 	flushAssistantText(): void;
 	markAssistantCompletion(
-		completionStatus?: 'completed' | 'completed_degraded',
+		completionStatus?: 'completed' | 'completed_degraded' | 'failed',
 		answerSource?: 'model' | 'partial_model' | 'deterministic_evidence' | 'precise_no_evidence'
 	): void;
 	finalizeAssistantMessage(): void;

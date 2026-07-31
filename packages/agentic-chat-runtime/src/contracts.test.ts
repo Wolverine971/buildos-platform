@@ -1,14 +1,24 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
+import type { AgentSSEMessage, AgentStreamEventV1 } from '@buildos/shared-types';
 import {
 	AGENTIC_CHAT_RUNTIME_CONTRACT_VERSION,
 	isAdmittedTurnHandle,
 	type AdmittedTurnHandleV1,
 	type AgenticChatRuntimeEvent,
 	type AgenticChatRuntimePorts,
+	type AgenticChatStreamEvent,
 	type AgenticChatTurnCommand,
 	type AgenticChatTurnOutcome,
 	type RunAgenticChatTurn
 } from './index';
+
+type UnrepresentableLegacyEvent = AgentSSEMessage extends infer TEvent
+	? TEvent extends { type: string }
+		? AgentStreamEventV1<TEvent> extends AgenticChatStreamEvent
+			? never
+			: TEvent
+		: TEvent
+	: never;
 
 const legacyHandle: AdmittedTurnHandleV1 = {
 	contractVersion: 'legacy_internal_v1',
@@ -106,5 +116,10 @@ describe('agentic chat runtime contracts', () => {
 			[AgenticChatRuntimeEvent]
 		>();
 		await expect(run(command, createPorts())).resolves.toEqual(outcome);
+	});
+
+	it('represents every legacy SSE payload variant in the runtime stream event', () => {
+		expectTypeOf<AgenticChatRuntimeEvent>().toEqualTypeOf<AgentSSEMessage>();
+		expectTypeOf<UnrepresentableLegacyEvent>().toEqualTypeOf<never>();
 	});
 });
