@@ -278,7 +278,7 @@ export async function admitLegacyAgenticChatTurn(
 	// The workspace package's built declaration can lag the source-generated
 	// Database type during a migration change. Keep this compatibility cast
 	// local and fully typed until the generated package is rebuilt/deployed.
-	const rpc = params.supabase.rpc as unknown as LegacyAgenticChatAdmissionRpc;
+	const rpc = params.supabase.rpc.bind(params.supabase) as unknown as LegacyAgenticChatAdmissionRpc;
 	const { data, error } = await rpc('admit_legacy_agentic_chat_turn', {
 		p_user_id: params.userId,
 		p_session_id: params.sessionId,

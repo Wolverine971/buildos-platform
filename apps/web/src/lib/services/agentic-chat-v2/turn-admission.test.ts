@@ -164,6 +164,40 @@ describe('admitLegacyAgenticChatTurn', () => {
 		});
 	});
 
+	it('preserves the Supabase client receiver when invoking rpc', async () => {
+		const response = {
+			data: {
+				outcome: 'matching_duplicate',
+				execution_may_start: false,
+				turn_run_id: rpcParams.turnRunId,
+				session_id: rpcParams.sessionId,
+				user_message_id: rpcParams.userMessageId,
+				stream_run_id: rpcParams.streamRunId,
+				client_turn_id: rpcParams.clientTurnId,
+				execution_mode: 'legacy_sse',
+				fallback_snapshot: null
+			},
+			error: null
+		};
+		const supabase = {
+			response,
+			rpc(this: { response: typeof response }) {
+				return Promise.resolve(this.response);
+			}
+		};
+
+		const result = await admitLegacyAgenticChatTurn({
+			...rpcParams,
+			supabase: supabase as any
+		});
+
+		expect(result).toMatchObject({
+			outcome: 'matching_duplicate',
+			executionMayStart: false,
+			turnRunId: rpcParams.turnRunId
+		});
+	});
+
 	it.each([
 		[
 			'matching_duplicate',
