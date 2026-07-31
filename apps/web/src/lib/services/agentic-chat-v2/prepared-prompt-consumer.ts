@@ -53,6 +53,53 @@ export type PreparedPromptConsumeResult =
 			diagnostics?: PreparedPromptConsumeMissDiagnostics;
 	  };
 
+export type PreparedPromptAdmissionLineage = {
+	id: string;
+	acceptedSurfaceProfile: GatewaySurfaceProfileName;
+};
+
+/**
+ * Derives stable, trusted hash lineage without claiming prepared content.
+ *
+ * Consumption and expiry are intentionally not consulted here: both are mutable
+ * after a successful admission, so using either to build the canonical request
+ * would turn a lost-response retry into a different hash. The later consume path
+ * remains authoritative for whether prepared content can actually be used.
+ */
+export async function inspectPreparedPromptAdmissionLineage(params: {
+	supabase: FastChatSupabaseClient;
+	key: string | null;
+	userId: string;
+	sessionId: string;
+	cacheKey: string;
+	surfaceProfile: GatewaySurfaceProfileName;
+}): Promise<PreparedPromptAdmissionLineage | null> {
+	if (!params.key || !isPreparedPromptPrewarmEnabled()) return null;
+	const parsed = parsePreparedPromptKey(params.key);
+	if (!parsed) return null;
+
+	const { data, error } = await params.supabase
+		.from('agentic_chat_prepared_prompts')
+		.select('*')
+		.eq('id', parsed.id)
+		.maybeSingle();
+	if (error || !data) return null;
+
+	const row = data as PreparedPromptRow;
+	if (row.user_id !== params.userId) return null;
+	if (!verifyPreparedPromptNonce({ nonce: parsed.nonce, nonceSha256: row.nonce_sha256 })) {
+		return null;
+	}
+	if (row.session_id && row.session_id !== params.sessionId) return null;
+	if (row.cache_key !== params.cacheKey) return null;
+	if (!getPreparedPromptSurface(row, params.surfaceProfile)) return null;
+
+	return {
+		id: row.id,
+		acceptedSurfaceProfile: params.surfaceProfile
+	};
+}
+
 export async function consumePreparedPrompt(params: {
 	supabase: FastChatSupabaseClient;
 	key: string | null;

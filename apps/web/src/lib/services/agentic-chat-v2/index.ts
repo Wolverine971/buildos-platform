@@ -12,7 +12,8 @@ export * from './context-models';
 export {
 	createFastChatSessionService,
 	extractLoadedSkillIdsFromHistory,
-	historyIncludesLoadedSkillsLedger
+	historyIncludesLoadedSkillsLedger,
+	projectLegacyFallbackHistorySnapshot
 } from './session-service';
 export { streamFastChat } from './stream-orchestrator/index';
 export { FASTCHAT_LIMITS } from './limits';

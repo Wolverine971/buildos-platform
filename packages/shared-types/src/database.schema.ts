@@ -954,6 +954,7 @@ export type DatabaseSchema = {
 		context_type: string;
 		created_at: string;
 		entity_id: string | null;
+		execution_mode: string;
 		finished_at: string | null;
 		finished_reason: string | null;
 		first_canonical_op: string | null;
@@ -974,6 +975,8 @@ export type DatabaseSchema = {
 		project_id: string | null;
 		prompt_snapshot_id: string | null;
 		raw_history_count: number | null;
+		request_hash: string | null;
+		request_hash_version: string | null;
 		request_message: string;
 		request_prewarmed_context: boolean | null;
 		session_id: string;

@@ -198,6 +198,12 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 	resolveFastChatModelTieringConfig: () => null,
 	resolveFastChatForcedSynthesisRoutingConfig: () => null,
 	resolveFastChatTurnOutcome: mocks.resolveFastChatTurnOutcome,
+	projectLegacyFallbackHistorySnapshot: ({ messages }: { messages: Row[] }) =>
+		messages.map((message) => ({
+			role: message.role,
+			content: message.content,
+			metadata: message.metadata ?? null
+		})),
 	sanitizeAttachmentRefsForMetadata: () => [],
 	shouldUseLiveVisionForTurn: () => false,
 	streamFastChat: mocks.streamFastChat
@@ -237,7 +243,7 @@ function createAdminOnlySupabase({ isAdmin = false } = {}) {
 
 function createStreamingSupabase(
 	initialRows: Record<string, Row[]> = {},
-	options: { insertErrors?: Record<string, unknown> } = {}
+	options: { admissionResult?: Row; insertErrors?: Record<string, unknown> } = {}
 ) {
 	const rows: Record<string, Row[]> = {
 		chat_turn_runs: [],
@@ -405,11 +411,160 @@ function createStreamingSupabase(
 		}
 	}
 
+	const rpc = vi.fn(async (name: string, args: Row = {}) => {
+		if (name !== 'admit_legacy_agentic_chat_turn') {
+			return { data: {}, error: null };
+		}
+		if (options.admissionResult) {
+			return { data: options.admissionResult, error: null };
+		}
+
+		const duplicate = ensureRows('chat_turn_runs').find(
+			(row) =>
+				args.p_client_turn_id &&
+				row.user_id === args.p_user_id &&
+				row.client_turn_id === args.p_client_turn_id
+		);
+		if (duplicate) {
+			const matchingHash =
+				duplicate.request_hash === args.p_request_hash &&
+				duplicate.request_hash_version === args.p_request_hash_version;
+			return {
+				data: {
+					outcome: matchingHash ? 'matching_duplicate' : 'idempotency_conflict',
+					execution_may_start: false,
+					turn_run_id: duplicate.id,
+					session_id: duplicate.session_id,
+					user_message_id: duplicate.user_message_id ?? null,
+					stream_run_id: duplicate.stream_run_id,
+					client_turn_id: duplicate.client_turn_id,
+					execution_mode: duplicate.execution_mode ?? 'legacy_sse',
+					conflict_reason: matchingHash ? null : 'request_hash_mismatch'
+				},
+				error: null
+			};
+		}
+
+		const activeTurn = ensureRows('chat_turn_runs').find(
+			(row) =>
+				row.user_id === args.p_user_id &&
+				row.session_id === args.p_session_id &&
+				row.status === 'running'
+		);
+		if (activeTurn || options.insertErrors?.chat_turn_runs) {
+			const active =
+				activeTurn ??
+				({
+					id: 'active-turn-conflict',
+					session_id: args.p_session_id,
+					stream_run_id: 'active-stream-conflict',
+					client_turn_id: null,
+					user_message_id: null
+				} as Row);
+			return {
+				data: {
+					outcome: 'active_turn_conflict',
+					execution_may_start: false,
+					turn_run_id: active.id,
+					session_id: active.session_id,
+					user_message_id: active.user_message_id ?? null,
+					stream_run_id: active.stream_run_id,
+					client_turn_id: active.client_turn_id ?? null,
+					execution_mode: 'legacy_sse'
+				},
+				error: null
+			};
+		}
+
+		if (options.insertErrors?.chat_messages) {
+			return { data: null, error: options.insertErrors.chat_messages };
+		}
+
+		const priorMessages = ensureRows('chat_messages')
+			.filter(
+				(row) =>
+					row.session_id === args.p_session_id &&
+					['user', 'assistant', 'system'].includes(row.role)
+			)
+			.sort((left, right) =>
+				String(right.created_at ?? '').localeCompare(String(left.created_at ?? ''))
+			)
+			.slice(0, args.p_history_limit ?? 10)
+			.reverse()
+			.map((row) => ({
+				id: row.id,
+				role: row.role,
+				content: row.content,
+				metadata: row.metadata ?? null,
+				created_at: row.created_at ?? null
+			}));
+		const now = args.p_started_at ?? new Date().toISOString();
+		const turnRow = {
+			id: args.p_turn_run_id,
+			user_id: args.p_user_id,
+			session_id: args.p_session_id,
+			user_message_id: args.p_user_message_id,
+			stream_run_id: args.p_stream_run_id,
+			client_turn_id: args.p_client_turn_id,
+			request_hash: args.p_request_hash,
+			request_hash_version: args.p_request_hash_version,
+			execution_mode: 'legacy_sse',
+			source: args.p_source,
+			context_type: args.p_context_type,
+			entity_id: args.p_entity_id,
+			project_id: args.p_project_id,
+			gateway_enabled: args.p_gateway_enabled,
+			request_message: args.p_request_message,
+			request_prewarmed_context: false,
+			status: 'running',
+			started_at: now,
+			last_progress_at: now,
+			created_at: now,
+			updated_at: now
+		};
+		const messageRow = {
+			id: args.p_user_message_id,
+			session_id: args.p_session_id,
+			user_id: args.p_user_id,
+			role: 'user',
+			content: args.p_user_message_content,
+			metadata: args.p_user_message_metadata,
+			idempotency_key: `chat-turn:${args.p_turn_run_id}:user`,
+			created_at: now,
+			updated_at: now
+		};
+		ensureRows('chat_turn_runs').push(turnRow);
+		insertedRows.chat_turn_runs.push({ ...turnRow });
+		ensureRows('chat_messages').push(messageRow);
+		insertedRows.chat_messages.push({ ...messageRow });
+
+		return {
+			data: {
+				outcome: 'newly_admitted',
+				execution_may_start: true,
+				turn_run_id: args.p_turn_run_id,
+				session_id: args.p_session_id,
+				user_message_id: args.p_user_message_id,
+				stream_run_id: args.p_stream_run_id,
+				client_turn_id: args.p_client_turn_id,
+				execution_mode: 'legacy_sse',
+				reclaimed_turn_run_id: null,
+				fallback_snapshot: {
+					messages: priorMessages,
+					attachments: [],
+					interrupted_tool_executions: [],
+					loaded_skill_executions: []
+				}
+			},
+			error: null
+		};
+	});
+
 	const client = {
 		insertedRows,
 		updatedRows,
 		from: vi.fn((table: string) => new QueryBuilder(table)),
-		rpc: vi.fn().mockResolvedValue({ data: {}, error: null })
+		rpc
 	};
 	mocks.internalSupabase = client;
 	return client;
@@ -689,10 +844,19 @@ describe('/api/agent/v2/stream', () => {
 
 	it('passes frozen prior history and the current user message exactly once to the runtime', async () => {
 		const priorHistory = [
-			{ role: 'user', content: 'Earlier question' },
-			{ role: 'assistant', content: 'Earlier answer' }
+			{ role: 'user', content: 'Earlier question', metadata: null },
+			{ role: 'assistant', content: 'Earlier answer', metadata: null }
 		];
-		mocks.loadRecentMessages.mockResolvedValueOnce(priorHistory);
+		const supabase = createStreamingSupabase({
+			chat_messages: priorHistory.map((message, index) => ({
+				id: `prior-message-${index + 1}`,
+				session_id: 'session-1',
+				user_id: 'user-1',
+				...message,
+				metadata: null,
+				created_at: `2026-05-24T00:00:0${index}.000Z`
+			}))
+		});
 		let capturedHistory: Row[] = [];
 		let capturedMessage = '';
 		mocks.streamFastChat.mockImplementationOnce(async ({ history, message, onDelta }: Row) => {
@@ -727,7 +891,7 @@ describe('/api/agent/v2/stream', () => {
 				})
 			}),
 			locals: {
-				supabase: createStreamingSupabase(),
+				supabase,
 				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
 			},
 			fetch: vi.fn()
@@ -741,6 +905,14 @@ describe('/api/agent/v2/stream', () => {
 		expect(capturedHistory).toEqual(priorHistory);
 		expect(capturedHistory).not.toContainEqual({ role: 'user', content: 'Current command' });
 		expect(capturedMessage).toBe('Current command');
+		expect(mocks.loadRecentMessages).not.toHaveBeenCalled();
+		expect(supabase.insertedRows.chat_messages).toEqual([
+			expect.objectContaining({
+				role: 'user',
+				content: 'Current command',
+				idempotency_key: expect.stringMatching(/^chat-turn:.*:user$/)
+			})
+		]);
 		expect(
 			[...capturedHistory.map((entry) => entry.content), capturedMessage].filter(
 				(content) => content === 'Current command'
@@ -1237,6 +1409,62 @@ describe('/api/agent/v2/stream', () => {
 		expect(mocks.streamFastChat).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		['matching_duplicate', 'matching_duplicate', false, undefined],
+		['idempotency_conflict', 'idempotency_conflict', true, 'request_hash_mismatch']
+	] as const)(
+		'does not execute or consume prepared content for %s admission',
+		async (outcome, finishedReason, turnRejected, conflictReason) => {
+			const preparedPrompt = buildPreparedPromptRow();
+			const supabase = createStreamingSupabase(
+				{ agentic_chat_prepared_prompts: [preparedPrompt.row] },
+				{
+					admissionResult: {
+						outcome,
+						execution_may_start: false,
+						turn_run_id: '00000000-0000-4000-8000-000000000091',
+						session_id: 'session-1',
+						user_message_id: '00000000-0000-4000-8000-000000000092',
+						stream_run_id: 'existing-stream',
+						client_turn_id: 'client-turn-duplicate-route',
+						execution_mode: 'legacy_sse',
+						...(conflictReason ? { conflict_reason: conflictReason } : {})
+					}
+				}
+			);
+
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: 'Hello',
+						context_type: 'global',
+						stream_run_id: `stream-run-${outcome}`,
+						client_turn_id: 'client-turn-duplicate-route',
+						preparedPromptKey: preparedPrompt.key
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+
+			const events = parseSseEvents(await response.text());
+			expect(events.find((event) => event.type === 'done')).toEqual(
+				expect.objectContaining({ finished_reason: finishedReason })
+			);
+			expect(events.find((event) => event.type === 'error')?.turn_rejected).toBe(
+				turnRejected
+			);
+			expect(supabase.insertedRows.chat_messages ?? []).toHaveLength(0);
+			expect(supabase.updatedRows.agentic_chat_prepared_prompts ?? []).toHaveLength(0);
+			expect(mocks.loadPromptContext).not.toHaveBeenCalled();
+			expect(mocks.streamFastChat).not.toHaveBeenCalled();
+		}
+	);
+
 	it('defers prompt snapshot persistence until after the first model delta is emitted', async () => {
 		const supabase = createStreamingSupabase();
 		const snapshotCountsDuringModel: number[] = [];
@@ -1387,7 +1615,7 @@ describe('/api/agent/v2/stream', () => {
 			expect(response.status).toBe(200);
 			await response.text();
 
-			expect(mocks.loadRecentMessages).toHaveBeenCalledOnce();
+			expect(mocks.loadRecentMessages).not.toHaveBeenCalled();
 			expect(mocks.loadPromptContext).toHaveBeenCalledOnce();
 			expect(
 				supabase.updatedRows.chat_turn_runs?.find((row) => row.status === 'completed')
@@ -2926,11 +3154,12 @@ describe('/api/agent/v2/stream', () => {
 			})
 		);
 
-		const userPersistCall = mocks.persistMessage.mock.calls.find(
-			([params]) => params.role === 'user'
-		)?.[0];
-		expect(userPersistCall?.metadata).toEqual(
+		const updatedUserMessage = supabase.updatedRows.chat_messages?.find(
+			(row) => row.role === 'user'
+		);
+		expect(updatedUserMessage?.metadata).toEqual(
 			expect.objectContaining({
+				idempotency_key: expect.stringMatching(/^chat-turn:.*:user$/),
 				supervisor_resume_checkpoint_id: 'checkpoint-resume',
 				supervisor_resume_original_turn_run_id: 'turn-previous'
 			})

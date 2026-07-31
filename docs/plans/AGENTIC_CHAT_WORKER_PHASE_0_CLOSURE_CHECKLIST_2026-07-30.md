@@ -8,6 +8,33 @@
 
 **Decision:** Do not begin Phase 1 implementation until every remaining gate below is accepted or explicitly waived.
 
+## Explicit Phase 1 gate waiver — 2026-07-31
+
+The user explicitly approved beginning Phase 1 on 2026-07-31 after the implementing
+agent reported that final independent Phase 0 acceptance had not yet been recorded.
+This is the explicit waiver permitted by the gate above; it authorizes only Phase 1
+Slice 1A from `AGENTIC_CHAT_WORKER_PHASE_1_HANDOFF_2026-07-31.md` and does not mark
+the independent Phase 0 re-audit as accepted.
+
+The approved common-admission boundary is:
+
+- pull forward nullable additive request-hash and hash-version columns;
+- pull forward `execution_mode` with a legacy-safe `legacy_sse` default/backfill,
+  without worker values, worker immutability, or other Phase 2 control-plane schema;
+- add partial unique `(user_id, client_turn_id)` and
+  `(session_id, client_turn_id)` indexes only after repeatable duplicate probes fail
+  closed;
+- keep prepared-prompt consumption after a genuinely new admission. A trusted,
+  non-consuming inspection may derive stable hash lineage from the nonce-protected,
+  owned prepared-prompt row and requested surface without depending on mutable
+  consumption/expiry state; the existing consume step remains authoritative for
+  whether prepared content is actually used;
+- add no queue job, `queued` status, Realtime transport, worker execution, lease,
+  generation fence, terminal CAS, input artifact, or other Phase 2 work.
+
+The waiver authorizes implementation and local/disposable validation. It does not
+authorize rerunning the paid hosted cohort without a separate intentional decision.
+
 ## Authoritative current state
 
 | Gate                                | State                      | Evidence / next proof                                                                                                           |

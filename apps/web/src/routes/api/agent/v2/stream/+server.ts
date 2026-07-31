@@ -33,6 +33,7 @@ import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 import type {
 	AgentTurnPhase,
+	ChatAttachmentRef,
 	ChatContextType,
 	ChatToolCall,
 	ChatToolResult,
@@ -41,6 +42,11 @@ import type {
 	Database,
 	Json,
 	AgentTimingSummary
+} from '@buildos/shared-types';
+import {
+	AGENTIC_CHAT_REQUEST_HASH_VERSION,
+	hashCanonicalAdmissionRequestV1,
+	type NormalizedChatAttachmentV1
 } from '@buildos/shared-types';
 import type { ServiceContext, ToolExecutionResult } from '$lib/services/agentic-chat/shared/types';
 import type { AgentState } from '$lib/types/agent-chat-enhancement';
@@ -83,6 +89,7 @@ import {
 import {
 	createFastChatSessionService,
 	extractLoadedSkillIdsFromHistory,
+	projectLegacyFallbackHistorySnapshot,
 	appendAttachmentContextToMessage,
 	buildAttachmentOnlyDisplayText,
 	buildLiveVisionContentParts,
@@ -216,6 +223,7 @@ import {
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
 import {
 	consumePreparedPrompt,
+	inspectPreparedPromptAdmissionLineage,
 	type PreparedPromptConsumeMissDiagnostics
 } from '$lib/services/agentic-chat-v2/prepared-prompt-consumer';
 import {
@@ -229,7 +237,12 @@ import {
 	type FastChatCancelReason
 } from '$lib/services/agentic-chat-v2/cancel-reason-channel';
 import { parseFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request';
-import { admitFastChatTurn } from '$lib/services/agentic-chat-v2/turn-admission';
+import {
+	admitLegacyAgenticChatTurn,
+	DEFAULT_PROGRESS_STALE_RECLAIM_MS,
+	DEFAULT_RECENT_PROGRESS_GRACE_MS,
+	LegacyAgenticChatAdmissionError
+} from '$lib/services/agentic-chat-v2/turn-admission';
 import { resolveFastChatTurnPreparation } from '$lib/services/agentic-chat-v2/turn-preparation';
 import { resolveFastChatScaffoldConfigFromEnv } from '$lib/services/agentic-chat-v2/scaffold-variant';
 import { TurnObservabilityWriter } from '$lib/services/agentic-chat-v2/turn-observability-writer';
@@ -440,6 +453,30 @@ function countBy(values: readonly string[]): Record<string, number> {
 		counts[value] = (counts[value] ?? 0) + 1;
 		return counts;
 	}, {});
+}
+
+function normalizeAdmissionAttachments(
+	attachments: readonly ChatAttachmentRef[]
+): NormalizedChatAttachmentV1[] {
+	return attachments.map((attachment, inputOrder) => ({
+		attachment_kind:
+			attachment.attachment_kind === 'temporary_file' ? 'temporary_file' : 'onto_asset',
+		media_type: 'image',
+		asset_id: attachment.asset_id ?? null,
+		temporary_attachment_id: attachment.temporary_attachment_id ?? null,
+		project_id: attachment.project_id ?? null,
+		role: attachment.role === 'analysis_target' ? 'analysis_target' : 'attachment',
+		display_order: attachment.display_order ?? inputOrder,
+		file_name: attachment.file_name ?? null,
+		content_type: attachment.content_type ?? null,
+		file_size_bytes: attachment.file_size_bytes ?? null,
+		width: attachment.width ?? null,
+		height: attachment.height ?? null,
+		checksum_sha256: attachment.checksum_sha256 ?? null,
+		ocr_status: attachment.ocr_status ?? null,
+		extraction_summary: attachment.extraction_summary ?? null,
+		extracted_text_preview: attachment.extracted_text_preview ?? null
+	}));
 }
 
 function resolvePersistableAssistantContent(params: {
@@ -1372,19 +1409,23 @@ export const POST: RequestHandler = async ({
 		// Emits the standard error -> done pair used by every early-exit / deny path.
 		// Marks doneEmittedAtMs for timing. Callers keep their own tail (stream close,
 		// cancel-watcher teardown, timing metric) since those differ per exit reason.
-		// `turn_rejected: true` tells the client this turn was denied BEFORE the user
-		// message persisted, so it can roll back its optimistic bubble. Every caller
-		// of this helper runs before persistMessage — keep it that way, or add an
-		// explicit override if a post-persistence caller ever appears.
+		// `turn_rejected: true` tells the client this command created no durable user
+		// message, so it can roll back its optimistic bubble. A matching admission
+		// duplicate overrides this to false because the original message is durable.
 		const emitErrorThenDone = async (params: {
 			error: string;
 			finishedReason: string;
 			projectId?: string;
 			errorMetadata: Record<string, unknown>;
 			doneMetadata?: Record<string, unknown>;
+			turnRejected?: boolean;
 		}): Promise<void> => {
 			await sendTimedMessage(
-				{ type: 'error', error: params.error, turn_rejected: true },
+				{
+					type: 'error',
+					error: params.error,
+					turn_rejected: params.turnRejected ?? true
+				},
 				{
 					operationType: 'fastchat_stream_emit_error',
 					projectId: params.projectId,
@@ -1521,68 +1562,193 @@ export const POST: RequestHandler = async ({
 				onCancel: abortTurn
 			});
 
-			const gatewayEnabled = true;
-			const turnAdmission = await admitFastChatTurn({
-				supabase: internalSupabase,
-				sessionId: session.id,
-				userId,
-				streamRunId,
-				clientTurnId: clientTurnId ?? null,
+			const requestLastTurnContext = streamRequest.lastTurnContext ?? null;
+			const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
+			const conversationSummary =
+				typeof session.summary === 'string' ? session.summary : null;
+			const turnPreparation = resolveFastChatTurnPreparation({
 				contextType,
-				entityId: entityId ?? null,
-				projectId: timingProjectId ?? null,
-				gatewayEnabled,
-				requestMessage: storedUserMessageContent,
-				requestStartedAtMs,
-				detachedTurnMaxDurationMs: FASTCHAT_DETACHED_TURN_MAX_DURATION_MS,
-				createTurnRunId: uuidv4
+				entityId,
+				projectId: projectIdForLogs ?? null,
+				projectFocus,
+				latestUserMessage: messageForModel,
+				conversationSummary,
+				agentMetadata: session.agent_metadata,
+				contextShiftHintTtlMs: FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS,
+				scaffold: FASTCHAT_SCAFFOLD
 			});
-			activeTurnLookupMs = turnAdmission.activeTurnLookupMs;
-			turnAdmissionMs = turnAdmission.turnAdmissionMs;
+			const {
+				sessionMetadata,
+				pendingTurnIntent,
+				turnIntent,
+				previousDomainState,
+				priorDomainIds,
+				priorOutcomeCardIds,
+				domainSensingBypassed,
+				turnDomainSensing,
+				recentContextShiftHint,
+				bypassContextCacheForShiftHint,
+				cacheKey,
+				cachedContext,
+				selectedSurfaceProfile
+			} = turnPreparation;
+			let tools = turnPreparation.tools;
+			const gatewayEnabled = true;
+			let commissionedWriteToolNames: string[] = [];
+			let commissionedWriteMinimumCount = 0;
+			let latestDomainState = previousDomainState;
+			let domainStateMetadataUpdatePromise: Promise<boolean> | null = null;
 
-			if (turnAdmission.activeTurnLookupError) {
-				logFastChatError({
-					error: turnAdmission.activeTurnLookupError,
-					operationType: 'fastchat_active_turn_lookup',
-					projectId: projectIdForLogs,
-					metadata: {
-						sessionId: session.id,
-						contextType,
-						entityId
-					}
-				});
+			const preparedAdmissionLineage = await inspectPreparedPromptAdmissionLineage({
+				supabase,
+				key: requestPreparedPromptKey,
+				userId,
+				sessionId: session.id,
+				cacheKey,
+				surfaceProfile: selectedSurfaceProfile
+			});
+			const requestHash = await hashCanonicalAdmissionRequestV1({
+				version: AGENTIC_CHAT_REQUEST_HASH_VERSION,
+				clientTurnId: clientTurnId ?? '',
+				streamRunId,
+				context: {
+					type: contextType,
+					entityId: entityId ?? null,
+					projectId: timingProjectId ?? null
+				},
+				message: storedUserMessageContent,
+				attachments: normalizeAdmissionAttachments(chatAttachmentRefs),
+				voiceNoteGroupId: voiceGroupId ?? null,
+				preparedPromptLineage: {
+					id: preparedAdmissionLineage?.id ?? null,
+					acceptedSurfaceProfile: preparedAdmissionLineage?.acceptedSurfaceProfile ?? null
+				}
+			});
+
+			const userMessageMetadata: Record<string, Json | undefined> = {};
+			if (voiceGroupId) userMessageMetadata.voice_note_group_id = voiceGroupId;
+			if (clientTurnId) userMessageMetadata.client_turn_id = clientTurnId;
+			userMessageMetadata.stream_run_id = streamRunId;
+			if (chatAttachmentRefs.length > 0) {
+				userMessageMetadata.attachment_count = chatAttachmentRefs.length;
+				userMessageMetadata.attachment_only = message.length === 0;
+				userMessageMetadata.live_vision_requested = liveVisionRequested;
+				userMessageMetadata.live_vision_attachment_count = liveVisionAttachmentCount;
+				userMessageMetadata.attachments = sanitizeAttachmentRefsForMetadata(
+					chatAttachmentRefs
+				) as unknown as Json;
 			}
 
-			const activeTurn = turnAdmission.activeTurn;
-			if (turnAdmission.staleTurnCancelError && activeTurn) {
+			const candidateTurnRunId = uuidv4();
+			const candidateUserMessageId = uuidv4();
+			userMessageMetadata.idempotency_key = `chat-turn:${candidateTurnRunId}:user`;
+			const admissionStartedAtMs = Date.now();
+			let turnAdmission: Awaited<ReturnType<typeof admitLegacyAgenticChatTurn>>;
+			try {
+				turnAdmission = await admitLegacyAgenticChatTurn({
+					supabase: internalSupabase,
+					userId,
+					sessionId: session.id,
+					turnRunId: candidateTurnRunId,
+					userMessageId: candidateUserMessageId,
+					streamRunId,
+					clientTurnId: clientTurnId ?? null,
+					requestHash,
+					requestHashVersion: AGENTIC_CHAT_REQUEST_HASH_VERSION,
+					contextType,
+					entityId: entityId ?? null,
+					projectId: timingProjectId ?? null,
+					source: 'live_ui',
+					gatewayEnabled: true,
+					requestMessage: storedUserMessageContent,
+					startedAt: new Date(requestStartedAtMs).toISOString(),
+					userMessageContent: storedUserMessageContent,
+					userMessageMetadata,
+					historyLimit: FASTCHAT_HISTORY_LOOKBACK_MESSAGES,
+					detachedTurnMaxDurationMs: FASTCHAT_DETACHED_TURN_MAX_DURATION_MS,
+					progressStaleReclaimMs: DEFAULT_PROGRESS_STALE_RECLAIM_MS,
+					recentProgressGraceMs: DEFAULT_RECENT_PROGRESS_GRACE_MS
+				});
+			} catch (error) {
+				turnAdmissionMs = Math.max(0, Date.now() - admissionStartedAtMs);
 				logFastChatError({
-					error: turnAdmission.staleTurnCancelError,
-					operationType: 'fastchat_stale_turn_cancel',
+					error,
+					operationType: 'fastchat_legacy_atomic_admission',
 					projectId: projectIdForLogs,
 					tableName: 'chat_turn_runs',
-					recordId: activeTurn.id,
+					recordId: candidateTurnRunId,
 					metadata: {
 						sessionId: session.id,
 						contextType,
 						entityId,
-						activeTurnRunId: activeTurn.id,
-						activeStreamRunId: activeTurn.stream_run_id,
-						streamRunId,
-						clientTurnId: clientTurnId ?? null
+						code:
+							error instanceof LegacyAgenticChatAdmissionError
+								? error.code
+								: 'unknown'
 					}
 				});
+				await emitErrorThenDone({
+					error: 'BuildOS could not start this response. Please try again.',
+					finishedReason: 'turn_run_admission_failed',
+					projectId: projectIdForLogs,
+					errorMetadata: {
+						sessionId: session.id,
+						contextType,
+						entityId,
+						reason: 'legacy_atomic_admission_failed'
+					}
+				});
+				observabilityWriter.queueTimingMetric('turn_run_admission_failed');
+				return;
 			}
+			turnAdmissionMs = Math.max(0, Date.now() - admissionStartedAtMs);
+			activeTurnLookupMs = null;
 
-			if (turnAdmission.status === 'active_turn_running') {
+			if (turnAdmission.outcome === 'matching_duplicate') {
+				await emitErrorThenDone({
+					error: 'This response is already in progress. Reopen the chat to continue with the existing response.',
+					finishedReason: 'matching_duplicate',
+					projectId: projectIdForLogs,
+					turnRejected: false,
+					errorMetadata: {
+						sessionId: turnAdmission.sessionId,
+						contextType,
+						activeTurnRunId: turnAdmission.turnRunId,
+						activeStreamRunId: turnAdmission.streamRunId,
+						reason: 'matching_duplicate'
+					}
+				});
+				stopCancelWatcher?.();
+				stopCancelWatcher = null;
+				return;
+			}
+			if (turnAdmission.outcome === 'active_turn_conflict') {
 				await emitErrorThenDone({
 					error: 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.',
 					finishedReason: 'active_turn_running',
 					projectId: projectIdForLogs,
 					errorMetadata: {
-						sessionId: session.id,
+						sessionId: turnAdmission.sessionId,
 						contextType,
-						activeTurnRunId: turnAdmission.activeTurn.id,
-						activeStreamRunId: turnAdmission.activeTurn.stream_run_id
+						activeTurnRunId: turnAdmission.turnRunId,
+						activeStreamRunId: turnAdmission.streamRunId
+					}
+				});
+				stopCancelWatcher?.();
+				stopCancelWatcher = null;
+				return;
+			}
+			if (turnAdmission.outcome === 'idempotency_conflict') {
+				await emitErrorThenDone({
+					error: 'This request conflicts with an existing response. Reopen the chat and try again.',
+					finishedReason: 'idempotency_conflict',
+					projectId: projectIdForLogs,
+					errorMetadata: {
+						sessionId: turnAdmission.sessionId,
+						contextType,
+						activeTurnRunId: turnAdmission.turnRunId,
+						activeStreamRunId: turnAdmission.streamRunId,
+						reason: turnAdmission.conflictReason
 					}
 				});
 				stopCancelWatcher?.();
@@ -1592,64 +1758,31 @@ export const POST: RequestHandler = async ({
 
 			turnRunId = turnAdmission.turnRunId;
 			observabilityWriter.setTurnRunId(turnRunId);
-			if (turnAdmission.status === 'insert_failed') {
-				const failedTurnRunId = turnAdmission.turnRunId;
-				const activeTurnConflict = turnAdmission.activeTurnConflict;
-				turnRunId = null;
-				observabilityWriter.setTurnRunId(null);
-				const conflictMetadata = {
+			const fallbackHistoryFromAdmission = projectLegacyFallbackHistorySnapshot(
+				turnAdmission.fallbackSnapshot
+			);
+			observabilityWriter.recordEvent('prompt', 'turn_intent_resolved', {
+				...turnIntent,
+				pending_intent_present: pendingTurnIntent !== null,
+				domain_sensing_bypassed: domainSensingBypassed
+			} as Json);
+			if (bypassContextCacheForShiftHint && cachedContext) {
+				logger.info('Bypassing fastchat context cache due to recent context shift hint', {
 					sessionId: session.id,
-					turnRunId: failedTurnRunId,
-					streamRunId,
-					clientTurnId: clientTurnId ?? null,
 					contextType,
 					entityId,
-					projectId: timingProjectId,
-					activeTurnConflict,
-					requestMessageLength: storedUserMessageContent.length
-				};
-				if (activeTurnConflict) {
-					logger.info('FastChat turn insert skipped because a turn is already running', {
-						...conflictMetadata,
-						streamRunId
-					});
-				} else {
-					logFastChatError({
-						error: turnAdmission.insertError,
-						operationType: 'fastchat_turn_run_insert',
-						projectId: projectIdForLogs,
-						tableName: 'chat_turn_runs',
-						recordId: failedTurnRunId,
-						metadata: conflictMetadata
-					});
-				}
-				const failedReason = activeTurnConflict
-					? 'active_turn_running'
-					: 'turn_run_insert_failed';
-				await emitErrorThenDone({
-					error: activeTurnConflict
-						? 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.'
-						: 'BuildOS could not start this response. Please try again.',
-					finishedReason: failedReason,
-					projectId: projectIdForLogs,
-					errorMetadata: {
-						sessionId: session.id,
-						contextType,
-						entityId,
-						reason: activeTurnConflict
-							? 'active_turn_conflict'
-							: 'turn_run_insert_failed'
-					},
-					doneMetadata: {
-						sessionId: session.id,
-						contextType,
-						entityId,
-						reason: failedReason
-					}
+					shiftHint: recentContextShiftHint
 				});
-				observabilityWriter.queueTimingMetric(failedReason);
-				return;
 			}
+			bypassedContextCache = bypassContextCacheForShiftHint;
+
+			const llm = new OpenRouterV2Service({
+				supabase,
+				httpReferer: request.headers.get('referer') ?? undefined,
+				appName: 'BuildOS Agentic Chat V2'
+			});
+			preparedSurfaceProfile = selectedSurfaceProfile;
+			toolSelectionMs = turnPreparation.toolSelectionMs;
 
 			// WP-12c (speed audit): stale-recovery must precede the active-checkpoint
 			// load (recovery flips resuming→active), but the pair as a whole is
@@ -1701,64 +1834,6 @@ export const POST: RequestHandler = async ({
 					return null;
 				}
 			})();
-
-			const requestLastTurnContext = streamRequest.lastTurnContext ?? null;
-			const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
-			const conversationSummary =
-				typeof session.summary === 'string' ? session.summary : null;
-			const turnPreparation = resolveFastChatTurnPreparation({
-				contextType,
-				entityId,
-				projectId: projectIdForLogs ?? null,
-				projectFocus,
-				latestUserMessage: messageForModel,
-				conversationSummary,
-				agentMetadata: session.agent_metadata,
-				contextShiftHintTtlMs: FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS,
-				scaffold: FASTCHAT_SCAFFOLD
-			});
-			const {
-				sessionMetadata,
-				pendingTurnIntent,
-				turnIntent,
-				previousDomainState,
-				priorDomainIds,
-				priorOutcomeCardIds,
-				domainSensingBypassed,
-				turnDomainSensing,
-				recentContextShiftHint,
-				bypassContextCacheForShiftHint,
-				cacheKey,
-				cachedContext,
-				selectedSurfaceProfile
-			} = turnPreparation;
-			let tools = turnPreparation.tools;
-			let commissionedWriteToolNames: string[] = [];
-			let commissionedWriteMinimumCount = 0;
-			let latestDomainState = previousDomainState;
-			let domainStateMetadataUpdatePromise: Promise<boolean> | null = null;
-			observabilityWriter.recordEvent('prompt', 'turn_intent_resolved', {
-				...turnIntent,
-				pending_intent_present: pendingTurnIntent !== null,
-				domain_sensing_bypassed: domainSensingBypassed
-			} as Json);
-			if (bypassContextCacheForShiftHint && cachedContext) {
-				logger.info('Bypassing fastchat context cache due to recent context shift hint', {
-					sessionId: session.id,
-					contextType,
-					entityId,
-					shiftHint: recentContextShiftHint
-				});
-			}
-			bypassedContextCache = bypassContextCacheForShiftHint;
-
-			const llm = new OpenRouterV2Service({
-				supabase,
-				httpReferer: request.headers.get('referer') ?? undefined,
-				appName: 'BuildOS Agentic Chat V2'
-			});
-			preparedSurfaceProfile = selectedSurfaceProfile;
-			toolSelectionMs = turnPreparation.toolSelectionMs;
 
 			const preparedPromptConsumeStartedAtMs = Date.now();
 			const preparedPromptForTurn = await consumePreparedPrompt({
@@ -1864,10 +1939,7 @@ export const POST: RequestHandler = async ({
 				historyComposedAtMs = Date.now();
 			} else {
 				historyLoadStartedAtMs = Date.now();
-				history = await sessionService.loadRecentMessages(
-					session.id,
-					FASTCHAT_HISTORY_LOOKBACK_MESSAGES
-				);
+				history = fallbackHistoryFromAdmission;
 				historyLoadedAtMs = Date.now();
 				historyComposeStartedAtMs = Date.now();
 				historyComposition = composeFastChatHistory({
@@ -1940,26 +2012,6 @@ export const POST: RequestHandler = async ({
 				}
 			);
 
-			const userMessageMetadata: Record<string, Json | undefined> = {};
-			if (voiceGroupId) {
-				userMessageMetadata.voice_note_group_id = voiceGroupId;
-			}
-			if (clientTurnId) {
-				userMessageMetadata.client_turn_id = clientTurnId;
-			}
-			if (streamRunId) {
-				userMessageMetadata.stream_run_id = streamRunId;
-			}
-			if (chatAttachmentRefs.length > 0) {
-				userMessageMetadata.attachment_count = chatAttachmentRefs.length;
-				userMessageMetadata.attachment_only = message.length === 0;
-				userMessageMetadata.live_vision_requested = liveVisionRequested;
-				userMessageMetadata.live_vision_attachment_count = liveVisionAttachmentCount;
-				userMessageMetadata.attachments = sanitizeAttachmentRefsForMetadata(
-					chatAttachmentRefs
-				) as unknown as Json;
-			}
-
 			activeSupervisorCheckpoint = await supervisorCheckpointChain;
 			if (activeSupervisorCheckpoint) {
 				try {
@@ -2030,37 +2082,36 @@ export const POST: RequestHandler = async ({
 					});
 				}
 			}
-			const userMessagePromise = sessionService.persistMessage({
-				sessionId: session.id,
-				userId,
-				role: 'user',
-				content: storedUserMessageContent,
-				metadata:
-					Object.keys(userMessageMetadata).length > 0 ? userMessageMetadata : undefined,
-				idempotencyKey: clientTurnId ? `turn:${clientTurnId}:user` : undefined
-			});
-			void userMessagePromise
-				.then(async (persistedUserMessage) => {
-					if (persistedUserMessage?.id) {
-						observabilityWriter.queueTurnRunUpdate(
-							{ user_message_id: persistedUserMessage.id },
-							'link_turn_run_user_message',
-							{ messageId: persistedUserMessage.id }
-						);
-						if (chatAttachmentRefs.length > 0) {
-							await sessionService.persistMessageAttachments({
-								sessionId: session.id,
-								userId,
-								messageId: persistedUserMessage.id,
-								projectId: attachmentProjectId,
-								attachments: chatAttachmentRefs
-							});
+			if (resumingSupervisorCheckpoint) {
+				const { error: userMessageMetadataError } = await internalSupabase
+					.from('chat_messages')
+					.update({ metadata: userMessageMetadata as Json })
+					.eq('id', turnAdmission.userMessageId)
+					.eq('session_id', session.id)
+					.eq('user_id', userId);
+				if (userMessageMetadataError) {
+					logFastChatError({
+						error: userMessageMetadataError,
+						operationType: 'fastchat_user_message_metadata_update',
+						projectId: projectIdForLogs,
+						tableName: 'chat_messages',
+						recordId: turnAdmission.userMessageId,
+						metadata: {
+							sessionId: session.id,
+							checkpointId: resumingSupervisorCheckpoint.id
 						}
-					}
-				})
-				.catch(() => {
-					// User message persistence is already handled later in the route.
+					});
+				}
+			}
+			if (chatAttachmentRefs.length > 0) {
+				await sessionService.persistMessageAttachments({
+					sessionId: session.id,
+					userId,
+					messageId: turnAdmission.userMessageId,
+					projectId: attachmentProjectId,
+					attachments: chatAttachmentRefs
 				});
+			}
 			let toolsRequiringProjectId = getToolsRequiringProjectId(tools);
 			let effectiveContextType: ChatContextType = contextType;
 			let effectiveEntityId: string | null = entityId ?? null;
@@ -3923,27 +3974,16 @@ export const POST: RequestHandler = async ({
 					recovered_as_degraded_completion: pass.recoveredAsDegradedCompletion === true
 				} as Json);
 			}
-			const persistedUserMessagePromise = userMessagePromise.catch((error) => {
-				logger.warn('Failed to persist user message', { error, sessionId: session.id });
-				logFastChatError({
-					error,
-					operationType: 'fastchat_persist_message',
-					projectId: projectIdForLogs,
-					metadata: { role: 'user', sessionId: session.id }
-				});
-				return null;
-			});
 			const finalizeUserMessagePromise = (async () => {
-				const userMessage = await persistedUserMessagePromise;
-				if (voiceGroupId && userMessage?.id) {
+				if (voiceGroupId) {
 					await sessionService.attachVoiceNoteGroup({
 						groupId: voiceGroupId,
 						userId,
 						sessionId: session.id,
-						messageId: userMessage.id
+						messageId: turnAdmission.userMessageId
 					});
 				}
-				return userMessage;
+				return { id: turnAdmission.userMessageId };
 			})();
 			const sessionContextSyncPromise = sessionService.updateSessionContext({
 				session,

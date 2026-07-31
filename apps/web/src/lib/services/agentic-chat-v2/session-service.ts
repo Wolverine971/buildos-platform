@@ -21,6 +21,7 @@ import {
 	createChatAttachmentRefFromAsset,
 	type ChatAttachmentAssetRow
 } from './attachments';
+import type { LegacyFallbackHistorySnapshot } from './turn-admission';
 
 const logger = createLogger('FastChatSession');
 
@@ -397,6 +398,112 @@ export function buildInterruptedToolHistorySummary(
 	return previewText(lines.join('\n'), 3000);
 }
 
+/**
+ * Pure projection shared by the legacy query path and the atomic-admission
+ * snapshot path. Admission returns raw bounded rows captured before the current
+ * message; this function reproduces the existing model-facing history shape.
+ */
+export function projectLegacyFallbackHistorySnapshot(
+	snapshot: LegacyFallbackHistorySnapshot
+): FastChatHistoryMessage[] {
+	const allowedRoles = new Set(['user', 'assistant', 'system']);
+	const orderedMessages = snapshot.messages.filter((message) => allowedRoles.has(message.role));
+	const messageOrderById = new Map(orderedMessages.map((message, index) => [message.id, index]));
+	const attachmentsByMessageId = new Map<string, ChatAttachmentRef[]>();
+
+	for (const rawRow of snapshot.attachments) {
+		const row = rawRow as unknown as ChatMessageAttachmentRow;
+		if (!row.message_id || row.media_type !== 'image') continue;
+		const existing = attachmentsByMessageId.get(row.message_id) ?? [];
+		if (row.attachment_kind === 'temporary_file') {
+			const metadata = row.metadata ?? {};
+			const temporaryAttachmentId =
+				typeof metadata.temporary_attachment_id === 'string'
+					? metadata.temporary_attachment_id
+					: null;
+			if (!temporaryAttachmentId) continue;
+			existing.push({
+				attachment_kind: 'temporary_file',
+				media_type: 'image',
+				temporary_attachment_id: temporaryAttachmentId,
+				project_id: null,
+				file_name: typeof metadata.file_name === 'string' ? metadata.file_name : null,
+				content_type:
+					typeof metadata.content_type === 'string' ? metadata.content_type : null,
+				file_size_bytes:
+					typeof metadata.file_size_bytes === 'number' ? metadata.file_size_bytes : null,
+				width: typeof metadata.width === 'number' ? metadata.width : null,
+				height: typeof metadata.height === 'number' ? metadata.height : null,
+				checksum_sha256:
+					typeof metadata.checksum_sha256 === 'string' ? metadata.checksum_sha256 : null,
+				ocr_status: 'skipped',
+				role: row.role === 'analysis_target' ? 'analysis_target' : 'attachment',
+				display_order: row.display_order ?? existing.length,
+				expires_at: typeof metadata.expires_at === 'string' ? metadata.expires_at : null,
+				metadata: null
+			});
+			attachmentsByMessageId.set(row.message_id, existing);
+			continue;
+		}
+		if (row.attachment_kind !== 'onto_asset') continue;
+		const asset = normalizeAttachmentAsset(row.asset);
+		if (!asset) continue;
+		existing.push(
+			createChatAttachmentRefFromAsset(
+				asset,
+				{
+					role: row.role === 'analysis_target' ? 'analysis_target' : 'attachment',
+					display_order: row.display_order ?? existing.length,
+					metadata: row.metadata ?? null
+				},
+				{ maxExtractedTextChars: 1600 }
+			)
+		);
+		attachmentsByMessageId.set(row.message_id, existing);
+	}
+
+	const executionsByMessageId = new Map<string, InterruptedToolExecutionSummaryRow[]>();
+	for (const row of snapshot.interrupted_tool_executions) {
+		if (!row.message_id) continue;
+		const existing = executionsByMessageId.get(row.message_id) ?? [];
+		existing.push(row);
+		executionsByMessageId.set(row.message_id, existing);
+	}
+
+	const orderedSkillExecutionRows = snapshot.loaded_skill_executions.slice().sort((a, b) => {
+		const aMessageOrder = messageOrderById.get(a.message_id ?? '') ?? Number.MAX_SAFE_INTEGER;
+		const bMessageOrder = messageOrderById.get(b.message_id ?? '') ?? Number.MAX_SAFE_INTEGER;
+		if (aMessageOrder !== bMessageOrder) return aMessageOrder - bMessageOrder;
+		return (a.sequence_index ?? 0) - (b.sequence_index ?? 0);
+	});
+	const loadedSkillHistorySummary = buildLoadedSkillHistorySummary(orderedSkillExecutionRows);
+
+	const historyMessages = orderedMessages.flatMap((message) => {
+		const msg = message as RecentChatMessageRow;
+		const attachments = attachmentsByMessageId.get(msg.id) ?? [];
+		const attachmentContext = buildAttachmentContextBlock(attachments, { maxChars: 5000 });
+		const projected: FastChatHistoryMessage[] = [
+			{
+				role: msg.role as FastChatHistoryMessage['role'],
+				content: attachmentContext ? `${msg.content}\n\n${attachmentContext}` : msg.content,
+				attachments: attachments.length > 0 ? attachments : undefined
+			}
+		];
+		if (isInterruptedAssistantMessage(msg)) {
+			const summary = buildInterruptedToolHistorySummary(
+				executionsByMessageId.get(msg.id) ?? []
+			);
+			if (summary) projected.push({ role: 'system', content: summary });
+		}
+		return projected;
+	});
+
+	if (loadedSkillHistorySummary) {
+		historyMessages.push({ role: 'system', content: loadedSkillHistorySummary });
+	}
+	return historyMessages;
+}
+
 export function createFastChatSessionService(
 	supabase: SupabaseClient<Database>,
 	options: FastChatSessionServiceOptions = {}
@@ -645,8 +752,7 @@ export function createFastChatSessionService(
 		const messageIds = orderedMessages
 			.map((msg) => msg.id)
 			.filter((id): id is string => Boolean(id));
-		const messageOrderById = new Map(messageIds.map((id, index) => [id, index]));
-		const attachmentsByMessageId = new Map<string, ChatAttachmentRef[]>();
+		let fallbackAttachmentRows: ChatMessageAttachmentRow[] = [];
 		if (messageIds.length > 0) {
 			const { data: attachmentRows, error: attachmentError } = await (supabase as any)
 				.from('chat_message_attachments')
@@ -674,76 +780,14 @@ export function createFastChatSessionService(
 					}
 				});
 			} else {
-				for (const row of (attachmentRows ?? []) as ChatMessageAttachmentRow[]) {
-					if (!row.message_id) continue;
-					if (row.media_type !== 'image') continue;
-					const existing = attachmentsByMessageId.get(row.message_id) ?? [];
-					if (row.attachment_kind === 'temporary_file') {
-						const metadata = row.metadata ?? {};
-						const temporaryAttachmentId =
-							typeof metadata.temporary_attachment_id === 'string'
-								? metadata.temporary_attachment_id
-								: null;
-						if (!temporaryAttachmentId) continue;
-						existing.push({
-							attachment_kind: 'temporary_file',
-							media_type: 'image',
-							temporary_attachment_id: temporaryAttachmentId,
-							project_id: null,
-							file_name:
-								typeof metadata.file_name === 'string' ? metadata.file_name : null,
-							content_type:
-								typeof metadata.content_type === 'string'
-									? metadata.content_type
-									: null,
-							file_size_bytes:
-								typeof metadata.file_size_bytes === 'number'
-									? metadata.file_size_bytes
-									: null,
-							width: typeof metadata.width === 'number' ? metadata.width : null,
-							height: typeof metadata.height === 'number' ? metadata.height : null,
-							checksum_sha256:
-								typeof metadata.checksum_sha256 === 'string'
-									? metadata.checksum_sha256
-									: null,
-							ocr_status: 'skipped',
-							role: row.role === 'analysis_target' ? 'analysis_target' : 'attachment',
-							display_order: row.display_order ?? existing.length,
-							expires_at:
-								typeof metadata.expires_at === 'string'
-									? metadata.expires_at
-									: null,
-							metadata: null
-						});
-						attachmentsByMessageId.set(row.message_id, existing);
-						continue;
-					}
-					if (row.attachment_kind !== 'onto_asset') continue;
-					const asset = normalizeAttachmentAsset(row.asset);
-					if (!asset) continue;
-					existing.push(
-						createChatAttachmentRefFromAsset(
-							asset,
-							{
-								role:
-									row.role === 'analysis_target'
-										? 'analysis_target'
-										: 'attachment',
-								display_order: row.display_order ?? existing.length,
-								metadata: row.metadata ?? null
-							},
-							{ maxExtractedTextChars: 1600 }
-						)
-					);
-					attachmentsByMessageId.set(row.message_id, existing);
-				}
+				fallbackAttachmentRows = (attachmentRows ?? []) as ChatMessageAttachmentRow[];
 			}
 		}
 		const interruptedMessageIds = orderedMessages
 			.filter(isInterruptedAssistantMessage)
 			.map((msg) => msg.id)
 			.filter((id): id is string => Boolean(id));
-		const executionsByMessageId = new Map<string, InterruptedToolExecutionSummaryRow[]>();
+		let interruptedExecutionRows: InterruptedToolExecutionSummaryRow[] = [];
 
 		if (interruptedMessageIds.length > 0) {
 			const { data: executionRows, error: executionError } = await supabase
@@ -771,16 +815,12 @@ export function createFastChatSessionService(
 					}
 				});
 			} else {
-				for (const row of executionRows ?? []) {
-					if (!row.message_id) continue;
-					const existing = executionsByMessageId.get(row.message_id) ?? [];
-					existing.push(row as InterruptedToolExecutionSummaryRow);
-					executionsByMessageId.set(row.message_id, existing);
-				}
+				interruptedExecutionRows = (executionRows ??
+					[]) as InterruptedToolExecutionSummaryRow[];
 			}
 		}
 
-		let loadedSkillHistorySummary: string | null = null;
+		let loadedSkillExecutionRows: LoadedSkillExecutionSummaryRow[] = [];
 		const assistantMessageIds = orderedMessages
 			.filter((msg) => msg.role === 'assistant')
 			.map((msg) => msg.id)
@@ -814,57 +854,17 @@ export function createFastChatSessionService(
 					}
 				});
 			} else {
-				const orderedSkillExecutionRows = (
-					(skillExecutionRows ?? []) as LoadedSkillExecutionSummaryRow[]
-				)
-					.slice()
-					.sort((a, b) => {
-						const aMessageOrder =
-							messageOrderById.get(a.message_id ?? '') ?? Number.MAX_SAFE_INTEGER;
-						const bMessageOrder =
-							messageOrderById.get(b.message_id ?? '') ?? Number.MAX_SAFE_INTEGER;
-						if (aMessageOrder !== bMessageOrder) return aMessageOrder - bMessageOrder;
-						return (a.sequence_index ?? 0) - (b.sequence_index ?? 0);
-					});
-				loadedSkillHistorySummary =
-					buildLoadedSkillHistorySummary(orderedSkillExecutionRows);
+				loadedSkillExecutionRows = (skillExecutionRows ??
+					[]) as LoadedSkillExecutionSummaryRow[];
 			}
 		}
 
-		const historyMessages = orderedMessages.flatMap((msg) => {
-			const attachments = attachmentsByMessageId.get(msg.id) ?? [];
-			const attachmentContext = buildAttachmentContextBlock(attachments, { maxChars: 5000 });
-			const historyMessages: FastChatHistoryMessage[] = [
-				{
-					role: msg.role as FastChatHistoryMessage['role'],
-					content: attachmentContext
-						? `${msg.content}\n\n${attachmentContext}`
-						: msg.content,
-					attachments: attachments.length > 0 ? attachments : undefined
-				}
-			];
-			if (isInterruptedAssistantMessage(msg)) {
-				const summary = buildInterruptedToolHistorySummary(
-					executionsByMessageId.get(msg.id) ?? []
-				);
-				if (summary) {
-					historyMessages.push({
-						role: 'system',
-						content: summary
-					});
-				}
-			}
-			return historyMessages;
+		return projectLegacyFallbackHistorySnapshot({
+			messages: orderedMessages,
+			attachments: fallbackAttachmentRows as LegacyFallbackHistorySnapshot['attachments'],
+			interrupted_tool_executions: interruptedExecutionRows,
+			loaded_skill_executions: loadedSkillExecutionRows
 		});
-
-		if (loadedSkillHistorySummary) {
-			historyMessages.push({
-				role: 'system',
-				content: loadedSkillHistorySummary
-			});
-		}
-
-		return historyMessages;
 	}
 
 	async function persistMessage(params: PersistMessageParams): Promise<ChatMessage | null> {

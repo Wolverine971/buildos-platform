@@ -3982,6 +3982,7 @@ export type Database = {
           context_type: string
           created_at: string
           entity_id: string | null
+          execution_mode: string
           finished_at: string | null
           finished_reason: string | null
           first_canonical_op: string | null
@@ -4002,6 +4003,8 @@ export type Database = {
           project_id: string | null
           prompt_snapshot_id: string | null
           raw_history_count: number | null
+          request_hash: string | null
+          request_hash_version: string | null
           request_message: string
           request_prewarmed_context: boolean | null
           session_id: string
@@ -4025,6 +4028,7 @@ export type Database = {
           context_type: string
           created_at?: string
           entity_id?: string | null
+          execution_mode?: string
           finished_at?: string | null
           finished_reason?: string | null
           first_canonical_op?: string | null
@@ -4045,6 +4049,8 @@ export type Database = {
           project_id?: string | null
           prompt_snapshot_id?: string | null
           raw_history_count?: number | null
+          request_hash?: string | null
+          request_hash_version?: string | null
           request_message: string
           request_prewarmed_context?: boolean | null
           session_id: string
@@ -4068,6 +4074,7 @@ export type Database = {
           context_type?: string
           created_at?: string
           entity_id?: string | null
+          execution_mode?: string
           finished_at?: string | null
           finished_reason?: string | null
           first_canonical_op?: string | null
@@ -4088,6 +4095,8 @@ export type Database = {
           project_id?: string | null
           prompt_snapshot_id?: string | null
           raw_history_count?: number | null
+          request_hash?: string | null
+          request_hash_version?: string | null
           request_message?: string
           request_prewarmed_context?: boolean | null
           session_id?: string
@@ -16383,6 +16392,32 @@ export type Database = {
       }
     }
     Functions: {
+      admit_legacy_agentic_chat_turn: {
+        Args: {
+          p_client_turn_id: string | null
+          p_context_type: string
+          p_detached_turn_max_duration_ms: number
+          p_entity_id: string | null
+          p_gateway_enabled: boolean
+          p_history_limit: number
+          p_progress_stale_reclaim_ms: number
+          p_project_id: string | null
+          p_recent_progress_grace_ms: number
+          p_request_hash: string
+          p_request_hash_version: string
+          p_request_message: string
+          p_session_id: string
+          p_source: string
+          p_started_at: string
+          p_stream_run_id: string
+          p_turn_run_id: string
+          p_user_id: string
+          p_user_message_content: string
+          p_user_message_id: string
+          p_user_message_metadata: Json
+        }
+        Returns: Json
+      }
       accept_project_invite: {
         Args: { p_actor_id: string; p_token_hash: string; p_user_email: string }
         Returns: {

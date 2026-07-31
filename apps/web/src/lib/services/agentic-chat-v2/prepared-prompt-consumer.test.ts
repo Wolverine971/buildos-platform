@@ -6,7 +6,10 @@ import {
 	buildPreparedPromptSurface,
 	type PreparedPromptRow
 } from './prepared-prompt-cache';
-import { consumePreparedPrompt } from './prepared-prompt-consumer';
+import {
+	consumePreparedPrompt,
+	inspectPreparedPromptAdmissionLineage
+} from './prepared-prompt-consumer';
 
 type QueryResult = {
 	data: unknown;
@@ -223,5 +226,47 @@ describe('consumePreparedPrompt', () => {
 			result.diagnostics?.actual_tool_definitions_sha256
 		);
 		expect(mock.updatePatches).toEqual([]);
+	});
+
+	it('inspects stable nonce-protected admission lineage without consuming the prompt', async () => {
+		const preparedPrompt = buildPreparedPromptRow({
+			tools: [],
+			overrides: {
+				consumed_at: '2026-07-31T11:00:00.000Z',
+				expires_at: '2026-07-31T11:01:00.000Z'
+			}
+		});
+		const mock = createSupabaseMock({ row: preparedPrompt.row });
+
+		await expect(
+			inspectPreparedPromptAdmissionLineage({
+				supabase: mock.supabase as any,
+				key: preparedPrompt.key,
+				userId: 'user-1',
+				sessionId: 'session-1',
+				cacheKey: 'v2|global|none|none|none',
+				surfaceProfile: 'global_basic'
+			})
+		).resolves.toEqual({
+			id: preparedPrompt.row.id,
+			acceptedSurfaceProfile: 'global_basic'
+		});
+		expect(mock.updatePatches).toEqual([]);
+	});
+
+	it('returns empty admission lineage when the nonce or immutable scope does not match', async () => {
+		const preparedPrompt = buildPreparedPromptRow({ tools: [] });
+		const mock = createSupabaseMock({ row: preparedPrompt.row });
+
+		await expect(
+			inspectPreparedPromptAdmissionLineage({
+				supabase: mock.supabase as any,
+				key: `${preparedPrompt.key}-forged`,
+				userId: 'user-1',
+				sessionId: 'session-1',
+				cacheKey: 'v2|global|none|none|none',
+				surfaceProfile: 'global_basic'
+			})
+		).resolves.toBeNull();
 	});
 });
