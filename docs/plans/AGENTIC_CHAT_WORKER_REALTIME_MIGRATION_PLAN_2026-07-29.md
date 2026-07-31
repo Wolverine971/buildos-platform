@@ -15,7 +15,7 @@
 Completed locally:
 
 - Added the executable `agentic_chat_worker_v1` contract to `packages/shared-types/src/agentic-chat-worker-contract.ts`, including canonical admission/input hashing, immutable history copying, generation-aware event identity, and the terminal-race decision model.
-- Added pinned contract fixtures in `packages/shared-types/src/agentic-chat-worker-contract.test.ts` and exported the contract through `@buildos/shared-types` (six at first lock; 13 tests as of contract revision .4 — the contract-lock doc's revision history is authoritative for counts).
+- Added pinned contract fixtures in `packages/shared-types/src/agentic-chat-worker-contract.test.ts` and exported the contract through `@buildos/shared-types` (six at first lock; eight contract tests as of revision .4/.5; the full shared-types package suite is two files / 13 tests).
 - Added the repeatable, read-only database/security inventory at `supabase/tests/20260729000000_agentic_chat_worker_phase0.preflight.sql`. It was exercised against a disposable PostgreSQL catalog and then captured SELECT-only against production on 2026-07-30.
 - Locked local legacy parity for attachment-only input, compressed history, route-to-runtime exact-once current input, deterministic research capture, and stated-future idempotency/provenance.
 - Updated the Phase 0 baseline, contract lock, and parity ledger to distinguish executable local proof from the database concurrency/fencing tests required in Phase 2.
@@ -1335,3 +1335,4 @@ Conditions 2 and 3 are satisfied by this planning baseline. Condition 1 (indepen
 - `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_BASELINE_2026-07-29.md`
 - `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_INDEPENDENT_AUDIT_2026-07-29.md`
 - `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_CLOSURE_CHECKLIST_2026-07-30.md`
+- `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_FINAL_REAUDIT_BRIEF_2026-07-31.md`

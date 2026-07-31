@@ -37,7 +37,7 @@ The correction chain retains both failed and focused recovery cohorts so the rev
 | `agentic_chat_worker_phase0_carry_targeted_2026-07-31_0f63e47bb.json`          | Focused 3/3 proof after the scenario began observing every pre-existing `START HERE` surface               |
 | `agentic_chat_worker_phase0_gate_2026-07-31_0f63e47bb.json`                    | Decisive clean-tree closure gate: 24/24 scenarios and 30/30 turn assertions                                |
 
-**Requested independent decision:** Re-audit contract revision .5, the migration plan, parity ledger, production preflight, correction chain, and final hosted artifact. Record explicit acceptance, rejection, or waiver. Phase 0 remains open and Phase 1 remains unstarted until that decision is retained.
+**Requested independent decision:** Use `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_FINAL_REAUDIT_BRIEF_2026-07-31.md` to re-audit contract revision .5, the migration plan, parity ledger, production preflight, correction chain, and final hosted artifact. Record explicit acceptance, rejection, or waiver. Phase 0 remains open and Phase 1 remains unstarted until that decision is retained.
 
 ## 1. Verdict by exit-gate item
 
