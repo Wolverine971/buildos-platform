@@ -1365,8 +1365,9 @@
 		request: StreamTurnReconcileRequest
 	): boolean {
 		return (
-			run.stream_run_id === request.streamRunId ||
-			(Boolean(request.clientTurnId) && run.client_turn_id === request.clientTurnId)
+			run.stream_run_id === request.handle.streamRunId ||
+			(Boolean(request.handle.clientTurnId) &&
+				run.client_turn_id === request.handle.clientTurnId)
 		);
 	}
 
@@ -1376,8 +1377,9 @@
 	): boolean {
 		const metadata = message.metadata as Record<string, unknown> | undefined;
 		return (
-			metadata?.stream_run_id === request.streamRunId ||
-			(Boolean(request.clientTurnId) && metadata?.client_turn_id === request.clientTurnId)
+			metadata?.stream_run_id === request.handle.streamRunId ||
+			(Boolean(request.handle.clientTurnId) &&
+				metadata?.client_turn_id === request.handle.clientTurnId)
 		);
 	}
 
@@ -1396,12 +1398,12 @@
 		if (!browser || !isSurfaceActive) return;
 		if (requestId !== turnReconciliationRequestId) return;
 
-		activeRestoredTurnRunId = `reconcile:${request.streamRunId}`;
+		activeRestoredTurnRunId = `reconcile:${request.handle.streamRunId}`;
 		stream.error = null;
 		stream.currentActivity = 'Restoring latest response...';
 
 		try {
-			const snapshot = await loadAgentChatSessionSnapshot(request.sessionId);
+			const snapshot = await loadAgentChatSessionSnapshot(request.handle.sessionId);
 			if (requestId !== turnReconciliationRequestId || !isSurfaceActive) return;
 
 			const matchingTurnRun =
@@ -1417,7 +1419,7 @@
 			}
 
 			if (shouldHydrate) {
-				applyChatSessionSnapshot(request.sessionId, snapshot);
+				applyChatSessionSnapshot(request.handle.sessionId, snapshot);
 				return;
 			}
 

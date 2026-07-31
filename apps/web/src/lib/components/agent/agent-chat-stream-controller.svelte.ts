@@ -7,10 +7,12 @@
 import type {
 	AgentSSEMessage,
 	AgentTimingSummary,
+	CancelTurnResultV1,
 	ChatAttachmentRef,
 	ChatContextType,
 	ChatRole,
-	ChatSession
+	ChatSession,
+	TurnHandleV1
 } from '@buildos/shared-types';
 import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { buildFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request-client';
@@ -48,9 +50,7 @@ export type StreamStopReason = 'user_cancelled' | 'superseded' | 'error';
 export type StreamTurnReconcileReason = 'transport_error' | 'detached';
 
 export interface StreamTurnReconcileRequest {
-	sessionId: string;
-	streamRunId: string;
-	clientTurnId: string | null;
+	handle: TurnHandleV1 & { sessionId: string };
 	reason: StreamTurnReconcileReason;
 }
 
@@ -217,8 +217,8 @@ export class AgentChatStreamController {
 	// reads them reactively (templates/effects), and they're written in the
 	// per-SSE-event hot path where signal overhead adds up.
 	activeStreamRunId = 0;
-	activeTransportStreamRunId: string | null = null;
-	activeClientTurnId: string | null = null;
+	activeTurnHandle: TurnHandleV1 | null = null;
+	lastCancelResult: CancelTurnResultV1 | null = null;
 	activeStreamTiming: ClientStreamTimingState | null = null;
 	lastCompletedStreamTiming: ClientStreamTimingState | null = null;
 
@@ -268,8 +268,8 @@ export class AgentChatStreamController {
 
 	#shouldAcceptStreamEvent(event: AgentSSEMessage): boolean {
 		const decision = this.#streamEventGuard.inspect(event, {
-			streamRunId: this.activeTransportStreamRunId,
-			clientTurnId: this.activeClientTurnId
+			streamRunId: this.activeTurnHandle?.streamRunId ?? null,
+			clientTurnId: this.activeTurnHandle?.clientTurnId ?? null
 		});
 		if (decision.accepted) return true;
 		this.#deps.logDebug?.('[AgentChat] Dropping rejected stream event', {
@@ -277,11 +277,26 @@ export class AgentChatStreamController {
 			reason: decision.reason,
 			eventKey: decision.eventKey,
 			eventStreamRunId: decision.eventStreamRunId,
-			activeStreamRunId: this.activeTransportStreamRunId,
+			activeStreamRunId: this.activeTurnHandle?.streamRunId ?? null,
 			eventClientTurnId: decision.eventClientTurnId,
-			activeClientTurnId: this.activeClientTurnId
+			activeClientTurnId: this.activeTurnHandle?.clientTurnId ?? null
 		});
 		return false;
+	}
+
+	#hydrateActiveTurnHandle(event: AgentSSEMessage): void {
+		const handle = this.activeTurnHandle;
+		if (!handle || handle.executionMode !== 'legacy_sse') return;
+		const eventSessionId =
+			event.type === 'session' ? (event.session?.id ?? event.sessionId ?? null) : null;
+		const sessionId = eventSessionId ?? handle.sessionId;
+		const turnRunId = event.turn_run_id ?? handle.turnRunId;
+		if (sessionId === handle.sessionId && turnRunId === handle.turnRunId) return;
+		this.activeTurnHandle = {
+			...handle,
+			sessionId,
+			turnRunId
+		};
 	}
 
 	finalizeClientStreamTiming(
@@ -304,13 +319,12 @@ export class AgentChatStreamController {
 	buildTurnReconcileRequest(
 		reason: StreamTurnReconcileReason
 	): StreamTurnReconcileRequest | null {
-		const sessionId = this.#deps.getCurrentSession()?.id;
-		const streamRunId = this.activeTransportStreamRunId;
-		if (!sessionId || !streamRunId) return null;
+		const handle = this.activeTurnHandle;
+		if (!handle) return null;
+		const sessionId = handle.sessionId ?? this.#deps.getCurrentSession()?.id ?? null;
+		if (!sessionId) return null;
 		return {
-			sessionId,
-			streamRunId,
-			clientTurnId: this.activeClientTurnId,
+			handle: { ...handle, sessionId },
 			reason
 		};
 	}
@@ -328,8 +342,7 @@ export class AgentChatStreamController {
 		this.isStreaming = false;
 		this.currentActivity = 'Restoring latest response...';
 		this.#currentStreamController = null;
-		this.activeTransportStreamRunId = null;
-		this.activeClientTurnId = null;
+		this.activeTurnHandle = null;
 		this.#clearStreamEventOrderingState();
 		this.#deps.thinking.finalize('interrupted', 'Restoring latest response');
 		this.#deps.assistant.flushText();
@@ -543,8 +556,15 @@ export class AgentChatStreamController {
 
 			this.activeStreamRunId = this.activeStreamRunId + 1;
 			runId = this.activeStreamRunId;
-			this.activeTransportStreamRunId = transportStreamRunId;
-			this.activeClientTurnId = clientTurnId;
+			this.activeTurnHandle = {
+				contractVersion: 'legacy_internal_v1',
+				executionMode: 'legacy_sse',
+				streamRunId: transportStreamRunId,
+				clientTurnId,
+				sessionId: sessionForTurn?.id ?? null,
+				turnRunId: null
+			};
+			this.lastCancelResult = null;
 			this.#clearStreamEventOrderingState();
 			this.activeStreamTiming = buildClientStreamTimingState(runId);
 
@@ -612,6 +632,7 @@ export class AgentChatStreamController {
 					}
 					const event = data as AgentSSEMessage;
 					if (!this.#shouldAcceptStreamEvent(event)) return;
+					this.#hydrateActiveTurnHandle(event);
 					receivedStreamEvent = true;
 					if (event?.type === 'done') receivedTerminalEvent = true;
 					if (event?.type && TURN_EVIDENCE_EVENT_TYPES.has(event.type)) {
@@ -645,8 +666,7 @@ export class AgentChatStreamController {
 					this.isStreaming = false;
 					this.currentActivity = '';
 					this.#currentStreamController = null;
-					this.activeTransportStreamRunId = null;
-					this.activeClientTurnId = null;
+					this.activeTurnHandle = null;
 					this.#clearStreamEventOrderingState();
 					this.#deps.thinking.finalize('error');
 					this.#deps.assistant.flushText();
@@ -668,11 +688,10 @@ export class AgentChatStreamController {
 					this.isStreaming = false;
 					this.currentActivity = '';
 					this.#currentStreamController = null;
-					this.activeClientTurnId = null;
 					if (!receivedStreamEvent && !this.error) {
 						this.error = 'BuildOS did not return a response. Please try again.';
 					}
-					this.activeTransportStreamRunId = null;
+					this.activeTurnHandle = null;
 					this.#clearStreamEventOrderingState();
 					const terminalState = this.error ? 'error' : 'completed';
 					this.#deps.thinking.finalize(terminalState);
@@ -712,8 +731,7 @@ export class AgentChatStreamController {
 				}
 				this.isStreaming = false;
 				this.currentActivity = '';
-				this.activeTransportStreamRunId = null;
-				this.activeClientTurnId = null;
+				this.activeTurnHandle = null;
 				this.#clearStreamEventOrderingState();
 				this.#deps.thinking.finalize('interrupted', 'Stopped');
 				this.#deps.assistant.flushText();
@@ -743,8 +761,7 @@ export class AgentChatStreamController {
 					: 'Failed to send message. Please try again.';
 			this.isStreaming = false;
 			this.currentActivity = '';
-			this.activeTransportStreamRunId = null;
-			this.activeClientTurnId = null;
+			this.activeTurnHandle = null;
 			this.#clearStreamEventOrderingState();
 			this.#deps.thinking.finalize('error');
 			this.#deps.assistant.flushText();
@@ -773,15 +790,19 @@ export class AgentChatStreamController {
 		}
 	}
 
-	async reportStreamCancellationReason(
+	async cancelTurn(
+		handle: TurnHandleV1,
 		reason: 'user_cancelled' | 'superseded',
-		streamRunId: string,
 		options: { awaitAck?: boolean } = {}
-	): Promise<void> {
+	): Promise<CancelTurnResultV1> {
+		if (handle.executionMode !== 'legacy_sse') {
+			throw new Error('Worker Realtime transport is not enabled during Phase 1');
+		}
+
 		const payload = {
-			session_id: this.#deps.getCurrentSession()?.id,
-			stream_run_id: streamRunId,
-			client_turn_id: this.activeClientTurnId ?? undefined,
+			session_id: handle.sessionId ?? this.#deps.getCurrentSession()?.id,
+			stream_run_id: handle.streamRunId,
+			client_turn_id: handle.clientTurnId,
 			reason
 		};
 		const request = this.#fetch('/api/agent/v2/stream/cancel', {
@@ -800,7 +821,7 @@ export class AgentChatStreamController {
 
 		if (!options.awaitAck) {
 			void request;
-			return;
+			return { outcome: 'legacy_abort_requested' };
 		}
 
 		await Promise.race([
@@ -809,6 +830,7 @@ export class AgentChatStreamController {
 				setTimeout(resolve, 120);
 			})
 		]);
+		return { outcome: 'legacy_abort_requested' };
 	}
 
 	detachActiveStream(options: { reconcile?: boolean } = {}): void {
@@ -822,8 +844,7 @@ export class AgentChatStreamController {
 		this.#deps.assistant.flushText();
 		this.finalizeClientStreamTiming(runId, 'aborted');
 		this.activeStreamRunId = this.activeStreamRunId + 1;
-		this.activeTransportStreamRunId = null;
-		this.activeClientTurnId = null;
+		this.activeTurnHandle = null;
 		this.#clearStreamEventOrderingState();
 
 		try {
@@ -858,12 +879,16 @@ export class AgentChatStreamController {
 		}
 
 		const runId = this.activeStreamRunId;
-		const streamRunId = this.activeTransportStreamRunId;
+		const handle = this.activeTurnHandle;
+		const streamRunId = handle?.streamRunId ?? null;
 		const shouldReportReason = reason === 'user_cancelled' || reason === 'superseded';
 		const cancellationReasonPromise =
-			shouldReportReason && streamRunId
-				? this.reportStreamCancellationReason(reason, streamRunId, {
+			shouldReportReason && handle
+				? this.cancelTurn(handle, reason, {
 						awaitAck: Boolean(options.awaitCancelHint)
+					}).then((result) => {
+						this.lastCancelResult = result;
+						return result;
 					})
 				: null;
 
@@ -875,8 +900,7 @@ export class AgentChatStreamController {
 			reason === 'user_cancelled' || reason === 'superseded' ? reason : null
 		);
 		this.activeStreamRunId = this.activeStreamRunId + 1;
-		this.activeTransportStreamRunId = null;
-		this.activeClientTurnId = null;
+		this.activeTurnHandle = null;
 		this.#clearStreamEventOrderingState();
 
 		if (cancellationReasonPromise && options.awaitCancelHint) {
@@ -920,16 +944,14 @@ export class AgentChatStreamController {
 			this.#deps.logDebug?.('Stream abort failed (already closed)', abortError);
 		}
 		this.#currentStreamController = null;
-		this.activeTransportStreamRunId = null;
-		this.activeClientTurnId = null;
+		this.activeTurnHandle = null;
 		this.#clearStreamEventOrderingState();
 	}
 
 	reset(): void {
 		this.disposeActiveStream({ reconcile: false });
 		this.activeStreamRunId = this.activeStreamRunId + 1;
-		this.activeTransportStreamRunId = null;
-		this.activeClientTurnId = null;
+		this.activeTurnHandle = null;
 		this.#clearStreamEventOrderingState();
 		this.isStreaming = false;
 		this.isStartingStream = false;
@@ -937,6 +959,7 @@ export class AgentChatStreamController {
 		this.error = null;
 		this.activeStreamTiming = null;
 		this.lastCompletedStreamTiming = null;
+		this.lastCancelResult = null;
 	}
 }
 

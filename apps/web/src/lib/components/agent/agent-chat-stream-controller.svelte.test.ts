@@ -351,6 +351,14 @@ describe('AgentChatStreamController', () => {
 			preparedPromptKey: 'prepared-key'
 		});
 		expect(requestBody).not.toHaveProperty('prewarmedContext');
+		expect(h.controller.activeTurnHandle).toEqual({
+			contractVersion: 'legacy_internal_v1',
+			executionMode: 'legacy_sse',
+			streamRunId: requestBody.stream_run_id,
+			clientTurnId: requestBody.client_turn_id,
+			sessionId: 'session-1',
+			turnRunId: null
+		});
 
 		const run = h.streamProcessor.runs[0]!;
 		expect(h.streamProcessor.processStream.mock.calls[0]?.[2]).toMatchObject({
@@ -514,6 +522,12 @@ describe('AgentChatStreamController', () => {
 		const run = h.streamProcessor.runs[0]!;
 		const streamCreatedSession = makeSession({ id: 'stream-created-session' });
 		run.progress({ type: 'session', session: streamCreatedSession } as AgentSSEMessage);
+		expect(h.controller.activeTurnHandle).toEqual(
+			expect.objectContaining({
+				executionMode: 'legacy_sse',
+				sessionId: 'stream-created-session'
+			})
+		);
 		run.progress({ type: 'done' });
 		run.complete();
 		await sendPromise;
@@ -644,9 +658,14 @@ describe('AgentChatStreamController', () => {
 		await sendPromise;
 
 		expect(h.reconcileTurnFromSession).toHaveBeenCalledWith({
-			sessionId: 'session-1',
-			streamRunId,
-			clientTurnId,
+			handle: {
+				contractVersion: 'legacy_internal_v1',
+				executionMode: 'legacy_sse',
+				sessionId: 'session-1',
+				streamRunId,
+				clientTurnId,
+				turnRunId: null
+			},
 			reason: 'transport_error'
 		});
 		expect(h.controller.error).toBeNull();
@@ -671,8 +690,10 @@ describe('AgentChatStreamController', () => {
 
 		expect(h.reconcileTurnFromSession).toHaveBeenCalledWith(
 			expect.objectContaining({
-				sessionId: 'session-1',
-				streamRunId,
+				handle: expect.objectContaining({
+					sessionId: 'session-1',
+					streamRunId
+				}),
 				reason: 'transport_error'
 			})
 		);
@@ -694,8 +715,10 @@ describe('AgentChatStreamController', () => {
 
 		expect(h.reconcileTurnFromSession).toHaveBeenCalledWith(
 			expect.objectContaining({
-				sessionId: 'session-1',
-				streamRunId,
+				handle: expect.objectContaining({
+					sessionId: 'session-1',
+					streamRunId
+				}),
 				reason: 'transport_error'
 			})
 		);
@@ -838,6 +861,18 @@ describe('AgentChatStreamController', () => {
 		const sendPromise = h.controller.sendMessage();
 		await flushMicrotasks();
 		const run = h.streamProcessor.runs[0]!;
+		const requestBody = parseBody(h.streamFetchCalls[0]!);
+		run.progress({
+			type: 'turn_phase',
+			turn_phase: 'gathering',
+			message: 'Gathering context',
+			stream_run_id: requestBody.stream_run_id,
+			client_turn_id: requestBody.client_turn_id,
+			turn_run_id: 'turn-run-1'
+		});
+		expect(h.controller.activeTurnHandle).toEqual(
+			expect.objectContaining({ turnRunId: 'turn-run-1' })
+		);
 
 		await h.controller.stopGeneration('user_cancelled');
 		await sendPromise;
@@ -858,7 +893,27 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.isStreaming).toBe(false);
 		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('cancelled');
 		expect(h.controller.lastCompletedStreamTiming?.cancelReason).toBe('user_cancelled');
+		expect(h.controller.lastCancelResult).toEqual({ outcome: 'legacy_abort_requested' });
 		expect(h.reconcileTurnFromSession).not.toHaveBeenCalled();
+	});
+
+	it('does not route a worker handle through the legacy cancellation endpoint', async () => {
+		const h = createHarness();
+
+		await expect(
+			h.controller.cancelTurn(
+				{
+					contractVersion: 'agentic_chat_worker_v1',
+					executionMode: 'worker_realtime',
+					streamRunId: 'worker-stream-1',
+					clientTurnId: 'worker-client-1',
+					sessionId: 'session-1',
+					turnRunId: 'turn-run-1'
+				},
+				'user_cancelled'
+			)
+		).rejects.toThrow('Worker Realtime transport is not enabled during Phase 1');
+		expect(h.cancelFetchCalls).toHaveLength(0);
 	});
 
 	it('supersedes an active stream before sending a second message', async () => {
@@ -899,9 +954,14 @@ describe('AgentChatStreamController', () => {
 
 		expect(run.signal?.aborted).toBe(true);
 		expect(h.reconcileTurnFromSession).toHaveBeenCalledWith({
-			sessionId: 'session-1',
-			streamRunId,
-			clientTurnId,
+			handle: {
+				contractVersion: 'legacy_internal_v1',
+				executionMode: 'legacy_sse',
+				sessionId: 'session-1',
+				streamRunId,
+				clientTurnId,
+				turnRunId: null
+			},
 			reason: 'detached'
 		});
 		expect(h.controller.isStreaming).toBe(false);
@@ -934,16 +994,22 @@ describe('AgentChatStreamController', () => {
 		h.controller.hasSentMessage = true;
 		h.controller.error = 'visible error';
 		h.controller.currentActivity = 'Working';
-		h.controller.activeClientTurnId = 'turn-1';
-		h.controller.activeTransportStreamRunId = 'stream-1';
+		h.controller.activeTurnHandle = {
+			contractVersion: 'legacy_internal_v1',
+			executionMode: 'legacy_sse',
+			clientTurnId: 'turn-1',
+			streamRunId: 'stream-1',
+			sessionId: 'session-1',
+			turnRunId: null
+		};
 
 		h.controller.reset();
 
 		expect(h.controller.hasSentMessage).toBe(true);
 		expect(h.controller.error).toBeNull();
 		expect(h.controller.currentActivity).toBe('');
-		expect(h.controller.activeClientTurnId).toBeNull();
-		expect(h.controller.activeTransportStreamRunId).toBeNull();
+		expect(h.controller.activeTurnHandle).toBeNull();
+		expect(h.controller.lastCancelResult).toBeNull();
 	});
 
 	it('hydrates a missing session from stale session events and drops stale text', async () => {
