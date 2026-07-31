@@ -2,8 +2,9 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { getVisitorOverview } from '$lib/services/admin/dashboard-analytics.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase } }) => {
+export const GET: RequestHandler = async ({ locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -14,7 +15,7 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 	}
 
 	try {
-		const overview = await getVisitorOverview(supabase);
+		const overview = await getVisitorOverview(createAdminSupabaseClient());
 		return ApiResponse.success(overview);
 	} catch (error) {
 		console.error('Error fetching visitor overview:', error);

@@ -30,9 +30,6 @@ export * from './asset-ocr';
 // Export project activity logging types
 export * from './project-activity.types';
 
-// Export Tree Agent orchestration types
-export * from './tree-agent.types';
-
 // Export Agent Work (durable Agent Runs) contract
 export * from './agent-work.types';
 export * from './agent-operative.types';

@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { EventType, NotificationChannel } from '@buildos/shared-types';
 import { transformEventPayload, validateNotificationPayload } from '@buildos/shared-types';
 import { generateCorrelationId } from '@buildos/shared-utils';
@@ -49,7 +50,7 @@ const testNotificationSchema = z
 	})
 	.strict();
 
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+export const POST: RequestHandler = async ({ request, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -58,6 +59,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	if (!user?.is_admin) {
 		return ApiResponse.forbidden('Admin access required');
 	}
+	const supabase = createAdminSupabaseClient();
 
 	try {
 		const parsed = await parseJsonRequest(request, testNotificationSchema);
@@ -227,7 +229,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 					deliveries.push(delivery);
 
-					// Queue notification job using atomic RPC with deduplication
+					// Queue notification job using atomic RPC with deduplication.
+					// add_queue_job is SECURITY INVOKER and enqueues for the recipient, so
+					// it uses the service role rather than this admin's user-scoped client.
 					const { data: _jobId, error: jobError } = await supabase.rpc('add_queue_job', {
 						p_user_id: recipientId,
 						p_job_type: 'send_notification',

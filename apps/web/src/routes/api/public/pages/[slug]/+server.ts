@@ -6,6 +6,7 @@ import {
 	getPublicPageBySlug,
 	getPublicPageRedirectSlug
 } from '$lib/server/public-page.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const slug = (params.slug ?? '').trim().toLowerCase();
@@ -26,15 +27,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const actorId = page.published_by ?? page.created_by ?? null;
+		const adminSupabase = createAdminSupabaseClient();
 		const [{ data: actor }, { data: project }] = await Promise.all([
 			actorId
-				? (locals.supabase as any)
+				? (adminSupabase as any)
 						.from('onto_actors')
 						.select('id, name, user_id')
 						.eq('id', actorId)
 						.maybeSingle()
 				: Promise.resolve({ data: null }),
-			(locals.supabase as any)
+			(adminSupabase as any)
 				.from('onto_projects')
 				.select('id, name')
 				.eq('id', page.project_id)

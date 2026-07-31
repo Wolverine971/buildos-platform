@@ -1,6 +1,7 @@
 // apps/web/src/lib/server/task-assignment.service.ts
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { createTrackedInAppNotification } from './tracked-in-app-notification.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const MAX_TASK_ASSIGNEES = 10;
 
@@ -334,10 +335,11 @@ export async function notifyTaskAssignmentAdded({
 	const message = `${actorName} assigned you a task in ${projectLabel}.`;
 	const actionUrl = `/projects/${projectId}/tasks/${taskId}`;
 	const coalescedMentionSet = new Set<string>(coalescedMentionUserIds);
+	const notificationSupabase = createAdminSupabaseClient();
 	const results = await Promise.all(
 		recipientUserIds.map(async (userId) =>
 			createTrackedInAppNotification({
-				supabase,
+				supabase: notificationSupabase,
 				recipientUserId: userId,
 				eventType: 'task.assigned',
 				actorUserId,

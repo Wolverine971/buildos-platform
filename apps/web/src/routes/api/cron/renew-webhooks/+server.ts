@@ -8,6 +8,10 @@ import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { isAuthorizedCronRequest } from '$lib/utils/security';
 import { ApiResponse } from '$lib/utils/api-response';
 
+export const config = {
+	maxDuration: 300
+};
+
 export const POST: RequestHandler = async ({ request, url }) => {
 	// Verify cron secret with constant-time comparison
 	if (!isAuthorizedCronRequest(request, [env.CRON_SECRET, PRIVATE_CRON_SECRET])) {
@@ -22,8 +26,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	const protocol = url.protocol;
 	const host = url.host;
 	const webhookUrl = `${protocol}//${host}/webhooks/calendar-events`;
+	const rotateAll = url.searchParams.get('rotate_all') === 'true';
 
-	await webhookService.renewExpiringWebhooks(webhookUrl);
+	const summary = await webhookService.renewExpiringWebhooks(webhookUrl, { rotateAll });
 
-	return ApiResponse.success({ renewed: true });
+	return ApiResponse.success(summary);
 };

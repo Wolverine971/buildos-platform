@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/admin/sms/daily-scheduler/trigger/+server.ts
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { RequestHandler } from './$types';
 
 interface TriggerOptions {
@@ -138,15 +139,20 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			};
 
 			if (!options.dry_run) {
-				// Queue the job using the existing queue system
-				const { error: queueError } = await supabase.rpc('add_queue_job', {
-					p_user_id: pref.user_id,
-					p_job_type: 'schedule_daily_sms',
-					p_metadata: jobData,
-					p_scheduled_for: new Date().toISOString(),
-					p_priority: 5,
-					p_dedup_key: `manual-schedule-daily-sms-${pref.user_id}-${targetDate}-${Date.now()}`
-				});
+				// Queue the job using the existing queue system. add_queue_job is
+				// SECURITY INVOKER and this enqueues for another user, so it must use
+				// the service role rather than this admin's user-scoped client.
+				const { error: queueError } = await createAdminSupabaseClient().rpc(
+					'add_queue_job',
+					{
+						p_user_id: pref.user_id,
+						p_job_type: 'schedule_daily_sms',
+						p_metadata: jobData,
+						p_scheduled_for: new Date().toISOString(),
+						p_priority: 5,
+						p_dedup_key: `manual-schedule-daily-sms-${pref.user_id}-${targetDate}-${Date.now()}`
+					}
+				);
 
 				if (!queueError) {
 					results.jobs_queued++;

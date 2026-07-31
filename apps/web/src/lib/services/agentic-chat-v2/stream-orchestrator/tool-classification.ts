@@ -289,7 +289,16 @@ export function didGatewayExecSucceed(execution: FastToolExecution | null): bool
 }
 
 export function isDuplicateWriteSkippedExecution(execution: FastToolExecution | null): boolean {
-	if (!execution || execution.result.success !== true) return false;
+	if (!execution) return false;
+	if (
+		typeof execution.result.error === 'string' &&
+		execution.result.error.startsWith(
+			'Tool validation failed: Duplicate commissioned target skipped:'
+		)
+	) {
+		return true;
+	}
+	if (execution.result.success !== true) return false;
 	const payload = execution.result.result;
 	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
 	const record = payload as Record<string, unknown>;

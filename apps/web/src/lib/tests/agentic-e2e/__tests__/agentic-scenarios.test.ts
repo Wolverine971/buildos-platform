@@ -11,7 +11,7 @@ import { loadHarnessEnv } from '../harness/env';
 import { loginAndGetCookie } from '../harness/auth';
 import { ensureTestAuthUser, provisionTestUser } from '../harness/test-user';
 import { runTurn, warmupPing } from '../harness/sse-client';
-import { sweepOrphanProjects, teardownProject } from '../harness/seed';
+import { sweepOrphanProjects, sweepStaleOrphanProjects, teardownProject } from '../harness/seed';
 import { releaseTurnForFollowup, teardownChatSession } from '../harness/telemetry';
 import { judgeQuality } from '../harness/judge';
 import { checkTurnBeforeFollowupRelease } from '../harness/turn-sequencing';
@@ -47,8 +47,8 @@ beforeAll(async () => {
 	// 2. Confirm the stream endpoint is reachable + authorized.
 	await warmupPing({ baseUrl: env.baseUrl, cookie });
 
-	// 3. Clear any orphaned harness projects from a previous crashed run.
-	await sweepOrphanProjects(db);
+	// 3. Clear only old crashed-run fixtures. Live concurrent runs remain isolated.
+	await sweepStaleOrphanProjects(db);
 
 	ctx = { baseUrl: env.baseUrl, cookie, db };
 }, 60000);

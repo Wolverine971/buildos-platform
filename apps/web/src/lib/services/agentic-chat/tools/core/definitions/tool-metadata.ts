@@ -524,7 +524,10 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'Append or LLM-merge body content safely'
 		],
 		contexts: ['project'],
-		category: 'write'
+		category: 'write',
+		// merge_llm has its own 25s editor deadline and then may need to perform a
+		// safe append plus the final PATCH. Leave enough outer room for that fallback.
+		timeoutMs: 45000
 	},
 	tag_onto_entity: {
 		summary: 'Tag collaborators on a task, goal, or document (content mention or manual ping).',

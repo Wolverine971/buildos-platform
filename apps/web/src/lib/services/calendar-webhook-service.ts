@@ -1790,19 +1790,36 @@ export class CalendarWebhookService {
 	/**
 	 * Renew expiring webhooks
 	 */
-	async renewExpiringWebhooks(webhookUrl: string): Promise<void> {
+	async renewExpiringWebhooks(
+		webhookUrl: string,
+		options: { rotateAll?: boolean } = {}
+	): Promise<{ attempted: number; renewed: number; failed: number; rotateAll: boolean }> {
+		const summary = {
+			attempted: 0,
+			renewed: 0,
+			failed: 0,
+			rotateAll: options.rotateAll === true
+		};
 		try {
 			// Find webhooks expiring in next 24 hours
 			const expirationThreshold = Date.now() + 24 * 60 * 60 * 1000;
 
-			const { data: expiringChannels } = await this.supabase
+			let channelsQuery = this.supabase
 				.from('calendar_webhook_channels')
 				.select('*')
-				.lt('expiration', expirationThreshold);
+				.order('created_at', { ascending: true });
+			if (!summary.rotateAll) {
+				channelsQuery = channelsQuery.lt('expiration', expirationThreshold);
+			}
+			const { data: expiringChannels, error: channelsError } = await channelsQuery;
+			if (channelsError) throw channelsError;
 
 			if (expiringChannels && expiringChannels.length > 0) {
 				for (const channel of expiringChannels) {
-					console.log(`Renewing webhook for user ${channel.user_id}`);
+					summary.attempted += 1;
+					console.log(
+						`${summary.rotateAll ? 'Rotating' : 'Renewing'} webhook for user ${channel.user_id}`
+					);
 
 					try {
 						// Perform a final sync before renewal to catch any pending changes
@@ -1836,10 +1853,17 @@ export class CalendarWebhookService {
 					await this.unregisterWebhook(channel.user_id, channel.calendar_id);
 
 					// Register new webhook
-					await this.registerWebhook(channel.user_id, webhookUrl, channel.calendar_id);
+					const registration = await this.registerWebhook(
+						channel.user_id,
+						webhookUrl,
+						channel.calendar_id
+					);
+					if (registration.success) summary.renewed += 1;
+					else summary.failed += 1;
 				}
 			}
 		} catch (error) {
+			summary.failed += Math.max(1, summary.attempted - summary.renewed - summary.failed);
 			console.error('Error renewing webhooks:', error);
 
 			// Log webhook renewal error
@@ -1855,6 +1879,8 @@ export class CalendarWebhookService {
 				}
 			);
 		}
+
+		return summary;
 	}
 
 	/**

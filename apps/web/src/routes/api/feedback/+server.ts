@@ -5,6 +5,7 @@ import { createGmailTransporter, getDefaultSender } from '$lib/utils/email-confi
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 import { emailColors } from '$lib/utils/email-styles';
 import { validateOptionalEmail } from '$lib/utils/email-validation';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 interface FeedbackRequest {
 	category: string;
@@ -100,14 +101,14 @@ async function checkRateLimit(supabase: any, clientIP: string): Promise<boolean>
 		});
 
 		if (error) {
-			// Rate limit check error
-			return true; // Allow submission if rate limit check fails
+			console.error('Rate limit check error:', error);
+			return false;
 		}
 
 		return data;
 	} catch (error) {
 		console.error('Rate limit check error:', error);
-		return true; // Allow submission if rate limit check fails
+		return false;
 	}
 }
 
@@ -281,8 +282,9 @@ async function sendFeedbackNotification(feedback: any) {
 	}
 }
 
-export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
+export const POST: RequestHandler = async ({ request }) => {
 	try {
+		const supabase = createAdminSupabaseClient();
 		// Parse request body
 		const data = await parseRequestBody<FeedbackRequest>(request);
 		if (!data) {

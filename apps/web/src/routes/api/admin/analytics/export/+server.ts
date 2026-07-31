@@ -1,8 +1,9 @@
 // apps/web/src/routes/api/admin/analytics/export/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -16,6 +17,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const days = timeframe === '7d' ? 7 : timeframe === '90d' ? 90 : 30;
 
 	try {
+		const supabase = createAdminSupabaseClient();
 		const endDate = new Date();
 		const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
 

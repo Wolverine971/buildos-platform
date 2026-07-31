@@ -25,14 +25,27 @@ import { listTasks, waitForTurnRun } from '../harness/telemetry';
 const TARGET_TITLE = 'Send the launch announcement to the beta list';
 const CONTROL_TITLE = 'Record the walkthrough video';
 
-function isoDaysFromNow(days: number): string {
-	const date = new Date();
+function isoDaysFromDate(dateString: string, days: number): string {
+	const date = new Date(`${dateString}T12:00:00.000Z`);
 	date.setUTCDate(date.getUTCDate() + days);
 	date.setUTCHours(15, 0, 0, 0);
 	return date.toISOString();
 }
 
-function spec(): ProjectSpec {
+export function buildRescheduleFixtureDates(now: Date): {
+	expectedFriday: string;
+	targetDueAt: string;
+	controlDueAt: string;
+} {
+	const expectedFriday = nextWeekdayDate(now, 5);
+	return {
+		expectedFriday,
+		targetDueAt: isoDaysFromDate(expectedFriday, -2),
+		controlDueAt: isoDaysFromDate(expectedFriday, 2)
+	};
+}
+
+function spec(dates: ReturnType<typeof buildRescheduleFixtureDates>): ProjectSpec {
 	return {
 		project: {
 			name: harnessProjectName('Reschedule Cold Ref'),
@@ -47,7 +60,9 @@ function spec(): ProjectSpec {
 				type_key: 'task.default',
 				state_key: 'todo',
 				priority: 2,
-				due_at: isoDaysFromNow(1)
+				// Always distinct from the requested Friday, regardless of the day
+				// or time at which this paid scenario happens to run.
+				due_at: dates.targetDueAt
 			},
 			{
 				temp_id: 'control',
@@ -55,7 +70,7 @@ function spec(): ProjectSpec {
 				title: CONTROL_TITLE,
 				type_key: 'task.default',
 				state_key: 'todo',
-				due_at: isoDaysFromNow(2)
+				due_at: dates.controlDueAt
 			}
 		],
 		relationships: []
@@ -67,7 +82,8 @@ export const taskRescheduleColdReferenceScenario: Scenario = {
 	title: 'Reschedule a task described, not named, in a cold session',
 	category: 'task',
 	seed: async (ctx): Promise<SeedResult> => {
-		const { projectId } = await seedProject(ctx, spec());
+		const dates = buildRescheduleFixtureDates(new Date());
+		const { projectId } = await seedProject(ctx, spec(dates));
 		const tasks = await listTasks(ctx.db.admin, projectId);
 		const target = tasks.find((t) => t.title === TARGET_TITLE);
 		const control = tasks.find((t) => t.title === CONTROL_TITLE);
@@ -76,7 +92,7 @@ export const taskRescheduleColdReferenceScenario: Scenario = {
 			projectId,
 			entityIds: { target: target.id, control: control.id },
 			notes: {
-				expectedFriday: nextWeekdayDate(new Date(), 5),
+				expectedFriday: dates.expectedFriday,
 				controlDueAt: control.due_at,
 				seededTaskIds: tasks.map((t) => t.id)
 			}

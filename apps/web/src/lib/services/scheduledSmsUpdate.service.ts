@@ -11,6 +11,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 interface EventChange {
 	calendarEventId: string;
@@ -30,9 +31,21 @@ interface SMSUpdateResult {
 
 export class ScheduledSmsUpdateService {
 	private supabase: SupabaseClient<Database>;
+	private queueClientCache: SupabaseClient<Database> | null = null;
 
 	constructor(supabase: SupabaseClient<Database>) {
 		this.supabase = supabase;
+	}
+
+	/**
+	 * `queue_jobs` is worker plumbing, not user-owned data, and this service is
+	 * reached from the calendar webhook with a user-scoped client. Queue reads and
+	 * writes therefore go through the service role so they keep working once
+	 * queue_jobs enforces RLS.
+	 */
+	private get queueClient(): SupabaseClient<Database> {
+		this.queueClientCache ??= createAdminSupabaseClient();
+		return this.queueClientCache;
 	}
 
 	/**
@@ -295,7 +308,7 @@ export class ScheduledSmsUpdateService {
 		newScheduledFor: string
 	): Promise<void> {
 		try {
-			const { data: jobs, error } = await this.supabase
+			const { data: jobs, error } = await this.queueClient
 				.from('queue_jobs')
 				.select('id')
 				.eq('job_type', 'send_sms')
@@ -309,7 +322,7 @@ export class ScheduledSmsUpdateService {
 				return;
 			}
 
-			const { error: updateError } = await this.supabase
+			const { error: updateError } = await this.queueClient
 				.from('queue_jobs')
 				.update({
 					scheduled_for: newScheduledFor,
@@ -343,7 +356,7 @@ export class ScheduledSmsUpdateService {
 			let cancelledCount = 0;
 
 			for (const scheduledSmsId of smsMessageIds) {
-				const { data: jobs, error } = await this.supabase
+				const { data: jobs, error } = await this.queueClient
 					.from('queue_jobs')
 					.select('id')
 					.eq('job_type', 'send_sms')
@@ -356,7 +369,7 @@ export class ScheduledSmsUpdateService {
 				}
 
 				for (const job of jobs || []) {
-					const { error: cancelError } = await this.supabase.rpc(
+					const { error: cancelError } = await this.queueClient.rpc(
 						'cancel_job_with_reason',
 						{
 							p_job_id: job.id,

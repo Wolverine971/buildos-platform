@@ -2502,6 +2502,119 @@ describe('streamFastChat direct tool orchestration', () => {
 		});
 	});
 
+	it('reserves a write-only pass when research exhausts the ordinary round budget', async () => {
+		const projectId = '05c40ed8-9dbe-4893-bd64-8aeec90eab40';
+		const streamParams: Array<{ toolChoice?: string; toolNames: string[]; text: string }> = [];
+		let invocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				invocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					toolNames: (params.tools ?? [])
+						.map((tool: ChatToolDefinition) => tool.function?.name)
+						.filter((name: string | undefined): name is string => Boolean(name)),
+					text: (params.messages ?? [])
+						.map((item: { content?: string }) => item.content)
+						.join('\n')
+				});
+
+				if (invocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'web_search',
+							{ query: 'competitor pricing' },
+							'search-1'
+						)
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'web_search',
+							{ query: 'SMB pricing tiers' },
+							'search-2'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (invocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall('create_onto_document', {
+							project_id: projectId,
+							title: 'Pricing Landscape',
+							description: 'Competitor and SMB pricing research.',
+							content:
+								'Pricing findings.\n\n## Sources\n- https://example.com/pricing'
+						})
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'I saved the pricing landscape research.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			if (call.function.name === 'web_search') {
+				return {
+					tool_call_id: call.id,
+					result: { results: [{ title: 'Pricing', url: 'https://example.com/pricing' }] },
+					success: true
+				};
+			}
+			return {
+				tool_call_id: call.id,
+				result: { document: { id: 'doc-1', title: 'Pricing Landscape' } },
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Research competitor pricing and pull together a pricing landscape document.',
+			tools: tools([
+				'tool_search',
+				'web_search',
+				'create_onto_document',
+				'update_onto_document'
+			]),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 1,
+			// Both ordinary call slots are consumed by research. The capture write
+			// must use the single reserved persistence slot.
+			maxToolCalls: 2
+		});
+
+		expect(streamParams[1]?.toolChoice).toBe('required');
+		expect(streamParams[1]?.toolNames).toEqual([
+			'create_onto_document',
+			'update_onto_document'
+		]);
+		expect(streamParams[1]?.text).toContain('web research is complete');
+		expect(streamParams[2]?.toolChoice).toBe('none');
+		expect(toolExecutor.mock.calls.map(([call]) => call.function.name)).toEqual([
+			'web_search',
+			'web_search',
+			'create_onto_document'
+		]);
+		expect(result.toolRounds).toBe(2);
+		expect(result.orchestrationInterventions.writeIntentCarveOut).toBe(true);
+		expect(result.finalAssistantText).toBe('I saved the pricing landscape research.');
+	});
+
 	it('uses explicit turn intent to force a document write before synthesis', async () => {
 		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
 		let streamInvocation = 0;
@@ -2627,9 +2740,7 @@ describe('streamFastChat direct tool orchestration', () => {
 							'update_onto_document',
 							{
 								document_id: characterDocumentId,
-								update_strategy: 'merge',
-								content:
-									'## Secret Agenda\n\nIlyan is using Mara to reach the sealed archive.',
+								update_strategy: 'merge_llm',
 								merge_instructions: 'Merge this fact into Ilyan’s character sheet.'
 							},
 							'update:ilyan-capture'
@@ -2676,6 +2787,11 @@ describe('streamFastChat direct tool orchestration', () => {
 		});
 		expect(toolExecutor).toHaveBeenCalledTimes(1);
 		expect(toolExecutor.mock.calls[0]?.[0].function.name).toBe('update_onto_document');
+		expect(
+			JSON.parse(toolExecutor.mock.calls[0]?.[0].function.arguments ?? '{}')
+		).toMatchObject({
+			content: 'Ilyan is secretly using Mara to reach the sealed archive.'
+		});
 		expect(result.finalAssistantText).toBe('I recorded Ilyan’s private agenda.');
 		expect(result.orchestrationInterventions.gatewayMutationStopRepair).toBe(true);
 		expect(result.orchestrationInterventions.writeIntentCarveOut).toBe(true);
@@ -2686,7 +2802,7 @@ describe('streamFastChat direct tool orchestration', () => {
 		const structureDocumentId = 'd60dd8bf-d7f1-4025-989c-ecaaa0b2cb63';
 		const characterDocumentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
 		let streamInvocation = 0;
-		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];
+		const streamParams: Array<{ toolChoice?: string; toolNames: string[]; text: string }> = [];
 		const llm = {
 			streamText: vi.fn(async function* (params: any) {
 				streamInvocation += 1;
@@ -2694,7 +2810,10 @@ describe('streamFastChat direct tool orchestration', () => {
 					toolChoice: params.tool_choice,
 					toolNames: (params.tools ?? [])
 						.map((tool: ChatToolDefinition) => tool.function?.name)
-						.filter((name: string | undefined): name is string => Boolean(name))
+						.filter((name: string | undefined): name is string => Boolean(name)),
+					text: (params.messages ?? [])
+						.map((item: { content?: string }) => item.content)
+						.join('\n')
 				});
 
 				if (streamInvocation === 1) {
@@ -2721,6 +2840,23 @@ describe('streamFastChat direct tool orchestration', () => {
 				}
 
 				if (streamInvocation === 3) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_document',
+							{
+								document_id: structureDocumentId,
+								update_strategy: 'merge',
+								content: 'Repeat the structure projection.'
+							},
+							'update:structure-repeat'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (streamInvocation === 4) {
 					yield {
 						type: 'tool_call',
 						tool_call: toolCall(
@@ -2767,23 +2903,49 @@ describe('streamFastChat direct tool orchestration', () => {
 			tools: tools(['skill_search', 'update_onto_document', 'create_onto_document']),
 			commissionedWriteToolNames: ['update_onto_document', 'create_onto_document'],
 			commissionedWriteMinimumCount: 2,
+			supervisorContextData: {
+				entity_refs: {
+					documents: [
+						{ id: structureDocumentId, title: 'Story Structure' },
+						{ id: characterDocumentId, title: 'Ilyan Rook' }
+					]
+				}
+			},
 			toolExecutor,
 			onDelta: async () => {},
-			maxToolRounds: 3
+			maxToolRounds: 4
 		});
 
 		expect(streamParams[2]).toEqual({
 			toolChoice: 'required',
-			toolNames: ['update_onto_document', 'create_onto_document']
+			toolNames: ['update_onto_document', 'create_onto_document'],
+			text: expect.any(String)
 		});
-		expect(toolExecutor).toHaveBeenCalledTimes(2);
-		expect(
-			toolExecutor.mock.calls.map(
+		expect(streamParams[2]?.text).toContain(structureDocumentId);
+		expect(streamParams[2]?.text).toContain(
+			'Do not write these already-successful document_ids'
+		);
+		expect(streamParams[2]?.text).toContain(
+			`"Ilyan Rook" (document_id ${characterDocumentId})`
+		);
+		expect(streamParams[3]?.text).toContain(
+			'This multi-document commission already has a successful projection'
+		);
+		expect({
+			executedDocumentIds: toolExecutor.mock.calls.map(
 				([call]) =>
 					(JSON.parse(call.function.arguments || '{}') as Record<string, unknown>)
 						.document_id
-			)
-		).toEqual([structureDocumentId, characterDocumentId]);
+			),
+			streamInvocation,
+			finishedReason: result.finishedReason,
+			finalAssistantText: result.finalAssistantText
+		}).toEqual({
+			executedDocumentIds: [structureDocumentId, characterDocumentId],
+			streamInvocation: 5,
+			finishedReason: 'stop',
+			finalAssistantText: 'I updated both the story structure and Ilyan.'
+		});
 		expect(result.finalAssistantText).toBe('I updated both the story structure and Ilyan.');
 		expect(result.orchestrationInterventions.gatewayMutationStopRepair).toBe(true);
 		expect(result.orchestrationInterventions.writeIntentCarveOut).toBe(true);

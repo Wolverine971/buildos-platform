@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/visitors/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 export const POST: RequestHandler = async ({
 	request,
@@ -28,8 +29,10 @@ export const POST: RequestHandler = async ({
 			return ApiResponse.success(null, 'Skipped Vercel');
 		}
 
-		// Insert visitor data with conflict handling (one per day per visitor)
-		const { error } = await supabase.from('visitors').insert({
+		// Public traffic is recorded server-side so the visitors table does not need
+		// any direct anon/authenticated table grants.
+		const adminSupabase = createAdminSupabaseClient();
+		const { error } = await adminSupabase.from('visitors').insert({
 			visitor_id,
 			ip_address,
 			user_agent

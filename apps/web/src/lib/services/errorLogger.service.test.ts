@@ -157,23 +157,20 @@ function createService(errorLogs: ErrorRow[], users: UserRow[] = []) {
 	);
 }
 
+function createLoggingSupabase(insertedEntries: Array<Record<string, any>>, loggedId: string) {
+	return {
+		rpc: vi.fn(async (fn: string, args: { p_entry: Record<string, any> }) => {
+			expect(fn).toBe('log_client_error');
+			insertedEntries.push(args.p_entry);
+			return { data: loggedId, error: null };
+		})
+	};
+}
+
 describe('ErrorLoggerService', () => {
 	it('omits malformed project IDs without dropping the original error log', async () => {
 		const insertedEntries: Array<Record<string, any>> = [];
-		const insert = vi.fn((entry: Record<string, any>) => ({
-			select: vi.fn(() => ({
-				single: vi.fn(async () => {
-					insertedEntries.push(entry);
-					return { data: { id: 'logged-error-1' }, error: null };
-				})
-			}))
-		}));
-		const supabase = {
-			from: vi.fn((table: string) => {
-				expect(table).toBe('error_logs');
-				return { insert };
-			})
-		};
+		const supabase = createLoggingSupabase(insertedEntries, 'logged-error-1');
 		const service = ErrorLoggerService.getInstance(
 			supabase as unknown as SupabaseClient<Database>
 		);
@@ -206,18 +203,7 @@ describe('ErrorLoggerService', () => {
 
 	it('preserves valid UUID record IDs that contain phone-like digit runs', async () => {
 		const insertedEntries: Array<Record<string, any>> = [];
-		const supabase = {
-			from: vi.fn(() => ({
-				insert: vi.fn((entry: Record<string, any>) => ({
-					select: vi.fn(() => ({
-						single: vi.fn(async () => {
-							insertedEntries.push(entry);
-							return { data: { id: 'logged-error-uuid' }, error: null };
-						})
-					}))
-				}))
-			}))
-		};
+		const supabase = createLoggingSupabase(insertedEntries, 'logged-error-uuid');
 		const service = ErrorLoggerService.getInstance(
 			supabase as unknown as SupabaseClient<Database>
 		);
@@ -241,18 +227,7 @@ describe('ErrorLoggerService', () => {
 
 	it('omits malformed record IDs without dropping the original error log', async () => {
 		const insertedEntries: Array<Record<string, any>> = [];
-		const supabase = {
-			from: vi.fn(() => ({
-				insert: vi.fn((entry: Record<string, any>) => ({
-					select: vi.fn(() => ({
-						single: vi.fn(async () => {
-							insertedEntries.push(entry);
-							return { data: { id: 'logged-error-invalid-record' }, error: null };
-						})
-					}))
-				}))
-			}))
-		};
+		const supabase = createLoggingSupabase(insertedEntries, 'logged-error-invalid-record');
 		const service = ErrorLoggerService.getInstance(
 			supabase as unknown as SupabaseClient<Database>
 		);
@@ -272,18 +247,7 @@ describe('ErrorLoggerService', () => {
 
 	it('redacts credentials from provider errors before persistence', async () => {
 		const insertedEntries: Array<Record<string, any>> = [];
-		const supabase = {
-			from: vi.fn(() => ({
-				insert: vi.fn((entry: Record<string, any>) => ({
-					select: vi.fn(() => ({
-						single: vi.fn(async () => {
-							insertedEntries.push(entry);
-							return { data: { id: 'logged-error-redacted' }, error: null };
-						})
-					}))
-				}))
-			}))
-		};
+		const supabase = createLoggingSupabase(insertedEntries, 'logged-error-redacted');
 		const service = ErrorLoggerService.getInstance(
 			supabase as unknown as SupabaseClient<Database>
 		);

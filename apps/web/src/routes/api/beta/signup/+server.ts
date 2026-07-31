@@ -6,6 +6,7 @@ import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
 import { createGmailTransporter, getDefaultSender } from '$lib/utils/email-config';
 import { validateEmail } from '$lib/utils/email-validation';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 interface BetaSignupRequest {
 	email: string;
@@ -375,8 +376,9 @@ async function sendBetaSignupNotification(signupData: any) {
 	}
 }
 
-export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
+export const POST: RequestHandler = async ({ request }) => {
 	try {
+		const supabase = createAdminSupabaseClient();
 		const parsed = await parseJsonRequest(request, betaSignupSchema);
 		if (!parsed.ok) return parsed.response;
 		const data: BetaSignupRequest = parsed.data;
@@ -455,7 +457,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 };
 
 // Function to check beta signup status
-export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
+export const GET: RequestHandler = async ({ url }) => {
 	const email = url.searchParams.get('email');
 
 	if (!email) {
@@ -469,6 +471,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 	}
 
 	try {
+		const supabase = createAdminSupabaseClient();
 		const { data: signup, error } = await supabase
 			.from('beta_signups')
 			.select('signup_status, created_at')

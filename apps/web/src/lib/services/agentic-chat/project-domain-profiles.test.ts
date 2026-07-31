@@ -15,7 +15,8 @@ import {
 	validateFictionCharacterSourceCoverage,
 	validateFictionOperationalScaffoldingGrounding,
 	validateFictionStructureSourceCoverage,
-	validateProjectCreationMilestoneGrounding
+	validateProjectCreationMilestoneGrounding,
+	validateProjectCreationProfileGrounding
 } from './project-domain-profiles';
 
 describe('project domain profiles', () => {
@@ -34,6 +35,22 @@ describe('project domain profiles', () => {
 		expect(result.content).toContain('## Author canon');
 		expect(result.content).toContain(source);
 		expect(result.content).toContain('Part II begins the next morning.');
+	});
+
+	it('places a raw commissioned source under Author canon before a structure merge', () => {
+		const source =
+			'Ilyan catches Mara hiding a forbidden map and chooses not to report her. Chapter 5 opens Part II the next morning.';
+		const result = applyFictionStructureUpdateSourceDefault(
+			{
+				document_id: 'structure-doc',
+				content: source,
+				update_strategy: 'merge_llm'
+			},
+			source
+		);
+
+		expect(result.content).toMatch(/^## Author canon\n\n/);
+		expect(result.content.match(/Ilyan catches Mara/g)).toHaveLength(1);
 	});
 
 	it('skips structure-source augmentation when the model content is not top-level', () => {
@@ -241,7 +258,7 @@ describe('project domain profiles', () => {
 
 	it('deterministically grounds a fiction workspace without replacing creative judgment', () => {
 		const characterSentence =
-			'Mara Venn is an apprentice cartographer who alone remembers the erased Drowned Ward.';
+			'Mara Venn is an apprentice cartographer who alone remembers the erased Drowned Ward, and she wants to restore it before Archivist Senn removes it forever.';
 		const structureSentence =
 			'The book has three parts: Part I, The Missing Street; Part II, The Salt Archive; and Part III, A Map That Refuses to Burn.';
 		const result = applyProjectCreationProfileDefaults(
@@ -284,9 +301,87 @@ describe('project domain profiles', () => {
 		expect(result.entities[0].body_markdown).toContain(characterSentence);
 		expect(result.entities[0].body_markdown).toContain('## Author canon');
 		expect(result.entities[1].content).toContain(structureSentence);
+		expect(result.entities[1].content).toContain(characterSentence);
+		expect(result.entities[1].content).toContain('Archivist Senn');
 		expect(result.entities[1].content).toContain('## Author canon');
 		expect(validateFictionCharacterSourceCoverage(result, characterSentence)).toEqual([]);
 		expect(validateFictionStructureSourceCoverage(result, structureSentence)).toEqual([]);
+	});
+
+	it('keeps a controlling antagonist pressure with an explicitly named story structure', () => {
+		const pressure =
+			'Mara Venn is an apprentice cartographer, and she wants to restore the Drowned Ward before Archivist Senn removes it forever.';
+		const structure =
+			'The book has three parts: Part I, The Missing Street; Part II, The Salt Archive; and Part III, A Map That Refuses to Burn.';
+		const result = applyProjectCreationProfileDefaults(
+			{
+				project: { name: 'The Glass Harbor', type_key: 'project.creative.novel' },
+				entities: [
+					{
+						kind: 'document',
+						type_key: 'document.creative.character',
+						title: 'Mara Venn',
+						content: 'Mara is the protagonist.'
+					},
+					{
+						kind: 'document',
+						type_key: 'document.creative.structure',
+						title: 'Story Structure',
+						content: 'Three-part structure.'
+					}
+				]
+			},
+			`Create an ongoing novel workspace. ${pressure} ${structure}`
+		);
+
+		expect(result.entities[1].content).toContain(pressure);
+		expect(validateFictionStructureSourceCoverage(result, `${pressure} ${structure}`)).toEqual(
+			[]
+		);
+	});
+
+	it('supplies the minimum grounded fiction artifacts when a creation model omits them', () => {
+		const userMessage =
+			'Create an ongoing novel workspace. Here is the opening brain dump: Bellwether is a canal city where official maps decide what the city remembers. Mara Venn is an apprentice cartographer who wants to restore the Drowned Ward before Archivist Senn removes it forever. Ilyan Rook is a harbor customs clerk whose older brother disappeared. The book has three parts: Part I, The Missing Street; Part II, The Salt Archive; and Part III, A Map That Refuses to Burn.';
+		const result = applyProjectCreationProfileDefaults(
+			{
+				project: { name: 'The Glass Harbor', type_key: 'project.creative.novel' },
+				entities: [],
+				relationships: []
+			},
+			userMessage
+		);
+
+		expect(result.entities).toHaveLength(3);
+		expect(result.entities.map((entity) => entity.title)).toEqual([
+			'Mara Venn',
+			'Ilyan Rook',
+			'Story Structure'
+		]);
+		expect(result.entities[2].content).toContain(
+			'official maps decide what the city remembers'
+		);
+		expect(result.entities[2].content).toContain('Archivist Senn');
+		expect(result.entities[2].content).toContain('Part III');
+		expect(validateProjectCreationProfileGrounding(result, userMessage)).toEqual([]);
+	});
+
+	it('does not turn character pressure alone into a required structure artifact', () => {
+		const userMessage =
+			'Mara Venn is an apprentice cartographer who must reach the archive before Archivist Senn.';
+		const args = {
+			project: { name: 'The Glass Harbor', type_key: 'project.creative.novel' },
+			entities: [
+				{
+					kind: 'document',
+					type_key: 'document.creative.character',
+					title: 'Mara Venn',
+					content: userMessage
+				}
+			]
+		};
+
+		expect(validateFictionStructureSourceCoverage(args, userMessage)).toEqual([]);
 	});
 
 	it('rejects invented operational scaffolding for a canon-only fiction opening', () => {

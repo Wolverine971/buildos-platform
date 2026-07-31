@@ -13,7 +13,10 @@ import type {
 	LLMStreamPassTerminalMeasurements,
 	LLMStreamPassTerminalOutcome
 } from './shared';
-import { normalizeToolCallDefaults } from './tool-arguments';
+import {
+	backfillCommissionedDocumentUpdateContent,
+	normalizeToolCallDefaults
+} from './tool-arguments';
 
 export type FastChatModelMessage = Omit<FastChatHistoryMessage, 'content'> & {
 	content: string | OpenRouterContentPart[];
@@ -28,6 +31,7 @@ type SmartLlmStreamEvent =
 
 const MAX_LLM_STREAM_ATTEMPTS = 2;
 const LLM_PASS_TIMEOUT_MS = 60_000;
+const PROJECT_CREATE_LLM_PASS_TIMEOUT_MS = 120_000;
 const LLM_STREAM_RETRY_BASE_DELAY_MS = 250;
 const LLM_STREAM_RETRY_JITTER_MS = 250;
 const MAX_RETRY_ERROR_METADATA_LENGTH = 240;
@@ -71,6 +75,21 @@ export class LlmStreamPassTerminalError extends Error {
 	}
 }
 
+/**
+ * Project creation can produce a large, structured tool payload (for example a
+ * fiction workspace with several fully seeded documents). Tool arguments are
+ * often delivered only when the provider finishes the call, so the ordinary
+ * 60-second pass limit can abort a healthy generation with zero visible chunks.
+ */
+export function resolveLlmPassTimeoutMs(params: {
+	normalizedContext: ChatContextType;
+	forcedToolChoice?: 'required';
+}): number {
+	return params.normalizedContext === 'project_create' && params.forcedToolChoice === 'required'
+		? PROJECT_CREATE_LLM_PASS_TIMEOUT_MS
+		: LLM_PASS_TIMEOUT_MS;
+}
+
 export async function runLlmStreamPass(params: {
 	llm: SmartLLMService;
 	passMessages: FastChatModelMessage[];
@@ -105,6 +124,7 @@ export async function runLlmStreamPass(params: {
 	onStreamRetry?: (error: Error, attempt: number) => Promise<void> | void;
 	retryDelayMs?: (attempt: number) => number;
 	passTimeoutMs?: number;
+	commissionedDocumentUpdateFallbackContent?: string;
 	modelRouting?: FastChatPassModelRouting;
 }): Promise<LlmStreamPassResult> {
 	const maxAttempts = MAX_LLM_STREAM_ATTEMPTS;
@@ -115,6 +135,7 @@ export async function runLlmStreamPass(params: {
 			? params.modelRouting.models
 			: undefined;
 	const maxTokens = params.modelRouting?.maxTokens ?? FASTCHAT_LIMITS.SYNTHESIS_MAX_TOKENS;
+	const passTimeoutMs = params.passTimeoutMs ?? resolveLlmPassTimeoutMs(params);
 	const startedAtMs = Date.now();
 	let attemptsStarted = 0;
 	let assistantTextCharsReceived = 0;
@@ -166,10 +187,7 @@ export async function runLlmStreamPass(params: {
 			}
 		}
 
-		const passAbortSignal = createLlmPassAbortSignal(
-			params.signal,
-			params.passTimeoutMs ?? LLM_PASS_TIMEOUT_MS
-		);
+		const passAbortSignal = createLlmPassAbortSignal(params.signal, passTimeoutMs);
 		const clearLlmHeartbeat = params.startLlmHeartbeat();
 		let heartbeatCleared = false;
 		const clearLlmHeartbeatOnce = (): void => {
@@ -257,9 +275,9 @@ export async function runLlmStreamPass(params: {
 				} else if (event.type === 'tool_call' && event.tool_call) {
 					toolCallsReceived += 1;
 					if (firstTokenAtMs === null) firstTokenAtMs = Date.now();
-					const normalizedToolCall = normalizeToolCallDefaults(
-						event.tool_call,
-						params.projectId ?? undefined
+					const normalizedToolCall = backfillCommissionedDocumentUpdateContent(
+						normalizeToolCallDefaults(event.tool_call, params.projectId ?? undefined),
+						params.commissionedDocumentUpdateFallbackContent
 					);
 					if (params.noToolSynthesisPass) {
 						suppressedNoToolSynthesisToolCallCount += 1;
@@ -484,7 +502,7 @@ function buildTerminalMeasurements(params: {
 		attempts: params.attemptsStarted,
 		maxAttempts: params.maxAttempts,
 		retryCount: Math.max(0, params.attemptsStarted - 1),
-		timeoutMs: params.params.passTimeoutMs ?? LLM_PASS_TIMEOUT_MS,
+		timeoutMs: params.params.passTimeoutMs ?? resolveLlmPassTimeoutMs(params.params),
 		durationMs: Math.max(0, Date.now() - params.startedAtMs),
 		terminalEventReceived: params.terminalEventReceived,
 		assistantTextCharsReceived: params.assistantTextCharsReceived,

@@ -140,21 +140,24 @@ function enumNameForSchema(schema: OpenApiSchema): string | undefined {
 	const format = schema.format ?? schema.items?.format;
 	if (!format?.startsWith('public.')) return undefined;
 
-	const name = format.slice('public.'.length).replace(/\[\]$/, '');
-	return schema.enum || schema.items?.enum ? name : undefined;
+	return format.slice('public.'.length).replace(/\[\]$/, '');
 }
 
 function collectEnums(
 	document: SupabaseOpenApiDocument,
 	existingTypes: string
 ): Map<string, string[]> {
-	const enums = parseExistingEnums(existingTypes);
+	const existingEnums = parseExistingEnums(existingTypes);
+	const enums = new Map<string, string[]>();
 
 	const visitSchema = (schema: OpenApiSchema | undefined) => {
 		if (!schema) return;
 
 		const enumName = enumNameForSchema(schema);
-		const values = schema.enum ?? schema.items?.enum;
+		const values =
+			schema.enum ??
+			schema.items?.enum ??
+			(enumName ? existingEnums.get(enumName) : undefined);
 		if (enumName && values?.every((value) => typeof value === 'string')) {
 			enums.set(enumName, values as string[]);
 		}

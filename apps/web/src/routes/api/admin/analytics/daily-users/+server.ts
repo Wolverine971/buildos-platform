@@ -5,8 +5,9 @@ import {
 	getDailyActiveUsers,
 	type AnalyticsTimeframe
 } from '$lib/services/admin/dashboard-analytics.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -21,7 +22,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		timeframeParam === '7d' || timeframeParam === '90d' ? timeframeParam : '30d';
 
 	try {
-		const data = await getDailyActiveUsers(supabase, timeframe);
+		const data = await getDailyActiveUsers(createAdminSupabaseClient(), timeframe);
 		return ApiResponse.success(data);
 	} catch (error) {
 		console.error('Error fetching daily users analytics:', error);

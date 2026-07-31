@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/admin/notifications/deliveries/[id]/retry/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { generateCorrelationId } from '@buildos/shared-utils';
 
 export const POST: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
@@ -71,22 +72,27 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 			return ApiResponse.databaseError(updateError);
 		}
 
-		// Queue a new notification job using atomic RPC with deduplication
-		const { data: _jobId, error: queueError } = await supabase.rpc('add_queue_job', {
-			p_user_id: delivery.recipient_user_id,
-			p_job_type: 'send_notification',
-			p_metadata: {
-				event_id: delivery.event_id,
-				event_type: event.event_type,
-				delivery_id: deliveryId,
-				channel: delivery.channel,
-				retry: true,
-				correlationId
-			},
-			p_priority: 10,
-			p_scheduled_for: new Date().toISOString(),
-			p_dedup_key: `notif_retry_${deliveryId}` // Prevent duplicate retry jobs
-		});
+		// Queue a new notification job using atomic RPC with deduplication.
+		// add_queue_job is SECURITY INVOKER and enqueues for the recipient, so it
+		// uses the service role rather than this admin's user-scoped client.
+		const { data: _jobId, error: queueError } = await createAdminSupabaseClient().rpc(
+			'add_queue_job',
+			{
+				p_user_id: delivery.recipient_user_id,
+				p_job_type: 'send_notification',
+				p_metadata: {
+					event_id: delivery.event_id,
+					event_type: event.event_type,
+					delivery_id: deliveryId,
+					channel: delivery.channel,
+					retry: true,
+					correlationId
+				},
+				p_priority: 10,
+				p_scheduled_for: new Date().toISOString(),
+				p_dedup_key: `notif_retry_${deliveryId}` // Prevent duplicate retry jobs
+			}
+		);
 
 		if (queueError) {
 			console.error('Error queuing retry job:', queueError);

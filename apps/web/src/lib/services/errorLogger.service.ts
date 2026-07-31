@@ -185,6 +185,20 @@ export class ErrorLoggerService {
 		return query;
 	}
 
+	private async insertErrorLog(errorEntry: Record<string, unknown>): Promise<{
+		data: { id: string } | null;
+		error: { code?: string; message?: string } | null;
+	}> {
+		const { data, error } = await (this.supabase.rpc as any)('log_client_error', {
+			p_entry: errorEntry
+		});
+
+		return {
+			data: typeof data === 'string' ? { id: data } : null,
+			error
+		};
+	}
+
 	private async getVisibleErrorRows(
 		selectClause: string,
 		filters: ErrorLogFilters | undefined,
@@ -459,18 +473,6 @@ export class ErrorLoggerService {
 		return 'error';
 	}
 
-	private isProjectForeignKeyViolation(error: {
-		code?: string;
-		message?: string | null;
-		details?: string | null;
-		hint?: string | null;
-	}): boolean {
-		if (error.code !== '23503') return false;
-		const combined =
-			`${error.message ?? ''} ${error.details ?? ''} ${error.hint ?? ''}`.toLowerCase();
-		return combined.includes('project_id');
-	}
-
 	private normalizeUuidForStorage(value?: string): {
 		uuid?: string;
 		invalidValue?: string;
@@ -600,49 +602,9 @@ export class ErrorLoggerService {
 				browser_info: browser ? this.getBrowserInfo() : sanitizedContext?.browserInfo
 			};
 
-			const { data, error: insertError } = await this.supabase
-				.from('error_logs')
-				.insert(errorEntry as any)
-				.select('id')
-				.single();
+			const { data, error: insertError } = await this.insertErrorLog(errorEntry);
 
 			if (insertError) {
-				if (insertError.code === '23503' && errorEntry.project_id) {
-					const isProjectFkFailure = this.isProjectForeignKeyViolation(
-						insertError as any
-					);
-					const retryEntry = {
-						...errorEntry,
-						project_id: null,
-						metadata: {
-							...(errorEntry.metadata as Record<string, any>),
-							project_id_fk_retry: true,
-							project_id_fk_retry_reason: isProjectFkFailure
-								? 'project_fk_violation'
-								: 'non_project_fk_violation',
-							...(isProjectFkFailure
-								? { invalid_project_id: errorEntry.project_id }
-								: { cleared_project_id_for_fk_retry: errorEntry.project_id })
-						}
-					};
-					const { data: retryData, error: retryError } = await this.supabase
-						.from('error_logs')
-						.insert(retryEntry as any)
-						.select('id')
-						.single();
-
-					if (retryError) {
-						console.error('Failed to log error to database:', retryError);
-						this.logToConsole(retryEntry, sanitizedError);
-						return null;
-					}
-
-					if (retryData?.id) {
-						console.log(`Error logged with ID: ${retryData.id}`);
-						return retryData.id;
-					}
-				}
-
 				console.error('Failed to log error to database:', insertError);
 				this.logToConsole(errorEntry, sanitizedError);
 				return null;
@@ -819,11 +781,7 @@ export class ErrorLoggerService {
 				browser_info: browser ? this.getBrowserInfo() : undefined
 			};
 
-			const { data, error: insertError } = await this.supabase
-				.from('error_logs')
-				.insert(errorEntry as any)
-				.select('id')
-				.single();
+			const { data, error: insertError } = await this.insertErrorLog(errorEntry);
 
 			if (insertError) {
 				console.error('Failed to log calendar error to database:', insertError);

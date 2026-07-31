@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/admin/notifications/analytics/failures/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 type Timeframe = '24h' | '7d' | '30d';
 
@@ -13,7 +14,7 @@ function getTimeframeInterval(timeframe: Timeframe): string {
 	return intervals[timeframe] || '24 hours';
 }
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -27,6 +28,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const timeframe = (url.searchParams.get('timeframe') || '24h') as Timeframe;
 		const limit = parseInt(url.searchParams.get('limit') || '50', 10);
 		const interval = getTimeframeInterval(timeframe);
+		const supabase = createAdminSupabaseClient();
 
 		const { data, error } = await supabase.rpc('get_notification_failed_deliveries', {
 			p_interval: interval,

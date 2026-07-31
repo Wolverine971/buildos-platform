@@ -5,8 +5,8 @@
  *
  * Design: apps/web/docs/technical/architecture/agent-work/
  *
- * Like tree-agent.types.ts, these intentionally do not depend on generated
- * Database types so the contract can be iterated before DB types are regenerated.
+ * These intentionally do not depend on generated Database types so the contract
+ * can be iterated before DB types are regenerated.
  */
 
 import type { Json } from './database.types';

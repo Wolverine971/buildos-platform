@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/onto/comments/comment-mentions.ts
 import { parseEntityReferences } from '$lib/utils/entity-reference-parser';
 import { createTrackedInAppNotification } from '$lib/server/tracked-in-app-notification.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 type SupabaseClient = App.Locals['supabase'];
 
@@ -123,12 +124,13 @@ export async function handleCommentMentions({
 		const message = `${author.name} mentioned you in a comment on ${entityLabel} in ${projectName}.`;
 
 		const notificationByUserId = new Map<string, string>();
+		const notificationSupabase = createAdminSupabaseClient();
 
 		const notificationResults = await Promise.all(
 			newMentionUserIds.map(async (userId) => ({
 				userId,
 				result: await createTrackedInAppNotification({
-					supabase,
+					supabase: notificationSupabase,
 					recipientUserId: userId,
 					eventType: 'comment.mentioned',
 					actorUserId: author.userId,

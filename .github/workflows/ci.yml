@@ -5,6 +5,9 @@ on:
     push:
         branches: [main]
     pull_request:
+    workflow_dispatch:
+    schedule:
+        - cron: '17 11 * * *'
 
 concurrency:
     group: ci-${{ github.ref }}
@@ -40,6 +43,9 @@ jobs:
             - name: Typecheck
               run: pnpm turbo typecheck
 
+            - name: Schema tooling tests
+              run: pnpm test:schema-tools
+
             - name: Lint
               run: pnpm turbo lint
 
@@ -68,3 +74,24 @@ jobs:
                       packages/*/coverage/**
                   if-no-files-found: warn
                   retention-days: 14
+
+    supabase-schema-drift:
+        name: Supabase RPC schema drift
+        # Production is migrated after code review/merge, so comparing a schema-
+        # changing PR to pre-deploy production would be a guaranteed false alarm.
+        # Run on the trusted post-deploy/manual and daily audit paths instead.
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
+
+            - name: Compare live and generated RPC names
+              env:
+                  PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+                  PRIVATE_SUPABASE_SERVICE_KEY: ${{ secrets.PRIVATE_SUPABASE_SERVICE_KEY }}
+              run: node scripts/security/check-supabase-rpc-drift.mjs

@@ -94,8 +94,10 @@ vi.mock('$lib/services/agentic-chat-v2/turn-intent', () => ({
 vi.mock('$lib/services/agentic-chat-v2/tool-selector', () => ({
 	applyLivingWorkspaceToolProfile: ({ tools }: { tools: unknown[] }) => ({
 		tools,
-		implicitCapture: false
+		implicitCapture: false,
+		commissionedWriteMinimumCount: 0
 	}),
+	looksLikeImpliedProjectDocumentCommission: () => false,
 	resolveFastChatSurfaceProfileForTurn: () => 'general',
 	selectFastChatTools: mocks.selectFastChatTools
 }));

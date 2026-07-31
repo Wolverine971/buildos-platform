@@ -7,7 +7,7 @@ import { loginAndGetCookie } from '../harness/auth';
 import { loadHarnessEnv } from '../harness/env';
 import { assertTurnSucceeded } from '../harness/assertions';
 import { runTurn, warmupPing } from '../harness/sse-client';
-import { sweepOrphanProjects, teardownProject } from '../harness/seed';
+import { sweepOrphanProjects, sweepStaleOrphanProjects, teardownProject } from '../harness/seed';
 import { teardownChatSession, waitForUsageSummary } from '../harness/telemetry';
 import { ensureTestAuthUser, provisionTestUser } from '../harness/test-user';
 import type { ScenarioContext } from '../harness/types';
@@ -186,7 +186,7 @@ phaseADescribe('Phase A frozen-corpus control baseline (paid, real endpoint)', (
 		});
 		const db = await provisionTestUser({ userId, email: env.testUserEmail });
 		await warmupPing({ baseUrl: env.baseUrl, cookie });
-		await sweepOrphanProjects(db);
+		await sweepStaleOrphanProjects(db);
 		ctx = { baseUrl: env.baseUrl, cookie, db };
 	}, 60_000);
 

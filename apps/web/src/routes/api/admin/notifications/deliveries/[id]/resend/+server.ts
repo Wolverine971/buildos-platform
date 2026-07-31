@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/admin/notifications/deliveries/[id]/resend/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { generateCorrelationId } from '@buildos/shared-utils';
 
 export const POST: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
@@ -44,9 +45,10 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 
 		const correlationId =
 			originalDelivery.correlation_id || event.correlation_id || generateCorrelationId();
+		const admin = createAdminSupabaseClient();
 
 		// Create a new delivery record (fresh start, no attempts carried over)
-		const { data: newDelivery, error: createError } = await supabase
+		const { data: newDelivery, error: createError } = await admin
 			.from('notification_deliveries')
 			.insert({
 				event_id: originalDelivery.event_id,
@@ -68,8 +70,10 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 			return ApiResponse.databaseError(createError);
 		}
 
-		// Queue a new notification job using atomic RPC with deduplication
-		const { data: _jobId, error: queueError } = await supabase.rpc('add_queue_job', {
+		// Queue a new notification job using atomic RPC with deduplication.
+		// add_queue_job is SECURITY INVOKER and enqueues for the recipient, so it
+		// uses the service role rather than this admin's user-scoped client.
+		const { data: _jobId, error: queueError } = await admin.rpc('add_queue_job', {
 			p_user_id: originalDelivery.recipient_user_id,
 			p_job_type: 'send_notification',
 			p_metadata: {

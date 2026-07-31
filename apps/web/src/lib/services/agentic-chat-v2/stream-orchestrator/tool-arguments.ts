@@ -5,6 +5,10 @@ import {
 	findDurableTextViolations,
 	isOntologyDurableWriteTool
 } from '$lib/services/agentic-chat/shared/durable-text-validation';
+import {
+	getDocumentUpdateContentCandidate,
+	isAppendOrMergeUpdateStrategy
+} from '$lib/services/agentic-chat/shared/update-value-validation';
 
 const MAX_TOOL_ARG_PARSE_DEPTH = 3;
 const MAX_TOOL_ARG_SEGMENTS = 8;
@@ -229,6 +233,38 @@ export function normalizeToolCallDefaults(
 		function: {
 			...toolCall.function,
 			arguments: serializedArgs
+		}
+	};
+}
+
+/**
+ * A commissioned document-capture pass has one authoritative source available
+ * even when a weak model emits only a target id and merge instructions: the
+ * user's current message. Supply it as merge/append input before validation so
+ * the executor can project the canon into the selected existing documents.
+ *
+ * This is intentionally narrow: ordinary (non-commissioned) tool calls never
+ * opt into this helper, replacement updates are untouched, malformed calls are
+ * left for normal validation, and existing content always wins.
+ */
+export function backfillCommissionedDocumentUpdateContent(
+	toolCall: ChatToolCall,
+	fallbackContent: string | null | undefined
+): ChatToolCall {
+	if (toolCall.function?.name?.trim() !== 'update_onto_document') return toolCall;
+	const content = typeof fallbackContent === 'string' ? fallbackContent.trim() : '';
+	if (!content) return toolCall;
+
+	const parsed = parseToolArguments(toolCall.function.arguments);
+	if (parsed.error) return toolCall;
+	if (!isAppendOrMergeUpdateStrategy(parsed.args.update_strategy)) return toolCall;
+	if (getDocumentUpdateContentCandidate(parsed.args)) return toolCall;
+
+	return {
+		...toolCall,
+		function: {
+			...toolCall.function,
+			arguments: JSON.stringify({ ...parsed.args, content })
 		}
 	};
 }

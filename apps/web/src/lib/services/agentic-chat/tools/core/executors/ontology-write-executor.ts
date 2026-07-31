@@ -61,6 +61,7 @@ import {
 
 const logger = createLogger('OntologyWriteExecutor');
 
+const CONTENT_MERGE_LLM_TIMEOUT_MS = 25_000;
 const MAX_TASK_ASSIGNEES = 10;
 const MAX_MENTION_RECIPIENTS = 25;
 
@@ -2186,12 +2187,30 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		// merge_llm strategy
 		if (this.llmService) {
 			try {
-				return await this.composeContentUpdateWithLLM({
+				const mergedText = await this.composeContentUpdateWithLLM({
 					existingContent: existingText,
 					newContent: sanitizedNew,
 					instructions,
 					projectId
 				});
+				const normalizedExisting = this.normalizeContentForComparison(existingText);
+				const normalizedMerged = this.normalizeContentForComparison(mergedText);
+				const normalizedNew = this.normalizeContentForComparison(sanitizedNew);
+
+				// A non-throwing LLM response is not proof that the requested update was
+				// applied. If it hands the original body back unchanged while the new
+				// material is still absent, fall through to the lossless append path.
+				if (
+					normalizedMerged === normalizedExisting &&
+					normalizedNew.length > 0 &&
+					!normalizedExisting.includes(normalizedNew)
+				) {
+					throw new Error(
+						'Merge returned the existing content without applying the update.'
+					);
+				}
+
+				return mergedText;
 			} catch (error) {
 				logger.warn('LLM merge failed, falling back to append', {
 					entityLabel: entityLabel || 'entity',
@@ -2205,6 +2224,15 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		}
 
 		return existingText ? `${existingText}\n\n${sanitizedNew}` : sanitizedNew;
+	}
+
+	private normalizeContentForComparison(content: string): string {
+		return content
+			.replace(/\r\n?/g, '\n')
+			.replace(/[\t ]+/g, ' ')
+			.replace(/\n{3,}/g, '\n\n')
+			.trim()
+			.toLowerCase();
 	}
 
 	/**
@@ -2259,6 +2287,10 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			userId: this.userId,
 			profile: 'balanced',
 			maxTokens: scaledMaxTokens,
+			// Finish or fall back before ToolExecutionService's outer document-write
+			// deadline. A slow editor must not prevent the lossless append path from
+			// preserving the user's new material.
+			timeoutMs: CONTENT_MERGE_LLM_TIMEOUT_MS,
 			temperature: 0.4,
 			operationType: 'agentic_chat_content_merge',
 			chatSessionId: this.sessionId,

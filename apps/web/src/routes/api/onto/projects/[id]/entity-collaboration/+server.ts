@@ -11,6 +11,7 @@ import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 type EntityType = 'task' | 'document' | 'goal' | 'plan';
 type EntitySummary = {
@@ -440,6 +441,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		requiredAccess: 'read'
 	});
 	if (!access.ok) return access.response;
+	const adminSupabase = createAdminSupabaseClient();
 
 	const entityType = normalizeEntityType(url.searchParams.get('entity_type'));
 	const entityId = url.searchParams.get('entity_id') ?? '';
@@ -458,7 +460,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 
 		const projectName = await fetchProjectName(supabase, access.projectId);
 		const { membersResult, assignmentsResult } = await fetchMembersAndAssignments({
-			supabase,
+			supabase: adminSupabase,
 			projectId: access.projectId,
 			entityType,
 			entityId
@@ -499,6 +501,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		requiredAccess: 'write'
 	});
 	if (!access.ok) return access.response;
+	const adminSupabase = createAdminSupabaseClient();
 
 	try {
 		const parsed = await parseJsonRequest(request, entityCollaborationSchema);
@@ -549,7 +552,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		if (action === 'assign') {
-			const { error: deleteError } = await supabase
+			const { error: deleteError } = await adminSupabase
 				.from('onto_assignments')
 				.delete()
 				.eq('object_kind', entityType)
@@ -557,7 +560,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				.eq('role_key', 'owner');
 			if (deleteError) return ApiResponse.databaseError(deleteError);
 
-			const { error: insertError } = await supabase.from('onto_assignments').insert({
+			const { error: insertError } = await adminSupabase.from('onto_assignments').insert({
 				actor_id: targetActor.id,
 				object_kind: entityType,
 				object_id: entityId,
@@ -572,7 +575,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		if (targetActor.user_id && targetActor.user_id !== access.userId && channel === 'in_app') {
 			deliveryResult = await notifyInApp({
-				supabase,
+				supabase: adminSupabase,
 				recipientUserId: targetActor.user_id,
 				actorUserId: access.userId,
 				projectId: access.projectId,

@@ -54,6 +54,11 @@ describe('looksLikeWebResearchTurn', () => {
 		expect(looksLikeWebResearchTurn('search the web for framework comparisons')).toBe(true);
 		expect(looksLikeWebResearchTurn('what is the latest pricing for Vercel?')).toBe(true);
 		expect(looksLikeWebResearchTurn('check competitor pricing pages')).toBe(true);
+		expect(
+			looksLikeWebResearchTurn(
+				'i think we need to figure out the research on what other people are charging'
+			)
+		).toBe(true);
 	});
 
 	it('does not match workspace research phrasing', () => {

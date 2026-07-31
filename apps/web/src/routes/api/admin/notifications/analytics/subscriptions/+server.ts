@@ -1,8 +1,9 @@
 // apps/web/src/routes/api/admin/notifications/analytics/subscriptions/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -13,6 +14,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 	}
 
 	try {
+		const supabase = createAdminSupabaseClient();
 		const { data, error } = await supabase.rpc('get_notification_active_subscriptions');
 
 		if (error) {

@@ -1,0 +1,20 @@
+{
+	"relations": [
+		{ "relation": "api_keys", "expect": "absent" },
+		{ "relation": "calendar_themes", "expect": "absent" },
+		{ "relation": "chat_sessions_daily_briefs", "expect": "absent" },
+		{ "relation": "chat_sessions_tasks", "expect": "absent" },
+		{ "relation": "llm_prompts", "expect": "absent" },
+		{ "relation": "onto_tools", "expect": "absent" },
+		{ "relation": "question_metrics", "expect": "absent" },
+		{ "relation": "question_templates", "expect": "absent" },
+		{ "relation": "research_artifact_refs", "expect": "absent" },
+		{ "relation": "task_documents", "expect": "absent" },
+		{ "relation": "tree_agent_artifacts", "expect": "absent" },
+		{ "relation": "tree_agent_events", "expect": "absent" },
+		{ "relation": "tree_agent_nodes", "expect": "absent" },
+		{ "relation": "tree_agent_plans", "expect": "absent" },
+		{ "relation": "tree_agent_runs", "expect": "absent" },
+		{ "relation": "user_notification_preferences_backup", "expect": "absent" }
+	]
+}

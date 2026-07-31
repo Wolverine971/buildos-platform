@@ -11,14 +11,16 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { buildPublicPageUrlPath } from '$lib/server/public-page.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const GET: RequestHandler = async ({ params, locals }) => {
+export const GET: RequestHandler = async ({ params }) => {
 	const slugPrefix = (params.slugPrefix ?? '').trim().toLowerCase();
 	if (!slugPrefix) {
 		return ApiResponse.badRequest('slugPrefix required');
 	}
 
-	const { data, error } = await (locals.supabase as any)
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await (supabase as any)
 		.from('onto_public_pages')
 		.select(
 			'id, slug, slug_prefix, slug_base, title, summary, published_at, last_live_sync_at, view_count_all, published_by, created_by, project_id'
@@ -51,7 +53,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	const anyActorId = rows[0].published_by ?? rows[0].created_by ?? null;
 	let authorName: string | null = null;
 	if (anyActorId) {
-		const { data: actor } = await (locals.supabase as any)
+		const { data: actor } = await (supabase as any)
 			.from('onto_actors')
 			.select('name')
 			.eq('id', anyActorId)
@@ -62,7 +64,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 	// Project names for display on each row.
 	const projectIds = Array.from(new Set(rows.map((r) => String(r.project_id))));
-	const { data: projects } = await (locals.supabase as any)
+	const { data: projects } = await (supabase as any)
 		.from('onto_projects')
 		.select('id, name')
 		.in('id', projectIds);

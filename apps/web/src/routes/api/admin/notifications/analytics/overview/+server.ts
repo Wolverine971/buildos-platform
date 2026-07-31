@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/admin/notifications/analytics/overview/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 type Timeframe = '24h' | '7d' | '30d' | '90d';
 
@@ -14,7 +15,7 @@ function getTimeframeInterval(timeframe: Timeframe): string {
 	return intervals[timeframe] || '7 days';
 }
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -27,6 +28,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	try {
 		const timeframe = (url.searchParams.get('timeframe') || '7d') as Timeframe;
 		const interval = getTimeframeInterval(timeframe);
+		const supabase = createAdminSupabaseClient();
 
 		// Get current period metrics
 		const { data: currentMetrics, error: currentError } = await supabase.rpc(

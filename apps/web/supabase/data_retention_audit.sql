@@ -83,17 +83,6 @@ WHERE created_at < NOW() - INTERVAL '90 days'
 UNION ALL
 
 SELECT
-	'tree_agent_events' AS dataset,
-	'90 days' AS retention_window,
-	COUNT(*) AS rows_eligible,
-	MIN(created_at) AS oldest_row_ts,
-	MAX(created_at) AS newest_row_ts
-FROM tree_agent_events
-WHERE created_at < NOW() - INTERVAL '90 days'
-
-UNION ALL
-
-SELECT
 	'homework_run_events' AS dataset,
 	'90 days' AS retention_window,
 	COUNT(*) AS rows_eligible,

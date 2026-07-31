@@ -268,7 +268,10 @@ describe('ProjectCalendarService sync health and retries', () => {
 	});
 
 	it('enqueues manual project event sync retry with current event version', async () => {
-		const { supabase, rpc } = createSupabaseMock({
+		// The enqueue runs on the service-role client, not the caller's user-scoped
+		// one: add_queue_job is SECURITY INVOKER and queues work for the target user,
+		// so a user-scoped call would break once queue_jobs enforces RLS.
+		const { supabase } = createSupabaseMock({
 			tables: {
 				onto_events: [
 					{
@@ -286,10 +289,9 @@ describe('ProjectCalendarService sync health and retries', () => {
 						user_id: 'user-2'
 					}
 				]
-			},
-			rpcAddQueueJob: { data: 'queue-123', error: null }
+			}
 		});
-		const { supabase: adminSupabase } = createSupabaseMock({
+		const { supabase: adminSupabase, rpc: adminRpc } = createSupabaseMock({
 			tables: {
 				queue_jobs: [
 					{
@@ -297,7 +299,8 @@ describe('ProjectCalendarService sync health and retries', () => {
 						queue_job_id: 'sync_calendar_public_123'
 					}
 				]
-			}
+			},
+			rpcAddQueueJob: { data: 'queue-123', error: null }
 		});
 		adminSupabaseState.current = adminSupabase;
 
@@ -312,7 +315,7 @@ describe('ProjectCalendarService sync health and retries', () => {
 		expect(payload.success).toBe(true);
 		expect(payload.data.queue_job_id).toBe('sync_calendar_public_123');
 
-		expect(rpc).toHaveBeenCalledWith(
+		expect(adminRpc).toHaveBeenCalledWith(
 			'add_queue_job',
 			expect.objectContaining({
 				p_user_id: 'user-2',
@@ -320,7 +323,7 @@ describe('ProjectCalendarService sync health and retries', () => {
 			})
 		);
 
-		const rpcArgs = rpc.mock.calls[0]?.[1] as Record<string, any>;
+		const rpcArgs = adminRpc.mock.calls[0]?.[1] as Record<string, any>;
 		expect(rpcArgs?.p_metadata).toMatchObject({
 			kind: 'onto_project_event_sync',
 			action: 'upsert',

@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/admin/notifications/analytics/timeline/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 type Timeframe = '24h' | '7d' | '30d' | '90d';
 type Granularity = 'hour' | 'day';
@@ -23,7 +24,7 @@ function getGranularity(timeframe: Timeframe, requested?: string): Granularity {
 	return timeframe === '24h' ? 'hour' : 'day';
 }
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -40,6 +41,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			url.searchParams.get('granularity') || undefined
 		);
 		const interval = getTimeframeInterval(timeframe);
+		const supabase = createAdminSupabaseClient();
 
 		const { data, error } = await supabase.rpc('get_notification_delivery_timeline', {
 			p_interval: interval,

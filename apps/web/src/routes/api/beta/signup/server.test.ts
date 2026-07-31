@@ -1,17 +1,22 @@
 // apps/web/src/routes/api/beta/signup/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { generateMinimalEmailHTMLMock, createGmailTransporterMock, getDefaultSenderMock } =
-	vi.hoisted(() => ({
-		generateMinimalEmailHTMLMock: vi.fn(() => '<html></html>'),
-		createGmailTransporterMock: vi.fn(() => ({
-			sendMail: vi.fn().mockResolvedValue(undefined)
-		})),
-		getDefaultSenderMock: vi.fn(() => ({
-			email: 'dj@build-os.com',
-			password: ''
-		}))
-	}));
+const {
+	generateMinimalEmailHTMLMock,
+	createGmailTransporterMock,
+	getDefaultSenderMock,
+	createAdminSupabaseClientMock
+} = vi.hoisted(() => ({
+	generateMinimalEmailHTMLMock: vi.fn(() => '<html></html>'),
+	createGmailTransporterMock: vi.fn(() => ({
+		sendMail: vi.fn().mockResolvedValue(undefined)
+	})),
+	getDefaultSenderMock: vi.fn(() => ({
+		email: 'dj@build-os.com',
+		password: ''
+	})),
+	createAdminSupabaseClientMock: vi.fn()
+}));
 
 vi.mock('$lib/utils/emailTemplate.js', () => ({
 	generateMinimalEmailHTML: generateMinimalEmailHTMLMock
@@ -20,6 +25,10 @@ vi.mock('$lib/utils/emailTemplate.js', () => ({
 vi.mock('$lib/utils/email-config', () => ({
 	createGmailTransporter: createGmailTransporterMock,
 	getDefaultSender: getDefaultSenderMock
+}));
+
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: createAdminSupabaseClientMock
 }));
 
 import { GET, POST } from './+server';
@@ -92,6 +101,7 @@ describe('POST /api/beta/signup', () => {
 		const { supabase, queryBuilder } = createBetaSignupSupabaseMock({
 			insertedSignup
 		});
+		createAdminSupabaseClientMock.mockReturnValue(supabase);
 
 		const response = await POST({
 			request: new Request('http://localhost/api/beta/signup', {
@@ -124,6 +134,7 @@ describe('POST /api/beta/signup', () => {
 
 	it('rejects honeypot submissions before touching the database', async () => {
 		const { supabase, queryBuilder } = createBetaSignupSupabaseMock({});
+		createAdminSupabaseClientMock.mockReturnValue(supabase);
 
 		const response = await POST({
 			request: new Request('http://localhost/api/beta/signup', {
@@ -151,6 +162,7 @@ describe('GET /api/beta/signup', () => {
 
 	it('returns not_found when the email has no existing signup', async () => {
 		const { supabase } = createBetaSignupSupabaseMock({});
+		createAdminSupabaseClientMock.mockReturnValue(supabase);
 
 		const response = await GET({
 			url: new URL('http://localhost/api/beta/signup?email=test@example.com'),

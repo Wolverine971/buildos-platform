@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	assertIsoDate,
 	assertMarkdownSectionBullets,
+	assertExactVisiblyLabeledOptions,
 	assertMinimumDistinctOptions,
 	assertNarratedBeforeActing,
 	assertNoMutations,
@@ -18,6 +19,14 @@ import {
 import type { TurnResult } from './types';
 
 describe('scenario assertion helpers', () => {
+	it('counts em-dash option labels exactly', () => {
+		const text = '**Option 1 — Hold price**\nDetails\n\n**Option 2 — Raise price**\nDetails';
+
+		const turn = { assistantText: text } as TurnResult;
+		expect(() => assertExactVisiblyLabeledOptions(turn, 2)).not.toThrow();
+		expect(() => assertExactVisiblyLabeledOptions(turn, 3)).toThrow('expected exactly 3');
+	});
+
 	it('computes this Friday without rolling an existing Friday forward', () => {
 		expect(nextWeekdayDate(new Date(2026, 6, 12, 9), 5)).toBe('2026-07-17');
 		expect(nextWeekdayDate(new Date(2026, 6, 17, 9), 5)).toBe('2026-07-17');

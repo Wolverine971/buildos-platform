@@ -929,7 +929,12 @@ export class ProjectCalendarService {
 
 			let queueJobId: string;
 			try {
-				const { data: queueRecordId, error: queueError } = await this.supabase.rpc(
+				// This route runs with a user-scoped client but queues work for the target user,
+				// so both the enqueue and the public-id read-back use a service-role client.
+				// add_queue_job is SECURITY INVOKER, so a user-scoped call would insert as the
+				// caller and break once queue_jobs enforces RLS.
+				const admin = createAdminSupabaseClient();
+				const { data: queueRecordId, error: queueError } = await admin.rpc(
 					'add_queue_job',
 					{
 						p_user_id: input.targetUserId,
@@ -945,12 +950,7 @@ export class ProjectCalendarService {
 					return ApiResponse.error('Failed to enqueue sync retry', 500);
 				}
 
-				// This route runs with a user-scoped client but queues work for the target user,
-				// so resolve the public queue_job_id with a service-role client to avoid RLS misses.
-				queueJobId = await resolveQueueJobPublicId(
-					createAdminSupabaseClient(),
-					queueRecordId
-				);
+				queueJobId = await resolveQueueJobPublicId(admin, queueRecordId);
 			} catch {
 				return ApiResponse.error('Failed to enqueue sync retry', 500);
 			}

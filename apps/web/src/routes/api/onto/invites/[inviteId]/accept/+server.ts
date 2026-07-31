@@ -8,6 +8,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { randomUUID } from 'crypto';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
 	const supabase = locals.supabase;
@@ -303,9 +304,10 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 					}
 				}
 
+				const notificationAdmin = createAdminSupabaseClient();
 				await Promise.all(
 					recipientIds.map(async (recipientId) => {
-						const { error: emitError } = await (supabase.rpc as any)(
+						const { error: emitError } = await (notificationAdmin.rpc as any)(
 							'emit_notification_event',
 							{
 								p_event_type: eventType,

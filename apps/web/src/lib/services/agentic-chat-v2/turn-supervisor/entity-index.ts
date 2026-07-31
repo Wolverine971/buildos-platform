@@ -123,6 +123,19 @@ export function buildTurnSupervisorEntityIndexFromContextData(
 		addArray(entriesFrom(root[key]), (item) => add(kind, item, { source: `context.${key}` }));
 	}
 
+	// Compact project context exposes the complete lightweight inventory under
+	// entity_refs rather than duplicating it in top-level arrays. Include those
+	// exact ids and labels in the supervisor index so repair passes can point the
+	// model at a real alternative target instead of asking it to guess.
+	const entityRefs = asRecord(root.entity_refs);
+	if (entityRefs) {
+		for (const [key, kind] of Object.entries(COLLECTION_KIND_BY_KEY)) {
+			addArray(entriesFrom(entityRefs[key]), (item) =>
+				add(kind, item, { source: `context.entity_refs.${key}` })
+			);
+		}
+	}
+
 	addArray(entriesFrom(root.projects), (bundle) => {
 		const bundleRecord = asRecord(bundle);
 		if (!bundleRecord) return;

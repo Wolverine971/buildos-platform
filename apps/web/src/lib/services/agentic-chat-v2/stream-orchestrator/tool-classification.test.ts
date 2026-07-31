@@ -108,10 +108,17 @@ describe('tool classification', () => {
 				}
 			}
 		});
+		const duplicateCommissionTarget = execution({
+			name: 'update_onto_document',
+			success: false,
+			error: 'Tool validation failed: Duplicate commissioned target skipped: choose a different affected document.'
+		});
 
 		expect(didGatewayExecSucceed(failedGatewayWrite)).toBe(false);
 		expect(isDuplicateWriteSkippedExecution(duplicate)).toBe(true);
+		expect(isDuplicateWriteSkippedExecution(duplicateCommissionTarget)).toBe(true);
 		expect(isWriteLedgerToolExecution(duplicate)).toBe(false);
+		expect(isWriteLedgerToolExecution(duplicateCommissionTarget)).toBe(false);
 	});
 
 	it('records a completed task move but not its confirmation preview', () => {

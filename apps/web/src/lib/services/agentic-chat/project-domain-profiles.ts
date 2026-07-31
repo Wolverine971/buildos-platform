@@ -420,6 +420,8 @@ const FICTION_NAMED_STRUCTURE_UNIT =
 	/\b(?:part|act|chapter|scene)\s+(?:[ivxlcdm]+|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/gi;
 const FICTION_STRUCTURE_UNIT_SIGNAL =
 	/\b(?:part|act|chapter|scene)\s+(?:[ivxlcdm]+|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i;
+const FICTION_CONTROLLING_STORY_PRESSURE =
+	/\b(?:wants?|must|needs?|tries?|seeks?|races?)\b[^.!?]{0,240}\bbefore\b|\b(?:emotional|thematic)\s+spine\b|\b(?:central|core|main)\s+conflict\b/i;
 
 function normalizeSourceCoverageText(value: unknown): string {
 	return normalizeText(value)
@@ -450,14 +452,56 @@ function extractFictionStructureSourceSentences(
 ): FictionStructureSourceSentence[] {
 	const message = normalizeText(userMessage);
 	if (!message) return [];
-	return message
-		.split(/(?<=[.!?])\s+/u)
-		.map((sentence) => sentence.trim())
-		.filter((sentence) => {
-			const namedUnits = sentence.match(FICTION_NAMED_STRUCTURE_UNIT) ?? [];
-			return FICTION_STRUCTURE_SOURCE_INTRO.test(sentence) && namedUnits.length >= 2;
-		})
+	const sentences = message.split(/(?<=[.!?])\s+/u).map((sentence) => sentence.trim());
+	const explicitStructureSources = sentences.filter((sentence) => {
+		const namedUnits = sentence.match(FICTION_NAMED_STRUCTURE_UNIT) ?? [];
+		return FICTION_STRUCTURE_SOURCE_INTRO.test(sentence) && namedUnits.length >= 2;
+	});
+	if (explicitStructureSources.length === 0) return [];
+
+	// Once the author has explicitly commissioned a structure artifact with a
+	// named sequence, keep the controlling pressure beside that sequence. A
+	// protagonist's "before the antagonist..." clause or an explicitly labeled
+	// emotional spine is structural canon, even when the same sentence also
+	// belongs on a character sheet.
+	return sentences
+		.filter(
+			(sentence) =>
+				explicitStructureSources.includes(sentence) ||
+				FICTION_CONTROLLING_STORY_PRESSURE.test(sentence)
+		)
 		.map((sentence) => ({ sentence }));
+}
+
+function extractFictionOpeningBrainDump(userMessage: string | null | undefined): string | null {
+	const message = normalizeText(userMessage);
+	if (!message) return null;
+	const marker = /\bopening brain dump\s*:\s*/i.exec(message);
+	if (!marker?.[0] || marker.index === undefined) return null;
+	const brainDump = message.slice(marker.index + marker[0].length).trim();
+	return brainDump || null;
+}
+
+function buildUniqueEntityTempId(base: string, entities: unknown[]): string {
+	const normalizedBase =
+		base
+			.normalize('NFKD')
+			.toLocaleLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '') || 'artifact';
+	const existing = new Set(
+		entities
+			.filter(isRecord)
+			.map((entity) => normalizeText(entity.temp_id))
+			.filter(Boolean)
+	);
+	let candidate = normalizedBase;
+	let suffix = 2;
+	while (existing.has(candidate)) {
+		candidate = `${normalizedBase}-${suffix}`;
+		suffix += 1;
+	}
+	return candidate;
 }
 
 function relationshipReferencesTempIds(value: unknown, tempIds: Set<string>): boolean {
@@ -472,9 +516,27 @@ function relationshipReferencesTempIds(value: unknown, tempIds: Set<string>): bo
 	return Object.values(value).some((entry) => relationshipReferencesTempIds(entry, tempIds));
 }
 
-function addAuthorCanonSentences(entity: JsonRecord, sentences: string[]): JsonRecord {
+function addAuthorCanonSentences(
+	entity: JsonRecord,
+	sentences: string[],
+	options: { requireAuthorCanonSection?: boolean } = {}
+): JsonRecord {
 	const combinedBody = `${normalizeText(entity.content)} ${normalizeText(entity.body_markdown)}`;
-	const normalizedBody = normalizeSourceCoverageText(combinedBody);
+	const headingMatch = /^## Author canon[ \t]*$/im.exec(combinedBody);
+	let existingCoverageText = combinedBody;
+	if (options.requireAuthorCanonSection) {
+		if (headingMatch?.index === undefined) {
+			existingCoverageText = '';
+		} else {
+			const sectionStart = headingMatch.index + headingMatch[0].length;
+			const followingHeading = /^#{1,6}\s+.+$/m.exec(combinedBody.slice(sectionStart));
+			const sectionEnd = followingHeading
+				? sectionStart + followingHeading.index
+				: combinedBody.length;
+			existingCoverageText = combinedBody.slice(sectionStart, sectionEnd);
+		}
+	}
+	const normalizedBody = normalizeSourceCoverageText(existingCoverageText);
 	const missing = sentences.filter(
 		(sentence) => !normalizedBody.includes(normalizeSourceCoverageText(sentence))
 	);
@@ -483,10 +545,10 @@ function addAuthorCanonSentences(entity: JsonRecord, sentences: string[]): JsonR
 	const bodyKey = typeof entity.content === 'string' ? 'content' : 'body_markdown';
 	const body = typeof entity[bodyKey] === 'string' ? entity[bodyKey] : '';
 	const canonLines = missing.join('\n\n');
-	const headingMatch = /^## Author canon[ \t]*$/im.exec(body);
+	const bodyHeadingMatch = /^## Author canon[ \t]*$/im.exec(body);
 	let nextBody: string;
-	if (headingMatch?.index !== undefined) {
-		const insertionPoint = headingMatch.index + headingMatch[0].length;
+	if (bodyHeadingMatch?.index !== undefined) {
+		const insertionPoint = bodyHeadingMatch.index + bodyHeadingMatch[0].length;
 		nextBody = `${body.slice(0, insertionPoint)}\n\n${canonLines}${body.slice(insertionPoint)}`;
 	} else {
 		nextBody = `## Author canon\n\n${canonLines}${body.trim() ? `\n\n${body}` : ''}`;
@@ -514,26 +576,37 @@ export function applyFictionStructureUpdateSourceDefault<T extends JsonRecord>(
 		(typeof args.content === 'string' && args.content.trim().length > 0) ||
 		(typeof args.body_markdown === 'string' && args.body_markdown.trim().length > 0);
 	if (!hasTopLevelContent) return args;
-	return addAuthorCanonSentences(args, [sourceMessage]) as T;
+	const bodyKey = typeof args.content === 'string' ? 'content' : 'body_markdown';
+	const body = normalizeText(args[bodyKey]);
+	if (normalizeSourceCoverageText(body) === normalizeSourceCoverageText(sourceMessage)) {
+		return {
+			...args,
+			[bodyKey]: `## Author canon\n\n${body}`
+		} as T;
+	}
+	return addAuthorCanonSentences(args, [sourceMessage], {
+		requireAuthorCanonSection: true
+	}) as T;
 }
 
 /**
  * Apply the small, lossless parts of the fiction creation contract on the
  * server. Weak models still decide which useful creative documents to make and
  * how to organize them; the server only removes unrequested project-management
- * scaffolding and copies clearly recognized author source sentences into the
- * dedicated artifacts the model already supplied.
+ * scaffolding, copies clearly recognized author source sentences into the
+ * dedicated artifacts, and supplies only the minimum artifacts the grounding
+ * contract can derive without creative inference when a weak model omitted
+ * them entirely.
  */
 function applyFictionCreationProfileDefaults(
 	args: JsonRecord,
 	userMessage: string | null | undefined
 ): JsonRecord {
 	const sourceMessage = normalizeText(userMessage);
-	let entities = Array.isArray(args.entities) ? args.entities : null;
+	let entities = Array.isArray(args.entities) ? args.entities : [];
 	let relationships = Array.isArray(args.relationships) ? args.relationships : null;
 
 	if (
-		entities &&
 		!hasExplicitProjectScheduleSignal(sourceMessage) &&
 		!EXPLICIT_PROJECT_SCAFFOLDING_PATTERN.test(sourceMessage)
 	) {
@@ -556,39 +629,71 @@ function applyFictionCreationProfileDefaults(
 		}
 	}
 
-	if (entities) {
-		const characterSources = extractFictionCharacterSourceSentences(sourceMessage);
-		const structureSources = extractFictionStructureSourceSentences(sourceMessage).map(
-			(source) => source.sentence
-		);
-		let structureSourceApplied = false;
+	const characterSources = extractFictionCharacterSourceSentences(sourceMessage);
+	const structureSources = extractFictionStructureSourceSentences(sourceMessage).map(
+		(source) => source.sentence
+	);
+	let structureSourceApplied = false;
 
-		entities = entities.map((entity: unknown) => {
-			if (!isRecord(entity) || entity.kind !== 'document') return entity;
-			const typeKey = normalizeText(entity.type_key);
-			if (/^document\.creative\.character(?:\.|$)/i.test(typeKey)) {
-				const identity = normalizeSourceCoverageText(
-					`${normalizeText(entity.title)} ${normalizeText(entity.name)} ${normalizeText(entity.content)} ${normalizeText(entity.body_markdown)}`
-				);
-				const matchingSources = characterSources
-					.filter((source) => identity.includes(normalizeSourceCoverageText(source.name)))
-					.map((source) => source.sentence);
-				return addAuthorCanonSentences(entity, matchingSources);
-			}
+	entities = entities.map((entity: unknown) => {
+		if (!isRecord(entity) || entity.kind !== 'document') return entity;
+		const typeKey = normalizeText(entity.type_key);
+		if (/^document\.creative\.character(?:\.|$)/i.test(typeKey)) {
+			const identity = normalizeSourceCoverageText(
+				`${normalizeText(entity.title)} ${normalizeText(entity.name)} ${normalizeText(entity.content)} ${normalizeText(entity.body_markdown)}`
+			);
+			const matchingSources = characterSources
+				.filter((source) => identity.includes(normalizeSourceCoverageText(source.name)))
+				.map((source) => source.sentence);
+			return addAuthorCanonSentences(entity, matchingSources);
+		}
+		if (!structureSourceApplied && /^document\.creative\.structure(?:\.|$)/i.test(typeKey)) {
+			structureSourceApplied = true;
+			return addAuthorCanonSentences(entity, structureSources);
+		}
+		return entity;
+	});
+
+	for (const source of characterSources) {
+		const normalizedName = normalizeSourceCoverageText(source.name);
+		const hasCharacterDocument = entities.some((entity: unknown) => {
 			if (
-				!structureSourceApplied &&
-				/^document\.creative\.structure(?:\.|$)/i.test(typeKey)
+				!isRecord(entity) ||
+				entity.kind !== 'document' ||
+				!/^document\.creative\.character(?:\.|$)/i.test(normalizeText(entity.type_key))
 			) {
-				structureSourceApplied = true;
-				return addAuthorCanonSentences(entity, structureSources);
+				return false;
 			}
-			return entity;
+			const identity = normalizeSourceCoverageText(
+				`${normalizeText(entity.title)} ${normalizeText(entity.name)} ${normalizeText(entity.content)} ${normalizeText(entity.body_markdown)}`
+			);
+			return identity.includes(normalizedName);
+		});
+		if (hasCharacterDocument) continue;
+		entities.push({
+			kind: 'document',
+			temp_id: buildUniqueEntityTempId(`character-${source.name}`, entities),
+			title: source.name,
+			type_key: 'document.creative.character',
+			content: `## Author canon\n\n${source.sentence}`
+		});
+	}
+
+	if (structureSources.length > 0 && !structureSourceApplied) {
+		const canon =
+			extractFictionOpeningBrainDump(sourceMessage) ?? structureSources.join('\n\n');
+		entities.push({
+			kind: 'document',
+			temp_id: buildUniqueEntityTempId('story-structure', entities),
+			title: 'Story Structure',
+			type_key: 'document.creative.structure',
+			content: `## Author canon\n\n${canon}`
 		});
 	}
 
 	return {
 		...args,
-		...(entities ? { entities } : {}),
+		entities,
 		...(relationships ? { relationships } : {})
 	};
 }

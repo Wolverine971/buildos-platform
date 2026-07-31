@@ -5,6 +5,7 @@ import { CalendarService } from '$lib/services/calendar-service';
 import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { GoogleOAuthConnectionError, GoogleOAuthService } from '$lib/services/google-oauth-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { OntoEventService, type OntoEventOwner } from './onto-event.service';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import {
@@ -1293,7 +1294,10 @@ export class OntoEventSyncService {
 				eventUpdatedAt: eventVersion
 			};
 
-			const { error } = await this.supabase.rpc('add_queue_job', {
+			// Enqueues work for targetUserId, who is frequently NOT the caller, and
+			// add_queue_job is SECURITY INVOKER — so this must not run on the
+			// user-scoped client or it breaks once queue_jobs enforces RLS.
+			const { error } = await createAdminSupabaseClient().rpc('add_queue_job', {
 				p_user_id: targetUserId,
 				p_job_type: 'sync_calendar',
 				p_metadata: metadata as unknown as Json,

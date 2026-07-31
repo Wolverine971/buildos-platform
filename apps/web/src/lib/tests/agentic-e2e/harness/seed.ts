@@ -16,9 +16,21 @@ import type { DbView, ScenarioContext, SeedResult } from './types';
  */
 export const HARNESS_PROJECT_PREFIX = 'AE2E ·';
 
+const STALE_ORPHAN_AGE_MS = 24 * 60 * 60 * 1000;
+
+function runLabel(): string {
+	const configured = process.env.AGENTIC_E2E_RUN_LABEL?.trim();
+	const safeLabel = configured?.replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 24);
+	return [safeLabel, randomUUID().slice(0, 12)].filter(Boolean).join('-');
+}
+
+/** Unique to this process, so concurrent harnesses never share a cleanup scope. */
+export const HARNESS_RUN_ID = runLabel();
+export const HARNESS_RUN_PREFIX = `${HARNESS_PROJECT_PREFIX} run=${HARNESS_RUN_ID} ·`;
+
 /** Build a collision-free, sweepable project name for a fixture. */
 export function harnessProjectName(label: string): string {
-	return `${HARNESS_PROJECT_PREFIX} ${label} · ${randomUUID().slice(0, 8)}`;
+	return `${HARNESS_RUN_PREFIX} ${label} · ${randomUUID().slice(0, 8)}`;
 }
 
 /** Instantiate a fixture project under the test user and return its id. */
@@ -53,19 +65,40 @@ export async function teardownProject(db: DbView, projectId: string | undefined)
 }
 
 /**
- * Backstop cleanup: delete any harness-prefixed projects still owned by the test
- * actor (e.g. from a mid-run crash). Scoped to created_by = actorId AND the
- * harness name prefix, so it can never touch real projects.
+ * Delete projects created by this harness process only. The run id in the name
+ * prevents a concurrent process (including another worktree) from deleting
+ * fixtures that are still in use.
  */
 export async function sweepOrphanProjects(db: DbView): Promise<number> {
 	const { data, error } = await db.admin
 		.from('onto_projects')
 		.delete()
 		.eq('created_by', db.actorId)
-		.like('name', `${HARNESS_PROJECT_PREFIX}%`)
+		.like('name', `${HARNESS_RUN_PREFIX}%`)
 		.select('id');
 	if (error) {
-		console.warn(`[agentic-e2e] orphan sweep failed: ${error.message}`);
+		console.warn(`[agentic-e2e] run cleanup failed: ${error.message}`);
+		return 0;
+	}
+	return data?.length ?? 0;
+}
+
+/**
+ * Reap projects left by crashed harnesses, but only after a full day. Active
+ * parallel runs are therefore outside the deletion window even though they use
+ * the same hosted database and test actor.
+ */
+export async function sweepStaleOrphanProjects(db: DbView, now = new Date()): Promise<number> {
+	const cutoff = new Date(now.getTime() - STALE_ORPHAN_AGE_MS).toISOString();
+	const { data, error } = await db.admin
+		.from('onto_projects')
+		.delete()
+		.eq('created_by', db.actorId)
+		.like('name', `${HARNESS_PROJECT_PREFIX}%`)
+		.lt('created_at', cutoff)
+		.select('id');
+	if (error) {
+		console.warn(`[agentic-e2e] stale orphan sweep failed: ${error.message}`);
 		return 0;
 	}
 	return data?.length ?? 0;

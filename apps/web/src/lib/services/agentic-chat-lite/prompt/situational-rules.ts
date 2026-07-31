@@ -61,7 +61,8 @@ const WEB_RESEARCH_TURN_PATTERNS = [
 	/\b(?:search|look\s?up|check|find)\b[\s\S]{0,50}\b(?:the web|online|the internet|google)\b/i,
 	/\b(?:web|online|internet)\b[\s\S]{0,30}\b(?:search|research|look\s?up)\b/i,
 	/\b(?:latest|current|up[-\s]?to[-\s]?date|today'?s)\b[\s\S]{0,60}\b(?:news|price|prices|pricing|benchmarks?|release|version|docs|documentation)\b/i,
-	/\bcompetitor(?:s)?\b[\s\S]{0,60}\b(?:pricing|prices|products?|features?|research)\b/i
+	/\bcompetitor(?:s)?\b[\s\S]{0,60}\b(?:pricing|prices|products?|features?|research)\b/i,
+	/\b(?:research|figure\s+out|find\s+out)\b[\s\S]{0,100}\b(?:other\s+people|others|competitors?)\b[\s\S]{0,50}\b(?:charging|pricing|prices)\b/i
 ];
 
 export function looksLikeWebResearchTurn(text: string | null | undefined): boolean {

@@ -2,12 +2,20 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { RequestEvent } from '@sveltejs/kit';
 
+const { createAdminSupabaseClientMock } = vi.hoisted(() => ({
+	createAdminSupabaseClientMock: vi.fn()
+}));
+
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 	ensureActorId: vi.fn().mockResolvedValue('actor-1')
 }));
 
 vi.mock('../../../shared/error-logging', () => ({
 	logOntologyApiError: vi.fn()
+}));
+
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: createAdminSupabaseClientMock
 }));
 
 import { POST } from './+server';
@@ -109,6 +117,8 @@ describe('POST /api/onto/invites/[inviteId]/accept', () => {
 		const projectTable = createProjectTable();
 		const membersTable = createMembersTable();
 		const notificationSubscriptionsTable = createNotificationSubscriptionsTable();
+		const adminRpc = vi.fn().mockResolvedValue({ data: null, error: null });
+		createAdminSupabaseClientMock.mockReturnValue({ rpc: adminRpc });
 
 		supabase.rpc.mockImplementation((fn: string, args: Record<string, unknown>) => {
 			if (fn === 'get_pending_project_invite_context') {
@@ -141,10 +151,6 @@ describe('POST /api/onto/invites/[inviteId]/accept', () => {
 				});
 			}
 
-			if (fn === 'emit_notification_event') {
-				return Promise.resolve({ data: null, error: null });
-			}
-
 			throw new Error(`Unexpected RPC: ${fn} ${JSON.stringify(args)}`);
 		});
 
@@ -172,7 +178,7 @@ describe('POST /api/onto/invites/[inviteId]/accept', () => {
 		expect(supabase.rpc).toHaveBeenCalledWith('accept_project_invite_by_id', {
 			p_invite_id: 'invite-1'
 		});
-		expect(supabase.rpc).toHaveBeenCalledWith(
+		expect(adminRpc).toHaveBeenCalledWith(
 			'emit_notification_event',
 			expect.objectContaining({
 				p_target_user_id: 'inviter-user-1',

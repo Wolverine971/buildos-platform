@@ -225,8 +225,38 @@ function resolveProjectSurfaceProfileForTurn(
 }
 
 function looksLikeProjectDocumentWriteTurn(text: string): boolean {
-	return /\b(?:append|capture|save|add|create|make|build|update|revise|draft|write|organize|move)\b[\s\S]{0,80}\b(?:document|doc|notes?|research|outline|brief|context|summary|log|chapter|scene)\b/i.test(
-		text
+	return (
+		/\b(?:append|capture|save|add|create|make|build|update|revise|draft|write|organize|move)\b[\s\S]{0,80}\b(?:document|doc|notes?|research|outline|brief|context|summary|log|chapter|scene)\b/i.test(
+			text
+		) || looksLikeImpliedProjectDocumentCommission(text)
+	);
+}
+
+/**
+ * A conservative detector for declarative artifact commissions. These are
+ * requests such as "I think we need ... a pricing landscape doc" that clearly
+ * ask for a durable work product without using an imperative write verb.
+ */
+export function looksLikeImpliedProjectDocumentCommission(text: string): boolean {
+	const normalized = text.trim();
+	if (!normalized) return false;
+	const isInformationQuestion =
+		normalized.endsWith('?') ||
+		/^(?:what|which|how|why|when|where|who|do|does|did|is|are|can|could|would|should)\b/i.test(
+			normalized
+		);
+	if (isInformationQuestion) return false;
+
+	const namesDurableArtifact =
+		/\b(?:document|doc|brief|report|outline|summary|landscape|analysis|research\s+log)\b/i.test(
+			normalized
+		);
+	if (!namesDurableArtifact) return false;
+
+	return (
+		/\b(?:i|we)\s+(?:think\s+|probably\s+|really\s+)?(?:need|want)\b/i.test(normalized) ||
+		/\b(?:i|we)\s+(?:could|would)\s+use\b/i.test(normalized) ||
+		/\b(?:would|could)\s+be\s+(?:helpful|useful)\s+to\s+have\b/i.test(normalized)
 	);
 }
 

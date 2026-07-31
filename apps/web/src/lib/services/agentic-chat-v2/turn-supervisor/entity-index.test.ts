@@ -51,4 +51,19 @@ describe('buildTurnSupervisorEntityIndexFromContextData', () => {
 			projectName: 'Novel Launch'
 		});
 	});
+
+	it('indexes compact entity_refs document inventories', () => {
+		const documentId = '304b36e2-19f7-4f11-b8c8-d00d681016ea';
+		const entries = buildTurnSupervisorEntityIndexFromContextData({
+			entity_refs: {
+				documents: [{ id: documentId, title: 'Ilyan Rook', state_key: 'draft' }]
+			}
+		});
+
+		expect(findEntityIndexEntry(entries, documentId)).toMatchObject({
+			kind: 'document',
+			label: 'Ilyan Rook',
+			source: 'context.entity_refs.documents'
+		});
+	});
 });

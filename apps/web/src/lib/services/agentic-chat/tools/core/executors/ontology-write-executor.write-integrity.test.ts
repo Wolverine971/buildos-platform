@@ -196,8 +196,12 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 			);
 
 			expect(generateTextDetailed).toHaveBeenCalledTimes(1);
-			const mergeArgs = generateTextDetailed.mock.calls[0][0] as { maxTokens?: number };
+			const mergeArgs = generateTextDetailed.mock.calls[0][0] as {
+				maxTokens?: number;
+				timeoutMs?: number;
+			};
 			expect(mergeArgs.maxTokens).toBeGreaterThan(2000);
+			expect(mergeArgs.timeoutMs).toBe(25_000);
 
 			// A merge at least as long as the existing body is accepted and PATCHed.
 			expect(patchBodies).toHaveLength(1);
@@ -226,6 +230,51 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 			expect(patchBodies[0].body.content).toBe(
 				`${longExisting}\n\nNew paragraph to weave in.`
 			);
+		});
+
+		it('falls back to a safe append when the merge returns the original body unchanged', async () => {
+			const existing = '# Start Here\n\nNext step: submit the application.';
+			const incoming = 'Now waiting to hear back on next steps.';
+			const generateTextDetailed = vi.fn(async () => ({ text: existing }));
+			context.llmService = { generateTextDetailed } as any;
+			const executor = new OntologyWriteExecutor(context);
+
+			await executor.updateOntoDocument(
+				{
+					document_id: 'doc-1',
+					content: incoming,
+					update_strategy: 'merge_llm'
+				},
+				async () => ({
+					document: { id: 'doc-1', content: existing, project_id: 'project-1' }
+				})
+			);
+
+			expect(generateTextDetailed).toHaveBeenCalledTimes(1);
+			expect(patchBodies).toHaveLength(1);
+			expect(patchBodies[0].body.content).toBe(`${existing}\n\n${incoming}`);
+		});
+
+		it('does not duplicate content that was already durably present', async () => {
+			const incoming = 'Now waiting to hear back on next steps.';
+			const existing = `# Start Here\n\n${incoming}`;
+			const generateTextDetailed = vi.fn(async () => ({ text: existing }));
+			context.llmService = { generateTextDetailed } as any;
+			const executor = new OntologyWriteExecutor(context);
+
+			await executor.updateOntoDocument(
+				{
+					document_id: 'doc-1',
+					content: incoming,
+					update_strategy: 'merge_llm'
+				},
+				async () => ({
+					document: { id: 'doc-1', content: existing, project_id: 'project-1' }
+				})
+			);
+
+			expect(patchBodies).toHaveLength(1);
+			expect(patchBodies[0].body.content).toBe(existing);
 		});
 	});
 

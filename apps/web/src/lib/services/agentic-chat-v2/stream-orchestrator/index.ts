@@ -52,6 +52,7 @@ import {
 } from './tool-arguments';
 import {
 	buildTurnSupervisorEntityIndexFromContextData,
+	type TurnSupervisorEntityIndexEntry,
 	createDeterministicTurnSupervisor,
 	type FinalizationGuardResult,
 	type TurnSupervisor,
@@ -228,7 +229,88 @@ function buildRuntimeToolBudgetMessage(params: {
 type ForcedWriteIntentToolPass = {
 	toolNames: string[];
 	instruction: string;
+	/** Calls reserved beyond the ordinary call cap for this write-only pass. */
+	reservedToolCalls?: number;
 };
+
+function collectSuccessfulCommissionedDocumentIds(
+	toolExecutions: FastToolExecution[]
+): Set<string> {
+	const ids = new Set<string>();
+	for (const execution of toolExecutions) {
+		if (execution.toolCall.function?.name !== 'update_onto_document') continue;
+		if (!didGatewayExecSucceed(execution) || isDuplicateWriteSkippedExecution(execution)) {
+			continue;
+		}
+		const { args } = parseToolArguments(execution.toolCall.function.arguments);
+		const documentId =
+			typeof args.document_id === 'string' ? args.document_id.trim().toLowerCase() : '';
+		if (documentId) ids.add(documentId);
+	}
+	return ids;
+}
+
+function buildMentionedDocumentTargetHint(params: {
+	entityIndex: TurnSupervisorEntityIndexEntry[];
+	message: string;
+	excludedDocumentIds: ReadonlySet<string>;
+}): string | null {
+	const normalizedMessage = params.message.normalize('NFKC').toLocaleLowerCase();
+	const candidates = params.entityIndex
+		.filter(
+			(entry) =>
+				entry.kind === 'document' &&
+				Boolean(entry.label?.trim()) &&
+				!params.excludedDocumentIds.has(entry.id.toLowerCase())
+		)
+		.map((entry) => {
+			const label = entry.label?.trim() ?? '';
+			const normalizedLabel = label.normalize('NFKC').toLocaleLowerCase();
+			const labelWords = normalizedLabel
+				.split(/[^\p{L}\p{N}]+/u)
+				.filter((word) => word.length >= 4);
+			const exactIndex = normalizedMessage.indexOf(normalizedLabel);
+			const wordIndexes = labelWords
+				.map((word) => normalizedMessage.indexOf(word))
+				.filter((index) => index >= 0);
+			const mentionIndex = exactIndex >= 0 ? exactIndex : Math.min(...wordIndexes);
+			return { entry, label, mentionIndex };
+		})
+		.filter((candidate) => Number.isFinite(candidate.mentionIndex))
+		.sort((left, right) => left.mentionIndex - right.mentionIndex)
+		.slice(0, 4);
+
+	if (candidates.length === 0) return null;
+	return `Affected document candidates named in the current message, in mention order: ${candidates
+		.map(({ entry, label }) => `"${label}" (document_id ${entry.id})`)
+		.join('; ')}. Choose the first one whose reference facts actually changed.`;
+}
+
+function buildCommissionedDistinctTargetInstruction(params: {
+	deficit: number;
+	successfulDocumentIds: ReadonlySet<string>;
+	entityIndex: TurnSupervisorEntityIndexEntry[];
+	message: string;
+}): string {
+	const candidateHint = buildMentionedDocumentTargetHint({
+		entityIndex: params.entityIndex,
+		message: params.message,
+		excludedDocumentIds: params.successfulDocumentIds
+	});
+	return [
+		`Make ${params.deficit} additional durable document write call${params.deficit === 1 ? '' : 's'} to distinct affected reference documents.`,
+		params.successfulDocumentIds.size > 0
+			? `Do not write these already-successful document_ids again: ${Array.from(params.successfulDocumentIds).join(', ')}. A repeat target does not satisfy this commission.`
+			: null,
+		candidateHint,
+		'Do not repeat an already-successful update to the same document, even with different content.'
+	]
+		.filter((line): line is string => Boolean(line))
+		.join(' ');
+}
+
+const RESEARCH_PERSISTENCE_OPT_OUT =
+	/\b(?:(?:do\s+not|don'?t|never)\s+(?:save|persist|record|write|create|update)|no\s+need\s+to\s+(?:save|persist|record))\b/i;
 
 const VAGUE_PROJECT_CREATE_REQUEST =
 	/^(?:(?:hi|hello|hey)[,!. ]*)?(?:(?:please\s+)?(?:help\s+me\s+)?|i\s+(?:want|need|would\s+like)\s+to\s+)?(?:create|start|set\s+up|make)?\s*(?:me\s+)?(?:a\s+)?(?:new\s+)?project(?:\s+please)?[?!. ]*$/i;
@@ -418,6 +500,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const contextGatheringLedger = new ContextGatheringLedger();
 	const knownEntitiesById = new Map<string, KnownEntity>();
 	const successfulWriteExecutionsByKey = new Map<string, FastToolExecution>();
+	const supervisorEntityIndex = buildTurnSupervisorEntityIndexFromContextData(
+		params.supervisorContextData
+	);
 	const supervisor =
 		params.turnSupervisor ??
 		createDeterministicTurnSupervisor({
@@ -428,9 +513,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			entityId: entityId ?? null,
 			projectId: params.projectId ?? null,
 			userMessage: message,
-			entityIndex: buildTurnSupervisorEntityIndexFromContextData(
-				params.supervisorContextData
-			),
+			entityIndex: supervisorEntityIndex,
 			config: {
 				maxToolRounds
 			}
@@ -633,6 +716,31 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		}
 		return materialized.addedToolNames;
 	};
+	function buildResearchCaptureToolPass(): ForcedWriteIntentToolPass | null {
+		if (writeIntentCarveOutUsed || countWebResearchCalls(toolExecutions) < 2) return null;
+		if (RESEARCH_PERSISTENCE_OPT_OUT.test(message ?? '')) return null;
+		const effectiveProjectId =
+			params.projectId ?? (normalizedContext === 'project' ? entityId : null);
+		if (!effectiveProjectId || !isValidUUID(effectiveProjectId)) return null;
+		const requestedToolNames = ['update_onto_document', 'create_onto_document'];
+		materializeDirectTools(
+			requestedToolNames,
+			'Research completed without a durable project record.'
+		);
+		const toolNames = requestedToolNames.filter((name) => allowedToolNames.has(name));
+		if (toolNames.length === 0) return null;
+		return {
+			toolNames,
+			reservedToolCalls: 1,
+			instruction: [
+				'Supervisor note: web research is complete, but none of its findings has been persisted.',
+				`For the next response, use exactly one of these document write tools: ${toolNames.join(', ')}.`,
+				'Append to the project document this research was for, or create one if no existing document fits.',
+				'Include the useful findings and a Sources section with the URLs already gathered.',
+				'Do not call more searches, page visits, reads, schemas, skills, or discovery tools in this pass.'
+			].join(' ')
+		};
+	}
 	function buildNearBudgetWriteIntentToolPass(): ForcedWriteIntentToolPass | null {
 		if (!gatewayModeActive || writeIntentCarveOutUsed) return null;
 		const writeIntentOps = collectGatewayWriteIntentOps(toolExecutions).filter((op) => {
@@ -678,6 +786,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 		}
 		if (writeToolNames.size === 0) {
+			const researchCapturePass = buildResearchCaptureToolPass();
+			if (researchCapturePass) return researchCapturePass;
+
 			// Third source: a commissioned document reorganization with the doc surface mounted
 			// but no write op attempted yet. Without this, the toolless synthesis pass fires and
 			// the system confiscates the tools at exactly the moment the writes would start.
@@ -710,7 +821,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		const toolNames = Array.from(writeToolNames);
 		const commissionedInstruction =
 			commissionedWriteDeficit > 0
-				? `Make ${commissionedWriteDeficit} additional durable document write call${commissionedWriteDeficit === 1 ? '' : 's'} to distinct affected reference documents. Do not repeat an already-successful update to the same document with the same content.`
+				? buildCommissionedDistinctTargetInstruction({
+						deficit: commissionedWriteDeficit,
+						successfulDocumentIds:
+							collectSuccessfulCommissionedDocumentIds(toolExecutions),
+						entityIndex: supervisorEntityIndex,
+						message
+					})
 				: null;
 		return {
 			toolNames,
@@ -1133,6 +1250,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			const writeIntentToolPass = consumeForcedWriteIntentToolPass();
+			let reservedWriteToolCallsUsed = 0;
 			const writeIntentToolNameSet = writeIntentToolPass
 				? new Set<string>(writeIntentToolPass.toolNames)
 				: null;
@@ -1211,6 +1329,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					normalizedContext,
 					entityId,
 					projectId: params.projectId,
+					commissionedDocumentUpdateFallbackContent: commissionedWriteToolNames.includes(
+						'update_onto_document'
+					)
+						? message
+						: undefined,
 					signal,
 					onAssistantBufferChange: (nextBuffer) => {
 						activeAssistantBuffer = nextBuffer;
@@ -1229,17 +1352,26 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					modelRouting
 				});
 			} catch (error) {
-				if (
-					!(error instanceof LlmStreamPassTerminalError) ||
-					!noToolSynthesisPass ||
-					error.outcome === 'aborted'
-				) {
+				if (!(error instanceof LlmStreamPassTerminalError) || error.outcome === 'aborted') {
 					throw error;
 				}
 
 				const recoveredPartialCandidate = sanitizeAssistantFinalText(
 					error.partialAssistantText || activeAssistantBuffer
 				).trim();
+				const canRecoverReadOnlyToolPass =
+					!noToolSynthesisPass &&
+					!mutationRequested &&
+					activePendingToolCallCount === 0 &&
+					isUsableReadOnlyTransportPartial(recoveredPartialCandidate) &&
+					toolExecutions.some(
+						(execution) =>
+							execution.result.success &&
+							isPureReadToolName(execution.toolCall.function.name)
+					);
+				if (!noToolSynthesisPass && !canRecoverReadOnlyToolPass) {
+					throw error;
+				}
 				const recoveredPartialText = isUsableSynthesisPartial(recoveredPartialCandidate)
 					? recoveredPartialCandidate
 					: '';
@@ -1401,10 +1533,17 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 							if (mutationPass) {
 								writeIntentCarveOutUsed = true;
 								forceWriteIntentToolPass = mutationPass;
+								queueRepairInstruction(mutationPass.instruction);
 							}
 						}
 					} else if (noToolCallFinalization.kind === 'research_no_persist') {
 						researchNoPersistStopRepairInjected = true;
+						const researchCapturePass = buildResearchCaptureToolPass();
+						if (researchCapturePass) {
+							writeIntentCarveOutUsed = true;
+							forceWriteIntentToolPass = researchCapturePass;
+							queueRepairInstruction(researchCapturePass.instruction);
+						}
 					} else if (noToolCallFinalization.kind === 'stated_future') {
 						statedFutureStopRepairInjected = true;
 					} else if (noToolCallFinalization.kind === 'organize_commission') {
@@ -1415,6 +1554,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						if (organizePass) {
 							writeIntentCarveOutUsed = true;
 							forceWriteIntentToolPass = organizePass;
+							queueRepairInstruction(organizePass.instruction);
 						}
 					} else {
 						skillGateStopRepairInjected = true;
@@ -1459,7 +1599,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			await notifyTurnPhase('gathering');
 
 			toolRounds += 1;
-			if (toolRounds > maxToolRounds) {
+			// A forced write pass is the one reserved persistence slot after the
+			// ordinary research/read budget. It is write-only and can cross the round
+			// cap once; writeIntentCarveOutUsed prevents a second over-budget pass.
+			if (toolRounds > maxToolRounds && !writeIntentToolPass) {
 				markToolLimitReached('round');
 				break;
 			}
@@ -1503,6 +1646,45 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			const validationIssues = validateToolCalls(pendingToolCalls, getPassTools(), {
 				projectId: validationProjectId
 			});
+			if (writeIntentToolPass && commissionedWriteMinimumCount > 1) {
+				const seenDocumentIds = collectSuccessfulCommissionedDocumentIds(toolExecutions);
+				const candidateHint = buildMentionedDocumentTargetHint({
+					entityIndex: supervisorEntityIndex,
+					message,
+					excludedDocumentIds: seenDocumentIds
+				});
+				for (const toolCall of pendingToolCalls) {
+					if (toolCall.function?.name !== 'update_onto_document') continue;
+					const { args } = parseToolArguments(toolCall.function.arguments);
+					const documentId =
+						typeof args.document_id === 'string'
+							? args.document_id.trim().toLowerCase()
+							: '';
+					if (!documentId) continue;
+					if (seenDocumentIds.has(documentId)) {
+						const error = [
+							'Duplicate commissioned target skipped:',
+							`This multi-document commission already has a successful projection to document_id ${documentId}.`,
+							'Repeating that target does not satisfy the remaining distinct-document write.',
+							candidateHint ||
+								'Choose a different affected document_id from project context.'
+						].join(' ');
+						const existingIssue = validationIssues.find(
+							(issue) => issue.toolCall.id === toolCall.id
+						);
+						if (existingIssue) existingIssue.errors.push(error);
+						else {
+							validationIssues.push({
+								toolCall,
+								toolName: toolCall.function.name,
+								errors: [error]
+							});
+						}
+						continue;
+					}
+					seenDocumentIds.add(documentId);
+				}
+			}
 			const executableToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
 			const roundExecutions: FastToolExecution[] = [];
 			let roundModelPayloadChars = 0;
@@ -1667,7 +1849,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					throw new Error('Request aborted');
 				}
 
-				if (toolCallsMade >= maxToolCalls) {
+				const canUseReservedWriteCall = Boolean(
+					writeIntentToolPass &&
+						reservedWriteToolCallsUsed < (writeIntentToolPass.reservedToolCalls ?? 0)
+				);
+				if (toolCallsMade >= maxToolCalls && !canUseReservedWriteCall) {
 					markToolLimitReached('call');
 					const skippedCalls = toolCallsToExecute
 						.slice(executionIndex)
@@ -1681,6 +1867,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						await recordToolExecutionInOrder(skippedToolCall, skippedExecution);
 					}
 					break;
+				}
+				if (toolCallsMade >= maxToolCalls && canUseReservedWriteCall) {
+					reservedWriteToolCallsUsed += 1;
 				}
 
 				// WP-12 read memo: an identical pure read already executed this
@@ -2076,9 +2265,16 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				markToolLimitReached('repetition');
 				break;
 			}
-			if (gatewayModeActive && toolRounds >= maxToolRounds) {
-				queueRepairInstruction(buildToolRoundBudgetSynthesisInstruction());
-				forceNoToolSynthesisPass = true;
+			if (gatewayModeActive && toolRounds >= maxToolRounds && !forceWriteIntentToolPass) {
+				const researchCapturePass = buildResearchCaptureToolPass();
+				if (researchCapturePass) {
+					writeIntentCarveOutUsed = true;
+					forceWriteIntentToolPass = researchCapturePass;
+					queueRepairInstruction(researchCapturePass.instruction);
+				} else {
+					queueRepairInstruction(buildToolRoundBudgetSynthesisInstruction());
+					forceNoToolSynthesisPass = true;
+				}
 			}
 			flushRepairInstructions();
 
@@ -2260,6 +2456,18 @@ function isUsableSynthesisPartial(text: string): boolean {
 	const normalized = text.replace(/\s+/g, ' ').trim();
 	if (normalized.length < 20) return false;
 	return normalized.split(' ').filter(Boolean).length >= 3;
+}
+
+/**
+ * A tool-enabled pass can contain the complete user-facing answer even when a
+ * provider never sends its terminal `done` event. Recover that text only for a
+ * read-only turn after evidence has already been loaded (checked by the caller),
+ * and keep the threshold well above a disposable lead-in such as “Let me check”.
+ */
+function isUsableReadOnlyTransportPartial(text: string): boolean {
+	const normalized = text.replace(/\s+/g, ' ').trim();
+	if (normalized.length < 120) return false;
+	return normalized.split(' ').filter(Boolean).length >= 18;
 }
 
 const emptyTurnIntent: FastChatTurnIntent = {

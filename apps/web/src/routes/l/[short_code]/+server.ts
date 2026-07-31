@@ -3,6 +3,7 @@
 import type { RequestHandler } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { createLogger } from '@buildos/shared-utils';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 /**
  * Link Shortener Redirect Endpoint
@@ -20,8 +21,11 @@ import { createLogger } from '@buildos/shared-utils';
  *
  * Usage: https://build-os.com/l/abc123 → https://build-os.com/app/briefs/today
  */
-export const GET: RequestHandler = async ({ params, locals: { supabase } }) => {
+export const GET: RequestHandler = async ({ params }) => {
 	const { short_code } = params;
+	// The short code is the public capability. Keep the tracking tables themselves
+	// inaccessible through PostgREST and perform the narrow lookup/update here.
+	const supabase = createAdminSupabaseClient();
 	const baseLogger = createLogger('web:api:link-tracking', supabase);
 
 	try {

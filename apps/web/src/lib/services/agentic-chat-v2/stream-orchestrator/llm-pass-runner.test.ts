@@ -1,7 +1,11 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/llm-pass-runner.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall } from '@buildos/shared-types';
-import { runLlmStreamPass, type FastChatModelMessage } from './llm-pass-runner';
+import {
+	resolveLlmPassTimeoutMs,
+	runLlmStreamPass,
+	type FastChatModelMessage
+} from './llm-pass-runner';
 
 function toolCall(name: string, args: Record<string, unknown>, id = name): ChatToolCall {
 	return {
@@ -60,6 +64,55 @@ function waitForAbort(signal: AbortSignal | undefined, message = 'The operation 
 describe('runLlmStreamPass', () => {
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('allows forced project creation payloads more time than ordinary passes', () => {
+		expect(
+			resolveLlmPassTimeoutMs({
+				normalizedContext: 'project_create',
+				forcedToolChoice: 'required'
+			})
+		).toBe(120_000);
+		expect(resolveLlmPassTimeoutMs({ normalizedContext: 'project' })).toBe(60_000);
+	});
+
+	it('does not abort a healthy large project-create tool call at 60 seconds', async () => {
+		vi.useFakeTimers();
+		const createCall = toolCall('create_onto_project', {
+			project: { name: 'Book workspace' },
+			entities: [],
+			relationships: []
+		});
+		const { params } = baseParams({
+			llm: {
+				streamText: vi.fn(async function* () {
+					await new Promise((resolve) => setTimeout(resolve, 70_000));
+					yield { type: 'tool_call', tool_call: createCall };
+					yield { type: 'done', finished_reason: 'tool_calls' };
+				})
+			} as any,
+			hasTools: true,
+			tools: [
+				{
+					type: 'function',
+					function: {
+						name: 'create_onto_project',
+						description: 'Create a project',
+						parameters: { type: 'object', properties: {} }
+					}
+				}
+			],
+			forcedToolChoice: 'required',
+			normalizedContext: 'project_create'
+		});
+
+		const resultPromise = runLlmStreamPass(params);
+		await vi.advanceTimersByTimeAsync(70_000);
+		const result = await resultPromise;
+
+		expect(params.llm.streamText).toHaveBeenCalledTimes(1);
+		expect(result.pendingToolCalls).toEqual([createCall]);
+		expect(result.finishedReason).toBe('tool_calls');
 	});
 
 	it('streams text, tool calls, usage, and pass metadata', async () => {
@@ -176,6 +229,38 @@ describe('runLlmStreamPass', () => {
 			})
 		);
 		expect(clearHeartbeat).toHaveBeenCalledTimes(1);
+	});
+
+	it('backfills missing merge content only for a commissioned document pass', async () => {
+		const emittedToolCall = toolCall('update_onto_document', {
+			document_id: '881823a4-e74e-48d2-bf3e-b77db7e47b5f',
+			update_strategy: 'merge_llm',
+			merge_instructions: 'Fold the beat into this document.'
+		});
+		const { params } = baseParams({
+			llm: {
+				streamText: vi.fn(async function* () {
+					yield { type: 'tool_call', tool_call: emittedToolCall };
+					yield { type: 'done', finished_reason: 'tool_calls' };
+				})
+			} as any,
+			hasTools: true,
+			commissionedDocumentUpdateFallbackContent:
+				'Ilyan catches Mara with the map and chooses not to report her.'
+		});
+
+		const result = await runLlmStreamPass(params);
+		const args = JSON.parse(result.pendingToolCalls[0]?.function.arguments ?? '{}');
+
+		expect(args.content).toBe('Ilyan catches Mara with the map and chooses not to report her.');
+		expect(params.observeSupervisor).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'tool_call_emitted',
+				argsPreview: expect.objectContaining({
+					content: 'Ilyan catches Mara with the map and chooses not to report her.'
+				})
+			})
+		);
 	});
 
 	it('suppresses tool calls during forced no-tool synthesis passes', async () => {

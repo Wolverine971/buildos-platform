@@ -574,6 +574,30 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('move_document_in_tree');
 	});
 
+	it('routes a declarative document commission to direct document writes', () => {
+		const names = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage:
+				'i think we need to figure out the research on what other people are charging for ' +
+				'this kind of thing — like a pricing landscape doc or something'
+		}).map((tool) => tool.function?.name);
+
+		expect(names).toContain('create_onto_document');
+		expect(names).toContain('update_onto_document');
+		expect(names).toContain('web_search');
+		expect(names).toContain('web_visit');
+	});
+
+	it('does not treat an informational document question as a write commission', () => {
+		const names = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage: 'Do we need a pricing landscape document?'
+		}).map((tool) => tool.function?.name);
+
+		expect(names).not.toContain('create_onto_document');
+		expect(names).not.toContain('update_onto_document');
+	});
+
 	it('routes noun-first organize requests to the document profile', () => {
 		// The project-organize e2e message verbatim. Measured 2026-07-26: this resolved
 		// project_basic (no write tools) because "organized" is a past participle AFTER the

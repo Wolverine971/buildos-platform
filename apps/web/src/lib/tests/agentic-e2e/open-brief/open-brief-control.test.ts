@@ -28,7 +28,7 @@ import { excludeSystemDocuments } from '../harness/assertions';
 import { loginAndGetCookie } from '../harness/auth';
 import { loadHarnessEnv } from '../harness/env';
 import { runTurn, warmupPing } from '../harness/sse-client';
-import { sweepOrphanProjects, teardownProject } from '../harness/seed';
+import { sweepOrphanProjects, sweepStaleOrphanProjects, teardownProject } from '../harness/seed';
 import {
 	getToolExecutions,
 	getTurnRun,
@@ -467,7 +467,7 @@ controlDescribe('Open-brief cohort 1 — production v2 control lane (paid)', () 
 		});
 		const db = await provisionTestUser({ userId, email: env.testUserEmail });
 		await warmupPing({ baseUrl: env.baseUrl, cookie });
-		await sweepOrphanProjects(db);
+		await sweepStaleOrphanProjects(db);
 		ctx = { baseUrl: env.baseUrl, cookie, db };
 	}, 60_000);
 

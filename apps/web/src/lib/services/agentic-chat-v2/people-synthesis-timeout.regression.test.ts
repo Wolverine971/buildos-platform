@@ -302,6 +302,89 @@ describe('people synthesis timeout recovery (incident 2026-07-22, Phase 1)', () 
 		expect(result.finishedReason).toBe('synthesis_recovered');
 	});
 
+	it('preserves a substantial read-only answer when a tool-enabled follow-up misses done', async () => {
+		vi.useFakeTimers();
+		vi.spyOn(Math, 'random').mockReturnValue(0);
+		let streamAttempt = 0;
+		const recoveredPartial =
+			'Based on the project evidence, Ilyan can protect Mara publicly, confront her privately, or leave a warning she must interpret. Each option advances his loyalty conflict while preserving the established pressure on their alliance.';
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamAttempt += 1;
+				if (streamAttempt === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_project',
+							{
+								query: 'Ilyan established arc',
+								project_id: PEOPLE_SYNTHESIS_TIMEOUT_INCIDENT.projectId
+							},
+							'arc-search'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: recoveredPartial };
+				yield {
+					type: 'error',
+					error: `LLM stream pass timed out after ${PEOPLE_SYNTHESIS_TIMEOUT_INCIDENT.observed.attemptTimeoutMs}ms`
+				};
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				success: true,
+				result: {
+					results: [
+						{
+							id: '10000000-0000-4000-8000-000000000010',
+							type: 'document',
+							title: 'Ilyan Rook',
+							excerpt: 'Ilyan protects Mara but fears what loyalty will cost.'
+						}
+					]
+				}
+			})
+		);
+
+		const resultPromise = streamFastChat({
+			llm,
+			userId: 'synthetic-user',
+			sessionId: 'synthetic-session',
+			contextType: 'project',
+			entityId: PEOPLE_SYNTHESIS_TIMEOUT_INCIDENT.projectId,
+			projectId: PEOPLE_SYNTHESIS_TIMEOUT_INCIDENT.projectId,
+			history: [],
+			message: 'Give me three options for Ilyan from the established canon.',
+			tools: tools(['search_project']),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+		await vi.runAllTimersAsync();
+		const result = await resultPromise;
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(streamAttempt).toBe(3);
+		expect(result.finalAssistantText).toBe(recoveredPartial);
+		expect(result.completionOutcome).toMatchObject({
+			status: 'completed_degraded',
+			answerSource: 'partial_model',
+			recovery: {
+				outcome: 'timed_out',
+				measurements: {
+					passRole: 'tool_followup',
+					forcedNoToolSynthesis: false,
+					attempts: 2
+				}
+			}
+		});
+		expect(result.finishedReason).toBe('synthesis_recovered');
+	});
+
 	it('returns a precise no-evidence result instead of a generic stream error', async () => {
 		vi.useFakeTimers();
 		vi.spyOn(Math, 'random').mockReturnValue(0);

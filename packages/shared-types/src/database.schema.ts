@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-07-30T05:58:53.807Z
+// Generated on: 2026-07-31T03:17:35.448Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -415,13 +415,6 @@ export type DatabaseSchema = {
 		type: string;
 		user_id: string;
 	};
-	api_keys: {
-		api_key: string;
-		created_at: string | null;
-		id: number;
-		service_name: string;
-		user_id: string;
-	};
 	beta_event_attendance: {
 		attended: boolean | null;
 		created_at: string;
@@ -720,15 +713,6 @@ export type DatabaseSchema = {
 		user_modified_description: string | null;
 		user_modified_name: string | null;
 	};
-	calendar_themes: {
-		color_mappings: Json;
-		created_at: string | null;
-		id: string;
-		is_default: boolean | null;
-		theme_name: string;
-		updated_at: string | null;
-		user_id: string;
-	};
 	calendar_webhook_channels: {
 		calendar_id: string | null;
 		channel_id: string;
@@ -901,23 +885,11 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
-	chat_sessions_daily_briefs: {
-		chat_session_id: string;
-		daily_brief_id: string;
-		id: string;
-		linked_at: string | null;
-	};
 	chat_sessions_projects: {
 		chat_session_id: string;
 		id: string;
 		linked_at: string | null;
 		project_id: string;
-	};
-	chat_sessions_tasks: {
-		chat_session_id: string;
-		id: string;
-		linked_at: string | null;
-		task_id: string;
 	};
 	chat_tool_executions: {
 		affected_entities: Json;
@@ -1829,13 +1801,6 @@ export type DatabaseSchema = {
 		user_agent: string | null;
 		user_id: string;
 	};
-	llm_prompts: {
-		id: string;
-		last_used: string | null;
-		prompt_text: string | null;
-		purpose: string | null;
-		title: string | null;
-	};
 	llm_usage_logs: {
 		agent_execution_id: string | null;
 		agent_plan_id: string | null;
@@ -2595,13 +2560,6 @@ export type DatabaseSchema = {
 		type_key: string;
 		updated_at: string;
 	};
-	onto_tools: {
-		capability_key: string;
-		config: Json;
-		created_at: string;
-		id: string;
-		name: string;
-	};
 	ontology_brief_entities: {
 		created_at: string;
 		daily_brief_id: string;
@@ -3092,29 +3050,6 @@ export type DatabaseSchema = {
 		user_agent: string | null;
 		user_id: string;
 	};
-	question_metrics: {
-		brain_dump_length: number | null;
-		created_at: string | null;
-		created_project: boolean | null;
-		created_tasks_count: number | null;
-		id: string;
-		presented_at: string;
-		question_id: string | null;
-		responded_at: string | null;
-		response_quality: string | null;
-		user_id: string | null;
-	};
-	question_templates: {
-		category: string;
-		conditions: Json | null;
-		created_at: string | null;
-		effectiveness_score: number | null;
-		id: string;
-		template: string;
-		updated_at: string | null;
-		usage_count: number | null;
-		variables: Json | null;
-	};
 	queue_jobs: {
 		attempts: number | null;
 		completed_at: string | null;
@@ -3163,15 +3098,6 @@ export type DatabaseSchema = {
 		task_id: string;
 		updated_at: string | null;
 		user_id: string;
-	};
-	research_artifact_refs: {
-		created_at: string;
-		id: string;
-		importance: number | null;
-		ref: Json;
-		ref_type: string;
-		session_id: string;
-		snippet: string | null;
 	};
 	retargeting_founder_pilot_members: {
 		batch_id: string | null;
@@ -3511,68 +3437,6 @@ export type DatabaseSchema = {
 		turn_run_id: string | null;
 		updated_at: string;
 		user_id: string;
-	};
-	tree_agent_artifacts: {
-		artifact_type: string;
-		created_at: string;
-		document_id: string | null;
-		id: string;
-		is_primary: boolean;
-		json_payload: Json | null;
-		label: string;
-		node_id: string;
-		run_id: string;
-	};
-	tree_agent_events: {
-		created_at: string;
-		event_type: string;
-		id: string;
-		node_id: string;
-		payload: Json;
-		run_id: string;
-		seq: number | null;
-	};
-	tree_agent_nodes: {
-		band_index: number;
-		context: Json;
-		created_at: string;
-		depth: number;
-		ended_at: string | null;
-		id: string;
-		parent_node_id: string | null;
-		reason: string;
-		result: Json | null;
-		role_state: string;
-		run_id: string;
-		scratchpad_doc_id: string | null;
-		started_at: string | null;
-		status: string;
-		step_index: number;
-		success_criteria: Json;
-		title: string;
-		updated_at: string;
-	};
-	tree_agent_plans: {
-		created_at: string;
-		id: string;
-		node_id: string;
-		plan_json: Json;
-		run_id: string;
-		version: number;
-	};
-	tree_agent_runs: {
-		budgets: Json;
-		completed_at: string | null;
-		created_at: string;
-		id: string;
-		metrics: Json;
-		objective: string;
-		root_node_id: string | null;
-		started_at: string | null;
-		status: string;
-		updated_at: string;
-		user_id: string;
-		workspace_project_id: string | null;
 	};
 	trial_reminders: {
 		created_at: string | null;
@@ -4097,7 +3961,6 @@ export const tableNames = [
 	'agent_tool_executions',
 	'agentic_chat_prepared_prompts',
 	'agents',
-	'api_keys',
 	'beta_event_attendance',
 	'beta_events',
 	'beta_feature_votes',
@@ -4115,7 +3978,6 @@ export const tableNames = [
 	'calendar_analysis_events',
 	'calendar_analysis_preferences',
 	'calendar_project_suggestions',
-	'calendar_themes',
 	'calendar_webhook_channels',
 	'chat_compressions',
 	'chat_context_cache',
@@ -4126,9 +3988,7 @@ export const tableNames = [
 	'chat_prompt_eval_runs',
 	'chat_prompt_snapshots',
 	'chat_sessions',
-	'chat_sessions_daily_briefs',
 	'chat_sessions_projects',
-	'chat_sessions_tasks',
 	'chat_tool_executions',
 	'chat_turn_checkpoints',
 	'chat_turn_events',
@@ -4180,7 +4040,6 @@ export const tableNames = [
 	'legacy_entity_mappings',
 	'legal_acceptance_intents',
 	'legal_acceptances',
-	'llm_prompts',
 	'llm_usage_logs',
 	'llm_usage_summary',
 	'migration_log',
@@ -4231,7 +4090,6 @@ export const tableNames = [
 	'onto_sources',
 	'onto_task_assignees',
 	'onto_tasks',
-	'onto_tools',
 	'ontology_brief_entities',
 	'ontology_daily_briefs',
 	'ontology_project_briefs',
@@ -4262,12 +4120,9 @@ export const tableNames = [
 	'projects',
 	'projects_history',
 	'push_subscriptions',
-	'question_metrics',
-	'question_templates',
 	'queue_jobs',
 	'recurring_task_instances',
 	'recurring_task_migration_log',
-	'research_artifact_refs',
 	'retargeting_founder_pilot_members',
 	'retargeting_founder_pilot_sends',
 	'scheduled_sms_messages',
@@ -4285,11 +4140,6 @@ export const tableNames = [
 	'tasks',
 	'time_blocks',
 	'timing_metrics',
-	'tree_agent_artifacts',
-	'tree_agent_events',
-	'tree_agent_nodes',
-	'tree_agent_plans',
-	'tree_agent_runs',
 	'trial_reminders',
 	'user_activity_logs',
 	'user_behavioral_profiles',
