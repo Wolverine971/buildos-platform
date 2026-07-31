@@ -49,6 +49,12 @@ export const researchLogReadbackScenario: Scenario = {
 	id: 'research-log-readback',
 	title: 'Research captured in one session is found again in a cold session',
 	category: 'document',
+	// This is a two-turn journey. A legitimate provider rotation can consume
+	// multiple 60-second pass timeouts before research persistence, after which
+	// the cold readback still needs its own complete request and assertions.
+	// Keep those latencies in evidence instead of letting Vitest abort at the
+	// single-turn 300-second default.
+	timeoutMs: 480_000,
 	seed: async (ctx) => {
 		const seeded = await seedScenarioProject(ctx, spec());
 		const docs = await listDocuments(ctx.db.admin, seeded.projectId!);
