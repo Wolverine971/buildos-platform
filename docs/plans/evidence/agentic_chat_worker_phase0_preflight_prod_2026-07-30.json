@@ -1,0 +1,1595 @@
+{
+	"authenticated_effective_table_privileges": [
+		{
+			"delete": true,
+			"insert": true,
+			"select": true,
+			"table": "agentic_chat_prepared_prompts",
+			"update": true
+		},
+		{
+			"delete": true,
+			"insert": true,
+			"select": true,
+			"table": "chat_messages",
+			"update": true
+		},
+		{
+			"delete": true,
+			"insert": true,
+			"select": true,
+			"table": "chat_prompt_snapshots",
+			"update": true
+		},
+		{
+			"delete": true,
+			"insert": true,
+			"select": true,
+			"table": "chat_sessions",
+			"update": true
+		},
+		{
+			"delete": true,
+			"insert": true,
+			"select": true,
+			"table": "chat_turn_checkpoints",
+			"update": true
+		},
+		{
+			"delete": true,
+			"insert": true,
+			"select": true,
+			"table": "chat_turn_events",
+			"update": true
+		},
+		{
+			"delete": true,
+			"insert": true,
+			"select": true,
+			"table": "chat_turn_runs",
+			"update": true
+		},
+		{
+			"delete": true,
+			"insert": true,
+			"select": true,
+			"table": "queue_jobs",
+			"update": true
+		}
+	],
+	"authenticated_policies": [
+		{
+			"check": null,
+			"command": "SELECT",
+			"name": "prepared_prompts_admin_select",
+			"roles": ["authenticated"],
+			"table": "agentic_chat_prepared_prompts",
+			"using": "is_admin()"
+		},
+		{
+			"check": "(auth.role() = 'service_role'::text)",
+			"command": "ALL",
+			"name": "prepared_prompts_service_role",
+			"roles": ["public"],
+			"table": "agentic_chat_prepared_prompts",
+			"using": "(auth.role() = 'service_role'::text)"
+		},
+		{
+			"check": "(auth.uid() = user_id)",
+			"command": "INSERT",
+			"name": "prepared_prompts_user_insert",
+			"roles": ["authenticated"],
+			"table": "agentic_chat_prepared_prompts",
+			"using": null
+		},
+		{
+			"check": null,
+			"command": "SELECT",
+			"name": "prepared_prompts_user_select",
+			"roles": ["authenticated"],
+			"table": "agentic_chat_prepared_prompts",
+			"using": "(auth.uid() = user_id)"
+		},
+		{
+			"check": "(auth.uid() = user_id)",
+			"command": "UPDATE",
+			"name": "prepared_prompts_user_update",
+			"roles": ["authenticated"],
+			"table": "agentic_chat_prepared_prompts",
+			"using": "(auth.uid() = user_id)"
+		},
+		{
+			"check": "(EXISTS ( SELECT 1\n   FROM chat_sessions\n  WHERE ((chat_sessions.id = chat_messages.session_id) AND (chat_sessions.user_id = auth.uid()))))",
+			"command": "INSERT",
+			"name": "Users can create messages in their sessions",
+			"roles": ["public"],
+			"table": "chat_messages",
+			"using": null
+		},
+		{
+			"check": null,
+			"command": "SELECT",
+			"name": "Users can view messages in their sessions",
+			"roles": ["public"],
+			"table": "chat_messages",
+			"using": "(EXISTS ( SELECT 1\n   FROM chat_sessions\n  WHERE ((chat_sessions.id = chat_messages.session_id) AND (chat_sessions.user_id = auth.uid()))))"
+		},
+		{
+			"check": null,
+			"command": "SELECT",
+			"name": "chat_prompt_snapshots_admin_select",
+			"roles": ["authenticated"],
+			"table": "chat_prompt_snapshots",
+			"using": "is_admin()"
+		},
+		{
+			"check": "(auth.role() = 'service_role'::text)",
+			"command": "ALL",
+			"name": "chat_prompt_snapshots_service_role",
+			"roles": ["public"],
+			"table": "chat_prompt_snapshots",
+			"using": "(auth.role() = 'service_role'::text)"
+		},
+		{
+			"check": "(auth.uid() = user_id)",
+			"command": "INSERT",
+			"name": "chat_prompt_snapshots_user_insert",
+			"roles": ["authenticated"],
+			"table": "chat_prompt_snapshots",
+			"using": null
+		},
+		{
+			"check": "(auth.uid() = user_id)",
+			"command": "INSERT",
+			"name": "Users can create their own chat sessions",
+			"roles": ["public"],
+			"table": "chat_sessions",
+			"using": null
+		},
+		{
+			"check": null,
+			"command": "DELETE",
+			"name": "Users can delete their own chat sessions",
+			"roles": ["public"],
+			"table": "chat_sessions",
+			"using": "(auth.uid() = user_id)"
+		},
+		{
+			"check": null,
+			"command": "UPDATE",
+			"name": "Users can update their own chat sessions",
+			"roles": ["public"],
+			"table": "chat_sessions",
+			"using": "(auth.uid() = user_id)"
+		},
+		{
+			"check": null,
+			"command": "SELECT",
+			"name": "Users can view their own chat sessions",
+			"roles": ["public"],
+			"table": "chat_sessions",
+			"using": "(auth.uid() = user_id)"
+		},
+		{
+			"check": null,
+			"command": "SELECT",
+			"name": "chat_turn_checkpoints_admin_select",
+			"roles": ["authenticated"],
+			"table": "chat_turn_checkpoints",
+			"using": "is_admin()"
+		},
+		{
+			"check": "(auth.role() = 'service_role'::text)",
+			"command": "ALL",
+			"name": "chat_turn_checkpoints_service_role",
+			"roles": ["public"],
+			"table": "chat_turn_checkpoints",
+			"using": "(auth.role() = 'service_role'::text)"
+		},
+		{
+			"check": "(auth.uid() = user_id)",
+			"command": "INSERT",
+			"name": "chat_turn_checkpoints_user_insert",
+			"roles": ["authenticated"],
+			"table": "chat_turn_checkpoints",
+			"using": null
+		},
+		{
+			"check": null,
+			"command": "SELECT",
+			"name": "chat_turn_checkpoints_user_select",
+			"roles": ["authenticated"],
+			"table": "chat_turn_checkpoints",
+			"using": "(auth.uid() = user_id)"
+		},
+		{
+			"check": "(auth.uid() = user_id)",
+			"command": "UPDATE",
+			"name": "chat_turn_checkpoints_user_update",
+			"roles": ["authenticated"],
+			"table": "chat_turn_checkpoints",
+			"using": "(auth.uid() = user_id)"
+		},
+		{
+			"check": null,
+			"command": "SELECT",
+			"name": "chat_turn_events_admin_select",
+			"roles": ["authenticated"],
+			"table": "chat_turn_events",
+			"using": "is_admin()"
+		},
+		{
+			"check": "(auth.role() = 'service_role'::text)",
+			"command": "ALL",
+			"name": "chat_turn_events_service_role",
+			"roles": ["public"],
+			"table": "chat_turn_events",
+			"using": "(auth.role() = 'service_role'::text)"
+		},
+		{
+			"check": "(auth.uid() = user_id)",
+			"command": "INSERT",
+			"name": "chat_turn_events_user_insert",
+			"roles": ["authenticated"],
+			"table": "chat_turn_events",
+			"using": null
+		},
+		{
+			"check": null,
+			"command": "SELECT",
+			"name": "chat_turn_runs_admin_select",
+			"roles": ["authenticated"],
+			"table": "chat_turn_runs",
+			"using": "is_admin()"
+		},
+		{
+			"check": "(auth.role() = 'service_role'::text)",
+			"command": "ALL",
+			"name": "chat_turn_runs_service_role",
+			"roles": ["public"],
+			"table": "chat_turn_runs",
+			"using": "(auth.role() = 'service_role'::text)"
+		},
+		{
+			"check": "(auth.uid() = user_id)",
+			"command": "INSERT",
+			"name": "chat_turn_runs_user_insert",
+			"roles": ["authenticated"],
+			"table": "chat_turn_runs",
+			"using": null
+		},
+		{
+			"check": "(auth.uid() = user_id)",
+			"command": "UPDATE",
+			"name": "chat_turn_runs_user_update",
+			"roles": ["authenticated"],
+			"table": "chat_turn_runs",
+			"using": "(auth.uid() = user_id)"
+		},
+		{
+			"check": null,
+			"command": "ALL",
+			"name": "Service role can manage all brief jobs",
+			"roles": ["public"],
+			"table": "queue_jobs",
+			"using": "(current_setting('role'::text) = 'service_role'::text)"
+		},
+		{
+			"check": null,
+			"command": "SELECT",
+			"name": "Users can view their own brief jobs",
+			"roles": ["public"],
+			"table": "queue_jobs",
+			"using": "(auth.uid() = user_id)"
+		}
+	],
+	"captured_at": "2026-07-30T05:13:03.859259+00:00",
+	"constraints": [
+		{
+			"definition": "PRIMARY KEY (id)",
+			"name": "agentic_chat_prepared_prompts_pkey",
+			"table": "agentic_chat_prepared_prompts",
+			"type": "p"
+		},
+		{
+			"definition": "FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE",
+			"name": "agentic_chat_prepared_prompts_session_id_fkey",
+			"table": "agentic_chat_prepared_prompts",
+			"type": "f"
+		},
+		{
+			"definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+			"name": "agentic_chat_prepared_prompts_user_id_fkey",
+			"table": "agentic_chat_prepared_prompts",
+			"type": "f"
+		},
+		{
+			"definition": "CHECK ((expires_at > created_at))",
+			"name": "chk_agentic_chat_prepared_prompt_expiry",
+			"table": "agentic_chat_prepared_prompts",
+			"type": "c"
+		},
+		{
+			"definition": "UNIQUE (nonce_sha256)",
+			"name": "uq_agentic_chat_prepared_prompt_nonce",
+			"table": "agentic_chat_prepared_prompts",
+			"type": "u"
+		},
+		{
+			"definition": "CHECK ((message_type = ANY (ARRAY['user_message'::text, 'assistant_message'::text, 'system_notification'::text, 'operation_summary'::text, 'phase_update'::text])))",
+			"name": "chat_messages_message_type_check",
+			"table": "chat_messages",
+			"type": "c"
+		},
+		{
+			"definition": "PRIMARY KEY (id)",
+			"name": "chat_messages_pkey",
+			"table": "chat_messages",
+			"type": "p"
+		},
+		{
+			"definition": "CHECK ((role = ANY (ARRAY['user'::text, 'assistant'::text, 'system'::text, 'tool'::text])))",
+			"name": "chat_messages_role_check",
+			"table": "chat_messages",
+			"type": "c"
+		},
+		{
+			"definition": "FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE",
+			"name": "chat_messages_session_id_fkey",
+			"table": "chat_messages",
+			"type": "f"
+		},
+		{
+			"definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+			"name": "chat_messages_user_id_fkey",
+			"table": "chat_messages",
+			"type": "f"
+		},
+		{
+			"definition": "PRIMARY KEY (id)",
+			"name": "chat_prompt_snapshots_pkey",
+			"table": "chat_prompt_snapshots",
+			"type": "p"
+		},
+		{
+			"definition": "CHECK ((prompt_variant = ANY (ARRAY['fastchat_prompt_v1'::text, 'lite_seed_v1'::text])))",
+			"name": "chat_prompt_snapshots_prompt_variant_check",
+			"table": "chat_prompt_snapshots",
+			"type": "c"
+		},
+		{
+			"definition": "FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE",
+			"name": "chat_prompt_snapshots_session_id_fkey",
+			"table": "chat_prompt_snapshots",
+			"type": "f"
+		},
+		{
+			"definition": "FOREIGN KEY (turn_run_id) REFERENCES chat_turn_runs(id) ON DELETE CASCADE",
+			"name": "chat_prompt_snapshots_turn_run_id_fkey",
+			"table": "chat_prompt_snapshots",
+			"type": "f"
+		},
+		{
+			"definition": "UNIQUE (turn_run_id)",
+			"name": "chat_prompt_snapshots_turn_run_id_key",
+			"table": "chat_prompt_snapshots",
+			"type": "u"
+		},
+		{
+			"definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+			"name": "chat_prompt_snapshots_user_id_fkey",
+			"table": "chat_prompt_snapshots",
+			"type": "f"
+		},
+		{
+			"definition": "CHECK ((chat_type = ANY (ARRAY['global'::text, 'project'::text, 'calendar'::text, 'general'::text, 'project_create'::text, 'daily_brief'::text, 'daily_brief_update'::text, 'ontology'::text, 'homework'::text, 'project_audit'::text])))",
+			"name": "chat_sessions_chat_type_check",
+			"table": "chat_sessions",
+			"type": "c"
+		},
+		{
+			"definition": "CHECK ((context_type = ANY (ARRAY['global'::text, 'project'::text, 'calendar'::text, 'general'::text, 'project_create'::text, 'daily_brief'::text, 'daily_brief_update'::text, 'ontology'::text])))",
+			"name": "chat_sessions_context_type_check",
+			"table": "chat_sessions",
+			"type": "c"
+		},
+		{
+			"definition": "PRIMARY KEY (id)",
+			"name": "chat_sessions_pkey",
+			"table": "chat_sessions",
+			"type": "p"
+		},
+		{
+			"definition": "CHECK ((status = ANY (ARRAY['active'::text, 'archived'::text, 'compressed'::text])))",
+			"name": "chat_sessions_status_check",
+			"table": "chat_sessions",
+			"type": "c"
+		},
+		{
+			"definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+			"name": "chat_sessions_user_id_fkey",
+			"table": "chat_sessions",
+			"type": "f"
+		},
+		{
+			"definition": "PRIMARY KEY (id)",
+			"name": "chat_turn_checkpoints_pkey",
+			"table": "chat_turn_checkpoints",
+			"type": "p"
+		},
+		{
+			"definition": "FOREIGN KEY (resume_turn_run_id) REFERENCES chat_turn_runs(id) ON DELETE SET NULL",
+			"name": "chat_turn_checkpoints_resume_turn_run_id_fkey",
+			"table": "chat_turn_checkpoints",
+			"type": "f"
+		},
+		{
+			"definition": "FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE",
+			"name": "chat_turn_checkpoints_session_id_fkey",
+			"table": "chat_turn_checkpoints",
+			"type": "f"
+		},
+		{
+			"definition": "FOREIGN KEY (turn_run_id) REFERENCES chat_turn_runs(id) ON DELETE CASCADE",
+			"name": "chat_turn_checkpoints_turn_run_id_fkey",
+			"table": "chat_turn_checkpoints",
+			"type": "f"
+		},
+		{
+			"definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+			"name": "chat_turn_checkpoints_user_id_fkey",
+			"table": "chat_turn_checkpoints",
+			"type": "f"
+		},
+		{
+			"definition": "CHECK ((length(TRIM(BOTH FROM reason)) > 0))",
+			"name": "chk_chat_turn_checkpoints_reason",
+			"table": "chat_turn_checkpoints",
+			"type": "c"
+		},
+		{
+			"definition": "CHECK ((status = ANY (ARRAY['active'::text, 'resuming'::text, 'resumed'::text, 'expired'::text, 'cancelled'::text])))",
+			"name": "chk_chat_turn_checkpoints_status",
+			"table": "chat_turn_checkpoints",
+			"type": "c"
+		},
+		{
+			"definition": "CHECK ((length(TRIM(BOTH FROM checkpoint_type)) > 0))",
+			"name": "chk_chat_turn_checkpoints_type",
+			"table": "chat_turn_checkpoints",
+			"type": "c"
+		},
+		{
+			"definition": "PRIMARY KEY (id)",
+			"name": "chat_turn_events_pkey",
+			"table": "chat_turn_events",
+			"type": "p"
+		},
+		{
+			"definition": "FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE",
+			"name": "chat_turn_events_session_id_fkey",
+			"table": "chat_turn_events",
+			"type": "f"
+		},
+		{
+			"definition": "FOREIGN KEY (turn_run_id) REFERENCES chat_turn_runs(id) ON DELETE CASCADE",
+			"name": "chat_turn_events_turn_run_id_fkey",
+			"table": "chat_turn_events",
+			"type": "f"
+		},
+		{
+			"definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+			"name": "chat_turn_events_user_id_fkey",
+			"table": "chat_turn_events",
+			"type": "f"
+		},
+		{
+			"definition": "CHECK ((sequence_index >= 1))",
+			"name": "chk_chat_turn_events_sequence",
+			"table": "chat_turn_events",
+			"type": "c"
+		},
+		{
+			"definition": "UNIQUE (turn_run_id, sequence_index)",
+			"name": "uq_chat_turn_events_sequence",
+			"table": "chat_turn_events",
+			"type": "u"
+		},
+		{
+			"definition": "FOREIGN KEY (assistant_message_id) REFERENCES chat_messages(id) ON DELETE SET NULL",
+			"name": "chat_turn_runs_assistant_message_id_fkey",
+			"table": "chat_turn_runs",
+			"type": "f"
+		},
+		{
+			"definition": "PRIMARY KEY (id)",
+			"name": "chat_turn_runs_pkey",
+			"table": "chat_turn_runs",
+			"type": "p"
+		},
+		{
+			"definition": "FOREIGN KEY (prepared_prompt_id) REFERENCES agentic_chat_prepared_prompts(id) ON DELETE SET NULL",
+			"name": "chat_turn_runs_prepared_prompt_id_fkey",
+			"table": "chat_turn_runs",
+			"type": "f"
+		},
+		{
+			"definition": "FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE",
+			"name": "chat_turn_runs_session_id_fkey",
+			"table": "chat_turn_runs",
+			"type": "f"
+		},
+		{
+			"definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+			"name": "chat_turn_runs_user_id_fkey",
+			"table": "chat_turn_runs",
+			"type": "f"
+		},
+		{
+			"definition": "FOREIGN KEY (user_message_id) REFERENCES chat_messages(id) ON DELETE SET NULL",
+			"name": "chat_turn_runs_user_message_id_fkey",
+			"table": "chat_turn_runs",
+			"type": "f"
+		},
+		{
+			"definition": "CHECK (((tool_round_count >= 0) AND (tool_call_count >= 0) AND (validation_failure_count >= 0) AND (llm_pass_count >= 0)))",
+			"name": "chk_chat_turn_runs_counts",
+			"table": "chat_turn_runs",
+			"type": "c"
+		},
+		{
+			"definition": "CHECK ((status = ANY (ARRAY['running'::text, 'completed'::text, 'failed'::text, 'cancelled'::text])))",
+			"name": "chk_chat_turn_runs_status",
+			"table": "chat_turn_runs",
+			"type": "c"
+		},
+		{
+			"definition": "UNIQUE (stream_run_id)",
+			"name": "uq_chat_turn_runs_stream_run_id",
+			"table": "chat_turn_runs",
+			"type": "u"
+		},
+		{
+			"definition": "PRIMARY KEY (id)",
+			"name": "brief_generation_jobs_pkey",
+			"table": "queue_jobs",
+			"type": "p"
+		},
+		{
+			"definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+			"name": "brief_generation_jobs_user_id_fkey",
+			"table": "queue_jobs",
+			"type": "f"
+		},
+		{
+			"definition": "UNIQUE (queue_job_id)",
+			"name": "queue_jobs_queue_job_id_key",
+			"table": "queue_jobs",
+			"type": "u"
+		},
+		{
+			"definition": "CHECK (((status = ANY (ARRAY['completed'::queue_status, 'cancelled'::queue_status, 'failed'::queue_status])) OR (NOT ((status <> ALL (ARRAY['completed'::queue_status, 'cancelled'::queue_status, 'failed'::queue_status])) AND (job_type = ANY (ARRAY['generate_daily_brief'::queue_type, 'generate_phases'::queue_type, 'generate_brief_email'::queue_type])) AND (metadata IS NULL)))))",
+			"name": "valid_job_metadata",
+			"table": "queue_jobs",
+			"type": "c"
+		},
+		{
+			"definition": "CHECK (((status = ANY (ARRAY['completed'::queue_status, 'cancelled'::queue_status, 'failed'::queue_status])) OR\nCASE\n    WHEN (job_type = 'generate_daily_brief'::queue_type) THEN ((metadata IS NOT NULL) AND (((metadata ? 'briefDate'::text) AND (metadata ? 'timezone'::text)) OR ((metadata ? 'brief_date'::text) AND (metadata ? 'time_zone'::text)) OR ((metadata ? 'date'::text) AND (metadata ? 'tz'::text)) OR (jsonb_typeof(metadata) = 'object'::text)))\n    WHEN (job_type = 'generate_phases'::queue_type) THEN ((metadata IS NOT NULL) AND ((metadata ? 'projectId'::text) OR (metadata ? 'project_id'::text) OR (metadata ? 'projectID'::text) OR (metadata ? 'project'::text) OR (jsonb_typeof(metadata) = 'object'::text)))\n    ELSE true\nEND)) NOT VALID",
+			"name": "valid_job_metadata_strict",
+			"table": "queue_jobs",
+			"type": "c"
+		}
+	],
+	"contract_family": "agentic_chat_worker_v1",
+	"direct_routine_grants": [
+		{
+			"grantable": "NO",
+			"grantee": "PUBLIC",
+			"name": "add_queue_job",
+			"privilege": "EXECUTE",
+			"specific_name": "add_queue_job_247580"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"name": "add_queue_job",
+			"privilege": "EXECUTE",
+			"specific_name": "add_queue_job_247580"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "PUBLIC",
+			"name": "build_fastchat_project_intelligence",
+			"privilege": "EXECUTE",
+			"specific_name": "build_fastchat_project_intelligence_494134"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"name": "build_fastchat_project_intelligence",
+			"privilege": "EXECUTE",
+			"specific_name": "build_fastchat_project_intelligence_494134"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "PUBLIC",
+			"name": "claim_pending_jobs",
+			"privilege": "EXECUTE",
+			"specific_name": "claim_pending_jobs_501577"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"name": "claim_pending_jobs",
+			"privilege": "EXECUTE",
+			"specific_name": "claim_pending_jobs_501577"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"name": "cleanup_agentic_chat_prompt_artifacts",
+			"privilege": "EXECUTE",
+			"specific_name": "cleanup_agentic_chat_prompt_artifacts_535735"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"name": "cleanup_expired_agentic_chat_prepared_prompts",
+			"privilege": "EXECUTE",
+			"specific_name": "cleanup_expired_agentic_chat_prepared_prompts_502496"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "PUBLIC",
+			"name": "complete_queue_job",
+			"privilege": "EXECUTE",
+			"specific_name": "complete_queue_job_501578"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"name": "complete_queue_job",
+			"privilege": "EXECUTE",
+			"specific_name": "complete_queue_job_501578"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"name": "current_actor_has_project_member_access",
+			"privilege": "EXECUTE",
+			"specific_name": "current_actor_has_project_member_access_510054"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "PUBLIC",
+			"name": "ensure_actor_for_user",
+			"privilege": "EXECUTE",
+			"specific_name": "ensure_actor_for_user_268640"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"name": "ensure_actor_for_user",
+			"privilege": "EXECUTE",
+			"specific_name": "ensure_actor_for_user_268640"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "PUBLIC",
+			"name": "fail_queue_job",
+			"privilege": "EXECUTE",
+			"specific_name": "fail_queue_job_501579"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"name": "fail_queue_job",
+			"privilege": "EXECUTE",
+			"specific_name": "fail_queue_job_501579"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "PUBLIC",
+			"name": "merge_chat_session_agent_metadata",
+			"privilege": "EXECUTE",
+			"specific_name": "merge_chat_session_agent_metadata_452726"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"name": "merge_chat_session_agent_metadata",
+			"privilege": "EXECUTE",
+			"specific_name": "merge_chat_session_agent_metadata_452726"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "PUBLIC",
+			"name": "reset_stalled_jobs",
+			"privilege": "EXECUTE",
+			"specific_name": "reset_stalled_jobs_231319"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"name": "reset_stalled_jobs",
+			"privilege": "EXECUTE",
+			"specific_name": "reset_stalled_jobs_231319"
+		}
+	],
+	"direct_table_grants": [
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "DELETE",
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "INSERT",
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "REFERENCES",
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "SELECT",
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRIGGER",
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRUNCATE",
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "UPDATE",
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "DELETE",
+			"table": "chat_messages"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "INSERT",
+			"table": "chat_messages"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "REFERENCES",
+			"table": "chat_messages"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "SELECT",
+			"table": "chat_messages"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRIGGER",
+			"table": "chat_messages"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRUNCATE",
+			"table": "chat_messages"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "UPDATE",
+			"table": "chat_messages"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "DELETE",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "INSERT",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "REFERENCES",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "SELECT",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRIGGER",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRUNCATE",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "UPDATE",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "DELETE",
+			"table": "chat_sessions"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "INSERT",
+			"table": "chat_sessions"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "REFERENCES",
+			"table": "chat_sessions"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "SELECT",
+			"table": "chat_sessions"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRIGGER",
+			"table": "chat_sessions"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRUNCATE",
+			"table": "chat_sessions"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "UPDATE",
+			"table": "chat_sessions"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "DELETE",
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "INSERT",
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "REFERENCES",
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "SELECT",
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRIGGER",
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRUNCATE",
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "UPDATE",
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "DELETE",
+			"table": "chat_turn_events"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "INSERT",
+			"table": "chat_turn_events"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "REFERENCES",
+			"table": "chat_turn_events"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "SELECT",
+			"table": "chat_turn_events"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRIGGER",
+			"table": "chat_turn_events"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRUNCATE",
+			"table": "chat_turn_events"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "UPDATE",
+			"table": "chat_turn_events"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "DELETE",
+			"table": "chat_turn_runs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "INSERT",
+			"table": "chat_turn_runs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "REFERENCES",
+			"table": "chat_turn_runs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "SELECT",
+			"table": "chat_turn_runs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRIGGER",
+			"table": "chat_turn_runs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRUNCATE",
+			"table": "chat_turn_runs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "UPDATE",
+			"table": "chat_turn_runs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "DELETE",
+			"table": "queue_jobs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "INSERT",
+			"table": "queue_jobs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "REFERENCES",
+			"table": "queue_jobs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "SELECT",
+			"table": "queue_jobs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRIGGER",
+			"table": "queue_jobs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "TRUNCATE",
+			"table": "queue_jobs"
+		},
+		{
+			"grantable": "NO",
+			"grantee": "authenticated",
+			"privilege": "UPDATE",
+			"table": "queue_jobs"
+		}
+	],
+	"indexes": [
+		{
+			"definition": "CREATE UNIQUE INDEX agentic_chat_prepared_prompts_pkey ON public.agentic_chat_prepared_prompts USING btree (id)",
+			"name": "agentic_chat_prepared_prompts_pkey",
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"definition": "CREATE INDEX idx_agentic_chat_prepared_prompts_cache_key ON public.agentic_chat_prepared_prompts USING btree (user_id, cache_key, expires_at DESC)",
+			"name": "idx_agentic_chat_prepared_prompts_cache_key",
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"definition": "CREATE INDEX idx_agentic_chat_prepared_prompts_cleanup ON public.agentic_chat_prepared_prompts USING btree (expires_at, consumed_at)",
+			"name": "idx_agentic_chat_prepared_prompts_cleanup",
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"definition": "CREATE INDEX idx_agentic_chat_prepared_prompts_user_expires ON public.agentic_chat_prepared_prompts USING btree (user_id, expires_at DESC)",
+			"name": "idx_agentic_chat_prepared_prompts_user_expires",
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX uq_agentic_chat_prepared_prompt_nonce ON public.agentic_chat_prepared_prompts USING btree (nonce_sha256)",
+			"name": "uq_agentic_chat_prepared_prompt_nonce",
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX chat_messages_pkey ON public.chat_messages USING btree (id)",
+			"name": "chat_messages_pkey",
+			"table": "chat_messages"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_messages_created_at ON public.chat_messages USING btree (created_at)",
+			"name": "idx_chat_messages_created_at",
+			"table": "chat_messages"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_messages_created_at_desc ON public.chat_messages USING btree (created_at DESC)",
+			"name": "idx_chat_messages_created_at_desc",
+			"table": "chat_messages"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_messages_created_user ON public.chat_messages USING btree (created_at DESC, user_id) WHERE (user_id IS NOT NULL)",
+			"name": "idx_chat_messages_created_user",
+			"table": "chat_messages"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_messages_operations ON public.chat_messages USING gin (operation_ids) WHERE (operation_ids IS NOT NULL)",
+			"name": "idx_chat_messages_operations",
+			"table": "chat_messages"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_messages_session_id ON public.chat_messages USING btree (session_id)",
+			"name": "idx_chat_messages_session_id",
+			"table": "chat_messages"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_messages_session_recent ON public.chat_messages USING btree (session_id, created_at DESC)",
+			"name": "idx_chat_messages_session_recent",
+			"table": "chat_messages"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_messages_session_role_created_at ON public.chat_messages USING btree (session_id, role, created_at DESC)",
+			"name": "idx_chat_messages_session_role_created_at",
+			"table": "chat_messages"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_messages_user ON public.chat_messages USING btree (user_id, created_at DESC)",
+			"name": "idx_chat_messages_user",
+			"table": "chat_messages"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX uq_chat_messages_session_idempotency_key ON public.chat_messages USING btree (session_id, ((metadata ->> 'idempotency_key'::text))) WHERE ((metadata ->> 'idempotency_key'::text) IS NOT NULL)",
+			"name": "uq_chat_messages_session_idempotency_key",
+			"table": "chat_messages"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX chat_prompt_snapshots_pkey ON public.chat_prompt_snapshots USING btree (id)",
+			"name": "chat_prompt_snapshots_pkey",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX chat_prompt_snapshots_turn_run_id_key ON public.chat_prompt_snapshots USING btree (turn_run_id)",
+			"name": "chat_prompt_snapshots_turn_run_id_key",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_prompt_snapshots_created_retention ON public.chat_prompt_snapshots USING btree (created_at)",
+			"name": "idx_chat_prompt_snapshots_created_retention",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_prompt_snapshots_prompt_variant_created ON public.chat_prompt_snapshots USING btree (prompt_variant, created_at DESC)",
+			"name": "idx_chat_prompt_snapshots_prompt_variant_created",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_prompt_snapshots_rendered_dump_retention ON public.chat_prompt_snapshots USING btree (created_at) WHERE (rendered_dump_text IS NOT NULL)",
+			"name": "idx_chat_prompt_snapshots_rendered_dump_retention",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_prompt_snapshots_session_created ON public.chat_prompt_snapshots USING btree (session_id, created_at DESC)",
+			"name": "idx_chat_prompt_snapshots_session_created",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_prompt_snapshots_user_created ON public.chat_prompt_snapshots USING btree (user_id, created_at DESC)",
+			"name": "idx_chat_prompt_snapshots_user_created",
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX chat_sessions_pkey ON public.chat_sessions USING btree (id)",
+			"name": "chat_sessions_pkey",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_chat_type ON public.chat_sessions USING btree (chat_type, user_id)",
+			"name": "idx_chat_sessions_chat_type",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_context ON public.chat_sessions USING btree (context_type, entity_id)",
+			"name": "idx_chat_sessions_context",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_context_type ON public.chat_sessions USING btree (context_type, user_id)",
+			"name": "idx_chat_sessions_context_type",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_created_at_desc ON public.chat_sessions USING btree (created_at DESC)",
+			"name": "idx_chat_sessions_created_at_desc",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_created_user ON public.chat_sessions USING btree (created_at DESC, user_id) WHERE (user_id IS NOT NULL)",
+			"name": "idx_chat_sessions_created_user",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_has_summary ON public.chat_sessions USING btree (user_id, created_at DESC) WHERE (summary IS NOT NULL)",
+			"name": "idx_chat_sessions_has_summary",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_history_query ON public.chat_sessions USING btree (user_id, created_at DESC) WHERE (status <> 'archived'::text)",
+			"name": "idx_chat_sessions_history_query",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_last_message ON public.chat_sessions USING btree (last_message_at DESC)",
+			"name": "idx_chat_sessions_last_message",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_last_message_at_desc ON public.chat_sessions USING btree (last_message_at DESC) WHERE (last_message_at IS NOT NULL)",
+			"name": "idx_chat_sessions_last_message_at_desc",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_status ON public.chat_sessions USING btree (status)",
+			"name": "idx_chat_sessions_status",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_topics ON public.chat_sessions USING gin (chat_topics) WHERE (chat_topics IS NOT NULL)",
+			"name": "idx_chat_sessions_topics",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_user_active ON public.chat_sessions USING btree (user_id, status) WHERE (status = 'active'::text)",
+			"name": "idx_chat_sessions_user_active",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_user_effective_activity_active ON public.chat_sessions USING btree (user_id, COALESCE(last_message_at, updated_at, created_at) DESC) WHERE ((status <> 'archived'::text) AND (COALESCE(message_count, 0) >= 1))",
+			"name": "idx_chat_sessions_user_effective_activity_active",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_user_id ON public.chat_sessions USING btree (user_id)",
+			"name": "idx_chat_sessions_user_id",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_sessions_user_recent_active ON public.chat_sessions USING btree (user_id, last_message_at DESC, updated_at DESC, created_at DESC) WHERE ((status <> 'archived'::text) AND (message_count >= 1))",
+			"name": "idx_chat_sessions_user_recent_active",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_history_chat_sessions_search_trgm ON public.chat_sessions USING gin ((((((COALESCE(title, ''::text) || ' '::text) || COALESCE(auto_title, ''::text)) || ' '::text) || COALESCE(summary, ''::text))) gin_trgm_ops) WHERE ((status <> 'archived'::text) AND ((COALESCE(message_count, 0) >= 3) OR (summary IS NOT NULL)))",
+			"name": "idx_history_chat_sessions_search_trgm",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_history_chat_sessions_user_activity_visible ON public.chat_sessions USING btree (user_id, COALESCE(last_message_at, updated_at, created_at, '1970-01-01 00:00:00+00'::timestamp with time zone) DESC, id DESC) WHERE ((status <> 'archived'::text) AND ((COALESCE(message_count, 0) >= 3) OR (summary IS NOT NULL)))",
+			"name": "idx_history_chat_sessions_user_activity_visible",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE INDEX idx_history_chat_sessions_user_created_visible ON public.chat_sessions USING btree (user_id, created_at DESC) WHERE ((status <> 'archived'::text) AND ((message_count >= 3) OR (summary IS NOT NULL)))",
+			"name": "idx_history_chat_sessions_user_created_visible",
+			"table": "chat_sessions"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX chat_turn_checkpoints_pkey ON public.chat_turn_checkpoints USING btree (id)",
+			"name": "chat_turn_checkpoints_pkey",
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_checkpoints_resume_turn_run ON public.chat_turn_checkpoints USING btree (resume_turn_run_id) WHERE (resume_turn_run_id IS NOT NULL)",
+			"name": "idx_chat_turn_checkpoints_resume_turn_run",
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_checkpoints_session_status_created ON public.chat_turn_checkpoints USING btree (session_id, status, created_at DESC)",
+			"name": "idx_chat_turn_checkpoints_session_status_created",
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_checkpoints_stale_resuming ON public.chat_turn_checkpoints USING btree (status, resume_started_at) WHERE (status = 'resuming'::text)",
+			"name": "idx_chat_turn_checkpoints_stale_resuming",
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_checkpoints_turn_run_created ON public.chat_turn_checkpoints USING btree (turn_run_id, created_at DESC)",
+			"name": "idx_chat_turn_checkpoints_turn_run_created",
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX chat_turn_events_pkey ON public.chat_turn_events USING btree (id)",
+			"name": "chat_turn_events_pkey",
+			"table": "chat_turn_events"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_events_run_sequence ON public.chat_turn_events USING btree (turn_run_id, sequence_index)",
+			"name": "idx_chat_turn_events_run_sequence",
+			"table": "chat_turn_events"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_events_stream_created ON public.chat_turn_events USING btree (stream_run_id, created_at DESC)",
+			"name": "idx_chat_turn_events_stream_created",
+			"table": "chat_turn_events"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_events_type_created ON public.chat_turn_events USING btree (event_type, created_at DESC)",
+			"name": "idx_chat_turn_events_type_created",
+			"table": "chat_turn_events"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX uq_chat_turn_events_sequence ON public.chat_turn_events USING btree (turn_run_id, sequence_index)",
+			"name": "uq_chat_turn_events_sequence",
+			"table": "chat_turn_events"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX chat_turn_runs_pkey ON public.chat_turn_runs USING btree (id)",
+			"name": "chat_turn_runs_pkey",
+			"table": "chat_turn_runs"
+		},
+		{
+			"definition": "CREATE INDEX chat_turn_runs_running_last_progress_idx ON public.chat_turn_runs USING btree (last_progress_at) WHERE (status = 'running'::text)",
+			"name": "chat_turn_runs_running_last_progress_idx",
+			"table": "chat_turn_runs"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_runs_context_created ON public.chat_turn_runs USING btree (context_type, created_at DESC)",
+			"name": "idx_chat_turn_runs_context_created",
+			"table": "chat_turn_runs"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_runs_first_op_created ON public.chat_turn_runs USING btree (first_canonical_op, created_at DESC)",
+			"name": "idx_chat_turn_runs_first_op_created",
+			"table": "chat_turn_runs"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_runs_first_skill_created ON public.chat_turn_runs USING btree (first_skill_path, created_at DESC)",
+			"name": "idx_chat_turn_runs_first_skill_created",
+			"table": "chat_turn_runs"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_runs_prepared_prompt_id ON public.chat_turn_runs USING btree (prepared_prompt_id) WHERE (prepared_prompt_id IS NOT NULL)",
+			"name": "idx_chat_turn_runs_prepared_prompt_id",
+			"table": "chat_turn_runs"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_runs_session_created ON public.chat_turn_runs USING btree (session_id, created_at DESC)",
+			"name": "idx_chat_turn_runs_session_created",
+			"table": "chat_turn_runs"
+		},
+		{
+			"definition": "CREATE INDEX idx_chat_turn_runs_status_created ON public.chat_turn_runs USING btree (status, created_at DESC)",
+			"name": "idx_chat_turn_runs_status_created",
+			"table": "chat_turn_runs"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX uq_chat_turn_runs_one_running_per_session ON public.chat_turn_runs USING btree (session_id) WHERE (status = 'running'::text)",
+			"name": "uq_chat_turn_runs_one_running_per_session",
+			"table": "chat_turn_runs"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX uq_chat_turn_runs_stream_run_id ON public.chat_turn_runs USING btree (stream_run_id)",
+			"name": "uq_chat_turn_runs_stream_run_id",
+			"table": "chat_turn_runs"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX brief_generation_jobs_pkey ON public.queue_jobs USING btree (id)",
+			"name": "brief_generation_jobs_pkey",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE INDEX idx_brief_generation_jobs_queue_job_id ON public.queue_jobs USING btree (queue_job_id)",
+			"name": "idx_brief_generation_jobs_queue_job_id",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE INDEX idx_brief_generation_jobs_scheduled_for ON public.queue_jobs USING btree (scheduled_for)",
+			"name": "idx_brief_generation_jobs_scheduled_for",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE INDEX idx_brief_generation_jobs_user_id ON public.queue_jobs USING btree (user_id)",
+			"name": "idx_brief_generation_jobs_user_id",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE INDEX idx_history_queue_jobs_classify_session_created ON public.queue_jobs USING btree (user_id, ((metadata ->> 'sessionId'::text)), created_at DESC) WHERE (job_type = 'classify_chat_session'::queue_type)",
+			"name": "idx_history_queue_jobs_classify_session_created",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE INDEX idx_queue_jobs_completed_retention ON public.queue_jobs USING btree (completed_at, id) WHERE (status = 'completed'::queue_status)",
+			"name": "idx_queue_jobs_completed_retention",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX idx_queue_jobs_dedup_key_unique ON public.queue_jobs USING btree (dedup_key) WHERE ((dedup_key IS NOT NULL) AND (status = ANY (ARRAY['pending'::queue_status, 'processing'::queue_status])))",
+			"name": "idx_queue_jobs_dedup_key_unique",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE INDEX idx_queue_jobs_metadata_gin ON public.queue_jobs USING gin (metadata)",
+			"name": "idx_queue_jobs_metadata_gin",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE INDEX idx_queue_jobs_metadata_project_id ON public.queue_jobs USING btree (((metadata ->> 'projectId'::text)))",
+			"name": "idx_queue_jobs_metadata_project_id",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE INDEX idx_queue_jobs_pending_claim ON public.queue_jobs USING btree (job_type, scheduled_for, priority DESC) WHERE (status = 'pending'::queue_status)",
+			"name": "idx_queue_jobs_pending_claim",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE INDEX idx_queue_jobs_pending_claim_priority ON public.queue_jobs USING btree (job_type, priority, scheduled_for) WHERE (status = 'pending'::queue_status)",
+			"name": "idx_queue_jobs_pending_claim_priority",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE INDEX idx_queue_jobs_processing_token ON public.queue_jobs USING btree (processing_token) WHERE (processing_token IS NOT NULL)",
+			"name": "idx_queue_jobs_processing_token",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE INDEX idx_queue_jobs_status_updated_at ON public.queue_jobs USING btree (status, updated_at)",
+			"name": "idx_queue_jobs_status_updated_at",
+			"table": "queue_jobs"
+		},
+		{
+			"definition": "CREATE UNIQUE INDEX queue_jobs_queue_job_id_key ON public.queue_jobs USING btree (queue_job_id)",
+			"name": "queue_jobs_queue_job_id_key",
+			"table": "queue_jobs"
+		}
+	],
+	"legacy_row_inventory": {
+		"client_turn_id_formats": {
+			"null": 27,
+			"uuid": 592
+		},
+		"duplicate_active_sessions": {
+			"duplicate_session_count": 0,
+			"excess_active_row_count": 0
+		},
+		"duplicate_client_turn_keys": {
+			"duplicate_key_count": 0,
+			"excess_row_count": 0
+		},
+		"duplicate_key_samples": [],
+		"duplicate_running_sessions": {
+			"duplicate_session_count": 0,
+			"excess_running_row_count": 0
+		},
+		"duplicate_user_client_turn_keys": {
+			"duplicate_key_count": 0,
+			"excess_row_count": 0
+		},
+		"null_client_turn_id_rows": 27,
+		"null_user_message_id_rows": 63,
+		"row_counts": {
+			"agentic_chat_prepared_prompts": 0,
+			"chat_messages": 4805,
+			"chat_prompt_snapshots": 46,
+			"chat_sessions": 1299,
+			"chat_turn_checkpoints": 0,
+			"chat_turn_events": 10138,
+			"chat_turn_runs": 619,
+			"queue_jobs": 1854
+		},
+		"turn_statuses": {
+			"cancelled": 7,
+			"completed": 535,
+			"failed": 21,
+			"running": 56
+		}
+	},
+	"missing_target_tables": [],
+	"phase_2_required_lockdown": [
+		"No authenticated direct write to worker-owned rows",
+		"No authenticated direct prepared-prompt content read/update",
+		"No authenticated cleanup execution for referenced prepared inputs",
+		"All worker writes use relationship-validating, generation-fenced RPCs",
+		"Existing duplicate command keys are resolved before adding the unique keys",
+		"No authenticated INSERT on queue_jobs; add_queue_job definer-gated with a job-type allowlist",
+		"chat_prompt_snapshots writes move behind the server-only observability writer"
+	],
+	"routine_exposure": [
+		{
+			"authenticated_execute": true,
+			"identity_arguments": "p_user_id uuid, p_job_type text, p_metadata jsonb, p_priority integer, p_scheduled_for timestamp with time zone, p_dedup_key text",
+			"name": "add_queue_job",
+			"security_definer": false
+		},
+		{
+			"authenticated_execute": true,
+			"identity_arguments": "p_context_type text, p_user_id uuid, p_project_id uuid",
+			"name": "build_fastchat_project_intelligence",
+			"security_definer": true
+		},
+		{
+			"authenticated_execute": true,
+			"identity_arguments": "p_job_types text[], p_batch_size integer",
+			"name": "claim_pending_jobs",
+			"security_definer": false
+		},
+		{
+			"authenticated_execute": true,
+			"identity_arguments": "p_prompt_snapshot_retention_days integer, p_rendered_dump_retention_days integer, p_batch_size integer",
+			"name": "cleanup_agentic_chat_prompt_artifacts",
+			"security_definer": true
+		},
+		{
+			"authenticated_execute": true,
+			"identity_arguments": "",
+			"name": "cleanup_expired_agentic_chat_prepared_prompts",
+			"security_definer": true
+		},
+		{
+			"authenticated_execute": true,
+			"identity_arguments": "p_job_id uuid, p_result jsonb, p_processing_token uuid",
+			"name": "complete_queue_job",
+			"security_definer": false
+		},
+		{
+			"authenticated_execute": true,
+			"identity_arguments": "p_project_id uuid, p_required_access text",
+			"name": "current_actor_has_project_member_access",
+			"security_definer": true
+		},
+		{
+			"authenticated_execute": true,
+			"identity_arguments": "p_user_id uuid",
+			"name": "ensure_actor_for_user",
+			"security_definer": true
+		},
+		{
+			"authenticated_execute": true,
+			"identity_arguments": "p_job_id uuid, p_error_message text, p_retry boolean, p_processing_token uuid",
+			"name": "fail_queue_job",
+			"security_definer": false
+		},
+		{
+			"authenticated_execute": true,
+			"identity_arguments": "p_session_id uuid, p_patch jsonb",
+			"name": "merge_chat_session_agent_metadata",
+			"security_definer": false
+		},
+		{
+			"authenticated_execute": true,
+			"identity_arguments": "p_stall_timeout text",
+			"name": "reset_stalled_jobs",
+			"security_definer": false
+		}
+	],
+	"row_level_security": [
+		{
+			"rls_enabled": true,
+			"rls_forced": false,
+			"table": "agentic_chat_prepared_prompts"
+		},
+		{
+			"rls_enabled": true,
+			"rls_forced": false,
+			"table": "chat_messages"
+		},
+		{
+			"rls_enabled": true,
+			"rls_forced": false,
+			"table": "chat_prompt_snapshots"
+		},
+		{
+			"rls_enabled": true,
+			"rls_forced": false,
+			"table": "chat_sessions"
+		},
+		{
+			"rls_enabled": true,
+			"rls_forced": false,
+			"table": "chat_turn_checkpoints"
+		},
+		{
+			"rls_enabled": true,
+			"rls_forced": false,
+			"table": "chat_turn_events"
+		},
+		{
+			"rls_enabled": true,
+			"rls_forced": false,
+			"table": "chat_turn_runs"
+		},
+		{
+			"rls_enabled": false,
+			"rls_forced": false,
+			"table": "queue_jobs"
+		}
+	]
+}

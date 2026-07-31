@@ -10,11 +10,16 @@ export interface TurnRunRow {
 	id: string;
 	session_id: string;
 	status: string;
+	created_at: string;
+	started_at: string;
+	finished_at: string | null;
 	finished_reason: string | null;
 	tool_call_count: number;
 	tool_round_count: number;
 	first_canonical_op: string | null;
 	assistant_message_id: string | null;
+	user_message_id: string | null;
+	timing_metric_id: string | null;
 }
 
 export interface ToolExecutionRow {
@@ -22,6 +27,7 @@ export interface ToolExecutionRow {
 	success: boolean;
 	gateway_op: string | null;
 	sequence_index: number | null;
+	execution_time_ms: number | null;
 	arguments: unknown;
 	result: unknown;
 	affected_entities: AffectedEntity[];
@@ -150,7 +156,7 @@ export async function getTurnRun(
 	const { data } = await admin
 		.from('chat_turn_runs')
 		.select(
-			'id, session_id, status, finished_reason, tool_call_count, tool_round_count, first_canonical_op, assistant_message_id'
+			'id, session_id, status, created_at, started_at, finished_at, finished_reason, tool_call_count, tool_round_count, first_canonical_op, assistant_message_id, user_message_id, timing_metric_id'
 		)
 		.eq('stream_run_id', streamRunId)
 		.maybeSingle();
@@ -242,7 +248,7 @@ export async function getToolExecutions(
 	const { data } = await admin
 		.from('chat_tool_executions')
 		.select(
-			'tool_name, success, gateway_op, sequence_index, arguments, result, affected_entities'
+			'tool_name, success, gateway_op, sequence_index, execution_time_ms, arguments, result, affected_entities'
 		)
 		.eq('stream_run_id', streamRunId)
 		.order('sequence_index', { ascending: true });
@@ -252,6 +258,25 @@ export async function getToolExecutions(
 			? (row.affected_entities as AffectedEntity[])
 			: []
 	}));
+}
+
+/** Wait for detached tool telemetry to reach the number observed on the SSE stream. */
+export async function waitForToolExecutions(
+	admin: TypedSupabaseClient,
+	streamRunId: string,
+	expectedCount: number,
+	options: { timeoutMs?: number; intervalMs?: number } = {}
+): Promise<ToolExecutionRow[]> {
+	const timeoutMs = options.timeoutMs ?? 5_000;
+	const intervalMs = options.intervalMs ?? 250;
+	const deadline = Date.now() + timeoutMs;
+	let last: ToolExecutionRow[] = [];
+	do {
+		last = await getToolExecutions(admin, streamRunId);
+		if (last.length >= expectedCount) return last;
+		await new Promise((resolve) => setTimeout(resolve, intervalMs));
+	} while (Date.now() < deadline);
+	return last;
 }
 
 /** All model-usage rows attributable to one streamed turn. */

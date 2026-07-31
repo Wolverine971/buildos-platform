@@ -5,10 +5,10 @@
 // where the JSON carries a `type` discriminator plus envelope metadata
 // (stream_run_id, sequence_index, phase, ...). We read until `type === 'done'`.
 import { randomUUID } from 'node:crypto';
-import type { ChatToolCall, LastTurnContext } from '@buildos/shared-types';
+import type { AgentTimingSummary, ChatToolCall, LastTurnContext } from '@buildos/shared-types';
 import { buildFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request-client';
 import { collectStrictAgentSse } from '$lib/services/agentic-chat-v2/strict-agent-sse';
-import type { HarnessContextType, TurnResult, TurnTiming } from './types';
+import type { HarnessContextType, TurnEventTiming, TurnResult, TurnTiming } from './types';
 
 const STREAM_PATH = '/api/agent/v2/stream';
 
@@ -66,6 +66,29 @@ export function recordTurnEventTiming(
 	}
 }
 
+/** Build a payload-free event observation for the retained Phase 0 timing artifact. */
+export function createTurnEventTiming(
+	event: Record<string, unknown>,
+	elapsedMs: number
+): TurnEventTiming {
+	return {
+		type: typeof event.type === 'string' ? event.type : 'unknown',
+		phase: typeof event.phase === 'string' ? event.phase : null,
+		sequenceIndex:
+			typeof event.sequence_index === 'number' && Number.isFinite(event.sequence_index)
+				? event.sequence_index
+				: null,
+		observedMs: Math.max(0, elapsedMs)
+	};
+}
+
+export function readServerTiming(event: Record<string, unknown>): AgentTimingSummary | null {
+	if (event.type !== 'timing' || !event.timing || typeof event.timing !== 'object') return null;
+	const timing = event.timing as Partial<AgentTimingSummary>;
+	if (typeof timing.request_started_at !== 'string' || !timing.phases) return null;
+	return timing as AgentTimingSummary;
+}
+
 function emptyResult(streamRunId: string, clientTurnId: string, timing: TurnTiming): TurnResult {
 	return {
 		sessionId: null,
@@ -81,7 +104,9 @@ function emptyResult(streamRunId: string, clientTurnId: string, timing: TurnTimi
 		usage: null,
 		completed: false,
 		rawEvents: [],
-		timing
+		timing,
+		serverTiming: null,
+		eventTimings: []
 	};
 }
 
@@ -114,6 +139,10 @@ function applyEvent(result: TurnResult, ev: Record<string, unknown>): void {
 		}
 		case 'skill_activity': {
 			result.skillActivity.push(ev);
+			break;
+		}
+		case 'timing': {
+			result.serverTiming = readServerTiming(ev);
 			break;
 		}
 		case 'error': {
@@ -181,7 +210,9 @@ export async function runTurn(params: RunTurnParams): Promise<TurnResult> {
 		streamRunId,
 		clientTurnId,
 		onEvent: (event) => {
-			recordTurnEventTiming(result.timing, event.type, performance.now() - requestStartedMs);
+			const elapsedMs = performance.now() - requestStartedMs;
+			recordTurnEventTiming(result.timing, event.type, elapsedMs);
+			result.eventTimings.push(createTurnEventTiming(event, elapsedMs));
 			applyEvent(result, event);
 		}
 	});
