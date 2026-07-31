@@ -59,6 +59,12 @@ describe('looksLikeWebResearchTurn', () => {
 				'i think we need to figure out the research on what other people are charging'
 			)
 		).toBe(true);
+		expect(
+			looksLikeWebResearchTurn(
+				'Look into what other scheduling tools for small service businesses charge — ' +
+					'I want a sense of the pricing landscape before we put a paid tier together.'
+			)
+		).toBe(true);
 	});
 
 	it('does not match workspace research phrasing', () => {

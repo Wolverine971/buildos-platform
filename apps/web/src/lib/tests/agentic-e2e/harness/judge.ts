@@ -8,6 +8,8 @@
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { JudgeResult } from './types';
 
+const JUDGE_MAX_ATTEMPTS = 2;
+
 const JUDGE_SYSTEM_PROMPT = `You are a strict QA judge evaluating an AI assistant that operates inside a
 productivity app (it manages projects, documents, and tasks via tools).
 
@@ -33,17 +35,30 @@ export async function judgeQuality(params: {
 	threshold?: number;
 }): Promise<JudgeResult> {
 	const threshold = params.threshold ?? 3;
-	const llm = new SmartLLMService();
+	let raw: { score?: number; reasoning?: string } | null = null;
 
-	const raw = await llm.getJSONResponse<{ score?: number; reasoning?: string }>({
-		systemPrompt: JUDGE_SYSTEM_PROMPT,
-		userPrompt: `RUBRIC:\n${params.rubric}\n\nTRANSCRIPT:\n${params.transcript}`,
-		profile: 'powerful',
-		temperature: 0,
-		maxTokens: 600,
-		userId: 'agentic-e2e-judge',
-		operationType: 'agentic_e2e_judge'
-	});
+	for (let attempt = 1; attempt <= JUDGE_MAX_ATTEMPTS; attempt += 1) {
+		try {
+			const llm = new SmartLLMService();
+			raw = await llm.getJSONResponse<{ score?: number; reasoning?: string }>({
+				systemPrompt: JUDGE_SYSTEM_PROMPT,
+				userPrompt: `RUBRIC:\n${params.rubric}\n\nTRANSCRIPT:\n${params.transcript}`,
+				profile: 'powerful',
+				temperature: 0,
+				maxTokens: 600,
+				userId: 'agentic-e2e-judge',
+				operationType: 'agentic_e2e_judge'
+			});
+			break;
+		} catch (error) {
+			if (attempt === JUDGE_MAX_ATTEMPTS) throw error;
+			console.warn('[agentic-e2e] retrying quality judge after provider failure', {
+				attempt,
+				maxAttempts: JUDGE_MAX_ATTEMPTS,
+				error: error instanceof Error ? error.message : String(error)
+			});
+		}
+	}
 
 	const score = Math.max(1, Math.min(5, Math.round(Number(raw?.score ?? 0))));
 	return {

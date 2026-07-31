@@ -1,7 +1,7 @@
 // apps/web/src/lib/tests/agentic-e2e/harness/types.ts
 //
 // Shared types for the agentic-chat end-to-end stress harness.
-import type { ChatToolCall, LastTurnContext } from '@buildos/shared-types';
+import type { AgentTimingSummary, ChatToolCall, LastTurnContext } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 
 /** A chat context mode accepted by POST /api/agent/v2/stream. */
@@ -15,6 +15,14 @@ export interface TurnTiming {
 	ttftMs: number | null;
 	terminalEventMs: number | null;
 	totalDurationMs: number | null;
+}
+
+/** Client-observed arrival time for one SSE event, without retaining its payload. */
+export interface TurnEventTiming {
+	type: string;
+	phase: string | null;
+	sequenceIndex: number | null;
+	observedMs: number;
 }
 
 /** Everything captured from driving a single chat turn over SSE. */
@@ -47,6 +55,10 @@ export interface TurnResult {
 	rawEvents: Array<Record<string, unknown>>;
 	/** Client-side timings, including TTFT at the first SSE text/text_delta event. */
 	timing: TurnTiming;
+	/** Server-measured phase timings emitted immediately before the terminal done event. */
+	serverTiming: AgentTimingSummary | null;
+	/** Payload-free client arrival timeline used for tool-stage and finalization evidence. */
+	eventTimings: TurnEventTiming[];
 }
 
 /** Result of seeding a scenario's fixtures. */

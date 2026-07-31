@@ -49,7 +49,6 @@ import {
 	normalizeComparableText
 } from '../harness/assertions';
 import {
-	getDocumentById,
 	getDocumentByTitle,
 	listDocuments,
 	listEvents,
@@ -144,7 +143,14 @@ export const taskCompleteColdReferenceScenario: Scenario = {
 			entityIds: { northwind: northwind.id, startHere: startHere.id },
 			notes: {
 				seededTaskIds: tasks.map((t) => t.id),
-				seededDocIds: docs.map((d) => d.id)
+				seededDocIds: docs.map((d) => d.id),
+				// seedProject creates the generated project-context START HERE before this
+				// scenario adds its purpose-built START HERE - Job Search fixture. The agent
+				// may correctly update either document, so retain ground-truth snapshots of
+				// every pre-existing START HERE surface instead of watching only one id.
+				seededStartHereDocuments: docs
+					.filter((d) => /\bstart here\b/i.test(d.title))
+					.map((d) => ({ id: d.id, title: d.title, content: d.content ?? '' }))
 			}
 		};
 	},
@@ -207,27 +213,45 @@ export const taskCompleteColdReferenceScenario: Scenario = {
 					return /wait|hear back|follow.?up|response/.test(text);
 				});
 
+				const documents = await listDocuments(ctx.db.admin, seed.projectId!);
 				const seededDocIds = new Set(seed.notes.seededDocIds as string[]);
 				// An auto-captured Research Log must not count as a forward-carry surface — that
 				// would turn this real 0/12 failure green without the stated next step ever being
 				// recorded.
-				const newDocs = excludeSystemDocuments(
-					await listDocuments(ctx.db.admin, seed.projectId!)
-				).filter((d) => !seededDocIds.has(d.id));
+				const newDocs = excludeSystemDocuments(documents).filter(
+					(d) => !seededDocIds.has(d.id)
+				);
 
 				const events = await listEvents(ctx.db.admin, seed.projectId!);
 
-				const startHere = await getDocumentById(ctx.db.admin, seed.entityIds.startHere!);
-				if (!startHere) throw new Error('[assert] the START HERE document vanished');
-				const startHereChanged =
-					normalizeComparableText(startHere.content ?? '') !==
-					normalizeComparableText(START_HERE_CONTENT);
+				const startHereSnapshots = seed.notes.seededStartHereDocuments as Array<{
+					id: string;
+					title: string;
+					content: string;
+				}>;
+				const changedStartHereDocuments = startHereSnapshots.filter((snapshot) => {
+					const current = documents.find((document) => document.id === snapshot.id);
+					if (!current) {
+						throw new Error(
+							`[assert] START HERE document "${snapshot.title}" vanished`
+						);
+					}
+					return (
+						normalizeComparableText(current.content ?? '') !==
+						normalizeComparableText(snapshot.content)
+					);
+				});
+				const startHereChanged = changedStartHereDocuments.length > 0;
 
 				const surfaces = {
 					task: forwardTask ? `"${forwardTask.title}"` : null,
 					document: newDocs.length > 0 ? `"${newDocs[0]!.title}"` : null,
 					event: events.length > 0 ? `"${events[0]!.title}"` : null,
-					startHereUpdated: startHereChanged ? 'yes' : null
+					startHereUpdated: startHereChanged
+						? changedStartHereDocuments
+								.map((document) => `"${document.title}"`)
+								.join(', ')
+						: null
 				};
 				seed.notes.forwardCarrySurfaces = surfaces;
 

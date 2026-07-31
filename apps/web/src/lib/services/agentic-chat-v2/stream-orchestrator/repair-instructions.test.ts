@@ -1160,18 +1160,42 @@ describe('shouldRepairStatedFutureNotRecorded', () => {
 		).toBe(false);
 	});
 
-	it('counts a document update as recording the future (START HERE edit)', () => {
+	it('counts a document content update as recording the future (START HERE edit)', () => {
 		expect(
 			shouldRepairStatedFutureNotRecorded({
 				latestUserText: "done — i'm waiting on their reply",
 				finalText: 'Closed it and noted the wait in START HERE.',
 				toolExecutions: [
 					...closedATask,
-					createExecution({ name: 'update_onto_document', args: { document_id: 'd1' } })
+					createExecution({
+						name: 'update_onto_document',
+						args: {
+							document_id: 'd1',
+							content: '- Waiting to hear back from them',
+							update_strategy: 'append'
+						}
+					})
 				],
 				repairAlreadyInjected: false
 			})
 		).toBe(false);
+	});
+
+	it('does not count a metadata-only document update as carrying the future', () => {
+		expect(
+			shouldRepairStatedFutureNotRecorded({
+				latestUserText: "done — i'm waiting on their reply",
+				finalText: 'Closed it and updated START HERE.',
+				toolExecutions: [
+					...closedATask,
+					createExecution({
+						name: 'update_onto_document',
+						args: { document_id: 'd1', description: 'Job-search status' }
+					})
+				],
+				repairAlreadyInjected: false
+			})
+		).toBe(true);
 	});
 
 	it('does not fire on a turn that wrote nothing at all', () => {
@@ -1293,6 +1317,21 @@ describe('didWriteWithoutDurableRecord', () => {
 				createExecution({ name: 'create_onto_task', args: { title: 'Follow up' } })
 			])
 		).toBe(false);
+	});
+
+	it('keeps the deterministic floor active after a metadata-only document update', () => {
+		expect(
+			didWriteWithoutDurableRecord([
+				createExecution({
+					name: 'update_onto_task',
+					args: { task_id: 't1', state_key: 'done' }
+				}),
+				createExecution({
+					name: 'update_onto_document',
+					args: { document_id: 'd1', state_key: 'ready' }
+				})
+			])
+		).toBe(true);
 	});
 });
 

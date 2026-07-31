@@ -30,6 +30,7 @@ type SmartLlmStreamEvent =
 	SmartLlmStreamTextResult extends AsyncGenerator<infer Event, unknown, unknown> ? Event : never;
 
 const MAX_LLM_STREAM_ATTEMPTS = 2;
+const MAX_WRITE_INTENT_STREAM_ATTEMPTS = 3;
 const LLM_PASS_TIMEOUT_MS = 60_000;
 const PROJECT_CREATE_LLM_PASS_TIMEOUT_MS = 120_000;
 const LLM_STREAM_RETRY_BASE_DELAY_MS = 250;
@@ -127,7 +128,15 @@ export async function runLlmStreamPass(params: {
 	commissionedDocumentUpdateFallbackContent?: string;
 	modelRouting?: FastChatPassModelRouting;
 }): Promise<LlmStreamPassResult> {
-	const maxAttempts = MAX_LLM_STREAM_ATTEMPTS;
+	// A forced write-intent pass is the last chance to fulfill an already-confirmed
+	// mutation after the read work is complete. Give that narrow recovery lane one
+	// additional rotated model/provider attempt; two different hosted providers can
+	// stall without emitting a single chunk, and failing here discards the whole turn.
+	// Ordinary and long-running project-create passes keep their existing retry cap.
+	const maxAttempts =
+		params.modelRouting?.passRole === 'write_intent'
+			? MAX_WRITE_INTENT_STREAM_ATTEMPTS
+			: MAX_LLM_STREAM_ATTEMPTS;
 	let lastRetryError: Error | null = null;
 	const modelProfile = params.modelRouting?.profile ?? 'balanced';
 	const modelCandidates =

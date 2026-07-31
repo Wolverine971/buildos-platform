@@ -3,6 +3,8 @@ interface CheckedTurnOptions {
 	hasFollowup: boolean;
 	assertTurn: () => Promise<void>;
 	judgeTurn?: () => Promise<void>;
+	/** Capture evidence before the harness mutates a running turn for follow-up release. */
+	captureTurn?: (checkError: unknown | null) => Promise<void>;
 	releaseForFollowup: () => Promise<void>;
 }
 
@@ -11,9 +13,18 @@ export async function checkTurnBeforeFollowupRelease({
 	hasFollowup,
 	assertTurn,
 	judgeTurn,
+	captureTurn,
 	releaseForFollowup
 }: CheckedTurnOptions): Promise<void> {
-	await assertTurn();
-	if (judgeTurn) await judgeTurn();
+	let checkError: unknown | null = null;
+	try {
+		await assertTurn();
+		if (judgeTurn) await judgeTurn();
+	} catch (error) {
+		checkError = error;
+		throw error;
+	} finally {
+		if (captureTurn) await captureTurn(checkError);
+	}
 	if (hasFollowup) await releaseForFollowup();
 }

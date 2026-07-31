@@ -62,7 +62,11 @@ const WEB_RESEARCH_TURN_PATTERNS = [
 	/\b(?:web|online|internet)\b[\s\S]{0,30}\b(?:search|research|look\s?up)\b/i,
 	/\b(?:latest|current|up[-\s]?to[-\s]?date|today'?s)\b[\s\S]{0,60}\b(?:news|price|prices|pricing|benchmarks?|release|version|docs|documentation)\b/i,
 	/\bcompetitor(?:s)?\b[\s\S]{0,60}\b(?:pricing|prices|products?|features?|research)\b/i,
-	/\b(?:research|figure\s+out|find\s+out)\b[\s\S]{0,100}\b(?:other\s+people|others|competitors?)\b[\s\S]{0,50}\b(?:charging|pricing|prices)\b/i
+	/\b(?:research|figure\s+out|find\s+out)\b[\s\S]{0,100}\b(?:other\s+people|others|competitors?)\b[\s\S]{0,50}\b(?:charging|pricing|prices)\b/i,
+	// Natural delegated-research phrasing from the Phase 0 readback scenario.
+	// Keep this bounded around an external comparison and a price verb so
+	// ordinary "look into this project" workspace reads stay on the local path.
+	/\b(?:look\s+into|research|figure\s+out|find\s+out)\b[\s\S]{0,100}\bother\b[\s\S]{0,80}\b(?:charge|charges|charging|pricing|prices)\b/i
 ];
 
 export function looksLikeWebResearchTurn(text: string | null | undefined): boolean {

@@ -84,7 +84,9 @@ describe('restraint assertion helpers', () => {
 				terminalEventMs: null,
 				totalDurationMs: null
 			},
-			...overrides
+			...overrides,
+			serverTiming: overrides.serverTiming ?? null,
+			eventTimings: overrides.eventTimings ?? []
 		};
 	}
 

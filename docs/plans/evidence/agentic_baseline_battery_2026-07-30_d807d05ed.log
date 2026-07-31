@@ -1,0 +1,142 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "shamefully-hoist". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+ RUN  v3.2.4 /Users/djwayne/buildos-baseline-wt/apps/web
+
+ ❯ src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts (16 tests | 3 failed | 2 skipped) 1756744ms
+   ✓ agentic chat e2e scenarios (real model + tools + DB) > [document] Add a structured document to a project  24621ms
+   ✓ agentic chat e2e scenarios (real model + tools + DB) > [document] Edit a document, then edit it again from context alone  266506ms (retry x1)
+   ✓ agentic chat e2e scenarios (real model + tools + DB) > [organization] Organize a project with messy, loose documents  266526ms (retry x1)
+   ✓ agentic chat e2e scenarios (real model + tools + DB) > [task] Create a scheduled, prioritized task  24124ms
+   ↓ agentic chat e2e scenarios (real model + tools + DB) > [calendar] Move a calendar event to a new time
+   ↓ agentic chat e2e scenarios (real model + tools + DB) > [email] Search connected Gmail and open a message (read-only)
+   ✓ agentic chat e2e scenarios (real model + tools + DB) > [task] Close a task named only by company, cold, and carry the next step forward  65984ms
+   ✓ agentic chat e2e scenarios (real model + tools + DB) > [organization] Resolve a project whose name the voice transcriber got wrong  35621ms
+   ✓ agentic chat e2e scenarios (real model + tools + DB) > [document] A multi-tool synthesis turn narrates, then finishes with a real answer  62787ms
+   ✓ agentic chat e2e scenarios (real model + tools + DB) > [task] Write nothing on a passing mention, and ask instead of guessing when ambiguous  27119ms
+   × agentic chat e2e scenarios (real model + tools + DB) > [task] Reschedule a task described, not named, in a cold session 138793ms (retry x1)
+     → [assert] expected tool "update_onto_task" to be called; got [none]. Assistant text: "The "Send the launch announcement to the beta list" task is actually already due this **Friday, July 31** (tomorrow). When you say push it to Friday — do you mean **next Friday, August 7**? Or is ther"
+     → [assert] the target task vanished
+   ✓ agentic chat e2e scenarios (real model + tools + DB) > [task] Apply three operations from one dictated sentence  35567ms
+   ✓ agentic chat e2e scenarios (real model + tools + DB) > [document] Turn a non-imperative "we need to figure out X" into a real document  129421ms
+   × agentic chat e2e scenarios (real model + tools + DB) > [document] Research captured in one session is found again in a cold session 109345ms (retry x1)
+     → [assert] no "Research Log" document after 7 research calls. Deterministic capture did not run. Titles: []
+     → [assert] no "Research Log" document after 7 research calls. Deterministic capture did not run. Titles: []
+   ✓ agentic chat e2e scenarios (real model + tools + DB) > [document] Cold session catch-up reflects live state, not the stale START HERE  46139ms
+   × agentic chat e2e scenarios (real model + tools + DB) > [creative] Grow a book from brain dump to grounded story guidance 522540ms (retry x1)
+     → [agentic-e2e] book-writing-journey completed all turns with 4 checkpoint failure(s):
+1. Propagate a beat into character and chapter structure — chapter beat triggered durable updates
+   [assert] chapter beat produced 1 document write call(s); expected character and structure updates
+2. Propagate a beat into character and chapter structure — Ilyan motivation propagated to his reference sheet
+   [assert] the Part I beat did not update the existing Ilyan reference sheet
+3. Cold-session story guidance from durable canon — options remained proposals rather than new canon
+   [assert] durable book documents changed while the user was only comparing options
+4. Cold-session story guidance from durable canon — three grounded character-arc options
+   [assert] guidance did not explicitly frame Ilyan in Chapter 5
+     → [assert] turn emitted 1 error event(s): An error occurred while streaming.
+ ✓ src/lib/tests/agentic-e2e/harness/assertions.test.ts (10 tests) 15ms
+ ✓ src/lib/tests/agentic-e2e/scenarios/calendar-move.scenario.test.ts (1 test) 1ms
+ ✓ src/lib/tests/agentic-e2e/harness/sse-client-timing.test.ts (2 tests) 1ms
+ ✓ src/lib/tests/agentic-e2e/open-brief/fixtures.test.ts (3 tests) 3ms
+ ✓ src/lib/tests/agentic-e2e/harness/turn-sequencing.test.ts (4 tests) 2ms
+ ✓ src/lib/tests/agentic-e2e/harness/checkpoints.test.ts (2 tests) 2ms
+ ✓ src/lib/tests/agentic-e2e/phase-a/fixtures.test.ts (2 tests) 2ms
+ ✓ src/lib/tests/agentic-e2e/phase-a/baseline-report.test.ts (3 tests) 2ms
+ ✓ src/lib/tests/agentic-e2e/harness/attribution.test.ts (5 tests) 2ms
+ ✓ src/lib/tests/agentic-e2e/phase-a/acceptance.test.ts (4 tests) 2ms
+ ✓ src/lib/tests/agentic-e2e/harness/telemetry-usage.test.ts (1 test) 1ms
+ ↓ src/lib/tests/agentic-e2e/open-brief/open-brief-control.test.ts (1 test | 1 skipped)
+ ↓ src/lib/tests/agentic-e2e/phase-a/phase-a-control.test.ts (8 tests | 8 skipped)
+ ↓ src/lib/tests/agentic-e2e/phase-a/route-mode-eval.test.ts (1 test | 1 skipped)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts > agentic chat e2e scenarios (real model + tools + DB) > [task] Reschedule a task described, not named, in a cold session
+Error: [assert] expected tool "update_onto_task" to be called; got [none]. Assistant text: "The "Send the launch announcement to the beta list" task is actually already due this **Friday, July 31** (tomorrow). When you say push it to Friday — do you mean **next Friday, August 7**? Or is ther"
+ ❯ assertToolCalled src/lib/tests/agentic-e2e/harness/assertions.ts:53:9
+     51| export function assertToolCalled(turn: TurnResult, name: string): void…
+     52|  if (!toolNames(turn).includes(name)) {
+     53|   throw new Error(
+       |         ^
+     54|    `[assert] expected tool "${name}" to be called; got [${toolNames(tu…
+     55|     `Assistant text: "${turn.assistantText.slice(0, 200)}"`
+ ❯ Object.assert src/lib/tests/agentic-e2e/scenarios/task-reschedule-cold-reference.scenario.ts:95:5
+ ❯ assertTurn src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts:131:20
+ ❯ checkTurnBeforeFollowupRelease src/lib/tests/agentic-e2e/harness/turn-sequencing.ts:16:8
+ ❯ src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts:128:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts > agentic chat e2e scenarios (real model + tools + DB) > [task] Reschedule a task described, not named, in a cold session
+Error: [assert] the target task vanished
+ ❯ Object.assert src/lib/tests/agentic-e2e/scenarios/task-reschedule-cold-reference.scenario.ts:111:24
+    109| 
+    110|     const target = tasks.find((t) => t.id === seed.entityIds.target);
+    111|     if (!target) throw new Error('[assert] the target task vanished');
+       |                        ^
+    112|     assertIsoDate(
+    113|      target.due_at,
+ ❯ assertTurn src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts:131:9
+ ❯ checkTurnBeforeFollowupRelease src/lib/tests/agentic-e2e/harness/turn-sequencing.ts:16:2
+ ❯ src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts:128:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts > agentic chat e2e scenarios (real model + tools + DB) > [document] Research captured in one session is found again in a cold session
+ FAIL  src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts > agentic chat e2e scenarios (real model + tools + DB) > [document] Research captured in one session is found again in a cold session
+Error: [assert] no "Research Log" document after 7 research calls. Deterministic capture did not run. Titles: []
+ ❯ Object.assert src/lib/tests/agentic-e2e/scenarios/research-log-readback.scenario.ts:83:12
+     81|     const log = documents.find((doc) => doc.title === RESEARCH_LOG_TIT…
+     82|     if (!log) {
+     83|      throw new Error(
+       |            ^
+     84|       `[assert] no "${RESEARCH_LOG_TITLE}" document after ${research.l…
+     85|        `Deterministic capture did not run. Titles: [${documents.map((d…
+ ❯ assertTurn src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts:131:9
+ ❯ checkTurnBeforeFollowupRelease src/lib/tests/agentic-e2e/harness/turn-sequencing.ts:16:2
+ ❯ src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts:128:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts > agentic chat e2e scenarios (real model + tools + DB) > [creative] Grow a book from brain dump to grounded story guidance
+Error: [agentic-e2e] book-writing-journey completed all turns with 4 checkpoint failure(s):
+1. Propagate a beat into character and chapter structure — chapter beat triggered durable updates
+   [assert] chapter beat produced 1 document write call(s); expected character and structure updates
+2. Propagate a beat into character and chapter structure — Ilyan motivation propagated to his reference sheet
+   [assert] the Part I beat did not update the existing Ilyan reference sheet
+3. Cold-session story guidance from durable canon — options remained proposals rather than new canon
+   [assert] durable book documents changed while the user was only comparing options
+4. Cold-session story guidance from durable canon — three grounded character-arc options
+   [assert] guidance did not explicitly frame Ilyan in Chapter 5
+ ❯ src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts:238:13
+    236| 
+    237|      if (checkpointFailures.length > 0) {
+    238|       throw new Error(formatCheckpointFailures(scenario.id, checkpoint…
+       |             ^
+    239|      }
+    240|     } finally {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts > agentic chat e2e scenarios (real model + tools + DB) > [creative] Grow a book from brain dump to grounded story guidance
+Error: [assert] turn emitted 1 error event(s): An error occurred while streaming.
+ ❯ assertTurnSucceeded src/lib/tests/agentic-e2e/harness/assertions.ts:33:9
+     31| export function assertTurnSucceeded(turn: TurnResult): void {
+     32|  if (turn.errors.length > 0) {
+     33|   throw new Error(
+       |         ^
+     34|    `[assert] turn emitted ${turn.errors.length} error event(s): ` +
+     35|     turn.errors.map((e) => e.error).join(' | ')
+ ❯ Object.assert src/lib/tests/agentic-e2e/scenarios/book-writing-journey.scenario.ts:193:5
+ ❯ assertTurn src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts:131:20
+ ❯ checkTurnBeforeFollowupRelease src/lib/tests/agentic-e2e/harness/turn-sequencing.ts:16:8
+ ❯ src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts:128:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+
+ Test Files  1 failed | 11 passed | 3 skipped (15)
+      Tests  3 failed | 48 passed | 12 skipped (63)
+   Start at  01:42:57
+   Duration  1766.70s (transform 1.52s, setup 505ms, collect 6.14s, tests 1756.78s, environment 1ms, prepare 542ms)
+

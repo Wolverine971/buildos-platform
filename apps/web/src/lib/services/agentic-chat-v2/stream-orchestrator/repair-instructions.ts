@@ -22,6 +22,7 @@ import {
 } from './tool-classification';
 import { extractGatewayRequiredFieldFailuresFromValidationIssues } from './round-analysis';
 import { looksLikeProjectDocumentOrganizeTurn } from '../tool-selector';
+import { getDocumentUpdateContentCandidate } from '$lib/services/agentic-chat/shared/update-value-validation';
 import {
 	classifyToolFailure,
 	isNotFoundFailure,
@@ -461,8 +462,15 @@ export function didCreateDurableRecord(toolExecutions: FastToolExecution[]): boo
 		if (!name) return false;
 		if (name.startsWith('create_onto_')) return true;
 		if (name === 'create_calendar_event') return true;
-		// A document edit is how "update START HERE" lands.
-		if (name === 'update_onto_document') return true;
+		// A document edit is how "update START HERE" lands, but metadata-only
+		// edits do not carry the stated future on the accepted document surface.
+		// Counting every nominal update suppressed both the repair and the D1
+		// floor when a model changed only description/state and left body content
+		// untouched (Phase 0 gate, 2026-07-31).
+		if (name === 'update_onto_document') {
+			const { args } = parseToolArguments(execution.toolCall.function?.arguments);
+			return getDocumentUpdateContentCandidate(args) !== null;
+		}
 		return false;
 	});
 }
