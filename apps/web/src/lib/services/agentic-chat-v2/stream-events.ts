@@ -7,6 +7,10 @@ import type {
 	ContextShiftPayload,
 	ContextUsageSnapshot
 } from '@buildos/shared-types';
+import type {
+	AgenticChatEventSinkPort,
+	AgenticChatRuntimeEvent
+} from '@buildos/agentic-chat-runtime';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { createLogger } from '$lib/utils/logger';
 import { normalizeFastContextType } from './scope';
@@ -16,6 +20,13 @@ const logger = createLogger('API:AgentStreamV2');
 
 export type AgentStreamEventPhase = 'prompt' | 'llm' | 'tool' | 'stream' | 'finalize';
 export type AgentChatSSEStream = ReturnType<typeof SSEResponse.createChatStream>;
+export type AgentChatEventPayload =
+	| AgentSSEMessage
+	| (Record<string, unknown> & AgenticChatRuntimeEvent);
+export type AgentChatEventSink = AgenticChatEventSinkPort<AgentChatEventPayload> & {
+	response: AgentChatSSEStream['response'];
+	close(): Promise<void>;
+};
 
 export function resolveAgentStreamEventPhase(eventType: string): AgentStreamEventPhase {
 	switch (eventType) {
@@ -50,19 +61,17 @@ export function resolveAgentStreamEventPhase(eventType: string): AgentStreamEven
 	}
 }
 
-export function createSequencedAgentStream(params: {
+export function createLegacySseEventSink(params: {
 	baseStream: AgentChatSSEStream;
 	streamRunId: string;
 	clientTurnId: string | null | undefined;
 	getTurnRunId: () => string | null;
-}): AgentChatSSEStream {
+}): AgentChatEventSink {
 	let sequenceIndex = 0;
 
 	return {
 		response: params.baseStream.response,
-		sendMessage: async (
-			payload: AgentSSEMessage | (Record<string, unknown> & { type: string })
-		) => {
+		emit: async (payload: AgentChatEventPayload) => {
 			const eventType = typeof payload.type === 'string' ? payload.type : 'message';
 			const nextSequenceIndex = ++sequenceIndex;
 			const turnRunId = params.getTurnRunId();
@@ -87,15 +96,15 @@ export function createSequencedAgentStream(params: {
 }
 
 export function emitContextUsage(
-	agentStream: AgentChatSSEStream,
+	eventSink: AgentChatEventSink,
 	usage: ContextUsageSnapshot,
 	options: {
 		onError?: (error: unknown) => void;
 		onMessageSent?: () => void;
 	} = {}
 ): void {
-	void agentStream
-		.sendMessage({ type: 'context_usage', usage })
+	void eventSink
+		.emit({ type: 'context_usage', usage })
 		.then(() => {
 			options.onMessageSent?.();
 		})
@@ -106,15 +115,15 @@ export function emitContextUsage(
 }
 
 export function emitToolCall(
-	agentStream: AgentChatSSEStream,
+	eventSink: AgentChatEventSink,
 	toolCall: ChatToolCall,
 	options: {
 		onError?: (error: unknown) => void;
 		onMessageSent?: () => void;
 	} = {}
 ): void {
-	void agentStream
-		.sendMessage({ type: 'tool_call', tool_call: toolCall })
+	void eventSink
+		.emit({ type: 'tool_call', tool_call: toolCall })
 		.then(() => {
 			options.onMessageSent?.();
 		})
@@ -125,15 +134,15 @@ export function emitToolCall(
 }
 
 export function emitSkillActivity(
-	agentStream: AgentChatSSEStream,
+	eventSink: AgentChatEventSink,
 	event: SkillActivityEvent,
 	options: {
 		onError?: (error: unknown) => void;
 		onMessageSent?: () => void;
 	} = {}
 ): void {
-	void agentStream
-		.sendMessage(event)
+	void eventSink
+		.emit(event)
 		.then(() => {
 			options.onMessageSent?.();
 		})
@@ -225,7 +234,7 @@ export function extractContextShiftPayload(result: ChatToolResult): ContextShift
 }
 
 export async function emitContextShift(
-	agentStream: AgentChatSSEStream,
+	eventSink: AgentChatEventSink,
 	contextShift: ContextShiftPayload,
 	options: {
 		onError?: (error: unknown) => void;
@@ -233,7 +242,7 @@ export async function emitContextShift(
 	} = {}
 ): Promise<void> {
 	try {
-		await agentStream.sendMessage({ type: 'context_shift', context_shift: contextShift });
+		await eventSink.emit({ type: 'context_shift', context_shift: contextShift });
 		options.onMessageSent?.();
 	} catch (error) {
 		logger.warn('Failed to emit context_shift', { error, contextShift });

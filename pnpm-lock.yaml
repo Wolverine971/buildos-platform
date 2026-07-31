@@ -95,6 +95,9 @@ importers:
       '@antv/g6':
         specifier: ^5.0.50
         version: 5.0.50(workerize-loader@2.0.2(webpack@5.104.1(postcss@8.5.10)))
+      '@buildos/agentic-chat-runtime':
+        specifier: workspace:*
+        version: link:../../packages/agentic-chat-runtime
       '@buildos/shared-agent-ops':
         specifier: workspace:*
         version: link:../../packages/shared-agent-ops

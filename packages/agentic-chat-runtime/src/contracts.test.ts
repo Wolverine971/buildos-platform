@@ -3,6 +3,7 @@ import {
 	AGENTIC_CHAT_RUNTIME_CONTRACT_VERSION,
 	isAdmittedTurnHandle,
 	type AdmittedTurnHandleV1,
+	type AgenticChatRuntimeEvent,
 	type AgenticChatRuntimePorts,
 	type AgenticChatTurnCommand,
 	type AgenticChatTurnOutcome,
@@ -101,6 +102,9 @@ describe('agentic chat runtime contracts', () => {
 		const run: RunAgenticChatTurn = vi.fn(async () => outcome);
 
 		expectTypeOf(run).toMatchTypeOf<RunAgenticChatTurn>();
+		expectTypeOf<Parameters<AgenticChatRuntimePorts['events']['emit']>>().toEqualTypeOf<
+			[AgenticChatRuntimeEvent]
+		>();
 		await expect(run(command, createPorts())).resolves.toEqual(outcome);
 	});
 });

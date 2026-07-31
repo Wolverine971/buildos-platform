@@ -250,7 +250,7 @@ import { sanitizeAssistantFinalText } from '$lib/services/agentic-chat-v2/stream
 import { buildRoundToolPattern } from '$lib/services/agentic-chat-v2/stream-orchestrator/round-analysis';
 import { buildSkillGateTelemetry } from '$lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions';
 import {
-	createSequencedAgentStream,
+	createLegacySseEventSink,
 	emitContextShift,
 	emitContextUsage,
 	emitSkillActivity,
@@ -1206,7 +1206,7 @@ export const POST: RequestHandler = async ({
 	const baseAgentStream = SSEResponse.createChatStream({
 		heartbeatIntervalMs: FASTCHAT_SSE_HEARTBEAT_INTERVAL_MS
 	});
-	const agentStream = createSequencedAgentStream({
+	const eventSink = createLegacySseEventSink({
 		baseStream: baseAgentStream,
 		streamRunId,
 		clientTurnId,
@@ -1296,7 +1296,7 @@ export const POST: RequestHandler = async ({
 		}
 
 		try {
-			await agentStream.sendMessage(payload);
+			await eventSink.emit(payload);
 			markStreamEventSent(payload.type);
 			return true;
 		} catch (error) {
@@ -1462,7 +1462,7 @@ export const POST: RequestHandler = async ({
 						finishedReason: 'error',
 						errorMetadata: { contextType, entityId, reason: 'missing_brief_id' }
 					});
-					await agentStream.close();
+					await eventSink.close();
 					return;
 				}
 
@@ -1491,7 +1491,7 @@ export const POST: RequestHandler = async ({
 						finishedReason: 'error',
 						errorMetadata: { contextType, entityId, reason: 'brief_access_denied' }
 					});
-					await agentStream.close();
+					await eventSink.close();
 					return;
 				}
 			}
@@ -1524,7 +1524,7 @@ export const POST: RequestHandler = async ({
 						projectId: projectIdForLogs,
 						errorMetadata: { contextType, entityId, reason: 'project_access_denied' }
 					});
-					await agentStream.close();
+					await eventSink.close();
 					return;
 				}
 			}
@@ -2623,7 +2623,7 @@ export const POST: RequestHandler = async ({
 					userMessage: messageForModel
 				});
 				contextUsageSnapshot = usageSnapshot;
-				emitContextUsage(agentStream, usageSnapshot, {
+				emitContextUsage(eventSink, usageSnapshot, {
 					onError: (error) => {
 						logFastChatError({
 							error,
@@ -3142,7 +3142,7 @@ export const POST: RequestHandler = async ({
 						}
 					}
 					if (!streamDetached) {
-						emitToolCall(agentStream, patchedCall, {
+						emitToolCall(eventSink, patchedCall, {
 							onError: (error) => {
 								streamDetached = true;
 								logFastChatError({
@@ -3176,7 +3176,7 @@ export const POST: RequestHandler = async ({
 						);
 					}
 					if (dev && requestedSkillActivity && !streamDetached) {
-						emitSkillActivity(agentStream, requestedSkillActivity, {
+						emitSkillActivity(eventSink, requestedSkillActivity, {
 							onError: (error) => {
 								streamDetached = true;
 								logFastChatError({
@@ -3300,7 +3300,7 @@ export const POST: RequestHandler = async ({
 							});
 						}
 						if (!streamDetached) {
-							emitToolResult(agentStream, patchedCall, result, {
+							emitToolResult(eventSink, patchedCall, result, {
 								onError: (error) => {
 									streamDetached = true;
 									logFastChatError({
@@ -3350,7 +3350,7 @@ export const POST: RequestHandler = async ({
 							);
 						}
 						if (dev && loadedSkillActivity && !streamDetached) {
-							emitSkillActivity(agentStream, loadedSkillActivity, {
+							emitSkillActivity(eventSink, loadedSkillActivity, {
 								onError: (error) => {
 									streamDetached = true;
 									logFastChatError({
@@ -3448,7 +3448,7 @@ export const POST: RequestHandler = async ({
 									projectId: effectiveProjectIdForTools ?? projectIdForLogs
 								}
 							);
-							await emitContextShift(agentStream, contextShift, {
+							await emitContextShift(eventSink, contextShift, {
 								onError: (error) => {
 									logFastChatError({
 										error,
@@ -4742,7 +4742,7 @@ export const POST: RequestHandler = async ({
 				return;
 			}
 			try {
-				await agentStream.close();
+				await eventSink.close();
 			} catch (error) {
 				logFastChatError({
 					error,
@@ -4758,5 +4758,5 @@ export const POST: RequestHandler = async ({
 		}
 	})();
 
-	return agentStream.response;
+	return eventSink.response;
 };

@@ -96,11 +96,8 @@ export interface AgenticChatToolExecutionPort<
 }
 
 /** Public-event delivery only; response creation and connection lifecycle remain host concerns. */
-export interface AgenticChatEventSinkPort<
-	TCommand extends AgenticChatTurnCommand,
-	TEvent extends AgenticChatRuntimeEvent
-> {
-	emit(event: TEvent, context: AgenticChatPortContext<TCommand>): Promise<void>;
+export interface AgenticChatEventSinkPort<TEvent extends AgenticChatRuntimeEvent> {
+	emit(event: TEvent): Promise<void>;
 }
 
 export interface AgenticChatWriterPort<
@@ -162,7 +159,7 @@ export type AgenticChatRuntimePorts<
 			TTypes['toolExecutionResult']
 		>;
 	};
-	events: AgenticChatEventSinkPort<TTypes['command'], TTypes['event']>;
+	events: AgenticChatEventSinkPort<TTypes['event']>;
 	persistence: {
 		turns: AgenticChatWriterPort<
 			TTypes['command'],

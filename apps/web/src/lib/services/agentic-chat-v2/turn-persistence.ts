@@ -19,7 +19,7 @@ import type {
 import { extractFastChatToolCallMeta } from '$lib/services/agentic-chat-v2/prompt-observability';
 import type { LLMStreamPassMetadata } from './stream-orchestrator/shared';
 import { extractToolOpFromToolCall } from './tool-trace';
-import type { AgentChatSSEStream } from './stream-events';
+import type { AgentChatEventSink } from './stream-events';
 
 const logger = createLogger('API:AgentStreamV2');
 
@@ -230,7 +230,7 @@ export function buildToolResultEventPayload(toolCall: ChatToolCall, result: Chat
 }
 
 export function emitToolResult(
-	agentStream: AgentChatSSEStream,
+	eventSink: AgentChatEventSink,
 	toolCall: ChatToolCall,
 	result: ChatToolResult,
 	options: {
@@ -239,8 +239,8 @@ export function emitToolResult(
 	} = {}
 ): void {
 	const payload = buildToolResultEventPayload(toolCall, result);
-	void agentStream
-		.sendMessage({ type: 'tool_result', result: payload })
+	void eventSink
+		.emit({ type: 'tool_result', result: payload })
 		.then(() => {
 			options.onMessageSent?.();
 		})

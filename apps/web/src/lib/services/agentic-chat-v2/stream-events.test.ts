@@ -2,13 +2,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall, ChatToolResult, ContextUsageSnapshot } from '@buildos/shared-types';
 import {
-	createSequencedAgentStream,
+	createLegacySseEventSink,
 	emitContextShift,
 	emitContextUsage,
 	emitSkillActivity,
 	emitToolCall,
 	extractContextShiftPayload,
 	resolveAgentStreamEventPhase,
+	type AgentChatEventSink,
 	type AgentChatSSEStream
 } from './stream-events';
 
@@ -25,6 +26,19 @@ function createFakeStream() {
 	return { stream, messages };
 }
 
+function createFakeEventSink() {
+	const messages: unknown[] = [];
+	const eventSink: AgentChatEventSink = {
+		response: new Response(null),
+		emit: vi.fn(async (payload: unknown) => {
+			messages.push(payload);
+		}),
+		close: vi.fn(async () => {})
+	};
+
+	return { eventSink, messages };
+}
+
 describe('stream-events', () => {
 	it('classifies agent stream event phases', () => {
 		expect(resolveAgentStreamEventPhase('text_delta')).toBe('llm');
@@ -36,15 +50,18 @@ describe('stream-events', () => {
 
 	it('adds stable sequencing metadata to outbound events', async () => {
 		const fake = createFakeStream();
-		const sequenced = createSequencedAgentStream({
+		const eventSink = createLegacySseEventSink({
 			baseStream: fake.stream,
 			streamRunId: 'stream-1',
 			clientTurnId: 'client-turn-1',
 			getTurnRunId: () => 'turn-run-1'
 		});
 
-		await sequenced.sendMessage({ type: 'text_delta', text: 'hello' });
-		await sequenced.sendMessage({ type: 'tool_call', tool_call: { id: 'call-1' } });
+		await eventSink.emit({ type: 'text_delta', text: 'hello' });
+		await eventSink.emit({ type: 'tool_call', tool_call: { id: 'call-1' } });
+		expect(eventSink.response).toBe(fake.stream.response);
+		await eventSink.close();
+		expect(fake.stream.close).toHaveBeenCalledOnce();
 
 		expect(fake.messages).toEqual([
 			expect.objectContaining({
@@ -72,14 +89,14 @@ describe('stream-events', () => {
 
 	it('marks sequenced events as non-durable before the turn run exists', async () => {
 		const fake = createFakeStream();
-		const sequenced = createSequencedAgentStream({
+		const eventSink = createLegacySseEventSink({
 			baseStream: fake.stream,
 			streamRunId: 'stream-1',
 			clientTurnId: null,
 			getTurnRunId: () => null
 		});
 
-		await sequenced.sendMessage({ type: 'session', session_id: 'session-1' });
+		await eventSink.emit({ type: 'session', session_id: 'session-1' });
 
 		expect(fake.messages[0]).toEqual(
 			expect.objectContaining({
@@ -92,7 +109,7 @@ describe('stream-events', () => {
 	});
 
 	it('emits context usage, tool calls, and skill activity through the stream', async () => {
-		const fake = createFakeStream();
+		const fake = createFakeEventSink();
 		const onMessageSent = vi.fn();
 		const usage = {
 			estimatedTokens: 10,
@@ -114,9 +131,9 @@ describe('stream-events', () => {
 			skill_ids: ['skill-1']
 		} as any;
 
-		emitContextUsage(fake.stream, usage, { onMessageSent });
-		emitToolCall(fake.stream, toolCall, { onMessageSent });
-		emitSkillActivity(fake.stream, skillActivity, { onMessageSent });
+		emitContextUsage(fake.eventSink, usage, { onMessageSent });
+		emitToolCall(fake.eventSink, toolCall, { onMessageSent });
+		emitSkillActivity(fake.eventSink, skillActivity, { onMessageSent });
 		await Promise.resolve();
 
 		expect(fake.messages).toEqual([
@@ -183,7 +200,7 @@ describe('stream-events', () => {
 	});
 
 	it('emits context shift events through the stream', async () => {
-		const fake = createFakeStream();
+		const fake = createFakeEventSink();
 		const onMessageSent = vi.fn();
 		const contextShift = {
 			new_context: 'project',
@@ -193,7 +210,7 @@ describe('stream-events', () => {
 			message: 'Context updated.'
 		} as const;
 
-		await emitContextShift(fake.stream, contextShift, { onMessageSent });
+		await emitContextShift(fake.eventSink, contextShift, { onMessageSent });
 
 		expect(fake.messages).toEqual([
 			{
