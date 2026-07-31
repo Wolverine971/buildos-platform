@@ -1336,3 +1336,4 @@ Conditions 2 and 3 are satisfied by this planning baseline. Condition 1 (indepen
 - `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_INDEPENDENT_AUDIT_2026-07-29.md`
 - `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_CLOSURE_CHECKLIST_2026-07-30.md`
 - `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_FINAL_REAUDIT_BRIEF_2026-07-31.md`
+- `docs/plans/AGENTIC_CHAT_WORKER_PHASE_1_HANDOFF_2026-07-31.md`

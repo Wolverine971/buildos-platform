@@ -120,6 +120,7 @@ The independent reviewer should append or create a dated verdict containing:
 4. one verdict per rubric row;
 5. any gate-blocking finding with file/line evidence and a concrete correction;
 6. an overall `PHASE 0 ACCEPTED`, `PHASE 0 REJECTED`, or explicit waiver statement;
-7. if accepted, confirmation that the first authorized Phase 1 slice is the service-only `admit_legacy_agentic_chat_turn(...)` RPC with transactionally pre-message fallback history and exactly-one turn/message differential tests—without worker transport or worker schema work.
+7. if accepted, confirmation that the first authorized Phase 1 slice is the service-only `admit_legacy_agentic_chat_turn(...)` RPC with transactionally pre-message fallback history and exactly-one turn/message differential tests—without worker transport or worker-control-plane schema work; use `docs/plans/AGENTIC_CHAT_WORKER_PHASE_1_HANDOFF_2026-07-31.md` for implementation context;
+8. an explicit resolution of the common admission-schema boundary identified in that handoff: Phase 1 needs persisted request-hash/execution-mode and duplicate keys, while the current plan lists those columns/indexes under Phase 2.
 
 Until that output exists, do not mark Phase 0 closed and do not implement Phase 1.

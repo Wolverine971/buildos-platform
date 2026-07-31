@@ -122,7 +122,7 @@ The self-contained reviewer packet is `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_FI
 1. Commission a fresh-context independent re-audit of contract revision .5, the parity ledger, production preflight, correction evidence chain, and final gate artifact using that packet.
 2. Record the auditor's explicit acceptance, rejection, or waiver. Operator evidence alone does not satisfy this gate.
 3. If accepted, mark Phase 0 closed.
-4. Only then begin Phase 1 with `admit_legacy_agentic_chat_turn(...)` plus differential pre-message history and exactly-one-message/turn tests. Do not start the worker transport in that slice.
+4. Only then begin Phase 1 using `docs/plans/AGENTIC_CHAT_WORKER_PHASE_1_HANDOFF_2026-07-31.md`, starting with `admit_legacy_agentic_chat_turn(...)` plus differential pre-message history and exactly-one-message/turn tests. Do not start the worker transport in that slice.
 
 ## Parallel security track
 
