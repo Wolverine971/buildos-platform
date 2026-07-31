@@ -4,7 +4,7 @@
 
 **Date:** 2026-07-29
 
-**Status:** Phase 0 operator evidence is complete and independent re-acceptance remains pending. Phase 1 implementation is locally complete under the explicit waiver recorded in the closure checklist. Phase 1 exit remains pending hosted migration/drift proof and an explicitly approved paid hosted quality rerun.
+**Status:** Phase 0 operator evidence is complete and independent re-acceptance remains pending. Phase 1 implementation and hosted schema deployment are complete under the explicit waiver recorded in the closure checklist. The Phase 1 hosted quality rerun failed 3 of 24 scenario executions, so Phase 1 is not exited and Phase 2 remains blocked.
 
 **Parent plan:** `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md`
 
@@ -23,11 +23,13 @@ The row-by-row ledger below preserves the Phase 0 baseline. These local Phase 1 
 - **Browser lifecycle/cancellation:** `947d2a726` stores one discriminated `TurnHandleV1` and uses it for cancel, detach, and reconcile. Legacy acknowledgements hydrate session/turn IDs; worker handles fail closed because worker transport is not enabled.
 - **P30 writer boundary:** `38086f010` makes the observability writer server-only and moves `chat_prompt_snapshots` inserts onto the service-role client with active user/session/turn scope checks. `7c0e1eb87` removes the obsolete direct legacy admission DML bypass.
 - **P10/P26/P30/P37 server boundaries:** `94bb04e62` enforces `.server.ts` ownership for prepared-prompt consumption, checkpoints, and admin replay; adds a service-role prepared-content store; routes replay-source mutation through the observability writer; and proves authenticated clients cannot access prepared content. It also adds a normalized cold/prepared SSE-persistence differential and a fresh two-connection PostgreSQL admission runner.
+- **Hosted schema/types:** migration `20260731150000` is applied and recorded on the configured hosted project; RPC drift is green at 195 functions. `c5472a276` regenerates the hosted database types, with only the live admission RPC's function ordering changing.
+- **Hosted adapter regression:** the first pre-model hosted preflight exposed a detached `supabase.rpc` receiver. `9521d814f` binds the RPC method to its Supabase client and adds a receiver-dependent regression test; the corrected clean tree admitted and completed all 30 hosted turns.
 - **Shared extraction foundation:** `0801da418` adds the portable `@buildos/agentic-chat-runtime` contracts/ports package; it contains no worker processor or deployment binding.
 
-Current recheck evidence is 134 Phase 1 web tests across 17 files, 4 runtime-package tests, 13 shared-types tests, clean runtime/shared/web typechecks, a passing fresh disposable PostgreSQL integration, and a passing normalized legacy differential. The configured hosted database is not yet aligned: `pnpm check:supabase-rpc-drift` reports `generated only: admit_legacy_agentic_chat_turn`. Therefore the admission migration is locally implemented but not documented as hosted/deployed.
+Current local evidence is 134 Phase 1 web tests across 17 files before the hosted adapter fix, a post-fix 45/45 focused admission/route run, 4 runtime-package tests, 13 shared-types tests, clean runtime/shared/web typechecks, a passing fresh disposable PostgreSQL integration, and a passing normalized legacy differential. Hosted migration, generated types, and RPC drift are aligned.
 
-All planned Phase 1 code boundaries and local gates are complete. The remaining exit evidence is external: make the admission RPC visible in the configured hosted project and pass drift, then explicitly approve and pass the hosted 24-scenario / 30-turn quality cohort. Phase 2 remains blocked until both gates are recorded.
+All planned Phase 1 code boundaries, local gates, and hosted schema gates are complete. The remaining exit evidence is the hosted quality bar: the first clean retry-free attempt passed 21/24 scenarios and 27/30 turn assertions, below the retained Phase 0 baseline's 24/24 and 30/30. Phase 2 remains blocked until a subsequent complete clean cohort passes.
 
 ## Current control points
 
@@ -123,6 +125,21 @@ The source evidence is in migrations `20260428000015`, `20260502000002`, and `20
 | Server-authoritative transport                       | 2D                  | `agentic_chat_transport_lease`, `agentic_chat_lost_admission_response`                                                    |
 | Bounded publisher/control loops                      | 2C                  | `chat_publisher_high_water`, `chat_cancel_batch_observer_100_turns`                                                       |
 | Channel before admission; session inside admission   | 2D                  | `agentic_chat_session_inline_admission`, `agentic_chat_channel_ready_at_send`                                             |
+
+## Phase 1 hosted gate attempt — FAIL 2026-07-31
+
+The retained artifact is `docs/plans/evidence/agentic_chat_worker_phase1_gate_2026-07-31_0147cbd94.json`. It records clean `HEAD` `0147cbd94e85f406512245803758796145e0e950`, tree `49e74889c528eb0a475b9c0c257e75ff4eb9118e`, three repetitions, and Vitest retries disabled.
+
+- 21/24 scenario executions passed; 27/30 turn assertions passed.
+- All 30 turns reached terminal completion; there was one stream-error turn and zero capture-error turns.
+- Recorded provider/model cost was `$0.12909659`.
+- `project-organize` repetition 3 completed normally but did not group at least two original documents.
+- `research-turn-finalizes` repetition 3 exhausted the existing provider stream retries and finished with one stream error.
+- `task-reschedule-cold-reference` repetition 1 wrote August 5, 2026 instead of the required August 7, 2026 and finished at the tool-repetition limit.
+- The other 21 scenario executions passed, including all restraint, multi-update, research readback, task completion/forward carry, and cold catch-up repetitions.
+- Hosted admission itself was healthy across the corrected run: 30 timing samples, p50 111 ms, p95 187 ms, and max 206 ms. The retained Phase 0 comparator was p50 96 ms and p95 108 ms. Retained rows remained p95 105 per turn.
+
+This is a hard-gate failure against the retained Phase 0 result below. Provider/model variance is plausible—especially for the exhausted stream—but cannot be assumed away. A targeted diagnostic may distinguish variance from a reproducible regression; only a subsequent full clean, retry-free 24/24 cohort can close Phase 1.
 
 ## Phase 0 hosted closure evidence
 
