@@ -37,7 +37,18 @@ export function buildRescheduleFixtureDates(now: Date): {
 	targetDueAt: string;
 	controlDueAt: string;
 } {
-	const expectedFriday = nextWeekdayDate(now, 5);
+	const nextFriday = nextWeekdayDate(now, 5);
+	// “Push it to Friday” means the next future Friday when the request itself is
+	// made on a Friday. Keep the shared helper's inclusive semantics for scenarios
+	// such as “due this Friday,” and make this reschedule fixture explicit.
+	const isFridayInScenarioZone =
+		new Intl.DateTimeFormat('en-US', {
+			timeZone: 'America/New_York',
+			weekday: 'short'
+		}).format(now) === 'Fri';
+	const expectedFriday = isFridayInScenarioZone
+		? isoDaysFromDate(nextFriday, 7).slice(0, 10)
+		: nextFriday;
 	return {
 		expectedFriday,
 		targetDueAt: isoDaysFromDate(expectedFriday, -2),

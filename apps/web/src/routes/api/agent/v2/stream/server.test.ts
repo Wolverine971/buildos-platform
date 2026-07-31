@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
 	selectFastChatTools: vi.fn(),
 	senseDomains: vi.fn(),
 	streamFastChat: vi.fn(),
+	internalSupabase: null as any,
 	applyActiveDomainSignalsOverlay: vi.fn(),
 	updateSessionContext: vi.fn()
 }));
@@ -45,6 +46,10 @@ vi.mock('$lib/services/errorLogger.service', () => ({
 
 vi.mock('$lib/services/openrouter-v2-service', () => ({
 	OpenRouterV2Service: vi.fn(() => ({}))
+}));
+
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: () => mocks.internalSupabase
 }));
 
 vi.mock('$lib/services/agentic-chat/state/agent-state-reconciliation-service', () => ({
@@ -400,12 +405,14 @@ function createStreamingSupabase(
 		}
 	}
 
-	return {
+	const client = {
 		insertedRows,
 		updatedRows,
 		from: vi.fn((table: string) => new QueryBuilder(table)),
 		rpc: vi.fn().mockResolvedValue({ data: {}, error: null })
 	};
+	mocks.internalSupabase = client;
+	return client;
 }
 
 function parseSseEvents(text: string): Row[] {
@@ -1748,6 +1755,70 @@ describe('/api/agent/v2/stream', () => {
 				tokens_consumed: 9,
 				requires_user_action: true
 			})
+		);
+	});
+
+	it('retains completed reads and emits timing when a later LLM pass fails', async () => {
+		const supabase = createStreamingSupabase();
+		const toolCall = {
+			id: 'call-read-before-error',
+			type: 'function',
+			function: {
+				name: 'search_project',
+				arguments: JSON.stringify({ query: 'launch notes', project_id: 'project-1' })
+			}
+		};
+		const toolResult = {
+			tool_call_id: toolCall.id,
+			result: { results: [{ id: 'document-1', title: 'Launch notes' }] },
+			success: true,
+			duration_ms: 17
+		};
+
+		mocks.streamFastChat.mockImplementationOnce(async ({ onToolCall, onToolResult }: Row) => {
+			await onToolCall?.(toolCall);
+			await onToolResult?.({ toolCall, result: toolResult });
+			throw new Error('LLM stream pass timed out after 60000ms');
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Read this project and then organize it',
+					context_type: 'global',
+					stream_run_id: 'stream-run-error-finalization',
+					client_turn_id: 'client-turn-error-finalization'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		const events = parseSseEvents(await response.text());
+		const timingIndex = events.findIndex((event) => event.type === 'timing');
+		const doneIndex = events.findIndex(
+			(event) => event.type === 'done' && event.finished_reason === 'error'
+		);
+
+		expect(events.some((event) => event.type === 'error')).toBe(true);
+		expect(timingIndex).toBeGreaterThan(-1);
+		expect(doneIndex).toBeGreaterThan(timingIndex);
+		expect(events[timingIndex]?.timing?.finished_reason).toBe('error');
+		expect(supabase.insertedRows.chat_tool_executions).toEqual([
+			expect.objectContaining({
+				tool_name: 'search_project',
+				sequence_index: 1,
+				execution_time_ms: 17,
+				success: true
+			})
+		]);
+		expect(supabase.updatedRows.chat_turn_runs?.find((row) => row.status === 'failed')).toEqual(
+			expect.objectContaining({ finished_reason: 'error' })
 		);
 	});
 

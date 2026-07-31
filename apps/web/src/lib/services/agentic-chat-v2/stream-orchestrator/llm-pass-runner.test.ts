@@ -663,6 +663,64 @@ describe('runLlmStreamPass', () => {
 		expect(clearHeartbeat).toHaveBeenCalledTimes(2);
 	});
 
+	it('gives a forced write-intent pass a third rotated provider attempt', async () => {
+		vi.useFakeTimers();
+		let invocation = 0;
+		const updateCall = toolCall('update_onto_document', { document_id: 'document-1' });
+		const { params, clearHeartbeat } = baseParams({
+			llm: {
+				streamText: vi.fn(async function* (options: { signal?: AbortSignal }) {
+					invocation += 1;
+					if (invocation < 3) {
+						await waitForAbort(options.signal);
+					}
+					yield { type: 'tool_call', tool_call: updateCall };
+					yield { type: 'done', finished_reason: 'tool_calls' };
+				})
+			} as any,
+			hasTools: true,
+			tools: [
+				{
+					type: 'function',
+					function: {
+						name: 'update_onto_document',
+						description: 'Update a document',
+						parameters: { type: 'object', properties: {} }
+					}
+				}
+			],
+			forcedToolChoice: 'required',
+			modelRouting: {
+				passRole: 'write_intent',
+				profile: 'balanced',
+				models: ['model-a', 'model-b', 'model-c'],
+				retryModelRotation: true
+			},
+			passTimeoutMs: 25,
+			retryDelayMs: () => 0
+		});
+
+		const resultPromise = runLlmStreamPass(params);
+		await vi.advanceTimersByTimeAsync(25);
+		await vi.advanceTimersByTimeAsync(25);
+		const result = await resultPromise;
+
+		expect(params.llm.streamText).toHaveBeenCalledTimes(3);
+		expect(params.llm.streamText.mock.calls.map(([options]) => options.models)).toEqual([
+			['model-a', 'model-b', 'model-c'],
+			['model-b', 'model-c', 'model-a'],
+			['model-c', 'model-a', 'model-b']
+		]);
+		expect(result.pendingToolCalls).toEqual([updateCall]);
+		expect(result.terminal.measurements).toMatchObject({
+			attempts: 3,
+			maxAttempts: 3,
+			retryCount: 2,
+			attemptsExhausted: false
+		});
+		expect(clearHeartbeat).toHaveBeenCalledTimes(3);
+	});
+
 	it('retries when a per-pass timeout makes the provider stream return without done', async () => {
 		vi.useFakeTimers();
 		let invocation = 0;

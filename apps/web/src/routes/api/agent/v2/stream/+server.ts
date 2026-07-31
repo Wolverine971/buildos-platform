@@ -1149,6 +1149,14 @@ export const POST: RequestHandler = async ({
 		schedule();
 	};
 	let streamDetached = false;
+	// Keep a request-local copy of every completed execution. The orchestrator only
+	// returns its aggregate execution list on a normal/cancelled result; if an LLM
+	// pass throws after reads have completed, the callback is the only durable
+	// handoff available to the route's error finalizer.
+	const completedToolExecutions: Array<{
+		toolCall: ChatToolCall;
+		result: ChatToolResult;
+	}> = [];
 	// D4: incremental tool-execution persistence. `onToolResult` fires exactly once
 	// per execution pushed to the orchestrator's toolExecutions array, in order, so a
 	// simple counter yields a sequence_index that matches the end-of-turn bulk persist
@@ -3142,6 +3150,7 @@ export const POST: RequestHandler = async ({
 					}
 				},
 				onToolResult: async ({ toolCall, result }) => {
+					completedToolExecutions.push({ toolCall, result });
 					try {
 						const patchedCall = patchToolCall(toolCall);
 						const toolCallMeta = extractFastChatToolCallMeta(patchedCall);
@@ -4529,6 +4538,21 @@ export const POST: RequestHandler = async ({
 				projectId: projectIdForLogs,
 				metadata: { contextType, entityId, sessionId: streamRequest.session_id }
 			});
+			if (completedToolExecutions.length > 0 && timingSessionId) {
+				await persistToolExecutionRows({
+					supabase,
+					sessionId: timingSessionId,
+					messageId: null,
+					turnRunId,
+					streamRunId,
+					clientTurnId,
+					executions: completedToolExecutions,
+					projectId: projectIdForLogs,
+					contextType,
+					persistedSequenceIndices: incrementallyPersistedToolSequences,
+					logError: logFastChatError
+				});
+			}
 			try {
 				await sendTimedMessage(
 					{
@@ -4557,8 +4581,38 @@ export const POST: RequestHandler = async ({
 					}
 				});
 			}
+			doneEmittedAtMs = Date.now();
+			if (timingSessionId) {
+				try {
+					await sendTimedMessage(
+						{
+							type: 'timing',
+							timing: observabilityWriter.buildTimingSummary('error')
+						},
+						{
+							operationType: 'fastchat_stream_emit_timing',
+							projectId: projectIdForLogs,
+							metadata: {
+								sessionId: timingSessionId,
+								contextType,
+								finishedReason: 'error'
+							}
+						}
+					);
+				} catch (sendError) {
+					logFastChatError({
+						error: sendError,
+						operationType: 'fastchat_stream_emit_timing',
+						projectId: projectIdForLogs,
+						metadata: {
+							sessionId: timingSessionId,
+							contextType,
+							finishedReason: 'error'
+						}
+					});
+				}
+			}
 			try {
-				doneEmittedAtMs = Date.now();
 				await sendTimedMessage(
 					{
 						type: 'done',
@@ -4581,7 +4635,6 @@ export const POST: RequestHandler = async ({
 					total_tokens: 0
 				} as Json);
 				scheduleDeferredPromptSnapshotPersistence();
-				observabilityWriter.queueTimingMetric('error');
 			} catch (sendError) {
 				logFastChatError({
 					error: sendError,
@@ -4594,6 +4647,7 @@ export const POST: RequestHandler = async ({
 					}
 				});
 			}
+			observabilityWriter.queueTimingMetric('error');
 			await observabilityWriter.persistFinalState(
 				{
 					status: 'failed',
