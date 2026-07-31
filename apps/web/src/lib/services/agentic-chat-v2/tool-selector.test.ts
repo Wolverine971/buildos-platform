@@ -588,6 +588,18 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('web_visit');
 	});
 
+	it('mounts web tools for natural comparative-pricing research phrasing', () => {
+		const names = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage:
+				'Look into what other scheduling tools for small service businesses charge — ' +
+				'I want a sense of the pricing landscape before we put a paid tier together.'
+		}).map((tool) => tool.function?.name);
+
+		expect(names).toContain('web_search');
+		expect(names).toContain('web_visit');
+	});
+
 	it('does not treat an informational document question as a write commission', () => {
 		const names = selectFastChatTools({
 			contextType: 'project',
