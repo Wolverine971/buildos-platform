@@ -245,7 +245,7 @@ import {
 } from '$lib/services/agentic-chat-v2/turn-admission';
 import { resolveFastChatTurnPreparation } from '$lib/services/agentic-chat-v2/turn-preparation';
 import { resolveFastChatScaffoldConfigFromEnv } from '$lib/services/agentic-chat-v2/scaffold-variant';
-import { TurnObservabilityWriter } from '$lib/services/agentic-chat-v2/turn-observability-writer';
+import { TurnObservabilityWriter } from '$lib/services/agentic-chat-v2/turn-observability-writer.server';
 import { sanitizeAssistantFinalText } from '$lib/services/agentic-chat-v2/stream-orchestrator/assistant-text-sanitization';
 import { buildRoundToolPattern } from '$lib/services/agentic-chat-v2/stream-orchestrator/round-analysis';
 import { buildSkillGateTelemetry } from '$lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions';
@@ -2765,29 +2765,17 @@ export const POST: RequestHandler = async ({
 											liteToolsSummary: snapshotLiteToolsSummary
 										});
 										const promptSnapshotInsertStartedAtMs = Date.now();
-										const { error: snapshotError } = await supabase
-											.from('chat_prompt_snapshots')
-											.insert({
-												id: snapshotId,
-												...promptSnapshotRow
-											});
+										await observabilityWriter.persistPromptSnapshot({
+											id: snapshotId,
+											...promptSnapshotRow,
+											turn_run_id: snapshotTurnRunId,
+											session_id: snapshotSessionId,
+											user_id: userId
+										});
 										promptSnapshotInsertMs = Math.max(
 											0,
 											Date.now() - promptSnapshotInsertStartedAtMs
 										);
-										if (snapshotError) {
-											logFastChatError({
-												error: snapshotError,
-												operationType: 'fastchat_prompt_snapshot_insert',
-												projectId: projectIdForLogs,
-												metadata: {
-													sessionId: snapshotSessionId,
-													contextType,
-													turnRunId: snapshotTurnRunId
-												}
-											});
-											return;
-										}
 										promptSnapshotId = snapshotId;
 										observabilityWriter.queueTurnRunUpdate(
 											{ prompt_snapshot_id: snapshotId },

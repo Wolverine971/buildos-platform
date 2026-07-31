@@ -1,10 +1,11 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-observability-writer.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { ChatContextType, Json } from '@buildos/shared-types';
+import type { PromptSnapshotRow } from './prompt-observability';
 import {
 	TurnObservabilityWriter,
 	type TurnObservabilityTimingState
-} from './turn-observability-writer';
+} from './turn-observability-writer.server';
 
 type Row = Record<string, any>;
 
@@ -172,6 +173,30 @@ function createWriter(
 }
 
 describe('TurnObservabilityWriter', () => {
+	it('persists prompt snapshots only for the active turn scope', async () => {
+		const { writer, supabase } = createWriter();
+		const promptSnapshot = {
+			id: 'snapshot-1',
+			turn_run_id: 'turn-1',
+			session_id: 'session-1',
+			user_id: 'user-1',
+			snapshot_version: 'fastchat_prompt_v1',
+			system_prompt: 'System prompt',
+			system_prompt_chars: 13,
+			system_prompt_sha256: 'system-hash',
+			message_chars: 5,
+			messages_sha256: 'messages-hash'
+		} satisfies PromptSnapshotRow;
+
+		await writer.persistPromptSnapshot(promptSnapshot);
+
+		expect(supabase.insertedRows.chat_prompt_snapshots).toEqual([promptSnapshot]);
+		await expect(
+			writer.persistPromptSnapshot({ ...promptSnapshot, session_id: 'session-other' })
+		).rejects.toThrow('Prompt snapshot scope does not match the active turn');
+		expect(supabase.insertCalls.chat_prompt_snapshots).toHaveLength(1);
+	});
+
 	it('increments event sequence indexes in insertion order', async () => {
 		const { writer, supabase } = createWriter();
 

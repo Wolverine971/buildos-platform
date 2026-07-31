@@ -1,9 +1,9 @@
-// apps/web/src/lib/services/agentic-chat-v2/turn-observability-writer.ts
+// apps/web/src/lib/services/agentic-chat-v2/turn-observability-writer.server.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import type { AgentTimingSummary, ChatContextType, Database, Json } from '@buildos/shared-types';
 import { normalizeTimingMetricSessionReference } from '$lib/services/agentic-chat/shared/timing-metrics';
-import { deriveFirstLane } from './prompt-observability';
+import { deriveFirstLane, type PromptSnapshotRow } from './prompt-observability';
 
 type FastChatSupabaseClient = SupabaseClient<Database>;
 
@@ -136,6 +136,24 @@ export class TurnObservabilityWriter {
 
 	setTurnRunId(id: string | null): void {
 		this.turnRunId = id;
+	}
+
+	async persistPromptSnapshot(row: PromptSnapshotRow): Promise<void> {
+		const turnRunId = this.turnRunId;
+		const sessionId = this.params.getTimingState().sessionId;
+		if (!turnRunId || !sessionId) {
+			throw new Error('Cannot persist a prompt snapshot before turn admission');
+		}
+		if (
+			row.turn_run_id !== turnRunId ||
+			row.session_id !== sessionId ||
+			row.user_id !== this.params.userId
+		) {
+			throw new Error('Prompt snapshot scope does not match the active turn');
+		}
+
+		const { error } = await this.params.supabase.from('chat_prompt_snapshots').insert(row);
+		if (error) throw error;
 	}
 
 	getTimingMetricId(): string | null {
