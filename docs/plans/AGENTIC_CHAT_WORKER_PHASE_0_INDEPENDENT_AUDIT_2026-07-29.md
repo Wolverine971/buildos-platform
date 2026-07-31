@@ -8,6 +8,37 @@
 
 **Overall disposition:** No verdict is a blanket rejection of the architecture. The REJECTs are contract-text and coverage defects with concrete fixes; the direction — including the 2026-07-29.3 first-turn-latency redesign — is affirmed. The Phase 0 gate is NOT passed until the P0 findings and named conditions are resolved and this audit is re-accepted (or residuals explicitly waived).
 
+## Operator re-audit handoff — 2026-07-31 (not an auditor verdict)
+
+The original disposition and findings below are preserved as the historical independent-audit record. Since that audit, contract revisions .4/.5 and the linked planning artifacts incorporated F1–F23; the 2026-07-30 re-audit reduced the remaining normative blockers to N1 and S1, and revision .5 corrected both. This operator update supplies the evidence requested for a final fresh-context decision; it does not self-accept the gate.
+
+Final hosted evidence:
+
+- artifact: `docs/plans/evidence/agentic_chat_worker_phase0_gate_2026-07-31_0f63e47bb.json`;
+- clean `HEAD`: `0f63e47bbafc4e58d85b360b1edb1ef8d0fe3fb5`;
+- tree: `6e3f1b451e7920478f54fa36dddbb79dc68e7c83`;
+- registered gate: eight scenarios × three repetitions, retries disabled;
+- outcome: 24/24 scenario executions, 30/30 turn assertions, and 30/30 terminal completions passed;
+- capture integrity: zero stream-error turns and zero capture-error turns;
+- attribution: model/provider/profile and cost retained; final run cost $0.13314743;
+- persistence/performance: legacy client/server timing, 170 tool-execution samples, and retained row/serialized-byte footprint recorded without prompt, message, tool-argument, tool-result, or event-payload bodies.
+
+The correction chain retains both failed and focused recovery cohorts so the reviewer can distinguish product defects, provider failure behavior, and harness false negatives from the final pass. The decisive acceptance artifact is the final clean-tree gate above; `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_CLOSURE_CHECKLIST_2026-07-30.md` indexes its limitations and the remaining security track.
+
+| Retained 2026-07-31 artifact                                                   | Audit purpose                                                                                              |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `agentic_chat_worker_phase0_diagnostic_2026-07-31_fa3987ba7.json`              | Focused proof that the internal lifecycle persistence correction retained completed tool work              |
+| `agentic_chat_worker_phase0_gate_2026-07-31_fa3987ba7.json`                    | Failed full cohort that exposed provider-stall handling and a date-fragile reschedule fixture              |
+| `agentic_chat_worker_phase0_targeted_2026-07-31_90d99599c.json`                | Focused project-organization/reschedule recovery proof                                                     |
+| `agentic_chat_worker_phase0_gate_2026-07-31_90d99599c.json`                    | Full cohort that isolated research routing/judge weaknesses after stream/capture errors reached zero       |
+| `agentic_chat_worker_phase0_research_targeted_2026-07-31_90796dc5e.json`       | Focused research finalization/readback proof after routing and judge hardening                             |
+| `agentic_chat_worker_phase0_gate_2026-07-31_90796dc5e.json`                    | Full cohort that exposed one completion-harness false negative and one outer scenario-timeout edge         |
+| `agentic_chat_worker_phase0_carry_research_targeted_2026-07-31_23786a1fd.json` | Exact trace proving the product updated a generated `START HERE` surface that the scenario did not observe |
+| `agentic_chat_worker_phase0_carry_targeted_2026-07-31_0f63e47bb.json`          | Focused 3/3 proof after the scenario began observing every pre-existing `START HERE` surface               |
+| `agentic_chat_worker_phase0_gate_2026-07-31_0f63e47bb.json`                    | Decisive clean-tree closure gate: 24/24 scenarios and 30/30 turn assertions                                |
+
+**Requested independent decision:** Re-audit contract revision .5, the migration plan, parity ledger, production preflight, correction chain, and final hosted artifact. Record explicit acceptance, rejection, or waiver. Phase 0 remains open and Phase 1 remains unstarted until that decision is retained.
+
 ## 1. Verdict by exit-gate item
 
 | Exit-gate item                                                                          | Verdict                                                                                                                      |
@@ -101,3 +132,15 @@ _Fix:_ pin: `sessionId: null` ⇒ create, except the existing `daily_brief` cano
 3. F3 (`queue_jobs` grants) should be verified against production and fixed independently of the migration timeline.
 4. F10 needs an explicit product/billing decision (worker-mode spend gating) — DJ call.
 5. F14 needs the working tree reconciled (commit or stash the staged route/orchestrator work) before the baseline re-run — coordinate with any live experiment using the v2 route as a control lane.
+
+### Operator completion map — 2026-07-31
+
+| Original follow-up | Operator disposition for re-audit                                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1–F4              | Incorporated in contract revision .4 and updated fixtures; revision .5 closes the later N1 excluded-field validation residual                         |
+| F5–F14             | Incorporated across the contract lock, preflight, ledger, migration plan, and exact-tree baseline                                                     |
+| F3 security track  | Production exposure verified; repository hardening exists, while deployment verification and the future non-service guard remain explicit checkpoints |
+| F10 billing        | Option A locked: admission pre-check plus worker finalization-time gate re-evaluation; Phase 4 proving tests named                                    |
+| F14 freeze         | Final gate ran from and recorded a clean exact commit/tree                                                                                            |
+
+Only a fresh independent reviewer can convert this completion map into Phase 0 acceptance.

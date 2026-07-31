@@ -4,7 +4,7 @@
 
 **Date:** 2026-07-29
 
-**Status:** Phase 0 contract revision .5, target-database preflight, and the first exact-tree hosted quality battery are complete. The retained three-run timing/persistence cohort and final independent re-acceptance remain before the Phase 1 gate.
+**Status:** Phase 0 contract revision .5, target-database preflight, and the clean retry-free three-sample hosted timing/quality gate are complete. Operator evidence is ready; final independent re-acceptance remains before the Phase 1 gate.
 
 **Scope:** Move interactive agentic-chat execution out of the web request lifecycle and into a bounded worker pool while preserving the current product behavior, live updates, explicit cancellation, persistence, and recovery semantics.
 
@@ -32,13 +32,13 @@ Validation recorded:
 | Focused worker queue baseline   | 6 files, 47 tests passed                           |
 | PostgreSQL preflight smoke test | Passed against disposable catalog                  |
 
-Remaining Phase 0 exit work:
+Phase 0 exit work:
 
 - Done 2026-07-29 — Write the missing forward-carry assertion into the hosted E2E scenario fixture (`task-complete-cold-reference` now asserts the stated-future path against ground-truth `onto_tasks.props` provenance). It passed in the first hosted battery on 2026-07-30.
 - Done 2026-07-30 — Run and retain the first paid hosted quality battery on exact commit `d807d05ed`; 11 of 14 live scenarios passed. The date-fragile reschedule fixture and cross-run fixture-deletion hazard found by that battery are corrected and locally tested. `book-writing-journey` remains explicitly outside the enforceable bar until its reviewed implementation lands.
-- Run the new clean-tree, retry-free Phase 0 gate cohort three times and retain its JSON artifact. The capture records client/server phase timings, tool duration, model/provider/cost attribution, terminal state, and payload-free retained row/byte footprint. It must prove the reschedule and research-readback corrections; no paid run has been started with this capture yet.
+- Done 2026-07-31 — Run the clean-tree, retry-free Phase 0 gate cohort three times and retain its JSON artifact. `docs/plans/evidence/agentic_chat_worker_phase0_gate_2026-07-31_0f63e47bb.json` records clean `HEAD` `0f63e47bbafc4e58d85b360b1edb1ef8d0fe3fb5`, tree `6e3f1b451e7920478f54fa36dddbb79dc68e7c83`, and a 24/24 scenario, 30/30 turn-assertion, 30/30 terminal-completion pass with zero stream/capture errors. It includes client/server timing, 170 tool-duration samples, model/provider/cost attribution, terminal state, and payload-free retained row/byte footprint.
 - Done 2026-07-30 — Run the read-only preflight against the intended target database and retain its JSON output: `docs/plans/evidence/agentic_chat_worker_phase0_preflight_prod_2026-07-30.json` (production, SELECT-only). **All four duplicate-hazard probes returned zero**, so the new `(user_id, client_turn_id)` and queued+running unique indexes need no pre-resolution pass. Note for operations: 56 of 619 turns sit in `running` with no terminal state — consistent with there being no stale-turn sweeper today, and a reason the Phase 5 sweeper matters beyond the worker path.
-- Obtain independent audit acceptance or explicitly waive the gate. **Audit RUN 2026-07-29** (`AGENTIC_CHAT_WORKER_PHASE_0_INDEPENDENT_AUDIT_2026-07-29.md`): architecture and phase order affirmed; gate NOT yet accepted — 4 P0 contract/coverage defects (F1 retry-hash duplicate path, F2 sequence-writer serialization, F3 `queue_jobs` grants, F4 resolve-or-create ambiguity) plus conditions require a contract revision .4 and re-acceptance. **Correction pass APPLIED 2026-07-30** (contract revision 2026-07-30.4 covering F1–F23). **Re-audit RUN 2026-07-30:** the three REJECT verdicts were upgraded (phase order and the parity ledger to ACCEPT; session-inline admission and the twelve-corrections criterion to ACCEPT WITH CONDITIONS), leaving exactly two normative blockers — N1 (the excluded-field validation rule re-opened F1) and S1 (§12's session-scoped Realtime RLS line) — **both closed in revision 2026-07-30.5**, along with the editorial drift and test-strength residuals. Final audit re-acceptance of .5 is the remaining gate signature.
+- **Pending — Obtain independent audit acceptance or explicitly waive the gate.** **Audit RUN 2026-07-29** (`AGENTIC_CHAT_WORKER_PHASE_0_INDEPENDENT_AUDIT_2026-07-29.md`): architecture and phase order affirmed; gate NOT yet accepted — 4 P0 contract/coverage defects (F1 retry-hash duplicate path, F2 sequence-writer serialization, F3 `queue_jobs` grants, F4 resolve-or-create ambiguity) plus conditions require a contract revision .4 and re-acceptance. **Correction pass APPLIED 2026-07-30** (contract revision 2026-07-30.4 covering F1–F23). **Re-audit RUN 2026-07-30:** the three REJECT verdicts were upgraded (phase order and the parity ledger to ACCEPT; session-inline admission and the twelve-corrections criterion to ACCEPT WITH CONDITIONS), leaving exactly two normative blockers — N1 (the excluded-field validation rule re-opened F1) and S1 (§12's session-scoped Realtime RLS line) — **both closed in revision 2026-07-30.5**, along with the editorial drift and test-strength residuals. The 2026-07-31 clean hosted gate completes the operator evidence package; final audit re-acceptance of .5 is the only remaining Phase 0 gate signature.
 - Done 2026-07-30 — Resolve audit F14 with the isolated-worktree run at exact commit `d807d05ed`. Future gate cohorts also fail closed on a dirty tree and record `HEAD` plus its tree object in the artifact.
 
 The authoritative remaining-gate checklist and paid-run handoff are in `AGENTIC_CHAT_WORKER_PHASE_0_CLOSURE_CHECKLIST_2026-07-30.md`.
@@ -688,6 +688,8 @@ Exit gate:
 - All 12 corrections locked in Section 15 have named proving tests and no unresolved implementation choice that can change their safety semantics.
 - No known current behavior lacks an owner or proving test.
 
+**Operator gate status 2026-07-31:** The baseline, parity ledger, correction chain, production preflight, and hosted evidence are complete. The final clean-tree gate passed all 24 registered scenario executions and all 30 turn assertions with no stream/capture errors. The exit gate remains open solely because independent acceptance has not yet been retained; Phase 1 has not started.
+
 ### Phase 1 — Shared runtime extraction under legacy SSE
 
 **Purpose:** Create one reusable turn runtime without changing production transport or behavior.
@@ -1061,6 +1063,8 @@ These are proposed targets for audit and Phase 0 measurement, not claims about c
 
 Provider time-to-first-token is tracked separately from BuildOS overhead.
 
+The 2026-07-31 Phase 0 artifact establishes the legacy HTTP/SSE comparator: admission p95 108 ms, first server event p95 7 ms, first server response p95 16,448 ms, client first SSE event p95 296.623 ms, client TTFT p95 16,681.192 ms, assistant persistence p95 320 ms, finalization p95 8 ms, and client total duration p95 171,001.530 ms. Tool execution p95 was 3,963 ms across 170 samples. These are legacy measurements, not claims that the future worker meets the table above; the worker-overhead row requires a matched differential run. The final-state retained footprint (p95 105 rows and 312,523 serialized bytes per turn) likewise does not replace the Phase 2 WAL/statement-rate fixture.
+
 The two queue-pickup rows resolve an earlier internal inconsistency: a single `< 750 ms` pickup p95 cannot compose with a `<= 250 ms` total overhead regression. The wake signal (Realtime notification or `pg_notify`) is the primary delivery path and must carry the p95; one-second polling is a durability fallback whose engagement rate is itself an alerting signal, not an accepted latency budget. Sustained fallback engagement is an incident.
 
 ## 11. Observability and operations
@@ -1315,7 +1319,7 @@ This planning baseline is ready for implementation handoff when:
 - Every remaining numeric/operational value in Section 15 has an explicit Phase 0 decision/measurement gate before it can affect later work.
 - Phase 0 baselines and parity-ledger work are explicitly authorized.
 
-Conditions 2 and 3 are satisfied by this planning baseline. Condition 1 (independent-audit corrections incorporated) is satisfied through the 2026-07-30 revision .5 pass for every finding raised so far, but final audit re-acceptance is still open — see the status header. Explicit authorization was received on 2026-07-29, and Phase 0 began with the artifacts linked below. Later runtime, schema, worker, and deployment phases remain gated by the Phase 0 exit criteria.
+Conditions 2 and 3 are satisfied by this planning baseline. Condition 1 (independent-audit corrections incorporated) is satisfied through the 2026-07-30 revision .5 pass for every finding raised so far, and the clean retry-free hosted evidence was completed on 2026-07-31. Final audit re-acceptance is still open — see the status header. Explicit authorization was received on 2026-07-29, and Phase 0 began with the artifacts linked below. Later runtime, schema, worker, and deployment phases remain gated by the Phase 0 exit criteria; no Phase 1 implementation starts before acceptance or explicit waiver.
 
 ## 18. Related documents
 

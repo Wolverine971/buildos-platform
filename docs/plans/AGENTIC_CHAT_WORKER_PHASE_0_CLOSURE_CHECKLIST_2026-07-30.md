@@ -2,27 +2,27 @@
 
 # Agentic Chat Worker Migration: Phase 0 Closure Checklist
 
-**Date:** 2026-07-30
+**Date:** 2026-07-30 (updated 2026-07-31)
 
-**Status:** Local capture implementation complete. Paid three-run gate and final independent acceptance not yet run.
+**Status:** Operator evidence complete. The clean, retry-free, three-sample hosted gate passed; final independent acceptance has not yet been recorded.
 
 **Decision:** Do not begin Phase 1 implementation until every remaining gate below is accepted or explicitly waived.
 
 ## Authoritative current state
 
-| Gate                                | State                        | Evidence / next proof                                                                                          |
-| ----------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Executable contract revision .5     | Complete locally             | `@buildos/shared-types` suite: 2 files / 13 tests                                                              |
-| Original independent audit findings | Corrections incorporated     | F1–F23 are mapped through revisions .4/.5; final .5 re-acceptance is still missing                             |
-| Target-database preflight           | Complete                     | `evidence/agentic_chat_worker_phase0_preflight_prod_2026-07-30.json`; all four duplicate probes zero           |
-| Exact-tree hosted quality battery   | Complete as first sample     | Commit `d807d05ed`; 11/14 live scenarios passed                                                                |
-| F14 enforceable tree identity       | Complete                     | The hosted run used an isolated worktree at exact `HEAD`                                                       |
-| Date-stable reschedule fixture      | Complete locally             | Seed date is always distinct from requested Friday; focused regression test passes                             |
-| Concurrent harness isolation        | Complete locally             | Per-run fixture prefix plus 24-hour stale sweep; focused cleanup tests pass                                    |
-| Retained timing/persistence capture | Complete locally, unmeasured | `phase0/evidence-report.ts` plus `test:agentic:phase0-evidence`                                                |
-| Three-sample hosted gate            | **Pending**                  | Run the eight gate scenarios three times, retry-free, from one clean exact tree                                |
-| `research-log-readback` disposition | **Pending hosted proof**     | The disappearing-project failure is explained by the fixed cross-run sweep, but must pass the corrected cohort |
-| Final independent audit acceptance  | **Pending**                  | Fresh-context review of revision .5, this checklist, and the retained gate artifact                            |
+| Gate                                | State                      | Evidence / next proof                                                                                                           |
+| ----------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Executable contract revision .5     | Complete locally           | `@buildos/shared-types` suite: 2 files / 13 tests                                                                               |
+| Original independent audit findings | Corrections incorporated   | F1–F23 are mapped through revisions .4/.5; final .5 re-acceptance is still missing                                              |
+| Target-database preflight           | Complete                   | `evidence/agentic_chat_worker_phase0_preflight_prod_2026-07-30.json`; all four duplicate probes zero                            |
+| Exact-tree hosted quality battery   | Complete                   | Historical sample at `d807d05ed` (11/14), superseded for the gate by the clean `0f63e47bb` run (24/24)                          |
+| F14 enforceable tree identity       | Complete                   | Final gate recorded clean `HEAD` `0f63e47bbafc4e58d85b360b1edb1ef8d0fe3fb5` and tree `6e3f1b451e7920478f54fa36dddbb79dc68e7c83` |
+| Date-stable reschedule fixture      | Complete and hosted-proven | All three retry-free reschedule repetitions passed                                                                              |
+| Concurrent harness isolation        | Complete and hosted-proven | Per-run fixture prefix plus 24-hour stale sweep; research readback passed 3/3                                                   |
+| Retained timing/persistence capture | Complete and measured      | Final artifact contains client/server timing, 170 tool samples, terminal state, cost, and retained row/byte footprint           |
+| Three-sample hosted gate            | **Complete**               | Eight scenarios × three repetitions: 24/24 scenarios and 30/30 turn assertions passed, with retries disabled                    |
+| `research-log-readback` disposition | **Complete**               | Three scenarios / six turns passed with zero stream or capture errors                                                           |
+| Final independent audit acceptance  | **Pending**                | Fresh-context review of revision .5, this checklist, the evidence chain, and the final gate artifact                            |
 
 `book-writing-journey` is not part of the enforceable Phase 0 gate while its separately reviewed implementation remains in progress. That deferral must be visible to the final auditor; it is not counted as a silent pass.
 
@@ -43,26 +43,51 @@ The artifact deliberately does not retain prompt, message, event-payload, tool-a
 
 The retained-row footprint is a Phase 4 parity comparator. It is not a PostgreSQL statement-frequency or WAL-throughput claim. Phase 2's 100-turn fixture still owns statements, affected rows, flush latency, and WAL/write-rate evidence.
 
-## Local proof completed
+## Local and hosted proof completed
 
 ```text
 Agentic focused tests: 6 files / 26 tests passed
 Phase A harness typecheck: passed
-Paid model calls: none
-Hosted database writes: none
+Final hosted gate: 24/24 scenarios; 30/30 turn assertions; 30/30 terminal completions
+Final hosted gate errors: 0 stream; 0 capture
+Final hosted gate model cost: $0.13314743
 ```
 
 The focused set covers timing extraction, payload-free event timing, evidence aggregation, pre-release evidence ordering, fixture run isolation, and date-stable rescheduling.
 
-## Paid gate handoff
+## Paid gate result — 2026-07-31
 
-Run only after the capture/harness changes are committed to an exact tree and checked out in a clean isolated worktree. Start the dev server from that same worktree. The evidence process fails before authentication/model/database work if its own checkout is dirty.
+The registered cohort ran from an isolated, clean worktree with Vitest retries disabled. The retained artifact is:
+
+`docs/plans/evidence/agentic_chat_worker_phase0_gate_2026-07-31_0f63e47bb.json`
+
+Repository identity:
+
+- `HEAD`: `0f63e47bbafc4e58d85b360b1edb1ef8d0fe3fb5`
+- tree: `6e3f1b451e7920478f54fa36dddbb79dc68e7c83`
+- repository dirty: `false`
+
+Gate outcome:
+
+- 24/24 scenario executions passed across the eight registered scenarios and three repetitions;
+- 30/30 turn assertions passed and all 30 turns reached terminal completion;
+- zero stream-error turns and zero capture-error turns;
+- 170 tool-execution samples, with p50 649 ms, p95 3,963 ms, and max 5,968 ms;
+- final hosted model cost: $0.13314743.
+
+Legacy SSE client timing was response headers p95 296.283 ms, first SSE event p95 296.623 ms, TTFT p95 16,681.192 ms, terminal event p95 170,696.101 ms, and total duration p95 171,001.530 ms. Server timing was admission p95 108 ms, first event p95 7 ms, first response p95 16,448 ms, assistant persistence p95 320 ms, finalization p95 8 ms, and total request p95 170,454 ms. Retained footprint was p95 105 rows and 312,523 serialized bytes per turn.
+
+These are legacy-path baselines, not worker measurements. The `<= 250 ms` worker-overhead threshold remains a later differential comparison, and the retained footprint does not substitute for the Phase 2 WAL/statement-rate load fixture.
+
+### Reproduction command
+
+The evidence process fails before authentication/model/database work if its checkout is dirty. From the isolated worktree and matching server checkout:
 
 From the isolated worktree:
 
 ```bash
 AGENTIC_E2E_BASE_URL=http://127.0.0.1:5199 \
-AGENTIC_PHASE0_OUTPUT_PATH=/Users/djwayne/buildos-platform/docs/plans/evidence/agentic_chat_worker_phase0_gate_2026-07-30.json \
+AGENTIC_PHASE0_OUTPUT_PATH=/Users/djwayne/buildos-platform/docs/plans/evidence/agentic_chat_worker_phase0_gate_<date>_<short-head>.json \
 pnpm --filter @buildos/web test:agentic:phase0-evidence
 ```
 
@@ -77,7 +102,7 @@ The command runs these eight scenarios three times each with Vitest retries disa
 7. `project-organize`
 8. `project-catchup-cold`
 
-The command spends provider/judge money and writes disposable fixtures to hosted Supabase. It has intentionally not been run during the local implementation pass.
+The command spends provider/judge money and writes disposable fixtures to hosted Supabase.
 
 ## Acceptance checks for the artifact
 
@@ -90,12 +115,12 @@ The command spends provider/judge money and writes disposable fixtures to hosted
 - Client and server timing summaries have usable sample counts for the later worker-overhead comparison.
 - Retained persistence footprint is present for every turn; its documented limitation remains attached.
 
-## After the paid gate
+## Independent re-audit handoff
 
-1. Attach the artifact result and any failure classification to the baseline and parity ledger.
-2. Commission a fresh-context independent re-audit of contract revision .5, the parity ledger, preflight, and gate artifact.
+1. Commission a fresh-context independent re-audit of contract revision .5, the parity ledger, production preflight, correction evidence chain, and final gate artifact.
+2. Record the auditor's explicit acceptance, rejection, or waiver. Operator evidence alone does not satisfy this gate.
 3. If accepted, mark Phase 0 closed.
-4. Begin Phase 1 with `admit_legacy_agentic_chat_turn(...)` plus differential pre-message history and exactly-one-message/turn tests. Do not start the worker transport in that slice.
+4. Only then begin Phase 1 with `admit_legacy_agentic_chat_turn(...)` plus differential pre-message history and exactly-one-message/turn tests. Do not start the worker transport in that slice.
 
 ## Parallel security track
 

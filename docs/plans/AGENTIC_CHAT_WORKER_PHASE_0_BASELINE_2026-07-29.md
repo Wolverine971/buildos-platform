@@ -8,7 +8,9 @@
 
 **Hosted quality tree:** `d807d05ed1555a13d0984fc23a32e9b885f2386b`
 
-**Status:** Local deterministic baseline, production preflight, and first exact-tree hosted quality battery complete. Three-run hosted timing/persistence evidence and final independent acceptance pending.
+**Phase 0 closure tree:** `0f63e47bbafc4e58d85b360b1edb1ef8d0fe3fb5` (tree `6e3f1b451e7920478f54fa36dddbb79dc68e7c83`)
+
+**Status:** Local deterministic baseline, production preflight, and clean retry-free hosted timing/quality gate complete. Operator evidence is ready for final independent re-acceptance.
 
 ## Repository baseline
 
@@ -147,7 +149,7 @@ The original local pass did not run `pnpm --filter @buildos/web test:agentic`. T
 - requires a separately running dev server and credentials;
 - can mutate test projects before teardown.
 
-Before the Phase 0 exit review, run the named scenario set at least three times per stochastic scenario and record raw artifacts, pass/fail, model/provider attribution, cost, and timing:
+The Phase 0 exit review requires the named gate scenarios to run at least three times each, with raw artifacts, pass/fail, model/provider attribution, cost, and timing retained:
 
 | Required behavior                    | Scenario                                                                                                                                                                                                                                            |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -197,7 +199,7 @@ Two of the three failures are not product regressions. Classifying them matters 
 
 **Enforceable Phase 4 bar from this run:** the 11 passing scenarios must still pass after the runtime extraction. `task-reschedule-cold-reference` and `research-log-readback` are quarantined only until the corrected retry-free gate cohort runs; `book-writing-journey` remains excluded until its supporting implementation lands.
 
-### Timing distribution — capture implemented; paid evidence still pending
+### Timing distribution — capture state after the 2026-07-30 run
 
 Correcting an earlier assumption recorded during setup: the SSE harness _measures_ per-turn milestones (`firstSseEventMs`, `ttftMs`, `terminalEventMs`, `responseHeadersMs`, `totalDurationMs` in `harness/sse-client.ts`), but nothing **persists or reports** them — this run produced no timing artifact. Per-scenario wall clock (above) is multi-turn and includes fixture setup, so it is not the per-milestone distribution the gate requires.
 
@@ -205,22 +207,64 @@ The Phase 0 capture is now implemented behind `AGENTIC_PHASE0_CAPTURE=true` and 
 
 The persistence footprint is a final-state parity baseline, not a claim about PostgreSQL statement frequency or WAL throughput. Phase 2's 100-turn fixture still owns statement, affected-row, payload-byte, flush-latency, and WAL/write-rate measurement.
 
-No paid run has been made with this capture. Until the clean-tree three-run cohort is retained, the `<= 250 ms` worker-overhead regression budget has no measured legacy figure and remains unenforceable.
+This historical limitation was resolved by the 2026-07-31 closure run below. The `<= 250 ms` worker-overhead regression budget now has a measured legacy comparator, but remains unenforceable until a later phase measures the worker path on a matched workload.
+
+## Hosted Phase 0 closure gate — PASS 2026-07-31
+
+**Measured tree:** `0f63e47bbafc4e58d85b360b1edb1ef8d0fe3fb5`; tree object `6e3f1b451e7920478f54fa36dddbb79dc68e7c83`. The evidence runner recorded a clean repository and ran in an isolated worktree with Vitest retries disabled.
+
+**Retained artifact:** `docs/plans/evidence/agentic_chat_worker_phase0_gate_2026-07-31_0f63e47bb.json`
+
+**Result: 24/24 registered scenario executions passed; 30/30 turn assertions passed; all 30 turns reached terminal completion.** There were zero stream-error turns and zero capture-error turns. The run cost $0.13314743 in recorded provider/model usage.
+
+| Scenario                         | Scenario executions | Turn assertions | Stream/capture errors |
+| -------------------------------- | ------------------- | --------------- | --------------------- |
+| `project-catchup-cold`           | 3/3                 | 3/3             | 0 / 0                 |
+| `project-organize`               | 3/3                 | 3/3             | 0 / 0                 |
+| `research-log-readback`          | 3/3                 | 6/6             | 0 / 0                 |
+| `research-turn-finalizes`        | 3/3                 | 3/3             | 0 / 0                 |
+| `restraint-noop-and-ambiguity`   | 3/3                 | 6/6             | 0 / 0                 |
+| `task-complete-cold-reference`   | 3/3                 | 3/3             | 0 / 0                 |
+| `task-multi-update`              | 3/3                 | 3/3             | 0 / 0                 |
+| `task-reschedule-cold-reference` | 3/3                 | 3/3             | 0 / 0                 |
+
+The closure work also corrected five defects exposed by the hosted cohorts: internal lifecycle failures now retain completed tool executions; generic-error paths retain reads/writes and timing; write-intent provider rotation no longer stops after one provider failure; exact research phrasing and judge failure handling are deterministic; metadata-only document updates no longer suppress stated-future carry; and the completion harness observes every pre-existing `START HERE` surface instead of assuming a single title.
+
+### Measured legacy SSE timing and footprint
+
+| Signal                             | p50           | p95            | Max            |
+| ---------------------------------- | ------------- | -------------- | -------------- |
+| Client response headers            | 240.439 ms    | 296.283 ms     | 297.444 ms     |
+| Client first SSE event             | 240.529 ms    | 296.623 ms     | 298.354 ms     |
+| Client time to first text          | 4,253.559 ms  | 16,681.192 ms  | 16,953.591 ms  |
+| Client terminal event              | 30,407.668 ms | 170,696.101 ms | 244,809.574 ms |
+| Client total duration              | 30,643.520 ms | 171,001.530 ms | 245,136.843 ms |
+| Server admission                   | 96 ms         | 108 ms         | 113 ms         |
+| Server first event                 | 2 ms          | 7 ms           | 8 ms           |
+| Server first response              | 4,012 ms      | 16,448 ms      | 16,750 ms      |
+| Server assistant persistence       | 232 ms        | 320 ms         | 472 ms         |
+| Server finalization                | 2 ms          | 8 ms           | 8 ms           |
+| Server total request               | 30,200 ms     | 170,454 ms     | 244,542 ms     |
+| Tool execution (170 samples)       | 649 ms        | 3,963 ms       | 5,968 ms       |
+| Retained persistence rows per turn | 38            | 105            | 107            |
+| Retained serialized bytes per turn | 158,273       | 312,523        | 318,798        |
+
+Provider time dominates first-text and total-turn latency and is tracked separately from BuildOS overhead. These measurements describe the legacy HTTP/SSE path. A future matched worker run must compare against them; they are not evidence that the worker already meets the `<= 250 ms` overhead budget. Likewise, retained rows/bytes are a final-state footprint, not PostgreSQL statement, affected-row, flush-latency, or WAL evidence. The Phase 2 load fixture still owns those measurements.
 
 ## Phase 0 status
 
-| Deliverable                                                        | Status                                                                                 |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| Fresh local deterministic baseline                                 | Complete                                                                               |
-| Route-owned behavior parity ledger                                 | Initial complete; independent review pending                                           |
-| Versioned command/event/snapshot/signal/transport/effect contracts | Executable lock complete; review pending                                               |
-| State transition, terminal race, retry, and rollback locks         | Initial complete                                                                       |
-| Direct authenticated policy/caller inventory                       | Complete; production SELECT-only capture retained 2026-07-30                           |
-| Named proving tests for all 12 audit corrections                   | Complete in parity ledger                                                              |
-| Local P04/P12/P27/P28 legacy parity fixtures                       | Complete                                                                               |
-| P13 route-to-runtime exact-once legacy fixture                     | Complete                                                                               |
-| Paid hosted quality baseline                                       | First battery retained at `d807d05ed` (11/14); corrected three-run gate cohort pending |
-| Production-like latency/persistence baseline                       | Capture implemented and locally tested; paid three-run JSON artifact pending           |
-| Independent audit sign-off                                         | Re-audit run 2026-07-30; revision .5 closed both blockers; final re-acceptance pending |
+| Deliverable                                                        | Status                                                                                   |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| Fresh local deterministic baseline                                 | Complete                                                                                 |
+| Route-owned behavior parity ledger                                 | Complete for Phase 0; final independent re-acceptance pending                            |
+| Versioned command/event/snapshot/signal/transport/effect contracts | Executable revision .5 lock complete; final independent re-acceptance pending            |
+| State transition, terminal race, retry, and rollback locks         | Initial complete                                                                         |
+| Direct authenticated policy/caller inventory                       | Complete; production SELECT-only capture retained 2026-07-30                             |
+| Named proving tests for all 12 audit corrections                   | Complete in parity ledger                                                                |
+| Local P04/P12/P27/P28 legacy parity fixtures                       | Complete                                                                                 |
+| P13 route-to-runtime exact-once legacy fixture                     | Complete                                                                                 |
+| Paid hosted quality baseline                                       | Complete: clean retry-free closure gate at `0f63e47bb` passed 24/24                      |
+| Production-like latency/persistence baseline                       | Complete for legacy-path timing and final-state footprint; Phase 2 WAL/rate work remains |
+| Independent audit sign-off                                         | Re-audit run 2026-07-30; revision .5 closed both blockers; final re-acceptance pending   |
 
-Phase 1 implementation should begin only after the pending baseline/audit items are accepted or explicitly waived. The safest first Phase 1 slice is the service-only atomic legacy admission RPC plus differential history/message tests; it removes a known split-write correctness gap while keeping SSE as the only production transport.
+The operator-side baseline is complete. Phase 1 implementation should begin only after final independent acceptance or an explicit waiver. The safest first Phase 1 slice remains the service-only atomic legacy admission RPC plus differential history/message tests; it removes a known split-write correctness gap while keeping SSE as the only production transport.
