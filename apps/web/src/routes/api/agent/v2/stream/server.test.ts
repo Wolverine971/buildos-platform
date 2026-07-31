@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
 	loadPromptContext: vi.fn(),
 	loadRecentMessages: vi.fn(),
 	logError: vi.fn(),
+	loadValidatedChatAttachments: vi.fn(),
+	createLiveVisionSignedImages: vi.fn(),
 	persistMessage: vi.fn(),
 	persistMessageAttachments: vi.fn(),
 	reconcile: vi.fn(),
@@ -153,7 +155,15 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 		FORCED_SYNTHESIS_MAX_TOKENS: 6000
 	},
 	FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY: 'fastchat_pending_turn_intent',
-	appendAttachmentContextToMessage: (message: string) => message,
+	appendAttachmentContextToMessage: (message: string, attachments: Row[] = []) =>
+		attachments.length > 0
+			? [
+					message,
+					`Attachment context: ${attachments.map((item) => item.file_name).join(', ')}`
+				]
+					.filter(Boolean)
+					.join('\n\n')
+			: message,
 	assessLiveVisionImageEligibility: () => ({ eligible: false, reason: 'disabled' }),
 	buildAttachmentOnlyDisplayText: () => 'Attachment',
 	buildFastContextUsageSnapshot: () => ({
@@ -179,7 +189,10 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 	getWriteToolNamesForTurnIntent: () => [],
 	historyIncludesLoadedSkillsLedger: () => false,
 	loadFastChatPromptContext: mocks.loadPromptContext,
-	normalizeChatAttachmentRefs: () => ({ attachments: [], rejected: 0 }),
+	normalizeChatAttachmentRefs: (attachments: Row[] | undefined) => ({
+		attachments: attachments ?? [],
+		rejected: 0
+	}),
 	normalizeFastAgentStreamRequest: (input: Record<string, any>) => ({
 		...input,
 		lastTurnContext: input?.lastTurnContext ?? input?.last_turn_context ?? null,
@@ -204,9 +217,15 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 			content: message.content,
 			metadata: message.metadata ?? null
 		})),
-	sanitizeAttachmentRefsForMetadata: () => [],
+	sanitizeAttachmentRefsForMetadata: (attachments: Row[] = []) => attachments,
 	shouldUseLiveVisionForTurn: () => false,
 	streamFastChat: mocks.streamFastChat
+}));
+
+vi.mock('$lib/services/agentic-chat-v2/stream-attachments', () => ({
+	createLiveVisionSignedImages: mocks.createLiveVisionSignedImages,
+	loadValidatedChatAttachments: mocks.loadValidatedChatAttachments,
+	resolveChatAttachmentProjectId: () => null
 }));
 
 import { GET, POST } from './+server';
@@ -243,7 +262,12 @@ function createAdminOnlySupabase({ isAdmin = false } = {}) {
 
 function createStreamingSupabase(
 	initialRows: Record<string, Row[]> = {},
-	options: { admissionResult?: Row; insertErrors?: Record<string, unknown> } = {}
+	options: {
+		admissionResult?: Row;
+		insertErrors?: Record<string, unknown>;
+		projectAccessAllowed?: boolean;
+		actorId?: string | null;
+	} = {}
 ) {
 	const rows: Record<string, Row[]> = {
 		chat_turn_runs: [],
@@ -412,6 +436,15 @@ function createStreamingSupabase(
 	}
 
 	const rpc = vi.fn(async (name: string, args: Row = {}) => {
+		if (name === 'ensure_actor_for_user') {
+			return {
+				data: options.actorId === undefined ? 'actor-1' : options.actorId,
+				error: null
+			};
+		}
+		if (name === 'current_actor_has_project_member_access') {
+			return { data: options.projectAccessAllowed ?? true, error: null };
+		}
 		if (name !== 'admit_legacy_agentic_chat_turn') {
 			return { data: {}, error: null };
 		}
@@ -795,6 +828,10 @@ beforeEach(() => {
 	);
 	mocks.updateSessionContext.mockResolvedValue(undefined);
 	mocks.persistMessageAttachments.mockResolvedValue(undefined);
+	mocks.loadValidatedChatAttachments.mockImplementation(
+		async ({ attachments }: { attachments: Row[] }) => ({ attachments, assets: [] })
+	);
+	mocks.createLiveVisionSignedImages.mockResolvedValue([]);
 	mocks.attachVoiceNoteGroup.mockResolvedValue(undefined);
 	mocks.reconcile.mockResolvedValue(null);
 	mocks.streamFastChat.mockImplementation(async ({ onDelta }: Row) => {
@@ -840,6 +877,69 @@ describe('/api/agent/v2/stream', () => {
 		} as any);
 
 		expect(response.status).toBe(401);
+	});
+
+	it('rejects an unauthenticated POST before durable turn admission', async () => {
+		const supabase = createStreamingSupabase();
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({ message: 'Do not persist this' })
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: null })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(401);
+		expect(supabase.rpc).not.toHaveBeenCalledWith(
+			'admit_legacy_agentic_chat_turn',
+			expect.anything()
+		);
+		expect(supabase.insertedRows.chat_messages ?? []).toHaveLength(0);
+		expect(mocks.streamFastChat).not.toHaveBeenCalled();
+	});
+
+	it('denies project access before durable turn admission', async () => {
+		const projectId = '22222222-2222-4222-8222-222222222222';
+		const supabase = createStreamingSupabase({}, { projectAccessAllowed: false });
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Do not persist this either',
+					context_type: 'project',
+					entity_id: projectId,
+					stream_run_id: 'stream-run-access-denied'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		const events = parseSseEvents(await response.text());
+		expect(events).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: 'error', turn_rejected: true }),
+				expect.objectContaining({ type: 'done', finished_reason: 'error' })
+			])
+		);
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
+			p_project_id: projectId,
+			p_required_access: 'read'
+		});
+		expect(supabase.rpc).not.toHaveBeenCalledWith(
+			'admit_legacy_agentic_chat_turn',
+			expect.anything()
+		);
+		expect(supabase.insertedRows.chat_messages ?? []).toHaveLength(0);
+		expect(mocks.streamFastChat).not.toHaveBeenCalled();
 	});
 
 	it('passes frozen prior history and the current user message exactly once to the runtime', async () => {
@@ -913,11 +1013,101 @@ describe('/api/agent/v2/stream', () => {
 				idempotency_key: expect.stringMatching(/^chat-turn:.*:user$/)
 			})
 		]);
+		expect(supabase.insertedRows.chat_turn_runs).toEqual([
+			expect.objectContaining({
+				user_message_id: supabase.insertedRows.chat_messages[0]?.id
+			})
+		]);
+		expect(mocks.persistMessage.mock.calls.some(([params]) => params.role === 'user')).toBe(
+			false
+		);
 		expect(
 			[...capturedHistory.map((entry) => entry.content), capturedMessage].filter(
 				(content) => content === 'Current command'
 			)
 		).toHaveLength(1);
+	});
+
+	it('admits an attachment-only turn and uses the admitted user message for attachment linkage', async () => {
+		const attachment = {
+			attachment_kind: 'onto_asset',
+			media_type: 'image',
+			asset_id: '33333333-3333-4333-8333-333333333333',
+			project_id: null,
+			file_name: 'diagram.png',
+			content_type: 'image/png',
+			file_size_bytes: 321,
+			width: 1200,
+			height: 800,
+			role: 'attachment',
+			display_order: 0
+		};
+		const supabase = createStreamingSupabase();
+		let capturedMessage = '';
+		mocks.streamFastChat.mockImplementationOnce(async ({ message, onDelta }: Row) => {
+			capturedMessage = message;
+			await onDelta('I can see the diagram.');
+			return {
+				assistantText: 'I can see the diagram.',
+				finalAssistantText: 'I can see the diagram.',
+				usage: { total_tokens: 12 },
+				finishedReason: 'stop',
+				toolExecutions: [],
+				llmPasses: [],
+				toolRounds: 0,
+				toolCallsMade: 0,
+				supervisorDecisions: [],
+				finalizationGuard: undefined,
+				cancelled: false,
+				peakPromptTokens: undefined,
+				finalContextUsage: undefined
+			};
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: '',
+					attachments: [attachment],
+					context_type: 'global',
+					stream_run_id: 'stream-run-attachment-only',
+					client_turn_id: 'client-turn-attachment-only'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		await response.text();
+		const admittedUserMessage = supabase.insertedRows.chat_messages[0];
+		expect(admittedUserMessage).toEqual(
+			expect.objectContaining({
+				role: 'user',
+				content: 'Attachment',
+				metadata: expect.objectContaining({
+					attachment_count: 1,
+					attachment_only: true
+				})
+			})
+		);
+		expect(capturedMessage).toContain('Attachment context: diagram.png');
+		expect(mocks.persistMessageAttachments).toHaveBeenCalledWith(
+			expect.objectContaining({
+				messageId: admittedUserMessage.id,
+				attachments: [attachment]
+			})
+		);
+		expect(supabase.insertedRows.chat_turn_runs[0]).toEqual(
+			expect.objectContaining({ user_message_id: admittedUserMessage.id })
+		);
+		expect(mocks.persistMessage.mock.calls.some(([params]) => params.role === 'user')).toBe(
+			false
+		);
 	});
 
 	it('ignores the legacy prompt_variant request field and does not consult the admin gate', async () => {
@@ -950,9 +1140,27 @@ describe('/api/agent/v2/stream', () => {
 	});
 
 	it('consumes a generated-type prepared prompt row for a valid preparedPromptKey', async () => {
-		const preparedPrompt = buildPreparedPromptRow();
+		const preparedHistory = [
+			{ role: 'user', content: 'Prepared question' },
+			{ role: 'assistant', content: 'Prepared answer' }
+		];
+		const preparedPrompt = buildPreparedPromptRow({
+			history_for_model: preparedHistory,
+			raw_history_count: preparedHistory.length
+		});
 		const supabase = createStreamingSupabase({
-			agentic_chat_prepared_prompts: [preparedPrompt.row]
+			agentic_chat_prepared_prompts: [preparedPrompt.row],
+			chat_messages: [
+				{
+					id: 'fallback-message-1',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					role: 'user',
+					content: 'Fallback history must not win',
+					metadata: null,
+					created_at: '2026-05-24T00:00:00.000Z'
+				}
+			]
 		});
 
 		const response = await POST({
@@ -1014,6 +1222,8 @@ describe('/api/agent/v2/stream', () => {
 
 		expect(supabase.from).toHaveBeenCalledWith('agentic_chat_prepared_prompts');
 		expect(mocks.loadRecentMessages).not.toHaveBeenCalled();
+		expect(mocks.composeFastChatHistory).not.toHaveBeenCalled();
+		expect(mocks.streamFastChat.mock.calls[0]?.[0]?.history).toEqual(preparedHistory);
 		expect(supabase.updatedRows.agentic_chat_prepared_prompts?.[0]).toEqual(
 			expect.objectContaining({
 				id: preparedPrompt.row.id,
