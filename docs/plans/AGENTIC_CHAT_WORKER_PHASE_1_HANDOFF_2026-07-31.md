@@ -63,14 +63,15 @@ The final local Phase 1 recheck ran:
 - Hosted migration and RPC drift: **green**. The exact `20260731150000_agentic_chat_legacy_atomic_admission.sql` file was applied without sweeping in unrelated migration-history gaps, its version was recorded remotely, and `pnpm check:supabase-rpc-drift` reports 195 aligned functions.
 - Hosted Phase 1 quality cohort: **failed** on clean `HEAD` `0147cbd94e85f406512245803758796145e0e950` / tree `49e74889c528eb0a475b9c0c257e75ff4eb9118e`, with retries disabled. The retained artifact is `docs/plans/evidence/agentic_chat_worker_phase1_gate_2026-07-31_0147cbd94.json`.
     - 21/24 scenario executions passed; 27/30 turn assertions passed; all 30 turns completed; one stream-error turn and zero capture-error turns.
-    - Failures: `project-organize` repetition 3 did not group at least two original documents; `research-turn-finalizes` repetition 3 exhausted provider stream retries; `task-reschedule-cold-reference` repetition 1 wrote August 5 instead of August 7.
+    - Failures: `project-organize` repetition 3 nested each original under a different parent; `research-turn-finalizes` repetition 3 exhausted provider stream retries after receiving a substantial partial answer; `task-reschedule-cold-reference` repetition 1 left the seeded August 5 date unchanged because all three update calls omitted `due_at`.
     - Recorded model cost was `$0.12909659`. Admission p50/p95 was 111/187 ms versus the Phase 0 baseline's 96/108 ms; retained-row p95 remained 105.
+- Deep failure investigation and next-agent handoff: `AGENTIC_CHAT_WORKER_PHASE_1_HOSTED_GATE_FAILURE_INVESTIGATION_2026-07-31.md`. It records exact failed tool shapes, the discarded-partial recovery boundary, telemetry gaps, ranked hypotheses, and non-paid diagnostics. No additional hosted run is authorized by that handoff.
 
 No worker queue, worker processor, Realtime transport, transport lease, `queued` status, generation fence, input artifact, worker cancel endpoint, or terminal CAS was added.
 
 ### Remaining Phase 1 work
 
-1. Triage the three hosted quality failures against the passing Phase 0 artifact. Do not weaken assertions or redesign prompts/tools as part of the worker migration; distinguish provider variance from a reproducible Phase 1 regression.
+1. Follow `AGENTIC_CHAT_WORKER_PHASE_1_HOSTED_GATE_FAILURE_INVESTIGATION_2026-07-31.md`: preserve the temporary traces, reproduce all three mechanisms without a provider, and add the missing terminal/no-effect observability before deciding on fixes. Do not weaken assertions or classify the failures as random without evidence.
 2. After any justified remediation and explicit approval for additional provider spend, rerun the complete clean, retry-free 24-scenario / 30-turn gate. Targeted reruns may diagnose variance but do not replace the full gate.
 3. Only after a full hosted pass, record the Phase 1 exit verdict and begin Phase 2. Until then, keep all Phase 2 worker execution, control-plane schema, and transport work blocked.
 

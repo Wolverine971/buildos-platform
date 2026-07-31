@@ -133,13 +133,15 @@ The retained artifact is `docs/plans/evidence/agentic_chat_worker_phase1_gate_20
 - 21/24 scenario executions passed; 27/30 turn assertions passed.
 - All 30 turns reached terminal completion; there was one stream-error turn and zero capture-error turns.
 - Recorded provider/model cost was `$0.12909659`.
-- `project-organize` repetition 3 completed normally but did not group at least two original documents.
-- `research-turn-finalizes` repetition 3 exhausted the existing provider stream retries and finished with one stream error.
-- `task-reschedule-cold-reference` repetition 1 wrote August 5, 2026 instead of the required August 7, 2026 and finished at the tool-repetition limit.
+- `project-organize` repetition 3 completed normally but nested each original under a different parent, so no grouping contained at least two originals.
+- `research-turn-finalizes` repetition 3 exhausted the existing provider stream retries after receiving a substantial partial answer and finished with one stream error.
+- `task-reschedule-cold-reference` repetition 1 left the seeded August 5, 2026 date unchanged because all three successful update calls omitted `due_at`; it then finished at the tool-repetition limit.
 - The other 21 scenario executions passed, including all restraint, multi-update, research readback, task completion/forward carry, and cold catch-up repetitions.
 - Hosted admission itself was healthy across the corrected run: 30 timing samples, p50 111 ms, p95 187 ms, and max 206 ms. The retained Phase 0 comparator was p50 96 ms and p95 108 ms. Retained rows remained p95 105 per turn.
 
 This is a hard-gate failure against the retained Phase 0 result below. Provider/model variance is plausible—especially for the exhausted stream—but cannot be assumed away. A targeted diagnostic may distinguish variance from a reproducible regression; only a subsequent full clean, retry-free 24/24 cohort can close Phase 1.
+
+The forensic handoff `AGENTIC_CHAT_WORKER_PHASE_1_HOSTED_GATE_FAILURE_INVESTIGATION_2026-07-31.md` records the failed tool traces, retry/partial-answer behavior, telemetry gaps, ranked hypotheses, and required non-paid diagnostics. It does not authorize another hosted run.
 
 ## Phase 0 hosted closure evidence
 
