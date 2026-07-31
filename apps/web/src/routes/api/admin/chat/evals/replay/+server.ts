@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/admin/chat/evals/replay/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { replayAndEvaluatePromptScenario } from '$lib/services/agentic-chat-v2/prompt-replay-runner';
+import { replayAndEvaluatePromptScenario } from '$lib/services/agentic-chat-v2/prompt-replay-runner.server';
 import type { ChatContextType } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 

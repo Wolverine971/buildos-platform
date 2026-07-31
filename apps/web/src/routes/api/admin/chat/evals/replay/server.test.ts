@@ -5,7 +5,7 @@ const { replayAndEvaluatePromptScenarioMock } = vi.hoisted(() => ({
 	replayAndEvaluatePromptScenarioMock: vi.fn()
 }));
 
-vi.mock('$lib/services/agentic-chat-v2/prompt-replay-runner', () => ({
+vi.mock('$lib/services/agentic-chat-v2/prompt-replay-runner.server', () => ({
 	replayAndEvaluatePromptScenario: replayAndEvaluatePromptScenarioMock
 }));
 

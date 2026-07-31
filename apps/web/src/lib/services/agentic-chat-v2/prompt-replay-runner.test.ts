@@ -1,15 +1,20 @@
 // apps/web/src/lib/services/agentic-chat-v2/prompt-replay-runner.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { uuidMock } = vi.hoisted(() => ({
-	uuidMock: vi.fn()
+const { uuidMock, adminSupabaseState } = vi.hoisted(() => ({
+	uuidMock: vi.fn(),
+	adminSupabaseState: { current: null as any }
 }));
 
 vi.mock('uuid', () => ({
 	v4: uuidMock
 }));
 
-import { replayAndEvaluatePromptScenario } from './prompt-replay-runner';
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: () => adminSupabaseState.current
+}));
+
+import { replayAndEvaluatePromptScenario } from './prompt-replay-runner.server';
 
 type TableName =
 	| 'chat_turn_runs'
@@ -141,6 +146,7 @@ describe('prompt replay runner', () => {
 		uuidMock.mockImplementationOnce(() => 'assert-1');
 		uuidMock.mockImplementationOnce(() => 'assert-2');
 		uuidMock.mockImplementation(() => 'uuid-fallback');
+		adminSupabaseState.current = null;
 	});
 
 	it('replays a scenario through the live stream contract and persists eval results', async () => {
@@ -209,6 +215,10 @@ describe('prompt replay runner', () => {
 				}
 			]
 		});
+		const adminSupabase = createSupabaseMock({
+			chat_turn_runs: supabase.getState('chat_turn_runs').map((row) => ({ ...row }))
+		});
+		adminSupabaseState.current = adminSupabase;
 
 		const fetchMock = vi.fn().mockResolvedValue(
 			new Response(
@@ -250,6 +260,10 @@ describe('prompt replay runner', () => {
 		});
 		expect(result.eval.result.status).toBe('passed');
 		expect(supabase.getState('chat_turn_runs')[0]).toMatchObject({
+			id: 'turn-run-1',
+			source: 'live_ui'
+		});
+		expect(adminSupabase.getState('chat_turn_runs')[0]).toMatchObject({
 			id: 'turn-run-1',
 			source: 'admin_replay'
 		});

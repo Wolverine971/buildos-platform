@@ -10,7 +10,7 @@ import {
 	restoreCheckpointToActive,
 	type ChatTurnCheckpoint,
 	type TurnSupervisorSupabaseClient
-} from './checkpoint-service';
+} from './checkpoint-service.server';
 import type { TurnDigest, TurnSupervisorDecision } from './types';
 
 type Row = Record<string, any>;

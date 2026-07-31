@@ -103,6 +103,20 @@ export type DetachedTaskMetadata = {
 	[key: string]: unknown;
 };
 
+export async function markTurnRunReplaySource(params: {
+	supabase: Pick<FastChatSupabaseClient, 'from'>;
+	turnRunId: string;
+	userId: string;
+	source: 'admin_replay' | 'eval_runner';
+}): Promise<void> {
+	const { error } = await params.supabase
+		.from('chat_turn_runs')
+		.update({ source: params.source })
+		.eq('id', params.turnRunId)
+		.eq('user_id', params.userId);
+	if (error) throw error;
+}
+
 function toIsoString(value: number | null): string | null {
 	return typeof value === 'number' ? new Date(value).toISOString() : null;
 }

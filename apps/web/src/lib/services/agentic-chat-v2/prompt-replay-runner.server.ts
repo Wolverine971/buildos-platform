@@ -1,7 +1,8 @@
-// apps/web/src/lib/services/agentic-chat-v2/prompt-replay-runner.ts
+// apps/web/src/lib/services/agentic-chat-v2/prompt-replay-runner.server.ts
 import { v4 as uuidv4 } from 'uuid';
 import type { ChatContextType, Database } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { FastAgentStreamRequest } from './types';
 import { collectStrictAgentSse } from './strict-agent-sse';
 import {
@@ -15,6 +16,7 @@ import {
 	type PromptEvalReplayRequest,
 	type PromptEvalScenario
 } from './prompt-eval-scenarios';
+import { markTurnRunReplaySource } from './turn-observability-writer.server';
 
 type ChatTurnRunRow = Database['public']['Tables']['chat_turn_runs']['Row'];
 
@@ -170,22 +172,6 @@ async function waitForTurnRunByStreamRunId(params: {
 	return latestRow;
 }
 
-async function updateTurnRunReplaySource(params: {
-	supabase: any;
-	turnRunId: string;
-	userId: string;
-	source: 'admin_replay' | 'eval_runner';
-}): Promise<void> {
-	const { error } = await params.supabase
-		.from('chat_turn_runs')
-		.update({ source: params.source })
-		.eq('id', params.turnRunId)
-		.eq('user_id', params.userId);
-	if (error) {
-		throw error;
-	}
-}
-
 async function ensureSseOk(response: Response): Promise<void> {
 	if (response.ok) return;
 	const contentType = response.headers.get('content-type') ?? '';
@@ -259,8 +245,8 @@ export async function replayAndEvaluatePromptScenario(params: {
 		);
 	}
 
-	await updateTurnRunReplaySource({
-		supabase: params.supabase,
+	await markTurnRunReplaySource({
+		supabase: createAdminSupabaseClient(),
 		turnRunId: turnRun.id,
 		userId: params.userId,
 		source: params.source ?? 'admin_replay'

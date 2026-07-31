@@ -225,7 +225,7 @@ import {
 	consumePreparedPrompt,
 	inspectPreparedPromptAdmissionLineage,
 	type PreparedPromptConsumeMissDiagnostics
-} from '$lib/services/agentic-chat-v2/prepared-prompt-consumer';
+} from '$lib/services/agentic-chat-v2/prepared-prompt-consumer.server';
 import {
 	normalizePreparedHistoryForModel,
 	normalizePreparedHistoryStrategy
@@ -267,7 +267,7 @@ import {
 	recoverStaleResumingCheckpoints,
 	restoreCheckpointToActive,
 	type ChatTurnCheckpoint
-} from '$lib/services/agentic-chat-v2/turn-supervisor';
+} from '$lib/services/agentic-chat-v2/turn-supervisor/checkpoint-service.server';
 
 const logger = createLogger('API:AgentStreamV2');
 
@@ -1601,7 +1601,7 @@ export const POST: RequestHandler = async ({
 			let domainStateMetadataUpdatePromise: Promise<boolean> | null = null;
 
 			const preparedAdmissionLineage = await inspectPreparedPromptAdmissionLineage({
-				supabase,
+				supabase: internalSupabase,
 				key: requestPreparedPromptKey,
 				userId,
 				sessionId: session.id,
@@ -1838,7 +1838,7 @@ export const POST: RequestHandler = async ({
 
 			const preparedPromptConsumeStartedAtMs = Date.now();
 			const preparedPromptForTurn = await consumePreparedPrompt({
-				supabase,
+				supabase: internalSupabase,
 				key: requestPreparedPromptKey,
 				userId,
 				sessionId: session.id,

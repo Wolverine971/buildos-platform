@@ -1,4 +1,4 @@
-// apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-consumer.ts
+// apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-consumer.server.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatContextType, ChatToolDefinition, Database } from '@buildos/shared-types';
 import type { GatewaySurfaceProfileName } from '$lib/services/agentic-chat/tools/core/gateway-surface';
@@ -14,6 +14,10 @@ import {
 	type PreparedPromptRow,
 	type PreparedPromptSurface
 } from './prepared-prompt-cache';
+import {
+	claimPreparedPromptContent,
+	readPreparedPromptContent
+} from './prepared-prompt-store.server';
 
 type FastChatSupabaseClient = SupabaseClient<Database>;
 
@@ -78,14 +82,12 @@ export async function inspectPreparedPromptAdmissionLineage(params: {
 	const parsed = parsePreparedPromptKey(params.key);
 	if (!parsed) return null;
 
-	const { data, error } = await params.supabase
-		.from('agentic_chat_prepared_prompts')
-		.select('*')
-		.eq('id', parsed.id)
-		.maybeSingle();
-	if (error || !data) return null;
+	const { row, error } = await readPreparedPromptContent({
+		supabase: params.supabase,
+		id: parsed.id
+	});
+	if (error || !row) return null;
 
-	const row = data as PreparedPromptRow;
 	if (row.user_id !== params.userId) return null;
 	if (!verifyPreparedPromptNonce({ nonce: parsed.nonce, nonceSha256: row.nonce_sha256 })) {
 		return null;
@@ -123,16 +125,14 @@ export async function consumePreparedPrompt(params: {
 		return { hit: false, reason: 'bad_format' };
 	}
 
-	const { data, error } = await params.supabase
-		.from('agentic_chat_prepared_prompts')
-		.select('*')
-		.eq('id', parsed.id)
-		.maybeSingle();
-	if (error || !data) {
+	const { row, error } = await readPreparedPromptContent({
+		supabase: params.supabase,
+		id: parsed.id
+	});
+	if (error || !row) {
 		return { hit: false, reason: 'not_found' };
 	}
 
-	const row = data as PreparedPromptRow;
 	if (row.user_id !== params.userId) {
 		return { hit: false, reason: 'user_mismatch' };
 	}
@@ -186,18 +186,16 @@ export async function consumePreparedPrompt(params: {
 	}
 
 	const consumedAt = new Date().toISOString();
-	const { data: updated, error: updateError } = await params.supabase
-		.from('agentic_chat_prepared_prompts')
-		.update({ consumed_at: consumedAt, updated_at: consumedAt })
-		.eq('id', row.id)
-		.eq('user_id', params.userId)
-		.is('consumed_at', null)
-		.select('id')
-		.maybeSingle();
+	const { claimed, error: updateError } = await claimPreparedPromptContent({
+		supabase: params.supabase,
+		id: row.id,
+		userId: params.userId,
+		consumedAt
+	});
 	if (updateError) {
 		return { hit: false, reason: 'update_failed' };
 	}
-	if (!updated?.id) {
+	if (!claimed) {
 		return { hit: false, reason: 'consumed' };
 	}
 

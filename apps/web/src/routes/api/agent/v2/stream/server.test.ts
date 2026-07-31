@@ -615,6 +615,58 @@ function parseSseEvents(text: string): Row[] {
 		});
 }
 
+function normalizeSseEventLog(events: Row[]): Row[] {
+	return events.map((event) => ({
+		type: event.type,
+		event_type: event.event_type,
+		phase: event.phase ?? null,
+		durable: event.durable ?? null,
+		turn_phase: event.turn_phase ?? null,
+		finished_reason: event.finished_reason ?? null
+	}));
+}
+
+function normalizePersistenceSnapshot(supabase: {
+	insertedRows: Record<string, Row[]>;
+	updatedRows: Record<string, Row[]>;
+}): Row {
+	const admittedTurn = supabase.insertedRows.chat_turn_runs?.[0] ?? {};
+	const admittedUserMessage = supabase.insertedRows.chat_messages?.[0] ?? {};
+	const terminalTurn = [...(supabase.updatedRows.chat_turn_runs ?? [])]
+		.reverse()
+		.find((row) => ['completed', 'failed', 'cancelled'].includes(row.status));
+
+	return {
+		admitted_turn: {
+			status: admittedTurn.status,
+			execution_mode: admittedTurn.execution_mode,
+			source: admittedTurn.source,
+			context_type: admittedTurn.context_type,
+			user_message_linked: admittedTurn.user_message_id === admittedUserMessage.id
+		},
+		admitted_user_message: {
+			role: admittedUserMessage.role,
+			content: admittedUserMessage.content,
+			idempotency_linked:
+				admittedUserMessage.idempotency_key === `chat-turn:${admittedTurn.id}:user`
+		},
+		turn_events: (supabase.insertedRows.chat_turn_events ?? []).map((event) => ({
+			sequence_index: event.sequence_index,
+			phase: event.phase,
+			event_type: event.event_type
+		})),
+		terminal_turn: terminalTurn
+			? {
+					status: terminalTurn.status,
+					finished_reason: terminalTurn.finished_reason,
+					assistant_message_linked: Boolean(terminalTurn.assistant_message_id),
+					tool_rounds: terminalTurn.tool_rounds ?? null,
+					tool_calls: terminalTurn.tool_calls ?? null
+				}
+			: null
+	};
+}
+
 function buildSupervisorDigest() {
 	return {
 		turnRunId: 'turn-run-1',
@@ -1028,6 +1080,183 @@ describe('/api/agent/v2/stream', () => {
 		).toHaveLength(1);
 	});
 
+	it('keeps normalized SSE and persistence snapshots equal across cold and prepared history', async () => {
+		const runTurn = async (params: {
+			streamRunId: string;
+			clientTurnId: string;
+			preparedPrompt?: ReturnType<typeof buildPreparedPromptRow>;
+		}) => {
+			const supabase = createStreamingSupabase(
+				params.preparedPrompt
+					? { agentic_chat_prepared_prompts: [params.preparedPrompt.row] }
+					: {}
+			);
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: 'Snapshot this lifecycle',
+						context_type: 'global',
+						stream_run_id: params.streamRunId,
+						client_turn_id: params.clientTurnId,
+						...(params.preparedPrompt
+							? { preparedPromptKey: params.preparedPrompt.key }
+							: {})
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+			const sse = normalizeSseEventLog(parseSseEvents(await response.text()));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			return {
+				sse,
+				persistence: normalizePersistenceSnapshot(supabase)
+			};
+		};
+
+		const cold = await runTurn({
+			streamRunId: 'stream-run-normalized-cold',
+			clientTurnId: 'client-turn-normalized-cold'
+		});
+		const prepared = await runTurn({
+			streamRunId: 'stream-run-normalized-prepared',
+			clientTurnId: 'client-turn-normalized-prepared',
+			preparedPrompt: buildPreparedPromptRow()
+		});
+
+		expect(prepared).toEqual(cold);
+		expect(cold).toEqual({
+			sse: [
+				{
+					type: 'turn_phase',
+					event_type: 'turn_phase',
+					phase: 'stream',
+					durable: false,
+					turn_phase: 'acknowledged',
+					finished_reason: null
+				},
+				{
+					type: 'session',
+					event_type: 'session',
+					phase: 'stream',
+					durable: false,
+					turn_phase: null,
+					finished_reason: null
+				},
+				{
+					type: 'context_usage',
+					event_type: 'context_usage',
+					phase: 'stream',
+					durable: true,
+					turn_phase: null,
+					finished_reason: null
+				},
+				{
+					type: 'text_delta',
+					event_type: 'text_delta',
+					phase: 'llm',
+					durable: true,
+					turn_phase: null,
+					finished_reason: null
+				},
+				{
+					type: 'turn_phase',
+					event_type: 'turn_phase',
+					phase: 'stream',
+					durable: true,
+					turn_phase: 'finalizing',
+					finished_reason: null
+				},
+				{
+					type: 'last_turn_context',
+					event_type: 'last_turn_context',
+					phase: 'finalize',
+					durable: true,
+					turn_phase: null,
+					finished_reason: null
+				},
+				{
+					type: 'timing',
+					event_type: 'timing',
+					phase: 'finalize',
+					durable: true,
+					turn_phase: null,
+					finished_reason: null
+				},
+				{
+					type: 'done',
+					event_type: 'done',
+					phase: 'finalize',
+					durable: true,
+					turn_phase: null,
+					finished_reason: 'stop'
+				}
+			],
+			persistence: {
+				admitted_turn: {
+					status: 'running',
+					execution_mode: 'legacy_sse',
+					source: 'live_ui',
+					context_type: 'global',
+					user_message_linked: true
+				},
+				admitted_user_message: {
+					role: 'user',
+					content: 'Snapshot this lifecycle',
+					idempotency_linked: true
+				},
+				turn_events: [
+					{
+						sequence_index: 1,
+						phase: 'prompt',
+						event_type: 'turn_intent_resolved'
+					},
+					{
+						sequence_index: 2,
+						phase: 'prompt',
+						event_type: 'prepared_prompt_cache_checked'
+					},
+					{
+						sequence_index: 3,
+						phase: 'stream',
+						event_type: 'turn_phase_changed'
+					},
+					{
+						sequence_index: 4,
+						phase: 'finalize',
+						event_type: 'turn_outcome_resolved'
+					},
+					{
+						sequence_index: 5,
+						phase: 'finalize',
+						event_type: 'orchestration_interventions'
+					},
+					{
+						sequence_index: 6,
+						phase: 'finalize',
+						event_type: 'done_emitted'
+					},
+					{
+						sequence_index: 7,
+						phase: 'prompt',
+						event_type: 'prompt_snapshot_created'
+					}
+				],
+				terminal_turn: {
+					status: 'completed',
+					finished_reason: 'stop',
+					assistant_message_linked: true,
+					tool_rounds: null,
+					tool_calls: null
+				}
+			}
+		});
+	});
+
 	it('admits an attachment-only turn and uses the admitted user message for attachment linkage', async () => {
 		const attachment = {
 			attachment_kind: 'onto_asset',
@@ -1162,6 +1391,16 @@ describe('/api/agent/v2/stream', () => {
 				}
 			]
 		});
+		const authenticatedFrom = vi.fn((table: string) => {
+			if (table === 'agentic_chat_prepared_prompts') {
+				throw new Error('Authenticated client must not read or consume prepared prompts');
+			}
+			return supabase.from(table);
+		});
+		const authenticatedSupabase = {
+			...supabase,
+			from: authenticatedFrom
+		};
 
 		const response = await POST({
 			request: new Request('http://localhost/api/agent/v2/stream', {
@@ -1175,7 +1414,7 @@ describe('/api/agent/v2/stream', () => {
 				})
 			}),
 			locals: {
-				supabase,
+				supabase: authenticatedSupabase,
 				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
 			},
 			fetch: vi.fn()
@@ -1221,6 +1460,7 @@ describe('/api/agent/v2/stream', () => {
 		);
 
 		expect(supabase.from).toHaveBeenCalledWith('agentic_chat_prepared_prompts');
+		expect(authenticatedFrom).not.toHaveBeenCalledWith('agentic_chat_prepared_prompts');
 		expect(mocks.loadRecentMessages).not.toHaveBeenCalled();
 		expect(mocks.composeFastChatHistory).not.toHaveBeenCalled();
 		expect(mocks.streamFastChat.mock.calls[0]?.[0]?.history).toEqual(preparedHistory);

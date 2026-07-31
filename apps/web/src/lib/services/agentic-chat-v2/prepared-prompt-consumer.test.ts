@@ -9,7 +9,7 @@ import {
 import {
 	consumePreparedPrompt,
 	inspectPreparedPromptAdmissionLineage
-} from './prepared-prompt-consumer';
+} from './prepared-prompt-consumer.server';
 
 type QueryResult = {
 	data: unknown;

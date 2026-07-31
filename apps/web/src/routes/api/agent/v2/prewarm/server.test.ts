@@ -9,6 +9,14 @@ const { resolveSessionMock, loadPromptContextMock, loadRecentMessagesMock, merge
 		mergeRpcMock: vi.fn()
 	}));
 
+const { preparedPromptStoreState } = vi.hoisted(() => ({
+	preparedPromptStoreState: { current: null as any }
+}));
+
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: () => preparedPromptStoreState.current
+}));
+
 vi.mock('$lib/services/agentic-chat-v2', () => ({
 	normalizeFastContextType: (value?: string) => value ?? 'global',
 	createFastChatSessionService: () => ({
@@ -56,6 +64,7 @@ import { POST } from './+server';
 describe('POST /api/agent/v2/prewarm', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		preparedPromptStoreState.current = null;
 		resolveSessionMock.mockResolvedValue({
 			session: {
 				id: 'session-1',
@@ -85,7 +94,8 @@ describe('POST /api/agent/v2/prewarm', () => {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					context_type: 'global',
-					ensure_session: true
+					ensure_session: true,
+					prepare_prompt: false
 				})
 			}),
 			locals: {
@@ -153,6 +163,13 @@ describe('POST /api/agent/v2/prewarm', () => {
 			insertedRows.push(row);
 			return { error: null };
 		});
+		const preparedPromptFrom = vi.fn((table: string) => {
+			if (table !== 'agentic_chat_prepared_prompts') {
+				throw new Error(`Unexpected prepared-prompt store table: ${table}`);
+			}
+			return { insert: insertPreparedPrompt };
+		});
+		preparedPromptStoreState.current = { from: preparedPromptFrom };
 		resolveSessionMock.mockResolvedValue({ session });
 		loadRecentMessagesMock.mockResolvedValue([
 			{
@@ -179,9 +196,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 					rpc: mergeRpcMock,
 					from: vi.fn((table: string) => {
 						if (table === 'agentic_chat_prepared_prompts') {
-							return {
-								insert: insertPreparedPrompt
-							};
+							throw new Error('Authenticated client must not write prepared prompts');
 						}
 						return {
 							select: vi.fn().mockReturnThis(),
@@ -202,6 +217,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 		expect(loadPromptContextMock).not.toHaveBeenCalled();
 		expect(loadRecentMessagesMock).toHaveBeenCalledWith('session-1', expect.any(Number));
 		expect(insertPreparedPrompt).toHaveBeenCalledOnce();
+		expect(preparedPromptFrom).toHaveBeenCalledWith('agentic_chat_prepared_prompts');
 		expect(insertedRows[0]).toEqual(
 			expect.objectContaining({
 				session_id: 'session-1',
@@ -267,6 +283,13 @@ describe('POST /api/agent/v2/prewarm', () => {
 			insertedRows.push(row);
 			return { error: null };
 		});
+		const preparedPromptFrom = vi.fn((table: string) => {
+			if (table !== 'agentic_chat_prepared_prompts') {
+				throw new Error(`Unexpected prepared-prompt store table: ${table}`);
+			}
+			return { insert: insertPreparedPrompt };
+		});
+		preparedPromptStoreState.current = { from: preparedPromptFrom };
 		const rpc = vi.fn(async (fn: string, args?: Record<string, unknown>) => {
 			if (fn === 'ensure_actor_for_user') return { data: 'actor-1', error: null };
 			if (fn === 'current_actor_has_project_member_access') {
@@ -295,9 +318,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 					rpc,
 					from: vi.fn((table: string) => {
 						if (table === 'agentic_chat_prepared_prompts') {
-							return {
-								insert: insertPreparedPrompt
-							};
+							throw new Error('Authenticated client must not write prepared prompts');
 						}
 						return {
 							select: vi.fn().mockReturnThis(),
@@ -315,6 +336,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 		expect(response.status).toBe(200);
 		const payload = await response.json();
 		expect(insertPreparedPrompt).toHaveBeenCalledOnce();
+		expect(preparedPromptFrom).toHaveBeenCalledWith('agentic_chat_prepared_prompts');
 		const row = insertedRows[0];
 		const serializedRow = JSON.stringify(row);
 		const focus = row.context_payload.data.focus_entity_full;

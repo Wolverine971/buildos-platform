@@ -1,4 +1,4 @@
-// apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/checkpoint-service.ts
+// apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/checkpoint-service.server.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@buildos/shared-types';
 import type { TurnDigest, TurnSupervisorDecision } from './types';
@@ -17,6 +17,10 @@ export type ChatTurnCheckpoint = Omit<ChatTurnCheckpointRow, 'checkpoint_type' |
 };
 
 export type TurnSupervisorSupabaseClient = Pick<SupabaseClient<Database>, 'from'>;
+
+// This module intentionally owns both checkpoint reads and mutations behind a
+// SvelteKit server-only boundary. Live callers supply the authenticated request's
+// trusted user id together with a service-role client.
 
 export type CreateTurnCheckpointParams = {
 	supabase: TurnSupervisorSupabaseClient;

@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import type { ChatContextType, ChatSession, Json, ProjectFocus } from '@buildos/shared-types';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
 import {
@@ -42,6 +43,7 @@ import {
 	type PreparedPromptResponse,
 	type PreparedPromptSurface
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
+import { writePreparedPromptContent } from '$lib/services/agentic-chat-v2/prepared-prompt-store.server';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { resolveFastChatScaffoldConfigFromEnv } from '$lib/services/agentic-chat-v2/scaffold-variant';
 
@@ -158,7 +160,8 @@ async function mergeFastChatContextCache(params: {
 }
 
 async function buildPreparedPrompt(params: {
-	supabase: any;
+	sourceSupabase: any;
+	storeSupabase: any;
 	session: ChatSession | null;
 	userId: string;
 	contextType: ChatContextType;
@@ -171,7 +174,7 @@ async function buildPreparedPrompt(params: {
 	const { key, nonceSha256 } = buildPreparedPromptKey(rowId);
 	const createdAt = new Date();
 	const expiresAt = new Date(createdAt.getTime() + getPreparedPromptTtlMs()).toISOString();
-	const sessionService = createFastChatSessionService(params.supabase, {
+	const sessionService = createFastChatSessionService(params.sourceSupabase, {
 		endpoint: '/api/agent/v2/prewarm',
 		httpMethod: 'POST'
 	});
@@ -229,35 +232,39 @@ async function buildPreparedPrompt(params: {
 		});
 	}
 
-	const { error } = await params.supabase.from('agentic_chat_prepared_prompts').insert({
-		id: rowId,
-		user_id: params.userId,
-		session_id: params.session?.id ?? null,
-		context_type: params.contextType,
-		entity_id: params.prewarmedContext.context.entityId ?? params.entityId ?? null,
-		project_id:
-			params.prewarmedContext.context.projectId ??
-			resolveEffectiveProjectId({
-				contextType: params.contextType,
-				entityId: params.entityId,
-				projectFocus: params.projectFocus
-			}),
-		project_focus: params.projectFocus ?? null,
-		cache_key: params.cacheKey,
-		nonce_sha256: nonceSha256,
-		prompt_variant: LITE_PROMPT_VARIANT,
-		context_cache_version: FASTCHAT_CONTEXT_CACHE_VERSION,
-		context_payload: preparedContextPayload,
-		conversation_summary: conversationSummary,
-		history_for_model: historyComposition.historyForModel,
-		history_strategy: historyComposition.strategy,
-		history_compressed: historyComposition.compressed,
-		raw_history_count: historyComposition.rawHistoryCount,
-		history_for_model_count: historyComposition.historyForModel.length,
-		prepared_surfaces: preparedSurfaces,
-		default_surface_profile: defaultSurfaceProfile,
-		context_payload_sha256: sha256Json(preparedContextPayload),
-		expires_at: expiresAt
+	const { error } = await writePreparedPromptContent({
+		supabase: params.storeSupabase,
+		userId: params.userId,
+		row: {
+			id: rowId,
+			user_id: params.userId,
+			session_id: params.session?.id ?? null,
+			context_type: params.contextType,
+			entity_id: params.prewarmedContext.context.entityId ?? params.entityId ?? null,
+			project_id:
+				params.prewarmedContext.context.projectId ??
+				resolveEffectiveProjectId({
+					contextType: params.contextType,
+					entityId: params.entityId,
+					projectFocus: params.projectFocus
+				}),
+			project_focus: (params.projectFocus ?? null) as unknown as Json,
+			cache_key: params.cacheKey,
+			nonce_sha256: nonceSha256,
+			prompt_variant: LITE_PROMPT_VARIANT,
+			context_cache_version: FASTCHAT_CONTEXT_CACHE_VERSION,
+			context_payload: preparedContextPayload as unknown as Json,
+			conversation_summary: conversationSummary,
+			history_for_model: historyComposition.historyForModel as unknown as Json,
+			history_strategy: historyComposition.strategy,
+			history_compressed: historyComposition.compressed,
+			raw_history_count: historyComposition.rawHistoryCount,
+			history_for_model_count: historyComposition.historyForModel.length,
+			prepared_surfaces: preparedSurfaces as unknown as Json,
+			default_surface_profile: defaultSurfaceProfile,
+			context_payload_sha256: sha256Json(preparedContextPayload),
+			expires_at: expiresAt
+		}
 	});
 
 	if (error) {
@@ -299,6 +306,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	});
 	const projectId = resolveEffectiveProjectId({ contextType, entityId, projectFocus });
 	const shouldPreparePrompt = isPreparedPromptPrewarmEnabled() && body.prepare_prompt !== false;
+	const preparedPromptStore = shouldPreparePrompt ? createAdminSupabaseClient() : null;
 	const requiresEntityId = isProjectScopedContext(contextType) || contextType === 'daily_brief';
 	if (requiresEntityId && !entityId) {
 		return ApiResponse.success({ warmed: false, reason: 'missing_entity' });
@@ -361,18 +369,20 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		cachedContext.key === cacheKey &&
 		isFastChatContextCacheFresh(cachedContext)
 	) {
-		const preparedPrompt = shouldPreparePrompt
-			? await buildPreparedPrompt({
-					supabase,
-					session,
-					userId: user.id,
-					contextType,
-					entityId,
-					projectFocus,
-					cacheKey,
-					prewarmedContext: cachedContext
-				})
-			: null;
+		const preparedPrompt =
+			shouldPreparePrompt && preparedPromptStore
+				? await buildPreparedPrompt({
+						sourceSupabase: supabase,
+						storeSupabase: preparedPromptStore,
+						session,
+						userId: user.id,
+						contextType,
+						entityId,
+						projectFocus,
+						cacheKey,
+						prewarmedContext: cachedContext
+					})
+				: null;
 		return ApiResponse.success({
 			warmed: true,
 			cache_source: 'session_cache',
@@ -415,10 +425,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	// Prepared prompts are a latency optimization — any failure here must
 	// degrade to a normal prewarm response, never fail the request.
 	let preparedPrompt = null;
-	if (shouldPreparePrompt) {
+	if (shouldPreparePrompt && preparedPromptStore) {
 		try {
 			preparedPrompt = await buildPreparedPrompt({
-				supabase,
+				sourceSupabase: supabase,
+				storeSupabase: preparedPromptStore,
 				session,
 				userId: user.id,
 				contextType,
