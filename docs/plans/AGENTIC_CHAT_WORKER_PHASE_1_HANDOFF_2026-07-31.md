@@ -4,21 +4,75 @@
 
 **Prepared:** 2026-07-31
 
-**Working branch:** Local `main`, per user instruction. The handoff was prepared after commit `6289b3f7f`.
+**Working branch:** Local `main`, per user instruction. The handoff was prepared after commit `6289b3f7f`; implementation is recorded through `7c0e1eb87`.
 
-**Status:** Ready for the next agent to orient and prepare the first Phase 1 slice. Code implementation remains gated on a recorded `PHASE 0 ACCEPTED` verdict or explicit user waiver.
+**Status:** Phase 1 is in progress. Seven bounded implementation commits have landed locally. The legacy SSE path remains the only executable mode. Local tests/typechecks pass, but the configured hosted Supabase project does not yet contain `admit_legacy_agentic_chat_turn`, so deployment and hosted drift verification remain open.
 
 ## Start here
 
 The goal of Phase 1 is to extract a transport-neutral runtime while production continues to use the existing HTTP/SSE path. It is not permission to build or expose the worker path.
 
+## Implementation progress — 2026-07-31
+
+The user explicitly waived the missing independent Phase 0 acceptance gate for the bounded Phase 1 work. The waiver and the approved additive admission-schema boundary are recorded in `AGENTIC_CHAT_WORKER_PHASE_0_CLOSURE_CHECKLIST_2026-07-30.md`. It does not mark Phase 0 independently accepted and does not authorize the paid hosted cohort.
+
+| Phase 1 slice                   | Commit      | State                                          | What landed                                                                                                                                                                                                                                                                                |
+| ------------------------------- | ----------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Atomic legacy admission         | `081d43641` | Complete locally; migration deployment pending | Added the service-only `admit_legacy_agentic_chat_turn(...)` transaction, additive hash/execution-mode schema, duplicate-first handling, pre-message fallback snapshot, exact-once admitted user-message persistence, typed adapter, route cutover, generated types, and SQL/web coverage. |
+| Runtime contracts and ports     | `0801da418` | Complete                                       | Added Node-portable `packages/agentic-chat-runtime` contracts/ports and portability/type tests without moving or enabling execution.                                                                                                                                                       |
+| Legacy event sink               | `38ad9fd9d` | Complete                                       | Routed public legacy SSE payload emission through `AgenticChatEventSinkPort` while preserving response/close lifecycle and endpoint behavior.                                                                                                                                              |
+| Exhaustive event typing         | `9047992bc` | Complete                                       | Derived the runtime event contract from `AgentSSEMessage` and added a type-level proof that no live payload variant is omitted.                                                                                                                                                            |
+| Turn handle/cancel result       | `947d2a726` | Complete for legacy mode                       | Replaced split controller IDs with one `TurnHandleV1`, hydrated session/turn identity from acknowledgements, and routed cancel/detach/reconcile through the handle and `CancelTurnResultV1`. Worker handles fail closed because worker transport remains disabled.                         |
+| Prompt-snapshot writer boundary | `38086f010` | Complete as first part of writer migration     | Made the observability writer an enforced `.server.ts` module, moved prompt-snapshot inserts from the authenticated request client to the service-role writer, and validated active user/session/turn scope before insert.                                                                 |
+| Remove old admission bypass     | `7c0e1eb87` | Complete                                       | Deleted the unused pre-RPC direct `chat_turn_runs` insert/update implementation and its duplicate tests, leaving the atomic RPC as the only legacy admission writer.                                                                                                                       |
+
+### Current verified flow
+
+```text
+POST /api/agent/v2/stream
+  -> authenticate and authorize scope
+  -> resolve the existing legacy session behavior
+  -> compute the gateway-owned canonical request hash
+  -> call service-only admit_legacy_agentic_chat_turn(...)
+       -> duplicate-first resolution under the shared per-user advisory lock
+       -> session ownership + active-turn/stale-reclaim checks
+       -> pre-message fallback-history snapshot
+       -> one running legacy turn + one linked user message atomically
+  -> execute only for outcome=newly_admitted
+  -> consume/use prepared history when valid; otherwise project the RPC snapshot
+  -> link current-message attachments to the admitted user_message_id
+  -> run the unchanged model/tool loop through the legacy SSE event sink
+  -> retain one legacy TurnHandle for cancel, detach, and reconcile
+```
+
+### Recheck evidence
+
+The 2026-07-31 documentation audit re-ran:
+
+- Phase 1 web regression set: 11 files / 157 tests passed.
+- `@buildos/agentic-chat-runtime`: 2 files / 4 tests passed; typecheck passed.
+- `@buildos/shared-types`: 2 files / 13 tests passed; typecheck passed.
+- `@buildos/web` Svelte check: 0 errors and 0 warnings.
+- The committed disposable SQL fixture covers transactionality, duplicate/concurrency behavior, rollback, stale reclaim, ownership, null-key compatibility, and privilege restrictions. This documentation audit did not create a new disposable database run.
+- Hosted RPC drift check: **not green**. It reports `generated only: admit_legacy_agentic_chat_turn`, proving the local migration/generated contract has not yet been applied to the configured hosted project.
+
+No worker queue, worker processor, Realtime transport, transport lease, `queued` status, generation fence, input artifact, worker cancel endpoint, or terminal CAS was added.
+
+### Remaining Phase 1 work
+
+1. Review and apply `20260731150000_agentic_chat_legacy_atomic_admission.sql` to the intended environment, then require `pnpm check:supabase-rpc-drift` to pass. Do not deploy implicitly from this handoff.
+2. Finish the controlled-writer work package. Legacy turn/event and prompt-snapshot writes are now centralized on the service-role observability writer; checkpoint mutations and the authenticated admin prompt-replay source patch still need enforced server-only writers/RPCs.
+3. Move prepared-prompt creation, content read, consume/update, and cleanup behind server-only boundaries; return only bounded metadata to authenticated clients.
+4. Run normalized event-log/persistence differential tests and the retained Phase 0 quality bar. The paid hosted cohort still requires an intentional decision.
+5. Keep Phase 2 blocked until the complete Phase 1 exit gate—including deployment/schema proof and security-boundary migration—is satisfied.
+
 The first authorized implementation slice is deliberately narrower than the whole phase:
 
 > Replace split legacy turn/user-message admission with a service-only `admit_legacy_agentic_chat_turn(...)` transaction that captures fallback history before the current message, produces exactly one running turn and one user message under duplicates/races, and leaves the public endpoint and SSE execution behavior unchanged.
 
-Do not begin that slice until the final independent Phase 0 verdict is recorded. The audit packet is `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_FINAL_REAUDIT_BRIEF_2026-07-31.md`. If acceptance is absent, the next agent may inspect, write a plan, and prepare tests, but must not change runtime or schema. If the user explicitly waives the gate, record the waiver in the Phase 0 checklist before implementation.
+This slice was implemented under the explicit user waiver recorded in the Phase 0 closure checklist. The original gate language and audit packet remain below as historical scope evidence; they should not be misread as an independent Phase 0 acceptance.
 
-### Copy/paste kickoff prompt
+### Historical kickoff prompt (completed)
 
 ```text
 Work from the latest local main branch. Read
@@ -48,9 +102,9 @@ working-tree changes and commit only the scoped Phase 1 files.
 
 Use the latest local `main` containing the acceptance record and this handoff. The primary checkout currently contains unrelated SMS, worker, content, schema, and strategy work. Preserve it. Do not reset, clean, stash, regenerate over, stage, or commit unrelated files. A clean worktree is strongly preferred for migrations and generated types.
 
-## Current legacy control flow
+## Pre-Slice 1A legacy control flow (historical baseline)
 
-The live route currently performs these steps separately:
+Before `081d43641`, the live route performed these steps separately:
 
 ```text
 POST /api/agent/v2/stream
@@ -66,29 +120,29 @@ POST /api/agent/v2/stream
   -> run the existing model/tool loop over SSE
 ```
 
-That split creates the Phase 1 correctness gap: the turn insert, history read, message insert, and turn/message link do not share a transaction. A lost response or concurrent retry can observe mutable history or produce a mismatched turn/message relationship.
+That split was the Slice 1A correctness gap. The atomic legacy admission RPC now owns those operations for admitted user turns.
 
 ### Current code owners
 
-| Concern                               | Current file / symbol                                                                   |
-| ------------------------------------- | --------------------------------------------------------------------------------------- |
-| HTTP/auth/SSE lifecycle               | `apps/web/src/routes/api/agent/v2/stream/+server.ts` (`POST`)                           |
-| Session resolution/creation           | `apps/web/src/lib/services/agentic-chat-v2/session-service.ts` (`resolveSession`)       |
-| Fallback history projection           | `session-service.ts` (`loadRecentMessages`)                                             |
-| Legacy active-turn guard/insert       | `apps/web/src/lib/services/agentic-chat-v2/turn-admission.ts` (`admitFastChatTurn`)     |
-| User/assistant message writes         | `session-service.ts` (`persistMessage`)                                                 |
-| Message attachment writes             | `session-service.ts` (`persistMessageAttachments`)                                      |
-| History compression/continuity        | `apps/web/src/lib/services/agentic-chat-v2/history-composer.ts`                         |
-| Prepared prompt validation/consume    | `prepared-prompt-consumer.ts`, `prepared-prompt-cache.ts`, `prepared-prompt-history.ts` |
-| Canonical request hash                | `packages/shared-types/src/agentic-chat-worker-contract.ts`                             |
-| Route request normalization           | `stream-request.ts`, `types.ts`, `stream-request-client.ts`                             |
-| Service-role client used by the route | `createAdminSupabaseClient()` in the stream route (`internalSupabase`)                  |
+| Concern                               | Current file / symbol                                                                        |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- |
+| HTTP/auth/SSE lifecycle               | `apps/web/src/routes/api/agent/v2/stream/+server.ts` (`POST`)                                |
+| Session resolution/creation           | `apps/web/src/lib/services/agentic-chat-v2/session-service.ts` (`resolveSession`)            |
+| Fallback history projection           | `session-service.ts` and `projectLegacyFallbackHistorySnapshot`                              |
+| Legacy admission transaction          | `turn-admission.ts` (`admitLegacyAgenticChatTurn`) and `admit_legacy_agentic_chat_turn(...)` |
+| User/assistant message writes         | Admission RPC for admitted user messages; `session-service.ts` for later messages            |
+| Message attachment writes             | `session-service.ts` (`persistMessageAttachments`)                                           |
+| History compression/continuity        | `apps/web/src/lib/services/agentic-chat-v2/history-composer.ts`                              |
+| Prepared prompt validation/consume    | `prepared-prompt-consumer.ts`, `prepared-prompt-cache.ts`, `prepared-prompt-history.ts`      |
+| Canonical request hash                | `packages/shared-types/src/agentic-chat-worker-contract.ts`                                  |
+| Route request normalization           | `stream-request.ts`, `types.ts`, `stream-request-client.ts`                                  |
+| Service-role client used by the route | `createAdminSupabaseClient()` in the stream route (`internalSupabase`)                       |
 
-The important route search anchors are `resolveSession`, `admitFastChatTurn`, `consumePreparedPrompt`, `loadRecentMessages`, and `const userMessagePromise = sessionService.persistMessage(...)`.
+The current route search anchors are `resolveSession`, `admitLegacyAgenticChatTurn`, `consumePreparedPrompt`, `projectLegacyFallbackHistorySnapshot`, `createLegacySseEventSink`, and `persistPromptSnapshot`.
 
-## First slice target flow
+## Implemented Slice 1A flow
 
-After this slice, the legacy route should behave as follows:
+The legacy route now behaves as follows locally:
 
 ```text
 authenticate/authorize and resolve the existing legacy session
@@ -317,16 +371,16 @@ Use a clean exact tree and a matching server checkout. Do not overwrite the reta
 - Do not include `book-writing-journey` in the enforceable bar until its separately reviewed implementation lands.
 - Do not alter unrelated SMS/worker/content/schema work in the current checkout.
 
-## What follows Slice 1A
+## Phase 1 sequence after Slice 1A
 
 After the atomic legacy admission slice lands and proves parity, continue Phase 1 in bounded changes:
 
-1. Create `packages/agentic-chat-runtime` contracts/ports without changing transport.
-2. Introduce a transport-neutral event sink and wrap legacy SSE.
-3. Prove the current `AgentSSEMessage` union is exhaustively representable by `AgentStreamEvent`.
-4. Introduce transport-neutral `TurnHandle`/cancel-result abstractions while the server still always selects legacy SSE.
-5. Move remaining turn/event/checkpoint and prompt-snapshot writes behind controlled server writers/RPCs.
-6. Move prepared-prompt content creation/read/consume/cleanup behind server-only boundaries.
-7. Run normalized event-log/persistence differential tests and the Phase 0 quality bar.
+1. [x] Create `packages/agentic-chat-runtime` contracts/ports without changing transport.
+2. [x] Introduce a transport-neutral event sink and wrap legacy SSE.
+3. [x] Prove the current `AgentSSEMessage` union is exhaustively representable by `AgentStreamEvent`.
+4. [x] Introduce transport-neutral `TurnHandle`/cancel-result abstractions while the server still always selects legacy SSE.
+5. [ ] Move remaining turn/event/checkpoint and prompt-snapshot writes behind controlled server writers/RPCs. Turn/event and prompt-snapshot writes are centralized; checkpoint and admin-replay cutovers remain.
+6. [ ] Move prepared-prompt content creation/read/consume/cleanup behind server-only boundaries.
+7. [ ] Run normalized event-log/persistence differential tests and the Phase 0 quality bar.
 
 Only after the complete Phase 1 exit gate is met should Phase 2 durable worker-control-plane schema begin.
