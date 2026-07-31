@@ -27,6 +27,7 @@ import type { ProcessingJob } from '../../lib/supabaseQueue.js';
 import webpush from 'web-push';
 import { sendEmailNotification } from './emailAdapter.js';
 import { sendSMSNotification } from './smsAdapter.js';
+import { SMS_SENDING_DISABLED_REASON, SMS_SENDING_ENABLED } from '../../config/sms.js';
 import {
 	type Logger,
 	createLogger,
@@ -721,6 +722,31 @@ export async function processNotification(
 			jobLogger.info('Delivery already in final state, skipping', {
 				status: delivery.status
 			});
+			return;
+		}
+
+		if (delivery.channel === 'sms' && !SMS_SENDING_ENABLED) {
+			jobLogger.info('SMS notification cancelled by global sending switch', {
+				reason: SMS_SENDING_DISABLED_REASON
+			});
+
+			const { error: cancelError } = await supabase
+				.from('notification_deliveries')
+				.update({
+					status: 'cancelled',
+					failed_at: null,
+					last_error: `Cancelled: ${SMS_SENDING_DISABLED_REASON}`,
+					attempts: (delivery.attempts || 0) + 1,
+					updated_at: new Date().toISOString()
+				})
+				.eq('id', delivery_id);
+
+			if (cancelError) {
+				jobLogger.error('Failed to mark disabled SMS delivery as cancelled', cancelError, {
+					notificationDeliveryId: delivery_id
+				});
+			}
+
 			return;
 		}
 

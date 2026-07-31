@@ -10,7 +10,11 @@ import {
 	PRIVATE_TWILIO_MESSAGING_SERVICE_SID,
 	PRIVATE_TWILIO_VERIFY_SERVICE_SID
 } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const smsSendingEnabled =
+	String(env.PRIVATE_SMS_SENDING_ENABLED ?? 'false').toLowerCase() === 'true';
 
 const smsVerifySchema = z
 	.object({
@@ -22,13 +26,18 @@ const twilioClient = new TwilioClient({
 	accountSid: PRIVATE_TWILIO_ACCOUNT_SID,
 	authToken: PRIVATE_TWILIO_AUTH_TOKEN,
 	messagingServiceSid: PRIVATE_TWILIO_MESSAGING_SERVICE_SID,
-	verifyServiceSid: PRIVATE_TWILIO_VERIFY_SERVICE_SID
+	verifyServiceSid: PRIVATE_TWILIO_VERIFY_SERVICE_SID,
+	sendingEnabled: smsSendingEnabled
 });
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const { session } = await locals.safeGetSession();
 	if (!session?.user) {
 		return ApiResponse.unauthorized();
+	}
+
+	if (!smsSendingEnabled) {
+		return ApiResponse.error('SMS sending is disabled', 503, 'SMS_DISABLED');
 	}
 
 	const parsed = await parseJsonRequest(request, smsVerifySchema);

@@ -18,6 +18,7 @@ import {
 } from './shared/queueUtils';
 import { smsMetricsService } from '@buildos/shared-utils';
 import { checkQuietHours } from '../lib/utils/smsPreferenceChecks';
+import { SMS_SENDING_DISABLED_REASON, SMS_SENDING_ENABLED } from '../config/sms';
 
 // Conditional Twilio initialization
 let twilioClient: TwilioClient | null = null;
@@ -34,13 +35,19 @@ const twilioConfig = {
 const supabase = createServiceClient();
 
 // Only initialize if all required Twilio credentials are present
-if (twilioConfig.accountSid && twilioConfig.authToken && twilioConfig.messagingServiceSid) {
+if (
+	SMS_SENDING_ENABLED &&
+	twilioConfig.accountSid &&
+	twilioConfig.authToken &&
+	twilioConfig.messagingServiceSid
+) {
 	try {
 		twilioClient = new TwilioClient({
 			accountSid: twilioConfig.accountSid,
 			authToken: twilioConfig.authToken,
 			messagingServiceSid: twilioConfig.messagingServiceSid,
-			statusCallbackUrl: twilioConfig.statusCallbackUrl
+			statusCallbackUrl: twilioConfig.statusCallbackUrl,
+			sendingEnabled: SMS_SENDING_ENABLED
 		});
 
 		smsService = new SMSService(twilioClient, supabase);
@@ -50,11 +57,50 @@ if (twilioConfig.accountSid && twilioConfig.authToken && twilioConfig.messagingS
 		twilioClient = null;
 		smsService = null;
 	}
-} else {
+} else if (SMS_SENDING_ENABLED) {
 	console.warn('⚠️ Twilio credentials not configured - SMS functionality disabled');
+} else {
+	console.warn(`⚠️ ${SMS_SENDING_DISABLED_REASON}`);
 }
 
 export async function processSMSJob(job: LegacyJob<SMSJobData>) {
+	if (!SMS_SENDING_ENABLED) {
+		const disabledAt = new Date().toISOString();
+		const { message_id, scheduled_sms_id } = job.data;
+
+		if (message_id) {
+			await supabase
+				.from('sms_messages')
+				.update({
+					status: 'cancelled',
+					twilio_error_message: SMS_SENDING_DISABLED_REASON,
+					updated_at: disabledAt
+				})
+				.eq('id', message_id);
+		}
+
+		if (scheduled_sms_id) {
+			await supabase
+				.from('scheduled_sms_messages')
+				.update({
+					status: 'cancelled',
+					cancelled_at: disabledAt,
+					last_error: SMS_SENDING_DISABLED_REASON,
+					updated_at: disabledAt
+				})
+				.eq('id', scheduled_sms_id);
+		}
+
+		await updateJobStatus(
+			job.id,
+			'completed',
+			'send_sms',
+			SMS_SENDING_DISABLED_REASON,
+			job.processingToken
+		);
+		return { success: false, reason: 'disabled' };
+	}
+
 	// Validate job data immediately to catch errors early
 	const validatedData = validateSMSJobData(job.data, job.data.userId);
 

@@ -41,6 +41,7 @@ import { cleanupStaleJobs } from './lib/utils/queueCleanup';
 import { checkQueueAlerts, emitQueueAlerts } from './lib/queueAlerts';
 import { supabase } from './lib/supabase';
 import { queueRuntimeConfig as config, queue } from './lib/queue';
+import { SMS_SENDING_DISABLED_REASON, SMS_SENDING_ENABLED } from './config/sms';
 
 // Validate environment before starting
 const { valid, errors } = validateEnvironment();
@@ -429,13 +430,18 @@ export async function startWorker() {
 
 	// Check if Twilio is configured
 	const twilioEnabled = !!(
+		SMS_SENDING_ENABLED &&
 		process.env.PRIVATE_TWILIO_ACCOUNT_SID &&
 		process.env.PRIVATE_TWILIO_AUTH_TOKEN &&
 		process.env.PRIVATE_TWILIO_MESSAGING_SERVICE_SID
 	);
 
 	if (!twilioEnabled) {
-		console.warn('⚠️  SMS functionality disabled - Twilio credentials not configured');
+		console.warn(
+			SMS_SENDING_ENABLED
+				? '⚠️  SMS functionality disabled - Twilio credentials not configured'
+				: `⚠️  ${SMS_SENDING_DISABLED_REASON}`
+		);
 	}
 
 	// Run queue cleanup on startup to cancel stale jobs and enforce retention

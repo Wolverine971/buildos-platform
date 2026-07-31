@@ -41,6 +41,7 @@ import {
 	agentRunStrandedSweepEnabled,
 	runAgentRunStrandedSweep
 } from './workers/agent-run/agentRunStrandedSweep';
+import { SMS_SENDING_DISABLED_REASON, SMS_SENDING_ENABLED } from './config/sms';
 
 export type UserBriefPreference = Database['public']['Tables']['user_brief_preferences']['Row'];
 type AgentOperativeRow = AgentOperativeRowShape;
@@ -1250,6 +1251,11 @@ export function validateUserPreference(preference: Partial<UserBriefPreference>)
  * Runs at midnight (12:00 AM) to queue SMS scheduling jobs for users
  */
 async function checkAndScheduleDailySMS() {
+	if (!SMS_SENDING_ENABLED) {
+		console.log(`⏭️ [SMS Scheduler] ${SMS_SENDING_DISABLED_REASON}`);
+		return;
+	}
+
 	try {
 		console.log('📱 [SMS Scheduler] Starting daily SMS check...');
 

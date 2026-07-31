@@ -26,6 +26,7 @@ import { addMinutes, endOfDay, format, isBefore, parseISO, startOfDay } from 'da
 import { queue } from '../lib/queue';
 import { type EventContext, SMSMessageGenerator } from '../lib/services/smsMessageGenerator';
 import { smsMetricsService } from '@buildos/shared-utils';
+import { SMS_SENDING_DISABLED_REASON, SMS_SENDING_ENABLED } from '../config/sms';
 
 export interface DailySMSJobData {
 	userId: string;
@@ -44,6 +45,10 @@ export interface DailySMSJobData {
  */
 export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 	const { userId, date, timezone, leadTimeMinutes } = job.data;
+	if (!SMS_SENDING_ENABLED) {
+		console.log(`⏭️ [DailySMS] ${SMS_SENDING_DISABLED_REASON}`);
+		return { success: true, scheduled_count: 0, message: SMS_SENDING_DISABLED_REASON };
+	}
 
 	console.log(`📱 [DailySMS] Processing for user ${userId}, date ${date}, timezone ${timezone}`);
 

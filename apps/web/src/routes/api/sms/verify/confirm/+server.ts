@@ -9,7 +9,11 @@ import {
 	PRIVATE_TWILIO_MESSAGING_SERVICE_SID,
 	PRIVATE_TWILIO_VERIFY_SERVICE_SID
 } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+
+const smsSendingEnabled =
+	String(env.PRIVATE_SMS_SENDING_ENABLED ?? 'false').toLowerCase() === 'true';
 
 const smsVerifyConfirmSchema = z
 	.object({
@@ -22,7 +26,8 @@ const twilioClient = new TwilioClient({
 	accountSid: PRIVATE_TWILIO_ACCOUNT_SID,
 	authToken: PRIVATE_TWILIO_AUTH_TOKEN,
 	messagingServiceSid: PRIVATE_TWILIO_MESSAGING_SERVICE_SID,
-	verifyServiceSid: PRIVATE_TWILIO_VERIFY_SERVICE_SID
+	verifyServiceSid: PRIVATE_TWILIO_VERIFY_SERVICE_SID,
+	sendingEnabled: smsSendingEnabled
 });
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -68,21 +73,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error;
 		}
 
-		// Send welcome SMS
-		try {
-			await supabase.rpc('queue_sms_message', {
-				p_user_id: session.user.id,
-				p_phone_number: phoneNumber,
-				p_message:
-					"Welcome to BuildOS! We'll help you stay on track. Reply HELP for commands or STOP to opt out.",
-				p_priority: 'normal',
-				p_metadata: {
-					type: 'welcome'
-				}
-			});
-		} catch (welcomeError) {
-			// Don't fail verification if welcome SMS fails
-			console.error('Failed to send welcome SMS:', welcomeError);
+		// Send welcome SMS only when the global sending switch is explicitly enabled.
+		if (smsSendingEnabled) {
+			try {
+				await supabase.rpc('queue_sms_message', {
+					p_user_id: session.user.id,
+					p_phone_number: phoneNumber,
+					p_message:
+						"Welcome to BuildOS! We'll help you stay on track. Reply HELP for commands or STOP to opt out.",
+					p_priority: 'normal',
+					p_metadata: {
+						type: 'welcome'
+					}
+				});
+			} catch (welcomeError) {
+				// Don't fail verification if welcome SMS fails
+				console.error('Failed to send welcome SMS:', welcomeError);
+			}
 		}
 
 		return ApiResponse.success({ verified: true }, 'Phone number verified successfully');

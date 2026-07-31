@@ -213,20 +213,6 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"AgentChatModal",
-				"ProjectEventsModal",
-				"RecentProjectChatsModal",
-				"ProjectModalsHost",
-				"ProjectAuditTracker",
-				"TaskKanbanBoard",
-				"MobileTaskBoard",
-				"ProjectDocumentsSection"
-			]
-		},
-		{
 			"file": "src/routes/projects/create/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal"]
@@ -260,6 +246,20 @@
 				"DocumentModal",
 				"ProjectGraphSection",
 				"AgentChatModal"
+			]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"AgentChatModal",
+				"ProjectEventsModal",
+				"RecentProjectChatsModal",
+				"ProjectModalsHost",
+				"ProjectAuditTracker",
+				"TaskKanbanBoard",
+				"MobileTaskBoard",
+				"ProjectDocumentsSection"
 			]
 		},
 		{
@@ -883,25 +883,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/chat/project-selector-browser.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_PROJECT_SELECTOR_LIMIT",
-				"MAX_PROJECT_SELECTOR_LIMIT",
-				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
-				"normalizeProjectSelectionSearch",
-				"PROJECT_RECENCY_RECENT_MAX_DAYS",
-				"PROJECT_RECENCY_OLDER_MAX_DAYS",
-				"parseProjectUpdatedAt",
-				"formatRelativeProjectUpdate",
-				"groupProjectsByRecency",
-				"normalizeProjectSelectionLimit",
-				"clearProjectSelectionBrowserCache",
-				"fetchProjectSelectionSummaries"
-			]
-		},
-		{
 			"file": "src/lib/components/agent/agent-chat-attachments.svelte.ts",
 			"type": "component",
 			"components": [],
@@ -1057,6 +1038,25 @@
 				"fetchProjectEntities",
 				"normalizeEntitySearch",
 				"normalizeEntityLimit"
+			]
+		},
+		{
+			"file": "src/lib/components/chat/project-selector-browser.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"DEFAULT_PROJECT_SELECTOR_LIMIT",
+				"MAX_PROJECT_SELECTOR_LIMIT",
+				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
+				"normalizeProjectSelectionSearch",
+				"PROJECT_RECENCY_RECENT_MAX_DAYS",
+				"PROJECT_RECENCY_OLDER_MAX_DAYS",
+				"parseProjectUpdatedAt",
+				"formatRelativeProjectUpdate",
+				"groupProjectsByRecency",
+				"normalizeProjectSelectionLimit",
+				"clearProjectSelectionBrowserCache",
+				"fetchProjectSelectionSummaries"
 			]
 		},
 		{
@@ -1365,12 +1365,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["prepareAgentRunChatEventDetail"]
-		},
-		{
 			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 			"type": "component",
 			"components": [],
@@ -1380,6 +1374,12 @@
 				"getCommander",
 				"formatTimelineYearRange"
 			]
+		},
+		{
+			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["prepareAgentRunChatEventDetail"]
 		},
 		{
 			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
@@ -1477,10 +1477,6 @@
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/EventEditModal.svelte"
 		],
-		"src/routes/projects/[id]/+page.svelte": [
-			"src/lib/components/project/ProjectModalsHost.svelte",
-			"src/lib/components/project/ProjectAuditTracker.svelte"
-		],
 		"src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte": [
 			"src/lib/components/ontology/PlanEditModal.svelte",
 			"src/lib/components/ontology/GoalEditModal.svelte",
@@ -1492,6 +1488,10 @@
 		"src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/DocumentModal.svelte"
+		],
+		"src/routes/projects/[id]/+page.svelte": [
+			"src/lib/components/project/ProjectModalsHost.svelte",
+			"src/lib/components/project/ProjectAuditTracker.svelte"
 		],
 		"src/lib/components/project/v2/EntityTabStrip.svelte": [
 			"src/lib/components/project/ProjectInboxPanel.svelte"
@@ -1531,7 +1531,6 @@
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
 		"src/lib/components/project/v2/EntityTabStrip.svelte",
 		"src/lib/components/admin/adminRoutes.ts",
-		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/agent/agent-chat-attachments.svelte.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat-prewarm.svelte.ts",
@@ -1547,6 +1546,7 @@
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
+		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/notifications/notification-preview.ts",
 		"src/lib/components/project/project-entity-modal-loader.ts",
 		"src/lib/components/project/project-event-filters.ts",
@@ -1569,8 +1569,8 @@
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
-		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.layout.ts",

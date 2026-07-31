@@ -3,9 +3,14 @@
 // the delivery to 'pending' with ONE attempt counted, and the queue retry
 // actually produces a second provider call. Regression tests for the
 // never-retries bug (FINAL_STATES short-circuit + double attempt increment).
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
+	// This suite exercises provider retry semantics, so opt in explicitly. The
+	// production default remains fail-closed when the variable is absent.
+	const originalSmsSendingEnabled = process.env.PRIVATE_SMS_SENDING_ENABLED;
+	process.env.PRIVATE_SMS_SENDING_ENABLED = 'true';
+
 	const state = {
 		delivery: {} as Record<string, any>
 	};
@@ -98,6 +103,7 @@ const mocks = vi.hoisted(() => {
 	};
 
 	return {
+		originalSmsSendingEnabled,
 		state,
 		updates,
 		createFakeClient,
@@ -134,6 +140,14 @@ vi.mock('web-push', () => ({
 }));
 
 import { processNotification } from '../src/workers/notification/notificationWorker';
+
+afterAll(() => {
+	if (mocks.originalSmsSendingEnabled === undefined) {
+		delete process.env.PRIVATE_SMS_SENDING_ENABLED;
+	} else {
+		process.env.PRIVATE_SMS_SENDING_ENABLED = mocks.originalSmsSendingEnabled;
+	}
+});
 
 const DELIVERY_ID = 'aaaaaaaa-0000-4000-8000-000000000001';
 const USER_ID = 'bbbbbbbb-0000-4000-8000-000000000001';

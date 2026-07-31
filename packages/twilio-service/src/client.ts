@@ -9,6 +9,8 @@ export interface TwilioConfig {
 	messagingServiceSid: string;
 	verifyServiceSid?: string;
 	statusCallbackUrl?: string;
+	/** Fail-closed gate for every operation that sends a text message. */
+	sendingEnabled?: boolean;
 }
 
 export class TwilioClient {
@@ -26,6 +28,8 @@ export class TwilioClient {
 		scheduledAt?: Date;
 		metadata?: Record<string, any>;
 	}): Promise<MessageInstance> {
+		this.assertSendingEnabled();
+
 		const messageParams: any = {
 			messagingServiceSid: this.config.messagingServiceSid,
 			to: this.formatPhoneNumber(params.to),
@@ -74,6 +78,8 @@ export class TwilioClient {
 	}
 
 	async verifyPhoneNumber(phoneNumber: string): Promise<{ verificationSid: string }> {
+		this.assertSendingEnabled();
+
 		if (!this.config.verifyServiceSid) {
 			throw new Error('Verify service SID not configured');
 		}
@@ -114,6 +120,12 @@ export class TwilioClient {
 
 	async cancelScheduledMessage(messageSid: string): Promise<void> {
 		await this.client.messages(messageSid).update({ status: 'canceled' });
+	}
+
+	private assertSendingEnabled(): void {
+		if (this.config.sendingEnabled !== true) {
+			throw new Error('SMS sending is disabled');
+		}
 	}
 
 	private formatPhoneNumber(phone: string): string {
