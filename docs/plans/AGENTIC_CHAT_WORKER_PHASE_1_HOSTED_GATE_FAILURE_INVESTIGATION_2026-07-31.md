@@ -4,11 +4,11 @@
 
 **Prepared:** 2026-07-31
 
-**Gate verdict:** Failed — 21/24 scenario executions and 27/30 turn assertions passed
+**Gate verdict:** Resolved — the remediation rerun passed 24/24 scenario executions and 30/30 turn assertions
 
-**Current instruction:** Do not run another hosted/model cohort yet
+**Current instruction:** No further Phase 1 hosted rerun is required
 
-**Phase state:** Phase 1 remains open; Phase 2 remains blocked
+**Phase state:** Phase 1 is exited; Phase 2 is unblocked
 
 ## Executive conclusion
 
@@ -21,6 +21,20 @@ The three failed executions must not be classified as random variance. They have
 These are real product/runtime behaviors even if provider sampling determined which repetition exposed them. None is yet proven to have been caused by the Phase 1 admission refactor. All three failed turns were cold turns with zero raw/model history messages, and neither the scenario definitions nor the stream orchestrator changed between the retained Phase 0 and Phase 1 measured commits. The Phase 1 route did change materially, so causality still needs to be tested rather than assumed.
 
 Do not weaken the assertions, increase retry/repetition counts, or rerun the full paid cohort before the deterministic paths below are investigated.
+
+## Resolution summary — 2026-07-31 EDT
+
+The three mechanisms below were reproduced deterministically and remediated without changing scenario assertions, timeouts, tool-round caps, repetition counts, or Vitest retry settings. After explicit approval, the complete clean hosted cohort was rerun from `bb0f16da1ddb96d2519c92987753e941fd46fb43` / tree `61f94f626cc0c96077cc62677bfa0319c6883fd8`.
+
+The retained artifact `docs/plans/evidence/agentic_chat_worker_phase1_gate_rerun_2026-07-31_bb0f16da1.json` records:
+
+- 24/24 scenario executions and 30/30 turn assertions passed;
+- all 30 turns completed with `finished_reason=stop`;
+- zero stream-error turns and zero capture-error turns;
+- repository `dirty=false` and Vitest retry count `0`; and
+- total provider/model cost `$0.09693123`.
+
+Every former failure scenario passed all three repetitions. This result closes the Phase 1 hard gate; the dossiers below remain as the historical causal record, not as unresolved blockers.
 
 ## Evidence inventory
 
@@ -401,12 +415,99 @@ pnpm --filter @buildos/web test:agentic:phase0-evidence
 
 Both commands spend provider/judge money and write disposable fixtures/telemetry to hosted Supabase. Neither is authorized by this handoff.
 
-## Exit criteria
+## Exit criteria — satisfied by the remediation rerun
 
-Phase 1 remains blocked until all of the following are true:
+The Phase 1 block required all of the following. Each condition is now satisfied:
 
 - the three mechanisms have been investigated with deterministic local evidence;
 - any accepted fixes have regression coverage and do not weaken the quality contract;
 - observability can explain terminal/repetition failures without relying on transient console output;
 - an explicitly approved, clean, retry-free full cohort passes 24/24 scenarios and 30/30 turn assertions with zero stream/capture errors; and
 - the Phase 1 handoff and parity ledger record that passing artifact and an explicit exit verdict.
+
+## Fixes implemented 2026-07-31 (landed in `bb0f16da1`; DJ-approved)
+
+All three mechanisms were reproduced deterministically without a provider and fixed in the
+legacy web runtime, per this document's investigation order. No scenario assertion, retry
+count, timeout, tool-round cap, or repetition limit was changed.
+
+### Reschedule no-op loop (dossier 3)
+
+- `turn-intent.ts` — new `turnIntentRequestsTaskScheduling()`: ground-truth detection of
+  re-dating requests from the USER's words only (reschedule/postpone/defer/delay, "push …
+  to friday", "push … out", due-date phrasing), scoped to update/organize intents against a
+  task or unresolved target. Never keys off model output (forward-carry escape-hatch
+  lesson).
+- `tool-validation.ts` + `stream-orchestrator/index.ts` — while the turn is a scheduling
+  request and no call in the turn has carried `start_at`/`due_at`, an `update_onto_task`
+  without either fails validation pre-execution with a repair message naming `due_at` and
+  preserving the resolved `task_id`. Round-atomic: one dated call in the round clears
+  sibling calls (rename + reschedule splits do not ping-pong).
+- `ontology-write-executor.ts` — `updateOntoTask` now detects a no-effect patch (every
+  supplied scalar field equals the stored value, date fields compared after parse) and
+  throws a repairable error instead of reporting "Updated". Fail-open on details-load
+  failure; payloads touching `props`/assignees skip the check.
+- Reproductions: `reschedule-noop-update.regression.test.ts` (observed echo blocked,
+  repaired call is the only PATCH), no-effect cases in
+  `ontology-write-executor.write-integrity.test.ts`, predicate cases in
+  `turn-intent.test.ts`, validation cases in `tool-validation.test.ts`.
+
+### Discarded transport partial (dossier 2)
+
+- `stream-orchestrator/index.ts` — the recovery predicate now admits a mutation-requested
+  turn when ZERO successful writes exist (nothing half-done can be misreported); once a
+  write has succeeded the turn still fails loudly. Recovered text is passed through
+  `enforceMutationOutcomeIntegrity`, which rewrites success claims for unexecuted writes
+  and appends an explicit "has not run yet / remains pending" disclosure for the
+  conditional mutation. Recovered turns finish `completed_degraded` /
+  `synthesis_recovered` (not in the harness failure set — the scenario contract holds
+  without weakening).
+- Reproduction: `mutation-partial-recovery.regression.test.ts` — two terminal-less
+  attempts after successful reads recover the 120+-char partial; a claiming partial is
+  rewritten; a turn with an executed write still fails and carries the recovery decision.
+
+### Observability (investigation-order step 3)
+
+- `llm-pass-runner.ts` — `LlmStreamPassTerminalError` now carries `turnProgress`
+  (rounds/calls/executions), `discardedPartialChars`, and `recoveryBlockedReason`, stamped
+  by the orchestrator before rethrow.
+- `routes/api/agent/v2/stream/+server.ts` — the error path now records a durable
+  `stream_terminal_failure` event with the full terminal measurements (previously
+  console-only) and reconciles `tool_call_count` / `tool_round_count` from completed
+  executions plus the stamped snapshot (fixes the seven-executions-versus-zero-counters
+  discrepancy).
+- `stream-orchestrator/index.ts` — dev prompt dumps now get runtime metadata appended on
+  terminal errors, not only on normal returns.
+
+### One-document-per-parent organization (dossier 1, prompt-level fix only)
+
+- The forced write-pass instruction (`index.ts`) and
+  `buildOrganizeCommissionRepairInstruction` (`repair-instructions.ts`) now state that
+  grouping requires reusing the exact same `new_parent_title` for related documents, with
+  a two-documents-one-category example, and that one-folder-per-document is filing, not
+  organizing. A runtime grouping postcondition was deliberately deferred until this recurs
+  after the instruction fix.
+
+### Verification
+
+- `vitest run` over `agentic-chat-v2/` + `agentic-chat/tools/` + the reschedule scenario
+  unit/assertions suites: 72 + 52 files, 1,086+ tests, all passing; `svelte-check` 0/0.
+- Coordination note: these edits change the v2 route — the tasker/41 open-brief cohort's
+  production-control lane. No lane output existed at edit time (corpus gate still blocks
+  execution); the cohort must record the post-fix commit as its control build.
+
+### Hosted verification and remaining follow-ups
+
+- The explicitly approved, clean, retry-free-at-the-test-level full cohort passed 24/24
+  scenarios and 30/30 turn assertions. Artifact:
+  `docs/plans/evidence/agentic_chat_worker_phase1_gate_rerun_2026-07-31_bb0f16da1.json`.
+- The formerly failing organization, terminal-research, and reschedule scenarios each
+  passed 3/3 repetitions. No runtime grouping postcondition was needed for this exit.
+- One `research-log-readback` pass hit the runtime's 60-second LLM-pass timeout and then
+  recovered through its existing built-in transient retry. The turn finished `completed`
+  / `stop`, its readback assertion passed, and the artifact records no stream/capture
+  error. This event is ephemeral server-log evidence and should remain in the separate
+  provider timeout-band investigation; it is not a hidden scenario retry.
+- TTFT remains a performance follow-up. On the passing rerun, client TTFT p50/p95 was
+  5.065/17.448 seconds versus the retained Phase 0 baseline's 4.254/16.681 seconds. Hosted
+  admission p50/p95 was 119/194 ms versus 96/108 ms in Phase 0.

@@ -4,9 +4,9 @@
 
 **Prepared:** 2026-07-31
 
-**Working branch:** Local `main`, per user instruction. The handoff was prepared after commit `6289b3f7f`; implementation and hosted-gate fixes are recorded through `9521d814f`.
+**Working branch:** Local `main`, per user instruction. The handoff was prepared after commit `6289b3f7f`; implementation, failure remediation, and the passing hosted-gate build are recorded through `bb0f16da1`.
 
-**Status:** Phase 1 implementation and hosted schema deployment are complete. The legacy SSE path remains the only executable mode. Local regression, typecheck, server-boundary, normalized differential, fresh PostgreSQL, generated-type, and RPC-drift gates pass. The paid hosted parity cohort completed on a clean tree but failed 3 of 24 scenario executions, so Phase 1 is **not exited** and Phase 2 remains blocked.
+**Status:** Phase 1 is **exited**. Implementation and hosted schema deployment are complete, the legacy SSE path remains the only executable mode, and all local/schema/differential gates pass. After deterministic remediation of the first hosted cohort's three failures, an explicitly approved clean rerun passed 24/24 scenario executions and 30/30 turn assertions with zero stream or capture errors. Phase 2 is unblocked.
 
 ## Start here
 
@@ -28,6 +28,7 @@ The user explicitly waived the missing independent Phase 0 acceptance gate for t
 | Finish Phase 1 server boundaries   | `94bb04e62` | Complete locally                           | Enforced server-only checkpoint, prepared-prompt, and admin-replay modules; centralized prepared content and replay-source writes on service-role stores/writers; proved authenticated clients cannot reach prepared content; added normalized cold/prepared event-persistence parity and a fresh two-connection PostgreSQL admission runner.                                   |
 | Regenerate hosted database types   | `c5472a276` | Complete                                   | Regenerated from the migrated hosted PostgREST schema: 232 tables and 13 views. The only diff was the now-live admission RPC moving into generated alphabetical function order; shared-types tests and typecheck pass.                                                                                                                                                          |
 | Preserve the Supabase RPC receiver | `9521d814f` | Complete                                   | The first hosted preflight exposed that the typed adapter detached `supabase.rpc`, losing Supabase JS's required receiver before model execution. Bound the method to the client and added a receiver-dependent regression test; focused admission/route tests pass 45/45.                                                                                                      |
+| Remediate hosted quality failures  | `bb0f16da1` | Complete and hosted-verified               | Added scheduling-intent/no-effect repair guards, safe zero-write partial recovery, durable terminal-error observability, and explicit shared-parent organization instructions. The complete clean hosted rerun passed every registered scenario and turn assertion without weakening assertions, timeouts, caps, repetitions, or test retry settings.                           |
 
 ### Current verified flow
 
@@ -61,19 +62,24 @@ The final local Phase 1 recheck ran:
 - The normalized route differential proves equivalent cold-history and prepared-history turns produce the same public SSE and durable persistence snapshots.
 - Authenticated-client denial tests prove prepared content is created, read, claimed, and consumed only through the service-role store. Checkpoint modules and the replay runner are enforced server-only; replay-source mutation is owned by the observability writer.
 - Hosted migration and RPC drift: **green**. The exact `20260731150000_agentic_chat_legacy_atomic_admission.sql` file was applied without sweeping in unrelated migration-history gaps, its version was recorded remotely, and `pnpm check:supabase-rpc-drift` reports 195 aligned functions.
-- Hosted Phase 1 quality cohort: **failed** on clean `HEAD` `0147cbd94e85f406512245803758796145e0e950` / tree `49e74889c528eb0a475b9c0c257e75ff4eb9118e`, with retries disabled. The retained artifact is `docs/plans/evidence/agentic_chat_worker_phase1_gate_2026-07-31_0147cbd94.json`.
+- First hosted Phase 1 quality cohort: **failed** on clean `HEAD` `0147cbd94e85f406512245803758796145e0e950` / tree `49e74889c528eb0a475b9c0c257e75ff4eb9118e`, with retries disabled. The retained artifact is `docs/plans/evidence/agentic_chat_worker_phase1_gate_2026-07-31_0147cbd94.json`.
     - 21/24 scenario executions passed; 27/30 turn assertions passed; all 30 turns completed; one stream-error turn and zero capture-error turns.
     - Failures: `project-organize` repetition 3 nested each original under a different parent; `research-turn-finalizes` repetition 3 exhausted provider stream retries after receiving a substantial partial answer; `task-reschedule-cold-reference` repetition 1 left the seeded August 5 date unchanged because all three update calls omitted `due_at`.
     - Recorded model cost was `$0.12909659`. Admission p50/p95 was 111/187 ms versus the Phase 0 baseline's 96/108 ms; retained-row p95 remained 105.
-- Deep failure investigation and next-agent handoff: `AGENTIC_CHAT_WORKER_PHASE_1_HOSTED_GATE_FAILURE_INVESTIGATION_2026-07-31.md`. It records exact failed tool shapes, the discarded-partial recovery boundary, telemetry gaps, ranked hypotheses, and non-paid diagnostics. No additional hosted run is authorized by that handoff.
+- Deterministic failure investigation and remediation are recorded in `AGENTIC_CHAT_WORKER_PHASE_1_HOSTED_GATE_FAILURE_INVESTIGATION_2026-07-31.md`. The fixes landed without changing the quality contract.
+- Approved hosted Phase 1 quality rerun: **passed** on clean detached `HEAD` `bb0f16da1ddb96d2519c92987753e941fd46fb43` / tree `61f94f626cc0c96077cc62677bfa0319c6883fd8`, with Vitest retries disabled. The retained artifact is `docs/plans/evidence/agentic_chat_worker_phase1_gate_rerun_2026-07-31_bb0f16da1.json`.
+    - 24/24 scenario executions passed; 30/30 turn assertions passed; all 30 turns completed with `finished_reason=stop`; stream-error and capture-error counts were both zero.
+    - Each former failure scenario passed all three repetitions: shared-parent organization, terminal research synthesis, and cold-reference rescheduling.
+    - Recorded model cost was `$0.09693123`. Admission p50/p95 was 119/194 ms; client TTFT p50/p95 was 5.065/17.448 seconds; retained-row p95 was 104.
+    - One `research-log-readback` pass encountered the runtime's 60-second provider timeout and recovered through its existing built-in LLM-pass retry. This was not a Vitest/scenario retry, did not produce a stream or capture error, and the turn completed normally with a passing persisted readback. It remains a separately tracked provider-latency reliability signal, not hidden gate evidence.
 
 No worker queue, worker processor, Realtime transport, transport lease, `queued` status, generation fence, input artifact, worker cancel endpoint, or terminal CAS was added.
 
-### Remaining Phase 1 work
+### Phase 1 exit verdict
 
-1. Follow `AGENTIC_CHAT_WORKER_PHASE_1_HOSTED_GATE_FAILURE_INVESTIGATION_2026-07-31.md`: preserve the temporary traces, reproduce all three mechanisms without a provider, and add the missing terminal/no-effect observability before deciding on fixes. Do not weaken assertions or classify the failures as random without evidence.
-2. After any justified remediation and explicit approval for additional provider spend, rerun the complete clean, retry-free 24-scenario / 30-turn gate. Targeted reruns may diagnose variance but do not replace the full gate.
-3. Only after a full hosted pass, record the Phase 1 exit verdict and begin Phase 2. Until then, keep all Phase 2 worker execution, control-plane schema, and transport work blocked.
+All Phase 1 exit criteria are satisfied: the three failures were investigated and reproduced deterministically, accepted fixes have regression coverage, terminal observability was made durable, and the complete approved hosted gate passed from a clean commit with test retries disabled. Phase 2 worker-control-plane work may begin under the parent migration plan's Phase 2 scope and gates.
+
+The provider timeout/retry signal and TTFT distribution remain performance/reliability follow-ups. They do not alter the Phase 1 quality verdict because every retained turn completed normally and the enforceable gate has no failed assertion, stream error, or capture error.
 
 The first authorized implementation slice is deliberately narrower than the whole phase:
 
@@ -390,6 +396,6 @@ After the atomic legacy admission slice lands and proves parity, continue Phase 
 4. [x] Introduce transport-neutral `TurnHandle`/cancel-result abstractions while the server still always selects legacy SSE.
 5. [x] Move remaining turn/event/checkpoint and prompt-snapshot writes behind controlled server writers/RPCs. The legacy replay-source patch is also owned by the service-role observability writer.
 6. [x] Move prepared-prompt content creation/read/consume/cleanup behind server-only boundaries. Authenticated callers receive bounded metadata only; the existing cleanup scheduler is already service-role owned.
-7. [ ] Run normalized event-log/persistence differential tests and the Phase 0 quality bar. The normalized local differential passes; the first paid hosted cohort completed but failed 3/24 scenarios, so the quality bar remains open.
+7. [x] Run normalized event-log/persistence differential tests and the Phase 0 quality bar. The normalized local differential passes; after deterministic remediation of the first cohort's three failures, the approved complete clean rerun passed 24/24 scenarios and 30/30 turn assertions with zero stream/capture errors.
 
-Only after the complete Phase 1 exit gate is met should Phase 2 durable worker-control-plane schema begin.
+The complete Phase 1 exit gate is met. Phase 2 durable worker-control-plane schema may begin.

@@ -4,7 +4,7 @@
 
 **Date:** 2026-07-29
 
-**Status:** Phase 0 operator evidence is complete and independent re-acceptance remains pending. Phase 1 implementation and hosted schema deployment are complete under the explicit waiver recorded in the closure checklist. The Phase 1 hosted quality rerun failed 3 of 24 scenario executions, so Phase 1 is not exited and Phase 2 remains blocked.
+**Status:** Phase 0 operator evidence is complete and independent re-acceptance remains pending. Phase 1 implementation and hosted schema deployment are complete under the explicit waiver recorded in the closure checklist. After deterministic remediation of the first hosted attempt, the approved clean Phase 1 rerun passed 24/24 scenario executions and 30/30 turn assertions with zero stream/capture errors. Phase 1 is exited and Phase 2 is unblocked.
 
 **Parent plan:** `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md`
 
@@ -29,7 +29,7 @@ The row-by-row ledger below preserves the Phase 0 baseline. These local Phase 1 
 
 Current local evidence is 134 Phase 1 web tests across 17 files before the hosted adapter fix, a post-fix 45/45 focused admission/route run, 4 runtime-package tests, 13 shared-types tests, clean runtime/shared/web typechecks, a passing fresh disposable PostgreSQL integration, and a passing normalized legacy differential. Hosted migration, generated types, and RPC drift are aligned.
 
-All planned Phase 1 code boundaries, local gates, and hosted schema gates are complete. The remaining exit evidence is the hosted quality bar: the first clean retry-free attempt passed 21/24 scenarios and 27/30 turn assertions, below the retained Phase 0 baseline's 24/24 and 30/30. Phase 2 remains blocked until a subsequent complete clean cohort passes.
+All planned Phase 1 code boundaries, local gates, and hosted schema gates are complete. The first clean hosted attempt exposed three distinct product/runtime behaviors and passed only 21/24 scenarios and 27/30 turn assertions. Those mechanisms were investigated and remediated without weakening the contract. The subsequent complete clean cohort passed the retained Phase 0 quality bar, so Phase 1 is exited.
 
 ## Current control points
 
@@ -141,7 +141,21 @@ The retained artifact is `docs/plans/evidence/agentic_chat_worker_phase1_gate_20
 
 This is a hard-gate failure against the retained Phase 0 result below. Provider/model variance is plausible—especially for the exhausted stream—but cannot be assumed away. A targeted diagnostic may distinguish variance from a reproducible regression; only a subsequent full clean, retry-free 24/24 cohort can close Phase 1.
 
-The forensic handoff `AGENTIC_CHAT_WORKER_PHASE_1_HOSTED_GATE_FAILURE_INVESTIGATION_2026-07-31.md` records the failed tool traces, retry/partial-answer behavior, telemetry gaps, ranked hypotheses, and required non-paid diagnostics. It does not authorize another hosted run.
+The forensic handoff `AGENTIC_CHAT_WORKER_PHASE_1_HOSTED_GATE_FAILURE_INVESTIGATION_2026-07-31.md` records the failed tool traces, retry/partial-answer behavior, telemetry gaps, ranked hypotheses, and required non-paid diagnostics. At the time of the failed attempt it did not authorize another hosted run; the subsequent full rerun received separate explicit approval after remediation.
+
+## Phase 1 hosted gate rerun — PASS 2026-07-31 EDT
+
+The retained passing artifact is `docs/plans/evidence/agentic_chat_worker_phase1_gate_rerun_2026-07-31_bb0f16da1.json`. It was generated at `2026-08-01T03:47:07.848Z` from clean detached `HEAD` `bb0f16da1ddb96d2519c92987753e941fd46fb43`, tree `61f94f626cc0c96077cc62677bfa0319c6883fd8`, three repetitions, and Vitest retry count `0`.
+
+- All 24 scenario executions passed across the eight registered scenarios.
+- All 30 turn assertions passed; all 30 turns completed with `finished_reason=stop`; stream-error and capture-error turn counts were both zero.
+- All three repetitions passed for each previously failing scenario: `project-organize`, `research-turn-finalizes`, and `task-reschedule-cold-reference`.
+- Recorded provider/model cost was `$0.09693123`.
+- Hosted admission p50/p95 was 119/194 ms. Client TTFT p50/p95 was 5.065/17.448 seconds; total-duration p50/p95 was 31.196/113.625 seconds. Retained rows remained bounded at p95 104 per turn.
+- One `research-log-readback` model pass hit the runtime's 60-second provider timeout and recovered through the existing built-in LLM-pass retry. This was not a Vitest/scenario retry, emitted no stream/capture error, and the persisted turn/readback passed. Keep it in the separate provider-latency reliability investigation.
+- The artifact intentionally retains no prompt, message, tool-argument, tool-result, or event payload bodies.
+
+**Exit verdict:** the enforceable Phase 1 parity/quality bar is satisfied. Phase 2 is unblocked; the known provider timeout and TTFT signals remain non-gating performance/reliability follow-ups.
 
 ## Phase 0 hosted closure evidence
 
