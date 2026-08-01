@@ -2,6 +2,9 @@
 export const AGENTIC_CHAT_WORKER_CONTRACT_VERSION = 'agentic_chat_worker_v1' as const;
 export const AGENTIC_CHAT_REQUEST_HASH_VERSION = 'agentic_chat_request_hash_v2' as const;
 export const AGENTIC_CHAT_INPUT_ARTIFACT_VERSION = 'agentic_chat_input_v2' as const;
+export const AGENTIC_CHAT_INPUT_ARTIFACT_MAX_BYTES = 2 * 1024 * 1024;
+export const AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES = 256 * 1024;
+export const AGENTIC_CHAT_INPUT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type JsonObject = { [key: string]: JsonValue | undefined };
 export type JsonValue = null | boolean | number | string | JsonObject | JsonValue[];
@@ -81,6 +84,32 @@ export type TurnInputArtifactV1 = TurnInputArtifactContentV1 & {
 	retainUntil: string;
 	contentHash: string;
 };
+
+export type TurnInputArtifactValidationErrorCodeV1 =
+	| 'invalid_version'
+	| 'invalid_history_source'
+	| 'invalid_content'
+	| 'invalid_hash_format'
+	| 'hash_mismatch'
+	| 'history_too_large'
+	| 'artifact_too_large'
+	| 'invalid_retention'
+	| 'prepared_history_has_source_ids'
+	| 'admitted_message_in_history';
+
+export type TurnInputArtifactValidationResultV1 =
+	| {
+			ok: true;
+			contentHash: string;
+			contentBytes: number;
+			historyBytes: number;
+			normalizedContent: TurnInputArtifactContentV1;
+	  }
+	| {
+			ok: false;
+			code: TurnInputArtifactValidationErrorCodeV1;
+			detail: string;
+	  };
 
 export type ChatTurnCommandV1 = {
 	commandVersion: 'agentic_chat_turn_v1';
@@ -349,6 +378,144 @@ export async function hashTurnInputArtifactContentV1(
 	return sha256Hex(canonicalizeTurnInputArtifactContentV1(artifact));
 }
 
+/**
+ * Verify a retained input artifact before any provider work begins.
+ *
+ * This is intentionally independent of a database client so web and worker
+ * adapters can share the same fail-closed version/hash/size contract. Database
+ * relationship ownership and active-turn references remain separate fenced
+ * checks in the Phase 2 service primitives.
+ */
+export async function validateTurnInputArtifactV1(
+	artifact: TurnInputArtifactV1,
+	options: { excludedMessageId?: string | null } = {}
+): Promise<TurnInputArtifactValidationResultV1> {
+	if (artifact.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION) {
+		return {
+			ok: false,
+			code: 'invalid_version',
+			detail: `Expected ${AGENTIC_CHAT_INPUT_ARTIFACT_VERSION}`
+		};
+	}
+	if (
+		artifact.historySource !== 'admission_window' &&
+		artifact.historySource !== 'prepared_prompt'
+	) {
+		return {
+			ok: false,
+			code: 'invalid_history_source',
+			detail: 'History source is not supported by the worker contract'
+		};
+	}
+	if (
+		!Array.isArray(artifact.history) ||
+		artifact.prepared === null ||
+		typeof artifact.prepared !== 'object'
+	) {
+		return {
+			ok: false,
+			code: 'invalid_content',
+			detail: 'Artifact history and prepared content have invalid shapes'
+		};
+	}
+	if (!/^[0-9a-f]{64}$/.test(artifact.contentHash)) {
+		return {
+			ok: false,
+			code: 'invalid_hash_format',
+			detail: 'Content hash must be a lowercase SHA-256 hexadecimal digest'
+		};
+	}
+
+	const createdAtMs = Date.parse(artifact.createdAt);
+	const retainUntilMs = Date.parse(artifact.retainUntil);
+	if (
+		!Number.isFinite(createdAtMs) ||
+		!Number.isFinite(retainUntilMs) ||
+		retainUntilMs - createdAtMs < AGENTIC_CHAT_INPUT_RETENTION_MS
+	) {
+		return {
+			ok: false,
+			code: 'invalid_retention',
+			detail: 'Input artifact retention must cover at least seven days'
+		};
+	}
+
+	if (
+		artifact.historySource === 'prepared_prompt' &&
+		artifact.history.some((message) => message.sourceMessageId !== null)
+	) {
+		return {
+			ok: false,
+			code: 'prepared_history_has_source_ids',
+			detail: 'Prepared-prompt history cannot claim source chat-message lineage'
+		};
+	}
+
+	const excludedMessageId = options.excludedMessageId ?? null;
+	if (
+		excludedMessageId !== null &&
+		artifact.history.some((message) => message.sourceMessageId === excludedMessageId)
+	) {
+		return {
+			ok: false,
+			code: 'admitted_message_in_history',
+			detail: 'The newly admitted user message must not appear in frozen history'
+		};
+	}
+
+	let normalizedContent: TurnInputArtifactContentV1;
+	let canonicalContent: string;
+	let historyBytes: number;
+	try {
+		normalizedContent = normalizeTurnInputArtifactContentV1(artifact);
+		canonicalContent = canonicalizeAgenticChatJson(normalizedContent as unknown as JsonValue);
+		historyBytes = utf8ByteLength(
+			canonicalizeAgenticChatJson(normalizedContent.history as unknown as JsonValue)
+		);
+	} catch (error) {
+		return {
+			ok: false,
+			code: 'invalid_content',
+			detail:
+				error instanceof Error ? error.message : 'Artifact content is not canonical JSON'
+		};
+	}
+
+	if (historyBytes > AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES) {
+		return {
+			ok: false,
+			code: 'history_too_large',
+			detail: `Frozen history exceeds ${AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES} UTF-8 bytes`
+		};
+	}
+
+	const contentBytes = utf8ByteLength(canonicalContent);
+	if (contentBytes > AGENTIC_CHAT_INPUT_ARTIFACT_MAX_BYTES) {
+		return {
+			ok: false,
+			code: 'artifact_too_large',
+			detail: `Input artifact exceeds ${AGENTIC_CHAT_INPUT_ARTIFACT_MAX_BYTES} UTF-8 bytes`
+		};
+	}
+
+	const contentHash = await sha256Hex(canonicalContent);
+	if (contentHash !== artifact.contentHash) {
+		return {
+			ok: false,
+			code: 'hash_mismatch',
+			detail: 'Stored content hash does not match the canonical input artifact'
+		};
+	}
+
+	return {
+		ok: true,
+		contentHash,
+		contentBytes,
+		historyBytes,
+		normalizedContent
+	};
+}
+
 export function createAgentStreamEventIdV1(
 	turnRunId: string,
 	executionGeneration: number,
@@ -427,6 +594,10 @@ async function sha256Hex(value: string): Promise<string> {
 	return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join(
 		''
 	);
+}
+
+function utf8ByteLength(value: string): number {
+	return new TextEncoder().encode(value).byteLength;
 }
 
 function cloneCanonicalJson<T>(value: T): T {

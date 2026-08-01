@@ -4,7 +4,7 @@
 
 **Date:** 2026-07-29
 
-**Status:** Phase 0 contract revision .5, target-database preflight, and the clean retry-free three-sample hosted timing/quality gate are complete; final independent re-acceptance remains pending. The user explicitly waived that missing signature for bounded Phase 1 work. Phase 1 is now exited after its approved clean hosted rerun passed 24/24 scenarios and 30/30 turn assertions with zero stream/capture errors. Phase 2 is unblocked but has not started.
+**Status:** Phase 0 contract revision .5, target-database preflight, and the clean retry-free three-sample hosted timing/quality gate are complete; final independent re-acceptance remains pending. The user explicitly waived that missing signature for bounded Phase 1 work. Phase 1 is exited after its approved clean hosted rerun passed 24/24 scenarios and 30/30 turn assertions with zero stream/capture errors. Phase 2A Slice 1 has started locally; its trust-foundation migration is not yet deployed and no worker path is enabled.
 
 **Scope:** Move interactive agentic-chat execution out of the web request lifecycle and into a bounded worker pool while preserving the current product behavior, live updates, explicit cancellation, persistence, and recovery semantics.
 
@@ -47,7 +47,7 @@ Spec-gap closure (2026-07-29 review): the typed error taxonomy, per-transition i
 
 First-turn latency redesign (2026-07-29, DJ-approved, contract revision 2026-07-29.3): the Realtime topic is per-user (`chat-user:<user_id>`) subscribed at chat-surface mount; the session is resolved-or-created inside the atomic admission transaction keyed by `(user_id, client_turn_id)`; the separate session-bootstrap endpoint/claims table is removed; transport leases are prefetched at compose time; and the first text batch of each generation flushes immediately. This document reflects the revised design throughout.
 
-Phase 1 runtime extraction and server-boundary work is complete; no worker routing or worker-control-plane schema has started. The implementation record, remediation history, and passing hosted artifact are linked from `AGENTIC_CHAT_WORKER_PHASE_1_HANDOFF_2026-07-31.md`.
+Phase 1 runtime extraction and server-boundary work is complete. Phase 2A Slice 1 now adds the local trust/schema foundation without worker routing; no hosted Phase 2 schema or executable worker path exists yet. The Phase 1 record is linked from `AGENTIC_CHAT_WORKER_PHASE_1_HANDOFF_2026-07-31.md`; current Phase 2 progress is recorded in `AGENTIC_CHAT_WORKER_PHASE_2_HANDOFF_2026-07-31.md`.
 
 ## 1. Executive decision
 
@@ -688,7 +688,7 @@ Exit gate:
 - All 12 corrections locked in Section 15 have named proving tests and no unresolved implementation choice that can change their safety semantics.
 - No known current behavior lacks an owner or proving test.
 
-**Operator gate status 2026-07-31:** The baseline, parity ledger, correction chain, production preflight, and hosted evidence are complete. The final clean-tree Phase 0 gate passed all 24 registered scenario executions and all 30 turn assertions with no stream/capture errors. Independent acceptance remains unretained, but the user explicitly waived that signature for bounded Phase 1 work. Phase 1 subsequently completed and its remediation rerun passed the same 24/24 and 30/30 quality bar with zero stream/capture errors; see `AGENTIC_CHAT_WORKER_PHASE_1_HANDOFF_2026-07-31.md`. Phase 2 is unblocked but not started.
+**Operator gate status 2026-07-31:** The baseline, parity ledger, correction chain, production preflight, and hosted evidence are complete. The final clean-tree Phase 0 gate passed all 24 registered scenario executions and all 30 turn assertions with no stream/capture errors. Independent acceptance remains unretained, but the user explicitly waived that signature for bounded Phase 1 work. Phase 1 subsequently completed and its remediation rerun passed the same 24/24 and 30/30 quality bar with zero stream/capture errors; see `AGENTIC_CHAT_WORKER_PHASE_1_HANDOFF_2026-07-31.md`. Phase 2A Slice 1 is now in local implementation with worker execution disabled; see `AGENTIC_CHAT_WORKER_PHASE_2_HANDOFF_2026-07-31.md`.
 
 ### Phase 1 — Shared runtime extraction under legacy SSE
 
@@ -1337,3 +1337,4 @@ Conditions 2 and 3 are satisfied by this planning baseline. Condition 1 (indepen
 - `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_CLOSURE_CHECKLIST_2026-07-30.md`
 - `docs/plans/AGENTIC_CHAT_WORKER_PHASE_0_FINAL_REAUDIT_BRIEF_2026-07-31.md`
 - `docs/plans/AGENTIC_CHAT_WORKER_PHASE_1_HANDOFF_2026-07-31.md`
+- `docs/plans/AGENTIC_CHAT_WORKER_PHASE_2_HANDOFF_2026-07-31.md`

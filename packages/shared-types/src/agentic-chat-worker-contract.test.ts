@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+	AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES,
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
 	canonicalizeAdmissionRequestV1,
 	canonicalizeAgenticChatJson,
@@ -12,6 +13,7 @@ import {
 	hashTurnInputArtifactContentV1,
 	normalizeTurnInputArtifactContentV1,
 	parseAgentStreamEventIdV1,
+	validateTurnInputArtifactV1,
 	type CanonicalAdmissionRequestV1,
 	type NormalizedChatAttachmentV1,
 	type TurnInputArtifactV1
@@ -262,6 +264,67 @@ describe('agentic chat worker v1 contract fixtures', () => {
 		const changedHistory = artifactFixture();
 		changedHistory.history[0]!.content = 'Source history changed after admission.';
 		expect(await hashTurnInputArtifactContentV1(changedHistory)).not.toBe(hash);
+	});
+
+	it('validates the retained artifact hash, byte bounds, lineage, and retention', async () => {
+		const artifact = artifactFixture();
+		artifact.contentHash = await hashTurnInputArtifactContentV1(artifact);
+
+		const valid = await validateTurnInputArtifactV1(artifact, {
+			excludedMessageId: '70000000-0000-4000-8000-000000000099'
+		});
+		expect(valid).toMatchObject({
+			ok: true,
+			contentHash: artifact.contentHash
+		});
+		if (valid.ok) {
+			expect(valid.contentBytes).toBeGreaterThan(valid.historyBytes);
+			expect(valid.historyBytes).toBeLessThan(AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES);
+		}
+
+		expect(
+			await validateTurnInputArtifactV1({ ...artifact, contentHash: '0'.repeat(64) })
+		).toMatchObject({ ok: false, code: 'hash_mismatch' });
+		expect(
+			await validateTurnInputArtifactV1({
+				...artifact,
+				retainUntil: '2026-08-05T19:59:59.999Z'
+			})
+		).toMatchObject({ ok: false, code: 'invalid_retention' });
+
+		const preparedHistory = {
+			...artifact,
+			historySource: 'prepared_prompt' as const
+		};
+		preparedHistory.contentHash = await hashTurnInputArtifactContentV1(preparedHistory);
+		expect(await validateTurnInputArtifactV1(preparedHistory)).toMatchObject({
+			ok: false,
+			code: 'prepared_history_has_source_ids'
+		});
+
+		const withAdmittedMessage = artifactFixture();
+		withAdmittedMessage.history.push({
+			sourceMessageId: '70000000-0000-4000-8000-000000000099',
+			role: 'user',
+			content: 'Current request',
+			attachments: [],
+			toolCalls: [],
+			toolCallId: null
+		});
+		withAdmittedMessage.contentHash = await hashTurnInputArtifactContentV1(withAdmittedMessage);
+		expect(
+			await validateTurnInputArtifactV1(withAdmittedMessage, {
+				excludedMessageId: '70000000-0000-4000-8000-000000000099'
+			})
+		).toMatchObject({ ok: false, code: 'admitted_message_in_history' });
+
+		const oversizeHistory = artifactFixture();
+		oversizeHistory.history[0]!.content = 'x'.repeat(AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES);
+		oversizeHistory.contentHash = await hashTurnInputArtifactContentV1(oversizeHistory);
+		expect(await validateTurnInputArtifactV1(oversizeHistory)).toMatchObject({
+			ok: false,
+			code: 'history_too_large'
+		});
 	});
 
 	it('freezes exact history and excludes the newly admitted user message', () => {
