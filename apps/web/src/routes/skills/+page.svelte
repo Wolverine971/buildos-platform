@@ -612,6 +612,7 @@
 						{#each matchingReferences as result}
 							<a
 								href={result.reference.url}
+								data-sveltekit-reload
 								class="group flex min-h-[10rem] flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-grain tx-weak"
 							>
 								<div class="flex min-w-0 items-center gap-2">
@@ -1131,6 +1132,7 @@
 									</a>
 									<a
 										href={getAgentFilePath(skill)}
+										data-sveltekit-reload
 										class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									>
 										<FileText class="h-4 w-4" />
@@ -1281,6 +1283,7 @@
 						</a>
 						<a
 							href="/agent-skills/index.json"
+							data-sveltekit-reload
 							class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<FileText class="h-4 w-4" />

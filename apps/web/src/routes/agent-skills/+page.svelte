@@ -352,6 +352,7 @@
 			<div class="flex flex-wrap gap-2">
 				<a
 					href="/agent-skills/index.json"
+					data-sveltekit-reload
 					class="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:border-accent/50"
 				>
 					<Code2 class="h-4 w-4" />
@@ -359,6 +360,7 @@
 				</a>
 				<a
 					href="/llms.txt"
+					data-sveltekit-reload
 					class="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:border-accent/50"
 				>
 					<FileText class="h-4 w-4" />
@@ -448,6 +450,7 @@
 								</a>
 								<a
 									href={getPortableSkillPath(skill)}
+									data-sveltekit-reload
 									class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 								>
 									<FileText class="h-3.5 w-3.5" />
@@ -455,6 +458,7 @@
 								</a>
 								<a
 									href={getBundlePath(skill)}
+									data-sveltekit-reload
 									class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 								>
 									<Download class="h-3.5 w-3.5" />
@@ -478,6 +482,7 @@
 							<div class="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
 								<a
 									href={getBuildOsSkillPath(skill)}
+									data-sveltekit-reload
 									class="inline-flex items-center gap-1 hover:text-accent"
 								>
 									BuildOS runtime <ExternalLink class="h-3 w-3" />

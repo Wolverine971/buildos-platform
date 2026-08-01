@@ -243,6 +243,7 @@
 						</a>
 						<a
 							href={getAgentFilePath(skill)}
+							data-sveltekit-reload
 							class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<FileText class="h-4 w-4" />
@@ -482,6 +483,7 @@
 					<div class="mt-4 grid gap-2">
 						<a
 							href={getAgentFilePath(skill)}
+							data-sveltekit-reload
 							class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-accent bg-accent px-3 text-sm font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<FileText class="h-4 w-4" />
@@ -489,6 +491,7 @@
 						</a>
 						<a
 							href={getBundlePath(skill)}
+							data-sveltekit-reload
 							class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<Download class="h-4 w-4" />
@@ -496,6 +499,7 @@
 						</a>
 						<a
 							href={getBuildOsMetadataPath(skill)}
+							data-sveltekit-reload
 							class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<FileText class="h-4 w-4" />
@@ -503,6 +507,7 @@
 						</a>
 						<a
 							href={getBuildOsSkillPath(skill)}
+							data-sveltekit-reload
 							class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<Brain class="h-4 w-4" />
@@ -770,6 +775,7 @@
 									{#each skill.references as reference}
 										<a
 											href={reference.url}
+											data-sveltekit-reload
 											class="group block rounded-md border border-border bg-background p-2 transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 										>
 											<div

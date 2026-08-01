@@ -57,6 +57,18 @@ export type LlmStreamPassTerminal = {
 	measurements: LlmStreamPassTerminalMeasurements;
 };
 
+export type LlmStreamTurnProgressSnapshot = {
+	toolRounds: number;
+	toolCallsMade: number;
+	toolExecutionCount: number;
+};
+
+export type LlmStreamRecoveryBlockedReason =
+	| 'mutation_write_executed'
+	| 'pending_tool_calls'
+	| 'partial_below_threshold'
+	| 'no_successful_reads';
+
 /**
  * Typed terminal failure for a logical LLM pass. The phase-1 recovery boundary
  * can inspect this value without parsing provider/error prose, while the
@@ -64,6 +76,15 @@ export type LlmStreamPassTerminal = {
  */
 export class LlmStreamPassTerminalError extends Error {
 	override name = 'LlmStreamPassTerminalError';
+
+	/**
+	 * Stamped by the orchestrator before rethrowing so the route's error path
+	 * can persist true tool counters and the recovery decision instead of the
+	 * 0/0 defaults a failed turn otherwise records.
+	 */
+	turnProgress?: LlmStreamTurnProgressSnapshot;
+	discardedPartialChars?: number;
+	recoveryBlockedReason?: LlmStreamRecoveryBlockedReason;
 
 	constructor(
 		message: string,

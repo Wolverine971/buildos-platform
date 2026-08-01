@@ -656,6 +656,7 @@ export function buildOrganizeCommissionRepairInstruction(
 		'The user commissioned a reorganization and this turn has not changed anything yet — a structure proposed in prose is not a reorganization.',
 		'Execute it now: call move_document_in_tree once per document that should live under a parent; multiple calls in this one response are expected.',
 		'For each move, set new_parent_title to a short category name (e.g. "Pricing", "Meeting notes") — the server reuses the existing document with that title or creates the parent. A move with neither parent field goes to the root and organizes nothing.',
+		'Group related documents under the SAME parent: reuse the exact same new_parent_title string for every document in a category (e.g. "meeting 3-14 raw" and "meeting 4-02 raw" both get new_parent_title "Meeting notes"). Giving every document its own distinct parent is filing, not organizing — prefer a few shared categories over one folder per document.',
 		inventoryLines,
 		'Use new_parent_id only for a UUID that appears in that list. NEVER invent a UUID — an unknown id is rejected.',
 		'Do not restate the plan. Then state exactly what changed, briefly.'

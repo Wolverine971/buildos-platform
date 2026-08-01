@@ -467,6 +467,7 @@
 												</a>
 												<a
 													href={getAgentFilePath(skill)}
+													data-sveltekit-reload
 													class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 												>
 													<FileText class="h-4 w-4" />
@@ -759,6 +760,7 @@
 						</a>
 						<a
 							href="/agent-skills/index.json"
+							data-sveltekit-reload
 							class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<FileText class="h-4 w-4" />

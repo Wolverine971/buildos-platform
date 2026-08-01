@@ -327,4 +327,100 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 			expect(patchBodies[0].body.title).toBe('Renamed task');
 		});
 	});
+
+	describe('no-effect task update throws instead of reporting success (2026-07-31 reschedule incident)', () => {
+		const storedTask = {
+			id: 'task-1',
+			project_id: 'project-1',
+			title: 'Send the launch announcement to the beta list',
+			type_key: 'task.default',
+			state_key: 'todo',
+			priority: 2,
+			due_at: '2026-08-05T15:00:00+00:00'
+		};
+
+		it('throws when the patch only resends the current title/type echo, and sends no PATCH', async () => {
+			const executor = new OntologyWriteExecutor(context);
+
+			await expect(
+				executor.updateOntoTask(
+					{
+						task_id: 'task-1',
+						title: 'Send the launch announcement to the beta list',
+						type_key: 'task.default'
+					},
+					async () => ({ task: storedTask })
+				)
+			).rejects.toThrow(/No-effect update.*due_at/s);
+
+			expect(patchBodies).toHaveLength(0);
+		});
+
+		it('treats an equivalent-but-differently-formatted due_at as unchanged', async () => {
+			const executor = new OntologyWriteExecutor(context);
+
+			await expect(
+				executor.updateOntoTask(
+					{
+						task_id: 'task-1',
+						title: 'Send the launch announcement to the beta list',
+						due_at: '2026-08-05T15:00:00Z'
+					},
+					async () => ({ task: storedTask })
+				)
+			).rejects.toThrow(/No-effect update/);
+
+			expect(patchBodies).toHaveLength(0);
+		});
+
+		it('PATCHes when due_at actually moves, even alongside echoed fields', async () => {
+			const executor = new OntologyWriteExecutor(context);
+
+			await executor.updateOntoTask(
+				{
+					task_id: 'task-1',
+					title: 'Send the launch announcement to the beta list',
+					type_key: 'task.default',
+					due_at: '2026-08-07T15:00:00Z'
+				},
+				async () => ({ task: storedTask })
+			);
+
+			expect(patchBodies).toHaveLength(1);
+			expect(patchBodies[0].body.due_at).toBe('2026-08-07T15:00:00Z');
+		});
+
+		it('skips the check when the payload touches non-scalar fields such as props', async () => {
+			const executor = new OntologyWriteExecutor(context);
+			const loader = vi.fn(async () => ({ task: storedTask }));
+
+			await executor.updateOntoTask(
+				{
+					task_id: 'task-1',
+					title: 'Send the launch announcement to the beta list',
+					props: { note: 'unchanged-looking but not compared' }
+				},
+				loader
+			);
+
+			expect(loader).not.toHaveBeenCalled();
+			expect(patchBodies).toHaveLength(1);
+		});
+
+		it('fails open when the details loader fails — the PATCH still runs', async () => {
+			const executor = new OntologyWriteExecutor(context);
+
+			await executor.updateOntoTask(
+				{
+					task_id: 'task-1',
+					title: 'Send the launch announcement to the beta list'
+				},
+				async () => {
+					throw new Error('details fetch failed');
+				}
+			);
+
+			expect(patchBodies).toHaveLength(1);
+		});
+	});
 });

@@ -87,6 +87,26 @@ const PROPERTY_REMOVAL_TARGET_PATTERN =
 const RELATIONSHIP_REMOVAL_PATTERN =
 	/\b(?:links?|relationships?|connections?|edges?)\b|\bfrom\s+(?:the\s+)?(?:projects?|plans?|goals?|tasks?|documents?|docs?|folders?|trees?|milestones?)\b/i;
 
+// Ground-truth scheduling detection (2026-07-31 reschedule no-op incident):
+// "push it to friday" produced three identical `update_onto_task` calls that
+// omitted `due_at` and were each reported as successful updates. These
+// patterns run against the USER's words only — never model output — so the
+// downstream validation floor cannot be waived by anything the model writes.
+const SCHEDULE_EXPLICIT_VERB = /\b(?:reschedule|postpone|defer|delay)\b/i;
+const SCHEDULE_TEMPORAL_TARGET =
+	/(?:today|tonight|tomorrow|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|week(?:end)?|month|morning|afternoon|evening|noon|midnight|eod|eow|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|\d)/i;
+const SCHEDULE_RETARGET_PATTERN = new RegExp(
+	`\\b(?:push|move|shift|bump|put)(?:\\s+\\S+){0,6}?\\s+(?:to|until|till|for|by)\\s+(?:the\\s+|this\\s+|next\\s+|coming\\s+|early\\s+|late\\s+)*${SCHEDULE_TEMPORAL_TARGET.source}`,
+	'i'
+);
+// "forward with" is the progress idiom ("move forward with the task") and
+// "out of" is containment ("move the task out of the project") — neither is a
+// date shift; bare "back"/"out"/"forward" after these verbs read as re-dating.
+const SCHEDULE_SHIFT_PATTERN =
+	/\b(?:push|move|shift|bump)(?:\s+\S+){0,6}?\s+(?:back\b|out(?!\s+of)\b|forward(?!\s+with)\b)/i;
+const SCHEDULE_DUE_PATTERN =
+	/\b(?:due date|deadline)\b|\bdue\s+(?:on|by|date|this|next|today|tomorrow|mon(?:day)?|tues?(?:day)?|wed(?:nesday)?|thur?s?(?:day)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/i;
+
 const DOCUMENT_NOUN =
 	/\b(?:documents?|docs?|notes?|briefs?|outlines?|summaries?|logs?|chapters?)\b/i;
 const TASK_NOUN = /\b(?:tasks?|todos?|to-dos?)\b/i;
@@ -249,6 +269,42 @@ export function shouldBypassDomainSensingForTurnIntent(intent: FastChatTurnInten
 
 export function looksLikeFastChatMutationRequest(text: string): boolean {
 	return classifyExplicitMutation(normalizeText(text)) !== null;
+}
+
+/**
+ * True when the user's own words ask for a task to be re-dated ("push it to
+ * friday", "postpone the review", "change the due date"). Used as a validation
+ * floor: while this holds and no call in the turn has carried a scheduling
+ * field, an `update_onto_task` without `start_at`/`due_at` is a repairable
+ * validation failure instead of a silently successful no-op PATCH.
+ *
+ * Deliberately narrow: create-shaped requests ("schedule a task for friday")
+ * carry the date in the create call, and event/document/project targets never
+ * route to `update_onto_task`, so only update/organize intents against a task
+ * or an unresolved ("it"/"the thing") target qualify.
+ */
+export function turnIntentRequestsTaskScheduling(intent: FastChatTurnIntent): boolean {
+	if (!intent.requiresWrite) return false;
+	const text = normalizeText(intent.originalRequestText);
+	if (!text) return false;
+	const operations =
+		intent.operations.length > 0
+			? intent.operations
+			: intent.action
+				? [{ action: intent.action, entityKind: intent.entityKind }]
+				: [];
+	const hasTaskShapedUpdateOperation = operations.some(
+		(operation) =>
+			(operation.action === 'update' || operation.action === 'organize') &&
+			(operation.entityKind === 'task' || operation.entityKind === 'unknown')
+	);
+	if (!hasTaskShapedUpdateOperation) return false;
+	return (
+		SCHEDULE_EXPLICIT_VERB.test(text) ||
+		SCHEDULE_RETARGET_PATTERN.test(text) ||
+		SCHEDULE_SHIFT_PATTERN.test(text) ||
+		SCHEDULE_DUE_PATTERN.test(text)
+	);
 }
 
 export function buildPendingTurnIntentSystemMessage(intent: FastChatTurnIntent): string | null {

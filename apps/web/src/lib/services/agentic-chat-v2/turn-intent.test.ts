@@ -6,7 +6,8 @@ import {
 	getWriteToolNamesForTurnIntent,
 	readFastChatPendingTurnIntent,
 	resolveFastChatTurnIntent,
-	shouldBypassDomainSensingForTurnIntent
+	shouldBypassDomainSensingForTurnIntent,
+	turnIntentRequestsTaskScheduling
 } from './turn-intent';
 
 describe('resolveFastChatTurnIntent', () => {
@@ -256,6 +257,72 @@ describe('resolveFastChatTurnIntent', () => {
 		});
 
 		expect(intent).toMatchObject({ requiresWrite: false, clearPending: false });
+	});
+});
+
+describe('turnIntentRequestsTaskScheduling', () => {
+	const intentFor = (message: string) =>
+		resolveFastChatTurnIntent({ contextType: 'project', latestUserMessage: message });
+
+	it('detects the 2026-07-31 incident message ("push it to friday" shape)', () => {
+		const intent = intentFor(
+			"push the beta list email thing to friday, i'm not gonna get to it before then"
+		);
+		expect(intent.requiresWrite).toBe(true);
+		expect(turnIntentRequestsTaskScheduling(intent)).toBe(true);
+	});
+
+	it('detects explicit reschedule verbs', () => {
+		expect(turnIntentRequestsTaskScheduling(intentFor('postpone the review task'))).toBe(true);
+		expect(
+			turnIntentRequestsTaskScheduling(intentFor('please defer that until next week'))
+		).toBe(true);
+	});
+
+	it('detects a relative shift without a named day', () => {
+		expect(turnIntentRequestsTaskScheduling(intentFor('push the launch task out a week'))).toBe(
+			true
+		);
+	});
+
+	it('detects due-date phrasing', () => {
+		expect(
+			turnIntentRequestsTaskScheduling(
+				intentFor('change the due date on that task to monday')
+			)
+		).toBe(true);
+	});
+
+	it('ignores non-scheduling task updates', () => {
+		expect(
+			turnIntentRequestsTaskScheduling(intentFor('rename the review task to "Final review"'))
+		).toBe(false);
+		expect(turnIntentRequestsTaskScheduling(intentFor('mark the review task as done'))).toBe(
+			false
+		);
+	});
+
+	it('ignores the progress idiom and containment moves', () => {
+		expect(
+			turnIntentRequestsTaskScheduling(intentFor('move forward with the review task'))
+		).toBe(false);
+		expect(
+			turnIntentRequestsTaskScheduling(
+				intentFor('move the review task out of the launch project')
+			)
+		).toBe(false);
+	});
+
+	it('ignores document organization moves', () => {
+		expect(
+			turnIntentRequestsTaskScheduling(
+				intentFor('move the pricing doc into the strategy folder')
+			)
+		).toBe(false);
+	});
+
+	it('ignores read-only turns entirely', () => {
+		expect(turnIntentRequestsTaskScheduling(intentFor('what is due this friday?'))).toBe(false);
 	});
 });
 

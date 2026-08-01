@@ -79,7 +79,26 @@ export type ToolValidationIssue = {
 
 type GatewayValidationContext = {
 	projectId?: string | null;
+	/**
+	 * The user's own words asked for a task to be re-dated and no call this
+	 * turn has carried a scheduling field yet (caller computes both halves).
+	 * While set, an `update_onto_task` without `start_at`/`due_at` fails
+	 * validation with a repair message naming the missing field — the 2026-07-31
+	 * reschedule incident showed the executor otherwise reports an unchanged
+	 * title/type echo as a successful update and the model loops on it.
+	 */
+	taskScheduleFieldRequired?: boolean;
 };
+
+const TASK_SCHEDULE_FIELD_KEYS = ['due_at', 'start_at'] as const;
+
+export function toolCallProvidesTaskScheduleField(
+	toolName: string,
+	args: Record<string, any>
+): boolean {
+	if (toolName !== 'update_onto_task') return false;
+	return TASK_SCHEDULE_FIELD_KEYS.some((key) => hasMeaningfulUpdateValue(args[key]));
+}
 
 type ToolValidationRecord = {
 	toolCall: ChatToolCall;
@@ -153,6 +172,18 @@ export function validateToolCalls(
 
 		if (toolName.startsWith(UPDATE_TOOL_PREFIX)) {
 			validateUpdateToolArgs(toolName, args, errors, normalizedOp);
+		}
+
+		if (
+			validationContext.taskScheduleFieldRequired === true &&
+			toolName === 'update_onto_task' &&
+			!toolCallProvidesTaskScheduleField(toolName, args)
+		) {
+			const taskId = typeof args.task_id === 'string' ? args.task_id.trim() : '';
+			errors.push(
+				`This turn is a scheduling request, but this update_onto_task call sets neither due_at nor start_at — resending a task's current title/type changes nothing. ` +
+					`Re-send update_onto_task${taskId ? ` for task_id ${taskId}` : ' with the same task_id'} including due_at (ISO 8601 datetime, e.g. 2026-08-07T15:00:00Z) for the requested day.`
+			);
 		}
 
 		records.push({

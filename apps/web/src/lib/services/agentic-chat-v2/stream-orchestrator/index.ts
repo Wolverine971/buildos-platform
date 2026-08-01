@@ -26,6 +26,7 @@ import { buildLiveSnapshotFromTokens, FASTCHAT_TOKEN_BUDGETS } from '../context-
 import {
 	getAutonomousWriteToolNamesForTurnIntent,
 	getWriteToolNamesForTurnIntent,
+	turnIntentRequestsTaskScheduling,
 	type FastChatTurnIntent
 } from '../turn-intent';
 import { looksLikeProjectDocumentOrganizeTurn } from '../tool-selector';
@@ -72,6 +73,7 @@ import {
 	collectDocumentInventoryFromReads,
 	collectGatewayWriteIntentOps,
 	countDistinctSuccessfulWriteTargets,
+	enforceMutationOutcomeIntegrity,
 	hasGatewayCreateFieldNoProgressFailure
 } from './repair-instructions';
 import {
@@ -86,6 +88,7 @@ import {
 	hasDocumentOrganizationValidationIssue
 } from './round-analysis';
 import {
+	classifyToolExecution,
 	doesToolExecutionRequireUserAction,
 	didGatewayExecSucceed,
 	didToolExecutionReachWriteExecutor,
@@ -95,7 +98,7 @@ import {
 	isWriteLikeOperation
 } from './tool-classification';
 import { buildMemoServedResult, buildReadMemoKey, shouldMemoizeReadResult } from './read-memo';
-import { validateToolCalls } from './tool-validation';
+import { toolCallProvidesTaskScheduleField, validateToolCalls } from './tool-validation';
 import { buildWriteLedgerMessage } from './write-ledger';
 import {
 	buildForcedSynthesisMessages,
@@ -411,6 +414,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		countDistinctSuccessfulWriteTargets(toolExecutions, commissionedWriteToolNames);
 	const mutationRequested =
 		params.turnIntent?.requiresWrite === true || commissionedWriteToolNames.length > 0;
+	const taskSchedulingRequested = turnIntentRequestsTaskScheduling(
+		params.turnIntent ?? emptyTurnIntent
+	);
 	const expectedWriteToolNames = getWriteToolNamesForTurnIntent(
 		params.turnIntent ?? emptyTurnIntent
 	);
@@ -804,6 +810,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					`For the next response, use only these write tools: ${toolNames.join(', ')}.`,
 					'Execute the reorganization now — call move_document_in_tree once per document that needs a new parent; multiple calls in this one response are expected.',
 					'For each move, set new_parent_title to a short category name (e.g. "Pricing", "Meeting notes") — the server reuses the existing document with that title or creates the parent. A move with neither parent field goes to the root and organizes nothing.',
+					'Group related documents under the SAME parent: reuse the exact same new_parent_title string for every document in a category (e.g. "meeting 3-14 raw" and "meeting 4-02 raw" both get new_parent_title "Meeting notes"). Giving every document its own distinct parent is filing, not organizing — prefer a few shared categories over one folder per document.',
 					inventory.length > 0
 						? `The ONLY valid document ids in this project are: ${inventory
 								.map((doc) => `${doc.id} ("${doc.title}")`)
@@ -1352,6 +1359,16 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					modelRouting
 				});
 			} catch (error) {
+				if (error instanceof LlmStreamPassTerminalError) {
+					// The route's error path persists these; without them a failed
+					// turn records 0 calls / 0 rounds even after successful tools ran
+					// (observed 2026-07-31: seven reads, counters said zero).
+					error.turnProgress = {
+						toolRounds,
+						toolCallsMade,
+						toolExecutionCount: toolExecutions.length
+					};
+				}
 				if (!(error instanceof LlmStreamPassTerminalError) || error.outcome === 'aborted') {
 					throw error;
 				}
@@ -1359,9 +1376,21 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				const recoveredPartialCandidate = sanitizeAssistantFinalText(
 					error.partialAssistantText || activeAssistantBuffer
 				).trim();
+				// A mutation-requested turn may recover a transport partial only while
+				// nothing has been written: with zero successful writes the partial
+				// cannot describe a change that must be double-checked, and
+				// enforceMutationOutcomeIntegrity rewrites any claim of a write that
+				// never executed before the text is finalized. Once a write has
+				// succeeded, keep failing loudly — a partial that under- or
+				// mis-reports an executed mutation is worse than an error.
+				const hasSuccessfulWriteExecution = toolExecutions.some(
+					(execution) =>
+						classifyToolExecution(execution) === 'write' &&
+						didGatewayExecSucceed(execution)
+				);
 				const canRecoverReadOnlyToolPass =
 					!noToolSynthesisPass &&
-					!mutationRequested &&
+					(!mutationRequested || !hasSuccessfulWriteExecution) &&
 					activePendingToolCallCount === 0 &&
 					isUsableReadOnlyTransportPartial(recoveredPartialCandidate) &&
 					toolExecutions.some(
@@ -1370,6 +1399,15 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 							isPureReadToolName(execution.toolCall.function.name)
 					);
 				if (!noToolSynthesisPass && !canRecoverReadOnlyToolPass) {
+					error.discardedPartialChars = recoveredPartialCandidate.length;
+					error.recoveryBlockedReason =
+						mutationRequested && hasSuccessfulWriteExecution
+							? 'mutation_write_executed'
+							: activePendingToolCallCount > 0
+								? 'pending_tool_calls'
+								: !isUsableReadOnlyTransportPartial(recoveredPartialCandidate)
+									? 'partial_below_threshold'
+									: 'no_successful_reads';
 					throw error;
 				}
 				const recoveredPartialText = isUsableSynthesisPartial(recoveredPartialCandidate)
@@ -1643,8 +1681,25 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						? entityId
 						: null;
 			const allowedToolNamesAtRoundStart = new Set(getPassAllowedToolNames());
+			// The scheduling floor is round-atomic: if any call in this round (or a
+			// prior successful execution) carries due_at/start_at, sibling calls
+			// (a rename, a state change) pass — the turn's scheduling obligation is
+			// already covered and flagging them would only cause repair ping-pong.
+			const providesTaskScheduleField = (toolCall: ChatToolCall): boolean => {
+				if (toolCall.function?.name !== 'update_onto_task') return false;
+				const { args } = parseToolArguments(toolCall.function.arguments);
+				return toolCallProvidesTaskScheduleField('update_onto_task', args);
+			};
+			const taskScheduleFieldRequired =
+				taskSchedulingRequested &&
+				!pendingToolCalls.some(providesTaskScheduleField) &&
+				!toolExecutions.some(
+					(execution) =>
+						execution.result.success && providesTaskScheduleField(execution.toolCall)
+				);
 			const validationIssues = validateToolCalls(pendingToolCalls, getPassTools(), {
-				projectId: validationProjectId
+				projectId: validationProjectId,
+				taskScheduleFieldRequired
 			});
 			if (writeIntentToolPass && commissionedWriteMinimumCount > 1) {
 				const seenDocumentIds = collectSuccessfulCommissionedDocumentIds(toolExecutions);
@@ -2321,6 +2376,18 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				orchestrationInterventions: buildOrchestrationInterventions()
 			};
 		}
+		// Terminal errors previously left the prompt dump without any runtime
+		// metadata, so the failed traces from the 2026-07-31 gate had to be
+		// reconstructed from console output. Dev-only, mirrors the normal return.
+		if (dev) {
+			appendRuntimeMetadataToPromptDump(promptDumpPath, {
+				llmPasses: llmStreamPasses,
+				finishedReason: 'error',
+				toolRounds,
+				toolCallsMade,
+				toolExecutions
+			});
+		}
 		throw error;
 	}
 
@@ -2349,6 +2416,19 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		answerSource: 'model'
 	};
 	if (synthesisTransportRecovery) {
+		if (finalAssistantText.trim()) {
+			// A recovered partial from a mutation-requested turn must not read as
+			// a completed write: no write executed in the failed pass (the
+			// recovery predicate guarantees it), so any success claim in the
+			// partial is rewritten and the unfulfilled intent is disclosed.
+			finalAssistantText = enforceMutationOutcomeIntegrity(finalAssistantText, {
+				contextType: normalizedContext,
+				toolExecutions,
+				latestUserText: message,
+				explicitMutationRequested: mutationRequested,
+				expectedWriteToolNames
+			});
+		}
 		if (!finalAssistantText.trim()) {
 			finalAssistantText =
 				'The response stalled before I could produce an answer, and I did not collect usable evidence for this request. Please retry.';

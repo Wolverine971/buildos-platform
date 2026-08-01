@@ -237,6 +237,7 @@ import {
 	type FastChatCancelReason
 } from '$lib/services/agentic-chat-v2/cancel-reason-channel';
 import { parseFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request';
+import { LlmStreamPassTerminalError } from '$lib/services/agentic-chat-v2/stream-orchestrator/llm-pass-runner';
 import {
 	admitLegacyAgenticChatTurn,
 	DEFAULT_PROGRESS_STALE_RECLAIM_MS,
@@ -4569,6 +4570,40 @@ export const POST: RequestHandler = async ({
 				projectId: projectIdForLogs,
 				metadata: { contextType, entityId, sessionId: streamRequest.session_id }
 			});
+			// 2026-07-31 gate finding: the terminal stream measurements existed
+			// only in console output and the failed turn run recorded 0 calls /
+			// 0 rounds despite seven completed executions. Persist both durably.
+			const terminalStreamFailure =
+				error instanceof LlmStreamPassTerminalError ? error : null;
+			if (terminalStreamFailure) {
+				const measurements = terminalStreamFailure.measurements;
+				observabilityWriter.recordEvent('llm', 'stream_terminal_failure', {
+					outcome: terminalStreamFailure.outcome,
+					pass: measurements.pass,
+					pass_role: measurements.passRole ?? null,
+					attempts: measurements.attempts,
+					max_attempts: measurements.maxAttempts,
+					retry_count: measurements.retryCount,
+					timeout_ms: measurements.timeoutMs,
+					duration_ms: measurements.durationMs,
+					terminal_event_received: measurements.terminalEventReceived,
+					assistant_text_chars_received: measurements.assistantTextCharsReceived,
+					reasoning_chars_received: measurements.reasoningCharsReceived,
+					tool_calls_received: measurements.toolCallsReceived,
+					retryable: measurements.retryable,
+					attempts_exhausted: measurements.attemptsExhausted,
+					last_error_message: measurements.lastErrorMessage ?? null,
+					attempt_routes: (measurements.attemptRoutes ?? []).map((route) => ({
+						attempt: route.attempt,
+						models: route.models ?? null,
+						max_tokens: route.maxTokens ?? null
+					})),
+					discarded_partial_chars: terminalStreamFailure.discardedPartialChars ?? null,
+					recovery_blocked_reason: terminalStreamFailure.recoveryBlockedReason ?? null,
+					turn_tool_rounds: terminalStreamFailure.turnProgress?.toolRounds ?? null,
+					turn_tool_calls_made: terminalStreamFailure.turnProgress?.toolCallsMade ?? null
+				} as Json);
+			}
 			if (completedToolExecutions.length > 0 && timingSessionId) {
 				await persistToolExecutionRows({
 					supabase,
@@ -4679,10 +4714,20 @@ export const POST: RequestHandler = async ({
 				});
 			}
 			observabilityWriter.queueTimingMetric('error');
+			// Reconcile counters from the executions that actually completed; the
+			// exact round count rides on the terminal error when available, and a
+			// turn with executions had at least one round by definition.
 			await observabilityWriter.persistFinalState(
 				{
 					status: 'failed',
 					finished_reason: 'error',
+					tool_call_count: Math.max(
+						terminalStreamFailure?.turnProgress?.toolCallsMade ?? 0,
+						completedToolExecutions.length
+					),
+					tool_round_count:
+						terminalStreamFailure?.turnProgress?.toolRounds ??
+						(completedToolExecutions.length > 0 ? 1 : 0),
 					validation_failure_count: observabilityWriter.getValidationFailureCount(),
 					...observabilityWriter.getFirstLanePatch(),
 					prompt_snapshot_id: promptSnapshotId,

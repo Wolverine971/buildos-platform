@@ -609,24 +609,28 @@
 					<div class="mt-2 flex flex-wrap gap-2">
 						<a
 							href={portableSkillMarkdownUrl}
+							data-sveltekit-reload
 							class="inline-flex min-h-11 items-center rounded-md border border-border bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							Portable SKILL.md
 						</a>
 						<a
 							href={skillBundleUrl}
+							data-sveltekit-reload
 							class="inline-flex min-h-11 items-center rounded-md border border-border bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							bundle.zip
 						</a>
 						<a
 							href={agentSkillMarkdownUrl}
+							data-sveltekit-reload
 							class="inline-flex min-h-11 items-center rounded-md border border-border bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							BuildOS SKILL.md
 						</a>
 						<a
 							href={agentSkillIndexUrl}
+							data-sveltekit-reload
 							class="inline-flex min-h-11 items-center rounded-md border border-border bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
 							index.json

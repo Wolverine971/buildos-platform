@@ -1496,6 +1496,19 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			throw new Error('No updates provided for ontology task');
 		}
 
+		// 2026-07-31 reschedule incident: a patch resending the task's current
+		// title/type is non-empty, PATCHes successfully, and is reported as an
+		// update — so the model saw success three times while changing nothing.
+		// When every supplied field is scalar-comparable and already matches the
+		// stored task, fail with a repair message instead of reporting progress.
+		const noEffectCheck = await this.detectNoEffectTaskUpdate(updateData, loadTaskDetails);
+		if (noEffectCheck.noEffect) {
+			throw new Error(
+				`No-effect update: every supplied field (${noEffectCheck.comparedFields.join(', ')}) already matches task "${noEffectCheck.taskTitle ?? args.task_id}" — nothing changed. ` +
+					`Include a field whose value actually differs; for a reschedule set due_at (or start_at) to the new ISO 8601 datetime.`
+			);
+		}
+
 		const data = await this.apiRequest(`/api/onto/tasks/${args.task_id}`, {
 			method: 'PATCH',
 			body: JSON.stringify(updateData)
@@ -1504,6 +1517,75 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		return {
 			task: data.task,
 			message: `Updated ontology task "${data.task?.title ?? args.task_id}"`
+		};
+	}
+
+	/**
+	 * A task update is a no-effect update when every supplied field equals the
+	 * stored value. Only scalar fields are compared; a payload touching `props`
+	 * or assignees skips the check (deep-diffing those risks false positives,
+	 * and the observed no-op loop only ever resent title/type echoes).
+	 */
+	private async detectNoEffectTaskUpdate(
+		updateData: Record<string, unknown>,
+		loadTaskDetails: () => Promise<any>
+	): Promise<{ noEffect: boolean; comparedFields: string[]; taskTitle?: string }> {
+		const comparableFields = new Set([
+			'title',
+			'description',
+			'type_key',
+			'state_key',
+			'priority',
+			'goal_id',
+			'supporting_milestone_id',
+			'start_at',
+			'due_at'
+		]);
+		const suppliedFields = Object.keys(updateData);
+		if (
+			suppliedFields.length === 0 ||
+			!suppliedFields.every((field) => comparableFields.has(field))
+		) {
+			return { noEffect: false, comparedFields: [] };
+		}
+
+		let currentTask: any;
+		try {
+			const details = await loadTaskDetails();
+			currentTask = details?.task;
+		} catch {
+			// The PATCH route re-validates everything; a details fetch failure
+			// must not block an otherwise valid update.
+			return { noEffect: false, comparedFields: [] };
+		}
+		if (!currentTask || typeof currentTask !== 'object') {
+			return { noEffect: false, comparedFields: [] };
+		}
+
+		const dateFields = new Set(['start_at', 'due_at']);
+		const matchesCurrent = suppliedFields.every((field) => {
+			const supplied = updateData[field];
+			const current = currentTask[field];
+			if (supplied === null || supplied === undefined) {
+				return current === null || current === undefined;
+			}
+			if (dateFields.has(field) && typeof supplied === 'string') {
+				const suppliedMs = Date.parse(supplied);
+				const currentMs = typeof current === 'string' ? Date.parse(current) : NaN;
+				if (Number.isFinite(suppliedMs) || Number.isFinite(currentMs)) {
+					return suppliedMs === currentMs;
+				}
+			}
+			if (typeof supplied === 'string' && typeof current === 'string') {
+				return supplied.trim() === current.trim();
+			}
+			return supplied === current;
+		});
+
+		return {
+			noEffect: matchesCurrent,
+			comparedFields: suppliedFields,
+			taskTitle: typeof currentTask.title === 'string' ? currentTask.title : undefined
 		};
 	}
 

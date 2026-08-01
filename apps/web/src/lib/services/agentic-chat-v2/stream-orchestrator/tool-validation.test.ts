@@ -114,3 +114,104 @@ describe('tool validation', () => {
 		);
 	});
 });
+
+describe('task scheduling field validation (2026-07-31 reschedule incident)', () => {
+	const taskId = '0b19a1af-6d5b-4b58-9f6a-1de1a58f2f7a';
+	const updateTaskTool: ChatToolDefinition = {
+		type: 'function',
+		function: {
+			name: 'update_onto_task',
+			description: 'Update task',
+			parameters: {
+				type: 'object',
+				properties: {
+					task_id: { type: 'string' },
+					title: { type: 'string' },
+					type_key: { type: 'string' },
+					state_key: { type: 'string' },
+					due_at: { type: 'string' },
+					start_at: { type: 'string' }
+				},
+				required: ['task_id']
+			}
+		}
+	};
+
+	it('rejects the observed no-op echo call when a scheduling field is required', () => {
+		const issues = validateToolCalls(
+			[
+				createToolCall('update_onto_task', {
+					task_id: taskId,
+					title: 'Send the launch announcement to the beta list',
+					type_key: 'task.default'
+				})
+			],
+			[updateTaskTool],
+			{ taskScheduleFieldRequired: true }
+		);
+
+		expect(issues).toHaveLength(1);
+		const message = issues[0]?.errors.join(' ');
+		expect(message).toMatch(/due_at/);
+		expect(message).toContain(taskId);
+	});
+
+	it('accepts the call once due_at is present', () => {
+		const issues = validateToolCalls(
+			[
+				createToolCall('update_onto_task', {
+					task_id: taskId,
+					due_at: '2026-08-07T15:00:00Z'
+				})
+			],
+			[updateTaskTool],
+			{ taskScheduleFieldRequired: true }
+		);
+
+		expect(issues).toEqual([]);
+	});
+
+	it('accepts start_at as the scheduling field', () => {
+		const issues = validateToolCalls(
+			[
+				createToolCall('update_onto_task', {
+					task_id: taskId,
+					start_at: '2026-08-07T09:00:00Z'
+				})
+			],
+			[updateTaskTool],
+			{ taskScheduleFieldRequired: true }
+		);
+
+		expect(issues).toEqual([]);
+	});
+
+	it('does not flag task updates when the turn is not a scheduling request', () => {
+		const issues = validateToolCalls(
+			[
+				createToolCall('update_onto_task', {
+					task_id: taskId,
+					title: 'Renamed task'
+				})
+			],
+			[updateTaskTool]
+		);
+
+		expect(issues).toEqual([]);
+	});
+
+	it('never flags non-task tools', () => {
+		const issues = validateToolCalls(
+			[
+				createToolCall('update_onto_document', {
+					document_id: documentId,
+					content: 'New content'
+				})
+			],
+			[updateDocumentTool],
+			{ taskScheduleFieldRequired: true }
+		);
+
+		expect(issues).toEqual([]);
+	});
+});

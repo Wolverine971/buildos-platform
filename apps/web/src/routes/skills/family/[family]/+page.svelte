@@ -377,6 +377,7 @@
 										>
 										<a
 											href={getAgentFilePath(skill)}
+											data-sveltekit-reload
 											class="inline-flex min-h-[44px] items-center justify-center rounded-md border border-border bg-background px-2 text-xs font-semibold transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											>SKILL.md</a
 										>
