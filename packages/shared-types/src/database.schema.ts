@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-02T04:40:03.703Z
+// Generated on: 2026-08-02T06:48:34.033Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -4063,13 +4063,16 @@ export type DatabaseSchema = {
 		content_type: string | null;
 		created_at: string;
 		error_message: string | null;
+		etag: string | null;
 		excerpt: string | null;
 		final_url: string;
 		first_visited_at: string;
 		id: string;
 		last_fetch_ms: number | null;
+		last_fetched_at: string;
 		last_llm_model: string | null;
 		last_llm_ms: number | null;
+		last_modified: string | null;
 		last_visited_at: string;
 		llm_completion_tokens: number | null;
 		llm_prompt_tokens: number | null;

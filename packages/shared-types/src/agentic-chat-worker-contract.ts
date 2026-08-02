@@ -263,6 +263,26 @@ export type ChatTurnEffectReceiptV1 = {
 	finishedAt: string | null;
 };
 
+type ChatTurnEffectRpcResultBaseV1 = ChatTurnEffectReceiptV1 & {
+	turnRunId: string;
+	executionGeneration: number;
+	sessionId: string;
+	userId: string;
+};
+
+/**
+ * Result shared by the fenced effect RPCs. Only the single `started` outcome
+ * authorizes the runtime to invoke a mutating adapter; every duplicate or
+ * reconciliation path is receipt-only.
+ */
+export type ChatTurnEffectRpcResultV1 = ChatTurnEffectRpcResultBaseV1 &
+	(
+		| { outcome: 'started'; state: 'started'; invokeAdapter: true }
+		| { outcome: 'reserved'; state: 'reserved'; invokeAdapter: false }
+		| { outcome: 'reconciled'; invokeAdapter: false }
+		| { outcome: 'existing'; invokeAdapter: false }
+	);
+
 export type ChatTurnStatusV1 = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type ChatTurnTerminalStatusV1 = Extract<
 	ChatTurnStatusV1,

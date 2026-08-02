@@ -743,12 +743,13 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	web_search: {
 		summary:
-			'Live web research via Tavily with synthesized answer and cited sources. Results are NOT persisted — save what you learn into a document or it is lost when the session ends.',
+			'Live web discovery plus BuildOS-fetched source evidence. Findings are not automatically saved as project documents.',
 		capabilities: [
-			'Searches current web content',
+			'Searches current web content with Tavily Advanced by default',
 			'Optional domain allow/deny lists',
-			'Returns ranked sources plus Tavily short answer',
-			'Stores nothing on its own — unlike web_visit, pair it with a document write to keep findings'
+			'Fetches the best two of the top four source pages concurrently',
+			'Returns ranked source evidence for BuildOS synthesis',
+			'Pair it with a document write to keep findings as project knowledge'
 		],
 		contexts: ['base', 'global', 'project_create', 'project'],
 		timeoutMs: 60000,

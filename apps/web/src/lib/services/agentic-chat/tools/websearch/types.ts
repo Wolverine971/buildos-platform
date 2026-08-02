@@ -45,6 +45,11 @@ export interface WebSearchResultItem {
 	snippet?: string;
 	score?: number;
 	published_date?: string;
+	page_title?: string;
+	page_content?: string;
+	page_final_url?: string;
+	page_fetched_at?: string;
+	page_cache_hit?: boolean;
 }
 
 export interface WebSearchResultPayload {
@@ -61,5 +66,8 @@ export interface WebSearchResultPayload {
 		include_domains?: string[];
 		exclude_domains?: string[];
 		fetched_at: string;
+		cache_status: 'miss' | 'hit' | 'shared';
+		pages_requested?: number;
+		pages_fetched?: number;
 	};
 }

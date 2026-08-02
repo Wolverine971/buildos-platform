@@ -21,6 +21,11 @@ export interface WebVisitArgs {
 	prefer_language?: string;
 }
 
+export interface WebVisitRevalidationOptions {
+	ifNoneMatch?: string;
+	ifModifiedSince?: string;
+}
+
 export interface WebVisitLink {
 	url: string;
 	text?: string;
@@ -55,6 +60,9 @@ export interface WebVisitFetchPayload {
 		bytes: number;
 		fetch_ms: number;
 		parser: WebVisitParser;
+		etag?: string;
+		last_modified?: string;
+		not_modified?: boolean;
 		extraction_strategy?: WebVisitExtractionStrategy;
 		html_chars?: number;
 	};
@@ -93,6 +101,11 @@ export interface WebVisitResultPayload {
 		llm_prompt_tokens?: number;
 		llm_completion_tokens?: number;
 		llm_total_tokens?: number;
+		etag?: string;
+		last_modified?: string;
 		cache_hit?: boolean;
+		cache_revalidated?: boolean;
+		cache_stale?: boolean;
+		cache_revalidation_failed?: boolean;
 	};
 }

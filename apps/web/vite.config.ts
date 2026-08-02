@@ -1,5 +1,7 @@
 // apps/web/vite.config.ts
 import { fileURLToPath, URL } from 'node:url';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { defineConfig } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { visualizer } from 'rollup-plugin-visualizer';
@@ -9,6 +11,10 @@ export default defineConfig(({ mode }) => {
 	const isDev = mode === 'development';
 	const isProd = mode === 'production';
 	const isAnalyze = process.env.ANALYZE === 'true';
+	// Each dev server needs its own dependency cache. Multiple local/Codex
+	// servers can run from this directory at once, and sharing node_modules/.vite
+	// lets one server replace another server's pre-bundled Svelte runtime.
+	const cacheDir = isDev ? join(tmpdir(), 'buildos-vite-cache', String(process.pid)) : undefined;
 	// Keep dep pre-bundles stable in local dev unless explicitly forced.
 	const forceOptimizeDeps = process.env.VITE_FORCE_OPTIMIZE_DEPS === 'true';
 	const hmrPortEnv = process.env.VITE_HMR_PORT?.trim();
@@ -43,6 +49,8 @@ export default defineConfig(({ mode }) => {
 	];
 
 	return {
+		cacheDir,
+
 		plugins: [
 			sveltekit(),
 			// Gzip compression for production (fallback for older browsers)

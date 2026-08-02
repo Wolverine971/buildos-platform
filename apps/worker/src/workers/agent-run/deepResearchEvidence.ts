@@ -150,10 +150,29 @@ export function observeDeepResearchToolResult(params: {
 				}
 			];
 		});
+		const visitedSources = rawResults.slice(0, 20).flatMap((value) => {
+			const candidate = readRecord(value);
+			const content = readText(candidate?.page_content, 12_000);
+			const requestedUrl = canonicalizeResearchUrl(candidate?.url);
+			const finalUrl = canonicalizeResearchUrl(candidate?.page_final_url ?? requestedUrl);
+			if (!content || !requestedUrl || !finalUrl) return [];
+			return [
+				{
+					requestedUrl,
+					finalUrl,
+					title:
+						readText(candidate?.page_title, 500) ??
+						readText(candidate?.title, 500) ??
+						undefined,
+					accessedAt: validDateText(candidate?.page_fetched_at) ?? params.observedAt,
+					content
+				}
+			];
+		});
 		return {
 			searchQueries: query ? [query] : [],
 			searchResults,
-			visitedSources: []
+			visitedSources
 		};
 	}
 	if (params.op !== AGENT_OP_WEB_VISIT) {

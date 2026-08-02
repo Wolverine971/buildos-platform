@@ -54,6 +54,8 @@ export interface FetchPublicUrlOptions {
 	maxBytes?: number;
 	maxRedirects?: number;
 	userAgent?: string;
+	ifNoneMatch?: string;
+	ifModifiedSince?: string;
 }
 
 export interface FetchPublicUrlResult {
@@ -247,11 +249,16 @@ function createPinnedDispatcher(target: VettedTarget): Agent {
 }
 
 function buildHeaders(options: FetchPublicUrlOptions): Record<string, string> {
-	return {
+	const headers: Record<string, string> = {
 		Accept: 'text/html, text/plain;q=0.9, application/json;q=0.8, */*;q=0.7',
 		'Accept-Language': options.preferLanguage ?? 'en-US,en;q=0.8',
 		'User-Agent': options.userAgent ?? DEFAULT_USER_AGENT
 	};
+	if (options.ifNoneMatch?.trim()) headers['If-None-Match'] = options.ifNoneMatch.trim();
+	if (options.ifModifiedSince?.trim()) {
+		headers['If-Modified-Since'] = options.ifModifiedSince.trim();
+	}
+	return headers;
 }
 
 async function readResponseBody(
@@ -337,6 +344,21 @@ export async function fetchPublicUrl(
 			await dispatcher?.destroy();
 			const message = error instanceof Error ? error.message : String(error);
 			throw new Error(`Fetch failed: ${message}`);
+		}
+
+		// 304 is a successful conditional revalidation response, not a redirect.
+		if (response.status === 304) {
+			clearTimeout(timeout);
+			await dispatcher?.destroy();
+			return {
+				url: inputUrl,
+				finalUrl: currentUrl.toString(),
+				status: response.status,
+				headers: response.headers,
+				body: '',
+				bytes: 0,
+				fetchMs: Date.now() - start
+			};
 		}
 
 		if (response.status >= 300 && response.status < 400) {

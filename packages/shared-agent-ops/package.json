@@ -156,6 +156,11 @@
 			"import": "./dist/web/safe-fetch.mjs",
 			"require": "./dist/web/safe-fetch.js"
 		},
+		"./web/search-cache": {
+			"types": "./dist/web/search-cache.d.ts",
+			"import": "./dist/web/search-cache.mjs",
+			"require": "./dist/web/search-cache.js"
+		},
 		"./inbox-index": {
 			"types": "./dist/inbox-index.d.ts",
 			"import": "./dist/inbox-index.mjs",

@@ -8,7 +8,13 @@ import {
 	parseHtmlToText,
 	prepareHtmlForMarkdown
 } from './parser';
-import type { WebVisitArgs, WebVisitFetchPayload, WebVisitMode, WebVisitParser } from './types';
+import type {
+	WebVisitArgs,
+	WebVisitFetchPayload,
+	WebVisitMode,
+	WebVisitParser,
+	WebVisitRevalidationOptions
+} from './types';
 
 const DEFAULT_MAX_CHARS = parseNumber(env.WEB_VISIT_MAX_CHARS, 6000);
 const DEFAULT_MAX_HTML_CHARS = parseNumber(env.WEB_VISIT_MAX_HTML_CHARS, 40000);
@@ -74,7 +80,8 @@ export function buildExcerpt(content: string): string | undefined {
 
 export async function performWebVisit(
 	args: WebVisitArgs,
-	fetchFn?: typeof fetch
+	fetchFn?: typeof fetch,
+	revalidation: WebVisitRevalidationOptions = {}
 ): Promise<WebVisitFetchPayload> {
 	const url = normalizeUrlInput(args.url);
 	const mode = normalizeMode(args.mode);
@@ -86,8 +93,33 @@ export async function performWebVisit(
 	const response = await fetchUrl(url, {
 		fetchFn,
 		allowRedirects,
-		preferLanguage
+		preferLanguage,
+		ifNoneMatch: revalidation.ifNoneMatch,
+		ifModifiedSince: revalidation.ifModifiedSince
 	});
+	const etag = response.headers.get('etag')?.trim() || undefined;
+	const lastModified = response.headers.get('last-modified')?.trim() || undefined;
+
+	if (response.status === 304) {
+		return {
+			url,
+			final_url: response.finalUrl,
+			status_code: response.status,
+			content_type: null,
+			text: '',
+			message: `Cached web visit content revalidated for "${response.finalUrl}".`,
+			info: {
+				fetched_at: new Date().toISOString(),
+				mode,
+				bytes: 0,
+				fetch_ms: response.fetchMs,
+				parser: 'text',
+				etag,
+				last_modified: lastModified,
+				not_modified: true
+			}
+		};
+	}
 
 	const contentType = normalizeContentType(response.headers.get('content-type'));
 	const isHtml = isHtmlContent(contentType, response.body);
@@ -159,6 +191,8 @@ export async function performWebVisit(
 			bytes: response.bytes,
 			fetch_ms: response.fetchMs,
 			parser,
+			etag,
+			last_modified: lastModified,
 			extraction_strategy: extractionStrategy,
 			html_chars: htmlChars
 		}
@@ -172,5 +206,6 @@ export type {
 	WebVisitMode,
 	WebVisitOutputFormat,
 	WebVisitParser,
+	WebVisitRevalidationOptions,
 	WebVisitResultPayload
 } from './types';

@@ -120,4 +120,23 @@ describe('fetchPublicUrl', () => {
 		expect(fetchFn).not.toHaveBeenCalled();
 		expect(dnsLookup).toHaveBeenCalledTimes(1);
 	});
+
+	it('sends conditional validators and accepts a 304 without reading a body', async () => {
+		const dnsLookup = vi.fn(async () => [{ address: '93.184.216.34', family: 4 }]);
+		const fetchFn = vi.fn(async (_url: unknown, init?: RequestInit) => {
+			const headers = new Headers(init?.headers);
+			expect(headers.get('if-none-match')).toBe('"page-v2"');
+			expect(headers.get('if-modified-since')).toBe('Sat, 01 Aug 2026 12:00:00 GMT');
+			return new Response(null, { status: 304, headers: { etag: '"page-v2"' } });
+		});
+
+		const result = await fetchPublicUrl('https://research.example/page', {
+			fetchFn: fetchFn as typeof fetch,
+			dnsLookup,
+			ifNoneMatch: '"page-v2"',
+			ifModifiedSince: 'Sat, 01 Aug 2026 12:00:00 GMT'
+		});
+
+		expect(result).toMatchObject({ status: 304, body: '', bytes: 0 });
+	});
 });

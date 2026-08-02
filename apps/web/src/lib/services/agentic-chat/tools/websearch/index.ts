@@ -1,4 +1,9 @@
 // apps/web/src/lib/services/agentic-chat/tools/websearch/index.ts
+import { env } from '$env/dynamic/private';
+import {
+	buildWebSearchCacheKey,
+	ExpiringSingleFlightCache
+} from '@buildos/shared-agent-ops/web/search-cache';
 import { tavilySearch } from './tavily-client';
 import type {
 	TavilySearchDepth,
@@ -7,12 +12,23 @@ import type {
 	WebSearchResultPayload
 } from './types';
 
-const DEFAULT_MAX_RESULTS = 5;
+const DEFAULT_MAX_RESULTS = 4;
 const MAX_RESULTS_CAP = 10;
+const DEFAULT_SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
 // Tavily's advanced-depth extraction returns ~2,000 chars of content per
 // result. The previous 400-char cap discarded ~80% of that paid signal; the
 // model-facing payload is budget-managed downstream in tool-payload-compaction.
 const SNIPPET_MAX_CHARS = 1600;
+
+function parsePositiveInteger(value: string | undefined, fallback: number): number {
+	const parsed = Number.parseInt(value ?? '', 10);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const searchCache = new ExpiringSingleFlightCache<WebSearchResultPayload>({
+	ttlMs: parsePositiveInteger(env.WEB_SEARCH_CACHE_TTL_MS, DEFAULT_SEARCH_CACHE_TTL_MS),
+	maxEntries: 500
+});
 
 function normalizeQuery(query?: string): string {
 	return query?.trim() ?? '';
@@ -46,45 +62,62 @@ export async function performWebSearch(
 
 	const maxResults = clampMaxResults(args.max_results);
 	const searchDepth = normalizeDepth(args.search_depth);
-	const includeAnswer = args.include_answer ?? true;
+	const includeAnswer = args.include_answer ?? false;
+	const cacheKey = buildWebSearchCacheKey({
+		query,
+		searchDepth,
+		maxResults,
+		includeAnswer,
+		includeDomains: args.include_domains,
+		excludeDomains: args.exclude_domains
+	});
 
-	const response = await tavilySearch(
-		{
+	const cached = await searchCache.getOrLoad(cacheKey, async () => {
+		const response = await tavilySearch(
+			{
+				query,
+				search_depth: searchDepth,
+				include_answer: includeAnswer,
+				max_results: maxResults,
+				include_domains: args.include_domains?.length ? args.include_domains : undefined,
+				exclude_domains: args.exclude_domains?.length ? args.exclude_domains : undefined,
+				include_raw_content: false,
+				include_images: false
+			},
+			{ fetchFn }
+		);
+
+		const results: WebSearchResultItem[] = (response.results ?? []).map((result) => ({
+			title: result.title,
+			url: result.url,
+			snippet: summarizeContent(result.content ?? result.raw_content),
+			score: result.score,
+			published_date: result.published_date
+		}));
+
+		return {
 			query,
-			search_depth: searchDepth,
-			include_answer: includeAnswer,
-			max_results: maxResults,
-			include_domains: args.include_domains?.length ? args.include_domains : undefined,
-			exclude_domains: args.exclude_domains?.length ? args.exclude_domains : undefined,
-			include_raw_content: false,
-			include_images: false
-		},
-		{ fetchFn }
-	);
-
-	const results: WebSearchResultItem[] = (response.results ?? []).map((result) => ({
-		title: result.title,
-		url: result.url,
-		snippet: summarizeContent(result.content ?? result.raw_content),
-		score: result.score,
-		published_date: result.published_date
-	}));
+			...(includeAnswer && response.answer ? { answer: response.answer } : {}),
+			results,
+			follow_up_questions: response.follow_up_questions,
+			message: `Web search results from Tavily for "${query}" (${searchDepth}, max ${maxResults}).`,
+			info: {
+				provider: 'tavily',
+				search_depth: searchDepth,
+				max_results: maxResults,
+				include_answer: includeAnswer,
+				include_domains: args.include_domains,
+				exclude_domains: args.exclude_domains,
+				fetched_at: new Date().toISOString(),
+				cache_status: 'miss'
+			}
+		};
+	});
 
 	return {
-		query,
-		answer: response.answer,
-		results,
-		follow_up_questions: response.follow_up_questions,
-		message: `Web search results from Tavily for "${query}" (${searchDepth}, max ${maxResults}).`,
-		info: {
-			provider: 'tavily',
-			search_depth: searchDepth,
-			max_results: maxResults,
-			include_answer: includeAnswer,
-			include_domains: args.include_domains,
-			exclude_domains: args.exclude_domains,
-			fetched_at: new Date().toISOString()
-		}
+		...cached.value,
+		results: cached.value.results.map((result) => ({ ...result })),
+		info: { ...cached.value.info, cache_status: cached.status }
 	};
 }
 

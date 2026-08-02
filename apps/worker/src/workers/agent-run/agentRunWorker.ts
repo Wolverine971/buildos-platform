@@ -1969,7 +1969,10 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		const searchIsPermitted =
 			!scope.allowed_ops || scope.allowed_ops.includes(AGENT_OP_WEB_SEARCH);
 		const reservedPaidToolCharge =
-			op === AGENT_OP_WEB_SEARCH && searchIsPermitted && typeof web.search === 'function'
+			op === AGENT_OP_WEB_SEARCH &&
+			searchIsPermitted &&
+			typeof web.search === 'function' &&
+			(web.searchRequiresDispatch?.(args) ?? true)
 				? estimateTavilySearchCharge(args, tavilyCreditCostUsd)
 				: null;
 		if (

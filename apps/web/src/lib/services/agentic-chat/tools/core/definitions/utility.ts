@@ -559,7 +559,7 @@ Use list_corsair_mcp_tools first to discover the exact tool name and argument sc
 			description: `Perform a live web search using the Tavily API for current or external information not present in BuildOS.
 Use this to discover sources or answer broad research questions. If the user provides a specific URL, use web_visit instead.
 Prefer primary sources — official sites, vendor pricing pages, documentation — over aggregator or SEO listicle blogs, and verify specific claims (prices, dates, quotes) by visiting the page with web_visit rather than trusting a search snippet.
-Return the concise answer plus the most relevant sources so the assistant can cite URLs in its reply.`,
+Return the most relevant sources so the assistant can synthesize and cite its own answer.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -571,18 +571,18 @@ Return the concise answer plus the most relevant sources so the assistant can ci
 						type: 'string',
 						enum: ['basic', 'advanced'],
 						description:
-							'Search depth. Use "basic" for fast lookups; "advanced" for more thorough research.'
+							'Search depth. Defaults to "advanced"; use "basic" only when explicitly requested.'
 					},
 					max_results: {
 						type: 'number',
-						default: 5,
+						default: 4,
 						maximum: 10,
 						description: 'Maximum number of results to return (1-10)'
 					},
 					include_answer: {
 						type: 'boolean',
 						description:
-							'Whether to request Tavily to synthesize an answer. Defaults to true.'
+							'Whether to request Tavily to synthesize an answer. Defaults to false because BuildOS synthesizes the final response.'
 					},
 					include_domains: {
 						type: 'array',

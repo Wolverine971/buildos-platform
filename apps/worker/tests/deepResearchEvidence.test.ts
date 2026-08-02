@@ -338,6 +338,36 @@ describe('deep research evidence contract', () => {
 		]);
 	});
 
+	it('records pages fetched during search as verified visited sources', () => {
+		const observed = observeDeepResearchToolResult({
+			op: 'util.web.search',
+			args: { query: 'current primary evidence' },
+			result: {
+				results: [
+					{
+						title: 'Discovery title',
+						url: 'https://example.com/start',
+						page_title: 'Fetched title',
+						page_content: 'Direct evidence from the fetched page.',
+						page_final_url: 'https://example.com/report#section',
+						page_fetched_at: ACCESSED_AT
+					}
+				]
+			},
+			observedAt: '2026-07-21T13:00:00.000Z'
+		});
+
+		expect(observed.visitedSources).toEqual([
+			{
+				requestedUrl: 'https://example.com/start',
+				finalUrl: 'https://example.com/report',
+				title: 'Fetched title',
+				accessedAt: ACCESSED_AT,
+				content: 'Direct evidence from the fetched page.'
+			}
+		]);
+	});
+
 	it('bounds oversized packets without discarding all usable evidence', () => {
 		const raw = validPacket();
 		raw.claims = Array.from({ length: 50 }, (_, index) => ({

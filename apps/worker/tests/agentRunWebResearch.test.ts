@@ -40,14 +40,25 @@ describe('Agent Run web research port', () => {
 
 	it('normalizes Tavily search results into bounded, source-bearing evidence', async () => {
 		const dispatchOrder: string[] = [];
-		const fetchFn = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
-			dispatchOrder.push('fetch');
+		const fetchFn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+			if (String(input) !== 'https://api.tavily.com/search') {
+				dispatchOrder.push('page-fetch');
+				return new Response(
+					'<html><title>Fetched page</title><main>Verified page text.</main></html>',
+					{
+						status: 200,
+						headers: { 'content-type': 'text/html' }
+					}
+				);
+			}
+			dispatchOrder.push('search-fetch');
 			const request = JSON.parse(String(init?.body)) as Record<string, unknown>;
 			expect(request).toMatchObject({
 				query: 'BuildOS research',
 				api_key: 'test-key',
 				search_depth: 'advanced',
 				max_results: 2,
+				include_answer: false,
 				include_raw_content: false,
 				include_usage: true
 			});
@@ -59,7 +70,7 @@ describe('Agent Run web research port', () => {
 					results: [
 						{
 							title: 'Primary source',
-							url: 'https://example.com/research',
+							url: 'https://93.184.216.34/research',
 							content: `Useful evidence ${'x'.repeat(2_000)}`,
 							score: 0.98,
 							published_date: '2026-07-18'
@@ -82,8 +93,13 @@ describe('Agent Run web research port', () => {
 			query: '  BuildOS research  ',
 			max_results: 2
 		})) as {
-			answer: string;
-			results: Array<{ title: string; url: string; snippet: string }>;
+			answer?: string;
+			results: Array<{
+				title: string;
+				url: string;
+				snippet: string;
+				page_content?: string;
+			}>;
 			security_notice: string;
 			info: {
 				fetched_at: string;
@@ -97,15 +113,16 @@ describe('Agent Run web research port', () => {
 			};
 		};
 
-		expect(result.answer.length).toBeLessThanOrEqual(2_003);
+		expect(result.answer).toBeUndefined();
 		expect(result.results[0]).toMatchObject({
 			title: 'Primary source',
-			url: 'https://example.com/research'
+			url: 'https://93.184.216.34/research'
 		});
+		expect(result.results[0]?.page_content).toContain('Verified page text.');
 		expect(result.results[0]?.snippet.length).toBeLessThanOrEqual(1_603);
 		expect(result.security_notice).toContain('untrusted');
 		expect(result.info.fetched_at).toBe(NOW.toISOString());
-		expect(dispatchOrder).toEqual(['reserved:0.016', 'fetch']);
+		expect(dispatchOrder).toEqual(['reserved:0.016', 'search-fetch', 'page-fetch']);
 		expect(result.info.billing).toEqual({
 			provider: 'tavily',
 			credits: 2,
@@ -114,6 +131,91 @@ describe('Agent Run web research port', () => {
 			source: 'provider_reported',
 			provider_request_id: 'tavily-request-1'
 		});
+	});
+
+	it('fetches only the best two of four result pages concurrently', async () => {
+		let activePageFetches = 0;
+		let maxActivePageFetches = 0;
+		const waiting: Array<() => void> = [];
+		const fetchFn = vi.fn(async (input: string | URL | Request) => {
+			if (String(input) === 'https://api.tavily.com/search') {
+				return new Response(
+					JSON.stringify({
+						results: [1, 2, 3, 4].map((rank) => ({
+							title: `Result ${rank}`,
+							url: `https://93.184.216.34/page-${rank}`,
+							content: `Snippet ${rank}`,
+							score: 1 - rank / 10
+						}))
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				);
+			}
+
+			activePageFetches += 1;
+			maxActivePageFetches = Math.max(maxActivePageFetches, activePageFetches);
+			await new Promise<void>((resolve) => {
+				waiting.push(resolve);
+				if (waiting.length === 2) waiting.splice(0).forEach((release) => release());
+			});
+			activePageFetches -= 1;
+			return new Response(`<html><main>Content for ${String(input)}</main></html>`, {
+				status: 200,
+				headers: { 'content-type': 'text/html' }
+			});
+		});
+		const port = createAgentRunWebResearchPort({
+			apiKey: 'test-key',
+			fetchFn: fetchFn as typeof fetch,
+			now: () => NOW
+		});
+
+		const result = (await port.search!({ query: 'four page concurrency test' })) as {
+			results: Array<{ page_content?: string }>;
+			info: { pages_requested: number; pages_fetched: number };
+		};
+
+		expect(maxActivePageFetches).toBe(2);
+		expect(fetchFn).toHaveBeenCalledTimes(3);
+		expect(result.info).toMatchObject({ pages_requested: 2, pages_fetched: 2 });
+		expect(result.results[0]?.page_content).toContain('/page-1');
+		expect(result.results[1]?.page_content).toContain('/page-2');
+		expect(result.results[2]?.page_content).toBeUndefined();
+		expect(result.results[3]?.page_content).toBeUndefined();
+	});
+
+	it('deduplicates normalized Agent Run queries without duplicate billing', async () => {
+		const onSearchDispatched = vi.fn();
+		const fetchFn = vi.fn(
+			async () =>
+				new Response(JSON.stringify({ usage: { credits: 2 }, results: [] }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				})
+		);
+		const port = createAgentRunWebResearchPort({
+			apiKey: 'test-key',
+			fetchFn: fetchFn as typeof fetch,
+			now: () => NOW,
+			onSearchDispatched
+		});
+
+		expect(port.searchRequiresDispatch?.({ query: ' Agent Run Cache Unique ' })).toBe(true);
+		const first = (await port.search!({ query: ' Agent Run   Cache Unique ' })) as {
+			info: { cache_status: string; billing?: unknown };
+		};
+		expect(port.searchRequiresDispatch?.({ query: 'agent run cache unique' })).toBe(false);
+		const second = (await port.search!({ query: 'agent run cache unique' })) as {
+			info: { cache_status: string; billing?: unknown };
+		};
+
+		expect(fetchFn).toHaveBeenCalledTimes(1);
+		expect(onSearchDispatched).toHaveBeenCalledTimes(1);
+		expect(first.info.cache_status).toBe('miss');
+		expect(first.info.billing).toBeDefined();
+		expect(second.info.cache_status).toBe('hit');
+		expect(second.info.billing).toBeUndefined();
+		expect(readPaidToolCharge(second)).toBeNull();
 	});
 
 	it('does not reserve Tavily cost when local validation rejects the request', async () => {

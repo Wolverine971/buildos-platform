@@ -18,7 +18,11 @@ import {
 	getBuildosOverviewDocument,
 	getBuildosUsageGuide
 } from '$lib/services/agentic-chat/tools/buildos';
-import { performWebSearch, type WebSearchArgs } from '$lib/services/agentic-chat/tools/websearch';
+import {
+	performWebSearch,
+	type WebSearchArgs,
+	type WebSearchResultPayload
+} from '$lib/services/agentic-chat/tools/websearch';
 import {
 	type QueryLibriLibraryArgs,
 	type ResolveLibriResourceArgs,
@@ -53,6 +57,20 @@ import { createLogger } from '$lib/utils/logger';
 
 const logger = createLogger('ExternalExecutor');
 const DEFAULT_WEB_VISIT_LLM_TIMEOUT_MS = 25000;
+const DEFAULT_WEB_VISIT_CACHE_TTL_MS = 15 * 60 * 1000;
+const SEARCH_PAGE_CANDIDATE_LIMIT = 4;
+const SEARCH_PAGE_FETCH_LIMIT = 2;
+const SEARCH_PAGE_MAX_CHARS = 4_000;
+
+interface CachedVisitEntry {
+	payload: WebVisitResultPayload;
+	id: string;
+	visitCount: number;
+	etag?: string;
+	lastModified?: string;
+	lastFetchedAt?: string;
+	isFresh: boolean;
+}
 
 function parseNumber(value: string | undefined, fallback: number): number {
 	if (!value) return fallback;
@@ -84,8 +102,46 @@ export class ExternalExecutor extends BaseExecutor {
 	/**
 	 * Perform a web search using Tavily API.
 	 */
-	async webSearch(args: WebSearchArgs): Promise<any> {
-		return performWebSearch(args, this.fetchFn);
+	async webSearch(args: WebSearchArgs): Promise<WebSearchResultPayload> {
+		const search = await performWebSearch(args, this.fetchFn);
+		const candidates = search.results.slice(0, SEARCH_PAGE_CANDIDATE_LIMIT);
+		const selected = candidates.slice(0, SEARCH_PAGE_FETCH_LIMIT);
+		const visits = await Promise.allSettled(
+			selected.map((result) =>
+				this.webVisit({
+					url: result.url,
+					mode: 'auto',
+					max_chars: SEARCH_PAGE_MAX_CHARS,
+					output_format: 'markdown',
+					persist: true
+				})
+			)
+		);
+
+		let pagesFetched = 0;
+		const results = search.results.map((result, index) => {
+			const visit = visits[index];
+			if (!visit || visit.status !== 'fulfilled') return result;
+			pagesFetched += 1;
+			return {
+				...result,
+				page_title: visit.value.title,
+				page_content: visit.value.content,
+				page_final_url: visit.value.final_url,
+				page_fetched_at: visit.value.info.fetched_at,
+				page_cache_hit: visit.value.info.cache_hit ?? false
+			};
+		});
+
+		return {
+			...search,
+			results,
+			info: {
+				...search.info,
+				pages_requested: selected.length,
+				pages_fetched: pagesFetched
+			}
+		};
 	}
 
 	async resolveLibriResource(args: ResolveLibriResourceArgs): Promise<LibriResolveToolResult> {
@@ -136,14 +192,66 @@ export class ExternalExecutor extends BaseExecutor {
 		// is the escape hatch for pages where the cached deterministic markdown
 		// rendered poorly — serving that same cached markdown back would make
 		// the escape hatch a no-op.
+		let staleCache: CachedVisitEntry | null = null;
 		if (persist && !forceRefresh && outputFormat === 'markdown') {
 			const cached = await this.loadCachedVisit(args.url, maxChars, args.mode);
-			if (cached) {
-				return cached;
+			if (cached?.isFresh) {
+				await this.recordCachedVisitUse(cached);
+				return cached.payload;
 			}
+			staleCache = cached;
 		}
 
-		const fetched = await performWebVisit(args, this.fetchFn);
+		let fetched: WebVisitFetchPayload;
+		try {
+			fetched = await performWebVisit(args, this.fetchFn, {
+				ifNoneMatch: staleCache?.etag,
+				ifModifiedSince: staleCache?.lastModified
+			});
+		} catch (error) {
+			if (!staleCache) throw error;
+			logger.warn('Page cache revalidation failed; serving stale content', {
+				url: args.url,
+				error: error instanceof Error ? error.message : String(error)
+			});
+			await this.recordCachedVisitUse(staleCache);
+			return {
+				...staleCache.payload,
+				message: `Stale cached web visit content served for "${staleCache.payload.final_url}" after revalidation failed.`,
+				info: {
+					...staleCache.payload.info,
+					cache_hit: true,
+					cache_stale: true,
+					cache_revalidation_failed: true
+				}
+			};
+		}
+
+		if (fetched.info.not_modified) {
+			if (!staleCache) {
+				throw new Error('Page returned 304 but no cached content was available.');
+			}
+			await this.recordCachedVisitUse(staleCache, {
+				revalidatedAt: fetched.info.fetched_at,
+				etag: fetched.info.etag,
+				lastModified: fetched.info.last_modified
+			});
+			return {
+				...staleCache.payload,
+				message: `Cached web visit content revalidated for "${staleCache.payload.final_url}".`,
+				info: {
+					...staleCache.payload.info,
+					fetched_at: fetched.info.fetched_at,
+					fetch_ms: fetched.info.fetch_ms,
+					etag: fetched.info.etag ?? staleCache.etag,
+					last_modified: fetched.info.last_modified ?? staleCache.lastModified,
+					cache_hit: true,
+					cache_revalidated: true,
+					cache_stale: false
+				}
+			};
+		}
+
 		const responseContent = await this.convertToMarkdownIfNeeded(fetched, outputFormat);
 
 		const trimmedOutput = responseContent.content.trim();
@@ -363,7 +471,7 @@ export class ExternalExecutor extends BaseExecutor {
 		url: string,
 		maxChars: number,
 		mode?: WebVisitMode
-	): Promise<WebVisitResultPayload | null> {
+	): Promise<CachedVisitEntry | null> {
 		const admin = this.getAdminSupabase();
 		const normalizedUrl = this.normalizeUrlForStorage(url);
 
@@ -387,7 +495,10 @@ export class ExternalExecutor extends BaseExecutor {
 					'llm_prompt_tokens',
 					'llm_completion_tokens',
 					'llm_total_tokens',
-					'visit_count'
+					'visit_count',
+					'etag',
+					'last_modified',
+					'last_fetched_at'
 				].join(', ')
 			)
 			.eq('normalized_url', normalizedUrl)
@@ -406,17 +517,11 @@ export class ExternalExecutor extends BaseExecutor {
 		const trimmedOutput = data.markdown.trim();
 		const truncated = trimmedOutput.length > maxChars;
 		const finalContent = truncated ? trimmedOutput.slice(0, maxChars) : trimmedOutput;
-		const now = new Date().toISOString();
-
-		await admin
-			.from('web_page_visits')
-			.update({
-				visit_count: (data.visit_count ?? 0) + 1,
-				last_visited_at: now
-			})
-			.eq('id', data.id);
-
-		return {
+		const lastFetchedAt =
+			typeof data.last_fetched_at === 'string' ? data.last_fetched_at : undefined;
+		const lastFetchedMs = lastFetchedAt ? Date.parse(lastFetchedAt) : Number.NaN;
+		const cacheTtlMs = parseNumber(env.WEB_VISIT_CACHE_TTL_MS, DEFAULT_WEB_VISIT_CACHE_TTL_MS);
+		const payload: WebVisitResultPayload = {
 			url: data.url ?? url,
 			final_url: data.final_url ?? data.url ?? url,
 			status_code: data.status_code ?? 200,
@@ -436,7 +541,7 @@ export class ExternalExecutor extends BaseExecutor {
 			stored: true,
 			message: `Web visit content loaded from cache for "${data.final_url ?? data.url ?? url}".`,
 			info: {
-				fetched_at: now,
+				fetched_at: lastFetchedAt ?? new Date().toISOString(),
 				mode: this.normalizeMode(mode),
 				bytes: data.bytes ?? 0,
 				fetch_ms: 0,
@@ -447,9 +552,51 @@ export class ExternalExecutor extends BaseExecutor {
 				llm_prompt_tokens: data.llm_prompt_tokens ?? undefined,
 				llm_completion_tokens: data.llm_completion_tokens ?? undefined,
 				llm_total_tokens: data.llm_total_tokens ?? undefined,
+				etag: data.etag ?? undefined,
+				last_modified: data.last_modified ?? undefined,
 				cache_hit: true
 			}
 		};
+
+		return {
+			payload,
+			id: data.id,
+			visitCount: data.visit_count ?? 0,
+			etag: data.etag ?? undefined,
+			lastModified: data.last_modified ?? undefined,
+			lastFetchedAt,
+			isFresh:
+				Number.isFinite(lastFetchedMs) &&
+				Date.now() - lastFetchedMs < Math.max(1, cacheTtlMs)
+		};
+	}
+
+	private async recordCachedVisitUse(
+		cached: CachedVisitEntry,
+		revalidation?: { revalidatedAt: string; etag?: string; lastModified?: string }
+	): Promise<void> {
+		const admin = this.getAdminSupabase();
+		const update = {
+			visit_count: cached.visitCount + 1,
+			last_visited_at: new Date().toISOString(),
+			...(revalidation
+				? {
+						last_fetched_at: revalidation.revalidatedAt,
+						etag: revalidation.etag ?? cached.etag ?? null,
+						last_modified: revalidation.lastModified ?? cached.lastModified ?? null
+					}
+				: {})
+		};
+		const { error } = await admin
+			.from('web_page_visits')
+			.update(update as any)
+			.eq('id', cached.id);
+		if (error) {
+			logger.warn('Failed to record cached web visit use', {
+				visitId: cached.id,
+				error: error.message
+			});
+		}
 	}
 
 	private async persistWebVisit(
@@ -513,6 +660,9 @@ export class ExternalExecutor extends BaseExecutor {
 						content_hash: contentHash ?? null,
 						visit_count: (existing.visit_count ?? 0) + 1,
 						last_visited_at: now,
+						last_fetched_at: fetched.info.fetched_at,
+						etag: fetched.info.etag ?? null,
+						last_modified: fetched.info.last_modified ?? null,
 						last_fetch_ms: fetched.info.fetch_ms,
 						last_llm_ms: responseContent.llmMs ?? null,
 						last_llm_model: responseContent.llmModel ?? null,
@@ -521,7 +671,7 @@ export class ExternalExecutor extends BaseExecutor {
 						llm_total_tokens: responseContent.llmTotalTokens ?? null,
 						bytes: fetched.info.bytes,
 						error_message: responseContent.errorMessage ?? null
-					})
+					} as any)
 					.eq('id', existing.id)
 					.select('id')
 					.maybeSingle();
@@ -548,6 +698,9 @@ export class ExternalExecutor extends BaseExecutor {
 					visit_count: 1,
 					first_visited_at: now,
 					last_visited_at: now,
+					last_fetched_at: fetched.info.fetched_at,
+					etag: fetched.info.etag ?? null,
+					last_modified: fetched.info.last_modified ?? null,
 					last_fetch_ms: fetched.info.fetch_ms,
 					last_llm_ms: responseContent.llmMs ?? null,
 					last_llm_model: responseContent.llmModel ?? null,
@@ -556,7 +709,7 @@ export class ExternalExecutor extends BaseExecutor {
 					llm_total_tokens: responseContent.llmTotalTokens ?? null,
 					bytes: fetched.info.bytes,
 					error_message: responseContent.errorMessage ?? null
-				})
+				} as any)
 				.select('id')
 				.maybeSingle();
 

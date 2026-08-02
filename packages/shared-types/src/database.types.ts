@@ -16610,13 +16610,16 @@ export type Database = {
           content_type: string | null
           created_at: string
           error_message: string | null
+          etag: string | null
           excerpt: string | null
           final_url: string
           first_visited_at: string
           id: string
           last_fetch_ms: number | null
+          last_fetched_at: string
           last_llm_model: string | null
           last_llm_ms: number | null
+          last_modified: string | null
           last_visited_at: string
           llm_completion_tokens: number | null
           llm_prompt_tokens: number | null
@@ -16638,13 +16641,16 @@ export type Database = {
           content_type?: string | null
           created_at?: string
           error_message?: string | null
+          etag?: string | null
           excerpt?: string | null
           final_url: string
           first_visited_at?: string
           id?: string
           last_fetch_ms?: number | null
+          last_fetched_at?: string
           last_llm_model?: string | null
           last_llm_ms?: number | null
+          last_modified?: string | null
           last_visited_at?: string
           llm_completion_tokens?: number | null
           llm_prompt_tokens?: number | null
@@ -16666,13 +16672,16 @@ export type Database = {
           content_type?: string | null
           created_at?: string
           error_message?: string | null
+          etag?: string | null
           excerpt?: string | null
           final_url?: string
           first_visited_at?: string
           id?: string
           last_fetch_ms?: number | null
+          last_fetched_at?: string
           last_llm_model?: string | null
           last_llm_ms?: number | null
+          last_modified?: string | null
           last_visited_at?: string
           llm_completion_tokens?: number | null
           llm_prompt_tokens?: number | null
@@ -17157,6 +17166,18 @@ export type Database = {
           start_date: string
           updated_at: string
         }[]
+      }
+      begin_agentic_chat_effect: {
+        Args: {
+          p_canonical_argument_hash: string
+          p_effect_id: string
+          p_execution_generation: number
+          p_processing_token: string
+          p_provider_tool_call_id?: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
       }
       build_fastchat_project_intelligence: {
         Args: {
@@ -18737,6 +18758,20 @@ export type Database = {
         }
         Returns: Json
       }
+      reconcile_agentic_chat_effect: {
+        Args: {
+          p_canonical_argument_hash: string
+          p_downstream_receipt?: Json
+          p_effect_id: string
+          p_execution_generation: number
+          p_failure_code?: string
+          p_processing_token: string
+          p_queue_job_id: string
+          p_target_state: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       record_email_relevance_adjudication: {
         Args: {
           p_corrected_project_id: string
@@ -18827,6 +18862,21 @@ export type Database = {
           p_reserved_units?: number
           p_resource: string
           p_unit_type?: string
+        }
+        Returns: Json
+      }
+      reserve_agentic_chat_effect: {
+        Args: {
+          p_canonical_argument_hash: string
+          p_downstream_idempotency_supported: boolean
+          p_effect_id: string
+          p_execution_generation: number
+          p_operation_name: string
+          p_processing_token: string
+          p_provider_tool_call_id?: string
+          p_queue_job_id: string
+          p_tool_name: string
+          p_turn_run_id: string
         }
         Returns: Json
       }
