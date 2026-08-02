@@ -1,3 +1,4 @@
+-- supabase/tests/fixtures/agentic_chat_legacy_atomic_admission_base.sql
 CREATE SCHEMA IF NOT EXISTS public;
 
 DO $$
@@ -58,7 +59,9 @@ CREATE TABLE public.chat_turn_runs (
 	finished_reason text NULL,
 	finished_at timestamptz NULL,
 	created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-	updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
+	updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+	CONSTRAINT chk_chat_turn_runs_status
+		CHECK (status IN ('running', 'completed', 'failed', 'cancelled'))
 );
 
 CREATE UNIQUE INDEX uq_chat_turn_runs_one_running_per_session

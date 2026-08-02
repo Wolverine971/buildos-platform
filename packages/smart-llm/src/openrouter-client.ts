@@ -101,6 +101,13 @@ export class OpenRouterClient {
 					response.headers.get('x-openrouter-request-id') ||
 					response.headers.get('openrouter-request-id');
 				const generationIdHeader = response.headers.get('x-generation-id');
+				const retryAfterHeader = response.headers.get('retry-after');
+				const retryAfterSeconds =
+					retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
+				const retryAfterMs =
+					Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0
+						? retryAfterSeconds * 1000
+						: null;
 				const errorMetadata =
 					errorObject?.metadata && typeof errorObject.metadata === 'object'
 						? (errorObject.metadata as Record<string, unknown>)
@@ -126,7 +133,8 @@ export class OpenRouterClient {
 					errorParam: errorObject?.param ?? null,
 					error: errorObject ?? null,
 					metadata: errorMetadata,
-					providerName
+					providerName,
+					retryAfterMs
 				};
 				throw enrichedError;
 			}

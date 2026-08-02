@@ -236,6 +236,11 @@ export interface AssetOcrJobMetadata {
 	forceOverwrite?: boolean;
 }
 
+export interface AdminQuestionTreeJobMetadata {
+	run_id: string;
+	advance_sequence: number;
+}
+
 // Map job types to their metadata
 export interface JobMetadataMap {
 	// Allow indexing by queue job types that are not explicitly listed (e.g. retired
@@ -262,6 +267,7 @@ export interface JobMetadataMap {
 	generate_project_icon: ProjectIconGenerationJobMetadata;
 	project_activity_batch_flush: ProjectActivityBatchFlushJobMetadata;
 	extract_onto_asset_ocr: AssetOcrJobMetadata;
+	admin_question_tree: AdminQuestionTreeJobMetadata;
 	other: Record<string, unknown>;
 }
 

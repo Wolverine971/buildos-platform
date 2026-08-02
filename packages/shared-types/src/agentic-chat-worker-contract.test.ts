@@ -4,6 +4,10 @@ import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES,
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
+	AGENTIC_CHAT_SIGNAL_VERSION,
+	AGENTIC_CHAT_STREAM_SPILL_THRESHOLD_BYTES,
+	AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES,
+	AGENTIC_CHAT_TERMINAL_RETENTION_MS,
 	canonicalizeAdmissionRequestV1,
 	canonicalizeAgenticChatJson,
 	createAgentStreamEventIdV1,
@@ -105,6 +109,13 @@ function artifactFixture(): TurnInputArtifactV1 {
 }
 
 describe('agentic chat worker v1 contract fixtures', () => {
+	it('pins the stream, signal, and terminal-retention operating values', () => {
+		expect(AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES).toBe(2 * 1024 * 1024);
+		expect(AGENTIC_CHAT_STREAM_SPILL_THRESHOLD_BYTES).toBe(512 * 1024);
+		expect(AGENTIC_CHAT_TERMINAL_RETENTION_MS).toBe(7 * 24 * 60 * 60 * 1000);
+		expect(AGENTIC_CHAT_SIGNAL_VERSION).toBe('agentic_chat_signal_v1');
+	});
+
 	it('canonicalizes JSON recursively while preserving array order and explicit null', () => {
 		expect(
 			canonicalizeAgenticChatJson({

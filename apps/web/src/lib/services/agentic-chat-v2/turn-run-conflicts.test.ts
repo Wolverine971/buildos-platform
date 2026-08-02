@@ -1,6 +1,10 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-run-conflicts.test.ts
 import { describe, expect, it } from 'vitest';
-import { isPostgresUniqueViolation, isRunningTurnUniqueViolation } from './turn-run-conflicts';
+import {
+	isActiveTurnUniqueViolation,
+	isPostgresUniqueViolation,
+	isRunningTurnUniqueViolation
+} from './turn-run-conflicts';
 
 describe('turn run conflict classification', () => {
 	it('recognizes the running-turn partial unique index as expected contention', () => {
@@ -20,6 +24,16 @@ describe('turn run conflict classification', () => {
 				constraint: 'uq_chat_turn_runs_one_running_per_session'
 			})
 		).toBe(true);
+	});
+
+	it('recognizes the queued/running replacement index during rollout', () => {
+		const error = {
+			code: '23505',
+			constraint: 'uq_chat_turn_runs_one_active_per_session'
+		};
+
+		expect(isActiveTurnUniqueViolation(error)).toBe(true);
+		expect(isRunningTurnUniqueViolation(error)).toBe(true);
 	});
 
 	it('does not treat unrelated unique violations as active turn conflicts', () => {

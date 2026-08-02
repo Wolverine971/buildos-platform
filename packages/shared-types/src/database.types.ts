@@ -3732,6 +3732,7 @@ export type Database = {
           arguments: Json
           client_turn_id: string | null
           created_at: string | null
+          effect_id: string | null
           error_message: string | null
           execution_time_ms: number | null
           gateway_op: string | null
@@ -3756,6 +3757,7 @@ export type Database = {
           arguments: Json
           client_turn_id?: string | null
           created_at?: string | null
+          effect_id?: string | null
           error_message?: string | null
           execution_time_ms?: number | null
           gateway_op?: string | null
@@ -3780,6 +3782,7 @@ export type Database = {
           arguments?: Json
           client_turn_id?: string | null
           created_at?: string | null
+          effect_id?: string | null
           error_message?: string | null
           execution_time_ms?: number | null
           gateway_op?: string | null
@@ -3800,6 +3803,13 @@ export type Database = {
           zero_result?: boolean | null
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_tool_executions_effect_id_fkey"
+            columns: ["effect_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_effects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_tool_executions_message_id_fkey"
             columns: ["message_id"]
@@ -3912,6 +3922,69 @@ export type Database = {
           },
         ]
       }
+      chat_turn_effects: {
+        Row: {
+          canonical_argument_hash: string
+          created_at: string
+          downstream_idempotency_supported: boolean
+          downstream_receipt: Json | null
+          execution_generation: number
+          failure_code: string | null
+          finished_at: string | null
+          id: string
+          operation_name: string
+          provider_tool_call_id: string | null
+          reserved_at: string
+          session_id: string
+          started_at: string | null
+          state: string
+          tool_name: string
+          turn_run_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          canonical_argument_hash: string
+          created_at?: string
+          downstream_idempotency_supported: boolean
+          downstream_receipt?: Json | null
+          execution_generation: number
+          failure_code?: string | null
+          finished_at?: string | null
+          id: string
+          operation_name: string
+          provider_tool_call_id?: string | null
+          reserved_at?: string
+          session_id: string
+          started_at?: string | null
+          state?: string
+          tool_name: string
+          turn_run_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          canonical_argument_hash?: string
+          created_at?: string
+          downstream_idempotency_supported?: boolean
+          downstream_receipt?: Json | null
+          execution_generation?: number
+          failure_code?: string | null
+          finished_at?: string | null
+          id?: string
+          operation_name?: string
+          provider_tool_call_id?: string | null
+          reserved_at?: string
+          session_id?: string
+          started_at?: string | null
+          state?: string
+          tool_name?: string
+          turn_run_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_turn_events: {
         Row: {
           created_at: string
@@ -3973,16 +4046,73 @@ export type Database = {
           },
         ]
       }
+      chat_turn_input_artifacts: {
+        Row: {
+          artifact_version: string
+          content_bytes: number
+          content_hash: string
+          created_at: string
+          history: Json
+          history_bytes: number
+          history_source: string
+          id: string
+          prepared: Json
+          retain_until: string
+          session_id: string
+          source_prepared_prompt_id: string | null
+          turn_run_id: string
+          user_id: string
+        }
+        Insert: {
+          artifact_version: string
+          content_bytes: number
+          content_hash: string
+          created_at?: string
+          history: Json
+          history_bytes: number
+          history_source: string
+          id?: string
+          prepared: Json
+          retain_until?: string
+          session_id: string
+          source_prepared_prompt_id?: string | null
+          turn_run_id: string
+          user_id: string
+        }
+        Update: {
+          artifact_version?: string
+          content_bytes?: number
+          content_hash?: string
+          created_at?: string
+          history?: Json
+          history_bytes?: number
+          history_source?: string
+          id?: string
+          prepared?: Json
+          retain_until?: string
+          session_id?: string
+          source_prepared_prompt_id?: string | null
+          turn_run_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_turn_runs: {
         Row: {
           assistant_message_id: string | null
           cache_age_seconds: number | null
           cache_source: string | null
+          cancel_reason: string | null
+          cancel_requested_at: string | null
           client_turn_id: string | null
           context_type: string
+          correlation_id: string
           created_at: string
           entity_id: string | null
+          execution_generation: number
           execution_mode: string
+          execution_started_at: string | null
+          failure_code: string | null
           finished_at: string | null
           finished_reason: string | null
           first_canonical_op: string | null
@@ -3991,44 +4121,65 @@ export type Database = {
           first_skill_path: string | null
           gateway_enabled: boolean
           history_compressed: boolean | null
+          history_cutoff_at: string | null
           history_for_model_count: number | null
+          history_message_ids: string[] | null
           history_strategy: string | null
           id: string
+          input_artifact_id: string | null
+          irreversible_boundary_at: string | null
+          last_event_sequence: number
           last_progress_at: string | null
           llm_pass_count: number
+          mutation_reserved_at: string | null
           prepared_prompt_hit: boolean | null
           prepared_prompt_id: string | null
           prepared_prompt_miss_reason: string | null
           prepared_surface_profile: string | null
           project_id: string | null
           prompt_snapshot_id: string | null
+          queue_job_id: string | null
           raw_history_count: number | null
           request_hash: string | null
           request_hash_version: string | null
           request_message: string
+          request_payload: Json
+          request_payload_version: string
           request_prewarmed_context: boolean | null
           session_id: string
           source: string
+          stale_context_policy: string | null
           started_at: string
           status: string
           stream_run_id: string
+          terminal_event_id: string | null
+          terminalized_at: string | null
           timing_metric_id: string | null
           tool_call_count: number
           tool_round_count: number
+          transport_contract_version: string | null
+          transport_decision_id: string | null
           updated_at: string
           user_id: string
           user_message_id: string | null
           validation_failure_count: number
+          worker_started_at: string | null
         }
         Insert: {
           assistant_message_id?: string | null
           cache_age_seconds?: number | null
           cache_source?: string | null
+          cancel_reason?: string | null
+          cancel_requested_at?: string | null
           client_turn_id?: string | null
           context_type: string
+          correlation_id?: string
           created_at?: string
           entity_id?: string | null
+          execution_generation?: number
           execution_mode?: string
+          execution_started_at?: string | null
+          failure_code?: string | null
           finished_at?: string | null
           finished_reason?: string | null
           first_canonical_op?: string | null
@@ -4037,44 +4188,65 @@ export type Database = {
           first_skill_path?: string | null
           gateway_enabled?: boolean
           history_compressed?: boolean | null
+          history_cutoff_at?: string | null
           history_for_model_count?: number | null
+          history_message_ids?: string[] | null
           history_strategy?: string | null
           id?: string
+          input_artifact_id?: string | null
+          irreversible_boundary_at?: string | null
+          last_event_sequence?: number
           last_progress_at?: string | null
           llm_pass_count?: number
+          mutation_reserved_at?: string | null
           prepared_prompt_hit?: boolean | null
           prepared_prompt_id?: string | null
           prepared_prompt_miss_reason?: string | null
           prepared_surface_profile?: string | null
           project_id?: string | null
           prompt_snapshot_id?: string | null
+          queue_job_id?: string | null
           raw_history_count?: number | null
           request_hash?: string | null
           request_hash_version?: string | null
           request_message: string
+          request_payload: Json
+          request_payload_version?: string
           request_prewarmed_context?: boolean | null
           session_id: string
           source?: string
+          stale_context_policy?: string | null
           started_at?: string
           status?: string
           stream_run_id: string
+          terminal_event_id?: string | null
+          terminalized_at?: string | null
           timing_metric_id?: string | null
           tool_call_count?: number
           tool_round_count?: number
+          transport_contract_version?: string | null
+          transport_decision_id?: string | null
           updated_at?: string
           user_id: string
           user_message_id?: string | null
           validation_failure_count?: number
+          worker_started_at?: string | null
         }
         Update: {
           assistant_message_id?: string | null
           cache_age_seconds?: number | null
           cache_source?: string | null
+          cancel_reason?: string | null
+          cancel_requested_at?: string | null
           client_turn_id?: string | null
           context_type?: string
+          correlation_id?: string
           created_at?: string
           entity_id?: string | null
+          execution_generation?: number
           execution_mode?: string
+          execution_started_at?: string | null
+          failure_code?: string | null
           finished_at?: string | null
           finished_reason?: string | null
           first_canonical_op?: string | null
@@ -4083,34 +4255,49 @@ export type Database = {
           first_skill_path?: string | null
           gateway_enabled?: boolean
           history_compressed?: boolean | null
+          history_cutoff_at?: string | null
           history_for_model_count?: number | null
+          history_message_ids?: string[] | null
           history_strategy?: string | null
           id?: string
+          input_artifact_id?: string | null
+          irreversible_boundary_at?: string | null
+          last_event_sequence?: number
           last_progress_at?: string | null
           llm_pass_count?: number
+          mutation_reserved_at?: string | null
           prepared_prompt_hit?: boolean | null
           prepared_prompt_id?: string | null
           prepared_prompt_miss_reason?: string | null
           prepared_surface_profile?: string | null
           project_id?: string | null
           prompt_snapshot_id?: string | null
+          queue_job_id?: string | null
           raw_history_count?: number | null
           request_hash?: string | null
           request_hash_version?: string | null
           request_message?: string
+          request_payload?: Json
+          request_payload_version?: string
           request_prewarmed_context?: boolean | null
           session_id?: string
           source?: string
+          stale_context_policy?: string | null
           started_at?: string
           status?: string
           stream_run_id?: string
+          terminal_event_id?: string | null
+          terminalized_at?: string | null
           timing_metric_id?: string | null
           tool_call_count?: number
           tool_round_count?: number
+          transport_contract_version?: string | null
+          transport_decision_id?: string | null
           updated_at?: string
           user_id?: string
           user_message_id?: string | null
           validation_failure_count?: number
+          worker_started_at?: string | null
         }
         Relationships: [
           {
@@ -4121,10 +4308,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "chat_turn_runs_input_artifact_id_fkey"
+            columns: ["input_artifact_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_input_artifacts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "chat_turn_runs_prepared_prompt_id_fkey"
             columns: ["prepared_prompt_id"]
             isOneToOne: false
             referencedRelation: "agentic_chat_prepared_prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_turn_runs_queue_job_id_fkey"
+            columns: ["queue_job_id"]
+            isOneToOne: false
+            referencedRelation: "queue_jobs"
             referencedColumns: ["id"]
           },
           {
@@ -4149,6 +4350,93 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      chat_turn_signals: {
+        Row: {
+          consumed_at: string | null
+          consumed_by_generation: number | null
+          created_at: string
+          id: string
+          kind: string
+          reason: string
+          session_id: string
+          signal_version: string
+          source: string
+          turn_run_id: string
+          user_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          consumed_by_generation?: number | null
+          created_at?: string
+          id?: string
+          kind?: string
+          reason: string
+          session_id: string
+          signal_version?: string
+          source: string
+          turn_run_id: string
+          user_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          consumed_by_generation?: number | null
+          created_at?: string
+          id?: string
+          kind?: string
+          reason?: string
+          session_id?: string
+          signal_version?: string
+          source?: string
+          turn_run_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chat_turn_stream_state: {
+        Row: {
+          assistant_text: string
+          created_at: string
+          durable_through_sequence: number
+          execution_generation: number
+          projection: Json
+          projection_durable_sequence: number
+          reconcile_required: boolean
+          session_id: string
+          snapshot_sequence: number
+          turn_run_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assistant_text?: string
+          created_at?: string
+          durable_through_sequence?: number
+          execution_generation?: number
+          projection: Json
+          projection_durable_sequence?: number
+          reconcile_required?: boolean
+          session_id: string
+          snapshot_sequence?: number
+          turn_run_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assistant_text?: string
+          created_at?: string
+          durable_through_sequence?: number
+          execution_generation?: number
+          projection?: Json
+          projection_durable_sequence?: number
+          reconcile_required?: boolean
+          session_id?: string
+          snapshot_sequence?: number
+          turn_run_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       cron_logs: {
         Row: {
@@ -12641,6 +12929,356 @@ export type Database = {
           },
         ]
       }
+      question_tree_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          node_id: string | null
+          payload: Json
+          run_id: string
+          seq: number
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          node_id?: string | null
+          payload: Json
+          run_id: string
+          seq: number
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          node_id?: string | null
+          payload?: Json
+          run_id?: string
+          seq?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_tree_events_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "question_tree_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_tree_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "question_tree_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_tree_nodes: {
+        Row: {
+          answer: string | null
+          attempt_count: number
+          completed_at: string | null
+          completion_tokens: number
+          confidence: number | null
+          cost_usd: number
+          created_at: string
+          depth: number
+          epistemic_assessment: Json | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          latency_ms: number
+          lease_expires_at: string | null
+          lease_owner: string | null
+          model_requested: string | null
+          model_used: string | null
+          node_kind: string
+          node_number: number
+          normalized_question: string
+          parent_node_id: string | null
+          prompt_tokens: number
+          provider_request_id: string | null
+          question: string
+          reasoning_tokens: number
+          run_id: string
+          search_document: unknown
+          sibling_index: number | null
+          started_at: string | null
+          status: string
+          stop_reason: string | null
+          thesis: string | null
+          updated_at: string
+        }
+        Insert: {
+          answer?: string | null
+          attempt_count?: number
+          completed_at?: string | null
+          completion_tokens?: number
+          confidence?: number | null
+          cost_usd?: number
+          created_at?: string
+          depth: number
+          epistemic_assessment?: Json | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          latency_ms?: number
+          lease_expires_at?: string | null
+          lease_owner?: string | null
+          model_requested?: string | null
+          model_used?: string | null
+          node_kind: string
+          node_number: number
+          normalized_question: string
+          parent_node_id?: string | null
+          prompt_tokens?: number
+          provider_request_id?: string | null
+          question: string
+          reasoning_tokens?: number
+          run_id: string
+          search_document?: unknown
+          sibling_index?: number | null
+          started_at?: string | null
+          status?: string
+          stop_reason?: string | null
+          thesis?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answer?: string | null
+          attempt_count?: number
+          completed_at?: string | null
+          completion_tokens?: number
+          confidence?: number | null
+          cost_usd?: number
+          created_at?: string
+          depth?: number
+          epistemic_assessment?: Json | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          latency_ms?: number
+          lease_expires_at?: string | null
+          lease_owner?: string | null
+          model_requested?: string | null
+          model_used?: string | null
+          node_kind?: string
+          node_number?: number
+          normalized_question?: string
+          parent_node_id?: string | null
+          prompt_tokens?: number
+          provider_request_id?: string | null
+          question?: string
+          reasoning_tokens?: number
+          run_id?: string
+          search_document?: unknown
+          sibling_index?: number | null
+          started_at?: string | null
+          status?: string
+          stop_reason?: string | null
+          thesis?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_tree_nodes_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "question_tree_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_tree_proposals: {
+        Row: {
+          child_node_id: string | null
+          created_at: string
+          duplicate_of_node_id: string | null
+          expected_information_gain: string
+          id: string
+          model_priority: number | null
+          normalized_question: string
+          purpose: string
+          question: string
+          rank: number
+          run_id: string
+          scheduler_score: number | null
+          source_node_id: string
+          status: string
+          target_claim: string | null
+          updated_at: string
+          validation_error: string | null
+          why_it_matters: string
+        }
+        Insert: {
+          child_node_id?: string | null
+          created_at?: string
+          duplicate_of_node_id?: string | null
+          expected_information_gain: string
+          id?: string
+          model_priority?: number | null
+          normalized_question: string
+          purpose: string
+          question: string
+          rank: number
+          run_id: string
+          scheduler_score?: number | null
+          source_node_id: string
+          status?: string
+          target_claim?: string | null
+          updated_at?: string
+          validation_error?: string | null
+          why_it_matters?: string
+        }
+        Update: {
+          child_node_id?: string | null
+          created_at?: string
+          duplicate_of_node_id?: string | null
+          expected_information_gain?: string
+          id?: string
+          model_priority?: number | null
+          normalized_question?: string
+          purpose?: string
+          question?: string
+          rank?: number
+          run_id?: string
+          scheduler_score?: number | null
+          source_node_id?: string
+          status?: string
+          target_claim?: string | null
+          updated_at?: string
+          validation_error?: string | null
+          why_it_matters?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_tree_proposals_child_node_id_fkey"
+            columns: ["child_node_id"]
+            isOneToOne: false
+            referencedRelation: "question_tree_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_tree_proposals_duplicate_of_node_id_fkey"
+            columns: ["duplicate_of_node_id"]
+            isOneToOne: false
+            referencedRelation: "question_tree_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_tree_proposals_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "question_tree_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_tree_runs: {
+        Row: {
+          advance_sequence: number
+          completed_at: string | null
+          config: Json
+          created_at: string
+          created_by: string
+          deepest_depth: number
+          explorer_model_requested: string
+          frontier_count: number
+          id: string
+          max_provider_requests: number
+          model_policy: string
+          next_batch_not_before: string | null
+          next_retry_at: string | null
+          node_limit: number
+          nodes_completed: number
+          nodes_created: number
+          nodes_failed: number
+          pause_reason: string | null
+          phase: string
+          prompt_version: string
+          provider_requests: number
+          root_node_id: string | null
+          root_question: string
+          started_at: string | null
+          status: string
+          synthesis: Json | null
+          synthesis_model_requested: string
+          updated_at: string
+          usage: Json
+        }
+        Insert: {
+          advance_sequence?: number
+          completed_at?: string | null
+          config: Json
+          created_at?: string
+          created_by: string
+          deepest_depth?: number
+          explorer_model_requested: string
+          frontier_count?: number
+          id?: string
+          max_provider_requests?: number
+          model_policy?: string
+          next_batch_not_before?: string | null
+          next_retry_at?: string | null
+          node_limit?: number
+          nodes_completed?: number
+          nodes_created?: number
+          nodes_failed?: number
+          pause_reason?: string | null
+          phase?: string
+          prompt_version?: string
+          provider_requests?: number
+          root_node_id?: string | null
+          root_question: string
+          started_at?: string | null
+          status?: string
+          synthesis?: Json | null
+          synthesis_model_requested: string
+          updated_at?: string
+          usage: Json
+        }
+        Update: {
+          advance_sequence?: number
+          completed_at?: string | null
+          config?: Json
+          created_at?: string
+          created_by?: string
+          deepest_depth?: number
+          explorer_model_requested?: string
+          frontier_count?: number
+          id?: string
+          max_provider_requests?: number
+          model_policy?: string
+          next_batch_not_before?: string | null
+          next_retry_at?: string | null
+          node_limit?: number
+          nodes_completed?: number
+          nodes_created?: number
+          nodes_failed?: number
+          pause_reason?: string | null
+          phase?: string
+          prompt_version?: string
+          provider_requests?: number
+          root_node_id?: string | null
+          root_question?: string
+          started_at?: string | null
+          status?: string
+          synthesis?: Json | null
+          synthesis_model_requested?: string
+          updated_at?: string
+          usage?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_tree_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       queue_jobs: {
         Row: {
           attempts: number | null
@@ -16495,6 +17133,13 @@ export type Database = {
         }
         Returns: Json
       }
+      admit_question_tree_proposals: {
+        Args: {
+          p_proposal_ids: string[]
+          p_run_id: string
+        }
+        Returns: Json
+      }
       apply_graph_reorg_changes: {
         Args: {
           p_deletes: Json
@@ -16733,6 +17378,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      claim_question_tree_batch: {
+        Args: {
+          p_limit?: number
+          p_run_id: string
+          p_worker_id: string
+        }
+        Returns: Json
+      }
       claim_specific_email_sequence_send: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -16830,6 +17483,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      complete_question_tree_run: {
+        Args: {
+          p_run_id: string
+          p_synthesis: Json
+          p_telemetry: Json
+          p_usage: Json
+        }
+        Returns: Json
+      }
       complete_queue_job: {
         Args: { p_job_id: string; p_processing_token?: string; p_result?: Json }
         Returns: boolean
@@ -16856,6 +17518,13 @@ export type Database = {
         Args: { p_action: string; p_run_id: string; p_user_id: string }
         Returns: string
       }
+      control_question_tree_run: {
+        Args: {
+          p_action: string
+          p_run_id: string
+        }
+        Returns: Json
+      }
       create_agent_run_with_job: {
         Args: { p_job_metadata: Json; p_priority?: number; p_run: Json }
         Returns: Json
@@ -16871,6 +17540,16 @@ export type Database = {
           created: boolean
           run_id: string
         }[]
+      }
+      create_question_tree_run_with_job: {
+        Args: {
+          p_config?: Json
+          p_created_by: string
+          p_model_policy?: string
+          p_node_limit?: number
+          p_root_question: string
+        }
+        Returns: Json
       }
       create_tracking_link: {
         Args: { p_delivery_id: string; p_destination_url: string }
@@ -16999,6 +17678,14 @@ export type Database = {
           p_recipient_user_id: string
         }
         Returns: string
+      }
+      enqueue_question_tree_advance: {
+        Args: {
+          p_expected_sequence: number
+          p_run_id: string
+          p_scheduled_for?: string
+        }
+        Returns: Json
       }
       enroll_user_in_email_sequence: {
         Args: {
@@ -18007,6 +18694,12 @@ export type Database = {
           observations_deleted: number
         }[]
       }
+      question_tree_normalize_question: {
+        Args: {
+          p_question: string
+        }
+        Returns: Json
+      }
       queue_deep_research_synthesis: {
         Args: { p_parent_run_id: string }
         Returns: string
@@ -18138,7 +18831,11 @@ export type Database = {
         Returns: Json
       }
       reset_stalled_jobs: {
-        Args: { p_stall_timeout?: string }
+        Args: {
+          p_exclude_job_types?: string[]
+          p_include_job_types?: string[]
+          p_stall_timeout?: string
+        }
         Returns: number
       }
       resolve_onto_public_page_slug_prefix: {
@@ -18172,6 +18869,13 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      retry_question_tree_node: {
+        Args: {
+          p_node_id: string
+          p_run_id: string
+        }
+        Returns: Json
       }
       rollup_security_events: {
         Args: { p_end_date?: string; p_start_date?: string }
@@ -18673,6 +19377,8 @@ export type Database = {
         | "generate_brief_audio"
         | "buildos_project_loop"
         | "agent_run"
+        | "agentic_chat_turn"
+        | "admin_question_tree"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -18928,6 +19634,8 @@ export const Constants = {
         "generate_brief_audio",
         "buildos_project_loop",
         "agent_run",
+        "agentic_chat_turn",
+        "admin_question_tree",
       ],
       recurrence_end_reason: [
         "indefinite",

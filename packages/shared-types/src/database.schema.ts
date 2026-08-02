@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-07-31T04:11:19.430Z
+// Generated on: 2026-08-02T04:40:03.703Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -896,6 +896,7 @@ export type DatabaseSchema = {
 		arguments: Json;
 		client_turn_id: string | null;
 		created_at: string | null;
+		effect_id: string | null;
 		error_message: string | null;
 		execution_time_ms: number | null;
 		gateway_op: string | null;
@@ -934,6 +935,26 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	chat_turn_effects: {
+		canonical_argument_hash: string;
+		created_at: string;
+		downstream_idempotency_supported: boolean;
+		downstream_receipt: Json | null;
+		execution_generation: number;
+		failure_code: string | null;
+		finished_at: string | null;
+		id: string;
+		operation_name: string;
+		provider_tool_call_id: string | null;
+		reserved_at: string;
+		session_id: string;
+		started_at: string | null;
+		state: string;
+		tool_name: string;
+		turn_run_id: string;
+		updated_at: string;
+		user_id: string;
+	};
 	chat_turn_events: {
 		created_at: string;
 		event_type: string;
@@ -946,15 +967,37 @@ export type DatabaseSchema = {
 		turn_run_id: string;
 		user_id: string;
 	};
+	chat_turn_input_artifacts: {
+		artifact_version: string;
+		content_bytes: number;
+		content_hash: string;
+		created_at: string;
+		history: Json;
+		history_bytes: number;
+		history_source: string;
+		id: string;
+		prepared: Json;
+		retain_until: string;
+		session_id: string;
+		source_prepared_prompt_id: string | null;
+		turn_run_id: string;
+		user_id: string;
+	};
 	chat_turn_runs: {
 		assistant_message_id: string | null;
 		cache_age_seconds: number | null;
 		cache_source: string | null;
+		cancel_reason: string | null;
+		cancel_requested_at: string | null;
 		client_turn_id: string | null;
 		context_type: string;
+		correlation_id: string;
 		created_at: string;
 		entity_id: string | null;
+		execution_generation: number;
 		execution_mode: string;
+		execution_started_at: string | null;
+		failure_code: string | null;
 		finished_at: string | null;
 		finished_reason: string | null;
 		first_canonical_op: string | null;
@@ -963,34 +1006,76 @@ export type DatabaseSchema = {
 		first_skill_path: string | null;
 		gateway_enabled: boolean;
 		history_compressed: boolean | null;
+		history_cutoff_at: string | null;
 		history_for_model_count: number | null;
+		history_message_ids: string[] | null;
 		history_strategy: string | null;
 		id: string;
+		input_artifact_id: string | null;
+		irreversible_boundary_at: string | null;
+		last_event_sequence: number;
 		last_progress_at: string | null;
 		llm_pass_count: number;
+		mutation_reserved_at: string | null;
 		prepared_prompt_hit: boolean | null;
 		prepared_prompt_id: string | null;
 		prepared_prompt_miss_reason: string | null;
 		prepared_surface_profile: string | null;
 		project_id: string | null;
 		prompt_snapshot_id: string | null;
+		queue_job_id: string | null;
 		raw_history_count: number | null;
 		request_hash: string | null;
 		request_hash_version: string | null;
 		request_message: string;
+		request_payload: Json;
+		request_payload_version: string;
 		request_prewarmed_context: boolean | null;
 		session_id: string;
 		source: string;
+		stale_context_policy: string | null;
 		started_at: string;
 		status: string;
 		stream_run_id: string;
+		terminal_event_id: string | null;
+		terminalized_at: string | null;
 		timing_metric_id: string | null;
 		tool_call_count: number;
 		tool_round_count: number;
+		transport_contract_version: string | null;
+		transport_decision_id: string | null;
 		updated_at: string;
 		user_id: string;
 		user_message_id: string | null;
 		validation_failure_count: number;
+		worker_started_at: string | null;
+	};
+	chat_turn_signals: {
+		consumed_at: string | null;
+		consumed_by_generation: number | null;
+		created_at: string;
+		id: string;
+		kind: string;
+		reason: string;
+		session_id: string;
+		signal_version: string;
+		source: string;
+		turn_run_id: string;
+		user_id: string;
+	};
+	chat_turn_stream_state: {
+		assistant_text: string;
+		created_at: string;
+		durable_through_sequence: number;
+		execution_generation: number;
+		projection: Json;
+		projection_durable_sequence: number;
+		reconcile_required: boolean;
+		session_id: string;
+		snapshot_sequence: number;
+		turn_run_id: string;
+		updated_at: string;
+		user_id: string;
 	};
 	cron_logs: {
 		created_at: string | null;
@@ -3053,6 +3138,101 @@ export type DatabaseSchema = {
 		user_agent: string | null;
 		user_id: string;
 	};
+	question_tree_events: {
+		created_at: string;
+		event_type: string;
+		id: string;
+		node_id: string | null;
+		payload: Json;
+		run_id: string;
+		seq: number;
+	};
+	question_tree_nodes: {
+		answer: string | null;
+		attempt_count: number;
+		completed_at: string | null;
+		completion_tokens: number;
+		confidence: number | null;
+		cost_usd: number;
+		created_at: string;
+		depth: number;
+		epistemic_assessment: Json | null;
+		error_code: string | null;
+		error_message: string | null;
+		id: string;
+		latency_ms: number;
+		lease_expires_at: string | null;
+		lease_owner: string | null;
+		model_requested: string | null;
+		model_used: string | null;
+		node_kind: string;
+		node_number: number;
+		normalized_question: string;
+		parent_node_id: string | null;
+		prompt_tokens: number;
+		provider_request_id: string | null;
+		question: string;
+		reasoning_tokens: number;
+		run_id: string;
+		search_document: unknown;
+		sibling_index: number | null;
+		started_at: string | null;
+		status: string;
+		stop_reason: string | null;
+		thesis: string | null;
+		updated_at: string;
+	};
+	question_tree_proposals: {
+		child_node_id: string | null;
+		created_at: string;
+		duplicate_of_node_id: string | null;
+		expected_information_gain: string;
+		id: string;
+		model_priority: number | null;
+		normalized_question: string;
+		purpose: string;
+		question: string;
+		rank: number;
+		run_id: string;
+		scheduler_score: number | null;
+		source_node_id: string;
+		status: string;
+		target_claim: string | null;
+		updated_at: string;
+		validation_error: string | null;
+		why_it_matters: string;
+	};
+	question_tree_runs: {
+		advance_sequence: number;
+		completed_at: string | null;
+		config: Json;
+		created_at: string;
+		created_by: string;
+		deepest_depth: number;
+		explorer_model_requested: string;
+		frontier_count: number;
+		id: string;
+		max_provider_requests: number;
+		model_policy: string;
+		next_batch_not_before: string | null;
+		next_retry_at: string | null;
+		node_limit: number;
+		nodes_completed: number;
+		nodes_created: number;
+		nodes_failed: number;
+		pause_reason: string | null;
+		phase: string;
+		prompt_version: string;
+		provider_requests: number;
+		root_node_id: string | null;
+		root_question: string;
+		started_at: string | null;
+		status: string;
+		synthesis: Json | null;
+		synthesis_model_requested: string;
+		updated_at: string;
+		usage: Json;
+	};
 	queue_jobs: {
 		attempts: number | null;
 		completed_at: string | null;
@@ -3994,8 +4174,12 @@ export const tableNames = [
 	'chat_sessions_projects',
 	'chat_tool_executions',
 	'chat_turn_checkpoints',
+	'chat_turn_effects',
 	'chat_turn_events',
+	'chat_turn_input_artifacts',
 	'chat_turn_runs',
+	'chat_turn_signals',
+	'chat_turn_stream_state',
 	'cron_logs',
 	'customer_subscriptions',
 	'daily_briefs',
@@ -4123,6 +4307,10 @@ export const tableNames = [
 	'projects',
 	'projects_history',
 	'push_subscriptions',
+	'question_tree_events',
+	'question_tree_nodes',
+	'question_tree_proposals',
+	'question_tree_runs',
 	'queue_jobs',
 	'recurring_task_instances',
 	'recurring_task_migration_log',

@@ -5,6 +5,10 @@ export const AGENTIC_CHAT_INPUT_ARTIFACT_VERSION = 'agentic_chat_input_v2' as co
 export const AGENTIC_CHAT_INPUT_ARTIFACT_MAX_BYTES = 2 * 1024 * 1024;
 export const AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES = 256 * 1024;
 export const AGENTIC_CHAT_INPUT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+export const AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES = 2 * 1024 * 1024;
+export const AGENTIC_CHAT_STREAM_SPILL_THRESHOLD_BYTES = 512 * 1024;
+export const AGENTIC_CHAT_TERMINAL_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+export const AGENTIC_CHAT_SIGNAL_VERSION = 'agentic_chat_signal_v1' as const;
 
 export type JsonObject = { [key: string]: JsonValue | undefined };
 export type JsonValue = null | boolean | number | string | JsonObject | JsonValue[];
@@ -183,7 +187,7 @@ export type TurnSnapshotV1 = {
 };
 
 export type ChatTurnSignalV1 = {
-	signalVersion: 'agentic_chat_signal_v1';
+	signalVersion: typeof AGENTIC_CHAT_SIGNAL_VERSION;
 	id: string;
 	turnRunId: string;
 	kind: 'cancel';

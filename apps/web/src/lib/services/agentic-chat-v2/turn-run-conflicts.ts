@@ -1,5 +1,8 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-run-conflicts.ts
-const RUNNING_TURN_CONSTRAINT = 'uq_chat_turn_runs_one_running_per_session';
+const ACTIVE_TURN_CONSTRAINTS = [
+	'uq_chat_turn_runs_one_running_per_session',
+	'uq_chat_turn_runs_one_active_per_session'
+] as const;
 
 function readErrorField(error: unknown, field: string): string | null {
 	if (!error || typeof error !== 'object') return null;
@@ -30,6 +33,15 @@ export function isPostgresUniqueViolation(error: unknown): boolean {
 }
 
 export function isRunningTurnUniqueViolation(error: unknown): boolean {
+	return isActiveTurnUniqueViolation(error);
+}
+
+/**
+ * Recognize either index name during the create-new-then-drop-old rollout.
+ * The legacy export above remains as a compatibility alias for older callers.
+ */
+export function isActiveTurnUniqueViolation(error: unknown): boolean {
 	if (!isPostgresUniqueViolation(error)) return false;
-	return collectPostgresErrorText(error).includes(RUNNING_TURN_CONSTRAINT);
+	const errorText = collectPostgresErrorText(error);
+	return ACTIVE_TURN_CONSTRAINTS.some((constraint) => errorText.includes(constraint));
 }

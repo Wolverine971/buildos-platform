@@ -34,6 +34,8 @@ import { processProjectContextSnapshotJob } from './workers/ontology/projectCont
 import { processProjectIconJob } from './workers/project-icon/projectIconWorker';
 import { processProjectLoopJob } from './workers/project-loop/projectLoopWorker';
 import { processCalendarSyncJob } from './workers/calendar/calendarSyncWorker';
+import { processQuestionTreeJob } from './workers/question-tree/questionTreeWorker';
+import type { QuestionTreeJobMetadata } from './workers/question-tree/questionTreeContracts';
 import { processBriefAudio as processBriefAudioJob } from './workers/briefAudio/briefAudioWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
 import { validateEnvironment } from './config/queueConfig';
@@ -381,6 +383,22 @@ async function processCalendarSync(job: ProcessingJob) {
 }
 
 /**
+ * Admin Question Tree experiment processor
+ */
+async function processQuestionTree(job: ProcessingJob<QuestionTreeJobMetadata>) {
+	await job.log('Question Tree advance received');
+
+	try {
+		const result = await processQuestionTreeJob(job);
+		await job.log(`Question Tree advance finished (${result.status}/${result.phase})`);
+		return result;
+	} catch (error) {
+		await job.log(`Question Tree advance failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -427,6 +445,9 @@ export async function startWorker() {
 
 	// Register calendar sync projection processor
 	queue.process('sync_calendar', processCalendarSync);
+
+	// Register admin Question Tree experiment processor.
+	queue.process('admin_question_tree', processQuestionTree);
 
 	// Check if Twilio is configured
 	const twilioEnabled = !!(

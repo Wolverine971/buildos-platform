@@ -60,7 +60,8 @@
 		'/admin/chat/timing',
 		'/admin/chat/domains',
 		'/admin/ontology/graph',
-		'/admin/ontology/public-pages'
+		'/admin/ontology/public-pages',
+		'/admin/experiments/question-tree'
 	];
 
 	let mobileOpen = $state(false);
@@ -134,6 +135,17 @@
 					href: '/admin/beta',
 					icon: Sparkles,
 					description: 'VIP onboarding'
+				}
+			]
+		},
+		{
+			title: 'Experiments',
+			items: [
+				{
+					title: 'Question Tree',
+					href: '/admin/experiments/question-tree',
+					icon: TestTube,
+					description: 'Adaptive model research'
 				}
 			]
 		},
@@ -432,7 +444,7 @@
 		</header>
 
 		<!-- Main Content Area -->
-		<main class="relative flex-1 overflow-y-auto">
+		<main class="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
 			<div class="min-h-full">
 				{#if hero}
 					<div class="border-b border-border bg-muted">

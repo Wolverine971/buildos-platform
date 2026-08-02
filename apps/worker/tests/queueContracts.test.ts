@@ -65,6 +65,28 @@ describe('queue SQL contracts', () => {
 		expect(sql).toContain('attempts = stalled_jobs.current_attempts + 1');
 		expect(sql).toContain('processing_token = NULL');
 	});
+
+	it('locks generic queue admission and recovery to the service role', () => {
+		const sql = readRepoFile(
+			'supabase/migrations/20260801030600_agentic_chat_worker_queue_function_lockdown.sql'
+		);
+
+		expect(sql).toContain(
+			'REVOKE INSERT ON TABLE public.queue_jobs FROM PUBLIC, anon, authenticated'
+		);
+		expect(sql).toContain('agentic_chat_queue_service_role_required');
+		expect(sql).toContain("jobs.job_type::text <> 'agentic_chat_turn'");
+		expect(sql).toContain('p_include_job_types text[]');
+		expect(sql).toContain('p_exclude_job_types text[]');
+		expect(sql).toContain('TO service_role');
+	});
+
+	it('scopes stalled recovery to registered processors and explicitly excludes agentic chat', () => {
+		const source = readRepoFile('apps/worker/src/lib/supabaseQueue.ts');
+
+		expect(source).toContain('p_include_job_types: registeredJobTypes');
+		expect(source).toContain("p_exclude_job_types: ['agentic_chat_turn']");
+	});
 });
 
 describe('SMS retry ownership', () => {

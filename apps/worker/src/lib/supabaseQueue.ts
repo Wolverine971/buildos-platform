@@ -696,9 +696,13 @@ export class SupabaseQueue {
 	 */
 	private async recoverStalledJobs(): Promise<void> {
 		try {
-			const { data: count, error } = await supabase.rpc('reset_stalled_jobs', {
-				p_stall_timeout: `${this.stalledTimeout / 1000} seconds`
-			});
+			const registeredJobTypes = Array.from(this.processors.keys());
+			const resetArgs = {
+				p_stall_timeout: `${this.stalledTimeout / 1000} seconds`,
+				p_include_job_types: registeredJobTypes,
+				p_exclude_job_types: ['agentic_chat_turn']
+			};
+			const { data: count, error } = await supabase.rpc('reset_stalled_jobs', resetArgs);
 
 			if (error) {
 				this.stalledJobRetryCount++;

@@ -38,10 +38,12 @@
 	);
 </script>
 
-<div class="space-y-4">
-	<div class="relative flex flex-col gap-4">
-		<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-			<div class="flex flex-1 flex-col gap-3">
+<div class="min-w-0 max-w-full space-y-4">
+	<div class="relative flex min-w-0 max-w-full flex-col gap-4">
+		<div
+			class="flex min-w-0 max-w-full flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
+		>
+			<div class="flex min-w-0 flex-1 flex-col gap-3">
 				{#if showBack}
 					<div>
 						<a
@@ -54,7 +56,7 @@
 						</a>
 					</div>
 				{/if}
-				<div class="flex items-center gap-3">
+				<div class="flex min-w-0 items-center gap-3">
 					{#if icon}
 						{@const Icon = icon}
 						<span
@@ -63,12 +65,12 @@
 							<Icon class="h-6 w-6" />
 						</span>
 					{/if}
-					<div>
+					<div class="min-w-0">
 						<h1 class="text-xl font-bold text-foreground sm:text-2xl lg:text-3xl">
 							{title}
 						</h1>
 						{#if description}
-							<p class="mt-1 text-sm text-muted-foreground sm:text-base">
+							<p class="mt-1 break-words text-sm text-muted-foreground sm:text-base">
 								{description}
 							</p>
 						{/if}
@@ -77,7 +79,7 @@
 			</div>
 
 			{#if actions}
-				<div class="flex flex-wrap items-center gap-2 lg:justify-end">
+				<div class="flex min-w-0 max-w-full flex-wrap items-center gap-2 lg:justify-end">
 					{@render actions()}
 				</div>
 			{/if}

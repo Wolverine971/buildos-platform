@@ -398,33 +398,67 @@ function rpcArgumentSchema(pathDefinition: OpenApiPath): OpenApiSchema | undefin
 	return pathDefinition.post?.parameters?.find((parameter) => parameter.in === 'body')?.schema;
 }
 
-function renderNewFunction(
-	name: string,
-	pathDefinition: OpenApiPath,
-	enums: Map<string, string[]>
-): string {
+function renderFunctionArgs(pathDefinition: OpenApiPath, enums: Map<string, string[]>): string[] {
 	const argsSchema = rpcArgumentSchema(pathDefinition);
 	const properties = Object.entries(argsSchema?.properties ?? {}).sort(([left], [right]) =>
 		left.localeCompare(right)
 	);
 	const required = new Set(argsSchema?.required ?? []);
-	const lines = [`      ${renderKey(name)}: {`];
 
-	if (properties.length === 0) {
-		lines.push('        Args: never');
-	} else {
-		lines.push('        Args: {');
-		for (const [argumentName, schema] of properties) {
-			lines.push(
+	if (properties.length === 0) return ['        Args: never'];
+
+	return [
+		'        Args: {',
+		...properties.map(
+			([argumentName, schema]) =>
 				`          ${renderKey(argumentName)}${required.has(argumentName) ? '' : '?'}: ${schemaToTypescript(schema, enums)}`
-			);
-		}
-		lines.push('        }');
+		),
+		'        }'
+	];
+}
+
+function existingFunctionReturnTail(existing: string): string[] | undefined {
+	const returnsIndex = existing.search(/^        Returns:/m);
+	if (returnsIndex !== -1) {
+		const tail = existing.slice(returnsIndex).trimEnd();
+		const closingIndex = tail.lastIndexOf('\n      }');
+		return (closingIndex === -1 ? tail : tail.slice(0, closingIndex)).split('\n');
 	}
 
+	// Older generated fixtures may keep a complete function block on one line.
+	const inlineReturn = existing.match(/\bReturns:\s*([^;}]+)/)?.[1]?.trim();
+	return inlineReturn ? [`        Returns: ${inlineReturn}`] : undefined;
+}
+
+function functionArgumentNamesFromOpenApi(pathDefinition: OpenApiPath): string[] {
+	return Object.keys(rpcArgumentSchema(pathDefinition)?.properties ?? {}).sort();
+}
+
+function existingFunctionArgumentNames(existing: string): string[] {
+	const names = new Set<string>();
+	for (const argsMatch of existing.matchAll(/Args:\s*\{([\s\S]*?)\}\s*;?\s*Returns:/g)) {
+		for (const match of argsMatch[1].matchAll(
+			/(?:^|[;{\n])\s*(?:"((?:\\.|[^"\\])*)"|([A-Za-z_$][A-Za-z0-9_$]*))\??\s*:/g
+		)) {
+			names.add(match[1] !== undefined ? JSON.parse(`"${match[1]}"`) : match[2]);
+		}
+	}
+	return [...names].sort();
+}
+
+function renderFunction(
+	name: string,
+	pathDefinition: OpenApiPath,
+	enums: Map<string, string[]>,
+	existing?: string
+): string {
+	const lines = [`      ${renderKey(name)}: {`, ...renderFunctionArgs(pathDefinition, enums)];
+	const existingReturnTail = existing ? existingFunctionReturnTail(existing) : undefined;
+
 	// PostgREST intentionally omits SQL return signatures from its OpenAPI document.
-	// Json is the safe type until a later CLI-authenticated generation enriches it.
-	lines.push('        Returns: Json', '      }');
+	// Preserve an existing/CLI-enriched return contract while refreshing arguments
+	// from the live OpenAPI schema. Json remains the safe fallback for new RPCs.
+	lines.push(...(existingReturnTail ?? ['        Returns: Json']), '      }');
 	return lines.join('\n');
 }
 
@@ -645,12 +679,18 @@ export function renderDatabaseTypesFromOpenApi(
 	const functions = liveFunctionPaths.map(([name, pathDefinition]) => {
 		const existing = existingFunctions.get(name);
 		const compatibility = compatibilityFunctions.get(name);
-		if (existing && compatibility && sameIgnoringWhitespace(existing, compatibility)) {
-			return compatibility;
+		const preservedContract = compatibility ?? existing;
+		if (!preservedContract) addedFunctions.push(name);
+		if (
+			preservedContract &&
+			equalStringArrays(
+				existingFunctionArgumentNames(preservedContract),
+				functionArgumentNamesFromOpenApi(pathDefinition)
+			)
+		) {
+			return preservedContract;
 		}
-		if (existing) return existing;
-		addedFunctions.push(name);
-		return renderNewFunction(name, pathDefinition, enums);
+		return renderFunction(name, pathDefinition, enums, preservedContract);
 	});
 
 	const content = `export type Json =

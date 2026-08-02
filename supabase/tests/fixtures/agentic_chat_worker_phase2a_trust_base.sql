@@ -1,10 +1,17 @@
+-- supabase/tests/fixtures/agentic_chat_worker_phase2a_trust_base.sql
 \ir agentic_chat_legacy_atomic_admission_base.sql
 
 ALTER ROLE service_role BYPASSRLS;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
+CREATE TYPE public.queue_type AS ENUM (
+	'other',
+	'agent_run'
+);
+
 CREATE TABLE public.queue_jobs (
-	id uuid PRIMARY KEY DEFAULT gen_random_uuid()
+	id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+	job_type public.queue_type NOT NULL DEFAULT 'other'
 );
 
 CREATE TABLE public.agentic_chat_prepared_prompts (
