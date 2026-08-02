@@ -18814,6 +18814,12 @@ export type Database = {
         Args: { p_fallback?: string; p_input: string; p_max_length: number }
         Returns: string
       }
+      observe_agentic_chat_turn_cancellations: {
+        Args: {
+          p_turns: Json
+        }
+        Returns: Json
+      }
       onto_check_guard: {
         Args: { p_entity: Json; p_guard: Json }
         Returns: boolean

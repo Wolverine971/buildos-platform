@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/admin/question-tree/QuestionTreeViewportAnchor.svelte -->
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { useSvelteFlow, type Node } from '@xyflow/svelte';
 
@@ -16,8 +17,25 @@
 	let previousNodeCount = 0;
 	let previousSelectedNodeId: string | null = null;
 	let initialFitComplete = false;
+	let viewportFrame: number | null = null;
 	const reducedMotion = new MediaQuery('prefers-reduced-motion: reduce', false);
 	const { fitView, getViewport, setCenter, setViewport } = useSvelteFlow();
+
+	function cancelViewportUpdate(): void {
+		if (viewportFrame === null) return;
+		cancelAnimationFrame(viewportFrame);
+		viewportFrame = null;
+	}
+
+	function scheduleViewportUpdate(update: () => void): void {
+		cancelViewportUpdate();
+		viewportFrame = requestAnimationFrame(() => {
+			viewportFrame = null;
+			update();
+		});
+	}
+
+	onDestroy(cancelViewportUpdate);
 
 	$effect(() => {
 		const currentNodes = nodes;
@@ -33,9 +51,9 @@
 		previousNodeCount = currentNodes.length;
 
 		if (!initialFitComplete && currentNodes.length > 0) {
-			initialFitComplete = true;
-			previousSelectedNodeId = selectedId;
-			const frame = requestAnimationFrame(() => {
+			scheduleViewportUpdate(() => {
+				initialFitComplete = true;
+				previousSelectedNodeId = selectedId;
 				const focusNodes = currentNodes.filter((node) => focusIds.includes(node.id));
 				void fitView({
 					nodes: focusNodes.length ? focusNodes : currentNodes.slice(0, 1),
@@ -45,30 +63,33 @@
 					duration: reducedMotion.current ? 0 : 280
 				});
 			});
-			return () => cancelAnimationFrame(frame);
+			return;
 		}
 
-		if (selectedId && selectedId !== previousSelectedNodeId) {
+		if (selectedId !== previousSelectedNodeId) {
 			previousSelectedNodeId = selectedId;
+			if (!selectedId) {
+				cancelViewportUpdate();
+				return;
+			}
 			const node = currentNodes.find((entry) => entry.id === selectedId);
 			if (!node) return;
-			const frame = requestAnimationFrame(() => {
+			scheduleViewportUpdate(() => {
 				const viewport = getViewport();
 				void setCenter(node.position.x + 125, node.position.y + 66, {
 					zoom: Math.max(viewport.zoom, 0.72),
 					duration: reducedMotion.current ? 0 : 220
 				});
 			});
-			return () => cancelAnimationFrame(frame);
+			return;
 		}
-		previousSelectedNodeId = selectedId;
 
 		if (!addedNodes || !priorPosition || !nextPosition) return;
 		const deltaX = nextPosition.x - priorPosition.x;
 		const deltaY = nextPosition.y - priorPosition.y;
 		if (deltaX === 0 && deltaY === 0) return;
 
-		const frame = requestAnimationFrame(() => {
+		scheduleViewportUpdate(() => {
 			const viewport = getViewport();
 			void setViewport(
 				{
@@ -79,6 +100,5 @@
 				{ duration: reducedMotion.current ? 0 : 120 }
 			);
 		});
-		return () => cancelAnimationFrame(frame);
 	});
 </script>

@@ -24,8 +24,20 @@
 		proposals.filter((proposal) => proposal.source_node_id === node.id)
 	);
 
-	function purposeLabel(value: QuestionTreeProposal['purpose']): string {
-		return value.replaceAll('_', ' ');
+	function humanize(value: string): string {
+		return value
+			.split('_')
+			.map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+			.join(' ');
+	}
+
+	function formatDuration(ms: number): string {
+		if (ms < 1000) return `${ms} ms`;
+		const seconds = Math.round(ms / 1000);
+		if (seconds < 60) return `${seconds} s`;
+		const minutes = Math.floor(seconds / 60);
+		const remainingSeconds = seconds % 60;
+		return `${minutes}m ${remainingSeconds}s`;
 	}
 </script>
 
@@ -64,7 +76,7 @@
 					<span
 						class="rounded-md bg-muted px-2 py-1 text-2xs font-semibold text-muted-foreground"
 					>
-						{node.status}
+						{humanize(node.status)}
 					</span>
 				</div>
 				{#if node.answer}
@@ -134,7 +146,7 @@
 									claim.status === 'unsure' && 'bg-warning/15 text-warning'
 								]}
 							>
-								{claim.status.replaceAll('_', ' ')}
+								{humanize(claim.status)}
 							</span>
 							<p class="mt-2 break-words text-sm font-medium text-foreground">
 								{claim.statement}
@@ -168,7 +180,7 @@
 										<span
 											class="rounded-md bg-muted px-1.5 py-0.5 text-2xs font-bold text-muted-foreground"
 										>
-											{purposeLabel(proposal.purpose)}
+											{humanize(proposal.purpose)}
 										</span>
 										<span
 											class="rounded-md bg-muted px-1.5 py-0.5 text-2xs text-muted-foreground"
@@ -177,7 +189,7 @@
 										</span>
 										<span
 											class="ml-auto text-2xs font-semibold text-muted-foreground"
-											>{proposal.status}</span
+											>{humanize(proposal.status)}</span
 										>
 									</div>
 									<p
@@ -230,7 +242,7 @@
 			<p class="break-words">Model: {node.model_used ?? node.model_requested ?? 'pending'}</p>
 			<p class="mt-1">
 				{node.prompt_tokens + node.completion_tokens} tokens · ${node.cost_usd.toFixed(6)} ·
-				{node.latency_ms} ms
+				{formatDuration(node.latency_ms)}
 			</p>
 		</footer>
 	</div>

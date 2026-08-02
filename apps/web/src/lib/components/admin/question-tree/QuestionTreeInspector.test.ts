@@ -102,4 +102,19 @@ describe('QuestionTreeInspector', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Open child node' }));
 		expect(onSelectNode).toHaveBeenCalledWith('child-node');
 	});
+
+	it('presents machine statuses and latency as readable labels', () => {
+		const view = render(QuestionTreeInspector, {
+			props: {
+				node: node({ node_kind: 'question', answer: 'A tested answer.' }),
+				proposals: [proposal({ purpose: 'resolve_unknown', status: 'budget_exhausted' })],
+				onClose: vi.fn()
+			}
+		});
+
+		expect(view.container).toHaveTextContent('Resolve Unknown');
+		expect(view.container).toHaveTextContent('Budget Exhausted');
+		expect(view.container).toHaveTextContent('150 tokens · $0.000100 · 1 s');
+		expect(view.container).not.toHaveTextContent('budget_exhausted');
+	});
 });

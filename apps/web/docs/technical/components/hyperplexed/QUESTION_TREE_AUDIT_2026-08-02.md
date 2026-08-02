@@ -14,7 +14,7 @@ Primary files:
 - `apps/web/src/lib/components/admin/question-tree/QuestionTreeInspector.svelte`
 - `apps/web/src/lib/components/admin/question-tree/QuestionTreeViewportAnchor.svelte`
 
-Status: audit complete; implementation is pending approval.
+Status: audit complete; approved remediation implemented locally and verified.
 
 Live verification status: authenticated production data was inspected in Chrome on the launch page
 and a 100-node failed run. Desktop and phone-width compositions were captured in light and dark mode.
@@ -27,6 +27,37 @@ Prior art stacked:
 - `ADMIN_PAGES_AUDIT_2026-06-26.md` established the admin console's responsive and primitive standards.
 - `HYPERPLEXED_FIX_PATTERNS.md` is the source for P1-P22 citations.
 - No prior Question Tree-specific Hyperplexed audit or tracker row existed.
+
+## Implemented remediation - 2026-08-02
+
+- **Mouse and keyboard graph parity:** click, drag-to-pan, scroll zoom, pinch zoom, double-click zoom,
+  minimap panning, and the 44 px flow controls remain available to pointer users. The 101-node tab
+  sequence was replaced with one labeled search combobox that supports Arrow Up/Down, Enter, Escape,
+  result counts, and mouse-selectable results. Selecting by either path centers the graph on the node.
+- **Legible graph working view:** large trees now open on the root and first two depths instead of
+  fitting the entire poster. `Fit view` remains the explicit overview action. Selection and hover
+  spotlight the ancestor path plus immediate children while unrelated branches dim; reduced motion
+  disables the transition and running-edge animation.
+- **Graph accessibility cleanup:** layout-only handles are presentation-only, edges and nodes no longer
+  generate hundreds of tab stops, node connection is disabled, controls are 44 x 44 px, and the minimap
+  hides below `sm`. The canvas retains an explicit pointer-navigation description.
+- **Responsive master-detail:** the 400 px inspector remains inline on `xl`. Smaller viewports open the
+  shared focus-trapped bottom sheet only after a user selects a node, with bounded scrolling, close and
+  focus restoration behavior. Closing it no longer leaves a multi-thousand-pixel inspector appended to
+  the document.
+- **Hierarchy and density:** six metric cards became one four-value summary band with progressively
+  disclosed run details; activity became a compact four-row timeline with a terse live announcement;
+  terminal synthesis is collapsed by default so the graph begins in the first viewport; proposal
+  rationale and target claims moved behind native disclosures.
+- **Copy and visual system:** back-label truthfulness, humanized statuses/policy, readable duration and
+  cost formatting, `.micro-label`, `rounded-lg`, quieter model-only context, one-accent explanation,
+  two-line run-question clamping, shared Button usage, and 44 px custom controls were applied.
+- **Root semantics:** an answerless seed is now explained as the research origin instead of displaying
+  the contradictory `completed` / `No answer yet` state.
+
+The keyboard recommendation was deliberately implemented as an equivalent node explorer rather than
+turning the canvas into a keyboard-only surface. This preserves the user's requested cursor/mouse
+navigation while eliminating the original tab trap.
 
 ## Current strengths
 
@@ -197,16 +228,27 @@ same pass with low risk.
 
 ## Verification notes
 
-- Authenticated production launch and 100-node detail states inspected on 2026-08-02.
-- Desktop and phone-width captures completed in dark and light mode.
-- No document-level horizontal overflow was observed.
-- Svelte analyzer results: the detail route, canvas, node, and inspector were clean. The index route
-  reported existing SvelteKit `resolve()` guidance for one `goto()` and one generated `href`. The viewport
-  anchor received advisory `$effect` warnings because it synchronizes an external flow viewport; no product
-  edit was made during the audit.
-- No Question Tree UI tests currently cover focus order, graph keyboard selection, mobile inspector
-  behavior, or reduced-motion edges. Add focused coverage with the implementation.
+- Authenticated production launch and 100-node detail states were inspected before implementation on
+  2026-08-02 at desktop and phone widths in light and dark mode.
+- Authenticated local after-state verification used the 101-node partial run at desktop and phone widths.
+  Both launch and detail pages reported zero document-level horizontal overflow.
+- The graph measured 101 nodes, **0 node tab stops**, 4 remaining focusable graph controls, 0 exposed
+  `Handle` roles, and four 44 x 44 px controls. The minimap remained available on desktop and was hidden
+  on phone width.
+- Keyboard verification searched a two-result query, used Arrow Down and Enter, centered Node 4, updated
+  the inspector, and dimmed 96 unrelated nodes. Mouse verification clicked a visible graph node, selected
+  Node 5, updated the inspector, and spotlighted its local branch.
+- The mobile inspector measured 1,114 px inside a 1,266 px viewport, with no horizontal overflow and no
+  visible duplicate desktop inspector. Closing the sheet restored the normal document; clicking the graph
+  reopened the sheet on the selected node.
+- Collapsing terminal synthesis reduced the detail document from 2,415 px to 1,875 px at the tested
+  desktop scale and moved the graph start to 843 px, inside the initial 1,350 px viewport.
+- Official Svelte analyzer: all edited components clean. Full `pnpm --dir apps/web check`: **0 errors,
+  0 warnings**. Focused tests: **4 files / 9 tests passed**, including new root-semantics and proposal-
+  disclosure inspector coverage.
 
 ## Implementation log
 
-- 2026-08-02: audit and authenticated live verification completed. No product code changed.
+- 2026-08-02: audit and authenticated production baseline completed.
+- 2026-08-02: approved Tier 1-3 cleanup implemented and authenticated local desktop/mobile after-state
+  verified, with pointer navigation explicitly preserved alongside the composite keyboard explorer.

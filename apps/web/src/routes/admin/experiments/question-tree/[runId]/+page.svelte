@@ -16,6 +16,7 @@
 		CircleAlert,
 		CircleDot,
 		Clock3,
+		Download,
 		Loader2,
 		Network,
 		Pause,
@@ -68,6 +69,7 @@
 	let activeSearchIndex = $state(-1);
 	let loading = $state(true);
 	let refreshing = $state(false);
+	let exporting = $state(false);
 	let actionPending = $state<string | null>(null);
 	let retryingNodeId = $state<string | null>(null);
 	let error = $state<string | null>(null);
@@ -474,7 +476,7 @@
 			const payload = (await response.json()) as ApiEnvelope<unknown>;
 			if (!response.ok || !payload.success)
 				throw new Error(payload.error || `Unable to ${action} run`);
-			await loadRun();
+			await loadRun({ afterCurrent: true });
 		} catch (controlError) {
 			error =
 				controlError instanceof Error ? controlError.message : `Unable to ${action} run`;
@@ -496,11 +498,47 @@
 			if (!response.ok || !payload.success) {
 				throw new Error(payload.error || 'Unable to retry node');
 			}
-			await loadRun();
+			await loadRun({ afterCurrent: true });
 		} catch (retryError) {
 			error = retryError instanceof Error ? retryError.message : 'Unable to retry node';
 		} finally {
 			retryingNodeId = null;
+		}
+	}
+
+	async function exportRun(): Promise<void> {
+		if (exporting) return;
+		exporting = true;
+		error = null;
+		try {
+			const response = await fetch(
+				`/api/admin/experiments/question-tree/runs/${data.runId}/export`
+			);
+			if (!response.ok) {
+				const payload = (await response
+					.json()
+					.catch(() => null)) as ApiEnvelope<unknown> | null;
+				throw new Error(payload?.error || 'Unable to export Question Tree run');
+			}
+
+			const disposition = response.headers.get('content-disposition');
+			const filename =
+				disposition?.match(/filename="([^"]+)"/i)?.[1] ?? `question-tree-${data.runId}.zip`;
+			const url = URL.createObjectURL(await response.blob());
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = filename;
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+			URL.revokeObjectURL(url);
+		} catch (exportError) {
+			error =
+				exportError instanceof Error
+					? exportError.message
+					: 'Unable to export Question Tree run';
+		} finally {
+			exporting = false;
 		}
 	}
 
@@ -581,6 +619,17 @@
 	>
 		{#snippet actions()}
 			<div class="flex flex-wrap items-center gap-2">
+				<Button
+					variant="primary"
+					size="sm"
+					icon={Download}
+					loading={exporting}
+					onclick={exportRun}
+					disabled={!detail || exporting}
+					title="Download the complete research tree, synthesis, proposals, events, and raw data"
+				>
+					Export data
+				</Button>
 				<Button
 					variant="outline"
 					size="sm"
@@ -699,6 +748,163 @@
 			</details>
 		</section>
 
+		<details class="admin-panel group" open>
+			<summary
+				class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 text-base font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+			>
+				<span>Final synthesis</span>
+				<span class="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+					{detail.run.synthesis
+						? 'Ready'
+						: detail.run.phase === 'synthesize'
+							? 'Generating'
+							: isQuestionTreeActive(detail.run.status)
+								? 'Pending'
+								: 'Not available'}
+					<ChevronDown
+						class="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+					/>
+				</span>
+			</summary>
+			{#if detail.run.synthesis}
+				<div class="space-y-6 border-t border-border px-5 py-5">
+					<div>
+						<p class="micro-label">Final thesis</p>
+						<p class="mt-2 text-base font-semibold leading-relaxed text-foreground">
+							{detail.run.synthesis.finalThesis}
+						</p>
+					</div>
+					<div>
+						<p class="micro-label">Final answer</p>
+						<p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+							{detail.run.synthesis.finalAnswer}
+						</p>
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-foreground">Confidence assessment</h3>
+						<p class="mt-1 text-xs text-muted-foreground">
+							The synthesis model's classification of the material claims in this
+							tree.
+						</p>
+						<div class="mt-3 grid gap-4 lg:grid-cols-3">
+							{#each synthesisGroups as group (group.label)}
+								<div class={['rounded-lg border p-3', group.className]}>
+									<h4
+										class="text-xs font-bold uppercase tracking-wide text-foreground"
+									>
+										{group.label}
+									</h4>
+									{#if group.items.length}
+										<ul
+											class="mt-2 space-y-1.5 text-xs leading-relaxed text-foreground"
+										>
+											{#each group.items as item (item)}
+												<li class="flex gap-2">
+													<span aria-hidden="true">•</span>
+													<span>{item}</span>
+												</li>
+											{/each}
+										</ul>
+									{:else}
+										<p class="mt-2 text-xs text-muted-foreground">
+											None identified.
+										</p>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					</div>
+
+					<div class="grid gap-4 lg:grid-cols-2">
+						<div class="rounded-lg border border-border bg-background p-4">
+							<h3 class="text-xs font-bold uppercase tracking-wide text-foreground">
+								Key evidence
+							</h3>
+							{#if detail.run.synthesis.keyEvidence.length}
+								<ul class="mt-2 space-y-2 text-xs leading-relaxed text-foreground">
+									{#each detail.run.synthesis.keyEvidence as evidence (`${evidence.finding}:${evidence.nodeNumbers.join(',')}`)}
+										<li>
+											{evidence.finding}
+											{#if evidence.nodeNumbers.length}
+												<span class="text-muted-foreground">
+													· Nodes {evidence.nodeNumbers.join(', ')}
+												</span>
+											{/if}
+										</li>
+									{/each}
+								</ul>
+							{:else}
+								<p class="mt-2 text-xs text-muted-foreground">None identified.</p>
+							{/if}
+						</div>
+						<div class="rounded-lg border border-border bg-background p-4">
+							<h3 class="text-xs font-bold uppercase tracking-wide text-foreground">
+								Important disagreements
+							</h3>
+							{#if detail.run.synthesis.importantDisagreements.length}
+								<ul class="mt-2 space-y-2 text-xs leading-relaxed text-foreground">
+									{#each detail.run.synthesis.importantDisagreements as disagreement (`${disagreement.issue}:${disagreement.nodeNumbers.join(',')}`)}
+										<li>
+											{disagreement.issue}
+											{#if disagreement.nodeNumbers.length}
+												<span class="text-muted-foreground">
+													· Nodes {disagreement.nodeNumbers.join(', ')}
+												</span>
+											{/if}
+										</li>
+									{/each}
+								</ul>
+							{:else}
+								<p class="mt-2 text-xs text-muted-foreground">None identified.</p>
+							{/if}
+						</div>
+						<div class="rounded-lg border border-border bg-background p-4">
+							<h3 class="text-xs font-bold uppercase tracking-wide text-foreground">
+								Recommended next research
+							</h3>
+							{#if detail.run.synthesis.recommendedNextResearch.length}
+								<ul class="mt-2 space-y-2 text-xs leading-relaxed text-foreground">
+									{#each detail.run.synthesis.recommendedNextResearch as item (item)}
+										<li class="flex gap-2">
+											<span aria-hidden="true">•</span>
+											<span>{item}</span>
+										</li>
+									{/each}
+								</ul>
+							{:else}
+								<p class="mt-2 text-xs text-muted-foreground">None identified.</p>
+							{/if}
+						</div>
+						<div class="rounded-lg border border-border bg-background p-4">
+							<h3 class="text-xs font-bold uppercase tracking-wide text-foreground">
+								Limitations
+							</h3>
+							{#if detail.run.synthesis.limitations.length}
+								<ul class="mt-2 space-y-2 text-xs leading-relaxed text-foreground">
+									{#each detail.run.synthesis.limitations as item (item)}
+										<li class="flex gap-2">
+											<span aria-hidden="true">•</span>
+											<span>{item}</span>
+										</li>
+									{/each}
+								</ul>
+							{:else}
+								<p class="mt-2 text-xs text-muted-foreground">None identified.</p>
+							{/if}
+						</div>
+					</div>
+				</div>
+			{:else}
+				<div class="border-t border-border px-5 py-5 text-sm text-muted-foreground">
+					{detail.run.phase === 'synthesize'
+						? 'The synthesis agent is combining the completed research now.'
+						: isQuestionTreeActive(detail.run.status)
+							? 'The final synthesis will appear here after exploration finishes.'
+							: 'This run ended before a final synthesis was recorded. The available node answers are still included in the export.'}
+				</div>
+			{/if}
+		</details>
+
 		<p class="sr-only" aria-live="polite">{phaseActivity}</p>
 		<section class="admin-panel min-w-0 max-w-full overflow-hidden">
 			<header
@@ -798,51 +1004,6 @@
 				<CircleAlert class="mt-0.5 h-4 w-4 shrink-0 text-warning" />
 				<span>{detail.run.pause_reason}</span>
 			</div>
-		{/if}
-
-		{#if detail.run.synthesis}
-			<details class="admin-panel group">
-				<summary
-					class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 text-base font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-				>
-					<span>Final synthesis</span>
-					<span
-						class="flex items-center gap-2 text-xs font-semibold text-muted-foreground"
-					>
-						Ready
-						<ChevronDown
-							class="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"
-						/>
-					</span>
-				</summary>
-				<div class="space-y-5 border-t border-border px-5 py-5">
-					<div>
-						<p class="micro-label">Final thesis</p>
-						<p class="mt-2 text-base font-semibold leading-relaxed text-foreground">
-							{detail.run.synthesis.finalThesis}
-						</p>
-					</div>
-					<p class="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-						{detail.run.synthesis.finalAnswer}
-					</p>
-					<div class="grid gap-4 lg:grid-cols-3">
-						{#each synthesisGroups as group (group.label)}
-							<div class={['rounded-lg border p-3', group.className]}>
-								<h3
-									class="text-xs font-bold uppercase tracking-wide text-foreground"
-								>
-									{group.label}
-								</h3>
-								<ul
-									class="mt-2 space-y-1.5 text-xs leading-relaxed text-foreground"
-								>
-									{#each group.items as item (item)}<li>• {item}</li>{/each}
-								</ul>
-							</div>
-						{/each}
-					</div>
-				</div>
-			</details>
 		{/if}
 
 		<section class="admin-panel min-w-0 max-w-full overflow-hidden">

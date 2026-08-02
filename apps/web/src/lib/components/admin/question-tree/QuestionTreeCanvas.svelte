@@ -40,23 +40,31 @@
 	const nodeTypes = { question: QuestionTreeNode } as unknown as NodeTypes;
 	const reducedMotion = new MediaQuery('prefers-reduced-motion: reduce', false);
 	let hoveredNodeId = $state<string | null>(null);
+	const layoutPositions = $derived.by(buildLayoutPositions);
+	const proposalByChild = $derived.by(() => {
+		const proposalsByNodeId = new Map<string, QuestionTreeProposal>();
+		for (const proposal of proposals) {
+			if (proposal.child_node_id) proposalsByNodeId.set(proposal.child_node_id, proposal);
+		}
+		return proposalsByNodeId;
+	});
 
-	function spotlightNodeIds(nodeId: string | null): string[] {
-		const spotlight: string[] = [];
+	function spotlightNodeIds(nodeId: string | null): Set<string> {
+		const spotlight = new Set<string>();
 		if (!nodeId) return spotlight;
 		const nodeById = new Map(nodes.map((node) => [node.id, node]));
 		let current = nodeById.get(nodeId);
 		while (current) {
-			spotlight.push(current.id);
+			spotlight.add(current.id);
 			current = current.parent_node_id ? nodeById.get(current.parent_node_id) : undefined;
 		}
 		for (const node of nodes) {
-			if (node.parent_node_id === nodeId) spotlight.push(node.id);
+			if (node.parent_node_id === nodeId) spotlight.add(node.id);
 		}
 		return spotlight;
 	}
 
-	function buildGraph(): { nodes: Node[]; edges: Edge[] } {
+	function buildLayoutPositions(): Map<string, { x: number; y: number }> {
 		const graph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 		graph.setGraph({
 			rankdir: 'LR',
@@ -67,16 +75,24 @@
 			acyclicer: 'greedy',
 			ranker: 'network-simplex'
 		});
-		const query = searchQuery.trim().toLowerCase();
-		const spotlight = spotlightNodeIds(hoveredNodeId ?? selectedNodeId);
-		const hasSpotlight = spotlight.length > 0;
 		for (const node of nodes) graph.setNode(node.id, { width: 250, height: 132 });
 		for (const node of nodes) {
 			if (node.parent_node_id) graph.setEdge(node.parent_node_id, node.id);
 		}
 		dagre.layout(graph);
+		return new Map(
+			nodes.map((node) => {
+				const point = graph.node(node.id) ?? { x: 125, y: 66 };
+				return [node.id, { x: point.x - 125, y: point.y - 66 }];
+			})
+		);
+	}
+
+	function buildGraph(): { nodes: Node[]; edges: Edge[] } {
+		const query = searchQuery.trim().toLowerCase();
+		const spotlight = spotlightNodeIds(hoveredNodeId ?? selectedNodeId);
+		const hasSpotlight = spotlight.size > 0;
 		const flowNodes: Node[] = nodes.map((node) => {
-			const point = graph.node(node.id) ?? { x: 125, y: 66 };
 			const matched =
 				query.length > 0 &&
 				[node.question, node.answer, node.thesis].some((value) =>
@@ -85,13 +101,13 @@
 			return {
 				id: node.id,
 				type: 'question',
-				position: { x: point.x - 125, y: point.y - 66 },
+				position: layoutPositions.get(node.id) ?? { x: 0, y: 0 },
 				targetPosition: Position.Left,
 				sourcePosition: Position.Right,
 				data: {
 					node,
 					matched,
-					spotlighted: !hasSpotlight || spotlight.includes(node.id),
+					spotlighted: !hasSpotlight || spotlight.has(node.id),
 					rootActive: rootActive && node.node_kind === 'root'
 				},
 				selected: selectedNodeId === node.id,
@@ -100,19 +116,13 @@
 				ariaLabel: `${node.node_kind === 'root' ? 'Original question' : `Node ${node.node_number}`}: ${node.question}`
 			};
 		});
-		const proposalByChild = new Map(
-			proposals
-				.filter((proposal) => proposal.child_node_id)
-				.map((proposal) => [proposal.child_node_id as string, proposal])
-		);
 		const flowEdges: Edge[] = nodes
 			.filter((node) => node.parent_node_id)
 			.map((node) => {
 				const proposal = proposalByChild.get(node.id);
 				const spotlighted =
 					!hasSpotlight ||
-					(spotlight.includes(node.parent_node_id as string) &&
-						spotlight.includes(node.id));
+					(spotlight.has(node.parent_node_id as string) && spotlight.has(node.id));
 				return {
 					id: `edge:${node.parent_node_id}:${node.id}`,
 					source: node.parent_node_id as string,
@@ -141,6 +151,7 @@
 
 <div
 	class="question-tree-canvas h-full w-full min-w-0 max-w-full overflow-hidden"
+	role="region"
 	aria-label="Interactive research tree. Drag to pan, scroll or pinch to zoom, and click a node to inspect it."
 >
 	<SvelteFlow

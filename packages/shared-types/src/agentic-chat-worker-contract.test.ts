@@ -1,6 +1,8 @@
 // packages/shared-types/src/agentic-chat-worker-contract.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	AGENTIC_CHAT_CANCEL_OBSERVATION_INTERVAL_MS,
+	AGENTIC_CHAT_CANCEL_OBSERVATION_MAX_PAIRS,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES,
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
@@ -25,6 +27,7 @@ import {
 	parseAgentStreamEventIdV1,
 	validateTurnInputArtifactV1,
 	type CanonicalAdmissionRequestV1,
+	type AgenticChatCancellationObservationRpcResultV1,
 	type AgenticChatCancelRpcResultV1,
 	type AgenticChatSemanticEventRpcResultV1,
 	type AgenticChatStreamDeliveryAckRpcResultV1,
@@ -126,6 +129,8 @@ describe('agentic chat worker v1 contract fixtures', () => {
 		expect(AGENTIC_CHAT_STREAM_SPILL_THRESHOLD_BYTES).toBe(512 * 1024);
 		expect(AGENTIC_CHAT_TERMINAL_RETENTION_MS).toBe(7 * 24 * 60 * 60 * 1000);
 		expect(AGENTIC_CHAT_SIGNAL_VERSION).toBe('agentic_chat_signal_v1');
+		expect(AGENTIC_CHAT_CANCEL_OBSERVATION_INTERVAL_MS).toBe(500);
+		expect(AGENTIC_CHAT_CANCEL_OBSERVATION_MAX_PAIRS).toBe(128);
 	});
 
 	it('canonicalizes JSON recursively while preserving array order and explicit null', () => {
@@ -613,6 +618,26 @@ describe('agentic chat worker v1 contract fixtures', () => {
 
 		expect(terminal.terminal_event_id).toContain(':2:8');
 		expect(cancel.outcome).toBe('cancel_requested');
+	});
+
+	it('pins the batched current-generation cancellation observation receipt', () => {
+		const observations = [
+			{
+				turn_run_id: '80000000-0000-4000-8000-000000000001',
+				execution_generation: 2,
+				signal_id: '60000000-0000-4000-8000-000000000001',
+				cancel_reason: 'superseded',
+				cancel_source: 'browser',
+				cancel_requested_at: '2026-08-02T16:01:00.000Z',
+				consumed_at: '2026-08-02T16:01:00.500Z'
+			}
+		] satisfies AgenticChatCancellationObservationRpcResultV1;
+
+		expect(observations).toHaveLength(1);
+		expect(observations[0]).toMatchObject({
+			execution_generation: 2,
+			cancel_reason: 'superseded'
+		});
 	});
 
 	it('pins bounded stream-write receipts and fail-closed publication authority', () => {

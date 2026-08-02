@@ -14,6 +14,8 @@ export const AGENTIC_CHAT_STREAM_PROJECTION_MAX_BYTES = 512 * 1024;
 export const AGENTIC_CHAT_STREAM_EVENT_PAYLOAD_MAX_BYTES = 256 * 1024;
 export const AGENTIC_CHAT_TERMINAL_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 export const AGENTIC_CHAT_SIGNAL_VERSION = 'agentic_chat_signal_v1' as const;
+export const AGENTIC_CHAT_CANCEL_OBSERVATION_INTERVAL_MS = 500;
+export const AGENTIC_CHAT_CANCEL_OBSERVATION_MAX_PAIRS = 128;
 
 export type JsonObject = { [key: string]: JsonValue | undefined };
 export type JsonValue = null | boolean | number | string | JsonObject | JsonValue[];
@@ -363,6 +365,23 @@ export type ChatTurnSignalV1 = {
 	consumedAt: string | null;
 	consumedByGeneration: number | null;
 };
+
+export type AgenticChatCancellationObservationInputV1 = {
+	turn_run_id: string;
+	execution_generation: number;
+};
+
+export type AgenticChatCancellationObservationV1 = {
+	turn_run_id: string;
+	execution_generation: number;
+	signal_id: string;
+	cancel_reason: ChatTurnSignalV1['reason'];
+	cancel_source: ChatTurnSignalV1['source'];
+	cancel_requested_at: string;
+	consumed_at: string;
+};
+
+export type AgenticChatCancellationObservationRpcResultV1 = AgenticChatCancellationObservationV1[];
 
 export type CancelTurnResultV1 =
 	| { outcome: 'cancel_requested' }
