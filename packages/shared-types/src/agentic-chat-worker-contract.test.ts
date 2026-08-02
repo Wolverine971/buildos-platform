@@ -7,12 +7,17 @@ import {
 	AGENTIC_CHAT_SIGNAL_VERSION,
 	AGENTIC_CHAT_STREAM_SPILL_THRESHOLD_BYTES,
 	AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES,
+	AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_BYTES,
+	AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_ITEMS,
+	AGENTIC_CHAT_TEXT_BATCH_MAX_BYTES,
 	AGENTIC_CHAT_TERMINAL_RETENTION_MS,
+	canPublishAgenticChatStreamWriteV1,
 	canonicalizeAdmissionRequestV1,
 	canonicalizeAgenticChatJson,
 	createAgentStreamEventIdV1,
 	decideAgenticChatRecoveryV1,
 	decideTerminalFinalizationV1,
+	didAcknowledgeAgenticChatStreamDeliveryV1,
 	freezeTurnInputHistoryV1,
 	hashCanonicalAdmissionRequestV1,
 	hashTurnInputArtifactContentV1,
@@ -21,7 +26,11 @@ import {
 	validateTurnInputArtifactV1,
 	type CanonicalAdmissionRequestV1,
 	type AgenticChatCancelRpcResultV1,
+	type AgenticChatSemanticEventRpcResultV1,
+	type AgenticChatStreamDeliveryAckRpcResultV1,
 	type AgenticChatTerminalFinalizeRpcResultV1,
+	type AgenticChatTextBatchFlushRpcResultV1,
+	type AgenticChatTextBatchRpcResultV1,
 	type NormalizedChatAttachmentV1,
 	type TurnInputArtifactV1
 } from './agentic-chat-worker-contract';
@@ -604,5 +613,103 @@ describe('agentic chat worker v1 contract fixtures', () => {
 
 		expect(terminal.terminal_event_id).toContain(':2:8');
 		expect(cancel.outcome).toBe('cancel_requested');
+	});
+
+	it('pins bounded stream-write receipts and fail-closed publication authority', () => {
+		const receiptBase = {
+			turn_run_id: '80000000-0000-4000-8000-000000000001',
+			queue_job_id: '90000000-0000-4000-8000-000000000001',
+			session_id: '30000000-0000-4000-8000-000000000001',
+			user_id: '10000000-0000-4000-8000-000000000001',
+			stream_run_id: 'stream-1',
+			client_turn_id: 'client-turn-1',
+			execution_generation: 2,
+			sequence_index: 4,
+			event_id: '80000000-0000-4000-8000-000000000001:2:4',
+			durable: true
+		} as const;
+		const persistedText = {
+			...receiptBase,
+			outcome: 'persisted',
+			publish_allowed: true,
+			phase: 'llm',
+			event_type: 'text_delta',
+			batch_id: '60000000-0000-4000-8000-000000000001',
+			text_delta: 'hello',
+			assistant_text_bytes: 5,
+			reconcile_required: true,
+			persisted_at: '2026-08-02T17:00:00.000Z'
+		} satisfies AgenticChatTextBatchRpcResultV1;
+		const duplicateText = {
+			...receiptBase,
+			outcome: 'already_persisted',
+			publish_allowed: false,
+			phase: 'llm',
+			event_type: 'text_delta',
+			batch_id: '60000000-0000-4000-8000-000000000001',
+			assistant_text_bytes: 5
+		} satisfies AgenticChatTextBatchRpcResultV1;
+		const semantic = {
+			...receiptBase,
+			outcome: 'persisted',
+			publish_allowed: true,
+			phase: 'tool',
+			event_type: 'tool_call',
+			transition_id: '60000000-0000-4000-8000-000000000002',
+			event_payload: { type: 'tool_call', tool_name: 'onto_project_read' },
+			reconcile_required: true,
+			persisted_at: '2026-08-02T17:00:00.000Z'
+		} satisfies AgenticChatSemanticEventRpcResultV1;
+		const flush = {
+			outcome: 'flushed',
+			input_count: 2,
+			persisted_count: 1,
+			rejected_count: 1,
+			results: [
+				{ ...persistedText, input_index: 0 },
+				{
+					outcome: 'rejected',
+					publish_allowed: false,
+					input_index: 1,
+					error_code: 'P0001',
+					error_message: 'agentic_chat_text_write_prefix_conflict'
+				}
+			]
+		} satisfies AgenticChatTextBatchFlushRpcResultV1;
+
+		expect(AGENTIC_CHAT_TEXT_BATCH_MAX_BYTES).toBe(512 * 1024);
+		expect(AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_ITEMS).toBe(128);
+		expect(AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_BYTES).toBe(16 * 1024 * 1024);
+		expect(canPublishAgenticChatStreamWriteV1(persistedText)).toBe(true);
+		expect(canPublishAgenticChatStreamWriteV1(duplicateText)).toBe(false);
+		expect(canPublishAgenticChatStreamWriteV1(semantic)).toBe(true);
+		expect(canPublishAgenticChatStreamWriteV1(flush.results[1])).toBe(false);
+	});
+
+	it('treats only exact or idempotent delivery acknowledgement as reconciled', () => {
+		const acknowledged = {
+			outcome: 'acknowledged',
+			turn_run_id: '80000000-0000-4000-8000-000000000001',
+			queue_job_id: '90000000-0000-4000-8000-000000000001',
+			execution_generation: 2,
+			acknowledged_sequence: 4,
+			current_sequence: 4,
+			reconcile_required: false
+		} satisfies AgenticChatStreamDeliveryAckRpcResultV1;
+		const newerSnapshot = {
+			...acknowledged,
+			outcome: 'newer_snapshot',
+			current_sequence: 5,
+			reconcile_required: true
+		} satisfies AgenticChatStreamDeliveryAckRpcResultV1;
+
+		expect(didAcknowledgeAgenticChatStreamDeliveryV1(acknowledged)).toBe(true);
+		expect(
+			didAcknowledgeAgenticChatStreamDeliveryV1({
+				...acknowledged,
+				outcome: 'already_acknowledged'
+			})
+		).toBe(true);
+		expect(didAcknowledgeAgenticChatStreamDeliveryV1(newerSnapshot)).toBe(false);
 	});
 });

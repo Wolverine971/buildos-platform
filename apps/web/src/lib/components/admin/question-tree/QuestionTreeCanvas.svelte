@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/admin/question-tree/QuestionTreeCanvas.svelte -->
 <script lang="ts">
+	import { MediaQuery } from 'svelte/reactivity';
 	import {
 		Background,
 		BackgroundVariant,
@@ -25,16 +26,35 @@
 		proposals,
 		searchQuery = '',
 		rootActive = false,
-		selectedNodeId = $bindable<string | null>(null)
+		selectedNodeId = $bindable<string | null>(null),
+		onSelectNode
 	}: {
 		nodes: TreeNode[];
 		proposals: QuestionTreeProposal[];
 		searchQuery?: string;
 		rootActive?: boolean;
 		selectedNodeId: string | null;
+		onSelectNode?: (nodeId: string) => void;
 	} = $props();
 
 	const nodeTypes = { question: QuestionTreeNode } as unknown as NodeTypes;
+	const reducedMotion = new MediaQuery('prefers-reduced-motion: reduce', false);
+	let hoveredNodeId = $state<string | null>(null);
+
+	function spotlightNodeIds(nodeId: string | null): string[] {
+		const spotlight: string[] = [];
+		if (!nodeId) return spotlight;
+		const nodeById = new Map(nodes.map((node) => [node.id, node]));
+		let current = nodeById.get(nodeId);
+		while (current) {
+			spotlight.push(current.id);
+			current = current.parent_node_id ? nodeById.get(current.parent_node_id) : undefined;
+		}
+		for (const node of nodes) {
+			if (node.parent_node_id === nodeId) spotlight.push(node.id);
+		}
+		return spotlight;
+	}
 
 	function buildGraph(): { nodes: Node[]; edges: Edge[] } {
 		const graph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
@@ -48,6 +68,8 @@
 			ranker: 'network-simplex'
 		});
 		const query = searchQuery.trim().toLowerCase();
+		const spotlight = spotlightNodeIds(hoveredNodeId ?? selectedNodeId);
+		const hasSpotlight = spotlight.length > 0;
 		for (const node of nodes) graph.setNode(node.id, { width: 250, height: 132 });
 		for (const node of nodes) {
 			if (node.parent_node_id) graph.setEdge(node.parent_node_id, node.id);
@@ -66,9 +88,16 @@
 				position: { x: point.x - 125, y: point.y - 66 },
 				targetPosition: Position.Left,
 				sourcePosition: Position.Right,
-				data: { node, matched, rootActive: rootActive && node.node_kind === 'root' },
+				data: {
+					node,
+					matched,
+					spotlighted: !hasSpotlight || spotlight.includes(node.id),
+					rootActive: rootActive && node.node_kind === 'root'
+				},
 				selected: selectedNodeId === node.id,
-				draggable: false
+				draggable: false,
+				focusable: false,
+				ariaLabel: `${node.node_kind === 'root' ? 'Original question' : `Node ${node.node_number}`}: ${node.question}`
 			};
 		});
 		const proposalByChild = new Map(
@@ -80,14 +109,19 @@
 			.filter((node) => node.parent_node_id)
 			.map((node) => {
 				const proposal = proposalByChild.get(node.id);
+				const spotlighted =
+					!hasSpotlight ||
+					(spotlight.includes(node.parent_node_id as string) &&
+						spotlight.includes(node.id));
 				return {
 					id: `edge:${node.parent_node_id}:${node.id}`,
 					source: node.parent_node_id as string,
 					target: node.id,
 					type: 'smoothstep',
-					label: proposal?.purpose.replace('_', ' '),
-					animated: node.status === 'running',
-					style: 'stroke-width: 1.5px;'
+					label: proposal?.purpose.replaceAll('_', ' '),
+					animated: node.status === 'running' && !reducedMotion.current,
+					focusable: false,
+					style: `stroke-width: ${spotlighted ? '2px' : '1.25px'}; opacity: ${spotlighted ? '1' : '0.18'}; transition: opacity 140ms ease, stroke-width 140ms ease;`
 				};
 			});
 		return { nodes: flowNodes, edges: flowEdges };
@@ -97,25 +131,50 @@
 
 	function handleNodeClick({ node }: { node: Node }) {
 		selectedNodeId = node.id;
+		onSelectNode?.(node.id);
+	}
+
+	function handleNodePointerEnter({ node }: { node: Node }) {
+		hoveredNodeId = node.id;
 	}
 </script>
 
-<div class="question-tree-canvas h-full w-full min-w-0 max-w-full overflow-hidden">
+<div
+	class="question-tree-canvas h-full w-full min-w-0 max-w-full overflow-hidden"
+	aria-label="Interactive research tree. Drag to pan, scroll or pinch to zoom, and click a node to inspect it."
+>
 	<SvelteFlow
 		nodes={graphData.nodes}
 		edges={graphData.edges}
 		{nodeTypes}
-		fitView
-		fitViewOptions={{ padding: 0.16, maxZoom: 1 }}
-		minZoom={0.08}
+		minZoom={0.12}
 		maxZoom={2.5}
+		nodesFocusable={false}
+		edgesFocusable={false}
+		nodesConnectable={false}
+		panOnDrag
+		zoomOnScroll
+		zoomOnPinch
+		zoomOnDoubleClick
 		onnodeclick={handleNodeClick}
+		onnodepointerenter={handleNodePointerEnter}
+		onnodepointerleave={() => (hoveredNodeId = null)}
 		onpaneclick={() => (selectedNodeId = null)}
 	>
 		<Background variant={BackgroundVariant.Dots} gap={22} size={1} />
-		<QuestionTreeViewportAnchor nodes={graphData.nodes} {selectedNodeId} />
-		<Controls position="bottom-left" />
-		<MiniMap position="bottom-right" pannable zoomable class="!bg-card" />
+		<QuestionTreeViewportAnchor
+			nodes={graphData.nodes}
+			{selectedNodeId}
+			initialNodeIds={nodes.filter((node) => node.depth <= 2).map((node) => node.id)}
+		/>
+		<Controls position="bottom-left" fitViewOptions={{ padding: 0.16, maxZoom: 0.9 }} />
+		<MiniMap
+			position="bottom-right"
+			pannable
+			zoomable
+			ariaLabel="Research tree overview"
+			class="!bg-card"
+		/>
 	</SvelteFlow>
 </div>
 
@@ -137,7 +196,26 @@
 
 	.question-tree-canvas :global(.svelte-flow__controls-button) {
 		border: 0;
+		width: 44px;
+		height: 44px;
 		background: hsl(var(--card));
 		fill: hsl(var(--foreground));
+	}
+
+	.question-tree-canvas :global(.svelte-flow__controls-button:focus-visible) {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: -2px;
+	}
+
+	@media (max-width: 639px) {
+		.question-tree-canvas :global(.svelte-flow__minimap) {
+			display: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.question-tree-canvas :global(.svelte-flow__edge-path) {
+			transition: none !important;
+		}
 	}
 </style>

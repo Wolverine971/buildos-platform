@@ -7,6 +7,11 @@ export const AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES = 256 * 1024;
 export const AGENTIC_CHAT_INPUT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 export const AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES = 2 * 1024 * 1024;
 export const AGENTIC_CHAT_STREAM_SPILL_THRESHOLD_BYTES = 512 * 1024;
+export const AGENTIC_CHAT_TEXT_BATCH_MAX_BYTES = 512 * 1024;
+export const AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_ITEMS = 128;
+export const AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_BYTES = 16 * 1024 * 1024;
+export const AGENTIC_CHAT_STREAM_PROJECTION_MAX_BYTES = 512 * 1024;
+export const AGENTIC_CHAT_STREAM_EVENT_PAYLOAD_MAX_BYTES = 256 * 1024;
 export const AGENTIC_CHAT_TERMINAL_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 export const AGENTIC_CHAT_SIGNAL_VERSION = 'agentic_chat_signal_v1' as const;
 
@@ -513,6 +518,168 @@ export type AgenticChatCancelRpcResultV1 =
 			cancel_source: ChatTurnSignalV1['source'];
 			signal_id: string;
 	  };
+
+type AgenticChatStreamPersistedReceiptBaseV1 = {
+	turn_run_id: string;
+	queue_job_id: string;
+	session_id: string;
+	user_id: string;
+	stream_run_id: string;
+	client_turn_id: string | null;
+	execution_generation: number;
+	sequence_index: number;
+	event_id: string;
+	phase: AgentStreamEventPhaseV1;
+	event_type: string;
+	durable: true;
+};
+
+export type AgenticChatStreamWriteBlockedRpcResultV1 =
+	| {
+			outcome: 'stale_generation';
+			publish_allowed: false;
+			turn_run_id: string;
+			queue_job_id: string;
+			execution_generation: number;
+			requested_execution_generation: number;
+			status: ChatTurnStatusV1;
+	  }
+	| {
+			outcome: 'cancel_requested';
+			publish_allowed: false;
+			turn_run_id: string;
+			queue_job_id: string;
+			execution_generation: number;
+			status: 'running';
+			cancel_requested_at: string;
+			cancel_reason: ChatTurnSignalV1['reason'];
+	  }
+	| {
+			outcome: 'already_terminal';
+			publish_allowed: false;
+			turn_run_id: string;
+			queue_job_id: string;
+			execution_generation: number;
+			status: ChatTurnTerminalStatusV1;
+			terminal_event_id: string | null;
+	  };
+
+export type AgenticChatTextBatchInputV1 = {
+	turn_run_id: string;
+	queue_job_id: string;
+	processing_token: string;
+	execution_generation: number;
+	batch_id: string;
+	text_delta: string;
+	assistant_text: string;
+};
+
+export type AgenticChatTextBatchRpcResultV1 =
+	| (AgenticChatStreamPersistedReceiptBaseV1 & {
+			outcome: 'persisted';
+			publish_allowed: true;
+			phase: 'llm';
+			event_type: 'text_delta';
+			batch_id: string;
+			text_delta: string;
+			assistant_text_bytes: number;
+			reconcile_required: true;
+			persisted_at: string;
+	  })
+	| (AgenticChatStreamPersistedReceiptBaseV1 & {
+			outcome: 'already_persisted';
+			publish_allowed: false;
+			phase: 'llm';
+			event_type: 'text_delta';
+			batch_id: string;
+			assistant_text_bytes: number;
+	  })
+	| AgenticChatStreamWriteBlockedRpcResultV1;
+
+export type AgenticChatSemanticEventRpcResultV1 =
+	| (AgenticChatStreamPersistedReceiptBaseV1 & {
+			outcome: 'persisted';
+			publish_allowed: true;
+			transition_id: string;
+			event_payload: JsonObject;
+			reconcile_required: true;
+			persisted_at: string;
+	  })
+	| (AgenticChatStreamPersistedReceiptBaseV1 & {
+			outcome: 'already_persisted';
+			publish_allowed: false;
+			transition_id: string;
+			event_payload: JsonObject;
+	  })
+	| AgenticChatStreamWriteBlockedRpcResultV1;
+
+export type AgenticChatTextBatchFlushItemResultV1 =
+	| (AgenticChatTextBatchRpcResultV1 & { input_index: number })
+	| {
+			outcome: 'rejected';
+			publish_allowed: false;
+			input_index: number;
+			error_code: string;
+			error_message: string;
+	  };
+
+export type AgenticChatTextBatchFlushRpcResultV1 = {
+	outcome: 'flushed';
+	input_count: number;
+	persisted_count: number;
+	rejected_count: number;
+	results: AgenticChatTextBatchFlushItemResultV1[];
+};
+
+export type AgenticChatStreamDeliveryAckRpcResultV1 =
+	| {
+			outcome: 'acknowledged' | 'already_acknowledged';
+			turn_run_id: string;
+			queue_job_id: string;
+			execution_generation: number;
+			acknowledged_sequence: number;
+			current_sequence: number;
+			reconcile_required: false;
+	  }
+	| {
+			outcome: 'newer_snapshot';
+			turn_run_id: string;
+			queue_job_id: string;
+			execution_generation: number;
+			acknowledged_sequence: number;
+			current_sequence: number;
+			reconcile_required: true;
+	  }
+	| {
+			outcome: 'stale_generation';
+			turn_run_id: string;
+			queue_job_id: string;
+			requested_execution_generation: number;
+			execution_generation: number;
+			acknowledged_sequence: number;
+			current_sequence: number;
+			reconcile_required: boolean;
+	  };
+
+/**
+ * Broadcast authority is deliberately narrower than durable success. A lost-
+ * response replay returns the committed receipt but may only reconcile it.
+ */
+export function canPublishAgenticChatStreamWriteV1(result: {
+	outcome: string;
+	publish_allowed: boolean;
+}): boolean {
+	return result.outcome === 'persisted' && result.publish_allowed === true;
+}
+
+export function didAcknowledgeAgenticChatStreamDeliveryV1(
+	result: AgenticChatStreamDeliveryAckRpcResultV1
+): boolean {
+	return (
+		(result.outcome === 'acknowledged' || result.outcome === 'already_acknowledged') &&
+		result.reconcile_required === false
+	);
+}
 
 /**
  * Serialize JSON deterministically for the v1 chat hashes.

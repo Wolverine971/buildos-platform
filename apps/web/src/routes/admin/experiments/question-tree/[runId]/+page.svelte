@@ -1,13 +1,18 @@
 <!-- apps/web/src/routes/admin/experiments/question-tree/[runId]/+page.svelte -->
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { onDestroy, onMount } from 'svelte';
+	import { MediaQuery } from 'svelte/reactivity';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import QuestionTreeCanvas from '$lib/components/admin/question-tree/QuestionTreeCanvas.svelte';
 	import QuestionTreeInspector from '$lib/components/admin/question-tree/QuestionTreeInspector.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import {
 		Activity,
 		Bot,
+		ChevronDown,
 		CircleAlert,
 		CircleDot,
 		Clock3,
@@ -58,7 +63,9 @@
 
 	let detail = $state.raw<QuestionTreeRunDetail | null>(null);
 	let selectedNodeId = $state<string | null>(null);
+	let hasUserSelectedNode = $state(false);
 	let searchQuery = $state('');
+	let activeSearchIndex = $state(-1);
 	let loading = $state(true);
 	let refreshing = $state(false);
 	let actionPending = $state<string | null>(null);
@@ -70,6 +77,8 @@
 	let realtimeChannel: RealtimeChannel | null = null;
 	let refreshAfterCurrentRequest = false;
 	let destroyed = false;
+	const isDesktop = new MediaQuery('(min-width: 1280px)', false);
+	const searchListboxId = 'question-tree-search-results';
 
 	const selectedNode = $derived(detail?.nodes.find((node) => node.id === selectedNodeId) ?? null);
 	const runningNodes = $derived(detail?.nodes.filter((node) => node.status === 'running') ?? []);
@@ -136,9 +145,68 @@
 			return 'Exploration is complete. The synthesis agent is combining the tree.';
 		return detail.run.status === 'completed'
 			? 'Research complete. Every retained result is available in the graph.'
-			: `Run finished with status ${detail.run.status.replace('_', ' ')}.`;
+			: `Run finished with status ${humanize(detail.run.status)}.`;
 	});
-	const recentActivity = $derived.by(() => (detail?.events ?? []).slice(0, 6).map(describeEvent));
+	const recentActivity = $derived.by(() => (detail?.events ?? []).slice(0, 4).map(describeEvent));
+	const activeSearchNode = $derived(searchMatches[activeSearchIndex] ?? null);
+	const mobileInspectorOpen = $derived(
+		Boolean(selectedNode && hasUserSelectedNode && !isDesktop.current)
+	);
+
+	function humanize(value: string): string {
+		return value
+			.split('_')
+			.map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+			.join(' ');
+	}
+
+	function modelPolicyLabel(value: QuestionTreeRunDetail['run']['model_policy']): string {
+		return value === 'paid_floor_strict' ? 'Paid research model' : 'Free quota-limited model';
+	}
+
+	function selectNode(nodeId: string): void {
+		selectedNodeId = nodeId;
+		hasUserSelectedNode = true;
+	}
+
+	function closeInspector(): void {
+		selectedNodeId = null;
+		hasUserSelectedNode = false;
+	}
+
+	function searchOptionId(nodeId: string): string {
+		return `question-tree-search-option-${nodeId}`;
+	}
+
+	function handleSearchInput(): void {
+		activeSearchIndex = -1;
+	}
+
+	function handleSearchKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') {
+			searchQuery = '';
+			activeSearchIndex = -1;
+			return;
+		}
+		if (!searchMatches.length) return;
+		if (event.key === 'ArrowDown') {
+			event.preventDefault();
+			activeSearchIndex = (activeSearchIndex + 1) % searchMatches.length;
+			return;
+		}
+		if (event.key === 'ArrowUp') {
+			event.preventDefault();
+			activeSearchIndex =
+				activeSearchIndex <= 0 ? searchMatches.length - 1 : activeSearchIndex - 1;
+			return;
+		}
+		if (event.key === 'Enter') {
+			const targetNode = activeSearchNode ?? searchMatches[0];
+			if (!targetNode) return;
+			event.preventDefault();
+			selectNode(targetNode.id);
+		}
+	}
 
 	function payloadString(event: QuestionTreeEvent, key: string): string | null {
 		const value = event.payload[key];
@@ -156,7 +224,7 @@
 	function describeEvent(event: QuestionTreeEvent): ActivityItem {
 		const label = nodeLabel(event);
 		const question = payloadString(event, 'question');
-		const purpose = payloadString(event, 'purpose')?.replace('_', ' ');
+		const purpose = payloadString(event, 'purpose')?.replaceAll('_', ' ');
 		const count = payloadString(event, 'follow_up_count');
 		if (event.event_type === 'run.created') {
 			return {
@@ -438,7 +506,11 @@
 
 	function formatDuration(ms: number): string {
 		if (ms < 1000) return `${ms} ms`;
-		return `${(ms / 1000).toFixed(1)} s`;
+		const seconds = Math.round(ms / 1000);
+		if (seconds < 60) return `${seconds} s`;
+		const minutes = Math.floor(seconds / 60);
+		const remainingSeconds = seconds % 60;
+		return `${minutes}m ${remainingSeconds}s`;
 	}
 
 	function formatActivityTime(value: string): string {
@@ -472,63 +544,92 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="admin-page min-w-0 max-w-full overflow-x-hidden">
+{#snippet activityRow(item: ActivityItem)}
+	<span
+		class={[
+			'mt-1 h-2 w-2 shrink-0 rounded-full',
+			item.tone === 'working'
+				? 'bg-warning'
+				: item.tone === 'success'
+					? 'bg-success'
+					: item.tone === 'danger'
+						? 'bg-destructive'
+						: 'bg-muted-foreground/60'
+		]}
+	></span>
+	<span class="min-w-0 flex-1">
+		<span class="flex items-center justify-between gap-2">
+			<span class="truncate text-xs font-bold text-foreground">{item.title}</span>
+			<span class="flex shrink-0 items-center gap-1 text-2xs text-muted-foreground">
+				<Clock3 class="h-3 w-3" />
+				{formatActivityTime(item.createdAt)}
+			</span>
+		</span>
+		<span class="mt-1 line-clamp-2 text-2xs leading-relaxed text-muted-foreground">
+			{item.detail}
+		</span>
+	</span>
+{/snippet}
+
+<div class="question-tree-detail-page admin-page min-w-0 max-w-full overflow-x-hidden">
 	<AdminPageHeader
 		title="Question Tree Run"
 		description={detail?.run.root_question ?? 'Loading model-only research tree'}
 		icon={Network}
-		backHref="/admin/experiments/question-tree"
+		backHref={resolve('/admin/experiments/question-tree')}
+		backLabel="Question Tree runs"
 	>
 		{#snippet actions()}
 			<div class="flex flex-wrap items-center gap-2">
-				<button
-					type="button"
-					class="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-xs font-bold text-foreground shadow-ink hover:bg-muted disabled:opacity-50"
+				<Button
+					variant="outline"
+					size="sm"
+					icon={RefreshCw}
+					loading={refreshing}
 					onclick={() => loadRun()}
 					disabled={refreshing}
 				>
-					<RefreshCw
-						class={refreshing
-							? 'h-3.5 w-3.5 animate-spin motion-reduce:animate-none'
-							: 'h-3.5 w-3.5'}
-					/>
 					Refresh
-				</button>
+				</Button>
 				{#if detail?.run.status === 'paused' || detail?.run.status === 'quota_paused'}
-					<button
-						type="button"
-						class="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-3 text-xs font-bold text-accent-foreground shadow-ink disabled:opacity-50"
+					<Button
+						variant="primary"
+						size="sm"
+						icon={Play}
 						onclick={() => controlRun('resume')}
 						disabled={Boolean(actionPending)}
 					>
-						<Play class="h-3.5 w-3.5" /> Resume
-					</button>
+						Resume
+					</Button>
 				{:else if detail && isQuestionTreeActive(detail.run.status)}
-					<button
-						type="button"
-						class="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-xs font-bold text-foreground shadow-ink hover:bg-muted disabled:opacity-50"
+					<Button
+						variant="outline"
+						size="sm"
+						icon={Pause}
 						onclick={() => controlRun('pause')}
 						disabled={Boolean(actionPending)}
 					>
-						<Pause class="h-3.5 w-3.5" /> Pause
-					</button>
-					<button
-						type="button"
-						class="inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 text-xs font-bold text-destructive hover:bg-destructive/15 disabled:opacity-50"
+						Pause
+					</Button>
+					<Button
+						variant="danger"
+						size="sm"
+						icon={Square}
 						onclick={() => controlRun('cancel')}
 						disabled={Boolean(actionPending)}
 					>
-						<Square class="h-3.5 w-3.5" /> Cancel
-					</button>
+						Cancel
+					</Button>
 				{:else if detail?.run.status === 'failed' || detail?.run.status === 'completed_partial'}
-					<button
-						type="button"
-						class="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-3 text-xs font-bold text-accent-foreground shadow-ink disabled:opacity-50"
+					<Button
+						variant="primary"
+						size="sm"
+						icon={RotateCcw}
 						onclick={() => controlRun('retry')}
 						disabled={Boolean(actionPending)}
 					>
-						<RotateCcw class="h-3.5 w-3.5" /> Retry failures
-					</button>
+						Retry failures
+					</Button>
 				{/if}
 			</div>
 		{/snippet}
@@ -549,18 +650,57 @@
 			<Loader2 class="h-5 w-5 animate-spin motion-reduce:animate-none" /> Loading Question Tree
 		</div>
 	{:else if detail}
-		<section class="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-			{#each [['Status', detail.run.status.replace('_', ' ')], ['Answered', `${detail.run.nodes_completed}/${detail.run.nodes_created}`], ['Depth', String(detail.run.deepest_depth)], ['Frontier', String(detail.run.frontier_count)], ['Tokens', detail.run.usage.total_tokens.toLocaleString()], ['Cost', `$${detail.run.usage.cost_usd.toFixed(6)}`]] as metric (metric[0])}
-				<div class="admin-panel px-3 py-2.5">
-					<p class="text-2xs font-bold uppercase tracking-wide text-muted-foreground">
-						{metric[0]}
-					</p>
-					<p class="mt-1 truncate text-sm font-bold text-foreground">{metric[1]}</p>
+		<section class="admin-panel overflow-hidden">
+			<div class="grid grid-cols-2 lg:grid-cols-4">
+				{#each [['Status', humanize(detail.run.status)], ['Answered', `${detail.run.nodes_completed}/${detail.run.nodes_created}`], ['Depth', String(detail.run.deepest_depth)], ['Cost', `$${detail.run.usage.cost_usd.toFixed(4)}`]] as metric (metric[0])}
+					<div
+						class="border-b border-r border-border px-4 py-3 even:border-r-0 lg:border-b-0 lg:even:border-r lg:last:border-r-0"
+					>
+						<p class="micro-label">{metric[0]}</p>
+						<p class="mt-1 truncate text-base font-bold text-foreground">{metric[1]}</p>
+					</div>
+				{/each}
+			</div>
+			<details class="group border-t border-border lg:border-t">
+				<summary
+					class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2 text-xs font-semibold text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+				>
+					<span>Run details</span>
+					<ChevronDown
+						class="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+					/>
+				</summary>
+				<div
+					class="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-border bg-muted/25 px-4 py-3 text-xs sm:grid-cols-4"
+				>
+					<div>
+						<span class="text-muted-foreground">Frontier</span>
+						<p class="font-bold text-foreground">{detail.run.frontier_count}</p>
+					</div>
+					<div>
+						<span class="text-muted-foreground">Tokens</span>
+						<p class="font-bold text-foreground">
+							{detail.run.usage.total_tokens.toLocaleString()}
+						</p>
+					</div>
+					<div>
+						<span class="text-muted-foreground">Requests</span>
+						<p class="font-bold text-foreground">
+							{detail.run.provider_requests}/{detail.run.max_provider_requests}
+						</p>
+					</div>
+					<div>
+						<span class="text-muted-foreground">Model time</span>
+						<p class="font-bold text-foreground">
+							{formatDuration(detail.run.usage.latency_ms)}
+						</p>
+					</div>
 				</div>
-			{/each}
+			</details>
 		</section>
 
-		<section class="admin-panel min-w-0 max-w-full overflow-hidden" aria-live="polite">
+		<p class="sr-only" aria-live="polite">{phaseActivity}</p>
+		<section class="admin-panel min-w-0 max-w-full overflow-hidden">
 			<header
 				class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3"
 			>
@@ -571,7 +711,11 @@
 						<Activity class="h-4 w-4" />
 					</span>
 					<div class="min-w-0">
-						<h2 class="text-xs font-bold text-foreground">Live execution</h2>
+						<h2 class="text-xs font-bold text-foreground">
+							{isQuestionTreeActive(detail.run.status)
+								? 'Live execution'
+								: 'Run activity'}
+						</h2>
 						<p class="line-clamp-2 text-2xs text-muted-foreground">{phaseActivity}</p>
 					</div>
 				</div>
@@ -591,56 +735,32 @@
 							: 'h-3 w-3 animate-pulse motion-reduce:animate-none'}
 					/>
 					{realtimeStatus === 'live'
-						? 'Live websocket'
+						? 'Live updates'
 						: realtimeStatus === 'connecting'
 							? 'Connecting'
 							: 'Recovery polling'}
 				</span>
 			</header>
 
-			<div class="grid min-w-0 gap-2 p-3 sm:grid-cols-2 2xl:grid-cols-3">
+			<div class="min-w-0 divide-y divide-border">
 				{#if recentActivity.length}
 					{#each recentActivity as item (item.id)}
-						<button
-							type="button"
-							class={[
-								'min-w-0 max-w-full overflow-hidden rounded-lg border p-3 text-left transition',
-								item.tone === 'working'
-									? 'border-warning/40 bg-warning/10'
-									: item.tone === 'success'
-										? 'border-success/40 bg-success/10'
-										: item.tone === 'danger'
-											? 'border-destructive/40 bg-destructive/10'
-											: 'border-border bg-background',
-								item.nodeId && 'hover:border-accent/60 hover:bg-muted/60'
-							]}
-							onclick={() => {
-								if (item.nodeId) selectedNodeId = item.nodeId;
-							}}
-							disabled={!item.nodeId}
-						>
-							<div class="flex items-center justify-between gap-2">
-								<p class="truncate text-xs font-bold text-foreground">
-									{item.title}
-								</p>
-								<span
-									class="flex shrink-0 items-center gap-1 text-2xs text-muted-foreground"
-								>
-									<Clock3 class="h-3 w-3" />
-									{formatActivityTime(item.createdAt)}
-								</span>
-							</div>
-							<p
-								class="mt-1.5 line-clamp-2 text-2xs leading-relaxed text-muted-foreground"
+						{#if item.nodeId}
+							<button
+								type="button"
+								class="flex min-h-14 w-full min-w-0 items-start gap-3 px-4 py-3 text-left transition hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+								onclick={() => selectNode(item.nodeId as string)}
 							>
-								{item.detail}
-							</p>
-						</button>
+								{@render activityRow(item)}
+							</button>
+						{:else}
+							<div class="flex min-h-14 min-w-0 items-start gap-3 px-4 py-3">
+								{@render activityRow(item)}
+							</div>
+						{/if}
 					{/each}
 				{:else}
-					<div
-						class="flex min-w-0 items-center gap-3 rounded-lg border border-dashed border-border bg-background p-3 sm:col-span-2 2xl:col-span-3"
-					>
+					<div class="flex min-w-0 items-center gap-3 px-4 py-4">
 						<Loader2
 							class="h-4 w-4 shrink-0 animate-spin text-warning motion-reduce:animate-none"
 						/>
@@ -651,26 +771,25 @@
 					</div>
 				{/if}
 			</div>
-		</section>
-
-		{#if runningNodes.length}
-			<section
-				class="admin-panel flex min-w-0 max-w-full flex-wrap items-center gap-2 overflow-hidden px-4 py-3"
-			>
-				<div class="mr-1 flex items-center gap-2 text-xs font-bold text-foreground">
-					<Bot class="h-4 w-4 text-warning" /> Active agents
+			{#if runningNodes.length}
+				<div
+					class="flex min-w-0 flex-wrap items-center gap-2 border-t border-border bg-warning/5 px-4 py-3"
+				>
+					<div class="mr-1 flex items-center gap-2 text-xs font-bold text-foreground">
+						<Bot class="h-4 w-4 text-warning" /> Active agents
+					</div>
+					{#each runningNodes as node (node.id)}
+						<button
+							type="button"
+							class="min-h-11 min-w-0 max-w-full truncate rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-2xs font-semibold text-foreground transition hover:bg-warning/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:max-w-64"
+							onclick={() => selectNode(node.id)}
+						>
+							Node {node.node_number}: {node.question}
+						</button>
+					{/each}
 				</div>
-				{#each runningNodes as node (node.id)}
-					<button
-						type="button"
-						class="min-w-0 max-w-full truncate rounded-full border border-warning/40 bg-warning/10 px-2.5 py-1 text-2xs font-semibold text-foreground hover:bg-warning/15 sm:max-w-64"
-						onclick={() => (selectedNodeId = node.id)}
-					>
-						Node {node.node_number}: {node.question}
-					</button>
-				{/each}
-			</section>
-		{/if}
+			{/if}
+		</section>
 
 		{#if detail.run.pause_reason}
 			<div
@@ -682,15 +801,23 @@
 		{/if}
 
 		{#if detail.run.synthesis}
-			<details class="admin-panel" open={detail.run.phase === 'done'}>
-				<summary class="cursor-pointer px-5 py-4 text-base font-bold text-foreground"
-					>Final synthesis</summary
+			<details class="admin-panel group">
+				<summary
+					class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 text-base font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 				>
+					<span>Final synthesis</span>
+					<span
+						class="flex items-center gap-2 text-xs font-semibold text-muted-foreground"
+					>
+						Ready
+						<ChevronDown
+							class="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+						/>
+					</span>
+				</summary>
 				<div class="space-y-5 border-t border-border px-5 py-5">
 					<div>
-						<p class="text-2xs font-bold uppercase tracking-wide text-muted-foreground">
-							Final thesis
-						</p>
+						<p class="micro-label">Final thesis</p>
 						<p class="mt-2 text-base font-semibold leading-relaxed text-foreground">
 							{detail.run.synthesis.finalThesis}
 						</p>
@@ -724,35 +851,74 @@
 					<div>
 						<h2 class="text-sm font-bold text-foreground">Research tree</h2>
 						<p class="text-xs text-muted-foreground">
-							Select any node to inspect its answer and produced questions.
+							Click a node to inspect it. Drag to pan, scroll or pinch to zoom, or use
+							search for keyboard navigation.
 						</p>
 					</div>
 					<label class="relative block w-full sm:w-80">
+						<span class="sr-only">Find a research tree node</span>
 						<Search
-							class="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground"
+							class="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground"
 						/>
 						<input
 							bind:value={searchQuery}
 							type="search"
-							placeholder="Search questions and answers"
-							class="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-xs text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+							placeholder="Find a node"
+							role="combobox"
+							aria-autocomplete="list"
+							aria-expanded={Boolean(searchQuery.trim())}
+							aria-controls={searchListboxId}
+							aria-activedescendant={activeSearchNode
+								? searchOptionId(activeSearchNode.id)
+								: undefined}
+							oninput={handleSearchInput}
+							onkeydown={handleSearchKeydown}
+							class="h-11 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
 						/>
 					</label>
 				</div>
 				{#if searchQuery.trim()}
-					<div class="mt-3 flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
+					<p class="mt-3 text-2xs font-semibold text-muted-foreground" aria-live="polite">
+						{searchMatches.length} match{searchMatches.length === 1
+							? ''
+							: 'es'}{searchMatches.length === 20 ? ' · showing the first 20' : ''}.
+						Use the arrow keys to move and Enter to open.
+					</p>
+					<div
+						id={searchListboxId}
+						role="listbox"
+						aria-label="Matching research tree nodes"
+						class="mt-3 max-h-52 overflow-y-auto rounded-lg border border-border bg-background p-1"
+					>
 						{#if searchMatches.length}
-							{#each searchMatches as node (node.id)}
+							{#each searchMatches as node, index (node.id)}
 								<button
+									id={searchOptionId(node.id)}
 									type="button"
-									class="max-w-72 truncate rounded-md bg-muted px-2 py-1 text-2xs font-semibold text-foreground hover:bg-accent hover:text-accent-foreground"
-									onclick={() => (selectedNodeId = node.id)}
+									role="option"
+									aria-selected={activeSearchIndex === index}
+									tabindex="-1"
+									class={[
+										'flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition hover:bg-muted',
+										activeSearchIndex === index && 'bg-accent/10 text-accent'
+									]}
+									onmouseenter={() => (activeSearchIndex = index)}
+									onclick={() => selectNode(node.id)}
 								>
-									Node {node.node_number}: {node.question}
+									<span class="shrink-0 font-bold text-muted-foreground">
+										{node.node_kind === 'root'
+											? 'Root'
+											: `Node ${node.node_number}`}
+									</span>
+									<span class="truncate font-semibold text-foreground"
+										>{node.question}</span
+									>
 								</button>
 							{/each}
 						{:else}
-							<span class="text-xs text-muted-foreground">No matches.</span>
+							<p class="px-2.5 py-3 text-xs text-muted-foreground">
+								No matching nodes.
+							</p>
 						{/if}
 					</div>
 				{/if}
@@ -760,11 +926,11 @@
 
 			<div
 				class={[
-					'grid min-h-[68vh] min-w-0 max-w-full',
+					'grid min-h-[72vh] min-w-0 max-w-full',
 					selectedNode ? 'xl:grid-cols-[minmax(0,1fr)_400px]' : 'grid-cols-1'
 				]}
 			>
-				<div class="h-[68vh] min-h-[520px] min-w-0 max-w-full overflow-hidden">
+				<div class="h-[72vh] min-h-[540px] min-w-0 max-w-full overflow-hidden">
 					<QuestionTreeCanvas
 						nodes={detail.nodes}
 						proposals={detail.proposals}
@@ -772,30 +938,66 @@
 						rootActive={detail.run.phase === 'seed' &&
 							isQuestionTreeActive(detail.run.status)}
 						bind:selectedNodeId
+						onSelectNode={() => (hasUserSelectedNode = true)}
 					/>
 				</div>
 				{#if selectedNode}
-					<div class="min-h-[420px] min-w-0 max-w-full overflow-hidden xl:h-[68vh]">
+					<div
+						class="hidden min-h-[420px] min-w-0 max-w-full overflow-hidden xl:block xl:h-[72vh]"
+					>
 						<QuestionTreeInspector
 							node={selectedNode}
 							proposals={detail.proposals}
 							retrying={retryingNodeId === selectedNode.id}
 							onRetry={retryNode}
-							onClose={() => (selectedNodeId = null)}
+							onSelectNode={selectNode}
+							onClose={closeInspector}
 						/>
 					</div>
 				{/if}
 			</div>
 		</section>
 
+		<Modal
+			isOpen={mobileInspectorOpen}
+			onClose={closeInspector}
+			title="Node details"
+			size="lg"
+			variant="bottom-sheet"
+			showCloseButton={false}
+			contentScrollable={false}
+			customClasses="h-[88dvh]"
+		>
+			{#if selectedNode}
+				<QuestionTreeInspector
+					node={selectedNode}
+					proposals={detail.proposals}
+					retrying={retryingNodeId === selectedNode.id}
+					onRetry={retryNode}
+					onSelectNode={selectNode}
+					onClose={closeInspector}
+				/>
+			{/if}
+		</Modal>
+
 		<footer
 			class="flex flex-wrap items-center justify-between gap-2 text-2xs text-muted-foreground"
 		>
-			<span>Model: {detail.run.explorer_model_requested} · {detail.run.model_policy}</span>
+			<span>Explorer model: {detail.run.explorer_model_requested}</span>
 			<span
-				>{detail.run.provider_requests}/{detail.run.max_provider_requests} provider requests
-				· {formatDuration(detail.run.usage.latency_ms)} total model latency</span
+				>{modelPolicyLabel(detail.run.model_policy)} · prompt {detail.run
+					.prompt_version}</span
 			>
 		</footer>
 	{/if}
 </div>
+
+<style>
+	.question-tree-detail-page :global(h1 + p) {
+		display: -webkit-box;
+		overflow: hidden;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+	}
+</style>

@@ -3999,6 +3999,7 @@ export type Database = {
           stream_run_id: string
           turn_run_id: string
           user_id: string
+          worker_transition_id: string | null
         }
         Insert: {
           created_at?: string
@@ -4013,6 +4014,7 @@ export type Database = {
           stream_run_id: string
           turn_run_id: string
           user_id: string
+          worker_transition_id?: string | null
         }
         Update: {
           created_at?: string
@@ -4027,6 +4029,7 @@ export type Database = {
           stream_run_id?: string
           turn_run_id?: string
           user_id?: string
+          worker_transition_id?: string | null
         }
         Relationships: [
           {
@@ -4405,6 +4408,9 @@ export type Database = {
           created_at: string
           durable_through_sequence: number
           execution_generation: number
+          last_text_batch_id: string | null
+          last_text_end_bytes: number | null
+          last_text_sequence: number | null
           projection: Json
           projection_durable_sequence: number
           reconcile_required: boolean
@@ -4419,6 +4425,9 @@ export type Database = {
           created_at?: string
           durable_through_sequence?: number
           execution_generation?: number
+          last_text_batch_id?: string | null
+          last_text_end_bytes?: number | null
+          last_text_sequence?: number | null
           projection: Json
           projection_durable_sequence?: number
           reconcile_required?: boolean
@@ -4433,6 +4442,9 @@ export type Database = {
           created_at?: string
           durable_through_sequence?: number
           execution_generation?: number
+          last_text_batch_id?: string | null
+          last_text_end_bytes?: number | null
+          last_text_sequence?: number | null
           projection?: Json
           projection_durable_sequence?: number
           reconcile_required?: boolean
@@ -17118,6 +17130,16 @@ export type Database = {
           role_key: string
         }[]
       }
+      acknowledge_agentic_chat_stream_delivery: {
+        Args: {
+          p_acknowledged_sequence: number
+          p_execution_generation: number
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       acquire_migration_platform_lock: {
         Args: {
           p_duration_minutes?: number
@@ -17954,6 +17976,12 @@ export type Database = {
       finalize_draft_project: {
         Args: { p_draft_id: string; p_user_id: string }
         Returns: string
+      }
+      flush_agentic_chat_text_batches: {
+        Args: {
+          p_batches: Json
+        }
+        Returns: Json
       }
       flush_project_activity_notification_batch: {
         Args: { p_batch_id: string }
@@ -18858,6 +18886,33 @@ export type Database = {
           p_sync_assignees: boolean
           p_task_id: string
           p_updates: Json
+        }
+        Returns: Json
+      }
+      persist_agentic_chat_semantic_event: {
+        Args: {
+          p_assistant_text: string
+          p_event_payload: Json
+          p_event_type: string
+          p_execution_generation: number
+          p_phase: string
+          p_processing_token: string
+          p_projection: Json
+          p_queue_job_id: string
+          p_transition_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
+      persist_agentic_chat_text_batch: {
+        Args: {
+          p_assistant_text: string
+          p_batch_id: string
+          p_execution_generation: number
+          p_processing_token: string
+          p_queue_job_id: string
+          p_text_delta: string
+          p_turn_run_id: string
         }
         Returns: Json
       }

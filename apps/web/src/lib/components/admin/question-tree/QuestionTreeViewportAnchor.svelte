@@ -1,15 +1,28 @@
 <!-- apps/web/src/lib/components/admin/question-tree/QuestionTreeViewportAnchor.svelte -->
 <script lang="ts">
+	import { MediaQuery } from 'svelte/reactivity';
 	import { useSvelteFlow, type Node } from '@xyflow/svelte';
 
-	let { nodes, selectedNodeId }: { nodes: Node[]; selectedNodeId: string | null } = $props();
+	let {
+		nodes,
+		selectedNodeId,
+		initialNodeIds = []
+	}: {
+		nodes: Node[];
+		selectedNodeId: string | null;
+		initialNodeIds?: string[];
+	} = $props();
 	let previousPositions = new Map<string, { x: number; y: number }>();
 	let previousNodeCount = 0;
-	const { getViewport, setViewport } = useSvelteFlow();
+	let previousSelectedNodeId: string | null = null;
+	let initialFitComplete = false;
+	const reducedMotion = new MediaQuery('prefers-reduced-motion: reduce', false);
+	const { fitView, getViewport, setCenter, setViewport } = useSvelteFlow();
 
 	$effect(() => {
 		const currentNodes = nodes;
 		const selectedId = selectedNodeId;
+		const focusIds = initialNodeIds;
 		const nextPositions = new Map(
 			currentNodes.map((node) => [node.id, { x: node.position.x, y: node.position.y }])
 		);
@@ -19,6 +32,37 @@
 		previousPositions = nextPositions;
 		previousNodeCount = currentNodes.length;
 
+		if (!initialFitComplete && currentNodes.length > 0) {
+			initialFitComplete = true;
+			previousSelectedNodeId = selectedId;
+			const frame = requestAnimationFrame(() => {
+				const focusNodes = currentNodes.filter((node) => focusIds.includes(node.id));
+				void fitView({
+					nodes: focusNodes.length ? focusNodes : currentNodes.slice(0, 1),
+					padding: 0.24,
+					minZoom: 0.35,
+					maxZoom: 0.9,
+					duration: reducedMotion.current ? 0 : 280
+				});
+			});
+			return () => cancelAnimationFrame(frame);
+		}
+
+		if (selectedId && selectedId !== previousSelectedNodeId) {
+			previousSelectedNodeId = selectedId;
+			const node = currentNodes.find((entry) => entry.id === selectedId);
+			if (!node) return;
+			const frame = requestAnimationFrame(() => {
+				const viewport = getViewport();
+				void setCenter(node.position.x + 125, node.position.y + 66, {
+					zoom: Math.max(viewport.zoom, 0.72),
+					duration: reducedMotion.current ? 0 : 220
+				});
+			});
+			return () => cancelAnimationFrame(frame);
+		}
+		previousSelectedNodeId = selectedId;
+
 		if (!addedNodes || !priorPosition || !nextPosition) return;
 		const deltaX = nextPosition.x - priorPosition.x;
 		const deltaY = nextPosition.y - priorPosition.y;
@@ -26,11 +70,14 @@
 
 		const frame = requestAnimationFrame(() => {
 			const viewport = getViewport();
-			void setViewport({
-				x: viewport.x - deltaX * viewport.zoom,
-				y: viewport.y - deltaY * viewport.zoom,
-				zoom: viewport.zoom
-			});
+			void setViewport(
+				{
+					x: viewport.x - deltaX * viewport.zoom,
+					y: viewport.y - deltaY * viewport.zoom,
+					zoom: viewport.zoom
+				},
+				{ duration: reducedMotion.current ? 0 : 120 }
+			);
 		});
 		return () => cancelAnimationFrame(frame);
 	});

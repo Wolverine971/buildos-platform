@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2026-08-02T19:02:30.232Z
+// Generated on: 2026-08-02T21:25:12.898Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -968,6 +968,7 @@ export type DatabaseSchema = {
 		stream_run_id: string;
 		turn_run_id: string;
 		user_id: string;
+		worker_transition_id: string | null;
 	};
 	chat_turn_input_artifacts: {
 		artifact_version: string;
@@ -1070,6 +1071,9 @@ export type DatabaseSchema = {
 		created_at: string;
 		durable_through_sequence: number;
 		execution_generation: number;
+		last_text_batch_id: string | null;
+		last_text_end_bytes: number | null;
+		last_text_sequence: number | null;
 		projection: Json;
 		projection_durable_sequence: number;
 		reconcile_required: boolean;

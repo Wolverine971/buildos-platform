@@ -8,6 +8,7 @@
 		node: QuestionTreeNode;
 		matched?: boolean;
 		rootActive?: boolean;
+		spotlighted?: boolean;
 	};
 
 	let { data, selected = false }: { data: NodeData; selected?: boolean } = $props();
@@ -48,13 +49,21 @@
 
 <div
 	class={[
-		'question-tree-node w-[250px] rounded-xl border-2 p-3 shadow-ink transition',
+		'question-tree-node w-[250px] rounded-lg border-2 p-3 shadow-ink transition-[opacity,filter,box-shadow] duration-150',
 		statusClasses,
 		selected && 'ring-2 ring-accent ring-offset-2 ring-offset-background',
-		data.matched && 'outline outline-2 outline-info outline-offset-2'
+		data.matched && 'outline outline-2 outline-info outline-offset-2',
+		data.spotlighted === false && 'opacity-40 grayscale-[0.35]'
 	]}
 >
-	<Handle type="target" position={Position.Left} class="!h-2.5 !w-2.5 !bg-muted-foreground" />
+	<Handle
+		type="target"
+		position={Position.Left}
+		class="!h-2.5 !w-2.5 !bg-muted-foreground"
+		aria-hidden="true"
+		role="presentation"
+		tabindex={-1}
+	/>
 	<div class="flex items-start gap-2.5">
 		<span
 			class={[
@@ -67,7 +76,7 @@
 		</span>
 		<div class="min-w-0 flex-1">
 			<div class="mb-1.5 flex items-center justify-between gap-2">
-				<span class="text-2xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+				<span class="micro-label">
 					{node.node_kind === 'root' ? 'Original question' : `Node ${node.node_number}`}
 				</span>
 				<span
@@ -87,12 +96,20 @@
 			</div>
 		</div>
 	</div>
-	<Handle type="source" position={Position.Right} class="!h-2.5 !w-2.5 !bg-muted-foreground" />
+	<Handle
+		type="source"
+		position={Position.Right}
+		class="!h-2.5 !w-2.5 !bg-muted-foreground"
+		aria-hidden="true"
+		role="presentation"
+		tabindex={-1}
+	/>
 </div>
 
 <style>
 	.question-tree-node {
 		font-family: inherit;
+		cursor: pointer;
 		animation: question-tree-node-arrive 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 	}
 
@@ -110,6 +127,7 @@
 	@media (prefers-reduced-motion: reduce) {
 		.question-tree-node {
 			animation: none;
+			transition: none;
 		}
 	}
 </style>
