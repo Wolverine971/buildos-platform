@@ -36,6 +36,7 @@ export default defineConfig({
 		'src/calendar/agent-run-calendar-port.ts',
 		'src/web/safe-fetch.ts',
 		'src/web/search-cache.ts',
+		'src/web/native-search.ts',
 		'src/inbox-index.ts',
 		'src/project-audits.ts',
 		'src/proposal-context/index.ts',

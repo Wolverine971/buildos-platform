@@ -352,6 +352,22 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			updateData.props = propsUpdate;
 		}
 
+		// Reject invalid relationship input before mutating goal fields. The fully
+		// transactional goal command remains a later phase, but validation errors
+		// must not leave a partially updated row behind in the meantime.
+		const hasConnectionsInput = Array.isArray(connections);
+		const connectionList: ConnectionRef[] =
+			hasConnectionsInput && connections.length > 0 ? connections : [];
+
+		if (hasConnectionsInput && connectionList.length > 0) {
+			await assertEntityRefsInProject({
+				supabase,
+				projectId: existingGoal.project_id,
+				refs: connectionList,
+				allowProject: true
+			});
+		}
+
 		// Update the goal
 		const { data: updatedGoal, error: updateError } = await supabase
 			.from('onto_goals')
@@ -377,20 +393,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to update goal', 500);
 		}
 
-		const hasConnectionsInput = Array.isArray(connections);
-		const connectionList: ConnectionRef[] =
-			hasConnectionsInput && connections.length > 0 ? connections : [];
-
 		if (hasConnectionsInput) {
-			if (connectionList.length > 0) {
-				await assertEntityRefsInProject({
-					supabase,
-					projectId: existingGoal.project_id,
-					refs: connectionList,
-					allowProject: true
-				});
-			}
-
 			await autoOrganizeConnections({
 				supabase,
 				projectId: existingGoal.project_id,

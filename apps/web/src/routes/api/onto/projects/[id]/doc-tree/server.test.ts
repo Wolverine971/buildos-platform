@@ -3,10 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { RequestEvent } from '@sveltejs/kit';
 
 const getDocTreeMock = vi.fn();
+const updateDocStructureMock = vi.fn();
 
 vi.mock('$lib/services/ontology/doc-structure.service', () => ({
 	getDocTree: getDocTreeMock,
-	updateDocStructure: vi.fn(),
+	updateDocStructure: updateDocStructureMock,
 	collectDocIds: vi.fn(() => new Set())
 }));
 
@@ -150,6 +151,10 @@ describe('GET /api/onto/projects/[id]/doc-tree', () => {
 });
 
 describe('PATCH /api/onto/projects/[id]/doc-tree', () => {
+	beforeEach(() => {
+		updateDocStructureMock.mockReset();
+	});
+
 	it('rejects invalid node shape before querying', async () => {
 		const { PATCH } = await import('./+server');
 
@@ -176,5 +181,45 @@ describe('PATCH /api/onto/projects/[id]/doc-tree', () => {
 		expect(response.status).toBe(400);
 		const payload = await response.json();
 		expect(payload.success).toBe(false);
+	});
+
+	it('returns 409 when the structure changes before the guarded update', async () => {
+		updateDocStructureMock.mockRejectedValue(
+			new Error(
+				'Structure version conflict: expected 1, but the structure changed before update'
+			)
+		);
+		const { PATCH } = await import('./+server');
+
+		const request = new Request(`http://localhost/api/onto/projects/${PROJECT_ID}/doc-tree`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				structure: { version: 1, root: [] },
+				change_type: 'reorder'
+			})
+		});
+
+		const response = await PATCH({
+			params: { id: PROJECT_ID },
+			request,
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as unknown as RequestEvent);
+
+		expect(response.status).toBe(409);
+		expect(updateDocStructureMock).toHaveBeenCalledWith(
+			expect.anything(),
+			PROJECT_ID,
+			{ version: 1, root: [] },
+			'reorder',
+			'actor-1'
+		);
+		await expect(response.json()).resolves.toMatchObject({
+			success: false,
+			error: expect.stringContaining('Structure version conflict')
+		});
 	});
 });

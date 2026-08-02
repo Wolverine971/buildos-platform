@@ -47,6 +47,33 @@ describe('Chat tool schema compatibility', () => {
 		expect(parameters?.properties?.type_key?.default).toBe('task.default');
 	});
 
+	it('publishes the BuildOS web-search defaults and bounded evidence contract', () => {
+		const tool = CHAT_TOOL_DEFINITIONS.find(
+			(candidate) => candidate.function?.name === 'web_search'
+		);
+		const parameters = tool?.function?.parameters as
+			| {
+					properties?: Record<
+						string,
+						{ default?: unknown; minimum?: number; maximum?: number; maxItems?: number }
+					>;
+			  }
+			| undefined;
+
+		expect(tool?.function?.description).toContain('BuildOS search pipeline');
+		expect(tool?.function?.description).toContain('best two valid pages');
+		expect(tool?.function?.description).not.toContain('using the Tavily API');
+		expect(parameters?.properties?.search_depth?.default).toBe('advanced');
+		expect(parameters?.properties?.max_results).toMatchObject({
+			default: 4,
+			minimum: 1,
+			maximum: 10
+		});
+		expect(parameters?.properties?.include_answer?.default).toBe(false);
+		expect(parameters?.properties?.include_domains?.maxItems).toBe(20);
+		expect(parameters?.properties?.exclude_domains?.maxItems).toBe(20);
+	});
+
 	it('returns exact create_onto_project schema details through tool_schema', () => {
 		const schema = getToolSchema('onto.project.create', {
 			include_examples: true,

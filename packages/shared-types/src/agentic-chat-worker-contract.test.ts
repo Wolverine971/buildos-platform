@@ -11,6 +11,7 @@ import {
 	canonicalizeAdmissionRequestV1,
 	canonicalizeAgenticChatJson,
 	createAgentStreamEventIdV1,
+	decideAgenticChatRecoveryV1,
 	decideTerminalFinalizationV1,
 	freezeTurnInputHistoryV1,
 	hashCanonicalAdmissionRequestV1,
@@ -19,6 +20,8 @@ import {
 	parseAgentStreamEventIdV1,
 	validateTurnInputArtifactV1,
 	type CanonicalAdmissionRequestV1,
+	type AgenticChatCancelRpcResultV1,
+	type AgenticChatTerminalFinalizeRpcResultV1,
 	type NormalizedChatAttachmentV1,
 	type TurnInputArtifactV1
 } from './agentic-chat-worker-contract';
@@ -423,5 +426,183 @@ describe('agentic chat worker v1 contract fixtures', () => {
 				cancelRequestedAt: null
 			})
 		).toEqual({ decision: 'invalid_status' });
+	});
+
+	it('allows whole-turn retry only before every execution boundary', () => {
+		const safePreStart = {
+			currentStatus: 'running' as const,
+			currentGeneration: 1,
+			requestedGeneration: 1,
+			failureClass: 'transient_infra' as const,
+			cancelRequested: false,
+			executionStarted: false,
+			mutationReserved: false,
+			irreversibleBoundaryCrossed: false,
+			effectCount: 0,
+			blockingEffectCount: 0,
+			queueAttempts: 0,
+			queueMaxAttempts: 3,
+			queueResidenceExpired: false
+		};
+
+		expect(decideAgenticChatRecoveryV1(safePreStart)).toEqual({
+			decision: 'retry',
+			failureCode: 'transient_infra'
+		});
+		expect(
+			decideAgenticChatRecoveryV1({
+				...safePreStart,
+				failureClass: 'provider_throttle'
+			})
+		).toEqual({ decision: 'retry', failureCode: 'provider_throttle' });
+		expect(
+			decideAgenticChatRecoveryV1({
+				...safePreStart,
+				executionStarted: true
+			})
+		).toMatchObject({ decision: 'finalize_failed', retryExhausted: false });
+		expect(
+			decideAgenticChatRecoveryV1({
+				...safePreStart,
+				mutationReserved: true
+			})
+		).toMatchObject({ decision: 'finalize_failed', retryExhausted: false });
+		expect(
+			decideAgenticChatRecoveryV1({
+				...safePreStart,
+				irreversibleBoundaryCrossed: true
+			})
+		).toMatchObject({ decision: 'finalize_failed', retryExhausted: false });
+		expect(
+			decideAgenticChatRecoveryV1({
+				...safePreStart,
+				effectCount: 1
+			})
+		).toMatchObject({ decision: 'finalize_failed', retryExhausted: false });
+	});
+
+	it('limits pre-start timeout retry and fails closed for stale, unknown, and exhausted work', () => {
+		const safePreStart = {
+			currentStatus: 'running' as const,
+			currentGeneration: 2,
+			requestedGeneration: 2,
+			failureClass: 'timeout_pre_start' as const,
+			cancelRequested: false,
+			executionStarted: false,
+			mutationReserved: false,
+			irreversibleBoundaryCrossed: false,
+			effectCount: 0,
+			blockingEffectCount: 0,
+			queueAttempts: 0,
+			queueMaxAttempts: 3,
+			queueResidenceExpired: false
+		};
+
+		expect(decideAgenticChatRecoveryV1(safePreStart)).toEqual({
+			decision: 'retry',
+			failureCode: 'timeout_pre_start'
+		});
+		expect(decideAgenticChatRecoveryV1({ ...safePreStart, queueAttempts: 1 })).toEqual({
+			decision: 'finalize_failed',
+			failureCode: 'timeout_pre_start',
+			retryExhausted: true
+		});
+		expect(
+			decideAgenticChatRecoveryV1({
+				...safePreStart,
+				failureClass: 'unknown'
+			})
+		).toEqual({
+			decision: 'finalize_failed',
+			failureCode: 'unknown',
+			retryExhausted: false
+		});
+		expect(
+			decideAgenticChatRecoveryV1({
+				...safePreStart,
+				failureClass: 'transient_infra',
+				queueResidenceExpired: true
+			})
+		).toEqual({
+			decision: 'finalize_failed',
+			failureCode: 'stale_context',
+			retryExhausted: false
+		});
+		expect(
+			decideAgenticChatRecoveryV1({
+				...safePreStart,
+				failureClass: 'transient_infra',
+				queueAttempts: 2
+			})
+		).toMatchObject({ decision: 'finalize_failed', retryExhausted: true });
+	});
+
+	it('prioritizes terminal, stale-generation, cancellation, and effect reconciliation', () => {
+		const input = {
+			currentStatus: 'running' as const,
+			currentGeneration: 3,
+			requestedGeneration: 3,
+			failureClass: 'transient_infra' as const,
+			cancelRequested: false,
+			executionStarted: false,
+			mutationReserved: false,
+			irreversibleBoundaryCrossed: false,
+			effectCount: 0,
+			blockingEffectCount: 0,
+			queueAttempts: 0,
+			queueMaxAttempts: 3,
+			queueResidenceExpired: false
+		};
+
+		expect(decideAgenticChatRecoveryV1({ ...input, currentStatus: 'completed' })).toEqual({
+			decision: 'reconcile_terminal_queue'
+		});
+		expect(decideAgenticChatRecoveryV1({ ...input, requestedGeneration: 2 })).toEqual({
+			decision: 'stale_generation'
+		});
+		expect(decideAgenticChatRecoveryV1({ ...input, currentStatus: 'queued' })).toEqual({
+			decision: 'already_requeued'
+		});
+		expect(decideAgenticChatRecoveryV1({ ...input, cancelRequested: true })).toEqual({
+			decision: 'finalize_cancelled',
+			failureCode: 'cancelled'
+		});
+		expect(decideAgenticChatRecoveryV1({ ...input, blockingEffectCount: 1 })).toEqual({
+			decision: 'effect_reconciliation_required'
+		});
+	});
+
+	it('pins typed database receipts for terminal finalization and cancellation', () => {
+		const terminal = {
+			outcome: 'finalized',
+			turn_run_id: '80000000-0000-4000-8000-000000000001',
+			session_id: '30000000-0000-4000-8000-000000000001',
+			user_id: '10000000-0000-4000-8000-000000000001',
+			queue_job_id: '90000000-0000-4000-8000-000000000001',
+			execution_generation: 2,
+			status: 'completed',
+			finished_reason: 'stop',
+			failure_code: null,
+			assistant_message_id: '70000000-0000-4000-8000-000000000001',
+			terminal_event_id: '80000000-0000-4000-8000-000000000001:2:8',
+			terminal_sequence_index: 8,
+			terminalized_at: '2026-08-02T16:00:00.000Z'
+		} satisfies AgenticChatTerminalFinalizeRpcResultV1;
+		const cancel = {
+			outcome: 'cancel_requested',
+			turn_run_id: terminal.turn_run_id,
+			session_id: terminal.session_id,
+			user_id: terminal.user_id,
+			queue_job_id: terminal.queue_job_id,
+			execution_generation: 2,
+			status: 'running',
+			cancel_requested_at: '2026-08-02T15:59:59.000Z',
+			cancel_reason: 'user_cancelled',
+			cancel_source: 'browser',
+			signal_id: '60000000-0000-4000-8000-000000000001'
+		} satisfies AgenticChatCancelRpcResultV1;
+
+		expect(terminal.terminal_event_id).toContain(':2:8');
+		expect(cancel.outcome).toBe('cancel_requested');
 	});
 });

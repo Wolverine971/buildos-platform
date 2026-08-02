@@ -121,4 +121,31 @@ describe('affected entity extraction', () => {
 			}
 		]);
 	});
+
+	it('records the moved document for move_document_in_tree', () => {
+		const refs = extractAffectedEntitiesFromToolExecution({
+			tool_name: 'move_document_in_tree',
+			gateway_op: 'onto.document.tree.move',
+			arguments: {
+				project_id: 'project-1',
+				document_id: 'doc-1',
+				new_parent_id: 'doc-parent'
+			},
+			result: {
+				structure: { version: 2, root: [] }
+			},
+			success: true
+		});
+
+		expect(refs).toEqual([
+			{
+				kind: 'document',
+				id: 'doc-1',
+				title: null,
+				projectId: 'project-1',
+				operation: 'moved',
+				url: '/projects/project-1?doc=doc-1'
+			}
+		]);
+	});
 });

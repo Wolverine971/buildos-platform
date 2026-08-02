@@ -189,6 +189,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
+		// Validate every requested relationship before inserting the goal. This does
+		// not replace the eventual transactional create command, but it prevents a
+		// known partial-create path where invalid references returned an error after
+		// the goal row had already committed.
+		const connectionList: ConnectionRef[] =
+			Array.isArray(connections) && connections.length > 0 ? connections : [];
+
+		if (connectionList.length > 0) {
+			await assertEntityRefsInProject({
+				supabase,
+				projectId,
+				refs: connectionList,
+				allowProject: true
+			});
+		}
+
 		// Create the goal
 		const goalData = {
 			project_id: projectId,
@@ -233,18 +249,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				tableName: 'onto_goals'
 			});
 			return ApiResponse.databaseError(createError);
-		}
-
-		const connectionList: ConnectionRef[] =
-			Array.isArray(connections) && connections.length > 0 ? connections : [];
-
-		if (connectionList.length > 0) {
-			await assertEntityRefsInProject({
-				supabase,
-				projectId,
-				refs: connectionList,
-				allowProject: true
-			});
 		}
 
 		await autoOrganizeConnections({

@@ -3988,7 +3988,9 @@ export type Database = {
       chat_turn_events: {
         Row: {
           created_at: string
+          event_id: string
           event_type: string
+          execution_generation: number
           id: string
           payload: Json
           phase: string
@@ -4000,7 +4002,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          event_id?: string
           event_type: string
+          execution_generation?: number
           id?: string
           payload?: Json
           phase: string
@@ -4012,7 +4016,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          event_id?: string
           event_type?: string
+          execution_generation?: number
           id?: string
           payload?: Json
           phase?: string
@@ -8041,6 +8047,63 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      native_search_cache: {
+        Row: {
+          adapter_version: string
+          cache_key: string
+          created_at: string
+          expires_at: string
+          fetched_at: string | null
+          hit_count: number
+          last_hit_at: string | null
+          lease_expires_at: string | null
+          owner_token: string | null
+          provider: string | null
+          provider_credits: number | null
+          provider_request_id: string | null
+          response: Json | null
+          response_version: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          adapter_version: string
+          cache_key: string
+          created_at?: string
+          expires_at?: string
+          fetched_at?: string | null
+          hit_count?: number
+          last_hit_at?: string | null
+          lease_expires_at?: string | null
+          owner_token?: string | null
+          provider?: string | null
+          provider_credits?: number | null
+          provider_request_id?: string | null
+          response?: Json | null
+          response_version: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          adapter_version?: string
+          cache_key?: string
+          created_at?: string
+          expires_at?: string
+          fetched_at?: string | null
+          hit_count?: number
+          last_hit_at?: string | null
+          lease_expires_at?: string | null
+          owner_token?: string | null
+          provider?: string | null
+          provider_credits?: number | null
+          provider_request_id?: string | null
+          response?: Json | null
+          response_version?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       notes: {
         Row: {
@@ -17179,6 +17242,15 @@ export type Database = {
         }
         Returns: Json
       }
+      begin_agentic_chat_turn_execution: {
+        Args: {
+          p_execution_generation: number
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       build_fastchat_project_intelligence: {
         Args: {
           p_context_type: string
@@ -17285,6 +17357,14 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_agentic_chat_turn: {
+        Args: {
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       claim_due_account_deletions: {
         Args: { p_lease_minutes?: number; p_limit?: number }
         Returns: {
@@ -17349,6 +17429,16 @@ export type Database = {
           operation_id: string
           scope_state: string
         }[]
+      }
+      claim_native_search_cache: {
+        Args: {
+          p_adapter_version: string
+          p_cache_key: string
+          p_lease_seconds?: number
+          p_owner_token: string
+          p_response_version: string
+        }
+        Returns: Json
       }
       claim_pending_email_sequence_sends: {
         Args: { p_limit?: number; p_sequence_key: string }
@@ -17504,6 +17594,18 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      complete_native_search_cache: {
+        Args: {
+          p_cache_key: string
+          p_owner_token: string
+          p_provider?: string
+          p_provider_credits?: number
+          p_provider_request_id?: string
+          p_response: Json
+          p_ttl_seconds?: number
+        }
+        Returns: Json
+      }
       complete_question_tree_run: {
         Args: {
           p_run_id: string
@@ -17548,6 +17650,45 @@ export type Database = {
       }
       create_agent_run_with_job: {
         Args: { p_job_metadata: Json; p_priority?: number; p_run: Json }
+        Returns: Json
+      }
+      create_agentic_chat_turn_with_job: {
+        Args: {
+          p_artifact_content_bytes: number
+          p_artifact_content_hash: string
+          p_artifact_history: Json
+          p_artifact_history_bytes: number
+          p_artifact_prepared: Json
+          p_capacity_available: boolean
+          p_client_turn_id: string
+          p_context_type: string
+          p_correlation_id: string
+          p_entity_id: string
+          p_gateway_enabled: boolean
+          p_history_limit: number
+          p_history_source: string
+          p_input_artifact_id: string
+          p_prepared_context_payload_sha256: string
+          p_prepared_prompt_id: string
+          p_prepared_surface_profile: string
+          p_project_id: string
+          p_request_hash: string
+          p_request_hash_version: string
+          p_request_message: string
+          p_request_payload: Json
+          p_request_payload_version: string
+          p_session_agent_metadata: Json
+          p_session_id: string
+          p_source: string
+          p_stream_run_id: string
+          p_transport_contract_version: string
+          p_transport_decision_id: string
+          p_turn_run_id: string
+          p_user_id: string
+          p_user_message_content: string
+          p_user_message_id: string
+          p_user_message_metadata: Json
+        }
         Returns: Json
       }
       create_email_relevance_scan_run: {
@@ -17787,6 +17928,27 @@ export type Database = {
       }
       finalize_account_deletion_database: {
         Args: { p_user_id: string }
+        Returns: Json
+      }
+      finalize_agentic_chat_turn: {
+        Args: {
+          p_assistant_message_id: string
+          p_assistant_metadata: Json
+          p_assistant_text: string
+          p_completion_tokens: number
+          p_event_payload: Json
+          p_execution_generation: number
+          p_failure_code: string
+          p_finished_reason: string
+          p_processing_token: string
+          p_projection: Json
+          p_prompt_tokens: number
+          p_queue_job_id: string
+          p_status: string
+          p_total_tokens: number
+          p_turn_run_id: string
+          p_user_id: string
+        }
         Returns: Json
       }
       finalize_draft_project: {
@@ -18484,6 +18646,12 @@ export type Database = {
         Args: { question_ids: string[] }
         Returns: undefined
       }
+      invalidate_native_search_cache: {
+        Args: {
+          p_cache_key: string
+        }
+        Returns: Json
+      }
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { user_id: string }; Returns: boolean }
@@ -18704,6 +18872,14 @@ export type Database = {
           total_samples: number
         }[]
       }
+      probe_native_search_cache: {
+        Args: {
+          p_adapter_version: string
+          p_cache_key: string
+          p_response_version: string
+        }
+        Returns: Json
+      }
       prune_stale_profile_fragments: {
         Args: { p_older_than_days?: number }
         Returns: number
@@ -18809,6 +18985,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      recover_agentic_chat_turn: {
+        Args: {
+          p_error_message?: string
+          p_execution_generation: number
+          p_failure_class: string
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       refresh_onto_public_page_30d_counts: { Args: never; Returns: number }
       refresh_sms_metrics_daily: { Args: never; Returns: undefined }
       refresh_user_migration_stats: {
@@ -18833,6 +19020,13 @@ export type Database = {
         Args: { p_run_id: string }
         Returns: boolean
       }
+      release_native_search_cache: {
+        Args: {
+          p_cache_key: string
+          p_owner_token: string
+        }
+        Returns: Json
+      }
       reorder_phases_with_tasks: {
         Args: {
           p_affected_task_ids?: string[]
@@ -18850,6 +19044,15 @@ export type Database = {
           scheduled_for: string
           status: string
         }[]
+      }
+      request_agentic_chat_turn_cancel: {
+        Args: {
+          p_reason: string
+          p_source: string
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       reserve_agent_run_cost: {
         Args: {

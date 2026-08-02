@@ -745,10 +745,10 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		summary:
 			'Live web discovery plus BuildOS-fetched source evidence. Findings are not automatically saved as project documents.',
 		capabilities: [
-			'Searches current web content with Tavily Advanced by default',
+			'Uses versioned live-web discovery with Advanced depth by default',
 			'Optional domain allow/deny lists',
 			'Fetches the best two of the top four source pages concurrently',
-			'Returns ranked source evidence for BuildOS synthesis',
+			'Returns bounded snippets plus fetched source-page evidence for BuildOS synthesis',
 			'Pair it with a document write to keep findings as project knowledge'
 		],
 		contexts: ['base', 'global', 'project_create', 'project'],

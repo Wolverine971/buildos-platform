@@ -817,6 +817,52 @@ describe('buildToolPayloadForModel', () => {
 		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
 	});
 
+	it('preserves BuildOS-fetched page evidence for web_search synthesis', () => {
+		const pageContent = `Verified primary-source evidence. ${'Detailed evidence '.repeat(260)}`;
+		const payload = buildToolPayloadForModel(
+			toolCall('web_search'),
+			toolResult({
+				query: 'current vendor pricing',
+				results: Array.from({ length: 4 }, (_, index) => ({
+					title: `Result ${index}`,
+					url: `https://example.com/${index}`,
+					snippet: 'Provider snippet '.repeat(90),
+					...(index < 2
+						? {
+								page_title: `Fetched page ${index}`,
+								page_content: pageContent,
+								page_final_url: `https://example.com/${index}/canonical`,
+								page_fetched_at: '2026-08-02T12:00:00.000Z',
+								page_cache_hit: index === 0
+							}
+						: {})
+				})),
+				message: 'Web search results for "current vendor pricing".',
+				info: {
+					provider: 'tavily',
+					adapter_version: 'tavily-v1',
+					search_depth: 'advanced',
+					max_results: 4,
+					cache_status: 'miss',
+					pages_requested: 2,
+					pages_fetched: 2
+				}
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.truncated).toBeUndefined();
+		expect(payload.results[0].page_content).toContain('Verified primary-source evidence');
+		expect(payload.results[1].page_content).toContain('Verified primary-source evidence');
+		expect(payload.results[2].page_content).toBeUndefined();
+		expect(payload.info).toMatchObject({
+			adapter_version: 'tavily-v1',
+			cache_status: 'miss',
+			pages_fetched: 2
+		});
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+	});
+
 	it('shrinks web_search snippets instead of degrading at max_results=10', () => {
 		const snippet = 'evidence '.repeat(190).trim();
 		const payload = buildToolPayloadForModel(

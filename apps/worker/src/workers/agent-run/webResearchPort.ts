@@ -2,25 +2,29 @@
 import sanitizeHtml from 'sanitize-html';
 import { type WebResearchPort, WebResearchPortError } from '@buildos/shared-agent-ops';
 import { fetchPublicUrl } from '@buildos/shared-agent-ops/web/safe-fetch';
+import { ExpiringSingleFlightCache } from '@buildos/shared-agent-ops/web/search-cache';
 import {
-	buildWebSearchCacheKey,
-	ExpiringSingleFlightCache,
-	type ExpiringCacheStatus
-} from '@buildos/shared-agent-ops/web/search-cache';
+	LayeredNativeSearchCache,
+	type NativeSearchDiscoveryCacheEntry,
+	NativeSearchDiscoveryError,
+	type NativeSearchDiscoveryResult,
+	type NativeSearchDurableCacheStore,
+	type NativeSearchResponse,
+	NativeSearchValidationError,
+	type NormalizedNativeSearchRequest,
+	buildNativeSearchDiscoveryCacheKey,
+	buildNativeSearchResponse,
+	createNativeSearchDiscoveryCacheEntry,
+	createTavilyDiscoveryAdapter,
+	enrichNativeSearchCandidates,
+	markNativeSearchResponseCacheStatus,
+	normalizeNativeSearchRequest
+} from '@buildos/shared-agent-ops/web/native-search';
 
-const TAVILY_SEARCH_URL = 'https://api.tavily.com/search';
 const DEFAULT_SEARCH_TIMEOUT_MS = 30_000;
 const DEFAULT_VISIT_MAX_CHARS = 6_000;
 const MAX_VISIT_CHARS = 12_000;
-const DEFAULT_MAX_RESULTS = 4;
-const MAX_RESULTS = 10;
-const MAX_QUERY_CHARS = 1_000;
-const MAX_SNIPPET_CHARS = 1_600;
-const MAX_ANSWER_CHARS = 2_000;
-const MAX_DOMAIN_FILTERS = 20;
 const DEFAULT_SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
-const SEARCH_PAGE_CANDIDATE_LIMIT = 4;
-const SEARCH_PAGE_FETCH_LIMIT = 2;
 const SEARCH_PAGE_MAX_CHARS = 4_000;
 export const TAVILY_PUBLIC_PAYG_CREDIT_COST_USD = 0.008;
 const SECURITY_NOTICE =
@@ -35,25 +39,7 @@ interface CreateWebResearchPortOptions {
 	visitMaxBytes?: number;
 	tavilyCreditCostUsd?: number;
 	onSearchDispatched?: (charge: PaidToolCharge) => void | Promise<void>;
-}
-
-interface TavilyResult {
-	title?: unknown;
-	url?: unknown;
-	content?: unknown;
-	raw_content?: unknown;
-	score?: unknown;
-	published_date?: unknown;
-}
-
-interface TavilyResponse {
-	request_id?: unknown;
-	answer?: unknown;
-	results?: unknown;
-	follow_up_questions?: unknown;
-	usage?: {
-		credits?: unknown;
-	};
+	searchCacheStore?: NativeSearchDurableCacheStore<NativeSearchDiscoveryCacheEntry>;
 }
 
 export interface PaidToolCharge {
@@ -65,12 +51,32 @@ export interface PaidToolCharge {
 	provider_request_id?: string;
 }
 
-const agentRunSearchCache = new ExpiringSingleFlightCache<unknown>({
-	ttlMs: Math.max(
-		1,
-		Number.parseInt(process.env.AGENT_RUN_WEB_SEARCH_CACHE_TTL_MS ?? '', 10) ||
-			DEFAULT_SEARCH_CACHE_TTL_MS
-	),
+interface AgentRunSearchResultPayload extends NativeSearchResponse {
+	security_notice: string;
+	info: NativeSearchResponse['info'] & { billing?: PaidToolCharge };
+}
+
+const agentRunSearchCacheTtlMs = Math.max(
+	1,
+	Number.parseInt(process.env.AGENT_RUN_WEB_SEARCH_CACHE_TTL_MS ?? '', 10) ||
+		DEFAULT_SEARCH_CACHE_TTL_MS
+);
+const agentRunDiscoveryCache = new LayeredNativeSearchCache<NativeSearchDiscoveryCacheEntry>({
+	ttlMs: agentRunSearchCacheTtlMs,
+	maxEntries: 1_000,
+	onDurableError: (error) => {
+		console.warn(
+			'[AgentRunWebResearch] Durable native-search cache unavailable; using provider fallback:',
+			error instanceof Error ? error.message : String(error)
+		);
+	}
+});
+interface AgentRunCachedSearchResult {
+	response: AgentRunSearchResultPayload;
+	discoveryStatus: 'miss' | 'hit' | 'shared';
+}
+const agentRunSearchCache = new ExpiringSingleFlightCache<AgentRunCachedSearchResult>({
+	ttlMs: agentRunSearchCacheTtlMs,
 	maxEntries: 1_000
 });
 
@@ -173,42 +179,23 @@ function compactText(value: unknown, maxChars: number): string | undefined {
 	return compact.length > maxChars ? `${compact.slice(0, maxChars)}...` : compact;
 }
 
-function normalizeDomainFilters(value: unknown, key: string): string[] | undefined {
-	if (value === undefined || value === null) return undefined;
-	if (!Array.isArray(value)) throw validationError(`${key} must be an array of domains`);
-
-	const domains = value
-		.filter((domain): domain is string => typeof domain === 'string')
-		.map((domain) => domain.trim().toLowerCase())
-		.filter(Boolean);
-	if (domains.length > MAX_DOMAIN_FILTERS) {
-		throw validationError(`${key} supports at most ${MAX_DOMAIN_FILTERS} domains`);
-	}
-	if (domains.some((domain) => domain.length > 255 || /[/\s]/.test(domain))) {
-		throw validationError(`${key} entries must be bare domain names`);
-	}
-	return domains.length ? domains : undefined;
-}
-
-function normalizeSourceUrl(value: unknown): string | undefined {
-	if (typeof value !== 'string') return undefined;
+function normalizeSearchArgs(args: Record<string, unknown>): NormalizedNativeSearchRequest {
 	try {
-		const url = new URL(value.trim());
-		if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
-			return undefined;
+		return normalizeNativeSearchRequest(args);
+	} catch (error) {
+		if (error instanceof NativeSearchValidationError) {
+			throw validationError(error.message);
 		}
-		return url.toString().slice(0, 2_048);
-	} catch {
-		return undefined;
+		throw error;
 	}
 }
 
 async function performSearch(
 	args: Record<string, unknown>,
-	options: Required<
+	normalized: NormalizedNativeSearchRequest,
+	options: { apiKey: string } & Required<
 		Pick<
 			CreateWebResearchPortOptions,
-			| 'apiKey'
 			| 'fetchFn'
 			| 'now'
 			| 'searchTimeoutMs'
@@ -217,138 +204,36 @@ async function performSearch(
 			| 'tavilyCreditCostUsd'
 			| 'onSearchDispatched'
 		>
-	>
-): Promise<unknown> {
-	const query = readRequiredString(args, 'query', MAX_QUERY_CHARS);
-	const searchDepth = args.search_depth === 'basic' ? 'basic' : 'advanced';
-	const maxResults = clampInteger(args.max_results, DEFAULT_MAX_RESULTS, 1, MAX_RESULTS);
-	const includeAnswer = readOptionalBoolean(args.include_answer, false);
-	const includeDomains = normalizeDomainFilters(args.include_domains, 'include_domains');
-	const excludeDomains = normalizeDomainFilters(args.exclude_domains, 'exclude_domains');
+	>,
+	discoveryEntry: NativeSearchDiscoveryCacheEntry
+): Promise<AgentRunSearchResultPayload> {
 	const reservedCharge = estimateTavilySearchCharge(args, options.tavilyCreditCostUsd);
+	const { discovery } = discoveryEntry;
 
-	try {
-		await options.onSearchDispatched(reservedCharge);
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		throw new WebResearchPortError(`Tavily search reservation failed: ${message}`);
-	}
-
-	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), options.searchTimeoutMs);
-	let response: Response;
-	try {
-		response = await options.fetchFn(TAVILY_SEARCH_URL, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				query,
-				api_key: options.apiKey,
-				search_depth: searchDepth,
-				include_answer: includeAnswer,
-				max_results: maxResults,
-				include_domains: includeDomains,
-				exclude_domains: excludeDomains,
-				include_raw_content: false,
-				include_images: false,
-				include_usage: true
-			}),
-			signal: controller.signal
-		});
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		throw new WebResearchPortError(`Tavily search failed: ${message}`);
-	} finally {
-		clearTimeout(timeout);
-	}
-
-	if (!response.ok) {
-		throw new WebResearchPortError(
-			`Tavily search failed (${response.status} ${response.statusText})`
-		);
-	}
-
-	let payload: TavilyResponse;
-	try {
-		payload = (await response.json()) as TavilyResponse;
-	} catch {
-		throw new WebResearchPortError('Tavily search returned invalid JSON');
-	}
-
-	const rawResults = Array.isArray(payload.results) ? (payload.results as TavilyResult[]) : [];
-	const results = rawResults.slice(0, maxResults).flatMap((result) => {
-		const title = compactText(result.title, 500);
-		const url = normalizeSourceUrl(result.url);
-		if (!title || !url) return [];
-		const snippet = compactText(result.content ?? result.raw_content, MAX_SNIPPET_CHARS);
-		return [
+	const enriched = await enrichNativeSearchCandidates(discovery.results, async (result) => {
+		const page = (await performVisit(
+			{ url: result.url, max_chars: SEARCH_PAGE_MAX_CHARS },
 			{
-				title,
-				url,
-				...(snippet ? { snippet } : {}),
-				...(typeof result.score === 'number' && Number.isFinite(result.score)
-					? { score: result.score }
-					: {}),
-				...(typeof result.published_date === 'string'
-					? { published_date: result.published_date.slice(0, 100) }
-					: {})
+				fetchFn: options.fetchFn,
+				now: options.now,
+				visitTimeoutMs: options.visitTimeoutMs,
+				visitMaxBytes: options.visitMaxBytes
 			}
-		];
-	});
-
-	const answer = includeAnswer ? compactText(payload.answer, MAX_ANSWER_CHARS) : undefined;
-	const selectedPages = results
-		.slice(0, SEARCH_PAGE_CANDIDATE_LIMIT)
-		.slice(0, SEARCH_PAGE_FETCH_LIMIT);
-	const visits = await Promise.allSettled(
-		selectedPages.map((result) =>
-			performVisit(
-				{ url: result.url, max_chars: SEARCH_PAGE_MAX_CHARS },
-				{
-					fetchFn: options.fetchFn,
-					now: options.now,
-					visitTimeoutMs: options.visitTimeoutMs,
-					visitMaxBytes: options.visitMaxBytes
-				}
-			)
-		)
-	);
-	let pagesFetched = 0;
-	const enrichedResults = results.map((result, index) => {
-		const visit = visits[index];
-		if (!visit || visit.status !== 'fulfilled') return result;
-		pagesFetched += 1;
-		const page = visit.value as {
+		)) as {
 			title?: string;
 			content?: string;
 			final_url?: string;
 			info?: { fetched_at?: string };
 		};
 		return {
-			...result,
-			...(page.title ? { page_title: page.title } : {}),
-			...(page.content ? { page_content: page.content } : {}),
-			...(page.final_url ? { page_final_url: page.final_url } : {}),
-			...(page.info?.fetched_at ? { page_fetched_at: page.info.fetched_at } : {})
+			title: page.title,
+			content: page.content ?? '',
+			finalUrl: page.final_url ?? result.url,
+			fetchedAt: page.info?.fetched_at ?? options.now().toISOString()
 		};
 	});
-	const followUpQuestions = Array.isArray(payload.follow_up_questions)
-		? payload.follow_up_questions
-				.filter((question): question is string => typeof question === 'string')
-				.map((question) => compactText(question, 500))
-				.filter((question): question is string => Boolean(question))
-				.slice(0, 5)
-		: undefined;
-	const providerCredits =
-		typeof payload.usage?.credits === 'number' &&
-		Number.isFinite(payload.usage.credits) &&
-		payload.usage.credits > 0
-			? payload.usage.credits
-			: null;
-	const providerRequestId =
-		typeof payload.request_id === 'string' && payload.request_id.trim()
-			? payload.request_id.trim().slice(0, 300)
-			: undefined;
+	const providerCredits = discovery.diagnostics.usage?.credits ?? null;
+	const providerRequestId = discovery.diagnostics.providerRequestId;
 	const billing: PaidToolCharge = providerCredits
 		? {
 				provider: 'tavily',
@@ -363,61 +248,73 @@ async function performSearch(
 				...(providerRequestId ? { provider_request_id: providerRequestId } : {})
 			};
 
+	const response = buildNativeSearchResponse({
+		request: normalized,
+		discovery,
+		results: enriched.results,
+		fetchedAt: discoveryEntry.fetchedAt,
+		pagesRequested: enriched.pagesRequested,
+		pagesFetched: enriched.pagesFetched
+	});
 	return {
-		query,
-		...(answer ? { answer } : {}),
-		results: enrichedResults,
-		...(followUpQuestions?.length ? { follow_up_questions: followUpQuestions } : {}),
+		...response,
 		security_notice: SECURITY_NOTICE,
-		message: `Web search results from Tavily for "${query}".`,
 		info: {
-			provider: 'tavily',
-			search_depth: searchDepth,
-			max_results: maxResults,
-			include_answer: includeAnswer,
-			fetched_at: options.now().toISOString(),
-			cache_status: 'miss',
-			pages_requested: selectedPages.length,
-			pages_fetched: pagesFetched,
+			...response.info,
 			billing
 		}
 	};
 }
 
+async function performDiscovery(
+	args: Record<string, unknown>,
+	normalized: NormalizedNativeSearchRequest,
+	options: { apiKey: string } & Required<
+		Pick<
+			CreateWebResearchPortOptions,
+			'fetchFn' | 'now' | 'searchTimeoutMs' | 'tavilyCreditCostUsd' | 'onSearchDispatched'
+		>
+	>
+): Promise<NativeSearchDiscoveryCacheEntry> {
+	const reservedCharge = estimateTavilySearchCharge(args, options.tavilyCreditCostUsd);
+	let discovery: NativeSearchDiscoveryResult;
+	try {
+		const adapter = createTavilyDiscoveryAdapter({
+			apiKey: options.apiKey,
+			fetchFn: options.fetchFn,
+			timeoutMs: options.searchTimeoutMs,
+			onBeforeDispatch: async () => {
+				try {
+					await options.onSearchDispatched(reservedCharge);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					throw new WebResearchPortError(`Tavily search reservation failed: ${message}`);
+				}
+			}
+		});
+		discovery = await adapter.discover(normalized);
+	} catch (error) {
+		if (error instanceof WebResearchPortError) throw error;
+		if (error instanceof NativeSearchDiscoveryError) {
+			throw new WebResearchPortError(error.message);
+		}
+		const message = error instanceof Error ? error.message : String(error);
+		throw new WebResearchPortError(`Tavily search failed: ${message}`);
+	}
+	return createNativeSearchDiscoveryCacheEntry(discovery, options.now().toISOString());
+}
+
 function searchCacheKey(args: Record<string, unknown>): string {
-	const query = readRequiredString(args, 'query', MAX_QUERY_CHARS);
-	const searchDepth = args.search_depth === 'basic' ? 'basic' : 'advanced';
-	const maxResults = clampInteger(args.max_results, DEFAULT_MAX_RESULTS, 1, MAX_RESULTS);
-	const includeAnswer = readOptionalBoolean(args.include_answer, false);
-	return buildWebSearchCacheKey({
+	const { query, searchDepth, maxResults, includeAnswer, includeDomains, excludeDomains } =
+		normalizeSearchArgs(args);
+	return buildNativeSearchDiscoveryCacheKey({
 		query,
 		searchDepth,
 		maxResults,
 		includeAnswer,
-		includeDomains: normalizeDomainFilters(args.include_domains, 'include_domains'),
-		excludeDomains: normalizeDomainFilters(args.exclude_domains, 'exclude_domains')
+		includeDomains,
+		excludeDomains
 	});
-}
-
-function markSearchCacheStatus(value: unknown, status: ExpiringCacheStatus): unknown {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
-	const payload = value as Record<string, unknown>;
-	const rawInfo =
-		payload.info && typeof payload.info === 'object' && !Array.isArray(payload.info)
-			? (payload.info as Record<string, unknown>)
-			: {};
-	const { billing: cachedBilling, ...info } = rawInfo;
-	return {
-		...payload,
-		...(Array.isArray(payload.results)
-			? { results: payload.results.map((result) => ({ ...(result as object) })) }
-			: {}),
-		info: {
-			...info,
-			cache_status: status,
-			...(status === 'miss' && cachedBilling ? { billing: cachedBilling } : {})
-		}
-	};
 }
 
 function normalizePlainText(value: string): string {
@@ -594,27 +491,51 @@ export function createAgentRunWebResearchPort(
 			})
 	};
 	if (apiKey) {
-		port.searchRequiresDispatch = (args) => {
+		port.searchRequiresDispatch = async (args) => {
 			try {
-				return !agentRunSearchCache.has(searchCacheKey(args));
+				const cacheKey = searchCacheKey(args);
+				if (agentRunSearchCache.hasCached(cacheKey)) return false;
+				return !(await agentRunDiscoveryCache.mayAvoidDispatch(cacheKey, {
+					durableStore: options.searchCacheStore
+				}));
 			} catch {
 				return true;
 			}
 		};
 		port.search = async (args) => {
-			const cached = await agentRunSearchCache.getOrLoad(searchCacheKey(args), () =>
-				performSearch(args, {
-					apiKey,
-					fetchFn,
-					now,
-					searchTimeoutMs: options.searchTimeoutMs ?? DEFAULT_SEARCH_TIMEOUT_MS,
-					visitTimeoutMs: options.visitTimeoutMs ?? 12_000,
-					visitMaxBytes: options.visitMaxBytes ?? 2_000_000,
-					tavilyCreditCostUsd,
-					onSearchDispatched: options.onSearchDispatched ?? (() => undefined)
-				})
-			);
-			return markSearchCacheStatus(cached.value, cached.status);
+			const normalized = normalizeSearchArgs(args);
+			const cacheKey = searchCacheKey(args);
+			const resolvedOptions = {
+				apiKey,
+				fetchFn,
+				now,
+				searchTimeoutMs: options.searchTimeoutMs ?? DEFAULT_SEARCH_TIMEOUT_MS,
+				visitTimeoutMs: options.visitTimeoutMs ?? 12_000,
+				visitMaxBytes: options.visitMaxBytes ?? 2_000_000,
+				tavilyCreditCostUsd,
+				onSearchDispatched: options.onSearchDispatched ?? (() => undefined)
+			};
+			const cached = await agentRunSearchCache.getOrLoad(cacheKey, async () => {
+				const discovery = await agentRunDiscoveryCache.getOrLoad(
+					cacheKey,
+					() => performDiscovery(args, normalized, resolvedOptions),
+					{ durableStore: options.searchCacheStore }
+				);
+				return {
+					response: await performSearch(
+						args,
+						normalized,
+						resolvedOptions,
+						discovery.value
+					),
+					discoveryStatus: discovery.status
+				};
+			});
+			const cacheStatus =
+				cached.status === 'miss' ? cached.value.discoveryStatus : cached.status;
+			return markNativeSearchResponseCacheStatus(cached.value.response, cacheStatus, {
+				missOnlyInfoKeys: ['billing']
+			});
 		};
 	}
 	return port;

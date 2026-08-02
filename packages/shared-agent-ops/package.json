@@ -161,6 +161,11 @@
 			"import": "./dist/web/search-cache.mjs",
 			"require": "./dist/web/search-cache.js"
 		},
+		"./web/native-search": {
+			"types": "./dist/web/native-search.d.ts",
+			"import": "./dist/web/native-search.mjs",
+			"require": "./dist/web/native-search.js"
+		},
 		"./inbox-index": {
 			"types": "./dist/inbox-index.d.ts",
 			"import": "./dist/inbox-index.mjs",

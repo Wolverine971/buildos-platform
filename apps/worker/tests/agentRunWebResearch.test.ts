@@ -1,6 +1,11 @@
 // apps/worker/tests/agentRunWebResearch.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
+	createNativeSearchDiscoveryCacheEntry,
+	type NativeSearchDiscoveryCacheEntry,
+	type NativeSearchDurableCacheStore
+} from '@buildos/shared-agent-ops/web/native-search';
+import {
 	createAgentRunWebResearchPort,
 	estimateTavilySearchCharge,
 	readPaidToolCharge
@@ -103,6 +108,7 @@ describe('Agent Run web research port', () => {
 			security_notice: string;
 			info: {
 				fetched_at: string;
+				adapter_version: string;
 				billing: {
 					provider: string;
 					credits: number;
@@ -122,6 +128,7 @@ describe('Agent Run web research port', () => {
 		expect(result.results[0]?.snippet.length).toBeLessThanOrEqual(1_603);
 		expect(result.security_notice).toContain('untrusted');
 		expect(result.info.fetched_at).toBe(NOW.toISOString());
+		expect(result.info.adapter_version).toBe('tavily-v1');
 		expect(dispatchOrder).toEqual(['reserved:0.016', 'search-fetch', 'page-fetch']);
 		expect(result.info.billing).toEqual({
 			provider: 'tavily',
@@ -200,22 +207,95 @@ describe('Agent Run web research port', () => {
 			onSearchDispatched
 		});
 
-		expect(port.searchRequiresDispatch?.({ query: ' Agent Run Cache Unique ' })).toBe(true);
+		expect(await port.searchRequiresDispatch?.({ query: ' Agent Run Cache Unique ' })).toBe(
+			true
+		);
 		const first = (await port.search!({ query: ' Agent Run   Cache Unique ' })) as {
-			info: { cache_status: string; billing?: unknown };
+			info: { cache_status: string; billing?: unknown; provider_credits?: number };
 		};
-		expect(port.searchRequiresDispatch?.({ query: 'agent run cache unique' })).toBe(false);
+		expect(await port.searchRequiresDispatch?.({ query: 'agent run cache unique' })).toBe(
+			false
+		);
 		const second = (await port.search!({ query: 'agent run cache unique' })) as {
-			info: { cache_status: string; billing?: unknown };
+			info: { cache_status: string; billing?: unknown; provider_credits?: number };
 		};
 
 		expect(fetchFn).toHaveBeenCalledTimes(1);
 		expect(onSearchDispatched).toHaveBeenCalledTimes(1);
 		expect(first.info.cache_status).toBe('miss');
 		expect(first.info.billing).toBeDefined();
+		expect(first.info.provider_credits).toBe(2);
 		expect(second.info.cache_status).toBe('hit');
 		expect(second.info.billing).toBeUndefined();
+		expect(second.info.provider_credits).toBeUndefined();
 		expect(readPaidToolCharge(second)).toBeNull();
+	});
+
+	it('uses a durable discovery hit without reserving or dispatching Tavily', async () => {
+		const onSearchDispatched = vi.fn();
+		const entry = createNativeSearchDiscoveryCacheEntry(
+			{
+				query: 'durable agent run unique',
+				results: [
+					{
+						title: 'Durable result',
+						url: 'https://93.184.216.34/source',
+						snippet: 'Lead'
+					}
+				],
+				diagnostics: {
+					provider: 'tavily',
+					adapterVersion: 'tavily-v1',
+					providerRequestId: 'durable-agent-run-request',
+					usage: { credits: 2 }
+				}
+			},
+			'2026-08-02T11:00:00.000Z'
+		);
+		const searchCacheStore: NativeSearchDurableCacheStore<NativeSearchDiscoveryCacheEntry> = {
+			probe: vi.fn(async () => true),
+			claim: vi.fn(async () => ({ state: 'hit', value: entry })),
+			complete: vi.fn(),
+			release: vi.fn(),
+			invalidate: vi.fn()
+		};
+		const fetchFn = vi.fn(
+			async () =>
+				new Response('<html><body><main>Fetched durable evidence</main></body></html>', {
+					status: 200,
+					headers: { 'content-type': 'text/html' }
+				})
+		);
+		const port = createAgentRunWebResearchPort({
+			apiKey: 'test-key',
+			fetchFn: fetchFn as typeof fetch,
+			now: () => NOW,
+			onSearchDispatched,
+			searchCacheStore
+		});
+
+		expect(await port.searchRequiresDispatch?.({ query: 'durable agent run unique' })).toBe(
+			false
+		);
+		const result = (await port.search!({ query: 'durable agent run unique' })) as {
+			results: Array<{ page_content?: string }>;
+			info: {
+				cache_status: string;
+				fetched_at: string;
+				billing?: unknown;
+				provider_credits?: number;
+			};
+		};
+
+		expect(onSearchDispatched).not.toHaveBeenCalled();
+		expect(fetchFn).toHaveBeenCalledTimes(1);
+		expect(result.results[0]?.page_content).toContain('Fetched durable evidence');
+		expect(result.info).toMatchObject({
+			cache_status: 'hit',
+			fetched_at: '2026-08-02T11:00:00.000Z'
+		});
+		expect(result.info.billing).toBeUndefined();
+		expect(result.info.provider_credits).toBeUndefined();
 	});
 
 	it('does not reserve Tavily cost when local validation rejects the request', async () => {

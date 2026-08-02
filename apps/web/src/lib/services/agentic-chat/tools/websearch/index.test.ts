@@ -1,5 +1,10 @@
 // apps/web/src/lib/services/agentic-chat/tools/websearch/index.test.ts
 import { describe, expect, it, vi } from 'vitest';
+import {
+	createNativeSearchDiscoveryCacheEntry,
+	type NativeSearchDiscoveryCacheEntry,
+	type NativeSearchDurableCacheStore
+} from '@buildos/shared-agent-ops/web/native-search';
 import { performWebSearch } from './index';
 
 function stubTavilyFetch(resultContent: string): typeof fetch {
@@ -48,7 +53,8 @@ describe('performWebSearch', () => {
 			expect(request).toMatchObject({
 				search_depth: 'advanced',
 				max_results: 4,
-				include_answer: false
+				include_answer: false,
+				include_usage: true
 			});
 			return new Response(
 				JSON.stringify({ answer: 'Provider answer should be ignored.', results: [] }),
@@ -63,6 +69,7 @@ describe('performWebSearch', () => {
 
 		expect(payload.answer).toBeUndefined();
 		expect(payload.info).toMatchObject({
+			adapter_version: 'tavily-v1',
 			search_depth: 'advanced',
 			max_results: 4,
 			include_answer: false,
@@ -73,7 +80,7 @@ describe('performWebSearch', () => {
 	it('deduplicates normalized queries in the short-lived cache', async () => {
 		const fetchFn = vi.fn(
 			async () =>
-				new Response(JSON.stringify({ results: [] }), {
+				new Response(JSON.stringify({ usage: { credits: 2 }, results: [] }), {
 					status: 200,
 					headers: { 'content-type': 'application/json' }
 				})
@@ -90,7 +97,54 @@ describe('performWebSearch', () => {
 
 		expect(fetchFn).toHaveBeenCalledTimes(1);
 		expect(first.info.cache_status).toBe('miss');
+		expect(first.info.provider_credits).toBe(2);
 		expect(second.info.cache_status).toBe('hit');
+		expect(second.info.provider_credits).toBeUndefined();
+	});
+
+	it('uses the durable discovery cache without dispatching Tavily', async () => {
+		const entry = createNativeSearchDiscoveryCacheEntry(
+			{
+				query: 'durable web cache unique',
+				results: [
+					{
+						title: 'Durable result',
+						url: 'https://example.com/',
+						snippet: 'Stored evidence'
+					}
+				],
+				diagnostics: {
+					provider: 'tavily',
+					adapterVersion: 'tavily-v1',
+					providerRequestId: 'durable-request',
+					usage: { credits: 2 }
+				}
+			},
+			'2026-08-02T12:00:00.000Z'
+		);
+		const durableStore: NativeSearchDurableCacheStore<NativeSearchDiscoveryCacheEntry> = {
+			probe: vi.fn(async () => true),
+			claim: vi.fn(async () => ({ state: 'hit', value: entry })),
+			complete: vi.fn(),
+			release: vi.fn(),
+			invalidate: vi.fn()
+		};
+		const fetchFn = vi.fn();
+
+		const payload = await performWebSearch(
+			{ query: 'durable web cache unique' },
+			fetchFn as typeof fetch,
+			durableStore
+		);
+
+		expect(fetchFn).not.toHaveBeenCalled();
+		expect(payload.results[0]?.snippet).toBe('Stored evidence');
+		expect(payload.info).toMatchObject({
+			cache_status: 'hit',
+			fetched_at: '2026-08-02T12:00:00.000Z',
+			provider_request_id: 'durable-request'
+		});
+		expect(payload.info.provider_credits).toBeUndefined();
 	});
 
 	it('rejects empty queries', async () => {

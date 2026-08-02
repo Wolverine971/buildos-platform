@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
+const autoOrganizeConnectionsMock = vi.fn();
+const assertEntityRefsInProjectMock = vi.fn();
 let capturedGoalUpdatePayload: Record<string, unknown> | null = null;
 
 vi.mock('$lib/services/async-activity-logger', () => ({
@@ -15,9 +17,14 @@ vi.mock('$lib/services/async-activity-logger', () => ({
 vi.mock('$lib/services/ontology/auto-organizer.service', () => ({
 	AutoOrganizeError: class AutoOrganizeError extends Error {
 		status = 400;
+
+		constructor(message: string, status = 400) {
+			super(message);
+			this.status = status;
+		}
 	},
-	autoOrganizeConnections: vi.fn(),
-	assertEntityRefsInProject: vi.fn()
+	autoOrganizeConnections: autoOrganizeConnectionsMock,
+	assertEntityRefsInProject: assertEntityRefsInProjectMock
 }));
 
 vi.mock('$lib/server/entity-mention-notification.service', () => ({
@@ -109,6 +116,8 @@ describe('PATCH /api/onto/goals/[id] mention notifications', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedGoalUpdatePayload = null;
+		assertEntityRefsInProjectMock.mockResolvedValue(undefined);
+		autoOrganizeConnectionsMock.mockResolvedValue(undefined);
 		resolveEntityMentionUserIdsMock.mockResolvedValue(['user-mentioned']);
 		notifyEntityMentionsAddedMock.mockResolvedValue({ notifiedUserIds: ['user-mentioned'] });
 	});
@@ -204,5 +213,41 @@ describe('PATCH /api/onto/goals/[id] mention notifications', () => {
 			success: false,
 			error: 'props must be an object'
 		});
+	});
+
+	it('validates relationship references before updating the goal row', async () => {
+		const { AutoOrganizeError } = await import('$lib/services/ontology/auto-organizer.service');
+		assertEntityRefsInProjectMock.mockRejectedValue(
+			new AutoOrganizeError('plan not found', 404)
+		);
+
+		const { PATCH } = await import('./+server');
+		const response = await PATCH({
+			params: { id: 'goal-1' },
+			request: new Request('http://localhost/api/onto/goals/goal-1', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: 'Updated goal title',
+					connections: [{ kind: 'plan', id: 'missing-plan' }]
+				})
+			}),
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: async () => ({
+					user: { id: 'user-actor', name: 'DJ', email: 'dj@example.com' }
+				})
+			}
+		} as any);
+
+		expect(response.status).toBe(404);
+		expect(assertEntityRefsInProjectMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId: 'project-1',
+				refs: [{ kind: 'plan', id: 'missing-plan' }]
+			})
+		);
+		expect(capturedGoalUpdatePayload).toBeNull();
+		expect(autoOrganizeConnectionsMock).not.toHaveBeenCalled();
 	});
 });

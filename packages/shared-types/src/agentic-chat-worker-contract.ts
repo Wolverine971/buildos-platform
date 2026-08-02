@@ -150,6 +150,167 @@ export type AgenticChatTurnJobV1 = {
 	correlationId: string;
 };
 
+type AgenticChatAdmissionHandleV1 = {
+	turnRunId: string;
+	sessionId: string;
+	userMessageId: string | null;
+	inputArtifactId: string | null;
+	queueJobId: string | null;
+	correlationId: string;
+	streamRunId: string;
+	clientTurnId: string;
+	executionMode: 'worker_realtime' | 'legacy_sse';
+	status: ChatTurnStatusV1;
+};
+
+/** Domain result parsed from the duplicate-first worker admission RPC. */
+export type AgenticChatWorkerAdmissionResultV1 =
+	| (AgenticChatAdmissionHandleV1 & {
+			outcome: 'newly_admitted';
+			executionMayStart: false;
+			executionMode: 'worker_realtime';
+			status: 'queued';
+			userMessageId: string;
+			inputArtifactId: string;
+			queueJobId: string;
+			sessionCreated: boolean;
+	  })
+	| (AgenticChatAdmissionHandleV1 & {
+			outcome: 'matching_duplicate' | 'active_turn_conflict';
+			executionMayStart: false;
+	  })
+	| (AgenticChatAdmissionHandleV1 & {
+			outcome: 'idempotency_conflict';
+			executionMayStart: false;
+			conflictReason: string;
+	  })
+	| {
+			outcome: 'capacity_exceeded';
+			executionMayStart: false;
+			capacityReason: 'pressure_closed' | 'max_running' | 'max_queued';
+			retryAfterSeconds: number;
+			runningCount: number;
+			queuedCount: number;
+	  };
+
+type AgenticChatClaimHandleV1 = {
+	turnRunId: string;
+	queueJobId: string;
+	sessionId: string;
+	userId: string;
+	correlationId: string;
+	executionGeneration: number;
+	status: ChatTurnStatusV1;
+};
+
+/**
+ * Domain result parsed from the queue/domain claim bridge. Provider execution
+ * still requires the later immediate-before-provider boundary.
+ */
+export type AgenticChatTurnClaimResultV1 =
+	| (AgenticChatClaimHandleV1 & {
+			outcome: 'claimed';
+			executionMayStart: true;
+			status: 'running';
+			inputArtifactId: string;
+			userMessageId: string;
+	  })
+	| (AgenticChatClaimHandleV1 & {
+			outcome: 'matching_current_claim';
+			executionMayStart: boolean;
+			status: 'running';
+			inputArtifactId: string;
+			userMessageId: string;
+	  })
+	| (AgenticChatClaimHandleV1 & {
+			outcome: 'cancel_requested' | 'already_terminal';
+			executionMayStart: false;
+	  });
+
+type AgenticChatExecutionHandleV1 = {
+	turn_run_id: string;
+	queue_job_id: string;
+	session_id: string;
+	user_id: string;
+	correlation_id: string;
+	execution_generation: number;
+	status: ChatTurnStatusV1;
+};
+
+/**
+ * Result of the immediate-before-provider database fence. Only `started`
+ * authorizes a provider call; a lost-response replay is deliberately denied.
+ */
+export type AgenticChatExecutionStartRpcResultV1 =
+	| (AgenticChatExecutionHandleV1 & {
+			outcome: 'started';
+			status: 'running';
+			execution_started_at: string;
+			invoke_provider: true;
+	  })
+	| (AgenticChatExecutionHandleV1 & {
+			outcome: 'already_started';
+			status: 'running';
+			execution_started_at: string;
+			invoke_provider: false;
+	  })
+	| (AgenticChatExecutionHandleV1 & {
+			outcome: 'cancel_requested' | 'stale_context';
+			status: 'running';
+			invoke_provider: false;
+	  })
+	| (AgenticChatExecutionHandleV1 & {
+			outcome: 'already_terminal';
+			status: ChatTurnTerminalStatusV1;
+			invoke_provider: false;
+	  })
+	| (AgenticChatExecutionHandleV1 & {
+			outcome: 'stale_generation';
+			status: 'queued' | 'running';
+			requested_execution_generation: number;
+			invoke_provider: false;
+	  });
+
+export type AgenticChatRecoveryFailureClassV1 =
+	| 'transient_infra'
+	| 'provider_throttle'
+	| 'timeout_pre_start'
+	| 'permanent'
+	| 'stale_context'
+	| 'publisher_overload'
+	| 'timeout_post_start'
+	| 'cancelled'
+	| 'uncertain_external_commit'
+	| 'unknown';
+
+export type AgenticChatRecoveryDecisionV1 =
+	| { decision: 'reconcile_terminal_queue' }
+	| { decision: 'stale_generation' }
+	| { decision: 'already_requeued' }
+	| { decision: 'finalize_cancelled'; failureCode: 'cancelled' }
+	| { decision: 'effect_reconciliation_required' }
+	| { decision: 'retry'; failureCode: AgenticChatRecoveryFailureClassV1 }
+	| {
+			decision: 'finalize_failed';
+			failureCode: AgenticChatRecoveryFailureClassV1;
+			retryExhausted: boolean;
+	  }
+	| { decision: 'invalid_status' };
+
+export type AgenticChatRecoveryRpcResultV1 = AgenticChatExecutionHandleV1 & {
+	outcome:
+		| 'retry_scheduled'
+		| 'already_requeued'
+		| 'finalize_failed'
+		| 'finalize_cancelled'
+		| 'effect_reconciliation_required'
+		| 'stale_generation'
+		| 'queue_reconciled'
+		| 'already_reconciled';
+	execution_may_retry: boolean;
+	failure_code: AgenticChatRecoveryFailureClassV1 | null;
+};
+
 export type AgentStreamEventPhaseV1 = 'prompt' | 'llm' | 'tool' | 'stream' | 'finalize';
 
 export type AgentStreamEventV1<TPayload extends { type: string } = { type: string }> = {
@@ -295,6 +456,63 @@ export type TerminalFinalizationDecisionV1 =
 	| { decision: 'stale_generation' }
 	| { decision: 'cancel_requested' }
 	| { decision: 'invalid_status' };
+
+export type AgenticChatTerminalReceiptV1 = {
+	turn_run_id: string;
+	session_id: string;
+	user_id: string;
+	queue_job_id: string;
+	execution_generation: number;
+	status: ChatTurnTerminalStatusV1;
+	finished_reason: string;
+	failure_code: string | null;
+	assistant_message_id: string | null;
+	terminal_event_id: string;
+	terminal_sequence_index: number;
+	terminalized_at: string;
+};
+
+/** Service-to-database result for the single worker terminal CAS boundary. */
+export type AgenticChatTerminalFinalizeRpcResultV1 =
+	| (AgenticChatTerminalReceiptV1 & { outcome: 'finalized' | 'already_terminal' })
+	| {
+			outcome: 'stale_generation';
+			turn_run_id: string;
+			session_id: string;
+			user_id: string;
+			queue_job_id: string;
+			requested_execution_generation: number;
+			execution_generation: number;
+			status: 'queued' | 'running';
+	  }
+	| {
+			outcome: 'cancel_requested';
+			turn_run_id: string;
+			session_id: string;
+			user_id: string;
+			queue_job_id: string;
+			execution_generation: number;
+			status: 'running';
+			cancel_requested_at: string;
+			cancel_reason: ChatTurnSignalV1['reason'];
+	  };
+
+/** Service-to-database result for queued or running worker cancellation. */
+export type AgenticChatCancelRpcResultV1 =
+	| (AgenticChatTerminalReceiptV1 & { outcome: 'cancelled' | 'already_terminal' })
+	| {
+			outcome: 'cancel_requested';
+			turn_run_id: string;
+			session_id: string;
+			user_id: string;
+			queue_job_id: string;
+			execution_generation: number;
+			status: 'running';
+			cancel_requested_at: string;
+			cancel_reason: ChatTurnSignalV1['reason'];
+			cancel_source: ChatTurnSignalV1['source'];
+			signal_id: string;
+	  };
 
 /**
  * Serialize JSON deterministically for the v1 chat hashes.
@@ -603,6 +821,77 @@ export function decideTerminalFinalizationV1(input: {
 		return { decision: 'cancel_requested' };
 	}
 	return { decision: 'commit', status: input.requestedStatus };
+}
+
+/**
+ * Pure mirror of the database whole-turn recovery policy. Unknown or
+ * post-boundary failures never inherit the generic queue's retry default.
+ */
+export function decideAgenticChatRecoveryV1(input: {
+	currentStatus: ChatTurnStatusV1;
+	currentGeneration: number;
+	requestedGeneration: number;
+	failureClass: AgenticChatRecoveryFailureClassV1;
+	cancelRequested: boolean;
+	executionStarted: boolean;
+	mutationReserved: boolean;
+	irreversibleBoundaryCrossed: boolean;
+	effectCount: number;
+	blockingEffectCount: number;
+	queueAttempts: number;
+	queueMaxAttempts: number;
+	queueResidenceExpired: boolean;
+}): AgenticChatRecoveryDecisionV1 {
+	if (isTerminalChatTurnStatusV1(input.currentStatus)) {
+		return { decision: 'reconcile_terminal_queue' };
+	}
+	if (input.currentGeneration !== input.requestedGeneration) {
+		return { decision: 'stale_generation' };
+	}
+	if (input.currentStatus === 'queued') {
+		return { decision: 'already_requeued' };
+	}
+	if (input.currentStatus !== 'running') {
+		return { decision: 'invalid_status' };
+	}
+	if (input.cancelRequested) {
+		return { decision: 'finalize_cancelled', failureCode: 'cancelled' };
+	}
+	if (input.blockingEffectCount > 0) {
+		return { decision: 'effect_reconciliation_required' };
+	}
+
+	const retryableClass =
+		input.failureClass === 'transient_infra' ||
+		input.failureClass === 'provider_throttle' ||
+		input.failureClass === 'timeout_pre_start';
+	const beforeAllExecutionBoundaries =
+		!input.executionStarted &&
+		!input.mutationReserved &&
+		!input.irreversibleBoundaryCrossed &&
+		input.effectCount === 0;
+	const attemptsRemain = input.queueAttempts + 1 < input.queueMaxAttempts;
+	const timeoutRetryAvailable =
+		input.failureClass !== 'timeout_pre_start' || input.queueAttempts === 0;
+
+	if (
+		retryableClass &&
+		beforeAllExecutionBoundaries &&
+		!input.queueResidenceExpired &&
+		attemptsRemain &&
+		timeoutRetryAvailable
+	) {
+		return { decision: 'retry', failureCode: input.failureClass };
+	}
+
+	return {
+		decision: 'finalize_failed',
+		failureCode: input.queueResidenceExpired ? 'stale_context' : input.failureClass,
+		retryExhausted:
+			retryableClass &&
+			beforeAllExecutionBoundaries &&
+			(!attemptsRemain || !timeoutRetryAvailable)
+	};
 }
 
 export function isTerminalChatTurnStatusV1(

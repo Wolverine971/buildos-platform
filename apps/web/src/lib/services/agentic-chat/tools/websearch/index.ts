@@ -1,124 +1,70 @@
 // apps/web/src/lib/services/agentic-chat/tools/websearch/index.ts
 import { env } from '$env/dynamic/private';
 import {
-	buildWebSearchCacheKey,
-	ExpiringSingleFlightCache
-} from '@buildos/shared-agent-ops/web/search-cache';
+	LayeredNativeSearchCache,
+	buildNativeSearchDiscoveryCacheKey,
+	buildNativeSearchResponse,
+	createNativeSearchDiscoveryCacheEntry,
+	markNativeSearchResponseCacheStatus,
+	normalizeNativeSearchRequest,
+	type NativeSearchDiscoveryCacheEntry,
+	type NativeSearchDurableCacheStore
+} from '@buildos/shared-agent-ops/web/native-search';
+import { createLogger } from '$lib/utils/logger';
 import { tavilySearch } from './tavily-client';
-import type {
-	TavilySearchDepth,
-	WebSearchArgs,
-	WebSearchResultItem,
-	WebSearchResultPayload
-} from './types';
+import type { WebSearchArgs, WebSearchResultPayload } from './types';
 
-const DEFAULT_MAX_RESULTS = 4;
-const MAX_RESULTS_CAP = 10;
 const DEFAULT_SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
-// Tavily's advanced-depth extraction returns ~2,000 chars of content per
-// result. The previous 400-char cap discarded ~80% of that paid signal; the
-// model-facing payload is budget-managed downstream in tool-payload-compaction.
-const SNIPPET_MAX_CHARS = 1600;
 
 function parsePositiveInteger(value: string | undefined, fallback: number): number {
 	const parsed = Number.parseInt(value ?? '', 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-const searchCache = new ExpiringSingleFlightCache<WebSearchResultPayload>({
+const logger = createLogger('WebSearch');
+const searchCache = new LayeredNativeSearchCache<NativeSearchDiscoveryCacheEntry>({
 	ttlMs: parsePositiveInteger(env.WEB_SEARCH_CACHE_TTL_MS, DEFAULT_SEARCH_CACHE_TTL_MS),
-	maxEntries: 500
+	maxEntries: 500,
+	onDurableError: (error) => {
+		logger.warn('Durable native-search cache unavailable; using provider fallback', {
+			error: error instanceof Error ? error.message : String(error)
+		});
+	}
 });
-
-function normalizeQuery(query?: string): string {
-	return query?.trim() ?? '';
-}
-
-function clampMaxResults(value?: number): number {
-	if (!value || Number.isNaN(value)) return DEFAULT_MAX_RESULTS;
-	return Math.min(Math.max(Math.floor(value), 1), MAX_RESULTS_CAP);
-}
-
-function normalizeDepth(depth?: TavilySearchDepth): TavilySearchDepth {
-	return depth === 'basic' || depth === 'advanced' ? depth : 'advanced';
-}
-
-function summarizeContent(content?: string): string | undefined {
-	if (!content) return undefined;
-	const compact = content.replace(/\s+/g, ' ').trim();
-	return compact.length > SNIPPET_MAX_CHARS
-		? `${compact.slice(0, SNIPPET_MAX_CHARS)}...`
-		: compact;
-}
 
 export async function performWebSearch(
 	args: WebSearchArgs,
-	fetchFn?: typeof fetch
+	fetchFn?: typeof fetch,
+	durableStore?: NativeSearchDurableCacheStore<NativeSearchDiscoveryCacheEntry>
 ): Promise<WebSearchResultPayload> {
-	const query = normalizeQuery(args.query);
-	if (!query) {
-		throw new Error('query is required for web_search');
-	}
-
-	const maxResults = clampMaxResults(args.max_results);
-	const searchDepth = normalizeDepth(args.search_depth);
-	const includeAnswer = args.include_answer ?? false;
-	const cacheKey = buildWebSearchCacheKey({
+	const normalized = normalizeNativeSearchRequest(args);
+	const { query, maxResults, searchDepth, includeAnswer, includeDomains, excludeDomains } =
+		normalized;
+	const cacheKey = buildNativeSearchDiscoveryCacheKey({
 		query,
 		searchDepth,
 		maxResults,
 		includeAnswer,
-		includeDomains: args.include_domains,
-		excludeDomains: args.exclude_domains
+		includeDomains,
+		excludeDomains
 	});
 
-	const cached = await searchCache.getOrLoad(cacheKey, async () => {
-		const response = await tavilySearch(
-			{
-				query,
-				search_depth: searchDepth,
-				include_answer: includeAnswer,
-				max_results: maxResults,
-				include_domains: args.include_domains?.length ? args.include_domains : undefined,
-				exclude_domains: args.exclude_domains?.length ? args.exclude_domains : undefined,
-				include_raw_content: false,
-				include_images: false
-			},
-			{ fetchFn }
-		);
+	const cached = await searchCache.getOrLoad(
+		cacheKey,
+		async () => {
+			const discovery = await tavilySearch(normalized, { fetchFn });
+			return createNativeSearchDiscoveryCacheEntry(discovery, new Date().toISOString());
+		},
+		{ durableStore }
+	);
 
-		const results: WebSearchResultItem[] = (response.results ?? []).map((result) => ({
-			title: result.title,
-			url: result.url,
-			snippet: summarizeContent(result.content ?? result.raw_content),
-			score: result.score,
-			published_date: result.published_date
-		}));
-
-		return {
-			query,
-			...(includeAnswer && response.answer ? { answer: response.answer } : {}),
-			results,
-			follow_up_questions: response.follow_up_questions,
-			message: `Web search results from Tavily for "${query}" (${searchDepth}, max ${maxResults}).`,
-			info: {
-				provider: 'tavily',
-				search_depth: searchDepth,
-				max_results: maxResults,
-				include_answer: includeAnswer,
-				include_domains: args.include_domains,
-				exclude_domains: args.exclude_domains,
-				fetched_at: new Date().toISOString(),
-				cache_status: 'miss'
-			}
-		};
+	const response = buildNativeSearchResponse({
+		request: normalized,
+		discovery: cached.value.discovery,
+		fetchedAt: cached.value.fetchedAt
 	});
 
-	return {
-		...cached.value,
-		results: cached.value.results.map((result) => ({ ...result })),
-		info: { ...cached.value.info, cache_status: cached.status }
-	};
+	return markNativeSearchResponseCacheStatus(response, cached.status);
 }
 
 export type {

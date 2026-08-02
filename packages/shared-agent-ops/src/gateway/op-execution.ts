@@ -90,7 +90,7 @@ export const AGENT_OP_WEB_READ_CATALOG = [AGENT_OP_WEB_SEARCH, AGENT_OP_WEB_VISI
 export interface WebResearchPort {
 	search?: (args: Record<string, unknown>) => Promise<unknown>;
 	/** False when an identical search is already cached or in flight. */
-	searchRequiresDispatch?: (args: Record<string, unknown>) => boolean;
+	searchRequiresDispatch?: (args: Record<string, unknown>) => boolean | Promise<boolean>;
 	visit?: (args: Record<string, unknown>) => Promise<unknown>;
 }
 

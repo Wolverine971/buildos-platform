@@ -3,7 +3,7 @@
  * External Executor
  *
  * Handles external service tool operations:
- * - web_search: Web search via Tavily API
+ * - web_search: BuildOS live-web discovery plus fetched source evidence
  * - web_visit: Fetch and summarize a specific URL
  * - list/call Corsair MCP tools
  * - get_buildos_overview: BuildOS documentation overview
@@ -12,6 +12,13 @@
 
 import { createHash } from 'node:crypto';
 import type { Json } from '@buildos/shared-types';
+import {
+	createSupabaseNativeSearchDiscoveryCacheStore,
+	enrichNativeSearchCandidates,
+	isGlobalWebPageCacheEligible,
+	normalizeWebPageCacheUrl,
+	type NativeSearchCacheRpcClient
+} from '@buildos/shared-agent-ops/web/native-search';
 import { env } from '$env/dynamic/private';
 import { BaseExecutor } from './base-executor';
 import {
@@ -58,8 +65,6 @@ import { createLogger } from '$lib/utils/logger';
 const logger = createLogger('ExternalExecutor');
 const DEFAULT_WEB_VISIT_LLM_TIMEOUT_MS = 25000;
 const DEFAULT_WEB_VISIT_CACHE_TTL_MS = 15 * 60 * 1000;
-const SEARCH_PAGE_CANDIDATE_LIMIT = 4;
-const SEARCH_PAGE_FETCH_LIMIT = 2;
 const SEARCH_PAGE_MAX_CHARS = 4_000;
 
 interface CachedVisitEntry {
@@ -100,46 +105,41 @@ export class ExternalExecutor extends BaseExecutor {
 	// ============================================
 
 	/**
-	 * Perform a web search using Tavily API.
+	 * Perform live-web discovery and enrich the best source pages.
 	 */
 	async webSearch(args: WebSearchArgs): Promise<WebSearchResultPayload> {
-		const search = await performWebSearch(args, this.fetchFn);
-		const candidates = search.results.slice(0, SEARCH_PAGE_CANDIDATE_LIMIT);
-		const selected = candidates.slice(0, SEARCH_PAGE_FETCH_LIMIT);
-		const visits = await Promise.allSettled(
-			selected.map((result) =>
-				this.webVisit({
-					url: result.url,
-					mode: 'auto',
-					max_chars: SEARCH_PAGE_MAX_CHARS,
-					output_format: 'markdown',
-					persist: true
-				})
-			)
-		);
-
-		let pagesFetched = 0;
-		const results = search.results.map((result, index) => {
-			const visit = visits[index];
-			if (!visit || visit.status !== 'fulfilled') return result;
-			pagesFetched += 1;
+		const durableStore = ['1', 'true', 'yes'].includes(
+			(env.NATIVE_SEARCH_DURABLE_CACHE_ENABLED ?? '').trim().toLowerCase()
+		)
+			? createSupabaseNativeSearchDiscoveryCacheStore(
+					this.getAdminSupabase() as unknown as NativeSearchCacheRpcClient
+				)
+			: undefined;
+		const search = await performWebSearch(args, this.fetchFn, durableStore);
+		const enriched = await enrichNativeSearchCandidates(search.results, async (result) => {
+			const visit = await this.webVisit({
+				url: result.url,
+				mode: 'auto',
+				max_chars: SEARCH_PAGE_MAX_CHARS,
+				output_format: 'markdown',
+				persist: true
+			});
 			return {
-				...result,
-				page_title: visit.value.title,
-				page_content: visit.value.content,
-				page_final_url: visit.value.final_url,
-				page_fetched_at: visit.value.info.fetched_at,
-				page_cache_hit: visit.value.info.cache_hit ?? false
+				title: visit.title,
+				content: visit.content,
+				finalUrl: visit.final_url,
+				fetchedAt: visit.info.fetched_at,
+				cacheHit: visit.info.cache_hit ?? false
 			};
 		});
 
 		return {
 			...search,
-			results,
+			results: enriched.results,
 			info: {
 				...search.info,
-				pages_requested: selected.length,
-				pages_fetched: pagesFetched
+				pages_requested: enriched.pagesRequested,
+				pages_fetched: enriched.pagesFetched
 			}
 		};
 	}
@@ -187,13 +187,14 @@ export class ExternalExecutor extends BaseExecutor {
 		const persist = args.persist ?? true;
 		const maxChars = clampMaxChars(args.max_chars);
 		const forceRefresh = args.force_refresh ?? false;
+		const cacheEligible = isGlobalWebPageCacheEligible(args.url);
 
 		// Only the default 'markdown' format serves from cache. 'llm_markdown'
 		// is the escape hatch for pages where the cached deterministic markdown
 		// rendered poorly — serving that same cached markdown back would make
 		// the escape hatch a no-op.
 		let staleCache: CachedVisitEntry | null = null;
-		if (persist && !forceRefresh && outputFormat === 'markdown') {
+		if (persist && cacheEligible && !forceRefresh && outputFormat === 'markdown') {
 			const cached = await this.loadCachedVisit(args.url, maxChars, args.mode);
 			if (cached?.isFresh) {
 				await this.recordCachedVisitUse(cached);
@@ -258,7 +259,10 @@ export class ExternalExecutor extends BaseExecutor {
 		const truncated = trimmedOutput.length > maxChars;
 		const finalContent = truncated ? trimmedOutput.slice(0, maxChars) : trimmedOutput;
 
-		const stored = persist ? await this.persistWebVisit(fetched, responseContent) : undefined;
+		const stored =
+			persist && this.isFetchedVisitCacheEligible(fetched)
+				? await this.persistWebVisit(fetched, responseContent)
+				: undefined;
 
 		return {
 			url: fetched.url,
@@ -439,32 +443,13 @@ export class ExternalExecutor extends BaseExecutor {
 	}
 
 	private normalizeUrlForStorage(url: string): string {
-		const parsed = new URL(url);
-		parsed.hash = '';
-		parsed.hostname = parsed.hostname.toLowerCase();
-		parsed.protocol = parsed.protocol.toLowerCase();
+		return normalizeWebPageCacheUrl(url);
+	}
 
-		if (
-			(parsed.protocol === 'http:' && parsed.port === '80') ||
-			(parsed.protocol === 'https:' && parsed.port === '443')
-		) {
-			parsed.port = '';
-		}
-
-		const params = new URLSearchParams(parsed.search);
-		const sorted = [...params.entries()].sort((a, b) => {
-			const keyCompare = a[0].localeCompare(b[0]);
-			if (keyCompare !== 0) return keyCompare;
-			return a[1].localeCompare(b[1]);
-		});
-		const nextParams = new URLSearchParams();
-		for (const [key, value] of sorted) {
-			nextParams.append(key, value);
-		}
-		const query = nextParams.toString();
-		parsed.search = query ? `?${query}` : '';
-
-		return parsed.toString();
+	private isFetchedVisitCacheEligible(fetched: WebVisitFetchPayload): boolean {
+		return [fetched.url, fetched.final_url, fetched.canonical_url]
+			.filter((url): url is string => Boolean(url))
+			.every((url) => isGlobalWebPageCacheEligible(url));
 	}
 
 	private async loadCachedVisit(
@@ -472,6 +457,7 @@ export class ExternalExecutor extends BaseExecutor {
 		maxChars: number,
 		mode?: WebVisitMode
 	): Promise<CachedVisitEntry | null> {
+		if (!isGlobalWebPageCacheEligible(url)) return null;
 		const admin = this.getAdminSupabase();
 		const normalizedUrl = this.normalizeUrlForStorage(url);
 
@@ -513,6 +499,14 @@ export class ExternalExecutor extends BaseExecutor {
 		}
 
 		if (!data?.markdown) return null;
+		const cachedUrls = [data.url, data.final_url, data.canonical_url].filter(
+			(candidate): candidate is string =>
+				typeof candidate === 'string' && candidate.length > 0
+		);
+		if (!cachedUrls.every((candidate) => isGlobalWebPageCacheEligible(candidate))) {
+			logger.warn('Ignoring ineligible global page cache entry', { visitId: data.id });
+			return null;
+		}
 
 		const trimmedOutput = data.markdown.trim();
 		const truncated = trimmedOutput.length > maxChars;
@@ -611,6 +605,7 @@ export class ExternalExecutor extends BaseExecutor {
 			errorMessage?: string;
 		}
 	): Promise<{ id?: string; stored: boolean } | undefined> {
+		if (!this.isFetchedVisitCacheEligible(fetched)) return { stored: false };
 		const admin = this.getAdminSupabase();
 		// SECURITY: web_page_visits is a GLOBAL cross-user cache keyed by
 		// normalized_url. Only key/store by the page's declared canonical_url when

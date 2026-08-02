@@ -54,6 +54,9 @@ import {
 type Locals = App.Locals;
 type ArchiveChildrenMode = 'archive_children' | 'promote_children' | 'unlink_children';
 
+const DOCUMENT_CONFLICT_MESSAGE =
+	'Document was modified by another user. Reload to see the latest version.';
+
 type AccessResult =
 	| {
 			document: Record<string, any>;
@@ -269,15 +272,20 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		const { document, actorId, project } = accessResult;
 
-		// Optimistic concurrency: if client sends expected_updated_at, reject if stale
+		// Optimistic concurrency: reject an already-stale client before doing any work,
+		// then reuse the validated timestamp as a compare-and-swap condition on the
+		// actual UPDATE below. The write-time condition closes the race between this
+		// access read and the mutation.
 		const expectedUpdatedAt = (body as Record<string, unknown>).expected_updated_at;
+		let expectedWriteVersion: string | null = null;
 		if (typeof expectedUpdatedAt === 'string' && document.updated_at) {
 			const clientTime = new Date(expectedUpdatedAt).getTime();
 			const serverTime = new Date(document.updated_at as string).getTime();
-			if (!isNaN(clientTime) && !isNaN(serverTime) && clientTime !== serverTime) {
-				return ApiResponse.conflict(
-					'Document was modified by another user. Reload to see the latest version.'
-				);
+			if (!isNaN(clientTime) && !isNaN(serverTime)) {
+				if (clientTime !== serverTime) {
+					return ApiResponse.conflict(DOCUMENT_CONFLICT_MESSAGE);
+				}
+				expectedWriteVersion = expectedUpdatedAt;
 			}
 		}
 
@@ -612,12 +620,26 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.badRequest('No update fields provided');
 		}
 
-		const { data: updatedDocument, error: updateError } = await locals.supabase
+		const updateQuery = locals.supabase
 			.from('onto_documents')
 			.update(updatePayload)
 			.eq('id', documentId)
+			.eq('project_id', document.project_id)
+			.is('deleted_at', null);
+
+		const guardedUpdateQuery = expectedWriteVersion
+			? updateQuery.eq('updated_at', expectedWriteVersion)
+			: updateQuery;
+
+		const { data: updatedDocument, error: updateError } = await guardedUpdateQuery
 			.select('*')
 			.single();
+
+		const updateMatchedNoRows =
+			!updatedDocument && (!updateError || updateError.code === 'PGRST116');
+		if (expectedWriteVersion && updateMatchedNoRows) {
+			return ApiResponse.conflict(DOCUMENT_CONFLICT_MESSAGE);
+		}
 
 		if (updateError) {
 			console.error('[Document API] Failed to update document:', updateError);

@@ -1,3 +1,4 @@
+// packages/shared-agent-ops/src/web/search-cache.ts
 export type ExpiringCacheStatus = 'miss' | 'hit' | 'shared';
 
 export interface ExpiringSingleFlightCacheOptions {
@@ -37,6 +38,11 @@ export class ExpiringSingleFlightCache<T> {
 	has(key: string): boolean {
 		this.pruneExpired();
 		return this.cache.has(key) || this.inFlight.has(key);
+	}
+
+	hasCached(key: string): boolean {
+		this.pruneExpired();
+		return this.cache.has(key);
 	}
 
 	async getOrLoad(key: string, loader: () => Promise<T>): Promise<ExpiringCacheResult<T>> {
@@ -95,6 +101,8 @@ export interface WebSearchCacheKeyInput {
 	includeAnswer: boolean;
 	includeDomains?: string[];
 	excludeDomains?: string[];
+	adapterVersion?: string;
+	responseVersion?: string;
 }
 
 export function normalizeWebSearchQuery(query: string): string {
@@ -109,6 +117,8 @@ function normalizeDomains(domains?: string[]): string[] {
 
 export function buildWebSearchCacheKey(input: WebSearchCacheKeyInput): string {
 	return JSON.stringify([
+		input.adapterVersion ?? null,
+		input.responseVersion ?? null,
 		normalizeWebSearchQuery(input.query),
 		input.searchDepth,
 		input.maxResults,

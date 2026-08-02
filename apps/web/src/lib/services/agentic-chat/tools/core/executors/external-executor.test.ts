@@ -67,4 +67,86 @@ describe('ExternalExecutor page cache revalidation', () => {
 			etag: '"cached-v1"'
 		});
 	});
+
+	it('never reads or writes the global cache for signed URLs', async () => {
+		const admin = { from: vi.fn() };
+		const fetchFn = vi.fn(
+			async () =>
+				new Response('<html><body><main>Private evidence</main></body></html>', {
+					status: 200,
+					headers: { 'content-type': 'text/html' }
+				})
+		);
+		const executor = new ExternalExecutor({
+			supabase: {} as never,
+			userId: 'user-1',
+			fetchFn: fetchFn as typeof fetch,
+			getActorId: async () => 'actor-1',
+			getAdminSupabase: () => admin as never,
+			getAuthHeaders: async () => ({})
+		});
+
+		const result = await executor.webVisit({
+			url: 'https://93.184.216.34/private?token=test-signature',
+			output_format: 'markdown',
+			persist: true
+		});
+
+		expect(result.content).toContain('Private evidence');
+		expect(result.stored).toBe(false);
+		expect(result.info).toMatchObject({ cache_hit: false });
+		expect(fetchFn).toHaveBeenCalledTimes(1);
+		expect(admin.from).not.toHaveBeenCalled();
+	});
+
+	it('ignores legacy cache rows whose stored redirect URL is credential-bearing', async () => {
+		const chain: Record<string, any> = {};
+		chain.select = vi.fn(() => chain);
+		chain.eq = vi.fn(() => chain);
+		chain.maybeSingle = vi.fn(async () => ({
+			data: {
+				id: 'legacy-private-visit',
+				url: 'https://93.184.216.34/research',
+				final_url: 'https://93.184.216.34/private?client_secret=test-secret',
+				markdown: '# Cached private evidence',
+				last_fetched_at: '2099-01-01T00:00:00.000Z'
+			},
+			error: null
+		}));
+		const admin = { from: vi.fn(() => chain) };
+		const fetchFn = vi.fn(async (input: string | URL | Request) => {
+			if (String(input).endsWith('/research')) {
+				return new Response(null, {
+					status: 302,
+					headers: {
+						location: 'https://93.184.216.34/private?client_secret=test-secret'
+					}
+				});
+			}
+			return new Response('<html><body><main>Fresh private evidence</main></body></html>', {
+				status: 200,
+				headers: { 'content-type': 'text/html' }
+			});
+		});
+		const executor = new ExternalExecutor({
+			supabase: {} as never,
+			userId: 'user-1',
+			fetchFn: fetchFn as typeof fetch,
+			getActorId: async () => 'actor-1',
+			getAdminSupabase: () => admin as never,
+			getAuthHeaders: async () => ({})
+		});
+
+		const result = await executor.webVisit({
+			url: 'https://93.184.216.34/research',
+			output_format: 'markdown',
+			persist: true
+		});
+
+		expect(result.content).toContain('Fresh private evidence');
+		expect(result.content).not.toContain('Cached private evidence');
+		expect(result.stored).toBe(false);
+		expect(fetchFn).toHaveBeenCalledTimes(2);
+		expect(admin.from).toHaveBeenCalledTimes(1);
+	});
 });

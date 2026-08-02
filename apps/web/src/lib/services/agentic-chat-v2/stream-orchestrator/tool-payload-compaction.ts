@@ -18,6 +18,8 @@ const MAX_WEB_VISIT_CONTENT_CHARS = 8000;
 const MIN_WEB_VISIT_CONTENT_CHARS = 1500;
 const MAX_WEB_SEARCH_SNIPPET_CHARS = 1600;
 const MIN_WEB_SEARCH_SNIPPET_CHARS = 400;
+const MAX_WEB_SEARCH_PAGE_CONTENT_CHARS = 4000;
+const MIN_WEB_SEARCH_PAGE_CONTENT_CHARS = 900;
 const MAX_EMAIL_MODEL_MESSAGES = 5;
 const MAX_EMAIL_SNIPPET_CHARS = 260;
 const MAX_SKILL_OUTPUT_CONTRACT_CHARS = 4000;
@@ -1048,6 +1050,41 @@ function fitPayloadToBudget(
 	return payload;
 }
 
+function fitWebSearchPayload(
+	build: (snippetBudget: number, pageBudget: number) => Record<string, unknown>,
+	params: { resultCount: number; pageCount: number }
+): Record<string, unknown> {
+	let snippetBudget = MAX_WEB_SEARCH_SNIPPET_CHARS;
+	let pageBudget = MAX_WEB_SEARCH_PAGE_CONTENT_CHARS;
+	let payload = build(snippetBudget, pageBudget);
+	for (let attempt = 0; attempt < 6; attempt++) {
+		let serializedLength: number;
+		try {
+			serializedLength = JSON.stringify(payload).length;
+		} catch {
+			return payload;
+		}
+		if (serializedLength <= WEB_COMPACT_TARGET_CHARS) return payload;
+
+		const overage = serializedLength - WEB_COMPACT_TARGET_CHARS;
+		if (snippetBudget > MIN_WEB_SEARCH_SNIPPET_CHARS) {
+			snippetBudget = Math.max(
+				MIN_WEB_SEARCH_SNIPPET_CHARS,
+				snippetBudget - Math.ceil((overage * 1.4) / Math.max(params.resultCount, 1)) - 40
+			);
+		} else if (pageBudget > MIN_WEB_SEARCH_PAGE_CONTENT_CHARS && params.pageCount > 0) {
+			pageBudget = Math.max(
+				MIN_WEB_SEARCH_PAGE_CONTENT_CHARS,
+				pageBudget - Math.ceil((overage * 1.4) / params.pageCount) - 40
+			);
+		} else {
+			return payload;
+		}
+		payload = build(snippetBudget, pageBudget);
+	}
+	return payload;
+}
+
 function compactWebSearchPayload(payload: unknown): unknown {
 	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
 		return payload;
@@ -1057,8 +1094,11 @@ function compactWebSearchPayload(payload: unknown): unknown {
 	const results = Array.isArray(record.results) ? record.results : [];
 	const info = record.info && typeof record.info === 'object' ? record.info : {};
 	const resultCount = Math.max(results.length, 1);
+	const pageCount = results.filter(
+		(result: Record<string, any>) => typeof result?.page_content === 'string'
+	).length;
 
-	const buildPayload = (snippetBudget: number): Record<string, unknown> => ({
+	const buildPayload = (snippetBudget: number, pageBudget: number): Record<string, unknown> => ({
 		query: record.query,
 		answer: toTextPreview(record.answer, 600),
 		results: results.map((result: Record<string, any>) => ({
@@ -1066,7 +1106,22 @@ function compactWebSearchPayload(payload: unknown): unknown {
 			url: compactUrlPreview(result?.url),
 			snippet: toTextPreview(result?.snippet, snippetBudget),
 			score: typeof result?.score === 'number' ? result.score : undefined,
-			published_date: result?.published_date ?? undefined
+			published_date: result?.published_date ?? undefined,
+			page_title:
+				typeof result?.page_title === 'string'
+					? toTextPreview(result.page_title, 150)
+					: undefined,
+			page_content:
+				typeof result?.page_content === 'string'
+					? toTextPreview(result.page_content, pageBudget)
+					: undefined,
+			page_final_url:
+				typeof result?.page_final_url === 'string'
+					? compactUrlPreview(result.page_final_url)
+					: undefined,
+			page_fetched_at: result?.page_fetched_at ?? undefined,
+			page_cache_hit:
+				typeof result?.page_cache_hit === 'boolean' ? result.page_cache_hit : undefined
 		})),
 		follow_up_questions: Array.isArray(record.follow_up_questions)
 			? record.follow_up_questions.slice(0, 3)
@@ -1074,18 +1129,19 @@ function compactWebSearchPayload(payload: unknown): unknown {
 		message: toTextPreview(record.message, 300),
 		info: {
 			provider: info.provider,
+			adapter_version: info.adapter_version,
+			provider_request_id: info.provider_request_id,
 			search_depth: info.search_depth,
 			max_results: info.max_results,
-			fetched_at: info.fetched_at
+			include_answer: info.include_answer,
+			fetched_at: info.fetched_at,
+			cache_status: info.cache_status,
+			pages_requested: info.pages_requested,
+			pages_fetched: info.pages_fetched
 		}
 	});
 
-	const fitted = fitPayloadToBudget(buildPayload, {
-		initial: MAX_WEB_SEARCH_SNIPPET_CHARS,
-		min: MIN_WEB_SEARCH_SNIPPET_CHARS,
-		targetChars: WEB_COMPACT_TARGET_CHARS,
-		fieldCount: resultCount
-	});
+	const fitted = fitWebSearchPayload(buildPayload, { resultCount, pageCount });
 
 	return applyToolPayloadSizeGuard(fitted, MAX_MODEL_WEB_PAYLOAD_CHARS);
 }

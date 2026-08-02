@@ -1,5 +1,5 @@
-// packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-02T06:48:34.033Z
+// Lightweight database schema - auto-generated from database.types.ts
+// Generated on: 2026-08-02T19:02:30.232Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -957,7 +957,9 @@ export type DatabaseSchema = {
 	};
 	chat_turn_events: {
 		created_at: string;
+		event_id: string;
 		event_type: string;
+		execution_generation: number;
 		id: string;
 		payload: Json;
 		phase: string;
@@ -1981,6 +1983,24 @@ export type DatabaseSchema = {
 		locked_at: string | null;
 		locked_by: string | null;
 		run_id: string | null;
+	};
+	native_search_cache: {
+		adapter_version: string;
+		cache_key: string;
+		created_at: string;
+		expires_at: string;
+		fetched_at: string | null;
+		hit_count: number;
+		last_hit_at: string | null;
+		lease_expires_at: string | null;
+		owner_token: string | null;
+		provider: string | null;
+		provider_credits: number | null;
+		provider_request_id: string | null;
+		response: Json | null;
+		response_version: string;
+		status: string;
+		updated_at: string;
 	};
 	notes: {
 		category: string | null;
@@ -4234,6 +4254,7 @@ export const tableNames = [
 	'llm_usage_summary',
 	'migration_log',
 	'migration_platform_lock',
+	'native_search_cache',
 	'notes',
 	'notification_deliveries',
 	'notification_events',

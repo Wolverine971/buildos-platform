@@ -697,11 +697,38 @@ export function createFastChatSessionService(
 			.insert(insert)
 			.select('*')
 			.single();
+		let sessionCreateError = error;
 
-		if (error || !data) {
-			logger.error('Failed to create chat session', { error, userId });
+		// The worker-admission migration makes the active daily-brief key unique.
+		// If a concurrent worker/legacy request inserted the canonical row after
+		// the lookup above, adopt that committed winner instead of surfacing the
+		// expected 23505 race or attempting to create another session.
+		if (error?.code === '23505' && contextType === 'daily_brief' && entityId) {
+			const { data: canonicalSession, error: canonicalError } = await supabase
+				.from('chat_sessions')
+				.select('*')
+				.eq('user_id', userId)
+				.eq('context_type', contextType)
+				.eq('entity_id', entityId)
+				.eq('status', 'active')
+				.maybeSingle();
+
+			if (!canonicalError && canonicalSession) {
+				return { session: canonicalSession, created: false };
+			}
+			if (canonicalError) {
+				sessionCreateError = canonicalError;
+			}
+		}
+
+		if (sessionCreateError || !data) {
+			logger.error('Failed to create chat session', {
+				error: sessionCreateError,
+				insertError: error,
+				userId
+			});
 			logFastChatSessionError({
-				error: error ?? new Error('No session returned from insert'),
+				error: sessionCreateError ?? new Error('No session returned from insert'),
 				operationType: 'fastchat_session_create',
 				userId,
 				projectId: projectFocus?.projectId ?? undefined,
@@ -709,10 +736,13 @@ export function createFastChatSessionService(
 				metadata: {
 					contextType,
 					entityId,
-					hasProjectFocus: Boolean(projectFocus)
+					hasProjectFocus: Boolean(projectFocus),
+					insertErrorCode: error?.code ?? null
 				}
 			});
-			throw new Error(`Failed to create chat session: ${error?.message ?? 'unknown error'}`);
+			throw new Error(
+				`Failed to create chat session: ${sessionCreateError?.message ?? 'unknown error'}`
+			);
 		}
 
 		return { session: data, created: true };
@@ -931,12 +961,13 @@ export function createFastChatSessionService(
 			.insert(insert)
 			.select('*')
 			.single();
+		let persistenceError = error;
 
 		// Unique violation on uq_chat_messages_session_idempotency_key: a
 		// concurrent call (or a retry after a degraded-open lookup) already
 		// inserted this message — return the existing row instead of failing.
 		if (error && error.code === '23505' && idempotencyKey) {
-			const { data: winner } = await supabase
+			const { data: winner, error: winnerError } = await supabase
 				.from('chat_messages')
 				.select('*')
 				.eq('session_id', sessionId)
@@ -947,12 +978,20 @@ export function createFastChatSessionService(
 			if (winner) {
 				return winner;
 			}
+			if (winnerError) {
+				persistenceError = winnerError;
+			}
 		}
 
-		if (error) {
-			logger.warn('Failed to persist chat message', { error, sessionId, role });
+		if (persistenceError) {
+			logger.warn('Failed to persist chat message', {
+				error: persistenceError,
+				insertError: error,
+				sessionId,
+				role
+			});
 			logFastChatSessionError({
-				error,
+				error: persistenceError,
 				operationType: 'fastchat_message_persist',
 				userId,
 				tableName: 'chat_messages',
@@ -961,7 +1000,8 @@ export function createFastChatSessionService(
 					sessionId,
 					role,
 					hasMetadata: Boolean(metadata),
-					usage: usage ?? null
+					usage: usage ?? null,
+					insertErrorCode: error?.code ?? null
 				}
 			});
 			return null;

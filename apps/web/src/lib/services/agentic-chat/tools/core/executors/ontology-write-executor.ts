@@ -11,7 +11,7 @@
  * Includes support for update strategies (replace, append, merge_llm).
  */
 
-import { BaseExecutor } from './base-executor';
+import { ApiRequestError, BaseExecutor } from './base-executor';
 import type {
 	ExecutorContext,
 	CreateOntoProjectArgs,
@@ -1244,12 +1244,30 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			new_parent_id: resolvedParentId,
 			new_position: typeof rawPosition === 'number' ? rawPosition : 0
 		};
-		let data: { structure: any };
-		try {
-			data = await this.apiRequest(`/api/onto/projects/${projectId}/doc-tree/move`, {
+		const requestMove = () =>
+			this.apiRequest<{ structure: any }>(`/api/onto/projects/${projectId}/doc-tree/move`, {
 				method: 'POST',
 				body: JSON.stringify(payload)
 			});
+		const requestMoveWithConflictRetry = async (): Promise<{ structure: any }> => {
+			try {
+				return await requestMove();
+			} catch (error) {
+				const isTransientStructureConflict =
+					error instanceof ApiRequestError &&
+					error.status === 409 &&
+					error.message.includes('Structure version conflict');
+				if (!isTransientStructureConflict) throw error;
+
+				// Moving a document to an explicit parent/position is safe to retry. The
+				// endpoint reloads the latest tree on each request, so one retry resolves
+				// ordinary concurrent edits without exposing version bookkeeping to the model.
+				return requestMove();
+			}
+		};
+		let data: { structure: any };
+		try {
+			data = await requestMoveWithConflictRetry();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			if (message.includes('Document not found')) {

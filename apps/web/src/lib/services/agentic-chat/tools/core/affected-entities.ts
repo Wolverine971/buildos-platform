@@ -49,6 +49,10 @@ const CREATE_TOOL_KINDS: Record<string, string> = {
 	create_calendar_event: 'event'
 };
 
+const TOOL_KIND_OVERRIDES: Record<string, string> = {
+	move_document_in_tree: 'document'
+};
+
 function isRecord(value: unknown): value is Record<string, any> {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -105,6 +109,7 @@ function normalizeOperation(value: unknown): string | null {
 
 function kindFromTool(toolName?: string | null, gatewayOp?: string | null): string | null {
 	if (toolName && CREATE_TOOL_KINDS[toolName]) return CREATE_TOOL_KINDS[toolName];
+	if (toolName && TOOL_KIND_OVERRIDES[toolName]) return TOOL_KIND_OVERRIDES[toolName];
 	const source = gatewayOp || toolName || '';
 	const ontoMatch = source.match(/onto\.([a-z_]+)\.(create|update|delete|move|link)/);
 	if (ontoMatch?.[1]) return normalizeAffectedEntityKind(ontoMatch[1]);

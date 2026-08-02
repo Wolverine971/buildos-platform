@@ -36,6 +36,10 @@ import {
 	buildGatewayProjectUrl,
 	entityActionForGatewayOp
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
+import {
+	type NativeSearchCacheRpcClient,
+	createSupabaseNativeSearchDiscoveryCacheStore
+} from '@buildos/shared-agent-ops/web/native-search';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
 import {
@@ -732,6 +736,10 @@ function positiveIntegerEnv(name: string): number | undefined {
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
+function booleanEnv(name: string): boolean {
+	return ['1', 'true', 'yes'].includes((trimmedEnv(name) ?? '').toLowerCase());
+}
+
 async function createCalendarPortForRun(userId: string) {
 	const clientId = trimmedEnv('PRIVATE_GOOGLE_CLIENT_ID') ?? trimmedEnv('GOOGLE_CLIENT_ID');
 	const clientSecret =
@@ -840,7 +848,7 @@ function buildSystemPrompt(
 		`Available operations (${surfaceLabel}): ${runnableOps.length ? runnableOps.join(', ') : '(none in scope)'}`,
 		'Most ops accept { "project_id": "<uuid>" }. Use onto.project.list first to discover projects.',
 		hasWebSearch
-			? '- util.web.search args: { "query": "...", "max_results"?: 1-10, "search_depth"?: "basic"|"advanced", "include_domains"?: ["example.com"], "exclude_domains"?: ["example.com"] }.'
+			? '- util.web.search args: { "query": "...", "max_results"?: 1-10 (default 4), "search_depth"?: "basic"|"advanced" (default advanced), "include_domains"?: ["example.com"], "exclude_domains"?: ["example.com"] }. BuildOS fetches evidence from at most the best two pages; synthesize the answer yourself.'
 			: '',
 		hasWebVisit
 			? '- util.web.visit args: { "url": "https://...", "max_chars"?: 1-12000, "allow_redirects"?: true|false, "prefer_language"?: "en-US" }.'
@@ -1213,16 +1221,34 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 
 	const calendar = await createCalendarPortForRun(run.user_id);
 	const tavilyCreditCostUsd = resolveTavilyCreditCostUsd();
+	const searchCacheStore = booleanEnv('NATIVE_SEARCH_DURABLE_CACHE_ENABLED')
+		? createSupabaseNativeSearchDiscoveryCacheStore(
+				supabase as unknown as NativeSearchCacheRpcClient
+			)
+		: undefined;
 	const web = createAgentRunWebResearchPort({
 		searchTimeoutMs: positiveIntegerEnv('AGENT_RUN_WEB_SEARCH_TIMEOUT_MS'),
 		visitTimeoutMs: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_TIMEOUT_MS'),
 		visitMaxBytes: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_MAX_BYTES'),
 		tavilyCreditCostUsd,
+		searchCacheStore,
 		onSearchDispatched: async (charge) => {
 			if (!activePaidToolAttemptKey) {
 				throw new AgentRunCostLedgerError(
 					'Tavily dispatch has no active cost attempt key.',
 					'rpc_error'
+				);
+			}
+			if (
+				!canReservePaidToolCost({
+					maxCostUsd,
+					currentCostUsd: costTotal,
+					reservationCostUsd: charge.cost_usd
+				})
+			) {
+				throw new AgentRunCostLedgerError(
+					'Tavily dispatch exceeds the remaining Agent Run cost budget.',
+					'budget_exceeded'
 				);
 			}
 			try {
@@ -1968,11 +1994,15 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		>;
 		const searchIsPermitted =
 			!scope.allowed_ops || scope.allowed_ops.includes(AGENT_OP_WEB_SEARCH);
+		const searchRequiresDispatch =
+			op === AGENT_OP_WEB_SEARCH && searchIsPermitted && typeof web.search === 'function'
+				? await Promise.resolve(web.searchRequiresDispatch?.(args) ?? true)
+				: false;
 		const reservedPaidToolCharge =
 			op === AGENT_OP_WEB_SEARCH &&
 			searchIsPermitted &&
 			typeof web.search === 'function' &&
-			(web.searchRequiresDispatch?.(args) ?? true)
+			searchRequiresDispatch
 				? estimateTavilySearchCharge(args, tavilyCreditCostUsd)
 				: null;
 		if (

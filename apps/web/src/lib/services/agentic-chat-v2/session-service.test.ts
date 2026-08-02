@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/session-service.test.ts
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
 	buildInterruptedToolHistorySummary,
 	buildLoadedSkillHistorySummary,
@@ -72,6 +72,179 @@ function createHistorySupabase(tableRows: Record<string, TestRow[]>) {
 }
 
 describe('fast chat session service helpers', () => {
+	it('reports the canonical lookup error after a 23505 winner cannot be resolved', async () => {
+		const insertError = { code: '23505', message: 'duplicate idempotency key' };
+		const winnerError = { code: '57014', message: 'canonical lookup timed out' };
+		const logError = vi.fn(async () => undefined);
+		let queryNumber = 0;
+
+		class MessageQuery {
+			private readonly number = ++queryNumber;
+
+			select() {
+				return this;
+			}
+			eq() {
+				return this;
+			}
+			contains() {
+				return this;
+			}
+			order() {
+				return this;
+			}
+			limit() {
+				return this;
+			}
+			insert() {
+				return this;
+			}
+			async maybeSingle() {
+				return this.number === 1
+					? { data: null, error: null }
+					: { data: null, error: winnerError };
+			}
+			async single() {
+				return { data: null, error: insertError };
+			}
+		}
+
+		const service = createFastChatSessionService({ from: () => new MessageQuery() } as any, {
+			errorLogger: { logError } as any
+		});
+		const result = await service.persistMessage({
+			sessionId: 'session-1',
+			userId: 'user-1',
+			role: 'assistant',
+			content: 'response',
+			idempotencyKey: 'turn:client-1:assistant'
+		});
+
+		expect(result).toBeNull();
+		expect(logError).toHaveBeenLastCalledWith(
+			winnerError,
+			expect.objectContaining({
+				operationType: 'fastchat_message_persist',
+				metadata: expect.objectContaining({ insertErrorCode: '23505' })
+			})
+		);
+	});
+
+	it('adopts the canonical daily-brief session after a concurrent unique-key winner', async () => {
+		const canonicalSession = {
+			id: 'brief-session-winner',
+			user_id: 'user-1',
+			context_type: 'daily_brief',
+			entity_id: 'brief-1',
+			status: 'active',
+			updated_at: '2026-08-02T12:00:00.000Z'
+		};
+		let lookupCount = 0;
+
+		class SessionQuery {
+			private inserting = false;
+
+			select() {
+				return this;
+			}
+			eq() {
+				return this;
+			}
+			order() {
+				return this;
+			}
+			limit() {
+				return this;
+			}
+			insert() {
+				this.inserting = true;
+				return this;
+			}
+			async maybeSingle() {
+				lookupCount += 1;
+				return lookupCount === 1
+					? { data: null, error: null }
+					: { data: canonicalSession, error: null };
+			}
+			async single() {
+				if (!this.inserting) throw new Error('Expected insert before single');
+				return {
+					data: null,
+					error: { code: '23505', message: 'duplicate canonical daily brief session' }
+				};
+			}
+		}
+
+		const service = createFastChatSessionService({ from: () => new SessionQuery() } as any, {
+			errorLogger: { logError: async () => undefined } as any
+		});
+		const result = await service.resolveSession({
+			userId: 'user-1',
+			contextType: 'daily_brief',
+			entityId: 'brief-1'
+		});
+
+		expect(result).toEqual({ session: canonicalSession, created: false });
+		expect(lookupCount).toBe(2);
+	});
+
+	it('reports the canonical daily-brief lookup failure after a 23505 race', async () => {
+		const insertError = { code: '23505', message: 'duplicate canonical daily brief session' };
+		const canonicalError = { code: '57014', message: 'canonical daily brief lookup timed out' };
+		const logError = vi.fn(async () => undefined);
+		let lookupCount = 0;
+
+		class SessionQuery {
+			private inserting = false;
+
+			select() {
+				return this;
+			}
+			eq() {
+				return this;
+			}
+			order() {
+				return this;
+			}
+			limit() {
+				return this;
+			}
+			insert() {
+				this.inserting = true;
+				return this;
+			}
+			async maybeSingle() {
+				lookupCount += 1;
+				return lookupCount === 1
+					? { data: null, error: null }
+					: { data: null, error: canonicalError };
+			}
+			async single() {
+				if (!this.inserting) throw new Error('Expected insert before single');
+				return { data: null, error: insertError };
+			}
+		}
+
+		const service = createFastChatSessionService({ from: () => new SessionQuery() } as any, {
+			errorLogger: { logError } as any
+		});
+
+		await expect(
+			service.resolveSession({
+				userId: 'user-1',
+				contextType: 'daily_brief',
+				entityId: 'brief-1'
+			})
+		).rejects.toThrow('canonical daily brief lookup timed out');
+		expect(logError).toHaveBeenLastCalledWith(
+			canonicalError,
+			expect.objectContaining({
+				operationType: 'fastchat_session_create',
+				metadata: expect.objectContaining({ insertErrorCode: '23505' })
+			})
+		);
+	});
+
 	it('keeps the legacy query path identical to the atomic snapshot projector', async () => {
 		const messages = [
 			{

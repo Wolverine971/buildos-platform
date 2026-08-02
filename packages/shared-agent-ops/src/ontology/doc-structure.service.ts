@@ -590,8 +590,10 @@ export async function updateDocStructure(
 		version: currentVersion + 1
 	};
 
-	// Update the project
-	const { error: updateError } = await supabase
+	// Apply the version check to the UPDATE itself. The earlier comparison gives
+	// fast feedback for an already-stale caller, while this compare-and-swap guard
+	// closes the race where another writer commits after our read.
+	const projectUpdateQuery = supabase
 		.from('onto_projects')
 		.update({
 			doc_structure:
@@ -599,15 +601,30 @@ export async function updateDocStructure(
 		})
 		.eq('id', projectId);
 
+	const versionGuardedUpdate =
+		current?.doc_structure === null || current?.doc_structure === undefined
+			? projectUpdateQuery.is('doc_structure', null)
+			: projectUpdateQuery.contains('doc_structure', { version: currentVersion });
+
+	const { data: updatedProject, error: updateError } = await versionGuardedUpdate
+		.select('id')
+		.maybeSingle();
+
 	if (updateError) {
 		throw new Error(`Failed to update structure: ${updateError.message}`);
+	}
+
+	if (!updatedProject) {
+		throw new Error(
+			`Structure version conflict: expected ${currentVersion}, but the structure changed before update`
+		);
 	}
 
 	// Save to history
 	await saveStructureHistory(supabase, projectId, updatedStructure, changeType, actorId);
 
-	// Update document children columns
-	await syncDocumentChildren(supabase, projectId, updatedStructure);
+	// Update only document children columns whose direct child list changed.
+	await syncDocumentChildren(supabase, projectId, currentStructure, updatedStructure);
 
 	return updatedStructure;
 }
@@ -643,30 +660,61 @@ async function saveStructureHistory(
 async function syncDocumentChildren(
 	supabase: SupabaseClient<Database>,
 	projectId: string,
-	structure: DocStructure
+	previousStructure: DocStructure,
+	nextStructure: DocStructure
 ): Promise<void> {
-	// Build a map of document ID -> children
-	const childrenMap = new Map<string, Array<{ id: string; order: number }>>();
+	type DocumentChildRef = { id: string; order: number };
 
-	function traverse(nodes: DocTreeNode[]) {
-		for (const node of nodes) {
-			if (node.children && node.children.length > 0) {
-				childrenMap.set(
-					node.id,
-					node.children.map((c) => ({ id: c.id, order: c.order }))
-				);
-				traverse(node.children);
-			} else {
-				// Document has no children - set empty array
-				childrenMap.set(node.id, []);
+	function buildChildrenMap(structure: DocStructure): Map<string, DocumentChildRef[]> {
+		const childrenMap = new Map<string, DocumentChildRef[]>();
+
+		function traverse(nodes: DocTreeNode[]) {
+			for (const node of nodes) {
+				const children = (node.children ?? []).map((child) => ({
+					id: child.id,
+					order: child.order
+				}));
+				childrenMap.set(node.id, children);
+				if (node.children?.length) traverse(node.children);
 			}
+		}
+
+		traverse(structure.root);
+		return childrenMap;
+	}
+
+	function childrenEqual(left: DocumentChildRef[], right: DocumentChildRef[]): boolean {
+		if (left.length !== right.length) return false;
+		for (let index = 0; index < left.length; index += 1) {
+			const leftChild = left[index];
+			const rightChild = right[index];
+			if (!leftChild || !rightChild) return false;
+			if (leftChild.id !== rightChild.id || leftChild.order !== rightChild.order)
+				return false;
+		}
+		return true;
+	}
+
+	const previousChildren = buildChildrenMap(previousStructure);
+	const nextChildren = buildChildrenMap(nextStructure);
+	const changedChildren = new Map<string, DocumentChildRef[]>();
+
+	for (const [docId, children] of nextChildren) {
+		const previous = previousChildren.get(docId);
+		if (!previous || !childrenEqual(previous, children)) {
+			changedChildren.set(docId, children);
 		}
 	}
 
-	traverse(structure.root);
+	// A removed parent is no longer present in the next tree, but its cached
+	// children column must still be cleared. Removed leaves are already empty.
+	for (const [docId, children] of previousChildren) {
+		if (!nextChildren.has(docId) && children.length > 0) {
+			changedChildren.set(docId, []);
+		}
+	}
 
-	// Update each document's children column
-	for (const [docId, children] of childrenMap) {
+	for (const [docId, children] of changedChildren) {
 		const { error } = await supabase
 			.from('onto_documents')
 			.update({
@@ -772,7 +820,9 @@ export async function removeDocumentFromTree(
 	options: RemoveDocumentOptions = {},
 	actorId?: string
 ): Promise<DocStructure> {
-	const { structure } = await getDocTree(supabase, projectId);
+	const { structure } = await getDocTree(supabase, projectId, {
+		includeDocuments: false
+	});
 
 	const mode = options.mode ?? 'cascade';
 	const newRoot =
@@ -992,8 +1042,11 @@ export async function recomputeDocStructure(
 	projectId: string,
 	actorId?: string
 ): Promise<DocStructure> {
-	// Get current state
-	const { structure } = await getDocTree(supabase, projectId);
+	// Get only the current structure; document metadata is fetched explicitly
+	// below, so loading full document rows here would duplicate work and content.
+	const { structure } = await getDocTree(supabase, projectId, {
+		includeDocuments: false
+	});
 
 	// Fetch all active documents to verify
 	const { data: docs, error } = await supabase

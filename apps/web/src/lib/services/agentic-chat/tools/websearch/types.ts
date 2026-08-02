@@ -1,34 +1,11 @@
 // apps/web/src/lib/services/agentic-chat/tools/websearch/types.ts
-export type TavilySearchDepth = 'basic' | 'advanced';
+import type {
+	NativeSearchCandidate,
+	NativeSearchDepth,
+	NativeSearchResponse
+} from '@buildos/shared-agent-ops/web/native-search';
 
-export interface TavilySearchRequest {
-	query: string;
-	api_key: string;
-	search_depth?: TavilySearchDepth;
-	max_results?: number;
-	include_answer?: boolean;
-	include_raw_content?: boolean;
-	include_images?: boolean;
-	include_domains?: string[];
-	exclude_domains?: string[];
-}
-
-export interface TavilySearchResult {
-	title: string;
-	url: string;
-	content?: string;
-	raw_content?: string;
-	score?: number;
-	published_date?: string;
-}
-
-export interface TavilySearchResponse {
-	query: string;
-	answer?: string;
-	results: TavilySearchResult[];
-	images?: string[];
-	follow_up_questions?: string[];
-}
+export type TavilySearchDepth = NativeSearchDepth;
 
 export interface WebSearchArgs {
 	query: string;
@@ -39,35 +16,6 @@ export interface WebSearchArgs {
 	exclude_domains?: string[];
 }
 
-export interface WebSearchResultItem {
-	title: string;
-	url: string;
-	snippet?: string;
-	score?: number;
-	published_date?: string;
-	page_title?: string;
-	page_content?: string;
-	page_final_url?: string;
-	page_fetched_at?: string;
-	page_cache_hit?: boolean;
-}
+export type WebSearchResultItem = NativeSearchCandidate;
 
-export interface WebSearchResultPayload {
-	query: string;
-	answer?: string;
-	results: WebSearchResultItem[];
-	follow_up_questions?: string[];
-	message: string;
-	info: {
-		provider: 'tavily';
-		search_depth: TavilySearchDepth;
-		max_results: number;
-		include_answer: boolean;
-		include_domains?: string[];
-		exclude_domains?: string[];
-		fetched_at: string;
-		cache_status: 'miss' | 'hit' | 'shared';
-		pages_requested?: number;
-		pages_fetched?: number;
-	};
-}
+export type WebSearchResultPayload = NativeSearchResponse;

@@ -21,6 +21,17 @@ const buildJsonResponse = (payload: any) => ({
 	text: async () => JSON.stringify(payload)
 });
 
+const buildJsonErrorResponse = (status: number, statusText: string, payload: any) => ({
+	ok: false,
+	status,
+	statusText,
+	headers: {
+		get: () => 'application/json'
+	},
+	json: async () => payload,
+	text: async () => JSON.stringify(payload)
+});
+
 describe('Ontology document tree tools', () => {
 	const userId = 'user-123';
 	const sessionId = 'session-456';
@@ -184,6 +195,43 @@ describe('Ontology document tree tools', () => {
 
 		const lastBody = (mockFetch as any).lastMoveBody();
 		expect(lastBody.document_id).toBe('doc-unlinked');
+	});
+
+	it('retries one transient structure-version conflict', async () => {
+		const documentId = '22222222-2222-4222-8222-222222222222';
+		let moveAttempts = 0;
+		const conflictThenSuccessFetch = vi.fn().mockImplementation((url) => {
+			if (String(url).includes('/api/onto/projects/project-1/doc-tree/move')) {
+				moveAttempts += 1;
+				if (moveAttempts === 1) {
+					return Promise.resolve(
+						buildJsonErrorResponse(409, 'Conflict', {
+							error: 'Structure version conflict: expected 1, but the structure changed before update'
+						})
+					);
+				}
+				return Promise.resolve(buildJsonResponse({ structure: { version: 3, root: [] } }));
+			}
+			return Promise.resolve(
+				buildJsonErrorResponse(500, 'Internal Server Error', {
+					error: 'Unexpected request'
+				})
+			);
+		});
+		const executor = new OntologyWriteExecutor({
+			...context,
+			fetchFn: conflictThenSuccessFetch
+		});
+
+		const result = await executor.moveDocumentInTree({
+			project_id: 'project-1',
+			document_id: documentId,
+			new_parent_id: null,
+			new_position: 0
+		});
+
+		expect(moveAttempts).toBe(2);
+		expect(result.structure).toEqual({ version: 3, root: [] });
 	});
 
 	it('fails with actionable guidance when document cannot be resolved in project', async () => {
