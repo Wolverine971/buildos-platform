@@ -45,8 +45,7 @@ import type {
 } from '@buildos/shared-types';
 import {
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
-	hashCanonicalAdmissionRequestV1,
-	type NormalizedChatAttachmentV1
+	hashCanonicalAdmissionRequestV1
 } from '@buildos/shared-types';
 import type { ServiceContext, ToolExecutionResult } from '$lib/services/agentic-chat/shared/types';
 import type { AgentState } from '$lib/types/agent-chat-enhancement';
@@ -95,6 +94,7 @@ import {
 	buildLiveVisionContentParts,
 	buildFastContextUsageSnapshot,
 	loadFastChatPromptContext,
+	normalizeChatAttachmentsForAdmission,
 	normalizeChatAttachmentRefs,
 	composeFastChatHistory,
 	normalizeFastAgentStreamRequest,
@@ -455,30 +455,6 @@ function countBy(values: readonly string[]): Record<string, number> {
 		counts[value] = (counts[value] ?? 0) + 1;
 		return counts;
 	}, {});
-}
-
-function normalizeAdmissionAttachments(
-	attachments: readonly ChatAttachmentRef[]
-): NormalizedChatAttachmentV1[] {
-	return attachments.map((attachment, inputOrder) => ({
-		attachment_kind:
-			attachment.attachment_kind === 'temporary_file' ? 'temporary_file' : 'onto_asset',
-		media_type: 'image',
-		asset_id: attachment.asset_id ?? null,
-		temporary_attachment_id: attachment.temporary_attachment_id ?? null,
-		project_id: attachment.project_id ?? null,
-		role: attachment.role === 'analysis_target' ? 'analysis_target' : 'attachment',
-		display_order: attachment.display_order ?? inputOrder,
-		file_name: attachment.file_name ?? null,
-		content_type: attachment.content_type ?? null,
-		file_size_bytes: attachment.file_size_bytes ?? null,
-		width: attachment.width ?? null,
-		height: attachment.height ?? null,
-		checksum_sha256: attachment.checksum_sha256 ?? null,
-		ocr_status: attachment.ocr_status ?? null,
-		extraction_summary: attachment.extraction_summary ?? null,
-		extracted_text_preview: attachment.extracted_text_preview ?? null
-	}));
 }
 
 function resolvePersistableAssistantContent(params: {
@@ -1619,7 +1595,7 @@ export const POST: RequestHandler = async ({
 					projectId: timingProjectId ?? null
 				},
 				message: storedUserMessageContent,
-				attachments: normalizeAdmissionAttachments(chatAttachmentRefs),
+				attachments: normalizeChatAttachmentsForAdmission(chatAttachmentRefs),
 				voiceNoteGroupId: voiceGroupId ?? null,
 				preparedPromptLineage: {
 					id: preparedAdmissionLineage?.id ?? null,

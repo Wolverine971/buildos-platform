@@ -28,8 +28,27 @@ export interface JobProgress {
 
 export type JobProcessor<T = unknown> = (job: ProcessingJob<T>) => Promise<unknown>;
 
+export type JobProcessorOptions = {
+	/**
+	 * Processor owns completion, failure, retry, and terminal queue reconciliation.
+	 * The generic queue still owns claim slots, heartbeat, timeout abort, and drain,
+	 * but must not call complete_queue_job/fail_queue_job for this job type.
+	 */
+	queueLifecycle?: 'automatic' | 'processor_managed';
+	/** Per-consumer timeout override; avoids coupling an isolated queue to global config. */
+	workerTimeoutMs?: number;
+};
+
+type ResolvedJobProcessorOptions = {
+	queueLifecycle: 'automatic' | 'processor_managed';
+	workerTimeoutMs: number | null;
+};
+
 export interface ProcessingJob<T = unknown> {
+	/** Human-readable queue identifier retained for existing processors/logs. */
 	id: string;
+	/** Database queue_jobs.id used by fenced worker-domain RPCs. */
+	queueRowId?: string;
 	processingToken?: string | null;
 	correlationId: string | null;
 	userId: string;
@@ -55,7 +74,10 @@ export function resolveQueueHeartbeatInterval(stalledTimeoutMs: number): number 
 }
 
 export class SupabaseQueue {
-	private processors: Map<JobType, JobProcessor> = new Map();
+	private processors: Map<
+		JobType,
+		{ processor: JobProcessor; options: ResolvedJobProcessorOptions }
+	> = new Map();
 	private processingInterval: NodeJS.Timeout | null = null;
 	private stalledJobInterval: NodeJS.Timeout | null = null;
 	private isClaiming = false;
@@ -63,6 +85,7 @@ export class SupabaseQueue {
 	private pollInterval: number;
 	private batchSize: number;
 	private stalledTimeout: number;
+	private readonly genericStalledRecovery: boolean;
 	private stalledJobRetryCount = 0;
 	private readonly MAX_STALLED_RETRIES = 3;
 
@@ -92,10 +115,13 @@ export class SupabaseQueue {
 		batchSize?: number;
 		stalledTimeout?: number;
 		drainTimeout?: number;
+		/** Disable when a processor owns a stricter domain-specific recovery loop. */
+		genericStalledRecovery?: boolean;
 	}) {
 		this.pollInterval = options?.pollInterval ?? 5000; // 5 seconds
 		this.batchSize = options?.batchSize ?? 5;
 		this.stalledTimeout = options?.stalledTimeout ?? 300000; // 5 minutes
+		this.genericStalledRecovery = options?.genericStalledRecovery ?? true;
 		// Bounded drain window on shutdown. Stay under Railway's ~30s
 		// SIGTERM→SIGKILL grace so we always return before the hard kill.
 		this.drainTimeout =
@@ -152,8 +178,24 @@ export class SupabaseQueue {
 	 * Register a processor for a job type. `T` is the concrete metadata type
 	 * the processor expects (per-job); the queue stores them type-erased.
 	 */
-	process<T>(jobType: JobType, processor: JobProcessor<T>): void {
-		this.processors.set(jobType, processor as JobProcessor);
+	process<T>(
+		jobType: JobType,
+		processor: JobProcessor<T>,
+		options: JobProcessorOptions = {}
+	): void {
+		if (
+			options.workerTimeoutMs !== undefined &&
+			(!Number.isSafeInteger(options.workerTimeoutMs) || options.workerTimeoutMs < 1)
+		) {
+			throw new Error('workerTimeoutMs must be a positive safe integer');
+		}
+		this.processors.set(jobType, {
+			processor: processor as JobProcessor,
+			options: {
+				queueLifecycle: options.queueLifecycle ?? 'automatic',
+				workerTimeoutMs: options.workerTimeoutMs ?? null
+			}
+		});
 		console.log(`🔧 Registered processor for ${jobType}`);
 	}
 
@@ -195,12 +237,30 @@ export class SupabaseQueue {
 			await this.processJobs();
 		}, this.pollInterval);
 
-		// Set up stalled job recovery (every minute)
-		this.stalledJobInterval = setInterval(async () => {
-			await this.recoverStalledJobs();
-		}, 60000);
+		// Agentic Chat owns a stricter fenced recovery service. Other consumers
+		// retain the generic minute cadence by default.
+		if (this.genericStalledRecovery) {
+			this.stalledJobInterval = setInterval(async () => {
+				await this.recoverStalledJobs();
+			}, 60000);
+		}
 
 		console.log('✅ Queue processor started');
+	}
+
+	/**
+	 * Ask a running consumer to refill its open slots immediately.
+	 *
+	 * Durable polling remains the source of truth. This is the low-latency hook
+	 * used by queue-specific wake transports; calls before start or during drain
+	 * are deliberately harmless, and a wake that overlaps a claim is replayed
+	 * once that claim settles so the notification is not lost to the claim guard.
+	 */
+	wake(): Promise<void> {
+		if (!this.acceptingWork) return Promise.resolve();
+		const activeClaim = this.inFlightClaim;
+		if (!activeClaim) return this.processJobs();
+		return activeClaim.then(() => this.processJobs());
 	}
 
 	/**
@@ -388,8 +448,8 @@ export class SupabaseQueue {
 		const trace = `[correlation=${correlationId ?? 'missing'}]`;
 		// Wrap the entire method to ensure no errors escape and crash other jobs
 		try {
-			const processor = this.processors.get(job.job_type as JobType);
-			if (!processor) {
+			const registration = this.processors.get(job.job_type as JobType);
+			if (!registration) {
 				console.error(`❌ No processor registered for job type: ${job.job_type} ${trace}`);
 				await this.failJob(
 					job.id,
@@ -404,13 +464,23 @@ export class SupabaseQueue {
 			console.log(`🏃 Processing ${job.job_type} job ${job.queue_job_id} ${trace}`);
 
 			// Process the job with proper error handling
-			await this.executeJobProcessor(job, processor, startTime);
+			await this.executeJobProcessor(job, registration, startTime);
 		} catch (error) {
 			// This is a catch-all for any unexpected errors in job setup or processing
 			console.error(
 				`❌ Unexpected error processing job ${job.queue_job_id} ${trace}:`,
 				error
 			);
+
+			if (
+				this.processors.get(job.job_type as JobType)?.options.queueLifecycle ===
+				'processor_managed'
+			) {
+				console.error(
+					`❌ Processor-managed job ${job.queue_job_id} left its queue row for domain recovery ${trace}`
+				);
+				return;
+			}
 
 			try {
 				// Attempt to mark the job as failed, but don't let this error crash the system
@@ -434,7 +504,10 @@ export class SupabaseQueue {
 	 */
 	private async executeJobProcessor(
 		job: ClaimedQueueJob,
-		processor: JobProcessor,
+		registration: {
+			processor: JobProcessor;
+			options: ResolvedJobProcessorOptions;
+		},
 		startTime: number
 	): Promise<void> {
 		const stopHeartbeat = this.startJobHeartbeat(job);
@@ -446,6 +519,7 @@ export class SupabaseQueue {
 			// Create processing job wrapper
 			const processingJob: ProcessingJob = {
 				id: job.queue_job_id,
+				queueRowId: job.id,
 				processingToken: job.processing_token ?? null,
 				correlationId,
 				userId: job.user_id!,
@@ -477,11 +551,15 @@ export class SupabaseQueue {
 
 			// Process the job
 			const result = await this.withWorkerTimeout(
-				processor(processingJob),
+				registration.processor(processingJob),
 				job.queue_job_id,
 				job.job_type,
-				abortController
+				abortController,
+				registration.options.workerTimeoutMs
 			);
+			if (registration.options.queueLifecycle === 'processor_managed') {
+				return;
+			}
 
 			// Mark as completed. IMPORTANT: a completion-RPC failure must NOT fall
 			// into the processor-failure path — the work already succeeded, and
@@ -537,6 +615,13 @@ export class SupabaseQueue {
 				`❌ Job ${job.queue_job_id} failed (${failure.kind}:${failure.code}) [correlation=${correlationId ?? 'missing'}]:`,
 				error
 			);
+
+			if (registration.options.queueLifecycle === 'processor_managed') {
+				console.error(
+					`❌ Processor-managed job ${job.queue_job_id} retained domain-owned queue state ${trace}`
+				);
+				return;
+			}
 
 			// Permanent failures cannot succeed with the same input. Unknown errors
 			// deliberately remain transient for backward compatibility.
@@ -630,9 +715,10 @@ export class SupabaseQueue {
 		promise: Promise<T>,
 		queueJobId: string,
 		jobType: string,
-		abortController: AbortController
+		abortController: AbortController,
+		timeoutOverrideMs: number | null = null
 	): Promise<T> {
-		const timeoutMs = resolveWorkerTimeout(jobType);
+		const timeoutMs = timeoutOverrideMs ?? resolveWorkerTimeout(jobType);
 		let timeout: NodeJS.Timeout | null = null;
 		const timeoutPromise = new Promise<T>((_, reject) => {
 			timeout = setTimeout(() => {

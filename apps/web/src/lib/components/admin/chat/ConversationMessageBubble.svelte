@@ -6,6 +6,7 @@
 		truncateText
 	} from '$lib/services/admin/chat-session-audit-formatters';
 	import { conversationMessageIsLong } from '$lib/services/admin/chat-session-audit-conversation';
+	import { conversationMessageTargetId } from '$lib/services/admin/chat-session-flow-targets';
 	import type { ConversationMessage } from '$lib/services/admin/chat-session-audit-types';
 
 	type MessageVariant = 'user' | 'assistant' | 'other';
@@ -17,10 +18,16 @@
 		message: ConversationMessage;
 		variant: MessageVariant;
 	} = $props();
+
+	let domId = $derived(conversationMessageTargetId(message.id));
 </script>
 
 {#if variant === 'user'}
-	<div class="flex justify-end">
+	<div
+		id={domId}
+		class="flex justify-end rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		tabindex="-1"
+	>
 		<div
 			class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%]"
 		>
@@ -70,7 +77,11 @@
 		</div>
 	</div>
 {:else if variant === 'assistant'}
-	<div class="flex min-w-0 gap-2 sm:gap-3">
+	<div
+		id={domId}
+		class="flex min-w-0 gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3"
+		tabindex="-1"
+	>
 		<div
 			class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-2xs font-semibold uppercase tracking-wide text-background shadow-ink sm:h-9 sm:w-9"
 		>
@@ -123,7 +134,11 @@
 		</div>
 	</div>
 {:else}
-	<div class="flex min-w-0 justify-center">
+	<div
+		id={domId}
+		class="flex min-w-0 justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		tabindex="-1"
+	>
 		<div
 			class="max-w-[92%] rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground"
 		>

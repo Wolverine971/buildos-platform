@@ -118,10 +118,17 @@ CREATE OR REPLACE FUNCTION public.cleanup_expired_agentic_chat_prepared_prompts(
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = ''
 AS $$
+DECLARE
+	v_deleted integer;
 BEGIN
-	RETURN 0;
+	DELETE FROM public.agentic_chat_prepared_prompts
+	WHERE expires_at < now() - interval '10 minutes'
+		OR consumed_at < now() - interval '10 minutes';
+
+	GET DIAGNOSTICS v_deleted = ROW_COUNT;
+	RETURN v_deleted;
 END;
 $$;
 

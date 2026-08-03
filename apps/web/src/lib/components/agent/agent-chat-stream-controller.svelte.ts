@@ -12,6 +12,7 @@ import type {
 	ChatContextType,
 	ChatRole,
 	ChatSession,
+	ChatTurnStatusV1,
 	TurnHandleV1
 } from '@buildos/shared-types';
 import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -234,6 +235,58 @@ export class AgentChatStreamController {
 		this.#streamProcessor = deps.streamProcessor ?? SSEProcessor;
 	}
 
+	adoptWorkerTurn(
+		handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>,
+		status: ChatTurnStatusV1
+	): void {
+		const active = this.activeTurnHandle;
+		if (
+			active &&
+			(active.executionMode !== 'worker_realtime' || active.turnRunId !== handle.turnRunId)
+		) {
+			throw new Error('Cannot replace an active turn with a different worker handle');
+		}
+		this.activeTurnHandle = handle;
+		this.isStartingStream = false;
+		this.isStreaming = status === 'queued' || status === 'running';
+		this.error = null;
+		this.currentActivity = workerActivityForStatus(status);
+	}
+
+	updateWorkerTurnState(
+		handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>,
+		status: ChatTurnStatusV1,
+		currentActivity: string
+	): void {
+		if (!this.#isActiveWorkerHandle(handle)) return;
+		this.isStreaming = status === 'queued' || status === 'running';
+		this.currentActivity = this.isStreaming ? currentActivity : '';
+	}
+
+	finishWorkerTurn(
+		handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>,
+		status: Extract<ChatTurnStatusV1, 'completed' | 'failed' | 'cancelled'>
+	): void {
+		if (!this.#isActiveWorkerHandle(handle)) return;
+		this.activeTurnHandle = null;
+		this.isStreaming = false;
+		this.isStartingStream = false;
+		this.currentActivity = '';
+		if (status === 'failed') {
+			this.error = 'BuildOS could not finish this response. Please try again.';
+		} else if (status !== 'cancelled') {
+			this.error = null;
+		}
+	}
+
+	releaseWorkerTurn(handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>): void {
+		if (!this.#isActiveWorkerHandle(handle)) return;
+		this.activeTurnHandle = null;
+		this.isStreaming = false;
+		this.isStartingStream = false;
+		this.currentActivity = '';
+	}
+
 	recordClientStreamEvent(
 		runId: number,
 		eventType: AgentSSEMessage['type'] | 'transport_error'
@@ -438,6 +491,10 @@ export class AgentChatStreamController {
 			return;
 		}
 		if (this.#deps.getActiveRestoredTurnRunId()) {
+			this.error = 'BuildOS is still finishing the latest response.';
+			return;
+		}
+		if (this.activeTurnHandle?.executionMode === 'worker_realtime' && this.isStreaming) {
 			this.error = 'BuildOS is still finishing the latest response.';
 			return;
 		}
@@ -795,8 +852,27 @@ export class AgentChatStreamController {
 		reason: 'user_cancelled' | 'superseded',
 		options: { awaitAck?: boolean } = {}
 	): Promise<CancelTurnResultV1> {
-		if (handle.executionMode !== 'legacy_sse') {
-			throw new Error('Worker Realtime transport is not enabled during Phase 1');
+		if (handle.executionMode === 'worker_realtime') {
+			const response = await this.#fetch(
+				`/api/agent/v2/turns/${encodeURIComponent(handle.turnRunId)}/cancel`,
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Accept: 'application/json'
+					},
+					credentials: 'same-origin',
+					cache: 'no-store',
+					body: JSON.stringify({ reason })
+				}
+			);
+			if (!response.ok) {
+				throw await buildAgentRequestError(
+					response,
+					'Unable to stop this response right now.'
+				);
+			}
+			return parseWorkerCancelResponse(await response.json());
 		}
 
 		const payload = {
@@ -872,14 +948,31 @@ export class AgentChatStreamController {
 		reason: StreamStopReason = 'user_cancelled',
 		options: { awaitCancelHint?: boolean } = {}
 	): Promise<void> {
-		if (!this.isStreaming || !this.#currentStreamController) return;
+		if (!this.isStreaming) return;
+		const handle = this.activeTurnHandle;
+		if (handle?.executionMode === 'worker_realtime') {
+			if (reason === 'error') return;
+			if (reason === 'user_cancelled') this.#deps.haptic?.('heavy');
+			try {
+				this.currentActivity = 'Stopping response...';
+				this.lastCancelResult = await this.cancelTurn(handle, reason);
+			} catch (error) {
+				this.#deps.logError?.('[AgentChat] Worker cancellation failed:', error);
+				this.error =
+					error instanceof Error
+						? error.message
+						: 'Unable to stop this response right now.';
+				this.currentActivity = workerActivityForStatus('running');
+			}
+			return;
+		}
+		if (!this.#currentStreamController) return;
 
 		if (reason === 'user_cancelled') {
 			this.#deps.haptic?.('heavy');
 		}
 
 		const runId = this.activeStreamRunId;
-		const handle = this.activeTurnHandle;
 		const streamRunId = handle?.streamRunId ?? null;
 		const shouldReportReason = reason === 'user_cancelled' || reason === 'superseded';
 		const cancellationReasonPromise =
@@ -961,6 +1054,66 @@ export class AgentChatStreamController {
 		this.lastCompletedStreamTiming = null;
 		this.lastCancelResult = null;
 	}
+
+	#isActiveWorkerHandle(
+		handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>
+	): boolean {
+		const active = this.activeTurnHandle;
+		return (
+			active?.executionMode === 'worker_realtime' &&
+			active.turnRunId === handle.turnRunId &&
+			active.sessionId === handle.sessionId &&
+			active.streamRunId === handle.streamRunId &&
+			active.clientTurnId === handle.clientTurnId
+		);
+	}
+}
+
+function parseWorkerCancelResponse(value: unknown): CancelTurnResultV1 {
+	if (!isRecord(value) || value.success !== true || !isRecord(value.data)) {
+		throw new Error('Worker cancellation returned an invalid response');
+	}
+	const result = value.data;
+	if (result.outcome === 'cancel_requested') return { outcome: 'cancel_requested' };
+	if (
+		result.outcome === 'cancelled' &&
+		result.status === 'cancelled' &&
+		canonicalText(result.terminalEventId)
+	) {
+		return {
+			outcome: 'cancelled',
+			status: 'cancelled',
+			terminalEventId: result.terminalEventId
+		};
+	}
+	if (
+		result.outcome === 'already_terminal' &&
+		(result.status === 'completed' ||
+			result.status === 'failed' ||
+			result.status === 'cancelled') &&
+		canonicalText(result.terminalEventId)
+	) {
+		return {
+			outcome: 'already_terminal',
+			status: result.status,
+			terminalEventId: result.terminalEventId
+		};
+	}
+	throw new Error('Worker cancellation returned an invalid receipt');
+}
+
+function workerActivityForStatus(status: ChatTurnStatusV1): string {
+	if (status === 'queued') return 'BuildOS is waiting to start...';
+	if (status === 'running') return 'BuildOS is working...';
+	return '';
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function canonicalText(value: unknown): value is string {
+	return typeof value === 'string' && value.length > 0 && value === value.trim();
 }
 
 export function createAgentChatStreamController(

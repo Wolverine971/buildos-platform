@@ -2,7 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import {
 	shouldHideMergedToolOutcomeEvent,
+	toolDisplayArguments,
 	toolDisplayName,
+	toolDisplayResult,
 	toolLifecycleDisplayState
 } from './chat-session-audit-tool-lifecycle';
 import type { AuditTimelineEvent } from './chat-session-audit-types';
@@ -78,5 +80,22 @@ describe('chat-session-audit-tool-lifecycle', () => {
 				trace_entry: { gateway_op: 'project.search' }
 			})
 		).toBe('project.search');
+	});
+
+	it('recovers request and response previews from assistant message traces', () => {
+		const payload = {
+			source: 'assistant_message_metadata',
+			trace_entry: {
+				tool_name: 'tool_search',
+				arguments_preview: '{"query":"read gmail email inbox","group":"email"}',
+				result_preview:
+					'{"type":"tool_search_results","query":"read gmail email inbox","total_matches":3}'
+			}
+		};
+
+		expect(toolDisplayArguments(payload)).toBe(
+			'{"query":"read gmail email inbox","group":"email"}'
+		);
+		expect(toolDisplayResult(payload)).toContain('"total_matches":3');
 	});
 });

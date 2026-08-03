@@ -4,7 +4,8 @@ import type {
 	AgentSSEMessage,
 	ChatAttachmentRef,
 	ChatContextType,
-	ChatSession
+	ChatSession,
+	TurnHandleV1
 } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { StreamCallbacks, SSEProcessorOptions } from '$lib/utils/sse-processor';
@@ -160,6 +161,9 @@ function createHarness(
 		const url = String(input);
 		if (url.includes('/cancel')) {
 			cancelFetchCalls.push({ input, init });
+			if (url.includes('/api/agent/v2/turns/')) {
+				return Response.json({ success: true, data: { outcome: 'cancel_requested' } });
+			}
 		} else {
 			streamFetchCalls.push({ input, init });
 		}
@@ -322,6 +326,20 @@ function createHarness(
 
 function parseBody(call: { init?: RequestInit }): Record<string, any> {
 	return JSON.parse(String(call.init?.body ?? '{}'));
+}
+
+function workerHandle(
+	overrides: Partial<Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>> = {}
+): Extract<TurnHandleV1, { executionMode: 'worker_realtime' }> {
+	return {
+		contractVersion: 'agentic_chat_worker_v1',
+		executionMode: 'worker_realtime',
+		streamRunId: 'worker-stream-1',
+		clientTurnId: 'worker-client-1',
+		sessionId: 'd2000000-0000-4000-8000-000000000001',
+		turnRunId: 'd4000000-0000-4000-8000-000000000001',
+		...overrides
+	};
 }
 
 describe('AgentChatStreamController', () => {
@@ -897,23 +915,49 @@ describe('AgentChatStreamController', () => {
 		expect(h.reconcileTurnFromSession).not.toHaveBeenCalled();
 	});
 
-	it('does not route a worker handle through the legacy cancellation endpoint', async () => {
+	it('routes a worker handle only through the owned worker cancellation endpoint', async () => {
 		const h = createHarness();
 
-		await expect(
-			h.controller.cancelTurn(
-				{
-					contractVersion: 'agentic_chat_worker_v1',
-					executionMode: 'worker_realtime',
-					streamRunId: 'worker-stream-1',
-					clientTurnId: 'worker-client-1',
-					sessionId: 'session-1',
-					turnRunId: 'turn-run-1'
-				},
-				'user_cancelled'
-			)
-		).rejects.toThrow('Worker Realtime transport is not enabled during Phase 1');
-		expect(h.cancelFetchCalls).toHaveLength(0);
+		await expect(h.controller.cancelTurn(workerHandle(), 'user_cancelled')).resolves.toEqual({
+			outcome: 'cancel_requested'
+		});
+		expect(h.cancelFetchCalls).toHaveLength(1);
+		expect(String(h.cancelFetchCalls[0]?.input)).toBe(
+			'/api/agent/v2/turns/d4000000-0000-4000-8000-000000000001/cancel'
+		);
+		expect(parseBody(h.cancelFetchCalls[0]!)).toEqual({ reason: 'user_cancelled' });
+	});
+
+	it('keeps a worker turn active until durable terminal truth follows cancellation', async () => {
+		const h = createHarness();
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'running');
+
+		await h.controller.stopGeneration('user_cancelled');
+
+		expect(h.haptic).toHaveBeenCalledWith('heavy');
+		expect(h.cancelFetchCalls).toHaveLength(1);
+		expect(h.controller.lastCancelResult).toEqual({ outcome: 'cancel_requested' });
+		expect(h.controller.activeTurnHandle).toEqual(handle);
+		expect(h.controller.isStreaming).toBe(true);
+		expect(h.controller.currentActivity).toBe('Stopping response...');
+
+		h.controller.finishWorkerTurn(handle, 'cancelled');
+		expect(h.controller.activeTurnHandle).toBeNull();
+		expect(h.controller.isStreaming).toBe(false);
+		expect(h.controller.currentActivity).toBe('');
+	});
+
+	it('does not start a legacy stream while an adopted worker turn is active', async () => {
+		const h = createHarness({ inputValue: 'do not double-dispatch' });
+		h.controller.adoptWorkerTurn(workerHandle(), 'queued');
+
+		await h.controller.sendMessage();
+
+		expect(h.controller.error).toBe('BuildOS is still finishing the latest response.');
+		expect(h.inputValue).toBe('do not double-dispatch');
+		expect(h.messages).toHaveLength(0);
+		expect(h.streamFetchCalls).toHaveLength(0);
 	});
 
 	it('supersedes an active stream before sending a second message', async () => {

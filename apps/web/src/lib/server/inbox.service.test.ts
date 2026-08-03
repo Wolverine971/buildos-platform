@@ -827,6 +827,62 @@ describe('inbox service', () => {
 		).toHaveLength(1);
 	});
 
+	it('hydrates user-owned integration attention without routing it through proposal sync', async () => {
+		const inboxItem = {
+			id: 'inbox-gmail-reconnect',
+			source_type: 'integration_attention',
+			source_ref_id: 'connection-1',
+			source_status: 'reconnect_required',
+			user_id: 'user-1',
+			project_id: null,
+			audience: 'user',
+			status: 'pending',
+			title: 'Reconnect Work',
+			summary: 'Reconnect Gmail read-only access.',
+			risk_tier: 2,
+			action_kinds: ['reconnect', 'snooze', 'manage'],
+			expires_at: null,
+			created_at: '2026-08-03T16:00:00.000Z'
+		};
+		const { supabase } = createSupabaseMock({
+			inbox_items: [inboxItem],
+			user_email_connections: [
+				{
+					id: 'connection-1',
+					user_id: 'user-1',
+					email_address: 'work@example.com',
+					account_label: 'Work',
+					status: 'reconnect_required',
+					read_enabled: false
+				}
+			]
+		});
+
+		const result = await listInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			sourceType: 'integration_attention',
+			limit: 20,
+			includePayload: true
+		});
+
+		expect(result.items[0]).toMatchObject({
+			source_type: 'integration_attention',
+			can_decide: true,
+			decision_disabled_reason: null,
+			source_payload: {
+				id: 'connection-1',
+				email_address: 'work@example.com',
+				account_label: 'Work',
+				status: 'reconnect_required',
+				read_enabled: false
+			}
+		});
+		expect(mocks.syncInboxItemForSource).not.toHaveBeenCalled();
+	});
+
 	it('attaches project audit context to audit child inbox items', async () => {
 		const inboxItem = {
 			id: 'inbox-1',

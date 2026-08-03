@@ -167,4 +167,93 @@ describe('SupabaseQueue per-slot refill', () => {
 			.mock.calls.filter(([functionName]) => functionName === 'claim_pending_jobs');
 		expect(claimCalls).toHaveLength(1);
 	});
+
+	it('exposes the queue row identity and leaves processor-managed lifecycle writes alone', async () => {
+		const chatJob = {
+			...claimedJob(5, 'fast-1'),
+			id: 'd5000000-0000-4000-8000-000000000001',
+			job_type: 'agentic_chat_turn',
+			processing_token: 'd7000000-0000-4000-8000-000000000001'
+		};
+		let claimCount = 0;
+		vi.mocked(supabase.rpc).mockImplementation(async (functionName) => {
+			if (functionName === 'claim_pending_jobs') {
+				claimCount += 1;
+				return { data: claimCount === 1 ? [chatJob] : [], error: null } as never;
+			}
+			return { data: true, error: null } as never;
+		});
+
+		let received: ProcessingJob<TestMetadata> | null = null;
+		const queue = new SupabaseQueue({ batchSize: 1, pollInterval: 60_000 });
+		queue.process<TestMetadata>(
+			'agentic_chat_turn',
+			async (job) => {
+				received = job;
+			},
+			{ queueLifecycle: 'processor_managed' }
+		);
+
+		await queue.start();
+		await vi.waitFor(() => expect(received).not.toBeNull());
+		await vi.waitFor(() => expect(claimCount).toBeGreaterThanOrEqual(2));
+
+		expect(received?.id).toBe(chatJob.queue_job_id);
+		expect(received?.queueRowId).toBe(chatJob.id);
+		expect(
+			vi
+				.mocked(supabase.rpc)
+				.mock.calls.some(
+					([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
+				)
+		).toBe(false);
+		await queue.stop();
+	});
+
+	it('uses a processor-scoped timeout instead of the module-global worker timeout', async () => {
+		const chatJob = {
+			...claimedJob(6, 'fast-1'),
+			id: 'd5000000-0000-4000-8000-000000000002',
+			job_type: 'agentic_chat_turn',
+			processing_token: 'd7000000-0000-4000-8000-000000000002'
+		};
+		let claimCount = 0;
+		vi.mocked(supabase.rpc).mockImplementation(async (functionName) => {
+			if (functionName === 'claim_pending_jobs') {
+				claimCount += 1;
+				return { data: claimCount === 1 ? [chatJob] : [], error: null } as never;
+			}
+			return { data: true, error: null } as never;
+		});
+
+		let aborted = false;
+		const queue = new SupabaseQueue({ batchSize: 1, pollInterval: 60_000 });
+		queue.process<TestMetadata>(
+			'agentic_chat_turn',
+			async (processingJob) => {
+				await new Promise<void>((resolve) => {
+					processingJob.signal.addEventListener(
+						'abort',
+						() => {
+							aborted = true;
+							resolve();
+						},
+						{ once: true }
+					);
+				});
+			},
+			{ queueLifecycle: 'processor_managed', workerTimeoutMs: 20 }
+		);
+
+		await queue.start();
+		await vi.waitFor(() => expect(aborted).toBe(true));
+		expect(
+			vi
+				.mocked(supabase.rpc)
+				.mock.calls.some(
+					([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
+				)
+		).toBe(false);
+		await queue.stop();
+	});
 });

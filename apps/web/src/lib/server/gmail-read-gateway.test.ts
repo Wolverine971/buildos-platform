@@ -176,6 +176,48 @@ describe('GmailReadGateway', () => {
 		);
 	});
 
+	it('force-refreshes once when Gmail rejects an otherwise unexpired access token', async () => {
+		const connectionId = '11111111-1111-4111-8111-111111111111';
+		const { admin } = createAdmin([
+			{
+				id: connectionId,
+				email_address: 'buildos@example.com',
+				account_label: 'BuildOS',
+				status: 'active',
+				read_enabled: true
+			}
+		]);
+		const oauthService = {
+			getAuthorizedReadAccessToken: vi
+				.fn()
+				.mockResolvedValueOnce('stale-token')
+				.mockResolvedValue('refreshed-token')
+		};
+		const providerFetch = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ error: 'invalidCredentials' }, { status: 401 }))
+			.mockResolvedValueOnce(jsonResponse({ messages: [{ id: 'm1', threadId: 't1' }] }))
+			.mockResolvedValueOnce(jsonResponse(metadataMessage('m1', 't1', 1_754_000_000_000)));
+		const gateway = new GmailReadGateway(admin, { oauthService, providerFetch });
+
+		const result = await gateway.searchMessages({
+			userId: 'user-1',
+			connectionIds: [connectionId],
+			query: 'newer_than:7d'
+		});
+
+		expect(result.accounts[0]).toEqual(
+			expect.objectContaining({ status: 'success', messageCount: 1 })
+		);
+		expect(oauthService.getAuthorizedReadAccessToken).toHaveBeenNthCalledWith(
+			2,
+			'user-1',
+			connectionId,
+			{ forceRefresh: true }
+		);
+		expect(providerFetch).toHaveBeenCalledTimes(3);
+	});
+
 	it('continues one account with a bound cursor and returns only the next account cursor', async () => {
 		const connectionId = '11111111-1111-4111-8111-111111111111';
 		const { admin, auditInsert } = createAdmin([

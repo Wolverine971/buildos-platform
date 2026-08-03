@@ -1,0 +1,569 @@
+// apps/worker/src/workers/agentic-chat/executionControl.ts
+import {
+	type AgenticChatExecutionStartRpcResultV1,
+	type AgenticChatRecoveryFailureClassV1,
+	type AgenticChatRecoveryRpcResultV1,
+	type AgenticChatTerminalFinalizeRpcResultV1,
+	type AgenticChatTurnClaimResultV1,
+	type ChatTurnStatusV1,
+	type JsonObject,
+	createAgentStreamEventIdV1
+} from '@buildos/shared-types';
+
+type RpcError = { code?: string; message: string };
+type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }>;
+
+export type AgenticChatExecutionRpcClient = {
+	rpc(name: string, args: Record<string, unknown>): RpcResponse;
+};
+
+export type AgenticChatExecutionIdentityV1 = {
+	turnRunId: string;
+	queueJobId: string;
+	processingToken: string;
+};
+
+export type AgenticChatTerminalFinalizeInputV1 = AgenticChatExecutionIdentityV1 & {
+	userId: string;
+	executionGeneration: number;
+	status: 'completed' | 'failed' | 'cancelled';
+	finishedReason: string;
+	failureCode: string | null;
+	assistantMessageId: string | null;
+	assistantText: string;
+	assistantMetadata: JsonObject;
+	promptTokens: number | null;
+	completionTokens: number | null;
+	totalTokens: number | null;
+	projection: JsonObject;
+	eventPayload: JsonObject;
+};
+
+export type AgenticChatExecutionControlPortV1 = {
+	claim(input: AgenticChatExecutionIdentityV1): Promise<AgenticChatTurnClaimResultV1>;
+	begin(
+		input: AgenticChatExecutionIdentityV1 & { executionGeneration: number }
+	): Promise<AgenticChatExecutionStartRpcResultV1>;
+	recover(
+		input: AgenticChatExecutionIdentityV1 & {
+			executionGeneration: number;
+			failureClass: AgenticChatRecoveryFailureClassV1;
+			errorMessage: string | null;
+		}
+	): Promise<AgenticChatRecoveryRpcResultV1>;
+	finalize(
+		input: AgenticChatTerminalFinalizeInputV1
+	): Promise<AgenticChatTerminalFinalizeRpcResultV1>;
+	completeQueueJob(input: {
+		queueJobId: string;
+		processingToken: string;
+		result: JsonObject;
+	}): Promise<boolean>;
+};
+
+export class AgenticChatExecutionControlRpcError extends Error {
+	constructor(
+		readonly rpcName: string,
+		readonly code: string,
+		message: string
+	) {
+		super(`${rpcName} failed${code ? ` (${code})` : ''}: ${message}`);
+		this.name = 'AgenticChatExecutionControlRpcError';
+	}
+}
+
+export class AgenticChatExecutionControlProtocolError extends Error {
+	constructor(message: string) {
+		super(`Invalid Agentic Chat execution-control receipt: ${message}`);
+		this.name = 'AgenticChatExecutionControlProtocolError';
+	}
+}
+
+type CommonExecutionReceipt = Record<string, unknown> & {
+	turn_run_id: string;
+	queue_job_id: string;
+	session_id: string;
+	user_id: string;
+	correlation_id: string;
+	execution_generation: number;
+	status: ChatTurnStatusV1;
+};
+
+type CommonTerminalReceipt = Omit<CommonExecutionReceipt, 'correlation_id'>;
+
+export class SupabaseAgenticChatExecutionControlAdapter
+	implements AgenticChatExecutionControlPortV1
+{
+	constructor(private readonly client: AgenticChatExecutionRpcClient) {}
+
+	async claim(input: AgenticChatExecutionIdentityV1): Promise<AgenticChatTurnClaimResultV1> {
+		validateExecutionIdentity(input);
+		const value = await this.call('claim_agentic_chat_turn', {
+			p_turn_run_id: input.turnRunId,
+			p_queue_job_id: input.queueJobId,
+			p_processing_token: input.processingToken
+		});
+		return parseClaimReceipt(value, input);
+	}
+
+	async begin(
+		input: AgenticChatExecutionIdentityV1 & { executionGeneration: number }
+	): Promise<AgenticChatExecutionStartRpcResultV1> {
+		validateExecutionIdentity(input);
+		positiveInteger(input.executionGeneration, 'executionGeneration');
+		const value = await this.call('begin_agentic_chat_turn_execution', {
+			p_turn_run_id: input.turnRunId,
+			p_queue_job_id: input.queueJobId,
+			p_processing_token: input.processingToken,
+			p_execution_generation: input.executionGeneration
+		});
+		return parseBeginReceipt(value, input);
+	}
+
+	async recover(
+		input: AgenticChatExecutionIdentityV1 & {
+			executionGeneration: number;
+			failureClass: AgenticChatRecoveryFailureClassV1;
+			errorMessage: string | null;
+		}
+	): Promise<AgenticChatRecoveryRpcResultV1> {
+		validateExecutionIdentity(input);
+		positiveInteger(input.executionGeneration, 'executionGeneration');
+		if (!isFailureClass(input.failureClass)) throw protocolError('failure class is invalid');
+		if (input.errorMessage !== null && !canonicalText(input.errorMessage, 2_000)) {
+			throw protocolError('recovery error message is invalid');
+		}
+		const value = await this.call('recover_agentic_chat_turn', {
+			p_turn_run_id: input.turnRunId,
+			p_queue_job_id: input.queueJobId,
+			p_processing_token: input.processingToken,
+			p_execution_generation: input.executionGeneration,
+			p_failure_class: input.failureClass,
+			p_error_message: input.errorMessage
+		});
+		return parseRecoveryReceipt(value, input);
+	}
+
+	async finalize(
+		input: AgenticChatTerminalFinalizeInputV1
+	): Promise<AgenticChatTerminalFinalizeRpcResultV1> {
+		validateExecutionIdentity(input);
+		positiveInteger(input.executionGeneration, 'executionGeneration');
+		canonicalUuid(input.userId, 'userId');
+		if (!canonicalText(input.finishedReason, 256)) {
+			throw protocolError('finished reason is invalid');
+		}
+		if (input.failureCode !== null && !canonicalText(input.failureCode, 128)) {
+			throw protocolError('failure code is invalid');
+		}
+		if (input.status === 'completed' && input.failureCode !== null) {
+			throw protocolError('completed finalization cannot carry a failure code');
+		}
+		if (input.status === 'failed' && input.failureCode === null) {
+			throw protocolError('failed finalization requires a failure code');
+		}
+		if (input.assistantMessageId !== null) {
+			canonicalUuid(input.assistantMessageId, 'assistantMessageId');
+		}
+		if (input.status === 'completed' && input.assistantMessageId === null) {
+			throw protocolError('completed finalization requires an assistant message id');
+		}
+		for (const [name, value] of [
+			['promptTokens', input.promptTokens],
+			['completionTokens', input.completionTokens],
+			['totalTokens', input.totalTokens]
+		] as const) {
+			if (value !== null) nonnegativeInteger(value, name);
+		}
+
+		const value = await this.call('finalize_agentic_chat_turn', {
+			p_turn_run_id: input.turnRunId,
+			p_queue_job_id: input.queueJobId,
+			p_processing_token: input.processingToken,
+			p_execution_generation: input.executionGeneration,
+			p_user_id: input.userId,
+			p_status: input.status,
+			p_finished_reason: input.finishedReason,
+			p_failure_code: input.failureCode,
+			p_assistant_message_id: input.assistantMessageId,
+			p_assistant_text: input.assistantText,
+			p_assistant_metadata: input.assistantMetadata,
+			p_prompt_tokens: input.promptTokens,
+			p_completion_tokens: input.completionTokens,
+			p_total_tokens: input.totalTokens,
+			p_projection: input.projection,
+			p_event_payload: input.eventPayload
+		});
+		return parseFinalizeReceipt(value, input);
+	}
+
+	async completeQueueJob(input: {
+		queueJobId: string;
+		processingToken: string;
+		result: JsonObject;
+	}): Promise<boolean> {
+		canonicalUuid(input.queueJobId, 'queueJobId');
+		canonicalUuid(input.processingToken, 'processingToken');
+		const value = await this.call('complete_queue_job', {
+			p_job_id: input.queueJobId,
+			p_processing_token: input.processingToken,
+			p_result: input.result
+		});
+		if (typeof value !== 'boolean') throw protocolError('queue completion is not boolean');
+		return value;
+	}
+
+	private async call(name: string, args: Record<string, unknown>): Promise<unknown> {
+		const { data, error } = await this.client.rpc(name, args);
+		if (error) {
+			throw new AgenticChatExecutionControlRpcError(name, error.code ?? '', error.message);
+		}
+		if (data === null || data === undefined) throw protocolError(`${name} returned no receipt`);
+		return data;
+	}
+}
+
+function parseClaimReceipt(
+	value: unknown,
+	expected: AgenticChatExecutionIdentityV1
+): AgenticChatTurnClaimResultV1 {
+	const receipt = commonReceipt(value, expected);
+	if (typeof receipt.execution_may_start !== 'boolean') {
+		throw protocolError('claim execution authority is missing');
+	}
+	if (receipt.outcome === 'claimed' || receipt.outcome === 'matching_current_claim') {
+		if (
+			receipt.status !== 'running' ||
+			receipt.execution_generation < 1 ||
+			!canonicalUuidValue(receipt.input_artifact_id) ||
+			!canonicalUuidValue(receipt.user_message_id) ||
+			(receipt.outcome === 'claimed' && receipt.execution_may_start !== true)
+		) {
+			throw protocolError('claim execution receipt is inconsistent');
+		}
+		return {
+			outcome: receipt.outcome,
+			executionMayStart: receipt.execution_may_start,
+			turnRunId: receipt.turn_run_id,
+			queueJobId: receipt.queue_job_id,
+			sessionId: receipt.session_id,
+			userId: receipt.user_id,
+			correlationId: receipt.correlation_id,
+			executionGeneration: receipt.execution_generation,
+			status: 'running',
+			inputArtifactId: receipt.input_artifact_id,
+			userMessageId: receipt.user_message_id
+		} as AgenticChatTurnClaimResultV1;
+	}
+	if (receipt.outcome === 'cancel_requested' || receipt.outcome === 'already_terminal') {
+		if (
+			receipt.execution_may_start !== false ||
+			(receipt.outcome === 'already_terminal' && !isTerminalStatus(receipt.status))
+		) {
+			throw protocolError('non-executable claim receipt is inconsistent');
+		}
+		return {
+			outcome: receipt.outcome,
+			executionMayStart: false,
+			turnRunId: receipt.turn_run_id,
+			queueJobId: receipt.queue_job_id,
+			sessionId: receipt.session_id,
+			userId: receipt.user_id,
+			correlationId: receipt.correlation_id,
+			executionGeneration: receipt.execution_generation,
+			status: receipt.status
+		};
+	}
+	throw protocolError('claim outcome is invalid');
+}
+
+function parseBeginReceipt(
+	value: unknown,
+	expected: AgenticChatExecutionIdentityV1 & { executionGeneration: number }
+): AgenticChatExecutionStartRpcResultV1 {
+	const receipt = commonReceipt(value, expected);
+	if (typeof receipt.invoke_provider !== 'boolean') {
+		throw protocolError('provider authority is missing');
+	}
+	if (receipt.outcome === 'started' || receipt.outcome === 'already_started') {
+		if (
+			receipt.status !== 'running' ||
+			receipt.execution_generation !== expected.executionGeneration ||
+			!isTimestamp(receipt.execution_started_at) ||
+			receipt.invoke_provider !== (receipt.outcome === 'started')
+		) {
+			throw protocolError('provider-start receipt is inconsistent');
+		}
+		return receipt as unknown as AgenticChatExecutionStartRpcResultV1;
+	}
+	if (receipt.outcome === 'stale_generation') {
+		if (
+			receipt.invoke_provider !== false ||
+			receipt.requested_execution_generation !== expected.executionGeneration ||
+			(receipt.status !== 'queued' && receipt.status !== 'running')
+		) {
+			throw protocolError('stale-generation receipt is inconsistent');
+		}
+		return receipt as unknown as AgenticChatExecutionStartRpcResultV1;
+	}
+	if (receipt.outcome === 'cancel_requested' || receipt.outcome === 'already_terminal') {
+		if (
+			receipt.invoke_provider !== false ||
+			(receipt.outcome === 'cancel_requested' && receipt.status !== 'running') ||
+			(receipt.outcome === 'already_terminal' && !isTerminalStatus(receipt.status))
+		) {
+			throw protocolError('non-start provider receipt is inconsistent');
+		}
+		return receipt as unknown as AgenticChatExecutionStartRpcResultV1;
+	}
+	if (receipt.outcome === 'stale_context') {
+		if (receipt.invoke_provider !== false || receipt.status !== 'running') {
+			throw protocolError('stale-context receipt is inconsistent');
+		}
+		return receipt as unknown as AgenticChatExecutionStartRpcResultV1;
+	}
+	throw protocolError('provider-start outcome is invalid');
+}
+
+function parseRecoveryReceipt(
+	value: unknown,
+	expected: AgenticChatExecutionIdentityV1 & {
+		executionGeneration: number;
+		failureClass: AgenticChatRecoveryFailureClassV1;
+	}
+): AgenticChatRecoveryRpcResultV1 {
+	const receipt = commonReceipt(value, expected);
+	if (
+		!RECOVERY_OUTCOMES.has(String(receipt.outcome)) ||
+		typeof receipt.execution_may_retry !== 'boolean' ||
+		!isNullableFailureClass(receipt.failure_code) ||
+		(receipt.outcome === 'retry_scheduled') !== receipt.execution_may_retry ||
+		((receipt.outcome === 'retry_scheduled' || receipt.outcome === 'already_requeued') &&
+			receipt.status !== 'queued') ||
+		((receipt.outcome === 'finalize_failed' ||
+			receipt.outcome === 'finalize_cancelled' ||
+			receipt.outcome === 'effect_reconciliation_required') &&
+			receipt.status !== 'running') ||
+		((receipt.outcome === 'queue_reconciled' || receipt.outcome === 'already_reconciled') &&
+			!isTerminalStatus(receipt.status)) ||
+		(receipt.outcome === 'finalize_cancelled' && receipt.failure_code !== 'cancelled') ||
+		(receipt.outcome === 'finalize_failed' && receipt.failure_code === null) ||
+		(receipt.outcome === 'stale_generation' &&
+			(receipt.execution_generation === expected.executionGeneration ||
+				receipt.requested_execution_generation !== expected.executionGeneration))
+	) {
+		throw protocolError('recovery receipt is inconsistent');
+	}
+	return receipt as unknown as AgenticChatRecoveryRpcResultV1;
+}
+
+function parseFinalizeReceipt(
+	value: unknown,
+	expected: AgenticChatTerminalFinalizeInputV1
+): AgenticChatTerminalFinalizeRpcResultV1 {
+	const receipt = commonTerminalReceipt(value, expected);
+	if (receipt.outcome === 'finalized' || receipt.outcome === 'already_terminal') {
+		if (
+			!isTerminalStatus(receipt.status) ||
+			!positiveIntegerValue(receipt.execution_generation) ||
+			(receipt.outcome === 'finalized' &&
+				receipt.execution_generation !== expected.executionGeneration) ||
+			(receipt.outcome === 'finalized' && receipt.status !== expected.status) ||
+			!canonicalText(receipt.finished_reason, 256) ||
+			!isNullableCanonicalText(receipt.failure_code, 128) ||
+			!nullableUuid(receipt.assistant_message_id) ||
+			!positiveIntegerValue(receipt.terminal_sequence_index) ||
+			receipt.terminal_event_id !==
+				createAgentStreamEventIdV1(
+					expected.turnRunId,
+					receipt.execution_generation,
+					receipt.terminal_sequence_index
+				) ||
+			!isTimestamp(receipt.terminalized_at) ||
+			(receipt.status === 'completed' &&
+				(receipt.assistant_message_id === null || receipt.failure_code !== null)) ||
+			(receipt.status === 'failed' && receipt.failure_code === null)
+		) {
+			throw protocolError('terminal receipt is inconsistent');
+		}
+		return receipt as unknown as AgenticChatTerminalFinalizeRpcResultV1;
+	}
+	if (receipt.outcome === 'stale_generation') {
+		if (
+			receipt.requested_execution_generation !== expected.executionGeneration ||
+			(receipt.status !== 'queued' && receipt.status !== 'running')
+		) {
+			throw protocolError('terminal stale-generation receipt is inconsistent');
+		}
+		return receipt as unknown as AgenticChatTerminalFinalizeRpcResultV1;
+	}
+	if (receipt.outcome === 'cancel_requested') {
+		if (
+			receipt.status !== 'running' ||
+			!isTimestamp(receipt.cancel_requested_at) ||
+			!isCancelReason(receipt.cancel_reason)
+		) {
+			throw protocolError('terminal cancellation receipt is inconsistent');
+		}
+		return receipt as unknown as AgenticChatTerminalFinalizeRpcResultV1;
+	}
+	throw protocolError('terminal outcome is invalid');
+}
+
+function commonReceipt(
+	value: unknown,
+	expected: Pick<AgenticChatExecutionIdentityV1, 'turnRunId' | 'queueJobId'>
+): CommonExecutionReceipt {
+	const receipt = requireRecord(value, 'receipt');
+	if (
+		receipt.turn_run_id !== expected.turnRunId ||
+		receipt.queue_job_id !== expected.queueJobId ||
+		!canonicalUuidValue(receipt.session_id) ||
+		!canonicalUuidValue(receipt.user_id) ||
+		!canonicalUuidValue(receipt.correlation_id) ||
+		!nonnegativeIntegerValue(receipt.execution_generation) ||
+		!isTurnStatus(receipt.status)
+	) {
+		throw protocolError('receipt identity or status is invalid');
+	}
+	return receipt as CommonExecutionReceipt;
+}
+
+function commonTerminalReceipt(
+	value: unknown,
+	expected: Pick<AgenticChatExecutionIdentityV1, 'turnRunId' | 'queueJobId'> & {
+		userId: string;
+	}
+): CommonTerminalReceipt {
+	const receipt = requireRecord(value, 'terminal receipt');
+	if (
+		receipt.turn_run_id !== expected.turnRunId ||
+		receipt.queue_job_id !== expected.queueJobId ||
+		receipt.user_id !== expected.userId ||
+		!canonicalUuidValue(receipt.session_id) ||
+		!nonnegativeIntegerValue(receipt.execution_generation) ||
+		!isTurnStatus(receipt.status)
+	) {
+		throw protocolError('terminal receipt identity or status is invalid');
+	}
+	return receipt as CommonTerminalReceipt;
+}
+
+function validateExecutionIdentity(input: AgenticChatExecutionIdentityV1): void {
+	canonicalUuid(input.turnRunId, 'turnRunId');
+	canonicalUuid(input.queueJobId, 'queueJobId');
+	canonicalUuid(input.processingToken, 'processingToken');
+}
+
+function canonicalUuid(value: unknown, name: string): asserts value is string {
+	if (!canonicalUuidValue(value)) throw protocolError(`${name} is not a canonical UUID`);
+}
+
+function canonicalUuidValue(value: unknown): value is string {
+	return typeof value === 'string' && UUID_PATTERN.test(value) && value === value.toLowerCase();
+}
+
+function nullableUuid(value: unknown): value is string | null {
+	return value === null || canonicalUuidValue(value);
+}
+
+function canonicalText(value: unknown, maximum: number): value is string {
+	return (
+		typeof value === 'string' &&
+		value.length > 0 &&
+		value.length <= maximum &&
+		value === value.trim()
+	);
+}
+
+function isNullableCanonicalText(value: unknown, maximum: number): value is string | null {
+	return value === null || canonicalText(value, maximum);
+}
+
+function positiveInteger(value: number, name: string): void {
+	if (!positiveIntegerValue(value)) throw protocolError(`${name} must be positive`);
+}
+
+function positiveIntegerValue(value: unknown): value is number {
+	return Number.isSafeInteger(value) && (value as number) >= 1;
+}
+
+function nonnegativeInteger(value: number, name: string): void {
+	if (!nonnegativeIntegerValue(value)) throw protocolError(`${name} must be nonnegative`);
+}
+
+function nonnegativeIntegerValue(value: unknown): value is number {
+	return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
+function isTimestamp(value: unknown): value is string {
+	return typeof value === 'string' && Number.isFinite(Date.parse(value));
+}
+
+function isTurnStatus(value: unknown): value is ChatTurnStatusV1 {
+	return (
+		value === 'queued' ||
+		value === 'running' ||
+		value === 'completed' ||
+		value === 'failed' ||
+		value === 'cancelled'
+	);
+}
+
+function isTerminalStatus(value: unknown): boolean {
+	return value === 'completed' || value === 'failed' || value === 'cancelled';
+}
+
+function isCancelReason(value: unknown): boolean {
+	return (
+		value === 'user_cancelled' ||
+		value === 'superseded' ||
+		value === 'timeout' ||
+		value === 'operator_cancelled'
+	);
+}
+
+function isFailureClass(value: unknown): value is AgenticChatRecoveryFailureClassV1 {
+	return (
+		typeof value === 'string' && FAILURE_CLASSES.has(value as AgenticChatRecoveryFailureClassV1)
+	);
+}
+
+function isNullableFailureClass(value: unknown): value is AgenticChatRecoveryFailureClassV1 | null {
+	return value === null || isFailureClass(value);
+}
+
+function requireRecord(value: unknown, label: string): Record<string, unknown> {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		throw protocolError(`${label} must be an object`);
+	}
+	return value as Record<string, unknown>;
+}
+
+function protocolError(message: string): AgenticChatExecutionControlProtocolError {
+	return new AgenticChatExecutionControlProtocolError(message);
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const FAILURE_CLASSES = new Set<AgenticChatRecoveryFailureClassV1>([
+	'transient_infra',
+	'provider_throttle',
+	'timeout_pre_start',
+	'permanent',
+	'stale_context',
+	'publisher_overload',
+	'timeout_post_start',
+	'cancelled',
+	'uncertain_external_commit',
+	'unknown'
+]);
+const RECOVERY_OUTCOMES = new Set([
+	'retry_scheduled',
+	'already_requeued',
+	'finalize_failed',
+	'finalize_cancelled',
+	'effect_reconciliation_required',
+	'stale_generation',
+	'queue_reconciled',
+	'already_reconciled'
+]);

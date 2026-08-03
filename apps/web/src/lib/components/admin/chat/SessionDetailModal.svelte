@@ -1,7 +1,9 @@
 <!-- apps/web/src/lib/components/admin/chat/SessionDetailModal.svelte -->
 <script lang="ts">
 	import { Activity, AlertCircle } from 'lucide-svelte';
+	import { tick } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import type { SessionFlowTarget } from '$lib/services/admin/chat-session-flow-targets';
 	import type {
 		AuditTimelineType as TimelineType,
 		ChatSessionAuditPayload as SessionDetailPayload,
@@ -14,6 +16,7 @@
 	import AuditTimeline from './AuditTimeline.svelte';
 	import ConversationReplay from './ConversationReplay.svelte';
 	import LibriPanel from './LibriPanel.svelte';
+	import SessionFlowVisuals from './SessionFlowVisuals.svelte';
 	import SessionMetricsHeader from './SessionMetricsHeader.svelte';
 
 	let {
@@ -73,6 +76,51 @@
 		updateSelectedEvalScenario: (turnRunId: string, value: string) => void;
 		runPromptEval: (turnRunId: string) => void | Promise<void>;
 	} = $props();
+
+	function openDetailsAround(element: HTMLElement, includeDescendants = false): void {
+		let current: HTMLElement | null = element;
+		while (current) {
+			if (current instanceof HTMLDetailsElement) current.open = true;
+			current = current.parentElement;
+		}
+		if (includeDescendants) {
+			element.querySelectorAll('details').forEach((details) => {
+				details.open = true;
+			});
+		}
+	}
+
+	async function revealFlowTarget(target: SessionFlowTarget): Promise<void> {
+		if (target.auditEventId && !expandedEventIds.has(target.auditEventId)) {
+			toggleEventExpansion(target.auditEventId);
+		}
+		await tick();
+
+		let exactTarget = document.getElementById(target.domId);
+		if (!exactTarget && target.kind === 'audit') {
+			resetTimelineFilters();
+			await tick();
+			exactTarget = document.getElementById(target.domId);
+		}
+		const targetElement =
+			exactTarget ??
+			(target.fallbackDomId ? document.getElementById(target.fallbackDomId) : null);
+		if (!targetElement) return;
+
+		openDetailsAround(targetElement, target.kind === 'message');
+		await tick();
+
+		const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		targetElement.scrollIntoView({
+			behavior: reduceMotion ? 'auto' : 'smooth',
+			block: 'center'
+		});
+		const focusTarget =
+			targetElement instanceof HTMLDetailsElement
+				? targetElement.querySelector<HTMLElement>(':scope > summary')
+				: targetElement;
+		focusTarget?.focus({ preventScroll: true });
+	}
 </script>
 
 <Modal
@@ -85,7 +133,7 @@
 >
 	{#if isLoadingDetail}
 		<div class="p-3 space-y-2">
-			{#each Array(8) as _}
+			{#each Array(8) as _, index (index)}
 				<div class="border border-border rounded-lg p-2.5 animate-pulse">
 					<div class="h-3 bg-muted rounded w-1/3 mb-2"></div>
 					<div class="h-2.5 bg-muted rounded w-5/6"></div>
@@ -109,6 +157,13 @@
 			</div>
 
 			<div class="p-3 space-y-4">
+				{#key sessionDetail}
+					<SessionFlowVisuals
+						{sessionDetail}
+						{conversationTurns}
+						onRevealTarget={revealFlowTarget}
+					/>
+				{/key}
 				<ConversationReplay {sessionDetail} {conversationTurns} />
 				<AuditTimeline
 					{visibleTimeline}

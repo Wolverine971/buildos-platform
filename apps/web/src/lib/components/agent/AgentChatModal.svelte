@@ -40,8 +40,11 @@
 		ChatContextType,
 		ChatRole,
 		AgentSSEMessage,
+		AgenticChatReconcileAssistantMessageV1,
 		ContextUsageSnapshot,
-		SkillActivityEvent
+		SkillActivityEvent,
+		ChatTurnStatusV1,
+		TurnHandleV1
 	} from '@buildos/shared-types';
 	import {
 		requestAgentToAgentMessage,
@@ -110,6 +113,12 @@
 		type SessionBootstrapTarget,
 		type StreamTurnReconcileRequest
 	} from './agent-chat-stream-controller.svelte';
+	import {
+		createAgenticChatWorkerRealtimeRuntime,
+		type AgenticChatWorkerRealtimeRuntimeClient
+	} from '$lib/services/agentic-chat-v2/worker-realtime-runtime';
+	import { AgenticChatWorkerTurnAdoption } from '$lib/services/agentic-chat-v2/worker-turn-adoption';
+	import { createAgentChatWorkerUiAdapter } from './agent-chat-worker-ui-adapter';
 	import {
 		downloadAgentChatStepsMarkdown,
 		downloadAgentChatSupportPacketMarkdown
@@ -284,7 +293,27 @@
 	// check reloads the thread only if realtime didn't deliver the message — so
 	// the result always shows even if chat_messages isn't in the publication.
 	type ChatMessageRow = Database['public']['Tables']['chat_messages']['Row'];
+	type WorkerTurnHandle = Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;
 	const supabaseClient = getContext<SupabaseClient | undefined>('supabase');
+	let workerAdoption: AgenticChatWorkerTurnAdoption | null = null;
+	let workerRealtimeUserId: string | null = null;
+	const workerRealtime = supabaseClient
+		? createAgenticChatWorkerRealtimeRuntime({
+				client: supabaseClient as unknown as AgenticChatWorkerRealtimeRuntimeClient,
+				onUserChange: (userId) => {
+					const changedAuthenticatedUser =
+						workerRealtimeUserId !== null && workerRealtimeUserId !== userId;
+					workerRealtimeUserId = userId;
+					// Initial authentication establishes ownership; it must not race and
+					// erase a same-mount discovery result. Actual identity changes and
+					// sign-out always invalidate every adopted handle.
+					if (changedAuthenticatedUser) workerAdoption?.clear('auth_changed');
+				},
+				onError: (error) => {
+					if (dev) console.warn('[AgentChat] Worker Realtime runtime degraded', error);
+				}
+			})
+		: null;
 	let chatMessagesChannel: RealtimeChannel | null = null;
 	let subscribedSessionId: string | null = null;
 	const seenTerminalAgentRunIds = new Set<string>();
@@ -353,6 +382,35 @@
 	$effect(() => {
 		const sid = currentSession?.id;
 		if (sid) subscribeSessionMessages(sid);
+	});
+
+	// Establish the standing per-user worker delivery path at chat-surface mount.
+	// The runtime is intentionally handle-free until server-authoritative worker
+	// admission lands; mounting it cannot change the existing legacy SSE Send path.
+	$effect(() => {
+		if (!browser || !isSurfaceActive || !workerRealtime) return;
+		void workerRealtime.start();
+		return () => {
+			void workerRealtime.stop();
+		};
+	});
+
+	// Owned active-session discovery is the only reload/second-tab adoption path.
+	// It cannot select worker transport or construct a handle from local state.
+	$effect(() => {
+		const sessionId = currentSession?.id;
+		if (!browser || !isSurfaceActive || !sessionId || !workerAdoption) return;
+		const controller = new AbortController();
+		void workerAdoption
+			.discoverSession(sessionId, { signal: controller.signal })
+			.catch((error) => {
+				if (controller.signal.aborted) return;
+				if (dev) console.warn('[AgentChat] Worker turn discovery degraded', error);
+			});
+		return () => {
+			controller.abort();
+			workerAdoption?.releaseSession(sessionId);
+		};
 	});
 
 	// Detect newly-terminal session runs and arm the fallback reload.
@@ -995,6 +1053,7 @@
 		cancelSessionBootstrap();
 		turnReconciliationRequestId += 1;
 
+		if (currentSession?.id) workerAdoption?.releaseSession(currentSession.id);
 		messages = [];
 		persistedTimelineItems = [];
 		activeChatTab = 'chat';
@@ -1978,6 +2037,8 @@
 		}
 		isLoadingSession = false;
 		stream.disposeActiveStream({ reconcile: false });
+		workerAdoption?.clear('teardown');
+		void workerRealtime?.stop();
 		voice.cleanup();
 		attachments.cleanup();
 		void unsubscribeSessionMessages();
@@ -2267,6 +2328,41 @@
 
 	handleSSEMessage = createSSEHandler(sseHandlerDeps);
 
+	workerAdoption = workerRealtime
+		? new AgenticChatWorkerTurnAdoption({
+				runtime: workerRealtime,
+				createObserver: ({ handle, onTerminal }) =>
+					createAgentChatWorkerUiAdapter({
+						handle,
+						onTerminal,
+						port: {
+							beginGeneration: beginWorkerGeneration,
+							replaceAssistantSnapshot: replaceWorkerAssistantSnapshot,
+							appendAssistantText: appendWorkerAssistantText,
+							applySemanticEvent: (event) => handleSSEMessage(event),
+							updateTurnState: ({ handle: workerHandle, status, currentActivity }) =>
+								stream.updateWorkerTurnState(workerHandle, status, currentActivity),
+							finishTurn: finishWorkerTurn,
+							onError: (error) => {
+								if (dev)
+									console.warn(
+										'[AgentChat] Worker UI projection degraded',
+										error
+									);
+							}
+						}
+					}),
+				onAdopted: ({ descriptor }) => {
+					if (descriptor.handle.sessionId !== currentSession?.id) return;
+					stream.adoptWorkerTurn(descriptor.handle, descriptor.status);
+				},
+				onReleased: ({ handle }) => stream.releaseWorkerTurn(handle),
+				onError: (error) => {
+					if (dev) console.warn('[AgentChat] Worker handle adoption degraded', error);
+				}
+			})
+		: null;
+
 	function describeFocus(focus: ProjectFocus | null): string {
 		if (!focus) return 'project workspace';
 		if (focus.focusType === 'project-wide') {
@@ -2305,6 +2401,158 @@
 			timestamp: new Date()
 		};
 		messages = [...messages, createdMessage];
+	}
+
+	function beginWorkerGeneration(input: {
+		handle: WorkerTurnHandle;
+		executionGeneration: number;
+		status: ChatTurnStatusV1;
+	}) {
+		flushAssistantText();
+		pendingToolResults.clear();
+		processedToolCallIds.clear();
+		processedToolResultIds.clear();
+		handleSSEMessage.resetTurnState();
+
+		const blockId = `worker-thinking:${input.handle.turnRunId}:${input.executionGeneration}`;
+		messages = messages.filter((message) => {
+			if (message.id === `active-turn-${input.handle.turnRunId}`) return false;
+			return !(
+				message.type === 'thinking_block' &&
+				message.metadata?.turn_run_id === input.handle.turnRunId &&
+				message.id !== blockId
+			);
+		});
+		const existingIndex = messages.findIndex((message) => message.id === blockId);
+		if (existingIndex >= 0) {
+			currentThinkingBlockId = blockId;
+			return;
+		}
+		const thinkingBlock: ThinkingBlockMessage = {
+			id: blockId,
+			type: 'thinking_block',
+			role: 'assistant',
+			content:
+				input.status === 'queued'
+					? 'BuildOS is waiting to start...'
+					: 'BuildOS is working...',
+			activities: [],
+			status: 'active',
+			agentState: 'thinking',
+			isCollapsed: false,
+			timestamp: new Date(),
+			created_at: new Date().toISOString(),
+			metadata: {
+				turn_run_id: input.handle.turnRunId,
+				stream_run_id: input.handle.streamRunId,
+				client_turn_id: input.handle.clientTurnId,
+				execution_generation: input.executionGeneration,
+				execution_mode: 'worker_realtime'
+			}
+		};
+		messages = [...messages, thinkingBlock];
+		currentThinkingBlockId = blockId;
+	}
+
+	function replaceWorkerAssistantSnapshot(input: {
+		handle: WorkerTurnHandle;
+		executionGeneration: number;
+		text: string;
+		assistantMessage: AgenticChatReconcileAssistantMessageV1 | null;
+		status: ChatTurnStatusV1;
+	}) {
+		flushAssistantText();
+		const existingIndex = messages.findIndex(
+			(message) =>
+				message.role === 'assistant' &&
+				message.type === 'assistant' &&
+				message.metadata?.turn_run_id === input.handle.turnRunId
+		);
+		if (existingIndex < 0 && !input.text && !input.assistantMessage) {
+			currentAssistantMessageId = `worker-assistant:${input.handle.turnRunId}`;
+			currentAssistantMessageIndex = null;
+			return;
+		}
+
+		const existing = existingIndex >= 0 ? messages[existingIndex] : null;
+		const messageId =
+			input.assistantMessage?.id ??
+			existing?.id ??
+			`worker-assistant:${input.handle.turnRunId}`;
+		const createdAt =
+			input.assistantMessage?.created_at ?? existing?.created_at ?? new Date().toISOString();
+		const nextMessage: UIMessage = {
+			...(existing ?? {}),
+			id: messageId,
+			session_id: input.handle.sessionId,
+			role: 'assistant',
+			type: 'assistant',
+			content: input.text,
+			created_at: createdAt ?? undefined,
+			timestamp: createdAt ? new Date(createdAt) : new Date(),
+			metadata: {
+				...(existing?.metadata ?? {}),
+				...(input.assistantMessage?.metadata ?? {}),
+				turn_run_id: input.handle.turnRunId,
+				stream_run_id: input.handle.streamRunId,
+				client_turn_id: input.handle.clientTurnId,
+				execution_generation: input.executionGeneration,
+				execution_mode: 'worker_realtime'
+			}
+		};
+		if (existingIndex >= 0) {
+			const nextMessages = [...messages];
+			nextMessages[existingIndex] = nextMessage;
+			messages = nextMessages;
+			currentAssistantMessageIndex = existingIndex;
+		} else {
+			currentAssistantMessageIndex = messages.length;
+			messages = [...messages, nextMessage];
+		}
+		currentAssistantMessageId = messageId;
+		if (input.status !== 'queued' && input.status !== 'running') {
+			currentAssistantMessageId = null;
+			currentAssistantMessageIndex = null;
+		}
+	}
+
+	function appendWorkerAssistantText(input: {
+		handle: WorkerTurnHandle;
+		executionGeneration: number;
+		text: string;
+	}) {
+		const existingIndex = messages.findIndex(
+			(message) =>
+				message.role === 'assistant' &&
+				message.type === 'assistant' &&
+				message.metadata?.turn_run_id === input.handle.turnRunId
+		);
+		if (existingIndex >= 0) {
+			const existing = messages[existingIndex]!;
+			const nextMessages = [...messages];
+			nextMessages[existingIndex] = { ...existing, content: existing.content + input.text };
+			messages = nextMessages;
+			currentAssistantMessageId = existing.id;
+			currentAssistantMessageIndex = existingIndex;
+			return;
+		}
+		replaceWorkerAssistantSnapshot({
+			...input,
+			text: input.text,
+			assistantMessage: null,
+			status: 'running'
+		});
+	}
+
+	function finishWorkerTurn(input: {
+		handle: WorkerTurnHandle;
+		status: 'completed' | 'failed' | 'cancelled';
+		finishedReason: string | null;
+		failureCode: string | null;
+	}) {
+		currentAssistantMessageId = null;
+		currentAssistantMessageIndex = null;
+		stream.finishWorkerTurn(input.handle, input.status);
 	}
 
 	function normalizeMessageContent(value: unknown): string {

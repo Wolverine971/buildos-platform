@@ -10,7 +10,8 @@ export type InboxSourceType =
 	| 'project_audit'
 	| 'calendar_suggestion'
 	| 'profile_fragment'
-	| 'contact_merge_candidate';
+	| 'contact_merge_candidate'
+	| 'integration_attention';
 
 export type InboxItemStatus =
 	| 'pending'
@@ -58,7 +59,11 @@ const INBOX_REVIEW_EXPIRY_MS_BY_SOURCE: Record<InboxSourceType, number> = {
 	project_audit: 14 * DAY_MS,
 	calendar_suggestion: 7 * DAY_MS,
 	profile_fragment: 30 * DAY_MS,
-	contact_merge_candidate: 30 * DAY_MS
+	contact_merge_candidate: 30 * DAY_MS,
+	// Integration attention is trigger-managed and intentionally has no review
+	// expiry. This value is only a type-safe fallback if it is ever routed
+	// through the generic mapper before getting a dedicated mapper.
+	integration_attention: 30 * DAY_MS
 };
 // Audit children carry decisions distilled from a full audit; give them the
 // audit's window, not the light-loop one.

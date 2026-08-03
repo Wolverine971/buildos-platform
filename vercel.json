@@ -49,6 +49,10 @@
 			"schedule": "15 * * * *"
 		},
 		{
+			"path": "/api/cron/gmail-connection-health",
+			"schedule": "45 * * * *"
+		},
+		{
 			"path": "/api/cron/account-deletions",
 			"schedule": "0 * * * *"
 		}

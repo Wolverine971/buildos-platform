@@ -1,12 +1,15 @@
 <!-- apps/web/src/lib/components/dashboard/DashboardInboxModal.svelte -->
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import {
 		CalendarDays,
 		ClipboardCheck,
 		FileText,
 		Inbox,
 		LoaderCircle,
+		Mail,
+		RefreshCw,
+		Settings,
 		Sparkles
 	} from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -26,6 +29,7 @@
 		failInboxDecisionNotification,
 		startInboxDecisionNotification
 	} from '$lib/services/inbox-decision-notification.service';
+	import { startGmailOAuth } from '$lib/services/gmail-oauth.client';
 	import { setAiInboxRemainingCount } from '$lib/stores/aiInboxCount.store';
 	import { toastService } from '$lib/stores/toast.store';
 	import { aiInboxPerformance } from '$lib/utils/ai-inbox-performance';
@@ -41,7 +45,8 @@
 		| 'agent_run'
 		| 'project_suggestion'
 		| 'project_audit'
-		| 'calendar_suggestion';
+		| 'calendar_suggestion'
+		| 'integration_attention';
 	type InboxItemStatus = 'pending' | 'deciding' | 'decided' | 'blocked' | 'expired' | 'snoozed';
 	type CloseSummary = { hasChanges: boolean; changedCount: number; remainingCount: number };
 	type AgentChatModalLazy =
@@ -86,6 +91,14 @@
 		suggested_description?: string | null;
 		suggested_name?: string | null;
 		suggested_tasks?: unknown;
+	};
+
+	type IntegrationAttentionPayload = {
+		id?: string;
+		email_address?: string | null;
+		account_label?: string | null;
+		status?: string | null;
+		read_enabled?: boolean | null;
 	};
 
 	type CalendarTaskPreview = {
@@ -331,6 +344,11 @@
 		return sourcePayload<CalendarSuggestionPayload & Record<string, unknown>>(item);
 	}
 
+	function integrationAttention(item: InboxItem): IntegrationAttentionPayload | null {
+		if (item.source_type !== 'integration_attention') return null;
+		return sourcePayload<IntegrationAttentionPayload & Record<string, unknown>>(item);
+	}
+
 	function projectLoopRunContext(item: InboxItem): ProjectLoopRunContext | null {
 		return item.source_context?.project_loop_run ?? null;
 	}
@@ -465,6 +483,7 @@
 		if (item.source_type === 'agent_run') return 'Agent proposal';
 		if (item.source_type === 'project_audit') return 'Project audit';
 		if (item.source_type === 'calendar_suggestion') return 'Calendar suggestion';
+		if (item.source_type === 'integration_attention') return 'Gmail access';
 		return 'Project review';
 	}
 
@@ -472,6 +491,7 @@
 		if (item.source_type === 'agent_run') return Sparkles;
 		if (item.source_type === 'project_suggestion') return ClipboardCheck;
 		if (item.source_type === 'calendar_suggestion') return CalendarDays;
+		if (item.source_type === 'integration_attention') return Mail;
 		return FileText;
 	}
 
@@ -525,6 +545,7 @@
 	}
 
 	function canChat(item: InboxItem): boolean {
+		if (item.source_type === 'integration_attention') return false;
 		return (
 			canDecide(item) ||
 			Boolean(agentFailedChangeSet(item)) ||
@@ -887,8 +908,33 @@
 		}
 	}
 
+	async function reconnectIntegration(item: InboxItem) {
+		if (item.source_type !== 'integration_attention' || pendingIds.has(item.id)) return;
+		pendingIds = new Set(pendingIds).add(item.id);
+		try {
+			const connection = await startGmailOAuth({
+				connectionId: item.source_ref_id,
+				fallbackRedirectPath: '/profile?tab=email&gmail=1'
+			});
+			if (removeItemFromInbox(item)) changedCount += 1;
+			toastService.success(`${connection.accountLabel} reconnected with read-only access`);
+			void loadInbox({ silent: true });
+		} catch (err) {
+			toastService.error(err instanceof Error ? err.message : 'Gmail reconnect failed');
+			void loadInbox({ silent: true });
+		} finally {
+			const next = new Set(pendingIds);
+			next.delete(item.id);
+			pendingIds = next;
+		}
+	}
+
 	function handleAgentRunApplied(item: InboxItem) {
 		if (removeItemFromInbox(item)) changedCount += 1;
+	}
+
+	function handleInboxChanged() {
+		if (isOpen) void loadInbox({ silent: true });
 	}
 
 	function close() {
@@ -924,6 +970,11 @@
 		if (!activeGroupKey || !groupedItems.some((group) => group.key === activeGroupKey)) {
 			activeGroupKey = groupedItems[0]?.key ?? null;
 		}
+	});
+
+	onMount(() => {
+		window.addEventListener('buildosaiinboxchanged', handleInboxChanged);
+		return () => window.removeEventListener('buildosaiinboxchanged', handleInboxChanged);
 	});
 </script>
 
@@ -1116,6 +1167,7 @@
 								{@const changeSet = agentChangeSet(item)}
 								{@const failedChangeSet = agentFailedChangeSet(item)}
 								{@const calendar = calendarSuggestion(item)}
+								{@const integration = integrationAttention(item)}
 								{@const reviewRun = projectLoopRunContext(item)}
 								{@const audit = projectAuditContext(item)}
 								{@const reviewRunText = reviewRunLabel(reviewRun)}
@@ -1373,7 +1425,42 @@
 											{/if}
 										</div>
 
-										{#if canDecide(item) && !changeSet}
+										{#if item.source_type === 'integration_attention'}
+											<div
+												class="flex w-full shrink-0 flex-col gap-2 sm:w-auto"
+											>
+												<Button
+													variant="primary"
+													size="sm"
+													loading={pendingIds.has(item.id)}
+													disabled={pendingIds.has(item.id)}
+													onclick={() => reconnectIntegration(item)}
+													class="min-h-11"
+												>
+													<RefreshCw class="mr-2 h-4 w-4" />
+													Reconnect
+												</Button>
+												<Button
+													variant="outline"
+													size="sm"
+													disabled={pendingIds.has(item.id)}
+													onclick={() => snooze(item)}
+													class="min-h-11"
+												>
+													Snooze 1 day
+												</Button>
+												<a
+													href="/profile?tab=email"
+													class="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+													title={integration?.email_address
+														? `Manage ${integration.email_address}`
+														: 'Manage Gmail accounts'}
+												>
+													<Settings class="mr-2 h-4 w-4" />
+													Manage accounts
+												</a>
+											</div>
+										{:else if canDecide(item) && !changeSet}
 											{#if isFinding(item)}
 												<InboxFindingControls
 													idPrefix={`dashboard-inbox-${item.id}`}

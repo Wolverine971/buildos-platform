@@ -6,18 +6,24 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@buildos/shared-types';
+import type { Database, Json } from '@buildos/shared-types';
 import type { EntityKind, RelationshipType } from './edge-direction';
 import {
 	applyContainmentEdges,
-	fetchContainmentParents,
+	applyPlannedContainmentEdges,
+	fetchContainmentEdges,
 	normalizeParentRefs,
+	type ContainmentEdge,
 	type ParentRef
 } from './containment-organizer';
 import {
+	buildRelationshipMutationPlan,
+	buildSemanticMutationEdges,
 	resolveConnections,
 	type ConnectionOptions,
-	type ConnectionRef
+	type ConnectionRef,
+	type PlannedSemanticMutation,
+	type RelationshipMutationPlan
 } from './relationship-resolver';
 
 export const ENTITY_TABLES = {
@@ -58,6 +64,8 @@ export type AutoOrganizeRequest = {
 	supabase: Supabase;
 	projectId: string;
 	entity: { kind: EntityKind; id: string };
+	/** The caller already validated every reference in this exact request. */
+	referencesValidated?: boolean;
 	containment?: {
 		parents?: ParentRef[];
 		allowProjectFallback?: boolean;
@@ -75,6 +83,8 @@ export type AutoOrganizeConnectionsRequest = {
 	entity: { kind: EntityKind; id: string };
 	connections?: ConnectionRef[];
 	options?: ConnectionOptions;
+	/** Skip duplicate validation after a pre-insert/pre-update validation guard. */
+	referencesValidated?: boolean;
 };
 
 export function toParentRefs(input?: {
@@ -91,6 +101,10 @@ export async function assertEntityRefsInProject(params: {
 	allowProject?: boolean;
 }): Promise<void> {
 	const { supabase, projectId, refs, allowProject = true } = params;
+	const refsByKind = new Map<
+		Exclude<EntityKind, 'project'>,
+		{ table: (typeof ENTITY_TABLES)[Exclude<EntityKind, 'project'>]; ids: string[] }
+	>();
 
 	for (const ref of refs) {
 		if (ref.kind === 'project') {
@@ -107,21 +121,36 @@ export async function assertEntityRefsInProject(params: {
 		if (!table) {
 			throw new AutoOrganizeError(`Unsupported entity kind: ${ref.kind}`, 400);
 		}
+		const kind = ref.kind as Exclude<EntityKind, 'project'>;
+		const group = refsByKind.get(kind);
+		if (!group) {
+			refsByKind.set(kind, { table, ids: [ref.id] });
+		} else if (!group.ids.includes(ref.id)) {
+			group.ids.push(ref.id);
+		}
+	}
 
-		const { data, error } = await supabase
-			.from(table)
-			.select('id')
-			.eq('id', ref.id)
-			.eq('project_id', projectId)
-			.is('deleted_at', null)
-			.maybeSingle();
+	const validationResults = await Promise.all(
+		Array.from(refsByKind, async ([kind, group]) => {
+			const { data, error } = await supabase
+				.from(group.table)
+				.select('id')
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.in('id', group.ids);
 
-		if (error) {
-			throw new AutoOrganizeError(error.message, 500);
+			return { kind, ids: group.ids, data, error };
+		})
+	);
+
+	for (const result of validationResults) {
+		if (result.error) {
+			throw new AutoOrganizeError(result.error.message, 500);
 		}
 
-		if (!data) {
-			throw new AutoOrganizeError(`${ref.kind} not found`, 404);
+		const foundIds = new Set((result.data ?? []).map((row) => row.id));
+		if (result.ids.some((id) => !foundIds.has(id))) {
+			throw new AutoOrganizeError(`${result.kind} not found`, 404);
 		}
 	}
 }
@@ -131,64 +160,65 @@ async function applySemanticEdges(params: {
 	projectId: string;
 	entity: { kind: EntityKind; id: string };
 	spec: SemanticEdgeSpec;
+	referencesValidated?: boolean;
 }): Promise<void> {
-	const { supabase, projectId, entity, spec } = params;
+	const { supabase, projectId, entity, spec, referencesValidated = false } = params;
 	const direction = spec.direction ?? 'outgoing';
 	const targets = spec.targets ?? [];
 	const mode = spec.mode ?? 'replace';
 
-	await assertEntityRefsInProject({ supabase, projectId, refs: targets, allowProject: false });
-
-	if (mode === 'replace') {
-		if (direction === 'outgoing') {
-			await supabase
-				.from('onto_edges')
-				.delete()
-				.eq('src_kind', entity.kind)
-				.eq('src_id', entity.id)
-				.eq('rel', spec.rel);
-		} else {
-			await supabase
-				.from('onto_edges')
-				.delete()
-				.eq('dst_kind', entity.kind)
-				.eq('dst_id', entity.id)
-				.eq('rel', spec.rel);
-		}
+	if (!referencesValidated) {
+		await assertEntityRefsInProject({
+			supabase,
+			projectId,
+			refs: targets,
+			allowProject: false
+		});
 	}
 
-	if (targets.length === 0) {
-		return;
-	}
-
-	const edges = targets.map((target) => {
-		const extraProps =
-			typeof spec.props === 'function' ? spec.props(target) : (spec.props ?? {});
-		const props = { is_primary: target.is_primary ?? false, ...extraProps };
-
-		if (direction === 'outgoing') {
-			return {
-				project_id: projectId,
-				src_kind: entity.kind,
-				src_id: entity.id,
-				dst_kind: target.kind,
-				dst_id: target.id,
-				rel: spec.rel,
-				props
-			};
-		}
-
-		return {
-			project_id: projectId,
-			src_kind: target.kind,
-			src_id: target.id,
-			dst_kind: entity.kind,
-			dst_id: entity.id,
+	await applyPlannedSemanticMutation({
+		supabase,
+		mutation: {
+			type: 'semantic',
+			entity,
 			rel: spec.rel,
-			props
-		};
+			direction,
+			mode,
+			desiredEdges: buildSemanticMutationEdges({ projectId, entity, spec })
+		}
 	});
+}
 
+async function applyPlannedSemanticMutation(params: {
+	supabase: Supabase;
+	mutation: PlannedSemanticMutation;
+}): Promise<void> {
+	const { supabase, mutation } = params;
+
+	if (mutation.mode === 'replace') {
+		const deleteQuery = supabase.from('onto_edges').delete();
+		const { error } =
+			mutation.direction === 'outgoing'
+				? await deleteQuery
+						.eq('src_kind', mutation.entity.kind)
+						.eq('src_id', mutation.entity.id)
+						.eq('rel', mutation.rel)
+				: await deleteQuery
+						.eq('dst_kind', mutation.entity.kind)
+						.eq('dst_id', mutation.entity.id)
+						.eq('rel', mutation.rel);
+
+		if (error) {
+			throw new AutoOrganizeError(error.message, 500);
+		}
+	}
+
+	if (mutation.desiredEdges.length === 0) return;
+
+	const edges = mutation.desiredEdges.map((edge) => ({
+		...edge,
+		props: edge.props as Json
+	}));
 	const { error } = await supabase.from('onto_edges').insert(edges);
 	if (error) {
 		throw new AutoOrganizeError(error.message, 500);
@@ -229,15 +259,25 @@ async function removeProjectEdge(params: {
 }
 
 export async function autoOrganizeEntityEdges(request: AutoOrganizeRequest): Promise<void> {
-	const { supabase, projectId, entity, containment, semantic, projectEdge } = request;
+	const {
+		supabase,
+		projectId,
+		entity,
+		containment,
+		semantic,
+		projectEdge,
+		referencesValidated = false
+	} = request;
 
 	if (containment?.parents) {
-		await assertEntityRefsInProject({
-			supabase,
-			projectId,
-			refs: containment.parents,
-			allowProject: true
-		});
+		if (!referencesValidated) {
+			await assertEntityRefsInProject({
+				supabase,
+				projectId,
+				refs: containment.parents,
+				allowProject: true
+			});
+		}
 
 		await applyContainmentEdges({
 			supabase,
@@ -257,31 +297,105 @@ export async function autoOrganizeEntityEdges(request: AutoOrganizeRequest): Pro
 
 	if (semantic?.length) {
 		for (const spec of semantic) {
-			await applySemanticEdges({ supabase, projectId, entity, spec });
+			await applySemanticEdges({
+				supabase,
+				projectId,
+				entity,
+				spec,
+				referencesValidated
+			});
 		}
 	}
 }
 
-function mergeParents(existing: ParentRef[], additions: ParentRef[]): ParentRef[] {
-	const merged = new Map<string, ParentRef>();
-	for (const parent of existing) {
-		merged.set(`${parent.kind}:${parent.id}`, parent);
+function entityKey(entity: { kind: EntityKind; id: string }): string {
+	return `${entity.kind}:${entity.id}`;
+}
+
+async function fetchExistingContainmentForPlan(params: {
+	supabase: Supabase;
+	entity: { kind: EntityKind; id: string };
+	resolved: ReturnType<typeof resolveConnections>;
+	options?: ConnectionOptions;
+}): Promise<Map<string, ContainmentEdge[]>> {
+	const { supabase, entity, resolved, options } = params;
+	if (options?.skipContainment) return new Map();
+
+	const children = new Map<string, { kind: EntityKind; id: string }>();
+	if (resolved.entityContainment?.mode === 'merge') {
+		children.set(entityKey(entity), entity);
 	}
-	for (const parent of additions) {
-		const key = `${parent.kind}:${parent.id}`;
-		if (!merged.has(key)) {
-			merged.set(key, parent);
+	for (const childPlan of resolved.childContainment) {
+		if (childPlan.mode === 'merge') {
+			children.set(entityKey(childPlan.child), childPlan.child);
 		}
 	}
-	return Array.from(merged.values());
+
+	const entries = await Promise.all(
+		Array.from(children, async ([key, child]) => {
+			const edges = await fetchContainmentEdges({
+				supabase,
+				childKind: child.kind,
+				childId: child.id
+			});
+			return [key, edges] as const;
+		})
+	);
+
+	return new Map(entries);
+}
+
+export async function applyRelationshipMutationPlan(params: {
+	supabase: Supabase;
+	projectId: string;
+	plan: RelationshipMutationPlan;
+}): Promise<void> {
+	const { supabase, projectId, plan } = params;
+	const applyContainment = async (
+		mutation: NonNullable<RelationshipMutationPlan['entityContainment']>
+	) =>
+		applyPlannedContainmentEdges({
+			supabase,
+			childKind: mutation.child.kind,
+			childId: mutation.child.id,
+			desiredEdges: mutation.desiredEdges
+		});
+
+	if (plan.entityContainment) {
+		await applyContainment(plan.entityContainment);
+	}
+
+	for (const mutation of plan.projectEdges) {
+		await removeProjectEdge({
+			supabase,
+			projectId,
+			entity: mutation.entity,
+			rel: mutation.rel
+		});
+	}
+
+	for (const mutation of plan.semantic) {
+		await applyPlannedSemanticMutation({ supabase, mutation });
+	}
+
+	for (const mutation of plan.childContainment) {
+		await applyContainment(mutation);
+	}
 }
 
 export async function autoOrganizeConnections(
 	request: AutoOrganizeConnectionsRequest
 ): Promise<void> {
-	const { supabase, projectId, entity, connections = [], options } = request;
+	const {
+		supabase,
+		projectId,
+		entity,
+		connections = [],
+		options,
+		referencesValidated = false
+	} = request;
 
-	if (connections.length > 0) {
+	if (connections.length > 0 && !referencesValidated) {
 		await assertEntityRefsInProject({
 			supabase,
 			projectId,
@@ -291,56 +405,20 @@ export async function autoOrganizeConnections(
 	}
 
 	const plan = resolveConnections({ entity, connections, options });
-	const allowMultiParent = options?.allowMultiParent ?? false;
-	const mode = options?.mode ?? 'replace';
-	const skipContainment = options?.skipContainment ?? false;
-
-	let containmentParents = plan.entityContainment?.parents ?? [];
-	if (!skipContainment && mode === 'merge') {
-		const existing = await fetchContainmentParents({
-			supabase,
-			childKind: entity.kind,
-			childId: entity.id
-		});
-		containmentParents = mergeParents(existing, containmentParents);
-	}
-
-	await autoOrganizeEntityEdges({
+	const existingContainmentByChild = await fetchExistingContainmentForPlan({
 		supabase,
+		entity,
+		resolved: plan,
+		options
+	});
+	const mutationPlan = buildRelationshipMutationPlan({
 		projectId,
 		entity,
-		containment:
-			plan.entityContainment && !skipContainment
-				? {
-						parents: containmentParents,
-						allowProjectFallback: plan.entityContainment.allowProjectFallback
-					}
-				: undefined,
-		semantic: plan.entitySemantic,
-		projectEdge: plan.entityProjectEdge
+		resolved: plan,
+		options,
+		references: connections,
+		existingContainmentByChild
 	});
 
-	if (!skipContainment) {
-		for (const childPlan of plan.childContainment) {
-			const existing =
-				childPlan.mode === 'merge'
-					? await fetchContainmentParents({
-							supabase,
-							childKind: childPlan.child.kind,
-							childId: childPlan.child.id
-						})
-					: [];
-			const parents = mergeParents(existing, [childPlan.parent]);
-
-			await applyContainmentEdges({
-				supabase,
-				projectId,
-				childKind: childPlan.child.kind,
-				childId: childPlan.child.id,
-				parents,
-				allowProjectFallback: true,
-				allowMultiParent
-			});
-		}
-	}
+	await applyRelationshipMutationPlan({ supabase, projectId, plan: mutationPlan });
 }

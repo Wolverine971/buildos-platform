@@ -406,6 +406,30 @@ export function buildInterruptedToolHistorySummary(
 export function projectLegacyFallbackHistorySnapshot(
 	snapshot: LegacyFallbackHistorySnapshot
 ): FastChatHistoryMessage[] {
+	return projectFallbackHistorySnapshotWithLineage(snapshot).map(
+		({ sourceMessageId: _sourceMessageId, ...message }) => message
+	);
+}
+
+export type FastChatHistoryMessageWithLineage = FastChatHistoryMessage & {
+	sourceMessageId: string | null;
+};
+
+/**
+ * Worker admission uses the same model-facing projection as legacy SSE while
+ * retaining exact database lineage for messages that actually came from the
+ * bounded admission window. Synthetic continuity/tool-ledger messages carry
+ * null lineage.
+ */
+export function projectWorkerFrozenHistorySnapshot(
+	snapshot: LegacyFallbackHistorySnapshot
+): FastChatHistoryMessageWithLineage[] {
+	return projectFallbackHistorySnapshotWithLineage(snapshot);
+}
+
+function projectFallbackHistorySnapshotWithLineage(
+	snapshot: LegacyFallbackHistorySnapshot
+): FastChatHistoryMessageWithLineage[] {
 	const allowedRoles = new Set(['user', 'assistant', 'system']);
 	const orderedMessages = snapshot.messages.filter((message) => allowedRoles.has(message.role));
 	const messageOrderById = new Map(orderedMessages.map((message, index) => [message.id, index]));
@@ -482,24 +506,31 @@ export function projectLegacyFallbackHistorySnapshot(
 		const msg = message as RecentChatMessageRow;
 		const attachments = attachmentsByMessageId.get(msg.id) ?? [];
 		const attachmentContext = buildAttachmentContextBlock(attachments, { maxChars: 5000 });
-		const projected: FastChatHistoryMessage[] = [
+		const projected: FastChatHistoryMessageWithLineage[] = [
 			{
 				role: msg.role as FastChatHistoryMessage['role'],
 				content: attachmentContext ? `${msg.content}\n\n${attachmentContext}` : msg.content,
-				attachments: attachments.length > 0 ? attachments : undefined
+				attachments: attachments.length > 0 ? attachments : undefined,
+				sourceMessageId: msg.id
 			}
 		];
 		if (isInterruptedAssistantMessage(msg)) {
 			const summary = buildInterruptedToolHistorySummary(
 				executionsByMessageId.get(msg.id) ?? []
 			);
-			if (summary) projected.push({ role: 'system', content: summary });
+			if (summary) {
+				projected.push({ role: 'system', content: summary, sourceMessageId: null });
+			}
 		}
 		return projected;
 	});
 
 	if (loadedSkillHistorySummary) {
-		historyMessages.push({ role: 'system', content: loadedSkillHistorySummary });
+		historyMessages.push({
+			role: 'system',
+			content: loadedSkillHistorySummary,
+			sourceMessageId: null
+		});
 	}
 	return historyMessages;
 }

@@ -19,7 +19,7 @@ export type ParentRef = {
 
 type ContainmentEdgeProps = { is_primary: boolean } & { [key: string]: Json | undefined };
 
-type ContainmentEdge = {
+export type ContainmentEdge = {
 	project_id: string;
 	src_kind: EntityKind;
 	src_id: string;
@@ -28,6 +28,23 @@ type ContainmentEdge = {
 	rel: RelationshipType;
 	props: ContainmentEdgeProps;
 };
+
+export type BuildContainmentEdgesParams = {
+	projectId: string;
+	childKind: EntityKind;
+	childId: string;
+	parents?: ParentRef[];
+	allowProjectFallback?: boolean;
+	allowMultiParent?: boolean;
+};
+
+export function containmentEdgeToParent(edge: ContainmentEdge): ParentRef {
+	return {
+		kind: edge.src_kind,
+		id: edge.src_id,
+		is_primary: edge.props.is_primary
+	};
+}
 
 export const CONTAINMENT_RELS: RelationshipType[] = [
 	'has_goal',
@@ -120,17 +137,14 @@ function buildEdgeKey(edge: {
 	return `${edge.rel}:${edge.src_kind}:${edge.src_id}:${edge.dst_kind}:${edge.dst_id}`;
 }
 
-export async function applyContainmentEdges(params: {
-	supabase: SupabaseClient<Database>;
-	projectId: string;
-	childKind: EntityKind;
-	childId: string;
-	parents?: ParentRef[];
-	allowProjectFallback?: boolean;
-	allowMultiParent?: boolean;
-}): Promise<{ created: number; deleted: number; updated: number }> {
+/**
+ * Resolve containment intent into the exact persisted edge rows.
+ *
+ * This is deliberately pure so HTTP, agentic, preview, and transactional
+ * callers can share the same parent precedence and primary-parent rules.
+ */
+export function buildContainmentEdges(params: BuildContainmentEdgesParams): ContainmentEdge[] {
 	const {
-		supabase,
 		projectId,
 		childKind,
 		childId,
@@ -138,7 +152,6 @@ export async function applyContainmentEdges(params: {
 		allowProjectFallback = true,
 		allowMultiParent = false
 	} = params;
-
 	const allowedParents = ALLOWED_PARENTS[childKind] ?? [];
 
 	let desiredParents = parents.filter((parent) => allowedParents.includes(parent.kind));
@@ -148,8 +161,7 @@ export async function applyContainmentEdges(params: {
 	}
 
 	if (desiredParents.length > 0) {
-		const precedence = allowedParents;
-		const indexByKind = new Map(precedence.map((kind, index) => [kind, index]));
+		const indexByKind = new Map(allowedParents.map((kind, index) => [kind, index]));
 		const minIndex = Math.min(
 			...desiredParents.map(
 				(parent) => indexByKind.get(parent.kind) ?? Number.POSITIVE_INFINITY
@@ -185,37 +197,46 @@ export async function applyContainmentEdges(params: {
 		}
 	}
 
-	for (const parent of desiredParents) {
-		if (!allowedParents.includes(parent.kind)) {
-			throw new Error(
-				`Invalid parent kind "${parent.kind}" for ${childKind}. Allowed: ${allowedParents.join(
-					', '
-				)}`
-			);
-		}
-	}
-
-	const persistedParents = desiredParents.filter(
-		(parent) => !NON_PERSISTED_PARENT_KINDS.has(parent.kind)
-	);
-
-	const desiredEdges: ContainmentEdge[] = persistedParents.flatMap((parent) => {
-		const rel = resolveContainmentRel(childKind, parent.kind);
-		if (!rel) return [];
-		return [
-			{
-				project_id: projectId,
-				src_kind: parent.kind,
-				src_id: parent.id,
-				dst_kind: childKind,
-				dst_id: childId,
-				rel,
-				props: {
-					is_primary: parent.is_primary ?? false
+	return desiredParents
+		.filter((parent) => !NON_PERSISTED_PARENT_KINDS.has(parent.kind))
+		.flatMap((parent) => {
+			const rel = resolveContainmentRel(childKind, parent.kind);
+			if (!rel) return [];
+			return [
+				{
+					project_id: projectId,
+					src_kind: parent.kind,
+					src_id: parent.id,
+					dst_kind: childKind,
+					dst_id: childId,
+					rel,
+					props: { is_primary: parent.is_primary ?? false }
 				}
-			}
-		];
-	});
+			];
+		});
+}
+
+export async function applyContainmentEdges(params: {
+	supabase: SupabaseClient<Database>;
+	projectId: string;
+	childKind: EntityKind;
+	childId: string;
+	parents?: ParentRef[];
+	allowProjectFallback?: boolean;
+	allowMultiParent?: boolean;
+}): Promise<{ created: number; deleted: number; updated: number }> {
+	const { supabase, childKind, childId } = params;
+	const desiredEdges = buildContainmentEdges(params);
+	return applyPlannedContainmentEdges({ supabase, childKind, childId, desiredEdges });
+}
+
+export async function applyPlannedContainmentEdges(params: {
+	supabase: SupabaseClient<Database>;
+	childKind: EntityKind;
+	childId: string;
+	desiredEdges: ContainmentEdge[];
+}): Promise<{ created: number; deleted: number; updated: number }> {
+	const { supabase, childKind, childId, desiredEdges } = params;
 
 	const desiredKeys = new Set(desiredEdges.map(buildEdgeKey));
 
@@ -287,11 +308,20 @@ export async function fetchContainmentParents(params: {
 	childKind: EntityKind;
 	childId: string;
 }): Promise<ParentRef[]> {
+	const edges = await fetchContainmentEdges(params);
+	return edges.map(containmentEdgeToParent);
+}
+
+export async function fetchContainmentEdges(params: {
+	supabase: SupabaseClient<Database>;
+	childKind: EntityKind;
+	childId: string;
+}): Promise<ContainmentEdge[]> {
 	const { supabase, childKind, childId } = params;
 
 	const { data, error } = await supabase
 		.from('onto_edges')
-		.select('src_kind, src_id, rel, props')
+		.select('project_id, src_kind, src_id, dst_kind, dst_id, rel, props')
 		.eq('dst_kind', childKind)
 		.eq('dst_id', childId)
 		.in('rel', CONTAINMENT_RELS);
@@ -300,16 +330,13 @@ export async function fetchContainmentParents(params: {
 		throw new Error(error.message);
 	}
 
-	const parents: ParentRef[] = [];
-	for (const edge of data ?? []) {
-		parents.push({
-			kind: edge.src_kind as EntityKind,
-			id: edge.src_id,
-			is_primary: (edge.props as Record<string, unknown> | null)?.is_primary as
-				| boolean
-				| undefined
-		});
-	}
-
-	return parents;
+	return (data ?? []).map((edge) => ({
+		project_id: edge.project_id,
+		src_kind: edge.src_kind as EntityKind,
+		src_id: edge.src_id,
+		dst_kind: edge.dst_kind as EntityKind,
+		dst_id: edge.dst_id,
+		rel: edge.rel as RelationshipType,
+		props: edge.props as ContainmentEdgeProps
+	}));
 }

@@ -46,6 +46,47 @@ export interface RemoveDocumentOptions {
 	mode?: 'cascade' | 'promote';
 }
 
+export type ArchiveDocumentChildrenMode =
+	| 'archive_children'
+	| 'promote_children'
+	| 'unlink_children';
+
+export interface ArchiveDocumentOptions {
+	mode?: ArchiveDocumentChildrenMode;
+	/** Version read with the target row before the archive command starts. */
+	expectedUpdatedAt: string;
+}
+
+export interface ArchiveDocumentResult {
+	document: OntoDocument;
+	structure: DocStructure | null;
+	archivedDocumentIds: string[];
+	archiveMode: ArchiveDocumentChildrenMode;
+}
+
+export interface RestoreDocumentOptions {
+	restoreStateKey: string;
+	/** Version read with the archived row before the restore command starts. */
+	expectedUpdatedAt: string;
+}
+
+export interface RestoreDocumentResult {
+	document: OntoDocument;
+	structure: DocStructure;
+}
+
+export interface DeleteDocumentOptions {
+	mode?: 'cascade' | 'promote';
+	permanent: boolean;
+	/** Version read with the target row before the delete command starts. */
+	expectedUpdatedAt: string;
+}
+
+export interface DeleteDocumentResult {
+	structure: DocStructure;
+	permanent: boolean;
+}
+
 export interface UpdateDocMetadataOptions {
 	title?: string | null;
 	description?: string | null;
@@ -590,79 +631,36 @@ export async function updateDocStructure(
 		version: currentVersion + 1
 	};
 
-	// Apply the version check to the UPDATE itself. The earlier comparison gives
-	// fast feedback for an already-stale caller, while this compare-and-swap guard
-	// closes the race where another writer commits after our read.
-	const projectUpdateQuery = supabase
-		.from('onto_projects')
-		.update({
-			doc_structure:
-				updatedStructure as unknown as Database['public']['Tables']['onto_projects']['Update']['doc_structure']
-		})
-		.eq('id', projectId);
+	const childrenUpdates = buildChangedDocumentChildren(currentStructure, updatedStructure);
+	const { error: updateError } = await supabase.rpc(
+		'onto_project_doc_structure_update_atomic' as never,
+		{
+			p_project_id: projectId,
+			p_expected_version: currentVersion,
+			p_next_structure: updatedStructure,
+			p_change_type: changeType,
+			p_changed_by: actorId ?? null,
+			p_children_updates: childrenUpdates
+		} as never
+	);
 
-	const versionGuardedUpdate =
-		current?.doc_structure === null || current?.doc_structure === undefined
-			? projectUpdateQuery.is('doc_structure', null)
-			: projectUpdateQuery.contains('doc_structure', { version: currentVersion });
-
-	const { data: updatedProject, error: updateError } = await versionGuardedUpdate
-		.select('id')
-		.maybeSingle();
-
-	if (updateError) {
-		throw new Error(`Failed to update structure: ${updateError.message}`);
-	}
-
-	if (!updatedProject) {
+	if (updateError?.message.includes('doc_structure_version_conflict')) {
 		throw new Error(
 			`Structure version conflict: expected ${currentVersion}, but the structure changed before update`
 		);
 	}
 
-	// Save to history
-	await saveStructureHistory(supabase, projectId, updatedStructure, changeType, actorId);
-
-	// Update only document children columns whose direct child list changed.
-	await syncDocumentChildren(supabase, projectId, currentStructure, updatedStructure);
+	if (updateError) {
+		throw new Error(`Failed to update structure: ${updateError.message}`);
+	}
 
 	return updatedStructure;
 }
 
-/**
- * Save structure to history table
- */
-async function saveStructureHistory(
-	supabase: SupabaseClient<Database>,
-	projectId: string,
-	structure: DocStructure,
-	changeType: ChangeType,
-	actorId?: string
-): Promise<void> {
-	const { error } = await supabase.from('onto_project_structure_history').insert({
-		project_id: projectId,
-		doc_structure:
-			structure as unknown as Database['public']['Tables']['onto_project_structure_history']['Insert']['doc_structure'],
-		version: structure.version,
-		changed_by: actorId || null,
-		change_type: changeType
-	});
-
-	if (error) {
-		// Log but don't fail - history is for undo, not critical path
-		console.error('Failed to save structure history:', error);
-	}
-}
-
-/**
- * Sync document children columns based on current structure
- */
-async function syncDocumentChildren(
-	supabase: SupabaseClient<Database>,
-	projectId: string,
+function buildChangedDocumentChildren(
 	previousStructure: DocStructure,
 	nextStructure: DocStructure
-): Promise<void> {
+): Array<{ document_id: string; children: Array<{ id: string; order: number }> }> {
 	type DocumentChildRef = { id: string; order: number };
 
 	function buildChildrenMap(structure: DocStructure): Map<string, DocumentChildRef[]> {
@@ -714,21 +712,10 @@ async function syncDocumentChildren(
 		}
 	}
 
-	for (const [docId, children] of changedChildren) {
-		const { error } = await supabase
-			.from('onto_documents')
-			.update({
-				children: {
-					children
-				} as unknown as Database['public']['Tables']['onto_documents']['Update']['children']
-			})
-			.eq('id', docId)
-			.eq('project_id', projectId);
-
-		if (error) {
-			console.error(`Failed to update children for doc ${docId}:`, error);
-		}
-	}
+	return Array.from(changedChildren, ([document_id, children]) => ({
+		document_id,
+		children
+	}));
 }
 
 /**
@@ -836,6 +823,231 @@ export async function removeDocumentFromTree(
 	};
 
 	return updateDocStructure(supabase, projectId, newStructure, 'delete', actorId);
+}
+
+/**
+ * Archive a document (and optionally its descendants) in the same database
+ * transaction that removes it from the canonical project tree.
+ */
+export async function archiveDocumentInTree(
+	supabase: SupabaseClient<Database>,
+	projectId: string,
+	docId: string,
+	options: ArchiveDocumentOptions,
+	actorId?: string
+): Promise<ArchiveDocumentResult> {
+	const archiveMode = options.mode ?? 'archive_children';
+	const { structure: currentStructure } = await getDocTree(supabase, projectId, {
+		includeDocuments: false
+	});
+	const treeNodeResult = findNodeById(currentStructure.root, docId);
+
+	let archivedDocumentIds = [docId];
+	let nextStructure: DocStructure | null = null;
+	let expectedStructureVersion: number | null = null;
+	let childrenUpdates: ReturnType<typeof buildChangedDocumentChildren> = [];
+
+	if (treeNodeResult) {
+		if (archiveMode === 'archive_children' && treeNodeResult.node.children?.length) {
+			archivedDocumentIds = [docId, ...collectDocIds(treeNodeResult.node.children)];
+		}
+
+		const nextRoot =
+			archiveMode === 'promote_children'
+				? removeNodeFromTreePromoteChildren(currentStructure.root, docId)
+				: removeNodeFromTree(currentStructure.root, docId);
+		expectedStructureVersion = currentStructure.version;
+		nextStructure = {
+			version: currentStructure.version + 1,
+			root: nextRoot
+		};
+		childrenUpdates = buildChangedDocumentChildren(currentStructure, nextStructure);
+	}
+
+	const { data, error } = await supabase.rpc(
+		'onto_document_archive_atomic' as never,
+		{
+			p_project_id: projectId,
+			p_document_id: docId,
+			p_document_ids: archivedDocumentIds,
+			p_expected_updated_at: options.expectedUpdatedAt,
+			p_expected_structure_version: expectedStructureVersion,
+			p_next_structure: nextStructure,
+			p_changed_by: actorId ?? null,
+			p_children_updates: childrenUpdates
+		} as never
+	);
+
+	if (error?.message.includes('document_archive_version_conflict')) {
+		throw new Error('Document version conflict: the document changed before archive');
+	}
+	if (error?.message.includes('doc_structure_version_conflict')) {
+		throw new Error(
+			`Structure version conflict: expected ${expectedStructureVersion}, but the structure changed before archive`
+		);
+	}
+	if (error) {
+		throw new Error(`Failed to archive document: ${error.message}`);
+	}
+
+	const payload = data as unknown as {
+		document?: OntoDocument;
+		structure?: DocStructure | null;
+		archived_document_ids?: string[];
+	} | null;
+	if (!payload?.document || !Array.isArray(payload.archived_document_ids)) {
+		throw new Error('Failed to archive document: database returned an invalid result');
+	}
+
+	return {
+		document: payload.document,
+		structure: payload.structure ?? null,
+		archivedDocumentIds: payload.archived_document_ids,
+		archiveMode
+	};
+}
+
+/**
+ * Restore an archived document and, for legacy data, remove any stale tree node
+ * in the same transaction. Normally archived documents are already unlinked,
+ * so the command verifies the observed tree version without rewriting it.
+ */
+export async function restoreDocumentInTree(
+	supabase: SupabaseClient<Database>,
+	projectId: string,
+	docId: string,
+	options: RestoreDocumentOptions,
+	actorId?: string
+): Promise<RestoreDocumentResult> {
+	const { structure: currentStructure } = await getDocTree(supabase, projectId, {
+		includeDocuments: false
+	});
+	const treeNodeResult = findNodeById(currentStructure.root, docId);
+	let nextStructure: DocStructure | null = null;
+	let childrenUpdates: ReturnType<typeof buildChangedDocumentChildren> = [];
+
+	if (treeNodeResult) {
+		nextStructure = {
+			version: currentStructure.version + 1,
+			root: removeNodeFromTreePromoteChildren(currentStructure.root, docId)
+		};
+		childrenUpdates = buildChangedDocumentChildren(currentStructure, nextStructure);
+	}
+
+	const { data, error } = await supabase.rpc(
+		'onto_document_restore_atomic' as never,
+		{
+			p_project_id: projectId,
+			p_document_id: docId,
+			p_restore_state_key: options.restoreStateKey,
+			p_expected_updated_at: options.expectedUpdatedAt,
+			p_expected_structure_version: currentStructure.version,
+			p_next_structure: nextStructure,
+			p_changed_by: actorId ?? null,
+			p_children_updates: childrenUpdates
+		} as never
+	);
+
+	if (error?.message.includes('document_restore_version_conflict')) {
+		throw new Error('Document version conflict: the document changed before restore');
+	}
+	if (
+		error?.message.includes('document_restore_structure_version_conflict') ||
+		error?.message.includes('doc_structure_version_conflict')
+	) {
+		throw new Error(
+			`Structure version conflict: expected ${currentStructure.version}, but the structure changed before restore`
+		);
+	}
+	if (error) {
+		throw new Error(`Failed to restore document: ${error.message}`);
+	}
+
+	const payload = data as unknown as {
+		document?: OntoDocument;
+		structure?: DocStructure;
+	} | null;
+	if (!payload?.document || !payload.structure) {
+		throw new Error('Failed to restore document: database returned an invalid result');
+	}
+
+	return {
+		document: payload.document,
+		structure: payload.structure
+	};
+}
+
+/**
+ * Soft- or permanently delete a document in the same transaction as its
+ * canonical tree removal, history entry, and changed child-cache updates.
+ */
+export async function deleteDocumentInTree(
+	supabase: SupabaseClient<Database>,
+	projectId: string,
+	docId: string,
+	options: DeleteDocumentOptions,
+	actorId?: string
+): Promise<DeleteDocumentResult> {
+	const { structure: currentStructure } = await getDocTree(supabase, projectId, {
+		includeDocuments: false
+	});
+	const treeNodeResult = findNodeById(currentStructure.root, docId);
+	let nextStructure: DocStructure | null = null;
+	let childrenUpdates: ReturnType<typeof buildChangedDocumentChildren> = [];
+
+	if (treeNodeResult) {
+		const nextRoot =
+			options.mode === 'promote'
+				? removeNodeFromTreePromoteChildren(currentStructure.root, docId)
+				: removeNodeFromTree(currentStructure.root, docId);
+		nextStructure = {
+			version: currentStructure.version + 1,
+			root: nextRoot
+		};
+		childrenUpdates = buildChangedDocumentChildren(currentStructure, nextStructure);
+	}
+
+	const { data, error } = await supabase.rpc(
+		'onto_document_delete_atomic' as never,
+		{
+			p_project_id: projectId,
+			p_document_id: docId,
+			p_permanent: options.permanent,
+			p_expected_updated_at: options.expectedUpdatedAt,
+			p_expected_structure_version: currentStructure.version,
+			p_next_structure: nextStructure,
+			p_changed_by: actorId ?? null,
+			p_children_updates: childrenUpdates
+		} as never
+	);
+
+	if (error?.message.includes('document_delete_version_conflict')) {
+		throw new Error('Document version conflict: the document changed before delete');
+	}
+	if (
+		error?.message.includes('document_delete_structure_version_conflict') ||
+		error?.message.includes('doc_structure_version_conflict')
+	) {
+		throw new Error(
+			`Structure version conflict: expected ${currentStructure.version}, but the structure changed before delete`
+		);
+	}
+	if (error) {
+		throw new Error(`Failed to delete document: ${error.message}`);
+	}
+
+	const payload = data as unknown as {
+		structure?: DocStructure;
+		permanent?: boolean;
+	} | null;
+	if (!payload?.structure || typeof payload.permanent !== 'boolean') {
+		throw new Error('Failed to delete document: database returned an invalid result');
+	}
+
+	return {
+		structure: payload.structure,
+		permanent: payload.permanent
+	};
 }
 
 /**

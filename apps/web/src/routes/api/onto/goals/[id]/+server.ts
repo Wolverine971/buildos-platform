@@ -399,7 +399,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				projectId: existingGoal.project_id,
 				entity: { kind: 'goal', id: params.id },
 				connections: connectionList,
-				options: { mode: 'replace' }
+				options: { mode: 'replace' },
+				referencesValidated: true
 			});
 		}
 

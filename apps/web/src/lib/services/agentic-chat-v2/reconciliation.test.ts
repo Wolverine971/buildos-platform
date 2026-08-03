@@ -49,6 +49,21 @@ function snapshot(overrides: Record<string, unknown> = {}) {
 				durable: true,
 				type: 'tool_result',
 				ok: true
+			},
+			{
+				contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+				event_id: `${TURN_ID}:2:4`,
+				stream_run_id: 'stream-1',
+				client_turn_id: 'client-1',
+				session_id: SESSION_ID,
+				turn_run_id: TURN_ID,
+				execution_generation: 2,
+				sequence_index: 4,
+				phase: 'llm',
+				event_type: 'text_delta',
+				durable: true,
+				type: 'text_delta',
+				text_delta: 'o'
 			}
 		],
 		response_watermark: 4,
@@ -115,6 +130,9 @@ describe('reconcileAgenticChatTurn', () => {
 			snapshot({ user_id: 'other-user' }),
 			snapshot({ response_watermark: 3 }),
 			snapshot({ terminal_event_id: { unexpected: true } }),
+			snapshot({
+				durable_events: [(snapshot().durable_events as Array<Record<string, unknown>>)[1]]
+			}),
 			snapshot({
 				durable_events: [
 					(snapshot().durable_events as Array<Record<string, unknown>>)[0],

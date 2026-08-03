@@ -171,7 +171,7 @@ type AgenticChatAdmissionHandleV1 = {
 	queueJobId: string | null;
 	correlationId: string;
 	streamRunId: string;
-	clientTurnId: string;
+	clientTurnId: string | null;
 	executionMode: 'worker_realtime' | 'legacy_sse';
 	status: ChatTurnStatusV1;
 };
@@ -183,17 +183,24 @@ export type AgenticChatWorkerAdmissionResultV1 =
 			executionMayStart: false;
 			executionMode: 'worker_realtime';
 			status: 'queued';
+			clientTurnId: string;
 			userMessageId: string;
 			inputArtifactId: string;
 			queueJobId: string;
 			sessionCreated: boolean;
 	  })
 	| (AgenticChatAdmissionHandleV1 & {
-			outcome: 'matching_duplicate' | 'active_turn_conflict';
+			outcome: 'matching_duplicate';
+			clientTurnId: string;
+			executionMayStart: false;
+	  })
+	| (AgenticChatAdmissionHandleV1 & {
+			outcome: 'active_turn_conflict';
 			executionMayStart: false;
 	  })
 	| (AgenticChatAdmissionHandleV1 & {
 			outcome: 'idempotency_conflict';
+			clientTurnId: string;
 			executionMayStart: false;
 			conflictReason: string;
 	  })
@@ -461,6 +468,22 @@ export type AgentChatTransportLeaseV1 = {
 	expiresAt: string;
 };
 
+export type AgentChatTransportContextV1 = {
+	type: string;
+	entityId: string | null;
+	projectId: string | null;
+};
+
+export type AgentChatTransportLeaseRequestV1 = {
+	clientTurnId: string;
+	streamRunId: string;
+	sessionId: string | null;
+	context: AgentChatTransportContextV1;
+	supportedModes: Array<AgentChatTransportLeaseV1['mode']>;
+	supportedContractVersions: Array<AgentChatTransportLeaseV1['contractVersion']>;
+	priorDecisionId: string | null;
+};
+
 export type TurnHandleV1 =
 	| {
 			contractVersion: 'legacy_internal_v1';
@@ -478,6 +501,14 @@ export type TurnHandleV1 =
 			sessionId: string;
 			turnRunId: string;
 	  };
+
+export type AgenticChatWorkerTurnDescriptorV1 = {
+	handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;
+	status: ChatTurnStatusV1;
+	executionGeneration: number;
+	terminalEventId: string | null;
+	updatedAt: string;
+};
 
 export type ChatTurnEffectStateV1 =
 	| 'reserved'

@@ -411,6 +411,59 @@ describe('GmailReadOAuthService', () => {
 		);
 	});
 
+	it('force-refreshes a token that has not reached its normal refresh window', async () => {
+		const connection = {
+			id: 'connection-1',
+			user_id: 'user-1',
+			provider: 'google_gmail',
+			provider_account_id: 'google-sub-1',
+			email_address: 'dj@example.com',
+			display_name: 'DJ Wayne',
+			account_label: 'BuildOS',
+			status: 'active',
+			read_enabled: true,
+			connected_at: '2026-07-22T17:00:00.000Z',
+			last_verified_at: '2026-07-22T17:00:00.000Z',
+			last_used_at: null
+		};
+		const tokenContext = {
+			userId: 'user-1',
+			providerAccountId: 'google-sub-1',
+			grantKind: 'read' as const
+		};
+		const { admin, rpc } = createAdmin({
+			connection: { data: connection, error: null },
+			credential: {
+				data: {
+					access_token_ciphertext: encryptGmailToken('old-access-token', tokenContext),
+					refresh_token_ciphertext: encryptGmailToken('refresh-token', tokenContext),
+					access_token_expires_at: '2026-07-22T18:00:00.000Z',
+					token_type: 'Bearer',
+					granted_scopes: [GMAIL_READ_SCOPE]
+				},
+				error: null
+			}
+		});
+		const oauthClient = createOAuthClient();
+		const service = new GmailReadOAuthService(admin, {
+			clientId: 'gmail-read-client',
+			clientSecret: 'gmail-read-secret',
+			createOAuthClient: () => oauthClient,
+			now: () => new Date('2026-07-22T17:00:00.000Z')
+		});
+
+		const accessToken = await service.getAuthorizedReadAccessToken('user-1', 'connection-1', {
+			forceRefresh: true
+		});
+
+		expect(accessToken).toBe('refreshed-access-token');
+		expect(oauthClient.refreshAccessToken).toHaveBeenCalledOnce();
+		expect(rpc).toHaveBeenCalledWith(
+			'rotate_gmail_read_credentials',
+			expect.objectContaining({ p_connection_id: 'connection-1' })
+		);
+	});
+
 	it('blocks token access when the BuildOS read capability is disabled', async () => {
 		const connection = {
 			id: 'connection-1',

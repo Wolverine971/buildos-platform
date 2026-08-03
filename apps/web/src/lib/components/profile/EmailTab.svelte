@@ -19,6 +19,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import { gmailOAuthErrorMessage, startGmailOAuth } from '$lib/services/gmail-oauth.client';
 	import type {
 		GmailConnectionSummary,
 		GmailConnectionsPayload
@@ -118,29 +119,19 @@
 		else connecting = true;
 
 		try {
-			const response = await fetch('/api/integrations/gmail/connections', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					connectionId: connectionId ?? null,
-					redirectPath: getReturnPath()
-				})
+			const connection = await startGmailOAuth({
+				connectionId: connectionId ?? null,
+				fallbackRedirectPath: getReturnPath()
 			});
-			const responsePayload = await response.json().catch(() => null);
-			if (!response.ok) {
-				throw new Error(
-					getErrorMessage(responsePayload, 'Failed to start Gmail connection')
-				);
-			}
-
-			const result = unwrapPayload<{ authorizationUrl: string }>(responsePayload);
-			if (!result.authorizationUrl)
-				throw new Error('Google authorization URL was not returned');
-			window.location.assign(result.authorizationUrl);
+			await loadConnections({ showError: false });
+			onsuccess?.({
+				message: `${connection.accountLabel} connected with read-only access`
+			});
 		} catch (error) {
 			onerror?.({
 				message: error instanceof Error ? error.message : 'Failed to start Gmail connection'
 			});
+		} finally {
 			connecting = false;
 			reconnectingId = null;
 		}
@@ -255,19 +246,7 @@
 		if (success === 'gmail_connected') {
 			onsuccess?.({ message: 'Gmail connected with read-only access' });
 		} else if (error) {
-			const messages: Record<string, string> = {
-				access_denied: 'Gmail access was not granted',
-				invalid_state: 'The Gmail connection request expired. Please try again.',
-				identity_verification_failed: 'Google account verification failed',
-				scope_mismatch: 'Google did not return the required read-only permission',
-				refresh_token_required: 'Google did not return offline access. Please reconnect.',
-				account_mismatch: 'Reconnect using the same Google account',
-				account_already_connected:
-					'That Gmail account is connected to another BuildOS user',
-				connection_limit_exceeded: 'You have reached the Gmail account limit',
-				not_configured: 'Gmail connections are not configured yet'
-			};
-			onerror?.({ message: messages[error] ?? 'Gmail connection failed' });
+			onerror?.({ message: gmailOAuthErrorMessage(error) });
 		}
 
 		const nextUrl = new URL($page.url);
@@ -275,7 +254,7 @@
 		nextUrl.searchParams.delete('success');
 		nextUrl.searchParams.delete('error');
 		nextUrl.searchParams.delete('connection');
-		const destination = `/profile?${nextUrl.searchParams.toString()}` as `/profile?${string}`;
+		const destination = `/profile${nextUrl.search}${nextUrl.hash}` as '/profile';
 		replaceState(resolve(destination), {});
 	});
 

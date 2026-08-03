@@ -180,6 +180,7 @@ describe('AgenticChatStreamPublisher', () => {
 		});
 
 		await Promise.all([left.delivery, right.delivery, semantic]);
+		expect(publisher.getSnapshot(context.turnRunId).durableSequence).toBe(3);
 		expect(persistence.textCalls.at(-1)?.[0]).toMatchObject({
 			text_delta: 'BC',
 			assistant_text: 'ABC'
@@ -448,6 +449,29 @@ describe('AgenticChatStreamPublisher', () => {
 			)
 		).resolves.toBe('reconcile_only');
 		expect(broadcast.messages).toHaveLength(3);
+		await publisher.stop();
+	});
+
+	it('abandons pending writes without publishing a late in-flight receipt', async () => {
+		const context = turn('abandon');
+		const gate = Promise.withResolvers<void>();
+		const persistence = createPersistence([context]);
+		const originalFlush = persistence.flushTextBatches.bind(persistence);
+		persistence.flushTextBatches = async (inputs) => {
+			await gate.promise;
+			return originalFlush(inputs);
+		};
+		const broadcast = createBroadcast();
+		const publisher = new AgenticChatStreamPublisher({ persistence, broadcast });
+		publisher.start();
+		publisher.registerTurn(context);
+
+		const pending = publisher.appendText(context.turnRunId, 'late');
+		void pending.delivery.catch(() => undefined);
+		publisher.abandonTurn(context.turnRunId, 'terminalizing');
+		gate.resolve();
+		await vi.waitFor(() => expect(persistence.textCalls).toHaveLength(1));
+		expect(broadcast.messages).toHaveLength(0);
 		await publisher.stop();
 	});
 });

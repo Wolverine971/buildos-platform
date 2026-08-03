@@ -62,6 +62,19 @@ export type PreparedPromptAdmissionLineage = {
 	acceptedSurfaceProfile: GatewaySurfaceProfileName;
 };
 
+export type PreparedPromptWorkerInspectionResult =
+	| {
+			hit: true;
+			row: PreparedPromptRow;
+			surface: PreparedPromptSurface;
+			ageSeconds: number;
+	  }
+	| {
+			hit: false;
+			reason: PreparedPromptCacheMissReason;
+			diagnostics?: PreparedPromptConsumeMissDiagnostics;
+	  };
+
 /**
  * Derives stable, trusted hash lineage without claiming prepared content.
  *
@@ -99,6 +112,92 @@ export async function inspectPreparedPromptAdmissionLineage(params: {
 	return {
 		id: row.id,
 		acceptedSurfaceProfile: params.surfaceProfile
+	};
+}
+
+/**
+ * Validate and copy a prepared prompt for worker admission without claiming it.
+ *
+ * The atomic admission RPC repeats these checks while holding the row lock and
+ * performs the only consumption write. If this read races consumption or
+ * expiry, the RPC rejects and rolls the entire admission transaction back.
+ */
+export async function inspectPreparedPromptForWorkerAdmission(params: {
+	supabase: FastChatSupabaseClient;
+	key: string | null;
+	userId: string;
+	sessionId: string;
+	cacheKey: string;
+	surfaceProfile: GatewaySurfaceProfileName;
+	contextType: ChatContextType;
+	tools: ChatToolDefinition[];
+	scaffold?: LitePromptScaffoldOptions | null;
+	nowMs?: number;
+}): Promise<PreparedPromptWorkerInspectionResult> {
+	if (!params.key) return { hit: false, reason: 'missing_key' };
+	if (!isPreparedPromptPrewarmEnabled()) return { hit: false, reason: 'disabled' };
+
+	const parsed = parsePreparedPromptKey(params.key);
+	if (!parsed) return { hit: false, reason: 'bad_format' };
+
+	const { row, error } = await readPreparedPromptContent({
+		supabase: params.supabase,
+		id: parsed.id
+	});
+	if (error || !row) return { hit: false, reason: 'not_found' };
+	if (row.user_id !== params.userId) return { hit: false, reason: 'user_mismatch' };
+	if (!verifyPreparedPromptNonce({ nonce: parsed.nonce, nonceSha256: row.nonce_sha256 })) {
+		return { hit: false, reason: 'nonce_mismatch' };
+	}
+	if (row.consumed_at) return { hit: false, reason: 'consumed' };
+	if (Date.parse(row.expires_at) <= (params.nowMs ?? Date.now())) {
+		return { hit: false, reason: 'expired' };
+	}
+	if (row.session_id && row.session_id !== params.sessionId) {
+		return { hit: false, reason: 'session_mismatch' };
+	}
+	if (row.cache_key !== params.cacheKey) {
+		return {
+			hit: false,
+			reason: 'scope_mismatch',
+			diagnostics: buildPreparedPromptRowDiagnostics({ row, params })
+		};
+	}
+
+	const surface = getPreparedPromptSurface(row, params.surfaceProfile);
+	if (!surface) {
+		return {
+			hit: false,
+			reason: 'surface_missing',
+			diagnostics: buildPreparedPromptRowDiagnostics({ row, params })
+		};
+	}
+	const surfaceInspection = inspectPreparedPromptSurfaceCurrent({
+		surface,
+		contextType: params.contextType,
+		contextPayload: row.context_payload,
+		conversationSummary: row.conversation_summary ?? null,
+		tools: params.tools,
+		scaffold: params.scaffold
+	});
+	if (!surfaceInspection.current) {
+		return {
+			hit: false,
+			reason: 'stale_harness',
+			diagnostics: buildPreparedPromptRowDiagnostics({
+				row,
+				params,
+				surface,
+				surfaceInspection
+			})
+		};
+	}
+
+	return {
+		hit: true,
+		row,
+		surface,
+		ageSeconds: resolveCacheAgeSeconds(row.created_at)
 	};
 }
 

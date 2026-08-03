@@ -15,22 +15,28 @@ const POSTGRES_INTEGER_MAX = 2_147_483_647;
 
 export const GET: RequestHandler = async ({ params, url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
-	if (!user?.id) return ApiResponse.unauthorized();
-	if (!isValidUUID(params.id)) return ApiResponse.badRequest('Invalid turn id');
+	if (!user?.id) return privateResponse(ApiResponse.unauthorized());
+	if (!isValidUUID(params.id)) return privateResponse(ApiResponse.badRequest('Invalid turn id'));
 
 	if (url.searchParams.getAll('generation').length > 1) {
-		return ApiResponse.badRequest('generation must be specified once');
+		return privateResponse(ApiResponse.badRequest('generation must be specified once'));
 	}
 	if (url.searchParams.getAll('after').length > 1) {
-		return ApiResponse.badRequest('after must be specified once');
+		return privateResponse(ApiResponse.badRequest('after must be specified once'));
 	}
 
 	const generation = parseOptionalCursor(url.searchParams.get('generation'));
 	const after = parseCursor(url.searchParams.get('after'), 0);
-	if (generation === 'invalid') return ApiResponse.badRequest('Invalid generation cursor');
-	if (after === 'invalid') return ApiResponse.badRequest('Invalid durable event cursor');
+	if (generation === 'invalid') {
+		return privateResponse(ApiResponse.badRequest('Invalid generation cursor'));
+	}
+	if (after === 'invalid') {
+		return privateResponse(ApiResponse.badRequest('Invalid durable event cursor'));
+	}
 	if (generation === null && after !== 0) {
-		return ApiResponse.badRequest('generation is required when after is nonzero');
+		return privateResponse(
+			ApiResponse.badRequest('generation is required when after is nonzero')
+		);
 	}
 
 	try {
@@ -42,19 +48,18 @@ export const GET: RequestHandler = async ({ params, url, locals: { safeGetSessio
 			afterDurableSequence: after
 		});
 
-		if (result.outcome === 'not_found') return ApiResponse.notFound('Turn');
+		if (result.outcome === 'not_found') return privateResponse(ApiResponse.notFound('Turn'));
 		if (result.outcome === 'not_worker_turn') {
-			return ApiResponse.error(
-				'Turn does not use worker transport',
-				HttpStatus.CONFLICT,
-				'INVALID_EXECUTION_MODE'
+			return privateResponse(
+				ApiResponse.error(
+					'Turn does not use worker transport',
+					HttpStatus.CONFLICT,
+					'INVALID_EXECUTION_MODE'
+				)
 			);
 		}
 
-		const response = ApiResponse.success(result);
-		response.headers.set('Cache-Control', 'private, no-store');
-		response.headers.set('Vary', 'Authorization');
-		return response;
+		return privateResponse(ApiResponse.success(result));
 	} catch (error) {
 		logger.warn('Worker turn reconciliation failed', {
 			error,
@@ -67,19 +72,29 @@ export const GET: RequestHandler = async ({ params, url, locals: { safeGetSessio
 			error instanceof AgenticChatReconciliationRpcError &&
 			error.message.includes('agentic_chat_reconcile_cursor_ahead')
 		) {
-			return ApiResponse.error(
-				'Reconciliation cursor is ahead of durable state',
-				HttpStatus.CONFLICT,
-				'RECONCILIATION_CURSOR_AHEAD'
+			return privateResponse(
+				ApiResponse.error(
+					'Reconciliation cursor is ahead of durable state',
+					HttpStatus.CONFLICT,
+					'RECONCILIATION_CURSOR_AHEAD'
+				)
 			);
 		}
-		return ApiResponse.error(
-			'Reconciliation temporarily unavailable',
-			HttpStatus.SERVICE_UNAVAILABLE,
-			'RECONCILIATION_UNAVAILABLE'
+		return privateResponse(
+			ApiResponse.error(
+				'Reconciliation temporarily unavailable',
+				HttpStatus.SERVICE_UNAVAILABLE,
+				'RECONCILIATION_UNAVAILABLE'
+			)
 		);
 	}
 };
+
+function privateResponse(response: Response): Response {
+	response.headers.set('Cache-Control', 'private, no-store');
+	response.headers.set('Vary', 'Authorization');
+	return response;
+}
 
 function parseOptionalCursor(value: string | null): number | null | 'invalid' {
 	if (value === null) return null;

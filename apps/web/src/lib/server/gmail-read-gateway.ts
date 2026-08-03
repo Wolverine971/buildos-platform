@@ -450,8 +450,17 @@ export class GmailReadGateway {
 		maxResults: number;
 		pageToken?: string;
 		page: number;
+		retriedAfterUnauthorized?: boolean;
 	}): Promise<{ account: GmailReadAccountResult; messages: GmailMessageSummary[] }> {
-		const { userId, connection, query, maxResults, pageToken, page } = params;
+		const {
+			userId,
+			connection,
+			query,
+			maxResults,
+			pageToken,
+			page,
+			retriedAfterUnauthorized = false
+		} = params;
 		if (connection.status !== 'active' || !connection.read_enabled) {
 			return {
 				account: {
@@ -567,9 +576,25 @@ export class GmailReadGateway {
 				messages
 			};
 		} catch (error) {
+			let failure = error;
+			if (
+				error instanceof GmailReadGatewayError &&
+				error.providerStatus === 401 &&
+				!retriedAfterUnauthorized
+			) {
+				try {
+					await this.oauthService.getAuthorizedReadAccessToken(userId, connection.id, {
+						forceRefresh: true
+					});
+					return this.searchOneAccount({ ...params, retriedAfterUnauthorized: true });
+				} catch (refreshError) {
+					failure = refreshError;
+				}
+			}
 			const reconnectRequired =
-				error instanceof GmailOAuthError &&
-				(error.code === 'reconnect_required' || error.code === 'read_capability_disabled');
+				failure instanceof GmailOAuthError &&
+				(failure.code === 'reconnect_required' ||
+					failure.code === 'read_capability_disabled');
 			await this.audit({
 				userId,
 				connectionId: connection.id,
@@ -578,14 +603,15 @@ export class GmailReadGateway {
 				reasonCode: reconnectRequired ? 'reconnect_required' : 'provider_error',
 				metadata: {
 					failureStage,
-					gatewayErrorCode: error instanceof GmailReadGatewayError ? error.code : null,
+					gatewayErrorCode:
+						failure instanceof GmailReadGatewayError ? failure.code : null,
 					providerStatus:
-						error instanceof GmailReadGatewayError
-							? (error.providerStatus ?? null)
+						failure instanceof GmailReadGatewayError
+							? (failure.providerStatus ?? null)
 							: null,
 					providerDiagnosticCode:
-						error instanceof GmailReadGatewayError
-							? (error.providerDiagnosticCode ?? null)
+						failure instanceof GmailReadGatewayError
+							? (failure.providerDiagnosticCode ?? null)
 							: null
 				}
 			});
@@ -700,6 +726,7 @@ export class GmailReadGateway {
 		userId: string;
 		connectionId: string;
 		messageId: string;
+		retriedAfterUnauthorized?: boolean;
 	}): Promise<GmailMessageDetail> {
 		const messageId = safeMessageId(params.messageId);
 		if (!messageId)
@@ -755,6 +782,16 @@ export class GmailReadGateway {
 			});
 			return detail;
 		} catch (error) {
+			if (
+				error instanceof GmailReadGatewayError &&
+				error.providerStatus === 401 &&
+				!params.retriedAfterUnauthorized
+			) {
+				await this.oauthService.getAuthorizedReadAccessToken(params.userId, connection.id, {
+					forceRefresh: true
+				});
+				return this.getMessage({ ...params, retriedAfterUnauthorized: true });
+			}
 			await this.audit({
 				userId: params.userId,
 				connectionId: connection.id,

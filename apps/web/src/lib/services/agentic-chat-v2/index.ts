@@ -13,7 +13,8 @@ export {
 	createFastChatSessionService,
 	extractLoadedSkillIdsFromHistory,
 	historyIncludesLoadedSkillsLedger,
-	projectLegacyFallbackHistorySnapshot
+	projectLegacyFallbackHistorySnapshot,
+	projectWorkerFrozenHistorySnapshot
 } from './session-service';
 export { streamFastChat } from './stream-orchestrator/index';
 export { FASTCHAT_LIMITS } from './limits';

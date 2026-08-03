@@ -119,7 +119,15 @@ describe('AgenticChatWorkerRealtimeInbox', () => {
 			bufferedEvents: 1
 		});
 
-		expect(inbox.applyReconciliation(TURN_ID, receipt(1, 0))).toBe(true);
+		expect(
+			inbox.applyReconciliation(
+				TURN_ID,
+				receipt(1, 0, {
+					requested_execution_generation: 0,
+					generation_changed: true
+				})
+			)
+		).toBe(true);
 		expect(sink.reconciled).toHaveLength(1);
 		expect(sink.applied.map((item) => item.sequence_index)).toEqual([1]);
 		expect(sink.applicationOrder).toEqual(['reconciliation', 'live:1']);
@@ -274,15 +282,73 @@ describe('AgenticChatWorkerRealtimeInbox', () => {
 	});
 
 	it('rejects a reconciliation receipt with inconsistent cursor truth', () => {
+		for (const corrupt of [
+			receipt(1, 2, { response_watermark: 1 }),
+			receipt(1, 2, {
+				projection_durable_sequence: 0,
+				durable_events: [event(2)]
+			})
+		]) {
+			const sink = observer();
+			const inbox = new AgenticChatWorkerRealtimeInbox();
+			inbox.registerTurn({ handle, observer: sink.value });
+
+			expect(inbox.applyReconciliation(TURN_ID, corrupt)).toBe(false);
+			expect(sink.reconciled).toEqual([]);
+			expect(sink.reasons).toEqual(['initial', 'protocol_error']);
+		}
+	});
+
+	it('rejects incomplete or forged terminal reconciliation truth', () => {
+		const assistantMessage = {
+			id: 'd6000000-0000-4000-8000-000000000001',
+			role: 'assistant',
+			content: 'done',
+			metadata: { turn_run_id: TURN_ID, execution_generation: 1 },
+			prompt_tokens: null,
+			completion_tokens: null,
+			total_tokens: null,
+			created_at: '2026-08-03T12:00:00.000Z'
+		};
+		for (const corrupt of [
+			receipt(1, 1, { status: 'completed', assistant_message: assistantMessage }),
+			receipt(1, 1, {
+				status: 'completed',
+				assistant_message: assistantMessage,
+				terminal_event_id: `${TURN_ID}:1:99`,
+				terminalized_at: '2026-08-03T12:00:01.000Z'
+			}),
+			receipt(1, 1, {
+				status: 'completed',
+				assistant_message: null,
+				terminal_event_id: `${TURN_ID}:1:1`,
+				terminalized_at: '2026-08-03T12:00:01.000Z'
+			}),
+			receipt(1, 0, { assistant_message: assistantMessage })
+		]) {
+			const sink = observer();
+			const inbox = new AgenticChatWorkerRealtimeInbox();
+			inbox.registerTurn({ handle, observer: sink.value });
+
+			expect(inbox.applyReconciliation(TURN_ID, corrupt)).toBe(false);
+			expect(sink.reconciled).toEqual([]);
+			expect(sink.reasons).toEqual(['initial', 'protocol_error']);
+		}
+	});
+
+	it('releases a failed request latch without leaving reconciliation mode', () => {
 		const sink = observer();
 		const inbox = new AgenticChatWorkerRealtimeInbox();
 		inbox.registerTurn({ handle, observer: sink.value });
 
-		expect(inbox.applyReconciliation(TURN_ID, receipt(1, 2, { response_watermark: 1 }))).toBe(
-			false
-		);
-		expect(sink.reconciled).toEqual([]);
-		expect(sink.reasons).toEqual(['initial', 'protocol_error']);
+		expect(inbox.releaseReconciliationRequest(TURN_ID)).toBe(true);
+		expect(inbox.getSnapshot(TURN_ID)).toMatchObject({
+			buffering: true,
+			reconciliationRequested: false
+		});
+		inbox.requestReconciliation(TURN_ID, 'watchdog');
+		expect(sink.reasons).toEqual(['initial', 'watchdog']);
+		expect(inbox.releaseReconciliationRequest('missing-turn')).toBe(false);
 	});
 
 	it('routes hints and same-turn protocol corruption through reconciliation', () => {

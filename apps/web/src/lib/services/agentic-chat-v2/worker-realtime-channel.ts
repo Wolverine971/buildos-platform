@@ -67,7 +67,7 @@ export class AgenticChatWorkerRealtimeChannel {
 	}
 
 	connect(userId: string): Promise<void> {
-		if (!isCanonicalUuid(userId)) {
+		if (!isAgenticChatRealtimeUserId(userId)) {
 			return Promise.reject(new Error('Invalid Agentic Chat Realtime user id'));
 		}
 		const topic = `chat-user:${userId.toLowerCase()}`;
@@ -102,28 +102,39 @@ export class AgenticChatWorkerRealtimeChannel {
 	}
 
 	async #connectNow(userId: string, topic: string): Promise<void> {
-		const reconnectingClosedTopic = this.#topic === topic && this.#status === 'unavailable';
+		const reconnectingClosedTopic =
+			this.#topic === topic && this.#status === 'unavailable' && this.#hasSubscribed;
 		this.#clearClosedReconnect();
-		await this.#removeCurrent('idle');
-
-		const epoch = ++this.#epoch;
-		this.#topic = topic;
-		this.#hasSubscribed = reconnectingClosedTopic;
-		this.#setStatus('connecting');
-		const channel = this.client.channel(topic, {
-			config: { private: true, broadcast: { self: false } }
-		});
+		let channel: AgenticChatRealtimeChannelLike | null = null;
 		try {
-			channel.on('broadcast', { event: AGENTIC_CHAT_REALTIME_STREAM_EVENT }, (message) => {
-				if (epoch !== this.#epoch) return;
-				this.inbox.receiveStreamEvent(broadcastPayload(message));
+			await this.#removeCurrent('idle');
+
+			const epoch = ++this.#epoch;
+			this.#topic = topic;
+			this.#hasSubscribed = reconnectingClosedTopic;
+			this.#setStatus('connecting');
+			const nextChannel = this.client.channel(topic, {
+				config: { private: true, broadcast: { self: false } }
 			});
-			channel.on('broadcast', { event: AGENTIC_CHAT_REALTIME_RECONCILE_EVENT }, (message) => {
-				if (epoch !== this.#epoch) return;
-				this.inbox.receiveReconcileHint(broadcastPayload(message));
-			});
-			this.#channel = channel;
-			channel.subscribe((status, error) => {
+			channel = nextChannel;
+			nextChannel.on(
+				'broadcast',
+				{ event: AGENTIC_CHAT_REALTIME_STREAM_EVENT },
+				(message) => {
+					if (epoch !== this.#epoch) return;
+					this.inbox.receiveStreamEvent(broadcastPayload(message));
+				}
+			);
+			nextChannel.on(
+				'broadcast',
+				{ event: AGENTIC_CHAT_REALTIME_RECONCILE_EVENT },
+				(message) => {
+					if (epoch !== this.#epoch) return;
+					this.inbox.receiveReconcileHint(broadcastPayload(message));
+				}
+			);
+			this.#channel = nextChannel;
+			nextChannel.subscribe((status, error) => {
 				if (epoch !== this.#epoch) return;
 				if (status === 'SUBSCRIBED') {
 					const reconnected = this.#hasSubscribed && this.#status !== 'subscribed';
@@ -135,18 +146,28 @@ export class AgenticChatWorkerRealtimeChannel {
 				this.#setStatus('unavailable', error);
 				this.inbox.notifyChannelUnavailable();
 				if (status === 'CLOSED') {
+					if (this.#channel !== nextChannel) return;
 					this.#channel = null;
-					this.#scheduleClosedReconnect(userId, epoch);
+					const reconnectEpoch = ++this.#epoch;
+					void Promise.resolve(this.client.removeChannel(nextChannel)).catch(() => {
+						// The closed channel is already fenced; reconnect remains authoritative.
+					});
+					this.#scheduleClosedReconnect(userId, reconnectEpoch);
 				}
 			});
 		} catch (error) {
 			this.#epoch += 1;
 			if (this.#channel === channel) this.#channel = null;
+			this.#topic = null;
+			this.#hasSubscribed = false;
 			this.#setStatus('unavailable', asError(error));
-			try {
-				await this.client.removeChannel(channel);
-			} catch {
-				// Preserve the original channel-construction failure.
+			this.inbox.notifyChannelUnavailable();
+			if (channel) {
+				try {
+					await this.client.removeChannel(channel);
+				} catch {
+					// Preserve the original channel-construction failure.
+				}
 			}
 			throw error;
 		}
@@ -209,7 +230,7 @@ function broadcastPayload(message: unknown): unknown {
 	return (message as Record<string, unknown>).payload;
 }
 
-function isCanonicalUuid(value: string): boolean {
+export function isAgenticChatRealtimeUserId(value: string): boolean {
 	return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 

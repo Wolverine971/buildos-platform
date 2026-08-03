@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/admin/chat/TimelineEventCard.svelte -->
 <script lang="ts">
 	import { formatDateTime } from '$lib/services/admin/chat-session-audit-formatters';
+	import { auditEventTargetId } from '$lib/services/admin/chat-session-flow-targets';
 	import { payloadField, stringValue } from '$lib/services/admin/chat-session-audit-payload';
 	import {
 		isToolCallEmittedEvent,
@@ -64,7 +65,11 @@
 	{@const turnEventToolResultSource = isStandaloneToolTurnEvent
 		? stringValue(payloadField(payload, 'tool_result_source'))
 		: ''}
-	<div class="relative pl-7">
+	<div
+		id={auditEventTargetId(event.id)}
+		class="relative rounded-lg pl-7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		tabindex="-1"
+	>
 		<div
 			class="absolute left-[2px] top-3.5 h-3 w-3 rounded-full ring-2 ring-card {timelineDotClasses(
 				lifecycleState.displaySeverity
@@ -112,7 +117,7 @@
 				{toolError}
 			/>
 
-			<TimelineLlmCallDetails {event} {payload} />
+			<TimelineLlmCallDetails {event} {payload} {group} />
 
 			<TimelineTurnRunDetails {event} {payload} />
 

@@ -8,7 +8,8 @@ import {
 } from './prepared-prompt-cache';
 import {
 	consumePreparedPrompt,
-	inspectPreparedPromptAdmissionLineage
+	inspectPreparedPromptAdmissionLineage,
+	inspectPreparedPromptForWorkerAdmission
 } from './prepared-prompt-consumer.server';
 
 type QueryResult = {
@@ -252,6 +253,31 @@ describe('consumePreparedPrompt', () => {
 			acceptedSurfaceProfile: 'global_basic'
 		});
 		expect(mock.updatePatches).toEqual([]);
+	});
+
+	it('validates a worker prepared copy without claiming it', async () => {
+		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
+		const preparedPrompt = buildPreparedPromptRow({ tools });
+		const mock = createSupabaseMock({ row: preparedPrompt.row });
+
+		const result = await inspectPreparedPromptForWorkerAdmission({
+			supabase: mock.supabase as any,
+			key: preparedPrompt.key,
+			userId: 'user-1',
+			sessionId: 'session-1',
+			cacheKey: 'v2|global|none|none|none',
+			surfaceProfile: 'global_basic',
+			contextType: 'global',
+			tools
+		});
+
+		expect(result).toMatchObject({
+			hit: true,
+			row: { id: preparedPrompt.row.id },
+			surface: { surface_profile: 'global_basic' }
+		});
+		expect(mock.updatePatches).toEqual([]);
+		expect(mock.builders[0]?.update).not.toHaveBeenCalled();
 	});
 
 	it('returns empty admission lineage when the nonce or immutable scope does not match', async () => {

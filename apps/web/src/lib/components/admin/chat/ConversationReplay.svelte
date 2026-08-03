@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { MessageSquare } from 'lucide-svelte';
 	import { formatNumber, pluralize } from '$lib/services/admin/chat-session-audit-formatters';
+	import { conversationTurnTargetId } from '$lib/services/admin/chat-session-flow-targets';
 	import type {
 		ChatSessionAuditPayload as SessionDetailPayload,
 		ConversationTurn
@@ -47,21 +48,25 @@
 		</div>
 
 		<div class="space-y-4">
-			{#each conversationTurns as turn}
-				<div class="space-y-2">
+			{#each conversationTurns as turn (turn.id)}
+				<div
+					id={conversationTurnTargetId(turn.id)}
+					class="space-y-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					tabindex="-1"
+				>
 					<ConversationTurnHeader {turn} />
 
-					{#each turn.userMessages as message}
+					{#each turn.userMessages as message (message.id)}
 						<ConversationMessageBubble {message} variant="user" />
 					{/each}
 
 					<BuildOsActivityDrawer {turn} />
 
-					{#each turn.assistantMessages as message}
+					{#each turn.assistantMessages as message (message.id)}
 						<ConversationMessageBubble {message} variant="assistant" />
 					{/each}
 
-					{#each turn.otherMessages as message}
+					{#each turn.otherMessages as message (message.id)}
 						<ConversationMessageBubble {message} variant="other" />
 					{/each}
 				</div>

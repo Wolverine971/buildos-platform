@@ -48,14 +48,14 @@ class FakeChannel implements AgenticChatRealtimeChannelLike {
 	}
 }
 
-function harness() {
+function harness(harnessOptions: { createChannel?: () => FakeChannel } = {}) {
 	const channels: FakeChannel[] = [];
 	const channelCalls: Array<{ topic: string; options: unknown }> = [];
 	const removed: FakeChannel[] = [];
 	const client: AgenticChatRealtimeClientLike = {
-		channel: (topic, options) => {
-			channelCalls.push({ topic, options });
-			const channel = new FakeChannel();
+		channel: (topic, channelOptions) => {
+			channelCalls.push({ topic, options: channelOptions });
+			const channel = harnessOptions.createChannel?.() ?? new FakeChannel();
 			channels.push(channel);
 			return channel;
 		},
@@ -98,7 +98,7 @@ function harness() {
 	};
 }
 
-function receipt(watermark: number) {
+function receipt(watermark: number, requestedGeneration = 0) {
 	return {
 		outcome: 'reconciled',
 		contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
@@ -108,9 +108,9 @@ function receipt(watermark: number) {
 		stream_run_id: 'worker-stream-1',
 		client_turn_id: 'worker-client-1',
 		execution_mode: 'worker_realtime',
-		requested_execution_generation: 1,
+		requested_execution_generation: requestedGeneration,
 		execution_generation: 1,
-		generation_changed: false,
+		generation_changed: requestedGeneration !== 1,
 		status: 'running',
 		text: '',
 		projection: {},
@@ -190,7 +190,7 @@ describe('AgenticChatWorkerRealtimeChannel', () => {
 		expect(h.transport.status).toBe('unavailable');
 		expect(h.reasons).toEqual(['initial', 'channel_unavailable']);
 
-		h.inbox.applyReconciliation(TURN_ID, receipt(0));
+		h.inbox.applyReconciliation(TURN_ID, receipt(0, 1));
 		channel.status('SUBSCRIBED');
 		expect(h.reasons).toEqual(['initial', 'channel_unavailable', 'channel_reconnected']);
 		expect(h.transport.status).toBe('subscribed');
@@ -205,16 +205,17 @@ describe('AgenticChatWorkerRealtimeChannel', () => {
 			first.status('SUBSCRIBED');
 			h.inbox.applyReconciliation(TURN_ID, receipt(0));
 			first.status('CLOSED');
+			expect(h.removed).toEqual([first]);
 
 			await vi.advanceTimersByTimeAsync(1_000);
 			expect(h.channelCalls).toHaveLength(2);
-			expect(h.removed).toEqual([]);
 			const second = h.channels[1]!;
-			h.inbox.applyReconciliation(TURN_ID, receipt(0));
+			h.inbox.applyReconciliation(TURN_ID, receipt(0, 1));
 			second.status('SUBSCRIBED');
 			expect(h.reasons).toEqual(['initial', 'channel_unavailable', 'channel_reconnected']);
 
 			second.status('CLOSED');
+			expect(h.removed).toEqual([first, second]);
 			await h.transport.close();
 			await vi.advanceTimersByTimeAsync(1_000);
 			expect(h.channelCalls).toHaveLength(2);
@@ -222,6 +223,20 @@ describe('AgenticChatWorkerRealtimeChannel', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it('fails unavailable and requests convergence when channel construction throws', async () => {
+		const h = harness({
+			createChannel: () => {
+				throw new Error('channel construction failed');
+			}
+		});
+		h.inbox.applyReconciliation(TURN_ID, receipt(0));
+
+		await expect(h.transport.connect(USER_ID)).rejects.toThrow('channel construction failed');
+		expect(h.transport.status).toBe('unavailable');
+		expect(h.reasons).toEqual(['initial', 'channel_unavailable']);
+		expect(h.channels).toEqual([]);
 	});
 
 	it('rejects malformed user topics before opening a channel', async () => {

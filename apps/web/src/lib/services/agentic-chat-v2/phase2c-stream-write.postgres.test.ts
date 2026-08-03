@@ -34,6 +34,7 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	let socketDir = '';
 	let port = 0;
 	let proofOutput = '';
+	let loadOutput = '';
 
 	const applySqlFile = (path: string): string =>
 		execFileSync(
@@ -115,13 +116,18 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			'20260802031000_agentic_chat_worker_execution_recovery.sql',
 			'20260802033000_agentic_chat_worker_stream_write_foundation.sql',
 			'20260802033100_agentic_chat_worker_create_transition_index.sql',
-			'20260802033200_agentic_chat_worker_stream_write_rpcs.sql'
+			'20260802033200_agentic_chat_worker_stream_write_rpcs.sql',
+			'20260802034000_agentic_chat_worker_stream_delivery_ack.sql',
+			'20260802035000_agentic_chat_worker_cancel_observation.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}
 
 		proofOutput = applySqlFile(
 			sqlPath('supabase/tests/20260802033200_agentic_chat_worker_stream_write_rpcs.test.sql')
+		);
+		loadOutput = applySqlFile(
+			sqlPath('supabase/tests/20260803000000_agentic_chat_worker_100_turn_load.test.sql')
 		);
 	}, 60_000);
 
@@ -134,5 +140,17 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 
 	it('passes fencing, idempotency, batch isolation, rollback, and concurrency checks', () => {
 		expect(proofOutput).toContain('phase2c_stream_write_rpcs_ok');
+	});
+
+	it('measures the bounded 100-turn database cadence and WAL budget', () => {
+		expect(loadOutput).toContain('phase2d_100_turn_database_load_ok');
+		const metricsText = loadOutput.match(/agentic_chat_100_turn_load_metrics=(\{[^\n]+\})/)?.[1];
+		expect(metricsText).toBeDefined();
+		const metrics = JSON.parse(metricsText ?? '{}') as Record<string, number>;
+		expect(metrics).toMatchObject({ turns: 100, rpc_statements: 102, affected_rows: 300 });
+		expect(metrics.wal_bytes).toBeGreaterThan(0);
+		expect(metrics.wal_bytes_per_turn).toBeLessThanOrEqual(65_536);
+		expect(metrics.flush_ms).toBeLessThan(2_000);
+		expect(metrics.total_ms).toBeLessThan(5_000);
 	});
 });

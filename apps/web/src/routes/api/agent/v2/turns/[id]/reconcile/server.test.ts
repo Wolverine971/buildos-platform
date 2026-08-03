@@ -60,6 +60,8 @@ describe('GET /api/agent/v2/turns/[id]/reconcile', () => {
 		const response = await GET(requestEvent({ user: null }) as never);
 
 		expect(response.status).toBe(401);
+		expect(response.headers.get('cache-control')).toBe('private, no-store');
+		expect(response.headers.get('vary')).toBe('Authorization');
 		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
 	});
 
@@ -73,6 +75,7 @@ describe('GET /api/agent/v2/turns/[id]/reconcile', () => {
 		]) {
 			const response = await GET(event as never);
 			expect(response.status).toBe(400);
+			expect(response.headers.get('cache-control')).toBe('private, no-store');
 		}
 		expect(mocks.reconcileAgenticChatTurn).not.toHaveBeenCalled();
 	});
@@ -102,6 +105,7 @@ describe('GET /api/agent/v2/turns/[id]/reconcile', () => {
 
 		const response = await GET(requestEvent() as never);
 		expect(response.status).toBe(404);
+		expect(response.headers.get('cache-control')).toBe('private, no-store');
 	});
 
 	it('rejects legacy transport and keeps database failures private', async () => {
@@ -120,6 +124,7 @@ describe('GET /api/agent/v2/turns/[id]/reconcile', () => {
 		const body = await response.json();
 		expect(response.status).toBe(503);
 		expect(JSON.stringify(body)).not.toContain('internal corruption detail');
+		expect(response.headers.get('cache-control')).toBe('private, no-store');
 	});
 
 	it('maps a durable cursor-ahead rejection to a retryable client conflict', async () => {
@@ -129,5 +134,6 @@ describe('GET /api/agent/v2/turns/[id]/reconcile', () => {
 
 		const response = await GET(requestEvent({ query: '?generation=2&after=9' }) as never);
 		expect(response.status).toBe(409);
+		expect(response.headers.get('cache-control')).toBe('private, no-store');
 	});
 });

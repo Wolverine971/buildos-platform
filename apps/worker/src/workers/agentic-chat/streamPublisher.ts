@@ -2,11 +2,11 @@
 
 import { randomUUID } from 'node:crypto';
 import {
+	AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
+	AGENTIC_CHAT_REALTIME_STREAM_EVENT,
 	AGENTIC_CHAT_STREAM_EVENT_PAYLOAD_MAX_BYTES,
 	AGENTIC_CHAT_STREAM_PROJECTION_MAX_BYTES,
 	AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES,
-	AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
-	AGENTIC_CHAT_REALTIME_STREAM_EVENT,
 	AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_BYTES,
 	AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_ITEMS,
 	AGENTIC_CHAT_TEXT_BATCH_MAX_BYTES,
@@ -90,12 +90,26 @@ export type AgenticChatTextEnqueueResultV1 = {
 export type AgenticChatPublisherSnapshotV1 = {
 	turnRunId: string;
 	executionGeneration: number;
+	durableSequence: number;
 	assistantText: string;
 	pendingBytes: number;
 	pendingEvents: number;
 	reconcileOnly: boolean;
 	blockedReason: 'publisher_overload' | 'ownership_lost' | 'persistence_rejected' | null;
 	busy: boolean;
+};
+
+export type AgenticChatPublisherWorkerSnapshotV1 = {
+	registeredTurns: number;
+	pendingBytes: number;
+	pendingEvents: number;
+	pressure: AgenticChatPublisherPressureV1;
+	softByteLimit: number;
+	hardByteLimit: number;
+	softEventLimit: number;
+	hardEventLimit: number;
+	accepting: boolean;
+	stopping: boolean;
 };
 
 export type AgenticChatPublisherMetricV1 =
@@ -180,7 +194,9 @@ type Operation = TextOperation | SemanticOperation;
 
 type TurnState = {
 	context: AgenticChatPublisherTurnV1;
+	durableSequence: number;
 	assistantText: string;
+	abandoned: boolean;
 	operations: Operation[];
 	pendingBytes: number;
 	busy: boolean;
@@ -283,7 +299,9 @@ export class AgenticChatStreamPublisher {
 		}
 		this.turns.set(context.turnRunId, {
 			context,
+			durableSequence: initialSequence,
 			assistantText,
+			abandoned: false,
 			operations: [],
 			pendingBytes: 0,
 			busy: false,
@@ -453,10 +471,12 @@ export class AgenticChatStreamPublisher {
 		}
 		if (
 			receipt.turn_run_id !== turnRunId ||
-			receipt.execution_generation !== state.context.executionGeneration
+			receipt.execution_generation !== state.context.executionGeneration ||
+			receipt.terminal_sequence_index !== state.durableSequence + 1
 		) {
-			throw new Error('Terminal receipt does not match the registered turn generation');
+			throw new Error('Terminal receipt does not match the registered turn sequence');
 		}
+		state.durableSequence = receipt.terminal_sequence_index;
 
 		const message = this.eventMessage(state, {
 			...eventPayload,
@@ -493,6 +513,7 @@ export class AgenticChatStreamPublisher {
 		return {
 			turnRunId,
 			executionGeneration: state.context.executionGeneration,
+			durableSequence: state.durableSequence,
 			assistantText: state.assistantText,
 			pendingBytes: state.pendingBytes,
 			pendingEvents: state.operations.length,
@@ -502,11 +523,45 @@ export class AgenticChatStreamPublisher {
 		};
 	}
 
+	/** Worker-wide pressure evidence used by capacity gates and load fixtures. */
+	getWorkerSnapshot(): AgenticChatPublisherWorkerSnapshotV1 {
+		return {
+			registeredTurns: this.turns.size,
+			pendingBytes: this.pendingBytes,
+			pendingEvents: this.pendingEvents,
+			pressure:
+				this.pendingBytes >= this.config.workerPendingSoftBytes ||
+				this.pendingEvents >= this.config.workerPendingSoftEvents
+					? 'soft_limit'
+					: 'normal',
+			softByteLimit: this.config.workerPendingSoftBytes,
+			hardByteLimit: this.config.workerPendingHardBytes,
+			softEventLimit: this.config.workerPendingSoftEvents,
+			hardEventLimit: this.config.workerPendingHardEvents,
+			accepting: this.accepting,
+			stopping: this.stopping
+		};
+	}
+
 	unregisterTurn(turnRunId: string): void {
 		const state = this.requireTurn(turnRunId);
 		if (state.busy || state.operations.length) {
 			throw new Error('Cannot unregister an Agentic Chat turn with pending publisher work');
 		}
+		this.turns.delete(turnRunId);
+	}
+
+	/**
+	 * Stop accepting or publishing writes for a turn whose domain owner is
+	 * converging through recovery/finalization. In-flight database work remains
+	 * fenced by generation/token; its eventual receipt is never Broadcast.
+	 */
+	abandonTurn(turnRunId: string, reason = 'turn_abandoned'): void {
+		const state = this.requireTurn(turnRunId);
+		state.abandoned = true;
+		state.reconcileOnly = true;
+		state.blockedReason = 'ownership_lost';
+		this.rejectOperations(state, new AgenticChatPublisherBlockedError(turnRunId, reason));
 		this.turns.delete(turnRunId);
 	}
 
@@ -664,9 +719,18 @@ export class AgenticChatStreamPublisher {
 		state: TurnState,
 		receipt: DeliveryReceipt
 	): Promise<AgenticChatPublisherDeliveryV1> {
+		if (state.abandoned) return 'blocked';
 		if (!this.receiptMatchesTurn(state, receipt)) {
 			this.blockTurn(state, 'receipt_scope_mismatch');
 			return 'blocked';
+		}
+		if ('sequence_index' in receipt) {
+			const expectedSequence = state.durableSequence + 1;
+			if (receipt.sequence_index !== expectedSequence) {
+				this.blockTurn(state, 'receipt_sequence_gap');
+				return 'blocked';
+			}
+			state.durableSequence = receipt.sequence_index;
 		}
 		if (!canPublishAgenticChatStreamWriteV1(receipt)) {
 			if (receipt.outcome === 'already_persisted') {
@@ -808,6 +872,7 @@ export class AgenticChatStreamPublisher {
 	}
 
 	private deferRetry(state: TurnState): void {
+		if (state.abandoned) return;
 		const operation = state.operations[0];
 		if (operation) operation.inFlight = false;
 		state.busy = false;

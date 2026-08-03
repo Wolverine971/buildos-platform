@@ -33,6 +33,7 @@ describePostgres('agentic-chat worker Phase 2B execution/recovery PostgreSQL con
 	let dataDir = '';
 	let socketDir = '';
 	let port = 0;
+	let behaviorOutput = '';
 	let proofOutput = '';
 
 	const applySqlFile = (path: string): string =>
@@ -117,6 +118,11 @@ describePostgres('agentic-chat worker Phase 2B execution/recovery PostgreSQL con
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}
 
+		behaviorOutput = applySqlFile(
+			sqlPath(
+				'supabase/tests/20260803001000_agentic_chat_worker_phase2d_behavior_matrix.test.sql'
+			)
+		);
 		proofOutput = applySqlFile(
 			sqlPath('supabase/tests/20260802031000_agentic_chat_worker_execution_recovery.test.sql')
 		);
@@ -131,5 +137,9 @@ describePostgres('agentic-chat worker Phase 2B execution/recovery PostgreSQL con
 
 	it('passes provider-start, typed recovery, security, idempotency, and rollback checks', () => {
 		expect(proofOutput).toContain('phase2b_execution_recovery_ok');
+	});
+
+	it('passes supersede terminal-wait and immutable-input cleanup/retry checks', () => {
+		expect(behaviorOutput).toContain('phase2d_behavior_matrix_ok');
 	});
 });

@@ -10,6 +10,7 @@ import {
 	type AgenticChatReconcileRpcResultV1,
 	type AgentStreamEventPhaseV1,
 	type AgentStreamEventV1,
+	type ChatTurnStatusV1,
 	type TurnHandleV1
 } from '@buildos/shared-types';
 
@@ -164,6 +165,14 @@ export class AgenticChatWorkerRealtimeInbox {
 		if (state) this.#requestReconciliation(state, reason);
 	}
 
+	releaseReconciliationRequest(turnRunId: string): boolean {
+		const state = this.#turns.get(turnRunId);
+		if (!state) return false;
+		state.buffering = true;
+		state.reconciliationRequested = false;
+		return true;
+	}
+
 	receiveStreamEvent(value: unknown): void {
 		const event = parseAgenticChatStreamEvent(value);
 		if (!event) {
@@ -251,7 +260,7 @@ export class AgenticChatWorkerRealtimeInbox {
 		const state = this.#turns.get(turnRunId);
 		if (!state) return false;
 		state.reconciliationRequested = false;
-		const receipt = parseReconciledReceipt(value, state.handle);
+		const receipt = parseReconciledReceipt(value, state);
 		if (!receipt) {
 			this.#requestReconciliation(state, 'protocol_error');
 			return false;
@@ -449,8 +458,9 @@ function parseAgenticChatReconcileHint(value: unknown): AgenticChatRealtimeRecon
 
 function parseReconciledReceipt(
 	value: unknown,
-	handle: WorkerTurnHandle
+	state: TrackedTurn
 ): AgenticChatWorkerReconciledReceipt | null {
+	const handle = state.handle;
 	if (!isRecord(value) || value.outcome !== 'reconciled') return null;
 	const generation = safeNonnegativeInteger(value.execution_generation);
 	const watermark = safeNonnegativeInteger(value.response_watermark);
@@ -488,20 +498,50 @@ function parseReconciledReceipt(
 	) {
 		return null;
 	}
-	let previousSequence = projectionSequence;
+	const terminal = isTerminalStatus(value.status);
+	if (
+		!isNullableString(value.finished_reason) ||
+		!isNullableString(value.failure_code) ||
+		terminal !== (typeof value.terminal_event_id === 'string') ||
+		terminal !== (typeof value.terminalized_at === 'string') ||
+		(terminal &&
+			(watermark < 1 ||
+				value.terminal_event_id !==
+					createAgentStreamEventIdV1(handle.turnRunId, generation, watermark) ||
+				!isTimestamp(value.terminalized_at))) ||
+		(!terminal &&
+			(value.terminal_event_id !== null ||
+				value.terminalized_at !== null ||
+				value.assistant_message !== null)) ||
+		(value.status === 'completed' && !isRecord(value.assistant_message)) ||
+		(value.status === 'completed' && value.failure_code !== null)
+	) {
+		return null;
+	}
+	const generationChanged = generation !== state.executionGeneration;
+	if (
+		value.requested_execution_generation !== state.executionGeneration ||
+		value.generation_changed !== generationChanged
+	) {
+		return null;
+	}
+	let previousSequence = generationChanged
+		? projectionSequence
+		: Math.max(state.lastAppliedSequence, projectionSequence);
 	for (const rawEvent of value.durable_events) {
 		const event = parseAgenticChatStreamEvent(rawEvent);
 		if (
 			!event ||
 			!eventMatchesHandle(event, handle) ||
 			event.execution_generation !== generation ||
-			event.sequence_index <= previousSequence ||
+			event.sequence_index !== previousSequence + 1 ||
 			event.sequence_index > watermark
 		) {
 			return null;
 		}
 		previousSequence = event.sequence_index;
 	}
+	if (previousSequence !== watermark) return null;
 	return value as AgenticChatWorkerReconciledReceipt;
 }
 
@@ -542,7 +582,7 @@ function isEventPhase(value: unknown): value is AgentStreamEventPhaseV1 {
 	);
 }
 
-function isTurnStatus(value: unknown): boolean {
+function isTurnStatus(value: unknown): value is ChatTurnStatusV1 {
 	return (
 		value === 'queued' ||
 		value === 'running' ||
@@ -550,6 +590,20 @@ function isTurnStatus(value: unknown): boolean {
 		value === 'failed' ||
 		value === 'cancelled'
 	);
+}
+
+function isTerminalStatus(
+	value: ChatTurnStatusV1
+): value is Extract<ChatTurnStatusV1, 'completed' | 'failed' | 'cancelled'> {
+	return value === 'completed' || value === 'failed' || value === 'cancelled';
+}
+
+function isNullableString(value: unknown): value is string | null {
+	return typeof value === 'string' || value === null;
+}
+
+function isTimestamp(value: unknown): value is string {
+	return typeof value === 'string' && Number.isFinite(Date.parse(value));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

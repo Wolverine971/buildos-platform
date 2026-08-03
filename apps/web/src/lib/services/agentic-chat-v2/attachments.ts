@@ -1,5 +1,9 @@
 // apps/web/src/lib/services/agentic-chat-v2/attachments.ts
-import type { ChatAttachmentRef, ChatImageAttachmentCaps } from '@buildos/shared-types';
+import type {
+	ChatAttachmentRef,
+	ChatImageAttachmentCaps,
+	NormalizedChatAttachmentV1
+} from '@buildos/shared-types';
 import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 
 const DEFAULT_ATTACHMENT_TEXT_MAX_CHARS = 2000;
@@ -243,6 +247,34 @@ export function normalizeChatAttachmentRefs(value: unknown): NormalizeChatAttach
 	}
 
 	return { attachments, rejected };
+}
+
+/**
+ * Convert server-validated attachment rows into the canonical admission/hash
+ * shape shared by the legacy and worker gateways.
+ */
+export function normalizeChatAttachmentsForAdmission(
+	attachments: readonly ChatAttachmentRef[]
+): NormalizedChatAttachmentV1[] {
+	return attachments.map((attachment, inputOrder) => ({
+		attachment_kind:
+			attachment.attachment_kind === 'temporary_file' ? 'temporary_file' : 'onto_asset',
+		media_type: 'image',
+		asset_id: attachment.asset_id ?? null,
+		temporary_attachment_id: attachment.temporary_attachment_id ?? null,
+		project_id: attachment.project_id ?? null,
+		role: attachment.role === 'analysis_target' ? 'analysis_target' : 'attachment',
+		display_order: attachment.display_order ?? inputOrder,
+		file_name: attachment.file_name ?? null,
+		content_type: attachment.content_type ?? null,
+		file_size_bytes: attachment.file_size_bytes ?? null,
+		width: attachment.width ?? null,
+		height: attachment.height ?? null,
+		checksum_sha256: attachment.checksum_sha256 ?? null,
+		ocr_status: attachment.ocr_status ?? null,
+		extraction_summary: attachment.extraction_summary ?? null,
+		extracted_text_preview: attachment.extracted_text_preview ?? null
+	}));
 }
 
 export function createChatAttachmentRefFromAsset(

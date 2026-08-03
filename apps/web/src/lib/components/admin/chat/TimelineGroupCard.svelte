@@ -201,7 +201,7 @@
 			<div class="relative pl-2">
 				<div class="absolute left-[8px] top-0 bottom-0 w-px bg-border"></div>
 				<div class="space-y-2">
-					{#each group.items as event, eventIndex}
+					{#each group.items as event, eventIndex (event.id)}
 						<TimelineEventCard
 							{group}
 							{event}

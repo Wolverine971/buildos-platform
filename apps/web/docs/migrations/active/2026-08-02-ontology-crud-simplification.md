@@ -4,7 +4,7 @@
 
 **Status:** Active  
 **Started:** 2026-08-02  
-**Last updated:** 2026-08-02  
+**Last updated:** 2026-08-03
 **Scope:** Documents, tasks, plans, goals, and projects  
 **Out of scope:** Broad agentic-chat redesign and unrelated UI redesign. Compatibility checks and narrowly scoped executor fixes are in scope when CRUD changes affect tool calls.
 
@@ -73,7 +73,10 @@ The server-route guardrail currently passes because 33 oversized routes are gran
 - [ ] Task update: include relationships with the existing task/assignee atomic command.
 - [ ] Document create: make the row and critical tree/relationship state atomic.
 - [ ] Document update: make the row and relationship state atomic.
-- [ ] Document archive/restore/delete: update document state and tree structure atomically.
+- [x] Document archive/restore/delete: update document state and tree structure atomically.
+    - [x] Archive: document state, canonical tree, history, and changed child caches commit together.
+    - [x] Restore: state and any legacy tree cleanup commit together; unchanged trees are not rewritten.
+    - [x] Delete: active soft delete and archived permanent delete commit with tree cleanup.
 
 Current failure mode: an endpoint can return an error after the primary entity row has already committed, or return success after a non-durable structural side effect failed.
 
@@ -84,14 +87,14 @@ Current failure mode: an endpoint can return an error after the primary entity r
 - [x] Add regression coverage proving stale and racing writes cannot overwrite newer content.
 - [x] Extend the same revision strategy to document-tree mutations.
 
-Baseline failure mode: document PATCH and document-tree mutations compared versions in application code and then performed unconditional updates, leaving time-of-check/time-of-use windows. Ordinary metadata/content PATCH now enforces the expected timestamp on the write itself, and document-tree mutations condition the canonical project update on the expected JSON structure version.
+Baseline failure mode: document PATCH and document-tree mutations compared versions in application code and then performed unconditional updates, leaving time-of-check/time-of-use windows. Ordinary metadata/content PATCH now enforces the expected timestamp on the write itself. Document-tree mutations now recheck the expected JSON structure version while holding the project row lock inside the same transaction that writes history and changed child caches.
 
 ### P1 — Document-tree performance and integrity
 
 - [x] Avoid loading full document content for structural operations.
 - [x] Replace application-level version comparison with a conditional database update.
 - [x] Update only changed child/parent rows rather than every document in the tree.
-- [ ] Combine structure history and structural mutation in one transaction.
+- [x] Combine structure history and structural mutation in one transaction.
 - [ ] Decide whether project JSON, normalized parent/order rows, or another representation is canonical.
 - [ ] Remove duplicated `children` synchronization if it is not required as a canonical store.
 
@@ -99,13 +102,19 @@ Target complexity: a single add, move, archive, or restore should be proportiona
 
 ### P1 — Relationship organization
 
-- [ ] Build a normalized relationship plan before issuing writes.
-- [ ] Validate references set-wise instead of one reference at a time.
-- [ ] Remove repeated validation between callers, `autoOrganizeConnections`, containment, and semantic-edge application.
+- [x] Build a normalized relationship plan before issuing writes.
+- [x] Validate references set-wise instead of one reference at a time.
+- [x] Remove repeated validation between callers, `autoOrganizeConnections`, containment, and semantic-edge application.
+    - [x] Goal create/update reuse their pre-mutation validation during relationship application.
+    - [x] Other `autoOrganizeConnections` callers validate the exact connection set once before planning.
+    - [x] The lower-level direct edge API retains its own guard without being called redundantly by the connection planner.
 - [ ] Replace relationship edges in one transaction.
+    - [x] Add and disposable-test the secured transactional plan applier.
+    - [x] Apply and live-verify the transactional plan-applier migration.
+    - [ ] Move CRUD callers onto the transactional boundary.
 - [ ] Preserve all current tool-call relationship semantics and error messages where clients depend on them.
 
-Current failure mode: one mutation can validate the same references multiple times and perform eight or more database round trips before side effects.
+The canonical connection path now resolves intent into a serializable mutation plan containing exact containment and semantic edges before issuing writes. Existing-parent reads needed for merge behavior run concurrently, and merge-derived containment operations carry exact edge snapshots for compare-and-swap enforcement. The secured transactional plan applier is deployed and verified; production callers still use multiple database statements until the routes are migrated.
 
 Transaction design note: goal connections can also reparent existing milestones, plans, tasks, risks, requirements, and metrics. A goal-only SQL implementation would duplicate the shared relationship planner and risk UI/tool behavior drift. Atomic entity work should therefore consume one shared edge-mutation plan rather than reimplementing connection semantics per route.
 
@@ -168,13 +177,20 @@ Each command should own one business intent and return the complete core result 
 
 ### Phase 3 — Document-tree rewrite
 
-- [ ] Introduce the transactional structure mutation primitive.
-- [ ] Migrate add, move, archive, restore, and delete.
+- [x] Introduce the transactional structure mutation primitive.
+- [x] Migrate add, move, archive, restore, and delete.
+    - [x] Add and move use the transactional structure primitive.
+    - [x] Archive uses a lifecycle command that includes the document rows.
+    - [x] Restore uses a lifecycle command and skips the normal no-op tree write.
+    - [x] Delete uses one lifecycle command for soft and permanent modes.
 - [x] Remove full-tree child synchronization from the hot path.
 
 ### Phase 4 — Relationship batching and durable side effects
 
 - [ ] Introduce set-based relationship planning/application.
+    - [x] Set-based validation and normalized mutation planning.
+    - [x] Transactional set-based relationship application primitive.
+    - [ ] Production caller migration.
 - [ ] Introduce the outbox and worker path.
 - [ ] Migrate side effects incrementally with compatibility tests.
 
@@ -194,15 +210,51 @@ Every affected entity should eventually have coverage for:
 | Update rollback                  | ⬜       | ⬜   | ⬜   | ⬜   | ⬜      |
 | Concurrent update conflict       | ✅¹      | ⬜   | ⬜   | ⬜   | ⬜      |
 | Relationship replacement         | ⬜       | ⬜   | ⬜   | ⬜   | N/A     |
-| Archive/restore/delete integrity | ⬜       | ⬜   | ⬜   | ⬜   | ⬜      |
+| Archive/restore/delete integrity | ✅³      | ⬜   | ⬜   | ⬜   | ⬜      |
 | Tool/API contract compatibility  | ✅²      | ⬜   | ⬜   | ⬜   | ⬜      |
 | Side-effect retry/deduplication  | ⬜       | ⬜   | ⬜   | ⬜   | ⬜      |
 
-¹ Ordinary document metadata/content PATCH and the canonical project document-tree update are covered. Structure history and per-document child synchronization remain outside that transaction.
+¹ Ordinary document metadata/content PATCH and the canonical project document-tree update are covered. Structure history and changed per-document child caches commit with the canonical tree, archive includes the affected document rows, and restore includes any required legacy tree cleanup. Delete and relationship mutations remain.
 
 ² The document-tree tool definition, registry/execution path, transient structure-conflict handling, API responses, and affected-entity reporting are covered. The model-facing input schema and success payload remain unchanged.
 
+³ Document archive, restore, active soft delete, and archived permanent delete now include the canonical tree, structure history, changed child caches, and document row mutation in one database transaction. Failure-injection regressions cover rollback after structural work has begun.
+
 ## Change log
+
+### 2026-08-03
+
+- Added and deployed migration `20260803015000_atomic_relationship_plan` with a fixed search path, project write-access enforcement, private entity-validation helper, project-row serialization, and explicit role grants.
+- The transaction revalidates every raw connection reference, verifies planned endpoints and relationship tokens, applies containment/semantic/project-edge mutations, and rolls the entire plan back on any failure.
+- Added merge-state compare-and-swap snapshots so a stale containment plan returns `relationship_containment_conflict` instead of overwriting newer parent state.
+- Added a disposable schema fixture and PostgreSQL coverage for privileges, access denial, semantic replacement, unchanged-edge preservation, missing references, stale containment rollback, and forced insert-failure rollback. The deployed functions and migration ledger were also verified live; production routes do not use the transaction yet.
+- Added a JSON-round-trippable relationship mutation plan that materializes containment precedence, canonical edge directions, semantic replacement modes, and callback-derived edge props before the write boundary.
+- Extracted pure containment-edge materialization so the current applier and the future database transaction consume the same parent-precedence and primary-parent rules.
+- Changed `autoOrganizeConnections` to validate once, load independent merge-parent state concurrently, build the complete mutation plan, and then apply it in the existing compatibility order.
+- Fixed semantic replacement error handling so a failed delete now returns `AutoOrganizeError` instead of potentially reporting success with stale edges.
+- Kept goal/plan/task/document route contracts and agentic tool definitions unchanged. Verified 46 focused relationship, goal-route, and agentic definition/executor tests, the shared package typecheck/declaration build, and a clean full web check.
+- Replaced sequential per-reference relationship validation with deduplicated, set-wise validation: one concurrent query per entity kind while preserving project-mismatch, query-error, and kind-specific not-found contracts.
+- Allowed `autoOrganizeConnections` to reuse an exact caller validation result. Goal create/update now avoid revalidating the same connections after their pre-mutation guard; other callers retain validation by default.
+- Confirmed `create_onto_goal` still uses the same route and payload schema. The agent tool does not currently expose connections, while other relationship-capable agent/API workflows benefit from the shared validator automatically.
+- Kept full transactional goal create/update pending because connections can reparent several entity kinds; the next command must consume the shared resolved relationship plan rather than duplicate those semantics in goal-specific SQL.
+- Applied linked migrations `20260803010000` and `20260803011000` after disposable-database verification; confirmed both functions use a fixed search path, deny anonymous execution, and are recorded in the remote migration ledger.
+- Added `onto_document_archive_atomic`, which locks the project and affected documents, checks both row and tree versions, and commits subtree archive state with the canonical tree, history, and changed child caches.
+- Replaced the document PATCH archive chain (tree read, tree transaction, row update, row reload) with one structure-only read and one lifecycle transaction while preserving the HTTP response and agentic `update_onto_document` contract.
+- Added database rollback coverage proving a document-row failure rolls back the tree, history, child cache, and every archive state change; added service/API coverage for subtree, unlinked-document, conflict, and replay-suppression behavior.
+- Verified 109 focused document/API/agentic tests plus shared-package typecheck/build for the archive slice.
+- Added and applied linked migration `20260803012000` for atomic document restore, with the same fixed-search-path and role-grant verification.
+- Removed restore's normal no-op tree version/history write. The command now verifies the observed structure under the project lock, updates only the archived row, and performs transactional promote-style tree cleanup only for legacy archived nodes that are still linked.
+- Routed state-only archived-to-active PATCH transitions through the restore command, preserving the existing `update_onto_document` schema while making agent-triggered state-only restores atomic.
+- Added disposable-database rollback, conflict, access, and unchanged-tree coverage; verified 111 focused document/API/agentic tests plus shared-package typecheck/build.
+- Added and applied linked migration `20260803013000` for atomic document delete. Active documents retain soft-delete semantics, archived documents retain permanent-delete semantics, and promote/cascade tree behavior remains request-compatible.
+- Removed the route's nonfatal `structure_error` path that previously allowed a document row to be deleted after tree cleanup failed. Successful responses retain `structure_error: null`; failures now roll the whole command back.
+- Kept the `delete_onto_document` definition, executor payload, and DELETE response schema unchanged; agentic deletes use the transactional command through the existing endpoint.
+- Added disposable-database coverage for soft delete, permanent delete without a no-op tree write, stale conflicts, authorization, and post-tree rollback; verified 114 focused document/API/agentic tests, shared-package typecheck/build, and a clean full web check.
+- Added the `onto_project_doc_structure_update_atomic` database primitive with write-access enforcement, project-row locking, expected-version validation, structure history, and changed child-cache updates in one transaction.
+- Replaced the service's project update, separate history insert, and per-parent child updates with one atomic RPC while preserving the existing HTTP, agentic-tool, and conflict-response contracts.
+- Reduced a representative two-parent move at the service boundary from five database round trips to two: one structure read and one transactional mutation call.
+- Added a disposable PostgreSQL regression proving stale conflicts, access denial, and rollback of the canonical tree and history when child synchronization fails.
+- Verified 158 focused CRUD/API/agentic tests plus shared-package typecheck/build. At that checkpoint, the full web check reached four TypeScript errors in concurrently modified `AgentChatModal.svelte` worker-adoption code; later verification returned to a clean baseline.
 
 ### 2026-08-02
 

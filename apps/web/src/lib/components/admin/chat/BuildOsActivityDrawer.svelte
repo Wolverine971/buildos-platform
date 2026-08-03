@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/admin/chat/BuildOsActivityDrawer.svelte -->
 <script lang="ts">
 	import { formatNumber, pluralize } from '$lib/services/admin/chat-session-audit-formatters';
+	import { conversationActivityTargetId } from '$lib/services/admin/chat-session-flow-targets';
 	import type { ConversationTurn } from '$lib/services/admin/chat-session-audit-types';
 	import ConversationToolCallCard from './ConversationToolCallCard.svelte';
 	import SupervisorEventCard from './SupervisorEventCard.svelte';
@@ -10,6 +11,7 @@
 
 {#if turn.toolCalls.length > 0 || turn.llmCalls.length > 0 || turn.promptSnapshots.length > 0 || turn.operations.length > 0 || turn.evalRuns.length > 0 || turn.supervisorEvents.length > 0}
 	<details
+		id={conversationActivityTargetId(turn.id)}
 		class="rounded-lg border border-border bg-card shadow-ink tx tx-thread tx-weak sm:ml-10"
 	>
 		<summary class="cursor-pointer list-none border-b border-border bg-background px-3 py-2">
@@ -61,7 +63,7 @@
 		<div class="space-y-2 p-3">
 			{#if turn.supervisorEvents.length > 0}
 				<div class="space-y-2">
-					{#each turn.supervisorEvents as event}
+					{#each turn.supervisorEvents as event (event.id)}
 						<SupervisorEventCard {event} />
 					{/each}
 				</div>
@@ -69,8 +71,8 @@
 
 			{#if turn.toolCalls.length > 0}
 				<div class="space-y-2">
-					{#each turn.toolCalls as tool}
-						<ConversationToolCallCard {tool} />
+					{#each turn.toolCalls as tool (tool.id)}
+						<ConversationToolCallCard {tool} turnId={turn.id} />
 					{/each}
 				</div>
 			{:else}

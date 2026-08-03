@@ -150,9 +150,8 @@ function isReconnectRequiredRefreshError(error: unknown): boolean {
 	return (
 		providerCode === 'invalid_grant' ||
 		providerCode === 'invalid_client' ||
-		candidate.code === 400 ||
-		candidate.status === 400 ||
 		message.includes('invalid_grant') ||
+		message.includes('invalid_client') ||
 		message.includes('expired or revoked')
 	);
 }
@@ -682,7 +681,11 @@ export class GmailReadOAuthService {
 		});
 	}
 
-	async getAuthorizedReadAccessToken(userId: string, connectionId: string): Promise<string> {
+	async getAuthorizedReadAccessToken(
+		userId: string,
+		connectionId: string,
+		options: { forceRefresh?: boolean } = {}
+	): Promise<string> {
 		this.requireConfigured();
 
 		const { data: connectionData, error: connectionError } = await this.admin
@@ -787,7 +790,11 @@ export class GmailReadOAuthService {
 		const expiresAt = credential.access_token_expires_at
 			? Date.parse(credential.access_token_expires_at)
 			: Number.NaN;
-		if (Number.isFinite(expiresAt) && expiresAt > this.now().getTime() + 5 * 60 * 1000) {
+		if (
+			!options.forceRefresh &&
+			Number.isFinite(expiresAt) &&
+			expiresAt > this.now().getTime() + 5 * 60 * 1000
+		) {
 			await this.admin
 				.from('user_email_connections')
 				.update({

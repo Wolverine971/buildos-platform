@@ -26,10 +26,9 @@ import {
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import {
-	getDocTree,
-	findNodeById,
-	collectDocIds,
-	removeDocumentFromTree,
+	archiveDocumentInTree,
+	deleteDocumentInTree,
+	restoreDocumentInTree,
 	updateDocNodeMetadata
 } from '$lib/services/ontology/doc-structure.service';
 import {
@@ -39,7 +38,6 @@ import {
 import type { ParentRef } from '$lib/services/ontology/containment-organizer';
 import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
-import type { DocStructure } from '$lib/types/onto';
 import { logOntologyApiError } from '../../shared/error-logging';
 import {
 	syncLivePublicPageForDocument,
@@ -325,87 +323,52 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const archiveRequested =
 			actionInput === 'archive' ||
 			(hasStateInput && normalizedState === 'archived' && currentState !== 'archived');
-		const restoreRequested = actionInput === 'restore';
+		const hasNonStateMutationInput = [
+			title,
+			type_key,
+			body_markdown,
+			content,
+			description,
+			props,
+			parent,
+			parents,
+			connections
+		].some((value) => value !== undefined);
+		const restoreStateTransitionRequested =
+			hasStateInput &&
+			currentState === 'archived' &&
+			normalizedState !== undefined &&
+			normalizedState !== 'archived' &&
+			!hasNonStateMutationInput;
+		const restoreRequested = actionInput === 'restore' || restoreStateTransitionRequested;
 
 		if (archiveRequested) {
 			const archiveMode = parseArchiveChildrenMode(
 				(body as Record<string, unknown>).archive_children_mode
 			);
-			const treeMode = archiveMode === 'promote_children' ? 'promote' : 'cascade';
-
-			let archivedDocumentIds: string[] = [documentId];
-			const { structure: currentStructure } = await getDocTree(
-				locals.supabase,
-				document.project_id,
-				{
-					includeDocuments: false
-				}
-			);
-			const treeNodeResult = findNodeById(currentStructure.root, documentId);
-			if (archiveMode === 'archive_children' && treeNodeResult?.node.children?.length) {
-				const descendantIds = [...collectDocIds(treeNodeResult.node.children)];
-				archivedDocumentIds = Array.from(new Set([documentId, ...descendantIds]));
-			}
-
-			let structure: DocStructure | null = null;
-			if (treeNodeResult) {
-				structure = await removeDocumentFromTree(
+			let archiveResult;
+			try {
+				archiveResult = await archiveDocumentInTree(
 					locals.supabase,
 					document.project_id,
 					documentId,
-					{ mode: treeMode },
+					{
+						mode: archiveMode,
+						expectedUpdatedAt: document.updated_at as string
+					},
 					actorId
 				);
+			} catch (archiveError) {
+				const message = archiveError instanceof Error ? archiveError.message : '';
+				if (
+					message.startsWith('Document version conflict') ||
+					message.startsWith('Structure version conflict')
+				) {
+					return ApiResponse.conflict(DOCUMENT_CONFLICT_MESSAGE);
+				}
+				throw archiveError;
 			}
-
-			const archiveUpdatePayload: { state_key: 'archived'; updated_at: string } = {
-				state_key: 'archived',
-				updated_at: new Date().toISOString()
-			};
-			const { error: archiveError } =
-				archivedDocumentIds.length === 1
-					? await locals.supabase
-							.from('onto_documents')
-							.update(archiveUpdatePayload)
-							.eq('id', documentId)
-							.eq('project_id', document.project_id)
-							.is('deleted_at', null)
-					: await locals.supabase
-							.from('onto_documents')
-							.update(archiveUpdatePayload)
-							.in('id', archivedDocumentIds)
-							.eq('project_id', document.project_id)
-							.is('deleted_at', null);
-
-			if (archiveError) {
-				await logOntologyApiError({
-					supabase: locals.supabase,
-					error: archiveError,
-					endpoint: `/api/onto/documents/${documentId}`,
-					method: 'PATCH',
-					userId: session.user.id,
-					projectId: document.project_id,
-					entityType: 'document',
-					entityId: documentId,
-					operation: 'document_archive',
-					tableName: 'onto_documents'
-				});
-				return ApiResponse.databaseError(archiveError);
-			}
-
-			const { data: archivedDocument, error: archivedDocumentError } = await locals.supabase
-				.from('onto_documents')
-				.select('*')
-				.eq('id', documentId)
-				.is('deleted_at', null)
-				.single();
-
-			if (archivedDocumentError || !archivedDocument) {
-				return ApiResponse.internalError(
-					archivedDocumentError || new Error('Archived document not found'),
-					'Failed to load archived document'
-				);
-			}
+			const archivedDocument = archiveResult.document;
 
 			logUpdateAsync(
 				locals.supabase,
@@ -440,9 +403,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 			return ApiResponse.success({
 				document: archivedDocument,
-				structure,
-				archived_document_ids: archivedDocumentIds,
-				archive_mode: archiveMode
+				structure: archiveResult.structure,
+				archived_document_ids: archiveResult.archivedDocumentIds,
+				archive_mode: archiveResult.archiveMode
 			});
 		}
 
@@ -452,7 +415,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			}
 
 			const restoreStateInput = normalizeDocumentStateInput(
-				(body as Record<string, unknown>).restore_state_key ?? 'draft'
+				(body as Record<string, unknown>).restore_state_key ??
+					(restoreStateTransitionRequested ? normalizedState : 'draft')
 			);
 			if (!restoreStateInput || restoreStateInput === 'archived') {
 				return ApiResponse.badRequest(
@@ -460,59 +424,29 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				);
 			}
 
-			let structure: DocStructure | null = null;
+			let restoreResult;
 			try {
-				structure = await removeDocumentFromTree(
+				restoreResult = await restoreDocumentInTree(
 					locals.supabase,
 					document.project_id,
 					documentId,
-					{ mode: 'promote' },
+					{
+						restoreStateKey: restoreStateInput,
+						expectedUpdatedAt: document.updated_at as string
+					},
 					actorId
 				);
-			} catch (treeError) {
-				await logOntologyApiError({
-					supabase: locals.supabase,
-					error: treeError,
-					endpoint: `/api/onto/documents/${documentId}`,
-					method: 'PATCH',
-					userId: session.user.id,
-					projectId: document.project_id,
-					entityType: 'project',
-					entityId: documentId,
-					operation: 'doc_tree_restore_remove'
-				});
-				throw treeError;
+			} catch (restoreError) {
+				const message = restoreError instanceof Error ? restoreError.message : '';
+				if (
+					message.startsWith('Document version conflict') ||
+					message.startsWith('Structure version conflict')
+				) {
+					return ApiResponse.conflict(DOCUMENT_CONFLICT_MESSAGE);
+				}
+				throw restoreError;
 			}
-
-			const { data: restoredDocument, error: restoreError } = await locals.supabase
-				.from('onto_documents')
-				.update({
-					state_key: restoreStateInput,
-					updated_at: new Date().toISOString()
-				})
-				.eq('id', documentId)
-				.eq('project_id', document.project_id)
-				.is('deleted_at', null)
-				.select('*')
-				.single();
-
-			if (restoreError || !restoredDocument) {
-				await logOntologyApiError({
-					supabase: locals.supabase,
-					error: restoreError || new Error('Failed to restore document'),
-					endpoint: `/api/onto/documents/${documentId}`,
-					method: 'PATCH',
-					userId: session.user.id,
-					projectId: document.project_id,
-					entityType: 'document',
-					entityId: documentId,
-					operation: 'document_restore',
-					tableName: 'onto_documents'
-				});
-				return ApiResponse.databaseError(
-					restoreError || new Error('Failed to restore document')
-				);
-			}
+			const restoredDocument = restoreResult.document;
 
 			logUpdateAsync(
 				locals.supabase,
@@ -547,7 +481,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 			return ApiResponse.success({
 				document: restoredDocument,
-				structure,
+				structure: restoreResult.structure,
 				restored: true
 			});
 		}
@@ -1012,80 +946,28 @@ export const DELETE: RequestHandler = async ({ params, request, locals, url }) =
 		}
 		const shouldPermanentDelete = isArchivedDocument || permanentRequested;
 
-		let structure: DocStructure | null = null;
-		let structureError: string | null = null;
+		let deleteResult;
 		try {
-			structure = await removeDocumentFromTree(
+			deleteResult = await deleteDocumentInTree(
 				locals.supabase,
 				projectId,
 				documentId,
-				{ mode: shouldPermanentDelete ? 'cascade' : mode },
+				{
+					mode: shouldPermanentDelete ? 'cascade' : mode,
+					permanent: shouldPermanentDelete,
+					expectedUpdatedAt: document.updated_at as string
+				},
 				actorId
 			);
-		} catch (treeError) {
-			structureError = treeError instanceof Error ? treeError.message : String(treeError);
-			console.error('[Document API] Failed to remove document from tree:', treeError);
-			await logOntologyApiError({
-				supabase: locals.supabase,
-				error: treeError,
-				endpoint: `/api/onto/documents/${documentId}`,
-				method: 'DELETE',
-				userId: session.user.id,
-				projectId,
-				entityType: 'project',
-				entityId: documentId,
-				operation: 'doc_tree_remove',
-				metadata: { nonFatal: true }
-			});
-		}
-
-		if (shouldPermanentDelete) {
-			const { error: deleteError } = await locals.supabase
-				.from('onto_documents')
-				.delete()
-				.eq('id', documentId)
-				.eq('project_id', projectId);
-
-			if (deleteError) {
-				console.error('[Document API] Failed to permanently delete document:', deleteError);
-				await logOntologyApiError({
-					supabase: locals.supabase,
-					error: deleteError,
-					endpoint: `/api/onto/documents/${documentId}`,
-					method: 'DELETE',
-					userId: session.user.id,
-					projectId,
-					entityType: 'document',
-					entityId: documentId,
-					operation: 'document_delete_permanent',
-					tableName: 'onto_documents'
-				});
-				return ApiResponse.databaseError(deleteError);
+		} catch (deleteError) {
+			const message = deleteError instanceof Error ? deleteError.message : '';
+			if (
+				message.startsWith('Document version conflict') ||
+				message.startsWith('Structure version conflict')
+			) {
+				return ApiResponse.conflict(DOCUMENT_CONFLICT_MESSAGE);
 			}
-		} else {
-			// Legacy soft delete path for non-archived docs.
-			const { error: deleteError } = await locals.supabase
-				.from('onto_documents')
-				.update({ deleted_at: new Date().toISOString() })
-				.eq('id', documentId)
-				.eq('project_id', projectId);
-
-			if (deleteError) {
-				console.error('[Document API] Failed to soft-delete document:', deleteError);
-				await logOntologyApiError({
-					supabase: locals.supabase,
-					error: deleteError,
-					endpoint: `/api/onto/documents/${documentId}`,
-					method: 'DELETE',
-					userId: session.user.id,
-					projectId,
-					entityType: 'document',
-					entityId: documentId,
-					operation: 'document_delete',
-					tableName: 'onto_documents'
-				});
-				return ApiResponse.databaseError(deleteError);
-			}
+			throw deleteError;
 		}
 
 		// Log activity async (non-blocking)
@@ -1102,9 +984,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals, url }) =
 
 		return ApiResponse.success({
 			deleted: true,
-			permanent: shouldPermanentDelete,
-			structure,
-			structure_error: structureError
+			permanent: deleteResult.permanent,
+			structure: deleteResult.structure,
+			structure_error: null
 		});
 	} catch (error) {
 		console.error('[Document API] Unexpected DELETE error:', error);

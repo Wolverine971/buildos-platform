@@ -101,7 +101,8 @@ const INBOX_SOURCE_TYPES = new Set<InboxSourceType>([
 	'project_audit',
 	'calendar_suggestion',
 	'profile_fragment',
-	'contact_merge_candidate'
+	'contact_merge_candidate',
+	'integration_attention'
 ]);
 
 const SUPPORTED_SOURCE_TYPES = new Set<InboxSourceType>([
@@ -599,7 +600,12 @@ async function loadSourcePayloads(params: {
 	const idsBySource = new Map<InboxSourceType, string[]>();
 
 	for (const row of params.rows) {
-		if (!SUPPORTED_SOURCE_TYPES.has(row.source_type)) continue;
+		if (
+			!SUPPORTED_SOURCE_TYPES.has(row.source_type) &&
+			row.source_type !== 'integration_attention'
+		) {
+			continue;
+		}
 		const ids = idsBySource.get(row.source_type) ?? [];
 		ids.push(row.source_ref_id);
 		idsBySource.set(row.source_type, ids);
@@ -609,7 +615,8 @@ async function loadSourcePayloads(params: {
 		agent_run: 'agent_runs',
 		project_suggestion: 'project_suggestions',
 		project_audit: 'project_audits',
-		calendar_suggestion: 'calendar_project_suggestions'
+		calendar_suggestion: 'calendar_project_suggestions',
+		integration_attention: 'user_email_connections'
 	};
 
 	const sourceRows = await Promise.all(
@@ -892,7 +899,11 @@ async function loadDecisionCapabilities(params: {
 			continue;
 		}
 
-		if (row.source_type === 'agent_run' || row.source_type === 'calendar_suggestion') {
+		if (
+			row.source_type === 'agent_run' ||
+			row.source_type === 'calendar_suggestion' ||
+			row.source_type === 'integration_attention'
+		) {
 			const canDecide = row.user_id === params.userId;
 			capabilities.set(rowKey(row), {
 				can_decide: canDecide,
@@ -1314,6 +1325,7 @@ export async function listInboxItems(params: {
 			const key = sourceKey(row.source_type, row.source_ref_id);
 			const payload = payloads.get(key) ?? null;
 			const context = contexts.get(key) ?? null;
+			const capability = capabilities.get(rowKey(row));
 			const projectId = resolveInboxItemProjectId({ row, payload, context });
 			const project = projectId
 				? (projects.get(projectId) ?? { id: projectId, name: null })
@@ -1322,10 +1334,10 @@ export async function listInboxItems(params: {
 				...row,
 				project_id: projectId,
 				project,
-				can_decide: capabilities.get(rowKey(row))?.can_decide ?? false,
-				decision_disabled_reason:
-					capabilities.get(rowKey(row))?.decision_disabled_reason ??
-					'Unsupported inbox source',
+				can_decide: capability?.can_decide ?? false,
+				decision_disabled_reason: capability
+					? capability.decision_disabled_reason
+					: 'Unsupported inbox source',
 				source_payload: payload,
 				source_context: context
 			};

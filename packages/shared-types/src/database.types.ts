@@ -18832,6 +18832,32 @@ export type Database = {
         }
         Returns: boolean
       }
+      onto_document_archive_atomic: {
+        Args: {
+          p_changed_by?: string
+          p_children_updates?: Json
+          p_document_id: string
+          p_document_ids: string[]
+          p_expected_structure_version: number
+          p_expected_updated_at: string
+          p_next_structure: Json
+          p_project_id: string
+        }
+        Returns: Json
+      }
+      onto_document_restore_atomic: {
+        Args: {
+          p_changed_by?: string
+          p_children_updates?: Json
+          p_document_id: string
+          p_expected_structure_version: number
+          p_expected_updated_at: string
+          p_next_structure: Json
+          p_project_id: string
+          p_restore_state_key: string
+        }
+        Returns: Json
+      }
       onto_jsonb_extract: {
         Args: { p_json: Json; p_path: string }
         Returns: Json
@@ -18843,6 +18869,17 @@ export type Database = {
       onto_jsonb_has_value: {
         Args: { p_json: Json; p_path: string }
         Returns: boolean
+      }
+      onto_project_doc_structure_update_atomic: {
+        Args: {
+          p_change_type: string
+          p_changed_by?: string
+          p_children_updates?: Json
+          p_expected_version: number
+          p_next_structure: Json
+          p_project_id: string
+        }
+        Returns: Json
       }
       onto_search_entities: {
         Args: {

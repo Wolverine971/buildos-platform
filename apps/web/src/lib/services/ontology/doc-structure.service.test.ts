@@ -13,6 +13,9 @@ import {
 	enrichTreeNodes,
 	getDocTree,
 	updateDocStructure,
+	archiveDocumentInTree,
+	restoreDocumentInTree,
+	deleteDocumentInTree,
 	removeDocumentFromTree,
 	recomputeDocStructure
 } from './doc-structure.service';
@@ -177,6 +180,75 @@ describe('getDocTree', () => {
 });
 
 describe('updateDocStructure', () => {
+	it('delegates the canonical tree, history, and changed children to one atomic RPC', async () => {
+		const currentStructure = {
+			version: 1,
+			root: [
+				{
+					id: 'parent-a',
+					order: 0,
+					children: [{ id: 'moved-doc', order: 0 }]
+				},
+				{ id: 'parent-b', order: 1 }
+			]
+		};
+		const nextStructure = {
+			version: 1,
+			root: [
+				{ id: 'parent-a', order: 0 },
+				{
+					id: 'parent-b',
+					order: 1,
+					children: [{ id: 'moved-doc', order: 0 }]
+				}
+			]
+		};
+
+		const projectReadQuery: Record<string, any> = {};
+		projectReadQuery.select = vi.fn(() => projectReadQuery);
+		projectReadQuery.eq = vi.fn(() => projectReadQuery);
+		projectReadQuery.single = vi.fn().mockResolvedValue({
+			data: { doc_structure: currentStructure },
+			error: null
+		});
+		const rpc = vi.fn().mockResolvedValue({
+			data: { ...nextStructure, version: 2 },
+			error: null
+		});
+		const supabase = {
+			from: vi.fn((table: string) => {
+				if (table === 'onto_projects') return projectReadQuery;
+				throw new Error(`Unexpected non-transactional table write: ${table}`);
+			}),
+			rpc
+		};
+
+		const result = await updateDocStructure(
+			supabase as any,
+			'proj-1',
+			nextStructure,
+			'move',
+			'actor-1'
+		);
+
+		expect(result).toEqual({ ...nextStructure, version: 2 });
+		expect(supabase.from).toHaveBeenCalledTimes(1);
+		expect(rpc).toHaveBeenCalledWith('onto_project_doc_structure_update_atomic', {
+			p_project_id: 'proj-1',
+			p_expected_version: 1,
+			p_next_structure: { ...nextStructure, version: 2 },
+			p_change_type: 'move',
+			p_changed_by: 'actor-1',
+			p_children_updates: [
+				{ document_id: 'parent-a', children: [] },
+				{
+					document_id: 'parent-b',
+					children: [{ id: 'moved-doc', order: 0 }]
+				}
+			]
+		});
+	});
+
 	it('rejects a write-time version race before history or child synchronization', async () => {
 		const currentStructure = {
 			version: 1,
@@ -202,55 +274,24 @@ describe('updateDocStructure', () => {
 			error: null
 		});
 
-		const projectUpdateQuery: Record<string, any> = {};
-		projectUpdateQuery.update = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.eq = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.is = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.contains = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.select = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-		// Preserve the pre-fix awaitable update shape so this regression fails on
-		// behavior, not because the mock cannot model the old query chain.
-		projectUpdateQuery.then = (
-			onfulfilled: (value: { data: null; error: null }) => unknown,
-			onrejected?: (reason: unknown) => unknown
-		) => Promise.resolve({ data: null, error: null }).then(onfulfilled, onrejected);
-
-		const historyInsert = vi.fn().mockResolvedValue({ error: null });
-		const documentUpdateQuery: Record<string, any> = {};
-		documentUpdateQuery.update = vi.fn(() => documentUpdateQuery);
-		documentUpdateQuery.eq = vi.fn(() => documentUpdateQuery);
-		documentUpdateQuery.then = (
-			onfulfilled: (value: { error: null }) => unknown,
-			onrejected?: (reason: unknown) => unknown
-		) => Promise.resolve({ error: null }).then(onfulfilled, onrejected);
-
-		let projectQueryCount = 0;
+		const rpc = vi.fn().mockResolvedValue({
+			data: null,
+			error: { message: 'doc_structure_version_conflict' }
+		});
 		const supabase = {
 			from: vi.fn((table: string) => {
-				if (table === 'onto_projects') {
-					projectQueryCount += 1;
-					return projectQueryCount === 1 ? projectReadQuery : projectUpdateQuery;
-				}
-				if (table === 'onto_project_structure_history') {
-					return { insert: historyInsert };
-				}
-				if (table === 'onto_documents') {
-					return documentUpdateQuery;
-				}
+				if (table === 'onto_projects') return projectReadQuery;
 				throw new Error(`Unexpected table query: ${table}`);
-			})
+			}),
+			rpc
 		};
 
 		await expect(
 			updateDocStructure(supabase as any, 'proj-1', nextStructure, 'reorder', 'actor-1')
 		).rejects.toThrow('Structure version conflict');
 
-		expect(projectUpdateQuery.contains).toHaveBeenCalledWith('doc_structure', {
-			version: 1
-		});
-		expect(historyInsert).not.toHaveBeenCalled();
-		expect(documentUpdateQuery.update).not.toHaveBeenCalled();
+		expect(supabase.from).toHaveBeenCalledTimes(1);
+		expect(rpc).toHaveBeenCalledOnce();
 	});
 
 	it('synchronizes children only for parents changed by a move', async () => {
@@ -302,68 +343,32 @@ describe('updateDocStructure', () => {
 			error: null
 		});
 
-		const projectUpdateQuery: Record<string, any> = {};
-		projectUpdateQuery.update = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.eq = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.contains = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.select = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.maybeSingle = vi
-			.fn()
-			.mockResolvedValue({ data: { id: 'proj-1' }, error: null });
-
-		const childrenUpdates: Array<{ id: string; children: unknown }> = [];
-		function createDocumentUpdateQuery() {
-			const query: Record<string, any> = {};
-			let documentId = '';
-			let children: unknown;
-			query.update = vi.fn((payload: { children?: unknown }) => {
-				children = payload.children;
-				return query;
-			});
-			query.eq = vi.fn((column: string, value: string) => {
-				if (column === 'id') documentId = value;
-				return query;
-			});
-			query.then = (
-				onfulfilled: (value: { error: null }) => unknown,
-				onrejected?: (reason: unknown) => unknown
-			) => {
-				childrenUpdates.push({ id: documentId, children });
-				return Promise.resolve({ error: null }).then(onfulfilled, onrejected);
-			};
-			return query;
-		}
-
-		const historyInsert = vi.fn().mockResolvedValue({ error: null });
-		let projectQueryCount = 0;
+		const rpc = vi.fn().mockResolvedValue({ data: { version: 2 }, error: null });
 		const supabase = {
 			from: vi.fn((table: string) => {
-				if (table === 'onto_projects') {
-					projectQueryCount += 1;
-					return projectQueryCount === 1 ? projectReadQuery : projectUpdateQuery;
-				}
-				if (table === 'onto_project_structure_history') {
-					return { insert: historyInsert };
-				}
-				if (table === 'onto_documents') {
-					return createDocumentUpdateQuery();
-				}
+				if (table === 'onto_projects') return projectReadQuery;
 				throw new Error(`Unexpected table query: ${table}`);
-			})
+			}),
+			rpc
 		};
 
 		await updateDocStructure(supabase as any, 'proj-1', nextStructure, 'move', 'actor-1');
 
-		expect(childrenUpdates).toEqual([
-			{
-				id: 'parent-a',
-				children: { children: [{ id: 'sibling-a', order: 0 }] }
-			},
-			{
-				id: 'parent-b',
-				children: { children: [{ id: 'moved-doc', order: 0 }] }
-			}
-		]);
+		expect(rpc).toHaveBeenCalledWith(
+			'onto_project_doc_structure_update_atomic',
+			expect.objectContaining({
+				p_children_updates: [
+					{
+						document_id: 'parent-a',
+						children: [{ id: 'sibling-a', order: 0 }]
+					},
+					{
+						document_id: 'parent-b',
+						children: [{ id: 'moved-doc', order: 0 }]
+					}
+				]
+			})
+		);
 	});
 });
 
@@ -385,25 +390,14 @@ describe('removeDocumentFromTree', () => {
 			return query;
 		}
 
-		const projectUpdateQuery: Record<string, any> = {};
-		projectUpdateQuery.update = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.eq = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.contains = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.select = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.maybeSingle = vi
-			.fn()
-			.mockResolvedValue({ data: { id: 'proj-1' }, error: null });
-
-		const historyInsert = vi.fn().mockResolvedValue({ error: null });
-		let projectQueryCount = 0;
+		const rpc = vi.fn().mockResolvedValue({ data: { version: 2 }, error: null });
 		const supabase = {
 			from: vi.fn((table: string) => {
 				if (table === 'onto_projects') {
-					projectQueryCount += 1;
-					return projectQueryCount <= 2 ? createProjectReadQuery() : projectUpdateQuery;
+					return createProjectReadQuery();
 				}
 				if (table === 'onto_project_structure_history') {
-					return { insert: historyInsert };
+					throw new Error('History must be written inside the atomic RPC');
 				}
 				if (table === 'onto_documents') {
 					throw new Error(
@@ -411,7 +405,8 @@ describe('removeDocumentFromTree', () => {
 					);
 				}
 				throw new Error(`Unexpected table query: ${table}`);
-			})
+			}),
+			rpc
 		};
 
 		const result = await removeDocumentFromTree(
@@ -424,7 +419,297 @@ describe('removeDocumentFromTree', () => {
 
 		expect(result).toEqual({ version: 2, root: [] });
 		expect(supabase.from).not.toHaveBeenCalledWith('onto_documents');
-		expect(historyInsert).toHaveBeenCalledOnce();
+		expect(rpc).toHaveBeenCalledWith(
+			'onto_project_doc_structure_update_atomic',
+			expect.objectContaining({
+				p_change_type: 'delete',
+				p_children_updates: []
+			})
+		);
+	});
+});
+
+describe('archiveDocumentInTree', () => {
+	it('archives a subtree and its tree mutation through one atomic RPC', async () => {
+		const currentStructure = {
+			version: 4,
+			root: [
+				{
+					id: 'parent-a',
+					order: 0,
+					children: [
+						{ id: 'child-a', order: 0 },
+						{
+							id: 'child-b',
+							order: 1,
+							children: [{ id: 'grandchild-a', order: 0 }]
+						}
+					]
+				},
+				{ id: 'unrelated-root', order: 1 }
+			]
+		};
+		const nextStructure = {
+			version: 5,
+			root: [{ id: 'unrelated-root', order: 0 }]
+		};
+		const archivedDocument = {
+			...doc('parent-a', 'Parent A'),
+			state_key: 'archived',
+			updated_at: '2026-08-03T12:00:01Z'
+		};
+
+		const projectReadQuery: Record<string, any> = {};
+		projectReadQuery.select = vi.fn(() => projectReadQuery);
+		projectReadQuery.eq = vi.fn(() => projectReadQuery);
+		projectReadQuery.single = vi.fn().mockResolvedValue({
+			data: { doc_structure: currentStructure },
+			error: null
+		});
+		const rpc = vi.fn().mockResolvedValue({
+			data: {
+				document: archivedDocument,
+				structure: nextStructure,
+				archived_document_ids: ['parent-a', 'child-a', 'child-b', 'grandchild-a']
+			},
+			error: null
+		});
+		const supabase = {
+			from: vi.fn((table: string) => {
+				if (table === 'onto_projects') return projectReadQuery;
+				throw new Error(`Unexpected non-transactional table operation: ${table}`);
+			}),
+			rpc
+		};
+
+		const result = await archiveDocumentInTree(
+			supabase as any,
+			'proj-1',
+			'parent-a',
+			{
+				mode: 'archive_children',
+				expectedUpdatedAt: '2026-08-03T12:00:00Z'
+			},
+			'actor-1'
+		);
+
+		expect(result).toEqual({
+			document: archivedDocument,
+			structure: nextStructure,
+			archivedDocumentIds: ['parent-a', 'child-a', 'child-b', 'grandchild-a'],
+			archiveMode: 'archive_children'
+		});
+		expect(supabase.from).toHaveBeenCalledTimes(1);
+		expect(rpc).toHaveBeenCalledWith('onto_document_archive_atomic', {
+			p_project_id: 'proj-1',
+			p_document_id: 'parent-a',
+			p_document_ids: ['parent-a', 'child-a', 'child-b', 'grandchild-a'],
+			p_expected_updated_at: '2026-08-03T12:00:00Z',
+			p_expected_structure_version: 4,
+			p_next_structure: nextStructure,
+			p_changed_by: 'actor-1',
+			p_children_updates: [
+				{ document_id: 'parent-a', children: [] },
+				{ document_id: 'child-b', children: [] }
+			]
+		});
+	});
+
+	it('archives an already-unlinked document without inventing a tree write', async () => {
+		const currentStructure = {
+			version: 7,
+			root: [{ id: 'unrelated-root', order: 0 }]
+		};
+		const archivedDocument = {
+			...doc('unlinked-doc', 'Unlinked'),
+			state_key: 'archived'
+		};
+		const projectReadQuery: Record<string, any> = {};
+		projectReadQuery.select = vi.fn(() => projectReadQuery);
+		projectReadQuery.eq = vi.fn(() => projectReadQuery);
+		projectReadQuery.single = vi.fn().mockResolvedValue({
+			data: { doc_structure: currentStructure },
+			error: null
+		});
+		const rpc = vi.fn().mockResolvedValue({
+			data: {
+				document: archivedDocument,
+				structure: null,
+				archived_document_ids: ['unlinked-doc']
+			},
+			error: null
+		});
+		const supabase = {
+			from: vi.fn(() => projectReadQuery),
+			rpc
+		};
+
+		const result = await archiveDocumentInTree(
+			supabase as any,
+			'proj-1',
+			'unlinked-doc',
+			{
+				mode: 'archive_children',
+				expectedUpdatedAt: '2026-08-03T12:00:00Z'
+			},
+			'actor-1'
+		);
+
+		expect(result.structure).toBeNull();
+		expect(rpc).toHaveBeenCalledWith(
+			'onto_document_archive_atomic',
+			expect.objectContaining({
+				p_document_ids: ['unlinked-doc'],
+				p_expected_structure_version: null,
+				p_next_structure: null,
+				p_children_updates: []
+			})
+		);
+	});
+});
+
+describe('restoreDocumentInTree', () => {
+	it('restores an unlinked document without a no-op structure mutation', async () => {
+		const currentStructure = {
+			version: 7,
+			root: [{ id: 'unrelated-root', order: 0 }]
+		};
+		const restoredDocument = {
+			...doc('archived-doc', 'Archived'),
+			state_key: 'draft',
+			updated_at: '2026-08-03T12:00:01Z'
+		};
+		const projectReadQuery: Record<string, any> = {};
+		projectReadQuery.select = vi.fn(() => projectReadQuery);
+		projectReadQuery.eq = vi.fn(() => projectReadQuery);
+		projectReadQuery.single = vi.fn().mockResolvedValue({
+			data: { doc_structure: currentStructure },
+			error: null
+		});
+		const rpc = vi.fn().mockResolvedValue({
+			data: {
+				document: restoredDocument,
+				structure: currentStructure
+			},
+			error: null
+		});
+		const supabase = {
+			from: vi.fn(() => projectReadQuery),
+			rpc
+		};
+
+		const result = await restoreDocumentInTree(
+			supabase as any,
+			'proj-1',
+			'archived-doc',
+			{
+				restoreStateKey: 'draft',
+				expectedUpdatedAt: '2026-08-03T12:00:00Z'
+			},
+			'actor-1'
+		);
+
+		expect(result).toEqual({
+			document: restoredDocument,
+			structure: currentStructure
+		});
+		expect(rpc).toHaveBeenCalledWith('onto_document_restore_atomic', {
+			p_project_id: 'proj-1',
+			p_document_id: 'archived-doc',
+			p_restore_state_key: 'draft',
+			p_expected_updated_at: '2026-08-03T12:00:00Z',
+			p_expected_structure_version: 7,
+			p_next_structure: null,
+			p_changed_by: 'actor-1',
+			p_children_updates: []
+		});
+	});
+});
+
+describe('deleteDocumentInTree', () => {
+	it('soft-deletes a document and promotes its children through one atomic RPC', async () => {
+		const currentStructure = {
+			version: 3,
+			root: [
+				{
+					id: 'parent-a',
+					order: 0,
+					children: [
+						{
+							id: 'deleted-doc',
+							order: 0,
+							children: [{ id: 'promoted-child', order: 0 }]
+						},
+						{ id: 'sibling-doc', order: 1 }
+					]
+				}
+			]
+		};
+		const nextStructure = {
+			version: 4,
+			root: [
+				{
+					id: 'parent-a',
+					order: 0,
+					children: [
+						{ id: 'promoted-child', order: 0 },
+						{ id: 'sibling-doc', order: 1 }
+					]
+				}
+			]
+		};
+		const projectReadQuery: Record<string, any> = {};
+		projectReadQuery.select = vi.fn(() => projectReadQuery);
+		projectReadQuery.eq = vi.fn(() => projectReadQuery);
+		projectReadQuery.single = vi.fn().mockResolvedValue({
+			data: { doc_structure: currentStructure },
+			error: null
+		});
+		const rpc = vi.fn().mockResolvedValue({
+			data: { structure: nextStructure, permanent: false },
+			error: null
+		});
+		const supabase = {
+			from: vi.fn((table: string) => {
+				if (table === 'onto_projects') return projectReadQuery;
+				throw new Error(`Unexpected non-transactional table operation: ${table}`);
+			}),
+			rpc
+		};
+
+		const result = await deleteDocumentInTree(
+			supabase as any,
+			'proj-1',
+			'deleted-doc',
+			{
+				mode: 'promote',
+				permanent: false,
+				expectedUpdatedAt: '2026-08-03T13:30:00Z'
+			},
+			'actor-1'
+		);
+
+		expect(result).toEqual({ structure: nextStructure, permanent: false });
+		expect(supabase.from).toHaveBeenCalledTimes(1);
+		expect(rpc).toHaveBeenCalledWith('onto_document_delete_atomic', {
+			p_project_id: 'proj-1',
+			p_document_id: 'deleted-doc',
+			p_permanent: false,
+			p_expected_updated_at: '2026-08-03T13:30:00Z',
+			p_expected_structure_version: 3,
+			p_next_structure: nextStructure,
+			p_changed_by: 'actor-1',
+			p_children_updates: [
+				{
+					document_id: 'parent-a',
+					children: [
+						{ id: 'promoted-child', order: 0 },
+						{ id: 'sibling-doc', order: 1 }
+					]
+				},
+				{ document_id: 'deleted-doc', children: [] }
+			]
+		});
 	});
 });
 
@@ -447,25 +732,10 @@ describe('recomputeDocStructure', () => {
 			return query;
 		}
 
-		const projectUpdateQuery: Record<string, any> = {};
-		projectUpdateQuery.update = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.eq = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.contains = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.select = vi.fn(() => projectUpdateQuery);
-		projectUpdateQuery.maybeSingle = vi
-			.fn()
-			.mockResolvedValue({ data: { id: 'proj-1' }, error: null });
-
 		function createDocumentQuery() {
 			const query: Record<string, any> = {};
-			let action: 'select' | 'update' | null = null;
 			query.select = vi.fn((fields: string) => {
-				action = 'select';
 				documentSelections.push(fields);
-				return query;
-			});
-			query.update = vi.fn(() => {
-				action = 'update';
 				return query;
 			});
 			query.eq = vi.fn(() => query);
@@ -474,33 +744,28 @@ describe('recomputeDocStructure', () => {
 				onfulfilled: (value: { data?: unknown; error: null }) => unknown,
 				onrejected?: (reason: unknown) => unknown
 			) =>
-				Promise.resolve(
-					action === 'select'
-						? {
-								data: [{ id: 'a', title: 'Alpha', description: 'Summary' }],
-								error: null
-							}
-						: { error: null }
-				).then(onfulfilled, onrejected);
+				Promise.resolve({
+					data: [{ id: 'a', title: 'Alpha', description: 'Summary' }],
+					error: null
+				}).then(onfulfilled, onrejected);
 			return query;
 		}
 
-		const historyInsert = vi.fn().mockResolvedValue({ error: null });
-		let projectQueryCount = 0;
+		const rpc = vi.fn().mockResolvedValue({ data: { version: 2 }, error: null });
 		const supabase = {
 			from: vi.fn((table: string) => {
 				if (table === 'onto_projects') {
-					projectQueryCount += 1;
-					return projectQueryCount <= 2 ? createProjectReadQuery() : projectUpdateQuery;
+					return createProjectReadQuery();
 				}
 				if (table === 'onto_documents') {
 					return createDocumentQuery();
 				}
 				if (table === 'onto_project_structure_history') {
-					return { insert: historyInsert };
+					throw new Error('History must be written inside the atomic RPC');
 				}
 				throw new Error(`Unexpected table query: ${table}`);
-			})
+			}),
+			rpc
 		};
 
 		const result = await recomputeDocStructure(supabase as any, 'proj-1', 'actor-1');

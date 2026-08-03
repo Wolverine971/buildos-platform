@@ -256,7 +256,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			projectId,
 			entity: { kind: 'goal', id: createdGoal.id },
 			connections: connectionList,
-			options: { mode: 'replace' }
+			options: { mode: 'replace' },
+			referencesValidated: true
 		});
 
 		const actorDisplayName =

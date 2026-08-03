@@ -6,7 +6,12 @@
 import type { EntityKind, RelationshipToken, RelationshipType } from './edge-direction';
 import { normalizeEdgeDirection, VALID_RELS } from './edge-direction';
 import { normalizeRelationshipToken } from './edge-relationship-resolver';
-import type { ParentRef } from './containment-organizer';
+import {
+	buildContainmentEdges,
+	containmentEdgeToParent,
+	type ContainmentEdge,
+	type ParentRef
+} from './containment-organizer';
 import {
 	REFERENCE_TARGET_KINDS,
 	SUPPORTS_GOAL_KINDS,
@@ -57,6 +62,214 @@ export type RelationshipPlan = {
 	entityProjectEdge?: { rel: RelationshipType; mode: 'ensure' | 'remove' };
 	childContainment: ChildContainmentPlan[];
 };
+
+export type PlannedRelationshipEdge = {
+	project_id: string;
+	src_kind: EntityKind;
+	src_id: string;
+	dst_kind: EntityKind;
+	dst_id: string;
+	rel: RelationshipType;
+	props: Record<string, unknown>;
+};
+
+export type PlannedContainmentMutation = {
+	type: 'containment';
+	child: { kind: EntityKind; id: string };
+	/** Exact merge input. Null means replacement semantics do not require a CAS guard. */
+	expectedEdges: ContainmentEdge[] | null;
+	desiredEdges: ContainmentEdge[];
+};
+
+export type PlannedRelationshipReference = {
+	kind: EntityKind;
+	id: string;
+};
+
+export type PlannedSemanticMutation = {
+	type: 'semantic';
+	entity: { kind: EntityKind; id: string };
+	rel: RelationshipType;
+	direction: 'outgoing' | 'incoming';
+	mode: 'replace' | 'merge';
+	desiredEdges: PlannedRelationshipEdge[];
+};
+
+export type PlannedProjectEdgeMutation = {
+	type: 'project_edge';
+	entity: { kind: EntityKind; id: string };
+	rel: RelationshipType;
+	mode: 'remove';
+};
+
+/**
+ * Serializable write plan produced after relationship intent is resolved.
+ * It contains no callbacks or policy decisions, so it can be consumed by the
+ * current application applier and, later, by one database transaction.
+ */
+export type RelationshipMutationPlan = {
+	references: PlannedRelationshipReference[];
+	entityContainment: PlannedContainmentMutation | null;
+	semantic: PlannedSemanticMutation[];
+	projectEdges: PlannedProjectEdgeMutation[];
+	childContainment: PlannedContainmentMutation[];
+};
+
+function entityKey(entity: { kind: EntityKind; id: string }): string {
+	return `${entity.kind}:${entity.id}`;
+}
+
+function mergeParents(existing: ParentRef[], additions: ParentRef[]): ParentRef[] {
+	const merged = new Map<string, ParentRef>();
+	for (const parent of existing) {
+		merged.set(entityKey(parent), parent);
+	}
+	for (const parent of additions) {
+		const key = entityKey(parent);
+		if (!merged.has(key)) merged.set(key, parent);
+	}
+	return Array.from(merged.values());
+}
+
+export function buildSemanticMutationEdges(params: {
+	projectId: string;
+	entity: { kind: EntityKind; id: string };
+	spec: ResolvedSemanticEdge;
+}): PlannedRelationshipEdge[] {
+	const { projectId, entity, spec } = params;
+	const direction = spec.direction ?? 'outgoing';
+
+	return (spec.targets ?? []).map((target) => {
+		const extraProps =
+			typeof spec.props === 'function' ? spec.props(target) : (spec.props ?? {});
+		const props = { is_primary: target.is_primary ?? false, ...extraProps };
+
+		if (direction === 'outgoing') {
+			return {
+				project_id: projectId,
+				src_kind: entity.kind,
+				src_id: entity.id,
+				dst_kind: target.kind,
+				dst_id: target.id,
+				rel: spec.rel,
+				props
+			};
+		}
+
+		return {
+			project_id: projectId,
+			src_kind: target.kind,
+			src_id: target.id,
+			dst_kind: entity.kind,
+			dst_id: entity.id,
+			rel: spec.rel,
+			props
+		};
+	});
+}
+
+export function buildRelationshipMutationPlan(params: {
+	projectId: string;
+	entity: { kind: EntityKind; id: string };
+	resolved: RelationshipPlan;
+	options?: ConnectionOptions;
+	references?: ParentRef[];
+	existingContainmentByChild?: ReadonlyMap<string, ContainmentEdge[]>;
+}): RelationshipMutationPlan {
+	const {
+		projectId,
+		entity,
+		resolved,
+		options,
+		references: rawReferences = [],
+		existingContainmentByChild = new Map()
+	} = params;
+	const skipContainment = options?.skipContainment ?? false;
+	let entityContainment: PlannedContainmentMutation | null = null;
+	const childContainment: PlannedContainmentMutation[] = [];
+	const references = Array.from(
+		new Map(
+			rawReferences.map((reference) => [
+				entityKey(reference),
+				{ kind: reference.kind, id: reference.id }
+			])
+		).values()
+	);
+
+	if (!skipContainment && resolved.entityContainment) {
+		const expectedEdges =
+			resolved.entityContainment.mode === 'merge'
+				? (existingContainmentByChild.get(entityKey(entity)) ?? [])
+				: null;
+		const existingParents = (expectedEdges ?? []).map(containmentEdgeToParent);
+		const parents = mergeParents(existingParents, resolved.entityContainment.parents);
+		const desiredEdges = buildContainmentEdges({
+			projectId,
+			childKind: entity.kind,
+			childId: entity.id,
+			parents,
+			allowProjectFallback: resolved.entityContainment.allowProjectFallback,
+			allowMultiParent: resolved.entityContainment.allowMultiParent
+		});
+
+		entityContainment = {
+			type: 'containment',
+			child: entity,
+			expectedEdges,
+			desiredEdges
+		};
+	}
+
+	if (!skipContainment) {
+		for (const childPlan of resolved.childContainment) {
+			const expectedEdges =
+				childPlan.mode === 'merge'
+					? (existingContainmentByChild.get(entityKey(childPlan.child)) ?? [])
+					: null;
+			const existingParents = (expectedEdges ?? []).map(containmentEdgeToParent);
+			const parents = mergeParents(existingParents, [childPlan.parent]);
+			const desiredEdges = buildContainmentEdges({
+				projectId,
+				childKind: childPlan.child.kind,
+				childId: childPlan.child.id,
+				parents,
+				allowProjectFallback: true,
+				allowMultiParent: options?.allowMultiParent ?? false
+			});
+
+			childContainment.push({
+				type: 'containment',
+				child: childPlan.child,
+				expectedEdges,
+				desiredEdges
+			});
+		}
+	}
+
+	const semantic = resolved.entitySemantic.map(
+		(spec): PlannedSemanticMutation => ({
+			type: 'semantic',
+			entity,
+			rel: spec.rel,
+			direction: spec.direction ?? 'outgoing',
+			mode: spec.mode ?? 'replace',
+			desiredEdges: buildSemanticMutationEdges({ projectId, entity, spec })
+		})
+	);
+
+	const projectEdges: PlannedProjectEdgeMutation[] = resolved.entityProjectEdge
+		? [
+				{
+					type: 'project_edge',
+					entity,
+					rel: resolved.entityProjectEdge.rel,
+					mode: 'remove'
+				}
+			]
+		: [];
+
+	return { references, entityContainment, semantic, projectEdges, childContainment };
+}
 
 function dedupeConnections(
 	entity: { kind: EntityKind; id: string },

@@ -443,6 +443,7 @@
 				timeBlockBridgeModule,
 				agentRunBridgeModule,
 				chatSessionBridgeModule,
+				gmailReconnectAttentionBridgeModule,
 				timeBlocksStoreModule,
 				agentRunsRealtimeModule
 			] = await Promise.all([
@@ -452,6 +453,7 @@
 				import('$lib/services/time-block-notification.bridge'),
 				import('$lib/services/agent-run-notification.bridge'),
 				import('$lib/services/chat-session-notification.bridge'),
+				import('$lib/services/gmail-reconnect-attention.bridge'),
 				import('$lib/stores/timeBlocksStore'),
 				import('$lib/services/agentRunsRealtime.service')
 			]);
@@ -461,14 +463,18 @@
 			NotificationStackManager = notificationStackModule.default;
 			agentRunsRealtimeService = agentRunsRealtimeModule.AgentRunsRealtimeService;
 
-			initNotificationBridges({
-				calendarAnalysisBridgeModule,
-				projectSynthesisBridgeModule,
-				timeBlockBridgeModule,
-				agentRunBridgeModule,
-				chatSessionBridgeModule,
-				timeBlocksStoreModule
-			});
+			initNotificationBridges(
+				{
+					calendarAnalysisBridgeModule,
+					projectSynthesisBridgeModule,
+					timeBlockBridgeModule,
+					agentRunBridgeModule,
+					chatSessionBridgeModule,
+					gmailReconnectAttentionBridgeModule,
+					timeBlocksStoreModule
+				},
+				resourceUserId
+			);
 
 			untrack(() => {
 				notificationResourcesLoaded = true;
@@ -484,14 +490,18 @@
 		}
 	}
 
-	function initNotificationBridges(modules: {
-		calendarAnalysisBridgeModule: any;
-		projectSynthesisBridgeModule: any;
-		timeBlockBridgeModule: any;
-		agentRunBridgeModule: any;
-		chatSessionBridgeModule: any;
-		timeBlocksStoreModule: any;
-	}) {
+	function initNotificationBridges(
+		modules: {
+			calendarAnalysisBridgeModule: any;
+			projectSynthesisBridgeModule: any;
+			timeBlockBridgeModule: any;
+			agentRunBridgeModule: any;
+			chatSessionBridgeModule: any;
+			gmailReconnectAttentionBridgeModule: any;
+			timeBlocksStoreModule: any;
+		},
+		resourceUserId: string
+	) {
 		if (notificationBridgeCleanup) return;
 
 		modules.calendarAnalysisBridgeModule.initCalendarAnalysisNotificationBridge();
@@ -499,6 +509,10 @@
 		modules.timeBlockBridgeModule.initTimeBlockNotificationBridge();
 		modules.agentRunBridgeModule.initAgentRunNotificationBridge();
 		modules.chatSessionBridgeModule.initChatSessionNotificationBridge();
+		modules.gmailReconnectAttentionBridgeModule.initGmailReconnectAttentionBridge(
+			supabase,
+			resourceUserId
+		);
 
 		notificationBridgeCleanup = () => {
 			modules.timeBlockBridgeModule.destroyTimeBlockNotificationBridge();
@@ -507,6 +521,7 @@
 			modules.projectSynthesisBridgeModule.cleanupProjectSynthesisNotificationBridge();
 			modules.agentRunBridgeModule.destroyAgentRunNotificationBridge();
 			modules.chatSessionBridgeModule.destroyChatSessionNotificationBridge();
+			modules.gmailReconnectAttentionBridgeModule.destroyGmailReconnectAttentionBridge();
 		};
 	}
 

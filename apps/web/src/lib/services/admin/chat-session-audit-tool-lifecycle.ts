@@ -57,14 +57,14 @@ export function toolDisplayTokens(payload: Record<string, unknown>): number {
 
 export function toolDisplayArguments(payload: Record<string, unknown>): unknown {
 	const argumentsValue = payloadField(payload, 'arguments');
-	if (argumentsValue !== undefined) return argumentsValue;
-	return preferredToolPayloadValue(payload, ['args', 'arguments']);
+	if (argumentsValue !== undefined && argumentsValue !== null) return argumentsValue;
+	return preferredToolPayloadValue(payload, ['args', 'arguments', 'arguments_preview']);
 }
 
 export function toolDisplayResult(payload: Record<string, unknown>): unknown {
 	const resultValue = payloadField(payload, 'result');
-	if (resultValue !== undefined) return resultValue;
-	return preferredToolPayloadValue(payload, ['result']);
+	if (resultValue !== undefined && resultValue !== null) return resultValue;
+	return preferredToolPayloadValue(payload, ['result', 'result_preview']);
 }
 
 export function toolDisplayError(payload: Record<string, unknown>): string {

@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/admin/chat/AuditTimeline.svelte -->
 <script lang="ts">
 	import { formatNumber } from '$lib/services/admin/chat-session-audit-formatters';
+	import { auditTimelineTargetId } from '$lib/services/admin/chat-session-flow-targets';
 	import type {
 		AuditTimelineType as TimelineType,
 		ChatSessionAuditPayload as SessionDetailPayload,
@@ -49,7 +50,10 @@
 	} = $props();
 </script>
 
-<details class="rounded-lg border border-border bg-background shadow-ink">
+<details
+	id={auditTimelineTargetId()}
+	class="rounded-lg border border-border bg-background shadow-ink"
+>
 	<summary class="cursor-pointer list-none p-3">
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<div>
@@ -80,7 +84,7 @@
 			</div>
 		{:else}
 			<div class="space-y-3">
-				{#each visibleTimelineGroups as group}
+				{#each visibleTimelineGroups as group (group.id)}
 					<TimelineGroupCard
 						{group}
 						{evalScenarios}

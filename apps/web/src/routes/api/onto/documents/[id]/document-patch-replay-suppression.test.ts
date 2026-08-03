@@ -4,6 +4,30 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const queueProjectLoopBurstAsyncMock = vi.hoisted(() => vi.fn());
 
 vi.mock('$lib/services/ontology/doc-structure.service', () => ({
+	archiveDocumentInTree: vi.fn(async () => ({
+		document: {
+			id: 'doc-1',
+			project_id: 'project-1',
+			title: 'Document title',
+			type_key: 'document.default',
+			state_key: 'archived',
+			updated_at: '2026-08-03T12:00:01Z'
+		},
+		structure: null,
+		archivedDocumentIds: ['doc-1'],
+		archiveMode: 'archive_children'
+	})),
+	restoreDocumentInTree: vi.fn(async () => ({
+		document: {
+			id: 'doc-1',
+			project_id: 'project-1',
+			title: 'Document title',
+			type_key: 'document.default',
+			state_key: 'draft',
+			updated_at: '2026-08-03T12:00:01Z'
+		},
+		structure: { version: 1, root: [] }
+	})),
 	getDocTree: vi.fn(async () => ({ structure: { root: [] } })),
 	findNodeById: vi.fn(() => null),
 	collectDocIds: vi.fn(() => new Set()),
@@ -130,6 +154,7 @@ function createSupabaseMock(documentOverrides: Record<string, unknown> = {}) {
 			description: 'Before description',
 			content: 'Before content',
 			props: {},
+			updated_at: '2026-08-03T12:00:00Z',
 			...documentOverrides
 		},
 		project: {
