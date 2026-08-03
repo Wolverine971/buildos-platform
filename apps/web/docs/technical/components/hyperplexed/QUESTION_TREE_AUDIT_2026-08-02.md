@@ -47,13 +47,17 @@ Prior art stacked:
   the document.
 - **Hierarchy and density:** six metric cards became one four-value summary band with progressively
   disclosed run details; activity became a compact four-row timeline with a terse live announcement;
-  terminal synthesis is collapsed by default so the graph begins in the first viewport; proposal
-  rationale and target claims moved behind native disclosures.
+  the complete terminal synthesis is grouped in one native disclosure; proposal rationale and target
+  claims moved behind native disclosures.
 - **Copy and visual system:** back-label truthfulness, humanized statuses/policy, readable duration and
   cost formatting, `.micro-label`, `rounded-lg`, quieter model-only context, one-accent explanation,
   two-line run-question clamping, shared Button usage, and 44 px custom controls were applied.
 - **Root semantics:** an answerless seed is now explained as the research origin instead of displaying
   the contradictory `completed` / `No answer yet` state.
+- **Second-pass hardening:** viewport work now survives reactive refreshes instead of losing a pending
+  fit or selected-node center operation; Dagre layout is derived only from tree structure instead of
+  rerunning on hover; control and retry mutations always queue a fresh reconciliation fetch; the canvas
+  exposes a named region; and inspector statuses and latency no longer leak machine formatting.
 
 The keyboard recommendation was deliberately implemented as an equivalent node explorer rather than
 turning the canvas into a keyboard-only surface. This preserves the user's requested cursor/mouse
@@ -241,14 +245,23 @@ same pass with low risk.
 - The mobile inspector measured 1,114 px inside a 1,266 px viewport, with no horizontal overflow and no
   visible duplicate desktop inspector. Closing the sheet restored the normal document; clicking the graph
   reopened the sheet on the selected node.
-- Collapsing terminal synthesis reduced the detail document from 2,415 px to 1,875 px at the tested
-  desktop scale and moved the graph start to 843 px, inside the initial 1,350 px viewport.
-- Official Svelte analyzer: all edited components clean. Full `pnpm --dir apps/web check`: **0 errors,
-  0 warnings**. Focused tests: **4 files / 9 tests passed**, including new root-semantics and proposal-
-  disclosure inspector coverage.
+- The completed-run synthesis was rechecked after the full thesis, answer, confidence buckets, evidence,
+  disagreements, next-research, and limitations sections were added; the disclosure remains visually
+  coherent and keeps the graph as a separate bounded workspace.
+- The second-pass desktop run reported zero horizontal overflow, 101 graph nodes, 0 node tab stops,
+  0 handle tab stops, and four 44 px controls. Mouse selection centered Node 2 and updated the inspector;
+  keyboard search/Enter centered a matching branch; the zoom control updated the viewport transform.
+- Official Svelte analyzer: edited components have no issues; the remaining native Map/Set and
+  third-party viewport-effect suggestions were reviewed and are intentional. Full
+  `pnpm --dir apps/web check`: **0 errors, 0 warnings**. Scoped ESLint and Prettier pass. Focused tests:
+  **8 files / 18 tests passed**, including viewport cancellation, inspector formatting, export bundle,
+  export route, realtime reconciliation, retry, creation, and PostgreSQL normalization coverage.
 
 ## Implementation log
 
 - 2026-08-02: audit and authenticated production baseline completed.
 - 2026-08-02: approved Tier 1-3 cleanup implemented and authenticated local desktop/mobile after-state
   verified, with pointer navigation explicitly preserved alongside the composite keyboard explorer.
+- 2026-08-02: second-pass hardening fixed camera cancellation, hover-layout churn, post-mutation refresh
+  races, and remaining machine-formatted inspector values; static, focused, database, and authenticated
+  desktop interaction checks rerun cleanly.

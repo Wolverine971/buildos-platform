@@ -3,8 +3,14 @@ import { describe, expect, it } from 'vitest';
 import {
 	AGENTIC_CHAT_CANCEL_OBSERVATION_INTERVAL_MS,
 	AGENTIC_CHAT_CANCEL_OBSERVATION_MAX_PAIRS,
+	AGENTIC_CHAT_CLIENT_BUFFER_MAX_BYTES,
+	AGENTIC_CHAT_CLIENT_BUFFER_MAX_EVENTS,
+	AGENTIC_CHAT_CLIENT_MAX_TRACKED_TURNS,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES,
+	AGENTIC_CHAT_RECONCILE_MAX_DURABLE_EVENTS,
+	AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
+	AGENTIC_CHAT_REALTIME_STREAM_EVENT,
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
 	AGENTIC_CHAT_SIGNAL_VERSION,
 	AGENTIC_CHAT_STREAM_SPILL_THRESHOLD_BYTES,
@@ -29,6 +35,8 @@ import {
 	type CanonicalAdmissionRequestV1,
 	type AgenticChatCancellationObservationRpcResultV1,
 	type AgenticChatCancelRpcResultV1,
+	type AgenticChatReconcileRpcResultV1,
+	type AgenticChatRealtimeBroadcastV1,
 	type AgenticChatSemanticEventRpcResultV1,
 	type AgenticChatStreamDeliveryAckRpcResultV1,
 	type AgenticChatTerminalFinalizeRpcResultV1,
@@ -736,5 +744,59 @@ describe('agentic chat worker v1 contract fixtures', () => {
 			})
 		).toBe(true);
 		expect(didAcknowledgeAgenticChatStreamDeliveryV1(newerSnapshot)).toBe(false);
+	});
+
+	it('pins the bounded generation-consistent reconciliation receipt', () => {
+		const result = {
+			outcome: 'reconciled',
+			contract_version: 'agentic_chat_worker_v1',
+			turn_run_id: '80000000-0000-4000-8000-000000000001',
+			session_id: '30000000-0000-4000-8000-000000000001',
+			user_id: '10000000-0000-4000-8000-000000000001',
+			stream_run_id: 'stream-1',
+			client_turn_id: 'client-turn-1',
+			execution_mode: 'worker_realtime',
+			requested_execution_generation: 1,
+			execution_generation: 2,
+			generation_changed: true,
+			status: 'running',
+			text: 'Hello',
+			projection: { phase: 'tool' },
+			snapshot_sequence: 4,
+			durable_through_sequence: 4,
+			projection_durable_sequence: 2,
+			durable_events: [],
+			response_watermark: 4,
+			reconcile_required: true,
+			assistant_message: null,
+			terminal_event_id: null,
+			terminalized_at: null,
+			finished_reason: null,
+			failure_code: null,
+			updated_at: '2026-08-02T22:00:00.000Z'
+		} satisfies AgenticChatReconcileRpcResultV1;
+
+		expect(AGENTIC_CHAT_RECONCILE_MAX_DURABLE_EVENTS).toBe(64);
+		expect(result.generation_changed).toBe(true);
+		expect(result.response_watermark).toBe(result.durable_through_sequence);
+	});
+
+	it('pins the shared private Realtime names and bounded client inbox', () => {
+		const hint = {
+			event: AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
+			payload: {
+				contract_version: 'agentic_chat_worker_v1',
+				turn_run_id: '80000000-0000-4000-8000-000000000001',
+				session_id: '30000000-0000-4000-8000-000000000001',
+				execution_generation: 2,
+				durable_through_sequence: 4
+			}
+		} satisfies AgenticChatRealtimeBroadcastV1;
+
+		expect(AGENTIC_CHAT_REALTIME_STREAM_EVENT).toBe('agent-stream-event');
+		expect(hint.event).toBe('agent-stream-reconcile');
+		expect(AGENTIC_CHAT_CLIENT_BUFFER_MAX_EVENTS).toBe(128);
+		expect(AGENTIC_CHAT_CLIENT_BUFFER_MAX_BYTES).toBe(1024 * 1024);
+		expect(AGENTIC_CHAT_CLIENT_MAX_TRACKED_TURNS).toBe(8);
 	});
 });

@@ -19009,6 +19009,15 @@ export type Database = {
         }
         Returns: Json
       }
+      reconcile_agentic_chat_turn: {
+        Args: {
+          p_after_durable_sequence?: number
+          p_requested_execution_generation?: number
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       record_email_relevance_adjudication: {
         Args: {
           p_corrected_project_id: string

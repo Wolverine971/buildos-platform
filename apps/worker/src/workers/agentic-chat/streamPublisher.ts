@@ -5,12 +5,15 @@ import {
 	AGENTIC_CHAT_STREAM_EVENT_PAYLOAD_MAX_BYTES,
 	AGENTIC_CHAT_STREAM_PROJECTION_MAX_BYTES,
 	AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES,
+	AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
+	AGENTIC_CHAT_REALTIME_STREAM_EVENT,
 	AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_BYTES,
 	AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_ITEMS,
 	AGENTIC_CHAT_TEXT_BATCH_MAX_BYTES,
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	type AgentStreamEventPhaseV1,
 	type AgentStreamEventV1,
+	type AgenticChatRealtimeBroadcastV1,
 	type AgenticChatSemanticEventRpcResultV1,
 	type AgenticChatStreamDeliveryAckRpcResultV1,
 	type AgenticChatTerminalReceiptV1,
@@ -133,24 +136,14 @@ export type AgenticChatPersistencePortV1 = {
 };
 
 export type AgenticChatBroadcastMessageV1 =
-	| {
+	| (Extract<AgenticChatRealtimeBroadcastV1, { event: 'agent-stream-event' }> & {
 			kind: 'event';
 			topic: string;
-			event: 'agent-stream-event';
-			payload: AgentStreamEventV1;
-	  }
-	| {
+	  })
+	| (Extract<AgenticChatRealtimeBroadcastV1, { event: 'agent-stream-reconcile' }> & {
 			kind: 'reconcile_hint';
 			topic: string;
-			event: 'agent-stream-reconcile';
-			payload: {
-				contract_version: typeof AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
-				turn_run_id: string;
-				session_id: string;
-				execution_generation: number;
-				durable_through_sequence: number;
-			};
-	  };
+	  });
 
 export type AgenticChatBroadcastPortV1 = {
 	publish(message: AgenticChatBroadcastMessageV1): Promise<'sent' | 'failed'>;
@@ -766,7 +759,7 @@ export class AgenticChatStreamPublisher {
 		return {
 			kind: 'event',
 			topic: `chat-user:${state.context.userId}`,
-			event: 'agent-stream-event',
+			event: AGENTIC_CHAT_REALTIME_STREAM_EVENT,
 			payload
 		};
 	}
@@ -778,7 +771,7 @@ export class AgenticChatStreamPublisher {
 		const result = await this.tryBroadcast({
 			kind: 'reconcile_hint',
 			topic: `chat-user:${state.context.userId}`,
-			event: 'agent-stream-reconcile',
+			event: AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
 			payload: {
 				contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 				turn_run_id: state.context.turnRunId,

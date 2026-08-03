@@ -16,6 +16,12 @@ export const AGENTIC_CHAT_TERMINAL_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 export const AGENTIC_CHAT_SIGNAL_VERSION = 'agentic_chat_signal_v1' as const;
 export const AGENTIC_CHAT_CANCEL_OBSERVATION_INTERVAL_MS = 500;
 export const AGENTIC_CHAT_CANCEL_OBSERVATION_MAX_PAIRS = 128;
+export const AGENTIC_CHAT_RECONCILE_MAX_DURABLE_EVENTS = 64;
+export const AGENTIC_CHAT_REALTIME_STREAM_EVENT = 'agent-stream-event' as const;
+export const AGENTIC_CHAT_REALTIME_RECONCILE_EVENT = 'agent-stream-reconcile' as const;
+export const AGENTIC_CHAT_CLIENT_BUFFER_MAX_EVENTS = 128;
+export const AGENTIC_CHAT_CLIENT_BUFFER_MAX_BYTES = 1024 * 1024;
+export const AGENTIC_CHAT_CLIENT_MAX_TRACKED_TURNS = 8;
 
 export type JsonObject = { [key: string]: JsonValue | undefined };
 export type JsonValue = null | boolean | number | string | JsonObject | JsonValue[];
@@ -334,6 +340,24 @@ export type AgentStreamEventV1<TPayload extends { type: string } = { type: strin
 	durable: boolean;
 } & TPayload;
 
+export type AgenticChatRealtimeReconcileHintV1 = {
+	contract_version: typeof AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
+	turn_run_id: string;
+	session_id: string;
+	execution_generation: number;
+	durable_through_sequence: number;
+};
+
+export type AgenticChatRealtimeBroadcastV1 =
+	| {
+			event: typeof AGENTIC_CHAT_REALTIME_STREAM_EVENT;
+			payload: AgentStreamEventV1;
+	  }
+	| {
+			event: typeof AGENTIC_CHAT_REALTIME_RECONCILE_EVENT;
+			payload: AgenticChatRealtimeReconcileHintV1;
+	  };
+
 export type TurnSnapshotV1 = {
 	contract_version: typeof AGENTIC_CHAT_WORKER_CONTRACT_VERSION;
 	turn_run_id: string;
@@ -353,6 +377,42 @@ export type TurnSnapshotV1 = {
 	terminal_event_id: string | null;
 	updated_at: string;
 };
+
+export type AgenticChatReconcileAssistantMessageV1 = {
+	id: string;
+	role: 'assistant';
+	content: string;
+	metadata: JsonObject;
+	prompt_tokens: number | null;
+	completion_tokens: number | null;
+	total_tokens: number | null;
+	created_at: string | null;
+};
+
+export type AgenticChatReconcileRpcResultV1 =
+	| {
+			outcome: 'not_found';
+			turn_run_id: string;
+	  }
+	| {
+			outcome: 'not_worker_turn';
+			turn_run_id: string;
+			execution_mode: 'legacy_sse';
+			status: ChatTurnStatusV1;
+	  }
+	| (TurnSnapshotV1 & {
+			outcome: 'reconciled';
+			session_id: string;
+			user_id: string;
+			stream_run_id: string;
+			client_turn_id: string;
+			requested_execution_generation: number | null;
+			generation_changed: boolean;
+			assistant_message: AgenticChatReconcileAssistantMessageV1 | null;
+			terminalized_at: string | null;
+			finished_reason: string | null;
+			failure_code: string | null;
+	  });
 
 export type ChatTurnSignalV1 = {
 	signalVersion: typeof AGENTIC_CHAT_SIGNAL_VERSION;
