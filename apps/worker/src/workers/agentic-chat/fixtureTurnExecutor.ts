@@ -1,6 +1,7 @@
 // apps/worker/src/workers/agentic-chat/fixtureTurnExecutor.ts
 import { randomUUID } from 'node:crypto';
 import {
+	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	type AgentStreamEventV1,
 	type AgenticChatRecoveryFailureClassV1,
@@ -42,6 +43,11 @@ import {
 	type AgenticChatProviderStepV1,
 	type AgenticChatProviderUsageV1
 } from './providerContract';
+import {
+	type AgenticChatExecutorLifecycleStageV1,
+	type AgenticChatExecutorSnapshotStageV1,
+	createStableAgenticChatLifecycleTransitionIdV1
+} from './lifecycleIdentity';
 
 const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_UI_PROJECTION_EVENTS = 128;
@@ -315,6 +321,14 @@ export class AgenticChatFixtureTurnExecutor {
 			}
 			executionStarted = true;
 			throwIfAborted(combined.signal);
+			await this.publishExecutorLifecycle(
+				executionInput,
+				projection,
+				'acknowledged',
+				combined.signal
+			);
+			await this.publishExecutorSnapshots(executionInput, projection, combined.signal);
+			throwIfAborted(combined.signal);
 
 			let finished = false;
 			const providerStream = preparedProvider
@@ -358,6 +372,13 @@ export class AgenticChatFixtureTurnExecutor {
 			if (!finished) throw new Error('Fixture provider ended without a finish step');
 			throwIfAborted(combined.signal);
 			await abortable(this.ports.publisher.flushTurn(claim.turnRunId), combined.signal);
+			await this.publishExecutorLifecycle(
+				executionInput,
+				projection,
+				'finalizing',
+				combined.signal
+			);
+			throwIfAborted(combined.signal);
 			return await this.finalize(
 				envelope,
 				executableClaim,
@@ -387,6 +408,98 @@ export class AgenticChatFixtureTurnExecutor {
 			this.ports.cancellation.unregisterTurn(claim.turnRunId, generation);
 			if (publisherRegistered) this.safeUnregisterPublisher(claim.turnRunId);
 		}
+	}
+
+	private async publishExecutorLifecycle(
+		executionInput: AgenticChatWorkerExecutionInputV1,
+		projection: ProjectionState,
+		stage: AgenticChatExecutorLifecycleStageV1,
+		signal: AbortSignal
+	): Promise<void> {
+		const message =
+			stage === 'acknowledged'
+				? 'Request received. Preparing the workspace context...'
+				: 'Finalizing the response...';
+		await this.publishSemantic(
+			executionInput,
+			projection,
+			{
+				type: 'semantic',
+				transitionId: createStableAgenticChatLifecycleTransitionIdV1({
+					turnRunId: executionInput.claim.turnRunId,
+					stage
+				}),
+				phase: 'stream',
+				eventType: 'turn_phase',
+				currentActivity: message,
+				eventPayload: {
+					type: 'turn_phase',
+					turn_phase: stage,
+					message
+				}
+			},
+			signal
+		);
+	}
+
+	private async publishExecutorSnapshots(
+		executionInput: AgenticChatWorkerExecutionInputV1,
+		projection: ProjectionState,
+		signal: AbortSignal
+	): Promise<void> {
+		if (executionInput.artifact.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION) {
+			return;
+		}
+		const prepared = executionInput.artifact.prepared;
+		await this.publishExecutorSnapshot(
+			executionInput,
+			projection,
+			'session',
+			{
+				type: 'session',
+				session: {
+					...prepared.sessionSnapshot,
+					id: executionInput.claim.sessionId
+				}
+			},
+			signal
+		);
+		throwIfAborted(signal);
+		await this.publishExecutorSnapshot(
+			executionInput,
+			projection,
+			'context_usage',
+			{
+				type: 'context_usage',
+				usage: prepared.contextUsageSnapshot
+			},
+			signal
+		);
+	}
+
+	private async publishExecutorSnapshot(
+		executionInput: AgenticChatWorkerExecutionInputV1,
+		projection: ProjectionState,
+		stage: AgenticChatExecutorSnapshotStageV1,
+		eventPayload: JsonObject,
+		signal: AbortSignal
+	): Promise<void> {
+		await this.publishSemantic(
+			executionInput,
+			projection,
+			{
+				type: 'semantic',
+				transitionId: createStableAgenticChatLifecycleTransitionIdV1({
+					turnRunId: executionInput.claim.turnRunId,
+					stage
+				}),
+				phase: 'stream',
+				eventType: stage,
+				currentActivity: 'Request received. Preparing the workspace context...',
+				eventPayload
+			},
+			signal
+		);
 	}
 
 	private async executeMutatingTool(
@@ -700,6 +813,26 @@ export class AgenticChatFixtureTurnExecutor {
 			}
 		}
 		const shouldPersistMessage = status === 'completed' || assistantText.length > 0;
+		const completedMessageMetadata =
+			status === 'completed'
+				? ({ completion_status: 'completed', answer_source: 'model' } as const)
+				: {};
+		const completedEventPayload =
+			status === 'completed'
+				? {
+						completion_status: 'completed',
+						answer_source: 'model',
+						...(usage
+							? {
+									usage: {
+										prompt_tokens: usage.promptTokens,
+										completion_tokens: usage.completionTokens,
+										total_tokens: usage.totalTokens
+									}
+								}
+							: {})
+					}
+				: {};
 		const terminalInput: AgenticChatTerminalFinalizeInputV1 = {
 			...envelope,
 			userId: claim.userId,
@@ -713,7 +846,8 @@ export class AgenticChatFixtureTurnExecutor {
 				transport_contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 				turn_run_id: claim.turnRunId,
 				execution_generation: claim.executionGeneration,
-				worker_runtime: 'agentic_chat_v1'
+				worker_runtime: 'agentic_chat_v1',
+				...completedMessageMetadata
 			},
 			promptTokens: status === 'completed' ? (usage?.promptTokens ?? null) : null,
 			completionTokens: status === 'completed' ? (usage?.completionTokens ?? null) : null,
@@ -723,7 +857,8 @@ export class AgenticChatFixtureTurnExecutor {
 				type: 'done',
 				status,
 				finished_reason: finishedReason,
-				failure_code: failureCode
+				failure_code: failureCode,
+				...completedEventPayload
 			}
 		};
 
@@ -879,7 +1014,7 @@ function toProjectionJson(projection: ProjectionState): JsonObject {
 	return {
 		version: UI_PROJECTION_VERSION,
 		current_activity: projection.currentActivity,
-		semantic_events: projection.semanticEvents as unknown as JsonObject[]
+		semantic_events: projection.semanticEvents.slice() as unknown as JsonObject[]
 	};
 }
 

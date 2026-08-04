@@ -264,6 +264,19 @@ describe('Agentic Chat worker turn preparation', () => {
 			preparedPromptLineage: { id: null, acceptedSurfaceProfile: null }
 		});
 		expect(result.args.p_request_hash).toBe(expectedHash);
+		expect(result.args.p_artifact_prepared).toMatchObject({
+			sessionSnapshot: {
+				summary: null,
+				agent_metadata: { trusted: true }
+			},
+			contextUsageSnapshot: {
+				estimatedTokens: 11,
+				tokenBudget: 15_000,
+				usagePercent: 0,
+				tokensRemaining: 14_989,
+				status: 'ok'
+			}
+		});
 
 		const artifact = {
 			artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
@@ -348,7 +361,19 @@ describe('Agentic Chat worker turn preparation', () => {
 		expect(result.args.p_artifact_prepared).toMatchObject({
 			sourcePreparedPromptId: preparedId,
 			systemPrompt: 'Prepared system prompt',
-			surfaceProfile: 'global_basic'
+			surfaceProfile: 'global_basic',
+			sessionSnapshot: {
+				user_id: USER_ID,
+				context_type: 'global',
+				entity_id: null,
+				summary: 'Trusted conversation summary',
+				agent_metadata: { trusted: true }
+			},
+			contextUsageSnapshot: {
+				estimatedTokens: 15,
+				tokensRemaining: 14_985,
+				status: 'ok'
+			}
 		});
 		const expectedHash = await hashCanonicalAdmissionRequestV1({
 			version: AGENTIC_CHAT_REQUEST_HASH_VERSION,

@@ -56,6 +56,29 @@ export type AgenticChatParityRunV1 = {
 	metadata: JsonObject;
 };
 
+export type AgenticChatParityDifferenceKindV1 =
+	| 'missing_in_actual'
+	| 'unexpected_in_actual'
+	| 'value_mismatch';
+
+export type AgenticChatParityDifferenceValueV1 = {
+	present: boolean;
+	value: JsonValue | null;
+};
+
+export type AgenticChatParityDifferenceV1 = {
+	path: string;
+	kind: AgenticChatParityDifferenceKindV1;
+	expected: AgenticChatParityDifferenceValueV1;
+	actual: AgenticChatParityDifferenceValueV1;
+};
+
+export type AgenticChatParityDiffV1 = {
+	matches: boolean;
+	truncated: boolean;
+	differences: readonly AgenticChatParityDifferenceV1[];
+};
+
 /**
  * Produce the deterministic comparison surface used by Phase 4 fixtures.
  *
@@ -118,7 +141,14 @@ export function normalizeAgenticChatParityEventsV1(
 		);
 
 		if (runtimeType === 'text' || runtimeType === 'text_delta') {
-			const content = record.content;
+			if (
+				typeof record.content === 'string' &&
+				typeof record.text_delta === 'string' &&
+				record.content !== record.text_delta
+			) {
+				throw new Error('Agentic Chat parity assistant text spellings do not match');
+			}
+			const content = typeof record.content === 'string' ? record.content : record.text_delta;
 			if (typeof content !== 'string') {
 				throw new Error('Agentic Chat parity assistant text must be a string');
 			}
@@ -149,6 +179,400 @@ export function normalizeAgenticChatParityEventsV1(
 	}
 
 	return normalized;
+}
+
+/** Return a bounded, stable JSON-pointer diff for an already-normalized pair. */
+export function diffAgenticChatParityRunsV1(
+	expected: AgenticChatParityRunV1,
+	actual: AgenticChatParityRunV1,
+	options: { maxDifferences?: number } = {}
+): AgenticChatParityDiffV1 {
+	const maxDifferences = options.maxDifferences ?? 256;
+	if (!Number.isSafeInteger(maxDifferences) || maxDifferences < 1 || maxDifferences > 4_096) {
+		throw new Error('Agentic Chat parity maxDifferences must be between 1 and 4096');
+	}
+
+	const differences: AgenticChatParityDifferenceV1[] = [];
+	let truncated = false;
+	const markTruncated = () => {
+		truncated = true;
+	};
+	diffParityEvents(expected.events, actual.events, differences, maxDifferences, markTruncated);
+	for (const [path, expectedValue, actualValue] of [
+		['/messages', expected.messages, actual.messages],
+		['/toolExecutions', expected.toolExecutions, actual.toolExecutions],
+		['/checkpoints', expected.checkpoints, actual.checkpoints],
+		['/outcome', expected.outcome, actual.outcome]
+	] as const) {
+		diffJsonValue(
+			expectedValue as JsonValue,
+			actualValue as JsonValue,
+			path,
+			differences,
+			maxDifferences,
+			markTruncated
+		);
+		if (truncated) break;
+	}
+	if (!truncated) {
+		diffParityMetadata(
+			expected.metadata,
+			actual.metadata,
+			differences,
+			maxDifferences,
+			markTruncated
+		);
+	}
+
+	return {
+		matches: differences.length === 0 && !truncated,
+		truncated,
+		differences
+	};
+}
+
+/**
+ * Lifecycle observability rows are ordered, but a missing earlier row must not
+ * make a later equivalent row look different. Other metadata remains an exact
+ * structural comparison.
+ */
+function diffParityMetadata(
+	expected: JsonObject,
+	actual: JsonObject,
+	differences: AgenticChatParityDifferenceV1[],
+	maxDifferences: number,
+	markTruncated: () => void
+): void {
+	const keys = [...new Set([...Object.keys(expected), ...Object.keys(actual)])].sort();
+	for (const key of keys) {
+		if (differences.length >= maxDifferences) {
+			markTruncated();
+			return;
+		}
+		const expectedPresent = Object.prototype.hasOwnProperty.call(expected, key);
+		const actualPresent = Object.prototype.hasOwnProperty.call(actual, key);
+		const path = `/metadata/${escapeJsonPointer(key)}`;
+		if (!expectedPresent || !actualPresent) {
+			differences.push(
+				missingDifference(path, expectedPresent, expected[key], actualPresent, actual[key])
+			);
+			continue;
+		}
+
+		const expectedValue = expected[key]!;
+		const actualValue = actual[key]!;
+		if (
+			key === 'lifecycle_events' &&
+			isLifecycleEventArray(expectedValue) &&
+			isLifecycleEventArray(actualValue)
+		) {
+			diffParityLifecycleEvents(
+				expectedValue,
+				actualValue,
+				path,
+				differences,
+				maxDifferences,
+				markTruncated
+			);
+		} else {
+			diffJsonValue(
+				expectedValue,
+				actualValue,
+				path,
+				differences,
+				maxDifferences,
+				markTruncated
+			);
+		}
+	}
+}
+
+function diffParityLifecycleEvents(
+	expected: readonly JsonObject[],
+	actual: readonly JsonObject[],
+	path: string,
+	differences: AgenticChatParityDifferenceV1[],
+	maxDifferences: number,
+	markTruncated: () => void
+): void {
+	let actualCursor = 0;
+	for (let expectedIndex = 0; expectedIndex < expected.length; expectedIndex += 1) {
+		if (differences.length >= maxDifferences) {
+			markTruncated();
+			return;
+		}
+		const expectedEvent = expected[expectedIndex]!;
+		let matchedActualIndex = -1;
+		for (let actualIndex = actualCursor; actualIndex < actual.length; actualIndex += 1) {
+			if (sameLifecycleEventIdentity(expectedEvent, actual[actualIndex]!)) {
+				matchedActualIndex = actualIndex;
+				break;
+			}
+		}
+
+		if (matchedActualIndex === -1) {
+			differences.push(
+				missingDifference(`${path}/${expectedIndex}`, true, expectedEvent, false, undefined)
+			);
+			continue;
+		}
+
+		for (let actualIndex = actualCursor; actualIndex < matchedActualIndex; actualIndex += 1) {
+			if (differences.length >= maxDifferences) {
+				markTruncated();
+				return;
+			}
+			differences.push(
+				missingDifference(
+					`${path}/${actualIndex}`,
+					false,
+					undefined,
+					true,
+					actual[actualIndex]
+				)
+			);
+		}
+		diffJsonValue(
+			expectedEvent,
+			actual[matchedActualIndex]!,
+			`${path}/${expectedIndex}`,
+			differences,
+			maxDifferences,
+			markTruncated
+		);
+		actualCursor = matchedActualIndex + 1;
+	}
+
+	for (let actualIndex = actualCursor; actualIndex < actual.length; actualIndex += 1) {
+		if (differences.length >= maxDifferences) {
+			markTruncated();
+			return;
+		}
+		differences.push(
+			missingDifference(`${path}/${actualIndex}`, false, undefined, true, actual[actualIndex])
+		);
+	}
+}
+
+function sameLifecycleEventIdentity(expected: JsonObject, actual: JsonObject): boolean {
+	return expected.event_type === actual.event_type && expected.phase === actual.phase;
+}
+
+function isLifecycleEventArray(value: JsonValue): value is JsonObject[] {
+	return Array.isArray(value) && value.every(isJsonObject);
+}
+
+/**
+ * Align ordered events by semantic identity before comparing payloads. A
+ * missing lifecycle event must not turn every later, otherwise-equal event
+ * into an index-shift cascade.
+ */
+function diffParityEvents(
+	expected: readonly AgenticChatParityEventV1[],
+	actual: readonly AgenticChatParityEventV1[],
+	differences: AgenticChatParityDifferenceV1[],
+	maxDifferences: number,
+	markTruncated: () => void
+): void {
+	let actualCursor = 0;
+	for (let expectedIndex = 0; expectedIndex < expected.length; expectedIndex += 1) {
+		if (differences.length >= maxDifferences) {
+			markTruncated();
+			return;
+		}
+		const expectedEvent = expected[expectedIndex]!;
+		let matchedActualIndex = -1;
+		for (let actualIndex = actualCursor; actualIndex < actual.length; actualIndex += 1) {
+			if (sameEventIdentity(expectedEvent, actual[actualIndex]!)) {
+				matchedActualIndex = actualIndex;
+				break;
+			}
+		}
+
+		if (matchedActualIndex === -1) {
+			differences.push(
+				missingDifference(`/events/${expectedIndex}`, true, expectedEvent, false, undefined)
+			);
+			continue;
+		}
+
+		for (let actualIndex = actualCursor; actualIndex < matchedActualIndex; actualIndex += 1) {
+			if (differences.length >= maxDifferences) {
+				markTruncated();
+				return;
+			}
+			differences.push(
+				missingDifference(
+					`/events/${actualIndex}`,
+					false,
+					undefined,
+					true,
+					actual[actualIndex]
+				)
+			);
+		}
+		diffJsonValue(
+			expectedEvent as unknown as JsonValue,
+			actual[matchedActualIndex] as unknown as JsonValue,
+			`/events/${expectedIndex}`,
+			differences,
+			maxDifferences,
+			markTruncated
+		);
+		actualCursor = matchedActualIndex + 1;
+	}
+
+	for (let actualIndex = actualCursor; actualIndex < actual.length; actualIndex += 1) {
+		if (differences.length >= maxDifferences) {
+			markTruncated();
+			return;
+		}
+		differences.push(
+			missingDifference(`/events/${actualIndex}`, false, undefined, true, actual[actualIndex])
+		);
+	}
+}
+
+function sameEventIdentity(
+	expected: AgenticChatParityEventV1,
+	actual: AgenticChatParityEventV1
+): boolean {
+	return (
+		expected.type === actual.type &&
+		expected.phase === actual.phase &&
+		eventVariant(expected) === eventVariant(actual)
+	);
+}
+
+function eventVariant(event: AgenticChatParityEventV1): string {
+	if (event.type === 'turn_phase' && typeof event.payload.turn_phase === 'string') {
+		return event.payload.turn_phase;
+	}
+	if (event.type === 'phase_update' && typeof event.payload.session_phase === 'string') {
+		return event.payload.session_phase;
+	}
+	if (event.type === 'skill_activity') {
+		return [event.payload.action, event.payload.path]
+			.filter((value): value is string => typeof value === 'string')
+			.join(':');
+	}
+	return '';
+}
+
+function diffJsonValue(
+	expected: JsonValue,
+	actual: JsonValue,
+	path: string,
+	differences: AgenticChatParityDifferenceV1[],
+	maxDifferences: number,
+	markTruncated: () => void
+): void {
+	if (differences.length >= maxDifferences) {
+		markTruncated();
+		return;
+	}
+	if (Object.is(expected, actual)) return;
+
+	if (Array.isArray(expected) && Array.isArray(actual)) {
+		const length = Math.max(expected.length, actual.length);
+		for (let index = 0; index < length; index += 1) {
+			if (differences.length >= maxDifferences) {
+				markTruncated();
+				return;
+			}
+			const expectedPresent = index < expected.length;
+			const actualPresent = index < actual.length;
+			const itemPath = `${path}/${index}`;
+			if (!expectedPresent || !actualPresent) {
+				differences.push(
+					missingDifference(
+						itemPath,
+						expectedPresent,
+						expected[index],
+						actualPresent,
+						actual[index]
+					)
+				);
+				continue;
+			}
+			diffJsonValue(
+				expected[index]!,
+				actual[index]!,
+				itemPath,
+				differences,
+				maxDifferences,
+				markTruncated
+			);
+		}
+		return;
+	}
+
+	if (isJsonObject(expected) && isJsonObject(actual)) {
+		const keys = [...new Set([...Object.keys(expected), ...Object.keys(actual)])].sort();
+		for (const key of keys) {
+			if (differences.length >= maxDifferences) {
+				markTruncated();
+				return;
+			}
+			const expectedPresent = Object.prototype.hasOwnProperty.call(expected, key);
+			const actualPresent = Object.prototype.hasOwnProperty.call(actual, key);
+			const itemPath = `${path}/${escapeJsonPointer(key)}`;
+			if (!expectedPresent || !actualPresent) {
+				differences.push(
+					missingDifference(
+						itemPath,
+						expectedPresent,
+						expected[key],
+						actualPresent,
+						actual[key]
+					)
+				);
+				continue;
+			}
+			diffJsonValue(
+				expected[key]!,
+				actual[key]!,
+				itemPath,
+				differences,
+				maxDifferences,
+				markTruncated
+			);
+		}
+		return;
+	}
+
+	differences.push({
+		path: path || '/',
+		kind: 'value_mismatch',
+		expected: differenceValue(true, expected),
+		actual: differenceValue(true, actual)
+	});
+}
+
+function missingDifference(
+	path: string,
+	expectedPresent: boolean,
+	expected: JsonValue | undefined,
+	actualPresent: boolean,
+	actual: JsonValue | undefined
+): AgenticChatParityDifferenceV1 {
+	return {
+		path,
+		kind: expectedPresent ? 'missing_in_actual' : 'unexpected_in_actual',
+		expected: differenceValue(expectedPresent, expected),
+		actual: differenceValue(actualPresent, actual)
+	};
+}
+
+function differenceValue(
+	present: boolean,
+	value: JsonValue | undefined
+): AgenticChatParityDifferenceValueV1 {
+	return { present, value: present ? (value ?? null) : null };
+}
+
+function escapeJsonPointer(value: string): string {
+	return value.replace(/~/g, '~0').replace(/\//g, '~1');
 }
 
 function validateEnvelope(

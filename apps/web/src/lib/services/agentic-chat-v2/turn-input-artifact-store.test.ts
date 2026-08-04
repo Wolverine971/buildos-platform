@@ -56,7 +56,17 @@ function contentFixture(): TurnInputArtifactContentV1 {
 			surfaceProfile: 'global_basic',
 			systemPrompt: 'System prompt',
 			promptSections: [{ id: 'context', text: 'Trusted context' }],
-			toolSurface: { names: ['get_workspace_overview'] }
+			toolSurface: { names: ['get_workspace_overview'] },
+			sessionSnapshot: { summary: 'Earlier context', agent_metadata: {} },
+			contextUsageSnapshot: {
+				estimatedTokens: 20,
+				tokenBudget: 15_000,
+				usagePercent: 0,
+				tokensRemaining: 14_980,
+				status: 'ok',
+				lastCompressedAt: null,
+				lastCompression: null
+			}
 		}
 	};
 }

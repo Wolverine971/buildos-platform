@@ -2,3 +2,4 @@
 export * from './contracts';
 export * from './parity';
 export * from './ports';
+export * from './text-only-success-parity-fixture';

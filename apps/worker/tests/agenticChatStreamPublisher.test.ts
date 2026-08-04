@@ -267,6 +267,54 @@ describe('AgenticChatStreamPublisher', () => {
 		await publisher.stop();
 	});
 
+	it('suppresses duplicate semantic Broadcast after a persisted response is lost', async () => {
+		const context = turn('semantic-replay');
+		const base = createPersistence([context]);
+		const transitionId = '60000000-0000-5000-8000-000000000006';
+		base.persistSemantic = vi.fn(async (input) => ({
+			outcome: 'already_persisted',
+			publish_allowed: false,
+			turn_run_id: context.turnRunId,
+			queue_job_id: context.queueJobId,
+			session_id: context.sessionId,
+			user_id: context.userId,
+			stream_run_id: context.streamRunId,
+			client_turn_id: context.clientTurnId,
+			execution_generation: context.executionGeneration,
+			sequence_index: 1,
+			event_id: `${context.turnRunId}:1:1`,
+			phase: input.phase,
+			event_type: input.event_type,
+			durable: true,
+			transition_id: input.transition_id,
+			event_payload: input.event_payload
+		}));
+		const broadcast = createBroadcast();
+		const publisher = new AgenticChatStreamPublisher({ persistence: base, broadcast });
+		publisher.start();
+		publisher.registerTurn(context);
+
+		await expect(
+			publisher.publishSemantic(context.turnRunId, {
+				transitionId,
+				phase: 'stream',
+				eventType: 'turn_phase',
+				projection: { current_activity: 'Finalizing the response...' },
+				eventPayload: {
+					type: 'turn_phase',
+					turn_phase: 'finalizing',
+					message: 'Finalizing the response...'
+				}
+			})
+		).resolves.toBe('already_persisted');
+		expect(base.persistSemantic).toHaveBeenCalledWith(
+			expect.objectContaining({ transition_id: transitionId })
+		);
+		expect(broadcast.messages.map((message) => message.kind)).toEqual(['reconcile_hint']);
+		expect(publisher.getSnapshot(context.turnRunId).reconcileOnly).toBe(true);
+		await publisher.stop();
+	});
+
 	it('suppresses later live events after Broadcast failure and emits only a reconcile hint', async () => {
 		const context = turn('degraded');
 		const persistence = createPersistence([context]);

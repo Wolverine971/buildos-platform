@@ -12,6 +12,8 @@ import {
 	normalizeTurnInputArtifactContentV1,
 	validateTurnInputArtifactV1,
 	type AgentChatTransportContextV1,
+	type AgenticChatContextUsageSnapshotV1,
+	type AgenticChatSessionEventSnapshotV1,
 	type ChatAttachmentRef,
 	type ChatContextType,
 	type ChatSession,
@@ -42,6 +44,7 @@ import {
 	sanitizeAttachmentRefsForMetadata
 } from './attachments';
 import { composeFastChatHistory } from './history-composer';
+import { buildFastContextUsageSnapshot } from './context-usage';
 import { buildLastTurnContinuityHint } from './last-turn-context';
 import {
 	inspectPreparedPromptAdmissionLineage,
@@ -416,11 +419,26 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	}
 
 	const frozenHistory = freezeHistory(modelHistory);
+	const sessionSnapshot = buildWorkerSessionEventSnapshot({
+		session: sessionIntent.session,
+		inlineAgentMetadata: turnPreparation.sessionMetadata
+	});
+	const contextUsageSnapshot = toJsonObject(
+		buildFastContextUsageSnapshot({
+			systemPrompt: preparedArtifact.systemPrompt,
+			history: frozenHistory,
+			userMessage: messageForModel
+		})
+	) as AgenticChatContextUsageSnapshotV1;
 	const artifactContent = normalizeTurnInputArtifactContentV1({
 		artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 		historySource,
 		history: frozenHistory,
-		prepared: preparedArtifact
+		prepared: {
+			...preparedArtifact,
+			sessionSnapshot,
+			contextUsageSnapshot
+		}
 	});
 	const artifactContentHash = await hashTurnInputArtifactContentV1(artifactContent);
 	const artifactValidation = await validateTurnInputArtifactV1(
@@ -521,6 +539,20 @@ type WorkerSessionIntent = {
 	session: ChatSession | null;
 	inlineMetadata: JsonObject;
 };
+
+function buildWorkerSessionEventSnapshot(input: {
+	session: ChatSession | null;
+	inlineAgentMetadata: unknown;
+}): AgenticChatSessionEventSnapshotV1 {
+	const source = toJsonObject(
+		input.session ?? {
+			summary: null,
+			agent_metadata: input.inlineAgentMetadata
+		}
+	);
+	const { id: _databaseScopedId, ...snapshot } = source;
+	return snapshot as AgenticChatSessionEventSnapshotV1;
+}
 
 async function resolveWorkerSessionIntent(params: {
 	serviceClient: FastChatSupabaseClient;

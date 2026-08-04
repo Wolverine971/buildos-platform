@@ -65,7 +65,20 @@ async function artifactFixture(): Promise<{
 			surfaceProfile: 'project_default',
 			systemPrompt: 'You are a fixture-only agent.',
 			promptSections: [],
-			toolSurface: { names: ['fixture_read'] }
+			toolSurface: { names: ['fixture_read'] },
+			sessionSnapshot: {
+				summary: null,
+				agent_metadata: {}
+			},
+			contextUsageSnapshot: {
+				estimatedTokens: 10,
+				tokenBudget: 15_000,
+				usagePercent: 0,
+				tokensRemaining: 14_990,
+				status: 'ok',
+				lastCompressedAt: null,
+				lastCompression: null
+			}
 		},
 		createdAt: '2026-08-03T11:00:00.000Z',
 		retainUntil: '2026-08-10T11:00:00.000Z',
@@ -191,6 +204,25 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 				toolCallId: null
 			}
 		];
+		const { client } = clientFor(turnFixture(), row);
+
+		await expect(
+			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
+		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+			code: 'invalid_artifact'
+		});
+	});
+
+	it('rejects a v3 session snapshot that tries to override database scope', async () => {
+		const { row } = await artifactFixture();
+		row.prepared = {
+			...(row.prepared as Record<string, unknown>),
+			sessionSnapshot: {
+				id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+				summary: null,
+				agent_metadata: {}
+			}
+		};
 		const { client } = clientFor(turnFixture(), row);
 
 		await expect(

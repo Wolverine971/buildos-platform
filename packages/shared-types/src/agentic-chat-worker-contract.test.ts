@@ -7,6 +7,7 @@ import {
 	AGENTIC_CHAT_CLIENT_BUFFER_MAX_EVENTS,
 	AGENTIC_CHAT_CLIENT_MAX_TRACKED_TURNS,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2,
 	AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES,
 	AGENTIC_CHAT_RECONCILE_MAX_DURABLE_EVENTS,
 	AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
@@ -123,7 +124,20 @@ function artifactFixture(): TurnInputArtifactV1 {
 			surfaceProfile: 'project_default',
 			systemPrompt: 'You are the BuildOS project agent.',
 			promptSections: [{ id: 'context', enabled: true }],
-			toolSurface: { names: ['onto_project_read'] }
+			toolSurface: { names: ['onto_project_read'] },
+			sessionSnapshot: {
+				summary: 'The user is preparing a launch.',
+				agent_metadata: { trusted: true }
+			},
+			contextUsageSnapshot: {
+				estimatedTokens: 120,
+				tokenBudget: 15_000,
+				usagePercent: 1,
+				tokensRemaining: 14_880,
+				status: 'ok',
+				lastCompressedAt: null,
+				lastCompression: null
+			}
 		},
 		createdAt: '2026-07-29T20:00:00.000Z',
 		retainUntil: '2026-08-05T20:00:00.000Z',
@@ -267,8 +281,10 @@ describe('agentic chat worker v1 contract fixtures', () => {
 		]);
 		expect(Object.keys(artifact.prepared).sort()).toEqual([
 			'contextPayload',
+			'contextUsageSnapshot',
 			'conversationSummary',
 			'promptSections',
+			'sessionSnapshot',
 			'sourcePreparedPromptId',
 			'surfaceProfile',
 			'systemPrompt',
@@ -295,7 +311,25 @@ describe('agentic chat worker v1 contract fixtures', () => {
 		};
 
 		expect(await hashTurnInputArtifactContentV1(sameContentDifferentRetention)).toBe(hash);
-		expect(hash).toBe('8c7fcdbdb7e4135ab27e6ce869e90221fbfe456d27f1dfecaf5b0ff705dfd69e');
+		expect(hash).toBe('2a5e1353cc90e102286b3be6da68570f4c2034e40af12cb221a29f23c68ad9ae');
+
+		const legacyArtifact = artifactFixture();
+		if (legacyArtifact.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION) {
+			throw new Error('Expected the current artifact fixture');
+		}
+		const {
+			sessionSnapshot: _sessionSnapshot,
+			contextUsageSnapshot: _usage,
+			...legacyPrepared
+		} = legacyArtifact.prepared;
+		const legacyV2 = {
+			...legacyArtifact,
+			artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2,
+			prepared: legacyPrepared
+		} satisfies TurnInputArtifactV1;
+		expect(await hashTurnInputArtifactContentV1(legacyV2)).toBe(
+			'8c7fcdbdb7e4135ab27e6ce869e90221fbfe456d27f1dfecaf5b0ff705dfd69e'
+		);
 
 		const changedHistory = artifactFixture();
 		changedHistory.history[0]!.content = 'Source history changed after admission.';
@@ -321,6 +355,23 @@ describe('agentic chat worker v1 contract fixtures', () => {
 		expect(
 			await validateTurnInputArtifactV1({ ...artifact, contentHash: '0'.repeat(64) })
 		).toMatchObject({ ok: false, code: 'hash_mismatch' });
+		if (artifact.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION) {
+			throw new Error('fixture must use the current input artifact version');
+		}
+		const scopedSessionOverride = {
+			...artifact,
+			prepared: {
+				...artifact.prepared,
+				sessionSnapshot: {
+					...artifact.prepared.sessionSnapshot,
+					id: 'ffffffff-ffff-4fff-8fff-ffffffffffff'
+				}
+			}
+		} as unknown as TurnInputArtifactV1;
+		expect(await validateTurnInputArtifactV1(scopedSessionOverride)).toMatchObject({
+			ok: false,
+			code: 'invalid_lifecycle_snapshot'
+		});
 		expect(
 			await validateTurnInputArtifactV1({
 				...artifact,

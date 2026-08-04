@@ -5,7 +5,11 @@ import type {
 	AgentStreamEventPhase,
 	AgentStreamEventV1
 } from '@buildos/shared-types';
-import { normalizeAgenticChatParityEventsV1, normalizeAgenticChatParityRunV1 } from './parity';
+import {
+	diffAgenticChatParityRunsV1,
+	normalizeAgenticChatParityEventsV1,
+	normalizeAgenticChatParityRunV1
+} from './parity';
 
 const legacyEvent = <TEvent extends AgentSSEMessage>(
 	event: TEvent,
@@ -85,6 +89,22 @@ describe('Agentic Chat Phase 4 parity projection', () => {
 		]);
 	});
 
+	it('accepts the durable worker text_delta spelling and rejects ambiguous text', () => {
+		const durableWorkerEvent = {
+			...workerEvent({ type: 'text_delta', content: 'Hello' }, 1, 'llm'),
+			content: undefined,
+			text_delta: 'Hello'
+		};
+		expect(normalizeAgenticChatParityEventsV1([durableWorkerEvent as never])).toEqual([
+			{ type: 'assistant_text', phase: 'llm', payload: { content: 'Hello' } }
+		]);
+		expect(() =>
+			normalizeAgenticChatParityEventsV1([
+				{ ...durableWorkerEvent, content: 'Different' } as never
+			])
+		).toThrow('assistant text spellings do not match');
+	});
+
 	it('keeps semantic payloads and every persistence collection exact', () => {
 		const baseline = normalizeAgenticChatParityRunV1({
 			events: [legacyEvent({ type: 'done', finished_reason: 'stop' }, 1, 'finalize')],
@@ -158,5 +178,156 @@ describe('Agentic Chat Phase 4 parity projection', () => {
 				metadata: {}
 			})
 		).toThrow('require finite numbers');
+	});
+
+	it('reports a bounded stable structural diff', () => {
+		const expected = normalizeAgenticChatParityRunV1({
+			events: [legacyEvent({ type: 'done', finished_reason: 'stop' }, 1, 'finalize')],
+			messages: [{ role: 'assistant', content: 'Answer' }],
+			toolExecutions: [],
+			checkpoints: [],
+			outcome: { status: 'completed' },
+			metadata: { model: 'fixture' }
+		});
+		const actual = normalizeAgenticChatParityRunV1({
+			events: [],
+			messages: [{ role: 'assistant', content: 'Different' }],
+			toolExecutions: [{ name: 'unexpected' }],
+			checkpoints: [],
+			outcome: { status: 'completed' },
+			metadata: { model: 'fixture' }
+		});
+
+		expect(diffAgenticChatParityRunsV1(expected, actual)).toEqual({
+			matches: false,
+			truncated: false,
+			differences: [
+				{
+					path: '/events/0',
+					kind: 'missing_in_actual',
+					expected: { present: true, value: expected.events[0] },
+					actual: { present: false, value: null }
+				},
+				{
+					path: '/messages/0/content',
+					kind: 'value_mismatch',
+					expected: { present: true, value: 'Answer' },
+					actual: { present: true, value: 'Different' }
+				},
+				{
+					path: '/toolExecutions/0',
+					kind: 'unexpected_in_actual',
+					expected: { present: false, value: null },
+					actual: { present: true, value: { name: 'unexpected' } }
+				}
+			]
+		});
+		expect(diffAgenticChatParityRunsV1(expected, actual, { maxDifferences: 1 })).toMatchObject({
+			matches: false,
+			truncated: true,
+			differences: [{ path: '/events/0' }]
+		});
+	});
+
+	it('aligns semantic events so missing lifecycle events do not cascade', () => {
+		const expected = normalizeAgenticChatParityRunV1({
+			events: [
+				legacyEvent(
+					{ type: 'turn_phase', turn_phase: 'acknowledged', message: 'Starting' },
+					1,
+					'stream'
+				),
+				legacyEvent({ type: 'text_delta', content: 'Answer' }, 2, 'llm'),
+				legacyEvent(
+					{ type: 'turn_phase', turn_phase: 'finalizing', message: 'Finishing' },
+					3,
+					'stream'
+				),
+				legacyEvent(
+					{ type: 'done', finished_reason: 'stop', usage: { total_tokens: 5 } },
+					4,
+					'finalize'
+				)
+			],
+			messages: [],
+			toolExecutions: [],
+			checkpoints: [],
+			outcome: {},
+			metadata: {}
+		});
+		const actual = normalizeAgenticChatParityRunV1({
+			events: [
+				workerEvent({ type: 'text_delta', content: 'Answer' }, 1, 'llm'),
+				workerEvent(
+					{ type: 'turn_phase', turn_phase: 'finalizing', message: 'Finishing' },
+					2,
+					'stream'
+				),
+				workerEvent(
+					{ type: 'done', finished_reason: 'stop', usage: { total_tokens: 6 } },
+					3,
+					'finalize'
+				)
+			],
+			messages: [],
+			toolExecutions: [],
+			checkpoints: [],
+			outcome: {},
+			metadata: {}
+		});
+
+		expect(diffAgenticChatParityRunsV1(expected, actual).differences).toEqual([
+			expect.objectContaining({ path: '/events/0', kind: 'missing_in_actual' }),
+			expect.objectContaining({
+				path: '/events/3/payload/usage/total_tokens',
+				kind: 'value_mismatch'
+			})
+		]);
+	});
+
+	it('aligns lifecycle observability metadata without weakening other metadata', () => {
+		const expected = normalizeAgenticChatParityRunV1({
+			events: [],
+			messages: [],
+			toolExecutions: [],
+			checkpoints: [],
+			outcome: {},
+			metadata: {
+				lifecycle_events: [
+					{ event_type: 'turn_intent_resolved', phase: 'prompt' },
+					{ event_type: 'turn_phase_changed', phase: 'stream', status: 'finalizing' },
+					{ event_type: 'done_emitted', phase: 'finalize' }
+				],
+				prompt_snapshot_count: 1
+			}
+		});
+		const actual = normalizeAgenticChatParityRunV1({
+			events: [],
+			messages: [],
+			toolExecutions: [],
+			checkpoints: [],
+			outcome: {},
+			metadata: {
+				lifecycle_events: [
+					{ event_type: 'turn_phase_changed', phase: 'stream', status: 'finalizing' }
+				],
+				prompt_snapshot_count: 0
+			}
+		});
+
+		expect(diffAgenticChatParityRunsV1(expected, actual).differences).toEqual([
+			expect.objectContaining({
+				path: '/metadata/lifecycle_events/0',
+				kind: 'missing_in_actual'
+			}),
+			expect.objectContaining({
+				path: '/metadata/lifecycle_events/2',
+				kind: 'missing_in_actual'
+			}),
+			expect.objectContaining({
+				path: '/metadata/prompt_snapshot_count',
+				kind: 'value_mismatch'
+			})
+		]);
 	});
 });

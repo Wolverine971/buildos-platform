@@ -1,10 +1,22 @@
 // apps/worker/tests/agenticChatFixtureTurnExecutor.test.ts
-import { createAgentStreamEventIdV1 } from '@buildos/shared-types';
+import {
+	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2,
+	createAgentStreamEventIdV1
+} from '@buildos/shared-types';
+import {
+	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1,
+	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1,
+	diffAgenticChatParityRunsV1,
+	normalizeAgenticChatParityRunV1
+} from '@buildos/agentic-chat-runtime';
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessingJob } from '../src/lib/supabaseQueue';
 import { AgenticChatCancellationError } from '../src/workers/agentic-chat/cancellationObserver';
+import type { AgenticChatTerminalFinalizeInputV1 } from '../src/workers/agentic-chat/executionControl';
 import { AgenticChatExecutionInputError } from '../src/workers/agentic-chat/executionInput';
 import { AgenticChatEffectExecutionError } from '../src/workers/agentic-chat/fixtureMutationExecutor';
+import { createStableAgenticChatLifecycleTransitionIdV1 } from '../src/workers/agentic-chat/lifecycleIdentity';
 import {
 	AgenticChatFixtureTurnExecutor,
 	type AgenticChatFixtureProviderStepV1
@@ -52,7 +64,7 @@ const executionInput = {
 		context: {}
 	},
 	artifact: {
-		artifactVersion: 'agentic_chat_input_v2',
+		artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 		historySource: 'admission_window',
 		history: [],
 		prepared: {
@@ -62,7 +74,20 @@ const executionInput = {
 			surfaceProfile: 'fixture',
 			systemPrompt: 'Fixture only',
 			promptSections: [],
-			toolSurface: {}
+			toolSurface: {},
+			sessionSnapshot: {
+				summary: null,
+				agent_metadata: {}
+			},
+			contextUsageSnapshot: {
+				estimatedTokens: 12,
+				tokenBudget: 1_000,
+				usagePercent: 1,
+				tokensRemaining: 988,
+				status: 'ok',
+				lastCompressedAt: null,
+				lastCompression: null
+			}
 		},
 		createdAt: '2026-08-03T12:00:00.000Z',
 		retainUntil: '2026-08-10T12:00:00.000Z',
@@ -189,6 +214,8 @@ function createHarness(
 		},
 		async persistSemantic(input: Record<string, unknown>) {
 			semanticInputs.push(input);
+			const payload = input.event_payload as Record<string, unknown>;
+			log.push(`semantic:${String(payload.type)}:${String(payload.turn_phase ?? '')}`);
 			sequence += 1;
 			return {
 				outcome: 'persisted',
@@ -260,7 +287,7 @@ function createHarness(
 			if (!receipt) throw new Error('Unexpected recovery call');
 			return receipt;
 		}),
-		finalize: vi.fn(async (input: { status: 'completed' | 'failed' | 'cancelled' }) =>
+		finalize: vi.fn(async (input: AgenticChatTerminalFinalizeInputV1) =>
 			terminalReceipt(input.status, sequence + 1, {
 				failure_code: input.status === 'completed' ? null : input.status,
 				assistant_message_id: input.status === 'completed' ? ASSISTANT_MESSAGE_ID : null
@@ -383,7 +410,13 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			terminalStatus: 'completed',
 			queueReconciled: true
 		});
-		expect(harness.log.slice(0, 2)).toEqual(['begin', 'provider']);
+		expect(harness.log.slice(0, 5)).toEqual([
+			'begin',
+			'semantic:turn_phase:acknowledged',
+			'semantic:session:',
+			'semantic:context_usage:',
+			'provider'
+		]);
 		expect(harness.provider.stream).toHaveBeenCalledOnce();
 		expect(harness.readTool.execute).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -401,33 +434,262 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				totalTokens: 14
 			})
 		);
-		const secondProjection = harness.semanticInputs[1]?.projection as {
+		const toolResultInput = harness.semanticInputs.find(
+			(input) => (input.event_payload as Record<string, unknown>)?.type === 'tool_result'
+		);
+		const toolResultProjection = toolResultInput?.projection as {
 			version: string;
 			semantic_events: Array<Record<string, unknown>>;
 		};
-		expect(secondProjection.version).toBe('agentic_chat_ui_projection_v1');
-		expect(secondProjection.semantic_events).toMatchObject([
+		expect(toolResultProjection.version).toBe('agentic_chat_ui_projection_v1');
+		expect(toolResultProjection.semantic_events).toMatchObject([
 			{
-				type: 'tool_call',
+				type: 'turn_phase',
+				turn_phase: 'acknowledged',
+				sequence_index: 1,
+				event_id: createAgentStreamEventIdV1(TURN_RUN_ID, EXECUTION_GENERATION, 1)
+			},
+			{
+				type: 'session',
 				sequence_index: 2,
 				event_id: createAgentStreamEventIdV1(TURN_RUN_ID, EXECUTION_GENERATION, 2)
 			},
 			{
-				type: 'tool_result',
+				type: 'context_usage',
 				sequence_index: 3,
 				event_id: createAgentStreamEventIdV1(TURN_RUN_ID, EXECUTION_GENERATION, 3)
+			},
+			{
+				type: 'tool_call',
+				sequence_index: 5,
+				event_id: createAgentStreamEventIdV1(TURN_RUN_ID, EXECUTION_GENERATION, 5)
+			},
+			{
+				type: 'tool_result',
+				sequence_index: 6,
+				event_id: createAgentStreamEventIdV1(TURN_RUN_ID, EXECUTION_GENERATION, 6)
+			}
+		]);
+		expect(
+			harness.semanticInputs
+				.filter((input) => input.event_type === 'turn_phase')
+				.map((input) => ({
+					transition_id: input.transition_id,
+					event_payload: input.event_payload
+				}))
+		).toEqual([
+			{
+				transition_id: createStableAgenticChatLifecycleTransitionIdV1({
+					turnRunId: TURN_RUN_ID,
+					stage: 'acknowledged'
+				}),
+				event_payload: {
+					type: 'turn_phase',
+					turn_phase: 'acknowledged',
+					message: 'Request received. Preparing the workspace context...'
+				}
+			},
+			{
+				transition_id: createStableAgenticChatLifecycleTransitionIdV1({
+					turnRunId: TURN_RUN_ID,
+					stage: 'finalizing'
+				}),
+				event_payload: {
+					type: 'turn_phase',
+					turn_phase: 'finalizing',
+					message: 'Finalizing the response...'
+				}
+			}
+		]);
+		expect(
+			harness.semanticInputs
+				.filter(
+					(input) =>
+						input.event_type === 'session' || input.event_type === 'context_usage'
+				)
+				.map((input) => ({
+					event_type: input.event_type,
+					transition_id: input.transition_id,
+					event_payload: input.event_payload
+				}))
+		).toEqual([
+			{
+				event_type: 'session',
+				transition_id: createStableAgenticChatLifecycleTransitionIdV1({
+					turnRunId: TURN_RUN_ID,
+					stage: 'session'
+				}),
+				event_payload: {
+					type: 'session',
+					session: {
+						id: SESSION_ID,
+						summary: null,
+						agent_metadata: {}
+					}
+				}
+			},
+			{
+				event_type: 'context_usage',
+				transition_id: createStableAgenticChatLifecycleTransitionIdV1({
+					turnRunId: TURN_RUN_ID,
+					stage: 'context_usage'
+				}),
+				event_payload: {
+					type: 'context_usage',
+					usage: executionInput.artifact.prepared.contextUsageSnapshot
+				}
 			}
 		]);
 		expect(
 			harness.broadcastMessages.map(
 				(message) => (message.payload as Record<string, unknown>).type
 			)
-		).toEqual(['text_delta', 'tool_call', 'tool_result', 'text_delta', 'done']);
+		).toEqual([
+			'turn_phase',
+			'session',
+			'context_usage',
+			'text_delta',
+			'tool_call',
+			'tool_result',
+			'text_delta',
+			'turn_phase',
+			'done'
+		]);
 		expect(harness.cancellation.unregisterTurn).toHaveBeenCalledWith(
 			TURN_RUN_ID,
 			EXECUTION_GENERATION
 		);
 		await harness.publisher.stop();
+	});
+
+	it('keeps rolling v2 artifacts executable without fabricating v3 snapshots', async () => {
+		const harness = createHarness([
+			{ type: 'text_delta', text: 'legacy artifact' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		const {
+			sessionSnapshot: _sessionSnapshot,
+			contextUsageSnapshot: _contextUsageSnapshot,
+			...legacyPrepared
+		} = executionInput.artifact.prepared;
+		harness.input.load.mockResolvedValueOnce({
+			...executionInput,
+			artifact: {
+				...executionInput.artifact,
+				artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2,
+				prepared: legacyPrepared
+			}
+		} as never);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(
+			harness.broadcastMessages.map(
+				(message) => (message.payload as Record<string, unknown>).type
+			)
+		).toEqual(['turn_phase', 'text_delta', 'turn_phase', 'done']);
+		await harness.publisher.stop();
+	});
+
+	it('records the exact Phase 4 text-only worker differential from the legacy golden', async () => {
+		const harness = createHarness([
+			{
+				type: 'text_delta',
+				text: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.assistantText
+			},
+			{
+				type: 'finish',
+				finishedReason: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.finishedReason,
+				usage: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.usage
+			}
+		]);
+		const fixtureExecutionInput = {
+			...executionInput,
+			requestPayload: {
+				...executionInput.requestPayload,
+				message: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.request.message,
+				context: { type: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.request.contextType }
+			}
+		};
+		harness.input.load.mockResolvedValueOnce(fixtureExecutionInput);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+			if (!terminalInput) throw new Error('Phase 4 worker fixture did not finalize');
+			const worker = normalizeAgenticChatParityRunV1({
+				events: harness.broadcastMessages.map((message) => message.payload) as never,
+				messages: [
+					{
+						role: 'user',
+						content: fixtureExecutionInput.requestPayload.message
+					},
+					{
+						role: 'assistant',
+						content: terminalInput.assistantText,
+						metadata: {
+							completion_status: terminalInput.assistantMetadata.completion_status,
+							answer_source: terminalInput.assistantMetadata.answer_source
+						}
+					}
+				],
+				toolExecutions: [],
+				checkpoints: [],
+				outcome: {
+					status: terminalInput.status,
+					finished_reason: terminalInput.finishedReason,
+					assistant_message_linked: terminalInput.assistantMessageId !== null,
+					total_tokens: terminalInput.totalTokens
+				},
+				metadata: {
+					admission: {
+						status: claim.status,
+						context_type: fixtureExecutionInput.requestPayload.context.type,
+						user_message_linked:
+							claim.userMessageId === executionInput.claim.userMessageId
+					},
+					lifecycle_events: harness.semanticInputs.flatMap((input) => {
+						const payload = input.event_payload as Record<string, unknown>;
+						return payload.type === 'turn_phase' && payload.turn_phase === 'finalizing'
+							? [{ event_type: 'turn_phase_changed', phase: input.phase }]
+							: [];
+					}),
+					prompt_snapshot_count: 0
+				}
+			});
+			const differential = diffAgenticChatParityRunsV1(
+				AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1,
+				worker
+			);
+			expect({
+				matches: differential.matches,
+				truncated: differential.truncated,
+				differences: differential.differences.map(({ path, kind }) => ({ path, kind }))
+			}).toEqual({
+				matches: false,
+				truncated: false,
+				differences: [
+					{ path: '/events/5', kind: 'missing_in_actual' },
+					{ path: '/events/6', kind: 'missing_in_actual' },
+					{ path: '/events/7/payload/failure_code', kind: 'unexpected_in_actual' },
+					{ path: '/events/7/payload/status', kind: 'unexpected_in_actual' },
+					{ path: '/metadata/lifecycle_events/0', kind: 'missing_in_actual' },
+					{ path: '/metadata/lifecycle_events/1', kind: 'missing_in_actual' },
+					{ path: '/metadata/lifecycle_events/3', kind: 'missing_in_actual' },
+					{ path: '/metadata/lifecycle_events/4', kind: 'missing_in_actual' },
+					{ path: '/metadata/lifecycle_events/5', kind: 'missing_in_actual' },
+					{ path: '/metadata/lifecycle_events/6', kind: 'missing_in_actual' },
+					{ path: '/metadata/prompt_snapshot_count', kind: 'value_mismatch' }
+				]
+			});
+		} finally {
+			await harness.publisher.stop();
+		}
 	});
 
 	it('routes a mutating tool through the effect-boundary port and persists its receipt', async () => {
@@ -459,7 +721,10 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				})
 			})
 		);
-		expect(harness.semanticInputs[1]?.event_payload).toMatchObject({
+		const toolResultInput = harness.semanticInputs.find(
+			(input) => (input.event_payload as Record<string, unknown>)?.type === 'tool_result'
+		);
+		expect(toolResultInput?.event_payload).toMatchObject({
 			type: 'tool_result',
 			result: {
 				effect_id: EFFECT_ID,
@@ -558,7 +823,16 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			outcome: 'completed',
 			terminalStatus: 'completed'
 		});
-		expect(harness.log).toEqual(['prepare', 'begin', 'provider', 'release']);
+		expect(harness.log).toEqual([
+			'prepare',
+			'begin',
+			'semantic:turn_phase:acknowledged',
+			'semantic:session:',
+			'semantic:context_usage:',
+			'provider',
+			'semantic:turn_phase:finalizing',
+			'release'
+		]);
 		expect(prepare).toHaveBeenCalledWith({
 			executionInput,
 			signal: expect.any(AbortSignal)
@@ -862,9 +1136,10 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 	});
 
 	it('turns publisher hard-bound overload into a failed terminal partial without retry', async () => {
+		const overloadText = 'x'.repeat(4_097);
 		const harness = createHarness(
 			[
-				{ type: 'text_delta', text: '123456' },
+				{ type: 'text_delta', text: overloadText },
 				{ type: 'finish', finishedReason: 'stop', usage: null }
 			],
 			{
@@ -878,8 +1153,8 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					})
 				],
 				publisherConfig: {
-					turnPendingSoftBytes: 2,
-					turnPendingHardBytes: 5
+					turnPendingSoftBytes: 2_048,
+					turnPendingHardBytes: 4_096
 				}
 			}
 		);
@@ -895,7 +1170,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		expect(harness.control.finalize).toHaveBeenCalledWith(
 			expect.objectContaining({
 				status: 'failed',
-				assistantText: '123456',
+				assistantText: overloadText,
 				failureCode: 'publisher_overload'
 			})
 		);

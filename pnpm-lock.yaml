@@ -496,6 +496,9 @@ importers:
         specifier: ^3.6.7
         version: 3.6.7
     devDependencies:
+      '@buildos/agentic-chat-runtime':
+        specifier: workspace:*
+        version: link:../../packages/agentic-chat-runtime
       '@eslint/js':
         specifier: ^9.32.0
         version: 9.36.0

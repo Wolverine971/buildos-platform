@@ -1,7 +1,8 @@
 // packages/shared-types/src/agentic-chat-worker-contract.ts
 export const AGENTIC_CHAT_WORKER_CONTRACT_VERSION = 'agentic_chat_worker_v1' as const;
 export const AGENTIC_CHAT_REQUEST_HASH_VERSION = 'agentic_chat_request_hash_v2' as const;
-export const AGENTIC_CHAT_INPUT_ARTIFACT_VERSION = 'agentic_chat_input_v2' as const;
+export const AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2 = 'agentic_chat_input_v2' as const;
+export const AGENTIC_CHAT_INPUT_ARTIFACT_VERSION = 'agentic_chat_input_v3' as const;
 export const AGENTIC_CHAT_INPUT_ARTIFACT_MAX_BYTES = 2 * 1024 * 1024;
 export const AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES = 256 * 1024;
 export const AGENTIC_CHAT_INPUT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -80,21 +81,50 @@ export type FrozenHistoryMessageV1 = {
 	toolCallId: string | null;
 };
 
-export type TurnInputArtifactContentV1 = {
-	artifactVersion: typeof AGENTIC_CHAT_INPUT_ARTIFACT_VERSION;
+type TurnInputArtifactPreparedBaseV1 = {
+	sourcePreparedPromptId: string | null;
+	contextPayload: JsonObject;
+	conversationSummary: string | null;
+	surfaceProfile: string;
+	systemPrompt: string;
+	promptSections: JsonObject[];
+	toolSurface: JsonObject;
+};
+
+/**
+ * Frozen public session fields. The database-fenced artifact `session_id` is
+ * injected into the public event by the worker and must not be duplicated here.
+ */
+export type AgenticChatSessionEventSnapshotV1 = JsonObject & { id?: never };
+
+export type AgenticChatContextUsageSnapshotV1 = JsonObject & {
+	estimatedTokens: number;
+	tokenBudget: number;
+	usagePercent: number;
+	tokensRemaining: number;
+	status: 'ok' | 'near_limit' | 'over_budget';
+};
+
+type TurnInputArtifactBaseV1 = {
 	/** which mechanism produced the frozen history; prepared-prompt history has no source message ids */
 	historySource: 'admission_window' | 'prepared_prompt';
 	history: FrozenHistoryMessageV1[];
-	prepared: {
-		sourcePreparedPromptId: string | null;
-		contextPayload: JsonObject;
-		conversationSummary: string | null;
-		surfaceProfile: string;
-		systemPrompt: string;
-		promptSections: JsonObject[];
-		toolSurface: JsonObject;
-	};
 };
+
+export type TurnInputArtifactContentV1 = TurnInputArtifactBaseV1 &
+	(
+		| {
+				artifactVersion: typeof AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2;
+				prepared: TurnInputArtifactPreparedBaseV1;
+		  }
+		| {
+				artifactVersion: typeof AGENTIC_CHAT_INPUT_ARTIFACT_VERSION;
+				prepared: TurnInputArtifactPreparedBaseV1 & {
+					sessionSnapshot: AgenticChatSessionEventSnapshotV1;
+					contextUsageSnapshot: AgenticChatContextUsageSnapshotV1;
+				};
+		  }
+	);
 
 export type TurnInputArtifactV1 = TurnInputArtifactContentV1 & {
 	createdAt: string;
@@ -108,6 +138,7 @@ export type TurnInputArtifactValidationErrorCodeV1 =
 	| 'invalid_content'
 	| 'invalid_hash_format'
 	| 'hash_mismatch'
+	| 'invalid_lifecycle_snapshot'
 	| 'history_too_large'
 	| 'artifact_too_large'
 	| 'invalid_retention'
@@ -845,14 +876,15 @@ export async function hashCanonicalAdmissionRequestV1(
 export function canonicalizeTurnInputArtifactContentV1(
 	artifact: TurnInputArtifactContentV1 | TurnInputArtifactV1
 ): string {
-	return canonicalizeAgenticChatJson(normalizeTurnInputArtifactContentV1(artifact));
+	return canonicalizeAgenticChatJson(
+		normalizeTurnInputArtifactContentV1(artifact) as unknown as JsonValue
+	);
 }
 
 export function normalizeTurnInputArtifactContentV1(
 	artifact: TurnInputArtifactContentV1 | TurnInputArtifactV1
 ): TurnInputArtifactContentV1 {
-	return {
-		artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+	const base = {
 		historySource: artifact.historySource,
 		history: freezeTurnInputHistoryV1(artifact.history),
 		prepared: {
@@ -865,6 +897,21 @@ export function normalizeTurnInputArtifactContentV1(
 				cloneCanonicalJson(section)
 			),
 			toolSurface: cloneCanonicalJson(artifact.prepared.toolSurface)
+		}
+	};
+	if (artifact.artifactVersion === AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2) {
+		return {
+			artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2,
+			...base
+		};
+	}
+	return {
+		artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+		...base,
+		prepared: {
+			...base.prepared,
+			sessionSnapshot: cloneCanonicalJson(artifact.prepared.sessionSnapshot),
+			contextUsageSnapshot: cloneCanonicalJson(artifact.prepared.contextUsageSnapshot)
 		}
 	};
 }
@@ -909,11 +956,14 @@ export async function validateTurnInputArtifactV1(
 	artifact: TurnInputArtifactV1,
 	options: { excludedMessageId?: string | null } = {}
 ): Promise<TurnInputArtifactValidationResultV1> {
-	if (artifact.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION) {
+	if (
+		artifact.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION &&
+		artifact.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2
+	) {
 		return {
 			ok: false,
 			code: 'invalid_version',
-			detail: `Expected ${AGENTIC_CHAT_INPUT_ARTIFACT_VERSION}`
+			detail: `Expected ${AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2} or ${AGENTIC_CHAT_INPUT_ARTIFACT_VERSION}`
 		};
 	}
 	if (
@@ -935,6 +985,17 @@ export async function validateTurnInputArtifactV1(
 			ok: false,
 			code: 'invalid_content',
 			detail: 'Artifact history and prepared content have invalid shapes'
+		};
+	}
+	if (
+		artifact.artifactVersion === AGENTIC_CHAT_INPUT_ARTIFACT_VERSION &&
+		(!isValidSessionEventSnapshot(artifact.prepared.sessionSnapshot) ||
+			!isValidContextUsageSnapshot(artifact.prepared.contextUsageSnapshot))
+	) {
+		return {
+			ok: false,
+			code: 'invalid_lifecycle_snapshot',
+			detail: 'Artifact lifecycle snapshots are missing or invalid'
 		};
 	}
 	if (!/^[0-9a-f]{64}$/.test(artifact.contentHash)) {
@@ -1192,6 +1253,34 @@ function utf8ByteLength(value: string): number {
 
 function cloneCanonicalJson<T>(value: T): T {
 	return JSON.parse(canonicalizeAgenticChatJson(value as unknown as JsonValue)) as T;
+}
+
+function isValidSessionEventSnapshot(value: unknown): value is AgenticChatSessionEventSnapshotV1 {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		!Array.isArray(value) &&
+		!Object.prototype.hasOwnProperty.call(value, 'id')
+	);
+}
+
+function isValidContextUsageSnapshot(value: unknown): value is AgenticChatContextUsageSnapshotV1 {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+	const snapshot = value as Partial<AgenticChatContextUsageSnapshotV1>;
+	return (
+		Number.isSafeInteger(snapshot.estimatedTokens) &&
+		snapshot.estimatedTokens! >= 0 &&
+		Number.isSafeInteger(snapshot.tokenBudget) &&
+		snapshot.tokenBudget! > 0 &&
+		Number.isSafeInteger(snapshot.usagePercent) &&
+		snapshot.usagePercent! >= 0 &&
+		snapshot.usagePercent! <= 999 &&
+		Number.isSafeInteger(snapshot.tokensRemaining) &&
+		snapshot.tokensRemaining! >= 0 &&
+		(snapshot.status === 'ok' ||
+			snapshot.status === 'near_limit' ||
+			snapshot.status === 'over_budget')
+	);
 }
 
 function canonicalizeAttachmentV1(

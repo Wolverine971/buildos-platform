@@ -1,5 +1,10 @@
 // apps/web/src/routes/api/agent/v2/stream/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1,
+	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1,
+	normalizeAgenticChatParityRunV1
+} from '@buildos/agentic-chat-runtime';
 
 const mocks = vi.hoisted(() => ({
 	attachVoiceNoteGroup: vi.fn(),
@@ -170,7 +175,10 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 		estimatedTokens: 12,
 		tokenBudget: 1000,
 		usagePercent: 1,
-		status: 'ok'
+		tokensRemaining: 988,
+		status: 'ok',
+		lastCompressedAt: null,
+		lastCompression: null
 	}),
 	buildLiveVisionContentParts: ({ text }: { text: string }) => text,
 	buildFastChatPendingTurnIntent: () => null,
@@ -193,6 +201,26 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 		attachments: attachments ?? [],
 		rejected: 0
 	}),
+	normalizeChatAttachmentsForAdmission: (attachments: Row[] = []) =>
+		attachments.map((attachment, inputOrder) => ({
+			attachment_kind:
+				attachment.attachment_kind === 'temporary_file' ? 'temporary_file' : 'onto_asset',
+			media_type: 'image',
+			asset_id: attachment.asset_id ?? null,
+			temporary_attachment_id: attachment.temporary_attachment_id ?? null,
+			project_id: attachment.project_id ?? null,
+			role: attachment.role === 'analysis_target' ? 'analysis_target' : 'attachment',
+			display_order: attachment.display_order ?? inputOrder,
+			file_name: attachment.file_name ?? null,
+			content_type: attachment.content_type ?? null,
+			file_size_bytes: attachment.file_size_bytes ?? null,
+			width: attachment.width ?? null,
+			height: attachment.height ?? null,
+			checksum_sha256: attachment.checksum_sha256 ?? null,
+			ocr_status: attachment.ocr_status ?? null,
+			extraction_summary: attachment.extraction_summary ?? null,
+			extracted_text_preview: attachment.extracted_text_preview ?? null
+		})),
 	normalizeFastAgentStreamRequest: (input: Record<string, any>) => ({
 		...input,
 		lastTurnContext: input?.lastTurnContext ?? input?.last_turn_context ?? null,
@@ -1255,6 +1283,123 @@ describe('/api/agent/v2/stream', () => {
 				}
 			}
 		});
+	});
+
+	it('matches the Phase 4 deterministic text-only legacy golden', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date(AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.clockIso));
+		try {
+			mocks.resolveSession.mockResolvedValueOnce({
+				session: {
+					id: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.request.sessionId,
+					summary: null,
+					agent_metadata: {}
+				}
+			});
+			mocks.streamFastChat.mockImplementationOnce(async ({ onDelta }: Row) => {
+				await onDelta(AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.assistantText);
+				return {
+					assistantText: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.assistantText,
+					finalAssistantText:
+						AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.assistantText,
+					usage: {
+						prompt_tokens:
+							AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.usage.promptTokens,
+						completion_tokens:
+							AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.usage
+								.completionTokens,
+						total_tokens:
+							AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.usage.totalTokens
+					},
+					finishedReason:
+						AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.finishedReason,
+					toolExecutions: [],
+					llmPasses: [],
+					toolRounds: 0,
+					toolCallsMade: 0,
+					supervisorDecisions: [],
+					finalizationGuard: undefined,
+					cancelled: false,
+					peakPromptTokens: undefined,
+					finalContextUsage: undefined
+				};
+			});
+			const supabase = createStreamingSupabase();
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.request.message,
+						context_type: 'global',
+						stream_run_id: 'phase-4-legacy-stream',
+						client_turn_id: 'phase-4-legacy-client'
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+			const events = parseSseEvents(await response.text());
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			const userMessage = supabase.insertedRows.chat_messages?.[0] ?? {};
+			const assistantCall = mocks.persistMessage.mock.calls.find(
+				([input]) => input.role === 'assistant'
+			)?.[0];
+			const terminalTurn = [...(supabase.updatedRows.chat_turn_runs ?? [])]
+				.reverse()
+				.find((row) => row.status === 'completed');
+			const doneEvent = [...events].reverse().find((event) => event.type === 'done');
+			const run = normalizeAgenticChatParityRunV1({
+				events: events as never,
+				messages: [
+					{ role: userMessage.role, content: userMessage.content },
+					{
+						role: assistantCall?.role,
+						content: assistantCall?.content,
+						metadata: {
+							completion_status: assistantCall?.metadata?.completion_status,
+							answer_source: assistantCall?.metadata?.answer_source
+						}
+					}
+				],
+				toolExecutions: (supabase.insertedRows.chat_tool_executions ?? []).map((row) => ({
+					tool_name: row.tool_name,
+					status: row.status
+				})),
+				checkpoints: (supabase.insertedRows.chat_turn_checkpoints ?? []).map((row) => ({
+					checkpoint_type: row.checkpoint_type,
+					status: row.status
+				})),
+				outcome: {
+					status: terminalTurn?.status,
+					finished_reason: terminalTurn?.finished_reason,
+					assistant_message_linked: Boolean(terminalTurn?.assistant_message_id),
+					total_tokens: doneEvent?.usage?.total_tokens ?? null
+				},
+				metadata: {
+					admission: {
+						status: supabase.insertedRows.chat_turn_runs?.[0]?.status,
+						context_type: supabase.insertedRows.chat_turn_runs?.[0]?.context_type,
+						user_message_linked:
+							supabase.insertedRows.chat_turn_runs?.[0]?.user_message_id ===
+							userMessage.id
+					},
+					lifecycle_events: (supabase.insertedRows.chat_turn_events ?? []).map(
+						(event) => ({
+							phase: event.phase,
+							event_type: event.event_type
+						})
+					),
+					prompt_snapshot_count: (supabase.insertedRows.chat_prompt_snapshots ?? [])
+						.length
+				}
+			});
+			expect(run).toEqual(AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('admits an attachment-only turn and uses the admitted user message for attachment linkage', async () => {

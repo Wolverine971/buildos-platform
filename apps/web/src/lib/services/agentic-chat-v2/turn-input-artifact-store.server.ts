@@ -243,7 +243,7 @@ function artifactFromRow(row: TurnInputArtifactRow): TurnInputArtifactV1 {
 		createdAt: row.created_at,
 		retainUntil: row.retain_until,
 		contentHash: row.content_hash
-	};
+	} as unknown as TurnInputArtifactV1;
 }
 
 function toStoredArtifact(params: {
