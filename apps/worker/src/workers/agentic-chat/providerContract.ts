@@ -53,7 +53,26 @@ export type AgenticChatProviderInputV1 = {
 	signal: AbortSignal;
 };
 
+export const AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION = 'agentic_chat_worker_prompt_v1' as const;
+
+/**
+ * Exact provider-facing prompt captured during preparation, before the start
+ * fence permits network I/O. The snapshot owns no delivery or event identity;
+ * the fenced persistence adapter derives that from the turn.
+ */
+export type AgenticChatPreparedPromptSnapshotV1 = {
+	snapshotVersion: typeof AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION;
+	modelMessages: JsonObject[];
+	systemPromptSha256: string;
+	messagesSha256: string;
+	systemPromptChars: number;
+	messageChars: number;
+	approxPromptTokens: number;
+};
+
 export type AgenticChatPreparedProviderInvocationV1 = {
+	/** Exact immutable prompt sent by this prepared invocation. */
+	promptSnapshot?: AgenticChatPreparedPromptSnapshotV1;
 	/** No network/provider work may begin until the executor calls this after its start fence. */
 	stream(): AsyncIterable<AgenticChatProviderStepV1>;
 	/** Idempotently release any pre-start capacity reservation. */

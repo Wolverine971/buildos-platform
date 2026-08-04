@@ -37,6 +37,7 @@ type ToolExecutionInsertRow = {
 	client_turn_id: string | null;
 	tool_name: string;
 	tool_category: string | null;
+	provider_tool_call_id: string;
 	gateway_op: string | null;
 	help_path: string | null;
 	sequence_index: number | null;
@@ -65,6 +66,23 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 
 function readMetadataString(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+export function resolveStableToolCallId(toolCall: ChatToolCall, result?: ChatToolResult): string {
+	const toolCallId = readStableToolCallId(toolCall.id);
+	if (toolCallId) return toolCallId;
+	const resultToolCallId = readStableToolCallId(result?.tool_call_id);
+	if (resultToolCallId) return resultToolCallId;
+	throw new Error(`Tool execution ${toolCall.function.name} is missing a stable tool-call ID`);
+}
+
+function readStableToolCallId(value: unknown): string | null {
+	return typeof value === 'string' &&
+		value.length > 0 &&
+		value.length <= 512 &&
+		value === value.trim()
+		? value
+		: null;
 }
 
 function resolveToolResultRequiresUserAction(result: ChatToolResult): boolean | null {
@@ -167,6 +185,7 @@ function normalizeToolResultForPersistence(rawResult: unknown): Json | null {
 }
 
 export function buildToolResultEventPayload(toolCall: ChatToolCall, result: ChatToolResult) {
+	const toolCallId = resolveStableToolCallId(toolCall, result);
 	const meta = extractFastChatToolCallMeta(toolCall);
 	const argumentsPayload = parseToolArgumentsForPersistence(toolCall.function.arguments);
 	const resultPayload = result.success ? normalizeToolResultForPersistence(result.result) : null;
@@ -177,7 +196,7 @@ export function buildToolResultEventPayload(toolCall: ChatToolCall, result: Chat
 	});
 	const toolCategory = getToolCategory(toolCall.function.name) ?? null;
 	const affectedEntities = extractAffectedEntitiesFromToolExecution({
-		id: result.tool_call_id ?? toolCall.id,
+		id: toolCallId,
 		tool_name: toolCall.function.name,
 		gateway_op: meta.canonicalOp,
 		arguments: argumentsPayload,
@@ -225,7 +244,7 @@ export function buildToolResultEventPayload(toolCall: ChatToolCall, result: Chat
 			streamEventCount: rawStreamEventCount ?? rawCamelStreamEventCount
 		}),
 		tool_name: toolCall.function.name,
-		tool_call_id: result.tool_call_id ?? toolCall.id
+		tool_call_id: toolCallId
 	};
 }
 
@@ -314,6 +333,7 @@ export function buildToolResultSummaries(
 	if (!executions.length) return [];
 
 	return executions.map(({ toolCall, result }) => {
+		const toolCallId = resolveStableToolCallId(toolCall, result);
 		const payload = result.result;
 		const counts =
 			payload && typeof payload === 'object'
@@ -339,6 +359,7 @@ export function buildToolResultSummaries(
 			? `Executed ${summaryParts.join(' ')}.`
 			: `Failed ${toolCall.function.name}: ${result.error ?? 'unknown error'}`;
 		const toolSummary: AgentStateToolSummary = {
+			tool_call_id: toolCallId,
 			tool_name: toolCall.function.name,
 			success: result.success,
 			error: result.error,
@@ -455,7 +476,8 @@ function buildToolExecutionInsertRows(params: {
 	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
 }): ToolExecutionInsertRow[] {
 	if (!Array.isArray(params.executions) || params.executions.length === 0) return [];
-	return params.executions.map(({ toolCall, result }, index) => {
+	const rows = params.executions.map(({ toolCall, result }, index) => {
+		const toolCallId = resolveStableToolCallId(toolCall, result);
 		const meta = extractFastChatToolCallMeta(toolCall);
 		const argumentsPayload = parseToolArgumentsForPersistence(toolCall.function.arguments);
 		const resultPayload = result.success
@@ -474,6 +496,7 @@ function buildToolExecutionInsertRows(params: {
 			client_turn_id: params.clientTurnId ?? null,
 			tool_name: toolCall.function.name,
 			tool_category: getToolCategory(toolCall.function.name) ?? null,
+			provider_tool_call_id: toolCallId,
 			gateway_op: meta.canonicalOp,
 			help_path: meta.helpPath,
 			sequence_index: index + 1,
@@ -497,7 +520,7 @@ function buildToolExecutionInsertRows(params: {
 			error_message: typeof result.error === 'string' ? result.error : null,
 			requires_user_action: resolveToolResultRequiresUserAction(result),
 			affected_entities: extractAffectedEntitiesFromToolExecution({
-				id: (toolCall as { id?: string }).id ?? `${toolCall.function.name}-${index + 1}`,
+				id: toolCallId,
 				tool_name: toolCall.function.name,
 				gateway_op: meta.canonicalOp,
 				arguments: argumentsPayload,
@@ -506,6 +529,24 @@ function buildToolExecutionInsertRows(params: {
 			}) as unknown as Json
 		};
 	});
+	// A repeated callback/provider ID represents the same logical tool call. Keep
+	// its latest terminal telemetry instead of sending duplicate conflict keys in
+	// one upsert statement (which PostgreSQL rejects).
+	const rowByToolCallId = new Map<string, ToolExecutionInsertRow>();
+	for (const row of rows) {
+		const previous = rowByToolCallId.get(row.provider_tool_call_id);
+		if (
+			previous &&
+			(previous.tool_name !== row.tool_name ||
+				JSON.stringify(previous.arguments) !== JSON.stringify(row.arguments))
+		) {
+			throw new Error(
+				`Tool-call ID ${row.provider_tool_call_id} was reused for different tool executions`
+			);
+		}
+		rowByToolCallId.set(row.provider_tool_call_id, row);
+	}
+	return [...rowByToolCallId.values()];
 }
 
 export async function persistIncrementalToolExecutionRow(params: {
@@ -529,7 +570,9 @@ export async function persistIncrementalToolExecutionRow(params: {
 	const row = rows[0];
 	if (!row) return false;
 	row.sequence_index = params.sequenceIndex;
-	const { error } = await params.supabase.from('chat_tool_executions').insert(rows);
+	const { error } = await params.supabase.from('chat_tool_executions').upsert(rows, {
+		onConflict: 'turn_run_id,provider_tool_call_id'
+	});
 	if (error) throw error;
 	return true;
 }
@@ -545,7 +588,6 @@ export async function persistToolExecutionRows(params: {
 	projectId?: string;
 	contextType: ChatContextType;
 	interrupted?: boolean;
-	persistedSequenceIndices?: ReadonlySet<number>;
 	logError?: PersistToolExecutionLogError;
 }): Promise<void> {
 	const rows = buildToolExecutionInsertRows({
@@ -558,54 +600,13 @@ export async function persistToolExecutionRows(params: {
 	});
 	if (rows.length === 0) return;
 
-	const persisted = params.persistedSequenceIndices;
-	const hasPersisted = Boolean(persisted && persisted.size > 0);
-
-	if (hasPersisted && params.messageId && params.turnRunId) {
-		const attachSequences = rows
-			.map((row) => row.sequence_index)
-			.filter(
-				(seq): seq is number =>
-					typeof seq === 'number' && (persisted as ReadonlySet<number>).has(seq)
-			);
-		if (attachSequences.length > 0) {
-			const { error: attachError } = await params.supabase
-				.from('chat_tool_executions')
-				.update({ message_id: params.messageId })
-				.eq('turn_run_id', params.turnRunId)
-				.eq('session_id', params.sessionId)
-				.in('sequence_index', attachSequences);
-			if (attachError) {
-				logger.warn('Failed to attach assistant message to incremental tool executions', {
-					error: attachError,
-					sessionId: params.sessionId
-				});
-				params.logError?.({
-					error: attachError,
-					operationType: 'fastchat_attach_tool_execution_message',
-					projectId: params.projectId,
-					metadata: {
-						sessionId: params.sessionId,
-						messageId: params.messageId,
-						turnRunId: params.turnRunId,
-						attachCount: attachSequences.length,
-						contextType: params.contextType
-					}
-				});
-			}
-		}
-	}
-
-	const rowsToInsert = hasPersisted
-		? rows.filter(
-				(row) =>
-					row.sequence_index == null ||
-					!(persisted as ReadonlySet<number>).has(row.sequence_index)
-			)
-		: rows;
-	if (rowsToInsert.length === 0) return;
-
-	const { error } = await params.supabase.from('chat_tool_executions').insert(rowsToInsert);
+	// Incremental mutation rows and end-of-turn rows describe the same logical
+	// provider tool call. Upsert by its stable identity so a reordered or partial
+	// execution array updates the existing telemetry row instead of relying on an
+	// ordinal sequence_index match. sequence_index remains ordering metadata.
+	const { error } = await params.supabase.from('chat_tool_executions').upsert(rows, {
+		onConflict: 'turn_run_id,provider_tool_call_id'
+	});
 	if (!error) return;
 
 	logger.warn(
@@ -624,7 +625,7 @@ export async function persistToolExecutionRows(params: {
 		metadata: {
 			sessionId: params.sessionId,
 			messageId: params.messageId,
-			toolExecutionCount: rowsToInsert.length,
+			toolExecutionCount: rows.length,
 			contextType: params.contextType,
 			...(params.interrupted ? { interrupted: true } : {})
 		}
@@ -636,8 +637,14 @@ export function buildToolMessageSnapshotsForReconciliation(
 	toolSummaries: AgentStateToolSummary[]
 ): AgentStateMessageSnapshot[] {
 	if (!executions.length) return [];
-	return executions.map(({ toolCall, result }, index) => {
-		const summary = toolSummaries[index];
+	const summariesByToolCallId = new Map(
+		toolSummaries.flatMap((summary) =>
+			summary.tool_call_id ? [[summary.tool_call_id, summary] as const] : []
+		)
+	);
+	return executions.map(({ toolCall, result }) => {
+		const toolCallId = resolveStableToolCallId(toolCall, result);
+		const summary = summariesByToolCallId.get(toolCallId);
 		const contentPayload = {
 			tool_name: toolCall.function.name,
 			op: extractToolOpFromToolCall(toolCall),
@@ -647,7 +654,7 @@ export function buildToolMessageSnapshotsForReconciliation(
 		};
 		return {
 			role: 'tool',
-			tool_call_id: toolCall.id,
+			tool_call_id: toolCallId,
 			tool_name: toolCall.function.name,
 			content: JSON.stringify(contentPayload)
 		};

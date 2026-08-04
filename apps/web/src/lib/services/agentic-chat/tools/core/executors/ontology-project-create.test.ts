@@ -43,7 +43,15 @@ describe('OntologyWriteExecutor project creation normalization', () => {
 				return Promise.resolve(
 					buildJsonResponse({
 						project_id: 'project-1',
-						counts: { goals: 1, tasks: 2 }
+						counts: { goals: 1, tasks: 2 },
+						created_entities: [
+							{
+								kind: 'goal',
+								id: 'goal-1',
+								project_id: 'project-1',
+								temp_id: 'g1'
+							}
+						]
 					})
 				);
 			}
@@ -74,7 +82,7 @@ describe('OntologyWriteExecutor project creation normalization', () => {
 	it('normalizes relationship string pairs to entity refs before instantiate', async () => {
 		const executor = new OntologyWriteExecutor(context);
 
-		await executor.createOntoProject({
+		const result = await executor.createOntoProject({
 			project: {
 				name: 'Podcast Launch',
 				type_key: 'project.creative.podcast'
@@ -100,6 +108,14 @@ describe('OntologyWriteExecutor project creation normalization', () => {
 				{ temp_id: 'g1', kind: 'goal' },
 				{ temp_id: 't2', kind: 'task' }
 			]
+		]);
+		expect(result.created_entities).toEqual([
+			{
+				kind: 'goal',
+				id: 'goal-1',
+				project_id: 'project-1',
+				temp_id: 'g1'
+			}
 		]);
 	});
 

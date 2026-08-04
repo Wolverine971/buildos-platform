@@ -40,6 +40,8 @@ export type AgenticChatTerminalFinalizeInputV1 = AgenticChatExecutionIdentityV1 
 	eventPayload: JsonObject;
 	lastTurnContext?: JsonObject | null;
 	lastTurnContextTransitionId?: string | null;
+	publicError?: string | null;
+	errorTransitionId?: string | null;
 	timingDraft?: JsonObject | null;
 	timingTransitionId?: string | null;
 };
@@ -189,6 +191,8 @@ export class SupabaseAgenticChatExecutionControlAdapter
 		}
 		const lastTurnContext = input.lastTurnContext ?? null;
 		const lastTurnContextTransitionId = input.lastTurnContextTransitionId ?? null;
+		const publicError = input.publicError ?? null;
+		const errorTransitionId = input.errorTransitionId ?? null;
 		const timingDraft = input.timingDraft ?? null;
 		const timingTransitionId = input.timingTransitionId ?? null;
 		if ((lastTurnContext === null) !== (lastTurnContextTransitionId === null)) {
@@ -197,28 +201,67 @@ export class SupabaseAgenticChatExecutionControlAdapter
 		if ((timingDraft === null) !== (timingTransitionId === null)) {
 			throw protocolError('timing draft and transition id must be supplied together');
 		}
-		if (timingDraft !== null && lastTurnContext === null) {
-			throw protocolError('timing draft requires last-turn context');
+		if ((publicError === null) !== (errorTransitionId === null)) {
+			throw protocolError('public error and transition id must be supplied together');
+		}
+		if (timingDraft !== null && lastTurnContext === null && publicError === null) {
+			throw protocolError('timing draft requires last-turn context or public error');
 		}
 		if (lastTurnContext !== null && lastTurnContextTransitionId !== null) {
-			if (input.status !== 'completed') {
-				throw protocolError('only completed finalization may carry last-turn context');
+			if (input.status !== 'completed' && input.status !== 'cancelled') {
+				throw protocolError(
+					'only completed or cancelled finalization may carry last-turn context'
+				);
 			}
 			canonicalUuid(lastTurnContextTransitionId, 'lastTurnContextTransitionId');
 		}
+		if (
+			input.status === 'cancelled' &&
+			lastTurnContext !== null &&
+			(input.failureCode !== 'cancelled' ||
+				input.assistantMessageId === null ||
+				input.assistantText.length === 0 ||
+				timingDraft === null)
+		) {
+			throw protocolError(
+				'cancelled terminal events require a durable partial message, cancellation code, and timing'
+			);
+		}
 		if (timingDraft !== null && timingTransitionId !== null) {
-			if (input.status !== 'completed') {
-				throw protocolError('only completed finalization may carry timing');
+			if (
+				input.status !== 'completed' &&
+				input.status !== 'cancelled' &&
+				input.status !== 'failed'
+			) {
+				throw protocolError('terminal finalization status may not carry timing');
 			}
 			canonicalUuid(timingTransitionId, 'timingTransitionId');
 		}
+		if (publicError !== null && errorTransitionId !== null) {
+			if (
+				input.status !== 'failed' ||
+				input.assistantMessageId !== null ||
+				lastTurnContext !== null ||
+				timingDraft === null
+			) {
+				throw protocolError(
+					'failed terminal events require no assistant message, no last-turn context, and timing'
+				);
+			}
+			if (!canonicalText(publicError, 512)) {
+				throw protocolError('public error must be canonical text');
+			}
+			canonicalUuid(errorTransitionId, 'errorTransitionId');
+		}
 
 		const rpcName =
-			lastTurnContext === null
-				? 'finalize_agentic_chat_turn'
-				: timingDraft === null
-					? 'finalize_agentic_chat_turn_with_last_context'
-					: 'finalize_agentic_chat_turn_with_terminal_events';
+			publicError !== null
+				? 'finalize_agentic_chat_turn_with_failure_events'
+				: lastTurnContext === null
+					? 'finalize_agentic_chat_turn'
+					: timingDraft === null
+						? 'finalize_agentic_chat_turn_with_last_context'
+						: 'finalize_agentic_chat_turn_with_terminal_events';
 		const args: Record<string, unknown> = {
 			p_turn_run_id: input.turnRunId,
 			p_queue_job_id: input.queueJobId,
@@ -240,6 +283,10 @@ export class SupabaseAgenticChatExecutionControlAdapter
 		if (lastTurnContext !== null && lastTurnContextTransitionId !== null) {
 			args.p_last_turn_context = lastTurnContext;
 			args.p_last_turn_context_transition_id = lastTurnContextTransitionId;
+		}
+		if (publicError !== null && errorTransitionId !== null) {
+			args.p_public_error = publicError;
+			args.p_error_transition_id = errorTransitionId;
 		}
 		if (timingDraft !== null && timingTransitionId !== null) {
 			args.p_timing_draft = timingDraft;
@@ -417,6 +464,8 @@ function parseFinalizeReceipt(
 	if (receipt.outcome === 'finalized' || receipt.outcome === 'already_terminal') {
 		const expectedLastTurnContext = expected.lastTurnContext ?? null;
 		const expectedTransitionId = expected.lastTurnContextTransitionId ?? null;
+		const expectedPublicError = expected.publicError ?? null;
+		const expectedErrorTransitionId = expected.errorTransitionId ?? null;
 		const expectedTimingDraft = expected.timingDraft ?? null;
 		const expectedTimingTransitionId = expected.timingTransitionId ?? null;
 		const preterminal = receipt.preterminal_event;
@@ -457,6 +506,7 @@ function parseFinalizeReceipt(
 					))) ||
 			(receipt.outcome === 'finalized' &&
 				expectedTimingDraft !== null &&
+				expectedPublicError === null &&
 				(expectedLastTurnContext === null ||
 					expectedTransitionId === null ||
 					expectedTimingTransitionId === null ||
@@ -479,13 +529,42 @@ function parseFinalizeReceipt(
 						expectedTimingTransitionId,
 						receipt.terminal_sequence_index - 1,
 						receipt.terminalized_at,
+						receipt.session_id,
+						true
+					))) ||
+			(receipt.outcome === 'finalized' &&
+				expectedPublicError !== null &&
+				(expectedErrorTransitionId === null ||
+					expectedTimingDraft === null ||
+					expectedTimingTransitionId === null ||
+					!Array.isArray(preterminals) ||
+					preterminals.length !== 2 ||
+					!isErrorReceipt(
+						preterminals[0],
+						expected,
+						expectedPublicError,
+						expectedErrorTransitionId,
+						receipt.terminal_sequence_index - 2,
 						receipt.session_id
+					) ||
+					!isTimingReceipt(
+						preterminals[1],
+						expected,
+						expectedTimingDraft,
+						expectedTimingTransitionId,
+						receipt.terminal_sequence_index - 1,
+						receipt.terminalized_at,
+						receipt.session_id,
+						false
 					))) ||
 			(receipt.outcome === 'already_terminal' &&
 				(preterminal !== undefined || preterminals !== undefined)) ||
 			(expectedLastTurnContext === null && preterminal !== undefined) ||
 			(expectedTimingDraft !== null && preterminal !== undefined) ||
-			(expectedTimingDraft === null && preterminals !== undefined)
+			(expectedTimingDraft === null && preterminals !== undefined) ||
+			(expectedPublicError === null &&
+				expectedLastTurnContext === null &&
+				preterminals !== undefined)
 		) {
 			throw protocolError('terminal receipt is inconsistent');
 		}
@@ -574,7 +653,8 @@ function isTimingReceipt(
 	transitionId: string,
 	expectedSequence: number,
 	terminalizedAt: string,
-	expectedSessionId: string
+	expectedSessionId: string,
+	assistantPersisted: boolean
 ): boolean {
 	try {
 		if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -627,16 +707,63 @@ function isTimingReceipt(
 			receipt.durable === true &&
 			receipt.transition_id === transitionId &&
 			payload.type === 'timing' &&
-			isTimestamp(assistantPersistedAt) &&
-			doneEmittedAt === null &&
 			isTimestamp(terminalCommittedAt) &&
-			timestampEquals(assistantPersistedAt, terminalCommittedAt) &&
+			(assistantPersisted
+				? isTimestamp(assistantPersistedAt) &&
+					timestampEquals(assistantPersistedAt, terminalCommittedAt)
+				: assistantPersistedAt === null) &&
+			doneEmittedAt === null &&
 			timestampEquals(terminalCommittedAt, terminalizedAt) &&
 			nonnegativeNumberValue(totalRequestMs) &&
 			expectedTotalRequestMs !== null &&
 			totalRequestMs === expectedTotalRequestMs &&
 			canonicalizeAgenticChatJson(reconstructedDraft) ===
 				canonicalizeAgenticChatJson(expectedDraft)
+		);
+	} catch {
+		return false;
+	}
+}
+
+function isErrorReceipt(
+	value: unknown,
+	expected: AgenticChatTerminalFinalizeInputV1,
+	expectedPublicError: string,
+	transitionId: string,
+	expectedSequence: number,
+	expectedSessionId: string
+): boolean {
+	try {
+		if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+		const receipt = value as Record<string, unknown>;
+		const eventPayload = receipt.event_payload;
+		if (!eventPayload || typeof eventPayload !== 'object' || Array.isArray(eventPayload)) {
+			return false;
+		}
+		const payload = eventPayload as Record<string, unknown>;
+		return (
+			receipt.outcome === 'persisted' &&
+			receipt.publish_allowed === true &&
+			receipt.reconcile_required === true &&
+			isTimestamp(receipt.persisted_at) &&
+			receipt.turn_run_id === expected.turnRunId &&
+			receipt.queue_job_id === expected.queueJobId &&
+			receipt.session_id === expectedSessionId &&
+			receipt.user_id === expected.userId &&
+			receipt.execution_generation === expected.executionGeneration &&
+			receipt.sequence_index === expectedSequence &&
+			receipt.event_id ===
+				createAgentStreamEventIdV1(
+					expected.turnRunId,
+					expected.executionGeneration,
+					expectedSequence
+				) &&
+			receipt.phase === 'finalize' &&
+			receipt.event_type === 'error' &&
+			receipt.durable === true &&
+			receipt.transition_id === transitionId &&
+			payload.type === 'error' &&
+			payload.error === expectedPublicError
 		);
 	} catch {
 		return false;

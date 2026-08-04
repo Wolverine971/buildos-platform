@@ -4,6 +4,18 @@
 
 \set ON_ERROR_STOP on
 
+-- Earlier compact worker fixtures predate hosted observability columns used by
+-- the timing contract. They already exist in production; extend only the
+-- disposable shape when this proof is composed with the Phase 2C harness.
+ALTER TABLE public.chat_turn_runs
+	ADD COLUMN IF NOT EXISTS history_strategy text,
+	ADD COLUMN IF NOT EXISTS history_compressed boolean,
+	ADD COLUMN IF NOT EXISTS raw_history_count integer,
+	ADD COLUMN IF NOT EXISTS history_for_model_count integer,
+	ADD COLUMN IF NOT EXISTS cache_source text,
+	ADD COLUMN IF NOT EXISTS cache_age_seconds numeric,
+	ADD COLUMN IF NOT EXISTS request_prewarmed_context boolean;
+
 CREATE OR REPLACE FUNCTION pg_temp.assert_true(p_condition boolean, p_message text)
 RETURNS void
 LANGUAGE plpgsql
@@ -29,15 +41,17 @@ END;
 $$;
 
 INSERT INTO public.users (id)
-VALUES ('f1000000-0000-4000-8000-000000000001');
+VALUES ('fa100000-0000-4000-8000-000000000001')
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.chat_sessions (id, user_id, context_type, status)
 VALUES (
-	'f2000000-0000-4000-8000-000000000001',
-	'f1000000-0000-4000-8000-000000000001',
+	'fa200000-0000-4000-8000-000000000001',
+	'fa100000-0000-4000-8000-000000000001',
 	'global',
 	'active'
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION pg_temp.seed_timing_turn(
 	p_turn_run_id uuid,
@@ -59,11 +73,19 @@ DECLARE
 	v_worker_started_at timestamptz := v_admitted_at + interval '200 milliseconds';
 	v_provider_authorized_at timestamptz := v_admitted_at + interval '300 milliseconds';
 BEGIN
+	INSERT INTO public.chat_sessions (id, user_id, context_type, status)
+	VALUES (
+		p_turn_run_id,
+		'fa100000-0000-4000-8000-000000000001',
+		'global',
+		'active'
+	);
+
 	INSERT INTO public.chat_messages (id, session_id, user_id, role, content, metadata)
 	VALUES (
 		p_user_message_id,
-		'f2000000-0000-4000-8000-000000000001',
-		'f1000000-0000-4000-8000-000000000001',
+		p_turn_run_id,
+		'fa100000-0000-4000-8000-000000000001',
 		'user',
 		'timing fixture ' || p_suffix,
 		jsonb_build_object('idempotency_key', 'terminal-timing-user-' || p_suffix)
@@ -74,7 +96,7 @@ BEGIN
 		queue_job_id, processing_token, started_at, attempts, max_attempts
 	) VALUES (
 		p_queue_job_id,
-		'f1000000-0000-4000-8000-000000000001',
+		'fa100000-0000-4000-8000-000000000001',
 		'agentic_chat_turn',
 		jsonb_build_object(
 			'turnRunId', p_turn_run_id,
@@ -102,8 +124,8 @@ BEGIN
 		cancel_requested_at, cancel_reason
 	) VALUES (
 		p_turn_run_id,
-		'f2000000-0000-4000-8000-000000000001',
-		'f1000000-0000-4000-8000-000000000001',
+		p_turn_run_id,
+		'fa100000-0000-4000-8000-000000000001',
 		'terminal-timing-stream-' || p_suffix,
 		'terminal-timing-client-' || p_suffix,
 		'global',
@@ -140,8 +162,8 @@ BEGIN
 		sequence_index, event_id, phase, event_type, payload, created_at
 	) VALUES (
 		p_turn_run_id,
-		'f2000000-0000-4000-8000-000000000001',
-		'f1000000-0000-4000-8000-000000000001',
+		p_turn_run_id,
+		'fa100000-0000-4000-8000-000000000001',
 		'terminal-timing-stream-' || p_suffix,
 		1,
 		1,
@@ -158,8 +180,8 @@ BEGIN
 			sequence_index, event_id, phase, event_type, payload, created_at
 		) VALUES (
 			p_turn_run_id,
-			'f2000000-0000-4000-8000-000000000001',
-			'f1000000-0000-4000-8000-000000000001',
+			p_turn_run_id,
+			'fa100000-0000-4000-8000-000000000001',
 			'terminal-timing-stream-' || p_suffix,
 			1,
 			2,
@@ -177,8 +199,8 @@ BEGIN
 		assistant_text, projection
 	) VALUES (
 		p_turn_run_id,
-		'f2000000-0000-4000-8000-000000000001',
-		'f1000000-0000-4000-8000-000000000001',
+		p_turn_run_id,
+		'fa100000-0000-4000-8000-000000000001',
 		1,
 		p_last_sequence,
 		p_last_sequence,
@@ -286,7 +308,7 @@ BEGIN
 
 	RETURN public.finalize_agentic_chat_turn_with_terminal_events(
 		p_turn_run_id,
-		'f1000000-0000-4000-8000-000000000001',
+		'fa100000-0000-4000-8000-000000000001',
 		p_queue_job_id,
 		p_processing_token,
 		p_execution_generation,
@@ -335,11 +357,11 @@ SELECT pg_temp.assert_true(
 -- Successful context -> timing -> done transaction with a 130-event input
 -- projection. Only the newest 126 prior events may survive.
 SELECT pg_temp.seed_timing_turn(
-	'f4000000-0000-4000-8000-000000000001',
-	'f3000000-0000-4000-8000-000000000001',
-	'f9000000-0000-4000-8000-000000000001',
-	'f5000000-0000-4000-8000-000000000001',
-	'f8000000-0000-4000-8000-000000000001',
+	'fa400000-0000-4000-8000-000000000001',
+	'fa300000-0000-4000-8000-000000000001',
+	'fa900000-0000-4000-8000-000000000001',
+	'fa500000-0000-4000-8000-000000000001',
+	'fa800000-0000-4000-8000-000000000001',
 	'success', 2, true, false
 );
 
@@ -348,13 +370,13 @@ GRANT ALL ON success_receipt TO service_role;
 SET ROLE service_role;
 INSERT INTO success_receipt
 SELECT pg_temp.finalize_timing_turn(
-	'f4000000-0000-4000-8000-000000000001',
-	'f3000000-0000-4000-8000-000000000001',
-	'f9000000-0000-4000-8000-000000000001',
-	'f6000000-0000-4000-8000-000000000001',
-	'f7000000-0000-5000-8000-000000000001',
-	'f7000000-0000-5000-8000-000000000002',
-	pg_temp.timing_draft('f4000000-0000-4000-8000-000000000001'),
+	'fa400000-0000-4000-8000-000000000001',
+	'fa300000-0000-4000-8000-000000000001',
+	'fa900000-0000-4000-8000-000000000001',
+	'fa600000-0000-4000-8000-000000000001',
+	'fa700000-0000-5000-8000-000000000001',
+	'fa700000-0000-5000-8000-000000000002',
+	pg_temp.timing_draft('fa400000-0000-4000-8000-000000000001'),
 	130,
 	1
 );
@@ -380,7 +402,7 @@ SELECT pg_temp.assert_true(
 			AND array_agg(event_type ORDER BY sequence_index) =
 				ARRAY['turn_phase', 'text_delta', 'last_turn_context', 'timing', 'done']::text[]
 		FROM public.chat_turn_events
-		WHERE turn_run_id = 'f4000000-0000-4000-8000-000000000001'
+		WHERE turn_run_id = 'fa400000-0000-4000-8000-000000000001'
 			AND execution_generation = 1
 	),
 	'durable terminal events are missing or out of order'
@@ -395,7 +417,7 @@ SELECT pg_temp.assert_true(
 			AND projection->'semantic_events'->127->>'type' = 'timing'
 			AND projection->>'current_activity' = ''
 		FROM public.chat_turn_stream_state
-		WHERE turn_run_id = 'f4000000-0000-4000-8000-000000000001'
+		WHERE turn_run_id = 'fa400000-0000-4000-8000-000000000001'
 	),
 	'terminal projection did not retain exactly 126 prior events plus context and timing'
 );
@@ -418,9 +440,9 @@ SELECT pg_temp.assert_true(
 			AND turns.terminalized_at = (receipt.receipt->>'terminalized_at')::timestamptz
 		FROM success_receipt receipt
 		JOIN public.chat_turn_runs turns
-			ON turns.id = 'f4000000-0000-4000-8000-000000000001'
+			ON turns.id = 'fa400000-0000-4000-8000-000000000001'
 		JOIN public.chat_messages message
-			ON message.id = 'f6000000-0000-4000-8000-000000000001'
+			ON message.id = 'fa600000-0000-4000-8000-000000000001'
 		JOIN public.chat_turn_events timing
 			ON timing.turn_run_id = turns.id AND timing.event_type = 'timing'
 		JOIN public.chat_turn_events done
@@ -436,12 +458,12 @@ GRANT ALL ON replay_receipt TO service_role;
 SET ROLE service_role;
 INSERT INTO replay_receipt
 SELECT pg_temp.finalize_timing_turn(
-	'f4000000-0000-4000-8000-000000000001',
-	'f3000000-0000-4000-8000-000000000001',
-	'f9000000-0000-4000-8000-000000000001',
-	'f6000000-0000-4000-8000-000000000099',
-	'f7000000-0000-5000-8000-000000000001',
-	'f7000000-0000-5000-8000-000000000002',
+	'fa400000-0000-4000-8000-000000000001',
+	'fa300000-0000-4000-8000-000000000001',
+	'fa900000-0000-4000-8000-000000000001',
+	'fa600000-0000-4000-8000-000000000099',
+	'fa700000-0000-5000-8000-000000000001',
+	'fa700000-0000-5000-8000-000000000002',
 	'null'::jsonb,
 	0,
 	1
@@ -457,7 +479,7 @@ SELECT pg_temp.assert_true(
 	AND (
 		SELECT count(*) = 5
 		FROM public.chat_turn_events
-		WHERE turn_run_id = 'f4000000-0000-4000-8000-000000000001'
+		WHERE turn_run_id = 'fa400000-0000-4000-8000-000000000001'
 	),
 	'lost-response replay did not resolve immutable terminal truth'
 );
@@ -465,11 +487,11 @@ SELECT pg_temp.assert_true(
 -- A database-source mismatch must roll back before context, timing, message,
 -- or done can become visible.
 SELECT pg_temp.seed_timing_turn(
-	'f4000000-0000-4000-8000-000000000002',
-	'f3000000-0000-4000-8000-000000000002',
-	'f9000000-0000-4000-8000-000000000002',
-	'f5000000-0000-4000-8000-000000000002',
-	'f8000000-0000-4000-8000-000000000002',
+	'fa400000-0000-4000-8000-000000000002',
+	'fa300000-0000-4000-8000-000000000002',
+	'fa900000-0000-4000-8000-000000000002',
+	'fa500000-0000-4000-8000-000000000002',
+	'fa800000-0000-4000-8000-000000000002',
 	'mismatch', 2, true, false
 );
 
@@ -481,14 +503,14 @@ SELECT pg_temp.assert_true(
 				%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid,
 				%L::jsonb, 0, 1
 			)$call$,
-			'f4000000-0000-4000-8000-000000000002',
-			'f3000000-0000-4000-8000-000000000002',
-			'f9000000-0000-4000-8000-000000000002',
-			'f6000000-0000-4000-8000-000000000002',
-			'f7000000-0000-5000-8000-000000000003',
-			'f7000000-0000-5000-8000-000000000004',
+			'fa400000-0000-4000-8000-000000000002',
+			'fa300000-0000-4000-8000-000000000002',
+			'fa900000-0000-4000-8000-000000000002',
+			'fa600000-0000-4000-8000-000000000002',
+			'fa700000-0000-5000-8000-000000000003',
+			'fa700000-0000-5000-8000-000000000004',
 			jsonb_set(
-				pg_temp.timing_draft('f4000000-0000-4000-8000-000000000002'),
+				pg_temp.timing_draft('fa400000-0000-4000-8000-000000000002'),
 				'{phases,queue_wait_ms}',
 				'999'::jsonb
 			)::text
@@ -503,16 +525,16 @@ SELECT pg_temp.assert_true(
 	(
 		SELECT status = 'running' AND last_event_sequence = 2
 		FROM public.chat_turn_runs
-		WHERE id = 'f4000000-0000-4000-8000-000000000002'
+		WHERE id = 'fa400000-0000-4000-8000-000000000002'
 	)
 	AND (
 		SELECT count(*) = 2
 		FROM public.chat_turn_events
-		WHERE turn_run_id = 'f4000000-0000-4000-8000-000000000002'
+		WHERE turn_run_id = 'fa400000-0000-4000-8000-000000000002'
 	)
 	AND NOT EXISTS (
 		SELECT 1 FROM public.chat_messages
-		WHERE id = 'f6000000-0000-4000-8000-000000000002'
+		WHERE id = 'fa600000-0000-4000-8000-000000000002'
 	),
 	'timing rejection leaked partial terminal state'
 );
@@ -520,19 +542,19 @@ SELECT pg_temp.assert_true(
 -- Stale-generation and cancellation winners must resolve through the original
 -- terminal CAS before timing validation or semantic writes.
 SELECT pg_temp.seed_timing_turn(
-	'f4000000-0000-4000-8000-000000000003',
-	'f3000000-0000-4000-8000-000000000003',
-	'f9000000-0000-4000-8000-000000000003',
-	'f5000000-0000-4000-8000-000000000003',
-	'f8000000-0000-4000-8000-000000000003',
+	'fa400000-0000-4000-8000-000000000003',
+	'fa300000-0000-4000-8000-000000000003',
+	'fa900000-0000-4000-8000-000000000003',
+	'fa500000-0000-4000-8000-000000000003',
+	'fa800000-0000-4000-8000-000000000003',
 	'stale', 2, true, false
 );
 SELECT pg_temp.seed_timing_turn(
-	'f4000000-0000-4000-8000-000000000004',
-	'f3000000-0000-4000-8000-000000000004',
-	'f9000000-0000-4000-8000-000000000004',
-	'f5000000-0000-4000-8000-000000000004',
-	'f8000000-0000-4000-8000-000000000004',
+	'fa400000-0000-4000-8000-000000000004',
+	'fa300000-0000-4000-8000-000000000004',
+	'fa900000-0000-4000-8000-000000000004',
+	'fa500000-0000-4000-8000-000000000004',
+	'fa800000-0000-4000-8000-000000000004',
 	'cancel', 2, true, true
 );
 
@@ -542,12 +564,12 @@ SET ROLE service_role;
 INSERT INTO control_receipts VALUES (
 	'stale',
 	pg_temp.finalize_timing_turn(
-		'f4000000-0000-4000-8000-000000000003',
-		'f3000000-0000-4000-8000-000000000003',
-		'f9000000-0000-4000-8000-000000000003',
-		'f6000000-0000-4000-8000-000000000003',
-		'f7000000-0000-5000-8000-000000000005',
-		'f7000000-0000-5000-8000-000000000006',
+		'fa400000-0000-4000-8000-000000000003',
+		'fa300000-0000-4000-8000-000000000003',
+		'fa900000-0000-4000-8000-000000000003',
+		'fa600000-0000-4000-8000-000000000003',
+		'fa700000-0000-5000-8000-000000000005',
+		'fa700000-0000-5000-8000-000000000006',
 		'null'::jsonb,
 		0,
 		2
@@ -555,12 +577,12 @@ INSERT INTO control_receipts VALUES (
 ), (
 	'cancel',
 	pg_temp.finalize_timing_turn(
-		'f4000000-0000-4000-8000-000000000004',
-		'f3000000-0000-4000-8000-000000000004',
-		'f9000000-0000-4000-8000-000000000004',
-		'f6000000-0000-4000-8000-000000000004',
-		'f7000000-0000-5000-8000-000000000007',
-		'f7000000-0000-5000-8000-000000000008',
+		'fa400000-0000-4000-8000-000000000004',
+		'fa300000-0000-4000-8000-000000000004',
+		'fa900000-0000-4000-8000-000000000004',
+		'fa600000-0000-4000-8000-000000000004',
+		'fa700000-0000-5000-8000-000000000007',
+		'fa700000-0000-5000-8000-000000000008',
 		'null'::jsonb,
 		0,
 		1
@@ -574,8 +596,8 @@ SELECT pg_temp.assert_true(
 	AND NOT EXISTS (
 		SELECT 1 FROM public.chat_turn_events
 		WHERE turn_run_id IN (
-			'f4000000-0000-4000-8000-000000000003',
-			'f4000000-0000-4000-8000-000000000004'
+			'fa400000-0000-4000-8000-000000000003',
+			'fa400000-0000-4000-8000-000000000004'
 		)
 		AND sequence_index > 2
 	),
@@ -584,11 +606,11 @@ SELECT pg_temp.assert_true(
 
 -- Three-event capacity is rejected before integer addition or any write.
 SELECT pg_temp.seed_timing_turn(
-	'f4000000-0000-4000-8000-000000000005',
-	'f3000000-0000-4000-8000-000000000005',
-	'f9000000-0000-4000-8000-000000000005',
-	'f5000000-0000-4000-8000-000000000005',
-	'f8000000-0000-4000-8000-000000000005',
+	'fa400000-0000-4000-8000-000000000005',
+	'fa300000-0000-4000-8000-000000000005',
+	'fa900000-0000-4000-8000-000000000005',
+	'fa500000-0000-4000-8000-000000000005',
+	'fa800000-0000-4000-8000-000000000005',
 	'capacity', 2147483645, false, false
 );
 
@@ -600,13 +622,13 @@ SELECT pg_temp.assert_true(
 				%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid,
 				%L::jsonb, 0, 1
 			)$call$,
-			'f4000000-0000-4000-8000-000000000005',
-			'f3000000-0000-4000-8000-000000000005',
-			'f9000000-0000-4000-8000-000000000005',
-			'f6000000-0000-4000-8000-000000000005',
-			'f7000000-0000-5000-8000-000000000009',
-			'f7000000-0000-5000-8000-00000000000a',
-			pg_temp.timing_draft('f4000000-0000-4000-8000-000000000005')::text
+			'fa400000-0000-4000-8000-000000000005',
+			'fa300000-0000-4000-8000-000000000005',
+			'fa900000-0000-4000-8000-000000000005',
+			'fa600000-0000-4000-8000-000000000005',
+			'fa700000-0000-5000-8000-000000000009',
+			'fa700000-0000-5000-8000-00000000000a',
+			pg_temp.timing_draft('fa400000-0000-4000-8000-000000000005')::text
 		),
 		'agentic_chat_terminal_events_finalize_sequence_exhausted'
 	),
@@ -618,16 +640,16 @@ SELECT pg_temp.assert_true(
 	(
 		SELECT status = 'running' AND last_event_sequence = 2147483645
 		FROM public.chat_turn_runs
-		WHERE id = 'f4000000-0000-4000-8000-000000000005'
+		WHERE id = 'fa400000-0000-4000-8000-000000000005'
 	)
 	AND (
 		SELECT count(*) = 1
 		FROM public.chat_turn_events
-		WHERE turn_run_id = 'f4000000-0000-4000-8000-000000000005'
+		WHERE turn_run_id = 'fa400000-0000-4000-8000-000000000005'
 	)
 	AND NOT EXISTS (
 		SELECT 1 FROM public.chat_messages
-		WHERE id = 'f6000000-0000-4000-8000-000000000005'
+		WHERE id = 'fa600000-0000-4000-8000-000000000005'
 	),
 	'sequence-capacity rejection wrote partial terminal state'
 );

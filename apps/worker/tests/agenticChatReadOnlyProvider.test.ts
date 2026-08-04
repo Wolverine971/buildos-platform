@@ -130,6 +130,19 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		const invocation = await adapter.prepare({ executionInput: executionInput(), signal });
 		expect(client.stream).not.toHaveBeenCalled();
 		expect(capacity.getSnapshot()).toMatchObject({ available: false, activeRequests: 1 });
+		expect(invocation.promptSnapshot).toMatchObject({
+			snapshotVersion: 'agentic_chat_worker_prompt_v1',
+			modelMessages: [
+				{ role: 'system', content: 'System prompt\n' },
+				{ role: 'assistant', content: 'Frozen reply' },
+				{ role: 'user', content: 'Current request' }
+			],
+			systemPromptChars: 14,
+			messageChars: 41,
+			approxPromptTokens: 11
+		});
+		expect(invocation.promptSnapshot?.systemPromptSha256).toMatch(/^[0-9a-f]{64}$/);
+		expect(invocation.promptSnapshot?.messagesSha256).toMatch(/^[0-9a-f]{64}$/);
 
 		await expect(collect(invocation.stream())).resolves.toEqual([
 			{ type: 'text_delta', text: 'Visible answer' },

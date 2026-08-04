@@ -42,6 +42,7 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
+	import EntityModalDetailsDrawer from './EntityModalDetailsDrawer.svelte';
 	import { PROJECT_STATES, type Project, type Document } from '$lib/types/onto';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { hasEntityReferences } from '$lib/utils/entity-reference-parser';
@@ -760,11 +761,11 @@
 			>
 				<!-- Main Content Area -->
 				<div
-					class="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:gap-4 lg:min-h-[50vh] lg:grid-cols-4"
+					class="relative grid min-h-0 flex-1 grid-cols-1 gap-y-3 sm:gap-y-4 lg:min-h-[50vh] lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
 				>
 					<!-- Content Section (Takes most space) -->
 					<div
-						class="flex h-full min-h-0 flex-col space-y-3 rounded-lg border border-border bg-card shadow-ink transition-all duration-200 lg:col-span-3"
+						class="flex h-full min-h-0 min-w-0 flex-col space-y-3 rounded-lg border border-border bg-card shadow-ink transition-all duration-200"
 					>
 						<!-- Project Name Header -->
 						<div
@@ -1028,7 +1029,7 @@
 					</div>
 
 					<!-- Sidebar (Right column) -->
-					<div class="lg:col-span-1">
+					<EntityModalDetailsDrawer panelLabel="Project details">
 						<Card variant="elevated" class="wt-card">
 							<CardHeader variant="muted" texture="strip" padding="sm">
 								<h3 class="text-sm font-semibold text-foreground">
@@ -1345,7 +1346,7 @@
 								</div>
 							</CardBody>
 						</Card>
-					</div>
+					</EntityModalDetailsDrawer>
 				</div>
 
 				{#if error}

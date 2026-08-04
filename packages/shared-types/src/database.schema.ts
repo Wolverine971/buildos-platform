@@ -1,5 +1,5 @@
-// packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-04T16:42:40.305Z
+// Lightweight database schema - auto-generated from database.types.ts
+// Generated on: 2026-08-04T22:30:23.942Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -599,29 +599,6 @@ export type DatabaseSchema = {
 		to_frozen_reason: string | null;
 		user_id: string;
 	};
-	brain_dump_links: {
-		brain_dump_id: string;
-		created_at: string;
-		id: number;
-		note_id: string | null;
-		project_id: string | null;
-		task_id: string | null;
-	};
-	brain_dumps: {
-		ai_insights: string | null;
-		ai_summary: string | null;
-		content: string | null;
-		created_at: string;
-		id: string;
-		metaData: Json | null;
-		parsed_results: Json | null;
-		project_id: string | null;
-		status: string;
-		tags: string[] | null;
-		title: string | null;
-		updated_at: string;
-		user_id: string;
-	};
 	calendar_analyses: {
 		ai_model: string | null;
 		ai_model_version: string | null;
@@ -903,6 +880,7 @@ export type DatabaseSchema = {
 		help_path: string | null;
 		id: string;
 		message_id: string | null;
+		provider_tool_call_id: string | null;
 		requires_user_action: boolean | null;
 		result: Json | null;
 		result_count: number | null;
@@ -2007,17 +1985,6 @@ export type DatabaseSchema = {
 		status: string;
 		updated_at: string;
 	};
-	notes: {
-		category: string | null;
-		content: string | null;
-		created_at: string;
-		id: string;
-		project_id: string | null;
-		tags: string[] | null;
-		title: string | null;
-		updated_at: string;
-		user_id: string;
-	};
 	notification_deliveries: {
 		attempts: number | null;
 		channel: string;
@@ -2198,23 +2165,6 @@ export type DatabaseSchema = {
 		project_id: string;
 		root_id: string;
 		updated_at: string;
-	};
-	onto_decisions: {
-		created_at: string;
-		created_by: string;
-		decision_at: string | null;
-		deleted_at: string | null;
-		description: string | null;
-		id: string;
-		outcome: string | null;
-		project_id: string;
-		props: Json;
-		rationale: string | null;
-		search_vector: unknown;
-		state_key: string;
-		title: string;
-		type_key: string;
-		updated_at: string | null;
 	};
 	onto_document_versions: {
 		created_at: string;
@@ -4221,8 +4171,6 @@ export const tableNames = [
 	'billing_ops_anomalies',
 	'billing_ops_snapshots',
 	'billing_state_transitions',
-	'brain_dump_links',
-	'brain_dumps',
 	'calendar_analyses',
 	'calendar_analysis_events',
 	'calendar_analysis_preferences',
@@ -4298,7 +4246,6 @@ export const tableNames = [
 	'migration_log',
 	'migration_platform_lock',
 	'native_search_cache',
-	'notes',
 	'notification_deliveries',
 	'notification_events',
 	'notification_logs',
@@ -4312,7 +4259,6 @@ export const tableNames = [
 	'onto_comment_mentions',
 	'onto_comment_read_states',
 	'onto_comments',
-	'onto_decisions',
 	'onto_document_versions',
 	'onto_documents',
 	'onto_edges',

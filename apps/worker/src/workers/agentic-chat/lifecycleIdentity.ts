@@ -5,6 +5,7 @@ export type AgenticChatExecutorLifecycleStageV1 =
 	| 'acknowledged'
 	| 'finalizing'
 	| 'last_turn_context'
+	| 'error'
 	| 'timing';
 export type AgenticChatExecutorSnapshotStageV1 = 'session' | 'context_usage';
 export type AgenticChatExecutorSemanticStageV1 =
@@ -29,6 +30,7 @@ export function createStableAgenticChatLifecycleTransitionIdV1(input: {
 		input.stage !== 'context_usage' &&
 		input.stage !== 'finalizing' &&
 		input.stage !== 'last_turn_context' &&
+		input.stage !== 'error' &&
 		input.stage !== 'timing'
 	) {
 		throw new Error('Agentic Chat lifecycle stage is invalid');

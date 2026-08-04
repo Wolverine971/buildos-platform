@@ -30,6 +30,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onDestroy } from 'svelte';
+	import { portal } from '$lib/actions/portal';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -48,6 +49,7 @@
 	import DocumentVersionHistoryPanel from './DocumentVersionHistoryPanel.svelte';
 	import DocumentVersionRestoreModal from './DocumentVersionRestoreModal.svelte';
 	import DocumentComparisonView from './DocumentComparisonView.svelte';
+	import DocumentInteractDock from './DocumentInteractDock.svelte';
 	import DocumentVoiceNotesPanel from './DocumentVoiceNotesPanel.svelte';
 	import DocMoveModal from './doc-tree/DocMoveModal.svelte';
 	import DocDeleteConfirmModal from './doc-tree/DocDeleteConfirmModal.svelte';
@@ -95,21 +97,15 @@
 		Clock,
 		MoreHorizontal
 	} from 'lucide-svelte';
-	import { PanelRightClose, PanelRightOpen } from '$lib/icons/lucide';
+	import { MessageCircle, PanelRightClose, PanelRightOpen } from '$lib/icons/lucide';
 	import { handleRovingTabKeydown } from '$lib/components/project/v2/board-a11y';
-	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import {
 		loadDocumentModal,
 		loadGoalEditModal,
 		loadPlanEditModal,
 		loadTaskEditModal
 	} from '$lib/components/project/project-entity-modal-loader';
-	// Lazy-loaded AgentChatModal for better initial load performance
-
-	type LazyComponent =
-		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
-		| null;
-	let AgentChatModalComponent = $state<LazyComponent>(null);
 	type TaskEditModalLazy = typeof import('./TaskEditModal.svelte').default | null;
 	type PlanEditModalLazy = typeof import('./PlanEditModal.svelte').default | null;
 	type GoalEditModalLazy = typeof import('./GoalEditModal.svelte').default | null;
@@ -118,12 +114,6 @@
 	let PlanEditModalComponent = $state<PlanEditModalLazy>(null);
 	let GoalEditModalComponent = $state<GoalEditModalLazy>(null);
 	let DocumentModalComponent = $state<DocumentModalLazy>(null);
-
-	async function loadAgentChatModal() {
-		if (AgentChatModalComponent) return AgentChatModalComponent;
-		const mod = await import('$lib/components/agent/AgentChatModal.svelte');
-		return mod.default;
-	}
 
 	interface Props {
 		projectId: string;
@@ -528,9 +518,9 @@
 	let selectedGoalIdForModal = $state<string | null>(null);
 	let showDocumentModal = $state(false);
 	let selectedDocumentIdForModal = $state<string | null>(null);
-	let showChatModal = $state(false);
+	let isDocumentInteractOpen = $state(false);
 	let linkedEntityModalSession = $state.raw<DocumentSession | null>(null);
-	let chatModalSession = $state.raw<DocumentSession | null>(null);
+	let documentInteractSession = $state.raw<DocumentSession | null>(null);
 	let restoreModalSession = $state.raw<DocumentSession | null>(null);
 	let moveModalSession = $state.raw<DocumentSession | null>(null);
 	let imageInsertModalSession = $state.raw<DocumentSession | null>(null);
@@ -670,8 +660,8 @@
 		selectedGoalIdForModal = null;
 		selectedDocumentIdForModal = null;
 		linkedEntityModalSession = null;
-		showChatModal = false;
-		chatModalSession = null;
+		isDocumentInteractOpen = false;
+		documentInteractSession = null;
 		showRestoreModal = false;
 		selectedVersionForRestore = null;
 		restoreModalSession = null;
@@ -685,18 +675,6 @@
 		liveSyncMutationId += 1;
 		resetDocumentOperationState();
 	}
-
-	// Build focus for chat about this document
-	const entityFocus = $derived.by((): ProjectFocus | null => {
-		if (!activeDocumentId || !projectId) return null;
-		return {
-			focusType: 'document',
-			focusEntityId: activeDocumentId,
-			focusEntityName: title || 'Untitled Document',
-			projectId: projectId,
-			projectName: 'Project' // We don't have project name in this modal
-		};
-	});
 
 	function normalizePublicPageSlugBaseInput(
 		value: string,
@@ -2339,22 +2317,31 @@
 		hasChanges = true;
 	}
 
-	// Chat about this document handlers
-	async function openChatAbout() {
+	// Document interaction handlers
+	function openDocumentInteract() {
 		if (!activeDocumentId || !projectId) return;
-		const session = captureDocumentSession();
-		const requestedDocumentId = activeDocumentId;
-		const component = await loadAgentChatModal();
-		if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
-		AgentChatModalComponent = component;
-		chatModalSession = session;
-		showChatModal = true;
+		documentInteractSession = captureDocumentSession();
+		isDocumentInteractOpen = true;
 	}
 
-	function handleChatClose(session: DocumentSession | null) {
+	async function handleDocumentInteractClose(
+		session: DocumentSession | null,
+		summary?: DataMutationSummary
+	) {
 		if (!session || !isCurrentDocumentSession(session)) return;
-		showChatModal = false;
-		chatModalSession = null;
+		isDocumentInteractOpen = false;
+		documentInteractSession = null;
+
+		if (!summary?.hasChanges || !activeDocumentId) return;
+		if (hasUnsavedChanges || saveStatus === 'dirty' || saveStatus === 'saving') {
+			toastService.warning(
+				'The agent updated the saved document. Finish saving your local edits, then reopen the document to load the latest version.'
+			);
+			return;
+		}
+
+		await loadDocument(activeDocumentId);
+		onSaved?.();
 	}
 
 	// Version history handlers
@@ -3115,6 +3102,7 @@
 
 					{#if showExportMenu}
 						<div
+							use:portal
 							class="fixed z-[10000] w-48 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
 							style="top: {exportMenuPos.top}px; right: {exportMenuPos.right}px;"
 							role="menu"
@@ -3188,20 +3176,20 @@
 						</div>
 					{/if}
 				</div>
-				<!-- Chat about this document button -->
+				<!-- Document interaction stays available without leaving this modal. -->
 				{#if isEditing}
 					<button
 						type="button"
-						onclick={openChatAbout}
+						onclick={openDocumentInteract}
 						disabled={loading || blockingSave}
-						class="flex h-9 w-9 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
-						title="Chat about this document"
+						class="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-accent/30 bg-accent/10 px-2.5 text-xs font-semibold text-accent shadow-ink transition-all pressable hover:border-accent/60 hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
+						title="Document Interact"
+						aria-label="Document Interact"
+						aria-controls="document-interact-dock"
+						aria-expanded={isDocumentInteractOpen}
 					>
-						<img
-							src="/brain-bolt.webp"
-							alt="Chat"
-							class="w-6 h-6 rounded object-cover"
-						/>
+						<MessageCircle class="h-4 w-4 shrink-0" />
+						<span class="hidden md:inline">Document Interact</span>
 					</button>
 				{/if}
 				<!-- Close button -->
@@ -3219,7 +3207,7 @@
 	{/snippet}
 
 	{#snippet children()}
-		<div class="flex-1 flex flex-col min-h-0">
+		<div class="relative flex-1 flex flex-col min-h-0">
 			{#if loading}
 				<div class="flex items-center justify-center py-12">
 					<Loader class="w-6 h-6 animate-spin text-muted-foreground" />
@@ -4004,6 +3992,22 @@
 						{/if}
 					</div>
 				{/if}
+
+				{#if activeDocumentId}
+					{#key activeDocumentId}
+						{@const interactSession = documentInteractSession}
+						<DocumentInteractDock
+							bind:isOpen={isDocumentInteractOpen}
+							{projectId}
+							projectName="Project"
+							documentId={activeDocumentId}
+							documentTitle={title || 'Untitled Document'}
+							placement="container"
+							onClose={(summary) =>
+								void handleDocumentInteractClose(interactSession, summary)}
+						/>
+					{/key}
+				{/if}
 			{/if}
 		</div>
 	{/snippet}
@@ -4485,17 +4489,6 @@
 		{latestVersionNumber}
 		onClose={() => handleRestoreModalClose(modalSession)}
 		onRestored={() => handleVersionRestored(modalSession)}
-	/>
-{/if}
-
-<!-- Chat About Modal (Lazy Loaded) -->
-{#if showChatModal && AgentChatModalComponent && entityFocus}
-	{@const ChatModal = AgentChatModalComponent}
-	{@const modalSession = chatModalSession}
-	<ChatModal
-		isOpen={showChatModal}
-		initialProjectFocus={entityFocus}
-		onClose={() => handleChatClose(modalSession)}
 	/>
 {/if}
 

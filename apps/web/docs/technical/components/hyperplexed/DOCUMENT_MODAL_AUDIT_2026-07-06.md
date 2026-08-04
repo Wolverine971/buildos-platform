@@ -112,7 +112,9 @@ visual pass, and it touches save semantics.
 
 - ✅ `pnpm check` — 0 errors / 0 warnings.
 - ✅ `pnpm format` (Prettier) applied.
-- ⬜ **Live before/after pass still owed** (desktop + iPhone width, light + dark) — the standing
-  program gap. Specific calls to confirm live: the restrained publish-panel colour in dark mode,
-  the mobile tab scroll-fade against `bg-muted` in both themes, and the More-menu positioning at
-  phone width.
+- ✅ 2026-08-04 edge-tab follow-up: focused `DocumentModal` suite passes 7/7; full
+  `svelte-check` reports 0 errors / 0 warnings.
+- 🔶 Authenticated desktop-dark screenshots captured the first collapsible-drawer pass and exposed
+  the busy-header regression. The refined edge-tab after-state plus light-mode and iPhone captures
+  remain owed. The original publish-panel, mobile scroll-fade, and phone More-menu checks remain part
+  of that pass.

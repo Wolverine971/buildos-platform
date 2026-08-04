@@ -155,6 +155,8 @@
 		 * with a selector-free context — with 'global' the draft waits on the
 		 * context selector and sends after the user picks one. */
 		autoSendInitialDraft?: boolean;
+		/** Submit a voice turn when the user stops recording from the composer. */
+		autoSendVoiceOnStop?: boolean;
 		embedded?: boolean;
 		inboxResolutionActions?: AgentChatResolutionAction[];
 		/** Reports the active chat session id so embedding surfaces can render
@@ -175,6 +177,7 @@
 		initialProjectFocus = null,
 		initialDraft = null,
 		autoSendInitialDraft = false,
+		autoSendVoiceOnStop = false,
 		embedded = false,
 		inboxResolutionActions = [],
 		onSessionChange
@@ -2927,6 +2930,9 @@
 			onRemoveAttachment={removeImageAttachment}
 			onVoiceNoteSegmentSaved={voice.handleSegmentSaved.bind(voice)}
 			onVoiceNoteSegmentError={voice.handleSegmentError.bind(voice)}
+			onVoiceStopRequested={autoSendVoiceOnStop
+				? () => (voice.pendingSendAfterTranscription = true)
+				: undefined}
 			onKeyDownHandler={handleKeyDown}
 			onSend={() => void stream.handleSendMessage()}
 			onStop={() => void stream.stopGeneration('user_cancelled')}

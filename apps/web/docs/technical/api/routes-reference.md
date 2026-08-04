@@ -92,9 +92,6 @@ Total endpoints: 134
 - [GET /api/email-tracking/{tracking_id}](#apiemailtrackingtrackingid)
 - [POST /api/feedback](#apifeedback)
 - [GET /api/health](#apihealth)
-- [POST, GET /api/notes](#apinotes)
-- [PUT, DELETE, GET /api/notes/{id}](#apinotesid)
-- [PATCH, DELETE /api/notes/{id}/link](#apinotesidlink)
 - [POST /api/onboarding](#apionboarding)
 - [GET, POST /api/phases-jobs](#apiphasesjobs)
 - [GET /api/project-briefs](#apiprojectbriefs)
@@ -111,7 +108,6 @@ Total endpoints: 134
 - [GET /api/projects/{id}/details](#apiprojectsiddetails)
 - [POST, PUT, GET /api/projects/{id}/generate-brief-template](#apiprojectsidgeneratebrieftemplate)
 - [GET /api/projects/{id}/history](#apiprojectsidhistory)
-- [GET /api/projects/{id}/notes](#apiprojectsidnotes)
 - [GET, POST, PUT, PATCH, DELETE /api/projects/{id}/phases](#apiprojectsidphases)
 - [PATCH, DELETE /api/projects/{id}/phases/{phaseId}](#apiprojectsidphasesphaseid)
 - [POST, DELETE /api/projects/{id}/phases/{phaseId}/schedule](#apiprojectsidphasesphaseidschedule)
@@ -1847,83 +1843,6 @@ No documented responses
 
 ---
 
-## POST, GET /api/notes
-
-**File:** `src/routes/api/notes/+server.ts`
-
-🔒 **Authentication Required**
-
-### Parameters
-
-| Name       | Type   | Location | Required | Description                 |
-| ---------- | ------ | -------- | -------- | --------------------------- |
-| project_id | string | query    | No       | Query parameter: project_id |
-| limit      | string | query    | No       | Query parameter: limit      |
-| search     | string | query    | No       | Query parameter: search     |
-| offset     | string | query    | No       | Query parameter: offset     |
-
-### Responses
-
-| Status | Description           | Content Type     |
-| ------ | --------------------- | ---------------- |
-| 200    | Success response      | application/json |
-| 401    | Unauthorized          | application/json |
-| 500    | Database error        | application/json |
-| 500    | Internal server error | application/json |
-| 400    | Bad request           | application/json |
-
----
-
-## PUT, DELETE, GET /api/notes/{id}
-
-**File:** `src/routes/api/notes/[id]/+server.ts`
-
-🔒 **Authentication Required**
-
-### Parameters
-
-| Name | Type   | Location | Required | Description        |
-| ---- | ------ | -------- | -------- | ------------------ |
-| id   | string | path     | Yes      | Path parameter: id |
-
-### Responses
-
-| Status | Description           | Content Type     |
-| ------ | --------------------- | ---------------- |
-| 200    | Success response      | application/json |
-| 401    | Unauthorized          | application/json |
-| 404    | Resource not found    | application/json |
-| 500    | Database error        | application/json |
-| 500    | Internal server error | application/json |
-| 400    | Bad request           | application/json |
-
----
-
-## PATCH, DELETE /api/notes/{id}/link
-
-**File:** `src/routes/api/notes/[id]/link/+server.ts`
-
-🔒 **Authentication Required**
-
-### Parameters
-
-| Name | Type   | Location | Required | Description        |
-| ---- | ------ | -------- | -------- | ------------------ |
-| id   | string | path     | Yes      | Path parameter: id |
-
-### Responses
-
-| Status | Description           | Content Type     |
-| ------ | --------------------- | ---------------- |
-| 200    | Success response      | application/json |
-| 401    | Unauthorized          | application/json |
-| 404    | Resource not found    | application/json |
-| 500    | Database error        | application/json |
-| 500    | Internal server error | application/json |
-| 400    | Bad request           | application/json |
-
----
-
 ## POST /api/onboarding
 
 **File:** `src/routes/api/onboarding/+server.ts`
@@ -2260,26 +2179,6 @@ No documented responses
 ### Responses
 
 No documented responses
-
----
-
-## GET /api/projects/{id}/notes
-
-**File:** `src/routes/api/projects/[id]/notes/+server.ts`
-
-### Parameters
-
-| Name  | Type   | Location | Required | Description            |
-| ----- | ------ | -------- | -------- | ---------------------- |
-| id    | string | path     | Yes      | Path parameter: id     |
-| page  | string | query    | No       | Query parameter: page  |
-| limit | string | query    | No       | Query parameter: limit |
-
-### Responses
-
-| Status | Description      | Content Type     |
-| ------ | ---------------- | ---------------- |
-| 200    | Success response | application/json |
 
 ---
 

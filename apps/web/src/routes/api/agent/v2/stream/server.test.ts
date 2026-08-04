@@ -1,6 +1,12 @@
 // apps/web/src/routes/api/agent/v2/stream/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1,
+	AGENTIC_CHAT_PARTIAL_CANCELLATION_GOLDEN_V1,
+	AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1,
+	AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1,
+	AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1,
+	AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1,
 	normalizeAgenticChatParityRunV1
@@ -324,7 +330,7 @@ function createStreamingSupabase(
 	class QueryBuilder {
 		private filters: Array<(row: Row) => boolean> = [];
 		private inserted: Row[] | null = null;
-		private mode: 'select' | 'insert' | 'update' = 'select';
+		private mode: 'select' | 'insert' | 'update' | 'upsert' = 'select';
 		private orderSpec: { column: string; ascending: boolean } | null = null;
 		private patch: Row | null = null;
 		private rowLimit: number | null = null;
@@ -350,6 +356,48 @@ function createStreamingSupabase(
 					...(this.table === 'chat_turn_checkpoints' && !item.id
 						? { id: `checkpoint-${++checkpointCount}` }
 						: {}),
+					...item,
+					created_at: item.created_at ?? now,
+					updated_at: item.updated_at ?? now
+				};
+				ensureRows(this.table).push(row);
+				insertedRows[this.table].push(row);
+				return row;
+			});
+			return this;
+		}
+
+		upsert(value: Row | Row[], upsertOptions?: { onConflict?: string }) {
+			this.mode = 'upsert';
+			if (options.insertErrors?.[this.table]) {
+				this.inserted = [];
+				return this;
+			}
+
+			const now = new Date().toISOString();
+			const conflictColumns = (upsertOptions?.onConflict ?? '')
+				.split(',')
+				.map((column) => column.trim())
+				.filter(Boolean);
+			const values = Array.isArray(value) ? value : [value];
+			this.inserted = values.map((item) => {
+				const existing =
+					conflictColumns.length > 0
+						? ensureRows(this.table).find((row) =>
+								conflictColumns.every(
+									(column) =>
+										item[column] !== null &&
+										item[column] !== undefined &&
+										row[column] === item[column]
+								)
+							)
+						: undefined;
+				if (existing) {
+					Object.assign(existing, item, { updated_at: item.updated_at ?? now });
+					return existing;
+				}
+
+				const row = {
 					...item,
 					created_at: item.created_at ?? now,
 					updated_at: item.updated_at ?? now
@@ -427,7 +475,7 @@ function createStreamingSupabase(
 		private async execute(single: false): Promise<{ data: Row[]; error: unknown | null }>;
 		private async execute(single: boolean) {
 			let data: Row[];
-			if (this.mode === 'insert') {
+			if (this.mode === 'insert' || this.mode === 'upsert') {
 				const insertError = options.insertErrors?.[this.table];
 				if (insertError) {
 					return single
@@ -1296,6 +1344,23 @@ describe('/api/agent/v2/stream', () => {
 					agent_metadata: {}
 				}
 			});
+			mocks.persistMessage.mockImplementationOnce(
+				async ({
+					role,
+					content,
+					metadata
+				}: {
+					role: string;
+					content: string;
+					metadata?: Row;
+				}) => ({
+					id: `${role}-message-1`,
+					role,
+					content,
+					metadata,
+					created_at: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.clockIso
+				})
+			);
 			mocks.streamFastChat.mockImplementationOnce(async ({ onDelta }: Row) => {
 				await onDelta(AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.assistantText);
 				return {
@@ -1397,6 +1462,377 @@ describe('/api/agent/v2/stream', () => {
 				}
 			});
 			expect(run).toEqual(AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('matches the Phase 4 deterministic read-only tool legacy golden', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date(AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.clockIso));
+		try {
+			mocks.resolveSession.mockResolvedValueOnce({
+				session: {
+					id: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.request.sessionId,
+					summary: null,
+					agent_metadata: {}
+				}
+			});
+			mocks.persistMessage.mockImplementationOnce(
+				async ({
+					role,
+					content,
+					metadata
+				}: {
+					role: string;
+					content: string;
+					metadata?: Row;
+				}) => ({
+					id: `${role}-message-read-1`,
+					role,
+					content,
+					metadata,
+					created_at: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.clockIso
+				})
+			);
+			const toolCall = {
+				id: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.callId,
+				type: 'function',
+				function: {
+					name: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.name,
+					arguments: JSON.stringify(AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.arguments)
+				}
+			};
+			const toolResult = {
+				tool_call_id: toolCall.id,
+				result: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.result,
+				success: true,
+				duration_ms: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.durationMs,
+				tokens_consumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.tokensConsumed
+			};
+			mocks.streamFastChat.mockImplementationOnce(
+				async ({ onToolCall, onToolResult, onDelta }: Row) => {
+					await onToolCall?.(toolCall);
+					await onToolResult?.({ toolCall, result: toolResult });
+					await onDelta(AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.assistantText);
+					return {
+						assistantText:
+							AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.assistantText,
+						finalAssistantText:
+							AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.assistantText,
+						usage: {
+							prompt_tokens:
+								AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.usage.promptTokens,
+							completion_tokens:
+								AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.usage
+									.completionTokens,
+							total_tokens:
+								AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.usage.totalTokens
+						},
+						finishedReason:
+							AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.finishedReason,
+						toolExecutions: [{ toolCall, result: toolResult }],
+						llmPasses: [],
+						toolRounds: 1,
+						toolCallsMade: 1,
+						supervisorDecisions: [],
+						finalizationGuard: undefined,
+						cancelled: false,
+						peakPromptTokens: undefined,
+						finalContextUsage: undefined
+					};
+				}
+			);
+			const supabase = createStreamingSupabase();
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.request.message,
+						context_type: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.request.contextType,
+						stream_run_id: 'phase-4-legacy-read-stream',
+						client_turn_id: 'phase-4-legacy-read-client'
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+			const events = parseSseEvents(await response.text());
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			const userMessage = supabase.insertedRows.chat_messages?.[0] ?? {};
+			const assistantCall = mocks.persistMessage.mock.calls.find(
+				([input]) => input.role === 'assistant'
+			)?.[0];
+			const assistantResult = await mocks.persistMessage.mock.results.find(
+				(result) => result.type === 'return'
+			)?.value;
+			const terminalTurn = [...(supabase.updatedRows.chat_turn_runs ?? [])]
+				.reverse()
+				.find((row) => row.status === 'completed');
+			const doneEvent = [...events].reverse().find((event) => event.type === 'done');
+			const run = normalizeAgenticChatParityRunV1({
+				events: events as never,
+				messages: [
+					{ role: userMessage.role, content: userMessage.content },
+					{
+						role: assistantCall?.role,
+						content: assistantCall?.content,
+						metadata: {
+							completion_status: assistantCall?.metadata?.completion_status,
+							answer_source: assistantCall?.metadata?.answer_source
+						}
+					}
+				],
+				toolExecutions: (supabase.insertedRows.chat_tool_executions ?? []).map((row) => ({
+					tool_name: row.tool_name,
+					tool_category: row.tool_category ?? null,
+					sequence_index: row.sequence_index,
+					arguments: row.arguments,
+					result: row.result,
+					execution_time_ms: row.execution_time_ms,
+					tokens_consumed: row.tokens_consumed,
+					success: row.success,
+					affected_entities: row.affected_entities,
+					message_linked: row.message_id === assistantResult?.id
+				})),
+				checkpoints: [],
+				outcome: {
+					status: terminalTurn?.status,
+					finished_reason: terminalTurn?.finished_reason,
+					assistant_message_linked: Boolean(terminalTurn?.assistant_message_id),
+					tool_round_count: terminalTurn?.tool_round_count,
+					tool_call_count: terminalTurn?.tool_call_count,
+					total_tokens: doneEvent?.usage?.total_tokens ?? null
+				},
+				metadata: {
+					admission: {
+						status: supabase.insertedRows.chat_turn_runs?.[0]?.status,
+						context_type: supabase.insertedRows.chat_turn_runs?.[0]?.context_type,
+						user_message_linked:
+							supabase.insertedRows.chat_turn_runs?.[0]?.user_message_id ===
+							userMessage.id
+					},
+					lifecycle_events: (supabase.insertedRows.chat_turn_events ?? []).map(
+						(event) => ({
+							phase: event.phase,
+							event_type: event.event_type
+						})
+					),
+					prompt_snapshot_count: (supabase.insertedRows.chat_prompt_snapshots ?? [])
+						.length
+				}
+			});
+			expect(run).toEqual(AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('matches the Phase 4 deterministic partial-cancellation legacy golden', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date(AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.clockIso));
+		try {
+			mocks.resolveSession.mockResolvedValueOnce({
+				session: {
+					id: AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.request.sessionId,
+					summary: null,
+					agent_metadata: {}
+				}
+			});
+			mocks.persistMessage.mockImplementationOnce(
+				async ({
+					role,
+					content,
+					metadata
+				}: {
+					role: string;
+					content: string;
+					metadata?: Row;
+				}) => ({
+					id: `${role}-message-cancelled`,
+					role,
+					content,
+					metadata,
+					created_at: AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.clockIso
+				})
+			);
+			mocks.streamFastChat.mockImplementationOnce(async ({ onDelta }: Row) => {
+				await onDelta(AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.response.assistantText);
+				return {
+					assistantText:
+						AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.response.assistantText,
+					finalAssistantText:
+						AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.response.assistantText,
+					usage: AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.response.usage,
+					finishedReason:
+						AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.response.finishedReason,
+					toolExecutions: [],
+					llmPasses: [],
+					toolRounds: 0,
+					toolCallsMade: 0,
+					supervisorDecisions: [],
+					finalizationGuard: undefined,
+					cancelled: true,
+					peakPromptTokens: undefined,
+					finalContextUsage: undefined
+				};
+			});
+			const supabase = createStreamingSupabase();
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.request.message,
+						context_type:
+							AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.request.contextType,
+						stream_run_id: 'phase-4-cancelled-legacy-stream',
+						client_turn_id: 'phase-4-cancelled-legacy-client'
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+			const events = parseSseEvents(await response.text());
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			const userMessage = supabase.insertedRows.chat_messages?.[0] ?? {};
+			const assistantCall = mocks.persistMessage.mock.calls.find(
+				([input]) => input.role === 'assistant'
+			)?.[0];
+			const terminalTurn = [...(supabase.updatedRows.chat_turn_runs ?? [])]
+				.reverse()
+				.find((row) => row.status === 'cancelled');
+			const doneEvent = [...events].reverse().find((event) => event.type === 'done');
+			const run = normalizeAgenticChatParityRunV1({
+				events: events as never,
+				messages: [
+					{ role: userMessage.role, content: userMessage.content },
+					{
+						role: assistantCall?.role,
+						content: assistantCall?.content,
+						metadata: {
+							interrupted: assistantCall?.metadata?.interrupted,
+							interrupted_reason: assistantCall?.metadata?.interrupted_reason,
+							finished_reason: assistantCall?.metadata?.finished_reason,
+							partial_tokens: assistantCall?.metadata?.partial_tokens
+						}
+					}
+				],
+				toolExecutions: (supabase.insertedRows.chat_tool_executions ?? []).map((row) => ({
+					tool_name: row.tool_name,
+					status: row.status
+				})),
+				checkpoints: (supabase.insertedRows.chat_turn_checkpoints ?? []).map((row) => ({
+					checkpoint_type: row.checkpoint_type,
+					status: row.status
+				})),
+				outcome: {
+					status: terminalTurn?.status,
+					finished_reason: terminalTurn?.finished_reason,
+					assistant_message_linked: Boolean(terminalTurn?.assistant_message_id),
+					total_tokens: doneEvent?.usage?.total_tokens ?? null
+				},
+				metadata: {
+					admission: {
+						status: supabase.insertedRows.chat_turn_runs?.[0]?.status,
+						context_type: supabase.insertedRows.chat_turn_runs?.[0]?.context_type,
+						user_message_linked:
+							supabase.insertedRows.chat_turn_runs?.[0]?.user_message_id ===
+							userMessage.id
+					},
+					lifecycle_events: (supabase.insertedRows.chat_turn_events ?? []).map(
+						(event) => ({
+							phase: event.phase,
+							event_type: event.event_type
+						})
+					),
+					prompt_snapshot_count: (supabase.insertedRows.chat_prompt_snapshots ?? [])
+						.length
+				}
+			});
+			expect(run).toEqual(AGENTIC_CHAT_PARTIAL_CANCELLATION_GOLDEN_V1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('captures the Phase 4 deterministic provider-error legacy golden', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date(AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1.clockIso));
+		try {
+			mocks.resolveSession.mockResolvedValueOnce({
+				session: {
+					id: AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1.request.sessionId,
+					summary: null,
+					agent_metadata: {}
+				}
+			});
+			mocks.streamFastChat.mockImplementationOnce(async ({ onDelta }: Row) => {
+				await onDelta(AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1.response.assistantText);
+				throw new Error('Provider stream failed after a partial response');
+			});
+			const supabase = createStreamingSupabase();
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1.request.message,
+						context_type: AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1.request.contextType,
+						stream_run_id: 'phase-4-provider-error-legacy-stream',
+						client_turn_id: 'phase-4-provider-error-legacy-client'
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+			const events = parseSseEvents(await response.text());
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			const userMessage = supabase.insertedRows.chat_messages?.[0] ?? {};
+			const terminalTurn = [...(supabase.updatedRows.chat_turn_runs ?? [])]
+				.reverse()
+				.find((row) => row.status === 'failed');
+			const doneEvent = [...events].reverse().find((event) => event.type === 'done');
+			const run = normalizeAgenticChatParityRunV1({
+				events: events as never,
+				messages: [{ role: userMessage.role, content: userMessage.content }],
+				toolExecutions: (supabase.insertedRows.chat_tool_executions ?? []).map((row) => ({
+					tool_name: row.tool_name,
+					status: row.status
+				})),
+				checkpoints: (supabase.insertedRows.chat_turn_checkpoints ?? []).map((row) => ({
+					checkpoint_type: row.checkpoint_type,
+					status: row.status
+				})),
+				outcome: {
+					status: terminalTurn?.status,
+					finished_reason: terminalTurn?.finished_reason,
+					assistant_message_linked: Boolean(terminalTurn?.assistant_message_id),
+					total_tokens: doneEvent?.usage?.total_tokens ?? null
+				},
+				metadata: {
+					admission: {
+						status: supabase.insertedRows.chat_turn_runs?.[0]?.status,
+						context_type: supabase.insertedRows.chat_turn_runs?.[0]?.context_type,
+						user_message_linked:
+							supabase.insertedRows.chat_turn_runs?.[0]?.user_message_id ===
+							userMessage.id
+					},
+					lifecycle_events: (supabase.insertedRows.chat_turn_events ?? []).map(
+						(event) => ({ phase: event.phase, event_type: event.event_type })
+					),
+					prompt_snapshot_count: (supabase.insertedRows.chat_prompt_snapshots ?? [])
+						.length
+				}
+			});
+			expect(run).toEqual(AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1);
 		} finally {
 			vi.useRealTimers();
 		}
@@ -2724,9 +3160,12 @@ describe('/api/agent/v2/stream', () => {
 		});
 
 		expect(liveToolResult?.result?.affected_entities).toEqual([expectedRef]);
-		expect(supabase.insertedRows.chat_tool_executions?.[0]?.affected_entities).toEqual([
-			expectedRef
-		]);
+		expect(supabase.insertedRows.chat_tool_executions?.[0]).toEqual(
+			expect.objectContaining({
+				provider_tool_call_id: 'call-create-task',
+				affected_entities: [expectedRef]
+			})
+		);
 		const completedTurnRun = supabase.updatedRows.chat_turn_runs?.find(
 			(row) => row.status === 'completed'
 		);
@@ -2735,6 +3174,175 @@ describe('/api/agent/v2/stream', () => {
 				tool_call_count: 1
 			})
 		);
+	});
+
+	it('preserves the ToolExecutionService call contract for single and batch execution', async () => {
+		const supabase = createStreamingSupabase();
+		const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+		const toolDefinition = {
+			type: 'function',
+			function: {
+				name: 'list_onto_tasks',
+				description: 'List project tasks',
+				parameters: {
+					type: 'object',
+					properties: { project_id: { type: 'string' } },
+					required: ['project_id']
+				}
+			}
+		};
+		const singleToolCall = {
+			id: 'call-single-contract',
+			type: 'function',
+			function: { name: 'list_onto_tasks', arguments: '{}' }
+		};
+		const batchToolCall = {
+			id: 'call-batch-contract',
+			type: 'function',
+			function: { name: 'list_onto_tasks', arguments: '{}' }
+		};
+		const executeSpy = vi
+			.spyOn(ToolExecutionService.prototype, 'executeTool')
+			.mockImplementation(async (toolCall: Row) => ({
+				success: true,
+				data: { lane: 'single' },
+				toolName: toolCall.function.name,
+				toolCallId: toolCall.id,
+				streamEvents: [{ type: 'text', content: 'single event' }],
+				tokensUsed: 5,
+				metadata: { durationMs: 12.6 }
+			}));
+		const batchSpy = vi
+			.spyOn(ToolExecutionService.prototype, 'batchExecuteTools')
+			.mockImplementation(async (toolCalls: Row[]) =>
+				toolCalls.map((toolCall) => ({
+					success: true,
+					data: { lane: 'batch' },
+					toolName: toolCall.function.name,
+					toolCallId: toolCall.id
+				}))
+			);
+
+		try {
+			mocks.selectFastChatTools.mockReturnValueOnce([toolDefinition]);
+			mocks.loadPromptContext.mockResolvedValueOnce({
+				contextType: 'project',
+				entityId: projectId,
+				projectId,
+				projectName: 'Launch Project',
+				focusEntityType: null,
+				focusEntityId: null,
+				focusEntityName: null,
+				conversationSummary: null,
+				data: {
+					project: { id: projectId, name: 'Launch Project' },
+					tasks: []
+				}
+			});
+			mocks.streamFastChat.mockImplementationOnce(
+				async ({ toolExecutor, batchToolExecutor, onDelta }: Row) => {
+					const singleResult = await toolExecutor(singleToolCall, [toolDefinition]);
+					const batchResults = await batchToolExecutor([batchToolCall], [toolDefinition]);
+					expect(singleResult).toEqual({
+						tool_call_id: 'call-single-contract',
+						result: { lane: 'single' },
+						success: true,
+						duration_ms: 13,
+						tokens_consumed: 5,
+						stream_events: [{ type: 'text', content: 'single event' }]
+					});
+					expect(batchResults).toEqual([
+						{
+							tool_call_id: 'call-batch-contract',
+							result: { lane: 'batch' },
+							success: true
+						}
+					]);
+					await onDelta('Executed contract fixture.');
+					return {
+						assistantText: 'Executed contract fixture.',
+						finalAssistantText: 'Executed contract fixture.',
+						usage: { total_tokens: 8 },
+						finishedReason: 'stop',
+						toolExecutions: [],
+						llmPasses: [],
+						toolRounds: 1,
+						toolCallsMade: 2,
+						supervisorDecisions: [],
+						finalizationGuard: undefined,
+						cancelled: false,
+						peakPromptTokens: undefined,
+						finalContextUsage: undefined
+					};
+				}
+			);
+
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: 'List the project tasks',
+						context_type: 'project',
+						entity_id: projectId,
+						stream_run_id: 'stream-run-tool-contract',
+						client_turn_id: 'client-turn-tool-contract'
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+
+			expect(response.status).toBe(200);
+			await response.text();
+
+			expect(executeSpy).toHaveBeenCalledTimes(1);
+			const [singleCall, singleContext, singleDefinitions, singleOptions] =
+				executeSpy.mock.calls[0];
+			expect(singleCall).toEqual(singleToolCall);
+			expect(singleContext).toEqual(
+				expect.objectContaining({
+					sessionId: 'session-1',
+					userId: 'user-1',
+					contextType: 'project',
+					entityId: projectId,
+					originalTurnContext: {
+						contextType: 'project',
+						entityId: projectId,
+						entityName: 'Launch Project'
+					},
+					contextScope: {
+						projectId,
+						projectName: 'Launch Project'
+					}
+				})
+			);
+			expect(singleDefinitions).toEqual([toolDefinition]);
+			expect(singleOptions).toEqual({ abortSignal: expect.any(AbortSignal) });
+
+			expect(batchSpy).toHaveBeenCalledTimes(1);
+			const [batchCalls, batchContext, batchDefinitions, maxConcurrency, batchOptions] =
+				batchSpy.mock.calls[0];
+			expect(batchCalls).toHaveLength(1);
+			expect(batchCalls[0]).toMatchObject({
+				id: 'call-batch-contract',
+				function: { name: 'list_onto_tasks' }
+			});
+			expect(JSON.parse(batchCalls[0].function.arguments)).toEqual({ project_id: projectId });
+			expect(batchContext).toEqual(
+				expect.objectContaining({
+					contextScope: { projectId, projectName: 'Launch Project' }
+				})
+			);
+			expect(batchDefinitions).toEqual([toolDefinition]);
+			expect(maxConcurrency).toBe(3);
+			expect(batchOptions).toEqual({ abortSignal: expect.any(AbortSignal) });
+		} finally {
+			executeSpy.mockRestore();
+			batchSpy.mockRestore();
+		}
 	});
 
 	it('passes prompt entity ownership context into tool execution', async () => {

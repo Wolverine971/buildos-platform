@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
-import { ToolExecutionService } from './tool-execution-service';
+import { ToolExecutionService, type VirtualToolHandler } from './tool-execution-service';
 import type { ServiceContext, ToolExecutionResult } from '../shared/types';
 import { ToolExecutionError } from '../shared/types';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
@@ -267,6 +267,954 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).not.toHaveBeenCalled();
 		});
 
+		it('allows a task to reference a goal created earlier in the same turn', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const goalId = 'b4724346-2b1b-4e71-a9c8-1e25f1aa9b8e';
+			const taskId = 'e1038564-6e3e-4e18-aa0a-a460fd2e3f80';
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: { goals: [], tasks: [] },
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			const createGoalDefinition: ChatToolDefinition = {
+				name: 'create_onto_goal',
+				description: 'Create goal',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						name: { type: 'string' }
+					},
+					required: ['project_id', 'name']
+				}
+			};
+			const createTaskDefinition: ChatToolDefinition = {
+				name: 'create_onto_task',
+				description: 'Create task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						goal_id: { type: 'string' }
+					},
+					required: ['project_id', 'title']
+				}
+			};
+			mockToolExecutor
+				.mockResolvedValueOnce({
+					data: { goal: { id: goalId, project_id: projectId, name: 'Validate demand' } }
+				})
+				.mockResolvedValueOnce({
+					data: {
+						task: { id: taskId, project_id: projectId, title: 'Interview parents' }
+					}
+				});
+
+			const goalResult = await service.executeTool(
+				{
+					id: 'call_create_goal_same_turn',
+					name: 'create_onto_goal',
+					arguments: { project_id: projectId, name: 'Validate demand' }
+				},
+				scopedContext,
+				[createGoalDefinition]
+			);
+			const taskResult = await service.executeTool(
+				{
+					id: 'call_create_task_for_same_turn_goal',
+					name: 'create_onto_task',
+					arguments: {
+						project_id: projectId,
+						title: 'Interview parents',
+						goal_id: goalId
+					}
+				},
+				scopedContext,
+				[createTaskDefinition]
+			);
+
+			expect(goalResult.success).toBe(true);
+			expect(taskResult.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledTimes(2);
+			expect(mockToolExecutor.mock.calls[1]?.[1]).toMatchObject({ goal_id: goalId });
+		});
+
+		it('registers every child returned by project instantiation for later same-turn writes', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
+			const goalId = 'b4724346-2b1b-4e71-a9c8-1e25f1aa9b8e';
+			const inconsistentGoalId = '0848bf8c-b7f4-405d-9d7c-f4d29679943e';
+			const taskId = 'e1038564-6e3e-4e18-aa0a-a460fd2e3f80';
+			const createProjectDefinition: ChatToolDefinition = {
+				name: 'create_onto_project',
+				description: 'Create project graph',
+				parameters: {
+					type: 'object',
+					properties: {
+						project: { type: 'object' },
+						entities: { type: 'array', items: { type: 'object' } },
+						relationships: { type: 'array', items: { type: 'array' } }
+					},
+					required: ['project', 'entities', 'relationships']
+				}
+			};
+			const createTaskDefinition: ChatToolDefinition = {
+				name: 'create_onto_task',
+				description: 'Create task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						goal_id: { type: 'string' }
+					},
+					required: ['project_id', 'title']
+				}
+			};
+			const projectContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: { goals: [], tasks: [] },
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			mockToolExecutor
+				.mockResolvedValueOnce({
+					data: {
+						project_id: projectId,
+						counts: { goals: 1 },
+						created_entities: [
+							{ kind: 'project', id: projectId, project_id: projectId },
+							{
+								kind: 'goal',
+								id: goalId,
+								project_id: projectId,
+								temp_id: 'launch-goal'
+							},
+							{
+								kind: 'goal',
+								id: inconsistentGoalId,
+								project_id: otherProjectId,
+								temp_id: 'wrong-project-goal'
+							}
+						]
+					}
+				})
+				.mockResolvedValueOnce({
+					data: { task: { id: taskId, project_id: projectId } }
+				});
+
+			const projectResult = await service.executeTool(
+				{
+					id: 'call_create_project_with_children',
+					name: 'create_onto_project',
+					arguments: {
+						project: {
+							name: 'Launch',
+							type_key: 'project.business.initiative'
+						},
+						entities: [
+							{ temp_id: 'launch-goal', kind: 'goal', name: 'Validate demand' }
+						],
+						relationships: []
+					}
+				},
+				mockContext,
+				[createProjectDefinition]
+			);
+			const taskResult = await service.executeTool(
+				{
+					id: 'call_create_task_for_instantiated_goal',
+					name: 'create_onto_task',
+					arguments: {
+						project_id: projectId,
+						title: 'Interview customers',
+						goal_id: goalId
+					}
+				},
+				projectContext,
+				[createTaskDefinition]
+			);
+			const inconsistentTaskResult = await service.executeTool(
+				{
+					id: 'call_create_task_for_inconsistent_instantiated_goal',
+					name: 'create_onto_task',
+					arguments: {
+						project_id: projectId,
+						title: 'Should not execute',
+						goal_id: inconsistentGoalId
+					}
+				},
+				projectContext,
+				[createTaskDefinition]
+			);
+
+			expect(projectResult.success).toBe(true);
+			expect(taskResult.success).toBe(true);
+			expect(inconsistentTaskResult).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('goal_id is not known to belong')
+			});
+			expect(mockToolExecutor).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not register a created entity when its project ownership is inconsistent', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
+			const goalId = 'b4724346-2b1b-4e71-a9c8-1e25f1aa9b8e';
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: { goals: [], tasks: [] },
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			const createGoalDefinition: ChatToolDefinition = {
+				name: 'create_onto_goal',
+				description: 'Create goal',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						name: { type: 'string' }
+					},
+					required: ['project_id', 'name']
+				}
+			};
+			const createTaskDefinition: ChatToolDefinition = {
+				name: 'create_onto_task',
+				description: 'Create task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						goal_id: { type: 'string' }
+					},
+					required: ['project_id', 'title']
+				}
+			};
+			mockToolExecutor.mockResolvedValueOnce({
+				data: { goal: { id: goalId, project_id: otherProjectId } }
+			});
+
+			const goalResult = await service.executeTool(
+				{
+					id: 'call_create_inconsistent_goal',
+					name: 'create_onto_goal',
+					arguments: { project_id: projectId, name: 'Validate demand' }
+				},
+				scopedContext,
+				[createGoalDefinition]
+			);
+			const taskResult = await service.executeTool(
+				{
+					id: 'call_task_with_inconsistent_goal',
+					name: 'create_onto_task',
+					arguments: {
+						project_id: projectId,
+						title: 'Interview parents',
+						goal_id: goalId
+					}
+				},
+				scopedContext,
+				[createTaskDefinition]
+			);
+
+			expect(goalResult.success).toBe(true);
+			expect(taskResult).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('goal_id is not known to belong')
+			});
+			expect(mockToolExecutor).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			{
+				kind: 'task',
+				createTool: 'create_onto_task',
+				updateTool: 'update_onto_task',
+				resultKey: 'task',
+				idArg: 'task_id',
+				createArgs: { title: 'First task' },
+				updateArgs: { title: 'Renamed task' }
+			},
+			{
+				kind: 'goal',
+				createTool: 'create_onto_goal',
+				updateTool: 'update_onto_goal',
+				resultKey: 'goal',
+				idArg: 'goal_id',
+				createArgs: { name: 'First goal' },
+				updateArgs: { name: 'Renamed goal' }
+			},
+			{
+				kind: 'plan',
+				createTool: 'create_onto_plan',
+				updateTool: 'update_onto_plan',
+				resultKey: 'plan',
+				idArg: 'plan_id',
+				createArgs: { name: 'First plan' },
+				updateArgs: { name: 'Renamed plan' }
+			},
+			{
+				kind: 'document',
+				createTool: 'create_onto_document',
+				updateTool: 'update_onto_document',
+				resultKey: 'document',
+				idArg: 'document_id',
+				createArgs: {
+					title: 'First document',
+					description: 'Initial document description',
+					type_key: 'document.default'
+				},
+				updateArgs: { title: 'Renamed document' }
+			},
+			{
+				kind: 'milestone',
+				createTool: 'create_onto_milestone',
+				updateTool: 'update_onto_milestone',
+				resultKey: 'milestone',
+				idArg: 'milestone_id',
+				createArgs: { title: 'First milestone' },
+				updateArgs: { title: 'Renamed milestone' }
+			},
+			{
+				kind: 'risk',
+				createTool: 'create_onto_risk',
+				updateTool: 'update_onto_risk',
+				resultKey: 'risk',
+				idArg: 'risk_id',
+				createArgs: { title: 'First risk' },
+				updateArgs: { title: 'Renamed risk' }
+			}
+		])('registers a newly created $kind for later same-turn mutations', async (scenario) => {
+			const projectId = '153dea7b-1fc7-4f77-a79f-d0ef7f40124a';
+			const entityId = '3f7bd6d2-0a9a-447e-ab3b-f48518f40f04';
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: {},
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			const createDefinition: ChatToolDefinition = {
+				name: scenario.createTool,
+				description: `Create ${scenario.kind}`,
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						name: { type: 'string' },
+						description: { type: 'string' },
+						type_key: { type: 'string' }
+					},
+					required: ['project_id']
+				}
+			};
+			const updateDefinition: ChatToolDefinition = {
+				name: scenario.updateTool,
+				description: `Update ${scenario.kind}`,
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						[scenario.idArg]: { type: 'string' },
+						title: { type: 'string' },
+						name: { type: 'string' }
+					},
+					required: [scenario.idArg]
+				}
+			};
+			mockToolExecutor
+				.mockResolvedValueOnce({
+					data: {
+						[scenario.resultKey]: { id: entityId, project_id: projectId }
+					}
+				})
+				.mockResolvedValueOnce({
+					data: {
+						[scenario.resultKey]: { id: entityId, project_id: projectId }
+					}
+				});
+
+			const createResult = await service.executeTool(
+				{
+					id: `call_create_same_turn_${scenario.kind}`,
+					name: scenario.createTool,
+					arguments: { project_id: projectId, ...scenario.createArgs }
+				},
+				scopedContext,
+				[createDefinition]
+			);
+			const updateResult = await service.executeTool(
+				{
+					id: `call_update_same_turn_${scenario.kind}`,
+					name: scenario.updateTool,
+					arguments: {
+						project_id: projectId,
+						[scenario.idArg]: entityId,
+						...scenario.updateArgs
+					}
+				},
+				scopedContext,
+				[updateDefinition]
+			);
+
+			expect(createResult.success).toBe(true);
+			expect(updateResult.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledTimes(2);
+		});
+
+		it('registers a document created by create_task_document', async () => {
+			const projectId = '153dea7b-1fc7-4f77-a79f-d0ef7f40124a';
+			const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
+			const documentId = 'c16bbfc1-c8f6-433f-9d84-f7ed17861757';
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: {
+						tasks: [{ id: taskId, project_id: projectId }],
+						documents: []
+					},
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			const createTaskDocumentDefinition: ChatToolDefinition = {
+				name: 'create_task_document',
+				description: 'Create and link a task document',
+				parameters: {
+					type: 'object',
+					properties: {
+						task_id: { type: 'string' },
+						title: { type: 'string' },
+						description: { type: 'string' },
+						type_key: { type: 'string' }
+					},
+					required: ['task_id']
+				}
+			};
+			const updateDocumentDefinition: ChatToolDefinition = {
+				name: 'update_onto_document',
+				description: 'Update document',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						document_id: { type: 'string' },
+						title: { type: 'string' }
+					},
+					required: ['document_id']
+				}
+			};
+			mockToolExecutor
+				.mockResolvedValueOnce({
+					data: {
+						document: {
+							id: documentId,
+							project_id: projectId,
+							title: 'Launch brief'
+						}
+					}
+				})
+				.mockResolvedValueOnce({
+					data: { document: { id: documentId, project_id: projectId } }
+				});
+
+			const createResult = await service.executeTool(
+				{
+					id: 'call_create_task_document_same_turn',
+					name: 'create_task_document',
+					arguments: {
+						task_id: taskId,
+						title: 'Launch brief',
+						description: 'Brief linked to the launch task.',
+						type_key: 'document.default'
+					}
+				},
+				scopedContext,
+				[createTaskDocumentDefinition]
+			);
+			const updateResult = await service.executeTool(
+				{
+					id: 'call_update_task_document_same_turn',
+					name: 'update_onto_document',
+					arguments: {
+						project_id: projectId,
+						document_id: documentId,
+						title: 'Updated launch brief'
+					}
+				},
+				scopedContext,
+				[updateDocumentDefinition]
+			);
+
+			expect(createResult.success).toBe(true);
+			expect(updateResult.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledTimes(2);
+		});
+
+		it('allows a goal loaded in the current project to be mutated later in the same turn', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const goalId = 'b4724346-2b1b-4e71-a9c8-1e25f1aa9b8e';
+			const taskId = 'e1038564-6e3e-4e18-aa0a-a460fd2e3f80';
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: { goals: [], tasks: [] },
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			const loadGoalDefinition: ChatToolDefinition = {
+				name: 'get_onto_goal_details',
+				description: 'Load goal',
+				parameters: {
+					type: 'object',
+					properties: { goal_id: { type: 'string' } },
+					required: ['goal_id']
+				}
+			};
+			const createTaskDefinition: ChatToolDefinition = {
+				name: 'create_onto_task',
+				description: 'Create task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						goal_id: { type: 'string' }
+					},
+					required: ['project_id', 'title']
+				}
+			};
+			mockToolExecutor
+				.mockResolvedValueOnce({
+					data: { goal: { id: goalId, project_id: projectId, name: 'Validate demand' } }
+				})
+				.mockResolvedValueOnce({
+					data: { task: { id: taskId, project_id: projectId } }
+				});
+
+			const loadResult = await service.executeTool(
+				{
+					id: 'call_load_goal_scope',
+					name: 'get_onto_goal_details',
+					arguments: { goal_id: goalId }
+				},
+				scopedContext,
+				[loadGoalDefinition]
+			);
+			const createResult = await service.executeTool(
+				{
+					id: 'call_create_for_loaded_goal',
+					name: 'create_onto_task',
+					arguments: { title: 'Interview parents', goal_id: goalId }
+				},
+				scopedContext,
+				[createTaskDefinition]
+			);
+
+			expect(loadResult.success).toBe(true);
+			expect(createResult.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledTimes(2);
+		});
+
+		it('rejects a current-project mutation after loading the entity from another project', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
+			const goalId = 'b4724346-2b1b-4e71-a9c8-1e25f1aa9b8e';
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: { goals: [], tasks: [] },
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			const loadGoalDefinition: ChatToolDefinition = {
+				name: 'get_onto_goal_details',
+				description: 'Load goal',
+				parameters: {
+					type: 'object',
+					properties: { goal_id: { type: 'string' } },
+					required: ['goal_id']
+				}
+			};
+			const createTaskDefinition: ChatToolDefinition = {
+				name: 'create_onto_task',
+				description: 'Create task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						goal_id: { type: 'string' }
+					},
+					required: ['project_id', 'title']
+				}
+			};
+			mockToolExecutor.mockResolvedValueOnce({
+				data: { goal: { id: goalId, project_id: otherProjectId } }
+			});
+
+			await service.executeTool(
+				{
+					id: 'call_load_cross_project_goal',
+					name: 'get_onto_goal_details',
+					arguments: { goal_id: goalId }
+				},
+				scopedContext,
+				[loadGoalDefinition]
+			);
+			const createResult = await service.executeTool(
+				{
+					id: 'call_create_for_cross_project_goal',
+					name: 'create_onto_task',
+					arguments: { title: 'Interview parents', goal_id: goalId }
+				},
+				scopedContext,
+				[createTaskDefinition]
+			);
+
+			expect(createResult).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('goal_id belongs to a different project')
+			});
+			expect(mockToolExecutor).toHaveBeenCalledTimes(1);
+		});
+
+		it('allows a typed search result to resolve entity ownership for a later mutation', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const goalId = 'b4724346-2b1b-4e71-a9c8-1e25f1aa9b8e';
+			const taskId = 'e1038564-6e3e-4e18-aa0a-a460fd2e3f80';
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: { goals: [], tasks: [] },
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			const searchDefinition: ChatToolDefinition = {
+				name: 'search_ontology',
+				description: 'Search ontology',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						query: { type: 'string' }
+					},
+					required: ['query']
+				}
+			};
+			const createTaskDefinition: ChatToolDefinition = {
+				name: 'create_onto_task',
+				description: 'Create task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						goal_id: { type: 'string' }
+					},
+					required: ['project_id', 'title']
+				}
+			};
+			mockToolExecutor
+				.mockResolvedValueOnce({
+					data: {
+						results: [{ type: 'goal', id: goalId, project_id: projectId }]
+					}
+				})
+				.mockResolvedValueOnce({
+					data: { task: { id: taskId, project_id: projectId } }
+				});
+
+			await service.executeTool(
+				{
+					id: 'call_resolve_goal_scope',
+					name: 'search_ontology',
+					arguments: { query: 'validate demand' }
+				},
+				scopedContext,
+				[searchDefinition]
+			);
+			const createResult = await service.executeTool(
+				{
+					id: 'call_create_for_resolved_goal',
+					name: 'create_onto_task',
+					arguments: { title: 'Interview parents', goal_id: goalId }
+				},
+				scopedContext,
+				[createTaskDefinition]
+			);
+
+			expect(createResult.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledTimes(2);
+		});
+
+		it('registers entities returned by a full project-detail load', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const goalId = 'b4724346-2b1b-4e71-a9c8-1e25f1aa9b8e';
+			const taskId = 'e1038564-6e3e-4e18-aa0a-a460fd2e3f80';
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: { goals: [], tasks: [] },
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			const projectDetailsDefinition: ChatToolDefinition = {
+				name: 'get_onto_project_details',
+				description: 'Load project details',
+				parameters: {
+					type: 'object',
+					properties: { project_id: { type: 'string' } },
+					required: ['project_id']
+				}
+			};
+			const createTaskDefinition: ChatToolDefinition = {
+				name: 'create_onto_task',
+				description: 'Create task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						goal_id: { type: 'string' }
+					},
+					required: ['project_id', 'title']
+				}
+			};
+			mockToolExecutor
+				.mockResolvedValueOnce({
+					data: {
+						project: { id: projectId },
+						goals: [{ id: goalId, project_id: projectId }]
+					}
+				})
+				.mockResolvedValueOnce({
+					data: { task: { id: taskId, project_id: projectId } }
+				});
+
+			await service.executeTool(
+				{
+					id: 'call_load_project_entities',
+					name: 'get_onto_project_details',
+					arguments: { project_id: projectId }
+				},
+				scopedContext,
+				[projectDetailsDefinition]
+			);
+			const createResult = await service.executeTool(
+				{
+					id: 'call_create_for_project_loaded_goal',
+					name: 'create_onto_task',
+					arguments: { title: 'Interview parents', goal_id: goalId }
+				},
+				scopedContext,
+				[createTaskDefinition]
+			);
+
+			expect(createResult.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledTimes(2);
+		});
+
+		it('fails closed when same-turn read results disagree about entity ownership', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
+			const goalId = 'b4724346-2b1b-4e71-a9c8-1e25f1aa9b8e';
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: { goals: [], tasks: [] },
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			const loadGoalDefinition: ChatToolDefinition = {
+				name: 'get_onto_goal_details',
+				description: 'Load goal',
+				parameters: {
+					type: 'object',
+					properties: { goal_id: { type: 'string' } },
+					required: ['goal_id']
+				}
+			};
+			const createTaskDefinition: ChatToolDefinition = {
+				name: 'create_onto_task',
+				description: 'Create task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						goal_id: { type: 'string' }
+					},
+					required: ['project_id', 'title']
+				}
+			};
+			mockToolExecutor
+				.mockResolvedValueOnce({
+					data: { goal: { id: goalId, project_id: projectId } }
+				})
+				.mockResolvedValueOnce({
+					data: { goal: { id: goalId, project_id: otherProjectId } }
+				});
+
+			for (const [index, expectedProjectId] of [projectId, otherProjectId].entries()) {
+				const loadResult = await service.executeTool(
+					{
+						id: `call_conflicting_goal_load_${index}`,
+						name: 'get_onto_goal_details',
+						arguments: { goal_id: goalId }
+					},
+					scopedContext,
+					[loadGoalDefinition]
+				);
+				expect(loadResult.data).toMatchObject({
+					goal: { project_id: expectedProjectId }
+				});
+			}
+			const createResult = await service.executeTool(
+				{
+					id: 'call_create_after_conflicting_loads',
+					name: 'create_onto_task',
+					arguments: { title: 'Interview parents', goal_id: goalId }
+				},
+				scopedContext,
+				[createTaskDefinition]
+			);
+
+			expect(createResult).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('goal_id is not known to belong')
+			});
+			expect(mockToolExecutor).toHaveBeenCalledTimes(2);
+		});
+
+		it('tombstones a deleted entity instead of falling back to stale turn-start context', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const goalId = 'b4724346-2b1b-4e71-a9c8-1e25f1aa9b8e';
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: { goals: [{ id: goalId, project_id: projectId }], tasks: [] },
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			const deleteGoalDefinition: ChatToolDefinition = {
+				name: 'delete_onto_goal',
+				description: 'Delete goal',
+				parameters: {
+					type: 'object',
+					properties: { goal_id: { type: 'string' } },
+					required: ['goal_id']
+				}
+			};
+			const createTaskDefinition: ChatToolDefinition = {
+				name: 'create_onto_task',
+				description: 'Create task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						goal_id: { type: 'string' }
+					},
+					required: ['project_id', 'title']
+				}
+			};
+			mockToolExecutor.mockResolvedValueOnce({ data: { success: true } });
+
+			const deleteResult = await service.executeTool(
+				{
+					id: 'call_delete_goal_scope',
+					name: 'delete_onto_goal',
+					arguments: { goal_id: goalId }
+				},
+				scopedContext,
+				[deleteGoalDefinition]
+			);
+			const createResult = await service.executeTool(
+				{
+					id: 'call_create_for_deleted_goal',
+					name: 'create_onto_task',
+					arguments: { title: 'Interview parents', goal_id: goalId }
+				},
+				scopedContext,
+				[createTaskDefinition]
+			);
+
+			expect(deleteResult.success).toBe(true);
+			expect(createResult).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('goal_id is not known to belong')
+			});
+			expect(mockToolExecutor).toHaveBeenCalledTimes(1);
+		});
+
 		it('allows a known task_id from the current project after injecting project_id', async () => {
 			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 			const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
@@ -342,6 +1290,19 @@ describe('ToolExecutionService', () => {
 					required: ['task_id', 'expected_source_project_id', 'destination_project_id']
 				}
 			};
+			const updateTaskDefinition: ChatToolDefinition = {
+				name: 'update_onto_task',
+				description: 'Update task',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						task_id: { type: 'string' },
+						title: { type: 'string' }
+					},
+					required: ['task_id', 'title']
+				}
+			};
 			const scopedContext: ServiceContext = {
 				...mockContext,
 				contextScope: { projectId: scopedProjectId },
@@ -364,15 +1325,55 @@ describe('ToolExecutionService', () => {
 				}
 			};
 
-			mockToolExecutor.mockResolvedValueOnce({ data: { status: 'moved' } });
+			mockToolExecutor
+				.mockResolvedValueOnce({ data: { status: 'moved' } })
+				.mockResolvedValueOnce({
+					data: { task: { id: taskId, project_id: destinationProjectId } }
+				});
 			const result = await service.executeTool(toolCall, scopedContext, [moveTaskDefinition]);
+			const staleSourceUpdate = await service.executeTool(
+				{
+					id: 'call_update_moved_task_from_source',
+					name: 'update_onto_task',
+					arguments: { task_id: taskId, title: 'Stale source update' }
+				},
+				scopedContext,
+				[updateTaskDefinition]
+			);
+			const destinationContext: ServiceContext = {
+				...scopedContext,
+				entityId: destinationProjectId,
+				contextScope: { projectId: destinationProjectId },
+				ontologyContext: {
+					type: 'project',
+					entities: { tasks: [] },
+					metadata: {},
+					scope: { projectId: destinationProjectId }
+				} as any
+			};
+			const destinationUpdate = await service.executeTool(
+				{
+					id: 'call_update_moved_task_from_destination',
+					name: 'update_onto_task',
+					arguments: { task_id: taskId, title: 'Destination update' }
+				},
+				destinationContext,
+				[updateTaskDefinition]
+			);
 
 			expect(result.success).toBe(true);
+			expect(staleSourceUpdate).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('task_id belongs to a different project')
+			});
+			expect(destinationUpdate.success).toBe(true);
 			expect(mockToolExecutor).toHaveBeenCalledWith(
 				'move_onto_task',
 				toolCall.arguments,
 				contextLike(scopedContext)
 			);
+			expect(mockToolExecutor).toHaveBeenCalledTimes(2);
 		});
 
 		it('requires the dedicated task move source to match project focus', async () => {
@@ -549,7 +1550,8 @@ describe('ToolExecutionService', () => {
 					type: 'object',
 					properties: {
 						query: { type: 'string' }
-					}
+					},
+					required: ['query']
 				}
 			};
 
@@ -617,6 +1619,7 @@ describe('ToolExecutionService', () => {
 
 			expect(result.success).toBe(true);
 			expect(result.toolName).toBe('tool_search');
+			expect(result.toolCallId).toBe('call_gateway_search');
 			expect(result.data).toMatchObject({
 				type: 'tool_search_results'
 			});
@@ -719,6 +1722,134 @@ describe('ToolExecutionService', () => {
 				success: false,
 				errorType: 'cancelled',
 				error: 'Operation cancelled'
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('returns the standard timeout envelope when a gateway handler exceeds its deadline', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_gateway_timeout',
+				name: 'tool_schema',
+				arguments: { op: 'onto.task.update' }
+			};
+			const gatewayService = service as unknown as {
+				executeGatewayTool: () => Promise<ToolExecutionResult>;
+			};
+			vi.spyOn(gatewayService, 'executeGatewayTool').mockImplementationOnce(
+				() => new Promise(() => undefined)
+			);
+
+			const result = await service.executeTool(toolCall, mockContext, [], { timeout: 10 });
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'timeout',
+				toolName: 'tool_schema',
+				toolCallId: 'call_gateway_timeout'
+			});
+			expect(result.error).toEqual(expect.stringContaining('timeout'));
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('repairs nested project collections before create_onto_project execution', async () => {
+			const createContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project_create',
+				entityId: undefined
+			};
+			const nestedEntities = [
+				{ temp_id: 'goal-1', kind: 'goal', name: 'Validate demand' },
+				{ temp_id: 'task-1', kind: 'task', title: 'Interview parents' }
+			];
+			const nestedRelationships = [
+				{
+					from: { temp_id: 'goal-1', kind: 'goal' },
+					to: { temp_id: 'task-1', kind: 'task' },
+					rel: 'contains'
+				}
+			];
+			const toolCall: ChatToolCall = {
+				id: 'call_create_nested_project_graph',
+				name: 'create_onto_project',
+				arguments: {
+					project: {
+						name: 'Christian School Launch',
+						type_key: 'project.nonprofit.school_launch',
+						entities: nestedEntities,
+						relationships: nestedRelationships
+					}
+				}
+			};
+			const createProjectDefinition: ChatToolDefinition = {
+				name: 'create_onto_project',
+				description: 'Create project',
+				parameters: {
+					type: 'object',
+					properties: {
+						project: { type: 'object' },
+						entities: { type: 'array' },
+						relationships: { type: 'array' }
+					},
+					required: ['project', 'entities', 'relationships']
+				}
+			};
+			mockToolExecutor.mockResolvedValueOnce({ data: { project_id: 'project-1' } });
+
+			const result = await service.executeTool(toolCall, createContext, [
+				createProjectDefinition
+			]);
+
+			expect(result.success).toBe(true);
+			const executedArgs = mockToolExecutor.mock.calls[0]?.[1];
+			expect(executedArgs.project).not.toHaveProperty('entities');
+			expect(executedArgs.project).not.toHaveProperty('relationships');
+			expect(executedArgs.entities).toEqual(nestedEntities);
+			expect(executedArgs.relationships).toEqual(nestedRelationships);
+		});
+
+		it('rejects conflicting nested and top-level project collections', async () => {
+			const createContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project_create',
+				entityId: undefined
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_create_conflicting_project_graph',
+				name: 'create_onto_project',
+				arguments: {
+					project: {
+						name: 'Launch',
+						type_key: 'project.business.launch',
+						entities: [{ temp_id: 'nested-goal', kind: 'goal', name: 'Nested goal' }]
+					},
+					entities: [{ temp_id: 'top-goal', kind: 'goal', name: 'Top goal' }],
+					relationships: []
+				}
+			};
+			const createProjectDefinition: ChatToolDefinition = {
+				name: 'create_onto_project',
+				description: 'Create project',
+				parameters: {
+					type: 'object',
+					properties: {
+						project: { type: 'object' },
+						entities: { type: 'array' },
+						relationships: { type: 'array' }
+					},
+					required: ['project', 'entities', 'relationships']
+				}
+			};
+
+			const result = await service.executeTool(toolCall, createContext, [
+				createProjectDefinition
+			]);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining(
+					'entities and project.entities contain different non-empty arrays'
+				)
 			});
 			expect(mockToolExecutor).not.toHaveBeenCalled();
 		});
@@ -1430,6 +2561,35 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('applies schema defaults before required-field validation', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_required_default',
+				name: 'defaulted_tool',
+				arguments: {}
+			};
+			const defaultedDefinition: ChatToolDefinition = {
+				name: 'defaulted_tool',
+				description: 'Tool with a required defaulted mode',
+				parameters: {
+					type: 'object',
+					properties: {
+						mode: { type: 'string', default: 'summary' }
+					},
+					required: ['mode']
+				}
+			};
+			mockToolExecutor.mockResolvedValueOnce({ data: { ok: true } });
+
+			const result = await service.executeTool(toolCall, mockContext, [defaultedDefinition]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'defaulted_tool',
+				{ mode: 'summary' },
+				contextLike(mockContext)
+			);
+		});
+
 		it('should trim whitespace in tool names', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_trim',
@@ -1571,7 +2731,10 @@ describe('ToolExecutionService', () => {
 
 			const virtualHandler = vi.fn().mockResolvedValue({
 				success: true,
-				data: { status: 'drafted' }
+				data: { status: 'drafted' },
+				streamEvents: [{ type: 'text', content: 'Plan drafted.' }],
+				tokensUsed: 7,
+				metadata: { durationMs: 12 }
 			} satisfies Partial<ToolExecutionResult>);
 
 			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions, {
@@ -1582,6 +2745,10 @@ describe('ToolExecutionService', () => {
 
 			expect(result.success).toBe(true);
 			expect(result.toolName).toBe('agent_create_plan');
+			expect(result.toolCallId).toBe('call_virtual');
+			expect(result.streamEvents).toEqual([{ type: 'text', content: 'Plan drafted.' }]);
+			expect(result.tokensUsed).toBe(7);
+			expect(result.metadata).toEqual({ durationMs: 12 });
 			expect(mockToolExecutor).not.toHaveBeenCalled();
 			expect(virtualHandler).toHaveBeenCalledWith({
 				toolCall,
@@ -1589,6 +2756,108 @@ describe('ToolExecutionService', () => {
 				args: { objective: 'Do something' },
 				context: contextLike(mockContext),
 				availableTools: mockToolDefinitions
+			});
+		});
+
+		it('propagates cancellation into virtual handlers and returns the standard envelope', async () => {
+			const controller = new AbortController();
+			let capturedSignal: AbortSignal | undefined;
+			const toolCall: ChatToolCall = {
+				id: 'call_virtual_cancelled',
+				name: 'agent_create_plan',
+				arguments: { objective: 'Do something' }
+			};
+			const virtualHandler: VirtualToolHandler = vi.fn(
+				({ context }: { context: ServiceContext }) =>
+					new Promise<ToolExecutionResult>((_resolve, reject) => {
+						capturedSignal = context.abortSignal;
+						context.abortSignal?.addEventListener(
+							'abort',
+							() => reject(new DOMException('Tool execution aborted', 'AbortError')),
+							{ once: true }
+						);
+					})
+			);
+
+			const resultPromise = service.executeTool(toolCall, mockContext, mockToolDefinitions, {
+				virtualHandlers: { agent_create_plan: virtualHandler },
+				abortSignal: controller.signal
+			});
+			await vi.waitFor(() => expect(capturedSignal).toBeDefined());
+			controller.abort();
+
+			await expect(resultPromise).resolves.toMatchObject({
+				success: false,
+				error: 'Operation cancelled',
+				errorType: 'cancelled',
+				toolName: 'agent_create_plan',
+				toolCallId: 'call_virtual_cancelled'
+			});
+			expect(capturedSignal?.aborted).toBe(true);
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('returns the standard timeout envelope when a virtual handler exceeds its deadline', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_virtual_timeout',
+				name: 'agent_create_plan',
+				arguments: { objective: 'Do something' }
+			};
+			const virtualHandler: VirtualToolHandler = vi.fn(
+				() => new Promise<ToolExecutionResult>(() => undefined)
+			);
+
+			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions, {
+				virtualHandlers: { agent_create_plan: virtualHandler },
+				timeout: 10
+			});
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'timeout',
+				toolName: 'agent_create_plan',
+				toolCallId: 'call_virtual_timeout'
+			});
+			expect(result.error).toEqual(expect.stringContaining('timeout'));
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('preserves lane-specific classification of handler timeout messages', async () => {
+			const virtualToolCall: ChatToolCall = {
+				id: 'call_virtual_timeout_message',
+				name: 'agent_create_plan',
+				arguments: { objective: 'Do something' }
+			};
+			const virtualHandler: VirtualToolHandler = vi.fn(async () => {
+				throw new Error('dependency timeout');
+			});
+
+			const virtualResult = await service.executeTool(
+				virtualToolCall,
+				mockContext,
+				mockToolDefinitions,
+				{ virtualHandlers: { agent_create_plan: virtualHandler } }
+			);
+			expect(virtualResult).toMatchObject({
+				success: false,
+				error: 'dependency timeout',
+				errorType: 'execution_error'
+			});
+
+			mockToolExecutor.mockRejectedValueOnce(new Error('dependency timeout'));
+			const coreResult = await service.executeTool(
+				{
+					id: 'call_core_timeout_message',
+					name: 'list_onto_tasks',
+					arguments: { project_id: 'proj_123' }
+				},
+				mockContext,
+				mockToolDefinitions
+			);
+			expect(coreResult).toMatchObject({
+				success: false,
+				error: "Tool 'list_onto_tasks' failed: dependency timeout",
+				errorType: 'timeout'
 			});
 		});
 
@@ -2046,6 +3315,78 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).toHaveBeenCalledTimes(1);
 		});
 
+		it('never leaks same-turn duplicate state across service instances', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const createContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				conversationHistory: [
+					{
+						role: 'user',
+						content: 'Add this new canon detail about Ilyan.'
+					} as ServiceContext['conversationHistory'][number]
+				],
+				ontologyContext: {
+					type: 'project',
+					entities: { documents: [] },
+					metadata: {},
+					scope: { projectId }
+				}
+			};
+			const createDocumentDefinition: ChatToolDefinition = {
+				name: 'create_onto_document',
+				description: 'Create document',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						title: { type: 'string' },
+						description: { type: 'string' },
+						type_key: { type: 'string' },
+						content: { type: 'string' }
+					},
+					required: ['project_id', 'title', 'description', 'type_key']
+				}
+			};
+			const firstExecutor = vi.fn().mockResolvedValue({
+				data: { document_id: '7b1e5f7c-2f4a-4f6e-9d2b-8a1c3e5f7a9b' }
+			});
+			const secondExecutor = vi.fn().mockResolvedValue({
+				data: { document_id: '2860f74f-c3ec-4823-8fcb-66c9d85673a6' }
+			});
+			const firstService = new ToolExecutionService(firstExecutor);
+			const secondService = new ToolExecutionService(secondExecutor);
+			const buildCall = (id: string): ChatToolCall => ({
+				id,
+				name: 'create_onto_document',
+				arguments: {
+					project_id: projectId,
+					title: 'Ilyan Rook — Character Sheet',
+					description: 'Character canon',
+					type_key: 'document.creative.character',
+					content: 'Ilyan detail.'
+				}
+			});
+
+			const first = await firstService.executeTool(
+				buildCall('call_first_instance'),
+				createContext,
+				[createDocumentDefinition]
+			);
+			const second = await secondService.executeTool(
+				buildCall('call_second_instance'),
+				createContext,
+				[createDocumentDefinition]
+			);
+
+			expect(first.success).toBe(true);
+			expect(second.success).toBe(true);
+			expect(firstExecutor).toHaveBeenCalledTimes(1);
+			expect(secondExecutor).toHaveBeenCalledTimes(1);
+		});
+
 		it('keeps the duplicate guard armed when the user forbids duplication', async () => {
 			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 			const documentId = '9da52903-4bb5-4c3f-af32-cb4a2c623dec';
@@ -2324,6 +3665,64 @@ describe('ToolExecutionService', () => {
 			expect(typeof telemetryArg.durationMs).toBe('number');
 			expect(telemetryArg.virtual).toBe(false);
 		});
+
+		it('returns the original result when the telemetry hook rejects', async () => {
+			const rejectingTelemetryHook = vi
+				.fn()
+				.mockRejectedValue(new Error('telemetry sink unavailable'));
+			const isolatedService = new ToolExecutionService(
+				mockToolExecutor,
+				rejectingTelemetryHook
+			);
+			const toolCall: ChatToolCall = {
+				id: 'call_telemetry_rejection',
+				name: 'list_onto_tasks',
+				arguments: { project_id: 'proj_123' }
+			};
+			mockToolExecutor.mockResolvedValueOnce({ data: { tasks: [] } });
+
+			const result = await isolatedService.executeTool(
+				toolCall,
+				mockContext,
+				mockToolDefinitions
+			);
+			await Promise.resolve();
+
+			expect(result).toEqual({
+				success: true,
+				data: { tasks: [] },
+				toolName: 'list_onto_tasks',
+				toolCallId: 'call_telemetry_rejection',
+				entitiesAccessed: undefined,
+				streamEvents: undefined,
+				tokensUsed: undefined,
+				metadata: undefined
+			});
+			expect(rejectingTelemetryHook).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not implicitly retry executeTool when retry options are present', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_execute_without_retry',
+				name: 'list_onto_tasks',
+				arguments: { project_id: 'proj_123' }
+			};
+			mockToolExecutor.mockRejectedValue(new Error('Transient failure'));
+
+			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions, {
+				retryCount: 3,
+				retryDelay: 0
+			});
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'execution_error',
+				toolName: 'list_onto_tasks',
+				toolCallId: 'call_execute_without_retry'
+			});
+			expect(mockToolExecutor).toHaveBeenCalledTimes(1);
+			expect(telemetryHook).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('executeMultipleTools', () => {
@@ -2402,6 +3801,57 @@ describe('ToolExecutionService', () => {
 
 			expect(results).toEqual([]);
 			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('batchExecuteTools', () => {
+		it('bounds concurrency while preserving input result order', async () => {
+			const toolCalls: ChatToolCall[] = ['first', 'second', 'third'].map((query) => ({
+				id: `call_${query}`,
+				name: 'list_onto_projects',
+				arguments: { query }
+			}));
+			let activeCount = 0;
+			let peakActiveCount = 0;
+			const releases = new Map<string, () => void>();
+			mockToolExecutor.mockImplementation(
+				(_toolName: string, args: Record<string, unknown>) =>
+					new Promise((resolve) => {
+						activeCount += 1;
+						peakActiveCount = Math.max(peakActiveCount, activeCount);
+						const query = String(args.query);
+						releases.set(query, () => {
+							activeCount -= 1;
+							resolve({ data: { query } });
+						});
+					})
+			);
+
+			const resultsPromise = service.batchExecuteTools(
+				toolCalls,
+				mockContext,
+				mockToolDefinitions,
+				2
+			);
+			await vi.waitFor(() => expect(releases.size).toBe(2));
+			releases.get('first')?.();
+			await vi.waitFor(() => expect(releases.has('third')).toBe(true));
+			releases.get('third')?.();
+			releases.get('second')?.();
+
+			const results = await resultsPromise;
+
+			expect(peakActiveCount).toBe(2);
+			expect(results.map((result) => result.toolCallId)).toEqual([
+				'call_first',
+				'call_second',
+				'call_third'
+			]);
+			expect(results.map((result) => result.data)).toEqual([
+				{ query: 'first' },
+				{ query: 'second' },
+				{ query: 'third' }
+			]);
 		});
 	});
 
@@ -2941,6 +4391,37 @@ describe('ToolExecutionService', () => {
 			});
 			expect(capturedSignal).toBeDefined();
 			expect(capturedSignal?.aborted).toBe(true);
+		});
+
+		it('emits telemetry exactly once for every executeWithRetry attempt', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_retry_telemetry',
+				name: 'list_onto_tasks',
+				arguments: { project_id: 'proj_123' }
+			};
+			mockToolExecutor
+				.mockRejectedValueOnce(new Error('Transient failure one'))
+				.mockRejectedValueOnce(new Error('Transient failure two'))
+				.mockResolvedValueOnce({ data: { tasks: [] } });
+
+			const result = await service.executeWithRetry(
+				toolCall,
+				mockContext,
+				mockToolDefinitions,
+				{ retryCount: 2, retryDelay: 0 }
+			);
+
+			expect(result).toMatchObject({
+				success: true,
+				data: { tasks: [] },
+				toolName: 'list_onto_tasks',
+				toolCallId: 'call_retry_telemetry'
+			});
+			expect(mockToolExecutor).toHaveBeenCalledTimes(3);
+			expect(telemetryHook).toHaveBeenCalledTimes(3);
+			expect(
+				telemetryHook.mock.calls.map(([attemptResult]) => attemptResult.success)
+			).toEqual([false, false, true]);
 		});
 
 		it('should cancel retry waits without starting another attempt', async () => {

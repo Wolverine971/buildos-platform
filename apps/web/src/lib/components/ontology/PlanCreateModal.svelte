@@ -20,6 +20,7 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import EntityModalDetailsDrawer from './EntityModalDetailsDrawer.svelte';
 	import { PLAN_STATES } from '$lib/types/onto';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { normalizeMarkdownInput } from '$lib/utils/markdown-normalization';
@@ -467,8 +468,10 @@
 							</div>
 						{:else}
 							<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
-								<div class="grid gap-6 lg:grid-cols-3">
-									<Card class="lg:col-span-2 shadow-ink">
+								<div
+									class="relative grid grid-cols-1 gap-y-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
+								>
+									<Card class="min-w-0 shadow-ink">
 										<CardHeader
 											class="flex items-center justify-between border-b border-border bg-muted tx tx-frame tx-weak"
 										>
@@ -571,7 +574,10 @@
 										</CardBody>
 									</Card>
 
-									<div class="space-y-4">
+									<EntityModalDetailsDrawer
+										panelLabel="Plan guidance"
+										class="space-y-4"
+									>
 										<Card class="shadow-ink">
 											<CardHeader
 												class="flex items-center gap-2 border-b border-border"
@@ -676,7 +682,7 @@
 												</div>
 											</CardBody>
 										</Card>
-									</div>
+									</EntityModalDetailsDrawer>
 								</div>
 
 								{#if error}

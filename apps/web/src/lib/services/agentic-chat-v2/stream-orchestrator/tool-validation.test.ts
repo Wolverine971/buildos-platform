@@ -75,7 +75,7 @@ describe('tool validation', () => {
 		expect(issues).toEqual([]);
 	});
 
-	it('applies create-project array defaults before required-parameter validation', () => {
+	it('rejects missing create-project collections instead of defaulting them to empty arrays', () => {
 		const createProjectTool = ONTOLOGY_WRITE_TOOLS.find(
 			(tool) => tool.function.name === 'create_onto_project'
 		);
@@ -89,6 +89,30 @@ describe('tool validation', () => {
 						type_key: 'project.academic.legal'
 					},
 					relationships: []
+				})
+			],
+			[createProjectTool as ChatToolDefinition]
+		);
+
+		expect(issues).toHaveLength(1);
+		expect(issues[0]?.errors).toContain('Missing required parameter: entities');
+	});
+
+	it('accepts repairable create-project collections nested under project', () => {
+		const createProjectTool = ONTOLOGY_WRITE_TOOLS.find(
+			(tool) => tool.function.name === 'create_onto_project'
+		);
+		expect(createProjectTool).toBeDefined();
+
+		const issues = validateToolCalls(
+			[
+				createToolCall('create_onto_project', {
+					project: {
+						name: 'Christian School Launch',
+						type_key: 'project.nonprofit.school_launch',
+						entities: [{ temp_id: 'goal-1', kind: 'goal', name: 'Validate demand' }],
+						relationships: []
+					}
 				})
 			],
 			[createProjectTool as ChatToolDefinition]

@@ -721,6 +721,7 @@ export class ChatToolExecutor {
 		try {
 			const { error: insertError } = await this.supabase.from('chat_tool_executions').insert({
 				session_id: this.sessionId,
+				provider_tool_call_id: toolCall.id,
 				tool_name: toolName,
 				tool_category: category,
 				arguments: argumentsPayload,

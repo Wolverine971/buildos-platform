@@ -1645,6 +1645,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 		return {
 			document_id: document.id,
+			project_id: document.project_id,
 			title: document.title ?? null,
 			outline: outline.nodes,
 			message:
@@ -1681,6 +1682,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			const available = collectOutlineAnchors(outline.nodes);
 			return {
 				document_id: document.id,
+				project_id: document.project_id,
 				anchor,
 				found: false,
 				available_anchors: available,
@@ -1693,6 +1695,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 		return {
 			document_id: document.id,
+			project_id: document.project_id,
 			title: document.title ?? null,
 			anchor: section.anchor,
 			heading: section.heading,

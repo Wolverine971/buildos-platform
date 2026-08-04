@@ -54,6 +54,7 @@
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
+	import EntityModalDetailsDrawer from './EntityModalDetailsDrawer.svelte';
 	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import EntityCollaborationAction from './EntityCollaborationAction.svelte';
 	import { TASK_STATES } from '$lib/types/onto';
@@ -1035,9 +1036,11 @@
 					<p class="text-destructive">Task not found</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+				<div
+					class="relative grid grid-cols-1 gap-y-3 sm:gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
+				>
 					<!-- Main Form (Left 2 columns) -->
-					<div class="lg:col-span-2 lg:col-start-1 lg:row-start-1">
+					<div class="min-w-0 lg:col-start-1 lg:row-start-1">
 						<form
 							id={detailsFormId}
 							onsubmit={(e) => {
@@ -1131,7 +1134,7 @@
 					</div>
 
 					<!-- Sidebar (right column, row 1) -->
-					<div class="lg:col-start-3 lg:row-start-1">
+					<EntityModalDetailsDrawer panelLabel="Task details">
 						<Card variant="elevated" class="wt-card">
 							<CardBody padding="none">
 								<div class="divide-y divide-border/70">
@@ -1579,9 +1582,9 @@
 								</div>
 							</CardBody>
 						</Card>
-					</div>
+					</EntityModalDetailsDrawer>
 					<!-- Comments (left column, row 2) -->
-					<div class="lg:col-span-2 lg:col-start-1 lg:row-start-2">
+					<div class="lg:col-start-1 lg:row-start-2">
 						<EntityCommentsSection {projectId} entityType="task" entityId={taskId} />
 					</div>
 				</div>

@@ -14,7 +14,10 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import LinkedEntities from '$lib/components/ontology/linked-entities/LinkedEntities.svelte';
+	import DocumentInteractDock from '$lib/components/ontology/DocumentInteractDock.svelte';
 	import StateDisplay from '$lib/components/ontology/StateDisplay.svelte';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
+	import { MessageCircle } from '$lib/icons/lucide';
 	import { DOCUMENT_STATES } from '$lib/types/onto';
 	import type { EntityKind } from '$lib/components/ontology/linked-entities/linked-entities.types';
 	import {
@@ -83,6 +86,8 @@
 	let isArchiving = $state(false);
 	let error = $state('');
 	let showArchiveConfirm = $state(false);
+	let isDocumentInteractOpen = $state(false);
+	let hasPendingAgentDocumentUpdate = $state(false);
 
 	let expandedPanels = $state<Record<string, boolean>>({
 		links: true,
@@ -301,6 +306,7 @@
 						event?.owner_entity_id === documentId) ||
 					linkedEventIds.has(event?.id)
 			);
+			hasPendingAgentDocumentUpdate = false;
 
 			if (!options.silent) {
 				toastService.success('Document refreshed');
@@ -311,6 +317,20 @@
 		} finally {
 			isRefreshing = false;
 		}
+	}
+
+	async function handleDocumentInteractClose(summary?: DataMutationSummary) {
+		if (!summary?.hasChanges) return;
+
+		if (hasUnsavedChanges) {
+			hasPendingAgentDocumentUpdate = true;
+			toastService.warning(
+				'The agent updated saved project data. Refresh after resolving your unsaved document changes.'
+			);
+			return;
+		}
+
+		await refreshData({ silent: true });
 	}
 
 	async function handleArchive() {
@@ -413,6 +433,18 @@
 						{project?.name || 'Project'}
 					</a>
 				</div>
+				<button
+					type="button"
+					onclick={() => (isDocumentInteractOpen = true)}
+					disabled={!document?.id || !project?.id}
+					class="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-semibold text-foreground shadow-ink transition-colors pressable hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+					aria-controls="document-interact-dock"
+					aria-expanded={isDocumentInteractOpen}
+				>
+					<MessageCircle class="h-3.5 w-3.5" />
+					<span class="hidden sm:inline">Document Interact</span>
+					<span class="sm:hidden">Interact</span>
+				</button>
 				<StateDisplay state={stateKey} entityKind="document" />
 			</div>
 		</div>
@@ -491,6 +523,21 @@
 									class="p-2 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
 								>
 									<p class="text-xs sm:text-sm text-destructive">{error}</p>
+								</div>
+							{/if}
+
+							{#if hasPendingAgentDocumentUpdate}
+								<div
+									class="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-2 tx tx-static tx-weak"
+								>
+									<AlertTriangle
+										class="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning"
+									/>
+									<p class="text-xs text-foreground">
+										The agent updated the saved project while this document has
+										local edits. Save or resolve those edits, then refresh to
+										load the latest version.
+									</p>
 								</div>
 							{/if}
 						</form>
@@ -1007,6 +1054,17 @@
 		</div>
 	</div>
 </div>
+
+{#if project?.id && document?.id}
+	<DocumentInteractDock
+		bind:isOpen={isDocumentInteractOpen}
+		projectId={project.id}
+		projectName={project.name || 'Project'}
+		documentId={document.id}
+		documentTitle={title || document.title || 'Untitled Document'}
+		onClose={handleDocumentInteractClose}
+	/>
+{/if}
 
 {#if showArchiveConfirm}
 	<ConfirmationModal

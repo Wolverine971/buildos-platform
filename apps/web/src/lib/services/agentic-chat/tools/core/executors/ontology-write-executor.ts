@@ -812,6 +812,12 @@ export class OntologyWriteExecutor extends BaseExecutor {
 	async createOntoProject(args: CreateOntoProjectArgs): Promise<{
 		project_id: string;
 		counts: Record<string, number | undefined>;
+		created_entities?: Array<{
+			kind: string;
+			id: string;
+			project_id: string;
+			temp_id?: string;
+		}>;
 		clarifications?: CreateOntoProjectArgs['clarifications'];
 		message: string;
 		context_shift?: {
@@ -821,50 +827,52 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			entity_type: 'project';
 		};
 	}> {
-		if (!Array.isArray(args.entities)) {
-			throw new Error('create_onto_project requires entities');
+		let normalizedArgs = normalizeProjectCreateArgs(
+			args as unknown as Record<string, any>
+		) as CreateOntoProjectArgs;
+		const initialValidationErrors = validateProjectCreateArgs(
+			normalizedArgs as unknown as Record<string, any>
+		);
+		if (initialValidationErrors.length > 0) {
+			throw new Error(initialValidationErrors[0] ?? 'Invalid create_onto_project payload');
 		}
-		if (!Array.isArray(args.relationships)) {
-			throw new Error('create_onto_project requires relationships');
-		}
-		this.assertDurableTextSafe('create_onto_project', args);
+		this.assertDurableTextSafe('create_onto_project', normalizedArgs);
 
-		if (args.clarifications?.length) {
+		if (normalizedArgs.clarifications?.length) {
 			return {
 				project_id: '',
 				counts: {},
-				clarifications: args.clarifications,
+				clarifications: normalizedArgs.clarifications,
 				message: 'Additional information is required before creating the project.'
 			};
 		}
 
-		const normalizedProject = { ...args.project };
+		const normalizedProject = { ...normalizedArgs.project };
 		if (normalizedProject.state_key !== undefined) {
 			normalizedProject.state_key =
 				this.normalizeProjectState(normalizedProject.state_key) ??
 				normalizedProject.state_key;
 		}
-		const normalizedStartAt = normalizeIsoDateTime(args.project.start_at, 'start');
+		const normalizedStartAt = normalizeIsoDateTime(normalizedArgs.project.start_at, 'start');
 		if (normalizedStartAt !== undefined) {
 			normalizedProject.start_at = normalizedStartAt;
-		} else if (args.project.start_at !== undefined) {
+		} else if (normalizedArgs.project.start_at !== undefined) {
 			delete normalizedProject.start_at;
 		}
 
-		const normalizedEndAt = normalizeIsoDateTime(args.project.end_at, 'end');
+		const normalizedEndAt = normalizeIsoDateTime(normalizedArgs.project.end_at, 'end');
 		if (normalizedEndAt !== undefined) {
 			normalizedProject.end_at = normalizedEndAt;
-		} else if (args.project.end_at !== undefined) {
+		} else if (normalizedArgs.project.end_at !== undefined) {
 			delete normalizedProject.end_at;
 		}
 
-		const normalizedEntities = args.entities.map(normalizeEntityDates);
-		let normalizedArgs: CreateOntoProjectArgs = {
-			...args,
+		const normalizedEntities = normalizedArgs.entities.map(normalizeEntityDates);
+		normalizedArgs = normalizeProjectCreateArgs({
+			...normalizedArgs,
 			project: normalizedProject,
 			entities: normalizedEntities
-		};
-		normalizedArgs = normalizeProjectCreateArgs(normalizedArgs) as CreateOntoProjectArgs;
+		}) as CreateOntoProjectArgs;
 		const projectCreateValidationErrors = validateProjectCreateArgs(
 			normalizedArgs as unknown as Record<string, any>
 		);
@@ -895,17 +903,20 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			.join(', ');
 
 		const message =
-			`Created project "${args.project.name}" (ID: ${data.project_id})` +
+			`Created project "${normalizedArgs.project.name}" (ID: ${data.project_id})` +
 			(summary ? ` with ${summary}` : '');
 
 		return {
 			project_id: data.project_id,
 			counts,
+			created_entities: Array.isArray(data.created_entities)
+				? data.created_entities
+				: undefined,
 			message,
 			context_shift: {
 				new_context: 'project',
 				entity_id: data.project_id,
-				entity_name: args.project.name,
+				entity_name: normalizedArgs.project.name,
 				entity_type: 'project'
 			}
 		};

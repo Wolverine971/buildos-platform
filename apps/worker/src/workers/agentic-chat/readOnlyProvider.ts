@@ -1,8 +1,14 @@
 // apps/worker/src/workers/agentic-chat/readOnlyProvider.ts
 
-import type { JsonObject } from '@buildos/shared-types';
+import { createHash } from 'node:crypto';
+import {
+	type JsonObject,
+	type JsonValue,
+	canonicalizeAgenticChatJson
+} from '@buildos/shared-types';
 import type { AgenticChatWorkerExecutionInputV1 } from './executionInput';
 import {
+	AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
 	type AgenticChatPreparedProviderInvocationV1,
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderInputV1,
@@ -87,6 +93,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 	): AgenticChatPreparedProviderInvocationV1 {
 		throwIfAborted(input.signal);
 		const request = buildReadOnlyRequest(input.executionInput, input.signal);
+		const promptSnapshot = buildPromptSnapshot(request.messages);
 		let lease;
 		try {
 			lease = this.ports.capacity.acquire();
@@ -109,6 +116,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			lease.release();
 		};
 		return {
+			promptSnapshot,
 			stream: () => {
 				if (released) {
 					throw new AgenticChatProviderExecutionError(
@@ -188,6 +196,39 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			release();
 		}
 	}
+}
+
+function buildPromptSnapshot(
+	messages: readonly AgenticChatReadOnlyProviderMessageV1[]
+): NonNullable<AgenticChatPreparedProviderInvocationV1['promptSnapshot']> {
+	const canonical = canonicalizeAgenticChatJson(messages as unknown as JsonValue);
+	const modelMessages = JSON.parse(canonical) as JsonObject[];
+	const systemPrompt = modelMessages[0]?.content;
+	if (typeof systemPrompt !== 'string' || systemPrompt.length === 0) {
+		throw providerError('provider_snapshot_system_prompt_invalid', 'permanent');
+	}
+	return {
+		snapshotVersion: AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
+		modelMessages,
+		systemPromptSha256: sha256(systemPrompt),
+		messagesSha256: sha256(canonical),
+		systemPromptChars: systemPrompt.length,
+		messageChars: modelMessages.reduce(
+			(total, message) =>
+				total + (typeof message.content === 'string' ? message.content.length : 0),
+			0
+		),
+		approxPromptTokens: modelMessages.reduce(
+			(total, message) =>
+				total +
+				(typeof message.content === 'string' ? Math.ceil(message.content.length / 4) : 0),
+			0
+		)
+	};
+}
+
+function sha256(value: string): string {
+	return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
 function buildReadOnlyRequest(

@@ -273,7 +273,8 @@ function relationshipPairs(relationship: Relationship): string[] {
 function relationshipsFromOpenApi(
 	name: string,
 	definition: OpenApiSchema,
-	existingEntries: Array<string | undefined>
+	existingEntries: Array<string | undefined>,
+	availableRelations: ReadonlySet<string>
 ): Relationship[] {
 	const discovered: Array<{
 		column: string;
@@ -295,6 +296,10 @@ function relationshipsFromOpenApi(
 
 	const existingRelationships = existingEntries
 		.flatMap(parseExistingRelationships)
+		// The REST generator enriches OpenAPI with exact constraint names from the
+		// previous CLI contract. Never carry that enrichment forward after the
+		// referenced public relation has been retired.
+		.filter((relationship) => availableRelations.has(relationship.referencedRelation))
 		.filter(
 			(relationship, index, relationships) =>
 				relationships.findIndex(
@@ -369,7 +374,8 @@ function renderDefinition(
 	definition: OpenApiSchema,
 	kind: 'table' | 'view',
 	existingEntries: Array<string | undefined>,
-	enums: Map<string, string[]>
+	enums: Map<string, string[]>,
+	availableRelations: ReadonlySet<string>
 ): string {
 	const lines = [`      ${renderKey(name)}: {`, '        Row: {'];
 	lines.push(...renderProperties(definition, 'row', enums), '        }');
@@ -388,7 +394,9 @@ function renderDefinition(
 	}
 
 	lines.push(
-		...renderRelationships(relationshipsFromOpenApi(name, definition, existingEntries)),
+		...renderRelationships(
+			relationshipsFromOpenApi(name, definition, existingEntries, availableRelations)
+		),
 		'      }'
 	);
 	return lines.join('\n');
@@ -640,6 +648,7 @@ export function renderDatabaseTypesFromOpenApi(
 	const existingFunctions = existingSectionEntries(existingTypes, 'Functions', 'Enums');
 	const compatibilityFunctions = existingSectionEntries(compatibilityTypes, 'Functions', 'Enums');
 	const enums = collectEnums(document, existingTypes);
+	const availableRelations = new Set(Object.keys(document.definitions));
 	const tableNames: string[] = [];
 	const viewNames: string[] = [];
 
@@ -659,7 +668,8 @@ export function renderDatabaseTypesFromOpenApi(
 			document.definitions?.[name] ?? {},
 			'table',
 			[existingTables.get(name), compatibilityTables.get(name)],
-			enums
+			enums,
+			availableRelations
 		)
 	);
 	const views = viewNames.map((name) =>
@@ -668,7 +678,8 @@ export function renderDatabaseTypesFromOpenApi(
 			document.definitions?.[name] ?? {},
 			'view',
 			[existingViews.get(name), compatibilityViews.get(name)],
-			enums
+			enums,
+			availableRelations
 		)
 	);
 	const liveFunctionPaths = Object.entries(document.paths)

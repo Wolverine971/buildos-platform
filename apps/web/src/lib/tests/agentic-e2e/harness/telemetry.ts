@@ -23,6 +23,7 @@ export interface TurnRunRow {
 }
 
 export interface ToolExecutionRow {
+	provider_tool_call_id?: string | null;
 	tool_name: string;
 	success: boolean;
 	gateway_op: string | null;
@@ -248,7 +249,7 @@ export async function getToolExecutions(
 	const { data } = await admin
 		.from('chat_tool_executions')
 		.select(
-			'tool_name, success, gateway_op, sequence_index, execution_time_ms, arguments, result, affected_entities'
+			'provider_tool_call_id, tool_name, success, gateway_op, sequence_index, execution_time_ms, arguments, result, affected_entities'
 		)
 		.eq('stream_run_id', streamRunId)
 		.order('sequence_index', { ascending: true });

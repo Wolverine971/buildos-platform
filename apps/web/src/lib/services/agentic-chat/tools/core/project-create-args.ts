@@ -6,6 +6,8 @@ type ProjectCreateRef = {
 	kind: string;
 };
 
+const PROJECT_CREATE_COLLECTION_KEYS = ['entities', 'relationships'] as const;
+
 const PROJECT_STATE_VALUES = new Set(['planning', 'active', 'paused', 'completed', 'cancelled']);
 const PROJECT_STATE_ALIASES: Record<string, string> = {
 	in_progress: 'active',
@@ -52,6 +54,80 @@ const PROJECT_STATE_TO_FALLBACK_STAGE: Record<string, string> = {
 
 function isRecord(value: unknown): value is JsonRecord {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function areJsonValuesEquivalent(left: unknown, right: unknown): boolean {
+	if (Object.is(left, right)) return true;
+
+	if (Array.isArray(left) || Array.isArray(right)) {
+		if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+			return false;
+		}
+		return left.every((entry, index) => areJsonValuesEquivalent(entry, right[index]));
+	}
+
+	if (!isRecord(left) || !isRecord(right)) return false;
+
+	const leftKeys = Object.keys(left).sort();
+	const rightKeys = Object.keys(right).sort();
+	if (
+		leftKeys.length !== rightKeys.length ||
+		leftKeys.some((key, index) => key !== rightKeys[index])
+	) {
+		return false;
+	}
+
+	return leftKeys.every((key) => areJsonValuesEquivalent(left[key], right[key]));
+}
+
+/**
+ * Repair the common model mistake where project graph collections are nested
+ * under `project` instead of being siblings of it. A collection is only moved
+ * when there is a single unambiguous value. Conflicting non-empty collections
+ * stay in place so validation can reject the payload instead of dropping data.
+ */
+function normalizeMisplacedProjectCollections<T extends JsonRecord>(args: T): T {
+	const project = isRecord(args.project) ? args.project : null;
+	if (!project) return args;
+
+	let resolvedArgs: JsonRecord = args;
+	let resolvedProject: JsonRecord = project;
+	let mutated = false;
+
+	for (const key of PROJECT_CREATE_COLLECTION_KEYS) {
+		if (!(key in project)) continue;
+
+		const nestedValue = project[key];
+		const topLevelValue = args[key];
+		if (!Array.isArray(nestedValue)) continue;
+
+		let resolvedValue: unknown[] | null = null;
+		if (topLevelValue === undefined || topLevelValue === null) {
+			resolvedValue = nestedValue;
+		} else if (Array.isArray(topLevelValue)) {
+			if (topLevelValue.length === 0 && nestedValue.length > 0) {
+				resolvedValue = nestedValue;
+			} else if (
+				nestedValue.length === 0 ||
+				areJsonValuesEquivalent(topLevelValue, nestedValue)
+			) {
+				resolvedValue = topLevelValue;
+			}
+		}
+
+		if (!resolvedValue) continue;
+		if (!mutated) {
+			resolvedArgs = { ...args };
+			resolvedProject = { ...project };
+			resolvedArgs.project = resolvedProject;
+			mutated = true;
+		}
+
+		resolvedArgs[key] = [...resolvedValue];
+		delete resolvedProject[key];
+	}
+
+	return (mutated ? resolvedArgs : args) as T;
 }
 
 function toNonEmptyString(value: unknown): string | null {
@@ -248,7 +324,9 @@ function validateRelationshipRef(
 }
 
 export function normalizeProjectCreateArgs<T extends JsonRecord>(args: T): T {
-	const normalizedArgs = normalizeProjectEntities(normalizeProjectFacets(args));
+	const normalizedArgs = normalizeProjectEntities(
+		normalizeProjectFacets(normalizeMisplacedProjectCollections(args))
+	);
 
 	if (!Array.isArray(normalizedArgs.relationships)) {
 		return normalizedArgs;
@@ -267,17 +345,19 @@ export function normalizeProjectCreateArgs<T extends JsonRecord>(args: T): T {
 
 export function validateProjectCreateArgs(args: JsonRecord): string[] {
 	const errors: string[] = [];
+	const normalizedArgs = normalizeProjectCreateArgs(args);
+	const project = isRecord(normalizedArgs.project) ? normalizedArgs.project : null;
 
-	if (!isRecord(args.project)) {
+	if (!project) {
 		errors.push('Missing required parameter: project');
 	} else {
-		if (!toNonEmptyString(args.project.name)) {
+		if (!toNonEmptyString(project.name)) {
 			errors.push('Missing required parameter: project.name');
 		}
-		if (!toNonEmptyString(args.project.type_key)) {
+		if (!toNonEmptyString(project.type_key)) {
 			errors.push('Missing required parameter: project.type_key');
 		}
-		const facets = isRecord(args.project.props) ? args.project.props.facets : null;
+		const facets = isRecord(project.props) ? project.props.facets : null;
 		if (isRecord(facets)) {
 			const stage = normalizeEnumToken(facets.stage);
 			if (stage && !FACET_STAGE_VALUES.has(stage)) {
@@ -288,20 +368,51 @@ export function validateProjectCreateArgs(args: JsonRecord): string[] {
 				);
 			}
 		}
+
+		for (const key of PROJECT_CREATE_COLLECTION_KEYS) {
+			if (!(key in project)) continue;
+
+			const nestedValue = project[key];
+			if (!Array.isArray(nestedValue)) {
+				errors.push(
+					`Invalid misplaced parameter project.${key}: expected an array. Remove it and use top-level ${key}.`
+				);
+				continue;
+			}
+
+			const topLevelValue = normalizedArgs[key];
+			if (Array.isArray(topLevelValue)) {
+				errors.push(
+					`Conflicting parameters: ${key} and project.${key} contain different non-empty arrays. Keep the intended value only at top-level ${key}.`
+				);
+			} else {
+				errors.push(
+					`Misplaced parameter project.${key}: move this array to top-level ${key}.`
+				);
+			}
+		}
 	}
 
-	if (!Array.isArray(args.entities)) {
-		errors.push('Missing required parameter: entities');
+	if (!Array.isArray(normalizedArgs.entities)) {
+		errors.push(
+			normalizedArgs.entities === undefined || normalizedArgs.entities === null
+				? 'Missing required parameter: entities'
+				: 'Invalid parameter entities: expected an array.'
+		);
 	}
 
-	if (!Array.isArray(args.relationships)) {
-		errors.push('Missing required parameter: relationships');
+	if (!Array.isArray(normalizedArgs.relationships)) {
+		errors.push(
+			normalizedArgs.relationships === undefined || normalizedArgs.relationships === null
+				? 'Missing required parameter: relationships'
+				: 'Invalid parameter relationships: expected an array.'
+		);
 		return errors;
 	}
 
-	const entityKindIndex = buildEntityKindIndex(args.entities);
-	for (let index = 0; index < args.relationships.length; index += 1) {
-		const relationship = args.relationships[index];
+	const entityKindIndex = buildEntityKindIndex(normalizedArgs.entities);
+	for (let index = 0; index < normalizedArgs.relationships.length; index += 1) {
+		const relationship = normalizedArgs.relationships[index];
 		const label = `relationships[${index}]`;
 
 		if (Array.isArray(relationship)) {

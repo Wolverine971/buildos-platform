@@ -141,7 +141,11 @@ export function validateToolCalls(
 			toolDef && (toolDef as any).function?.parameters
 				? (toolDef as any).function.parameters
 				: (toolDef as any)?.parameters;
-		const args = applySchemaDefaults(parsedArgs, paramSchema);
+		const normalizedParsedArgs =
+			toolName === 'create_onto_project'
+				? normalizeProjectCreateArgs(parsedArgs)
+				: parsedArgs;
+		const args = applySchemaDefaults(normalizedParsedArgs, paramSchema);
 		const requiredParams = Array.isArray(paramSchema?.required) ? paramSchema.required : [];
 		for (const required of requiredParams) {
 			const value = getValueByPath(args, required);

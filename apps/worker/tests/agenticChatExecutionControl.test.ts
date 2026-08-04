@@ -19,6 +19,7 @@ const USER_MESSAGE_ID = '80000000-0000-4000-8000-000000000008';
 const ASSISTANT_MESSAGE_ID = '90000000-0000-4000-8000-000000000009';
 const LAST_CONTEXT_TRANSITION_ID = 'a0000000-0000-5000-8000-00000000000a';
 const TIMING_TRANSITION_ID = 'b0000000-0000-5000-8000-00000000000b';
+const ERROR_TRANSITION_ID = 'c0000000-0000-5000-8000-00000000000c';
 const EXECUTION_GENERATION = 2;
 const TERMINAL_SEQUENCE = 8;
 
@@ -166,7 +167,8 @@ function committedTimingReceipt(
 	draft: ReturnType<typeof asyncTimingDraft>,
 	overrides: Record<string, unknown> = {},
 	committedAt = '2026-08-03T12:00:00.000Z',
-	totalRequestMs = 3_000
+	totalRequestMs = 3_000,
+	assistantPersistedAt: string | null = committedAt
 ) {
 	const sequence = TERMINAL_SEQUENCE - 1;
 	return {
@@ -189,7 +191,7 @@ function committedTimingReceipt(
 			type: 'timing',
 			timing: {
 				...draft,
-				assistant_persisted_at: committedAt,
+				assistant_persisted_at: assistantPersistedAt,
 				done_emitted_at: null,
 				terminal_committed_at: committedAt,
 				phases: { ...draft.phases, total_request_ms: totalRequestMs }
@@ -198,6 +200,29 @@ function committedTimingReceipt(
 		reconcile_required: true,
 		persisted_at: '2026-08-03T12:00:00.000Z',
 		...overrides
+	};
+}
+
+function committedErrorReceipt(publicError: string, sequence = TERMINAL_SEQUENCE - 2) {
+	return {
+		outcome: 'persisted',
+		publish_allowed: true,
+		turn_run_id: TURN_RUN_ID,
+		queue_job_id: QUEUE_JOB_ID,
+		session_id: SESSION_ID,
+		user_id: USER_ID,
+		stream_run_id: 'stream-1',
+		client_turn_id: 'client-1',
+		execution_generation: EXECUTION_GENERATION,
+		sequence_index: sequence,
+		event_id: createAgentStreamEventIdV1(TURN_RUN_ID, EXECUTION_GENERATION, sequence),
+		phase: 'finalize',
+		event_type: 'error',
+		durable: true,
+		transition_id: ERROR_TRANSITION_ID,
+		event_payload: { type: 'error', error: publicError },
+		reconcile_required: true,
+		persisted_at: '2026-08-03T12:00:00.000Z'
 	};
 }
 
@@ -432,6 +457,136 @@ describe('SupabaseAgenticChatExecutionControlAdapter', () => {
 			expect.objectContaining({
 				p_last_turn_context: lastTurnContext,
 				p_last_turn_context_transition_id: LAST_CONTEXT_TRANSITION_ID,
+				p_timing_draft: timingDraft,
+				p_timing_transition_id: TIMING_TRANSITION_ID
+			})
+		);
+	});
+
+	it('uses the ordered terminal-event RPC for a cancelled partial response', async () => {
+		const lastTurnContext = {
+			summary: 'Partial answer.',
+			entities: {},
+			context_type: 'global',
+			data_accessed: []
+		};
+		const timingDraft = { ...asyncTimingDraft(), finished_reason: 'cancelled' };
+		const { adapter, rpc } = adapterFor([
+			terminalReceipt({
+				status: 'cancelled',
+				finished_reason: 'cancelled',
+				failure_code: 'cancelled',
+				preterminal_events: [
+					committedContextReceipt(lastTurnContext),
+					committedTimingReceipt(timingDraft)
+				]
+			})
+		]);
+
+		await expect(
+			adapter.finalize(
+				finalizeInput({
+					status: 'cancelled',
+					finishedReason: 'cancelled',
+					failureCode: 'cancelled',
+					assistantText: 'Partial answer.',
+					promptTokens: null,
+					completionTokens: null,
+					totalTokens: null,
+					lastTurnContext,
+					lastTurnContextTransitionId: LAST_CONTEXT_TRANSITION_ID,
+					timingDraft,
+					timingTransitionId: TIMING_TRANSITION_ID
+				})
+			)
+		).resolves.toMatchObject({
+			outcome: 'finalized',
+			status: 'cancelled',
+			preterminal_events: [{ event_type: 'last_turn_context' }, { event_type: 'timing' }]
+		});
+		expect(rpc).toHaveBeenCalledWith(
+			'finalize_agentic_chat_turn_with_terminal_events',
+			expect.objectContaining({
+				p_status: 'cancelled',
+				p_failure_code: 'cancelled',
+				p_last_turn_context: lastTurnContext,
+				p_timing_draft: timingDraft
+			})
+		);
+	});
+
+	it('rejects a cancelled context-only call before selecting the completion-only wrapper', async () => {
+		const { adapter, rpc } = adapterFor([]);
+
+		await expect(
+			adapter.finalize(
+				finalizeInput({
+					status: 'cancelled',
+					finishedReason: 'cancelled',
+					failureCode: 'cancelled',
+					assistantText: 'Partial answer.',
+					promptTokens: null,
+					completionTokens: null,
+					totalTokens: null,
+					lastTurnContext: {
+						summary: 'Partial answer.',
+						entities: {},
+						context_type: 'global',
+						data_accessed: []
+					},
+					lastTurnContextTransitionId: LAST_CONTEXT_TRANSITION_ID
+				})
+			)
+		).rejects.toThrow('cancelled terminal events require');
+		expect(rpc).not.toHaveBeenCalled();
+	});
+
+	it('selects the failure-event RPC and verifies error then timing with no assistant row', async () => {
+		const publicError = 'An error occurred while streaming.';
+		const timingDraft = { ...asyncTimingDraft(), finished_reason: 'error' };
+		const committedAt = '2026-08-03T12:00:00.123456Z';
+		const { adapter, rpc } = adapterFor([
+			terminalReceipt({
+				status: 'failed',
+				finished_reason: 'error',
+				failure_code: 'permanent',
+				assistant_message_id: null,
+				terminalized_at: committedAt,
+				preterminal_events: [
+					committedErrorReceipt(publicError),
+					committedTimingReceipt(timingDraft, {}, committedAt, 3_123.456, null)
+				]
+			})
+		]);
+
+		await expect(
+			adapter.finalize(
+				finalizeInput({
+					status: 'failed',
+					finishedReason: 'error',
+					failureCode: 'permanent',
+					assistantMessageId: null,
+					assistantText: 'Discarded partial.',
+					promptTokens: null,
+					completionTokens: null,
+					totalTokens: null,
+					publicError,
+					errorTransitionId: ERROR_TRANSITION_ID,
+					timingDraft,
+					timingTransitionId: TIMING_TRANSITION_ID
+				})
+			)
+		).resolves.toMatchObject({
+			outcome: 'finalized',
+			status: 'failed',
+			assistant_message_id: null,
+			preterminal_events: [{ event_type: 'error' }, { event_type: 'timing' }]
+		});
+		expect(rpc).toHaveBeenCalledWith(
+			'finalize_agentic_chat_turn_with_failure_events',
+			expect.objectContaining({
+				p_public_error: publicError,
+				p_error_transition_id: ERROR_TRANSITION_ID,
 				p_timing_draft: timingDraft,
 				p_timing_transition_id: TIMING_TRANSITION_ID
 			})

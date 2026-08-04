@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/stalledRecovery.ts
 import { createHash } from 'node:crypto';
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
@@ -389,7 +390,7 @@ function buildTerminalInput(
 		finishedReason: status === 'cancelled' ? 'cancelled' : 'worker_interrupted',
 		failureCode: normalizedFailureCode,
 		assistantMessageId:
-			snapshot.assistantText.length > 0
+			status === 'cancelled' && snapshot.assistantText.length > 0
 				? stableRecoveryMessageId(candidate.turnRunId, snapshot.executionGeneration)
 				: null,
 		assistantText: snapshot.assistantText,

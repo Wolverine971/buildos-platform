@@ -52,6 +52,7 @@
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
+	import EntityModalDetailsDrawer from './EntityModalDetailsDrawer.svelte';
 	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -504,9 +505,11 @@
 					<p class="text-destructive">Milestone not found</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+				<div
+					class="relative grid grid-cols-1 gap-y-3 sm:gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:overflow-x-clip"
+				>
 					<!-- Main Form (Left 2 columns) -->
-					<div class="lg:col-span-2">
+					<div class="min-w-0">
 						<form
 							id={detailsFormId}
 							onsubmit={(e) => {
@@ -669,7 +672,7 @@
 					</div>
 
 					<!-- Sidebar (Right column) -->
-					<div>
+					<EntityModalDetailsDrawer panelLabel="Milestone details">
 						<Card variant="elevated" class="wt-card">
 							<CardHeader variant="muted" texture="strip">
 								<div class="flex items-center justify-between gap-3">
@@ -910,7 +913,7 @@
 								</div>
 							</CardBody>
 						</Card>
-					</div>
+					</EntityModalDetailsDrawer>
 				</div>
 
 				<div class="mt-4">

@@ -140,12 +140,6 @@ Total routes: 134
 
 - GET /api/health
 
-### notes
-
-- POST, GET /api/notes
-- PUT, DELETE, GET /api/notes/{id}
-- PATCH, DELETE /api/notes/{id}/link
-
 ### onboarding
 
 - POST /api/onboarding
@@ -173,7 +167,6 @@ Total routes: 134
 - GET /api/projects/{id}/details
 - POST, PUT, GET /api/projects/{id}/generate-brief-template
 - GET /api/projects/{id}/history
-- GET /api/projects/{id}/notes
 - GET, POST, PUT, PATCH, DELETE /api/projects/{id}/phases
 - PATCH, DELETE /api/projects/{id}/phases/{phaseId}
 - POST, DELETE /api/projects/{id}/phases/{phaseId}/schedule

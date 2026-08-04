@@ -71,6 +71,37 @@ test('REST type generation prunes retired RPCs and unreferenced enums', () => {
 	assert.doesNotMatch(rendered, /stale_enum:/);
 });
 
+test('REST type generation prunes preserved relationships to retired relations', () => {
+	const typesWithRetiredRelationship = existingTypes.replace(
+		'Relationships: []',
+		`Relationships: [
+          {
+            foreignKeyName: "widgets_retired_parent_id_fkey"
+            columns: ["id"]
+            isOneToOne: false
+            referencedRelation: "retired_parents"
+            referencedColumns: ["id"]
+          },
+        ]`
+	);
+	const document: SupabaseOpenApiDocument = {
+		swagger: '2.0',
+		definitions: {
+			widgets: {
+				type: 'object',
+				required: ['id'],
+				properties: { id: { type: 'string' } }
+			}
+		},
+		paths: { '/widgets': { post: {} } }
+	};
+
+	const rendered = renderDatabaseTypesFromOpenApi(document, typesWithRetiredRelationship).content;
+
+	assert.doesNotMatch(rendered, /widgets_retired_parent_id_fkey/);
+	assert.doesNotMatch(rendered, /referencedRelation: "retired_parents"/);
+});
+
 test('REST type generation refreshes a changed RPC argument set while preserving return types', () => {
 	const document: SupabaseOpenApiDocument = {
 		swagger: '2.0',

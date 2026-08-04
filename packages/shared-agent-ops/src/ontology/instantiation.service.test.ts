@@ -145,6 +145,23 @@ describe('instantiateProject', () => {
 			// context START HERE document + the spec document
 			documents: 2
 		});
+		expect(result.created_entities).toHaveLength(6);
+		expect(result.created_entities).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					kind: 'project',
+					id: result.project_id,
+					project_id: result.project_id
+				}),
+				expect.objectContaining({ kind: 'goal', temp_id: 'g1' }),
+				expect.objectContaining({ kind: 'task', temp_id: 't1' }),
+				expect.objectContaining({ kind: 'task', temp_id: 't2' }),
+				expect.objectContaining({ kind: 'document', temp_id: 'd1' })
+			])
+		);
+		expect(
+			result.created_entities.every((entity) => entity.project_id === result.project_id)
+		).toBe(true);
 		expect(insertsByTable.get('onto_projects')).toHaveLength(1);
 		expect(insertsByTable.get('onto_goals')).toHaveLength(1);
 		expect(insertsByTable.get('onto_tasks')).toHaveLength(2);

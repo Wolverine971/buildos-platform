@@ -59,7 +59,17 @@ import {
 	AgenticChatRuntimeTimingTracker,
 	SYSTEM_AGENTIC_CHAT_MONOTONIC_CLOCK
 } from './runtimeTiming';
+import {
+	type AgenticChatPromptSnapshotPortV1,
+	createStableAgenticChatPromptSnapshotIdV1
+} from './promptSnapshot';
 import { buildAgenticChatAsyncTimingDraftV1 } from './timingPayload';
+import {
+	type AgenticChatReadToolExecutionV1,
+	AgenticChatToolExecutionFenceError,
+	type AgenticChatToolExecutionPortV1,
+	createStableAgenticChatToolExecutionIdV1
+} from './toolExecution';
 
 const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_UI_PROJECTION_EVENTS = 128;
@@ -85,7 +95,7 @@ export type AgenticChatFixtureReadToolPortV1 = {
 		providerToolCallId: string;
 		executionInput: AgenticChatWorkerExecutionInputV1;
 		signal: AbortSignal;
-	}): Promise<JsonObject>;
+	}): Promise<AgenticChatReadToolExecutionV1>;
 };
 
 type PublisherPort = Pick<
@@ -147,7 +157,9 @@ type FinalizeTurnInput = {
 	projection: ProjectionState;
 	publisherRegistered: boolean;
 	assistantTextOverride?: string;
-	completionContext?: {
+	interruptedReason?: string;
+	publicError?: string;
+	terminalEventContext?: {
 		executionInput: AgenticChatWorkerExecutionInputV1;
 		terminalContext: TerminalContextState;
 		runtimeTiming: AgenticChatRuntimeTimingTracker | null;
@@ -167,11 +179,14 @@ export class AgenticChatFixtureTurnExecutor {
 			publisher: PublisherPort;
 			cancellation: CancellationPort;
 			provider: AgenticChatProviderPortV1;
+			promptSnapshots?: AgenticChatPromptSnapshotPortV1;
 			readTool: AgenticChatFixtureReadToolPortV1;
+			toolExecutions: AgenticChatToolExecutionPortV1;
 			mutation: MutationPort;
 			createId?: () => string;
 			timingClock?: AgenticChatMonotonicClockV1;
 			onTimingSnapshot?: AgenticChatRuntimeTimingObserverV1;
+			onPromptSnapshotError?: (error: unknown) => void;
 		}
 	) {}
 
@@ -389,6 +404,7 @@ export class AgenticChatFixtureTurnExecutor {
 			throwIfAborted(combined.signal);
 
 			let finished = false;
+			let promptSnapshotAttempted = false;
 			const providerStream = preparedProvider
 				? preparedProvider.stream()
 				: this.ports.provider.stream!({ executionInput, signal: combined.signal });
@@ -401,6 +417,14 @@ export class AgenticChatFixtureTurnExecutor {
 					if (queued.pressureRelieved) {
 						await abortable(queued.pressureRelieved, combined.signal);
 					}
+					if (!promptSnapshotAttempted) {
+						promptSnapshotAttempted = true;
+						await this.persistPromptSnapshot(
+							envelope,
+							executionInput,
+							preparedProvider
+						);
+					}
 					continue;
 				}
 				if (step.type === 'semantic') {
@@ -412,6 +436,7 @@ export class AgenticChatFixtureTurnExecutor {
 				if (step.type === 'read_tool') {
 					await this.executeReadTool(
 						executionInput,
+						envelope.processingToken,
 						projection,
 						terminalContext,
 						step,
@@ -456,10 +481,28 @@ export class AgenticChatFixtureTurnExecutor {
 				usage,
 				projection,
 				publisherRegistered,
-				completionContext: { executionInput, terminalContext, runtimeTiming }
+				terminalEventContext: { executionInput, terminalContext, runtimeTiming }
 			});
 		} catch (error) {
 			const failureClass = classifyFailure(error, executionStarted, combined.signal);
+			const assistantText = this.safeAssistantText(
+				claim.turnRunId,
+				publisherRegistered,
+				error
+			);
+			const terminalEventContext =
+				executionStarted &&
+				executionInput !== null &&
+				runtimeTiming !== null &&
+				((failureClass === 'cancelled' &&
+					assistantText !== null &&
+					assistantText.length > 0) ||
+					failureClass !== 'cancelled')
+					? { executionInput, terminalContext, runtimeTiming }
+					: undefined;
+			if (terminalEventContext) {
+				this.captureRuntimeTiming(runtimeTiming, (timing) => timing.markProviderFinished());
+			}
 			// Await inside the try/catch/finally scope so publisher cleanup cannot
 			// unregister the turn before recovery captures/finalizes its prefix.
 			return await this.recover(
@@ -467,15 +510,43 @@ export class AgenticChatFixtureTurnExecutor {
 				generation,
 				failureClass,
 				errorMessage(error),
-				this.safeAssistantText(claim.turnRunId, publisherRegistered, error),
+				assistantText,
 				projection,
-				publisherRegistered
+				publisherRegistered,
+				cancellationInterruptionReason(error, combined.signal),
+				terminalEventContext,
+				failureClass === 'cancelled' ? undefined : 'An error occurred while streaming.'
 			);
 		} finally {
 			preparedProvider?.release();
 			combined.dispose();
 			this.ports.cancellation.unregisterTurn(claim.turnRunId, generation);
 			if (publisherRegistered) this.safeUnregisterPublisher(claim.turnRunId);
+		}
+	}
+
+	private async persistPromptSnapshot(
+		envelope: AgenticChatExecutionIdentityV1,
+		executionInput: AgenticChatWorkerExecutionInputV1,
+		preparedProvider: AgenticChatPreparedProviderInvocationV1 | null
+	): Promise<void> {
+		const prompt = preparedProvider?.promptSnapshot;
+		if (!prompt || !this.ports.promptSnapshots) return;
+		try {
+			await this.ports.promptSnapshots.persist({
+				...envelope,
+				userId: executionInput.claim.userId,
+				executionGeneration: executionInput.claim.executionGeneration,
+				promptSnapshotId: createStableAgenticChatPromptSnapshotIdV1(
+					executionInput.claim.turnRunId
+				),
+				prompt
+			});
+		} catch (error) {
+			// Prompt snapshots are an observability/evaluation artifact. A failure
+			// must be visible to worker telemetry but cannot invalidate text that is
+			// already durable and delivered to the user.
+			this.ports.onPromptSnapshotError?.(error);
 		}
 	}
 
@@ -668,6 +739,7 @@ export class AgenticChatFixtureTurnExecutor {
 
 	private async executeReadTool(
 		executionInput: AgenticChatWorkerExecutionInputV1,
+		processingToken: string,
 		projection: ProjectionState,
 		terminalContext: TerminalContextState,
 		step: Extract<AgenticChatFixtureProviderStepV1, { type: 'read_tool' }>,
@@ -714,6 +786,38 @@ export class AgenticChatFixtureTurnExecutor {
 			}),
 			signal
 		);
+		validateReadToolExecution(toolResult);
+		const sequenceIndex = terminalContext.toolExecutions.length + 1;
+		await abortable(
+			this.ports.toolExecutions.persistRead({
+				turnRunId: executionInput.claim.turnRunId,
+				queueJobId: executionInput.claim.queueJobId,
+				processingToken,
+				userId: executionInput.claim.userId,
+				executionGeneration: executionInput.claim.executionGeneration,
+				toolExecutionId: createStableAgenticChatToolExecutionIdV1({
+					turnRunId: executionInput.claim.turnRunId,
+					sequenceIndex
+				}),
+				sequenceIndex,
+				providerToolCallId: step.providerToolCallId,
+				toolName: step.toolName,
+				arguments: step.arguments,
+				execution: toolResult
+			}),
+			signal
+		);
+		const chatToolResult: ChatToolResult = {
+			tool_call_id: step.providerToolCallId,
+			result: toolResult.result,
+			success: true,
+			...(toolResult.executionTimeMs !== null
+				? { duration_ms: toolResult.executionTimeMs }
+				: {}),
+			...(toolResult.tokensConsumed !== null
+				? { tokens_consumed: toolResult.tokensConsumed }
+				: {})
+		};
 		await this.publishSemantic(
 			executionInput,
 			projection,
@@ -726,10 +830,21 @@ export class AgenticChatFixtureTurnExecutor {
 				eventPayload: {
 					type: 'tool_result',
 					result: {
-						tool_call_id: step.providerToolCallId,
-						tool_name: step.toolName,
-						success: true,
-						result: toolResult
+						...chatToolResult,
+						affected_entities: toolResult.affectedEntities,
+						...(toolResult.toolCategory !== null
+							? { tool_category: toolResult.toolCategory }
+							: {}),
+						...(toolResult.resultCount !== null
+							? {
+									result_count: toolResult.resultCount,
+									zero_result: toolResult.zeroResult
+								}
+							: {}),
+						...(toolResult.requiresUserAction !== null
+							? { requires_user_action: toolResult.requiresUserAction }
+							: {}),
+						tool_name: step.toolName
 					}
 				}
 			},
@@ -737,11 +852,7 @@ export class AgenticChatFixtureTurnExecutor {
 		);
 		terminalContext.toolExecutions.push({
 			toolCall: providerToolCall(step),
-			result: {
-				tool_call_id: step.providerToolCallId,
-				result: toolResult,
-				success: true
-			}
+			result: chatToolResult
 		});
 	}
 
@@ -811,7 +922,10 @@ export class AgenticChatFixtureTurnExecutor {
 		message: string,
 		assistantText: string | null,
 		projection: ProjectionState,
-		publisherRegistered: boolean
+		publisherRegistered: boolean,
+		interruptedReason?: string,
+		terminalEventContext?: FinalizeTurnInput['terminalEventContext'],
+		publicError?: string
 	): Promise<AgenticChatFixtureExecutionResultV1> {
 		if (executionGeneration < 1) {
 			return result('recovery_required', envelope.turnRunId, executionGeneration);
@@ -865,7 +979,10 @@ export class AgenticChatFixtureTurnExecutor {
 				usage: null,
 				projection,
 				publisherRegistered,
-				assistantTextOverride: assistantText ?? ''
+				assistantTextOverride: assistantText ?? '',
+				interruptedReason,
+				publicError,
+				terminalEventContext
 			});
 		} catch {
 			return result('recovery_required', envelope.turnRunId, executionGeneration);
@@ -882,7 +999,9 @@ export class AgenticChatFixtureTurnExecutor {
 		projection,
 		publisherRegistered,
 		assistantTextOverride,
-		completionContext
+		interruptedReason,
+		publicError,
+		terminalEventContext
 	}: FinalizeTurnInput): Promise<AgenticChatFixtureExecutionResultV1> {
 		let assistantText =
 			assistantTextOverride ??
@@ -897,12 +1016,22 @@ export class AgenticChatFixtureTurnExecutor {
 				mayPublishTerminal = false;
 			}
 		}
-		const shouldPersistMessage = status === 'completed' || assistantText.length > 0;
+		const shouldPersistMessage =
+			status === 'completed' || (status === 'cancelled' && assistantText.length > 0);
 		const completedMessageMetadata =
 			status === 'completed'
 				? ({ completion_status: 'completed', answer_source: 'model' } as const)
 				: {};
-		const completedEventPayload =
+		const interruptedMessageMetadata =
+			status === 'cancelled' && assistantText.length > 0
+				? {
+						interrupted: true,
+						interrupted_reason: interruptedReason ?? 'cancelled',
+						finished_reason: 'cancelled',
+						partial_tokens: Math.ceil(assistantText.length / 4)
+					}
+				: {};
+		const terminalEventDetails =
 			status === 'completed'
 				? {
 						completion_status: 'completed',
@@ -917,19 +1046,28 @@ export class AgenticChatFixtureTurnExecutor {
 								}
 							: {})
 					}
-				: {};
-		const lastTurnContext =
-			status === 'completed' && completionContext
-				? (buildCompletionLastTurnContext(
-						completionContext.executionInput,
-						assistantText,
-						completionContext.terminalContext
-					) as unknown as JsonObject)
-				: null;
+				: status === 'failed'
+					? { usage: { total_tokens: 0 } }
+					: { usage: null };
+		const includesTerminalEventPair =
+			(status === 'completed' || status === 'cancelled') && terminalEventContext;
+		const terminalLastTurnContext = includesTerminalEventPair
+			? (buildTerminalLastTurnContext(
+					terminalEventContext.executionInput,
+					assistantText,
+					terminalEventContext.terminalContext
+				) as unknown as JsonObject)
+			: null;
+		const includesFailureEventPair = status === 'failed' && terminalEventContext;
 		const timingDraft =
-			status === 'completed' && completionContext
-				? this.buildTimingDraft(completionContext.runtimeTiming, finishedReason)
+			includesTerminalEventPair || includesFailureEventPair
+				? this.buildTimingDraft(terminalEventContext.runtimeTiming, finishedReason)
 				: null;
+		// The rolling context-only RPC remains completion-specific. A cancelled
+		// partial uses the new three-event wrapper only when both optional drafts
+		// are trustworthy; otherwise it safely falls back to the base terminal CAS.
+		const lastTurnContext =
+			status === 'cancelled' && timingDraft === null ? null : terminalLastTurnContext;
 		const terminalInput: AgenticChatTerminalFinalizeInputV1 = {
 			...envelope,
 			userId: claim.userId,
@@ -944,7 +1082,12 @@ export class AgenticChatFixtureTurnExecutor {
 				turn_run_id: claim.turnRunId,
 				execution_generation: claim.executionGeneration,
 				worker_runtime: 'agentic_chat_v1',
-				...completedMessageMetadata
+				tool_round_count: terminalEventContext?.terminalContext.toolExecutions.length
+					? 1
+					: 0,
+				tool_call_count: terminalEventContext?.terminalContext.toolExecutions.length ?? 0,
+				...completedMessageMetadata,
+				...interruptedMessageMetadata
 			},
 			promptTokens: status === 'completed' ? (usage?.promptTokens ?? null) : null,
 			completionTokens: status === 'completed' ? (usage?.completionTokens ?? null) : null,
@@ -955,7 +1098,7 @@ export class AgenticChatFixtureTurnExecutor {
 				status,
 				finished_reason: finishedReason,
 				failure_code: failureCode,
-				...completedEventPayload
+				...terminalEventDetails
 			},
 			lastTurnContext,
 			lastTurnContextTransitionId:
@@ -972,7 +1115,16 @@ export class AgenticChatFixtureTurnExecutor {
 							turnRunId: claim.turnRunId,
 							stage: 'timing'
 						})
-					: null
+					: null,
+			publicError: includesFailureEventPair
+				? (publicError ?? 'An error occurred while streaming.')
+				: null,
+			errorTransitionId: includesFailureEventPair
+				? createStableAgenticChatLifecycleTransitionIdV1({
+						turnRunId: claim.turnRunId,
+						stage: 'error'
+					})
+				: null
 		};
 
 		let terminal: AgenticChatTerminalFinalizeRpcResultV1;
@@ -981,7 +1133,7 @@ export class AgenticChatFixtureTurnExecutor {
 		} catch {
 			return result('recovery_required', claim.turnRunId, claim.executionGeneration);
 		} finally {
-			this.completeRuntimeTiming(completionContext?.runtimeTiming ?? null);
+			this.completeRuntimeTiming(terminalEventContext?.runtimeTiming ?? null);
 		}
 		if (terminal.outcome === 'stale_generation') {
 			return result('stale_generation', claim.turnRunId, claim.executionGeneration);
@@ -1248,7 +1400,7 @@ function extractContextShift(payload: JsonObject): ContextShiftPayload | null {
 	return shift as unknown as ContextShiftPayload;
 }
 
-function buildCompletionLastTurnContext(
+function buildTerminalLastTurnContext(
 	executionInput: AgenticChatWorkerExecutionInputV1,
 	assistantText: string,
 	terminalContext: TerminalContextState
@@ -1280,6 +1432,56 @@ function validateFinish(reason: string, usage: AgenticChatFixtureUsageV1 | null)
 	}
 }
 
+function validateReadToolExecution(execution: AgenticChatReadToolExecutionV1): void {
+	if (!execution || typeof execution !== 'object' || Array.isArray(execution)) {
+		throw new Error('Fixture read-tool execution is invalid');
+	}
+	if (
+		!execution.result ||
+		typeof execution.result !== 'object' ||
+		Array.isArray(execution.result)
+	) {
+		throw new Error('Fixture read-tool result is invalid');
+	}
+	if (!Array.isArray(execution.affectedEntities)) {
+		throw new Error('Fixture read-tool affected entities are invalid');
+	}
+	if (
+		execution.affectedEntities.some(
+			(entity) => !entity || typeof entity !== 'object' || Array.isArray(entity)
+		)
+	) {
+		throw new Error('Fixture read-tool affected entities are invalid');
+	}
+	for (const [label, value] of [
+		['executionTimeMs', execution.executionTimeMs],
+		['tokensConsumed', execution.tokensConsumed],
+		['resultCount', execution.resultCount]
+	] as const) {
+		if (value !== null && (!Number.isSafeInteger(value) || value < 0)) {
+			throw new Error(`Fixture read-tool ${label} is invalid`);
+		}
+	}
+	if (execution.toolCategory !== null && !canonicalText(execution.toolCategory, 128)) {
+		throw new Error('Fixture read-tool category is invalid');
+	}
+	if (execution.zeroResult !== null && typeof execution.zeroResult !== 'boolean') {
+		throw new Error('Fixture read-tool zero-result evidence is invalid');
+	}
+	if (
+		(execution.resultCount === null) !== (execution.zeroResult === null) ||
+		(execution.resultCount !== null && execution.zeroResult !== (execution.resultCount === 0))
+	) {
+		throw new Error('Fixture read-tool result-count evidence is inconsistent');
+	}
+	if (
+		execution.requiresUserAction !== null &&
+		typeof execution.requiresUserAction !== 'boolean'
+	) {
+		throw new Error('Fixture read-tool user-action evidence is invalid');
+	}
+}
+
 function classifyFailure(
 	error: unknown,
 	executionStarted: boolean,
@@ -1288,6 +1490,7 @@ function classifyFailure(
 	// Once an irreversible effect reports uncertainty, a concurrent cancellation
 	// cannot downgrade the recovery classification to ordinary cancellation.
 	if (error instanceof AgenticChatEffectExecutionError) return error.failureClass;
+	if (error instanceof AgenticChatToolExecutionFenceError) return error.failureClass;
 	if (error instanceof AgenticChatProviderExecutionError) return error.failureClass;
 	const reason = signal.aborted ? signal.reason : error;
 	if (reason instanceof AgenticChatCancellationError) return 'cancelled';
@@ -1299,6 +1502,13 @@ function classifyFailure(
 	}
 	if (signal.aborted) return executionStarted ? 'timeout_post_start' : 'timeout_pre_start';
 	return executionStarted ? 'unknown' : 'transient_infra';
+}
+
+function cancellationInterruptionReason(error: unknown, signal: AbortSignal): string | undefined {
+	const reason = signal.aborted ? signal.reason : error;
+	return reason instanceof AgenticChatCancellationError && canonicalText(reason.cancelReason, 256)
+		? reason.cancelReason
+		: undefined;
 }
 
 function canonicalErrorMessage(message: string): string {

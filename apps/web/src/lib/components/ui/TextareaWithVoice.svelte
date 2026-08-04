@@ -70,6 +70,8 @@
 		onVoiceNoteGroupReady?: (groupId: string) => void;
 		onVoiceNoteSegmentSaved?: (voiceNote: VoiceNote) => void;
 		onVoiceNoteSegmentError?: (error: string) => void;
+		/** Called when the user explicitly stops capture from the voice UI. */
+		onVoiceStopRequested?: () => void;
 		// Snippet for action buttons
 		actions?: import('svelte').Snippet;
 		// Snippet for status row
@@ -131,6 +133,7 @@
 		onVoiceNoteGroupReady,
 		onVoiceNoteSegmentSaved,
 		onVoiceNoteSegmentError,
+		onVoiceStopRequested,
 		// Snippet for action buttons
 		actions,
 		// Snippet for status row (legacy support)
@@ -903,10 +906,16 @@
 		haptic('light');
 
 		if (isRecording || isInitializing) {
+			onVoiceStopRequested?.();
 			await stopVoiceRecording();
 		} else {
 			await startVoiceRecording();
 		}
+	}
+
+	function requestVoiceStop() {
+		onVoiceStopRequested?.();
+		void stopVoiceRecording();
 	}
 
 	async function stopRecordingInternal() {
@@ -947,7 +956,7 @@
 		if (isRecording && (event.key === ' ' || event.key === 'Enter')) {
 			event.preventDefault();
 			event.stopPropagation();
-			stopVoiceRecording();
+			requestVoiceStop();
 		}
 	}
 
@@ -967,7 +976,7 @@
 		if (isTypingElsewhere) return;
 
 		event.preventDefault();
-		stopVoiceRecording();
+		requestVoiceStop();
 	}
 
 	// Set up global keydown listener when recording starts

@@ -65,6 +65,7 @@ export interface AgentStateMessageSnapshot {
 }
 
 export interface AgentStateToolSummary {
+	tool_call_id?: string;
 	tool_name?: string;
 	success?: boolean;
 	error?: string;

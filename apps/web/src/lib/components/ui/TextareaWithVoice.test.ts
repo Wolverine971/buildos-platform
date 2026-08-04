@@ -124,6 +124,7 @@ describe('TextareaWithVoice state ownership', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Stop recording' }));
 		expect(screen.getByTestId('recording')).toHaveTextContent('false');
 		expect(screen.getByTestId('stopping')).toHaveTextContent('true');
+		expect(screen.getByTestId('stop-request-count')).toHaveTextContent('1');
 
 		voiceMock.stop?.resolve();
 		await waitFor(() => {

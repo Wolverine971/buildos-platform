@@ -194,6 +194,67 @@ describe('DocumentModal document loading', () => {
 		});
 	});
 
+	it('shows Document Interact in the document header and opens its dock', async () => {
+		const fetchMock = vi.fn((input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url.includes('/documents/document-a/full')) {
+				return Promise.resolve(documentResponse('document-a', 'Document A'));
+			}
+			if (url.includes('/api/onto/edges/linked?')) {
+				return Promise.resolve(emptyLinkedEntitiesResponse());
+			}
+			return Promise.resolve(jsonResponse({ data: {} }));
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		render(DocumentModal, {
+			props: {
+				projectId: 'project-1',
+				documentId: 'document-a',
+				isOpen: true
+			}
+		});
+
+		await waitFor(() => expect(screen.getAllByDisplayValue('Document A')).toHaveLength(2));
+		const trigger = screen.getByRole('button', { name: 'Document Interact' });
+		expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+		await fireEvent.click(trigger);
+
+		expect(trigger).toHaveAttribute('aria-expanded', 'true');
+		expect(screen.getByLabelText('Document interaction')).toBeInTheDocument();
+	});
+
+	it('portals the More actions menu above the modal clipping context', async () => {
+		const fetchMock = vi.fn((input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url.includes('/documents/document-a/full')) {
+				return Promise.resolve(documentResponse('document-a', 'Document A'));
+			}
+			if (url.includes('/api/onto/edges/linked?')) {
+				return Promise.resolve(emptyLinkedEntitiesResponse());
+			}
+			return Promise.resolve(jsonResponse({ data: {} }));
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		render(DocumentModal, {
+			props: {
+				projectId: 'project-1',
+				documentId: 'document-a',
+				isOpen: true
+			}
+		});
+
+		await waitFor(() => expect(screen.getAllByDisplayValue('Document A')).toHaveLength(2));
+		await fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+
+		const menu = screen.getByRole('menu');
+		expect(menu.parentElement).toBe(document.body);
+		expect(screen.getByRole('menuitem', { name: 'Copy document URL' })).toBeVisible();
+		expect(screen.getByRole('menuitem', { name: 'Open document page' })).toBeVisible();
+	});
+
 	it('keeps the latest document when an obsolete request ignores abort and resolves last', async () => {
 		const documentA = deferred<Response>();
 		const documentB = deferred<Response>();

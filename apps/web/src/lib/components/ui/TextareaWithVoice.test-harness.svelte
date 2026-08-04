@@ -10,6 +10,7 @@
 	let voiceError = $state('');
 	let recordingDuration = $state(0);
 	let canUseLiveTranscript = $state(false);
+	let stopRequestCount = $state(0);
 </script>
 
 <TextareaWithVoice
@@ -21,6 +22,7 @@
 	bind:voiceError
 	bind:recordingDuration
 	bind:canUseLiveTranscript
+	onVoiceStopRequested={() => (stopRequestCount += 1)}
 	showStatusRow={false}
 />
 
@@ -34,3 +36,4 @@
 <output data-testid="voice-error">{voiceError}</output>
 <output data-testid="duration">{recordingDuration}</output>
 <output data-testid="live-transcript-capability">{String(canUseLiveTranscript)}</output>
+<output data-testid="stop-request-count">{stopRequestCount}</output>

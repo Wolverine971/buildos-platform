@@ -1172,15 +1172,11 @@ export const POST: RequestHandler = async ({
 		toolCall: ChatToolCall;
 		result: ChatToolResult;
 	}> = [];
-	// D4: incremental tool-execution persistence. `onToolResult` fires exactly once
-	// per execution pushed to the orchestrator's toolExecutions array, in order, so a
-	// simple counter yields a sequence_index that matches the end-of-turn bulk persist
-	// (buildToolExecutionInsertRows uses index+1). Rows are written as each tool
-	// completes so a mid-turn lambda kill still leaves a record of applied writes; the
-	// end-of-turn persist then attaches the assistant message_id to those rows instead
-	// of re-inserting them (keyed by turn_run_id + sequence_index).
+	// D4: incremental tool-execution persistence. Rows are written as mutations
+	// complete so a mid-turn lambda kill still leaves a record of applied writes.
+	// sequence_index records observed completion order only; end-of-turn persistence
+	// correlates the row by the stable (turn_run_id, provider_tool_call_id) identity.
 	let incrementalToolSequence = 0;
-	const incrementallyPersistedToolSequences = new Set<number>();
 	const baseAgentStream = SSEResponse.createChatStream({
 		heartbeatIntervalMs: FASTCHAT_SSE_HEARTBEAT_INTERVAL_MS
 	});
@@ -3177,11 +3173,8 @@ export const POST: RequestHandler = async ({
 						// from normalizedExecutions) so the incremental row matches the final
 						// row byte-for-byte apart from message_id.
 						if (turnRunId) {
-							// Advance the sequence counter for EVERY execution (read or write)
-							// so it stays aligned with the end-of-turn bulk persist, which
-							// assigns sequence_index by array index over all executions. Skipping
-							// reads here would drift the counter and break the incremental/
-							// end-of-turn reconciliation keyed on (turn_run_id, sequence_index).
+							// Keep a human-readable completion ordinal for diagnostics. It is
+							// deliberately not used as the persistence identity.
 							const sequenceIndex = ++incrementalToolSequence;
 							// D4: only WRITES need incremental crash-recovery persistence — reads
 							// are re-derivable, so we skip the per-read DB round-trip on the hot
@@ -3203,7 +3196,6 @@ export const POST: RequestHandler = async ({
 										result,
 										sequenceIndex
 									});
-									incrementallyPersistedToolSequences.add(sequenceIndex);
 								} catch (error) {
 									// Non-fatal: the end-of-turn bulk persist is the safety net for
 									// a turn that completes. Log and keep streaming.
@@ -3216,6 +3208,7 @@ export const POST: RequestHandler = async ({
 											sessionId: session.id,
 											contextType: effectiveContextType,
 											toolName: toolCall.function.name,
+											toolCallId: toolCall.id,
 											sequenceIndex
 										}
 									});
@@ -4047,7 +4040,6 @@ export const POST: RequestHandler = async ({
 					projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 					contextType: effectiveContextType,
 					interrupted: true,
-					persistedSequenceIndices: incrementallyPersistedToolSequences,
 					logError: logFastChatError
 				});
 				observabilityWriter.trackDetachedTask(
@@ -4276,7 +4268,6 @@ export const POST: RequestHandler = async ({
 				executions: normalizedExecutions,
 				projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 				contextType: effectiveContextType,
-				persistedSequenceIndices: incrementallyPersistedToolSequences,
 				logError: logFastChatError
 			});
 			observabilityWriter.trackDetachedTask(
@@ -4591,7 +4582,6 @@ export const POST: RequestHandler = async ({
 					executions: completedToolExecutions,
 					projectId: projectIdForLogs,
 					contextType,
-					persistedSequenceIndices: incrementallyPersistedToolSequences,
 					logError: logFastChatError
 				});
 			}

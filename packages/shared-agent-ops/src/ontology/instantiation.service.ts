@@ -56,6 +56,19 @@ type InstantiationCounts = {
 	edges: number;
 };
 
+export interface InstantiatedEntityRef {
+	kind: string;
+	id: string;
+	project_id: string;
+	temp_id?: string;
+}
+
+export interface InstantiateProjectResult {
+	project_id: string;
+	counts: InstantiationCounts;
+	created_entities: InstantiatedEntityRef[];
+}
+
 type EdgeInsert = {
 	project_id: string;
 	src_kind: string;
@@ -287,7 +300,7 @@ export async function instantiateProject(
 	spec: ProjectSpec,
 	userId: string,
 	options: ProjectInstantiationOptions = {}
-): Promise<{ project_id: string; counts: InstantiationCounts }> {
+): Promise<InstantiateProjectResult> {
 	// Double-validate to ensure service can be called directly (tests, scripts)
 	const validation = validateProjectSpecStruct(spec);
 	if (!validation.valid) {
@@ -1092,9 +1105,39 @@ export async function instantiateProject(
 			counts.edges = edgeCount;
 		}
 
+		const tempIdByEntityKey = new Map<string, string>();
+		for (const [tempId, entity] of entityIdByTempId) {
+			tempIdByEntityKey.set(`${entity.kind}:${entity.id}`, tempId);
+		}
+		const createdEntityRefs: InstantiatedEntityRef[] = [
+			{ kind: 'project', id: typedProjectId, project_id: typedProjectId },
+			...[
+				{ kind: 'goal', ids: inserted.goals },
+				{ kind: 'requirement', ids: inserted.requirements },
+				{ kind: 'plan', ids: inserted.plans },
+				{ kind: 'task', ids: inserted.tasks },
+				{ kind: 'document', ids: inserted.documents },
+				{ kind: 'source', ids: inserted.sources },
+				{ kind: 'metric', ids: inserted.metrics },
+				{ kind: 'milestone', ids: inserted.milestones },
+				{ kind: 'risk', ids: inserted.risks }
+			].flatMap(({ kind, ids }) =>
+				ids.map((id) => {
+					const tempId = tempIdByEntityKey.get(`${kind}:${id}`);
+					return {
+						kind,
+						id,
+						project_id: typedProjectId,
+						...(tempId ? { temp_id: tempId } : {})
+					};
+				})
+			)
+		];
+
 		return {
 			project_id: typedProjectId,
-			counts
+			counts,
+			created_entities: createdEntityRefs
 		};
 	} catch (error) {
 		await cleanupPartialInstantiation(client, inserted);

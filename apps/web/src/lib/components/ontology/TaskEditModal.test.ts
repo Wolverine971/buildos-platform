@@ -39,6 +39,20 @@ function taskResponse(id: string, title: string): Response {
 
 describe('TaskEditModal task loading', () => {
 	beforeEach(() => {
+		Object.defineProperty(window, 'matchMedia', {
+			configurable: true,
+			writable: true,
+			value: vi.fn((query: string) => ({
+				matches: query === '(min-width: 1024px)',
+				media: query,
+				onchange: null,
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+				addListener: vi.fn(),
+				removeListener: vi.fn(),
+				dispatchEvent: vi.fn()
+			}))
+		});
 		Object.defineProperty(window, 'scrollTo', {
 			configurable: true,
 			writable: true,
@@ -54,6 +68,75 @@ describe('TaskEditModal task loading', () => {
 				play: vi.fn()
 			}))
 		});
+	});
+
+	it('opens with task details closed behind the right-edge tab', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() => Promise.resolve(taskResponse('task-a', 'Task A')))
+		);
+
+		render(TaskEditModal, {
+			props: {
+				taskId: 'task-a',
+				projectId: 'project-1',
+				onClose: vi.fn()
+			}
+		});
+
+		await screen.findByDisplayValue('Task A');
+		const openButton = screen.getByRole('button', { name: 'Open Task details' });
+		const panelId = openButton.getAttribute('aria-controls');
+		const panel = document.getElementById(String(panelId));
+
+		expect(openButton).toHaveAttribute('aria-expanded', 'false');
+		expect(openButton.parentElement).toHaveClass('right-0');
+		expect(panel).toHaveAttribute('aria-hidden', 'true');
+		expect((panel as HTMLElement & { inert: boolean }).inert).toBe(true);
+
+		await fireEvent.click(openButton);
+
+		const closeButton = screen.getByRole('button', { name: 'Close Task details' });
+		expect(closeButton).toHaveAttribute('aria-expanded', 'true');
+		expect(closeButton.parentElement).toHaveClass('right-80');
+		expect(panel).toHaveAttribute('aria-hidden', 'false');
+		expect((panel as HTMLElement & { inert: boolean }).inert).toBe(false);
+	});
+
+	it('keeps task details available inline below the desktop breakpoint', async () => {
+		Object.defineProperty(window, 'matchMedia', {
+			configurable: true,
+			writable: true,
+			value: vi.fn((query: string) => ({
+				matches: false,
+				media: query,
+				onchange: null,
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+				addListener: vi.fn(),
+				removeListener: vi.fn(),
+				dispatchEvent: vi.fn()
+			}))
+		});
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() => Promise.resolve(taskResponse('task-a', 'Task A')))
+		);
+
+		render(TaskEditModal, {
+			props: {
+				taskId: 'task-a',
+				projectId: 'project-1',
+				onClose: vi.fn()
+			}
+		});
+
+		await screen.findByDisplayValue('Task A');
+		const button = screen.getByRole('button', { name: 'Open Task details' });
+		const panel = document.getElementById(String(button.getAttribute('aria-controls')));
+
+		expect(panel).toHaveAttribute('aria-hidden', 'false');
+		expect((panel as HTMLElement & { inert: boolean }).inert).toBe(false);
 	});
 
 	afterEach(() => {

@@ -715,7 +715,7 @@ async function loadHistoryToolExecutions(params: {
 	let query = params.serviceClient
 		.from('chat_tool_executions')
 		.select(
-			'message_id, tool_name, gateway_op, sequence_index, success, error_message, arguments, result'
+			'message_id, provider_tool_call_id, tool_name, gateway_op, sequence_index, success, error_message, arguments, result'
 		)
 		.in('message_id', params.messageIds);
 	if (params.skillLoadsOnly) {

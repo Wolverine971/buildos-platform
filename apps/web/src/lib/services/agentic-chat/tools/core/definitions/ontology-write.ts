@@ -805,9 +805,8 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 					},
 					entities: {
 						type: 'array',
-						default: [],
 						description:
-							'Entity list. Labels: goal/plan/metric name; task/milestone/document/risk title; requirement text; source uri.',
+							'Top-level entity list; never nest this under project. Use [] when empty. Labels: goal/plan/metric name; task/milestone/document/risk title; requirement text; source uri.',
 						items: {
 							type: 'object',
 							properties: {
@@ -854,9 +853,8 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 					},
 					relationships: {
 						type: 'array',
-						default: [],
 						description:
-							'Required directional temp_id connections between entities defined in the entities array. The project itself is implicit and must NOT be a relationship endpoint. Items can be [from, to] or { from, to, rel?, intent? }.',
+							'Top-level directional temp_id connections between entities defined in the entities array; never nest this under project and use [] when empty. The project itself is implicit and must NOT be a relationship endpoint. Items can be [from, to] or { from, to, rel?, intent? }.',
 						items: {
 							oneOf: [
 								{

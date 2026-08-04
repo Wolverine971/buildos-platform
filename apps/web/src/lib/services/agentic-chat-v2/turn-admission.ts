@@ -27,6 +27,7 @@ export type LegacyFallbackHistoryAttachmentRow = {
 
 export type LegacyFallbackHistoryToolExecutionRow = {
 	message_id: string | null;
+	provider_tool_call_id?: string | null;
 	tool_name: string;
 	gateway_op: string | null;
 	sequence_index: number | null;
@@ -278,7 +279,9 @@ export async function admitLegacyAgenticChatTurn(
 	// The workspace package's built declaration can lag the source-generated
 	// Database type during a migration change. Keep this compatibility cast
 	// local and fully typed until the generated package is rebuilt/deployed.
-	const rpc = params.supabase.rpc.bind(params.supabase) as unknown as LegacyAgenticChatAdmissionRpc;
+	const rpc = params.supabase.rpc.bind(
+		params.supabase
+	) as unknown as LegacyAgenticChatAdmissionRpc;
 	const { data, error } = await rpc('admit_legacy_agentic_chat_turn', {
 		p_user_id: params.userId,
 		p_session_id: params.sessionId,

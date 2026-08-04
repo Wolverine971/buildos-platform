@@ -69,7 +69,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		return ApiResponse.success({
 			project_id: result.project_id,
-			counts: result.counts
+			counts: result.counts,
+			created_entities: result.created_entities
 		});
 	} catch (err) {
 		if (err instanceof OntologyInstantiationError) {

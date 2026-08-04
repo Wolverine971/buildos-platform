@@ -34,6 +34,59 @@ describe('affected entity extraction', () => {
 		]);
 	});
 
+	it('infers a created document from the create_task_document composite write', () => {
+		const refs = extractAffectedEntitiesFromToolExecution({
+			tool_name: 'create_task_document',
+			arguments: {
+				task_id: 'task-1',
+				title: 'Launch brief'
+			},
+			result: {
+				document: {
+					id: 'doc-1',
+					title: 'Launch brief',
+					project_id: 'project-1'
+				}
+			},
+			success: true
+		});
+
+		expect(refs).toEqual([
+			{
+				kind: 'document',
+				id: 'doc-1',
+				title: 'Launch brief',
+				projectId: 'project-1',
+				operation: 'created',
+				url: '/projects/project-1?doc=doc-1'
+			}
+		]);
+	});
+
+	it('classifies create_task_document with an existing document_id as a link', () => {
+		const refs = extractAffectedEntitiesFromToolExecution({
+			tool_name: 'create_task_document',
+			arguments: {
+				task_id: 'task-1',
+				document_id: 'doc-1'
+			},
+			result: {
+				document: {
+					id: 'doc-1',
+					title: 'Existing brief',
+					project_id: 'project-1'
+				}
+			},
+			success: true
+		});
+
+		expect(refs[0]).toMatchObject({
+			kind: 'document',
+			id: 'doc-1',
+			operation: 'linked'
+		});
+	});
+
 	it('prefers persisted affected entity refs when present', () => {
 		const refs = extractAffectedEntitiesFromToolExecution({
 			tool_name: 'update_onto_document',

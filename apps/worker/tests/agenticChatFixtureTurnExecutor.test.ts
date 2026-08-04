@@ -5,6 +5,12 @@ import {
 	createAgentStreamEventIdV1
 } from '@buildos/shared-types';
 import {
+	AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1,
+	AGENTIC_CHAT_PARTIAL_CANCELLATION_GOLDEN_V1,
+	AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1,
+	AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1,
+	AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1,
+	AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1,
 	diffAgenticChatParityRunsV1,
@@ -22,6 +28,8 @@ import {
 	type AgenticChatFixtureProviderStepV1
 } from '../src/workers/agentic-chat/fixtureTurnExecutor';
 import { AgenticChatProviderExecutionError } from '../src/workers/agentic-chat/providerContract';
+import type { AgenticChatPreparedPromptSnapshotV1 } from '../src/workers/agentic-chat/providerContract';
+import { createStableAgenticChatPromptSnapshotIdV1 } from '../src/workers/agentic-chat/promptSnapshot';
 import type { AgenticChatRuntimeTimingSnapshotV1 } from '../src/workers/agentic-chat/runtimeTiming';
 import { AgenticChatStreamPublisher } from '../src/workers/agentic-chat/streamPublisher';
 
@@ -39,6 +47,19 @@ const RESULT_TRANSITION_ID = 'b0000000-0000-4000-8000-00000000000b';
 const LOGICAL_OPERATION_ID = 'c0000000-0000-4000-8000-00000000000c';
 const EFFECT_ID = 'd0000000-0000-5000-8000-00000000000d';
 const EXECUTION_GENERATION = 1;
+
+const fixturePromptSnapshot = {
+	snapshotVersion: 'agentic_chat_worker_prompt_v1',
+	modelMessages: [
+		{ role: 'system', content: 'Fixture only' },
+		{ role: 'user', content: 'Use the fixture' }
+	],
+	systemPromptSha256: 'a'.repeat(64),
+	messagesSha256: 'b'.repeat(64),
+	systemPromptChars: 12,
+	messageChars: 27,
+	approxPromptTokens: 7
+} satisfies AgenticChatPreparedPromptSnapshotV1;
 
 const claim = {
 	outcome: 'claimed',
@@ -189,6 +210,8 @@ function createHarness(
 		publisherConfig?: ConstructorParameters<typeof AgenticChatStreamPublisher>[1];
 		timingClockValues?: number[];
 		failBroadcastType?: string;
+		promptSnapshot?: AgenticChatPreparedPromptSnapshotV1;
+		promptSnapshotError?: Error;
 	} = {}
 ) {
 	let sequence = 0;
@@ -319,7 +342,91 @@ function createHarness(
 		}),
 		finalize: vi.fn(async (input: AgenticChatTerminalFinalizeInputV1) => {
 			const lastTurnContext = input.lastTurnContext ?? null;
-			if (input.status === 'completed' && lastTurnContext) {
+			if (
+				input.status === 'failed' &&
+				input.publicError &&
+				input.errorTransitionId &&
+				input.timingDraft &&
+				input.timingTransitionId
+			) {
+				const timingDraft = input.timingDraft as Record<string, unknown>;
+				const draftPhases = timingDraft.phases as Record<string, unknown>;
+				const errorSequence = sequence + 1;
+				const timingSequence = sequence + 2;
+				const terminalSequence = sequence + 3;
+				const terminalCommittedAt = AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1.clockIso;
+				sequence = timingSequence;
+				return terminalReceipt('failed', terminalSequence, {
+					finished_reason: input.finishedReason,
+					failure_code: input.failureCode,
+					assistant_message_id: null,
+					terminalized_at: terminalCommittedAt,
+					preterminal_events: [
+						{
+							outcome: 'persisted',
+							publish_allowed: true,
+							turn_run_id: TURN_RUN_ID,
+							queue_job_id: QUEUE_JOB_ID,
+							session_id: SESSION_ID,
+							user_id: USER_ID,
+							stream_run_id: executionInput.streamRunId,
+							client_turn_id: executionInput.clientTurnId,
+							execution_generation: EXECUTION_GENERATION,
+							sequence_index: errorSequence,
+							event_id: createAgentStreamEventIdV1(
+								TURN_RUN_ID,
+								EXECUTION_GENERATION,
+								errorSequence
+							),
+							phase: 'finalize',
+							event_type: 'error',
+							durable: true,
+							transition_id: input.errorTransitionId,
+							event_payload: { type: 'error', error: input.publicError },
+							reconcile_required: true,
+							persisted_at: terminalCommittedAt
+						},
+						{
+							outcome: 'persisted',
+							publish_allowed: true,
+							turn_run_id: TURN_RUN_ID,
+							queue_job_id: QUEUE_JOB_ID,
+							session_id: SESSION_ID,
+							user_id: USER_ID,
+							stream_run_id: executionInput.streamRunId,
+							client_turn_id: executionInput.clientTurnId,
+							execution_generation: EXECUTION_GENERATION,
+							sequence_index: timingSequence,
+							event_id: createAgentStreamEventIdV1(
+								TURN_RUN_ID,
+								EXECUTION_GENERATION,
+								timingSequence
+							),
+							phase: 'finalize',
+							event_type: 'timing',
+							durable: true,
+							transition_id: input.timingTransitionId,
+							event_payload: {
+								type: 'timing',
+								timing: {
+									...timingDraft,
+									assistant_persisted_at: null,
+									done_emitted_at: null,
+									terminal_committed_at: terminalCommittedAt,
+									phases: { ...draftPhases, total_request_ms: 3_000 }
+								}
+							},
+							reconcile_required: true,
+							persisted_at: terminalCommittedAt
+						}
+					]
+				});
+			}
+			const terminalCommittedAt =
+				input.status === 'cancelled'
+					? AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.clockIso
+					: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.clockIso;
+			if ((input.status === 'completed' || input.status === 'cancelled') && lastTurnContext) {
 				if (input.timingDraft && input.timingTransitionId) {
 					const timingDraft = input.timingDraft as Record<string, unknown>;
 					const draftPhases = timingDraft.phases as Record<string, unknown>;
@@ -328,8 +435,8 @@ function createHarness(
 					const terminalSequence = sequence + 3;
 					sequence = timingSequence;
 					return terminalReceipt(input.status, terminalSequence, {
-						failure_code: null,
-						assistant_message_id: ASSISTANT_MESSAGE_ID,
+						failure_code: input.failureCode,
+						assistant_message_id: input.assistantMessageId,
 						preterminal_events: [
 							{
 								outcome: 'persisted',
@@ -355,8 +462,7 @@ function createHarness(
 									type: 'last_turn_context',
 									context: {
 										...lastTurnContext,
-										timestamp:
-											AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.clockIso
+										timestamp: terminalCommittedAt
 									}
 								},
 								reconcile_required: true,
@@ -386,9 +492,9 @@ function createHarness(
 									type: 'timing',
 									timing: {
 										...timingDraft,
-										assistant_persisted_at: '2026-08-03T12:00:00.000Z',
+										assistant_persisted_at: terminalCommittedAt,
 										done_emitted_at: null,
-										terminal_committed_at: '2026-08-03T12:00:00.000Z',
+										terminal_committed_at: terminalCommittedAt,
 										phases: { ...draftPhases, total_request_ms: 3_000 }
 									}
 								},
@@ -400,8 +506,8 @@ function createHarness(
 				}
 				sequence += 1;
 				return terminalReceipt(input.status, sequence + 1, {
-					failure_code: null,
-					assistant_message_id: ASSISTANT_MESSAGE_ID,
+					failure_code: input.failureCode,
+					assistant_message_id: input.assistantMessageId,
 					preterminal_event: {
 						outcome: 'persisted',
 						publish_allowed: true,
@@ -426,7 +532,7 @@ function createHarness(
 							type: 'last_turn_context',
 							context: {
 								...lastTurnContext,
-								timestamp: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.clockIso
+								timestamp: terminalCommittedAt
 							}
 						},
 						reconcile_required: true,
@@ -435,22 +541,56 @@ function createHarness(
 				});
 			}
 			return terminalReceipt(input.status, sequence + 1, {
-				failure_code: input.status === 'completed' ? null : input.status,
-				assistant_message_id: input.status === 'completed' ? ASSISTANT_MESSAGE_ID : null
+				failure_code: input.failureCode,
+				assistant_message_id: input.assistantMessageId
 			});
 		}),
 		completeQueueJob: vi.fn(async () => true)
 	};
-	const provider = {
-		stream: vi.fn(() => {
-			log.push('provider');
-			return (async function* () {
-				for (const step of steps) yield step;
-			})();
+	const providerStream = vi.fn(() => {
+		log.push('provider');
+		return (async function* () {
+			for (const step of steps) yield step;
+		})();
+	});
+	const provider = options.promptSnapshot
+		? {
+				stream: providerStream,
+				prepare: vi.fn(async () => ({
+					promptSnapshot: options.promptSnapshot,
+					stream: providerStream,
+					release: vi.fn()
+				}))
+			}
+		: {
+				stream: providerStream
+			};
+	const promptSnapshots = {
+		persist: vi.fn(async () => {
+			log.push('prompt_snapshot');
+			if (options.promptSnapshotError) throw options.promptSnapshotError;
+			return {
+				outcome: 'persisted' as const,
+				snapshotAvailable: true,
+				promptSnapshotId: createStableAgenticChatPromptSnapshotIdV1(TURN_RUN_ID)
+			};
 		})
 	};
+	const promptSnapshotErrors: unknown[] = [];
 	const input = { load: vi.fn(async () => executionInput) };
-	const readTool = { execute: vi.fn(async () => ({ title: 'Fixture project' })) };
+	const readTool = {
+		execute: vi.fn(async () => ({
+			result: { title: 'Fixture project' },
+			executionTimeMs: null,
+			tokensConsumed: null,
+			affectedEntities: [],
+			toolCategory: null,
+			resultCount: null,
+			zeroResult: null,
+			requiresUserAction: null
+		}))
+	};
+	const toolExecutions = { persistRead: vi.fn(async () => undefined) };
 	const mutation = {
 		execute: vi.fn(async () => ({
 			effectId: EFFECT_ID,
@@ -470,7 +610,10 @@ function createHarness(
 		publisher,
 		cancellation: cancellation as never,
 		provider,
+		promptSnapshots,
+		onPromptSnapshotError: (error) => promptSnapshotErrors.push(error),
 		readTool,
+		toolExecutions,
 		mutation,
 		createId: () => ASSISTANT_MESSAGE_ID,
 		timingClock: timingClockValues
@@ -493,7 +636,10 @@ function createHarness(
 		control,
 		input,
 		provider,
+		promptSnapshots,
+		promptSnapshotErrors,
 		readTool,
+		toolExecutions,
 		mutation,
 		cancellation,
 		cancellationController,
@@ -506,6 +652,69 @@ function createHarness(
 }
 
 describe('AgenticChatFixtureTurnExecutor', () => {
+	it('persists one exact prompt snapshot after the first durable response only', async () => {
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'first' },
+				{ type: 'text_delta', text: ' second' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{ promptSnapshot: fixturePromptSnapshot }
+		);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(harness.promptSnapshots.persist).toHaveBeenCalledOnce();
+		expect(harness.promptSnapshots.persist).toHaveBeenCalledWith({
+			turnRunId: TURN_RUN_ID,
+			userId: USER_ID,
+			queueJobId: QUEUE_JOB_ID,
+			processingToken: PROCESSING_TOKEN,
+			executionGeneration: EXECUTION_GENERATION,
+			promptSnapshotId: createStableAgenticChatPromptSnapshotIdV1(TURN_RUN_ID),
+			prompt: fixturePromptSnapshot
+		});
+		expect(harness.log.indexOf('prompt_snapshot')).toBeGreaterThan(
+			harness.log.indexOf('provider')
+		);
+		await harness.publisher.stop();
+	});
+
+	it('reports prompt-snapshot failure without overturning durable response truth', async () => {
+		const error = new Error('snapshot database unavailable');
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'response survives' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{ promptSnapshot: fixturePromptSnapshot, promptSnapshotError: error }
+		);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(harness.promptSnapshotErrors).toEqual([error]);
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({ assistantText: 'response survives' })
+		);
+		await harness.publisher.stop();
+	});
+
+	it('does not create a snapshot when the provider produces no response text', async () => {
+		const harness = createHarness([{ type: 'finish', finishedReason: 'stop', usage: null }], {
+			promptSnapshot: fixturePromptSnapshot
+		});
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed'
+		});
+		expect(harness.promptSnapshots.persist).not.toHaveBeenCalled();
+		await harness.publisher.stop();
+	});
+
 	it('commits and publishes deterministic timing between context and done', async () => {
 		const harness = createHarness(
 			[
@@ -712,10 +921,19 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			}
 		]);
 		harness.readTool.execute.mockResolvedValueOnce({
-			project: {
-				id: 'da000000-0000-4000-8000-000000000001',
-				name: 'Fixture project'
-			}
+			result: {
+				project: {
+					id: 'da000000-0000-4000-8000-000000000001',
+					name: 'Fixture project'
+				}
+			},
+			executionTimeMs: null,
+			tokensConsumed: null,
+			affectedEntities: [],
+			toolCategory: null,
+			resultCount: null,
+			zeroResult: null,
+			requiresUserAction: null
 		});
 
 		await expect(harness.executor.execute(job())).resolves.toEqual({
@@ -930,17 +1148,21 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 	});
 
 	it('isolates the intentional async timing divergence from the remaining legacy differential', async () => {
-		const harness = createHarness([
-			{
-				type: 'text_delta',
-				text: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.assistantText
-			},
-			{
-				type: 'finish',
-				finishedReason: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.finishedReason,
-				usage: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.usage
-			}
-		]);
+		const harness = createHarness(
+			[
+				{
+					type: 'text_delta',
+					text: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.assistantText
+				},
+				{
+					type: 'finish',
+					finishedReason:
+						AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.finishedReason,
+					usage: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.usage
+				}
+			],
+			{ promptSnapshot: fixturePromptSnapshot }
+		);
 		const fixtureExecutionInput = {
 			...executionInput,
 			requestPayload: {
@@ -995,7 +1217,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 							? [{ event_type: 'turn_phase_changed', phase: input.phase }]
 							: [];
 					}),
-					prompt_snapshot_count: 0
+					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}
 			});
 			const differential = diffAgenticChatParityRunsV1(
@@ -1028,8 +1250,155 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				{ path: '/metadata/lifecycle_events/3', kind: 'missing_in_actual' },
 				{ path: '/metadata/lifecycle_events/4', kind: 'missing_in_actual' },
 				{ path: '/metadata/lifecycle_events/5', kind: 'missing_in_actual' },
+				{ path: '/metadata/lifecycle_events/6', kind: 'missing_in_actual' }
+			]);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('exposes the exact deterministic read-only tool parity gaps', async () => {
+		const harness = createHarness(
+			[
+				{
+					type: 'semantic',
+					transitionId: 'e0000000-0000-4000-8000-00000000000e',
+					phase: 'stream',
+					eventType: 'agent_state',
+					currentActivity: 'Planning the first step...',
+					eventPayload: {
+						type: 'agent_state',
+						state: 'thinking',
+						contextType: 'global',
+						details: 'Planning the first step...',
+						activity_visibility: 'activity_log'
+					}
+				},
+				{
+					type: 'read_tool',
+					callTransitionId: CALL_TRANSITION_ID,
+					resultTransitionId: RESULT_TRANSITION_ID,
+					providerToolCallId: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.callId,
+					toolName: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.name,
+					arguments: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.arguments
+				},
+				{
+					type: 'text_delta',
+					text: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.assistantText
+				},
+				{
+					type: 'finish',
+					finishedReason: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.finishedReason,
+					usage: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.usage
+				}
+			],
+			{ promptSnapshot: fixturePromptSnapshot }
+		);
+		harness.readTool.execute.mockResolvedValueOnce({
+			result: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.result,
+			executionTimeMs: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.durationMs,
+			tokensConsumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.tokensConsumed,
+			affectedEntities: [],
+			toolCategory: null,
+			resultCount: null,
+			zeroResult: null,
+			requiresUserAction: null
+		});
+		const fixtureExecutionInput = {
+			...executionInput,
+			requestPayload: {
+				...executionInput.requestPayload,
+				message: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.request.message,
+				context: { type: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.request.contextType }
+			}
+		};
+		harness.input.load.mockResolvedValueOnce(fixtureExecutionInput);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+			if (!terminalInput) throw new Error('Phase 4 read-only fixture did not finalize');
+			const worker = normalizeAgenticChatParityRunV1({
+				events: harness.broadcastMessages.map((message) => message.payload) as never,
+				messages: [
+					{
+						role: 'user',
+						content: fixtureExecutionInput.requestPayload.message
+					},
+					{
+						role: 'assistant',
+						content: terminalInput.assistantText,
+						metadata: {
+							completion_status: terminalInput.assistantMetadata.completion_status,
+							answer_source: terminalInput.assistantMetadata.answer_source
+						}
+					}
+				],
+				toolExecutions: harness.toolExecutions.persistRead.mock.calls.map(([input]) => ({
+					tool_name: input.toolName,
+					tool_category: input.execution.toolCategory,
+					sequence_index: input.sequenceIndex,
+					arguments: input.arguments,
+					result: input.execution.result,
+					execution_time_ms: input.execution.executionTimeMs,
+					tokens_consumed: input.execution.tokensConsumed,
+					success: true,
+					affected_entities: input.execution.affectedEntities,
+					message_linked: terminalInput.assistantMessageId !== null
+				})),
+				checkpoints: [],
+				outcome: {
+					status: terminalInput.status,
+					finished_reason: terminalInput.finishedReason,
+					assistant_message_linked: terminalInput.assistantMessageId !== null,
+					tool_round_count: terminalInput.assistantMetadata.tool_round_count,
+					tool_call_count: terminalInput.assistantMetadata.tool_call_count,
+					total_tokens: terminalInput.totalTokens
+				},
+				metadata: {
+					admission: {
+						status: claim.status,
+						context_type: fixtureExecutionInput.requestPayload.context.type,
+						user_message_linked:
+							claim.userMessageId === fixtureExecutionInput.claim.userMessageId
+					},
+					lifecycle_events: harness.semanticInputs.flatMap((input) => {
+						const payload = input.event_payload as Record<string, unknown>;
+						return payload.type === 'turn_phase' && payload.turn_phase === 'finalizing'
+							? [{ event_type: 'turn_phase_changed', phase: input.phase }]
+							: [];
+					}),
+					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
+				}
+			});
+			const differential = diffAgenticChatParityRunsV1(
+				AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1,
+				worker
+			);
+			const timingDifferences = differential.differences.filter(({ path }) =>
+				path.startsWith('/events/9/payload/timing/')
+			);
+			const nonTimingDifferences = differential.differences
+				.filter(({ path }) => !path.startsWith('/events/9/payload/timing/'))
+				.map(({ path, kind }) => ({ path, kind }));
+			expect(differential.matches).toBe(false);
+			expect(differential.truncated).toBe(false);
+			expect(timingDifferences.length).toBeGreaterThan(0);
+			expect(nonTimingDifferences).toEqual([
+				{ path: '/events/10/payload/failure_code', kind: 'unexpected_in_actual' },
+				{ path: '/events/10/payload/status', kind: 'unexpected_in_actual' },
+				{ path: '/metadata/lifecycle_events/0', kind: 'missing_in_actual' },
+				{ path: '/metadata/lifecycle_events/1', kind: 'missing_in_actual' },
+				{ path: '/metadata/lifecycle_events/2', kind: 'missing_in_actual' },
+				{ path: '/metadata/lifecycle_events/3', kind: 'missing_in_actual' },
+				{ path: '/metadata/lifecycle_events/4', kind: 'missing_in_actual' },
 				{ path: '/metadata/lifecycle_events/6', kind: 'missing_in_actual' },
-				{ path: '/metadata/prompt_snapshot_count', kind: 'value_mismatch' }
+				{ path: '/metadata/lifecycle_events/7', kind: 'missing_in_actual' },
+				{ path: '/metadata/lifecycle_events/8', kind: 'missing_in_actual' },
+				{ path: '/metadata/lifecycle_events/9', kind: 'missing_in_actual' }
 			]);
 		} finally {
 			await harness.publisher.stop();
@@ -1143,6 +1512,28 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		);
 		expect(harness.control.begin).not.toHaveBeenCalled();
 		expect(harness.provider.stream).not.toHaveBeenCalled();
+		await harness.publisher.stop();
+	});
+
+	it('classifies a queue timeout before provider authority as the one safe timeout retry', async () => {
+		const harness = createHarness([], {
+			recovery: [recoveryReceipt('retry_scheduled', { failure_code: 'timeout_pre_start' })]
+		});
+		const timeout = new AbortController();
+		timeout.abort(new Error('Queue processing deadline exceeded'));
+
+		await expect(harness.executor.execute(job(timeout.signal))).resolves.toMatchObject({
+			outcome: 'requeued',
+			terminalStatus: null,
+			queueReconciled: false
+		});
+		expect(harness.control.recover).toHaveBeenCalledWith(
+			expect.objectContaining({ failureClass: 'timeout_pre_start' })
+		);
+		expect(harness.input.load).not.toHaveBeenCalled();
+		expect(harness.control.begin).not.toHaveBeenCalled();
+		expect(harness.provider.stream).not.toHaveBeenCalled();
+		expect(harness.control.finalize).not.toHaveBeenCalled();
 		await harness.publisher.stop();
 	});
 
@@ -1426,7 +1817,13 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			expect.objectContaining({
 				status: 'cancelled',
 				assistantText: 'partial',
-				failureCode: 'cancelled'
+				failureCode: 'cancelled',
+				assistantMetadata: expect.objectContaining({
+					interrupted: true,
+					interrupted_reason: 'user_cancelled',
+					finished_reason: 'cancelled',
+					partial_tokens: 2
+				})
 			})
 		);
 		expect(harness.control.completeQueueJob).not.toHaveBeenCalled();
@@ -1440,6 +1837,354 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			)
 		).toBe(false);
 		await harness.publisher.stop();
+	});
+
+	it('exposes the remaining partial-cancellation differential after durable metadata parity', async () => {
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('finalize_cancelled'),
+				recoveryReceipt('queue_reconciled', {
+					status: 'cancelled',
+					failure_code: 'cancelled'
+				})
+			],
+			promptSnapshot: fixturePromptSnapshot
+		});
+		(harness.provider.prepare as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => ({
+			promptSnapshot: fixturePromptSnapshot,
+			stream: () =>
+				(async function* () {
+					yield {
+						type: 'text_delta',
+						text: AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.response.assistantText
+					} as const;
+					harness.cancellationController.abort(
+						new AgenticChatCancellationError({
+							turn_run_id: TURN_RUN_ID,
+							execution_generation: EXECUTION_GENERATION,
+							signal_id: 'c0000000-0000-4000-8000-00000000000c',
+							cancel_reason:
+								AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.response
+									.interruptedReason,
+							cancel_source: 'user',
+							cancel_requested_at: '2026-08-04T12:05:00.000Z',
+							consumed_at: '2026-08-04T12:05:00.100Z'
+						})
+					);
+					yield { type: 'text_delta', text: ' must-not-persist' } as const;
+				})(),
+			release: vi.fn()
+		}));
+		const fixtureExecutionInput = {
+			...executionInput,
+			requestPayload: {
+				...executionInput.requestPayload,
+				message: AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.request.message,
+				context: { type: AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.request.contextType }
+			}
+		};
+		harness.input.load.mockResolvedValueOnce(fixtureExecutionInput);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'cancelled',
+				terminalStatus: 'cancelled'
+			});
+			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+			if (!terminalInput)
+				throw new Error('Partial-cancellation worker fixture did not finalize');
+			const worker = normalizeAgenticChatParityRunV1({
+				events: harness.broadcastMessages.map((message) => message.payload) as never,
+				messages: [
+					{
+						role: 'user',
+						content: fixtureExecutionInput.requestPayload.message
+					},
+					{
+						role: 'assistant',
+						content: terminalInput.assistantText,
+						metadata: {
+							finished_reason: terminalInput.assistantMetadata.finished_reason,
+							interrupted: terminalInput.assistantMetadata.interrupted,
+							interrupted_reason: terminalInput.assistantMetadata.interrupted_reason,
+							partial_tokens: terminalInput.assistantMetadata.partial_tokens
+						}
+					}
+				],
+				toolExecutions: [],
+				checkpoints: [],
+				outcome: {
+					status: terminalInput.status,
+					finished_reason: terminalInput.finishedReason,
+					assistant_message_linked: terminalInput.assistantMessageId !== null,
+					total_tokens: terminalInput.totalTokens
+				},
+				metadata: {
+					admission: {
+						status: claim.status,
+						context_type: fixtureExecutionInput.requestPayload.context.type,
+						user_message_linked:
+							claim.userMessageId === executionInput.claim.userMessageId
+					},
+					lifecycle_events: [],
+					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
+				}
+			});
+			const differential = diffAgenticChatParityRunsV1(
+				AGENTIC_CHAT_PARTIAL_CANCELLATION_GOLDEN_V1,
+				worker
+			);
+			const timingDifferences = differential.differences.filter(({ path }) =>
+				path.startsWith('/events/5/payload/timing/')
+			);
+			const nonTimingDifferences = differential.differences
+				.filter(({ path }) => !path.startsWith('/events/5/payload/timing/'))
+				.map(({ path, kind }) => ({ path, kind }));
+			expect(differential.matches).toBe(false);
+			expect(differential.truncated).toBe(false);
+			expect(differential.differences).not.toContainEqual(
+				expect.objectContaining({ path: '/events/4', kind: 'missing_in_actual' })
+			);
+			expect(differential.differences).not.toContainEqual(
+				expect.objectContaining({ path: '/events/5', kind: 'missing_in_actual' })
+			);
+			expect(timingDifferences.length).toBeGreaterThan(0);
+			expect(
+				(harness.broadcastMessages[5]?.payload as Record<string, unknown>).timing
+			).toMatchObject({
+				timing_contract_version: 'agentic_chat_async_v1',
+				done_emitted_at: null,
+				finished_reason: 'cancelled'
+			});
+			expect(nonTimingDifferences).toEqual([
+				{ path: '/events/6/payload/failure_code', kind: 'unexpected_in_actual' },
+				{ path: '/events/6/payload/status', kind: 'unexpected_in_actual' },
+				...Array.from({ length: 6 }, (_, index) => ({
+					path: `/metadata/lifecycle_events/${index}`,
+					kind: 'missing_in_actual' as const
+				}))
+			]);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('matches provider-error structure while retaining only reconnect-safe failed text', async () => {
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'permanent' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'permanent'
+				})
+			],
+			promptSnapshot: fixturePromptSnapshot
+		});
+		(harness.provider.prepare as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => ({
+			promptSnapshot: fixturePromptSnapshot,
+			stream: () =>
+				(async function* () {
+					yield {
+						type: 'text_delta',
+						text: AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1.response.assistantText
+					} as const;
+					throw new AgenticChatProviderExecutionError(
+						'provider_stream_failed',
+						'permanent',
+						'Provider stream failed after a partial response'
+					);
+				})(),
+			release: vi.fn()
+		}));
+		const fixtureExecutionInput = {
+			...executionInput,
+			requestPayload: {
+				...executionInput.requestPayload,
+				message: AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1.request.message,
+				context: { type: AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1.request.contextType }
+			}
+		};
+		harness.input.load.mockResolvedValueOnce(fixtureExecutionInput);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed',
+				queueReconciled: true
+			});
+			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+			if (!terminalInput) throw new Error('Provider-error worker fixture did not finalize');
+			const worker = normalizeAgenticChatParityRunV1({
+				events: harness.broadcastMessages.map((message) => message.payload) as never,
+				messages: [
+					{
+						role: 'user',
+						content: fixtureExecutionInput.requestPayload.message
+					}
+				],
+				toolExecutions: [],
+				checkpoints: [],
+				outcome: {
+					status: terminalInput.status,
+					finished_reason: terminalInput.finishedReason,
+					assistant_message_linked: terminalInput.assistantMessageId !== null,
+					total_tokens: 0
+				},
+				metadata: {
+					admission: {
+						status: claim.status,
+						context_type: fixtureExecutionInput.requestPayload.context.type,
+						user_message_linked:
+							claim.userMessageId === executionInput.claim.userMessageId
+					},
+					lifecycle_events: [],
+					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
+				}
+			});
+			const differential = diffAgenticChatParityRunsV1(
+				AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1,
+				worker
+			);
+			const workerEventTypes = worker.events.map(({ type }) => type);
+
+			expect(differential.matches).toBe(false);
+			expect(differential.truncated).toBe(false);
+			expect(workerEventTypes).toEqual([
+				'turn_phase',
+				'session',
+				'context_usage',
+				'assistant_text',
+				'error',
+				'timing',
+				'done'
+			]);
+			expect(AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1.events.map(({ type }) => type)).toEqual([
+				'turn_phase',
+				'session',
+				'context_usage',
+				'assistant_text',
+				'error',
+				'timing',
+				'done'
+			]);
+			expect(worker.messages).toHaveLength(1);
+			expect(AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1.messages).toHaveLength(1);
+			expect(worker.outcome).toMatchObject({
+				assistant_message_linked: false,
+				total_tokens: 0
+			});
+			expect(AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1.outcome).toMatchObject({
+				assistant_message_linked: false,
+				total_tokens: 0
+			});
+			expect(worker.metadata.prompt_snapshot_count).toBe(1);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('finalizes a post-start timeout without text as error, timing, and done', async () => {
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'timeout_post_start' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'timeout_post_start'
+				})
+			]
+		});
+		const timeout = new AbortController();
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						timeout.abort(new Error('Provider execution deadline exceeded'));
+						yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+					})(),
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job(timeout.signal))).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed',
+				queueReconciled: true
+			});
+			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+			expect(terminalInput).toMatchObject({
+				status: 'failed',
+				finishedReason: 'error',
+				failureCode: 'timeout_post_start',
+				assistantMessageId: null,
+				assistantText: '',
+				publicError: 'An error occurred while streaming.',
+				timingDraft: expect.objectContaining({
+					finished_reason: 'error',
+					first_response_at: null
+				})
+			});
+			expect(
+				harness.broadcastMessages.map(
+					(message) => (message.payload as Record<string, unknown>).type
+				)
+			).toEqual(['turn_phase', 'session', 'context_usage', 'error', 'timing', 'done']);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('keeps a post-start timeout partial reconnectable but out of assistant history', async () => {
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'timeout_post_start' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'timeout_post_start'
+				})
+			]
+		});
+		const timeout = new AbortController();
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield { type: 'text_delta', text: 'Timed partial.' } as const;
+						timeout.abort(new Error('Provider execution deadline exceeded'));
+						yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+					})(),
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job(timeout.signal))).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed'
+			});
+			expect(harness.control.finalize.mock.calls[0]?.[0]).toMatchObject({
+				status: 'failed',
+				failureCode: 'timeout_post_start',
+				assistantMessageId: null,
+				assistantText: 'Timed partial.',
+				publicError: 'An error occurred while streaming.'
+			});
+			expect(
+				harness.broadcastMessages.map(
+					(message) => (message.payload as Record<string, unknown>).type
+				)
+			).toEqual([
+				'turn_phase',
+				'session',
+				'context_usage',
+				'text_delta',
+				'error',
+				'timing',
+				'done'
+			]);
+		} finally {
+			await harness.publisher.stop();
+		}
 	});
 
 	it('honors a cancellation terminal winner returned to a completion replay', async () => {

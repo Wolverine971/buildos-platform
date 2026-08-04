@@ -36,6 +36,10 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	let proofOutput = '';
 	let loadOutput = '';
 	let lastContextOutput = '';
+	let timingOutput = '';
+	let partialCancellationOutput = '';
+	let providerFailureOutput = '';
+	let readToolLedgerOutput = '';
 
 	const applySqlFile = (path: string): string =>
 		execFileSync(
@@ -51,6 +55,22 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 				'ON_ERROR_STOP=1',
 				'-f',
 				path
+			],
+			{ encoding: 'utf8' }
+		);
+	const applySqlFiles = (paths: string[]): string =>
+		execFileSync(
+			'psql',
+			[
+				'-h',
+				socketDir,
+				'-p',
+				String(port),
+				'-d',
+				'postgres',
+				'-v',
+				'ON_ERROR_STOP=1',
+				...paths.flatMap((path) => ['-f', path])
 			],
 			{ encoding: 'utf8' }
 		);
@@ -120,7 +140,13 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			'20260802033200_agentic_chat_worker_stream_write_rpcs.sql',
 			'20260802034000_agentic_chat_worker_stream_delivery_ack.sql',
 			'20260802035000_agentic_chat_worker_cancel_observation.sql',
-			'20260804000100_agentic_chat_terminal_last_turn_context.sql'
+			'20260804000100_agentic_chat_terminal_last_turn_context.sql',
+			'20260804000110_agentic_chat_terminal_sequence_capacity.sql',
+			'20260804000120_agentic_chat_terminal_timing.sql',
+			'20260804033000_agentic_chat_partial_cancellation_terminal_events.sql',
+			'20260804034000_agentic_chat_provider_failure_terminal_events.sql',
+			'20260804035100_chat_tool_execution_provider_call_identity.sql',
+			'20260804036000_agentic_chat_read_tool_execution_ledger.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}
@@ -136,6 +162,22 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 				'supabase/tests/20260804000100_agentic_chat_terminal_last_turn_context.test.sql'
 			)
 		);
+		const terminalParityOutput = applySqlFiles([
+			sqlPath('supabase/tests/20260804000120_agentic_chat_terminal_timing.test.sql'),
+			sqlPath(
+				'supabase/tests/20260804033000_agentic_chat_partial_cancellation_terminal_events.test.sql'
+			),
+			sqlPath(
+				'supabase/tests/20260804034000_agentic_chat_provider_failure_terminal_events.test.sql'
+			),
+			sqlPath(
+				'supabase/tests/20260804036000_agentic_chat_read_tool_execution_ledger.test.sql'
+			)
+		]);
+		timingOutput = terminalParityOutput;
+		partialCancellationOutput = terminalParityOutput;
+		providerFailureOutput = terminalParityOutput;
+		readToolLedgerOutput = terminalParityOutput;
 	}, 60_000);
 
 	afterAll(() => {
@@ -165,5 +207,25 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 
 	it('commits replay-safe last-turn context immediately before terminal done', () => {
 		expect(lastContextOutput).toContain('phase4_slice5_terminal_last_turn_context_ok');
+	});
+
+	it('commits database-owned asynchronous timing before terminal done', () => {
+		expect(timingOutput).toContain('phase4_slice6_terminal_timing_ok');
+	});
+
+	it('commits cancelled partial context and timing without weakening the cancel fence', () => {
+		expect(partialCancellationOutput).toContain(
+			'phase4_slice8_partial_cancellation_terminal_events_ok'
+		);
+	});
+
+	it('keeps failed provider text reconnectable but out of assistant history', () => {
+		expect(providerFailureOutput).toContain(
+			'phase4_slice9_provider_failure_terminal_events_ok'
+		);
+	});
+
+	it('persists and terminally attaches one fenced read-tool execution', () => {
+		expect(readToolLedgerOutput).toContain('phase4_slice10_read_tool_execution_ledger_ok');
 	});
 });

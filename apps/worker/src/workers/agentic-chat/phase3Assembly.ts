@@ -24,6 +24,11 @@ import {
 } from './providerContract';
 import { AgenticChatProviderCapacity } from './providerCapacity';
 import {
+	type AgenticChatPromptSnapshotPortV1,
+	type AgenticChatPromptSnapshotRpcClient,
+	SupabaseAgenticChatPromptSnapshotAdapter
+} from './promptSnapshot';
+import {
 	AgenticChatReadOnlyProviderAdapter,
 	type AgenticChatReadOnlyProviderClientPortV1
 } from './readOnlyProvider';
@@ -44,6 +49,11 @@ import {
 	SupabaseAgenticChatBroadcastAdapter,
 	SupabaseAgenticChatPersistenceAdapter
 } from './supabaseStreamPublisherAdapters';
+import {
+	type AgenticChatToolExecutionPortV1,
+	type AgenticChatToolExecutionRpcClient,
+	SupabaseAgenticChatToolExecutionAdapter
+} from './toolExecution';
 
 export type AgenticChatPhase3Assembly = {
 	consumer: ReturnType<typeof createAgenticChatConsumer>;
@@ -51,6 +61,8 @@ export type AgenticChatPhase3Assembly = {
 	executor: AgenticChatFixtureTurnExecutor;
 	provider: AgenticChatProviderPortV1;
 	providerCapacity: AgenticChatProviderCapacity;
+	promptSnapshots: AgenticChatPromptSnapshotPortV1;
+	toolExecutions: AgenticChatToolExecutionPortV1;
 	publisher: AgenticChatStreamPublisher;
 	cancellation: AgenticChatCancellationObserver;
 	recovery: AgenticChatStalledRecoverySweep;
@@ -71,6 +83,7 @@ export function createAgenticChatPhase3Assembly(options: {
 	publisherConfig?: Partial<AgenticChatPublisherConfig>;
 	cancellationConfig?: Partial<AgenticChatCancellationObserverConfig>;
 	providerCooldownMs?: number;
+	onPromptSnapshotError?: (error: unknown) => void;
 }): AgenticChatPhase3Assembly {
 	if (
 		options.cancellationConfig?.consumerConcurrency !== undefined &&
@@ -80,8 +93,12 @@ export function createAgenticChatPhase3Assembly(options: {
 	}
 	const rpcClient = options.client as unknown as AgenticChatExecutionRpcClient &
 		AgenticChatSupabaseRpcClient &
-		AgenticChatRecoverySnapshotRpcClient;
+		AgenticChatRecoverySnapshotRpcClient &
+		AgenticChatPromptSnapshotRpcClient &
+		AgenticChatToolExecutionRpcClient;
 	const control = new SupabaseAgenticChatExecutionControlAdapter(rpcClient);
+	const promptSnapshots = new SupabaseAgenticChatPromptSnapshotAdapter(rpcClient);
+	const toolExecutions = new SupabaseAgenticChatToolExecutionAdapter(rpcClient);
 	const input = new SupabaseAgenticChatExecutionInputAdapter(options.client);
 	const broadcast = new SupabaseAgenticChatBroadcastAdapter(
 		options.client as unknown as AgenticChatRealtimeClient
@@ -113,7 +130,12 @@ export function createAgenticChatPhase3Assembly(options: {
 		publisher,
 		cancellation,
 		provider,
+		promptSnapshots,
+		onPromptSnapshotError:
+			options.onPromptSnapshotError ??
+			((error) => console.error('Agentic Chat prompt snapshot persistence failed', error)),
 		readTool: disabledToolPort('read_tools_disabled'),
+		toolExecutions,
 		mutation: disabledToolPort('mutating_tools_disabled')
 	});
 	const consumer = createAgenticChatConsumer(executor, {
@@ -163,6 +185,8 @@ export function createAgenticChatPhase3Assembly(options: {
 		executor,
 		provider,
 		providerCapacity,
+		promptSnapshots,
+		toolExecutions,
 		publisher,
 		cancellation,
 		recovery,

@@ -46,6 +46,7 @@ const CREATE_TOOL_KINDS: Record<string, string> = {
 	create_onto_document: 'document',
 	create_onto_milestone: 'milestone',
 	create_onto_risk: 'risk',
+	create_task_document: 'document',
 	create_calendar_event: 'event'
 };
 
@@ -70,7 +71,15 @@ export function normalizeAffectedEntityKind(kind: string | null | undefined): st
 	return ENTITY_KIND_ALIASES[normalized] ?? normalized;
 }
 
-function operationFromTool(toolName?: string | null, gatewayOp?: string | null): string | null {
+function operationFromTool(
+	toolName?: string | null,
+	gatewayOp?: string | null,
+	argumentsPayload?: unknown
+): string | null {
+	if (toolName === 'create_task_document') {
+		const args = unwrapPayload(argumentsPayload);
+		return stringValue(args?.document_id) ? 'linked' : 'created';
+	}
 	const source = gatewayOp || toolName || '';
 	if (source.includes('.create') || source.startsWith('create_')) return 'created';
 	if (source.includes('.update') || source.startsWith('update_')) return 'updated';
@@ -229,7 +238,11 @@ function inferEntityRefFromToolExecution(
 	execution: ToolExecutionAffectedEntityInput
 ): ToolExecutionEntityRef | null {
 	const kind = kindFromTool(execution.tool_name, execution.gateway_op);
-	const operation = operationFromTool(execution.tool_name, execution.gateway_op);
+	const operation = operationFromTool(
+		execution.tool_name,
+		execution.gateway_op,
+		execution.arguments
+	);
 	if (!kind || !operation) return null;
 
 	const args = unwrapPayload(execution.arguments);

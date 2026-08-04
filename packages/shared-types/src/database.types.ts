@@ -3613,6 +3613,7 @@ export type Database = {
           help_path: string | null
           id: string
           message_id: string | null
+          provider_tool_call_id: string | null
           requires_user_action: boolean | null
           result: Json | null
           result_count: number | null
@@ -3638,6 +3639,7 @@ export type Database = {
           help_path?: string | null
           id?: string
           message_id?: string | null
+          provider_tool_call_id?: string | null
           requires_user_action?: boolean | null
           result?: Json | null
           result_count?: number | null
@@ -3663,6 +3665,7 @@ export type Database = {
           help_path?: string | null
           id?: string
           message_id?: string | null
+          provider_tool_call_id?: string | null
           requires_user_action?: boolean | null
           result?: Json | null
           result_count?: number | null
@@ -6733,13 +6736,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "error_logs_brain_dump_id_fkey"
-            columns: ["brain_dump_id"]
-            isOneToOne: false
-            referencedRelation: "brain_dumps"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "error_logs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -7700,13 +7696,6 @@ export type Database = {
             columns: ["agent_session_id"]
             isOneToOne: false
             referencedRelation: "agent_chat_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "llm_usage_logs_brain_dump_id_fkey"
-            columns: ["brain_dump_id"]
-            isOneToOne: false
-            referencedRelation: "brain_dumps"
             referencedColumns: ["id"]
           },
           {
@@ -12279,13 +12268,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "project_questions_answer_brain_dump_id_fkey"
-            columns: ["answer_brain_dump_id"]
-            isOneToOne: false
-            referencedRelation: "brain_dumps"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "project_questions_project_id_fkey"
             columns: ["project_id"]
@@ -17881,6 +17863,31 @@ export type Database = {
         }
         Returns: Json
       }
+      finalize_agentic_chat_turn_with_failure_events: {
+        Args: {
+          p_assistant_message_id: string
+          p_assistant_metadata: Json
+          p_assistant_text: string
+          p_completion_tokens: number
+          p_error_transition_id: string
+          p_event_payload: Json
+          p_execution_generation: number
+          p_failure_code: string
+          p_finished_reason: string
+          p_processing_token: string
+          p_projection: Json
+          p_prompt_tokens: number
+          p_public_error: string
+          p_queue_job_id: string
+          p_status: string
+          p_timing_draft: Json
+          p_timing_transition_id: string
+          p_total_tokens: number
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       finalize_agentic_chat_turn_with_last_context: {
         Args: {
           p_assistant_message_id: string
@@ -18964,6 +18971,46 @@ export type Database = {
           p_sync_assignees: boolean
           p_task_id: string
           p_updates: Json
+        }
+        Returns: Json
+      }
+      persist_agentic_chat_prompt_snapshot: {
+        Args: {
+          p_approx_prompt_tokens: number
+          p_execution_generation: number
+          p_message_chars: number
+          p_messages_sha256: string
+          p_model_messages: Json
+          p_processing_token: string
+          p_prompt_snapshot_id: string
+          p_queue_job_id: string
+          p_system_prompt_chars: number
+          p_system_prompt_sha256: string
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      persist_agentic_chat_read_tool_execution: {
+        Args: {
+          p_affected_entities: Json
+          p_arguments: Json
+          p_execution_generation: number
+          p_execution_time_ms: number
+          p_processing_token: string
+          p_provider_tool_call_id: string
+          p_queue_job_id: string
+          p_requires_user_action: boolean
+          p_result: Json
+          p_result_count: number
+          p_sequence_index: number
+          p_tokens_consumed: number
+          p_tool_category: string
+          p_tool_execution_id: string
+          p_tool_name: string
+          p_turn_run_id: string
+          p_user_id: string
+          p_zero_result: boolean
         }
         Returns: Json
       }

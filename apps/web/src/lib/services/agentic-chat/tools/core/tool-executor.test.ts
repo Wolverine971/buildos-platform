@@ -217,6 +217,9 @@ describe('ChatToolExecutor - Update Behavior', () => {
 			expect(result.tokens_consumed).toBe(23);
 			expect(result.stream_events).toEqual([{ type: 'progress', message: 'done' }]);
 			expect(result.result).toEqual({ ok: true });
+			expect(mockChain.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ provider_tool_call_id: 'call-tokens' })
+			);
 		});
 	});
 

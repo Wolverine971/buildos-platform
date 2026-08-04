@@ -2,6 +2,7 @@
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import EntityModalDetailsDrawer from '$lib/components/ontology/EntityModalDetailsDrawer.svelte';
 	import type { TimeBlockWithProject, TimeBlockSuggestion } from '@buildos/shared-types';
 	import { format } from 'date-fns';
 	import { Calendar, Clock, Zap, PencilLine } from 'lucide-svelte';
@@ -295,8 +296,12 @@
 <Modal isOpen={true} {onClose} size="lg" title={blockTitle}>
 	{#snippet children()}
 		<div class="px-3 py-4 sm:px-4 sm:py-6 lg:px-6">
-			<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5">
-				<section class="lg:col-span-3 order-2 flex flex-col gap-4 lg:order-1 lg:pr-1">
+			<div
+				class="relative grid grid-cols-1 gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-y-5 lg:overflow-x-clip"
+			>
+				<section
+					class="order-2 flex min-w-0 flex-col gap-4 lg:order-none lg:col-start-1 lg:row-start-1 lg:pr-1"
+				>
 					<div
 						class="rounded-2xl border border-border bg-card shadow-ink transition-all hover:shadow-ink-strong tx tx-frame tx-weak"
 					>
@@ -512,7 +517,11 @@
 					{/if}
 				</section>
 
-				<aside class="lg:col-span-1 order-1 flex flex-col gap-4 lg:order-2">
+				<EntityModalDetailsDrawer
+					panelLabel="Time block details"
+					mobileDetailsFirst
+					class="flex flex-col gap-4"
+				>
 					<div
 						class="rounded-2xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-4 tx tx-frame tx-weak"
 					>
@@ -742,7 +751,7 @@
 							{/if}
 						</div>
 					</div>
-				</aside>
+				</EntityModalDetailsDrawer>
 			</div>
 		</div>
 	{/snippet}

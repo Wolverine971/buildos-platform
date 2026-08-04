@@ -501,6 +501,7 @@ export const GET: RequestHandler = async ({
 			turn_run_id,
 			stream_run_id,
 			client_turn_id,
+			provider_tool_call_id,
 			tool_name,
 			tool_category,
 			gateway_op,

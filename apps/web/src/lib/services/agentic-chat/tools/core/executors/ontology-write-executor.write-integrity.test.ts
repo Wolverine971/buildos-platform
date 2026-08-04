@@ -94,6 +94,46 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 		};
 	});
 
+	describe('create-project payload integrity', () => {
+		it('repairs nested graph collections before calling the instantiate endpoint', async () => {
+			let instantiateBody: Record<string, any> | null = null;
+			mockFetch.mockImplementationOnce((_url, options) => {
+				instantiateBody = JSON.parse(String(options?.body));
+				return Promise.resolve(
+					buildJsonResponse({
+						project_id: 'project-1',
+						counts: { goals: 1, tasks: 1, edges: 1 }
+					})
+				);
+			});
+			const executor = new OntologyWriteExecutor(context);
+
+			const result = await executor.createOntoProject({
+				project: {
+					name: 'Christian School Launch',
+					type_key: 'project.nonprofit.school_launch',
+					entities: [
+						{ temp_id: 'goal-1', kind: 'goal', name: 'Validate demand' },
+						{ temp_id: 'task-1', kind: 'task', title: 'Interview parents' }
+					],
+					relationships: [
+						{
+							from: { temp_id: 'goal-1', kind: 'goal' },
+							to: { temp_id: 'task-1', kind: 'task' },
+							rel: 'contains'
+						}
+					]
+				}
+			} as any);
+
+			expect(result.project_id).toBe('project-1');
+			expect(instantiateBody?.project).not.toHaveProperty('entities');
+			expect(instantiateBody?.project).not.toHaveProperty('relationships');
+			expect(instantiateBody?.entities).toHaveLength(2);
+			expect(instantiateBody?.relationships).toHaveLength(1);
+		});
+	});
+
 	describe('D1 — append/merge aborts on existing-content load failure', () => {
 		it('throws (does not PATCH) when the existing-content loader fails under append', async () => {
 			const executor = new OntologyWriteExecutor(context);

@@ -68,6 +68,7 @@ describe('OntologyReadExecutor — document outline & section (Project Knowledge
 		const result = await executor.getDocumentOutline({ document_id: 'doc-1' });
 
 		expect(result.document_id).toBe('doc-1');
+		expect(result.project_id).toBe('project-1');
 		expect(result.outline?.[0]?.anchor).toBe('marketing-plan');
 		const channels = result.outline?.[0]?.children?.find((n: any) => n.text === 'Channels');
 		expect(channels?.anchor).toBe('channels');
@@ -83,6 +84,7 @@ describe('OntologyReadExecutor — document outline & section (Project Knowledge
 		});
 
 		expect(result.found).not.toBe(false);
+		expect(result.project_id).toBe('project-1');
 		expect(result.heading).toBe('Channels');
 		expect(result.content).toContain('channel body');
 		expect(result.content).toContain('### Instagram'); // nested child included
@@ -97,6 +99,7 @@ describe('OntologyReadExecutor — document outline & section (Project Knowledge
 		});
 
 		expect(result.found).toBe(false);
+		expect(result.project_id).toBe('project-1');
 		expect(result.available_anchors).toContain('channels');
 		expect(result.available_anchors).toContain('budget');
 	});

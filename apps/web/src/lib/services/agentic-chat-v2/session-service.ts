@@ -98,6 +98,7 @@ type ChatMessageAttachmentRow = {
 
 export type InterruptedToolExecutionSummaryRow = {
 	message_id: string | null;
+	provider_tool_call_id?: string | null;
 	tool_name: string;
 	gateway_op: string | null;
 	sequence_index: number | null;
@@ -854,7 +855,7 @@ export function createFastChatSessionService(
 			const { data: executionRows, error: executionError } = await supabase
 				.from('chat_tool_executions')
 				.select(
-					'message_id, tool_name, gateway_op, sequence_index, success, error_message, arguments, result'
+					'message_id, provider_tool_call_id, tool_name, gateway_op, sequence_index, success, error_message, arguments, result'
 				)
 				.in('message_id', interruptedMessageIds)
 				.order('sequence_index', { ascending: true });
@@ -890,7 +891,7 @@ export function createFastChatSessionService(
 			const { data: skillExecutionRows, error: skillExecutionError } = await supabase
 				.from('chat_tool_executions')
 				.select(
-					'message_id, tool_name, gateway_op, sequence_index, success, error_message, arguments, result'
+					'message_id, provider_tool_call_id, tool_name, gateway_op, sequence_index, success, error_message, arguments, result'
 				)
 				.in('message_id', assistantMessageIds)
 				.eq('tool_name', 'skill_load')
