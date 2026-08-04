@@ -408,7 +408,7 @@ type LegacyAgentSSEMessage =
 	| { type: 'operation'; operation: ChatOperation | OperationEventPayload }
 	| { type: 'draft_update'; draft: Partial<ProjectDraft> }
 	| { type: 'dimension_update'; dimension: string; content: string }
-	| { type: 'phase_update'; phase: AgentSessionPhase; message?: string }
+	| { type: 'phase_update'; session_phase: AgentSessionPhase; message?: string }
 	| { type: 'queue_update'; operations: ChatOperation[] };
 
 export type SkillActivityEvent = {
