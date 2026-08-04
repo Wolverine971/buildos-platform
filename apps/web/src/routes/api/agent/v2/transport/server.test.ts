@@ -12,7 +12,8 @@ const mocks = vi.hoisted(() => ({
 		AGENTIC_CHAT_WORKER_KILL_EPOCH: '0'
 	},
 	createAdminSupabaseClient: vi.fn(),
-	resolveExistingAgenticChatTransportDecision: vi.fn()
+	resolveExistingAgenticChatTransportDecision: vi.fn(),
+	selectAgenticChatNewTransport: vi.fn()
 }));
 
 vi.mock('$env/dynamic/private', () => ({ env: mocks.env }));
@@ -30,6 +31,9 @@ vi.mock('$lib/services/agentic-chat-v2/transport-decision.server', async (import
 			mocks.resolveExistingAgenticChatTransportDecision
 	};
 });
+vi.mock('$lib/services/agentic-chat-v2/worker-transport-routing.server', () => ({
+	selectAgenticChatNewTransport: mocks.selectAgenticChatNewTransport
+}));
 
 import { AgenticChatTransportDecisionError } from '$lib/services/agentic-chat-v2/transport-decision.server';
 import { POST } from './+server';
@@ -70,6 +74,10 @@ describe('POST /api/agent/v2/transport', () => {
 		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';
 		mocks.createAdminSupabaseClient.mockReturnValue({ from: vi.fn() });
 		mocks.resolveExistingAgenticChatTransportDecision.mockResolvedValue(null);
+		mocks.selectAgenticChatNewTransport.mockResolvedValue({
+			mode: 'legacy_sse',
+			contractVersion: 'legacy_internal_v1'
+		});
 	});
 
 	it('requires authentication before parsing or creating a service client', async () => {
@@ -91,7 +99,7 @@ describe('POST /api/agent/v2/transport', () => {
 		expect(mocks.resolveExistingAgenticChatTransportDecision).not.toHaveBeenCalled();
 	});
 
-	it('issues only a private legacy lease for a genuinely new decision', async () => {
+	it('issues a private policy-selected lease for a genuinely new decision', async () => {
 		const response = await POST(event() as never);
 		const payload = await response.json();
 
@@ -108,6 +116,26 @@ describe('POST /api/agent/v2/transport', () => {
 			client: expect.any(Object),
 			userId: USER_ID,
 			request: body()
+		});
+		expect(mocks.selectAgenticChatNewTransport).toHaveBeenCalledWith({
+			userId: USER_ID,
+			supportedModes: body().supportedModes,
+			supportedContractVersions: body().supportedContractVersions,
+			environment: mocks.env
+		});
+	});
+
+	it('can issue a new worker lease only when server routing policy selects it', async () => {
+		mocks.selectAgenticChatNewTransport.mockResolvedValueOnce({
+			mode: 'worker_realtime',
+			contractVersion: 'agentic_chat_worker_v1'
+		});
+		const response = await POST(event() as never);
+		const payload = await response.json();
+		expect(response.status).toBe(200);
+		expect(payload.data).toMatchObject({
+			mode: 'worker_realtime',
+			contractVersion: 'agentic_chat_worker_v1'
 		});
 	});
 
@@ -150,6 +178,7 @@ describe('POST /api/agent/v2/transport', () => {
 			contractVersion: 'agentic_chat_worker_v1',
 			decisionId: DECISION_ID
 		});
+		expect(mocks.selectAgenticChatNewTransport).not.toHaveBeenCalled();
 	});
 
 	it('maps binding conflicts distinctly and keeps internal failures private', async () => {

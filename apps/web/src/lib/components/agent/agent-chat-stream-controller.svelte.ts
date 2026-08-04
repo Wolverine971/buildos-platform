@@ -13,11 +13,21 @@ import type {
 	ChatRole,
 	ChatSession,
 	ChatTurnStatusV1,
+	AgenticChatWorkerTurnDescriptorV1,
 	TurnHandleV1
 } from '@buildos/shared-types';
 import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { buildFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request-client';
 import { AgentStreamEventGuard } from '$lib/services/agentic-chat-v2/stream-protocol';
+import {
+	normalizeFastContextType,
+	resolveEffectiveEntityId,
+	resolveEffectiveProjectId
+} from '$lib/services/agentic-chat-v2/scope';
+import {
+	requestAgenticChatTransportLease,
+	requestAgenticChatWorkerAdmission
+} from '$lib/services/agentic-chat-v2/worker-transport-client';
 import {
 	SSEProcessor,
 	type StreamCallbacks,
@@ -122,6 +132,8 @@ export interface StreamControllerDeps {
 	clearPendingToolState(): void;
 	handleSSEMessage(event: AgentSSEMessage): void;
 	hydrateSessionFromEvent(session: ChatSession): void;
+	adoptWorkerAdmissionResponse?(value: unknown): AgenticChatWorkerTurnDescriptorV1;
+	discoverWorkerSession?(sessionId: string): Promise<unknown>;
 	reconcileTurnFromSession?(request: StreamTurnReconcileRequest): void | Promise<void>;
 	setUserHasScrolled(value: boolean): void;
 	setExistingImagePickerOpen(value: boolean): void;
@@ -182,6 +194,15 @@ const TURN_EVIDENCE_EVENT_TYPES = new Set<string>([
 	'last_turn_context',
 	'skill_activity',
 	'operation'
+]);
+
+const WORKER_KNOWN_NOT_ADMITTED_CODES = new Set([
+	'TRANSPORT_RENEGOTIATE',
+	'WORKER_LEASE_REQUIRED',
+	'WORKER_CAPACITY_EXCEEDED',
+	'WORKER_ADMISSION_CONFLICT',
+	'INVALID_WORKER_COMMAND',
+	'WORKER_SESSION_CONFLICT'
 ]);
 
 function diffMs(start: number | null, end: number | null): number | null {
@@ -505,6 +526,8 @@ export class AgentChatStreamController {
 		let runId: number | null = null;
 		let streamController: AbortController | null = null;
 		let responseAccepted = false;
+		let workerAdmissionAttempted = false;
+		let workerAdmissionSessionId: string | null = null;
 
 		try {
 			if (this.isStreaming) {
@@ -558,6 +581,44 @@ export class AgentChatStreamController {
 			const now = new Date();
 			const clientTurnId = crypto.randomUUID();
 			const transportStreamRunId = crypto.randomUUID();
+			const normalizedContextType = normalizeFastContextType(requestContextType);
+			const transportContext = {
+				type: normalizedContextType,
+				entityId: resolveEffectiveEntityId({
+					contextType: normalizedContextType,
+					entityId: requestEntityId,
+					projectFocus: requestProjectFocus
+				}),
+				projectId: resolveEffectiveProjectId({
+					contextType: normalizedContextType,
+					entityId: requestEntityId,
+					projectFocus: requestProjectFocus
+				})
+			};
+			const canAttemptWorkerTextCanary = Boolean(
+				senderType === 'user' &&
+					sessionForTurn?.id &&
+					streamAttachmentRefs.length === 0 &&
+					!activeVoiceNoteGroupId &&
+					this.#deps.adoptWorkerAdmissionResponse
+			);
+			const transportLease = canAttemptWorkerTextCanary
+				? await requestAgenticChatTransportLease({
+						fetchImpl: this.#fetch,
+						request: {
+							clientTurnId,
+							streamRunId: transportStreamRunId,
+							sessionId: sessionForTurn?.id ?? null,
+							context: transportContext,
+							supportedModes: ['legacy_sse', 'worker_realtime'],
+							supportedContractVersions: [
+								'legacy_internal_v1',
+								'agentic_chat_worker_v1'
+							],
+							priorDecisionId: null
+						}
+					})
+				: null;
 
 			userMessage = {
 				id: crypto.randomUUID(),
@@ -610,6 +671,60 @@ export class AgentChatStreamController {
 				this.#deps.voice.noteGroupId = null;
 			}
 			this.error = null;
+
+			if (transportLease?.mode === 'worker_realtime' && sessionForTurn?.id) {
+				this.lastCancelResult = null;
+				this.isStreaming = false;
+				this.#deps.clearPendingToolState();
+				this.#deps.thinking.create();
+				this.currentActivity = 'Submitting secure worker turn...';
+				this.#deps.thinking.updateState(
+					'thinking',
+					'BuildOS is starting the canary response...'
+				);
+				this.#deps.setUserHasScrolled(false);
+				prewarm.clearPreparedPrompt();
+				workerAdmissionAttempted = true;
+				workerAdmissionSessionId = sessionForTurn.id;
+				const admission = await requestAgenticChatWorkerAdmission({
+					fetchImpl: this.#fetch,
+					command: {
+						leaseToken: transportLease.token,
+						clientTurnId,
+						streamRunId: transportStreamRunId,
+						sessionId: sessionForTurn.id,
+						context: transportContext,
+						message: trimmed,
+						projectFocus: requestProjectFocus,
+						lastTurnContext: this.#deps.getLastTurnContext(),
+						preparedPromptKey: matchingPreparedPrompt?.key ?? null
+					}
+				});
+				if (!admission.response.ok) {
+					const admissionError = await buildAgentRequestError(
+						admission.response,
+						'Unable to start the worker response. BuildOS is checking its status.'
+					);
+					if (
+						admissionError.code &&
+						WORKER_KNOWN_NOT_ADMITTED_CODES.has(admissionError.code)
+					) {
+						workerAdmissionAttempted = false;
+						workerAdmissionSessionId = null;
+					}
+					throw admissionError;
+				}
+				const descriptor = this.#deps.adoptWorkerAdmissionResponse?.(admission.payload);
+				if (
+					!descriptor ||
+					descriptor.handle.clientTurnId !== clientTurnId ||
+					descriptor.handle.streamRunId !== transportStreamRunId
+				) {
+					throw new Error('Worker admission did not return the negotiated turn handle');
+				}
+				responseAccepted = true;
+				return;
+			}
 
 			this.activeStreamRunId = this.activeStreamRunId + 1;
 			runId = this.activeStreamRunId;
@@ -827,16 +942,31 @@ export class AgentChatStreamController {
 				this.finalizeClientStreamTiming(runId, 'error', 'error');
 			}
 
+			if (workerAdmissionAttempted && workerAdmissionSessionId) {
+				void this.#deps
+					.discoverWorkerSession?.(workerAdmissionSessionId)
+					.catch((discoveryError) => {
+						this.#deps.logDebug?.(
+							'[AgentChat] Worker admission recovery discovery failed',
+							discoveryError
+						);
+					});
+			}
+
 			const failedUserMessageId = userMessage?.id;
-			if (failedUserMessageId) {
+			if (failedUserMessageId && !workerAdmissionAttempted) {
 				this.#deps.messages.removeById(failedUserMessageId);
 			}
 			// Restore the failed draft, but never clobber text the user typed
 			// while the request was in flight.
-			if (!this.#deps.getInputValue().trim()) {
+			if (!workerAdmissionAttempted && !this.#deps.getInputValue().trim()) {
 				this.#deps.setInputValue(trimmed);
 			}
-			if (!suppressInputClear && sentImageAttachments.length > 0) {
+			if (
+				!workerAdmissionAttempted &&
+				!suppressInputClear &&
+				sentImageAttachments.length > 0
+			) {
 				this.#deps.attachments.restoreDraft(sentImageAttachments);
 			}
 		} finally {

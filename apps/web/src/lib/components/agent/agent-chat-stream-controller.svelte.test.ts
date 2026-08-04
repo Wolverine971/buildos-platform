@@ -127,6 +127,7 @@ function createHarness(
 		draftAttachments?: AgentChatImageAttachment[];
 		preparedPrompt?: PreparedPromptClient | null;
 		waitForPreparedPrompt?: StreamControllerPrewarmDeps['waitForPreparedPrompt'];
+		enableWorkerAdoption?: boolean;
 	} = {}
 ) {
 	let inputValue = overrides.inputValue ?? 'hello';
@@ -224,6 +225,22 @@ function createHarness(
 	const restoreDraft = vi.fn((snapshot: AgentChatImageAttachment[]) => {
 		draftAttachments = snapshot;
 	});
+	const discoverWorkerSession = vi.fn(async () => []);
+	let controller!: ReturnType<typeof createAgentChatStreamController>;
+	const adoptWorkerAdmissionResponse = vi.fn((value: unknown) => {
+		const data = (
+			value as { data: { handle: ReturnType<typeof workerHandle>; status: 'queued' } }
+		).data;
+		const descriptor = {
+			handle: data.handle,
+			status: data.status,
+			executionGeneration: 0,
+			terminalEventId: null,
+			updatedAt: '2026-08-04T03:00:00.000Z'
+		};
+		controller.adoptWorkerTurn(descriptor.handle, descriptor.status);
+		return descriptor;
+	});
 
 	const deps: StreamControllerDeps = {
 		getInputValue: () => inputValue,
@@ -268,6 +285,9 @@ function createHarness(
 			sseEvents.push(event);
 		},
 		hydrateSessionFromEvent,
+		...(overrides.enableWorkerAdoption
+			? { adoptWorkerAdmissionResponse, discoverWorkerSession }
+			: {}),
 		reconcileTurnFromSession,
 		setUserHasScrolled: vi.fn(),
 		setExistingImagePickerOpen: vi.fn(),
@@ -278,7 +298,7 @@ function createHarness(
 		logDebug: vi.fn()
 	};
 
-	const controller = createAgentChatStreamController(deps);
+	controller = createAgentChatStreamController(deps);
 
 	return {
 		controller,
@@ -300,6 +320,8 @@ function createHarness(
 		scheduleMessageOcrPoll,
 		clearDraft,
 		restoreDraft,
+		adoptWorkerAdmissionResponse,
+		discoverWorkerSession,
 		get inputValue() {
 			return inputValue;
 		},
@@ -555,6 +577,215 @@ describe('AgentChatStreamController', () => {
 			session: expect.objectContaining({ id: 'stream-created-session' })
 		});
 		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('completed');
+	});
+
+	it('negotiates and adopts an exact text-only worker canary without opening legacy SSE', async () => {
+		const sessionId = 'd2000000-0000-4000-8000-000000000001';
+		const turnRunId = 'd4000000-0000-4000-8000-000000000001';
+		const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
+			const url = String(input);
+			const request = JSON.parse(String(init?.body ?? '{}'));
+			if (url === '/api/agent/v2/transport') {
+				return Response.json({
+					success: true,
+					data: {
+						mode: 'worker_realtime',
+						contractVersion: 'agentic_chat_worker_v1',
+						decisionId: 'd3000000-0000-4000-8000-000000000001',
+						token: 'actl1.claims.signature',
+						expiresAt: '2026-08-04T03:00:00.000Z'
+					}
+				});
+			}
+			if (url === '/api/agent/v2/turns') {
+				return Response.json(
+					{
+						success: true,
+						data: {
+							outcome: 'newly_admitted',
+							handle: {
+								contractVersion: 'agentic_chat_worker_v1',
+								executionMode: 'worker_realtime',
+								turnRunId,
+								sessionId,
+								streamRunId: request.streamRunId,
+								clientTurnId: request.clientTurnId
+							},
+							status: 'queued'
+						}
+					},
+					{ status: 202 }
+				);
+			}
+			throw new Error(`unexpected request: ${url}`);
+		});
+		const h = createHarness({
+			inputValue: 'Canary hello',
+			currentSession: makeSession({ id: sessionId }),
+			fetchImpl,
+			enableWorkerAdoption: true
+		});
+
+		await h.controller.sendMessage();
+
+		expect(fetchImpl.mock.calls.map(([input]) => String(input))).toEqual([
+			'/api/agent/v2/transport',
+			'/api/agent/v2/turns'
+		]);
+		expect(h.streamProcessor.runs).toHaveLength(0);
+		expect(h.messages).toHaveLength(1);
+		expect(h.inputValue).toBe('');
+		expect(h.adoptWorkerAdmissionResponse).toHaveBeenCalledOnce();
+		expect(h.controller.activeTurnHandle).toMatchObject({
+			executionMode: 'worker_realtime',
+			turnRunId,
+			sessionId
+		});
+		expect(h.controller.isStreaming).toBe(true);
+		expect(JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body))).toMatchObject({
+			message: 'Canary hello',
+			attachments: [],
+			voiceNoteGroupId: null
+		});
+	});
+
+	it('keeps the existing legacy path when negotiation selects legacy', async () => {
+		const sessionId = 'd2000000-0000-4000-8000-000000000001';
+		const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+			if (String(input) === '/api/agent/v2/transport') {
+				return Response.json({
+					success: true,
+					data: {
+						mode: 'legacy_sse',
+						contractVersion: 'legacy_internal_v1',
+						decisionId: 'd3000000-0000-4000-8000-000000000001',
+						token: 'actl1.claims.signature',
+						expiresAt: '2026-08-04T03:00:00.000Z'
+					}
+				});
+			}
+			return new Response('', { status: 200 });
+		});
+		const h = createHarness({
+			currentSession: makeSession({ id: sessionId }),
+			fetchImpl,
+			enableWorkerAdoption: true
+		});
+
+		const send = h.controller.sendMessage();
+		await flushMicrotasks(10);
+		expect(fetchImpl.mock.calls.map(([input]) => String(input))).toEqual([
+			'/api/agent/v2/transport',
+			'/api/agent/v2/stream'
+		]);
+		h.streamProcessor.runs[0]!.progress({ type: 'done' });
+		h.streamProcessor.runs[0]!.complete();
+		await send;
+		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('completed');
+	});
+
+	it('bypasses worker negotiation for attachments and retains legacy attachment behavior', async () => {
+		const ref = makeAttachmentRef();
+		const draft = makeDraftAttachment();
+		const h = createHarness({
+			currentSession: makeSession({ id: 'd2000000-0000-4000-8000-000000000001' }),
+			readyRefs: [ref],
+			draftAttachments: [draft],
+			enableWorkerAdoption: true
+		});
+		const send = h.controller.sendMessage();
+		await flushMicrotasks();
+		expect(h.defaultFetch.mock.calls.map(([input]) => String(input))).toEqual([
+			'/api/agent/v2/stream'
+		]);
+		h.streamProcessor.runs[0]!.progress({ type: 'done' });
+		h.streamProcessor.runs[0]!.complete();
+		await send;
+	});
+
+	it('never falls back to legacy after worker admission becomes uncertain', async () => {
+		const sessionId = 'd2000000-0000-4000-8000-000000000001';
+		const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+			if (String(input) === '/api/agent/v2/transport') {
+				return Response.json({
+					success: true,
+					data: {
+						mode: 'worker_realtime',
+						contractVersion: 'agentic_chat_worker_v1',
+						decisionId: 'd3000000-0000-4000-8000-000000000001',
+						token: 'actl1.claims.signature',
+						expiresAt: '2026-08-04T03:00:00.000Z'
+					}
+				});
+			}
+			return Response.json(
+				{
+					success: false,
+					error: 'Worker admission is temporarily unavailable',
+					code: 'WORKER_ADMISSION_UNAVAILABLE'
+				},
+				{ status: 503 }
+			);
+		});
+		const h = createHarness({
+			inputValue: 'Do not duplicate me',
+			currentSession: makeSession({ id: sessionId }),
+			fetchImpl,
+			enableWorkerAdoption: true
+		});
+
+		await h.controller.sendMessage();
+
+		expect(fetchImpl.mock.calls.map(([input]) => String(input))).toEqual([
+			'/api/agent/v2/transport',
+			'/api/agent/v2/turns'
+		]);
+		expect(h.streamProcessor.runs).toHaveLength(0);
+		expect(h.messages).toHaveLength(1);
+		expect(h.inputValue).toBe('');
+		expect(h.discoverWorkerSession).toHaveBeenCalledWith(sessionId);
+		expect(h.controller.error).toBe(
+			'Unable to start the worker response. BuildOS is checking its status.'
+		);
+	});
+
+	it('rolls back a worker bubble only when the server proves admission did not occur', async () => {
+		const sessionId = 'd2000000-0000-4000-8000-000000000001';
+		const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+			if (String(input) === '/api/agent/v2/transport') {
+				return Response.json({
+					success: true,
+					data: {
+						mode: 'worker_realtime',
+						contractVersion: 'agentic_chat_worker_v1',
+						decisionId: 'd3000000-0000-4000-8000-000000000001',
+						token: 'actl1.claims.signature',
+						expiresAt: '2026-08-04T03:00:00.000Z'
+					}
+				});
+			}
+			return Response.json(
+				{
+					success: false,
+					error: 'Worker turn capacity is temporarily unavailable',
+					code: 'WORKER_CAPACITY_EXCEEDED'
+				},
+				{ status: 503 }
+			);
+		});
+		const h = createHarness({
+			inputValue: 'Retry me safely',
+			currentSession: makeSession({ id: sessionId }),
+			fetchImpl,
+			enableWorkerAdoption: true
+		});
+
+		await h.controller.sendMessage();
+
+		expect(h.messages).toHaveLength(0);
+		expect(h.inputValue).toBe('Retry me safely');
+		expect(h.discoverWorkerSession).not.toHaveBeenCalled();
+		expect(h.streamProcessor.runs).toHaveLength(0);
 	});
 
 	it('waits briefly for an in-flight prepared prompt before first send', async () => {

@@ -34,7 +34,6 @@ import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const logger = createLogger('API:AgentWorkerTurnsV2');
-
 const canonicalText = (maximum: number) =>
 	z
 		.string()

@@ -18,6 +18,7 @@ import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { normalizeFastContextType } from '$lib/services/agentic-chat-v2/scope';
+import { selectAgenticChatNewTransport } from '$lib/services/agentic-chat-v2/worker-transport-routing.server';
 
 const logger = createLogger('API:AgentTransportV2');
 
@@ -79,8 +80,15 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			userId: user.id,
 			request: parsed.data
 		});
-		const mode = existing?.mode ?? 'legacy_sse';
-		const contractVersion = existing?.contractVersion ?? 'legacy_internal_v1';
+		const selected = existing
+			? { mode: existing.mode, contractVersion: existing.contractVersion }
+			: await selectAgenticChatNewTransport({
+					userId: user.id,
+					supportedModes: parsed.data.supportedModes,
+					supportedContractVersions: parsed.data.supportedContractVersions,
+					environment: env
+				});
+		const { mode, contractVersion } = selected;
 		if (
 			!parsed.data.supportedModes.includes(mode) ||
 			!parsed.data.supportedContractVersions.includes(contractVersion)
@@ -94,8 +102,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			);
 		}
 
-		// Routing is intentionally locked to legacy for new decisions in this slice.
-		// An existing worker turn may only receive its already-persisted immutable mode.
+		// Existing turns bypass live routing and retain their already-persisted
+		// immutable mode. New worker selection is exact-cohort and capacity-gated.
 		const lease = issueAgenticChatTransportLease({
 			secret: env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET ?? '',
 			userId: user.id,

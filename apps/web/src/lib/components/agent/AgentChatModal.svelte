@@ -616,6 +616,16 @@
 		},
 		handleSSEMessage: (event) => handleSSEMessage(event),
 		hydrateSessionFromEvent: (session) => hydrateSessionFromEvent(session),
+		adoptWorkerAdmissionResponse: (value) => {
+			if (!workerAdoption) {
+				throw new Error('Worker admission runtime is unavailable');
+			}
+			return workerAdoption.adoptAdmissionResponse(value);
+		},
+		discoverWorkerSession: async (sessionId) => {
+			if (!workerAdoption) return [];
+			return workerAdoption.discoverSession(sessionId);
+		},
 		reconcileTurnFromSession: (request) => reconcileTurnFromSession(request),
 		setUserHasScrolled: (value) => {
 			userHasScrolled = value;
