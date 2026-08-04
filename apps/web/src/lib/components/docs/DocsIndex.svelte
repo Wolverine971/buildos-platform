@@ -6,23 +6,19 @@
 		BookOpen,
 		Brain,
 		Calendar,
-		CalendarClock,
 		FolderOpen,
 		Layers,
 		Mail,
 		MessageSquare,
-		Network,
 		Plug,
-		Puzzle,
-		Sparkles,
 		Zap,
-		type Icon as IconType
-	} from 'lucide-svelte';
+		type Icon
+	} from '$lib/icons/lucide';
 	import type { DocSectionMeta } from '$lib/utils/docs';
 
 	let { sections }: { sections: DocSectionMeta[] } = $props();
 
-	const ICONS: Record<string, typeof IconType> = {
+	const ICONS: Record<string, Icon> = {
 		Zap,
 		Layers,
 		Brain,
@@ -35,77 +31,22 @@
 		BookOpen
 	};
 
-	type CapabilityGroup = {
-		title: string;
-		icon: typeof IconType;
-		items: string[];
-	};
-
-	const CAPABILITY_GROUPS: CapabilityGroup[] = [
-		{
-			title: 'Capture',
-			icon: Brain,
-			items: [
-				'Plain-language project creation',
-				'Brain dumps and voice notes',
-				'Files, images, and OCR-backed assets'
-			]
-		},
-		{
-			title: 'Organize',
-			icon: Network,
-			items: [
-				'Goals, milestones, plans, tasks, and documents',
-				'Risks, events, and people connected to the work',
-				'Task and document hierarchy inside each project'
-			]
-		},
-		{
-			title: 'Execute',
-			icon: CalendarClock,
-			items: [
-				'Calendar-aware scheduling and rescheduling',
-				'Daily briefs by app, email, and SMS',
-				'Notifications across the channels that matter'
-			]
-		},
-		{
-			title: 'Think',
-			icon: Sparkles,
-			items: [
-				'Project health audits',
-				'Forecasting for risk and slippage',
-				'Web research when outside context is needed'
-			]
-		},
-		{
-			title: 'Extend',
-			icon: Puzzle,
-			items: [
-				'Claude Code, OpenClaw, or custom agents',
-				'Scoped JSON-RPC access',
-				'Read-only or read-write keys by project'
-			]
-		}
-	];
-
 	type FeaturedPath = {
 		label: string;
 		title: string;
 		description: string;
 		href: string;
-		icon: typeof IconType;
-		primarySlug?: string;
+		icon: Icon;
+		primarySlug: string;
 		secondarySlugs: string[];
 		texture?: string;
 	};
 
 	const FEATURED_PATHS: FeaturedPath[] = [
 		{
-			label: 'Start',
+			label: 'First steps',
 			title: 'New to BuildOS',
-			description:
-				'Create your first project and learn the graph model that everything uses.',
+			description: 'Create your first project and learn the model that connects your work.',
 			href: '/docs/getting-started',
 			icon: Zap,
 			primarySlug: 'getting-started',
@@ -113,8 +54,8 @@
 			texture: 'tx tx-bloom tx-weak'
 		},
 		{
-			label: 'Operate',
-			title: 'Move real work forward',
+			label: 'Daily work',
+			title: 'Move work forward',
 			description:
 				'Capture messy thinking, work with the agent, plan tasks, and protect time.',
 			href: '/docs/brain-dump',
@@ -123,10 +64,9 @@
 			secondarySlugs: ['agentic-chat', 'projects-tasks-plans', 'calendar', 'daily-briefs']
 		},
 		{
-			label: 'Extend',
+			label: 'Agents & API',
 			title: 'Connect external agents',
-			description:
-				'Let Claude Code, OpenClaw, or a custom client work against your ontology.',
+			description: 'Give Claude Code, OpenClaw, or a custom client scoped project context.',
 			href: '/docs/connect-agents',
 			icon: Plug,
 			primarySlug: 'connect-agents',
@@ -144,13 +84,12 @@
 	const SECTION_GROUPS: SectionGroup[] = [
 		{
 			title: 'Start here',
-			description:
-				'The shortest path to creating your first project and seeing how it works.',
+			description: 'Create your first project and understand how BuildOS organizes it.',
 			slugs: ['getting-started', 'ontology']
 		},
 		{
 			title: 'Everyday workflows',
-			description: 'Capture work, move it forward, and let BuildOS keep the loop visible.',
+			description: 'Capture work, move it forward, and keep the loop visible.',
 			slugs: [
 				'brain-dump',
 				'agentic-chat',
@@ -162,8 +101,7 @@
 		},
 		{
 			title: 'Extend & reference',
-			description:
-				'Connect external agents to your project context and find supporting reference material.',
+			description: 'Connect agents and find supporting reference material.',
 			slugs: ['connect-agents', 'reference']
 		}
 	];
@@ -187,108 +125,94 @@
 	}
 </script>
 
-<!-- Hero -->
-<header class="mb-10 sm:mb-12 rounded-lg border border-border bg-muted atmo atmo-med rim-accent">
-	<div class="px-5 py-8 sm:px-8 sm:py-10 text-center">
-		<div class="flex justify-center mb-5">
-			<div
-				class="flex-shrink-0 rounded-lg border border-border bg-card shadow-ink w-16 h-16 flex items-center justify-center tx tx-bloom tx-weak"
-			>
-				<video
-					src="/onboarding-assets/animations/brain-bolt-electric-transparent.webm"
-					class="w-12 h-12"
-					autoplay
-					loop
-					muted
-					playsinline
-					aria-label="BuildOS Icon"
-				></video>
-			</div>
+<header
+	class="mb-10 rounded-lg border border-border bg-card p-5 shadow-ink tx tx-frame tx-weak sm:p-8"
+>
+	<div class="flex flex-col items-start gap-5 sm:flex-row sm:gap-6">
+		<div
+			class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-14 sm:w-14"
+		>
+			<BookOpen class="h-6 w-6 sm:h-7 sm:w-7" aria-hidden="true" />
 		</div>
 
-		<p class="text-xs sm:text-sm font-semibold text-accent mb-3">BuildOS documentation</p>
-		<h1
-			class="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground tracking-tight leading-tight max-w-4xl mx-auto"
-		>
-			Start with a project. Learn the model when you need it.
-		</h1>
-		<p
-			class="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed max-w-2xl mx-auto"
-		>
-			Use these docs to turn messy project context into structured work, operate on it with
-			the agent, and connect outside tools when the work needs more leverage.
-		</p>
+		<div class="min-w-0 max-w-3xl">
+			<p class="micro-label mb-3 text-accent">BuildOS documentation</p>
+			<h1
+				class="text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl"
+			>
+				Start with a project. Learn the model when you need it.
+			</h1>
+			<p class="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+				Turn messy project context into structured work, operate on it with the agent, and
+				connect outside tools when the work needs more leverage.
+			</p>
 
-		<div
-			class="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3"
-		>
 			<a
 				href="/docs/getting-started"
-				class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+				class="pressable mt-6 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-accent bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none"
 			>
-				<Zap class="w-4 h-4" aria-hidden="true" />
-				Create your first project
-			</a>
-			<a
-				href="/auth/register"
-				class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:border-accent hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-			>
-				<ArrowRight class="w-4 h-4" aria-hidden="true" />
-				Start in chat
+				Read getting started
+				<ArrowRight class="h-4 w-4 shrink-0" aria-hidden="true" />
 			</a>
 		</div>
 	</div>
 </header>
 
-<!-- Choose a path -->
-<section class="mb-10 sm:mb-12" aria-labelledby="paths-heading">
-	<header class="text-center mb-6">
-		<h2 id="paths-heading" class="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-			Choose the path you need
+<section class="mb-10" aria-labelledby="paths-heading">
+	<header class="mb-5 max-w-2xl">
+		<p class="micro-label mb-2 text-accent">Find your path</p>
+		<h2 id="paths-heading" class="text-2xl font-semibold text-foreground sm:text-3xl">
+			What are you trying to do?
 		</h2>
-		<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-			Start at the top if you are new. Jump to the workflow when you already know what you are
-			trying to do.
+		<p class="mt-2 text-sm text-muted-foreground sm:text-base">
+			Start at the top if you are new, or jump straight to the workflow you need.
 		</p>
 	</header>
 
-	<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-		{#each FEATURED_PATHS as path}
+	<div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
+		{#each FEATURED_PATHS as path (path.href)}
 			{@const PathIcon = path.icon}
-			{@const primarySection = path.primarySlug ? sectionFor(path.primarySlug) : undefined}
-			<article class="p-5 sm:p-6 wt-card sp-block {path.texture ?? ''}">
-				<div class="flex items-start justify-between gap-4 mb-4">
-					<div>
-						<p class="text-xs font-semibold text-accent mb-2">{path.label}</p>
-						<h3 class="text-lg font-bold text-foreground">{path.title}</h3>
+			{@const primarySection = sectionFor(path.primarySlug)}
+			{@const secondarySections = secondarySectionsFor(path)}
+			<article
+				class="flex h-full flex-col rounded-lg border border-border bg-card p-5 shadow-ink {path.texture ??
+					''}"
+			>
+				<div class="mb-4 flex items-start justify-between gap-4">
+					<div class="min-w-0">
+						<p class="micro-label mb-2 text-accent">{path.label}</p>
+						<h3 class="text-lg font-semibold text-foreground">{path.title}</h3>
 					</div>
 					<span
-						class="inline-flex w-10 h-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent"
+						class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent"
 					>
-						<PathIcon class="w-5 h-5" aria-hidden="true" />
+						<PathIcon class="h-5 w-5" aria-hidden="true" />
 					</span>
 				</div>
 
-				<p class="text-sm text-muted-foreground leading-relaxed mb-4">{path.description}</p>
+				<p class="mb-4 text-sm leading-relaxed text-muted-foreground">{path.description}</p>
 
 				<a
 					href={path.href}
-					class="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:text-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
+					class="pressable inline-flex min-h-[44px] w-full items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 				>
-					{primarySection?.title ?? 'Open guide'}
-					<ArrowRight class="w-3.5 h-3.5" aria-hidden="true" />
+					<span class="truncate">{primarySection?.title ?? 'Open guide'}</span>
+					<ArrowRight class="h-4 w-4 shrink-0" aria-hidden="true" />
 				</a>
 
-				{#if secondarySectionsFor(path).length > 0}
-					<div class="mt-4 flex flex-wrap gap-2">
-						{#each secondarySectionsFor(path) as section}
-							<a
-								href={'/docs/' + section.slug}
-								class="rounded border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-accent/40 hover:text-foreground"
-							>
-								{section.title}
-							</a>
-						{/each}
+				{#if secondarySections.length > 0}
+					<div class="mt-4 border-t border-border pt-3">
+						<p class="micro-label mb-1.5">Then explore</p>
+						<div class="flex flex-wrap gap-1">
+							{#each secondarySections as section (section.slug)}
+								<a
+									href={'/docs/' + section.slug}
+									class="inline-flex min-h-[44px] min-w-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+								>
+									<span class="truncate">{section.title}</span>
+								</a>
+							{/each}
+						</div>
 					</div>
 				{/if}
 			</article>
@@ -296,93 +220,55 @@
 	</div>
 </section>
 
-<!-- What BuildOS can do -->
-<section class="mb-10 sm:mb-12" aria-labelledby="capabilities-heading">
-	<header class="text-center mb-6">
-		<h2 id="capabilities-heading" class="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-			Capability map
-		</h2>
-		<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-			BuildOS is one project graph with several ways to capture, organize, execute, think, and
-			extend.
-		</p>
-	</header>
-
-	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-		{#each CAPABILITY_GROUPS as group}
-			{@const GroupIcon = group.icon}
-			<article class="p-4 wt-paper sp-inline">
-				<div class="flex items-center gap-2 mb-3">
-					<span
-						class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-accent/10 text-accent"
-					>
-						<GroupIcon class="w-4 h-4" aria-hidden="true" />
-					</span>
-					<h3 class="text-sm font-semibold text-foreground">{group.title}</h3>
-				</div>
-				<ul class="space-y-1.5">
-					{#each group.items as item}
-						<li class="flex gap-2 text-xs text-muted-foreground leading-relaxed">
-							<span
-								class="text-accent/70 flex-shrink-0 select-none"
-								aria-hidden="true">•</span
-							>
-							<span>{item}</span>
-						</li>
-					{/each}
-				</ul>
-			</article>
-		{/each}
-	</div>
-</section>
-
-<!-- Sections, grouped -->
 <section aria-labelledby="sections-heading">
-	<header class="text-center mb-6">
-		<h2 id="sections-heading" class="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-			Read the docs
+	<header class="mb-6 max-w-2xl">
+		<p class="micro-label mb-2 text-accent">Documentation library</p>
+		<h2 id="sections-heading" class="text-2xl font-semibold text-foreground sm:text-3xl">
+			All guides
 		</h2>
-		<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-			Every guide is organized around what you are trying to understand or change.
+		<p class="mt-2 text-sm text-muted-foreground sm:text-base">
+			Every guide is organized around something you can understand or change.
 		</p>
 	</header>
 
 	<div class="space-y-8">
-		{#each SECTION_GROUPS as group}
+		{#each SECTION_GROUPS as group (group.title)}
+			{@const groupSections = sectionsFor(group)}
 			<div>
 				<header class="mb-3">
-					<h3 class="text-base sm:text-lg font-semibold text-foreground">
+					<h3 class="text-base font-semibold text-foreground sm:text-lg">
 						{group.title}
 					</h3>
-					<p class="text-sm text-muted-foreground">{group.description}</p>
+					<p class="mt-1 text-sm text-muted-foreground">{group.description}</p>
 				</header>
 
-				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-					{#each sectionsFor(group) as section}
-						{@const Icon = ICONS[section.icon] ?? BookOpen}
+				<div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+					{#each groupSections as section (section.slug)}
+						{@const SectionIcon = ICONS[section.icon] ?? BookOpen}
 						<a
 							href={'/docs/' + section.slug}
-							class="group flex items-start gap-3 bg-card border border-border rounded-lg hover:shadow-ink hover:border-accent/40 transition-all duration-200 p-3.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							class="group flex min-h-[76px] min-w-0 items-start gap-3 rounded-lg border border-border bg-card p-3.5 transition-colors hover:border-accent/40 hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
 						>
 							<span
-								class="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded bg-muted text-foreground group-hover:bg-accent/10 group-hover:text-accent transition-colors"
+								class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-foreground transition-colors group-hover:bg-accent/10 group-hover:text-accent motion-reduce:transition-none"
 							>
-								<Icon class="w-4 h-4" aria-hidden="true" />
+								<SectionIcon class="h-4 w-4" aria-hidden="true" />
 							</span>
 							<span class="min-w-0 flex-1">
 								<span
-									class="block text-sm font-semibold text-foreground group-hover:text-accent transition-colors truncate"
+									class="block truncate text-sm font-semibold text-foreground transition-colors group-hover:text-accent motion-reduce:transition-none"
 								>
 									{section.title}
 								</span>
 								<span
-									class="block text-xs text-muted-foreground leading-snug line-clamp-2 mt-0.5"
+									class="mt-0.5 block line-clamp-2 text-xs leading-snug text-muted-foreground"
 								>
 									{section.summary}
 								</span>
 							</span>
 							<ArrowRight
-								class="w-3.5 h-3.5 text-muted-foreground/50 flex-shrink-0 mt-1 group-hover:text-accent group-hover:translate-x-0.5 transition-all"
+								class="mt-1 h-4 w-4 shrink-0 text-muted-foreground/60 transition-colors group-hover:text-accent motion-reduce:transition-none"
+								aria-hidden="true"
 							/>
 						</a>
 					{/each}

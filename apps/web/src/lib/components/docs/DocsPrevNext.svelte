@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/docs/DocsPrevNext.svelte -->
 <script lang="ts">
-	import { ArrowLeft, ArrowRight } from 'lucide-svelte';
+	import { ArrowLeft, ArrowRight } from '$lib/icons/lucide';
 	import type { DocSectionMeta } from '$lib/utils/docs';
 
 	let { prev, next }: { prev: DocSectionMeta | null; next: DocSectionMeta | null } = $props();
@@ -10,14 +10,14 @@
 	{#if prev}
 		<a
 			href={'/docs/' + prev.slug}
-			class="group block bg-card border border-border rounded-lg p-4 hover:shadow-ink hover:border-accent/40 transition-all duration-200 pressable"
+			class="group block min-w-0 rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none pressable"
 		>
-			<span class="flex items-center gap-1 text-2xs text-muted-foreground mb-1">
-				<ArrowLeft class="w-3 h-3" />
+			<span class="micro-label mb-1 flex items-center gap-1">
+				<ArrowLeft class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
 				Previous
 			</span>
 			<span
-				class="block text-sm font-medium text-foreground group-hover:text-accent transition-colors"
+				class="block line-clamp-2 text-sm font-medium text-foreground transition-colors group-hover:text-accent motion-reduce:transition-none"
 			>
 				{prev.title}
 			</span>
@@ -29,16 +29,14 @@
 	{#if next}
 		<a
 			href={'/docs/' + next.slug}
-			class="group block bg-card border border-border rounded-lg p-4 hover:shadow-ink hover:border-accent/40 transition-all duration-200 pressable sm:text-right"
+			class="group block min-w-0 rounded-lg border border-border bg-card p-4 shadow-ink transition-colors hover:border-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none pressable sm:text-right"
 		>
-			<span
-				class="flex items-center gap-1 text-2xs text-muted-foreground mb-1 sm:justify-end"
-			>
+			<span class="micro-label mb-1 flex items-center gap-1 sm:justify-end">
 				Next
-				<ArrowRight class="w-3 h-3" />
+				<ArrowRight class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
 			</span>
 			<span
-				class="block text-sm font-medium text-foreground group-hover:text-accent transition-colors"
+				class="block line-clamp-2 text-sm font-medium text-foreground transition-colors group-hover:text-accent motion-reduce:transition-none"
 			>
 				{next.title}
 			</span>

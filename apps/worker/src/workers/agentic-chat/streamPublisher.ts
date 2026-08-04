@@ -15,6 +15,7 @@ import {
 	type AgentStreamEventV1,
 	type AgenticChatRealtimeBroadcastV1,
 	type AgenticChatSemanticEventRpcResultV1,
+	type AgenticChatCommittedSemanticEventReceiptV1,
 	type AgenticChatStreamDeliveryAckRpcResultV1,
 	type AgenticChatTerminalReceiptV1,
 	type AgenticChatTextBatchFlushRpcResultV1,
@@ -458,6 +459,18 @@ export class AgenticChatStreamPublisher {
 		);
 		this.wake();
 		return Promise.all(deliveries);
+	}
+
+	/** Deliver a semantic event already committed by a larger database transaction. */
+	async publishCommittedSemantic(
+		turnRunId: string,
+		receipt: AgenticChatCommittedSemanticEventReceiptV1
+	): Promise<AgenticChatPublisherDeliveryV1> {
+		const state = this.requireTurn(turnRunId);
+		if (state.operations.length || state.busy) {
+			throw new Error('Committed semantic publication requires a fully drained write slot');
+		}
+		return this.deliverPersisted(state, receipt);
 	}
 
 	async publishTerminal(

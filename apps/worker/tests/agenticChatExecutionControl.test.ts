@@ -17,6 +17,7 @@ const PROCESSING_TOKEN = '60000000-0000-4000-8000-000000000006';
 const INPUT_ARTIFACT_ID = '70000000-0000-4000-8000-000000000007';
 const USER_MESSAGE_ID = '80000000-0000-4000-8000-000000000008';
 const ASSISTANT_MESSAGE_ID = '90000000-0000-4000-8000-000000000009';
+const LAST_CONTEXT_TRANSITION_ID = 'a0000000-0000-5000-8000-00000000000a';
 const EXECUTION_GENERATION = 2;
 const TERMINAL_SEQUENCE = 8;
 
@@ -208,6 +209,81 @@ describe('SupabaseAgenticChatExecutionControlAdapter', () => {
 		await expect(adapter.claim(identity)).rejects.toBeInstanceOf(
 			AgenticChatExecutionControlProtocolError
 		);
+	});
+
+	it('selects the atomic completion RPC and verifies the preterminal receipt', async () => {
+		const lastTurnContext = {
+			summary: 'Completed the request.',
+			entities: {},
+			context_type: 'global',
+			data_accessed: []
+		};
+		const preterminalEvent = {
+			outcome: 'persisted',
+			publish_allowed: true,
+			turn_run_id: TURN_RUN_ID,
+			queue_job_id: QUEUE_JOB_ID,
+			session_id: SESSION_ID,
+			user_id: USER_ID,
+			stream_run_id: 'stream-1',
+			client_turn_id: 'client-1',
+			execution_generation: EXECUTION_GENERATION,
+			sequence_index: TERMINAL_SEQUENCE - 1,
+			event_id: createAgentStreamEventIdV1(
+				TURN_RUN_ID,
+				EXECUTION_GENERATION,
+				TERMINAL_SEQUENCE - 1
+			),
+			phase: 'finalize',
+			event_type: 'last_turn_context',
+			durable: true,
+			transition_id: LAST_CONTEXT_TRANSITION_ID,
+			event_payload: {
+				type: 'last_turn_context',
+				context: { ...lastTurnContext, timestamp: '2026-08-03T12:00:00.000Z' }
+			},
+			reconcile_required: true,
+			persisted_at: '2026-08-03T12:00:00.010Z'
+		};
+		const { adapter, rpc } = adapterFor([
+			terminalReceipt({ preterminal_event: preterminalEvent })
+		]);
+
+		await expect(
+			adapter.finalize(
+				finalizeInput({
+					lastTurnContext,
+					lastTurnContextTransitionId: LAST_CONTEXT_TRANSITION_ID
+				})
+			)
+		).resolves.toMatchObject({
+			outcome: 'finalized',
+			preterminal_event: { event_type: 'last_turn_context' }
+		});
+		expect(rpc).toHaveBeenCalledWith(
+			'finalize_agentic_chat_turn_with_last_context',
+			expect.objectContaining({
+				p_last_turn_context: lastTurnContext,
+				p_last_turn_context_transition_id: LAST_CONTEXT_TRANSITION_ID
+			})
+		);
+	});
+
+	it('rejects atomic completion without its committed preterminal receipt', async () => {
+		const { adapter } = adapterFor([terminalReceipt()]);
+		await expect(
+			adapter.finalize(
+				finalizeInput({
+					lastTurnContext: {
+						summary: 'Completed the request.',
+						entities: {},
+						context_type: 'global',
+						data_accessed: []
+					},
+					lastTurnContextTransitionId: LAST_CONTEXT_TRANSITION_ID
+				})
+			)
+		).rejects.toBeInstanceOf(AgenticChatExecutionControlProtocolError);
 	});
 
 	it('accepts a lost provider-start response only as non-authoritative replay', async () => {

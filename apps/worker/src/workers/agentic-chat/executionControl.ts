@@ -7,6 +7,7 @@ import {
 	type AgenticChatTurnClaimResultV1,
 	type ChatTurnStatusV1,
 	type JsonObject,
+	canonicalizeAgenticChatJson,
 	createAgentStreamEventIdV1
 } from '@buildos/shared-types';
 
@@ -37,6 +38,8 @@ export type AgenticChatTerminalFinalizeInputV1 = AgenticChatExecutionIdentityV1 
 	totalTokens: number | null;
 	projection: JsonObject;
 	eventPayload: JsonObject;
+	lastTurnContext?: JsonObject | null;
+	lastTurnContextTransitionId?: string | null;
 };
 
 export type AgenticChatExecutionControlPortV1 = {
@@ -175,8 +178,23 @@ export class SupabaseAgenticChatExecutionControlAdapter
 		] as const) {
 			if (value !== null) nonnegativeInteger(value, name);
 		}
+		const lastTurnContext = input.lastTurnContext ?? null;
+		const lastTurnContextTransitionId = input.lastTurnContextTransitionId ?? null;
+		if ((lastTurnContext === null) !== (lastTurnContextTransitionId === null)) {
+			throw protocolError('last-turn context and transition id must be supplied together');
+		}
+		if (lastTurnContext !== null) {
+			if (input.status !== 'completed') {
+				throw protocolError('only completed finalization may carry last-turn context');
+			}
+			canonicalUuid(lastTurnContextTransitionId!, 'lastTurnContextTransitionId');
+		}
 
-		const value = await this.call('finalize_agentic_chat_turn', {
+		const rpcName =
+			lastTurnContext === null
+				? 'finalize_agentic_chat_turn'
+				: 'finalize_agentic_chat_turn_with_last_context';
+		const args: Record<string, unknown> = {
 			p_turn_run_id: input.turnRunId,
 			p_queue_job_id: input.queueJobId,
 			p_processing_token: input.processingToken,
@@ -193,7 +211,12 @@ export class SupabaseAgenticChatExecutionControlAdapter
 			p_total_tokens: input.totalTokens,
 			p_projection: input.projection,
 			p_event_payload: input.eventPayload
-		});
+		};
+		if (lastTurnContext !== null) {
+			args.p_last_turn_context = lastTurnContext;
+			args.p_last_turn_context_transition_id = lastTurnContextTransitionId;
+		}
+		const value = await this.call(rpcName, args);
 		return parseFinalizeReceipt(value, input);
 	}
 
@@ -363,6 +386,9 @@ function parseFinalizeReceipt(
 ): AgenticChatTerminalFinalizeRpcResultV1 {
 	const receipt = commonTerminalReceipt(value, expected);
 	if (receipt.outcome === 'finalized' || receipt.outcome === 'already_terminal') {
+		const expectedLastTurnContext = expected.lastTurnContext ?? null;
+		const expectedTransitionId = expected.lastTurnContextTransitionId ?? null;
+		const preterminal = receipt.preterminal_event;
 		if (
 			!isTerminalStatus(receipt.status) ||
 			!positiveIntegerValue(receipt.execution_generation) ||
@@ -382,7 +408,16 @@ function parseFinalizeReceipt(
 			!isTimestamp(receipt.terminalized_at) ||
 			(receipt.status === 'completed' &&
 				(receipt.assistant_message_id === null || receipt.failure_code !== null)) ||
-			(receipt.status === 'failed' && receipt.failure_code === null)
+			(receipt.status === 'failed' && receipt.failure_code === null) ||
+			(receipt.outcome === 'finalized' &&
+				expectedLastTurnContext !== null &&
+				!isLastTurnContextReceipt(
+					preterminal,
+					expected,
+					expectedTransitionId!,
+					receipt.terminal_sequence_index
+				)) ||
+			(expectedLastTurnContext === null && preterminal !== undefined)
 		) {
 			throw protocolError('terminal receipt is inconsistent');
 		}
@@ -408,6 +443,50 @@ function parseFinalizeReceipt(
 		return receipt as unknown as AgenticChatTerminalFinalizeRpcResultV1;
 	}
 	throw protocolError('terminal outcome is invalid');
+}
+
+function isLastTurnContextReceipt(
+	value: unknown,
+	expected: AgenticChatTerminalFinalizeInputV1,
+	transitionId: string,
+	terminalSequence: number
+): boolean {
+	try {
+		if (!value || typeof value !== 'object') return false;
+		const receipt = value as Record<string, unknown>;
+		const eventPayload = receipt.event_payload;
+		if (!eventPayload || typeof eventPayload !== 'object' || Array.isArray(eventPayload)) {
+			return false;
+		}
+		const payload = eventPayload as Record<string, unknown>;
+		const context = payload.context;
+		if (!context || typeof context !== 'object' || Array.isArray(context)) return false;
+		const { timestamp, ...draft } = context as Record<string, unknown>;
+		return (
+			(receipt.outcome === 'persisted' || receipt.outcome === 'already_persisted') &&
+			receipt.publish_allowed === (receipt.outcome === 'persisted') &&
+			receipt.turn_run_id === expected.turnRunId &&
+			receipt.queue_job_id === expected.queueJobId &&
+			receipt.execution_generation === expected.executionGeneration &&
+			receipt.sequence_index === terminalSequence - 1 &&
+			receipt.event_id ===
+				createAgentStreamEventIdV1(
+					expected.turnRunId,
+					expected.executionGeneration,
+					terminalSequence - 1
+				) &&
+			receipt.phase === 'finalize' &&
+			receipt.event_type === 'last_turn_context' &&
+			receipt.durable === true &&
+			receipt.transition_id === transitionId &&
+			payload.type === 'last_turn_context' &&
+			isTimestamp(timestamp) &&
+			canonicalizeAgenticChatJson(draft as JsonObject) ===
+				canonicalizeAgenticChatJson(expected.lastTurnContext!)
+		);
+	} catch {
+		return false;
+	}
 }
 
 function commonReceipt(

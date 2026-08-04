@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/docs/[slug]/+page.svelte -->
 <script lang="ts">
 	import type { ComponentType } from 'svelte';
-	import { ArrowLeft, Clock, History } from 'lucide-svelte';
+	import { ArrowLeft, Clock, History } from '$lib/icons/lucide';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import DocsPrevNext from '$lib/components/docs/DocsPrevNext.svelte';
 	import {
@@ -31,6 +31,16 @@
 	const seoKeywords = $derived(
 		data.doc.seoKeywords ??
 			`BuildOS, ${data.doc.title.toLowerCase()}, thinking environment, project memory, structured work, documentation`
+	);
+	const formattedLastUpdated = $derived(
+		data.doc.lastUpdated
+			? new Intl.DateTimeFormat('en-US', {
+					month: 'short',
+					day: 'numeric',
+					year: 'numeric',
+					timeZone: 'UTC'
+				}).format(new Date(data.doc.lastUpdated))
+			: null
 	);
 	const seoAdditionalMeta = $derived.by(() => {
 		const meta = [{ property: 'article:section', content: 'Documentation' }];
@@ -105,15 +115,19 @@
 	additionalMeta={seoAdditionalMeta}
 />
 
-<article>
+<article class="max-w-4xl">
 	<!-- Breadcrumb -->
 	<nav
-		class="flex items-center gap-1.5 text-xs text-muted-foreground mb-4"
+		class="mb-3 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
 		aria-label="Breadcrumb"
 	>
-		<a href="/docs" class="hover:text-accent transition-colors">Docs</a>
+		<a
+			href="/docs"
+			class="inline-flex min-h-[44px] shrink-0 items-center rounded-md px-1.5 transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+			>Docs</a
+		>
 		<span aria-hidden="true">/</span>
-		<span class="text-foreground">{data.doc.title}</span>
+		<span class="truncate text-foreground" aria-current="page">{data.doc.title}</span>
 	</nav>
 
 	<header class="pb-6 border-b border-border">
@@ -126,15 +140,15 @@
 			{data.doc.summary}
 		</p>
 
-		<div class="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-			{#if data.doc.lastUpdated}
+		<div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+			{#if data.doc.lastUpdated && formattedLastUpdated}
 				<span class="flex items-center gap-1">
-					<History class="w-3 h-3" />
-					Updated {data.doc.lastUpdated}
+					<History class="h-4 w-4 shrink-0" aria-hidden="true" />
+					<time datetime={data.doc.lastUpdated}>Updated {formattedLastUpdated}</time>
 				</span>
 			{/if}
 			<span class="flex items-center gap-1">
-				<Clock class="w-3 h-3" />
+				<Clock class="h-4 w-4 shrink-0" aria-hidden="true" />
 				{data.doc.readingTime} min read
 			</span>
 		</div>
@@ -148,10 +162,11 @@
 			prose-strong:text-foreground prose-strong:font-semibold
 			prose-a:text-accent prose-a:no-underline hover:prose-a:underline
 			prose-blockquote:text-muted-foreground prose-blockquote:border-accent/30 prose-blockquote:not-italic
-			prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:before:content-none prose-code:after:content-none
-			prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-pre:rounded-lg
+			prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded-md prose-code:text-sm prose-code:before:content-none prose-code:after:content-none
+			prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-pre:rounded-lg prose-pre:overflow-x-auto
 			prose-hr:border-border
 			prose-img:rounded-lg prose-img:shadow-ink
+			prose-table:block prose-table:max-w-full prose-table:overflow-x-auto
 			prose-th:text-foreground prose-td:text-foreground/90
 			prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg"
 	>
@@ -172,9 +187,9 @@
 
 		<a
 			href="/docs"
-			class="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors"
+			class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 		>
-			<ArrowLeft class="w-3 h-3" />
+			<ArrowLeft class="h-4 w-4 shrink-0" aria-hidden="true" />
 			All docs
 		</a>
 	</div>

@@ -500,6 +500,75 @@ describe('AgenticChatStreamPublisher', () => {
 		await publisher.stop();
 	});
 
+	it('publishes an atomically committed semantic receipt before terminal done', async () => {
+		const context = turn('committed-context');
+		const log: string[] = [];
+		const broadcast = createBroadcast(log);
+		const publisher = new AgenticChatStreamPublisher({
+			persistence: createPersistence([context], log),
+			broadcast
+		});
+		publisher.start();
+		publisher.registerTurn(context);
+
+		await expect(
+			publisher.publishCommittedSemantic(context.turnRunId, {
+				outcome: 'persisted',
+				publish_allowed: true,
+				turn_run_id: context.turnRunId,
+				queue_job_id: context.queueJobId,
+				session_id: context.sessionId,
+				user_id: context.userId,
+				stream_run_id: context.streamRunId,
+				client_turn_id: context.clientTurnId,
+				execution_generation: 1,
+				sequence_index: 1,
+				event_id: `${context.turnRunId}:1:1`,
+				phase: 'finalize',
+				event_type: 'last_turn_context',
+				durable: true,
+				transition_id: 'transition-last-context',
+				event_payload: {
+					type: 'last_turn_context',
+					context: { timestamp: '2026-08-02T20:00:00.000Z' }
+				},
+				reconcile_required: true,
+				persisted_at: '2026-08-02T20:00:00.010Z'
+			})
+		).resolves.toBe('broadcast_acknowledged');
+		await expect(
+			publisher.publishTerminal(
+				context.turnRunId,
+				{
+					turn_run_id: context.turnRunId,
+					session_id: context.sessionId,
+					user_id: context.userId,
+					queue_job_id: context.queueJobId,
+					execution_generation: 1,
+					status: 'completed',
+					finished_reason: 'stop',
+					failure_code: null,
+					assistant_message_id: 'message-committed-context',
+					terminal_event_id: `${context.turnRunId}:1:2`,
+					terminal_sequence_index: 2,
+					terminalized_at: '2026-08-02T20:00:00.020Z'
+				},
+				{ type: 'done', status: 'completed' }
+			)
+		).resolves.toBe('broadcast_acknowledged');
+		expect(broadcast.messages.map((message) => message.payload.type)).toEqual([
+			'last_turn_context',
+			'done'
+		]);
+		expect(log).toEqual([
+			'broadcast:event',
+			`ack:${context.turnRunId}:1`,
+			'broadcast:event',
+			`ack:${context.turnRunId}:2`
+		]);
+		await publisher.stop();
+	});
+
 	it('abandons pending writes without publishing a late in-flight receipt', async () => {
 		const context = turn('abandon');
 		const gate = Promise.withResolvers<void>();

@@ -35,6 +35,7 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	let port = 0;
 	let proofOutput = '';
 	let loadOutput = '';
+	let lastContextOutput = '';
 
 	const applySqlFile = (path: string): string =>
 		execFileSync(
@@ -118,7 +119,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			'20260802033100_agentic_chat_worker_create_transition_index.sql',
 			'20260802033200_agentic_chat_worker_stream_write_rpcs.sql',
 			'20260802034000_agentic_chat_worker_stream_delivery_ack.sql',
-			'20260802035000_agentic_chat_worker_cancel_observation.sql'
+			'20260802035000_agentic_chat_worker_cancel_observation.sql',
+			'20260804000100_agentic_chat_terminal_last_turn_context.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}
@@ -128,6 +130,11 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 		);
 		loadOutput = applySqlFile(
 			sqlPath('supabase/tests/20260803000000_agentic_chat_worker_100_turn_load.test.sql')
+		);
+		lastContextOutput = applySqlFile(
+			sqlPath(
+				'supabase/tests/20260804000100_agentic_chat_terminal_last_turn_context.test.sql'
+			)
 		);
 	}, 60_000);
 
@@ -144,7 +151,9 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 
 	it('measures the bounded 100-turn database cadence and WAL budget', () => {
 		expect(loadOutput).toContain('phase2d_100_turn_database_load_ok');
-		const metricsText = loadOutput.match(/agentic_chat_100_turn_load_metrics=(\{[^\n]+\})/)?.[1];
+		const metricsText = loadOutput.match(
+			/agentic_chat_100_turn_load_metrics=(\{[^\n]+\})/
+		)?.[1];
 		expect(metricsText).toBeDefined();
 		const metrics = JSON.parse(metricsText ?? '{}') as Record<string, number>;
 		expect(metrics).toMatchObject({ turns: 100, rpc_statements: 102, affected_rows: 300 });
@@ -152,5 +161,9 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 		expect(metrics.wal_bytes_per_turn).toBeLessThanOrEqual(65_536);
 		expect(metrics.flush_ms).toBeLessThan(2_000);
 		expect(metrics.total_ms).toBeLessThan(5_000);
+	});
+
+	it('commits replay-safe last-turn context immediately before terminal done', () => {
+		expect(lastContextOutput).toContain('phase4_slice5_terminal_last_turn_context_ok');
 	});
 });

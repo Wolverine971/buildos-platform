@@ -1,5 +1,6 @@
 // apps/worker/src/workers/agentic-chat/fixtureTurnExecutor.ts
 import { randomUUID } from 'node:crypto';
+import { buildLastTurnContextDraftV1 } from '@buildos/agentic-chat-runtime';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
@@ -9,6 +10,10 @@ import {
 	type AgenticChatTurnClaimResultV1,
 	type AgenticChatTurnJobV1,
 	type ChatTurnTerminalStatusV1,
+	type ChatContextType,
+	type ChatToolCall,
+	type ChatToolResult,
+	type ContextShiftPayload,
 	type JsonObject,
 	createAgentStreamEventIdV1
 } from '@buildos/shared-types';
@@ -82,6 +87,7 @@ type PublisherPort = Pick<
 	| 'appendText'
 	| 'publishSemantic'
 	| 'flushTurn'
+	| 'publishCommittedSemantic'
 	| 'publishTerminal'
 	| 'getSnapshot'
 	| 'unregisterTurn'
@@ -112,6 +118,11 @@ export type AgenticChatFixtureExecutionResultV1 = {
 type ProjectionState = {
 	currentActivity: string;
 	semanticEvents: AgentStreamEventV1[];
+};
+
+type TerminalContextState = {
+	contextShift: ContextShiftPayload | null;
+	toolExecutions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
 };
 
 /**
@@ -262,6 +273,10 @@ export class AgenticChatFixtureTurnExecutor {
 		let usage: AgenticChatFixtureUsageV1 | null = null;
 		let finishedReason = 'stop';
 		const projection = emptyProjection();
+		const terminalContext: TerminalContextState = {
+			contextShift: null,
+			toolExecutions: []
+		};
 
 		try {
 			throwIfAborted(combined.signal);
@@ -347,10 +362,18 @@ export class AgenticChatFixtureTurnExecutor {
 				}
 				if (step.type === 'semantic') {
 					await this.publishSemantic(executionInput, projection, step, combined.signal);
+					terminalContext.contextShift =
+						extractContextShift(step.eventPayload) ?? terminalContext.contextShift;
 					continue;
 				}
 				if (step.type === 'read_tool') {
-					await this.executeReadTool(executionInput, projection, step, combined.signal);
+					await this.executeReadTool(
+						executionInput,
+						projection,
+						terminalContext,
+						step,
+						combined.signal
+					);
 					continue;
 				}
 				if (step.type === 'mutating_tool') {
@@ -358,6 +381,7 @@ export class AgenticChatFixtureTurnExecutor {
 						executionInput,
 						envelope.processingToken,
 						projection,
+						terminalContext,
 						step,
 						combined.signal
 					);
@@ -387,7 +411,9 @@ export class AgenticChatFixtureTurnExecutor {
 				null,
 				usage,
 				projection,
-				publisherRegistered
+				publisherRegistered,
+				undefined,
+				{ executionInput, terminalContext }
 			);
 		} catch (error) {
 			const failureClass = classifyFailure(error, executionStarted, combined.signal);
@@ -506,6 +532,7 @@ export class AgenticChatFixtureTurnExecutor {
 		executionInput: AgenticChatWorkerExecutionInputV1,
 		processingToken: string,
 		projection: ProjectionState,
+		terminalContext: TerminalContextState,
 		step: Extract<AgenticChatFixtureProviderStepV1, { type: 'mutating_tool' }>,
 		signal: AbortSignal
 	): Promise<void> {
@@ -586,11 +613,20 @@ export class AgenticChatFixtureTurnExecutor {
 			},
 			signal
 		);
+		terminalContext.toolExecutions.push({
+			toolCall: providerToolCall(step),
+			result: {
+				tool_call_id: step.providerToolCallId,
+				result: mutation.downstreamReceipt,
+				success: true
+			}
+		});
 	}
 
 	private async executeReadTool(
 		executionInput: AgenticChatWorkerExecutionInputV1,
 		projection: ProjectionState,
+		terminalContext: TerminalContextState,
 		step: Extract<AgenticChatFixtureProviderStepV1, { type: 'read_tool' }>,
 		signal: AbortSignal
 	): Promise<void> {
@@ -656,6 +692,14 @@ export class AgenticChatFixtureTurnExecutor {
 			},
 			signal
 		);
+		terminalContext.toolExecutions.push({
+			toolCall: providerToolCall(step),
+			result: {
+				tool_call_id: step.providerToolCallId,
+				result: toolResult,
+				success: true
+			}
+		});
 	}
 
 	private async publishSemantic(
@@ -797,7 +841,11 @@ export class AgenticChatFixtureTurnExecutor {
 		usage: AgenticChatFixtureUsageV1 | null,
 		projection: ProjectionState,
 		publisherRegistered: boolean,
-		assistantTextOverride?: string
+		assistantTextOverride?: string,
+		completionContext?: {
+			executionInput: AgenticChatWorkerExecutionInputV1;
+			terminalContext: TerminalContextState;
+		}
 	): Promise<AgenticChatFixtureExecutionResultV1> {
 		let assistantText =
 			assistantTextOverride ??
@@ -859,7 +907,22 @@ export class AgenticChatFixtureTurnExecutor {
 				finished_reason: finishedReason,
 				failure_code: failureCode,
 				...completedEventPayload
-			}
+			},
+			lastTurnContext:
+				status === 'completed' && completionContext
+					? (buildCompletionLastTurnContext(
+							completionContext.executionInput,
+							assistantText,
+							completionContext.terminalContext
+						) as unknown as JsonObject)
+					: null,
+			lastTurnContextTransitionId:
+				status === 'completed' && completionContext
+					? createStableAgenticChatLifecycleTransitionIdV1({
+							turnRunId: claim.turnRunId,
+							stage: 'last_turn_context'
+						})
+					: null
 		};
 
 		let terminal: AgenticChatTerminalFinalizeRpcResultV1;
@@ -885,11 +948,23 @@ export class AgenticChatFixtureTurnExecutor {
 
 		if (terminal.outcome === 'finalized' && mayPublishTerminal) {
 			try {
-				await this.ports.publisher.publishTerminal(
-					claim.turnRunId,
-					terminal,
-					terminalInput.eventPayload
-				);
+				const preterminalDelivery = terminal.preterminal_event
+					? await this.ports.publisher.publishCommittedSemantic(
+							claim.turnRunId,
+							terminal.preterminal_event
+						)
+					: null;
+				if (
+					preterminalDelivery === null ||
+					preterminalDelivery === 'broadcast_acknowledged' ||
+					preterminalDelivery === 'broadcast_sent_reconcile_pending'
+				) {
+					await this.ports.publisher.publishTerminal(
+						claim.turnRunId,
+						terminal,
+						terminalInput.eventPayload
+					);
+				}
 			} catch {
 				// Terminal database truth is authoritative; reconnect reconciliation
 				// is the required fallback for a failed/mismatched Broadcast.
@@ -1016,6 +1091,67 @@ function toProjectionJson(projection: ProjectionState): JsonObject {
 		current_activity: projection.currentActivity,
 		semantic_events: projection.semanticEvents.slice() as unknown as JsonObject[]
 	};
+}
+
+function providerToolCall(
+	step: Extract<AgenticChatFixtureProviderStepV1, { type: 'read_tool' | 'mutating_tool' }>
+): ChatToolCall {
+	return {
+		id: step.providerToolCallId,
+		type: 'function',
+		function: {
+			name: step.toolName,
+			arguments: JSON.stringify(step.arguments)
+		}
+	};
+}
+
+function extractContextShift(payload: JsonObject): ContextShiftPayload | null {
+	if (payload.type !== 'context_shift') return null;
+	const value = payload.context_shift;
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const shift = value as Record<string, unknown>;
+	const entityTypes = new Set([
+		'workspace',
+		'project',
+		'task',
+		'plan',
+		'goal',
+		'document',
+		'milestone',
+		'risk',
+		'requirement'
+	]);
+	if (
+		typeof shift.new_context !== 'string' ||
+		typeof shift.entity_type !== 'string' ||
+		!entityTypes.has(shift.entity_type) ||
+		!(shift.entity_id === null || typeof shift.entity_id === 'string') ||
+		!(shift.entity_name === null || typeof shift.entity_name === 'string') ||
+		!(shift.message === undefined || typeof shift.message === 'string')
+	) {
+		return null;
+	}
+	return shift as unknown as ContextShiftPayload;
+}
+
+function buildCompletionLastTurnContext(
+	executionInput: AgenticChatWorkerExecutionInputV1,
+	assistantText: string,
+	terminalContext: TerminalContextState
+) {
+	const requestContext = executionInput.requestPayload.context as JsonObject;
+	return buildLastTurnContextDraftV1({
+		assistantText,
+		userMessage: String(executionInput.requestPayload.message),
+		contextType:
+			typeof requestContext.type === 'string'
+				? (requestContext.type as ChatContextType)
+				: 'global',
+		entityId: typeof requestContext.entityId === 'string' ? requestContext.entityId : null,
+		contextShift: terminalContext.contextShift,
+		toolExecutions: terminalContext.toolExecutions
+	});
 }
 
 function validateFinish(reason: string, usage: AgenticChatFixtureUsageV1 | null): void {

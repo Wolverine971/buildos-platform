@@ -1,117 +1,114 @@
 <!-- apps/web/src/routes/feedback/+page.svelte -->
 <script lang="ts">
 	import {
-		MessageCircle,
-		Heart,
-		Lightbulb,
+		AlertTriangle,
 		Bug,
-		Star,
-		Zap,
-		Target,
-		Users,
-		ThumbsUp,
-		Send,
 		CheckCircle,
-		AlertTriangle
-	} from 'lucide-svelte';
-	import Textarea from '$lib/components/ui/Textarea.svelte';
-	import FormField from '$lib/components/ui/FormField.svelte';
-	import TextInput from '$lib/components/ui/TextInput.svelte';
+		Lightbulb,
+		Mail,
+		MessageCircle,
+		Send,
+		Star,
+		Zap
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
+	import FormField from '$lib/components/ui/FormField.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import { validateOptionalEmailClient } from '$lib/utils/client-email-validation';
 
 	let selectedCategory = $state('');
 	let rating = $state(0);
 	let feedbackText = $state('');
 	let userEmail = $state('');
-	let honeypot = $state(''); // Hidden field for bot detection
+	let honeypot = $state('');
 	let isSubmitting = $state(false);
 	let submitSuccess = $state(false);
 	let submitError = $state('');
 	let emailError = $state('');
 
 	const feedbackCategories = [
-		{ id: 'feature', label: 'Feature Request', icon: Lightbulb },
-		{ id: 'bug', label: 'Bug Report', icon: Bug },
-		{ id: 'improvement', label: 'Improvement', icon: Zap },
-		{ id: 'general', label: 'General Feedback', icon: MessageCircle }
+		{
+			id: 'feature',
+			label: 'Feature request',
+			description: 'Something new that would improve your workflow.',
+			icon: Lightbulb
+		},
+		{
+			id: 'bug',
+			label: 'Bug report',
+			description: 'Something broke or behaved unexpectedly.',
+			icon: Bug
+		},
+		{
+			id: 'improvement',
+			label: 'Improvement',
+			description: 'A current experience that could work better.',
+			icon: Zap
+		},
+		{
+			id: 'general',
+			label: 'General feedback',
+			description: 'Anything else you want the team to know.',
+			icon: MessageCircle
+		}
 	];
 
-	function setRating(value: number) {
-		rating = value;
-	}
+	const ratingLabels = ['Poor', 'Fair', 'Good', 'Great', 'Excellent'];
+	let feedbackCharacterCount = $derived(feedbackText.length);
+	let ratingLabel = $derived(rating > 0 ? ratingLabels[rating - 1] : 'Optional');
+	let canSubmit = $derived(
+		Boolean(selectedCategory && feedbackText.trim().length >= 10 && !isSubmitting)
+	);
 
-	// Validate email on blur for instant feedback (optional field)
 	function validateEmail() {
 		emailError = '';
-		if (!userEmail.trim()) {
-			return; // Empty is valid for optional field
-		}
+		if (!userEmail.trim()) return;
 
 		const validation = validateOptionalEmailClient(userEmail.trim());
 		if (!validation.valid) {
-			emailError = validation.error || 'Invalid email address';
+			emailError = validation.error || 'Enter a valid email address';
 		}
 	}
 
 	function validateForm(): string | null {
-		// Check honeypot (should be empty)
-		if (honeypot.trim() !== '') {
-			return 'Spam detected';
-		}
+		if (honeypot.trim() !== '') return 'Spam detected';
 
-		// Validate feedback text
-		if (!feedbackText.trim()) {
-			return 'Please provide your feedback';
-		}
+		const trimmedFeedback = feedbackText.trim();
+		if (!trimmedFeedback) return 'Please share your feedback.';
+		if (trimmedFeedback.length < 10) return 'Please add a little more detail.';
+		if (trimmedFeedback.length > 5000) return 'Keep your feedback under 5,000 characters.';
+		if (!selectedCategory) return 'Choose a feedback type.';
 
-		if (feedbackText.length < 10) {
-			return 'Please provide more detailed feedback (at least 10 characters)';
-		}
-
-		if (feedbackText.length > 5000) {
-			return 'Feedback is too long (maximum 5000 characters)';
-		}
-
-		// Validate category
-		if (!selectedCategory) {
-			return 'Please select a feedback category';
-		}
-
-		// Validate email format if provided (enhanced security)
 		if (userEmail.trim()) {
 			const emailValidation = validateOptionalEmailClient(userEmail.trim());
 			if (!emailValidation.valid) {
-				emailError = emailValidation.error || 'Invalid email address';
-				return emailValidation.error || 'Please provide a valid email address';
+				emailError = emailValidation.error || 'Enter a valid email address';
+				return emailValidation.error || 'Enter a valid email address.';
 			}
 		}
 
-		// Check for spam patterns
 		const spamPatterns = [
-			/https?:\/\/[^\s]+/gi, // URLs
-			/\b(bitcoin|crypto|investment|loan|money)\b/gi, // Common spam words
-			/(.)\1{10,}/g // Repeated characters
+			/https?:\/\/[^\s]+/i,
+			/\b(bitcoin|crypto|investment|loan|money)\b/i,
+			/(.)\1{10,}/
 		];
 
 		for (const pattern of spamPatterns) {
-			if (pattern.test(feedbackText)) {
-				return 'Your message appears to contain spam. Please revise and try again.';
+			if (pattern.test(trimmedFeedback)) {
+				return 'Your message looks like spam. Please revise it and try again.';
 			}
 		}
 
 		return null;
 	}
 
-	async function handleSubmit(e: Event) {
-		e.preventDefault();
-
-		// Reset states
+	async function handleSubmit(event: SubmitEvent) {
+		event.preventDefault();
 		submitError = '';
 		submitSuccess = false;
 
-		// Validate form
 		const validationError = validateForm();
 		if (validationError) {
 			submitError = validationError;
@@ -121,50 +118,35 @@
 		isSubmitting = true;
 
 		try {
-			// Submit feedback via API
 			const response = await fetch('/api/feedback', {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					category: selectedCategory,
 					rating: rating || undefined,
 					feedback_text: feedbackText.trim(),
 					user_email: userEmail.trim() || undefined,
-					honeypot: honeypot
+					honeypot
 				})
 			});
 
 			const result = await response.json();
 
 			if (!response.ok) {
-				submitError =
-					result.error ||
-					'There was an error submitting your feedback. Please try again.';
+				submitError = result.error || 'Your feedback could not be sent. Please try again.';
 				return;
 			}
 
-			// Success!
 			submitSuccess = true;
-
-			// Reset form
 			selectedCategory = '';
 			rating = 0;
 			feedbackText = '';
 			userEmail = '';
 			honeypot = '';
-
-			// Scroll to success message
-			setTimeout(() => {
-				document.getElementById('success-message')?.scrollIntoView({
-					behavior: 'smooth',
-					block: 'center'
-				});
-			}, 100);
+			emailError = '';
 		} catch (error) {
 			console.error('Submission error:', error);
-			submitError = 'There was an unexpected error. Please try again later.';
+			submitError = 'Something unexpected happened. Please try again later.';
 		} finally {
 			isSubmitting = false;
 		}
@@ -184,466 +166,332 @@
 />
 
 <div class="min-h-screen bg-background">
-	<!-- Header -->
-	<div class="bg-card py-16">
-		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-			<div class="flex justify-center mb-8">
-				<div class="flex items-center justify-center w-16 h-16 bg-accent/10 rounded-lg">
-					<MessageCircle class="w-8 h-8 text-accent" aria-hidden="true" />
+	<header class="border-b border-border bg-card tx tx-bloom tx-weak">
+		<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
+			<div class="max-w-3xl">
+				<div
+					class="mb-5 flex h-11 w-11 items-center justify-center rounded-md bg-accent/10 text-accent"
+				>
+					<MessageCircle class="h-5 w-5" aria-hidden="true" />
 				</div>
-			</div>
-			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-6">
-				Your Feedback is everything
-			</h1>
-			<p class="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-				Help improve the thinking environment by sharing what worked, what broke, and where
-				your project workflow still feels scattered.
-			</p>
-			<div class="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
-				<Heart class="w-4 h-4 text-destructive" aria-hidden="true" />
-				<span>DJ reads every message</span>
+				<p class="micro-label text-accent">FEEDBACK</p>
+				<h1 class="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">
+					Help shape BuildOS
+				</h1>
+				<p
+					class="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+				>
+					Tell me what worked, what broke, or where your workflow still feels scattered.
+					Every message is read personally.
+				</p>
 			</div>
 		</div>
-	</div>
+	</header>
 
-	<!-- Success Message -->
-	{#if submitSuccess}
-		<section id="success-message" class="py-16">
-			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-				<div
-					class="bg-accent/10 border border-accent/30 rounded-lg p-8 text-center shadow-ink tx tx-bloom tx-weak"
-				>
-					<div class="flex justify-center mb-6">
-						<CheckCircle class="w-16 h-16 text-accent" aria-hidden="true" />
-					</div>
-					<h2 class="text-2xl font-bold text-foreground mb-4">
-						Thank You for Your Feedback!
-					</h2>
-					<p class="text-muted-foreground mb-6">
-						Your feedback has been submitted successfully. DJ will review it personally
-						and may reach out if you provided your email address.
-					</p>
-					<Button onclick={resetForm} variant="primary" size="lg">
-						Submit More Feedback
-					</Button>
-				</div>
-			</div>
-		</section>
-	{:else}
-		<!-- Feedback Form -->
-		<section class="py-16">
-			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-				<div
-					class="bg-card rounded-lg p-8 md:p-12 shadow-ink border border-border tx tx-grain tx-weak"
-				>
-					<h2 class="text-2xl font-bold text-foreground mb-8 text-center">
-						Share Your Feedback
-					</h2>
-
-					<!-- Error Message -->
-					{#if submitError}
+	<main class="mx-auto max-w-7xl px-2 py-8 sm:px-4 sm:py-12 lg:px-6">
+		<div class="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12">
+			<section aria-labelledby="feedback-form-title" class="min-w-0">
+				{#if submitSuccess}
+					<div
+						id="success-message"
+						class="rounded-lg border border-success/30 bg-success/10 p-6 shadow-ink sm:p-8"
+						role="status"
+						aria-live="polite"
+					>
 						<div
-							class="mb-6 bg-destructive/10 border border-destructive/50 rounded-lg p-4"
-							role="alert"
-							aria-live="assertive"
+							class="flex h-12 w-12 items-center justify-center rounded-md bg-success/15 text-success"
 						>
-							<div class="flex items-center">
-								<AlertTriangle
-									class="w-5 h-5 text-destructive mr-3"
-									aria-hidden="true"
-								/>
-								<p class="text-destructive">{submitError}</p>
-							</div>
+							<CheckCircle class="h-6 w-6" aria-hidden="true" />
 						</div>
-					{/if}
-
-					<form onsubmit={handleSubmit} class="space-y-8">
-						<!-- Honeypot field (hidden from users, visible to bots) -->
-						<div class="hidden">
-							<label for="website">Website (leave blank)</label>
-							<TextInput
-								id="website"
-								type="text"
-								bind:value={honeypot}
-								tabindex={-1}
-								autocomplete="off"
-								size="md"
-							/>
-						</div>
-
-						<!-- Feedback Category -->
-						<fieldset class="space-y-4">
-							<legend
-								id="feedback-category-legend"
-								class="block text-sm font-medium text-muted-foreground"
+						<p class="micro-label mt-6 text-success">SENT</p>
+						<h2 class="mt-2 text-2xl font-semibold text-foreground">Thank you</h2>
+						<p class="mt-3 max-w-xl text-muted-foreground">
+							Your feedback is in. If you left an email address, DJ may follow up for
+							more context.
+						</p>
+						<Button class="mt-6" onclick={resetForm} variant="outline">
+							Send another note
+						</Button>
+					</div>
+				{:else}
+					<div
+						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak sm:p-6 lg:p-8"
+					>
+						<div class="border-b border-border pb-6">
+							<h2
+								id="feedback-form-title"
+								class="text-2xl font-semibold text-foreground"
 							>
-								What type of feedback do you have?
-								<span class="text-destructive">*</span>
-							</legend>
-							<div
-								class="grid grid-cols-1 md:grid-cols-2 gap-4"
-								role="radiogroup"
-								aria-labelledby="feedback-category-legend"
-							>
-								{#each feedbackCategories as category}
-									{@const CategoryIcon = category.icon}
-									<Button
-										type="button"
-										onclick={() => (selectedCategory = category.id)}
-										variant="ghost"
-										size="lg"
-										class="flex items-center p-4 w-full justify-start border-2 rounded-lg transition-all duration-200 {selectedCategory ===
-										category.id
-											? 'border-accent bg-accent/10'
-											: 'border-border hover:border-muted-foreground/30'}"
-										role="radio"
-										aria-checked={selectedCategory === category.id}
-										aria-label={category.label}
-									>
-										<div
-											class="flex items-center justify-center w-10 h-10 rounded-lg mr-4 {selectedCategory ===
-											category.id
-												? 'bg-accent/20'
-												: 'bg-muted'}"
-										>
-											<CategoryIcon
-												class="w-5 h-5 {selectedCategory === category.id
-													? 'text-accent'
-													: 'text-foreground'}"
-												aria-hidden="true"
-											/>
-										</div>
-										<div class="text-left">
-											<h3 class="font-semibold text-foreground">
-												{category.label}
-											</h3>
-										</div>
-									</Button>
-								{/each}
-							</div>
-						</fieldset>
-
-						<!-- Rating -->
-						<fieldset class="space-y-4">
-							<legend
-								id="feedback-rating-legend"
-								class="block text-sm font-medium text-muted-foreground"
-							>
-								How would you rate your overall experience with BuildOS?
-							</legend>
-							<div
-								class="flex items-center space-x-2"
-								role="radiogroup"
-								aria-labelledby="feedback-rating-legend"
-							>
-								{#each Array(5) as _, i}
-									{@const ratingValue = i + 1}
-									<Button
-										type="button"
-										onclick={() => setRating(ratingValue)}
-										variant="ghost"
-										size="sm"
-										class="p-1"
-										icon={Star}
-										role="radio"
-										aria-checked={rating === ratingValue}
-										aria-label={`Rate ${ratingValue} out of 5`}
-									></Button>
-								{/each}
-								{#if rating > 0}
-									<span class="ml-4 text-sm text-muted-foreground">
-										{rating === 5
-											? 'Excellent!'
-											: rating === 4
-												? 'Great!'
-												: rating === 3
-													? 'Good'
-													: rating === 2
-														? 'Fair'
-														: 'Poor'}
-									</span>
-								{/if}
-							</div>
-						</fieldset>
-
-						<!-- Feedback Text -->
-						<FormField
-							label="Tell us more about your experience"
-							labelFor="feedback"
-							required
-							hint="{feedbackText.length} / 5000 characters"
-						>
-							<Textarea
-								id="feedback"
-								bind:value={feedbackText}
-								rows={6}
-								size="md"
-								enterkeyhint="next"
-								placeholder="Share your thoughts, ideas, or describe any issues you've encountered. The more detail, the better we can help! (Minimum 10 characters)"
-								required
-							/>
-						</FormField>
-
-						<!-- Email (Optional) -->
-						<FormField
-							label="Email (optional) - if you'd like us to follow up"
-							labelFor="email"
-						>
-							<TextInput
-								id="email"
-								type="email"
-								inputmode="email"
-								enterkeyhint="send"
-								bind:value={userEmail}
-								placeholder="your@email.com"
-								size="md"
-								onblur={validateEmail}
-							/>
-							{#if emailError}
-								<p class="mt-1 text-sm text-destructive">
-									{emailError}
-								</p>
-							{/if}
-						</FormField>
-
-						<!-- Submit Button -->
-						<div class="text-center">
-							<Button
-								type="submit"
-								disabled={!feedbackText.trim() || !selectedCategory || isSubmitting}
-								variant="primary"
-								size="xl"
-								class="shadow-ink hover:shadow-ink-strong transform hover:scale-105 disabled:transform-none transition-all duration-200"
-								loading={isSubmitting}
-								icon={Send}
-							>
-								{#if isSubmitting}
-									Sending...
-								{:else}
-									Send Feedback
-								{/if}
-							</Button>
-						</div>
-
-						<!-- Form Info -->
-						<div class="text-center text-sm text-muted-foreground">
-							<p>
-								Protected against spam with rate limiting and validation.
-								<br />
-								Your feedback is stored securely and only used to improve BuildOS.
+								Share your feedback
+							</h2>
+							<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+								A category and a short description are all that is required.
 							</p>
 						</div>
-					</form>
-				</div>
-			</div>
-		</section>
-	{/if}
 
-	<!-- Why Feedback Matters -->
-	<section class="py-16 bg-card">
-		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="text-center mb-12">
-				<h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">
-					Why Your Feedback <span class="text-accent">Matters</span>
+						{#if submitError}
+							<div
+								class="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-4"
+								role="alert"
+								aria-live="assertive"
+							>
+								<div class="flex items-start gap-3">
+									<AlertTriangle
+										class="mt-0.5 h-5 w-5 shrink-0 text-destructive"
+										aria-hidden="true"
+									/>
+									<div class="min-w-0">
+										<p class="font-semibold text-destructive">
+											Check your feedback
+										</p>
+										<p class="mt-1 text-sm text-foreground">{submitError}</p>
+									</div>
+								</div>
+							</div>
+						{/if}
+
+						<form onsubmit={handleSubmit} class="mt-8 space-y-8">
+							<div class="hidden" aria-hidden="true">
+								<label for="website">Website (leave blank)</label>
+								<TextInput
+									id="website"
+									type="text"
+									bind:value={honeypot}
+									tabindex={-1}
+									autocomplete="off"
+								/>
+							</div>
+
+							<fieldset>
+								<legend class="mb-4">
+									<span class="micro-label text-accent">01 · TYPE</span>
+									<span
+										class="mt-1 block text-base font-semibold text-foreground"
+									>
+										What are you sharing?
+										<span class="text-destructive" aria-hidden="true">*</span>
+										<span class="sr-only">(required)</span>
+									</span>
+								</legend>
+								<div class="grid gap-3 sm:grid-cols-2">
+									{#each feedbackCategories as category (category.id)}
+										{@const CategoryIcon = category.icon}
+										<label
+											for={`feedback-category-${category.id}`}
+											class="flex min-h-[76px] cursor-pointer items-center gap-3 rounded-lg border p-3 text-left transition-colors focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 motion-reduce:transition-none {selectedCategory ===
+											category.id
+												? 'border-accent bg-accent/10'
+												: 'border-border-strong bg-background hover:border-accent/60 hover:bg-muted/40'}"
+										>
+											<input
+												id={`feedback-category-${category.id}`}
+												class="sr-only"
+												type="radio"
+												name="feedback-category"
+												value={category.id}
+												bind:group={selectedCategory}
+												required
+											/>
+											<span
+												class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md {selectedCategory ===
+												category.id
+													? 'bg-accent/15 text-accent'
+													: 'bg-muted text-foreground'}"
+											>
+												<CategoryIcon class="h-5 w-5" aria-hidden="true" />
+											</span>
+											<span class="min-w-0">
+												<span class="block font-semibold text-foreground"
+													>{category.label}</span
+												>
+												<span
+													class="mt-0.5 block text-xs leading-snug text-muted-foreground"
+												>
+													{category.description}
+												</span>
+											</span>
+										</label>
+									{/each}
+								</div>
+							</fieldset>
+
+							<fieldset>
+								<legend>
+									<span class="micro-label text-accent">02 · RATING</span>
+									<span
+										class="mt-1 block text-base font-semibold text-foreground"
+									>
+										How is BuildOS working for you?
+									</span>
+								</legend>
+								<div class="mt-3 flex flex-wrap items-center gap-2">
+									{#each Array(5) as _, index (index)}
+										{@const ratingValue = index + 1}
+										<label
+											class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border transition-colors focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 motion-reduce:transition-none {rating >=
+											ratingValue
+												? 'border-warning/50 bg-warning/10 text-warning'
+												: 'border-border-strong bg-background text-muted-foreground hover:border-warning/50 hover:text-warning'}"
+										>
+											<input
+												class="sr-only"
+												type="radio"
+												name="feedback-rating"
+												value={ratingValue}
+												bind:group={rating}
+												aria-label={`${ratingValue} out of 5`}
+											/>
+											<Star
+												class="h-5 w-5 {rating >= ratingValue
+													? 'fill-current'
+													: ''}"
+												aria-hidden="true"
+											/>
+										</label>
+									{/each}
+									<span
+										class="ml-1 text-sm text-muted-foreground"
+										aria-live="polite"
+									>
+										{ratingLabel}
+									</span>
+								</div>
+							</fieldset>
+
+							<div>
+								<p class="micro-label mb-1 text-accent">03 · DETAILS</p>
+								<FormField
+									label="What should we know?"
+									labelFor="feedback"
+									required
+									uppercase={false}
+								>
+									<Textarea
+										id="feedback"
+										bind:value={feedbackText}
+										rows={7}
+										placeholder="What happened, what did you expect, and what would make it better?"
+										required
+										minlength={10}
+										maxlength={5000}
+										aria-describedby="feedback-help"
+									/>
+									<div
+										id="feedback-help"
+										class="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground"
+									>
+										<span>At least 10 characters.</span>
+										<span class="shrink-0 tabular-nums"
+											>{feedbackCharacterCount} / 5,000</span
+										>
+									</div>
+								</FormField>
+							</div>
+
+							<div>
+								<p class="micro-label mb-1 text-accent">04 · REPLY</p>
+								<FormField
+									label="Email for a reply"
+									labelFor="email"
+									uppercase={false}
+								>
+									<TextInput
+										id="email"
+										type="email"
+										inputmode="email"
+										enterkeyhint="send"
+										bind:value={userEmail}
+										placeholder="you@example.com"
+										onblur={validateEmail}
+										error={Boolean(emailError)}
+										errorMessage={emailError}
+										helperText="Only used to reply to this submission."
+									/>
+								</FormField>
+							</div>
+
+							<div
+								class="flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between"
+							>
+								<p class="max-w-md text-xs leading-relaxed text-muted-foreground">
+									Protected with rate limiting. Your note is used to improve
+									BuildOS.
+								</p>
+								<Button
+									type="submit"
+									disabled={!canSubmit}
+									loading={isSubmitting}
+									icon={Send}
+									class="w-full sm:w-auto"
+								>
+									{isSubmitting ? 'Sending…' : 'Send feedback'}
+								</Button>
+							</div>
+						</form>
+					</div>
+				{/if}
+			</section>
+
+			<aside class="lg:border-l lg:border-border lg:pl-8" aria-labelledby="next-title">
+				<p class="micro-label text-accent">WHAT HAPPENS NEXT</p>
+				<h2 id="next-title" class="mt-2 text-xl font-semibold text-foreground">
+					A direct line to the product
 				</h2>
-				<p class="text-lg text-muted-foreground max-w-3xl mx-auto">
-					As a solo founder building BuildOS, your input directly shapes the product
-					roadmap and development priorities.
-				</p>
-			</div>
-
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-				<div class="text-center">
-					<div
-						class="flex items-center justify-center w-16 h-16 bg-accent/10 rounded-lg mb-6 mx-auto"
-					>
-						<Target class="w-8 h-8 text-accent" aria-hidden="true" />
-					</div>
-					<h3 class="text-xl font-bold text-foreground mb-4">Direct Impact</h3>
-					<p class="text-muted-foreground">
-						Your suggestions often get implemented within days. Every piece of feedback
-						is read by the founder personally.
-					</p>
-				</div>
-
-				<div class="text-center">
-					<div
-						class="flex items-center justify-center w-16 h-16 bg-muted rounded-lg mb-6 mx-auto"
-					>
-						<Users class="w-8 h-8 text-foreground" aria-hidden="true" />
-					</div>
-					<h3 class="text-xl font-bold text-foreground mb-4">Community Building</h3>
-					<p class="text-muted-foreground">
-						Help us build a community of productive, goal-oriented individuals who
-						support each other's growth.
-					</p>
-				</div>
-
-				<div class="text-center">
-					<div
-						class="flex items-center justify-center w-16 h-16 bg-muted rounded-lg mb-6 mx-auto"
-					>
-						<Zap class="w-8 h-8 text-foreground" aria-hidden="true" />
-					</div>
-					<h3 class="text-xl font-bold text-foreground mb-4">Rapid Iteration</h3>
-					<p class="text-muted-foreground">
-						We ship features fast. Your feedback helps us prioritize what matters most
-						to our users.
-					</p>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- Recent Feedback Examples -->
-	<section class="py-16 bg-background">
-		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="text-center mb-12">
-				<h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">
-					Feedback in <span class="text-accent">Action</span>
-				</h2>
-				<p class="text-lg text-muted-foreground max-w-3xl mx-auto">
-					Here are some recent examples of how user feedback directly improved BuildOS.
-				</p>
-			</div>
-
-			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-				<!-- Feedback Example 1 -->
-				<div
-					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-frame tx-weak"
-				>
-					<div class="flex items-center mb-4">
-						<div
-							class="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center mr-3"
+				<ul class="mt-6 space-y-5">
+					<li class="flex gap-3">
+						<span
+							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-foreground"
 						>
-							<span class="text-sm font-bold text-accent">PP</span>
+							<MessageCircle class="h-4 w-4" aria-hidden="true" />
+						</span>
+						<div class="min-w-0">
+							<p class="font-semibold text-foreground">Read personally</p>
+							<p class="mt-1 text-sm leading-relaxed text-muted-foreground">
+								DJ reviews every submission.
+							</p>
 						</div>
-						<div>
-							<div class="font-semibold text-foreground text-sm">Phillip P.</div>
-							<div class="text-xs text-muted-foreground">Beta User</div>
-						</div>
-					</div>
-					<blockquote class="text-muted-foreground text-sm mb-4 italic">
-						"It would be nice to capture ideas on any page."
-					</blockquote>
-					<div class="bg-accent/10 rounded-lg p-3">
-						<div class="flex items-center text-accent text-sm">
-							<ThumbsUp class="w-4 h-4 mr-2" />
-							<span class="font-medium">Implemented!</span>
-						</div>
-						<p class="text-xs text-muted-foreground mt-1">
-							Added quick capture icon in nav bar.
-						</p>
-					</div>
-				</div>
-
-				<!-- Feedback Example 2 -->
-				<div
-					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-frame tx-weak"
-				>
-					<div class="flex items-center mb-4">
-						<div
-							class="w-8 h-8 bg-muted rounded-full flex items-center justify-center mr-3"
+					</li>
+					<li class="flex gap-3">
+						<span
+							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-foreground"
 						>
-							<span class="text-sm font-bold text-foreground">MK</span>
+							<Mail class="h-4 w-4" aria-hidden="true" />
+						</span>
+						<div class="min-w-0">
+							<p class="font-semibold text-foreground">Follow-up is optional</p>
+							<p class="mt-1 text-sm leading-relaxed text-muted-foreground">
+								Leave an email only if you want a reply.
+							</p>
 						</div>
-						<div>
-							<div class="font-semibold text-foreground text-sm">Mike K.</div>
-							<div class="text-xs text-muted-foreground">Product Manager</div>
-						</div>
-					</div>
-					<blockquote class="text-muted-foreground text-sm mb-4 italic">
-						"The daily brief is great, but could it show progress percentages for each
-						goal?"
-					</blockquote>
-					<div class="bg-accent/10 rounded-lg p-3">
-						<div class="flex items-center text-accent text-sm">
-							<ThumbsUp class="w-4 h-4 mr-2" />
-							<span class="font-medium">Implemented!</span>
-						</div>
-						<p class="text-xs text-muted-foreground mt-1">
-							Added progress bars to daily briefs
-						</p>
-					</div>
-				</div>
-
-				<!-- Feedback Example 3 -->
-				<div
-					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-frame tx-weak"
-				>
-					<div class="flex items-center mb-4">
-						<div
-							class="w-8 h-8 bg-muted rounded-full flex items-center justify-center mr-3"
+					</li>
+					<li class="flex gap-3">
+						<span
+							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-foreground"
 						>
-							<span class="text-sm font-bold text-foreground">AL</span>
+							<CheckCircle class="h-4 w-4" aria-hidden="true" />
+						</span>
+						<div class="min-w-0">
+							<p class="font-semibold text-foreground">Details speed up fixes</p>
+							<p class="mt-1 text-sm leading-relaxed text-muted-foreground">
+								Include what happened and what you expected.
+							</p>
 						</div>
-						<div>
-							<div class="font-semibold text-foreground text-sm">Alex L.</div>
-							<div class="text-xs text-muted-foreground">Designer</div>
-						</div>
-					</div>
-					<blockquote class="text-muted-foreground text-sm mb-4 italic">
-						"Love the app! Could we have a dark mode? I work late and it would be easier
-						on my eyes."
-					</blockquote>
-					<div class="bg-accent/10 rounded-lg p-3">
-						<div class="flex items-center text-accent text-sm">
-							<ThumbsUp class="w-4 h-4 mr-2" />
-							<span class="font-medium">Implemented!</span>
-						</div>
-						<p class="text-xs text-muted-foreground mt-1">
-							Full dark mode support added
-						</p>
-					</div>
+					</li>
+				</ul>
+
+				<div class="mt-8 border-t border-border pt-6">
+					<p class="text-sm text-muted-foreground">
+						Need help with something private or urgent?
+					</p>
+					<a
+						href="/contact"
+						class="mt-2 inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-semibold text-accent underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+					>
+						<Mail class="h-4 w-4 shrink-0" aria-hidden="true" />
+						Contact DJ directly
+					</a>
 				</div>
-			</div>
+			</aside>
 		</div>
-	</section>
-
-	<!-- Other Ways to Connect -->
-	<section class="py-16 bg-card">
-		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-			<h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">
-				Other Ways to Connect
-			</h2>
-			<p class="text-lg text-muted-foreground mb-12">
-				Prefer a different way to share your thoughts? We're available through multiple
-				channels.
-			</p>
-
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-				<a
-					href="/contact"
-					class="bg-accent/10 border border-accent/30 rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left tx tx-bloom tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-				>
-					<div
-						class="flex items-center justify-center w-12 h-12 bg-accent/10 rounded-lg mb-4 group-hover:scale-110 transition-transform"
-					>
-						<MessageCircle class="w-6 h-6 text-accent" aria-hidden="true" />
-					</div>
-					<h3 class="text-xl font-bold text-foreground mb-3">Direct Contact</h3>
-					<p class="text-muted-foreground">
-						Reach out directly to the founder for detailed discussions or private
-						feedback.
-					</p>
-				</a>
-
-				<a
-					href="/auth/register"
-					class="bg-muted border border-border rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left tx tx-grain tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-				>
-					<div
-						class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mb-4 group-hover:scale-110 transition-transform"
-					>
-						<Users class="w-6 h-6 text-foreground" aria-hidden="true" />
-					</div>
-					<h3 class="text-xl font-bold text-foreground mb-3">Start in Chat</h3>
-					<p class="text-muted-foreground">
-						Try BuildOS directly with rough project input, then send feedback from the
-						work itself.
-					</p>
-				</a>
-			</div>
-		</div>
-	</section>
+	</main>
 </div>

@@ -1,7 +1,10 @@
 // apps/worker/src/workers/agentic-chat/lifecycleIdentity.ts
 import { createHash } from 'node:crypto';
 
-export type AgenticChatExecutorLifecycleStageV1 = 'acknowledged' | 'finalizing';
+export type AgenticChatExecutorLifecycleStageV1 =
+	| 'acknowledged'
+	| 'finalizing'
+	| 'last_turn_context';
 export type AgenticChatExecutorSnapshotStageV1 = 'session' | 'context_usage';
 export type AgenticChatExecutorSemanticStageV1 =
 	| AgenticChatExecutorLifecycleStageV1
@@ -23,7 +26,8 @@ export function createStableAgenticChatLifecycleTransitionIdV1(input: {
 		input.stage !== 'acknowledged' &&
 		input.stage !== 'session' &&
 		input.stage !== 'context_usage' &&
-		input.stage !== 'finalizing'
+		input.stage !== 'finalizing' &&
+		input.stage !== 'last_turn_context'
 	) {
 		throw new Error('Agentic Chat lifecycle stage is invalid');
 	}

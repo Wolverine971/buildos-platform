@@ -616,6 +616,8 @@ export type AgenticChatTerminalReceiptV1 = {
 	terminal_event_id: string;
 	terminal_sequence_index: number;
 	terminalized_at: string;
+	/** Present only when completion atomically committed a semantic event immediately before done. */
+	preterminal_event?: AgenticChatCommittedSemanticEventReceiptV1;
 };
 
 /** Service-to-database result for the single worker terminal CAS boundary. */
@@ -753,6 +755,11 @@ export type AgenticChatSemanticEventRpcResultV1 =
 			event_payload: JsonObject;
 	  })
 	| AgenticChatStreamWriteBlockedRpcResultV1;
+
+export type AgenticChatCommittedSemanticEventReceiptV1 = Extract<
+	AgenticChatSemanticEventRpcResultV1,
+	{ outcome: 'persisted' | 'already_persisted' }
+>;
 
 export type AgenticChatTextBatchFlushItemResultV1 =
 	| (AgenticChatTextBatchRpcResultV1 & { input_index: number })

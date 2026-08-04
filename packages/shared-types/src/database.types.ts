@@ -17976,6 +17976,29 @@ export type Database = {
         }
         Returns: Json
       }
+			finalize_agentic_chat_turn_with_last_context: {
+				Args: {
+					p_assistant_message_id: string
+					p_assistant_metadata: Json
+					p_assistant_text: string
+					p_completion_tokens: number
+					p_event_payload: Json
+					p_execution_generation: number
+					p_failure_code: string
+					p_finished_reason: string
+					p_last_turn_context: Json
+					p_last_turn_context_transition_id: string
+					p_processing_token: string
+					p_projection: Json
+					p_prompt_tokens: number
+					p_queue_job_id: string
+					p_status: string
+					p_total_tokens: number
+					p_turn_run_id: string
+					p_user_id: string
+				}
+				Returns: Json
+			}
       finalize_draft_project: {
         Args: { p_draft_id: string; p_user_id: string }
         Returns: string

@@ -287,12 +287,50 @@ function createHarness(
 			if (!receipt) throw new Error('Unexpected recovery call');
 			return receipt;
 		}),
-		finalize: vi.fn(async (input: AgenticChatTerminalFinalizeInputV1) =>
-			terminalReceipt(input.status, sequence + 1, {
+		finalize: vi.fn(async (input: AgenticChatTerminalFinalizeInputV1) => {
+			const lastTurnContext = input.lastTurnContext ?? null;
+			if (input.status === 'completed' && lastTurnContext) {
+				sequence += 1;
+				return terminalReceipt(input.status, sequence + 1, {
+					failure_code: null,
+					assistant_message_id: ASSISTANT_MESSAGE_ID,
+					preterminal_event: {
+						outcome: 'persisted',
+						publish_allowed: true,
+						turn_run_id: TURN_RUN_ID,
+						queue_job_id: QUEUE_JOB_ID,
+						session_id: SESSION_ID,
+						user_id: USER_ID,
+						stream_run_id: executionInput.streamRunId,
+						client_turn_id: executionInput.clientTurnId,
+						execution_generation: EXECUTION_GENERATION,
+						sequence_index: sequence,
+						event_id: createAgentStreamEventIdV1(
+							TURN_RUN_ID,
+							EXECUTION_GENERATION,
+							sequence
+						),
+						phase: 'finalize',
+						event_type: 'last_turn_context',
+						durable: true,
+						transition_id: input.lastTurnContextTransitionId,
+						event_payload: {
+							type: 'last_turn_context',
+							context: {
+								...lastTurnContext,
+								timestamp: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.clockIso
+							}
+						},
+						reconcile_required: true,
+						persisted_at: '2026-08-03T12:00:00.010Z'
+					}
+				});
+			}
+			return terminalReceipt(input.status, sequence + 1, {
 				failure_code: input.status === 'completed' ? null : input.status,
 				assistant_message_id: input.status === 'completed' ? ASSISTANT_MESSAGE_ID : null
-			})
-		),
+			});
+		}),
 		completeQueueJob: vi.fn(async () => true)
 	};
 	const provider = {
@@ -402,6 +440,12 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				usage: { promptTokens: 10, completionTokens: 4, totalTokens: 14 }
 			}
 		]);
+		harness.readTool.execute.mockResolvedValueOnce({
+			project: {
+				id: 'da000000-0000-4000-8000-000000000001',
+				name: 'Fixture project'
+			}
+		});
 
 		await expect(harness.executor.execute(job())).resolves.toEqual({
 			outcome: 'completed',
@@ -431,7 +475,19 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				assistantText: 'Hello done',
 				promptTokens: 10,
 				completionTokens: 4,
-				totalTokens: 14
+				totalTokens: 14,
+				lastTurnContext: expect.objectContaining({
+					summary: 'Hello done',
+					data_accessed: ['fixture_project_read'],
+					entities: expect.objectContaining({
+						projects: [
+							expect.objectContaining({
+								id: 'da000000-0000-4000-8000-000000000001',
+								name: 'Fixture project'
+							})
+						]
+					})
+				})
 			})
 		);
 		const toolResultInput = harness.semanticInputs.find(
@@ -553,6 +609,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			'tool_result',
 			'text_delta',
 			'turn_phase',
+			'last_turn_context',
 			'done'
 		]);
 		expect(harness.cancellation.unregisterTurn).toHaveBeenCalledWith(
@@ -589,7 +646,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			harness.broadcastMessages.map(
 				(message) => (message.payload as Record<string, unknown>).type
 			)
-		).toEqual(['turn_phase', 'text_delta', 'turn_phase', 'done']);
+		).toEqual(['turn_phase', 'text_delta', 'turn_phase', 'last_turn_context', 'done']);
 		await harness.publisher.stop();
 	});
 
@@ -674,7 +731,6 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				matches: false,
 				truncated: false,
 				differences: [
-					{ path: '/events/5', kind: 'missing_in_actual' },
 					{ path: '/events/6', kind: 'missing_in_actual' },
 					{ path: '/events/7/payload/failure_code', kind: 'unexpected_in_actual' },
 					{ path: '/events/7/payload/status', kind: 'unexpected_in_actual' },

@@ -75,7 +75,7 @@ export const AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1: AgenticChatParityRunV1 = 
 					data_accessed: [],
 					entities: {},
 					summary: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.response.assistantText,
-					timestamp: '2026-05-24T00:00:00.000Z'
+					timestamp: AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.clockIso
 				}
 			}
 		},
