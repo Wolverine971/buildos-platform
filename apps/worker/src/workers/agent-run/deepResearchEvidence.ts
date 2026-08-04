@@ -10,6 +10,7 @@ import type {
 	DeepResearchSourceType
 } from '@buildos/shared-types';
 import { AGENT_OP_WEB_SEARCH, AGENT_OP_WEB_VISIT } from '@buildos/shared-agent-ops';
+import type { NativeSearchEvidenceChunkReference } from '@buildos/shared-agent-ops/web/native-search';
 
 const MAX_SOURCES = 30;
 const MAX_CLAIMS = 50;
@@ -27,6 +28,11 @@ export interface ObservedResearchSource {
 	accessedAt: string;
 	/** Bounded text already persisted in the successful tool-execution result. */
 	content?: string;
+	pageVisitId?: string;
+	pageVersionId?: string;
+	pageVersionNumber?: number;
+	contentHash?: string;
+	evidenceChunks?: NativeSearchEvidenceChunkReference[];
 }
 
 export interface ObservedResearchSearchResult {
@@ -114,6 +120,75 @@ function validDateText(value: unknown): string | undefined {
 	return text && Number.isFinite(Date.parse(text)) ? text : undefined;
 }
 
+function readUuid(value: unknown): string | undefined {
+	return typeof value === 'string' &&
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+		? value
+		: undefined;
+}
+
+function readSha256(value: unknown): string | undefined {
+	return typeof value === 'string' && /^[0-9a-f]{64}$/.test(value) ? value : undefined;
+}
+
+function readEvidenceChunks(value: unknown): NativeSearchEvidenceChunkReference[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const chunks = value
+		.map((raw): NativeSearchEvidenceChunkReference | undefined => {
+			const chunk = readRecord(raw);
+			if (
+				!chunk ||
+				typeof chunk.chunk_index !== 'number' ||
+				!Number.isInteger(chunk.chunk_index) ||
+				chunk.chunk_index < 0 ||
+				typeof chunk.start_offset !== 'number' ||
+				typeof chunk.end_offset !== 'number' ||
+				chunk.start_offset < 0 ||
+				chunk.end_offset <= chunk.start_offset ||
+				chunk.selector !== `char:${chunk.start_offset}-${chunk.end_offset}`
+			) {
+				return undefined;
+			}
+			const contentHash = readSha256(chunk.content_hash);
+			if (!contentHash) return undefined;
+			return {
+				...(readUuid(chunk.id) ? { id: readUuid(chunk.id) } : {}),
+				chunk_index: chunk.chunk_index,
+				start_offset: chunk.start_offset,
+				end_offset: chunk.end_offset,
+				selector: chunk.selector,
+				content_hash: contentHash
+			};
+		})
+		.filter((chunk): chunk is NativeSearchEvidenceChunkReference => Boolean(chunk))
+		.slice(0, 10);
+	return chunks.length > 0 ? chunks : undefined;
+}
+
+function readPageEvidence(
+	record: Record<string, unknown>,
+	prefix: '' | 'page_'
+): Pick<
+	ObservedResearchSource,
+	'pageVisitId' | 'pageVersionId' | 'pageVersionNumber' | 'contentHash' | 'evidenceChunks'
+> {
+	const versionNumber = record.page_version_number;
+	return {
+		pageVisitId: readUuid(record[prefix ? 'page_visit_id' : 'visit_id']),
+		pageVersionId: readUuid(record.page_version_id),
+		pageVersionNumber:
+			typeof versionNumber === 'number' &&
+			Number.isInteger(versionNumber) &&
+			versionNumber > 0
+				? versionNumber
+				: undefined,
+		contentHash: readSha256(record[prefix ? 'page_content_hash' : 'content_hash']),
+		evidenceChunks: readEvidenceChunks(
+			record[prefix ? 'page_evidence_chunks' : 'evidence_chunks']
+		)
+	};
+}
+
 function dedupeStrings(values: string[], limit: number): string[] {
 	return Array.from(new Set(values)).slice(0, limit);
 }
@@ -165,7 +240,8 @@ export function observeDeepResearchToolResult(params: {
 						readText(candidate?.title, 500) ??
 						undefined,
 					accessedAt: validDateText(candidate?.page_fetched_at) ?? params.observedAt,
-					content
+					content,
+					...(candidate ? readPageEvidence(candidate, 'page_') : {})
 				}
 			];
 		});
@@ -194,7 +270,8 @@ export function observeDeepResearchToolResult(params: {
 				finalUrl,
 				title: readText(result?.title, 500) ?? undefined,
 				accessedAt: validDateText(info?.fetched_at) ?? params.observedAt,
-				content: readText(result?.content, 12_000) ?? undefined
+				content: readText(result?.content, 12_000) ?? undefined,
+				...(result ? readPageEvidence(result, '') : {})
 			}
 		]
 	};

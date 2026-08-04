@@ -3,8 +3,8 @@
 	Document Modal - Markdown Document Editing
 
 	Features:
-	- Two-column layout: left sidebar (metadata + history) + main content
-	- Left sidebar contains collapsible sections:
+	- Content-first layout with a collapsible right details panel
+	- Right details panel contains collapsible sections:
 		- Settings (title, description, state) - always expanded
 		- Tags display
 		- Metadata (created, updated, ID)
@@ -95,6 +95,7 @@
 		Clock,
 		MoreHorizontal
 	} from 'lucide-svelte';
+	import { PanelRightClose, PanelRightOpen } from '$lib/icons/lucide';
 	import { handleRovingTabKeydown } from '$lib/components/project/v2/board-a11y';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import {
@@ -542,7 +543,11 @@
 	let exportButtonRef = $state<HTMLButtonElement | null>(null);
 	let exportMenuPos = $state({ top: 0, right: 0 });
 
-	// Left panel collapsible sections
+	// The desktop details panel always opens from the right and starts closed for
+	// each document session. Mobile keeps the existing bottom-panel treatment.
+	let showDetailsPanel = $state(false);
+
+	// Details panel collapsible sections
 	let showPublicPage = $state(false);
 	let showLinkedEntities = $state(true);
 	let showImages = $state(false);
@@ -1033,6 +1038,7 @@
 
 	function resetDocumentPanels() {
 		activeMobileTab = null;
+		showDetailsPanel = false;
 		showPublicPage = false;
 		showImages = false;
 		showVersionHistory = false;
@@ -2424,6 +2430,10 @@
 		showComments = !showComments;
 	}
 
+	function toggleDetailsPanel() {
+		showDetailsPanel = !showDetailsPanel;
+	}
+
 	function toggleMobileTab(tab: Exclude<MobileTab, null>) {
 		const nextTab = activeMobileTab === tab ? null : tab;
 		activeMobileTab = nextTab;
@@ -3220,12 +3230,66 @@
 					class="flex-1 flex flex-col min-h-0"
 					onsubmit={handleSave}
 				>
-					<!-- Desktop: Two-column layout (sidebar on the right) | Mobile: content-first with collapsible metadata -->
-					<div class="flex flex-col lg:flex-row-reverse flex-1 min-h-0">
-						<!-- Right sidebar (metadata + history + activity) - Desktop only, hidden on mobile -->
+					<!-- Desktop: content-first with a sliding panel on the right | Mobile: bottom panels -->
+					<div
+						class="relative flex flex-col lg:flex-row-reverse flex-1 min-h-0 lg:overflow-hidden"
+					>
+						<!-- Edge tab: the panel's persistent handle stays on the right and
+							 travels with the drawer seam when the panel opens. -->
 						<div
-							class="hidden lg:flex lg:flex-col lg:w-64 xl:w-72 flex-shrink-0 lg:border-l border-border bg-muted overflow-y-auto tx tx-frame tx-weak"
+							class="pointer-events-none absolute top-1/2 -mt-14 z-20 hidden h-28 w-11 transition-[right] duration-[280ms] ease-out motion-reduce:transition-none lg:block {showDetailsPanel
+								? 'right-64 xl:right-72'
+								: 'right-0'}"
 						>
+							<button
+								id="document-details-panel-toggle"
+								type="button"
+								onclick={toggleDetailsPanel}
+								class="pointer-events-auto group flex h-full w-full flex-col items-center justify-center gap-2 rounded-l-md border border-r-0 px-1 py-2 shadow-ink transition-colors motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {showDetailsPanel
+									? 'border-accent/50 bg-accent/10 text-foreground'
+									: 'border-border-strong bg-muted/95 text-foreground hover:border-accent/50 hover:bg-card'} tx tx-strip tx-weak wt-paper"
+								title={showDetailsPanel
+									? 'Close details panel'
+									: 'Open details panel'}
+								aria-label={showDetailsPanel
+									? 'Close details panel'
+									: 'Open details panel'}
+								aria-controls="document-details-panel"
+								aria-expanded={showDetailsPanel}
+							>
+								{#if showDetailsPanel}
+									<PanelRightClose class="w-4 h-4 shrink-0 text-accent" />
+								{:else}
+									<PanelRightOpen
+										class="w-4 h-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground motion-reduce:transition-none"
+									/>
+								{/if}
+								<span class="micro-label [writing-mode:vertical-rl] rotate-180"
+									>DETAILS</span
+								>
+							</button>
+						</div>
+
+						<!-- Right details panel - desktop only, closed by default -->
+						<aside
+							id="document-details-panel"
+							aria-label="Document details"
+							aria-hidden={!showDetailsPanel}
+							inert={!showDetailsPanel}
+							class="hidden lg:flex lg:h-full lg:w-64 xl:w-72 lg:flex-col flex-shrink-0 lg:border-l border-border bg-muted overflow-y-auto shadow-ink-strong transition-[margin-right,transform] duration-[280ms] ease-out motion-reduce:transition-none {showDetailsPanel
+								? 'translate-x-0 mr-0'
+								: 'translate-x-full -mr-64 xl:-mr-72'} tx tx-frame tx-weak"
+						>
+							<div
+								class="sticky top-0 z-10 border-b border-border/70 px-3 py-2.5 bg-muted/95 tx tx-strip tx-weak"
+							>
+								<div class="min-w-0">
+									<p class="micro-label text-foreground">DOCUMENT DETAILS</p>
+									<p class="mt-0.5 text-xs text-muted-foreground">
+										Settings, connections, and history
+									</p>
+								</div>
+							</div>
 							<div class="p-3 space-y-3">
 								<!-- Settings: Title / Description / State -->
 								<div class="space-y-2">
@@ -3549,7 +3613,7 @@
 									{/if}
 								{/if}
 							</div>
-						</div>
+						</aside>
 
 						<!-- Main content area -->
 						<div class="flex-1 flex flex-col min-w-0 min-h-0">
@@ -3573,15 +3637,19 @@
 							{:else}
 								<!-- Content editor - the main focus -->
 								<div class="px-3 pt-1.5 pb-1 flex-1 flex flex-col min-h-0">
-									<div class="lg:hidden mb-1.5 shrink-0 space-y-1">
+									<div
+										class="mb-1.5 shrink-0 space-y-1 {showDetailsPanel
+											? 'lg:hidden'
+											: ''}"
+									>
 										<label
-											for="document-title-mobile-inline"
+											for="document-title-inline"
 											class="micro-label text-muted-foreground/70"
 										>
 											TITLE
 										</label>
 										<TextInput
-											id="document-title-mobile-inline"
+											id="document-title-inline"
 											bind:value={title}
 											required
 											placeholder="Document title"

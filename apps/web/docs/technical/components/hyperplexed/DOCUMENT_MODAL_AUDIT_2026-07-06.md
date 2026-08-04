@@ -13,17 +13,17 @@
 
 ## Flow map (the screens this one component shells)
 
-| Screen / state        | Trigger                    | Content                                                                                                           |
-| --------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Loading               | `loading` (during `/full`) | centered spinner                                                                                                  |
-| Create (New Document) | no `activeDocumentId`      | Title / Description / State + editor + Cancel/Create. No sidebar chrome, publish, or history                      |
-| Edit                  | `activeDocumentId` set     | two-column: editor (main) + right sidebar (settings, collaboration, tags/metadata, publish, 5 collapsibles, move) |
-| Comparison            | `comparisonMode`           | `DocumentComparisonView` replaces the editor in place                                                             |
-| Archived              | `stateKey === 'archived'`  | footer swaps to Restore / Delete Permanently                                                                      |
+| Screen / state        | Trigger                    | Content                                                                                                                     |
+| --------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Loading               | `loading` (during `/full`) | centered spinner                                                                                                            |
+| Create (New Document) | no `activeDocumentId`      | Title / Description / State + editor + Cancel/Create. No sidebar chrome, publish, or history                                |
+| Edit                  | `activeDocumentId` set     | content-first editor + right-edge Details tab; tab opens settings, collaboration, tags/metadata, publish, history, and move |
+| Comparison            | `comparisonMode`           | `DocumentComparisonView` replaces the editor in place                                                                       |
+| Archived              | `stateKey === 'archived'`  | footer swaps to Restore / Delete Permanently                                                                                |
 
-**Responsive split:** desktop = right sidebar (`lg:w-64/72`); mobile = a bottom tabbed
-panel (Details / Links / Media / History / Comments). Autosave (2s debounce) runs alongside
-a manual Save (which forces a version snapshot).
+**Responsive split:** desktop = right details drawer (`lg:w-64/72`), closed by default and opened
+from an edge-anchored tab; mobile = a bottom tabbed panel (Details / Links / Media / History /
+Comments). Autosave (2s debounce) runs alongside a manual Save (which forces a version snapshot).
 
 **Sub-modals (10):** archive-confirm, permanent-delete, discard-changes, insert-image,
 publish-confirm/preview, move, version-restore, chat, and Task/Plan/Goal/Document link modals.
@@ -88,6 +88,18 @@ driven by the duplication collapse.
 A dense editing modal doesn't earn a signature effect. Two motion nits left as follow-ups (small):
 the desktop-comments `transition-[max-height]` isn't reduced-motion gated (→ P11), and the sidebar
 collapsibles snap open without `slideMotion()` (optional polish).
+
+## Follow-up — edge-anchored details drawer (2026-08-04)
+
+Screenshot review showed that the first collapsible-sidebar pass solved the static-rail noise but
+put its labeled **Details** toggle into an already-busy header. The toggle now lives as a 44px-wide
+vertical tab on the modal's right edge. It travels with the drawer seam while open, remains the one
+open/close control, and keeps keyboard focus mounted throughout the transition. The drawer still
+defaults closed for every document session; `aria-expanded`, `aria-hidden`, and `inert` expose the
+same state to assistive technology. The title remains in the editor while closed, and mobile keeps
+the existing bottom-panel treatment. Motion is synchronized at 280ms and removed under reduced
+motion. This is the reference implementation for the later goal/plan/task modal rollout (→ P23,
+stacking P2/P9/P11/P13).
 
 ## Streamlining note (product call, not a Hyperplexed pattern)
 

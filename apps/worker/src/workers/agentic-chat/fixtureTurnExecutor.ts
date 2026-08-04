@@ -9,10 +9,10 @@ import {
 	type AgenticChatTerminalFinalizeRpcResultV1,
 	type AgenticChatTurnClaimResultV1,
 	type AgenticChatTurnJobV1,
-	type ChatTurnTerminalStatusV1,
 	type ChatContextType,
 	type ChatToolCall,
 	type ChatToolResult,
+	type ChatTurnTerminalStatusV1,
 	type ContextShiftPayload,
 	type JsonObject,
 	createAgentStreamEventIdV1
@@ -53,6 +53,13 @@ import {
 	type AgenticChatExecutorSnapshotStageV1,
 	createStableAgenticChatLifecycleTransitionIdV1
 } from './lifecycleIdentity';
+import {
+	type AgenticChatMonotonicClockV1,
+	type AgenticChatRuntimeTimingObserverV1,
+	AgenticChatRuntimeTimingTracker,
+	SYSTEM_AGENTIC_CHAT_MONOTONIC_CLOCK
+} from './runtimeTiming';
+import { buildAgenticChatAsyncTimingDraftV1 } from './timingPayload';
 
 const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_UI_PROJECTION_EVENTS = 128;
@@ -125,6 +132,28 @@ type TerminalContextState = {
 	toolExecutions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
 };
 
+type TerminalClaim = Pick<
+	ExecutableClaim,
+	'turnRunId' | 'queueJobId' | 'sessionId' | 'userId' | 'executionGeneration'
+>;
+
+type FinalizeTurnInput = {
+	envelope: AgenticChatExecutionIdentityV1;
+	claim: TerminalClaim;
+	status: ChatTurnTerminalStatusV1;
+	finishedReason: string;
+	failureCode: string | null;
+	usage: AgenticChatFixtureUsageV1 | null;
+	projection: ProjectionState;
+	publisherRegistered: boolean;
+	assistantTextOverride?: string;
+	completionContext?: {
+		executionInput: AgenticChatWorkerExecutionInputV1;
+		terminalContext: TerminalContextState;
+		runtimeTiming: AgenticChatRuntimeTimingTracker | null;
+	};
+};
+
 /**
  * Fenced Agentic Chat execution kernel, first proven by the Phase 2D fixtures.
  * Provider and tool ports remain injected, and no production worker entrypoint
@@ -141,6 +170,8 @@ export class AgenticChatFixtureTurnExecutor {
 			readTool: AgenticChatFixtureReadToolPortV1;
 			mutation: MutationPort;
 			createId?: () => string;
+			timingClock?: AgenticChatMonotonicClockV1;
+			onTimingSnapshot?: AgenticChatRuntimeTimingObserverV1;
 		}
 	) {}
 
@@ -191,17 +222,17 @@ export class AgenticChatFixtureTurnExecutor {
 			);
 		}
 
-		return this.finalize(
+		return this.finalize({
 			envelope,
 			claim,
-			'failed',
-			'error',
-			rejection.code,
-			null,
-			emptyProjection(),
-			false,
-			''
-		);
+			status: 'failed',
+			finishedReason: 'error',
+			failureCode: rejection.code,
+			usage: null,
+			projection: emptyProjection(),
+			publisherRegistered: false,
+			assistantTextOverride: ''
+		});
 	}
 
 	async execute(
@@ -272,6 +303,7 @@ export class AgenticChatFixtureTurnExecutor {
 		let preparedProvider: AgenticChatPreparedProviderInvocationV1 | null = null;
 		let usage: AgenticChatFixtureUsageV1 | null = null;
 		let finishedReason = 'stop';
+		let runtimeTiming: AgenticChatRuntimeTimingTracker | null = null;
 		const projection = emptyProjection();
 		const terminalContext: TerminalContextState = {
 			contextShift: null,
@@ -292,7 +324,12 @@ export class AgenticChatFixtureTurnExecutor {
 				streamRunId: executionInput.streamRunId,
 				clientTurnId: executionInput.clientTurnId,
 				executionGeneration: generation,
-				onOverload: (error) => overload.abort(error)
+				onOverload: (error) => overload.abort(error),
+				onPersistenceObserved: (observation) => {
+					this.captureRuntimeTiming(runtimeTiming, (timing) =>
+						timing.observePersistedEvent(observation.persistedAt, observation.eventType)
+					);
+				}
 			});
 			publisherRegistered = true;
 
@@ -335,6 +372,12 @@ export class AgenticChatFixtureTurnExecutor {
 				);
 			}
 			executionStarted = true;
+			runtimeTiming = this.createRuntimeTiming({
+				turnRunId: claim.turnRunId,
+				executionGeneration: generation,
+				baseline: executionInput.timingBaseline,
+				executionStartedAt: start.execution_started_at
+			});
 			throwIfAborted(combined.signal);
 			await this.publishExecutorLifecycle(
 				executionInput,
@@ -389,6 +432,7 @@ export class AgenticChatFixtureTurnExecutor {
 				}
 
 				validateFinish(step.finishedReason, step.usage);
+				this.captureRuntimeTiming(runtimeTiming, (timing) => timing.markProviderFinished());
 				finishedReason = step.finishedReason;
 				usage = step.usage;
 				finished = true;
@@ -403,18 +447,17 @@ export class AgenticChatFixtureTurnExecutor {
 				combined.signal
 			);
 			throwIfAborted(combined.signal);
-			return await this.finalize(
+			return await this.finalize({
 				envelope,
-				executableClaim,
-				'completed',
+				claim: executableClaim,
+				status: 'completed',
 				finishedReason,
-				null,
+				failureCode: null,
 				usage,
 				projection,
 				publisherRegistered,
-				undefined,
-				{ executionInput, terminalContext }
-			);
+				completionContext: { executionInput, terminalContext, runtimeTiming }
+			});
 		} catch (error) {
 			const failureClass = classifyFailure(error, executionStarted, combined.signal);
 			// Await inside the try/catch/finally scope so publisher cleanup cannot
@@ -813,40 +856,34 @@ export class AgenticChatFixtureTurnExecutor {
 				userId: receipt.user_id,
 				executionGeneration: receipt.execution_generation
 			};
-			return await this.finalize(
+			return await this.finalize({
 				envelope,
 				claim,
-				receipt.outcome === 'finalize_cancelled' ? 'cancelled' : 'failed',
-				receipt.outcome === 'finalize_cancelled' ? 'cancelled' : 'error',
-				receipt.failure_code,
-				null,
+				status: receipt.outcome === 'finalize_cancelled' ? 'cancelled' : 'failed',
+				finishedReason: receipt.outcome === 'finalize_cancelled' ? 'cancelled' : 'error',
+				failureCode: receipt.failure_code,
+				usage: null,
 				projection,
 				publisherRegistered,
-				assistantText ?? ''
-			);
+				assistantTextOverride: assistantText ?? ''
+			});
 		} catch {
 			return result('recovery_required', envelope.turnRunId, executionGeneration);
 		}
 	}
 
-	private async finalize(
-		envelope: AgenticChatExecutionIdentityV1,
-		claim: Pick<
-			ExecutableClaim,
-			'turnRunId' | 'queueJobId' | 'sessionId' | 'userId' | 'executionGeneration'
-		>,
-		status: ChatTurnTerminalStatusV1,
-		finishedReason: string,
-		failureCode: string | null,
-		usage: AgenticChatFixtureUsageV1 | null,
-		projection: ProjectionState,
-		publisherRegistered: boolean,
-		assistantTextOverride?: string,
-		completionContext?: {
-			executionInput: AgenticChatWorkerExecutionInputV1;
-			terminalContext: TerminalContextState;
-		}
-	): Promise<AgenticChatFixtureExecutionResultV1> {
+	private async finalize({
+		envelope,
+		claim,
+		status,
+		finishedReason,
+		failureCode,
+		usage,
+		projection,
+		publisherRegistered,
+		assistantTextOverride,
+		completionContext
+	}: FinalizeTurnInput): Promise<AgenticChatFixtureExecutionResultV1> {
 		let assistantText =
 			assistantTextOverride ??
 			this.safeAssistantText(claim.turnRunId, publisherRegistered) ??
@@ -881,6 +918,18 @@ export class AgenticChatFixtureTurnExecutor {
 							: {})
 					}
 				: {};
+		const lastTurnContext =
+			status === 'completed' && completionContext
+				? (buildCompletionLastTurnContext(
+						completionContext.executionInput,
+						assistantText,
+						completionContext.terminalContext
+					) as unknown as JsonObject)
+				: null;
+		const timingDraft =
+			status === 'completed' && completionContext
+				? this.buildTimingDraft(completionContext.runtimeTiming, finishedReason)
+				: null;
 		const terminalInput: AgenticChatTerminalFinalizeInputV1 = {
 			...envelope,
 			userId: claim.userId,
@@ -908,19 +957,20 @@ export class AgenticChatFixtureTurnExecutor {
 				failure_code: failureCode,
 				...completedEventPayload
 			},
-			lastTurnContext:
-				status === 'completed' && completionContext
-					? (buildCompletionLastTurnContext(
-							completionContext.executionInput,
-							assistantText,
-							completionContext.terminalContext
-						) as unknown as JsonObject)
-					: null,
+			lastTurnContext,
 			lastTurnContextTransitionId:
-				status === 'completed' && completionContext
+				lastTurnContext !== null
 					? createStableAgenticChatLifecycleTransitionIdV1({
 							turnRunId: claim.turnRunId,
 							stage: 'last_turn_context'
+						})
+					: null,
+			timingDraft,
+			timingTransitionId:
+				timingDraft !== null
+					? createStableAgenticChatLifecycleTransitionIdV1({
+							turnRunId: claim.turnRunId,
+							stage: 'timing'
 						})
 					: null
 		};
@@ -930,6 +980,8 @@ export class AgenticChatFixtureTurnExecutor {
 			terminal = await this.ports.control.finalize(terminalInput);
 		} catch {
 			return result('recovery_required', claim.turnRunId, claim.executionGeneration);
+		} finally {
+			this.completeRuntimeTiming(completionContext?.runtimeTiming ?? null);
 		}
 		if (terminal.outcome === 'stale_generation') {
 			return result('stale_generation', claim.turnRunId, claim.executionGeneration);
@@ -948,17 +1000,24 @@ export class AgenticChatFixtureTurnExecutor {
 
 		if (terminal.outcome === 'finalized' && mayPublishTerminal) {
 			try {
-				const preterminalDelivery = terminal.preterminal_event
-					? await this.ports.publisher.publishCommittedSemantic(
-							claim.turnRunId,
-							terminal.preterminal_event
-						)
-					: null;
-				if (
-					preterminalDelivery === null ||
-					preterminalDelivery === 'broadcast_acknowledged' ||
-					preterminalDelivery === 'broadcast_sent_reconcile_pending'
-				) {
+				const committedSemanticEvents =
+					terminal.preterminal_events ??
+					(terminal.preterminal_event ? [terminal.preterminal_event] : []);
+				let committedPrefixDelivered = true;
+				for (const committedEvent of committedSemanticEvents) {
+					const delivery = await this.ports.publisher.publishCommittedSemantic(
+						claim.turnRunId,
+						committedEvent
+					);
+					if (
+						delivery !== 'broadcast_acknowledged' &&
+						delivery !== 'broadcast_sent_reconcile_pending'
+					) {
+						committedPrefixDelivered = false;
+						break;
+					}
+				}
+				if (committedPrefixDelivered) {
 					await this.ports.publisher.publishTerminal(
 						claim.turnRunId,
 						terminal,
@@ -984,6 +1043,60 @@ export class AgenticChatFixtureTurnExecutor {
 			terminal.status,
 			queueReconciled
 		);
+	}
+
+	private createRuntimeTiming(
+		input: Omit<ConstructorParameters<typeof AgenticChatRuntimeTimingTracker>[0], 'clock'>
+	): AgenticChatRuntimeTimingTracker | null {
+		try {
+			return new AgenticChatRuntimeTimingTracker({
+				...input,
+				clock: this.ports.timingClock ?? SYSTEM_AGENTIC_CHAT_MONOTONIC_CLOCK
+			});
+		} catch {
+			return null;
+		}
+	}
+
+	private buildTimingDraft(
+		tracker: AgenticChatRuntimeTimingTracker | null,
+		finishedReason: string
+	): JsonObject | null {
+		if (!tracker) return null;
+		try {
+			tracker.markTerminalCallStarted();
+			return buildAgenticChatAsyncTimingDraftV1(
+				tracker.preterminalSnapshot(),
+				finishedReason
+			) as unknown as JsonObject;
+		} catch {
+			// Timing remains an optional observability extension. If its local source
+			// becomes untrustworthy, successful completion uses the established atomic
+			// context + done wrapper instead of failing the user turn.
+			return null;
+		}
+	}
+
+	private captureRuntimeTiming(
+		tracker: AgenticChatRuntimeTimingTracker | null,
+		capture: (tracker: AgenticChatRuntimeTimingTracker) => void
+	): void {
+		if (!tracker) return;
+		try {
+			capture(tracker);
+		} catch {
+			// Timing capture must never overturn the provider or terminal result.
+		}
+	}
+
+	private completeRuntimeTiming(tracker: AgenticChatRuntimeTimingTracker | null): void {
+		if (!tracker) return;
+		try {
+			tracker.markTerminalCallCompleted();
+			this.ports.onTimingSnapshot?.(tracker.snapshot());
+		} catch {
+			// Post-call timing must never overturn authoritative terminal DB truth.
+		}
 	}
 
 	private async reconcileTerminalQueue(

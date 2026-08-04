@@ -477,6 +477,33 @@ Partition statuses once at the data/store layer, then bind each surface to the s
 Badges should update without attention-grabbing motion. If the destination is lazy-loaded, gate any
 loading spinner with `motion-reduce:animate-none` (P11) and keep the count chip static.
 
+### P23 · Edge-anchored tab for secondary modal context
+
+**Finding:** a dense entity modal either leaves a secondary settings/context rail permanently open,
+making the primary workspace noisy, or puts the rail toggle among global header actions, making an
+already-busy header harder to scan.
+
+Treat the disclosure control as the panel's physical handle:
+
+1. Keep the editor or primary entity content dominant. The secondary panel starts closed for every
+   new modal/entity session; do not persist an open state that surprises the next record.
+2. Anchor one labeled, 44px-wide tab to a consistent modal edge (BuildOS entity modals use the
+   right). Keep it out of the header and attach it to the panel seam while the drawer is open.
+3. Keep the tab mounted while the drawer moves so keyboard focus never falls into an element being
+   hidden. Use `aria-controls` + `aria-expanded` on the tab and pair the closed panel with both
+   `aria-hidden` and `inert`.
+4. Give the tab position and drawer the same restrained duration/easing. Match Inkprint's modal
+   weight (~280ms), and collapse both transitions with `motion-reduce:transition-none` (P11).
+5. Do not hide fields required for the primary task. For a document, its title remains in the editor
+   when the details drawer is closed; description, state, connections, publishing, and history can
+   live behind the tab.
+6. On phone widths, replace the side treatment with the surface's existing bottom disclosure or
+   sheet. Do not shrink the edge tab below its usable target just to preserve it.
+
+The tab is an earned overlay because it is the only entrance to the hidden panel, but it must remain
+attached to an edge or seam—never float over the canvas as a detached launcher. Use semantic Inkprint
+surface/border tokens, P2 radii, a fixed P9 icon box, and the P13 focus/target contract.
+
 ---
 
 ## Using this doc in an audit

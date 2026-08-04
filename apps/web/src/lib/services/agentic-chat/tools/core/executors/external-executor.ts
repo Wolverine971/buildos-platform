@@ -10,14 +10,19 @@
  * - get_buildos_usage_guide: BuildOS usage guide
  */
 
-import { createHash } from 'node:crypto';
 import type { Json } from '@buildos/shared-types';
 import {
 	createSupabaseNativeSearchDiscoveryCacheStore,
 	enrichNativeSearchCandidates,
+	hashNativeSearchPageContent,
 	isGlobalWebPageCacheEligible,
+	loadCurrentNativeSearchPageEvidence,
 	normalizeWebPageCacheUrl,
-	type NativeSearchCacheRpcClient
+	persistNativeSearchPageEvidence,
+	type NativeSearchCacheRpcClient,
+	type NativeSearchEvidenceChunkReference,
+	type NativeSearchEvidenceRpcClient,
+	type NativeSearchPageEvidenceReceipt
 } from '@buildos/shared-agent-ops/web/native-search';
 import { env } from '$env/dynamic/private';
 import { BaseExecutor } from './base-executor';
@@ -90,6 +95,16 @@ function structuredDataForStorage(
 	return structuredData as unknown as Json;
 }
 
+function truncateByUnicodeCodePoints(
+	content: string,
+	maxChars: number
+): { content: string; truncated: boolean } {
+	const codePoints = Array.from(content);
+	return codePoints.length > maxChars
+		? { content: codePoints.slice(0, maxChars).join(''), truncated: true }
+		: { content, truncated: false };
+}
+
 /**
  * Executor for external service tool operations.
  *
@@ -129,7 +144,12 @@ export class ExternalExecutor extends BaseExecutor {
 				content: visit.content,
 				finalUrl: visit.final_url,
 				fetchedAt: visit.info.fetched_at,
-				cacheHit: visit.info.cache_hit ?? false
+				cacheHit: visit.info.cache_hit ?? false,
+				visitId: visit.visit_id,
+				versionId: visit.page_version_id,
+				versionNumber: visit.page_version_number,
+				contentHash: visit.content_hash,
+				evidenceChunks: visit.evidence_chunks
 			};
 		});
 
@@ -256,8 +276,10 @@ export class ExternalExecutor extends BaseExecutor {
 		const responseContent = await this.convertToMarkdownIfNeeded(fetched, outputFormat);
 
 		const trimmedOutput = responseContent.content.trim();
-		const truncated = trimmedOutput.length > maxChars;
-		const finalContent = truncated ? trimmedOutput.slice(0, maxChars) : trimmedOutput;
+		const { content: finalContent, truncated } = truncateByUnicodeCodePoints(
+			trimmedOutput,
+			maxChars
+		);
 
 		const stored =
 			persist && this.isFetchedVisitCacheEligible(fetched)
@@ -279,6 +301,13 @@ export class ExternalExecutor extends BaseExecutor {
 			meta: fetched.meta,
 			structured_data: fetched.structured_data,
 			visit_id: stored?.id,
+			page_version_id: stored?.evidence?.page_version_id,
+			page_version_number: stored?.evidence?.version_number,
+			content_hash: stored?.evidence?.content_hash ?? stored?.contentHash,
+			evidence_chunks: this.evidenceReferencesForContent(
+				stored?.evidence?.chunks,
+				finalContent
+			),
 			stored: stored?.stored ?? false,
 			message: fetched.message,
 			info: {
@@ -475,6 +504,7 @@ export class ExternalExecutor extends BaseExecutor {
 					'meta',
 					'structured_data',
 					'markdown',
+					'content_hash',
 					'bytes',
 					'last_llm_model',
 					'last_llm_ms',
@@ -509,12 +539,15 @@ export class ExternalExecutor extends BaseExecutor {
 		}
 
 		const trimmedOutput = data.markdown.trim();
-		const truncated = trimmedOutput.length > maxChars;
-		const finalContent = truncated ? trimmedOutput.slice(0, maxChars) : trimmedOutput;
+		const { content: finalContent, truncated } = truncateByUnicodeCodePoints(
+			trimmedOutput,
+			maxChars
+		);
 		const lastFetchedAt =
 			typeof data.last_fetched_at === 'string' ? data.last_fetched_at : undefined;
 		const lastFetchedMs = lastFetchedAt ? Date.parse(lastFetchedAt) : Number.NaN;
 		const cacheTtlMs = parseNumber(env.WEB_VISIT_CACHE_TTL_MS, DEFAULT_WEB_VISIT_CACHE_TTL_MS);
+		const evidence = await this.loadVisitEvidence(data.id);
 		const payload: WebVisitResultPayload = {
 			url: data.url ?? url,
 			final_url: data.final_url ?? data.url ?? url,
@@ -522,7 +555,7 @@ export class ExternalExecutor extends BaseExecutor {
 			content_type: data.content_type ?? null,
 			title: data.title ?? undefined,
 			canonical_url: data.canonical_url ?? undefined,
-			content_format: 'markdown',
+			content_format: evidence?.content_format ?? 'markdown',
 			content: finalContent,
 			excerpt: buildExcerpt(finalContent),
 			truncated,
@@ -532,6 +565,10 @@ export class ExternalExecutor extends BaseExecutor {
 				? (data.structured_data as WebVisitResultPayload['structured_data'])
 				: undefined,
 			visit_id: data.id,
+			page_version_id: evidence?.page_version_id,
+			page_version_number: evidence?.version_number,
+			content_hash: evidence?.content_hash ?? data.content_hash ?? undefined,
+			evidence_chunks: this.evidenceReferencesForContent(evidence?.chunks, finalContent),
 			stored: true,
 			message: `Web visit content loaded from cache for "${data.final_url ?? data.url ?? url}".`,
 			info: {
@@ -596,7 +633,10 @@ export class ExternalExecutor extends BaseExecutor {
 	private async persistWebVisit(
 		fetched: WebVisitFetchPayload,
 		responseContent: {
+			content: string;
+			format: WebVisitContentFormat;
 			markdown?: string;
+			conversion?: 'turndown' | 'llm';
 			llmModel?: string;
 			llmMs?: number;
 			llmPromptTokens?: number;
@@ -604,7 +644,15 @@ export class ExternalExecutor extends BaseExecutor {
 			llmTotalTokens?: number;
 			errorMessage?: string;
 		}
-	): Promise<{ id?: string; stored: boolean } | undefined> {
+	): Promise<
+		| {
+				id?: string;
+				stored: boolean;
+				contentHash?: string;
+				evidence?: NativeSearchPageEvidenceReceipt;
+		  }
+		| undefined
+	> {
 		if (!this.isFetchedVisitCacheEligible(fetched)) return { stored: false };
 		const admin = this.getAdminSupabase();
 		// SECURITY: web_page_visits is a GLOBAL cross-user cache keyed by
@@ -619,11 +667,9 @@ export class ExternalExecutor extends BaseExecutor {
 				? fetched.canonical_url
 				: fetched.final_url;
 		const normalizedUrl = this.normalizeUrlForStorage(cacheKeyUrl);
-		const markdown = responseContent.markdown ?? fetched.text;
+		const markdown = (responseContent.markdown ?? fetched.text).trim();
 		const excerpt = buildExcerpt(markdown ?? '');
-		const contentHash = markdown
-			? createHash('sha256').update(markdown).digest('hex')
-			: undefined;
+		const contentHash = markdown ? hashNativeSearchPageContent(markdown) : undefined;
 		const now = new Date().toISOString();
 
 		try {
@@ -672,7 +718,10 @@ export class ExternalExecutor extends BaseExecutor {
 					.maybeSingle();
 
 				if (error) throw error;
-				return { id: data?.id, stored: true };
+				const evidence = data?.id
+					? await this.persistVisitEvidence(data.id, fetched, responseContent, markdown)
+					: undefined;
+				return { id: data?.id, stored: true, contentHash, evidence };
 			}
 
 			const { data, error } = await admin
@@ -709,7 +758,10 @@ export class ExternalExecutor extends BaseExecutor {
 				.maybeSingle();
 
 			if (error) throw error;
-			return { id: data?.id, stored: true };
+			const evidence = data?.id
+				? await this.persistVisitEvidence(data.id, fetched, responseContent, markdown)
+				: undefined;
+			return { id: data?.id, stored: true, contentHash, evidence };
 		} catch (error) {
 			logger.error('[ExternalExecutor] Failed to persist web visit', {
 				url: fetched.url,
@@ -717,5 +769,86 @@ export class ExternalExecutor extends BaseExecutor {
 			});
 			return { stored: false };
 		}
+	}
+
+	private evidenceRpcClient(): NativeSearchEvidenceRpcClient {
+		return this.getAdminSupabase() as unknown as NativeSearchEvidenceRpcClient;
+	}
+
+	private async loadVisitEvidence(
+		pageVisitId: string
+	): Promise<NativeSearchPageEvidenceReceipt | undefined> {
+		try {
+			return (
+				(await loadCurrentNativeSearchPageEvidence(
+					this.evidenceRpcClient(),
+					pageVisitId
+				)) ?? undefined
+			);
+		} catch (error) {
+			// Deploy-safe: page caching remains available while the evidence
+			// migration rolls out or during a transient RPC failure.
+			logger.warn('Failed to load immutable web-page evidence', {
+				pageVisitId,
+				error: error instanceof Error ? error.message : String(error)
+			});
+			return undefined;
+		}
+	}
+
+	private async persistVisitEvidence(
+		pageVisitId: string,
+		fetched: WebVisitFetchPayload,
+		responseContent: {
+			format: WebVisitContentFormat;
+			conversion?: 'turndown' | 'llm';
+		},
+		content: string
+	): Promise<NativeSearchPageEvidenceReceipt | undefined> {
+		if (!content) return undefined;
+		try {
+			return await persistNativeSearchPageEvidence(this.evidenceRpcClient(), {
+				pageVisitId,
+				content,
+				contentFormat: responseContent.format,
+				requestedUrl: fetched.url,
+				finalUrl: fetched.final_url,
+				canonicalUrl: fetched.canonical_url,
+				statusCode: fetched.status_code,
+				contentType: fetched.content_type ?? undefined,
+				title: fetched.title,
+				meta: fetched.meta,
+				structuredData: fetched.structured_data,
+				excerpt: buildExcerpt(content),
+				bytes: fetched.info.bytes,
+				fetchedAt: fetched.info.fetched_at,
+				etag: fetched.info.etag,
+				lastModified: fetched.info.last_modified,
+				extractionMethod: fetched.content_type?.includes('pdf') ? 'pdf' : 'static',
+				extractionVersion:
+					responseContent.conversion === 'llm' ? 'web-visit-llm-v1' : 'web-visit-v1',
+				parser: fetched.info.parser,
+				extractionStrategy: fetched.info.extraction_strategy
+			});
+		} catch (error) {
+			// The mutable cache write already succeeded. Evidence persistence is
+			// additive and must not turn a successful user-facing visit into a
+			// failed tool call during rollout.
+			logger.warn('Failed to persist immutable web-page evidence', {
+				pageVisitId,
+				error: error instanceof Error ? error.message : String(error)
+			});
+			return undefined;
+		}
+	}
+
+	private evidenceReferencesForContent(
+		chunks: NativeSearchEvidenceChunkReference[] | undefined,
+		content: string
+	): NativeSearchEvidenceChunkReference[] | undefined {
+		if (!chunks?.length || !content) return undefined;
+		const visibleEndOffset = Array.from(content).length;
+		const visible = chunks.filter((chunk) => chunk.start_offset < visibleEndOffset);
+		return visible.length > 0 ? visible : undefined;
 	}
 }

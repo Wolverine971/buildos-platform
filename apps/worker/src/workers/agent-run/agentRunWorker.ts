@@ -37,8 +37,14 @@ import {
 	entityActionForGatewayOp
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import {
+	NATIVE_SEARCH_EVIDENCE_MAX_CONTENT_CHARS,
 	type NativeSearchCacheRpcClient,
-	createSupabaseNativeSearchDiscoveryCacheStore
+	type NativeSearchEvidenceRpcClient,
+	createSupabaseNativeSearchDiscoveryCacheStore,
+	hashNativeSearchPageContent,
+	isGlobalWebPageCacheEligible,
+	normalizeWebPageCacheUrl,
+	persistNativeSearchPageEvidence
 } from '@buildos/shared-agent-ops/web/native-search';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
@@ -91,6 +97,7 @@ import {
 } from './agentRunCostLedger';
 import { resolveAgentRunCancellationSource, resolveAgentRunModelPolicy } from './agentRunPolicy';
 import {
+	type AgentRunFetchedPageEvidence,
 	type PaidToolCharge,
 	createAgentRunWebResearchPort,
 	estimateTavilySearchCharge,
@@ -138,6 +145,111 @@ const WEB_TRANSCRIPT_RESULT_CHARS = 12_500;
 // llm_usage_logs pane admin cost dashboards already read. The cost ledger
 // (agent_run_cost_entries) remains the enforcement record.
 const paidToolUsageLogger = new LLMUsageLogger({ supabase });
+
+async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence) {
+	if (![page.requestedUrl, page.finalUrl].every((url) => isGlobalWebPageCacheEligible(url))) {
+		return undefined;
+	}
+
+	const content = Array.from(page.content)
+		.slice(0, NATIVE_SEARCH_EVIDENCE_MAX_CONTENT_CHARS)
+		.join('')
+		.trim();
+	if (!content) return undefined;
+	const normalizedUrl = normalizeWebPageCacheUrl(page.finalUrl);
+	const contentHash = hashNativeSearchPageContent(content);
+	const excerpt = content.length > 280 ? `${content.slice(0, 280)}...` : content;
+	const { data: existing, error: selectError } = await supabase
+		.from('web_page_visits')
+		.select('id, visit_count')
+		.eq('normalized_url', normalizedUrl)
+		.maybeSingle();
+	if (selectError) throw selectError;
+
+	const mutableSnapshot = {
+		url: page.requestedUrl,
+		final_url: page.finalUrl,
+		canonical_url: null,
+		normalized_url: normalizedUrl,
+		status_code: page.statusCode,
+		content_type: page.contentType ?? null,
+		title: page.title ?? null,
+		meta: null,
+		structured_data: null,
+		markdown: content,
+		excerpt,
+		content_hash: contentHash,
+		last_visited_at: page.fetchedAt,
+		last_fetched_at: page.fetchedAt,
+		etag: page.etag ?? null,
+		last_modified: page.lastModified ?? null,
+		last_fetch_ms: page.fetchMs,
+		bytes: page.bytes,
+		error_message: null
+	};
+
+	const updateExisting = async (id: string, visitCount: number) => {
+		const { data, error } = await supabase
+			.from('web_page_visits')
+			.update({
+				...mutableSnapshot,
+				visit_count: visitCount + 1
+			} as any)
+			.eq('id', id)
+			.select('id')
+			.maybeSingle();
+		if (error) throw error;
+		return data?.id;
+	};
+
+	let pageVisitId: string | undefined;
+	if (existing?.id) {
+		pageVisitId = await updateExisting(existing.id, existing.visit_count ?? 0);
+	} else {
+		const { data, error } = await supabase
+			.from('web_page_visits')
+			.insert({
+				...mutableSnapshot,
+				visit_count: 1,
+				first_visited_at: page.fetchedAt
+			} as any)
+			.select('id')
+			.maybeSingle();
+		if (error?.code === '23505') {
+			const { data: raced, error: raceError } = await supabase
+				.from('web_page_visits')
+				.select('id, visit_count')
+				.eq('normalized_url', normalizedUrl)
+				.maybeSingle();
+			if (raceError || !raced?.id) throw raceError ?? error;
+			pageVisitId = await updateExisting(raced.id, raced.visit_count ?? 0);
+		} else {
+			if (error) throw error;
+			pageVisitId = data?.id;
+		}
+	}
+	if (!pageVisitId) throw new Error('Web page cache did not return a visit identity');
+
+	return persistNativeSearchPageEvidence(supabase as unknown as NativeSearchEvidenceRpcClient, {
+		pageVisitId,
+		content,
+		contentFormat: 'text',
+		requestedUrl: page.requestedUrl,
+		finalUrl: page.finalUrl,
+		statusCode: page.statusCode,
+		contentType: page.contentType,
+		title: page.title,
+		excerpt,
+		bytes: page.bytes,
+		fetchedAt: page.fetchedAt,
+		etag: page.etag,
+		lastModified: page.lastModified,
+		extractionMethod: 'text',
+		extractionVersion: 'agent-run-web-visit-v1',
+		parser: page.parser,
+		extractionStrategy: page.parser
+	});
+}
 
 function transcriptResultCharsForOp(op: string): number {
 	return AGENT_OP_WEB_READ_CATALOG.some((webOp) => webOp === op)
@@ -848,10 +960,10 @@ function buildSystemPrompt(
 		`Available operations (${surfaceLabel}): ${runnableOps.length ? runnableOps.join(', ') : '(none in scope)'}`,
 		'Most ops accept { "project_id": "<uuid>" }. Use onto.project.list first to discover projects.',
 		hasWebSearch
-			? '- util.web.search args: { "query": "...", "max_results"?: 1-10 (default 4), "search_depth"?: "basic"|"advanced" (default advanced), "include_domains"?: ["example.com"], "exclude_domains"?: ["example.com"] }. BuildOS fetches evidence from at most the best two pages; synthesize the answer yourself.'
+			? '- util.web.search args: { "query": "...", "max_results"?: 1-10 (default 4), "search_depth"?: "basic"|"advanced" (default advanced), "include_domains"?: ["example.com"], "exclude_domains"?: ["example.com"] }. BuildOS fetches evidence from at most the best two pages and may return immutable page-version/chunk coordinates; synthesize the answer yourself.'
 			: '',
 		hasWebVisit
-			? '- util.web.visit args: { "url": "https://...", "max_chars"?: 1-12000, "allow_redirects"?: true|false, "prefer_language"?: "en-US" }.'
+			? '- util.web.visit args: { "url": "https://...", "max_chars"?: 1-12000, "allow_redirects"?: true|false, "prefer_language"?: "en-US" }. Persisted public pages may include an immutable version ID, content hash, and stable evidence chunk selectors.'
 			: '',
 		hasWriteOps
 			? '- When the goal calls for creating or updating entities, use the write ops directly; just do the work.'
@@ -1232,6 +1344,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		visitMaxBytes: positiveIntegerEnv('AGENT_RUN_WEB_VISIT_MAX_BYTES'),
 		tavilyCreditCostUsd,
 		searchCacheStore,
+		pageEvidenceSink: persistAgentRunPageEvidence,
 		onSearchDispatched: async (charge) => {
 			if (!activePaidToolAttemptKey) {
 				throw new AgentRunCostLedgerError(

@@ -251,6 +251,11 @@ export function renderDeepResearchFinalizationContext(
 				final_url: source.finalUrl,
 				title: source.title ?? null,
 				accessed_at: source.accessedAt,
+				page_visit_id: source.pageVisitId,
+				page_version_id: source.pageVersionId,
+				page_version_number: source.pageVersionNumber,
+				content_hash: source.contentHash,
+				evidence_chunks: source.evidenceChunks,
 				content
 			}
 		];
@@ -281,6 +286,11 @@ export function renderDeepResearchWorkingContext(observations: DeepResearchObser
 				requested_url: source.requestedUrl,
 				final_url: source.finalUrl,
 				title: source.title ?? null,
+				page_visit_id: source.pageVisitId,
+				page_version_id: source.pageVersionId,
+				page_version_number: source.pageVersionNumber,
+				content_hash: source.contentHash,
+				evidence_chunks: source.evidenceChunks,
 				content
 			}
 		];

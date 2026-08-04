@@ -419,7 +419,17 @@ export type SkillActivityEvent = {
 };
 
 export interface AgentTimingSummary {
+	/** Identifies the ownership/meaning of fields on asynchronous worker turns. */
+	timing_contract_version?: 'agentic_chat_async_v1';
+	/**
+	 * Legacy-compatible request origin. For `agentic_chat_async_v1`, this is the
+	 * durable admission timestamp and is identical to `admitted_at`.
+	 */
 	request_started_at: string;
+	admitted_at?: string;
+	accepted_at?: string;
+	worker_started_at?: string;
+	provider_authorized_at?: string;
 	session_resolved_at?: string | null;
 	history_loaded_at?: string | null;
 	history_composed_at?: string | null;
@@ -428,6 +438,8 @@ export interface AgentTimingSummary {
 	first_response_at?: string | null;
 	assistant_persisted_at?: string | null;
 	done_emitted_at?: string | null;
+	/** Durable database commit; unlike `done_emitted_at`, this is not delivery proof. */
+	terminal_committed_at?: string | null;
 	cache_source?:
 		| 'not_requested'
 		| 'session_cache'
@@ -444,12 +456,19 @@ export interface AgentTimingSummary {
 		| 'unknown_cached';
 	cache_age_seconds?: number | null;
 	bypassed_context_cache?: boolean;
+	request_prewarmed_context?: boolean;
 	history_strategy?: string | null;
 	history_compressed?: boolean;
 	raw_history_count?: number | null;
 	history_for_model_count?: number | null;
+	prepared_prompt_hit?: boolean;
+	prepared_prompt_miss_reason?: string | null;
+	prepared_surface_profile?: string | null;
 	finished_reason?: string | null;
 	phases: {
+		admission_to_acceptance_ms?: number;
+		queue_wait_ms?: number;
+		worker_start_to_provider_authority_ms?: number;
 		session_resolve_ms?: number;
 		active_turn_lookup_ms?: number;
 		turn_admission_ms?: number;
@@ -462,6 +481,10 @@ export interface AgentTimingSummary {
 		request_to_context_ready_ms?: number;
 		time_to_first_event_ms?: number;
 		time_to_first_response_ms?: number;
+		provider_authority_to_first_event_persistence_ms?: number;
+		provider_authority_to_first_response_persistence_ms?: number;
+		provider_authority_to_finish_ms?: number;
+		provider_finish_to_terminal_call_ms?: number;
 		response_generation_ms?: number;
 		assistant_persist_ms?: number;
 		finalization_ms?: number;

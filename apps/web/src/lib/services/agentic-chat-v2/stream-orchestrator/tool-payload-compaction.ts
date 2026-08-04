@@ -1121,7 +1121,18 @@ function compactWebSearchPayload(payload: unknown): unknown {
 					: undefined,
 			page_fetched_at: result?.page_fetched_at ?? undefined,
 			page_cache_hit:
-				typeof result?.page_cache_hit === 'boolean' ? result.page_cache_hit : undefined
+				typeof result?.page_cache_hit === 'boolean' ? result.page_cache_hit : undefined,
+			page_visit_id: compactEvidenceId(result?.page_visit_id),
+			page_version_id: compactEvidenceId(result?.page_version_id),
+			page_version_number:
+				typeof result?.page_version_number === 'number'
+					? result.page_version_number
+					: undefined,
+			page_content_hash: compactSha256(result?.page_content_hash),
+			page_evidence_chunks: compactEvidenceChunkReferences(
+				result?.page_evidence_chunks,
+				pageBudget
+			)
 		})),
 		follow_up_questions: Array.isArray(record.follow_up_questions)
 			? record.follow_up_questions.slice(0, 3)
@@ -1180,6 +1191,14 @@ function compactWebVisitPayload(payload: unknown): unknown {
 			content_format: record.content_format,
 			excerpt: toTextPreview(record.excerpt, 500),
 			content: toTextPreview(sourceContent, contentBudget),
+			visit_id: compactEvidenceId(record.visit_id),
+			page_version_id: compactEvidenceId(record.page_version_id),
+			page_version_number:
+				typeof record.page_version_number === 'number'
+					? record.page_version_number
+					: undefined,
+			content_hash: compactSha256(record.content_hash),
+			evidence_chunks: compactEvidenceChunkReferences(record.evidence_chunks, contentBudget),
 			// `truncated` describes the evidence the model actually received.
 			// Preserve the executor-level signal separately so the model can tell
 			// whether omission happened before or during payload compaction.
@@ -1248,6 +1267,52 @@ function compactWebVisitPayload(payload: unknown): unknown {
 	}
 
 	return applyToolPayloadSizeGuard(fitted, MAX_MODEL_WEB_PAYLOAD_CHARS);
+}
+
+function compactEvidenceId(value: unknown): string | undefined {
+	return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value) ? value : undefined;
+}
+
+function compactSha256(value: unknown): string | undefined {
+	return typeof value === 'string' && /^[0-9a-f]{64}$/.test(value) ? value : undefined;
+}
+
+function compactEvidenceChunkReferences(
+	value: unknown,
+	visibleEndOffset: number
+): Array<Record<string, unknown>> | undefined {
+	if (!Array.isArray(value) || visibleEndOffset <= 0) return undefined;
+	const references = value
+		.map((raw): Record<string, unknown> | undefined => {
+			if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+			const chunk = raw as Record<string, unknown>;
+			if (
+				typeof chunk.chunk_index !== 'number' ||
+				!Number.isInteger(chunk.chunk_index) ||
+				chunk.chunk_index < 0 ||
+				typeof chunk.start_offset !== 'number' ||
+				typeof chunk.end_offset !== 'number' ||
+				chunk.start_offset < 0 ||
+				chunk.end_offset <= chunk.start_offset ||
+				chunk.start_offset >= visibleEndOffset ||
+				chunk.selector !== `char:${chunk.start_offset}-${chunk.end_offset}`
+			) {
+				return undefined;
+			}
+			const contentHash = compactSha256(chunk.content_hash);
+			if (!contentHash) return undefined;
+			return {
+				id: compactEvidenceId(chunk.id),
+				chunk_index: chunk.chunk_index,
+				start_offset: chunk.start_offset,
+				end_offset: chunk.end_offset,
+				selector: chunk.selector,
+				content_hash: contentHash
+			};
+		})
+		.filter((reference): reference is Record<string, unknown> => Boolean(reference))
+		.slice(0, 10);
+	return references.length > 0 ? references : undefined;
 }
 
 function exceedsTarget(payload: unknown, targetChars: number): boolean {

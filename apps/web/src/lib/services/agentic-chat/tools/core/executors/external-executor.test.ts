@@ -1,17 +1,21 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/executors/external-executor.test.ts
 import { describe, expect, it, vi } from 'vitest';
+import { hashNativeSearchPageContent } from '@buildos/shared-agent-ops/web/native-search';
 import { ExternalExecutor } from './external-executor';
 
 describe('ExternalExecutor page cache revalidation', () => {
 	it('serves stored markdown after a stale entry receives HTTP 304', async () => {
+		const cachedMarkdown = '# Cached evidence\n\nStill current.';
+		const contentHash = hashNativeSearchPageContent(cachedMarkdown);
 		const cachedRow = {
-			id: 'visit-1',
+			id: '10000000-0000-4000-8000-000000000001',
 			url: 'https://93.184.216.34/research',
 			final_url: 'https://93.184.216.34/research',
 			status_code: 200,
 			content_type: 'text/html',
 			title: 'Cached title',
-			markdown: '# Cached evidence\n\nStill current.',
+			markdown: cachedMarkdown,
+			content_hash: contentHash,
 			bytes: 123,
 			visit_count: 4,
 			etag: '"cached-v1"',
@@ -19,7 +23,32 @@ describe('ExternalExecutor page cache revalidation', () => {
 			last_fetched_at: '2026-07-31T12:00:00.000Z'
 		};
 		const updates: Array<Record<string, unknown>> = [];
+		const rpc = vi.fn(async () => ({
+			data: {
+				page_visit_id: cachedRow.id,
+				page_version_id: '20000000-0000-4000-8000-000000000001',
+				version_number: 1,
+				content_hash: contentHash,
+				content_length: Array.from(cachedMarkdown).length,
+				content_format: 'markdown',
+				fetched_at: cachedRow.last_fetched_at,
+				extraction_method: 'static',
+				extraction_version: 'legacy-web-page-visit-v1',
+				chunks: [
+					{
+						id: '30000000-0000-4000-8000-000000000001',
+						chunk_index: 0,
+						start_offset: 0,
+						end_offset: Array.from(cachedMarkdown).length,
+						selector: `char:0-${Array.from(cachedMarkdown).length}`,
+						content_hash: contentHash
+					}
+				]
+			},
+			error: null
+		}));
 		const admin = {
+			rpc,
 			from: vi.fn(() => {
 				const chain: Record<string, any> = {};
 				chain.select = vi.fn(() => chain);
@@ -56,12 +85,27 @@ describe('ExternalExecutor page cache revalidation', () => {
 		});
 
 		expect(result.content).toContain('Cached evidence');
+		expect(result).toMatchObject({
+			visit_id: cachedRow.id,
+			page_version_id: '20000000-0000-4000-8000-000000000001',
+			page_version_number: 1,
+			content_hash: contentHash,
+			evidence_chunks: [
+				{
+					id: '30000000-0000-4000-8000-000000000001',
+					selector: `char:0-${Array.from(cachedMarkdown).length}`
+				}
+			]
+		});
 		expect(result.info).toMatchObject({
 			cache_hit: true,
 			cache_revalidated: true,
 			cache_stale: false
 		});
 		expect(fetchFn).toHaveBeenCalledTimes(1);
+		expect(rpc).toHaveBeenCalledWith('get_current_web_page_evidence', {
+			p_web_page_visit_id: cachedRow.id
+		});
 		expect(updates[0]).toMatchObject({
 			visit_count: 5,
 			etag: '"cached-v1"'

@@ -206,29 +206,6 @@ export function getPhaseCreateModel(): string {
 }
 
 // ============================================================================
-// NOTE MODELS
-// ============================================================================
-
-/**
- * Get note model for CREATE operations
- */
-export function getNoteCreateModel(): string {
-	return `// Note CREATE model:
-{
-  "operation": "create",
-  "table": "notes",
-  "id": "op-[timestamp]-note-create",
-  "data": {
-    "title": "Note title (required)",
-    "content": "Note content in markdown",
-    "project_id": "project-uuid" (optional),
-    "tags": ["optional", "tags"],
-    "is_pinned": false
-  }
-}`;
-}
-
-// ============================================================================
 // EXPORT COLLECTIONS
 // ============================================================================
 
@@ -260,18 +237,10 @@ export const PhaseModels = {
 };
 
 /**
- * All note-related models
- */
-export const NoteModels = {
-	create: getNoteCreateModel
-};
-
-/**
  * Complete data models collection
  */
 export const DataModels = {
 	task: TaskModels,
 	project: ProjectModels,
-	phase: PhaseModels,
-	note: NoteModels
+	phase: PhaseModels
 };

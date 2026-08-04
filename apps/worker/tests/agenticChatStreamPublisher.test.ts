@@ -134,8 +134,15 @@ function createBroadcast(log: string[] = [], results: Array<'sent' | 'failed'> =
 
 describe('AgenticChatStreamPublisher', () => {
 	it('persists first text before Broadcast and exact-sequence acknowledgement', async () => {
-		const context = turn('first');
 		const log: string[] = [];
+		const observations: unknown[] = [];
+		const context = {
+			...turn('first'),
+			onPersistenceObserved(observation) {
+				observations.push(observation);
+				log.push(`observe:${observation.eventType}`);
+			}
+		} satisfies AgenticChatPublisherTurnV1;
 		const persistence = createPersistence([context], log);
 		const broadcast = createBroadcast(log);
 		const publisher = new AgenticChatStreamPublisher({ persistence, broadcast });
@@ -146,8 +153,19 @@ describe('AgenticChatStreamPublisher', () => {
 		await expect(queued.delivery).resolves.toBe('broadcast_acknowledged');
 		expect(log).toEqual([
 			`persist:text:${context.turnRunId}`,
+			'observe:text_delta',
 			'broadcast:event',
 			`ack:${context.turnRunId}:1`
+		]);
+		expect(observations).toEqual([
+			{
+				turnRunId: context.turnRunId,
+				executionGeneration: 1,
+				sequenceIndex: 1,
+				phase: 'llm',
+				eventType: 'text_delta',
+				persistedAt: '2026-08-02T20:00:00.000Z'
+			}
 		]);
 		expect(broadcast.messages[0]).toMatchObject({
 			topic: `chat-user:${context.userId}`,

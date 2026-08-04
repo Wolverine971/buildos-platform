@@ -1,19 +1,12 @@
 // apps/web/src/lib/utils/markdown-nesting.ts
 import { format } from 'date-fns/format';
-import type { Task, Note, ProjectWithRelations } from '$lib/types/project';
+import type { Task, ProjectWithRelations } from '$lib/types/project';
 import { DataFormatterService } from '$lib/services/prompts/core/data-formatter';
 
 interface TaskHierarchy {
 	task: Task;
 	children: TaskHierarchy[];
 	level: number;
-}
-
-interface NoteGroup {
-	category: string;
-	icon: string;
-	title: string;
-	notes: Note[];
 }
 
 /**
@@ -352,101 +345,6 @@ export function formatTasksForPrompt(
 }
 
 /**
- * Group and format notes with proper nesting
- */
-export function formatNotesWithNesting(notes: Note[], baseLevel: number = 2): string {
-	if (!notes.length) return '';
-
-	const noteGroups = groupNotesByCategory(notes);
-	const headingPrefix = '#'.repeat(baseLevel);
-	let output = `${headingPrefix} 📝 Notes\n\n`;
-
-	// Sort categories with uncategorized last
-	const sortedGroups = noteGroups.sort((a, b) => {
-		if (a.category === 'uncategorized') return 1;
-		if (b.category === 'uncategorized') return -1;
-		return a.title.localeCompare(b.title);
-	});
-
-	sortedGroups.forEach((group) => {
-		if (sortedGroups.length > 1) {
-			const categoryHeading = '#'.repeat(baseLevel + 1);
-			output += `${categoryHeading} ${group.icon} ${group.title}\n\n`;
-		}
-
-		// Sort notes within category by creation date (newest first)
-		const sortedNotes = group.notes.sort(
-			(a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-		);
-
-		sortedNotes.forEach((note) => {
-			const noteHeading = '#'.repeat(baseLevel + 2);
-			const noteTitle = note.title || 'Untitled Note';
-			output += `${noteHeading} ${noteTitle}\n\n`;
-
-			// Note content with proper markdown preservation
-			if (note.content) {
-				const content = note.content.trim();
-				if (content) {
-					// Preserve existing markdown formatting in note content
-					output += `${content}\n\n`;
-				}
-			}
-
-			// Note metadata
-			const metadata = buildNoteMetadata(note, sortedGroups.length === 1);
-			if (metadata.length > 0) {
-				output += `*${metadata.join(' • ')}*\n\n`;
-			}
-
-			// Add separator between notes (except for last one)
-			if (note !== sortedNotes[sortedNotes.length - 1]) {
-				output += `---\n\n`;
-			}
-		});
-
-		// Add spacing between categories
-		if (group !== sortedGroups[sortedGroups.length - 1]) {
-			output += `\n`;
-		}
-	});
-
-	return output;
-}
-
-/**
- * Format notes for prompts with proper nesting
- */
-export function formatNotesForPrompt(
-	notes: Note[],
-	baseLevel: number = 2,
-	mode: 'full' | 'summary' = 'full'
-): string {
-	if (!notes || notes.length === 0) return '';
-
-	const headingPrefix = '#'.repeat(baseLevel);
-	const subHeadingPrefix = '#'.repeat(baseLevel + 1);
-	let output = `${headingPrefix} Notes (${notes.length})\n\n`;
-
-	notes.forEach((note) => {
-		const title = note.title || 'Untitled';
-		let content = note.content || 'No content';
-
-		// Trim content in summary mode
-		if (mode === 'summary' && content.length > 100) {
-			content = content.substring(0, 100) + '...';
-		}
-
-		const category = note.category ? ` [${note.category}]` : '';
-
-		// Use bullet points for prompt format (not headers for individual notes)
-		output += `- **${title}**${category}: ${content}\n`;
-	});
-
-	return output;
-}
-
-/**
  * Generate status-based task collections with proper nesting
  */
 export function formatTasksByStatus(tasks: Task[], baseLevel: number = 2): string {
@@ -626,55 +524,4 @@ function groupTasks(tasks: Task[]): {
 	});
 
 	return groups;
-}
-
-function groupNotesByCategory(notes: Note[]): NoteGroup[] {
-	const notesByCategory = notes.reduce(
-		(acc, note) => {
-			const category = note.category || 'uncategorized';
-			if (!acc[category]) acc[category] = [];
-			acc[category].push(note);
-			return acc;
-		},
-		{} as Record<string, Note[]>
-	);
-
-	return Object.entries(notesByCategory).map(([category, categoryNotes]) => ({
-		category,
-		icon: getCategoryIcon(category),
-		title:
-			category === 'uncategorized'
-				? 'General Notes'
-				: category.charAt(0).toUpperCase() + category.slice(1),
-		notes: categoryNotes
-	}));
-}
-
-function buildNoteMetadata(note: Note, hideCategory: boolean): string[] {
-	const metadata: string[] = [];
-
-	if (note.category && !hideCategory) {
-		metadata.push(`**Category:** ${note.category}`);
-	}
-
-	metadata.push(`**Created:** ${format(new Date(note.created_at), 'MMM d, yyyy')}`);
-
-	if (note.tags?.length) {
-		metadata.push(`**Tags:** ${note.tags.join(', ')}`);
-	}
-
-	return metadata;
-}
-
-function getCategoryIcon(category: string): string {
-	const icons: Record<string, string> = {
-		insight: '💡',
-		research: '🔍',
-		idea: '💭',
-		observation: '👁️',
-		reference: '📖',
-		question: '❓',
-		uncategorized: '📝'
-	};
-	return icons[category] || '📝';
 }

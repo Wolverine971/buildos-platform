@@ -204,19 +204,6 @@ const tableSchemas = {
 		updated_at: { type: 'timestamp' }
 	},
 
-	notes: {
-		id: { type: 'uuid' },
-		user_id: { type: 'uuid', required: true },
-		project_id: { type: 'uuid' },
-		title: { type: 'string', maxLength: 255 },
-		content: { type: 'string' },
-		category: { type: 'string', maxLength: 100 },
-		tags: { type: 'array' },
-		pinned: { type: 'boolean' },
-		created_at: { type: 'timestamp' },
-		updated_at: { type: 'timestamp' }
-	},
-
 	phases: {
 		id: { type: 'uuid' },
 		project_id: { type: 'uuid', required: true },
@@ -386,7 +373,6 @@ export function cleanDataForEmbedding(data: any, table: string): string | null {
 			'core_harmony_integration'
 		],
 		tasks: ['title', 'description', 'priority', 'status', 'task_type', 'details'],
-		notes: ['title', 'content', 'category', 'tags'],
 		phases: ['name', 'description', 'status']
 	};
 
@@ -411,4 +397,3 @@ export function cleanDataForEmbedding(data: any, table: string): string | null {
 // --- Legacy exports for backward compatibility ----------------------------
 export const cleanProjectData = (data: any) => cleanDataForTable('projects', data);
 export const cleanTaskData = (data: any) => cleanDataForTable('tasks', data);
-export const cleanNoteData = (data: any) => cleanDataForTable('notes', data);

@@ -22,6 +22,7 @@ import {
 	type AgenticChatFixtureProviderStepV1
 } from '../src/workers/agentic-chat/fixtureTurnExecutor';
 import { AgenticChatProviderExecutionError } from '../src/workers/agentic-chat/providerContract';
+import type { AgenticChatRuntimeTimingSnapshotV1 } from '../src/workers/agentic-chat/runtimeTiming';
 import { AgenticChatStreamPublisher } from '../src/workers/agentic-chat/streamPublisher';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
@@ -62,6 +63,24 @@ const executionInput = {
 		streamRunId: 'stream-run-1',
 		message: 'Use the fixture',
 		context: {}
+	},
+	timingBaseline: {
+		admittedAt: '2026-08-03T11:59:57.000Z',
+		startedAt: '2026-08-03T11:59:58.000Z',
+		workerStartedAt: '2026-08-03T11:59:59.000Z',
+		executionStartedAt: null,
+		historyCutoffAt: '2026-08-03T11:59:58.000Z',
+		requestPrewarmedContext: false,
+		cacheSource: 'not_requested',
+		cacheAgeSeconds: null,
+		historyStrategy: 'raw_history',
+		historyCompressed: false,
+		rawHistoryCount: 0,
+		historyForModelCount: 0,
+		preparedPromptId: null,
+		preparedPromptHit: false,
+		preparedPromptMissReason: null,
+		preparedSurfaceProfile: null
 	},
 	artifact: {
 		artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
@@ -168,12 +187,16 @@ function createHarness(
 	options: {
 		recovery?: unknown[];
 		publisherConfig?: ConstructorParameters<typeof AgenticChatStreamPublisher>[1];
+		timingClockValues?: number[];
+		failBroadcastType?: string;
 	} = {}
 ) {
 	let sequence = 0;
 	const semanticInputs: Array<Record<string, unknown>> = [];
 	const broadcastMessages: Array<Record<string, unknown>> = [];
+	const timingSnapshots: AgenticChatRuntimeTimingSnapshotV1[] = [];
 	const log: string[] = [];
+	const timingClockValues = options.timingClockValues ? [...options.timingClockValues] : null;
 	const persistence = {
 		async flushTextBatches(inputs: Array<Record<string, unknown>>) {
 			return {
@@ -256,6 +279,13 @@ function createHarness(
 			broadcast: {
 				async publish(message) {
 					broadcastMessages.push(message as unknown as Record<string, unknown>);
+					if (
+						message.kind === 'event' &&
+						(message.payload as Record<string, unknown>).type ===
+							options.failBroadcastType
+					) {
+						return 'failed';
+					}
 					return 'sent';
 				}
 			}
@@ -290,6 +320,84 @@ function createHarness(
 		finalize: vi.fn(async (input: AgenticChatTerminalFinalizeInputV1) => {
 			const lastTurnContext = input.lastTurnContext ?? null;
 			if (input.status === 'completed' && lastTurnContext) {
+				if (input.timingDraft && input.timingTransitionId) {
+					const timingDraft = input.timingDraft as Record<string, unknown>;
+					const draftPhases = timingDraft.phases as Record<string, unknown>;
+					const contextSequence = sequence + 1;
+					const timingSequence = sequence + 2;
+					const terminalSequence = sequence + 3;
+					sequence = timingSequence;
+					return terminalReceipt(input.status, terminalSequence, {
+						failure_code: null,
+						assistant_message_id: ASSISTANT_MESSAGE_ID,
+						preterminal_events: [
+							{
+								outcome: 'persisted',
+								publish_allowed: true,
+								turn_run_id: TURN_RUN_ID,
+								queue_job_id: QUEUE_JOB_ID,
+								session_id: SESSION_ID,
+								user_id: USER_ID,
+								stream_run_id: executionInput.streamRunId,
+								client_turn_id: executionInput.clientTurnId,
+								execution_generation: EXECUTION_GENERATION,
+								sequence_index: contextSequence,
+								event_id: createAgentStreamEventIdV1(
+									TURN_RUN_ID,
+									EXECUTION_GENERATION,
+									contextSequence
+								),
+								phase: 'finalize',
+								event_type: 'last_turn_context',
+								durable: true,
+								transition_id: input.lastTurnContextTransitionId,
+								event_payload: {
+									type: 'last_turn_context',
+									context: {
+										...lastTurnContext,
+										timestamp:
+											AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1.clockIso
+									}
+								},
+								reconcile_required: true,
+								persisted_at: '2026-08-03T12:00:00.000Z'
+							},
+							{
+								outcome: 'persisted',
+								publish_allowed: true,
+								turn_run_id: TURN_RUN_ID,
+								queue_job_id: QUEUE_JOB_ID,
+								session_id: SESSION_ID,
+								user_id: USER_ID,
+								stream_run_id: executionInput.streamRunId,
+								client_turn_id: executionInput.clientTurnId,
+								execution_generation: EXECUTION_GENERATION,
+								sequence_index: timingSequence,
+								event_id: createAgentStreamEventIdV1(
+									TURN_RUN_ID,
+									EXECUTION_GENERATION,
+									timingSequence
+								),
+								phase: 'finalize',
+								event_type: 'timing',
+								durable: true,
+								transition_id: input.timingTransitionId,
+								event_payload: {
+									type: 'timing',
+									timing: {
+										...timingDraft,
+										assistant_persisted_at: '2026-08-03T12:00:00.000Z',
+										done_emitted_at: null,
+										terminal_committed_at: '2026-08-03T12:00:00.000Z',
+										phases: { ...draftPhases, total_request_ms: 3_000 }
+									}
+								},
+								reconcile_required: true,
+								persisted_at: '2026-08-03T12:00:00.000Z'
+							}
+						]
+					});
+				}
 				sequence += 1;
 				return terminalReceipt(input.status, sequence + 1, {
 					failure_code: null,
@@ -364,7 +472,19 @@ function createHarness(
 		provider,
 		readTool,
 		mutation,
-		createId: () => ASSISTANT_MESSAGE_ID
+		createId: () => ASSISTANT_MESSAGE_ID,
+		timingClock: timingClockValues
+			? {
+					nowMs() {
+						const value = timingClockValues.shift();
+						if (value === undefined) {
+							throw new Error('Fixture executor monotonic clock exhausted');
+						}
+						return value;
+					}
+				}
+			: undefined,
+		onTimingSnapshot: (snapshot) => timingSnapshots.push(snapshot)
 	});
 
 	return {
@@ -379,12 +499,163 @@ function createHarness(
 		cancellationController,
 		semanticInputs,
 		broadcastMessages,
+		timingSnapshots,
 		log,
 		getSequence: () => sequence
 	};
 }
 
 describe('AgenticChatFixtureTurnExecutor', () => {
+	it('commits and publishes deterministic timing between context and done', async () => {
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'timed response' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{ timingClockValues: [100, 110, 120, 150, 160, 190] }
+		);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(harness.timingSnapshots).toEqual([
+			expect.objectContaining({
+				database: expect.objectContaining({
+					admittedAt: executionInput.timingBaseline.admittedAt,
+					executionStartedAt: '2026-08-03T12:00:00.000Z'
+				}),
+				preterminal: {
+					providerAuthorityObservedAtMs: 100,
+					firstEventPersistedAt: '2026-08-03T12:00:00.000Z',
+					firstEventPersistenceObservedAtMs: 110,
+					firstResponsePersistedAt: '2026-08-03T12:00:00.000Z',
+					firstResponsePersistenceObservedAtMs: 120,
+					providerFinishedAtMs: 150,
+					terminalCallStartedAtMs: 160,
+					durationsMs: {
+						authorityToFirstEventPersistence: 10,
+						authorityToFirstResponsePersistence: 20,
+						firstResponsePersistenceToProviderFinish: 30,
+						authorityToProviderFinish: 50,
+						providerFinishToTerminalCall: 10
+					}
+				},
+				postcallTelemetry: {
+					terminalCallCompletedAtMs: 190,
+					terminalCall: 30
+				}
+			})
+		]);
+		const terminalTypes = harness.broadcastMessages
+			.map((message) => (message.payload as Record<string, unknown>).type)
+			.filter((type) => type === 'last_turn_context' || type === 'timing' || type === 'done');
+		expect(terminalTypes).toEqual(['last_turn_context', 'timing', 'done']);
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				timingDraft: expect.objectContaining({
+					timing_contract_version: 'agentic_chat_async_v1',
+					finished_reason: 'stop',
+					phases: expect.objectContaining({
+						provider_authority_to_finish_ms: 50,
+						provider_finish_to_terminal_call_ms: 10
+					})
+				}),
+				timingTransitionId: createStableAgenticChatLifecycleTransitionIdV1({
+					turnRunId: TURN_RUN_ID,
+					stage: 'timing'
+				})
+			})
+		);
+		await harness.publisher.stop();
+	});
+
+	it('does not publish done when the committed timing prefix degrades to reconciliation', async () => {
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'timed response' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{
+				timingClockValues: [100, 110, 120, 150, 160, 190],
+				failBroadcastType: 'timing'
+			}
+		);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed',
+			queueReconciled: true
+		});
+		const terminalTypes = harness.broadcastMessages
+			.map((message) => (message.payload as Record<string, unknown>).type)
+			.filter((type) => type === 'last_turn_context' || type === 'timing' || type === 'done');
+		expect(terminalTypes).toEqual(['last_turn_context', 'timing']);
+		await harness.publisher.stop();
+	});
+
+	it('keeps queue delay in database time instead of inflating monotonic provider duration', async () => {
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'queued response' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{ timingClockValues: [200, 210, 220, 250, 260, 290] }
+		);
+		const queuedInput = {
+			...executionInput,
+			timingBaseline: {
+				...executionInput.timingBaseline,
+				admittedAt: '2026-08-03T11:00:00.000Z',
+				startedAt: '2026-08-03T11:00:01.000Z',
+				historyCutoffAt: '2026-08-03T11:00:01.000Z'
+			}
+		};
+		harness.input.load.mockResolvedValueOnce(queuedInput);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed'
+		});
+		expect(harness.timingSnapshots[0]).toMatchObject({
+			database: {
+				admittedAt: '2026-08-03T11:00:00.000Z',
+				workerStartedAt: '2026-08-03T11:59:59.000Z',
+				executionStartedAt: '2026-08-03T12:00:00.000Z'
+			},
+			preterminal: {
+				durationsMs: {
+					authorityToProviderFinish: 50,
+					authorityToFirstResponsePersistence: 20
+				}
+			}
+		});
+		expect(
+			harness.broadcastMessages.some(
+				(message) => (message.payload as Record<string, unknown>).type === 'timing'
+			)
+		).toBe(true);
+		await harness.publisher.stop();
+	});
+
+	it('does not let observational clock failure change terminal truth', async () => {
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'clock-safe response' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{ timingClockValues: [100, 99] }
+		);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed',
+			queueReconciled: true
+		});
+		expect(harness.timingSnapshots).toEqual([]);
+		expect(harness.control.finalize).toHaveBeenCalledOnce();
+		await harness.publisher.stop();
+	});
+
 	it('durably terminalizes an impossible out-of-cohort claimed row without provider work', async () => {
 		const harness = createHarness([], {
 			recovery: [
@@ -610,6 +881,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			'text_delta',
 			'turn_phase',
 			'last_turn_context',
+			'timing',
 			'done'
 		]);
 		expect(harness.cancellation.unregisterTurn).toHaveBeenCalledWith(
@@ -646,11 +918,18 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			harness.broadcastMessages.map(
 				(message) => (message.payload as Record<string, unknown>).type
 			)
-		).toEqual(['turn_phase', 'text_delta', 'turn_phase', 'last_turn_context', 'done']);
+		).toEqual([
+			'turn_phase',
+			'text_delta',
+			'turn_phase',
+			'last_turn_context',
+			'timing',
+			'done'
+		]);
 		await harness.publisher.stop();
 	});
 
-	it('records the exact Phase 4 text-only worker differential from the legacy golden', async () => {
+	it('isolates the intentional async timing divergence from the remaining legacy differential', async () => {
 		const harness = createHarness([
 			{
 				type: 'text_delta',
@@ -723,26 +1002,35 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1,
 				worker
 			);
-			expect({
-				matches: differential.matches,
-				truncated: differential.truncated,
-				differences: differential.differences.map(({ path, kind }) => ({ path, kind }))
-			}).toEqual({
-				matches: false,
-				truncated: false,
-				differences: [
-					{ path: '/events/6', kind: 'missing_in_actual' },
-					{ path: '/events/7/payload/failure_code', kind: 'unexpected_in_actual' },
-					{ path: '/events/7/payload/status', kind: 'unexpected_in_actual' },
-					{ path: '/metadata/lifecycle_events/0', kind: 'missing_in_actual' },
-					{ path: '/metadata/lifecycle_events/1', kind: 'missing_in_actual' },
-					{ path: '/metadata/lifecycle_events/3', kind: 'missing_in_actual' },
-					{ path: '/metadata/lifecycle_events/4', kind: 'missing_in_actual' },
-					{ path: '/metadata/lifecycle_events/5', kind: 'missing_in_actual' },
-					{ path: '/metadata/lifecycle_events/6', kind: 'missing_in_actual' },
-					{ path: '/metadata/prompt_snapshot_count', kind: 'value_mismatch' }
-				]
+			const timingDifferences = differential.differences.filter(({ path }) =>
+				path.startsWith('/events/6/payload/timing/')
+			);
+			const nonTimingDifferences = differential.differences
+				.filter(({ path }) => !path.startsWith('/events/6/payload/timing/'))
+				.map(({ path, kind }) => ({ path, kind }));
+			expect(differential.matches).toBe(false);
+			expect(differential.truncated).toBe(false);
+			expect(differential.differences).not.toContainEqual(
+				expect.objectContaining({ path: '/events/6', kind: 'missing_in_actual' })
+			);
+			expect(timingDifferences.length).toBeGreaterThan(0);
+			expect(
+				(harness.broadcastMessages[6]?.payload as Record<string, unknown>).timing
+			).toMatchObject({
+				timing_contract_version: 'agentic_chat_async_v1',
+				done_emitted_at: null
 			});
+			expect(nonTimingDifferences).toEqual([
+				{ path: '/events/7/payload/failure_code', kind: 'unexpected_in_actual' },
+				{ path: '/events/7/payload/status', kind: 'unexpected_in_actual' },
+				{ path: '/metadata/lifecycle_events/0', kind: 'missing_in_actual' },
+				{ path: '/metadata/lifecycle_events/1', kind: 'missing_in_actual' },
+				{ path: '/metadata/lifecycle_events/3', kind: 'missing_in_actual' },
+				{ path: '/metadata/lifecycle_events/4', kind: 'missing_in_actual' },
+				{ path: '/metadata/lifecycle_events/5', kind: 'missing_in_actual' },
+				{ path: '/metadata/lifecycle_events/6', kind: 'missing_in_actual' },
+				{ path: '/metadata/prompt_snapshot_count', kind: 'value_mismatch' }
+			]);
 		} finally {
 			await harness.publisher.stop();
 		}

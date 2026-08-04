@@ -14,6 +14,18 @@ type ExecutableClaim = Extract<
 >;
 type ExecutionInputClient = Pick<SupabaseClient<Database>, 'from'>;
 
+const AGENTIC_CHAT_TIMING_CACHE_SOURCES = new Set([
+	'not_requested',
+	'session_cache',
+	'request_prewarm',
+	'prepared_prompt',
+	'fresh_load',
+	'context_build_failed'
+]);
+const DATABASE_TIMESTAMP_PATTERN =
+	/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
 const TURN_COLUMNS = [
 	'id',
 	'session_id',
@@ -28,7 +40,23 @@ const TURN_COLUMNS = [
 	'input_artifact_id',
 	'user_message_id',
 	'request_payload',
-	'request_payload_version'
+	'request_payload_version',
+	'created_at',
+	'started_at',
+	'worker_started_at',
+	'execution_started_at',
+	'history_cutoff_at',
+	'request_prewarmed_context',
+	'cache_source',
+	'cache_age_seconds',
+	'history_strategy',
+	'history_compressed',
+	'raw_history_count',
+	'history_for_model_count',
+	'prepared_prompt_id',
+	'prepared_prompt_hit',
+	'prepared_prompt_miss_reason',
+	'prepared_surface_profile'
 ].join(',');
 
 const ARTIFACT_COLUMNS = [
@@ -54,6 +82,38 @@ export type AgenticChatWorkerExecutionInputV1 = {
 	clientTurnId: string;
 	requestPayload: JsonObject;
 	artifact: TurnInputArtifactV1;
+	timingBaseline: AgenticChatWorkerTimingBaselineV1;
+};
+
+/**
+ * Immutable database-clock and admission-category evidence. Runtime elapsed
+ * measurements use a separate monotonic clock and must never be inferred from
+ * these wall-clock strings.
+ */
+export type AgenticChatWorkerTimingBaselineV1 = {
+	admittedAt: string;
+	startedAt: string;
+	workerStartedAt: string;
+	executionStartedAt: string | null;
+	historyCutoffAt: string;
+	requestPrewarmedContext: boolean;
+	cacheSource:
+		| 'not_requested'
+		| 'session_cache'
+		| 'request_prewarm'
+		| 'prepared_prompt'
+		| 'fresh_load'
+		| 'context_build_failed'
+		| null;
+	cacheAgeSeconds: number | null;
+	historyStrategy: string | null;
+	historyCompressed: boolean | null;
+	rawHistoryCount: number | null;
+	historyForModelCount: number | null;
+	preparedPromptId: string | null;
+	preparedPromptHit: boolean;
+	preparedPromptMissReason: string | null;
+	preparedSurfaceProfile: string | null;
 };
 
 export type AgenticChatExecutionInputPortV1 = {
@@ -68,6 +128,7 @@ export class AgenticChatExecutionInputError extends Error {
 			| 'scope_mismatch'
 			| 'invalid_command'
 			| 'invalid_artifact'
+			| 'invalid_timing_source'
 			| 'artifact_expired',
 		message: string
 	) {
@@ -129,6 +190,7 @@ export class SupabaseAgenticChatExecutionInputAdapter implements AgenticChatExec
 				'Worker request payload is malformed or cross-bound'
 			);
 		}
+		const timingBaseline = parseTimingBaseline(turn);
 
 		const { data: rawArtifact, error: artifactError } = await this.client
 			.from('chat_turn_input_artifacts')
@@ -192,6 +254,20 @@ export class SupabaseAgenticChatExecutionInputAdapter implements AgenticChatExec
 					: `Worker input artifact failed validation: ${validation.code}`
 			);
 		}
+		if (
+			timingBaseline.preparedPromptId !==
+				validation.normalizedContent.prepared.sourcePreparedPromptId ||
+			(timingBaseline.preparedPromptId !== null &&
+				timingBaseline.preparedSurfaceProfile !==
+					validation.normalizedContent.prepared.surfaceProfile) ||
+			(timingBaseline.historyForModelCount !== null &&
+				timingBaseline.historyForModelCount !== validation.normalizedContent.history.length)
+		) {
+			throw new AgenticChatExecutionInputError(
+				'invalid_timing_source',
+				'Worker timing baseline does not match its immutable input artifact'
+			);
+		}
 		if (Date.parse(artifact.retainUntil) <= this.now()) {
 			throw new AgenticChatExecutionInputError(
 				'artifact_expired',
@@ -208,9 +284,120 @@ export class SupabaseAgenticChatExecutionInputAdapter implements AgenticChatExec
 				...artifact,
 				...validation.normalizedContent,
 				contentHash: validation.contentHash
-			}
+			},
+			timingBaseline
 		};
 	}
+}
+
+function parseTimingBaseline(turn: Record<string, unknown>): AgenticChatWorkerTimingBaselineV1 {
+	const admittedAt = requiredDatabaseTimestamp(turn.created_at);
+	const startedAt = requiredDatabaseTimestamp(turn.started_at);
+	const workerStartedAt = requiredDatabaseTimestamp(turn.worker_started_at);
+	const executionStartedAt = nullableDatabaseTimestamp(turn.execution_started_at);
+	const historyCutoffAt = requiredDatabaseTimestamp(turn.history_cutoff_at);
+	const requestPrewarmedContext = turn.request_prewarmed_context;
+	const cacheSource = turn.cache_source;
+	const cacheAgeSeconds = turn.cache_age_seconds;
+	const historyStrategy = turn.history_strategy;
+	const historyCompressed = turn.history_compressed;
+	const rawHistoryCount = turn.raw_history_count;
+	const historyForModelCount = turn.history_for_model_count;
+	const preparedPromptId = turn.prepared_prompt_id;
+	const preparedPromptHit = turn.prepared_prompt_hit;
+	const preparedPromptMissReason = turn.prepared_prompt_miss_reason;
+	const preparedSurfaceProfile = turn.prepared_surface_profile;
+	const timestampsOrdered =
+		Date.parse(admittedAt) <= Date.parse(startedAt) &&
+		Date.parse(startedAt) <= Date.parse(workerStartedAt) &&
+		Date.parse(admittedAt) <= Date.parse(historyCutoffAt) &&
+		Date.parse(historyCutoffAt) <= Date.parse(workerStartedAt) &&
+		(executionStartedAt === null ||
+			Date.parse(workerStartedAt) <= Date.parse(executionStartedAt));
+
+	if (
+		!timestampsOrdered ||
+		typeof requestPrewarmedContext !== 'boolean' ||
+		!(
+			cacheSource === null ||
+			(typeof cacheSource === 'string' && AGENTIC_CHAT_TIMING_CACHE_SOURCES.has(cacheSource))
+		) ||
+		!nullableNonnegativeNumber(cacheAgeSeconds) ||
+		!nullableCanonicalText(historyStrategy, 128) ||
+		!(historyCompressed === null || typeof historyCompressed === 'boolean') ||
+		!nullableNonnegativeInteger(rawHistoryCount) ||
+		!nullableNonnegativeInteger(historyForModelCount) ||
+		!nullableCanonicalUuid(preparedPromptId) ||
+		typeof preparedPromptHit !== 'boolean' ||
+		preparedPromptHit !== (preparedPromptId !== null) ||
+		requestPrewarmedContext !== (preparedPromptId !== null) ||
+		!nullableCanonicalText(preparedPromptMissReason, 256) ||
+		!nullableCanonicalText(preparedSurfaceProfile, 128) ||
+		(preparedPromptId === null && preparedSurfaceProfile !== null)
+	) {
+		throw new AgenticChatExecutionInputError(
+			'invalid_timing_source',
+			'Worker timing baseline is malformed or internally inconsistent'
+		);
+	}
+
+	return {
+		admittedAt,
+		startedAt,
+		workerStartedAt,
+		executionStartedAt,
+		historyCutoffAt,
+		requestPrewarmedContext,
+		cacheSource: cacheSource as AgenticChatWorkerTimingBaselineV1['cacheSource'],
+		cacheAgeSeconds,
+		historyStrategy,
+		historyCompressed,
+		rawHistoryCount,
+		historyForModelCount,
+		preparedPromptId,
+		preparedPromptHit,
+		preparedPromptMissReason,
+		preparedSurfaceProfile
+	};
+}
+
+function requiredDatabaseTimestamp(value: unknown): string {
+	if (!isDatabaseTimestamp(value)) {
+		throw new AgenticChatExecutionInputError(
+			'invalid_timing_source',
+			'Worker timing baseline contains an invalid required timestamp'
+		);
+	}
+	return value;
+}
+
+function nullableDatabaseTimestamp(value: unknown): string | null {
+	if (value === null) return null;
+	return requiredDatabaseTimestamp(value);
+}
+
+function isDatabaseTimestamp(value: unknown): value is string {
+	return (
+		typeof value === 'string' &&
+		DATABASE_TIMESTAMP_PATTERN.test(value) &&
+		Number.isFinite(Date.parse(value))
+	);
+}
+
+function nullableCanonicalUuid(value: unknown): value is string | null {
+	return value === null || (typeof value === 'string' && UUID_PATTERN.test(value));
+}
+
+function nullableCanonicalText(value: unknown, maximum: number): value is string | null {
+	return value === null || canonicalText(value, maximum);
+}
+
+function nullableNonnegativeInteger(value: unknown): value is number | null {
+	return value === null || (Number.isSafeInteger(value) && (value as number) >= 0);
+}
+
+function nullableNonnegativeNumber(value: unknown): value is number | null {
+	return value === null || (typeof value === 'number' && Number.isFinite(value) && value >= 0);
 }
 
 function canonicalText(value: unknown, maximum: number): value is string {

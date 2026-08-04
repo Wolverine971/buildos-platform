@@ -13,9 +13,9 @@ import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	type AgentStreamEventPhaseV1,
 	type AgentStreamEventV1,
+	type AgenticChatCommittedSemanticEventReceiptV1,
 	type AgenticChatRealtimeBroadcastV1,
 	type AgenticChatSemanticEventRpcResultV1,
-	type AgenticChatCommittedSemanticEventReceiptV1,
 	type AgenticChatStreamDeliveryAckRpcResultV1,
 	type AgenticChatTerminalReceiptV1,
 	type AgenticChatTextBatchFlushRpcResultV1,
@@ -63,6 +63,16 @@ export type AgenticChatPublisherTurnV1 = {
 	initialAssistantText?: string;
 	initialSequence?: number;
 	onOverload?: (error: AgenticChatPublisherOverloadError) => void;
+	onPersistenceObserved?: (observation: AgenticChatPublisherPersistenceObservationV1) => void;
+};
+
+export type AgenticChatPublisherPersistenceObservationV1 = {
+	turnRunId: string;
+	executionGeneration: number;
+	sequenceIndex: number;
+	phase: AgentStreamEventPhaseV1;
+	eventType: string;
+	persistedAt: string;
 };
 
 export type AgenticChatSemanticPublishInputV1 = {
@@ -462,7 +472,7 @@ export class AgenticChatStreamPublisher {
 	}
 
 	/** Deliver a semantic event already committed by a larger database transaction. */
-	async publishCommittedSemantic(
+	publishCommittedSemantic(
 		turnRunId: string,
 		receipt: AgenticChatCommittedSemanticEventReceiptV1
 	): Promise<AgenticChatPublisherDeliveryV1> {
@@ -755,6 +765,7 @@ export class AgenticChatStreamPublisher {
 			return 'blocked';
 		}
 		const publishableReceipt = receipt as PublishableDeliveryReceipt;
+		this.observePersistence(state, publishableReceipt);
 		if (state.reconcileOnly) {
 			await this.maybeHint(state, publishableReceipt.sequence_index);
 			return 'reconcile_only';
@@ -767,6 +778,21 @@ export class AgenticChatStreamPublisher {
 			return 'reconcile_only';
 		}
 		return this.acknowledge(state, publishableReceipt.sequence_index);
+	}
+
+	private observePersistence(state: TurnState, receipt: PublishableDeliveryReceipt): void {
+		try {
+			state.context.onPersistenceObserved?.({
+				turnRunId: state.context.turnRunId,
+				executionGeneration: state.context.executionGeneration,
+				sequenceIndex: receipt.sequence_index,
+				phase: receipt.phase,
+				eventType: receipt.event_type,
+				persistedAt: receipt.persisted_at
+			});
+		} catch {
+			// Observability callbacks cannot change durable publisher delivery.
+		}
 	}
 
 	private async acknowledge(

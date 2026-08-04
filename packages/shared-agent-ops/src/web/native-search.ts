@@ -68,6 +68,11 @@ export interface NativeSearchCandidate {
 	page_final_url?: string;
 	page_fetched_at?: string;
 	page_cache_hit?: boolean;
+	page_visit_id?: string;
+	page_version_id?: string;
+	page_version_number?: number;
+	page_content_hash?: string;
+	page_evidence_chunks?: import('./native-search-evidence').NativeSearchEvidenceChunkReference[];
 }
 
 export interface NativeSearchPageFetchResult {
@@ -76,6 +81,11 @@ export interface NativeSearchPageFetchResult {
 	finalUrl: string;
 	fetchedAt: string;
 	cacheHit?: boolean;
+	visitId?: string;
+	versionId?: string;
+	versionNumber?: number;
+	contentHash?: string;
+	evidenceChunks?: import('./native-search-evidence').NativeSearchEvidenceChunkReference[];
 }
 
 export interface NativeSearchEnrichmentResult<T extends NativeSearchCandidate> {
@@ -176,6 +186,15 @@ export async function enrichNativeSearchCandidates<T extends NativeSearchCandida
 		enriched[target.index] = {
 			...enriched[target.index],
 			...(page.value.title ? { page_title: page.value.title } : {}),
+			...(page.value.visitId ? { page_visit_id: page.value.visitId } : {}),
+			...(page.value.versionId ? { page_version_id: page.value.versionId } : {}),
+			...(page.value.versionNumber === undefined
+				? {}
+				: { page_version_number: page.value.versionNumber }),
+			...(page.value.contentHash ? { page_content_hash: page.value.contentHash } : {}),
+			...(page.value.evidenceChunks?.length
+				? { page_evidence_chunks: page.value.evidenceChunks.map((chunk) => ({ ...chunk })) }
+				: {}),
 			page_content: page.value.content,
 			page_final_url: page.value.finalUrl,
 			page_fetched_at: page.value.fetchedAt,
@@ -244,3 +263,4 @@ export function normalizeWebPageCacheUrl(inputUrl: string): string {
 export * from './native-search-discovery';
 export * from './native-search-response';
 export * from './native-search-cache';
+export * from './native-search-evidence';

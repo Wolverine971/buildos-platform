@@ -73,6 +73,24 @@ function executionInput(
 			attachments: [],
 			context: { type: 'project', entityId: 'project-1', projectId: 'project-1' }
 		},
+		timingBaseline: {
+			admittedAt: '2026-08-03T11:59:57.000Z',
+			startedAt: '2026-08-03T11:59:58.000Z',
+			workerStartedAt: '2026-08-03T11:59:59.000Z',
+			executionStartedAt: null,
+			historyCutoffAt: '2026-08-03T11:59:58.000Z',
+			requestPrewarmedContext: false,
+			cacheSource: 'not_requested',
+			cacheAgeSeconds: null,
+			historyStrategy: 'raw_history',
+			historyCompressed: false,
+			rawHistoryCount: 1,
+			historyForModelCount: 1,
+			preparedPromptId: null,
+			preparedPromptHit: false,
+			preparedPromptMissReason: null,
+			preparedSurfaceProfile: null
+		},
 		artifact,
 		...overrides
 	};

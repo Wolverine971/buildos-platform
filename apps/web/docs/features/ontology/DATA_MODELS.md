@@ -51,7 +51,6 @@ The ontology system is a **props-based, graph-connected data model** that suppor
 | `onto_requirements`  | Requirements        | id, project_id, text, type_key, priority                                |
 | `onto_milestones`    | Checkpoints         | id, project_id, title, state_key, due_at                                |
 | `onto_risks`         | Risk tracking       | id, project_id, title, impact, probability, state_key                   |
-| `onto_decisions`     | Decision records    | id, project_id, title, rationale, outcome, decision_at                  |
 | `onto_metrics`       | Metrics             | id, project_id, name, unit, definition                                  |
 | `onto_metric_points` | Metric datapoints   | id, metric_id, ts, numeric_value                                        |
 | `onto_sources`       | External references | id, project_id, uri, snapshot_uri                                       |
@@ -747,7 +746,6 @@ onto_projects
   │   └→ onto_document_versions
   ├→ onto_outputs
   │   └→ onto_output_versions
-  ├→ onto_decisions
   ├→ onto_milestones
   ├→ onto_risks
   ├→ onto_metrics

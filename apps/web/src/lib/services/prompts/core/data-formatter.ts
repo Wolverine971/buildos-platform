@@ -6,11 +6,7 @@
 
 import type { ProjectWithRelations, Task } from '$lib/types/project';
 import type { UserContext } from '$lib/types/user-context';
-import {
-	formatNotesForPrompt,
-	formatProjectForPrompt,
-	formatTasksForPrompt
-} from '$lib/utils/markdown-nesting';
+import { formatProjectForPrompt, formatTasksForPrompt } from '$lib/utils/markdown-nesting';
 
 const MAX_TASKS_TO_DISPLAY = 25;
 
@@ -46,13 +42,6 @@ export function formatProjectData(params: FullProjectData): string {
 	if (activeTasks.length > 0) {
 		const taskSection = formatTasksForPrompt(activeTasks, 3, 'full'); // Start at ### level
 		sections.push(taskSection);
-	}
-
-	// Format recent notes using new nesting utilities
-	if ((project.notes?.length || 0) > 0) {
-		const recentNotes = project.notes!.slice(0, 10);
-		const notesSection = formatNotesForPrompt(recentNotes, 3, 'full'); // Start at ### level
-		sections.push(notesSection);
 	}
 
 	return sections.join('\n\n');

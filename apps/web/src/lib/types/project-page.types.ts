@@ -1,6 +1,6 @@
 // apps/web/src/lib/types/project-page.types.ts
 import type { Database } from '@buildos/shared-types';
-import type { Project, Task, Note, Phase } from '$lib/types/project';
+import type { Project, Task, Phase } from '$lib/types/project';
 
 // ==========================================
 // CALENDAR EVENT TYPES
@@ -85,7 +85,6 @@ export interface TaskStats {
 
 export interface TabCounts {
 	tasks: number;
-	notes: number;
 	deletedTasks: number;
 	doneTasks: number;
 	phases: number;
@@ -104,7 +103,6 @@ export interface PageMetadata {
 		tasks: number;
 		deletedTasks: number;
 		doneTasks: number;
-		notes: number;
 		phases: number;
 		backlog: number;
 		scheduled: number;
@@ -129,7 +127,6 @@ export interface ProjectPageData {
 	scheduledTasks: TaskWithCalendarEvents[];
 
 	// Other data
-	notes: Note[];
 	phases: ProcessedPhase[];
 
 	// Calendar and user info

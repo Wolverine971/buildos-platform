@@ -2537,132 +2537,6 @@ export type Database = {
           },
         ]
       }
-      brain_dump_links: {
-        Row: {
-          brain_dump_id: string
-          created_at: string
-          id: number
-          note_id: string | null
-          project_id: string | null
-          task_id: string | null
-        }
-        Insert: {
-          brain_dump_id: string
-          created_at?: string
-          id?: number
-          note_id?: string | null
-          project_id?: string | null
-          task_id?: string | null
-        }
-        Update: {
-          brain_dump_id?: string
-          created_at?: string
-          id?: number
-          note_id?: string | null
-          project_id?: string | null
-          task_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "brain_dump_links_brain_dump_id_fkey"
-            columns: ["brain_dump_id"]
-            isOneToOne: false
-            referencedRelation: "brain_dumps"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "brain_dump_links_note_id_fkey"
-            columns: ["note_id"]
-            isOneToOne: false
-            referencedRelation: "notes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "brain_dump_links_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "brain_dump_links_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "recurring_task_summary"
-            referencedColumns: ["task_id"]
-          },
-          {
-            foreignKeyName: "brain_dump_links_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      brain_dumps: {
-        Row: {
-          ai_insights: string | null
-          ai_summary: string | null
-          content: string | null
-          created_at: string
-          id: string
-          metaData: Json | null
-          parsed_results: Json | null
-          project_id: string | null
-          status: Database["public"]["Enums"]["brain_dump_status"]
-          tags: string[] | null
-          title: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          ai_insights?: string | null
-          ai_summary?: string | null
-          content?: string | null
-          created_at?: string
-          id?: string
-          metaData?: Json | null
-          parsed_results?: Json | null
-          project_id?: string | null
-          status?: Database["public"]["Enums"]["brain_dump_status"]
-          tags?: string[] | null
-          title?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          ai_insights?: string | null
-          ai_summary?: string | null
-          content?: string | null
-          created_at?: string
-          id?: string
-          metaData?: Json | null
-          parsed_results?: Json | null
-          project_id?: string | null
-          status?: Database["public"]["Enums"]["brain_dump_status"]
-          tags?: string[] | null
-          title?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "brain_dumps_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "brain_dumps_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       calendar_analyses: {
         Row: {
           ai_model: string | null
@@ -8120,57 +7994,6 @@ export type Database = {
         }
         Relationships: []
       }
-      notes: {
-        Row: {
-          category: string | null
-          content: string | null
-          created_at: string
-          id: string
-          project_id: string | null
-          tags: string[] | null
-          title: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          category?: string | null
-          content?: string | null
-          created_at?: string
-          id?: string
-          project_id?: string | null
-          tags?: string[] | null
-          title?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          category?: string | null
-          content?: string | null
-          created_at?: string
-          id?: string
-          project_id?: string | null
-          tags?: string[] | null
-          title?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notes_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notes_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       notification_deliveries: {
         Row: {
           attempts: number | null
@@ -8986,68 +8809,6 @@ export type Database = {
             columns: ["root_id"]
             isOneToOne: false
             referencedRelation: "onto_comments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      onto_decisions: {
-        Row: {
-          created_at: string
-          created_by: string
-          decision_at: string | null
-          deleted_at: string | null
-          description: string | null
-          id: string
-          outcome: string | null
-          project_id: string
-          props: Json
-          rationale: string | null
-          search_vector: unknown
-          state_key: string
-          title: string
-          type_key: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          decision_at?: string | null
-          deleted_at?: string | null
-          description?: string | null
-          id?: string
-          outcome?: string | null
-          project_id: string
-          props?: Json
-          rationale?: string | null
-          search_vector?: unknown
-          state_key?: string
-          title: string
-          type_key?: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          decision_at?: string | null
-          deleted_at?: string | null
-          description?: string | null
-          id?: string
-          outcome?: string | null
-          project_id?: string
-          props?: Json
-          rationale?: string | null
-          search_vector?: unknown
-          state_key?: string
-          title?: string
-          type_key?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "onto_decisions_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "onto_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -10297,7 +10058,15 @@ export type Database = {
           type_key?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "onto_projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onto_public_page_review_attempts: {
         Row: {
@@ -13037,11 +12806,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "question_tree_events_node_id_fkey"
-            columns: ["node_id"]
+            foreignKeyName: "question_tree_events_node_run_fkey"
+            columns: ["run_id", "node_id"]
             isOneToOne: false
             referencedRelation: "question_tree_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["run_id", "id"]
           },
           {
             foreignKeyName: "question_tree_events_run_id_fkey"
@@ -13231,18 +13000,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "question_tree_proposals_child_node_id_fkey"
-            columns: ["child_node_id"]
+            foreignKeyName: "question_tree_proposals_child_node_run_fkey"
+            columns: ["run_id", "child_node_id"]
             isOneToOne: false
             referencedRelation: "question_tree_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["run_id", "id"]
           },
           {
-            foreignKeyName: "question_tree_proposals_duplicate_of_node_id_fkey"
-            columns: ["duplicate_of_node_id"]
+            foreignKeyName: "question_tree_proposals_duplicate_node_run_fkey"
+            columns: ["run_id", "duplicate_of_node_id"]
             isOneToOne: false
             referencedRelation: "question_tree_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["run_id", "id"]
           },
           {
             foreignKeyName: "question_tree_proposals_run_id_fkey"
@@ -16680,6 +16449,139 @@ export type Database = {
           },
         ]
       }
+      web_page_evidence_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          content_hash: string
+          created_at: string
+          end_offset: number
+          id: string
+          page_version_id: string
+          selector: string
+          start_offset: number
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          content_hash: string
+          created_at?: string
+          end_offset: number
+          id?: string
+          page_version_id: string
+          selector: string
+          start_offset: number
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          content_hash?: string
+          created_at?: string
+          end_offset?: number
+          id?: string
+          page_version_id?: string
+          selector?: string
+          start_offset?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_page_evidence_chunks_page_version_id_fkey"
+            columns: ["page_version_id"]
+            isOneToOne: false
+            referencedRelation: "web_page_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      web_page_versions: {
+        Row: {
+          bytes: number | null
+          canonical_url: string | null
+          content: string
+          content_format: string
+          content_hash: string
+          content_type: string | null
+          created_at: string
+          etag: string | null
+          excerpt: string | null
+          extraction_method: string
+          extraction_strategy: string | null
+          extraction_version: string
+          fetched_at: string
+          final_url: string
+          id: string
+          last_modified: string | null
+          meta: Json | null
+          parser: string | null
+          requested_url: string
+          status_code: number
+          structured_data: Json | null
+          title: string | null
+          version_number: number
+          web_page_visit_id: string
+        }
+        Insert: {
+          bytes?: number | null
+          canonical_url?: string | null
+          content: string
+          content_format: string
+          content_hash: string
+          content_type?: string | null
+          created_at?: string
+          etag?: string | null
+          excerpt?: string | null
+          extraction_method: string
+          extraction_strategy?: string | null
+          extraction_version: string
+          fetched_at: string
+          final_url: string
+          id?: string
+          last_modified?: string | null
+          meta?: Json | null
+          parser?: string | null
+          requested_url: string
+          status_code: number
+          structured_data?: Json | null
+          title?: string | null
+          version_number: number
+          web_page_visit_id: string
+        }
+        Update: {
+          bytes?: number | null
+          canonical_url?: string | null
+          content?: string
+          content_format?: string
+          content_hash?: string
+          content_type?: string | null
+          created_at?: string
+          etag?: string | null
+          excerpt?: string | null
+          extraction_method?: string
+          extraction_strategy?: string | null
+          extraction_version?: string
+          fetched_at?: string
+          final_url?: string
+          id?: string
+          last_modified?: string | null
+          meta?: Json | null
+          parser?: string | null
+          requested_url?: string
+          status_code?: number
+          structured_data?: Json | null
+          title?: string | null
+          version_number?: number
+          web_page_visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_page_versions_web_page_visit_id_fkey"
+            columns: ["web_page_visit_id"]
+            isOneToOne: false
+            referencedRelation: "web_page_visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       web_page_visits: {
         Row: {
           bytes: number | null
@@ -16687,6 +16589,7 @@ export type Database = {
           content_hash: string | null
           content_type: string | null
           created_at: string
+          current_version_id: string | null
           error_message: string | null
           etag: string | null
           excerpt: string | null
@@ -16718,6 +16621,7 @@ export type Database = {
           content_hash?: string | null
           content_type?: string | null
           created_at?: string
+          current_version_id?: string | null
           error_message?: string | null
           etag?: string | null
           excerpt?: string | null
@@ -16749,6 +16653,7 @@ export type Database = {
           content_hash?: string | null
           content_type?: string | null
           created_at?: string
+          current_version_id?: string | null
           error_message?: string | null
           etag?: string | null
           excerpt?: string | null
@@ -17976,29 +17881,54 @@ export type Database = {
         }
         Returns: Json
       }
-			finalize_agentic_chat_turn_with_last_context: {
-				Args: {
-					p_assistant_message_id: string
-					p_assistant_metadata: Json
-					p_assistant_text: string
-					p_completion_tokens: number
-					p_event_payload: Json
-					p_execution_generation: number
-					p_failure_code: string
-					p_finished_reason: string
-					p_last_turn_context: Json
-					p_last_turn_context_transition_id: string
-					p_processing_token: string
-					p_projection: Json
-					p_prompt_tokens: number
-					p_queue_job_id: string
-					p_status: string
-					p_total_tokens: number
-					p_turn_run_id: string
-					p_user_id: string
-				}
-				Returns: Json
-			}
+      finalize_agentic_chat_turn_with_last_context: {
+        Args: {
+          p_assistant_message_id: string
+          p_assistant_metadata: Json
+          p_assistant_text: string
+          p_completion_tokens: number
+          p_event_payload: Json
+          p_execution_generation: number
+          p_failure_code: string
+          p_finished_reason: string
+          p_last_turn_context: Json
+          p_last_turn_context_transition_id: string
+          p_processing_token: string
+          p_projection: Json
+          p_prompt_tokens: number
+          p_queue_job_id: string
+          p_status: string
+          p_total_tokens: number
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      finalize_agentic_chat_turn_with_terminal_events: {
+        Args: {
+          p_assistant_message_id: string
+          p_assistant_metadata: Json
+          p_assistant_text: string
+          p_completion_tokens: number
+          p_event_payload: Json
+          p_execution_generation: number
+          p_failure_code: string
+          p_finished_reason: string
+          p_last_turn_context: Json
+          p_last_turn_context_transition_id: string
+          p_processing_token: string
+          p_projection: Json
+          p_prompt_tokens: number
+          p_queue_job_id: string
+          p_status: string
+          p_timing_draft: Json
+          p_timing_transition_id: string
+          p_total_tokens: number
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       finalize_draft_project: {
         Args: { p_draft_id: string; p_user_id: string }
         Returns: string
@@ -18200,6 +18130,12 @@ export type Database = {
           views_7d: number
           views_7d_percentile: number
         }[]
+      }
+      get_current_web_page_evidence: {
+        Args: {
+          p_web_page_visit_id: string
+        }
+        Returns: Json
       }
       get_daily_active_users: {
         Args: { end_date: string; start_date: string }
@@ -19058,6 +18994,33 @@ export type Database = {
         }
         Returns: Json
       }
+      persist_web_page_evidence_version: {
+        Args: {
+          p_bytes?: number
+          p_canonical_url?: string
+          p_chunks?: Json
+          p_content: string
+          p_content_format?: string
+          p_content_hash: string
+          p_content_type?: string
+          p_etag?: string
+          p_excerpt?: string
+          p_extraction_method?: string
+          p_extraction_strategy?: string
+          p_extraction_version?: string
+          p_fetched_at?: string
+          p_final_url?: string
+          p_last_modified?: string
+          p_meta?: Json
+          p_parser?: string
+          p_requested_url?: string
+          p_status_code?: number
+          p_structured_data?: Json
+          p_title?: string
+          p_web_page_visit_id: string
+        }
+        Returns: Json
+      }
       prepare_email_relevance_review_sample: {
         Args: {
           p_run_id: string
@@ -19760,7 +19723,6 @@ export type Database = {
       agent_session_type: "planner_thinking" | "planner_executor"
       agent_status: "active" | "completed" | "failed"
       agent_type: "planner" | "executor"
-      brain_dump_status: "pending" | "parsed" | "saved" | "parsed_and_deleted"
       calendar_sync_status: "active" | "paused" | "error"
       calendar_visibility: "public" | "private" | "shared"
       document_state:
@@ -20017,7 +19979,6 @@ export const Constants = {
       agent_session_type: ["planner_thinking", "planner_executor"],
       agent_status: ["active", "completed", "failed"],
       agent_type: ["planner", "executor"],
-      brain_dump_status: ["pending", "parsed", "saved", "parsed_and_deleted"],
       calendar_sync_status: ["active", "paused", "error"],
       calendar_visibility: ["public", "private", "shared"],
       document_state: [

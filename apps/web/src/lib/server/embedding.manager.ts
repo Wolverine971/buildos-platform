@@ -222,9 +222,6 @@ export class EmbeddingManager {
 			case 'tasks':
 				return `Task (${data.task_type || 'one_off'}): ${data.title || 'Untitled'}. ${data.description || ''}. Priority: ${data.priority || 'medium'}. Status: ${data.status || 'backlog'}`;
 
-			case 'notes':
-				return `Note: ${data.title || 'Untitled'}. ${data.content || ''}. Tags: ${data.tags?.join(', ') || 'none'}`;
-
 			case 'habits':
 				return `Habit: ${data.name || 'Unnamed'}. ${data.description || ''}. Frequency: ${data.frequency || 'daily'}`;
 
@@ -284,11 +281,6 @@ export class EmbeddingManager {
 			},
 			tasks: {
 				create: ['title', 'user_id'],
-				update: ['id'],
-				delete: ['id']
-			},
-			notes: {
-				create: ['title', 'content', 'user_id'],
 				update: ['id'],
 				delete: ['id']
 			},

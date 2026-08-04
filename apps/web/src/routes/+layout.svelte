@@ -1063,7 +1063,7 @@
 	<!-- Skip to main content link for accessibility -->
 	<a
 		href="#main-content"
-		class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 bg-accent text-accent-foreground px-4 py-2 rounded-lg shadow-ink-strong font-semibold"
+		class="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-3 focus-visible:left-3 focus-visible:z-[10002] focus-visible:inline-flex focus-visible:min-h-11 focus-visible:items-center focus-visible:justify-center focus-visible:rounded-md focus-visible:border focus-visible:border-border-strong focus-visible:bg-card focus-visible:px-4 focus-visible:py-2 focus-visible:font-ui focus-visible:text-sm focus-visible:font-semibold focus-visible:text-foreground focus-visible:shadow-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:focus-visible:top-4 sm:focus-visible:left-4"
 	>
 		Skip to main content
 	</a>
@@ -1116,7 +1116,7 @@
 		</div>
 	{/if}
 
-	<main id="main-content" class={mainContentClasses}>
+	<main id="main-content" class={mainContentClasses} tabindex="-1">
 		{@render children?.()}
 	</main>
 
@@ -1151,6 +1151,7 @@
 		background-image: url('/textures/brushed-alum.png');
 		background-size: 500px 500px;
 		background-repeat: repeat;
+		outline: none;
 	}
 
 	:global(.dark) #main-content {

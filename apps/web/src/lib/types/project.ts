@@ -9,7 +9,6 @@ import type { UserContext } from './user-context';
 
 export type Project = Database['public']['Tables']['projects']['Row'];
 export type Task = Database['public']['Tables']['tasks']['Row'];
-export type Note = Database['public']['Tables']['notes']['Row'];
 export type CalendarEvent = Database['public']['Tables']['task_calendar_events']['Row'];
 export type ProjectQuestion = Database['public']['Tables']['project_questions']['Row'];
 
@@ -20,13 +19,11 @@ export type Phase = Database['public']['Tables']['phases']['Row'];
 // Insert types
 export type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
 export type TaskInsert = Database['public']['Tables']['tasks']['Insert'];
-export type NoteInsert = Database['public']['Tables']['notes']['Insert'];
 export type PhaseInsert = Database['public']['Tables']['phases']['Insert'];
 
 // Update types
 export type ProjectUpdate = Database['public']['Tables']['projects']['Update'];
 export type TaskUpdate = Database['public']['Tables']['tasks']['Update'];
-export type NoteUpdate = Database['public']['Tables']['notes']['Update'];
 export type PhaseUpdate = Database['public']['Tables']['phases']['Update'];
 
 // ==========================================
@@ -35,7 +32,6 @@ export type PhaseUpdate = Database['public']['Tables']['phases']['Update'];
 
 export interface ProjectWithRelations extends Project {
 	tasks: Task[];
-	notes: Note[];
 	phases?: PhaseWithTasks[];
 }
 
@@ -48,11 +44,11 @@ export interface UserDataResult {
 // UI/COMPONENT TYPES
 // ==========================================
 
-export type TabType = 'tasks' | 'context' | 'notes' | 'phases';
+export type TabType = 'tasks' | 'context' | 'phases';
 
 export interface ModalState {
 	show: boolean;
-	type: 'task' | 'note' | 'phase' | 'context' | 'delete' | 'synthesis' | 'brain-dump';
+	type: 'task' | 'phase' | 'context' | 'delete' | 'synthesis' | 'brain-dump';
 	data: any; // Consider making this generic: ModalState<T>
 }
 
@@ -78,16 +74,8 @@ export function isTask(obj: any): obj is Task {
 	return obj && typeof obj.id === 'string' && typeof obj.title === 'string';
 }
 
-export function isNote(obj: any): obj is Note {
-	return (
-		obj &&
-		typeof obj.id === 'string' &&
-		(typeof obj.title === 'string' || typeof obj.content === 'string')
-	);
-}
-
 export function isProjectWithRelations(obj: ProjectWithRelations): obj is ProjectWithRelations {
-	return isProject(obj) && Array.isArray(obj.tasks) && Array.isArray(obj.notes);
+	return isProject(obj) && Array.isArray(obj.tasks);
 }
 
 // ==========================================
@@ -98,14 +86,6 @@ export type ProjectStatus = Database['public']['Enums']['project_status'];
 export type TaskStatus = Database['public']['Enums']['task_status'];
 export type TaskPriority = Database['public']['Enums']['priority_level'];
 export type TaskType = Database['public']['Enums']['task_type'];
-export type NoteCategory =
-	| 'insight'
-	| 'research'
-	| 'idea'
-	| 'observation'
-	| 'reference'
-	| 'question';
-
 // ==========================================
 // API TYPES
 // ==========================================
@@ -117,11 +97,6 @@ export interface ProjectCreatePayload
 
 export interface TaskCreatePayload
 	extends Omit<TaskInsert, 'id' | 'user_id' | 'created_at' | 'updated_at'> {
-	// Additional fields that might be sent from the client
-}
-
-export interface NoteCreatePayload
-	extends Omit<NoteInsert, 'id' | 'user_id' | 'created_at' | 'updated_at'> {
 	// Additional fields that might be sent from the client
 }
 
@@ -144,11 +119,5 @@ export interface TaskFilters {
 	priority?: TaskPriority[];
 	type?: TaskType[];
 	phaseId?: string;
-	search?: string;
-}
-
-export interface NoteFilters {
-	category?: NoteCategory[];
-	tags?: string[];
 	search?: string;
 }

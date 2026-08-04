@@ -153,47 +153,51 @@ async function loadAccountContext(supabase, user, member) {
 			'user context'
 		),
 		expectQuery(
-			supabase
-				.from('projects')
-				.select(
-					'id, name, description, context, executive_summary, status, source, created_at, updated_at'
-				)
-				.eq('user_id', user.id)
-				.order('updated_at', { ascending: false })
-				.limit(30),
-			'legacy projects'
+			actorId
+				? supabase
+						.from('onto_projects')
+						.select('id, name, description, state_key, props, created_at, updated_at')
+						.eq('created_by', actorId)
+						.is('deleted_at', null)
+						.order('updated_at', { ascending: false })
+						.limit(30)
+				: Promise.resolve({ data: [], error: null }),
+			'ontology projects'
+		),
+		expectQuery(
+			actorId
+				? supabase
+						.from('onto_tasks')
+						.select(
+							'id, project_id, title, description, state_key, priority, props, created_at, updated_at, completed_at'
+						)
+						.eq('created_by', actorId)
+						.is('deleted_at', null)
+						.order('updated_at', { ascending: false })
+						.limit(200)
+				: Promise.resolve({ data: [], error: null }),
+			'ontology tasks'
+		),
+		expectQuery(
+			actorId
+				? supabase
+						.from('onto_documents')
+						.select('id, project_id, title, content, type_key, created_at, updated_at')
+						.eq('created_by', actorId)
+						.is('deleted_at', null)
+						.order('updated_at', { ascending: false })
+						.limit(20)
+				: Promise.resolve({ data: [], error: null }),
+			'ontology documents'
 		),
 		expectQuery(
 			supabase
-				.from('tasks')
-				.select(
-					'id, project_id, title, description, details, status, priority, source, created_at, updated_at, completed_at'
-				)
-				.eq('user_id', user.id)
-				.is('deleted_at', null)
-				.order('updated_at', { ascending: false })
-				.limit(200),
-			'legacy tasks'
-		),
-		expectQuery(
-			supabase
-				.from('notes')
-				.select('id, project_id, title, content, category, created_at, updated_at')
-				.eq('user_id', user.id)
-				.order('updated_at', { ascending: false })
-				.limit(20),
-			'notes'
-		),
-		expectQuery(
-			supabase
-				.from('brain_dumps')
-				.select(
-					'id, project_id, title, content, ai_summary, ai_insights, status, created_at'
-				)
+				.from('onto_braindumps')
+				.select('id, title, content, summary, status, created_at')
 				.eq('user_id', user.id)
 				.order('created_at', { ascending: false })
 				.limit(30),
-			'brain dumps'
+			'ontology brain dumps'
 		),
 		expectQuery(
 			supabase
@@ -290,40 +294,11 @@ async function loadAccountContext(supabase, user, member) {
 		)
 	];
 
-	if (actorId) {
-		queries.push(
-			expectQuery(
-				supabase
-					.from('onto_projects')
-					.select('id, name, description, state_key, props, created_at, updated_at')
-					.eq('created_by', actorId)
-					.is('deleted_at', null)
-					.order('updated_at', { ascending: false })
-					.limit(30),
-				'ontology projects'
-			),
-			expectQuery(
-				supabase
-					.from('onto_tasks')
-					.select(
-						'id, project_id, title, description, state_key, priority, created_at, updated_at'
-					)
-					.eq('created_by', actorId)
-					.is('deleted_at', null)
-					.order('updated_at', { ascending: false })
-					.limit(200),
-				'ontology tasks'
-			)
-		);
-	} else {
-		queries.push(Promise.resolve([]), Promise.resolve([]));
-	}
-
 	const [
 		userContext,
-		legacyProjects,
-		legacyTasks,
-		notes,
+		ontoProjects,
+		ontoTasks,
+		documents,
 		brainDumps,
 		chatSessions,
 		chatMessages,
@@ -333,17 +308,15 @@ async function loadAccountContext(supabase, user, member) {
 		activityLogs,
 		behavioralProfile,
 		emailHistory,
-		calendarAnalyses,
-		ontoProjects,
-		ontoTasks
+		calendarAnalyses
 	] = await Promise.all(queries);
 
 	return {
 		user,
 		user_context: userContext || null,
-		legacy_projects: legacyProjects,
-		legacy_tasks: legacyTasks,
-		notes,
+		legacy_projects: [],
+		legacy_tasks: [],
+		notes: documents,
 		brain_dumps: brainDumps,
 		chat_sessions: chatSessions,
 		chat_messages: chatMessages,

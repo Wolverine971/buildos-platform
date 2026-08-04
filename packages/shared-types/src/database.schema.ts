@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-04T13:36:50.198Z
+// Generated on: 2026-08-04T16:42:40.305Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -4081,12 +4081,50 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	web_page_evidence_chunks: {
+		chunk_index: number;
+		content: string;
+		content_hash: string;
+		created_at: string;
+		end_offset: number;
+		id: string;
+		page_version_id: string;
+		selector: string;
+		start_offset: number;
+	};
+	web_page_versions: {
+		bytes: number | null;
+		canonical_url: string | null;
+		content: string;
+		content_format: string;
+		content_hash: string;
+		content_type: string | null;
+		created_at: string;
+		etag: string | null;
+		excerpt: string | null;
+		extraction_method: string;
+		extraction_strategy: string | null;
+		extraction_version: string;
+		fetched_at: string;
+		final_url: string;
+		id: string;
+		last_modified: string | null;
+		meta: Json | null;
+		parser: string | null;
+		requested_url: string;
+		status_code: number;
+		structured_data: Json | null;
+		title: string | null;
+		version_number: number;
+		web_page_visit_id: string;
+	};
 	web_page_visits: {
 		bytes: number | null;
 		canonical_url: string | null;
 		content_hash: string | null;
 		content_type: string | null;
 		created_at: string;
+		current_version_id: string | null;
 		error_message: string | null;
 		etag: string | null;
 		excerpt: string | null;
@@ -4386,6 +4424,8 @@ export const tableNames = [
 	'visitors',
 	'voice_note_groups',
 	'voice_notes',
+	'web_page_evidence_chunks',
+	'web_page_versions',
 	'web_page_visits',
 	'webhook_events',
 	'welcome_email_sequences'

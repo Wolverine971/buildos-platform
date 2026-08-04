@@ -819,6 +819,8 @@ describe('buildToolPayloadForModel', () => {
 
 	it('preserves BuildOS-fetched page evidence for web_search synthesis', () => {
 		const pageContent = `Verified primary-source evidence. ${'Detailed evidence '.repeat(260)}`;
+		const pageHash = 'a'.repeat(64);
+		const chunkHash = 'b'.repeat(64);
 		const payload = buildToolPayloadForModel(
 			toolCall('web_search'),
 			toolResult({
@@ -833,7 +835,21 @@ describe('buildToolPayloadForModel', () => {
 								page_content: pageContent,
 								page_final_url: `https://example.com/${index}/canonical`,
 								page_fetched_at: '2026-08-02T12:00:00.000Z',
-								page_cache_hit: index === 0
+								page_cache_hit: index === 0,
+								page_visit_id: '10000000-0000-4000-8000-000000000001',
+								page_version_id: `20000000-0000-4000-8000-00000000000${index + 1}`,
+								page_version_number: index + 1,
+								page_content_hash: pageHash,
+								page_evidence_chunks: [
+									{
+										id: `30000000-0000-4000-8000-00000000000${index + 1}`,
+										chunk_index: 0,
+										start_offset: 0,
+										end_offset: 1600,
+										selector: 'char:0-1600',
+										content_hash: chunkHash
+									}
+								]
 							}
 						: {})
 				})),
@@ -855,6 +871,19 @@ describe('buildToolPayloadForModel', () => {
 		expect(payload.results[0].page_content).toContain('Verified primary-source evidence');
 		expect(payload.results[1].page_content).toContain('Verified primary-source evidence');
 		expect(payload.results[2].page_content).toBeUndefined();
+		expect(payload.results[0]).toMatchObject({
+			page_visit_id: '10000000-0000-4000-8000-000000000001',
+			page_version_id: '20000000-0000-4000-8000-000000000001',
+			page_version_number: 1,
+			page_content_hash: pageHash,
+			page_evidence_chunks: [
+				{
+					id: '30000000-0000-4000-8000-000000000001',
+					selector: 'char:0-1600',
+					content_hash: chunkHash
+				}
+			]
+		});
 		expect(payload.info).toMatchObject({
 			adapter_version: 'tavily-v1',
 			cache_status: 'miss',
@@ -1062,6 +1091,20 @@ describe('buildToolPayloadForModel', () => {
 				title: 'Pricing',
 				content_format: 'markdown',
 				content,
+				visit_id: '10000000-0000-4000-8000-000000000001',
+				page_version_id: '20000000-0000-4000-8000-000000000001',
+				page_version_number: 2,
+				content_hash: 'a'.repeat(64),
+				evidence_chunks: [
+					{
+						id: '30000000-0000-4000-8000-000000000001',
+						chunk_index: 0,
+						start_offset: 0,
+						end_offset: content.length,
+						selector: `char:0-${content.length}`,
+						content_hash: 'b'.repeat(64)
+					}
+				],
 				truncated: false,
 				message: 'Web visit content fetched.',
 				info: {
@@ -1079,6 +1122,13 @@ describe('buildToolPayloadForModel', () => {
 		expect(payload.truncated).toBe(false);
 		expect(payload.tool_result_truncated).toBe(false);
 		expect(payload.model_payload_truncated).toBe(false);
+		expect(payload).toMatchObject({
+			visit_id: '10000000-0000-4000-8000-000000000001',
+			page_version_id: '20000000-0000-4000-8000-000000000001',
+			page_version_number: 2,
+			content_hash: 'a'.repeat(64),
+			evidence_chunks: [{ selector: `char:0-${content.length}` }]
+		});
 	});
 
 	it('preserves tool-result truncation when the returned content fits the model payload', () => {

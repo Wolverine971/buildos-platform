@@ -206,6 +206,44 @@ describe('native search core', () => {
 		expect(result.results[3]?.page_content).toBeUndefined();
 	});
 
+	it('carries immutable evidence receipts into the enriched search contract', async () => {
+		const result = await enrichNativeSearchCandidates(
+			[{ title: 'Primary', url: 'https://example.com/source' }],
+			async () => ({
+				content: 'Verified evidence',
+				finalUrl: 'https://example.com/source',
+				fetchedAt: '2026-08-04T12:00:00.000Z',
+				visitId: '10000000-0000-4000-8000-000000000001',
+				versionId: '20000000-0000-4000-8000-000000000001',
+				versionNumber: 2,
+				contentHash: 'a'.repeat(64),
+				evidenceChunks: [
+					{
+						id: '30000000-0000-4000-8000-000000000001',
+						chunk_index: 0,
+						start_offset: 0,
+						end_offset: 17,
+						selector: 'char:0-17',
+						content_hash: 'b'.repeat(64)
+					}
+				]
+			})
+		);
+
+		expect(result.results[0]).toMatchObject({
+			page_visit_id: '10000000-0000-4000-8000-000000000001',
+			page_version_id: '20000000-0000-4000-8000-000000000001',
+			page_version_number: 2,
+			page_content_hash: 'a'.repeat(64),
+			page_evidence_chunks: [
+				{
+					id: '30000000-0000-4000-8000-000000000001',
+					selector: 'char:0-17'
+				}
+			]
+		});
+	});
+
 	it('keeps signed URLs out of the global page cache and removes tracking keys', () => {
 		expect(
 			isGlobalWebPageCacheEligible('https://example.com/file?X-Amz-Signature=secret')

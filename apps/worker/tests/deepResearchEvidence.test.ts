@@ -350,7 +350,21 @@ describe('deep research evidence contract', () => {
 						page_title: 'Fetched title',
 						page_content: 'Direct evidence from the fetched page.',
 						page_final_url: 'https://example.com/report#section',
-						page_fetched_at: ACCESSED_AT
+						page_fetched_at: ACCESSED_AT,
+						page_visit_id: '10000000-0000-4000-8000-000000000001',
+						page_version_id: '20000000-0000-4000-8000-000000000001',
+						page_version_number: 2,
+						page_content_hash: 'a'.repeat(64),
+						page_evidence_chunks: [
+							{
+								id: '30000000-0000-4000-8000-000000000001',
+								chunk_index: 0,
+								start_offset: 0,
+								end_offset: 38,
+								selector: 'char:0-38',
+								content_hash: 'b'.repeat(64)
+							}
+						]
 					}
 				]
 			},
@@ -363,7 +377,21 @@ describe('deep research evidence contract', () => {
 				finalUrl: 'https://example.com/report',
 				title: 'Fetched title',
 				accessedAt: ACCESSED_AT,
-				content: 'Direct evidence from the fetched page.'
+				content: 'Direct evidence from the fetched page.',
+				pageVisitId: '10000000-0000-4000-8000-000000000001',
+				pageVersionId: '20000000-0000-4000-8000-000000000001',
+				pageVersionNumber: 2,
+				contentHash: 'a'.repeat(64),
+				evidenceChunks: [
+					{
+						id: '30000000-0000-4000-8000-000000000001',
+						chunk_index: 0,
+						start_offset: 0,
+						end_offset: 38,
+						selector: 'char:0-38',
+						content_hash: 'b'.repeat(64)
+					}
+				]
 			}
 		]);
 	});

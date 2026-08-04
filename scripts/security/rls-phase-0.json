@@ -22,7 +22,6 @@
 		{ "relation": "feedback_rate_limit", "expect": "service_only" },
 		{ "relation": "legacy_entity_mappings", "expect": "admin_scoped" },
 		{ "relation": "migration_log", "expect": "admin_scoped" },
-		{ "relation": "notes", "expect": "user_scoped" },
 		{ "relation": "notification_deliveries", "expect": "user_scoped" },
 		{ "relation": "notification_events", "expect": "user_scoped" },
 		{ "relation": "notification_subscriptions", "expect": "user_scoped" },

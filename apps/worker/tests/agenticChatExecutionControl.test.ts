@@ -18,6 +18,7 @@ const INPUT_ARTIFACT_ID = '70000000-0000-4000-8000-000000000007';
 const USER_MESSAGE_ID = '80000000-0000-4000-8000-000000000008';
 const ASSISTANT_MESSAGE_ID = '90000000-0000-4000-8000-000000000009';
 const LAST_CONTEXT_TRANSITION_ID = 'a0000000-0000-5000-8000-00000000000a';
+const TIMING_TRANSITION_ID = 'b0000000-0000-5000-8000-00000000000b';
 const EXECUTION_GENERATION = 2;
 const TERMINAL_SEQUENCE = 8;
 
@@ -92,6 +93,111 @@ function adapterFor(receipts: unknown[]) {
 			rpc
 		} as AgenticChatExecutionRpcClient),
 		rpc
+	};
+}
+
+function asyncTimingDraft() {
+	return {
+		timing_contract_version: 'agentic_chat_async_v1',
+		request_started_at: '2026-08-03T11:59:57.000Z',
+		admitted_at: '2026-08-03T11:59:57.000Z',
+		accepted_at: '2026-08-03T11:59:57.100Z',
+		worker_started_at: '2026-08-03T11:59:57.300Z',
+		provider_authorized_at: '2026-08-03T11:59:57.500Z',
+		first_event_at: '2026-08-03T11:59:57.700Z',
+		first_response_at: '2026-08-03T11:59:57.800Z',
+		cache_source: 'fresh_load',
+		cache_age_seconds: null,
+		request_prewarmed_context: false,
+		history_strategy: 'full',
+		history_compressed: false,
+		raw_history_count: 2,
+		history_for_model_count: 2,
+		prepared_prompt_hit: false,
+		prepared_prompt_miss_reason: 'not_requested',
+		prepared_surface_profile: null,
+		finished_reason: 'stop',
+		phases: {
+			admission_to_acceptance_ms: 100,
+			queue_wait_ms: 200,
+			worker_start_to_provider_authority_ms: 200,
+			time_to_first_event_ms: 700,
+			time_to_first_response_ms: 800,
+			provider_authority_to_first_event_persistence_ms: 200,
+			provider_authority_to_first_response_persistence_ms: 300,
+			provider_authority_to_finish_ms: 900,
+			provider_finish_to_terminal_call_ms: 50,
+			response_generation_ms: 600
+		}
+	};
+}
+
+function committedContextReceipt(
+	lastTurnContext: Record<string, unknown>,
+	sequence = TERMINAL_SEQUENCE - 2,
+	committedAt = '2026-08-03T12:00:00.000Z'
+) {
+	return {
+		outcome: 'persisted',
+		publish_allowed: true,
+		turn_run_id: TURN_RUN_ID,
+		queue_job_id: QUEUE_JOB_ID,
+		session_id: SESSION_ID,
+		user_id: USER_ID,
+		stream_run_id: 'stream-1',
+		client_turn_id: 'client-1',
+		execution_generation: EXECUTION_GENERATION,
+		sequence_index: sequence,
+		event_id: createAgentStreamEventIdV1(TURN_RUN_ID, EXECUTION_GENERATION, sequence),
+		phase: 'finalize',
+		event_type: 'last_turn_context',
+		durable: true,
+		transition_id: LAST_CONTEXT_TRANSITION_ID,
+		event_payload: {
+			type: 'last_turn_context',
+			context: { ...lastTurnContext, timestamp: committedAt }
+		},
+		reconcile_required: true,
+		persisted_at: '2026-08-03T12:00:00.000Z'
+	};
+}
+
+function committedTimingReceipt(
+	draft: ReturnType<typeof asyncTimingDraft>,
+	overrides: Record<string, unknown> = {},
+	committedAt = '2026-08-03T12:00:00.000Z',
+	totalRequestMs = 3_000
+) {
+	const sequence = TERMINAL_SEQUENCE - 1;
+	return {
+		outcome: 'persisted',
+		publish_allowed: true,
+		turn_run_id: TURN_RUN_ID,
+		queue_job_id: QUEUE_JOB_ID,
+		session_id: SESSION_ID,
+		user_id: USER_ID,
+		stream_run_id: 'stream-1',
+		client_turn_id: 'client-1',
+		execution_generation: EXECUTION_GENERATION,
+		sequence_index: sequence,
+		event_id: createAgentStreamEventIdV1(TURN_RUN_ID, EXECUTION_GENERATION, sequence),
+		phase: 'finalize',
+		event_type: 'timing',
+		durable: true,
+		transition_id: TIMING_TRANSITION_ID,
+		event_payload: {
+			type: 'timing',
+			timing: {
+				...draft,
+				assistant_persisted_at: committedAt,
+				done_emitted_at: null,
+				terminal_committed_at: committedAt,
+				phases: { ...draft.phases, total_request_ms: totalRequestMs }
+			}
+		},
+		reconcile_required: true,
+		persisted_at: '2026-08-03T12:00:00.000Z',
+		...overrides
 	};
 }
 
@@ -281,6 +387,93 @@ describe('SupabaseAgenticChatExecutionControlAdapter', () => {
 						data_accessed: []
 					},
 					lastTurnContextTransitionId: LAST_CONTEXT_TRANSITION_ID
+				})
+			)
+		).rejects.toBeInstanceOf(AgenticChatExecutionControlProtocolError);
+	});
+
+	it('selects the three-event terminal RPC and verifies the ordered context/timing prefix', async () => {
+		const lastTurnContext = {
+			summary: 'Completed the request.',
+			entities: {},
+			context_type: 'global',
+			data_accessed: []
+		};
+		const timingDraft = asyncTimingDraft();
+		const committedAt = '2026-08-03T12:00:00.123456Z';
+		const { adapter, rpc } = adapterFor([
+			terminalReceipt({
+				terminalized_at: committedAt,
+				preterminal_events: [
+					committedContextReceipt(lastTurnContext, TERMINAL_SEQUENCE - 2, committedAt),
+					committedTimingReceipt(timingDraft, {}, committedAt, 3_123.456)
+				]
+			})
+		]);
+
+		await expect(
+			adapter.finalize(
+				finalizeInput({
+					lastTurnContext,
+					lastTurnContextTransitionId: LAST_CONTEXT_TRANSITION_ID,
+					timingDraft,
+					timingTransitionId: TIMING_TRANSITION_ID
+				})
+			)
+		).resolves.toMatchObject({
+			outcome: 'finalized',
+			preterminal_events: [
+				{ sequence_index: TERMINAL_SEQUENCE - 2, event_type: 'last_turn_context' },
+				{ sequence_index: TERMINAL_SEQUENCE - 1, event_type: 'timing' }
+			]
+		});
+		expect(rpc).toHaveBeenCalledWith(
+			'finalize_agentic_chat_turn_with_terminal_events',
+			expect.objectContaining({
+				p_last_turn_context: lastTurnContext,
+				p_last_turn_context_transition_id: LAST_CONTEXT_TRANSITION_ID,
+				p_timing_draft: timingDraft,
+				p_timing_transition_id: TIMING_TRANSITION_ID
+			})
+		);
+	});
+
+	it('rejects a forged database-owned timing summary', async () => {
+		const lastTurnContext = {
+			summary: 'Completed the request.',
+			entities: {},
+			context_type: 'global',
+			data_accessed: []
+		};
+		const timingDraft = asyncTimingDraft();
+		const timingReceipt = committedTimingReceipt(timingDraft);
+		const committedTiming = timingReceipt.event_payload.timing as Record<string, unknown>;
+		const forgedTiming = {
+			...committedTiming,
+			phases: {
+				...(committedTiming.phases as Record<string, unknown>),
+				total_request_ms: 3_001
+			}
+		};
+		const { adapter } = adapterFor([
+			terminalReceipt({
+				preterminal_events: [
+					committedContextReceipt(lastTurnContext),
+					{
+						...timingReceipt,
+						event_payload: { type: 'timing', timing: forgedTiming }
+					}
+				]
+			})
+		]);
+
+		await expect(
+			adapter.finalize(
+				finalizeInput({
+					lastTurnContext,
+					lastTurnContextTransitionId: LAST_CONTEXT_TRANSITION_ID,
+					timingDraft,
+					timingTransitionId: TIMING_TRANSITION_ID
 				})
 			)
 		).rejects.toBeInstanceOf(AgenticChatExecutionControlProtocolError);

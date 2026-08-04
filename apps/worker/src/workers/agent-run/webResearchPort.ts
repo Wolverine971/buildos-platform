@@ -17,6 +17,8 @@ import {
 	createNativeSearchDiscoveryCacheEntry,
 	createTavilyDiscoveryAdapter,
 	enrichNativeSearchCandidates,
+	type NativeSearchEvidenceChunkReference,
+	type NativeSearchPageEvidenceReceipt,
 	markNativeSearchResponseCacheStatus,
 	normalizeNativeSearchRequest
 } from '@buildos/shared-agent-ops/web/native-search';
@@ -40,7 +42,27 @@ interface CreateWebResearchPortOptions {
 	tavilyCreditCostUsd?: number;
 	onSearchDispatched?: (charge: PaidToolCharge) => void | Promise<void>;
 	searchCacheStore?: NativeSearchDurableCacheStore<NativeSearchDiscoveryCacheEntry>;
+	pageEvidenceSink?: AgentRunPageEvidenceSink;
 }
+
+export interface AgentRunFetchedPageEvidence {
+	requestedUrl: string;
+	finalUrl: string;
+	statusCode: number;
+	contentType?: string;
+	title?: string;
+	content: string;
+	fetchedAt: string;
+	bytes: number;
+	fetchMs: number;
+	parser: 'html_text' | 'text';
+	etag?: string;
+	lastModified?: string;
+}
+
+export type AgentRunPageEvidenceSink = (
+	page: AgentRunFetchedPageEvidence
+) => Promise<NativeSearchPageEvidenceReceipt | null | undefined>;
 
 export interface PaidToolCharge {
 	provider: 'tavily';
@@ -193,7 +215,7 @@ function normalizeSearchArgs(args: Record<string, unknown>): NormalizedNativeSea
 async function performSearch(
 	args: Record<string, unknown>,
 	normalized: NormalizedNativeSearchRequest,
-	options: { apiKey: string } & Required<
+	options: { apiKey: string; pageEvidenceSink?: AgentRunPageEvidenceSink } & Required<
 		Pick<
 			CreateWebResearchPortOptions,
 			| 'fetchFn'
@@ -217,19 +239,30 @@ async function performSearch(
 				fetchFn: options.fetchFn,
 				now: options.now,
 				visitTimeoutMs: options.visitTimeoutMs,
-				visitMaxBytes: options.visitMaxBytes
+				visitMaxBytes: options.visitMaxBytes,
+				pageEvidenceSink: options.pageEvidenceSink
 			}
 		)) as {
 			title?: string;
 			content?: string;
 			final_url?: string;
+			visit_id?: string;
+			page_version_id?: string;
+			page_version_number?: number;
+			content_hash?: string;
+			evidence_chunks?: NativeSearchEvidenceChunkReference[];
 			info?: { fetched_at?: string };
 		};
 		return {
 			title: page.title,
 			content: page.content ?? '',
 			finalUrl: page.final_url ?? result.url,
-			fetchedAt: page.info?.fetched_at ?? options.now().toISOString()
+			fetchedAt: page.info?.fetched_at ?? options.now().toISOString(),
+			visitId: page.visit_id,
+			versionId: page.page_version_id,
+			versionNumber: page.page_version_number,
+			contentHash: page.content_hash,
+			evidenceChunks: page.evidence_chunks
 		};
 	});
 	const providerCredits = discovery.diagnostics.usage?.credits ?? null;
@@ -398,7 +431,8 @@ async function performVisit(
 	args: Record<string, unknown>,
 	options: Required<
 		Pick<CreateWebResearchPortOptions, 'fetchFn' | 'now' | 'visitTimeoutMs' | 'visitMaxBytes'>
-	>
+	> &
+		Pick<CreateWebResearchPortOptions, 'pageEvidenceSink'>
 ): Promise<unknown> {
 	const inputUrl = readRequiredString(args, 'url', 2_048);
 	let url: URL;
@@ -445,8 +479,40 @@ async function performVisit(
 	}
 
 	if (!text) throw new WebResearchPortError('The page did not contain readable text');
-	const truncated = text.length > maxChars;
-	const content = truncated ? text.slice(0, maxChars) : text;
+	const fullContent = text.trim();
+	const codePoints = Array.from(fullContent);
+	const truncated = codePoints.length > maxChars;
+	const content = truncated ? codePoints.slice(0, maxChars).join('') : fullContent;
+	const fetchedAt = options.now().toISOString();
+	let evidence: NativeSearchPageEvidenceReceipt | undefined;
+	if (options.pageEvidenceSink) {
+		try {
+			evidence =
+				(await options.pageEvidenceSink({
+					requestedUrl: url.toString(),
+					finalUrl: response.finalUrl,
+					statusCode: response.status,
+					contentType,
+					title,
+					content: fullContent,
+					fetchedAt,
+					bytes: response.bytes,
+					fetchMs: response.fetchMs,
+					parser: isHtml ? 'html_text' : 'text',
+					etag: response.headers.get('etag') ?? undefined,
+					lastModified: response.headers.get('last-modified') ?? undefined
+				})) ?? undefined;
+		} catch (error) {
+			console.warn(
+				'[AgentRunWebResearch] Immutable page evidence unavailable; returning fetched content:',
+				error instanceof Error ? error.message : String(error)
+			);
+		}
+	}
+	const visibleEndOffset = Array.from(content).length;
+	const evidenceChunks = evidence?.chunks.filter(
+		(chunk) => chunk.start_offset < visibleEndOffset
+	);
 
 	return {
 		url: url.toString(),
@@ -455,13 +521,22 @@ async function performVisit(
 		content_type: contentType ?? null,
 		...(title ? { title } : {}),
 		content_format: 'text',
+		...(evidence
+			? {
+					visit_id: evidence.page_visit_id,
+					page_version_id: evidence.page_version_id,
+					page_version_number: evidence.version_number,
+					content_hash: evidence.content_hash,
+					...(evidenceChunks?.length ? { evidence_chunks: evidenceChunks } : {})
+				}
+			: {}),
 		content,
 		excerpt: content.length > 280 ? `${content.slice(0, 280)}...` : content,
 		truncated,
 		security_notice: SECURITY_NOTICE,
 		message: `Web visit content fetched from "${response.finalUrl}".`,
 		info: {
-			fetched_at: options.now().toISOString(),
+			fetched_at: fetchedAt,
 			bytes: response.bytes,
 			fetch_ms: response.fetchMs,
 			parser: isHtml ? 'html_text' : 'text'
@@ -487,7 +562,8 @@ export function createAgentRunWebResearchPort(
 				fetchFn,
 				now,
 				visitTimeoutMs: options.visitTimeoutMs ?? 12_000,
-				visitMaxBytes: options.visitMaxBytes ?? 2_000_000
+				visitMaxBytes: options.visitMaxBytes ?? 2_000_000,
+				pageEvidenceSink: options.pageEvidenceSink
 			})
 	};
 	if (apiKey) {
@@ -512,6 +588,7 @@ export function createAgentRunWebResearchPort(
 				searchTimeoutMs: options.searchTimeoutMs ?? DEFAULT_SEARCH_TIMEOUT_MS,
 				visitTimeoutMs: options.visitTimeoutMs ?? 12_000,
 				visitMaxBytes: options.visitMaxBytes ?? 2_000_000,
+				pageEvidenceSink: options.pageEvidenceSink,
 				tavilyCreditCostUsd,
 				onSearchDispatched: options.onSearchDispatched ?? (() => undefined)
 			};

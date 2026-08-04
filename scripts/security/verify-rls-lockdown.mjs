@@ -179,6 +179,29 @@ for (const entry of entries) {
 		}
 		const policyText = JSON.stringify(row.policies ?? []);
 		check(policyText.includes('is_admin'), `${relation}: no is_admin policy found`, checks);
+	} else if (expect === 'admin_read_scoped') {
+		check(row.rls_enabled === true, `${relation}: RLS is not enabled`, checks);
+		for (const privilege of dmlPrivileges) {
+			check(
+				row.anon?.[privilege] === false,
+				`${relation}: anon still has ${privilege.toUpperCase()}`,
+				checks
+			);
+		}
+		check(row.authenticated?.select === true, `${relation}: authenticated lost SELECT`, checks);
+		for (const privilege of ['insert', 'update', 'delete']) {
+			check(
+				row.authenticated?.[privilege] === false,
+				`${relation}: authenticated still has ${privilege.toUpperCase()}`,
+				checks
+			);
+		}
+		const policyText = JSON.stringify(row.policies ?? []);
+		check(
+			policyText.includes('is_admin') || policyText.includes('admin_users'),
+			`${relation}: no admin-only read policy found`,
+			checks
+		);
 	} else if (expect === 'authenticated_reference') {
 		check(row.rls_enabled === true, `${relation}: RLS is not enabled`, checks);
 		check(row.anon?.select === false, `${relation}: anon still has SELECT`, checks);

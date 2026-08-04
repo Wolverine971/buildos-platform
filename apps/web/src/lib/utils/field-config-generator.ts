@@ -157,10 +157,6 @@ const REQUIRED_FIELDS: Record<string, { create: string[]; update: string[] }> = 
 	tasks: {
 		create: ['title'],
 		update: [] // No required fields for updates
-	},
-	notes: {
-		create: [], // Either title or content required, but handled separately
-		update: []
 	}
 };
 
@@ -266,8 +262,7 @@ function getAllFieldsForTable(tableName: TableName): string[] {
 			'tags',
 			'context', // Now stored directly in projects table
 			'executive_summary' // Now stored directly in projects table
-		],
-		notes: ['title', 'content', 'project_id', 'tags', 'category']
+		]
 	};
 
 	return tableFields[tableName] || [];

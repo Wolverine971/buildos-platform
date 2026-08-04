@@ -22,6 +22,10 @@ describe('Agentic Chat executor lifecycle identity', () => {
 			turnRunId: TURN_RUN_ID,
 			stage: 'context_usage'
 		});
+		const timing = createStableAgenticChatLifecycleTransitionIdV1({
+			turnRunId: TURN_RUN_ID,
+			stage: 'timing'
+		});
 
 		expect(
 			createStableAgenticChatLifecycleTransitionIdV1({
@@ -33,6 +37,7 @@ describe('Agentic Chat executor lifecycle identity', () => {
 		expect(finalizing).toBe('189ab196-c910-547c-b667-9c81d3ebc32f');
 		expect(session).toBe('e426f2ab-ba50-56d8-83d1-de6b150b16b0');
 		expect(contextUsage).toBe('857d7701-d7fc-5706-89b0-1068e227c482');
+		expect(timing).toBe('ea1a6d82-0b8b-5dc8-af61-0b663d90ec6b');
 		expect(finalizing).not.toBe(acknowledged);
 	});
 

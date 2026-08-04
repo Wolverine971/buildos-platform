@@ -358,3 +358,32 @@ The detailed list/pagination contract and verification are recorded in
 The global entry also starts `buildos.ai_inbox.open_to_data.navigation` before lazy import; the modal
 completes it only after its first usable data state renders. Failed/abandoned opens do not pollute the
 metric, and the initial click-to-data budget is 800 ms. -> P20
+
+---
+
+## Skip-link focus follow-up — 2026-08-04
+
+An authenticated desktop capture exposed a mismatch between this audit's stated standard and the
+root-layout markup: the skip link used `focus:not-sr-only`, so browser-restored or pointer-assigned DOM
+focus could reveal it even when the keyboard-focus indicator did not apply.
+
+### Shipped
+
+- The link now reveals only under `:focus-visible`, keeping it available as the first keyboard tab stop
+  without surfacing during ordinary pointer use or generic focus restoration. -> P13
+- The focused presentation now uses the Inkprint control contract: a 44px minimum target, `rounded-md`,
+  semantic card/border/text tokens, a two-pixel ring with offset, and overlay-level stacking. -> P2+P13
+- `#main-content` is now a programmatic focus target, so activating the link moves focus into the page
+  and dismisses the skip control instead of leaving it stranded onscreen. The target suppresses the
+  otherwise page-sized global focus outline. -> P13
+
+### Verification
+
+- Svelte autofixer reports no issue in the touched markup; its output is limited to existing root-layout
+  advisories outside this change.
+- `pnpm --filter @buildos/web check` passes with 0 errors and 0 warnings.
+- Local Playwright smoke at 1440px confirms the link stays clipped for pointer/programmatic focus,
+  reveals as a fixed 44px control for keyboard focus, and transfers activation focus to
+  `#main-content`.
+- Focused after-state captures pass at 390px and 1440px in light and dark mode; the supplied authenticated
+  desktop screenshot remains the before-state reference.

@@ -70,6 +70,7 @@ action, an H2 empty heading, and a result-only live region.
 - ✅ One main landmark, one H1, and zero horizontal overflow at both widths.
 - ✅ Mobile filter open/select/clear state, default show-all/show-fewer state, search/no-results/clear
   state, and complete 59-article expansion verified in the browser.
+- ✅ Fresh isolated-preview smoke reports no browser console warnings or errors.
 - ✅ Svelte autofixer clean after formatting.
 - ✅ Focused route suite: 4 tests pass (URL-owned search state, filter disclosure, article
   disclosure, and no-results semantics).

@@ -748,7 +748,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'Uses versioned live-web discovery with Advanced depth by default',
 			'Optional domain allow/deny lists',
 			'Fetches the best two of the top four source pages concurrently',
-			'Returns bounded snippets plus fetched source-page evidence for BuildOS synthesis',
+			'Returns bounded snippets plus versioned source-page evidence for BuildOS synthesis',
+			'Carries stable page-version and evidence-chunk citation coordinates when available',
 			'Pair it with a document write to keep findings as project knowledge'
 		],
 		contexts: ['base', 'global', 'project_create', 'project'],
@@ -760,7 +761,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		capabilities: [
 			'Best for reading known pages',
 			'Fast deterministic HTML-to-markdown conversion',
-			'Stores a reusable snapshot with metadata',
+			'Stores a reusable snapshot plus immutable page-version evidence',
+			'Returns stable chunk selectors and content hashes for grounded citation',
 			'Optional link list for related sources',
 			'Pairs with web_search for discovery'
 		],

@@ -226,6 +226,20 @@ describe('deep-research finalization context', () => {
 					finalUrl: 'https://example.com/final',
 					title: 'Example',
 					accessedAt: '2026-07-22T12:00:00.000Z',
+					pageVisitId: '10000000-0000-4000-8000-000000000001',
+					pageVersionId: '20000000-0000-4000-8000-000000000001',
+					pageVersionNumber: 2,
+					contentHash: 'a'.repeat(64),
+					evidenceChunks: [
+						{
+							id: '30000000-0000-4000-8000-000000000001',
+							chunk_index: 0,
+							start_offset: 0,
+							end_offset: 1600,
+							selector: 'char:0-1600',
+							content_hash: 'b'.repeat(64)
+						}
+					],
 					content: 'evidence '.repeat(3_000)
 				}
 			]
@@ -233,6 +247,13 @@ describe('deep-research finalization context', () => {
 		const parsed = JSON.parse(rendered);
 		expect(parsed.search_queries).toEqual(['test query']);
 		expect(parsed.verified_visited_sources[0].final_url).toBe('https://example.com/final');
+		expect(parsed.verified_visited_sources[0]).toMatchObject({
+			page_visit_id: '10000000-0000-4000-8000-000000000001',
+			page_version_id: '20000000-0000-4000-8000-000000000001',
+			page_version_number: 2,
+			content_hash: 'a'.repeat(64),
+			evidence_chunks: [{ selector: 'char:0-1600' }]
+		});
 		expect(parsed.verified_visited_sources[0].content.length).toBe(6_000);
 		expect(rendered.length).toBeLessThan(7_000);
 	});

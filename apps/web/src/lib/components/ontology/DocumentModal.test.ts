@@ -146,6 +146,54 @@ describe('DocumentModal document loading', () => {
 		vi.clearAllMocks();
 	});
 
+	it('opens with the right details panel closed and resets it for the next modal session', async () => {
+		const view = render(DocumentModal, {
+			props: {
+				projectId: 'project-1',
+				isOpen: true
+			}
+		});
+
+		const detailsPanel = document.getElementById('document-details-panel');
+		const openButton = screen.getByRole('button', { name: 'Open details panel' });
+		const tabPositioner = openButton.parentElement;
+		expect(detailsPanel).toHaveAttribute('aria-hidden', 'true');
+		expect(detailsPanel).toHaveProperty('inert', true);
+		expect(openButton).toHaveAttribute('aria-expanded', 'false');
+		expect(openButton.closest('.document-modal-header')).toBeNull();
+		expect(tabPositioner).toHaveClass('right-0');
+
+		await fireEvent.click(openButton);
+		expect(detailsPanel).toHaveAttribute('aria-hidden', 'false');
+		expect(detailsPanel).toHaveProperty('inert', false);
+		expect(tabPositioner).toHaveClass('right-64');
+		expect(screen.getByRole('button', { name: 'Close details panel' })).toHaveAttribute(
+			'aria-expanded',
+			'true'
+		);
+
+		await view.rerender({
+			projectId: 'project-1',
+			isOpen: false
+		});
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
+		await view.rerender({
+			projectId: 'project-1',
+			isOpen: true
+		});
+
+		await waitFor(() => {
+			expect(document.getElementById('document-details-panel')).toHaveAttribute(
+				'aria-hidden',
+				'true'
+			);
+			expect(screen.getByRole('button', { name: 'Open details panel' })).toHaveAttribute(
+				'aria-expanded',
+				'false'
+			);
+		});
+	});
+
 	it('keeps the latest document when an obsolete request ignores abort and resolves last', async () => {
 		const documentA = deferred<Response>();
 		const documentB = deferred<Response>();

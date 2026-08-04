@@ -49,7 +49,6 @@ const WORKSPACE_MUTATION_PREFIXES_WHEN_FROZEN = [
 	'/api/daily-briefs/',
 	'/api/brief-templates/',
 	'/api/project-briefs/',
-	'/api/notes/',
 	'/api/time-blocks/',
 	'/api/voice-notes/',
 	'/api/voice-note-groups/',

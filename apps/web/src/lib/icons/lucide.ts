@@ -176,6 +176,8 @@ export { default as Package } from 'lucide-svelte/icons/package';
 export { default as Palette } from 'lucide-svelte/icons/palette';
 export { default as PanelLeftClose } from 'lucide-svelte/icons/panel-left-close';
 export { default as PanelLeftOpen } from 'lucide-svelte/icons/panel-left-open';
+export { default as PanelRightClose } from 'lucide-svelte/icons/panel-right-close';
+export { default as PanelRightOpen } from 'lucide-svelte/icons/panel-right-open';
 export { default as Pause } from 'lucide-svelte/icons/pause';
 export { default as PauseCircle } from 'lucide-svelte/icons/pause-circle';
 export { default as PenTool } from 'lucide-svelte/icons/pen-tool';

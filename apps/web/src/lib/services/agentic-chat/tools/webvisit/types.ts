@@ -1,5 +1,7 @@
 // apps/web/src/lib/services/agentic-chat/tools/webvisit/types.ts
 
+import type { NativeSearchEvidenceChunkReference } from '@buildos/shared-agent-ops/web/native-search';
+
 export type WebVisitMode = 'auto' | 'reader' | 'raw';
 export type WebVisitContentFormat = 'text' | 'markdown';
 // Requested output format. 'markdown' converts deterministically (Turndown);
@@ -83,6 +85,10 @@ export interface WebVisitResultPayload {
 	meta?: Record<string, string>;
 	structured_data?: WebVisitStructuredDataItem[];
 	visit_id?: string;
+	page_version_id?: string;
+	page_version_number?: number;
+	content_hash?: string;
+	evidence_chunks?: NativeSearchEvidenceChunkReference[];
 	stored?: boolean;
 	message: string;
 	info: {

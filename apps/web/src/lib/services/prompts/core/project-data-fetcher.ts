@@ -17,7 +17,6 @@ export interface ProjectDataOptions {
 	includeQuestions?: boolean;
 	includeTasks?: boolean;
 	includePhases?: boolean;
-	includeNotes?: boolean;
 	taskLimit?: number;
 }
 
@@ -91,7 +90,6 @@ export class ProjectDataFetcher {
 			includeQuestions = false,
 			includeTasks = true,
 			includePhases = true,
-			includeNotes = false,
 			taskLimit = MAX_TASKS_TO_DISPLAY
 		} = options;
 
@@ -146,19 +144,6 @@ export class ProjectDataFetcher {
 				);
 			}
 
-			// Conditionally add notes query
-			if (includeNotes) {
-				queries.push(
-					this.supabase
-						.from('notes')
-						.select('*')
-						.eq('user_id', userId)
-						.eq('project_id', projectId)
-						.order('created_at', { ascending: false })
-						.limit(10)
-				);
-			}
-
 			// Add questions query if requested
 			if (includeQuestions) {
 				queries.push(
@@ -181,7 +166,6 @@ export class ProjectDataFetcher {
 			const projectResult = results[queryIndex++];
 			const tasksResult = includeTasks ? results[queryIndex++] : null;
 			const phasesResult = includePhases ? results[queryIndex++] : null;
-			const notesResult = includeNotes ? results[queryIndex++] : null;
 			const questionsResult = includeQuestions ? results[queryIndex++] : null;
 
 			// Check for errors
@@ -233,7 +217,6 @@ export class ProjectDataFetcher {
 					updated_at: task.updated_at
 				})
 			) as unknown as ProjectWithRelations['tasks'];
-			const notesData = (notesResult?.data ?? []) as ProjectWithRelations['notes'];
 			const phasesData = ((phasesResult?.data ?? []) as Array<Record<string, any>>).map(
 				(plan, index) => ({
 					id: plan.id,
@@ -272,7 +255,6 @@ export class ProjectDataFetcher {
 			const fullProjectWithRelations: ProjectWithRelations = {
 				...projectBase,
 				tasks: tasksData,
-				notes: notesData,
 				phases: phasesData
 			};
 
@@ -340,7 +322,6 @@ export class ProjectDataFetcher {
 			options: {
 				includeTasks: true,
 				includePhases: true,
-				includeNotes: false,
 				includeQuestions: false
 			}
 		});
@@ -360,7 +341,6 @@ export class ProjectDataFetcher {
 			options: {
 				includeTasks: false,
 				includePhases: false,
-				includeNotes: false,
 				includeQuestions: false
 			}
 		});

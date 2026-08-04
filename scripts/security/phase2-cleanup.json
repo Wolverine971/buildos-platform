@@ -1,0 +1,12 @@
+{
+	"relations": [
+		{ "relation": "onto_decisions", "expect": "absent" },
+		{ "relation": "notes", "expect": "absent" },
+		{ "relation": "brain_dumps", "expect": "absent" },
+		{ "relation": "brain_dump_links", "expect": "absent" },
+		{ "relation": "question_tree_runs", "expect": "admin_read_scoped" },
+		{ "relation": "question_tree_nodes", "expect": "admin_read_scoped" },
+		{ "relation": "question_tree_proposals", "expect": "admin_read_scoped" },
+		{ "relation": "question_tree_events", "expect": "admin_read_scoped" }
+	]
+}

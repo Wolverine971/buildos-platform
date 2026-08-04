@@ -23,6 +23,24 @@ const STREAM_RUN_ID = 'stream-run-1';
 const CLIENT_TURN_ID = 'client-turn-1';
 const EXECUTION_GENERATION = 2;
 const NOW = Date.parse('2026-08-03T12:00:00.000Z');
+const TIMING_BASELINE = {
+	admittedAt: '2026-08-03T11:59:57.000Z',
+	startedAt: '2026-08-03T11:59:58.000Z',
+	workerStartedAt: '2026-08-03T11:59:59.000Z',
+	executionStartedAt: null,
+	historyCutoffAt: '2026-08-03T11:59:58.000Z',
+	requestPrewarmedContext: false,
+	cacheSource: 'not_requested',
+	cacheAgeSeconds: null,
+	historyStrategy: 'raw_history',
+	historyCompressed: false,
+	rawHistoryCount: 1,
+	historyForModelCount: 1,
+	preparedPromptId: null,
+	preparedPromptHit: false,
+	preparedPromptMissReason: null,
+	preparedSurfaceProfile: null
+} as const;
 
 const claim = {
 	outcome: 'claimed',
@@ -132,6 +150,22 @@ function turnFixture(overrides: Record<string, unknown> = {}) {
 			context: { type: 'project', entityId: 'project-1' }
 		},
 		request_payload_version: 'agentic_chat_request_v1',
+		created_at: TIMING_BASELINE.admittedAt,
+		started_at: TIMING_BASELINE.startedAt,
+		worker_started_at: TIMING_BASELINE.workerStartedAt,
+		execution_started_at: TIMING_BASELINE.executionStartedAt,
+		history_cutoff_at: TIMING_BASELINE.historyCutoffAt,
+		request_prewarmed_context: TIMING_BASELINE.requestPrewarmedContext,
+		cache_source: TIMING_BASELINE.cacheSource,
+		cache_age_seconds: TIMING_BASELINE.cacheAgeSeconds,
+		history_strategy: TIMING_BASELINE.historyStrategy,
+		history_compressed: TIMING_BASELINE.historyCompressed,
+		raw_history_count: TIMING_BASELINE.rawHistoryCount,
+		history_for_model_count: TIMING_BASELINE.historyForModelCount,
+		prepared_prompt_id: TIMING_BASELINE.preparedPromptId,
+		prepared_prompt_hit: TIMING_BASELINE.preparedPromptHit,
+		prepared_prompt_miss_reason: TIMING_BASELINE.preparedPromptMissReason,
+		prepared_surface_profile: TIMING_BASELINE.preparedSurfaceProfile,
 		...overrides
 	};
 }
@@ -168,7 +202,8 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 			streamRunId: STREAM_RUN_ID,
 			clientTurnId: CLIENT_TURN_ID,
 			requestPayload: turnFixture().request_payload,
-			artifact
+			artifact,
+			timingBaseline: TIMING_BASELINE
 		});
 		expect(calls).toEqual([
 			{
@@ -250,6 +285,33 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
 		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
 			code: 'invalid_command'
+		});
+	});
+
+	it('rejects malformed or non-monotonic database timing evidence', async () => {
+		const { row } = await artifactFixture();
+		const { client } = clientFor(
+			turnFixture({
+				worker_started_at: '2026-08-03T11:59:56.000Z'
+			}),
+			row
+		);
+
+		await expect(
+			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
+		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+			code: 'invalid_timing_source'
+		});
+	});
+
+	it('rejects timing counts that do not match the immutable model history', async () => {
+		const { row } = await artifactFixture();
+		const { client } = clientFor(turnFixture({ history_for_model_count: 2 }), row);
+
+		await expect(
+			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
+		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+			code: 'invalid_timing_source'
 		});
 	});
 

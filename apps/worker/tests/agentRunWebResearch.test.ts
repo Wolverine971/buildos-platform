@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	createNativeSearchDiscoveryCacheEntry,
+	hashNativeSearchPageContent,
 	type NativeSearchDiscoveryCacheEntry,
 	type NativeSearchDurableCacheStore
 } from '@buildos/shared-agent-ops/web/native-search';
@@ -352,6 +353,32 @@ describe('Agent Run web research port', () => {
 	});
 
 	it('visits a public page and strips executable HTML from the model payload', async () => {
+		const pageEvidenceSink = vi.fn(async (page: { content: string; fetchedAt: string }) => {
+			const contentHash = hashNativeSearchPageContent(page.content);
+			const contentLength = Array.from(page.content).length;
+			return {
+				page_visit_id: '10000000-0000-4000-8000-000000000001',
+				page_version_id: '20000000-0000-4000-8000-000000000001',
+				version_number: 1,
+				content_hash: contentHash,
+				content_length: contentLength,
+				content_format: 'text' as const,
+				fetched_at: page.fetchedAt,
+				extraction_method: 'text' as const,
+				extraction_version: 'agent-run-web-visit-v1',
+				created: true,
+				chunks: [
+					{
+						id: '30000000-0000-4000-8000-000000000001',
+						chunk_index: 0,
+						start_offset: 0,
+						end_offset: contentLength,
+						selector: `char:0-${contentLength}`,
+						content_hash: contentHash
+					}
+				]
+			};
+		});
 		const fetchFn = vi.fn(async () => {
 			return new Response(
 				`<!doctype html>
@@ -368,7 +395,8 @@ describe('Agent Run web research port', () => {
 		const port = createAgentRunWebResearchPort({
 			apiKey: null,
 			fetchFn: fetchFn as typeof fetch,
-			now: () => NOW
+			now: () => NOW,
+			pageEvidenceSink
 		});
 
 		const result = (await port.visit!({
@@ -379,6 +407,11 @@ describe('Agent Run web research port', () => {
 			content: string;
 			content_format: string;
 			security_notice: string;
+			visit_id: string;
+			page_version_id: string;
+			page_version_number: number;
+			content_hash: string;
+			evidence_chunks: Array<{ selector: string }>;
 		};
 
 		expect(result.title).toBe('Example & Research');
@@ -388,6 +421,20 @@ describe('Agent Run web research port', () => {
 		expect(result.content).not.toContain('ignorePrompt');
 		expect(result.content_format).toBe('text');
 		expect(result.security_notice).toContain('untrusted');
+		expect(result).toMatchObject({
+			visit_id: '10000000-0000-4000-8000-000000000001',
+			page_version_id: '20000000-0000-4000-8000-000000000001',
+			page_version_number: 1,
+			evidence_chunks: [{ selector: expect.stringMatching(/^char:0-\d+$/) }]
+		});
+		expect(result.content_hash).toBe(hashNativeSearchPageContent(result.content));
+		expect(pageEvidenceSink).toHaveBeenCalledWith(
+			expect.objectContaining({
+				requestedUrl: 'https://93.184.216.34/research',
+				finalUrl: 'https://93.184.216.34/research',
+				parser: 'html_text'
+			})
+		);
 	});
 
 	it('flattens a 2MB adversarial HTML page well under 500ms', async () => {

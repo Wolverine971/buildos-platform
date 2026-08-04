@@ -2,13 +2,7 @@
 
 // Shared operation-shape types used by project synthesis and calendar analysis flows.
 
-export type TableName =
-	| 'projects'
-	| 'tasks'
-	| 'notes'
-	| 'phases'
-	| 'daily_briefs'
-	| 'project_questions';
+export type TableName = 'projects' | 'tasks' | 'phases' | 'daily_briefs' | 'project_questions';
 
 export type OperationType = 'create' | 'update' | 'delete';
 
@@ -76,20 +70,6 @@ export interface TaskOperation extends ParsedOperation {
 		recurrence_ends?: string;
 		dependencies?: string[];
 		parent_task_id?: string;
-	};
-}
-
-export interface NoteOperation extends ParsedOperation {
-	table: 'notes';
-	operation: 'create' | 'update';
-	data: {
-		project_id?: string;
-		project_ref?: string;
-
-		title?: string;
-		content: string;
-		category?: string;
-		tags?: string[];
 	};
 }
 

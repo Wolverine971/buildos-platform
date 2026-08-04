@@ -1,5 +1,6 @@
 // packages/shared-types/src/agentic-chat-worker-contract.ts
 export const AGENTIC_CHAT_WORKER_CONTRACT_VERSION = 'agentic_chat_worker_v1' as const;
+export const AGENTIC_CHAT_ASYNC_TIMING_CONTRACT_VERSION = 'agentic_chat_async_v1' as const;
 export const AGENTIC_CHAT_REQUEST_HASH_VERSION = 'agentic_chat_request_hash_v2' as const;
 export const AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2 = 'agentic_chat_input_v2' as const;
 export const AGENTIC_CHAT_INPUT_ARTIFACT_VERSION = 'agentic_chat_input_v3' as const;
@@ -616,8 +617,13 @@ export type AgenticChatTerminalReceiptV1 = {
 	terminal_event_id: string;
 	terminal_sequence_index: number;
 	terminalized_at: string;
-	/** Present only when completion atomically committed a semantic event immediately before done. */
+	/** Legacy one-event terminal wrapper receipt. */
 	preterminal_event?: AgenticChatCommittedSemanticEventReceiptV1;
+	/** Ordered context/timing receipts from the three-event terminal wrapper. */
+	preterminal_events?: [
+		AgenticChatCommittedSemanticEventReceiptV1,
+		AgenticChatCommittedSemanticEventReceiptV1
+	];
 };
 
 /** Service-to-database result for the single worker terminal CAS boundary. */
