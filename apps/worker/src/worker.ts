@@ -44,6 +44,16 @@ import { checkQueueAlerts, emitQueueAlerts } from './lib/queueAlerts';
 import { supabase } from './lib/supabase';
 import { queueRuntimeConfig as config, queue } from './lib/queue';
 import { SMS_SENDING_DISABLED_REASON, SMS_SENDING_ENABLED } from './config/sms';
+import {
+	WorkerRuntimeLifecycle,
+	type WorkerRuntimeLifecycleHealth
+} from './lib/workerRuntimeLifecycle';
+import {
+	type AgenticChatPhase3Bootstrap,
+	type AgenticChatPhase3BootstrapHealth,
+	createAgenticChatPhase3Bootstrap
+} from './workers/agentic-chat/phase3Bootstrap';
+import type { AgenticChatWorkerCapacityEvidenceV1 } from './workers/agentic-chat/capacity';
 
 // Validate environment before starting
 const { valid, errors } = validateEnvironment();
@@ -55,6 +65,10 @@ if (!valid) {
 
 // Health-stats logging interval; stored so graceful shutdown can clear it.
 let statsInterval: NodeJS.Timeout | null = null;
+let workerRuntimeLifecycle: WorkerRuntimeLifecycle | null = null;
+let agenticChatBootstrap: AgenticChatPhase3Bootstrap | null = null;
+let agenticChatCapacityCollection: Promise<AgenticChatWorkerCapacityEvidenceV1 | null> | null =
+	null;
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -403,6 +417,9 @@ async function processQuestionTree(job: ProcessingJob<QuestionTreeJobMetadata>) 
  */
 export async function startWorker() {
 	console.log('🚀 Starting worker...');
+	// Validate and construct the default-off chat boundary before cleanup or
+	// either queue starts. Disabled configuration constructs no chat services.
+	const lifecycle = getOrCreateWorkerRuntimeLifecycle();
 
 	// Register processors
 	queue.process('generate_daily_brief', processBrief);
@@ -490,8 +507,9 @@ export async function startWorker() {
 		// Continue startup even if cleanup fails - don't block the worker
 	}
 
-	// Start processing
-	await queue.start();
+	// Start the existing queue first, then the isolated chat runtime. The
+	// coordinator rolls both back if either startup fails.
+	await lifecycle.start();
 
 	// Log queue stats based on configuration
 	if (config.enableHealthChecks) {
@@ -536,16 +554,71 @@ export async function startWorker() {
 
 /**
  * Gracefully shut the worker down: stop the health-stats logger and drain the
- * queue (stop claiming, then wait for the in-flight batch up to the drain
- * timeout). Called from index.ts's single SIGTERM/SIGINT handler. Safe to call
- * more than once — queue.stop() is idempotent.
+ * general and chat queues concurrently (stop claiming, then wait for each
+ * bounded drain). Called from index.ts's single SIGTERM/SIGINT/crash path.
+ * Safe to call more than once.
  */
 export async function shutdownWorker(): Promise<void> {
 	if (statsInterval) {
 		clearInterval(statsInterval);
 		statsInterval = null;
 	}
+	if (workerRuntimeLifecycle) {
+		await workerRuntimeLifecycle.stop();
+		return;
+	}
 	await queue.stop();
+}
+
+export function getWorkerHealth(): WorkerRuntimeLifecycleHealth {
+	if (workerRuntimeLifecycle) return workerRuntimeLifecycle.getHealth();
+	const queueHealth = queue.getHealth();
+	const agenticChat = uninitializedAgenticChatHealth();
+	return {
+		healthy: false,
+		state: 'idle',
+		reason: 'worker_runtime_not_initialized',
+		queue: queueHealth,
+		agenticChat
+	};
+}
+
+export function collectAgenticChatWorkerCapacityEvidence(): Promise<AgenticChatWorkerCapacityEvidenceV1 | null> {
+	if (!agenticChatBootstrap) return Promise.resolve(null);
+	if (agenticChatCapacityCollection) return agenticChatCapacityCollection;
+	const collection = agenticChatBootstrap.collectCapacityEvidence().finally(() => {
+		if (agenticChatCapacityCollection === collection) agenticChatCapacityCollection = null;
+	});
+	agenticChatCapacityCollection = collection;
+	return collection;
+}
+
+function getOrCreateWorkerRuntimeLifecycle(): WorkerRuntimeLifecycle {
+	if (workerRuntimeLifecycle) return workerRuntimeLifecycle;
+	const agenticChat = createAgenticChatPhase3Bootstrap({ client: supabase });
+	agenticChatBootstrap = agenticChat;
+	workerRuntimeLifecycle = new WorkerRuntimeLifecycle({ queue, agenticChat });
+	return workerRuntimeLifecycle;
+}
+
+function uninitializedAgenticChatHealth(): AgenticChatPhase3BootstrapHealth {
+	const flag = process.env.AGENTIC_CHAT_WORKER_ENABLED;
+	if (flag !== undefined && flag !== '' && flag !== 'false') {
+		return {
+			enabled: true,
+			healthy: false,
+			state: 'failed',
+			reason: flag === 'true' ? 'bootstrap_not_initialized' : 'bootstrap_flag_invalid',
+			runtime: null
+		};
+	}
+	return {
+		enabled: false,
+		healthy: true,
+		state: 'disabled',
+		reason: 'bootstrap_not_initialized',
+		runtime: null
+	};
 }
 
 // Export queue instance for use in other modules

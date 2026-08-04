@@ -10,7 +10,6 @@ import type { Database, Json } from '@buildos/shared-types';
 import type { EntityKind, RelationshipType } from './edge-direction';
 import {
 	applyContainmentEdges,
-	applyPlannedContainmentEdges,
 	fetchContainmentEdges,
 	normalizeParentRefs,
 	type ContainmentEdge,
@@ -351,41 +350,43 @@ export async function applyRelationshipMutationPlan(params: {
 	plan: RelationshipMutationPlan;
 }): Promise<void> {
 	const { supabase, projectId, plan } = params;
-	const applyContainment = async (
-		mutation: NonNullable<RelationshipMutationPlan['entityContainment']>
-	) =>
-		applyPlannedContainmentEdges({
-			supabase,
-			childKind: mutation.child.kind,
-			childId: mutation.child.id,
-			desiredEdges: mutation.desiredEdges
-		});
+	const { error } = await supabase.rpc('onto_apply_relationship_plan_atomic', {
+		p_project_id: projectId,
+		p_plan: plan as unknown as Json
+	});
 
-	if (plan.entityContainment) {
-		await applyContainment(plan.entityContainment);
+	if (!error) return;
+	throw relationshipMutationErrorFromDatabase(error) ?? new AutoOrganizeError(error.message, 500);
+}
+
+export function relationshipMutationErrorFromDatabase(error: {
+	message: string;
+}): AutoOrganizeError | null {
+	const referenceMatch = /^relationship_reference_not_found:([a-z_]+)$/.exec(error.message);
+	if (referenceMatch?.[1]) {
+		return new AutoOrganizeError(`${referenceMatch[1]} not found`, 404);
 	}
 
-	for (const mutation of plan.projectEdges) {
-		await removeProjectEdge({
-			supabase,
-			projectId,
-			entity: mutation.entity,
-			rel: mutation.rel
-		});
-	}
-
-	for (const mutation of plan.semantic) {
-		await applyPlannedSemanticMutation({ supabase, mutation });
-	}
-
-	for (const mutation of plan.childContainment) {
-		await applyContainment(mutation);
+	switch (error.message) {
+		case 'relationship_containment_conflict':
+			return new AutoOrganizeError(
+				'Relationship containment changed; retry the request',
+				409
+			);
+		case 'relationship_plan_access_denied':
+			return new AutoOrganizeError('Access denied', 403);
+		case 'relationship_plan_project_not_found':
+			return new AutoOrganizeError('Project not found', 404);
+		case 'relationship_containment_child_not_found':
+			return new AutoOrganizeError('Relationship child not found', 404);
+		default:
+			return null;
 	}
 }
 
-export async function autoOrganizeConnections(
+export async function prepareRelationshipMutationPlan(
 	request: AutoOrganizeConnectionsRequest
-): Promise<void> {
+): Promise<RelationshipMutationPlan> {
 	const {
 		supabase,
 		projectId,
@@ -419,6 +420,13 @@ export async function autoOrganizeConnections(
 		references: connections,
 		existingContainmentByChild
 	});
+	return mutationPlan;
+}
 
+export async function autoOrganizeConnections(
+	request: AutoOrganizeConnectionsRequest
+): Promise<void> {
+	const { supabase, projectId } = request;
+	const mutationPlan = await prepareRelationshipMutationPlan(request);
 	await applyRelationshipMutationPlan({ supabase, projectId, plan: mutationPlan });
 }

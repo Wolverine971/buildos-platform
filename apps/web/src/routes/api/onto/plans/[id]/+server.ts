@@ -34,6 +34,7 @@
  * - Project ownership verification
  */
 import type { RequestHandler } from './$types';
+import type { Database, Json } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import { PLAN_STATES } from '$lib/types/onto';
@@ -45,8 +46,9 @@ import {
 } from '$lib/services/async-activity-logger';
 import {
 	AutoOrganizeError,
-	autoOrganizeConnections,
 	assertEntityRefsInProject,
+	prepareRelationshipMutationPlan,
+	relationshipMutationErrorFromDatabase,
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
@@ -54,6 +56,8 @@ import type { EntityKind } from '$lib/services/ontology/edge-direction';
 import { logOntologyApiError } from '../../shared/error-logging';
 import { normalizeTypeKeyInput } from '../../shared/input-normalization';
 import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
+
+type PlanRow = Database['public']['Tables']['onto_plans']['Row'];
 
 // GET /api/onto/plans/[id] - Get a single plan
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -393,15 +397,51 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			updateData.props = propsUpdate;
 		}
 
-		// Update the plan
-		const { data: updatedPlan, error: updateError } = await supabase
-			.from('onto_plans')
-			.update(updateData)
-			.eq('id', params.id)
-			.select('*')
-			.single();
+		const hasContainmentInput =
+			hasGoalInput ||
+			hasMilestoneInput ||
+			hasParentField ||
+			hasParentsField ||
+			hasConnectionsInput;
+		const shouldOrganize = hasContainmentInput;
+		let relationshipPlan: Awaited<ReturnType<typeof prepareRelationshipMutationPlan>> | null =
+			null;
+
+		if (shouldOrganize) {
+			const explicitKinds: EntityKind[] = [];
+			if (hasConnectionsInput) {
+				explicitKinds.push('goal');
+			} else if (hasGoalInput) {
+				explicitKinds.push('goal');
+			}
+
+			relationshipPlan = await prepareRelationshipMutationPlan({
+				supabase,
+				projectId: existingPlan.project_id,
+				entity: { kind: 'plan', id: params.id },
+				connections: connectionList,
+				options: {
+					mode: 'replace',
+					explicitKinds
+				},
+				referencesValidated: true
+			});
+		}
+
+		// Update the row and any requested relationships in one transaction.
+		const { data: updateResult, error: updateError } = await supabase.rpc(
+			'onto_plan_update_atomic',
+			{
+				p_plan_id: params.id,
+				p_updates: updateData as Json,
+				p_relationship_plan: relationshipPlan as unknown as Json
+			}
+		);
+		const updatedPlan = (updateResult as { plan?: PlanRow } | null)?.plan ?? null;
 
 		if (updateError) {
+			const relationshipError = relationshipMutationErrorFromDatabase(updateError);
+			if (relationshipError) throw relationshipError;
 			console.error('Error updating plan:', updateError);
 			await logOntologyApiError({
 				supabase,
@@ -418,32 +458,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to update plan', 500);
 		}
 
-		const hasContainmentInput =
-			hasGoalInput ||
-			hasMilestoneInput ||
-			hasParentField ||
-			hasParentsField ||
-			hasConnectionsInput;
-		const shouldOrganize = hasContainmentInput;
-
-		if (shouldOrganize) {
-			const explicitKinds: EntityKind[] = [];
-			if (hasConnectionsInput) {
-				explicitKinds.push('goal');
-			} else if (hasGoalInput) {
-				explicitKinds.push('goal');
-			}
-
-			await autoOrganizeConnections({
-				supabase,
-				projectId: existingPlan.project_id,
-				entity: { kind: 'plan', id: params.id },
-				connections: connectionList,
-				options: {
-					mode: 'replace',
-					explicitKinds
-				}
-			});
+		if (!updatedPlan) {
+			throw new Error('Atomic plan update returned no plan');
 		}
 
 		// Log activity async (non-blocking)

@@ -9,6 +9,7 @@ import {
 	AgenticChatFixtureTurnExecutor,
 	type AgenticChatFixtureProviderStepV1
 } from '../src/workers/agentic-chat/fixtureTurnExecutor';
+import { AgenticChatProviderExecutionError } from '../src/workers/agentic-chat/providerContract';
 import { AgenticChatStreamPublisher } from '../src/workers/agentic-chat/streamPublisher';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
@@ -319,6 +320,43 @@ function createHarness(
 }
 
 describe('AgenticChatFixtureTurnExecutor', () => {
+	it('durably terminalizes an impossible out-of-cohort claimed row without provider work', async () => {
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'internal_cohort_rejected'
+				})
+			]
+		});
+
+		await expect(
+			harness.executor.reject(job(), {
+				code: 'internal_cohort_rejected',
+				message: 'Agentic Chat turn is outside the configured internal cohort'
+			})
+		).resolves.toMatchObject({
+			outcome: 'failed',
+			terminalStatus: 'failed',
+			queueReconciled: true
+		});
+		expect(harness.control.claim).toHaveBeenCalledOnce();
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'failed',
+				failureCode: 'internal_cohort_rejected',
+				assistantText: ''
+			})
+		);
+		expect(harness.control.recover).toHaveBeenCalledWith(
+			expect.objectContaining({ failureClass: 'permanent' })
+		);
+		expect(harness.input.load).not.toHaveBeenCalled();
+		expect(harness.control.begin).not.toHaveBeenCalled();
+		expect(harness.provider.stream).not.toHaveBeenCalled();
+		await harness.publisher.stop();
+	});
+
 	it('streams text, executes a read-only tool, persists reconnect-safe projection, and finalizes', async () => {
 		const harness = createHarness([
 			{ type: 'text_delta', text: 'Hello ' },
@@ -499,6 +537,101 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	it('reserves provider capacity before begin and starts the network stream only after begin wins', async () => {
+		const harness = createHarness([]);
+		const release = vi.fn(() => harness.log.push('release'));
+		const prepare = vi.fn(async () => {
+			harness.log.push('prepare');
+			return {
+				stream: () => {
+					harness.log.push('provider');
+					return (async function* () {
+						yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+					})();
+				},
+				release
+			};
+		});
+		Object.assign(harness.provider, { prepare });
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(harness.log).toEqual(['prepare', 'begin', 'provider', 'release']);
+		expect(prepare).toHaveBeenCalledWith({
+			executionInput,
+			signal: expect.any(AbortSignal)
+		});
+		expect(harness.provider.stream).not.toHaveBeenCalled();
+		expect(release).toHaveBeenCalledOnce();
+		await harness.publisher.stop();
+	});
+
+	it('releases a prepared provider without streaming when the start fence denies invocation', async () => {
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'unknown' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'unknown'
+				})
+			]
+		});
+		const preparedStream = vi.fn();
+		const release = vi.fn();
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({ stream: preparedStream, release }))
+		});
+		harness.control.begin.mockResolvedValueOnce({
+			outcome: 'already_started',
+			invoke_provider: false,
+			turn_run_id: TURN_RUN_ID,
+			queue_job_id: QUEUE_JOB_ID,
+			session_id: SESSION_ID,
+			user_id: USER_ID,
+			correlation_id: CORRELATION_ID,
+			execution_generation: EXECUTION_GENERATION,
+			execution_started_at: '2026-08-03T12:00:00.000Z',
+			status: 'running'
+		} as never);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'failed',
+			terminalStatus: 'failed'
+		});
+		expect(preparedStream).not.toHaveBeenCalled();
+		expect(harness.provider.stream).not.toHaveBeenCalled();
+		expect(release).toHaveBeenCalledOnce();
+		await harness.publisher.stop();
+	});
+
+	it('routes a pre-start provider-capacity failure through typed retry recovery', async () => {
+		const harness = createHarness([], {
+			recovery: [recoveryReceipt('retry_scheduled', { failure_code: 'provider_throttle' })]
+		});
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => {
+				throw new AgenticChatProviderExecutionError(
+					'provider_capacity_unavailable',
+					'provider_throttle',
+					'provider saturated'
+				);
+			})
+		});
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'requeued',
+			queueReconciled: false
+		});
+		expect(harness.control.begin).not.toHaveBeenCalled();
+		expect(harness.control.recover).toHaveBeenCalledWith(
+			expect.objectContaining({ failureClass: 'provider_throttle' })
+		);
+		expect(harness.provider.stream).not.toHaveBeenCalled();
+		await harness.publisher.stop();
+	});
+
 	it('never invokes the provider for a lost-response already-started receipt', async () => {
 		const harness = createHarness([], {
 			recovery: [
@@ -543,13 +676,20 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				})
 			]
 		});
+		const preparedStream = vi.fn();
+		const release = vi.fn();
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({ stream: preparedStream, release }))
+		});
 		harness.control.begin.mockRejectedValueOnce(new Error('begin response lost'));
 
 		await expect(harness.executor.execute(job())).resolves.toMatchObject({
 			outcome: 'failed',
 			terminalStatus: 'failed'
 		});
+		expect(preparedStream).not.toHaveBeenCalled();
 		expect(harness.provider.stream).not.toHaveBeenCalled();
+		expect(release).toHaveBeenCalledOnce();
 		expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
 			failureClass: 'transient_infra'
 		});

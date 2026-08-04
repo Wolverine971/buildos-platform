@@ -1,6 +1,7 @@
 // apps/worker/src/workers/agentic-chat/index.ts
 
 export * from './cancellationObserver';
+export * from './capacity';
 export * from './consumer';
 export * from './consumerRuntime';
 export * from './effectControl';
@@ -10,7 +11,13 @@ export * from './executionInput';
 export * from './fixtureConsumer';
 export * from './fixtureMutationExecutor';
 export * from './fixtureTurnExecutor';
+export * from './openRouterReadOnlyClient';
+export * from './phase3Bootstrap';
 export * from './phase3Config';
+export * from './phase3Assembly';
+export * from './providerContract';
+export * from './providerCapacity';
+export * from './readOnlyProvider';
 export * from './recoverySnapshot';
 export * from './stalledRecovery';
 export * from './streamPublisher';

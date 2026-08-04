@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/onto/tasks/create/+server.ts
 import type { RequestHandler } from './$types';
+import type { Database, Json } from '@buildos/shared-types';
 import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
@@ -15,8 +16,9 @@ import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.ser
 import {
 	AutoOrganizeError,
 	ENTITY_TABLES,
-	autoOrganizeConnections,
 	assertEntityRefsInProject,
+	prepareRelationshipMutationPlan,
+	relationshipMutationErrorFromDatabase,
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
@@ -47,25 +49,7 @@ import {
 	shouldSkipProjectLoopBurst
 } from '$lib/server/project-loop-burst.service';
 const ALLOWED_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
-
-/**
- * Compensating cleanup for D7: if edge auto-organization fails after the task
- * row committed, remove the orphan so a retry does not accumulate connectionless
- * tasks. Edges are polymorphic (no FK to onto_tasks) so they are deleted
- * explicitly; assignee links cascade via the task FK.
- */
-async function cleanupOrphanTask(supabase: App.Locals['supabase'], taskId: string): Promise<void> {
-	try {
-		await supabase.from('onto_edges').delete().eq('src_id', taskId);
-		await supabase.from('onto_edges').delete().eq('dst_id', taskId);
-		await supabase.from('onto_tasks').delete().eq('id', taskId);
-	} catch (cleanupError) {
-		console.error(
-			'[Task Create] Failed to clean up orphan task after edge failure:',
-			cleanupError
-		);
-	}
-}
+type TaskRow = Database['public']['Tables']['onto_tasks']['Row'];
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -284,10 +268,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (normalizedMilestoneId) {
 			validatedMilestoneId = normalizedMilestoneId;
 		}
+		const taskId = crypto.randomUUID();
+		const relationshipPlan = await prepareRelationshipMutationPlan({
+			supabase,
+			projectId,
+			entity: { kind: 'task', id: taskId },
+			connections: connectionList,
+			options: { mode: 'replace' },
+			referencesValidated: true
+		});
 		// Create the task
 		// Description is now a proper column (not just in props)
 		// completed_at is auto-set when state_key is 'done'
 		const taskData = {
+			id: taskId,
 			project_id: projectId,
 			title: taskTitle,
 			description: taskDescription ?? null,
@@ -306,26 +300,31 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// Auto-set completed_at when creating a task as done
 			...(finalState === 'done' ? { completed_at: new Date().toISOString() } : {})
 		};
-		// Atomic create: the task row + its assignee links are written inside a
-		// single RPC transaction (mirrors onto_task_update_atomic). Edge
-		// auto-organization stays post-commit — exactly as the update path does —
-		// and is compensated below if it fails so no orphan task survives (D7).
+		// The task row, assignees, idempotency key, and relationship plan commit
+		// together. External notifications and calendar sync remain post-commit.
 		const { data: atomicResult, error: atomicError } = await supabase.rpc(
-			'onto_task_create_atomic' as any,
+			'onto_task_create_with_relationships_atomic',
 			{
-				p_task: taskData,
+				p_task: taskData as Json,
+				p_relationship_plan: relationshipPlan as unknown as Json,
 				p_sync_assignees: hasAssigneeInput,
 				p_assignee_actor_ids: hasAssigneeInput ? assigneeActorIds : null,
 				p_assigned_by_actor_id: hasAssigneeInput ? actorId : null,
 				p_source: 'manual',
 				p_idempotency_key: idempotencyKey
-			} as any
+			}
 		);
 		if (atomicError || !atomicResult) {
+			const relationshipError = atomicError
+				? relationshipMutationErrorFromDatabase(atomicError)
+				: null;
+			if (relationshipError) throw relationshipError;
 			console.error('Error creating task:', atomicError);
 			await logOntologyApiError({
 				supabase,
-				error: atomicError ?? new Error('onto_task_create_atomic returned no data'),
+				error:
+					atomicError ??
+					new Error('onto_task_create_with_relationships_atomic returned no data'),
 				endpoint: '/api/onto/tasks/create',
 				method: 'POST',
 				userId: user.id,
@@ -344,10 +343,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				return ApiResponse.badRequest(message);
 			}
 			return ApiResponse.databaseError(
-				atomicError ?? new Error('onto_task_create_atomic returned no data')
+				atomicError ??
+					new Error('onto_task_create_with_relationships_atomic returned no data')
 			);
 		}
-		const task = (atomicResult as { task: any }).task;
+		const task = (atomicResult as { task?: TaskRow }).task;
+		if (!task) {
+			throw new Error('Atomic task create returned no task');
+		}
 		const isIdempotentReplay = Boolean(
 			(atomicResult as { idempotent_replay?: boolean }).idempotent_replay
 		);
@@ -368,21 +371,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 			return ApiResponse.created({ task: replayTask });
 		}
-		try {
-			await autoOrganizeConnections({
-				supabase,
-				projectId,
-				entity: { kind: 'task', id: task.id },
-				connections: connectionList,
-				options: { mode: 'replace' }
-			});
-		} catch (organizeError) {
-			// D7: the task committed but edge creation failed. Delete the orphan
-			// (its edges + assignee links + row) so the caller can retry cleanly
-			// instead of accumulating tasks with no connections.
-			await cleanupOrphanTask(supabase, task.id);
-			throw organizeError;
-		}
 		const actorDisplayName =
 			(typeof user.name === 'string' && user.name) ||
 			user.email?.split('@')[0] ||
@@ -396,7 +384,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 		let assignmentRecipientUserIds: string[] = [];
 		if (hasAssigneeInput) {
-			// Assignees were already inserted inside onto_task_create_atomic above;
+			// Assignees were already inserted inside the atomic command above;
 			// `addedActorIds` came back with the RPC result. Notifications stay
 			// outside the transaction because they fan out via external channels.
 			const addedActorIds = ((atomicResult as { added_actor_ids?: string[] })

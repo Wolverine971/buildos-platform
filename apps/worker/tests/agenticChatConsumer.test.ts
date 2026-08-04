@@ -21,6 +21,10 @@ vi.mock('../src/lib/supabase', () => ({
 }));
 
 const INTERNAL_USER_ID = 'd1000000-0000-4000-8000-000000000001';
+const PHASE_3_PROVIDER_ENV = {
+	PRIVATE_OPENROUTER_API_KEY: 'provider-secret',
+	AGENTIC_CHAT_OPENROUTER_MODEL: 'provider/primary'
+} as const;
 
 beforeEach(() => {
 	vi.mocked(supabase.rpc).mockReset();
@@ -33,7 +37,7 @@ afterEach(() => {
 describe('Phase 3 Agentic Chat consumer', () => {
 	it('constructs an inert one-type pool with the Phase 3 default envelope', () => {
 		const execute = vi.fn();
-		const consumer = createAgenticChatConsumer({ execute }, consumerOptions());
+		const consumer = createAgenticChatConsumer(testExecutor(execute), consumerOptions());
 
 		expect(consumer.config).toEqual(DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG);
 		expect(consumer.queue.getRegisteredJobTypes()).toEqual(['agentic_chat_turn']);
@@ -45,18 +49,21 @@ describe('Phase 3 Agentic Chat consumer', () => {
 	});
 
 	it('holds the initial internal phase at one slot and preserves the one-second fallback', () => {
-		const executor = { execute: vi.fn() };
-		expect(() => createAgenticChatConsumer(executor, consumerOptions({ concurrency: 2 }))).toThrow(
-			'must remain 1 until the load-smoke gate'
-		);
+		const executor = testExecutor();
+		expect(() =>
+			createAgenticChatConsumer(executor, consumerOptions({ concurrency: 2 }))
+		).toThrow('must remain 1 until the load-smoke gate');
 		expect(() =>
 			createAgenticChatConsumer(executor, consumerOptions({ pollIntervalMs: 999 }))
 		).toThrow('polling cannot be below 1000ms');
 		expect(() =>
-			createAgenticChatConsumer(executor, consumerOptions({
-				workerTimeoutMs: 1_000,
-				stalledTimeoutMs: 1_000
-			}))
+			createAgenticChatConsumer(
+				executor,
+				consumerOptions({
+					workerTimeoutMs: 1_000,
+					stalledTimeoutMs: 1_000
+				})
+			)
 		).toThrow('stalled timeout must exceed');
 	});
 
@@ -74,7 +81,7 @@ describe('Phase 3 Agentic Chat consumer', () => {
 
 		const execute = vi.fn().mockResolvedValue({ outcome: 'completed' });
 		const consumer = createAgenticChatConsumer(
-			{ execute },
+			testExecutor(execute),
 			consumerOptions({ pollIntervalMs: 60_000 })
 		);
 		await consumer.queue.start();
@@ -91,7 +98,9 @@ describe('Phase 3 Agentic Chat consumer', () => {
 		expect(
 			vi
 				.mocked(supabase.rpc)
-				.mock.calls.some(([name]) => name === 'complete_queue_job' || name === 'fail_queue_job')
+				.mock.calls.some(
+					([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
+				)
 		).toBe(false);
 		await consumer.queue.stop();
 	});
@@ -112,7 +121,7 @@ describe('Phase 3 Agentic Chat consumer', () => {
 
 		const execute = vi.fn().mockResolvedValue({ outcome: 'completed' });
 		const consumer = createAgenticChatConsumer(
-			{ execute },
+			testExecutor(execute),
 			consumerOptions({ pollIntervalMs: 60_000 })
 		);
 		const starting = consumer.queue.start();
@@ -129,7 +138,7 @@ describe('Phase 3 Agentic Chat consumer', () => {
 	it('delegates stalled rows only to the fenced chat recovery service', async () => {
 		vi.useFakeTimers();
 		vi.mocked(supabase.rpc).mockResolvedValue({ data: [], error: null } as never);
-		const consumer = createAgenticChatConsumer({ execute: vi.fn() }, consumerOptions());
+		const consumer = createAgenticChatConsumer(testExecutor(), consumerOptions());
 
 		await consumer.queue.start();
 		await vi.advanceTimersByTimeAsync(60_000);
@@ -148,28 +157,35 @@ describe('Phase 3 Agentic Chat consumer', () => {
 			return { data: claimCount === 1 ? [job] : [], error: null } as never;
 		});
 		const execute = vi.fn();
-		const consumer = createAgenticChatConsumer({ execute }, consumerOptions());
+		const executor = testExecutor(execute);
+		const consumer = createAgenticChatConsumer(executor, consumerOptions());
 
 		await consumer.queue.start();
 		await vi.waitFor(() => expect(claimCount).toBeGreaterThanOrEqual(2));
 		expect(execute).not.toHaveBeenCalled();
+		expect(executor.reject).toHaveBeenCalledWith(
+			expect.objectContaining({ userId: job.user_id, queueRowId: job.id }),
+			{
+				code: 'internal_cohort_rejected',
+				message: 'Agentic Chat turn is outside the configured internal cohort'
+			}
+		);
 		expect(
 			vi
 				.mocked(supabase.rpc)
-				.mock.calls.some(([name]) => name === 'complete_queue_job' || name === 'fail_queue_job')
+				.mock.calls.some(
+					([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
+				)
 		).toBe(false);
 		await consumer.queue.stop();
 	});
 
 	it('requires a nonempty canonical cohort at construction', () => {
+		expect(() => createAgenticChatConsumer(testExecutor(), { internalUserIds: [] })).toThrow(
+			'requires at least one internal user UUID'
+		);
 		expect(() =>
-			createAgenticChatConsumer({ execute: vi.fn() }, { internalUserIds: [] })
-		).toThrow('requires at least one internal user UUID');
-		expect(() =>
-			createAgenticChatConsumer(
-				{ execute: vi.fn() },
-				{ internalUserIds: ['not-a-user-id'] }
-			)
+			createAgenticChatConsumer(testExecutor(), { internalUserIds: ['not-a-user-id'] })
 		).toThrow('must contain canonical UUIDs');
 		expect(new AgenticChatInternalCohortError()).toMatchObject({
 			code: 'internal_cohort_rejected'
@@ -182,19 +198,22 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 		expect(loadAgenticChatPhase3Config({})).toEqual({
 			enabled: false,
 			internalUserIds: [],
-			consumer: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG
+			consumer: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
+			provider: null
 		});
-		expect(() =>
-			loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_ENABLED: 'true' })
-		).toThrow('must contain at least one canonical UUID');
+		expect(() => loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_ENABLED: 'true' })).toThrow(
+			'must contain at least one canonical UUID'
+		);
 	});
 
 	it('parses an exact internal cohort and independently bounded queue policy', () => {
 		const first = 'd1000000-0000-4000-8000-000000000002';
 		const second = 'd1000000-0000-4000-8000-000000000001';
 		const config = loadAgenticChatPhase3Config({
+			...PHASE_3_PROVIDER_ENV,
 			AGENTIC_CHAT_WORKER_ENABLED: 'true',
 			AGENTIC_CHAT_INTERNAL_USER_IDS: `${first},${second}`,
+			AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS: 'provider/fallback-1,provider/fallback-2',
 			CHAT_CONCURRENCY: '1',
 			CHAT_POLL_INTERVAL_MS: '1500',
 			CHAT_WORKER_TIMEOUT_MS: '2000',
@@ -211,6 +230,18 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 				workerTimeoutMs: 2000,
 				stalledTimeoutMs: 3000,
 				drainTimeoutMs: 1000
+			},
+			provider: {
+				routes: [
+					{
+						id: 'openrouter',
+						kind: 'openrouter',
+						baseUrl: 'https://openrouter.ai/api/v1',
+						apiKey: 'provider-secret',
+						model: 'provider/primary',
+						fallbackModels: ['provider/fallback-1', 'provider/fallback-2']
+					}
+				]
 			}
 		});
 		expect(isAgenticChatInternalUser(config, first.toUpperCase())).toBe(true);
@@ -220,9 +251,9 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 	});
 
 	it('fails closed on ambiguous flags, duplicate users, and out-of-envelope values', () => {
-		expect(() =>
-			loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_ENABLED: 'TRUE' })
-		).toThrow('must be exactly true or false');
+		expect(() => loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_ENABLED: 'TRUE' })).toThrow(
+			'must be exactly true or false'
+		);
 		expect(() =>
 			loadAgenticChatPhase3Config({
 				AGENTIC_CHAT_INTERNAL_USER_IDS:
@@ -232,12 +263,48 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 		expect(() => loadAgenticChatPhase3Config({ CHAT_CONCURRENCY: '2' })).toThrow(
 			'must remain 1 until the load-smoke gate'
 		);
+		expect(
+			loadAgenticChatPhase3Config({
+				AGENTIC_CHAT_WORKER_ENABLED: 'false',
+				CHAT_DRAIN_TIMEOUT_MS: '25000'
+			}).consumer.drainTimeoutMs
+		).toBe(25_000);
+		expect(() =>
+			loadAgenticChatPhase3Config({
+				...PHASE_3_PROVIDER_ENV,
+				AGENTIC_CHAT_WORKER_ENABLED: 'true',
+				AGENTIC_CHAT_INTERNAL_USER_IDS: INTERNAL_USER_ID,
+				CHAT_DRAIN_TIMEOUT_MS: '22001'
+			})
+		).toThrow('cannot exceed 22000ms process budget');
+		expect(() =>
+			loadAgenticChatPhase3Config({
+				AGENTIC_CHAT_WORKER_ENABLED: 'true',
+				AGENTIC_CHAT_INTERNAL_USER_IDS: INTERNAL_USER_ID
+			})
+		).toThrow('PRIVATE_OPENROUTER_API_KEY');
+		expect(() =>
+			loadAgenticChatPhase3Config({
+				...PHASE_3_PROVIDER_ENV,
+				AGENTIC_CHAT_WORKER_ENABLED: 'true',
+				AGENTIC_CHAT_INTERNAL_USER_IDS: INTERNAL_USER_ID,
+				AGENTIC_CHAT_OPENROUTER_BASE_URL: 'http://openrouter.example/api/v1'
+			})
+		).toThrow('clean HTTPS base URL');
+		expect(() =>
+			loadAgenticChatPhase3Config({
+				...PHASE_3_PROVIDER_ENV,
+				AGENTIC_CHAT_WORKER_ENABLED: 'true',
+				AGENTIC_CHAT_INTERNAL_USER_IDS: INTERNAL_USER_ID,
+				AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS: 'provider/fallback,provider/fallback'
+			})
+		).toThrow('must be unique');
 	});
 });
 
 describe('Phase 3 Agentic Chat lifecycle', () => {
 	it('starts and drains owned services in dependency-safe order', async () => {
-		const consumer = createAgenticChatConsumer({ execute: vi.fn() }, consumerOptions());
+		const consumer = createAgenticChatConsumer(testExecutor(), consumerOptions());
 		const calls: string[] = [];
 		vi.spyOn(consumer.queue, 'start').mockImplementation(async () => {
 			calls.push('queue.start');
@@ -278,7 +345,7 @@ describe('Phase 3 Agentic Chat lifecycle', () => {
 	});
 
 	it('rolls back earlier services when startup fails', async () => {
-		const consumer = createAgenticChatConsumer({ execute: vi.fn() }, consumerOptions());
+		const consumer = createAgenticChatConsumer(testExecutor(), consumerOptions());
 		const calls: string[] = [];
 		vi.spyOn(consumer.queue, 'stop').mockImplementation(async () => {
 			calls.push('queue.stop');
@@ -309,7 +376,7 @@ describe('Phase 3 Agentic Chat lifecycle', () => {
 	});
 
 	it('attempts every drain stage even if one service stop fails', async () => {
-		const consumer = createAgenticChatConsumer({ execute: vi.fn() }, consumerOptions());
+		const consumer = createAgenticChatConsumer(testExecutor(), consumerOptions());
 		const calls: string[] = [];
 		vi.spyOn(consumer.queue, 'start').mockResolvedValue();
 		vi.spyOn(consumer.queue, 'stop').mockImplementation(async () => {
@@ -341,7 +408,7 @@ describe('Phase 3 Agentic Chat lifecycle', () => {
 	});
 
 	it('refuses a mixed or general queue at construction', () => {
-		const consumer = createAgenticChatConsumer({ execute: vi.fn() }, consumerOptions());
+		const consumer = createAgenticChatConsumer(testExecutor(), consumerOptions());
 		consumer.queue.process('send_notification', vi.fn());
 		expect(
 			() =>
@@ -367,6 +434,10 @@ function service(name: string, calls: string[]) {
 
 function consumerOptions(config = {}) {
 	return { internalUserIds: [INTERNAL_USER_ID], config };
+}
+
+function testExecutor(execute = vi.fn()) {
+	return { execute, reject: vi.fn().mockResolvedValue({ outcome: 'failed' }) };
 }
 
 function claimedChatJob() {

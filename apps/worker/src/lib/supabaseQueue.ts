@@ -6,6 +6,7 @@ import { updateJobProgress } from './progressTracker';
 import { ensureQueueCorrelationMetadata, getQueueCorrelationId } from './queueCorrelation';
 import { classifyQueueError } from './queueErrors';
 import { supabase } from './supabase';
+import { resolveDefaultQueueDrainTimeout } from '../config/shutdownBudget';
 
 type QueueJob = Database['public']['Tables']['queue_jobs']['Row'];
 type ClaimedQueueJob = QueueJob & { processing_token?: string | null };
@@ -68,6 +69,14 @@ export interface ProcessingJob<T = unknown> {
 	log: (message: string) => Promise<void>;
 }
 
+export type QueueCapacitySnapshot = {
+	concurrency: number;
+	activeJobs: number;
+	availableSlots: number;
+	acceptingWork: boolean;
+	draining: boolean;
+};
+
 export function resolveQueueHeartbeatInterval(stalledTimeoutMs: number): number {
 	const finiteTimeout = Number.isFinite(stalledTimeoutMs) ? stalledTimeoutMs : 300_000;
 	return Math.max(5_000, Math.min(60_000, Math.floor(finiteTimeout / 3)));
@@ -125,7 +134,8 @@ export class SupabaseQueue {
 		// Bounded drain window on shutdown. Stay under Railway's ~30s
 		// SIGTERM→SIGKILL grace so we always return before the hard kill.
 		this.drainTimeout =
-			options?.drainTimeout ?? (Number(process.env.QUEUE_DRAIN_TIMEOUT_MS) || 25000);
+			options?.drainTimeout ??
+			resolveDefaultQueueDrainTimeout(process.env.QUEUE_DRAIN_TIMEOUT_MS);
 	}
 
 	/**
@@ -204,6 +214,16 @@ export class SupabaseQueue {
 	 */
 	getRegisteredJobTypes(): JobType[] {
 		return Array.from(this.processors.keys());
+	}
+
+	getCapacitySnapshot(): QueueCapacitySnapshot {
+		return {
+			concurrency: this.batchSize,
+			activeJobs: this.activeJobs.size,
+			availableSlots: Math.max(0, this.batchSize - this.activeJobs.size),
+			acceptingWork: this.acceptingWork,
+			draining: this.stopping !== null
+		};
 	}
 
 	/**

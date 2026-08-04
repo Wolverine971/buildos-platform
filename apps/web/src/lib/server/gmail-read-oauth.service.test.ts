@@ -86,6 +86,7 @@ function createOAuthClient(overrides: Record<string, unknown> = {}) {
 			tokens: {
 				access_token: 'access-token',
 				refresh_token: 'refresh-token',
+				refresh_token_expires_in: 604_800,
 				id_token: 'id-token',
 				expiry_date: Date.parse('2026-07-22T18:00:00.000Z'),
 				token_type: 'Bearer'
@@ -115,6 +116,7 @@ function createOAuthClient(overrides: Record<string, unknown> = {}) {
 		refreshAccessToken: vi.fn().mockResolvedValue({
 			credentials: {
 				access_token: 'refreshed-access-token',
+				refresh_token: 'refresh-token',
 				expiry_date: Date.parse('2026-07-22T19:00:00.000Z'),
 				token_type: 'Bearer'
 			}
@@ -254,7 +256,8 @@ describe('GmailReadOAuthService', () => {
 		const service = new GmailReadOAuthService(admin, {
 			clientId: 'gmail-read-client',
 			clientSecret: 'gmail-read-secret',
-			createOAuthClient: () => oauthClient
+			createOAuthClient: () => oauthClient,
+			now: () => new Date('2026-07-22T17:00:00.000Z')
 		});
 
 		const result = await service.exchangeAuthorizationCode({
@@ -277,6 +280,7 @@ describe('GmailReadOAuthService', () => {
 		expect(upsertCall.p_access_token_ciphertext).toMatch(/^enc:gmail:v1\./);
 		expect(upsertCall.p_refresh_token_ciphertext).toMatch(/^enc:gmail:v1\./);
 		expect(upsertCall.p_access_token_ciphertext).not.toContain('access-token');
+		expect(upsertCall.p_refresh_token_expires_at).toBe('2026-07-29T17:00:00.000Z');
 		expect(upsertCall.p_granted_scopes).toEqual(['email', GMAIL_READ_SCOPE, 'openid'].sort());
 		expect(
 			decryptGmailToken(upsertCall.p_refresh_token_ciphertext, {
@@ -310,7 +314,10 @@ describe('GmailReadOAuthService', () => {
 		const { admin, rpc } = createAdmin({
 			connection: { data: connection, error: null },
 			credential: {
-				data: { refresh_token_ciphertext: encryptedRefreshToken },
+				data: {
+					refresh_token_ciphertext: encryptedRefreshToken,
+					refresh_token_expires_at: '2026-07-29T17:00:00.000Z'
+				},
 				error: null
 			},
 			upsertConnection: { data: [connection], error: null }
@@ -354,6 +361,7 @@ describe('GmailReadOAuthService', () => {
 				grantKind: 'read'
 			})
 		).toBe('preserved-refresh-token');
+		expect(upsertCall.p_refresh_token_expires_at).toBe('2026-07-29T17:00:00.000Z');
 	});
 
 	it('rotates an expiring access token for only the selected Gmail connection', async () => {
@@ -380,6 +388,7 @@ describe('GmailReadOAuthService', () => {
 			access_token_ciphertext: encryptGmailToken('old-access-token', tokenContext),
 			refresh_token_ciphertext: encryptGmailToken('refresh-token', tokenContext),
 			access_token_expires_at: '2026-07-22T17:01:00.000Z',
+			refresh_token_expires_at: '2026-07-29T17:00:00.000Z',
 			token_type: 'Bearer',
 			granted_scopes: [GMAIL_READ_SCOPE]
 		};
@@ -409,6 +418,59 @@ describe('GmailReadOAuthService', () => {
 		expect(decryptGmailToken(rotateCall.p_access_token_ciphertext, tokenContext)).toBe(
 			'refreshed-access-token'
 		);
+		expect(rotateCall.p_refresh_token_expires_at).toBe('2026-07-29T17:00:00.000Z');
+	});
+
+	it('marks a connection for reconnect when its known refresh-token deadline has passed', async () => {
+		const connection = {
+			id: 'connection-1',
+			user_id: 'user-1',
+			provider: 'google_gmail',
+			provider_account_id: 'google-sub-1',
+			email_address: 'dj@example.com',
+			display_name: 'DJ Wayne',
+			account_label: 'BuildOS',
+			status: 'active',
+			read_enabled: true,
+			connected_at: '2026-07-22T17:00:00.000Z',
+			last_verified_at: '2026-07-22T17:00:00.000Z',
+			last_used_at: null
+		};
+		const tokenContext = {
+			userId: 'user-1',
+			providerAccountId: 'google-sub-1',
+			grantKind: 'read' as const
+		};
+		const { admin, rpc } = createAdmin({
+			connection: { data: connection, error: null },
+			credential: {
+				data: {
+					access_token_ciphertext: encryptGmailToken('access-token', tokenContext),
+					refresh_token_ciphertext: encryptGmailToken('refresh-token', tokenContext),
+					access_token_expires_at: '2026-07-22T18:00:00.000Z',
+					refresh_token_expires_at: '2026-07-22T16:59:59.000Z',
+					token_type: 'Bearer',
+					granted_scopes: [GMAIL_READ_SCOPE]
+				},
+				error: null
+			}
+		});
+		const oauthClient = createOAuthClient();
+		const service = new GmailReadOAuthService(admin, {
+			clientId: 'gmail-read-client',
+			clientSecret: 'gmail-read-secret',
+			createOAuthClient: () => oauthClient,
+			now: () => new Date('2026-07-22T17:00:00.000Z')
+		});
+
+		await expect(
+			service.getAuthorizedReadAccessToken('user-1', 'connection-1')
+		).rejects.toMatchObject<GmailOAuthError>({ code: 'reconnect_required' });
+		expect(rpc).toHaveBeenCalledWith('mark_gmail_read_connection_reconnect_required', {
+			p_user_id: 'user-1',
+			p_connection_id: 'connection-1'
+		});
+		expect(oauthClient.refreshAccessToken).not.toHaveBeenCalled();
 	});
 
 	it('force-refreshes a token that has not reached its normal refresh window', async () => {

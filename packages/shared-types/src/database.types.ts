@@ -5077,6 +5077,7 @@ export type Database = {
           last_refreshed_at: string | null
           oauth_client_kind: string
           refresh_token_ciphertext: string
+          refresh_token_expires_at: string | null
           revoked_at: string | null
           token_type: string
           updated_at: string
@@ -5093,6 +5094,7 @@ export type Database = {
           last_refreshed_at?: string | null
           oauth_client_kind: string
           refresh_token_ciphertext: string
+          refresh_token_expires_at?: string | null
           revoked_at?: string | null
           token_type?: string
           updated_at?: string
@@ -5109,6 +5111,7 @@ export type Database = {
           last_refreshed_at?: string | null
           oauth_client_kind?: string
           refresh_token_ciphertext?: string
+          refresh_token_expires_at?: string | null
           revoked_at?: string | null
           token_type?: string
           updated_at?: string
@@ -18820,6 +18823,10 @@ export type Database = {
         }
         Returns: Json
       }
+      onto_apply_relationship_plan_atomic: {
+        Args: { p_plan: Json; p_project_id: string }
+        Returns: Json
+      }
       onto_check_guard: {
         Args: { p_entity: Json; p_guard: Json }
         Returns: boolean
@@ -18845,6 +18852,19 @@ export type Database = {
         }
         Returns: Json
       }
+      onto_document_delete_atomic: {
+        Args: {
+          p_changed_by?: string
+          p_children_updates?: Json
+          p_document_id: string
+          p_expected_structure_version: number
+          p_expected_updated_at: string
+          p_next_structure: Json
+          p_permanent: boolean
+          p_project_id: string
+        }
+        Returns: Json
+      }
       onto_document_restore_atomic: {
         Args: {
           p_changed_by?: string
@@ -18855,6 +18875,18 @@ export type Database = {
           p_next_structure: Json
           p_project_id: string
           p_restore_state_key: string
+        }
+        Returns: Json
+      }
+      onto_goal_create_atomic: {
+        Args: { p_goal: Json; p_relationship_plan: Json }
+        Returns: Json
+      }
+      onto_goal_update_atomic: {
+        Args: {
+          p_goal_id: string
+          p_relationship_plan?: Json
+          p_updates: Json
         }
         Returns: Json
       }
@@ -18870,6 +18902,18 @@ export type Database = {
         Args: { p_json: Json; p_path: string }
         Returns: boolean
       }
+      onto_plan_create_atomic: {
+        Args: { p_plan: Json; p_relationship_plan: Json }
+        Returns: Json
+      }
+      onto_plan_update_atomic: {
+        Args: {
+          p_plan_id: string
+          p_relationship_plan?: Json
+          p_updates: Json
+        }
+        Returns: Json
+      }
       onto_project_doc_structure_update_atomic: {
         Args: {
           p_change_type: string
@@ -18877,6 +18921,14 @@ export type Database = {
           p_children_updates?: Json
           p_expected_version: number
           p_next_structure: Json
+          p_project_id: string
+        }
+        Returns: Json
+      }
+      onto_relationship_entity_in_project: {
+        Args: {
+          p_entity_id: string
+          p_kind: string
           p_project_id: string
         }
         Returns: Json
@@ -18912,6 +18964,18 @@ export type Database = {
         }
         Returns: Json
       }
+      onto_task_create_with_relationships_atomic: {
+        Args: {
+          p_assigned_by_actor_id?: string | null
+          p_assignee_actor_ids?: string[] | null
+          p_idempotency_key?: string | null
+          p_relationship_plan: Json
+          p_source?: string
+          p_sync_assignees?: boolean
+          p_task: Json
+        }
+        Returns: Json
+      }
       onto_task_move_atomic: {
         Args: {
           p_confirmation_token?: string
@@ -18925,6 +18989,18 @@ export type Database = {
         Args: {
           p_assigned_by_actor_id: string
           p_assignee_actor_ids: string[]
+          p_source?: string
+          p_sync_assignees: boolean
+          p_task_id: string
+          p_updates: Json
+        }
+        Returns: Json
+      }
+      onto_task_update_with_relationships_atomic: {
+        Args: {
+          p_assigned_by_actor_id: string | null
+          p_assignee_actor_ids: string[] | null
+          p_relationship_plan?: Json
           p_source?: string
           p_sync_assignees: boolean
           p_task_id: string
@@ -19254,6 +19330,7 @@ export type Database = {
           p_granted_scopes: string[]
           p_key_version: number
           p_refresh_token_ciphertext: string
+          p_refresh_token_expires_at: string
           p_token_type: string
           p_user_id: string
         }
@@ -19596,6 +19673,7 @@ export type Database = {
           p_key_version: number
           p_provider_account_id: string
           p_refresh_token_ciphertext: string
+          p_refresh_token_expires_at: string
           p_token_type: string
           p_user_id: string
         }

@@ -33,6 +33,7 @@
  * - Project ownership verification
  */
 import type { RequestHandler } from './$types';
+import type { Database, Json } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import {
@@ -47,13 +48,16 @@ import {
 } from '$lib/server/entity-mention-notification.service';
 import { GOAL_STATES } from '$lib/types/onto';
 import {
-	autoOrganizeConnections,
 	assertEntityRefsInProject,
-	AutoOrganizeError
+	AutoOrganizeError,
+	prepareRelationshipMutationPlan,
+	relationshipMutationErrorFromDatabase
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
 import { normalizeDateTimeInput, normalizeTypeKeyInput } from '../../shared/input-normalization';
+
+type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 
 // GET /api/onto/goals/[id] - Get a single goal
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -368,15 +372,31 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 
+		const relationshipPlan = hasConnectionsInput
+			? await prepareRelationshipMutationPlan({
+					supabase,
+					projectId: existingGoal.project_id,
+					entity: { kind: 'goal', id: params.id },
+					connections: connectionList,
+					options: { mode: 'replace' },
+					referencesValidated: true
+				})
+			: null;
+
 		// Update the goal
-		const { data: updatedGoal, error: updateError } = await supabase
-			.from('onto_goals')
-			.update(updateData)
-			.eq('id', params.id)
-			.select('*')
-			.single();
+		const { data: updateResult, error: updateError } = await supabase.rpc(
+			'onto_goal_update_atomic',
+			{
+				p_goal_id: params.id,
+				p_updates: updateData as Json,
+				p_relationship_plan: relationshipPlan as unknown as Json
+			}
+		);
+		const updatedGoal = (updateResult as { goal?: GoalRow } | null)?.goal ?? null;
 
 		if (updateError) {
+			const relationshipError = relationshipMutationErrorFromDatabase(updateError);
+			if (relationshipError) throw relationshipError;
 			console.error('Error updating goal:', updateError);
 			await logOntologyApiError({
 				supabase,
@@ -393,15 +413,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to update goal', 500);
 		}
 
-		if (hasConnectionsInput) {
-			await autoOrganizeConnections({
-				supabase,
-				projectId: existingGoal.project_id,
-				entity: { kind: 'goal', id: params.id },
-				connections: connectionList,
-				options: { mode: 'replace' },
-				referencesValidated: true
-			});
+		if (!updatedGoal) {
+			throw new Error('Atomic goal update returned no goal');
 		}
 
 		const actorDisplayName =

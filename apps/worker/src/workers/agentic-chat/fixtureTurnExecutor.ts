@@ -2,7 +2,6 @@
 import { randomUUID } from 'node:crypto';
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
-	type AgentStreamEventPhaseV1,
 	type AgentStreamEventV1,
 	type AgenticChatRecoveryFailureClassV1,
 	type AgenticChatTerminalFinalizeRpcResultV1,
@@ -17,6 +16,7 @@ import {
 	AgenticChatCancellationError,
 	type AgenticChatCancellationObserver
 } from './cancellationObserver';
+import type { AgenticChatClaimRejectionV1 } from './consumer';
 import {
 	type AgenticChatExecutionControlPortV1,
 	type AgenticChatExecutionIdentityV1,
@@ -35,6 +35,13 @@ import {
 	AgenticChatPublisherOverloadError,
 	type AgenticChatStreamPublisher
 } from './streamPublisher';
+import {
+	type AgenticChatPreparedProviderInvocationV1,
+	AgenticChatProviderExecutionError,
+	type AgenticChatProviderPortV1,
+	type AgenticChatProviderStepV1,
+	type AgenticChatProviderUsageV1
+} from './providerContract';
 
 const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_UI_PROJECTION_EVENTS = 128;
@@ -49,53 +56,9 @@ type TerminalReceipt = Extract<
 	{ outcome: 'finalized' | 'already_terminal' }
 >;
 
-export type AgenticChatFixtureUsageV1 = {
-	promptTokens: number;
-	completionTokens: number;
-	totalTokens: number;
-};
-
-export type AgenticChatFixtureProviderStepV1 =
-	| { type: 'text_delta'; text: string }
-	| {
-			type: 'semantic';
-			transitionId: string;
-			phase: AgentStreamEventPhaseV1;
-			eventType: string;
-			currentActivity: string;
-			eventPayload: JsonObject;
-	  }
-	| {
-			type: 'read_tool';
-			callTransitionId: string;
-			resultTransitionId: string;
-			providerToolCallId: string;
-			toolName: string;
-			arguments: JsonObject;
-	  }
-	| {
-			type: 'mutating_tool';
-			callTransitionId: string;
-			resultTransitionId: string;
-			logicalOperationId: string;
-			providerToolCallId: string;
-			toolName: string;
-			operationName: string;
-			arguments: JsonObject;
-			downstreamIdempotencySupported: boolean;
-	  }
-	| {
-			type: 'finish';
-			finishedReason: string;
-			usage: AgenticChatFixtureUsageV1 | null;
-	  };
-
-export type AgenticChatFixtureProviderPortV1 = {
-	stream(input: {
-		executionInput: AgenticChatWorkerExecutionInputV1;
-		signal: AbortSignal;
-	}): AsyncIterable<AgenticChatFixtureProviderStepV1>;
-};
+export type AgenticChatFixtureUsageV1 = AgenticChatProviderUsageV1;
+export type AgenticChatFixtureProviderStepV1 = AgenticChatProviderStepV1;
+export type AgenticChatFixtureProviderPortV1 = AgenticChatProviderPortV1;
 
 export type AgenticChatFixtureReadToolPortV1 = {
 	execute(input: {
@@ -146,8 +109,9 @@ type ProjectionState = {
 };
 
 /**
- * Phase 2D fixture-only execution kernel. It has no real provider adapter and
- * is not registered by any production worker entrypoint.
+ * Fenced Agentic Chat execution kernel, first proven by the Phase 2D fixtures.
+ * Provider and tool ports remain injected, and no production worker entrypoint
+ * imports or starts this executor.
  */
 export class AgenticChatFixtureTurnExecutor {
 	constructor(
@@ -156,12 +120,72 @@ export class AgenticChatFixtureTurnExecutor {
 			input: AgenticChatExecutionInputPortV1;
 			publisher: PublisherPort;
 			cancellation: CancellationPort;
-			provider: AgenticChatFixtureProviderPortV1;
+			provider: AgenticChatProviderPortV1;
 			readTool: AgenticChatFixtureReadToolPortV1;
 			mutation: MutationPort;
 			createId?: () => string;
 		}
 	) {}
+
+	/**
+	 * Convert a claimed row that fails the local rollout cohort into durable
+	 * domain and queue terminal truth. Throwing from a processor-managed queue
+	 * would strand the processing row until the chat-specific stalled sweep.
+	 */
+	async reject(
+		job: ProcessingJob<AgenticChatTurnJobV1>,
+		rejection: AgenticChatClaimRejectionV1
+	): Promise<AgenticChatFixtureExecutionResultV1> {
+		let envelope: AgenticChatExecutionIdentityV1;
+		try {
+			envelope = validateJobEnvelope(job);
+		} catch {
+			return result('recovery_required', job.data?.turnRunId ?? job.id, null);
+		}
+
+		let claim: AgenticChatTurnClaimResultV1;
+		try {
+			claim = await this.ports.control.claim(envelope);
+			validateClaimEnvelope(claim, job);
+		} catch {
+			return result('recovery_required', envelope.turnRunId, null);
+		}
+		const generation = claim.executionGeneration;
+		if (claim.outcome === 'already_terminal') {
+			return this.recover(
+				envelope,
+				generation,
+				'permanent',
+				rejection.message,
+				null,
+				emptyProjection(),
+				false
+			);
+		}
+		if (claim.outcome === 'cancel_requested') {
+			return this.recover(
+				envelope,
+				generation,
+				'cancelled',
+				'Cancellation was accepted before cohort rejection',
+				null,
+				emptyProjection(),
+				false
+			);
+		}
+
+		return this.finalize(
+			envelope,
+			claim,
+			'failed',
+			'error',
+			rejection.code,
+			null,
+			emptyProjection(),
+			false,
+			''
+		);
+	}
 
 	async execute(
 		job: ProcessingJob<AgenticChatTurnJobV1>
@@ -228,6 +252,7 @@ export class AgenticChatFixtureTurnExecutor {
 		let publisherRegistered = false;
 		let executionStarted = false;
 		let executionInput: AgenticChatWorkerExecutionInputV1 | null = null;
+		let preparedProvider: AgenticChatPreparedProviderInvocationV1 | null = null;
 		let usage: AgenticChatFixtureUsageV1 | null = null;
 		let finishedReason = 'stop';
 		const projection = emptyProjection();
@@ -250,8 +275,23 @@ export class AgenticChatFixtureTurnExecutor {
 			});
 			publisherRegistered = true;
 
+			if (this.ports.provider.prepare) {
+				preparedProvider = await this.ports.provider.prepare({
+					executionInput,
+					signal: combined.signal
+				});
+			} else if (!this.ports.provider.stream) {
+				throw new AgenticChatProviderExecutionError(
+					'provider_not_configured',
+					'permanent',
+					'Agentic Chat provider has no preparation or fixture stream implementation'
+				);
+			}
+			throwIfAborted(combined.signal);
+
 			// This is the final asynchronous control-plane boundary before the
-			// fixture provider call. Only `started` below grants invocation.
+			// provider call. Provider input validation and capacity reservation have
+			// completed, but only `started` below grants network invocation.
 			const start = await this.ports.control.begin({
 				...envelope,
 				executionGeneration: generation
@@ -277,10 +317,10 @@ export class AgenticChatFixtureTurnExecutor {
 			throwIfAborted(combined.signal);
 
 			let finished = false;
-			for await (const step of iterateWithAbort(
-				this.ports.provider.stream({ executionInput, signal: combined.signal }),
-				combined.signal
-			)) {
+			const providerStream = preparedProvider
+				? preparedProvider.stream()
+				: this.ports.provider.stream!({ executionInput, signal: combined.signal });
+			for await (const step of iterateWithAbort(providerStream, combined.signal)) {
 				if (finished) throw new Error('Fixture provider emitted a step after finish');
 				if (step.type === 'text_delta') {
 					if (!step.text) throw new Error('Fixture text delta must be nonempty');
@@ -342,6 +382,7 @@ export class AgenticChatFixtureTurnExecutor {
 				publisherRegistered
 			);
 		} finally {
+			preparedProvider?.release();
 			combined.dispose();
 			this.ports.cancellation.unregisterTurn(claim.turnRunId, generation);
 			if (publisherRegistered) this.safeUnregisterPublisher(claim.turnRunId);
@@ -672,7 +713,7 @@ export class AgenticChatFixtureTurnExecutor {
 				transport_contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 				turn_run_id: claim.turnRunId,
 				execution_generation: claim.executionGeneration,
-				fixture_runtime: true
+				worker_runtime: 'agentic_chat_v1'
 			},
 			promptTokens: status === 'completed' ? (usage?.promptTokens ?? null) : null,
 			completionTokens: status === 'completed' ? (usage?.completionTokens ?? null) : null,
@@ -863,6 +904,7 @@ function classifyFailure(
 	// Once an irreversible effect reports uncertainty, a concurrent cancellation
 	// cannot downgrade the recovery classification to ordinary cancellation.
 	if (error instanceof AgenticChatEffectExecutionError) return error.failureClass;
+	if (error instanceof AgenticChatProviderExecutionError) return error.failureClass;
 	const reason = signal.aborted ? signal.reason : error;
 	if (reason instanceof AgenticChatCancellationError) return 'cancelled';
 	if (reason instanceof AgenticChatPublisherOverloadError) return 'publisher_overload';

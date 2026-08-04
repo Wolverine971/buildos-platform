@@ -30,8 +30,9 @@ vi.mock('$lib/services/ontology/auto-organizer.service', () => ({
 		task: 'onto_tasks',
 		document: 'onto_documents'
 	},
-	autoOrganizeConnections: vi.fn(),
 	assertEntityRefsInProject: vi.fn(),
+	prepareRelationshipMutationPlan: vi.fn(),
+	relationshipMutationErrorFromDatabase: vi.fn(() => null),
 	toParentRefs: vi.fn(() => [])
 }));
 
@@ -157,7 +158,7 @@ function createSupabaseMock(fixtures: { existingTask: any; updatedTask?: any }) 
 			if (fn === 'current_actor_has_project_member_access') {
 				return { data: true, error: null };
 			}
-			if (fn === 'onto_task_update_atomic') {
+			if (fn === 'onto_task_update_with_relationships_atomic') {
 				capturedAtomicArgs = args ?? null;
 				return {
 					data: {

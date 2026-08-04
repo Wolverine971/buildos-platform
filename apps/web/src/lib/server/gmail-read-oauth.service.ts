@@ -63,9 +63,14 @@ type EmailCredentialRow = Pick<
 	| 'access_token_ciphertext'
 	| 'refresh_token_ciphertext'
 	| 'access_token_expires_at'
+	| 'refresh_token_expires_at'
 	| 'token_type'
 	| 'granted_scopes'
 >;
+
+type CredentialsWithRefreshTokenExpiry = Credentials & {
+	refresh_token_expires_in?: number | string | null;
+};
 
 export class GmailOAuthError extends Error {
 	constructor(
@@ -118,6 +123,19 @@ function normalizeRedirectPath(path: string | null | undefined): string {
 function firstRow<T>(data: T | T[] | null | undefined): T | null {
 	if (Array.isArray(data)) return data[0] ?? null;
 	return data ?? null;
+}
+
+function getRefreshTokenExpiresAt(credentials: Credentials, now: Date): string | null {
+	const rawSeconds = (credentials as CredentialsWithRefreshTokenExpiry).refresh_token_expires_in;
+	const seconds = typeof rawSeconds === 'string' ? Number(rawSeconds) : rawSeconds;
+	if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) {
+		return null;
+	}
+
+	const expiresAtMs = now.getTime() + Math.floor(seconds * 1000);
+	if (!Number.isFinite(expiresAtMs)) return null;
+	const expiresAt = new Date(expiresAtMs);
+	return Number.isFinite(expiresAt.getTime()) ? expiresAt.toISOString() : null;
 }
 
 function normalizeScopeList(scopes: string[] | string | null | undefined): string[] {
@@ -555,11 +573,12 @@ export class GmailReadOAuthService {
 			grantKind: 'read'
 		};
 		let refreshToken = tokens.refresh_token ?? null;
+		let refreshTokenExpiresAt = getRefreshTokenExpiresAt(tokens, this.now());
 
 		if (!refreshToken && existingConnection) {
 			const { data: existingCredential } = await this.admin
 				.from('email_connection_credentials')
-				.select('refresh_token_ciphertext')
+				.select('refresh_token_ciphertext, refresh_token_expires_at')
 				.eq('connection_id', existingConnection.id)
 				.eq('grant_kind', 'read')
 				.is('revoked_at', null)
@@ -569,6 +588,7 @@ export class GmailReadOAuthService {
 					existingCredential.refresh_token_ciphertext,
 					tokenContext
 				);
+				refreshTokenExpiresAt ??= existingCredential.refresh_token_expires_at ?? null;
 			}
 		}
 
@@ -596,6 +616,7 @@ export class GmailReadOAuthService {
 				p_access_token_ciphertext: accessTokenCiphertext,
 				p_refresh_token_ciphertext: refreshTokenCiphertext,
 				p_access_token_expires_at: expiresAt,
+				p_refresh_token_expires_at: refreshTokenExpiresAt,
 				p_token_type: tokens.token_type ?? 'Bearer',
 				p_granted_scopes: grantedScopes,
 				p_key_version: getActiveGmailTokenKeyVersion(),
@@ -744,7 +765,7 @@ export class GmailReadOAuthService {
 		const { data: credentialData, error: credentialError } = await this.admin
 			.from('email_connection_credentials')
 			.select(
-				'access_token_ciphertext, refresh_token_ciphertext, access_token_expires_at, token_type, granted_scopes'
+				'access_token_ciphertext, refresh_token_ciphertext, access_token_expires_at, refresh_token_expires_at, token_type, granted_scopes'
 			)
 			.eq('connection_id', connectionId)
 			.eq('grant_kind', 'read')
@@ -772,6 +793,18 @@ export class GmailReadOAuthService {
 				'This Gmail account authorization no longer matches the read-only policy'
 			);
 		}
+
+		const knownRefreshExpiry = credential.refresh_token_expires_at
+			? Date.parse(credential.refresh_token_expires_at)
+			: Number.NaN;
+		if (Number.isFinite(knownRefreshExpiry) && knownRefreshExpiry <= this.now().getTime()) {
+			await this.markReconnectRequired(userId, connectionId, 'refresh_token_expired');
+			throw new GmailOAuthError(
+				'reconnect_required',
+				'This Gmail account authorization has expired. Please reconnect it.'
+			);
+		}
+
 		const tokenContext: GmailTokenContext = {
 			userId,
 			providerAccountId: connection.provider_account_id,
@@ -871,6 +904,13 @@ export class GmailReadOAuthService {
 
 		const rotatedRefreshToken = refreshed.refresh_token ?? refreshToken;
 		const refreshedExpiry = refreshed.expiry_date ?? tokenInfo.expiry_date ?? null;
+		// google-auth-library copies the existing refresh token into every refresh result.
+		// Only a new refresh_token_expires_in value is authoritative; otherwise keep
+		// the deadline associated with the stored token.
+		const refreshedRefreshTokenExpiry =
+			getRefreshTokenExpiresAt(refreshed, this.now()) ??
+			credential.refresh_token_expires_at ??
+			null;
 		const { error: rotateError } = await this.admin.rpc('rotate_gmail_read_credentials', {
 			p_user_id: userId,
 			p_connection_id: connectionId,
@@ -879,6 +919,7 @@ export class GmailReadOAuthService {
 			p_access_token_expires_at: refreshedExpiry
 				? new Date(refreshedExpiry).toISOString()
 				: null,
+			p_refresh_token_expires_at: refreshedRefreshTokenExpiry,
 			p_token_type: refreshed.token_type ?? credential.token_type ?? 'Bearer',
 			p_granted_scopes: grantedScopes,
 			p_key_version: getActiveGmailTokenKeyVersion()

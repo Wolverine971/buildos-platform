@@ -31,6 +31,7 @@
  * - Project ownership verification
  */
 import type { RequestHandler } from './$types';
+import type { Database, Json } from '@buildos/shared-types';
 import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
@@ -48,8 +49,9 @@ import {
 } from '$lib/server/entity-mention-notification.service';
 import {
 	AutoOrganizeError,
-	autoOrganizeConnections,
-	assertEntityRefsInProject
+	assertEntityRefsInProject,
+	prepareRelationshipMutationPlan,
+	relationshipMutationErrorFromDatabase
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
@@ -59,6 +61,8 @@ import {
 	normalizeRequiredString,
 	normalizeTypeKeyInput
 } from '../../shared/input-normalization';
+
+type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -205,8 +209,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
+		const goalId = crypto.randomUUID();
+		const relationshipPlan = await prepareRelationshipMutationPlan({
+			supabase,
+			projectId,
+			entity: { kind: 'goal', id: goalId },
+			connections: connectionList,
+			options: { mode: 'replace' },
+			referencesValidated: true
+		});
+
 		// Create the goal
 		const goalData = {
+			id: goalId,
 			project_id: projectId,
 			type_key: goalTypeKey,
 			name: goalName,
@@ -228,13 +243,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		};
 
-		const { data: createdGoal, error: createError } = await supabase
-			.from('onto_goals')
-			.insert(goalData)
-			.select('*')
-			.single();
+		const { data: createResult, error: createError } = await supabase.rpc(
+			'onto_goal_create_atomic',
+			{
+				p_goal: goalData as Json,
+				p_relationship_plan: relationshipPlan as unknown as Json
+			}
+		);
+		const createdGoal = (createResult as { goal?: GoalRow } | null)?.goal ?? null;
 
 		if (createError) {
+			const relationshipError = relationshipMutationErrorFromDatabase(createError);
+			if (relationshipError) throw relationshipError;
 			console.error('Error creating goal:', createError);
 			await logOntologyApiError({
 				supabase,
@@ -251,14 +271,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(createError);
 		}
 
-		await autoOrganizeConnections({
-			supabase,
-			projectId,
-			entity: { kind: 'goal', id: createdGoal.id },
-			connections: connectionList,
-			options: { mode: 'replace' },
-			referencesValidated: true
-		});
+		if (!createdGoal) {
+			throw new Error('Atomic goal create returned no goal');
+		}
 
 		const actorDisplayName =
 			(typeof user.name === 'string' && user.name) ||

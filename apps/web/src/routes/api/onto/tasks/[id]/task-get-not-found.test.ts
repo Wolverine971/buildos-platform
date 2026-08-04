@@ -39,8 +39,9 @@ vi.mock('$lib/services/ontology/auto-organizer.service', () => ({
 		status = 400;
 	},
 	ENTITY_TABLES: {},
-	autoOrganizeConnections: vi.fn(),
 	assertEntityRefsInProject: vi.fn(),
+	prepareRelationshipMutationPlan: vi.fn(),
+	relationshipMutationErrorFromDatabase: vi.fn(() => null),
 	toParentRefs: vi.fn(() => [])
 }));
 

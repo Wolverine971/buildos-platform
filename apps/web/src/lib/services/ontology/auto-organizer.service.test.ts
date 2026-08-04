@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/ontology/auto-organizer.service.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
 	AutoOrganizeError,
@@ -11,7 +12,10 @@ type TableFixture = {
 	error?: { message: string } | null;
 };
 
-function createSupabaseMock(fixtures: Record<string, TableFixture>) {
+function createSupabaseMock(
+	fixtures: Record<string, TableFixture>,
+	rpcError: { message: string; code?: string } | null = null
+) {
 	const queries: Array<{ table: string; ids: string[] }> = [];
 
 	function createQuery(table: string) {
@@ -46,7 +50,8 @@ function createSupabaseMock(fixtures: Record<string, TableFixture>) {
 
 	return {
 		supabase: {
-			from: vi.fn((table: string) => createQuery(table))
+			from: vi.fn((table: string) => createQuery(table)),
+			rpc: vi.fn(async () => ({ data: null, error: rpcError }))
 		},
 		queries
 	};
@@ -126,6 +131,13 @@ describe('autoOrganizeConnections validation reuse', () => {
 		expect(queries.filter((query) => query.table === 'onto_documents')).toEqual([
 			{ table: 'onto_documents', ids: ['doc-1'] }
 		]);
+		expect(supabase.rpc).toHaveBeenCalledTimes(1);
+		expect(supabase.rpc).toHaveBeenCalledWith('onto_apply_relationship_plan_atomic', {
+			p_project_id: 'project-1',
+			p_plan: expect.objectContaining({
+				references: [{ kind: 'document', id: 'doc-1' }]
+			})
+		});
 	});
 
 	it('does not re-query references that the mutation guard already validated', async () => {
@@ -144,7 +156,54 @@ describe('autoOrganizeConnections validation reuse', () => {
 		});
 
 		expect(queries.some((query) => query.table === 'onto_plans')).toBe(false);
-		expect(queries.filter((query) => query.table === 'onto_edges')).toHaveLength(3);
+		expect(queries.filter((query) => query.table === 'onto_edges')).toHaveLength(1);
+		expect(supabase.rpc).toHaveBeenCalledTimes(1);
+	});
+
+	it('maps a transactional reference race to the existing kind-specific not-found error', async () => {
+		const { supabase } = createSupabaseMock(
+			{},
+			{
+				message: 'relationship_reference_not_found:plan',
+				code: 'P0002'
+			}
+		);
+
+		await expect(
+			autoOrganizeConnections({
+				supabase: supabase as any,
+				projectId: 'project-1',
+				entity: { kind: 'goal', id: 'goal-1' },
+				connections: [{ kind: 'plan', id: 'plan-1' }],
+				options: { mode: 'replace', skipContainment: true },
+				referencesValidated: true
+			})
+		).rejects.toEqual(new AutoOrganizeError('plan not found', 404));
+	});
+
+	it('maps a stale merge snapshot to a retryable conflict without issuing direct edge writes', async () => {
+		const { supabase } = createSupabaseMock(
+			{},
+			{
+				message: 'relationship_containment_conflict',
+				code: '40001'
+			}
+		);
+
+		await expect(
+			autoOrganizeConnections({
+				supabase: supabase as any,
+				projectId: 'project-1',
+				entity: { kind: 'goal', id: 'goal-1' },
+				connections: [],
+				options: { mode: 'merge' },
+				referencesValidated: true
+			})
+		).rejects.toEqual(
+			new AutoOrganizeError('Relationship containment changed; retry the request', 409)
+		);
+		expect(supabase.rpc).toHaveBeenCalledTimes(1);
+		expect(supabase.from).toHaveBeenCalledTimes(1);
 	});
 });
 

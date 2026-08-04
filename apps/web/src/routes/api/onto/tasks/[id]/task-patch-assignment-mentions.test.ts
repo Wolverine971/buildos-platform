@@ -5,6 +5,8 @@ const syncTaskAssigneesMock = vi.fn();
 const notifyTaskAssignmentAddedMock = vi.fn();
 const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
+const prepareRelationshipMutationPlanMock = vi.fn();
+let capturedAtomicArgs: Record<string, unknown> | null = null;
 
 vi.mock('$lib/services/async-activity-logger', () => ({
 	logUpdateAsync: vi.fn(),
@@ -37,8 +39,9 @@ vi.mock('$lib/services/ontology/auto-organizer.service', () => ({
 		task: 'onto_tasks',
 		document: 'onto_documents'
 	},
-	autoOrganizeConnections: vi.fn(),
 	assertEntityRefsInProject: vi.fn(),
+	prepareRelationshipMutationPlan: prepareRelationshipMutationPlanMock,
+	relationshipMutationErrorFromDatabase: vi.fn(() => null),
 	toParentRefs: vi.fn(() => [])
 }));
 
@@ -147,7 +150,8 @@ function createSupabaseMock() {
 			if (fn === 'current_actor_has_project_member_access') {
 				return { data: true, error: null };
 			}
-			if (fn === 'onto_task_update_atomic') {
+			if (fn === 'onto_task_update_with_relationships_atomic') {
+				capturedAtomicArgs = args ?? null;
 				return {
 					data: {
 						task: {
@@ -175,6 +179,19 @@ function createSupabaseMock() {
 describe('PATCH /api/onto/tasks/[id] assignment + mention coalescing', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		capturedAtomicArgs = null;
+		prepareRelationshipMutationPlanMock.mockImplementation(async ({ entity }) => ({
+			references: [],
+			entityContainment: {
+				type: 'containment',
+				child: entity,
+				expectedEdges: null,
+				desiredEdges: []
+			},
+			semantic: [],
+			projectEdges: [],
+			childContainment: []
+		}));
 		syncTaskAssigneesMock.mockResolvedValue({ addedActorIds: ['actor-assignee'] });
 		notifyTaskAssignmentAddedMock.mockResolvedValue({ recipientUserIds: ['user-assignee'] });
 		resolveEntityMentionUserIdsMock.mockResolvedValue(['user-assignee', 'user-mentioned']);
@@ -214,5 +231,41 @@ describe('PATCH /api/onto/tasks/[id] assignment + mention coalescing', () => {
 				skipUserIds: ['user-assignee']
 			})
 		);
+		expect(capturedAtomicArgs?.p_relationship_plan).toBeNull();
+	});
+
+	it('passes goal replacement through the task transaction', async () => {
+		const { PATCH } = await import('./+server');
+		const response = await PATCH({
+			params: { id: 'task-1' },
+			request: new Request('http://localhost/api/onto/tasks/task-1', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ goal_id: 'goal-1' })
+			}),
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: async () => ({
+					user: { id: 'user-actor', name: 'DJ', email: 'dj@example.com' }
+				})
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(prepareRelationshipMutationPlanMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				entity: { kind: 'task', id: 'task-1' },
+				connections: [{ kind: 'goal', id: 'goal-1' }],
+				referencesValidated: true,
+				options: {
+					mode: 'replace',
+					explicitKinds: ['goal'],
+					skipContainment: false
+				}
+			})
+		);
+		expect(capturedAtomicArgs?.p_relationship_plan).toMatchObject({
+			entityContainment: { child: { kind: 'task', id: 'task-1' } }
+		});
 	});
 });

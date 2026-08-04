@@ -20,12 +20,22 @@ import {
 import { isWorkerAuthorized } from './http/auth';
 import { getErrorMessage } from './http/errors';
 import { getSafeTimezone } from './http/timezone';
+import {
+	AGENTIC_CHAT_CAPACITY_PATH,
+	respondWithAgenticChatCapacity
+} from './http/agenticChatCapacity';
 import { jsonParseErrorHandler } from './middleware/jsonError';
 import { registerEmailTrackingRoute } from './routes/email-tracking';
 import smsScheduledRoutes from './routes/sms/scheduled';
 import { startScheduler } from './scheduler';
 import { queueConfig } from './config/queueConfig';
-import { queue, shutdownWorker, startWorker } from './worker';
+import {
+	collectAgenticChatWorkerCapacityEvidence,
+	getWorkerHealth,
+	queue,
+	shutdownWorker,
+	startWorker
+} from './worker';
 import type { Server } from 'node:http';
 import { classifyOntologyEntity } from './workers/ontology/ontologyClassifier';
 import { getFutureNotificationScheduledFor } from './workers/brief/briefNotificationSchedule';
@@ -139,12 +149,20 @@ app.use('/sms/scheduled', smsScheduledRoutes);
 // Railway restarts the process on repeated 503s, which is exactly what we
 // want when the claim loop is wedged or DB credentials have died.
 app.get('/health', (_req, res) => {
-	const queueHealth = queue.getHealth();
-	res.status(queueHealth.healthy ? 200 : 503).json({
-		status: queueHealth.healthy ? 'healthy' : 'unhealthy',
+	const workerHealth = getWorkerHealth();
+	res.status(workerHealth.healthy ? 200 : 503).json({
+		status: workerHealth.healthy ? 'healthy' : 'unhealthy',
 		timestamp: new Date().toISOString(),
 		service: 'daily-brief-worker',
-		queue: queueHealth
+		runtimeState: workerHealth.state,
+		queue: workerHealth.queue,
+		agenticChat: workerHealth.agenticChat
+	});
+});
+
+app.get(AGENTIC_CHAT_CAPACITY_PATH, async (req, res) => {
+	await respondWithAgenticChatCapacity(req, res, {
+		collect: collectAgenticChatWorkerCapacityEvidence
 	});
 });
 
@@ -822,22 +840,24 @@ app.post('/queue/cleanup', async (req, res) => {
 
 // Start the server
 async function start() {
+	// Give both runtimes a short, bounded drain before a fatal exit. This is
+	// shared by process-level crashes and failures after worker startup.
+	const crashExit = async (label: string) => {
+		try {
+			const timer = new Promise((resolve) => setTimeout(resolve, 5000));
+			await Promise.race([shutdownWorker(), timer]);
+		} catch (e) {
+			console.error(`Failed to stop worker runtimes during ${label} shutdown:`, e);
+		} finally {
+			process.exit(1);
+		}
+	};
+
 	try {
 		// Add global error handlers FIRST to prevent process crashes.
-		// Give the queue a short, bounded drain before exiting — the old
-		// fire-and-forget `void queue.stop(); process.exit(1)` killed every
+		// Give both runtimes a short, bounded drain before exiting — the old
+		// fire-and-forget queue stop killed every
 		// in-flight job mid-write, silently charging each one a retry attempt.
-		const crashExit = async (label: string) => {
-			try {
-				const timer = new Promise((resolve) => setTimeout(resolve, 5000));
-				await Promise.race([queue.stop(), timer]);
-			} catch (e) {
-				console.error(`Failed to stop queue during ${label} shutdown:`, e);
-			} finally {
-				process.exit(1);
-			}
-		};
-
 		process.on('uncaughtException', (error) => {
 			console.error('🚨 CRITICAL: Uncaught Exception', error);
 			console.error('Stack:', error.stack);
@@ -881,14 +901,19 @@ async function start() {
 		});
 	} catch (error) {
 		console.error('Failed to start server:', error);
-		await logWorkerError(error, {
-			operationType: 'worker_startup',
-			severity: 'critical',
-			metadata: {
-				phase: 'start'
-			}
-		});
-		process.exit(1);
+		try {
+			await logWorkerError(error, {
+				operationType: 'worker_startup',
+				severity: 'critical',
+				metadata: {
+					phase: 'start'
+				}
+			});
+		} catch (logError) {
+			console.error('Failed to persist worker startup error:', logError);
+		} finally {
+			await crashExit('startup');
+		}
 	}
 }
 

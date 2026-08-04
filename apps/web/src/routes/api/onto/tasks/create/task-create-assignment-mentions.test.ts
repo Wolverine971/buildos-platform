@@ -5,6 +5,7 @@ const notifyTaskAssignmentAddedMock = vi.fn();
 const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
 const atomicCreateTaskMock = vi.fn();
+const prepareRelationshipMutationPlanMock = vi.fn();
 let capturedTaskInsertPayload: Record<string, unknown> | null = null;
 
 vi.mock('$lib/services/async-activity-logger', () => ({
@@ -31,8 +32,9 @@ vi.mock('$lib/services/ontology/auto-organizer.service', () => ({
 		task: 'onto_tasks',
 		document: 'onto_documents'
 	},
-	autoOrganizeConnections: vi.fn(),
 	assertEntityRefsInProject: vi.fn(),
+	prepareRelationshipMutationPlan: prepareRelationshipMutationPlanMock,
+	relationshipMutationErrorFromDatabase: vi.fn(() => null),
 	toParentRefs: vi.fn(() => [])
 }));
 
@@ -136,7 +138,7 @@ function createSupabaseMock() {
 			if (fn === 'current_actor_has_project_member_access') {
 				return { data: true, error: null };
 			}
-			if (fn === 'onto_task_create_atomic') {
+			if (fn === 'onto_task_create_with_relationships_atomic') {
 				return atomicCreateTaskMock(args);
 			}
 			return { data: null, error: null };
@@ -149,6 +151,18 @@ describe('POST /api/onto/tasks/create assignment + mention coalescing', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedTaskInsertPayload = null;
+		prepareRelationshipMutationPlanMock.mockImplementation(async ({ entity }) => ({
+			references: [],
+			entityContainment: {
+				type: 'containment',
+				child: entity,
+				expectedEdges: null,
+				desiredEdges: []
+			},
+			semantic: [],
+			projectEdges: [],
+			childContainment: []
+		}));
 		atomicCreateTaskMock.mockImplementation(async (args: Record<string, unknown>) => {
 			const taskPayload = args.p_task as Record<string, unknown>;
 			capturedTaskInsertPayload = taskPayload;
@@ -156,7 +170,7 @@ describe('POST /api/onto/tasks/create assignment + mention coalescing', () => {
 			return {
 				data: {
 					task: {
-						id: 'task-1',
+						id: taskPayload.id,
 						project_id: taskPayload.project_id,
 						title: taskPayload.title,
 						description: taskPayload.description,
@@ -207,6 +221,18 @@ describe('POST /api/onto/tasks/create assignment + mention coalescing', () => {
 				p_task: expect.objectContaining({
 					project_id: 'project-1',
 					title: 'Task with mention'
+				})
+			})
+		);
+		expect(atomicCreateTaskMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				p_relationship_plan: expect.objectContaining({
+					entityContainment: expect.objectContaining({
+						child: {
+							kind: 'task',
+							id: capturedTaskInsertPayload?.id
+						}
+					})
 				})
 			})
 		);

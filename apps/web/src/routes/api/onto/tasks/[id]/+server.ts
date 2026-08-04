@@ -34,6 +34,7 @@
  * - Project ownership verification
  */
 import type { RequestHandler } from './$types';
+import type { Database, Json } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 import { resolveLinkedEntities } from '../task-linked-helpers';
@@ -51,12 +52,13 @@ import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.ser
 import {
 	AutoOrganizeError,
 	ENTITY_TABLES,
-	autoOrganizeConnections,
 	assertEntityRefsInProject,
+	relationshipMutationErrorFromDatabase,
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import type { EntityKind } from '$lib/services/ontology/edge-direction';
+import { prepareTaskUpdateRelationshipPlan } from '../task-relationship-helpers';
 import { logOntologyApiError } from '../../shared/error-logging';
 import {
 	normalizeDateTimeInput,
@@ -85,6 +87,7 @@ import {
 } from '$lib/server/project-loop-burst.service';
 
 const ALLOWED_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
+type TaskRow = Database['public']['Tables']['onto_tasks']['Row'];
 
 // GET /api/onto/tasks/[id] - Get a single task
 export const GET: RequestHandler = async ({ params, request, locals }) => {
@@ -531,10 +534,19 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			updateData.props = nextProps;
 		}
 
-		// Atomic update: task row + assignee sync happen in a single RPC
-		// transaction so a partial failure cannot leave the task metadata and
-		// its assignee set in divergent states. See migration
-		// 20260430000002_onto_task_update_atomic.sql for the contract.
+		const relationshipPlan = await prepareTaskUpdateRelationshipPlan({
+			supabase,
+			projectId: existingTask.project_id,
+			taskId: params.id,
+			connections: connectionList,
+			hasPlanInput,
+			hasGoalInput,
+			hasMilestoneInput,
+			hasParentInput: hasParentField || hasParentsField,
+			hasConnectionsInput
+		});
+
+		// Task fields, assignees, and any requested relationships commit together.
 		// Build the JSONB payload — only include keys explicitly touched by
 		// this request so the RPC's case-by-case merge can skip the rest.
 		const atomicUpdatePayload: Record<string, unknown> = {
@@ -557,22 +569,29 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const { data: atomicResult, error: atomicError } = await supabase.rpc(
-			'onto_task_update_atomic' as any,
+			'onto_task_update_with_relationships_atomic',
 			{
 				p_task_id: params.id,
-				p_updates: atomicUpdatePayload,
+				p_updates: atomicUpdatePayload as Json,
 				p_sync_assignees: hasAssigneeInput,
 				p_assignee_actor_ids: hasAssigneeInput ? assigneeActorIds : null,
 				p_assigned_by_actor_id: hasAssigneeInput ? actorId : null,
+				p_relationship_plan: relationshipPlan as unknown as Json,
 				p_source: 'manual'
-			} as any
+			}
 		);
 
 		if (atomicError || !atomicResult) {
+			const relationshipError = atomicError
+				? relationshipMutationErrorFromDatabase(atomicError)
+				: null;
+			if (relationshipError) throw relationshipError;
 			console.error('Error updating task atomically:', atomicError);
 			await logOntologyApiError({
 				supabase,
-				error: atomicError ?? new Error('onto_task_update_atomic returned no data'),
+				error:
+					atomicError ??
+					new Error('onto_task_update_with_relationships_atomic returned no data'),
 				endpoint: `/api/onto/tasks/${params.id}`,
 				method: 'PATCH',
 				userId: session.user.id,
@@ -595,46 +614,17 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				return ApiResponse.badRequest(message);
 			}
 			return ApiResponse.databaseError(
-				atomicError ?? new Error('onto_task_update_atomic returned no data')
+				atomicError ??
+					new Error('onto_task_update_with_relationships_atomic returned no data')
 			);
 		}
 
-		const updatedTask = (atomicResult as { task: any }).task;
+		const updatedTask = (atomicResult as { task?: TaskRow }).task;
+		if (!updatedTask) {
+			throw new Error('Atomic task update returned no task');
+		}
 		const addedActorIds = ((atomicResult as { added_actor_ids?: string[] }).added_actor_ids ??
 			[]) as string[];
-
-		const hasContainmentInput =
-			hasPlanInput ||
-			hasGoalInput ||
-			hasParentField ||
-			hasParentsField ||
-			hasConnectionsInput;
-		const hasSemanticInput = hasMilestoneInput;
-		const shouldOrganize = hasContainmentInput || hasSemanticInput;
-
-		if (shouldOrganize) {
-			const explicitKinds: EntityKind[] = [];
-			if (hasConnectionsInput) {
-				explicitKinds.push('goal', 'milestone');
-			} else {
-				if (hasGoalInput) explicitKinds.push('goal');
-				if (hasMilestoneInput) explicitKinds.push('milestone');
-			}
-
-			const skipContainment = !hasContainmentInput && hasSemanticInput;
-
-			await autoOrganizeConnections({
-				supabase,
-				projectId: existingTask.project_id,
-				entity: { kind: 'task', id: params.id },
-				connections: connectionList,
-				options: {
-					mode: 'replace',
-					explicitKinds,
-					skipContainment
-				}
-			});
-		}
 
 		const isTransitioningToDone =
 			state_key !== undefined &&
@@ -680,7 +670,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		let assignmentRecipientUserIds: string[] = [];
 
 		if (hasAssigneeInput) {
-			// Assignees were already synced inside onto_task_update_atomic above;
+			// Assignees were already synced inside the atomic command above;
 			// `addedActorIds` came back with the RPC result. Notifications stay
 			// outside the transaction because they fan out via external channels.
 			const { recipientUserIds } = await notifyTaskAssignmentAdded({

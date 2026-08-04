@@ -1,3 +1,4 @@
+// apps/web/src/lib/server/gmail-connection-health.ts
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { GmailOAuthError, GmailReadOAuthService } from './gmail-read-oauth.service';
 import { mapWithConcurrency } from './gmail-gateway-infrastructure';
@@ -5,6 +6,7 @@ import { mapWithConcurrency } from './gmail-gateway-infrastructure';
 type HealthCandidate = {
 	connection_id: string;
 	access_token_expires_at: string | null;
+	refresh_token_expires_at: string | null;
 };
 
 type ActiveConnection = {
@@ -41,15 +43,19 @@ export async function checkGmailConnectionHealth(
 	const now = options.now ?? new Date();
 	const limit = Math.max(1, Math.min(Math.trunc(options.limit ?? DEFAULT_LIMIT), 200));
 	const refreshBefore = new Date(now.getTime() + REFRESH_WINDOW_MS).toISOString();
+	const nowIso = now.toISOString();
 	const queryLimit = limit + 1;
 
 	const { data: credentialData, error: credentialError } = await admin
 		.from('email_connection_credentials')
-		.select('connection_id, access_token_expires_at')
+		.select('connection_id, access_token_expires_at, refresh_token_expires_at')
 		.eq('grant_kind', 'read')
 		.eq('oauth_client_kind', 'gmail_read')
 		.is('revoked_at', null)
-		.or(`access_token_expires_at.is.null,access_token_expires_at.lte.${refreshBefore}`)
+		.or(
+			`access_token_expires_at.is.null,access_token_expires_at.lte.${refreshBefore},refresh_token_expires_at.lte.${nowIso}`
+		)
+		.order('refresh_token_expires_at', { ascending: true, nullsFirst: false })
 		.order('access_token_expires_at', { ascending: true, nullsFirst: true })
 		.limit(queryLimit);
 	if (credentialError) throw credentialError;

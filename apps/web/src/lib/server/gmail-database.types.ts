@@ -44,6 +44,7 @@ export type EmailConnectionCredentialRow = Omit<
 > & {
 	grant_kind: GmailGrantKind;
 	oauth_client_kind: GmailOauthClientKind;
+	refresh_token_expires_at: string | null;
 };
 
 export type EmailCapabilityGrantRow = Omit<
@@ -86,12 +87,13 @@ type UpsertGmailReadConnectionArgs = NullableArgs<
 	| 'p_default_account_label'
 	| 'p_display_name'
 	| 'p_expected_connection_id'
+	| 'p_refresh_token_expires_at'
 	| 'p_token_type'
 >;
 
 type RotateGmailReadCredentialsArgs = NullableArgs<
 	FunctionArgs<'rotate_gmail_read_credentials'>,
-	'p_access_token_expires_at' | 'p_token_type'
+	'p_access_token_expires_at' | 'p_refresh_token_expires_at' | 'p_token_type'
 >;
 
 export type GmailReadDatabase = {

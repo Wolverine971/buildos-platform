@@ -4,14 +4,31 @@ import {
 	type AgenticChatConsumerConfig,
 	DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
 	normalizeInternalUserIds,
-	validateAgenticChatConsumerConfig
+	validateAgenticChatConsumerConfig,
+	validateAgenticChatDrainTimeout
 } from './consumer';
+import type { AgenticChatOpenAiCompatibleRouteV1 } from './openRouterReadOnlyClient';
 
-export type AgenticChatPhase3Config = {
-	enabled: boolean;
+const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+
+export type AgenticChatPhase3ProviderConfig = {
+	routes: readonly AgenticChatOpenAiCompatibleRouteV1[];
+};
+
+type AgenticChatPhase3BaseConfig = {
 	internalUserIds: readonly string[];
 	consumer: AgenticChatConsumerConfig;
 };
+
+export type AgenticChatPhase3Config =
+	| (AgenticChatPhase3BaseConfig & {
+			enabled: false;
+			provider: null;
+	  })
+	| (AgenticChatPhase3BaseConfig & {
+			enabled: true;
+			provider: AgenticChatPhase3ProviderConfig;
+	  });
 
 /**
  * Parse the Phase 3 startup envelope without mutating process state.
@@ -60,7 +77,15 @@ export function loadAgenticChatPhase3Config(
 	};
 	validateAgenticChatConsumerConfig(consumer);
 
-	return { enabled, internalUserIds, consumer };
+	if (!enabled) return { enabled: false, internalUserIds, consumer, provider: null };
+	validateAgenticChatDrainTimeout(consumer.drainTimeoutMs);
+
+	return {
+		enabled: true,
+		internalUserIds,
+		consumer,
+		provider: loadProviderConfig(environment)
+	};
 }
 
 export function isAgenticChatInternalUser(
@@ -93,6 +118,92 @@ function parseInternalUserIds(value: string | undefined): string[] {
 		return normalizeInternalUserIds(value.split(',').map((entry) => entry.trim()));
 	} catch (error) {
 		if (error instanceof Error && error.message.includes('duplicates')) throw error;
-		throw new Error('AGENTIC_CHAT_INTERNAL_USER_IDS must be a comma-separated canonical UUID list');
+		throw new Error(
+			'AGENTIC_CHAT_INTERNAL_USER_IDS must be a comma-separated canonical UUID list'
+		);
 	}
+}
+
+function loadProviderConfig(environment: NodeJS.ProcessEnv): AgenticChatPhase3ProviderConfig {
+	const apiKey = canonicalRequiredValue(
+		environment.PRIVATE_OPENROUTER_API_KEY,
+		'PRIVATE_OPENROUTER_API_KEY',
+		2_048
+	);
+	const model = canonicalRequiredValue(
+		environment.AGENTIC_CHAT_OPENROUTER_MODEL,
+		'AGENTIC_CHAT_OPENROUTER_MODEL',
+		256
+	);
+	const fallbackModels = parseFallbackModels(
+		environment.AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS,
+		model
+	);
+	const baseUrl = cleanHttpsBaseUrl(
+		environment.AGENTIC_CHAT_OPENROUTER_BASE_URL ?? DEFAULT_OPENROUTER_BASE_URL
+	);
+	const route = Object.freeze({
+		id: 'openrouter',
+		kind: 'openrouter' as const,
+		baseUrl,
+		apiKey,
+		model,
+		fallbackModels
+	});
+	return Object.freeze({ routes: Object.freeze([route]) });
+}
+
+function parseFallbackModels(value: string | undefined, primaryModel: string): readonly string[] {
+	if (value === undefined || value === '') return Object.freeze([]);
+	const entries = value.split(',');
+	if (entries.some((entry) => !entry)) {
+		throw new Error(
+			'AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS must be a comma-separated canonical model list'
+		);
+	}
+	const models = entries.map((entry) =>
+		canonicalRequiredValue(entry, 'AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS', 256)
+	);
+	if (models.length > 3) {
+		throw new Error('AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS supports at most three models');
+	}
+	if (new Set(models).size !== models.length || models.includes(primaryModel)) {
+		throw new Error(
+			'AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS must be unique and exclude the primary model'
+		);
+	}
+	return Object.freeze(models);
+}
+
+function canonicalRequiredValue(
+	value: string | undefined,
+	name: string,
+	maximumLength: number
+): string {
+	if (
+		value === undefined ||
+		!value ||
+		value !== value.trim() ||
+		value.length > maximumLength ||
+		/[\r\n]/.test(value)
+	) {
+		throw new Error(`${name} must be a nonempty canonical value`);
+	}
+	return value;
+}
+
+function cleanHttpsBaseUrl(value: string): string {
+	if (!value || value !== value.trim()) {
+		throw new Error('AGENTIC_CHAT_OPENROUTER_BASE_URL must be a clean HTTPS base URL');
+	}
+	let url: URL;
+	try {
+		url = new URL(value);
+	} catch {
+		throw new Error('AGENTIC_CHAT_OPENROUTER_BASE_URL must be a clean HTTPS base URL');
+	}
+	if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
+		throw new Error('AGENTIC_CHAT_OPENROUTER_BASE_URL must be a clean HTTPS base URL');
+	}
+	return value.replace(/\/+$/, '');
 }

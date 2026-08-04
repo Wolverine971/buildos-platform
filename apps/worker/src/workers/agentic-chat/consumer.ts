@@ -2,13 +2,14 @@
 
 import type { AgenticChatTurnJobV1 } from '@buildos/shared-types';
 import { type ProcessingJob, SupabaseQueue } from '../../lib/supabaseQueue';
+import { MAX_QUEUE_DRAIN_TIMEOUT_MS } from '../../config/shutdownBudget';
 
 export const DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG = {
 	concurrency: 1,
 	pollIntervalMs: 1_000,
 	workerTimeoutMs: 360_000,
 	stalledTimeoutMs: 420_000,
-	drainTimeoutMs: 25_000
+	drainTimeoutMs: MAX_QUEUE_DRAIN_TIMEOUT_MS
 } as const;
 
 export type AgenticChatConsumerConfig = {
@@ -17,6 +18,15 @@ export type AgenticChatConsumerConfig = {
 
 export type AgenticChatTurnExecutorPort = {
 	execute(job: ProcessingJob<AgenticChatTurnJobV1>): Promise<unknown>;
+	reject(
+		job: ProcessingJob<AgenticChatTurnJobV1>,
+		rejection: AgenticChatClaimRejectionV1
+	): Promise<unknown>;
+};
+
+export type AgenticChatClaimRejectionV1 = {
+	code: 'internal_cohort_rejected';
+	message: string;
 };
 
 export type AgenticChatConsumer = {
@@ -58,6 +68,7 @@ export function createAgenticChatConsumer(
 		...options.config
 	};
 	validateAgenticChatConsumerConfig(resolved);
+	validateAgenticChatDrainTimeout(resolved.drainTimeoutMs);
 	const internalUserIds = normalizeInternalUserIds(options.internalUserIds);
 	const internalUsers = new Set(internalUserIds);
 
@@ -72,7 +83,8 @@ export function createAgenticChatConsumer(
 		'agentic_chat_turn',
 		(job) => {
 			if (!internalUsers.has(job.userId.toLowerCase())) {
-				throw new AgenticChatInternalCohortError();
+				const error = new AgenticChatInternalCohortError();
+				return executor.reject(job, { code: error.code, message: error.message });
 			}
 			return executor.execute(job);
 		},
@@ -111,6 +123,14 @@ export function validateAgenticChatConsumerConfig(config: AgenticChatConsumerCon
 	}
 }
 
+export function validateAgenticChatDrainTimeout(drainTimeoutMs: number): void {
+	if (drainTimeoutMs > MAX_QUEUE_DRAIN_TIMEOUT_MS) {
+		throw new Error(
+			`Agentic Chat drain timeout cannot exceed ${MAX_QUEUE_DRAIN_TIMEOUT_MS}ms process budget`
+		);
+	}
+}
+
 export function normalizeInternalUserIds(userIds: readonly string[]): string[] {
 	if (userIds.length === 0) {
 		throw new Error('Agentic Chat consumer requires at least one internal user UUID');
@@ -125,5 +145,4 @@ export function normalizeInternalUserIds(userIds: readonly string[]): string[] {
 	return normalized.sort();
 }
 
-const UUID_PATTERN =
-	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;

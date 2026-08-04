@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-03T17:48:10.071Z
+// Generated on: 2026-08-04T01:49:03.122Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1254,6 +1254,7 @@ export type DatabaseSchema = {
 		last_refreshed_at: string | null;
 		oauth_client_kind: string;
 		refresh_token_ciphertext: string;
+		refresh_token_expires_at: string | null;
 		revoked_at: string | null;
 		token_type: string;
 		updated_at: string;

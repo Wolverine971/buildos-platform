@@ -1,3 +1,4 @@
+// apps/web/src/lib/server/gmail-connection-health.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { GmailOAuthError } from './gmail-read-oauth.service';
 import { checkGmailConnectionHealth } from './gmail-connection-health';
@@ -22,11 +23,13 @@ describe('checkGmailConnectionHealth', () => {
 		const credentials = queryResult([
 			{
 				connection_id: 'connection-1',
-				access_token_expires_at: '2026-08-03T16:01:00.000Z'
+				access_token_expires_at: '2026-08-03T16:01:00.000Z',
+				refresh_token_expires_at: null
 			},
 			{
 				connection_id: 'connection-2',
-				access_token_expires_at: '2026-08-03T16:02:00.000Z'
+				access_token_expires_at: '2026-08-03T17:02:00.000Z',
+				refresh_token_expires_at: '2026-08-03T15:59:59.000Z'
 			}
 		]);
 		const connections = queryResult([
@@ -69,6 +72,9 @@ describe('checkGmailConnectionHealth', () => {
 			'user-2',
 			'connection-2',
 			{ forceRefresh: true }
+		);
+		expect(credentials.or).toHaveBeenCalledWith(
+			'access_token_expires_at.is.null,access_token_expires_at.lte.2026-08-03T16:05:00.000Z,refresh_token_expires_at.lte.2026-08-03T16:00:00.000Z'
 		);
 	});
 });

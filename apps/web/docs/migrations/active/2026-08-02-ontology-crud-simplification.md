@@ -49,7 +49,7 @@ These sizes are indicators of mixed responsibilities, not defects by themselves:
 | `GoalEditModal.svelte` |                    1,170 lines |
 | `PlanEditModal.svelte` |                    1,032 lines |
 
-The server-route guardrail currently passes because 33 oversized routes are grandfathered.
+The ontology route baseline still contains 33 grandfathered oversized routes, and every CRUD route touched here remains under its recorded ceiling. The repository-wide guard is currently blocked by concurrent work in `src/routes/api/agent/v2/turns/+server.ts` at 401 lines; this is outside the CRUD refactor but means the global command is not presently green.
 
 ### Validation baseline
 
@@ -63,14 +63,28 @@ The server-route guardrail currently passes because 33 oversized routes are gran
 
 #### Atomic entity mutations
 
-- [ ] Goal create: validate and apply relationships in the same transaction as the row insert.
+- [x] Goal create: validate and apply relationships in the same transaction as the row insert.
     - [x] Interim guard: validate requested relationship references before inserting the row.
-- [ ] Goal update: apply the row and relationship replacement atomically.
+    - [x] Add and disposable-test the atomic goal-create command and wire the route.
+    - [x] Apply and live-verify the goal mutation migration.
+- [x] Goal update: apply the row and relationship replacement atomically.
     - [x] Interim guard: validate requested relationship references before updating the row.
-- [ ] Plan create: apply the row and containment/relationship changes atomically.
-- [ ] Plan update: apply the row and containment/relationship changes atomically.
-- [ ] Task create: include relationships with the existing task/assignee atomic command.
-- [ ] Task update: include relationships with the existing task/assignee atomic command.
+    - [x] Add and disposable-test the atomic goal-update command and wire the route.
+    - [x] Apply and live-verify the goal mutation migration.
+- [x] Plan create: apply the row and containment/relationship changes atomically.
+    - [x] Add and disposable-test the atomic plan-create command and wire the route.
+    - [x] Apply and live-verify migration `20260803018000_atomic_plan_mutations`.
+- [x] Plan update: apply the row and containment/relationship changes atomically.
+    - [x] Add and disposable-test the atomic plan-update command and wire the route.
+    - [x] Apply and live-verify migration `20260803018000_atomic_plan_mutations`.
+- [x] Task create: include relationships with the existing task/assignee atomic command.
+    - [x] Characterize the current boundary: row, assignees, and idempotency are atomic; relationships commit afterward and failure triggers compensating deletes.
+    - [x] Extend and disposable-test the command with the shared relationship plan, then remove orphan cleanup from the route.
+    - [x] Apply and live-verify migration `20260803019000_atomic_task_relationship_mutations`.
+- [x] Task update: include relationships with the existing task/assignee atomic command.
+    - [x] Characterize the current boundary: row and assignees are atomic; relationship replacement still commits afterward without compensation.
+    - [x] Extend and disposable-test the command with the shared relationship plan while preserving semantic-only `skipContainment` behavior.
+    - [x] Apply and live-verify migration `20260803019000_atomic_task_relationship_mutations`.
 - [ ] Document create: make the row and critical tree/relationship state atomic.
 - [ ] Document update: make the row and relationship state atomic.
 - [x] Document archive/restore/delete: update document state and tree structure atomically.
@@ -108,13 +122,13 @@ Target complexity: a single add, move, archive, or restore should be proportiona
     - [x] Goal create/update reuse their pre-mutation validation during relationship application.
     - [x] Other `autoOrganizeConnections` callers validate the exact connection set once before planning.
     - [x] The lower-level direct edge API retains its own guard without being called redundantly by the connection planner.
-- [ ] Replace relationship edges in one transaction.
+- [x] Replace relationship edges in one transaction.
     - [x] Add and disposable-test the secured transactional plan applier.
     - [x] Apply and live-verify the transactional plan-applier migration.
-    - [ ] Move CRUD callers onto the transactional boundary.
-- [ ] Preserve all current tool-call relationship semantics and error messages where clients depend on them.
+    - [x] Move CRUD callers onto the transactional boundary.
+- [x] Preserve all current tool-call relationship semantics and error messages where clients depend on them.
 
-The canonical connection path now resolves intent into a serializable mutation plan containing exact containment and semantic edges before issuing writes. Existing-parent reads needed for merge behavior run concurrently, and merge-derived containment operations carry exact edge snapshots for compare-and-swap enforcement. The secured transactional plan applier is deployed and verified; production callers still use multiple database statements until the routes are migrated.
+The canonical connection path now resolves intent into a serializable mutation plan containing exact containment and semantic edges before issuing writes. Existing-parent reads needed for merge behavior run concurrently, and merge-derived containment operations carry exact edge snapshots for compare-and-swap enforcement. The secured transactional plan applier is deployed, and the shared auto-organizer now sends each completed plan through that single RPC. Existing CRUD and agentic callers inherit the atomic edge boundary without changing their route or tool contracts.
 
 Transaction design note: goal connections can also reparent existing milestones, plans, tasks, risks, requirements, and metrics. A goal-only SQL implementation would duplicate the shared relationship planner and risk UI/tool behavior drift. Atomic entity work should therefore consume one shared edge-mutation plan rather than reimplementing connection semantics per route.
 
@@ -162,13 +176,13 @@ Compatibility-sensitive consumers include task calendar synchronization, mention
 - [x] Enforce document PATCH compare-and-swap at write time.
 - [x] Add a goal-create regression proving invalid relationship references cannot leave a row behind.
 - [x] Add a goal-update regression proving invalid relationship references cannot mutate the row.
-- [ ] Add rollback tests for invalid or failed relationship changes.
+- [x] Add rollback tests for invalid or failed relationship changes.
 - [x] Add document-tree concurrent-update tests.
 
 ### Phase 2 — Transactional CRUD commands
 
-- [ ] Goals.
-- [ ] Plans.
+- [x] Goals.
+- [x] Plans.
 - [ ] Tasks.
 - [ ] Documents.
 - [ ] Projects.
@@ -206,13 +220,13 @@ Every affected entity should eventually have coverage for:
 
 | Behavior                         | Document | Task | Plan | Goal | Project |
 | -------------------------------- | -------- | ---- | ---- | ---- | ------- |
-| Create rollback                  | ⬜       | ⬜   | ⬜   | ⬜   | ⬜      |
-| Update rollback                  | ⬜       | ⬜   | ⬜   | ⬜   | ⬜      |
+| Create rollback                  | ⬜       | ✅⁵  | ✅⁴  | ⬜   | ⬜      |
+| Update rollback                  | ⬜       | ✅⁵  | ✅⁴  | ⬜   | ⬜      |
 | Concurrent update conflict       | ✅¹      | ⬜   | ⬜   | ⬜   | ⬜      |
-| Relationship replacement         | ⬜       | ⬜   | ⬜   | ⬜   | N/A     |
+| Relationship replacement         | ⬜       | ✅⁵  | ✅⁴  | ⬜   | N/A     |
 | Archive/restore/delete integrity | ✅³      | ⬜   | ⬜   | ⬜   | ⬜      |
-| Tool/API contract compatibility  | ✅²      | ⬜   | ⬜   | ⬜   | ⬜      |
-| Side-effect retry/deduplication  | ⬜       | ⬜   | ⬜   | ⬜   | ⬜      |
+| Tool/API contract compatibility  | ✅²      | ✅⁵  | ✅⁴  | ⬜   | ⬜      |
+| Side-effect retry/deduplication  | ⬜       | ✅⁵  | ⬜   | ⬜   | ⬜      |
 
 ¹ Ordinary document metadata/content PATCH and the canonical project document-tree update are covered. Structure history and changed per-document child caches commit with the canonical tree, archive includes the affected document rows, and restore includes any required legacy tree cleanup. Delete and relationship mutations remain.
 
@@ -220,10 +234,31 @@ Every affected entity should eventually have coverage for:
 
 ³ Document archive, restore, active soft delete, and archived permanent delete now include the canonical tree, structure history, changed child caches, and document row mutation in one database transaction. Failure-injection regressions cover rollback after structural work has begun.
 
+⁴ Plan create/update use the existing HTTP and agentic payload contracts. Disposable PostgreSQL tests cover row/relationship rollback and containment replacement; route and agentic regressions cover the unchanged API/tool boundary. Migration `20260803018000` is deployed and live-security verified.
+
+⁵ Task create/update retain the existing HTTP and agentic payload contracts, assignee synchronization, create idempotency, and update relationship policy. Disposable PostgreSQL tests cover replay suppression and rollback across task rows, assignees, and relationships. Migration `20260803019000` is deployed, ledger-aligned, and live-security verified.
+
 ## Change log
 
 ### 2026-08-03
 
+- Applied and ledger-aligned migration `20260803019000_atomic_task_relationship_mutations`. Live catalog checks confirmed the existing and relationship-aware task commands use `SECURITY INVOKER`, `search_path=public`, authenticated/service-role grants, and no anonymous execution. Re-ran the combined disposable relationship/goal/plan/task PostgreSQL suite, 75 focused task-route/helper and agentic definition/executor tests, both shared typechecks, the shared-types declaration build, scoped formatting, and the full web check with zero errors or warnings. The unchanged model-facing task tool definitions remain correct because both tools still use the same HTTP payload and response contracts; only the endpoints' internal transaction boundary changed.
+- Applied and ledger-aligned migration `20260803018000_atomic_plan_mutations`. Live checks confirmed both plan commands use `SECURITY DEFINER`, `search_path=public`, authenticated/service-role grants, and no anonymous execution; 81 post-deploy relationship, plan-route, goal-route, and agentic regressions passed.
+- Added migration `20260803019000_atomic_task_relationship_mutations`. It preserves the existing task create/update commands, adds a caller-supplied create UUID for preplanned relationships, wraps row/assignee/relationship writes in one transaction, keeps stable idempotent replay as a no-op, fixes search paths, and removes anonymous execution from the underlying commands and new wrappers.
+- Wired task create/update through the relationship-aware commands without changing HTTP or agentic tool schemas. Create no longer needs three compensating deletes after an edge failure. Extracted update relationship-mode selection into a small tested helper that preserves `explicitKinds` and semantic-only `skipContainment` behavior while reducing the task `[id]` handler from its 1,000-line assessment baseline to 990 lines.
+- Added disposable PostgreSQL coverage for task/assignee/relationship create and update rollback, containment replacement, authorization, grants, and idempotent replay. The combined goal/plan/task migration suite passes from a fresh database, along with 75 focused task-route/helper and agentic definition/executor tests, both shared typechecks, the shared-types declaration build, and a clean full web check. Migration `019` was subsequently deployed and live-verified.
+- Began the task slice by tracing create/update through the existing `onto_task_create_atomic` and `onto_task_update_atomic` commands. Those commands already protect task rows, assignees, create idempotency, and update row locking, but relationship planning/application remains post-commit. Create attempts a three-delete compensation sequence after edge failure; update can return an edge error after task fields and assignees have committed.
+- Confirmed internal agentic `create_onto_task` and `update_onto_task` use the same HTTP routes, including stable tool-call idempotency keys and assignee-handle resolution. No model-facing tool-definition change is needed for the transaction refactor; the deployed command preserves create replay short-circuiting and update's `explicitKinds`/semantic-only `skipContainment` semantics.
+- Added migration `20260803018000_atomic_plan_mutations` with secured create and partial-update commands that apply the normalized relationship plan in the same PostgreSQL transaction. The migration deliberately skips the unrelated `20260803017000_gmail_refresh_token_expiry` filename; `017` was applied independently by concurrent work.
+- Wired plan POST/PATCH through the atomic commands while preserving validation, normalization, response payloads, classification, activity logging, containment precedence, and `explicitKinds` replacement behavior. Internal agentic `create_onto_plan` and `update_onto_plan` already use these HTTP endpoints, so their definitions and executors required no changes.
+- Added disposable PostgreSQL coverage for privileges, access denial, containment replacement, and rollback of plan inserts/updates after relationship failure. Verified 81 focused relationship, goal, plan-route, and agentic definition/executor tests, shared-agent-ops and shared-types typechecks, and the shared-types declaration build. An initial full web check was blocked while concurrent Gmail schema/types work was incomplete; after that migration landed, the full web check passed with zero errors and warnings. The separate route-size guard remains blocked only by the unrelated 401-line agent-v2 turn route.
+- Added and deployed migration `20260803016000_atomic_goal_mutations` with secured create and partial-update commands that call the normalized relationship-plan applier inside the same PostgreSQL transaction.
+- Added disposable PostgreSQL coverage proving goal create/update and relationship changes commit together, relationship failures roll back the row mutation, authenticated callers without write access are denied, and the existing relationship fixture/regressions remain compatible. A read-only linked-schema check also confirmed the live goal columns, enum, and defaults used by the migration.
+- Split relationship planning from application in the shared auto-organizer so goal routes can prepare once, pass the exact serializable plan into the atomic goal command, and keep all relationship policy in TypeScript.
+- Wired goal POST/PATCH to the typed commands without changing request/response shapes, mention notifications, activity logging, classification, agentic tool definitions, or affected-entity reporting. Verified 32 focused relationship/goal-route tests and 42 agentic definition/executor tests. Live checks confirmed both functions use `SECURITY DEFINER`, `search_path=public`, authenticated/service-role execution grants, and no anonymous execution grant.
+- Moved the shared relationship-plan write boundary from sequential containment, project-edge, semantic, and child-containment statements to one `onto_apply_relationship_plan_atomic` RPC call. All existing `autoOrganizeConnections` CRUD and agentic callers inherit the transaction without route or tool-schema changes.
+- Added application coverage for the exact RPC payload, eliminated direct edge writes from the normalized-plan path, preserved kind-specific not-found errors for transaction-time reference races, and mapped stale merge snapshots to `409 Conflict`.
+- Verified 30 focused relationship and goal-route tests, 42 agentic tool-definition/executor tests, shared-types typecheck/build, and shared-agent-ops typecheck/declaration build after the caller migration.
 - Added and deployed migration `20260803015000_atomic_relationship_plan` with a fixed search path, project write-access enforcement, private entity-validation helper, project-row serialization, and explicit role grants.
 - The transaction revalidates every raw connection reference, verifies planned endpoints and relationship tokens, applies containment/semantic/project-edge mutations, and rolls the entire plan back on any failure.
 - Added merge-state compare-and-swap snapshots so a stale containment plan returns `relationship_containment_conflict` instead of overwriting newer parent state.

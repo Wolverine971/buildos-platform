@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
-const autoOrganizeConnectionsMock = vi.fn();
 const assertEntityRefsInProjectMock = vi.fn();
+const prepareRelationshipMutationPlanMock = vi.fn();
 let capturedGoalInsertPayload: Record<string, unknown> | null = null;
+let capturedRelationshipPlan: Record<string, unknown> | null = null;
 
 vi.mock('$lib/services/async-activity-logger', () => ({
 	logCreateAsync: vi.fn(),
@@ -22,8 +23,9 @@ vi.mock('$lib/services/ontology/auto-organizer.service', () => ({
 			this.status = status;
 		}
 	},
-	autoOrganizeConnections: autoOrganizeConnectionsMock,
-	assertEntityRefsInProject: assertEntityRefsInProjectMock
+	assertEntityRefsInProject: assertEntityRefsInProjectMock,
+	prepareRelationshipMutationPlan: prepareRelationshipMutationPlanMock,
+	relationshipMutationErrorFromDatabase: vi.fn(() => null)
 }));
 
 vi.mock('$lib/server/ontology-classification.service', () => ({
@@ -40,20 +42,12 @@ vi.mock('../../shared/error-logging', () => ({
 }));
 
 class QueryBuilderMock {
-	private action: 'select' | 'insert' | null = null;
-	private insertPayload: Record<string, unknown> | null = null;
+	private action: 'select' | null = null;
 
 	constructor(private readonly table: string) {}
 
 	select() {
 		if (!this.action) this.action = 'select';
-		return this;
-	}
-
-	insert(payload: Record<string, unknown>) {
-		this.action = 'insert';
-		this.insertPayload = payload;
-		capturedGoalInsertPayload = payload;
 		return this;
 	}
 
@@ -77,33 +71,31 @@ class QueryBuilderMock {
 			};
 		}
 
-		if (this.table === 'onto_goals' && this.action === 'insert') {
-			return {
-				data: {
-					id: 'goal-1',
-					project_id: this.insertPayload?.project_id,
-					name: this.insertPayload?.name,
-					goal: this.insertPayload?.goal,
-					description: this.insertPayload?.description,
-					type_key: this.insertPayload?.type_key ?? 'goal.default',
-					state_key: this.insertPayload?.state_key ?? 'draft'
-				},
-				error: null
-			};
-		}
-
 		return { data: null, error: null };
 	}
 }
 
 function createSupabaseMock() {
 	return {
-		rpc: vi.fn(async (fn: string) => {
+		rpc: vi.fn(async (fn: string, args?: Record<string, any>) => {
 			if (fn === 'ensure_actor_for_user') {
 				return { data: 'actor-current', error: null };
 			}
 			if (fn === 'current_actor_has_project_member_access') {
 				return { data: true, error: null };
+			}
+			if (fn === 'onto_goal_create_atomic') {
+				capturedGoalInsertPayload = args?.p_goal ?? null;
+				capturedRelationshipPlan = args?.p_relationship_plan ?? null;
+				return {
+					data: {
+						goal: {
+							...args?.p_goal,
+							id: 'goal-1'
+						}
+					},
+					error: null
+				};
 			}
 			return { data: null, error: null };
 		}),
@@ -115,8 +107,15 @@ describe('POST /api/onto/goals/create mention notifications', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedGoalInsertPayload = null;
+		capturedRelationshipPlan = null;
 		assertEntityRefsInProjectMock.mockResolvedValue(undefined);
-		autoOrganizeConnectionsMock.mockResolvedValue(undefined);
+		prepareRelationshipMutationPlanMock.mockResolvedValue({
+			references: [],
+			entityContainment: {},
+			semantic: [],
+			projectEdges: [],
+			childContainment: []
+		});
 		resolveEntityMentionUserIdsMock.mockResolvedValue(['user-mentioned']);
 		notifyEntityMentionsAddedMock.mockResolvedValue({ notifiedUserIds: ['user-mentioned'] });
 	});
@@ -207,6 +206,10 @@ describe('POST /api/onto/goals/create mention notifications', () => {
 				priority: 'high'
 			}
 		});
+		expect(capturedRelationshipPlan).toMatchObject({
+			semantic: [],
+			projectEdges: []
+		});
 	});
 
 	it('returns 400 for invalid target_date before inserting', async () => {
@@ -235,6 +238,50 @@ describe('POST /api/onto/goals/create mention notifications', () => {
 			success: false,
 			error: expect.stringContaining('target_date')
 		});
+	});
+
+	it('passes the preplanned relationships and matching generated goal id into one atomic create', async () => {
+		const preparedPlan = {
+			references: [{ kind: 'plan', id: 'plan-1' }],
+			entityContainment: { type: 'containment' },
+			semantic: [],
+			projectEdges: [],
+			childContainment: []
+		};
+		prepareRelationshipMutationPlanMock.mockResolvedValueOnce(preparedPlan);
+
+		const { POST } = await import('./+server');
+		const response = await POST({
+			request: new Request('http://localhost/api/onto/goals/create', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					project_id: 'project-1',
+					name: 'Connected goal',
+					connections: [{ kind: 'plan', id: 'plan-1' }]
+				})
+			}),
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: async () => ({
+					user: { id: 'user-actor', name: 'DJ', email: 'dj@example.com' }
+				})
+			}
+		} as any);
+
+		expect(response.status).toBe(201);
+		expect(assertEntityRefsInProjectMock).toHaveBeenCalledTimes(1);
+		expect(prepareRelationshipMutationPlanMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId: 'project-1',
+				connections: [{ kind: 'plan', id: 'plan-1' }],
+				referencesValidated: true
+			})
+		);
+		const generatedGoalId = prepareRelationshipMutationPlanMock.mock.calls[0]?.[0]?.entity?.id;
+		expect(generatedGoalId).toEqual(expect.any(String));
+		expect(capturedGoalInsertPayload?.id).toBe(generatedGoalId);
+		expect(capturedRelationshipPlan).toEqual(preparedPlan);
 	});
 
 	it('validates relationship references before inserting the goal', async () => {
@@ -270,6 +317,6 @@ describe('POST /api/onto/goals/create mention notifications', () => {
 			})
 		);
 		expect(capturedGoalInsertPayload).toBeNull();
-		expect(autoOrganizeConnectionsMock).not.toHaveBeenCalled();
+		expect(prepareRelationshipMutationPlanMock).not.toHaveBeenCalled();
 	});
 });

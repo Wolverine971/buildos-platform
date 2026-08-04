@@ -32,6 +32,7 @@
  * - Project ownership verification
  */
 import type { RequestHandler } from './$types';
+import type { Database, Json } from '@buildos/shared-types';
 import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
@@ -44,8 +45,9 @@ import {
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 import {
 	AutoOrganizeError,
-	autoOrganizeConnections,
 	assertEntityRefsInProject,
+	prepareRelationshipMutationPlan,
+	relationshipMutationErrorFromDatabase,
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
@@ -59,6 +61,7 @@ import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
 
 type ParentInput = NonNullable<Parameters<typeof toParentRefs>[0]>['parent'];
 type ParentsInput = NonNullable<Parameters<typeof toParentRefs>[0]>['parents'];
+type PlanRow = Database['public']['Tables']['onto_plans']['Row'];
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -235,8 +238,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
+		const planId = crypto.randomUUID();
+		const relationshipPlan = await prepareRelationshipMutationPlan({
+			supabase,
+			projectId,
+			entity: { kind: 'plan', id: planId },
+			connections: connectionList,
+			options: { mode: 'replace' },
+			referencesValidated: true
+		});
+
 		// Create the plan
 		const planData = {
+			id: planId,
 			project_id: projectId,
 			type_key: normalizedTypeKey,
 			name: planName,
@@ -254,13 +268,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		};
 
-		const { data: createdPlan, error: createError } = await supabase
-			.from('onto_plans')
-			.insert(planData)
-			.select('*')
-			.single();
+		const { data: createResult, error: createError } = await supabase.rpc(
+			'onto_plan_create_atomic',
+			{
+				p_plan: planData as Json,
+				p_relationship_plan: relationshipPlan as unknown as Json
+			}
+		);
+		const createdPlan = (createResult as { plan?: PlanRow } | null)?.plan ?? null;
 
 		if (createError) {
+			const relationshipError = relationshipMutationErrorFromDatabase(createError);
+			if (relationshipError) throw relationshipError;
 			console.error('Error creating plan:', createError);
 			await logOntologyApiError({
 				supabase,
@@ -277,13 +296,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(createError);
 		}
 
-		await autoOrganizeConnections({
-			supabase,
-			projectId,
-			entity: { kind: 'plan', id: createdPlan.id },
-			connections: connectionList,
-			options: { mode: 'replace' }
-		});
+		if (!createdPlan) {
+			throw new Error('Atomic plan create returned no plan');
+		}
 
 		// Log activity async (non-blocking)
 		logCreateAsync(
