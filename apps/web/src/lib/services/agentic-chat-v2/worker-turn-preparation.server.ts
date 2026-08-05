@@ -60,7 +60,7 @@ import { resolveFastChatTurnPreparation } from './turn-preparation';
 import type { FastChatHistoryMessage } from './types';
 import type { LegacyFallbackHistorySnapshot } from './turn-admission';
 import {
-	observeAgenticChatWorkerCapacity,
+	observeAgenticChatWorkerCapacityWithRetry,
 	type AgenticChatWorkerCapacityDecisionV1
 } from './worker-turn-capacity.server';
 import type { AgenticChatWorkerAdmissionRpcArgs } from './worker-turn-admission.server';
@@ -176,6 +176,15 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	const nowMs = input.dependencies?.nowMs?.() ?? Date.now();
 	const nowIso = new Date(nowMs).toISOString();
 	if (!Number.isFinite(Date.parse(nowIso))) throw protocolError('Preparation time is invalid');
+
+	// Started here so the observation deadline overlaps the preparation work
+	// below instead of stacking after it inside the route's bounded duration;
+	// the decision is awaited only when the admission args are assembled.
+	const capacityObservation = (
+		input.dependencies?.observeCapacity ??
+		(() => observeAgenticChatWorkerCapacityWithRetry('turn_admission'))
+	)();
+	capacityObservation.catch(() => {});
 
 	const contextType = input.command.context.type as ChatContextType;
 	const entityId = input.command.context.entityId;
@@ -487,9 +496,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		surfaceProfile: turnPreparation.selectedSurfaceProfile,
 		preparedPromptId
 	});
-	const capacity = await (
-		input.dependencies?.observeCapacity ?? observeAgenticChatWorkerCapacity
-	)();
+	const capacity = await capacityObservation;
 
 	return {
 		args: {

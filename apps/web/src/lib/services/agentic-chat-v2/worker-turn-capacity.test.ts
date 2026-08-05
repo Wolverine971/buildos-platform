@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	evaluateAgenticChatWorkerCapacity,
 	observeAgenticChatWorkerCapacity,
+	observeAgenticChatWorkerCapacityWithRetry,
 	type AgenticChatWorkerCapacityEvidenceV1
 } from './worker-turn-capacity.server';
 
@@ -229,5 +230,105 @@ describe('Agentic Chat worker capacity boundary', () => {
 			})
 		).toMatchObject({ available: false, reason: 'missing_evidence' });
 		expect(fetchImpl.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+	});
+});
+
+describe('Agentic Chat worker capacity retry boundary', () => {
+	it('retries once after a failed observation and returns the fresh open decision', async () => {
+		const fetchImpl = vi
+			.fn<typeof fetch>()
+			.mockRejectedValueOnce(new Error('network reset'))
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify(evidence()), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				})
+			);
+
+		await expect(
+			observeAgenticChatWorkerCapacityWithRetry('turn_admission', {
+				workerUrl: 'https://worker.test',
+				workerToken: 'worker-token',
+				fetchImpl,
+				now: () => NOW
+			})
+		).resolves.toEqual({ available: true, retryAfterSeconds: 2, reason: 'open' });
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+	});
+
+	it('never retries an authoritative worker-reported pressure closure', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(
+			async () =>
+				new Response(JSON.stringify(evidence({ provider: { available: false } })), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				})
+		);
+
+		await expect(
+			observeAgenticChatWorkerCapacityWithRetry('transport_negotiation', {
+				workerUrl: 'https://worker.test',
+				workerToken: 'worker-token',
+				fetchImpl,
+				now: () => NOW
+			})
+		).resolves.toMatchObject({ available: false, reason: 'provider_pressure' });
+		expect(fetchImpl).toHaveBeenCalledTimes(1);
+	});
+
+	it('stays closed after exactly two failed observations', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () => {
+			throw new Error('unreachable');
+		});
+
+		await expect(
+			observeAgenticChatWorkerCapacityWithRetry('turn_admission', {
+				workerUrl: 'https://worker.test',
+				workerToken: 'worker-token',
+				fetchImpl,
+				now: () => NOW
+			})
+		).resolves.toMatchObject({ available: false, reason: 'missing_evidence' });
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+	});
+
+	it('bounds the primary attempt at 5s and the retry attempt at 2.5s', async () => {
+		vi.useFakeTimers();
+		try {
+			const abortedAt: number[] = [];
+			const startedAt: number[] = [];
+			const fetchImpl = vi.fn<typeof fetch>(
+				(_input, init) =>
+					new Promise<Response>((_resolve, reject) => {
+						startedAt.push(vi.getMockedSystemTime()?.getTime() ?? Date.now());
+						init?.signal?.addEventListener(
+							'abort',
+							() => {
+								abortedAt.push(vi.getMockedSystemTime()?.getTime() ?? Date.now());
+								reject(new Error('aborted'));
+							},
+							{ once: true }
+						);
+					})
+			);
+
+			const observation = observeAgenticChatWorkerCapacityWithRetry('turn_admission', {
+				workerUrl: 'https://worker.test',
+				workerToken: 'worker-token',
+				fetchImpl,
+				now: () => NOW
+			});
+			await vi.advanceTimersByTimeAsync(5_000);
+			await vi.advanceTimersByTimeAsync(2_500);
+			await expect(observation).resolves.toMatchObject({
+				available: false,
+				reason: 'missing_evidence'
+			});
+			expect(fetchImpl).toHaveBeenCalledTimes(2);
+			expect(abortedAt[0]! - startedAt[0]!).toBe(5_000);
+			expect(abortedAt[1]! - startedAt[1]!).toBe(2_500);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

@@ -3,6 +3,7 @@ import {
 	PRIVATE_RAILWAY_WORKER_TOKEN,
 	PUBLIC_RAILWAY_WORKER_URL
 } from '$lib/server/railway-worker-env';
+import { createLogger } from '$lib/utils/logger';
 
 export const AGENTIC_CHAT_WORKER_CAPACITY_RETRY_AFTER_SECONDS = 2;
 
@@ -15,6 +16,11 @@ const WORKER_CAPACITY_PATH = '/agentic-chat/capacity';
 // deadline also covers cross-provider DNS, TLS, and proxy transit, so it must
 // leave meaningful network budget around the worker's internal deadline.
 const WORKER_CAPACITY_TIMEOUT_MS = 5_000;
+// A failed observation earns exactly one fresh attempt with a tighter bound so
+// a single slow network draw cannot close an otherwise healthy admission.
+const WORKER_CAPACITY_RETRY_TIMEOUT_MS = 2_500;
+
+const logger = createLogger('AgenticChat:WorkerCapacity');
 const MAX_WORKER_CAPACITY_BODY_BYTES = 4 * 1024;
 const MAX_WORKER_TOKEN_LENGTH = 4 * 1024;
 
@@ -144,6 +150,49 @@ export async function observeAgenticChatWorkerCapacity(
 	} finally {
 		clearTimeout(timer);
 	}
+}
+
+export type AgenticChatWorkerCapacityObservationPhase = 'transport_negotiation' | 'turn_admission';
+
+/**
+ * Observation wrapper for the two production capacity checks. Worker-reported
+ * pressure and staleness closures are authoritative and never retried; only a
+ * failed observation (timeout, network, HTTP, parse, or schema) earns one
+ * bounded fresh attempt. Every attempt is logged with its duration so a closed
+ * production admission is diagnosable from server logs alone.
+ */
+export async function observeAgenticChatWorkerCapacityWithRetry(
+	phase: AgenticChatWorkerCapacityObservationPhase,
+	options: AgenticChatWorkerCapacityObservationOptions = {}
+): Promise<AgenticChatWorkerCapacityDecisionV1> {
+	const first = await timedCapacityObservation(phase, 1, options);
+	if (first.available || first.reason !== 'missing_evidence') return first;
+	return timedCapacityObservation(phase, 2, {
+		...options,
+		timeoutMs: Math.min(resolveTimeoutMs(options.timeoutMs), WORKER_CAPACITY_RETRY_TIMEOUT_MS)
+	});
+}
+
+async function timedCapacityObservation(
+	phase: AgenticChatWorkerCapacityObservationPhase,
+	attempt: 1 | 2,
+	options: AgenticChatWorkerCapacityObservationOptions
+): Promise<AgenticChatWorkerCapacityDecisionV1> {
+	const startedAtMs = Date.now();
+	const decision = await observeAgenticChatWorkerCapacity(options);
+	const meta = {
+		phase,
+		attempt,
+		durationMs: Date.now() - startedAtMs,
+		reason: decision.reason,
+		available: decision.available
+	};
+	if (decision.available) {
+		logger.info('Agentic chat worker capacity observed open', meta);
+	} else {
+		logger.warn('Agentic chat worker capacity observed closed', meta);
+	}
+	return decision;
 }
 
 function isEvidenceShapeValid(value: unknown): value is AgenticChatWorkerCapacityEvidenceV1 {

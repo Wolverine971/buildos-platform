@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-transport-routing.server.ts
 import {
-	observeAgenticChatWorkerCapacity,
+	observeAgenticChatWorkerCapacityWithRetry,
 	type AgenticChatWorkerCapacityDecisionV1
 } from './worker-turn-capacity.server';
 
@@ -49,7 +49,10 @@ export async function selectAgenticChatNewTransport(
 	if (!cohort?.has(input.userId)) return LEGACY_TRANSPORT;
 
 	try {
-		const capacity = await (input.observeCapacity ?? observeAgenticChatWorkerCapacity)();
+		const capacity = await (
+			input.observeCapacity ??
+			(() => observeAgenticChatWorkerCapacityWithRetry('transport_negotiation'))
+		)();
 		if (!isExactlyOpenCapacity(capacity)) return LEGACY_TRANSPORT;
 		return {
 			mode: 'worker_realtime',
