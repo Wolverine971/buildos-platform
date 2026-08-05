@@ -158,10 +158,6 @@
 		if (oninput) {
 			oninput(event);
 		}
-
-		if (autoResize) {
-			adjustHeight();
-		}
 	}
 
 	function adjustHeight() {

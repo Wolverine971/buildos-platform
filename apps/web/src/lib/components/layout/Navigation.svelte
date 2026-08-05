@@ -980,7 +980,7 @@
 									<div class="relative">
 										<!-- Glow effect for zap -->
 										<div
-											class="absolute inset-0 bg-accent rounded-full blur-md opacity-60 animate-pulse motion-reduce:animate-none"
+											class="absolute inset-0 bg-accent rounded-full blur-md opacity-60 animate-status-pulse motion-reduce:animate-none"
 											style="transform: scale(2.5);"
 										></div>
 										<Zap
@@ -1407,7 +1407,7 @@
 							{/if}
 							{#if needsOnboarding}
 								<div
-									class="ml-2 w-2 h-2 bg-accent rounded-full animate-pulse"
+									class="ml-2 w-2 h-2 bg-accent rounded-full animate-status-pulse"
 								></div>
 							{/if}
 						</div>

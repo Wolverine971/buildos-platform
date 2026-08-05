@@ -457,7 +457,7 @@
 						title={currentActivity}
 					>
 						<span
-							class="h-1.5 w-1.5 animate-pulse rounded-full bg-success motion-reduce:animate-none"
+							class="h-1.5 w-1.5 animate-status-pulse rounded-full bg-success motion-reduce:animate-none"
 						></span>
 					</span>
 				{/if}

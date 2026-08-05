@@ -199,7 +199,7 @@
 			{:else if isCurrentlyRecording}
 				<Square class="h-5 w-5" />
 				<span
-					class="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-destructive"
+					class="absolute -right-1 -top-1 h-3 w-3 animate-status-ping rounded-full bg-destructive"
 				></span>
 			{:else}
 				<Mic class="h-5 w-5" />

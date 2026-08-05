@@ -1692,7 +1692,7 @@
 {#snippet taskBoardSkeleton()}
 	<div class="sm:hidden mb-2">
 		<div
-			class="min-h-[260px] bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
+			class="min-h-[260px] bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-status-pulse"
 		></div>
 	</div>
 	<div class="hidden sm:block">
@@ -1700,13 +1700,13 @@
 			class="min-h-[300px] bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
 		>
 			<div class="px-3 sm:px-4 py-2.5 border-b border-border/60">
-				<div class="h-3.5 w-24 bg-muted rounded animate-pulse"></div>
+				<div class="h-3.5 w-24 bg-muted rounded animate-status-pulse"></div>
 			</div>
 			<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-3">
 				{#each Array(4) as _, i (i)}
 					<div class="space-y-2">
-						<div class="h-4 w-20 bg-muted rounded animate-pulse"></div>
-						<div class="h-40 bg-muted/40 rounded-md animate-pulse"></div>
+						<div class="h-4 w-20 bg-muted rounded animate-status-pulse"></div>
+						<div class="h-40 bg-muted/40 rounded-md animate-status-pulse"></div>
 					</div>
 				{/each}
 			</div>
@@ -1721,11 +1721,11 @@
 		>
 			<div class="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3">
 				<div
-					class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-muted/40 animate-pulse shrink-0"
+					class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-muted/40 animate-status-pulse shrink-0"
 				></div>
 				<div class="space-y-1.5">
-					<div class="h-3.5 w-24 bg-muted rounded animate-pulse"></div>
-					<div class="h-2.5 w-16 bg-muted/40 rounded animate-pulse"></div>
+					<div class="h-3.5 w-24 bg-muted rounded animate-status-pulse"></div>
+					<div class="h-2.5 w-16 bg-muted/40 rounded animate-status-pulse"></div>
 				</div>
 			</div>
 		</div>
@@ -1776,13 +1776,13 @@
 					class="sm:hidden bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
 				>
 					<div class="flex border-b border-border/60">
-						<div class="flex-1 h-10 bg-muted/40 animate-pulse"></div>
-						<div class="flex-1 h-10 bg-muted/40 animate-pulse"></div>
+						<div class="flex-1 h-10 bg-muted/40 animate-status-pulse"></div>
+						<div class="flex-1 h-10 bg-muted/40 animate-status-pulse"></div>
 					</div>
 					<div class="p-2 space-y-1.5">
 						{#each Array(3) as _, i (i)}
 							<div
-								class="h-14 bg-muted/40 border border-border/60 rounded-md animate-pulse"
+								class="h-14 bg-muted/40 border border-border/60 rounded-md animate-status-pulse"
 							></div>
 						{/each}
 					</div>
@@ -1794,12 +1794,12 @@
 							class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
 						>
 							<div class="px-3 sm:px-4 py-2.5 border-b border-border/60">
-								<div class="h-3.5 w-32 bg-muted rounded animate-pulse"></div>
+								<div class="h-3.5 w-32 bg-muted rounded animate-status-pulse"></div>
 							</div>
 							<div class="p-2 sm:p-3 space-y-1.5">
 								{#each Array(3) as _, j (j)}
 									<div
-										class="h-12 bg-muted/40 border border-border/60 rounded-md animate-pulse"
+										class="h-12 bg-muted/40 border border-border/60 rounded-md animate-status-pulse"
 									></div>
 								{/each}
 							</div>
@@ -1843,7 +1843,7 @@
 				<div
 					class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-2 sm:p-2.5"
 				>
-					<div class="h-10 rounded-lg bg-muted/40 animate-pulse"></div>
+					<div class="h-10 rounded-lg bg-muted/40 animate-status-pulse"></div>
 				</div>
 			</div>
 		{:else}
@@ -1861,7 +1861,7 @@
 				{#if canLoadSecondaryProjectRequests}
 					{#await import('$lib/components/project/ProjectAuditTracker.svelte')}
 						<div
-							class="h-16 rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak animate-pulse"
+							class="h-16 rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak animate-status-pulse"
 							aria-hidden="true"
 						></div>
 					{:then { default: ProjectAuditTracker }}
@@ -1869,7 +1869,7 @@
 					{/await}
 				{:else}
 					<div
-						class="h-16 rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak animate-pulse"
+						class="h-16 rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak animate-status-pulse"
 						aria-hidden="true"
 					></div>
 				{/if}
@@ -1884,7 +1884,7 @@
 			<div class="mb-2 sm:mb-3 flex flex-wrap gap-1.5 sm:gap-2">
 				{#each Array(9) as _, i (i)}
 					<div
-						class="h-10 min-w-[88px] flex-1 sm:flex-none bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
+						class="h-10 min-w-[88px] flex-1 sm:flex-none bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-status-pulse"
 					></div>
 				{/each}
 			</div>

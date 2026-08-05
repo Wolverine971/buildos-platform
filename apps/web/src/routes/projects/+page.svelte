@@ -666,7 +666,7 @@
 							<p class="micro-label text-muted-foreground">CURRENT WORK</p>
 							{#if showSkeletons}
 								<div
-									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded-md mt-1 animate-pulse motion-reduce:animate-none"
+									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded-md mt-1 animate-status-pulse motion-reduce:animate-none"
 								></div>
 							{:else}
 								<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
@@ -679,7 +679,7 @@
 							<p class="micro-label text-muted-foreground">TASKS</p>
 							{#if showSkeletons}
 								<div
-									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded-md mt-1 animate-pulse motion-reduce:animate-none"
+									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded-md mt-1 animate-status-pulse motion-reduce:animate-none"
 								></div>
 							{:else}
 								<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
@@ -692,7 +692,7 @@
 							<p class="micro-label text-muted-foreground">DOCS</p>
 							{#if showSkeletons}
 								<div
-									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded-md mt-1 animate-pulse motion-reduce:animate-none"
+									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded-md mt-1 animate-status-pulse motion-reduce:animate-none"
 								></div>
 							{:else}
 								<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
@@ -707,7 +707,7 @@
 							<p class="micro-label text-accent">ACTIVE</p>
 							{#if showSkeletons}
 								<div
-									class="h-6 sm:h-8 w-10 sm:w-14 bg-accent/20 rounded-md mt-1 animate-pulse motion-reduce:animate-none"
+									class="h-6 sm:h-8 w-10 sm:w-14 bg-accent/20 rounded-md mt-1 animate-status-pulse motion-reduce:animate-none"
 								></div>
 							{:else}
 								<p class="text-xl sm:text-2xl font-semibold text-accent mt-1">

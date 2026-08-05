@@ -557,7 +557,7 @@
 			{#if logsLoading}
 				{#each Array(3) as _, i (i)}
 					<div
-						class="h-14 animate-pulse rounded-md border border-border/60 bg-muted/40 motion-reduce:animate-none"
+						class="h-14 animate-status-pulse rounded-md border border-border/60 bg-muted/40 motion-reduce:animate-none"
 					></div>
 				{/each}
 			{:else if logsError}
@@ -671,7 +671,7 @@
 			{#if logsLoading}
 				{#each Array(3) as _, i (i)}
 					<div
-						class="h-12 animate-pulse rounded-md border border-border/60 bg-muted/40 motion-reduce:animate-none"
+						class="h-12 animate-status-pulse rounded-md border border-border/60 bg-muted/40 motion-reduce:animate-none"
 					></div>
 				{/each}
 			{:else if logsError}

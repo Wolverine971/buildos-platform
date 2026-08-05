@@ -148,10 +148,10 @@
 					: 'px-3 pb-2.5 sm:px-4 sm:pb-3'}"
 			>
 				<div
-					class="h-3 w-3/4 animate-pulse rounded bg-muted/40 motion-reduce:animate-none"
+					class="h-3 w-3/4 animate-status-pulse rounded bg-muted/40 motion-reduce:animate-none"
 				></div>
 				<div
-					class="h-3 w-1/2 animate-pulse rounded bg-muted/40 motion-reduce:animate-none"
+					class="h-3 w-1/2 animate-status-pulse rounded bg-muted/40 motion-reduce:animate-none"
 				></div>
 			</div>
 		{:else if content !== null}

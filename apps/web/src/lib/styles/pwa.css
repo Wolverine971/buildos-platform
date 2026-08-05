@@ -19,9 +19,10 @@
 	overscroll-behavior-y: contain;
 }
 
-/* Pull-to-refresh keeps the gesture page-scoped by moving only opted-in page content. */
-.pwa-pull-to-refresh-surface {
-	transform: translate3d(0, 0, 0);
+/* Pull-to-refresh keeps the gesture page-scoped by moving only opted-in page content.
+   Promote the page only while a gesture or settle animation is actually active. */
+.pwa-pull-to-refresh-surface.pulling,
+.pwa-pull-to-refresh-surface.settling {
 	will-change: transform;
 }
 

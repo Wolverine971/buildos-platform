@@ -1,3 +1,4 @@
+// packages/agentic-chat-runtime/src/lifecycle-observability.ts
 export type AgenticChatLifecycleObservationV1 = {
 	event_type: string;
 	phase: 'prompt' | 'tool' | 'stream' | 'finalize';

@@ -45,6 +45,9 @@
 	const indicatorOffset = $derived(Math.min(12, visibleOffset - 36));
 	const indicatorScale = $derived(0.72 + pullProgress * 0.28);
 	const surfaceTransform = $derived(`translate3d(0, ${visibleOffset}px, 0)`);
+	const surfaceTransformActive = $derived(
+		isAvailable && (isPulling || isRefreshing || isSettling)
+	);
 	const indicatorStyle = $derived(
 		`transform: translate3d(-50%, ${indicatorOffset}px, 0) scale(${indicatorScale}); opacity: ${Math.min(
 			1,
@@ -222,7 +225,7 @@
 		class="pwa-pull-to-refresh-surface"
 		class:pulling={isPulling}
 		class:settling={isSettling || isRefreshing}
-		style:transform={surfaceTransform}
+		style:transform={surfaceTransformActive ? surfaceTransform : undefined}
 	>
 		{@render children()}
 	</div>

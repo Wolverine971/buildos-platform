@@ -1,3 +1,4 @@
+// packages/agentic-chat-runtime/src/lifecycle-observability.test.ts
 import { describe, expect, it } from 'vitest';
 import {
 	AGENTIC_CHAT_PARTIAL_CANCELLATION_GOLDEN_V1,

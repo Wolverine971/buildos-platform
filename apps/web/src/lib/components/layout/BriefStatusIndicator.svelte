@@ -189,7 +189,7 @@
 		<div class="absolute -top-1 -right-1">
 			<span class="relative flex h-2.5 w-2.5">
 				<span
-					class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent/75"
+					class="animate-status-ping absolute inline-flex h-full w-full rounded-full bg-accent/75"
 				></span>
 				<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
 			</span>

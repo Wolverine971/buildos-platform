@@ -193,7 +193,7 @@
 
 	// Animation class for high severity risks
 	const iconAnimation = $derived(
-		type === 'risk' && effectiveSeverity === 'high' ? 'animate-pulse' : ''
+		type === 'risk' && effectiveSeverity === 'high' ? 'animate-status-pulse' : ''
 	);
 </script>
 

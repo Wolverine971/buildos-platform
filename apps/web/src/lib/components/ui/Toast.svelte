@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/ui/Toast.svelte -->
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import type { Toast } from '$lib/stores/toast.store';
 	import { toastService } from '$lib/stores/toast.store';
 	import { X, Check, AlertTriangle, AlertCircle, Info } from 'lucide-svelte';
@@ -11,25 +12,25 @@
 
 	let { toast, ondismiss }: Props = $props();
 
-	function getInitialDuration(): number {
-		return toast.duration || 0;
-	}
-
 	// Swipe gesture state
 	let translateX = $state(0);
 	let isDragging = $state(false);
 	let startX = 0;
-	let toastElement: HTMLDivElement;
+	let startY = 0;
+	let swipeStartedAt = 0;
+	let swipePointerId: number | undefined;
+	let swipeAxis: 'pending' | 'horizontal' | undefined;
+	let toastElement = $state<HTMLDivElement>();
 
-	// Progress state for auto-dismiss countdown
-	let progress = $state(100);
-	let progressInterval: ReturnType<typeof setInterval> | undefined;
 	let isPaused = $state(false);
-	let startTime = $state(Date.now());
-	let duration = $state(getInitialDuration());
 
 	function handleDismiss() {
-		ondismiss?.(toast.id);
+		if (ondismiss) {
+			ondismiss(toast.id);
+			return;
+		}
+
+		toastService.remove(toast.id);
 	}
 
 	// Toast type configuration - Inkprint aligned with semantic textures
@@ -86,99 +87,145 @@
 	// Tracked so the swipe-dismiss animation can be cancelled on unmount.
 	let swipeDismissTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
-	// Progress bar countdown (visual only - store handles actual dismissal)
-	$effect(() => {
-		if (duration > 0) {
-			progressInterval = setInterval(() => {
-				if (!isPaused) {
-					const elapsed = Date.now() - startTime;
-					progress = Math.max(0, 100 - (elapsed / duration) * 100);
-
-					if (progress <= 0) {
-						clearInterval(progressInterval);
-					}
-				}
-			}, 16); // ~60fps for smooth animation
-		}
-
-		return () => {
-			if (progressInterval) clearInterval(progressInterval);
-			if (swipeDismissTimeoutId) clearTimeout(swipeDismissTimeoutId);
-		};
+	onDestroy(() => {
+		if (swipeDismissTimeoutId) clearTimeout(swipeDismissTimeoutId);
 	});
 
-	// Touch gesture handlers for swipe-to-dismiss
-	function handleTouchStart(e: TouchEvent) {
-		const touch = e.touches[0];
-		if (!touch) return;
-		startX = touch.clientX;
-		isDragging = true;
-	}
-
-	function handleTouchMove(e: TouchEvent) {
-		if (!isDragging) return;
-		const touch = e.touches[0];
-		if (!touch) return;
-		const currentX = touch.clientX;
-		const diff = currentX - startX;
-		// Only allow swiping right (positive direction) to dismiss
-		translateX = Math.max(0, diff);
-	}
-
-	function handleTouchEnd() {
-		isDragging = false;
-		// Dismiss if swiped more than 100px or 40% of width
-		const threshold = Math.min(100, toastElement?.offsetWidth * 0.4 || 100);
-		if (translateX > threshold) {
-			// Animate out and dismiss
-			translateX = 400;
-			swipeDismissTimeoutId = setTimeout(handleDismiss, 150);
-		} else {
-			// Snap back
-			translateX = 0;
-		}
-	}
-
-	// Pause progress and store timeout on hover/touch
-	function handleMouseEnter() {
+	function pauseTimer() {
 		isPaused = true;
 		toastService.pause(toast.id);
 	}
 
-	function handleMouseLeave() {
-		// Update our local state to match remaining time from store
-		const state = toastService.getState(toast.id);
-		if (state) {
-			duration = state.remainingTime;
-			startTime = Date.now();
-			progress = 100; // Reset progress for remaining duration
-		}
+	function resumeTimer() {
 		isPaused = false;
 		toastService.resume(toast.id);
+	}
+
+	function resetSwipe({ resume = true } = {}) {
+		isDragging = false;
+		translateX = 0;
+		swipeAxis = undefined;
+		swipePointerId = undefined;
+		if (resume) resumeTimer();
+	}
+
+	function isInteractiveTarget(target: EventTarget | null): boolean {
+		return (
+			target instanceof Element &&
+			Boolean(target.closest('button, a, input, textarea, select, [role="button"]'))
+		);
+	}
+
+	// Pointer events cover touchscreens without fighting vertical page scrolling.
+	function handlePointerDown(event: PointerEvent) {
+		if (
+			event.pointerType !== 'touch' ||
+			!toast.dismissible ||
+			isInteractiveTarget(event.target)
+		) {
+			return;
+		}
+
+		startX = event.clientX;
+		startY = event.clientY;
+		swipeStartedAt = performance.now();
+		swipePointerId = event.pointerId;
+		swipeAxis = 'pending';
+		isDragging = true;
+		pauseTimer();
+	}
+
+	function handlePointerMove(event: PointerEvent) {
+		if (!isDragging || event.pointerId !== swipePointerId) return;
+
+		const deltaX = event.clientX - startX;
+		const deltaY = event.clientY - startY;
+
+		if (swipeAxis === 'pending') {
+			if (Math.hypot(deltaX, deltaY) < 8) return;
+			if (Math.abs(deltaY) >= Math.abs(deltaX)) {
+				resetSwipe();
+				return;
+			}
+			swipeAxis = 'horizontal';
+			(event.currentTarget as HTMLDivElement).setPointerCapture?.(event.pointerId);
+		}
+
+		if (event.cancelable) event.preventDefault();
+		translateX = deltaX;
+	}
+
+	function handlePointerUp(event: PointerEvent) {
+		if (!isDragging || event.pointerId !== swipePointerId) return;
+
+		const target = event.currentTarget as HTMLDivElement;
+		if (target.hasPointerCapture?.(event.pointerId)) {
+			target.releasePointerCapture(event.pointerId);
+		}
+
+		if (swipeAxis !== 'horizontal') {
+			resetSwipe();
+			return;
+		}
+
+		const distance = event.clientX - startX;
+		const width = toastElement?.offsetWidth || window.innerWidth;
+		const threshold = Math.min(96, Math.max(56, width * 0.25));
+		const elapsed = Math.max(1, performance.now() - swipeStartedAt);
+		const isQuickFlick = Math.abs(distance) >= 32 && Math.abs(distance) / elapsed >= 0.5;
+
+		if (Math.abs(distance) >= threshold || isQuickFlick) {
+			isDragging = false;
+			swipeAxis = undefined;
+			swipePointerId = undefined;
+			translateX = (Math.sign(distance) || 1) * (width + 32);
+			swipeDismissTimeoutId = setTimeout(handleDismiss, 150);
+			return;
+		}
+
+		resetSwipe();
+	}
+
+	function handlePointerCancel(event: PointerEvent) {
+		if (event.pointerId !== swipePointerId) return;
+		resetSwipe();
+	}
+
+	// Pause progress and store timeout while the toast is being interacted with.
+	function handleMouseEnter() {
+		pauseTimer();
+	}
+
+	function handleMouseLeave() {
+		resumeTimer();
 	}
 </script>
 
 <div
 	bind:this={toastElement}
 	class="
-		relative overflow-hidden
+		toast-surface relative overflow-hidden
 		flex items-center gap-3 p-3
+		{toast.dismissible ? 'pr-14 md:pr-12' : ''}
 		rounded-lg border
 		shadow-ink-strong backdrop-blur-sm
 		w-full max-w-[calc(100vw-2rem)] md:max-w-md
 		{config.containerClass}
 		{config.texture}
-		transition-transform duration-150 ease-out
-		{isDragging ? '' : 'transition-[transform,opacity]'}
+		transition-[transform,opacity] duration-150 ease-out
+		{isDragging ? 'transition-none' : ''}
 	"
-	style="transform: translateX({translateX}px); opacity: {translateX > 0
-		? 1 - translateX / 400
-		: 1}"
+	class:toast-surface-swiping={isDragging}
+	style:transform={translateX !== 0 ? `translate3d(${translateX}px, 0, 0)` : undefined}
+	style:opacity={translateX !== 0
+		? Math.max(0, 1 - Math.abs(translateX) / (toastElement?.offsetWidth || 320))
+		: undefined}
 	role={ariaRole}
 	aria-live={ariaLive}
-	ontouchstart={handleTouchStart}
-	ontouchmove={handleTouchMove}
-	ontouchend={handleTouchEnd}
+	onpointerdown={handlePointerDown}
+	onpointermove={handlePointerMove}
+	onpointerup={handlePointerUp}
+	onpointercancel={handlePointerCancel}
 	onmouseenter={handleMouseEnter}
 	onmouseleave={handleMouseLeave}
 	onfocusin={handleMouseEnter}
@@ -225,9 +272,12 @@
 	{#if toast.dismissible}
 		<button
 			type="button"
-			onclick={handleDismiss}
+			onclick={(event) => {
+				event.stopPropagation();
+				handleDismiss();
+			}}
 			class="
-				flex-shrink-0
+				toast-dismiss absolute right-2 top-1/2 z-10 -translate-y-1/2
 				w-9 h-9 md:w-8 md:h-8
 				flex items-center justify-center
 				rounded-lg
@@ -247,44 +297,79 @@
 	{#if toast.duration && toast.duration > 0}
 		<div
 			class="
-				absolute bottom-0 left-0 right-0 h-1
+				toast-progress-track absolute bottom-0 left-0 right-0 h-1
 				bg-black/5 dark:bg-card/5
 			"
 		>
 			<div
-				class="
+				class="toast-progress
 					h-full
 					{config.progressClass}
-					{isPaused ? '' : 'transition-[width] duration-100 ease-linear'}
+					{isPaused ? 'toast-progress-paused' : ''}
 				"
-				style="width: {progress}%"
+				style="--toast-duration: {toast.duration}ms"
 			></div>
 		</div>
 	{/if}
-
-	<!-- Swipe hint indicator (mobile only) - subtle line on right edge -->
-	<div
-		class="
-			absolute right-1 top-1/2 -translate-y-1/2
-			w-1 h-8 rounded-full
-			bg-black/10 dark:bg-card/10
-			md:hidden
-			{translateX > 0 ? 'opacity-0' : 'opacity-100'}
-			transition-opacity
-		"
-		aria-hidden="true"
-	></div>
 </div>
 
 <style>
+	.toast-surface {
+		touch-action: pan-y;
+		overscroll-behavior-x: contain;
+	}
+
+	/* Promote only while a swipe is actually in progress — an idle toast must not
+	   hold a composited layer for its whole lifetime. */
+	.toast-surface-swiping {
+		will-change: transform, opacity;
+	}
+
 	/* Ensure toast content stays above texture */
-	div :global(> *) {
-		position: relative;
+	.toast-surface > :global(*) {
 		z-index: 2;
 	}
 
-	/* Respect reduced motion */
+	/* Inkprint positions direct texture children relatively, so interactive
+	   overlays need component-level positioning to stay anchored. */
+	.toast-dismiss {
+		position: absolute;
+		right: 0.5rem;
+		top: 50%;
+		z-index: 3;
+		transform: translateY(-50%);
+	}
+
+	.toast-progress-track {
+		position: absolute;
+		z-index: 2;
+	}
+
+	@keyframes toast-progress-shrink {
+		from {
+			transform: scaleX(1);
+		}
+		to {
+			transform: scaleX(0);
+		}
+	}
+
+	.toast-progress {
+		transform-origin: left center;
+		animation: toast-progress-shrink var(--toast-duration) linear forwards;
+	}
+
+	.toast-progress-paused {
+		animation-play-state: paused;
+	}
+
+	/* Respect reduced motion: keep the countdown information but replace the
+	   continuous shrink with a handful of discrete steps. */
 	@media (prefers-reduced-motion: reduce) {
+		.toast-progress {
+			animation-timing-function: steps(8, end);
+		}
+
 		div {
 			transition: none !important;
 		}

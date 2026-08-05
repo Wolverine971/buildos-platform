@@ -117,7 +117,11 @@ export default {
 				'slide-up': 'slideUp 200ms ease-out',
 				'scale-in': 'scaleIn 150ms ease-out',
 				shimmer: 'shimmer 2s linear infinite',
-				'pulse-glow': 'pulseGlow 2.5s ease-in-out infinite'
+				'pulse-glow': 'pulseGlow 2.5s ease-in-out infinite',
+				// Persistent indicators spend most of their cycle at a fixed value so
+				// Chromium can stop presenting identical frames between short ramps.
+				'status-pulse': 'statusPulse 2.4s infinite',
+				'status-ping': 'statusPing 2.4s infinite'
 			},
 
 			keyframes: {
@@ -140,8 +144,36 @@ export default {
 					'100%': { backgroundPosition: '1000px 0' }
 				},
 				pulseGlow: {
-					'0%, 100%': { opacity: '1', boxShadow: '0 0 0 0 hsl(var(--accent) / 0)' },
-					'50%': { opacity: '0.85', boxShadow: '0 0 12px 2px hsl(var(--accent) / 0.3)' }
+					'0%, 34%, 66%, 100%': {
+						opacity: '1',
+						boxShadow: '0 0 0 0 hsl(var(--accent) / 0)'
+					},
+					'44%, 56%': {
+						opacity: '0.85',
+						boxShadow: '0 0 12px 2px hsl(var(--accent) / 0.3)'
+					}
+				},
+				statusPulse: {
+					'0%, 40%': {
+						opacity: '1',
+						animationTimingFunction: 'steps(6, end)'
+					},
+					'50%, 90%': {
+						opacity: '0.5',
+						animationTimingFunction: 'steps(6, end)'
+					},
+					'100%': { opacity: '1' }
+				},
+				statusPing: {
+					'0%': {
+						opacity: '0.9',
+						transform: 'scale(0.75)',
+						animationTimingFunction: 'steps(20, end)'
+					},
+					'40%, 100%': {
+						opacity: '0',
+						transform: 'scale(2)'
+					}
 				}
 			},
 

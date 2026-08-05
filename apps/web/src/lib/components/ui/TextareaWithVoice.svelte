@@ -1017,7 +1017,7 @@
 				<span
 					class="mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent"
 				>
-					<span class="h-1.5 w-1.5 animate-pulse rounded-full bg-accent"></span>
+					<span class="h-1.5 w-1.5 animate-status-pulse rounded-full bg-accent"></span>
 					{voiceActivityLabel}
 				</span>
 				<div
@@ -1105,7 +1105,7 @@
 						<span class="flex items-center gap-1.5 text-destructive">
 							<span class="relative flex h-2 w-2 items-center justify-center">
 								<span
-									class="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60"
+									class="absolute inline-flex h-full w-full animate-status-ping rounded-full bg-destructive/60"
 								></span>
 								<span
 									class="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive"

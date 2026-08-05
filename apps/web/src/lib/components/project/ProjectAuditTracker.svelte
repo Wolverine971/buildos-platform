@@ -727,7 +727,7 @@
 						</div>
 						{#if loading}
 							<div
-								class="mt-1 h-3 w-56 max-w-full animate-pulse rounded bg-muted/50"
+								class="mt-1 h-3 w-56 max-w-full animate-status-pulse rounded bg-muted/50"
 							></div>
 						{:else if visibleSummary}
 							<p class="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -816,7 +816,7 @@
 			<div class="grid gap-2 border-t border-border px-3 py-3 sm:grid-cols-3 sm:px-4">
 				{#each Array(3) as _, index (index)}
 					<div
-						class="h-12 animate-pulse rounded-md border border-border bg-muted/30"
+						class="h-12 animate-status-pulse rounded-md border border-border bg-muted/30"
 					></div>
 				{/each}
 			</div>

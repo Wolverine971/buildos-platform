@@ -1019,7 +1019,7 @@
 		<div class="space-y-2 border-t border-border p-2 sm:p-3">
 			{#each Array(3) as _, index (index)}
 				<div
-					class="h-20 animate-pulse rounded-md border border-border bg-muted/30 motion-reduce:animate-none"
+					class="h-20 animate-status-pulse rounded-md border border-border bg-muted/30 motion-reduce:animate-none"
 				></div>
 			{/each}
 		</div>

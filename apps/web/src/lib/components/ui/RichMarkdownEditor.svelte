@@ -1491,7 +1491,7 @@
 								class="relative flex h-2 w-2 items-center justify-center shrink-0"
 							>
 								<span
-									class="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60"
+									class="absolute inline-flex h-full w-full animate-status-ping rounded-full bg-destructive/60"
 								></span>
 								<span
 									class="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive"
