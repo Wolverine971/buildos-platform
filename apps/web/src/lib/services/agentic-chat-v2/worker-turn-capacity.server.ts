@@ -11,7 +11,10 @@ const MAX_EVIDENCE_FUTURE_SKEW_MS = 1_000;
 const MAX_QUEUE_AGE_MS = 30_000;
 const MAX_PUBLISHER_PENDING_BYTES = 8 * 1024 * 1024;
 const WORKER_CAPACITY_PATH = '/agentic-chat/capacity';
-const WORKER_CAPACITY_TIMEOUT_MS = 1_500;
+// The worker independently bounds evidence collection at 1.5s. This caller
+// deadline also covers cross-provider DNS, TLS, and proxy transit, so it must
+// leave meaningful network budget around the worker's internal deadline.
+const WORKER_CAPACITY_TIMEOUT_MS = 5_000;
 const MAX_WORKER_CAPACITY_BODY_BYTES = 4 * 1024;
 const MAX_WORKER_TOKEN_LENGTH = 4 * 1024;
 

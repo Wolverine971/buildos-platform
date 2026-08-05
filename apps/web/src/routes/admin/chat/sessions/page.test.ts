@@ -1,7 +1,7 @@
 // apps/web/src/routes/admin/chat/sessions/page.test.ts
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 
 const {
 	pageStore,
@@ -427,18 +427,31 @@ describe('/admin/chat/sessions modal URL state', () => {
 	it('renders a chat-style replay with expandable tool call details', async () => {
 		render(ChatSessionsPage);
 
-		await openSessionFromList();
+		const dialog = await openSessionFromList();
+		const replay = within(dialog);
 
 		expect(await screen.findByText('Chat Replay')).toBeInTheDocument();
 		expect(screen.getAllByText('What should I do next?').length).toBeGreaterThan(0);
 		expect(
 			screen.getAllByText('Draft the outline, then schedule the first writing block.').length
 		).toBeGreaterThan(0);
-		expect(screen.getByText('BuildOS activity')).toBeInTheDocument();
+		const activityLabel = replay.getByText('BuildOS activity');
+		const activitySummary = activityLabel.closest('summary');
+		if (!activitySummary) throw new Error('Expected an expandable BuildOS activity drawer');
+		await fireEvent.click(activitySummary);
+
 		expect(screen.getAllByText('buildos_gateway').length).toBeGreaterThan(0);
 		expect(screen.getAllByText('project.search').length).toBeGreaterThan(0);
-		expect(screen.getByText('Arguments')).toBeInTheDocument();
-		expect(screen.getByText('Result')).toBeInTheDocument();
+
+		const toolSummary = replay
+			.getAllByText('buildos_gateway')
+			.map((element) => element.closest('summary'))
+			.find((element): element is HTMLElement => element instanceof HTMLElement);
+		if (!toolSummary) throw new Error('Expected an expandable BuildOS tool call');
+		await fireEvent.click(toolSummary);
+
+		expect(replay.getByRole('region', { name: 'Request' })).toBeVisible();
+		expect(replay.getByRole('region', { name: 'Response' })).toBeVisible();
 		expect(screen.getByText('Libri Entity Handoff')).toBeInTheDocument();
 		expect(screen.getAllByText('James Clear').length).toBeGreaterThan(0);
 	});

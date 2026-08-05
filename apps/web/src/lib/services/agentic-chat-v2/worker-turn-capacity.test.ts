@@ -107,6 +107,52 @@ describe('Agentic Chat worker capacity boundary', () => {
 		);
 	});
 
+	it('reserves network transit budget beyond the worker collection ceiling', async () => {
+		vi.useFakeTimers();
+		try {
+			let requestSignal: AbortSignal | null = null;
+			const fetchImpl = vi.fn<typeof fetch>(
+				(_input, init) =>
+					new Promise<Response>((resolve, reject) => {
+						requestSignal = init?.signal ?? null;
+						init?.signal?.addEventListener(
+							'abort',
+							() => reject(new Error('aborted')),
+							{
+								once: true
+							}
+						);
+						setTimeout(
+							() =>
+								resolve(
+									new Response(JSON.stringify(evidence()), {
+										headers: { 'content-type': 'application/json' }
+									})
+								),
+							4_999
+						);
+					})
+			);
+
+			const observation = observeAgenticChatWorkerCapacity({
+				workerUrl: 'https://worker.test',
+				workerToken: 'worker-token',
+				fetchImpl,
+				now: () => NOW
+			});
+
+			await vi.advanceTimersByTimeAsync(4_999);
+			expect(requestSignal?.aborted).toBe(false);
+			await expect(observation).resolves.toEqual({
+				available: true,
+				retryAfterSeconds: 2,
+				reason: 'open'
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('preserves a valid stale decision instead of misclassifying it as malformed', async () => {
 		const fetchImpl = vi.fn<typeof fetch>(
 			async () =>
