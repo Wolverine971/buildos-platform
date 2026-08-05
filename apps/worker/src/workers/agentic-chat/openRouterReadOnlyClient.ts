@@ -1,11 +1,17 @@
 // apps/worker/src/workers/agentic-chat/openRouterReadOnlyClient.ts
 import { buildOpenRouterChatCompletionBody, normalizeStreamingContent } from '@buildos/smart-llm';
 import type { UsageLogger } from '@buildos/smart-llm';
+import { type JsonValue, canonicalizeAgenticChatJson } from '@buildos/shared-types';
 import type {
 	AgenticChatReadOnlyProviderClientEventV1,
 	AgenticChatReadOnlyProviderClientPortV1,
-	AgenticChatReadOnlyProviderMessageV1
+	AgenticChatReadOnlyProviderMessageV1,
+	AgenticChatReadOnlyProviderToolV1
 } from './readOnlyProvider';
+import {
+	AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1,
+	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1
+} from './readOnlyTool';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
 const DEFAULT_MAX_TOKENS = 2_000;
@@ -174,14 +180,10 @@ export class AgenticChatOpenRouterReadOnlyClient
 	private readonly appName: string;
 
 	async *stream(input: ClientInput): AsyncGenerator<AgenticChatReadOnlyProviderClientEventV1> {
-		if (input.toolChoice !== 'none') {
-			throw new Error('Agentic Chat network client requires toolChoice=none');
-		}
+		validateToolSurface(input);
 		throwIfAborted(input.signal);
-		const inputChars = input.messages.reduce(
-			(total, message) => total + message.content.length,
-			0
-		);
+		const inputChars =
+			JSON.stringify(input.messages).length + JSON.stringify(input.tools).length;
 		const requestStartedAtMs = Date.now();
 		const attemptedRouteIds: string[] = [];
 		const failures: RouteFailure[] = [];
@@ -376,7 +378,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 					'X-Title': this.appName,
 					...(route.headers ?? {})
 				},
-				body: JSON.stringify(this.requestBody(route, input.messages, input.sessionId)),
+				body: JSON.stringify(this.requestBody(route, input)),
 				signal: attempt.signal
 			});
 			if (!response.ok) {
@@ -425,15 +427,18 @@ export class AgenticChatOpenRouterReadOnlyClient
 
 	private requestBody(
 		route: AgenticChatOpenAiCompatibleRouteV1,
-		messages: readonly AgenticChatReadOnlyProviderMessageV1[],
-		sessionId: string
+		input: ClientInput
 	): Record<string, unknown> {
+		const toolSurface =
+			input.toolChoice === 'auto'
+				? { tools: input.tools.map(copyTool), tool_choice: 'auto' as const }
+				: { tool_choice: 'none' as const };
 		if (route.kind === 'openrouter') {
 			return buildOpenRouterChatCompletionBody({
 				model: route.model,
 				models: route.fallbackModels ? [...route.fallbackModels] : undefined,
-				messages: messages.map(copyMessage),
-				tool_choice: 'none',
+				messages: input.messages.map(copyMessage),
+				...toolSurface,
 				temperature: this.temperature,
 				max_tokens: this.maxTokens,
 				reasoning: { exclude: true },
@@ -444,19 +449,19 @@ export class AgenticChatOpenRouterReadOnlyClient
 				},
 				stream: true,
 				stream_options: { include_usage: true },
-				session_id: sessionId,
-				prompt_cache_key: sessionId
+				session_id: input.sessionId,
+				prompt_cache_key: input.sessionId
 			});
 		}
 		return {
 			model: route.model,
-			messages: messages.map(copyMessage),
-			tool_choice: 'none',
+			messages: input.messages.map(copyMessage),
+			...toolSurface,
 			temperature: this.temperature,
 			max_tokens: this.maxTokens,
 			stream: true,
 			stream_options: { include_usage: true },
-			prompt_cache_key: sessionId
+			prompt_cache_key: input.sessionId
 		};
 	}
 
@@ -553,6 +558,12 @@ function parseSseLine(
 			false
 		);
 	}
+	if (choices.length > 1) {
+		throw new AgenticChatProviderNetworkError(
+			'Agentic Chat provider returned more than one streamed choice',
+			false
+		);
+	}
 	const choice = choices[0];
 	if (choice === undefined) return { events: [], done: false };
 	const record = requireRecord(choice, 'provider choice');
@@ -578,6 +589,7 @@ function parseSseLine(
 			}
 		}
 		if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) {
+			state.completionChars += JSON.stringify(delta.tool_calls).length;
 			events.push({ type: 'tool_call', toolCall: delta.tool_calls });
 		}
 	}
@@ -809,6 +821,64 @@ function copyMessage(message: AgenticChatReadOnlyProviderMessageV1) {
 		...(message.tool_calls ? { tool_calls: message.tool_calls } : {}),
 		...(message.tool_call_id ? { tool_call_id: message.tool_call_id } : {})
 	};
+}
+
+function copyTool(tool: AgenticChatReadOnlyProviderToolV1) {
+	return {
+		type: 'function' as const,
+		function: {
+			name: tool.function.name,
+			description: tool.function.description,
+			parameters: tool.function.parameters
+		}
+	};
+}
+
+function validateToolSurface(input: ClientInput): void {
+	if (!Array.isArray(input.tools)) {
+		throw new Error('Agentic Chat provider tool surface must be an array');
+	}
+	if (input.toolChoice === 'none') {
+		if (input.tools.length !== 0) {
+			throw new Error('Agentic Chat toolChoice=none requires an empty tool surface');
+		}
+		return;
+	}
+	if (input.toolChoice !== 'auto' || input.tools.length !== 1) {
+		throw new Error('Agentic Chat toolChoice=auto requires exactly one read tool');
+	}
+	const tool = input.tools[0];
+	if (
+		tool?.type !== 'function' ||
+		!tool.function ||
+		typeof tool.function.name !== 'string' ||
+		!tool.function.name ||
+		tool.function.name !== tool.function.name.trim() ||
+		!AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.some((name) => name === tool.function.name) ||
+		typeof tool.function.description !== 'string' ||
+		!tool.function.description ||
+		!tool.function.parameters ||
+		typeof tool.function.parameters !== 'object' ||
+		Array.isArray(tool.function.parameters) ||
+		!matchesProductionReadTool(tool)
+	) {
+		throw new Error('Agentic Chat read tool definition is invalid');
+	}
+}
+
+function matchesProductionReadTool(tool: AgenticChatReadOnlyProviderToolV1): boolean {
+	const expected = AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1.find(
+		(candidate) => candidate.function.name === tool.function.name
+	);
+	if (!expected) return false;
+	try {
+		return (
+			canonicalizeAgenticChatJson(tool as unknown as JsonValue) ===
+			canonicalizeAgenticChatJson(expected as unknown as JsonValue)
+		);
+	} catch {
+		return false;
+	}
 }
 
 async function responseErrorMessage(response: Response): Promise<string> {

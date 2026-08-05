@@ -7,6 +7,7 @@ import {
 	type AgenticChatProviderStepV1
 } from '../src/workers/agentic-chat/providerContract';
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
+import { createStableAgenticChatReadToolTransitionIdV1 } from '../src/workers/agentic-chat/readToolIdentity';
 import {
 	AgenticChatReadOnlyProviderAdapter,
 	type AgenticChatReadOnlyProviderClientEventV1
@@ -112,6 +113,23 @@ async function collect(stream: AsyncIterable<AgenticChatProviderStepV1>) {
 	return result;
 }
 
+function executionInputWithReadSurface(): AgenticChatWorkerExecutionInputV1 {
+	const input = executionInput();
+	return {
+		...input,
+		artifact: {
+			...input.artifact,
+			prepared: {
+				...input.artifact.prepared,
+				toolSurface: {
+					surfaceProfile: 'project_default',
+					toolNames: ['get_project_overview']
+				}
+			}
+		}
+	};
+}
+
 describe('AgenticChatReadOnlyProviderAdapter', () => {
 	it('reserves before start and defers the first client call until stream', async () => {
 		const client = clientWith([
@@ -158,6 +176,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				{ role: 'assistant', content: 'Frozen reply' },
 				{ role: 'user', content: 'Current request' }
 			],
+			tools: [],
 			toolChoice: 'none',
 			userId: USER_ID,
 			sessionId: SESSION_ID,
@@ -215,6 +234,246 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
+	it('runs one allowlisted read round and synthesizes only from the durable feedback', async () => {
+		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-read-1',
+							type: 'function',
+							function: {
+								name: 'get_project_',
+								arguments: '{"project_id":"40000000-0000-4000-8000-000000000004"'
+							}
+						}
+					]
+				},
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							function: { name: 'overview', arguments: '}' }
+						}
+					]
+				},
+				{
+					type: 'done',
+					finishedReason: 'tool_calls',
+					usage: { promptTokens: 7, completionTokens: 1, totalTokens: 8 }
+				}
+			],
+			[
+				{ type: 'text', content: 'The project is ready.' },
+				{
+					type: 'done',
+					finishedReason: 'stop',
+					usage: { promptTokens: 10, completionTokens: 3, totalTokens: 13 }
+				}
+			]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity });
+		const invocation = await adapter.prepare({
+			executionInput: executionInputWithReadSurface(),
+			signal: new AbortController().signal
+		});
+
+		const initial = await collect(invocation.stream());
+		expect(initial).toEqual([
+			{
+				type: 'semantic',
+				transitionId: createStableAgenticChatReadToolTransitionIdV1({
+					turnRunId: TURN_RUN_ID,
+					providerToolCallId: 'provider-read-1',
+					stage: 'planning'
+				}),
+				phase: 'stream',
+				eventType: 'agent_state',
+				currentActivity: 'Planning the first step...',
+				eventPayload: {
+					type: 'agent_state',
+					state: 'thinking',
+					contextType: 'project',
+					details: 'Planning the first step...',
+					activity_visibility: 'activity_log'
+				}
+			},
+			expect.objectContaining({
+				type: 'read_tool',
+				providerToolCallId: 'provider-read-1',
+				toolName: 'get_project_overview',
+				arguments: { project_id: '40000000-0000-4000-8000-000000000004' }
+			})
+		]);
+		expect(capacity.getSnapshot()).toMatchObject({ available: false, activeRequests: 1 });
+
+		const feedback = {
+			providerToolCallId: 'provider-read-1',
+			toolName: 'get_project_overview',
+			arguments: { project_id: '40000000-0000-4000-8000-000000000004' },
+			execution: {
+				result: { project: { id: '40000000-0000-4000-8000-000000000004' } },
+				executionTimeMs: 12,
+				tokensConsumed: null,
+				affectedEntities: [],
+				toolCategory: 'project_read',
+				resultCount: 1,
+				zeroResult: false,
+				requiresUserAction: false
+			}
+		};
+		await expect(collect(invocation.synthesize!(feedback))).resolves.toEqual([
+			{ type: 'text_delta', text: 'The project is ready.' },
+			{
+				type: 'finish',
+				finishedReason: 'stop',
+				usage: { promptTokens: 17, completionTokens: 4, totalTokens: 21 }
+			}
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(client.stream.mock.calls[0]?.[0]).toMatchObject({
+			toolChoice: 'auto',
+			tools: [
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'get_project_overview' })
+				})
+			]
+		});
+		expect(client.stream.mock.calls[1]?.[0]).toMatchObject({
+			toolChoice: 'none',
+			tools: [],
+			messages: expect.arrayContaining([
+				expect.objectContaining({ role: 'assistant', tool_calls: [expect.any(Object)] }),
+				{
+					role: 'tool',
+					content: '{"project":{"id":"40000000-0000-4000-8000-000000000004"}}',
+					tool_call_id: 'provider-read-1'
+				}
+			])
+		});
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('streams a direct answer immediately even when the read tool is available', async () => {
+		const client = clientWith([
+			{ type: 'text', content: 'No project lookup is needed.' },
+			{
+				type: 'done',
+				finishedReason: 'stop',
+				usage: { promptTokens: 8, completionTokens: 5, totalTokens: 13 }
+			}
+		]);
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity });
+		const invocation = await adapter.prepare({
+			executionInput: executionInputWithReadSurface(),
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			{ type: 'text_delta', text: 'No project lookup is needed.' },
+			{
+				type: 'finish',
+				finishedReason: 'stop',
+				usage: { promptTokens: 8, completionTokens: 5, totalTokens: 13 }
+			}
+		]);
+		expect(client.stream).toHaveBeenCalledWith(
+			expect.objectContaining({ toolChoice: 'auto', tools: [expect.any(Object)] })
+		);
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('rejects a second provider tool round and releases capacity', async () => {
+		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-read-1',
+							type: 'function',
+							function: {
+								name: 'get_project_overview',
+								arguments: '{"project_id":"40000000-0000-4000-8000-000000000004"}'
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			],
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-read-2',
+							type: 'function',
+							function: { name: 'get_project_overview', arguments: '{}' }
+						}
+					]
+				}
+			]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity });
+		const invocation = await adapter.prepare({
+			executionInput: executionInputWithReadSurface(),
+			signal: new AbortController().signal
+		});
+		await collect(invocation.stream());
+
+		await expect(
+			collect(
+				invocation.synthesize!({
+					providerToolCallId: 'provider-read-1',
+					toolName: 'get_project_overview',
+					arguments: {
+						project_id: '40000000-0000-4000-8000-000000000004'
+					},
+					execution: {
+						result: {
+							project: { id: '40000000-0000-4000-8000-000000000004' }
+						},
+						executionTimeMs: 1,
+						tokensConsumed: null,
+						affectedEntities: [],
+						toolCategory: 'project_read',
+						resultCount: 1,
+						zeroResult: false,
+						requiresUserAction: false
+					}
+				})
+			)
+		).rejects.toMatchObject({
+			code: 'provider_additional_tool_round_disabled',
+			failureClass: 'permanent'
+		});
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
 	it('turns retryable provider errors into bounded pressure evidence', async () => {
 		let nowMs = 1_000;
 		const client = clientWith([{ type: 'error', error: 'rate limited', retryable: true }]);
@@ -240,6 +499,62 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 		nowMs = 3_000;
 		expect(capacity.getSnapshot().available).toBe(true);
+	});
+
+	it('rejects non-allowlisted and multi-call provider output without executing another round', async () => {
+		for (const events of [
+			[
+				{
+					type: 'tool_call' as const,
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-write-1',
+							type: 'function',
+							function: { name: 'update_onto_project', arguments: '{}' }
+						}
+					]
+				},
+				{ type: 'done' as const, finishedReason: 'tool_calls' }
+			],
+			[
+				{
+					type: 'tool_call' as const,
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-read-1',
+							type: 'function',
+							function: { name: 'get_project_overview', arguments: '{}' }
+						},
+						{
+							index: 1,
+							id: 'provider-read-2',
+							type: 'function',
+							function: { name: 'get_project_overview', arguments: '{}' }
+						}
+					]
+				}
+			]
+		] satisfies AgenticChatReadOnlyProviderClientEventV1[][]) {
+			const capacity = new AgenticChatProviderCapacity({
+				configured: true,
+				concurrency: 1
+			});
+			const adapter = new AgenticChatReadOnlyProviderAdapter({
+				client: clientWith(events),
+				capacity
+			});
+			const invocation = await adapter.prepare({
+				executionInput: executionInputWithReadSurface(),
+				signal: new AbortController().signal
+			});
+
+			await expect(collect(invocation.stream())).rejects.toMatchObject({
+				failureClass: 'permanent'
+			});
+			expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+		}
 	});
 
 	it('rejects malformed completion and single-use invocation violations', async () => {

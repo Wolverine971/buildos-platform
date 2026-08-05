@@ -43,6 +43,15 @@ describe('Agentic Chat worker capacity boundary', () => {
 		});
 	});
 
+	it('tolerates bounded infrastructure clock skew but rejects future evidence beyond it', () => {
+		expect(
+			evaluateAgenticChatWorkerCapacity(evidence({ observedAtMs: NOW + 1_000 }), NOW)
+		).toEqual({ available: true, retryAfterSeconds: 2, reason: 'open' });
+		expect(
+			evaluateAgenticChatWorkerCapacity(evidence({ observedAtMs: NOW + 1_001 }), NOW)
+		).toMatchObject({ available: false, reason: 'stale_evidence' });
+	});
+
 	it('closes independently for stale and pressured evidence', () => {
 		expect(
 			evaluateAgenticChatWorkerCapacity(evidence({ observedAtMs: NOW - 20_000 }), NOW)

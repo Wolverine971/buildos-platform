@@ -7,6 +7,7 @@ import {
 	type AgenticChatProviderUsageObservationV1
 } from '../src/workers/agentic-chat/openRouterReadOnlyClient';
 import type { AgenticChatReadOnlyProviderClientEventV1 } from '../src/workers/agentic-chat/readOnlyProvider';
+import { AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1 } from '../src/workers/agentic-chat/readOnlyTool';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
@@ -22,6 +23,7 @@ function input(signal = new AbortController().signal) {
 			{ role: 'system', content: 'System prompt' },
 			{ role: 'user', content: 'Current request' }
 		] as const,
+		tools: [],
 		toolChoice: 'none' as const,
 		userId: USER_ID,
 		sessionId: SESSION_ID,
@@ -253,6 +255,115 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			completionTokens: 4,
 			error: null
 		});
+	});
+
+	it('passes through one streamed read-tool call with the exact allowlisted HTTP surface', async () => {
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				JSON.stringify({
+					choices: [
+						{
+							delta: {
+								tool_calls: [
+									{
+										index: 0,
+										id: 'provider-read-1',
+										type: 'function',
+										function: {
+											name: 'get_project_overview',
+											arguments: '{"query":"9takes"}'
+										}
+									}
+								]
+							}
+						}
+					]
+				}),
+				JSON.stringify({
+					usage: { prompt_tokens: 9, completion_tokens: 2, total_tokens: 11 },
+					choices: [{ delta: {}, finish_reason: 'tool_calls' }]
+				}),
+				'[DONE]'
+			])
+		) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		const tool = JSON.parse(JSON.stringify(AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1[0]));
+
+		await expect(
+			collect(
+				test.client.stream({
+					...input(),
+					tools: [tool],
+					toolChoice: 'auto'
+				})
+			)
+		).resolves.toEqual([
+			{
+				type: 'tool_call',
+				toolCall: [
+					{
+						index: 0,
+						id: 'provider-read-1',
+						type: 'function',
+						function: {
+							name: 'get_project_overview',
+							arguments: '{"query":"9takes"}'
+						}
+					}
+				]
+			},
+			{
+				type: 'done',
+				finishedReason: 'tool_calls',
+				usage: { promptTokens: 9, completionTokens: 2, totalTokens: 11 }
+			}
+		]);
+		const body = JSON.parse(String(vi.mocked(fetchImpl).mock.calls[0]?.[1]?.body));
+		expect(body).toMatchObject({ tool_choice: 'auto', tools: [tool] });
+	});
+
+	it('rejects a widened same-name tool definition before opening the network', async () => {
+		const fetchImpl = vi.fn() as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		const widened = {
+			type: 'function' as const,
+			function: {
+				name: 'get_project_overview',
+				description: 'Read one project.',
+				parameters: { type: 'object', additionalProperties: true }
+			}
+		};
+
+		await expect(
+			collect(
+				test.client.stream({
+					...input(),
+					tools: [widened],
+					toolChoice: 'auto'
+				})
+			)
+		).rejects.toThrow('read tool definition is invalid');
+		expect(fetchImpl).not.toHaveBeenCalled();
+	});
+
+	it('rejects multiple streamed choices instead of silently ignoring one', async () => {
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				JSON.stringify({
+					choices: [{ delta: { content: 'first' } }, { delta: { content: 'second' } }]
+				})
+			])
+		) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+
+		await expect(collect(test.client.stream(input()))).resolves.toEqual([
+			{
+				type: 'error',
+				error: 'Agentic Chat provider returned more than one streamed choice',
+				retryable: false
+			}
+		]);
+		expect(test.observations[0]).toMatchObject({ status: 'failure', retryable: false });
 	});
 
 	it('rejects an HTTP 200 non-SSE body before acceptance and tries the next route', async () => {

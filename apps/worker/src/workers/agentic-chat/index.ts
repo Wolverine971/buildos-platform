@@ -19,6 +19,8 @@ export * from './providerContract';
 export * from './providerCapacity';
 export * from './promptSnapshot';
 export * from './readOnlyProvider';
+export * from './readOnlyTool';
+export * from './readToolIdentity';
 export * from './recoverySnapshot';
 export * from './stalledRecovery';
 export * from './streamPublisher';

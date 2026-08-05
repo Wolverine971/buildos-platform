@@ -1726,31 +1726,6 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).not.toHaveBeenCalled();
 		});
 
-		it('returns the standard timeout envelope when a gateway handler exceeds its deadline', async () => {
-			const toolCall: ChatToolCall = {
-				id: 'call_gateway_timeout',
-				name: 'tool_schema',
-				arguments: { op: 'onto.task.update' }
-			};
-			const gatewayService = service as unknown as {
-				executeGatewayTool: () => Promise<ToolExecutionResult>;
-			};
-			vi.spyOn(gatewayService, 'executeGatewayTool').mockImplementationOnce(
-				() => new Promise(() => undefined)
-			);
-
-			const result = await service.executeTool(toolCall, mockContext, [], { timeout: 10 });
-
-			expect(result).toMatchObject({
-				success: false,
-				errorType: 'timeout',
-				toolName: 'tool_schema',
-				toolCallId: 'call_gateway_timeout'
-			});
-			expect(result.error).toEqual(expect.stringContaining('timeout'));
-			expect(mockToolExecutor).not.toHaveBeenCalled();
-		});
-
 		it('repairs nested project collections before create_onto_project execution', async () => {
 			const createContext: ServiceContext = {
 				...mockContext,

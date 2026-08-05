@@ -14,7 +14,8 @@ import {
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1,
 	diffAgenticChatParityRunsV1,
-	normalizeAgenticChatParityRunV1
+	normalizeAgenticChatParityRunV1,
+	projectAgenticChatWorkerLifecycleObservationsV1
 } from '@buildos/agentic-chat-runtime';
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessingJob } from '../src/lib/supabaseQueue';
@@ -318,8 +319,18 @@ function createHarness(
 	publisher.start();
 
 	const recovery = [...(options.recovery ?? [])];
+	let claimCount = 0;
 	const control = {
-		claim: vi.fn(async () => claim),
+		claim: vi.fn(async () => {
+			claimCount += 1;
+			return claimCount === 1
+				? claim
+				: {
+						...claim,
+						outcome: 'matching_current_claim' as const,
+						executionMayStart: false
+					};
+		}),
 		begin: vi.fn(async () => {
 			log.push('begin');
 			return {
@@ -1147,6 +1158,87 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	it('starts synthesis only after the single read is fenced, durable, and publicly committed', async () => {
+		const harness = createHarness([]);
+		const readExecution = {
+			result: {
+				project: {
+					id: 'da000000-0000-4000-8000-000000000001',
+					name: 'Fixture project'
+				}
+			},
+			executionTimeMs: 12,
+			tokensConsumed: null,
+			affectedEntities: [],
+			toolCategory: 'project_read',
+			resultCount: 1,
+			zeroResult: false,
+			requiresUserAction: false
+		};
+		harness.readTool.execute.mockResolvedValueOnce(readExecution);
+		harness.toolExecutions.persistRead.mockImplementationOnce(async () => {
+			harness.log.push('tool_ledger');
+		});
+		const synthesize = vi.fn((feedback) => {
+			harness.log.push('synthesize');
+			expect(feedback).toEqual({
+				providerToolCallId: 'provider-read-1',
+				toolName: 'get_project_overview',
+				arguments: { project_id: 'da000000-0000-4000-8000-000000000001' },
+				execution: readExecution
+			});
+			return (async function* () {
+				yield { type: 'text_delta', text: 'The fixture project is ready.' } as const;
+				yield {
+					type: 'finish',
+					finishedReason: 'stop',
+					usage: { promptTokens: 10, completionTokens: 6, totalTokens: 16 }
+				} as const;
+			})();
+		});
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-read-1',
+							toolName: 'get_project_overview',
+							arguments: {
+								project_id: 'da000000-0000-4000-8000-000000000001'
+							}
+						} as const;
+					})(),
+				synthesize,
+				release: vi.fn()
+			}))
+		});
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(synthesize).toHaveBeenCalledOnce();
+		expect(harness.control.claim).toHaveBeenCalledTimes(2);
+		const ledgerIndex = harness.log.indexOf('tool_ledger');
+		const publicResultIndex = harness.log.indexOf('semantic:tool_result:');
+		const synthesisIndex = harness.log.indexOf('synthesize');
+		expect(ledgerIndex).toBeGreaterThan(-1);
+		expect(publicResultIndex).toBeGreaterThan(ledgerIndex);
+		expect(synthesisIndex).toBeGreaterThan(publicResultIndex);
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				assistantText: 'The fixture project is ready.',
+				promptTokens: 10,
+				completionTokens: 6,
+				totalTokens: 16
+			})
+		);
+		await harness.publisher.stop();
+	});
+
 	it('isolates the intentional async timing divergence from the remaining legacy differential', async () => {
 		const harness = createHarness(
 			[
@@ -1211,11 +1303,11 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 						user_message_linked:
 							claim.userMessageId === executionInput.claim.userMessageId
 					},
-					lifecycle_events: harness.semanticInputs.flatMap((input) => {
-						const payload = input.event_payload as Record<string, unknown>;
-						return payload.type === 'turn_phase' && payload.turn_phase === 'finalizing'
-							? [{ event_type: 'turn_phase_changed', phase: input.phase }]
-							: [];
+					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
+						admissionObserved: true,
+						publicEvents: harness.broadcastMessages.map((message) => message.payload),
+						terminalStatus: terminalInput.status,
+						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
 					}),
 					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}
@@ -1244,13 +1336,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			});
 			expect(nonTimingDifferences).toEqual([
 				{ path: '/events/7/payload/failure_code', kind: 'unexpected_in_actual' },
-				{ path: '/events/7/payload/status', kind: 'unexpected_in_actual' },
-				{ path: '/metadata/lifecycle_events/0', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/1', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/3', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/4', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/5', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/6', kind: 'missing_in_actual' }
+				{ path: '/events/7/payload/status', kind: 'unexpected_in_actual' }
 			]);
 		} finally {
 			await harness.publisher.stop();
@@ -1365,11 +1451,11 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 						user_message_linked:
 							claim.userMessageId === fixtureExecutionInput.claim.userMessageId
 					},
-					lifecycle_events: harness.semanticInputs.flatMap((input) => {
-						const payload = input.event_payload as Record<string, unknown>;
-						return payload.type === 'turn_phase' && payload.turn_phase === 'finalizing'
-							? [{ event_type: 'turn_phase_changed', phase: input.phase }]
-							: [];
+					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
+						admissionObserved: true,
+						publicEvents: harness.broadcastMessages.map((message) => message.payload),
+						terminalStatus: terminalInput.status,
+						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
 					}),
 					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}
@@ -1389,16 +1475,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			expect(timingDifferences.length).toBeGreaterThan(0);
 			expect(nonTimingDifferences).toEqual([
 				{ path: '/events/10/payload/failure_code', kind: 'unexpected_in_actual' },
-				{ path: '/events/10/payload/status', kind: 'unexpected_in_actual' },
-				{ path: '/metadata/lifecycle_events/0', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/1', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/2', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/3', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/4', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/6', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/7', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/8', kind: 'missing_in_actual' },
-				{ path: '/metadata/lifecycle_events/9', kind: 'missing_in_actual' }
+				{ path: '/events/10/payload/status', kind: 'unexpected_in_actual' }
 			]);
 		} finally {
 			await harness.publisher.stop();
@@ -1926,7 +2003,12 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 						user_message_linked:
 							claim.userMessageId === executionInput.claim.userMessageId
 					},
-					lifecycle_events: [],
+					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
+						admissionObserved: true,
+						publicEvents: harness.broadcastMessages.map((message) => message.payload),
+						terminalStatus: terminalInput.status,
+						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
+					}),
 					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}
 			});
@@ -1958,11 +2040,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			});
 			expect(nonTimingDifferences).toEqual([
 				{ path: '/events/6/payload/failure_code', kind: 'unexpected_in_actual' },
-				{ path: '/events/6/payload/status', kind: 'unexpected_in_actual' },
-				...Array.from({ length: 6 }, (_, index) => ({
-					path: `/metadata/lifecycle_events/${index}`,
-					kind: 'missing_in_actual' as const
-				}))
+				{ path: '/events/6/payload/status', kind: 'unexpected_in_actual' }
 			]);
 		} finally {
 			await harness.publisher.stop();
@@ -2037,7 +2115,12 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 						user_message_linked:
 							claim.userMessageId === executionInput.claim.userMessageId
 					},
-					lifecycle_events: [],
+					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
+						admissionObserved: true,
+						publicEvents: harness.broadcastMessages.map((message) => message.payload),
+						terminalStatus: terminalInput.status,
+						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
+					}),
 					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}
 			});
@@ -2049,6 +2132,11 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 
 			expect(differential.matches).toBe(false);
 			expect(differential.truncated).toBe(false);
+			expect(
+				differential.differences.filter(({ path }) =>
+					path.startsWith('/metadata/lifecycle_events/')
+				)
+			).toEqual([]);
 			expect(workerEventTypes).toEqual([
 				'turn_phase',
 				'session',

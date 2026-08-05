@@ -45,6 +45,7 @@ import {
 	type AgenticChatPreparedProviderInvocationV1,
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderPortV1,
+	type AgenticChatProviderReadSynthesisInputV1,
 	type AgenticChatProviderStepV1,
 	type AgenticChatProviderUsageV1
 } from './providerContract';
@@ -405,64 +406,115 @@ export class AgenticChatFixtureTurnExecutor {
 
 			let finished = false;
 			let promptSnapshotAttempted = false;
-			const providerStream = preparedProvider
+			let pendingReadFeedback: AgenticChatProviderReadSynthesisInputV1 | null = null;
+			let synthesisStarted = false;
+			let providerStream: AsyncIterable<AgenticChatProviderStepV1> = preparedProvider
 				? preparedProvider.stream()
 				: this.ports.provider.stream!({ executionInput, signal: combined.signal });
-			for await (const step of iterateWithAbort(providerStream, combined.signal)) {
-				if (finished) throw new Error('Fixture provider emitted a step after finish');
-				if (step.type === 'text_delta') {
-					if (!step.text) throw new Error('Fixture text delta must be nonempty');
-					const queued = this.ports.publisher.appendText(claim.turnRunId, step.text);
-					await abortable(queued.delivery, combined.signal);
-					if (queued.pressureRelieved) {
-						await abortable(queued.pressureRelieved, combined.signal);
+			while (!finished) {
+				for await (const step of iterateWithAbort(providerStream, combined.signal)) {
+					if (finished) throw new Error('Fixture provider emitted a step after finish');
+					if (step.type === 'text_delta') {
+						if (!step.text) throw new Error('Fixture text delta must be nonempty');
+						const queued = this.ports.publisher.appendText(claim.turnRunId, step.text);
+						await abortable(queued.delivery, combined.signal);
+						if (queued.pressureRelieved) {
+							await abortable(queued.pressureRelieved, combined.signal);
+						}
+						if (!promptSnapshotAttempted) {
+							promptSnapshotAttempted = true;
+							await this.persistPromptSnapshot(
+								envelope,
+								executionInput,
+								preparedProvider
+							);
+						}
+						continue;
 					}
-					if (!promptSnapshotAttempted) {
-						promptSnapshotAttempted = true;
-						await this.persistPromptSnapshot(
-							envelope,
+					if (step.type === 'semantic') {
+						await this.publishSemantic(
 							executionInput,
-							preparedProvider
+							projection,
+							step,
+							combined.signal
+						);
+						terminalContext.contextShift =
+							extractContextShift(step.eventPayload) ?? terminalContext.contextShift;
+						continue;
+					}
+					if (step.type === 'read_tool') {
+						if (!promptSnapshotAttempted) {
+							promptSnapshotAttempted = true;
+							await this.persistPromptSnapshot(
+								envelope,
+								executionInput,
+								preparedProvider
+							);
+						}
+						if (
+							preparedProvider?.synthesize &&
+							(synthesisStarted || pendingReadFeedback !== null)
+						) {
+							throw new AgenticChatProviderExecutionError(
+								'provider_read_round_limit_exceeded',
+								'permanent',
+								'Agentic Chat production provider supports exactly one bounded read call'
+							);
+						}
+						pendingReadFeedback = await this.executeReadTool(
+							executionInput,
+							envelope.processingToken,
+							projection,
+							terminalContext,
+							step,
+							combined.signal
+						);
+						continue;
+					}
+					if (step.type === 'mutating_tool') {
+						if (preparedProvider?.synthesize) {
+							throw new AgenticChatProviderExecutionError(
+								'provider_mutating_tool_disabled',
+								'permanent',
+								'Mutating tools are unreachable in the production read-only provider'
+							);
+						}
+						await this.executeMutatingTool(
+							executionInput,
+							envelope.processingToken,
+							projection,
+							terminalContext,
+							step,
+							combined.signal
+						);
+						continue;
+					}
+
+					if (preparedProvider?.synthesize && pendingReadFeedback && !synthesisStarted) {
+						throw new AgenticChatProviderExecutionError(
+							'provider_finished_before_read_synthesis',
+							'unknown',
+							'Provider finished before the durable read result was synthesized'
 						);
 					}
-					continue;
-				}
-				if (step.type === 'semantic') {
-					await this.publishSemantic(executionInput, projection, step, combined.signal);
-					terminalContext.contextShift =
-						extractContextShift(step.eventPayload) ?? terminalContext.contextShift;
-					continue;
-				}
-				if (step.type === 'read_tool') {
-					await this.executeReadTool(
-						executionInput,
-						envelope.processingToken,
-						projection,
-						terminalContext,
-						step,
-						combined.signal
+					validateFinish(step.finishedReason, step.usage);
+					this.captureRuntimeTiming(runtimeTiming, (timing) =>
+						timing.markProviderFinished()
 					);
+					finishedReason = step.finishedReason;
+					usage = step.usage;
+					finished = true;
+				}
+				if (finished) break;
+				if (pendingReadFeedback && preparedProvider?.synthesize && !synthesisStarted) {
+					throwIfAborted(combined.signal);
+					providerStream = preparedProvider.synthesize(pendingReadFeedback);
+					pendingReadFeedback = null;
+					synthesisStarted = true;
 					continue;
 				}
-				if (step.type === 'mutating_tool') {
-					await this.executeMutatingTool(
-						executionInput,
-						envelope.processingToken,
-						projection,
-						terminalContext,
-						step,
-						combined.signal
-					);
-					continue;
-				}
-
-				validateFinish(step.finishedReason, step.usage);
-				this.captureRuntimeTiming(runtimeTiming, (timing) => timing.markProviderFinished());
-				finishedReason = step.finishedReason;
-				usage = step.usage;
-				finished = true;
+				throw new Error('Fixture provider ended without a finish step');
 			}
-			if (!finished) throw new Error('Fixture provider ended without a finish step');
 			throwIfAborted(combined.signal);
 			await abortable(this.ports.publisher.flushTurn(claim.turnRunId), combined.signal);
 			await this.publishExecutorLifecycle(
@@ -744,13 +796,14 @@ export class AgenticChatFixtureTurnExecutor {
 		terminalContext: TerminalContextState,
 		step: Extract<AgenticChatFixtureProviderStepV1, { type: 'read_tool' }>,
 		signal: AbortSignal
-	): Promise<void> {
+	): Promise<AgenticChatProviderReadSynthesisInputV1> {
 		canonicalUuid(step.callTransitionId, 'callTransitionId');
 		canonicalUuid(step.resultTransitionId, 'resultTransitionId');
 		if (!canonicalText(step.providerToolCallId, 512)) {
 			throw new Error('Fixture provider tool-call id is invalid');
 		}
 		if (!canonicalText(step.toolName, 256)) throw new Error('Fixture tool name is invalid');
+		await this.assertCurrentReadToolFence(executionInput, processingToken, signal);
 
 		await this.publishSemantic(
 			executionInput,
@@ -854,6 +907,48 @@ export class AgenticChatFixtureTurnExecutor {
 			toolCall: providerToolCall(step),
 			result: chatToolResult
 		});
+		return {
+			providerToolCallId: step.providerToolCallId,
+			toolName: step.toolName,
+			arguments: step.arguments,
+			execution: toolResult
+		};
+	}
+
+	private async assertCurrentReadToolFence(
+		executionInput: AgenticChatWorkerExecutionInputV1,
+		processingToken: string,
+		signal: AbortSignal
+	): Promise<void> {
+		throwIfAborted(signal);
+		const receipt = await abortable(
+			this.ports.control.claim({
+				turnRunId: executionInput.claim.turnRunId,
+				queueJobId: executionInput.claim.queueJobId,
+				processingToken
+			}),
+			signal
+		);
+		if (receipt.outcome === 'cancel_requested') {
+			throw new AgenticChatToolExecutionFenceError('cancel_requested', 'cancelled');
+		}
+		if (receipt.outcome === 'already_terminal') {
+			throw new AgenticChatToolExecutionFenceError('already_terminal', 'unknown');
+		}
+		if (
+			receipt.outcome !== 'matching_current_claim' ||
+			receipt.turnRunId !== executionInput.claim.turnRunId ||
+			receipt.queueJobId !== executionInput.claim.queueJobId ||
+			receipt.sessionId !== executionInput.claim.sessionId ||
+			receipt.userId !== executionInput.claim.userId ||
+			receipt.correlationId !== executionInput.claim.correlationId ||
+			receipt.executionGeneration !== executionInput.claim.executionGeneration ||
+			receipt.inputArtifactId !== executionInput.claim.inputArtifactId ||
+			receipt.userMessageId !== executionInput.claim.userMessageId
+		) {
+			throw new AgenticChatToolExecutionFenceError('stale_generation', 'unknown');
+		}
+		throwIfAborted(signal);
 	}
 
 	private async publishSemantic(

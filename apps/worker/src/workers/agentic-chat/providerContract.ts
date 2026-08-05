@@ -6,6 +6,7 @@ import type {
 	JsonObject
 } from '@buildos/shared-types';
 import type { AgenticChatWorkerExecutionInputV1 } from './executionInput';
+import type { AgenticChatReadToolExecutionV1 } from './toolExecution';
 
 export type AgenticChatProviderUsageV1 = {
 	promptTokens: number;
@@ -75,8 +76,24 @@ export type AgenticChatPreparedProviderInvocationV1 = {
 	promptSnapshot?: AgenticChatPreparedPromptSnapshotV1;
 	/** No network/provider work may begin until the executor calls this after its start fence. */
 	stream(): AsyncIterable<AgenticChatProviderStepV1>;
+	/**
+	 * Optional second and final provider pass. The executor may call this only
+	 * after the matching read result is durable and publicly committed. The
+	 * production read-only adapter accepts exactly one result and disables tools
+	 * for this synthesis pass.
+	 */
+	synthesize?(
+		input: AgenticChatProviderReadSynthesisInputV1
+	): AsyncIterable<AgenticChatProviderStepV1>;
 	/** Idempotently release any pre-start capacity reservation. */
 	release(): void;
+};
+
+export type AgenticChatProviderReadSynthesisInputV1 = {
+	providerToolCallId: string;
+	toolName: string;
+	arguments: JsonObject;
+	execution: AgenticChatReadToolExecutionV1;
 };
 
 /**

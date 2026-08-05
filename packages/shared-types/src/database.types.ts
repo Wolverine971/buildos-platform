@@ -16814,6 +16814,24 @@ export type Database = {
           },
         ]
       }
+      agentic_chat_worker_lifecycle_observations: {
+        Row: {
+          event_type: string | null
+          execution_generation: number | null
+          observation_key: string | null
+          observation_sequence_index: number | null
+          observed_at: string | null
+          payload: Json | null
+          phase: string | null
+          session_id: string | null
+          source_id: string | null
+          source_kind: string | null
+          stream_run_id: string | null
+          turn_run_id: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       brief_email_stats: {
         Row: {
           avg_send_time_seconds: number | null

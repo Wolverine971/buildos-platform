@@ -32,6 +32,7 @@ import {
 	AgenticChatReadOnlyProviderAdapter,
 	type AgenticChatReadOnlyProviderClientPortV1
 } from './readOnlyProvider';
+import { AgenticChatReadOnlyToolAdapter } from './readOnlyTool';
 import {
 	type AgenticChatRecoverySnapshotRpcClient,
 	SupabaseAgenticChatRecoverySnapshotAdapter
@@ -124,6 +125,7 @@ export function createAgenticChatPhase3Assembly(options: {
 		{ client: options.providerClient, capacity: providerCapacity },
 		options.providerCooldownMs
 	);
+	const readTool = new AgenticChatReadOnlyToolAdapter(options.client);
 	const executor = new AgenticChatFixtureTurnExecutor({
 		control,
 		input,
@@ -134,7 +136,7 @@ export function createAgenticChatPhase3Assembly(options: {
 		onPromptSnapshotError:
 			options.onPromptSnapshotError ??
 			((error) => console.error('Agentic Chat prompt snapshot persistence failed', error)),
-		readTool: disabledToolPort('read_tools_disabled'),
+		readTool,
 		toolExecutions,
 		mutation: disabledToolPort('mutating_tools_disabled')
 	});
@@ -194,7 +196,7 @@ export function createAgenticChatPhase3Assembly(options: {
 	};
 }
 
-function disabledToolPort(code: 'read_tools_disabled' | 'mutating_tools_disabled') {
+function disabledToolPort(code: 'mutating_tools_disabled') {
 	return {
 		execute(): Promise<never> {
 			return Promise.reject(

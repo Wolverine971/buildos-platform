@@ -7,6 +7,7 @@ import {
 export const AGENTIC_CHAT_WORKER_CAPACITY_RETRY_AFTER_SECONDS = 2;
 
 const MAX_EVIDENCE_AGE_MS = 15_000;
+const MAX_EVIDENCE_FUTURE_SKEW_MS = 1_000;
 const MAX_QUEUE_AGE_MS = 30_000;
 const MAX_PUBLISHER_PENDING_BYTES = 8 * 1024 * 1024;
 const WORKER_CAPACITY_PATH = '/agentic-chat/capacity';
@@ -62,7 +63,7 @@ export function evaluateAgenticChatWorkerCapacity(
 		return closed('missing_evidence');
 	}
 	const evidenceAgeMs = nowMs - evidence.observedAtMs;
-	if (evidenceAgeMs < 0 || evidenceAgeMs > MAX_EVIDENCE_AGE_MS) {
+	if (evidenceAgeMs < -MAX_EVIDENCE_FUTURE_SKEW_MS || evidenceAgeMs > MAX_EVIDENCE_AGE_MS) {
 		return closed('stale_evidence');
 	}
 	if (evidence.queue.oldestReadyJobAgeMs > MAX_QUEUE_AGE_MS) {
