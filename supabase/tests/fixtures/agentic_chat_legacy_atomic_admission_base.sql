@@ -1,4 +1,9 @@
 -- supabase/tests/fixtures/agentic_chat_legacy_atomic_admission_base.sql
+-- TEST FIXTURE ONLY: this bootstraps a brand-new disposable PostgreSQL database.
+-- Do not apply it to a local, staging, or hosted Supabase database. Existing
+-- application tables such as public.users are expected to make this file fail.
+-- Production changes belong in supabase/migrations; the tool-category repair
+-- covered by this fixture is an application-code change and needs no migration.
 CREATE SCHEMA IF NOT EXISTS public;
 
 DO $$
@@ -119,5 +124,16 @@ CREATE TABLE public.chat_tool_executions (
 	tokens_consumed integer NULL,
 	requires_user_action boolean NULL,
 	affected_entities jsonb NOT NULL DEFAULT '[]'::jsonb,
-	created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+	created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+	-- Mirrors the production pre-migration constraint that rejected the
+	-- 2026-08-06 canary ledger insert (SQLSTATE 23514, 'project_read').
+	-- chk_chat_tool_executions_provider_call_id is intentionally absent here:
+	-- migration 20260804035100 adds it without IF NOT EXISTS.
+	CONSTRAINT chat_tool_executions_tool_category_check CHECK (
+		tool_category = ANY (ARRAY[
+			'list'::text, 'detail'::text, 'action'::text, 'calendar'::text,
+			'ontology'::text, 'ontology_action'::text, 'utility'::text,
+			'web_research'::text, 'buildos_docs'::text
+		])
+	)
 );

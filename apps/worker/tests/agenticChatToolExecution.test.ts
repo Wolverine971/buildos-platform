@@ -32,7 +32,7 @@ const input: AgenticChatToolExecutionPersistInputV1 = {
 		executionTimeMs: 12,
 		tokensConsumed: 9,
 		affectedEntities: [{ id: 'da000000-0000-4000-8000-000000000001', type: 'project' }],
-		toolCategory: 'project_read',
+		toolCategory: 'utility',
 		resultCount: 1,
 		zeroResult: false,
 		requiresUserAction: false
@@ -80,7 +80,7 @@ describe('Agentic Chat read-tool execution ledger', () => {
 			p_sequence_index: 1,
 			p_provider_tool_call_id: 'read-tool-call-1',
 			p_tool_name: 'fixture_project_read',
-			p_tool_category: 'project_read',
+			p_tool_category: 'utility',
 			p_arguments: { projectId: 'da000000-0000-4000-8000-000000000001' },
 			p_result: { note: 'Fixture project is ready.' },
 			p_result_count: 1,

@@ -72,7 +72,7 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 			executionTimeMs: 12,
 			tokensConsumed: null,
 			affectedEntities: [{ type: 'project', id: PROJECT_ID, name: '9takes' }],
-			toolCategory: 'project_read',
+			toolCategory: 'utility',
 			resultCount: 1,
 			zeroResult: false,
 			requiresUserAction: false

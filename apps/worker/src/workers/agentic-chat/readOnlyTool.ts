@@ -167,7 +167,9 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 			executionTimeMs: duration,
 			tokensConsumed: null,
 			affectedEntities,
-			toolCategory: 'project_read',
+			// Must stay inside prod's chat_tool_executions_tool_category_check
+			// allowlist; legacy SSE persists get_project_overview as 'utility'.
+			toolCategory: 'utility',
 			resultCount: 1,
 			zeroResult: false,
 			requiresUserAction: false

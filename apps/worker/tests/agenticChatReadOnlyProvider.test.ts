@@ -344,7 +344,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				executionTimeMs: 12,
 				tokensConsumed: null,
 				affectedEntities: [],
-				toolCategory: 'project_read',
+				toolCategory: 'utility',
 				resultCount: 1,
 				zeroResult: false,
 				requiresUserAction: false
@@ -478,7 +478,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 						executionTimeMs: 1,
 						tokensConsumed: null,
 						affectedEntities: [],
-						toolCategory: 'project_read',
+						toolCategory: 'utility',
 						resultCount: 1,
 						zeroResult: false,
 						requiresUserAction: false
