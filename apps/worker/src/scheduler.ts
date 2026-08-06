@@ -333,7 +333,6 @@ export function startScheduler() {
 
 	// Saved Operatives: enqueue due Agent Runs through the normal agent_run queue.
 	cron.schedule('*/5 * * * *', async () => {
-		console.log('🧭 Checking scheduled Operatives...');
 		await checkAndScheduleAgentOperatives();
 	});
 
@@ -586,10 +585,7 @@ export async function checkAndScheduleAgentOperatives(now: Date = new Date()): P
 		console.error('🧭 Failed to fetch scheduled Operatives:', error);
 		return;
 	}
-	if (!operatives?.length) {
-		console.log('🧭 No scheduled Operatives due');
-		return;
-	}
+	if (!operatives?.length) return;
 
 	console.log(`🧭 Found ${operatives.length} scheduled Operative(s) due soon`);
 

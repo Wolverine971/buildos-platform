@@ -16,7 +16,8 @@ const mocks = vi.hoisted(() => ({
 	createAdminSupabaseClient: vi.fn(),
 	listOwnedActiveAgenticChatWorkerTurns: vi.fn(),
 	prepareAgenticChatWorkerAdmission: vi.fn(),
-	admitAgenticChatWorkerTurn: vi.fn()
+	admitAgenticChatWorkerTurn: vi.fn(),
+	loggerWarn: vi.fn()
 }));
 
 vi.mock('$env/dynamic/private', () => ({ env: mocks.env }));
@@ -43,6 +44,9 @@ vi.mock('$lib/services/agentic-chat-v2/worker-turn-admission.server', async (imp
 		>();
 	return { ...original, admitAgenticChatWorkerTurn: mocks.admitAgenticChatWorkerTurn };
 });
+vi.mock('$lib/utils/logger', () => ({
+	createLogger: () => ({ warn: mocks.loggerWarn })
+}));
 
 import { issueAgenticChatTransportLease } from '$lib/services/agentic-chat-v2/transport-lease.server';
 import { GET, POST } from './+server';
@@ -390,6 +394,14 @@ describe('POST /api/agent/v2/turns', () => {
 		expect(response.status).toBe(503);
 		expect(response.headers.get('retry-after')).toBe('2');
 		expect(response.headers.get('cache-control')).toBe('private, no-store');
+		expect(mocks.loggerWarn).toHaveBeenCalledWith('Worker turn admission capacity exceeded', {
+			userId: USER_ID,
+			clientTurnId: 'client-turn-1',
+			capacityReason: 'pressure_closed',
+			runningCount: 0,
+			queuedCount: 0,
+			retryAfterSeconds: 2
+		});
 	});
 
 	it('keeps preparation and corrupt database receipt details private', async () => {

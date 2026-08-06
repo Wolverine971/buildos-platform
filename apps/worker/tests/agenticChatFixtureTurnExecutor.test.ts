@@ -21,6 +21,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ProcessingJob } from '../src/lib/supabaseQueue';
 import { AgenticChatCancellationError } from '../src/workers/agentic-chat/cancellationObserver';
 import type { AgenticChatTerminalFinalizeInputV1 } from '../src/workers/agentic-chat/executionControl';
+import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/executionObservation';
 import { AgenticChatExecutionInputError } from '../src/workers/agentic-chat/executionInput';
 import { AgenticChatEffectExecutionError } from '../src/workers/agentic-chat/fixtureMutationExecutor';
 import { createStableAgenticChatLifecycleTransitionIdV1 } from '../src/workers/agentic-chat/lifecycleIdentity';
@@ -30,9 +31,11 @@ import {
 } from '../src/workers/agentic-chat/fixtureTurnExecutor';
 import { AgenticChatProviderExecutionError } from '../src/workers/agentic-chat/providerContract';
 import type { AgenticChatPreparedPromptSnapshotV1 } from '../src/workers/agentic-chat/providerContract';
+import { AgenticChatReadOnlyToolAdapter } from '../src/workers/agentic-chat/readOnlyTool';
 import { createStableAgenticChatPromptSnapshotIdV1 } from '../src/workers/agentic-chat/promptSnapshot';
 import type { AgenticChatRuntimeTimingSnapshotV1 } from '../src/workers/agentic-chat/runtimeTiming';
 import { AgenticChatStreamPublisher } from '../src/workers/agentic-chat/streamPublisher';
+import { AgenticChatToolExecutionTimeoutError } from '../src/workers/agentic-chat/toolExecution';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
@@ -151,6 +154,12 @@ function job(signal: AbortSignal = new AbortController().signal) {
 	} satisfies ProcessingJob<{ turnRunId: string; correlationId: string }>;
 }
 
+function executionBoundaryLogs(processingJob: ReturnType<typeof job>) {
+	return processingJob.log.mock.calls.map(
+		([message]) => JSON.parse(message) as Record<string, unknown>
+	);
+}
+
 function recoveryReceipt(
 	outcome:
 		| 'retry_scheduled'
@@ -213,6 +222,8 @@ function createHarness(
 		failBroadcastType?: string;
 		promptSnapshot?: AgenticChatPreparedPromptSnapshotV1;
 		promptSnapshotError?: Error;
+		providerBudgetMs?: number;
+		overheadTimeoutMs?: number;
 	} = {}
 ) {
 	let sequence = 0;
@@ -602,6 +613,12 @@ function createHarness(
 		}))
 	};
 	const toolExecutions = { persistRead: vi.fn(async () => undefined) };
+	const executionObservationInputs: AgenticChatExecutionObservationInputV1[] = [];
+	const executionObservations = {
+		observe: vi.fn(async (observation: AgenticChatExecutionObservationInputV1) => {
+			executionObservationInputs.push(observation);
+		})
+	};
 	const mutation = {
 		execute: vi.fn(async () => ({
 			effectId: EFFECT_ID,
@@ -615,31 +632,38 @@ function createHarness(
 		registerTurn: vi.fn(() => cancellationController.signal),
 		unregisterTurn: vi.fn(() => true)
 	};
-	const executor = new AgenticChatFixtureTurnExecutor({
-		control: control as never,
-		input: input as never,
-		publisher,
-		cancellation: cancellation as never,
-		provider,
-		promptSnapshots,
-		onPromptSnapshotError: (error) => promptSnapshotErrors.push(error),
-		readTool,
-		toolExecutions,
-		mutation,
-		createId: () => ASSISTANT_MESSAGE_ID,
-		timingClock: timingClockValues
-			? {
-					nowMs() {
-						const value = timingClockValues.shift();
-						if (value === undefined) {
-							throw new Error('Fixture executor monotonic clock exhausted');
+	const executor = new AgenticChatFixtureTurnExecutor(
+		{
+			control: control as never,
+			input: input as never,
+			publisher,
+			cancellation: cancellation as never,
+			provider,
+			promptSnapshots,
+			executionObservations,
+			onPromptSnapshotError: (error) => promptSnapshotErrors.push(error),
+			readTool,
+			toolExecutions,
+			mutation,
+			createId: () => ASSISTANT_MESSAGE_ID,
+			timingClock: timingClockValues
+				? {
+						nowMs() {
+							const value = timingClockValues.shift();
+							if (value === undefined) {
+								throw new Error('Fixture executor monotonic clock exhausted');
+							}
+							return value;
 						}
-						return value;
 					}
-				}
-			: undefined,
-		onTimingSnapshot: (snapshot) => timingSnapshots.push(snapshot)
-	});
+				: undefined,
+			onTimingSnapshot: (snapshot) => timingSnapshots.push(snapshot)
+		},
+		{
+			providerBudgetMs: options.providerBudgetMs,
+			overheadTimeoutMs: options.overheadTimeoutMs
+		}
+	);
 
 	return {
 		executor,
@@ -651,6 +675,8 @@ function createHarness(
 		promptSnapshotErrors,
 		readTool,
 		toolExecutions,
+		executionObservations,
+		executionObservationInputs,
 		mutation,
 		cancellation,
 		cancellationController,
@@ -969,6 +995,25 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				executionInput
 			})
 		);
+		expect(
+			harness.executionObservationInputs.map(({ eventType, payload }) => ({
+				eventType,
+				status: payload.status ?? null,
+				toolName: payload.tool_name
+			}))
+		).toEqual([
+			{
+				eventType: 'tool_execution_started',
+				status: null,
+				toolName: 'fixture_project_read'
+			},
+			{
+				eventType: 'tool_execution_ended',
+				status: 'success',
+				toolName: 'fixture_project_read'
+			}
+		]);
+		expect(JSON.stringify(harness.executionObservationInputs)).not.toContain('Fixture project');
 		expect(harness.control.finalize).toHaveBeenCalledWith(
 			expect.objectContaining({
 				status: 'completed',
@@ -1216,7 +1261,8 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			}))
 		});
 
-		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+		const processingJob = job();
+		await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
 			outcome: 'completed',
 			terminalStatus: 'completed'
 		});
@@ -1228,6 +1274,33 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		expect(ledgerIndex).toBeGreaterThan(-1);
 		expect(publicResultIndex).toBeGreaterThan(ledgerIndex);
 		expect(synthesisIndex).toBeGreaterThan(publicResultIndex);
+		expect(
+			executionBoundaryLogs(processingJob).map(({ stage, state }) => `${stage}:${state}`)
+		).toEqual([
+			'read_op:started',
+			'read_op:finished',
+			'ledger_persist:started',
+			'ledger_persist:finished',
+			'tool_result_publish:started',
+			'tool_result_publish:finished',
+			'synthesis:started'
+		]);
+		expect(executionBoundaryLogs(processingJob)).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					event: 'agentic_chat_execution_boundary',
+					turn_run_id: TURN_RUN_ID,
+					queue_job_id: QUEUE_JOB_ID,
+					execution_generation: EXECUTION_GENERATION,
+					provider_tool_call_id: 'provider-read-1',
+					tool_name: 'get_project_overview'
+				})
+			])
+		);
+		for (const boundary of executionBoundaryLogs(processingJob)) {
+			expect(boundary).not.toHaveProperty('arguments');
+			expect(boundary).not.toHaveProperty('result');
+		}
 		expect(harness.control.finalize).toHaveBeenCalledWith(
 			expect.objectContaining({
 				assistantText: 'The fixture project is ready.',
@@ -1237,6 +1310,121 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			})
 		);
 		await harness.publisher.stop();
+	});
+
+	it('writes a terminal outcome when a read-tool network call exceeds its local deadline', async () => {
+		const harness = createHarness(
+			[
+				{
+					type: 'read_tool',
+					callTransitionId: CALL_TRANSITION_ID,
+					resultTransitionId: RESULT_TRANSITION_ID,
+					providerToolCallId: 'provider-read-timeout',
+					toolName: 'get_project_overview',
+					arguments: { project_id: 'da000000-0000-4000-8000-000000000001' }
+				}
+			],
+			{
+				recovery: [
+					recoveryReceipt('finalize_failed', { failure_code: 'transient_infra' }),
+					recoveryReceipt('queue_reconciled', {
+						status: 'failed',
+						failure_code: 'read_tool_timeout'
+					})
+				]
+			}
+		);
+		let deadlineSignal: AbortSignal | null = null;
+		const readAdapter = new AgenticChatReadOnlyToolAdapter({} as never, {
+			timeoutMs: 10,
+			runOp: (input) =>
+				new Promise<never>(() => {
+					deadlineSignal = input.signal;
+				})
+		});
+		harness.readTool.execute.mockImplementation(readAdapter.execute.bind(readAdapter));
+
+		const processingJob = job();
+		try {
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed',
+				queueReconciled: true
+			});
+			expect(deadlineSignal).toMatchObject({ aborted: true });
+			expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+				failureClass: 'transient_infra',
+				errorMessage: expect.stringContaining('read tool exceeded its 10ms deadline')
+			});
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'failed',
+					failureCode: 'read_tool_timeout'
+				})
+			);
+			expect(
+				executionBoundaryLogs(processingJob).map(({ stage, state, error_code }) => ({
+					stage,
+					state,
+					error_code
+				}))
+			).toEqual([
+				{ stage: 'read_op', state: 'started', error_code: undefined },
+				{ stage: 'read_op', state: 'failed', error_code: 'read_tool_timeout' }
+			]);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('identifies ledger persistence as the failed boundary without logging tool data', async () => {
+		const harness = createHarness(
+			[
+				{
+					type: 'read_tool',
+					callTransitionId: CALL_TRANSITION_ID,
+					resultTransitionId: RESULT_TRANSITION_ID,
+					providerToolCallId: 'provider-ledger-timeout',
+					toolName: 'get_project_overview',
+					arguments: { project_id: 'da000000-0000-4000-8000-000000000001' }
+				}
+			],
+			{ recovery: [recoveryReceipt('retry_scheduled')] }
+		);
+		harness.toolExecutions.persistRead.mockRejectedValueOnce(
+			new AgenticChatToolExecutionTimeoutError(10)
+		);
+		const processingJob = job();
+
+		try {
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+				outcome: 'requeued',
+				terminalStatus: null,
+				queueReconciled: false
+			});
+			expect(
+				executionBoundaryLogs(processingJob).map(({ stage, state, error_code }) => ({
+					stage,
+					state,
+					error_code
+				}))
+			).toEqual([
+				{ stage: 'read_op', state: 'started', error_code: undefined },
+				{ stage: 'read_op', state: 'finished', error_code: undefined },
+				{ stage: 'ledger_persist', state: 'started', error_code: undefined },
+				{
+					stage: 'ledger_persist',
+					state: 'failed',
+					error_code: 'tool_execution_persist_timeout'
+				}
+			]);
+			for (const boundary of executionBoundaryLogs(processingJob)) {
+				expect(boundary).not.toHaveProperty('arguments');
+				expect(boundary).not.toHaveProperty('result');
+			}
+		} finally {
+			await harness.publisher.stop();
+		}
 	});
 
 	it('isolates the intentional async timing divergence from the remaining legacy differential', async () => {
@@ -1614,6 +1802,43 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	it('terminalizes a never-resolving provider stream inside the executor budget', async () => {
+		const harness = createHarness([], {
+			providerBudgetMs: 20,
+			overheadTimeoutMs: 100,
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'timeout_post_start' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'provider_budget_exhausted'
+				})
+			]
+		});
+		harness.provider.stream.mockImplementation(() =>
+			(async function* () {
+				await new Promise<never>(() => undefined);
+			})()
+		);
+		const startedAt = Date.now();
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'failed',
+			terminalStatus: 'failed',
+			queueReconciled: true
+		});
+		expect(Date.now() - startedAt).toBeLessThan(250);
+		expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+			failureClass: 'timeout_post_start'
+		});
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'failed',
+				failureCode: 'provider_budget_exhausted'
+			})
+		);
+		await harness.publisher.stop();
+	});
+
 	it('reserves provider capacity before begin and starts the network stream only after begin wins', async () => {
 		const harness = createHarness([]);
 		const release = vi.fn(() => harness.log.push('release'));
@@ -1647,6 +1872,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		]);
 		expect(prepare).toHaveBeenCalledWith({
 			executionInput,
+			processingToken: PROCESSING_TOKEN,
 			signal: expect.any(AbortSignal)
 		});
 		expect(harness.provider.stream).not.toHaveBeenCalled();

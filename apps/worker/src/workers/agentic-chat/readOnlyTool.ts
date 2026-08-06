@@ -10,12 +10,14 @@ import {
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { runWithAbortableDeadline } from './abortableDeadline';
 import type { AgenticChatFixtureReadToolPortV1 } from './fixtureTurnExecutor';
 import { AgenticChatProviderExecutionError } from './providerContract';
 
 const PROJECT_OVERVIEW_TOOL_NAME = 'get_project_overview';
 const PROJECT_STATUS_OP = 'onto.project.status.get';
 const MAX_RESULT_BYTES = 480 * 1024;
+export const AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS = 30_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 export const AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 = Object.freeze([
@@ -65,22 +67,26 @@ type AgenticChatReadOpRunnerV1 = (input: {
 	userId: string;
 	projectId: string | null;
 	arguments: JsonObject;
+	signal: AbortSignal;
 }) => Promise<GatewayReadOpResult>;
 
 /** One-tool, one-op production read adapter. No mutation capability is present. */
 export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToolPortV1 {
 	private readonly now: () => number;
 	private readonly runOp: AgenticChatReadOpRunnerV1;
+	private readonly timeoutMs: number;
 
 	constructor(
 		private readonly client: SupabaseClient<Database>,
 		options: {
 			now?: () => number;
 			runOp?: AgenticChatReadOpRunnerV1;
+			timeoutMs?: number;
 		} = {}
 	) {
 		this.now = options.now ?? Date.now;
 		this.runOp = options.runOp ?? runProjectStatusOp;
+		this.timeoutMs = options.timeoutMs ?? AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS;
 	}
 
 	async execute(
@@ -97,11 +103,23 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 			throw providerError('read_tool_context_invalid', 'permanent');
 		}
 		const startedAt = this.now();
-		const result = await this.runOp({
-			admin: this.client,
-			userId: input.executionInput.claim.userId,
-			projectId,
-			arguments: args
+		const result = await runWithAbortableDeadline({
+			parentSignal: input.signal,
+			timeoutMs: this.timeoutMs,
+			createTimeoutError: () =>
+				new AgenticChatProviderExecutionError(
+					'read_tool_timeout',
+					'transient_infra',
+					`Agentic Chat read tool exceeded its ${this.timeoutMs}ms deadline`
+				),
+			run: (signal) =>
+				this.runOp({
+					admin: this.client,
+					userId: input.executionInput.claim.userId,
+					projectId,
+					arguments: args,
+					signal
+				})
 		});
 		throwIfAborted(input.signal);
 		if (!result.ok) {
@@ -162,6 +180,7 @@ function runProjectStatusOp(input: {
 	userId: string;
 	projectId: string | null;
 	arguments: JsonObject;
+	signal: AbortSignal;
 }): Promise<GatewayReadOpResult> {
 	return runGatewayReadOp({
 		admin: input.admin,
@@ -172,7 +191,8 @@ function runProjectStatusOp(input: {
 			...(input.projectId ? { project_ids: [input.projectId] } : {})
 		},
 		op: PROJECT_STATUS_OP,
-		args: input.arguments
+		args: input.arguments,
+		signal: input.signal
 	});
 }
 

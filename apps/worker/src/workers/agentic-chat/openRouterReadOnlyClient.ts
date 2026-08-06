@@ -1,7 +1,11 @@
 // apps/worker/src/workers/agentic-chat/openRouterReadOnlyClient.ts
 import { buildOpenRouterChatCompletionBody, normalizeStreamingContent } from '@buildos/smart-llm';
 import type { UsageLogger } from '@buildos/smart-llm';
-import { type JsonValue, canonicalizeAgenticChatJson } from '@buildos/shared-types';
+import {
+	type JsonObject,
+	type JsonValue,
+	canonicalizeAgenticChatJson
+} from '@buildos/shared-types';
 import type {
 	AgenticChatReadOnlyProviderClientEventV1,
 	AgenticChatReadOnlyProviderClientPortV1,
@@ -12,11 +16,17 @@ import {
 	AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1,
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1
 } from './readOnlyTool';
+import { runWithAbortableDeadline } from './abortableDeadline';
+import {
+	type AgenticChatExecutionObservationPortV1,
+	createStableAgenticChatExecutionObservationKeyV1
+} from './executionObservation';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
 const DEFAULT_MAX_TOKENS = 2_000;
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_SSE_BUFFER_BYTES = 256 * 1024;
+const PROVIDER_TELEMETRY_TIMEOUT_MS = 5_000;
 
 export type AgenticChatOpenRouterProviderRoutingV1 = {
 	allow_fallbacks?: boolean;
@@ -132,7 +142,9 @@ export class AgenticChatOpenRouterReadOnlyClient
 	constructor(
 		private readonly ports: {
 			usage: AgenticChatProviderUsageObserverPortV1;
+			executionObservations?: AgenticChatExecutionObservationPortV1;
 			onUsageError?: (error: unknown) => void;
+			onExecutionObservationError?: (error: unknown) => void;
 		},
 		options: {
 			routes: readonly AgenticChatOpenAiCompatibleRouteV1[];
@@ -189,6 +201,8 @@ export class AgenticChatOpenRouterReadOnlyClient
 		const failures: RouteFailure[] = [];
 		let lastAttemptedRoute: AgenticChatOpenAiCompatibleRouteV1 | null = null;
 		let active: ActiveResponse | null = null;
+		let activeAttemptStartedAtMs: number | null = null;
+		let activeAttemptEnded = false;
 		let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 		let accounted = false;
 		const state: StreamState = {
@@ -218,46 +232,68 @@ export class AgenticChatOpenRouterReadOnlyClient
 			const promptTokens = exactUsage?.promptTokens ?? estimateTokens(inputChars);
 			const completionTokens =
 				exactUsage?.completionTokens ?? estimateTokens(state.completionChars);
-			await this.observeUsage({
-				status,
-				requestStartedAtMs,
-				observedAtMs: Date.now(),
-				userId: input.userId,
-				sessionId: input.sessionId,
-				turnRunId: input.turnRunId,
-				streamRunId: input.streamRunId,
-				clientTurnId: input.clientTurnId,
-				contextType: input.contextType,
-				entityId: input.entityId,
-				projectId: input.projectId,
-				attemptedRouteIds: [...attemptedRouteIds],
-				routeId: active?.route.id ?? lastAttemptedRoute?.id ?? null,
-				modelRequested: active?.route.model ?? lastAttemptedRoute?.model ?? null,
-				modelUsed:
-					state.modelUsed ?? active?.route.model ?? lastAttemptedRoute?.model ?? null,
-				provider: state.provider ?? active?.route.id ?? lastAttemptedRoute?.id ?? null,
-				requestId: state.requestId ?? active?.requestId ?? null,
-				promptTokens,
-				completionTokens,
-				totalTokens: exactUsage?.totalTokens ?? promptTokens + completionTokens,
-				estimated: exactUsage === null,
-				providerCost: exactUsage?.cost ?? null,
-				retryable,
-				error
-			});
+			await this.observeUsage(
+				{
+					status,
+					requestStartedAtMs,
+					observedAtMs: Date.now(),
+					userId: input.userId,
+					sessionId: input.sessionId,
+					turnRunId: input.turnRunId,
+					streamRunId: input.streamRunId,
+					clientTurnId: input.clientTurnId,
+					contextType: input.contextType,
+					entityId: input.entityId,
+					projectId: input.projectId,
+					attemptedRouteIds: [...attemptedRouteIds],
+					routeId: active?.route.id ?? lastAttemptedRoute?.id ?? null,
+					modelRequested: active?.route.model ?? lastAttemptedRoute?.model ?? null,
+					modelUsed:
+						state.modelUsed ?? active?.route.model ?? lastAttemptedRoute?.model ?? null,
+					provider: state.provider ?? active?.route.id ?? lastAttemptedRoute?.id ?? null,
+					requestId: state.requestId ?? active?.requestId ?? null,
+					promptTokens,
+					completionTokens,
+					totalTokens: exactUsage?.totalTokens ?? promptTokens + completionTokens,
+					estimated: exactUsage === null,
+					providerCost: exactUsage?.cost ?? null,
+					retryable,
+					error
+				},
+				input.signal
+			);
 		};
 
 		try {
 			for (const route of this.routes) {
 				lastAttemptedRoute = route;
 				attemptedRouteIds.push(route.id);
+				const attemptStartedAtMs = Date.now();
+				await this.observeProviderAttempt(input, route, 'provider_attempt_started', {
+					round: input.providerRound,
+					route_id: route.id,
+					model_requested: route.model
+				});
 				try {
 					active = await this.openRoute(route, input);
+					activeAttemptStartedAtMs = attemptStartedAtMs;
 					break;
 				} catch (error) {
 					if (input.signal.aborted) throwAbort(input.signal);
 					const failure = routeFailure(route.id, error);
 					failures.push(failure);
+					await this.observeProviderAttempt(input, route, 'provider_attempt_ended', {
+						round: input.providerRound,
+						route_id: route.id,
+						model_requested: route.model,
+						status: 'failure',
+						duration_ms: boundedDuration(attemptStartedAtMs, Date.now()),
+						finish_reason: null,
+						error_class: failure.retryable
+							? 'provider_retryable_error'
+							: 'provider_permanent_error',
+						usage: null
+					});
 				}
 			}
 
@@ -323,6 +359,28 @@ export class AgenticChatOpenRouterReadOnlyClient
 			}
 
 			const exactUsage = normalizeProviderUsage(state.rawUsage);
+			await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
+				round: input.providerRound,
+				route_id: active.route.id,
+				model_requested: active.route.model,
+				model_used: state.modelUsed ?? active.route.model,
+				provider: state.provider ?? active.route.id,
+				status: 'success',
+				duration_ms: boundedDuration(
+					activeAttemptStartedAtMs ?? requestStartedAtMs,
+					Date.now()
+				),
+				finish_reason: state.finishReason ?? 'stop',
+				error_class: null,
+				usage: exactUsage
+					? {
+							prompt_tokens: exactUsage.promptTokens,
+							completion_tokens: exactUsage.completionTokens,
+							total_tokens: exactUsage.totalTokens
+						}
+					: null
+			});
+			activeAttemptEnded = true;
 			await account('success', null, false);
 			yield {
 				type: 'done',
@@ -336,6 +394,31 @@ export class AgenticChatOpenRouterReadOnlyClient
 					: undefined
 			};
 		} catch (error) {
+			if (active && !activeAttemptEnded) {
+				const aborted = input.signal.aborted;
+				await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
+					round: input.providerRound,
+					route_id: active.route.id,
+					model_requested: active.route.model,
+					model_used: state.modelUsed ?? active.route.model,
+					provider: state.provider ?? active.route.id,
+					status: aborted ? 'aborted' : 'failure',
+					duration_ms: boundedDuration(
+						activeAttemptStartedAtMs ?? requestStartedAtMs,
+						Date.now()
+					),
+					finish_reason: state.finishReason,
+					error_class: aborted
+						? 'aborted'
+						: active.timedOut()
+							? 'provider_timeout'
+							: error instanceof AgenticChatProviderNetworkError && error.retryable
+								? 'provider_retryable_error'
+								: 'provider_permanent_error',
+					usage: null
+				});
+				activeAttemptEnded = true;
+			}
 			if (input.signal.aborted) {
 				await account('aborted', canonicalError(input.signal.reason), false);
 				throwAbort(input.signal);
@@ -357,7 +440,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 					false
 				);
 			}
-			if (reader) await reader.cancel().catch(() => undefined);
+			if (reader) void reader.cancel().catch(() => undefined);
 			active?.cleanup();
 		}
 	}
@@ -465,14 +548,69 @@ export class AgenticChatOpenRouterReadOnlyClient
 		};
 	}
 
-	private async observeUsage(observation: AgenticChatProviderUsageObservationV1): Promise<void> {
+	private async observeUsage(
+		observation: AgenticChatProviderUsageObservationV1,
+		signal: AbortSignal
+	): Promise<void> {
 		try {
-			await this.ports.usage.observe(observation);
+			const observationSignal = signal.aborted ? new AbortController().signal : signal;
+			await runWithAbortableDeadline({
+				parentSignal: observationSignal,
+				timeoutMs: PROVIDER_TELEMETRY_TIMEOUT_MS,
+				createTimeoutError: () =>
+					new Error('Agentic Chat provider usage observation timed out'),
+				run: () => Promise.resolve(this.ports.usage.observe(observation))
+			});
 		} catch (error) {
 			try {
 				this.ports.onUsageError?.(error);
 			} catch {
 				// Usage telemetry failures cannot alter the durable turn outcome.
+			}
+		}
+	}
+
+	private async observeProviderAttempt(
+		input: ClientInput,
+		route: AgenticChatOpenAiCompatibleRouteV1,
+		eventType: 'provider_attempt_started' | 'provider_attempt_ended',
+		payload: JsonObject
+	): Promise<void> {
+		if (!this.ports.executionObservations) return;
+		try {
+			const observationSignal = input.signal.aborted
+				? new AbortController().signal
+				: input.signal;
+			await runWithAbortableDeadline({
+				parentSignal: observationSignal,
+				timeoutMs: PROVIDER_TELEMETRY_TIMEOUT_MS,
+				createTimeoutError: () =>
+					new Error('Agentic Chat provider execution observation timed out'),
+				run: (deadlineSignal) =>
+					this.ports.executionObservations!.observe(
+						{
+							turnRunId: input.turnRunId,
+							queueJobId: input.queueJobId,
+							processingToken: input.processingToken,
+							userId: input.userId,
+							executionGeneration: input.executionGeneration,
+							observationKey: createStableAgenticChatExecutionObservationKeyV1({
+								turnRunId: input.turnRunId,
+								scope: `provider:${input.providerRound}:${route.id}`,
+								boundary: eventType
+							}),
+							phase: 'provider',
+							eventType,
+							payload
+						},
+						deadlineSignal
+					)
+			});
+		} catch (error) {
+			try {
+				this.ports.onExecutionObservationError?.(error);
+			} catch {
+				// Private observation failures remain bounded and cannot alter the turn.
 			}
 		}
 	}
@@ -958,6 +1096,10 @@ function numericStatus(value: unknown): number | null {
 
 function estimateTokens(chars: number): number {
 	return Math.ceil(chars / 4);
+}
+
+function boundedDuration(startedAtMs: number, observedAtMs: number): number {
+	return Math.min(2_147_483_647, Math.max(0, Math.floor(observedAtMs - startedAtMs)));
 }
 
 function canonicalError(value: unknown): string {

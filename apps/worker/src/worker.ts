@@ -63,8 +63,8 @@ if (!valid) {
 	process.exit(1);
 }
 
-// Health-stats logging interval; stored so graceful shutdown can clear it.
-let statsInterval: NodeJS.Timeout | null = null;
+// Queue-monitoring interval; stored so graceful shutdown can clear it.
+let queueMonitoringInterval: NodeJS.Timeout | null = null;
 let workerRuntimeLifecycle: WorkerRuntimeLifecycle | null = null;
 let agenticChatBootstrap: AgenticChatPhase3Bootstrap | null = null;
 let agenticChatCapacityCollection: Promise<AgenticChatWorkerCapacityEvidenceV1 | null> | null =
@@ -511,19 +511,11 @@ export async function startWorker() {
 	// coordinator rolls both back if either startup fails.
 	await lifecycle.start();
 
-	// Log queue stats based on configuration
+	// Run actionable queue alert checks without dumping cumulative queue history
+	// on every tick. The queue_jobs_stats view remains available for on-demand
+	// diagnostics, while alerts cover recent failure spikes and runnable backlog.
 	if (config.enableHealthChecks) {
-		statsInterval = setInterval(async () => {
-			const stats = await queue.getStats();
-			if (stats && stats.length > 0) {
-				console.log('📊 Queue Statistics:');
-				stats.forEach((stat) => {
-					console.log(
-						`   ${String(stat.job_type)} - ${String(stat.status)}: ${String(stat.count)}`
-					);
-				});
-			}
-
+		queueMonitoringInterval = setInterval(async () => {
 			// Alert tripwires: failed-job spikes + oldest runnable pending age.
 			try {
 				const alerts = await checkQueueAlerts(supabase);
@@ -536,7 +528,7 @@ export async function startWorker() {
 			}
 		}, config.statsUpdateInterval);
 
-		console.log(`📈 Health monitoring enabled (stats every ${config.statsUpdateInterval}ms)`);
+		console.log(`📈 Queue alert monitoring enabled (every ${config.statsUpdateInterval}ms)`);
 	}
 
 	// NOTE: signal handling lives in index.ts (single shutdown path). See
@@ -553,15 +545,15 @@ export async function startWorker() {
 }
 
 /**
- * Gracefully shut the worker down: stop the health-stats logger and drain the
+ * Gracefully shut the worker down: stop queue monitoring and drain the
  * general and chat queues concurrently (stop claiming, then wait for each
  * bounded drain). Called from index.ts's single SIGTERM/SIGINT/crash path.
  * Safe to call more than once.
  */
 export async function shutdownWorker(): Promise<void> {
-	if (statsInterval) {
-		clearInterval(statsInterval);
-		statsInterval = null;
+	if (queueMonitoringInterval) {
+		clearInterval(queueMonitoringInterval);
+		queueMonitoringInterval = null;
 	}
 	if (workerRuntimeLifecycle) {
 		await workerRuntimeLifecycle.stop();

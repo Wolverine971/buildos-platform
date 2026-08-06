@@ -27,7 +27,7 @@ export interface QueueConfiguration {
 	progressUpdateRetries: number;
 
 	// Health and monitoring
-	statsUpdateInterval: number; // How often to log queue stats (ms)
+	statsUpdateInterval: number; // Queue alert-check cadence (ms); legacy config name
 	enableHealthChecks: boolean;
 
 	// Performance tuning
@@ -93,14 +93,14 @@ export const developmentConfig: Partial<QueueConfiguration> = {
 	pollInterval: 2000, // Faster polling in development
 	batchSize: 2, // Smaller batches for easier debugging
 	stalledTimeout: 120000, // Shorter timeout for faster feedback
-	statsUpdateInterval: 30000 // More frequent stats
+	statsUpdateInterval: 30000 // More frequent queue alert checks
 };
 
 export const productionConfig: Partial<QueueConfiguration> = {
 	pollInterval: 5000, // Standard polling
 	batchSize: 10, // Larger batches for better throughput
 	stalledTimeout: 600000, // Longer timeout for complex jobs
-	statsUpdateInterval: 300000 // Less frequent stats (5 minutes)
+	statsUpdateInterval: 300000 // Queue alert checks every 5 minutes
 };
 
 // Built-in per-job-type timeout defaults. agent_run wall-clock budgets go up

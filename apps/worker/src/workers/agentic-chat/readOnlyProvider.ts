@@ -68,6 +68,10 @@ export type AgenticChatReadOnlyProviderClientPortV1 = {
 		contextType: string;
 		entityId: string | null;
 		projectId: string | null;
+		queueJobId: string;
+		processingToken: string;
+		executionGeneration: number;
+		providerRound: 'initial' | 'synthesis';
 		signal: AbortSignal;
 	}): AsyncIterable<AgenticChatReadOnlyProviderClientEventV1>;
 };
@@ -120,7 +124,11 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		input: AgenticChatProviderInputV1
 	): AgenticChatPreparedProviderInvocationV1 {
 		throwIfAborted(input.signal);
-		const request = buildReadOnlyRequest(input.executionInput, input.signal);
+		const request = buildReadOnlyRequest(
+			input.executionInput,
+			input.processingToken,
+			input.signal
+		);
 		const promptSnapshot = buildPromptSnapshot(request.messages);
 		let lease;
 		try {
@@ -312,6 +320,9 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						request.toolChoice === 'none' ? 'permanent' : 'unknown'
 					);
 				}
+				if (!streamedText) {
+					throw providerError('provider_no_assistant_text', 'permanent');
+				}
 				this.ports.capacity.markAvailable();
 				yield {
 					type: 'finish',
@@ -331,12 +342,14 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		release: () => void
 	): AsyncGenerator<AgenticChatProviderStepV1> {
 		let finished = false;
+		let streamedText = false;
 		try {
 			for await (const event of this.ports.client.stream(request)) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
 					if (!event.content) throw providerError('provider_empty_text', 'unknown');
+					streamedText = true;
 					yield { type: 'text_delta', text: event.content };
 					continue;
 				}
@@ -359,6 +372,9 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
 				if (finishedReason === 'tool_calls' || finishedReason === 'function_call') {
 					throw providerError('provider_additional_tool_round_disabled', 'permanent');
+				}
+				if (!streamedText) {
+					throw providerError('provider_no_assistant_text', 'permanent');
 				}
 				finished = true;
 				this.ports.capacity.markAvailable();
@@ -484,6 +500,7 @@ function buildSynthesisRequest(
 ): ClientRequest {
 	return {
 		...request,
+		providerRound: 'synthesis',
 		messages: [
 			...request.messages,
 			{
@@ -557,6 +574,7 @@ function sha256(value: string): string {
 
 function buildReadOnlyRequest(
 	input: AgenticChatWorkerExecutionInputV1,
+	processingToken: string,
 	signal: AbortSignal
 ): Parameters<AgenticChatReadOnlyProviderClientPortV1['stream']>[0] {
 	const systemPrompt = requiredContent(input.artifact.prepared.systemPrompt, 'system prompt');
@@ -606,6 +624,10 @@ function buildReadOnlyRequest(
 		contextType,
 		entityId: nullableString(context.entityId, 'context entity id'),
 		projectId: nullableString(context.projectId, 'context project id'),
+		queueJobId: input.claim.queueJobId,
+		processingToken,
+		executionGeneration: input.claim.executionGeneration,
+		providerRound: 'initial',
 		signal
 	};
 }

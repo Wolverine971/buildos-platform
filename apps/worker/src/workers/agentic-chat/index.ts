@@ -7,6 +7,7 @@ export * from './consumerRuntime';
 export * from './effectControl';
 export * from './effectIdentity';
 export * from './executionControl';
+export * from './executionObservation';
 export * from './executionInput';
 export * from './fixtureConsumer';
 export * from './fixtureMutationExecutor';

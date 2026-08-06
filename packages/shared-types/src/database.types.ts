@@ -1661,6 +1661,60 @@ export type Database = {
           },
         ]
       }
+      agentic_chat_execution_observations: {
+        Row: {
+          event_type: string
+          execution_generation: number
+          id: number
+          observation_key: string
+          observed_at: string
+          payload: Json
+          phase: string
+          session_id: string
+          turn_run_id: string
+          user_id: string
+        }
+        Insert: {
+          event_type: string
+          execution_generation: number
+          id: number
+          observation_key: string
+          observed_at?: string
+          payload: Json
+          phase: string
+          session_id: string
+          turn_run_id: string
+          user_id: string
+        }
+        Update: {
+          event_type?: string
+          execution_generation?: number
+          id?: number
+          observation_key?: string
+          observed_at?: string
+          payload?: Json
+          phase?: string
+          session_id?: string
+          turn_run_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_chat_execution_observations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agentic_chat_execution_observations_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agentic_chat_prepared_prompts: {
         Row: {
           cache_key: string
@@ -16832,6 +16886,24 @@ export type Database = {
         }
         Relationships: []
       }
+      agentic_chat_worker_lifecycle_observations_slice12: {
+        Row: {
+          event_type: string | null
+          execution_generation: number | null
+          observation_key: string | null
+          observation_sequence_index: number | null
+          observed_at: string | null
+          payload: Json | null
+          phase: string | null
+          session_id: string | null
+          source_id: string | null
+          source_kind: string | null
+          stream_run_id: string | null
+          turn_run_id: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       brief_email_stats: {
         Row: {
           avg_send_time_seconds: number | null
@@ -18989,6 +19061,20 @@ export type Database = {
           p_sync_assignees: boolean
           p_task_id: string
           p_updates: Json
+        }
+        Returns: Json
+      }
+      persist_agentic_chat_execution_observation: {
+        Args: {
+          p_event_type: string
+          p_execution_generation: number
+          p_observation_key: string
+          p_payload: Json
+          p_phase: string
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+          p_user_id: string
         }
         Returns: Json
       }

@@ -232,7 +232,7 @@ async function loadProjectStatusTasks(params: {
 	taskLimit: number;
 }) {
 	const horizonIso = addDays(params.now, params.dueSoonDays).toISOString();
-	const { data, error } = await params.context.admin
+	const request = params.context.admin
 		.from('onto_tasks')
 		.select('id, project_id, title, state_key, priority, due_at, completed_at, updated_at')
 		.eq('project_id', params.projectId)
@@ -241,6 +241,8 @@ async function loadProjectStatusTasks(params: {
 		.lte('due_at', horizonIso)
 		.order('due_at', { ascending: true })
 		.limit(params.taskLimit * 4);
+	if (params.context.signal) request.abortSignal(params.context.signal);
+	const { data, error } = await request;
 
 	if (error) {
 		throw new ExternalToolGatewayError(
@@ -285,7 +287,7 @@ async function loadProjectStatusEvents(params: {
 }) {
 	const nowIso = params.now.toISOString();
 	const horizonIso = addDays(params.now, params.upcomingDays).toISOString();
-	const { data, error } = await params.context.admin
+	const request = params.context.admin
 		.from('onto_events')
 		.select('id, project_id, title, state_key, start_at, end_at, location, updated_at')
 		.eq('project_id', params.projectId)
@@ -294,6 +296,8 @@ async function loadProjectStatusEvents(params: {
 		.lte('start_at', horizonIso)
 		.order('start_at', { ascending: true })
 		.limit(params.eventLimit);
+	if (params.context.signal) request.abortSignal(params.context.signal);
+	const { data, error } = await request;
 
 	if (error) {
 		throw new ExternalToolGatewayError(
@@ -313,7 +317,7 @@ async function loadProjectStatusRecentChanges(params: {
 	projectId: string;
 	recentLimit: number;
 }) {
-	const { data, error } = await params.context.admin
+	const request = params.context.admin
 		.from('onto_project_logs')
 		.select(
 			'entity_type, entity_id, action, created_at, before_data, after_data, change_source'
@@ -321,6 +325,8 @@ async function loadProjectStatusRecentChanges(params: {
 		.eq('project_id', params.projectId)
 		.order('created_at', { ascending: false })
 		.limit(params.recentLimit);
+	if (params.context.signal) request.abortSignal(params.context.signal);
+	const { data, error } = await request;
 
 	if (error) {
 		throw new ExternalToolGatewayError(
@@ -340,8 +346,12 @@ async function loadProjectStatusCollaborators(params: {
 	projectId: string;
 	collaboratorLimit: number;
 }) {
-	const currentActorId = await ensureActorId(params.context.admin, params.context.userId);
-	const { data, error, count } = await params.context.admin
+	const currentActorId = await ensureActorId(
+		params.context.admin,
+		params.context.userId,
+		params.context.signal
+	);
+	const request = params.context.admin
 		.from('onto_project_members')
 		.select(
 			'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)',
@@ -351,6 +361,8 @@ async function loadProjectStatusCollaborators(params: {
 		.is('removed_at', null)
 		.order('created_at', { ascending: true })
 		.limit(params.collaboratorLimit + 1);
+	if (params.context.signal) request.abortSignal(params.context.signal);
+	const { data, error, count } = await request;
 
 	if (error) {
 		throw new ExternalToolGatewayError(
@@ -415,7 +427,8 @@ export async function getProjectStatus(
 		loadProjectStartHereExcerpt({
 			supabase: context.admin,
 			projectId: project.id,
-			maxChars: START_HERE_PROMPT_MAX_CHARS
+			maxChars: START_HERE_PROMPT_MAX_CHARS,
+			signal: context.signal
 		})
 	]);
 

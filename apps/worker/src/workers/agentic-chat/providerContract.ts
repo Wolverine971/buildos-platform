@@ -51,6 +51,8 @@ export type AgenticChatProviderStepV1 =
 
 export type AgenticChatProviderInputV1 = {
 	executionInput: AgenticChatWorkerExecutionInputV1;
+	/** Current queue ownership token used only for fenced private observations. */
+	processingToken: string;
 	signal: AbortSignal;
 };
 

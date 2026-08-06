@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-05T03:36:58.731Z
+// Generated on: 2026-08-06T20:15:11.882Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -371,6 +371,18 @@ export type DatabaseSchema = {
 		tokens_consumed: number | null;
 		tool_category: string | null;
 		tool_name: string;
+		user_id: string;
+	};
+	agentic_chat_execution_observations: {
+		event_type: string;
+		execution_generation: number;
+		id: number;
+		observation_key: string;
+		observed_at: string;
+		payload: Json;
+		phase: string;
+		session_id: string;
+		turn_run_id: string;
 		user_id: string;
 	};
 	agentic_chat_prepared_prompts: {
@@ -4158,6 +4170,7 @@ export const tableNames = [
 	'agent_run_signals',
 	'agent_runs',
 	'agent_tool_executions',
+	'agentic_chat_execution_observations',
 	'agentic_chat_prepared_prompts',
 	'agents',
 	'beta_event_attendance',

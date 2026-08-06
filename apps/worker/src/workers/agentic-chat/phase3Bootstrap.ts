@@ -11,6 +11,10 @@ import {
 } from './openRouterReadOnlyClient';
 import { createAgenticChatPhase3Assembly } from './phase3Assembly';
 import { type AgenticChatPhase3Config, loadAgenticChatPhase3Config } from './phase3Config';
+import {
+	type AgenticChatExecutionObservationRpcClient,
+	SupabaseAgenticChatExecutionObservationAdapter
+} from './executionObservation';
 
 const OPENROUTER_HTTP_REFERER = 'https://build-os.com';
 const OPENROUTER_APP_NAME = 'BuildOS Agentic Chat Worker';
@@ -228,10 +232,15 @@ function createDefaultAssembly(
 	input: AgenticChatPhase3BootstrapAssemblyFactoryInput
 ): AgenticChatPhase3BootstrapAssemblyPort {
 	const usageLogger = new LLMUsageLogger({ supabase: input.client });
+	const executionObservations = new SupabaseAgenticChatExecutionObservationAdapter(
+		input.client as unknown as AgenticChatExecutionObservationRpcClient
+	);
 	const providerClient = new AgenticChatOpenRouterReadOnlyClient(
 		{
 			usage: new AgenticChatLlmUsageObserver(usageLogger),
-			onUsageError: input.onUsageError
+			executionObservations,
+			onUsageError: input.onUsageError,
+			onExecutionObservationError: input.onUsageError
 		},
 		{
 			routes: input.config.provider.routes,
@@ -245,7 +254,9 @@ function createDefaultAssembly(
 		providerClient,
 		providerConfigured: true,
 		internalUserIds: input.config.internalUserIds,
-		consumerConfig: input.config.consumer
+		consumerConfig: input.config.consumer,
+		providerBudgetMs: input.config.providerBudgetMs,
+		onExecutionObservationError: input.onUsageError
 	});
 }
 

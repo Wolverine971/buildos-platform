@@ -70,6 +70,8 @@ export type ToolExecutionContext = {
 	scope: AgentCallScope;
 	calendar?: CalendarPort;
 	taskSync?: TaskSyncPort;
+	/** Optional worker cancellation/deadline propagated to network-backed handlers. */
+	signal?: AbortSignal;
 };
 
 export type ExternalGatewayRegistryEntry = RegistryOp & {

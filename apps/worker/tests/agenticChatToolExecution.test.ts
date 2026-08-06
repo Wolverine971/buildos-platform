@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	AgenticChatToolExecutionFenceError,
 	AgenticChatToolExecutionRpcError,
+	AgenticChatToolExecutionTimeoutError,
 	SupabaseAgenticChatToolExecutionAdapter,
 	createStableAgenticChatToolExecutionIdV1,
 	type AgenticChatToolExecutionPersistInputV1
@@ -94,6 +95,25 @@ describe('Agentic Chat read-tool execution ledger', () => {
 	it('accepts an exact lost-response replay', async () => {
 		const { adapter } = adapterFor(receipt({ outcome: 'already_persisted' }));
 		await expect(adapter.persistRead(input)).resolves.toBeUndefined();
+	});
+
+	it('aborts and rejects a hung ledger RPC at the configured deadline', async () => {
+		let deadlineSignal: AbortSignal | null = null;
+		const response = Object.assign(new Promise<never>(() => undefined), {
+			abortSignal(signal: AbortSignal) {
+				deadlineSignal = signal;
+				return this;
+			}
+		});
+		const adapter = new SupabaseAgenticChatToolExecutionAdapter(
+			{ rpc: vi.fn(() => response) },
+			{ timeoutMs: 10 }
+		);
+
+		await expect(
+			adapter.persistRead(input, new AbortController().signal)
+		).rejects.toBeInstanceOf(AgenticChatToolExecutionTimeoutError);
+		expect(deadlineSignal).toMatchObject({ aborted: true });
 	});
 
 	it('surfaces stale, cancelled, and terminal receipts as typed execution fences', async () => {

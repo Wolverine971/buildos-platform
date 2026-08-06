@@ -8,6 +8,7 @@ import {
 	validateAgenticChatDrainTimeout
 } from './consumer';
 import type { AgenticChatOpenAiCompatibleRouteV1 } from './openRouterReadOnlyClient';
+import { DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS } from './fixtureTurnExecutor';
 
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
@@ -18,6 +19,7 @@ export type AgenticChatPhase3ProviderConfig = {
 type AgenticChatPhase3BaseConfig = {
 	internalUserIds: readonly string[];
 	consumer: AgenticChatConsumerConfig;
+	providerBudgetMs: number;
 };
 
 export type AgenticChatPhase3Config =
@@ -76,14 +78,25 @@ export function loadAgenticChatPhase3Config(
 		)
 	};
 	validateAgenticChatConsumerConfig(consumer);
+	const providerBudgetMs = parsePositiveInteger(
+		environment.CHAT_PROVIDER_BUDGET_MS,
+		DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS,
+		'CHAT_PROVIDER_BUDGET_MS'
+	);
+	if (providerBudgetMs >= consumer.workerTimeoutMs) {
+		throw new Error('CHAT_PROVIDER_BUDGET_MS must be below CHAT_WORKER_TIMEOUT_MS');
+	}
 
-	if (!enabled) return { enabled: false, internalUserIds, consumer, provider: null };
+	if (!enabled) {
+		return { enabled: false, internalUserIds, consumer, providerBudgetMs, provider: null };
+	}
 	validateAgenticChatDrainTimeout(consumer.drainTimeoutMs);
 
 	return {
 		enabled: true,
 		internalUserIds,
 		consumer,
+		providerBudgetMs,
 		provider: loadProviderConfig(environment)
 	};
 }

@@ -65,8 +65,8 @@ export function assertVisibleEntityProject(
 export async function loadVisibleProjects(
 	context: ToolExecutionContext
 ): Promise<VisibleProjectContext> {
-	const actorId = await ensureActorId(context.admin, context.userId);
-	const projects = await fetchProjectSummaries(context.admin, actorId);
+	const actorId = await ensureActorId(context.admin, context.userId, context.signal);
+	const projects = await fetchProjectSummaries(context.admin, actorId, undefined, context.signal);
 	const projectMap = buildAllowedProjectSet(context.scope, projects);
 	const scopedProjectIds = Array.isArray(context.scope.project_ids)
 		? new Set(context.scope.project_ids)

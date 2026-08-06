@@ -280,14 +280,16 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 
 			if (claimError) {
-				// Fail open (previous behavior) — the SELECT-based idempotency check
-				// above already ran; a claim error shouldn't drop the email.
-				console.warn(
-					'[NotificationEmailWebhook] Email claim failed, proceeding unclaimed',
+				// Sending without the claim reopens the duplicate-delivery window this
+				// lease is meant to close. Return a retryable server error instead; the
+				// worker keeps the delivery pending and can retry after the DB recovers.
+				return ApiResponse.internalError(
 					{
 						emailRecordId: body.emailRecordId,
+						deliveryId: body.deliveryId,
 						error: claimError.message
-					}
+					},
+					'Email delivery temporarily unavailable'
 				);
 			} else if (!claimed) {
 				console.log(

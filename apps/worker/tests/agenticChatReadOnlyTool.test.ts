@@ -81,8 +81,34 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 			admin: {},
 			userId: USER_ID,
 			projectId: PROJECT_ID,
-			arguments: { project_id: PROJECT_ID }
+			arguments: { project_id: PROJECT_ID },
+			signal: expect.any(AbortSignal)
 		});
+	});
+
+	it('aborts and rejects a hung gateway read at the configured deadline', async () => {
+		let deadlineSignal: AbortSignal | null = null;
+		const runOp = vi.fn(
+			(input: { signal: AbortSignal }) =>
+				new Promise<never>(() => {
+					deadlineSignal = input.signal;
+				})
+		);
+		const adapter = new AgenticChatReadOnlyToolAdapter({} as never, {
+			runOp: runOp as never,
+			timeoutMs: 10
+		});
+
+		await expect(
+			adapter.execute({
+				toolName: 'get_project_overview',
+				arguments: { project_id: PROJECT_ID },
+				providerToolCallId: 'provider-read-timeout',
+				executionInput: executionInput(),
+				signal: new AbortController().signal
+			})
+		).rejects.toMatchObject({ code: 'read_tool_timeout', failureClass: 'transient_infra' });
+		expect(deadlineSignal).toMatchObject({ aborted: true });
 	});
 
 	it('fails closed on non-allowlisted tools, widened arguments, and op failures', async () => {

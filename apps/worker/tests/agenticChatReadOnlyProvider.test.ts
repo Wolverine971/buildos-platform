@@ -17,6 +17,7 @@ const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
 const TURN_RUN_ID = '30000000-0000-4000-8000-000000000003';
 const QUEUE_JOB_ID = '40000000-0000-4000-8000-000000000004';
+const PROCESSING_TOKEN = '90000000-0000-4000-8000-000000000009';
 
 function executionInput(
 	overrides: Partial<AgenticChatWorkerExecutionInputV1> = {}
@@ -145,7 +146,11 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity });
 		const signal = new AbortController().signal;
 
-		const invocation = await adapter.prepare({ executionInput: executionInput(), signal });
+		const invocation = await adapter.prepare({
+			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal
+		});
 		expect(client.stream).not.toHaveBeenCalled();
 		expect(capacity.getSnapshot()).toMatchObject({ available: false, activeRequests: 1 });
 		expect(invocation.promptSnapshot).toMatchObject({
@@ -186,6 +191,10 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			contextType: 'project',
 			entityId: 'project-1',
 			projectId: 'project-1',
+			queueJobId: QUEUE_JOB_ID,
+			processingToken: PROCESSING_TOKEN,
+			executionGeneration: 1,
+			providerRound: 'initial',
 			signal
 		});
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
@@ -204,13 +213,18 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 
 		await expect(
-			adapter.prepare({ executionInput: invalid, signal: new AbortController().signal })
+			adapter.prepare({
+				executionInput: invalid,
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			})
 		).rejects.toMatchObject({ code: 'attachments_disabled', failureClass: 'permanent' });
 		expect(client.stream).not.toHaveBeenCalled();
 		expect(capacity.getSnapshot().available).toBe(true);
 
 		const invocation = await adapter.prepare({
 			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
 		await expect(collect(invocation.stream())).rejects.toMatchObject({
@@ -225,6 +239,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 		const finishInvocation = await finishToolCall.prepare({
 			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
 		await expect(collect(finishInvocation.stream())).rejects.toMatchObject({
@@ -287,6 +302,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity });
 		const invocation = await adapter.prepare({
 			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
 
@@ -379,6 +395,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity });
 		const invocation = await adapter.prepare({
 			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
 
@@ -441,6 +458,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity });
 		const invocation = await adapter.prepare({
 			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
 		await collect(invocation.stream());
@@ -485,6 +503,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity }, 2_000);
 		const invocation = await adapter.prepare({
 			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
 
@@ -547,6 +566,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			});
 			const invocation = await adapter.prepare({
 				executionInput: executionInputWithReadSurface(),
+				processingToken: PROCESSING_TOKEN,
 				signal: new AbortController().signal
 			});
 
@@ -565,6 +585,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 		const first = await missingDone.prepare({
 			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
 		await expect(collect(first.stream())).rejects.toMatchObject({
@@ -573,12 +594,30 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 		expect(capacity.getSnapshot().available).toBe(true);
 
-		const valid = new AgenticChatReadOnlyProviderAdapter({
+		const noText = new AgenticChatReadOnlyProviderAdapter({
 			client: clientWith([{ type: 'done' }]),
+			capacity
+		});
+		const empty = await noText.prepare({
+			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+		await expect(collect(empty.stream())).rejects.toMatchObject({
+			code: 'provider_no_assistant_text',
+			failureClass: 'permanent'
+		});
+
+		const valid = new AgenticChatReadOnlyProviderAdapter({
+			client: clientWith([
+				{ type: 'text', content: 'answer' },
+				{ type: 'done', finishedReason: 'stop' }
+			]),
 			capacity
 		});
 		const released = await valid.prepare({
 			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
 		released.release();
@@ -586,6 +625,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 
 		const reused = await valid.prepare({
 			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
 		await collect(reused.stream());

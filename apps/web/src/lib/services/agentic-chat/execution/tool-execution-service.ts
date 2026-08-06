@@ -6,7 +6,7 @@
  * This service manages tool validation, execution, and result formatting,
  * providing a clean abstraction over the actual tool implementations.
  *
- * @see {@link /apps/web/docs/features/agentic-chat/REFACTORING_SPEC.md} - Refactoring specification
+ * @see {@link /apps/web/docs/features/agentic-chat/README.md#71-tool-execution-architecture} - Current architecture
  * @see {@link ../../tools/core/tool-executor.ts} - Actual tool implementations
  *
  * Key responsibilities:

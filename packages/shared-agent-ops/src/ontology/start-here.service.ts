@@ -86,9 +86,10 @@ export type RefreshProjectStartHereManagedRegionsResult =
 
 async function loadStartHereDocument(
 	supabase: Supabase,
-	projectId: string
+	projectId: string,
+	signal?: AbortSignal
 ): Promise<StartHereDocumentRecord | null> {
-	const { data, error } = await supabase
+	const request = supabase
 		.from('onto_documents')
 		.select(
 			'id, project_id, title, content, type_key, state_key, created_at, updated_at, props'
@@ -99,6 +100,8 @@ async function loadStartHereDocument(
 		.is('archived_at', null)
 		.order('updated_at', { ascending: false })
 		.limit(20);
+	if (signal) request.abortSignal(signal);
+	const { data, error } = await request;
 
 	if (error) {
 		throw error;
@@ -136,9 +139,10 @@ export async function loadProjectStartHereExcerpt(params: {
 	supabase: Supabase;
 	projectId: string;
 	maxChars?: number;
+	signal?: AbortSignal;
 }): Promise<ProjectStartHereExcerpt | null> {
 	try {
-		const doc = await loadStartHereDocument(params.supabase, params.projectId);
+		const doc = await loadStartHereDocument(params.supabase, params.projectId, params.signal);
 		const content = doc?.content?.trim();
 		if (!doc || !content) return null;
 

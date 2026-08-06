@@ -160,6 +160,61 @@ describe('/api/webhooks/send-notification-email', () => {
 		);
 	});
 
+	it('does not call Gmail when the email claim fails', async () => {
+		const responsesByTable: Record<string, any[]> = {
+			emails: [
+				{ data: { id: 'email-1', status: 'scheduled', tracking_id: 't', sent_at: null } },
+				{ data: [], error: null },
+				{
+					data: null,
+					error: {
+						message:
+							'new row for relation "emails" violates check constraint "emails_status_check"'
+					}
+				}
+			],
+			user_notification_preferences: [
+				{ data: { email_enabled: true, should_email_daily_brief: true }, error: null }
+			]
+		};
+
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn((table: string) => {
+				fromCalls.push(table);
+				const response = responsesByTable[table]?.shift();
+				if (!response) throw new Error(`Unexpected query on table: ${table}`);
+				const query: any = {
+					select: vi.fn(() => query),
+					update: vi.fn(() => query),
+					eq: vi.fn(() => query),
+					not: vi.fn(() => query),
+					neq: vi.fn(() => query),
+					in: vi.fn(() => query),
+					order: vi.fn(() => query),
+					limit: vi.fn(() => query),
+					maybeSingle: vi.fn().mockResolvedValue(response),
+					then: (resolve: any, reject: any) =>
+						Promise.resolve(response).then(resolve, reject)
+				};
+				return query;
+			})
+		});
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		const response = await POST({
+			request: createWebhookRequest({})
+		} as any);
+
+		expect(response.status).toBe(500);
+		const payload = await response.json();
+		expect(payload).toMatchObject({
+			success: false,
+			error: 'Email delivery temporarily unavailable'
+		});
+		expect(sendEmailMock).not.toHaveBeenCalled();
+		consoleError.mockRestore();
+	});
+
 	it('skips the Gmail send when another sender holds the claim', async () => {
 		const responsesByTable: Record<string, any[]> = {
 			emails: [

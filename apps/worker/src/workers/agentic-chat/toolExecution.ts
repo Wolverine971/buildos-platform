@@ -7,14 +7,18 @@ import {
 	normalizeAgenticChatText
 } from '@buildos/shared-types';
 import type { AgenticChatExecutionIdentityV1 } from './executionControl';
+import { runWithAbortableDeadline } from './abortableDeadline';
 
 const IDENTITY_VERSION = 'agentic_chat_read_tool_execution_identity_v1';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const DATABASE_TIMESTAMP_PATTERN =
 	/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
+export const AGENTIC_CHAT_TOOL_LEDGER_TIMEOUT_MS = 30_000;
 
 type RpcError = { code?: string; message: string };
-type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }>;
+type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }> & {
+	abortSignal?(signal: AbortSignal): RpcResponse;
+};
 
 export type AgenticChatToolExecutionRpcClient = {
 	rpc(name: string, args: Record<string, unknown>): RpcResponse;
@@ -43,7 +47,7 @@ export type AgenticChatToolExecutionPersistInputV1 = AgenticChatExecutionIdentit
 };
 
 export type AgenticChatToolExecutionPortV1 = {
-	persistRead(input: AgenticChatToolExecutionPersistInputV1): Promise<void>;
+	persistRead(input: AgenticChatToolExecutionPersistInputV1, signal: AbortSignal): Promise<void>;
 };
 
 export class AgenticChatToolExecutionRpcError extends Error {
@@ -68,30 +72,58 @@ export class AgenticChatToolExecutionFenceError extends Error {
 	}
 }
 
-export class SupabaseAgenticChatToolExecutionAdapter implements AgenticChatToolExecutionPortV1 {
-	constructor(private readonly client: AgenticChatToolExecutionRpcClient) {}
+export class AgenticChatToolExecutionTimeoutError extends Error {
+	readonly code = 'tool_execution_persist_timeout';
+	readonly failureClass = 'transient_infra' as const;
 
-	async persistRead(input: AgenticChatToolExecutionPersistInputV1): Promise<void> {
+	constructor(timeoutMs: number) {
+		super(`Agentic Chat tool-execution ledger exceeded its ${timeoutMs}ms deadline`);
+		this.name = 'AgenticChatToolExecutionTimeoutError';
+	}
+}
+
+export class SupabaseAgenticChatToolExecutionAdapter implements AgenticChatToolExecutionPortV1 {
+	private readonly timeoutMs: number;
+
+	constructor(
+		private readonly client: AgenticChatToolExecutionRpcClient,
+		options: { timeoutMs?: number } = {}
+	) {
+		this.timeoutMs = options.timeoutMs ?? AGENTIC_CHAT_TOOL_LEDGER_TIMEOUT_MS;
+	}
+
+	async persistRead(
+		input: AgenticChatToolExecutionPersistInputV1,
+		signal: AbortSignal = new AbortController().signal
+	): Promise<void> {
 		validateInput(input);
-		const { data, error } = await this.client.rpc('persist_agentic_chat_read_tool_execution', {
-			p_turn_run_id: input.turnRunId,
-			p_user_id: input.userId,
-			p_queue_job_id: input.queueJobId,
-			p_processing_token: input.processingToken,
-			p_execution_generation: input.executionGeneration,
-			p_tool_execution_id: input.toolExecutionId,
-			p_sequence_index: input.sequenceIndex,
-			p_provider_tool_call_id: input.providerToolCallId,
-			p_tool_name: input.toolName,
-			p_tool_category: input.execution.toolCategory,
-			p_arguments: input.arguments,
-			p_result: input.execution.result,
-			p_result_count: input.execution.resultCount,
-			p_zero_result: input.execution.zeroResult,
-			p_execution_time_ms: input.execution.executionTimeMs,
-			p_tokens_consumed: input.execution.tokensConsumed,
-			p_requires_user_action: input.execution.requiresUserAction,
-			p_affected_entities: input.execution.affectedEntities
+		const { data, error } = await runWithAbortableDeadline({
+			parentSignal: signal,
+			timeoutMs: this.timeoutMs,
+			createTimeoutError: () => new AgenticChatToolExecutionTimeoutError(this.timeoutMs),
+			run: (deadlineSignal) => {
+				const request = this.client.rpc('persist_agentic_chat_read_tool_execution', {
+					p_turn_run_id: input.turnRunId,
+					p_user_id: input.userId,
+					p_queue_job_id: input.queueJobId,
+					p_processing_token: input.processingToken,
+					p_execution_generation: input.executionGeneration,
+					p_tool_execution_id: input.toolExecutionId,
+					p_sequence_index: input.sequenceIndex,
+					p_provider_tool_call_id: input.providerToolCallId,
+					p_tool_name: input.toolName,
+					p_tool_category: input.execution.toolCategory,
+					p_arguments: input.arguments,
+					p_result: input.execution.result,
+					p_result_count: input.execution.resultCount,
+					p_zero_result: input.execution.zeroResult,
+					p_execution_time_ms: input.execution.executionTimeMs,
+					p_tokens_consumed: input.execution.tokensConsumed,
+					p_requires_user_action: input.execution.requiresUserAction,
+					p_affected_entities: input.execution.affectedEntities
+				});
+				return request.abortSignal ? request.abortSignal(deadlineSignal) : request;
+			}
 		});
 		if (error) throw new AgenticChatToolExecutionRpcError(error.code ?? '', error.message);
 		if (!data || typeof data !== 'object' || Array.isArray(data)) {

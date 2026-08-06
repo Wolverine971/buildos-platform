@@ -147,10 +147,16 @@ function mapProjectSelectorRow(row: ProjectSelectorRow): OntologyProjectSelector
 /**
  * Resolve (or create) the actor id for the given user.
  */
-export async function ensureActorId(client: TypedSupabaseClient, userId: string): Promise<string> {
-	const { data, error } = await client.rpc('ensure_actor_for_user', {
+export async function ensureActorId(
+	client: TypedSupabaseClient,
+	userId: string,
+	signal?: AbortSignal
+): Promise<string> {
+	const request = client.rpc('ensure_actor_for_user', {
 		p_user_id: userId
 	});
+	if (signal) request.abortSignal(signal);
+	const { data, error } = await request;
 
 	if (error || !data) {
 		throw new Error(error?.message || 'Failed to resolve ontology actor for user');
@@ -166,18 +172,21 @@ export async function ensureActorId(client: TypedSupabaseClient, userId: string)
 export async function fetchProjectSummaries(
 	client: TypedSupabaseClient,
 	actorId: string,
-	timing?: ServerTiming
+	timing?: ServerTiming,
+	signal?: AbortSignal
 ): Promise<OntologyProjectSummary[]> {
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		timing ? timing.measure(name, fn) : fn();
 
 	// Preferred path: single RPC performs summary + latest-activity aggregation server-side.
 	// If the migration is not present yet, fall back to the legacy multi-query path below.
-	const { data: rpcRows, error: rpcError } = await measure('db.projects.summary_rpc', () =>
-		client.rpc('get_onto_project_summaries_v1', {
+	const { data: rpcRows, error: rpcError } = await measure('db.projects.summary_rpc', () => {
+		const request = client.rpc('get_onto_project_summaries_v1', {
 			p_actor_id: actorId
-		})
-	);
+		});
+		if (signal) request.abortSignal(signal);
+		return request;
+	});
 
 	if (!rpcError && Array.isArray(rpcRows)) {
 		return (rpcRows as ProjectSummaryRpcRow[]).map((row) => ({
@@ -251,12 +260,17 @@ export async function fetchProjectSummaries(
 		return latest;
 	};
 
-	const { data: memberRows, error: memberError } = await measure('db.project_members.list', () =>
-		client
-			.from('onto_project_members')
-			.select('project_id, role_key, access')
-			.eq('actor_id', actorId)
-			.is('removed_at', null)
+	const { data: memberRows, error: memberError } = await measure(
+		'db.project_members.list',
+		() => {
+			const request = client
+				.from('onto_project_members')
+				.select('project_id, role_key, access')
+				.eq('actor_id', actorId)
+				.is('removed_at', null);
+			if (signal) request.abortSignal(signal);
+			return request;
+		}
 	);
 
 	if (memberError) {
@@ -277,8 +291,8 @@ export async function fetchProjectSummaries(
 		}
 	});
 
-	const { data, error } = await measure('db.projects.summary', () =>
-		client
+	const { data, error } = await measure('db.projects.summary', () => {
+		const request = client
 			.from('onto_projects')
 			.select(
 				`
@@ -324,8 +338,10 @@ export async function fetchProjectSummaries(
 			.is('onto_plans.archived_at', null)
 			.is('onto_documents.deleted_at', null)
 			.is('onto_documents.archived_at', null)
-			.order('created_at', { ascending: false })
-	);
+			.order('created_at', { ascending: false });
+		if (signal) request.abortSignal(signal);
+		return request;
+	});
 
 	if (error) {
 		throw new Error(error.message);
@@ -337,16 +353,18 @@ export async function fetchProjectSummaries(
 	const fetchLatestEntityUpdates = async (table: EntityTable): Promise<Map<string, string>> => {
 		if (projectIds.length === 0) return new Map();
 
-		const { data: rows, error: rowsError } = await measure(`db.${table}.latest_updates`, () =>
-			client
+		const { data: rows, error: rowsError } = await measure(`db.${table}.latest_updates`, () => {
+			const request = client
 				.from(table)
 				.select('project_id, updated_at, created_at')
 				.in('project_id', projectIds)
 				.is('deleted_at', null)
 				.is('archived_at', null)
 				.order('updated_at', { ascending: false })
-				.order('created_at', { ascending: false })
-		);
+				.order('created_at', { ascending: false });
+			if (signal) request.abortSignal(signal);
+			return request;
+		});
 
 		if (rowsError) {
 			throw new Error(rowsError.message);

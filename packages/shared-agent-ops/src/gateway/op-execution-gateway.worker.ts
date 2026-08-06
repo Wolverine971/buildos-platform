@@ -85,6 +85,7 @@ export async function runGatewayReadOp(params: {
 	callSessionId?: string;
 	calendar?: CalendarPort;
 	taskSync?: TaskSyncPort;
+	signal?: AbortSignal;
 }): Promise<GatewayReadOpResult> {
 	const canonicalOp = normalizeGatewayOpName(
 		typeof params.op === 'string' ? params.op.trim() : ''
@@ -109,7 +110,8 @@ export async function runGatewayReadOp(params: {
 		callSessionId: params.callSessionId,
 		scope: params.scope,
 		calendar: params.calendar,
-		taskSync: params.taskSync
+		taskSync: params.taskSync,
+		signal: params.signal
 	};
 
 	try {

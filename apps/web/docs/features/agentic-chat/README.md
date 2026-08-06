@@ -2,7 +2,7 @@
 
 # Agentic Chat (Current Implementation)
 
-> Last updated: 2026-07-05
+> Last updated: 2026-08-06
 > Scope: Runtime behavior in `apps/web` (UI + APIs + tools + persistence)
 
 This is the canonical documentation for the chat system currently running in the web app.
@@ -42,7 +42,8 @@ The modal renders the shell and delegates stream transport to
 | Turn observability       | `apps/web/src/lib/services/agentic-chat-v2/turn-observability-writer.ts`     | Turn runs, batched turn events, timing metrics, prompt snapshots               |
 | Tool dispatch            | `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.ts`         | Maps tool names to domain executors                                            |
 | Gateway surface          | `apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts`       | Builds discovery-tool plus direct-tool surfaces                                |
-| Gateway execution        | `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts` | Executes discovery tools and registry-backed direct tools in gateway mode      |
+| Tool execution facade    | `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts` | Preserves the public execution API and owns the ordered per-call pipeline      |
+| Tool execution stages    | `apps/web/src/lib/services/agentic-chat/execution/tool-execution/`           | Decode, normalize, authorize, validate, dispatch, adapt, and observe stages    |
 | Session service (V2)     | `apps/web/src/lib/services/agentic-chat-v2/session-service.ts`               | Resolve/create session, load/persist messages, update stats                    |
 
 Related APIs used by the modal:
@@ -223,14 +224,76 @@ Tool execution paths:
 - Registry-backed direct tools execute the underlying canonical ops through `ToolExecutionService`.
 - `ChatToolExecutor` dispatches named tools to domain executors.
 
-`ToolExecutionService` is the validation/enrichment layer before
-`ChatToolExecutor`. It normalizes tool arguments, applies schema defaults and
-context-derived `project_id`, maps supported argument aliases, normalizes UUID
-fields, enforces project/entity scope guards, validates schemas, and wraps
-execution with timeout and abort handling. Gateway tools (`skill_load`,
-`tool_search`, `tool_schema`, domain/resource loaders, and Libri discovery)
-use the same enrichment/validation path, but execute locally from canonical
-gateway definitions instead of passing through `ChatToolExecutor`.
+### 7.1 Tool execution architecture
+
+`ToolExecutionService` is a request-scoped compatibility facade. The V2 stream route creates one
+instance per stream request and calls `executeTool` or `batchExecuteTools`; the established import
+path, constructor, and public methods remain stable.
+
+Every single-tool attempt follows this visible order:
+
+1. Resolve the function name and decode arguments, including the supported nested-JSON repairs.
+2. Apply tool-specific argument adapters, semantic aliases, schema/context defaults, and ID
+   normalization without mutating caller-owned input.
+3. Strip server-owned workspace metadata, then enforce project and entity scope.
+4. Run the ordered domain preflight policies, including project-creation confirmation and
+   duplicate-document protection.
+5. Honor pre-dispatch cancellation, validate against the selected or canonical gateway schema,
+   dispatch through the explicit core, gateway, or virtual lane, and adapt the lane result to the
+   established envelope.
+6. On a successful core mutation/read, update request-local ownership and document evidence for
+   later calls in the same turn.
+7. Finalize telemetry or sanitized error logging exactly once for the returned result.
+
+The extracted package is organized by invariant rather than by tool:
+
+| Area                            | Modules                                                                                      | Owns                                                                                       |
+| ------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Decode and argument preparation | `call-decoder.ts`, `argument-values.ts`, `tool-argument-adapters.ts`, `argument-pipeline.ts` | Parsing, immutable normalization, aliases, defaults, and IDs                               |
+| Schema validation               | `schema-validator.ts`, `schema-custom-validations.ts`                                        | Definition lookup, supported JSON-schema subset, UUID and graph checks                     |
+| Authorization evidence          | `scope-guards.ts`, `ontology-scope-evidence.ts`                                              | Project/entity ownership decisions and cross-project move exceptions                       |
+| Domain preflight                | `tool-policies.ts`, `same-turn-document-registry.ts`                                         | Ordered tool policies and duplicate-document protection                                    |
+| Dispatch                        | `gateway-executor.ts`, `execution-runner.ts`                                                 | Explicit execution lanes, timeouts, aborts, cancellation, retries, and ordered concurrency |
+| Result boundary                 | `result-adapter.ts`, `result-observer.ts`                                                    | Cleanup, entities, tokens, formatting, telemetry, and sanitized errors                     |
+| Request-local ownership         | `same-turn-ontology-ownership.ts`                                                            | Trusted same-turn creates, reads, moves, deletes, and contradiction tombstones             |
+
+Lane differences remain intentional:
+
+- Core tools execute through `ChatToolExecutor` and feed successful cleaned data into same-turn
+  ownership bookkeeping.
+- Gateway tools use canonical gateway definitions and local registry handlers.
+- Virtual tools receive the original call, normalized arguments, request context, and available
+  tools through the injected virtual handler contract.
+
+All three lanes share the runner's timeout, abort, cancellation, and result-envelope behavior.
+Retries remain opt-in through `executeWithRetry`; `executeTool` does not retry implicitly. Sequential
+and bounded-concurrency helpers retain input ordering, and request-local registries cannot leak
+between service instances.
+
+The compatibility surface also retains `executeMultipleTools`, `validateToolCall`,
+`getToolDefinition`, `formatToolResult`, and `extractEntitiesFromResult` for existing callers.
+
+### 7.2 Decomposition closeout and guardrails
+
+The tool-execution decomposition completed on 2026-08-06. The facade moved from 3,662 lines to 488
+lines without changing live tool contracts. The complete focused gate is 250 passing tests, and the
+web typecheck reports 0 errors and 0 warnings.
+
+`tool-execution-architecture.test.ts` keeps the boundary executable:
+
+- the compatibility facade must remain at or below 500 lines;
+- every extracted production module must remain at or below 600 lines;
+- production files in the execution package may not reintroduce explicit `any`.
+
+New per-tool behavior belongs in the cohesive extracted module that owns its invariant, not in the
+facade. Run the focused closeout gate with:
+
+```bash
+pnpm --filter @buildos/web exec vitest run \
+  src/lib/services/agentic-chat/execution \
+  src/routes/api/agent/v2/stream/server.test.ts
+pnpm --filter @buildos/web check
+```
 
 Provider selection:
 

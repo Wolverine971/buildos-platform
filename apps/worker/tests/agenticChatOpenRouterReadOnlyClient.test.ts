@@ -8,10 +8,13 @@ import {
 } from '../src/workers/agentic-chat/openRouterReadOnlyClient';
 import type { AgenticChatReadOnlyProviderClientEventV1 } from '../src/workers/agentic-chat/readOnlyProvider';
 import { AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1 } from '../src/workers/agentic-chat/readOnlyTool';
+import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/executionObservation';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
 const TURN_RUN_ID = '30000000-0000-4000-8000-000000000003';
+const QUEUE_JOB_ID = '40000000-0000-4000-8000-000000000004';
+const PROCESSING_TOKEN = '50000000-0000-4000-8000-000000000005';
 
 afterEach(() => {
 	vi.useRealTimers();
@@ -33,6 +36,10 @@ function input(signal = new AbortController().signal) {
 		contextType: 'project',
 		entityId: 'project-1',
 		projectId: 'project-1',
+		queueJobId: QUEUE_JOB_ID,
+		processingToken: PROCESSING_TOKEN,
+		executionGeneration: 2,
+		providerRound: 'initial' as const,
 		signal
 	};
 }
@@ -84,13 +91,19 @@ function splitSseResponse(chunks: string[]): Response {
 
 function harness(fetchImpl: typeof fetch, routes = [route()]) {
 	const observations: AgenticChatProviderUsageObservationV1[] = [];
+	const lifecycleObservations: AgenticChatExecutionObservationInputV1[] = [];
 	const usage = {
 		observe: vi.fn(async (observation: AgenticChatProviderUsageObservationV1) => {
 			observations.push(observation);
 		})
 	};
+	const executionObservations = {
+		observe: vi.fn(async (observation: AgenticChatExecutionObservationInputV1) => {
+			lifecycleObservations.push(observation);
+		})
+	};
 	const client = new AgenticChatOpenRouterReadOnlyClient(
-		{ usage },
+		{ usage, executionObservations },
 		{
 			routes,
 			httpReferer: 'https://build-os.com',
@@ -99,7 +112,7 @@ function harness(fetchImpl: typeof fetch, routes = [route()]) {
 			requestTimeoutMs: 10_000
 		}
 	);
-	return { client, usage, observations };
+	return { client, usage, observations, executionObservations, lifecycleObservations };
 }
 
 async function collect(
@@ -197,6 +210,29 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 				error: null
 			})
 		]);
+		expect(test.lifecycleObservations).toEqual([
+			expect.objectContaining({
+				phase: 'provider',
+				eventType: 'provider_attempt_started',
+				payload: {
+					round: 'initial',
+					route_id: 'openrouter',
+					model_requested: 'provider/primary'
+				}
+			}),
+			expect.objectContaining({
+				phase: 'provider',
+				eventType: 'provider_attempt_ended',
+				payload: expect.objectContaining({
+					round: 'initial',
+					route_id: 'openrouter',
+					status: 'success',
+					finish_reason: 'stop',
+					usage: { prompt_tokens: 8, completion_tokens: 2, total_tokens: 10 }
+				})
+			})
+		]);
+		expect(JSON.stringify(test.lifecycleObservations)).not.toContain('Visible answer');
 	});
 
 	it('falls back only before accepting a stream and accounts an estimated natural close', async () => {
@@ -255,6 +291,18 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			completionTokens: 4,
 			error: null
 		});
+		expect(
+			test.lifecycleObservations.map(({ eventType, payload }) => ({
+				eventType,
+				routeId: payload.route_id,
+				status: payload.status ?? null
+			}))
+		).toEqual([
+			{ eventType: 'provider_attempt_started', routeId: 'primary', status: null },
+			{ eventType: 'provider_attempt_ended', routeId: 'primary', status: 'failure' },
+			{ eventType: 'provider_attempt_started', routeId: 'direct', status: null },
+			{ eventType: 'provider_attempt_ended', routeId: 'direct', status: 'success' }
+		]);
 	});
 
 	it('passes through one streamed read-tool call with the exact allowlisted HTTP surface', async () => {
