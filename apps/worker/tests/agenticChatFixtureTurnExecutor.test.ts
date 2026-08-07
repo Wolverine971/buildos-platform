@@ -599,6 +599,12 @@ function createHarness(
 		})
 	};
 	const promptSnapshotErrors: unknown[] = [];
+	const terminalControlErrors: Array<{
+		stage: 'finalize' | 'finalize_retry' | 'recover';
+		turnRunId: string;
+		executionGeneration: number;
+		error: unknown;
+	}> = [];
 	const input = { load: vi.fn(async () => executionInput) };
 	const readTool = {
 		execute: vi.fn(async () => ({
@@ -642,6 +648,7 @@ function createHarness(
 			promptSnapshots,
 			executionObservations,
 			onPromptSnapshotError: (error) => promptSnapshotErrors.push(error),
+			onTerminalControlError: (report) => terminalControlErrors.push(report),
 			readTool,
 			toolExecutions,
 			mutation,
@@ -673,6 +680,7 @@ function createHarness(
 		provider,
 		promptSnapshots,
 		promptSnapshotErrors,
+		terminalControlErrors,
 		readTool,
 		toolExecutions,
 		executionObservations,
@@ -813,6 +821,79 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				})
 			})
 		);
+		await harness.publisher.stop();
+	});
+
+	it('retries a rejected timing finalize once without the draft instead of abandoning the turn', async () => {
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'timed response' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{ timingClockValues: [100, 110, 120, 150, 160, 190] }
+		);
+		harness.control.finalize.mockImplementationOnce(async () => {
+			throw new Error('agentic_chat_terminal_events_finalize_timing_evidence_mismatch');
+		});
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(harness.control.finalize).toHaveBeenCalledTimes(2);
+		const firstInput = harness.control.finalize.mock.calls[0][0];
+		const retryInput = harness.control.finalize.mock.calls[1][0];
+		expect(firstInput.timingDraft).not.toBeNull();
+		expect(retryInput.timingDraft).toBeNull();
+		expect(retryInput.timingTransitionId).toBeNull();
+		expect(retryInput.lastTurnContext).not.toBeNull();
+		expect(retryInput.assistantText).toBe(firstInput.assistantText);
+		expect(harness.terminalControlErrors).toEqual([
+			expect.objectContaining({
+				stage: 'finalize',
+				turnRunId: TURN_RUN_ID,
+				executionGeneration: EXECUTION_GENERATION
+			})
+		]);
+		await harness.publisher.stop();
+	});
+
+	it('reports both terminal-control failures when the timing-stripped retry also fails', async () => {
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'timed response' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{
+				timingClockValues: [100, 110, 120, 150, 160, 190],
+				recovery: [
+					{
+						outcome: 'queue_reconciled',
+						turn_run_id: TURN_RUN_ID,
+						queue_job_id: QUEUE_JOB_ID,
+						session_id: SESSION_ID,
+						user_id: USER_ID,
+						execution_generation: EXECUTION_GENERATION,
+						status: 'failed'
+					}
+				]
+			}
+		);
+		harness.control.finalize
+			.mockImplementationOnce(async () => {
+				throw new Error('agentic_chat_terminal_events_finalize_timing_evidence_mismatch');
+			})
+			.mockImplementationOnce(async () => {
+				throw new Error('terminal finalization retry unavailable');
+			});
+
+		const outcome = await harness.executor.execute(job());
+		expect(harness.control.finalize).toHaveBeenCalledTimes(2);
+		expect(harness.terminalControlErrors.map((report) => report.stage)).toEqual([
+			'finalize',
+			'finalize_retry'
+		]);
+		expect(outcome.outcome).not.toBe('completed');
 		await harness.publisher.stop();
 	});
 

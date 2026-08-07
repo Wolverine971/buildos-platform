@@ -92,7 +92,7 @@ describe('AgenticChatWorkerRealtimeCoordinator', () => {
 		await vi.waitFor(() => expect(observer.applyReconciliation).toHaveBeenCalledOnce());
 
 		expect(fetchImpl).toHaveBeenCalledWith(
-			`/api/agent/v2/turns/${TURN_ID}/reconcile?generation=0&after=0`,
+			`/api/agent/v2/turns/${TURN_ID}/reconcile?generation=0&after=0&reason=initial`,
 			expect.objectContaining({
 				method: 'GET',
 				credentials: 'same-origin',
@@ -240,7 +240,7 @@ describe('AgenticChatWorkerRealtimeCoordinator', () => {
 		await flushAsync();
 		expect(fetchImpl).toHaveBeenCalledTimes(2);
 		expect(fetchImpl.mock.calls[1]?.[0]).toBe(
-			`/api/agent/v2/turns/${TURN_ID}/reconcile?generation=1&after=2`
+			`/api/agent/v2/turns/${TURN_ID}/reconcile?generation=1&after=2&reason=watchdog`
 		);
 
 		await vi.advanceTimersByTimeAsync(4_999);

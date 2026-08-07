@@ -245,6 +245,48 @@ describe('ErrorLoggerService', () => {
 		});
 	});
 
+	it('stores IPv4 addresses verbatim instead of the sanitizer phone redaction', async () => {
+		const insertedEntries: Array<Record<string, any>> = [];
+		const supabase = createLoggingSupabase(insertedEntries, 'logged-error-ip');
+		const service = ErrorLoggerService.getInstance(
+			supabase as unknown as SupabaseClient<Database>
+		);
+
+		const loggedId = await service.logError(
+			{ code: '500', message: 'boom' },
+			{
+				ipAddress: '203.0.113.7',
+				endpoint: '/api/agent/v2/stream',
+				httpMethod: 'POST'
+			}
+		);
+
+		expect(loggedId).toBe('logged-error-ip');
+		expect(insertedEntries).toHaveLength(1);
+		expect(insertedEntries[0]?.ip_address).toBe('203.0.113.7');
+	});
+
+	it('stores null for a malformed ip address instead of rejecting the inet insert', async () => {
+		const insertedEntries: Array<Record<string, any>> = [];
+		const supabase = createLoggingSupabase(insertedEntries, 'logged-error-bad-ip');
+		const service = ErrorLoggerService.getInstance(
+			supabase as unknown as SupabaseClient<Database>
+		);
+
+		const loggedId = await service.logError(
+			{ code: '500', message: 'boom' },
+			{
+				ipAddress: '[redacted-phone]',
+				endpoint: '/api/agent/v2/stream',
+				httpMethod: 'POST'
+			}
+		);
+
+		expect(loggedId).toBe('logged-error-bad-ip');
+		expect(insertedEntries).toHaveLength(1);
+		expect(insertedEntries[0]?.ip_address).toBeNull();
+	});
+
 	it('redacts credentials from provider errors before persistence', async () => {
 		const insertedEntries: Array<Record<string, any>> = [];
 		const supabase = createLoggingSupabase(insertedEntries, 'logged-error-redacted');

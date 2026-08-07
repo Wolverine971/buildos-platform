@@ -196,7 +196,7 @@ BEGIN
 	INSERT INTO public.chat_turn_stream_state (
 		turn_run_id, session_id, user_id, execution_generation,
 		snapshot_sequence, durable_through_sequence, projection_durable_sequence,
-		assistant_text, projection
+		assistant_text, projection, first_text_persisted_at
 	) VALUES (
 		p_turn_run_id,
 		p_turn_run_id,
@@ -206,7 +206,8 @@ BEGIN
 		p_last_sequence,
 		p_last_sequence,
 		'fixture answer',
-		'{"version":"agentic_chat_ui_projection_v1","current_activity":"","semantic_events":[]}'::jsonb
+		'{"version":"agentic_chat_ui_projection_v1","current_activity":"","semantic_events":[]}'::jsonb,
+		CASE WHEN p_with_text THEN v_admitted_at + interval '750 milliseconds' ELSE NULL END
 	);
 END;
 $$;
@@ -225,13 +226,20 @@ BEGIN
 	FROM public.chat_turn_runs
 	WHERE id = p_turn_run_id;
 
-	SELECT
-		min(created_at),
-		min(created_at) FILTER (WHERE event_type = 'text_delta')
-	INTO v_first_event_at, v_first_response_at
+	SELECT min(created_at)
+	INTO v_first_event_at
 	FROM public.chat_turn_events
 	WHERE turn_run_id = p_turn_run_id
 		AND execution_generation = v_turn.execution_generation;
+
+	-- First-response evidence is the stream state's first flushed text batch,
+	-- matching the corrected validator source (text batches write no
+	-- text_delta event rows).
+	SELECT streams.first_text_persisted_at
+	INTO v_first_response_at
+	FROM public.chat_turn_stream_state streams
+	WHERE streams.turn_run_id = p_turn_run_id
+		AND streams.execution_generation = v_turn.execution_generation;
 
 	v_phases := jsonb_build_object(
 		'admission_to_acceptance_ms',

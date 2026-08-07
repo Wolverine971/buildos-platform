@@ -491,6 +491,39 @@ export class ErrorLoggerService {
 		};
 	}
 
+	// error_logs.ip_address is a PostgreSQL inet column and the sanitizer's
+	// phone-number redaction rewrites IPv4 digit runs into "[redacted-phone]",
+	// which the insert then rejects. Validate the ORIGINAL value and store a
+	// well-formed address or nothing.
+	private normalizeIpForStorage(value?: string): string | null {
+		const trimmed = value?.trim().replace(/^\[/, '').replace(/\]$/, '');
+		if (!trimmed) return null;
+		const ipv4Parts = trimmed.split('.');
+		if (
+			ipv4Parts.length === 4 &&
+			ipv4Parts.every((part) => {
+				if (!/^\d{1,3}$/.test(part)) return false;
+				const numeric = Number(part);
+				return numeric >= 0 && numeric <= 255;
+			})
+		) {
+			return trimmed;
+		}
+		if (/^[0-9a-f:]+$/i.test(trimmed) && trimmed.includes(':') && !trimmed.includes(':::')) {
+			const doubleColons = trimmed.match(/::/g)?.length ?? 0;
+			const groups = trimmed.split(':').filter(Boolean);
+			if (
+				doubleColons <= 1 &&
+				groups.length <= 8 &&
+				groups.every((group) => group.length <= 4) &&
+				(doubleColons === 1 || groups.length === 8)
+			) {
+				return trimmed;
+			}
+		}
+		return null;
+	}
+
 	public async logError(
 		error: any,
 		context?: ErrorContext,
@@ -552,7 +585,7 @@ export class ErrorLoggerService {
 				http_method: sanitizedContext?.httpMethod,
 				request_id: sanitizedContext?.requestId || this.generateRequestId(),
 				user_agent: browser ? navigator.userAgent : sanitizedContext?.userAgent,
-				ip_address: sanitizedContext?.ipAddress ?? null,
+				ip_address: this.normalizeIpForStorage(context?.ipAddress),
 
 				llm_provider: sanitizedContext?.llmMetadata?.provider,
 				llm_model: sanitizedContext?.llmMetadata?.model,

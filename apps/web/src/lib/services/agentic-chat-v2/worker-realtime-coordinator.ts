@@ -305,7 +305,11 @@ export class AgenticChatWorkerRealtimeCoordinator {
 	): Promise<AgenticChatReconcileRpcResultV1> {
 		const query = new URLSearchParams({
 			generation: String(request.executionGeneration),
-			after: String(request.afterDurableSequence)
+			after: String(request.afterDurableSequence),
+			// Diagnostic only, ignored by the route: puts the requesting loop's
+			// trigger into edge logs so a reconcile runaway (1,314 calls at ~3/s
+			// during the 2026-08-06 canary) names its own cause next time.
+			reason: request.reason
 		});
 		const response = await this.#fetch(
 			`/api/agent/v2/turns/${encodeURIComponent(request.handle.turnRunId)}/reconcile?${query}`,

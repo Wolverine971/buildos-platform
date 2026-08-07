@@ -202,6 +202,12 @@ export class AgenticChatFixtureTurnExecutor {
 			onTimingSnapshot?: AgenticChatRuntimeTimingObserverV1;
 			onPromptSnapshotError?: (error: unknown) => void;
 			onExecutionObservationError?: (error: unknown) => void;
+			onTerminalControlError?: (report: {
+				stage: 'finalize' | 'finalize_retry' | 'recover';
+				turnRunId: string;
+				executionGeneration: number;
+				error: unknown;
+			}) => void;
 		},
 		options: { providerBudgetMs?: number; overheadTimeoutMs?: number } = {}
 	) {
@@ -1369,7 +1375,12 @@ export class AgenticChatFixtureTurnExecutor {
 				publicError,
 				terminalEventContext
 			});
-		} catch {
+		} catch (error) {
+			this.reportTerminalControlError(
+				'recover',
+				{ turnRunId: envelope.turnRunId, executionGeneration },
+				error
+			);
 			return result('recovery_required', envelope.turnRunId, executionGeneration);
 		}
 	}
@@ -1514,9 +1525,7 @@ export class AgenticChatFixtureTurnExecutor {
 
 		let terminal: AgenticChatTerminalFinalizeRpcResultV1;
 		try {
-			terminal = await this.awaitTerminal('terminal finalization', () =>
-				this.ports.control.finalize(terminalInput)
-			);
+			terminal = await this.finalizeWithTimingFallback(terminalInput, claim);
 		} catch {
 			return result('recovery_required', claim.turnRunId, claim.executionGeneration);
 		} finally {
@@ -1660,6 +1669,64 @@ export class AgenticChatFixtureTurnExecutor {
 
 	private awaitTerminal<T>(label: string, run: () => PromiseLike<T>): Promise<T> {
 		return this.awaitOverhead(new AbortController().signal, label, run);
+	}
+
+	/**
+	 * Timing is optional observability that must never cost the user their
+	 * terminal state (production turn 1422ffc3 was abandoned to the stalled
+	 * sweeper when the timing validator rejected a draft). A failed finalize
+	 * that carried a timing draft is retried exactly once without timing —
+	 * dropping the surfaces the RPC contract ties to timing — before the
+	 * failure propagates to recovery.
+	 */
+	private async finalizeWithTimingFallback(
+		terminalInput: AgenticChatTerminalFinalizeInputV1,
+		claim: { turnRunId: string; executionGeneration: number }
+	): Promise<AgenticChatTerminalFinalizeRpcResultV1> {
+		try {
+			return await this.awaitTerminal('terminal finalization', () =>
+				this.ports.control.finalize(terminalInput)
+			);
+		} catch (error) {
+			this.reportTerminalControlError('finalize', claim, error);
+			if (terminalInput.timingDraft === null) throw error;
+			const stripped: AgenticChatTerminalFinalizeInputV1 = {
+				...terminalInput,
+				timingDraft: null,
+				timingTransitionId: null,
+				...(terminalInput.status === 'cancelled'
+					? { lastTurnContext: null, lastTurnContextTransitionId: null }
+					: {}),
+				...(terminalInput.status === 'failed'
+					? { publicError: null, errorTransitionId: null }
+					: {})
+			};
+			try {
+				return await this.awaitTerminal('terminal finalization retry', () =>
+					this.ports.control.finalize(stripped)
+				);
+			} catch (retryError) {
+				this.reportTerminalControlError('finalize_retry', claim, retryError);
+				throw retryError;
+			}
+		}
+	}
+
+	private reportTerminalControlError(
+		stage: 'finalize' | 'finalize_retry' | 'recover',
+		claim: { turnRunId: string; executionGeneration: number },
+		error: unknown
+	): void {
+		try {
+			this.ports.onTerminalControlError?.({
+				stage,
+				turnRunId: claim.turnRunId,
+				executionGeneration: claim.executionGeneration,
+				error
+			});
+		} catch {
+			// Terminal-control observability must never overturn terminal truth.
+		}
 	}
 
 	private async reconcileTerminalQueue(

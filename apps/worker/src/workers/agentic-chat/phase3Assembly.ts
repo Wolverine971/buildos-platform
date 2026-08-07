@@ -152,6 +152,11 @@ export function createAgenticChatPhase3Assembly(options: {
 			onExecutionObservationError:
 				options.onExecutionObservationError ??
 				((error) => console.error('Agentic Chat execution observation failed', error)),
+			onTerminalControlError: (report) =>
+				console.error(
+					`Agentic Chat terminal control ${report.stage} failed turn=${report.turnRunId} generation=${report.executionGeneration}`,
+					report.error
+				),
 			readTool,
 			toolExecutions,
 			mutation: disabledToolPort('mutating_tools_disabled')
