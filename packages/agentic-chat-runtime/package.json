@@ -16,11 +16,16 @@
 			"types": "./dist/loop/index.d.ts",
 			"import": "./dist/loop/index.mjs",
 			"require": "./dist/loop/index.js"
+		},
+		"./tools": {
+			"types": "./dist/tools/index.d.ts",
+			"import": "./dist/tools/index.mjs",
+			"require": "./dist/tools/index.js"
 		}
 	},
 	"scripts": {
-		"build": "tsup src/index.ts src/loop/index.ts --format cjs,esm --dts --sourcemap",
-		"build:types": "tsup src/index.ts src/loop/index.ts --format cjs,esm --dts --sourcemap",
+		"build": "tsup src/index.ts src/loop/index.ts src/tools/index.ts --format cjs,esm --dts --sourcemap",
+		"build:types": "tsup src/index.ts src/loop/index.ts src/tools/index.ts --format cjs,esm --dts --sourcemap",
 		"clean": "rm -rf dist .turbo",
 		"typecheck": "tsc --noEmit --skipLibCheck",
 		"test": "vitest",

@@ -1,0 +1,10 @@
+// packages/agentic-chat-runtime/src/tools/index.ts
+//
+// Shared read-tool implementations (Phase 4 Slice 18 S3). These are the legacy
+// chat read tools' pure payload builders and (in later tranches) the
+// access-ported query implementations — single-sourced so web (RLS client) and
+// the worker (service-role + explicit actor scoping) return identical payloads.
+
+export * from './activity-log-summary';
+export * from './overview-helper';
+export * from './start-here-selector';
