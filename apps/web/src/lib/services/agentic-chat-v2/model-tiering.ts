@@ -22,15 +22,18 @@ export const FASTCHAT_FORCED_SYNTHESIS_MODELS = [
 export const FASTCHAT_FORCED_SYNTHESIS_IGNORED_PROVIDER_SLUGS = ['digitalocean'] as const;
 
 export type FastChatModelTieringMode = 'off' | 'control' | 'fast_initial_plan' | 'ab';
-export type FastChatModelTieringVariant = 'control' | 'fast_initial_plan';
 export type FastChatForcedSynthesisRoutingMode = 'off' | 'control' | 'dedicated' | 'ab';
-export type FastChatForcedSynthesisRoutingVariant = 'control' | 'dedicated';
-export type FastChatLlmPassRole =
-	| 'initial_plan'
-	| 'tool_followup'
-	| 'forced_synthesis'
-	| 'write_intent'
-	| 'synthesis';
+// The variant/pass-role vocabulary is owned by the shared loop package.
+export {
+	type FastChatForcedSynthesisRoutingVariant,
+	type FastChatLlmPassRole,
+	type FastChatModelTieringVariant
+} from '@buildos/agentic-chat-runtime/loop';
+import type {
+	FastChatForcedSynthesisRoutingVariant,
+	FastChatLlmPassRole,
+	FastChatModelTieringVariant
+} from '@buildos/agentic-chat-runtime/loop';
 
 export type FastChatModelTieringConfig = {
 	variant: FastChatModelTieringVariant;
