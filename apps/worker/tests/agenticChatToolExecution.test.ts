@@ -6,7 +6,8 @@ import {
 	AgenticChatToolExecutionTimeoutError,
 	SupabaseAgenticChatToolExecutionAdapter,
 	createStableAgenticChatToolExecutionIdV1,
-	type AgenticChatToolExecutionPersistInputV1
+	type AgenticChatToolExecutionPersistInputV1,
+	type AgenticChatToolValidationFailurePersistInputV1
 } from '../src/workers/agentic-chat/toolExecution';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
@@ -37,6 +38,21 @@ const input: AgenticChatToolExecutionPersistInputV1 = {
 		zeroResult: false,
 		requiresUserAction: false
 	}
+};
+
+const validationFailureInput: AgenticChatToolValidationFailurePersistInputV1 = {
+	turnRunId: TURN_RUN_ID,
+	userId: USER_ID,
+	queueJobId: QUEUE_JOB_ID,
+	processingToken: PROCESSING_TOKEN,
+	executionGeneration: 2,
+	toolExecutionId: TOOL_EXECUTION_ID,
+	sequenceIndex: 1,
+	providerToolCallId: 'read-tool-call-1',
+	toolName: 'fixture_project_read',
+	arguments: {},
+	toolCategory: 'read',
+	error: 'Tool validation failed: Missing required parameter: project_id'
 };
 
 function receipt(overrides: Record<string, unknown> = {}) {
@@ -89,6 +105,28 @@ describe('Agentic Chat read-tool execution ledger', () => {
 			p_tokens_consumed: 9,
 			p_requires_user_action: false,
 			p_affected_entities: [{ id: 'da000000-0000-4000-8000-000000000001', type: 'project' }]
+		});
+	});
+
+	it('persists a pre-execution validation failure through its fenced RPC', async () => {
+		const { adapter, rpc } = adapterFor(receipt());
+
+		await expect(
+			adapter.persistValidationFailure(validationFailureInput)
+		).resolves.toBeUndefined();
+		expect(rpc).toHaveBeenCalledWith('persist_agentic_chat_tool_validation_failure', {
+			p_turn_run_id: TURN_RUN_ID,
+			p_user_id: USER_ID,
+			p_queue_job_id: QUEUE_JOB_ID,
+			p_processing_token: PROCESSING_TOKEN,
+			p_execution_generation: 2,
+			p_tool_execution_id: TOOL_EXECUTION_ID,
+			p_sequence_index: 1,
+			p_provider_tool_call_id: 'read-tool-call-1',
+			p_tool_name: 'fixture_project_read',
+			p_tool_category: 'read',
+			p_arguments: {},
+			p_error_message: 'Tool validation failed: Missing required parameter: project_id'
 		});
 	});
 

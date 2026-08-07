@@ -527,8 +527,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 							type: 'function',
 							function: {
 								name: 'get_project_overview',
-								arguments:
-									'{"project_id":"40000000-0000-4000-8000-000000000004"}'
+								arguments: '{"project_id":"40000000-0000-4000-8000-000000000004"}'
 							}
 						}
 					]
@@ -658,7 +657,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
-	it('repairs an invalid provider tool call before exposing a read to the executor', async () => {
+	it('exposes a durable validation failure before repairing the provider tool call', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
 		const definition = {
 			type: 'function' as const,
@@ -730,13 +729,26 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			})
 		};
 		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
-		const invocation = await new AgenticChatReadOnlyProviderAdapter({ client, capacity }).prepare({
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity
+		}).prepare({
 			executionInput: executionInputWithReadSurface([definition]),
 			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
 
 		await expect(collect(invocation.stream())).resolves.toEqual([
+			expect.objectContaining({
+				type: 'read_tool',
+				providerToolCallId: 'invalid-read',
+				toolName: 'get_project_overview',
+				arguments: {},
+				validationFailure: {
+					error: expect.stringContaining('Missing required parameter: project_id'),
+					toolCategory: 'read'
+				}
+			}),
 			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
 			expect.objectContaining({
 				type: 'read_tool',
@@ -823,7 +835,10 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			})
 		};
 		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
-		const invocation = await new AgenticChatReadOnlyProviderAdapter({ client, capacity }).prepare({
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity
+		}).prepare({
 			executionInput: executionInputWithReadSurface([
 				{
 					type: 'function',
@@ -842,10 +857,20 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			signal: new AbortController().signal
 		});
 
-		await expect(collect(invocation.stream())).rejects.toMatchObject({
+		const exposedSteps: AgenticChatProviderStepV1[] = [];
+		await expect(
+			(async () => {
+				for await (const step of invocation.stream()) exposedSteps.push(step);
+			})()
+		).rejects.toMatchObject({
 			code: 'provider_tool_validation_repair_exhausted',
 			failureClass: 'permanent'
 		});
+		expect(
+			exposedSteps.flatMap((step) =>
+				step.type === 'read_tool' && step.validationFailure ? [step.providerToolCallId] : []
+			)
+		).toEqual(['invalid-read-1', 'invalid-read-2', 'invalid-read-3']);
 		expect(client.stream).toHaveBeenCalledTimes(3);
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
@@ -863,8 +888,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 						type: 'function',
 						function: {
 							name: 'get_project_overview',
-							arguments:
-								'{"project_id":"40000000-0000-4000-8000-000000000004"}'
+							arguments: '{"project_id":"40000000-0000-4000-8000-000000000004"}'
 						}
 					}
 				]
@@ -889,7 +913,10 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			})
 		};
 		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
-		const invocation = await new AgenticChatReadOnlyProviderAdapter({ client, capacity }).prepare({
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity
+		}).prepare({
 			executionInput: executionInputWithReadSurface(),
 			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal

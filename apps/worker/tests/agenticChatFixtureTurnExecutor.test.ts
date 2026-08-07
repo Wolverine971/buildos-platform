@@ -45,6 +45,8 @@ const USER_MESSAGE_ID = '80000000-0000-4000-8000-000000000008';
 const ASSISTANT_MESSAGE_ID = '90000000-0000-4000-8000-000000000009';
 const CALL_TRANSITION_ID = 'a0000000-0000-4000-8000-00000000000a';
 const RESULT_TRANSITION_ID = 'b0000000-0000-4000-8000-00000000000b';
+const VALIDATION_CALL_TRANSITION_ID = 'a0500000-0000-4000-8000-00000000005a';
+const VALIDATION_RESULT_TRANSITION_ID = 'b0500000-0000-4000-8000-00000000005b';
 const SECOND_CALL_TRANSITION_ID = 'a1000000-0000-4000-8000-00000000001a';
 const SECOND_RESULT_TRANSITION_ID = 'b1000000-0000-4000-8000-00000000001b';
 const THIRD_CALL_TRANSITION_ID = 'a2000000-0000-4000-8000-00000000002a';
@@ -227,6 +229,7 @@ function createHarness(
 		overheadTimeoutMs?: number;
 		maxProviderRounds?: number;
 		maxToolCalls?: number;
+		failSemanticType?: string;
 	} = {}
 ) {
 	let sequence = 0;
@@ -277,6 +280,9 @@ function createHarness(
 			semanticInputs.push(input);
 			const payload = input.event_payload as Record<string, unknown>;
 			log.push(`semantic:${String(payload.type)}:${String(payload.turn_phase ?? '')}`);
+			if (payload.type === options.failSemanticType) {
+				throw new Error(`fixture semantic persistence failed: ${String(payload.type)}`);
+			}
 			sequence += 1;
 			return {
 				outcome: 'persisted',
@@ -621,7 +627,10 @@ function createHarness(
 			requiresUserAction: null
 		}))
 	};
-	const toolExecutions = { persistRead: vi.fn(async () => undefined) };
+	const toolExecutions = {
+		persistRead: vi.fn(async () => undefined),
+		persistValidationFailure: vi.fn(async () => undefined)
+	};
 	const executionObservationInputs: AgenticChatExecutionObservationInputV1[] = [];
 	const executionObservations = {
 		observe: vi.fn(async (observation: AgenticChatExecutionObservationInputV1) => {
@@ -1400,6 +1409,45 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	it('carries an acknowledged tool row into recovery when public result persistence fails', async () => {
+		const harness = createHarness(
+			[
+				{
+					type: 'read_tool',
+					callTransitionId: CALL_TRANSITION_ID,
+					resultTransitionId: RESULT_TRANSITION_ID,
+					providerToolCallId: 'provider-read-public-failure',
+					toolName: 'get_workspace_overview',
+					arguments: {}
+				}
+			],
+			{
+				failSemanticType: 'tool_result',
+				providerBudgetMs: 50,
+				publisherConfig: { retryDelayMs: 1 },
+				recovery: [
+					recoveryReceipt('finalize_failed', { failure_code: 'timeout_post_start' })
+				]
+			}
+		);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'failed',
+			terminalStatus: 'failed'
+		});
+		expect(harness.toolExecutions.persistRead).toHaveBeenCalledOnce();
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'failed',
+				assistantMetadata: expect.objectContaining({
+					tool_round_count: 1,
+					tool_call_count: 1
+				})
+			})
+		);
+		await harness.publisher.stop();
+	});
+
 	it('writes a terminal outcome when a read-tool network call exceeds its local deadline', async () => {
 		const harness = createHarness(
 			[
@@ -1613,7 +1661,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		}
 	});
 
-	it('exposes the exact deterministic three-round real-tool parity gaps', async () => {
+	it('exposes the exact deterministic validation-repair real-tool parity gaps', async () => {
 		const harness = createHarness([]);
 		const firstReadExecution = {
 			result: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.result,
@@ -1649,6 +1697,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			.mockResolvedValueOnce(firstReadExecution)
 			.mockResolvedValueOnce(secondReadExecution)
 			.mockResolvedValueOnce(thirdReadExecution);
+		harness.toolExecutions.persistValidationFailure.mockImplementationOnce(async () => {
+			harness.log.push('validation_ledger');
+		});
 		const continueWithToolResults = vi.fn(
 			({
 				round,
@@ -1662,6 +1713,24 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 						AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.callId
 					]);
 					return (async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: VALIDATION_CALL_TRANSITION_ID,
+							resultTransitionId: VALIDATION_RESULT_TRANSITION_ID,
+							providerToolCallId:
+								AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.callId,
+							toolName: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.name,
+							arguments:
+								AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.arguments,
+							validationFailure: {
+								error: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure
+									.error,
+								toolCategory:
+									AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure
+										.toolCategory
+							}
+						} as const;
+						harness.log.push('repair_provider');
 						yield {
 							type: 'read_tool',
 							callTransitionId: SECOND_CALL_TRANSITION_ID,
@@ -1756,6 +1825,43 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			});
 			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
 			if (!terminalInput) throw new Error('Phase 4 read-only fixture did not finalize');
+			const persistedToolExecutions = [
+				...harness.toolExecutions.persistRead.mock.calls.map(([input], index) => ({
+					order: harness.toolExecutions.persistRead.mock.invocationCallOrder[index]!,
+					row: {
+						tool_name: input.toolName,
+						tool_category: input.execution.toolCategory,
+						sequence_index: input.sequenceIndex,
+						arguments: input.arguments,
+						result: input.execution.result,
+						execution_time_ms: input.execution.executionTimeMs,
+						tokens_consumed: input.execution.tokensConsumed,
+						success: true,
+						affected_entities: input.execution.affectedEntities,
+						message_linked: terminalInput.assistantMessageId !== null
+					}
+				})),
+				...harness.toolExecutions.persistValidationFailure.mock.calls.map(
+					([input], index) => ({
+						order: harness.toolExecutions.persistValidationFailure.mock
+							.invocationCallOrder[index]!,
+						row: {
+							tool_name: input.toolName,
+							tool_category: input.toolCategory,
+							sequence_index: input.sequenceIndex,
+							arguments: input.arguments,
+							result: null,
+							execution_time_ms: null,
+							tokens_consumed: null,
+							success: false,
+							affected_entities: [],
+							message_linked: terminalInput.assistantMessageId !== null
+						}
+					})
+				)
+			]
+				.sort((left, right) => left.order - right.order)
+				.map(({ row }) => row);
 			const worker = normalizeAgenticChatParityRunV1({
 				events: harness.broadcastMessages.map((message) => message.payload) as never,
 				messages: [
@@ -1772,18 +1878,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 						}
 					}
 				],
-				toolExecutions: harness.toolExecutions.persistRead.mock.calls.map(([input]) => ({
-					tool_name: input.toolName,
-					tool_category: input.execution.toolCategory,
-					sequence_index: input.sequenceIndex,
-					arguments: input.arguments,
-					result: input.execution.result,
-					execution_time_ms: input.execution.executionTimeMs,
-					tokens_consumed: input.execution.tokensConsumed,
-					success: true,
-					affected_entities: input.execution.affectedEntities,
-					message_linked: terminalInput.assistantMessageId !== null
-				})),
+				toolExecutions: persistedToolExecutions,
 				checkpoints: [],
 				outcome: {
 					status: terminalInput.status,
@@ -1810,6 +1905,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				}
 			});
 			expect(continueWithToolResults).toHaveBeenCalledTimes(3);
+			expect(harness.readTool.execute).toHaveBeenCalledTimes(3);
 			expect(
 				harness.toolExecutions.persistRead.mock.calls.map(([input]) => [
 					input.sequenceIndex,
@@ -1817,12 +1913,29 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				])
 			).toEqual([
 				[1, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.name],
-				[2, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.name],
-				[3, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.name]
+				[3, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.name],
+				[4, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.name]
 			]);
+			expect(
+				harness.toolExecutions.persistValidationFailure.mock.calls.map(([input]) => [
+					input.sequenceIndex,
+					input.toolName
+				])
+			).toEqual([[2, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.name]]);
+			const firstPublicResultIndex = harness.log.indexOf('semantic:tool_result:');
+			const validationPublicResultIndex = harness.log.indexOf(
+				'semantic:tool_result:',
+				firstPublicResultIndex + 1
+			);
+			expect(harness.log.indexOf('validation_ledger')).toBeLessThan(
+				validationPublicResultIndex
+			);
+			expect(validationPublicResultIndex).toBeLessThan(
+				harness.log.indexOf('repair_provider')
+			);
 			expect(terminalInput.assistantMetadata).toMatchObject({
-				tool_round_count: 3,
-				tool_call_count: 3
+				tool_round_count: 4,
+				tool_call_count: 4
 			});
 			expect(
 				harness.broadcastMessages.map(
@@ -1837,6 +1950,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				'tool_result',
 				'tool_call',
 				'tool_result',
+				'tool_call',
+				'tool_result',
+				'context_shift',
 				'tool_call',
 				'tool_result',
 				'text_delta',

@@ -1515,6 +1515,22 @@ describe('/api/agent/v2/stream', () => {
 				duration_ms: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.durationMs,
 				tokens_consumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.tokensConsumed
 			};
+			const validationFailureToolCall = {
+				id: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.callId,
+				type: 'function',
+				function: {
+					name: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.name,
+					arguments: JSON.stringify(
+						AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.arguments
+					)
+				}
+			};
+			const validationFailureToolResult = {
+				tool_call_id: validationFailureToolCall.id,
+				result: null,
+				success: false,
+				error: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.error
+			};
 			const secondToolCall = {
 				id: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.callId,
 				type: 'function',
@@ -1553,6 +1569,11 @@ describe('/api/agent/v2/stream', () => {
 				async ({ onToolCall, onToolResult, onDelta }: Row) => {
 					await onToolCall?.(toolCall);
 					await onToolResult?.({ toolCall, result: toolResult });
+					await onToolCall?.(validationFailureToolCall);
+					await onToolResult?.({
+						toolCall: validationFailureToolCall,
+						result: validationFailureToolResult
+					});
 					await onToolCall?.(secondToolCall);
 					await onToolResult?.({ toolCall: secondToolCall, result: secondToolResult });
 					await onToolCall?.(thirdToolCall);
@@ -1576,12 +1597,16 @@ describe('/api/agent/v2/stream', () => {
 							AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.finishedReason,
 						toolExecutions: [
 							{ toolCall, result: toolResult },
+							{
+								toolCall: validationFailureToolCall,
+								result: validationFailureToolResult
+							},
 							{ toolCall: secondToolCall, result: secondToolResult },
 							{ toolCall: thirdToolCall, result: thirdToolResult }
 						],
 						llmPasses: [],
-						toolRounds: 3,
-						toolCallsMade: 3,
+						toolRounds: 4,
+						toolCallsMade: 4,
 						supervisorDecisions: [],
 						finalizationGuard: undefined,
 						cancelled: false,

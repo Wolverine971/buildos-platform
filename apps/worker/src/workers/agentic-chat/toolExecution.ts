@@ -46,18 +46,33 @@ export type AgenticChatToolExecutionPersistInputV1 = AgenticChatExecutionIdentit
 	execution: AgenticChatReadToolExecutionV1;
 };
 
+export type AgenticChatToolValidationFailurePersistInputV1 = AgenticChatExecutionIdentityV1 & {
+	userId: string;
+	executionGeneration: number;
+	toolExecutionId: string;
+	sequenceIndex: number;
+	providerToolCallId: string;
+	toolName: string;
+	arguments: JsonObject;
+	toolCategory: string | null;
+	error: string;
+};
+
 export type AgenticChatToolExecutionPortV1 = {
 	persistRead(input: AgenticChatToolExecutionPersistInputV1, signal: AbortSignal): Promise<void>;
+	persistValidationFailure(
+		input: AgenticChatToolValidationFailurePersistInputV1,
+		signal: AbortSignal
+	): Promise<void>;
 };
 
 export class AgenticChatToolExecutionRpcError extends Error {
 	constructor(
 		readonly code: string,
-		message: string
+		message: string,
+		operation = 'persist_agentic_chat_read_tool_execution'
 	) {
-		super(
-			`persist_agentic_chat_read_tool_execution failed${code ? ` (${code})` : ''}: ${message}`
-		);
+		super(`${operation} failed${code ? ` (${code})` : ''}: ${message}`);
 		this.name = 'AgenticChatToolExecutionRpcError';
 	}
 }
@@ -126,46 +141,44 @@ export class SupabaseAgenticChatToolExecutionAdapter implements AgenticChatToolE
 			}
 		});
 		if (error) throw new AgenticChatToolExecutionRpcError(error.code ?? '', error.message);
-		if (!data || typeof data !== 'object' || Array.isArray(data)) {
-			throw protocolError('RPC returned no receipt');
-		}
-		const receipt = data as Record<string, unknown>;
-		if (
-			receipt.turn_run_id !== input.turnRunId ||
-			receipt.queue_job_id !== input.queueJobId ||
-			receipt.user_id !== input.userId ||
-			receipt.session_id === undefined ||
-			!canonicalUuidValue(receipt.session_id) ||
-			!Number.isSafeInteger(receipt.execution_generation) ||
-			(receipt.execution_generation as number) < 1
-		) {
-			throw protocolError('receipt scope is inconsistent');
-		}
-		if (receipt.outcome === 'persisted' || receipt.outcome === 'already_persisted') {
-			if (
-				receipt.execution_generation !== input.executionGeneration ||
-				receipt.tool_execution_id !== input.toolExecutionId ||
-				receipt.sequence_index !== input.sequenceIndex ||
-				receipt.provider_tool_call_id !== input.providerToolCallId ||
-				receipt.tool_name !== input.toolName ||
-				receipt.message_id !== null ||
-				!isTimestamp(receipt.created_at)
-			) {
-				throw protocolError('persisted receipt is inconsistent');
+		validatePersistReceipt(data, input);
+	}
+
+	async persistValidationFailure(
+		input: AgenticChatToolValidationFailurePersistInputV1,
+		signal: AbortSignal = new AbortController().signal
+	): Promise<void> {
+		validateValidationFailureInput(input);
+		const { data, error } = await runWithAbortableDeadline({
+			parentSignal: signal,
+			timeoutMs: this.timeoutMs,
+			createTimeoutError: () => new AgenticChatToolExecutionTimeoutError(this.timeoutMs),
+			run: (deadlineSignal) => {
+				const request = this.client.rpc('persist_agentic_chat_tool_validation_failure', {
+					p_turn_run_id: input.turnRunId,
+					p_user_id: input.userId,
+					p_queue_job_id: input.queueJobId,
+					p_processing_token: input.processingToken,
+					p_execution_generation: input.executionGeneration,
+					p_tool_execution_id: input.toolExecutionId,
+					p_sequence_index: input.sequenceIndex,
+					p_provider_tool_call_id: input.providerToolCallId,
+					p_tool_name: input.toolName,
+					p_tool_category: input.toolCategory,
+					p_arguments: input.arguments,
+					p_error_message: input.error
+				});
+				return request.abortSignal ? request.abortSignal(deadlineSignal) : request;
 			}
-			return;
-		}
-		if (
-			receipt.outcome === 'stale_generation' ||
-			receipt.outcome === 'cancel_requested' ||
-			receipt.outcome === 'already_terminal'
-		) {
-			throw new AgenticChatToolExecutionFenceError(
-				receipt.outcome,
-				receipt.outcome === 'cancel_requested' ? 'cancelled' : 'unknown'
+		});
+		if (error) {
+			throw new AgenticChatToolExecutionRpcError(
+				error.code ?? '',
+				error.message,
+				'persist_agentic_chat_tool_validation_failure'
 			);
 		}
-		throw protocolError('receipt outcome is invalid');
+		validatePersistReceipt(data, input);
 	}
 }
 
@@ -186,32 +199,10 @@ export function createStableAgenticChatToolExecutionIdV1(input: {
 }
 
 function validateInput(input: AgenticChatToolExecutionPersistInputV1): void {
-	for (const [label, value] of [
-		['turnRunId', input.turnRunId],
-		['userId', input.userId],
-		['queueJobId', input.queueJobId],
-		['processingToken', input.processingToken],
-		['toolExecutionId', input.toolExecutionId]
-	] as const) {
-		canonicalUuid(value, label);
-	}
-	positiveInteger(input.executionGeneration, 'executionGeneration');
-	positiveInteger(input.sequenceIndex, 'sequenceIndex');
-	if (
-		input.toolExecutionId !==
-		createStableAgenticChatToolExecutionIdV1({
-			turnRunId: input.turnRunId,
-			sequenceIndex: input.sequenceIndex
-		})
-	) {
-		throw protocolError('tool-execution id is not the stable turn sequence identity');
-	}
-	canonicalText(input.providerToolCallId, 512, 'providerToolCallId');
-	canonicalText(input.toolName, 256, 'toolName');
+	validateCommonInput(input);
 	if (input.execution.toolCategory !== null) {
 		canonicalText(input.execution.toolCategory, 128, 'toolCategory');
 	}
-	canonicalizeAgenticChatJson(input.arguments as unknown as JsonValue);
 	canonicalizeAgenticChatJson(input.execution.result as unknown as JsonValue);
 	canonicalizeAgenticChatJson(input.execution.affectedEntities as unknown as JsonValue);
 	if (
@@ -246,6 +237,88 @@ function validateInput(input: AgenticChatToolExecutionPersistInputV1): void {
 	) {
 		throw protocolError('requiresUserAction is invalid');
 	}
+}
+
+function validateValidationFailureInput(
+	input: AgenticChatToolValidationFailurePersistInputV1
+): void {
+	validateCommonInput(input);
+	if (input.toolCategory !== null) canonicalText(input.toolCategory, 128, 'toolCategory');
+	canonicalText(input.error, 4_000, 'error');
+}
+
+function validateCommonInput(
+	input: Omit<AgenticChatToolExecutionPersistInputV1, 'execution'>
+): void {
+	for (const [label, value] of [
+		['turnRunId', input.turnRunId],
+		['userId', input.userId],
+		['queueJobId', input.queueJobId],
+		['processingToken', input.processingToken],
+		['toolExecutionId', input.toolExecutionId]
+	] as const) {
+		canonicalUuid(value, label);
+	}
+	positiveInteger(input.executionGeneration, 'executionGeneration');
+	positiveInteger(input.sequenceIndex, 'sequenceIndex');
+	if (
+		input.toolExecutionId !==
+		createStableAgenticChatToolExecutionIdV1({
+			turnRunId: input.turnRunId,
+			sequenceIndex: input.sequenceIndex
+		})
+	) {
+		throw protocolError('tool-execution id is not the stable turn sequence identity');
+	}
+	canonicalText(input.providerToolCallId, 512, 'providerToolCallId');
+	canonicalText(input.toolName, 256, 'toolName');
+	canonicalizeAgenticChatJson(input.arguments as unknown as JsonValue);
+}
+
+function validatePersistReceipt(
+	data: unknown,
+	input: Omit<AgenticChatToolExecutionPersistInputV1, 'execution'>
+): void {
+	if (!data || typeof data !== 'object' || Array.isArray(data)) {
+		throw protocolError('RPC returned no receipt');
+	}
+	const receipt = data as Record<string, unknown>;
+	if (
+		receipt.turn_run_id !== input.turnRunId ||
+		receipt.queue_job_id !== input.queueJobId ||
+		receipt.user_id !== input.userId ||
+		receipt.session_id === undefined ||
+		!canonicalUuidValue(receipt.session_id) ||
+		!Number.isSafeInteger(receipt.execution_generation) ||
+		(receipt.execution_generation as number) < 1
+	) {
+		throw protocolError('receipt scope is inconsistent');
+	}
+	if (receipt.outcome === 'persisted' || receipt.outcome === 'already_persisted') {
+		if (
+			receipt.execution_generation !== input.executionGeneration ||
+			receipt.tool_execution_id !== input.toolExecutionId ||
+			receipt.sequence_index !== input.sequenceIndex ||
+			receipt.provider_tool_call_id !== input.providerToolCallId ||
+			receipt.tool_name !== input.toolName ||
+			receipt.message_id !== null ||
+			!isTimestamp(receipt.created_at)
+		) {
+			throw protocolError('persisted receipt is inconsistent');
+		}
+		return;
+	}
+	if (
+		receipt.outcome === 'stale_generation' ||
+		receipt.outcome === 'cancel_requested' ||
+		receipt.outcome === 'already_terminal'
+	) {
+		throw new AgenticChatToolExecutionFenceError(
+			receipt.outcome,
+			receipt.outcome === 'cancel_requested' ? 'cancelled' : 'unknown'
+		);
+	}
+	throw protocolError('receipt outcome is invalid');
 }
 
 function canonicalUuid(value: string, label: string): void {

@@ -2,14 +2,16 @@
 
 import { createHash } from 'node:crypto';
 import {
-	type ChatToolDefinition,
 	type ChatToolCall,
+	type ChatToolDefinition,
 	type JsonObject,
 	type JsonValue,
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import {
 	READ_LOOP_REPAIR_RANK,
+	TOOL_METADATA,
+	type ToolValidationIssue,
 	buildReadLoopRepairInstruction,
 	buildRoundToolPattern,
 	buildToolPayloadForModel,
@@ -17,7 +19,6 @@ import {
 	parseToolArguments,
 	provideAgenticChatLoopToolCatalog,
 	selectReadLoopRepairEscalation,
-	type ToolValidationIssue,
 	validateToolCalls
 } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatWorkerExecutionInputV1 } from './executionInput';
@@ -51,9 +52,7 @@ const WORKER_READ_LOOP_CATALOG_ENTRIES = AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES
 );
 const WORKER_READ_LOOP_CATALOG = Object.freeze({
 	ops: Object.freeze(
-		Object.fromEntries(
-			WORKER_READ_LOOP_CATALOG_ENTRIES.map(([, entry]) => [entry.op, entry])
-		)
+		Object.fromEntries(WORKER_READ_LOOP_CATALOG_ENTRIES.map(([, entry]) => [entry.op, entry]))
 	),
 	byToolName: Object.freeze(Object.fromEntries(WORKER_READ_LOOP_CATALOG_ENTRIES))
 });
@@ -296,10 +295,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					completedRead.call,
 					feedback
 				);
-				const roundsRemaining = Math.max(
-					0,
-					this.maxProviderRounds - readOnlyRoundCount
-				);
+				const roundsRemaining = Math.max(0, this.maxProviderRounds - readOnlyRoundCount);
 				const escalation = selectReadLoopRepairEscalation({
 					readOnlyRoundCount,
 					roundsRemaining
@@ -407,6 +403,11 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					assertAllowlistedCall(call, request.tools);
 					const validationIssues = validateCompletedProviderCall(call, request);
 					if (validationIssues.length > 0) {
+						yield buildValidationFailureReadToolStep(
+							request.turnRunId,
+							call,
+							validationIssues
+						);
 						const repairRequest = buildValidationRepairRequest(
 							request,
 							call,
@@ -524,6 +525,11 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					assertAllowlistedCall(call, request.tools);
 					const validationIssues = validateCompletedProviderCall(call, request);
 					if (validationIssues.length > 0) {
+						yield buildValidationFailureReadToolStep(
+							request.turnRunId,
+							call,
+							validationIssues
+						);
 						if (validationRepairRounds >= MAX_VALIDATION_REPAIR_ROUNDS) {
 							throw providerError(
 								'provider_tool_validation_repair_exhausted',
@@ -786,6 +792,20 @@ function buildReadToolStep(
 	};
 }
 
+function buildValidationFailureReadToolStep(
+	turnRunId: string,
+	call: CompletedProviderToolCall,
+	issues: ToolValidationIssue[]
+): Extract<AgenticChatProviderStepV1, { type: 'read_tool' }> {
+	return {
+		...buildReadToolStep(turnRunId, call),
+		validationFailure: {
+			error: validationFailureError(issues),
+			toolCategory: TOOL_METADATA[call.name]?.category ?? null
+		}
+	};
+}
+
 function buildContinuationRequest(
 	request: ClientRequest,
 	call: CompletedProviderToolCall,
@@ -854,7 +874,7 @@ function buildValidationRepairRequest(
 	issues: ToolValidationIssue[]
 ): ClientRequest {
 	const fieldErrors = issues.flatMap((issue) => issue.errors);
-	const error = `Tool validation failed: ${fieldErrors.join(' ')}`;
+	const error = validationFailureError(issues);
 	const issueOp = issues.find((issue) => issue.op)?.op;
 	const validationPayload: JsonObject = {
 		error,
@@ -892,6 +912,10 @@ function buildValidationRepairRequest(
 		},
 		buildToolValidationRepairInstruction(issues, false)
 	);
+}
+
+function validationFailureError(issues: ToolValidationIssue[]): string {
+	return `Tool validation failed: ${issues.flatMap((issue) => issue.errors).join(' ')}`;
 }
 
 function appendSystemInstruction(request: ClientRequest, content: string): ClientRequest {

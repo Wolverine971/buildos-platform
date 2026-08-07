@@ -1,6 +1,7 @@
 // apps/worker/src/workers/agentic-chat/fixtureTurnExecutor.ts
 import { randomUUID } from 'node:crypto';
 import { buildLastTurnContextDraftV1 } from '@buildos/agentic-chat-runtime';
+import { extractContextShiftPayload } from '@buildos/agentic-chat-runtime/loop';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
@@ -78,6 +79,7 @@ import {
 	createStableAgenticChatExecutionObservationKeyV1
 } from './executionObservation';
 import { runWithAbortableDeadline } from './abortableDeadline';
+import { createStableAgenticChatReadToolTransitionIdV1 } from './readToolIdentity';
 
 const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_UI_PROJECTION_EVENTS = 128;
@@ -570,18 +572,19 @@ export class AgenticChatFixtureTurnExecutor {
 								`Agentic Chat provider exceeded its ${this.maxToolCalls} tool-call budget`
 							);
 						}
-						pendingReadResults.push(
-							await this.executeReadTool(
-								job,
-								executionInput,
-								envelope.processingToken,
-								projection,
-								terminalContext,
-								step,
-								combined.signal
-							)
+						const readResult = await this.executeReadTool(
+							job,
+							executionInput,
+							envelope.processingToken,
+							projection,
+							terminalContext,
+							step,
+							markToolExecution,
+							combined.signal
 						);
-						markToolExecution();
+						if (readResult) {
+							pendingReadResults.push(readResult);
+						}
 						continue;
 					}
 					if (step.type === 'mutating_tool') {
@@ -996,8 +999,9 @@ export class AgenticChatFixtureTurnExecutor {
 		projection: ProjectionState,
 		terminalContext: TerminalContextState,
 		step: Extract<AgenticChatFixtureProviderStepV1, { type: 'read_tool' }>,
+		markToolExecution: () => void,
 		signal: AbortSignal
-	): Promise<AgenticChatProviderReadSynthesisInputV1> {
+	): Promise<AgenticChatProviderReadSynthesisInputV1 | null> {
 		canonicalUuid(step.callTransitionId, 'callTransitionId');
 		canonicalUuid(step.resultTransitionId, 'resultTransitionId');
 		if (!canonicalText(step.providerToolCallId, 512)) {
@@ -1031,6 +1035,17 @@ export class AgenticChatFixtureTurnExecutor {
 		);
 		throwIfAborted(signal);
 		const sequenceIndex = terminalContext.toolExecutions.length + 1;
+		if (step.validationFailure) {
+			return this.persistReadValidationFailure(
+				executionInput,
+				processingToken,
+				projection,
+				terminalContext,
+				step,
+				sequenceIndex,
+				signal
+			);
+		}
 		const readStartedAt = Date.now();
 		await logAgenticChatExecutionBoundary(job, executionInput, {
 			stage: 'read_op',
@@ -1162,6 +1177,25 @@ export class AgenticChatFixtureTurnExecutor {
 			toolName: step.toolName,
 			durationMs: elapsedMs(ledgerStartedAt)
 		});
+		const chatToolResult: ChatToolResult = {
+			tool_call_id: step.providerToolCallId,
+			result: toolResult.result,
+			success: true,
+			...(toolResult.executionTimeMs !== null
+				? { duration_ms: toolResult.executionTimeMs }
+				: {}),
+			...(toolResult.tokensConsumed !== null
+				? { tokens_consumed: toolResult.tokensConsumed }
+				: {})
+		};
+		// Once the ledger RPC acknowledges persistence, terminal recovery must
+		// describe that durable row even if observation or public publication
+		// fails afterward.
+		terminalContext.toolExecutions.push({
+			toolCall: providerToolCall(step),
+			result: chatToolResult
+		});
+		markToolExecution();
 		await this.observeToolExecution(
 			executionInput,
 			processingToken,
@@ -1178,17 +1212,6 @@ export class AgenticChatFixtureTurnExecutor {
 			},
 			signal
 		);
-		const chatToolResult: ChatToolResult = {
-			tool_call_id: step.providerToolCallId,
-			result: toolResult.result,
-			success: true,
-			...(toolResult.executionTimeMs !== null
-				? { duration_ms: toolResult.executionTimeMs }
-				: {}),
-			...(toolResult.tokensConsumed !== null
-				? { tokens_consumed: toolResult.tokensConsumed }
-				: {})
-		};
 		const resultPublishStartedAt = Date.now();
 		await logAgenticChatExecutionBoundary(job, executionInput, {
 			stage: 'tool_result_publish',
@@ -1229,6 +1252,30 @@ export class AgenticChatFixtureTurnExecutor {
 				},
 				signal
 			);
+			const contextShift = extractContextShiftPayload(chatToolResult);
+			if (contextShift) {
+				terminalContext.contextShift = contextShift;
+				await this.publishSemantic(
+					executionInput,
+					projection,
+					{
+						type: 'semantic',
+						transitionId: createStableAgenticChatReadToolTransitionIdV1({
+							turnRunId: executionInput.claim.turnRunId,
+							providerToolCallId: step.providerToolCallId,
+							stage: 'context_shift'
+						}),
+						phase: 'tool',
+						eventType: 'context_shift',
+						currentActivity: 'BuildOS is working...',
+						eventPayload: {
+							type: 'context_shift',
+							context_shift: { ...contextShift } satisfies JsonObject
+						}
+					},
+					signal
+				);
+			}
 		} catch (error) {
 			await logAgenticChatExecutionBoundary(job, executionInput, {
 				stage: 'tool_result_publish',
@@ -1247,16 +1294,93 @@ export class AgenticChatFixtureTurnExecutor {
 			toolName: step.toolName,
 			durationMs: elapsedMs(resultPublishStartedAt)
 		});
-		terminalContext.toolExecutions.push({
-			toolCall: providerToolCall(step),
-			result: chatToolResult
-		});
 		return {
 			providerToolCallId: step.providerToolCallId,
 			toolName: step.toolName,
 			arguments: step.arguments,
 			execution: toolResult
 		};
+	}
+
+	private async persistReadValidationFailure(
+		executionInput: AgenticChatWorkerExecutionInputV1,
+		processingToken: string,
+		projection: ProjectionState,
+		terminalContext: TerminalContextState,
+		step: Extract<AgenticChatFixtureProviderStepV1, { type: 'read_tool' }>,
+		sequenceIndex: number,
+		signal: AbortSignal
+	): Promise<null> {
+		const failure = step.validationFailure;
+		if (!failure) throw new Error('Fixture validation failure payload is missing');
+		if (!canonicalText(failure.error, 4_000)) {
+			throw new Error('Fixture validation failure error is invalid');
+		}
+		if (failure.toolCategory !== null && !canonicalText(failure.toolCategory, 128)) {
+			throw new Error('Fixture validation failure tool category is invalid');
+		}
+		await abortable(
+			this.ports.toolExecutions.persistValidationFailure(
+				{
+					turnRunId: executionInput.claim.turnRunId,
+					queueJobId: executionInput.claim.queueJobId,
+					processingToken,
+					userId: executionInput.claim.userId,
+					executionGeneration: executionInput.claim.executionGeneration,
+					toolExecutionId: createStableAgenticChatToolExecutionIdV1({
+						turnRunId: executionInput.claim.turnRunId,
+						sequenceIndex
+					}),
+					sequenceIndex,
+					providerToolCallId: step.providerToolCallId,
+					toolName: step.toolName,
+					arguments: step.arguments,
+					toolCategory: failure.toolCategory,
+					error: failure.error
+				},
+				signal
+			),
+			signal
+		);
+
+		const chatToolResult: ChatToolResult = {
+			tool_call_id: step.providerToolCallId,
+			result: null,
+			success: false,
+			error: failure.error
+		};
+		// Validation failures are separate legacy-visible attempts even when the
+		// repaired successor is yielded by the same adapter generator.
+		terminalContext.toolRoundCount += 1;
+		terminalContext.toolExecutions.push({
+			toolCall: providerToolCall(step),
+			result: chatToolResult
+		});
+		throwIfAborted(signal);
+		await this.publishSemantic(
+			executionInput,
+			projection,
+			{
+				type: 'semantic',
+				transitionId: step.resultTransitionId,
+				phase: 'tool',
+				eventType: 'tool_result',
+				currentActivity: 'BuildOS is working...',
+				eventPayload: {
+					type: 'tool_result',
+					result: {
+						...chatToolResult,
+						affected_entities: [],
+						...(failure.toolCategory !== null
+							? { tool_category: failure.toolCategory }
+							: {}),
+						tool_name: step.toolName
+					}
+				}
+			},
+			signal
+		);
+		return null;
 	}
 
 	private async observeToolExecution(

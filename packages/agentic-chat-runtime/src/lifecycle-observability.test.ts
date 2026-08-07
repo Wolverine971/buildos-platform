@@ -30,7 +30,7 @@ describe('worker lifecycle observability projection', () => {
 		).toEqual(AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1.metadata.lifecycle_events);
 	});
 
-	it('projects the exact three-round real-tool legacy lifecycle meanings', () => {
+	it('projects the exact four-round validation-repair legacy lifecycle meanings', () => {
 		expect(
 			projectAgenticChatWorkerLifecycleObservationsV1({
 				admissionObserved: true,
@@ -44,7 +44,16 @@ describe('worker lifecycle observability projection', () => {
 					{ type: 'tool_call' },
 					{ type: 'tool_result' },
 					{ type: 'tool_call' },
+					{
+						type: 'tool_result',
+						result: {
+							success: false,
+							error: 'Tool validation failed: Missing required parameter: project_id'
+						}
+					},
+					{ type: 'tool_call' },
 					{ type: 'tool_result' },
+					{ type: 'context_shift' },
 					{ type: 'tool_call' },
 					{ type: 'tool_result' },
 					{ type: 'turn_phase', turn_phase: 'finalizing' },
@@ -84,6 +93,7 @@ describe('worker lifecycle observability projection', () => {
 					{ type: 'tool_result' },
 					{ type: 'tool_call' },
 					{ type: 'tool_result' },
+					{ type: 'context_shift' },
 					{ type: 'tool_call' }
 				],
 				terminalStatus: null,
@@ -94,6 +104,7 @@ describe('worker lifecycle observability projection', () => {
 			{ event_type: 'tool_result_received', phase: 'tool' },
 			{ event_type: 'tool_call_emitted', phase: 'tool' },
 			{ event_type: 'tool_result_received', phase: 'tool' },
+			{ event_type: 'context_shift_emitted', phase: 'tool' },
 			{ event_type: 'tool_call_emitted', phase: 'tool' }
 		]);
 	});

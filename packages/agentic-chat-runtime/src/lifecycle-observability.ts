@@ -19,8 +19,8 @@ export type AgenticChatWorkerLifecycleProjectionInputV1 = {
  *
  * The Slice 18 multi-round golden widened tool lifecycle cardinality from the
  * original one-read bound to N pairs: legacy inserts one `tool_call_emitted`
- * and one `tool_result_received` per pair in event order, with the single
- * planning cue projected directly after the first tool call.
+ * and one terminal result observation per pair in event order. Expected
+ * pre-execution validation failures retain their distinct legacy event name.
  */
 export function projectAgenticChatWorkerLifecycleObservationsV1(
 	input: AgenticChatWorkerLifecycleProjectionInputV1
@@ -86,7 +86,14 @@ export function projectAgenticChatWorkerLifecycleObservationsV1(
 			}
 		} else if (payload.type === 'tool_result') {
 			toolResultCount += 1;
-			toolObservations.push({ event_type: 'tool_result_received', phase: 'tool' });
+			toolObservations.push({
+				event_type: isValidationFailureResult(payload.result)
+					? 'tool_call_validation_failed'
+					: 'tool_result_received',
+				phase: 'tool'
+			});
+		} else if (payload.type === 'context_shift') {
+			toolObservations.push({ event_type: 'context_shift_emitted', phase: 'tool' });
 		}
 	}
 	if (toolResultCount > toolCallCount) {
@@ -134,6 +141,15 @@ export function projectAgenticChatWorkerLifecycleObservationsV1(
 		observations.push({ event_type: 'prompt_snapshot_created', phase: 'prompt' });
 	}
 	return observations;
+}
+
+function isValidationFailureResult(value: unknown): boolean {
+	if (!isRecord(value) || value.success !== false || typeof value.error !== 'string') {
+		return false;
+	}
+	return /Tool validation failed|Missing required parameter|No update fields provided|Invalid .*expected UUID|Tool arguments must be a JSON object|Invalid JSON in tool arguments/i.test(
+		value.error
+	);
 }
 
 function readEventPayload(value: unknown): Record<string, unknown> | null {

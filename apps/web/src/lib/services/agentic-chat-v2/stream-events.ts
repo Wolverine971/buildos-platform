@@ -1,8 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-events.ts
 import type {
-	ChatContextType,
 	ChatToolCall,
-	ChatToolResult,
 	ContextShiftPayload,
 	ContextUsageSnapshot
 } from '@buildos/shared-types';
@@ -10,10 +8,12 @@ import type {
 	AgenticChatEventSinkPort,
 	AgenticChatRuntimeEvent
 } from '@buildos/agentic-chat-runtime';
+import { extractContextShiftPayload } from '@buildos/agentic-chat-runtime/loop';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { createLogger } from '$lib/utils/logger';
-import { normalizeFastContextType } from './scope';
 import type { SkillActivityEvent } from './skill-activity';
+
+export { extractContextShiftPayload } from '@buildos/agentic-chat-runtime/loop';
 
 const logger = createLogger('API:AgentStreamV2');
 
@@ -147,87 +147,6 @@ export function emitSkillActivity(
 			logger.warn('Failed to emit skill_activity', { error, event });
 			options.onError?.(error);
 		});
-}
-
-const CONTEXT_SHIFT_ENTITY_TYPES: ContextShiftPayload['entity_type'][] = [
-	'workspace',
-	'project',
-	'task',
-	'plan',
-	'goal',
-	'document',
-	'milestone',
-	'risk'
-];
-
-const CONTEXT_SHIFT_NESTED_KEYS = ['result', 'data', 'payload'];
-
-function isContextShiftEntityType(
-	value: string | null | undefined
-): value is ContextShiftPayload['entity_type'] {
-	if (!value) return false;
-	return CONTEXT_SHIFT_ENTITY_TYPES.includes(value as ContextShiftPayload['entity_type']);
-}
-
-function extractContextShiftObject(value: unknown, depth = 0): Record<string, unknown> | null {
-	if (!value || typeof value !== 'object' || depth > 4) return null;
-
-	const record = value as Record<string, unknown>;
-	if (record.context_shift && typeof record.context_shift === 'object') {
-		return record.context_shift as Record<string, unknown>;
-	}
-
-	for (const key of CONTEXT_SHIFT_NESTED_KEYS) {
-		const nested = record[key];
-		const extracted = extractContextShiftObject(nested, depth + 1);
-		if (extracted) {
-			return extracted;
-		}
-	}
-
-	return null;
-}
-
-export function extractContextShiftPayload(result: ChatToolResult): ContextShiftPayload | null {
-	const contextShift = extractContextShiftObject(result);
-	if (!contextShift) return null;
-
-	const rawContext =
-		typeof contextShift.new_context === 'string' ? contextShift.new_context.trim() : '';
-	const rawEntityId =
-		typeof contextShift.entity_id === 'string' ? contextShift.entity_id.trim() : '';
-	if (!rawContext) return null;
-
-	const normalizedContext = normalizeFastContextType(rawContext as ChatContextType);
-	const isGlobalContext = normalizedContext === 'global' || normalizedContext === 'general';
-	if (!isGlobalContext && !rawEntityId) return null;
-	const entityName =
-		typeof contextShift.entity_name === 'string' && contextShift.entity_name.trim()
-			? contextShift.entity_name.trim()
-			: isGlobalContext
-				? 'Workspace'
-				: 'Project';
-	const entityType =
-		typeof contextShift.entity_type === 'string' &&
-		isContextShiftEntityType(contextShift.entity_type)
-			? contextShift.entity_type
-			: isGlobalContext
-				? 'workspace'
-				: 'project';
-	const message =
-		typeof contextShift.message === 'string' && contextShift.message.trim()
-			? contextShift.message.trim()
-			: isGlobalContext
-				? 'Zoomed out to workspace context.'
-				: `Context updated to ${entityName}`;
-
-	return {
-		new_context: normalizedContext,
-		entity_id: rawEntityId || null,
-		entity_name: entityName,
-		entity_type: entityType,
-		message
-	};
 }
 
 export async function emitContextShift(

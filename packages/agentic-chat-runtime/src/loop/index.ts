@@ -9,6 +9,7 @@
 
 export * from './assistant-text-sanitization';
 export * from './context-gathering-ledger';
+export * from './context-shift';
 export * from './definition-types';
 export * from './durable-text-validation';
 export * from './entity-kind-repair';

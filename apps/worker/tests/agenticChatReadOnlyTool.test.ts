@@ -220,10 +220,10 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 			},
 			executionTimeMs: 12,
 			tokensConsumed: null,
-			affectedEntities: [{ type: 'project', id: PROJECT_ID, name: '9takes' }],
+			affectedEntities: [],
 			toolCategory: 'read',
-			resultCount: 1,
-			zeroResult: false,
+			resultCount: null,
+			zeroResult: null,
 			requiresUserAction: false
 		});
 		expect(access.getActorId).toHaveBeenCalled();

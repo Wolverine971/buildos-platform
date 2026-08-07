@@ -40,6 +40,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	let partialCancellationOutput = '';
 	let providerFailureOutput = '';
 	let readToolLedgerOutput = '';
+	let validationFailureLedgerOutput = '';
+	let trueToolRoundCountOutput = '';
 
 	const applySqlFile = (path: string): string =>
 		execFileSync(
@@ -148,7 +150,9 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			'20260804035100_chat_tool_execution_provider_call_identity.sql',
 			'20260804036000_agentic_chat_read_tool_execution_ledger.sql',
 			'20260806020000_agentic_chat_timing_evidence_repair.sql',
-			'20260808010000_agentic_chat_read_tool_categories.sql'
+			'20260808010000_agentic_chat_read_tool_categories.sql',
+			'20260808130000_agentic_chat_tool_validation_failure_ledger.sql',
+			'20260808140000_agentic_chat_true_tool_round_count.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}
@@ -175,12 +179,18 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			sqlPath(
 				'supabase/tests/20260804036000_agentic_chat_read_tool_execution_ledger.test.sql'
 			),
+			sqlPath(
+				'supabase/tests/20260808130000_agentic_chat_tool_validation_failure_ledger.test.sql'
+			),
+			sqlPath('supabase/tests/20260808140000_agentic_chat_true_tool_round_count.test.sql'),
 			sqlPath('supabase/tests/20260806020000_agentic_chat_timing_evidence_repair.test.sql')
 		]);
 		timingOutput = terminalParityOutput;
 		partialCancellationOutput = terminalParityOutput;
 		providerFailureOutput = terminalParityOutput;
 		readToolLedgerOutput = terminalParityOutput;
+		validationFailureLedgerOutput = terminalParityOutput;
+		trueToolRoundCountOutput = terminalParityOutput;
 	}, 60_000);
 
 	afterAll(() => {
@@ -230,6 +240,16 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 
 	it('persists and terminally attaches one fenced read-tool execution', () => {
 		expect(readToolLedgerOutput).toContain('phase4_slice10_read_tool_execution_ledger_ok');
+	});
+
+	it('persists a fenced pre-execution validation failure without invoking a read', () => {
+		expect(validationFailureLedgerOutput).toContain(
+			'phase4_slice18_validation_failure_ledger_ok'
+		);
+	});
+
+	it('retains the executor-owned provider round count behind the durable call-count fence', () => {
+		expect(trueToolRoundCountOutput).toContain('phase4_slice18_true_tool_round_count_ok');
 	});
 
 	it('accepts truthful streamed-turn timing drafts and rejects microsecond drift', () => {

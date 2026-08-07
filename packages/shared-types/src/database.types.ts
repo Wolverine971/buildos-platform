@@ -18680,6 +18680,23 @@ export type Database = {
         }
         Returns: Json
       }
+      persist_agentic_chat_tool_validation_failure: {
+        Args: {
+          p_arguments: Json
+          p_error_message: string
+          p_execution_generation: number
+          p_processing_token: string
+          p_provider_tool_call_id: string
+          p_queue_job_id: string
+          p_sequence_index: number
+          p_tool_category: string
+          p_tool_execution_id: string
+          p_tool_name: string
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       persist_web_page_evidence_version: {
         Args: {
           p_bytes?: number

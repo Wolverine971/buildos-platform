@@ -1,6 +1,14 @@
 // packages/agentic-chat-runtime/src/read-only-tool-parity-fixture.ts
 import type { AgenticChatParityRunV1 } from './parity';
 
+const READ_ONLY_CONTEXT_SHIFT_V1 = {
+	new_context: 'project',
+	entity_id: 'da000000-0000-4000-8000-000000000001',
+	entity_name: 'Fixture project',
+	entity_type: 'project',
+	message: 'Focused on Fixture project.'
+} as const;
+
 export const AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1 = {
 	clockIso: '2026-08-04T12:00:00.000Z',
 	request: {
@@ -82,6 +90,13 @@ export const AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1 = {
 		tokensConsumed: 7,
 		toolCategory: 'read'
 	},
+	validationFailure: {
+		callId: 'read-tool-call-invalid-2',
+		name: 'get_project_overview',
+		arguments: {},
+		error: 'Tool validation failed: Missing required parameter: project_id',
+		toolCategory: 'read'
+	},
 	secondTool: {
 		callId: 'read-tool-call-2',
 		name: 'get_project_overview',
@@ -137,6 +152,7 @@ export const AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1 = {
 			risks: [],
 			upcoming_events: [],
 			recent_activity: [],
+			context_shift: READ_ONLY_CONTEXT_SHIFT_V1,
 			message: 'Project overview prepared for Fixture project.'
 		},
 		durationMs: 12,
@@ -179,9 +195,10 @@ export const AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1 = {
 };
 
 /**
- * Legacy three-round read success (Slice 18 S3 instrument change). The rounds
- * exercise three distinct production tools and pin the legacy project-overview
- * envelope on both adapters before the synthesis round answers.
+ * Legacy four-round read success with one validation repair (Slice 18 S4
+ * instrument change). The successful rounds still exercise three distinct
+ * production tools; the rejected project-overview call pins the failed
+ * durable/public trace before its corrected successor executes.
  */
 export const AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1: AgenticChatParityRunV1 = {
 	events: [
@@ -268,6 +285,38 @@ export const AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1: AgenticChatParityRunV1 = {
 				tool_call: {
 					function: {
 						arguments: JSON.stringify(
+							AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.arguments
+						),
+						name: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.name
+					},
+					id: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.callId,
+					type: 'function'
+				}
+			}
+		},
+		{
+			type: 'tool_result',
+			phase: 'tool',
+			payload: {
+				result: {
+					affected_entities: [],
+					error: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.error,
+					result: null,
+					success: false,
+					tool_category:
+						AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.toolCategory,
+					tool_call_id: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.callId,
+					tool_name: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.name
+				}
+			}
+		},
+		{
+			type: 'tool_call',
+			phase: 'tool',
+			payload: {
+				tool_call: {
+					function: {
+						arguments: JSON.stringify(
 							AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.arguments
 						),
 						name: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.name
@@ -293,6 +342,11 @@ export const AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1: AgenticChatParityRunV1 = {
 					tool_name: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.name
 				}
 			}
+		},
+		{
+			type: 'context_shift',
+			phase: 'tool',
+			payload: { context_shift: READ_ONLY_CONTEXT_SHIFT_V1 }
 		},
 		{
 			type: 'tool_call',
@@ -342,11 +396,12 @@ export const AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1: AgenticChatParityRunV1 = {
 			phase: 'finalize',
 			payload: {
 				context: {
-					context_type: 'global',
+					context_type: 'project',
 					data_accessed: [
 						AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.name,
 						AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.name,
-						AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.name
+						AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.name,
+						'context_shift'
 					],
 					entities: {
 						project_id: 'da000000-0000-4000-8000-000000000001',
@@ -452,11 +507,23 @@ export const AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1: AgenticChatParityRunV1 = {
 		},
 		{
 			affected_entities: [],
+			arguments: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.arguments,
+			execution_time_ms: null,
+			message_linked: true,
+			result: null,
+			sequence_index: 2,
+			success: false,
+			tokens_consumed: null,
+			tool_category: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.toolCategory,
+			tool_name: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.validationFailure.name
+		},
+		{
+			affected_entities: [],
 			arguments: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.arguments,
 			execution_time_ms: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.durationMs,
 			message_linked: true,
 			result: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.result,
-			sequence_index: 2,
+			sequence_index: 3,
 			success: true,
 			tokens_consumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.tokensConsumed,
 			tool_category: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.toolCategory,
@@ -468,7 +535,7 @@ export const AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1: AgenticChatParityRunV1 = {
 			execution_time_ms: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.durationMs,
 			message_linked: true,
 			result: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.result,
-			sequence_index: 3,
+			sequence_index: 4,
 			success: true,
 			tokens_consumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.tokensConsumed,
 			tool_category: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.toolCategory,
@@ -480,8 +547,8 @@ export const AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1: AgenticChatParityRunV1 = {
 		assistant_message_linked: true,
 		finished_reason: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.finishedReason,
 		status: 'completed',
-		tool_call_count: 3,
-		tool_round_count: 3,
+		tool_call_count: 4,
+		tool_round_count: 4,
 		total_tokens: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.usage.totalTokens
 	},
 	metadata: {
@@ -493,7 +560,10 @@ export const AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1: AgenticChatParityRunV1 = {
 			{ event_type: 'first_tool_call_planning_cue_emitted', phase: 'stream' },
 			{ event_type: 'tool_result_received', phase: 'tool' },
 			{ event_type: 'tool_call_emitted', phase: 'tool' },
+			{ event_type: 'tool_call_validation_failed', phase: 'tool' },
+			{ event_type: 'tool_call_emitted', phase: 'tool' },
 			{ event_type: 'tool_result_received', phase: 'tool' },
+			{ event_type: 'context_shift_emitted', phase: 'tool' },
 			{ event_type: 'tool_call_emitted', phase: 'tool' },
 			{ event_type: 'tool_result_received', phase: 'tool' },
 			{ event_type: 'turn_phase_changed', phase: 'stream' },

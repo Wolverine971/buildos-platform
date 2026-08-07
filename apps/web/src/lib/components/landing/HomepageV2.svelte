@@ -167,39 +167,107 @@
 				</div>
 			</div>
 
-			<!-- single demonstration card -->
-			<div
-				class="border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
-			>
-				<div
-					class="h-10 border-b border-border tx tx-strip tx-med flex items-center px-4 micro-label"
+			<!--
+			  real product triptych — actual screenshots of one live session:
+			  a braindump typed into chat, the agent's tool receipts, and the project
+			  page it produced. Captured from the Fading Crown demo account
+			  (apps/web/scripts/seed-demo-account.ts); re-capture rather than mock up.
+			-->
+			<div class="space-y-2.5">
+				<figure
+					class="rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
 				>
-					Rough thinking → organized project
-				</div>
-				<div class="p-4 sm:p-5 grid sm:grid-cols-2 gap-3 sm:gap-4">
-					<div
-						class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-static tx-weak p-4"
+					<figcaption
+						class="h-8 border-b border-border tx tx-strip tx-med flex items-center px-3 micro-label"
 					>
-						<div class="micro-label mb-3">What you say</div>
-						<p class="text-sm text-muted-foreground leading-relaxed">
-							"Chapter 12 drags, Maya's motivation feels weak, I keep losing track of
-							my magic rules, and beta-reader notes are scattered across email and
-							Discord."
-						</p>
-					</div>
-					<div
-						class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-grain tx-weak p-4"
-					>
-						<div class="micro-label mb-3">What BuildOS holds</div>
-						<ul class="text-sm leading-relaxed space-y-1 text-foreground">
-							<li>▸ Project: Novel revision</li>
-							<li>▸ Doc: Character arc — Maya</li>
-							<li>▸ Doc: Magic system rules</li>
-							<li>▸ Task: Rewrite Ch. 12 opening</li>
-							<li>▸ Inbox: Beta-reader notes (consolidating)</li>
-						</ul>
-					</div>
+						01 · You brain-dump
+					</figcaption>
+					<img
+						src="/home/hero-say-light.jpg"
+						alt="A messy braindump about a fantasy novel typed into BuildOS chat"
+						class="w-full dark:hidden"
+						width="1000"
+						height="120"
+						fetchpriority="high"
+					/>
+					<img
+						src="/home/hero-say-dark.jpg"
+						alt=""
+						aria-hidden="true"
+						class="w-full hidden dark:block"
+						width="1000"
+						height="120"
+						fetchpriority="high"
+					/>
+				</figure>
+
+				<div class="flex justify-center text-muted-foreground" aria-hidden="true">
+					<ArrowDown class="w-4 h-4" />
 				</div>
+
+				<figure
+					class="rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
+				>
+					<figcaption
+						class="h-8 border-b border-border tx tx-strip tx-med flex items-center justify-between px-3 micro-label"
+					>
+						<span>02 · BuildOS does the work — on the record</span>
+						<span class="text-muted-foreground hidden sm:inline">live tool calls</span>
+					</figcaption>
+					<img
+						src="/home/hero-work-light.jpg"
+						alt="BuildOS chat receipts: Created project Fading Crown, plus a summary of the five documents it generated"
+						class="w-full dark:hidden"
+						width="1000"
+						height="212"
+						fetchpriority="high"
+					/>
+					<img
+						src="/home/hero-work-dark.jpg"
+						alt=""
+						aria-hidden="true"
+						class="w-full hidden dark:block"
+						width="1000"
+						height="212"
+						fetchpriority="high"
+					/>
+				</figure>
+
+				<div class="flex justify-center text-muted-foreground" aria-hidden="true">
+					<ArrowDown class="w-4 h-4" />
+				</div>
+
+				<figure
+					class="rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
+				>
+					<figcaption
+						class="h-8 border-b border-border tx tx-strip tx-med flex items-center justify-between px-3 micro-label"
+					>
+						<span>03 · It's a real project</span>
+						<span class="text-muted-foreground hidden sm:inline">no setup ritual</span>
+					</figcaption>
+					<img
+						src="/home/hero-real-light.jpg"
+						alt="The Fading Crown project page in BuildOS: recent activity, scheduled tasks, milestones, and an AI-suggested next move"
+						class="w-full dark:hidden"
+						width="1010"
+						height="500"
+						loading="lazy"
+					/>
+					<img
+						src="/home/hero-real-dark.jpg"
+						alt=""
+						aria-hidden="true"
+						class="w-full hidden dark:block"
+						width="1010"
+						height="500"
+						loading="lazy"
+					/>
+				</figure>
+
+				<p class="text-center text-xs text-muted-foreground pt-1">
+					Real screenshots from one live session — nothing mocked up.
+				</p>
 			</div>
 		</div>
 	</section>
@@ -422,227 +490,130 @@
 							How it actually works.
 						</h2>
 						<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
-							You talk. BuildOS organizes. You come back tomorrow with more — and the
-							project keeps shape between sessions.
+							Two real sessions on the same project — every change made by talking,
+							every tool call on the record.
 						</p>
 					</div>
 
 					<div class="max-w-4xl mx-auto space-y-5">
-						<!-- TIME marker: Day 1 -->
+						<!-- USE CASE: update a task by talking -->
 						<div class="flex items-center gap-3">
 							<div class="flex-1 border-t border-dashed border-border"></div>
-							<span class="micro-label font-medium"> Day 1 </span>
+							<span class="micro-label font-medium">
+								Change anything in one sentence
+							</span>
 							<div class="flex-1 border-t border-dashed border-border"></div>
 						</div>
 
-						<!-- ROW: brain dump → project created -->
 						<div
-							class="flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 md:items-stretch"
+							class="flex flex-col md:grid md:grid-cols-[1.15fr_auto_1fr] gap-3 md:gap-4 md:items-center"
 						>
-							<div
-								class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-4"
+							<figure
+								class="rounded-lg border border-border bg-card shadow-ink tx tx-bloom tx-weak overflow-hidden"
 							>
-								<div class="micro-label mb-2">You · brain dump</div>
-								<p class="text-sm leading-relaxed">
-									"I want to write a fantasy novel — queen losing her magic. Magic
-									rules are loose. Maya's motivation feels weak. Beta readers
-									eventually."
-								</p>
-							</div>
+								<figcaption
+									class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
+								>
+									You say it · BuildOS finds the task
+								</figcaption>
+								<img
+									src="/home/case-update-chat-light.jpg"
+									alt="Chat: push the beta-reader pass out a week and bump it to priority 1. BuildOS lists tasks, updates the task, and replies with the exact date and priority changes."
+									class="w-full dark:hidden"
+									width="1040"
+									height="302"
+									loading="lazy"
+								/>
+								<img
+									src="/home/case-update-chat-dark.jpg"
+									alt=""
+									aria-hidden="true"
+									class="w-full hidden dark:block"
+									width="1040"
+									height="302"
+									loading="lazy"
+								/>
+							</figure>
 							<div class="flex items-center justify-center text-muted-foreground">
 								<ArrowRight class="hidden md:block w-5 h-5" />
 								<ArrowDown class="md:hidden w-5 h-5" />
 							</div>
-							<div
-								class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-4"
+							<figure
+								class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak overflow-hidden"
 							>
-								<div class="micro-label mb-2">BuildOS · project created</div>
-								<ul class="text-sm space-y-1.5">
-									<li class="flex items-center gap-1.5">
-										<FolderKanban
-											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-										/>
-										<span
-											>Project: <strong class="font-medium"
-												>Fading Crown</strong
-											></span
-										>
-									</li>
-									<li class="flex items-center gap-1.5">
-										<FileText
-											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-										/>
-										<span>Doc: Magic system rules</span>
-									</li>
-									<li class="flex items-center gap-1.5">
-										<FileText
-											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-										/>
-										<span>Doc: Maya — character notes</span>
-									</li>
-									<li class="flex items-center gap-1.5">
-										<Circle
-											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-										/>
-										<span>Task: Rewrite Ch. 12 opening</span>
-									</li>
-									<li class="flex items-center gap-1.5">
-										<Target
-											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-										/>
-										<span>Goal: First-draft complete</span>
-									</li>
-								</ul>
-							</div>
+								<figcaption
+									class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
+								>
+									It lands on the board · P1, new date
+								</figcaption>
+								<img
+									src="/home/case-board-light.jpg"
+									alt="The task board with Beta-reader pass now priority 1 and due Aug 24 in the Scheduled column"
+									class="w-full dark:hidden"
+									width="980"
+									height="310"
+									loading="lazy"
+								/>
+								<img
+									src="/home/case-board-dark.jpg"
+									alt=""
+									aria-hidden="true"
+									class="w-full hidden dark:block"
+									width="980"
+									height="310"
+									loading="lazy"
+								/>
+							</figure>
 						</div>
 
-						<!-- TIME SKIP: 1 week later -->
+						<!-- USE CASE: reschedule by talking -->
 						<div class="flex items-center gap-3 py-2">
 							<div class="flex-1 border-t border-dashed border-border"></div>
-							<span class="micro-label font-medium"> 1 week later </span>
+							<span class="micro-label font-medium"> Reschedule by talking </span>
 							<div class="flex-1 border-t border-dashed border-border"></div>
 						</div>
 
-						<!-- ROW: brain dump updates project -->
 						<div
-							class="flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 md:items-stretch"
+							class="flex flex-col md:grid md:grid-cols-[1.15fr_auto_1fr] gap-3 md:gap-4 md:items-center"
 						>
-							<div
-								class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-4"
+							<figure
+								class="rounded-lg border border-border bg-card shadow-ink tx tx-bloom tx-weak overflow-hidden"
 							>
-								<div class="micro-label mb-2">You · brain dump</div>
-								<p class="text-sm leading-relaxed">
-									"Worked Maya's arc all week. Queen's motive should hinge on her
-									sister. Add a beta-reader pass after Ch. 14."
-								</p>
-							</div>
+								<figcaption
+									class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
+								>
+									"Move my writing block to Thursday"
+								</figcaption>
+								<img
+									src="/home/case-schedule-chat-dark.jpg"
+									alt="Chat: move my chapter 13 writing block to Thursday afternoon. BuildOS updates the Writing block task."
+									class="w-full"
+									width="1040"
+									height="178"
+									loading="lazy"
+								/>
+							</figure>
 							<div class="flex items-center justify-center text-muted-foreground">
 								<ArrowRight class="hidden md:block w-5 h-5" />
 								<ArrowDown class="md:hidden w-5 h-5" />
 							</div>
-							<div
-								class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-4"
+							<figure
+								class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak overflow-hidden"
 							>
-								<div class="micro-label mb-2">BuildOS · project updates</div>
-								<ul class="text-sm space-y-1.5">
-									<li class="flex items-center gap-1.5">
-										<FileText class="w-3.5 h-3.5 text-success flex-shrink-0" />
-										<span>
-											Doc: Maya —
-											<span class="text-success">updated</span>
-										</span>
-									</li>
-									<li class="flex items-center gap-1.5">
-										<FileText class="w-3.5 h-3.5 text-success flex-shrink-0" />
-										<span>
-											Doc: Queen's motive —
-											<span class="text-success">new</span>
-										</span>
-									</li>
-									<li class="flex items-center gap-1.5">
-										<Circle
-											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-										/>
-										<span>
-											Task: Beta-reader pass after Ch. 14
-											<span class="text-success">(new)</span>
-										</span>
-									</li>
-								</ul>
-							</div>
-						</div>
-
-						<!-- ROW: BuildOS sends daily brief (next morning) -->
-						<div
-							class="flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 md:items-stretch"
-						>
-							<div
-								class="rounded-lg border border-border bg-background shadow-ink tx tx-pulse tx-weak p-4"
-							>
-								<div class="micro-label mb-2 flex items-center gap-1.5">
-									<Mail class="w-3 h-3" />
-									<span>You · daily brief (next morning)</span>
-								</div>
-								<p class="text-sm leading-relaxed font-medium">
-									Yesterday: 2 docs updated, 1 task added.
-								</p>
-								<div class="text-sm text-muted-foreground mt-1.5 space-y-0.5">
-									<div>▸ Today: Ch. 12 rewrite</div>
-									<div>▸ Open: queen's act-3 turn</div>
-									<div>▸ Calendar: 2pm writing block</div>
-								</div>
-							</div>
-							<div class="flex items-center justify-center text-muted-foreground">
-								<ArrowLeft class="hidden md:block w-5 h-5" />
-								<ArrowDown class="md:hidden w-5 h-5 rotate-180" />
-							</div>
-							<div
-								class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-4"
-							>
-								<div class="micro-label mb-2">BuildOS · sends brief</div>
-								<p class="text-sm leading-relaxed">
-									Pulls progress, today's tasks, open questions, and calendar
-									holds — into your inbox and the app. Same content, same context.
-								</p>
-							</div>
-						</div>
-
-						<!-- TIME SKIP: later that day -->
-						<div class="flex items-center gap-3 py-2">
-							<div class="flex-1 border-t border-dashed border-border"></div>
-							<span class="micro-label font-medium"> later that day </span>
-							<div class="flex-1 border-t border-dashed border-border"></div>
-						</div>
-
-						<!-- ROW: brain dump completes a task -->
-						<div
-							class="flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 md:items-stretch"
-						>
-							<div
-								class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-4"
-							>
-								<div class="micro-label mb-2">You · brain dump</div>
-								<p class="text-sm leading-relaxed">
-									"Finally finished the Ch. 12 rewrite. Feels much tighter.
-									Pushing the beta-reader pass to next week."
-								</p>
-							</div>
-							<div class="flex items-center justify-center text-muted-foreground">
-								<ArrowRight class="hidden md:block w-5 h-5" />
-								<ArrowDown class="md:hidden w-5 h-5" />
-							</div>
-							<div
-								class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-4"
-							>
-								<div class="micro-label mb-2">BuildOS · state syncs</div>
-								<ul class="text-sm space-y-1.5">
-									<li class="flex items-center gap-1.5">
-										<CircleCheck
-											class="w-3.5 h-3.5 text-success flex-shrink-0"
-										/>
-										<span class="line-through text-muted-foreground"
-											>Rewrite Ch. 12 opening</span
-										>
-										<span class="micro-label text-success font-semibold">
-											done
-										</span>
-									</li>
-									<li class="flex items-center gap-1.5">
-										<Calendar
-											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-										/>
-										<span
-											>Beta-reader pass → moved <strong>+1 week</strong></span
-										>
-									</li>
-									<li class="flex items-center gap-1.5">
-										<FileText
-											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-										/>
-										<span>Captured: "tighter" — Ch. 12 notes</span>
-									</li>
-								</ul>
-							</div>
+								<figcaption
+									class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
+								>
+									It lands on the calendar · Thursday
+								</figcaption>
+								<img
+									src="/home/case-schedule-cal-dark.jpg"
+									alt="The BuildOS calendar with the writing block now scheduled on Thursday the 13th"
+									class="w-full"
+									width="975"
+									height="345"
+									loading="lazy"
+								/>
+							</figure>
 						</div>
 
 						<!-- footer caption -->
@@ -650,7 +621,8 @@
 							class="text-center text-xs sm:text-sm text-muted-foreground pt-6 max-w-2xl mx-auto leading-relaxed"
 						>
 							No re-explaining where you are. No re-finding what you decided last
-							week. The project remembers — and the loop tightens as the work moves.
+							week. The project remembers — and every change is a tool call on the
+							record, not a vibe.
 						</p>
 					</div>
 				</div>
@@ -1183,7 +1155,7 @@
 		}
 
 		.home-deferred-loop {
-			contain-intrinsic-size: auto 1125px;
+			contain-intrinsic-size: auto 900px;
 		}
 
 		.home-deferred-agents {

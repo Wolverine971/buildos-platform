@@ -223,14 +223,11 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 		}
 		const payload = parsed as JsonObject;
 
-		let affectedEntities: JsonObject[] = [];
-		let resultCount: number | null;
-		let zeroResult: boolean | null;
+		const affectedEntities: JsonObject[] = [];
 		if (input.toolName === PROJECT_OVERVIEW_TOOL_NAME) {
-			// Preserved pre-swap semantics: a resolved project pins the affected
-			// entity and counts as one result. A payload without a project is a
-			// legacy-shaped not_found/ambiguous match — web returns it to the
-			// model, so the worker forwards it too with no result evidence.
+			// The project payload still needs an identity fence, but legacy read
+			// persistence does not infer affected entities from read results and
+			// search telemetry intentionally ignores non-search overview tools.
 			const project = requireOptionalRecord(payload.project);
 			if (project !== null) {
 				const affectedProjectId = canonicalUuidOrNull(project.id);
@@ -241,33 +238,16 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 				) {
 					throw providerError('read_tool_result_invalid', 'unknown');
 				}
-				affectedEntities = [
-					{
-						type: 'project',
-						id: affectedProjectId,
-						...(typeof project.name === 'string' && project.name.trim()
-							? { name: project.name.trim().slice(0, 500) }
-							: {})
-					} satisfies JsonObject
-				];
-				resultCount = 1;
-				zeroResult = false;
-			} else {
-				resultCount = null;
-				zeroResult = null;
 			}
-		} else {
-			// Same derivation the legacy web SSE path persists
-			// (turn-persistence.ts -> searchTelemetryColumns): search tools count
-			// their primary result array, everything else records no evidence.
-			const telemetry = searchTelemetryColumns({
-				toolName: input.toolName,
-				success: true,
-				result: payload
-			});
-			resultCount = telemetry.result_count;
-			zeroResult = telemetry.zero_result;
 		}
+		// Same derivation the legacy web SSE path persists
+		// (turn-persistence.ts -> searchTelemetryColumns): search tools count
+		// their primary result array, everything else records no evidence.
+		const telemetry = searchTelemetryColumns({
+			toolName: input.toolName,
+			success: true,
+			result: payload
+		});
 		const duration = Math.min(2_147_483_647, Math.max(0, Math.floor(this.now() - startedAt)));
 
 		return {
@@ -280,8 +260,8 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 			// get_field_info). The hosted chat_tool_executions constraint was widened
 			// and verified before the worker catalog admitted these categories.
 			toolCategory: TOOL_METADATA[input.toolName]?.category ?? null,
-			resultCount,
-			zeroResult,
+			resultCount: telemetry.result_count,
+			zeroResult: telemetry.zero_result,
 			requiresUserAction: false
 		};
 	}

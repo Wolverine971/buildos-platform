@@ -3,9 +3,9 @@ import { createHash } from 'node:crypto';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-export type AgenticChatReadToolTransitionStageV1 = 'planning' | 'call' | 'result';
+export type AgenticChatReadToolTransitionStageV1 = 'planning' | 'call' | 'result' | 'context_shift';
 
-/** Stable public transition identity for the single bounded read round. */
+/** Stable public transition identity for one bounded read-tool lifecycle. */
 export function createStableAgenticChatReadToolTransitionIdV1(input: {
 	turnRunId: string;
 	providerToolCallId: string;
@@ -21,7 +21,12 @@ export function createStableAgenticChatReadToolTransitionIdV1(input: {
 	) {
 		throw new Error('Agentic Chat provider tool-call id is invalid');
 	}
-	if (input.stage !== 'planning' && input.stage !== 'call' && input.stage !== 'result') {
+	if (
+		input.stage !== 'planning' &&
+		input.stage !== 'call' &&
+		input.stage !== 'result' &&
+		input.stage !== 'context_shift'
+	) {
 		throw new Error('Agentic Chat read-tool transition stage is invalid');
 	}
 

@@ -350,21 +350,20 @@ SELECT pg_temp.assert_true(
 	),
 	'terminal transaction attaches the assistant message to every round row'
 );
--- tool_call_count is derived from the ledger; tool_round_count derivation still
--- caps at 1 because rounds are not recorded on ledger rows — recorded as a known
--- S1 divergence, owned by Slice 18 S5 finalization semantics.
+-- tool_call_count remains derived from the ledger while Slice 18 S5 validates
+-- and retains the executor-owned provider round count.
 SELECT pg_temp.assert_true(
 	(
-		SELECT tool_round_count = 1 AND tool_call_count = 2
+		SELECT tool_round_count = 2 AND tool_call_count = 2
 		FROM public.chat_turn_runs
 		WHERE id = 'fb300000-0000-4000-8000-000000000001'
 	) AND (
-		SELECT metadata->>'tool_round_count' = '1'
+		SELECT metadata->>'tool_round_count' = '2'
 			AND metadata->>'tool_call_count' = '2'
 		FROM public.chat_messages
 		WHERE id = 'fb900000-0000-4000-8000-000000000001'
 	),
-	'database-derived read-tool counters override caller metadata on turn and message'
+	'durable call count and validated round count agree on turn and message'
 );
 
 SELECT 'phase4_slice10_read_tool_execution_ledger_ok' AS result;
