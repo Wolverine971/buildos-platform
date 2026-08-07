@@ -30,7 +30,7 @@ describe('worker lifecycle observability projection', () => {
 		).toEqual(AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1.metadata.lifecycle_events);
 	});
 
-	it('projects the exact two-round read legacy lifecycle meanings', () => {
+	it('projects the exact three-round real-tool legacy lifecycle meanings', () => {
 		expect(
 			projectAgenticChatWorkerLifecycleObservationsV1({
 				admissionObserved: true,
@@ -41,6 +41,8 @@ describe('worker lifecycle observability projection', () => {
 						state: 'thinking',
 						details: 'Planning the first step...'
 					},
+					{ type: 'tool_call' },
+					{ type: 'tool_result' },
 					{ type: 'tool_call' },
 					{ type: 'tool_result' },
 					{ type: 'tool_call' },

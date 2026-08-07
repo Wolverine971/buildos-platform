@@ -172,7 +172,7 @@ SELECT public.persist_agentic_chat_read_tool_execution(
 	1,
 	'read-tool-call-1',
 	'fixture_project_read',
-	'utility',
+	'read',
 	'{"projectId":"da000000-0000-4000-8000-000000000001"}'::jsonb,
 	'{"note":"Fixture project is ready."}'::jsonb,
 	NULL,
@@ -191,7 +191,7 @@ SELECT pg_temp.assert_true(
 			message_id IS NULL
 			AND provider_tool_call_id = 'read-tool-call-1'
 			AND tool_name = 'fixture_project_read'
-			AND tool_category = 'utility'
+			AND tool_category = 'read'
 			AND sequence_index = 1
 			AND arguments = '{"projectId":"da000000-0000-4000-8000-000000000001"}'::jsonb
 			AND result = '{"note":"Fixture project is ready."}'::jsonb
@@ -216,7 +216,7 @@ SELECT public.persist_agentic_chat_read_tool_execution(
 	1,
 	'read-tool-call-1',
 	'fixture_project_read',
-	'utility',
+	'read',
 	'{"projectId":"da000000-0000-4000-8000-000000000001"}'::jsonb,
 	'{"note":"Fixture project is ready."}'::jsonb,
 	NULL,
@@ -242,7 +242,7 @@ SELECT pg_temp.assert_true(
 				'fb400000-0000-4000-8000-000000000001',
 				'fb500000-0000-4000-8000-000000000001', 1,
 				'fb800000-0000-5000-8000-000000000002', 1,
-				'read-tool-call-1', 'fixture_project_read', 'utility',
+				'read-tool-call-1', 'fixture_project_read', 'read',
 				'{"projectId":"da000000-0000-4000-8000-000000000001"}'::jsonb,
 				'{"note":"conflict"}'::jsonb, NULL, NULL, 12, 9, NULL, '[]'::jsonb
 			)
@@ -278,8 +278,9 @@ SELECT pg_temp.assert_true(
 );
 RESET ROLE;
 
--- Phase 4 Slice 18 S1: the ledger accepts a second provider round on the same
--- turn — sequence_index 2 under a distinct stable id, prod-compatible category.
+-- Phase 4 Slice 18: the ledger accepts a second provider round on the same
+-- turn — sequence_index 2 under a distinct stable id and the shared search
+-- category added without removing the first round's read category.
 SET ROLE service_role;
 SELECT public.persist_agentic_chat_read_tool_execution(
 	'fb300000-0000-4000-8000-000000000001',
@@ -291,7 +292,7 @@ SELECT public.persist_agentic_chat_read_tool_execution(
 	2,
 	'read-tool-call-2',
 	'fixture_task_read',
-	'utility',
+	'search',
 	'{"taskId":"db000000-0000-4000-8000-000000000002"}'::jsonb,
 	'{"note":"Fixture task is ready."}'::jsonb,
 	NULL,
@@ -312,10 +313,11 @@ SELECT pg_temp.assert_true(
 		SELECT count(*) = 2
 			AND count(DISTINCT id) = 2
 			AND array_agg(sequence_index ORDER BY sequence_index) = ARRAY[1, 2]
+			AND array_agg(tool_category ORDER BY sequence_index) = ARRAY['read', 'search']
 		FROM public.chat_tool_executions
 		WHERE turn_run_id = 'fb300000-0000-4000-8000-000000000001'
 	),
-	'two-round turn holds two rows with distinct stable ids and sequence 1,2'
+	'two-round turn holds read/search rows with distinct stable ids and sequence 1,2'
 );
 
 SET ROLE service_role;

@@ -73,12 +73,18 @@ const sharedAgentOpsTestAliases = [
 	'ops/async-activity-logger',
 	'ops/entity-mention-notification.service',
 	'ops/gateway-op-aliases',
+	'ops/security-event-logger',
 	'ops/tracked-in-app-notification.service',
 	'ops/update-value-validation',
 	'inbox-index',
+	'utils/document-outline',
+	'utils/entity-reference-parser',
+	'utils/markdown-normalization',
 	'utils/project-props-sanitizer',
 	'utils/search-filter',
-	'utils/validation-utils'
+	'utils/validation-utils',
+	'web/native-search',
+	'web/safe-fetch'
 ].map((sub) => ({
 	find: `@buildos/shared-agent-ops/${sub}`,
 	replacement: sharedAgentOpsSrc(`${sub}.ts`)

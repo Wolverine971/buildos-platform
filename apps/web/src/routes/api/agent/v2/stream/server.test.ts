@@ -1532,12 +1532,31 @@ describe('/api/agent/v2/stream', () => {
 				duration_ms: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.durationMs,
 				tokens_consumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.tokensConsumed
 			};
+			const thirdToolCall = {
+				id: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.callId,
+				type: 'function',
+				function: {
+					name: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.name,
+					arguments: JSON.stringify(
+						AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.arguments
+					)
+				}
+			};
+			const thirdToolResult = {
+				tool_call_id: thirdToolCall.id,
+				result: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.result,
+				success: true,
+				duration_ms: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.durationMs,
+				tokens_consumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.tokensConsumed
+			};
 			mocks.streamFastChat.mockImplementationOnce(
 				async ({ onToolCall, onToolResult, onDelta }: Row) => {
 					await onToolCall?.(toolCall);
 					await onToolResult?.({ toolCall, result: toolResult });
 					await onToolCall?.(secondToolCall);
 					await onToolResult?.({ toolCall: secondToolCall, result: secondToolResult });
+					await onToolCall?.(thirdToolCall);
+					await onToolResult?.({ toolCall: thirdToolCall, result: thirdToolResult });
 					await onDelta(AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.assistantText);
 					return {
 						assistantText:
@@ -1557,11 +1576,12 @@ describe('/api/agent/v2/stream', () => {
 							AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.finishedReason,
 						toolExecutions: [
 							{ toolCall, result: toolResult },
-							{ toolCall: secondToolCall, result: secondToolResult }
+							{ toolCall: secondToolCall, result: secondToolResult },
+							{ toolCall: thirdToolCall, result: thirdToolResult }
 						],
 						llmPasses: [],
-						toolRounds: 2,
-						toolCallsMade: 2,
+						toolRounds: 3,
+						toolCallsMade: 3,
 						supervisorDecisions: [],
 						finalizationGuard: undefined,
 						cancelled: false,
@@ -3020,7 +3040,7 @@ describe('/api/agent/v2/stream', () => {
 			expect.objectContaining({
 				tool_call_id: 'call-search',
 				tool_name: 'search_project',
-				tool_category: 'ontology',
+				tool_category: 'search',
 				result_count: 0,
 				zero_result: true,
 				tokens_consumed: 9,
@@ -3042,6 +3062,7 @@ describe('/api/agent/v2/stream', () => {
 		expect(supabase.insertedRows.chat_tool_executions?.[0]).toEqual(
 			expect.objectContaining({
 				tool_name: 'search_project',
+				tool_category: 'search',
 				result_count: 0,
 				zero_result: true,
 				tokens_consumed: 9,

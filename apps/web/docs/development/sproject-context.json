@@ -212,11 +212,6 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -229,6 +224,11 @@
 				"MobileTaskBoard",
 				"ProjectDocumentsSection"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte",
@@ -888,17 +888,6 @@
 			"exports": ["workRunsStore", "workRunsLoading", "loadWorkRuns", "mergeWorkRuns"]
 		},
 		{
-			"file": "src/lib/components/admin/adminRoutes.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"CHAT_ADMIN_ROOT",
-				"CHAT_ADMIN_TITLE",
-				"CHAT_ADMIN_NAV_ITEMS",
-				"isChatAdminSubpath"
-			]
-		},
-		{
 			"file": "src/lib/components/agent/agent-chat-attachments.svelte.ts",
 			"type": "component",
 			"components": [],
@@ -1069,6 +1058,17 @@
 			]
 		},
 		{
+			"file": "src/lib/components/admin/adminRoutes.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"CHAT_ADMIN_ROOT",
+				"CHAT_ADMIN_TITLE",
+				"CHAT_ADMIN_NAV_ITEMS",
+				"isChatAdminSubpath"
+			]
+		},
+		{
 			"file": "src/lib/components/chat/project-selector-browser.ts",
 			"type": "component",
 			"components": [],
@@ -1185,6 +1185,18 @@
 			]
 		},
 		{
+			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"eventIcon",
+				"eventSeverityClasses",
+				"timelineDotClasses",
+				"statusBadge",
+				"libriStatusClasses"
+			]
+		},
+		{
 			"file": "src/lib/components/admin/chat-users/chat-user-export.ts",
 			"type": "component",
 			"components": [],
@@ -1228,18 +1240,6 @@
 				"entityGroupKey",
 				"entityGroupKeyForAggregate",
 				"entityGroupKeyForChange"
-			]
-		},
-		{
-			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"eventIcon",
-				"eventSeverityClasses",
-				"timelineDotClasses",
-				"statusBadge",
-				"libriStatusClasses"
 			]
 		},
 		{
@@ -1560,7 +1560,6 @@
 		"src/lib/components/admin/chat/SessionFlowVisuals.svelte",
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
 		"src/lib/components/project/v2/EntityTabStrip.svelte",
-		"src/lib/components/admin/adminRoutes.ts",
 		"src/lib/components/agent/agent-chat-attachments.svelte.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat-prewarm.svelte.ts",
@@ -1578,6 +1577,7 @@
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
+		"src/lib/components/admin/adminRoutes.ts",
 		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/notifications/notification-preview.ts",
 		"src/lib/components/project/project-entity-modal-loader.ts",
@@ -1586,9 +1586,9 @@
 		"src/lib/components/project/project-page-interactions.ts",
 		"src/lib/components/ui/live-transcript-preview.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
+		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
-		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",

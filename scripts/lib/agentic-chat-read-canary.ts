@@ -372,9 +372,9 @@ export function verifyAgenticChatReadCanaryEvidence(
 			'Tool ledger identity does not match the public call.'
 		);
 		check(
-			// 'utility' matches prod's chat_tool_executions_tool_category_check
-			// allowlist and legacy SSE's category for this tool (canary 8 fix).
-			tool.tool_category === 'utility' &&
+			// Slice 18 S3 single-sources durable categories from shared TOOL_METADATA.
+			// Production must admit 'read' before this canary is run.
+			tool.tool_category === 'read' &&
 				tool.result_count === 1 &&
 				tool.zero_result === false &&
 				tool.requires_user_action === false,

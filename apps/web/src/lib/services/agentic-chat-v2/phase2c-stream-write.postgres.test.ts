@@ -147,7 +147,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			'20260804034000_agentic_chat_provider_failure_terminal_events.sql',
 			'20260804035100_chat_tool_execution_provider_call_identity.sql',
 			'20260804036000_agentic_chat_read_tool_execution_ledger.sql',
-			'20260806020000_agentic_chat_timing_evidence_repair.sql'
+			'20260806020000_agentic_chat_timing_evidence_repair.sql',
+			'20260808010000_agentic_chat_read_tool_categories.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}

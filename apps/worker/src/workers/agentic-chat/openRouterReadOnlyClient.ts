@@ -13,8 +13,8 @@ import type {
 	AgenticChatReadOnlyProviderToolV1
 } from './readOnlyProvider';
 import {
-	AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1,
-	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1
+	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
+	isAgenticChatProductionReadToolNameV1
 } from './readOnlyTool';
 import { runWithAbortableDeadline } from './abortableDeadline';
 import {
@@ -982,41 +982,46 @@ function validateToolSurface(input: ClientInput): void {
 		}
 		return;
 	}
-	if (input.toolChoice !== 'auto' || input.tools.length !== 1) {
-		throw new Error('Agentic Chat toolChoice=auto requires exactly one read tool');
+	if (
+		input.toolChoice !== 'auto' ||
+		input.tools.length < 1 ||
+		input.tools.length > AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.length
+	) {
+		throw new Error('Agentic Chat toolChoice=auto requires a bounded read tool surface');
 	}
-	const tool = input.tools[0];
+	const seen = new Set<string>();
+	for (const tool of input.tools) {
+		validateReadToolDefinition(tool, seen);
+	}
+}
+
+function validateReadToolDefinition(
+	tool: AgenticChatReadOnlyProviderToolV1 | undefined,
+	seen: Set<string>
+): void {
 	if (
 		tool?.type !== 'function' ||
 		!tool.function ||
 		typeof tool.function.name !== 'string' ||
 		!tool.function.name ||
 		tool.function.name !== tool.function.name.trim() ||
-		!AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.some((name) => name === tool.function.name) ||
+		!isAgenticChatProductionReadToolNameV1(tool.function.name) ||
+		seen.has(tool.function.name) ||
 		typeof tool.function.description !== 'string' ||
-		!tool.function.description ||
+		!tool.function.description.trim() ||
 		!tool.function.parameters ||
 		typeof tool.function.parameters !== 'object' ||
 		Array.isArray(tool.function.parameters) ||
-		!matchesProductionReadTool(tool)
+		tool.function.parameters.type !== 'object'
 	) {
 		throw new Error('Agentic Chat read tool definition is invalid');
 	}
-}
-
-function matchesProductionReadTool(tool: AgenticChatReadOnlyProviderToolV1): boolean {
-	const expected = AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1.find(
-		(candidate) => candidate.function.name === tool.function.name
-	);
-	if (!expected) return false;
 	try {
-		return (
-			canonicalizeAgenticChatJson(tool as unknown as JsonValue) ===
-			canonicalizeAgenticChatJson(expected as unknown as JsonValue)
-		);
+		canonicalizeAgenticChatJson(tool as unknown as JsonValue);
 	} catch {
-		return false;
+		throw new Error('Agentic Chat read tool definition is invalid');
 	}
+	seen.add(tool.function.name);
 }
 
 async function responseErrorMessage(response: Response): Promise<string> {

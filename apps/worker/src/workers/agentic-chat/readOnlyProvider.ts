@@ -19,7 +19,7 @@ import {
 } from './providerContract';
 import { AgenticChatProviderCapacity, AgenticChatProviderCapacityError } from './providerCapacity';
 import { createStableAgenticChatReadToolTransitionIdV1 } from './readToolIdentity';
-import { AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1 } from './readOnlyTool';
+import { isAgenticChatProductionReadToolNameV1 } from './readOnlyTool';
 
 export type AgenticChatReadOnlyProviderMessageV1 = {
 	role: 'system' | 'user' | 'assistant' | 'tool';
@@ -95,9 +95,9 @@ type PendingReadRound = {
  * command and reserves local provider capacity; its returned stream performs
  * the first network call only after the executor wins execution-start.
  *
- * The reviewed surface contains at most one read-only project-status call.
- * Mutating tools are absent, the second pass always sends `toolChoice: none`,
- * and no third provider pass exists.
+ * The reviewed surface is the immutable admission artifact intersected with
+ * the worker's shared read allowlist. Mutating tools are absent, the second
+ * pass always sends `toolChoice: none`, and no third provider pass exists.
  */
 export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPortV1 {
 	constructor(
@@ -474,7 +474,7 @@ function assertAllowlistedCall(
 	call: CompletedProviderToolCall,
 	tools: readonly AgenticChatReadOnlyProviderToolV1[]
 ): void {
-	if (tools.length !== 1 || tools[0]?.function.name !== call.name) {
+	if (!tools.some((tool) => tool.function.name === call.name)) {
 		throw providerError('provider_tool_not_allowlisted', 'permanent');
 	}
 }
@@ -615,7 +615,7 @@ function buildReadOnlyRequest(
 	return {
 		messages,
 		tools,
-		toolChoice: tools.length === 1 ? 'auto' : 'none',
+		toolChoice: tools.length > 0 ? 'auto' : 'none',
 		userId: input.claim.userId,
 		sessionId: input.claim.sessionId,
 		turnRunId: input.claim.turnRunId,
@@ -637,12 +637,69 @@ function productionReadToolsFor(
 ): readonly AgenticChatReadOnlyProviderToolV1[] {
 	const surface = input.artifact.prepared.toolSurface;
 	if (!surface || typeof surface !== 'object' || Array.isArray(surface)) return [];
-	const names = (surface as Record<string, unknown>).toolNames;
-	const allowlistedName = AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1[0].function.name;
-	if (!Array.isArray(names) || !names.includes(allowlistedName)) return [];
-	return JSON.parse(
-		canonicalizeAgenticChatJson(AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1 as unknown as JsonValue)
-	) as AgenticChatReadOnlyProviderToolV1[];
+	const record = surface as Record<string, unknown>;
+	if (!Array.isArray(record.toolNames) || !Array.isArray(record.definitions)) return [];
+
+	const selectedNames = new Set(
+		record.toolNames.filter(
+			(name): name is string =>
+				typeof name === 'string' && name === name.trim() && name.length > 0
+		)
+	);
+	const seen = new Set<string>();
+	const tools: AgenticChatReadOnlyProviderToolV1[] = [];
+	for (const definition of record.definitions) {
+		const tool = readArtifactToolDefinition(definition);
+		if (
+			!tool ||
+			!selectedNames.has(tool.function.name) ||
+			!isAgenticChatProductionReadToolNameV1(tool.function.name) ||
+			seen.has(tool.function.name)
+		) {
+			continue;
+		}
+		seen.add(tool.function.name);
+		tools.push(tool);
+	}
+	return tools;
+}
+
+function readArtifactToolDefinition(value: unknown): AgenticChatReadOnlyProviderToolV1 | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const record = value as Record<string, unknown>;
+	if (record.type !== 'function' || !record.function || typeof record.function !== 'object') {
+		return null;
+	}
+	const fn = record.function as Record<string, unknown>;
+	if (
+		typeof fn.name !== 'string' ||
+		fn.name !== fn.name.trim() ||
+		fn.name.length === 0 ||
+		fn.name.length > 256 ||
+		typeof fn.description !== 'string' ||
+		fn.description.trim().length === 0 ||
+		!fn.parameters ||
+		typeof fn.parameters !== 'object' ||
+		Array.isArray(fn.parameters) ||
+		(fn.parameters as Record<string, unknown>).type !== 'object'
+	) {
+		return null;
+	}
+	try {
+		const parameters = JSON.parse(
+			canonicalizeAgenticChatJson(fn.parameters as JsonValue)
+		) as JsonObject;
+		return {
+			type: 'function',
+			function: {
+				name: fn.name,
+				description: fn.description,
+				parameters
+			}
+		};
+	} catch {
+		return null;
+	}
 }
 
 function normalizeUsage(

@@ -17,7 +17,7 @@ export type AgenticChatWorkerLifecycleProjectionInputV1 = {
  * observations belong to evaluation/admin telemetry and must never consume a
  * reconnect sequence number.
  *
- * The Slice 18 S1 two-round golden widened tool lifecycle cardinality from the
+ * The Slice 18 multi-round golden widened tool lifecycle cardinality from the
  * original one-read bound to N pairs: legacy inserts one `tool_call_emitted`
  * and one `tool_result_received` per pair in event order, with the single
  * planning cue projected directly after the first tool call.

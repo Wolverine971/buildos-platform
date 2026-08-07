@@ -64,7 +64,7 @@ describe('Agentic Chat bounded production read canary verifier', () => {
 			toolRoundCount: 1,
 			toolCallCount: 1,
 			usageEvidence: 'exact',
-			lifecycleObservationCount: 10,
+			lifecycleObservationCount: 16,
 			queueCompleted: true,
 			mutationEffectCount: 0
 		});
@@ -187,9 +187,15 @@ function validEvidence(): AgenticChatReadCanaryEvidence {
 	const lifecycleNames = [
 		['turn_intent_resolved', 'prompt'],
 		['prepared_prompt_cache_checked', 'prompt'],
+		['provider_attempt_started', 'provider'],
+		['provider_attempt_ended', 'provider'],
 		['tool_call_emitted', 'tool'],
 		['first_tool_call_planning_cue_emitted', 'stream'],
+		['tool_execution_started', 'tool'],
+		['tool_execution_ended', 'tool'],
 		['tool_result_received', 'tool'],
+		['provider_attempt_started', 'provider'],
+		['provider_attempt_ended', 'provider'],
 		['turn_phase_changed', 'stream'],
 		['turn_outcome_resolved', 'finalize'],
 		['orchestration_interventions', 'finalize'],
@@ -247,7 +253,7 @@ function validEvidence(): AgenticChatReadCanaryEvidence {
 				session_id: SESSION_ID,
 				stream_run_id: STREAM_ID,
 				success: true,
-				tool_category: 'project_read',
+				tool_category: 'read',
 				tool_name: 'get_project_overview',
 				turn_run_id: TURN_ID,
 				zero_result: false

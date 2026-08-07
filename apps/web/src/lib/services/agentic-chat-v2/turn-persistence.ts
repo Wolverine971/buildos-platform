@@ -9,7 +9,7 @@ import type {
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createLogger } from '$lib/utils/logger';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
-import { getToolCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { getToolExecutionCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { searchTelemetryColumns } from '$lib/services/agentic-chat/tools/core/search-telemetry';
 import { extractAffectedEntitiesFromToolExecution } from '$lib/services/agentic-chat/tools/core/affected-entities';
 import type {
@@ -194,7 +194,7 @@ export function buildToolResultEventPayload(toolCall: ChatToolCall, result: Chat
 		success: result.success === true,
 		result: result.result
 	});
-	const toolCategory = getToolCategory(toolCall.function.name) ?? null;
+	const toolCategory = getToolExecutionCategory(toolCall.function.name);
 	const affectedEntities = extractAffectedEntitiesFromToolExecution({
 		id: toolCallId,
 		tool_name: toolCall.function.name,
@@ -495,7 +495,7 @@ function buildToolExecutionInsertRows(params: {
 			stream_run_id: params.streamRunId ?? null,
 			client_turn_id: params.clientTurnId ?? null,
 			tool_name: toolCall.function.name,
-			tool_category: getToolCategory(toolCall.function.name) ?? null,
+			tool_category: getToolExecutionCategory(toolCall.function.name),
 			provider_tool_call_id: toolCallId,
 			gateway_op: meta.canonicalOp,
 			help_path: meta.helpPath,

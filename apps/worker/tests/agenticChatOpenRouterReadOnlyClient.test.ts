@@ -7,7 +7,6 @@ import {
 	type AgenticChatProviderUsageObservationV1
 } from '../src/workers/agentic-chat/openRouterReadOnlyClient';
 import type { AgenticChatReadOnlyProviderClientEventV1 } from '../src/workers/agentic-chat/readOnlyProvider';
-import { AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1 } from '../src/workers/agentic-chat/readOnlyTool';
 import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/executionObservation';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
@@ -41,6 +40,20 @@ function input(signal = new AbortController().signal) {
 		executionGeneration: 2,
 		providerRound: 'initial' as const,
 		signal
+	};
+}
+
+function readToolDefinition(name: string) {
+	return {
+		type: 'function' as const,
+		function: {
+			name,
+			description: `Read with ${name}.`,
+			parameters: {
+				type: 'object',
+				properties: { query: { type: 'string', description: name } }
+			}
+		}
 	};
 }
 
@@ -305,7 +318,7 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 		]);
 	});
 
-	it('passes through one streamed read-tool call with the exact allowlisted HTTP surface', async () => {
+	it('passes through one streamed read-tool call with the exact artifact-scoped HTTP surface', async () => {
 		const fetchImpl = vi.fn(async () =>
 			sseResponse([
 				JSON.stringify({
@@ -335,13 +348,17 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			])
 		) as unknown as typeof fetch;
 		const test = harness(fetchImpl);
-		const tool = JSON.parse(JSON.stringify(AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1[0]));
+		const tools = [
+			readToolDefinition('get_workspace_overview'),
+			readToolDefinition('get_project_overview'),
+			readToolDefinition('list_onto_tasks')
+		];
 
 		await expect(
 			collect(
 				test.client.stream({
 					...input(),
-					tools: [tool],
+					tools,
 					toolChoice: 'auto'
 				})
 			)
@@ -367,18 +384,18 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			}
 		]);
 		const body = JSON.parse(String(vi.mocked(fetchImpl).mock.calls[0]?.[1]?.body));
-		expect(body).toMatchObject({ tool_choice: 'auto', tools: [tool] });
+		expect(body).toMatchObject({ tool_choice: 'auto', tools });
 	});
 
-	it('rejects a widened same-name tool definition before opening the network', async () => {
+	it('rejects a malformed artifact tool definition before opening the network', async () => {
 		const fetchImpl = vi.fn() as unknown as typeof fetch;
 		const test = harness(fetchImpl);
-		const widened = {
+		const malformed = {
 			type: 'function' as const,
 			function: {
 				name: 'get_project_overview',
 				description: 'Read one project.',
-				parameters: { type: 'object', additionalProperties: true }
+				parameters: { additionalProperties: true }
 			}
 		};
 
@@ -386,7 +403,7 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			collect(
 				test.client.stream({
 					...input(),
-					tools: [widened],
+					tools: [malformed],
 					toolChoice: 'auto'
 				})
 			)

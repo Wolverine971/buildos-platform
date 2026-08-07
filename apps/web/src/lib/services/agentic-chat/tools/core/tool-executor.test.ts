@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChatToolExecutor } from './tool-executor';
-import { getToolCategory, isWriteToolName } from './tools.config';
+import { getToolCategory, getToolExecutionCategory, isWriteToolName } from './tools.config';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, ChatToolCall } from '@buildos/shared-types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
@@ -262,6 +262,13 @@ describe('ChatToolExecutor - Update Behavior', () => {
 			expect(getToolCategory('search_buildos')).toBe('ontology');
 			expect(getToolCategory('delegate_task')).toBe('utility');
 			expect(getToolCategory('commit_change_set')).toBe('utility');
+		});
+
+		it('uses shared semantic categories for durable execution telemetry', () => {
+			expect(getToolExecutionCategory('get_workspace_overview')).toBe('read');
+			expect(getToolExecutionCategory('get_project_overview')).toBe('read');
+			expect(getToolExecutionCategory('list_onto_tasks')).toBe('search');
+			expect(getToolExecutionCategory('update_onto_project')).toBe('ontology_action');
 		});
 
 		it('marks agent-run mutation tools as writes', () => {

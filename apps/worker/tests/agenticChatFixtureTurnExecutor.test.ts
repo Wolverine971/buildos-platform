@@ -47,6 +47,8 @@ const CALL_TRANSITION_ID = 'a0000000-0000-4000-8000-00000000000a';
 const RESULT_TRANSITION_ID = 'b0000000-0000-4000-8000-00000000000b';
 const SECOND_CALL_TRANSITION_ID = 'a1000000-0000-4000-8000-00000000001a';
 const SECOND_RESULT_TRANSITION_ID = 'b1000000-0000-4000-8000-00000000001b';
+const THIRD_CALL_TRANSITION_ID = 'a2000000-0000-4000-8000-00000000002a';
+const THIRD_RESULT_TRANSITION_ID = 'b2000000-0000-4000-8000-00000000002b';
 const LOGICAL_OPERATION_ID = 'c0000000-0000-4000-8000-00000000000c';
 const EFFECT_ID = 'd0000000-0000-5000-8000-00000000000d';
 const EXECUTION_GENERATION = 1;
@@ -1611,14 +1613,14 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		}
 	});
 
-	it('exposes the exact deterministic two-round read-only tool parity gaps', async () => {
+	it('exposes the exact deterministic three-round real-tool parity gaps', async () => {
 		const harness = createHarness([]);
 		const firstReadExecution = {
 			result: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.result,
 			executionTimeMs: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.durationMs,
 			tokensConsumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.tokensConsumed,
 			affectedEntities: [],
-			toolCategory: null,
+			toolCategory: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.toolCategory,
 			resultCount: null,
 			zeroResult: null,
 			requiresUserAction: null
@@ -1628,14 +1630,25 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			executionTimeMs: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.durationMs,
 			tokensConsumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.tokensConsumed,
 			affectedEntities: [],
-			toolCategory: null,
+			toolCategory: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.toolCategory,
+			resultCount: null,
+			zeroResult: null,
+			requiresUserAction: null
+		};
+		const thirdReadExecution = {
+			result: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.result,
+			executionTimeMs: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.durationMs,
+			tokensConsumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.tokensConsumed,
+			affectedEntities: [],
+			toolCategory: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.toolCategory,
 			resultCount: null,
 			zeroResult: null,
 			requiresUserAction: null
 		};
 		harness.readTool.execute
 			.mockResolvedValueOnce(firstReadExecution)
-			.mockResolvedValueOnce(secondReadExecution);
+			.mockResolvedValueOnce(secondReadExecution)
+			.mockResolvedValueOnce(thirdReadExecution);
 		const continueWithToolResults = vi.fn(
 			({
 				round,
@@ -1660,9 +1673,25 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 						} as const;
 					})();
 				}
-				expect(round).toBe(3);
+				if (round === 3) {
+					expect(results.map((result) => result.providerToolCallId)).toEqual([
+						AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.callId
+					]);
+					return (async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: THIRD_CALL_TRANSITION_ID,
+							resultTransitionId: THIRD_RESULT_TRANSITION_ID,
+							providerToolCallId:
+								AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.callId,
+							toolName: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.name,
+							arguments: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.arguments
+						} as const;
+					})();
+				}
+				expect(round).toBe(4);
 				expect(results.map((result) => result.providerToolCallId)).toEqual([
-					AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.callId
+					AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.callId
 				]);
 				return (async function* () {
 					yield {
@@ -1780,7 +1809,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}
 			});
-			expect(continueWithToolResults).toHaveBeenCalledTimes(2);
+			expect(continueWithToolResults).toHaveBeenCalledTimes(3);
 			expect(
 				harness.toolExecutions.persistRead.mock.calls.map(([input]) => [
 					input.sequenceIndex,
@@ -1788,11 +1817,12 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				])
 			).toEqual([
 				[1, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.name],
-				[2, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.name]
+				[2, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.name],
+				[3, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.name]
 			]);
 			expect(terminalInput.assistantMetadata).toMatchObject({
-				tool_round_count: 2,
-				tool_call_count: 2
+				tool_round_count: 3,
+				tool_call_count: 3
 			});
 			expect(
 				harness.broadcastMessages.map(
@@ -1803,6 +1833,8 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				'session',
 				'context_usage',
 				'agent_state',
+				'tool_call',
+				'tool_result',
 				'tool_call',
 				'tool_result',
 				'tool_call',

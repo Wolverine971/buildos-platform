@@ -487,6 +487,21 @@ export function getToolCategory(toolName: string): keyof typeof TOOL_CATEGORIES 
 	return null;
 }
 
+/**
+ * Durable execution category shared by the legacy web loop and worker for the
+ * extracted read surface. Writes and unextracted utilities retain their legacy
+ * buckets until their own parity slices; TOOL_CATEGORIES also continues to
+ * drive token estimates and progressive-disclosure grouping.
+ */
+export function getToolExecutionCategory(
+	toolName: string
+): keyof typeof TOOL_CATEGORIES | 'read' | 'search' | null {
+	const semanticCategory = TOOL_METADATA[toolName]?.category;
+	return semanticCategory === 'read' || semanticCategory === 'search'
+		? semanticCategory
+		: getToolCategory(toolName);
+}
+
 export function estimateToolTokens(toolName: string): number {
 	const category = getToolCategory(toolName);
 	if (!category) return 200;

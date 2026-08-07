@@ -108,13 +108,30 @@ function clientWith(events: AgenticChatReadOnlyProviderClientEventV1[]) {
 	};
 }
 
+function readToolDefinition(name: string, description = `Read with ${name}.`) {
+	return {
+		type: 'function' as const,
+		function: {
+			name,
+			description,
+			parameters: {
+				type: 'object',
+				properties: { marker: { type: 'string', description: name } }
+			}
+		}
+	};
+}
+
 async function collect(stream: AsyncIterable<AgenticChatProviderStepV1>) {
 	const result: AgenticChatProviderStepV1[] = [];
 	for await (const step of stream) result.push(step);
 	return result;
 }
 
-function executionInputWithReadSurface(): AgenticChatWorkerExecutionInputV1 {
+function executionInputWithReadSurface(
+	definitions = [readToolDefinition('get_project_overview')],
+	toolNames = definitions.map((definition) => definition.function.name)
+): AgenticChatWorkerExecutionInputV1 {
 	const input = executionInput();
 	return {
 		...input,
@@ -124,7 +141,8 @@ function executionInputWithReadSurface(): AgenticChatWorkerExecutionInputV1 {
 				...input.artifact.prepared,
 				toolSurface: {
 					surfaceProfile: 'project_default',
-					toolNames: ['get_project_overview']
+					toolNames,
+					definitions
 				}
 			}
 		}
@@ -411,6 +429,42 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			expect.objectContaining({ toolChoice: 'auto', tools: [expect.any(Object)] })
 		);
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('offers the artifact surface intersected with the shared read allowlist', async () => {
+		const workspace = readToolDefinition('get_workspace_overview', 'Workspace schema.');
+		const project = readToolDefinition('get_project_overview', 'Project schema.');
+		const tasks = readToolDefinition('list_onto_tasks', 'Task-list schema.');
+		const excludedWrite = readToolDefinition('update_onto_project', 'Write schema.');
+		const absentFromNames = readToolDefinition('get_field_info', 'Field schema.');
+		const duplicateProject = readToolDefinition('get_project_overview', 'Duplicate schema.');
+		const client = clientWith([
+			{ type: 'text', content: 'No lookup is needed.' },
+			{ type: 'done', finishedReason: 'stop' }
+		]);
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity });
+		const invocation = await adapter.prepare({
+			executionInput: executionInputWithReadSurface(
+				[workspace, excludedWrite, project, absentFromNames, duplicateProject, tasks],
+				[
+					'get_workspace_overview',
+					'update_onto_project',
+					'get_project_overview',
+					'list_onto_tasks'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		expect(client.stream).toHaveBeenCalledWith(
+			expect.objectContaining({
+				toolChoice: 'auto',
+				tools: [workspace, project, tasks]
+			})
+		);
 	});
 
 	it('rejects a second provider tool round and releases capacity', async () => {

@@ -4,8 +4,8 @@ import type { AgenticChatToolAccessPortV1 } from '@buildos/agentic-chat-runtime/
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
 import {
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
-	AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1,
-	AgenticChatReadOnlyToolAdapter
+	AgenticChatReadOnlyToolAdapter,
+	isAgenticChatProductionReadToolNameV1
 } from '../src/workers/agentic-chat/readOnlyTool';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
@@ -148,7 +148,7 @@ function requestFor(toolName: string, args: Record<string, unknown>) {
 }
 
 describe('AgenticChatReadOnlyToolAdapter', () => {
-	it('allowlists exactly the shared read tools while advertising the single reviewed schema', () => {
+	it('allowlists exactly the shared read tools for provider and executor composition', () => {
 		expect([...AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1].sort()).toEqual(
 			[...SHARED_ALLOWLIST].sort()
 		);
@@ -157,17 +157,8 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).not.toContain(
 			'get_user_profile_overview'
 		);
-		// The provider-advertised schema surface stays the single reviewed tool
-		// until the catalog swap slice expands it.
-		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1).toMatchObject([
-			{
-				type: 'function',
-				function: {
-					name: 'get_project_overview',
-					parameters: { type: 'object', additionalProperties: false }
-				}
-			}
-		]);
+		expect(isAgenticChatProductionReadToolNameV1('get_project_overview')).toBe(true);
+		expect(isAgenticChatProductionReadToolNameV1('update_onto_project')).toBe(false);
 	});
 
 	it('routes get_project_overview through the shared implementation and returns the legacy payload', async () => {

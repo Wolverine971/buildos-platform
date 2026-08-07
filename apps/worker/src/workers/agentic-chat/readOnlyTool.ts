@@ -88,44 +88,17 @@ export const AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 = Object.freeze(
 );
 
 /**
- * The provider-advertised tool schema surface. This is intentionally copied
- * into the worker rather than consuming the admission artifact's broader tool
- * surface: a deployment can expose only the reviewed schemas below even when
- * the immutable prompt was prepared with many legacy tools. The executor above
- * can dispatch the full shared allowlist, but the provider surface stays this
- * single reviewed schema until the catalog swap slice expands it.
+ * Keep the provider and executor on the same reviewed name catalog. The actual
+ * schemas remain the immutable admission artifact's definitions so the worker
+ * preserves the exact context-specific surface selected by the web host.
  */
-export const AGENTIC_CHAT_PRODUCTION_READ_TOOLS_V1 = Object.freeze([
-	Object.freeze({
-		type: 'function' as const,
-		function: Object.freeze({
-			name: PROJECT_OVERVIEW_TOOL_NAME,
-			description:
-				'Get a read-only BuildOS status summary for one accessible project. Pass exactly one of project_id or query.',
-			parameters: Object.freeze({
-				type: 'object',
-				additionalProperties: false,
-				properties: Object.freeze({
-					project_id: Object.freeze({
-						type: 'string',
-						format: 'uuid',
-						description: 'Exact project UUID when known.'
-					}),
-					query: Object.freeze({
-						type: 'string',
-						minLength: 1,
-						maxLength: 200,
-						description: 'Project name query when the UUID is not known.'
-					})
-				}),
-				oneOf: Object.freeze([
-					Object.freeze({ required: Object.freeze(['project_id']) }),
-					Object.freeze({ required: Object.freeze(['query']) })
-				])
-			})
-		})
-	})
-]);
+const AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAME_SET_V1 = new Set(
+	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1
+);
+
+export function isAgenticChatProductionReadToolNameV1(value: unknown): value is string {
+	return typeof value === 'string' && AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAME_SET_V1.has(value);
+}
 
 /**
  * Shared-allowlist production read adapter. Dispatches every allowlisted read

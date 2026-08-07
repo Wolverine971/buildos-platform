@@ -22,7 +22,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
-import { getToolCategory } from './tools.config';
+import { getToolExecutionCategory } from './tools.config';
 import { searchTelemetryColumns } from './search-telemetry';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
@@ -671,7 +671,7 @@ export class ChatToolExecutor {
 		}
 
 		const toolName = toolCall.function.name;
-		const category = getToolCategory(toolName);
+		const category = getToolExecutionCategory(toolName);
 		const argumentsPayload = parsedArgs ?? this.safeParseArguments(toolCall.function.arguments);
 		const sanitizedArgs = sanitizeLogData(argumentsPayload);
 

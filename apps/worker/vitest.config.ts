@@ -35,6 +35,57 @@ const workspacePackageAliases = [
 		)
 	},
 	{
+		find: /^@buildos\/shared-agent-ops\/ontology\/ontology-projects.service$/,
+		replacement: fileURLToPath(
+			new URL(
+				'../../packages/shared-agent-ops/src/ontology/ontology-projects.service.ts',
+				import.meta.url
+			)
+		)
+	},
+	{
+		find: /^@buildos\/shared-agent-ops\/ops\/gateway-op-aliases$/,
+		replacement: fileURLToPath(
+			new URL(
+				'../../packages/shared-agent-ops/src/ops/gateway-op-aliases.ts',
+				import.meta.url
+			)
+		)
+	},
+	{
+		find: /^@buildos\/shared-agent-ops\/ops\/update-value-validation$/,
+		replacement: fileURLToPath(
+			new URL(
+				'../../packages/shared-agent-ops/src/ops/update-value-validation.ts',
+				import.meta.url
+			)
+		)
+	},
+	{
+		find: /^@buildos\/shared-agent-ops\/utils\/document-outline$/,
+		replacement: fileURLToPath(
+			new URL(
+				'../../packages/shared-agent-ops/src/utils/document-outline.ts',
+				import.meta.url
+			)
+		)
+	},
+	{
+		find: /^@buildos\/shared-agent-ops\/utils\/search-filter$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/shared-agent-ops/src/utils/search-filter.ts', import.meta.url)
+		)
+	},
+	{
+		find: /^@buildos\/shared-agent-ops\/utils\/validation-utils$/,
+		replacement: fileURLToPath(
+			new URL(
+				'../../packages/shared-agent-ops/src/utils/validation-utils.ts',
+				import.meta.url
+			)
+		)
+	},
+	{
 		find: /^@buildos\/shared-agent-ops\/web\/safe-fetch$/,
 		replacement: fileURLToPath(
 			new URL('../../packages/shared-agent-ops/src/web/safe-fetch.ts', import.meta.url)
