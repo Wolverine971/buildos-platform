@@ -3,7 +3,7 @@
 # Phase 4 P1 Implementation Handoff — Read-Loop Parity (start at S1)
 
 **Prepared:** 2026-08-07, at the close of the P0 session (commits `6898acbd6` P0, `4ae990c63` P1 plan).
-**Status:** **S1 COMPLETE (2026-08-08, commit `32b2b2dfb`** — all S1 exit gates green; evidence: `AGENTIC_CHAT_WORKER_PHASE_4_SLICE_18_S1_EVIDENCE_2026-08-08.md`; a NEW durable-truth finding — the finalize RPC caps `tool_round_count` at 1 — is registered in the Slice 18 plan §Known live divergences, owned by S5). **Next: S2.** All remaining P1 work is local code — no deploys, no routing flips, no spend needed until S3's live gate and S5's E2E battery.
+**Status (2026-08-08):** **S1 COMPLETE** (`32b2b2dfb`; evidence `AGENTIC_CHAT_WORKER_PHASE_4_SLICE_18_S1_EVIDENCE_2026-08-08.md`). **S2 COMPLETE** (`e114416a4` closing commit; pre-push 35/35). **S3 IN PROGRESS** — extraction map + T1/T3/T4/T5 + worker composition landed; current working ledger is `AGENTIC_CHAT_WORKER_PHASE_4_S3_EXTRACTION_MAP_2026-08-08.md` and the Slice 18 plan's Status line. This handoff's S1 section is historical; start from the S3 map for what remains (provider catalog swap, ≥3-tool golden, T6-T11, then S4/S5). No deploys, no routing flips, no spend needed until S3's live gate and S5's E2E battery.
 **Authority chain:** master plan `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 4 → `tasker/51-worker-behavioral-parity-phase4.md` P1 → ratified architecture `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_SLICE_18_READ_LOOP_PARITY_PLAN_2026-08-07.md` (the plan; this doc is the how).
 
 ## Read these first, in order
