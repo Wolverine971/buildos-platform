@@ -269,12 +269,8 @@ export function looksLikeImpliedProjectDocumentCommission(text: string): boolean
  * A doc-noun plus an organization verb anywhere in the message mounts the document surface; a
  * false positive costs surface tokens, never a write — restraint is owned by the model and gates.
  */
-export function looksLikeProjectDocumentOrganizeTurn(text: string): boolean {
-	if (!/\b(?:documents?|docs?|notes?|files?)\b/i.test(text)) return false;
-	return /\b(?:re)?organiz\w*\b|\brestructur\w*\b|\btid(?:y|ie)\w*\b|\bclean\s+(?:it\s+|this\s+|things\s+)?up\b|\bsort\s+(?:out|these|them|it|the)\b|\bgroup\s+(?:these|them|the|related)\b/i.test(
-		text
-	);
-}
+import { looksLikeProjectDocumentOrganizeTurn } from '@buildos/agentic-chat-runtime/loop';
+export { looksLikeProjectDocumentOrganizeTurn };
 
 function looksLikeProjectMutationTurn(text: string): boolean {
 	return /\b(?:finished|complete|completed|done|progress|update|updated|add|create|capture|save|todo|task|revise|draft|wrote|mark|marked|move|blocked|in progress)\b/i.test(

@@ -1,4 +1,4 @@
-// apps/web/src/lib/services/agentic-chat-v2/turn-intent.test.ts
+// packages/agentic-chat-runtime/src/loop/turn-intent.test.ts
 import { describe, expect, it } from 'vitest';
 import {
 	buildFastChatPendingTurnIntent,

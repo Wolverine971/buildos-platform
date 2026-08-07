@@ -22,25 +22,38 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 	return parsed;
 }
 
-export const FASTCHAT_LIMITS = {
-	MAX_TOOL_CALLS: parsePositiveInt(
-		process.env.FASTCHAT_MAX_TOOL_CALLS,
-		DEFAULT_FASTCHAT_MAX_TOOL_CALLS
-	),
-	MAX_TOOL_ROUNDS: parsePositiveInt(
-		process.env.FASTCHAT_MAX_TOOL_ROUNDS,
-		DEFAULT_FASTCHAT_MAX_TOOL_ROUNDS
-	),
-	SYNTHESIS_MAX_TOKENS: parsePositiveInt(
-		process.env.FASTCHAT_SYNTHESIS_MAX_TOKENS,
-		DEFAULT_FASTCHAT_SYNTHESIS_MAX_TOKENS
-	),
-	FORCED_SYNTHESIS_MAX_TOKENS: parsePositiveInt(
-		process.env.FASTCHAT_FORCED_SYNTHESIS_MAX_TOKENS,
-		DEFAULT_FASTCHAT_FORCED_SYNTHESIS_MAX_TOKENS
-	),
-	MAX_LENGTH_CONTINUATIONS: parsePositiveInt(
-		process.env.FASTCHAT_MAX_LENGTH_CONTINUATIONS,
-		DEFAULT_FASTCHAT_MAX_LENGTH_CONTINUATIONS
-	)
-} as const;
+export type FastChatLimits = {
+	MAX_TOOL_CALLS: number;
+	MAX_TOOL_ROUNDS: number;
+	SYNTHESIS_MAX_TOKENS: number;
+	FORCED_SYNTHESIS_MAX_TOKENS: number;
+	MAX_LENGTH_CONTINUATIONS: number;
+};
+
+/** Injectable loader (Slice 18 S2): never read module-scope env in new call sites. */
+export function loadFastChatLimits(environment: NodeJS.ProcessEnv = process.env): FastChatLimits {
+	return {
+		MAX_TOOL_CALLS: parsePositiveInt(
+			environment.FASTCHAT_MAX_TOOL_CALLS,
+			DEFAULT_FASTCHAT_MAX_TOOL_CALLS
+		),
+		MAX_TOOL_ROUNDS: parsePositiveInt(
+			environment.FASTCHAT_MAX_TOOL_ROUNDS,
+			DEFAULT_FASTCHAT_MAX_TOOL_ROUNDS
+		),
+		SYNTHESIS_MAX_TOKENS: parsePositiveInt(
+			environment.FASTCHAT_SYNTHESIS_MAX_TOKENS,
+			DEFAULT_FASTCHAT_SYNTHESIS_MAX_TOKENS
+		),
+		FORCED_SYNTHESIS_MAX_TOKENS: parsePositiveInt(
+			environment.FASTCHAT_FORCED_SYNTHESIS_MAX_TOKENS,
+			DEFAULT_FASTCHAT_FORCED_SYNTHESIS_MAX_TOKENS
+		),
+		MAX_LENGTH_CONTINUATIONS: parsePositiveInt(
+			environment.FASTCHAT_MAX_LENGTH_CONTINUATIONS,
+			DEFAULT_FASTCHAT_MAX_LENGTH_CONTINUATIONS
+		)
+	};
+}
+
+export const FASTCHAT_LIMITS: FastChatLimits = loadFastChatLimits();

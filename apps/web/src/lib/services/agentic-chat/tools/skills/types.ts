@@ -6,7 +6,8 @@ export interface SkillExample {
 	next_steps: string[];
 }
 
-export type SkillLoadFormat = 'short' | 'full';
+export type { SkillLoadFormat } from '@buildos/agentic-chat-runtime/loop';
+import type { SkillLoadFormat } from '@buildos/agentic-chat-runtime/loop';
 
 export type SkillResourceVisibility = 'public' | 'internal';
 

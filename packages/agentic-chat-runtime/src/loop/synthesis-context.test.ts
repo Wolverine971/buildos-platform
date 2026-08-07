@@ -1,4 +1,4 @@
-// apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/synthesis-context.test.ts
+// packages/agentic-chat-runtime/src/loop/synthesis-context.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall } from '@buildos/shared-types';
 import {

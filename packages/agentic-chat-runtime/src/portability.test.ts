@@ -6,11 +6,13 @@ import { describe, expect, it } from 'vitest';
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const forbiddenProductionImports = [
 	'$app/',
+	'$env/',
 	'$lib/',
 	'@sveltejs/kit',
 	'vercel',
 	'railway',
-	'supabase/admin'
+	'supabase/admin',
+	'process.env'
 ];
 
 describe('runtime package portability', () => {

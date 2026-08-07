@@ -22,13 +22,22 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 	return parsed;
 }
 
-export const FASTCHAT_TOKEN_BUDGETS = {
-	UI: parsePositiveInt(process.env.FASTCHAT_UI_TOKEN_BUDGET, DEFAULT_FASTCHAT_TOKEN_BUDGET),
-	ORCHESTRATION: parsePositiveInt(
-		process.env.FASTCHAT_ORCHESTRATION_TOKEN_BUDGET,
-		DEFAULT_ORCHESTRATION_TOKEN_BUDGET
-	)
-} as const;
+export type FastChatTokenBudgets = { UI: number; ORCHESTRATION: number };
+
+/** Injectable loader (Slice 18 S2): never read module-scope env in new call sites. */
+export function loadFastChatTokenBudgets(
+	environment: NodeJS.ProcessEnv = process.env
+): FastChatTokenBudgets {
+	return {
+		UI: parsePositiveInt(environment.FASTCHAT_UI_TOKEN_BUDGET, DEFAULT_FASTCHAT_TOKEN_BUDGET),
+		ORCHESTRATION: parsePositiveInt(
+			environment.FASTCHAT_ORCHESTRATION_TOKEN_BUDGET,
+			DEFAULT_ORCHESTRATION_TOKEN_BUDGET
+		)
+	};
+}
+
+export const FASTCHAT_TOKEN_BUDGETS: FastChatTokenBudgets = loadFastChatTokenBudgets();
 
 export function estimateTokensFromText(text: string): number {
 	if (!text) return 0;
