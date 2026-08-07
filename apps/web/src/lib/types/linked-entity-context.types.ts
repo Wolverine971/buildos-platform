@@ -101,6 +101,9 @@ export interface EntityLinkedContext {
  * Options for loading linked entity context.
  */
 export interface LoadLinkedEntitiesOptions {
+	/** Authorized project fence for every edge and entity query. */
+	projectId?: string;
+
 	/** Maximum entities to load per type (default: 3 for abbreviated, 50 for full) */
 	maxPerType?: number;
 

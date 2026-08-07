@@ -50,6 +50,11 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
+import {
+	AgenticChatToolAccessDeniedError,
+	loadOntoRiskDetail
+} from '@buildos/agentic-chat-runtime/tools';
+import { createWebAgenticChatSharedReadContext } from '$lib/services/agentic-chat/tools/core/executors/web-access-adapter';
 
 const VALID_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
 type Impact = (typeof VALID_IMPACTS)[number];
@@ -86,59 +91,23 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get risk with project to verify ownership (exclude soft-deleted)
-		const { data: risk, error } = await supabase
-			.from('onto_risks')
-			.select(
-				`
-				*,
-				project:onto_projects!inner(
-					id,
-					name
-				)
-			`
-			)
-			.eq('id', params.id)
-			.is('deleted_at', null)
-			.single();
+		const details = await loadOntoRiskDetail(
+			createWebAgenticChatSharedReadContext({
+				supabase: supabase as never,
+				getActorId: async () => actorId
+			}),
+			params.id
+		);
 
-		if (error || !risk) {
+		if (!details) {
 			return ApiResponse.notFound('Risk');
 		}
 
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_member_access',
-			{
-				p_project_id: risk.project.id,
-				p_required_access: 'read'
-			}
-		);
-
-		if (accessError) {
-			console.error('[Risk GET] Failed to check access:', accessError);
-			await logOntologyApiError({
-				supabase,
-				error: accessError,
-				endpoint: `/api/onto/risks/${params.id}`,
-				method: 'GET',
-				userId: session.user.id,
-				projectId: risk.project_id,
-				entityType: 'risk',
-				entityId: params.id,
-				operation: 'risk_access_check'
-			});
-			return ApiResponse.error('Failed to check project access', 500);
-		}
-
-		if (!hasAccess) {
+		return ApiResponse.success(details);
+	} catch (error) {
+		if (error instanceof AgenticChatToolAccessDeniedError) {
 			return ApiResponse.forbidden('You do not have access to this risk');
 		}
-
-		// Extract project data and include project name in response
-		const { project, ...riskData } = risk;
-
-		return ApiResponse.success({ risk: { ...riskData, project: { name: project.name } } });
-	} catch (error) {
 		console.error('[Risk GET] Unexpected error:', error);
 		await logOntologyApiError({
 			supabase: locals.supabase,

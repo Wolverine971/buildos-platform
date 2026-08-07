@@ -2400,7 +2400,7 @@ FROM onto_braindumps
 WHERE created_at: :date BETWEEN start_date AND end_date
 UNION ALL
 SELECT user_id, created_at: :date AS activity_date
-FROM agent_chat_sessions
+FROM chat_sessions
 WHERE created_at: :date BETWEEN start_date AND end_date
 )
 SELECT
@@ -4004,7 +4004,7 @@ FROM onto_braindumps
 WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
 UNION ALL
 SELECT user_id, created_at
-FROM agent_chat_sessions
+FROM chat_sessions
 WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
 ),
 top_users AS (
@@ -5797,23 +5797,6 @@ AS '$libdir/vector', $function$hnsw_sparsevec_support$function$
 RETURNS index_am_handler
 LANGUAGE c
 AS '$libdir/vector', $function$hnswhandler$function$
-"
-},
-{
-"args": "",
-"name": "increment_agent_session_message_count",
-"schema": "public",
-"definition": "CREATE OR REPLACE FUNCTION public.increment_agent_session_message_count()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $function$
-BEGIN
-UPDATE agent_chat_sessions
-SET message_count = message_count + 1
-WHERE id = NEW.agent_session_id;
-RETURN NEW;
-END;
-$function$
 "
 },
 {
@@ -8559,21 +8542,6 @@ RETURNS internal
 LANGUAGE c
 PARALLEL SAFE
 AS '$libdir/unaccent', $function$unaccent_lexize$function$
-"
-},
-{
-"args": "",
-"name": "update_agent_plans_updated_at",
-"schema": "public",
-"definition": "CREATE OR REPLACE FUNCTION public.update_agent_plans_updated_at()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $function$
-BEGIN
-NEW.updated_at = NOW();
-RETURN NEW;
-END;
-$function$
 "
 },
 {

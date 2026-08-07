@@ -1666,7 +1666,7 @@ export class RetargetingPilotService {
 				created_at: string;
 			}>(() =>
 				(this.supabase as any)
-					.from('agent_chat_sessions')
+					.from('chat_sessions')
 					.select('id, title, summary, created_at')
 					.eq('user_id', userId)
 					.order('created_at', { ascending: false })

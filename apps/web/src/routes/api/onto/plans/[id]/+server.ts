@@ -56,6 +56,11 @@ import type { EntityKind } from '$lib/services/ontology/edge-direction';
 import { logOntologyApiError } from '../../shared/error-logging';
 import { normalizeTypeKeyInput } from '../../shared/input-normalization';
 import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
+import {
+	AgenticChatToolAccessDeniedError,
+	loadOntoPlanDetail
+} from '@buildos/agentic-chat-runtime/tools';
+import { createWebAgenticChatSharedReadContext } from '$lib/services/agentic-chat/tools/core/executors/web-access-adapter';
 
 type PlanRow = Database['public']['Tables']['onto_plans']['Row'];
 
@@ -89,58 +94,23 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get plan with project to verify ownership (exclude soft-deleted)
-		const { data: plan, error } = await supabase
-			.from('onto_plans')
-			.select(
-				`
-				*,
-				project:onto_projects!inner(
-					id
-				)
-			`
-			)
-			.eq('id', params.id)
-			.is('deleted_at', null)
-			.single();
+		const details = await loadOntoPlanDetail(
+			createWebAgenticChatSharedReadContext({
+				supabase: supabase as never,
+				getActorId: async () => actorId
+			}),
+			params.id
+		);
 
-		if (error || !plan) {
+		if (!details) {
 			return ApiResponse.error('Plan not found', 404);
 		}
 
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_member_access',
-			{
-				p_project_id: plan.project.id,
-				p_required_access: 'read'
-			}
-		);
-
-		if (accessError) {
-			console.error('[Plan GET] Failed to check access:', accessError);
-			await logOntologyApiError({
-				supabase,
-				error: accessError,
-				endpoint: `/api/onto/plans/${params.id}`,
-				method: 'GET',
-				userId: session.user.id,
-				projectId: plan.project_id,
-				entityType: 'plan',
-				entityId: params.id,
-				operation: 'plan_access_check'
-			});
-			return ApiResponse.error('Failed to check project access', 500);
-		}
-
-		if (!hasAccess) {
+		return ApiResponse.success(details);
+	} catch (error) {
+		if (error instanceof AgenticChatToolAccessDeniedError) {
 			return ApiResponse.error('Access denied', 403);
 		}
-
-		// Remove nested project data from response
-		const { project: _project, ...planData } = plan;
-
-		return ApiResponse.success({ plan: planData });
-	} catch (error) {
 		console.error('Error fetching plan:', error);
 		await logOntologyApiError({
 			supabase: locals.supabase,

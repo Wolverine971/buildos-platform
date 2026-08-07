@@ -109,8 +109,8 @@ If you see `user_migration_stats` or `global_migration_progress` in a query, you
 - `calendar_analyses` — events_analyzed, projects_suggested, projects_created, confidence_average — watch `projects_suggested` vs `projects_created` ratio as a decision-friction metric
 - `calendar_project_suggestions` — per-suggestion acceptance
 - `calendar_webhook_channels`, `user_calendar_tokens`, `user_calendar_preferences` — calendar connection state
-- `agent_chat_sessions` — chat_session_type, status, user_id, created_at — agentic chat usage
-- `chat_sessions`, `chat_messages`, `agent_chat_messages` — message-level chat telemetry
+- `chat_sessions` — context_type, status, user_id, created_at — agentic chat usage
+- `chat_sessions`, `chat_messages` — message-level chat telemetry
 - `chat_tool_executions` — which tools the agent actually called (leading indicator of whether memory is being used)
 - `voice_notes`, `voice_note_groups` — voice input path
 

@@ -19,6 +19,10 @@ function createSupabaseQuery(result: Record<string, unknown>) {
 	query.order = vi.fn(() => query);
 	query.limit = vi.fn(() => Promise.resolve(result));
 	query.maybeSingle = vi.fn(() => Promise.resolve(result));
+	query.then = (
+		onFulfilled: (value: Record<string, unknown>) => unknown,
+		onRejected: (reason: unknown) => unknown
+	) => Promise.resolve(result).then(onFulfilled, onRejected);
 	return query;
 }
 
@@ -99,6 +103,143 @@ describe('OntologyReadExecutor payload hygiene', () => {
 		expect(result.document.props.search_vector).toBeUndefined();
 		expect(result.document.props.body_markdown).toBe('# Notes');
 		expect(result.source).toBe('agent_document_detail_projection');
+	});
+
+	it('loads goal details directly through the shared two-step access fence', async () => {
+		const goalQuery = createSupabaseQuery({
+			data: {
+				id: 'goal-1',
+				project_id: 'project-1',
+				name: 'Launch',
+				search_vector: "'launch':1",
+				project: { id: 'project-1', name: 'BuildOS', created_by: 'actor-1' }
+			},
+			error: null
+		});
+		(mockSupabase as any).rpc = vi.fn((fn: string) => {
+			if (fn === 'ensure_actor_for_user') {
+				return Promise.resolve({ data: 'actor-1', error: null });
+			}
+			if (fn === 'current_actor_has_project_member_access') {
+				return Promise.resolve({ data: true, error: null });
+			}
+			return Promise.resolve({ data: null, error: null });
+		});
+		(mockSupabase as any).from = vi.fn(() => goalQuery);
+
+		const executor = new OntologyReadExecutor(context);
+		const result = await executor.getOntoGoalDetails({ goal_id: 'goal-1' });
+
+		expect(fetchFn).not.toHaveBeenCalled();
+		expect(goalQuery.select.mock.calls.map(([selection]) => String(selection))).toEqual([
+			'id, project_id',
+			'*, project:onto_projects!inner(id, name, created_by)'
+		]);
+		expect(goalQuery.eq).toHaveBeenCalledWith('project_id', 'project-1');
+		expect(result).toEqual({
+			goal: { id: 'goal-1', project_id: 'project-1', name: 'Launch' },
+			message: 'Complete ontology goal details loaded.'
+		});
+	});
+
+	it('loads task details directly with linked and assignee reads', async () => {
+		const taskQuery = createSupabaseQuery({
+			data: {
+				id: 'task-1',
+				project_id: 'project-1',
+				title: 'Ship T7',
+				project: { id: 'project-1', created_by: 'actor-1' }
+			},
+			error: null
+		});
+		const edgeQuery = createSupabaseQuery({ data: [], error: null });
+		const assigneeQuery = createSupabaseQuery({
+			data: [
+				{
+					task_id: 'task-1',
+					created_at: '2026-08-08T12:00:00.000Z',
+					assignee: {
+						id: 'actor-1',
+						user_id: 'user-1',
+						name: 'Avery',
+						email: 'avery@example.com'
+					}
+				}
+			],
+			error: null
+		});
+		(mockSupabase as any).rpc = vi.fn((fn: string) => {
+			if (fn === 'ensure_actor_for_user') {
+				return Promise.resolve({ data: 'actor-1', error: null });
+			}
+			if (fn === 'current_actor_has_project_member_access') {
+				return Promise.resolve({ data: true, error: null });
+			}
+			return Promise.resolve({ data: null, error: null });
+		});
+		(mockSupabase as any).from = vi.fn((table: string) => {
+			if (table === 'onto_tasks') return taskQuery;
+			if (table === 'onto_edges') return edgeQuery;
+			if (table === 'onto_task_assignees') return assigneeQuery;
+			throw new Error(`Unexpected table: ${table}`);
+		});
+
+		const executor = new OntologyReadExecutor(context);
+		const result = await executor.getOntoTaskDetails({ task_id: 'task-1' });
+
+		expect(fetchFn).not.toHaveBeenCalled();
+		expect(taskQuery.select).toHaveBeenCalledTimes(2);
+		expect(edgeQuery.eq).toHaveBeenCalledWith('project_id', 'project-1');
+		expect(assigneeQuery.eq).toHaveBeenCalledWith('project_id', 'project-1');
+		expect(result).toMatchObject({
+			task: {
+				id: 'task-1',
+				assignees: [{ actor_id: 'actor-1', name: 'Avery' }]
+			},
+			linkedEntities: {
+				plans: [],
+				goals: [],
+				milestones: [],
+				documents: [],
+				dependentTasks: []
+			},
+			message: 'Complete ontology task details loaded.'
+		});
+	});
+
+	it('lists task documents directly without the route gateway', async () => {
+		const taskQuery = createSupabaseQuery({
+			data: { id: '10000000-0000-4000-8000-000000000001', project_id: 'project-1' },
+			error: null
+		});
+		const edgeQuery = createSupabaseQuery({ data: [], error: null });
+		(mockSupabase as any).rpc = vi.fn((fn: string) => {
+			if (fn === 'ensure_actor_for_user') {
+				return Promise.resolve({ data: 'actor-1', error: null });
+			}
+			if (fn === 'current_actor_has_project_member_access') {
+				return Promise.resolve({ data: true, error: null });
+			}
+			return Promise.resolve({ data: null, error: null });
+		});
+		(mockSupabase as any).from = vi.fn((table: string) => {
+			if (table === 'onto_tasks') return taskQuery;
+			if (table === 'onto_edges') return edgeQuery;
+			throw new Error(`Unexpected table: ${table}`);
+		});
+
+		const executor = new OntologyReadExecutor(context);
+		const result = await executor.listTaskDocuments({
+			task_id: '10000000-0000-4000-8000-000000000001'
+		});
+
+		expect(fetchFn).not.toHaveBeenCalled();
+		expect(edgeQuery.eq).toHaveBeenCalledWith('project_id', 'project-1');
+		expect(result).toEqual({
+			documents: [],
+			scratch_pad: null,
+			message: 'Found 0 documents linked to this task.'
+		});
 	});
 
 	it('uses metadata-only projections for document list and search rows', async () => {

@@ -9,10 +9,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type {
+	AgenticChatSharedReadContextV1,
 	AgenticChatToolAccessLevelV1,
 	AgenticChatToolAccessPortV1,
 	AgenticChatToolProjectSummaryV1
 } from '@buildos/agentic-chat-runtime/tools';
+import { AgenticChatToolAccessDeniedError } from '@buildos/agentic-chat-runtime/tools';
 import { fetchProjectSummaries } from '$lib/services/ontology/ontology-projects.service';
 
 const ENTITY_TABLES = [
@@ -43,7 +45,7 @@ export function createWebAgenticChatToolAccessAdapter(input: {
 
 		if (error) throw error;
 		if (!data) {
-			throw new Error('Project not found or access denied');
+			throw new AgenticChatToolAccessDeniedError();
 		}
 	}
 
@@ -94,7 +96,18 @@ export function createWebAgenticChatToolAccessAdapter(input: {
 				}
 			}
 
-			throw new Error('Entity not found or access denied');
+			throw new AgenticChatToolAccessDeniedError('Entity not found or access denied');
 		}
+	};
+}
+
+/** Shared context factory used by executors and route-level compatibility handlers. */
+export function createWebAgenticChatSharedReadContext(input: {
+	supabase: SupabaseClient<Database>;
+	getActorId: () => Promise<string>;
+}): AgenticChatSharedReadContextV1 {
+	return {
+		client: input.supabase as AgenticChatSharedReadContextV1['client'],
+		access: createWebAgenticChatToolAccessAdapter(input)
 	};
 }

@@ -37,7 +37,6 @@ import type { RequestHandler } from './$types';
 import type { Database, Json } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
-import { resolveLinkedEntities } from '../task-linked-helpers';
 import { TASK_STATES } from '$lib/types/onto';
 import {
 	logUpdateAsync,
@@ -85,6 +84,12 @@ import {
 	shouldSuppressProjectLoopBurstForTaskUpdate,
 	shouldSkipProjectLoopBurst
 } from '$lib/server/project-loop-burst.service';
+import {
+	AgenticChatDetailReadQueryError,
+	AgenticChatToolAccessDeniedError,
+	loadOntoTaskDetail
+} from '@buildos/agentic-chat-runtime/tools';
+import { createWebAgenticChatSharedReadContext } from '$lib/services/agentic-chat/tools/core/executors/web-access-adapter';
 
 const ALLOWED_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
 type TaskRow = Database['public']['Tables']['onto_tasks']['Row'];
@@ -101,28 +106,9 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 	let projectId: string | undefined;
 
 	try {
-		// Parallelize initial queries: actor resolution and task fetch
-		const [actorResult, taskResult] = await Promise.all([
-			supabase.rpc('ensure_actor_for_user', { p_user_id: session.user.id }),
-			supabase
-				.from('onto_tasks')
-				.select(
-					`
-					*,
-					project:onto_projects!inner(
-						id,
-						created_by
-					)
-				`
-				)
-				.eq('id', params.id)
-				.is('deleted_at', null) // Exclude soft-deleted tasks
-				.maybeSingle()
-		]);
-
-		const { data: actorId, error: actorError } = actorResult;
-		const { data: task, error } = taskResult;
-		projectId = task?.project?.id;
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
 
 		if (actorError || !actorId) {
 			console.error('[Task GET] Failed to resolve actor:', actorError);
@@ -143,69 +129,43 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 			);
 		}
 
-		if (error) {
-			console.error('[Task GET] Failed to fetch task:', error);
+		const details = await loadOntoTaskDetail(
+			createWebAgenticChatSharedReadContext({
+				supabase: supabase as never,
+				getActorId: async () => actorId
+			}),
+			params.id,
+			{
+				onAssigneeError: (error) =>
+					console.warn('[Task GET] Failed to enrich assignees in response:', error)
+			}
+		);
+
+		if (!details) {
+			return ApiResponse.notFound('Task');
+		}
+
+		return ApiResponse.success(details);
+	} catch (error) {
+		if (error instanceof AgenticChatToolAccessDeniedError) {
+			return ApiResponse.forbidden('Access denied');
+		}
+		if (error instanceof AgenticChatDetailReadQueryError && error.table === 'onto_tasks') {
+			console.error('[Task GET] Failed to fetch task:', error.cause);
 			await logOntologyApiError({
 				supabase,
-				error,
+				error: error.cause,
 				endpoint: `/api/onto/tasks/${params.id}`,
 				method: 'GET',
 				userId: session.user.id,
-				projectId,
+				projectId: error.projectId ?? projectId,
 				entityType: 'task',
 				entityId: params.id,
 				operation: 'task_fetch',
 				tableName: 'onto_tasks'
 			});
-			return ApiResponse.databaseError(error);
+			return ApiResponse.databaseError(error.cause as never);
 		}
-
-		if (!task) {
-			return ApiResponse.notFound('Task');
-		}
-
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_member_access',
-			{
-				p_project_id: task.project.id,
-				p_required_access: 'read'
-			}
-		);
-
-		if (accessError) {
-			console.error('[Task GET] Failed to check access:', accessError);
-			await logOntologyApiError({
-				supabase,
-				error: accessError,
-				endpoint: `/api/onto/tasks/${params.id}`,
-				method: 'GET',
-				userId: session.user.id,
-				projectId,
-				entityType: 'task',
-				entityId: params.id,
-				operation: 'task_access_check'
-			});
-			return ApiResponse.error('Failed to check project access', 500);
-		}
-
-		if (!hasAccess) {
-			return ApiResponse.forbidden('Access denied');
-		}
-
-		const linkedEntities = await resolveLinkedEntities(supabase, params.id);
-
-		// Remove nested project data from response
-		const { project: _project, ...taskData } = task;
-		let taskWithAssignees = { ...taskData, assignees: [] as unknown[] };
-		try {
-			const assigneeMap = await fetchTaskAssigneesMap({ supabase, taskIds: [params.id] });
-			taskWithAssignees = attachAssigneesToTask(taskData, assigneeMap);
-		} catch (assigneeError) {
-			console.warn('[Task GET] Failed to enrich assignees in response:', assigneeError);
-		}
-
-		return ApiResponse.success({ task: taskWithAssignees, linkedEntities });
-	} catch (error) {
 		console.error('Error fetching task:', error);
 		await logOntologyApiError({
 			supabase: locals.supabase,

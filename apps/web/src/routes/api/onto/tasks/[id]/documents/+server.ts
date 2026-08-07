@@ -10,7 +10,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { DOCUMENT_STATES, type DocumentState } from '$lib/types/onto';
-import type { Json, Database } from '@buildos/shared-types';
+import type { Json } from '@buildos/shared-types';
 import { ensureTaskAccess, TASK_DOCUMENT_REL } from '../../task-document-helpers';
 import { normalizeDocumentStateInput } from '../../../shared/document-state';
 import { normalizeMarkdownInput } from '../../../shared/markdown-normalization';
@@ -19,13 +19,10 @@ import {
 	createOrMergeDocumentVersion,
 	toDocumentSnapshot
 } from '$lib/services/ontology/versioning.service';
-
-type OntoEdge = Database['public']['Tables']['onto_edges']['Row'];
-
-// Type guard for edge props with role
-function hasRole(props: Json): props is { role: string; [key: string]: Json | undefined } {
-	return typeof props === 'object' && props !== null && !Array.isArray(props) && 'role' in props;
-}
+import {
+	AgenticChatTaskDocumentsQueryError,
+	loadTaskDocumentLinks
+} from '@buildos/agentic-chat-runtime/tools';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -45,85 +42,33 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return access.error;
 		}
 
-		const supabase = locals.supabase;
-
-		const { data: edges, error: edgeError } = await supabase
-			.from('onto_edges')
-			.select('*')
-			.eq('src_kind', 'task')
-			.eq('src_id', taskId)
-			.eq('rel', TASK_DOCUMENT_REL)
-			.order('created_at', { ascending: true });
-
-		if (edgeError) {
-			console.error('[TaskDoc API] Failed to fetch edges:', edgeError);
-			await logOntologyApiError({
-				supabase,
-				error: edgeError,
-				endpoint: `/api/onto/tasks/${taskId}/documents`,
-				method: 'GET',
-				userId: session.user.id,
-				projectId: access.project.id,
-				entityType: 'edge',
-				operation: 'task_documents_edges_fetch',
-				tableName: 'onto_edges'
-			});
-			return ApiResponse.databaseError(edgeError);
-		}
-
-		if (!edges?.length) {
-			return ApiResponse.success({ documents: [], scratch_pad: null });
-		}
-
-		const documentIds = edges.map((edge) => edge.dst_id);
-
-		const { data: documents, error: docError } = await supabase
-			.from('onto_documents')
-			.select('*')
-			.in('id', documentIds)
-			.is('deleted_at', null);
-
-		if (docError) {
-			console.error('[TaskDoc API] Failed to fetch documents:', docError);
-			await logOntologyApiError({
-				supabase,
-				error: docError,
-				endpoint: `/api/onto/tasks/${taskId}/documents`,
-				method: 'GET',
-				userId: session.user.id,
-				projectId: access.project.id,
-				entityType: 'document',
-				operation: 'task_documents_fetch',
-				tableName: 'onto_documents'
-			});
-			return ApiResponse.databaseError(docError);
-		}
-
-		const documentMap = new Map<string, Record<string, unknown>>();
-		for (const doc of documents ?? []) {
-			documentMap.set(doc.id as string, doc);
-		}
-
-		const combined = edges
-			.map((edge) => {
-				const document = documentMap.get(edge.dst_id);
-				if (!document) return null;
-				return { document, edge };
-			})
-			.filter((item): item is { document: Record<string, unknown>; edge: OntoEdge } =>
-				Boolean(item)
-			);
-
-		const scratchPad =
-			combined.find(
-				(item) => hasRole(item.edge.props) && item.edge.props.role === 'scratch'
-			) ?? null;
-
-		return ApiResponse.success({
-			documents: combined,
-			scratch_pad: scratchPad
+		const payload = await loadTaskDocumentLinks(locals.supabase as never, {
+			taskId,
+			projectId: access.project.id
 		});
+		return ApiResponse.success(payload);
 	} catch (error) {
+		if (error instanceof AgenticChatTaskDocumentsQueryError) {
+			const isEdgeFailure = error.stage === 'edges';
+			console.error(
+				isEdgeFailure
+					? '[TaskDoc API] Failed to fetch edges:'
+					: '[TaskDoc API] Failed to fetch documents:',
+				error.cause
+			);
+			await logOntologyApiError({
+				supabase: locals.supabase,
+				error: error.cause,
+				endpoint: `/api/onto/tasks/${params.id ?? ''}/documents`,
+				method: 'GET',
+				userId: (await locals.safeGetSession()).user?.id,
+				projectId: error.projectId,
+				entityType: isEdgeFailure ? 'edge' : 'document',
+				operation: isEdgeFailure ? 'task_documents_edges_fetch' : 'task_documents_fetch',
+				tableName: isEdgeFailure ? 'onto_edges' : 'onto_documents'
+			});
+			return ApiResponse.databaseError(error.cause as never);
+		}
 		console.error('[TaskDoc API] Unexpected GET error:', error);
 		await logOntologyApiError({
 			supabase: locals.supabase,

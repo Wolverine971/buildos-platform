@@ -967,9 +967,6 @@ export class SmartLLMService {
 							taskId: options.taskId,
 							briefId: options.briefId,
 							chatSessionId: options.chatSessionId,
-							agentSessionId: options.agentSessionId,
-							agentPlanId: options.agentPlanId,
-							agentExecutionId: options.agentExecutionId,
 							turnRunId: options.turnRunId,
 							streamRunId: options.streamRunId,
 							clientTurnId: options.clientTurnId,
@@ -1187,9 +1184,6 @@ export class SmartLLMService {
 					taskId: options.taskId,
 					briefId: options.briefId,
 					chatSessionId: options.chatSessionId,
-					agentSessionId: options.agentSessionId,
-					agentPlanId: options.agentPlanId,
-					agentExecutionId: options.agentExecutionId,
 					turnRunId: options.turnRunId,
 					streamRunId: options.streamRunId,
 					clientTurnId: options.clientTurnId,
@@ -1389,9 +1383,6 @@ export class SmartLLMService {
 							taskId: options.taskId,
 							briefId: options.briefId,
 							chatSessionId: options.chatSessionId,
-							agentSessionId: options.agentSessionId,
-							agentPlanId: options.agentPlanId,
-							agentExecutionId: options.agentExecutionId,
 							turnRunId: options.turnRunId,
 							streamRunId: options.streamRunId,
 							clientTurnId: options.clientTurnId,
@@ -1580,9 +1571,6 @@ export class SmartLLMService {
 					taskId: options.taskId,
 					briefId: options.briefId,
 					chatSessionId: options.chatSessionId,
-					agentSessionId: options.agentSessionId,
-					agentPlanId: options.agentPlanId,
-					agentExecutionId: options.agentExecutionId,
 					turnRunId: options.turnRunId,
 					streamRunId: options.streamRunId,
 					clientTurnId: options.clientTurnId,
@@ -2017,9 +2005,6 @@ export class SmartLLMService {
 		sessionId?: string;
 		messageId?: string;
 		chatSessionId?: string;
-		agentSessionId?: string;
-		agentPlanId?: string;
-		agentExecutionId?: string;
 		turnRunId?: string;
 		streamRunId?: string;
 		clientTurnId?: string;
@@ -2142,8 +2127,7 @@ export class SmartLLMService {
 				// Stable per session (never per pass/turn) so multi-pass turns and
 				// follow-up turns land on the provider node holding the prompt prefix
 				// cache. Regressed in the openrouter-v2 -> smart-llm refactor (D9).
-				const cacheAffinityKey =
-					options.chatSessionId || options.sessionId || options.agentSessionId;
+				const cacheAffinityKey = options.chatSessionId || options.sessionId;
 				const body: any =
 					route.provider === 'openrouter'
 						? buildOpenRouterChatCompletionBody({
@@ -2301,9 +2285,6 @@ export class SmartLLMService {
 						streaming: true,
 						projectId: options.projectId || options.entityId,
 						chatSessionId: options.chatSessionId || options.sessionId,
-						agentSessionId: options.agentSessionId,
-						agentPlanId: options.agentPlanId,
-						agentExecutionId: options.agentExecutionId,
 						turnRunId: options.turnRunId,
 						streamRunId: options.streamRunId,
 						clientTurnId: options.clientTurnId,
@@ -2408,9 +2389,6 @@ export class SmartLLMService {
 						streaming: true,
 						projectId: options.projectId || options.entityId,
 						chatSessionId: options.chatSessionId || options.sessionId,
-						agentSessionId: options.agentSessionId,
-						agentPlanId: options.agentPlanId,
-						agentExecutionId: options.agentExecutionId,
 						turnRunId: options.turnRunId,
 						streamRunId: options.streamRunId,
 						clientTurnId: options.clientTurnId,
@@ -2575,9 +2553,6 @@ export class SmartLLMService {
 									streaming: true,
 									projectId: options.projectId,
 									chatSessionId: options.chatSessionId || options.sessionId,
-									agentSessionId: options.agentSessionId,
-									agentPlanId: options.agentPlanId,
-									agentExecutionId: options.agentExecutionId,
 									turnRunId: options.turnRunId,
 									streamRunId: options.streamRunId,
 									clientTurnId: options.clientTurnId,
@@ -2901,9 +2876,6 @@ export class SmartLLMService {
 					streaming: true,
 					projectId: options.projectId || options.entityId,
 					chatSessionId: options.chatSessionId || options.sessionId,
-					agentSessionId: options.agentSessionId,
-					agentPlanId: options.agentPlanId,
-					agentExecutionId: options.agentExecutionId,
 					turnRunId: options.turnRunId,
 					streamRunId: options.streamRunId,
 					clientTurnId: options.clientTurnId,

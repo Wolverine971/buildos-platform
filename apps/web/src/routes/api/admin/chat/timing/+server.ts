@@ -77,7 +77,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		if (planStatus) {
 			if (planStatus === 'none') {
-				query = query.is('agent_plan_id', null);
+				query = query.is('plan_status', null);
 			} else if (planStatus !== 'all') {
 				query = query.eq('plan_status', planStatus);
 			}

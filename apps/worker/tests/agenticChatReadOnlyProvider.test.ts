@@ -1,9 +1,14 @@
 // apps/worker/tests/agenticChatReadOnlyProvider.test.ts
-import type { AgenticChatTurnClaimResultV1, TurnInputArtifactV1 } from '@buildos/shared-types';
+import type {
+	AgenticChatTurnClaimResultV1,
+	JsonObject,
+	TurnInputArtifactV1
+} from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
 import {
 	AgenticChatProviderExecutionError,
+	type AgenticChatProviderReadSynthesisInputV1,
 	type AgenticChatProviderStepV1
 } from '../src/workers/agentic-chat/providerContract';
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
@@ -126,6 +131,28 @@ async function collect(stream: AsyncIterable<AgenticChatProviderStepV1>) {
 	const result: AgenticChatProviderStepV1[] = [];
 	for await (const step of stream) result.push(step);
 	return result;
+}
+
+function durableReadFeedback(
+	providerToolCallId: string,
+	argumentsValue: JsonObject = {},
+	result: JsonObject = { ok: true }
+): AgenticChatProviderReadSynthesisInputV1 {
+	return {
+		providerToolCallId,
+		toolName: 'get_project_overview',
+		arguments: argumentsValue,
+		execution: {
+			result,
+			executionTimeMs: 1,
+			tokensConsumed: null,
+			affectedEntities: [],
+			toolCategory: 'utility',
+			resultCount: 1,
+			zeroResult: false,
+			requiresUserAction: false
+		}
+	};
 }
 
 function executionInputWithReadSurface(
@@ -467,7 +494,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		);
 	});
 
-	it('rejects a second provider tool round and releases capacity', async () => {
+	it('continues sequential read rounds with compacted durable feedback', async () => {
 		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
 			[
 				{
@@ -484,7 +511,11 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 						}
 					]
 				},
-				{ type: 'done', finishedReason: 'tool_calls' }
+				{
+					type: 'done',
+					finishedReason: 'tool_calls',
+					usage: { promptTokens: 7, completionTokens: 1, totalTokens: 8 }
+				}
 			],
 			[
 				{
@@ -494,9 +525,26 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 							index: 0,
 							id: 'provider-read-2',
 							type: 'function',
-							function: { name: 'get_project_overview', arguments: '{}' }
+							function: {
+								name: 'get_project_overview',
+								arguments:
+									'{"project_id":"40000000-0000-4000-8000-000000000004"}'
+							}
 						}
 					]
+				},
+				{
+					type: 'done',
+					finishedReason: 'tool_calls',
+					usage: { promptTokens: 11, completionTokens: 1, totalTokens: 12 }
+				}
+			],
+			[
+				{ type: 'text', content: 'The project and its second read are ready.' },
+				{
+					type: 'done',
+					finishedReason: 'stop',
+					usage: { promptTokens: 15, completionTokens: 3, totalTokens: 18 }
 				}
 			]
 		];
@@ -517,32 +565,385 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 		await collect(invocation.stream());
 
+		const firstFeedback = {
+			providerToolCallId: 'provider-read-1',
+			toolName: 'get_project_overview',
+			arguments: {
+				project_id: '40000000-0000-4000-8000-000000000004'
+			},
+			execution: {
+				result: {
+					project: { id: '40000000-0000-4000-8000-000000000004' },
+					search_vector: 'must-not-reach-the-model'
+				},
+				executionTimeMs: 1,
+				tokensConsumed: null,
+				affectedEntities: [],
+				toolCategory: 'utility',
+				resultCount: 1,
+				zeroResult: false,
+				requiresUserAction: false
+			}
+		};
+		await expect(
+			collect(invocation.continueWithToolResults!({ round: 2, results: [firstFeedback] }))
+		).resolves.toEqual([
+			expect.objectContaining({
+				type: 'read_tool',
+				providerToolCallId: 'provider-read-2',
+				toolName: 'get_project_overview',
+				arguments: { project_id: '40000000-0000-4000-8000-000000000004' }
+			})
+		]);
+		expect(capacity.getSnapshot()).toMatchObject({ available: false, activeRequests: 1 });
+
+		const firstModelPayload = JSON.parse(
+			client.stream.mock.calls[1]?.[0].messages.at(-1)?.content ?? ''
+		) as Record<string, unknown>;
+		expect(firstModelPayload).toMatchObject({
+			model_context_source: 'tool_result_untrusted',
+			tool_name: 'get_project_overview',
+			project: { id: '40000000-0000-4000-8000-000000000004' }
+		});
+		expect(firstModelPayload).not.toHaveProperty('search_vector');
+		expect(client.stream.mock.calls[1]?.[0]).toMatchObject({
+			providerRound: 'synthesis',
+			toolChoice: 'auto',
+			tools: [
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'get_project_overview' })
+				})
+			]
+		});
+
 		await expect(
 			collect(
-				invocation.synthesize!({
-					providerToolCallId: 'provider-read-1',
-					toolName: 'get_project_overview',
-					arguments: {
-						project_id: '40000000-0000-4000-8000-000000000004'
-					},
-					execution: {
-						result: {
-							project: { id: '40000000-0000-4000-8000-000000000004' }
-						},
-						executionTimeMs: 1,
-						tokensConsumed: null,
-						affectedEntities: [],
-						toolCategory: 'utility',
-						resultCount: 1,
-						zeroResult: false,
-						requiresUserAction: false
-					}
+				invocation.continueWithToolResults!({
+					round: 3,
+					results: [
+						{
+							providerToolCallId: 'provider-read-2',
+							toolName: 'get_project_overview',
+							arguments: {
+								project_id: '40000000-0000-4000-8000-000000000004'
+							},
+							execution: {
+								result: { project: { status: 'ready' } },
+								executionTimeMs: 2,
+								tokensConsumed: null,
+								affectedEntities: [],
+								toolCategory: 'utility',
+								resultCount: 1,
+								zeroResult: false,
+								requiresUserAction: false
+							}
+						}
+					]
 				})
 			)
-		).rejects.toMatchObject({
-			code: 'provider_additional_tool_round_disabled',
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'The project and its second read are ready.' },
+			{
+				type: 'finish',
+				finishedReason: 'stop',
+				usage: { promptTokens: 33, completionTokens: 5, totalTokens: 38 }
+			}
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(
+			client.stream.mock.calls[2]?.[0].messages.filter(
+				(message: { role: string }) => message.role === 'tool'
+			)
+		).toHaveLength(2);
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('repairs an invalid provider tool call before exposing a read to the executor', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const definition = {
+			type: 'function' as const,
+			function: {
+				name: 'get_project_overview',
+				description: 'Read a project overview.',
+				parameters: {
+					type: 'object',
+					properties: { project_id: { type: 'string' } },
+					required: ['project_id']
+				}
+			}
+		};
+		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'invalid-read',
+							type: 'function',
+							function: { name: 'get_project_overview', arguments: '{}' }
+						}
+					]
+				},
+				{
+					type: 'done',
+					finishedReason: 'tool_calls',
+					usage: { promptTokens: 3, completionTokens: 1, totalTokens: 4 }
+				}
+			],
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'repaired-read',
+							type: 'function',
+							function: {
+								name: 'get_project_overview',
+								arguments: JSON.stringify({ project_id: projectId })
+							}
+						}
+					]
+				},
+				{
+					type: 'done',
+					finishedReason: 'tool_calls',
+					usage: { promptTokens: 5, completionTokens: 1, totalTokens: 6 }
+				}
+			],
+			[
+				{ type: 'text', content: 'The repaired read succeeded.' },
+				{
+					type: 'done',
+					finishedReason: 'stop',
+					usage: { promptTokens: 7, completionTokens: 2, totalTokens: 9 }
+				}
+			]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({ client, capacity }).prepare({
+			executionInput: executionInputWithReadSurface([definition]),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
+			expect.objectContaining({
+				type: 'read_tool',
+				providerToolCallId: 'repaired-read',
+				toolName: 'get_project_overview',
+				arguments: { project_id: projectId }
+			})
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		const repairRequest = client.stream.mock.calls[1]?.[0];
+		expect(repairRequest.messages.slice(-3).map((message) => message.role)).toEqual([
+			'assistant',
+			'tool',
+			'system'
+		]);
+		const validationPayload = JSON.parse(
+			repairRequest.messages.at(-2)?.content ?? ''
+		) as Record<string, unknown>;
+		expect(validationPayload).toMatchObject({
+			error: expect.stringContaining('Missing required parameter: project_id'),
+			op: 'util.project.overview',
+			help_path: 'util.project.overview'
+		});
+		expect(repairRequest.messages.at(-1)?.content).toContain(
+			'One or more tool calls failed validation.'
+		);
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedback(
+							'repaired-read',
+							{ project_id: projectId },
+							{ project: { id: projectId } }
+						)
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'The repaired read succeeded.' },
+			{
+				type: 'finish',
+				finishedReason: 'stop',
+				usage: { promptTokens: 15, completionTokens: 4, totalTokens: 19 }
+			}
+		]);
+		expect(
+			client.stream.mock.calls[2]?.[0].messages.some(
+				(message: { role: string; tool_call_id?: string }) =>
+					message.role === 'tool' && message.tool_call_id === 'invalid-read'
+			)
+		).toBe(true);
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('bounds repeated validation repairs and releases provider capacity', async () => {
+		const invalidRound = (providerToolCallId: string) => [
+			{
+				type: 'tool_call' as const,
+				toolCall: [
+					{
+						index: 0,
+						id: providerToolCallId,
+						type: 'function',
+						function: { name: 'get_project_overview', arguments: '{}' }
+					}
+				]
+			},
+			{ type: 'done' as const, finishedReason: 'tool_calls' }
+		];
+		const streams = [
+			invalidRound('invalid-read-1'),
+			invalidRound('invalid-read-2'),
+			invalidRound('invalid-read-3')
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({ client, capacity }).prepare({
+			executionInput: executionInputWithReadSurface([
+				{
+					type: 'function',
+					function: {
+						name: 'get_project_overview',
+						description: 'Read a project overview.',
+						parameters: {
+							type: 'object',
+							properties: { project_id: { type: 'string' } },
+							required: ['project_id']
+						}
+					}
+				}
+			]),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).rejects.toMatchObject({
+			code: 'provider_tool_validation_repair_exhausted',
 			failureClass: 'permanent'
 		});
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('injects the shared read-loop escalation after three completed read rounds', async () => {
+		const readRound = (
+			providerToolCallId: string
+		): AgenticChatReadOnlyProviderClientEventV1[] => [
+			{
+				type: 'tool_call',
+				toolCall: [
+					{
+						index: 0,
+						id: providerToolCallId,
+						type: 'function',
+						function: {
+							name: 'get_project_overview',
+							arguments:
+								'{"project_id":"40000000-0000-4000-8000-000000000004"}'
+						}
+					}
+				]
+			},
+			{ type: 'done', finishedReason: 'tool_calls' }
+		];
+		const streams = [
+			readRound('provider-read-1'),
+			readRound('provider-read-2'),
+			readRound('provider-read-3'),
+			[
+				{ type: 'text', content: 'Enough context.' },
+				{ type: 'done', finishedReason: 'stop' }
+			] satisfies AgenticChatReadOnlyProviderClientEventV1[]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({ client, capacity }).prepare({
+			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedback('provider-read-1', {
+						project_id: '40000000-0000-4000-8000-000000000004'
+					})
+				]
+			})
+		);
+		await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedback('provider-read-2', {
+						project_id: '40000000-0000-4000-8000-000000000004'
+					})
+				]
+			})
+		);
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 4,
+					results: [
+						durableReadFeedback('provider-read-3', {
+							project_id: '40000000-0000-4000-8000-000000000004'
+						})
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'Enough context.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+
+		const continuationMessages = client.stream.mock.calls[3]?.[0].messages;
+		const systemMessages = continuationMessages.filter(
+			(message: { role: string }) => message.role === 'system'
+		);
+		expect(systemMessages).toHaveLength(2);
+		expect(systemMessages[1]?.content).toContain(
+			'Read-loop nudge: you are repeating read-only tool calls without making progress.'
+		);
+		expect(systemMessages[1]?.content).toContain('Repeated ops: util.project.overview.');
+		expect(systemMessages[1]?.content).toContain(
+			'Tool rounds remaining before the safety cap: 13.'
+		);
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 

@@ -24,7 +24,7 @@ AS $function$
       AND created_at < ((end_date + 1)::timestamp at time zone 'UTC')
     UNION ALL
     SELECT user_id, created_at
-    FROM agent_chat_sessions
+	FROM chat_sessions
     WHERE created_at >= (start_date::timestamp at time zone 'UTC')
       AND created_at < ((end_date + 1)::timestamp at time zone 'UTC')
   )

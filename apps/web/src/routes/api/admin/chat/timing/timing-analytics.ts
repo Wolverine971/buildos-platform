@@ -20,7 +20,6 @@ export interface TimingMetricsRow {
 	plan_execution_ms: number | null;
 	plan_step_count: number | null;
 	plan_status: string | null;
-	agent_plan_id: string | null;
 	message_length: number | null;
 	created_at: string;
 	metadata?: Record<string, unknown> | null;
@@ -235,7 +234,7 @@ export function buildTimingAnalytics({
 	);
 
 	const totalRequests = rows.length;
-	const requestsWithPlan = rows.filter((r) => r.agent_plan_id !== null).length;
+	const requestsWithPlan = rows.filter((r) => r.plan_status !== null).length;
 	const requestsWithClarification = rows.filter(
 		(r) => r.clarification_ms !== null && r.clarification_ms > 0
 	).length;

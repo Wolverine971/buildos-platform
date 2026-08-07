@@ -2,10 +2,24 @@
 
 import { createHash } from 'node:crypto';
 import {
+	type ChatToolDefinition,
+	type ChatToolCall,
 	type JsonObject,
 	type JsonValue,
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
+import {
+	READ_LOOP_REPAIR_RANK,
+	buildReadLoopRepairInstruction,
+	buildRoundToolPattern,
+	buildToolPayloadForModel,
+	buildToolValidationRepairInstruction,
+	parseToolArguments,
+	provideAgenticChatLoopToolCatalog,
+	selectReadLoopRepairEscalation,
+	type ToolValidationIssue,
+	validateToolCalls
+} from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatWorkerExecutionInputV1 } from './executionInput';
 import {
 	AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
@@ -19,7 +33,34 @@ import {
 } from './providerContract';
 import { AgenticChatProviderCapacity, AgenticChatProviderCapacityError } from './providerCapacity';
 import { createStableAgenticChatReadToolTransitionIdV1 } from './readToolIdentity';
-import { isAgenticChatProductionReadToolNameV1 } from './readOnlyTool';
+import {
+	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
+	isAgenticChatProductionReadToolNameV1
+} from './readOnlyTool';
+
+const DEFAULT_MAX_PROVIDER_ROUNDS = 16;
+const MAX_VALIDATION_REPAIR_ROUNDS = 2;
+const CANONICAL_UUID_PATTERN =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const WORKER_READ_LOOP_CATALOG_ENTRIES = AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.map(
+	(toolName) => {
+		const op = workerReadOpForToolName(toolName);
+		return [toolName, { op, tool_name: toolName, kind: 'read' as const }] as const;
+	}
+);
+const WORKER_READ_LOOP_CATALOG = Object.freeze({
+	ops: Object.freeze(
+		Object.fromEntries(
+			WORKER_READ_LOOP_CATALOG_ENTRIES.map(([, entry]) => [entry.op, entry])
+		)
+	),
+	byToolName: Object.freeze(Object.fromEntries(WORKER_READ_LOOP_CATALOG_ENTRIES))
+});
+
+// Worker and web are separate hosts. Web installs its full registry; the
+// worker installs exactly the reviewed read-only catalog it can execute.
+provideAgenticChatLoopToolCatalog(() => WORKER_READ_LOOP_CATALOG);
 
 export type AgenticChatReadOnlyProviderMessageV1 = {
 	role: 'system' | 'user' | 'assistant' | 'tool';
@@ -96,8 +137,9 @@ type PendingReadRound = {
  * the first network call only after the executor wins execution-start.
  *
  * The reviewed surface is the immutable admission artifact intersected with
- * the worker's shared read allowlist. Mutating tools are absent, the second
- * pass always sends `toolChoice: none`, and no third provider pass exists.
+ * the worker's shared read allowlist. Mutating tools are absent. Slice 18 S4
+ * keeps provider calls sequential and routes each durable read result through
+ * the shared payload and round policies before another provider pass begins.
  */
 export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPortV1 {
 	constructor(
@@ -105,7 +147,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			client: AgenticChatReadOnlyProviderClientPortV1;
 			capacity: AgenticChatProviderCapacity;
 		},
-		private readonly retryableFailureCooldownMs = 2_000
+		private readonly retryableFailureCooldownMs = 2_000,
+		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS
 	) {
 		if (
 			!Number.isSafeInteger(retryableFailureCooldownMs) ||
@@ -113,6 +156,9 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			retryableFailureCooldownMs > 60_000
 		) {
 			throw new Error('Read-only provider cooldown must be between 1ms and 60000ms');
+		}
+		if (!Number.isSafeInteger(maxProviderRounds) || maxProviderRounds < 1) {
+			throw new Error('Read-only provider round budget must be a positive safe integer');
 		}
 	}
 
@@ -147,8 +193,14 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let released = false;
 		let streamed = false;
 		let synthesized = false;
+		let continued = false;
 		let pendingRead: PendingReadRound | null = null;
 		let readRoundCompleted = false;
+		let currentRequest = request;
+		let nextProviderRound = 2;
+		let readOnlyRoundCount = 0;
+		let readLoopRepairRank = 0;
+		const readOps = new Set<string>();
 		const release = () => {
 			if (released) return;
 			released = true;
@@ -179,6 +231,9 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					},
 					markReadRoundCompleted() {
 						readRoundCompleted = true;
+					},
+					setCurrentRequest(value) {
+						currentRequest = value;
 					}
 				});
 			},
@@ -192,13 +247,89 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (synthesized) {
 					throw providerError('provider_read_synthesis_reused', 'unknown');
 				}
+				if (continued) {
+					throw providerError(
+						'provider_read_synthesis_unavailable_after_continuation',
+						'unknown'
+					);
+				}
 				validateReadFeedback(pendingRead.call, feedback);
 				synthesized = true;
 				return this.streamSynthesis(
-					buildSynthesisRequest(request, pendingRead.call, feedback),
+					buildSynthesisRequest(currentRequest, pendingRead.call, feedback),
 					pendingRead.usage,
 					release
 				);
+			},
+			continueWithToolResults: (input) => {
+				if (released) {
+					throw providerError('provider_invocation_released', 'unknown');
+				}
+				if (synthesized) {
+					throw providerError('provider_read_continuation_reused', 'unknown');
+				}
+				if (!streamed || !pendingRead || !readRoundCompleted) {
+					throw providerError('provider_read_continuation_not_ready', 'unknown');
+				}
+				if (input.round !== nextProviderRound) {
+					throw providerError('provider_read_continuation_round_mismatch', 'unknown');
+				}
+				if (input.results.length !== 1) {
+					throw providerError(
+						'provider_read_continuation_result_count_invalid',
+						'unknown'
+					);
+				}
+
+				const feedback = input.results[0]!;
+				continued = true;
+				const completedRead = pendingRead;
+				validateReadFeedback(completedRead.call, feedback);
+				const pattern = buildRoundToolPattern([
+					completedProviderCallToChatToolCall(completedRead.call)
+				]);
+				for (const op of pattern.readOps) readOps.add(op);
+				if (pattern.readOps.length > 0) readOnlyRoundCount += 1;
+
+				currentRequest = buildContinuationRequest(
+					currentRequest,
+					completedRead.call,
+					feedback
+				);
+				const roundsRemaining = Math.max(
+					0,
+					this.maxProviderRounds - readOnlyRoundCount
+				);
+				const escalation = selectReadLoopRepairEscalation({
+					readOnlyRoundCount,
+					roundsRemaining
+				});
+				if (escalation && READ_LOOP_REPAIR_RANK[escalation] > readLoopRepairRank) {
+					readLoopRepairRank = READ_LOOP_REPAIR_RANK[escalation];
+					currentRequest = appendSystemInstruction(
+						currentRequest,
+						buildReadLoopRepairInstruction([...readOps].sort(), {
+							level: escalation,
+							roundsRemaining
+						})
+					);
+				}
+
+				pendingRead = null;
+				readRoundCompleted = false;
+				nextProviderRound += 1;
+				return this.streamContinuation(currentRequest, completedRead.usage, {
+					release,
+					setPendingRead(value) {
+						pendingRead = value;
+					},
+					markReadRoundCompleted() {
+						readRoundCompleted = true;
+					},
+					setCurrentRequest(value) {
+						currentRequest = value;
+					}
+				});
 			},
 			release
 		};
@@ -210,6 +341,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			release(): void;
 			setPendingRead(value: PendingReadRound): void;
 			markReadRoundCompleted(): void;
+			setCurrentRequest(value: ClientRequest): void;
 		}
 	): AsyncGenerator<AgenticChatProviderStepV1> {
 		let finished = false;
@@ -273,42 +405,28 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						throw providerError('provider_tool_finish_reason_invalid', 'unknown');
 					}
 					assertAllowlistedCall(call, request.tools);
+					const validationIssues = validateCompletedProviderCall(call, request);
+					if (validationIssues.length > 0) {
+						const repairRequest = buildValidationRepairRequest(
+							request,
+							call,
+							validationIssues
+						);
+						state.setCurrentRequest(repairRequest);
+						keepLeaseForSynthesis = true;
+						yield* this.streamContinuation(
+							repairRequest,
+							normalizeUsage(event.usage),
+							state,
+							1,
+							true
+						);
+						continue;
+					}
 					state.setPendingRead({ call, usage: normalizeUsage(event.usage) });
 					keepLeaseForSynthesis = true;
-					yield {
-						type: 'semantic',
-						transitionId: createStableAgenticChatReadToolTransitionIdV1({
-							turnRunId: request.turnRunId,
-							providerToolCallId: call.id,
-							stage: 'planning'
-						}),
-						phase: 'stream',
-						eventType: 'agent_state',
-						currentActivity: 'Planning the first step...',
-						eventPayload: {
-							type: 'agent_state',
-							state: 'thinking',
-							contextType: request.contextType,
-							details: 'Planning the first step...',
-							activity_visibility: 'activity_log'
-						}
-					};
-					yield {
-						type: 'read_tool',
-						callTransitionId: createStableAgenticChatReadToolTransitionIdV1({
-							turnRunId: request.turnRunId,
-							providerToolCallId: call.id,
-							stage: 'call'
-						}),
-						resultTransitionId: createStableAgenticChatReadToolTransitionIdV1({
-							turnRunId: request.turnRunId,
-							providerToolCallId: call.id,
-							stage: 'result'
-						}),
-						providerToolCallId: call.id,
-						toolName: call.name,
-						arguments: call.arguments
-					};
+					yield buildPlanningStep(request, call.id);
+					yield buildReadToolStep(request.turnRunId, call);
 					state.markReadRoundCompleted();
 					continue;
 				}
@@ -333,6 +451,127 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			if (!finished) throw providerError('provider_missing_done', 'unknown');
 		} finally {
 			if (!keepLeaseForSynthesis) state.release();
+		}
+	}
+
+	private async *streamContinuation(
+		request: ClientRequest,
+		priorUsage: AgenticChatProviderUsageV1 | null,
+		state: {
+			release(): void;
+			setPendingRead(value: PendingReadRound): void;
+			markReadRoundCompleted(): void;
+			setCurrentRequest(value: ClientRequest): void;
+		},
+		validationRepairRounds = 0,
+		emitPlanningSemantic = false
+	): AsyncGenerator<AgenticChatProviderStepV1> {
+		let finished = false;
+		let keepLeaseForContinuation = false;
+		let streamedText = false;
+		const toolCall = createToolCallAccumulator();
+		try {
+			for await (const event of this.ports.client.stream(request)) {
+				throwIfAborted(request.signal);
+				if (finished) throw providerError('provider_event_after_done', 'unknown');
+				if (event.type === 'text') {
+					if (!event.content) throw providerError('provider_empty_text', 'unknown');
+					if (toolCall.seen) {
+						throw providerError('provider_mixed_text_and_tool_call', 'permanent');
+					}
+					streamedText = true;
+					yield { type: 'text_delta', text: event.content };
+					continue;
+				}
+				if (event.type === 'reasoning') continue;
+				if (event.type === 'tool_call') {
+					if (request.toolChoice === 'none') {
+						throw providerError('provider_tool_call_disabled', 'permanent');
+					}
+					if (streamedText) {
+						throw providerError('provider_mixed_text_and_tool_call', 'permanent');
+					}
+					appendToolCallDelta(toolCall, event.toolCall);
+					continue;
+				}
+				if (event.type === 'error') {
+					if (event.retryable) {
+						this.ports.capacity.markTemporarilyUnavailable(
+							this.retryableFailureCooldownMs
+						);
+					}
+					throw new AgenticChatProviderExecutionError(
+						'provider_stream_error',
+						event.retryable ? 'provider_throttle' : 'unknown',
+						canonicalError(event.error)
+					);
+				}
+
+				const finishedReason = canonicalFinishedReason(event.finishedReason);
+				const call = completeToolCall(toolCall);
+				const aggregateUsage = combineUsage(priorUsage, normalizeUsage(event.usage));
+				finished = true;
+				if (call) {
+					if (request.toolChoice !== 'auto') {
+						throw providerError('provider_tool_call_disabled', 'permanent');
+					}
+					if (streamedText) {
+						throw providerError('provider_mixed_text_and_tool_call', 'permanent');
+					}
+					if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
+						throw providerError('provider_tool_finish_reason_invalid', 'unknown');
+					}
+					assertAllowlistedCall(call, request.tools);
+					const validationIssues = validateCompletedProviderCall(call, request);
+					if (validationIssues.length > 0) {
+						if (validationRepairRounds >= MAX_VALIDATION_REPAIR_ROUNDS) {
+							throw providerError(
+								'provider_tool_validation_repair_exhausted',
+								'permanent'
+							);
+						}
+						const repairRequest = buildValidationRepairRequest(
+							request,
+							call,
+							validationIssues
+						);
+						state.setCurrentRequest(repairRequest);
+						keepLeaseForContinuation = true;
+						yield* this.streamContinuation(
+							repairRequest,
+							aggregateUsage,
+							state,
+							validationRepairRounds + 1,
+							emitPlanningSemantic
+						);
+						continue;
+					}
+					state.setPendingRead({ call, usage: aggregateUsage });
+					keepLeaseForContinuation = true;
+					if (emitPlanningSemantic) {
+						yield buildPlanningStep(request, call.id);
+					}
+					yield buildReadToolStep(request.turnRunId, call);
+					state.markReadRoundCompleted();
+					continue;
+				}
+				if (finishedReason === 'tool_calls' || finishedReason === 'function_call') {
+					throw providerError(
+						request.toolChoice === 'none'
+							? 'provider_tool_call_disabled'
+							: 'provider_missing_tool_call',
+						request.toolChoice === 'none' ? 'permanent' : 'unknown'
+					);
+				}
+				if (!streamedText) {
+					throw providerError('provider_no_assistant_text', 'permanent');
+				}
+				this.ports.capacity.markAvailable();
+				yield { type: 'finish', finishedReason, usage: aggregateUsage };
+			}
+			if (!finished) throw providerError('provider_missing_done', 'unknown');
+		} finally {
+			if (!keepLeaseForContinuation) state.release();
 		}
 	}
 
@@ -491,6 +730,175 @@ function validateReadFeedback(
 		throw providerError('provider_read_feedback_mismatch', 'unknown');
 	}
 	canonicalizeAgenticChatJson(feedback.execution.result as JsonValue);
+}
+
+function completedProviderCallToChatToolCall(call: CompletedProviderToolCall): ChatToolCall {
+	return {
+		id: call.id,
+		type: 'function',
+		function: { name: call.name, arguments: call.canonicalArguments }
+	};
+}
+
+function buildPlanningStep(
+	request: ClientRequest,
+	providerToolCallId: string
+): Extract<AgenticChatProviderStepV1, { type: 'semantic' }> {
+	return {
+		type: 'semantic',
+		transitionId: createStableAgenticChatReadToolTransitionIdV1({
+			turnRunId: request.turnRunId,
+			providerToolCallId,
+			stage: 'planning'
+		}),
+		phase: 'stream',
+		eventType: 'agent_state',
+		currentActivity: 'Planning the first step...',
+		eventPayload: {
+			type: 'agent_state',
+			state: 'thinking',
+			contextType: request.contextType,
+			details: 'Planning the first step...',
+			activity_visibility: 'activity_log'
+		}
+	};
+}
+
+function buildReadToolStep(
+	turnRunId: string,
+	call: CompletedProviderToolCall
+): Extract<AgenticChatProviderStepV1, { type: 'read_tool' }> {
+	return {
+		type: 'read_tool',
+		callTransitionId: createStableAgenticChatReadToolTransitionIdV1({
+			turnRunId,
+			providerToolCallId: call.id,
+			stage: 'call'
+		}),
+		resultTransitionId: createStableAgenticChatReadToolTransitionIdV1({
+			turnRunId,
+			providerToolCallId: call.id,
+			stage: 'result'
+		}),
+		providerToolCallId: call.id,
+		toolName: call.name,
+		arguments: call.arguments
+	};
+}
+
+function buildContinuationRequest(
+	request: ClientRequest,
+	call: CompletedProviderToolCall,
+	feedback: AgenticChatProviderReadSynthesisInputV1
+): ClientRequest {
+	const toolCall = completedProviderCallToChatToolCall(call);
+	const modelPayload = buildToolPayloadForModel(
+		toolCall,
+		{
+			tool_call_id: call.id,
+			result: feedback.execution.result,
+			success: true,
+			duration_ms: feedback.execution.executionTimeMs ?? undefined,
+			tokens_consumed: feedback.execution.tokensConsumed ?? undefined,
+			requires_user_action: feedback.execution.requiresUserAction ?? undefined
+		},
+		parseToolArguments
+	);
+	return {
+		...request,
+		providerRound: 'synthesis',
+		messages: [
+			...request.messages,
+			{
+				role: 'assistant',
+				content: '',
+				tool_calls: [
+					{
+						id: call.id,
+						type: 'function',
+						function: { name: call.name, arguments: call.canonicalArguments }
+					}
+				]
+			},
+			{
+				role: 'tool',
+				content: canonicalizeAgenticChatJson(modelPayload as JsonValue),
+				tool_call_id: call.id
+			}
+		],
+		tools: request.tools,
+		toolChoice: request.tools.length > 0 ? 'auto' : 'none'
+	};
+}
+
+function validateCompletedProviderCall(
+	call: CompletedProviderToolCall,
+	request: ClientRequest
+): ToolValidationIssue[] {
+	return validateToolCalls(
+		[completedProviderCallToChatToolCall(call)],
+		Array.from(request.tools) as unknown as ChatToolDefinition[],
+		{
+			projectId:
+				typeof request.projectId === 'string' &&
+				CANONICAL_UUID_PATTERN.test(request.projectId)
+					? request.projectId
+					: null
+		}
+	);
+}
+
+function buildValidationRepairRequest(
+	request: ClientRequest,
+	call: CompletedProviderToolCall,
+	issues: ToolValidationIssue[]
+): ClientRequest {
+	const fieldErrors = issues.flatMap((issue) => issue.errors);
+	const error = `Tool validation failed: ${fieldErrors.join(' ')}`;
+	const issueOp = issues.find((issue) => issue.op)?.op;
+	const validationPayload: JsonObject = {
+		error,
+		details: { field_errors: fieldErrors }
+	};
+	if (issueOp) {
+		validationPayload.op = issueOp;
+		validationPayload.help_path = issueOp;
+	}
+	return appendSystemInstruction(
+		{
+			...request,
+			providerRound: 'synthesis',
+			messages: [
+				...request.messages,
+				{
+					role: 'assistant',
+					content: '',
+					tool_calls: [
+						{
+							id: call.id,
+							type: 'function',
+							function: { name: call.name, arguments: call.canonicalArguments }
+						}
+					]
+				},
+				{
+					role: 'tool',
+					content: canonicalizeAgenticChatJson(validationPayload),
+					tool_call_id: call.id
+				}
+			],
+			tools: request.tools,
+			toolChoice: request.tools.length > 0 ? 'auto' : 'none'
+		},
+		buildToolValidationRepairInstruction(issues, false)
+	);
+}
+
+function appendSystemInstruction(request: ClientRequest, content: string): ClientRequest {
+	return {
+		...request,
+		messages: [...request.messages, { role: 'system', content }]
+	};
 }
 
 function buildSynthesisRequest(
@@ -777,6 +1185,38 @@ function providerError(code: string, failureClass: 'permanent' | 'unknown') {
 		failureClass,
 		`Agentic Chat read-only provider protocol failed: ${code}`
 	);
+}
+
+function workerReadOpForToolName(toolName: string): string {
+	const exceptions: Readonly<Record<string, string>> = {
+		search_all_projects: 'x.search.all_projects',
+		search_project: 'x.search.project',
+		search_ontology: 'onto.search',
+		get_document_tree: 'onto.document.tree.get',
+		get_document_path: 'onto.document.path.get',
+		list_task_documents: 'onto.task.docs.list',
+		get_onto_project_graph: 'onto.project.graph.get',
+		get_field_info: 'util.schema.field_info',
+		get_workspace_overview: 'util.workspace.overview',
+		get_project_overview: 'util.project.overview'
+	};
+	const exception = exceptions[toolName];
+	if (exception) return exception;
+
+	const match = /^(list|search|get|create|update|delete)_(?:onto_)?(.+)$/.exec(toolName);
+	if (!match) return `x.misc.${toolName}`;
+	const action = match[1]!;
+	const rawEntity = match[2]!.replace(/_details$/, '');
+	const singularEntities: Readonly<Record<string, string>> = {
+		projects: 'project',
+		tasks: 'task',
+		goals: 'goal',
+		plans: 'plan',
+		documents: 'document',
+		milestones: 'milestone',
+		risks: 'risk'
+	};
+	return `onto.${singularEntities[rawEntity] ?? rawEntity}.${action}`;
 }
 
 function throwIfAborted(signal: AbortSignal): void {

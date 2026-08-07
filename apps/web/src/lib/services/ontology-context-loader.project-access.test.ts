@@ -81,17 +81,36 @@ describe('OntologyContextLoader project-scoped access', () => {
 		const loader = new OntologyContextLoader(mockSupabase, 'collaborator-actor');
 
 		const result = await loader.loadLinkedEntitiesContext('task-1', 'task', 'Shared task', {
-			includeDescriptions: true
+			includeDescriptions: true,
+			projectId: 'project-1'
 		});
 
 		expect(mockSupabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: 'project-1',
 			p_required_access: 'read'
 		});
-		expect(taskAccessQuery.select).toHaveBeenCalledWith('project_id, created_by');
+		expect(taskAccessQuery.select).toHaveBeenCalledWith('project_id');
+		expect(taskAccessQuery.eq).toHaveBeenCalledWith('project_id', 'project-1');
+		expect(edgeQuery.eq).toHaveBeenCalledWith('project_id', 'project-1');
 		expect(edgeQuery.or).toHaveBeenCalledWith('src_id.eq.task-1,dst_id.eq.task-1');
+		expect(documentQuery.eq).toHaveBeenCalledWith('project_id', 'project-1');
 		expect(documentQuery.in).toHaveBeenCalledWith('id', ['doc-1']);
 		expect(result.linkedEntities.documents).toHaveLength(1);
 		expect(result.linkedEntities.documents[0].id).toBe('doc-1');
+	});
+
+	it('rejects project-less creator rows before loading linked edges', async () => {
+		taskAccessQuery.maybeSingle.mockResolvedValue({
+			data: { project_id: null, created_by: 'collaborator-actor' },
+			error: null
+		});
+		const loader = new OntologyContextLoader(mockSupabase, 'collaborator-actor');
+
+		await expect(
+			loader.loadLinkedEntitiesContext('task-1', 'task', 'Project-less task')
+		).rejects.toThrow('Entity not found or access denied');
+
+		expect(mockSupabase.from).not.toHaveBeenCalledWith('onto_edges');
+		expect(mockSupabase.rpc).not.toHaveBeenCalled();
 	});
 });

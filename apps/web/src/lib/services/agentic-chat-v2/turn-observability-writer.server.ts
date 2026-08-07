@@ -2,7 +2,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import type { AgentTimingSummary, ChatContextType, Database, Json } from '@buildos/shared-types';
-import { normalizeTimingMetricSessionReference } from '$lib/services/agentic-chat/shared/timing-metrics';
 import { deriveFirstLane, type PromptSnapshotRow } from './prompt-observability';
 
 type FastChatSupabaseClient = SupabaseClient<Database>;
@@ -366,27 +365,23 @@ export class TurnObservabilityWriter {
 		this.timingMetricQueued = true;
 		const timingMetricId = this.createId();
 		this.timingMetricId = timingMetricId;
-		const timingMetricReference = normalizeTimingMetricSessionReference({
-			source: 'chat_sessions',
-			sessionId: timingState.sessionId,
-			metadata: {
-				stream_version: 'v2',
-				client_turn_id: this.params.clientTurnId ?? null,
-				stream_run_id: this.params.streamRunId,
-				project_id: timingState.projectId,
-				entity_id: timingState.entityId,
-				request_prewarmed_context: this.params.requestPrewarmedContext,
-				context_load_source: timingState.contextLoadSource,
-				prepared_prompt_requested: timingState.preparedPromptRequested,
-				prepared_prompt_hit: timingState.preparedPromptHit,
-				prepared_prompt_miss_reason: timingState.preparedPromptMissReason,
-				prepared_prompt_miss_diagnostics: timingState.preparedPromptMissDiagnostics,
-				prepared_prompt_id: timingState.preparedPromptId,
-				prepared_prompt_age_seconds: timingState.preparedPromptAgeSeconds,
-				prepared_prompt_surface_profile: timingState.preparedSurfaceProfile,
-				timing_summary: JSON.parse(JSON.stringify(summary)) as Json
-			}
-		});
+		const timingMetricMetadata = {
+			stream_version: 'v2',
+			client_turn_id: this.params.clientTurnId ?? null,
+			stream_run_id: this.params.streamRunId,
+			project_id: timingState.projectId,
+			entity_id: timingState.entityId,
+			request_prewarmed_context: this.params.requestPrewarmedContext,
+			context_load_source: timingState.contextLoadSource,
+			prepared_prompt_requested: timingState.preparedPromptRequested,
+			prepared_prompt_hit: timingState.preparedPromptHit,
+			prepared_prompt_miss_reason: timingState.preparedPromptMissReason,
+			prepared_prompt_miss_diagnostics: timingState.preparedPromptMissDiagnostics,
+			prepared_prompt_id: timingState.preparedPromptId,
+			prepared_prompt_age_seconds: timingState.preparedPromptAgeSeconds,
+			prepared_prompt_surface_profile: timingState.preparedSurfaceProfile,
+			timing_summary: JSON.parse(JSON.stringify(summary)) as Json
+		};
 		const nowIso = new Date().toISOString();
 
 		this.trackTimingTask(
@@ -394,7 +389,7 @@ export class TurnObservabilityWriter {
 				const { error } = await this.params.supabase.from('timing_metrics').insert({
 					id: timingMetricId,
 					user_id: this.params.userId,
-					session_id: timingMetricReference.session_id,
+					session_id: timingState.sessionId,
 					turn_run_id: this.turnRunId,
 					context_type: timingState.contextType,
 					message_length: this.params.messageLength,
@@ -405,7 +400,7 @@ export class TurnObservabilityWriter {
 					time_to_first_response_ms: summary.phases.time_to_first_response_ms ?? null,
 					context_build_ms: summary.phases.context_build_ms ?? null,
 					tool_selection_ms: summary.phases.tool_selection_ms ?? null,
-					metadata: timingMetricReference.metadata,
+					metadata: timingMetricMetadata,
 					created_at: nowIso,
 					updated_at: nowIso
 				});

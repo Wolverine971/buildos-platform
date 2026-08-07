@@ -27,10 +27,23 @@ const SHARED_ALLOWLIST = [
 	'search_onto_documents',
 	'search_onto_milestones',
 	'search_onto_risks',
+	'search_all_projects',
+	'search_buildos',
+	'search_project',
+	'search_ontology',
 	'get_onto_project_details',
+	'get_onto_project_graph',
 	'get_onto_document_details',
+	'get_onto_goal_details',
+	'get_onto_plan_details',
+	'get_onto_milestone_details',
+	'get_onto_risk_details',
+	'get_onto_task_details',
+	'list_task_documents',
 	'get_document_outline',
 	'read_document_section',
+	'get_document_tree',
+	'get_document_path',
 	'get_workspace_overview',
 	'get_project_overview',
 	'get_field_info'
@@ -109,6 +122,7 @@ function makeBuilder(rows: unknown[]): Record<string, unknown> {
 		builder[method] = vi.fn(() => builder);
 	}
 	builder.maybeSingle = vi.fn(async () => ({ data: rows[0] ?? null, error: null }));
+	builder.single = vi.fn(async () => ({ data: rows[0] ?? null, error: null }));
 	builder.then = (
 		onFulfilled: (value: unknown) => unknown,
 		onRejected: (reason: unknown) => unknown
@@ -292,6 +306,206 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 			requiresUserAction: false
 		});
 		expect(access.assertProjectAccess).toHaveBeenCalledWith(PROJECT_ID, 'read');
+	});
+
+	it('dispatches newly shared detail reads without a web gateway', async () => {
+		const riskId = '22222222-0000-4000-8000-000000000022';
+		const riskRow = {
+			id: riskId,
+			project_id: PROJECT_ID,
+			title: 'Launch slips',
+			state_key: 'open',
+			impact: 'high',
+			search_vector: "'launch':1",
+			project: { id: PROJECT_ID, name: '9takes' }
+		};
+		const access = accessStub();
+		const client = fakeSharedClient({ onto_risks: [riskRow] });
+		const adapter = adapterWith(client, access);
+
+		await expect(
+			adapter.execute(requestFor('get_onto_risk_details', { risk_id: riskId }))
+		).resolves.toMatchObject({
+			result: {
+				risk: {
+					id: riskId,
+					project_id: PROJECT_ID,
+					title: 'Launch slips',
+					project: { name: '9takes' }
+				},
+				message: 'Complete ontology risk details loaded.'
+			},
+			toolCategory: 'read',
+			resultCount: null,
+			zeroResult: null
+		});
+		expect(access.assertProjectAccess).toHaveBeenCalledWith(PROJECT_ID, 'read');
+		expect(client.from).toHaveBeenCalledTimes(2);
+	});
+
+	it('dispatches task details with project-fenced assignee hydration', async () => {
+		const taskId = '33333333-0000-4000-8000-000000000033';
+		const taskRow = {
+			id: taskId,
+			project_id: PROJECT_ID,
+			title: 'Ship task details',
+			state_key: 'todo',
+			project: { id: PROJECT_ID, created_by: ACTOR_ID }
+		};
+		const client = fakeSharedClient({
+			onto_tasks: [taskRow],
+			onto_edges: [],
+			onto_task_assignees: [
+				{
+					task_id: taskId,
+					created_at: '2026-08-08T12:00:00.000Z',
+					assignee: {
+						id: ACTOR_ID,
+						user_id: USER_ID,
+						name: 'Avery',
+						email: 'avery@example.com'
+					}
+				}
+			]
+		});
+		const access = accessStub();
+		const adapter = adapterWith(client, access);
+
+		await expect(
+			adapter.execute(requestFor('get_onto_task_details', { task_id: taskId }))
+		).resolves.toMatchObject({
+			result: {
+				task: {
+					id: taskId,
+					project_id: PROJECT_ID,
+					assignees: [{ actor_id: ACTOR_ID, name: 'Avery' }]
+				},
+				linkedEntities: {
+					plans: [],
+					goals: [],
+					milestones: [],
+					documents: [],
+					dependentTasks: []
+				},
+				message: 'Complete ontology task details loaded.'
+			},
+			toolCategory: 'read'
+		});
+		expect(access.assertProjectAccess).toHaveBeenCalledWith(PROJECT_ID, 'read');
+	});
+
+	it('dispatches task document reads without the web route', async () => {
+		const taskId = '44444444-0000-4000-8000-000000000044';
+		const client = fakeSharedClient({
+			onto_tasks: [{ id: taskId, project_id: PROJECT_ID }],
+			onto_edges: []
+		});
+		const access = accessStub();
+		const adapter = adapterWith(client, access);
+
+		await expect(
+			adapter.execute(requestFor('list_task_documents', { task_id: taskId }))
+		).resolves.toMatchObject({
+			result: {
+				documents: [],
+				scratch_pad: null,
+				message: 'Found 0 documents linked to this task.'
+			},
+			toolCategory: 'search'
+		});
+		expect(access.assertProjectAccess).toHaveBeenCalledWith(PROJECT_ID, 'read');
+	});
+
+	it('dispatches document tree reads without the web route', async () => {
+		const client = fakeSharedClient({
+			onto_projects: [
+				{
+					id: PROJECT_ID,
+					doc_structure: {
+						version: 1,
+						root: [{ id: 'doc-1', order: 0, title: 'Project Brief' }]
+					}
+				}
+			]
+		});
+		const access = accessStub();
+		const adapter = adapterWith(client, access);
+
+		await expect(
+			adapter.execute(
+				requestFor('get_document_tree', {
+					project_id: PROJECT_ID,
+					include_documents: false
+				})
+			)
+		).resolves.toMatchObject({
+			result: {
+				structure: {
+					version: 1,
+					root: [{ id: 'doc-1', order: 0, title: 'Project Brief' }]
+				},
+				documents: {},
+				unlinked: [],
+				message:
+					'Document tree loaded with 1 nodes. Unlinked documents not included (set include_documents=true to list them).'
+			},
+			toolCategory: 'read'
+		});
+		expect(access.assertProjectAccess).toHaveBeenCalledWith(PROJECT_ID, 'read');
+	});
+
+	it('dispatches cross-project search without the web route', async () => {
+		const client = {
+			...fakeSharedClient(),
+			rpc: vi.fn(async (fn: string) => {
+				if (fn === 'onto_search_entities') {
+					return {
+						data: [
+							{
+								type: 'task',
+								id: 'task-1',
+								project_id: PROJECT_ID,
+								project_name: '9takes',
+								title: 'Launch checklist',
+								score: 0.9,
+								state_key: 'in_progress'
+							}
+						],
+						error: null
+					};
+				}
+				throw new Error(`Unexpected rpc: ${fn}`);
+			})
+		};
+		const access = accessStub();
+		const adapter = adapterWith(client, access);
+
+		await expect(
+			adapter.execute(
+				requestFor('search_all_projects', {
+					query: 'launch',
+					types: ['task']
+				})
+			)
+		).resolves.toMatchObject({
+			result: {
+				search_scope: 'workspace',
+				total_returned: 1,
+				results: [{ type: 'task', id: 'task-1', title: 'Launch checklist' }],
+				materialized_tools: ['get_onto_task_details', 'list_task_documents']
+			},
+			toolCategory: 'search',
+			resultCount: 1,
+			zeroResult: false
+		});
+		expect(client.rpc).toHaveBeenCalledWith(
+			'onto_search_entities',
+			expect.objectContaining({
+				p_actor_id: ACTOR_ID,
+				p_query: 'launch',
+				p_types: ['task']
+			})
+		);
 	});
 
 	it('derives search telemetry from the primary result array for search tools', async () => {

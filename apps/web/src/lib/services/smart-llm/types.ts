@@ -39,9 +39,6 @@ export interface JSONRequestOptions {
 	taskId?: string;
 	briefId?: string;
 	chatSessionId?: string;
-	agentSessionId?: string;
-	agentPlanId?: string;
-	agentExecutionId?: string;
 }
 
 export interface TextGenerationOptions {
@@ -65,9 +62,6 @@ export interface TextGenerationOptions {
 	taskId?: string;
 	briefId?: string;
 	chatSessionId?: string;
-	agentSessionId?: string;
-	agentPlanId?: string;
-	agentExecutionId?: string;
 }
 
 export interface TextGenerationUsage {

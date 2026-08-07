@@ -16,6 +16,7 @@ import type {
 	AgenticChatToolAccessPortV1,
 	AgenticChatToolProjectSummaryV1
 } from '@buildos/agentic-chat-runtime/tools';
+import { AgenticChatToolAccessDeniedError } from '@buildos/agentic-chat-runtime/tools';
 import {
 	ensureActorId,
 	fetchProjectSummaries
@@ -84,7 +85,7 @@ export class WorkerAgenticChatToolAccessAdapter implements AgenticChatToolAccess
 		if (!data) {
 			// Byte-identical to the web adapter's message so error payloads stay
 			// parity-identical across hosts.
-			throw new Error('Project not found or access denied');
+			throw new AgenticChatToolAccessDeniedError();
 		}
 	}
 
@@ -128,6 +129,6 @@ export class WorkerAgenticChatToolAccessAdapter implements AgenticChatToolAccess
 			// closed throw below.
 		}
 
-		throw new Error('Entity not found or access denied');
+		throw new AgenticChatToolAccessDeniedError('Entity not found or access denied');
 	}
 }

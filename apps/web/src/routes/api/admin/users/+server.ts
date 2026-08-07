@@ -53,17 +53,6 @@ type ChatMessageMetricRow = {
 	user_id: string;
 };
 
-type AgentChatSessionMetricRow = {
-	id: string;
-	user_id: string;
-	message_count: number | null;
-};
-
-type AgentChatMessageMetricRow = {
-	agent_session_id: string;
-	user_id: string;
-};
-
 const fetchAllRows = async <T>(createQuery: () => any): Promise<T[]> => {
 	const rows: T[] = [];
 
@@ -198,8 +187,6 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
 			{ data: calendarTokens },
 			chatSessions,
 			chatMessages,
-			agentSessions,
-			agentMessages,
 			{ data: userBriefPrefs },
 			{ data: dailyBriefs },
 			{ data: ontoTasks },
@@ -229,18 +216,6 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
 				adminSupabase
 					.from('chat_messages')
 					.select('session_id, user_id')
-					.in('user_id', userIds)
-			),
-			fetchAllRows<AgentChatSessionMetricRow>(() =>
-				adminSupabase
-					.from('agent_chat_sessions')
-					.select('id, user_id, message_count')
-					.in('user_id', userIds)
-			),
-			fetchAllRows<AgentChatMessageMetricRow>(() =>
-				adminSupabase
-					.from('agent_chat_messages')
-					.select('agent_session_id, user_id')
 					.in('user_id', userIds)
 			),
 			adminSupabase
@@ -327,22 +302,13 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
 				{} as Record<string, boolean>
 			) || {};
 
-		// Chat metrics combine the current user-facing chat tables with legacy
-		// agent chat tables. Message rows are authoritative when present, with
-		// session.message_count kept as a fallback for older/stale records.
+		// Message rows are authoritative when present, with session.message_count
+		// kept as a fallback for older/stale current records.
 		const currentMessageRowsBySession = new Map<string, number>();
 		for (const message of chatMessages) {
 			currentMessageRowsBySession.set(
 				message.session_id,
 				(currentMessageRowsBySession.get(message.session_id) || 0) + 1
-			);
-		}
-
-		const legacyMessageRowsBySession = new Map<string, number>();
-		for (const message of agentMessages) {
-			legacyMessageRowsBySession.set(
-				message.agent_session_id,
-				(legacyMessageRowsBySession.get(message.agent_session_id) || 0) + 1
 			);
 		}
 
@@ -359,25 +325,9 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
 				);
 		}
 
-		for (const session of agentSessions) {
-			chatSessionCountMap[session.user_id] = (chatSessionCountMap[session.user_id] || 0) + 1;
-			chatMessageCountMap[session.user_id] =
-				(chatMessageCountMap[session.user_id] || 0) +
-				Math.max(
-					session.message_count || 0,
-					legacyMessageRowsBySession.get(session.id) || 0
-				);
-		}
-
 		const knownCurrentSessionIds = new Set(chatSessions.map((session) => session.id));
 		for (const message of chatMessages) {
 			if (knownCurrentSessionIds.has(message.session_id)) continue;
-			chatMessageCountMap[message.user_id] = (chatMessageCountMap[message.user_id] || 0) + 1;
-		}
-
-		const knownLegacySessionIds = new Set(agentSessions.map((session) => session.id));
-		for (const message of agentMessages) {
-			if (knownLegacySessionIds.has(message.agent_session_id)) continue;
 			chatMessageCountMap[message.user_id] = (chatMessageCountMap[message.user_id] || 0) + 1;
 		}
 

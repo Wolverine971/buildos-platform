@@ -12,6 +12,15 @@
 
 export type AgenticChatToolAccessLevelV1 = 'read' | 'write' | 'admin';
 
+/** Stable host-neutral denial so HTTP routes can preserve their 403 contract. */
+export class AgenticChatToolAccessDeniedError extends Error {
+	readonly name = 'AgenticChatToolAccessDeniedError';
+
+	constructor(message = 'Project not found or access denied') {
+		super(message);
+	}
+}
+
 /**
  * A visible-project summary as produced by shared-agent-ops
  * `fetchProjectSummaries`. Reads only depend on `id`/`state_key`; the overview

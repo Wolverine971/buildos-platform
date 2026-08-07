@@ -21,7 +21,7 @@ AS $function$
     WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
     UNION ALL
     SELECT user_id, created_at
-    FROM agent_chat_sessions
+	FROM chat_sessions
     WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
   ),
   top_users AS (

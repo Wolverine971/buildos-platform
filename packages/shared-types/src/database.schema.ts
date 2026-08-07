@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-07T13:15:51.694Z
+// Generated on: 2026-08-07T16:36:31.985Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -95,58 +95,6 @@ export type DatabaseSchema = {
 		project_id: string | null;
 		session_id: string | null;
 		source: string;
-		user_id: string;
-	};
-	agent_chat_messages: {
-		agent_session_id: string;
-		content: string;
-		created_at: string;
-		id: string;
-		model_used: string | null;
-		parent_user_session_id: string;
-		role: string;
-		sender_agent_id: string | null;
-		sender_type: string;
-		tokens_used: number | null;
-		tool_call_id: string | null;
-		tool_calls: Json | null;
-		user_id: string;
-	};
-	agent_chat_sessions: {
-		completed_at: string | null;
-		context_type: string | null;
-		created_at: string;
-		entity_id: string | null;
-		executor_agent_id: string | null;
-		id: string;
-		initial_context: Json;
-		message_count: number;
-		parent_session_id: string;
-		plan_id: string | null;
-		planner_agent_id: string;
-		session_type: string;
-		status: string;
-		step_number: number | null;
-		user_id: string;
-	};
-	agent_executions: {
-		agent_session_id: string;
-		completed_at: string | null;
-		created_at: string;
-		duration_ms: number | null;
-		error: string | null;
-		executor_agent_id: string;
-		id: string;
-		message_count: number | null;
-		plan_id: string;
-		result: Json | null;
-		status: string;
-		step_number: number;
-		success: boolean;
-		task: Json;
-		tokens_used: number | null;
-		tool_calls_made: number | null;
-		tools_available: Json;
 		user_id: string;
 	};
 	agent_oauth_access_tokens: {
@@ -258,20 +206,6 @@ export type DatabaseSchema = {
 		scope_mode: string;
 		updated_at: string;
 		user_id: string;
-	};
-	agent_plans: {
-		completed_at: string | null;
-		created_at: string;
-		id: string;
-		metadata: Json | null;
-		planner_agent_id: string;
-		session_id: string;
-		status: string;
-		steps: Json;
-		strategy: string;
-		updated_at: string;
-		user_id: string;
-		user_message: string;
 	};
 	agent_run_cost_entries: {
 		actual_cost_usd: number | null;
@@ -410,21 +344,6 @@ export type DatabaseSchema = {
 		raw_history_count: number | null;
 		session_id: string | null;
 		updated_at: string;
-		user_id: string;
-	};
-	agents: {
-		available_tools: Json | null;
-		completed_at: string | null;
-		created_at: string;
-		created_for_plan: string | null;
-		created_for_session: string;
-		id: string;
-		model_preference: string;
-		name: string;
-		permissions: string;
-		status: string;
-		system_prompt: string;
-		type: string;
 		user_id: string;
 	};
 	beta_event_attendance: {
@@ -1888,9 +1807,6 @@ export type DatabaseSchema = {
 		user_id: string;
 	};
 	llm_usage_logs: {
-		agent_execution_id: string | null;
-		agent_plan_id: string | null;
-		agent_session_id: string | null;
 		brain_dump_id: string | null;
 		brief_id: string | null;
 		cache_write_tokens: number;
@@ -3582,7 +3498,6 @@ export type DatabaseSchema = {
 		user_id: string;
 	};
 	timing_metrics: {
-		agent_plan_id: string | null;
 		clarification_ms: number | null;
 		context_build_ms: number | null;
 		context_type: string | null;
@@ -3600,7 +3515,6 @@ export type DatabaseSchema = {
 		plan_execution_started_at: string | null;
 		plan_status: string | null;
 		plan_step_count: number | null;
-		planner_agent_id: string | null;
 		session_id: string | null;
 		time_to_first_event_ms: number | null;
 		time_to_first_response_ms: number | null;
@@ -4156,16 +4070,12 @@ export const tableNames = [
 	'agent_call_sessions',
 	'agent_call_tool_executions',
 	'agent_chat_media_events',
-	'agent_chat_messages',
-	'agent_chat_sessions',
-	'agent_executions',
 	'agent_oauth_access_tokens',
 	'agent_oauth_authorization_codes',
 	'agent_oauth_clients',
 	'agent_oauth_grants',
 	'agent_oauth_refresh_tokens',
 	'agent_operatives',
-	'agent_plans',
 	'agent_run_cost_entries',
 	'agent_run_events',
 	'agent_run_signals',
@@ -4173,7 +4083,6 @@ export const tableNames = [
 	'agent_tool_executions',
 	'agentic_chat_execution_observations',
 	'agentic_chat_prepared_prompts',
-	'agents',
 	'beta_event_attendance',
 	'beta_events',
 	'beta_feature_votes',

@@ -31,9 +31,6 @@ export type UsageLogParams = {
 	taskId?: string;
 	briefId?: string;
 	chatSessionId?: string;
-	agentSessionId?: string;
-	agentPlanId?: string;
-	agentExecutionId?: string;
 	turnRunId?: string;
 	streamRunId?: string;
 	clientTurnId?: string;
@@ -55,9 +52,6 @@ export type UsageLogger = {
 
 type UsageLogInsert = Database['public']['Tables']['llm_usage_logs']['Insert'];
 type UsageLogForeignKeyColumn =
-	| 'agent_execution_id'
-	| 'agent_plan_id'
-	| 'agent_session_id'
 	| 'brain_dump_id'
 	| 'brief_id'
 	| 'chat_session_id'
@@ -99,15 +93,6 @@ export class LLMUsageLogger {
 			const chatSessionId = this.normalizeOptionalIdForLogging(
 				params.chatSessionId || this.getMetadataId(params.metadata, 'sessionId')
 			);
-			const agentSessionId = this.normalizeOptionalIdForLogging(
-				params.agentSessionId || this.getMetadataId(params.metadata, 'agentSessionId')
-			);
-			const agentPlanId = this.normalizeOptionalIdForLogging(
-				params.agentPlanId || this.getMetadataId(params.metadata, 'planId')
-			);
-			const agentExecutionId = this.normalizeOptionalIdForLogging(
-				params.agentExecutionId || this.getMetadataId(params.metadata, 'executionId')
-			);
 			const turnRunId = this.normalizeOptionalIdForLogging(
 				params.turnRunId || this.getMetadataId(params.metadata, 'turnRunId')
 			);
@@ -148,9 +133,6 @@ export class LLMUsageLogger {
 				streaming: params.streaming,
 				project_id: projectId ?? undefined,
 				chat_session_id: chatSessionId ?? undefined,
-				agent_session_id: agentSessionId ?? undefined,
-				agent_plan_id: agentPlanId ?? undefined,
-				agent_execution_id: agentExecutionId ?? undefined,
 				turn_run_id: turnRunId ?? undefined,
 				stream_run_id:
 					params.streamRunId || this.getMetadataId(params.metadata, 'streamRunId'),
@@ -254,9 +236,6 @@ export class LLMUsageLogger {
 
 		const description = `${error.message ?? ''} ${error.details ?? ''}`;
 		const constraintColumns: Array<[string, UsageLogForeignKeyColumn]> = [
-			['llm_usage_logs_agent_execution_id_fkey', 'agent_execution_id'],
-			['llm_usage_logs_agent_plan_id_fkey', 'agent_plan_id'],
-			['llm_usage_logs_agent_session_id_fkey', 'agent_session_id'],
 			['llm_usage_logs_brain_dump_id_fkey', 'brain_dump_id'],
 			['llm_usage_logs_brief_id_fkey', 'brief_id'],
 			['llm_usage_logs_chat_session_id_fkey', 'chat_session_id'],

@@ -250,9 +250,9 @@ type AdminDashboardComprehensiveRpcRow = {
 	total_beta_users?: unknown;
 	new_users_last_24h?: unknown;
 	new_beta_signups_last_24h?: unknown;
-	agent_chat_sessions?: unknown;
-	agent_chat_messages?: unknown;
-	agent_chat_unique_users?: unknown;
+	chat_sessions?: unknown;
+	chat_messages?: unknown;
+	chat_unique_users?: unknown;
 	new_projects?: unknown;
 	updated_projects?: unknown;
 	project_unique_users?: unknown;
@@ -554,9 +554,9 @@ function normalizeComprehensiveAnalyticsFromRpc(
 			newBetaSignupsLast24h: coerceNumber(source.new_beta_signups_last_24h)
 		},
 		agentChatMetrics: {
-			totalSessions: coerceNumber(source.agent_chat_sessions),
-			totalMessages: coerceNumber(source.agent_chat_messages),
-			uniqueUsers: coerceNumber(source.agent_chat_unique_users)
+			totalSessions: coerceNumber(source.chat_sessions),
+			totalMessages: coerceNumber(source.chat_messages),
+			uniqueUsers: coerceNumber(source.chat_unique_users)
 		},
 		projectMetrics: {
 			newProjects: coerceNumber(source.new_projects),
@@ -616,46 +616,35 @@ async function getTopActiveUsers(
 	const dateRange = resolveDateRange(timeframe);
 	const { startDateTime, endDateTime } = buildDateTimeRange(dateRange);
 
-	const [
-		projectLogsResult,
-		briefResult,
-		chatSessionsResult,
-		chatMessagesResult,
-		agentSessionsResult
-	] = await Promise.all([
-		client
-			.from('onto_project_logs')
-			.select('changed_by, created_at')
-			.gte('created_at', startDateTime)
-			.lte('created_at', endDateTime),
-		client
-			.from('ontology_daily_briefs')
-			.select('user_id, created_at')
-			.eq('generation_status', 'completed')
-			.gte('created_at', startDateTime)
-			.lte('created_at', endDateTime),
-		client
-			.from('chat_sessions')
-			.select('user_id, created_at')
-			.gte('created_at', startDateTime)
-			.lte('created_at', endDateTime),
-		client
-			.from('chat_messages')
-			.select('user_id, created_at')
-			.gte('created_at', startDateTime)
-			.lte('created_at', endDateTime),
-		client
-			.from('agent_chat_sessions')
-			.select('user_id, created_at')
-			.gte('created_at', startDateTime)
-			.lte('created_at', endDateTime)
-	]);
+	const [projectLogsResult, briefResult, chatSessionsResult, chatMessagesResult] =
+		await Promise.all([
+			client
+				.from('onto_project_logs')
+				.select('changed_by, created_at')
+				.gte('created_at', startDateTime)
+				.lte('created_at', endDateTime),
+			client
+				.from('ontology_daily_briefs')
+				.select('user_id, created_at')
+				.eq('generation_status', 'completed')
+				.gte('created_at', startDateTime)
+				.lte('created_at', endDateTime),
+			client
+				.from('chat_sessions')
+				.select('user_id, created_at')
+				.gte('created_at', startDateTime)
+				.lte('created_at', endDateTime),
+			client
+				.from('chat_messages')
+				.select('user_id, created_at')
+				.gte('created_at', startDateTime)
+				.lte('created_at', endDateTime)
+		]);
 
 	if (projectLogsResult.error) throw new Error(projectLogsResult.error.message);
 	if (briefResult.error) throw new Error(briefResult.error.message);
 	if (chatSessionsResult.error) throw new Error(chatSessionsResult.error.message);
 	if (chatMessagesResult.error) throw new Error(chatMessagesResult.error.message);
-	if (agentSessionsResult.error) throw new Error(agentSessionsResult.error.message);
 
 	const counts = new Map<string, { count: number; lastActivity: string | null }>();
 
@@ -686,10 +675,6 @@ async function getTopActiveUsers(
 
 	(chatMessagesResult.data || []).forEach((message) => {
 		upsertActivity(message.user_id, message.created_at);
-	});
-
-	(agentSessionsResult.data || []).forEach((session) => {
-		upsertActivity(session.user_id, session.created_at);
 	});
 
 	const userIds = Array.from(counts.keys());
@@ -1845,14 +1830,14 @@ export async function getSystemHealth(client: TypedSupabaseClient) {
 	const now = new Date();
 	const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
-	const [queueJobs, failedJobs, agentExecutions, errorLogs, llmMetrics] = await Promise.all([
+	const [queueJobs, failedJobs, turnRuns, errorLogs, llmMetrics] = await Promise.all([
 		client
 			.from('queue_jobs')
 			.select('created_at, scheduled_for, status')
 			.neq('status', 'completed')
 			.neq('status', 'failed'),
 		client.from('queue_jobs').select('id').eq('status', 'failed').gte('updated_at', last24h),
-		client.from('agent_executions').select('id, success').gte('created_at', last24h),
+		client.from('chat_turn_runs').select('id, status').gte('created_at', last24h),
 		client
 			.from('error_logs')
 			.select('id', { count: 'exact', head: true })
@@ -1865,7 +1850,7 @@ export async function getSystemHealth(client: TypedSupabaseClient) {
 
 	if (queueJobs.error) throw new Error(queueJobs.error.message);
 	if (failedJobs.error) throw new Error(failedJobs.error.message);
-	if (agentExecutions.error) throw new Error(agentExecutions.error.message);
+	if (turnRuns.error) throw new Error(turnRuns.error.message);
 	if (errorLogs.error) throw new Error(errorLogs.error.message);
 	if (llmMetrics.error) throw new Error(llmMetrics.error.message);
 
@@ -1890,8 +1875,8 @@ export async function getSystemHealth(client: TypedSupabaseClient) {
 		}
 	}
 
-	const totalExecs = agentExecutions.data?.length || 0;
-	const failedExecs = agentExecutions.data?.filter((exec) => exec.success === false).length || 0;
+	const totalExecs = turnRuns.data?.length || 0;
+	const failedExecs = turnRuns.data?.filter((run) => run.status === 'failed').length || 0;
 	const agentFailureRate = totalExecs > 0 ? (failedExecs / totalExecs) * 100 : 0;
 
 	const errorCount24h = errorLogs.count || 0;

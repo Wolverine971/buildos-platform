@@ -48,6 +48,11 @@ import {
 	queueProjectLoopBurstAsync,
 	shouldSkipProjectLoopBurst
 } from '$lib/server/project-loop-burst.service';
+import {
+	AgenticChatToolAccessDeniedError,
+	loadOntoDocumentApiDetail
+} from '@buildos/agentic-chat-runtime/tools';
+import { createWebAgenticChatSharedReadContext } from '$lib/services/agentic-chat/tools/core/executors/web-access-adapter';
 
 type Locals = App.Locals;
 type ArchiveChildrenMode = 'archive_children' | 'promote_children' | 'unlink_children';
@@ -206,20 +211,44 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.badRequest('Document ID required');
 		}
 
-		const accessResult = await ensureDocumentAccess(
-			locals,
-			documentId,
-			session.user.id,
-			'GET',
-			'read'
+		const { data: actorId, error: actorError } = await locals.supabase.rpc(
+			'ensure_actor_for_user',
+			{ p_user_id: session.user.id }
 		);
-
-		if ('error' in accessResult) {
-			return accessResult.error;
+		if (actorError || !actorId) {
+			console.error('[Document API] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase: locals.supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/documents/${documentId}`,
+				method: 'GET',
+				userId: session.user.id,
+				entityType: 'document',
+				entityId: documentId,
+				operation: 'document_actor_resolve'
+			});
+			return ApiResponse.internalError(
+				actorError || new Error('Failed to resolve user actor'),
+				'Failed to resolve user identity'
+			);
 		}
 
-		return ApiResponse.success({ document: accessResult.document });
+		const details = await loadOntoDocumentApiDetail(
+			createWebAgenticChatSharedReadContext({
+				supabase: locals.supabase as never,
+				getActorId: async () => actorId
+			}),
+			documentId
+		);
+		if (!details) {
+			return ApiResponse.notFound('Document');
+		}
+
+		return ApiResponse.success(details);
 	} catch (error) {
+		if (error instanceof AgenticChatToolAccessDeniedError) {
+			return ApiResponse.forbidden('You do not have permission to access this document');
+		}
 		console.error('[Document API] Unexpected GET error:', error);
 		await logOntologyApiError({
 			supabase: locals.supabase,

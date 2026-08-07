@@ -7,11 +7,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
-	getDocTree,
 	updateDocStructure,
 	collectDocIds,
 	type ChangeType
 } from '$lib/services/ontology/doc-structure.service';
+import { loadDocumentTreePayload } from '@buildos/agentic-chat-runtime/tools';
 import type { DocStructure, DocTreeNode } from '$lib/types/onto';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
@@ -96,10 +96,14 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 				? true
 				: includeDocumentsParam === 'true' || includeDocumentsParam === '1';
 
-		const { structure, documents, unlinked, archived } = await getDocTree(supabase, id, {
-			includeContent,
-			includeDocuments
-		});
+		const { structure, documents, unlinked, archived } = await loadDocumentTreePayload(
+			supabase as never,
+			id,
+			{
+				includeContent,
+				includeDocuments
+			}
+		);
 
 		return ApiResponse.success({ structure, documents, unlinked, archived });
 	} catch (error) {

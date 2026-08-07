@@ -141,6 +141,7 @@ describe('/api/onto/search', () => {
 				p_project_id: undefined
 			})
 		);
+		expect(event.locals.supabase.eventLookup.eq).toHaveBeenCalledWith('created_by', 'actor-1');
 	});
 
 	it('returns 400 for malformed non-sentinel project ids', async () => {
@@ -180,6 +181,28 @@ describe('/api/onto/search', () => {
 			search_scope: 'project',
 			project_id: '31021625-1377-4715-9fb4-f93102974628'
 		});
+	});
+
+	it('rejects project search before querying entities when membership is denied', async () => {
+		const event = createEvent({
+			query: 'onboarding',
+			project_id: '31021625-1377-4715-9fb4-f93102974628'
+		});
+		event.locals.supabase.rpc.mockImplementation(async (fn: string) => {
+			if (fn === 'current_actor_has_project_member_access') {
+				return { data: false, error: null };
+			}
+			throw new Error(`Unexpected rpc: ${fn}`);
+		});
+
+		const response = await POST(event as any);
+
+		expect(response.status).toBe(403);
+		expect(event.locals.supabase.rpc).not.toHaveBeenCalledWith(
+			'onto_search_entities',
+			expect.anything()
+		);
+		expect(event.locals.supabase.from).not.toHaveBeenCalled();
 	});
 
 	it('searches project events without calling the RPC for event-only requests', async () => {

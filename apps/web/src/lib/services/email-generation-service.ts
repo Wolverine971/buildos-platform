@@ -316,7 +316,7 @@ export class EmailGenerationService {
 			dailyBriefsResult,
 			documentsResult,
 			calendarTokensResult,
-			agentSessionsResult,
+			chatSessionsResult,
 			emailHistoryResult
 		] = await Promise.all([
 			// Onboarding context
@@ -379,9 +379,9 @@ export class EmailGenerationService {
 				.select('*', { count: 'exact', head: true })
 				.eq('user_id', userId),
 
-			// Agentic chat sessions (30d)
+			// Current chat sessions (30d)
 			this.supabase
-				.from('agent_chat_sessions')
+				.from('chat_sessions')
 				.select('id, message_count')
 				.eq('user_id', userId)
 				.gte('created_at', thirtyDaysAgoISO),
@@ -423,7 +423,7 @@ export class EmailGenerationService {
 		const { count: dailyBriefsCount } = dailyBriefsResult;
 		const { count: documentsCount } = documentsResult;
 		const { count: calendarTokensCount } = calendarTokensResult;
-		const { data: agentSessions } = agentSessionsResult;
+		const { data: chatSessions } = chatSessionsResult;
 		const { data: emailHistory } = emailHistoryResult;
 
 		const basic: UserBasicInfo = {
@@ -475,9 +475,9 @@ export class EmailGenerationService {
 		const tasksCreated = tasks?.length || 0;
 		const tasksCompleted = tasks?.filter((t) => t.state_key === 'done').length || 0;
 
-		const agenticSessionsCount = agentSessions?.length || 0;
+		const agenticSessionsCount = chatSessions?.length || 0;
 		const agenticMessagesCount =
-			agentSessions?.reduce((sum, s) => sum + (s.message_count || 0), 0) || 0;
+			chatSessions?.reduce((sum, s) => sum + (s.message_count || 0), 0) || 0;
 
 		const activity: UserActivitySummary = {
 			project_count: projectCount || 0,

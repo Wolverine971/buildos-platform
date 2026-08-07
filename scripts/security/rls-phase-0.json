@@ -11,9 +11,7 @@
 		{ "relation": "onto_metric_points", "expect": "rls_protected" },
 		{ "relation": "onto_signals", "expect": "rls_protected" },
 		{ "relation": "onto_facet_definitions", "expect": "rls_protected" },
-		{ "relation": "agent_chat_messages", "expect": "rls_protected" },
 
-		{ "relation": "agent_chat_sessions", "expect": "user_scoped" },
 		{ "relation": "beta_feedback", "expect": "admin_scoped" },
 		{ "relation": "beta_members", "expect": "admin_scoped" },
 		{ "relation": "beta_signups", "expect": "admin_scoped" },

@@ -6,8 +6,8 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { loadProjectGraphData } from '$lib/services/ontology/project-graph-loader';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
+import { loadOntoProjectGraphPayload } from '@buildos/agentic-chat-runtime/tools';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -24,28 +24,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 		if (!access.ok) return access.response;
 
-		const supabase = locals.supabase;
-		const { data: project, error: projectError } = await supabase
-			.from('onto_projects')
-			.select('id')
-			.eq('id', id)
-			.is('deleted_at', null)
-			.single();
-
-		if (projectError || !project) {
-			return ApiResponse.notFound('Project not found');
-		}
-
-		const data = await loadProjectGraphData(supabase, id, { excludeCompletedTasks: true });
-
-		return ApiResponse.success({
-			graph: data,
-			metadata: {
-				projectId: id,
-				queryPattern: 'project-graph-loader',
-				generatedAt: new Date().toISOString()
-			}
-		});
+		return ApiResponse.success(
+			await loadOntoProjectGraphPayload(locals.supabase as never, access.projectId)
+		);
 	} catch (err) {
 		console.error('[Project Graph Full API] Unexpected error', err);
 		return ApiResponse.internalError(err, 'Failed to load project graph');

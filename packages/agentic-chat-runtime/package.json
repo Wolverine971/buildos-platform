@@ -21,11 +21,16 @@
 			"types": "./dist/tools/index.d.ts",
 			"import": "./dist/tools/index.mjs",
 			"require": "./dist/tools/index.js"
+		},
+		"./tools/milestone-state": {
+			"types": "./dist/tools/milestone-state.d.ts",
+			"import": "./dist/tools/milestone-state.mjs",
+			"require": "./dist/tools/milestone-state.js"
 		}
 	},
 	"scripts": {
-		"build": "tsup src/index.ts src/loop/index.ts src/tools/index.ts --format cjs,esm --dts --sourcemap",
-		"build:types": "tsup src/index.ts src/loop/index.ts src/tools/index.ts --format cjs,esm --dts --sourcemap",
+		"build": "tsup src/index.ts src/loop/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
+		"build:types": "tsup src/index.ts src/loop/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
 		"clean": "rm -rf dist .turbo",
 		"typecheck": "tsc --noEmit --skipLibCheck",
 		"test": "vitest",

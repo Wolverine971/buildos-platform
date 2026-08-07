@@ -1133,9 +1133,6 @@ export class OpenRouterV2Service extends SmartLLMService {
 			taskId: optionsRecord.taskId,
 			briefId: optionsRecord.briefId,
 			chatSessionId: optionsRecord.chatSessionId,
-			agentSessionId: optionsRecord.agentSessionId,
-			agentPlanId: optionsRecord.agentPlanId,
-			agentExecutionId: optionsRecord.agentExecutionId,
 			turnRunId: optionsRecord.turnRunId,
 			streamRunId: optionsRecord.streamRunId,
 			clientTurnId: optionsRecord.clientTurnId,
@@ -1588,9 +1585,6 @@ export class OpenRouterV2Service extends SmartLLMService {
 		sessionId?: string;
 		messageId?: string;
 		chatSessionId?: string;
-		agentSessionId?: string;
-		agentPlanId?: string;
-		agentExecutionId?: string;
 		turnRunId?: string;
 		streamRunId?: string;
 		clientTurnId?: string;
@@ -1769,8 +1763,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 						stream_options: { include_usage: true },
 						timeoutMs: this.resolveTimeout(undefined),
 						signal: options.signal,
-						prompt_cache_key:
-							options.chatSessionId || options.sessionId || options.agentSessionId
+						prompt_cache_key: options.chatSessionId || options.sessionId
 					});
 					providerRoute = 'direct';
 					fallbackProvider = route.provider;
@@ -1906,9 +1899,6 @@ export class OpenRouterV2Service extends SmartLLMService {
 				streaming: true,
 				projectId: options.projectId,
 				chatSessionId: options.chatSessionId || options.sessionId,
-				agentSessionId: options.agentSessionId,
-				agentPlanId: options.agentPlanId,
-				agentExecutionId: options.agentExecutionId,
 				turnRunId: options.turnRunId,
 				streamRunId: options.streamRunId,
 				clientTurnId: options.clientTurnId,

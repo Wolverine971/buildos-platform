@@ -1,0 +1,9 @@
+{
+	"relations": [
+		{ "relation": "agent_chat_messages", "expect": "absent" },
+		{ "relation": "agent_executions", "expect": "absent" },
+		{ "relation": "agent_chat_sessions", "expect": "absent" },
+		{ "relation": "agent_plans", "expect": "absent" },
+		{ "relation": "agents", "expect": "absent" }
+	]
+}

@@ -1056,31 +1056,12 @@ The initial context shows abbreviated linked entities. Use this tool to get full
 					},
 					entity_kind: {
 						type: 'string',
-						enum: [
-							'task',
-							'plan',
-							'goal',
-							'milestone',
-							'document',
-							'risk',
-							'metric',
-							'source'
-						],
+						enum: ['task', 'plan', 'goal', 'milestone', 'document', 'risk'],
 						description: 'Type of the source entity'
 					},
 					filter_kind: {
 						type: 'string',
-						enum: [
-							'task',
-							'plan',
-							'goal',
-							'milestone',
-							'document',
-							'risk',
-							'metric',
-							'source',
-							'all'
-						],
+						enum: ['task', 'plan', 'goal', 'milestone', 'document', 'risk', 'all'],
 						default: 'all',
 						description: 'Filter to specific entity type, or "all" for everything'
 					}

@@ -47,6 +47,10 @@ describe('Ontology document tree tools', () => {
 			select: vi.fn().mockReturnThis(),
 			eq: vi.fn().mockReturnThis(),
 			in: vi.fn().mockReturnThis(),
+			single: vi.fn().mockResolvedValue({
+				data: { doc_structure: { version: 1, root: [] } },
+				error: null
+			}),
 			maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'project-1' }, error: null })
 		};
 
@@ -149,6 +153,7 @@ describe('Ontology document tree tools', () => {
 
 		expect(result.path).toHaveLength(0);
 		expect(result.message.toLowerCase()).toContain('not found');
+		expect(mockFetch).not.toHaveBeenCalled();
 	});
 
 	it('posts move payload when rehoming documents in the tree', async () => {

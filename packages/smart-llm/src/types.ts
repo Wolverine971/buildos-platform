@@ -109,9 +109,6 @@ export interface JSONRequestOptions<T = unknown> {
 	taskId?: string;
 	briefId?: string;
 	chatSessionId?: string;
-	agentSessionId?: string;
-	agentPlanId?: string;
-	agentExecutionId?: string;
 	turnRunId?: string;
 	streamRunId?: string;
 	clientTurnId?: string;
@@ -142,9 +139,6 @@ export interface TextGenerationOptions {
 	taskId?: string;
 	briefId?: string;
 	chatSessionId?: string;
-	agentSessionId?: string;
-	agentPlanId?: string;
-	agentExecutionId?: string;
 	turnRunId?: string;
 	streamRunId?: string;
 	clientTurnId?: string;

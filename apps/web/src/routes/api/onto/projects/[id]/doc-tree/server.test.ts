@@ -2,13 +2,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { RequestEvent } from '@sveltejs/kit';
 
-const getDocTreeMock = vi.fn();
+const loadDocumentTreePayloadMock = vi.fn();
 const updateDocStructureMock = vi.fn();
 
 vi.mock('$lib/services/ontology/doc-structure.service', () => ({
-	getDocTree: getDocTreeMock,
 	updateDocStructure: updateDocStructureMock,
 	collectDocIds: vi.fn(() => new Set())
+}));
+
+vi.mock('@buildos/agentic-chat-runtime/tools', () => ({
+	loadDocumentTreePayload: loadDocumentTreePayloadMock
 }));
 
 vi.mock('../../../shared/error-logging', () => ({
@@ -58,8 +61,8 @@ function createSupabaseMock(options: { hasMemberAccess?: boolean } = {}) {
 
 describe('GET /api/onto/projects/[id]/doc-tree', () => {
 	beforeEach(() => {
-		getDocTreeMock.mockReset();
-		getDocTreeMock.mockResolvedValue({
+		loadDocumentTreePayloadMock.mockReset();
+		loadDocumentTreePayloadMock.mockResolvedValue({
 			structure: { version: 1, root: [] },
 			documents: {},
 			unlinked: [],
@@ -82,7 +85,7 @@ describe('GET /api/onto/projects/[id]/doc-tree', () => {
 
 		await GET(requestEvent);
 
-		expect(getDocTreeMock).toHaveBeenCalledWith(supabase, PROJECT_ID, {
+		expect(loadDocumentTreePayloadMock).toHaveBeenCalledWith(supabase, PROJECT_ID, {
 			includeContent: true,
 			includeDocuments: true
 		});
@@ -105,7 +108,7 @@ describe('GET /api/onto/projects/[id]/doc-tree', () => {
 
 		await GET(requestEvent);
 
-		expect(getDocTreeMock).toHaveBeenCalledWith(supabase, PROJECT_ID, {
+		expect(loadDocumentTreePayloadMock).toHaveBeenCalledWith(supabase, PROJECT_ID, {
 			includeContent: false,
 			includeDocuments: true
 		});
@@ -125,7 +128,7 @@ describe('GET /api/onto/projects/[id]/doc-tree', () => {
 		} as unknown as RequestEvent);
 
 		expect(response.status).toBe(401);
-		expect(getDocTreeMock).not.toHaveBeenCalled();
+		expect(loadDocumentTreePayloadMock).not.toHaveBeenCalled();
 	});
 
 	it('rejects authenticated public-only readers before loading documents', async () => {
@@ -146,7 +149,7 @@ describe('GET /api/onto/projects/[id]/doc-tree', () => {
 			p_project_id: PROJECT_ID,
 			p_required_access: 'read'
 		});
-		expect(getDocTreeMock).not.toHaveBeenCalled();
+		expect(loadDocumentTreePayloadMock).not.toHaveBeenCalled();
 	});
 });
 

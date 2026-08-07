@@ -365,12 +365,10 @@ These are internal PostgreSQL trigger functions that execute automatically when 
 
 ### Chat & Agent Triggers
 
-| Trigger                         | Table                | Function                                | Events        |
-| ------------------------------- | -------------------- | --------------------------------------- | ------------- |
-| agent_message_count_trigger     | agent_chat_messages  | `increment_agent_session_message_count` | AFTER INSERT  |
-| agent_plans_updated_at          | agent_plans          | `update_agent_plans_updated_at`         | BEFORE UPDATE |
-| update_session_stats_on_message | chat_messages        | `update_chat_session_stats`             | AFTER INSERT  |
-| update_tool_count_on_execution  | chat_tool_executions | `update_tool_call_count`                | AFTER INSERT  |
+| Trigger                         | Table                | Function                    | Events       |
+| ------------------------------- | -------------------- | --------------------------- | ------------ |
+| update_session_stats_on_message | chat_messages        | `update_chat_session_stats` | AFTER INSERT |
+| update_tool_count_on_execution  | chat_tool_executions | `update_tool_call_count`    | AFTER INSERT |
 
 ### Daily Brief Triggers
 

@@ -91,28 +91,6 @@ type ChatMessageRow = {
 	error_message: string | null;
 };
 
-type AgentChatSessionRow = {
-	id: string;
-	parent_session_id: string;
-	session_type: string;
-	status: string;
-	context_type: string | null;
-	entity_id: string | null;
-	message_count: number | null;
-	created_at: string;
-	completed_at: string | null;
-};
-
-type AgentChatMessageRow = {
-	id: string;
-	agent_session_id: string;
-	parent_user_session_id: string;
-	role: string;
-	sender_type: string;
-	content: string;
-	created_at: string;
-};
-
 type ChatSessionProjectLinkRow = {
 	chat_session_id: string;
 	project_id: string;
@@ -499,8 +477,6 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 			scheduledBriefsResult,
 			chatSessionsResult,
 			chatMessagesResult,
-			agentChatSessionsResult,
-			agentChatMessagesResult,
 			chatSessionProjectLinksResult
 		] = await Promise.all([
 			projectIds.length
@@ -575,22 +551,6 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 				.eq('user_id', userId)
 				.order('created_at', { ascending: false })
 				.limit(500),
-			adminSupabase
-				.from('agent_chat_sessions')
-				.select(
-					'id, parent_session_id, session_type, status, context_type, entity_id, message_count, created_at, completed_at'
-				)
-				.eq('user_id', userId)
-				.order('created_at', { ascending: false })
-				.limit(100),
-			adminSupabase
-				.from('agent_chat_messages')
-				.select(
-					'id, agent_session_id, parent_user_session_id, role, sender_type, content, created_at'
-				)
-				.eq('user_id', userId)
-				.order('created_at', { ascending: false })
-				.limit(500),
 			projectIds.length
 				? adminSupabase
 						.from('chat_sessions_projects')
@@ -608,8 +568,6 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 		if (scheduledBriefsResult.error) throw scheduledBriefsResult.error;
 		if (chatSessionsResult.error) throw chatSessionsResult.error;
 		if (chatMessagesResult.error) throw chatMessagesResult.error;
-		if (agentChatSessionsResult.error) throw agentChatSessionsResult.error;
-		if (agentChatMessagesResult.error) throw agentChatMessagesResult.error;
 		if (chatSessionProjectLinksResult.error) throw chatSessionProjectLinksResult.error;
 
 		const tasks = (tasksResult.data || []) as ProjectTaskRow[];
@@ -621,8 +579,6 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 		const scheduledBriefs = scheduledBriefsResult.data || [];
 		const rawChatSessions = (chatSessionsResult.data || []) as ChatSessionRow[];
 		const chatMessages = (chatMessagesResult.data || []) as ChatMessageRow[];
-		const rawAgentChatSessions = (agentChatSessionsResult.data || []) as AgentChatSessionRow[];
-		const agentChatMessages = (agentChatMessagesResult.data || []) as AgentChatMessageRow[];
 		const chatSessionProjectLinks = (chatSessionProjectLinksResult.data ||
 			[]) as ChatSessionProjectLinkRow[];
 
@@ -673,20 +629,6 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 			);
 		}
 
-		const agentMessagesBySession = new Map<string, AgentChatMessageRow[]>();
-		for (const message of agentChatMessages) {
-			if (!agentMessagesBySession.has(message.agent_session_id)) {
-				agentMessagesBySession.set(message.agent_session_id, []);
-			}
-			agentMessagesBySession.get(message.agent_session_id)?.push(message);
-		}
-		for (const [sessionId, messages] of agentMessagesBySession.entries()) {
-			agentMessagesBySession.set(
-				sessionId,
-				sortByTimestampDesc(messages, (message) => message.created_at)
-			);
-		}
-
 		const linkedProjectIdsBySession = new Map<string, Set<string>>();
 		for (const link of chatSessionProjectLinks) {
 			const linkedIds =
@@ -694,8 +636,6 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 			linkedIds.add(link.project_id);
 			linkedProjectIdsBySession.set(link.chat_session_id, linkedIds);
 		}
-
-		const rawChatSessionById = new Map(rawChatSessions.map((session) => [session.id, session]));
 
 		const getProjectIdsForCurrentChatSession = (session: ChatSessionRow): string[] => {
 			const projectIdsForSession = new Set<string>(
@@ -747,64 +687,8 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 			};
 		});
 
-		const processedLegacyAgentChatSessions = rawAgentChatSessions.map((session) => {
-			const sessionMessages = agentMessagesBySession.get(session.id) || [];
-			const projectIdsForSession = new Set<string>();
-			if (session.context_type === 'project' && session.entity_id) {
-				projectIdsForSession.add(session.entity_id);
-			}
-			const parentSession = rawChatSessionById.get(session.parent_session_id);
-			if (parentSession) {
-				for (const projectId of getProjectIdsForCurrentChatSession(parentSession)) {
-					projectIdsForSession.add(projectId);
-				}
-			}
-			for (const projectId of linkedProjectIdsBySession.get(session.parent_session_id) ||
-				[]) {
-				projectIdsForSession.add(projectId);
-			}
-			const projectIdsForSessionList = Array.from(projectIdsForSession);
-			const latestMessageAt = sessionMessages[0]?.created_at ?? null;
-			const lastActivityAt = latestMessageAt ?? session.completed_at ?? session.created_at;
-
-			return {
-				id: `legacy:${session.id}`,
-				source: 'legacy_agent',
-				source_label: 'Legacy agent chat',
-				raw_session_id: session.id,
-				title: `Legacy ${humanizeLabel(session.session_type || 'agent chat')}`,
-				status: session.status ?? 'active',
-				context_type: session.context_type ?? 'agent',
-				entity_id: session.entity_id ?? null,
-				project_ids: projectIdsForSessionList,
-				project_id: projectIdsForSessionList[0] ?? null,
-				project_name: projectIdsForSessionList[0]
-					? projectNameById.get(projectIdsForSessionList[0]) || null
-					: null,
-				project_names: projectIdsForSessionList
-					.map((projectId) => projectNameById.get(projectId))
-					.filter((name): name is string => Boolean(name)),
-				message_count: Math.max(session.message_count || 0, sessionMessages.length),
-				tool_call_count: 0,
-				total_tokens_used: 0,
-				created_at: session.created_at,
-				updated_at: session.completed_at,
-				last_message_at: latestMessageAt,
-				last_activity_at: lastActivityAt,
-				admin_url: null,
-				recent_messages: sessionMessages.slice(0, 3).map((message) => ({
-					id: message.id,
-					role: message.sender_type || message.role,
-					content: summarizeMessageContent(message.content),
-					created_at: message.created_at,
-					message_type: null,
-					error_message: null
-				}))
-			};
-		});
-
 		const processedChatSessions = sortByTimestampDesc(
-			[...processedCurrentChatSessions, ...processedLegacyAgentChatSessions],
+			processedCurrentChatSessions,
 			(session) => session.last_activity_at
 		);
 

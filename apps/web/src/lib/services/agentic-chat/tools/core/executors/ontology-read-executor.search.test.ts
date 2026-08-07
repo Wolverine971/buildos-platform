@@ -134,26 +134,30 @@ describe('OntologyReadExecutor searchOntoDocuments', () => {
 
 describe('OntologyReadExecutor searchAllProjects scoping', () => {
 	let fetchFn: ReturnType<typeof vi.fn>;
+	let rpc: ReturnType<typeof vi.fn>;
 	let context: ExecutorContext;
+	const projectId = '31021625-1377-4715-9fb4-f93102974628';
 
 	beforeEach(() => {
-		fetchFn = vi.fn().mockResolvedValue({
-			ok: true,
-			status: 200,
-			headers: { get: () => 'application/json' },
-			json: async () => ({
-				query: 'rockwool',
-				results: [],
-				total: 0,
-				total_returned: 0,
-				maybe_more: false,
-				search_scope: 'project',
-				project_id: 'proj-1'
-			})
+		fetchFn = vi.fn();
+		rpc = vi.fn(async (fn: string) => {
+			if (fn === 'ensure_actor_for_user') return { data: 'actor-1', error: null };
+			if (fn === 'current_actor_has_project_member_access') {
+				return { data: true, error: null };
+			}
+			if (fn === 'onto_search_entities') return { data: [], error: null };
+			throw new Error(`Unexpected rpc: ${fn}`);
 		});
+		const projectQuery = {
+			select: vi.fn().mockReturnThis(),
+			eq: vi.fn().mockReturnThis(),
+			is: vi.fn().mockReturnThis(),
+			maybeSingle: vi.fn().mockResolvedValue({ data: { id: projectId }, error: null })
+		};
 
 		const mockSupabase = {
-			rpc: vi.fn().mockResolvedValue({ data: 'actor-1', error: null }),
+			rpc,
+			from: vi.fn(() => projectQuery),
 			auth: {
 				getSession: vi.fn().mockResolvedValue({
 					data: { session: { access_token: 'test-token' } }
@@ -174,24 +178,35 @@ describe('OntologyReadExecutor searchAllProjects scoping', () => {
 
 		const result = await executor.searchAllProjects({
 			query: 'rockwool',
-			project_id: 'proj-1'
+			project_id: projectId,
+			types: ['document']
 		});
 
-		const [path, options] = fetchFn.mock.calls[0];
-		expect(path).toBe('/api/onto/search');
-		const body = JSON.parse((options as RequestInit).body as string);
-		expect(body.query).toBe('rockwool');
-		expect(body.project_id).toBe('proj-1');
+		expect(rpc).toHaveBeenCalledWith(
+			'onto_search_entities',
+			expect.objectContaining({
+				p_query: 'rockwool',
+				p_project_id: projectId,
+				p_types: ['document']
+			})
+		);
 		expect(result.search_scope).toBe('project');
+		expect(fetchFn).not.toHaveBeenCalled();
 	});
 
 	it('omits project scope for a broad workspace search', async () => {
 		const executor = new OntologyReadExecutor(context);
 
-		await executor.searchAllProjects({ query: 'rockwool' });
+		const result = await executor.searchAllProjects({
+			query: 'rockwool',
+			types: ['document']
+		});
 
-		const [, options] = fetchFn.mock.calls[0];
-		const body = JSON.parse((options as RequestInit).body as string);
-		expect(body.project_id).toBeUndefined();
+		expect(rpc).toHaveBeenCalledWith(
+			'onto_search_entities',
+			expect.objectContaining({ p_project_id: undefined })
+		);
+		expect(result.search_scope).toBe('workspace');
+		expect(fetchFn).not.toHaveBeenCalled();
 	});
 });

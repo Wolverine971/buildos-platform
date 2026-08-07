@@ -1,5 +1,7 @@
 // packages/shared-agent-ops/src/utils/document-outline.ts
-import { createHash } from 'node:crypto';
+// Pure-JS sha256 (identical hex output to node:crypto) — this module is imported
+// by browser bundles (doc tree / task modal chunks), so it must not touch node APIs.
+import { sha256 } from 'js-sha256';
 import { Marked } from 'marked';
 import { gfmHeadingId, getHeadingList, resetHeadings } from 'marked-gfm-heading-id';
 
@@ -48,9 +50,7 @@ interface FlatHeading {
 
 /** Stable content hash. Keyed on content alone — title/state/props changes do not invalidate the outline. */
 export function hashDocumentContent(content: string | null | undefined): string {
-	return createHash('sha256')
-		.update(typeof content === 'string' ? content : '')
-		.digest('hex');
+	return sha256(typeof content === 'string' ? content : '');
 }
 
 function countWords(text: string): number {

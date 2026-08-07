@@ -277,8 +277,6 @@
 		switch (source) {
 			case 'current':
 				return 'bg-info/10 text-info border-info/30';
-			case 'legacy_agent':
-				return 'bg-cyan-50 text-cyan-700 border-cyan-200';
 			default:
 				return 'bg-muted text-muted-foreground border-border';
 		}

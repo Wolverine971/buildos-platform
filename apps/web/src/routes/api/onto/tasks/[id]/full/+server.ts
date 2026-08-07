@@ -127,7 +127,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 		}
 
 		const linkedEntities = includeLinkedEntities
-			? await resolveLinkedEntities(supabase, taskId)
+			? await resolveLinkedEntities(supabase, taskId, task.project_id)
 			: null;
 
 		// Extract project data and include project name in response

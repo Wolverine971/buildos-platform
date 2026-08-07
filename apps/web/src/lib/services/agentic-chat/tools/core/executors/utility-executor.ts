@@ -55,8 +55,10 @@ import type {
 import {
 	type AgenticChatSharedReadContextV1,
 	changeChatContext as sharedChangeChatContext,
+	getEntityRelationships as sharedGetEntityRelationships,
 	getFieldInfo as sharedGetFieldInfo,
 	getProjectOverview as sharedGetProjectOverview,
+	getReadableRelationshipEntityDisplayName,
 	getWorkspaceOverview as sharedGetWorkspaceOverview
 } from '@buildos/agentic-chat-runtime/tools';
 
@@ -672,48 +674,7 @@ export class UtilityExecutor extends BaseExecutor {
 		relationships: any[];
 		message: string;
 	}> {
-		await this.assertEntityAccess(args.entity_id, 'read');
-		const direction = args.direction ?? 'both';
-		const relationships: any[] = [];
-
-		if (direction === 'outgoing' || direction === 'both') {
-			const { data } = await this.supabase
-				.from('onto_edges')
-				.select('*')
-				.eq('src_id', args.entity_id)
-				.limit(50);
-
-			if (data) {
-				relationships.push(
-					...data.map((edge) => ({
-						...edge,
-						direction: 'outgoing'
-					}))
-				);
-			}
-		}
-
-		if (direction === 'incoming' || direction === 'both') {
-			const { data } = await this.supabase
-				.from('onto_edges')
-				.select('*')
-				.eq('dst_id', args.entity_id)
-				.limit(50);
-
-			if (data) {
-				relationships.push(
-					...data.map((edge) => ({
-						...edge,
-						direction: 'incoming'
-					}))
-				);
-			}
-		}
-
-		return {
-			relationships,
-			message: `Found ${relationships.length} relationships for entity ${args.entity_id}.`
-		};
+		return sharedGetEntityRelationships(this.sharedReadContext, args);
 	}
 
 	// ============================================
@@ -731,10 +692,11 @@ export class UtilityExecutor extends BaseExecutor {
 		message: string;
 	}> {
 		const actorId = await this.getActorId();
-		await this.assertEntityAccess(args.entity_id, 'read');
-
-		// Get entity name for context
-		const entityName = await this.getEntityDisplayName(args.entity_id, args.entity_kind);
+		const { displayName: entityName, projectId } =
+			await getReadableRelationshipEntityDisplayName(this.sharedReadContext, {
+				entityId: args.entity_id,
+				entityKind: args.entity_kind
+			});
 
 		// Load linked entities with full details
 		const ontologyLoader = new OntologyContextLoader(this.supabase, actorId);
@@ -745,7 +707,8 @@ export class UtilityExecutor extends BaseExecutor {
 			{
 				maxPerType: 50, // Full mode - get all
 				includeDescriptions: true,
-				priorityOrder: 'active_first'
+				priorityOrder: 'active_first',
+				projectId
 			}
 		);
 
@@ -791,38 +754,6 @@ export class UtilityExecutor extends BaseExecutor {
 			counts: linkedContext.counts,
 			message: `Found ${linkedContext.counts.total} linked entities for ${args.entity_kind} "${entityName}".`
 		};
-	}
-
-	/**
-	 * Get display name for an entity by its kind.
-	 */
-	private async getEntityDisplayName(entityId: string, entityKind: string): Promise<string> {
-		const tableMap: Record<string, string> = {
-			task: 'onto_tasks',
-			plan: 'onto_plans',
-			goal: 'onto_goals',
-			milestone: 'onto_milestones',
-			document: 'onto_documents',
-			risk: 'onto_risks'
-		};
-
-		const table = tableMap[entityKind];
-		if (!table) return entityId;
-
-		const { data } = await this.supabase
-			.from(table as any)
-			.select('name, title, summary, text')
-			.eq('id', entityId)
-			.single();
-
-		if (!data) return entityId;
-		return (
-			(data as any).name ||
-			(data as any).title ||
-			(data as any).summary ||
-			(data as any).text ||
-			entityId
-		);
 	}
 
 	/**

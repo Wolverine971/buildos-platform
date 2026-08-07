@@ -337,7 +337,7 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 		expect(requestSupabase.rpc).not.toHaveBeenCalled();
 	});
 
-	it('hydrates current and legacy project chats with recent message snippets', async () => {
+	it('hydrates current project chats with recent message snippets', async () => {
 		const rowsByTable: Record<string, Row[]> = {
 			users: [{ id: 'user-1', email: 'lysander@example.com', name: 'Lysander' }],
 			user_context: [{ user_id: 'user-1' }],
@@ -404,33 +404,6 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 					error_message: null
 				}
 			],
-			agent_chat_sessions: [
-				{
-					id: 'agent-session-1',
-					user_id: 'user-1',
-					parent_session_id: 'chat-1',
-					session_type: 'planner',
-					status: 'completed',
-					context_type: null,
-					entity_id: null,
-					message_count: 0,
-					created_at: '2026-06-27T01:03:30.000Z',
-					completed_at: '2026-06-27T01:04:30.000Z'
-				}
-			],
-			agent_chat_messages: [
-				{
-					id: 'agent-message-1',
-					agent_session_id: 'agent-session-1',
-					parent_user_session_id: 'chat-1',
-					user_id: 'user-1',
-					role: 'assistant',
-					sender_type: 'planner',
-					content:
-						'Plan includes tasks, documents, goals, and a first implementation pass.',
-					created_at: '2026-06-27T01:04:00.000Z'
-				}
-			],
 			chat_sessions_projects: [
 				{
 					chat_session_id: 'chat-1',
@@ -455,15 +428,11 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 		const currentChat = payload.data.chat_sessions.find(
 			(session: any) => session.id === 'chat-1'
 		);
-		const legacyChat = payload.data.chat_sessions.find(
-			(session: any) => session.source === 'legacy_agent'
-		);
-
 		expect(response.status).toBe(200);
 		expect(payload.data.activity_stats).toMatchObject({
-			total_chat_sessions: 2,
-			total_chat_messages: 3,
-			total_project_chat_sessions: 2
+			total_chat_sessions: 1,
+			total_chat_messages: 2,
+			total_project_chat_sessions: 1
 		});
 		expect(currentChat).toMatchObject({
 			id: 'chat-1',
@@ -476,22 +445,12 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 			role: 'assistant',
 			content: 'I created the Pico Keypad Controller project and outlined the first tasks.'
 		});
-		expect(legacyChat).toMatchObject({
-			source: 'legacy_agent',
-			project_id: 'project-1',
-			message_count: 1,
-			admin_url: null
-		});
-		expect(legacyChat.recent_messages[0]).toMatchObject({
-			role: 'planner',
-			content: 'Plan includes tasks, documents, goals, and a first implementation pass.'
-		});
 		expect(payload.data.projects[0]).toMatchObject({
-			chat_session_count: 2,
-			chat_message_count: 3
+			chat_session_count: 1,
+			chat_message_count: 2
 		});
 		expect(payload.data.projects[0].recent_chat_sessions[0]).toMatchObject({
-			source: 'legacy_agent',
+			source: 'current',
 			project_id: 'project-1'
 		});
 		expect(requestSupabase.from).not.toHaveBeenCalled();

@@ -377,7 +377,7 @@ describe('TurnObservabilityWriter', () => {
 			expect.objectContaining({
 				id: 'metric-1',
 				user_id: 'user-1',
-				session_id: null,
+				session_id: 'session-1',
 				turn_run_id: 'turn-1',
 				context_type: 'global',
 				message_length: 42,
@@ -389,8 +389,6 @@ describe('TurnObservabilityWriter', () => {
 		);
 		expect(supabase.insertedRows.timing_metrics[0].metadata).toEqual(
 			expect.objectContaining({
-				source_session_id: 'session-1',
-				source_session_table: 'chat_sessions',
 				stream_version: 'v2',
 				client_turn_id: 'client-turn-1',
 				stream_run_id: 'stream-run-1',

@@ -9,10 +9,18 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	type AgenticChatSharedReadContextV1,
 	type AgenticChatToolAccessPortV1,
+	getDocumentPath,
 	getDocumentOutline,
+	getDocumentTree,
 	getFieldInfo,
 	getOntoDocumentDetails,
+	getOntoGoalDetails,
+	getOntoMilestoneDetails,
+	getOntoPlanDetails,
 	getOntoProjectDetails,
+	getOntoProjectGraph,
+	getOntoRiskDetails,
+	getOntoTaskDetails,
 	getProjectOverview,
 	getWorkspaceOverview,
 	listOntoDocuments,
@@ -22,14 +30,18 @@ import {
 	listOntoProjects,
 	listOntoRisks,
 	listOntoTasks,
+	listTaskDocuments,
 	readDocumentSection,
+	searchAllProjects,
 	searchOntoDocuments,
 	searchOntoGoals,
 	searchOntoMilestones,
 	searchOntoPlans,
 	searchOntoProjects,
 	searchOntoRisks,
-	searchOntoTasks
+	searchOntoTasks,
+	searchOntology,
+	searchProject
 } from '@buildos/agentic-chat-runtime/tools';
 import { TOOL_METADATA, searchTelemetryColumns } from '@buildos/agentic-chat-runtime/loop';
 import { runWithAbortableDeadline } from './abortableDeadline';
@@ -49,7 +61,7 @@ type SharedReadToolRunner = (
 
 /**
  * The shared-allowlist dispatch table (Slice 18 S3): every read tool exported
- * by `@buildos/agentic-chat-runtime/tools` — the 18 ontology reads plus
+ * by `@buildos/agentic-chat-runtime/tools` — the 31 ontology reads plus
  * get_workspace_overview / get_project_overview / get_field_info.
  * Deliberately excluded:
  * - change_chat_context: needs the web-only resolveDirectToolNames port and
@@ -74,10 +86,23 @@ const SHARED_READ_TOOL_RUNNERS: Readonly<Record<string, SharedReadToolRunner>> =
 	search_onto_documents: (context, args) => searchOntoDocuments(context, args as never),
 	search_onto_milestones: (context, args) => searchOntoMilestones(context, args as never),
 	search_onto_risks: (context, args) => searchOntoRisks(context, args as never),
+	search_all_projects: (context, args) => searchAllProjects(context, args as never),
+	search_buildos: (context, args) => searchAllProjects(context, args as never),
+	search_project: (context, args) => searchProject(context, args as never),
+	search_ontology: (context, args) => searchOntology(context, args as never),
 	get_onto_project_details: (context, args) => getOntoProjectDetails(context, args as never),
+	get_onto_project_graph: (context, args) => getOntoProjectGraph(context, args as never),
 	get_onto_document_details: (context, args) => getOntoDocumentDetails(context, args as never),
+	get_onto_goal_details: (context, args) => getOntoGoalDetails(context, args as never),
+	get_onto_plan_details: (context, args) => getOntoPlanDetails(context, args as never),
+	get_onto_milestone_details: (context, args) => getOntoMilestoneDetails(context, args as never),
+	get_onto_risk_details: (context, args) => getOntoRiskDetails(context, args as never),
+	get_onto_task_details: (context, args) => getOntoTaskDetails(context, args as never),
+	list_task_documents: (context, args) => listTaskDocuments(context, args as never),
 	get_document_outline: (context, args) => getDocumentOutline(context, args as never),
 	read_document_section: (context, args) => readDocumentSection(context, args as never),
+	get_document_tree: (context, args) => getDocumentTree(context, args as never),
+	get_document_path: (context, args) => getDocumentPath(context, args as never),
 	get_workspace_overview: (context, args) => getWorkspaceOverview(context, args as never),
 	[PROJECT_OVERVIEW_TOOL_NAME]: (context, args) => getProjectOverview(context, args as never),
 	get_field_info: async (_context, args) => getFieldInfo(args as never)
@@ -252,9 +277,8 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 			affectedEntities,
 			// Per-tool category from the shared TOOL_METADATA ('search' for the
 			// list/search reads, 'read' for detail/overview reads, 'utility' for
-			// get_field_info). NOTE: prod's chat_tool_executions_tool_category_check
-			// constraint diff is still owed BEFORE the worker emits 'read'/'search'
-			// live (S3 extraction map, T4 ops note).
+			// get_field_info). The hosted chat_tool_executions constraint was widened
+			// and verified before the worker catalog admitted these categories.
 			toolCategory: TOOL_METADATA[input.toolName]?.category ?? null,
 			resultCount,
 			zeroResult,

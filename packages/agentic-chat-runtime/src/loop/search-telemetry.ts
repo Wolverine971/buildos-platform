@@ -11,6 +11,7 @@
  */
 export const SEARCH_RESULT_ARRAY_KEYS: Record<string, string> = {
 	search_all_projects: 'results',
+	search_buildos: 'results',
 	search_project: 'results',
 	search_ontology: 'results',
 	search_onto_tasks: 'tasks',
@@ -35,7 +36,12 @@ export function isSearchTool(toolName: string): boolean {
  * else in SEARCH_RESULT_ARRAY_KEYS is a legacy per-entity ILIKE tool. Keep this in
  * sync with Family A in the search audit / AGENTIC_BUILDOS_SEARCH_SPEC.
  */
-const SMART_SEARCH_TOOLS = new Set(['search_all_projects', 'search_project', 'search_ontology']);
+const SMART_SEARCH_TOOLS = new Set([
+	'search_all_projects',
+	'search_buildos',
+	'search_project',
+	'search_ontology'
+]);
 
 /**
  * Which search family a tool belongs to, for telemetry that answers the spec's

@@ -135,7 +135,8 @@ export function createAgenticChatPhase3Assembly(options: {
 	});
 	const provider = new AgenticChatReadOnlyProviderAdapter(
 		{ client: options.providerClient, capacity: providerCapacity },
-		options.providerCooldownMs
+		options.providerCooldownMs,
+		options.maxProviderRounds
 	);
 	const readTool = new AgenticChatReadOnlyToolAdapter(options.client);
 	const executor = new AgenticChatFixtureTurnExecutor(

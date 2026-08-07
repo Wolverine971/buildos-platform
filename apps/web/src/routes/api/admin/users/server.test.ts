@@ -101,7 +101,7 @@ describe('GET /api/admin/users', () => {
 		vi.clearAllMocks();
 	});
 
-	it('counts current and legacy chat activity for every listed user using the admin client', async () => {
+	it('counts current chat activity for every listed user using the admin client', async () => {
 		const adminSupabase = createSupabase({
 			users: [
 				{
@@ -152,14 +152,6 @@ describe('GET /api/admin/users', () => {
 				{ session_id: 'user-chat-with-rows', user_id: 'user-2' },
 				{ session_id: 'user-chat-with-rows', user_id: 'user-2' }
 			],
-			agent_chat_sessions: [
-				{
-					id: 'legacy-agent-session',
-					user_id: 'user-2',
-					message_count: 0
-				}
-			],
-			agent_chat_messages: [{ agent_session_id: 'legacy-agent-session', user_id: 'user-2' }],
 			user_brief_preferences: [],
 			ontology_daily_briefs: [],
 			onto_tasks: [],
@@ -196,17 +188,15 @@ describe('GET /api/admin/users', () => {
 			chat_message_count: 1
 		});
 		expect(otherUser).toMatchObject({
-			agentic_session_count: 3,
-			agentic_message_count: 7,
-			chat_session_count: 3,
-			chat_message_count: 7
+			agentic_session_count: 2,
+			agentic_message_count: 6,
+			chat_session_count: 2,
+			chat_message_count: 6
 		});
 		expect(createAdminSupabaseClientMock).toHaveBeenCalledTimes(1);
 		expect(requestSupabase.from).not.toHaveBeenCalled();
 		expect(adminSupabase.from).toHaveBeenCalledWith('chat_sessions');
 		expect(adminSupabase.from).toHaveBeenCalledWith('chat_messages');
-		expect(adminSupabase.from).toHaveBeenCalledWith('agent_chat_sessions');
-		expect(adminSupabase.from).toHaveBeenCalledWith('agent_chat_messages');
 	});
 
 	it('does not create a service-role client for non-admin users', async () => {

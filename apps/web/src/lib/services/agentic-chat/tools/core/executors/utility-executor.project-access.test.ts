@@ -22,7 +22,7 @@ describe('UtilityExecutor project-scoped entity access', () => {
 
 	beforeEach(() => {
 		taskAccessQuery = createQuery({
-			data: { project_id: 'project-1', created_by: 'owner-actor' },
+			data: { id: 'task-1', project_id: 'project-1', created_by: 'owner-actor' },
 			error: null
 		});
 		outgoingEdgesQuery = createQuery({
@@ -96,10 +96,33 @@ describe('UtilityExecutor project-scoped entity access', () => {
 			p_project_id: 'project-1',
 			p_required_access: 'read'
 		});
-		expect(taskAccessQuery.select).toHaveBeenCalledWith('project_id, created_by');
+		expect(taskAccessQuery.select).toHaveBeenCalledWith('id, project_id');
 		expect(taskAccessQuery.eq).toHaveBeenCalledWith('id', 'task-1');
+		expect(outgoingEdgesQuery.eq).toHaveBeenCalledWith('project_id', 'project-1');
 		expect(outgoingEdgesQuery.eq).toHaveBeenCalledWith('src_id', 'task-1');
 		expect(result.relationships).toHaveLength(1);
 		expect(result.relationships[0].direction).toBe('outgoing');
+	});
+
+	it('rejects a project-less creator before querying relationship edges', async () => {
+		taskAccessQuery.maybeSingle.mockResolvedValue({
+			data: {
+				id: 'task-1',
+				project_id: null,
+				created_by: 'collaborator-actor'
+			},
+			error: null
+		});
+		const executor = new UtilityExecutor(context);
+
+		await expect(
+			executor.getEntityRelationships({ entity_id: 'task-1', direction: 'both' })
+		).rejects.toThrow('Entity not found or access denied');
+
+		expect(mockSupabase.from).not.toHaveBeenCalledWith('onto_edges');
+		expect(mockSupabase.rpc).not.toHaveBeenCalledWith(
+			'current_actor_has_project_member_access',
+			expect.anything()
+		);
 	});
 });

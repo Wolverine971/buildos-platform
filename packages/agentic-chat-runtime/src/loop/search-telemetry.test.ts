@@ -24,6 +24,7 @@ describe('extractSearchResultCount', () => {
 			4
 		);
 		expect(extractSearchResultCount('search_project', { results: [] })).toBe(0);
+		expect(extractSearchResultCount('search_buildos', { results: [{}, {}] })).toBe(2);
 	});
 
 	it('counts gateway discovery matches and schema lookup misses', () => {
@@ -56,6 +57,7 @@ describe('extractSearchResultCount', () => {
 describe('searchToolFamily', () => {
 	it('classifies the smart ranked tools', () => {
 		expect(searchToolFamily('search_all_projects')).toBe('smart');
+		expect(searchToolFamily('search_buildos')).toBe('smart');
 		expect(searchToolFamily('search_project')).toBe('smart');
 		expect(searchToolFamily('search_ontology')).toBe('smart');
 	});

@@ -23,6 +23,16 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		timeoutMs: 45000,
 		category: 'search'
 	},
+	search_buildos: {
+		summary: 'Compatibility alias for broad search across accessible projects.',
+		capabilities: [
+			'Returns one typed result shape across core ontology entities',
+			'Uses the same implementation as search_all_projects'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 45000,
+		category: 'search'
+	},
 	search_project: {
 		summary: 'Primary scoped search inside one project.',
 		capabilities: [

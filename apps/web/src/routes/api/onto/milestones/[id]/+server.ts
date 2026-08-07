@@ -52,6 +52,11 @@ import {
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
 import { withComputedMilestoneState } from '$lib/utils/milestone-state';
+import {
+	AgenticChatToolAccessDeniedError,
+	loadOntoMilestoneDetail
+} from '@buildos/agentic-chat-runtime/tools';
+import { createWebAgenticChatSharedReadContext } from '$lib/services/agentic-chat/tools/core/executors/web-access-adapter';
 
 // GET /api/onto/milestones/[id] - Get a single milestone
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -83,96 +88,23 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get milestone with project to verify ownership (exclude soft-deleted)
-		const { data: milestone, error } = await supabase
-			.from('onto_milestones')
-			.select(
-				`
-				*,
-				project:onto_projects!inner(
-					id,
-					name
-				)
-			`
-			)
-			.eq('id', params.id)
-			.is('deleted_at', null)
-			.single();
+		const details = await loadOntoMilestoneDetail(
+			createWebAgenticChatSharedReadContext({
+				supabase: supabase as never,
+				getActorId: async () => actorId
+			}),
+			params.id
+		);
 
-		if (error || !milestone) {
+		if (!details) {
 			return ApiResponse.notFound('Milestone');
 		}
 
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_member_access',
-			{
-				p_project_id: milestone.project.id,
-				p_required_access: 'read'
-			}
-		);
-
-		if (accessError) {
-			console.error('[Milestone GET] Failed to check access:', accessError);
-			await logOntologyApiError({
-				supabase,
-				error: accessError,
-				endpoint: `/api/onto/milestones/${params.id}`,
-				method: 'GET',
-				userId: session.user.id,
-				projectId: milestone.project_id,
-				entityType: 'milestone',
-				entityId: params.id,
-				operation: 'milestone_access_check'
-			});
-			return ApiResponse.error('Failed to check project access', 500);
-		}
-
-		if (!hasAccess) {
+		return ApiResponse.success(details);
+	} catch (error) {
+		if (error instanceof AgenticChatToolAccessDeniedError) {
 			return ApiResponse.forbidden('You do not have access to this milestone');
 		}
-
-		const { data: goalEdge, error: goalEdgeError } = await supabase
-			.from('onto_edges')
-			.select('src_id')
-			.eq('project_id', milestone.project_id)
-			.eq('src_kind', 'goal')
-			.eq('dst_kind', 'milestone')
-			.eq('dst_id', params.id)
-			.eq('rel', 'has_milestone')
-			.order('created_at', { ascending: false })
-			.limit(1)
-			.maybeSingle();
-
-		if (goalEdgeError) {
-			console.error('[Milestone GET] Failed to load goal edge:', goalEdgeError);
-			await logOntologyApiError({
-				supabase,
-				error: goalEdgeError,
-				endpoint: `/api/onto/milestones/${params.id}`,
-				method: 'GET',
-				userId: session.user.id,
-				projectId: milestone.project_id,
-				entityType: 'milestone',
-				entityId: params.id,
-				operation: 'milestone_goal_edge_fetch',
-				tableName: 'onto_edges'
-			});
-			return ApiResponse.error('Failed to load milestone goal', 500);
-		}
-
-		const decoratedMilestone = withComputedMilestoneState(milestone);
-
-		// Extract project data and include project name in response
-		const { project, type_key: _typeKey, ...milestoneData } = decoratedMilestone;
-
-		return ApiResponse.success({
-			milestone: {
-				...milestoneData,
-				goal_id: goalEdge?.src_id ?? null,
-				project: { name: project.name }
-			}
-		});
-	} catch (error) {
 		console.error('[Milestone GET] Unexpected error:', error);
 		await logOntologyApiError({
 			supabase: locals.supabase,

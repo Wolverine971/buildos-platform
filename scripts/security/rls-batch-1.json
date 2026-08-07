@@ -9,6 +9,5 @@
 	{ "relation": "onto_insights", "expect": "rls_protected" },
 	{ "relation": "onto_metric_points", "expect": "rls_protected" },
 	{ "relation": "onto_signals", "expect": "rls_protected" },
-	{ "relation": "onto_facet_definitions", "expect": "rls_protected" },
-	{ "relation": "agent_chat_messages", "expect": "rls_protected" }
+	{ "relation": "onto_facet_definitions", "expect": "rls_protected" }
 ]

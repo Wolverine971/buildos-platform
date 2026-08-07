@@ -1466,12 +1466,17 @@ export class OntologyContextLoader {
 		entityName: string,
 		options: LoadLinkedEntitiesOptions = {}
 	): Promise<EntityLinkedContext> {
-		await this.assertEntityAccess(entityId, 'read');
 		const {
+			projectId: expectedProjectId,
 			maxPerType = 3,
 			includeDescriptions = false,
 			priorityOrder = 'active_first'
 		} = options;
+		const projectId = await this.resolveLinkedEntityProjectAccess(
+			entityId,
+			entityKind,
+			expectedProjectId
+		);
 
 		console.log('[OntologyLoader] Loading linked entities for:', entityKind, entityId);
 
@@ -1479,6 +1484,7 @@ export class OntologyContextLoader {
 		const { data: edges, error } = await this.supabase
 			.from('onto_edges')
 			.select('id, src_kind, src_id, rel, dst_kind, dst_id')
+			.eq('project_id', projectId)
 			.or(`src_id.eq.${entityId},dst_id.eq.${entityId}`);
 
 		if (error) {
@@ -1609,6 +1615,7 @@ export class OntologyContextLoader {
 				const { data: entities, error: fetchError } = await this.supabase
 					.from(table as any)
 					.select('*')
+					.eq('project_id', projectId)
 					.in('id', idsToFetch);
 
 				if (fetchError || !entities) {
@@ -1800,6 +1807,47 @@ export class OntologyContextLoader {
 		if (!data) {
 			throw new Error('Project not found or access denied');
 		}
+	}
+
+	/**
+	 * Resolve the linked-entity source to a project without the legacy
+	 * project-less `created_by` fallback. The optional expected id comes from the
+	 * shared relationship resolver and is repeated as a SQL predicate so every
+	 * public entry to this loader remains independently fenced.
+	 */
+	private async resolveLinkedEntityProjectAccess(
+		entityId: string,
+		entityKind: OntologyEntityType,
+		expectedProjectId?: string
+	): Promise<string> {
+		if (entityKind === 'project') {
+			if (expectedProjectId && expectedProjectId !== entityId) {
+				throw new Error('Entity not found or access denied');
+			}
+			const { data, error } = await this.supabase
+				.from('onto_projects')
+				.select('id')
+				.eq('id', entityId)
+				.maybeSingle();
+			if (error) throw error;
+			if (!data?.id) throw new Error('Entity not found or access denied');
+			await this.assertProjectAccess(data.id, 'read');
+			return data.id;
+		}
+
+		const table = OntologyContextLoader.ELEMENT_TABLE_MAP[entityKind];
+		if (!table) throw new Error('Entity not found or access denied');
+
+		let query = this.supabase.from(table).select('project_id').eq('id', entityId);
+		if (expectedProjectId) {
+			query = query.eq('project_id', expectedProjectId);
+		}
+		const { data, error } = await query.maybeSingle();
+		if (error) throw error;
+		if (!data?.project_id) throw new Error('Entity not found or access denied');
+
+		await this.assertProjectAccess(data.project_id, 'read');
+		return data.project_id;
 	}
 
 	private async assertEntityAccess(

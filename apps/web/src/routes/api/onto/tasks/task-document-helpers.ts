@@ -2,8 +2,9 @@
 import { ApiResponse } from '$lib/utils/api-response';
 import type { Json } from '@buildos/shared-types';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { TASK_DOCUMENT_REL } from '@buildos/agentic-chat-runtime/tools';
 
-export const TASK_DOCUMENT_REL = 'task_has_document';
+export { TASK_DOCUMENT_REL };
 
 type Locals = App.Locals;
 type ProjectAccessLevel = 'read' | 'write' | 'admin';

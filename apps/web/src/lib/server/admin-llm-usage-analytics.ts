@@ -35,7 +35,6 @@ type UsageLogRow = Pick<
 	| 'openrouter_cache_status'
 	| 'metadata'
 	| 'chat_session_id'
-	| 'agent_session_id'
 	| 'created_at'
 >;
 
@@ -217,7 +216,7 @@ export async function getAdminLlmUsageStats(supabase: Supabase, lookbackDays: nu
 			supabase
 				.from('llm_usage_logs')
 				.select(
-					'id, user_id, operation_type, model_requested, model_used, provider, prompt_tokens, completion_tokens, total_tokens, input_cost_usd, output_cost_usd, total_cost_usd, openrouter_usage_cost_usd, response_time_ms, status, streaming, profile, openrouter_cache_status, metadata, chat_session_id, agent_session_id, created_at'
+					'id, user_id, operation_type, model_requested, model_used, provider, prompt_tokens, completion_tokens, total_tokens, input_cost_usd, output_cost_usd, total_cost_usd, openrouter_usage_cost_usd, response_time_ms, status, streaming, profile, openrouter_cache_status, metadata, chat_session_id, created_at'
 				)
 				.gte('created_at', startIso)
 				.lte('created_at', endIso)
