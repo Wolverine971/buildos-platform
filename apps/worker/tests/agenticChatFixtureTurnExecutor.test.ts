@@ -1420,13 +1420,20 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				]
 			}
 		);
-		let deadlineSignal: AbortSignal | null = null;
+		// S3 swap: the adapter no longer takes a gateway runOp; hang the shared
+		// read's first network hop (project summaries) behind the access port.
+		let readHangStarted = false;
 		const readAdapter = new AgenticChatReadOnlyToolAdapter({} as never, {
 			timeoutMs: 10,
-			runOp: (input) =>
-				new Promise<never>(() => {
-					deadlineSignal = input.signal;
-				})
+			createAccessAdapter: () => ({
+				getActorId: async () => 'a0000000-0000-4000-8000-00000000000a',
+				resolveProjectSummaries: () =>
+					new Promise<never>(() => {
+						readHangStarted = true;
+					}),
+				assertProjectAccess: async () => {},
+				assertEntityAccess: async () => {}
+			})
 		});
 		harness.readTool.execute.mockImplementation(readAdapter.execute.bind(readAdapter));
 
@@ -1437,7 +1444,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				terminalStatus: 'failed',
 				queueReconciled: true
 			});
-			expect(deadlineSignal).toMatchObject({ aborted: true });
+			expect(readHangStarted).toBe(true);
 			expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
 				failureClass: 'transient_infra',
 				errorMessage: expect.stringContaining('read tool exceeded its 10ms deadline')
