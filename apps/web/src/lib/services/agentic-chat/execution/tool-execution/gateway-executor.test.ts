@@ -114,46 +114,4 @@ describe('gateway executor', () => {
 		});
 	});
 
-	it('injects the configured fetch function into asynchronous Libri handlers', async () => {
-		const fetchFn = vi.fn() as unknown as typeof fetch;
-		const libriOverview = vi.fn().mockResolvedValue({ overview: true });
-		const libriSearchCapabilities = vi.fn().mockResolvedValue({ capabilities: [] });
-		const libriGetCapabilitySchema = vi.fn().mockResolvedValue({ schema: true });
-
-		await executeGatewayTool(
-			'libri_overview',
-			{ refresh: true, includeDomains: false },
-			{ fetchFn, libriOverview }
-		);
-		await executeGatewayTool(
-			'libri_search_capabilities',
-			{ domain: 'writing', kind: 'read', limit: 5 },
-			{ fetchFn, libriSearchCapabilities }
-		);
-		await executeGatewayTool(
-			'libri_get_capability_schema',
-			{ path: 'onto.task.update', includeExamples: false },
-			{ fetchFn, libriGetCapabilitySchema }
-		);
-
-		expect(libriOverview).toHaveBeenCalledWith(
-			{ refresh: true, includeDomains: false },
-			{ fetchFn }
-		);
-		expect(libriSearchCapabilities).toHaveBeenCalledWith(
-			{
-				domain: 'writing',
-				query: undefined,
-				resource: undefined,
-				kind: 'read',
-				limit: 5,
-				refresh: false
-			},
-			{ fetchFn }
-		);
-		expect(libriGetCapabilitySchema).toHaveBeenCalledWith(
-			{ op: 'onto.task.update', includeExamples: false, refresh: false },
-			{ fetchFn }
-		);
-	});
 });

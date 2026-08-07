@@ -29,7 +29,6 @@ import {
 	shouldPersistGenericErrorEvent,
 	shouldTrackServerResponseFailure
 } from '$lib/utils/error-observability';
-import { configureLibriRuntimeEnv } from '$lib/services/agentic-chat/tools/libri/config';
 import {
 	buildEncryptedCalendarTokenPatch,
 	decodeStoredCalendarTokens
@@ -37,8 +36,6 @@ import {
 import { createCrossSiteFormPostResponse } from '$lib/server/csrf';
 import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
 // import { rateLimits } from '$lib/middleware/rate-limiter';
-
-configureLibriRuntimeEnv(() => privateEnv);
 
 const LEGACY_FEATURE_PATHS = new Set(['/features', '/features/']);
 const LEGACY_PATH_REDIRECTS = new Map<string, string>([

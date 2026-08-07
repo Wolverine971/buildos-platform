@@ -20,7 +20,6 @@ import {
 	contextEngineeringForAgentWorkSkill,
 	nonfictionWritingFromLivedConvictionSkill
 } from './founder-craft.skill';
-import { libriSkill } from './libri.skill';
 import { linkedinCompanyPageGrowthSkill } from './linkedin-company-page-growth.skill';
 import {
 	algorithmAwarePublishingSkill,
@@ -63,7 +62,6 @@ import {
 	usabilityQuickResearchSkill,
 	visualCraftFundamentalsSkill
 } from './ui-ux.skill';
-import { isLibriIntegrationEnabled } from '$lib/services/agentic-chat/tools/libri';
 
 const ALL_SKILLS: SkillDefinition[] = [
 	calendarSkill,
@@ -117,13 +115,12 @@ const ALL_SKILLS: SkillDefinition[] = [
 	aiEraCraftAndQualityMoatSkill,
 	contextEngineeringForAgentWorkSkill,
 	nonfictionWritingFromLivedConvictionSkill,
-	libriSkill,
 	projectAuditSkill,
 	projectForecastSkill
 ];
 
-function isSkillEnabled(skill: SkillDefinition): boolean {
-	return skill.id !== 'libri_knowledge' || isLibriIntegrationEnabled();
+function isSkillEnabled(_skill: SkillDefinition): boolean {
+	return true;
 }
 
 function getEnabledSkills(): SkillDefinition[] {

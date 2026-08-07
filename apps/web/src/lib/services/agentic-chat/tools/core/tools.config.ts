@@ -15,7 +15,6 @@ import {
 	type ToolContextScope,
 	type ToolMetadata
 } from './tool-definitions';
-import { isLibriIntegrationEnabled, isLibriToolName } from '$lib/services/agentic-chat/tools/libri';
 import { isEmailChatToolsEnabled, isEmailToolName } from '$lib/services/agentic-chat/tools/email';
 
 export { ENTITY_FIELD_INFO } from './tool-definitions';
@@ -162,12 +161,7 @@ export const TOOL_CATEGORIES = {
 		costTier: 'low'
 	},
 	external_knowledge: {
-		tools: [
-			'resolve_libri_resource',
-			'query_libri_library',
-			'list_corsair_mcp_tools',
-			'call_corsair_mcp_tool'
-		],
+		tools: ['list_corsair_mcp_tools', 'call_corsair_mcp_tool'],
 		averageTokens: 250,
 		costTier: 'low'
 	},
@@ -226,8 +220,6 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	],
 	global: [
 		'change_chat_context',
-		'resolve_libri_resource',
-		'query_libri_library',
 		'search_all_projects',
 		'search_project',
 		'list_onto_projects',
@@ -253,8 +245,6 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	project_create: ['create_onto_project'],
 	project: [
 		'change_chat_context',
-		'resolve_libri_resource',
-		'query_libri_library',
 		'search_project',
 		'search_all_projects',
 		'list_onto_projects',
@@ -372,21 +362,7 @@ function resolveToolNames(contextType: PlannerContextType, options: GetToolsOpti
 
 	options.additionalTools?.forEach((toolName) => names.add(toolName));
 
-	if (!isLibriContext(contextType) || !isLibriIntegrationEnabled()) {
-		names.delete('resolve_libri_resource');
-		names.delete('query_libri_library');
-	}
-
 	return Array.from(names);
-}
-
-function isLibriContext(contextType: ChatContextType): boolean {
-	return (
-		contextType === 'global' ||
-		contextType === 'general' ||
-		contextType === 'project' ||
-		contextType === 'ontology'
-	);
 }
 
 export function isWriteToolName(toolName: string): boolean {
@@ -394,14 +370,12 @@ export function isWriteToolName(toolName: string): boolean {
 }
 
 function isToolEnabled(toolName: string): boolean {
-	if (isLibriToolName(toolName) && !isLibriIntegrationEnabled()) return false;
 	if (isEmailToolName(toolName) && !isEmailChatToolsEnabled()) return false;
 	return true;
 }
 
-function isToolEnabledForContext(toolName: string, contextType: ChatContextType): boolean {
-	if (!isToolEnabled(toolName)) return false;
-	return !isLibriToolName(toolName) || isLibriContext(contextType);
+function isToolEnabledForContext(toolName: string, _contextType: ChatContextType): boolean {
+	return isToolEnabled(toolName);
 }
 
 export function filterEnabledTools(tools: ChatToolDefinition[]): ChatToolDefinition[] {

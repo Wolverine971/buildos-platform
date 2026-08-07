@@ -7,11 +7,6 @@ import { loadSkillReference } from '../../tools/skills/skill-reference-load';
 import { searchSkills } from '../../tools/skills/skill-search';
 import { getToolSchema } from '../../tools/registry/tool-schema';
 import { searchToolRegistry } from '../../tools/registry/tool-search';
-import {
-	libriGetCapabilitySchema,
-	libriOverview,
-	libriSearchCapabilities
-} from '../../tools/libri';
 import type { ToolArguments } from './argument-values';
 
 export interface GatewayExecutorDependencies {
@@ -26,10 +21,6 @@ export interface GatewayExecutorDependencies {
 	loadSkillReference: typeof loadSkillReference;
 	searchToolRegistry: typeof searchToolRegistry;
 	getToolSchema: typeof getToolSchema;
-	libriOverview: typeof libriOverview;
-	libriSearchCapabilities: typeof libriSearchCapabilities;
-	libriGetCapabilitySchema: typeof libriGetCapabilitySchema;
-	fetchFn: typeof fetch;
 }
 
 type GatewayHandler = (
@@ -48,11 +39,7 @@ const DEFAULT_DEPENDENCIES: GatewayExecutorDependencies = {
 	loadSkill,
 	loadSkillReference,
 	searchToolRegistry,
-	getToolSchema,
-	libriOverview,
-	libriSearchCapabilities,
-	libriGetCapabilitySchema,
-	fetchFn: fetch
+	getToolSchema
 };
 
 const GATEWAY_TOOL_HANDLERS = {
@@ -107,36 +94,7 @@ const GATEWAY_TOOL_HANDLERS = {
 		dependencies.getToolSchema(firstString(args.op, args.path) ?? '', {
 			include_examples: args.include_examples !== false,
 			include_schema: args.include_schema !== false
-		}),
-	libri_overview: (args, dependencies) =>
-		dependencies.libriOverview(
-			{
-				refresh: args.refresh === true,
-				includeDomains: args.includeDomains !== false
-			},
-			{ fetchFn: dependencies.fetchFn }
-		),
-	libri_search_capabilities: (args, dependencies) =>
-		dependencies.libriSearchCapabilities(
-			{
-				domain: readString(args.domain),
-				query: readString(args.query),
-				resource: readString(args.resource),
-				kind: args.kind === 'read' || args.kind === 'write' ? args.kind : undefined,
-				limit: readNumber(args.limit),
-				refresh: args.refresh === true
-			},
-			{ fetchFn: dependencies.fetchFn }
-		),
-	libri_get_capability_schema: (args, dependencies) =>
-		dependencies.libriGetCapabilitySchema(
-			{
-				op: firstString(args.op, args.path) ?? '',
-				includeExamples: args.includeExamples !== false,
-				refresh: args.refresh === true
-			},
-			{ fetchFn: dependencies.fetchFn }
-		)
+		})
 } satisfies Record<string, GatewayHandler>;
 
 export type GatewayToolName = keyof typeof GATEWAY_TOOL_HANDLERS;

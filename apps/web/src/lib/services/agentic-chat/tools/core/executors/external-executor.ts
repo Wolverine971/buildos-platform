@@ -36,21 +36,10 @@ import {
 	type WebSearchResultPayload
 } from '$lib/services/agentic-chat/tools/websearch';
 import {
-	type QueryLibriLibraryArgs,
-	type ResolveLibriResourceArgs,
-	type LibriLibraryQueryToolResult,
-	type LibriResolveToolResult
-} from '$lib/services/agentic-chat/tools/libri';
-import {
-	queryLibriLibrary,
-	resolveLibriResource
-} from '$lib/services/agentic-chat/tools/libri/client';
-import {
 	callCorsairMcpTool,
 	listCorsairMcpTools,
 	type CallCorsairMcpToolArgs
 } from '$lib/services/agentic-chat/tools/corsair-mcp';
-import { executeDynamicLibriTool } from '$lib/services/agentic-chat/tools/libri';
 import {
 	buildExcerpt,
 	clampMaxChars,
@@ -162,29 +151,6 @@ export class ExternalExecutor extends BaseExecutor {
 				pages_fetched: enriched.pagesFetched
 			}
 		};
-	}
-
-	async resolveLibriResource(args: ResolveLibriResourceArgs): Promise<LibriResolveToolResult> {
-		return resolveLibriResource(args, {
-			fetchFn: this.fetchFn,
-			sessionId: this.sessionId
-		});
-	}
-
-	async queryLibriLibrary(args: QueryLibriLibraryArgs): Promise<LibriLibraryQueryToolResult> {
-		return queryLibriLibrary(args, {
-			fetchFn: this.fetchFn,
-			sessionId: this.sessionId
-		});
-	}
-
-	async executeDynamicLibriTool(
-		toolName: string,
-		args: Record<string, any>
-	): Promise<Record<string, unknown>> {
-		return executeDynamicLibriTool(toolName, args, {
-			fetchFn: this.fetchFn
-		});
 	}
 
 	async listCorsairMcpTools(): Promise<any> {

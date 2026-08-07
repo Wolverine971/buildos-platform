@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/agentic-chat/tools/email/config.ts
 //
-// Feature-flag gate for the Tier 1 read-only Gmail chat tools. Mirrors the Libri
-// integration flag (see ../libri/config.ts): default OFF, enabled per-environment
+// Feature-flag gate for the Tier 1 read-only Gmail chat tools: default OFF,
+// enabled per-environment
 // so the pilot can be turned on for a single deployment and killed independently
 // of the profile-tab Gmail UI. The tool registry, definition surfacing, and
 // on-demand materialization all consult this gate, so flag-off hides the tools

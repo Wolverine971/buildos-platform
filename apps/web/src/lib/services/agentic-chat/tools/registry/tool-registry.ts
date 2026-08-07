@@ -8,7 +8,6 @@
 import type { ChatToolDefinition } from '@buildos/shared-types';
 import type { ToolMetadata, ToolContextScope } from '../core/definitions/types';
 import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../core/definitions';
-import { isLibriIntegrationEnabled, isLibriToolName } from '../libri';
 import { isEmailChatToolsEnabled, isEmailToolName } from '../email';
 
 export type RegistryOp = {
@@ -45,9 +44,7 @@ const OP_EXCEPTIONS: Record<string, string> = {
 	link_onto_entities: 'onto.edge.link',
 	unlink_onto_edge: 'onto.edge.unlink',
 	reorganize_onto_project_graph: 'onto.project.graph.reorganize',
-	get_onto_project_graph: 'onto.project.graph.get',
-	resolve_libri_resource: 'libri.resource.resolve',
-	query_libri_library: 'libri.library.query'
+	get_onto_project_graph: 'onto.project.graph.get'
 };
 
 const UTIL_OPS: Record<string, string> = {
@@ -141,7 +138,6 @@ export function buildToolRegistry(
 	for (const tool of tools) {
 		const toolName = tool.function?.name;
 		if (!toolName) continue;
-		if (isLibriToolName(toolName) && !isLibriIntegrationEnabled()) continue;
 		if (isEmailToolName(toolName) && !isEmailChatToolsEnabled()) continue;
 
 		const op = deriveOpFromToolName(toolName) ?? `x.misc.${toolName}`;

@@ -176,18 +176,7 @@ const SEMANTIC_ALIAS_POLICIES: Readonly<Record<string, readonly AliasRule[]>> = 
 			aliasKeys: ['reference_id', 'module', 'reference.path']
 		}
 	],
-	tool_schema: [{ targetKey: 'op', aliasKeys: ['path'] }],
-	libri_overview: [
-		{ targetKey: 'includeDomains', aliasKeys: ['include_domains'], allowNonString: true }
-	],
-	libri_get_capability_schema: [
-		{ targetKey: 'op', aliasKeys: ['path'] },
-		{
-			targetKey: 'includeExamples',
-			aliasKeys: ['include_examples'],
-			allowNonString: true
-		}
-	]
+	tool_schema: [{ targetKey: 'op', aliasKeys: ['path'] }]
 };
 
 /** Tool-specific repair that intentionally runs immediately after decoding. */

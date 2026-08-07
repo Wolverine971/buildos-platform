@@ -585,27 +585,4 @@ reference_modules:
 		expect(fullPayload.markdown).not.toContain('Loaded child skill contents');
 	});
 
-	it('gates the Libri knowledge skill behind the Libri integration flag', () => {
-		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
-		expect(getSkillById('libri_knowledge')).toBeUndefined();
-		expect(loadSkill('libri').type).toBe('not_found');
-
-		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
-		const skill = getSkillById('libri_knowledge');
-		expect(skill).toBeDefined();
-		expect(skill?.summary).toContain('Libri is BuildOS');
-		expect(skill?.legacyPaths).toContain('libri');
-		expect(skill?.relatedOps).toContain('libri.resource.resolve');
-
-		const result = loadSkill('libri', {
-			format: 'full',
-			include_examples: true
-		}) as Record<string, unknown>;
-
-		expect(result.type).toBe('skill');
-		expect(result.id).toBe('libri_knowledge');
-		expect(typeof result.markdown).toBe('string');
-		expect(result.markdown).toContain('Libri is BuildOS');
-		expect(result.markdown).toContain('resolve_libri_resource');
-	});
 });

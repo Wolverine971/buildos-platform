@@ -4,11 +4,6 @@ import {
 	extractToolNamesFromDefinitions,
 	extractTools
 } from '$lib/services/agentic-chat/tools/core/tools.config';
-import {
-	isLibriIntegrationEnabled,
-	isLibriToolName,
-	resolveDynamicLibriToolDefinition
-} from '$lib/services/agentic-chat/tools/libri';
 import { GATEWAY_TOOL_DEFINITIONS } from './definitions/gateway';
 import { inferMaterializedToolsFromEntityResults } from './entity-result-materialization';
 
@@ -17,9 +12,6 @@ const GATEWAY_DISCOVERY_TOOL_NAMES = [
 	'skill_search',
 	'skill_load',
 	'skill_reference_load',
-	'libri_overview',
-	'libri_search_capabilities',
-	'libri_get_capability_schema',
 	'tool_search',
 	'tool_schema'
 ] as const;
@@ -171,15 +163,11 @@ function uniqueToolNames(names: string[]): string[] {
 function resolveGatewayToolDefinition(name: string): ChatToolDefinition | undefined {
 	const normalizedName = normalizeGatewayToolName(name);
 	if (!isGatewayToolEnabled(normalizedName)) return undefined;
-	return (
-		GATEWAY_TOOL_DEFINITION_MAP.get(normalizedName) ??
-		extractTools([normalizedName])[0] ??
-		resolveDynamicLibriToolDefinition(normalizedName)
-	);
+	return GATEWAY_TOOL_DEFINITION_MAP.get(normalizedName) ?? extractTools([normalizedName])[0];
 }
 
-function isGatewayToolEnabled(name: string): boolean {
-	return !isLibriToolName(name) || isLibriIntegrationEnabled();
+function isGatewayToolEnabled(_name: string): boolean {
+	return true;
 }
 
 export function resolveGatewaySurfaceProfileForContextType(

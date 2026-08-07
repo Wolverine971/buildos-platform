@@ -45,11 +45,6 @@ import {
 
 import type { WebSearchArgs } from '$lib/services/agentic-chat/tools/websearch';
 import type { WebVisitArgs } from '$lib/services/agentic-chat/tools/webvisit';
-import {
-	getCachedLibriOperationByToolName,
-	type QueryLibriLibraryArgs,
-	type ResolveLibriResourceArgs
-} from '$lib/services/agentic-chat/tools/libri';
 import type { CallCorsairMcpToolArgs } from '$lib/services/agentic-chat/tools/corsair-mcp';
 
 const logger = createLogger('ChatToolExecutor');
@@ -299,10 +294,6 @@ export class ChatToolExecutor {
 	// ============================================
 
 	private async dispatchTool(toolName: string, args: any): Promise<any> {
-		if (getCachedLibriOperationByToolName(toolName)) {
-			return this.externalExecutor.executeDynamicLibriTool(toolName, args);
-		}
-
 		switch (toolName) {
 			// ==================
 			// UTILITY TOOLS
@@ -357,12 +348,6 @@ export class ChatToolExecutor {
 
 			case 'get_buildos_usage_guide':
 				return this.externalExecutor.getBuildosUsageGuide();
-
-			case 'resolve_libri_resource':
-				return this.externalExecutor.resolveLibriResource(args as ResolveLibriResourceArgs);
-
-			case 'query_libri_library':
-				return this.externalExecutor.queryLibriLibrary(args as QueryLibriLibraryArgs);
 
 			case 'list_corsair_mcp_tools':
 				return this.externalExecutor.listCorsairMcpTools();
