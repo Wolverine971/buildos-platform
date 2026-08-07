@@ -572,6 +572,9 @@ importers:
 
   packages/agentic-chat-runtime:
     dependencies:
+      '@buildos/shared-agent-ops':
+        specifier: workspace:*
+        version: link:../shared-agent-ops
       '@buildos/shared-types':
         specifier: workspace:*
         version: link:../shared-types

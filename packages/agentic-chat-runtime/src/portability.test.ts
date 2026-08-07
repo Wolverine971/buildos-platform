@@ -15,7 +15,8 @@ const forbiddenProductionImports = [
 
 describe('runtime package portability', () => {
 	it('keeps production modules free of host-framework and deployment imports', async () => {
-		const sourceFiles = (await readdir(sourceDirectory)).filter(
+		const entries = await readdir(sourceDirectory, { recursive: true });
+		const sourceFiles = entries.filter(
 			(file) => file.endsWith('.ts') && !file.endsWith('.test.ts')
 		);
 		const productionSource = (

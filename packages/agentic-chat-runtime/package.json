@@ -11,17 +11,23 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.mjs",
 			"require": "./dist/index.js"
+		},
+		"./loop": {
+			"types": "./dist/loop/index.d.ts",
+			"import": "./dist/loop/index.mjs",
+			"require": "./dist/loop/index.js"
 		}
 	},
 	"scripts": {
-		"build": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
-		"build:types": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
+		"build": "tsup src/index.ts src/loop/index.ts --format cjs,esm --dts --sourcemap",
+		"build:types": "tsup src/index.ts src/loop/index.ts --format cjs,esm --dts --sourcemap",
 		"clean": "rm -rf dist .turbo",
 		"typecheck": "tsc --noEmit --skipLibCheck",
 		"test": "vitest",
 		"test:run": "vitest run"
 	},
 	"dependencies": {
+		"@buildos/shared-agent-ops": "workspace:*",
 		"@buildos/shared-types": "workspace:*"
 	},
 	"devDependencies": {

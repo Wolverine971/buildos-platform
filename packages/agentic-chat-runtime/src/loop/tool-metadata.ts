@@ -1,0 +1,818 @@
+// packages/agentic-chat-runtime/src/loop/tool-metadata.ts
+/**
+ * Tool Metadata
+ *
+ * Metadata describing tool capabilities, contexts, and categories.
+ * Used for progressive disclosure and tool summaries.
+ */
+
+import type { ToolMetadata } from './definition-types';
+
+export const TOOL_METADATA: Record<string, ToolMetadata> = {
+	// ============================================
+	// ONTOLOGY READ TOOLS
+	// ============================================
+
+	search_all_projects: {
+		summary: 'Primary broad search across all accessible projects.',
+		capabilities: [
+			'Returns one typed result shape across core ontology entities',
+			'Best first step when project scope is unknown'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 45000,
+		category: 'search'
+	},
+	search_project: {
+		summary: 'Primary scoped search inside one project.',
+		capabilities: [
+			'Uses project_id for faster, narrower retrieval',
+			'Returns one typed result shape across core ontology entities'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 45000,
+		category: 'search'
+	},
+	list_onto_tasks: {
+		summary: 'Browse recent ontology tasks with status and owning project context.',
+		capabilities: [
+			'Filter by project or state',
+			'Returns abbreviated summaries for fast scans'
+		],
+		contexts: ['global', 'project'],
+		category: 'search'
+	},
+	search_onto_tasks: {
+		summary: 'Keyword search for tasks when the exact project is unknown.',
+		capabilities: [
+			'Matches task titles and descriptions',
+			'Supports explicit OR alternatives',
+			'Optional project/state filters'
+		],
+		contexts: ['global', 'project'],
+		category: 'search'
+	},
+	search_onto_goals: {
+		summary: 'Keyword search for goals by name or description.',
+		capabilities: ['Optional project filters', 'Useful for strategic discovery'],
+		contexts: ['global', 'project'],
+		category: 'search',
+		chatDiscovery: 'hidden'
+	},
+	search_onto_plans: {
+		summary: 'Keyword search for plans by name or description.',
+		capabilities: ['Optional project filters', 'Useful for plan discovery'],
+		contexts: ['global', 'project'],
+		category: 'search',
+		chatDiscovery: 'hidden'
+	},
+	list_onto_goals: {
+		summary: 'List project goals with brief descriptions.',
+		capabilities: ['Filter by project', 'Highlights strategic objectives'],
+		contexts: ['global', 'project'],
+		category: 'search'
+	},
+	list_onto_plans: {
+		summary: 'Show plans that organize related tasks.',
+		capabilities: ['Filter by project', 'Provides plan state/type context'],
+		contexts: ['global', 'project'],
+		category: 'search'
+	},
+	list_onto_documents: {
+		summary: 'List project documents (briefs, specs, context, research).',
+		capabilities: [
+			'Filter by project/type/state',
+			'Returns concise summaries with markdown header outlines',
+			'Does not return full document bodies'
+		],
+		contexts: ['global', 'project'],
+		category: 'search'
+	},
+	list_onto_milestones: {
+		summary: 'List project milestones with due dates and status.',
+		capabilities: ['Filter by project/state', 'Highlights upcoming checkpoints'],
+		contexts: ['global', 'project'],
+		category: 'search'
+	},
+	list_onto_risks: {
+		summary: 'List project risks with impact and state.',
+		capabilities: ['Filter by project/state/impact', 'Highlights risk posture'],
+		contexts: ['global', 'project'],
+		category: 'search'
+	},
+	list_onto_projects: {
+		summary: 'List ontology projects grouped by recent activity.',
+		capabilities: ['Filter by type or state', 'Highlights facet metadata'],
+		contexts: ['global', 'project'],
+		category: 'search'
+	},
+	search_onto_projects: {
+		summary: 'Keyword search across project names/descriptions.',
+		capabilities: ['Focus on discovery', 'Supports state/type filters'],
+		contexts: ['global', 'project'],
+		category: 'search'
+	},
+	search_onto_documents: {
+		summary: 'Keyword search for documents by title.',
+		capabilities: [
+			'Supports project/type/state filters',
+			'Returns markdown header outlines',
+			'Does not return full document bodies'
+		],
+		contexts: ['global', 'project'],
+		category: 'search'
+	},
+	search_onto_milestones: {
+		summary: 'Keyword search for milestones by title or description.',
+		capabilities: ['Supports project/state filters', 'Helps locate timeline checkpoints'],
+		contexts: ['global', 'project'],
+		category: 'search',
+		chatDiscovery: 'hidden'
+	},
+	search_onto_risks: {
+		summary: 'Keyword search for risks by title or content.',
+		capabilities: ['Supports project/state/impact filters', 'Fast risk discovery'],
+		contexts: ['global', 'project'],
+		category: 'search',
+		chatDiscovery: 'hidden'
+	},
+	search_ontology: {
+		summary: 'Compatibility fuzzy search across ontology entities with snippets.',
+		capabilities: [
+			'Prefer search_all_projects or search_project first',
+			'Use only for older instructions or compatibility paths',
+			'Accepts project scope and type filters'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 45000,
+		category: 'search'
+	},
+	get_onto_project_details: {
+		summary: 'Load the complete ontology project graph and metadata.',
+		capabilities: ['Returns nested entities', 'Use after identifying a project'],
+		contexts: ['project'],
+		timeoutMs: 45000,
+		category: 'read'
+	},
+	get_onto_project_graph: {
+		summary: 'Load the full project graph payload (all entities + edges).',
+		capabilities: ['Returns full graph data', 'Use before reorganizing structure'],
+		contexts: ['project'],
+		timeoutMs: 45000,
+		category: 'read'
+	},
+	get_onto_task_details: {
+		summary: 'Load full task details including props and relationships.',
+		capabilities: ['Validates ownership', 'Great for deep task updates'],
+		contexts: ['project'],
+		category: 'read'
+	},
+	get_onto_goal_details: {
+		summary: 'Load full goal details including props.',
+		capabilities: ['Validates ownership', 'Great before editing KPIs'],
+		contexts: ['project'],
+		category: 'read'
+	},
+	get_onto_plan_details: {
+		summary: 'Load full plan details including props.',
+		capabilities: ['Validates ownership', 'Great before editing timelines'],
+		contexts: ['project'],
+		category: 'read'
+	},
+	get_onto_document_details: {
+		summary: 'Load full document details including body markdown/props.',
+		capabilities: ['Validates ownership', 'Use before edits or linking'],
+		contexts: ['project'],
+		category: 'read'
+	},
+	get_onto_milestone_details: {
+		summary: 'Load full milestone details including due dates and state.',
+		capabilities: ['Validates ownership', 'Use before edits'],
+		contexts: ['project'],
+		category: 'read'
+	},
+	get_onto_risk_details: {
+		summary: 'Load full risk details including impact and mitigation info.',
+		capabilities: ['Validates ownership', 'Use before edits'],
+		contexts: ['project'],
+		category: 'read'
+	},
+	get_entity_relationships: {
+		summary: 'Graph traversal helper for edges between ontology entities.',
+		capabilities: ['Supports direction filters', 'Useful before multi-entity analysis'],
+		contexts: ['base', 'project'],
+		category: 'read'
+	},
+	get_linked_entities: {
+		summary: 'Get detailed linked entities with names, states, and descriptions.',
+		capabilities: [
+			'Returns full entity details',
+			'Supports filtering by entity type',
+			'Use when abbreviated context needs expansion'
+		],
+		contexts: ['base', 'project'],
+		timeoutMs: 45000,
+		category: 'read'
+	},
+	list_task_documents: {
+		summary: 'List documents linked to a task via task_has_document edges.',
+		capabilities: [
+			'Returns documents plus edge metadata',
+			'Highlights scratch vs primary',
+			'Best for task workspace/document questions; skip for plain task field updates'
+		],
+		contexts: ['project'],
+		category: 'search'
+	},
+	get_document_tree: {
+		summary: 'Get the hierarchical document tree structure for a project.',
+		capabilities: [
+			'Returns tree structure with parent-child relationships',
+			'Include document metadata + unlinked docs when include_documents=true',
+			'Supports structure-only mode for low-token usage',
+			'Supports metadata-only mode (omit document bodies)'
+		],
+		contexts: ['project'],
+		category: 'read'
+	},
+	get_document_path: {
+		summary: 'Get the hierarchical path (breadcrumb) for a document in the tree.',
+		capabilities: [
+			'Returns ancestor chain with titles',
+			'Identifies document location in tree'
+		],
+		contexts: ['project'],
+		category: 'read'
+	},
+	get_document_outline: {
+		summary: 'Get a document’s heading outline (table of contents) without the full body.',
+		capabilities: [
+			'Cheap relevance scan: see what a document covers',
+			'Returns heading anchors for read_document_section',
+			'Prefer over full document details when you only need structure'
+		],
+		contexts: ['project'],
+		category: 'read'
+	},
+	read_document_section: {
+		summary: 'Read one section of a document by heading anchor, not the whole body.',
+		capabilities: [
+			'Pulls in only the relevant section (with nested subsections)',
+			'Re-parses live content so the slice is always current',
+			'Lists available anchors when the anchor is unknown'
+		],
+		contexts: ['project'],
+		category: 'read'
+	},
+
+	// ============================================
+	// CALENDAR TOOLS
+	// ============================================
+
+	list_calendar_events: {
+		summary: 'List calendar events across Google Calendar and ontology events.',
+		capabilities: [
+			'Supports explicit time ranges (timeMin/timeMax or time_min/time_max)',
+			'Merges Google + ontology events',
+			'Supports pagination with limit/offset'
+		],
+		contexts: ['global', 'project'],
+		category: 'read'
+	},
+	get_calendar_event_details: {
+		summary: 'Fetch detailed info for a specific calendar event.',
+		capabilities: ['Supports ontology or Google event ids'],
+		contexts: ['global', 'project'],
+		category: 'read'
+	},
+	create_calendar_event: {
+		summary: 'Create a calendar event and optionally sync to Google.',
+		capabilities: ['Supports project or user scope', 'Optionally links to tasks'],
+		contexts: ['global', 'project'],
+		category: 'write'
+	},
+	update_calendar_event: {
+		summary: 'Update a calendar event (ontology or Google).',
+		capabilities: ['Updates titles, times, and descriptions', 'Syncs to Google when linked'],
+		contexts: ['global', 'project'],
+		category: 'write'
+	},
+	delete_calendar_event: {
+		summary: 'Delete a calendar event (ontology or Google).',
+		capabilities: ['Deletes ontology events and mirrors to Google if linked'],
+		contexts: ['global', 'project'],
+		category: 'write'
+	},
+	get_project_calendar: {
+		summary: 'Fetch the project calendar mapping and settings.',
+		capabilities: ['Returns calendar id, color, and sync state'],
+		contexts: ['project'],
+		category: 'read'
+	},
+	set_project_calendar: {
+		summary: 'Create or update the project calendar configuration.',
+		capabilities: ['Creates calendars after connect', 'Updates name/color/sync'],
+		contexts: ['project'],
+		category: 'write'
+	},
+
+	// ============================================
+	// EMAIL (GMAIL) READ TOOLS — Tier 1, read-only
+	// Gated behind EMAIL_CHAT_TOOLS_ENABLED (default off).
+	// ============================================
+
+	list_email_accounts: {
+		summary: 'List connected Gmail accounts BuildOS can read (read-only, no Gmail call).',
+		capabilities: [
+			'Returns connection_id, label, address, and status per account',
+			'Call first to obtain the connection_ids other email tools require',
+			'Surfaces accounts needing reconnection'
+		],
+		contexts: ['global', 'project'],
+		category: 'read'
+	},
+	search_email_messages: {
+		summary:
+			'Search connected Gmail accounts (read-only) with account provenance and deep links.',
+		capabilities: [
+			'Requires explicit connection_ids from list_email_accounts',
+			'Bounded multi-account Gmail search with per-account status',
+			'Returns untrusted-content-wrapped snippets, never raw HTML'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 30000,
+		category: 'read'
+	},
+	get_email_message: {
+		summary: 'Read one sanitized Gmail message by connection_id + message_id (read-only).',
+		capabilities: [
+			'Returns sanitized plain text wrapped as untrusted external data',
+			'Includes account provenance and an Open-in-Gmail deep link',
+			'Bounded body length; never returns raw MIME'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 30000,
+		category: 'read'
+	},
+
+	// ============================================
+	// ONTOLOGY WRITE TOOLS
+	// ============================================
+
+	create_onto_project: {
+		summary:
+			'End-to-end project creation with classified type_key, inferred props, and nested entities.',
+		capabilities: ['Supports goals/plans/tasks scaffolding', 'Captures clarifications'],
+		contexts: ['project_create', 'project'],
+		category: 'write'
+	},
+	create_onto_task: {
+		summary: 'Add a new task within a project/plan.',
+		capabilities: [
+			'Sets priority/state/plan links',
+			'Supports assignee actor IDs or @handle resolution',
+			'Accepts metadata props'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	create_onto_goal: {
+		summary: 'Record a new goal aligned to the current project.',
+		capabilities: ['Supports type classification', 'Stores KPI metadata'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	create_onto_plan: {
+		summary: 'Add execution plans that turn goals or milestones into taskable timelines.',
+		capabilities: [
+			'Assigns type/state',
+			'Stores a detailed plan body',
+			'Accepts props for richer context'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	create_onto_document: {
+		summary: 'Create a document linked to a project (brief/spec/context).',
+		capabilities: [
+			'Validates ownership',
+			'Stores body markdown/props',
+			'Supports tree placement via parent_id/position'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	create_onto_milestone: {
+		summary: 'Create a milestone checkpoint and link it to project goals.',
+		capabilities: ['Supports due dates/state', 'Supports parent/connections'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	create_onto_risk: {
+		summary: 'Create a risk with impact/probability and mitigation context.',
+		capabilities: ['Supports impact/state/probability', 'Supports parent/connections'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	move_document_in_tree: {
+		summary: 'Move or insert a document within the project doc_structure.',
+		capabilities: [
+			'Nests documents under a new parent',
+			'Adds unlinked documents into the tree',
+			'Reorders siblings by position'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	create_task_document: {
+		summary: 'Create or attach a document to a specific task workspace.',
+		capabilities: [
+			'Creates task_has_document edge',
+			'Can attach existing docs',
+			'Uses document project_id for project membership'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	link_onto_entities: {
+		summary: 'Create a relationship edge between two ontology entities.',
+		capabilities: [
+			'Normalizes edge direction',
+			'Validates ownership and project scope',
+			'Use for plans/goals/milestones/tasks/docs/risks'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	unlink_onto_edge: {
+		summary: 'Remove a relationship edge by ID.',
+		capabilities: ['Deletes a single edge', 'Validates ownership before removal'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	reorganize_onto_project_graph: {
+		summary:
+			'Reorganize a subset of a project graph from a node-centric structure (excludes documents).',
+		capabilities: [
+			'Reparents containment edges',
+			'Rebuilds auto-managed semantics',
+			'Supports dry-run previews',
+			'Documents are managed only via doc_structure'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	update_onto_task: {
+		summary: 'Modify task status, assignment, or metadata.',
+		capabilities: [
+			'Supports partial updates',
+			'Validates ownership',
+			'Append or LLM-merge description updates safely',
+			'Supports assignment updates via actor IDs or @handles'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	move_onto_task: {
+		summary: 'Move a standalone task between two writable projects.',
+		capabilities: [
+			'Preserves task identity and comments',
+			'Checks source and destination write access',
+			'Previews relationship, task-link, and assignee impact before destructive changes',
+			'Uses a stale-safe confirmation token when user approval is required'
+		],
+		// Intentionally not part of a default context surface. The fast selector
+		// hot-loads it for task-transfer intent and tool_search can discover it.
+		contexts: [],
+		category: 'write'
+	},
+	update_onto_project: {
+		summary: 'Update project headline details, state, timeline, and facets.',
+		capabilities: [
+			'Change states/facets',
+			'Clear or set timeline dates',
+			'Accepts partial updates'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	update_onto_goal: {
+		summary: 'Modify goal details (priority, target date, KPIs).',
+		capabilities: [
+			'Supports partial updates',
+			'Validates ownership',
+			'Append or LLM-merge description updates safely'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	update_onto_plan: {
+		summary: 'Modify plan details (body, state, dates, metadata).',
+		capabilities: [
+			'Supports partial updates',
+			'Validates ownership',
+			'Append or LLM-merge description/body updates safely'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	update_onto_document: {
+		summary: 'Modify document title/type/state/body/metadata.',
+		capabilities: [
+			'Supports partial updates',
+			'Validates ownership',
+			'Append or LLM-merge body content safely'
+		],
+		contexts: ['project'],
+		category: 'write',
+		// merge_llm has its own 25s editor deadline and then may need to perform a
+		// safe append plus the final PATCH. Leave enough outer room for that fallback.
+		timeoutMs: 45000
+	},
+	tag_onto_entity: {
+		summary: 'Tag collaborators on a task, goal, or document (content mention or manual ping).',
+		capabilities: [
+			'Supports explicit user IDs or @handle resolution',
+			'Supports content-mode canonical mention injection or ping-only mode',
+			'Reuses standard mention notification rules and permissions'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	update_onto_milestone: {
+		summary: 'Modify milestone title, due date, state, or metadata.',
+		capabilities: ['Supports partial updates', 'Validates ownership'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	update_onto_risk: {
+		summary: 'Modify risk status, impact, probability, or mitigation info.',
+		capabilities: ['Supports partial updates', 'Validates ownership'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	delete_onto_project: {
+		summary: 'Delete an ontology project workspace.',
+		capabilities: ['Validates ownership', 'Irreversible delete'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	delete_onto_task: {
+		summary: 'Remove a task and associated edges.',
+		capabilities: ['Validates ownership', 'Irreversible delete'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	delete_onto_document: {
+		summary: 'Remove a document and associated edges.',
+		capabilities: ['Validates ownership', 'Irreversible delete'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	delete_onto_milestone: {
+		summary: 'Remove a milestone and associated edges.',
+		capabilities: ['Validates ownership', 'Irreversible delete'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	delete_onto_risk: {
+		summary: 'Remove a risk and associated edges.',
+		capabilities: ['Validates ownership', 'Irreversible delete'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	delete_onto_goal: {
+		summary: 'Remove a goal from the project graph.',
+		capabilities: ['Validates ownership', 'Irreversible delete'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	delete_onto_plan: {
+		summary: 'Delete a plan container while leaving tasks untouched.',
+		capabilities: ['Validates ownership', 'Irreversible delete'],
+		contexts: ['project'],
+		category: 'write'
+	},
+
+	// ============================================
+	// UTILITY TOOLS
+	// ============================================
+
+	get_field_info: {
+		summary: 'Schema helper that explains entity fields, enums, and valid values.',
+		capabilities: ['Provides enum values & examples', 'Great for structured updates'],
+		contexts: ['base', 'global', 'project_create', 'project'],
+		category: 'utility'
+	},
+	get_user_profile_overview: {
+		summary: 'Read the user profile chapter/section overview from profile doc_structure.',
+		capabilities: [
+			'Returns profile chapter metadata by section',
+			'Can include normalized profile doc_structure tree',
+			'Optional chapter summary excerpts for lightweight personalization'
+		],
+		contexts: ['base', 'global', 'project_create', 'project'],
+		category: 'read'
+	},
+	get_workspace_overview: {
+		summary: 'Return a BuildOS-native workspace status summary across accessible projects.',
+		capabilities: [
+			'Includes workspace-level and per-project task, document, plan, goal, and collaborator counts',
+			'Highlights active, blocked, overdue, and due-soon work across projects',
+			'Includes next milestones, upcoming events, and recent changes per project',
+			'Preferred first step for broad workspace status questions'
+		],
+		contexts: ['base', 'global', 'project'],
+		category: 'read'
+	},
+	get_project_overview: {
+		summary: 'Return a BuildOS-native status summary for one project by ID or name query.',
+		capabilities: [
+			'Resolves a named project when the exact ID is not yet known',
+			'Includes task, document, plan, goal, and collaborator counts',
+			'Highlights top active tasks, milestones, risks, upcoming events, recent changes, and active collaborators',
+			'Preferred first step for project status questions'
+		],
+		contexts: ['base', 'global', 'project'],
+		category: 'read'
+	},
+	change_chat_context: {
+		summary: 'Durably zoom chat context into a resolved project or out to the workspace.',
+		capabilities: [
+			'Emits a visible context_shift event for the UI and session metadata',
+			'Materializes the target context direct-tool profile for the rest of the turn',
+			'Returns candidates instead of shifting when project resolution is ambiguous'
+		],
+		contexts: ['global', 'project'],
+		category: 'utility'
+	},
+	search_user_contacts: {
+		summary: 'Search user-owned contact memory by name, relationship, and method metadata.',
+		capabilities: [
+			'Returns redacted method values by default',
+			'Supports method_type and relationship filtering',
+			'Can include archived contacts when requested'
+		],
+		contexts: ['base', 'global', 'project_create', 'project'],
+		category: 'search'
+	},
+	upsert_user_contact: {
+		summary: 'Create or update a contact with conflict-safe method upsert.',
+		capabilities: [
+			'Matches by strong method hash before name fallback',
+			'Adds/updates multiple contact methods in one call',
+			'Stores sensitivity and usage_scope controls'
+		],
+		contexts: ['base', 'global', 'project_create', 'project'],
+		category: 'write'
+	},
+	list_user_contact_candidates: {
+		summary: 'List contact merge candidates for user confirmation flows.',
+		capabilities: [
+			'Supports pending and resolved candidate statuses',
+			'Includes both primary and secondary contact payloads',
+			'Returns redacted methods by default'
+		],
+		contexts: ['base', 'global', 'project_create', 'project'],
+		category: 'read'
+	},
+	resolve_user_contact_candidate: {
+		summary: 'Resolve ambiguous contact merge candidates using explicit user clarification.',
+		capabilities: [
+			'Supports confirmed_merge, rejected, and snoozed actions',
+			'Performs contact merge when confirmed',
+			'Audit-ready merge resolution'
+		],
+		contexts: ['base', 'global', 'project_create', 'project'],
+		category: 'write'
+	},
+	link_user_contact: {
+		summary: 'Link a contact to profile documents/fragments or ontology entities.',
+		capabilities: [
+			'Supports profile_document, profile_fragment, onto_actor, and onto_entity links',
+			'Attaches contact context to project entities',
+			'Stores link metadata for downstream retrieval'
+		],
+		contexts: ['base', 'global', 'project_create', 'project'],
+		category: 'write'
+	},
+	resolve_libri_resource: {
+		summary: 'Resolve a person or author through Libri before generic web search.',
+		capabilities: [
+			'Calls Libri server-side with BuildOS provenance',
+			'Returns found, queued, pending, needs_input, and structured error statuses',
+			'Does not wait for Libri enrichment jobs'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 15000,
+		category: 'read'
+	},
+	query_libri_library: {
+		summary:
+			'Query Libri library inventory for books, categories, authors, and YouTube videos.',
+		capabilities: [
+			'Searches Libri structured library data',
+			'Lists book categories/genres and top books by category',
+			'Returns authors and ingested YouTube videos without enqueueing research'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 15000,
+		category: 'read'
+	},
+	list_corsair_mcp_tools: {
+		summary: 'List tools exposed by the connected Corsair remote MCP server.',
+		capabilities: [
+			'Initializes the remote MCP session',
+			'Returns advertised tool names and input schemas',
+			'Reports OAuth/Bearer auth requirements when credentials are missing'
+		],
+		contexts: ['base', 'global', 'project'],
+		timeoutMs: 25000,
+		category: 'read'
+	},
+	call_corsair_mcp_tool: {
+		summary: 'Call a tool on the connected Corsair remote MCP server.',
+		capabilities: [
+			'Uses the MCP tools/call method',
+			'Accepts exact remote tool names and schema-matching arguments',
+			'Returns structured MCP content from Corsair'
+		],
+		contexts: ['base', 'global', 'project'],
+		timeoutMs: 30000,
+		category: 'write'
+	},
+	web_search: {
+		summary:
+			'Live web discovery plus BuildOS-fetched source evidence. Findings are not automatically saved as project documents.',
+		capabilities: [
+			'Uses versioned live-web discovery with Advanced depth by default',
+			'Optional domain allow/deny lists',
+			'Fetches the best two of the top four source pages concurrently',
+			'Returns bounded snippets plus versioned source-page evidence for BuildOS synthesis',
+			'Carries stable page-version and evidence-chunk citation coordinates when available',
+			'Pair it with a document write to keep findings as project knowledge'
+		],
+		contexts: ['base', 'global', 'project_create', 'project'],
+		timeoutMs: 60000,
+		category: 'search'
+	},
+	web_visit: {
+		summary: 'Fetch a specific URL, convert HTML to markdown, and persist metadata.',
+		capabilities: [
+			'Best for reading known pages',
+			'Fast deterministic HTML-to-markdown conversion',
+			'Stores a reusable snapshot plus immutable page-version evidence',
+			'Returns stable chunk selectors and content hashes for grounded citation',
+			'Optional link list for related sources',
+			'Pairs with web_search for discovery'
+		],
+		contexts: ['base', 'global', 'project_create', 'project'],
+		timeoutMs: 60000,
+		category: 'read'
+	},
+	get_buildos_overview: {
+		summary:
+			'High-level BuildOS overview covering mission, architecture, and documentation map.',
+		capabilities: [
+			'Explains platform pillars',
+			'Lists doc entry points',
+			'Clarifies architecture responsibilities'
+		],
+		contexts: ['base', 'global', 'project_create', 'project'],
+		category: 'utility'
+	},
+	get_buildos_usage_guide: {
+		summary: 'Step-by-step BuildOS usage playbook for onboarding, planning, and automation.',
+		capabilities: [
+			'Describes workflows (captured context -> ontology -> scheduling)',
+			'Highlights prop inference + calendar actions',
+			'Suggests follow-up tool calls'
+		],
+		contexts: ['base', 'global', 'project_create', 'project'],
+		category: 'utility'
+	},
+	delegate_task: {
+		summary: 'Dispatch a self-contained task to a background Agent Run.',
+		capabilities: [
+			'Creates and queues an agent run without blocking the chat turn',
+			'Supports read-only or explicitly requested read-write scope',
+			'Can request a higher-reasoning deep lane with a bounded observed-cost budget',
+			'Supports a bounded two-researcher deep-research template',
+			'Can stage read-write changes for later review before commit'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 30000,
+		category: 'write'
+	},
+	commit_change_set: {
+		summary: 'Apply or reject staged changes from a review Agent Run.',
+		capabilities: [
+			'Applies approved staged changes after user confirmation',
+			'Supports per-change approve/reject decisions',
+			'Returns applied, failed, and rejected change counts'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 60000,
+		category: 'write'
+	}
+};

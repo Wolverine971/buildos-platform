@@ -1,0 +1,22 @@
+// packages/agentic-chat-runtime/src/loop/index.ts
+//
+// Shared read-loop leaves (Phase 4 Slice 18 S2). These modules are the legacy
+// orchestrator's pure semantic pieces — prompt text, argument parsing,
+// classification metadata, payload compaction — single-sourced here so the web
+// route and the worker provider cannot drift on what differentials can't
+// referee. Web's original paths re-export from this subpath; the worker
+// composes them behind its provider port (S4).
+
+export * from './assistant-text-sanitization';
+export * from './definition-types';
+export * from './durable-text-validation';
+export * from './entity-kind-repair';
+export * from './entity-result-materialization';
+export * from './project-create-args';
+export * from './read-loop-escalation';
+export * from './read-memo';
+export * from './search-telemetry';
+export * from './tool-arguments';
+export * from './tool-failure';
+export * from './tool-metadata';
+export * from './tool-payload-compaction';
