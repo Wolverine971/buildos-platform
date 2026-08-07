@@ -13,6 +13,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
+import type { AgenticChatToolAccessPortV1 } from '@buildos/agentic-chat-runtime/tools';
+import { createWebAgenticChatToolAccessAdapter } from './web-access-adapter';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { ExecutorContext } from './types';
@@ -84,6 +86,8 @@ export class BaseExecutor {
 	private readonly authHeadersProvider?: ExecutorContext['getAuthHeaders'];
 	private _actorId?: string;
 	private _adminSupabase?: TypedSupabaseClient;
+	/** Shared tools access port (S3-T3); preserves the legacy RLS semantics. */
+	protected readonly accessAdapter: AgenticChatToolAccessPortV1;
 
 	constructor(context: ExecutorContext) {
 		this.supabase = context.supabase;
@@ -96,6 +100,10 @@ export class BaseExecutor {
 		this.actorIdProvider = context.getActorId;
 		this.adminSupabaseProvider = context.getAdminSupabase;
 		this.authHeadersProvider = context.getAuthHeaders;
+		this.accessAdapter = createWebAgenticChatToolAccessAdapter({
+			supabase: this.supabase as never,
+			getActorId: () => this.getActorId()
+		});
 	}
 
 	// ============================================
@@ -302,16 +310,7 @@ export class BaseExecutor {
 		projectId: string,
 		requiredAccess: 'read' | 'write' | 'admin' = 'write'
 	): Promise<void> {
-		await this.getActorId();
-		const { data, error } = await this.supabase.rpc('current_actor_has_project_member_access', {
-			p_project_id: projectId,
-			p_required_access: requiredAccess
-		});
-
-		if (error) throw error;
-		if (!data) {
-			throw new Error('Project not found or access denied');
-		}
+		await this.accessAdapter.assertProjectAccess(projectId, requiredAccess);
 	}
 
 	/**
@@ -324,50 +323,7 @@ export class BaseExecutor {
 		entityId: string,
 		requiredAccess: 'read' | 'write' | 'admin' = 'read'
 	): Promise<void> {
-		const { data: project, error: projectError } = await this.supabase
-			.from('onto_projects')
-			.select('id')
-			.eq('id', entityId)
-			.maybeSingle();
-
-		if (projectError) throw projectError;
-		if (project?.id) {
-			await this.assertProjectAccess(project.id, requiredAccess);
-			return;
-		}
-
-		const actorId = await this.getActorId();
-		const tables = [
-			'onto_tasks',
-			'onto_plans',
-			'onto_goals',
-			'onto_documents',
-			'onto_milestones',
-			'onto_risks',
-			'onto_requirements'
-		];
-
-		for (const table of tables) {
-			const { data, error } = await this.supabase
-				.from(table)
-				.select('project_id, created_by')
-				.eq('id', entityId)
-				.maybeSingle();
-
-			if (error) throw error;
-			if (!data) continue;
-
-			if (data.project_id) {
-				await this.assertProjectAccess(data.project_id, requiredAccess);
-				return;
-			}
-
-			if (data.created_by === actorId) {
-				return;
-			}
-		}
-
-		throw new Error('Entity not found or access denied');
+		await this.accessAdapter.assertEntityAccess(entityId, requiredAccess);
 	}
 
 	// ============================================

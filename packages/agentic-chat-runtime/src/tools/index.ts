@@ -5,6 +5,7 @@
 // access-ported query implementations — single-sourced so web (RLS client) and
 // the worker (service-role + explicit actor scoping) return identical payloads.
 
+export * from './access-port';
 export * from './activity-log-summary';
 export * from './overview-helper';
 export * from './start-here-selector';
