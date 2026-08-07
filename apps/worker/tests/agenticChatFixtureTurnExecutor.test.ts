@@ -6,14 +6,11 @@ import {
 } from '@buildos/shared-types';
 import {
 	AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1,
-	AGENTIC_CHAT_PARTIAL_CANCELLATION_GOLDEN_V1,
 	AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1,
 	AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1,
 	AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1,
-	AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1,
-	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1,
-	diffAgenticChatParityRunsV1,
+	createAgenticChatWorkerParityCoverageTrackerV1,
 	normalizeAgenticChatParityRunV1,
 	projectAgenticChatWorkerLifecycleObservationsV1
 } from '@buildos/agentic-chat-runtime';
@@ -695,6 +692,8 @@ function createHarness(
 		getSequence: () => sequence
 	};
 }
+
+const parityCoverage = createAgenticChatWorkerParityCoverageTrackerV1();
 
 describe('AgenticChatFixtureTurnExecutor', () => {
 	it('persists one exact prompt snapshot after the first durable response only', async () => {
@@ -1581,32 +1580,19 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}
 			});
-			const differential = diffAgenticChatParityRunsV1(
-				AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1,
-				worker
-			);
-			const timingDifferences = differential.differences.filter(({ path }) =>
-				path.startsWith('/events/6/payload/timing/')
-			);
-			const nonTimingDifferences = differential.differences
-				.filter(({ path }) => !path.startsWith('/events/6/payload/timing/'))
-				.map(({ path, kind }) => ({ path, kind }));
-			expect(differential.matches).toBe(false);
-			expect(differential.truncated).toBe(false);
-			expect(differential.differences).not.toContainEqual(
-				expect.objectContaining({ path: '/events/6', kind: 'missing_in_actual' })
-			);
-			expect(timingDifferences.length).toBeGreaterThan(0);
+			const evaluation = parityCoverage.evaluate('success', worker);
+			expect(evaluation.diff.truncated).toBe(false);
+			expect(evaluation.deliberate.length).toBeGreaterThan(0);
 			expect(
 				(harness.broadcastMessages[6]?.payload as Record<string, unknown>).timing
 			).toMatchObject({
 				timing_contract_version: 'agentic_chat_async_v1',
 				done_emitted_at: null
 			});
-			expect(nonTimingDifferences).toEqual([
-				{ path: '/events/7/payload/failure_code', kind: 'unexpected_in_actual' },
-				{ path: '/events/7/payload/status', kind: 'unexpected_in_actual' }
-			]);
+			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
+				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
+			);
+			expect(evaluation.matchesContract).toBe(true);
 		} finally {
 			await harness.publisher.stop();
 		}
@@ -1729,23 +1715,13 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}
 			});
-			const differential = diffAgenticChatParityRunsV1(
-				AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1,
-				worker
+			const evaluation = parityCoverage.evaluate('read_only_tools', worker);
+			expect(evaluation.diff.truncated).toBe(false);
+			expect(evaluation.deliberate.length).toBeGreaterThan(0);
+			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
+				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
 			);
-			const timingDifferences = differential.differences.filter(({ path }) =>
-				path.startsWith('/events/9/payload/timing/')
-			);
-			const nonTimingDifferences = differential.differences
-				.filter(({ path }) => !path.startsWith('/events/9/payload/timing/'))
-				.map(({ path, kind }) => ({ path, kind }));
-			expect(differential.matches).toBe(false);
-			expect(differential.truncated).toBe(false);
-			expect(timingDifferences.length).toBeGreaterThan(0);
-			expect(nonTimingDifferences).toEqual([
-				{ path: '/events/10/payload/failure_code', kind: 'unexpected_in_actual' },
-				{ path: '/events/10/payload/status', kind: 'unexpected_in_actual' }
-			]);
+			expect(evaluation.matchesContract).toBe(true);
 		} finally {
 			await harness.publisher.stop();
 		}
@@ -2319,25 +2295,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}
 			});
-			const differential = diffAgenticChatParityRunsV1(
-				AGENTIC_CHAT_PARTIAL_CANCELLATION_GOLDEN_V1,
-				worker
-			);
-			const timingDifferences = differential.differences.filter(({ path }) =>
-				path.startsWith('/events/5/payload/timing/')
-			);
-			const nonTimingDifferences = differential.differences
-				.filter(({ path }) => !path.startsWith('/events/5/payload/timing/'))
-				.map(({ path, kind }) => ({ path, kind }));
-			expect(differential.matches).toBe(false);
-			expect(differential.truncated).toBe(false);
-			expect(differential.differences).not.toContainEqual(
-				expect.objectContaining({ path: '/events/4', kind: 'missing_in_actual' })
-			);
-			expect(differential.differences).not.toContainEqual(
-				expect.objectContaining({ path: '/events/5', kind: 'missing_in_actual' })
-			);
-			expect(timingDifferences.length).toBeGreaterThan(0);
+			const evaluation = parityCoverage.evaluate('cancellation', worker);
+			expect(evaluation.diff.truncated).toBe(false);
+			expect(evaluation.deliberate.length).toBeGreaterThan(0);
 			expect(
 				(harness.broadcastMessages[5]?.payload as Record<string, unknown>).timing
 			).toMatchObject({
@@ -2345,10 +2305,10 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				done_emitted_at: null,
 				finished_reason: 'cancelled'
 			});
-			expect(nonTimingDifferences).toEqual([
-				{ path: '/events/6/payload/failure_code', kind: 'unexpected_in_actual' },
-				{ path: '/events/6/payload/status', kind: 'unexpected_in_actual' }
-			]);
+			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
+				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
+			);
+			expect(evaluation.matchesContract).toBe(true);
 		} finally {
 			await harness.publisher.stop();
 		}
@@ -2431,19 +2391,19 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}
 			});
-			const differential = diffAgenticChatParityRunsV1(
-				AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1,
-				worker
-			);
+			const evaluation = parityCoverage.evaluate('provider_error', worker);
 			const workerEventTypes = worker.events.map(({ type }) => type);
 
-			expect(differential.matches).toBe(false);
-			expect(differential.truncated).toBe(false);
+			expect(evaluation.diff.truncated).toBe(false);
 			expect(
-				differential.differences.filter(({ path }) =>
+				evaluation.contested.filter(({ path }) =>
 					path.startsWith('/metadata/lifecycle_events/')
 				)
 			).toEqual([]);
+			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
+				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
+			);
+			expect(evaluation.matchesContract).toBe(true);
 			expect(workerEventTypes).toEqual([
 				'turn_phase',
 				'session',
@@ -2674,5 +2634,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			queueReconciled: false
 		});
 		await harness.publisher.stop();
+	});
+
+	it('exercises every implemented parity scenario class from the shared registry', () => {
+		expect(parityCoverage.missing()).toEqual([]);
 	});
 });

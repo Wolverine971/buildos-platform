@@ -9,8 +9,11 @@ import {
 	AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1,
+	createAgenticChatLegacyParityCoverageTrackerV1,
 	normalizeAgenticChatParityRunV1
 } from '@buildos/agentic-chat-runtime';
+
+const parityCoverage = createAgenticChatLegacyParityCoverageTrackerV1();
 
 const mocks = vi.hoisted(() => ({
 	attachVoiceNoteGroup: vi.fn(),
@@ -1461,7 +1464,9 @@ describe('/api/agent/v2/stream', () => {
 						.length
 				}
 			});
+			const evaluation = parityCoverage.evaluate('success', run);
 			expect(run).toEqual(AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1);
+			expect(evaluation.matchesContract).toBe(true);
 		} finally {
 			vi.useRealTimers();
 		}
@@ -1625,7 +1630,9 @@ describe('/api/agent/v2/stream', () => {
 						.length
 				}
 			});
+			const evaluation = parityCoverage.evaluate('read_only_tools', run);
 			expect(run).toEqual(AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1);
+			expect(evaluation.matchesContract).toBe(true);
 		} finally {
 			vi.useRealTimers();
 		}
@@ -1755,7 +1762,9 @@ describe('/api/agent/v2/stream', () => {
 						.length
 				}
 			});
+			const evaluation = parityCoverage.evaluate('cancellation', run);
 			expect(run).toEqual(AGENTIC_CHAT_PARTIAL_CANCELLATION_GOLDEN_V1);
+			expect(evaluation.matchesContract).toBe(true);
 		} finally {
 			vi.useRealTimers();
 		}
@@ -1832,7 +1841,9 @@ describe('/api/agent/v2/stream', () => {
 						.length
 				}
 			});
+			const evaluation = parityCoverage.evaluate('provider_error', run);
 			expect(run).toEqual(AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1);
+			expect(evaluation.matchesContract).toBe(true);
 		} finally {
 			vi.useRealTimers();
 		}
@@ -4448,5 +4459,9 @@ describe('/api/agent/v2/stream', () => {
 			outcome_status: 'unfulfilled',
 			intent_fulfilled: false
 		});
+	});
+
+	it('exercises every implemented parity scenario class from the shared registry', () => {
+		expect(parityCoverage.missing()).toEqual([]);
 	});
 });

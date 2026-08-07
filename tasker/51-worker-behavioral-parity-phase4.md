@@ -3,7 +3,7 @@
 # 51 — Phase 4: full worker behavioral parity
 
 **Created:** 2026-08-07  
-**Status:** Not started. Phase 3 is exited (`AGENTIC_CHAT_WORKER_PHASE_3_EXIT_GATE_PACKET_2026-08-07.md`, recommendation GO; carried partials: live queued-window Stop, live worker-restart-mid-turn). Remaining pre-P0 items: tasker/50's follow-up canary plus its two authorized production gates. Master plan: `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 4 (lines 857–886).  
+**Status:** P0 COMPLETE (2026-08-07, Slice 17 — `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_SLICE_17_PARITY_SCENARIO_REGISTRY_EVIDENCE_2026-08-07.md`; all local gates green, no deploy required). Phase 3 is exited (`AGENTIC_CHAT_WORKER_PHASE_3_EXIT_GATE_PACKET_2026-08-07.md`, recommendation GO; carried partials: live queued-window Stop, live worker-restart-mid-turn). tasker/50's operator-gated items (follow-up canary, constraint-diff sweep, provider-budget overrun) remain open but were judged non-blocking for P0/P1 code work — they gate the next LIVE run, not local slices. Next: P1 (plan: `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_SLICE_18_READ_LOOP_PARITY_PLAN_2026-08-07.md`). Master plan: `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 4 (lines 857–886).  
 **Mission:** Make the worker path as capable as the legacy web path — full tool catalog, mutations behind effect reservations, attachments, supervisor, telemetry, billing — proven by differential tests that run legacy and worker against identical fixtures, so routing can eventually stay ON instead of flipping per canary. Internal-only throughout; cohort widening is Phase 6.
 
 ## Why this work exists
@@ -12,9 +12,11 @@ Canary 11 (turn `9e54c04b`, 2026-08-07) proved the execution *architecture* end 
 
 ## Work packages (proposed slicing — refine per slice as the campaign did)
 
-### P0 — Differential harness foundation (the required test mechanism)
+### P0 — Differential harness foundation (the required test mechanism) — ✅ COMPLETE 2026-08-07
 
-The plan mandates it (lines 873–877): a deterministic adapter runs the legacy and worker adapters against the same canned provider streams and mock tool results, then compares normalized ordered events, messages, tool rows, checkpoints, turn outcomes, and metadata. Build the runner + normalizer + first golden fixture using the already-at-parity read-only scenario (canary 11's shape) so the harness itself is validated against known-equal behavior before it referees anything contested. Existing material: the Phase 1 parity ledger, `agentic_chat_prepared_history_divergence` differential, and the 100-turn disposable fixtures.
+The plan mandates it (lines 873–877). **Premise corrections found during execution (do not relearn):** the normalizer + differ + four goldens already existed from Phase 4 Slices 1–10 (`packages/agentic-chat-runtime/src/parity.ts` + `*-parity-fixture.ts`); `agentic_chat_prepared_history_divergence` never materialized — it is a name in the Phase 0/1 parity ledger only, and the staleness rule it names is an open P3 gap in `prepared-prompt-consumer.server.ts`; the read-only scenario is NOT at exact parity (done-event `failure_code`/`status` gap on all four goldens).
+
+What P0 actually delivered (Slice 17): a shared scenario registry for all eight plan scenario classes (`packages/agentic-chat-runtime/src/parity-scenarios.ts`) with per-scenario deliberate-divergence prefixes (ratified async-timing split) and exact open-gap inventories (the in-code parity ledger — closing a gap must shrink the list, drift outside it fails the worker suite); shared evaluators replacing the duplicated partition logic in both adapter suites; provider-error tightened from structural to exact inventory; and cross-side coverage trackers so a newly registered scenario fails BOTH suites until each side exercises it. Gates: runtime 30/30, worker 772 + TS7 typecheck, web server.test 40/40 + svelte-check clean.
 
 ### P1 — Full read loop: prompt, gateway, skill, and direct-tool surface parity
 
