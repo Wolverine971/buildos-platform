@@ -3,7 +3,7 @@
 # 49 — Investigate the worker canary stall between tool call and tool completion
 
 **Created:** 2026-08-06  
-**Status:** Ready for owner deployment — failure window proven; bounded fix and regression verified locally; production canary pending  
+**Status:** ✅ **CLOSED — CANARY 11 PASSED 2026-08-07 00:56–00:57Z.** Turn `9e54c04b-eb21-4ea4-9c8d-37b07ba496ee` completed end-to-end in 83 s with an executor-written terminal (`completed/stop`), and `pnpm verify:agentic-chat-read-canary` returns **PASS** against the full durable-evidence contract. Routing returned to exact `false` afterward. See "Canary 11 result" below.  
 **Mission:** Establish, with worker-log and provider-side evidence, exactly why production turn `670b3163-2c1a-407d-9a84-980b88d42f32` made no durable progress for 6m55s after emitting a correct `get_project_overview` tool call, then land the smallest fix that lets the Phase 3 read canary complete. Do not change the configured model as a first move; the "reasoning-heavy model burned its budget" hypothesis is **disproved as stated** (see below).
 
 ## Why this work exists
@@ -110,9 +110,63 @@ For Railway diagnosis, filter by the new turn id or `agentic_chat_execution_boun
 - `ledger_persist:finished` then `tool_result_publish:started` without a finish → durable/public result publication.
 - `tool_result_publish:finished` then `synthesis:started` → synthesis/provider path.
 
+## Canary 8 result — 2026-08-06 21:29Z (turn `f729f360-3b13-439f-a94c-06f16238b7eb`)
+
+Owner deployment executed per the handoff: taskers 49+50 code deployed (commit `dfb69d844`, worker healthy 20:19:31Z), hosted migration `20260806010000` applied, routing flipped to exact `true`, one controlled read request sent in session `26fe15dc` at 21:29:30Z. **Turn failed; routing returned to exact `false` immediately after (rollback redeploy `build-qbsufm9ku`).** Verifier output retained: 19 assertion failures, `usageEvidence: invalid`, `toolExecutionCount: 0`.
+
+**The Slice 16 observation ledger worked exactly as designed and named the failure in one query:**
+
+| Boundary (private ledger) | Time (Z)    | Detail                                                         |
+| ------------------------- | ----------- | -------------------------------------------------------------- |
+| provider_attempt_started  | 21:29:32.66 | round=initial, openrouter, deepseek-v4-flash                   |
+| provider_attempt_ended    | 21:29:35.75 | success, 3,091 ms, finish=tool_calls, 6,377 tokens, StreamLake |
+| tool_execution_started    | 21:29:36.76 | get_project_overview, `call_67360a91…`                         |
+| tool_execution_ended      | 21:29:37.56 | **status=failure, error_code=23514, 801 ms**                   |
+| (sweeper terminal)        | 21:36:32.91 | failed / worker_interrupted / stale_context — 422 s occupation |
+
+**Root cause (D1):** production carries a pre-migration constraint `chat_tool_executions_tool_category_check` restricting `tool_category` to `('list','detail','action','calendar','ontology','ontology_action','utility','web_research','buildos_docs')`. `readOnlyTool.ts` sent `toolCategory: 'project_read'`, so `persist_agentic_chat_read_tool_execution`'s INSERT raised 23514 in ~800 ms. Every local gate passed because the constraint exists only in prod: it predates `supabase/migrations/`, the disposable fixture's `chat_tool_executions` had no category CHECK, the ledger SQL test passes NULL categories, and the RPC validates category only as trimmed/≤128 chars. The read itself (ontology fetch) succeeded — tasker 49's 30 s deadlines were not the failing element. This also reinterprets attempt 7: identical durable signature (tool_call event, no ledger row, no tool_result, sweeper terminal), so the 2026-08-05 stall was very plausibly this same fast 23514, not a network hang.
+
+**Fix landed locally (uncommitted):** `readOnlyTool.ts` now sends `'utility'` — the category legacy SSE persisted for all 141 historical `get_project_overview` rows; the prod constraint is now mirrored into `supabase/tests/fixtures/agentic_chat_legacy_atomic_admission_base.sql`; worker test expectations updated. Gates: worker 769 passed / 1 intentional skip, worker typecheck clean, web agentic-chat-v2 105 files / 864 tests incl. all disposable PostgreSQL compositions.
+
+**Open defect (D2, moved to tasker/50 W3):** after the ledger throw at 21:29:37.56, the executor never wrote a terminal — the 150 s provider budget produced no executor-written failure and the sweeper cleaned up at 422 s, occupying the single chat slot the whole time. Slice 16's "no failure path exceeds budget + bounded overhead" exit gate is NOT met in production. Candidate mechanisms: provider-generator cleanup hanging between the read-tool throw and the outer catch (not signal-abortable), or `recover()`'s catch swallowing a failed recovery RPC into `recovery_required` with no terminal write. Discriminator: Railway `agentic_chat_execution_boundary` logs for 21:29:37–21:36:33Z — `ledger_persist:failed` should exist; whatever does or does not follow it names the wedge.
+
+## Canary 10 result — 2026-08-06 23:40Z (turn `1422ffc3-afa4-4478-b6d9-8d9439fbeb13`)
+
+Fix commit `715eed577` deployed (worker restart 23:18:11Z); routing flipped true (deployment `build-3wqlxgq6n`); exact canary text sent at 23:40:00Z. (Canary 9 at 23:29Z was consumed by an operator error: the flag-carrying Vercel redeploy had silently not run — `vercel ls` prints to stderr, so the URL capture was empty — and the turn admitted `legacy_sse` and completed normally. Lesson: verify a NEW deployment exists after every flag change before sending.)
+
+**Canary 10 got further than any turn ever:** admission → claim → prompt → provider round 1 (3.5 s, `tool_calls`) → tool execution success (725 ms) → **ledger row persisted with `tool_category='utility'` (canary 8's fix verified live)** → public `tool_result` (seq 6) → synthesis started → 58.5 s clean synthesis (`finish_reason=stop`, 320 completion tokens) → all 1,344 chars durably streamed (sequences 7–117) → `finalizing` lifecycle event persisted (seq 118, 23:41:07.357).
+
+**Then the last step failed and was swallowed.** Supabase edge + Postgres logs (Management API `logs.all`, timestamps exact):
+
+| Time (Z)        | Call                                                      | Result                                                                                   |
+| --------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| 23:41:07.639    | `finalize_agentic_chat_turn_with_terminal_events`         | **HTTP 400** — Postgres `agentic_chat_terminal_events_finalize_timing_evidence_mismatch` |
+| 23:48:11.6–12.0 | sweeper: recover → `finalize_agentic_chat_turn` → recover | 200s — honest `failed/worker_interrupted/stale_context` terminal                         |
+
+**D2a — executor swallow (fix is worker-code, small):** `fixtureTurnExecutor.finalize()`'s `catch { return result('recovery_required') }` (and `recover()`'s identical catch) swallow the RPC error with no logging, no retry-without-timing, no fallback terminal, no queue reconciliation. The turn and its `CHAT_CONCURRENCY=1` slot sat for 420 s until the sweeper. `buildTimingDraft`'s own comment says timing is optional observability that "must never fail the user turn" — but the rejection happens DB-side after a draft was built, and there is no retry with `timingDraft: null`.
+
+**D2b — timing validator contract bug (deterministic for EVERY streamed worker turn):** migration `20260804000120` computes first-response evidence as `min(created_at) FILTER (WHERE event_type = 'text_delta')` over `chat_turn_events`. Worker text batches consume sequence numbers but write to `chat_turn_stream_state` — canary 10 has NO `text_delta` rows in `chat_turn_events` (verified: sequences jump 6 → 118). The DB therefore sees `first_response_at IS NULL` and requires the draft to omit response timings; the tracker truthfully includes them; the validator raises. Decision needed: fix the validator's evidence source (hosted migration) or suppress response timings in the draft (worker code). Timing-optional retry (D2a fix) unblocks the canary either way.
+
+**Also observed in the same window (separate defects, evidence in edge logs):**
+
+- The browser reconciliation loop ran at ~3 calls/second for the full 7-minute window — 1,314 `reconcile_agentic_chat_turn` calls (plus ~1,025 each `ensure_actor_for_user`/`current_actor_has_project_member_access`). The documented cadence is single-flight 2 s/5 s. This is almost certainly the mechanism behind the "actions counter 23→79→729" observation from attempt 7.
+- `log_client_error` returned 400 six times at 23:40:58–23:41:05 — Postgres `invalid input syntax for type inet` (client-error logging passes a malformed value into an inet column), so client errors during canaries are being dropped.
+
+**Diagnosis access discovered this session:** Supabase Management API with the CLI keyring token answers both catalog and log questions in seconds — `POST /v1/projects/{ref}/database/query` for read-only SQL; `GET /v1/projects/{ref}/analytics/endpoints/logs.all` with `iso_timestamp_start/end` + BigQuery-style SQL over `edge_logs`/`postgres_logs`. This replaced hours of Railway forensics.
+
+## Canary 11 result — 2026-08-07 00:56Z (turn `9e54c04b-eb21-4ea4-9c8d-37b07ba496ee`) — **PASS**
+
+Deployment: fix commit `6d12e043e` (worker restart 00:37:54Z), hosted migrations `20260806020000` + `20260806021000` applied via the Management API with 8/8 post-apply verifications (validator/flush/claim prosrc, timing column, `agentic_chat_epoch_ms`, `safe_inet` behavior probe) and ledger-recorded; routing flipped on deployment `build-skwklif5h` (verified NEW and Ready before sending — the canary-9 lesson).
+
+End-to-end timeline, all executor-written: admission 00:56:31.87 → provider round 1 success (5.6 s, `tool_calls`) → tool success 792 ms → **ledger row `tool_category='utility'`** → `tool_result` public event → synthesis started 00:56:42 → **`chat_turn_stream_state.first_text_persisted_at` stamped 00:56:46.55 (new evidence working live)** → 1,900+ chars streamed → finalizing → **terminal `completed/stop` at 00:57:54.46, 83 s total, no sweeper involvement**. The persisted timing event carries the complete phase set including `time_to_first_response_ms=14680` and `response_generation_ms=67487` — the timing draft was ACCEPTED by the repaired validator on the first finalize attempt (no strip-retry needed; D2a remains an untriggered safety net). Assistant message linked; queue job cleanly completed; 16/16 lifecycle observations.
+
+Verifier: **PASS** after an instrument-contract update it forced honestly — the script still pinned three pre-repair contracts (`tool_category='project_read'`, 10 lifecycle observations pre-Slice-16, and contiguous public event sequences, which text batches have never satisfied — the same wrong assumption the DB validator had). Updated in `scripts/lib/agentic-chat-read-canary.ts` with the 16-row lifecycle list captured from this turn.
+
+Reconcile behavior during the pass: 43 calls over ~85 s ≈ the documented 2 s changed-cadence, stopping at terminal — no runaway when a turn terminates promptly (the canary-10 3/s runaway correlates with the dangling-turn state; `reason=` instrumentation stays armed). Minor client-render residuals observed and NOT blocking: post-terminal "BuildOS is thinking" banner and a thoughts panel counting ~17 actions with duplicated planning/tool lines.
+
 ## Exit gate
 
 - [x] The failed region is named with durable, Railway, and provider evidence; the missing historical subcall boundary is explicitly recorded rather than inferred.
 - [x] The smallest region-complete fix is implemented with hung-call regressions: a bounded deadline and actual AbortSignal wiring on every network call in the read/ledger window.
-- [ ] One production read canary completes end-to-end and passes `pnpm verify:agentic-chat-read-canary -- --turn-id <uuid>`.
+- [x] One production read canary completes end-to-end and passes `pnpm verify:agentic-chat-read-canary -- --turn-id <uuid>`. (**Canary 11, turn `9e54c04b`, PASS.**)
 - [x] Findings are recorded here and in the Slice 15 evidence doc; deeper non-blocking hardening remains in `tasker/50`.
