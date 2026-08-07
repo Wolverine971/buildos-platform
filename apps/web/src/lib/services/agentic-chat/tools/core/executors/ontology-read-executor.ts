@@ -8,12 +8,15 @@
  * - search_ontology (cross-entity search)
  * - get_onto_*_details (project, task, goal, plan, document, milestone, risk)
  * - list_task_documents
+ *
+ * The 18 direct-Supabase reads live in @buildos/agentic-chat-runtime/tools
+ * (Phase 4 Slice 18 S3-T4) as free functions over an injected context; this
+ * class delegates to them with its RLS client + web access adapter. The
+ * HTTP-hop tools (agentic search, route-backed detail GETs, doc-tree) stay
+ * here until their route logic is ported in later tranches.
  */
 
 import { BaseExecutor } from './base-executor';
-import { buildSearchFilter } from '$lib/utils/api-helpers';
-import { fetchProjectSummaries } from '$lib/services/ontology/ontology-projects.service';
-import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
 import type {
 	ExecutorContext,
 	ListOntoProjectsArgs,
@@ -48,11 +51,29 @@ import type {
 	ReadDocumentSectionArgs
 } from './types';
 import {
-	collectOutlineAnchors,
-	countOutlineNodes,
-	extractOutline,
-	getSectionByAnchor
-} from '$utils/document-outline';
+	type AgenticChatSharedReadContextV1,
+	applyKeywordSearch as sharedApplyKeywordSearch,
+	buildDetailNotFoundPayload as sharedBuildDetailNotFoundPayload,
+	stripInternalPayloadFields as sharedStripInternalPayloadFields,
+	getDocumentOutline as sharedGetDocumentOutline,
+	getOntoDocumentDetails as sharedGetOntoDocumentDetails,
+	getOntoProjectDetails as sharedGetOntoProjectDetails,
+	listOntoDocuments as sharedListOntoDocuments,
+	listOntoGoals as sharedListOntoGoals,
+	listOntoMilestones as sharedListOntoMilestones,
+	listOntoPlans as sharedListOntoPlans,
+	listOntoProjects as sharedListOntoProjects,
+	listOntoRisks as sharedListOntoRisks,
+	listOntoTasks as sharedListOntoTasks,
+	readDocumentSection as sharedReadDocumentSection,
+	searchOntoDocuments as sharedSearchOntoDocuments,
+	searchOntoGoals as sharedSearchOntoGoals,
+	searchOntoMilestones as sharedSearchOntoMilestones,
+	searchOntoPlans as sharedSearchOntoPlans,
+	searchOntoProjects as sharedSearchOntoProjects,
+	searchOntoRisks as sharedSearchOntoRisks,
+	searchOntoTasks as sharedSearchOntoTasks
+} from '@buildos/agentic-chat-runtime/tools';
 import { inferMaterializedToolsFromEntityResults } from '../entity-result-materialization';
 
 /**
@@ -72,234 +93,24 @@ export class OntologyReadExecutor extends BaseExecutor {
 		'requirement',
 		'image'
 	]);
-	private static readonly INTERNAL_PAYLOAD_KEYS = new Set(['search_vector']);
+
+	/** Context handed to the shared read tools: RLS client + web access port. */
+	private readonly sharedReadContext: AgenticChatSharedReadContextV1;
 
 	constructor(context: ExecutorContext) {
 		super(context);
-	}
-
-	private stripInternalPayloadFields<T>(value: T): T {
-		if (Array.isArray(value)) {
-			return value.map((item) => this.stripInternalPayloadFields(item)) as T;
-		}
-
-		if (!value || typeof value !== 'object') {
-			return value;
-		}
-
-		const output: Record<string, unknown> = {};
-		let changed = false;
-
-		for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
-			if (OntologyReadExecutor.INTERNAL_PAYLOAD_KEYS.has(key)) {
-				changed = true;
-				continue;
-			}
-
-			const sanitized = this.stripInternalPayloadFields(raw);
-			output[key] = sanitized;
-			if (sanitized !== raw) {
-				changed = true;
-			}
-		}
-
-		return changed ? (output as T) : value;
+		this.sharedReadContext = {
+			client: this.supabase as AgenticChatSharedReadContextV1['client'],
+			access: this.accessAdapter
+		};
 	}
 
 	/**
-	 * Apply project-scope filters to a Postgrest query.
-	 *
-	 * The result is wrapped in `{ q }` because Postgrest builders are thenables
-	 * (their `.then()` triggers the HTTP request). Returning the builder directly
-	 * from an `async` function would let JavaScript's Promise resolution adopt the
-	 * thenable, executing the query and yielding `{ data, error }` to the caller —
-	 * then any subsequent `.limit()` / `.eq()` chain would explode with
-	 * `t.limit is not a function`. The wrapper prevents that adoption.
-	 */
-	private async scopeEntityQueryToReadableProject(
-		query: any,
-		projectId?: string | null
-	): Promise<{ q: any }> {
-		const normalizedProjectId =
-			typeof projectId === 'string' && projectId.trim().length > 0 ? projectId.trim() : null;
-
-		if (normalizedProjectId) {
-			await this.assertProjectAccess(normalizedProjectId, 'read');
-			return { q: query.eq('project_id', normalizedProjectId) };
-		}
-
-		const actorId = await this.getActorId();
-		const summaries = await fetchProjectSummaries(this.supabase as any, actorId);
-		const readableProjectIds = summaries
-			.filter((project) => project.state_key !== 'paused')
-			.map((project) => (typeof project.id === 'string' ? project.id : null))
-			.filter((id): id is string => Boolean(id));
-
-		if (readableProjectIds.length === 0) {
-			return { q: query.eq('project_id', '00000000-0000-0000-0000-000000000000') };
-		}
-
-		return { q: query.in('project_id', readableProjectIds) };
-	}
-
-	private applyArchivedReadFilter(query: any, args: { archived?: boolean }): any {
-		const withoutDeleted = query.is('deleted_at', null);
-		return args.archived === true
-			? withoutDeleted.not('archived_at', 'is', null)
-			: withoutDeleted.is('archived_at', null);
-	}
-
-	private static readonly MAX_MARKDOWN_HEADERS = 40;
-	private static readonly MAX_HEADING_TEXT_LENGTH = 140;
-
-	private resolveSearchTerm(args: { query?: string; search?: string }): string {
-		return this.prepareSearchTerm(args.query ?? args.search);
-	}
-
-	private expandBooleanSearchTerms(term: string): string[] {
-		const normalized = term.trim();
-		if (!normalized) return [];
-
-		const hasExplicitOr = /\s+\bOR\b\s+/i.test(normalized) || normalized.includes('|');
-		if (!hasExplicitOr) {
-			return [normalized];
-		}
-
-		return Array.from(
-			new Set(
-				normalized
-					.split(/\s+\bOR\b\s+|\s*\|\s*/i)
-					.map((part) => this.prepareSearchTerm(part))
-					.filter(Boolean)
-			)
-		).slice(0, 12);
-	}
-
-	private buildMultiTermSearchFilter(term: string, fields: string[]): string | null {
-		const filters = this.expandBooleanSearchTerms(term)
-			.map((part) => buildSearchFilter(part, fields))
-			.filter((filter): filter is string => Boolean(filter));
-
-		return filters.length > 0 ? filters.join(',') : null;
-	}
-
-	// Very common English words that, when AND-ed across tokens, would only hurt
-	// recall (Postgres full-text strips these too). Kept tiny and conservative.
-	private static readonly SEARCH_STOPWORDS = new Set([
-		'a',
-		'an',
-		'and',
-		'are',
-		'as',
-		'at',
-		'be',
-		'by',
-		'for',
-		'from',
-		'in',
-		'is',
-		'it',
-		'me',
-		'my',
-		'of',
-		'on',
-		'or',
-		'the',
-		'to',
-		'with'
-	]);
-
-	/**
-	 * Split a plain (non-boolean) query into significant tokens for AND matching.
-	 * Drops stopwords and single characters; de-dupes; caps the token count.
-	 */
-	private tokenizeForKeywordSearch(term: string): string[] {
-		return Array.from(
-			new Set(
-				term
-					.split(/\s+/)
-					.map((part) => this.prepareSearchTerm(part))
-					.filter(
-						(part) =>
-							part.length >= 2 &&
-							!OntologyReadExecutor.SEARCH_STOPWORDS.has(part.toLowerCase())
-					)
-			)
-		).slice(0, 12);
-	}
-
-	/**
-	 * Apply keyword matching to a Supabase query so multi-word phrases match
-	 * regardless of word order. ILIKE `%a b c%` only matches the contiguous
-	 * phrase, so "ideas for blog posts" would miss a task titled "blog post
-	 * ideas". Instead:
-	 *   - Explicit boolean queries ("blog OR instagram", "a|b") keep OR semantics:
-	 *     any alternative may match any field.
-	 *   - Plain queries require every significant token to appear in some field
-	 *     (AND across tokens, OR across fields) — chaining multiple `.or()` calls,
-	 *     which PostgREST combines with AND.
+	 * Delegates to the shared keyword-search builder. Kept as a class method so
+	 * the postgrest URL-generation test can drive it against a real builder.
 	 */
 	private applyKeywordSearch<Q>(query: Q, term: string, fields: string[]): Q {
-		const normalized = term.trim();
-		if (!normalized) return query;
-
-		const hasExplicitOr = /\s+\bOR\b\s+/i.test(normalized) || normalized.includes('|');
-		if (hasExplicitOr) {
-			const filter = this.buildMultiTermSearchFilter(normalized, fields);
-			return filter ? (query as any).or(filter) : query;
-		}
-
-		const tokens = this.tokenizeForKeywordSearch(normalized);
-		if (tokens.length === 0) {
-			const filter = buildSearchFilter(normalized, fields);
-			return filter ? (query as any).or(filter) : query;
-		}
-
-		let next = query;
-		for (const token of tokens) {
-			const filter = buildSearchFilter(token, fields);
-			if (filter) next = (next as any).or(filter);
-		}
-		return next;
-	}
-
-	/**
-	 * In-memory counterpart of applyKeywordSearch for the project-summary search
-	 * (project access is resolved by loading accessible summaries, so matching is
-	 * done in JS rather than SQL). Same semantics: OR across explicit alternatives,
-	 * otherwise every token must appear somewhere in the combined fields.
-	 */
-	private matchesKeywordSearch(
-		haystackParts: Array<string | null | undefined>,
-		term: string
-	): boolean {
-		const haystack = haystackParts
-			.map((part) => (typeof part === 'string' ? part.toLowerCase() : ''))
-			.join(' ');
-		if (!haystack.trim()) return false;
-
-		const normalized = term.trim();
-		const hasExplicitOr = /\s+\bOR\b\s+/i.test(normalized) || normalized.includes('|');
-		if (hasExplicitOr) {
-			const alternatives = this.expandBooleanSearchTerms(normalized).map((part) =>
-				part.toLowerCase()
-			);
-			return alternatives.some((alt) => alt && haystack.includes(alt));
-		}
-
-		const tokens = this.tokenizeForKeywordSearch(normalized);
-		if (tokens.length === 0) {
-			return haystack.includes(normalized.toLowerCase());
-		}
-		return tokens.every((token) => haystack.includes(token.toLowerCase()));
-	}
-
-	private isPlainSearchTermTooBroad(term: string): boolean {
-		const normalized = term.trim();
-		if (!normalized) return true;
-		const hasExplicitOr = /\s+\bOR\b\s+/i.test(normalized) || normalized.includes('|');
-		if (hasExplicitOr) return false;
-		return this.tokenizeForKeywordSearch(normalized).length === 0;
+		return sharedApplyKeywordSearch(query, term, fields);
 	}
 
 	private normalizeAgenticSearchTypes(types?: string[]): string[] | undefined {
@@ -318,187 +129,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return normalized.length > 0 ? normalized : undefined;
 	}
 
-	private getCountedRows<T>(result: { data?: T[] | null }): T[] {
-		return Array.isArray(result.data) ? result.data : [];
-	}
-
-	private getResultCount(result: { data?: unknown[] | null; count?: number | null }): number {
-		return typeof result.count === 'number' ? result.count : (result.data?.length ?? 0);
-	}
-
-	private throwFirstQueryError(results: Array<{ label: string; error?: unknown }>): void {
-		const failed = results.find((result) => result.error);
-		if (!failed) return;
-		const error =
-			failed.error instanceof Error
-				? failed.error
-				: new Error(`Failed to load ${failed.label}`);
-		throw error;
-	}
-
-	private async loadCompactProjectDetails(
-		projectId: string
-	): Promise<Record<string, any> | null> {
-		await this.assertProjectAccess(projectId, 'read');
-		const supabase = this.supabase as any;
-
-		const [
-			projectResult,
-			goalsResult,
-			requirementsResult,
-			plansResult,
-			tasksResult,
-			documentsResult,
-			milestonesResult,
-			risksResult,
-			contextDocResult
-		] = await Promise.all([
-			supabase
-				.from('onto_projects')
-				.select(
-					'id, name, description, type_key, state_key, created_at, updated_at, next_step_short, next_step_long'
-				)
-				.eq('id', projectId)
-				.is('deleted_at', null)
-				.maybeSingle(),
-			supabase
-				.from('onto_goals')
-				.select(
-					'id, project_id, name, description, type_key, state_key, target_date, completed_at, updated_at',
-					{ count: 'exact' }
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null)
-				.order('updated_at', { ascending: false })
-				.limit(8),
-			supabase
-				.from('onto_requirements')
-				.select('id, project_id, text, type_key, priority, created_at, updated_at', {
-					count: 'exact'
-				})
-				.eq('project_id', projectId)
-				.is('deleted_at', null)
-				.order('priority', { ascending: false, nullsFirst: false })
-				.order('updated_at', { ascending: false, nullsFirst: false })
-				.limit(8),
-			supabase
-				.from('onto_plans')
-				.select('id, project_id, name, description, type_key, state_key, updated_at', {
-					count: 'exact'
-				})
-				.eq('project_id', projectId)
-				.is('deleted_at', null)
-				.order('updated_at', { ascending: false })
-				.limit(8),
-			supabase
-				.from('onto_tasks')
-				.select(
-					'id, project_id, title, description, type_key, state_key, priority, due_at, completed_at, updated_at, archived_at',
-					{ count: 'exact' }
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null)
-				.is('archived_at', null)
-				.order('updated_at', { ascending: false })
-				.limit(12),
-			supabase
-				.from('onto_documents')
-				.select(
-					'id, project_id, title, description, type_key, state_key, created_at, updated_at, archived_at',
-					{ count: 'exact' }
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null)
-				.is('archived_at', null)
-				.order('updated_at', { ascending: false })
-				.limit(12),
-			supabase
-				.from('onto_milestones')
-				.select(
-					'id, project_id, title, description, type_key, state_key, due_at, completed_at, updated_at',
-					{ count: 'exact' }
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null)
-				.order('due_at', { ascending: true, nullsFirst: false })
-				.limit(8),
-			supabase
-				.from('onto_risks')
-				.select(
-					'id, project_id, title, type_key, state_key, impact, probability, updated_at',
-					{ count: 'exact' }
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null)
-				.is('archived_at', null)
-				.order('updated_at', { ascending: false })
-				.limit(8),
-			supabase
-				.from('onto_documents')
-				.select(
-					'id, project_id, title, description, type_key, state_key, props, created_at, updated_at, archived_at'
-				)
-				.eq('project_id', projectId)
-				.eq('type_key', 'document.context.project')
-				.is('deleted_at', null)
-				.order('updated_at', { ascending: false })
-				.limit(20)
-		]);
-
-		this.throwFirstQueryError([
-			{ label: 'project', error: projectResult.error },
-			{ label: 'goals', error: goalsResult.error },
-			{ label: 'requirements', error: requirementsResult.error },
-			{ label: 'plans', error: plansResult.error },
-			{ label: 'tasks', error: tasksResult.error },
-			{ label: 'documents', error: documentsResult.error },
-			{ label: 'milestones', error: milestonesResult.error },
-			{ label: 'risks', error: risksResult.error },
-			{ label: 'context document', error: contextDocResult.error }
-		]);
-
-		const project = projectResult.data;
-		if (!project) {
-			return null;
-		}
-
-		const contextDocumentRaw = contextDocResult.data ?? null;
-		const contextDocument = Array.isArray(contextDocumentRaw)
-			? pickStartHereDocument(contextDocumentRaw)
-			: contextDocumentRaw;
-
-		return this.stripInternalPayloadFields({
-			project,
-			counts: {
-				goals: this.getResultCount(goalsResult),
-				requirements: this.getResultCount(requirementsResult),
-				plans: this.getResultCount(plansResult),
-				tasks: this.getResultCount(tasksResult),
-				documents: this.getResultCount(documentsResult),
-				milestones: this.getResultCount(milestonesResult),
-				risks: this.getResultCount(risksResult)
-			},
-			limits: {
-				goals: 8,
-				requirements: 8,
-				plans: 8,
-				tasks: 12,
-				documents: 12,
-				milestones: 8,
-				risks: 8
-			},
-			goals: this.getCountedRows(goalsResult),
-			requirements: this.getCountedRows(requirementsResult),
-			plans: this.getCountedRows(plansResult),
-			tasks: this.getCountedRows(tasksResult),
-			documents: this.getCountedRows(documentsResult),
-			milestones: this.getCountedRows(milestonesResult),
-			risks: this.getCountedRows(risksResult),
-			context_document: contextDocument,
-			source: 'compact_agent_project_context'
-		});
-	}
-
 	private async getDetailOrNotFound(args: {
 		path: string;
 		entityType: string;
@@ -513,46 +143,18 @@ export class OntologyReadExecutor extends BaseExecutor {
 			details = await this.apiRequest(args.path);
 		} catch (error) {
 			if (this.isApiRequestStatus(error, 404)) {
-				return this.buildDetailNotFoundPayload(args);
+				return sharedBuildDetailNotFoundPayload(args);
 			}
 			throw error;
 		}
 
 		if (!details?.[args.payloadKey]) {
-			return this.buildDetailNotFoundPayload(args, {
+			return sharedBuildDetailNotFoundPayload(args, {
 				reason: `${args.entityType} details response did not include ${args.payloadKey}.`
 			});
 		}
 
-		return this.stripInternalPayloadFields(details);
-	}
-
-	private buildDetailNotFoundPayload(
-		args: {
-			entityType: string;
-			idKey: string;
-			id: string;
-			searchTool?: string;
-			listTool?: string;
-		},
-		options: { reason?: string } = {}
-	): Record<string, any> {
-		const entityLabel = args.entityType[0]?.toUpperCase() + args.entityType.slice(1);
-		const recoveryTools = [args.listTool, args.searchTool].filter(Boolean).join(' or ');
-		const recoveryMessage = recoveryTools
-			? ` Use ${recoveryTools} to find a current ${args.entityType}.`
-			: '';
-		const reason =
-			options.reason ??
-			`${entityLabel} not found. The ${args.entityType} may have been deleted, archived, inaccessible, or the ID may be stale.`;
-
-		return {
-			status: 'not_found',
-			found: false,
-			[args.idKey]: args.id,
-			[args.entityType]: null,
-			message: `${reason}${recoveryMessage}`
-		};
+		return sharedStripInternalPayloadFields(details);
 	}
 
 	private async runAgenticSearch(args: {
@@ -629,192 +231,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 		};
 	}
 
-	private summarizeDocumentForList(document: Record<string, any>): Record<string, any> {
-		const outline =
-			document.markdown_outline && typeof document.markdown_outline === 'object'
-				? document.markdown_outline
-				: null;
-		const contentLength =
-			typeof document.content_length === 'number' ? document.content_length : null;
-
-		return {
-			id: typeof document.id === 'string' ? document.id : null,
-			project_id: typeof document.project_id === 'string' ? document.project_id : null,
-			title: typeof document.title === 'string' ? document.title : null,
-			type_key: typeof document.type_key === 'string' ? document.type_key : null,
-			state_key: typeof document.state_key === 'string' ? document.state_key : null,
-			description: typeof document.description === 'string' ? document.description : null,
-			created_at: typeof document.created_at === 'string' ? document.created_at : null,
-			updated_at: typeof document.updated_at === 'string' ? document.updated_at : null,
-			content_length: contentLength,
-			markdown_outline: outline
-		};
-	}
-
-	private async loadAgentDocumentDetails(
-		documentId: string
-	): Promise<Record<string, any> | null> {
-		const { data: document, error } = await this.supabase
-			.from('onto_documents')
-			.select(
-				'id, project_id, title, description, type_key, state_key, content, props, children, created_at, updated_at, archived_at'
-			)
-			.eq('id', documentId)
-			.is('deleted_at', null)
-			.maybeSingle();
-
-		if (error) throw error;
-		if (!document) return null;
-
-		await this.assertProjectAccess(document.project_id, 'read');
-
-		return this.stripInternalPayloadFields({
-			document,
-			source: 'agent_document_detail_projection'
-		});
-	}
-
-	private extractMarkdownOutline(markdown: string): {
-		counts: { total: number; h1: number; h2: number; h3: number };
-		headings: Array<{ level: 1 | 2 | 3; text: string; children: Array<any> }>;
-		truncated: boolean;
-	} {
-		type Heading = { level: 1 | 2 | 3; text: string };
-		type HeadingNode = { level: 1 | 2 | 3; text: string; children: HeadingNode[] };
-
-		const headings: Heading[] = [];
-		const lines = markdown.split(/\r?\n/);
-		let inFence = false;
-		let fenceChar = '';
-		let fenceLength = 0;
-
-		for (let index = 0; index < lines.length; index += 1) {
-			const line = lines[index] ?? '';
-			const fenceMatch = line.match(/^\s{0,3}(`{3,}|~{3,})/);
-			if (fenceMatch) {
-				const fence = fenceMatch[1];
-				if (!fence) continue;
-				const nextFenceChar = fence[0] ?? '';
-				const nextFenceLength = fence.length;
-				if (!inFence) {
-					inFence = true;
-					fenceChar = nextFenceChar;
-					fenceLength = nextFenceLength;
-				} else if (nextFenceChar === fenceChar && nextFenceLength >= fenceLength) {
-					inFence = false;
-					fenceChar = '';
-					fenceLength = 0;
-				}
-				continue;
-			}
-			if (inFence) continue;
-
-			const atxMatch = line.match(/^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/);
-			if (atxMatch) {
-				const hashes = atxMatch[1];
-				const headingText = atxMatch[2];
-				if (!hashes || headingText === undefined) continue;
-				const level = Math.min(hashes.length, 3) as 1 | 2 | 3;
-				const text = this.normalizeHeadingText(headingText);
-				if (text) {
-					headings.push({ level, text });
-					if (headings.length >= OntologyReadExecutor.MAX_MARKDOWN_HEADERS) break;
-				}
-				continue;
-			}
-
-			const nextLine = lines[index + 1] ?? '';
-			const setextMatch = nextLine.match(/^\s{0,3}(=+|-+)\s*$/);
-			if (!setextMatch) continue;
-
-			const text = this.normalizeHeadingText(line);
-			if (!text) continue;
-			const setextMarker = setextMatch[1];
-			const level = setextMarker?.[0] === '=' ? 1 : 2;
-			headings.push({ level: level as 1 | 2 | 3, text });
-			if (headings.length >= OntologyReadExecutor.MAX_MARKDOWN_HEADERS) break;
-			index += 1;
-		}
-
-		const counts = { total: headings.length, h1: 0, h2: 0, h3: 0 };
-		const rootNodes: HeadingNode[] = [];
-		const stack: HeadingNode[] = [];
-
-		for (const heading of headings) {
-			if (heading.level === 1) counts.h1 += 1;
-			else if (heading.level === 2) counts.h2 += 1;
-			else counts.h3 += 1;
-
-			const node: HeadingNode = {
-				level: heading.level,
-				text: heading.text,
-				children: []
-			};
-
-			while (stack.length > 0 && stack[stack.length - 1]!.level >= node.level) {
-				stack.pop();
-			}
-
-			if (stack.length === 0) {
-				rootNodes.push(node);
-			} else {
-				stack[stack.length - 1]!.children.push(node);
-			}
-			stack.push(node);
-		}
-
-		const truncated = headings.length >= OntologyReadExecutor.MAX_MARKDOWN_HEADERS;
-		return {
-			counts,
-			headings: rootNodes,
-			truncated
-		};
-	}
-
-	private normalizeHeadingText(raw: string): string {
-		const trimmed = raw.trim().replace(/\s+/g, ' ');
-		if (!trimmed) return '';
-		if (trimmed.length <= OntologyReadExecutor.MAX_HEADING_TEXT_LENGTH) {
-			return trimmed;
-		}
-		return `${trimmed.slice(0, OntologyReadExecutor.MAX_HEADING_TEXT_LENGTH - 3)}...`;
-	}
-
-	private async loadAccessibleProjectSummaries(): Promise<any[]> {
-		const actorId = await this.getActorId();
-		const summaries = await fetchProjectSummaries(this.supabase as any, actorId);
-		return summaries
-			.map((project) => ({
-				id: project.id,
-				name: project.name,
-				description: project.description,
-				type_key: project.type_key,
-				state_key: project.state_key,
-				props: project.props,
-				facet_context: project.facet_context,
-				facet_scale: project.facet_scale,
-				facet_stage: project.facet_stage,
-				created_at: project.created_at,
-				updated_at: project.updated_at,
-				access_role: project.access_role,
-				access_level: project.access_level,
-				is_shared: project.is_shared,
-				task_count: project.task_count,
-				goal_count: project.goal_count,
-				plan_count: project.plan_count,
-				document_count: project.document_count,
-				next_step_short: project.next_step_short,
-				next_step_long: project.next_step_long,
-				next_step_source: project.next_step_source,
-				next_step_updated_at: project.next_step_updated_at
-			}))
-			.sort((a, b) => {
-				const aTime = Date.parse(a.updated_at ?? a.created_at ?? '');
-				const bTime = Date.parse(b.updated_at ?? b.created_at ?? '');
-				return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
-			});
-	}
-
 	// ============================================
 	// LIST OPERATIONS
 	// ============================================
@@ -824,26 +240,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		let projects = await this.loadAccessibleProjectSummaries();
-		const normalizedState = this.normalizeProjectState(args.state_key);
-		if (normalizedState) {
-			projects = projects.filter((project) => project.state_key === normalizedState);
-		} else {
-			projects = projects.filter((project) => project.state_key !== 'paused');
-		}
-
-		if (args.type_key) {
-			projects = projects.filter((project) => project.type_key === args.type_key);
-		}
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		const limited = projects.slice(0, limit);
-
-		return {
-			projects: limited,
-			total: projects.length,
-			message: `Found ${limited.length} ontology projects. Use get_onto_project_details for full context.`
-		};
+		return sharedListOntoProjects(this.sharedReadContext, args);
 	}
 
 	async listOntoTasks(args: ListOntoTasksArgs): Promise<{
@@ -851,57 +248,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		let query = this.supabase
-			.from('onto_tasks')
-			.select(
-				`
-				id,
-				project_id,
-				title,
-				description,
-				type_key,
-				state_key,
-				priority,
-				start_at,
-				due_at,
-				completed_at,
-				props,
-				project:onto_projects(name)
-			`,
-				{ count: 'exact' }
-			)
-			.order('updated_at', { ascending: false });
-
-		query = this.applyArchivedReadFilter(query, args);
-		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
-
-		const normalizedState = this.normalizeTaskState(args.state_key);
-		if (normalizedState) {
-			query = query.eq('state_key', normalizedState);
-		}
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		const normalized = (data ?? []).map((task: any) => {
-			const projectName = Array.isArray(task.project)
-				? task.project[0]?.name
-				: task.project?.name;
-			const { project, ...rest } = task;
-			return {
-				...rest,
-				project_name: projectName ?? null
-			};
-		});
-
-		return {
-			tasks: normalized,
-			total: count ?? normalized.length,
-			message: `Found ${normalized.length} ontology tasks. Use get_onto_task_details for full information.`
-		};
+		return sharedListOntoTasks(this.sharedReadContext, args);
 	}
 
 	async listOntoGoals(args: ListOntoGoalsArgs): Promise<{
@@ -909,28 +256,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		let query = this.supabase
-			.from('onto_goals')
-			.select(
-				'id, project_id, name, type_key, description, target_date, state_key, props, created_at, updated_at',
-				{ count: 'exact' }
-			)
-			.order('created_at', { ascending: false });
-
-		query = this.applyArchivedReadFilter(query, args);
-		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		return {
-			goals: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} ontology goals.`
-		};
+		return sharedListOntoGoals(this.sharedReadContext, args);
 	}
 
 	async listOntoPlans(args: ListOntoPlansArgs): Promise<{
@@ -938,30 +264,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		let query = this.supabase
-			.from('onto_plans')
-			.select(
-				'id, project_id, name, state_key, type_key, description, props, created_at, updated_at',
-				{
-					count: 'exact'
-				}
-			)
-			.order('updated_at', { ascending: false });
-
-		query = this.applyArchivedReadFilter(query, args);
-		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		return {
-			plans: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} ontology plans.`
-		};
+		return sharedListOntoPlans(this.sharedReadContext, args);
 	}
 
 	async listOntoDocuments(args: ListOntoDocumentsArgs): Promise<{
@@ -969,39 +272,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		let query = this.supabase
-			.from('onto_documents')
-			.select(
-				'id, project_id, title, type_key, state_key, description, created_at, updated_at',
-				{
-					count: 'exact'
-				}
-			)
-			.order('updated_at', { ascending: false });
-
-		query = this.applyArchivedReadFilter(query, args);
-		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
-
-		if (args.type_key) {
-			query = query.eq('type_key', args.type_key);
-		}
-
-		if (args.state_key) {
-			query = query.eq('state_key', args.state_key);
-		}
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-		const documents = (data ?? []).map((document) => this.summarizeDocumentForList(document));
-
-		return {
-			documents,
-			total: count ?? documents.length,
-			message: `Found ${documents.length} ontology documents. Use get_onto_document_details for full document content.`
-		};
+		return sharedListOntoDocuments(this.sharedReadContext, args);
 	}
 
 	async listOntoMilestones(args: ListOntoMilestonesArgs): Promise<{
@@ -1009,32 +280,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		let query = this.supabase
-			.from('onto_milestones')
-			.select(
-				'id, project_id, title, due_at, state_key, description, type_key, props, created_at, updated_at',
-				{ count: 'exact' }
-			)
-			.order('due_at', { ascending: true, nullsFirst: true });
-
-		query = this.applyArchivedReadFilter(query, args);
-		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
-
-		if (args.state_key) {
-			query = query.eq('state_key', args.state_key);
-		}
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		return {
-			milestones: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} ontology milestones.`
-		};
+		return sharedListOntoMilestones(this.sharedReadContext, args);
 	}
 
 	async listOntoRisks(args: ListOntoRisksArgs): Promise<{
@@ -1042,36 +288,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		let query = this.supabase
-			.from('onto_risks')
-			.select(
-				'id, project_id, title, impact, probability, state_key, content, type_key, props, created_at, updated_at',
-				{ count: 'exact' }
-			)
-			.order('updated_at', { ascending: false });
-
-		query = this.applyArchivedReadFilter(query, args);
-		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
-
-		if (args.state_key) {
-			query = query.eq('state_key', args.state_key);
-		}
-
-		if (args.impact) {
-			query = query.eq('impact', args.impact);
-		}
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		return {
-			risks: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} ontology risks.`
-		};
+		return sharedListOntoRisks(this.sharedReadContext, args);
 	}
 
 	async listTaskDocuments(args: ListTaskDocumentsArgs): Promise<{
@@ -1105,42 +322,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		rejected_query?: boolean;
 		materialized_tools?: string[];
 	}> {
-		const searchTerm = this.resolveSearchTerm(args);
-		if (!searchTerm) {
-			throw new Error('Search term is required for search_onto_projects');
-		}
-		if (this.isPlainSearchTermTooBroad(searchTerm)) {
-			return {
-				projects: [],
-				total: 0,
-				rejected_query: true,
-				materialized_tools: ['get_workspace_overview'],
-				message: `Project search query "${searchTerm}" is too broad. Use get_workspace_overview for project inventory/status, or search with a specific project keyword of at least two non-stopword characters.`
-			};
-		}
-
-		let projects = (await this.loadAccessibleProjectSummaries()).filter((project) =>
-			this.matchesKeywordSearch([project.name, project.description], searchTerm)
-		);
-
-		if (args.state_key) {
-			projects = projects.filter((project) => project.state_key === args.state_key);
-		} else {
-			projects = projects.filter((project) => project.state_key !== 'paused');
-		}
-
-		if (args.type_key) {
-			projects = projects.filter((project) => project.type_key === args.type_key);
-		}
-
-		const limit = Math.min(args.limit ?? 10, 30);
-		const limited = projects.slice(0, limit);
-
-		return {
-			projects: limited,
-			total: projects.length,
-			message: `Found ${limited.length} projects matching "${searchTerm}".`
-		};
+		return sharedSearchOntoProjects(this.sharedReadContext, args);
 	}
 
 	async searchOntoTasks(args: SearchOntoTasksArgs): Promise<{
@@ -1148,64 +330,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const searchTerm = this.resolveSearchTerm(args);
-		if (!searchTerm) {
-			throw new Error('Search term is required for search_onto_tasks');
-		}
-
-		let query = this.supabase
-			.from('onto_tasks')
-			.select(
-				`
-				id,
-				project_id,
-				title,
-				description,
-				type_key,
-				state_key,
-				priority,
-				start_at,
-				due_at,
-				completed_at,
-				props,
-				project:onto_projects(name)
-			`,
-				{ count: 'exact' }
-			)
-			.order('updated_at', { ascending: false });
-
-		query = this.applyKeywordSearch(query, searchTerm, ['title', 'description']);
-
-		query = this.applyArchivedReadFilter(query, args);
-		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
-
-		const normalizedState = this.normalizeTaskState(args.state_key);
-		if (normalizedState) {
-			query = query.eq('state_key', normalizedState);
-		}
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		const normalized = (data ?? []).map((task: any) => {
-			const projectName = Array.isArray(task.project)
-				? task.project[0]?.name
-				: task.project?.name;
-			const { project, ...rest } = task;
-			return {
-				...rest,
-				project_name: projectName ?? null
-			};
-		});
-
-		return {
-			tasks: normalized,
-			total: count ?? normalized.length,
-			message: `Found ${normalized.length} tasks matching "${searchTerm}".`
-		};
+		return sharedSearchOntoTasks(this.sharedReadContext, args);
 	}
 
 	async searchOntoGoals(args: SearchOntoGoalsArgs): Promise<{
@@ -1213,35 +338,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const searchTerm = this.resolveSearchTerm(args);
-		if (!searchTerm) {
-			throw new Error('Search term is required for search_onto_goals');
-		}
-
-		let query = this.supabase
-			.from('onto_goals')
-			.select(
-				'id, project_id, name, type_key, description, target_date, state_key, props, created_at, updated_at',
-				{ count: 'exact' }
-			)
-			.order('updated_at', { ascending: false });
-
-		query = this.applyKeywordSearch(query, searchTerm, ['name', 'description']);
-
-		query = this.applyArchivedReadFilter(query, args);
-		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		return {
-			goals: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} goals matching "${searchTerm}".`
-		};
+		return sharedSearchOntoGoals(this.sharedReadContext, args);
 	}
 
 	async searchOntoPlans(args: SearchOntoPlansArgs): Promise<{
@@ -1249,35 +346,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const searchTerm = this.resolveSearchTerm(args);
-		if (!searchTerm) {
-			throw new Error('Search term is required for search_onto_plans');
-		}
-
-		let query = this.supabase
-			.from('onto_plans')
-			.select(
-				'id, project_id, name, state_key, type_key, description, props, created_at, updated_at',
-				{ count: 'exact' }
-			)
-			.order('updated_at', { ascending: false });
-
-		query = this.applyKeywordSearch(query, searchTerm, ['name', 'description']);
-
-		query = this.applyArchivedReadFilter(query, args);
-		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		return {
-			plans: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} plans matching "${searchTerm}".`
-		};
+		return sharedSearchOntoPlans(this.sharedReadContext, args);
 	}
 
 	async searchOntoDocuments(args: SearchOntoDocumentsArgs): Promise<{
@@ -1285,48 +354,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const searchTerm = this.resolveSearchTerm(args);
-		if (!searchTerm) {
-			throw new Error('Search term is required for search_onto_documents');
-		}
-
-		let query = this.supabase
-			.from('onto_documents')
-			.select(
-				'id, project_id, title, type_key, state_key, description, created_at, updated_at',
-				{
-					count: 'exact'
-				}
-			)
-			.order('updated_at', { ascending: false });
-
-		// Match title, description, and body content (the body is matched but not
-		// selected, so large documents are still summarized for the list payload).
-		query = this.applyKeywordSearch(query, searchTerm, ['title', 'description', 'content']);
-
-		query = this.applyArchivedReadFilter(query, args);
-		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
-
-		if (args.type_key) {
-			query = query.eq('type_key', args.type_key);
-		}
-
-		if (args.state_key) {
-			query = query.eq('state_key', args.state_key);
-		}
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-		const documents = (data ?? []).map((document) => this.summarizeDocumentForList(document));
-
-		return {
-			documents,
-			total: count ?? documents.length,
-			message: `Found ${documents.length} documents matching "${searchTerm}". Use get_onto_document_details for full document content.`
-		};
+		return sharedSearchOntoDocuments(this.sharedReadContext, args);
 	}
 
 	async searchOntoMilestones(args: SearchOntoMilestonesArgs): Promise<{
@@ -1334,39 +362,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const searchTerm = this.resolveSearchTerm(args);
-		if (!searchTerm) {
-			throw new Error('Search term is required for search_onto_milestones');
-		}
-
-		let query = this.supabase
-			.from('onto_milestones')
-			.select(
-				'id, project_id, title, due_at, state_key, description, type_key, props, created_at, updated_at',
-				{ count: 'exact' }
-			)
-			.order('due_at', { ascending: true, nullsFirst: true });
-
-		query = this.applyKeywordSearch(query, searchTerm, ['title', 'description']);
-
-		query = this.applyArchivedReadFilter(query, args);
-		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
-
-		if (args.state_key) {
-			query = query.eq('state_key', args.state_key);
-		}
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		return {
-			milestones: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} milestones matching "${searchTerm}".`
-		};
+		return sharedSearchOntoMilestones(this.sharedReadContext, args);
 	}
 
 	async searchOntoRisks(args: SearchOntoRisksArgs): Promise<{
@@ -1374,43 +370,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const searchTerm = this.resolveSearchTerm(args);
-		if (!searchTerm) {
-			throw new Error('Search term is required for search_onto_risks');
-		}
-
-		let query = this.supabase
-			.from('onto_risks')
-			.select(
-				'id, project_id, title, impact, probability, state_key, content, type_key, props, created_at, updated_at',
-				{ count: 'exact' }
-			)
-			.order('updated_at', { ascending: false });
-
-		query = this.applyKeywordSearch(query, searchTerm, ['title', 'content']);
-
-		query = this.applyArchivedReadFilter(query, args);
-		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
-
-		if (args.state_key) {
-			query = query.eq('state_key', args.state_key);
-		}
-
-		if (args.impact) {
-			query = query.eq('impact', args.impact);
-		}
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		return {
-			risks: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} risks matching "${searchTerm}".`
-		};
+		return sharedSearchOntoRisks(this.sharedReadContext, args);
 	}
 
 	async searchAllProjects(args: SearchAllProjectsArgs): Promise<{
@@ -1514,21 +474,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 	// ============================================
 
 	async getOntoProjectDetails(args: GetOntoProjectDetailsArgs): Promise<any> {
-		const details = await this.loadCompactProjectDetails(args.project_id);
-		if (!details) {
-			return this.buildDetailNotFoundPayload({
-				entityType: 'project',
-				idKey: 'project_id',
-				id: args.project_id,
-				listTool: 'list_onto_projects',
-				searchTool: 'search_onto_projects'
-			});
-		}
-
-		return {
-			...details,
-			message: 'Compact ontology project details loaded.'
-		};
+		return sharedGetOntoProjectDetails(this.sharedReadContext, args);
 	}
 
 	async getOntoProjectGraph(args: GetOntoProjectGraphArgs): Promise<any> {
@@ -1603,21 +549,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 	}
 
 	async getOntoDocumentDetails(args: GetOntoDocumentDetailsArgs): Promise<any> {
-		const details = await this.loadAgentDocumentDetails(args.document_id);
-		if (!details?.document) {
-			return this.buildDetailNotFoundPayload({
-				entityType: 'document',
-				idKey: 'document_id',
-				id: args.document_id,
-				listTool: 'list_onto_documents',
-				searchTool: 'search_onto_documents'
-			});
-		}
-
-		return {
-			...details,
-			message: 'Complete ontology document details loaded.'
-		};
+		return sharedGetOntoDocumentDetails(this.sharedReadContext, args);
 	}
 
 	/**
@@ -1626,33 +558,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 	 * a section to read without pulling the full body. Computed live from content.
 	 */
 	async getDocumentOutline(args: GetDocumentOutlineArgs): Promise<any> {
-		const details = await this.loadAgentDocumentDetails(args.document_id);
-		const document = details?.document as Record<string, any> | undefined;
-		if (!document) {
-			return this.buildDetailNotFoundPayload({
-				entityType: 'document',
-				idKey: 'document_id',
-				id: args.document_id,
-				listTool: 'list_onto_documents',
-				searchTool: 'search_onto_documents'
-			});
-		}
-
-		const outline = extractOutline(
-			typeof document.content === 'string' ? document.content : ''
-		);
-		const headingCount = countOutlineNodes(outline.nodes);
-
-		return {
-			document_id: document.id,
-			project_id: document.project_id,
-			title: document.title ?? null,
-			outline: outline.nodes,
-			message:
-				headingCount > 0
-					? `Outline loaded: ${headingCount} headings. Use read_document_section with an anchor to read a specific section.`
-					: 'This document has no markdown headings. Use get_onto_document_details to read the full body.'
-		};
+		return sharedGetDocumentOutline(this.sharedReadContext, args);
 	}
 
 	/**
@@ -1661,48 +567,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 	 * the agent zoom into the relevant part instead of loading the whole document.
 	 */
 	async readDocumentSection(args: ReadDocumentSectionArgs): Promise<any> {
-		const details = await this.loadAgentDocumentDetails(args.document_id);
-		const document = details?.document as Record<string, any> | undefined;
-		if (!document) {
-			return this.buildDetailNotFoundPayload({
-				entityType: 'document',
-				idKey: 'document_id',
-				id: args.document_id,
-				listTool: 'list_onto_documents',
-				searchTool: 'search_onto_documents'
-			});
-		}
-
-		const content = typeof document.content === 'string' ? document.content : '';
-		const anchor = typeof args.anchor === 'string' ? args.anchor.trim() : '';
-		const section = getSectionByAnchor(content, anchor);
-
-		if (!section.found) {
-			const outline = extractOutline(content);
-			const available = collectOutlineAnchors(outline.nodes);
-			return {
-				document_id: document.id,
-				project_id: document.project_id,
-				anchor,
-				found: false,
-				available_anchors: available,
-				message:
-					available.length > 0
-						? `No section with anchor "${anchor}". Available anchors: ${available.join(', ')}. Call get_document_outline for the full structure.`
-						: `No section with anchor "${anchor}". This document has no headings; use get_onto_document_details for the full body.`
-			};
-		}
-
-		return {
-			document_id: document.id,
-			project_id: document.project_id,
-			title: document.title ?? null,
-			anchor: section.anchor,
-			heading: section.heading,
-			level: section.level,
-			content: section.content,
-			message: `Section "${section.heading}" loaded.`
-		};
+		return sharedReadDocumentSection(this.sharedReadContext, args);
 	}
 
 	async getOntoMilestoneDetails(args: GetOntoMilestoneDetailsArgs): Promise<any> {

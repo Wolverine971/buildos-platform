@@ -85,11 +85,16 @@ describe('OntologyReadExecutor payload hygiene', () => {
 			p_project_id: 'project-1',
 			p_required_access: 'read'
 		});
+		// S3-T4 security reorder: the first select resolves the project for the
+		// access check WITHOUT touching the body; only after access passes does
+		// the second select fetch the full agent projection.
 		const selections = documentQuery.select.mock.calls.map(([selection]) => String(selection));
-		expect(selections).toHaveLength(1);
-		expect(selections[0]).not.toBe('*');
-		expect(selections[0]).toContain('content');
-		expect(selections[0]).not.toContain('search_vector');
+		expect(selections).toHaveLength(2);
+		expect(selections[0]).toBe('id, project_id');
+		expect(selections[0]).not.toContain('content');
+		expect(selections[1]).not.toBe('*');
+		expect(selections[1]).toContain('content');
+		expect(selections[1]).not.toContain('search_vector');
 		expect(result.document.search_vector).toBeUndefined();
 		expect(result.document.props.search_vector).toBeUndefined();
 		expect(result.document.props.body_markdown).toBe('# Notes');

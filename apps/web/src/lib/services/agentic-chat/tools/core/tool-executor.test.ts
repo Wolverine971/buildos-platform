@@ -421,7 +421,10 @@ describe('ChatToolExecutor - Update Behavior', () => {
 		});
 
 		it('should handle empty existing content gracefully', async () => {
-			mockChain.maybeSingle.mockResolvedValueOnce({
+			// The shared loadAgentDocumentDetails now reads twice (S3-T4 security
+			// reorder: narrow access-resolution select, then the full projection),
+			// so the empty document must be served for both sequential reads.
+			const emptyDocumentResult = {
 				data: {
 					id: 'doc-123',
 					project_id: 'project-123',
@@ -430,7 +433,10 @@ describe('ChatToolExecutor - Update Behavior', () => {
 					props: {}
 				},
 				error: null
-			});
+			};
+			mockChain.maybeSingle
+				.mockResolvedValueOnce(emptyDocumentResult)
+				.mockResolvedValueOnce(emptyDocumentResult);
 
 			mockFetch = vi.fn().mockImplementation((url, options) => {
 				if (url.includes('/api/onto/documents/') && options?.method === 'PATCH') {

@@ -33,7 +33,8 @@
 	},
 	"dependencies": {
 		"@buildos/shared-agent-ops": "workspace:*",
-		"@buildos/shared-types": "workspace:*"
+		"@buildos/shared-types": "workspace:*",
+		"@supabase/supabase-js": "^2.89.0"
 	},
 	"devDependencies": {
 		"@types/node": "^20.11.10",

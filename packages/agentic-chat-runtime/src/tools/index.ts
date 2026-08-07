@@ -7,5 +7,6 @@
 
 export * from './access-port';
 export * from './activity-log-summary';
+export * from './ontology-reads';
 export * from './overview-helper';
 export * from './start-here-selector';

@@ -578,6 +578,9 @@ importers:
       '@buildos/shared-types':
         specifier: workspace:*
         version: link:../shared-types
+      '@supabase/supabase-js':
+        specifier: ^2.89.0
+        version: 2.89.0
     devDependencies:
       '@types/node':
         specifier: ^20.11.10
