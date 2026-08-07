@@ -91,6 +91,8 @@ export function createAgenticChatPhase3Assembly(options: {
 	cancellationConfig?: Partial<AgenticChatCancellationObserverConfig>;
 	providerCooldownMs?: number;
 	providerBudgetMs?: number;
+	maxProviderRounds?: number;
+	maxToolCalls?: number;
 	onPromptSnapshotError?: (error: unknown) => void;
 	onExecutionObservationError?: (error: unknown) => void;
 }): AgenticChatPhase3Assembly {
@@ -162,7 +164,9 @@ export function createAgenticChatPhase3Assembly(options: {
 			mutation: disabledToolPort('mutating_tools_disabled')
 		},
 		{
-			providerBudgetMs: options.providerBudgetMs
+			providerBudgetMs: options.providerBudgetMs,
+			maxProviderRounds: options.maxProviderRounds,
+			maxToolCalls: options.maxToolCalls
 		}
 	);
 	const consumer = createAgenticChatConsumer(executor, {

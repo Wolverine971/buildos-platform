@@ -200,6 +200,8 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			internalUserIds: [],
 			consumer: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
 			providerBudgetMs: 150_000,
+			maxProviderRounds: 16,
+			maxToolCalls: 40,
 			provider: null
 		});
 		expect(() => loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_ENABLED: 'true' })).toThrow(
@@ -220,7 +222,9 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			CHAT_WORKER_TIMEOUT_MS: '2000',
 			CHAT_PROVIDER_BUDGET_MS: '1200',
 			CHAT_STALLED_TIMEOUT_MS: '3000',
-			CHAT_DRAIN_TIMEOUT_MS: '1000'
+			CHAT_DRAIN_TIMEOUT_MS: '1000',
+			CHAT_MAX_TOOL_ROUNDS: '4',
+			CHAT_MAX_TOOL_CALLS: '9'
 		});
 
 		expect(config).toEqual({
@@ -234,6 +238,8 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 				drainTimeoutMs: 1000
 			},
 			providerBudgetMs: 1200,
+			maxProviderRounds: 4,
+			maxToolCalls: 9,
 			provider: {
 				routes: [
 					{

@@ -45,6 +45,8 @@ const USER_MESSAGE_ID = '80000000-0000-4000-8000-000000000008';
 const ASSISTANT_MESSAGE_ID = '90000000-0000-4000-8000-000000000009';
 const CALL_TRANSITION_ID = 'a0000000-0000-4000-8000-00000000000a';
 const RESULT_TRANSITION_ID = 'b0000000-0000-4000-8000-00000000000b';
+const SECOND_CALL_TRANSITION_ID = 'a1000000-0000-4000-8000-00000000001a';
+const SECOND_RESULT_TRANSITION_ID = 'b1000000-0000-4000-8000-00000000001b';
 const LOGICAL_OPERATION_ID = 'c0000000-0000-4000-8000-00000000000c';
 const EFFECT_ID = 'd0000000-0000-5000-8000-00000000000d';
 const EXECUTION_GENERATION = 1;
@@ -221,6 +223,8 @@ function createHarness(
 		promptSnapshotError?: Error;
 		providerBudgetMs?: number;
 		overheadTimeoutMs?: number;
+		maxProviderRounds?: number;
+		maxToolCalls?: number;
 	} = {}
 ) {
 	let sequence = 0;
@@ -665,7 +669,9 @@ function createHarness(
 		},
 		{
 			providerBudgetMs: options.providerBudgetMs,
-			overheadTimeoutMs: options.overheadTimeoutMs
+			overheadTimeoutMs: options.overheadTimeoutMs,
+			maxProviderRounds: options.maxProviderRounds,
+			maxToolCalls: options.maxToolCalls
 		}
 	);
 
@@ -1598,44 +1604,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		}
 	});
 
-	it('exposes the exact deterministic read-only tool parity gaps', async () => {
-		const harness = createHarness(
-			[
-				{
-					type: 'semantic',
-					transitionId: 'e0000000-0000-4000-8000-00000000000e',
-					phase: 'stream',
-					eventType: 'agent_state',
-					currentActivity: 'Planning the first step...',
-					eventPayload: {
-						type: 'agent_state',
-						state: 'thinking',
-						contextType: 'global',
-						details: 'Planning the first step...',
-						activity_visibility: 'activity_log'
-					}
-				},
-				{
-					type: 'read_tool',
-					callTransitionId: CALL_TRANSITION_ID,
-					resultTransitionId: RESULT_TRANSITION_ID,
-					providerToolCallId: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.callId,
-					toolName: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.name,
-					arguments: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.arguments
-				},
-				{
-					type: 'text_delta',
-					text: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.assistantText
-				},
-				{
-					type: 'finish',
-					finishedReason: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.finishedReason,
-					usage: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.usage
-				}
-			],
-			{ promptSnapshot: fixturePromptSnapshot }
-		);
-		harness.readTool.execute.mockResolvedValueOnce({
+	it('exposes the exact deterministic two-round read-only tool parity gaps', async () => {
+		const harness = createHarness([]);
+		const firstReadExecution = {
 			result: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.result,
 			executionTimeMs: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.durationMs,
 			tokensConsumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.tokensConsumed,
@@ -1644,6 +1615,93 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			resultCount: null,
 			zeroResult: null,
 			requiresUserAction: null
+		};
+		const secondReadExecution = {
+			result: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.result,
+			executionTimeMs: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.durationMs,
+			tokensConsumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.tokensConsumed,
+			affectedEntities: [],
+			toolCategory: null,
+			resultCount: null,
+			zeroResult: null,
+			requiresUserAction: null
+		};
+		harness.readTool.execute
+			.mockResolvedValueOnce(firstReadExecution)
+			.mockResolvedValueOnce(secondReadExecution);
+		const continueWithToolResults = vi.fn(
+			({
+				round,
+				results
+			}: {
+				round: number;
+				results: ReadonlyArray<{ providerToolCallId: string }>;
+			}) => {
+				if (round === 2) {
+					expect(results.map((result) => result.providerToolCallId)).toEqual([
+						AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.callId
+					]);
+					return (async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: SECOND_CALL_TRANSITION_ID,
+							resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+							providerToolCallId:
+								AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.callId,
+							toolName: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.name,
+							arguments: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.arguments
+						} as const;
+					})();
+				}
+				expect(round).toBe(3);
+				expect(results.map((result) => result.providerToolCallId)).toEqual([
+					AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.callId
+				]);
+				return (async function* () {
+					yield {
+						type: 'text_delta',
+						text: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.assistantText
+					} as const;
+					yield {
+						type: 'finish',
+						finishedReason:
+							AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.finishedReason,
+						usage: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.usage
+					} as const;
+				})();
+			}
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				promptSnapshot: fixturePromptSnapshot,
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'semantic',
+							transitionId: 'e0000000-0000-4000-8000-00000000000e',
+							phase: 'stream',
+							eventType: 'agent_state',
+							currentActivity: 'Planning the first step...',
+							eventPayload: {
+								type: 'agent_state',
+								state: 'thinking',
+								contextType: 'global',
+								details: 'Planning the first step...',
+								activity_visibility: 'activity_log'
+							}
+						} as const;
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.callId,
+							toolName: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.name,
+							arguments: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.arguments
+						} as const;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
 		});
 		const fixtureExecutionInput = {
 			...executionInput,
@@ -1715,6 +1773,39 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}
 			});
+			expect(continueWithToolResults).toHaveBeenCalledTimes(2);
+			expect(
+				harness.toolExecutions.persistRead.mock.calls.map(([input]) => [
+					input.sequenceIndex,
+					input.toolName
+				])
+			).toEqual([
+				[1, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.name],
+				[2, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.name]
+			]);
+			expect(terminalInput.assistantMetadata).toMatchObject({
+				tool_round_count: 2,
+				tool_call_count: 2
+			});
+			expect(
+				harness.broadcastMessages.map(
+					(message) => (message.payload as Record<string, unknown>).type
+				)
+			).toEqual([
+				'turn_phase',
+				'session',
+				'context_usage',
+				'agent_state',
+				'tool_call',
+				'tool_result',
+				'tool_call',
+				'tool_result',
+				'text_delta',
+				'turn_phase',
+				'last_turn_context',
+				'timing',
+				'done'
+			]);
 			const evaluation = parityCoverage.evaluate('read_only_tools', worker);
 			expect(evaluation.diff.truncated).toBe(false);
 			expect(evaluation.deliberate.length).toBeGreaterThan(0);
@@ -1722,6 +1813,257 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
 			);
 			expect(evaluation.matchesContract).toBe(true);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('holds the durable-then-public fence inside every continueWithToolResults round', async () => {
+		const harness = createHarness([]);
+		const continueWithToolResults = vi.fn(({ round }: { round: number }) => {
+			if (round === 2) {
+				return (async function* () {
+					yield {
+						type: 'read_tool',
+						callTransitionId: SECOND_CALL_TRANSITION_ID,
+						resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+						providerToolCallId: 'provider-round-read-2',
+						toolName: 'fixture_task_read',
+						arguments: { taskId: 'db000000-0000-4000-8000-000000000002' }
+					} as const;
+				})();
+			}
+			return (async function* () {
+				yield { type: 'text_delta', text: 'Both fixtures are ready.' } as const;
+				yield {
+					type: 'finish',
+					finishedReason: 'stop',
+					usage: { promptTokens: 12, completionTokens: 5, totalTokens: 17 }
+				} as const;
+			})();
+		});
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-round-read-1',
+							toolName: 'fixture_project_read',
+							arguments: { projectId: 'da000000-0000-4000-8000-000000000001' }
+						} as const;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+
+		const processingJob = job();
+		try {
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			// One admission claim plus one fence reclaim per read round.
+			expect(harness.control.claim).toHaveBeenCalledTimes(3);
+			expect(
+				executionBoundaryLogs(processingJob).map(({ stage, state }) => `${stage}:${state}`)
+			).toEqual([
+				'read_op:started',
+				'read_op:finished',
+				'ledger_persist:started',
+				'ledger_persist:finished',
+				'tool_result_publish:started',
+				'tool_result_publish:finished',
+				'tool_round:started',
+				'read_op:started',
+				'read_op:finished',
+				'ledger_persist:started',
+				'ledger_persist:finished',
+				'tool_result_publish:started',
+				'tool_result_publish:finished',
+				'tool_round:started'
+			]);
+			expect(
+				harness.toolExecutions.persistRead.mock.calls.map(([input]) => input.sequenceIndex)
+			).toEqual([1, 2]);
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					assistantMetadata: expect.objectContaining({
+						tool_round_count: 2,
+						tool_call_count: 2
+					})
+				})
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('writes a specific failed terminal when the provider round budget is exceeded', async () => {
+		const harness = createHarness([], {
+			maxProviderRounds: 1,
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'permanent' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'provider_round_budget_exceeded'
+				})
+			]
+		});
+		const continueWithToolResults = vi.fn(() =>
+			(async function* () {
+				yield {
+					type: 'read_tool',
+					callTransitionId: SECOND_CALL_TRANSITION_ID,
+					resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+					providerToolCallId: 'provider-budget-read-2',
+					toolName: 'fixture_task_read',
+					arguments: { taskId: 'db000000-0000-4000-8000-000000000002' }
+				} as const;
+			})()
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-budget-read-1',
+							toolName: 'fixture_project_read',
+							arguments: { projectId: 'da000000-0000-4000-8000-000000000001' }
+						} as const;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed',
+				queueReconciled: true
+			});
+			expect(continueWithToolResults).toHaveBeenCalledTimes(1);
+			expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+				failureClass: 'permanent',
+				errorMessage: expect.stringContaining('tool-round budget')
+			});
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'failed',
+					failureCode: 'provider_round_budget_exceeded'
+				})
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('writes a specific failed terminal when the tool-call budget is exceeded', async () => {
+		const harness = createHarness(
+			[
+				{
+					type: 'read_tool',
+					callTransitionId: CALL_TRANSITION_ID,
+					resultTransitionId: RESULT_TRANSITION_ID,
+					providerToolCallId: 'provider-call-budget-1',
+					toolName: 'fixture_project_read',
+					arguments: { projectId: 'da000000-0000-4000-8000-000000000001' }
+				},
+				{
+					type: 'read_tool',
+					callTransitionId: SECOND_CALL_TRANSITION_ID,
+					resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+					providerToolCallId: 'provider-call-budget-2',
+					toolName: 'fixture_task_read',
+					arguments: { taskId: 'db000000-0000-4000-8000-000000000002' }
+				}
+			],
+			{
+				maxToolCalls: 1,
+				recovery: [
+					recoveryReceipt('finalize_failed', { failure_code: 'permanent' }),
+					recoveryReceipt('queue_reconciled', {
+						status: 'failed',
+						failure_code: 'provider_tool_call_budget_exceeded'
+					})
+				]
+			}
+		);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed',
+				queueReconciled: true
+			});
+			expect(harness.readTool.execute).toHaveBeenCalledTimes(1);
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'failed',
+					failureCode: 'provider_tool_call_budget_exceeded'
+				})
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('keeps the Phase 3 single-read fence for providers without continueWithToolResults', async () => {
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'permanent' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'permanent'
+				})
+			]
+		});
+		const synthesize = vi.fn();
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-phase3-read-1',
+							toolName: 'fixture_project_read',
+							arguments: { projectId: 'da000000-0000-4000-8000-000000000001' }
+						} as const;
+						yield {
+							type: 'read_tool',
+							callTransitionId: SECOND_CALL_TRANSITION_ID,
+							resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-phase3-read-2',
+							toolName: 'fixture_task_read',
+							arguments: { taskId: 'db000000-0000-4000-8000-000000000002' }
+						} as const;
+					})(),
+				synthesize,
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed',
+				queueReconciled: true
+			});
+			expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+				failureClass: 'permanent',
+				errorMessage: expect.stringContaining('exactly one bounded read call')
+			});
+			expect(synthesize).not.toHaveBeenCalled();
+			expect(harness.readTool.execute).toHaveBeenCalledTimes(1);
 		} finally {
 			await harness.publisher.stop();
 		}

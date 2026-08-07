@@ -17,9 +17,10 @@ export type AgenticChatWorkerLifecycleProjectionInputV1 = {
  * observations belong to evaluation/admin telemetry and must never consume a
  * reconnect sequence number.
  *
- * The current production contract permits at most one read call, so tool
- * lifecycle cardinality is deliberately bounded to one until a later golden
- * authorizes a wider loop.
+ * The Slice 18 S1 two-round golden widened tool lifecycle cardinality from the
+ * original one-read bound to N pairs: legacy inserts one `tool_call_emitted`
+ * and one `tool_result_received` per pair in event order, with the single
+ * planning cue projected directly after the first tool call.
  */
 export function projectAgenticChatWorkerLifecycleObservationsV1(
 	input: AgenticChatWorkerLifecycleProjectionInputV1
@@ -53,26 +54,49 @@ export function projectAgenticChatWorkerLifecycleObservationsV1(
 		}
 		return payload;
 	});
-	const toolCalls = payloads.filter((payload) => payload.type === 'tool_call');
 	const planningCues = payloads.filter(
 		(payload) =>
 			payload.type === 'agent_state' &&
 			payload.state === 'thinking' &&
 			payload.details === 'Planning the first step...'
 	);
-	const toolResults = payloads.filter((payload) => payload.type === 'tool_result');
 	const finalizingPhases = payloads.filter(
 		(payload) => payload.type === 'turn_phase' && payload.turn_phase === 'finalizing'
 	);
 	for (const [label, values] of [
-		['tool calls', toolCalls],
 		['planning cues', planningCues],
-		['tool results', toolResults],
 		['finalizing phases', finalizingPhases]
 	] as const) {
 		if (values.length > 1) {
 			throw new Error(`Agentic Chat lifecycle ${label} exceed the bounded contract`);
 		}
+	}
+	const toolObservations: AgenticChatLifecycleObservationV1[] = [];
+	let toolCallCount = 0;
+	let toolResultCount = 0;
+	for (const payload of payloads) {
+		if (payload.type === 'tool_call') {
+			toolCallCount += 1;
+			toolObservations.push({ event_type: 'tool_call_emitted', phase: 'tool' });
+			if (toolCallCount === 1 && planningCues.length === 1) {
+				toolObservations.push({
+					event_type: 'first_tool_call_planning_cue_emitted',
+					phase: 'stream'
+				});
+			}
+		} else if (payload.type === 'tool_result') {
+			toolResultCount += 1;
+			toolObservations.push({ event_type: 'tool_result_received', phase: 'tool' });
+		}
+	}
+	if (toolResultCount > toolCallCount) {
+		throw new Error('Agentic Chat lifecycle tool results exceed the bounded contract');
+	}
+	if (toolCallCount === 0 && planningCues.length === 1) {
+		toolObservations.unshift({
+			event_type: 'first_tool_call_planning_cue_emitted',
+			phase: 'stream'
+		});
 	}
 
 	const done = payloads.find((payload) => payload.type === 'done') ?? null;
@@ -95,18 +119,7 @@ export function projectAgenticChatWorkerLifecycleObservationsV1(
 			{ event_type: 'prepared_prompt_cache_checked', phase: 'prompt' }
 		);
 	}
-	if (toolCalls.length === 1) {
-		observations.push({ event_type: 'tool_call_emitted', phase: 'tool' });
-	}
-	if (planningCues.length === 1) {
-		observations.push({
-			event_type: 'first_tool_call_planning_cue_emitted',
-			phase: 'stream'
-		});
-	}
-	if (toolResults.length === 1) {
-		observations.push({ event_type: 'tool_result_received', phase: 'tool' });
-	}
+	observations.push(...toolObservations);
 	if (finalizingPhases.length === 1) {
 		observations.push({ event_type: 'turn_phase_changed', phase: 'stream' });
 	}

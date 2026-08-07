@@ -30,7 +30,7 @@ describe('worker lifecycle observability projection', () => {
 		).toEqual(AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1.metadata.lifecycle_events);
 	});
 
-	it('projects the exact bounded one-read legacy lifecycle meanings', () => {
+	it('projects the exact two-round read legacy lifecycle meanings', () => {
 		expect(
 			projectAgenticChatWorkerLifecycleObservationsV1({
 				admissionObserved: true,
@@ -41,6 +41,8 @@ describe('worker lifecycle observability projection', () => {
 						state: 'thinking',
 						details: 'Planning the first step...'
 					},
+					{ type: 'tool_call' },
+					{ type: 'tool_result' },
 					{ type: 'tool_call' },
 					{ type: 'tool_result' },
 					{ type: 'turn_phase', turn_phase: 'finalizing' },
@@ -71,15 +73,38 @@ describe('worker lifecycle observability projection', () => {
 		).toEqual(AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1.metadata.lifecycle_events);
 	});
 
+	it('projects one lifecycle pair per tool call in event order', () => {
+		expect(
+			projectAgenticChatWorkerLifecycleObservationsV1({
+				admissionObserved: false,
+				publicEvents: [
+					{ type: 'tool_call' },
+					{ type: 'tool_result' },
+					{ type: 'tool_call' },
+					{ type: 'tool_result' },
+					{ type: 'tool_call' }
+				],
+				terminalStatus: null,
+				promptSnapshotCount: 0
+			})
+		).toEqual([
+			{ event_type: 'tool_call_emitted', phase: 'tool' },
+			{ event_type: 'tool_result_received', phase: 'tool' },
+			{ event_type: 'tool_call_emitted', phase: 'tool' },
+			{ event_type: 'tool_result_received', phase: 'tool' },
+			{ event_type: 'tool_call_emitted', phase: 'tool' }
+		]);
+	});
+
 	it('rejects evidence beyond the currently authorized cardinality', () => {
 		expect(() =>
 			projectAgenticChatWorkerLifecycleObservationsV1({
 				admissionObserved: true,
-				publicEvents: [{ type: 'tool_call' }, { type: 'tool_call' }],
+				publicEvents: [{ type: 'tool_result' }],
 				terminalStatus: null,
 				promptSnapshotCount: 0
 			})
-		).toThrow('tool calls exceed the bounded contract');
+		).toThrow('tool results exceed the bounded contract');
 		expect(() =>
 			projectAgenticChatWorkerLifecycleObservationsV1({
 				admissionObserved: true,

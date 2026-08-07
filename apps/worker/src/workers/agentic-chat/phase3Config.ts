@@ -8,7 +8,11 @@ import {
 	validateAgenticChatDrainTimeout
 } from './consumer';
 import type { AgenticChatOpenAiCompatibleRouteV1 } from './openRouterReadOnlyClient';
-import { DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS } from './fixtureTurnExecutor';
+import {
+	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS,
+	DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS,
+	DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS
+} from './fixtureTurnExecutor';
 
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
@@ -20,6 +24,8 @@ type AgenticChatPhase3BaseConfig = {
 	internalUserIds: readonly string[];
 	consumer: AgenticChatConsumerConfig;
 	providerBudgetMs: number;
+	maxProviderRounds: number;
+	maxToolCalls: number;
 };
 
 export type AgenticChatPhase3Config =
@@ -86,9 +92,27 @@ export function loadAgenticChatPhase3Config(
 	if (providerBudgetMs >= consumer.workerTimeoutMs) {
 		throw new Error('CHAT_PROVIDER_BUDGET_MS must be below CHAT_WORKER_TIMEOUT_MS');
 	}
+	const maxProviderRounds = parsePositiveInteger(
+		environment.CHAT_MAX_TOOL_ROUNDS,
+		DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS,
+		'CHAT_MAX_TOOL_ROUNDS'
+	);
+	const maxToolCalls = parsePositiveInteger(
+		environment.CHAT_MAX_TOOL_CALLS,
+		DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS,
+		'CHAT_MAX_TOOL_CALLS'
+	);
 
 	if (!enabled) {
-		return { enabled: false, internalUserIds, consumer, providerBudgetMs, provider: null };
+		return {
+			enabled: false,
+			internalUserIds,
+			consumer,
+			providerBudgetMs,
+			maxProviderRounds,
+			maxToolCalls,
+			provider: null
+		};
 	}
 	validateAgenticChatDrainTimeout(consumer.drainTimeoutMs);
 
@@ -97,6 +121,8 @@ export function loadAgenticChatPhase3Config(
 		internalUserIds,
 		consumer,
 		providerBudgetMs,
+		maxProviderRounds,
+		maxToolCalls,
 		provider: loadProviderConfig(environment)
 	};
 }

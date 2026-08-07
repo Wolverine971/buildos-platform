@@ -256,6 +256,8 @@ function createDefaultAssembly(
 		internalUserIds: input.config.internalUserIds,
 		consumerConfig: input.config.consumer,
 		providerBudgetMs: input.config.providerBudgetMs,
+		maxProviderRounds: input.config.maxProviderRounds,
+		maxToolCalls: input.config.maxToolCalls,
 		onExecutionObservationError: input.onUsageError
 	});
 }

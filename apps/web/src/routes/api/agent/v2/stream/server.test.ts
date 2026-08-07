@@ -1515,10 +1515,29 @@ describe('/api/agent/v2/stream', () => {
 				duration_ms: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.durationMs,
 				tokens_consumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.tool.tokensConsumed
 			};
+			const secondToolCall = {
+				id: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.callId,
+				type: 'function',
+				function: {
+					name: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.name,
+					arguments: JSON.stringify(
+						AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.arguments
+					)
+				}
+			};
+			const secondToolResult = {
+				tool_call_id: secondToolCall.id,
+				result: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.result,
+				success: true,
+				duration_ms: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.durationMs,
+				tokens_consumed: AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.secondTool.tokensConsumed
+			};
 			mocks.streamFastChat.mockImplementationOnce(
 				async ({ onToolCall, onToolResult, onDelta }: Row) => {
 					await onToolCall?.(toolCall);
 					await onToolResult?.({ toolCall, result: toolResult });
+					await onToolCall?.(secondToolCall);
+					await onToolResult?.({ toolCall: secondToolCall, result: secondToolResult });
 					await onDelta(AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.assistantText);
 					return {
 						assistantText:
@@ -1536,10 +1555,13 @@ describe('/api/agent/v2/stream', () => {
 						},
 						finishedReason:
 							AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.response.finishedReason,
-						toolExecutions: [{ toolCall, result: toolResult }],
+						toolExecutions: [
+							{ toolCall, result: toolResult },
+							{ toolCall: secondToolCall, result: secondToolResult }
+						],
 						llmPasses: [],
-						toolRounds: 1,
-						toolCallsMade: 1,
+						toolRounds: 2,
+						toolCallsMade: 2,
 						supervisorDecisions: [],
 						finalizationGuard: undefined,
 						cancelled: false,

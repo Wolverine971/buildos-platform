@@ -79,13 +79,23 @@ export type AgenticChatPreparedProviderInvocationV1 = {
 	/** No network/provider work may begin until the executor calls this after its start fence. */
 	stream(): AsyncIterable<AgenticChatProviderStepV1>;
 	/**
-	 * Optional second and final provider pass. The executor may call this only
-	 * after the matching read result is durable and publicly committed. The
-	 * production read-only adapter accepts exactly one result and disables tools
-	 * for this synthesis pass.
+	 * @deprecated Single-result alias retained for the Phase 3 bounded adapter.
+	 * The executor keeps its one-read fence byte-identical for providers that
+	 * expose only this pass; new adapters implement `continueWithToolResults`.
 	 */
 	synthesize?(
 		input: AgenticChatProviderReadSynthesisInputV1
+	): AsyncIterable<AgenticChatProviderStepV1>;
+	/**
+	 * Multi-round continuation (Phase 4 Slice 18 S1). A provider round ends when
+	 * its iterable completes without emitting `finish`; the executor then calls
+	 * this with every read result of that round — each already durable in the
+	 * tool-execution ledger and publicly committed as a `tool_result` event —
+	 * and consumes the returned round the same way. Takes precedence over the
+	 * deprecated `synthesize` alias when both are present.
+	 */
+	continueWithToolResults?(
+		input: AgenticChatProviderToolRoundInputV1
 	): AsyncIterable<AgenticChatProviderStepV1>;
 	/** Idempotently release any pre-start capacity reservation. */
 	release(): void;
@@ -96,6 +106,12 @@ export type AgenticChatProviderReadSynthesisInputV1 = {
 	toolName: string;
 	arguments: JsonObject;
 	execution: AgenticChatReadToolExecutionV1;
+};
+
+export type AgenticChatProviderToolRoundInputV1 = {
+	/** 1-based provider round about to start; the initial `stream()` pass is round 1. */
+	round: number;
+	results: readonly AgenticChatProviderReadSynthesisInputV1[];
 };
 
 /**

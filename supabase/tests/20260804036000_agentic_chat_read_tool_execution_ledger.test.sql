@@ -278,6 +278,46 @@ SELECT pg_temp.assert_true(
 );
 RESET ROLE;
 
+-- Phase 4 Slice 18 S1: the ledger accepts a second provider round on the same
+-- turn — sequence_index 2 under a distinct stable id, prod-compatible category.
+SET ROLE service_role;
+SELECT public.persist_agentic_chat_read_tool_execution(
+	'fb300000-0000-4000-8000-000000000001',
+	'fa100000-0000-4000-8000-000000000001',
+	'fb400000-0000-4000-8000-000000000001',
+	'fb500000-0000-4000-8000-000000000001',
+	1,
+	'fb800000-0000-5000-8000-000000000004',
+	2,
+	'read-tool-call-2',
+	'fixture_task_read',
+	'utility',
+	'{"taskId":"db000000-0000-4000-8000-000000000002"}'::jsonb,
+	'{"note":"Fixture task is ready."}'::jsonb,
+	NULL,
+	NULL,
+	8,
+	5,
+	NULL,
+	'[]'::jsonb
+) AS receipt \gset read_tool_round2_
+RESET ROLE;
+
+SELECT pg_temp.assert_true(
+	:'read_tool_round2_receipt'::jsonb->>'outcome' = 'persisted',
+	'second-round read row persisted'
+);
+SELECT pg_temp.assert_true(
+	(
+		SELECT count(*) = 2
+			AND count(DISTINCT id) = 2
+			AND array_agg(sequence_index ORDER BY sequence_index) = ARRAY[1, 2]
+		FROM public.chat_tool_executions
+		WHERE turn_run_id = 'fb300000-0000-4000-8000-000000000001'
+	),
+	'two-round turn holds two rows with distinct stable ids and sequence 1,2'
+);
+
 SET ROLE service_role;
 SELECT public.finalize_agentic_chat_turn(
 	'fb300000-0000-4000-8000-000000000001',
@@ -290,7 +330,7 @@ SELECT public.finalize_agentic_chat_turn(
 	NULL,
 	'fb900000-0000-4000-8000-000000000001',
 	'fixture answer',
-	'{"completion_status":"completed","answer_source":"model","tool_round_count":0,"tool_call_count":0}'::jsonb,
+	'{"completion_status":"completed","answer_source":"model","tool_round_count":2,"tool_call_count":2}'::jsonb,
 	10,
 	6,
 	16,
@@ -302,20 +342,23 @@ RESET ROLE;
 SELECT pg_temp.assert_true(:'read_tool_final_receipt'::jsonb->>'outcome' = 'finalized', 'turn finalized');
 SELECT pg_temp.assert_true(
 	(
-		SELECT message_id = 'fb900000-0000-4000-8000-000000000001'
+		SELECT count(*) = 2 AND bool_and(message_id = 'fb900000-0000-4000-8000-000000000001')
 		FROM public.chat_tool_executions
-		WHERE id = 'fb800000-0000-5000-8000-000000000001'
+		WHERE turn_run_id = 'fb300000-0000-4000-8000-000000000001'
 	),
-	'terminal transaction attaches the assistant message to the tool row'
+	'terminal transaction attaches the assistant message to every round row'
 );
+-- tool_call_count is derived from the ledger; tool_round_count derivation still
+-- caps at 1 because rounds are not recorded on ledger rows — recorded as a known
+-- S1 divergence, owned by Slice 18 S5 finalization semantics.
 SELECT pg_temp.assert_true(
 	(
-		SELECT tool_round_count = 1 AND tool_call_count = 1
+		SELECT tool_round_count = 1 AND tool_call_count = 2
 		FROM public.chat_turn_runs
 		WHERE id = 'fb300000-0000-4000-8000-000000000001'
 	) AND (
 		SELECT metadata->>'tool_round_count' = '1'
-			AND metadata->>'tool_call_count' = '1'
+			AND metadata->>'tool_call_count' = '2'
 		FROM public.chat_messages
 		WHERE id = 'fb900000-0000-4000-8000-000000000001'
 	),

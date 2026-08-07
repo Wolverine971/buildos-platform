@@ -3,7 +3,7 @@
 # Phase 4 Slice 18 — P1 Read-Loop Parity Plan (tasker/51 P1)
 
 **Prepared:** 2026-08-07 (deep-reasoner architecture pass; decisive claims re-verified firsthand in-session)
-**Status:** Plan ratified, implementation not started. Supersedes tasker/51 P1's one-paragraph sketch.
+**Status:** Plan ratified. **S1 COMPLETE (2026-08-08)** — multi-round fence + budgets landed, all S1 exit gates green locally (see §Known live divergences for the two registered gaps). S2–S5 not started. Supersedes tasker/51 P1's one-paragraph sketch.
 **Authority:** `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 4 workstreams 3–4; `tasker/51-worker-behavioral-parity-phase4.md` P1; P0 registry (`packages/agentic-chat-runtime/src/parity-scenarios.ts`) is the referee.
 
 ## Headline findings that reshape P1 (verified, not assumed)
@@ -95,6 +95,34 @@ emission order (no batch) for deterministic differentials.
 | S3 | Shared read-tool implementation behind the access port; web cuts over same commit; move skills/domains catalogs; worker catalog = artifact tool surface ∩ shared allowlist. | Prod `pg_constraint` diff on `chat_tool_executions_tool_category_check` BEFORE any live run. `get_project_overview` payload identical web vs worker (closes finding 2). A golden using ≥3 distinct real tools. |
 | S4 | Compose the shared loop in the worker provider via the round bridge: validation, repair instructions, payload compaction, round analysis, read-loop escalation. | `read_only_tools` golden extended with validation-failure → repair round → success; that scenario's `workerOpenDivergences` shrinks, never grows. |
 | S5 | Ledger + finalization semantics: context-gathering ledger, read-memo, context shifts, affected-entity capture, finalization-runner. | Context-shift events + `affected_entities` rows match golden; agentic E2E quality ≥ Phase 0 baseline on the read-only subset (spend-gated: DJ). |
+
+## Known live divergences (S1 ledger — registered 2026-08-08, shrink only)
+
+The parity registry cannot express these (the goldens use synthetic fixture
+tools), so this section is their durable record until the closing slice's
+golden covers them.
+
+1. **`get_project_overview` payload shape (LIVE, unrefereed).** The worker
+   routes through the `shared-agent-ops` gateway
+   (`op-execution-gateway.project-status.ts` → `onto.project.status.get`),
+   returning `{ counts, count_summary, overdue_tasks, due_soon_tasks }`; legacy
+   (`overview-helper.ts`) returns `{ counts, entity_counts, active_tasks,
+   blocked_tasks, … }`. Every Phase 3 canary that called this tool got the
+   gateway shape. **Closed by S3's shared implementation; verified closed when
+   S3's ≥3-real-tool golden covers `get_project_overview` on both sides.**
+2. **Durable `tool_round_count` caps at 1 on the worker (found during S1).**
+   `finalize_agentic_chat_turn` derives the counters from the ledger and
+   overrides caller metadata — `v_tool_round_count := CASE WHEN
+   v_tool_call_count > 0 THEN 1 ELSE 0 END`
+   (migration `20260804036000_agentic_chat_read_tool_execution_ledger.sql:61`).
+   Ledger rows carry no round attribution, so a two-round worker turn persists
+   `tool_round_count = 1` in `chat_turn_runs`/message metadata while legacy
+   writes the real round count; the S1 executor computes the true count in its
+   finalize input, but the RPC overrides it. The differential cannot see this
+   (it reads the executor's finalize input, not the DB row). The extended
+   ledger SQL test pins the current derivation with a comment. **Owned by S5
+   (finalization semantics): either record round attribution on ledger rows or
+   ratify caller-supplied round counts.**
 
 ## Landmines (repo-specific, carry into every slice)
 

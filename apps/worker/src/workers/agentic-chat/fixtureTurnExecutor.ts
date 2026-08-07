@@ -83,6 +83,10 @@ const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_UI_PROJECTION_EVENTS = 128;
 export const DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS = 150_000;
 export const DEFAULT_AGENTIC_CHAT_EXECUTOR_OVERHEAD_TIMEOUT_MS = 10_000;
+// Keep aligned with the legacy web loop defaults
+// (apps/web/src/lib/services/agentic-chat-v2/limits.ts FASTCHAT_LIMITS).
+export const DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS = 16;
+export const DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS = 40;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 type ExecutableClaim = Extract<
@@ -150,6 +154,8 @@ type ProjectionState = {
 type TerminalContextState = {
 	contextShift: ContextShiftPayload | null;
 	toolExecutions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
+	/** Provider rounds that completed at least one tool execution. */
+	toolRoundCount: number;
 };
 
 type TerminalClaim = Pick<
@@ -184,6 +190,8 @@ type FinalizeTurnInput = {
 export class AgenticChatFixtureTurnExecutor {
 	private readonly providerBudgetMs: number;
 	private readonly overheadTimeoutMs: number;
+	private readonly maxProviderRounds: number;
+	private readonly maxToolCalls: number;
 
 	constructor(
 		private readonly ports: {
@@ -209,7 +217,12 @@ export class AgenticChatFixtureTurnExecutor {
 				error: unknown;
 			}) => void;
 		},
-		options: { providerBudgetMs?: number; overheadTimeoutMs?: number } = {}
+		options: {
+			providerBudgetMs?: number;
+			overheadTimeoutMs?: number;
+			maxProviderRounds?: number;
+			maxToolCalls?: number;
+		} = {}
 	) {
 		this.providerBudgetMs = options.providerBudgetMs ?? DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS;
 		if (!Number.isSafeInteger(this.providerBudgetMs) || this.providerBudgetMs < 1) {
@@ -221,6 +234,14 @@ export class AgenticChatFixtureTurnExecutor {
 			throw new Error(
 				'Agentic Chat executor overhead timeout must be a positive safe integer'
 			);
+		}
+		this.maxProviderRounds = options.maxProviderRounds ?? DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS;
+		if (!Number.isSafeInteger(this.maxProviderRounds) || this.maxProviderRounds < 1) {
+			throw new Error('Agentic Chat provider round budget must be a positive safe integer');
+		}
+		this.maxToolCalls = options.maxToolCalls ?? DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS;
+		if (!Number.isSafeInteger(this.maxToolCalls) || this.maxToolCalls < 1) {
+			throw new Error('Agentic Chat tool-call budget must be a positive safe integer');
 		}
 	}
 
@@ -367,7 +388,8 @@ export class AgenticChatFixtureTurnExecutor {
 		const projection = emptyProjection();
 		const terminalContext: TerminalContextState = {
 			contextShift: null,
-			toolExecutions: []
+			toolExecutions: [],
+			toolRoundCount: 0
 		};
 
 		try {
@@ -470,8 +492,16 @@ export class AgenticChatFixtureTurnExecutor {
 
 			let finished = false;
 			let promptSnapshotAttempted = false;
-			let pendingReadFeedback: AgenticChatProviderReadSynthesisInputV1 | null = null;
+			const pendingReadResults: AgenticChatProviderReadSynthesisInputV1[] = [];
 			let synthesisStarted = false;
+			let toolCallCount = 0;
+			let continuationRounds = 0;
+			let roundHadToolExecution = false;
+			const markToolExecution = () => {
+				if (roundHadToolExecution) return;
+				roundHadToolExecution = true;
+				terminalContext.toolRoundCount += 1;
+			};
 			let providerStream: AsyncIterable<AgenticChatProviderStepV1> = preparedProvider
 				? preparedProvider.stream()
 				: this.ports.provider.stream!({
@@ -523,7 +553,8 @@ export class AgenticChatFixtureTurnExecutor {
 						}
 						if (
 							preparedProvider?.synthesize &&
-							(synthesisStarted || pendingReadFeedback !== null)
+							!preparedProvider.continueWithToolResults &&
+							(synthesisStarted || pendingReadResults.length > 0)
 						) {
 							throw new AgenticChatProviderExecutionError(
 								'provider_read_round_limit_exceeded',
@@ -531,23 +562,45 @@ export class AgenticChatFixtureTurnExecutor {
 								'Agentic Chat production provider supports exactly one bounded read call'
 							);
 						}
-						pendingReadFeedback = await this.executeReadTool(
-							job,
-							executionInput,
-							envelope.processingToken,
-							projection,
-							terminalContext,
-							step,
-							combined.signal
+						toolCallCount += 1;
+						if (toolCallCount > this.maxToolCalls) {
+							throw new AgenticChatProviderExecutionError(
+								'provider_tool_call_budget_exceeded',
+								'permanent',
+								`Agentic Chat provider exceeded its ${this.maxToolCalls} tool-call budget`
+							);
+						}
+						pendingReadResults.push(
+							await this.executeReadTool(
+								job,
+								executionInput,
+								envelope.processingToken,
+								projection,
+								terminalContext,
+								step,
+								combined.signal
+							)
 						);
+						markToolExecution();
 						continue;
 					}
 					if (step.type === 'mutating_tool') {
-						if (preparedProvider?.synthesize) {
+						if (
+							preparedProvider?.synthesize ||
+							preparedProvider?.continueWithToolResults
+						) {
 							throw new AgenticChatProviderExecutionError(
 								'provider_mutating_tool_disabled',
 								'permanent',
 								'Mutating tools are unreachable in the production read-only provider'
+							);
+						}
+						toolCallCount += 1;
+						if (toolCallCount > this.maxToolCalls) {
+							throw new AgenticChatProviderExecutionError(
+								'provider_tool_call_budget_exceeded',
+								'permanent',
+								`Agentic Chat provider exceeded its ${this.maxToolCalls} tool-call budget`
 							);
 						}
 						await this.executeMutatingTool(
@@ -558,10 +611,15 @@ export class AgenticChatFixtureTurnExecutor {
 							step,
 							combined.signal
 						);
+						markToolExecution();
 						continue;
 					}
 
-					if (preparedProvider?.synthesize && pendingReadFeedback && !synthesisStarted) {
+					const finishedWithUnreturnedReads =
+						pendingReadResults.length > 0 &&
+						(preparedProvider?.continueWithToolResults !== undefined ||
+							(preparedProvider?.synthesize !== undefined && !synthesisStarted));
+					if (finishedWithUnreturnedReads) {
 						throw new AgenticChatProviderExecutionError(
 							'provider_finished_before_read_synthesis',
 							'unknown',
@@ -577,9 +635,51 @@ export class AgenticChatFixtureTurnExecutor {
 					finished = true;
 				}
 				if (finished) break;
-				if (pendingReadFeedback && preparedProvider?.synthesize && !synthesisStarted) {
+				if (preparedProvider?.continueWithToolResults) {
+					if (pendingReadResults.length === 0) {
+						throw new Error('Fixture provider ended without a finish step');
+					}
 					throwIfAborted(combined.signal);
-					const synthesisFeedback = pendingReadFeedback;
+					continuationRounds += 1;
+					if (continuationRounds > this.maxProviderRounds) {
+						throw new AgenticChatProviderExecutionError(
+							'provider_round_budget_exceeded',
+							'permanent',
+							`Agentic Chat provider exceeded its ${this.maxProviderRounds} tool-round budget`
+						);
+					}
+					const roundResults = pendingReadResults.splice(0, pendingReadResults.length);
+					await logAgenticChatExecutionBoundary(job, executionInput, {
+						stage: 'tool_round',
+						state: 'started',
+						providerToolCallId: roundResults[0]!.providerToolCallId,
+						toolName: roundResults[0]!.toolName
+					});
+					try {
+						providerStream = preparedProvider.continueWithToolResults({
+							round: continuationRounds + 1,
+							results: roundResults
+						});
+					} catch (error) {
+						await logAgenticChatExecutionBoundary(job, executionInput, {
+							stage: 'tool_round',
+							state: 'failed',
+							providerToolCallId: roundResults[0]!.providerToolCallId,
+							toolName: roundResults[0]!.toolName,
+							error
+						});
+						throw error;
+					}
+					roundHadToolExecution = false;
+					continue;
+				}
+				if (
+					pendingReadResults.length > 0 &&
+					preparedProvider?.synthesize &&
+					!synthesisStarted
+				) {
+					throwIfAborted(combined.signal);
+					const synthesisFeedback = pendingReadResults[0]!;
 					await logAgenticChatExecutionBoundary(job, executionInput, {
 						stage: 'synthesis',
 						state: 'started',
@@ -598,8 +698,9 @@ export class AgenticChatFixtureTurnExecutor {
 						});
 						throw error;
 					}
-					pendingReadFeedback = null;
+					pendingReadResults.length = 0;
 					synthesisStarted = true;
+					roundHadToolExecution = false;
 					continue;
 				}
 				throw new Error('Fixture provider ended without a finish step');
@@ -1478,9 +1579,7 @@ export class AgenticChatFixtureTurnExecutor {
 				turn_run_id: claim.turnRunId,
 				execution_generation: claim.executionGeneration,
 				worker_runtime: 'agentic_chat_v1',
-				tool_round_count: terminalEventContext?.terminalContext.toolExecutions.length
-					? 1
-					: 0,
+				tool_round_count: terminalEventContext?.terminalContext.toolRoundCount ?? 0,
 				tool_call_count: terminalEventContext?.terminalContext.toolExecutions.length ?? 0,
 				...completedMessageMetadata,
 				...interruptedMessageMetadata
@@ -1995,7 +2094,9 @@ function specificTerminalFailureCode(error: unknown, signal: AbortSignal): strin
 		candidate instanceof AgenticChatProviderExecutionError &&
 		(candidate.code === 'provider_budget_exhausted' ||
 			candidate.code === 'provider_no_assistant_text' ||
-			candidate.code === 'read_tool_timeout')
+			candidate.code === 'read_tool_timeout' ||
+			candidate.code === 'provider_round_budget_exceeded' ||
+			candidate.code === 'provider_tool_call_budget_exceeded')
 	) {
 		return candidate.code;
 	}
@@ -2035,7 +2136,8 @@ type AgenticChatExecutionBoundaryStage =
 	| 'read_op'
 	| 'ledger_persist'
 	| 'tool_result_publish'
-	| 'synthesis';
+	| 'synthesis'
+	| 'tool_round';
 
 function logAgenticChatExecutionBoundary(
 	job: Pick<ProcessingJob, 'log'>,
