@@ -4339,6 +4339,7 @@ export type Database = {
           created_at: string
           durable_through_sequence: number
           execution_generation: number
+          first_text_persisted_at: string | null
           last_text_batch_id: string | null
           last_text_end_bytes: number | null
           last_text_sequence: number | null
@@ -4356,6 +4357,7 @@ export type Database = {
           created_at?: string
           durable_through_sequence?: number
           execution_generation?: number
+          first_text_persisted_at?: string | null
           last_text_batch_id?: string | null
           last_text_end_bytes?: number | null
           last_text_sequence?: number | null
@@ -4373,6 +4375,7 @@ export type Database = {
           created_at?: string
           durable_through_sequence?: number
           execution_generation?: number
+          first_text_persisted_at?: string | null
           last_text_batch_id?: string | null
           last_text_end_bytes?: number | null
           last_text_sequence?: number | null
@@ -17214,6 +17217,12 @@ export type Database = {
         }
         Returns: Json
       }
+      agentic_chat_epoch_ms: {
+        Args: {
+          ts: string
+        }
+        Returns: Json
+      }
       apply_graph_reorg_changes: {
         Args: {
           p_deletes: Json
@@ -19494,6 +19503,12 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      safe_inet: {
+        Args: {
+          p_value: string
+        }
+        Returns: Json
       }
       search_all_content: {
         Args: {

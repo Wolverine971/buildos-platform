@@ -172,7 +172,7 @@ SELECT public.persist_agentic_chat_read_tool_execution(
 	1,
 	'read-tool-call-1',
 	'fixture_project_read',
-	NULL,
+	'utility',
 	'{"projectId":"da000000-0000-4000-8000-000000000001"}'::jsonb,
 	'{"note":"Fixture project is ready."}'::jsonb,
 	NULL,
@@ -191,6 +191,7 @@ SELECT pg_temp.assert_true(
 			message_id IS NULL
 			AND provider_tool_call_id = 'read-tool-call-1'
 			AND tool_name = 'fixture_project_read'
+			AND tool_category = 'utility'
 			AND sequence_index = 1
 			AND arguments = '{"projectId":"da000000-0000-4000-8000-000000000001"}'::jsonb
 			AND result = '{"note":"Fixture project is ready."}'::jsonb
@@ -215,7 +216,7 @@ SELECT public.persist_agentic_chat_read_tool_execution(
 	1,
 	'read-tool-call-1',
 	'fixture_project_read',
-	NULL,
+	'utility',
 	'{"projectId":"da000000-0000-4000-8000-000000000001"}'::jsonb,
 	'{"note":"Fixture project is ready."}'::jsonb,
 	NULL,
@@ -241,7 +242,7 @@ SELECT pg_temp.assert_true(
 				'fb400000-0000-4000-8000-000000000001',
 				'fb500000-0000-4000-8000-000000000001', 1,
 				'fb800000-0000-5000-8000-000000000002', 1,
-				'read-tool-call-1', 'fixture_project_read', NULL,
+				'read-tool-call-1', 'fixture_project_read', 'utility',
 				'{"projectId":"da000000-0000-4000-8000-000000000001"}'::jsonb,
 				'{"note":"conflict"}'::jsonb, NULL, NULL, 12, 9, NULL, '[]'::jsonb
 			)

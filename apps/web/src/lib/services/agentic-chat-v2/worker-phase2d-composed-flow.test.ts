@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat-v2/worker-phase2d-composed-flow.test.ts
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	createAgentStreamEventIdV1,
@@ -240,6 +241,10 @@ describe('Agentic Chat Phase 2D composed browser convergence', () => {
 		await vi.waitFor(() =>
 			expect(reconcileRequests.length).toBeGreaterThan(requestsBeforeReconnect)
 		);
+		// Finish applying the reconnect receipt before injecting the next fault.
+		// A trigger that really arrives in-flight is intentionally held behind the
+		// coordinator's changed-state cadence instead of draining back-to-back.
+		await vi.waitFor(() => expect(textSnapshots).toHaveLength(3));
 
 		// Sequence 3 arrives before sequence 2. The live inbox buffers it, fetches
 		// the missing durable window, and the UI applies only the complete snapshot.

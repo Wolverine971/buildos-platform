@@ -131,6 +131,33 @@ describe('AgenticChatWorkerRealtimeCoordinator', () => {
 		coordinator.stop();
 	});
 
+	it('keeps triggers queued during reconciliation behind the changed-state cadence', async () => {
+		vi.useFakeTimers();
+		const fetchImpl = vi.fn(async () => apiResponse(receipt()));
+		let coordinator!: AgenticChatWorkerRealtimeCoordinator;
+		const observer = applicationObserver();
+		observer.applyReconciliation.mockImplementation(() => {
+			coordinator.requestAll('watchdog');
+			coordinator.inbox.notifyChannelUnavailable();
+		});
+		coordinator = new AgenticChatWorkerRealtimeCoordinator({
+			fetchImpl: fetchImpl as typeof fetch,
+			changedWatchdogMs: 2_000,
+			random: () => 0.5
+		});
+		coordinator.start();
+		coordinator.registerTurn({ handle, observer });
+		await flushAsync();
+
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		await vi.advanceTimersByTimeAsync(1_999);
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		await vi.advanceTimersByTimeAsync(1);
+		await flushAsync();
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		coordinator.stop();
+	});
+
 	it('releases the inbox latch and retries failed requests on one bounded timer', async () => {
 		vi.useFakeTimers();
 		const errors: unknown[] = [];

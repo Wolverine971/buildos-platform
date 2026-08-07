@@ -5,12 +5,21 @@ export const AGENTIC_CHAT_READ_CANARY_TOOL_NAME = 'get_project_overview';
 const CANONICAL_UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
+// Slice 16 added durable provider-attempt and tool-execution boundaries to the
+// lifecycle projection; the passing canary contract is sixteen observations in
+// causal order (verified live on turn 9e54c04b, 2026-08-07).
 const EXPECTED_LIFECYCLE = [
 	['turn_intent_resolved', 'prompt'],
 	['prepared_prompt_cache_checked', 'prompt'],
+	['provider_attempt_started', 'provider'],
+	['provider_attempt_ended', 'provider'],
 	['tool_call_emitted', 'tool'],
 	['first_tool_call_planning_cue_emitted', 'stream'],
+	['tool_execution_started', 'tool'],
+	['tool_execution_ended', 'tool'],
 	['tool_result_received', 'tool'],
+	['provider_attempt_started', 'provider'],
+	['provider_attempt_ended', 'provider'],
 	['turn_phase_changed', 'stream'],
 	['turn_outcome_resolved', 'finalize'],
 	['orchestration_interventions', 'finalize'],
@@ -227,12 +236,20 @@ export function verifyAgenticChatReadCanaryEvidence(
 			'Public event scope or generation is inconsistent.'
 		);
 	}
+	// Text batches consume sequence numbers without creating public event rows,
+	// so public sequences are strictly increasing from one with gaps, and the
+	// terminal event owns the turn's last allocated sequence.
 	const sequences = eventRows.map((event) => nonnegativeInteger(event.sequence_index));
 	check(
 		sequences.every((sequence): sequence is number => sequence !== null) &&
-			sequences.every((sequence, index) => sequence === index + 1),
+			sequences[0] === 1 &&
+			sequences.every(
+				(sequence, index) => index === 0 || sequence > (sequences[index - 1] ?? 0)
+			) &&
+			(turn === null ||
+				sequences[sequences.length - 1] === nonnegativeInteger(turn.last_event_sequence)),
 		'events.sequence',
-		'Public event sequence is not contiguous from one.'
+		'Public event sequence is not strictly increasing from one to the terminal sequence.'
 	);
 
 	const toolCalls = eventRows.filter(
@@ -355,7 +372,9 @@ export function verifyAgenticChatReadCanaryEvidence(
 			'Tool ledger identity does not match the public call.'
 		);
 		check(
-			tool.tool_category === 'project_read' &&
+			// 'utility' matches prod's chat_tool_executions_tool_category_check
+			// allowlist and legacy SSE's category for this tool (canary 8 fix).
+			tool.tool_category === 'utility' &&
 				tool.result_count === 1 &&
 				tool.zero_result === false &&
 				tool.requires_user_action === false,

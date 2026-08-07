@@ -120,6 +120,10 @@
 	import { AgenticChatWorkerTurnAdoption } from '$lib/services/agentic-chat-v2/worker-turn-adoption';
 	import { createAgentChatWorkerUiAdapter } from './agent-chat-worker-ui-adapter';
 	import {
+		appendUniqueThinkingActivity,
+		finalizeWorkerThinkingBlock
+	} from './agent-chat-thinking-state';
+	import {
 		downloadAgentChatStepsMarkdown,
 		downloadAgentChatSupportPacketMarkdown
 	} from './agent-chat-step-export';
@@ -1791,7 +1795,7 @@
 
 		updateThinkingBlock(blockId, (block) => ({
 			...block,
-			activities: [...block.activities, activity]
+			activities: appendUniqueThinkingActivity(block.activities, activity)
 		}));
 	}
 
@@ -2565,6 +2569,15 @@
 	}) {
 		currentAssistantMessageId = null;
 		currentAssistantMessageIndex = null;
+		const finalizedThinking = finalizeWorkerThinkingBlock(
+			messages,
+			input.handle.turnRunId,
+			input.status
+		);
+		messages = finalizedThinking.messages;
+		if (currentThinkingBlockId === finalizedThinking.blockId) {
+			currentThinkingBlockId = null;
+		}
 		stream.finishWorkerTurn(input.handle, input.status);
 	}
 

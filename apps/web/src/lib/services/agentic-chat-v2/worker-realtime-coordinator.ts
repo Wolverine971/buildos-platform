@@ -44,6 +44,7 @@ type CoordinatedTurn = {
 	lastFingerprint: string | null;
 	terminal: boolean;
 	backingOff: boolean;
+	throttlingQueuedRequest: boolean;
 };
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled']);
@@ -123,6 +124,7 @@ export class AgenticChatWorkerRealtimeCoordinator {
 			state.inFlight = null;
 			state.queuedRequest = null;
 			state.backingOff = false;
+			state.throttlingQueuedRequest = false;
 			this.inbox.releaseReconciliationRequest(state.handle.turnRunId);
 		}
 	}
@@ -154,7 +156,8 @@ export class AgenticChatWorkerRealtimeCoordinator {
 			requestEpoch: 0,
 			lastFingerprint: null,
 			terminal: false,
-			backingOff: false
+			backingOff: false,
+			throttlingQueuedRequest: false
 		};
 		this.#turns.set(input.handle.turnRunId, state);
 		try {
@@ -205,7 +208,7 @@ export class AgenticChatWorkerRealtimeCoordinator {
 	#queue(state: CoordinatedTurn, request: AgenticChatWorkerReconciliationRequest): void {
 		if (this.#turns.get(state.handle.turnRunId) !== state || state.terminal) return;
 		state.queuedRequest = request;
-		if (state.backingOff) return;
+		if (state.backingOff || state.throttlingQueuedRequest) return;
 		this.#clearTimer(state);
 		if (this.#running && !state.inFlight) void this.#drain(state);
 	}
@@ -242,7 +245,10 @@ export class AgenticChatWorkerRealtimeCoordinator {
 				!state.terminal &&
 				this.#turns.get(state.handle.turnRunId) === state
 			) {
-				void this.#drain(state);
+				// Triggers that arrive during a request stay behind the normal
+				// changed-state cadence. A signal/channel storm therefore cannot drain
+				// back-to-back and recreate the canary-10 ~3 requests/second runaway.
+				this.#schedule(state, this.#jitteredChangedDelay(), true);
 			}
 		}
 	}
@@ -329,10 +335,12 @@ export class AgenticChatWorkerRealtimeCoordinator {
 		return payload.data as AgenticChatReconcileRpcResultV1;
 	}
 
-	#schedule(state: CoordinatedTurn, delayMs: number): void {
+	#schedule(state: CoordinatedTurn, delayMs: number, throttleQueuedRequest = false): void {
 		this.#clearTimer(state);
+		state.throttlingQueuedRequest = throttleQueuedRequest;
 		state.timer = setTimeout(() => {
 			state.timer = null;
+			state.throttlingQueuedRequest = false;
 			if (
 				!this.#running ||
 				state.terminal ||
@@ -342,10 +350,10 @@ export class AgenticChatWorkerRealtimeCoordinator {
 			}
 			if (state.backingOff) {
 				state.backingOff = false;
-				if (state.queuedRequest) {
-					void this.#drain(state);
-					return;
-				}
+			}
+			if (state.queuedRequest) {
+				void this.#drain(state);
+				return;
 			}
 			this.inbox.requestReconciliation(state.handle.turnRunId, 'watchdog');
 		}, delayMs);
@@ -355,6 +363,7 @@ export class AgenticChatWorkerRealtimeCoordinator {
 		if (state.timer === null) return;
 		clearTimeout(state.timer);
 		state.timer = null;
+		state.throttlingQueuedRequest = false;
 	}
 
 	#jitteredChangedDelay(): number {

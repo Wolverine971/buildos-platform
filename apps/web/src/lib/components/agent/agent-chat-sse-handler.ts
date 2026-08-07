@@ -36,6 +36,7 @@ import { buildProjectWideFocus, isProjectContext } from './agent-chat-session';
 import { buildSkillLoadActivityEvent } from './agent-chat-skill-activity';
 import { deriveContextOverheadTokens } from './agent-chat-formatters';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
+import { appendUniqueThinkingActivity } from './agent-chat-thinking-state';
 
 // ---------------------------------------------------------------------------
 // Pure helpers — testable standalone
@@ -521,7 +522,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		const blockId = thinking.ensure();
 		thinking.update(blockId, (block) => ({
 			...block,
-			activities: [...block.activities, result.activity]
+			activities: appendUniqueThinkingActivity(block.activities, result.activity)
 		}));
 
 		if (result.toolCallId && deps.pendingToolResults.has(result.toolCallId)) {
@@ -720,6 +721,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 					thinking.addActivity(event.details, 'state_change', {
 						state: agentState,
 						details: event.details,
+						...(event.event_id ? { eventId: event.event_id } : {}),
 						...(event.activity_visibility
 							? { activityVisibility: event.activity_visibility }
 							: {})
