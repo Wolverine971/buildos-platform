@@ -18,9 +18,11 @@ The plan mandates it (lines 873–877). **Premise corrections found during execu
 
 What P0 actually delivered (Slice 17): a shared scenario registry for all eight plan scenario classes (`packages/agentic-chat-runtime/src/parity-scenarios.ts`) with per-scenario deliberate-divergence prefixes (ratified async-timing split) and exact open-gap inventories (the in-code parity ledger — closing a gap must shrink the list, drift outside it fails the worker suite); shared evaluators replacing the duplicated partition logic in both adapter suites; provider-error tightened from structural to exact inventory; and cross-side coverage trackers so a newly registered scenario fails BOTH suites until each side exercises it. Gates: runtime 30/30, worker 772 + TS7 typecheck, web server.test 40/40 + svelte-check clean.
 
-### P1 — Full read loop: prompt, gateway, skill, and direct-tool surface parity
+### P1 — Full read loop: prompt, gateway, skill, and direct-tool surface parity — PLAN RATIFIED (Slice 18)
 
-Replace the Phase 3 single-tool `readOnlyProvider` with the shared runtime's real orchestration loop for the **read-only** catalog first: tool selection, multi-round tool calls, validation, affected-entity capture, context shifts, skill routing. This is the big architectural slice — the moment the worker stops being a demo. Mutations stay disabled.
+Replace the Phase 3 single-tool `readOnlyProvider` with the real orchestration loop for the **read-only** catalog first. Mutations stay disabled. **Plan:** `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_SLICE_18_READ_LOOP_PARITY_PLAN_2026-08-07.md` — hybrid extraction (loop leaves into `agentic-chat-runtime/src/loop/*` with same-commit web shims; the extraction wall is a single `$app/environment` import), shared read-tool implementations behind an access port, provider contract gains only `continueWithToolResults` (no new step types, no migration — the ledger already supports N rounds), five sub-slices S1–S5 with exit gates.
+
+**Two verified findings that reshape this package (2026-08-07):** (1) legacy read tools do NOT route through `shared-agent-ops` — the gateway is a parallel implementation with different payloads, so the Phase 3 worker's `get_project_overview` has been returning a **different payload than legacy in production canaries, unrefereed** (register in S1, close in S3); (2) `utility-executor.ts` reads that scope via `auth.uid()` fail OPEN under the worker's service role — every shared read must scope through `ensureActorId` + actor-visible projects before S3 exposes it.
 
 ### P2 — Mutating tools behind effect reservations
 
