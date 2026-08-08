@@ -120,10 +120,8 @@
 <div class="min-h-screen bg-background text-foreground">
 	<!-- ─── §01 hero ────────────────────────────────────────────────── -->
 	<section class="border-b border-border">
-		<div
-			class="mx-auto grid max-w-7xl items-center gap-8 px-2 py-10 sm:gap-10 sm:px-4 sm:py-14 md:grid-cols-2 lg:px-6"
-		>
-			<div class="space-y-5 sm:space-y-6">
+		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-14 lg:px-6 lg:py-16">
+			<div class="mx-auto max-w-4xl space-y-5 text-center sm:space-y-6">
 				<div
 					class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 shadow-ink tx tx-frame tx-weak"
 				>
@@ -146,12 +144,14 @@
 					</span>
 				</h1>
 
-				<p class="text-base sm:text-lg text-muted-foreground max-w-xl leading-relaxed">
+				<p
+					class="mx-auto max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+				>
 					Brain-dump everything — half-thoughts, voice memos, the 2am spiral. BuildOS
 					turns it into projects, tasks, and a plan you can actually move on.
 				</p>
 
-				<div class="flex flex-wrap gap-3 items-center pt-1">
+				<div class="flex flex-wrap items-center justify-center gap-3 pt-1">
 					<a
 						href="/auth/register"
 						class="pressable rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-ink hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -159,115 +159,259 @@
 						Start in chat
 					</a>
 					<a
-						href="#split"
+						href="#walkthrough"
 						class="inline-flex min-h-11 items-center text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
-						How BuildOS works ↓
+						See the transformation ↓
 					</a>
 				</div>
 			</div>
 
 			<!--
-			  real product triptych — actual screenshots of one live session:
-			  a braindump typed into chat, the agent's tool receipts, and the project
-			  page it produced. Captured from the Fading Crown demo account
+			  Real product walkthrough — actual screenshots of one live session.
+			  The screenshots remain near their native width so the UI stays legible.
+			  Captured from the Fading Crown demo account
 			  (apps/web/scripts/seed-demo-account.ts); re-capture rather than mock up.
 			-->
-			<div class="space-y-2.5">
-				<figure
-					class="rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
+			<div
+				id="walkthrough"
+				class="mt-12 scroll-mt-4 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak sm:mt-16"
+			>
+				<div
+					class="border-b border-border px-4 py-5 text-center tx tx-strip tx-med sm:px-6"
 				>
-					<figcaption
-						class="h-8 border-b border-border tx tx-strip tx-med flex items-center px-3 micro-label"
+					<p class="micro-label text-accent">One conversation → one working project</p>
+					<h2 class="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+						See exactly what happens after you hit send.
+					</h2>
+					<p
+						class="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base"
 					>
-						01 · You brain-dump
-					</figcaption>
-					<img
-						src="/home/hero-say-light.jpg"
-						alt="A messy braindump about a fantasy novel typed into BuildOS chat"
-						class="w-full dark:hidden"
-						width="1000"
-						height="120"
-						fetchpriority="high"
-					/>
-					<img
-						src="/home/hero-say-dark.jpg"
-						alt=""
-						aria-hidden="true"
-						class="w-full hidden dark:block"
-						width="1000"
-						height="120"
-						fetchpriority="high"
-					/>
-				</figure>
-
-				<div class="flex justify-center text-muted-foreground" aria-hidden="true">
-					<ArrowDown class="w-4 h-4" />
+						No templates to configure. No blank project to organize. Start with the
+						messy version and watch it become something you can use.
+					</p>
 				</div>
 
-				<figure
-					class="rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
-				>
-					<figcaption
-						class="h-8 border-b border-border tx tx-strip tx-med flex items-center justify-between px-3 micro-label"
-					>
-						<span>02 · BuildOS does the work — on the record</span>
-						<span class="text-muted-foreground hidden sm:inline">live tool calls</span>
-					</figcaption>
-					<img
-						src="/home/hero-work-light.jpg"
-						alt="BuildOS chat receipts: Created project Fading Crown, plus a summary of the five documents it generated"
-						class="w-full dark:hidden"
-						width="1000"
-						height="212"
-						fetchpriority="high"
-					/>
-					<img
-						src="/home/hero-work-dark.jpg"
-						alt=""
+				<div class="relative">
+					<div
 						aria-hidden="true"
-						class="w-full hidden dark:block"
-						width="1000"
-						height="212"
-						fetchpriority="high"
-					/>
-				</figure>
+						class="absolute bottom-12 left-12 top-12 hidden w-px bg-border xl:block"
+					></div>
+					<article
+						class="relative grid gap-5 p-4 sm:p-6 lg:p-8 xl:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8"
+					>
+						<div class="relative xl:pl-11">
+							<span
+								class="micro-label inline-flex h-7 items-center rounded-md border border-accent/40 bg-accent/10 px-2.5 text-accent shadow-ink-inner xl:absolute xl:left-0 xl:top-0 xl:h-8 xl:w-8 xl:justify-center xl:px-0"
+							>
+								<span class="xl:hidden">Step&nbsp;</span>1
+							</span>
+							<h3
+								class="mt-3 text-xl font-semibold leading-snug tracking-tight xl:mt-0"
+							>
+								Brain-dump your project.
+							</h3>
+							<p
+								class="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base"
+							>
+								Type, paste, or talk. Messy is fine.
+							</p>
+						</div>
 
-				<div class="flex justify-center text-muted-foreground" aria-hidden="true">
-					<ArrowDown class="w-4 h-4" />
+						<figure
+							class="min-w-0 self-start overflow-hidden rounded-lg border border-accent/50 bg-background shadow-ink"
+						>
+							<figcaption
+								class="flex min-h-10 items-center justify-between gap-3 border-b border-border px-3 tx tx-strip tx-weak"
+							>
+								<span class="text-sm font-semibold text-foreground"
+									>Your brain dump</span
+								>
+								<span class="micro-label hidden text-muted-foreground sm:block"
+									>Messy is welcome</span
+								>
+							</figcaption>
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard access for horizontal screenshot overflow) -->
+							<div
+								class="overflow-x-auto"
+								role="region"
+								tabindex="0"
+								aria-label="Scrollable product screenshot"
+							>
+								<img
+									src="/home/hero-say-light.jpg"
+									alt="A messy brain dump about a fantasy novel typed into BuildOS chat"
+									class="min-w-[720px] dark:hidden md:min-w-0 md:w-full"
+									width="1000"
+									height="120"
+									fetchpriority="high"
+								/>
+								<img
+									src="/home/hero-say-dark.jpg"
+									alt=""
+									aria-hidden="true"
+									class="hidden min-w-[720px] dark:block md:min-w-0 md:w-full"
+									width="1000"
+									height="120"
+									fetchpriority="high"
+								/>
+							</div>
+							<p
+								class="border-t border-border px-3 py-2 text-xs text-muted-foreground md:hidden"
+							>
+								Swipe the screenshot to read the full example →
+							</p>
+						</figure>
+					</article>
+
+					<article
+						class="relative grid gap-5 border-t border-border p-4 sm:p-6 lg:p-8 xl:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8"
+					>
+						<div class="relative xl:pl-11">
+							<span
+								class="micro-label inline-flex h-7 items-center rounded-md border border-accent/40 bg-accent/10 px-2.5 text-accent shadow-ink-inner xl:absolute xl:left-0 xl:top-0 xl:h-8 xl:w-8 xl:justify-center xl:px-0"
+							>
+								<span class="xl:hidden">Step&nbsp;</span>2
+							</span>
+							<h3
+								class="mt-3 text-xl font-semibold leading-snug tracking-tight xl:mt-0"
+							>
+								BuildOS builds the project.
+							</h3>
+							<p
+								class="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base"
+							>
+								It creates the structure, goals, and starting documents.
+							</p>
+						</div>
+
+						<figure
+							class="min-w-0 self-start overflow-hidden rounded-lg border border-accent/50 bg-background shadow-ink"
+						>
+							<figcaption
+								class="flex min-h-10 items-center justify-between gap-3 border-b border-border px-3 tx tx-strip tx-weak"
+							>
+								<span class="text-sm font-semibold text-foreground"
+									>BuildOS creates the project</span
+								>
+								<span class="micro-label hidden text-muted-foreground sm:block"
+									>Visible as it happens</span
+								>
+							</figcaption>
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard access for horizontal screenshot overflow) -->
+							<div
+								class="overflow-x-auto"
+								role="region"
+								tabindex="0"
+								aria-label="Scrollable product screenshot"
+							>
+								<img
+									src="/home/hero-work-light.jpg"
+									alt="BuildOS chat receipts showing the Fading Crown project being created, followed by a summary of the project structure"
+									class="min-w-[720px] dark:hidden md:min-w-0 md:w-full"
+									width="1000"
+									height="212"
+									loading="lazy"
+								/>
+								<img
+									src="/home/hero-work-dark.jpg"
+									alt=""
+									aria-hidden="true"
+									class="hidden min-w-[720px] dark:block md:min-w-0 md:w-full"
+									width="1000"
+									height="212"
+									loading="lazy"
+								/>
+							</div>
+							<p
+								class="border-t border-border px-3 py-2 text-xs text-muted-foreground md:hidden"
+							>
+								Swipe the screenshot to follow each action →
+							</p>
+						</figure>
+					</article>
+
+					<article
+						class="relative grid gap-5 border-t border-border p-4 sm:p-6 lg:p-8 xl:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8"
+					>
+						<div class="relative xl:pl-11">
+							<span
+								class="micro-label inline-flex h-7 items-center rounded-md border border-accent/40 bg-accent/10 px-2.5 text-accent shadow-ink-inner xl:absolute xl:left-0 xl:top-0 xl:h-8 xl:w-8 xl:justify-center xl:px-0"
+							>
+								<span class="xl:hidden">Step&nbsp;</span>3
+							</span>
+							<h3
+								class="mt-3 text-xl font-semibold leading-snug tracking-tight xl:mt-0"
+							>
+								Open your working project.
+							</h3>
+							<p
+								class="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base"
+							>
+								Explore and update everything beyond the chat.
+							</p>
+						</div>
+
+						<figure
+							class="min-w-0 self-start overflow-hidden rounded-lg border border-accent/50 bg-background shadow-ink"
+						>
+							<figcaption
+								class="flex min-h-10 items-center justify-between gap-3 border-b border-border px-3 tx tx-strip tx-weak"
+							>
+								<span class="text-sm font-semibold text-foreground"
+									>Your project, ready to use</span
+								>
+								<span class="micro-label hidden text-muted-foreground sm:block"
+									>Beyond the chat</span
+								>
+							</figcaption>
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard access for horizontal screenshot overflow) -->
+							<div
+								class="overflow-x-auto"
+								role="region"
+								tabindex="0"
+								aria-label="Scrollable product screenshot"
+							>
+								<img
+									src="/home/hero-real-light.jpg"
+									alt="The Fading Crown project page in BuildOS with recent activity, scheduled tasks, milestones, and an AI-suggested next move"
+									class="min-w-[720px] dark:hidden md:min-w-0 md:w-full"
+									width="1010"
+									height="500"
+									loading="lazy"
+								/>
+								<img
+									src="/home/hero-real-dark.jpg"
+									alt=""
+									aria-hidden="true"
+									class="hidden min-w-[720px] dark:block md:min-w-0 md:w-full"
+									width="1010"
+									height="500"
+									loading="lazy"
+								/>
+							</div>
+							<p
+								class="border-t border-border px-3 py-2 text-xs text-muted-foreground md:hidden"
+							>
+								Swipe to explore the project →
+							</p>
+						</figure>
+					</article>
 				</div>
 
-				<figure
-					class="rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
+				<div
+					class="border-t border-accent/30 bg-accent/5 px-4 py-5 text-center sm:px-6 sm:py-6"
 				>
-					<figcaption
-						class="h-8 border-b border-border tx tx-strip tx-med flex items-center justify-between px-3 micro-label"
+					<p
+						class="mx-auto max-w-3xl text-base font-semibold leading-relaxed text-foreground sm:text-lg"
 					>
-						<span>03 · It's a real project</span>
-						<span class="text-muted-foreground hidden sm:inline">no setup ritual</span>
-					</figcaption>
-					<img
-						src="/home/hero-real-light.jpg"
-						alt="The Fading Crown project page in BuildOS: recent activity, scheduled tasks, milestones, and an AI-suggested next move"
-						class="w-full dark:hidden"
-						width="1010"
-						height="500"
-						loading="lazy"
-					/>
-					<img
-						src="/home/hero-real-dark.jpg"
-						alt=""
-						aria-hidden="true"
-						class="w-full hidden dark:block"
-						width="1010"
-						height="500"
-						loading="lazy"
-					/>
-				</figure>
-
-				<p class="text-center text-xs text-muted-foreground pt-1">
-					Real screenshots from one live session — nothing mocked up.
-				</p>
+						<span class="text-accent">The aha:</span> you don't finish with a better chat
+						response. You finish with a project that's ready to move.
+					</p>
+					<p class="mt-2 text-xs text-muted-foreground sm:text-sm">
+						Real screenshots from one live session — nothing mocked up.
+					</p>
+				</div>
 			</div>
 		</div>
 	</section>
@@ -493,6 +637,16 @@
 							Two real sessions on the same project — every change made by talking,
 							every tool call on the record.
 						</p>
+						<div
+							class="mt-4 inline-flex items-center gap-2 rounded-md border border-accent/50 bg-accent/5 px-3 py-1.5 shadow-ink-inner"
+						>
+							<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"></span>
+							<span class="micro-label text-accent">Real BuildOS screenshots</span>
+							<span class="hidden h-3 w-px bg-accent/30 md:block"></span>
+							<span class="micro-label hidden text-muted-foreground md:block"
+								>Hover to inspect</span
+							>
+						</div>
 					</div>
 
 					<div class="max-w-4xl mx-auto space-y-5">
@@ -508,8 +662,10 @@
 						<div
 							class="flex flex-col md:grid md:grid-cols-[1.15fr_auto_1fr] gap-3 md:gap-4 md:items-center"
 						>
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard focus mirrors the desktop hover inspection) -->
 							<figure
-								class="rounded-lg border border-border bg-card shadow-ink tx tx-bloom tx-weak overflow-hidden"
+								class="app-screenshot app-screenshot--left overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink tx tx-bloom tx-weak outline-none hover:border-accent hover:shadow-ink-strong focus-visible:border-accent focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+								tabindex="0"
 							>
 								<figcaption
 									class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
@@ -538,8 +694,10 @@
 								<ArrowRight class="hidden md:block w-5 h-5" />
 								<ArrowDown class="md:hidden w-5 h-5" />
 							</div>
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard focus mirrors the desktop hover inspection) -->
 							<figure
-								class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak overflow-hidden"
+								class="app-screenshot app-screenshot--right overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink tx tx-grain tx-weak outline-none hover:border-accent hover:shadow-ink-strong focus-visible:border-accent focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+								tabindex="0"
 							>
 								<figcaption
 									class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
@@ -576,8 +734,10 @@
 						<div
 							class="flex flex-col md:grid md:grid-cols-[1.15fr_auto_1fr] gap-3 md:gap-4 md:items-center"
 						>
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard focus mirrors the desktop hover inspection) -->
 							<figure
-								class="rounded-lg border border-border bg-card shadow-ink tx tx-bloom tx-weak overflow-hidden"
+								class="app-screenshot app-screenshot--left overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink tx tx-bloom tx-weak outline-none hover:border-accent hover:shadow-ink-strong focus-visible:border-accent focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+								tabindex="0"
 							>
 								<figcaption
 									class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
@@ -585,9 +745,18 @@
 									"Move my writing block to Thursday"
 								</figcaption>
 								<img
-									src="/home/case-schedule-chat-dark.jpg"
+									src="/home/case-schedule-chat-light.jpg"
 									alt="Chat: move my chapter 13 writing block to Thursday afternoon. BuildOS updates the Writing block task."
-									class="w-full"
+									class="w-full dark:hidden"
+									width="1040"
+									height="178"
+									loading="lazy"
+								/>
+								<img
+									src="/home/case-schedule-chat-dark.jpg"
+									alt=""
+									aria-hidden="true"
+									class="hidden w-full dark:block"
 									width="1040"
 									height="178"
 									loading="lazy"
@@ -597,8 +766,10 @@
 								<ArrowRight class="hidden md:block w-5 h-5" />
 								<ArrowDown class="md:hidden w-5 h-5" />
 							</div>
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard focus mirrors the desktop hover inspection) -->
 							<figure
-								class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak overflow-hidden"
+								class="app-screenshot app-screenshot--right overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink tx tx-grain tx-weak outline-none hover:border-accent hover:shadow-ink-strong focus-visible:border-accent focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+								tabindex="0"
 							>
 								<figcaption
 									class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
@@ -606,11 +777,20 @@
 									It lands on the calendar · Thursday
 								</figcaption>
 								<img
-									src="/home/case-schedule-cal-dark.jpg"
+									src="/home/case-schedule-cal-light.jpg"
 									alt="The BuildOS calendar with the writing block now scheduled on Thursday the 13th"
-									class="w-full"
-									width="975"
-									height="345"
+									class="w-full dark:hidden"
+									width="974"
+									height="344"
+									loading="lazy"
+								/>
+								<img
+									src="/home/case-schedule-cal-dark.jpg"
+									alt=""
+									aria-hidden="true"
+									class="hidden w-full dark:block"
+									width="974"
+									height="344"
 									loading="lazy"
 								/>
 							</figure>
@@ -1149,6 +1329,44 @@
 {/if}
 
 <style>
+	.app-screenshot {
+		position: relative;
+		z-index: 0;
+		transition:
+			border-color 120ms ease,
+			box-shadow 180ms ease;
+	}
+
+	@media (min-width: 768px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+		.app-screenshot {
+			will-change: transform;
+			transition:
+				transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+				border-color 120ms ease,
+				box-shadow 180ms ease;
+		}
+
+		.app-screenshot:hover,
+		.app-screenshot:focus-visible {
+			z-index: 30;
+			transform: scale(1.72);
+		}
+
+		.app-screenshot--left {
+			transform-origin: left center;
+		}
+
+		.app-screenshot--right {
+			transform-origin: right center;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.app-screenshot {
+			transition: none;
+		}
+	}
+
 	@supports (content-visibility: auto) {
 		.home-deferred {
 			content-visibility: auto;

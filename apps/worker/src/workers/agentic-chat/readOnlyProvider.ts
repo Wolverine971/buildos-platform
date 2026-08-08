@@ -2,23 +2,32 @@
 
 import { createHash } from 'node:crypto';
 import {
+	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	type ChatToolCall,
 	type ChatToolDefinition,
+	type ChatToolResult,
+	type ContextUsageSnapshot,
 	type JsonObject,
 	type JsonValue,
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import {
+	ContextGatheringLedger,
 	READ_LOOP_REPAIR_RANK,
 	TOOL_METADATA,
 	type ToolValidationIssue,
+	buildMemoServedResult,
 	buildReadLoopRepairInstruction,
+	buildReadMemoKey,
 	buildRoundToolPattern,
 	buildToolPayloadForModel,
 	buildToolValidationRepairInstruction,
+	isPureReadToolName,
 	parseToolArguments,
 	provideAgenticChatLoopToolCatalog,
+	sanitizeAssistantFinalText,
 	selectReadLoopRepairEscalation,
+	shouldMemoizeReadResult,
 	validateToolCalls
 } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatWorkerExecutionInputV1 } from './executionInput';
@@ -38,9 +47,15 @@ import {
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
 	isAgenticChatProductionReadToolNameV1
 } from './readOnlyTool';
+import type { AgenticChatReadToolExecutionV1 } from './toolExecution';
 
 const DEFAULT_MAX_PROVIDER_ROUNDS = 16;
 const MAX_VALIDATION_REPAIR_ROUNDS = 2;
+const MAX_FORCED_SYNTHESIS_RETRIES = 1;
+const NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE =
+	'The previous synthesis attempt still requested tool calls even though tools are unavailable. Ignore all pending or implied tool calls and write the final user-facing answer now from the existing tool results. Do not say you will check, search, pull up, inspect, load, or update anything else.';
+const NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE =
+	'The previous synthesis attempt produced no visible answer. Write the final user-facing answer now from the existing tool results. Include the concrete entities you found (with their titles and states) and directly answer the user. Do not call tools.';
 const CANONICAL_UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -130,6 +145,14 @@ type PendingReadRound = {
 	usage: AgenticChatProviderUsageV1 | null;
 };
 
+type ReadRoundStreamState = {
+	release(): void;
+	setPendingRead(value: PendingReadRound): void;
+	markReadRoundCompleted(): void;
+	setCurrentRequest(value: ClientRequest): void;
+	resolveMemoServed(call: CompletedProviderToolCall): AgenticChatReadToolExecutionV1 | null;
+};
+
 /**
  * Default-off Phase 3 provider boundary. Preparation validates the immutable
  * command and reserves local provider capacity; its returned stream performs
@@ -200,11 +223,32 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let readOnlyRoundCount = 0;
 		let readLoopRepairRank = 0;
 		const readOps = new Set<string>();
+		// P1 exposes no writes. When a future worker surface admits them, the
+		// round bridge must clear this memo as soon as any call reaches the write
+		// executor (successful or not), matching the legacy invalidation fence.
+		const turnReadMemo = new Map<string, AgenticChatReadToolExecutionV1>();
+		const contextGatheringLedger = new ContextGatheringLedger();
+		const admissionContextUsage = getAdmissionContextUsage(input.executionInput);
 		const release = () => {
 			if (released) return;
 			released = true;
 			lease.release();
 		};
+		const buildStreamState = (): ReadRoundStreamState => ({
+			release,
+			setPendingRead(value) {
+				pendingRead = value;
+			},
+			markReadRoundCompleted() {
+				readRoundCompleted = true;
+			},
+			setCurrentRequest(value) {
+				currentRequest = value;
+			},
+			resolveMemoServed(call) {
+				return resolveMemoServedExecution(turnReadMemo, call);
+			}
+		});
 		return {
 			promptSnapshot,
 			stream: () => {
@@ -223,18 +267,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					);
 				}
 				streamed = true;
-				return this.streamInitial(request, {
-					release,
-					setPendingRead(value) {
-						pendingRead = value;
-					},
-					markReadRoundCompleted() {
-						readRoundCompleted = true;
-					},
-					setCurrentRequest(value) {
-						currentRequest = value;
-					}
-				});
+				return this.streamInitial(request, buildStreamState());
 			},
 			synthesize: (feedback) => {
 				if (released) {
@@ -284,9 +317,13 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				continued = true;
 				const completedRead = pendingRead;
 				validateReadFeedback(completedRead.call, feedback);
-				const pattern = buildRoundToolPattern([
-					completedProviderCallToChatToolCall(completedRead.call)
-				]);
+				memoizeCompletedRead(turnReadMemo, completedRead.call, feedback.execution);
+				const completedToolCall = completedProviderCallToChatToolCall(completedRead.call);
+				const completedToolResult = executionToChatToolResult(
+					completedRead.call.id,
+					feedback.execution
+				);
+				const pattern = buildRoundToolPattern([completedToolCall]);
 				for (const op of pattern.readOps) readOps.add(op);
 				if (pattern.readOps.length > 0) readOnlyRoundCount += 1;
 
@@ -294,6 +331,24 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					currentRequest,
 					completedRead.call,
 					feedback
+				);
+				const ledgerObservation = contextGatheringLedger.observeToolRound({
+					roundExecutions: [{ toolCall: completedToolCall, result: completedToolResult }],
+					roundPattern: pattern,
+					toolRounds: readOnlyRoundCount,
+					maxToolRounds: this.maxProviderRounds,
+					modelPayloadChars: latestToolPayloadChars(currentRequest),
+					liveContextUsage: admissionContextUsage
+				});
+				if (ledgerObservation.message) {
+					currentRequest = appendSystemInstruction(
+						currentRequest,
+						ledgerObservation.message
+					);
+				}
+				readLoopRepairRank = Math.max(
+					readLoopRepairRank,
+					contextSaturationRepairRank(ledgerObservation.status.status)
 				);
 				const roundsRemaining = Math.max(0, this.maxProviderRounds - readOnlyRoundCount);
 				const escalation = selectReadLoopRepairEscalation({
@@ -310,22 +365,23 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						})
 					);
 				}
+				const forceNoToolSynthesis =
+					ledgerObservation.forceSynthesis ||
+					readLoopRepairRank >= READ_LOOP_REPAIR_RANK.must_synthesize;
+				if (forceNoToolSynthesis) {
+					currentRequest = forceToolFreeRequest(currentRequest);
+				}
 
 				pendingRead = null;
 				readRoundCompleted = false;
 				nextProviderRound += 1;
-				return this.streamContinuation(currentRequest, completedRead.usage, {
-					release,
-					setPendingRead(value) {
-						pendingRead = value;
-					},
-					markReadRoundCompleted() {
-						readRoundCompleted = true;
-					},
-					setCurrentRequest(value) {
-						currentRequest = value;
-					}
-				});
+				return forceNoToolSynthesis
+					? this.streamForcedSynthesis(currentRequest, completedRead.usage, release)
+					: this.streamContinuation(
+							currentRequest,
+							completedRead.usage,
+							buildStreamState()
+						);
 			},
 			release
 		};
@@ -333,12 +389,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 
 	private async *streamInitial(
 		request: ClientRequest,
-		state: {
-			release(): void;
-			setPendingRead(value: PendingReadRound): void;
-			markReadRoundCompleted(): void;
-			setCurrentRequest(value: ClientRequest): void;
-		}
+		state: ReadRoundStreamState
 	): AsyncGenerator<AgenticChatProviderStepV1> {
 		let finished = false;
 		let keepLeaseForSynthesis = false;
@@ -427,7 +478,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					state.setPendingRead({ call, usage: normalizeUsage(event.usage) });
 					keepLeaseForSynthesis = true;
 					yield buildPlanningStep(request, call.id);
-					yield buildReadToolStep(request.turnRunId, call);
+					yield buildReadToolStep(request.turnRunId, call, state.resolveMemoServed(call));
 					state.markReadRoundCompleted();
 					continue;
 				}
@@ -458,12 +509,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 	private async *streamContinuation(
 		request: ClientRequest,
 		priorUsage: AgenticChatProviderUsageV1 | null,
-		state: {
-			release(): void;
-			setPendingRead(value: PendingReadRound): void;
-			markReadRoundCompleted(): void;
-			setCurrentRequest(value: ClientRequest): void;
-		},
+		state: ReadRoundStreamState,
 		validationRepairRounds = 0,
 		emitPlanningSemantic = false
 	): AsyncGenerator<AgenticChatProviderStepV1> {
@@ -557,7 +603,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					if (emitPlanningSemantic) {
 						yield buildPlanningStep(request, call.id);
 					}
-					yield buildReadToolStep(request.turnRunId, call);
+					yield buildReadToolStep(request.turnRunId, call, state.resolveMemoServed(call));
 					state.markReadRoundCompleted();
 					continue;
 				}
@@ -578,6 +624,81 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			if (!finished) throw providerError('provider_missing_done', 'unknown');
 		} finally {
 			if (!keepLeaseForContinuation) state.release();
+		}
+	}
+
+	private async *streamForcedSynthesis(
+		request: ClientRequest,
+		priorUsage: AgenticChatProviderUsageV1 | null,
+		release: () => void
+	): AsyncGenerator<AgenticChatProviderStepV1> {
+		let currentRequest = forceToolFreeRequest(request);
+		let accumulatedUsage = priorUsage;
+		try {
+			for (let retryCount = 0; retryCount <= MAX_FORCED_SYNTHESIS_RETRIES; retryCount += 1) {
+				let finished = false;
+				let requestedTools = false;
+				let assistantCandidate = '';
+				let finishedReason = 'stop';
+				let passUsage: AgenticChatProviderUsageV1 | null = null;
+
+				for await (const event of this.ports.client.stream(currentRequest)) {
+					throwIfAborted(currentRequest.signal);
+					if (finished) throw providerError('provider_event_after_done', 'unknown');
+					if (event.type === 'text') {
+						if (!event.content) throw providerError('provider_empty_text', 'unknown');
+						assistantCandidate += event.content;
+						continue;
+					}
+					if (event.type === 'reasoning') continue;
+					if (event.type === 'tool_call') {
+						// This pass advertises no tools. Buffer and discard the entire
+						// candidate, then give the provider one bounded tool-free retry.
+						requestedTools = true;
+						continue;
+					}
+					if (event.type === 'error') {
+						if (event.retryable) {
+							this.ports.capacity.markTemporarilyUnavailable(
+								this.retryableFailureCooldownMs
+							);
+						}
+						throw new AgenticChatProviderExecutionError(
+							'provider_stream_error',
+							event.retryable ? 'provider_throttle' : 'unknown',
+							canonicalError(event.error)
+						);
+					}
+
+					finishedReason = canonicalFinishedReason(event.finishedReason);
+					requestedTools ||=
+						finishedReason === 'tool_calls' || finishedReason === 'function_call';
+					passUsage = normalizeUsage(event.usage);
+					finished = true;
+				}
+				if (!finished) throw providerError('provider_missing_done', 'unknown');
+
+				accumulatedUsage = combineUsage(accumulatedUsage, passUsage);
+				const finalText = sanitizeAssistantFinalText(assistantCandidate);
+				if (!requestedTools && finalText) {
+					this.ports.capacity.markAvailable();
+					yield { type: 'text_delta', text: finalText };
+					yield { type: 'finish', finishedReason, usage: accumulatedUsage };
+					return;
+				}
+
+				if (retryCount >= MAX_FORCED_SYNTHESIS_RETRIES) {
+					throw providerError('provider_forced_synthesis_failed', 'permanent');
+				}
+				currentRequest = appendSystemInstruction(
+					currentRequest,
+					requestedTools
+						? NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE
+						: NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE
+				);
+			}
+		} finally {
+			release();
 		}
 	}
 
@@ -746,6 +867,92 @@ function completedProviderCallToChatToolCall(call: CompletedProviderToolCall): C
 	};
 }
 
+function executionToChatToolResult(
+	toolCallId: string,
+	execution: AgenticChatReadToolExecutionV1
+): ChatToolResult {
+	return {
+		tool_call_id: toolCallId,
+		result: execution.result,
+		success: true,
+		...(execution.executionTimeMs !== null ? { duration_ms: execution.executionTimeMs } : {}),
+		...(execution.tokensConsumed !== null ? { tokens_consumed: execution.tokensConsumed } : {}),
+		...(execution.requiresUserAction !== null
+			? { requires_user_action: execution.requiresUserAction }
+			: {})
+	};
+}
+
+function memoizeCompletedRead(
+	memo: Map<string, AgenticChatReadToolExecutionV1>,
+	call: CompletedProviderToolCall,
+	execution: AgenticChatReadToolExecutionV1
+): void {
+	if (!isPureReadToolName(call.name)) return;
+	const toolCall = completedProviderCallToChatToolCall(call);
+	const key = buildReadMemoKey(toolCall);
+	if (!key || memo.has(key)) return;
+	const result = executionToChatToolResult(call.id, execution);
+	if (!shouldMemoizeReadResult(result)) return;
+	memo.set(key, execution);
+}
+
+function resolveMemoServedExecution(
+	memo: Map<string, AgenticChatReadToolExecutionV1>,
+	call: CompletedProviderToolCall
+): AgenticChatReadToolExecutionV1 | null {
+	if (!isPureReadToolName(call.name)) return null;
+	const key = buildReadMemoKey(completedProviderCallToChatToolCall(call));
+	const cached = key ? memo.get(key) : undefined;
+	if (!cached) return null;
+	const served = buildMemoServedResult(executionToChatToolResult(call.id, cached), call.id);
+	const canonicalResult = canonicalizeAgenticChatJson(served.result as JsonValue);
+	const result = JSON.parse(canonicalResult) as unknown;
+	if (!result || typeof result !== 'object' || Array.isArray(result)) {
+		throw providerError('provider_read_memo_result_invalid', 'unknown');
+	}
+	return {
+		result: result as JsonObject,
+		executionTimeMs: served.duration_ms ?? 0,
+		tokensConsumed: served.tokens_consumed ?? null,
+		affectedEntities: cached.affectedEntities,
+		toolCategory: cached.toolCategory,
+		resultCount: cached.resultCount,
+		zeroResult: cached.zeroResult,
+		requiresUserAction: served.requires_user_action ?? cached.requiresUserAction
+	};
+}
+
+function getAdmissionContextUsage(
+	input: AgenticChatWorkerExecutionInputV1
+): ContextUsageSnapshot | undefined {
+	if (input.artifact.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION) {
+		return undefined;
+	}
+	return input.artifact.prepared.contextUsageSnapshot;
+}
+
+function latestToolPayloadChars(request: ClientRequest): number {
+	for (let index = request.messages.length - 1; index >= 0; index -= 1) {
+		const message = request.messages[index];
+		if (message?.role === 'tool') return message.content.length;
+	}
+	return 0;
+}
+
+function forceToolFreeRequest(request: ClientRequest): ClientRequest {
+	return { ...request, tools: [], toolChoice: 'none', providerRound: 'synthesis' };
+}
+
+function contextSaturationRepairRank(
+	status: 'open' | 'narrowing' | 'saturated' | 'must_synthesize'
+): number {
+	if (status === 'narrowing') return READ_LOOP_REPAIR_RANK.nudge;
+	if (status === 'saturated') return READ_LOOP_REPAIR_RANK.stop_and_answer;
+	if (status === 'must_synthesize') return READ_LOOP_REPAIR_RANK.must_synthesize;
+	return 0;
+}
+
 function buildPlanningStep(
 	request: ClientRequest,
 	providerToolCallId: string
@@ -772,8 +979,14 @@ function buildPlanningStep(
 
 function buildReadToolStep(
 	turnRunId: string,
-	call: CompletedProviderToolCall
+	call: CompletedProviderToolCall,
+	memoServed: AgenticChatReadToolExecutionV1 | null = null
 ): Extract<AgenticChatProviderStepV1, { type: 'read_tool' }> {
+	const base = buildReadToolStepBase(turnRunId, call);
+	return memoServed ? { ...base, memoServed } : base;
+}
+
+function buildReadToolStepBase(turnRunId: string, call: CompletedProviderToolCall) {
 	return {
 		type: 'read_tool',
 		callTransitionId: createStableAgenticChatReadToolTransitionIdV1({
@@ -789,7 +1002,7 @@ function buildReadToolStep(
 		providerToolCallId: call.id,
 		toolName: call.name,
 		arguments: call.arguments
-	};
+	} as const;
 }
 
 function buildValidationFailureReadToolStep(
@@ -798,7 +1011,7 @@ function buildValidationFailureReadToolStep(
 	issues: ToolValidationIssue[]
 ): Extract<AgenticChatProviderStepV1, { type: 'read_tool' }> {
 	return {
-		...buildReadToolStep(turnRunId, call),
+		...buildReadToolStepBase(turnRunId, call),
 		validationFailure: {
 			error: validationFailureError(issues),
 			toolCategory: TOOL_METADATA[call.name]?.category ?? null

@@ -24,23 +24,37 @@ export type AgenticChatProviderStepV1 =
 			currentActivity: string;
 			eventPayload: JsonObject;
 	  }
-	| {
+	| ({
 			type: 'read_tool';
 			callTransitionId: string;
 			resultTransitionId: string;
 			providerToolCallId: string;
 			toolName: string;
 			arguments: JsonObject;
-			/**
-			 * A provider call rejected before execution. The executor records the
-			 * failed call behind the same durable/public fence as a normal read, but
-			 * never invokes the read adapter or returns it through the round bridge.
-			 */
-			validationFailure?: {
-				error: string;
-				toolCategory: string | null;
-			};
-	  }
+	  } & (
+			| {
+					/**
+					 * A provider call rejected before execution. The executor records the
+					 * failed call behind the same durable/public fence as a normal read, but
+					 * never invokes the read adapter or returns it through the round bridge.
+					 */
+					validationFailure: {
+						error: string;
+						toolCategory: string | null;
+					};
+					memoServed?: never;
+			  }
+			| {
+					/**
+					 * An exact successful pure read already completed in this turn. The
+					 * executor skips the read adapter but still persists and publishes this
+					 * call-specific execution before returning it to the provider.
+					 */
+					memoServed: AgenticChatReadToolExecutionV1;
+					validationFailure?: never;
+			  }
+			| { validationFailure?: never; memoServed?: never }
+	  ))
 	| {
 			type: 'mutating_tool';
 			callTransitionId: string;

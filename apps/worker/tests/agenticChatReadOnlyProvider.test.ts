@@ -1,8 +1,10 @@
 // apps/worker/tests/agenticChatReadOnlyProvider.test.ts
-import type {
-	AgenticChatTurnClaimResultV1,
-	JsonObject,
-	TurnInputArtifactV1
+
+import {
+	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+	type AgenticChatTurnClaimResultV1,
+	type JsonObject,
+	type TurnInputArtifactV1
 } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
@@ -174,6 +176,28 @@ function executionInputWithReadSurface(
 			}
 		}
 	};
+}
+
+function providerReadRound(
+	providerToolCallId: string,
+	args: JsonObject,
+	toolName = 'get_project_overview',
+	usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
+): AgenticChatReadOnlyProviderClientEventV1[] {
+	return [
+		{
+			type: 'tool_call',
+			toolCall: [
+				{
+					index: 0,
+					id: providerToolCallId,
+					type: 'function',
+					function: { name: toolName, arguments: JSON.stringify(args) }
+				}
+			]
+		},
+		{ type: 'done', finishedReason: 'tool_calls', ...(usage ? { usage } : {}) }
+	];
 }
 
 describe('AgenticChatReadOnlyProviderAdapter', () => {
@@ -657,6 +681,186 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
+	it('serves an exact successful pure-read repeat from the turn memo with a new call identity', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const streams = [
+			providerReadRound('provider-read-1', { project_id: projectId }),
+			providerReadRound('provider-read-2', { project_id: projectId }),
+			[
+				{ type: 'text', content: 'The cached evidence is enough.' },
+				{ type: 'done', finishedReason: 'stop' }
+			] satisfies AgenticChatReadOnlyProviderClientEventV1[]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity
+		}).prepare({
+			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		const firstExecution = {
+			result: { project: { id: projectId, title: 'Memo project' } },
+			executionTimeMs: 17,
+			tokensConsumed: 4,
+			affectedEntities: [],
+			toolCategory: 'read',
+			resultCount: null,
+			zeroResult: null,
+			requiresUserAction: false
+		};
+		const repeatSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					{
+						providerToolCallId: 'provider-read-1',
+						toolName: 'get_project_overview',
+						arguments: { project_id: projectId },
+						execution: firstExecution
+					}
+				]
+			})
+		);
+		const memoStep = repeatSteps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'read_tool' }> =>
+				step.type === 'read_tool'
+		);
+		expect(memoStep).toMatchObject({
+			providerToolCallId: 'provider-read-2',
+			toolName: 'get_project_overview',
+			arguments: { project_id: projectId },
+			memoServed: {
+				result: {
+					served_from_turn_memo: true,
+					repeat_read_notice: expect.stringContaining('exact call already ran'),
+					project: { id: projectId, title: 'Memo project' }
+				},
+				executionTimeMs: 0,
+				tokensConsumed: 4,
+				affectedEntities: [],
+				toolCategory: 'read',
+				resultCount: null,
+				zeroResult: null,
+				requiresUserAction: false
+			}
+		});
+		expect(memoStep?.validationFailure).toBeUndefined();
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 3,
+					results: [
+						{
+							providerToolCallId: 'provider-read-2',
+							toolName: 'get_project_overview',
+							arguments: { project_id: projectId },
+							execution: memoStep!.memoServed!
+						}
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'The cached evidence is enough.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		const repeatedModelPayload = JSON.parse(
+			client.stream.mock.calls[2]?.[0].messages.findLast(
+				(message: { role: string }) => message.role === 'tool'
+			)?.content ?? ''
+		) as Record<string, unknown>;
+		expect(repeatedModelPayload).toMatchObject({
+			served_from_turn_memo: true,
+			repeat_read_notice: expect.stringContaining('vary the arguments'),
+			project: { id: projectId }
+		});
+		expect(
+			client.stream.mock.calls[2]?.[0].messages.findLast(
+				(message: { role: string }) => message.role === 'tool'
+			)?.tool_call_id
+		).toBe('provider-read-2');
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('does not memoize reads with different arguments or requiring user action', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		for (const scenario of [
+			{
+				secondArgs: { project_id: projectId, marker: 'different' },
+				requiresUserAction: false
+			},
+			{
+				secondArgs: { project_id: projectId },
+				requiresUserAction: true
+			}
+		]) {
+			const streams = [
+				providerReadRound('provider-read-1', { project_id: projectId }),
+				providerReadRound('provider-read-2', scenario.secondArgs)
+			];
+			const client = {
+				stream: vi.fn(() => {
+					const events = streams.shift() ?? [];
+					return (async function* () {
+						for (const event of events) yield event;
+					})();
+				})
+			};
+			const capacity = new AgenticChatProviderCapacity({
+				configured: true,
+				concurrency: 1
+			});
+			const invocation = await new AgenticChatReadOnlyProviderAdapter({
+				client,
+				capacity
+			}).prepare({
+				executionInput: executionInputWithReadSurface(),
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			await collect(invocation.stream());
+			const steps = await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						{
+							...durableReadFeedback(
+								'provider-read-1',
+								{ project_id: projectId },
+								{ project: { id: projectId } }
+							),
+							execution: {
+								...durableReadFeedback('provider-read-1').execution,
+								result: { project: { id: projectId } },
+								requiresUserAction: scenario.requiresUserAction
+							}
+						}
+					]
+				})
+			);
+			const readStep = steps.find((step) => step.type === 'read_tool');
+			expect(readStep).toMatchObject({
+				type: 'read_tool',
+				providerToolCallId: 'provider-read-2'
+			});
+			expect(readStep).not.toHaveProperty('memoServed');
+			invocation.release();
+			expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+		}
+	});
+
 	it('exposes a durable validation failure before repairing the provider tool call', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
 		const definition = {
@@ -875,30 +1079,13 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
-	it('injects the shared read-loop escalation after three completed read rounds', async () => {
-		const readRound = (
-			providerToolCallId: string
-		): AgenticChatReadOnlyProviderClientEventV1[] => [
-			{
-				type: 'tool_call',
-				toolCall: [
-					{
-						index: 0,
-						id: providerToolCallId,
-						type: 'function',
-						function: {
-							name: 'get_project_overview',
-							arguments: '{"project_id":"40000000-0000-4000-8000-000000000004"}'
-						}
-					}
-				]
-			},
-			{ type: 'done', finishedReason: 'tool_calls' }
-		];
+	it('emits monotonic context saturation and forces a true no-tool synthesis pass', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
 		const streams = [
-			readRound('provider-read-1'),
-			readRound('provider-read-2'),
-			readRound('provider-read-3'),
+			providerReadRound('provider-read-1', { project_id: projectId }),
+			providerReadRound('provider-read-2', { project_id: projectId }),
+			providerReadRound('provider-read-3', { project_id: projectId }),
+			providerReadRound('provider-read-4', { project_id: projectId }),
 			[
 				{ type: 'text', content: 'Enough context.' },
 				{ type: 'done', finishedReason: 'stop' }
@@ -927,9 +1114,11 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			invocation.continueWithToolResults!({
 				round: 2,
 				results: [
-					durableReadFeedback('provider-read-1', {
-						project_id: '40000000-0000-4000-8000-000000000004'
-					})
+					durableReadFeedback(
+						'provider-read-1',
+						{ project_id: projectId },
+						{ project: { id: projectId } }
+					)
 				]
 			})
 		);
@@ -937,20 +1126,36 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			invocation.continueWithToolResults!({
 				round: 3,
 				results: [
-					durableReadFeedback('provider-read-2', {
-						project_id: '40000000-0000-4000-8000-000000000004'
-					})
+					durableReadFeedback(
+						'provider-read-2',
+						{ project_id: projectId },
+						{ project: { id: projectId } }
+					)
+				]
+			})
+		);
+		await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [
+					durableReadFeedback(
+						'provider-read-3',
+						{ project_id: projectId },
+						{ project: { id: projectId } }
+					)
 				]
 			})
 		);
 		await expect(
 			collect(
 				invocation.continueWithToolResults!({
-					round: 4,
+					round: 5,
 					results: [
-						durableReadFeedback('provider-read-3', {
-							project_id: '40000000-0000-4000-8000-000000000004'
-						})
+						durableReadFeedback(
+							'provider-read-4',
+							{ project_id: projectId },
+							{ project: { id: projectId } }
+						)
 					]
 				})
 			)
@@ -959,17 +1164,314 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
 
-		const continuationMessages = client.stream.mock.calls[3]?.[0].messages;
+		const forcedRequest = client.stream.mock.calls[4]?.[0];
+		expect(forcedRequest).toMatchObject({ tools: [], toolChoice: 'none' });
+		const continuationMessages = forcedRequest.messages;
 		const systemMessages = continuationMessages.filter(
 			(message: { role: string }) => message.role === 'system'
 		);
-		expect(systemMessages).toHaveLength(2);
-		expect(systemMessages[1]?.content).toContain(
-			'Read-loop nudge: you are repeating read-only tool calls without making progress.'
+		expect(systemMessages.map((message: { content: string }) => message.content)).toEqual([
+			'System prompt\n',
+			expect.stringContaining('Context gathering: narrowing.'),
+			expect.stringContaining('Context gathering: saturated.'),
+			expect.stringContaining('Context gathering: must synthesize.')
+		]);
+		expect(systemMessages.at(-1)?.content).toContain('do not gather more context');
+		expect(systemMessages.some((message) => message.content.includes('Read-loop nudge'))).toBe(
+			false
 		);
-		expect(systemMessages[1]?.content).toContain('Repeated ops: util.project.overview.');
-		expect(systemMessages[1]?.content).toContain(
-			'Tool rounds remaining before the safety cap: 13.'
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('resets the low-novelty ladder when a later read adds new evidence', async () => {
+		const firstProjectId = '40000000-0000-4000-8000-000000000004';
+		const secondProjectId = '50000000-0000-4000-8000-000000000005';
+		const streams = [
+			providerReadRound('provider-read-1', { project_id: firstProjectId }),
+			providerReadRound('provider-read-2', { project_id: firstProjectId }),
+			providerReadRound('provider-read-3', { project_id: secondProjectId }),
+			providerReadRound('provider-read-4', { project_id: secondProjectId }),
+			[
+				{ type: 'text', content: 'Both projects are covered.' },
+				{ type: 'done', finishedReason: 'stop' }
+			] satisfies AgenticChatReadOnlyProviderClientEventV1[]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity
+		}).prepare({
+			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+		await collect(invocation.stream());
+		for (const [round, providerToolCallId, projectId] of [
+			[2, 'provider-read-1', firstProjectId],
+			[3, 'provider-read-2', firstProjectId],
+			[4, 'provider-read-3', secondProjectId]
+		] as const) {
+			await collect(
+				invocation.continueWithToolResults!({
+					round,
+					results: [
+						durableReadFeedback(
+							providerToolCallId,
+							{ project_id: projectId },
+							{ project: { id: projectId } }
+						)
+					]
+				})
+			);
+		}
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 5,
+					results: [
+						durableReadFeedback(
+							'provider-read-4',
+							{ project_id: secondProjectId },
+							{ project: { id: secondProjectId } }
+						)
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'Both projects are covered.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		const finalRequest = client.stream.mock.calls[4]?.[0];
+		expect(finalRequest).toMatchObject({ toolChoice: 'auto' });
+		expect(finalRequest.tools).not.toHaveLength(0);
+		const contextMessages = finalRequest.messages.filter(
+			(message: { role: string; content: string }) =>
+				message.role === 'system' && message.content.startsWith('Context gathering:')
+		);
+		expect(contextMessages).toHaveLength(1);
+		expect(contextMessages[0]?.content).toContain('narrowing');
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('uses the admission context snapshot to force synthesis when context is already over budget', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const baseInput = executionInputWithReadSurface();
+		const input: AgenticChatWorkerExecutionInputV1 = {
+			...baseInput,
+			artifact: {
+				...baseInput.artifact,
+				artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+				prepared: {
+					...baseInput.artifact.prepared,
+					sessionSnapshot: {},
+					contextUsageSnapshot: {
+						estimatedTokens: 81_000,
+						tokenBudget: 80_000,
+						usagePercent: 101,
+						tokensRemaining: 0,
+						status: 'over_budget'
+					}
+				}
+			}
+		};
+		const streams = [
+			providerReadRound('provider-read-1', { project_id: projectId }),
+			[
+				{ type: 'text', content: 'The loaded evidence answers it.' },
+				{ type: 'done', finishedReason: 'stop' }
+			] satisfies AgenticChatReadOnlyProviderClientEventV1[]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity
+		}).prepare({
+			executionInput: input,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+		await collect(invocation.stream());
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedback(
+							'provider-read-1',
+							{ project_id: projectId },
+							{ project: { id: projectId } }
+						)
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'The loaded evidence answers it.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(client.stream.mock.calls[1]?.[0]).toMatchObject({
+			tools: [],
+			toolChoice: 'none',
+			messages: expect.arrayContaining([
+				expect.objectContaining({
+					role: 'system',
+					content: expect.stringContaining('Context gathering: must synthesize.')
+				})
+			])
+		});
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('buffers forced synthesis and retries once when the provider still requests a tool', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const streams = [
+			providerReadRound(
+				'provider-read-1',
+				{ project_id: projectId },
+				'get_project_overview',
+				{ promptTokens: 3, completionTokens: 1, totalTokens: 4 }
+			),
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'suppressed-read',
+							type: 'function',
+							function: {
+								name: 'get_project_overview',
+								arguments: JSON.stringify({ project_id: projectId })
+							}
+						}
+					]
+				},
+				{
+					type: 'done',
+					finishedReason: 'tool_calls',
+					usage: { promptTokens: 4, completionTokens: 1, totalTokens: 5 }
+				}
+			] satisfies AgenticChatReadOnlyProviderClientEventV1[],
+			[
+				{ type: 'text', content: 'Read-loop hard stop: synthesize now.\n' },
+				{ type: 'text', content: 'The project evidence is ready.' },
+				{
+					type: 'done',
+					finishedReason: 'end_turn',
+					usage: { promptTokens: 6, completionTokens: 2, totalTokens: 8 }
+				}
+			] satisfies AgenticChatReadOnlyProviderClientEventV1[]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{ client, capacity },
+			2_000,
+			3
+		).prepare({
+			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedback(
+							'provider-read-1',
+							{ project_id: projectId },
+							{ project: { id: projectId } }
+						)
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'The project evidence is ready.' },
+			{
+				type: 'finish',
+				finishedReason: 'end_turn',
+				usage: { promptTokens: 13, completionTokens: 4, totalTokens: 17 }
+			}
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		for (const callIndex of [1, 2]) {
+			expect(client.stream.mock.calls[callIndex]?.[0]).toMatchObject({
+				tools: [],
+				toolChoice: 'none'
+			});
+		}
+		expect(client.stream.mock.calls[2]?.[0].messages.at(-1)?.content).toContain(
+			'tools are unavailable'
+		);
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('fails deterministically after one empty forced-synthesis retry', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const streams = [
+			providerReadRound('provider-read-1', { project_id: projectId }),
+			[{ type: 'done', finishedReason: 'stop' }],
+			[{ type: 'done', finishedReason: 'stop' }]
+		] satisfies AgenticChatReadOnlyProviderClientEventV1[][];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{ client, capacity },
+			2_000,
+			3
+		).prepare({
+			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+		await collect(invocation.stream());
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [durableReadFeedback('provider-read-1', { project_id: projectId })]
+				})
+			)
+		).rejects.toMatchObject({
+			code: 'provider_forced_synthesis_failed',
+			failureClass: 'permanent'
+		});
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(client.stream.mock.calls[2]?.[0].messages.at(-1)?.content).toContain(
+			'produced no visible answer'
 		);
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});

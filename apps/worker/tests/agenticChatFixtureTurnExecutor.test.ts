@@ -1448,6 +1448,66 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	it('does not advance the provider when memo-result publication fails after ledger acknowledgement', async () => {
+		const harness = createHarness([], {
+			failSemanticType: 'tool_result',
+			providerBudgetMs: 50,
+			publisherConfig: { retryDelayMs: 1 },
+			recovery: [recoveryReceipt('finalize_failed', { failure_code: 'timeout_post_start' })]
+		});
+		const continueWithToolResults = vi.fn();
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-memo-public-failure',
+							toolName: 'fixture_project_read',
+							arguments: {},
+							memoServed: {
+								result: {
+									served_from_turn_memo: true,
+									repeat_read_notice: 'Repeat read: use the earlier result.'
+								},
+								executionTimeMs: 0,
+								tokensConsumed: null,
+								affectedEntities: [],
+								toolCategory: 'read',
+								resultCount: null,
+								zeroResult: null,
+								requiresUserAction: false
+							}
+						} as const;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed'
+			});
+			expect(harness.readTool.execute).not.toHaveBeenCalled();
+			expect(harness.toolExecutions.persistRead).toHaveBeenCalledOnce();
+			expect(continueWithToolResults).not.toHaveBeenCalled();
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					assistantMetadata: expect.objectContaining({
+						tool_round_count: 1,
+						tool_call_count: 1
+					})
+				})
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it('writes a terminal outcome when a read-tool network call exceeds its local deadline', async () => {
 		const harness = createHarness(
 			[
@@ -1565,6 +1625,61 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				expect(boundary).not.toHaveProperty('arguments');
 				expect(boundary).not.toHaveProperty('result');
 			}
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('does not advance the provider when a memo-served execution is not durable', async () => {
+		const harness = createHarness([], {
+			recovery: [recoveryReceipt('retry_scheduled')]
+		});
+		const continueWithToolResults = vi.fn();
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-memo-ledger-failure',
+							toolName: 'fixture_project_read',
+							arguments: {},
+							memoServed: {
+								result: {
+									served_from_turn_memo: true,
+									repeat_read_notice: 'Repeat read: use the earlier result.'
+								},
+								executionTimeMs: 0,
+								tokensConsumed: null,
+								affectedEntities: [],
+								toolCategory: 'read',
+								resultCount: null,
+								zeroResult: null,
+								requiresUserAction: false
+							}
+						} as const;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+		harness.toolExecutions.persistRead.mockRejectedValueOnce(
+			new AgenticChatToolExecutionTimeoutError(10)
+		);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'requeued',
+				terminalStatus: null
+			});
+			expect(harness.readTool.execute).not.toHaveBeenCalled();
+			expect(harness.toolExecutions.persistRead).toHaveBeenCalledOnce();
+			expect(continueWithToolResults).not.toHaveBeenCalled();
+			expect(harness.semanticInputs).not.toEqual(
+				expect.arrayContaining([expect.objectContaining({ event_type: 'tool_result' })])
+			);
 		} finally {
 			await harness.publisher.stop();
 		}
@@ -2044,6 +2159,113 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			expect(
 				harness.toolExecutions.persistRead.mock.calls.map(([input]) => input.sequenceIndex)
 			).toEqual([1, 2]);
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					assistantMetadata: expect.objectContaining({
+						tool_round_count: 2,
+						tool_call_count: 2
+					})
+				})
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('persists and publishes a memo-served repeat without re-entering the read adapter', async () => {
+		const harness = createHarness([]);
+		const memoExecution = {
+			result: {
+				served_from_turn_memo: true,
+				repeat_read_notice: 'Repeat read: use the earlier result.',
+				title: 'Fixture project'
+			},
+			executionTimeMs: 0,
+			tokensConsumed: null,
+			affectedEntities: [],
+			toolCategory: 'read',
+			resultCount: null,
+			zeroResult: null,
+			requiresUserAction: false
+		};
+		const continueWithToolResults = vi.fn(({ round }: { round: number }) => {
+			if (round === 2) {
+				return (async function* () {
+					yield {
+						type: 'read_tool',
+						callTransitionId: SECOND_CALL_TRANSITION_ID,
+						resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+						providerToolCallId: 'provider-memo-read-2',
+						toolName: 'fixture_project_read',
+						arguments: { projectId: 'da000000-0000-4000-8000-000000000001' },
+						memoServed: memoExecution
+					} as const;
+				})();
+			}
+			return (async function* () {
+				yield { type: 'text_delta', text: 'The memo result is enough.' } as const;
+				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+			})();
+		});
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-memo-read-1',
+							toolName: 'fixture_project_read',
+							arguments: {
+								projectId: 'da000000-0000-4000-8000-000000000001'
+							}
+						} as const;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			expect(harness.readTool.execute).toHaveBeenCalledTimes(1);
+			expect(harness.toolExecutions.persistRead).toHaveBeenCalledTimes(2);
+			expect(harness.toolExecutions.persistRead.mock.calls[1]?.[0]).toMatchObject({
+				sequenceIndex: 2,
+				providerToolCallId: 'provider-memo-read-2',
+				execution: memoExecution
+			});
+			expect(continueWithToolResults).toHaveBeenNthCalledWith(2, {
+				round: 3,
+				results: [
+					{
+						providerToolCallId: 'provider-memo-read-2',
+						toolName: 'fixture_project_read',
+						arguments: {
+							projectId: 'da000000-0000-4000-8000-000000000001'
+						},
+						execution: memoExecution
+					}
+				]
+			});
+			const memoResult = harness.semanticInputs.find((input) => {
+				const payload = input.event_payload as Record<string, unknown>;
+				const result = payload.result as Record<string, unknown> | undefined;
+				return result?.tool_call_id === 'provider-memo-read-2';
+			});
+			expect(memoResult?.event_payload).toMatchObject({
+				type: 'tool_result',
+				result: {
+					tool_call_id: 'provider-memo-read-2',
+					duration_ms: 0,
+					result: { served_from_turn_memo: true },
+					tool_category: 'read'
+				}
+			});
 			expect(harness.control.finalize).toHaveBeenCalledWith(
 				expect.objectContaining({
 					assistantMetadata: expect.objectContaining({

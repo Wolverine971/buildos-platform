@@ -1047,12 +1047,6 @@ export class AgenticChatFixtureTurnExecutor {
 			);
 		}
 		const readStartedAt = Date.now();
-		await logAgenticChatExecutionBoundary(job, executionInput, {
-			stage: 'read_op',
-			state: 'started',
-			providerToolCallId: step.providerToolCallId,
-			toolName: step.toolName
-		});
 		await this.observeToolExecution(
 			executionInput,
 			processingToken,
@@ -1067,52 +1061,64 @@ export class AgenticChatFixtureTurnExecutor {
 			signal
 		);
 		let toolResult: AgenticChatReadToolExecutionV1;
-		try {
-			toolResult = await abortable(
-				this.ports.readTool.execute({
-					toolName: step.toolName,
-					arguments: step.arguments,
-					providerToolCallId: step.providerToolCallId,
-					executionInput,
-					signal
-				}),
-				signal
-			);
+		if (step.memoServed) {
+			toolResult = step.memoServed;
 			validateReadToolExecution(toolResult);
-		} catch (error) {
+			validateMemoServedExecution(toolResult);
+		} else {
 			await logAgenticChatExecutionBoundary(job, executionInput, {
 				stage: 'read_op',
-				state: 'failed',
+				state: 'started',
+				providerToolCallId: step.providerToolCallId,
+				toolName: step.toolName
+			});
+			try {
+				toolResult = await abortable(
+					this.ports.readTool.execute({
+						toolName: step.toolName,
+						arguments: step.arguments,
+						providerToolCallId: step.providerToolCallId,
+						executionInput,
+						signal
+					}),
+					signal
+				);
+				validateReadToolExecution(toolResult);
+			} catch (error) {
+				await logAgenticChatExecutionBoundary(job, executionInput, {
+					stage: 'read_op',
+					state: 'failed',
+					providerToolCallId: step.providerToolCallId,
+					toolName: step.toolName,
+					durationMs: elapsedMs(readStartedAt),
+					error
+				});
+				await this.observeToolExecution(
+					executionInput,
+					processingToken,
+					step,
+					sequenceIndex,
+					'tool_execution_ended',
+					{
+						tool_name: step.toolName,
+						provider_tool_call_id: step.providerToolCallId,
+						sequence_index: sequenceIndex,
+						status: signal.aborted ? 'aborted' : 'failure',
+						duration_ms: elapsedMs(readStartedAt),
+						error_code: executionErrorCode(error, signal)
+					},
+					signal
+				);
+				throw error;
+			}
+			await logAgenticChatExecutionBoundary(job, executionInput, {
+				stage: 'read_op',
+				state: 'finished',
 				providerToolCallId: step.providerToolCallId,
 				toolName: step.toolName,
-				durationMs: elapsedMs(readStartedAt),
-				error
+				durationMs: elapsedMs(readStartedAt)
 			});
-			await this.observeToolExecution(
-				executionInput,
-				processingToken,
-				step,
-				sequenceIndex,
-				'tool_execution_ended',
-				{
-					tool_name: step.toolName,
-					provider_tool_call_id: step.providerToolCallId,
-					sequence_index: sequenceIndex,
-					status: signal.aborted ? 'aborted' : 'failure',
-					duration_ms: elapsedMs(readStartedAt),
-					error_code: executionErrorCode(error, signal)
-				},
-				signal
-			);
-			throw error;
 		}
-		await logAgenticChatExecutionBoundary(job, executionInput, {
-			stage: 'read_op',
-			state: 'finished',
-			providerToolCallId: step.providerToolCallId,
-			toolName: step.toolName,
-			durationMs: elapsedMs(readStartedAt)
-		});
 		const ledgerStartedAt = Date.now();
 		await logAgenticChatExecutionBoundary(job, executionInput, {
 			stage: 'ledger_persist',
@@ -1207,7 +1213,7 @@ export class AgenticChatFixtureTurnExecutor {
 				provider_tool_call_id: step.providerToolCallId,
 				sequence_index: sequenceIndex,
 				status: 'success',
-				duration_ms: elapsedMs(readStartedAt),
+				duration_ms: step.memoServed ? 0 : elapsedMs(readStartedAt),
 				error_code: null
 			},
 			signal
@@ -2184,6 +2190,17 @@ function validateReadToolExecution(execution: AgenticChatReadToolExecutionV1): v
 		typeof execution.requiresUserAction !== 'boolean'
 	) {
 		throw new Error('Fixture read-tool user-action evidence is invalid');
+	}
+}
+
+function validateMemoServedExecution(execution: AgenticChatReadToolExecutionV1): void {
+	if (
+		execution.executionTimeMs !== 0 ||
+		execution.requiresUserAction === true ||
+		execution.result.served_from_turn_memo !== true ||
+		!canonicalText(execution.result.repeat_read_notice, 2_000)
+	) {
+		throw new Error('Fixture memo-served read execution is invalid');
 	}
 }
 
