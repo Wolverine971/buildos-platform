@@ -42,6 +42,7 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	let readToolLedgerOutput = '';
 	let validationFailureLedgerOutput = '';
 	let trueToolRoundCountOutput = '';
+	let trueToolRoundCountReplayOutput = '';
 
 	const applySqlFile = (path: string): string =>
 		execFileSync(
@@ -156,6 +157,9 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}
+		trueToolRoundCountReplayOutput = applySqlFile(
+			sqlPath('supabase/migrations/20260808140000_agentic_chat_true_tool_round_count.sql')
+		);
 
 		proofOutput = applySqlFile(
 			sqlPath('supabase/tests/20260802033200_agentic_chat_worker_stream_write_rpcs.test.sql')
@@ -250,6 +254,10 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 
 	it('retains the executor-owned provider round count behind the durable call-count fence', () => {
 		expect(trueToolRoundCountOutput).toContain('phase4_slice18_true_tool_round_count_ok');
+	});
+
+	it('reconciles an already-installed S5 finalizer body without weakening its guard', () => {
+		expect(trueToolRoundCountReplayOutput).toContain('COMMIT');
 	});
 
 	it('accepts truthful streamed-turn timing drafts and rejects microsecond drift', () => {

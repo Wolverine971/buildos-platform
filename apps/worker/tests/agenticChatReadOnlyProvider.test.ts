@@ -1347,6 +1347,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				{ promptTokens: 3, completionTokens: 1, totalTokens: 4 }
 			),
 			[
+				{ type: 'text', content: 'This rejected partial must never be published.' },
 				{
 					type: 'tool_call',
 					toolCall: [
@@ -1425,8 +1426,8 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				toolChoice: 'none'
 			});
 		}
-		expect(client.stream.mock.calls[2]?.[0].messages.at(-1)?.content).toContain(
-			'tools are unavailable'
+		expect(client.stream.mock.calls[2]?.[0].messages.at(-1)?.content).toBe(
+			'The previous synthesis attempt still requested tool calls even though tools are unavailable. Ignore all pending or implied tool calls and write the final user-facing answer now from the existing tool results. Do not say you will check, search, pull up, inspect, load, or update anything else.'
 		);
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
@@ -1470,8 +1471,8 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			failureClass: 'permanent'
 		});
 		expect(client.stream).toHaveBeenCalledTimes(3);
-		expect(client.stream.mock.calls[2]?.[0].messages.at(-1)?.content).toContain(
-			'produced no visible answer'
+		expect(client.stream.mock.calls[2]?.[0].messages.at(-1)?.content).toBe(
+			'The previous synthesis attempt produced no visible answer. Write the final user-facing answer now from the existing tool results. Include the concrete entities you found (with their titles and states) and directly answer any definition question the user asked. Do not call tools.'
 		);
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});

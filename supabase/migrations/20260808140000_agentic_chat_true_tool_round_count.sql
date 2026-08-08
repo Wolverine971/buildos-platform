@@ -41,7 +41,30 @@ BEGIN
 	END IF;$new$
 	);
 	IF v_next = v_body THEN
-		RAISE EXCEPTION 'agentic_chat_true_tool_round_count_unexpected_finalizer';
+		-- A prior operator may have installed the guarded body without recording
+		-- this migration receipt. Accept only the complete S5 semantic shape so
+		-- the normal migration push can reconcile that exact out-of-band state.
+		IF position('agentic_chat_finalize_invalid_tool_counts' in v_body) = 0
+			OR position(
+				$v_zero$IF v_tool_call_count = 0 THEN
+		v_tool_round_count := COALESCE((v_message_metadata->>'tool_round_count')::integer, 0);$v_zero$
+				in v_body
+			) = 0
+			OR position(
+				$v_missing$ELSIF NOT (v_message_metadata ? 'tool_round_count') THEN$v_missing$
+				in v_body
+			) = 0
+			OR position(
+				$v_ceiling$IF v_tool_round_count > v_tool_call_count THEN$v_ceiling$
+				in v_body
+			) = 0
+			OR position(
+				$v_completed$IF p_status = 'completed' THEN$v_completed$
+				in v_body
+			) = 0
+		THEN
+			RAISE EXCEPTION 'agentic_chat_true_tool_round_count_unexpected_finalizer';
+		END IF;
 	END IF;
 
 	EXECUTE format(

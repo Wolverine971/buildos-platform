@@ -13,6 +13,8 @@ import {
 } from '@buildos/shared-types';
 import {
 	ContextGatheringLedger,
+	NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE,
+	NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE,
 	READ_LOOP_REPAIR_RANK,
 	TOOL_METADATA,
 	type ToolValidationIssue,
@@ -52,10 +54,6 @@ import type { AgenticChatReadToolExecutionV1 } from './toolExecution';
 const DEFAULT_MAX_PROVIDER_ROUNDS = 16;
 const MAX_VALIDATION_REPAIR_ROUNDS = 2;
 const MAX_FORCED_SYNTHESIS_RETRIES = 1;
-const NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE =
-	'The previous synthesis attempt still requested tool calls even though tools are unavailable. Ignore all pending or implied tool calls and write the final user-facing answer now from the existing tool results. Do not say you will check, search, pull up, inspect, load, or update anything else.';
-const NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE =
-	'The previous synthesis attempt produced no visible answer. Write the final user-facing answer now from the existing tool results. Include the concrete entities you found (with their titles and states) and directly answer the user. Do not call tools.';
 const CANONICAL_UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

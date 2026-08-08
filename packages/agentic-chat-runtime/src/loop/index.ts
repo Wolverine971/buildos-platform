@@ -15,6 +15,7 @@ export * from './durable-text-validation';
 export * from './entity-kind-repair';
 export * from './entity-result-materialization';
 export * from './model-routing-types';
+export * from './no-tool-synthesis';
 export * from './project-create-args';
 export * from './read-loop-escalation';
 export * from './read-memo';

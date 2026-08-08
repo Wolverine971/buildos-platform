@@ -1,6 +1,10 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/finalization-runner.ts
 import type { ChatContextType } from '@buildos/shared-types';
 import {
+	NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE,
+	NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE
+} from '@buildos/agentic-chat-runtime/loop';
+import {
 	applyFinalizationGuard,
 	type FinalizationGuardResult,
 	type TurnSupervisorObservation
@@ -33,12 +37,6 @@ import { classifyToolExecution, didGatewayExecSucceed } from './tool-classificat
 
 const LENGTH_CONTINUATION_MESSAGE =
 	'Your previous message was cut off because it reached the output length limit. Continue the answer from exactly where it stopped. Do not repeat text you already wrote, do not restart, and do not call any tools — just finish the answer.';
-
-const NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE =
-	'The previous synthesis attempt still requested tool calls even though tools are unavailable. Ignore all pending or implied tool calls and write the final user-facing answer now from the existing tool results. Do not say you will check, search, pull up, inspect, load, or update anything else.';
-
-const NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE =
-	'The previous synthesis attempt produced no visible answer. Write the final user-facing answer now from the existing tool results. Include the concrete entities you found (with their titles and states) and directly answer any definition question the user asked. Do not call tools.';
 
 function buildNoToolSynthesisConstraintRetryMessage(
 	required: number,
