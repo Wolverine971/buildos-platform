@@ -89,7 +89,11 @@ export function readServerTiming(event: Record<string, unknown>): AgentTimingSum
 	return timing as AgentTimingSummary;
 }
 
-function emptyResult(streamRunId: string, clientTurnId: string, timing: TurnTiming): TurnResult {
+export function createEmptyTurnResult(
+	streamRunId: string,
+	clientTurnId: string,
+	timing: TurnTiming
+): TurnResult {
 	return {
 		sessionId: null,
 		streamRunId,
@@ -110,7 +114,7 @@ function emptyResult(streamRunId: string, clientTurnId: string, timing: TurnTimi
 	};
 }
 
-function applyEvent(result: TurnResult, ev: Record<string, unknown>): void {
+export function applyTurnEvent(result: TurnResult, ev: Record<string, unknown>): void {
 	result.rawEvents.push(ev);
 
 	switch (ev.type) {
@@ -173,7 +177,11 @@ export async function runTurn(params: RunTurnParams): Promise<TurnResult> {
 	const requestStartedMs = performance.now();
 	const streamRunId = randomUUID();
 	const clientTurnId = randomUUID();
-	const result = emptyResult(streamRunId, clientTurnId, createTurnTiming(requestStartedAt));
+	const result = createEmptyTurnResult(
+		streamRunId,
+		clientTurnId,
+		createTurnTiming(requestStartedAt)
+	);
 	const body = buildFastAgentStreamRequestBody({
 		message: params.message,
 		sessionId: params.sessionId,
@@ -213,7 +221,7 @@ export async function runTurn(params: RunTurnParams): Promise<TurnResult> {
 			const elapsedMs = performance.now() - requestStartedMs;
 			recordTurnEventTiming(result.timing, event.type, elapsedMs);
 			result.eventTimings.push(createTurnEventTiming(event, elapsedMs));
-			applyEvent(result, event);
+			applyTurnEvent(result, event);
 		}
 	});
 	result.timing.totalDurationMs = performance.now() - requestStartedMs;

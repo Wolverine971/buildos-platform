@@ -2,6 +2,12 @@
 import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { fileURLToPath } from 'node:url';
+import { config as loadDotenv } from 'dotenv';
+
+// The harness needs PUBLIC_* values in process.env for its Node Realtime
+// client. Resolve the package-local file explicitly so filtered invocations
+// behave the same whether pnpm starts from the repository root or apps/web.
+loadDotenv({ path: fileURLToPath(new URL('.env', import.meta.url)), quiet: true });
 
 // Redirect the shared-agent-ops subpaths the harness uses (directly or via the
 // $lib re-export shims) to package SOURCE, so the suite runs without a prior
@@ -25,9 +31,9 @@ const sharedAgentOpsTestAliases = [
 /**
  * Vitest configuration for the agentic-chat end-to-end stress harness.
  *
- * These tests drive the REAL `POST /api/agent/v2/stream` endpoint against a
- * running dev server, exercise the production weak-model path, execute tools,
- * write to the hosted database, and call a strong LLM judge on fuzzy scenarios.
+ * These tests drive the selected real Agentic Chat transport against a running
+ * server, exercise the production weak-model path, execute tools, write to the
+ * hosted database, and call a strong LLM judge on fuzzy scenarios.
  * They cost money and require:
  *   1. `pnpm dev --filter=@buildos/web` running (default http://localhost:5173)
  *   2. A dedicated test user (AGENTIC_TEST_USER_EMAIL / _PASSWORD in apps/web/.env)

@@ -15,6 +15,7 @@ import {
 	type TurnRunRow
 } from '../harness/telemetry';
 import type { Scenario, TurnEventTiming, TurnResult, TurnTiming } from '../harness/types';
+import type { AgenticE2EExecutionMode } from '../harness/worker-client';
 
 export const PHASE0_EVIDENCE_SCHEMA_VERSION = 1 as const;
 
@@ -93,6 +94,7 @@ export interface Phase0EvidenceReport {
 	repository: Phase0RepositoryState;
 	configuration: {
 		baseUrl: string;
+		executionMode: AgenticE2EExecutionMode;
 		scenarioIds: string[];
 		repetitions: number;
 		retryCount: number;
@@ -398,6 +400,7 @@ export function buildPhase0EvidenceReport(params: {
 	generatedAt?: string;
 	repository: Phase0RepositoryState;
 	baseUrl: string;
+	executionMode?: AgenticE2EExecutionMode;
 	scenarioIds: string[];
 	repetitions: number;
 	retryCount: number;
@@ -421,6 +424,7 @@ export function buildPhase0EvidenceReport(params: {
 		repository: params.repository,
 		configuration: {
 			baseUrl: params.baseUrl,
+			executionMode: params.executionMode ?? 'legacy_sse',
 			scenarioIds: params.scenarioIds,
 			repetitions: params.repetitions,
 			retryCount: params.retryCount

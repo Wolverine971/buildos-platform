@@ -9,6 +9,8 @@ import { STATED_FUTURE_SOURCE } from '$lib/server/stated-future.service';
 export interface TurnRunRow {
 	id: string;
 	session_id: string;
+	execution_mode: string;
+	transport_contract_version: string | null;
 	status: string;
 	created_at: string;
 	started_at: string;
@@ -157,7 +159,7 @@ export async function getTurnRun(
 	const { data } = await admin
 		.from('chat_turn_runs')
 		.select(
-			'id, session_id, status, created_at, started_at, finished_at, finished_reason, tool_call_count, tool_round_count, first_canonical_op, assistant_message_id, user_message_id, timing_metric_id'
+			'id, session_id, execution_mode, transport_contract_version, status, created_at, started_at, finished_at, finished_reason, tool_call_count, tool_round_count, first_canonical_op, assistant_message_id, user_message_id, timing_metric_id'
 		)
 		.eq('stream_run_id', streamRunId)
 		.maybeSingle();

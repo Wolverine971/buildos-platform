@@ -141,6 +141,7 @@ describe('Phase 0 evidence report', () => {
 			retainedRowsPerTurn: { samples: 2, p50: 8, p95: 10 },
 			retainedBytesPerTurn: { samples: 2, p50: 2_000, p95: 3_000 }
 		});
+		expect(report.configuration.executionMode).toBe('legacy_sse');
 		expect(report.limitations.join(' ')).toContain('not a PostgreSQL WAL');
 	});
 });

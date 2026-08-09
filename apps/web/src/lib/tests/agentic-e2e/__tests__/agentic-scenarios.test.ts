@@ -1,9 +1,9 @@
 // apps/web/src/lib/tests/agentic-e2e/__tests__/agentic-scenarios.test.ts
 //
 // ⚠️ End-to-end agentic-chat stress harness. Every scenario drives the REAL
-// POST /api/agent/v2/stream endpoint against a running dev server, runs the
-// production (cheap) model + tools, writes to the hosted DB, and calls a strong
-// LLM judge on fuzzy scenarios. It COSTS MONEY and requires a running dev server
+// selected production transport against a running dev server, runs the production
+// (cheap) model + tools, writes to the hosted DB, and calls a strong LLM judge on
+// fuzzy scenarios. It COSTS MONEY and requires a running dev server
 // (`pnpm dev --filter=@buildos/web`). Excluded from `pnpm test`; run with
 // `pnpm --filter @buildos/web test:agentic`.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -12,12 +12,17 @@ import { loginAndGetCookie } from '../harness/auth';
 import { ensureTestAuthUser, provisionTestUser } from '../harness/test-user';
 import { runTurn, warmupPing } from '../harness/sse-client';
 import {
+	createAgenticE2EWorkerClient,
+	resolveAgenticE2EExecutionMode,
+	type AgenticE2EWorkerClient
+} from '../harness/worker-client';
+import {
 	HARNESS_RUN_ID,
 	sweepOrphanProjects,
 	sweepStaleOrphanProjects,
 	teardownProject
 } from '../harness/seed';
-import { releaseTurnForFollowup, teardownChatSession } from '../harness/telemetry';
+import { releaseTurnForFollowup, teardownChatSession, waitForTurnRun } from '../harness/telemetry';
 import { judgeQuality } from '../harness/judge';
 import { checkTurnBeforeFollowupRelease } from '../harness/turn-sequencing';
 import { readTurnAttribution } from '../harness/attribution';
@@ -41,9 +46,11 @@ import {
 let ctx: ScenarioContext | null = null;
 let phase0Repository: Phase0RepositoryState | null = null;
 let phase0BaseUrl = '';
+let workerClient: AgenticE2EWorkerClient | null = null;
 const phase0Turns: Phase0TurnEvidence[] = [];
 const phase0FatalCaptureErrors: string[] = [];
 const PHASE0_CAPTURE = process.env.AGENTIC_PHASE0_CAPTURE === 'true';
+const EXECUTION_MODE = resolveAgenticE2EExecutionMode();
 const PHASE0_OUTPUT_PATH =
 	process.env.AGENTIC_PHASE0_OUTPUT_PATH?.trim() ||
 	`/tmp/buildos-agentic-phase0-${HARNESS_RUN_ID}.json`;
@@ -87,8 +94,21 @@ beforeAll(async () => {
 	});
 	const db = await provisionTestUser({ userId, email: env.testUserEmail });
 
-	// 2. Confirm the stream endpoint is reachable + authorized.
+	// 2. Confirm the selected transport is reachable + authorized. Worker mode
+	// requires both the private Realtime subscription and an exact worker lease;
+	// it never silently falls back to legacy SSE.
 	await warmupPing({ baseUrl: env.baseUrl, cookie });
+	if (EXECUTION_MODE === 'worker_realtime') {
+		workerClient = await createAgenticE2EWorkerClient({
+			baseUrl: env.baseUrl,
+			cookie,
+			email: env.testUserEmail,
+			password: env.testUserPassword,
+			userId,
+			admin: db.admin
+		});
+		await workerClient.requireWorkerLease();
+	}
 
 	// 3. Clear only old crashed-run fixtures. Live concurrent runs remain isolated.
 	await sweepStaleOrphanProjects(db);
@@ -97,12 +117,26 @@ beforeAll(async () => {
 }, 60000);
 
 afterAll(async () => {
+	if (workerClient) {
+		try {
+			await workerClient.close();
+		} catch (error) {
+			phase0FatalCaptureErrors.push(
+				`could not close worker Realtime client: ${
+					error instanceof Error ? error.message : String(error)
+				}`
+			);
+		} finally {
+			workerClient = null;
+		}
+	}
 	if (PHASE0_CAPTURE && phase0Repository) {
 		try {
 			const report = buildPhase0EvidenceReport({
 				runId: HARNESS_RUN_ID,
 				repository: phase0Repository,
 				baseUrl: phase0BaseUrl,
+				executionMode: EXECUTION_MODE,
 				scenarioIds: selectedScenarios().map((scenario) => scenario.id),
 				repetitions: PHASE0_REPETITIONS,
 				retryCount: 0,
@@ -194,7 +228,10 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 								sessionId = undefined;
 								lastTurnContext = null;
 							}
-							const result = await runTurn({
+							const turnRunner = workerClient
+								? workerClient.runTurn.bind(workerClient)
+								: runTurn;
+							const result = await turnRunner({
 								baseUrl: c.baseUrl,
 								cookie: c.cookie,
 								message: turn.message,
@@ -211,6 +248,27 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 								hasFollowup: turnIndex < scenario.turns.length - 1,
 								assertTurn: async () => {
 									await turn.assert(result, c, seed);
+									if (!result.streamRunId) {
+										throw new Error(
+											'[agentic-e2e] selected transport did not expose a stream_run_id'
+										);
+									}
+									const selectedTurnRun = await waitForTurnRun(
+										c.db.admin,
+										result.streamRunId
+									);
+									const expectedContract = 'agentic_chat_worker_v1';
+									if (
+										selectedTurnRun?.execution_mode !== EXECUTION_MODE ||
+										(EXECUTION_MODE === 'worker_realtime' &&
+											selectedTurnRun.transport_contract_version !==
+												expectedContract)
+									) {
+										throw new Error(
+											`[agentic-e2e] expected ${EXECUTION_MODE}${EXECUTION_MODE === 'worker_realtime' ? `/${expectedContract}` : ''}, received ` +
+												`${selectedTurnRun?.execution_mode ?? 'missing'}/${selectedTurnRun?.transport_contract_version ?? 'missing'}`
+										);
+									}
 									const failures = await evaluateTurnCheckpoints({
 										checkpoints: turn.checkpoints ?? [],
 										turn: result,
