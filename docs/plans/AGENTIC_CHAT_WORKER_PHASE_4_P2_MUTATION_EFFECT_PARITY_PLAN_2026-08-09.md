@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1 implementation complete locally; hosted migration not applied; production mutations remain disabled
+**Status:** S1 hosted; S2 complete locally; S2 category-correction migration pending hosted apply; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -106,14 +106,19 @@ Local evidence at preparation time:
   effect-link and post-commit cancellation proof
 - worker lint: zero errors, unchanged 175-warning repository baseline
 
-Hosted gate remains open. Before applying the migration, compare the linked
-`chat_tool_executions_tool_category_check` expression and the exact effect/tool
-table constraints to the disposable schema. After apply, verify receipt, function
-body, invoker/search path, service-only ACL, category expression, PostgREST
-signature, and an empty post-apply dry run. This migration alone still enables no
-production mutation.
+Hosted application completed on 2026-08-09. A fresh receipt-isolated workdir
+fetched the linked migration ledger, staged only `20260809010000`, and matched
+the committed source SHA-256
+`13012939a25e3b40ebb51945bcf0d2a7083a0fdd480ebac966acfd689df10afd` before
+apply. The dry run named exactly that migration, application succeeded, and the
+post-apply dry run reported the remote database up to date. A fresh hosted
+receipt contains the same statements with only Supabase history serialization
+differences (blank-line removal and the final comment terminator). PostgREST
+exposes all 17 required arguments. A service-role no-write probe reached the
+function and failed closed with the expected `turn_not_found`; anonymous access
+failed with SQLSTATE `42501`. This migration enabled no production mutation.
 
-### S2 — Ratify the mutation differential contract
+### S2 — Ratify the mutation differential contract — locally complete
 
 - Add one shared `mutating_tools` fixture/golden centered on
   `update_onto_task`.
@@ -127,6 +132,42 @@ production mutation.
 - Add cancellation fixtures at pre-reserve, reserved/pre-begin, and
   post-commit/pre-public boundaries; keep uncertain external commit as a separate
   recovery assertion rather than a successful parity run.
+
+Implementation and findings:
+
+- Added the shared `update_onto_task` fixture/golden and registered
+  `mutating_tools` as implemented on both adapters.
+- The legacy route and worker fixture now agree on event order, message metadata,
+  provider correlation, canonical operation, arguments/result, affected entity,
+  tool/round counts, lifecycle, and terminal outcome.
+- The worker acknowledgement now derives the same `project`, `brief`, or
+  `workspace` scope as the legacy route instead of always claiming workspace
+  context.
+- The worker golden delegates through the real effect executor and the real S1
+  tool-ledger RPC adapter. Its only mutation-specific deliberate differences are
+  `effect_id` and `replayed` on the public receipt plus `effect_id` on the durable
+  tool row. Existing async timing and done-event contracts remain unchanged.
+- The audit caught that legacy `update_onto_task` rows use `ontology_action`, not
+  the initially assumed `write`. The already-applied S1 migration is immutable.
+  Forward migration
+  `20260809020000_agentic_chat_mutation_tool_execution_legacy_category.sql`
+  restores the legacy category in new rows and exact replay checks. It passes the
+  composed disposable PostgreSQL suite but is not yet applied to hosted.
+- The cancellation/recovery matrix was already present and remains green:
+  pre-reserve cancellation creates no effect; reserved/pre-begin cancellation
+  closes the reservation without invoking; post-commit/pre-public cancellation
+  persists the effect-linked tool receipt while suppressing the public result;
+  uncertain external commit remains a recovery-only assertion.
+
+Local evidence on the final S2 tree:
+
+- focused worker mutation/executor/ledger suite: 64/64
+- full worker suite: 818 passed, 1 intentional skip
+- runtime suite: 183/183
+- exact legacy route suite: 41/41
+- composed disposable PostgreSQL suite: 12/12
+- worker/runtime typechecks and Svelte check: pass; Svelte reports 0 diagnostics
+- worker lint: zero errors, unchanged 175-warning repository baseline
 
 ### S3 — Mixed provider round bridge, still adapter-disabled
 

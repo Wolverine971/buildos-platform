@@ -38,7 +38,6 @@ describe('agentic chat parity scenario registry', () => {
 		const blocked = listBlockedAgenticChatParityScenariosV1();
 		expect(blocked.map((scenario) => scenario.scenarioClass).sort()).toEqual([
 			'clarification',
-			'mutating_tools',
 			'supervisor_checkpoint',
 			'timeout'
 		]);
@@ -53,9 +52,21 @@ describe('agentic chat parity scenario registry', () => {
 				(event) => event.type === 'timing'
 			);
 			const doneIndex = scenario.golden.events.findIndex((event) => event.type === 'done');
-			expect(scenario.workerDeliberateDivergencePrefixes).toEqual([
+			expect(scenario.workerDeliberateDivergencePrefixes[0]).toBe(
 				`/events/${timingIndex}/payload/timing/`
-			]);
+			);
+			if (scenario.scenarioClass === 'mutating_tools') {
+				const resultIndex = scenario.golden.events.findIndex(
+					(event) => event.type === 'tool_result'
+				);
+				expect(scenario.workerDeliberateDivergencePrefixes.slice(1)).toEqual([
+					`/events/${resultIndex}/payload/result/effect_id`,
+					`/events/${resultIndex}/payload/result/replayed`,
+					'/toolExecutions/0/effect_id'
+				]);
+			} else {
+				expect(scenario.workerDeliberateDivergencePrefixes).toHaveLength(1);
+			}
 			expect(scenario.workerOpenDivergences.map(({ path }) => path)).toEqual([
 				`/events/${doneIndex}/payload/failure_code`,
 				`/events/${doneIndex}/payload/status`

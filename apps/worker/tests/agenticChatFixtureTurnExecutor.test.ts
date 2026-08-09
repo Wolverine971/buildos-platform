@@ -5,6 +5,7 @@ import {
 	createAgentStreamEventIdV1
 } from '@buildos/shared-types';
 import {
+	AGENTIC_CHAT_MUTATING_TOOL_FIXTURE_V1,
 	AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1,
 	AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1,
 	AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1,
@@ -20,7 +21,11 @@ import { AgenticChatCancellationError } from '../src/workers/agentic-chat/cancel
 import type { AgenticChatTerminalFinalizeInputV1 } from '../src/workers/agentic-chat/executionControl';
 import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/executionObservation';
 import { AgenticChatExecutionInputError } from '../src/workers/agentic-chat/executionInput';
-import { AgenticChatEffectExecutionError } from '../src/workers/agentic-chat/fixtureMutationExecutor';
+import { createStableAgenticChatEffectIdentityV1 } from '../src/workers/agentic-chat/effectIdentity';
+import {
+	AgenticChatEffectExecutionError,
+	AgenticChatFixtureMutationExecutor
+} from '../src/workers/agentic-chat/fixtureMutationExecutor';
 import { createStableAgenticChatLifecycleTransitionIdV1 } from '../src/workers/agentic-chat/lifecycleIdentity';
 import {
 	AgenticChatFixtureTurnExecutor,
@@ -32,7 +37,10 @@ import { AgenticChatReadOnlyToolAdapter } from '../src/workers/agentic-chat/read
 import { createStableAgenticChatPromptSnapshotIdV1 } from '../src/workers/agentic-chat/promptSnapshot';
 import type { AgenticChatRuntimeTimingSnapshotV1 } from '../src/workers/agentic-chat/runtimeTiming';
 import { AgenticChatStreamPublisher } from '../src/workers/agentic-chat/streamPublisher';
-import { AgenticChatToolExecutionTimeoutError } from '../src/workers/agentic-chat/toolExecution';
+import {
+	AgenticChatToolExecutionTimeoutError,
+	SupabaseAgenticChatToolExecutionAdapter
+} from '../src/workers/agentic-chat/toolExecution';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
@@ -2083,6 +2091,249 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			const evaluation = parityCoverage.evaluate('read_only_tools', worker);
 			expect(evaluation.diff.truncated).toBe(false);
 			expect(evaluation.deliberate.length).toBeGreaterThan(0);
+			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
+				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
+			);
+			expect(evaluation.matchesContract).toBe(true);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('exposes only the ratified effect-receipt asymmetry for the mutating-tool golden', async () => {
+		const fixture = AGENTIC_CHAT_MUTATING_TOOL_FIXTURE_V1;
+		const harness = createHarness(
+			[
+				{
+					type: 'semantic',
+					transitionId: 'e3000000-0000-4000-8000-00000000003e',
+					phase: 'stream',
+					eventType: 'agent_state',
+					currentActivity: 'Planning the first step...',
+					eventPayload: {
+						type: 'agent_state',
+						state: 'thinking',
+						contextType: fixture.request.contextType,
+						details: 'Planning the first step...',
+						activity_visibility: 'activity_log'
+					}
+				},
+				{
+					type: 'mutating_tool',
+					callTransitionId: CALL_TRANSITION_ID,
+					resultTransitionId: RESULT_TRANSITION_ID,
+					logicalOperationId: fixture.tool.logicalOperationId,
+					providerToolCallId: fixture.tool.callId,
+					toolName: fixture.tool.name,
+					operationName: fixture.tool.operationName,
+					arguments: fixture.tool.arguments,
+					downstreamIdempotencySupported: fixture.tool.downstreamIdempotencySupported
+				},
+				{ type: 'text_delta', text: fixture.response.assistantText },
+				{
+					type: 'finish',
+					finishedReason: fixture.response.finishedReason,
+					usage: fixture.response.usage
+				}
+			],
+			{ promptSnapshot: fixturePromptSnapshot }
+		);
+		const stable = createStableAgenticChatEffectIdentityV1({
+			turnRunId: TURN_RUN_ID,
+			logicalOperationId: fixture.tool.logicalOperationId,
+			toolName: fixture.tool.name,
+			operationName: fixture.tool.operationName,
+			arguments: fixture.tool.arguments
+		});
+		const effectReceipt = (overrides: Record<string, unknown> = {}) => ({
+			effectId: stable.effectId,
+			turnRunId: TURN_RUN_ID,
+			executionGeneration: EXECUTION_GENERATION,
+			sessionId: SESSION_ID,
+			userId: USER_ID,
+			state: 'reserved',
+			downstreamIdempotencySupported: fixture.tool.downstreamIdempotencySupported,
+			downstreamReceipt: null,
+			startedAt: null,
+			finishedAt: null,
+			outcome: 'reserved',
+			invokeAdapter: false,
+			...overrides
+		});
+		const effectControl = {
+			reserve: vi.fn(async () => effectReceipt()),
+			begin: vi.fn(async () =>
+				effectReceipt({
+					state: 'started',
+					startedAt: fixture.clockIso,
+					outcome: 'started',
+					invokeAdapter: true
+				})
+			),
+			reconcile: vi.fn(async (input: { targetState: string; downstreamReceipt: unknown }) =>
+				effectReceipt({
+					state: input.targetState,
+					startedAt: fixture.clockIso,
+					finishedAt: fixture.clockIso,
+					downstreamReceipt: input.downstreamReceipt,
+					outcome: 'reconciled'
+				})
+			)
+		};
+		const mutatingTool = {
+			execute: vi.fn(async () => fixture.tool.result)
+		};
+		const realMutation = new AgenticChatFixtureMutationExecutor({
+			control: effectControl as never,
+			mutatingTool
+		});
+		harness.mutation.execute.mockImplementation((input) => realMutation.execute(input));
+
+		const ledgerRpc = vi.fn((name: string, args: Record<string, unknown>) => {
+			expect(name).toBe('persist_agentic_chat_mutation_tool_execution');
+			const response = Promise.resolve({
+				data: {
+					outcome: 'persisted',
+					turn_run_id: TURN_RUN_ID,
+					queue_job_id: QUEUE_JOB_ID,
+					session_id: SESSION_ID,
+					user_id: USER_ID,
+					execution_generation: EXECUTION_GENERATION,
+					tool_execution_id: args.p_tool_execution_id,
+					effect_id: args.p_effect_id,
+					sequence_index: args.p_sequence_index,
+					provider_tool_call_id: args.p_provider_tool_call_id,
+					tool_name: args.p_tool_name,
+					message_id: null,
+					created_at: fixture.clockIso
+				},
+				error: null
+			}) as Promise<{ data: unknown; error: null }> & {
+				abortSignal?: (signal: AbortSignal) => Promise<{ data: unknown; error: null }>;
+			};
+			response.abortSignal = () => response;
+			return response;
+		});
+		const realLedger = new SupabaseAgenticChatToolExecutionAdapter({ rpc: ledgerRpc });
+		harness.toolExecutions.persistMutation.mockImplementation(async (input, signal) => {
+			harness.log.push('mutation_ledger');
+			await realLedger.persistMutation(input, signal);
+		});
+
+		const fixtureExecutionInput = {
+			...executionInput,
+			requestPayload: {
+				...executionInput.requestPayload,
+				message: fixture.request.message,
+				context: {
+					type: fixture.request.contextType,
+					entityId: fixture.request.entityId
+				}
+			}
+		};
+		harness.input.load.mockResolvedValueOnce(fixtureExecutionInput);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+			if (!terminalInput) throw new Error('Phase 4 mutation fixture did not finalize');
+			const persistedMutation = harness.toolExecutions.persistMutation.mock.calls[0]?.[0];
+			if (!persistedMutation) throw new Error('Phase 4 mutation fixture was not persisted');
+			const worker = normalizeAgenticChatParityRunV1({
+				events: harness.broadcastMessages.map((message) => message.payload) as never,
+				messages: [
+					{ role: 'user', content: fixtureExecutionInput.requestPayload.message },
+					{
+						role: 'assistant',
+						content: terminalInput.assistantText,
+						metadata: {
+							completion_status: terminalInput.assistantMetadata.completion_status,
+							answer_source: terminalInput.assistantMetadata.answer_source
+						}
+					}
+				],
+				toolExecutions: [
+					{
+						tool_name: persistedMutation.toolName,
+						tool_category: fixture.tool.toolCategory,
+						gateway_op: persistedMutation.operationName,
+						effect_id: persistedMutation.effectId,
+						provider_tool_call_id: persistedMutation.providerToolCallId,
+						sequence_index: persistedMutation.sequenceIndex,
+						arguments: persistedMutation.arguments,
+						result: fixture.tool.result,
+						execution_time_ms: persistedMutation.executionTimeMs,
+						tokens_consumed: persistedMutation.tokensConsumed,
+						requires_user_action: persistedMutation.requiresUserAction,
+						success: true,
+						affected_entities: persistedMutation.affectedEntities,
+						message_linked: terminalInput.assistantMessageId !== null
+					}
+				],
+				checkpoints: [],
+				outcome: {
+					status: terminalInput.status,
+					finished_reason: terminalInput.finishedReason,
+					assistant_message_linked: terminalInput.assistantMessageId !== null,
+					tool_round_count: terminalInput.assistantMetadata.tool_round_count,
+					tool_call_count: terminalInput.assistantMetadata.tool_call_count,
+					total_tokens: terminalInput.totalTokens
+				},
+				metadata: {
+					admission: {
+						status: claim.status,
+						context_type: fixtureExecutionInput.requestPayload.context.type,
+						user_message_linked:
+							claim.userMessageId === fixtureExecutionInput.claim.userMessageId
+					},
+					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
+						admissionObserved: true,
+						publicEvents: harness.broadcastMessages.map((message) => message.payload),
+						terminalStatus: terminalInput.status,
+						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
+					}),
+					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
+				}
+			});
+			const evaluation = parityCoverage.evaluate('mutating_tools', worker);
+			expect(effectControl.reserve).toHaveBeenCalledOnce();
+			expect(effectControl.begin).toHaveBeenCalledOnce();
+			expect(effectControl.reconcile).toHaveBeenCalledWith(
+				expect.objectContaining({
+					targetState: 'succeeded',
+					downstreamReceipt: fixture.tool.result
+				})
+			);
+			expect(mutatingTool.execute).toHaveBeenCalledOnce();
+			expect(mutatingTool.execute).toHaveBeenCalledWith(
+				expect.objectContaining({
+					effectId: stable.effectId,
+					downstreamIdempotencyKey: stable.downstreamIdempotencyKey
+				})
+			);
+			expect(ledgerRpc).toHaveBeenCalledOnce();
+			expect(ledgerRpc.mock.calls[0]?.[1]).toMatchObject({
+				p_effect_id: stable.effectId,
+				p_operation_name: fixture.tool.operationName,
+				p_affected_entities: fixture.tool.affectedEntities
+			});
+			expect(evaluation.diff.truncated).toBe(false);
+			const effectDivergences = evaluation.deliberate
+				.map(({ path }) => path)
+				.filter((path) => !path.startsWith('/events/9/payload/timing/'));
+			expect(effectDivergences).toEqual([
+				'/events/5/payload/result/effect_id',
+				'/events/5/payload/result/replayed',
+				'/toolExecutions/0/effect_id'
+			]);
+			expect(
+				evaluation.deliberate
+					.map(({ path }) => path)
+					.filter((path) => path.startsWith('/events/9/payload/timing/')).length
+			).toBeGreaterThan(0);
 			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
 				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
 			);

@@ -7,6 +7,7 @@ import {
 	type AgenticChatParityRunV1
 } from './parity';
 import { AGENTIC_CHAT_PARTIAL_CANCELLATION_GOLDEN_V1 } from './partial-cancellation-parity-fixture';
+import { AGENTIC_CHAT_MUTATING_TOOL_GOLDEN_V1 } from './mutating-tool-parity-fixture';
 import { AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1 } from './provider-error-parity-fixture';
 import { AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1 } from './read-only-tool-parity-fixture';
 import { AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1 } from './text-only-success-parity-fixture';
@@ -103,6 +104,21 @@ function doneEventGapInventory(
 	];
 }
 
+function mutationEffectDivergencePrefixes(golden: AgenticChatParityRunV1): readonly string[] {
+	const resultIndices = golden.events.flatMap((event, index) =>
+		event.type === 'tool_result' ? [index] : []
+	);
+	if (resultIndices.length !== 1 || golden.toolExecutions.length !== 1) {
+		throw new Error('Agentic Chat mutation golden must contain exactly one tool receipt');
+	}
+	const resultIndex = resultIndices[0]!;
+	return [
+		`/events/${resultIndex}/payload/result/effect_id`,
+		`/events/${resultIndex}/payload/result/replayed`,
+		'/toolExecutions/0/effect_id'
+	];
+}
+
 export const AGENTIC_CHAT_PARITY_SCENARIOS_V1: readonly AgenticChatParityScenarioV1[] = [
 	{
 		scenarioClass: 'success',
@@ -130,9 +146,13 @@ export const AGENTIC_CHAT_PARITY_SCENARIOS_V1: readonly AgenticChatParityScenari
 	},
 	{
 		scenarioClass: 'mutating_tools',
-		status: 'blocked',
-		blockedOn:
-			'tasker/51 P2 — mutating tools behind effect reservations; the legacy path has no effect ledger, so the differential contract must first ratify the effect-receipt asymmetry'
+		status: 'implemented',
+		golden: AGENTIC_CHAT_MUTATING_TOOL_GOLDEN_V1,
+		workerDeliberateDivergencePrefixes: [
+			timingDivergencePrefix(AGENTIC_CHAT_MUTATING_TOOL_GOLDEN_V1),
+			...mutationEffectDivergencePrefixes(AGENTIC_CHAT_MUTATING_TOOL_GOLDEN_V1)
+		],
+		workerOpenDivergences: doneEventGapInventory(AGENTIC_CHAT_MUTATING_TOOL_GOLDEN_V1)
 	},
 	{
 		scenarioClass: 'supervisor_checkpoint',

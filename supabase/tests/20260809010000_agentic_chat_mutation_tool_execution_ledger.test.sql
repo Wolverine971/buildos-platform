@@ -127,7 +127,7 @@ SELECT pg_temp.assert_true(
 			AND effect_id = 'f8800000-0000-5000-8000-000000000001'
 			AND provider_tool_call_id = 'mutation-tool-call-1'
 			AND tool_name = 'update_onto_task'
-			AND tool_category = 'write'
+			AND tool_category = 'ontology_action'
 			AND gateway_op = 'onto.task.update'
 			AND sequence_index = 1
 			AND arguments = '{"task_id":"dc000000-0000-4000-8000-000000000001","state_key":"done"}'::jsonb

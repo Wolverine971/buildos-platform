@@ -155,7 +155,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			'20260808010000_agentic_chat_read_tool_categories.sql',
 			'20260808130000_agentic_chat_tool_validation_failure_ledger.sql',
 			'20260808140000_agentic_chat_true_tool_round_count.sql',
-			'20260809010000_agentic_chat_mutation_tool_execution_ledger.sql'
+			'20260809010000_agentic_chat_mutation_tool_execution_ledger.sql',
+			'20260809020000_agentic_chat_mutation_tool_execution_legacy_category.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}

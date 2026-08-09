@@ -810,7 +810,7 @@ export class AgenticChatFixtureTurnExecutor {
 	): Promise<void> {
 		const message =
 			stage === 'acknowledged'
-				? 'Request received. Preparing the workspace context...'
+				? resolveAcknowledgementMessage(executionInput)
 				: 'Finalizing the response...';
 		await this.publishSemantic(
 			executionInput,
@@ -876,6 +876,7 @@ export class AgenticChatFixtureTurnExecutor {
 		eventPayload: JsonObject,
 		signal: AbortSignal
 	): Promise<void> {
+		const acknowledgementMessage = resolveAcknowledgementMessage(executionInput);
 		await this.publishSemantic(
 			executionInput,
 			projection,
@@ -887,7 +888,7 @@ export class AgenticChatFixtureTurnExecutor {
 				}),
 				phase: 'stream',
 				eventType: stage,
-				currentActivity: 'Request received. Preparing the workspace context...',
+				currentActivity: acknowledgementMessage,
 				eventPayload
 			},
 			signal
@@ -935,9 +936,7 @@ export class AgenticChatFixtureTurnExecutor {
 							name: step.toolName,
 							arguments: JSON.stringify(step.arguments)
 						}
-					},
-					mutating: true,
-					operation_name: step.operationName
+					}
 				}
 			},
 			signal
@@ -955,6 +954,7 @@ export class AgenticChatFixtureTurnExecutor {
 			},
 			signal
 		});
+		const telemetry = deriveFixtureMutationTelemetry(step, mutation.downstreamReceipt);
 		const sequenceIndex = terminalContext.toolExecutions.length + 1;
 		// A committed effect must become durable telemetry even if cancellation
 		// arrives after the irreversible boundary. The ledger adapter owns its own
@@ -978,10 +978,10 @@ export class AgenticChatFixtureTurnExecutor {
 				toolName: step.toolName,
 				operationName: step.operationName,
 				arguments: step.arguments,
-				executionTimeMs: null,
-				tokensConsumed: null,
-				requiresUserAction: false,
-				affectedEntities: []
+				executionTimeMs: telemetry.executionTimeMs,
+				tokensConsumed: telemetry.tokensConsumed,
+				requiresUserAction: telemetry.requiresUserAction,
+				affectedEntities: telemetry.affectedEntities
 			},
 			new AbortController().signal
 		);
@@ -1011,7 +1011,10 @@ export class AgenticChatFixtureTurnExecutor {
 						tool_call_id: step.providerToolCallId,
 						tool_name: step.toolName,
 						success: true,
-						mutating: true,
+						tool_category: fixtureMutationToolCategory(step),
+						gateway_op: step.operationName,
+						requires_user_action: telemetry.requiresUserAction,
+						affected_entities: telemetry.affectedEntities,
 						effect_id: mutation.effectId,
 						replayed: mutation.replayed,
 						result: mutation.downstreamReceipt
@@ -2058,6 +2061,27 @@ export class AgenticChatFixtureTurnExecutor {
 	}
 }
 
+function resolveAcknowledgementMessage(executionInput: AgenticChatWorkerExecutionInputV1): string {
+	const context = executionInput.requestPayload.context;
+	const rawContextType =
+		context && typeof context === 'object' && !Array.isArray(context)
+			? (context as JsonObject).type
+			: null;
+	const contextType =
+		rawContextType === 'project_audit' || rawContextType === 'project_forecast'
+			? 'project'
+			: rawContextType === 'general'
+				? 'global'
+				: rawContextType;
+	const scope =
+		contextType === 'project'
+			? 'project'
+			: contextType === 'daily_brief'
+				? 'brief'
+				: 'workspace';
+	return `Request received. Preparing the ${scope} context...`;
+}
+
 function validateJobEnvelope(
 	job: ProcessingJob<AgenticChatTurnJobV1>
 ): AgenticChatExecutionIdentityV1 {
@@ -2110,6 +2134,111 @@ function providerToolCall(
 			arguments: JSON.stringify(step.arguments)
 		}
 	};
+}
+
+function deriveFixtureMutationTelemetry(
+	step: Extract<AgenticChatFixtureProviderStepV1, { type: 'mutating_tool' }>,
+	downstreamReceipt: JsonObject | null
+): {
+	executionTimeMs: number | null;
+	tokensConsumed: number | null;
+	requiresUserAction: boolean;
+	affectedEntities: JsonObject[];
+} {
+	const requiresUserAction = findRequiresUserAction(downstreamReceipt) ?? false;
+	return {
+		executionTimeMs: null,
+		tokensConsumed: null,
+		requiresUserAction,
+		affectedEntities: deriveFixtureMutationAffectedEntities(step, downstreamReceipt)
+	};
+}
+
+function fixtureMutationToolCategory(
+	step: Extract<AgenticChatFixtureProviderStepV1, { type: 'mutating_tool' }>
+): string {
+	return step.operationName.startsWith('onto.') || step.toolName.includes('_onto_')
+		? 'ontology_action'
+		: 'action';
+}
+
+function deriveFixtureMutationAffectedEntities(
+	step: Extract<AgenticChatFixtureProviderStepV1, { type: 'mutating_tool' }>,
+	downstreamReceipt: JsonObject | null
+): JsonObject[] {
+	if (!downstreamReceipt || findRequiresUserAction(downstreamReceipt) === true) return [];
+	const operation = mutationOperation(step.toolName, step.operationName);
+	const kind = mutationEntityKind(step.toolName, step.operationName);
+	if (!operation || !kind) return [];
+
+	const candidate = downstreamReceipt[kind];
+	const entity = isJsonRecord(candidate) ? candidate : downstreamReceipt;
+	const id = firstText(
+		entity.id,
+		entity[`${kind}_id`],
+		step.arguments[`${kind}_id`],
+		step.arguments.id
+	);
+	if (!id) return [];
+	const projectId =
+		kind === 'project'
+			? id
+			: firstText(
+					entity.project_id,
+					entity.projectId,
+					step.arguments.project_id,
+					step.arguments.projectId
+				);
+	const title = firstText(entity.title, entity.name, step.arguments.title, step.arguments.name);
+	const url =
+		kind === 'project'
+			? `/projects/${id}`
+			: projectId
+				? kind === 'document'
+					? `/projects/${projectId}?doc=${id}`
+					: `/projects/${projectId}?entity=${encodeURIComponent(kind)}&entity_id=${id}`
+				: null;
+	return [{ kind, id, title, projectId, operation, url }];
+}
+
+function mutationEntityKind(toolName: string, operationName: string): string | null {
+	const operationMatch = operationName.match(
+		/^onto\.([a-z_]+)\.(?:create|update|delete|move|link)$/
+	);
+	if (operationMatch?.[1]) return operationMatch[1].replace(/s$/, '');
+	const toolMatch = toolName.match(/^(?:create|update|delete|move)_onto_([a-z_]+)$/);
+	return toolMatch?.[1]?.replace(/s$/, '') ?? null;
+}
+
+function mutationOperation(toolName: string, operationName: string): string | null {
+	const source = `${operationName}:${toolName}`;
+	if (source.includes('.create') || toolName.startsWith('create_')) return 'created';
+	if (source.includes('.update') || toolName.startsWith('update_')) return 'updated';
+	if (source.includes('.delete') || toolName.startsWith('delete_')) return 'deleted';
+	if (source.includes('.move') || toolName.startsWith('move_')) return 'moved';
+	if (source.includes('.link') || toolName.includes('link_')) return 'linked';
+	return null;
+}
+
+function findRequiresUserAction(value: unknown, depth = 0): boolean | null {
+	if (!isJsonRecord(value) || depth > 2) return null;
+	const direct = value.requires_user_action ?? value.requiresUserAction;
+	if (typeof direct === 'boolean') return direct;
+	return (
+		findRequiresUserAction(value.result, depth + 1) ??
+		findRequiresUserAction(value.data, depth + 1)
+	);
+}
+
+function isJsonRecord(value: unknown): value is JsonObject {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function firstText(...values: unknown[]): string | null {
+	for (const value of values) {
+		if (typeof value === 'string' && value.trim()) return value.trim();
+	}
+	return null;
 }
 
 function extractContextShift(payload: JsonObject): ContextShiftPayload | null {
