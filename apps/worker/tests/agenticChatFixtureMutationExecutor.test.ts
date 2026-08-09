@@ -145,6 +145,7 @@ describe('AgenticChatFixtureMutationExecutor', () => {
 			})
 		).resolves.toEqual({
 			effectId: harness.stable.effectId,
+			canonicalArgumentHash: harness.stable.canonicalArgumentHash,
 			downstreamIdempotencyKey: harness.stable.downstreamIdempotencyKey,
 			downstreamReceipt: { mutationId: 'mutation-1' },
 			replayed: false
@@ -163,6 +164,24 @@ describe('AgenticChatFixtureMutationExecutor', () => {
 				downstreamReceipt: { mutationId: 'mutation-1' }
 			})
 		);
+	});
+
+	it('rejects cancellation before reservation without creating an effect', async () => {
+		const controller = new AbortController();
+		controller.abort(new Error('cancelled before reservation'));
+		const harness = createHarness();
+
+		await expect(
+			harness.executor.execute({
+				executionInput,
+				processingToken: PROCESSING_TOKEN,
+				step: baseStep,
+				signal: controller.signal
+			})
+		).rejects.toThrow('cancelled before reservation');
+		expect(harness.control.reserve).not.toHaveBeenCalled();
+		expect(harness.control.begin).not.toHaveBeenCalled();
+		expect(harness.mutatingTool.execute).not.toHaveBeenCalled();
 	});
 
 	it('closes a cancelled reservation before begin and never invokes the mutator', async () => {

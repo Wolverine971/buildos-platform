@@ -6,6 +6,7 @@ import {
 	AgenticChatToolExecutionTimeoutError,
 	SupabaseAgenticChatToolExecutionAdapter,
 	createStableAgenticChatToolExecutionIdV1,
+	type AgenticChatMutationToolExecutionPersistInputV1,
 	type AgenticChatToolExecutionPersistInputV1,
 	type AgenticChatToolValidationFailurePersistInputV1
 } from '../src/workers/agentic-chat/toolExecution';
@@ -16,6 +17,7 @@ const TURN_RUN_ID = '30000000-0000-4000-8000-000000000003';
 const QUEUE_JOB_ID = '40000000-0000-4000-8000-000000000004';
 const PROCESSING_TOKEN = '50000000-0000-4000-8000-000000000005';
 const TOOL_EXECUTION_ID = 'f1e584b9-4a0b-5715-b940-50848e21ca38';
+const EFFECT_ID = '60000000-0000-5000-8000-000000000006';
 
 const input: AgenticChatToolExecutionPersistInputV1 = {
 	turnRunId: TURN_RUN_ID,
@@ -53,6 +55,26 @@ const validationFailureInput: AgenticChatToolValidationFailurePersistInputV1 = {
 	arguments: {},
 	toolCategory: 'read',
 	error: 'Tool validation failed: Missing required parameter: project_id'
+};
+
+const mutationInput: AgenticChatMutationToolExecutionPersistInputV1 = {
+	turnRunId: TURN_RUN_ID,
+	userId: USER_ID,
+	queueJobId: QUEUE_JOB_ID,
+	processingToken: PROCESSING_TOKEN,
+	executionGeneration: 2,
+	effectId: EFFECT_ID,
+	canonicalArgumentHash: 'a'.repeat(64),
+	toolExecutionId: TOOL_EXECUTION_ID,
+	sequenceIndex: 1,
+	providerToolCallId: 'mutation-tool-call-1',
+	toolName: 'update_onto_task',
+	operationName: 'onto.task.update',
+	arguments: { task_id: 'da000000-0000-4000-8000-000000000001', state_key: 'done' },
+	executionTimeMs: 12,
+	tokensConsumed: null,
+	requiresUserAction: false,
+	affectedEntities: [{ id: 'da000000-0000-4000-8000-000000000001', type: 'task' }]
 };
 
 function receipt(overrides: Record<string, unknown> = {}) {
@@ -127,6 +149,40 @@ describe('Agentic Chat read-tool execution ledger', () => {
 			p_tool_category: 'read',
 			p_arguments: {},
 			p_error_message: 'Tool validation failed: Missing required parameter: project_id'
+		});
+	});
+
+	it('persists a succeeded mutation through its effect-linked fenced RPC', async () => {
+		const { adapter, rpc } = adapterFor(
+			receipt({
+				provider_tool_call_id: mutationInput.providerToolCallId,
+				tool_name: mutationInput.toolName,
+				effect_id: EFFECT_ID
+			})
+		);
+
+		await expect(adapter.persistMutation(mutationInput)).resolves.toBeUndefined();
+		expect(rpc).toHaveBeenCalledWith('persist_agentic_chat_mutation_tool_execution', {
+			p_turn_run_id: TURN_RUN_ID,
+			p_user_id: USER_ID,
+			p_queue_job_id: QUEUE_JOB_ID,
+			p_processing_token: PROCESSING_TOKEN,
+			p_execution_generation: 2,
+			p_effect_id: EFFECT_ID,
+			p_canonical_argument_hash: 'a'.repeat(64),
+			p_tool_execution_id: TOOL_EXECUTION_ID,
+			p_sequence_index: 1,
+			p_provider_tool_call_id: 'mutation-tool-call-1',
+			p_tool_name: 'update_onto_task',
+			p_operation_name: 'onto.task.update',
+			p_arguments: {
+				task_id: 'da000000-0000-4000-8000-000000000001',
+				state_key: 'done'
+			},
+			p_execution_time_ms: 12,
+			p_tokens_consumed: null,
+			p_requires_user_action: false,
+			p_affected_entities: [{ id: 'da000000-0000-4000-8000-000000000001', type: 'task' }]
 		});
 	});
 

@@ -629,7 +629,10 @@ function createHarness(
 	};
 	const toolExecutions = {
 		persistRead: vi.fn(async () => undefined),
-		persistValidationFailure: vi.fn(async () => undefined)
+		persistValidationFailure: vi.fn(async () => undefined),
+		persistMutation: vi.fn(async () => {
+			log.push('mutation_ledger');
+		})
 	};
 	const executionObservationInputs: AgenticChatExecutionObservationInputV1[] = [];
 	const executionObservations = {
@@ -640,6 +643,7 @@ function createHarness(
 	const mutation = {
 		execute: vi.fn(async () => ({
 			effectId: EFFECT_ID,
+			canonicalArgumentHash: 'a'.repeat(64),
 			downstreamIdempotencyKey: `chat-effect:${EFFECT_ID}`,
 			downstreamReceipt: { mutationId: 'fixture-mutation-1' },
 			replayed: false
@@ -2558,6 +2562,19 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				})
 			})
 		);
+		expect(harness.toolExecutions.persistMutation).toHaveBeenCalledWith(
+			expect.objectContaining({
+				turnRunId: TURN_RUN_ID,
+				effectId: EFFECT_ID,
+				canonicalArgumentHash: 'a'.repeat(64),
+				sequenceIndex: 1,
+				providerToolCallId: 'provider-mutation-call-1',
+				toolName: 'fixture_project_write',
+				operationName: 'update_project',
+				arguments: { projectId: 'project-1', name: 'Updated' }
+			}),
+			expect.any(AbortSignal)
+		);
 		const toolResultInput = harness.semanticInputs.find(
 			(input) => (input.event_payload as Record<string, unknown>)?.type === 'tool_result'
 		);
@@ -2569,6 +2586,72 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				result: { mutationId: 'fixture-mutation-1' }
 			}
 		});
+		expect(harness.log.indexOf('mutation_ledger')).toBeLessThan(
+			harness.log.indexOf('semantic:tool_result:')
+		);
+		await harness.publisher.stop();
+	});
+
+	it('persists a committed mutation receipt before honoring post-begin cancellation', async () => {
+		const harness = createHarness(
+			[
+				{
+					type: 'mutating_tool',
+					callTransitionId: CALL_TRANSITION_ID,
+					resultTransitionId: RESULT_TRANSITION_ID,
+					logicalOperationId: LOGICAL_OPERATION_ID,
+					providerToolCallId: 'provider-mutation-call-cancelled',
+					toolName: 'fixture_project_write',
+					operationName: 'update_project',
+					arguments: { projectId: 'project-1', name: 'Updated' },
+					downstreamIdempotencySupported: true
+				},
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{
+				recovery: [
+					recoveryReceipt('finalize_cancelled'),
+					recoveryReceipt('queue_reconciled', {
+						status: 'cancelled',
+						failure_code: 'cancelled'
+					})
+				]
+			}
+		);
+		harness.mutation.execute.mockImplementationOnce(async () => {
+			harness.cancellationController.abort(
+				new AgenticChatCancellationError({
+					turn_run_id: TURN_RUN_ID,
+					execution_generation: EXECUTION_GENERATION,
+					signal_id: 'c0000000-0000-4000-8000-00000000000c',
+					cancel_reason: 'user_cancelled',
+					cancel_source: 'user',
+					cancel_requested_at: '2026-08-03T12:00:00.000Z',
+					consumed_at: '2026-08-03T12:00:00.100Z'
+				})
+			);
+			return {
+				effectId: EFFECT_ID,
+				canonicalArgumentHash: 'a'.repeat(64),
+				downstreamIdempotencyKey: `chat-effect:${EFFECT_ID}`,
+				downstreamReceipt: { mutationId: 'fixture-mutation-1' },
+				replayed: false
+			};
+		});
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'cancelled',
+			terminalStatus: 'cancelled'
+		});
+		expect(harness.toolExecutions.persistMutation).toHaveBeenCalledOnce();
+		expect(
+			harness.semanticInputs.some(
+				(input) => (input.event_payload as Record<string, unknown>)?.type === 'tool_result'
+			)
+		).toBe(false);
+		expect(harness.control.recover).toHaveBeenCalledWith(
+			expect.objectContaining({ failureClass: 'cancelled' })
+		);
 		await harness.publisher.stop();
 	});
 

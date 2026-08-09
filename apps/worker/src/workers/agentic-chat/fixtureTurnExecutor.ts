@@ -612,9 +612,9 @@ export class AgenticChatFixtureTurnExecutor {
 							projection,
 							terminalContext,
 							step,
+							markToolExecution,
 							combined.signal
 						);
-						markToolExecution();
 						continue;
 					}
 
@@ -900,6 +900,7 @@ export class AgenticChatFixtureTurnExecutor {
 		projection: ProjectionState,
 		terminalContext: TerminalContextState,
 		step: Extract<AgenticChatFixtureProviderStepV1, { type: 'mutating_tool' }>,
+		markToolExecution: () => void,
 		signal: AbortSignal
 	): Promise<void> {
 		canonicalUuid(step.callTransitionId, 'callTransitionId');
@@ -941,22 +942,59 @@ export class AgenticChatFixtureTurnExecutor {
 			},
 			signal
 		);
-		const mutation = await abortable(
-			this.ports.mutation.execute({
-				executionInput,
-				processingToken,
-				step: {
-					logicalOperationId: step.logicalOperationId,
-					providerToolCallId: step.providerToolCallId,
-					toolName: step.toolName,
-					operationName: step.operationName,
-					arguments: step.arguments,
-					downstreamIdempotencySupported: step.downstreamIdempotencySupported
-				},
-				signal
-			}),
+		const mutation = await this.ports.mutation.execute({
+			executionInput,
+			processingToken,
+			step: {
+				logicalOperationId: step.logicalOperationId,
+				providerToolCallId: step.providerToolCallId,
+				toolName: step.toolName,
+				operationName: step.operationName,
+				arguments: step.arguments,
+				downstreamIdempotencySupported: step.downstreamIdempotencySupported
+			},
 			signal
+		});
+		const sequenceIndex = terminalContext.toolExecutions.length + 1;
+		// A committed effect must become durable telemetry even if cancellation
+		// arrives after the irreversible boundary. The ledger adapter owns its own
+		// bounded deadline; a fresh signal prevents user cancellation from hiding
+		// an already-committed mutation receipt.
+		await this.ports.toolExecutions.persistMutation(
+			{
+				turnRunId: executionInput.claim.turnRunId,
+				queueJobId: executionInput.claim.queueJobId,
+				processingToken,
+				userId: executionInput.claim.userId,
+				executionGeneration: executionInput.claim.executionGeneration,
+				effectId: mutation.effectId,
+				canonicalArgumentHash: mutation.canonicalArgumentHash,
+				toolExecutionId: createStableAgenticChatToolExecutionIdV1({
+					turnRunId: executionInput.claim.turnRunId,
+					sequenceIndex
+				}),
+				sequenceIndex,
+				providerToolCallId: step.providerToolCallId,
+				toolName: step.toolName,
+				operationName: step.operationName,
+				arguments: step.arguments,
+				executionTimeMs: null,
+				tokensConsumed: null,
+				requiresUserAction: false,
+				affectedEntities: []
+			},
+			new AbortController().signal
 		);
+		const chatToolResult: ChatToolResult = {
+			tool_call_id: step.providerToolCallId,
+			result: mutation.downstreamReceipt,
+			success: true
+		};
+		terminalContext.toolExecutions.push({
+			toolCall: providerToolCall(step),
+			result: chatToolResult
+		});
+		markToolExecution();
 		throwIfAborted(signal);
 		await this.publishSemantic(
 			executionInput,
@@ -982,14 +1020,6 @@ export class AgenticChatFixtureTurnExecutor {
 			},
 			signal
 		);
-		terminalContext.toolExecutions.push({
-			toolCall: providerToolCall(step),
-			result: {
-				tool_call_id: step.providerToolCallId,
-				result: mutation.downstreamReceipt,
-				success: true
-			}
-		});
 	}
 
 	private async executeReadTool(

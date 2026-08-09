@@ -42,6 +42,7 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	let readToolLedgerOutput = '';
 	let validationFailureLedgerOutput = '';
 	let trueToolRoundCountOutput = '';
+	let mutationToolLedgerOutput = '';
 	let trueToolRoundCountReplayOutput = '';
 
 	const applySqlFile = (path: string): string =>
@@ -153,7 +154,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			'20260806020000_agentic_chat_timing_evidence_repair.sql',
 			'20260808010000_agentic_chat_read_tool_categories.sql',
 			'20260808130000_agentic_chat_tool_validation_failure_ledger.sql',
-			'20260808140000_agentic_chat_true_tool_round_count.sql'
+			'20260808140000_agentic_chat_true_tool_round_count.sql',
+			'20260809010000_agentic_chat_mutation_tool_execution_ledger.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}
@@ -187,6 +189,9 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 				'supabase/tests/20260808130000_agentic_chat_tool_validation_failure_ledger.test.sql'
 			),
 			sqlPath('supabase/tests/20260808140000_agentic_chat_true_tool_round_count.test.sql'),
+			sqlPath(
+				'supabase/tests/20260809010000_agentic_chat_mutation_tool_execution_ledger.test.sql'
+			),
 			sqlPath('supabase/tests/20260806020000_agentic_chat_timing_evidence_repair.test.sql')
 		]);
 		timingOutput = terminalParityOutput;
@@ -195,6 +200,7 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 		readToolLedgerOutput = terminalParityOutput;
 		validationFailureLedgerOutput = terminalParityOutput;
 		trueToolRoundCountOutput = terminalParityOutput;
+		mutationToolLedgerOutput = terminalParityOutput;
 	}, 60_000);
 
 	afterAll(() => {
@@ -254,6 +260,12 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 
 	it('retains the executor-owned provider round count behind the durable call-count fence', () => {
 		expect(trueToolRoundCountOutput).toContain('phase4_slice18_true_tool_round_count_ok');
+	});
+
+	it('links succeeded mutation effects to fenced durable tool telemetry', () => {
+		expect(mutationToolLedgerOutput).toContain(
+			'phase4_p2_slice1_mutation_tool_execution_ledger_ok'
+		);
 	});
 
 	it('reconciles an already-installed S5 finalizer body without weakening its guard', () => {

@@ -11,6 +11,7 @@ import { runWithAbortableDeadline } from './abortableDeadline';
 
 const IDENTITY_VERSION = 'agentic_chat_read_tool_execution_identity_v1';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const DATABASE_TIMESTAMP_PATTERN =
 	/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
 export const AGENTIC_CHAT_TOOL_LEDGER_TIMEOUT_MS = 30_000;
@@ -58,10 +59,31 @@ export type AgenticChatToolValidationFailurePersistInputV1 = AgenticChatExecutio
 	error: string;
 };
 
+export type AgenticChatMutationToolExecutionPersistInputV1 = AgenticChatExecutionIdentityV1 & {
+	userId: string;
+	executionGeneration: number;
+	effectId: string;
+	canonicalArgumentHash: string;
+	toolExecutionId: string;
+	sequenceIndex: number;
+	providerToolCallId: string;
+	toolName: string;
+	operationName: string;
+	arguments: JsonObject;
+	executionTimeMs: number | null;
+	tokensConsumed: number | null;
+	requiresUserAction: boolean | null;
+	affectedEntities: JsonObject[];
+};
+
 export type AgenticChatToolExecutionPortV1 = {
 	persistRead(input: AgenticChatToolExecutionPersistInputV1, signal: AbortSignal): Promise<void>;
 	persistValidationFailure(
 		input: AgenticChatToolValidationFailurePersistInputV1,
+		signal: AbortSignal
+	): Promise<void>;
+	persistMutation(
+		input: AgenticChatMutationToolExecutionPersistInputV1,
 		signal: AbortSignal
 	): Promise<void>;
 };
@@ -180,6 +202,48 @@ export class SupabaseAgenticChatToolExecutionAdapter implements AgenticChatToolE
 		}
 		validatePersistReceipt(data, input);
 	}
+
+	async persistMutation(
+		input: AgenticChatMutationToolExecutionPersistInputV1,
+		signal: AbortSignal = new AbortController().signal
+	): Promise<void> {
+		validateMutationInput(input);
+		const { data, error } = await runWithAbortableDeadline({
+			parentSignal: signal,
+			timeoutMs: this.timeoutMs,
+			createTimeoutError: () => new AgenticChatToolExecutionTimeoutError(this.timeoutMs),
+			run: (deadlineSignal) => {
+				const request = this.client.rpc('persist_agentic_chat_mutation_tool_execution', {
+					p_turn_run_id: input.turnRunId,
+					p_user_id: input.userId,
+					p_queue_job_id: input.queueJobId,
+					p_processing_token: input.processingToken,
+					p_execution_generation: input.executionGeneration,
+					p_effect_id: input.effectId,
+					p_canonical_argument_hash: input.canonicalArgumentHash,
+					p_tool_execution_id: input.toolExecutionId,
+					p_sequence_index: input.sequenceIndex,
+					p_provider_tool_call_id: input.providerToolCallId,
+					p_tool_name: input.toolName,
+					p_operation_name: input.operationName,
+					p_arguments: input.arguments,
+					p_execution_time_ms: input.executionTimeMs,
+					p_tokens_consumed: input.tokensConsumed,
+					p_requires_user_action: input.requiresUserAction,
+					p_affected_entities: input.affectedEntities
+				});
+				return request.abortSignal ? request.abortSignal(deadlineSignal) : request;
+			}
+		});
+		if (error) {
+			throw new AgenticChatToolExecutionRpcError(
+				error.code ?? '',
+				error.message,
+				'persist_agentic_chat_mutation_tool_execution'
+			);
+		}
+		validatePersistReceipt(data, input, input.effectId);
+	}
 }
 
 export function createStableAgenticChatToolExecutionIdV1(input: {
@@ -247,6 +311,34 @@ function validateValidationFailureInput(
 	canonicalText(input.error, 4_000, 'error');
 }
 
+function validateMutationInput(input: AgenticChatMutationToolExecutionPersistInputV1): void {
+	validateCommonInput(input);
+	canonicalUuid(input.effectId, 'effectId');
+	if (!SHA256_PATTERN.test(input.canonicalArgumentHash)) {
+		throw protocolError('canonicalArgumentHash is invalid');
+	}
+	canonicalText(input.operationName, 256, 'operationName');
+	canonicalizeAgenticChatJson(input.affectedEntities as unknown as JsonValue);
+	if (
+		input.affectedEntities.some(
+			(entity) => !entity || typeof entity !== 'object' || Array.isArray(entity)
+		)
+	) {
+		throw protocolError('affectedEntities is invalid');
+	}
+	for (const [label, value] of [
+		['executionTimeMs', input.executionTimeMs],
+		['tokensConsumed', input.tokensConsumed]
+	] as const) {
+		if (value !== null && (!Number.isSafeInteger(value) || value < 0)) {
+			throw protocolError(`${label} is invalid`);
+		}
+	}
+	if (input.requiresUserAction !== null && typeof input.requiresUserAction !== 'boolean') {
+		throw protocolError('requiresUserAction is invalid');
+	}
+}
+
 function validateCommonInput(
 	input: Omit<AgenticChatToolExecutionPersistInputV1, 'execution'>
 ): void {
@@ -277,7 +369,8 @@ function validateCommonInput(
 
 function validatePersistReceipt(
 	data: unknown,
-	input: Omit<AgenticChatToolExecutionPersistInputV1, 'execution'>
+	input: Omit<AgenticChatToolExecutionPersistInputV1, 'execution'>,
+	expectedEffectId?: string
 ): void {
 	if (!data || typeof data !== 'object' || Array.isArray(data)) {
 		throw protocolError('RPC returned no receipt');
@@ -301,6 +394,7 @@ function validatePersistReceipt(
 			receipt.sequence_index !== input.sequenceIndex ||
 			receipt.provider_tool_call_id !== input.providerToolCallId ||
 			receipt.tool_name !== input.toolName ||
+			(expectedEffectId !== undefined && receipt.effect_id !== expectedEffectId) ||
 			receipt.message_id !== null ||
 			!isTimestamp(receipt.created_at)
 		) {

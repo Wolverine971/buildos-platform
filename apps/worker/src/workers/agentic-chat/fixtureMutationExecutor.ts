@@ -32,6 +32,7 @@ export type AgenticChatFixtureMutatingToolPortV1 = {
 
 export type AgenticChatFixtureMutationResultV1 = {
 	effectId: string;
+	canonicalArgumentHash: string;
 	downstreamIdempotencyKey: string;
 	downstreamReceipt: JsonObject | null;
 	replayed: boolean;
@@ -92,6 +93,7 @@ export class AgenticChatFixtureMutationExecutor {
 		step: AgenticChatFixtureMutationStepV1;
 		signal: AbortSignal;
 	}): Promise<AgenticChatFixtureMutationResultV1> {
+		if (input.signal.aborted) throwAbort(input.signal);
 		const { claim } = input.executionInput;
 		const stableIdentity = createStableAgenticChatEffectIdentityV1({
 			turnRunId: claim.turnRunId,
@@ -118,7 +120,7 @@ export class AgenticChatFixtureMutationExecutor {
 			operationName: input.step.operationName,
 			providerToolCallId: input.step.providerToolCallId
 		});
-		const replay = replaySucceeded(reservation, stableIdentity.downstreamIdempotencyKey);
+		const replay = replaySucceeded(reservation, stableIdentity);
 		if (replay) return replay;
 		if (reservation.state !== 'reserved') throw stateError(reservation);
 
@@ -131,7 +133,7 @@ export class AgenticChatFixtureMutationExecutor {
 			...identity,
 			providerToolCallId: input.step.providerToolCallId
 		});
-		const beginReplay = replaySucceeded(begin, stableIdentity.downstreamIdempotencyKey);
+		const beginReplay = replaySucceeded(begin, stableIdentity);
 		if (beginReplay) return beginReplay;
 		if (begin.outcome !== 'started' || begin.invokeAdapter !== true) {
 			throw stateError(begin);
@@ -170,6 +172,7 @@ export class AgenticChatFixtureMutationExecutor {
 		if (reconciliation.state !== 'succeeded') throw stateError(reconciliation);
 		return {
 			effectId: stableIdentity.effectId,
+			canonicalArgumentHash: stableIdentity.canonicalArgumentHash,
 			downstreamIdempotencyKey: stableIdentity.downstreamIdempotencyKey,
 			downstreamReceipt: reconciliation.downstreamReceipt,
 			replayed: reconciliation.outcome === 'existing'
@@ -227,12 +230,13 @@ export class AgenticChatFixtureMutationExecutor {
 
 function replaySucceeded(
 	receipt: ChatTurnEffectRpcResultV1,
-	downstreamIdempotencyKey: string
+	stableIdentity: ReturnType<typeof createStableAgenticChatEffectIdentityV1>
 ): AgenticChatFixtureMutationResultV1 | null {
 	if (receipt.state !== 'succeeded') return null;
 	return {
 		effectId: receipt.effectId,
-		downstreamIdempotencyKey,
+		canonicalArgumentHash: stableIdentity.canonicalArgumentHash,
+		downstreamIdempotencyKey: stableIdentity.downstreamIdempotencyKey,
 		downstreamReceipt: receipt.downstreamReceipt,
 		replayed: true
 	};
