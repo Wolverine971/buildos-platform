@@ -13,6 +13,24 @@ export type StableAgenticChatEffectIdentityV1 = {
 };
 
 /**
+ * Stable runtime identity for a normalized model write. Provider correlation
+ * ids are deliberately excluded; round and call position are retained across
+ * continuation callbacks and deterministic queue recovery.
+ */
+export function createStableAgenticChatMutationLogicalOperationIdV1(input: {
+	turnRunId: string;
+	providerRound: number;
+	callIndex: number;
+}): string {
+	canonicalUuid(input.turnRunId, 'turnRunId');
+	positiveInteger(input.providerRound, 'providerRound');
+	positiveInteger(input.callIndex, 'callIndex');
+	return uuidFromSha256(
+		`agentic-chat-mutation-logical-operation-v1:${input.turnRunId}:${input.providerRound}:${input.callIndex}`
+	);
+}
+
+/**
  * Builds a runtime-owned effect identity from the stable logical operation.
  * Provider tool-call ids and execution generations are deliberately absent.
  */
@@ -63,6 +81,12 @@ function canonicalName(value: string, label: string): string {
 function canonicalUuid(value: string, label: string): void {
 	if (!UUID_PATTERN.test(value) || value !== value.toLowerCase()) {
 		throw new Error(`${label} must be a canonical UUID`);
+	}
+}
+
+function positiveInteger(value: number, label: string): void {
+	if (!Number.isSafeInteger(value) || value < 1) {
+		throw new Error(`${label} must be a positive safe integer`);
 	}
 }
 

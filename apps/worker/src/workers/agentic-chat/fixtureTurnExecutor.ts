@@ -45,9 +45,11 @@ import {
 import {
 	type AgenticChatPreparedProviderInvocationV1,
 	AgenticChatProviderExecutionError,
+	type AgenticChatProviderMutationSynthesisInputV1,
 	type AgenticChatProviderPortV1,
 	type AgenticChatProviderReadSynthesisInputV1,
 	type AgenticChatProviderStepV1,
+	type AgenticChatProviderToolSynthesisInputV1,
 	type AgenticChatProviderUsageV1
 } from './providerContract';
 import {
@@ -494,7 +496,7 @@ export class AgenticChatFixtureTurnExecutor {
 
 			let finished = false;
 			let promptSnapshotAttempted = false;
-			const pendingReadResults: AgenticChatProviderReadSynthesisInputV1[] = [];
+			const pendingToolResults: AgenticChatProviderToolSynthesisInputV1[] = [];
 			let synthesisStarted = false;
 			let toolCallCount = 0;
 			let continuationRounds = 0;
@@ -556,7 +558,7 @@ export class AgenticChatFixtureTurnExecutor {
 						if (
 							preparedProvider?.synthesize &&
 							!preparedProvider.continueWithToolResults &&
-							(synthesisStarted || pendingReadResults.length > 0)
+							(synthesisStarted || pendingToolResults.length > 0)
 						) {
 							throw new AgenticChatProviderExecutionError(
 								'provider_read_round_limit_exceeded',
@@ -583,19 +585,28 @@ export class AgenticChatFixtureTurnExecutor {
 							combined.signal
 						);
 						if (readResult) {
-							pendingReadResults.push(readResult);
+							pendingToolResults.push(readResult);
 						}
 						continue;
 					}
 					if (step.type === 'mutating_tool') {
 						if (
-							preparedProvider?.synthesize ||
-							preparedProvider?.continueWithToolResults
+							preparedProvider?.synthesize &&
+							!preparedProvider.continueWithToolResults
 						) {
 							throw new AgenticChatProviderExecutionError(
 								'provider_mutating_tool_disabled',
 								'permanent',
-								'Mutating tools are unreachable in the production read-only provider'
+								'Mutating tools require the multi-result provider continuation bridge'
+							);
+						}
+						if (!promptSnapshotAttempted) {
+							promptSnapshotAttempted = true;
+							await this.persistPromptSnapshot(
+								envelope,
+								executionInput,
+								preparedProvider,
+								combined.signal
 							);
 						}
 						toolCallCount += 1;
@@ -606,7 +617,8 @@ export class AgenticChatFixtureTurnExecutor {
 								`Agentic Chat provider exceeded its ${this.maxToolCalls} tool-call budget`
 							);
 						}
-						await this.executeMutatingTool(
+						preparedProvider?.invalidateReadMemo?.();
+						const mutationResult = await this.executeMutatingTool(
 							executionInput,
 							envelope.processingToken,
 							projection,
@@ -615,18 +627,19 @@ export class AgenticChatFixtureTurnExecutor {
 							markToolExecution,
 							combined.signal
 						);
+						pendingToolResults.push(mutationResult);
 						continue;
 					}
 
-					const finishedWithUnreturnedReads =
-						pendingReadResults.length > 0 &&
+					const finishedWithUnreturnedToolResults =
+						pendingToolResults.length > 0 &&
 						(preparedProvider?.continueWithToolResults !== undefined ||
 							(preparedProvider?.synthesize !== undefined && !synthesisStarted));
-					if (finishedWithUnreturnedReads) {
+					if (finishedWithUnreturnedToolResults) {
 						throw new AgenticChatProviderExecutionError(
 							'provider_finished_before_read_synthesis',
 							'unknown',
-							'Provider finished before the durable read result was synthesized'
+							'Provider finished before the durable tool result was synthesized'
 						);
 					}
 					validateFinish(step.finishedReason, step.usage);
@@ -639,7 +652,7 @@ export class AgenticChatFixtureTurnExecutor {
 				}
 				if (finished) break;
 				if (preparedProvider?.continueWithToolResults) {
-					if (pendingReadResults.length === 0) {
+					if (pendingToolResults.length === 0) {
 						throw new Error('Fixture provider ended without a finish step');
 					}
 					throwIfAborted(combined.signal);
@@ -651,7 +664,7 @@ export class AgenticChatFixtureTurnExecutor {
 							`Agentic Chat provider exceeded its ${this.maxProviderRounds} tool-round budget`
 						);
 					}
-					const roundResults = pendingReadResults.splice(0, pendingReadResults.length);
+					const roundResults = pendingToolResults.splice(0, pendingToolResults.length);
 					await logAgenticChatExecutionBoundary(job, executionInput, {
 						stage: 'tool_round',
 						state: 'started',
@@ -677,12 +690,19 @@ export class AgenticChatFixtureTurnExecutor {
 					continue;
 				}
 				if (
-					pendingReadResults.length > 0 &&
+					pendingToolResults.length > 0 &&
 					preparedProvider?.synthesize &&
 					!synthesisStarted
 				) {
 					throwIfAborted(combined.signal);
-					const synthesisFeedback = pendingReadResults[0]!;
+					const synthesisFeedback = pendingToolResults[0]!;
+					if (isMutationSynthesisInput(synthesisFeedback)) {
+						throw new AgenticChatProviderExecutionError(
+							'provider_mutating_tool_disabled',
+							'permanent',
+							'Mutating tools require the multi-result provider continuation bridge'
+						);
+					}
 					await logAgenticChatExecutionBoundary(job, executionInput, {
 						stage: 'synthesis',
 						state: 'started',
@@ -701,7 +721,7 @@ export class AgenticChatFixtureTurnExecutor {
 						});
 						throw error;
 					}
-					pendingReadResults.length = 0;
+					pendingToolResults.length = 0;
 					synthesisStarted = true;
 					roundHadToolExecution = false;
 					continue;
@@ -903,7 +923,7 @@ export class AgenticChatFixtureTurnExecutor {
 		step: Extract<AgenticChatFixtureProviderStepV1, { type: 'mutating_tool' }>,
 		markToolExecution: () => void,
 		signal: AbortSignal
-	): Promise<void> {
+	): Promise<AgenticChatProviderMutationSynthesisInputV1> {
 		canonicalUuid(step.callTransitionId, 'callTransitionId');
 		canonicalUuid(step.resultTransitionId, 'resultTransitionId');
 		canonicalUuid(step.logicalOperationId, 'logicalOperationId');
@@ -1023,6 +1043,27 @@ export class AgenticChatFixtureTurnExecutor {
 			},
 			signal
 		);
+		return {
+			providerToolCallId: step.providerToolCallId,
+			toolName: step.toolName,
+			arguments: step.arguments,
+			execution: {
+				result: mutation.downstreamReceipt,
+				executionTimeMs: telemetry.executionTimeMs,
+				tokensConsumed: telemetry.tokensConsumed,
+				affectedEntities: telemetry.affectedEntities,
+				toolCategory: fixtureMutationToolCategory(step),
+				resultCount: null,
+				zeroResult: null,
+				requiresUserAction: telemetry.requiresUserAction
+			},
+			mutation: {
+				effectId: mutation.effectId,
+				logicalOperationId: step.logicalOperationId,
+				operationName: step.operationName,
+				replayed: mutation.replayed
+			}
+		};
 	}
 
 	private async executeReadTool(
@@ -2505,6 +2546,12 @@ function canonicalUuid(value: unknown, label: string): asserts value is string {
 	if (typeof value !== 'string' || !UUID_PATTERN.test(value) || value !== value.toLowerCase()) {
 		throw new Error(`${label} must be a canonical UUID`);
 	}
+}
+
+function isMutationSynthesisInput(
+	input: AgenticChatProviderToolSynthesisInputV1
+): input is AgenticChatProviderMutationSynthesisInputV1 {
+	return 'mutation' in input;
 }
 
 function canonicalText(value: unknown, maximum: number): value is string {

@@ -112,7 +112,7 @@ export type AgenticChatPreparedProviderInvocationV1 = {
 	/**
 	 * Multi-round continuation (Phase 4 Slice 18 S1). A provider round ends when
 	 * its iterable completes without emitting `finish`; the executor then calls
-	 * this with every read result of that round — each already durable in the
+	 * this with every successful tool result of that round — each already durable in the
 	 * tool-execution ledger and publicly committed as a `tool_result` event —
 	 * and consumes the returned round the same way. Takes precedence over the
 	 * deprecated `synthesize` alias when both are present.
@@ -120,6 +120,8 @@ export type AgenticChatPreparedProviderInvocationV1 = {
 	continueWithToolResults?(
 		input: AgenticChatProviderToolRoundInputV1
 	): AsyncIterable<AgenticChatProviderStepV1>;
+	/** Clear provider-owned pure-read memoization before any write can execute. */
+	invalidateReadMemo?(): void;
 	/** Idempotently release any pre-start capacity reservation. */
 	release(): void;
 };
@@ -131,10 +133,37 @@ export type AgenticChatProviderReadSynthesisInputV1 = {
 	execution: AgenticChatReadToolExecutionV1;
 };
 
+export type AgenticChatProviderMutationSynthesisInputV1 = {
+	providerToolCallId: string;
+	toolName: string;
+	arguments: JsonObject;
+	execution: {
+		result: JsonObject | null;
+		executionTimeMs: number | null;
+		tokensConsumed: number | null;
+		affectedEntities: JsonObject[];
+		toolCategory: string;
+		resultCount: null;
+		zeroResult: null;
+		requiresUserAction: boolean | null;
+	};
+	mutation: {
+		effectId: string;
+		logicalOperationId: string;
+		operationName: string;
+		replayed: boolean;
+	};
+};
+
+export type AgenticChatProviderToolSynthesisInputV1 =
+	| AgenticChatProviderReadSynthesisInputV1
+	| AgenticChatProviderMutationSynthesisInputV1;
+
 export type AgenticChatProviderToolRoundInputV1 = {
 	/** 1-based provider round about to start; the initial `stream()` pass is round 1. */
 	round: number;
-	results: readonly AgenticChatProviderReadSynthesisInputV1[];
+	/** Ordered durable/public results from the preceding provider round. */
+	results: readonly AgenticChatProviderToolSynthesisInputV1[];
 };
 
 /**

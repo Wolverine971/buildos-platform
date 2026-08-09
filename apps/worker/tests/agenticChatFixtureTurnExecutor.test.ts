@@ -2427,6 +2427,166 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		}
 	});
 
+	it('continues one mixed read/write round only after both ordered receipts are durable and public', async () => {
+		const harness = createHarness([]);
+		const invalidateReadMemo = vi.fn(() => harness.log.push('read_memo_invalidated'));
+		harness.toolExecutions.persistRead.mockImplementationOnce(async () => {
+			harness.log.push('read_ledger');
+		});
+		harness.mutation.execute.mockImplementationOnce(async () => {
+			harness.log.push('mutation_adapter');
+			return {
+				effectId: EFFECT_ID,
+				canonicalArgumentHash: 'a'.repeat(64),
+				downstreamIdempotencyKey: `chat-effect:${EFFECT_ID}`,
+				downstreamReceipt: { mutationId: 'fixture-mutation-1' },
+				replayed: false
+			};
+		});
+		const continueWithToolResults = vi.fn(
+			({ results }: { results: ReadonlyArray<Record<string, unknown>> }) => {
+				harness.log.push('continuation');
+				expect(results.map((result) => result.providerToolCallId)).toEqual([
+					'provider-mixed-read',
+					'provider-mixed-write'
+				]);
+				expect(results[0]).not.toHaveProperty('mutation');
+				expect(results[1]).toMatchObject({
+					mutation: {
+						effectId: EFFECT_ID,
+						logicalOperationId: LOGICAL_OPERATION_ID,
+						operationName: 'onto.task.update',
+						replayed: false
+					}
+				});
+				return (async function* () {
+					yield { type: 'text_delta', text: 'The mixed round is complete.' } as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})();
+			}
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-mixed-read',
+							toolName: 'fixture_project_read',
+							arguments: { projectId: 'da000000-0000-4000-8000-000000000001' }
+						} as const;
+						yield {
+							type: 'mutating_tool',
+							callTransitionId: SECOND_CALL_TRANSITION_ID,
+							resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+							logicalOperationId: LOGICAL_OPERATION_ID,
+							providerToolCallId: 'provider-mixed-write',
+							toolName: 'update_onto_task',
+							operationName: 'onto.task.update',
+							arguments: {
+								task_id: 'db000000-0000-4000-8000-000000000002',
+								state_key: 'in_progress'
+							},
+							downstreamIdempotencySupported: false
+						} as const;
+					})(),
+				continueWithToolResults,
+				invalidateReadMemo,
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			expect(invalidateReadMemo).toHaveBeenCalledOnce();
+			expect(harness.log.indexOf('read_memo_invalidated')).toBeLessThan(
+				harness.log.indexOf('mutation_adapter')
+			);
+			expect(harness.log.indexOf('read_ledger')).toBeLessThan(
+				harness.log.indexOf('continuation')
+			);
+			expect(harness.log.indexOf('mutation_ledger')).toBeLessThan(
+				harness.log.indexOf('continuation')
+			);
+			const publicResultIndices = harness.log
+				.map((entry, index) => ({ entry, index }))
+				.filter(({ entry }) => entry === 'semantic:tool_result:')
+				.map(({ index }) => index);
+			expect(publicResultIndices).toHaveLength(2);
+			expect(publicResultIndices[1]).toBeLessThan(harness.log.indexOf('continuation'));
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					assistantMetadata: expect.objectContaining({
+						tool_round_count: 1,
+						tool_call_count: 2
+					})
+				})
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('invalidates provider read memo before a mutation that fails uncertain', async () => {
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('effect_reconciliation_required', {
+					failure_code: 'uncertain_external_commit'
+				})
+			]
+		});
+		const invalidateReadMemo = vi.fn();
+		const continueWithToolResults = vi.fn();
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'mutating_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							logicalOperationId: LOGICAL_OPERATION_ID,
+							providerToolCallId: 'provider-uncertain-write',
+							toolName: 'update_onto_task',
+							operationName: 'onto.task.update',
+							arguments: {
+								task_id: 'db000000-0000-4000-8000-000000000002',
+								state_key: 'in_progress'
+							},
+							downstreamIdempotencySupported: false
+						} as const;
+					})(),
+				continueWithToolResults,
+				invalidateReadMemo,
+				release: vi.fn()
+			}))
+		});
+		harness.mutation.execute.mockRejectedValueOnce(
+			new AgenticChatEffectExecutionError(
+				'uncertain_external_commit',
+				EFFECT_ID,
+				'connection closed after possible commit'
+			)
+		);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'effect_reconciliation_required',
+				terminalStatus: null
+			});
+			expect(invalidateReadMemo).toHaveBeenCalledOnce();
+			expect(harness.mutation.execute).toHaveBeenCalledOnce();
+			expect(continueWithToolResults).not.toHaveBeenCalled();
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it('persists parallel provider reads sequentially before replaying the ordered round', async () => {
 		const harness = createHarness([]);
 		const continueWithToolResults = vi.fn(

@@ -41,9 +41,11 @@ import {
 	type AgenticChatProviderPortV1,
 	type AgenticChatProviderReadSynthesisInputV1,
 	type AgenticChatProviderStepV1,
+	type AgenticChatProviderToolSynthesisInputV1,
 	type AgenticChatProviderUsageV1
 } from './providerContract';
 import { AgenticChatProviderCapacity, AgenticChatProviderCapacityError } from './providerCapacity';
+import { createStableAgenticChatMutationLogicalOperationIdV1 } from './effectIdentity';
 import { createStableAgenticChatReadToolTransitionIdV1 } from './readToolIdentity';
 import {
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
@@ -57,6 +59,7 @@ const MAX_VALIDATION_REPAIR_ROUNDS = 2;
 const MAX_FORCED_SYNTHESIS_RETRIES = 1;
 const CANONICAL_UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const REVIEWED_MUTATION_TOOL_NAMES = new Set(['update_onto_task']);
 
 const WORKER_READ_LOOP_CATALOG_ENTRIES = AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.map(
 	(toolName) => {
@@ -64,16 +67,31 @@ const WORKER_READ_LOOP_CATALOG_ENTRIES = AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES
 		return [toolName, { op, tool_name: toolName, kind: 'read' as const }] as const;
 	}
 );
-const WORKER_READ_LOOP_CATALOG = Object.freeze({
+const WORKER_MUTATION_LOOP_CATALOG_ENTRIES = [
+	[
+		'update_onto_task',
+		{ op: 'onto.task.update', tool_name: 'update_onto_task', kind: 'write' as const }
+	]
+] as const;
+const WORKER_LOOP_CATALOG = Object.freeze({
 	ops: Object.freeze(
-		Object.fromEntries(WORKER_READ_LOOP_CATALOG_ENTRIES.map(([, entry]) => [entry.op, entry]))
+		Object.fromEntries(
+			[...WORKER_READ_LOOP_CATALOG_ENTRIES, ...WORKER_MUTATION_LOOP_CATALOG_ENTRIES].map(
+				([, entry]) => [entry.op, entry]
+			)
+		)
 	),
-	byToolName: Object.freeze(Object.fromEntries(WORKER_READ_LOOP_CATALOG_ENTRIES))
+	byToolName: Object.freeze(
+		Object.fromEntries([
+			...WORKER_READ_LOOP_CATALOG_ENTRIES,
+			...WORKER_MUTATION_LOOP_CATALOG_ENTRIES
+		])
+	)
 });
 
 // Worker and web are separate hosts. Web installs its full registry; the
-// worker installs exactly the reviewed read-only catalog it can execute.
-provideAgenticChatLoopToolCatalog(() => WORKER_READ_LOOP_CATALOG);
+// worker installs reviewed reads plus capability-gated mutation identities.
+provideAgenticChatLoopToolCatalog(() => WORKER_LOOP_CATALOG);
 
 export type AgenticChatReadOnlyProviderMessageV1 = {
 	role: 'system' | 'user' | 'assistant' | 'tool';
@@ -130,7 +148,13 @@ export type AgenticChatReadOnlyProviderClientPortV1 = {
 	}): AsyncIterable<AgenticChatReadOnlyProviderClientEventV1>;
 };
 
-type ClientRequest = Parameters<AgenticChatReadOnlyProviderClientPortV1['stream']>[0];
+type ClientRequest = Parameters<AgenticChatReadOnlyProviderClientPortV1['stream']>[0] & {
+	logicalProviderRound: number;
+};
+
+export type AgenticChatProviderMutationCapabilitiesV1 = {
+	updateOntoTask: boolean;
+};
 
 type CompletedProviderToolCall = {
 	id: string;
@@ -139,15 +163,26 @@ type CompletedProviderToolCall = {
 	canonicalArguments: string;
 };
 
-type PendingReadRound = {
-	calls: readonly CompletedProviderToolCall[];
+type NormalizedProviderToolCall = CompletedProviderToolCall &
+	(
+		| { kind: 'read' }
+		| {
+				kind: 'mutation';
+				logicalOperationId: string;
+				operationName: 'onto.task.update';
+				downstreamIdempotencySupported: false;
+		  }
+	);
+
+type PendingToolRound = {
+	calls: readonly NormalizedProviderToolCall[];
 	usage: AgenticChatProviderUsageV1 | null;
 };
 
-type ReadRoundStreamState = {
+type ToolRoundStreamState = {
 	release(): void;
-	setPendingRead(value: PendingReadRound): void;
-	markReadRoundCompleted(): void;
+	setPendingToolRound(value: PendingToolRound): void;
+	markToolRoundCompleted(): void;
 	setCurrentRequest(value: ClientRequest): void;
 	resolveMemoServed(call: CompletedProviderToolCall): AgenticChatReadToolExecutionV1 | null;
 };
@@ -158,9 +193,10 @@ type ReadRoundStreamState = {
  * the first network call only after the executor wins execution-start.
  *
  * The reviewed surface is the immutable admission artifact intersected with
- * the worker's shared read allowlist. Mutating tools are absent. Slice 18 S4
- * keeps provider calls sequential and routes each durable read result through
- * the shared payload and round policies before another provider pass begins.
+ * the worker's shared read allowlist and explicit mutation capabilities. The
+ * default capability set is empty. Provider calls stay sequential and every
+ * durable tool result crosses the shared payload and round policies before
+ * another provider pass begins.
  */
 export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPortV1 {
 	constructor(
@@ -169,7 +205,10 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			capacity: AgenticChatProviderCapacity;
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
-		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS
+		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
+		private readonly mutationCapabilities: AgenticChatProviderMutationCapabilitiesV1 = {
+			updateOntoTask: false
+		}
 	) {
 		if (
 			!Number.isSafeInteger(retryableFailureCooldownMs) ||
@@ -194,7 +233,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		const request = buildReadOnlyRequest(
 			input.executionInput,
 			input.processingToken,
-			input.signal
+			input.signal,
+			this.mutationCapabilities
 		);
 		const promptSnapshot = buildPromptSnapshot(request.messages);
 		let lease;
@@ -215,16 +255,15 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let streamed = false;
 		let synthesized = false;
 		let continued = false;
-		let pendingRead: PendingReadRound | null = null;
-		let readRoundCompleted = false;
+		let pendingToolRound: PendingToolRound | null = null;
+		let toolRoundCompleted = false;
 		let currentRequest = request;
 		let nextProviderRound = 2;
 		let readOnlyRoundCount = 0;
 		let readLoopRepairRank = 0;
 		const readOps = new Set<string>();
-		// P1 exposes no writes. When a future worker surface admits them, the
-		// round bridge must clear this memo as soon as any call reaches the write
-		// executor (successful or not), matching the legacy invalidation fence.
+		// The executor clears this memo as soon as any call reaches the write
+		// boundary (successful or not), matching the legacy invalidation fence.
 		const turnReadMemo = new Map<string, AgenticChatReadToolExecutionV1>();
 		const contextGatheringLedger = new ContextGatheringLedger();
 		const admissionContextUsage = getAdmissionContextUsage(input.executionInput);
@@ -233,13 +272,13 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			released = true;
 			lease.release();
 		};
-		const buildStreamState = (): ReadRoundStreamState => ({
+		const buildStreamState = (): ToolRoundStreamState => ({
 			release,
-			setPendingRead(value) {
-				pendingRead = value;
+			setPendingToolRound(value) {
+				pendingToolRound = value;
 			},
-			markReadRoundCompleted() {
-				readRoundCompleted = true;
+			markToolRoundCompleted() {
+				toolRoundCompleted = true;
 			},
 			setCurrentRequest(value) {
 				currentRequest = value;
@@ -272,7 +311,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (released) {
 					throw providerError('provider_invocation_released', 'unknown');
 				}
-				if (!streamed || !pendingRead || !readRoundCompleted) {
+				if (!streamed || !pendingToolRound || !toolRoundCompleted) {
 					throw providerError('provider_read_synthesis_not_ready', 'unknown');
 				}
 				if (synthesized) {
@@ -284,15 +323,18 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						'unknown'
 					);
 				}
-				if (pendingRead.calls.length !== 1) {
+				if (pendingToolRound.calls.length !== 1) {
 					throw providerError('provider_read_synthesis_result_count_invalid', 'unknown');
 				}
-				const pendingCall = pendingRead.calls[0]!;
+				const pendingCall = pendingToolRound.calls[0]!;
+				if (pendingCall.kind !== 'read') {
+					throw providerError('provider_mutating_tool_disabled', 'permanent');
+				}
 				validateReadFeedback(pendingCall, feedback);
 				synthesized = true;
 				return this.streamSynthesis(
 					buildSynthesisRequest(currentRequest, pendingCall, feedback),
-					pendingRead.usage,
+					pendingToolRound.usage,
 					release
 				);
 			},
@@ -303,13 +345,13 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (synthesized) {
 					throw providerError('provider_read_continuation_reused', 'unknown');
 				}
-				if (!streamed || !pendingRead || !readRoundCompleted) {
+				if (!streamed || !pendingToolRound || !toolRoundCompleted) {
 					throw providerError('provider_read_continuation_not_ready', 'unknown');
 				}
 				if (input.round !== nextProviderRound) {
 					throw providerError('provider_read_continuation_round_mismatch', 'unknown');
 				}
-				if (input.results.length !== pendingRead.calls.length) {
+				if (input.results.length !== pendingToolRound.calls.length) {
 					throw providerError(
 						'provider_read_continuation_result_count_invalid',
 						'unknown'
@@ -317,11 +359,21 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 
 				continued = true;
-				const completedRead = pendingRead;
-				const roundExecutions = completedRead.calls.map((call, index) => {
+				const completedToolRound = pendingToolRound;
+				const roundContainsMutation = completedToolRound.calls.some(
+					(call) => call.kind === 'mutation'
+				);
+				if (roundContainsMutation) turnReadMemo.clear();
+				const roundExecutions = completedToolRound.calls.map((call, index) => {
 					const feedback = input.results[index]!;
-					validateReadFeedback(call, feedback);
-					memoizeCompletedRead(turnReadMemo, call, feedback.execution);
+					validateToolFeedback(call, feedback);
+					if (
+						!roundContainsMutation &&
+						call.kind === 'read' &&
+						!isMutationFeedback(feedback)
+					) {
+						memoizeCompletedRead(turnReadMemo, call, feedback.execution);
+					}
 					return {
 						toolCall: completedProviderCallToChatToolCall(call),
 						result: executionToChatToolResult(call.id, feedback.execution)
@@ -334,7 +386,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 
 				currentRequest = buildContinuationRequest(
 					currentRequest,
-					completedRead.calls,
+					completedToolRound.calls,
 					input.results
 				);
 				const ledgerObservation = contextGatheringLedger.observeToolRound({
@@ -377,31 +429,32 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					currentRequest = forceToolFreeRequest(currentRequest);
 				}
 
-				pendingRead = null;
-				readRoundCompleted = false;
+				pendingToolRound = null;
+				toolRoundCompleted = false;
 				nextProviderRound += 1;
 				return forceNoToolSynthesis
-					? this.streamForcedSynthesis(currentRequest, completedRead.usage, release)
+					? this.streamForcedSynthesis(currentRequest, completedToolRound.usage, release)
 					: this.streamContinuation(
 							currentRequest,
-							completedRead.usage,
+							completedToolRound.usage,
 							buildStreamState()
 						);
 			},
+			invalidateReadMemo: () => turnReadMemo.clear(),
 			release
 		};
 	}
 
 	private async *streamInitial(
 		request: ClientRequest,
-		state: ReadRoundStreamState
+		state: ToolRoundStreamState
 	): AsyncGenerator<AgenticChatProviderStepV1> {
 		let finished = false;
 		let keepLeaseForSynthesis = false;
 		let streamedText = false;
 		const toolCalls = createToolCallAccumulator();
 		try {
-			for await (const event of this.ports.client.stream(request)) {
+			for await (const event of this.ports.client.stream(providerClientRequest(request))) {
 				throwIfAborted(request.signal);
 				if (finished) {
 					throw providerError('provider_event_after_done', 'unknown');
@@ -478,17 +531,17 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						);
 						continue;
 					}
-					state.setPendingRead({ calls, usage: normalizeUsage(event.usage) });
+					const normalizedCalls = normalizeCompletedProviderCalls(request, calls);
+					state.setPendingToolRound({
+						calls: normalizedCalls,
+						usage: normalizeUsage(event.usage)
+					});
 					keepLeaseForSynthesis = true;
-					yield buildPlanningStep(request, calls[0]!.id);
-					for (const call of calls) {
-						yield buildReadToolStep(
-							request.turnRunId,
-							call,
-							state.resolveMemoServed(call)
-						);
+					yield buildPlanningStep(request, normalizedCalls[0]!.id);
+					for (const call of normalizedCalls) {
+						yield buildProviderToolStep(request.turnRunId, call, state);
 					}
-					state.markReadRoundCompleted();
+					state.markToolRoundCompleted();
 					continue;
 				}
 				if (finishedReason === 'tool_calls' || finishedReason === 'function_call') {
@@ -518,7 +571,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 	private async *streamContinuation(
 		request: ClientRequest,
 		priorUsage: AgenticChatProviderUsageV1 | null,
-		state: ReadRoundStreamState,
+		state: ToolRoundStreamState,
 		validationRepairRounds = 0,
 		emitPlanningSemantic = false
 	): AsyncGenerator<AgenticChatProviderStepV1> {
@@ -527,7 +580,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let streamedText = false;
 		const toolCalls = createToolCallAccumulator();
 		try {
-			for await (const event of this.ports.client.stream(request)) {
+			for await (const event of this.ports.client.stream(providerClientRequest(request))) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
@@ -605,19 +658,16 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						);
 						continue;
 					}
-					state.setPendingRead({ calls, usage: aggregateUsage });
+					const normalizedCalls = normalizeCompletedProviderCalls(request, calls);
+					state.setPendingToolRound({ calls: normalizedCalls, usage: aggregateUsage });
 					keepLeaseForContinuation = true;
 					if (emitPlanningSemantic) {
-						yield buildPlanningStep(request, calls[0]!.id);
+						yield buildPlanningStep(request, normalizedCalls[0]!.id);
 					}
-					for (const call of calls) {
-						yield buildReadToolStep(
-							request.turnRunId,
-							call,
-							state.resolveMemoServed(call)
-						);
+					for (const call of normalizedCalls) {
+						yield buildProviderToolStep(request.turnRunId, call, state);
 					}
-					state.markReadRoundCompleted();
+					state.markToolRoundCompleted();
 					continue;
 				}
 				if (finishedReason === 'tool_calls' || finishedReason === 'function_call') {
@@ -655,7 +705,9 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				let finishedReason = 'stop';
 				let passUsage: AgenticChatProviderUsageV1 | null = null;
 
-				for await (const event of this.ports.client.stream(currentRequest)) {
+				for await (const event of this.ports.client.stream(
+					providerClientRequest(currentRequest)
+				)) {
 					throwIfAborted(currentRequest.signal);
 					if (finished) throw providerError('provider_event_after_done', 'unknown');
 					if (event.type === 'text') {
@@ -723,7 +775,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let finished = false;
 		let streamedText = false;
 		try {
-			for await (const event of this.ports.client.stream(request)) {
+			for await (const event of this.ports.client.stream(providerClientRequest(request))) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
@@ -906,6 +958,39 @@ function validateReadFeedback(
 	canonicalizeAgenticChatJson(feedback.execution.result as JsonValue);
 }
 
+function validateToolFeedback(
+	call: NormalizedProviderToolCall,
+	feedback: AgenticChatProviderToolSynthesisInputV1
+): void {
+	if (
+		feedback.providerToolCallId !== call.id ||
+		feedback.toolName !== call.name ||
+		canonicalizeAgenticChatJson(feedback.arguments as JsonValue) !== call.canonicalArguments
+	) {
+		throw providerError('provider_read_feedback_mismatch', 'unknown');
+	}
+	canonicalizeAgenticChatJson(feedback.execution.result as JsonValue);
+	if (call.kind === 'read') {
+		if (isMutationFeedback(feedback)) {
+			throw providerError('provider_tool_feedback_kind_mismatch', 'unknown');
+		}
+		return;
+	}
+	if (
+		!isMutationFeedback(feedback) ||
+		feedback.mutation.logicalOperationId !== call.logicalOperationId ||
+		feedback.mutation.operationName !== call.operationName
+	) {
+		throw providerError('provider_tool_feedback_kind_mismatch', 'unknown');
+	}
+}
+
+function isMutationFeedback(
+	feedback: AgenticChatProviderToolSynthesisInputV1
+): feedback is Extract<AgenticChatProviderToolSynthesisInputV1, { mutation: unknown }> {
+	return 'mutation' in feedback;
+}
+
 function completedProviderCallToChatToolCall(call: CompletedProviderToolCall): ChatToolCall {
 	return {
 		id: call.id,
@@ -916,7 +1001,7 @@ function completedProviderCallToChatToolCall(call: CompletedProviderToolCall): C
 
 function executionToChatToolResult(
 	toolCallId: string,
-	execution: AgenticChatReadToolExecutionV1
+	execution: AgenticChatProviderToolSynthesisInputV1['execution']
 ): ChatToolResult {
 	return {
 		tool_call_id: toolCallId,
@@ -1035,6 +1120,60 @@ function buildReadToolStep(
 	return memoServed ? { ...base, memoServed } : base;
 }
 
+function normalizeCompletedProviderCalls(
+	request: ClientRequest,
+	calls: readonly CompletedProviderToolCall[]
+): NormalizedProviderToolCall[] {
+	return calls.map((call, index) => {
+		if (isAgenticChatProductionReadToolNameV1(call.name)) {
+			return { ...call, kind: 'read' };
+		}
+		if (call.name === 'update_onto_task') {
+			return {
+				...call,
+				kind: 'mutation',
+				logicalOperationId: createStableAgenticChatMutationLogicalOperationIdV1({
+					turnRunId: request.turnRunId,
+					providerRound: request.logicalProviderRound,
+					callIndex: index + 1
+				}),
+				operationName: 'onto.task.update',
+				downstreamIdempotencySupported: false
+			};
+		}
+		throw providerError('provider_tool_not_allowlisted', 'permanent');
+	});
+}
+
+function buildProviderToolStep(
+	turnRunId: string,
+	call: NormalizedProviderToolCall,
+	state: ToolRoundStreamState
+): AgenticChatProviderStepV1 {
+	if (call.kind === 'read') {
+		return buildReadToolStep(turnRunId, call, state.resolveMemoServed(call));
+	}
+	return {
+		type: 'mutating_tool',
+		callTransitionId: createStableAgenticChatReadToolTransitionIdV1({
+			turnRunId,
+			providerToolCallId: call.id,
+			stage: 'call'
+		}),
+		resultTransitionId: createStableAgenticChatReadToolTransitionIdV1({
+			turnRunId,
+			providerToolCallId: call.id,
+			stage: 'result'
+		}),
+		logicalOperationId: call.logicalOperationId,
+		providerToolCallId: call.id,
+		toolName: call.name,
+		operationName: call.operationName,
+		arguments: call.arguments,
+		downstreamIdempotencySupported: call.downstreamIdempotencySupported
+	};
+}
+
 function buildReadToolStepBase(turnRunId: string, call: CompletedProviderToolCall) {
 	return {
 		type: 'read_tool',
@@ -1070,8 +1209,8 @@ function buildValidationFailureReadToolStep(
 
 function buildContinuationRequest(
 	request: ClientRequest,
-	calls: readonly CompletedProviderToolCall[],
-	feedback: readonly AgenticChatProviderReadSynthesisInputV1[]
+	calls: readonly NormalizedProviderToolCall[],
+	feedback: readonly AgenticChatProviderToolSynthesisInputV1[]
 ): ClientRequest {
 	if (calls.length === 0 || calls.length !== feedback.length) {
 		throw providerError('provider_read_continuation_result_count_invalid', 'unknown');
@@ -1098,6 +1237,7 @@ function buildContinuationRequest(
 	});
 	return {
 		...request,
+		logicalProviderRound: request.logicalProviderRound + 1,
 		providerRound: 'synthesis',
 		messages: [
 			...request.messages,
@@ -1153,6 +1293,7 @@ function buildValidationRepairRequest(
 	return appendSystemInstruction(
 		{
 			...request,
+			logicalProviderRound: request.logicalProviderRound + 1,
 			providerRound: 'synthesis',
 			messages: [
 				...request.messages,
@@ -1273,8 +1414,9 @@ function sha256(value: string): string {
 function buildReadOnlyRequest(
 	input: AgenticChatWorkerExecutionInputV1,
 	processingToken: string,
-	signal: AbortSignal
-): Parameters<AgenticChatReadOnlyProviderClientPortV1['stream']>[0] {
+	signal: AbortSignal,
+	mutationCapabilities: AgenticChatProviderMutationCapabilitiesV1
+): ClientRequest {
 	const systemPrompt = requiredContent(input.artifact.prepared.systemPrompt, 'system prompt');
 	const userMessage = requiredContent(input.requestPayload.message, 'user message');
 	const attachments = input.requestPayload.attachments;
@@ -1309,7 +1451,7 @@ function buildReadOnlyRequest(
 
 	const context = requireRecord(input.requestPayload.context, 'request context');
 	const contextType = canonicalRequiredText(context.type, 'context type');
-	const tools = productionReadToolsFor(input);
+	const tools = productionToolsFor(input, mutationCapabilities);
 	return {
 		messages,
 		tools,
@@ -1325,13 +1467,22 @@ function buildReadOnlyRequest(
 		queueJobId: input.claim.queueJobId,
 		processingToken,
 		executionGeneration: input.claim.executionGeneration,
+		logicalProviderRound: 1,
 		providerRound: 'initial',
 		signal
 	};
 }
 
-function productionReadToolsFor(
-	input: AgenticChatWorkerExecutionInputV1
+function providerClientRequest(
+	request: ClientRequest
+): Parameters<AgenticChatReadOnlyProviderClientPortV1['stream']>[0] {
+	const { logicalProviderRound: _logicalProviderRound, ...clientRequest } = request;
+	return clientRequest;
+}
+
+function productionToolsFor(
+	input: AgenticChatWorkerExecutionInputV1,
+	mutationCapabilities: AgenticChatProviderMutationCapabilitiesV1
 ): readonly AgenticChatReadOnlyProviderToolV1[] {
 	const surface = input.artifact.prepared.toolSurface;
 	if (!surface || typeof surface !== 'object' || Array.isArray(surface)) return [];
@@ -1351,7 +1502,8 @@ function productionReadToolsFor(
 		if (
 			!tool ||
 			!selectedNames.has(tool.function.name) ||
-			!isAgenticChatProductionReadToolNameV1(tool.function.name) ||
+			(!isAgenticChatProductionReadToolNameV1(tool.function.name) &&
+				!isEnabledMutationTool(tool.function.name, mutationCapabilities)) ||
 			seen.has(tool.function.name)
 		) {
 			continue;
@@ -1360,6 +1512,17 @@ function productionReadToolsFor(
 		tools.push(tool);
 	}
 	return tools;
+}
+
+function isEnabledMutationTool(
+	toolName: string,
+	capabilities: AgenticChatProviderMutationCapabilitiesV1
+): boolean {
+	return (
+		capabilities.updateOntoTask &&
+		REVIEWED_MUTATION_TOOL_NAMES.has(toolName) &&
+		toolName === 'update_onto_task'
+	);
 }
 
 function readArtifactToolDefinition(value: unknown): AgenticChatReadOnlyProviderToolV1 | null {

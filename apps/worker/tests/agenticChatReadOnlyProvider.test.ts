@@ -10,9 +10,11 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
 import {
 	AgenticChatProviderExecutionError,
+	type AgenticChatProviderMutationSynthesisInputV1,
 	type AgenticChatProviderReadSynthesisInputV1,
 	type AgenticChatProviderStepV1
 } from '../src/workers/agentic-chat/providerContract';
+import { createStableAgenticChatMutationLogicalOperationIdV1 } from '../src/workers/agentic-chat/effectIdentity';
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../src/workers/agentic-chat/readToolIdentity';
 import {
@@ -129,6 +131,24 @@ function readToolDefinition(name: string, description = `Read with ${name}.`) {
 	};
 }
 
+function updateTaskToolDefinition() {
+	return {
+		type: 'function' as const,
+		function: {
+			name: 'update_onto_task',
+			description: 'Update a task.',
+			parameters: {
+				type: 'object',
+				required: ['task_id'],
+				properties: {
+					task_id: { type: 'string' },
+					state_key: { type: 'string' }
+				}
+			}
+		}
+	};
+}
+
 async function collect(stream: AsyncIterable<AgenticChatProviderStepV1>) {
 	const result: AgenticChatProviderStepV1[] = [];
 	for await (const step of stream) result.push(step);
@@ -153,6 +173,34 @@ function durableReadFeedback(
 			resultCount: 1,
 			zeroResult: false,
 			requiresUserAction: false
+		}
+	};
+}
+
+function durableMutationFeedback(input: {
+	providerToolCallId: string;
+	logicalOperationId: string;
+	arguments: JsonObject;
+}): AgenticChatProviderMutationSynthesisInputV1 {
+	return {
+		providerToolCallId: input.providerToolCallId,
+		toolName: 'update_onto_task',
+		arguments: input.arguments,
+		execution: {
+			result: { message: 'Task updated successfully.' },
+			executionTimeMs: null,
+			tokensConsumed: null,
+			affectedEntities: [],
+			toolCategory: 'ontology_action',
+			resultCount: null,
+			zeroResult: null,
+			requiresUserAction: false
+		},
+		mutation: {
+			effectId: 'a3000000-0000-4000-8000-00000000003a',
+			logicalOperationId: input.logicalOperationId,
+			operationName: 'onto.task.update',
+			replayed: false
 		}
 	};
 }
@@ -487,6 +535,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		const project = readToolDefinition('get_project_overview', 'Project schema.');
 		const tasks = readToolDefinition('list_onto_tasks', 'Task-list schema.');
 		const excludedWrite = readToolDefinition('update_onto_project', 'Write schema.');
+		const reviewedButDisabledWrite = updateTaskToolDefinition();
 		const absentFromNames = readToolDefinition('get_field_info', 'Field schema.');
 		const duplicateProject = readToolDefinition('get_project_overview', 'Duplicate schema.');
 		const client = clientWith([
@@ -497,10 +546,19 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity });
 		const invocation = await adapter.prepare({
 			executionInput: executionInputWithReadSurface(
-				[workspace, excludedWrite, project, absentFromNames, duplicateProject, tasks],
+				[
+					workspace,
+					excludedWrite,
+					reviewedButDisabledWrite,
+					project,
+					absentFromNames,
+					duplicateProject,
+					tasks
+				],
 				[
 					'get_workspace_overview',
 					'update_onto_project',
+					'update_onto_task',
 					'get_project_overview',
 					'list_onto_tasks'
 				]
@@ -516,6 +574,119 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				tools: [workspace, project, tasks]
 			})
 		);
+	});
+
+	it('bridges an explicitly enabled mixed read/write round in provider order', async () => {
+		const taskId = 'db000000-0000-4000-8000-000000000002';
+		const mutationArguments = { task_id: taskId, state_key: 'in_progress' };
+		const logicalOperationId = createStableAgenticChatMutationLogicalOperationIdV1({
+			turnRunId: TURN_RUN_ID,
+			providerRound: 1,
+			callIndex: 2
+		});
+		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-read-before-write',
+							type: 'function',
+							function: {
+								name: 'get_project_overview',
+								arguments: `{"marker":"before","project_id":"${QUEUE_JOB_ID}"}`
+							}
+						},
+						{
+							index: 1,
+							id: 'provider-update-task',
+							type: 'function',
+							function: {
+								name: 'update_onto_task',
+								arguments: JSON.stringify(mutationArguments)
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			],
+			[
+				{ type: 'text', content: 'The task is now in progress.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity }, 2_000, 16, {
+			updateOntoTask: true
+		});
+		const readDefinition = readToolDefinition('get_project_overview');
+		const updateDefinition = updateTaskToolDefinition();
+		const invocation = await adapter.prepare({
+			executionInput: executionInputWithReadSurface(
+				[readDefinition, updateDefinition],
+				['get_project_overview', 'update_onto_task']
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const firstRound = await collect(invocation.stream());
+		expect(firstRound).toEqual([
+			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
+			expect.objectContaining({
+				type: 'read_tool',
+				providerToolCallId: 'provider-read-before-write'
+			}),
+			expect.objectContaining({
+				type: 'mutating_tool',
+				providerToolCallId: 'provider-update-task',
+				logicalOperationId,
+				operationName: 'onto.task.update',
+				downstreamIdempotencySupported: false
+			})
+		]);
+		expect(client.stream.mock.calls[0]?.[0].tools).toEqual([readDefinition, updateDefinition]);
+
+		invocation.invalidateReadMemo?.();
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedback('provider-read-before-write', {
+							marker: 'before',
+							project_id: QUEUE_JOB_ID
+						}),
+						durableMutationFeedback({
+							providerToolCallId: 'provider-update-task',
+							logicalOperationId,
+							arguments: mutationArguments
+						})
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'The task is now in progress.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		const continuationMessages = client.stream.mock.calls[1]?.[0].messages;
+		expect(continuationMessages.at(-3)?.tool_calls?.map((call) => call.id)).toEqual([
+			'provider-read-before-write',
+			'provider-update-task'
+		]);
+		expect(continuationMessages.slice(-2).map((message) => message.tool_call_id)).toEqual([
+			'provider-read-before-write',
+			'provider-update-task'
+		]);
 	});
 
 	it('continues sequential read rounds with compacted durable feedback', async () => {
@@ -807,6 +978,75 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			)?.tool_call_id
 		).toBe('provider-read-2');
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('clears an already memoized read before the next provider round executes', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const streams = [
+			providerReadRound('provider-read-before-write', { project_id: projectId }),
+			providerReadRound('provider-read-after-write', { project_id: projectId }),
+			[
+				{ type: 'text', content: 'Fresh post-write evidence is ready.' },
+				{ type: 'done', finishedReason: 'stop' }
+			] satisfies AgenticChatReadOnlyProviderClientEventV1[]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity
+		}).prepare({
+			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		const postWriteRound = invocation.continueWithToolResults!({
+			round: 2,
+			results: [
+				durableReadFeedback(
+					'provider-read-before-write',
+					{ project_id: projectId },
+					{ project: { id: projectId, title: 'Before write' } }
+				)
+			]
+		});
+		invocation.invalidateReadMemo?.();
+		const postWriteSteps = await collect(postWriteRound);
+		const postWriteRead = postWriteSteps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'read_tool' }> =>
+				step.type === 'read_tool'
+		);
+		expect(postWriteRead).toMatchObject({
+			providerToolCallId: 'provider-read-after-write'
+		});
+		expect(postWriteRead?.memoServed).toBeUndefined();
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 3,
+					results: [
+						durableReadFeedback(
+							'provider-read-after-write',
+							{ project_id: projectId },
+							{ project: { id: projectId, title: 'After write' } }
+						)
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'Fresh post-write evidence is ready.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
 	});
 
 	it('does not memoize reads with different arguments or requiring user action', async () => {

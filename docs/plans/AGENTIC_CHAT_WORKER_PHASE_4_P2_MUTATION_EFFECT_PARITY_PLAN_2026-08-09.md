@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1 hosted; S2 complete locally; S2 category-correction migration pending hosted apply; production mutations remain disabled
+**Status:** S1 hosted; S2-S3 complete locally; S2 category-correction migration pending hosted apply; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -169,7 +169,7 @@ Local evidence on the final S2 tree:
 - worker/runtime typechecks and Svelte check: pass; Svelte reports 0 diagnostics
 - worker lint: zero errors, unchanged 175-warning repository baseline
 
-### S3 — Mixed provider round bridge, still adapter-disabled
+### S3 — Mixed provider round bridge, still adapter-disabled — locally complete
 
 - Generalize continuation results from read-only to successful read/write tool
   results while preserving ordered same-round execution.
@@ -181,6 +181,35 @@ Local evidence on the final S2 tree:
   database-authoritative.
 - Add `update_onto_task` to the reviewed catalog only behind an explicit assembly
   capability; default production assembly remains disabled through this slice.
+
+Implementation and findings:
+
+- Provider continuation now accepts an ordered union of durable read and mutation
+  receipts. The executor processes mixed same-round calls sequentially and does
+  not invoke the next provider round until every successful result is both
+  ledger-persisted and publicly committed.
+- A normalized model write receives a deterministic logical operation UUID from
+  turn ID, one-based provider round, and one-based call position. Provider call
+  IDs remain correlation only and do not contribute to effect identity.
+- `update_onto_task` is present in the worker's reviewed loop catalog as
+  `onto.task.update`, with downstream idempotency declared false. It is offered
+  only when the signed admission surface contains it and the explicit provider
+  capability is true.
+- The provider owns an explicit read-memo invalidation hook. The executor calls
+  it before entering the mutation executor, including the uncertain-failure
+  path, and mixed rounds are prevented from re-memoizing pre-write reads.
+- `createAgenticChatPhase3Assembly` defaults the capability off and continues to
+  inject `mutating_tools_disabled`; the production bootstrap supplies no opt-in.
+  No production adapter, deploy, routing change, or model spend was introduced.
+
+Local evidence on the final S3 tree:
+
+- focused provider/executor/effect/assembly suite: 84/84
+- full worker suite: 823 passed, 1 intentional skip
+- runtime suite: 183/183
+- worker typecheck: pass
+- changed worker source ESLint: zero diagnostics; full worker lint remains at the
+  zero-error repository baseline
 
 ### S4 — `update_onto_task` production adapter
 

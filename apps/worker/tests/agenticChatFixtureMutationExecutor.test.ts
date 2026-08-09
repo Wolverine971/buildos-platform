@@ -4,7 +4,10 @@ import {
 	AgenticChatEffectExecutionError,
 	AgenticChatFixtureMutationExecutor
 } from '../src/workers/agentic-chat/fixtureMutationExecutor';
-import { createStableAgenticChatEffectIdentityV1 } from '../src/workers/agentic-chat/effectIdentity';
+import {
+	createStableAgenticChatEffectIdentityV1,
+	createStableAgenticChatMutationLogicalOperationIdV1
+} from '../src/workers/agentic-chat/effectIdentity';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
@@ -94,6 +97,30 @@ function createHarness(options: { abortOnReserve?: AbortController } = {}) {
 }
 
 describe('AgenticChat effect identity', () => {
+	it('derives logical write identity from runtime round position, never provider correlation', () => {
+		const first = createStableAgenticChatMutationLogicalOperationIdV1({
+			turnRunId: TURN_RUN_ID,
+			providerRound: 2,
+			callIndex: 3
+		});
+		const replay = createStableAgenticChatMutationLogicalOperationIdV1({
+			turnRunId: TURN_RUN_ID,
+			providerRound: 2,
+			callIndex: 3
+		});
+		const nextCall = createStableAgenticChatMutationLogicalOperationIdV1({
+			turnRunId: TURN_RUN_ID,
+			providerRound: 2,
+			callIndex: 4
+		});
+
+		expect(first).toBe(replay);
+		expect(first).toMatch(
+			/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+		);
+		expect(nextCall).not.toBe(first);
+	});
+
 	it('is stable across provider ids/generations and conflicts changed arguments under one effect id', () => {
 		const first = createStableAgenticChatEffectIdentityV1({
 			turnRunId: TURN_RUN_ID,

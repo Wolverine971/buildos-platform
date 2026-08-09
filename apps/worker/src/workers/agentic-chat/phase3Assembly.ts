@@ -29,6 +29,7 @@ import {
 	SupabaseAgenticChatPromptSnapshotAdapter
 } from './promptSnapshot';
 import {
+	type AgenticChatProviderMutationCapabilitiesV1,
 	AgenticChatReadOnlyProviderAdapter,
 	type AgenticChatReadOnlyProviderClientPortV1
 } from './readOnlyProvider';
@@ -93,6 +94,8 @@ export function createAgenticChatPhase3Assembly(options: {
 	providerBudgetMs?: number;
 	maxProviderRounds?: number;
 	maxToolCalls?: number;
+	/** Provider bridge only; the production mutation adapter remains disabled in this slice. */
+	mutationProviderCapabilities?: Partial<AgenticChatProviderMutationCapabilitiesV1>;
 	onPromptSnapshotError?: (error: unknown) => void;
 	onExecutionObservationError?: (error: unknown) => void;
 }): AgenticChatPhase3Assembly {
@@ -136,7 +139,8 @@ export function createAgenticChatPhase3Assembly(options: {
 	const provider = new AgenticChatReadOnlyProviderAdapter(
 		{ client: options.providerClient, capacity: providerCapacity },
 		options.providerCooldownMs,
-		options.maxProviderRounds
+		options.maxProviderRounds,
+		{ updateOntoTask: options.mutationProviderCapabilities?.updateOntoTask === true }
 	);
 	const readTool = new AgenticChatReadOnlyToolAdapter(options.client);
 	const executor = new AgenticChatFixtureTurnExecutor(
