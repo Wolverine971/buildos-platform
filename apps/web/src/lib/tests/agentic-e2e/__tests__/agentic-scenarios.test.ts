@@ -51,6 +51,7 @@ const phase0Turns: Phase0TurnEvidence[] = [];
 const phase0FatalCaptureErrors: string[] = [];
 const PHASE0_CAPTURE = process.env.AGENTIC_PHASE0_CAPTURE === 'true';
 const EXECUTION_MODE = resolveAgenticE2EExecutionMode();
+const WORKER_PREFLIGHT_ONLY = process.env.AGENTIC_E2E_WORKER_PREFLIGHT_ONLY === 'true';
 const PHASE0_OUTPUT_PATH =
 	process.env.AGENTIC_PHASE0_OUTPUT_PATH?.trim() ||
 	`/tmp/buildos-agentic-phase0-${HARNESS_RUN_ID}.json`;
@@ -194,6 +195,14 @@ function selectedScenarios() {
 }
 
 describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
+	if (WORKER_PREFLIGHT_ONLY) {
+		it('authenticates, subscribes, and obtains an exact worker transport lease without a model turn', () => {
+			expect(EXECUTION_MODE).toBe('worker_realtime');
+			expect(workerClient).not.toBeNull();
+		});
+		return;
+	}
+
 	for (const scenario of selectedScenarios()) {
 		const skipped = scenario.skip?.() ?? false;
 		const runner = skipped ? it.skip : it;
