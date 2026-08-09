@@ -52,6 +52,7 @@ import {
 import type { AgenticChatReadToolExecutionV1 } from './toolExecution';
 
 const DEFAULT_MAX_PROVIDER_ROUNDS = 16;
+const MAX_PROVIDER_TOOL_CALLS_PER_ROUND = 40;
 const MAX_VALIDATION_REPAIR_ROUNDS = 2;
 const MAX_FORCED_SYNTHESIS_RETRIES = 1;
 const CANONICAL_UUID_PATTERN =
@@ -139,7 +140,7 @@ type CompletedProviderToolCall = {
 };
 
 type PendingReadRound = {
-	call: CompletedProviderToolCall;
+	calls: readonly CompletedProviderToolCall[];
 	usage: AgenticChatProviderUsageV1 | null;
 };
 
@@ -283,10 +284,14 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						'unknown'
 					);
 				}
-				validateReadFeedback(pendingRead.call, feedback);
+				if (pendingRead.calls.length !== 1) {
+					throw providerError('provider_read_synthesis_result_count_invalid', 'unknown');
+				}
+				const pendingCall = pendingRead.calls[0]!;
+				validateReadFeedback(pendingCall, feedback);
 				synthesized = true;
 				return this.streamSynthesis(
-					buildSynthesisRequest(currentRequest, pendingRead.call, feedback),
+					buildSynthesisRequest(currentRequest, pendingCall, feedback),
 					pendingRead.usage,
 					release
 				);
@@ -304,34 +309,36 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (input.round !== nextProviderRound) {
 					throw providerError('provider_read_continuation_round_mismatch', 'unknown');
 				}
-				if (input.results.length !== 1) {
+				if (input.results.length !== pendingRead.calls.length) {
 					throw providerError(
 						'provider_read_continuation_result_count_invalid',
 						'unknown'
 					);
 				}
 
-				const feedback = input.results[0]!;
 				continued = true;
 				const completedRead = pendingRead;
-				validateReadFeedback(completedRead.call, feedback);
-				memoizeCompletedRead(turnReadMemo, completedRead.call, feedback.execution);
-				const completedToolCall = completedProviderCallToChatToolCall(completedRead.call);
-				const completedToolResult = executionToChatToolResult(
-					completedRead.call.id,
-					feedback.execution
-				);
-				const pattern = buildRoundToolPattern([completedToolCall]);
+				const roundExecutions = completedRead.calls.map((call, index) => {
+					const feedback = input.results[index]!;
+					validateReadFeedback(call, feedback);
+					memoizeCompletedRead(turnReadMemo, call, feedback.execution);
+					return {
+						toolCall: completedProviderCallToChatToolCall(call),
+						result: executionToChatToolResult(call.id, feedback.execution)
+					};
+				});
+				const completedToolCalls = roundExecutions.map(({ toolCall }) => toolCall);
+				const pattern = buildRoundToolPattern(completedToolCalls);
 				for (const op of pattern.readOps) readOps.add(op);
 				if (pattern.readOps.length > 0) readOnlyRoundCount += 1;
 
 				currentRequest = buildContinuationRequest(
 					currentRequest,
-					completedRead.call,
-					feedback
+					completedRead.calls,
+					input.results
 				);
 				const ledgerObservation = contextGatheringLedger.observeToolRound({
-					roundExecutions: [{ toolCall: completedToolCall, result: completedToolResult }],
+					roundExecutions,
 					roundPattern: pattern,
 					toolRounds: readOnlyRoundCount,
 					maxToolRounds: this.maxProviderRounds,
@@ -392,7 +399,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let finished = false;
 		let keepLeaseForSynthesis = false;
 		let streamedText = false;
-		const toolCall = createToolCallAccumulator();
+		const toolCalls = createToolCallAccumulator();
 		try {
 			for await (const event of this.ports.client.stream(request)) {
 				throwIfAborted(request.signal);
@@ -414,7 +421,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					if (request.toolChoice === 'none') {
 						throw providerError('provider_tool_call_disabled', 'permanent');
 					}
-					appendToolCallDelta(toolCall, event.toolCall);
+					appendToolCallDelta(toolCalls, event.toolCall);
 					continue;
 				}
 				if (event.type === 'error') {
@@ -431,18 +438,25 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
-				const call = completeToolCall(toolCall);
+				const calls = completeToolCalls(toolCalls);
 				finished = true;
-				if (call) {
+				if (calls.length > 0) {
 					if (request.toolChoice !== 'auto') {
 						throw providerError('provider_tool_call_disabled', 'permanent');
 					}
 					if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
 						throw providerError('provider_tool_finish_reason_invalid', 'unknown');
 					}
-					assertAllowlistedCall(call, request.tools);
-					const validationIssues = validateCompletedProviderCall(call, request);
+					for (const call of calls) assertAllowlistedCall(call, request.tools);
+					const validationIssues = validateCompletedProviderCalls(calls, request);
 					if (validationIssues.length > 0) {
+						if (calls.length !== 1) {
+							throw providerError(
+								'provider_parallel_tool_validation_failed',
+								'permanent'
+							);
+						}
+						const call = calls[0]!;
 						yield buildValidationFailureReadToolStep(
 							request.turnRunId,
 							call,
@@ -464,10 +478,16 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						);
 						continue;
 					}
-					state.setPendingRead({ call, usage: normalizeUsage(event.usage) });
+					state.setPendingRead({ calls, usage: normalizeUsage(event.usage) });
 					keepLeaseForSynthesis = true;
-					yield buildPlanningStep(request, call.id);
-					yield buildReadToolStep(request.turnRunId, call, state.resolveMemoServed(call));
+					yield buildPlanningStep(request, calls[0]!.id);
+					for (const call of calls) {
+						yield buildReadToolStep(
+							request.turnRunId,
+							call,
+							state.resolveMemoServed(call)
+						);
+					}
 					state.markReadRoundCompleted();
 					continue;
 				}
@@ -505,7 +525,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let finished = false;
 		let keepLeaseForContinuation = false;
 		let streamedText = false;
-		const toolCall = createToolCallAccumulator();
+		const toolCalls = createToolCallAccumulator();
 		try {
 			for await (const event of this.ports.client.stream(request)) {
 				throwIfAborted(request.signal);
@@ -521,7 +541,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					if (request.toolChoice === 'none') {
 						throw providerError('provider_tool_call_disabled', 'permanent');
 					}
-					appendToolCallDelta(toolCall, event.toolCall);
+					appendToolCallDelta(toolCalls, event.toolCall);
 					continue;
 				}
 				if (event.type === 'error') {
@@ -538,19 +558,26 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
-				const call = completeToolCall(toolCall);
+				const calls = completeToolCalls(toolCalls);
 				const aggregateUsage = combineUsage(priorUsage, normalizeUsage(event.usage));
 				finished = true;
-				if (call) {
+				if (calls.length > 0) {
 					if (request.toolChoice !== 'auto') {
 						throw providerError('provider_tool_call_disabled', 'permanent');
 					}
 					if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
 						throw providerError('provider_tool_finish_reason_invalid', 'unknown');
 					}
-					assertAllowlistedCall(call, request.tools);
-					const validationIssues = validateCompletedProviderCall(call, request);
+					for (const call of calls) assertAllowlistedCall(call, request.tools);
+					const validationIssues = validateCompletedProviderCalls(calls, request);
 					if (validationIssues.length > 0) {
+						if (calls.length !== 1) {
+							throw providerError(
+								'provider_parallel_tool_validation_failed',
+								'permanent'
+							);
+						}
+						const call = calls[0]!;
 						yield buildValidationFailureReadToolStep(
 							request.turnRunId,
 							call,
@@ -578,12 +605,18 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						);
 						continue;
 					}
-					state.setPendingRead({ call, usage: aggregateUsage });
+					state.setPendingRead({ calls, usage: aggregateUsage });
 					keepLeaseForContinuation = true;
 					if (emitPlanningSemantic) {
-						yield buildPlanningStep(request, call.id);
+						yield buildPlanningStep(request, calls[0]!.id);
 					}
-					yield buildReadToolStep(request.turnRunId, call, state.resolveMemoServed(call));
+					for (const call of calls) {
+						yield buildReadToolStep(
+							request.turnRunId,
+							call,
+							state.resolveMemoServed(call)
+						);
+					}
 					state.markReadRoundCompleted();
 					continue;
 				}
@@ -737,83 +770,117 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 	}
 }
 
-function createToolCallAccumulator(): {
+type ProviderToolCallAccumulator = {
 	seen: boolean;
 	id: string;
 	name: string;
 	argumentsText: string;
-} {
-	return { seen: false, id: '', name: '', argumentsText: '' };
+};
+
+function createToolCallAccumulator(): Map<number, ProviderToolCallAccumulator> {
+	return new Map();
 }
 
 function appendToolCallDelta(
 	state: ReturnType<typeof createToolCallAccumulator>,
 	value: unknown
 ): void {
-	if (!Array.isArray(value) || value.length !== 1) {
-		throw providerError('provider_tool_call_count_exceeded', 'permanent');
+	if (!Array.isArray(value) || value.length === 0) {
+		throw providerError('provider_tool_call_delta_invalid', 'permanent');
 	}
-	const delta = requireRecord(value[0], 'provider tool-call delta');
-	if (delta.index !== undefined && delta.index !== 0) {
-		throw providerError('provider_tool_call_count_exceeded', 'permanent');
-	}
-	state.seen = true;
-	if (delta.id !== undefined) {
-		const id = canonicalRequiredText(delta.id, 'provider tool-call id');
-		if (id.length > 512 || (state.id && state.id !== id)) {
-			throw providerError('provider_tool_call_id_invalid', 'permanent');
+	for (let position = 0; position < value.length; position += 1) {
+		const delta = requireRecord(value[position], 'provider tool-call delta');
+		const index = delta.index ?? (value.length === 1 ? 0 : position);
+		if (
+			!Number.isSafeInteger(index) ||
+			(index as number) < 0 ||
+			(index as number) >= MAX_PROVIDER_TOOL_CALLS_PER_ROUND
+		) {
+			throw providerError('provider_tool_call_count_exceeded', 'permanent');
 		}
-		state.id = id;
-	}
-	if (delta.type !== undefined && delta.type !== 'function') {
-		throw providerError('provider_tool_call_type_invalid', 'permanent');
-	}
-	if (delta.function !== undefined) {
-		const fn = requireRecord(delta.function, 'provider tool-call function');
-		if (fn.name !== undefined) {
-			if (typeof fn.name !== 'string' || fn.name.length === 0) {
-				throw providerError('provider_tool_name_invalid', 'permanent');
+		const callIndex = index as number;
+		const call = state.get(callIndex) ?? {
+			seen: false,
+			id: '',
+			name: '',
+			argumentsText: ''
+		};
+		call.seen = true;
+		if (delta.id !== undefined) {
+			const id = canonicalRequiredText(delta.id, 'provider tool-call id');
+			if (id.length > 512 || (call.id && call.id !== id)) {
+				throw providerError('provider_tool_call_id_invalid', 'permanent');
 			}
-			state.name += fn.name;
-			if (state.name.length > 256) {
-				throw providerError('provider_tool_name_invalid', 'permanent');
+			call.id = id;
+		}
+		if (delta.type !== undefined && delta.type !== 'function') {
+			throw providerError('provider_tool_call_type_invalid', 'permanent');
+		}
+		if (delta.function !== undefined) {
+			const fn = requireRecord(delta.function, 'provider tool-call function');
+			if (fn.name !== undefined) {
+				if (typeof fn.name !== 'string' || fn.name.length === 0) {
+					throw providerError('provider_tool_name_invalid', 'permanent');
+				}
+				call.name += fn.name;
+				if (call.name.length > 256) {
+					throw providerError('provider_tool_name_invalid', 'permanent');
+				}
+			}
+			if (fn.arguments !== undefined) {
+				if (typeof fn.arguments !== 'string') {
+					throw providerError('provider_tool_arguments_invalid', 'permanent');
+				}
+				call.argumentsText += fn.arguments;
+				if (Buffer.byteLength(call.argumentsText, 'utf8') > 64 * 1024) {
+					throw providerError('provider_tool_arguments_too_large', 'permanent');
+				}
 			}
 		}
-		if (fn.arguments !== undefined) {
-			if (typeof fn.arguments !== 'string') {
-				throw providerError('provider_tool_arguments_invalid', 'permanent');
-			}
-			state.argumentsText += fn.arguments;
-			if (Buffer.byteLength(state.argumentsText, 'utf8') > 64 * 1024) {
-				throw providerError('provider_tool_arguments_too_large', 'permanent');
-			}
-		}
+		state.set(callIndex, call);
 	}
 }
 
-function completeToolCall(
+function completeToolCalls(
 	state: ReturnType<typeof createToolCallAccumulator>
-): CompletedProviderToolCall | null {
-	if (!state.seen) return null;
-	if (!state.id || !state.name || state.name !== state.name.trim()) {
-		throw providerError('provider_tool_call_incomplete', 'permanent');
+): CompletedProviderToolCall[] {
+	if (state.size === 0) return [];
+	const calls: CompletedProviderToolCall[] = [];
+	const seenIds = new Set<string>();
+	const entries = [...state.entries()].sort(([left], [right]) => left - right);
+	for (let position = 0; position < entries.length; position += 1) {
+		const [index, call] = entries[position]!;
+		if (
+			index !== position ||
+			!call.seen ||
+			!call.id ||
+			!call.name ||
+			call.name !== call.name.trim()
+		) {
+			throw providerError('provider_tool_call_incomplete', 'permanent');
+		}
+		if (seenIds.has(call.id)) {
+			throw providerError('provider_tool_call_id_invalid', 'permanent');
+		}
+		seenIds.add(call.id);
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(call.argumentsText || '{}');
+		} catch {
+			throw providerError('provider_tool_arguments_invalid', 'permanent');
+		}
+		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+			throw providerError('provider_tool_arguments_invalid', 'permanent');
+		}
+		const canonicalArguments = canonicalizeAgenticChatJson(parsed as JsonValue);
+		calls.push({
+			id: call.id,
+			name: call.name,
+			arguments: JSON.parse(canonicalArguments) as JsonObject,
+			canonicalArguments
+		});
 	}
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(state.argumentsText || '{}');
-	} catch {
-		throw providerError('provider_tool_arguments_invalid', 'permanent');
-	}
-	if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-		throw providerError('provider_tool_arguments_invalid', 'permanent');
-	}
-	const canonicalArguments = canonicalizeAgenticChatJson(parsed as JsonValue);
-	return {
-		id: state.id,
-		name: state.name,
-		arguments: JSON.parse(canonicalArguments) as JsonObject,
-		canonicalArguments
-	};
+	return calls;
 }
 
 function assertAllowlistedCall(
@@ -913,11 +980,13 @@ function getAdmissionContextUsage(
 }
 
 function latestToolPayloadChars(request: ClientRequest): number {
+	let total = 0;
 	for (let index = request.messages.length - 1; index >= 0; index -= 1) {
 		const message = request.messages[index];
-		if (message?.role === 'tool') return message.content.length;
+		if (message?.role !== 'tool') break;
+		total += message.content.length;
 	}
-	return 0;
+	return total;
 }
 
 function forceToolFreeRequest(request: ClientRequest): ClientRequest {
@@ -1001,22 +1070,32 @@ function buildValidationFailureReadToolStep(
 
 function buildContinuationRequest(
 	request: ClientRequest,
-	call: CompletedProviderToolCall,
-	feedback: AgenticChatProviderReadSynthesisInputV1
+	calls: readonly CompletedProviderToolCall[],
+	feedback: readonly AgenticChatProviderReadSynthesisInputV1[]
 ): ClientRequest {
-	const toolCall = completedProviderCallToChatToolCall(call);
-	const modelPayload = buildToolPayloadForModel(
-		toolCall,
-		{
-			tool_call_id: call.id,
-			result: feedback.execution.result,
-			success: true,
-			duration_ms: feedback.execution.executionTimeMs ?? undefined,
-			tokens_consumed: feedback.execution.tokensConsumed ?? undefined,
-			requires_user_action: feedback.execution.requiresUserAction ?? undefined
-		},
-		parseToolArguments
-	);
+	if (calls.length === 0 || calls.length !== feedback.length) {
+		throw providerError('provider_read_continuation_result_count_invalid', 'unknown');
+	}
+	const toolMessages = calls.map((call, index): AgenticChatReadOnlyProviderMessageV1 => {
+		const execution = feedback[index]!.execution;
+		const modelPayload = buildToolPayloadForModel(
+			completedProviderCallToChatToolCall(call),
+			{
+				tool_call_id: call.id,
+				result: execution.result,
+				success: true,
+				duration_ms: execution.executionTimeMs ?? undefined,
+				tokens_consumed: execution.tokensConsumed ?? undefined,
+				requires_user_action: execution.requiresUserAction ?? undefined
+			},
+			parseToolArguments
+		);
+		return {
+			role: 'tool',
+			content: canonicalizeAgenticChatJson(modelPayload as JsonValue),
+			tool_call_id: call.id
+		};
+	});
 	return {
 		...request,
 		providerRound: 'synthesis',
@@ -1025,31 +1104,25 @@ function buildContinuationRequest(
 			{
 				role: 'assistant',
 				content: '',
-				tool_calls: [
-					{
-						id: call.id,
-						type: 'function',
-						function: { name: call.name, arguments: call.canonicalArguments }
-					}
-				]
+				tool_calls: calls.map((call) => ({
+					id: call.id,
+					type: 'function',
+					function: { name: call.name, arguments: call.canonicalArguments }
+				}))
 			},
-			{
-				role: 'tool',
-				content: canonicalizeAgenticChatJson(modelPayload as JsonValue),
-				tool_call_id: call.id
-			}
+			...toolMessages
 		],
 		tools: request.tools,
 		toolChoice: request.tools.length > 0 ? 'auto' : 'none'
 	};
 }
 
-function validateCompletedProviderCall(
-	call: CompletedProviderToolCall,
+function validateCompletedProviderCalls(
+	calls: readonly CompletedProviderToolCall[],
 	request: ClientRequest
 ): ToolValidationIssue[] {
 	return validateToolCalls(
-		[completedProviderCallToChatToolCall(call)],
+		calls.map(completedProviderCallToChatToolCall),
 		Array.from(request.tools) as unknown as ChatToolDefinition[],
 		{
 			projectId:

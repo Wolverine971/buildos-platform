@@ -2172,6 +2172,89 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		}
 	});
 
+	it('persists parallel provider reads sequentially before replaying the ordered round', async () => {
+		const harness = createHarness([]);
+		const continueWithToolResults = vi.fn(
+			({ results }: { results: ReadonlyArray<{ providerToolCallId: string }> }) => {
+				harness.log.push('continuation');
+				expect(results.map(({ providerToolCallId }) => providerToolCallId)).toEqual([
+					'provider-parallel-read-1',
+					'provider-parallel-read-2'
+				]);
+				return (async function* () {
+					yield { type: 'text_delta', text: 'Both parallel reads are ready.' } as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})();
+			}
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-parallel-read-1',
+							toolName: 'fixture_project_read',
+							arguments: { marker: 'first' }
+						} as const;
+						yield {
+							type: 'read_tool',
+							callTransitionId: SECOND_CALL_TRANSITION_ID,
+							resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-parallel-read-2',
+							toolName: 'fixture_task_read',
+							arguments: { marker: 'second' }
+						} as const;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			expect(
+				harness.readTool.execute.mock.calls.map(([input]) => [
+					input.providerToolCallId,
+					input.toolName
+				])
+			).toEqual([
+				['provider-parallel-read-1', 'fixture_project_read'],
+				['provider-parallel-read-2', 'fixture_task_read']
+			]);
+			expect(
+				harness.toolExecutions.persistRead.mock.calls.map(([input]) => [
+					input.sequenceIndex,
+					input.providerToolCallId
+				])
+			).toEqual([
+				[1, 'provider-parallel-read-1'],
+				[2, 'provider-parallel-read-2']
+			]);
+			const publicResultIndexes = harness.log
+				.map((entry, index) => ({ entry, index }))
+				.filter(({ entry }) => entry === 'semantic:tool_result:')
+				.map(({ index }) => index);
+			expect(publicResultIndexes).toHaveLength(2);
+			expect(publicResultIndexes[1]).toBeLessThan(harness.log.indexOf('continuation'));
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					assistantMetadata: expect.objectContaining({
+						tool_round_count: 1,
+						tool_call_count: 2
+					})
+				})
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it('persists and publishes a memo-served repeat without re-entering the read adapter', async () => {
 		const harness = createHarness([]);
 		const memoExecution = {
