@@ -16,7 +16,12 @@ import {
 	type AgenticChatExecutionRpcClient,
 	SupabaseAgenticChatExecutionControlAdapter
 } from './executionControl';
+import {
+	type AgenticChatEffectRpcClient,
+	SupabaseAgenticChatEffectControlAdapter
+} from './effectControl';
 import { SupabaseAgenticChatExecutionInputAdapter } from './executionInput';
+import { AgenticChatFixtureMutationExecutor } from './fixtureMutationExecutor';
 import { AgenticChatFixtureTurnExecutor } from './fixtureTurnExecutor';
 import {
 	AgenticChatProviderExecutionError,
@@ -61,6 +66,7 @@ import {
 	type AgenticChatExecutionObservationRpcClient,
 	SupabaseAgenticChatExecutionObservationAdapter
 } from './executionObservation';
+import { AgenticChatUpdateOntoTaskMutationAdapter } from './updateOntoTaskMutationAdapter';
 
 export type AgenticChatPhase3Assembly = {
 	consumer: ReturnType<typeof createAgenticChatConsumer>;
@@ -94,8 +100,10 @@ export function createAgenticChatPhase3Assembly(options: {
 	providerBudgetMs?: number;
 	maxProviderRounds?: number;
 	maxToolCalls?: number;
-	/** Provider bridge only; the production mutation adapter remains disabled in this slice. */
+	/** Separate provider-advertisement gate. Requires the matching adapter gate. */
 	mutationProviderCapabilities?: Partial<AgenticChatProviderMutationCapabilitiesV1>;
+	/** Separate irreversible-adapter gate. The production bootstrap leaves this off. */
+	mutationAdapterCapabilities?: Partial<AgenticChatProviderMutationCapabilitiesV1>;
 	onPromptSnapshotError?: (error: unknown) => void;
 	onExecutionObservationError?: (error: unknown) => void;
 }): AgenticChatPhase3Assembly {
@@ -105,13 +113,22 @@ export function createAgenticChatPhase3Assembly(options: {
 	) {
 		throw new Error('Phase 3 cancellation concurrency must match CHAT_CONCURRENCY=1');
 	}
+	const updateOntoTaskProviderEnabled =
+		options.mutationProviderCapabilities?.updateOntoTask === true;
+	const updateOntoTaskAdapterEnabled =
+		options.mutationAdapterCapabilities?.updateOntoTask === true;
+	if (updateOntoTaskProviderEnabled && !updateOntoTaskAdapterEnabled) {
+		throw new Error('update_onto_task provider capability requires its mutation adapter');
+	}
 	const rpcClient = options.client as unknown as AgenticChatExecutionRpcClient &
+		AgenticChatEffectRpcClient &
 		AgenticChatSupabaseRpcClient &
 		AgenticChatRecoverySnapshotRpcClient &
 		AgenticChatPromptSnapshotRpcClient &
 		AgenticChatToolExecutionRpcClient &
 		AgenticChatExecutionObservationRpcClient;
 	const control = new SupabaseAgenticChatExecutionControlAdapter(rpcClient);
+	const effectControl = new SupabaseAgenticChatEffectControlAdapter(rpcClient);
 	const promptSnapshots = new SupabaseAgenticChatPromptSnapshotAdapter(rpcClient);
 	const toolExecutions = new SupabaseAgenticChatToolExecutionAdapter(rpcClient);
 	const executionObservations = new SupabaseAgenticChatExecutionObservationAdapter(rpcClient);
@@ -140,9 +157,15 @@ export function createAgenticChatPhase3Assembly(options: {
 		{ client: options.providerClient, capacity: providerCapacity },
 		options.providerCooldownMs,
 		options.maxProviderRounds,
-		{ updateOntoTask: options.mutationProviderCapabilities?.updateOntoTask === true }
+		{ updateOntoTask: updateOntoTaskProviderEnabled }
 	);
 	const readTool = new AgenticChatReadOnlyToolAdapter(options.client);
+	const mutation = updateOntoTaskAdapterEnabled
+		? new AgenticChatFixtureMutationExecutor({
+				control: effectControl,
+				mutatingTool: new AgenticChatUpdateOntoTaskMutationAdapter(options.client)
+			})
+		: disabledToolPort('mutating_tools_disabled');
 	const executor = new AgenticChatFixtureTurnExecutor(
 		{
 			control,
@@ -166,7 +189,7 @@ export function createAgenticChatPhase3Assembly(options: {
 				),
 			readTool,
 			toolExecutions,
-			mutation: disabledToolPort('mutating_tools_disabled')
+			mutation
 		},
 		{
 			providerBudgetMs: options.providerBudgetMs,

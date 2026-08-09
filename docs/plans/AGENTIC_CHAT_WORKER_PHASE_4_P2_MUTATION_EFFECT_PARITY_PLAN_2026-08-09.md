@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1 hosted; S2-S3 complete locally; S2 category-correction migration pending hosted apply; production mutations remain disabled
+**Status:** S1-S3 complete; S1/S2 SQL hosted; S4 core adapter unit complete locally with parity expansion still open; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -71,7 +71,7 @@ mutation golden.
 
 ## Slices
 
-### S1 — Durable mutation receipt fence — locally complete
+### S1 — Durable mutation receipt fence — hosted complete
 
 Deliverables:
 
@@ -118,7 +118,7 @@ exposes all 17 required arguments. A service-role no-write probe reached the
 function and failed closed with the expected `turn_not_found`; anonymous access
 failed with SQLSTATE `42501`. This migration enabled no production mutation.
 
-### S2 — Ratify the mutation differential contract — locally complete
+### S2 — Ratify the mutation differential contract — locally complete; corrective SQL hosted
 
 - Add one shared `mutating_tools` fixture/golden centered on
   `update_onto_task`.
@@ -152,7 +152,7 @@ Implementation and findings:
   Forward migration
   `20260809020000_agentic_chat_mutation_tool_execution_legacy_category.sql`
   restores the legacy category in new rows and exact replay checks. It passes the
-  composed disposable PostgreSQL suite but is not yet applied to hosted.
+  composed disposable PostgreSQL suite and is now applied to hosted.
 - The cancellation/recovery matrix was already present and remains green:
   pre-reserve cancellation creates no effect; reserved/pre-begin cancellation
   closes the reservation without invoking; post-commit/pre-public cancellation
@@ -168,6 +168,21 @@ Local evidence on the final S2 tree:
 - composed disposable PostgreSQL suite: 12/12
 - worker/runtime typechecks and Svelte check: pass; Svelte reports 0 diagnostics
 - worker lint: zero errors, unchanged 175-warning repository baseline
+
+Hosted correction evidence on 2026-08-09:
+
+- A fresh receipt-isolated workdir fetched production through `20260809010000`.
+  Only `20260809020000_agentic_chat_mutation_tool_execution_legacy_category.sql`
+  was added, and its staged SHA-256 matched the committed source exactly:
+  `f7329e2c661703a84c457abe760bb08ddb363d4aa15217f2047ddaae3af79a11`.
+- The linked dry run named exactly that migration, application succeeded, and
+  the post-apply dry run reported the remote database up to date. A second fresh
+  hosted receipt contains the same statements; its only differences are the
+  Supabase history serializer's removal of blank lines between statements.
+- A service-role no-write PostgREST probe reached the 17-argument function and
+  failed closed with `P0001` / `agentic_chat_mutation_tool_execution_turn_not_found`.
+  The identical anonymous probe was denied with SQLSTATE `42501`. Neither probe
+  created a row.
 
 ### S3 — Mixed provider round bridge, still adapter-disabled — locally complete
 
@@ -211,7 +226,7 @@ Local evidence on the final S3 tree:
 - changed worker source ESLint: zero diagnostics; full worker lint remains at the
   zero-error repository baseline
 
-### S4 — `update_onto_task` production adapter
+### S4 — `update_onto_task` production adapter — core unit complete; expansion open
 
 - Differentially compare the legacy `OntologyWriteExecutor.updateOntoTask`
   behavior with the worker-safe shared gateway implementation.
@@ -225,6 +240,54 @@ Local evidence on the final S3 tree:
   ledger alone.
 - Enable the adapter only after the S2 golden and S1 PostgreSQL proof pass with
   the real adapter injected.
+
+Core-unit implementation and findings:
+
+- Added `AgenticChatUpdateOntoTaskMutationAdapter`, which accepts the reserved
+  `effect_id` and exact `chat-effect:<effect_id>` identity, rechecks the immutable
+  admitted tool surface, derives a project fence from the turn context plus the
+  optional legacy `project_id` hint, and calls the worker-safe shared gateway
+  in-process. It never calls the web host.
+- The gateway cannot atomically persist or query the effect identity, so the
+  provider contract remains `downstreamIdempotencySupported = false`. Known
+  pre-commit validation/access/not-found failures reconcile as failed; thrown,
+  internal, conflict, oversized, or mismatched post-dispatch outcomes reconcile
+  as uncertain. The existing effect executor therefore makes one attempt.
+- Assembly now has separate default-off provider-advertisement and adapter
+  capability gates. Advertising without the matching adapter throws during
+  composition. The production bootstrap supplies neither gate, so this work
+  does not make a mutation reachable in production.
+- The provider narrows the signed legacy definition to the reviewed shared
+  gateway subset (`task_id`, optional `project_id`, title/description/type/state,
+  priority, scheduling, and props) and sets `additionalProperties: false`.
+  Assignee handles/IDs plus goal/milestone relationship fields remain hidden
+  until their atomic legacy side effects are extracted; they cannot silently
+  enter this adapter.
+- The differential found and closed one core behavioral gap in the shared
+  gateway: scalar echoes now use the legacy no-effect comparison, including
+  trimmed text and timestamp-equivalent dates, instead of bumping `updated_at`
+  and reporting false progress. Props and archival updates intentionally retain
+  the legacy skip behavior.
+- The S2 mutation golden now injects this real adapter (with only its downstream
+  gateway runner stubbed), while a separate adapter test crosses the real shared
+  gateway handler and proves the project-scoped update plus activity-log side
+  effect and legacy-compatible receipt shape.
+
+Focused evidence for this unit:
+
+- shared gateway no-effect differential: 3/3
+- provider/effect/adapter/executor/assembly focused worker matrix: 97/97
+- full shared-agent-ops suite: 63/63
+- full worker suite: 836 passed, 1 intentional skip
+- runtime suite: 183/183; exact legacy route referee: 41/41
+- shared-agent-ops and worker typechecks: pass
+- changed worker source ESLint: zero diagnostics; full worker lint and HTTP
+  module-size guard pass with zero errors
+
+S4 remains open for the intentionally hidden assignment/goal/milestone fields
+and for a worker-safe task-calendar synchronization port. Do not expose those
+fields or enable either assembly gate until their side effects have a two-sided
+differential and recovery coverage.
 
 ### S5 — Adapter-by-adapter expansion and local exit
 

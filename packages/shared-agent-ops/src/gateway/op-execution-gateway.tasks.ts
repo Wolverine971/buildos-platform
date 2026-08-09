@@ -305,10 +305,12 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 		updated_at: new Date().toISOString()
 	};
 	let changedFieldCount = 0;
+	const changedFields: string[] = [];
 
 	if (args.title !== undefined) {
 		updateData.title = requireTrimmedString(args.title, 'title');
 		changedFieldCount += 1;
+		changedFields.push('title');
 	}
 
 	if (args.description !== undefined) {
@@ -322,28 +324,33 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 			);
 		}
 		changedFieldCount += 1;
+		changedFields.push('description');
 	}
 
 	if (args.type_key !== undefined) {
 		updateData.type_key = requireTrimmedString(args.type_key, 'type_key');
 		changedFieldCount += 1;
+		changedFields.push('type_key');
 	}
 
 	if (args.priority !== undefined) {
 		updateData.priority = normalizePriority(args.priority, 'priority', { allowNull: true });
 		changedFieldCount += 1;
+		changedFields.push('priority');
 	}
 
 	const startAt = normalizeOptionalDate(args.start_at, 'start_at');
 	if (startAt !== undefined) {
 		updateData.start_at = startAt;
 		changedFieldCount += 1;
+		changedFields.push('start_at');
 	}
 
 	const dueAt = normalizeOptionalDate(args.due_at, 'due_at');
 	if (dueAt !== undefined) {
 		updateData.due_at = dueAt;
 		changedFieldCount += 1;
+		changedFields.push('due_at');
 	}
 
 	if (args.props !== undefined) {
@@ -353,6 +360,7 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 			...(props ?? {})
 		};
 		changedFieldCount += 1;
+		changedFields.push('props');
 	}
 
 	if (args.state_key !== undefined) {
@@ -372,17 +380,32 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 			updateData.completed_at = null;
 		}
 		changedFieldCount += 1;
+		changedFields.push('state_key');
 	}
 
 	if (archivedAtUpdate !== undefined) {
 		updateData.archived_at = archivedAtUpdate;
 		changedFieldCount += 1;
+		changedFields.push('archived');
 	}
 
 	if (changedFieldCount === 0) {
 		throw new ExternalToolGatewayError(
 			'VALIDATION_ERROR',
 			'At least one writable task field is required'
+		);
+	}
+
+	const noEffect = detectNoEffectTaskUpdate(
+		existingTask as Record<string, unknown>,
+		updateData,
+		changedFields
+	);
+	if (noEffect.noEffect) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`No-effect update: every supplied field (${noEffect.comparedFields.join(', ')}) already matches task "${noEffect.taskTitle ?? taskId}" — nothing changed. ` +
+				'Include a field whose value actually differs; for a reschedule set due_at (or start_at) to the new ISO 8601 datetime.'
 		);
 	}
 
@@ -413,5 +436,57 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 			...data,
 			project_name: project.name
 		}
+	};
+}
+
+/**
+ * Legacy-compatible guard for scalar task echoes. Props/archival updates skip
+ * this comparison because their deep/derived semantics can create real work.
+ */
+export function detectNoEffectTaskUpdate(
+	existingTask: Record<string, unknown>,
+	updateData: Record<string, unknown>,
+	changedFields: readonly string[]
+): { noEffect: boolean; comparedFields: string[]; taskTitle?: string } {
+	const comparableFields = new Set([
+		'title',
+		'description',
+		'type_key',
+		'state_key',
+		'priority',
+		'start_at',
+		'due_at'
+	]);
+	if (
+		changedFields.length === 0 ||
+		!changedFields.every((field) => comparableFields.has(field))
+	) {
+		return { noEffect: false, comparedFields: [] };
+	}
+
+	const dateFields = new Set(['start_at', 'due_at']);
+	const matchesCurrent = changedFields.every((field) => {
+		const supplied = updateData[field];
+		const current = existingTask[field];
+		if (supplied === null || supplied === undefined) {
+			return current === null || current === undefined;
+		}
+		if (dateFields.has(field) && typeof supplied === 'string') {
+			const suppliedMs = Date.parse(supplied);
+			const currentMs = typeof current === 'string' ? Date.parse(current) : Number.NaN;
+			if (Number.isFinite(suppliedMs) || Number.isFinite(currentMs)) {
+				return suppliedMs === currentMs;
+			}
+		}
+		if (typeof supplied === 'string' && typeof current === 'string') {
+			return supplied.trim() === current.trim();
+		}
+		return supplied === current;
+	});
+
+	return {
+		noEffect: matchesCurrent,
+		comparedFields: [...changedFields],
+		taskTitle: typeof existingTask.title === 'string' ? existingTask.title : undefined
 	};
 }

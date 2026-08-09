@@ -41,6 +41,7 @@ import {
 	AgenticChatToolExecutionTimeoutError,
 	SupabaseAgenticChatToolExecutionAdapter
 } from '../src/workers/agentic-chat/toolExecution';
+import { AgenticChatUpdateOntoTaskMutationAdapter } from '../src/workers/agentic-chat/updateOntoTaskMutationAdapter';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
@@ -2180,9 +2181,23 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				})
 			)
 		};
-		const mutatingTool = {
-			execute: vi.fn(async () => fixture.tool.result)
-		};
+		const runGateway = vi.fn(async () => ({
+			ok: true,
+			data: {
+				task: {
+					...fixture.tool.result.task,
+					project_name: 'Fixture project'
+				}
+			},
+			entityKind: 'task',
+			entityId: fixture.tool.result.task.id,
+			entityProjectId: fixture.tool.result.task.project_id,
+			entityTitle: fixture.tool.result.task.title
+		}));
+		const mutatingTool = new AgenticChatUpdateOntoTaskMutationAdapter({} as never, {
+			runGateway: runGateway as never
+		});
+		const mutatingToolExecute = vi.spyOn(mutatingTool, 'execute');
 		const realMutation = new AgenticChatFixtureMutationExecutor({
 			control: effectControl as never,
 			mutatingTool
@@ -2228,6 +2243,25 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				context: {
 					type: fixture.request.contextType,
 					entityId: fixture.request.entityId
+				}
+			},
+			artifact: {
+				...executionInput.artifact,
+				prepared: {
+					...executionInput.artifact.prepared,
+					toolSurface: {
+						toolNames: [fixture.tool.name],
+						definitions: [
+							{
+								type: 'function',
+								function: {
+									name: fixture.tool.name,
+									description: 'Update a task.',
+									parameters: { type: 'object' }
+								}
+							}
+						]
+					}
 				}
 			}
 		};
@@ -2307,8 +2341,8 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					downstreamReceipt: fixture.tool.result
 				})
 			);
-			expect(mutatingTool.execute).toHaveBeenCalledOnce();
-			expect(mutatingTool.execute).toHaveBeenCalledWith(
+			expect(mutatingToolExecute).toHaveBeenCalledOnce();
+			expect(mutatingToolExecute).toHaveBeenCalledWith(
 				expect.objectContaining({
 					effectId: stable.effectId,
 					downstreamIdempotencyKey: stable.downstreamIdempotencyKey

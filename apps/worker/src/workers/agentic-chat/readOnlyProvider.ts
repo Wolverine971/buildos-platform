@@ -60,6 +60,18 @@ const MAX_FORCED_SYNTHESIS_RETRIES = 1;
 const CANONICAL_UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const REVIEWED_MUTATION_TOOL_NAMES = new Set(['update_onto_task']);
+const REVIEWED_UPDATE_ONTO_TASK_ARGUMENT_NAMES = new Set([
+	'task_id',
+	'project_id',
+	'title',
+	'description',
+	'type_key',
+	'state_key',
+	'priority',
+	'start_at',
+	'due_at',
+	'props'
+]);
 
 const WORKER_READ_LOOP_CATALOG_ENTRIES = AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.map(
 	(toolName) => {
@@ -1508,10 +1520,41 @@ function productionToolsFor(
 		) {
 			continue;
 		}
+		const reviewedTool = reviewedProviderToolDefinition(tool);
+		if (!reviewedTool) continue;
 		seen.add(tool.function.name);
-		tools.push(tool);
+		tools.push(reviewedTool);
 	}
 	return tools;
+}
+
+function reviewedProviderToolDefinition(
+	tool: AgenticChatReadOnlyProviderToolV1
+): AgenticChatReadOnlyProviderToolV1 | null {
+	if (tool.function.name !== 'update_onto_task') return tool;
+	const parameters = tool.function.parameters as Record<string, JsonValue>;
+	const properties = parameters.properties;
+	if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
+		return null;
+	}
+	if (!Object.hasOwn(properties, 'task_id')) return null;
+	const reviewedProperties = Object.fromEntries(
+		Object.entries(properties).filter(([name]) =>
+			REVIEWED_UPDATE_ONTO_TASK_ARGUMENT_NAMES.has(name)
+		)
+	) as JsonObject;
+	return {
+		...tool,
+		function: {
+			...tool.function,
+			parameters: {
+				...tool.function.parameters,
+				additionalProperties: false,
+				properties: reviewedProperties,
+				required: ['task_id']
+			}
+		}
+	};
 }
 
 function isEnabledMutationTool(

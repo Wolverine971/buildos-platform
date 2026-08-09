@@ -63,4 +63,41 @@ describe('createAgenticChatPhase3Assembly', () => {
 			})
 		).toThrow('must match CHAT_CONCURRENCY=1');
 	});
+
+	it('fails closed when the provider mutation surface is enabled without its adapter', () => {
+		expect(() =>
+			createAgenticChatPhase3Assembly({
+				client: supabaseClient() as never,
+				providerClient: { stream: vi.fn() } as never,
+				providerConfigured: true,
+				internalUserIds: [INTERNAL_USER_ID],
+				mutationProviderCapabilities: { updateOntoTask: true }
+			})
+		).toThrow('update_onto_task provider capability requires its mutation adapter');
+	});
+
+	it('can compose the adapter while keeping provider advertisement separately disabled', () => {
+		const assembly = createAgenticChatPhase3Assembly({
+			client: supabaseClient() as never,
+			providerClient: { stream: vi.fn() } as never,
+			providerConfigured: true,
+			internalUserIds: [INTERNAL_USER_ID],
+			mutationAdapterCapabilities: { updateOntoTask: true }
+		});
+
+		expect(assembly.runtime.getHealth()).toMatchObject({ state: 'idle' });
+	});
+
+	it('requires both explicit gates before composing the advertised mutation path', () => {
+		const assembly = createAgenticChatPhase3Assembly({
+			client: supabaseClient() as never,
+			providerClient: { stream: vi.fn() } as never,
+			providerConfigured: true,
+			internalUserIds: [INTERNAL_USER_ID],
+			mutationProviderCapabilities: { updateOntoTask: true },
+			mutationAdapterCapabilities: { updateOntoTask: true }
+		});
+
+		expect(assembly.runtime.getHealth()).toMatchObject({ state: 'idle' });
+	});
 });

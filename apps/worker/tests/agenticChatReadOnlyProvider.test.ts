@@ -142,7 +142,9 @@ function updateTaskToolDefinition() {
 				required: ['task_id'],
 				properties: {
 					task_id: { type: 'string' },
-					state_key: { type: 'string' }
+					state_key: { type: 'string' },
+					assignee_handles: { type: 'array', items: { type: 'string' } },
+					goal_id: { type: ['string', 'null'] }
 				}
 			}
 		}
@@ -654,7 +656,24 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				downstreamIdempotencySupported: false
 			})
 		]);
-		expect(client.stream.mock.calls[0]?.[0].tools).toEqual([readDefinition, updateDefinition]);
+		expect(client.stream.mock.calls[0]?.[0].tools).toEqual([
+			readDefinition,
+			{
+				...updateDefinition,
+				function: {
+					...updateDefinition.function,
+					parameters: {
+						...updateDefinition.function.parameters,
+						additionalProperties: false,
+						properties: {
+							task_id: { type: 'string' },
+							state_key: { type: 'string' }
+						},
+						required: ['task_id']
+					}
+				}
+			}
+		]);
 
 		invocation.invalidateReadMemo?.();
 		await expect(
