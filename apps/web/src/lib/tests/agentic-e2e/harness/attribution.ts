@@ -1,5 +1,6 @@
 // apps/web/src/lib/tests/agentic-e2e/harness/attribution.ts
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import { getUsageLogsForStreamRun, type LlmUsageLogRow } from './telemetry';
 
 export type HarnessOutcomeClass =
 	| 'native'
@@ -120,6 +121,63 @@ export async function readTurnAttribution(
 	} while (Date.now() < deadline);
 
 	return attribution;
+}
+
+/**
+ * The P1 worker does not run the legacy web orchestrator, so it has no
+ * llm_pass_completed or orchestration_interventions events. Its provider
+ * boundary instead attributes every request in llm_usage_logs. Keep that
+ * native evidence path explicit so a worker gate cannot pass on absent or
+ * legacy-only telemetry.
+ */
+export async function readWorkerTurnAttribution(
+	admin: TypedSupabaseClient,
+	streamRunId: string,
+	options: { timeoutMs?: number; intervalMs?: number } = {}
+): Promise<HarnessTurnAttribution> {
+	const strict = process.env.AGENTIC_ASSERT_TELEMETRY === 'true';
+	const deadline = Date.now() + (options.timeoutMs ?? (strict ? 15000 : 1500));
+	const intervalMs = options.intervalMs ?? 300;
+	let attribution: HarnessTurnAttribution = {
+		passes: [],
+		interventions: null,
+		outcomeClass: 'unattributed'
+	};
+
+	do {
+		const rows = await getUsageLogsForStreamRun(admin, streamRunId);
+		attribution = buildWorkerTurnAttributionFromUsage(rows);
+		if (attribution.outcomeClass !== 'unattributed') return attribution;
+		if (Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, intervalMs));
+	} while (Date.now() < deadline);
+
+	return attribution;
+}
+
+export function buildWorkerTurnAttributionFromUsage(
+	rows: LlmUsageLogRow[]
+): HarnessTurnAttribution {
+	const workerRows = rows.filter((row) => row.operation_type === 'agentic_chat_worker_stream');
+	const passes = workerRows.map((row, index) => ({
+		pass: index + 1,
+		passRole: row.operation_type,
+		requestedProfile: row.profile,
+		requestedModels: row.model_requested ? [row.model_requested] : [],
+		model: row.model_used || null,
+		provider: row.provider,
+		finishedReason: null,
+		streamRetryCount: 0
+	}));
+	const fullyAttributed =
+		rows.length > 0 &&
+		workerRows.length === rows.length &&
+		passes.every((pass) => Boolean(pass.model && pass.provider && pass.passRole));
+
+	return {
+		passes,
+		interventions: null,
+		outcomeClass: fullyAttributed ? 'native' : 'unattributed'
+	};
 }
 
 export function buildTurnAttributionFromEvents(

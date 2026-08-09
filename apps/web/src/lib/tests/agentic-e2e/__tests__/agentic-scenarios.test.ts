@@ -25,7 +25,7 @@ import {
 import { releaseTurnForFollowup, teardownChatSession, waitForTurnRun } from '../harness/telemetry';
 import { judgeQuality } from '../harness/judge';
 import { checkTurnBeforeFollowupRelease } from '../harness/turn-sequencing';
-import { readTurnAttribution } from '../harness/attribution';
+import { readTurnAttribution, readWorkerTurnAttribution } from '../harness/attribution';
 import { scenarioCatalog } from '../scenarios/catalog';
 import {
 	evaluateTurnCheckpoints,
@@ -233,7 +233,8 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 							if (turn.coldSession) {
 								if (sessionId) {
 									await teardownChatSession(c.db.admin, c.db.userId, sessionId, {
-										retainForWorkerControlRowRetention: EXECUTION_MODE === 'worker_realtime'
+										retainForWorkerControlRowRetention:
+											EXECUTION_MODE === 'worker_realtime'
 									});
 								}
 								sessionId = undefined;
@@ -303,10 +304,16 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 										}
 										return;
 									}
-									const attribution = await readTurnAttribution(
-										c.db.admin,
-										result.streamRunId
-									);
+									const attribution =
+										EXECUTION_MODE === 'worker_realtime'
+											? await readWorkerTurnAttribution(
+													c.db.admin,
+													result.streamRunId
+												)
+											: await readTurnAttribution(
+													c.db.admin,
+													result.streamRunId
+												);
 									console.info(
 										'[agentic-e2e] turn attribution',
 										JSON.stringify({
@@ -324,7 +331,10 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 											`[agentic-e2e] missing model/provider/intervention attribution for ${result.streamRunId}`
 										);
 									}
-									if (process.env.AGENTIC_ASSERT_TELEMETRY === 'true') {
+									if (
+										process.env.AGENTIC_ASSERT_TELEMETRY === 'true' &&
+										EXECUTION_MODE !== 'worker_realtime'
+									) {
 										const interventions = attribution.interventions;
 										const expectedVariant =
 											process.env.AGENTIC_EXPECT_SCAFFOLD_VARIANT?.trim();
@@ -424,7 +434,8 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 					} finally {
 						try {
 							await teardownChatSession(c.db.admin, c.db.userId, sessionId, {
-								retainForWorkerControlRowRetention: EXECUTION_MODE === 'worker_realtime'
+								retainForWorkerControlRowRetention:
+									EXECUTION_MODE === 'worker_realtime'
 							});
 						} finally {
 							// Extra cleanup first (multi-project fixtures, agent-created

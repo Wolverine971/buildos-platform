@@ -401,9 +401,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 				if (event.type === 'text') {
 					if (!event.content) throw providerError('provider_empty_text', 'unknown');
-					if (toolCall.seen) {
-						throw providerError('provider_mixed_text_and_tool_call', 'permanent');
-					}
 					streamedText = true;
 					yield { type: 'text_delta', text: event.content };
 					continue;
@@ -416,9 +413,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (event.type === 'tool_call') {
 					if (request.toolChoice === 'none') {
 						throw providerError('provider_tool_call_disabled', 'permanent');
-					}
-					if (streamedText) {
-						throw providerError('provider_mixed_text_and_tool_call', 'permanent');
 					}
 					appendToolCallDelta(toolCall, event.toolCall);
 					continue;
@@ -442,9 +436,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (call) {
 					if (request.toolChoice !== 'auto') {
 						throw providerError('provider_tool_call_disabled', 'permanent');
-					}
-					if (streamedText) {
-						throw providerError('provider_mixed_text_and_tool_call', 'permanent');
 					}
 					if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
 						throw providerError('provider_tool_finish_reason_invalid', 'unknown');
@@ -521,9 +512,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
 					if (!event.content) throw providerError('provider_empty_text', 'unknown');
-					if (toolCall.seen) {
-						throw providerError('provider_mixed_text_and_tool_call', 'permanent');
-					}
 					streamedText = true;
 					yield { type: 'text_delta', text: event.content };
 					continue;
@@ -532,9 +520,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (event.type === 'tool_call') {
 					if (request.toolChoice === 'none') {
 						throw providerError('provider_tool_call_disabled', 'permanent');
-					}
-					if (streamedText) {
-						throw providerError('provider_mixed_text_and_tool_call', 'permanent');
 					}
 					appendToolCallDelta(toolCall, event.toolCall);
 					continue;
@@ -559,9 +544,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (call) {
 					if (request.toolChoice !== 'auto') {
 						throw providerError('provider_tool_call_disabled', 'permanent');
-					}
-					if (streamedText) {
-						throw providerError('provider_mixed_text_and_tool_call', 'permanent');
 					}
 					if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
 						throw providerError('provider_tool_finish_reason_invalid', 'unknown');

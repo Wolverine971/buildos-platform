@@ -521,6 +521,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 	it('continues sequential read rounds with compacted durable feedback', async () => {
 		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
 			[
+				{ type: 'text', content: 'Let me check the first source.' },
 				{
 					type: 'tool_call',
 					toolCall: [
@@ -542,6 +543,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				}
 			],
 			[
+				{ type: 'text', content: 'I need one more detail.' },
 				{
 					type: 'tool_call',
 					toolCall: [
@@ -586,7 +588,19 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
-		await collect(invocation.stream());
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			{ type: 'text_delta', text: 'Let me check the first source.' },
+			expect.objectContaining({
+				type: 'semantic',
+				eventType: 'agent_state',
+				currentActivity: 'Planning the first step...'
+			}),
+			expect.objectContaining({
+				type: 'read_tool',
+				providerToolCallId: 'provider-read-1',
+				toolName: 'get_project_overview'
+			})
+		]);
 
 		const firstFeedback = {
 			providerToolCallId: 'provider-read-1',
@@ -611,6 +625,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		await expect(
 			collect(invocation.continueWithToolResults!({ round: 2, results: [firstFeedback] }))
 		).resolves.toEqual([
+			{ type: 'text_delta', text: 'I need one more detail.' },
 			expect.objectContaining({
 				type: 'read_tool',
 				providerToolCallId: 'provider-read-2',

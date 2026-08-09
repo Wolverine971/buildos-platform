@@ -1,6 +1,7 @@
 // apps/web/src/lib/tests/agentic-e2e/harness/attribution.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	buildWorkerTurnAttributionFromUsage,
 	buildTurnAttributionFromEvents,
 	classifyHarnessOutcome,
 	type HarnessInterventions,
@@ -117,5 +118,65 @@ describe('buildTurnAttributionFromEvents', () => {
 			},
 			evalPinnedModels: ['provider/model']
 		});
+	});
+});
+
+describe('buildWorkerTurnAttributionFromUsage', () => {
+	it('uses exact worker provider usage without requiring legacy intervention events', () => {
+		const result = buildWorkerTurnAttributionFromUsage([
+			{
+				id: 'usage-1',
+				model_requested: 'test/model',
+				model_used: 'test/model',
+				provider: 'test-provider',
+				profile: null,
+				operation_type: 'agentic_chat_worker_stream',
+				prompt_tokens: 10,
+				completion_tokens: 2,
+				total_tokens: 12,
+				total_cost_usd: 0.001,
+				request_started_at: '2026-08-09T00:00:00.000Z',
+				request_completed_at: '2026-08-09T00:00:01.000Z'
+			}
+		]);
+
+		expect(result).toMatchObject({
+			outcomeClass: 'native',
+			interventions: null,
+			passes: [
+				{
+					pass: 1,
+					passRole: 'agentic_chat_worker_stream',
+					model: 'test/model',
+					provider: 'test-provider'
+				}
+			]
+		});
+	});
+
+	it('fails closed for non-worker or incomplete usage attribution', () => {
+		const legacyUsage = {
+			id: 'usage-1',
+			model_requested: 'test/model',
+			model_used: 'test/model',
+			provider: 'test-provider',
+			profile: null,
+			operation_type: 'agent_chat_stream',
+			prompt_tokens: 10,
+			completion_tokens: 2,
+			total_tokens: 12,
+			total_cost_usd: 0.001,
+			request_started_at: '2026-08-09T00:00:00.000Z',
+			request_completed_at: '2026-08-09T00:00:01.000Z'
+		};
+
+		expect(buildWorkerTurnAttributionFromUsage([legacyUsage]).outcomeClass).toBe(
+			'unattributed'
+		);
+		expect(
+			buildWorkerTurnAttributionFromUsage([
+				{ ...legacyUsage, operation_type: 'agentic_chat_worker_stream', provider: null }
+			]).outcomeClass
+		).toBe('unattributed');
 	});
 });
