@@ -232,7 +232,9 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 							// only pass on durable project state, not on recall from history.
 							if (turn.coldSession) {
 								if (sessionId) {
-									await teardownChatSession(c.db.admin, c.db.userId, sessionId);
+									await teardownChatSession(c.db.admin, c.db.userId, sessionId, {
+										retainForWorkerControlRowRetention: EXECUTION_MODE === 'worker_realtime'
+									});
 								}
 								sessionId = undefined;
 								lastTurnContext = null;
@@ -421,7 +423,9 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 						}
 					} finally {
 						try {
-							await teardownChatSession(c.db.admin, c.db.userId, sessionId);
+							await teardownChatSession(c.db.admin, c.db.userId, sessionId, {
+								retainForWorkerControlRowRetention: EXECUTION_MODE === 'worker_realtime'
+							});
 						} finally {
 							// Extra cleanup first (multi-project fixtures, agent-created
 							// projects the AE2E-prefix sweep cannot see), then the primary.

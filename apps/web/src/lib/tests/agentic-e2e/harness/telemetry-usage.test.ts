@@ -1,7 +1,7 @@
 // apps/web/src/lib/tests/agentic-e2e/harness/telemetry-usage.test.ts
 import { describe, expect, it } from 'vitest';
 
-import { summarizeUsageLogs, type LlmUsageLogRow } from './telemetry';
+import { summarizeUsageLogs, teardownChatSession, type LlmUsageLogRow } from './telemetry';
 
 function usage(overrides: Partial<LlmUsageLogRow>): LlmUsageLogRow {
 	return {
@@ -49,5 +49,13 @@ describe('agentic E2E stream usage summaries', () => {
 			profiles: ['balanced', 'quality'],
 			operations: ['agent_chat_stream', 'agent_chat_synthesis']
 		});
+	});
+
+	it('retains worker sessions while production control-row retention is active', async () => {
+		await expect(
+			teardownChatSession({} as never, 'user-id', 'session-id', {
+				retainForWorkerControlRowRetention: true
+			})
+		).resolves.toBeUndefined();
 	});
 });

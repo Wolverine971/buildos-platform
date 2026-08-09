@@ -192,13 +192,20 @@ export async function releaseTurnForFollowup(
 	}
 }
 
-/** Delete one exact harness-owned chat session and its cascading test data. */
+/**
+ * Delete one exact harness-owned chat session and its cascading test data.
+ * Worker stream-state and signal rows deliberately enforce a seven-day
+ * retention window with ON DELETE RESTRICT, so worker evidence runs retain the
+ * owning session until that production control-row window expires.
+ */
 export async function teardownChatSession(
 	admin: TypedSupabaseClient,
 	userId: string,
-	sessionId: string | null | undefined
+	sessionId: string | null | undefined,
+	options: { retainForWorkerControlRowRetention?: boolean } = {}
 ): Promise<void> {
 	if (!sessionId) return;
+	if (options.retainForWorkerControlRowRetention) return;
 	const { data, error } = await admin
 		.from('chat_sessions')
 		.delete()
