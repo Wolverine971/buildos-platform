@@ -151,6 +151,16 @@
 			"import": "./dist/calendar/agent-run-calendar-port.mjs",
 			"require": "./dist/calendar/agent-run-calendar-port.js"
 		},
+		"./calendar/task-event-sync": {
+			"types": "./dist/calendar/task-event-sync.d.ts",
+			"import": "./dist/calendar/task-event-sync.mjs",
+			"require": "./dist/calendar/task-event-sync.js"
+		},
+		"./calendar/worker-task-event-mutation-port": {
+			"types": "./dist/calendar/worker-task-event-mutation-port.d.ts",
+			"import": "./dist/calendar/worker-task-event-mutation-port.mjs",
+			"require": "./dist/calendar/worker-task-event-mutation-port.js"
+		},
 		"./web/safe-fetch": {
 			"types": "./dist/web/safe-fetch.d.ts",
 			"import": "./dist/web/safe-fetch.mjs",

@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S3 complete; S1/S2 SQL hosted; S4 core adapter unit complete locally with parity expansion still open; production mutations remain disabled
+**Status:** S1-S3 complete; S1/S2 SQL hosted; S4 task/calendar unit complete locally with relationship expansion still open; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -272,22 +272,43 @@ Core-unit implementation and findings:
   gateway runner stubbed), while a separate adapter test crosses the real shared
   gateway handler and proves the project-scoped update plus activity-log side
   effect and legacy-compatible receipt shape.
+- Extracted the legacy task-event scheduling coordinator into
+  `@buildos/shared-agent-ops/calendar/task-event-sync`; the web
+  `TaskEventSyncService` is now a thin adapter over that same coordinator, so
+  start-only, due-only, short-range, long-range, backlog, reschedule, and
+  completion behavior cannot drift between runtimes.
+- Added a worker-native event mutation port that performs ontology-event CRUD,
+  event activity logging, task-event edge maintenance, actor-projection/member-
+  fanout target resolution, and version-keyed `sync_calendar` queue enqueues
+  entirely through Supabase. It imports no SvelteKit module and never calls the
+  web host. The adapter supplies this port to the shared task update handler.
+- The service-role path adds an explicit task-project fence to event hydration,
+  mutation, failure marking, and edge cleanup. A malformed cross-project edge
+  cannot be used to mutate another project's event.
+- Calendar fan-out retains the legacy best-effort recovery contract. Durable
+  queue jobs use the existing event-version dedup key; an enqueue rejection
+  marks the event sync failed without retrying the committed task mutation, and
+  a thrown task-sync side effect is warned and does not erase the authoritative
+  task receipt.
 
 Focused evidence for this unit:
 
 - shared gateway no-effect differential: 3/3
-- provider/effect/adapter/executor/assembly focused worker matrix: 97/97
-- full shared-agent-ops suite: 63/63
-- full worker suite: 836 passed, 1 intentional skip
+- provider/effect/adapter/executor/assembly focused worker matrix: 98/98
+- shared task-calendar coordinator/worker-port matrix: 10/10; web coordinator
+  referee: 3/3; exact task-patch calendar referee: 9/9
+- full shared-agent-ops suite: 73/73
+- full worker suite: 837 passed, 1 intentional skip
 - runtime suite: 183/183; exact legacy route referee: 41/41
-- shared-agent-ops and worker typechecks: pass
+- shared-agent-ops build/typecheck, worker typecheck, and Svelte check: pass;
+  Svelte reports 0 diagnostics
 - changed worker source ESLint: zero diagnostics; full worker lint and HTTP
   module-size guard pass with zero errors
 
-S4 remains open for the intentionally hidden assignment/goal/milestone fields
-and for a worker-safe task-calendar synchronization port. Do not expose those
-fields or enable either assembly gate until their side effects have a two-sided
-differential and recovery coverage.
+S4 remains open for the intentionally hidden assignment/goal/milestone fields.
+Do not expose those fields or enable either assembly gate until their atomic
+relationship/assignment side effects have a two-sided differential and recovery
+coverage.
 
 ### S5 — Adapter-by-adapter expansion and local exit
 

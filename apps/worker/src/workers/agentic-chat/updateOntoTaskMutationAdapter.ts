@@ -1,4 +1,8 @@
-import { runGatewayWriteOp } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
+import { createWorkerTaskSyncPort } from '@buildos/shared-agent-ops/calendar/worker-task-event-mutation-port';
+import {
+	type TaskSyncPort,
+	runGatewayWriteOp
+} from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import {
 	type Database,
 	type JsonObject,
@@ -43,12 +47,14 @@ export class AgenticChatUpdateOntoTaskMutationAdapter
 	implements AgenticChatFixtureMutatingToolPortV1
 {
 	private readonly runGateway: GatewayRunner;
+	private readonly taskSync: TaskSyncPort;
 
 	constructor(
 		private readonly client: SupabaseClient<Database>,
-		options: { runGateway?: GatewayRunner } = {}
+		options: { runGateway?: GatewayRunner; taskSync?: TaskSyncPort } = {}
 	) {
 		this.runGateway = options.runGateway ?? runGatewayWriteOp;
+		this.taskSync = options.taskSync ?? createWorkerTaskSyncPort(client);
 	}
 
 	async execute(input: MutationInput): Promise<JsonObject> {
@@ -94,7 +100,8 @@ export class AgenticChatUpdateOntoTaskMutationAdapter
 				},
 				op: OPERATION_NAME,
 				args: gatewayArguments,
-				callSessionId: input.executionInput.claim.sessionId
+				callSessionId: input.executionInput.claim.sessionId,
+				taskSync: this.taskSync
 			});
 		} catch (error) {
 			throw uncertainFailure('update_onto_task_gateway_threw', canonicalError(error));

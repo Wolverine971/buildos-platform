@@ -185,7 +185,10 @@ function realGatewayClient() {
 describe('AgenticChatUpdateOntoTaskMutationAdapter', () => {
 	it('crosses the real shared gateway handler and records its activity side effect', async () => {
 		const { client, calls } = realGatewayClient();
-		const adapter = new AgenticChatUpdateOntoTaskMutationAdapter(client as never);
+		const taskSync = { syncTaskEvents: vi.fn(async () => undefined) };
+		const adapter = new AgenticChatUpdateOntoTaskMutationAdapter(client as never, {
+			taskSync
+		});
 
 		await expect(adapter.execute(mutationInput())).resolves.toMatchObject({
 			task: {
@@ -214,6 +217,20 @@ describe('AgenticChatUpdateOntoTaskMutationAdapter', () => {
 				agent_call_session_id: SESSION_ID
 			})
 		});
+		expect(taskSync.syncTaskEvents).toHaveBeenCalledWith(
+			USER_ID,
+			'actor-1',
+			expect.objectContaining({ id: TASK_ID, title: 'Updated task' }),
+			{
+				activityLog: {
+					changeSource: 'agent_call',
+					actorContext: {
+						externalAgentCallerId: null,
+						agentCallSessionId: SESSION_ID
+					}
+				}
+			}
+		);
 	});
 
 	it('executes the admitted canonical op through the project-fenced shared gateway', async () => {
@@ -262,9 +279,35 @@ describe('AgenticChatUpdateOntoTaskMutationAdapter', () => {
 					allowed_ops: ['onto.task.update'],
 					project_ids: [PROJECT_ID],
 					write_project_ids: [PROJECT_ID]
-				}
+				},
+				taskSync: expect.objectContaining({ syncTaskEvents: expect.any(Function) })
 			})
 		);
+	});
+
+	it('keeps the committed task receipt when best-effort calendar synchronization fails', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const { client, calls } = realGatewayClient();
+		const taskSync = {
+			syncTaskEvents: vi.fn(async () => {
+				throw new Error('calendar queue unavailable');
+			})
+		};
+		const adapter = new AgenticChatUpdateOntoTaskMutationAdapter(client as never, {
+			taskSync
+		});
+
+		await expect(adapter.execute(mutationInput())).resolves.toMatchObject({
+			task: { id: TASK_ID, title: 'Updated task' },
+			message: 'Task updated successfully.'
+		});
+		expect(taskSync.syncTaskEvents).toHaveBeenCalledOnce();
+		expect(calls).toContainEqual({
+			table: 'onto_project_logs',
+			operation: 'insert',
+			value: expect.objectContaining({ entity_id: TASK_ID, action: 'updated' })
+		});
+		warn.mockRestore();
 	});
 
 	it('rejects a changed effect key before dispatch', async () => {
