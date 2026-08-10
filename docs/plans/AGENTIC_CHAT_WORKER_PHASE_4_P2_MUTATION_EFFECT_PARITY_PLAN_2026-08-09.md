@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S4 complete; S1/S2/S4 SQL hosted; S5 adapter inventory next; production mutations remain disabled
+**Status:** S1-S4 complete; S5 inventory and idempotent task-create adapter complete; all required SQL hosted; document family next; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -361,6 +361,67 @@ Hosted correction evidence on 2026-08-10:
   reconciliation contracts exist.
 - Close the `mutating_tools` parity registry block only when the golden is
   exercised by both legacy and worker suites.
+
+S5 inventory and first expansion unit completed on 2026-08-10:
+
+- The exhaustive signed write-category union contains 38 tools: 28 ontology,
+  four calendar, and six contact/external/control tools. The shared in-process
+  gateway covers 22; 16 remain web-only. The per-tool owner, timeout, receipt,
+  side-effect, idempotency/query, and recovery classification is recorded in
+  `AGENTIC_CHAT_WORKER_PHASE_4_P2_S5_MUTATION_ADAPTER_INVENTORY_2026-08-10.md`.
+- Added an independently gated `create_onto_task` worker adapter and a mutation
+  adapter router, so task create and update can be advertised/installed without
+  coupling their gates. Advertising either tool without its matching adapter
+  fails assembly. Production bootstrap still supplies no mutation capabilities.
+- The provider exposes only the reviewed task-create projection and assigns a
+  stable logical operation with `downstreamIdempotencySupported = true`.
+- The adapter rechecks the signed surface, effect/key identity, reviewed
+  arguments, cancellation, provider correlation, and project fence. It passes
+  `chat-effect:<effect_id>` into the shared gateway's atomic task create command
+  and returns the legacy-compatible task receipt without gateway-only
+  `project_name` or the internal domain idempotency column. External-gateway
+  downstream keys are namespaced by caller and canonical op before reaching the
+  globally unique task key.
+- Shared task creation now matches the legacy task relationship, assignee,
+  assignment/mention, activity, and calendar side-effect surface. The task row,
+  initial assignees, and relationship plan commit atomically; an idempotent RPC
+  replay returns the original task and skips post-commit side effects.
+- The existing create wrapper still called the generic relationship applier,
+  which predated `targets_milestone`. Forward migration
+  `20260810020000_atomic_task_create_milestone_relationship.sql` routes task
+  create through the task-scoped applier introduced in S4.
+
+Final local evidence for this unit:
+
+- full shared-agent-ops suite: 82/82
+- full worker suite: 849 passed, 1 intentional skip
+- runtime suite: 183/183
+- external-gateway plus legacy task-create referee: 46/46
+- shared-agent-ops build/typecheck, worker typecheck, and Svelte check: pass;
+  Svelte reports zero diagnostics
+- changed worker source ESLint: zero errors; changed-source formatting: pass
+- disposable PostgreSQL task-create milestone/replay proof: pass; predecessor
+  atomic task relationship and semantic update suites remain green
+
+Hosted task-create correction evidence on 2026-08-10:
+
+- A fresh receipt-isolated workdir fetched production through
+  `20260810010000`. Only
+  `20260810020000_atomic_task_create_milestone_relationship.sql` was added; its
+  staged SHA-256 matched the committed source exactly:
+  `bceeac1605353d14bf80e5bd1b1e69b2ea486204d857cd0b6ddd79fd11e50e15`.
+- The isolated dry run named exactly that migration, application succeeded, and
+  the post-apply dry run reported the remote database up to date. Hosted history
+  contains receipt `20260810020000` with six statements.
+- A second fresh hosted receipt differs from source only by the migration
+  history serializer removing two blank lines between statements.
+- Live catalog verification confirms the create wrapper remains
+  `SECURITY INVOKER`, the task-scoped applier remains `SECURITY DEFINER`, both
+  fix `search_path=public`, anonymous execute is revoked, authenticated execute
+  is present, and the installed wrapper delegates to the applier whose body
+  handles `targets_milestone`.
+- No provider capability, adapter capability, production routing, worker deploy,
+  or live model mutation was enabled.
 
 ## P2 exit gate
 
