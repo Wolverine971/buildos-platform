@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S3 complete; S1/S2 SQL hosted; S4 task/calendar unit complete locally with relationship expansion still open; production mutations remain disabled
+**Status:** S1-S4 complete; S1/S2/S4 SQL hosted; S5 adapter inventory next; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -226,7 +226,7 @@ Local evidence on the final S3 tree:
 - changed worker source ESLint: zero diagnostics; full worker lint remains at the
   zero-error repository baseline
 
-### S4 — `update_onto_task` production adapter — core unit complete; expansion open
+### S4 — `update_onto_task` production adapter — complete; corrective SQL hosted
 
 - Differentially compare the legacy `OntologyWriteExecutor.updateOntoTask`
   behavior with the worker-safe shared gateway implementation.
@@ -259,10 +259,10 @@ Core-unit implementation and findings:
   does not make a mutation reachable in production.
 - The provider narrows the signed legacy definition to the reviewed shared
   gateway subset (`task_id`, optional `project_id`, title/description/type/state,
-  priority, scheduling, and props) and sets `additionalProperties: false`.
-  Assignee handles/IDs plus goal/milestone relationship fields remain hidden
-  until their atomic legacy side effects are extracted; they cannot silently
-  enter this adapter.
+  priority, scheduling, props, assignee handles/IDs, goal, and supporting
+  milestone) and sets `additionalProperties: false`. These fields remain behind
+  the separate default-off provider and adapter capabilities; the production
+  bootstrap opts into neither.
 - The differential found and closed one core behavioral gap in the shared
   gateway: scalar echoes now use the legacy no-effect comparison, including
   trimmed text and timestamp-equivalent dates, instead of bumping `updated_at`
@@ -290,25 +290,64 @@ Core-unit implementation and findings:
   marks the event sync failed without retrying the committed task mutation, and
   a thrown task-sync side effect is warned and does not erase the authoritative
   task receipt.
+- Extracted the assignment-notification implementation into
+  `@buildos/shared-agent-ops` and made the web service a thin admin-client
+  adapter. Worker task updates now use the same recipient filtering, payload,
+  assignment-before-mention ordering, and mention coalescing contract.
+- Added worker-safe active-member validation, legacy-compatible exact/prefix
+  handle resolution, owner handling for explicit actor IDs, a ten-assignee cap,
+  and legacy-shaped assignee enrichment in the returned task.
+- Goal and supporting-milestone updates now mirror the legacy route: they update
+  the shadow IDs in `props`, validate references against the task project, and
+  build the shared replace-mode relationship plan. A milestone-only update sets
+  `skipContainment` so it cannot detach the task from its existing goal/plan.
+- Task fields, assignee synchronization, and relationship mutations cross the
+  existing `onto_task_update_with_relationships_atomic` transaction. The audit
+  found that the hosted wrapper rejected a valid semantic-only milestone plan
+  and that the generic plan applier predated `targets_milestone`. Forward
+  migration `20260810010000_atomic_task_semantic_relationship_update.sql` adds a
+  task-scoped guarded applier and updates the wrapper without widening anonymous
+  access.
+- The downstream gateway still cannot atomically persist or query the worker
+  effect identity. The adapter therefore remains one-attempt/uncertain and does
+  not claim downstream idempotency after this expansion.
 
-Focused evidence for this unit:
+Final local evidence for this unit:
 
 - shared gateway no-effect differential: 3/3
-- provider/effect/adapter/executor/assembly focused worker matrix: 98/98
+- full shared-agent-ops suite: 79/79
+- focused provider projection: 21/21; focused provider/adapter matrix: 48/48
+- provider/effect/adapter/executor/assembly focused worker matrix remains green
 - shared task-calendar coordinator/worker-port matrix: 10/10; web coordinator
   referee: 3/3; exact task-patch calendar referee: 9/9
-- full shared-agent-ops suite: 73/73
-- full worker suite: 837 passed, 1 intentional skip
-- runtime suite: 183/183; exact legacy route referee: 41/41
+- focused web relationship/assignment/calendar/stream referee: 77/77
+- full worker suite: 838 passed, 1 intentional skip
+- runtime suite: 183/183
 - shared-agent-ops build/typecheck, worker typecheck, and Svelte check: pass;
   Svelte reports 0 diagnostics
 - changed worker source ESLint: zero diagnostics; full worker lint and HTTP
   module-size guard pass with zero errors
+- disposable PostgreSQL proof: the new semantic-only task relationship test and
+  the prior atomic task relationship suite both pass; the mismatch case proves
+  the task row rolls back with an invalid relationship plan
 
-S4 remains open for the intentionally hidden assignment/goal/milestone fields.
-Do not expose those fields or enable either assembly gate until their atomic
-relationship/assignment side effects have a two-sided differential and recovery
-coverage.
+Hosted correction evidence on 2026-08-10:
+
+- A fresh receipt-isolated workdir fetched the linked ledger through
+  `20260809020000`. Only
+  `20260810010000_atomic_task_semantic_relationship_update.sql` was added; its
+  SHA-256 matched the committed source exactly:
+  `8753d75b2de296de5d4fca15dfd9ed69741cab5a150f3a8fbe71428f44b414b9`.
+- The isolated dry run named exactly that migration, application succeeded, and
+  the post-apply dry run reported the remote database up to date. Hosted history
+  contains receipt `20260810010000` with 12 statements.
+- Live catalog verification confirms the wrapper remains `SECURITY INVOKER`,
+  the task-scoped applier is `SECURITY DEFINER`, both fix
+  `search_path=public`, anonymous execute is revoked, authenticated execute is
+  present, and the installed bodies contain the task-applier delegation and
+  `targets_milestone` handling.
+- No provider capability, adapter capability, production routing, or live model
+  mutation was enabled.
 
 ### S5 — Adapter-by-adapter expansion and local exit
 
