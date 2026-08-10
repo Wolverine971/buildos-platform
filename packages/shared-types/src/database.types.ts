@@ -18613,6 +18613,28 @@ export type Database = {
         }
         Returns: Json
       }
+      persist_agentic_chat_mutation_tool_execution: {
+        Args: {
+          p_affected_entities: Json
+          p_arguments: Json
+          p_canonical_argument_hash: string
+          p_effect_id: string
+          p_execution_generation: number
+          p_execution_time_ms: number
+          p_operation_name: string
+          p_processing_token: string
+          p_provider_tool_call_id: string
+          p_queue_job_id: string
+          p_requires_user_action: boolean
+          p_sequence_index: number
+          p_tokens_consumed: number
+          p_tool_execution_id: string
+          p_tool_name: string
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       persist_agentic_chat_prompt_snapshot: {
         Args: {
           p_approx_prompt_tokens: number

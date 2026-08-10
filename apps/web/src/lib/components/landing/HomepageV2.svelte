@@ -1,9 +1,8 @@
 <!-- apps/web/src/lib/components/landing/HomepageV2.svelte -->
 <!--
   Homepage redesign — preview at /landing-v2
-  Goal: lead with simple promise, split audience (creator vs technical/builder)
-  using the §-numbered two-column pattern, then dramatize compounding value
-  via a Day 1 → Week 3 → Month 2 future-pacing timeline.
+  Goal: make the path from messy input to a durable project obvious,
+  using real product proof and one restrained visual language.
   Strategy: docs/marketing/strategy/buildos-positioning-and-homepage-rewrite-2026-05-07.md
 -->
 <script lang="ts">
@@ -17,7 +16,6 @@
 		FileText,
 		TriangleAlert,
 		ArrowRight,
-		ArrowLeft,
 		ArrowDown,
 		CircleCheck,
 		Circle,
@@ -101,18 +99,18 @@
 		{
 			icon: FolderKanban,
 			name: 'Projects',
-			desc: 'The bodies of work you are trying to finish.'
+			desc: "The work you're moving."
 		},
-		{ icon: Target, name: 'Goals', desc: 'The outcomes that give the work direction.' },
-		{ icon: Calendar, name: 'Plans', desc: 'The stages the work moves through.' },
-		{ icon: ListChecks, name: 'Tasks', desc: 'The concrete next moves that ship it.' },
-		{ icon: Flag, name: 'Milestones', desc: 'Checkpoints that show the project is moving.' },
-		{ icon: FileText, name: 'Documents', desc: 'Research, scripts, notes, references.' },
-		{ icon: TriangleAlert, name: 'Risks', desc: 'Unknowns, blockers, and loose ends.' },
+		{ icon: Target, name: 'Goals', desc: "The outcome you're aiming for." },
+		{ icon: Calendar, name: 'Plans', desc: 'The path from here to done.' },
+		{ icon: ListChecks, name: 'Tasks', desc: 'The next concrete actions.' },
+		{ icon: Flag, name: 'Milestones', desc: 'Proof that the work is moving.' },
+		{ icon: FileText, name: 'Documents', desc: 'Notes, research, and drafts.' },
+		{ icon: TriangleAlert, name: 'Risks', desc: 'Blockers and open questions.' },
 		{
 			icon: FolderKanban,
 			name: 'Flexible structure',
-			desc: 'Project-specific shape that adapts to what you are building.'
+			desc: 'A shape that fits the project.'
 		}
 	] as const;
 </script>
@@ -120,49 +118,39 @@
 <div class="min-h-screen bg-background text-foreground">
 	<!-- ─── §01 hero ────────────────────────────────────────────────── -->
 	<section class="border-b border-border">
-		<div class="mx-auto max-w-7xl px-2 py-10 sm:px-4 sm:py-14 lg:px-6 lg:py-16">
+		<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6 lg:py-20">
 			<div class="mx-auto max-w-4xl space-y-5 text-center sm:space-y-6">
-				<div
-					class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 shadow-ink tx tx-frame tx-weak"
-				>
+				<div class="inline-flex items-center gap-2 text-muted-foreground">
 					<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-					<span class="micro-label">
-						For authors, YouTubers, podcasters, and course creators
-					</span>
+					<span class="micro-label">For creators with too much in their head</span>
 				</div>
 
 				<h1
-					class="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-[1.02]"
+					class="text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl md:text-6xl"
 				>
-					Get it out of your head.<br />
-					We'll make it
-					<span class="relative">
-						make sense.
-						<span
-							class="absolute inset-x-0 bottom-1 -z-10 h-[0.65em] tx tx-bloom tx-med rounded"
-						></span>
-					</span>
+					Turn messy thinking into a working project.
 				</h1>
 
 				<p
 					class="mx-auto max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
 				>
-					Brain-dump everything — half-thoughts, voice memos, the 2am spiral. BuildOS
-					turns it into projects, tasks, and a plan you can actually move on.
+					Type it, paste it, or say it out loud. BuildOS turns the raw version into tasks,
+					docs, and a clear next step.
 				</p>
 
 				<div class="flex flex-wrap items-center justify-center gap-3 pt-1">
 					<a
 						href="/auth/register"
-						class="pressable rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-ink hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+						class="pressable rounded-md bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground shadow-ink transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
 					>
 						Start in chat
 					</a>
 					<a
 						href="#walkthrough"
-						class="inline-flex min-h-11 items-center text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					>
-						See the transformation ↓
+						See how it works
+						<ArrowDown class="h-4 w-4 shrink-0" />
 					</a>
 				</div>
 			</div>
@@ -175,63 +163,51 @@
 			-->
 			<div
 				id="walkthrough"
-				class="mt-12 scroll-mt-4 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak sm:mt-16"
+				class="mt-12 scroll-mt-4 overflow-hidden rounded-lg border border-border bg-card shadow-ink sm:mt-16"
 			>
-				<div
-					class="border-b border-border px-4 py-5 text-center tx tx-strip tx-med sm:px-6"
-				>
-					<p class="micro-label text-accent">One conversation → one working project</p>
+				<div class="border-b border-border px-4 py-6 text-center sm:px-6">
+					<p class="micro-label text-accent">From brain dump to project</p>
 					<h2 class="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-						See exactly what happens after you hit send.
+						One message in. A working project out.
 					</h2>
 					<p
 						class="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base"
 					>
-						No templates to configure. No blank project to organize. Start with the
-						messy version and watch it become something you can use.
+						BuildOS creates the structure while you watch, then gives you a project you
+						can keep using.
 					</p>
+					<p class="micro-label mt-3 text-muted-foreground">Real BuildOS screenshots</p>
 				</div>
 
-				<div class="relative">
-					<div
-						aria-hidden="true"
-						class="absolute bottom-12 left-12 top-12 hidden w-px bg-border xl:block"
-					></div>
+				<div>
 					<article
-						class="relative grid gap-5 p-4 sm:p-6 lg:p-8 xl:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8"
+						class="grid gap-5 p-4 sm:p-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8 lg:p-8"
 					>
-						<div class="relative xl:pl-11">
+						<div>
 							<span
-								class="micro-label inline-flex h-7 items-center rounded-md border border-accent/40 bg-accent/10 px-2.5 text-accent shadow-ink-inner xl:absolute xl:left-0 xl:top-0 xl:h-8 xl:w-8 xl:justify-center xl:px-0"
+								class="micro-label inline-flex h-7 items-center rounded-md border border-border px-2.5 text-muted-foreground"
 							>
-								<span class="xl:hidden">Step&nbsp;</span>1
+								Step 1
 							</span>
-							<h3
-								class="mt-3 text-xl font-semibold leading-snug tracking-tight xl:mt-0"
-							>
-								Brain-dump your project.
+							<h3 class="mt-3 text-xl font-semibold leading-snug tracking-tight">
+								Tell BuildOS what you're making.
 							</h3>
-							<p
-								class="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base"
-							>
-								Type, paste, or talk. Messy is fine.
+							<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+								Type, paste, or talk.
 							</p>
 						</div>
 
 						<figure
-							class="min-w-0 self-start overflow-hidden rounded-lg border border-accent/50 bg-background shadow-ink"
+							class="min-w-0 self-start overflow-hidden rounded-lg border border-accent/50 bg-background"
 						>
 							<figcaption
-								class="flex min-h-10 items-center justify-between gap-3 border-b border-border px-3 tx tx-strip tx-weak"
+								class="flex min-h-10 items-center border-b border-border bg-muted/30 px-3"
 							>
 								<span class="text-sm font-semibold text-foreground"
 									>Your brain dump</span
 								>
-								<span class="micro-label hidden text-muted-foreground sm:block"
-									>Messy is welcome</span
-								>
 							</figcaption>
-							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard access for horizontal screenshot overflow) -->
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 							<div
 								class="overflow-x-auto"
 								role="region"
@@ -265,40 +241,33 @@
 					</article>
 
 					<article
-						class="relative grid gap-5 border-t border-border p-4 sm:p-6 lg:p-8 xl:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8"
+						class="grid gap-5 border-t border-border p-4 sm:p-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8 lg:p-8"
 					>
-						<div class="relative xl:pl-11">
+						<div>
 							<span
-								class="micro-label inline-flex h-7 items-center rounded-md border border-accent/40 bg-accent/10 px-2.5 text-accent shadow-ink-inner xl:absolute xl:left-0 xl:top-0 xl:h-8 xl:w-8 xl:justify-center xl:px-0"
+								class="micro-label inline-flex h-7 items-center rounded-md border border-border px-2.5 text-muted-foreground"
 							>
-								<span class="xl:hidden">Step&nbsp;</span>2
+								Step 2
 							</span>
-							<h3
-								class="mt-3 text-xl font-semibold leading-snug tracking-tight xl:mt-0"
-							>
-								BuildOS builds the project.
+							<h3 class="mt-3 text-xl font-semibold leading-snug tracking-tight">
+								BuildOS creates the structure.
 							</h3>
-							<p
-								class="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base"
-							>
-								It creates the structure, goals, and starting documents.
+							<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+								Tasks, goals, and docs appear as it works.
 							</p>
 						</div>
 
 						<figure
-							class="min-w-0 self-start overflow-hidden rounded-lg border border-accent/50 bg-background shadow-ink"
+							class="min-w-0 self-start overflow-hidden rounded-lg border border-accent/50 bg-background"
 						>
 							<figcaption
-								class="flex min-h-10 items-center justify-between gap-3 border-b border-border px-3 tx tx-strip tx-weak"
+								class="flex min-h-10 items-center border-b border-border bg-muted/30 px-3"
 							>
 								<span class="text-sm font-semibold text-foreground"
-									>BuildOS creates the project</span
-								>
-								<span class="micro-label hidden text-muted-foreground sm:block"
-									>Visible as it happens</span
+									>Build in progress</span
 								>
 							</figcaption>
-							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard access for horizontal screenshot overflow) -->
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 							<div
 								class="overflow-x-auto"
 								role="region"
@@ -332,40 +301,33 @@
 					</article>
 
 					<article
-						class="relative grid gap-5 border-t border-border p-4 sm:p-6 lg:p-8 xl:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8"
+						class="grid gap-5 border-t border-border p-4 sm:p-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8 lg:p-8"
 					>
-						<div class="relative xl:pl-11">
+						<div>
 							<span
-								class="micro-label inline-flex h-7 items-center rounded-md border border-accent/40 bg-accent/10 px-2.5 text-accent shadow-ink-inner xl:absolute xl:left-0 xl:top-0 xl:h-8 xl:w-8 xl:justify-center xl:px-0"
+								class="micro-label inline-flex h-7 items-center rounded-md border border-border px-2.5 text-muted-foreground"
 							>
-								<span class="xl:hidden">Step&nbsp;</span>3
+								Step 3
 							</span>
-							<h3
-								class="mt-3 text-xl font-semibold leading-snug tracking-tight xl:mt-0"
-							>
-								Open your working project.
+							<h3 class="mt-3 text-xl font-semibold leading-snug tracking-tight">
+								Keep working outside the chat.
 							</h3>
-							<p
-								class="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base"
-							>
-								Explore and update everything beyond the chat.
+							<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+								Open the project, make changes, and pick up where you left off.
 							</p>
 						</div>
 
 						<figure
-							class="min-w-0 self-start overflow-hidden rounded-lg border border-accent/50 bg-background shadow-ink"
+							class="min-w-0 self-start overflow-hidden rounded-lg border border-accent/50 bg-background"
 						>
 							<figcaption
-								class="flex min-h-10 items-center justify-between gap-3 border-b border-border px-3 tx tx-strip tx-weak"
+								class="flex min-h-10 items-center border-b border-border bg-muted/30 px-3"
 							>
 								<span class="text-sm font-semibold text-foreground"
-									>Your project, ready to use</span
-								>
-								<span class="micro-label hidden text-muted-foreground sm:block"
-									>Beyond the chat</span
+									>Working project</span
 								>
 							</figcaption>
-							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard access for horizontal screenshot overflow) -->
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 							<div
 								class="overflow-x-auto"
 								role="region"
@@ -399,682 +361,461 @@
 					</article>
 				</div>
 
-				<div
-					class="border-t border-accent/30 bg-accent/5 px-4 py-5 text-center sm:px-6 sm:py-6"
-				>
-					<p
-						class="mx-auto max-w-3xl text-base font-semibold leading-relaxed text-foreground sm:text-lg"
-					>
-						<span class="text-accent">The aha:</span> you don't finish with a better chat
-						response. You finish with a project that's ready to move.
-					</p>
-					<p class="mt-2 text-xs text-muted-foreground sm:text-sm">
-						Real screenshots from one live session — nothing mocked up.
+				<div class="border-t border-border bg-background px-4 py-5 text-center sm:px-6">
+					<p class="mx-auto max-w-3xl text-base font-semibold text-foreground sm:text-lg">
+						The result is a project—not another chat thread.
 					</p>
 				</div>
 			</div>
 		</div>
 	</section>
 
-	<!-- ═══ BRANCH WRAPPER: continuous decision-tree rails — §02 → §03 (No) and §02 → §04 (Yes, skirts §03) ═══ -->
-	<div class="relative">
-		<!--
-		  decorative rail layer (lg+ only).
-		  - LEFT path: straight vertical from §02A card-bottom (x=25%) to §03 chip (x=25%, y=31.5%).
-		  - RIGHT path: right-angle around §03 — from §02B card-bottom (x=75%) drops a hair,
-		    turns right to x=90% (clears §03's 78%-wide card), then drops past §03's bottom and
-		    lands at the §04 chip at (x=90%, y=75%).
-		  SVG keeps the dash pattern continuous around corners (CSS borders break dashes at joins).
-		  Coordinate space: viewBox 0-100 stretched non-uniformly over the rail wrapper.
-		  vector-effect="non-scaling-stroke" keeps the stroke 2px regardless of the stretch.
-		-->
-		<div aria-hidden="true" class="hidden lg:block absolute inset-0 pointer-events-none z-[1]">
-			<div class="mx-auto h-full max-w-7xl px-2 sm:px-4 lg:px-6">
-				<div class="relative h-full">
-					<svg
-						class="absolute inset-0 w-full h-full text-foreground/55"
-						viewBox="0 0 100 100"
-						preserveAspectRatio="none"
+	<!-- ─── §02 two ways to use BuildOS ─────────────────────────────── -->
+	<section id="split" class="border-b border-border bg-card/30">
+		<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
+			<div class="mx-auto mb-8 max-w-2xl text-center sm:mb-10">
+				<p class="micro-label text-muted-foreground">Built for both</p>
+				<h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+					Use it yourself. Bring agents when you're ready.
+				</h2>
+			</div>
+
+			<div class="grid gap-4 md:grid-cols-2 sm:gap-5">
+				<article
+					class="flex flex-col rounded-lg border border-border bg-background p-5 sm:p-6"
+				>
+					<p class="micro-label text-muted-foreground">Just you</p>
+					<h3 class="mt-3 text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
+						Keep the whole project together.
+					</h3>
+					<p class="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+						BuildOS remembers the notes, tasks, decisions, and loose ends so you can
+						return without rebuilding the context.
+					</p>
+
+					<div class="mt-auto pt-6">
+						<button
+							type="button"
+							onclick={openExampleModal}
+							onpointerenter={preloadExampleModal}
+							onpointerdown={preloadExampleModal}
+							onfocus={preloadExampleModal}
+							class="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-semibold text-foreground transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+						>
+							Open an example project
+							<ArrowRight class="h-4 w-4 shrink-0" />
+						</button>
+					</div>
+				</article>
+
+				<article
+					class="flex flex-col rounded-lg border border-border bg-background p-5 sm:p-6"
+				>
+					<p class="micro-label text-muted-foreground">You + agents</p>
+					<h3 class="mt-3 text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
+						Give agents the context to do useful work.
+					</h3>
+					<p class="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+						Agents read and update the same project state you use. No prompt
+						archaeology. No hand-built handoffs.
+					</p>
+
+					<div class="mt-5 divide-y divide-border border-y border-border">
+						<div class="grid gap-1 py-3 sm:grid-cols-[7rem_1fr] sm:gap-3">
+							<p class="micro-label text-muted-foreground">You</p>
+							<p class="text-sm text-foreground">Set direction and make decisions.</p>
+						</div>
+						<div class="grid gap-1 py-3 sm:grid-cols-[7rem_1fr] sm:gap-3">
+							<p class="micro-label text-muted-foreground">Agents</p>
+							<p class="text-sm text-foreground">
+								Execute scoped work with real context.
+							</p>
+						</div>
+						<div class="grid gap-1 py-3 sm:grid-cols-[7rem_1fr] sm:gap-3">
+							<p class="micro-label text-muted-foreground">BuildOS</p>
+							<p class="text-sm text-foreground">
+								Keeps the shared project memory current.
+							</p>
+						</div>
+					</div>
+
+					<div class="mt-auto pt-6">
+						<a
+							href="#agents"
+							class="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-semibold text-foreground transition-colors hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+						>
+							See how agents use BuildOS
+							<ArrowDown class="h-4 w-4 shrink-0" />
+						</a>
+					</div>
+				</article>
+			</div>
+		</div>
+	</section>
+
+	<!-- ─── §03 real changes in the product ─────────────────────────── -->
+	<section id="loop" class="border-b border-border">
+		<div
+			class="home-deferred home-deferred-loop mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6"
+		>
+			<div class="space-y-8">
+				<div class="text-center">
+					<p class="micro-label text-muted-foreground">Real changes, made in chat</p>
+					<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
+						Ask once. See the project update.
+					</h2>
+					<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
+						BuildOS finds the right item, makes the change, and shows you what moved.
+					</p>
+					<div
+						class="mt-4 inline-flex items-center gap-2 rounded-md border border-accent/50 px-3 py-1.5"
 					>
-						<!-- LEFT: §02A → §03 -->
-						<path
-							d="M 25,27 L 25,31.5"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-dasharray="6 4"
-							vector-effect="non-scaling-stroke"
-						/>
-						<!-- RIGHT: §02B → around §03 → §04 -->
-						<path
-							d="M 75,27 L 75,29 L 90,29 L 90,75"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-dasharray="6 4"
-							stroke-linejoin="miter"
-							vector-effect="non-scaling-stroke"
-						/>
-					</svg>
-					<!-- exit dots (HTML so they stay round under the SVG's non-uniform stretch) -->
-					<span
-						class="absolute left-[25%] top-[27%] -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/60"
-					></span>
-					<span
-						class="absolute left-[75%] top-[27%] -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/60"
-					></span>
-					<!-- landing dots -->
-					<span
-						class="absolute left-[25%] top-[31.5%] -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/60"
-					></span>
-					<span
-						class="absolute left-[90%] top-[75%] -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/60"
-					></span>
+						<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"></span>
+						<span class="micro-label text-accent">Real BuildOS screenshots</span>
+						<span class="hidden h-3 w-px bg-accent/30 md:block"></span>
+						<span class="micro-label hidden text-muted-foreground md:block"
+							>Hover to zoom</span
+						>
+					</div>
+				</div>
+
+				<div class="mx-auto max-w-5xl space-y-6">
+					<!-- USE CASE: update a task by talking -->
+					<p class="micro-label text-muted-foreground">Update a task</p>
+
+					<div
+						class="flex flex-col md:grid md:grid-cols-[1.15fr_auto_1fr] gap-3 md:gap-4 md:items-center"
+					>
+						<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+						<figure
+							class="app-screenshot app-screenshot--left overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink outline-none hover:border-accent hover:shadow-ink-strong focus-visible:border-accent focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+							tabindex="0"
+						>
+							<figcaption
+								class="micro-label flex h-8 items-center border-b border-border bg-muted/30 px-3"
+							>
+								Ask in chat
+							</figcaption>
+							<img
+								src="/home/case-update-chat-light.jpg"
+								alt="Chat: push the beta-reader pass out a week and bump it to priority 1. BuildOS lists tasks, updates the task, and replies with the exact date and priority changes."
+								class="w-full dark:hidden"
+								width="1040"
+								height="302"
+								loading="lazy"
+							/>
+							<img
+								src="/home/case-update-chat-dark.jpg"
+								alt=""
+								aria-hidden="true"
+								class="w-full hidden dark:block"
+								width="1040"
+								height="302"
+								loading="lazy"
+							/>
+						</figure>
+						<div class="flex items-center justify-center text-muted-foreground">
+							<ArrowRight class="hidden md:block w-5 h-5" />
+							<ArrowDown class="md:hidden w-5 h-5" />
+						</div>
+						<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+						<figure
+							class="app-screenshot app-screenshot--right overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink outline-none hover:border-accent hover:shadow-ink-strong focus-visible:border-accent focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+							tabindex="0"
+						>
+							<figcaption
+								class="micro-label flex h-8 items-center border-b border-border bg-muted/30 px-3"
+							>
+								Task updated
+							</figcaption>
+							<img
+								src="/home/case-board-light.jpg"
+								alt="The task board with Beta-reader pass now priority 1 and due Aug 24 in the Scheduled column"
+								class="w-full dark:hidden"
+								width="980"
+								height="310"
+								loading="lazy"
+							/>
+							<img
+								src="/home/case-board-dark.jpg"
+								alt=""
+								aria-hidden="true"
+								class="w-full hidden dark:block"
+								width="980"
+								height="310"
+								loading="lazy"
+							/>
+						</figure>
+					</div>
+
+					<!-- USE CASE: reschedule by talking -->
+					<p class="micro-label border-t border-border pt-6 text-muted-foreground">
+						Move something on your calendar
+					</p>
+
+					<div
+						class="flex flex-col md:grid md:grid-cols-[1.15fr_auto_1fr] gap-3 md:gap-4 md:items-center"
+					>
+						<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+						<figure
+							class="app-screenshot app-screenshot--left overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink outline-none hover:border-accent hover:shadow-ink-strong focus-visible:border-accent focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+							tabindex="0"
+						>
+							<figcaption
+								class="micro-label flex h-8 items-center border-b border-border bg-muted/30 px-3"
+							>
+								Ask in chat
+							</figcaption>
+							<img
+								src="/home/case-schedule-chat-light.jpg"
+								alt="Chat: move my chapter 13 writing block to Thursday afternoon. BuildOS updates the Writing block task."
+								class="w-full dark:hidden"
+								width="1040"
+								height="178"
+								loading="lazy"
+							/>
+							<img
+								src="/home/case-schedule-chat-dark.jpg"
+								alt=""
+								aria-hidden="true"
+								class="hidden w-full dark:block"
+								width="1040"
+								height="178"
+								loading="lazy"
+							/>
+						</figure>
+						<div class="flex items-center justify-center text-muted-foreground">
+							<ArrowRight class="hidden md:block w-5 h-5" />
+							<ArrowDown class="md:hidden w-5 h-5" />
+						</div>
+						<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+						<figure
+							class="app-screenshot app-screenshot--right overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink outline-none hover:border-accent hover:shadow-ink-strong focus-visible:border-accent focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+							tabindex="0"
+						>
+							<figcaption
+								class="micro-label flex h-8 items-center border-b border-border bg-muted/30 px-3"
+							>
+								Calendar updated
+							</figcaption>
+							<img
+								src="/home/case-schedule-cal-light.jpg"
+								alt="The BuildOS calendar with the writing block now scheduled on Thursday the 13th"
+								class="w-full dark:hidden"
+								width="974"
+								height="344"
+								loading="lazy"
+							/>
+							<img
+								src="/home/case-schedule-cal-dark.jpg"
+								alt=""
+								aria-hidden="true"
+								class="hidden w-full dark:block"
+								width="974"
+								height="344"
+								loading="lazy"
+							/>
+						</figure>
+					</div>
+
+					<!-- footer caption -->
+					<p
+						class="text-center text-xs sm:text-sm text-muted-foreground pt-6 max-w-2xl mx-auto leading-relaxed"
+					>
+						Every change stays attached to the project.
+					</p>
 				</div>
 			</div>
 		</div>
+	</section>
 
-		<!-- ─── §02 the two-persona split (modeled on Stakes screenshot) ─── -->
-		<section id="split" class="border-b border-border bg-card/40">
-			<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
-				<div class="text-center mb-8 sm:mb-10">
-					<h2 class="micro-label inline-flex items-center gap-3">
-						<span class="h-px w-10 bg-border"></span>
-						<span>§02 — Do you work with AI agents yet?</span>
-						<span class="h-px w-10 bg-border"></span>
+	<!-- ─── §04 humans and agents share one project ─────────────────── -->
+	<section id="agents" class="border-b border-border bg-card/30">
+		<div
+			class="home-deferred home-deferred-agents mx-auto max-w-7xl space-y-8 px-2 py-12 sm:px-4 sm:py-16 lg:px-6"
+		>
+			<div class="space-y-6">
+				<div class="text-center">
+					<p class="micro-label text-muted-foreground">Shared project memory</p>
+					<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
+						One project for you and your agents.
 					</h2>
+					<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
+						You set direction. Agents execute. Both work from the same live context.
+					</p>
 				</div>
 
-				<div class="grid md:grid-cols-2 gap-4 sm:gap-5">
-					<!-- LEFT: NO — for the long-tail creator -->
-					<article
-						class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-5 sm:p-6 flex flex-col"
-					>
-						<div class="micro-label mb-3 flex items-center gap-2">
-							<span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/60"></span>
-							<span>§02A — No</span>
-						</div>
-
-						<h3 class="text-xl sm:text-2xl font-semibold tracking-tight leading-snug">
-							That's most people. Most of the work isn't AI — it's keeping the project
-							from falling apart.
-						</h3>
-
-						<p class="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
-							Chapters drift. Episodes pile up. Launches sprawl into ten tabs. BuildOS
-							holds the whole project in one place — notes, tasks, research, decisions
-							— so you stop losing the thread between sessions.
-						</p>
-
-						<p class="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
-							You talk. We organize. You come back tomorrow and pick up exactly where
-							you left off.
-						</p>
-
-						<div class="mt-auto pt-6">
-							<button
-								type="button"
-								onclick={openExampleModal}
-								onpointerenter={preloadExampleModal}
-								onpointerdown={preloadExampleModal}
-								onfocus={preloadExampleModal}
-								class="group inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-foreground transition-all hover:gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-							>
-								See an example project
-								<ArrowRight class="h-4 w-4 shrink-0" />
-							</button>
-						</div>
-					</article>
-
-					<!-- RIGHT: YES — for the technical / builder -->
-					<article
-						class="rounded-lg border border-border bg-background shadow-ink tx tx-grain tx-weak p-5 sm:p-6 flex flex-col"
-					>
-						<div class="micro-label mb-3 flex items-center gap-2">
-							<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-							<span>§02B — Yes</span>
-						</div>
-
-						<h3 class="text-xl sm:text-2xl font-semibold tracking-tight leading-snug">
-							Then you already know context is the bottleneck. BuildOS is the layer
-							between you and your agents.
-						</h3>
-
-						<p class="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
-							A framework for the person. A harness for the agent. Same context drives
-							both. Cheap models stay productive when the context layer is right — and
-							your non-technical collaborators can finally read off the same sheet of
-							music.
-						</p>
-
-						<!-- mini "type cards" mirroring the Stakes pattern -->
-						<div class="mt-5 space-y-2">
-							<div
-								class="rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-frame tx-weak"
-							>
-								<div class="micro-label mb-1">Framework — for you</div>
-								<p class="text-xs sm:text-sm text-foreground leading-snug">
-									Daily brief, return-and-update, the ritual of clarity. You stay
-									in the work, not above it.
+				<!-- the chart: 3-column architecture (You · Shared state · Agent) -->
+				<div>
+					<div class="grid md:grid-cols-3 gap-3 sm:gap-4 items-stretch">
+						<!-- LEFT: Framework — for you -->
+						<article
+							class="flex flex-col rounded-lg border border-border bg-background p-5"
+						>
+							<div class="micro-label mb-2 text-muted-foreground">You</div>
+							<h3 class="text-lg font-semibold tracking-tight">Direction</h3>
+							<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+								Share ideas, make decisions, and choose what matters next.
+							</p>
+							<div class="mt-auto border-t border-border pt-4">
+								<div class="micro-label mb-1 text-muted-foreground">Example</div>
+								<p class="text-xs leading-relaxed">
+									"Push the beta-reader pass to next week. Maya's act-3 turn
+									should hinge on her sister."
 								</p>
 							</div>
-							<div
-								class="rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-grain tx-weak"
-							>
-								<div class="micro-label mb-1">Harness — for your agent</div>
-								<p class="text-xs sm:text-sm text-foreground leading-snug">
-									Persistent project memory, structured tool calls, the context an
-									agent needs to actually be useful in production.
-								</p>
-							</div>
-							<div
-								class="rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-thread tx-weak"
-							>
-								<div class="micro-label mb-1">Shared context</div>
-								<p class="text-xs sm:text-sm text-foreground leading-snug">
-									Both sides read from the same project state. Parallel work, not
-									delegation.
-								</p>
-							</div>
-						</div>
+						</article>
 
-						<div class="mt-auto pt-6">
-							<a
-								href="#agents"
-								class="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-foreground transition-all hover:gap-3 focus:outline-none focus-visible:gap-3 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-							>
-								Skip to: how agents work in BuildOS
-								<ArrowDown class="w-4 h-4" />
-							</a>
-						</div>
-					</article>
-				</div>
-			</div>
-		</section>
-
-		<!-- ─── §03 the loop — flow chart for non-AI users (rail enters from §02A above) ── -->
-		<section id="loop" class="border-b border-border">
-			<div
-				class="home-deferred home-deferred-loop relative z-[2] mx-auto max-w-7xl space-y-8 px-2 py-12 sm:px-4 sm:py-16 lg:px-6"
-			>
-				<!--
-				  entry marker: dead-center under LEFT rail via grid-mirroring.
-				  Uses the same grid shape as §02 so the chip lands on the same X as the rail.
-				  On mobile the outer div collapses to block and the chip just sits left-aligned.
-				-->
-				<div class="relative z-10 lg:grid lg:grid-cols-2 lg:gap-5">
-					<div class="lg:flex lg:justify-center">
-						<div class="relative">
-							<div
-								class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card shadow-ink-inner px-3 py-1.5 tx tx-bloom tx-weak"
-							>
-								<span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/60"
-								></span>
-								<span class="micro-label"> ↓ from §02A — no </span>
-							</div>
-						</div>
-					</div>
-					<div class="hidden lg:block"></div>
-				</div>
-
-				<!--
-				  §03 card (78% width on lg+). The right ~22% gutter stays empty so the §02B
-				  rail can wrap around to the right and continue down to §04.
-				-->
-				<div
-					class="lg:max-w-[78%] rounded-lg border border-border bg-background shadow-ink-strong tx tx-frame tx-weak p-5 sm:p-8 space-y-8"
-				>
-					<div class="text-center">
-						<div class="micro-label inline-flex items-center gap-3">
-							<span class="h-px w-10 bg-border"></span>
-							<span>§03 — The loop</span>
-							<span class="h-px w-10 bg-border"></span>
-						</div>
-						<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
-							How it actually works.
-						</h2>
-						<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
-							Two real sessions on the same project — every change made by talking,
-							every tool call on the record.
-						</p>
-						<div
-							class="mt-4 inline-flex items-center gap-2 rounded-md border border-accent/50 bg-accent/5 px-3 py-1.5 shadow-ink-inner"
+						<!-- MIDDLE: Shared project state -->
+						<article
+							class="flex flex-col rounded-lg border border-accent/50 bg-background p-5"
 						>
-							<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"></span>
-							<span class="micro-label text-accent">Real BuildOS screenshots</span>
-							<span class="hidden h-3 w-px bg-accent/30 md:block"></span>
-							<span class="micro-label hidden text-muted-foreground md:block"
-								>Hover to inspect</span
-							>
-						</div>
-					</div>
-
-					<div class="max-w-4xl mx-auto space-y-5">
-						<!-- USE CASE: update a task by talking -->
-						<div class="flex items-center gap-3">
-							<div class="flex-1 border-t border-dashed border-border"></div>
-							<span class="micro-label font-medium">
-								Change anything in one sentence
-							</span>
-							<div class="flex-1 border-t border-dashed border-border"></div>
-						</div>
-
-						<div
-							class="flex flex-col md:grid md:grid-cols-[1.15fr_auto_1fr] gap-3 md:gap-4 md:items-center"
-						>
-							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard focus mirrors the desktop hover inspection) -->
-							<figure
-								class="app-screenshot app-screenshot--left overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink tx tx-bloom tx-weak outline-none hover:border-accent hover:shadow-ink-strong focus-visible:border-accent focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-								tabindex="0"
-							>
-								<figcaption
-									class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
-								>
-									You say it · BuildOS finds the task
-								</figcaption>
-								<img
-									src="/home/case-update-chat-light.jpg"
-									alt="Chat: push the beta-reader pass out a week and bump it to priority 1. BuildOS lists tasks, updates the task, and replies with the exact date and priority changes."
-									class="w-full dark:hidden"
-									width="1040"
-									height="302"
-									loading="lazy"
-								/>
-								<img
-									src="/home/case-update-chat-dark.jpg"
-									alt=""
-									aria-hidden="true"
-									class="w-full hidden dark:block"
-									width="1040"
-									height="302"
-									loading="lazy"
-								/>
-							</figure>
-							<div class="flex items-center justify-center text-muted-foreground">
-								<ArrowRight class="hidden md:block w-5 h-5" />
-								<ArrowDown class="md:hidden w-5 h-5" />
-							</div>
-							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard focus mirrors the desktop hover inspection) -->
-							<figure
-								class="app-screenshot app-screenshot--right overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink tx tx-grain tx-weak outline-none hover:border-accent hover:shadow-ink-strong focus-visible:border-accent focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-								tabindex="0"
-							>
-								<figcaption
-									class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
-								>
-									It lands on the board · P1, new date
-								</figcaption>
-								<img
-									src="/home/case-board-light.jpg"
-									alt="The task board with Beta-reader pass now priority 1 and due Aug 24 in the Scheduled column"
-									class="w-full dark:hidden"
-									width="980"
-									height="310"
-									loading="lazy"
-								/>
-								<img
-									src="/home/case-board-dark.jpg"
-									alt=""
-									aria-hidden="true"
-									class="w-full hidden dark:block"
-									width="980"
-									height="310"
-									loading="lazy"
-								/>
-							</figure>
-						</div>
-
-						<!-- USE CASE: reschedule by talking -->
-						<div class="flex items-center gap-3 py-2">
-							<div class="flex-1 border-t border-dashed border-border"></div>
-							<span class="micro-label font-medium"> Reschedule by talking </span>
-							<div class="flex-1 border-t border-dashed border-border"></div>
-						</div>
-
-						<div
-							class="flex flex-col md:grid md:grid-cols-[1.15fr_auto_1fr] gap-3 md:gap-4 md:items-center"
-						>
-							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard focus mirrors the desktop hover inspection) -->
-							<figure
-								class="app-screenshot app-screenshot--left overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink tx tx-bloom tx-weak outline-none hover:border-accent hover:shadow-ink-strong focus-visible:border-accent focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-								tabindex="0"
-							>
-								<figcaption
-									class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
-								>
-									"Move my writing block to Thursday"
-								</figcaption>
-								<img
-									src="/home/case-schedule-chat-light.jpg"
-									alt="Chat: move my chapter 13 writing block to Thursday afternoon. BuildOS updates the Writing block task."
-									class="w-full dark:hidden"
-									width="1040"
-									height="178"
-									loading="lazy"
-								/>
-								<img
-									src="/home/case-schedule-chat-dark.jpg"
-									alt=""
-									aria-hidden="true"
-									class="hidden w-full dark:block"
-									width="1040"
-									height="178"
-									loading="lazy"
-								/>
-							</figure>
-							<div class="flex items-center justify-center text-muted-foreground">
-								<ArrowRight class="hidden md:block w-5 h-5" />
-								<ArrowDown class="md:hidden w-5 h-5" />
-							</div>
-							<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard focus mirrors the desktop hover inspection) -->
-							<figure
-								class="app-screenshot app-screenshot--right overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink tx tx-grain tx-weak outline-none hover:border-accent hover:shadow-ink-strong focus-visible:border-accent focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-								tabindex="0"
-							>
-								<figcaption
-									class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
-								>
-									It lands on the calendar · Thursday
-								</figcaption>
-								<img
-									src="/home/case-schedule-cal-light.jpg"
-									alt="The BuildOS calendar with the writing block now scheduled on Thursday the 13th"
-									class="w-full dark:hidden"
-									width="974"
-									height="344"
-									loading="lazy"
-								/>
-								<img
-									src="/home/case-schedule-cal-dark.jpg"
-									alt=""
-									aria-hidden="true"
-									class="hidden w-full dark:block"
-									width="974"
-									height="344"
-									loading="lazy"
-								/>
-							</figure>
-						</div>
-
-						<!-- footer caption -->
-						<p
-							class="text-center text-xs sm:text-sm text-muted-foreground pt-6 max-w-2xl mx-auto leading-relaxed"
-						>
-							No re-explaining where you are. No re-finding what you decided last
-							week. The project remembers — and every change is a tool call on the
-							record, not a vibe.
-						</p>
-					</div>
-				</div>
-			</div>
-		</section>
-
-		<!-- ─── §04 same context — agents at the same project (for §02B readers) ── -->
-		<section id="agents" class="relative border-b border-border bg-card/40">
-			<div
-				class="home-deferred home-deferred-agents relative z-[2] mx-auto max-w-7xl space-y-8 px-2 py-12 sm:px-4 sm:py-16 lg:px-6"
-			>
-				<!--
-				  entry marker: lands at the RIGHT rail's terminus (x=90% on lg+).
-				  The chip sits inside a 20%-wide column anchored to the parent's right edge
-				  (so it spans 80%-100%), then centers itself in that column → chip center at 90%.
-				  On mobile, the outer's flex justify-end keeps the chip right-aligned.
-				-->
-				<div class="relative z-10 min-h-[2.5rem] flex justify-end">
-					<div
-						class="lg:absolute lg:right-0 lg:top-0 lg:w-[20%] lg:flex lg:justify-center"
-					>
-						<div class="relative">
-							<div
-								class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card shadow-ink-inner px-3 py-1.5 tx tx-grain tx-weak whitespace-nowrap"
-							>
-								<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-								<span class="micro-label"> ↓ from §02B — yes </span>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!--
-				  §04 card — wider than §03 (full content-area width), so the architecture
-				  chart can breathe and the rail's landing on its top-right reads as deliberate.
-				-->
-				<div
-					class="rounded-lg border border-border bg-background shadow-ink-strong tx tx-frame tx-weak p-5 sm:p-8 space-y-6"
-				>
-					<div class="text-center">
-						<div class="micro-label inline-flex items-center gap-3">
-							<span class="h-px w-10 bg-border"></span>
-							<span>§04 — Same context</span>
-							<span class="h-px w-10 bg-border"></span>
-						</div>
-						<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
-							You and your agents, on the same project.
-						</h2>
-						<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
-							Same context, two surfaces. You stay in the work. Your agents stay
-							useful. Both contribute to the same project state.
-						</p>
-					</div>
-
-					<!-- the chart: 3-column architecture (You · Shared state · Agent) -->
-					<div>
-						<div class="grid md:grid-cols-3 gap-3 sm:gap-4 items-stretch">
-							<!-- LEFT: Framework — for you -->
-							<article
-								class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-5 flex flex-col"
-							>
-								<div class="micro-label mb-2">Framework — for you</div>
-								<h3 class="text-lg font-semibold tracking-tight">
-									High-level direction.
-								</h3>
-								<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-									Brain dumps, decisions, taste. The daily brief surfaces what
-									deserves your attention. You stay the author.
-								</p>
-								<div
-									class="mt-4 rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-grid tx-weak"
-								>
-									<div class="micro-label mb-1">You · brain dump</div>
-									<p class="text-xs leading-relaxed">
-										"Push the beta-reader pass to next week. Maya's act-3 turn
-										should hinge on her sister."
-									</p>
+							<div class="micro-label mb-2 text-accent">BuildOS</div>
+							<h3 class="text-lg font-semibold tracking-tight">Project memory</h3>
+							<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+								The project, its decisions, and its current state stay connected.
+							</p>
+							<div class="mt-4 space-y-1.5 text-sm">
+								<div class="flex items-center gap-1.5">
+									<FolderKanban
+										class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+									/>
+									<span
+										>Project: <strong class="font-medium">Fading Crown</strong
+										></span
+									>
 								</div>
-							</article>
-
-							<!-- MIDDLE: Shared project state -->
-							<article
-								class="rounded-lg border border-accent/40 bg-accent/5 shadow-ink-strong tx tx-frame tx-med p-5 flex flex-col"
-							>
-								<div class="micro-label text-accent mb-2">Shared project state</div>
-								<h3 class="text-lg font-semibold tracking-tight">
-									The same context.
-								</h3>
-								<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-									Project, docs, decisions, conversations. Both sides write to it.
-									Both sides read from it.
-								</p>
-								<div class="mt-4 space-y-1.5 text-sm">
-									<div class="flex items-center gap-1.5">
-										<FolderKanban
-											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-										/>
-										<span
-											>Project: <strong class="font-medium"
-												>Fading Crown</strong
-											></span
-										>
-									</div>
-									<div class="flex items-center gap-1.5">
-										<FileText
-											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-										/>
-										<span>Doc: Maya — character arc</span>
-									</div>
-									<div class="flex items-center gap-1.5">
-										<Calendar
-											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-										/>
-										<span>Task: Beta pass → +1 week</span>
-									</div>
-									<div class="flex items-center gap-1.5">
-										<CircleCheck
-											class="w-3.5 h-3.5 text-success flex-shrink-0"
-										/>
-										<span class="line-through text-muted-foreground">
-											Ch. 12 rewrite
-										</span>
-									</div>
+								<div class="flex items-center gap-1.5">
+									<FileText
+										class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+									/>
+									<span>Doc: Maya — character arc</span>
 								</div>
-							</article>
+								<div class="flex items-center gap-1.5">
+									<Calendar
+										class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+									/>
+									<span>Task: Beta pass → +1 week</span>
+								</div>
+								<div class="flex items-center gap-1.5">
+									<CircleCheck class="w-3.5 h-3.5 text-success flex-shrink-0" />
+									<span class="line-through text-muted-foreground">
+										Ch. 12 rewrite
+									</span>
+								</div>
+							</div>
+						</article>
 
-							<!-- RIGHT: Harness — for your agent -->
-							<article
-								class="rounded-lg border border-border bg-background shadow-ink tx tx-grain tx-weak p-5 flex flex-col"
-							>
-								<div class="micro-label mb-2">Harness — for your agent</div>
-								<h3 class="text-lg font-semibold tracking-tight">
-									Grounded execution.
-								</h3>
-								<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-									Your agent reads the project state, picks up tool calls, ships
-									scoped work. Cheap models stay productive when the context layer
-									is right.
-								</p>
+						<!-- RIGHT: Harness — for your agent -->
+						<article
+							class="flex flex-col rounded-lg border border-border bg-background p-5"
+						>
+							<div class="micro-label mb-2 text-muted-foreground">Agents</div>
+							<h3 class="text-lg font-semibold tracking-tight">Execution</h3>
+							<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+								Agents pick up scoped work, use the context, and write results back.
+							</p>
 
-								<!-- compatible agents row -->
-								<div class="mt-4 space-y-2">
-									<div class="micro-label">Works with</div>
-									<div class="flex flex-wrap items-center gap-2">
-										<span
-											class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card shadow-ink-inner px-2 py-1"
-											title="Claude / Claude Code"
+							<!-- compatible agents row -->
+							<div class="mt-4 space-y-2">
+								<div class="micro-label">Works with</div>
+								<div class="flex flex-wrap items-center gap-2">
+									<span
+										class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1"
+										title="Claude / Claude Code"
+									>
+										<svg
+											aria-hidden="true"
+											viewBox="0 0 24 24"
+											class="w-3.5 h-3.5 text-foreground"
+											fill="currentColor"
 										>
-											<svg
-												aria-hidden="true"
-												viewBox="0 0 24 24"
-												class="w-3.5 h-3.5 text-foreground"
-												fill="currentColor"
-											>
-												<path
-													d="M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693-3.5527h7.0052l1.3693 3.5527h3.7442L10.5363 3.541Zm-.3712 10.2232 2.2914-5.9456 2.2914 5.9456Z"
-												/>
-											</svg>
-											<span class="text-2xs font-medium text-foreground">
-												Claude
-											</span>
-										</span>
-										<span
-											class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card shadow-ink-inner px-2 py-1"
-											title="ChatGPT / Codex"
-										>
-											<svg
-												aria-hidden="true"
-												viewBox="0 0 24 24"
-												class="w-3.5 h-3.5 text-foreground"
-												fill="currentColor"
-											>
-												<path
-													d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"
-												/>
-											</svg>
-											<span class="text-2xs font-medium text-foreground">
-												ChatGPT / Codex
-											</span>
-										</span>
-										<span
-											class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card shadow-ink-inner px-2 py-1"
-											title="OpenClaw"
-										>
-											<img
-												src="/brands/openclaw.png"
-												alt=""
-												aria-hidden="true"
-												class="w-4 h-4 object-contain"
-												width="16"
-												height="16"
-												loading="lazy"
-												decoding="async"
-												fetchpriority="low"
+											<path
+												d="M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693-3.5527h7.0052l1.3693 3.5527h3.7442L10.5363 3.541Zm-.3712 10.2232 2.2914-5.9456 2.2914 5.9456Z"
 											/>
-											<span class="text-2xs font-medium text-foreground">
-												OpenClaw
-											</span>
+										</svg>
+										<span class="text-2xs font-medium text-foreground">
+											Claude
 										</span>
-									</div>
+									</span>
+									<span
+										class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1"
+										title="ChatGPT / Codex"
+									>
+										<svg
+											aria-hidden="true"
+											viewBox="0 0 24 24"
+											class="w-3.5 h-3.5 text-foreground"
+											fill="currentColor"
+										>
+											<path
+												d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"
+											/>
+										</svg>
+										<span class="text-2xs font-medium text-foreground">
+											ChatGPT / Codex
+										</span>
+									</span>
+									<span
+										class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1"
+										title="OpenClaw"
+									>
+										<img
+											src="/brands/openclaw.png"
+											alt=""
+											aria-hidden="true"
+											class="w-4 h-4 object-contain"
+											width="16"
+											height="16"
+											loading="lazy"
+											decoding="async"
+											fetchpriority="low"
+										/>
+										<span class="text-2xs font-medium text-foreground">
+											OpenClaw
+										</span>
+									</span>
 								</div>
-
-								<div
-									class="mt-4 rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-thread tx-weak"
-								>
-									<div class="micro-label mb-1">Agent · acting on it</div>
-									<p class="text-xs leading-relaxed">
-										"Drafting beta-reader email with the latest Ch. 12.
-										Rescheduling the calendar block. Logging notes back to the
-										project."
-									</p>
-								</div>
-							</article>
-						</div>
-
-						<!-- bidirectional flow indicators -->
-						<div
-							class="micro-label mt-5 grid gap-3 text-center md:grid-cols-3 sm:gap-4"
-						>
-							<div class="flex items-center justify-center gap-2">
-								<span>writes & reads</span>
-								<ArrowRight class="w-3.5 h-3.5" />
 							</div>
-							<div class="flex items-center justify-center gap-2">
-								<ArrowLeft class="w-3.5 h-3.5" />
-								<span>shared</span>
-								<ArrowRight class="w-3.5 h-3.5" />
-							</div>
-							<div class="flex items-center justify-center gap-2">
-								<ArrowLeft class="w-3.5 h-3.5" />
-								<span>writes & reads</span>
-							</div>
-						</div>
 
-						<!-- closing caption -->
-						<p
-							class="mt-8 text-center text-xs sm:text-sm text-muted-foreground max-w-2xl mx-auto leading-relaxed"
-						>
-							<span class="mb-2 block font-medium text-foreground">
-								BuildOS is not another agent. BuildOS is where the project lives so
-								every human and agent can work from the same memory.
-							</span>
-							An agent can clone a workflow in a weekend. It can't clone a worldview. The
-							moat is the shared context layer — and you control it.
-						</p>
+							<div class="mt-auto border-t border-border pt-4">
+								<div class="micro-label mb-1 text-muted-foreground">Example</div>
+								<p class="text-xs leading-relaxed">
+									"Draft the beta-reader email, move the calendar block, and log
+									the result."
+								</p>
+							</div>
+						</article>
 					</div>
+
+					<p
+						class="mx-auto mt-8 max-w-2xl text-center text-sm font-medium text-foreground"
+					>
+						BuildOS is the project memory. You and your agents are the workers.
+					</p>
 				</div>
 			</div>
-		</section>
-	</div>
-	<!-- ═══ END BRANCH WRAPPER ═══ -->
-
+		</div>
+	</section>
 	<!-- ─── §05 what it holds (the data model) ──────────────────────── -->
 	<section class="home-deferred home-deferred-model border-b border-border">
 		<div class="mx-auto max-w-7xl space-y-6 px-2 py-10 sm:px-4 sm:py-12 lg:px-6">
 			<div class="text-center">
-				<div class="micro-label inline-flex items-center gap-3">
-					<span class="h-px w-10 bg-border"></span>
-					<span>§05 — What it holds</span>
-					<span class="h-px w-10 bg-border"></span>
-				</div>
+				<p class="micro-label text-muted-foreground">Project structure</p>
 				<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
-					One project. One place. Everything connected.
+					Everything has a place.
 				</h2>
+				<p class="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
+					The pieces stay connected without forcing every project into the same template.
+				</p>
 			</div>
 
 			<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-				{#each dataModel as item}
+				{#each dataModel as item (item.name)}
 					{@const Icon = item.icon}
-					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-4">
+					<div class="rounded-lg border border-border bg-card p-4">
 						<div class="flex items-center gap-2 mb-1.5">
-							<Icon class="w-4 h-4 text-muted-foreground" />
+							<Icon class="h-4 w-4 shrink-0 text-muted-foreground" />
 							<span class="text-sm font-semibold text-foreground">{item.name}</span>
 						</div>
 						<p class="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
@@ -1085,43 +826,33 @@
 	</section>
 
 	<!-- ─── §06 what it becomes — future pacing timeline ────────────── -->
-	<section class="home-deferred home-deferred-timeline border-b border-border bg-card/40">
+	<section class="home-deferred home-deferred-timeline border-b border-border bg-card/30">
 		<div class="mx-auto max-w-7xl space-y-8 px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
 			<div class="text-center">
-				<div class="micro-label inline-flex items-center gap-3">
-					<span class="h-px w-10 bg-border"></span>
-					<span>§06 — What it becomes</span>
-					<span class="h-px w-10 bg-border"></span>
-				</div>
+				<p class="micro-label text-muted-foreground">Project memory</p>
 				<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
-					The longer you use it, the more it holds.
+					More useful every day.
 				</h2>
 				<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
-					Most tools are flat. BuildOS compounds. Here's what one project looks like over
-					time.
+					Every update adds context. BuildOS remembers where you left off and what comes
+					next.
 				</p>
 			</div>
 
 			<div class="grid md:grid-cols-3 gap-4 sm:gap-5">
 				<!-- DAY 1 -->
 				<article class="space-y-3">
-					<div class="micro-label flex items-center gap-2">
-						<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-						<span>Day 1 — first brain dump</span>
-					</div>
-					<div
-						class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak overflow-hidden"
-					>
+					<div class="micro-label text-muted-foreground">Day 1 · first brain dump</div>
+					<div class="overflow-hidden rounded-lg border border-border bg-background">
 						<div
-							class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
+							class="micro-label flex h-8 items-center border-b border-border bg-muted/30 px-3"
 						>
 							New project
 						</div>
 						<div class="p-3 space-y-2 text-xs">
 							<p class="text-muted-foreground italic leading-relaxed">
-								"I want to write a fantasy novel about a queen losing her magic. Not
-								sure about act 2 yet. Have a magic system but it's loose. Beta
-								readers eventually."
+								"A queen is losing her magic. Act two is fuzzy. I need a first draft
+								and beta readers."
 							</p>
 							<div class="border-t border-border/60 pt-2 space-y-1">
 								<div class="flex items-center gap-1.5 text-foreground">
@@ -1138,22 +869,16 @@
 						</div>
 					</div>
 					<p class="text-xs text-muted-foreground leading-relaxed">
-						You talk. BuildOS extracts the project, the goal, the docs you'll need. No
-						setup ritual.
+						BuildOS creates the first useful structure.
 					</p>
 				</article>
 
 				<!-- WEEK 3 -->
 				<article class="space-y-3">
-					<div class="micro-label flex items-center gap-2">
-						<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-						<span>Week 3 — momentum visible</span>
-					</div>
-					<div
-						class="rounded-lg border border-border bg-background shadow-ink tx tx-grain tx-weak overflow-hidden"
-					>
+					<div class="micro-label text-muted-foreground">Week 3 · momentum</div>
+					<div class="overflow-hidden rounded-lg border border-border bg-background">
 						<div
-							class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
+							class="micro-label flex h-8 items-center border-b border-border bg-muted/30 px-3"
 						>
 							Fading Crown — active
 						</div>
@@ -1186,22 +911,16 @@
 						</div>
 					</div>
 					<p class="text-xs text-muted-foreground leading-relaxed">
-						The project has shape. You can see what's done, what's next, what you
-						decided last week.
+						The project shows what moved and what needs attention.
 					</p>
 				</article>
 
 				<!-- MONTH 2 -->
 				<article class="space-y-3">
-					<div class="micro-label flex items-center gap-2">
-						<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-						<span>Month 2 — the daily ritual</span>
-					</div>
-					<div
-						class="rounded-lg border border-border bg-background shadow-ink tx tx-pulse tx-weak overflow-hidden"
-					>
+					<div class="micro-label text-muted-foreground">Month 2 · daily brief</div>
+					<div class="overflow-hidden rounded-lg border border-border bg-background">
 						<div
-							class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center justify-between micro-label"
+							class="micro-label flex h-8 items-center justify-between border-b border-border bg-muted/30 px-3"
 						>
 							<span class="flex items-center gap-1.5">
 								<Mail class="w-3 h-3" /> Daily brief — Tue
@@ -1223,75 +942,34 @@
 						</div>
 					</div>
 					<p class="text-xs text-muted-foreground leading-relaxed">
-						You open your inbox. The project tells you where you left off and what
-						deserves today.
+						The project tells you where to restart.
 					</p>
 				</article>
 			</div>
 		</div>
 	</section>
 
-	<!-- ─── §07 honest comparison + final CTA ──────────────────────── -->
-	<section class="home-deferred home-deferred-cta py-12 sm:py-16">
-		<div class="mx-auto max-w-7xl space-y-8 px-2 sm:px-4 lg:px-6">
-			<div class="text-center">
-				<div class="micro-label inline-flex items-center gap-3">
-					<span class="h-px w-10 bg-border"></span>
-					<span>§07 — You have three options</span>
-					<span class="h-px w-10 bg-border"></span>
-				</div>
-				<p class="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">
-					Two of them leave your thinking scattered. One starts compounding today.
-				</p>
-			</div>
+	<!-- ─── Final CTA ───────────────────────────────────────────────── -->
+	<section class="home-deferred home-deferred-cta border-t border-border py-14 sm:py-20">
+		<div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
+			<div class="micro-label text-muted-foreground">Start with one project</div>
+			<h2 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+				Start with the messy version.
+			</h2>
+			<p class="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
+				Tell BuildOS what you're making. Leave with a project you can move.
+			</p>
 
-			<div class="grid md:grid-cols-3 gap-3 sm:gap-4">
-				<article
-					class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-4"
-				>
-					<div class="text-xs font-medium text-muted-foreground">Option 1</div>
-					<h3 class="mt-1 text-base font-semibold text-foreground">
-						Keep managing the sprawl.
-					</h3>
-					<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-						Notes in one app, tasks in another, context in a chat thread you'll never
-						find again.
-					</p>
-				</article>
-				<article
-					class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-4"
-				>
-					<div class="text-xs font-medium text-muted-foreground">Option 2</div>
-					<h3 class="mt-1 text-base font-semibold text-foreground">
-						Wait for the perfect tool.
-					</h3>
-					<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-						There's always a better one coming. Meanwhile your ideas pile up
-						unstructured.
-					</p>
-				</article>
-				<article
-					class="rounded-lg border border-accent/40 bg-accent/5 shadow-ink-strong tx tx-bloom tx-weak p-4"
-				>
-					<div class="text-xs font-semibold text-accent">Option 3</div>
-					<h3 class="mt-1 text-base font-semibold text-foreground">Start in chat.</h3>
-					<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-						The system gets better with every conversation, note, and project update.
-						The value compounds from day one.
-					</p>
-				</article>
-			</div>
-
-			<div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-2">
+			<div class="mt-7 flex flex-wrap items-center justify-center gap-3">
 				<a
 					href="/auth/register"
-					class="pressable rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-ink hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+					class="pressable rounded-md bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				>
 					Start in chat
 				</a>
 				<a
 					href="/blogs/philosophy"
-					class="pressable rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold shadow-ink hover:border-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+					class="pressable rounded-md border border-border bg-background px-6 py-3 text-sm font-semibold transition-colors hover:border-foreground/40 hover:bg-muted/40 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				>
 					Read the philosophy
 				</a>
