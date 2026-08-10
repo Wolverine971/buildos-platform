@@ -39,6 +39,9 @@ export const BUILDOS_OAUTH_SCOPES = [
 	'buildos.write',
 	'offline_access'
 ] as const satisfies readonly BuildosAgentOAuthScope[];
+export const BUILDOS_MCP_RESOURCE_SCOPES = [
+	'buildos.read'
+] as const satisfies readonly BuildosAgentOAuthScope[];
 
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
 const REFRESH_TOKEN_TTL_SECONDS = 90 * 24 * 60 * 60;

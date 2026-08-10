@@ -67,7 +67,7 @@ type JsonRpcResponse = {
 	};
 };
 
-const MCP_PROTOCOL_VERSION = '2025-06-18';
+const MCP_PROTOCOL_VERSION = '2025-11-25';
 const MCP_MODERN_PROTOCOL_VERSION = '2026-07-28';
 const MCP_SERVER_INFO = {
 	name: 'buildos',
@@ -83,7 +83,13 @@ const MCP_SERVER_INSTRUCTIONS =
  * When a legacy header is absent we keep backwards-compatible behavior; when it
  * is present but unrecognized we reject with HTTP 400.
  */
-const SUPPORTED_MCP_PROTOCOL_VERSIONS = new Set(['2025-06-18', '2025-03-26', '2024-11-05']);
+const SUPPORTED_MCP_PROTOCOL_VERSIONS = new Set([
+	'2025-11-25',
+	'2025-06-18',
+	'2025-03-26',
+	'2024-11-05',
+	'2024-10-07'
+]);
 
 const MCP_CORS_ALLOW_HEADERS =
 	'Content-Type, Authorization, MCP-Protocol-Version, Mcp-Method, Mcp-Name, Mcp-Session-Id';
@@ -168,7 +174,18 @@ function mcpAuthChallengeHeaders(
 	cors: Record<string, string>
 ): Record<string, string> {
 	return {
-		'WWW-Authenticate': `Bearer resource_metadata="${protectedResourceMetadataUrl(serverOrigin)}", scope="buildos.read offline_access"`,
+		'WWW-Authenticate': `Bearer resource_metadata="${protectedResourceMetadataUrl(serverOrigin)}", scope="buildos.read"`,
+		'Cache-Control': 'no-store',
+		...cors
+	};
+}
+
+function mcpInsufficientScopeChallengeHeaders(
+	serverOrigin: string,
+	cors: Record<string, string>
+): Record<string, string> {
+	return {
+		'WWW-Authenticate': `Bearer error="insufficient_scope", scope="buildos.read", resource_metadata="${protectedResourceMetadataUrl(serverOrigin)}"`,
 		'Cache-Control': 'no-store',
 		...cors
 	};
@@ -299,7 +316,7 @@ function toMcpTool(tool: ReturnType<typeof getPublicBuildosAgentTools>[number]) 
 
 function readToolName(params: unknown): string {
 	if (!isRecord(params) || typeof params.name !== 'string' || !params.name.trim()) {
-		throw new Error('tools/call params.name is required');
+		throw new ProtocolError(-32602, 'tools/call params.name is required');
 	}
 	return params.name.trim();
 }
@@ -309,7 +326,7 @@ function readToolArguments(params: unknown): Record<string, unknown> | undefined
 		return undefined;
 	}
 	if (!isRecord(params.arguments)) {
-		throw new Error('tools/call params.arguments must be an object');
+		throw new ProtocolError(-32602, 'tools/call params.arguments must be an object');
 	}
 	return params.arguments;
 }
@@ -691,17 +708,17 @@ function decodeMcpCursor(rawParams: unknown): number {
 		return 0;
 	}
 	if (typeof rawParams.cursor !== 'string') {
-		throw new Error('cursor must be a string');
+		throw new ProtocolError(-32602, 'cursor must be a string');
 	}
 	let decoded: string;
 	try {
 		decoded = Buffer.from(rawParams.cursor, 'base64url').toString('utf8');
 	} catch {
-		throw new Error('Invalid pagination cursor');
+		throw new ProtocolError(-32602, 'Invalid pagination cursor');
 	}
 	const offset = Number.parseInt(decoded, 10);
 	if (!Number.isInteger(offset) || offset < 0 || String(offset) !== decoded) {
-		throw new Error('Invalid pagination cursor');
+		throw new ProtocolError(-32602, 'Invalid pagination cursor');
 	}
 	return offset;
 }
@@ -850,7 +867,8 @@ async function dispatchAuthenticatedMcpMethod(params: {
 					: '';
 			const parsedResource = parseResourceUri(uri);
 			if (!parsedResource) {
-				throw new Error(
+				throw new ProtocolError(
+					-32602,
 					`Unsupported resource uri "${uri}". Expected "buildos://project/<id>" or "buildos://document/<id>".`
 				);
 			}
@@ -1011,10 +1029,6 @@ async function dispatchModernMcpMethod(params: {
 			throw new ProtocolError(-32003, error.description);
 		}
 
-		if (error instanceof Error) {
-			throw new ProtocolError(-32602, error.message);
-		}
-
 		throw new ProtocolError(-32603, 'BuildOS MCP request failed');
 	}
 }
@@ -1112,6 +1126,20 @@ async function handleBuildosModernMcpPost(params: {
 				status: 401,
 				headers: {
 					...mcpAuthChallengeHeaders(params.url.origin, params.cors),
+					'Content-Type': 'application/json'
+				}
+			});
+		}
+
+		if (
+			error instanceof OAuthConnectorError &&
+			error.status === 403 &&
+			error.code === 'insufficient_scope'
+		) {
+			return new Response(JSON.stringify(jsonRpcError(id, -32003, error.description)), {
+				status: 403,
+				headers: {
+					...mcpInsufficientScopeChallengeHeaders(params.url.origin, params.cors),
 					'Content-Type': 'application/json'
 				}
 			});
@@ -1313,21 +1341,43 @@ export async function handleBuildosMcpPost(params: {
 			});
 		}
 
+		if (
+			error instanceof OAuthConnectorError &&
+			error.status === 403 &&
+			error.code === 'insufficient_scope'
+		) {
+			return new Response(JSON.stringify(jsonRpcError(id, -32003, error.description)), {
+				status: 403,
+				headers: {
+					...mcpInsufficientScopeChallengeHeaders(serverOrigin, cors),
+					'Content-Type': 'application/json'
+				}
+			});
+		}
+
 		if (error instanceof OAuthConnectorError && error.code === 'method_not_found') {
 			return respond(jsonRpcError(id, -32601, error.description), 400);
 		}
 
-		// MCP reserves -32002 for "resource not found" (resources/read misses).
+		// Resource misses use Invalid Params plus the requested URI in `data`.
+		// Accepting the older -32002 value remains a client-side compatibility job.
 		if (error instanceof OAuthConnectorError && error.code === 'not_found') {
-			return respond(jsonRpcError(id, -32002, error.description), error.status);
+			const uri =
+				isRecord(rpcRequest.params) && typeof rpcRequest.params.uri === 'string'
+					? rpcRequest.params.uri
+					: '';
+			return respond(jsonRpcError(id, -32602, error.description, { uri }), error.status);
 		}
 
 		if (error instanceof OAuthConnectorError) {
 			return respond(jsonRpcError(id, -32003, error.description), error.status);
 		}
 
-		if (error instanceof Error) {
-			return respond(jsonRpcError(id, -32602, error.message), 400);
+		if (error instanceof ProtocolError) {
+			return respond(
+				jsonRpcError(id, error.code, error.message, error.data),
+				error.code === -32603 ? 500 : 400
+			);
 		}
 
 		return respond(jsonRpcError(id, -32603, 'BuildOS MCP request failed'), 500);
@@ -1392,6 +1442,19 @@ export async function handleBuildosMcpGet(params: {
 	} catch (error) {
 		if (error instanceof OAuthConnectorError && error.status === 401) {
 			return unauthenticatedChallenge();
+		}
+		if (
+			error instanceof OAuthConnectorError &&
+			error.status === 403 &&
+			error.code === 'insufficient_scope'
+		) {
+			return new Response(JSON.stringify(jsonRpcError(null, -32003, error.description)), {
+				status: 403,
+				headers: {
+					...mcpInsufficientScopeChallengeHeaders(serverOrigin, cors),
+					'Content-Type': 'application/json'
+				}
+			});
 		}
 		if (error instanceof OAuthConnectorError) {
 			return json(jsonRpcError(null, -32003, error.description), {

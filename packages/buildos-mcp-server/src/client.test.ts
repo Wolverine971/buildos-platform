@@ -1,6 +1,12 @@
 // packages/buildos-mcp-server/src/client.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { BuildosRemoteMcpClient, type FetchLike } from './client';
+import { ProtocolError, ResourceNotFoundError } from '@modelcontextprotocol/server';
+import {
+	BuildosRemoteMcpClient,
+	BuildosRemoteMcpError,
+	translateRemoteMcpError,
+	type FetchLike
+} from './client';
 
 const CONFIG = { baseUrl: 'https://build-os.com', token: 'boca_secret' };
 
@@ -100,16 +106,53 @@ describe('BuildosRemoteMcpClient', () => {
 		);
 	});
 
-	it('throws on a JSON-RPC error response', async () => {
+	it('preserves JSON-RPC error metadata from the remote response', async () => {
 		const fetchFn = vi.fn(async () =>
 			jsonResponse(
-				{ jsonrpc: '2.0', id: 1, error: { code: -32001, message: 'unauthorized' } },
+				{
+					jsonrpc: '2.0',
+					id: 1,
+					error: { code: -32001, message: 'unauthorized', data: { reason: 'expired' } }
+				},
 				401
 			)
 		) as unknown as FetchLike;
 		const client = new BuildosRemoteMcpClient(CONFIG, fetchFn);
 
-		await expect(client.listTools()).rejects.toThrow(/unauthorized/);
+		const error = await client.listTools().catch((caught) => caught);
+		expect(error).toBeInstanceOf(BuildosRemoteMcpError);
+		expect(error).toMatchObject({
+			message: 'unauthorized',
+			code: -32001,
+			data: { reason: 'expired' },
+			status: 401
+		});
+	});
+
+	it('translates an old remote resource miss to the modern typed error', () => {
+		const translated = translateRemoteMcpError(
+			new BuildosRemoteMcpError('Document not found', -32002, undefined, 404),
+			'buildos://document/doc-1'
+		);
+
+		expect(translated).toBeInstanceOf(ResourceNotFoundError);
+		expect(translated).toMatchObject({
+			code: -32602,
+			data: { uri: 'buildos://document/doc-1' }
+		});
+	});
+
+	it('preserves other remote protocol codes and data during translation', () => {
+		const translated = translateRemoteMcpError(
+			new BuildosRemoteMcpError('Method unavailable', -32601, { method: 'x' }, 404)
+		);
+
+		expect(translated).toBeInstanceOf(ProtocolError);
+		expect(translated).toMatchObject({
+			code: -32601,
+			message: 'Method unavailable',
+			data: { method: 'x' }
+		});
 	});
 
 	it('throws a clear error on a non-JSON response', async () => {

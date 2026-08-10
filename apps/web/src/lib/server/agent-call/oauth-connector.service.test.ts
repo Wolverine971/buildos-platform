@@ -3,6 +3,7 @@ import { createHash } from 'crypto';
 import { describe, expect, it } from 'vitest';
 import {
 	authenticateOAuthMcpRequest,
+	BUILDOS_MCP_RESOURCE_SCOPES,
 	BUILDOS_OAUTH_READ_WRITE_OPS,
 	buildOAuthRedirect,
 	isOAuthRedirectUriAllowed,
@@ -18,6 +19,10 @@ import {
 } from './oauth-connector.service';
 
 describe('OAuth connector helpers', () => {
+	it('advertises only the minimal scope required by the MCP protected resource', () => {
+		expect(BUILDOS_MCP_RESOURCE_SCOPES).toEqual(['buildos.read']);
+	});
+
 	it('defaults OAuth requests to read-only access with refresh support', () => {
 		expect(parseOAuthScopes(null)).toEqual(['buildos.read', 'offline_access']);
 	});

@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/agent-call/mcp-connector.service.test.ts
+import { createHash } from 'crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Spies for the two collaborators that touch the database. The connector test
@@ -41,6 +42,7 @@ import {
 const MCP_URL = new URL('https://build-os.com/mcp/buildos');
 const STATIC_KEY_HEADER = { Authorization: 'Bearer boca_static_test_key' };
 const MODERN_MCP_PROTOCOL_VERSION = '2026-07-28';
+const REVOKED_OAUTH_TOKEN = 'bo_at_revoked_test_token';
 const MODERN_MCP_META = {
 	'io.modelcontextprotocol/protocolVersion': MODERN_MCP_PROTOCOL_VERSION,
 	'io.modelcontextprotocol/clientInfo': { name: 'buildos-connector-test', version: '1.0.0' },
@@ -170,6 +172,43 @@ function missAdmin() {
 	});
 }
 
+function revokedOAuthAdmin() {
+	return makeAdmin({
+		agent_oauth_access_tokens: {
+			data: {
+				id: 'token-revoked',
+				grant_id: 'grant-revoked',
+				external_agent_caller_id: 'caller-revoked',
+				token_hash: createHash('sha256').update(REVOKED_OAUTH_TOKEN).digest('hex'),
+				resource: MCP_URL.href,
+				scope: 'buildos.read',
+				expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+				revoked_at: null
+			},
+			error: null
+		},
+		agent_oauth_grants: {
+			data: {
+				id: 'grant-revoked',
+				status: 'revoked',
+				scope_mode: 'read_only',
+				allowed_ops: [],
+				allowed_project_ids: null
+			},
+			error: null
+		},
+		external_agent_callers: {
+			data: {
+				id: 'caller-revoked',
+				user_id: 'user-1',
+				status: 'trusted',
+				policy: { scope_mode: 'read_only' }
+			},
+			error: null
+		}
+	});
+}
+
 describe('BuildOS MCP connector endpoint helpers', () => {
 	beforeEach(() => {
 		gatewayMocks.executeBuildosAgentGatewayTool.mockReset();
@@ -185,9 +224,8 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			expect(response.headers.get('WWW-Authenticate')).toContain(
 				'https://build-os.com/.well-known/oauth-protected-resource/mcp/buildos'
 			);
-			expect(response.headers.get('WWW-Authenticate')).toContain(
-				'scope="buildos.read offline_access"'
-			);
+			expect(response.headers.get('WWW-Authenticate')).toContain('scope="buildos.read"');
+			expect(response.headers.get('WWW-Authenticate')).not.toContain('offline_access');
 		});
 
 		it('returns 405 for an authenticated GET because v1 offers no SSE stream', async () => {
@@ -204,9 +242,8 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			const response = await mcpPost({}, { jsonrpc: '2.0', id: 1, method: 'tools/list' });
 
 			expect(response.status).toBe(401);
-			expect(response.headers.get('WWW-Authenticate')).toContain(
-				'scope="buildos.read offline_access"'
-			);
+			expect(response.headers.get('WWW-Authenticate')).toContain('scope="buildos.read"');
+			expect(response.headers.get('WWW-Authenticate')).not.toContain('offline_access');
 			const body = await response.json();
 			expect(body.error.code).toBe(-32001);
 		});
@@ -242,6 +279,33 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			expect(response.status).toBe(401);
 			const body = await response.json();
 			expect(body.error.code).toBe(-32001);
+		});
+
+		it('returns a complete insufficient-scope challenge for legacy and modern requests', async () => {
+			const authorization = `Bearer ${REVOKED_OAUTH_TOKEN}`;
+			const responses = await Promise.all([
+				mcpPost(
+					revokedOAuthAdmin(),
+					{ jsonrpc: '2.0', id: 9, method: 'tools/list' },
+					{ Authorization: authorization }
+				),
+				modernMcpPost(
+					revokedOAuthAdmin(),
+					'server/discover',
+					{},
+					{ Authorization: authorization }
+				)
+			]);
+
+			for (const response of responses) {
+				expect(response.status).toBe(403);
+				const challenge = response.headers.get('WWW-Authenticate');
+				expect(challenge).toContain('error="insufficient_scope"');
+				expect(challenge).toContain('scope="buildos.read"');
+				expect(challenge).toContain(
+					'resource_metadata="https://build-os.com/.well-known/oauth-protected-resource/mcp/buildos"'
+				);
+			}
 		});
 	});
 
@@ -429,7 +493,7 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 
 			expect(response.status).toBe(200);
 			const body = await response.json();
-			expect(body.result.protocolVersion).toBe('2025-06-18');
+			expect(body.result.protocolVersion).toBe('2025-11-25');
 		});
 
 		it('answers ping with an empty result', async () => {
@@ -550,15 +614,18 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			expect(body.error.code).toBe(-32600);
 		});
 
-		it('accepts a supported MCP-Protocol-Version', async () => {
-			const response = await mcpPost(
-				staticKeyAdmin({ scope_mode: 'read_only' }),
-				{ jsonrpc: '2.0', id: 35, method: 'tools/list' },
-				{ ...STATIC_KEY_HEADER, 'MCP-Protocol-Version': '2025-06-18' }
-			);
+		it.each(['2025-11-25', '2024-10-07'])(
+			'accepts supported MCP-Protocol-Version %s',
+			async (protocolVersion) => {
+				const response = await mcpPost(
+					staticKeyAdmin({ scope_mode: 'read_only' }),
+					{ jsonrpc: '2.0', id: 35, method: 'tools/list' },
+					{ ...STATIC_KEY_HEADER, 'MCP-Protocol-Version': protocolVersion }
+				);
 
-			expect(response.status).toBe(200);
-		});
+				expect(response.status).toBe(200);
+			}
+		);
 	});
 
 	describe('tool profiles', () => {
@@ -755,7 +822,7 @@ describe('MCP spec compliance fixes', () => {
 		expect(response.status).toBe(401);
 	});
 
-	it('maps a resources/read miss to JSON-RPC -32002 (resource not found)', async () => {
+	it('maps a legacy resources/read miss to -32602 with the requested URI', async () => {
 		gatewayMocks.executeBuildosAgentGatewayTool.mockResolvedValue({
 			ok: false,
 			error: { code: 'NOT_FOUND', message: 'Document not found' }
@@ -777,7 +844,33 @@ describe('MCP spec compliance fixes', () => {
 		);
 		expect(response.status).toBe(404);
 		const payload = await response.json();
-		expect(payload.error.code).toBe(-32002);
+		expect(payload.error.code).toBe(-32602);
+		expect(payload.error.data.uri).toBe(
+			'buildos://document/11111111-1111-1111-1111-111111111111'
+		);
+	});
+
+	it('sanitizes unexpected legacy dispatcher failures as internal errors', async () => {
+		gatewayMocks.executeBuildosAgentGatewayTool.mockRejectedValue(
+			new Error('sensitive database failure')
+		);
+		const response = await mcpPost(
+			staticKeyAdmin({ scope_mode: 'read_only' }),
+			{
+				jsonrpc: '2.0',
+				id: 31,
+				method: 'tools/call',
+				params: { name: 'list_onto_projects', arguments: {} }
+			},
+			STATIC_KEY_HEADER
+		);
+
+		expect(response.status).toBe(500);
+		const payload = await response.json();
+		expect(payload.error).toEqual({
+			code: -32603,
+			message: 'BuildOS MCP request failed'
+		});
 	});
 
 	it('blocks discovery tools at call time in the general profile', async () => {
@@ -920,6 +1013,25 @@ describe('MCP 2026-07-28 compatibility', () => {
 		const payload = await response.json();
 		expect(payload.error.code).toBe(-32602);
 		expect(payload.error.data.uri).toBe(uri);
+	});
+
+	it('sanitizes unexpected modern dispatcher failures as internal errors', async () => {
+		gatewayMocks.executeBuildosAgentGatewayTool.mockRejectedValue(
+			new Error('sensitive database failure')
+		);
+		const response = await modernMcpPost(
+			staticKeyAdmin({ scope_mode: 'read_only' }),
+			'tools/call',
+			{ name: 'list_onto_projects', arguments: {} },
+			{ 'Mcp-Name': 'list_onto_projects' }
+		);
+
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(payload.error).toEqual({
+			code: -32603,
+			message: 'BuildOS MCP request failed'
+		});
 	});
 
 	it('preserves the OAuth challenge for unauthenticated modern requests', async () => {

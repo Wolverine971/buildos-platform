@@ -16,15 +16,27 @@ import {
 } from '@modelcontextprotocol/server';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { loadConfig, BRIDGE_VERSION } from './config';
-import { BuildosRemoteMcpClient } from './client';
+import { BuildosRemoteMcpClient, translateRemoteMcpError } from './client';
 
 const SUPPORTED_PROTOCOL_VERSIONS = [
 	'2026-07-28',
 	'2025-11-25',
 	'2025-06-18',
 	'2025-03-26',
-	'2024-11-05'
+	'2024-11-05',
+	'2024-10-07'
 ];
+
+async function forwardRemoteMcpRequest<T>(
+	request: () => Promise<T>,
+	resourceUri?: string
+): Promise<T> {
+	try {
+		return await request();
+	} catch (error) {
+		throw translateRemoteMcpError(error, resourceUri) ?? error;
+	}
+}
 
 function createBridgeServer(client: BuildosRemoteMcpClient): Server {
 	const server = new Server(
@@ -46,27 +58,31 @@ function createBridgeServer(client: BuildosRemoteMcpClient): Server {
 	);
 
 	server.setRequestHandler('tools/list', async () => {
-		return (await client.listTools()) as ListToolsResult;
+		return (await forwardRemoteMcpRequest(() => client.listTools())) as ListToolsResult;
 	});
 
 	server.setRequestHandler('tools/call', async (request) => {
-		const result = (await client.callTool(
-			request.params.name,
-			request.params.arguments ?? {}
+		const result = (await forwardRemoteMcpRequest(() =>
+			client.callTool(request.params.name, request.params.arguments ?? {})
 		)) as CallToolResult;
 		return server.projectCallToolResult(result, { type: 'object' });
 	});
 
 	server.setRequestHandler('resources/list', async () => {
-		return (await client.listResources()) as ListResourcesResult;
+		return (await forwardRemoteMcpRequest(() => client.listResources())) as ListResourcesResult;
 	});
 
 	server.setRequestHandler('resources/templates/list', async () => {
-		return (await client.listResourceTemplates()) as ListResourceTemplatesResult;
+		return (await forwardRemoteMcpRequest(() =>
+			client.listResourceTemplates()
+		)) as ListResourceTemplatesResult;
 	});
 
 	server.setRequestHandler('resources/read', async (request) => {
-		return (await client.readResource(request.params.uri)) as ReadResourceResult;
+		return (await forwardRemoteMcpRequest(
+			() => client.readResource(request.params.uri),
+			request.params.uri
+		)) as ReadResourceResult;
 	});
 
 	return server;

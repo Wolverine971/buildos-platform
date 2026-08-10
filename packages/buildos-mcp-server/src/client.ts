@@ -1,4 +1,5 @@
 // packages/buildos-mcp-server/src/client.ts
+import { ProtocolError, ResourceNotFoundError } from '@modelcontextprotocol/server';
 import { BRIDGE_NAME, BRIDGE_VERSION, type BridgeConfig } from './config';
 
 const MCP_PROTOCOL_VERSION = '2025-06-18';
@@ -7,12 +8,43 @@ type JsonRpcResponse = {
 	jsonrpc?: '2.0';
 	id?: string | number | null;
 	result?: unknown;
-	error?: { code?: number; message?: string };
+	error?: { code?: number; message?: string; data?: unknown };
 };
 
 export type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
 const REQUEST_TIMEOUT_MS = 60_000;
+
+export class BuildosRemoteMcpError extends Error {
+	constructor(
+		message: string,
+		public readonly code: number | undefined,
+		public readonly data: unknown,
+		public readonly status: number
+	) {
+		super(message);
+		this.name = 'BuildosRemoteMcpError';
+	}
+}
+
+export function translateRemoteMcpError(
+	error: unknown,
+	resourceUri?: string
+): ProtocolError | null {
+	if (!(error instanceof BuildosRemoteMcpError)) return null;
+
+	// Older MCP servers emitted -32002 without URI data for resource misses.
+	// The 2026 protocol requires -32602 plus the requested URI.
+	if (resourceUri && error.code === -32002) {
+		return new ResourceNotFoundError(resourceUri, error.message);
+	}
+
+	if (typeof error.code !== 'number') {
+		return new ProtocolError(-32603, 'BuildOS MCP request failed');
+	}
+
+	return ProtocolError.fromError(error.code, error.message, error.data);
+}
 
 /**
  * Thin JSON-RPC proxy to the remote BuildOS connector (`/mcp/buildos`). The local
@@ -114,8 +146,11 @@ export class BuildosRemoteMcpClient {
 		}
 
 		if (payload.error) {
-			throw new Error(
-				`BuildOS MCP error ${payload.error.code ?? ''}: ${payload.error.message ?? 'request failed'}`.trim()
+			throw new BuildosRemoteMcpError(
+				payload.error.message ?? 'BuildOS MCP request failed',
+				payload.error.code,
+				payload.error.data,
+				response.status
 			);
 		}
 
