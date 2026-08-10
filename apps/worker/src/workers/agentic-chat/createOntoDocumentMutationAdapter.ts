@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/createOntoDocumentMutationAdapter.ts
 import { runGatewayWriteOp } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import { type Database, type JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -16,19 +17,11 @@ import {
 	throwGatewayResultFailure,
 	uncertainFailure
 } from './mutationAdapterBoundary';
+import { AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 } from './mutationToolCatalog';
 
 const TOOL_NAME = 'create_onto_document';
-const OPERATION_NAME = 'onto.document.create';
-const REVIEWED_ARGUMENT_NAMES = new Set([
-	'project_id',
-	'title',
-	'description',
-	'type_key',
-	'state_key',
-	'content',
-	'parent_id',
-	'position'
-]);
+const MUTATION_SPEC = AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1[TOOL_NAME];
+const REVIEWED_ARGUMENT_NAMES = new Set(MUTATION_SPEC.reviewedArgumentNames);
 
 type GatewayRunner = typeof runGatewayWriteOp;
 
@@ -54,8 +47,8 @@ export class AgenticChatCreateOntoDocumentMutationAdapter
 	async execute(input: MutationInput): Promise<JsonObject> {
 		assertMutationAdapterBoundary(input, {
 			toolName: TOOL_NAME,
-			operationName: OPERATION_NAME,
-			downstreamIdempotencySupported: false,
+			operationName: MUTATION_SPEC.operationName,
+			downstreamIdempotencySupported: MUTATION_SPEC.downstreamIdempotencySupported,
 			reviewedArgumentNames: REVIEWED_ARGUMENT_NAMES
 		});
 
@@ -107,11 +100,11 @@ export class AgenticChatCreateOntoDocumentMutationAdapter
 				userId: input.executionInput.claim.userId,
 				scope: {
 					mode: 'read_write',
-					allowed_ops: [OPERATION_NAME],
+					allowed_ops: [MUTATION_SPEC.operationName],
 					project_ids: [argumentProjectId],
 					write_project_ids: [argumentProjectId]
 				},
-				op: OPERATION_NAME,
+				op: MUTATION_SPEC.operationName,
 				args: gatewayArguments,
 				callSessionId: input.executionInput.claim.sessionId
 			});

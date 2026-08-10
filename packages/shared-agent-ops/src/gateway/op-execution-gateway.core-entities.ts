@@ -1,7 +1,17 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.core-entities.ts
 import { ensureActorId } from '../ontology/ontology-projects.service';
-import { GOAL_STATES, MILESTONE_STATES, PLAN_STATES, RISK_STATES } from '../ontology/onto';
+import {
+	GOAL_STATES,
+	MILESTONE_STATES,
+	PLAN_STATES,
+	RISK_STATES,
+	isValidTypeKey
+} from '../ontology/onto';
 import { logCreateAsync, logUpdateAsync } from '../ops/async-activity-logger';
+import {
+	notifyEntityMentionsAdded,
+	resolveEntityMentionUserIds
+} from '../ops/entity-mention-notification.service';
 import { normalizeMarkdownInput } from '../utils/markdown-normalization';
 import { CORE_ENTITY_CONFIG, type ExternalEntityKind } from './op-execution-gateway.config';
 import {
@@ -178,23 +188,25 @@ export async function createGoal(context: ToolExecutionContext, args: Record<str
 	const name = requireTrimmedString(args.name, 'name');
 	const stateKey = normalizeStateValue(args.state_key, 'state_key', GOAL_STATES, 'draft');
 	const targetDate = normalizeOptionalDate(args.target_date, 'target_date');
-	const description = normalizeOptionalText(args.description, 'description', { allowNull: true });
-	const goalBody = normalizeOptionalText(args.goal, 'goal', { allowNull: true });
-	const measurementCriteria = normalizeOptionalText(
-		args.measurement_criteria,
-		'measurement_criteria',
-		{ allowNull: true }
-	);
+	const description =
+		normalizeOptionalText(args.description, 'description', { allowNull: true }) || null;
+	const goalBody = normalizeOptionalText(args.goal, 'goal', { allowNull: true }) || null;
+	const measurementCriteria =
+		normalizeOptionalText(args.measurement_criteria, 'measurement_criteria', {
+			allowNull: true
+		}) || null;
 	const props = normalizeProps(args.props, 'props') ?? {};
 	const insertPayload: Record<string, unknown> = {
 		project_id: project.id,
 		name,
 		goal: goalBody ?? null,
 		description: description ?? null,
-		type_key:
-			typeof args.type_key === 'string' && args.type_key.trim()
-				? args.type_key.trim()
-				: 'goal.outcome.project',
+		type_key: normalizeCoreTypeKey(
+			args.type_key,
+			'goal',
+			'goal.outcome.project',
+			'goal.default'
+		),
 		state_key: stateKey,
 		target_date: targetDate ?? null,
 		completed_at: stateKey === 'achieved' ? new Date().toISOString() : null,
@@ -219,6 +231,8 @@ export async function createGoal(context: ToolExecutionContext, args: Record<str
 		throw new ExternalToolGatewayError('INTERNAL', error?.message || 'Failed to create goal');
 	}
 
+	await syncGoalMentionSideEffects(context, project, data as Record<string, unknown>);
+
 	await logCreateAsync(
 		context.admin,
 		project.id,
@@ -238,48 +252,76 @@ export async function createGoal(context: ToolExecutionContext, args: Record<str
 }
 
 export async function updateGoal(context: ToolExecutionContext, args: Record<string, unknown>) {
-	return updateCoreEntity(context, args, 'goal', (existing) => {
-		const updateData: Record<string, unknown> = {};
-		if (args.name !== undefined) updateData.name = requireTrimmedString(args.name, 'name');
-		if (args.description !== undefined) {
-			updateData.description = normalizeOptionalText(args.description, 'description', {
-				allowNull: true
-			});
-		}
-		if (args.type_key !== undefined)
-			updateData.type_key = requireTrimmedString(args.type_key, 'type_key');
-		if (args.state_key !== undefined) {
-			updateData.state_key = normalizeStateValue(args.state_key, 'state_key', GOAL_STATES);
-			updateData.completed_at =
-				updateData.state_key === 'achieved'
-					? (existing.completed_at ?? new Date().toISOString())
-					: null;
-		}
-		if (args.target_date !== undefined) {
-			updateData.target_date = normalizeOptionalDate(args.target_date, 'target_date');
-		}
-		if (
-			args.props !== undefined ||
-			args.measurement_criteria !== undefined ||
-			args.priority !== undefined
-		) {
-			updateData.props = {
-				...((existing.props as Record<string, unknown> | null) ?? {}),
-				...(normalizeProps(args.props, 'props') ?? {}),
-				...(args.measurement_criteria !== undefined
-					? {
-							measurement_criteria: normalizeOptionalText(
-								args.measurement_criteria,
-								'measurement_criteria',
-								{ allowNull: true }
-							)
-						}
-					: {}),
-				...(args.priority !== undefined ? { priority: args.priority } : {})
-			};
-		}
-		return updateData;
-	});
+	return updateCoreEntity(
+		context,
+		args,
+		'goal',
+		(existing) => {
+			const updateData: Record<string, unknown> = {};
+			if (args.name !== undefined) updateData.name = requireTrimmedString(args.name, 'name');
+			if (args.description !== undefined) {
+				updateData.description =
+					normalizeOptionalText(args.description, 'description', { allowNull: true }) ||
+					null;
+			}
+			if (args.type_key !== undefined) {
+				updateData.type_key = normalizeCoreTypeKey(
+					args.type_key,
+					'goal',
+					typeof existing.type_key === 'string' ? existing.type_key : 'goal.default',
+					typeof existing.type_key === 'string' ? existing.type_key : 'goal.default'
+				);
+			}
+			if (args.state_key !== undefined) {
+				updateData.state_key = normalizeStateValue(
+					args.state_key,
+					'state_key',
+					GOAL_STATES
+				);
+				updateData.completed_at =
+					updateData.state_key === 'achieved'
+						? (existing.completed_at ?? new Date().toISOString())
+						: null;
+			}
+			if (args.target_date !== undefined) {
+				updateData.target_date = normalizeOptionalDate(args.target_date, 'target_date');
+			}
+			if (
+				args.props !== undefined ||
+				args.description !== undefined ||
+				args.state_key !== undefined ||
+				args.target_date !== undefined ||
+				args.measurement_criteria !== undefined ||
+				args.priority !== undefined
+			) {
+				updateData.props = {
+					...((existing.props as Record<string, unknown> | null) ?? {}),
+					...(normalizeProps(args.props, 'props') ?? {}),
+					...(args.description !== undefined
+						? { description: updateData.description }
+						: {}),
+					...(args.state_key !== undefined ? { state_key: updateData.state_key } : {}),
+					...(args.target_date !== undefined
+						? { target_date: updateData.target_date }
+						: {}),
+					...(args.measurement_criteria !== undefined
+						? {
+								measurement_criteria:
+									normalizeOptionalText(
+										args.measurement_criteria,
+										'measurement_criteria',
+										{ allowNull: true }
+									) || null
+							}
+						: {}),
+					...(args.priority !== undefined ? { priority: args.priority || null } : {})
+				};
+			}
+			return updateData;
+		},
+		({ existing, updated, project }) =>
+			syncGoalMentionSideEffects(context, project, updated, existing)
+	);
 }
 
 export async function createPlan(context: ToolExecutionContext, args: Record<string, unknown>) {
@@ -288,26 +330,25 @@ export async function createPlan(context: ToolExecutionContext, args: Record<str
 	assertProjectWriteAccess(project, context.scope);
 	const actorId = await ensureActorId(context.admin, context.userId);
 	const name = requireTrimmedString(args.name, 'name');
-	const description = normalizeOptionalText(args.description, 'description', { allowNull: true });
+	const description =
+		normalizeOptionalText(args.description, 'description', { allowNull: true }) || null;
 	const planBody = normalizeMarkdownInput(typeof args.plan === 'string' ? args.plan : null);
 	const stateKey = normalizeStateValue(args.state_key, 'state_key', PLAN_STATES, 'draft');
 	const props = normalizeProps(args.props, 'props') ?? {};
-	const startDate = normalizeOptionalText(args.start_date, 'start_date', { allowNull: true });
-	const endDate = normalizeOptionalText(args.end_date, 'end_date', { allowNull: true });
+	const startDate =
+		normalizeOptionalText(args.start_date, 'start_date', { allowNull: true }) || null;
+	const endDate = normalizeOptionalText(args.end_date, 'end_date', { allowNull: true }) || null;
 	const insertPayload: Record<string, unknown> = {
 		project_id: project.id,
 		name,
 		description: description ?? null,
-		plan: planBody ?? null,
-		type_key:
-			typeof args.type_key === 'string' && args.type_key.trim()
-				? args.type_key.trim()
-				: 'plan.phase.project',
+		plan: planBody || null,
+		type_key: normalizeCoreTypeKey(args.type_key, 'plan', 'plan.phase.project', 'plan.default'),
 		state_key: stateKey,
 		created_by: actorId,
 		props: {
 			...props,
-			plan: planBody ?? null,
+			plan: planBody || null,
 			description: description ?? null,
 			start_date: startDate ?? null,
 			end_date: endDate ?? null
@@ -355,40 +396,50 @@ export async function updatePlan(context: ToolExecutionContext, args: Record<str
 		const updateData: Record<string, unknown> = {};
 		if (args.name !== undefined) updateData.name = requireTrimmedString(args.name, 'name');
 		if (args.description !== undefined) {
-			updateData.description = normalizeOptionalText(args.description, 'description', {
-				allowNull: true
-			});
+			updateData.description =
+				normalizeOptionalText(args.description, 'description', { allowNull: true }) || null;
 		}
 		if (args.plan !== undefined) {
-			updateData.plan = normalizeMarkdownInput(
-				typeof args.plan === 'string' ? args.plan : null
+			updateData.plan =
+				normalizeMarkdownInput(typeof args.plan === 'string' ? args.plan : null) || null;
+		}
+		if (args.type_key !== undefined) {
+			updateData.type_key = normalizeCoreTypeKey(
+				args.type_key,
+				'plan',
+				typeof existing.type_key === 'string' ? existing.type_key : 'plan.default',
+				typeof existing.type_key === 'string' ? existing.type_key : 'plan.default'
 			);
 		}
-		if (args.type_key !== undefined)
-			updateData.type_key = requireTrimmedString(args.type_key, 'type_key');
 		if (args.state_key !== undefined) {
 			updateData.state_key = normalizeStateValue(args.state_key, 'state_key', PLAN_STATES);
 		}
 		if (
 			args.props !== undefined ||
+			args.plan !== undefined ||
+			args.description !== undefined ||
 			args.start_date !== undefined ||
 			args.end_date !== undefined
 		) {
 			updateData.props = {
 				...((existing.props as Record<string, unknown> | null) ?? {}),
 				...(normalizeProps(args.props, 'props') ?? {}),
+				...(args.plan !== undefined ? { plan: updateData.plan } : {}),
+				...(args.description !== undefined ? { description: updateData.description } : {}),
 				...(args.start_date !== undefined
 					? {
-							start_date: normalizeOptionalText(args.start_date, 'start_date', {
-								allowNull: true
-							})
+							start_date:
+								normalizeOptionalText(args.start_date, 'start_date', {
+									allowNull: true
+								}) || null
 						}
 					: {}),
 				...(args.end_date !== undefined
 					? {
-							end_date: normalizeOptionalText(args.end_date, 'end_date', {
-								allowNull: true
-							})
+							end_date:
+								normalizeOptionalText(args.end_date, 'end_date', {
+									allowNull: true
+								}) || null
 						}
 					: {})
 			};
@@ -416,8 +467,10 @@ export async function createMilestone(
 	const title = requireTrimmedString(args.title, 'title');
 	const stateKey = normalizeStateValue(args.state_key, 'state_key', MILESTONE_STATES, 'pending');
 	const dueAt = normalizeOptionalDate(args.due_at, 'due_at');
-	const description = normalizeOptionalText(args.description, 'description', { allowNull: true });
-	const milestone = normalizeOptionalText(args.milestone, 'milestone', { allowNull: true });
+	const description =
+		normalizeOptionalText(args.description, 'description', { allowNull: true }) || null;
+	const milestone =
+		normalizeOptionalText(args.milestone, 'milestone', { allowNull: true }) || null;
 	const props = normalizeProps(args.props, 'props') ?? {};
 	const { data, error } = await context.admin
 		.from('onto_milestones')
@@ -429,7 +482,11 @@ export async function createMilestone(
 			type_key: 'milestone.default',
 			state_key: stateKey,
 			due_at: dueAt ?? null,
-			props,
+			props: {
+				...props,
+				description,
+				state_key: stateKey
+			},
 			created_by: actorId
 		})
 		.select(CORE_ENTITY_CONFIG.milestone.select)
@@ -471,13 +528,12 @@ export async function updateMilestone(
 	context: ToolExecutionContext,
 	args: Record<string, unknown>
 ) {
-	return updateCoreEntity(context, args, 'milestone', () => {
+	return updateCoreEntity(context, args, 'milestone', (existing) => {
 		const updateData: Record<string, unknown> = {};
 		if (args.title !== undefined) updateData.title = requireTrimmedString(args.title, 'title');
 		if (args.description !== undefined) {
-			updateData.description = normalizeOptionalText(args.description, 'description', {
-				allowNull: true
-			});
+			updateData.description =
+				normalizeOptionalText(args.description, 'description', { allowNull: true }) || null;
 		}
 		if (args.due_at !== undefined)
 			updateData.due_at = normalizeOptionalDate(args.due_at, 'due_at');
@@ -487,8 +543,23 @@ export async function updateMilestone(
 				'state_key',
 				MILESTONE_STATES
 			);
+			updateData.completed_at =
+				updateData.state_key === 'completed'
+					? (existing.completed_at ?? new Date().toISOString())
+					: null;
 		}
-		if (args.props !== undefined) updateData.props = normalizeProps(args.props, 'props');
+		if (
+			args.props !== undefined ||
+			args.description !== undefined ||
+			args.state_key !== undefined
+		) {
+			updateData.props = {
+				...((existing.props as Record<string, unknown> | null) ?? {}),
+				...(normalizeProps(args.props, 'props') ?? {}),
+				...(args.description !== undefined ? { description: updateData.description } : {}),
+				...(args.state_key !== undefined ? { state_key: updateData.state_key } : {})
+			};
+		}
 		return updateData;
 	});
 }
@@ -522,14 +593,13 @@ export async function createRisk(context: ToolExecutionContext, args: Record<str
 					})();
 	const stateKey = normalizeStateValue(args.state_key, 'state_key', RISK_STATES, 'identified');
 	const content =
-		normalizeOptionalText(args.content, 'content', { allowNull: true }) ??
-		normalizeOptionalText(args.description, 'description', { allowNull: true }) ??
+		normalizeOptionalText(args.content, 'content', { allowNull: true }) ||
+		normalizeOptionalText(args.description, 'description', { allowNull: true }) ||
 		null;
-	const mitigationStrategy = normalizeOptionalText(
-		args.mitigation_strategy,
-		'mitigation_strategy',
-		{ allowNull: true }
-	);
+	const mitigationStrategy =
+		normalizeOptionalText(args.mitigation_strategy, 'mitigation_strategy', {
+			allowNull: true
+		}) || null;
 	const props = normalizeProps(args.props, 'props') ?? {};
 	const { data, error } = await context.admin
 		.from('onto_risks')
@@ -607,12 +677,11 @@ export async function updateRisk(context: ToolExecutionContext, args: Record<str
 			updateData.mitigated_at =
 				updateData.state_key === 'mitigated'
 					? (existing.mitigated_at ?? new Date().toISOString())
-					: existing.mitigated_at;
+					: null;
 		}
 		if (args.content !== undefined) {
-			updateData.content = normalizeOptionalText(args.content, 'content', {
-				allowNull: true
-			});
+			updateData.content =
+				normalizeOptionalText(args.content, 'content', { allowNull: true }) || null;
 		}
 		if (
 			args.props !== undefined ||
@@ -625,22 +694,28 @@ export async function updateRisk(context: ToolExecutionContext, args: Record<str
 				...(normalizeProps(args.props, 'props') ?? {}),
 				...(args.description !== undefined
 					? {
-							description: normalizeOptionalText(args.description, 'description', {
-								allowNull: true
-							})
+							description:
+								normalizeOptionalText(args.description, 'description', {
+									allowNull: true
+								}) || null
 						}
 					: {}),
 				...(args.mitigation_strategy !== undefined
 					? {
-							mitigation_strategy: normalizeOptionalText(
-								args.mitigation_strategy,
-								'mitigation_strategy',
-								{ allowNull: true }
-							)
+							mitigation_strategy:
+								normalizeOptionalText(
+									args.mitigation_strategy,
+									'mitigation_strategy',
+									{ allowNull: true }
+								) || null
 						}
 					: {}),
 				...(args.owner !== undefined
-					? { owner: normalizeOptionalText(args.owner, 'owner', { allowNull: true }) }
+					? {
+							owner:
+								normalizeOptionalText(args.owner, 'owner', { allowNull: true }) ||
+								null
+						}
 					: {})
 			};
 		}
@@ -652,7 +727,12 @@ async function updateCoreEntity(
 	context: ToolExecutionContext,
 	args: Record<string, unknown>,
 	kind: CoreOntologyEntityKind,
-	buildUpdateData: (existing: Record<string, unknown>) => Record<string, unknown>
+	buildUpdateData: (existing: Record<string, unknown>) => Record<string, unknown>,
+	afterUpdate?: (params: {
+		existing: Record<string, unknown>;
+		updated: Record<string, unknown>;
+		project: Awaited<ReturnType<typeof loadCoreEntityForAccess>>['project'];
+	}) => Promise<void>
 ) {
 	const config = CORE_ENTITY_CONFIG[kind];
 	const archivedAtUpdate = normalizeArchivedUpdate(args.archived);
@@ -686,6 +766,12 @@ async function updateCoreEntity(
 		);
 	}
 
+	await afterUpdate?.({
+		existing: access.entity,
+		updated: data as Record<string, unknown>,
+		project: access.project
+	});
+
 	await logUpdateAsync(
 		context.admin,
 		access.project.id,
@@ -707,4 +793,50 @@ async function updateCoreEntity(
 		),
 		message: `Updated ontology ${kind} "${data[config.displayField] ?? access.entity.id}".`
 	};
+}
+
+async function syncGoalMentionSideEffects(
+	context: ToolExecutionContext,
+	project: Awaited<ReturnType<typeof loadCoreEntityForAccess>>['project'],
+	goal: Record<string, unknown>,
+	previousGoal?: Record<string, unknown>
+): Promise<void> {
+	const textValues = (value: Record<string, unknown>) =>
+		['name', 'goal', 'description'].map((field) =>
+			typeof value[field] === 'string' ? (value[field] as string) : null
+		);
+	const mentionUserIds = await resolveEntityMentionUserIds({
+		supabase: context.admin,
+		projectId: project.id,
+		projectOwnerActorId: project.owner_actor_id,
+		actorUserId: context.userId,
+		nextTextValues: textValues(goal),
+		...(previousGoal ? { previousTextValues: textValues(previousGoal) } : {})
+	});
+
+	await notifyEntityMentionsAdded({
+		supabase: context.admin,
+		projectId: project.id,
+		projectName: project.name,
+		entityType: 'goal',
+		entityId: String(goal.id),
+		entityTitle: typeof goal.name === 'string' ? goal.name : null,
+		actorUserId: context.userId,
+		actorDisplayName: 'BuildOS agent',
+		mentionedUserIds: mentionUserIds,
+		source: 'agent_ping'
+	});
+}
+
+function normalizeCoreTypeKey(
+	value: unknown,
+	kind: 'goal' | 'plan',
+	missingFallback: string,
+	invalidFallback: string
+): string {
+	if (value === undefined || value === null) return missingFallback;
+	if (typeof value !== 'string') return invalidFallback;
+	const trimmed = value.trim();
+	if (!trimmed) return missingFallback;
+	return isValidTypeKey(trimmed, kind) ? trimmed : invalidFallback;
 }

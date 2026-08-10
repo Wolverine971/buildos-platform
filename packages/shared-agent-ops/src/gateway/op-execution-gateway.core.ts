@@ -36,7 +36,8 @@ import {
 	addDocumentToTree,
 	getDocTree,
 	getNodePath,
-	moveDocument
+	moveDocument,
+	updateDocNodeMetadata
 } from '../ontology/doc-structure.service';
 import { DOCUMENT_STATES, isValidTypeKey } from '../ontology/onto';
 import { logSecurityEvent, type SecurityEventLogOptions } from '../ops/security-event-logger';
@@ -811,6 +812,64 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		});
 	} catch (versionError) {
 		console.warn('[External Tool Gateway] Failed to record document version:', versionError);
+	}
+
+	if (args.title !== undefined || args.description !== undefined) {
+		try {
+			await updateDocNodeMetadata(
+				context.admin,
+				project.id,
+				documentId,
+				{
+					title: typeof data.title === 'string' ? data.title : null,
+					description: typeof data.description === 'string' ? data.description : null
+				},
+				actorId
+			);
+		} catch (treeMetadataError) {
+			console.warn(
+				'[External Tool Gateway] Failed to sync document tree metadata:',
+				treeMetadataError
+			);
+		}
+	}
+
+	try {
+		const mentionUserIds = await resolveEntityMentionUserIds({
+			supabase: context.admin,
+			projectId: project.id,
+			projectOwnerActorId: project.owner_actor_id,
+			actorUserId: context.userId,
+			nextTextValues: [
+				typeof data.title === 'string' ? data.title : null,
+				typeof data.description === 'string' ? data.description : null,
+				typeof data.content === 'string' ? data.content : null
+			],
+			previousTextValues: [
+				typeof existingDocument.title === 'string' ? existingDocument.title : null,
+				typeof existingDocument.description === 'string'
+					? existingDocument.description
+					: null,
+				typeof existingDocument.content === 'string' ? existingDocument.content : null
+			]
+		});
+		await notifyEntityMentionsAdded({
+			supabase: context.admin,
+			projectId: project.id,
+			projectName: project.name,
+			entityType: 'document',
+			entityId: String(data.id),
+			entityTitle: typeof data.title === 'string' ? data.title : null,
+			actorUserId: context.userId,
+			actorDisplayName: 'BuildOS agent',
+			mentionedUserIds: mentionUserIds,
+			source: 'agent_ping'
+		});
+	} catch (mentionError) {
+		console.warn(
+			'[External Tool Gateway] Failed to process document mention notifications:',
+			mentionError
+		);
 	}
 
 	await logUpdateAsync(

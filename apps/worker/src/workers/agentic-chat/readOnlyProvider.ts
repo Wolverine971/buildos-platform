@@ -52,6 +52,11 @@ import {
 	isAgenticChatProductionReadToolNameV1
 } from './readOnlyTool';
 import type { AgenticChatReadToolExecutionV1 } from './toolExecution';
+import {
+	AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1,
+	type AgenticChatProviderMutationCapabilitiesV1,
+	reviewedAgenticChatMutationSpecV1
+} from './mutationToolCatalog';
 
 const DEFAULT_MAX_PROVIDER_ROUNDS = 16;
 const MAX_PROVIDER_TOOL_CALLS_PER_ROUND = 40;
@@ -60,94 +65,15 @@ const MAX_FORCED_SYNTHESIS_RETRIES = 1;
 const CANONICAL_UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export type AgenticChatProviderMutationCapabilitiesV1 = {
-	createOntoDocument: boolean;
-	createOntoTask: boolean;
-	updateOntoTask: boolean;
-};
-
-type MutationCapabilityName = keyof AgenticChatProviderMutationCapabilitiesV1;
-type ReviewedMutationSpec = {
-	capability: MutationCapabilityName;
-	operationName: string;
-	downstreamIdempotencySupported: boolean;
-	requiredNames: readonly string[];
-	reviewedArgumentNames: ReadonlySet<string>;
-};
-
-const REVIEWED_MUTATION_SPECS = {
-	create_onto_document: {
-		capability: 'createOntoDocument',
-		operationName: 'onto.document.create',
-		downstreamIdempotencySupported: false,
-		requiredNames: ['project_id', 'title', 'description'],
-		reviewedArgumentNames: new Set([
-			'project_id',
-			'title',
-			'description',
-			'type_key',
-			'state_key',
-			'content',
-			'parent_id',
-			'position'
-		])
-	},
-	create_onto_task: {
-		capability: 'createOntoTask',
-		operationName: 'onto.task.create',
-		downstreamIdempotencySupported: true,
-		requiredNames: ['project_id', 'title'],
-		reviewedArgumentNames: new Set([
-			'project_id',
-			'title',
-			'description',
-			'type_key',
-			'state_key',
-			'priority',
-			'assignee_actor_ids',
-			'assignee_handles',
-			'plan_id',
-			'goal_id',
-			'supporting_milestone_id',
-			'parent',
-			'start_at',
-			'due_at',
-			'props'
-		])
-	},
-	update_onto_task: {
-		capability: 'updateOntoTask',
-		operationName: 'onto.task.update',
-		downstreamIdempotencySupported: false,
-		requiredNames: ['task_id'],
-		reviewedArgumentNames: new Set([
-			'task_id',
-			'project_id',
-			'title',
-			'description',
-			'type_key',
-			'state_key',
-			'priority',
-			'assignee_actor_ids',
-			'assignee_handles',
-			'goal_id',
-			'supporting_milestone_id',
-			'start_at',
-			'due_at',
-			'props'
-		])
-	}
-} as const satisfies Record<string, ReviewedMutationSpec>;
-type ReviewedMutationToolName = keyof typeof REVIEWED_MUTATION_SPECS;
-const REVIEWED_MUTATION_TOOL_NAMES = new Set<string>(Object.keys(REVIEWED_MUTATION_SPECS));
-
 const WORKER_READ_LOOP_CATALOG_ENTRIES = AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.map(
 	(toolName) => {
 		const op = workerReadOpForToolName(toolName);
 		return [toolName, { op, tool_name: toolName, kind: 'read' as const }] as const;
 	}
 );
-const WORKER_MUTATION_LOOP_CATALOG_ENTRIES = Object.entries(REVIEWED_MUTATION_SPECS).map(
+const WORKER_MUTATION_LOOP_CATALOG_ENTRIES = Object.entries(
+	AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1
+).map(
 	([toolName, spec]) =>
 		[toolName, { op: spec.operationName, tool_name: toolName, kind: 'write' as const }] as const
 );
@@ -1202,7 +1128,7 @@ function normalizeCompletedProviderCalls(
 		if (isAgenticChatProductionReadToolNameV1(call.name)) {
 			return { ...call, kind: 'read' };
 		}
-		const spec = reviewedMutationSpec(call.name);
+		const spec = reviewedAgenticChatMutationSpecV1(call.name);
 		if (spec) {
 			return {
 				...call,
@@ -1594,7 +1520,7 @@ function productionToolsFor(
 function reviewedProviderToolDefinition(
 	tool: AgenticChatReadOnlyProviderToolV1
 ): AgenticChatReadOnlyProviderToolV1 | null {
-	const spec = reviewedMutationSpec(tool.function.name);
+	const spec = reviewedAgenticChatMutationSpecV1(tool.function.name);
 	if (!spec) return tool;
 	const parameters = tool.function.parameters as Record<string, JsonValue>;
 	const properties = parameters.properties;
@@ -1602,8 +1528,16 @@ function reviewedProviderToolDefinition(
 		return null;
 	}
 	if (!spec.requiredNames.every((name) => Object.hasOwn(properties, name))) return null;
+	const reviewedArgumentNames = new Set(spec.reviewedArgumentNames);
 	const reviewedProperties = Object.fromEntries(
-		Object.entries(properties).filter(([name]) => spec.reviewedArgumentNames.has(name))
+		Object.entries(properties)
+			.filter(([name]) => reviewedArgumentNames.has(name))
+			.map(([name, schema]) => [
+				name,
+				spec.propertyOverrides?.[name]
+					? { ...(schema as JsonObject), ...spec.propertyOverrides[name] }
+					: schema
+			])
 	) as JsonObject;
 	return {
 		...tool,
@@ -1623,13 +1557,8 @@ function isEnabledMutationTool(
 	toolName: string,
 	capabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>
 ): boolean {
-	const spec = reviewedMutationSpec(toolName);
+	const spec = reviewedAgenticChatMutationSpecV1(toolName);
 	return spec !== null && capabilities[spec.capability] === true;
-}
-
-function reviewedMutationSpec(toolName: string): ReviewedMutationSpec | null {
-	if (!REVIEWED_MUTATION_TOOL_NAMES.has(toolName)) return null;
-	return REVIEWED_MUTATION_SPECS[toolName as ReviewedMutationToolName];
 }
 
 function readArtifactToolDefinition(value: unknown): AgenticChatReadOnlyProviderToolV1 | null {

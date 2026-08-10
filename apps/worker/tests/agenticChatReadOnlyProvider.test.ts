@@ -903,6 +903,202 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		]);
 	});
 
+	it('projects every straightforward entity mutation through its reviewed row-only surface', async () => {
+		const reviewedFields = {
+			update_onto_document: [
+				'document_id',
+				'title',
+				'type_key',
+				'state_key',
+				'content',
+				'description',
+				'update_strategy',
+				'merge_instructions',
+				'props'
+			],
+			create_onto_goal: [
+				'project_id',
+				'name',
+				'description',
+				'type_key',
+				'state_key',
+				'target_date',
+				'measurement_criteria',
+				'priority',
+				'props'
+			],
+			update_onto_goal: [
+				'goal_id',
+				'name',
+				'description',
+				'type_key',
+				'state_key',
+				'priority',
+				'target_date',
+				'measurement_criteria',
+				'props'
+			],
+			create_onto_plan: [
+				'project_id',
+				'name',
+				'description',
+				'plan',
+				'type_key',
+				'state_key',
+				'start_date',
+				'end_date',
+				'props'
+			],
+			update_onto_plan: [
+				'plan_id',
+				'name',
+				'description',
+				'plan',
+				'type_key',
+				'start_date',
+				'end_date',
+				'state_key',
+				'props'
+			],
+			create_onto_milestone: [
+				'project_id',
+				'title',
+				'goal_id',
+				'due_at',
+				'state_key',
+				'description',
+				'milestone'
+			],
+			update_onto_milestone: [
+				'milestone_id',
+				'title',
+				'due_at',
+				'state_key',
+				'description',
+				'props'
+			],
+			create_onto_risk: [
+				'project_id',
+				'title',
+				'impact',
+				'probability',
+				'state_key',
+				'content',
+				'description',
+				'mitigation_strategy'
+			],
+			update_onto_risk: [
+				'risk_id',
+				'title',
+				'impact',
+				'probability',
+				'state_key',
+				'content',
+				'description',
+				'mitigation_strategy',
+				'owner',
+				'props'
+			]
+		} as const;
+		const compoundFields = ['goal_id', 'milestone_id', 'parent', 'parents', 'connections'];
+		const definitions = Object.entries(reviewedFields).map(([name, fields]) => ({
+			type: 'function' as const,
+			function: {
+				name,
+				description: `Mutate with ${name}.`,
+				parameters: {
+					type: 'object',
+					required: [],
+					properties: Object.fromEntries(
+						[...new Set([...fields, ...compoundFields, 'props'])].map((field) => [
+							field,
+							field === 'update_strategy'
+								? { type: 'string', enum: ['replace', 'append', 'merge_llm'] }
+								: { type: 'string' }
+						])
+					)
+				}
+			}
+		}));
+		const client = clientWith([
+			{
+				type: 'tool_call',
+				toolCall: [
+					{
+						index: 0,
+						id: 'provider-update-document',
+						type: 'function',
+						function: {
+							name: 'update_onto_document',
+							arguments: JSON.stringify({
+								document_id: 'db000000-0000-4000-8000-000000000004',
+								title: 'Updated'
+							})
+						}
+					}
+				]
+			},
+			{ type: 'done', finishedReason: 'tool_calls' }
+		]);
+		const adapter = new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{
+				updateOntoDocument: true,
+				createOntoGoal: true,
+				updateOntoGoal: true,
+				createOntoPlan: true,
+				updateOntoPlan: true,
+				createOntoMilestone: true,
+				updateOntoMilestone: true,
+				createOntoRisk: true,
+				updateOntoRisk: true
+			}
+		);
+		const toolNames = Object.keys(reviewedFields);
+		const invocation = await adapter.prepare({
+			executionInput: executionInputWithReadSurface(definitions, toolNames),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
+			expect.objectContaining({
+				type: 'mutating_tool',
+				operationName: 'onto.document.update',
+				downstreamIdempotencySupported: false
+			})
+		]);
+		const projected = client.stream.mock.calls[0]?.[0].tools ?? [];
+		for (const [name, fields] of Object.entries(reviewedFields)) {
+			const definition = projected.find((entry) => entry.function.name === name);
+			expect(definition?.function.parameters.additionalProperties).toBe(false);
+			expect(Object.keys(definition?.function.parameters.properties ?? {}).sort()).toEqual(
+				[...fields].sort()
+			);
+		}
+		const updateDocument = projected.find(
+			(entry) => entry.function.name === 'update_onto_document'
+		);
+		expect(updateDocument?.function.parameters.properties.update_strategy).toMatchObject({
+			enum: ['replace', 'append'],
+			default: 'replace'
+		});
+		expect(
+			projected.find((entry) => entry.function.name === 'create_onto_milestone')?.function
+				.parameters.required
+		).toEqual(['project_id', 'title', 'goal_id']);
+		expect(
+			projected.find((entry) => entry.function.name === 'create_onto_risk')?.function
+				.parameters.required
+		).toEqual(['project_id', 'title', 'impact']);
+	});
+
 	it('continues sequential read rounds with compacted durable feedback', async () => {
 		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
 			[

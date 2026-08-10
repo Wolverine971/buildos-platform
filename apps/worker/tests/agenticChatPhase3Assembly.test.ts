@@ -100,6 +100,18 @@ describe('createAgenticChatPhase3Assembly', () => {
 		).toThrow('create_onto_document provider capability requires its mutation adapter');
 	});
 
+	it('fails closed when a straightforward entity mutation is advertised without its adapter', () => {
+		expect(() =>
+			createAgenticChatPhase3Assembly({
+				client: supabaseClient() as never,
+				providerClient: { stream: vi.fn() } as never,
+				providerConfigured: true,
+				internalUserIds: [INTERNAL_USER_ID],
+				mutationProviderCapabilities: { createOntoMilestone: true }
+			})
+		).toThrow('create_onto_milestone provider capability requires its mutation adapter');
+	});
+
 	it('can compose the adapter while keeping provider advertisement separately disabled', () => {
 		const assembly = createAgenticChatPhase3Assembly({
 			client: supabaseClient() as never,
@@ -141,6 +153,33 @@ describe('createAgenticChatPhase3Assembly', () => {
 				createOntoTask: true,
 				updateOntoTask: true
 			}
+		});
+
+		expect(assembly.runtime.getHealth()).toMatchObject({ state: 'idle' });
+	});
+
+	it('composes every reviewed mutation when both independent gates match', () => {
+		const capabilities = {
+			createOntoDocument: true,
+			updateOntoDocument: true,
+			createOntoTask: true,
+			updateOntoTask: true,
+			createOntoGoal: true,
+			updateOntoGoal: true,
+			createOntoPlan: true,
+			updateOntoPlan: true,
+			createOntoMilestone: true,
+			updateOntoMilestone: true,
+			createOntoRisk: true,
+			updateOntoRisk: true
+		} as const;
+		const assembly = createAgenticChatPhase3Assembly({
+			client: supabaseClient() as never,
+			providerClient: { stream: vi.fn() } as never,
+			providerConfigured: true,
+			internalUserIds: [INTERNAL_USER_ID],
+			mutationProviderCapabilities: capabilities,
+			mutationAdapterCapabilities: capabilities
 		});
 
 		expect(assembly.runtime.getHealth()).toMatchObject({ state: 'idle' });

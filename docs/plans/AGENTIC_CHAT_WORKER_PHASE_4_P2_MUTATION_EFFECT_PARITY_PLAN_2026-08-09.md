@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S4 complete; S5 inventory, task family, and document-create adapter complete; all required task SQL hosted; document update/tree/attach next; production mutations remain disabled
+**Status:** S1-S4 complete; S5 inventory plus all 12 straightforward task/document/core-entity adapters complete; all required task SQL hosted; tree/attach and compound/queryable families next; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -472,6 +472,32 @@ First document-family unit completed locally on 2026-08-10:
   legacy document-create/mention/schema referee passes 53/53.
 - No SQL, migration, deploy, provider capability, adapter capability, routing,
   or live model mutation was introduced or enabled in this unit.
+
+Straightforward entity expansion completed locally on 2026-08-10:
+
+- Added independently gated provider/adapter capabilities for document update
+  plus goal, plan, milestone, and risk create/update. A central catalog now
+  drives every implemented mutation's operation, projection, required fields,
+  idempotency classification, assembly gate, and adapter allowlist.
+- The nine new tools share a one-attempt gateway entity adapter. Thrown,
+  internal, or mismatched-receipt outcomes are uncertain; validation, not-found,
+  and forbidden gateway results remain known pre-commit failures. No adapter in
+  this unit claims downstream idempotency or automatic reconciliation.
+- Provider projection excludes document `merge_llm`, compound plan/milestone/
+  risk relationship fields, and create-only opaque props that the legacy routes
+  ignore. Milestone create requires the goal UUID that its authoritative route
+  requires. Tree move, task-document attach, project/edge/graph/delete,
+  calendar/provider, contact, external MCP, delegation, and staged-commit tools
+  remain out of scope.
+- Shared handlers now preserve the legacy goal/plan/milestone/risk props and
+  timestamp behavior. Goal create/update includes mention notification diffing;
+  document update adds best-effort tree metadata and mention diffing alongside
+  its existing version/activity behavior. Public-page sync and the project-loop
+  burst remain web-owned live-enablement prerequisites for document update.
+- Full local gates pass: shared-agent-ops 89/89, worker 876 passed with one
+  intentional skip, external gateway referee 42/42, and shared/worker
+  typechecks. No SQL or migration was required. All production mutation gates,
+  routing, deployment, and live model writes remain OFF.
 
 ## P2 exit gate
 

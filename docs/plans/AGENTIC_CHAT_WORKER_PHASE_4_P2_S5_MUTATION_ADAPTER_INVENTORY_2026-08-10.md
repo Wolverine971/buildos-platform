@@ -4,7 +4,7 @@
 
 **Prepared:** 2026-08-10
 
-**Status:** inventory complete; task family and `create_onto_document` adapters implemented; required task SQL hosted; production gates remain OFF
+**Status:** inventory complete; all 12 straightforward task/document/core-entity mutations have reviewed adapters; required task SQL hosted; production gates remain OFF
 
 **Governing plan:** `AGENTIC_CHAT_WORKER_PHASE_4_P2_MUTATION_EFFECT_PARITY_PLAN_2026-08-09.md`
 
@@ -50,17 +50,17 @@ projection, an independently gated adapter, and a recovery classification.
 | `create_onto_task`              | `onto.task.create`                | shared |     30s | **Idempotent now:** atomic task key receives `chat-effect:<effect_id>`                                              | `task`; task row, assignees, relationships, assignment/mention notifications, activity, task-calendar sync |
 | `update_onto_task`              | `onto.task.update`                | shared |     30s | One/uncertain; no effect-key persistence/query                                                                      | `task`; row, assignees, relationships, assignment/mention notifications, activity, task-calendar sync      |
 | `create_onto_document`          | `onto.document.create`            | shared |     30s | **One/uncertain:** no effect-key persistence/query; adapter implemented                                             | `document`; row/version/tree/mentions/activity; project-loop burst remains web-only                        |
-| `update_onto_document`          | `onto.document.update`            | shared |     45s | Unclassified; merge path has model/editor sub-call, likely one/uncertain                                            | `document`; row, version, optional merge/append, activity                                                  |
+| `update_onto_document`          | `onto.document.update`            | shared |     45s | **One/uncertain adapter implemented** for replace/append; `merge_llm` remains web-owned                             | `document`; row/version, append, tree metadata, mentions, activity; public-page/project-loop sync web-only |
 | `move_document_in_tree`         | `onto.document.tree.move`         | shared |     30s | Unclassified; exact tree-state reconciliation needed                                                                | tree/document placement; doc-structure version                                                             |
 | `create_task_document`          | `onto.task.docs.create_or_attach` | shared |     30s | Unclassified; compound create-or-link needs exact branch receipt                                                    | `document` plus task-document edge; version/tree/activity as applicable                                    |
-| `create_onto_goal`              | `onto.goal.create`                | shared |     30s | Unclassified; likely one/uncertain                                                                                  | `goal`; row, relationships, activity                                                                       |
-| `update_onto_goal`              | `onto.goal.update`                | shared |     30s | Unclassified; likely one/uncertain                                                                                  | `goal`; row, relationships, activity                                                                       |
-| `create_onto_plan`              | `onto.plan.create`                | shared |     30s | Unclassified; likely one/uncertain                                                                                  | `plan`; row, relationships, activity                                                                       |
-| `update_onto_plan`              | `onto.plan.update`                | shared |     30s | Unclassified; likely one/uncertain                                                                                  | `plan`; row, relationships, activity                                                                       |
-| `create_onto_milestone`         | `onto.milestone.create`           | shared |     30s | Unclassified; likely one/uncertain                                                                                  | `milestone`; row, relationships, activity                                                                  |
-| `update_onto_milestone`         | `onto.milestone.update`           | shared |     30s | Unclassified; likely one/uncertain                                                                                  | `milestone`; row, relationships, activity                                                                  |
-| `create_onto_risk`              | `onto.risk.create`                | shared |     30s | Unclassified; likely one/uncertain                                                                                  | `risk`; row, relationships, activity                                                                       |
-| `update_onto_risk`              | `onto.risk.update`                | shared |     30s | Unclassified; likely one/uncertain                                                                                  | `risk`; row, relationships, activity                                                                       |
+| `create_onto_goal`              | `onto.goal.create`                | shared |     30s | **One/uncertain adapter implemented**                                                                               | `goal`; row, props mirrors, mentions, activity                                                             |
+| `update_onto_goal`              | `onto.goal.update`                | shared |     30s | **One/uncertain adapter implemented**                                                                               | `goal`; row/state timestamp, merged props, mention diff, activity                                          |
+| `create_onto_plan`              | `onto.plan.create`                | shared |     30s | **One/uncertain row-only adapter implemented**; relationship inputs excluded                                        | `plan`; row/props mirrors/activity                                                                         |
+| `update_onto_plan`              | `onto.plan.update`                | shared |     30s | **One/uncertain row-only adapter implemented**                                                                      | `plan`; row/merged props/activity                                                                          |
+| `create_onto_milestone`         | `onto.milestone.create`           | shared |     30s | **One/uncertain adapter implemented**; canonical goal UUID required                                                 | `milestone`; row, required goal edge, compatibility state, activity                                        |
+| `update_onto_milestone`         | `onto.milestone.update`           | shared |     30s | **One/uncertain row-only adapter implemented**                                                                      | `milestone`; row/completion timestamp, merged props/activity                                               |
+| `create_onto_risk`              | `onto.risk.create`                | shared |     30s | **One/uncertain row-only adapter implemented**; relationship/opaque props excluded                                  | `risk`; row/props mirrors/activity                                                                         |
+| `update_onto_risk`              | `onto.risk.update`                | shared |     30s | **One/uncertain row-only adapter implemented**                                                                      | `risk`; row/mitigation timestamp, merged props/activity                                                    |
 | `create_onto_project`           | `onto.project.create`             | shared |     30s | Instantiation has caller idempotency input, but effect-key semantics and compound receipt are not yet ratified      | `project`, entity counts, created entities/edges, caller-scope expansion                                   |
 | `update_onto_project`           | `onto.project.update`             | shared |     30s | Unclassified; likely one/uncertain                                                                                  | `project`; row/facets/timeline/activity                                                                    |
 | `link_onto_entities`            | `onto.edge.link`                  | shared |     30s | Unclassified; exact edge identity/query could make this queryable                                                   | `edge`; relationship/activity                                                                              |
@@ -104,11 +104,14 @@ registry's email surface is read-only.
 1. **Task family:** `update_onto_task` is complete and one-attempt/uncertain;
    `create_onto_task` is the first truly idempotent adapter and is implemented in
    this unit.
-2. **Document family:** create is complete and independently gated. Update,
-   tree move, and task-document attach remain separate because merge/editor,
-   exact placement reconciliation, and compound create-or-link behavior need
-   their own proofs.
-3. **Core ontology rows:** goal, plan, milestone, and risk create/update pairs.
+2. **Document family:** create and the replace/append update subset are complete
+   and independently gated. `merge_llm`, tree move, and task-document attach
+   remain separate because model/editor, exact placement reconciliation, and
+   compound create-or-link behavior need their own proofs.
+3. **Core ontology rows:** goal, plan, milestone, and risk create/update pairs
+   are complete behind independent default-off gates. Compound plan/risk/
+   milestone relationship fields remain excluded except the milestone's
+   required goal edge.
 4. **Relationships and project:** link/unlink, then project update/create after
    compound-instantiation idempotency is pinned.
 5. **Graph move/tag/deletes:** web-only, compound, or irreversible paths require
@@ -235,3 +238,61 @@ full worker suite 860 passed with one intentional skip; worker lint/typecheck an
 HTTP module-size guard pass with zero errors; external shared-gateway plus legacy
 document-create/mention/schema referees 53/53. Production provider capability,
 adapter capability, routing, deploy, and live model mutation remain OFF.
+
+## Straightforward document/core-entity bundle (2026-08-10)
+
+The next bounded unit migrates every remaining mutation whose authoritative
+path can be expressed as one reviewed shared-gateway attempt without an exact
+replay query:
+
+- `update_onto_document`, limited to replace/append;
+- goal create/update;
+- plan create/update;
+- milestone create/update; and
+- risk create/update.
+
+One central mutation catalog now owns all 12 implemented tool/capability/op/
+idempotency/projection contracts. Provider advertisement and adapter
+installation are still separate default-off gates, and assembly checks every
+catalog entry fail-closed. The nine tools in this unit share one entity adapter;
+task create/update and document create retain their specialized adapters.
+
+The shared adapter performs one gateway call, never retries an uncertain
+outcome, validates canonical effect/provider/entity/project identity, and
+returns legacy-compatible entity/message receipts without gateway-only
+`project_name`. It additionally preserves the legacy goal date-only end boundary,
+milestone date normalization and computed state fields, create-milestone
+`goal_id`, and external document provenance stripping in the public receipt.
+
+The admitted surface is deliberately narrower than the signed web surface:
+
+- document `merge_llm` remains on the web model/editor path;
+- plan goal/milestone/parent/connection fields are excluded;
+- milestone parent/connection and create `props` fields are excluded, while a
+  canonical `goal_id` is required because the authoritative route requires a
+  goal edge;
+- risk parent/connection and create `props` fields are excluded; and
+- tree move, task-document attach, projects, graph/edge tools, deletes,
+  calendar/provider writes, contacts, MCP, delegation, and staged commit remain
+  separate units.
+
+Shared-handler parity hardening in the same unit validates goal/plan type keys,
+normalizes blank compatibility values, restores goal/plan/milestone/risk props
+mirrors, applies milestone completion and risk mitigation timestamps, and adds
+goal mention diffing. Document update now retains version/activity behavior and
+also performs best-effort tree-metadata sync plus mention diffing. The web-owned
+public-page sync and project-loop burst remain explicit document-update live-
+enablement prerequisites.
+
+No SQL or migration was required. Full local evidence after the bundle:
+
+- shared-agent-ops: 89/89;
+- worker: 876 passed, 1 intentional skip;
+- external shared-gateway referee: 42/42;
+- shared and worker typechecks: pass;
+- provider projection, assembly gates, one-attempt failure classification,
+  receipt validation, date normalization, and all nine adapters have focused
+  coverage.
+
+Production provider capabilities, adapter capabilities, routing, deployment,
+and live model mutations remain OFF.

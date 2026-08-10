@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/updateOntoTaskMutationAdapter.ts
 import { createWorkerTaskSyncPort } from '@buildos/shared-agent-ops/calendar/worker-task-event-mutation-port';
 import {
 	type TaskSyncPort,
@@ -19,25 +20,11 @@ import {
 	throwGatewayResultFailure,
 	uncertainFailure
 } from './mutationAdapterBoundary';
+import { AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 } from './mutationToolCatalog';
 
 const TOOL_NAME = 'update_onto_task';
-const OPERATION_NAME = 'onto.task.update';
-const REVIEWED_ARGUMENT_NAMES = new Set([
-	'task_id',
-	'project_id',
-	'title',
-	'description',
-	'type_key',
-	'state_key',
-	'priority',
-	'assignee_actor_ids',
-	'assignee_handles',
-	'goal_id',
-	'supporting_milestone_id',
-	'start_at',
-	'due_at',
-	'props'
-]);
+const MUTATION_SPEC = AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1[TOOL_NAME];
+const REVIEWED_ARGUMENT_NAMES = new Set(MUTATION_SPEC.reviewedArgumentNames);
 
 type GatewayRunner = typeof runGatewayWriteOp;
 
@@ -66,8 +53,8 @@ export class AgenticChatUpdateOntoTaskMutationAdapter
 	async execute(input: MutationInput): Promise<JsonObject> {
 		assertMutationAdapterBoundary(input, {
 			toolName: TOOL_NAME,
-			operationName: OPERATION_NAME,
-			downstreamIdempotencySupported: false,
+			operationName: MUTATION_SPEC.operationName,
+			downstreamIdempotencySupported: MUTATION_SPEC.downstreamIdempotencySupported,
 			reviewedArgumentNames: REVIEWED_ARGUMENT_NAMES
 		});
 
@@ -96,12 +83,12 @@ export class AgenticChatUpdateOntoTaskMutationAdapter
 				userId: input.executionInput.claim.userId,
 				scope: {
 					mode: 'read_write',
-					allowed_ops: [OPERATION_NAME],
+					allowed_ops: [MUTATION_SPEC.operationName],
 					...(projectId
 						? { project_ids: [projectId], write_project_ids: [projectId] }
 						: {})
 				},
-				op: OPERATION_NAME,
+				op: MUTATION_SPEC.operationName,
 				args: gatewayArguments,
 				callSessionId: input.executionInput.claim.sessionId,
 				taskSync: this.taskSync

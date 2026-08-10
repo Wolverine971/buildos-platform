@@ -34,7 +34,6 @@ import {
 	SupabaseAgenticChatPromptSnapshotAdapter
 } from './promptSnapshot';
 import {
-	type AgenticChatProviderMutationCapabilitiesV1,
 	AgenticChatReadOnlyProviderAdapter,
 	type AgenticChatReadOnlyProviderClientPortV1
 } from './readOnlyProvider';
@@ -69,9 +68,18 @@ import {
 import { AgenticChatCreateOntoDocumentMutationAdapter } from './createOntoDocumentMutationAdapter';
 import { AgenticChatCreateOntoTaskMutationAdapter } from './createOntoTaskMutationAdapter';
 import {
+	AGENTIC_CHAT_GATEWAY_ENTITY_MUTATION_TOOL_NAMES_V1,
+	AgenticChatGatewayEntityMutationAdapter
+} from './gatewayEntityMutationAdapter';
+import {
 	type AgenticChatMutationAdapterEntry,
 	AgenticChatMutationAdapterRouter
 } from './mutationAdapterRouter';
+import {
+	AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1,
+	type AgenticChatProviderMutationCapabilitiesV1,
+	normalizeAgenticChatMutationCapabilitiesV1
+} from './mutationToolCatalog';
 import { AgenticChatUpdateOntoTaskMutationAdapter } from './updateOntoTaskMutationAdapter';
 
 export type AgenticChatPhase3Assembly = {
@@ -119,24 +127,13 @@ export function createAgenticChatPhase3Assembly(options: {
 	) {
 		throw new Error('Phase 3 cancellation concurrency must match CHAT_CONCURRENCY=1');
 	}
-	const mutationProviderCapabilities: AgenticChatProviderMutationCapabilitiesV1 = {
-		createOntoDocument: options.mutationProviderCapabilities?.createOntoDocument === true,
-		createOntoTask: options.mutationProviderCapabilities?.createOntoTask === true,
-		updateOntoTask: options.mutationProviderCapabilities?.updateOntoTask === true
-	};
-	const mutationAdapterCapabilities: AgenticChatProviderMutationCapabilitiesV1 = {
-		createOntoDocument: options.mutationAdapterCapabilities?.createOntoDocument === true,
-		createOntoTask: options.mutationAdapterCapabilities?.createOntoTask === true,
-		updateOntoTask: options.mutationAdapterCapabilities?.updateOntoTask === true
-	};
-	const capabilityTools: ReadonlyArray<
-		readonly [keyof AgenticChatProviderMutationCapabilitiesV1, string]
-	> = [
-		['createOntoDocument', 'create_onto_document'],
-		['createOntoTask', 'create_onto_task'],
-		['updateOntoTask', 'update_onto_task']
-	];
-	for (const [capability, toolName] of capabilityTools) {
+	const mutationProviderCapabilities = normalizeAgenticChatMutationCapabilitiesV1(
+		options.mutationProviderCapabilities
+	);
+	const mutationAdapterCapabilities = normalizeAgenticChatMutationCapabilitiesV1(
+		options.mutationAdapterCapabilities
+	);
+	for (const [capability, toolName] of AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1) {
 		if (mutationProviderCapabilities[capability] && !mutationAdapterCapabilities[capability]) {
 			throw new Error(`${toolName} provider capability requires its mutation adapter`);
 		}
@@ -199,6 +196,19 @@ export function createAgenticChatPhase3Assembly(options: {
 			'update_onto_task',
 			new AgenticChatUpdateOntoTaskMutationAdapter(options.client)
 		]);
+	}
+	const gatewayEntityToolNames = new Set<string>(
+		AGENTIC_CHAT_GATEWAY_ENTITY_MUTATION_TOOL_NAMES_V1
+	);
+	const enabledGatewayEntityTools = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
+		([capability, toolName]) =>
+			mutationAdapterCapabilities[capability] && gatewayEntityToolNames.has(toolName)
+	).map(([, toolName]) => toolName);
+	if (enabledGatewayEntityTools.length > 0) {
+		const gatewayEntityAdapter = new AgenticChatGatewayEntityMutationAdapter(options.client);
+		for (const toolName of enabledGatewayEntityTools) {
+			mutationAdapters.push([toolName, gatewayEntityAdapter]);
+		}
 	}
 	const mutation =
 		mutationAdapters.length > 0

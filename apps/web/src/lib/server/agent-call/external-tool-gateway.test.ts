@@ -10,6 +10,7 @@ const syncTaskEventsMock = vi.fn();
 const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
 const addDocumentToTreeMock = vi.fn();
+const updateDocNodeMetadataMock = vi.fn();
 const createOrMergeDocumentVersionMock = vi.fn();
 const instantiateProjectMock = vi.fn();
 const validateProjectSpecMock = vi.fn();
@@ -51,7 +52,8 @@ vi.mock('@buildos/shared-agent-ops/ops/entity-mention-notification.service', () 
 }));
 
 vi.mock('@buildos/shared-agent-ops/ontology/doc-structure.service', () => ({
-	addDocumentToTree: addDocumentToTreeMock
+	addDocumentToTree: addDocumentToTreeMock,
+	updateDocNodeMetadata: updateDocNodeMetadataMock
 }));
 
 vi.mock('@buildos/shared-agent-ops/ontology/versioning.service', () => ({
@@ -1529,6 +1531,7 @@ describe('external tool gateway', () => {
 		vi.clearAllMocks();
 		ensureActorIdMock.mockResolvedValue('actor-1');
 		addDocumentToTreeMock.mockResolvedValue({ version: 2, root: [] });
+		updateDocNodeMetadataMock.mockResolvedValue(null);
 		createOrMergeDocumentVersionMock.mockResolvedValue({
 			status: 'created',
 			versionNumber: 1,
@@ -3590,6 +3593,26 @@ describe('external tool gateway', () => {
 			}
 		});
 		expect((result.result as any).document).not.toHaveProperty('search_vector');
+		expect(updateDocNodeMetadataMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'44444444-4444-4444-4444-444444444444',
+			'55555555-5555-5555-5555-555555555555',
+			{ title: 'Existing doc updated', description: 'Doc summary' },
+			'actor-1'
+		);
+		expect(resolveEntityMentionUserIdsMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				nextTextValues: ['Existing doc updated', 'Doc summary', '# Existing'],
+				previousTextValues: ['Existing doc', 'Doc summary', '# Existing']
+			})
+		);
+		expect(notifyEntityMentionsAddedMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				entityType: 'document',
+				entityId: '55555555-5555-5555-5555-555555555555',
+				source: 'agent_ping'
+			})
+		);
 	});
 
 	it('rejects append document updates without content on the external gateway', async () => {
