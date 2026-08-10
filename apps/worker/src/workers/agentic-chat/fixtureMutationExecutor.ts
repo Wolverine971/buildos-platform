@@ -188,6 +188,9 @@ export class AgenticChatFixtureMutationExecutor {
 		downstreamIdempotencyKey: string;
 	}): Promise<JsonObject> {
 		let lastError: unknown;
+		let firstAmbiguousError: unknown;
+		let sawAmbiguousAttempt = false;
+		const recoverySignal = new AbortController().signal;
 		const attempts = input.step.downstreamIdempotencySupported
 			? this.maximumAdapterAttempts
 			: 1;
@@ -201,16 +204,24 @@ export class AgenticChatFixtureMutationExecutor {
 					arguments: input.step.arguments,
 					providerToolCallId: input.step.providerToolCallId,
 					executionInput: input.executionInput,
-					signal: input.signal
+					// Once an attempt may have committed, cancellation can no longer
+					// prove that no write happened. Recovery must query/replay with the
+					// stable key and independently own its bounded completion.
+					signal: sawAmbiguousAttempt ? recoverySignal : input.signal
 				});
 			} catch (error) {
 				lastError = error;
-				if (
+				const knownFailure =
 					error instanceof AgenticChatFixtureMutationAdapterError &&
-					error.disposition === 'known_failed'
-				) {
+					error.disposition === 'known_failed';
+				if (knownFailure && !sawAmbiguousAttempt) {
 					throw error;
 				}
+				if (knownFailure) {
+					throw preserveAmbiguousOutcome(firstAmbiguousError, error);
+				}
+				if (!sawAmbiguousAttempt) firstAmbiguousError = error;
+				sawAmbiguousAttempt = true;
 				if (attempt === attempts) throw error;
 			}
 		}
@@ -226,6 +237,23 @@ export class AgenticChatFixtureMutationExecutor {
 		});
 		if (reconciliation.state !== 'cancelled') throw stateError(reconciliation);
 	}
+}
+
+function preserveAmbiguousOutcome(firstError: unknown, recoveryError: unknown): Error {
+	if (
+		firstError instanceof AgenticChatFixtureMutationAdapterError &&
+		firstError.disposition === 'outcome_uncertain'
+	) {
+		return firstError;
+	}
+	const firstMessage = firstError instanceof Error ? firstError.message : String(firstError);
+	const recoveryMessage =
+		recoveryError instanceof Error ? recoveryError.message : String(recoveryError);
+	return new AgenticChatFixtureMutationAdapterError(
+		'outcome_uncertain',
+		'uncertain_external_commit',
+		`Initial mutation outcome was ambiguous (${firstMessage}); recovery did not prove it absent (${recoveryMessage})`
+	);
 }
 
 function replaySucceeded(

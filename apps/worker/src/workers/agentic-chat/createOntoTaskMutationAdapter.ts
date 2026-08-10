@@ -3,22 +3,26 @@ import {
 	type TaskSyncPort,
 	runGatewayWriteOp
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
-import {
-	type Database,
-	type JsonObject,
-	type JsonValue,
-	canonicalizeAgenticChatJson
-} from '@buildos/shared-types';
+import { type Database, type JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { AgenticChatFixtureMutatingToolPortV1 } from './fixtureMutationExecutor';
 import {
-	type AgenticChatFixtureMutatingToolPortV1,
-	AgenticChatFixtureMutationAdapterError
-} from './fixtureMutationExecutor';
+	type MutationInput,
+	assertMutationAdapterBoundary,
+	assertMutationReceiptSize,
+	canonicalGatewayError,
+	canonicalMutationReceipt,
+	canonicalUuid,
+	isRecord,
+	knownFailure,
+	requestProjectId,
+	requiredUuid,
+	throwGatewayResultFailure,
+	uncertainFailure
+} from './mutationAdapterBoundary';
 
 const TOOL_NAME = 'create_onto_task';
 const OPERATION_NAME = 'onto.task.create';
-const MAX_RECEIPT_BYTES = 480 * 1024;
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const REVIEWED_ARGUMENT_NAMES = new Set([
 	'project_id',
 	'title',
@@ -38,7 +42,6 @@ const REVIEWED_ARGUMENT_NAMES = new Set([
 ]);
 
 type GatewayRunner = typeof runGatewayWriteOp;
-type MutationInput = Parameters<AgenticChatFixtureMutatingToolPortV1['execute']>[0];
 
 /**
  * Idempotent worker adapter for `create_onto_task`.
@@ -63,15 +66,11 @@ export class AgenticChatCreateOntoTaskMutationAdapter
 	}
 
 	async execute(input: MutationInput): Promise<JsonObject> {
-		validateEffectBoundary(input);
-		assertSignedToolSurface(input);
-		assertReviewedArguments(input.arguments);
-		if (input.signal.aborted) {
-			throw knownFailure(
-				'mutation_cancelled_before_dispatch',
-				'Mutation cancelled before dispatch'
-			);
-		}
+		assertMutationAdapterBoundary(input, {
+			toolName: TOOL_NAME,
+			operationName: OPERATION_NAME,
+			reviewedArgumentNames: REVIEWED_ARGUMENT_NAMES
+		});
 
 		const contextProjectId = requestProjectId(input);
 		const argumentProjectId = requiredUuid(input.arguments.project_id, 'project_id');
@@ -100,120 +99,28 @@ export class AgenticChatCreateOntoTaskMutationAdapter
 				downstreamIdempotencyKey: input.downstreamIdempotencyKey
 			});
 		} catch (error) {
-			throw uncertainFailure('create_onto_task_gateway_threw', canonicalError(error));
+			throw uncertainFailure(
+				'create_onto_task_gateway_threw',
+				canonicalGatewayError(error, TOOL_NAME)
+			);
 		}
 
 		if (!result.ok) {
-			const code = result.error?.code ?? 'INTERNAL';
-			const message = result.error?.message ?? 'create_onto_task gateway failed';
-			if (code === 'VALIDATION_ERROR' || code === 'NOT_FOUND' || code === 'FORBIDDEN') {
-				throw knownFailure(`create_onto_task_${code.toLowerCase()}`, message);
-			}
-			throw uncertainFailure('create_onto_task_outcome_uncertain', message);
+			throwGatewayResultFailure(TOOL_NAME, result.error);
 		}
 
 		const task = requireTaskReceipt(result.data, argumentProjectId);
-		const receipt = canonicalJsonObject({
-			task,
-			message: 'Task created successfully.',
-			requires_user_action: false
-		});
-		if (Buffer.byteLength(JSON.stringify(receipt), 'utf8') > MAX_RECEIPT_BYTES) {
-			throw uncertainFailure(
-				'create_onto_task_receipt_too_large',
-				'create_onto_task returned an oversized downstream receipt'
-			);
-		}
+		const receipt = canonicalMutationReceipt(
+			{
+				task,
+				message: 'Task created successfully.',
+				requires_user_action: false
+			},
+			TOOL_NAME
+		);
+		assertMutationReceiptSize(receipt, TOOL_NAME);
 		return receipt;
 	}
-}
-
-function assertReviewedArguments(argumentsValue: JsonObject): void {
-	const unsupported = Object.keys(argumentsValue).filter(
-		(name) => !REVIEWED_ARGUMENT_NAMES.has(name)
-	);
-	if (unsupported.length > 0) {
-		throw knownFailure(
-			'mutation_arguments_not_admitted',
-			`create_onto_task contains unsupported arguments: ${unsupported.sort().join(', ')}`
-		);
-	}
-}
-
-function validateEffectBoundary(input: MutationInput): void {
-	if (input.toolName !== TOOL_NAME || input.operationName !== OPERATION_NAME) {
-		throw knownFailure(
-			'mutation_adapter_not_allowlisted',
-			'Only create_onto_task / onto.task.create is enabled for this adapter'
-		);
-	}
-	if (!canonicalUuid(input.effectId)) {
-		throw knownFailure('mutation_effect_identity_invalid', 'Mutation effect_id is invalid');
-	}
-	if (input.downstreamIdempotencyKey !== `chat-effect:${input.effectId}`) {
-		throw knownFailure(
-			'mutation_effect_identity_invalid',
-			'Mutation downstream idempotency key does not match effect_id'
-		);
-	}
-	if (!canonicalText(input.providerToolCallId, 512)) {
-		throw knownFailure(
-			'mutation_provider_call_invalid',
-			'Mutation provider tool-call identity is invalid'
-		);
-	}
-}
-
-function assertSignedToolSurface(input: MutationInput): void {
-	const surface = input.executionInput.artifact.prepared.toolSurface;
-	if (!isRecord(surface)) {
-		throw knownFailure('mutation_tool_not_admitted', 'Mutation tool surface is missing');
-	}
-	const selected = Array.isArray(surface.toolNames) && surface.toolNames.includes(TOOL_NAME);
-	const defined =
-		Array.isArray(surface.definitions) &&
-		surface.definitions.some((definition) => {
-			if (
-				!isRecord(definition) ||
-				definition.type !== 'function' ||
-				!isRecord(definition.function)
-			) {
-				return false;
-			}
-			return definition.function.name === TOOL_NAME;
-		});
-	if (!selected || !defined) {
-		throw knownFailure(
-			'mutation_tool_not_admitted',
-			'create_onto_task is absent from the immutable admitted tool surface'
-		);
-	}
-}
-
-function requestProjectId(input: MutationInput): string | null {
-	const context = input.executionInput.requestPayload.context;
-	if (!isRecord(context)) {
-		throw knownFailure('mutation_context_invalid', 'Mutation turn context is invalid');
-	}
-	const explicit = optionalUuid(context.projectId, 'context projectId');
-	const entity = optionalUuid(context.entityId, 'context entityId');
-	if (context.type === 'project') {
-		if (explicit !== null && entity !== null && explicit !== entity) {
-			throw knownFailure(
-				'mutation_context_invalid',
-				'Mutation project context is inconsistent'
-			);
-		}
-		const projectId = explicit ?? entity;
-		if (projectId === null) {
-			throw knownFailure(
-				'mutation_context_invalid',
-				'Mutation project context has no project ID'
-			);
-		}
-		return projectId;
-	}
-	return explicit;
 }
 
 function requireTaskReceipt(
@@ -235,60 +142,5 @@ function requireTaskReceipt(
 	}
 	delete task.project_name;
 	delete task.idempotency_key;
-	return canonicalJsonObject(task);
-}
-
-function canonicalJsonObject(value: Record<string, unknown>): JsonObject {
-	const canonical = canonicalizeAgenticChatJson(value as JsonValue);
-	const parsed = JSON.parse(canonical) as unknown;
-	if (!isRecord(parsed)) {
-		throw uncertainFailure(
-			'create_onto_task_receipt_invalid',
-			'create_onto_task returned a non-object receipt'
-		);
-	}
-	return parsed as JsonObject;
-}
-
-function requiredUuid(value: unknown, label: string): string {
-	if (!canonicalUuid(value)) {
-		throw knownFailure('mutation_scope_invalid', `${label} must be a canonical UUID`);
-	}
-	return value;
-}
-
-function optionalUuid(value: unknown, label: string): string | null {
-	if (value === undefined || value === null || value === '') return null;
-	return requiredUuid(value, label);
-}
-
-function canonicalUuid(value: unknown): value is string {
-	return typeof value === 'string' && UUID_PATTERN.test(value) && value === value.toLowerCase();
-}
-
-function canonicalText(value: unknown, maxLength: number): value is string {
-	return (
-		typeof value === 'string' &&
-		value === value.trim() &&
-		value.length > 0 &&
-		value.length <= maxLength
-	);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function knownFailure(code: string, message: string): AgenticChatFixtureMutationAdapterError {
-	return new AgenticChatFixtureMutationAdapterError('known_failed', code, message);
-}
-
-function uncertainFailure(code: string, message: string): AgenticChatFixtureMutationAdapterError {
-	return new AgenticChatFixtureMutationAdapterError('outcome_uncertain', code, message);
-}
-
-function canonicalError(error: unknown): string {
-	return error instanceof Error
-		? error.message
-		: String(error ?? 'create_onto_task gateway failed');
+	return canonicalMutationReceipt(task, TOOL_NAME);
 }

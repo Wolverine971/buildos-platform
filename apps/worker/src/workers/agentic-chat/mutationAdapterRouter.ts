@@ -4,12 +4,16 @@ import {
 } from './fixtureMutationExecutor';
 
 type MutationInput = Parameters<AgenticChatFixtureMutatingToolPortV1['execute']>[0];
+export type AgenticChatMutationAdapterEntry = readonly [
+	string,
+	AgenticChatFixtureMutatingToolPortV1
+];
 
 /** Routes one already-admitted mutation to its independently gated adapter. */
 export class AgenticChatMutationAdapterRouter implements AgenticChatFixtureMutatingToolPortV1 {
 	private readonly adapters: ReadonlyMap<string, AgenticChatFixtureMutatingToolPortV1>;
 
-	constructor(entries: ReadonlyArray<readonly [string, AgenticChatFixtureMutatingToolPortV1]>) {
+	constructor(entries: ReadonlyArray<AgenticChatMutationAdapterEntry>) {
 		this.adapters = new Map(entries);
 		if (this.adapters.size !== entries.length) {
 			throw new Error('Mutation adapter router contains duplicate tool names');

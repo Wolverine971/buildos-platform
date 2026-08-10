@@ -423,6 +423,22 @@ Hosted task-create correction evidence on 2026-08-10:
 - No provider capability, adapter capability, production routing, worker deploy,
   or live model mutation was enabled.
 
+Pause-point audit hardening on 2026-08-10:
+
+- Corrected idempotent recovery so cancellation after an ambiguous first
+  attempt cannot stop stable-key replay or incorrectly reconcile a possible
+  external commit as failed. Recovery uses an independent signal, and a later
+  known failure preserves `uncertain_external_commit` unless replay proves the
+  authoritative receipt.
+- Extracted the shared fail-closed mutation adapter boundary used by task create
+  and update, leaving their tool-specific project and receipt validation local.
+  Simplified assembly around a named adapter-entry type before adding the
+  document family.
+- Focused adapter/router/assembly/effect tests pass 39/39; the full worker suite
+  passes 851 tests with one intentional skip; worker lint/typecheck and changed-
+  source formatting/diff checks pass. Hosted SQL and every production mutation
+  gate remain unchanged and OFF.
+
 ## P2 exit gate
 
 - The mutation differential passes on both adapters with only ratified effect

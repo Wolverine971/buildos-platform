@@ -67,7 +67,10 @@ import {
 	SupabaseAgenticChatExecutionObservationAdapter
 } from './executionObservation';
 import { AgenticChatCreateOntoTaskMutationAdapter } from './createOntoTaskMutationAdapter';
-import { AgenticChatMutationAdapterRouter } from './mutationAdapterRouter';
+import {
+	type AgenticChatMutationAdapterEntry,
+	AgenticChatMutationAdapterRouter
+} from './mutationAdapterRouter';
 import { AgenticChatUpdateOntoTaskMutationAdapter } from './updateOntoTaskMutationAdapter';
 
 export type AgenticChatPhase3Assembly = {
@@ -172,24 +175,19 @@ export function createAgenticChatPhase3Assembly(options: {
 		}
 	);
 	const readTool = new AgenticChatReadOnlyToolAdapter(options.client);
-	const mutationAdapters = [
-		...(createOntoTaskAdapterEnabled
-			? ([
-					[
-						'create_onto_task',
-						new AgenticChatCreateOntoTaskMutationAdapter(options.client)
-					] as const
-				] as const)
-			: []),
-		...(updateOntoTaskAdapterEnabled
-			? ([
-					[
-						'update_onto_task',
-						new AgenticChatUpdateOntoTaskMutationAdapter(options.client)
-					] as const
-				] as const)
-			: [])
-	];
+	const mutationAdapters: AgenticChatMutationAdapterEntry[] = [];
+	if (createOntoTaskAdapterEnabled) {
+		mutationAdapters.push([
+			'create_onto_task',
+			new AgenticChatCreateOntoTaskMutationAdapter(options.client)
+		]);
+	}
+	if (updateOntoTaskAdapterEnabled) {
+		mutationAdapters.push([
+			'update_onto_task',
+			new AgenticChatUpdateOntoTaskMutationAdapter(options.client)
+		]);
+	}
 	const mutation =
 		mutationAdapters.length > 0
 			? new AgenticChatFixtureMutationExecutor({

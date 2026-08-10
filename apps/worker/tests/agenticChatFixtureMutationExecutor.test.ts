@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	AgenticChatEffectExecutionError,
+	AgenticChatFixtureMutationAdapterError,
 	AgenticChatFixtureMutationExecutor
 } from '../src/workers/agentic-chat/fixtureMutationExecutor';
 import {
@@ -277,6 +278,62 @@ describe('AgenticChatFixtureMutationExecutor', () => {
 			harness.stable.downstreamIdempotencyKey,
 			harness.stable.downstreamIdempotencyKey
 		]);
+	});
+
+	it('finishes idempotent recovery with an independent signal after cancellation', async () => {
+		const controller = new AbortController();
+		const harness = createHarness();
+		harness.mutatingTool.execute
+			.mockImplementationOnce(async () => {
+				controller.abort(new Error('cancelled after possible commit'));
+				throw new Error('response lost after downstream accepted key');
+			})
+			.mockImplementationOnce(async (input) => {
+				expect(input.signal).not.toBe(controller.signal);
+				expect(input.signal.aborted).toBe(false);
+				return { mutationId: 'mutation-1' };
+			});
+
+		await expect(
+			harness.executor.execute({
+				executionInput,
+				processingToken: PROCESSING_TOKEN,
+				step: baseStep,
+				signal: controller.signal
+			})
+		).resolves.toMatchObject({ downstreamReceipt: { mutationId: 'mutation-1' } });
+		expect(harness.mutatingTool.execute).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps an earlier ambiguous attempt uncertain when recovery fails closed', async () => {
+		const harness = createHarness();
+		harness.mutatingTool.execute
+			.mockRejectedValueOnce(new Error('response lost after possible commit'))
+			.mockRejectedValueOnce(
+				new AgenticChatFixtureMutationAdapterError(
+					'known_failed',
+					'mutation_cancelled_before_dispatch',
+					'Recovery was cancelled before dispatch'
+				)
+			);
+
+		await expect(
+			harness.executor.execute({
+				executionInput,
+				processingToken: PROCESSING_TOKEN,
+				step: baseStep,
+				signal: new AbortController().signal
+			})
+		).rejects.toMatchObject<Partial<AgenticChatEffectExecutionError>>({
+			failureClass: 'uncertain_external_commit',
+			effectId: harness.stable.effectId
+		});
+		expect(harness.control.reconcile).toHaveBeenCalledWith(
+			expect.objectContaining({
+				targetState: 'uncertain',
+				failureCode: 'uncertain_external_commit'
+			})
+		);
 	});
 
 	it('marks a non-queryable crash uncertain and never retries automatically', async () => {

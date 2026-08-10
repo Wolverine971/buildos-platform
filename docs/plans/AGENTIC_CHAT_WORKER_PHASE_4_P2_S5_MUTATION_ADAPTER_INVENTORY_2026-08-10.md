@@ -168,3 +168,24 @@ task-scoped applier that handles `targets_milestone`.
 
 Production provider capability, adapter capability, worker routing, worker
 deploy, and live model mutation remain OFF.
+
+## Pause-point audit hardening (2026-08-10)
+
+A post-unit audit found and closed one recovery edge before the document family:
+
+- After an idempotent adapter attempt became ambiguous, caller cancellation or
+  a later known recovery failure could previously downgrade a possible commit
+  to `failed`. Recovery now reuses the exact stable downstream key with an
+  independent signal, and any later failure remains
+  `uncertain_external_commit` unless replay proves success.
+- The duplicated effect identity, signed-surface, argument allowlist, project
+  context, gateway-failure, receipt-canonicalization, and receipt-size checks
+  now live in one fail-closed `mutationAdapterBoundary` used by both task
+  adapters. Tool-specific scope and receipt checks remain local.
+- Assembly now uses an explicit mutation-adapter entry type instead of nested
+  tuple assertions. This is the stable extension seam for the document family.
+
+Audit gates: focused task-adapter/router/assembly/effect suite 39/39; full worker
+suite 851 passed with one intentional skip; worker lint/typecheck and changed-
+source formatting/diff checks pass. The hosted SQL receipt and all production-
+off gates are unchanged.
