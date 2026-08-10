@@ -76,6 +76,18 @@ describe('createAgenticChatPhase3Assembly', () => {
 		).toThrow('update_onto_task provider capability requires its mutation adapter');
 	});
 
+	it('fails closed when create_onto_task is advertised without its adapter', () => {
+		expect(() =>
+			createAgenticChatPhase3Assembly({
+				client: supabaseClient() as never,
+				providerClient: { stream: vi.fn() } as never,
+				providerConfigured: true,
+				internalUserIds: [INTERNAL_USER_ID],
+				mutationProviderCapabilities: { createOntoTask: true }
+			})
+		).toThrow('create_onto_task provider capability requires its mutation adapter');
+	});
+
 	it('can compose the adapter while keeping provider advertisement separately disabled', () => {
 		const assembly = createAgenticChatPhase3Assembly({
 			client: supabaseClient() as never,
@@ -96,6 +108,19 @@ describe('createAgenticChatPhase3Assembly', () => {
 			internalUserIds: [INTERNAL_USER_ID],
 			mutationProviderCapabilities: { updateOntoTask: true },
 			mutationAdapterCapabilities: { updateOntoTask: true }
+		});
+
+		expect(assembly.runtime.getHealth()).toMatchObject({ state: 'idle' });
+	});
+
+	it('composes independently gated create and update adapters behind the router', () => {
+		const assembly = createAgenticChatPhase3Assembly({
+			client: supabaseClient() as never,
+			providerClient: { stream: vi.fn() } as never,
+			providerConfigured: true,
+			internalUserIds: [INTERNAL_USER_ID],
+			mutationProviderCapabilities: { createOntoTask: true, updateOntoTask: true },
+			mutationAdapterCapabilities: { createOntoTask: true, updateOntoTask: true }
 		});
 
 		expect(assembly.runtime.getHealth()).toMatchObject({ state: 'idle' });

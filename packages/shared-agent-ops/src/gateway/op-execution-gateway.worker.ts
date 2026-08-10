@@ -138,8 +138,9 @@ export async function runGatewayReadOp(params: {
  * external_agent_caller_id + agent_call_session), this is a lean path for the
  * worker runner: validate args, invoke the handler directly, return the entity
  * meta. The runner records its own agent_tool_executions telemetry, so there is
- * no external write-audit and no idempotency here. The caller is responsible for
- * scope/allowed-op enforcement (the worker's executeAgentOp does this before
+ * no external write-audit here. A caller may pass a stable key to a handler
+ * with domain-level idempotency. The caller remains responsible for scope/allowed-op
+ * enforcement (the worker's executeAgentOp does this before
  * dispatching); the handler additionally enforces project-level write access.
  *
  * Calendar/task-sync remain optional ports; when absent, task handlers skip
@@ -154,6 +155,7 @@ export async function runGatewayWriteOp(params: {
 	callSessionId?: string;
 	calendar?: CalendarPort;
 	taskSync?: TaskSyncPort;
+	downstreamIdempotencyKey?: string;
 }): Promise<GatewayWriteOpResult> {
 	const canonicalOp = normalizeGatewayOpName(
 		typeof params.op === 'string' ? params.op.trim() : ''
@@ -182,7 +184,8 @@ export async function runGatewayWriteOp(params: {
 		callSessionId: params.callSessionId,
 		scope: params.scope,
 		calendar: params.calendar,
-		taskSync: params.taskSync
+		taskSync: params.taskSync,
+		downstreamIdempotencyKey: params.downstreamIdempotencyKey
 	};
 
 	try {

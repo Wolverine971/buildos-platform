@@ -2,9 +2,11 @@
 import { isValidUUID, type Json } from '@buildos/shared-types';
 import {
 	AutoOrganizeError,
+	ENTITY_TABLES,
 	assertEntityRefsInProject,
 	prepareRelationshipMutationPlan,
-	relationshipMutationErrorFromDatabase
+	relationshipMutationErrorFromDatabase,
+	toParentRefs
 } from '../ontology/auto-organizer.service';
 import { ensureActorId } from '../ontology/ontology-projects.service';
 import type { ConnectionRef } from '../ontology/relationship-resolver';
@@ -47,6 +49,12 @@ type AtomicTaskUpdateResult = {
 	added_actor_ids?: string[];
 };
 
+type AtomicTaskCreateResult = AtomicTaskUpdateResult & {
+	idempotent_replay?: boolean;
+};
+
+const ALLOWED_TASK_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
+
 function hasOwn(record: Record<string, unknown>, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(record, key);
 }
@@ -69,6 +77,31 @@ function atomicTaskUpdateError(error: { message?: string } | null | undefined): 
 	}
 	if (message.includes('task_not_found')) {
 		throw new ExternalToolGatewayError('NOT_FOUND', 'Task not found');
+	}
+	if (message.includes('access_denied')) {
+		throw new ExternalToolGatewayError('FORBIDDEN', 'Access denied');
+	}
+	if (message.includes('invalid_state_key')) {
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', message);
+	}
+	throw new ExternalToolGatewayError('INTERNAL', message);
+}
+
+function atomicTaskCreateError(error: { message?: string } | null | undefined): never {
+	const message = error?.message ?? 'Failed to create task atomically';
+	const relationshipError = relationshipMutationErrorFromDatabase({ message });
+	if (relationshipError) {
+		const code =
+			relationshipError.status === 404
+				? 'NOT_FOUND'
+				: relationshipError.status === 403
+					? 'FORBIDDEN'
+					: relationshipError.status === 409
+						? 'CONFLICT'
+						: relationshipError.status === 400
+							? 'VALIDATION_ERROR'
+							: 'INTERNAL';
+		throw new ExternalToolGatewayError(code, relationshipError.message);
 	}
 	if (message.includes('access_denied')) {
 		throw new ExternalToolGatewayError('FORBIDDEN', 'Access denied');
@@ -274,49 +307,155 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 	const dueAt = normalizeOptionalDate(args.due_at, 'due_at');
 	const props = normalizeProps(args.props, 'props');
 	const actorId = await ensureActorId(context.admin, context.userId);
+	const assignees = await resolveGatewayTaskAssignees({
+		admin: context.admin,
+		projectId: project.id,
+		projectOwnerActorId: project.owner_actor_id,
+		args
+	});
+	const planId = normalizeOptionalUuid(args.plan_id, 'plan_id');
+	const goalId = normalizeOptionalUuid(args.goal_id, 'goal_id');
+	const milestoneId = normalizeOptionalUuid(
+		args.supporting_milestone_id,
+		'supporting_milestone_id'
+	);
+	const explicitParents = toParentRefs({
+		parent:
+			args.parent && typeof args.parent === 'object' && !Array.isArray(args.parent)
+				? (args.parent as never)
+				: null
+	});
+	const invalidParent = explicitParents.find(
+		(parent) => !ALLOWED_TASK_PARENT_KINDS.has(parent.kind)
+	);
+	if (invalidParent) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`Unsupported parent kind: ${invalidParent.kind}`
+		);
+	}
+	const connections: ConnectionRef[] = [
+		...explicitParents,
+		...(planId ? [{ kind: 'plan' as const, id: planId }] : []),
+		...(goalId ? [{ kind: 'goal' as const, id: goalId }] : []),
+		...(milestoneId
+			? [
+					{
+						kind: 'milestone' as const,
+						id: milestoneId,
+						rel: 'targets_milestone' as const
+					}
+				]
+			: [])
+	];
+	try {
+		if (connections.length > 0) {
+			await assertEntityRefsInProject({
+				supabase: context.admin,
+				projectId: project.id,
+				refs: connections,
+				allowProject: true
+			});
+		}
+	} catch (error) {
+		relationshipPlanningError(error);
+	}
+
+	const taskId = crypto.randomUUID();
+	let relationshipPlan: Awaited<ReturnType<typeof prepareRelationshipMutationPlan>>;
+	try {
+		relationshipPlan = await prepareRelationshipMutationPlan({
+			supabase: context.admin,
+			projectId: project.id,
+			entity: { kind: 'task', id: taskId },
+			connections,
+			options: { mode: 'replace' },
+			referencesValidated: true
+		});
+	} catch (error) {
+		relationshipPlanningError(error);
+	}
 
 	const insertPayload: Record<string, unknown> = {
+		id: taskId,
 		project_id: project.id,
 		title,
 		description: toNullableText(description),
 		type_key: typeKey,
 		state_key: stateKey,
+		priority: priority ?? 3,
 		created_by: actorId,
 		start_at: startAt ?? null,
 		due_at: dueAt ?? null,
-		props: props ?? {}
+		props: {
+			...(props ?? {}),
+			...(goalId ? { goal_id: goalId } : {}),
+			...(milestoneId ? { supporting_milestone_id: milestoneId } : {})
+		}
 	};
-
-	if (priority !== undefined) {
-		insertPayload.priority = priority;
-	}
 
 	if (stateKey === 'done') {
 		insertPayload.completed_at = new Date().toISOString();
 	}
 
-	const { data, error } = await context.admin
-		.from('onto_tasks')
-		.insert(insertPayload)
-		.select(
-			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at'
-		)
-		.single();
-
-	if (error || !data) {
-		throw new ExternalToolGatewayError('INTERNAL', error?.message || 'Failed to create task');
+	const { data: atomicResult, error: atomicError } = await context.admin.rpc(
+		'onto_task_create_with_relationships_atomic',
+		{
+			p_task: insertPayload as Json,
+			p_relationship_plan: relationshipPlan as Json,
+			p_sync_assignees: assignees.hasInput,
+			p_assignee_actor_ids: assignees.hasInput ? assignees.assigneeActorIds : null,
+			p_assigned_by_actor_id: assignees.hasInput ? actorId : null,
+			p_source: 'manual',
+			p_idempotency_key: context.downstreamIdempotencyKey ?? null
+		}
+	);
+	if (atomicError || !atomicResult) atomicTaskCreateError(atomicError);
+	const atomic = atomicResult as AtomicTaskCreateResult;
+	if (!atomic.task) atomicTaskCreateError(null);
+	const task = atomic.task as Record<string, unknown>;
+	if (task.project_id !== project.id) {
+		throw new ExternalToolGatewayError(
+			'CONFLICT',
+			'Task idempotency key resolved outside the requested project'
+		);
 	}
 
-	await syncCreatedTaskSideEffects({
-		context,
-		project,
-		actorId,
-		task: data as Record<string, unknown>
-	});
+	if (!atomic.idempotent_replay) {
+		await syncCreatedTaskSideEffects({
+			context,
+			project,
+			actorId,
+			task,
+			addedAssigneeActorIds: assignees.hasInput
+				? (atomic.added_actor_ids ?? []).filter(
+						(id): id is string => typeof id === 'string'
+					)
+				: undefined
+		});
+	}
+
+	const responseTaskBase = { ...task };
+	// The domain key is internal replay authority, not part of the public task
+	// contract. The former direct-insert gateway did not expose this column.
+	delete responseTaskBase.idempotency_key;
+	let responseTask: Record<string, unknown> = { ...responseTaskBase, assignees: [] };
+	try {
+		responseTask = {
+			...responseTaskBase,
+			assignees: await fetchGatewayTaskAssignees({
+				admin: context.admin,
+				projectId: project.id,
+				taskId: String(task.id)
+			})
+		};
+	} catch (assigneeError) {
+		console.warn('[External Tool Gateway] Failed to enrich task assignees:', assigneeError);
+	}
 
 	return {
 		task: {
-			...data,
+			...responseTask,
 			project_name: project.name
 		}
 	};

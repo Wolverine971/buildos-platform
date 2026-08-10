@@ -59,7 +59,24 @@ const MAX_VALIDATION_REPAIR_ROUNDS = 2;
 const MAX_FORCED_SYNTHESIS_RETRIES = 1;
 const CANONICAL_UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const REVIEWED_MUTATION_TOOL_NAMES = new Set(['update_onto_task']);
+const REVIEWED_MUTATION_TOOL_NAMES = new Set(['create_onto_task', 'update_onto_task']);
+const REVIEWED_CREATE_ONTO_TASK_ARGUMENT_NAMES = new Set([
+	'project_id',
+	'title',
+	'description',
+	'type_key',
+	'state_key',
+	'priority',
+	'assignee_actor_ids',
+	'assignee_handles',
+	'plan_id',
+	'goal_id',
+	'supporting_milestone_id',
+	'parent',
+	'start_at',
+	'due_at',
+	'props'
+]);
 const REVIEWED_UPDATE_ONTO_TASK_ARGUMENT_NAMES = new Set([
 	'task_id',
 	'project_id',
@@ -84,6 +101,10 @@ const WORKER_READ_LOOP_CATALOG_ENTRIES = AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES
 	}
 );
 const WORKER_MUTATION_LOOP_CATALOG_ENTRIES = [
+	[
+		'create_onto_task',
+		{ op: 'onto.task.create', tool_name: 'create_onto_task', kind: 'write' as const }
+	],
 	[
 		'update_onto_task',
 		{ op: 'onto.task.update', tool_name: 'update_onto_task', kind: 'write' as const }
@@ -169,6 +190,7 @@ type ClientRequest = Parameters<AgenticChatReadOnlyProviderClientPortV1['stream'
 };
 
 export type AgenticChatProviderMutationCapabilitiesV1 = {
+	createOntoTask: boolean;
 	updateOntoTask: boolean;
 };
 
@@ -187,6 +209,12 @@ type NormalizedProviderToolCall = CompletedProviderToolCall &
 				logicalOperationId: string;
 				operationName: 'onto.task.update';
 				downstreamIdempotencySupported: false;
+		  }
+		| {
+				kind: 'mutation';
+				logicalOperationId: string;
+				operationName: 'onto.task.create';
+				downstreamIdempotencySupported: true;
 		  }
 	);
 
@@ -223,6 +251,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		private readonly retryableFailureCooldownMs = 2_000,
 		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
 		private readonly mutationCapabilities: AgenticChatProviderMutationCapabilitiesV1 = {
+			createOntoTask: false,
 			updateOntoTask: false
 		}
 	) {
@@ -1157,6 +1186,19 @@ function normalizeCompletedProviderCalls(
 				downstreamIdempotencySupported: false
 			};
 		}
+		if (call.name === 'create_onto_task') {
+			return {
+				...call,
+				kind: 'mutation',
+				logicalOperationId: createStableAgenticChatMutationLogicalOperationIdV1({
+					turnRunId: request.turnRunId,
+					providerRound: request.logicalProviderRound,
+					callIndex: index + 1
+				}),
+				operationName: 'onto.task.create',
+				downstreamIdempotencySupported: true
+			};
+		}
 		throw providerError('provider_tool_not_allowlisted', 'permanent');
 	});
 }
@@ -1535,17 +1577,20 @@ function productionToolsFor(
 function reviewedProviderToolDefinition(
 	tool: AgenticChatReadOnlyProviderToolV1
 ): AgenticChatReadOnlyProviderToolV1 | null {
-	if (tool.function.name !== 'update_onto_task') return tool;
+	if (!REVIEWED_MUTATION_TOOL_NAMES.has(tool.function.name)) return tool;
 	const parameters = tool.function.parameters as Record<string, JsonValue>;
 	const properties = parameters.properties;
 	if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
 		return null;
 	}
-	if (!Object.hasOwn(properties, 'task_id')) return null;
+	const isCreate = tool.function.name === 'create_onto_task';
+	const requiredNames = isCreate ? ['project_id', 'title'] : ['task_id'];
+	if (!requiredNames.every((name) => Object.hasOwn(properties, name))) return null;
+	const reviewedArgumentNames = isCreate
+		? REVIEWED_CREATE_ONTO_TASK_ARGUMENT_NAMES
+		: REVIEWED_UPDATE_ONTO_TASK_ARGUMENT_NAMES;
 	const reviewedProperties = Object.fromEntries(
-		Object.entries(properties).filter(([name]) =>
-			REVIEWED_UPDATE_ONTO_TASK_ARGUMENT_NAMES.has(name)
-		)
+		Object.entries(properties).filter(([name]) => reviewedArgumentNames.has(name))
 	) as JsonObject;
 	return {
 		...tool,
@@ -1555,7 +1600,7 @@ function reviewedProviderToolDefinition(
 				...tool.function.parameters,
 				additionalProperties: false,
 				properties: reviewedProperties,
-				required: ['task_id']
+				required: requiredNames
 			}
 		}
 	};
@@ -1566,9 +1611,9 @@ function isEnabledMutationTool(
 	capabilities: AgenticChatProviderMutationCapabilitiesV1
 ): boolean {
 	return (
-		capabilities.updateOntoTask &&
 		REVIEWED_MUTATION_TOOL_NAMES.has(toolName) &&
-		toolName === 'update_onto_task'
+		((toolName === 'create_onto_task' && capabilities.createOntoTask) ||
+			(toolName === 'update_onto_task' && capabilities.updateOntoTask))
 	);
 }
 

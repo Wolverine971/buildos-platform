@@ -66,6 +66,8 @@ import {
 	type AgenticChatExecutionObservationRpcClient,
 	SupabaseAgenticChatExecutionObservationAdapter
 } from './executionObservation';
+import { AgenticChatCreateOntoTaskMutationAdapter } from './createOntoTaskMutationAdapter';
+import { AgenticChatMutationAdapterRouter } from './mutationAdapterRouter';
 import { AgenticChatUpdateOntoTaskMutationAdapter } from './updateOntoTaskMutationAdapter';
 
 export type AgenticChatPhase3Assembly = {
@@ -117,6 +119,13 @@ export function createAgenticChatPhase3Assembly(options: {
 		options.mutationProviderCapabilities?.updateOntoTask === true;
 	const updateOntoTaskAdapterEnabled =
 		options.mutationAdapterCapabilities?.updateOntoTask === true;
+	const createOntoTaskProviderEnabled =
+		options.mutationProviderCapabilities?.createOntoTask === true;
+	const createOntoTaskAdapterEnabled =
+		options.mutationAdapterCapabilities?.createOntoTask === true;
+	if (createOntoTaskProviderEnabled && !createOntoTaskAdapterEnabled) {
+		throw new Error('create_onto_task provider capability requires its mutation adapter');
+	}
 	if (updateOntoTaskProviderEnabled && !updateOntoTaskAdapterEnabled) {
 		throw new Error('update_onto_task provider capability requires its mutation adapter');
 	}
@@ -157,15 +166,37 @@ export function createAgenticChatPhase3Assembly(options: {
 		{ client: options.providerClient, capacity: providerCapacity },
 		options.providerCooldownMs,
 		options.maxProviderRounds,
-		{ updateOntoTask: updateOntoTaskProviderEnabled }
+		{
+			createOntoTask: createOntoTaskProviderEnabled,
+			updateOntoTask: updateOntoTaskProviderEnabled
+		}
 	);
 	const readTool = new AgenticChatReadOnlyToolAdapter(options.client);
-	const mutation = updateOntoTaskAdapterEnabled
-		? new AgenticChatFixtureMutationExecutor({
-				control: effectControl,
-				mutatingTool: new AgenticChatUpdateOntoTaskMutationAdapter(options.client)
-			})
-		: disabledToolPort('mutating_tools_disabled');
+	const mutationAdapters = [
+		...(createOntoTaskAdapterEnabled
+			? ([
+					[
+						'create_onto_task',
+						new AgenticChatCreateOntoTaskMutationAdapter(options.client)
+					] as const
+				] as const)
+			: []),
+		...(updateOntoTaskAdapterEnabled
+			? ([
+					[
+						'update_onto_task',
+						new AgenticChatUpdateOntoTaskMutationAdapter(options.client)
+					] as const
+				] as const)
+			: [])
+	];
+	const mutation =
+		mutationAdapters.length > 0
+			? new AgenticChatFixtureMutationExecutor({
+					control: effectControl,
+					mutatingTool: new AgenticChatMutationAdapterRouter(mutationAdapters)
+				})
+			: disabledToolPort('mutating_tools_disabled');
 	const executor = new AgenticChatFixtureTurnExecutor(
 		{
 			control,

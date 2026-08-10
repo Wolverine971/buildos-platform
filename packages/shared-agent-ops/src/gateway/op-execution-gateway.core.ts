@@ -2106,6 +2106,10 @@ export async function executeGatewayOp(params: {
 			);
 		}
 	}
+	const downstreamIdempotencyKey =
+		idempotencyKey && executionContext
+			? `agent-call:${executionContext.callerId}:${canonicalOp}:${idempotencyKey}`
+			: undefined;
 
 	const executionStartedAt = new Date().toISOString();
 
@@ -2120,7 +2124,8 @@ export async function executeGatewayOp(params: {
 				callSessionId: params.callSessionId,
 				scope: params.scope,
 				calendar: params.calendar,
-				taskSync: params.taskSync
+				taskSync: params.taskSync,
+				downstreamIdempotencyKey
 			},
 			opArgs
 		);

@@ -1,15 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
-const { syncUpdatedTaskSideEffectsMock } = vi.hoisted(() => ({
+const { syncCreatedTaskSideEffectsMock, syncUpdatedTaskSideEffectsMock } = vi.hoisted(() => ({
+	syncCreatedTaskSideEffectsMock: vi.fn(async () => undefined),
 	syncUpdatedTaskSideEffectsMock: vi.fn(async () => undefined)
 }));
 
 vi.mock('./op-execution-gateway.activity', () => ({
-	syncCreatedTaskSideEffects: vi.fn(async () => undefined),
+	syncCreatedTaskSideEffects: syncCreatedTaskSideEffectsMock,
 	syncUpdatedTaskSideEffects: syncUpdatedTaskSideEffectsMock
 }));
 
-import { detectNoEffectTaskUpdate, updateTask } from './op-execution-gateway.tasks';
+import { createTask, detectNoEffectTaskUpdate, updateTask } from './op-execution-gateway.tasks';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const TASK_ID = '22222222-2222-4222-8222-222222222222';
@@ -18,6 +19,28 @@ const ASSIGNEE_ACTOR_ID = '44444444-4444-4444-8444-444444444444';
 const USER_ID = '55555555-5555-4555-8555-555555555555';
 const GOAL_ID = '66666666-6666-4666-8666-666666666666';
 const MILESTONE_ID = '77777777-7777-4777-8777-777777777777';
+const PLAN_ID = '88888888-8888-4888-8888-888888888888';
+
+function projectSummary() {
+	return {
+		id: PROJECT_ID,
+		name: 'Atomic project',
+		description: null,
+		type_key: 'project.default',
+		state_key: 'active',
+		props: {},
+		created_at: '2026-08-01T00:00:00.000Z',
+		updated_at: '2026-08-01T00:00:00.000Z',
+		task_count: 1,
+		goal_count: 1,
+		plan_count: 1,
+		document_count: 0,
+		owner_actor_id: OWNER_ACTOR_ID,
+		access_role: 'owner',
+		access_level: 'admin',
+		is_shared: false
+	};
+}
 
 describe('detectNoEffectTaskUpdate', () => {
 	const existingTask = {
@@ -67,6 +90,217 @@ describe('detectNoEffectTaskUpdate', () => {
 		expect(detectNoEffectTaskUpdate(existingTask, { archived_at: null }, ['archived'])).toEqual(
 			{ noEffect: false, comparedFields: [] }
 		);
+	});
+});
+
+describe('createTask atomic idempotent surface', () => {
+	it('commits the task, assignees, and relationships with the stable downstream key', async () => {
+		syncCreatedTaskSideEffectsMock.mockClear();
+		let createdTaskId = '';
+		const rpc = vi.fn(async (name: string, args?: Record<string, unknown>) => {
+			if (name === 'ensure_actor_for_user') return { data: OWNER_ACTOR_ID, error: null };
+			if (name === 'get_onto_project_summaries_v1') {
+				return { data: [projectSummary()], error: null };
+			}
+			if (name === 'onto_task_create_with_relationships_atomic') {
+				const task = args?.p_task as Record<string, unknown>;
+				createdTaskId = String(task.id);
+				return {
+					data: {
+						task: {
+							...task,
+							idempotency_key: 'chat-effect:stable-create',
+							created_at: '2026-08-10T12:00:00.000Z',
+							updated_at: '2026-08-10T12:00:00.000Z'
+						},
+						added_actor_ids: [ASSIGNEE_ACTOR_ID],
+						idempotent_replay: false
+					},
+					error: null
+				};
+			}
+			throw new Error(`unexpected rpc ${name}`);
+		});
+
+		class Query {
+			constructor(private readonly table: string) {}
+			select() {
+				return this;
+			}
+			eq() {
+				return this;
+			}
+			in() {
+				return this;
+			}
+			is() {
+				return this;
+			}
+			order() {
+				return this;
+			}
+			then<TResult1 = unknown, TResult2 = never>(
+				onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | null,
+				onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+			) {
+				let result: { data: unknown[]; error: null };
+				if (this.table === 'onto_project_members') {
+					result = {
+						data: [
+							{
+								actor_id: ASSIGNEE_ACTOR_ID,
+								actor: {
+									id: ASSIGNEE_ACTOR_ID,
+									user_id: 'assignee-user',
+									name: 'Sam Person',
+									email: 'sam@example.com'
+								}
+							}
+						],
+						error: null
+					};
+				} else if (this.table === 'onto_plans') {
+					result = { data: [{ id: PLAN_ID }], error: null };
+				} else if (this.table === 'onto_milestones') {
+					result = { data: [{ id: MILESTONE_ID }], error: null };
+				} else if (this.table === 'onto_task_assignees') {
+					result = {
+						data: [
+							{
+								created_at: '2026-08-10T12:00:00.000Z',
+								assignee: {
+									id: ASSIGNEE_ACTOR_ID,
+									user_id: 'assignee-user',
+									name: 'Sam Person',
+									email: 'sam@example.com'
+								}
+							}
+						],
+						error: null
+					};
+				} else {
+					throw new Error(`unexpected awaited table ${this.table}`);
+				}
+				return Promise.resolve(result).then(onfulfilled, onrejected);
+			}
+		}
+
+		const admin = { rpc, from: vi.fn((table: string) => new Query(table)) };
+		const result = await createTask(
+			{
+				admin,
+				userId: USER_ID,
+				downstreamIdempotencyKey: 'chat-effect:stable-create',
+				scope: {
+					mode: 'read_write',
+					allowed_ops: ['onto.task.create'],
+					project_ids: [PROJECT_ID],
+					write_project_ids: [PROJECT_ID]
+				}
+			} as never,
+			{
+				project_id: PROJECT_ID,
+				title: 'Atomic create',
+				assignee_handles: ['@sam'],
+				plan_id: PLAN_ID,
+				supporting_milestone_id: MILESTONE_ID,
+				props: { retained: true }
+			}
+		);
+
+		const atomicCall = rpc.mock.calls.find(
+			([name]) => name === 'onto_task_create_with_relationships_atomic'
+		);
+		expect(createdTaskId).toMatch(/^[0-9a-f-]{36}$/);
+		expect(atomicCall?.[1]).toMatchObject({
+			p_sync_assignees: true,
+			p_assignee_actor_ids: [ASSIGNEE_ACTOR_ID],
+			p_assigned_by_actor_id: OWNER_ACTOR_ID,
+			p_source: 'manual',
+			p_idempotency_key: 'chat-effect:stable-create',
+			p_task: {
+				id: createdTaskId,
+				project_id: PROJECT_ID,
+				title: 'Atomic create',
+				priority: 3,
+				props: {
+					retained: true,
+					supporting_milestone_id: MILESTONE_ID
+				}
+			}
+		});
+		expect(atomicCall?.[1]?.p_relationship_plan).toMatchObject({
+			entityContainment: { child: { kind: 'task', id: createdTaskId } },
+			semantic: expect.arrayContaining([
+				expect.objectContaining({
+					entity: { kind: 'task', id: createdTaskId },
+					rel: 'targets_milestone'
+				})
+			])
+		});
+		expect(syncCreatedTaskSideEffectsMock).toHaveBeenCalledWith(
+			expect.objectContaining({ addedAssigneeActorIds: [ASSIGNEE_ACTOR_ID] })
+		);
+		expect(result).toMatchObject({
+			task: {
+				id: createdTaskId,
+				project_id: PROJECT_ID,
+				assignees: [expect.objectContaining({ actor_id: ASSIGNEE_ACTOR_ID })]
+			}
+		});
+		expect(result.task).not.toHaveProperty('idempotency_key');
+	});
+
+	it('returns the existing task without replaying post-commit side effects', async () => {
+		syncCreatedTaskSideEffectsMock.mockClear();
+		const existing = {
+			id: TASK_ID,
+			project_id: PROJECT_ID,
+			title: 'Existing task',
+			props: {}
+		};
+		const admin = {
+			rpc: vi.fn(async (name: string) => {
+				if (name === 'get_onto_project_summaries_v1') {
+					return { data: [projectSummary()], error: null };
+				}
+				if (name === 'ensure_actor_for_user') return { data: OWNER_ACTOR_ID, error: null };
+				if (name === 'onto_task_create_with_relationships_atomic') {
+					return {
+						data: { task: existing, added_actor_ids: [], idempotent_replay: true },
+						error: null
+					};
+				}
+				throw new Error(`unexpected rpc ${name}`);
+			}),
+			from: vi.fn(() => ({
+				select: () => ({
+					eq: () => ({
+						eq: () => ({
+							order: async () => ({ data: [], error: null })
+						})
+					})
+				})
+			}))
+		};
+
+		await expect(
+			createTask(
+				{
+					admin,
+					userId: USER_ID,
+					downstreamIdempotencyKey: 'chat-effect:stable-create',
+					scope: {
+						mode: 'read_write',
+						allowed_ops: ['onto.task.create'],
+						project_ids: [PROJECT_ID],
+						write_project_ids: [PROJECT_ID]
+					}
+				} as never,
+				{ project_id: PROJECT_ID, title: 'Existing task' }
+			)
+		).resolves.toMatchObject({ task: { id: TASK_ID, assignees: [] } });
+		expect(syncCreatedTaskSideEffectsMock).not.toHaveBeenCalled();
 	});
 });
 

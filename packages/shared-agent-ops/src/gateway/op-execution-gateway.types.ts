@@ -70,6 +70,8 @@ export type ToolExecutionContext = {
 	scope: AgentCallScope;
 	calendar?: CalendarPort;
 	taskSync?: TaskSyncPort;
+	/** Stable downstream key for handlers with domain-level idempotency. */
+	downstreamIdempotencyKey?: string;
 	/** Optional worker cancellation/deadline propagated to network-backed handlers. */
 	signal?: AbortSignal;
 };

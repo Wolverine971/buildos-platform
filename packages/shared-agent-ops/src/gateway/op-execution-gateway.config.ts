@@ -336,6 +336,41 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 					'Optional priority, 1-5, where 1 is the HIGHEST priority and 5 is the LOWEST. ' +
 					'"top priority" / "urgent" / "most important" means 1, not 5.'
 			},
+			assignee_actor_ids: {
+				type: 'array',
+				items: { type: 'string' },
+				description:
+					'Optional initial assignee actor UUID list. Actors must be active project members; maximum 10.'
+			},
+			assignee_handles: {
+				type: 'array',
+				items: { type: 'string' },
+				description:
+					'Optional active project-member handles such as ["@jim"], resolved by name or email local-part.'
+			},
+			plan_id: {
+				type: 'string',
+				description: 'Optional plan UUID containment parent.'
+			},
+			goal_id: {
+				type: 'string',
+				description: 'Optional goal UUID containment parent.'
+			},
+			supporting_milestone_id: {
+				type: 'string',
+				description: 'Optional supporting milestone UUID relationship.'
+			},
+			parent: {
+				type: 'object',
+				additionalProperties: false,
+				properties: {
+					kind: { type: 'string' },
+					id: { type: 'string' },
+					is_primary: { type: 'boolean' }
+				},
+				required: ['kind', 'id'],
+				description: 'Optional explicit primary containment parent.'
+			},
 			start_at: {
 				type: ['string', 'null'],
 				description: 'Optional ISO start date.'

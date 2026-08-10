@@ -153,6 +153,29 @@ function updateTaskToolDefinition() {
 	};
 }
 
+function createTaskToolDefinition() {
+	return {
+		type: 'function' as const,
+		function: {
+			name: 'create_onto_task',
+			description: 'Create a task.',
+			parameters: {
+				type: 'object',
+				required: ['project_id', 'title'],
+				properties: {
+					project_id: { type: 'string' },
+					title: { type: 'string' },
+					assignee_actor_ids: { type: 'array', items: { type: 'string' } },
+					plan_id: { type: 'string' },
+					supporting_milestone_id: { type: 'string' },
+					parent: { type: 'object' },
+					archived: { type: 'boolean' }
+				}
+			}
+		}
+	};
+}
+
 async function collect(stream: AsyncIterable<AgenticChatProviderStepV1>) {
 	const result: AgenticChatProviderStepV1[] = [];
 	for await (const step of stream) result.push(step);
@@ -630,6 +653,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		};
 		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
 		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity }, 2_000, 16, {
+			createOntoTask: false,
 			updateOntoTask: true
 		});
 		const readDefinition = readToolDefinition('get_project_overview');
@@ -711,6 +735,73 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(continuationMessages.slice(-2).map((message) => message.tool_call_id)).toEqual([
 			'provider-read-before-write',
 			'provider-update-task'
+		]);
+	});
+
+	it('projects create_onto_task as a downstream-idempotent mutation only when enabled', async () => {
+		const projectId = 'db000000-0000-4000-8000-000000000003';
+		const definition = createTaskToolDefinition();
+		const client = clientWith([
+			{
+				type: 'tool_call',
+				toolCall: [
+					{
+						index: 0,
+						id: 'provider-create-task',
+						type: 'function',
+						function: {
+							name: 'create_onto_task',
+							arguments: JSON.stringify({ project_id: projectId, title: 'New task' })
+						}
+					}
+				]
+			},
+			{ type: 'done', finishedReason: 'tool_calls' }
+		]);
+		const adapter = new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ createOntoTask: true, updateOntoTask: false }
+		);
+		const invocation = await adapter.prepare({
+			executionInput: executionInputWithReadSurface([definition], ['create_onto_task']),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
+			expect.objectContaining({
+				type: 'mutating_tool',
+				providerToolCallId: 'provider-create-task',
+				operationName: 'onto.task.create',
+				downstreamIdempotencySupported: true
+			})
+		]);
+		expect(client.stream.mock.calls[0]?.[0].tools).toEqual([
+			{
+				...definition,
+				function: {
+					...definition.function,
+					parameters: {
+						...definition.function.parameters,
+						additionalProperties: false,
+						properties: {
+							project_id: { type: 'string' },
+							title: { type: 'string' },
+							assignee_actor_ids: { type: 'array', items: { type: 'string' } },
+							plan_id: { type: 'string' },
+							supporting_milestone_id: { type: 'string' },
+							parent: { type: 'object' }
+						},
+						required: ['project_id', 'title']
+					}
+				}
+			}
 		]);
 	});
 

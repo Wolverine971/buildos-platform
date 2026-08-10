@@ -32,6 +32,7 @@ export async function syncCreatedTaskSideEffects(params: {
 	project: OntologyProjectSummary;
 	actorId: string;
 	task: Record<string, unknown>;
+	addedAssigneeActorIds?: string[];
 }): Promise<void> {
 	const actorDisplayName = 'BuildOS agent';
 	const mentionUserIds = await resolveEntityMentionUserIds({
@@ -45,6 +46,22 @@ export async function syncCreatedTaskSideEffects(params: {
 		]
 	});
 
+	let assignmentRecipientUserIds: string[] = [];
+	if (params.addedAssigneeActorIds) {
+		const { recipientUserIds } = await notifyTaskAssignmentAdded({
+			supabase: params.context.admin,
+			projectId: params.project.id,
+			projectName: params.project.name,
+			taskId: String(params.task.id),
+			taskTitle: typeof params.task.title === 'string' ? params.task.title : 'Task',
+			actorUserId: params.context.userId,
+			actorDisplayName,
+			addedAssigneeActorIds: params.addedAssigneeActorIds,
+			coalescedMentionUserIds: mentionUserIds
+		});
+		assignmentRecipientUserIds = recipientUserIds;
+	}
+
 	await notifyEntityMentionsAdded({
 		supabase: params.context.admin,
 		projectId: params.project.id,
@@ -55,6 +72,7 @@ export async function syncCreatedTaskSideEffects(params: {
 		actorUserId: params.context.userId,
 		actorDisplayName,
 		mentionedUserIds: mentionUserIds,
+		skipUserIds: assignmentRecipientUserIds,
 		source: 'agent_ping'
 	});
 

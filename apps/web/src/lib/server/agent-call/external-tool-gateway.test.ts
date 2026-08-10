@@ -128,6 +128,7 @@ type TaskRow = {
 	archived_at?: string | null;
 	deleted_at: string | null;
 	created_by?: string | null;
+	idempotency_key?: string | null;
 };
 
 type AssetRow = {
@@ -1456,7 +1457,70 @@ function createAdminMock(state: State) {
 
 			throw new Error(`Unexpected table ${table}`);
 		}),
-		rpc: vi.fn()
+		rpc: vi.fn(async (functionName: string, args?: Record<string, unknown>) => {
+			if (functionName !== 'onto_task_create_with_relationships_atomic') {
+				return undefined;
+			}
+
+			const taskPayload = args?.p_task;
+			if (!taskPayload || typeof taskPayload !== 'object' || Array.isArray(taskPayload)) {
+				return { data: null, error: new Error('p_task is required') };
+			}
+			const idempotencyKey =
+				typeof args?.p_idempotency_key === 'string' && args.p_idempotency_key.length > 0
+					? args.p_idempotency_key
+					: null;
+			const replay = idempotencyKey
+				? state.tasks.find((task) => task.idempotency_key === idempotencyKey)
+				: undefined;
+			if (replay) {
+				return {
+					data: {
+						task: replay,
+						added_actor_ids: [],
+						idempotent_replay: true,
+						relationships: null
+					},
+					error: null
+				};
+			}
+
+			const task = taskPayload as Record<string, unknown>;
+			const row: TaskRow = {
+				id: String(task.id),
+				project_id: String(task.project_id),
+				title: String(task.title),
+				description: typeof task.description === 'string' ? task.description : null,
+				type_key: String(task.type_key),
+				state_key: String(task.state_key),
+				priority: typeof task.priority === 'number' ? task.priority : null,
+				start_at: typeof task.start_at === 'string' ? task.start_at : null,
+				due_at: typeof task.due_at === 'string' ? task.due_at : null,
+				completed_at: typeof task.completed_at === 'string' ? task.completed_at : null,
+				props:
+					task.props && typeof task.props === 'object' && !Array.isArray(task.props)
+						? (task.props as Record<string, unknown>)
+						: {},
+				created_at: '2026-04-28T00:00:00.000Z',
+				updated_at: '2026-04-28T00:00:00.000Z',
+				archived_at: null,
+				deleted_at: null,
+				created_by: typeof task.created_by === 'string' ? task.created_by : null,
+				idempotency_key: idempotencyKey
+			};
+			state.tasks.push(row);
+			return {
+				data: {
+					task: row,
+					added_actor_ids: Array.isArray(args?.p_assignee_actor_ids)
+						? args.p_assignee_actor_ids
+						: [],
+					idempotent_replay: false,
+					relationships: { inserted: 0, updated: 0, deleted: 0 }
+				},
+				error: null
+			};
+		})
 	};
 }
 
@@ -3715,6 +3779,9 @@ describe('external tool gateway', () => {
 			}
 		});
 		expect(state.tasks).toHaveLength(1);
+		expect(state.tasks[0]?.idempotency_key).toBe(
+			'agent-call:11111111-1111-1111-1111-111111111111:onto.task.create:task-create-1'
+		);
 		expect(state.toolExecutions).toHaveLength(1);
 	});
 
