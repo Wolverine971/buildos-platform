@@ -77,6 +77,7 @@ export const POST: RequestHandler = async (event) => {
 				client_uri: client.client_uri,
 				logo_uri: client.logo_uri,
 				redirect_uris: client.redirect_uris,
+				application_type: client.application_type,
 				grant_types: ['authorization_code', 'refresh_token'],
 				response_types: ['code'],
 				scope: client.allowed_scopes.join(' '),

@@ -534,12 +534,30 @@ async function insertOAuthClient(
 export async function registerDynamicOAuthClient(
 	admin: any,
 	body: unknown
-): Promise<AgentOAuthClientRecord & { client_id_issued_at: number }> {
+): Promise<
+	AgentOAuthClientRecord & {
+		client_id_issued_at: number;
+		application_type: 'native' | 'web';
+	}
+> {
 	if (!isRecord(body)) {
 		throw new OAuthConnectorError('Registration body must be an object');
 	}
 
 	const redirectUris = normalizeRedirectUris(body.redirect_uris);
+	const requestedApplicationType = body.application_type;
+	if (
+		requestedApplicationType !== undefined &&
+		requestedApplicationType !== 'native' &&
+		requestedApplicationType !== 'web'
+	) {
+		throw new OAuthConnectorError('application_type must be "native" or "web"');
+	}
+	const applicationType =
+		requestedApplicationType ??
+		(redirectUris.every((uri) => isLoopbackRedirectHost(new URL(uri).hostname))
+			? 'native'
+			: 'web');
 	const clientId = `bo_cl_${randomBytes(24).toString('base64url')}`;
 
 	const client = await insertOAuthClient(admin, {
@@ -553,6 +571,7 @@ export async function registerDynamicOAuthClient(
 		registrationSource: 'dynamic',
 		metadata: {
 			raw_registration_name: typeof body.client_name === 'string' ? body.client_name : null,
+			application_type: applicationType,
 			software_id: typeof body.software_id === 'string' ? body.software_id : null,
 			software_version:
 				typeof body.software_version === 'string' ? body.software_version : null
@@ -561,7 +580,8 @@ export async function registerDynamicOAuthClient(
 
 	return {
 		...client,
-		client_id_issued_at: Math.floor(Date.now() / 1000)
+		client_id_issued_at: Math.floor(Date.now() / 1000),
+		application_type: applicationType
 	};
 }
 
@@ -622,12 +642,14 @@ export async function loadOAuthAuthorizationRequest(
 
 export function buildOAuthRedirect(params: {
 	redirectUri: string;
+	issuer: string;
 	code?: string;
 	state?: string | null;
 	error?: string;
 	errorDescription?: string;
 }): string {
 	const url = new URL(params.redirectUri);
+	url.searchParams.set('iss', params.issuer);
 	if (params.code) url.searchParams.set('code', params.code);
 	if (params.state) url.searchParams.set('state', params.state);
 	if (params.error) url.searchParams.set('error', params.error);

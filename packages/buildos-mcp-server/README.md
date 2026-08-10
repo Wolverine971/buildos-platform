@@ -15,7 +15,8 @@ Streamable HTTP MCP should connect to `https://build-os.com/mcp/buildos` directl
 local MCP client  ⇄ (stdio)  buildos-mcp-server  ⇄ (HTTPS + Bearer)  /mcp/buildos
 ```
 
-- `initialize` is answered locally by the bridge.
+- Protocol lifecycle is answered locally by the bridge: `server/discover` for MCP 2026-07-28
+  clients and `initialize` for legacy clients.
 - `tools/list`, `tools/call`, `resources/list`, and `resources/read` are forwarded to the remote
   connector.
 - Auth is a single `Authorization: Bearer <token>` header — your BuildOS **agent key** (`boca_…`).

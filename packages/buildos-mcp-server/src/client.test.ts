@@ -35,6 +35,7 @@ describe('BuildosRemoteMcpClient', () => {
 		expect(headers.Authorization).toBe('Bearer boca_secret');
 		expect(headers.Accept).toContain('application/json');
 		expect(headers['MCP-Protocol-Version']).toBe('2025-06-18');
+		expect(headers['Mcp-Method']).toBe('tools/list');
 		const body = JSON.parse(init.body as string);
 		expect(body).toMatchObject({ jsonrpc: '2.0', method: 'tools/list' });
 	});
@@ -66,6 +67,37 @@ describe('BuildosRemoteMcpClient', () => {
 		);
 		expect(body.method).toBe('tools/call');
 		expect(body.params).toEqual({ name: 'fetch', arguments: { id: 'task:t1' } });
+		const headers = (fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1]
+			.headers as Record<string, string>;
+		expect(headers['Mcp-Name']).toBe('fetch');
+	});
+
+	it('forwards resource template listing and resource operation names', async () => {
+		const fetchFn = vi.fn(async (_input: string, init: RequestInit) => {
+			const body = JSON.parse(init.body as string);
+			return jsonResponse({
+				jsonrpc: '2.0',
+				id: body.id,
+				result:
+					body.method === 'resources/templates/list'
+						? { resourceTemplates: [{ uriTemplate: 'buildos://tasks/{id}' }] }
+						: { contents: [] }
+			});
+		}) as unknown as FetchLike;
+		const client = new BuildosRemoteMcpClient(CONFIG, fetchFn);
+
+		expect(await client.listResourceTemplates()).toEqual({
+			resourceTemplates: [{ uriTemplate: 'buildos://tasks/{id}' }]
+		});
+		await client.readResource('buildos://tasks/t1');
+
+		const calls = (fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls;
+		expect((calls[0][1].headers as Record<string, string>)['Mcp-Method']).toBe(
+			'resources/templates/list'
+		);
+		expect((calls[1][1].headers as Record<string, string>)['Mcp-Name']).toBe(
+			'buildos://tasks/t1'
+		);
 	});
 
 	it('throws on a JSON-RPC error response', async () => {

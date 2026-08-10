@@ -1,5 +1,17 @@
 // apps/web/src/lib/server/agent-call/mcp-connector.service.ts
 import { json } from '@sveltejs/kit';
+import {
+	createMcpHandler,
+	isLegacyRequest,
+	ProtocolError,
+	ResourceNotFoundError,
+	Server,
+	type CallToolResult,
+	type ListResourcesResult,
+	type ListResourceTemplatesResult,
+	type ListToolsResult,
+	type ReadResourceResult
+} from '@modelcontextprotocol/server';
 import type {
 	AgentCallScope,
 	BuildosAgentProjectScopeMode,
@@ -56,15 +68,25 @@ type JsonRpcResponse = {
 };
 
 const MCP_PROTOCOL_VERSION = '2025-06-18';
+const MCP_MODERN_PROTOCOL_VERSION = '2026-07-28';
+const MCP_SERVER_INFO = {
+	name: 'buildos',
+	title: BUILDOS_MCP_SERVER_NAME,
+	version: '2026-08-10'
+} as const;
+const MCP_SERVER_INSTRUCTIONS =
+	'Use BuildOS tools to read scoped project context. Write tools are available only when the user approved write access.';
 
 /**
- * MCP-Protocol-Version values this server accepts. When the header is absent we
- * fall back to backwards-compatible behavior (MCP spec §Transports); when it is
- * present but unrecognized we reject with HTTP 400.
+ * Legacy MCP-Protocol-Version values accepted by the hand-rolled compatibility
+ * path. Modern traffic is routed into the v2 SDK before this set is consulted.
+ * When a legacy header is absent we keep backwards-compatible behavior; when it
+ * is present but unrecognized we reject with HTTP 400.
  */
 const SUPPORTED_MCP_PROTOCOL_VERSIONS = new Set(['2025-06-18', '2025-03-26', '2024-11-05']);
 
-const MCP_CORS_ALLOW_HEADERS = 'Content-Type, Authorization, MCP-Protocol-Version, Mcp-Session-Id';
+const MCP_CORS_ALLOW_HEADERS =
+	'Content-Type, Authorization, MCP-Protocol-Version, Mcp-Method, Mcp-Name, Mcp-Session-Id';
 const MCP_CORS_EXPOSE_HEADERS = 'WWW-Authenticate, MCP-Protocol-Version, Mcp-Session-Id';
 
 /**
@@ -320,17 +342,19 @@ function scopeFromCallerPolicy(caller: ExternalAgentCallerRecord): AgentCallScop
  * identically downstream. An OAuth denial (403, e.g. revoked grant) is NOT
  * downgraded to the static path.
  */
+type BuildosMcpAuthentication = {
+	caller: ExternalAgentCallerRecord;
+	scope: AgentCallScope;
+	oauthGrantId?: string;
+	projectScopeMode: BuildosAgentProjectScopeMode;
+};
+
 async function authenticateBuildosMcpRequest(params: {
 	admin: any;
 	request: Request;
 	url: URL;
 	securityEventOptions?: SecurityEventLogOptions;
-}): Promise<{
-	caller: ExternalAgentCallerRecord;
-	scope: AgentCallScope;
-	oauthGrantId?: string;
-	projectScopeMode: BuildosAgentProjectScopeMode;
-}> {
+}): Promise<BuildosMcpAuthentication> {
 	try {
 		const oauth = await authenticateOAuthMcpRequest({
 			admin: params.admin,
@@ -747,23 +771,20 @@ async function listMcpResourcesForCaller(params: {
 					? project.description
 					: 'BuildOS project START HERE orientation.',
 			mimeType: 'text/markdown'
-		}));
+		}))
+		.sort((left, right) => String(left.uri).localeCompare(String(right.uri)));
 }
 
-async function dispatchMcpMethod(params: {
+async function dispatchAuthenticatedMcpMethod(params: {
 	admin: any;
 	request: Request;
 	url: URL;
 	method: string;
 	rawParams: unknown;
+	auth: BuildosMcpAuthentication;
 	securityEventOptions?: SecurityEventLogOptions;
 }) {
-	const auth = await authenticateBuildosMcpRequest({
-		admin: params.admin,
-		request: params.request,
-		url: params.url,
-		securityEventOptions: params.securityEventOptions
-	});
+	const auth = params.auth;
 
 	switch (params.method) {
 		case 'initialize': {
@@ -785,13 +806,8 @@ async function dispatchMcpMethod(params: {
 					tools: { listChanged: false },
 					resources: { listChanged: false }
 				},
-				serverInfo: {
-					name: 'buildos',
-					title: BUILDOS_MCP_SERVER_NAME,
-					version: '2026-05-13'
-				},
-				instructions:
-					'Use BuildOS tools to read scoped project context. Write tools are available only when the user approved write access.'
+				serverInfo: MCP_SERVER_INFO,
+				instructions: MCP_SERVER_INSTRUCTIONS
 			};
 		}
 
@@ -947,6 +963,195 @@ async function dispatchMcpMethod(params: {
 	}
 }
 
+async function dispatchMcpMethod(params: {
+	admin: any;
+	request: Request;
+	url: URL;
+	method: string;
+	rawParams: unknown;
+	securityEventOptions?: SecurityEventLogOptions;
+}) {
+	const auth = await authenticateBuildosMcpRequest({
+		admin: params.admin,
+		request: params.request,
+		url: params.url,
+		securityEventOptions: params.securityEventOptions
+	});
+
+	return dispatchAuthenticatedMcpMethod({ ...params, auth });
+}
+
+async function dispatchModernMcpMethod(params: {
+	admin: any;
+	request: Request;
+	url: URL;
+	method: string;
+	rawParams: unknown;
+	auth: BuildosMcpAuthentication;
+	securityEventOptions?: SecurityEventLogOptions;
+}): Promise<unknown> {
+	try {
+		return await dispatchAuthenticatedMcpMethod(params);
+	} catch (error) {
+		if (error instanceof ProtocolError) throw error;
+
+		if (error instanceof OAuthConnectorError && error.code === 'not_found') {
+			const uri =
+				isRecord(params.rawParams) && typeof params.rawParams.uri === 'string'
+					? params.rawParams.uri
+					: '';
+			throw new ResourceNotFoundError(uri, error.description);
+		}
+
+		if (error instanceof OAuthConnectorError && error.code === 'method_not_found') {
+			throw new ProtocolError(-32601, error.description);
+		}
+
+		if (error instanceof OAuthConnectorError) {
+			throw new ProtocolError(-32003, error.description);
+		}
+
+		if (error instanceof Error) {
+			throw new ProtocolError(-32602, error.message);
+		}
+
+		throw new ProtocolError(-32603, 'BuildOS MCP request failed');
+	}
+}
+
+function createAuthenticatedModernMcpServer(params: {
+	admin: any;
+	request: Request;
+	url: URL;
+	auth: BuildosMcpAuthentication;
+	securityEventOptions?: SecurityEventLogOptions;
+}): Server {
+	const server = new Server(MCP_SERVER_INFO, {
+		supportedProtocolVersions: [MCP_MODERN_PROTOCOL_VERSION],
+		capabilities: {
+			tools: { listChanged: false },
+			resources: { listChanged: false }
+		},
+		instructions: MCP_SERVER_INSTRUCTIONS,
+		// Discovery and schemas are stable enough to remove repeat round trips. Tool
+		// visibility is auth-scoped, so every cacheable result stays private; live
+		// resource data remains uncached.
+		cacheHints: {
+			'server/discover': { ttlMs: 300_000, cacheScope: 'private' },
+			'tools/list': { ttlMs: 60_000, cacheScope: 'private' },
+			'resources/list': { ttlMs: 0, cacheScope: 'private' },
+			'resources/templates/list': { ttlMs: 300_000, cacheScope: 'private' },
+			'resources/read': { ttlMs: 0, cacheScope: 'private' }
+		}
+	});
+
+	const dispatch = (method: string, rawParams: unknown) =>
+		dispatchModernMcpMethod({
+			...params,
+			method,
+			rawParams
+		});
+
+	server.setRequestHandler(
+		'tools/list',
+		async (request) => (await dispatch('tools/list', request.params)) as ListToolsResult
+	);
+
+	server.setRequestHandler('tools/call', async (request) => {
+		const result = (await dispatch('tools/call', request.params)) as CallToolResult;
+		return server.projectCallToolResult(result, { type: 'object' });
+	});
+
+	server.setRequestHandler(
+		'resources/list',
+		async (request) => (await dispatch('resources/list', request.params)) as ListResourcesResult
+	);
+
+	server.setRequestHandler(
+		'resources/templates/list',
+		async (request) =>
+			(await dispatch(
+				'resources/templates/list',
+				request.params
+			)) as ListResourceTemplatesResult
+	);
+
+	server.setRequestHandler(
+		'resources/read',
+		async (request) => (await dispatch('resources/read', request.params)) as ReadResourceResult
+	);
+
+	return server;
+}
+
+async function jsonRpcIdFromRequest(request: Request): Promise<JsonRpcId> {
+	try {
+		const body = (await request.clone().json()) as unknown;
+		if (!isRecord(body)) return null;
+		const id = body.id;
+		return typeof id === 'string' || typeof id === 'number' || id === null ? id : null;
+	} catch {
+		return null;
+	}
+}
+
+async function handleBuildosModernMcpPost(params: {
+	admin: any;
+	request: Request;
+	url: URL;
+	cors: Record<string, string>;
+	securityEventOptions?: SecurityEventLogOptions;
+}): Promise<Response> {
+	let auth: BuildosMcpAuthentication;
+	try {
+		auth = await authenticateBuildosMcpRequest(params);
+	} catch (error) {
+		const id = await jsonRpcIdFromRequest(params.request);
+		if (error instanceof OAuthConnectorError && error.status === 401) {
+			return new Response(JSON.stringify(jsonRpcError(id, -32001, error.description)), {
+				status: 401,
+				headers: {
+					...mcpAuthChallengeHeaders(params.url.origin, params.cors),
+					'Content-Type': 'application/json'
+				}
+			});
+		}
+
+		if (error instanceof OAuthConnectorError) {
+			return json(jsonRpcError(id, -32003, error.description), {
+				status: error.status,
+				headers: { 'Cache-Control': 'no-store', ...params.cors }
+			});
+		}
+
+		throw error;
+	}
+
+	const handler = createMcpHandler(
+		() =>
+			createAuthenticatedModernMcpServer({
+				admin: params.admin,
+				request: params.request,
+				url: params.url,
+				auth,
+				securityEventOptions: params.securityEventOptions
+			}),
+		{ legacy: 'reject', responseMode: 'json' }
+	);
+	const response = await handler.fetch(params.request);
+	const headers = new Headers(response.headers);
+	headers.set('Cache-Control', 'no-store');
+	for (const [name, value] of Object.entries(params.cors)) {
+		headers.set(name, value);
+	}
+
+	return new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers
+	});
+}
+
 function parseJsonRpcRequest(body: unknown): JsonRpcRequest {
 	if (!isRecord(body) || typeof body.method !== 'string') {
 		throw new OAuthConnectorError('MCP request must include a method', 400, 'invalid_request');
@@ -1002,6 +1207,39 @@ export async function handleBuildosMcpPost(params: {
 			securityEventOptions: params.securityEventOptions
 		});
 		return respond(jsonRpcError(null, -32600, 'Accept must include application/json'), 406);
+	}
+
+	let classificationBody: unknown;
+	try {
+		classificationBody = await params.request.clone().json();
+	} catch {
+		classificationBody = undefined;
+	}
+	const classificationParams = isRecord(classificationBody)
+		? classificationBody.params
+		: undefined;
+	const classificationMeta = isRecord(classificationParams)
+		? classificationParams._meta
+		: undefined;
+	const claimsModernProtocol =
+		params.request.headers.get('mcp-protocol-version') === MCP_MODERN_PROTOCOL_VERSION ||
+		(isRecord(classificationMeta) &&
+			classificationMeta['io.modelcontextprotocol/protocolVersion'] ===
+				MCP_MODERN_PROTOCOL_VERSION);
+	const hasJsonRpcMethod =
+		isRecord(classificationBody) && typeof classificationBody.method === 'string';
+
+	// Keep the proven BuildOS auth/policy dispatcher shared, but let the official
+	// v2 SDK own modern envelope/header validation and wire projection. The legacy
+	// path stays byte-compatible during the client rollout.
+	if (
+		claimsModernProtocol ||
+		(hasJsonRpcMethod && !(await isLegacyRequest(params.request, classificationBody)))
+	) {
+		return handleBuildosModernMcpPost({
+			...params,
+			cors
+		});
 	}
 
 	const protocolVersion = params.request.headers.get('mcp-protocol-version');

@@ -104,6 +104,7 @@ export const actions: Actions = {
 			if (decision === 'deny') {
 				redirectTarget = buildOAuthRedirect({
 					redirectUri: authorizationRequest.redirectUri,
+					issuer: authorizationUrl.origin,
 					state: authorizationRequest.state,
 					error: 'access_denied',
 					errorDescription: 'The BuildOS connector request was denied.'
@@ -135,6 +136,7 @@ export const actions: Actions = {
 
 				redirectTarget = buildOAuthRedirect({
 					redirectUri: authorizationRequest.redirectUri,
+					issuer: authorizationUrl.origin,
 					code,
 					state: authorizationRequest.state
 				});

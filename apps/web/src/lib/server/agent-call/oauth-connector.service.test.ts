@@ -4,12 +4,14 @@ import { describe, expect, it } from 'vitest';
 import {
 	authenticateOAuthMcpRequest,
 	BUILDOS_OAUTH_READ_WRITE_OPS,
+	buildOAuthRedirect,
 	isOAuthRedirectUriAllowed,
 	mcpResourceUrl,
 	normalizeOAuthResource,
 	OAuthConnectorError,
 	parseOAuthScopes,
 	protectedResourceMetadataUrl,
+	registerDynamicOAuthClient,
 	revokeOAuthToken,
 	scopesForOAuthApproval,
 	scopeString
@@ -54,6 +56,42 @@ describe('OAuth connector helpers', () => {
 		expect(protectedResourceMetadataUrl('https://build-os.com')).toBe(
 			'https://build-os.com/.well-known/oauth-protected-resource/mcp/buildos'
 		);
+	});
+
+	it('binds OAuth authorization responses to the BuildOS issuer', () => {
+		const redirect = buildOAuthRedirect({
+			redirectUri: 'http://localhost:58233/callback',
+			issuer: 'https://build-os.com',
+			code: 'authorization-code',
+			state: 'client-state'
+		});
+		const url = new URL(redirect);
+
+		expect(url.searchParams.get('iss')).toBe('https://build-os.com');
+		expect(url.searchParams.get('code')).toBe('authorization-code');
+		expect(url.searchParams.get('state')).toBe('client-state');
+	});
+
+	it('accepts and preserves native application_type during dynamic registration', async () => {
+		let inserted: Record<string, unknown> | undefined;
+		const builder = {
+			insert(value: Record<string, unknown>) {
+				inserted = value;
+				return builder;
+			},
+			select: () => builder,
+			single: async () => ({ data: { id: 'client-row', ...inserted }, error: null })
+		};
+		const admin = { from: () => builder };
+
+		const client = await registerDynamicOAuthClient(admin, {
+			application_type: 'native',
+			client_name: 'Desktop MCP client',
+			redirect_uris: ['http://127.0.0.1/callback']
+		});
+
+		expect(client.application_type).toBe('native');
+		expect((inserted?.metadata as Record<string, unknown>).application_type).toBe('native');
 	});
 
 	it('accepts the read-only ChatGPT profile resource and binds it to the canonical audience', () => {

@@ -16,8 +16,9 @@ const REQUEST_TIMEOUT_MS = 60_000;
 
 /**
  * Thin JSON-RPC proxy to the remote BuildOS connector (`/mcp/buildos`). The local
- * SDK server handles `initialize` itself and forwards `tools/list`, `tools/call`,
- * `resources/list`, and `resources/read` through here. Auth is a single bearer
+ * SDK server handles the stdio protocol lifecycle itself and forwards tool and
+ * resource operations through here. The remote leg deliberately stays on the
+ * stable 2025 protocol during the dual-era rollout. Auth is a single bearer
  * header; nothing is logged.
  */
 export class BuildosRemoteMcpClient {
@@ -53,6 +54,17 @@ export class BuildosRemoteMcpClient {
 		return { resources: Array.isArray(result?.resources) ? result!.resources : [] };
 	}
 
+	async listResourceTemplates(): Promise<{ resourceTemplates: unknown[] }> {
+		const result = (await this.rpc('resources/templates/list')) as
+			| { resourceTemplates?: unknown[] }
+			| undefined;
+		return {
+			resourceTemplates: Array.isArray(result?.resourceTemplates)
+				? result.resourceTemplates
+				: []
+		};
+	}
+
 	async readResource(uri: string): Promise<Record<string, unknown>> {
 		const result = (await this.rpc('resources/read', { uri })) as
 			| Record<string, unknown>
@@ -69,7 +81,9 @@ export class BuildosRemoteMcpClient {
 					'Content-Type': 'application/json',
 					Accept: 'application/json, text/event-stream',
 					Authorization: `Bearer ${this.config.token}`,
-					'MCP-Protocol-Version': MCP_PROTOCOL_VERSION
+					'MCP-Protocol-Version': MCP_PROTOCOL_VERSION,
+					'Mcp-Method': method,
+					...this.namedOperationHeader(method, params)
 				},
 				body: JSON.stringify({
 					jsonrpc: '2.0',
@@ -110,6 +124,19 @@ export class BuildosRemoteMcpClient {
 		}
 
 		return payload.result;
+	}
+
+	private namedOperationHeader(
+		method: string,
+		params?: Record<string, unknown>
+	): Record<string, string> {
+		if (method === 'tools/call' && typeof params?.name === 'string') {
+			return { 'Mcp-Name': params.name };
+		}
+		if (method === 'resources/read' && typeof params?.uri === 'string') {
+			return { 'Mcp-Name': params.uri };
+		}
+		return {};
 	}
 }
 

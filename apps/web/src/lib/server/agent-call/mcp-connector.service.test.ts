@@ -40,6 +40,12 @@ import {
 
 const MCP_URL = new URL('https://build-os.com/mcp/buildos');
 const STATIC_KEY_HEADER = { Authorization: 'Bearer boca_static_test_key' };
+const MODERN_MCP_PROTOCOL_VERSION = '2026-07-28';
+const MODERN_MCP_META = {
+	'io.modelcontextprotocol/protocolVersion': MODERN_MCP_PROTOCOL_VERSION,
+	'io.modelcontextprotocol/clientInfo': { name: 'buildos-connector-test', version: '1.0.0' },
+	'io.modelcontextprotocol/clientCapabilities': {}
+};
 const WRITE_BUNDLE_TOOLS = [
 	'create_onto_task',
 	'update_onto_task',
@@ -113,6 +119,29 @@ function mcpGet(admin: unknown, headers: Record<string, string> = {}): Promise<R
 		request: new Request(MCP_URL.href, { method: 'GET', headers }),
 		url: MCP_URL
 	});
+}
+
+function modernMcpPost(
+	admin: unknown,
+	method: string,
+	params: Record<string, unknown> = {},
+	headers: Record<string, string> = {}
+): Promise<Response> {
+	return mcpPost(
+		admin,
+		{
+			jsonrpc: '2.0',
+			id: 20260728,
+			method,
+			params: { ...params, _meta: MODERN_MCP_META }
+		},
+		{
+			...STATIC_KEY_HEADER,
+			'MCP-Protocol-Version': MODERN_MCP_PROTOCOL_VERSION,
+			'Mcp-Method': method,
+			...headers
+		}
+	);
 }
 
 function mcpPostProfile(
@@ -796,6 +825,119 @@ describe('MCP spec compliance fixes', () => {
 		const payload = await response.json();
 		expect(payload.result.isError).toBeUndefined();
 		expect(gatewayMocks.executeBuildosAgentGatewayTool).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('MCP 2026-07-28 compatibility', () => {
+	beforeEach(() => {
+		gatewayMocks.executeBuildosAgentGatewayTool.mockReset();
+		sessionMocks.createMcpCallSession.mockReset();
+		sessionMocks.createMcpCallSession.mockResolvedValue('session-test');
+	});
+
+	it('discovers the modern server without an initialize session', async () => {
+		const response = await modernMcpPost(
+			staticKeyAdmin({ scope_mode: 'read_only' }),
+			'server/discover'
+		);
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get('Cache-Control')).toBe('no-store');
+		const payload = await response.json();
+		expect(payload.result.resultType).toBe('complete');
+		expect(payload.result.supportedVersions).toContain(MODERN_MCP_PROTOCOL_VERSION);
+		expect(payload.result.ttlMs).toBe(300_000);
+		expect(payload.result.cacheScope).toBe('private');
+		expect(payload.result._meta['io.modelcontextprotocol/serverInfo']).toMatchObject({
+			name: 'buildos'
+		});
+	});
+
+	it('lists tools with modern result metadata and a short private cache hint', async () => {
+		const response = await modernMcpPost(
+			staticKeyAdmin({ scope_mode: 'read_only' }),
+			'tools/list'
+		);
+
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(payload.result.resultType).toBe('complete');
+		expect(payload.result.ttlMs).toBe(60_000);
+		expect(payload.result.cacheScope).toBe('private');
+		expect(payload.result.tools.length).toBeGreaterThan(0);
+		expect(payload.result._meta['io.modelcontextprotocol/serverInfo']).toMatchObject({
+			name: 'buildos'
+		});
+	});
+
+	it('projects tool results onto the modern complete-result wire shape', async () => {
+		const result = { ok: true, projects: [{ id: 'p1', name: 'Demo' }] };
+		gatewayMocks.executeBuildosAgentGatewayTool.mockResolvedValue(result);
+		const response = await modernMcpPost(
+			staticKeyAdmin({ scope_mode: 'read_only' }),
+			'tools/call',
+			{ name: 'list_onto_projects', arguments: { limit: 1 } },
+			{ 'Mcp-Name': 'list_onto_projects' }
+		);
+
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(payload.result.resultType).toBe('complete');
+		expect(payload.result.structuredContent).toEqual(result);
+		expect(payload.result.content).toContainEqual({
+			type: 'text',
+			text: JSON.stringify(result, null, 2)
+		});
+	});
+
+	it('requires the Mcp-Method transport binding header', async () => {
+		const response = await modernMcpPost(
+			staticKeyAdmin({ scope_mode: 'read_only' }),
+			'tools/list',
+			{},
+			{ 'Mcp-Method': '' }
+		);
+
+		expect(response.status).toBe(400);
+		const payload = await response.json();
+		expect(payload.error.code).toBe(-32020);
+	});
+
+	it('returns the modern invalid-params resource error with the requested URI', async () => {
+		gatewayMocks.executeBuildosAgentGatewayTool.mockResolvedValue({
+			ok: false,
+			error: { code: 'NOT_FOUND', message: 'Document not found' }
+		});
+		const uri = 'buildos://document/11111111-1111-1111-1111-111111111111';
+		const response = await modernMcpPost(
+			staticKeyAdmin({ scope_mode: 'read_only' }),
+			'resources/read',
+			{ uri },
+			{ 'Mcp-Name': uri }
+		);
+
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(payload.error.code).toBe(-32602);
+		expect(payload.error.data.uri).toBe(uri);
+	});
+
+	it('preserves the OAuth challenge for unauthenticated modern requests', async () => {
+		const response = await modernMcpPost(
+			missAdmin(),
+			'server/discover',
+			{},
+			{
+				Authorization: ''
+			}
+		);
+
+		expect(response.status).toBe(401);
+		expect(response.headers.get('WWW-Authenticate')).toContain(
+			'https://build-os.com/.well-known/oauth-protected-resource/mcp/buildos'
+		);
+		const payload = await response.json();
+		expect(payload.error.code).toBe(-32001);
 	});
 });
 
