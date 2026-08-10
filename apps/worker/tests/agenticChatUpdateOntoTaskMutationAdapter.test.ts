@@ -8,6 +8,9 @@ const TASK_ID = '33333333-3333-4333-8333-333333333333';
 const EFFECT_ID = '44444444-4444-4444-8444-444444444444';
 const USER_ID = '55555555-5555-4555-8555-555555555555';
 const SESSION_ID = '66666666-6666-4666-8666-666666666666';
+const ASSIGNEE_ID = '77777777-7777-4777-8777-777777777777';
+const GOAL_ID = '88888888-8888-4888-8888-888888888888';
+const MILESTONE_ID = '99999999-9999-4999-8999-999999999999';
 
 function mutationInput(overrides: Record<string, unknown> = {}) {
 	return {
@@ -308,6 +311,44 @@ describe('AgenticChatUpdateOntoTaskMutationAdapter', () => {
 			value: expect.objectContaining({ entity_id: TASK_ID, action: 'updated' })
 		});
 		warn.mockRestore();
+	});
+
+	it('admits the ratified assignment and relationship arguments without weakening the project fence', async () => {
+		const runGateway = vi.fn(async () => ({
+			ok: true,
+			data: { task: { ...gatewayTask(), assignees: [] } }
+		}));
+		const adapter = new AgenticChatUpdateOntoTaskMutationAdapter({} as never, {
+			runGateway: runGateway as never
+		});
+		const input = mutationInput() as any;
+		input.arguments = {
+			project_id: PROJECT_ID,
+			task_id: TASK_ID,
+			assignee_actor_ids: [ASSIGNEE_ID],
+			assignee_handles: ['@sam'],
+			goal_id: GOAL_ID,
+			supporting_milestone_id: MILESTONE_ID
+		};
+
+		await expect(adapter.execute(input)).resolves.toMatchObject({
+			task: { id: TASK_ID, project_id: PROJECT_ID, assignees: [] }
+		});
+		expect(runGateway).toHaveBeenCalledWith(
+			expect.objectContaining({
+				args: {
+					task_id: TASK_ID,
+					assignee_actor_ids: [ASSIGNEE_ID],
+					assignee_handles: ['@sam'],
+					goal_id: GOAL_ID,
+					supporting_milestone_id: MILESTONE_ID
+				},
+				scope: expect.objectContaining({
+					project_ids: [PROJECT_ID],
+					write_project_ids: [PROJECT_ID]
+				})
+			})
+		);
 	});
 
 	it('rejects a changed effect key before dispatch', async () => {

@@ -68,6 +68,10 @@ const REVIEWED_UPDATE_ONTO_TASK_ARGUMENT_NAMES = new Set([
 	'type_key',
 	'state_key',
 	'priority',
+	'assignee_actor_ids',
+	'assignee_handles',
+	'goal_id',
+	'supporting_milestone_id',
 	'start_at',
 	'due_at',
 	'props'

@@ -10,6 +10,7 @@ import {
 	notifyEntityMentionsAdded,
 	resolveEntityMentionUserIds
 } from '../ops/entity-mention-notification.service';
+import { notifyTaskAssignmentAdded } from '../ops/task-assignment-notification.service';
 import type { OntologyProjectSummary } from '../ontology/ontology-projects.service';
 import type { ToolExecutionContext } from './op-execution-gateway.types';
 
@@ -102,6 +103,7 @@ export async function syncUpdatedTaskSideEffects(params: {
 	existingTask: Record<string, unknown>;
 	updatedTask: Record<string, unknown>;
 	changedArgs: Record<string, unknown>;
+	addedAssigneeActorIds?: string[];
 }): Promise<void> {
 	const isTransitioningToDone =
 		params.changedArgs.state_key !== undefined &&
@@ -157,6 +159,23 @@ export async function syncUpdatedTaskSideEffects(params: {
 				: null
 		]
 	});
+	let assignmentRecipientUserIds: string[] = [];
+
+	if (params.addedAssigneeActorIds) {
+		const { recipientUserIds } = await notifyTaskAssignmentAdded({
+			supabase: params.context.admin,
+			projectId: params.project.id,
+			projectName: params.project.name,
+			taskId: String(params.updatedTask.id),
+			taskTitle:
+				typeof params.updatedTask.title === 'string' ? params.updatedTask.title : 'Task',
+			actorUserId: params.context.userId,
+			actorDisplayName,
+			addedAssigneeActorIds: params.addedAssigneeActorIds,
+			coalescedMentionUserIds: mentionUserIds
+		});
+		assignmentRecipientUserIds = recipientUserIds;
+	}
 
 	await notifyEntityMentionsAdded({
 		supabase: params.context.admin,
@@ -168,6 +187,7 @@ export async function syncUpdatedTaskSideEffects(params: {
 		actorUserId: params.context.userId,
 		actorDisplayName,
 		mentionedUserIds: mentionUserIds,
+		skipUserIds: assignmentRecipientUserIds,
 		source: 'agent_ping'
 	});
 

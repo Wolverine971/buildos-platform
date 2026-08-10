@@ -484,6 +484,26 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 					'Raising a task\'s priority means giving it a LOWER number ("make this top ' +
 					'priority" -> 1). Use null to clear.'
 			},
+			assignee_actor_ids: {
+				type: 'array',
+				items: { type: 'string' },
+				description:
+					'Optional full replacement assignee actor UUID list. Use [] to clear; maximum 10.'
+			},
+			assignee_handles: {
+				type: 'array',
+				items: { type: 'string' },
+				description:
+					'Optional project-member handles such as ["@jim"], resolved by name or email local-part.'
+			},
+			goal_id: {
+				type: ['string', 'null'],
+				description: 'Optional goal UUID relationship. Use null to clear.'
+			},
+			supporting_milestone_id: {
+				type: ['string', 'null'],
+				description: 'Optional milestone UUID relationship. Use null to clear.'
+			},
 			start_at: {
 				type: ['string', 'null'],
 				description: 'Optional ISO start date. Use null to clear.'

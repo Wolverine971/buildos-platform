@@ -143,8 +143,10 @@ function updateTaskToolDefinition() {
 				properties: {
 					task_id: { type: 'string' },
 					state_key: { type: 'string' },
+					assignee_actor_ids: { type: 'array', items: { type: 'string' } },
 					assignee_handles: { type: 'array', items: { type: 'string' } },
-					goal_id: { type: ['string', 'null'] }
+					goal_id: { type: ['string', 'null'] },
+					supporting_milestone_id: { type: ['string', 'null'] }
 				}
 			}
 		}
@@ -667,7 +669,11 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 						additionalProperties: false,
 						properties: {
 							task_id: { type: 'string' },
-							state_key: { type: 'string' }
+							state_key: { type: 'string' },
+							assignee_actor_ids: { type: 'array', items: { type: 'string' } },
+							assignee_handles: { type: 'array', items: { type: 'string' } },
+							goal_id: { type: ['string', 'null'] },
+							supporting_milestone_id: { type: ['string', 'null'] }
 						},
 						required: ['task_id']
 					}

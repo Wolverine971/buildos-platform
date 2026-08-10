@@ -1,6 +1,13 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.tasks.ts
-import { isValidUUID } from '@buildos/shared-types';
+import { isValidUUID, type Json } from '@buildos/shared-types';
+import {
+	AutoOrganizeError,
+	assertEntityRefsInProject,
+	prepareRelationshipMutationPlan,
+	relationshipMutationErrorFromDatabase
+} from '../ontology/auto-organizer.service';
 import { ensureActorId } from '../ontology/ontology-projects.service';
+import type { ConnectionRef } from '../ontology/relationship-resolver';
 import { normalizeTaskStateInput } from '../ontology/task-state';
 import {
 	assertAccessibleProject,
@@ -18,6 +25,7 @@ import {
 	normalizeEntityStateFilter,
 	normalizeEntityTypeFilter,
 	normalizeOptionalDate,
+	normalizeOptionalUuid,
 	normalizeProps,
 	requireTrimmedString
 } from './op-execution-gateway.normalization';
@@ -28,7 +36,63 @@ import {
 } from './op-execution-gateway.pagination';
 import { ExternalToolGatewayError } from './op-execution-gateway.responses';
 import { searchEntitiesByType } from './op-execution-gateway.search';
+import {
+	fetchGatewayTaskAssignees,
+	resolveGatewayTaskAssignees
+} from './op-execution-gateway.task-assignment';
 import type { ToolExecutionContext } from './op-execution-gateway.types';
+
+type AtomicTaskUpdateResult = {
+	task?: Record<string, unknown>;
+	added_actor_ids?: string[];
+};
+
+function hasOwn(record: Record<string, unknown>, key: string): boolean {
+	return Object.prototype.hasOwnProperty.call(record, key);
+}
+
+function atomicTaskUpdateError(error: { message?: string } | null | undefined): never {
+	const message = error?.message ?? 'Failed to update task atomically';
+	const relationshipError = relationshipMutationErrorFromDatabase({ message });
+	if (relationshipError) {
+		const code =
+			relationshipError.status === 404
+				? 'NOT_FOUND'
+				: relationshipError.status === 403
+					? 'FORBIDDEN'
+					: relationshipError.status === 409
+						? 'CONFLICT'
+						: relationshipError.status === 400
+							? 'VALIDATION_ERROR'
+							: 'INTERNAL';
+		throw new ExternalToolGatewayError(code, relationshipError.message);
+	}
+	if (message.includes('task_not_found')) {
+		throw new ExternalToolGatewayError('NOT_FOUND', 'Task not found');
+	}
+	if (message.includes('access_denied')) {
+		throw new ExternalToolGatewayError('FORBIDDEN', 'Access denied');
+	}
+	if (message.includes('invalid_state_key')) {
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', message);
+	}
+	throw new ExternalToolGatewayError('INTERNAL', message);
+}
+
+function relationshipPlanningError(error: unknown): never {
+	if (!(error instanceof AutoOrganizeError)) throw error;
+	const code =
+		error.status === 404
+			? 'NOT_FOUND'
+			: error.status === 403
+				? 'FORBIDDEN'
+				: error.status === 409
+					? 'CONFLICT'
+					: error.status === 400
+						? 'VALIDATION_ERROR'
+						: 'INTERNAL';
+	throw new ExternalToolGatewayError(code, error.message);
+}
 
 function normalizePriority(
 	value: unknown,
@@ -300,6 +364,26 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 	const project = assertVisibleEntityProject(visible.projectMap, existingTask.project_id);
 	assertProjectWriteAccess(project, context.scope);
 	const actorId = await ensureActorId(context.admin, context.userId);
+	const assignees = await resolveGatewayTaskAssignees({
+		admin: context.admin,
+		projectId: project.id,
+		projectOwnerActorId: project.owner_actor_id,
+		args
+	});
+	const hasGoalInput = hasOwn(args, 'goal_id');
+	const hasMilestoneInput = hasOwn(args, 'supporting_milestone_id');
+	const goalId = hasGoalInput ? normalizeOptionalUuid(args.goal_id, 'goal_id') : undefined;
+	const milestoneId = hasMilestoneInput
+		? normalizeOptionalUuid(args.supporting_milestone_id, 'supporting_milestone_id')
+		: undefined;
+	const requiresAtomicRelationshipUpdate =
+		assignees.hasInput || hasGoalInput || hasMilestoneInput;
+	if (requiresAtomicRelationshipUpdate && archivedAtUpdate !== undefined) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'archived cannot be combined with task assignee or relationship updates'
+		);
+	}
 
 	const updateData: Record<string, unknown> = {
 		updated_at: new Date().toISOString()
@@ -353,14 +437,31 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 		changedFields.push('due_at');
 	}
 
-	if (args.props !== undefined) {
-		const props = normalizeProps(args.props, 'props');
-		updateData.props = {
+	const propsPatch = normalizeProps(args.props, 'props');
+	if (args.props !== undefined || hasGoalInput || hasMilestoneInput) {
+		const nextProps = {
 			...((existingTask.props as Record<string, unknown> | null) ?? {}),
-			...(props ?? {})
+			...(propsPatch ?? {})
 		};
+		if (hasGoalInput) nextProps.goal_id = goalId ?? null;
+		if (hasMilestoneInput) nextProps.supporting_milestone_id = milestoneId ?? null;
+		updateData.props = nextProps;
+	}
+	if (args.props !== undefined) {
 		changedFieldCount += 1;
 		changedFields.push('props');
+	}
+	if (hasGoalInput) {
+		changedFieldCount += 1;
+		changedFields.push('goal_id');
+	}
+	if (hasMilestoneInput) {
+		changedFieldCount += 1;
+		changedFields.push('supporting_milestone_id');
+	}
+	if (assignees.hasInput) {
+		changedFieldCount += 1;
+		changedFields.push('assignees');
 	}
 
 	if (args.state_key !== undefined) {
@@ -409,17 +510,89 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 		);
 	}
 
-	const { data, error } = await context.admin
-		.from('onto_tasks')
-		.update(updateData)
-		.eq('id', taskId)
-		.select(
-			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at'
-		)
-		.single();
+	let data: Record<string, unknown>;
+	let addedAssigneeActorIds: string[] = [];
+	if (requiresAtomicRelationshipUpdate) {
+		const connections: ConnectionRef[] = [
+			...(goalId ? [{ kind: 'goal' as const, id: goalId }] : []),
+			...(milestoneId
+				? [
+						{
+							kind: 'milestone' as const,
+							id: milestoneId,
+							rel: 'targets_milestone' as const
+						}
+					]
+				: [])
+		];
+		let relationshipPlan: Awaited<ReturnType<typeof prepareRelationshipMutationPlan>> | null =
+			null;
+		if (hasGoalInput || hasMilestoneInput) {
+			try {
+				if (connections.length > 0) {
+					await assertEntityRefsInProject({
+						supabase: context.admin,
+						projectId: project.id,
+						refs: connections,
+						allowProject: true
+					});
+				}
+				relationshipPlan = await prepareRelationshipMutationPlan({
+					supabase: context.admin,
+					projectId: project.id,
+					entity: { kind: 'task', id: taskId },
+					connections,
+					options: {
+						mode: 'replace',
+						explicitKinds: [
+							...(hasGoalInput ? (['goal'] as const) : []),
+							...(hasMilestoneInput ? (['milestone'] as const) : [])
+						],
+						skipContainment: !hasGoalInput && hasMilestoneInput
+					},
+					referencesValidated: true
+				});
+			} catch (error) {
+				relationshipPlanningError(error);
+			}
+		}
 
-	if (error || !data) {
-		throw new ExternalToolGatewayError('INTERNAL', error?.message || 'Failed to update task');
+		const { data: atomicResult, error: atomicError } = await context.admin.rpc(
+			'onto_task_update_with_relationships_atomic',
+			{
+				p_task_id: taskId,
+				p_updates: updateData as Json,
+				p_sync_assignees: assignees.hasInput,
+				p_assignee_actor_ids: assignees.hasInput ? assignees.assigneeActorIds : null,
+				p_assigned_by_actor_id: assignees.hasInput ? actorId : null,
+				p_relationship_plan: relationshipPlan as Json | null,
+				p_source: 'manual'
+			}
+		);
+		if (atomicError || !atomicResult) atomicTaskUpdateError(atomicError);
+		const result = atomicResult as AtomicTaskUpdateResult;
+		if (!result.task) atomicTaskUpdateError(null);
+		data = result.task;
+		addedAssigneeActorIds = Array.isArray(result.added_actor_ids)
+			? result.added_actor_ids.filter((id): id is string => typeof id === 'string')
+			: [];
+	} else {
+		const { data: updatedTask, error } = await context.admin
+			.from('onto_tasks')
+			.update(updateData)
+			.eq('id', taskId)
+			.select(
+				'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at'
+			)
+			.single();
+
+		if (error || !updatedTask) {
+			throw new ExternalToolGatewayError(
+				'INTERNAL',
+				error?.message || 'Failed to update task'
+			);
+		}
+		data = updatedTask as Record<string, unknown>;
 	}
 
 	await syncUpdatedTaskSideEffects({
@@ -428,12 +601,30 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 		actorId,
 		existingTask: existingTask as Record<string, unknown>,
 		updatedTask: data as Record<string, unknown>,
-		changedArgs: args
+		changedArgs: args,
+		addedAssigneeActorIds: assignees.hasInput ? addedAssigneeActorIds : undefined
 	});
+
+	let responseTask: Record<string, unknown> = data;
+	if (requiresAtomicRelationshipUpdate) {
+		try {
+			responseTask = {
+				...data,
+				assignees: await fetchGatewayTaskAssignees({
+					admin: context.admin,
+					projectId: project.id,
+					taskId
+				})
+			};
+		} catch (assigneeError) {
+			console.warn('[External Tool Gateway] Failed to enrich task assignees:', assigneeError);
+			responseTask = { ...data, assignees: [] };
+		}
+	}
 
 	return {
 		task: {
-			...data,
+			...responseTask,
 			project_name: project.name
 		}
 	};

@@ -29,6 +29,7 @@ export * from './utils/entity-reference-parser';
 export * from './utils/validation-utils';
 export * from './ops/tracked-in-app-notification.service';
 export * from './ops/entity-mention-notification.service';
+export * from './ops/task-assignment-notification.service';
 
 // Ontology mutation core
 export * from './ontology/relationship-resolver';

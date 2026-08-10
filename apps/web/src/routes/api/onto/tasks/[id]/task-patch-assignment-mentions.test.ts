@@ -268,4 +268,55 @@ describe('PATCH /api/onto/tasks/[id] assignment + mention coalescing', () => {
 			entityContainment: { child: { kind: 'task', id: 'task-1' } }
 		});
 	});
+
+	it('passes a semantic-only milestone replacement without touching containment', async () => {
+		prepareRelationshipMutationPlanMock.mockResolvedValueOnce({
+			references: [{ kind: 'milestone', id: 'milestone-1' }],
+			entityContainment: null,
+			semantic: [
+				{
+					type: 'semantic',
+					entity: { kind: 'task', id: 'task-1' },
+					rel: 'targets_milestone',
+					direction: 'outgoing',
+					mode: 'replace',
+					desiredEdges: []
+				}
+			],
+			projectEdges: [],
+			childContainment: []
+		});
+		const { PATCH } = await import('./+server');
+		const response = await PATCH({
+			params: { id: 'task-1' },
+			request: new Request('http://localhost/api/onto/tasks/task-1', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ supporting_milestone_id: 'milestone-1' })
+			}),
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: async () => ({
+					user: { id: 'user-actor', name: 'DJ', email: 'dj@example.com' }
+				})
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(prepareRelationshipMutationPlanMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				entity: { kind: 'task', id: 'task-1' },
+				connections: [{ kind: 'milestone', id: 'milestone-1', rel: 'targets_milestone' }],
+				options: {
+					mode: 'replace',
+					explicitKinds: ['milestone'],
+					skipContainment: true
+				}
+			})
+		);
+		expect(capturedAtomicArgs?.p_relationship_plan).toMatchObject({
+			entityContainment: null,
+			semantic: [expect.objectContaining({ rel: 'targets_milestone' })]
+		});
+	});
 });
