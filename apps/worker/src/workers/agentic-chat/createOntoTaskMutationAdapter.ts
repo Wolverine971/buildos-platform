@@ -69,6 +69,7 @@ export class AgenticChatCreateOntoTaskMutationAdapter
 		assertMutationAdapterBoundary(input, {
 			toolName: TOOL_NAME,
 			operationName: OPERATION_NAME,
+			downstreamIdempotencySupported: true,
 			reviewedArgumentNames: REVIEWED_ARGUMENT_NAMES
 		});
 

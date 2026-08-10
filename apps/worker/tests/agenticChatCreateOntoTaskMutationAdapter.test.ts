@@ -15,6 +15,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 		downstreamIdempotencyKey: `chat-effect:${EFFECT_ID}`,
 		toolName: 'create_onto_task',
 		operationName: 'onto.task.create',
+		downstreamIdempotencySupported: true,
 		arguments: {
 			project_id: PROJECT_ID,
 			title: 'New task',

@@ -4,7 +4,7 @@
 
 **Prepared:** 2026-08-10
 
-**Status:** inventory complete; `create_onto_task` adapter implemented and locally/hosted-SQL proven; production gates remain OFF
+**Status:** inventory complete; task family and `create_onto_document` adapters implemented; required task SQL hosted; production gates remain OFF
 
 **Governing plan:** `AGENTIC_CHAT_WORKER_PHASE_4_P2_MUTATION_EFFECT_PARITY_PLAN_2026-08-09.md`
 
@@ -49,7 +49,7 @@ projection, an independently gated adapter, and a recovery classification.
 | ------------------------------- | --------------------------------- | ------ | ------: | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `create_onto_task`              | `onto.task.create`                | shared |     30s | **Idempotent now:** atomic task key receives `chat-effect:<effect_id>`                                              | `task`; task row, assignees, relationships, assignment/mention notifications, activity, task-calendar sync |
 | `update_onto_task`              | `onto.task.update`                | shared |     30s | One/uncertain; no effect-key persistence/query                                                                      | `task`; row, assignees, relationships, assignment/mention notifications, activity, task-calendar sync      |
-| `create_onto_document`          | `onto.document.create`            | shared |     30s | Unclassified; likely one/uncertain                                                                                  | `document`; document row, version, tree placement, activity                                                |
+| `create_onto_document`          | `onto.document.create`            | shared |     30s | **One/uncertain:** no effect-key persistence/query; adapter implemented                                             | `document`; row/version/tree/mentions/activity; project-loop burst remains web-only                        |
 | `update_onto_document`          | `onto.document.update`            | shared |     45s | Unclassified; merge path has model/editor sub-call, likely one/uncertain                                            | `document`; row, version, optional merge/append, activity                                                  |
 | `move_document_in_tree`         | `onto.document.tree.move`         | shared |     30s | Unclassified; exact tree-state reconciliation needed                                                                | tree/document placement; doc-structure version                                                             |
 | `create_task_document`          | `onto.task.docs.create_or_attach` | shared |     30s | Unclassified; compound create-or-link needs exact branch receipt                                                    | `document` plus task-document edge; version/tree/activity as applicable                                    |
@@ -104,9 +104,10 @@ registry's email surface is read-only.
 1. **Task family:** `update_onto_task` is complete and one-attempt/uncertain;
    `create_onto_task` is the first truly idempotent adapter and is implemented in
    this unit.
-2. **Document family:** create, update, tree move, and task-document attach share
-   version/tree behavior and should be differentially proven together, while
-   keeping independent capability gates.
+2. **Document family:** create is complete and independently gated. Update,
+   tree move, and task-document attach remain separate because merge/editor,
+   exact placement reconciliation, and compound create-or-link behavior need
+   their own proofs.
 3. **Core ontology rows:** goal, plan, milestone, and risk create/update pairs.
 4. **Relationships and project:** link/unlink, then project update/create after
    compound-instantiation idempotency is pinned.
@@ -189,3 +190,48 @@ Audit gates: focused task-adapter/router/assembly/effect suite 39/39; full worke
 suite 851 passed with one intentional skip; worker lint/typecheck and changed-
 source formatting/diff checks pass. The hosted SQL receipt and all production-
 off gates are unchanged.
+
+## `create_onto_document` bounded adapter result
+
+The first document-family adapter is locally complete without enabling it in
+production:
+
+- The provider projection requires the signed `project_id`, `title`, and
+  `description` fields and admits only the reviewed legacy fields: type/state,
+  content, parent placement, and position. The adapter trims and rejects an
+  empty description. Legacy `props` remain excluded because the current web
+  create route accepts but does not persist them.
+- The signed chat field `parent_id` is translated to the shared gateway's
+  canonical `parent_document_id`. Description trimming, blank-parent handling,
+  and invalid-position omission preserve the legacy chat route's preflight
+  behavior before dispatch.
+- Provider advertisement and adapter installation remain independent,
+  default-off gates. Assembly fails closed if the provider advertises document
+  create without the corresponding adapter.
+- The shared gateway creates the row and preserves the core document version,
+  tree-placement, mention-notification, and activity side effects. The worker
+  returns the legacy-compatible `{ document, message }` receipt and removes only
+  gateway-only `project_name` plus `props.origin = "external_agent"` provenance
+  from the public copy; the authoritative row retains provenance.
+- No document effect key is atomically stored or exactly queryable. The provider,
+  executor, and adapter now cross-check that classification as
+  `downstreamIdempotencySupported = false`; the adapter gets one attempt and any
+  thrown or ambiguous post-dispatch outcome remains uncertain.
+- The provider mutation catalog is now declarative, so operation name, reviewed
+  projection, capability, and idempotency classification cannot drift across
+  separate create/update branches. The adapter boundary independently checks
+  the provider's idempotency classification before any write.
+- Legacy duplicate-title prevention depends on web executor context and its
+  same-turn registry, while the route-owned project-loop burst is not part of
+  the shared gateway. Both remain live-enablement prerequisites, not reasons to
+  widen this adapter's database behavior. Invalid non-empty parent IDs also fail
+  before create in the shared gateway instead of producing the legacy route's
+  post-create tree error; this intentional fail-closed difference must remain
+  visible in any future golden.
+- No schema change or migration is needed for this one-attempt adapter.
+
+Document-create proof: focused provider/adapter/executor/assembly matrix 68/68;
+full worker suite 860 passed with one intentional skip; worker lint/typecheck and
+HTTP module-size guard pass with zero errors; external shared-gateway plus legacy
+document-create/mention/schema referees 53/53. Production provider capability,
+adapter capability, routing, deploy, and live model mutation remain OFF.

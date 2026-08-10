@@ -25,6 +25,7 @@ export type AgenticChatFixtureMutatingToolPortV1 = {
 		operationName: string;
 		arguments: JsonObject;
 		providerToolCallId: string;
+		downstreamIdempotencySupported: boolean;
 		executionInput: AgenticChatWorkerExecutionInputV1;
 		signal: AbortSignal;
 	}): Promise<JsonObject>;
@@ -203,6 +204,7 @@ export class AgenticChatFixtureMutationExecutor {
 					operationName: input.step.operationName,
 					arguments: input.step.arguments,
 					providerToolCallId: input.step.providerToolCallId,
+					downstreamIdempotencySupported: input.step.downstreamIdempotencySupported,
 					executionInput: input.executionInput,
 					// Once an attempt may have committed, cancellation can no longer
 					// prove that no write happened. Recovery must query/replay with the

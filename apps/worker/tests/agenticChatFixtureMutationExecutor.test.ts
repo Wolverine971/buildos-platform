@@ -183,6 +183,7 @@ describe('AgenticChatFixtureMutationExecutor', () => {
 			expect.objectContaining({
 				effectId: harness.stable.effectId,
 				downstreamIdempotencyKey: harness.stable.downstreamIdempotencyKey,
+				downstreamIdempotencySupported: true,
 				providerToolCallId: 'provider-call-1'
 			})
 		);

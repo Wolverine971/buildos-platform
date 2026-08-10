@@ -176,6 +176,31 @@ function createTaskToolDefinition() {
 	};
 }
 
+function createDocumentToolDefinition() {
+	return {
+		type: 'function' as const,
+		function: {
+			name: 'create_onto_document',
+			description: 'Create a document.',
+			parameters: {
+				type: 'object',
+				required: ['project_id', 'title', 'description'],
+				properties: {
+					project_id: { type: 'string' },
+					title: { type: 'string' },
+					description: { type: 'string' },
+					type_key: { type: 'string' },
+					state_key: { type: 'string' },
+					content: { type: 'string' },
+					props: { type: 'object' },
+					parent_id: { type: ['string', 'null'] },
+					position: { type: 'number' }
+				}
+			}
+		}
+	};
+}
+
 async function collect(stream: AsyncIterable<AgenticChatProviderStepV1>) {
 	const result: AgenticChatProviderStepV1[] = [];
 	for await (const step of stream) result.push(step);
@@ -799,6 +824,79 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 							parent: { type: 'object' }
 						},
 						required: ['project_id', 'title']
+					}
+				}
+			}
+		]);
+	});
+
+	it('projects create_onto_document as one-attempt/uncertain with only reviewed fields', async () => {
+		const projectId = 'db000000-0000-4000-8000-000000000004';
+		const definition = createDocumentToolDefinition();
+		const client = clientWith([
+			{
+				type: 'tool_call',
+				toolCall: [
+					{
+						index: 0,
+						id: 'provider-create-document',
+						type: 'function',
+						function: {
+							name: 'create_onto_document',
+							arguments: JSON.stringify({
+								project_id: projectId,
+								title: 'Decision log',
+								description: 'Project decisions'
+							})
+						}
+					}
+				]
+			},
+			{ type: 'done', finishedReason: 'tool_calls' }
+		]);
+		const adapter = new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ createOntoDocument: true }
+		);
+		const invocation = await adapter.prepare({
+			executionInput: executionInputWithReadSurface([definition], ['create_onto_document']),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
+			expect.objectContaining({
+				type: 'mutating_tool',
+				providerToolCallId: 'provider-create-document',
+				operationName: 'onto.document.create',
+				downstreamIdempotencySupported: false
+			})
+		]);
+		expect(client.stream.mock.calls[0]?.[0].tools).toEqual([
+			{
+				...definition,
+				function: {
+					...definition.function,
+					parameters: {
+						...definition.function.parameters,
+						additionalProperties: false,
+						properties: {
+							project_id: { type: 'string' },
+							title: { type: 'string' },
+							description: { type: 'string' },
+							type_key: { type: 'string' },
+							state_key: { type: 'string' },
+							content: { type: 'string' },
+							parent_id: { type: ['string', 'null'] },
+							position: { type: 'number' }
+						},
+						required: ['project_id', 'title', 'description']
 					}
 				}
 			}

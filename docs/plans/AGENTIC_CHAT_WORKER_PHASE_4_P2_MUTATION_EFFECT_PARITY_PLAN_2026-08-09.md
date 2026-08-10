@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S4 complete; S5 inventory and idempotent task-create adapter complete; all required SQL hosted; document family next; production mutations remain disabled
+**Status:** S1-S4 complete; S5 inventory, task family, and document-create adapter complete; all required task SQL hosted; document update/tree/attach next; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -438,6 +438,40 @@ Pause-point audit hardening on 2026-08-10:
   passes 851 tests with one intentional skip; worker lint/typecheck and changed-
   source formatting/diff checks pass. Hosted SQL and every production mutation
   gate remain unchanged and OFF.
+
+First document-family unit completed locally on 2026-08-10:
+
+- Added an independently gated `create_onto_document` adapter over the shared
+  in-process gateway. It rechecks the signed surface, effect/key and provider
+  correlation, project fence, reviewed arguments, cancellation, and the
+  provider's non-idempotent classification before dispatch.
+- The reviewed provider projection requires the signed `project_id`, `title`,
+  and `description` fields; the adapter trims and rejects an empty description.
+  It excludes legacy `props` because the current web route does not persist
+  them, translates signed `parent_id` to canonical `parent_document_id`, and
+  preserves legacy blank-parent and invalid-position normalization.
+- The shared handler covers the authoritative document row, initial version,
+  tree placement, mention notifications, and activity. The public receipt keeps
+  the legacy `{ document, message }` shape while gateway-only project name and
+  external-agent provenance are removed only from the receipt copy.
+- Document create has no atomic effect-key persistence or exact query, so it is
+  explicitly one-attempt/uncertain. A new boundary assertion prevents provider
+  metadata from accidentally upgrading or downgrading any adapter's downstream
+  idempotency classification.
+- Provider mutation metadata is now a declarative table rather than repeated
+  create/update branches. Assembly still normalizes every provider and adapter
+  capability independently and production bootstrap supplies none.
+- The web executor's context-aware duplicate-title guard and same-turn document
+  registry are not yet worker-owned, and the route-owned project-loop burst is
+  not part of the shared gateway. They remain explicit production-enablement
+  prerequisites. The shared gateway's earlier rejection of invalid non-empty
+  parent IDs is retained as an intentional fail-closed differential.
+- Focused provider/adapter/executor/assembly tests pass 68/68; the full worker
+  suite passes 860 tests with one intentional skip; worker lint/typecheck and
+  HTTP module-size guard pass with zero errors. The external shared-gateway plus
+  legacy document-create/mention/schema referee passes 53/53.
+- No SQL, migration, deploy, provider capability, adapter capability, routing,
+  or live model mutation was introduced or enabled in this unit.
 
 ## P2 exit gate
 

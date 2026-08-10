@@ -59,40 +59,87 @@ const MAX_VALIDATION_REPAIR_ROUNDS = 2;
 const MAX_FORCED_SYNTHESIS_RETRIES = 1;
 const CANONICAL_UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const REVIEWED_MUTATION_TOOL_NAMES = new Set(['create_onto_task', 'update_onto_task']);
-const REVIEWED_CREATE_ONTO_TASK_ARGUMENT_NAMES = new Set([
-	'project_id',
-	'title',
-	'description',
-	'type_key',
-	'state_key',
-	'priority',
-	'assignee_actor_ids',
-	'assignee_handles',
-	'plan_id',
-	'goal_id',
-	'supporting_milestone_id',
-	'parent',
-	'start_at',
-	'due_at',
-	'props'
-]);
-const REVIEWED_UPDATE_ONTO_TASK_ARGUMENT_NAMES = new Set([
-	'task_id',
-	'project_id',
-	'title',
-	'description',
-	'type_key',
-	'state_key',
-	'priority',
-	'assignee_actor_ids',
-	'assignee_handles',
-	'goal_id',
-	'supporting_milestone_id',
-	'start_at',
-	'due_at',
-	'props'
-]);
+
+export type AgenticChatProviderMutationCapabilitiesV1 = {
+	createOntoDocument: boolean;
+	createOntoTask: boolean;
+	updateOntoTask: boolean;
+};
+
+type MutationCapabilityName = keyof AgenticChatProviderMutationCapabilitiesV1;
+type ReviewedMutationSpec = {
+	capability: MutationCapabilityName;
+	operationName: string;
+	downstreamIdempotencySupported: boolean;
+	requiredNames: readonly string[];
+	reviewedArgumentNames: ReadonlySet<string>;
+};
+
+const REVIEWED_MUTATION_SPECS = {
+	create_onto_document: {
+		capability: 'createOntoDocument',
+		operationName: 'onto.document.create',
+		downstreamIdempotencySupported: false,
+		requiredNames: ['project_id', 'title', 'description'],
+		reviewedArgumentNames: new Set([
+			'project_id',
+			'title',
+			'description',
+			'type_key',
+			'state_key',
+			'content',
+			'parent_id',
+			'position'
+		])
+	},
+	create_onto_task: {
+		capability: 'createOntoTask',
+		operationName: 'onto.task.create',
+		downstreamIdempotencySupported: true,
+		requiredNames: ['project_id', 'title'],
+		reviewedArgumentNames: new Set([
+			'project_id',
+			'title',
+			'description',
+			'type_key',
+			'state_key',
+			'priority',
+			'assignee_actor_ids',
+			'assignee_handles',
+			'plan_id',
+			'goal_id',
+			'supporting_milestone_id',
+			'parent',
+			'start_at',
+			'due_at',
+			'props'
+		])
+	},
+	update_onto_task: {
+		capability: 'updateOntoTask',
+		operationName: 'onto.task.update',
+		downstreamIdempotencySupported: false,
+		requiredNames: ['task_id'],
+		reviewedArgumentNames: new Set([
+			'task_id',
+			'project_id',
+			'title',
+			'description',
+			'type_key',
+			'state_key',
+			'priority',
+			'assignee_actor_ids',
+			'assignee_handles',
+			'goal_id',
+			'supporting_milestone_id',
+			'start_at',
+			'due_at',
+			'props'
+		])
+	}
+} as const satisfies Record<string, ReviewedMutationSpec>;
+type ReviewedMutationToolName = keyof typeof REVIEWED_MUTATION_SPECS;
+const REVIEWED_MUTATION_TOOL_NAMES = new Set<string>(Object.keys(REVIEWED_MUTATION_SPECS));
 
 const WORKER_READ_LOOP_CATALOG_ENTRIES = AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.map(
 	(toolName) => {
@@ -100,16 +147,10 @@ const WORKER_READ_LOOP_CATALOG_ENTRIES = AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES
 		return [toolName, { op, tool_name: toolName, kind: 'read' as const }] as const;
 	}
 );
-const WORKER_MUTATION_LOOP_CATALOG_ENTRIES = [
-	[
-		'create_onto_task',
-		{ op: 'onto.task.create', tool_name: 'create_onto_task', kind: 'write' as const }
-	],
-	[
-		'update_onto_task',
-		{ op: 'onto.task.update', tool_name: 'update_onto_task', kind: 'write' as const }
-	]
-] as const;
+const WORKER_MUTATION_LOOP_CATALOG_ENTRIES = Object.entries(REVIEWED_MUTATION_SPECS).map(
+	([toolName, spec]) =>
+		[toolName, { op: spec.operationName, tool_name: toolName, kind: 'write' as const }] as const
+);
 const WORKER_LOOP_CATALOG = Object.freeze({
 	ops: Object.freeze(
 		Object.fromEntries(
@@ -189,11 +230,6 @@ type ClientRequest = Parameters<AgenticChatReadOnlyProviderClientPortV1['stream'
 	logicalProviderRound: number;
 };
 
-export type AgenticChatProviderMutationCapabilitiesV1 = {
-	createOntoTask: boolean;
-	updateOntoTask: boolean;
-};
-
 type CompletedProviderToolCall = {
 	id: string;
 	name: string;
@@ -207,14 +243,8 @@ type NormalizedProviderToolCall = CompletedProviderToolCall &
 		| {
 				kind: 'mutation';
 				logicalOperationId: string;
-				operationName: 'onto.task.update';
-				downstreamIdempotencySupported: false;
-		  }
-		| {
-				kind: 'mutation';
-				logicalOperationId: string;
-				operationName: 'onto.task.create';
-				downstreamIdempotencySupported: true;
+				operationName: string;
+				downstreamIdempotencySupported: boolean;
 		  }
 	);
 
@@ -250,10 +280,9 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
 		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
-		private readonly mutationCapabilities: AgenticChatProviderMutationCapabilitiesV1 = {
-			createOntoTask: false,
-			updateOntoTask: false
-		}
+		private readonly mutationCapabilities: Readonly<
+			Partial<AgenticChatProviderMutationCapabilitiesV1>
+		> = {}
 	) {
 		if (
 			!Number.isSafeInteger(retryableFailureCooldownMs) ||
@@ -1173,7 +1202,8 @@ function normalizeCompletedProviderCalls(
 		if (isAgenticChatProductionReadToolNameV1(call.name)) {
 			return { ...call, kind: 'read' };
 		}
-		if (call.name === 'update_onto_task') {
+		const spec = reviewedMutationSpec(call.name);
+		if (spec) {
 			return {
 				...call,
 				kind: 'mutation',
@@ -1182,21 +1212,8 @@ function normalizeCompletedProviderCalls(
 					providerRound: request.logicalProviderRound,
 					callIndex: index + 1
 				}),
-				operationName: 'onto.task.update',
-				downstreamIdempotencySupported: false
-			};
-		}
-		if (call.name === 'create_onto_task') {
-			return {
-				...call,
-				kind: 'mutation',
-				logicalOperationId: createStableAgenticChatMutationLogicalOperationIdV1({
-					turnRunId: request.turnRunId,
-					providerRound: request.logicalProviderRound,
-					callIndex: index + 1
-				}),
-				operationName: 'onto.task.create',
-				downstreamIdempotencySupported: true
+				operationName: spec.operationName,
+				downstreamIdempotencySupported: spec.downstreamIdempotencySupported
 			};
 		}
 		throw providerError('provider_tool_not_allowlisted', 'permanent');
@@ -1473,7 +1490,7 @@ function buildReadOnlyRequest(
 	input: AgenticChatWorkerExecutionInputV1,
 	processingToken: string,
 	signal: AbortSignal,
-	mutationCapabilities: AgenticChatProviderMutationCapabilitiesV1
+	mutationCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>
 ): ClientRequest {
 	const systemPrompt = requiredContent(input.artifact.prepared.systemPrompt, 'system prompt');
 	const userMessage = requiredContent(input.requestPayload.message, 'user message');
@@ -1540,7 +1557,7 @@ function providerClientRequest(
 
 function productionToolsFor(
 	input: AgenticChatWorkerExecutionInputV1,
-	mutationCapabilities: AgenticChatProviderMutationCapabilitiesV1
+	mutationCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>
 ): readonly AgenticChatReadOnlyProviderToolV1[] {
 	const surface = input.artifact.prepared.toolSurface;
 	if (!surface || typeof surface !== 'object' || Array.isArray(surface)) return [];
@@ -1577,20 +1594,16 @@ function productionToolsFor(
 function reviewedProviderToolDefinition(
 	tool: AgenticChatReadOnlyProviderToolV1
 ): AgenticChatReadOnlyProviderToolV1 | null {
-	if (!REVIEWED_MUTATION_TOOL_NAMES.has(tool.function.name)) return tool;
+	const spec = reviewedMutationSpec(tool.function.name);
+	if (!spec) return tool;
 	const parameters = tool.function.parameters as Record<string, JsonValue>;
 	const properties = parameters.properties;
 	if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
 		return null;
 	}
-	const isCreate = tool.function.name === 'create_onto_task';
-	const requiredNames = isCreate ? ['project_id', 'title'] : ['task_id'];
-	if (!requiredNames.every((name) => Object.hasOwn(properties, name))) return null;
-	const reviewedArgumentNames = isCreate
-		? REVIEWED_CREATE_ONTO_TASK_ARGUMENT_NAMES
-		: REVIEWED_UPDATE_ONTO_TASK_ARGUMENT_NAMES;
+	if (!spec.requiredNames.every((name) => Object.hasOwn(properties, name))) return null;
 	const reviewedProperties = Object.fromEntries(
-		Object.entries(properties).filter(([name]) => reviewedArgumentNames.has(name))
+		Object.entries(properties).filter(([name]) => spec.reviewedArgumentNames.has(name))
 	) as JsonObject;
 	return {
 		...tool,
@@ -1600,7 +1613,7 @@ function reviewedProviderToolDefinition(
 				...tool.function.parameters,
 				additionalProperties: false,
 				properties: reviewedProperties,
-				required: requiredNames
+				required: [...spec.requiredNames]
 			}
 		}
 	};
@@ -1608,13 +1621,15 @@ function reviewedProviderToolDefinition(
 
 function isEnabledMutationTool(
 	toolName: string,
-	capabilities: AgenticChatProviderMutationCapabilitiesV1
+	capabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>
 ): boolean {
-	return (
-		REVIEWED_MUTATION_TOOL_NAMES.has(toolName) &&
-		((toolName === 'create_onto_task' && capabilities.createOntoTask) ||
-			(toolName === 'update_onto_task' && capabilities.updateOntoTask))
-	);
+	const spec = reviewedMutationSpec(toolName);
+	return spec !== null && capabilities[spec.capability] === true;
+}
+
+function reviewedMutationSpec(toolName: string): ReviewedMutationSpec | null {
+	if (!REVIEWED_MUTATION_TOOL_NAMES.has(toolName)) return null;
+	return REVIEWED_MUTATION_SPECS[toolName as ReviewedMutationToolName];
 }
 
 function readArtifactToolDefinition(value: unknown): AgenticChatReadOnlyProviderToolV1 | null {

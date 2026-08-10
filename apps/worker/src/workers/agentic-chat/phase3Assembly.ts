@@ -66,6 +66,7 @@ import {
 	type AgenticChatExecutionObservationRpcClient,
 	SupabaseAgenticChatExecutionObservationAdapter
 } from './executionObservation';
+import { AgenticChatCreateOntoDocumentMutationAdapter } from './createOntoDocumentMutationAdapter';
 import { AgenticChatCreateOntoTaskMutationAdapter } from './createOntoTaskMutationAdapter';
 import {
 	type AgenticChatMutationAdapterEntry,
@@ -118,19 +119,27 @@ export function createAgenticChatPhase3Assembly(options: {
 	) {
 		throw new Error('Phase 3 cancellation concurrency must match CHAT_CONCURRENCY=1');
 	}
-	const updateOntoTaskProviderEnabled =
-		options.mutationProviderCapabilities?.updateOntoTask === true;
-	const updateOntoTaskAdapterEnabled =
-		options.mutationAdapterCapabilities?.updateOntoTask === true;
-	const createOntoTaskProviderEnabled =
-		options.mutationProviderCapabilities?.createOntoTask === true;
-	const createOntoTaskAdapterEnabled =
-		options.mutationAdapterCapabilities?.createOntoTask === true;
-	if (createOntoTaskProviderEnabled && !createOntoTaskAdapterEnabled) {
-		throw new Error('create_onto_task provider capability requires its mutation adapter');
-	}
-	if (updateOntoTaskProviderEnabled && !updateOntoTaskAdapterEnabled) {
-		throw new Error('update_onto_task provider capability requires its mutation adapter');
+	const mutationProviderCapabilities: AgenticChatProviderMutationCapabilitiesV1 = {
+		createOntoDocument: options.mutationProviderCapabilities?.createOntoDocument === true,
+		createOntoTask: options.mutationProviderCapabilities?.createOntoTask === true,
+		updateOntoTask: options.mutationProviderCapabilities?.updateOntoTask === true
+	};
+	const mutationAdapterCapabilities: AgenticChatProviderMutationCapabilitiesV1 = {
+		createOntoDocument: options.mutationAdapterCapabilities?.createOntoDocument === true,
+		createOntoTask: options.mutationAdapterCapabilities?.createOntoTask === true,
+		updateOntoTask: options.mutationAdapterCapabilities?.updateOntoTask === true
+	};
+	const capabilityTools: ReadonlyArray<
+		readonly [keyof AgenticChatProviderMutationCapabilitiesV1, string]
+	> = [
+		['createOntoDocument', 'create_onto_document'],
+		['createOntoTask', 'create_onto_task'],
+		['updateOntoTask', 'update_onto_task']
+	];
+	for (const [capability, toolName] of capabilityTools) {
+		if (mutationProviderCapabilities[capability] && !mutationAdapterCapabilities[capability]) {
+			throw new Error(`${toolName} provider capability requires its mutation adapter`);
+		}
 	}
 	const rpcClient = options.client as unknown as AgenticChatExecutionRpcClient &
 		AgenticChatEffectRpcClient &
@@ -169,20 +178,23 @@ export function createAgenticChatPhase3Assembly(options: {
 		{ client: options.providerClient, capacity: providerCapacity },
 		options.providerCooldownMs,
 		options.maxProviderRounds,
-		{
-			createOntoTask: createOntoTaskProviderEnabled,
-			updateOntoTask: updateOntoTaskProviderEnabled
-		}
+		mutationProviderCapabilities
 	);
 	const readTool = new AgenticChatReadOnlyToolAdapter(options.client);
 	const mutationAdapters: AgenticChatMutationAdapterEntry[] = [];
-	if (createOntoTaskAdapterEnabled) {
+	if (mutationAdapterCapabilities.createOntoDocument) {
+		mutationAdapters.push([
+			'create_onto_document',
+			new AgenticChatCreateOntoDocumentMutationAdapter(options.client)
+		]);
+	}
+	if (mutationAdapterCapabilities.createOntoTask) {
 		mutationAdapters.push([
 			'create_onto_task',
 			new AgenticChatCreateOntoTaskMutationAdapter(options.client)
 		]);
 	}
-	if (updateOntoTaskAdapterEnabled) {
+	if (mutationAdapterCapabilities.updateOntoTask) {
 		mutationAdapters.push([
 			'update_onto_task',
 			new AgenticChatUpdateOntoTaskMutationAdapter(options.client)

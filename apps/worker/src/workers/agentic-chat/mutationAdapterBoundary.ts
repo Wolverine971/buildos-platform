@@ -20,6 +20,7 @@ export function assertMutationAdapterBoundary(
 	spec: {
 		toolName: string;
 		operationName: string;
+		downstreamIdempotencySupported: boolean;
 		reviewedArgumentNames: ReadonlySet<string>;
 	}
 ): void {
@@ -36,6 +37,12 @@ export function assertMutationAdapterBoundary(
 		throw knownFailure(
 			'mutation_effect_identity_invalid',
 			'Mutation downstream idempotency key does not match effect_id'
+		);
+	}
+	if (input.downstreamIdempotencySupported !== spec.downstreamIdempotencySupported) {
+		throw knownFailure(
+			'mutation_idempotency_contract_invalid',
+			`${spec.toolName} downstream idempotency classification is invalid`
 		);
 	}
 	if (!canonicalText(input.providerToolCallId, 512)) {
