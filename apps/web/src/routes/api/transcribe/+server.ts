@@ -19,7 +19,8 @@ import {
 	withRateLimitHeaders
 } from '$lib/server/expensive-operation-limiter';
 
-const DEFAULT_OPENROUTER_TRANSCRIPTION_MODEL = 'openai/gpt-4o-mini-transcribe';
+const DEFAULT_OPENROUTER_TRANSCRIPTION_MODEL = 'openai/gpt-transcribe';
+const DEFAULT_OPENROUTER_TRANSCRIPTION_FALLBACK_MODELS = ['openai/gpt-4o-mini-transcribe'];
 
 // Timeout and retry configuration
 const TRANSCRIPTION_TIMEOUT_MS = 30000; // 30 seconds timeout
@@ -32,6 +33,12 @@ function parseModelList(value?: string | null): string[] {
 		.split(',')
 		.map((model) => model.trim())
 		.filter(Boolean);
+}
+
+function getConfiguredFallbackModels(value?: string | null): string[] {
+	return value === undefined || value === null
+		? DEFAULT_OPENROUTER_TRANSCRIPTION_FALLBACK_MODELS
+		: parseModelList(value);
 }
 
 // MIME type to file extension mapping for speech-to-text API compatibility
@@ -155,7 +162,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 
 		const openrouterModels = [
 			transcriptionModel,
-			...parseModelList(env.TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS)
+			...getConfiguredFallbackModels(env.TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS)
 		].filter((model, index, models) => model && models.indexOf(model) === index);
 		transcriptionModel = openrouterModels[0] ?? DEFAULT_OPENROUTER_TRANSCRIPTION_MODEL;
 

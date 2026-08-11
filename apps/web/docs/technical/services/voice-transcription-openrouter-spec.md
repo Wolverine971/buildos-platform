@@ -4,7 +4,7 @@
 
 **Date:** 2026-01-13
 **Author:** Codex (GPT-5)
-**Status:** Implemented for web on 2026-07-10
+**Status:** Implemented for web on 2026-07-10; default model updated on 2026-08-11
 
 ---
 
@@ -34,7 +34,7 @@ OpenRouter supports dedicated transcription requests:
 - **Models:** only speech-to-text models that support the transcription endpoint will accept these requests
 - **Common formats:** `wav`, `mp3`, `aiff`, `aac`, `ogg`, `flac`, `m4a`, `pcm16`, `pcm24`
 
-The request is authenticated and billed with `PRIVATE_OPENROUTER_API_KEY`. The default model is `openai/gpt-4o-mini-transcribe`, but the request is sent to OpenRouter rather than OpenAI's API.
+The request is authenticated and billed with `PRIVATE_OPENROUTER_API_KEY`. The default model is `openai/gpt-transcribe`, but the request is sent to OpenRouter rather than OpenAI's API.
 
 ---
 
@@ -95,8 +95,8 @@ Implementation notes:
 
 OpenRouter speech-to-text models:
 
-1. `openai/gpt-4o-mini-transcribe` (default)
-2. Values from `TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS` (optional)
+1. `openai/gpt-transcribe` (default)
+2. Values from `TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS`, which defaults to `openai/gpt-4o-mini-transcribe`
 
 ### Provider Order
 
@@ -116,8 +116,8 @@ OpenRouter speech-to-text models:
 Add/extend env configuration (defaults shown):
 
 ```
-TRANSCRIPTION_OPENROUTER_MODEL=openai/gpt-4o-mini-transcribe
-TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS=<optional-comma-separated-models>
+TRANSCRIPTION_OPENROUTER_MODEL=openai/gpt-transcribe
+TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS=openai/gpt-4o-mini-transcribe
 TRANSCRIPTION_TIMEOUT_MS=30000
 TRANSCRIPTION_MAX_RETRIES=2
 TRANSCRIPTION_INITIAL_RETRY_DELAY_MS=1000
@@ -127,6 +127,7 @@ Notes:
 
 - Transcription always uses OpenRouter's `/api/v1/audio/transcriptions` endpoint.
 - OpenRouter models must support the speech-to-text transcription endpoint.
+- When the fallback variable is unset, the previous mini model is used; set it to an empty string to disable fallback.
 - Only `PRIVATE_OPENROUTER_API_KEY` is required for transcription.
 
 ---

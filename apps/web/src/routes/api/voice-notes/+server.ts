@@ -7,9 +7,13 @@ import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 const MAX_SYNC_TRANSCRIBE_SECONDS = 180; // 3 minutes
-// const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-transcribe';
-// NOTE: Testing the cheaper model to reduce transcription costs.
-const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
+const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_OPENROUTER_MODEL?.trim() || 'openai/gpt-transcribe';
+
+type TranscriptionResult = {
+	transcript: string;
+	model: string;
+	service: 'openrouter';
+};
 
 const ALLOWED_AUDIO_MIME_TYPES = [
 	'audio/webm',
@@ -89,7 +93,7 @@ async function transcribeViaApi(
 	audioFile: File,
 	fetcher: typeof fetch,
 	cookieHeader: string | null
-): Promise<string> {
+): Promise<TranscriptionResult> {
 	const formData = new FormData();
 	formData.append('audio', audioFile);
 
@@ -113,12 +117,17 @@ async function transcribeViaApi(
 	}
 
 	const payload = await response.json();
-	if (payload?.success && payload?.data?.transcript) {
-		return payload.data.transcript;
-	}
-
-	if (payload?.transcript) {
-		return payload.transcript;
+	const result = payload?.success ? payload.data : payload;
+	if (result?.transcript) {
+		const model =
+			typeof result.transcription_model === 'string' && result.transcription_model.trim()
+				? result.transcription_model.trim()
+				: TRANSCRIPTION_MODEL;
+		return {
+			transcript: result.transcript,
+			model,
+			service: 'openrouter'
+		};
 	}
 
 	throw new Error('No transcript returned from transcription service');
@@ -311,7 +320,7 @@ export const POST: RequestHandler = async ({
 
 	if (transcribe && shouldSyncTranscribe && !transcript) {
 		try {
-			const transcript = await transcribeViaApi(
+			const transcription = await transcribeViaApi(
 				audioFile,
 				fetch,
 				request.headers.get('cookie')
@@ -320,14 +329,14 @@ export const POST: RequestHandler = async ({
 			const { data: updated, error: updateError } = await supabase
 				.from('voice_notes')
 				.update({
-					transcript,
+					transcript: transcription.transcript,
 					transcription_status: 'complete',
-					transcription_model: TRANSCRIPTION_MODEL,
+					transcription_model: transcription.model,
 					transcription_error: null,
 					metadata: {
 						...metadata,
 						transcription_source: metadata.transcription_source || 'audio',
-						transcription_service: metadata.transcription_service || 'openai'
+						transcription_service: transcription.service
 					} as any
 				})
 				.eq('id', noteId)
@@ -346,13 +355,13 @@ export const POST: RequestHandler = async ({
 				...logContext,
 				operationType: 'transcribe',
 				llmMetadata: {
-					provider: 'openai',
+					provider: 'openrouter',
 					model: TRANSCRIPTION_MODEL
 				},
 				metadata: {
 					durationSeconds,
 					transcription_source: metadata.transcription_source || 'audio',
-					transcription_service: metadata.transcription_service || 'openai'
+					transcription_service: 'openrouter'
 				}
 			});
 			const message = error instanceof Error ? error.message : 'Transcription failed';
@@ -365,7 +374,7 @@ export const POST: RequestHandler = async ({
 					metadata: {
 						...metadata,
 						transcription_source: metadata.transcription_source || 'audio',
-						transcription_service: metadata.transcription_service || 'openai'
+						transcription_service: 'openrouter'
 					} as any
 				})
 				.eq('id', noteId)
@@ -406,7 +415,7 @@ export const POST: RequestHandler = async ({
 		const queuedMetadata: Record<string, unknown> = {
 			...metadata,
 			transcription_source: metadata.transcription_source || 'audio',
-			transcription_service: metadata.transcription_service || 'openai'
+			transcription_service: 'openrouter'
 		};
 		if (queued.jobId) {
 			queuedMetadata.transcription_job_id = queued.jobId;

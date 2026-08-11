@@ -18584,6 +18584,16 @@ export type Database = {
         }
         Returns: Json
       }
+      onto_task_move_atomic_for_user: {
+        Args: {
+          p_confirmation_token?: string
+          p_destination_project_id: string
+          p_expected_source_project_id: string
+          p_task_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       onto_task_update_atomic: {
         Args: {
           p_assigned_by_actor_id: string

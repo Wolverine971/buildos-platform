@@ -59,14 +59,14 @@
 			"components": ["AgentChatModal"]
 		},
 		{
-			"file": "src/lib/components/landing/HomepageV2.svelte",
-			"type": "component",
-			"components": ["Modal", "PublicProjectView"]
-		},
-		{
 			"file": "src/lib/components/email/EmailManager.svelte",
 			"type": "component",
 			"components": ["EmailComposer", "EmailPreview"]
+		},
+		{
+			"file": "src/lib/components/landing/HomepageV2.svelte",
+			"type": "component",
+			"components": ["Modal", "PublicProjectView"]
 		},
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",
@@ -1185,6 +1185,18 @@
 			]
 		},
 		{
+			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"eventIcon",
+				"eventSeverityClasses",
+				"timelineDotClasses",
+				"statusBadge",
+				"libriStatusClasses"
+			]
+		},
+		{
 			"file": "src/lib/components/admin/chat-users/chat-user-export.ts",
 			"type": "component",
 			"components": [],
@@ -1228,18 +1240,6 @@
 				"entityGroupKey",
 				"entityGroupKeyForAggregate",
 				"entityGroupKeyForChange"
-			]
-		},
-		{
-			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"eventIcon",
-				"eventSeverityClasses",
-				"timelineDotClasses",
-				"statusBadge",
-				"libriStatusClasses"
 			]
 		},
 		{
@@ -1586,9 +1586,9 @@
 		"src/lib/components/project/project-page-interactions.ts",
 		"src/lib/components/ui/live-transcript-preview.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
+		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
-		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",

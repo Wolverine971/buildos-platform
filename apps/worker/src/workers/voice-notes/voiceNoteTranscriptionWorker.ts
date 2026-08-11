@@ -19,13 +19,16 @@ type VoiceNoteRecord = {
 
 const OPENROUTER_API_KEY =
 	process.env.PRIVATE_OPENROUTER_API_KEY?.trim() || process.env.OPENROUTER_API_KEY?.trim();
-const DEFAULT_TRANSCRIPTION_MODEL = 'openai/gpt-4o-mini-transcribe';
+const DEFAULT_TRANSCRIPTION_MODEL = 'openai/gpt-transcribe';
+const DEFAULT_TRANSCRIPTION_FALLBACK_MODELS = ['openai/gpt-4o-mini-transcribe'];
 const TRANSCRIPTION_MODEL =
 	process.env.TRANSCRIPTION_OPENROUTER_MODEL?.trim() || DEFAULT_TRANSCRIPTION_MODEL;
-const TRANSCRIPTION_FALLBACK_MODELS = (process.env.TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS || '')
-	.split(',')
-	.map((model) => model.trim())
-	.filter(Boolean);
+const TRANSCRIPTION_FALLBACK_MODELS =
+	process.env.TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS === undefined
+		? DEFAULT_TRANSCRIPTION_FALLBACK_MODELS
+		: process.env.TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS.split(',')
+				.map((model) => model.trim())
+				.filter(Boolean);
 
 const BASE_VOCABULARY = 'BuildOS, ontology, daily brief, phase, project context';
 
