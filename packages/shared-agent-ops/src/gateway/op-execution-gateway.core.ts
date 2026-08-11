@@ -49,8 +49,10 @@ import { loadProjectGraphData } from '../ontology/project-graph-loader';
 import {
 	instantiateProject,
 	OntologyInstantiationError,
+	type InstantiateProjectResult,
 	validateProjectSpec
 } from '../ontology/instantiation.service';
+import { sanitizeProjectPropsPatchInput } from '../utils/project-props-sanitizer';
 import {
 	preserveCurrentStartHereManagedRegions,
 	START_HERE_DOCUMENT_TYPE_KEY
@@ -933,7 +935,7 @@ async function createProject(context: ToolExecutionContext, args: Record<string,
 				}
 			: undefined;
 	const spec = {
-		project: args.project,
+		project: sanitizeProjectCreateInput(args.project),
 		entities: Array.isArray(args.entities) ? args.entities : [],
 		relationships: Array.isArray(args.relationships) ? args.relationships : [],
 		...(contextDocument ? { context_document: contextDocument } : {})
@@ -946,7 +948,7 @@ async function createProject(context: ToolExecutionContext, args: Record<string,
 		);
 	}
 
-	let result: { project_id: string; counts: Record<string, number | undefined> };
+	let result: InstantiateProjectResult;
 	try {
 		result = await instantiateProject(context.admin, spec as any, context.userId, {
 			activityLog: {
@@ -962,6 +964,7 @@ async function createProject(context: ToolExecutionContext, args: Record<string,
 	}
 
 	await grantCallerProjectAccess(context, result.project_id);
+	await queueCreatedProjectContextSnapshot(context, result.project_id);
 
 	const { data: project } = await context.admin
 		.from('onto_projects')
@@ -973,8 +976,49 @@ async function createProject(context: ToolExecutionContext, args: Record<string,
 		project_id: result.project_id,
 		project: project ?? { id: result.project_id },
 		counts: result.counts,
+		created_entities: result.created_entities,
 		message: `Created project "${(project as { name?: string } | null)?.name ?? result.project_id}".`
 	};
+}
+
+function sanitizeProjectCreateInput(value: unknown): unknown {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+	const project = { ...(value as Record<string, unknown>) };
+	if (!Object.prototype.hasOwnProperty.call(project, 'props')) return project;
+	const props = sanitizeProjectPropsPatchInput(project.props);
+	if (props && Object.keys(props).length > 0) {
+		project.props = props;
+	} else {
+		delete project.props;
+	}
+	return project;
+}
+
+/** Legacy project creation queues this best-effort snapshot before responding. */
+async function queueCreatedProjectContextSnapshot(
+	context: ToolExecutionContext,
+	projectId: string
+): Promise<void> {
+	try {
+		const { error } = await context.admin.rpc('add_queue_job', {
+			p_user_id: context.userId,
+			p_job_type: 'build_project_context_snapshot',
+			p_metadata: {
+				projectId,
+				reason: 'project_created',
+				force: true
+			},
+			p_priority: 7,
+			p_scheduled_for: new Date().toISOString(),
+			p_dedup_key: `project-context-snapshot-${projectId}`
+		});
+		if (error) throw error;
+	} catch (error) {
+		console.warn('[External Tool Gateway] Failed to queue created-project snapshot:', {
+			projectId,
+			error
+		});
+	}
 }
 
 /**

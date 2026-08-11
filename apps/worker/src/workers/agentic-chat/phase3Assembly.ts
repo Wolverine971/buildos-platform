@@ -66,6 +66,7 @@ import {
 	SupabaseAgenticChatExecutionObservationAdapter
 } from './executionObservation';
 import { AgenticChatCreateOntoDocumentMutationAdapter } from './createOntoDocumentMutationAdapter';
+import { AgenticChatCreateOntoProjectMutationAdapter } from './createOntoProjectMutationAdapter';
 import { AgenticChatCreateOntoTaskMutationAdapter } from './createOntoTaskMutationAdapter';
 import {
 	AGENTIC_CHAT_GATEWAY_ENTITY_MUTATION_TOOL_NAMES_V1,
@@ -210,6 +211,12 @@ export function createAgenticChatPhase3Assembly(options: {
 		mutationAdapters.push([
 			'update_onto_project',
 			new AgenticChatGatewayProjectMutationAdapter(options.client)
+		]);
+	}
+	if (mutationAdapterCapabilities.createOntoProject) {
+		mutationAdapters.push([
+			'create_onto_project',
+			new AgenticChatCreateOntoProjectMutationAdapter(options.client)
 		]);
 	}
 	const gatewayEntityToolNames = new Set<string>(

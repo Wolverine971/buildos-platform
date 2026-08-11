@@ -1003,6 +1003,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				'owner',
 				'props'
 			],
+			create_onto_project: ['project', 'entities', 'relationships'],
 			update_onto_project: [
 				'project_id',
 				'name',
@@ -1113,6 +1114,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				updateOntoMilestone: true,
 				createOntoRisk: true,
 				updateOntoRisk: true,
+				createOntoProject: true,
 				updateOntoProject: true
 			}
 		);
@@ -1198,6 +1200,18 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			projected.find((entry) => entry.function.name === 'unlink_onto_edge')?.function
 				.parameters.required
 		).toEqual(['edge_id']);
+		expect(
+			projected.find((entry) => entry.function.name === 'create_onto_project')?.function
+				.parameters.required
+		).toEqual(['project', 'entities', 'relationships']);
+		expect(
+			projected.find((entry) => entry.function.name === 'create_onto_project')?.function
+				.parameters.properties.entities
+		).toMatchObject({ maxItems: 0 });
+		expect(
+			projected.find((entry) => entry.function.name === 'create_onto_project')?.function
+				.description
+		).toContain('standard project shell');
 		expect(
 			projected.find((entry) => entry.function.name === 'update_onto_project')?.function
 				.parameters.required

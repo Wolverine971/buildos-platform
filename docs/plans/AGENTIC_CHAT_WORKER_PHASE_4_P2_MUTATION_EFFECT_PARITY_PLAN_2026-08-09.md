@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S4 complete; S5 inventory plus 17 reviewed mutation tools complete, including bounded document relationships, exact edge link/unlink, and project-row update; all required task SQL hosted; project creation and remaining compound/provider branches next; production mutations remain disabled
+**Status:** S1-S4 complete; S5 inventory plus 18 reviewed mutation tools complete, including bounded document relationships, exact edge link/unlink, project-row update, and standard project-shell creation; all required task SQL hosted; graph move/tag/delete and remaining provider/control branches next; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -587,6 +587,39 @@ Project-row update subset completed locally on 2026-08-11:
   worker ESLint, project-column guard, formatting, and Svelte diagnostics with
   zero errors and zero warnings. Production mutation gates, routing,
   deployment, and live model writes remain OFF.
+
+Standard project-shell creation completed locally on 2026-08-11:
+
+- Added an independently gated `create_onto_project` adapter over the shared
+  project instantiator. The reviewed provider surface requires a project plus
+  empty `entities` and `relationships` arrays; arbitrary initial entities,
+  relationships, custom context documents, clarifications, and meta remain on
+  the web-owned compound creation path.
+- The adapter admits only global/general/project-create contexts and standard
+  project fields: canonical name/type, description, state, dates, and validated
+  facets. Explicit fiction domain types and unreviewed/server-owned props fail
+  before dispatch because they require the web-owned domain-profile and
+  living-reference policy.
+- The worker generates the legacy Context document, normalizes state and date
+  boundaries, and validates the exact compound receipt: one project, one
+  Context document, no initial graph entities/edges, matching counts, and a
+  canonical project row. It then restores the legacy project ID, counts,
+  `created_entities`, message, and project `context_shift`.
+- Project instantiation remains a multi-write service without an atomic domain
+  effect key or exact lost-response query. The adapter is therefore explicitly
+  one-attempt/uncertain; it never claims compound idempotency or automatically
+  replays an ambiguous result.
+- The shared handler now returns the instantiator's `created_entities`, strips
+  untrusted server-owned project props, and restores the legacy best-effort
+  project-context snapshot enqueue. External caller scope expansion remains in
+  the shared handler; the internal worker path has no external caller grant.
+- No SQL or migration was required. Full local gates pass: worker 896/896 with
+  one intentional skip, shared-agent-ops 99/99, agentic-chat-runtime 183/183,
+  legacy/external project-create referees 50/50, shared/worker typechecks,
+  changed worker ESLint, shared build, HTTP/project-column guards, formatting,
+  and Svelte diagnostics with zero errors and zero warnings. Production
+  provider capability, adapter capability, routing, deployment, and live model
+  mutations remain OFF.
 
 ## P2 exit gate
 

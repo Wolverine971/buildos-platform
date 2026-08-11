@@ -176,6 +176,7 @@ describe('createAgenticChatPhase3Assembly', () => {
 			updateOntoMilestone: true,
 			createOntoRisk: true,
 			updateOntoRisk: true,
+			createOntoProject: true,
 			updateOntoProject: true
 		} as const;
 		const assembly = createAgenticChatPhase3Assembly({

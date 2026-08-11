@@ -4,7 +4,7 @@
 
 **Prepared:** 2026-08-10
 
-**Status:** inventory complete; 17 mutation tools have reviewed adapters, including bounded document relationships, exact edge link/unlink, and project-row update; required task SQL hosted; production gates remain OFF
+**Status:** inventory complete; 18 mutation tools have reviewed adapters, including bounded document relationships, exact edge link/unlink, project-row update, and standard project-shell creation; required task SQL hosted; production gates remain OFF
 
 **Governing plan:** `AGENTIC_CHAT_WORKER_PHASE_4_P2_MUTATION_EFFECT_PARITY_PLAN_2026-08-09.md`
 
@@ -61,7 +61,7 @@ projection, an independently gated adapter, and a recovery classification.
 | `update_onto_milestone`         | `onto.milestone.update`           | shared |     30s | **One/uncertain row-only adapter implemented**                                                                      | `milestone`; row/completion timestamp, merged props/activity                                               |
 | `create_onto_risk`              | `onto.risk.create`                | shared |     30s | **One/uncertain row-only adapter implemented**; relationship/opaque props excluded                                  | `risk`; row/props mirrors/activity                                                                         |
 | `update_onto_risk`              | `onto.risk.update`                | shared |     30s | **One/uncertain row-only adapter implemented**                                                                      | `risk`; row/mitigation timestamp, merged props/activity                                                    |
-| `create_onto_project`           | `onto.project.create`             | shared |     30s | Instantiation has caller idempotency input, but effect-key semantics and compound receipt are not yet ratified      | `project`, entity counts, created entities/edges, caller-scope expansion                                   |
+| `create_onto_project`           | `onto.project.create`             | shared |     30s | **One/uncertain project-shell adapter implemented**; initial graph/profile branches excluded                        | one `project`, one Context document, exact counts/refs, snapshot enqueue, caller-scope expansion           |
 | `update_onto_project`           | `onto.project.update`             | shared |     30s | **One/uncertain row-only adapter implemented**                                                                      | `project`; row/facets/timeline/activity                                                                    |
 | `link_onto_entities`            | `onto.edge.link`                  | shared |     30s | **One/uncertain non-project adapter implemented**; no general uniqueness constraint                                 | `edge`; canonical relationship/props/activity                                                              |
 | `unlink_onto_edge`              | `onto.edge.unlink`                | shared |     30s | **One/uncertain exact-edge adapter implemented**; no durable delete tombstone                                       | removed edge; relationship/activity                                                                        |
@@ -112,9 +112,9 @@ registry's email surface is read-only.
    are complete behind independent default-off gates. Compound plan/risk/
    milestone relationship fields remain excluded except the milestone's
    required goal edge.
-4. **Relationships and project:** exact non-project link/unlink and project-row
-   update are complete; project creation follows after compound-instantiation
-   idempotency is pinned.
+4. **Relationships and project:** exact non-project link/unlink, project-row
+   update, and standard project-shell creation are complete. Full initial graph,
+   fiction/domain-profile, and living-reference creation remain web-owned.
 5. **Graph move/tag/deletes:** web-only, compound, or irreversible paths require
    extraction plus stronger reconciliation evidence.
 6. **Calendar, contacts, external MCP, delegation, and staged commit:** keep last;
@@ -359,9 +359,9 @@ This unit adds two more reviewed tools without enabling either in production:
   referee 42/42, all relevant typechecks, and Svelte check with zero diagnostics.
 
 Production provider capabilities, adapter capabilities, routing, deployment,
-and live model mutations remain OFF. The bounded project-update differential is
-recorded below; project creation remains behind its larger instantiation and
-caller-idempotency differential.
+and live model mutations remain OFF. The bounded project-update and project-shell
+creation differentials are recorded below; full graph/profile instantiation
+remains web-owned.
 
 ## Project-row update subset (2026-08-11)
 
@@ -389,6 +389,41 @@ This unit adds one reviewed tool without enabling it in production:
   diagnostics.
 
 Production provider capabilities, adapter capabilities, routing, deployment,
-and live model mutations remain OFF. Project creation is next, but it remains a
-separate larger unit because instantiation, caller-scope expansion, idempotency,
-and its compound receipt must be reconciled together.
+and live model mutations remain OFF. The bounded project-shell creation unit is
+recorded below.
+
+## Standard project-shell creation subset (2026-08-11)
+
+This unit adds one reviewed tool without enabling it in production:
+
+- `create_onto_project` admits a standard project definition plus required empty
+  `entities` and `relationships` arrays. The provider schema excludes custom
+  context documents, clarifications, meta, arbitrary initial graph entities,
+  and relationships; those compound branches remain web-owned.
+- Only global, general, and project-create turns can dispatch it. Project-scoped
+  turns fail closed. The nested project contract admits name/type, description,
+  state, start/end dates, and validated facets; explicit fiction project types
+  and unreviewed or server-owned props are rejected before the write.
+- The adapter builds the legacy generated Context document and requires an
+  exact post-dispatch receipt: one canonical project ref, one distinct Context
+  document ref, `documents = 1`, every other entity/edge count zero, and a
+  matching project row. Its public receipt restores the legacy project ID,
+  counts, created refs, summary message, and project context shift.
+- Instantiation writes the project, document/tree, activity, and analytics
+  across a compound service without atomically storing the stable effect key.
+  There is no exact lost-response query for the full receipt. The adapter is
+  therefore one-attempt/uncertain and never replays an ambiguous commit.
+- The shared gateway now returns `created_entities`, strips untrusted
+  `preferences`/`agent_workspace` project props, and best-effort queues the same
+  project-context snapshot as the legacy API route. Existing external caller
+  scope expansion remains intact; the internal worker supplies no external
+  caller identity.
+- No SQL or migration was required. Full proof passes worker 896 plus one
+  intentional skip, shared-agent-ops 99/99, agentic-chat-runtime 183/183, and
+  legacy/external project-create referees 50/50. Shared/worker typechecks,
+  changed worker ESLint, shared build, HTTP/project-column guards, formatting,
+  and Svelte diagnostics all pass with no errors.
+
+Production provider capability, adapter capability, routing, deployment, and
+live model mutations remain OFF. The next expansion family is graph move/tag/
+delete, followed by calendar/provider and external control-plane writes.

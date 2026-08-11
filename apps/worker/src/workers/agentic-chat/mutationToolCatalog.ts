@@ -18,6 +18,7 @@ export type AgenticChatMutationCapabilityNameV1 =
 	| 'updateOntoMilestone'
 	| 'createOntoRisk'
 	| 'updateOntoRisk'
+	| 'createOntoProject'
 	| 'updateOntoProject';
 
 export type AgenticChatProviderMutationCapabilitiesV1 = Record<
@@ -305,6 +306,93 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'owner',
 			'props'
 		]
+	},
+	create_onto_project: {
+		capability: 'createOntoProject',
+		operationName: 'onto.project.create',
+		downstreamIdempotencySupported: false,
+		descriptionOverride:
+			'Create one standard project shell and its generated Context document. Always pass empty entities and relationships arrays; add goals, plans, tasks, documents, milestones, and relationships with their separately reviewed tools after creation. Fiction/living-reference workspaces, custom context documents, clarifications, and compound project graphs remain available only in the web-owned flow.',
+		requiredNames: ['project', 'entities', 'relationships'],
+		reviewedArgumentNames: ['project', 'entities', 'relationships'],
+		propertyOverrides: {
+			project: {
+				type: 'object',
+				additionalProperties: false,
+				description: 'Standard project-shell definition.',
+				properties: {
+					name: { type: 'string', minLength: 1, description: 'Project name.' },
+					type_key: {
+						type: 'string',
+						pattern: '^project\\.[a-z_]+\\.[a-z_]+(?:\\.[a-z_]+)?$',
+						description:
+							'Canonical project.{realm}.{domain} type key. Fiction types use the web-owned creation flow.'
+					},
+					description: { type: 'string', description: 'Optional project description.' },
+					state_key: {
+						type: 'string',
+						enum: ['planning', 'active', 'paused', 'completed', 'cancelled'],
+						description: 'Initial project status.'
+					},
+					props: {
+						type: 'object',
+						additionalProperties: false,
+						properties: {
+							facets: {
+								type: 'object',
+								additionalProperties: false,
+								properties: {
+									context: {
+										type: 'string',
+										enum: [
+											'personal',
+											'client',
+											'commercial',
+											'internal',
+											'open_source',
+											'community',
+											'academic',
+											'nonprofit',
+											'startup'
+										]
+									},
+									scale: {
+										type: 'string',
+										enum: ['micro', 'small', 'medium', 'large', 'epic']
+									},
+									stage: {
+										type: 'string',
+										enum: [
+											'discovery',
+											'planning',
+											'execution',
+											'launch',
+											'maintenance',
+											'complete'
+										]
+									}
+								}
+							}
+						}
+					},
+					start_at: { type: 'string', description: 'Optional ISO start date.' },
+					end_at: { type: 'string', description: 'Optional ISO end date.' }
+				},
+				required: ['name', 'type_key']
+			},
+			entities: {
+				type: 'array',
+				maxItems: 0,
+				description:
+					'Must be empty for the reviewed worker project-shell path. Create entities separately after the project exists.'
+			},
+			relationships: {
+				type: 'array',
+				maxItems: 0,
+				description:
+					'Must be empty for the reviewed worker project-shell path. Link entities separately after creation.'
+			}
+		}
 	},
 	update_onto_project: {
 		capability: 'updateOntoProject',
