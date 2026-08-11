@@ -68,6 +68,7 @@ import {
 import { AgenticChatCreateOntoDocumentMutationAdapter } from './createOntoDocumentMutationAdapter';
 import { AgenticChatCreateOntoProjectMutationAdapter } from './createOntoProjectMutationAdapter';
 import { AgenticChatCreateOntoTaskMutationAdapter } from './createOntoTaskMutationAdapter';
+import { AgenticChatMoveOntoTaskMutationAdapter } from './moveOntoTaskMutationAdapter';
 import {
 	AGENTIC_CHAT_GATEWAY_ENTITY_MUTATION_TOOL_NAMES_V1,
 	AgenticChatGatewayEntityMutationAdapter
@@ -205,6 +206,12 @@ export function createAgenticChatPhase3Assembly(options: {
 		mutationAdapters.push([
 			'update_onto_task',
 			new AgenticChatUpdateOntoTaskMutationAdapter(options.client)
+		]);
+	}
+	if (mutationAdapterCapabilities.moveOntoTask) {
+		mutationAdapters.push([
+			'move_onto_task',
+			new AgenticChatMoveOntoTaskMutationAdapter(options.client)
 		]);
 	}
 	if (mutationAdapterCapabilities.updateOntoProject) {

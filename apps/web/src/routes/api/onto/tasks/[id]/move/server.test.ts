@@ -116,6 +116,7 @@ describe('POST /api/onto/tasks/[id]/move', () => {
 				},
 				source_project: { id: SOURCE_ID, name: 'Source' },
 				destination_project: { id: DESTINATION_ID, name: 'Destination' },
+				impact: { relationships_to_detach: 0 },
 				applied: { relationships_detached: 0 }
 			}
 		});
@@ -165,8 +166,11 @@ describe('POST /api/onto/tasks/[id]/move', () => {
 				status: 'moved',
 				requires_user_action: false,
 				task: { id: TASK_ID, title: 'Move me', project_id: DESTINATION_ID },
+				task_before: { id: TASK_ID, title: 'Move me', project_id: SOURCE_ID },
 				source_project: { id: SOURCE_ID, name: 'Source' },
-				destination_project: { id: DESTINATION_ID, name: 'Destination' }
+				destination_project: { id: DESTINATION_ID, name: 'Destination' },
+				impact: { relationships_to_detach: 0 },
+				applied: { relationships_detached: 0 }
 			}
 		});
 

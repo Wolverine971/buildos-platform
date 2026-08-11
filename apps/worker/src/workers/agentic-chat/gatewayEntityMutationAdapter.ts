@@ -20,7 +20,7 @@ import {
 } from './mutationAdapterBoundary';
 import {
 	type AgenticChatReviewedMutationToolNameV1,
-	reviewedAgenticChatMutationSpecV1
+	reviewedAgenticChatGatewayMutationSpecV1
 } from './mutationToolCatalog';
 
 type GatewayRunner = typeof runGatewayWriteOp;
@@ -127,7 +127,7 @@ export class AgenticChatGatewayEntityMutationAdapter
 
 	async execute(input: MutationInput): Promise<JsonObject> {
 		const config = gatewayEntityMutationConfig(input.toolName);
-		const reviewedSpec = reviewedAgenticChatMutationSpecV1(input.toolName);
+		const reviewedSpec = reviewedAgenticChatGatewayMutationSpecV1(input.toolName);
 		if (!config || !reviewedSpec) {
 			throw knownFailure(
 				'mutation_adapter_not_allowlisted',

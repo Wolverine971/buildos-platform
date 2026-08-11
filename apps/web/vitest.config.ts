@@ -67,6 +67,7 @@ const sharedAgentOpsTestAliases = [
 	'gateway/op-execution-gateway',
 	'ontology/onto',
 	'ontology/ontology-projects.service',
+	'ontology/task-move.service',
 	'ontology/doc-structure.service',
 	'ontology/versioning.service',
 	'ontology/instantiation.service',

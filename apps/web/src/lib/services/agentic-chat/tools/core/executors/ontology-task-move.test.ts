@@ -47,7 +47,11 @@ describe('OntologyWriteExecutor moveOntoTask', () => {
 				status: 'confirmation_required',
 				requires_user_action: true,
 				confirmation_token: 'preview-token',
-				message: 'Confirm one relationship detachment.'
+				message: 'Confirm one relationship detachment.',
+				task: { id: TASK_ID, title: 'Move me', project_id: SOURCE_ID },
+				source_project: { id: SOURCE_ID, name: 'Source' },
+				destination_project: { id: DESTINATION_ID, name: 'Cadre' },
+				impact: { relationships_to_detach: 1 }
 			})
 		);
 
@@ -71,6 +75,7 @@ describe('OntologyWriteExecutor moveOntoTask', () => {
 				status: 'moved',
 				requires_user_action: false,
 				task: { id: TASK_ID, title: 'Move me', project_id: DESTINATION_ID },
+				source_project: { id: SOURCE_ID, name: 'Source' },
 				destination_project: { id: DESTINATION_ID, name: 'Cadre' }
 			})
 		);

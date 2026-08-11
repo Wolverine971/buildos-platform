@@ -31,6 +31,11 @@
 			"import": "./dist/ontology/task-state.mjs",
 			"require": "./dist/ontology/task-state.js"
 		},
+		"./ontology/task-move.service": {
+			"types": "./dist/ontology/task-move.service.d.ts",
+			"import": "./dist/ontology/task-move.service.mjs",
+			"require": "./dist/ontology/task-move.service.js"
+		},
 		"./ontology/document-state": {
 			"types": "./dist/ontology/document-state.d.ts",
 			"import": "./dist/ontology/document-state.mjs",

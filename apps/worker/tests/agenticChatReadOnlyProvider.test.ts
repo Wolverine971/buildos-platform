@@ -918,6 +918,12 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			],
 			move_document_in_tree: ['project_id', 'document_id', 'new_parent_id', 'new_position'],
 			create_task_document: ['task_id', 'document_id', 'role'],
+			move_onto_task: [
+				'task_id',
+				'expected_source_project_id',
+				'destination_project_id',
+				'confirmation_token'
+			],
 			link_onto_entities: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel', 'props'],
 			unlink_onto_edge: ['edge_id'],
 			create_onto_goal: [
@@ -1088,6 +1094,19 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 								state_key: 'active'
 							})
 						}
+					},
+					{
+						index: 4,
+						id: 'provider-move-task',
+						type: 'function',
+						function: {
+							name: 'move_onto_task',
+							arguments: JSON.stringify({
+								task_id: 'db000000-0000-4000-8000-000000000005',
+								expected_source_project_id: 'db000000-0000-4000-8000-000000000001',
+								destination_project_id: 'db000000-0000-4000-8000-000000000002'
+							})
+						}
 					}
 				]
 			},
@@ -1106,6 +1125,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				createTaskDocument: true,
 				linkOntoEntities: true,
 				unlinkOntoEdge: true,
+				moveOntoTask: true,
 				createOntoGoal: true,
 				updateOntoGoal: true,
 				createOntoPlan: true,
@@ -1148,6 +1168,12 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				type: 'mutating_tool',
 				providerToolCallId: 'provider-update-project',
 				operationName: 'onto.project.update',
+				downstreamIdempotencySupported: false
+			}),
+			expect.objectContaining({
+				type: 'mutating_tool',
+				providerToolCallId: 'provider-move-task',
+				operationName: 'onto.task.move',
 				downstreamIdempotencySupported: false
 			})
 		]);
@@ -1216,6 +1242,18 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			projected.find((entry) => entry.function.name === 'update_onto_project')?.function
 				.parameters.required
 		).toEqual(['project_id']);
+		expect(
+			projected.find((entry) => entry.function.name === 'move_onto_task')?.function.parameters
+				.required
+		).toEqual(['task_id', 'expected_source_project_id', 'destination_project_id']);
+		expect(
+			projected.find((entry) => entry.function.name === 'move_onto_task')?.function.parameters
+				.properties.confirmation_token
+		).toMatchObject({ minLength: 1, maxLength: 128 });
+		expect(
+			projected.find((entry) => entry.function.name === 'move_onto_task')?.function
+				.description
+		).toContain('later turn');
 	});
 
 	it('continues sequential read rounds with compacted durable feedback', async () => {

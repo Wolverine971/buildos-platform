@@ -17,7 +17,7 @@ import {
 	throwGatewayResultFailure,
 	uncertainFailure
 } from './mutationAdapterBoundary';
-import { reviewedAgenticChatMutationSpecV1 } from './mutationToolCatalog';
+import { reviewedAgenticChatGatewayMutationSpecV1 } from './mutationToolCatalog';
 
 type GatewayRunner = typeof runGatewayWriteOp;
 
@@ -54,7 +54,7 @@ export class AgenticChatGatewayDocumentRelationshipMutationAdapter
 
 	async execute(input: MutationInput): Promise<JsonObject> {
 		const dispatch = reviewedDispatch(input);
-		const spec = reviewedAgenticChatMutationSpecV1(dispatch.toolName);
+		const spec = reviewedAgenticChatGatewayMutationSpecV1(dispatch.toolName);
 		if (!spec) {
 			throw knownFailure(
 				'mutation_adapter_not_allowlisted',
@@ -104,7 +104,7 @@ function reviewedDispatch(input: MutationInput): ReviewedDispatch {
 			`No document relationship adapter is enabled for ${input.toolName}`
 		);
 	}
-	const spec = reviewedAgenticChatMutationSpecV1(input.toolName);
+	const spec = reviewedAgenticChatGatewayMutationSpecV1(input.toolName);
 	if (!spec) {
 		throw knownFailure(
 			'mutation_adapter_not_allowlisted',

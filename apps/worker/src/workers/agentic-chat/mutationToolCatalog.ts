@@ -1,5 +1,9 @@
 // apps/worker/src/workers/agentic-chat/mutationToolCatalog.ts
-import type { BuildosAgentAllowedOp, JsonObject } from '@buildos/shared-types';
+import {
+	BUILDOS_AGENT_SUPPORTED_OPS,
+	type BuildosAgentAllowedOp,
+	type JsonObject
+} from '@buildos/shared-types';
 
 export type AgenticChatMutationCapabilityNameV1 =
 	| 'createOntoDocument'
@@ -10,6 +14,7 @@ export type AgenticChatMutationCapabilityNameV1 =
 	| 'unlinkOntoEdge'
 	| 'createOntoTask'
 	| 'updateOntoTask'
+	| 'moveOntoTask'
 	| 'createOntoGoal'
 	| 'updateOntoGoal'
 	| 'createOntoPlan'
@@ -26,9 +31,13 @@ export type AgenticChatProviderMutationCapabilitiesV1 = Record<
 	boolean
 >;
 
+export type AgenticChatMutationOperationNameV1 = BuildosAgentAllowedOp | 'onto.task.move';
+
+const BUILDOS_AGENT_ALLOWED_OP_SET = new Set<string>(BUILDOS_AGENT_SUPPORTED_OPS);
+
 export type AgenticChatReviewedMutationSpecV1 = {
 	capability: AgenticChatMutationCapabilityNameV1;
-	operationName: BuildosAgentAllowedOp;
+	operationName: AgenticChatMutationOperationNameV1;
 	downstreamIdempotencySupported: boolean;
 	requiredNames: readonly string[];
 	reviewedArgumentNames: readonly string[];
@@ -175,6 +184,29 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'due_at',
 			'props'
 		]
+	},
+	move_onto_task: {
+		capability: 'moveOntoTask',
+		operationName: 'onto.task.move',
+		downstreamIdempotencySupported: false,
+		descriptionOverride:
+			'Move one standalone task from the focused source project to another writable project while preserving its ID, comments, and eligible assignees. Clean moves execute immediately. If relationships, project-local links, or incompatible assignees must be removed, the tool returns an exact impact preview and confirmation_token. Ask the user to confirm those effects, then call this tool in a later turn with that token. Never confirm or retry with the token in the same turn. Scheduled, recurring, asset-linked, and archived-destination moves are blocked.',
+		requiredNames: ['task_id', 'expected_source_project_id', 'destination_project_id'],
+		reviewedArgumentNames: [
+			'task_id',
+			'expected_source_project_id',
+			'destination_project_id',
+			'confirmation_token'
+		],
+		propertyOverrides: {
+			confirmation_token: {
+				type: 'string',
+				minLength: 1,
+				maxLength: 128,
+				description:
+					'Supply only after the user explicitly confirms the exact impact preview in a later turn.'
+			}
+		}
 	},
 	create_onto_goal: {
 		capability: 'createOntoGoal',
@@ -431,6 +463,27 @@ export function reviewedAgenticChatMutationSpecV1(
 	return AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1[
 		toolName as AgenticChatReviewedMutationToolNameV1
 	];
+}
+
+export type AgenticChatGatewayMutationSpecV1 = Omit<
+	AgenticChatReviewedMutationSpecV1,
+	'operationName'
+> & { operationName: BuildosAgentAllowedOp };
+
+/**
+ * Return only specs implemented by the shared external-op gateway. Worker-only
+ * extracted operations must not leak into an external caller's allowed-op set.
+ */
+export function reviewedAgenticChatGatewayMutationSpecV1(
+	toolName: string
+): AgenticChatGatewayMutationSpecV1 | null {
+	const spec = reviewedAgenticChatMutationSpecV1(toolName);
+	if (!spec || !isBuildosAgentAllowedOp(spec.operationName)) return null;
+	return { ...spec, operationName: spec.operationName };
+}
+
+function isBuildosAgentAllowedOp(value: string): value is BuildosAgentAllowedOp {
+	return BUILDOS_AGENT_ALLOWED_OP_SET.has(value);
 }
 
 export function normalizeAgenticChatMutationCapabilitiesV1(

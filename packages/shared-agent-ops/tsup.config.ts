@@ -13,6 +13,7 @@ export default defineConfig({
 		'src/ontology/onto-api.ts',
 		'src/ontology/project-graph.types.ts',
 		'src/ontology/task-state.ts',
+		'src/ontology/task-move.service.ts',
 		'src/ontology/document-state.ts',
 		'src/ontology/start-here.ts',
 		'src/ontology/start-here.service.ts',

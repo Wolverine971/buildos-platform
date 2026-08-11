@@ -1043,6 +1043,30 @@ export class AgenticChatFixtureTurnExecutor {
 			},
 			signal
 		);
+		const contextShift = extractContextShiftPayload(chatToolResult);
+		if (contextShift) {
+			terminalContext.contextShift = contextShift;
+			await this.publishSemantic(
+				executionInput,
+				projection,
+				{
+					type: 'semantic',
+					transitionId: createStableAgenticChatReadToolTransitionIdV1({
+						turnRunId: executionInput.claim.turnRunId,
+						providerToolCallId: step.providerToolCallId,
+						stage: 'context_shift'
+					}),
+					phase: 'tool',
+					eventType: 'context_shift',
+					currentActivity: 'BuildOS is working...',
+					eventPayload: {
+						type: 'context_shift',
+						context_shift: { ...contextShift } satisfies JsonObject
+					}
+				},
+				signal
+			);
+		}
 		return {
 			providerToolCallId: step.providerToolCallId,
 			toolName: step.toolName,

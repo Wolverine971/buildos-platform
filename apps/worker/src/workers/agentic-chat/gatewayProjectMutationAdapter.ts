@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/gatewayProjectMutationAdapter.ts
 import { runGatewayWriteOp } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import {
 	sanitizeProjectForClient,
@@ -20,7 +21,7 @@ import {
 	throwGatewayResultFailure,
 	uncertainFailure
 } from './mutationAdapterBoundary';
-import { reviewedAgenticChatMutationSpecV1 } from './mutationToolCatalog';
+import { reviewedAgenticChatGatewayMutationSpecV1 } from './mutationToolCatalog';
 
 type GatewayRunner = typeof runGatewayWriteOp;
 
@@ -42,7 +43,7 @@ export class AgenticChatGatewayProjectMutationAdapter
 	}
 
 	async execute(input: MutationInput): Promise<JsonObject> {
-		const reviewedSpec = reviewedAgenticChatMutationSpecV1('update_onto_project');
+		const reviewedSpec = reviewedAgenticChatGatewayMutationSpecV1('update_onto_project');
 		if (!reviewedSpec) {
 			throw knownFailure(
 				'mutation_adapter_not_allowlisted',

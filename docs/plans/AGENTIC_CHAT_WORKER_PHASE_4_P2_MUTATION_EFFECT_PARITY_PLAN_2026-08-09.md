@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S4 complete; S5 inventory plus 18 reviewed mutation tools complete, including bounded document relationships, exact edge link/unlink, project-row update, and standard project-shell creation; all required task SQL hosted; graph move/tag/delete and remaining provider/control branches next; production mutations remain disabled
+**Status:** S1-S4 complete; S5 inventory plus 19 reviewed mutation tools complete, including bounded document relationships, exact edge link/unlink, project-row update/create, and atomic task move; all required task SQL hosted; graph reorganization/tag/delete and remaining provider/control branches next; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -620,6 +620,46 @@ Standard project-shell creation completed locally on 2026-08-11:
   and Svelte diagnostics with zero errors and zero warnings. Production
   provider capability, adapter capability, routing, deployment, and live model
   mutations remain OFF.
+
+Atomic task move completed and hosted on 2026-08-11:
+
+- Added independently gated `move_onto_task` provider and adapter capabilities.
+  The reviewed surface requires canonical task/source/destination UUIDs, pins
+  the source to the admitted project, rejects identical projects, and bounds an
+  optional confirmation token. Production bootstrap supplies neither gate.
+- Extracted a shared task-move service used by the web route, legacy executor,
+  and worker adapter. It delegates all locking, destructive-impact preview,
+  signed later-turn confirmation, blocked dependency handling, and compound
+  movement to the existing atomic database command; validates exact status and
+  identity receipts; compacts internal task details; and logs truthful activity
+  for both projects only after a committed move.
+- Added a service-role-only SQL bridge that resolves the explicit user's actor,
+  checks write access to both source and destination projects, invokes the
+  established atomic command under that user subject, and restores the prior
+  request subject. It is not available to authenticated or anonymous clients.
+- The move remains one-attempt/uncertain. Destination inspection can prove an
+  `already_moved` state but cannot reconstruct the exact original impact and
+  applied receipt. Network, malformed, or unclassified post-dispatch outcomes
+  therefore never auto-retry. Known authorization/validation/blocked command
+  failures remain known failures.
+- The worker-only `onto.task.move` operation is explicitly excluded from the
+  external gateway allowlist, preventing accidental scope expansion. Successful
+  moved/already-moved receipts publish a durable destination context shift only
+  after the durable tool result; previews and blocked receipts require user
+  action without shifting context.
+- Full local gates pass: worker 904 tests plus one intentional skip,
+  shared-agent-ops 103/103, runtime 183/183, focused web move referees 8/8,
+  shared build/typecheck, worker lint/typecheck/HTTP guard, Svelte check with
+  zero diagnostics, and the disposable PostgreSQL bridge proof.
+- A fresh receipt-isolated workdir fetched the 85 hosted receipts and staged
+  only `20260811010000_agentic_chat_task_move_worker_bridge.sql`. Source and
+  staged SHA-256 matched at
+  `a4c4022d9aa7996f9853bf72237f29dd3c8f4ab9d3092811da68a7e8679e7170`.
+  The dry run named only that migration, application succeeded, the post-apply
+  dry run is empty, hosted history contains the receipt, and hosted OpenAPI
+  exposes the RPC to `service_role` while hiding it from anonymous callers.
+  Production provider/adapter gates, routing, worker deploy, and live model
+  writes remain OFF.
 
 ## P2 exit gate
 

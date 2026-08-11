@@ -3037,6 +3037,87 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	it('publishes a durable mutation context shift after its durable tool result', async () => {
+		const harness = createHarness([
+			{
+				type: 'mutating_tool',
+				callTransitionId: CALL_TRANSITION_ID,
+				resultTransitionId: RESULT_TRANSITION_ID,
+				logicalOperationId: LOGICAL_OPERATION_ID,
+				providerToolCallId: 'provider-mutation-context-shift',
+				toolName: 'move_onto_task',
+				operationName: 'onto.task.move',
+				arguments: {
+					task_id: 'task-1',
+					expected_source_project_id: 'project-1',
+					destination_project_id: 'project-2'
+				},
+				downstreamIdempotencySupported: false
+			},
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		harness.mutation.execute.mockResolvedValueOnce({
+			effectId: EFFECT_ID,
+			canonicalArgumentHash: 'a'.repeat(64),
+			downstreamIdempotencyKey: `chat-effect:${EFFECT_ID}`,
+			downstreamReceipt: {
+				status: 'moved',
+				context_shift: {
+					new_context: 'project',
+					entity_id: 'project-2',
+					entity_name: 'Destination',
+					entity_type: 'project',
+					message: 'Task moved successfully. Context switched to Destination.'
+				}
+			},
+			replayed: false
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+
+			const publicTypes = harness.broadcastMessages.map(
+				(message) => (message.payload as Record<string, unknown>).type
+			);
+			const toolResultIndex = publicTypes.indexOf('tool_result');
+			const contextShiftIndex = publicTypes.indexOf('context_shift');
+			expect(toolResultIndex).toBeGreaterThan(-1);
+			expect(contextShiftIndex).toBeGreaterThan(toolResultIndex);
+			expect(harness.log.indexOf('mutation_ledger')).toBeLessThan(
+				harness.log.indexOf('semantic:tool_result:')
+			);
+			expect(
+				harness.semanticInputs.find(
+					(input) =>
+						(input.event_payload as Record<string, unknown>)?.type === 'context_shift'
+				)?.event_payload
+			).toEqual({
+				type: 'context_shift',
+				context_shift: {
+					new_context: 'project',
+					entity_id: 'project-2',
+					entity_name: 'Destination',
+					entity_type: 'project',
+					message: 'Task moved successfully. Context switched to Destination.'
+				}
+			});
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					lastTurnContext: expect.objectContaining({
+						context_type: 'project',
+						summary: 'Task moved successfully. Context switched to Destination.',
+						data_accessed: expect.arrayContaining(['move_onto_task', 'context_shift'])
+					})
+				})
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it('persists a committed mutation receipt before honoring post-begin cancellation', async () => {
 		const harness = createHarness(
 			[
