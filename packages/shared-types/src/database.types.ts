@@ -18418,6 +18418,14 @@ export type Database = {
         Args: { p_plan: Json; p_project_id: string }
         Returns: Json
       }
+      onto_apply_task_update_relationship_plan_atomic: {
+        Args: {
+          p_plan: Json
+          p_project_id: string
+          p_task_id: string
+        }
+        Returns: Json
+      }
       onto_check_guard: {
         Args: { p_entity: Json; p_guard: Json }
         Returns: boolean

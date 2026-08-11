@@ -316,3 +316,21 @@ request work rather than a universal server-rendering failure.
   `pnpm --filter @buildos/web check` reports 0 errors and 0 warnings. The standalone Svelte
   autofixer could not run because its CLI is not installed locally and sandbox policy rejected an
   npm download; the repository-native Svelte diagnostics passed cleanly.
+
+## Homepage proof and simplification follow-up — 2026-08-08
+
+- ✅ The homepage now leads with one concrete promise—messy input becomes a working project—and
+  carries that idea through a three-step walkthrough with real product screenshots. Repeated setup,
+  transformation, and compounding-value claims were tightened or removed. → P4+P6+P8
+- ✅ Decorative section numbering, branch rails, connector labels, texture layers, tinted option
+  cards, and most shadows were removed. The page now uses neutral surfaces and one orange accent for
+  primary actions and real-app screenshot proof. → P3+P4+P5+P21
+- ✅ The creator/agent split, shared project-state architecture, project data model, and memory
+  timeline remain, but each has one job, a shorter heading, and compact supporting copy. The closing
+  three-option comparison is now a single direct invitation to start with one project. → P4+P6+P19
+- ✅ The real-change screenshots retain orange borders and the desktop 1.72× hover/focus inspection
+  transition. Mobile stays stacked and non-scaling; reduced-motion users receive no transform or
+  transition. → P11+P13
+- ✅ Live checks at 390×844 and 1440×1000 confirm zero horizontal overflow, correct light/dark
+  screenshot selection, readable mobile stacking, and keyboard-accessible screenshot expansion.
+  Prettier, the Svelte autofixer, `pnpm check`, and `git diff --check` pass.
