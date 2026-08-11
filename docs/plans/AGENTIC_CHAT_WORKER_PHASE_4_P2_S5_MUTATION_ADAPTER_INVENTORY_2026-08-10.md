@@ -4,7 +4,7 @@
 
 **Prepared:** 2026-08-10
 
-**Status:** inventory complete; 19 mutation tools have reviewed adapters, including bounded document relationships, exact edge link/unlink, project-row update/create, and atomic task move; required task SQL hosted; production gates remain OFF
+**Status:** inventory complete; 20 mutation tools have reviewed adapters, including bounded document relationships, exact edge link/unlink, project-row update/create, atomic task move, and notification-only entity tag; required task SQL hosted; production gates remain OFF
 
 **Governing plan:** `AGENTIC_CHAT_WORKER_PHASE_4_P2_MUTATION_EFFECT_PARITY_PLAN_2026-08-09.md`
 
@@ -22,12 +22,13 @@ The exhaustive signed write-category union contains **38 tools**:
 - 6 contact, external, or control-plane tools.
 
 The shared in-process gateway currently covers **22 of 38**: 18 ontology tools
-and all 4 calendar tools. An additional worker-callable shared command now owns
-the atomic task move, so 23 of 38 tools have a shared implementation. The
-remaining 15 are web-owned graph, tag, delete, contact, external MCP,
-delegation, or staged-commit operations. Shared coverage alone is not worker
-admission; every tool still needs a provider projection, an independently gated
-adapter, and a recovery classification.
+and all 4 calendar tools. Additional worker-callable shared commands now own the
+atomic task move and notification-only entity tag, so 24 of 38 tools have a
+shared implementation. The remaining 14 are web-owned graph, delete, contact,
+external MCP, delegation, staged-commit, or excluded tag-content operations.
+Shared coverage alone is not worker admission; every tool still needs a
+provider projection, an independently gated adapter, and a recovery
+classification.
 
 ## Inventory conventions
 
@@ -68,8 +69,8 @@ adapter, and a recovery classification.
 | `link_onto_entities`            | `onto.edge.link`                  | shared |     30s | **One/uncertain non-project adapter implemented**; no general uniqueness constraint                                 | `edge`; canonical relationship/props/activity                                                              |
 | `unlink_onto_edge`              | `onto.edge.unlink`                | shared |     30s | **One/uncertain exact-edge adapter implemented**; no durable delete tombstone                                       | removed edge; relationship/activity                                                                        |
 | `reorganize_onto_project_graph` | `onto.project.graph.reorganize`   | web    |     30s | Web-only compound graph rewrite; one/uncertain is insufficient until partial-change receipt is defined              | graph plan/result; multiple containment and semantic edges                                                 |
-| `move_onto_task`                | `onto.task.move`                  | shared |     30s | **One/uncertain adapter implemented**; atomic preview/token/move command, but no exact original-receipt recovery      | task move receipt; task, edges, assignees, links, source/destination activity                              |
-| `tag_onto_entity`               | `x.misc.tag_onto_entity`          | web    |     30s | Web-only and registry taxonomy gap; one/uncertain candidate                                                         | entity/tag result; content mutation or manual ping plus notifications                                      |
+| `move_onto_task`                | `onto.task.move`                  | shared |     30s | **One/uncertain adapter implemented**; atomic preview/token/move command, but no exact original-receipt recovery    | task move receipt; task, edges, assignees, links, source/destination activity                              |
+| `tag_onto_entity`               | `x.misc.tag_onto_entity`          | shared |     30s | **One/uncertain ping-only adapter implemented**; explicit user UUIDs only; content/handle branches remain web-owned | entity/tag result plus notification fan-out; no content mutation                                           |
 | `delete_onto_project`           | `onto.project.delete`             | web    |     30s | Web-only irreversible delete; exact tombstone/query contract required                                               | deleted project and cascading effects                                                                      |
 | `delete_onto_task`              | `onto.task.delete`                | web    |     30s | Web-only irreversible delete; exact tombstone/query contract required                                               | deleted task; edges/calendar cleanup/activity                                                              |
 | `delete_onto_document`          | `onto.document.delete`            | web    |     30s | Web-only irreversible delete; exact tombstone/query contract required                                               | deleted document; tree/version/edge cleanup                                                                |
@@ -117,9 +118,10 @@ registry's email surface is read-only.
 4. **Relationships and project:** exact non-project link/unlink, project-row
    update, and standard project-shell creation are complete. Full initial graph,
    fiction/domain-profile, and living-reference creation remain web-owned.
-5. **Graph move/tag/deletes:** atomic task move is complete behind independent
-   default-off gates. Compound graph reorganization, tagging, and irreversible
-   deletes still require extraction plus stronger reconciliation evidence.
+5. **Graph move/tag/deletes:** atomic task move and explicit notification-only
+   tagging are complete behind independent default-off gates. Compound graph
+   reorganization, content tagging/handle resolution, and irreversible deletes
+   still require stronger reconciliation evidence.
 6. **Calendar, contacts, external MCP, delegation, and staged commit:** keep last;
    these cross provider/control boundaries or can partially commit.
 
@@ -480,5 +482,36 @@ shared-agent-ops 103/103, agentic-chat-runtime 183/183, focused web move
 referees 8/8, shared build/typecheck, worker check and HTTP size guard, and
 Svelte diagnostics with zero errors and zero warnings. Production provider
 capability, adapter capability, routing, worker deploy, and live model mutations
-remain OFF. The next bounded candidates are graph reorganization and tagging;
-irreversible deletes remain behind a tombstone/query-contract prerequisite.
+remain OFF.
+
+## Notification-only entity-tag subset (2026-08-11)
+
+This unit adds one reviewed tool without enabling it in production:
+
+- `tag_onto_entity` now requires explicit `mode: "ping"`, canonical project and
+  entity UUIDs, an exact task/goal/document type, and 1-25 unique canonical user
+  UUIDs. The admitted project must match the signed turn context. Handle
+  resolution and the legacy default content-appending branch remain web-owned.
+- A shared service now owns actor resolution, caller-specific access checks,
+  active project/entity validation, strict project-member resolution, and the
+  single notification fan-out attempt. The web API route uses the authenticated
+  `auth.uid()` access RPC; the service-role worker uses the actor-explicit RPC.
+- Notification fan-out creates multiple rows per recipient and has no stable
+  effect key or exact replay query. The adapter therefore advertises no
+  downstream idempotency, calls once, and never retries an ambiguous result.
+  Access, scope, membership, and pre-dispatch database failures are known;
+  thrown, malformed, or incomplete delivery receipts are outcome-uncertain.
+- Successful receipts preserve the legacy project/entity/user fields and
+  collaborator-count message. The worker-only `x.misc.tag_onto_entity`
+  operation remains outside the external gateway allowlist. Provider and
+  adapter capabilities are independent and default OFF; production bootstrap
+  supplies neither.
+- No SQL or migration was required. Local proof passes worker 909 tests with
+  one intentional skip, shared-agent-ops 107/107, focused web tag route and
+  legacy tag referees, shared/worker typechecks and build, worker lint/HTTP
+  guard, and Svelte diagnostics with zero errors and zero warnings.
+
+Production provider capability, adapter capability, routing, worker deploy,
+and live model mutations remain OFF. The next unresolved ontology candidates
+are compound graph reorganization and irreversible deletes, both of which need
+stronger partial-change or tombstone reconciliation contracts.

@@ -126,6 +126,11 @@
 			"import": "./dist/ops/entity-mention-notification.service.mjs",
 			"require": "./dist/ops/entity-mention-notification.service.js"
 		},
+		"./ops/entity-mention-ping.service": {
+			"types": "./dist/ops/entity-mention-ping.service.d.ts",
+			"import": "./dist/ops/entity-mention-ping.service.mjs",
+			"require": "./dist/ops/entity-mention-ping.service.js"
+		},
 		"./ops/task-assignment-notification.service": {
 			"types": "./dist/ops/task-assignment-notification.service.d.ts",
 			"import": "./dist/ops/task-assignment-notification.service.mjs",

@@ -53,6 +53,15 @@ const workspacePackageAliases = [
 		)
 	},
 	{
+		find: /^@buildos\/shared-agent-ops\/ops\/entity-mention-ping.service$/,
+		replacement: fileURLToPath(
+			new URL(
+				'../../packages/shared-agent-ops/src/ops/entity-mention-ping.service.ts',
+				import.meta.url
+			)
+		)
+	},
+	{
 		find: /^@buildos\/shared-agent-ops\/ops\/gateway-op-aliases$/,
 		replacement: fileURLToPath(
 			new URL(

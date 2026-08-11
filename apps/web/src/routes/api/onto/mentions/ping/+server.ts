@@ -1,27 +1,19 @@
-// apps/web/src/routes/api/onto/mentions/ping/+server.ts
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
-import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
-import { logOntologyApiError } from '../../shared/error-logging';
 import {
-	notifyEntityMentionsAdded,
-	resolveEligibleProjectMentionUserIds,
-	type EntityMentionNotificationSource
-} from '$lib/server/entity-mention-notification.service';
+	EntityMentionPingServiceError,
+	pingOntoEntity,
+	type EntityMentionPingEntityType
+} from '$lib/server/entity-mention-ping.service';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { logOntologyApiError } from '../../shared/error-logging';
 
-const ALLOWED_ENTITY_TYPES = new Set(['task', 'goal', 'document']);
+const ALLOWED_ENTITY_TYPES = new Set<string>(['task', 'goal', 'document']);
 const MAX_MENTIONED_USERS = 25;
 const MAX_MESSAGE_SUFFIX_LENGTH = 280;
-
-const ENTITY_TITLE_COLUMN: Record<string, 'title' | 'name'> = {
-	task: 'title',
-	goal: 'name',
-	document: 'title'
-};
 
 const mentionPingSchema = z
 	.object({
@@ -67,175 +59,80 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	let projectId: string | undefined;
+	let entityType: EntityMentionPingEntityType | undefined;
+	let entityId: string | undefined;
 
 	try {
 		const parsed = await parseJsonRequest(request, mentionPingSchema);
 		if (!parsed.ok) return parsed.response;
 		const body = parsed.data;
-		const projectId = typeof body.project_id === 'string' ? body.project_id.trim() : '';
-		const entityType =
-			typeof body.entity_type === 'string' ? body.entity_type.trim().toLowerCase() : '';
-		const entityId = typeof body.entity_id === 'string' ? body.entity_id.trim() : '';
-		const rawMessageSuffix = typeof body.message === 'string' ? body.message.trim() : '';
-		const messageSuffix = rawMessageSuffix.slice(0, MAX_MESSAGE_SUFFIX_LENGTH);
+		projectId = body.project_id.trim();
+		const normalizedEntityType = body.entity_type.trim().toLowerCase();
+		entityId = body.entity_id.trim();
+		const messageSuffix = body.message?.trim().slice(0, MAX_MESSAGE_SUFFIX_LENGTH) || null;
 		const mentionedUserIds = normalizeMentionedUserIds(body.mentioned_user_ids);
 
-		if (!projectId || !entityId || !ALLOWED_ENTITY_TYPES.has(entityType)) {
+		if (!projectId || !entityId || !ALLOWED_ENTITY_TYPES.has(normalizedEntityType)) {
 			return ApiResponse.badRequest(
 				'project_id, entity_type (task|goal|document), and entity_id are required'
 			);
 		}
-
+		entityType = normalizedEntityType as EntityMentionPingEntityType;
 		if (!mentionedUserIds) {
 			return ApiResponse.badRequest('mentioned_user_ids must be an array of user UUIDs');
 		}
-
 		if (mentionedUserIds.length === 0) {
 			return ApiResponse.badRequest('mentioned_user_ids cannot be empty');
 		}
-
 		if (mentionedUserIds.length > MAX_MENTIONED_USERS) {
 			return ApiResponse.badRequest(
 				`mentioned_user_ids supports at most ${MAX_MENTIONED_USERS} recipients`
 			);
 		}
 
-		await ensureActorId(supabase, user.id);
-
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_member_access',
-			{
-				p_project_id: projectId,
-				p_required_access: 'write'
+		const result = await pingOntoEntity({
+			client: supabase,
+			projectId,
+			entityType,
+			entityId,
+			mentionedUserIds,
+			messageSuffix,
+			source: getChangeSourceFromRequest(request) === 'chat' ? 'agent_ping' : 'manual_ping',
+			caller: {
+				kind: 'authenticated',
+				userId: user.id,
+				actorDisplayName: getActorDisplayName({ name: user.name, email: user.email })
 			}
-		);
+		});
 
-		if (accessError) {
+		return ApiResponse.success(result);
+	} catch (error) {
+		if (error instanceof EntityMentionPingServiceError) {
+			if (error.code === 'invalid_arguments' || error.code === 'ineligible_recipients') {
+				return ApiResponse.badRequest(error.message);
+			}
+			if (error.code === 'access_denied') return ApiResponse.forbidden(error.message);
+			if (error.code === 'project_not_found') return ApiResponse.notFound('Project');
+			if (error.code === 'entity_not_found') return ApiResponse.notFound(entityType);
+
 			await logOntologyApiError({
 				supabase,
-				error: accessError,
-				endpoint: '/api/onto/mentions/ping',
-				method: 'POST',
-				userId: user.id,
-				projectId,
-				entityType: 'project',
-				operation: 'mention_ping_access'
-			});
-			return ApiResponse.internalError(accessError, 'Failed to check project access');
-		}
-
-		if (!hasAccess) {
-			return ApiResponse.forbidden(
-				'You do not have permission to tag members in this project'
-			);
-		}
-
-		const { data: projectRow, error: projectError } = await supabase
-			.from('onto_projects')
-			.select('id, name, created_by')
-			.eq('id', projectId)
-			.is('deleted_at', null)
-			.maybeSingle();
-
-		if (projectError) {
-			await logOntologyApiError({
-				supabase,
-				error: projectError,
-				endpoint: '/api/onto/mentions/ping',
-				method: 'POST',
-				userId: user.id,
-				projectId,
-				entityType: 'project',
-				operation: 'mention_ping_project_lookup',
-				tableName: 'onto_projects'
-			});
-			return ApiResponse.databaseError(projectError);
-		}
-
-		if (!projectRow) {
-			return ApiResponse.notFound('Project');
-		}
-
-		const titleColumn = ENTITY_TITLE_COLUMN[entityType];
-		const { data: entityRow, error: entityError } = await (supabase as any)
-			.from(
-				entityType === 'task'
-					? 'onto_tasks'
-					: entityType === 'goal'
-						? 'onto_goals'
-						: 'onto_documents'
-			)
-			.select(`id, project_id, ${titleColumn}`)
-			.eq('id', entityId)
-			.eq('project_id', projectId)
-			.is('deleted_at', null)
-			.maybeSingle();
-
-		if (entityError) {
-			await logOntologyApiError({
-				supabase,
-				error: entityError,
+				error: error.causeValue ?? error,
 				endpoint: '/api/onto/mentions/ping',
 				method: 'POST',
 				userId: user.id,
 				projectId,
 				entityType,
 				entityId,
-				operation: 'mention_ping_entity_lookup'
+				operation: `mention_ping_${error.code}`
 			});
-			return ApiResponse.databaseError(entityError);
+			if (error.code === 'database_error') {
+				return ApiResponse.databaseError(error.causeValue ?? error);
+			}
+			return ApiResponse.internalError(error, 'Failed to ping mentions');
 		}
 
-		if (!entityRow) {
-			return ApiResponse.notFound(entityType);
-		}
-
-		const { eligibleUserIds, ineligibleUserIds } = await resolveEligibleProjectMentionUserIds({
-			supabase,
-			projectId,
-			projectOwnerActorId: projectRow.created_by,
-			candidateUserIds: mentionedUserIds
-		});
-
-		if (ineligibleUserIds.length > 0) {
-			return ApiResponse.badRequest(
-				`mentioned_user_ids must be active project members: ${ineligibleUserIds.join(', ')}`
-			);
-		}
-
-		const changeSource = getChangeSourceFromRequest(request);
-		const source: EntityMentionNotificationSource =
-			changeSource === 'chat' ? 'agent_ping' : 'manual_ping';
-		const actorDisplayName = getActorDisplayName({
-			name: user.name,
-			email: user.email
-		});
-
-		const { notifiedUserIds } = await notifyEntityMentionsAdded({
-			supabase,
-			projectId,
-			projectName: projectRow.name,
-			entityType,
-			entityId,
-			entityTitle:
-				(titleColumn === 'name'
-					? (entityRow as { name?: string | null }).name
-					: (entityRow as { title?: string | null }).title) ?? null,
-			actorUserId: user.id,
-			actorDisplayName,
-			mentionedUserIds: eligibleUserIds,
-			source,
-			messageSuffix: messageSuffix.length > 0 ? messageSuffix : null
-		});
-
-		return ApiResponse.success({
-			project_id: projectId,
-			entity_type: entityType,
-			entity_id: entityId,
-			mentioned_user_ids: eligibleUserIds,
-			notified_user_ids: notifiedUserIds
-		});
-	} catch (error) {
 		console.error('[Mention Ping API] Failed to ping mentions:', error);
 		return ApiResponse.internalError(error, 'Failed to ping mentions');
 	}

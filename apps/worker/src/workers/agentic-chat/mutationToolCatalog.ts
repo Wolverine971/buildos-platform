@@ -15,6 +15,7 @@ export type AgenticChatMutationCapabilityNameV1 =
 	| 'createOntoTask'
 	| 'updateOntoTask'
 	| 'moveOntoTask'
+	| 'tagOntoEntity'
 	| 'createOntoGoal'
 	| 'updateOntoGoal'
 	| 'createOntoPlan'
@@ -31,7 +32,10 @@ export type AgenticChatProviderMutationCapabilitiesV1 = Record<
 	boolean
 >;
 
-export type AgenticChatMutationOperationNameV1 = BuildosAgentAllowedOp | 'onto.task.move';
+export type AgenticChatMutationOperationNameV1 =
+	| BuildosAgentAllowedOp
+	| 'onto.task.move'
+	| 'x.misc.tag_onto_entity';
 
 const BUILDOS_AGENT_ALLOWED_OP_SET = new Set<string>(BUILDOS_AGENT_SUPPORTED_OPS);
 
@@ -206,6 +210,52 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 				description:
 					'Supply only after the user explicitly confirms the exact impact preview in a later turn.'
 			}
+		}
+	},
+	tag_onto_entity: {
+		capability: 'tagOntoEntity',
+		operationName: 'x.misc.tag_onto_entity',
+		downstreamIdempotencySupported: false,
+		descriptionOverride:
+			'Send one explicit notification-only tag to active members of the focused project. Use exact user UUIDs returned by project-member reads and always pass mode "ping". This worker tool never edits entity content and does not resolve @handles.',
+		requiredNames: ['project_id', 'entity_type', 'entity_id', 'mode', 'mentioned_user_ids'],
+		reviewedArgumentNames: [
+			'project_id',
+			'entity_type',
+			'entity_id',
+			'mode',
+			'mentioned_user_ids',
+			'message'
+		],
+		propertyOverrides: {
+			project_id: {
+				type: 'string',
+				pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+			},
+			entity_type: { type: 'string', enum: ['task', 'goal', 'document'] },
+			entity_id: {
+				type: 'string',
+				pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+			},
+			mode: {
+				type: 'string',
+				enum: ['ping'],
+				default: 'ping',
+				description:
+					'Must be "ping". Content tagging remains available only in the web-owned flow.'
+			},
+			mentioned_user_ids: {
+				type: 'array',
+				minItems: 1,
+				maxItems: 25,
+				uniqueItems: true,
+				items: {
+					type: 'string',
+					pattern:
+						'^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+				}
+			},
+			message: { type: 'string', maxLength: 280 }
 		}
 	},
 	create_onto_goal: {

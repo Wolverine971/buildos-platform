@@ -73,6 +73,7 @@ const sharedAgentOpsTestAliases = [
 	'ontology/instantiation.service',
 	'ops/async-activity-logger',
 	'ops/entity-mention-notification.service',
+	'ops/entity-mention-ping.service',
 	'ops/gateway-op-aliases',
 	'ops/security-event-logger',
 	'ops/tracked-in-app-notification.service',

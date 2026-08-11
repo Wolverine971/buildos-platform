@@ -32,6 +32,7 @@ export default defineConfig({
 		'src/ops/async-activity-logger.ts',
 		'src/ops/tracked-in-app-notification.service.ts',
 		'src/ops/entity-mention-notification.service.ts',
+		'src/ops/entity-mention-ping.service.ts',
 		'src/ops/task-assignment-notification.service.ts',
 		'src/ops/gateway-op-aliases.ts',
 		'src/ops/security-event-logger.ts',

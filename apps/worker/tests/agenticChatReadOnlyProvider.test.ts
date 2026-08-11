@@ -924,6 +924,14 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				'destination_project_id',
 				'confirmation_token'
 			],
+			tag_onto_entity: [
+				'project_id',
+				'entity_type',
+				'entity_id',
+				'mode',
+				'mentioned_user_ids',
+				'message'
+			],
 			link_onto_entities: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel', 'props'],
 			unlink_onto_edge: ['edge_id'],
 			create_onto_goal: [
@@ -1126,6 +1134,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				linkOntoEntities: true,
 				unlinkOntoEdge: true,
 				moveOntoTask: true,
+				tagOntoEntity: true,
 				createOntoGoal: true,
 				updateOntoGoal: true,
 				createOntoPlan: true,
@@ -1254,6 +1263,22 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			projected.find((entry) => entry.function.name === 'move_onto_task')?.function
 				.description
 		).toContain('later turn');
+		expect(
+			projected.find((entry) => entry.function.name === 'tag_onto_entity')?.function
+				.parameters.required
+		).toEqual(['project_id', 'entity_type', 'entity_id', 'mode', 'mentioned_user_ids']);
+		expect(
+			projected.find((entry) => entry.function.name === 'tag_onto_entity')?.function
+				.parameters.properties.mode
+		).toMatchObject({ enum: ['ping'], default: 'ping' });
+		expect(
+			projected.find((entry) => entry.function.name === 'tag_onto_entity')?.function
+				.parameters.properties.mentioned_user_ids
+		).toMatchObject({ minItems: 1, maxItems: 25, uniqueItems: true });
+		expect(
+			projected.find((entry) => entry.function.name === 'tag_onto_entity')?.function
+				.description
+		).toContain('never edits entity content');
 	});
 
 	it('continues sequential read rounds with compacted durable feedback', async () => {

@@ -112,6 +112,18 @@ describe('createAgenticChatPhase3Assembly', () => {
 		).toThrow('move_onto_task provider capability requires its mutation adapter');
 	});
 
+	it('fails closed when tag_onto_entity is advertised without its adapter', () => {
+		expect(() =>
+			createAgenticChatPhase3Assembly({
+				client: supabaseClient() as never,
+				providerClient: { stream: vi.fn() } as never,
+				providerConfigured: true,
+				internalUserIds: [INTERNAL_USER_ID],
+				mutationProviderCapabilities: { tagOntoEntity: true }
+			})
+		).toThrow('tag_onto_entity provider capability requires its mutation adapter');
+	});
+
 	it('fails closed when a straightforward entity mutation is advertised without its adapter', () => {
 		expect(() =>
 			createAgenticChatPhase3Assembly({
@@ -181,6 +193,7 @@ describe('createAgenticChatPhase3Assembly', () => {
 			createOntoTask: true,
 			updateOntoTask: true,
 			moveOntoTask: true,
+			tagOntoEntity: true,
 			createOntoGoal: true,
 			updateOntoGoal: true,
 			createOntoPlan: true,

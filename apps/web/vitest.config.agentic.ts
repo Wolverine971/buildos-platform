@@ -22,6 +22,7 @@ const sharedAgentOpsTestAliases = [
 	'ontology/versioning.service',
 	'ops/async-activity-logger',
 	'ops/entity-mention-notification.service',
+	'ops/entity-mention-ping.service',
 	'inbox-index'
 ].map((sub) => ({
 	find: `@buildos/shared-agent-ops/${sub}`,

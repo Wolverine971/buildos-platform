@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S4 complete; S5 inventory plus 19 reviewed mutation tools complete, including bounded document relationships, exact edge link/unlink, project-row update/create, and atomic task move; all required task SQL hosted; graph reorganization/tag/delete and remaining provider/control branches next; production mutations remain disabled
+**Status:** S1-S4 complete; S5 inventory plus 20 reviewed mutation tools complete, including bounded document relationships, exact edge link/unlink, project-row update/create, atomic task move, and notification-only entity tag; all required task SQL hosted; graph reorganization/delete and remaining provider/control branches next; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -660,6 +660,29 @@ Atomic task move completed and hosted on 2026-08-11:
   exposes the RPC to `service_role` while hiding it from anonymous callers.
   Production provider/adapter gates, routing, worker deploy, and live model
   writes remain OFF.
+
+Notification-only entity tagging completed locally on 2026-08-11:
+
+- Added independently gated `tag_onto_entity` provider and adapter capabilities
+  for explicit `mode: "ping"` only. The reviewed surface requires canonical
+  project/entity UUIDs, task/goal/document type, 1-25 unique exact user UUIDs,
+  and an optional 280-character message. Handles and content mutation are not
+  admitted.
+- Extracted a shared ping service used by the authenticated web route and the
+  service-role worker. It resolves the acting ontology actor, uses the correct
+  caller-specific project access RPC, verifies an active scoped entity and
+  active project members, and performs one notification fan-out attempt.
+- Notification creation is neither atomic across recipients nor keyed by the
+  chat effect. The adapter is therefore one-attempt/uncertain: known
+  pre-dispatch validation/access/database failures are not ambiguous, while
+  thrown, incomplete, or malformed delivery outcomes never auto-retry.
+- The exact legacy ping receipt and collaborator-count message are restored.
+  `x.misc.tag_onto_entity` is explicitly excluded from the external gateway
+  allowlist, and production provider/adapter gates remain OFF.
+- No SQL was required. Local gates pass worker 909 tests plus one intentional
+  skip, shared-agent-ops 107/107, focused web tag referees, shared/worker
+  typechecks and build, worker lint/HTTP guard, and Svelte diagnostics with zero
+  errors and zero warnings.
 
 ## P2 exit gate
 
