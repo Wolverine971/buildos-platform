@@ -1347,29 +1347,24 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 		if (titledParent && titledParent.id !== documentId) {
 			newParentId = titledParent.id;
 		} else {
-			const creatorActorId = await ensureActorId(context.admin, context.userId);
-			const { data: createdParent, error: createParentError } = await context.admin
-				.from('onto_documents')
-				.insert({
-					project_id: project.id,
-					title: rawParentTitle,
-					type_key: 'document.default',
-					state_key: 'draft',
-					description: 'Grouping document created while organizing the project.',
-					content: '',
-					props: {},
-					created_by: creatorActorId
-				})
-				.select('id')
-				.single();
-			if (createParentError || !createdParent) {
+			const createdParent = await createDocument(context, {
+				project_id: project.id,
+				title: rawParentTitle,
+				type_key: 'document.default',
+				state_key: 'draft',
+				description: 'Grouping document created while organizing the project.',
+				content: ''
+			});
+			const createdParentId =
+				typeof createdParent.document.id === 'string' ? createdParent.document.id : null;
+			if (!createdParentId || createdParent.structure_error) {
 				throw new ExternalToolGatewayError(
 					'INTERNAL',
-					createParentError?.message ||
+					createdParent.structure_error ||
 						`Failed to create parent document "${rawParentTitle}"`
 				);
 			}
-			newParentId = createdParent.id;
+			newParentId = createdParentId;
 		}
 	}
 	if (newParentId && newParentId === documentId) {
@@ -1381,16 +1376,29 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 	const position =
 		normalizeDocumentPosition(args.new_position ?? args.position, 'new_position') ?? 0;
 	const actorId = await ensureActorId(context.admin, context.userId);
-	const structure = await moveDocument(
-		context.admin,
-		project.id,
-		documentId,
-		{
-			newParentId: newParentId ?? null,
-			newPosition: position
-		},
-		actorId
-	);
+	let structure;
+	try {
+		structure = await moveDocument(
+			context.admin,
+			project.id,
+			documentId,
+			{
+				newParentId: newParentId ?? null,
+				newPosition: position
+			},
+			actorId
+		);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		if (
+			message === 'A document cannot be moved under itself.' ||
+			message === 'Parent document is not linked in the document tree.' ||
+			message === 'Cannot move a folder into its own descendant'
+		) {
+			throw new ExternalToolGatewayError('VALIDATION_ERROR', message);
+		}
+		throw error;
+	}
 	await logUpdateAsync(
 		context.admin,
 		project.id,

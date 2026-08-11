@@ -162,6 +162,8 @@ describe('createAgenticChatPhase3Assembly', () => {
 		const capabilities = {
 			createOntoDocument: true,
 			updateOntoDocument: true,
+			moveDocumentInTree: true,
+			createTaskDocument: true,
 			createOntoTask: true,
 			updateOntoTask: true,
 			createOntoGoal: true,

@@ -916,6 +916,8 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				'merge_instructions',
 				'props'
 			],
+			move_document_in_tree: ['project_id', 'document_id', 'new_parent_id', 'new_position'],
+			create_task_document: ['task_id', 'document_id', 'role'],
 			create_onto_goal: [
 				'project_id',
 				'name',
@@ -1035,6 +1037,18 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 								title: 'Updated'
 							})
 						}
+					},
+					{
+						index: 1,
+						id: 'provider-attach-document',
+						type: 'function',
+						function: {
+							name: 'create_task_document',
+							arguments: JSON.stringify({
+								task_id: 'db000000-0000-4000-8000-000000000005',
+								document_id: 'db000000-0000-4000-8000-000000000004'
+							})
+						}
 					}
 				]
 			},
@@ -1049,6 +1063,8 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			16,
 			{
 				updateOntoDocument: true,
+				moveDocumentInTree: true,
+				createTaskDocument: true,
 				createOntoGoal: true,
 				updateOntoGoal: true,
 				createOntoPlan: true,
@@ -1072,6 +1088,12 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				type: 'mutating_tool',
 				operationName: 'onto.document.update',
 				downstreamIdempotencySupported: false
+			}),
+			expect.objectContaining({
+				type: 'mutating_tool',
+				providerToolCallId: 'provider-attach-document',
+				operationName: 'onto.task.docs.create_or_attach',
+				downstreamIdempotencySupported: true
 			})
 		]);
 		const projected = client.stream.mock.calls[0]?.[0].tools ?? [];
@@ -1097,6 +1119,18 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			projected.find((entry) => entry.function.name === 'create_onto_risk')?.function
 				.parameters.required
 		).toEqual(['project_id', 'title', 'impact']);
+		expect(
+			projected.find((entry) => entry.function.name === 'create_task_document')?.function
+				.parameters.required
+		).toEqual(['task_id', 'document_id']);
+		expect(
+			projected.find((entry) => entry.function.name === 'move_document_in_tree')?.function
+				.description
+		).toContain('Parent-by-title creation is not available');
+		expect(
+			projected.find((entry) => entry.function.name === 'create_task_document')?.function
+				.description
+		).toContain('does not create a new document');
 	});
 
 	it('continues sequential read rounds with compacted durable feedback', async () => {

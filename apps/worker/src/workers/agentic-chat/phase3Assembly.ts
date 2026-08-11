@@ -72,6 +72,10 @@ import {
 	AgenticChatGatewayEntityMutationAdapter
 } from './gatewayEntityMutationAdapter';
 import {
+	AGENTIC_CHAT_DOCUMENT_RELATIONSHIP_MUTATION_TOOL_NAMES_V1,
+	AgenticChatGatewayDocumentRelationshipMutationAdapter
+} from './gatewayDocumentRelationshipMutationAdapter';
+import {
 	type AgenticChatMutationAdapterEntry,
 	AgenticChatMutationAdapterRouter
 } from './mutationAdapterRouter';
@@ -208,6 +212,20 @@ export function createAgenticChatPhase3Assembly(options: {
 		const gatewayEntityAdapter = new AgenticChatGatewayEntityMutationAdapter(options.client);
 		for (const toolName of enabledGatewayEntityTools) {
 			mutationAdapters.push([toolName, gatewayEntityAdapter]);
+		}
+	}
+	const documentRelationshipToolNames = new Set<string>(
+		AGENTIC_CHAT_DOCUMENT_RELATIONSHIP_MUTATION_TOOL_NAMES_V1
+	);
+	const enabledDocumentRelationshipTools = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
+		([capability, toolName]) =>
+			mutationAdapterCapabilities[capability] && documentRelationshipToolNames.has(toolName)
+	).map(([, toolName]) => toolName);
+	if (enabledDocumentRelationshipTools.length > 0) {
+		const documentRelationshipAdapter =
+			new AgenticChatGatewayDocumentRelationshipMutationAdapter(options.client);
+		for (const toolName of enabledDocumentRelationshipTools) {
+			mutationAdapters.push([toolName, documentRelationshipAdapter]);
 		}
 	}
 	const mutation =

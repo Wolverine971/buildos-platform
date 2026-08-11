@@ -4,7 +4,7 @@
 
 **Prepared:** 2026-08-10
 
-**Status:** inventory complete; all 12 straightforward task/document/core-entity mutations have reviewed adapters; required task SQL hosted; production gates remain OFF
+**Status:** inventory complete; 14 mutation tools have reviewed adapters, including bounded exact tree-move and attach-existing task-document surfaces; required task SQL hosted; production gates remain OFF
 
 **Governing plan:** `AGENTIC_CHAT_WORKER_PHASE_4_P2_MUTATION_EFFECT_PARITY_PLAN_2026-08-09.md`
 
@@ -51,8 +51,8 @@ projection, an independently gated adapter, and a recovery classification.
 | `update_onto_task`              | `onto.task.update`                | shared |     30s | One/uncertain; no effect-key persistence/query                                                                      | `task`; row, assignees, relationships, assignment/mention notifications, activity, task-calendar sync      |
 | `create_onto_document`          | `onto.document.create`            | shared |     30s | **One/uncertain:** no effect-key persistence/query; adapter implemented                                             | `document`; row/version/tree/mentions/activity; project-loop burst remains web-only                        |
 | `update_onto_document`          | `onto.document.update`            | shared |     45s | **One/uncertain adapter implemented** for replace/append; `merge_llm` remains web-owned                             | `document`; row/version, append, tree metadata, mentions, activity; public-page/project-loop sync web-only |
-| `move_document_in_tree`         | `onto.document.tree.move`         | shared |     30s | Unclassified; exact tree-state reconciliation needed                                                                | tree/document placement; doc-structure version                                                             |
-| `create_task_document`          | `onto.task.docs.create_or_attach` | shared |     30s | Unclassified; compound create-or-link needs exact branch receipt                                                    | `document` plus task-document edge; version/tree/activity as applicable                                    |
+| `move_document_in_tree`         | `onto.document.tree.move`         | shared |     30s | **One/uncertain exact-UUID adapter implemented**; parent-by-title creation excluded                                 | tree/document placement; doc-structure version                                                             |
+| `create_task_document`          | `onto.task.docs.create_or_attach` | shared |     30s | **Queryable/replayable attach-existing adapter implemented**; new-document branch excluded                          | existing `document` plus exact task-document edge                                                          |
 | `create_onto_goal`              | `onto.goal.create`                | shared |     30s | **One/uncertain adapter implemented**                                                                               | `goal`; row, props mirrors, mentions, activity                                                             |
 | `update_onto_goal`              | `onto.goal.update`                | shared |     30s | **One/uncertain adapter implemented**                                                                               | `goal`; row/state timestamp, merged props, mention diff, activity                                          |
 | `create_onto_plan`              | `onto.plan.create`                | shared |     30s | **One/uncertain row-only adapter implemented**; relationship inputs excluded                                        | `plan`; row/props mirrors/activity                                                                         |
@@ -104,10 +104,10 @@ registry's email surface is read-only.
 1. **Task family:** `update_onto_task` is complete and one-attempt/uncertain;
    `create_onto_task` is the first truly idempotent adapter and is implemented in
    this unit.
-2. **Document family:** create and the replace/append update subset are complete
-   and independently gated. `merge_llm`, tree move, and task-document attach
-   remain separate because model/editor, exact placement reconciliation, and
-   compound create-or-link behavior need their own proofs.
+2. **Document family:** create, replace/append update, exact-UUID tree move, and
+   attach-existing task-document subsets are complete and independently gated.
+   `merge_llm`, parent-by-title creation, and new task-document creation remain
+   excluded because model/editor and multi-commit behavior need separate proofs.
 3. **Core ontology rows:** goal, plan, milestone, and risk create/update pairs
    are complete behind independent default-off gates. Compound plan/risk/
    milestone relationship fields remain excluded except the milestone's
@@ -272,9 +272,9 @@ The admitted surface is deliberately narrower than the signed web surface:
   canonical `goal_id` is required because the authoritative route requires a
   goal edge;
 - risk parent/connection and create `props` fields are excluded; and
-- tree move, task-document attach, projects, graph/edge tools, deletes,
-  calendar/provider writes, contacts, MCP, delegation, and staged commit remain
-  separate units.
+- parent-by-title move, new task-document creation, projects, graph/edge tools,
+  deletes, calendar/provider writes, contacts, MCP, delegation, and staged
+  commit remain separate units.
 
 Shared-handler parity hardening in the same unit validates goal/plan type keys,
 normalizes blank compatibility values, restores goal/plan/milestone/risk props
@@ -296,3 +296,36 @@ No SQL or migration was required. Full local evidence after the bundle:
 
 Production provider capabilities, adapter capabilities, routing, deployment,
 and live model mutations remain OFF.
+
+## Document relationship subset (2026-08-10)
+
+This unit adds two more reviewed tools without enabling either in production:
+
+- `move_document_in_tree` admits only exact project/document/optional-parent
+  UUIDs and a non-negative safe-integer position. It is one-attempt/uncertain
+  because no effect key is atomically persisted or queryable. A successful
+  worker receipt recursively proves exactly one placement under the requested
+  parent at the clamped sibling index.
+- `create_task_document` admits only its attach-existing branch: task UUID,
+  document UUID, and optional role. The shared edge path queries the exact
+  task/document/`task_has_document` identity before inserting, so a lost response
+  can safely replay and recover the original edge. Receipt validation pins the
+  project, endpoint kinds and IDs, relationship, and role.
+- Parent-by-title move and new task-document creation remain excluded because
+  each may commit a new document before a later tree/edge operation fails. The
+  provider descriptions make these narrower worker semantics explicit.
+- The shared tree service rejects self-parenting and unlinked exact parents
+  instead of silently falling back to root. Gateway and web-route error mapping
+  preserve those as pre-commit validation failures. The shared title branch now
+  creates its parent through the canonical document/tree service so stricter
+  validation does not break existing external callers, but the worker still
+  excludes that compound branch.
+- No SQL or migration was needed. Focused worker projection/assembly/adapter
+  coverage passes 41/41. Full proof passes worker 882 plus one intentional skip,
+  shared-agent-ops 92/92, agentic-chat-runtime 183/183, web gateway/tree referees
+  71/71, all relevant typechecks, and Svelte check with zero diagnostics.
+
+Production provider capabilities, adapter capabilities, routing, deployment,
+and live model mutations remain OFF. The next bounded shared family is exact
+edge link/unlink, followed by project update/create after their reconciliation
+contracts are pinned.

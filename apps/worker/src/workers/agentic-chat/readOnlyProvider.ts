@@ -1543,6 +1543,7 @@ function reviewedProviderToolDefinition(
 		...tool,
 		function: {
 			...tool.function,
+			...(spec.descriptionOverride ? { description: spec.descriptionOverride } : {}),
 			parameters: {
 				...tool.function.parameters,
 				additionalProperties: false,

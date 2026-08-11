@@ -1065,9 +1065,12 @@ export async function moveDocument(
 		includeContent: false
 	});
 
-	let resolvedParentId = newParentId === docId ? null : newParentId;
+	if (newParentId === docId) {
+		throw new Error('A document cannot be moved under itself.');
+	}
+	const resolvedParentId = newParentId;
 	if (resolvedParentId && !findNodeById(structure.root, resolvedParentId)) {
-		resolvedParentId = null;
+		throw new Error('Parent document is not linked in the document tree.');
 	}
 
 	// Check for cycle

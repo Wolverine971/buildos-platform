@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S4 complete; S5 inventory plus all 12 straightforward task/document/core-entity adapters complete; all required task SQL hosted; tree/attach and compound/queryable families next; production mutations remain disabled
+**Status:** S1-S4 complete; S5 inventory plus 14 reviewed mutation tools complete, including exact document-tree move and attach-existing task-document subsets; all required task SQL hosted; edge/project and remaining compound branches next; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -486,9 +486,9 @@ Straightforward entity expansion completed locally on 2026-08-10:
 - Provider projection excludes document `merge_llm`, compound plan/milestone/
   risk relationship fields, and create-only opaque props that the legacy routes
   ignore. Milestone create requires the goal UUID that its authoritative route
-  requires. Tree move, task-document attach, project/edge/graph/delete,
-  calendar/provider, contact, external MCP, delegation, and staged-commit tools
-  remain out of scope.
+  requires. Parent-by-title tree moves, new task-document creation, project/
+  edge/graph/delete, calendar/provider, contact, external MCP, delegation, and
+  staged-commit tools remain out of scope.
 - Shared handlers now preserve the legacy goal/plan/milestone/risk props and
   timestamp behavior. Goal create/update includes mention notification diffing;
   document update adds best-effort tree metadata and mention diffing alongside
@@ -498,6 +498,38 @@ Straightforward entity expansion completed locally on 2026-08-10:
   intentional skip, external gateway referee 42/42, and shared/worker
   typechecks. No SQL or migration was required. All production mutation gates,
   routing, deployment, and live model writes remain OFF.
+
+Document relationship subset completed locally on 2026-08-10:
+
+- Added independently gated `move_document_in_tree` and
+  `create_task_document` adapters over the shared in-process gateway. The move
+  surface accepts only exact project/document/optional-parent UUIDs plus a
+  non-negative position. The task-document surface requires both an existing
+  task UUID and existing document UUID, with an optional role.
+- Parent-by-title creation remains excluded from the worker because parent
+  creation and the requested move are separate commits. New document creation
+  through `create_task_document` also remains excluded because the document can
+  commit before its task edge. Provider descriptions state both exclusions and
+  the projected schemas reject those fields.
+- Exact tree move has no downstream effect-key query and is one-attempt/
+  uncertain. Its receipt must contain the requested document exactly once under
+  the requested parent at the service-clamped sibling position.
+- Attach-existing is replayable: the shared edge path queries the exact
+  task/document/`task_has_document` identity before insert and returns the
+  existing edge on replay. The adapter validates project, endpoint kinds/IDs,
+  relationship, and role before returning the legacy-compatible public
+  `{ document, edge, message }` receipt.
+- The shared tree service now rejects self-parenting and exact parents that are
+  not linked in the current tree instead of silently placing the document at
+  root. The gateway and web route classify those failures as validation errors.
+  The shared parent-title path now creates a canonical document/tree entry so
+  existing external callers are not broken by the stricter parent invariant;
+  that compound path is still not worker-admitted.
+- No SQL or migration was required. Full local gates pass: worker 882 passed
+  with one intentional skip, shared-agent-ops 92/92, agentic-chat-runtime
+  183/183, web gateway/tree referees 71/71, all four type/check gates, and
+  Svelte diagnostics with zero errors and zero warnings. Production mutation
+  capabilities, routing, deployment, and live model writes remain OFF.
 
 ## P2 exit gate
 

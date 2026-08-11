@@ -4,6 +4,8 @@ import type { BuildosAgentAllowedOp, JsonObject } from '@buildos/shared-types';
 export type AgenticChatMutationCapabilityNameV1 =
 	| 'createOntoDocument'
 	| 'updateOntoDocument'
+	| 'moveDocumentInTree'
+	| 'createTaskDocument'
 	| 'createOntoTask'
 	| 'updateOntoTask'
 	| 'createOntoGoal'
@@ -26,6 +28,7 @@ export type AgenticChatReviewedMutationSpecV1 = {
 	downstreamIdempotencySupported: boolean;
 	requiredNames: readonly string[];
 	reviewedArgumentNames: readonly string[];
+	descriptionOverride?: string;
 	propertyOverrides?: Readonly<Record<string, JsonObject>>;
 };
 
@@ -77,6 +80,24 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 					"How to apply content: 'replace' (default) or 'append'. The web-owned merge_llm strategy is not available in the worker."
 			}
 		}
+	},
+	move_document_in_tree: {
+		capability: 'moveDocumentInTree',
+		operationName: 'onto.document.tree.move',
+		downstreamIdempotencySupported: false,
+		descriptionOverride:
+			'Move an existing document to an exact location in the current project document tree. Use only document and parent UUIDs returned by tree/document reads. Omit or set new_parent_id to null for root placement. Parent-by-title creation is not available in the worker.',
+		requiredNames: ['project_id', 'document_id'],
+		reviewedArgumentNames: ['project_id', 'document_id', 'new_parent_id', 'new_position']
+	},
+	create_task_document: {
+		capability: 'createTaskDocument',
+		operationName: 'onto.task.docs.create_or_attach',
+		downstreamIdempotencySupported: true,
+		descriptionOverride:
+			'Attach an existing document to a task workspace using exact task and document UUIDs from reads. This worker tool does not create a new document.',
+		requiredNames: ['task_id', 'document_id'],
+		reviewedArgumentNames: ['task_id', 'document_id', 'role']
 	},
 	create_onto_task: {
 		capability: 'createOntoTask',

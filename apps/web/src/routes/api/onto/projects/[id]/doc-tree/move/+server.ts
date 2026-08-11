@@ -188,6 +188,13 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			if (message.startsWith('Structure version conflict')) {
 				return ApiResponse.error(message, 409);
 			}
+			if (
+				message === 'A document cannot be moved under itself.' ||
+				message === 'Parent document is not linked in the document tree.' ||
+				message === 'Cannot move a folder into its own descendant'
+			) {
+				return ApiResponse.badRequest(message);
+			}
 			throw err;
 		}
 

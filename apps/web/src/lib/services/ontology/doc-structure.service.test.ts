@@ -17,7 +17,8 @@ import {
 	restoreDocumentInTree,
 	deleteDocumentInTree,
 	removeDocumentFromTree,
-	recomputeDocStructure
+	recomputeDocStructure,
+	moveDocument
 } from './doc-structure.service';
 
 const baseTree: DocTreeNode[] = [
@@ -368,6 +369,56 @@ describe('updateDocStructure', () => {
 					}
 				]
 			})
+		);
+	});
+});
+
+describe('moveDocument', () => {
+	it('rejects an exact parent that is not linked in the current tree before writing', async () => {
+		const currentStructure = {
+			version: 3,
+			root: [{ id: 'moved-doc', order: 0, title: 'Moved' }]
+		};
+		const projectQuery: Record<string, any> = {};
+		projectQuery.select = vi.fn(() => projectQuery);
+		projectQuery.eq = vi.fn(() => projectQuery);
+		projectQuery.single = vi.fn().mockResolvedValue({
+			data: { doc_structure: currentStructure },
+			error: null
+		});
+		const rpc = vi.fn(async (name: string) => {
+			if (name === 'get_project_document_tree_metadata') {
+				return {
+					data: [
+						{ id: 'moved-doc', title: 'Moved', description: null },
+						{ id: 'unlinked-parent', title: 'Parent', description: null }
+					],
+					error: null
+				};
+			}
+			throw new Error(`Unexpected write RPC: ${name}`);
+		});
+		const supabase = {
+			from: vi.fn((table: string) => {
+				if (table === 'onto_projects') return projectQuery;
+				throw new Error(`Unexpected table query: ${table}`);
+			}),
+			rpc
+		};
+
+		await expect(
+			moveDocument(
+				supabase as any,
+				'proj-1',
+				'moved-doc',
+				{ newParentId: 'unlinked-parent', newPosition: 0 },
+				'actor-1'
+			)
+		).rejects.toThrow('Parent document is not linked in the document tree.');
+		expect(rpc).toHaveBeenCalledTimes(1);
+		expect(rpc).not.toHaveBeenCalledWith(
+			'onto_project_doc_structure_update_atomic',
+			expect.anything()
 		);
 	});
 });
