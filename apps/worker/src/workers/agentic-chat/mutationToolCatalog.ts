@@ -17,7 +17,8 @@ export type AgenticChatMutationCapabilityNameV1 =
 	| 'createOntoMilestone'
 	| 'updateOntoMilestone'
 	| 'createOntoRisk'
-	| 'updateOntoRisk';
+	| 'updateOntoRisk'
+	| 'updateOntoProject';
 
 export type AgenticChatProviderMutationCapabilitiesV1 = Record<
 	AgenticChatMutationCapabilityNameV1,
@@ -302,6 +303,21 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'description',
 			'mitigation_strategy',
 			'owner',
+			'props'
+		]
+	},
+	update_onto_project: {
+		capability: 'updateOntoProject',
+		operationName: 'onto.project.update',
+		downstreamIdempotencySupported: false,
+		requiredNames: ['project_id'],
+		reviewedArgumentNames: [
+			'project_id',
+			'name',
+			'description',
+			'state_key',
+			'start_at',
+			'end_at',
 			'props'
 		]
 	}

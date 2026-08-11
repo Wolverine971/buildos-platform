@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S4 complete; S5 inventory plus 16 reviewed mutation tools complete, including bounded document-relationship and exact edge link/unlink surfaces; all required task SQL hosted; project and remaining compound/provider branches next; production mutations remain disabled
+**Status:** S1-S4 complete; S5 inventory plus 17 reviewed mutation tools complete, including bounded document relationships, exact edge link/unlink, and project-row update; all required task SQL hosted; project creation and remaining compound/provider branches next; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -561,6 +561,32 @@ Exact edge link/unlink subset completed locally on 2026-08-11:
   183/183, external gateway referee 42/42, all relevant typechecks, and Svelte
   diagnostics with zero errors and zero warnings. Production mutation gates,
   routing, deployment, and live model writes remain OFF.
+
+Project-row update subset completed locally on 2026-08-11:
+
+- Added an independently gated `update_onto_project` adapter over the shared
+  gateway. It admits exactly the signed legacy fields: canonical `project_id`,
+  name, description, state, start/end dates, and props. The gateway-only
+  `archived` field and legacy internal `state` alias are not provider-visible.
+- The adapter requires the requested project to match any admitted project
+  context, normalizes legacy state aliases and dates before dispatch, strips
+  server-owned `agent_workspace` and hidden `preferences` props, and rejects an
+  empty effective update without calling the gateway.
+- The project row has no effect-key persistence or exact replay query, so the
+  adapter is one-attempt/uncertain. A successful receipt proves the exact
+  project UUID, enforces the effect-ledger size cap, and restores the legacy
+  `{ project, message }` response without the shared gateway's trailing period.
+- The shared project handler now lives with the project read handlers, applies
+  the same reserved-prop and blank-description behavior as the web route, and
+  selects the full public project mutation row (including generated facets and
+  timeline fields) before sanitizing its receipt. Activity logging remains on
+  the single successful row update.
+- No SQL or migration was required. Full local gates pass: worker 893 passed
+  with one intentional skip, shared-agent-ops 97/97, agentic-chat-runtime
+  183/183, external gateway referee 42/42, shared/worker typechecks, changed
+  worker ESLint, project-column guard, formatting, and Svelte diagnostics with
+  zero errors and zero warnings. Production mutation gates, routing,
+  deployment, and live model writes remain OFF.
 
 ## P2 exit gate
 

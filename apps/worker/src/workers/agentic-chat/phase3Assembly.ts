@@ -79,6 +79,7 @@ import {
 	AGENTIC_CHAT_EDGE_MUTATION_TOOL_NAMES_V1,
 	AgenticChatGatewayEdgeMutationAdapter
 } from './gatewayEdgeMutationAdapter';
+import { AgenticChatGatewayProjectMutationAdapter } from './gatewayProjectMutationAdapter';
 import {
 	type AgenticChatMutationAdapterEntry,
 	AgenticChatMutationAdapterRouter
@@ -203,6 +204,12 @@ export function createAgenticChatPhase3Assembly(options: {
 		mutationAdapters.push([
 			'update_onto_task',
 			new AgenticChatUpdateOntoTaskMutationAdapter(options.client)
+		]);
+	}
+	if (mutationAdapterCapabilities.updateOntoProject) {
+		mutationAdapters.push([
+			'update_onto_project',
+			new AgenticChatGatewayProjectMutationAdapter(options.client)
 		]);
 	}
 	const gatewayEntityToolNames = new Set<string>(

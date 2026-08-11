@@ -116,7 +116,12 @@ import {
 } from './op-execution-gateway.pagination';
 import { getAsset, searchAssets } from './op-execution-gateway.assets';
 import { assertValidId } from './op-execution-gateway.ids';
-import { getProject, listProjects, searchProjects } from './op-execution-gateway.projects';
+import {
+	getProject,
+	listProjects,
+	searchProjects,
+	updateProject
+} from './op-execution-gateway.projects';
 import {
 	createGoal,
 	createMilestone,
@@ -1060,90 +1065,6 @@ async function grantCallerProjectAccess(
 			error
 		});
 	}
-}
-
-async function updateProject(context: ToolExecutionContext, args: Record<string, unknown>) {
-	const archivedAtUpdate = normalizeArchivedUpdate(args.archived);
-	const access = await loadCoreEntityForAccess(context, 'project', args.project_id, 'write', {
-		includeArchived: archivedAtUpdate === null
-	});
-	const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
-	let changed = 0;
-
-	if (args.name !== undefined) {
-		updateData.name = requireTrimmedString(args.name, 'name');
-		changed += 1;
-	}
-	if (args.description !== undefined) {
-		updateData.description = normalizeOptionalText(args.description, 'description', {
-			allowNull: true
-		});
-		changed += 1;
-	}
-	if (args.state_key !== undefined || args.state !== undefined) {
-		updateData.state_key = normalizeProjectState(args.state_key ?? args.state);
-		changed += 1;
-	}
-	const startAt = normalizeOptionalDate(args.start_at, 'start_at');
-	if (startAt !== undefined) {
-		updateData.start_at = startAt;
-		changed += 1;
-	}
-	const endAt = normalizeOptionalDate(args.end_at, 'end_at');
-	if (endAt !== undefined) {
-		updateData.end_at = endAt;
-		changed += 1;
-	}
-	if (args.props !== undefined) {
-		updateData.props = {
-			...((access.entity.props as Record<string, unknown> | null) ?? {}),
-			...(normalizeProps(args.props, 'props') ?? {})
-		};
-		changed += 1;
-	}
-	if (archivedAtUpdate !== undefined) {
-		updateData.archived_at = archivedAtUpdate;
-		changed += 1;
-	}
-
-	if (changed === 0) {
-		throw new ExternalToolGatewayError(
-			'VALIDATION_ERROR',
-			'At least one writable project field is required'
-		);
-	}
-
-	const { data, error } = await context.admin
-		.from('onto_projects')
-		.update(updateData)
-		.eq('id', access.project.id)
-		.select(CORE_ENTITY_CONFIG.project.select)
-		.single();
-
-	if (error || !data) {
-		throw new ExternalToolGatewayError(
-			'INTERNAL',
-			error?.message || 'Failed to update project'
-		);
-	}
-
-	await logUpdateAsync(
-		context.admin,
-		access.project.id,
-		'project',
-		access.project.id,
-		access.entity,
-		data as Record<string, unknown>,
-		context.userId,
-		'agent_call',
-		undefined,
-		getExternalAgentActivityContext(context)
-	);
-
-	return {
-		project: data,
-		message: `Updated ontology project "${data.name ?? access.project.id}".`
-	};
 }
 
 async function createTaskDocument(context: ToolExecutionContext, args: Record<string, unknown>) {

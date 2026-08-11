@@ -1002,6 +1002,15 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				'mitigation_strategy',
 				'owner',
 				'props'
+			],
+			update_onto_project: [
+				'project_id',
+				'name',
+				'description',
+				'state_key',
+				'start_at',
+				'end_at',
+				'props'
 			]
 		} as const;
 		const compoundFields = ['goal_id', 'milestone_id', 'parent', 'parents', 'connections'];
@@ -1066,6 +1075,18 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 								rel: 'supports_goal'
 							})
 						}
+					},
+					{
+						index: 3,
+						id: 'provider-update-project',
+						type: 'function',
+						function: {
+							name: 'update_onto_project',
+							arguments: JSON.stringify({
+								project_id: 'db000000-0000-4000-8000-000000000001',
+								state_key: 'active'
+							})
+						}
 					}
 				]
 			},
@@ -1091,7 +1112,8 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				createOntoMilestone: true,
 				updateOntoMilestone: true,
 				createOntoRisk: true,
-				updateOntoRisk: true
+				updateOntoRisk: true,
+				updateOntoProject: true
 			}
 		);
 		const toolNames = Object.keys(reviewedFields);
@@ -1118,6 +1140,12 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				type: 'mutating_tool',
 				providerToolCallId: 'provider-link-edge',
 				operationName: 'onto.edge.link',
+				downstreamIdempotencySupported: false
+			}),
+			expect.objectContaining({
+				type: 'mutating_tool',
+				providerToolCallId: 'provider-update-project',
+				operationName: 'onto.project.update',
 				downstreamIdempotencySupported: false
 			})
 		]);
@@ -1170,6 +1198,10 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			projected.find((entry) => entry.function.name === 'unlink_onto_edge')?.function
 				.parameters.required
 		).toEqual(['edge_id']);
+		expect(
+			projected.find((entry) => entry.function.name === 'update_onto_project')?.function
+				.parameters.required
+		).toEqual(['project_id']);
 	});
 
 	it('continues sequential read rounds with compacted durable feedback', async () => {

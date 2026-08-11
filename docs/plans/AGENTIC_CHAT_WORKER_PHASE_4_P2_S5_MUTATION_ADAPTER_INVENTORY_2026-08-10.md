@@ -4,7 +4,7 @@
 
 **Prepared:** 2026-08-10
 
-**Status:** inventory complete; 16 mutation tools have reviewed adapters, including bounded document relationships and exact edge link/unlink; required task SQL hosted; production gates remain OFF
+**Status:** inventory complete; 17 mutation tools have reviewed adapters, including bounded document relationships, exact edge link/unlink, and project-row update; required task SQL hosted; production gates remain OFF
 
 **Governing plan:** `AGENTIC_CHAT_WORKER_PHASE_4_P2_MUTATION_EFFECT_PARITY_PLAN_2026-08-09.md`
 
@@ -62,7 +62,7 @@ projection, an independently gated adapter, and a recovery classification.
 | `create_onto_risk`              | `onto.risk.create`                | shared |     30s | **One/uncertain row-only adapter implemented**; relationship/opaque props excluded                                  | `risk`; row/props mirrors/activity                                                                         |
 | `update_onto_risk`              | `onto.risk.update`                | shared |     30s | **One/uncertain row-only adapter implemented**                                                                      | `risk`; row/mitigation timestamp, merged props/activity                                                    |
 | `create_onto_project`           | `onto.project.create`             | shared |     30s | Instantiation has caller idempotency input, but effect-key semantics and compound receipt are not yet ratified      | `project`, entity counts, created entities/edges, caller-scope expansion                                   |
-| `update_onto_project`           | `onto.project.update`             | shared |     30s | Unclassified; likely one/uncertain                                                                                  | `project`; row/facets/timeline/activity                                                                    |
+| `update_onto_project`           | `onto.project.update`             | shared |     30s | **One/uncertain row-only adapter implemented**                                                                      | `project`; row/facets/timeline/activity                                                                    |
 | `link_onto_entities`            | `onto.edge.link`                  | shared |     30s | **One/uncertain non-project adapter implemented**; no general uniqueness constraint                                 | `edge`; canonical relationship/props/activity                                                              |
 | `unlink_onto_edge`              | `onto.edge.unlink`                | shared |     30s | **One/uncertain exact-edge adapter implemented**; no durable delete tombstone                                       | removed edge; relationship/activity                                                                        |
 | `reorganize_onto_project_graph` | `onto.project.graph.reorganize`   | web    |     30s | Web-only compound graph rewrite; one/uncertain is insufficient until partial-change receipt is defined              | graph plan/result; multiple containment and semantic edges                                                 |
@@ -112,9 +112,9 @@ registry's email surface is read-only.
    are complete behind independent default-off gates. Compound plan/risk/
    milestone relationship fields remain excluded except the milestone's
    required goal edge.
-4. **Relationships and project:** exact non-project link/unlink are complete;
-   project update/create follow after compound-instantiation idempotency is
-   pinned.
+4. **Relationships and project:** exact non-project link/unlink and project-row
+   update are complete; project creation follows after compound-instantiation
+   idempotency is pinned.
 5. **Graph move/tag/deletes:** web-only, compound, or irreversible paths require
    extraction plus stronger reconciliation evidence.
 6. **Calendar, contacts, external MCP, delegation, and staged commit:** keep last;
@@ -359,6 +359,36 @@ This unit adds two more reviewed tools without enabling either in production:
   referee 42/42, all relevant typechecks, and Svelte check with zero diagnostics.
 
 Production provider capabilities, adapter capabilities, routing, deployment,
-and live model mutations remain OFF. Project update is the next bounded shared
-candidate; project creation remains behind its larger instantiation and caller-
-idempotency differential.
+and live model mutations remain OFF. The bounded project-update differential is
+recorded below; project creation remains behind its larger instantiation and
+caller-idempotency differential.
+
+## Project-row update subset (2026-08-11)
+
+This unit adds one reviewed tool without enabling it in production:
+
+- `update_onto_project` admits only canonical `project_id`, name, description,
+  state, start/end dates, and props. It excludes the shared gateway's archive
+  convenience field and the internal `state` alias because neither is on the
+  signed provider tool.
+- The adapter pins the project to the admitted turn context, normalizes legacy
+  project state aliases and date-only values, and drops hidden `preferences`
+  plus server-owned `agent_workspace` from incoming props. A patch containing
+  only empty or reserved props fails before dispatch.
+- There is no durable project-row effect key or exact recovery query, so the
+  operation is one-attempt/uncertain. The returned row must carry the exact
+  requested project UUID before the adapter emits the legacy-compatible
+  `{ project, message }` receipt.
+- The shared handler now mirrors the web route's props and blank-description
+  rules, returns its full public mutation row (including generated facet and
+  timeline columns), sanitizes hidden props, and records update activity.
+- No SQL or migration was needed. Focused worker coverage passes 39/39. Full
+  proof passes worker 893 plus one intentional skip, shared-agent-ops 97/97,
+  agentic-chat-runtime 183/183, external gateway referee 42/42, relevant
+  typechecks/lint/format/project-column guards, and Svelte check with zero
+  diagnostics.
+
+Production provider capabilities, adapter capabilities, routing, deployment,
+and live model mutations remain OFF. Project creation is next, but it remains a
+separate larger unit because instantiation, caller-scope expansion, idempotency,
+and its compound receipt must be reconciled together.

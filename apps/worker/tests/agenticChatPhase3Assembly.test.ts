@@ -175,7 +175,8 @@ describe('createAgenticChatPhase3Assembly', () => {
 			createOntoMilestone: true,
 			updateOntoMilestone: true,
 			createOntoRisk: true,
-			updateOntoRisk: true
+			updateOntoRisk: true,
+			updateOntoProject: true
 		} as const;
 		const assembly = createAgenticChatPhase3Assembly({
 			client: supabaseClient() as never,

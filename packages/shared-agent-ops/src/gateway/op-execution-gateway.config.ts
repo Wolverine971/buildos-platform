@@ -32,6 +32,8 @@ export type CoreEntityConfig = {
 
 export const ONTO_PROJECT_SELECT =
 	'id, name, description, type_key, state_key, props, start_at, end_at, created_by, created_at, updated_at, archived_at, deleted_at';
+export const ONTO_PROJECT_MUTATION_SELECT =
+	'archived_at, created_at, created_by, deleted_at, description, doc_structure, end_at, external_agent_access, facet_context, facet_scale, facet_stage, icon_concept, icon_generated_at, icon_generation_prompt, icon_generation_source, icon_svg, id, is_public, name, next_step_long, next_step_short, next_step_source, next_step_updated_at, org_id, props, start_at, state_key, type_key, updated_at';
 export const ONTO_TASK_SELECT =
 	'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at, deleted_at';
 export const ONTO_DOCUMENT_SELECT =

@@ -1,9 +1,22 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.projects.ts
 import type { OntologyProjectSummary } from '../ontology/ontology-projects.service';
-import { assertAccessibleProject, loadVisibleProjects } from './op-execution-gateway.access';
+import { logUpdateAsync } from '../ops/async-activity-logger';
 import {
+	sanitizeProjectForClient,
+	sanitizeProjectPropsPatchInput
+} from '../utils/project-props-sanitizer';
+import { assertAccessibleProject, loadVisibleProjects } from './op-execution-gateway.access';
+import { getExternalAgentActivityContext } from './op-execution-gateway.activity';
+import { ONTO_PROJECT_MUTATION_SELECT } from './op-execution-gateway.config';
+import { loadCoreEntityForAccess } from './op-execution-gateway.entity-access';
+import {
+	normalizeArchivedUpdate,
 	normalizeEntityStateFilter,
-	normalizeEntityTypeFilter
+	normalizeEntityTypeFilter,
+	normalizeOptionalDate,
+	normalizeOptionalText,
+	normalizeProjectState,
+	requireTrimmedString
 } from './op-execution-gateway.normalization';
 import {
 	buildPaginationForRows,
@@ -122,5 +135,94 @@ export async function getProject(context: ToolExecutionContext, args: Record<str
 		project: serializeProjectSummary(project),
 		start_here: startHere,
 		snapshot: data ?? null
+	};
+}
+
+export async function updateProject(context: ToolExecutionContext, args: Record<string, unknown>) {
+	const archivedAtUpdate = normalizeArchivedUpdate(args.archived);
+	const access = await loadCoreEntityForAccess(context, 'project', args.project_id, 'write', {
+		includeArchived: archivedAtUpdate === null
+	});
+	const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+	let changed = 0;
+
+	if (args.name !== undefined) {
+		updateData.name = requireTrimmedString(args.name, 'name');
+		changed += 1;
+	}
+	if (args.description !== undefined) {
+		const description = normalizeOptionalText(args.description, 'description', {
+			allowNull: true
+		});
+		updateData.description = description === '' ? null : description;
+		changed += 1;
+	}
+	if (args.state_key !== undefined || args.state !== undefined) {
+		updateData.state_key = normalizeProjectState(args.state_key ?? args.state);
+		changed += 1;
+	}
+	const startAt = normalizeOptionalDate(args.start_at, 'start_at');
+	if (startAt !== undefined) {
+		updateData.start_at = startAt;
+		changed += 1;
+	}
+	const endAt = normalizeOptionalDate(args.end_at, 'end_at');
+	if (endAt !== undefined) {
+		updateData.end_at = endAt;
+		changed += 1;
+	}
+	if (args.props !== undefined) {
+		const sanitizedProps = sanitizeProjectPropsPatchInput(args.props);
+		if (sanitizedProps && Object.keys(sanitizedProps).length > 0) {
+			updateData.props = {
+				...((access.entity.props as Record<string, unknown> | null) ?? {}),
+				...sanitizedProps
+			};
+			changed += 1;
+		}
+	}
+	if (archivedAtUpdate !== undefined) {
+		updateData.archived_at = archivedAtUpdate;
+		changed += 1;
+	}
+
+	if (changed === 0) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'At least one writable project field is required'
+		);
+	}
+
+	const { data, error } = await context.admin
+		.from('onto_projects')
+		.update(updateData)
+		.eq('id', access.project.id)
+		.select(ONTO_PROJECT_MUTATION_SELECT)
+		.single();
+
+	if (error || !data) {
+		throw new ExternalToolGatewayError(
+			'INTERNAL',
+			error?.message || 'Failed to update project'
+		);
+	}
+
+	await logUpdateAsync(
+		context.admin,
+		access.project.id,
+		'project',
+		access.project.id,
+		access.entity,
+		data as Record<string, unknown>,
+		context.userId,
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
+	);
+
+	const project = sanitizeProjectForClient(data as Record<string, unknown>);
+	return {
+		project,
+		message: `Updated ontology project "${project.name ?? access.project.id}".`
 	};
 }
