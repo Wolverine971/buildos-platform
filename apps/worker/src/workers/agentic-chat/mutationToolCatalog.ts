@@ -6,6 +6,8 @@ export type AgenticChatMutationCapabilityNameV1 =
 	| 'updateOntoDocument'
 	| 'moveDocumentInTree'
 	| 'createTaskDocument'
+	| 'linkOntoEntities'
+	| 'unlinkOntoEdge'
 	| 'createOntoTask'
 	| 'updateOntoTask'
 	| 'createOntoGoal'
@@ -98,6 +100,34 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'Attach an existing document to a task workspace using exact task and document UUIDs from reads. This worker tool does not create a new document.',
 		requiredNames: ['task_id', 'document_id'],
 		reviewedArgumentNames: ['task_id', 'document_id', 'role']
+	},
+	link_onto_entities: {
+		capability: 'linkOntoEntities',
+		operationName: 'onto.edge.link',
+		downstreamIdempotencySupported: false,
+		descriptionOverride:
+			'Create one relationship between two existing non-project ontology entities using exact UUIDs from reads. Project endpoints are not available in the worker. Relationship aliases are normalized to their canonical direction.',
+		requiredNames: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel'],
+		reviewedArgumentNames: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel', 'props'],
+		propertyOverrides: {
+			src_kind: {
+				type: 'string',
+				enum: ['plan', 'goal', 'milestone', 'task', 'document', 'risk', 'metric', 'source']
+			},
+			dst_kind: {
+				type: 'string',
+				enum: ['plan', 'goal', 'milestone', 'task', 'document', 'risk', 'metric', 'source']
+			}
+		}
+	},
+	unlink_onto_edge: {
+		capability: 'unlinkOntoEdge',
+		operationName: 'onto.edge.unlink',
+		downstreamIdempotencySupported: false,
+		descriptionOverride:
+			'Remove one existing ontology relationship by the exact edge UUID returned by a project graph or relationship read.',
+		requiredNames: ['edge_id'],
+		reviewedArgumentNames: ['edge_id']
 	},
 	create_onto_task: {
 		capability: 'createOntoTask',

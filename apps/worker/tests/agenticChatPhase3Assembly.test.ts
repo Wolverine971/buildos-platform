@@ -164,6 +164,8 @@ describe('createAgenticChatPhase3Assembly', () => {
 			updateOntoDocument: true,
 			moveDocumentInTree: true,
 			createTaskDocument: true,
+			linkOntoEntities: true,
+			unlinkOntoEdge: true,
 			createOntoTask: true,
 			updateOntoTask: true,
 			createOntoGoal: true,

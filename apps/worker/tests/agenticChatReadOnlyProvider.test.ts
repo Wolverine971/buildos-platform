@@ -918,6 +918,8 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			],
 			move_document_in_tree: ['project_id', 'document_id', 'new_parent_id', 'new_position'],
 			create_task_document: ['task_id', 'document_id', 'role'],
+			link_onto_entities: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel', 'props'],
+			unlink_onto_edge: ['edge_id'],
 			create_onto_goal: [
 				'project_id',
 				'name',
@@ -1049,6 +1051,21 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 								document_id: 'db000000-0000-4000-8000-000000000004'
 							})
 						}
+					},
+					{
+						index: 2,
+						id: 'provider-link-edge',
+						type: 'function',
+						function: {
+							name: 'link_onto_entities',
+							arguments: JSON.stringify({
+								src_kind: 'task',
+								src_id: 'db000000-0000-4000-8000-000000000005',
+								dst_kind: 'goal',
+								dst_id: 'db000000-0000-4000-8000-000000000006',
+								rel: 'supports_goal'
+							})
+						}
 					}
 				]
 			},
@@ -1065,6 +1082,8 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				updateOntoDocument: true,
 				moveDocumentInTree: true,
 				createTaskDocument: true,
+				linkOntoEntities: true,
+				unlinkOntoEdge: true,
 				createOntoGoal: true,
 				updateOntoGoal: true,
 				createOntoPlan: true,
@@ -1094,6 +1113,12 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				providerToolCallId: 'provider-attach-document',
 				operationName: 'onto.task.docs.create_or_attach',
 				downstreamIdempotencySupported: true
+			}),
+			expect.objectContaining({
+				type: 'mutating_tool',
+				providerToolCallId: 'provider-link-edge',
+				operationName: 'onto.edge.link',
+				downstreamIdempotencySupported: false
 			})
 		]);
 		const projected = client.stream.mock.calls[0]?.[0].tools ?? [];
@@ -1131,6 +1156,20 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			projected.find((entry) => entry.function.name === 'create_task_document')?.function
 				.description
 		).toContain('does not create a new document');
+		expect(
+			projected.find((entry) => entry.function.name === 'link_onto_entities')?.function
+				.parameters.required
+		).toEqual(['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel']);
+		expect(
+			projected.find((entry) => entry.function.name === 'link_onto_entities')?.function
+				.parameters.properties.src_kind
+		).toMatchObject({
+			enum: ['plan', 'goal', 'milestone', 'task', 'document', 'risk', 'metric', 'source']
+		});
+		expect(
+			projected.find((entry) => entry.function.name === 'unlink_onto_edge')?.function
+				.parameters.required
+		).toEqual(['edge_id']);
 	});
 
 	it('continues sequential read rounds with compacted durable feedback', async () => {

@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S4 complete; S5 inventory plus 14 reviewed mutation tools complete, including exact document-tree move and attach-existing task-document subsets; all required task SQL hosted; edge/project and remaining compound branches next; production mutations remain disabled
+**Status:** S1-S4 complete; S5 inventory plus 16 reviewed mutation tools complete, including bounded document-relationship and exact edge link/unlink surfaces; all required task SQL hosted; project and remaining compound/provider branches next; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -530,6 +530,37 @@ Document relationship subset completed locally on 2026-08-10:
   183/183, web gateway/tree referees 71/71, all four type/check gates, and
   Svelte diagnostics with zero errors and zero warnings. Production mutation
   capabilities, routing, deployment, and live model writes remain OFF.
+
+Exact edge link/unlink subset completed locally on 2026-08-11:
+
+- Added independently gated `link_onto_entities` and `unlink_onto_edge`
+  adapters. Link requires exact endpoint UUIDs, canonical non-project entity
+  kinds, a relationship, and optional props. Unlink requires an exact edge UUID
+  from a prior graph/relationship read. Both require an admitted project
+  context and cross the shared gateway with that single-project write scope.
+- The link adapter resolves invented relationship labels, preserves
+  `original_rel`, and canonicalizes deprecated/swapped directions before
+  dispatch. Self-links and project endpoints fail before dispatch. Project
+  endpoints are deliberately excluded because the legacy web route treats them
+  as skipped no-ops while the shared gateway can create them.
+- Neither tool claims downstream idempotency. General `onto_edges` rows have no
+  uniqueness constraint, so a check-then-insert recovery can race and duplicate
+  a link. Deletes have no durable tombstone, so a missing edge cannot prove that
+  a lost unlink response committed. Each therefore gets one attempt and any
+  ambiguous response remains `uncertain_external_commit`.
+- Successful link receipts prove the canonical edge project, endpoints,
+  relationship, and newly inserted props before returning the legacy
+  `{ created, message }` shape. Successful unlink receipts prove the exact
+  deleted edge and project before returning `{ deleted, message }`.
+- The shared existing-edge query now includes project, source/destination kinds
+  and IDs, and relationship instead of relying on IDs plus relationship alone.
+  This prevents UUID collisions across entity tables from satisfying the wrong
+  edge lookup. Existing Agent Run alias validation order remains unchanged.
+- No SQL or migration was required. Full local gates pass: worker 889 passed
+  with one intentional skip, shared-agent-ops 95/95, agentic-chat-runtime
+  183/183, external gateway referee 42/42, all relevant typechecks, and Svelte
+  diagnostics with zero errors and zero warnings. Production mutation gates,
+  routing, deployment, and live model writes remain OFF.
 
 ## P2 exit gate
 

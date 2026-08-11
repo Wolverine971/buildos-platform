@@ -4,7 +4,7 @@
 
 **Prepared:** 2026-08-10
 
-**Status:** inventory complete; 14 mutation tools have reviewed adapters, including bounded exact tree-move and attach-existing task-document surfaces; required task SQL hosted; production gates remain OFF
+**Status:** inventory complete; 16 mutation tools have reviewed adapters, including bounded document relationships and exact edge link/unlink; required task SQL hosted; production gates remain OFF
 
 **Governing plan:** `AGENTIC_CHAT_WORKER_PHASE_4_P2_MUTATION_EFFECT_PARITY_PLAN_2026-08-09.md`
 
@@ -63,8 +63,8 @@ projection, an independently gated adapter, and a recovery classification.
 | `update_onto_risk`              | `onto.risk.update`                | shared |     30s | **One/uncertain row-only adapter implemented**                                                                      | `risk`; row/mitigation timestamp, merged props/activity                                                    |
 | `create_onto_project`           | `onto.project.create`             | shared |     30s | Instantiation has caller idempotency input, but effect-key semantics and compound receipt are not yet ratified      | `project`, entity counts, created entities/edges, caller-scope expansion                                   |
 | `update_onto_project`           | `onto.project.update`             | shared |     30s | Unclassified; likely one/uncertain                                                                                  | `project`; row/facets/timeline/activity                                                                    |
-| `link_onto_entities`            | `onto.edge.link`                  | shared |     30s | Unclassified; exact edge identity/query could make this queryable                                                   | `edge`; relationship/activity                                                                              |
-| `unlink_onto_edge`              | `onto.edge.unlink`                | shared |     30s | Unclassified; delete reconciliation needs an exact prior edge identity                                              | removed edge; relationship/activity                                                                        |
+| `link_onto_entities`            | `onto.edge.link`                  | shared |     30s | **One/uncertain non-project adapter implemented**; no general uniqueness constraint                                 | `edge`; canonical relationship/props/activity                                                              |
+| `unlink_onto_edge`              | `onto.edge.unlink`                | shared |     30s | **One/uncertain exact-edge adapter implemented**; no durable delete tombstone                                       | removed edge; relationship/activity                                                                        |
 | `reorganize_onto_project_graph` | `onto.project.graph.reorganize`   | web    |     30s | Web-only compound graph rewrite; one/uncertain is insufficient until partial-change receipt is defined              | graph plan/result; multiple containment and semantic edges                                                 |
 | `move_onto_task`                | `onto.task.move`                  | web    |     30s | Web-only; destination state is inspectable but stale-confirmation and compound cleanup need a formal query contract | task move receipt; task, edges, assignees, links, source/destination activity                              |
 | `tag_onto_entity`               | `x.misc.tag_onto_entity`          | web    |     30s | Web-only and registry taxonomy gap; one/uncertain candidate                                                         | entity/tag result; content mutation or manual ping plus notifications                                      |
@@ -112,8 +112,9 @@ registry's email surface is read-only.
    are complete behind independent default-off gates. Compound plan/risk/
    milestone relationship fields remain excluded except the milestone's
    required goal edge.
-4. **Relationships and project:** link/unlink, then project update/create after
-   compound-instantiation idempotency is pinned.
+4. **Relationships and project:** exact non-project link/unlink are complete;
+   project update/create follow after compound-instantiation idempotency is
+   pinned.
 5. **Graph move/tag/deletes:** web-only, compound, or irreversible paths require
    extraction plus stronger reconciliation evidence.
 6. **Calendar, contacts, external MCP, delegation, and staged commit:** keep last;
@@ -326,6 +327,38 @@ This unit adds two more reviewed tools without enabling either in production:
   71/71, all relevant typechecks, and Svelte check with zero diagnostics.
 
 Production provider capabilities, adapter capabilities, routing, deployment,
-and live model mutations remain OFF. The next bounded shared family is exact
-edge link/unlink, followed by project update/create after their reconciliation
-contracts are pinned.
+and live model mutations remain OFF. The next bounded shared family is project
+update/create after their reconciliation contracts are pinned.
+
+## Exact edge link/unlink subset (2026-08-11)
+
+This unit adds two more reviewed tools without enabling either in production:
+
+- `link_onto_entities` admits exact UUID endpoints for plan, goal, milestone,
+  task, document, risk, metric, and source entities. Project endpoints are
+  excluded because the legacy web route skips them while the shared gateway can
+  persist them. The adapter rejects self-links and normalizes arbitrary or
+  deprecated relationships to the legacy canonical direction before dispatch.
+- `unlink_onto_edge` admits only an exact edge UUID from a prior relationship or
+  graph read. Its success receipt must include that same deleted edge and the
+  admitted project.
+- Both adapters are one-attempt/uncertain. General edges have no uniqueness
+  constraint, leaving a race between an ambiguous insert and an exact recovery
+  query. Edge deletion has no durable tombstone. Automatic replay would
+  therefore overstate safety for both operations.
+- The shared gateway's existing-edge lookup now checks the complete stored
+  identity: project, endpoint kinds and UUIDs, and canonical relationship. This
+  removes cross-table UUID collision ambiguity without changing the established
+  Agent Run alias-validation path.
+- Worker receipts retain the legacy public shapes: `{ created, message }` for
+  link and `{ deleted, message }` for unlink. Gateway-only edge details are used
+  for post-dispatch proof and are not exposed in the public receipt.
+- No SQL or migration was needed. Focused projection/assembly/adapter coverage
+  passes 42/42. Full proof passes worker 889 plus one intentional skip,
+  shared-agent-ops 95/95, agentic-chat-runtime 183/183, the external gateway
+  referee 42/42, all relevant typechecks, and Svelte check with zero diagnostics.
+
+Production provider capabilities, adapter capabilities, routing, deployment,
+and live model mutations remain OFF. Project update is the next bounded shared
+candidate; project creation remains behind its larger instantiation and caller-
+idempotency differential.

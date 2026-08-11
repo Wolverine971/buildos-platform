@@ -125,7 +125,10 @@ export async function createEdge(
 	const { data: existing, error: existingError } = await context.admin
 		.from('onto_edges')
 		.select(ONTO_EDGE_SELECT)
+		.eq('project_id', srcProjectId)
+		.eq('src_kind', normalized.src_kind)
 		.eq('src_id', normalized.src_id)
+		.eq('dst_kind', normalized.dst_kind)
 		.eq('dst_id', normalized.dst_id)
 		.eq('rel', normalized.rel)
 		.maybeSingle();

@@ -76,6 +76,10 @@ import {
 	AgenticChatGatewayDocumentRelationshipMutationAdapter
 } from './gatewayDocumentRelationshipMutationAdapter';
 import {
+	AGENTIC_CHAT_EDGE_MUTATION_TOOL_NAMES_V1,
+	AgenticChatGatewayEdgeMutationAdapter
+} from './gatewayEdgeMutationAdapter';
+import {
 	type AgenticChatMutationAdapterEntry,
 	AgenticChatMutationAdapterRouter
 } from './mutationAdapterRouter';
@@ -226,6 +230,17 @@ export function createAgenticChatPhase3Assembly(options: {
 			new AgenticChatGatewayDocumentRelationshipMutationAdapter(options.client);
 		for (const toolName of enabledDocumentRelationshipTools) {
 			mutationAdapters.push([toolName, documentRelationshipAdapter]);
+		}
+	}
+	const edgeToolNames = new Set<string>(AGENTIC_CHAT_EDGE_MUTATION_TOOL_NAMES_V1);
+	const enabledEdgeTools = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
+		([capability, toolName]) =>
+			mutationAdapterCapabilities[capability] && edgeToolNames.has(toolName)
+	).map(([, toolName]) => toolName);
+	if (enabledEdgeTools.length > 0) {
+		const edgeAdapter = new AgenticChatGatewayEdgeMutationAdapter(options.client);
+		for (const toolName of enabledEdgeTools) {
+			mutationAdapters.push([toolName, edgeAdapter]);
 		}
 	}
 	const mutation =
