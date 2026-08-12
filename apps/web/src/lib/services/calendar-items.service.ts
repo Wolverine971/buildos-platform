@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/calendar-items.service.ts
 import { requireApiData } from '$lib/utils/api-client-helpers';
 import type { CalendarItem } from '$lib/types/calendar-items';
+import type { ConnectedGoogleCalendarEventsPayload } from '$lib/types/google-calendar-integration';
 
 export interface CalendarItemsQuery {
 	start: string;
@@ -37,4 +38,24 @@ export async function fetchCalendarItems(params: CalendarItemsQuery): Promise<Ca
 	);
 
 	return data.items ?? [];
+}
+
+export async function fetchConnectedGoogleCalendarEvents(params: {
+	start: string;
+	end: string;
+	maxResults?: number;
+	timeZone?: string;
+}): Promise<ConnectedGoogleCalendarEventsPayload> {
+	const searchParams = new URLSearchParams({
+		timeMin: params.start,
+		timeMax: params.end,
+		maxResults: String(params.maxResults ?? 500)
+	});
+	if (params.timeZone) searchParams.set('timeZone', params.timeZone);
+
+	const response = await fetch(`/api/calendar/events?${searchParams.toString()}`);
+	return requireApiData<ConnectedGoogleCalendarEventsPayload>(
+		response,
+		'Failed to fetch connected Google Calendar events'
+	);
 }

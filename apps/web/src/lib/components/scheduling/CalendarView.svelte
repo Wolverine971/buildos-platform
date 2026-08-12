@@ -33,6 +33,8 @@
 		htmlLink?: string | null;
 		externalLink?: string | null;
 		colorClass?: string | null;
+		colorStyle?: string | null;
+		sourceLabel?: string | null;
 		allDay?: boolean | null;
 		all_day?: boolean | null;
 		itemType?: string | null;
@@ -47,6 +49,8 @@
 		end: Date;
 		displayEnd: Date;
 		color: string;
+		colorStyle?: string | null;
+		sourceLabel?: string | null;
 		htmlLink?: string | null;
 		originalEvent?: CalendarViewEvent;
 		calendarItem?: any;
@@ -67,6 +71,14 @@
 		lane: number;
 		continuesBefore: boolean;
 		continuesAfter: boolean;
+	}
+
+	interface WeekTimedEventLayout {
+		event: CalendarDayEvent;
+		columnIndex: number;
+		columnCount: number;
+		left: number;
+		width: number;
 	}
 
 	type TaskMarkerKind = 'range' | 'start' | 'due';
@@ -190,13 +202,6 @@
 	}
 
 	function handleEventClick(event: any) {
-		console.log('[CalendarView] Event clicked:', {
-			event,
-			hasCalendarItem: !!event?.calendarItem,
-			hasOriginalEvent: !!event?.originalEvent,
-			calendarItemTaskId: event?.calendarItem?.task_id,
-			calendarItemProjectId: event?.calendarItem?.project_id
-		});
 		oneventClick?.(event);
 	}
 
@@ -264,6 +269,8 @@
 			startValue: string | Date | null | undefined;
 			endValue: string | Date | null | undefined;
 			color: string;
+			colorStyle?: string | null;
+			sourceLabel?: string | null;
 			allDay?: boolean | null;
 			htmlLink?: string | null;
 			originalEvent?: CalendarViewEvent;
@@ -286,6 +293,8 @@
 			end: normalized.end,
 			displayEnd: normalized.displayEnd,
 			color: input.color,
+			colorStyle: input.colorStyle,
+			sourceLabel: input.sourceLabel,
 			htmlLink: input.htmlLink,
 			originalEvent: input.originalEvent,
 			calendarItem: input.calendarItem,
@@ -314,6 +323,8 @@
 				startValue: event.start?.dateTime || event.start?.date,
 				endValue: event.end?.dateTime || event.end?.date,
 				color: colorClass,
+				colorStyle: event.colorStyle,
+				sourceLabel: event.sourceLabel,
 				allDay,
 				htmlLink,
 				originalEvent: event,
@@ -351,36 +362,62 @@
 		return dayEvents;
 	}
 
-	function calculateEventColumns(dayEvents: CalendarDayEvent[]): Map<number, CalendarDayEvent[]> {
-		const columns: Map<number, CalendarDayEvent[]> = new Map();
+	function calculateWeekTimedEventLayouts(dayEvents: CalendarDayEvent[]): WeekTimedEventLayout[] {
+		const sorted = [...dayEvents].sort((left, right) => {
+			const startDifference = left.start.getTime() - right.start.getTime();
+			if (startDifference !== 0) return startDifference;
+			return right.end.getTime() - left.end.getTime();
+		});
+		const clusters: CalendarDayEvent[][] = [];
+		let currentCluster: CalendarDayEvent[] = [];
+		let clusterEnd = Number.NEGATIVE_INFINITY;
 
-		for (const event of dayEvents) {
-			let columnIndex = 0;
-
-			// Find the first available column where this event doesn't overlap
-			while (columns.has(columnIndex)) {
-				const eventsInColumn = columns.get(columnIndex) || [];
-				let hasOverlap = false;
-
-				for (const existingEvent of eventsInColumn) {
-					// Check if events overlap
-					if (!(event.end <= existingEvent.start || event.start >= existingEvent.end)) {
-						hasOverlap = true;
-						break;
-					}
-				}
-
-				if (!hasOverlap) break;
-				columnIndex++;
+		for (const event of sorted) {
+			if (currentCluster.length === 0 || event.start.getTime() < clusterEnd) {
+				currentCluster.push(event);
+				clusterEnd = Math.max(clusterEnd, event.end.getTime());
+				continue;
 			}
-
-			if (!columns.has(columnIndex)) {
-				columns.set(columnIndex, []);
-			}
-			columns.get(columnIndex)!.push(event);
+			clusters.push(currentCluster);
+			currentCluster = [event];
+			clusterEnd = event.end.getTime();
 		}
+		if (currentCluster.length > 0) clusters.push(currentCluster);
 
-		return columns;
+		return clusters.flatMap((cluster) => {
+			const columnEnds: number[] = [];
+			const assignments = cluster.map((event) => {
+				let columnIndex = columnEnds.findIndex(
+					(endTime) => endTime <= event.start.getTime()
+				);
+				if (columnIndex === -1) columnIndex = columnEnds.length;
+				columnEnds[columnIndex] = event.end.getTime();
+				return { event, columnIndex };
+			});
+			const columnCount = Math.max(1, columnEnds.length);
+			return assignments.map(({ event, columnIndex }) => ({
+				event,
+				columnIndex,
+				columnCount,
+				left: (columnIndex / columnCount) * 100,
+				width: 100 / columnCount
+			}));
+		});
+	}
+
+	function getWeekTimedEventStyle(layout: WeekTimedEventLayout): string {
+		return [
+			`left: calc(${layout.left}% + 2px)`,
+			`width: calc(${layout.width}% - 4px)`,
+			`top: ${getTimePosition(layout.event.start)}%`,
+			`height: ${Math.max(
+				5,
+				getTimePosition(layout.event.end) - getTimePosition(layout.event.start)
+			)}%`,
+			layout.event.colorStyle ?? ''
+		]
+			.filter(Boolean)
+			.join('; ');
 	}
 
 	function shouldRenderInAllDayLane(event: CalendarDayEvent): boolean {
@@ -600,7 +637,8 @@
 			`border-top-left-radius: ${radiusLeft}`,
 			`border-bottom-left-radius: ${radiusLeft}`,
 			`border-top-right-radius: ${radiusRight}`,
-			`border-bottom-right-radius: ${radiusRight}`
+			`border-bottom-right-radius: ${radiusRight}`,
+			segment.event.colorStyle ?? ''
 		].join('; ');
 	}
 
@@ -793,6 +831,7 @@
 										class="w-full text-left px-3 py-2 rounded-md border border-border transition-colors hover:border-accent/50 hover:shadow-ink motion-reduce:transition-none pressable tx tx-grain tx-weak {event.color} {getContinuationClass(
 											event
 										)}"
+										style={event.colorStyle}
 									>
 										<div class="flex items-center justify-between gap-2">
 											<div class="min-w-0 flex-1">
@@ -834,6 +873,9 @@
 														<span> - </span>
 													{/if}
 													{getEventRangeLabel(event)}
+													{#if event.sourceLabel}
+														<span> · {event.sourceLabel}</span>
+													{/if}
 												</p>
 											</div>
 										</div>
@@ -848,6 +890,7 @@
 						<button
 							onclick={() => handleEventClick(event)}
 							class="w-full text-left px-3 py-2.5 rounded-lg border border-border transition-colors hover:border-accent/50 hover:shadow-ink motion-reduce:transition-none shadow-ink pressable tx tx-grain tx-weak {event.color}"
+							style={event.colorStyle}
 						>
 							<div class="flex items-center justify-between gap-2">
 								<div class="flex-1 min-w-0">
@@ -879,6 +922,9 @@
 									</div>
 									<p class="text-xs text-muted-foreground mt-0.5">
 										{getEventDayLabel(event)}
+										{#if event.sourceLabel}
+											<span> · {event.sourceLabel}</span>
+										{/if}
 									</p>
 									{#if event.type === 'proposed' && event.schedule?.hasConflict}
 										<p class="text-xs text-destructive mt-0.5">
@@ -926,8 +972,7 @@
 					{@const dayEvents = getEventsForDay(date)}
 					{@const allDayEvents = getAllDayLaneEvents(dayEvents)}
 					{@const timedEvents = getTimedEvents(dayEvents)}
-					{@const eventColumns = calculateEventColumns(timedEvents)}
-					{@const columnCount = eventColumns.size || 1}
+					{@const timedEventLayouts = calculateWeekTimedEventLayouts(timedEvents)}
 					{@const isToday = date.toDateString() === new Date().toDateString()}
 					<div class="bg-card {isToday ? 'bg-accent/[0.03]' : ''}">
 						<div class="h-10 px-1.5 py-1 border-b border-border text-center">
@@ -952,7 +997,8 @@
 									class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-2xs leading-tight transition-colors hover:opacity-90 hover:shadow-ink motion-reduce:transition-none pressable {event.color} {getContinuationClass(
 										event
 									)}"
-									title={`${event.title} - ${getEventDayLabel(event)}`}
+									style={event.colorStyle}
+									title={`${event.title} - ${getEventDayLabel(event)}${event.sourceLabel ? ` · ${event.sourceLabel}` : ''}`}
 								>
 									{#if markerKind}
 										<span
@@ -995,52 +1041,49 @@
 								parseInt(workingHours.work_start_time.split(':')[0] ?? '9')) *
 								64}px"
 						>
-							{#each Array.from(eventColumns.entries()) as [columnIndex, eventsInColumn]}
-								{#each eventsInColumn as event}
-									{@const left = (columnIndex / columnCount) * 100}
-									{@const width = 100 / columnCount - 4}
-									{@const markerKind = getTaskMarkerKind(event)}
-									<button
-										onclick={() => handleEventClick(event)}
-										class="absolute px-1 py-0.5 rounded-sm text-2xs leading-tight overflow-hidden transition-colors hover:opacity-90 hover:shadow-ink motion-reduce:transition-none pressable border border-transparent {event.color}"
-										style="left: {left + 2}%; right: {100 -
-											(left + width + 2)}%; top: {getTimePosition(
-											event.start
-										)}%; height: {Math.max(
-											5,
-											getTimePosition(event.end) -
-												getTimePosition(event.start)
-										)}%"
-									>
-										<div class="flex min-w-0 items-center gap-1">
-											{#if markerKind}
-												<span
-													class="inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-background/70 px-1 py-0.5 font-semibold text-foreground/80 shadow-sm ring-1 ring-border/60"
-												>
-													{#if markerKind === 'range'}
-														<CalendarRange class="h-2.5 w-2.5" />
-													{:else if markerKind === 'start'}
-														<Play class="h-2.5 w-2.5" />
-													{:else}
-														<Target class="h-2.5 w-2.5" />
-													{/if}
+							{#each timedEventLayouts as layout (getEventIdentity(layout.event))}
+								{@const event = layout.event}
+								{@const markerKind = getTaskMarkerKind(event)}
+								<button
+									onclick={() => handleEventClick(event)}
+									class="absolute px-1 py-0.5 rounded-sm text-2xs leading-tight overflow-hidden transition-colors hover:opacity-90 hover:shadow-ink motion-reduce:transition-none pressable border border-transparent {event.color}"
+									style={getWeekTimedEventStyle(layout)}
+									title={`${event.title} - ${getEventDayLabel(event)}${event.sourceLabel ? ` · ${event.sourceLabel}` : ''}`}
+								>
+									<div class="flex min-w-0 items-center gap-1">
+										{#if markerKind}
+											<span
+												class="inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-background/70 px-1 py-0.5 font-semibold text-foreground/80 shadow-sm ring-1 ring-border/60"
+											>
+												{#if markerKind === 'range'}
+													<CalendarRange class="h-2.5 w-2.5" />
+												{:else if markerKind === 'start'}
+													<Play class="h-2.5 w-2.5" />
+												{:else}
+													<Target class="h-2.5 w-2.5" />
+												{/if}
+												{#if layout.columnCount < 3}
 													<span
 														>{getTaskMarkerLabel(
 															markerKind,
 															true
 														)}</span
 													>
-												</span>
-											{/if}
-											<span class="min-w-0 truncate font-medium"
-												>{event.title}</span
-											>
-										</div>
-										<div class="opacity-70 tabular-nums">
-											{formatTime(event.start)}
-										</div>
-									</button>
-								{/each}
+												{:else}
+													<span class="sr-only"
+														>{getTaskMarkerLabel(markerKind)}</span
+													>
+												{/if}
+											</span>
+										{/if}
+										<span class="min-w-0 truncate font-medium"
+											>{event.title}</span
+										>
+									</div>
+									<div class="opacity-70 tabular-nums">
+										{formatTime(event.start)}
+									</div>
+								</button>
 							{/each}
 						</div>
 					</div>
@@ -1087,6 +1130,7 @@
 										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted motion-reduce:transition-none pressable {event.color} {getContinuationClass(
 											event
 										)}"
+										style={event.colorStyle}
 									>
 										<div class="flex-1 min-w-0">
 											<div class="flex min-w-0 items-center gap-2">
@@ -1119,6 +1163,9 @@
 													<span> - </span>
 												{/if}
 												{getEventDayLabel(event)}
+												{#if event.sourceLabel}
+													<span> · {event.sourceLabel}</span>
+												{/if}
 											</div>
 										</div>
 									</button>
@@ -1200,8 +1247,9 @@
 											{@const markerKind = getTaskMarkerKind(event)}
 											<button
 												onclick={() => handleEventClick(event)}
-												class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-2xs leading-tight transition-colors hover:bg-muted motion-reduce:transition-none pressable"
-												title={`${event.title} - ${getEventDayLabel(event)}`}
+												class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-2xs leading-tight transition-colors hover:bg-muted motion-reduce:transition-none pressable {event.color}"
+												style={event.colorStyle}
+												title={`${event.title} - ${getEventDayLabel(event)}${event.sourceLabel ? ` · ${event.sourceLabel}` : ''}`}
 											>
 												{#if markerKind}
 													<span
@@ -1224,6 +1272,7 @@
 												{:else}
 													<span
 														class="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/70"
+														style="background-color: var(--calendar-source-color, hsl(var(--muted-foreground) / 0.7))"
 													></span>
 												{/if}
 												<span class="min-w-0 truncate">
@@ -1261,7 +1310,7 @@
 									class="absolute z-10 flex h-5 items-center gap-1 overflow-hidden px-1.5 text-left text-2xs font-semibold leading-5 text-foreground shadow-sm transition-colors hover:brightness-95 hover:shadow-ink motion-reduce:transition-none pressable {segment
 										.event.color}"
 									style={getMonthSegmentStyle(segment)}
-									title={`${segment.event.title} - ${getEventRangeLabel(segment.event)}`}
+									title={`${segment.event.title} - ${getEventRangeLabel(segment.event)}${segment.event.sourceLabel ? ` · ${segment.event.sourceLabel}` : ''}`}
 								>
 									{#if markerKind}
 										<span
@@ -1327,6 +1376,7 @@
 										class="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs transition-colors hover:bg-muted motion-reduce:transition-none pressable {event.color} {getContinuationClass(
 											event
 										)}"
+										style={event.colorStyle}
 									>
 										<div class="min-w-0 flex-1">
 											<div class="flex min-w-0 items-center gap-2">
@@ -1359,6 +1409,9 @@
 													<span> - </span>
 												{/if}
 												{getEventDayLabel(event)}
+												{#if event.sourceLabel}
+													<span> · {event.sourceLabel}</span>
+												{/if}
 											</div>
 										</div>
 									</button>

@@ -34,6 +34,8 @@ const MAX_PERSISTED_TOOL_ARGUMENT_PREVIEW_CHARS = 420;
 const MAX_PERSISTED_TOOL_RESULT_PREVIEW_CHARS = 600;
 
 const EMAIL_TOOL_NAMES = new Set([
+	'get_external_account_status',
+	'request_email_account_connection',
 	'list_email_accounts',
 	'search_email_messages',
 	'get_email_message'
@@ -64,6 +66,19 @@ function arrayLength(value: unknown): number {
  */
 function buildEmailArgumentsPreview(toolName: string, raw: unknown): string {
 	const args = asRecord(parseToolValue(raw)) ?? {};
+	if (toolName === 'get_external_account_status') {
+		return JSON.stringify({
+			read_only: true,
+			email_address_present: typeof (args.email_address ?? args.emailAddress) === 'string'
+		});
+	}
+	if (toolName === 'request_email_account_connection') {
+		return JSON.stringify({
+			browser_handoff_only: true,
+			email_address_present: typeof (args.email_address ?? args.emailAddress) === 'string',
+			user_confirmed: (args.user_confirmed ?? args.userConfirmed) === true
+		});
+	}
 	if (toolName === 'list_email_accounts') {
 		return '{"read_only":true}';
 	}
@@ -91,7 +106,28 @@ function buildEmailArgumentsPreview(toolName: string, raw: unknown): string {
 }
 
 function buildEmailResultPreview(toolName: string, raw: unknown): string {
-	const result = asRecord(raw) ?? {};
+	const result = asRecord(parseToolValue(raw)) ?? {};
+	if (toolName === 'get_external_account_status') {
+		const capabilities = asRecord(result.capabilities) ?? {};
+		const inbox = asRecord(capabilities.inbox) ?? {};
+		const calendar = asRecord(capabilities.calendar) ?? {};
+		return JSON.stringify({
+			read_only: true,
+			connected: result.connected === true,
+			inbox_connected: inbox.connected === true,
+			inbox_usable: inbox.usable === true,
+			calendar_connected: calendar.connected === true,
+			calendar_usable: calendar.usable === true
+		});
+	}
+	if (toolName === 'request_email_account_connection') {
+		return JSON.stringify({
+			browser_handoff_only: true,
+			status: typeof result.status === 'string' ? result.status : undefined,
+			requires_user_action: result.requires_user_action === true,
+			has_client_action: asRecord(result.client_action) !== null
+		});
+	}
 	if (toolName === 'list_email_accounts') {
 		const accounts = Array.isArray(result.accounts) ? result.accounts : [];
 		return JSON.stringify({
@@ -166,7 +202,7 @@ export function buildPersistedToolTrace(
 		const rawError =
 			typeof result.error === 'string'
 				? isEmailTool
-					? 'Gmail read tool failed.'
+					? 'Email account tool failed.'
 					: result.error
 				: '';
 		const argumentsPreview = isEmailTool

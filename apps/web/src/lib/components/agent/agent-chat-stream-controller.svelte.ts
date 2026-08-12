@@ -112,6 +112,7 @@ export interface StreamControllerDeps {
 	getLastTurnContext(): LastTurnContext | null;
 	getIsLoadingSession(): boolean;
 	getActiveRestoredTurnRunId(): string | null;
+	requiresLegacyToolSurface?(content: string): boolean;
 	getPrewarm(): StreamControllerPrewarmDeps;
 	attachments: StreamControllerAttachmentDeps;
 	voice: StreamControllerVoiceDeps;
@@ -602,6 +603,8 @@ export class AgentChatStreamController {
 					!activeVoiceNoteGroupId &&
 					this.#deps.adoptWorkerAdmissionResponse
 			);
+			const requiresLegacyToolSurface =
+				senderType === 'user' && this.#deps.requiresLegacyToolSurface?.(trimmed) === true;
 			const transportLease = canAttemptWorkerTextCanary
 				? await requestAgenticChatTransportLease({
 						fetchImpl: this.#fetch,
@@ -610,11 +613,12 @@ export class AgentChatStreamController {
 							streamRunId: transportStreamRunId,
 							sessionId: sessionForTurn?.id ?? null,
 							context: transportContext,
-							supportedModes: ['legacy_sse', 'worker_realtime'],
-							supportedContractVersions: [
-								'legacy_internal_v1',
-								'agentic_chat_worker_v1'
-							],
+							supportedModes: requiresLegacyToolSurface
+								? ['legacy_sse']
+								: ['legacy_sse', 'worker_realtime'],
+							supportedContractVersions: requiresLegacyToolSurface
+								? ['legacy_internal_v1']
+								: ['legacy_internal_v1', 'agentic_chat_worker_v1'],
 							priorDecisionId: null
 						}
 					})

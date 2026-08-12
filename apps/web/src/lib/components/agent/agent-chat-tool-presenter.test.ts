@@ -563,6 +563,27 @@ describe('agent-chat-tool-presenter — calendar formatters', () => {
 	});
 });
 
+describe('agent-chat-tool-presenter — email account formatters', () => {
+	it('shows the exact account while checking connection status', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+		expect(
+			presenter.describeToolDisplay('get_external_account_status', {
+				email_address: 'dj@9takes.com'
+			})
+		).toEqual({ action: 'Checking connected account', target: 'dj@9takes.com' });
+	});
+
+	it('labels the OAuth handoff without implying it already connected', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+		expect(
+			presenter.describeToolDisplay('request_email_account_connection', {
+				email_address: 'dj@9takes.com',
+				user_confirmed: true
+			})
+		).toEqual({ action: 'Preparing Gmail connection', target: 'dj@9takes.com' });
+	});
+});
+
 describe('agent-chat-tool-presenter — formatErrorMessage', () => {
 	it('returns the raw string for small strings', () => {
 		expect(formatErrorMessage('oops')).toBe('oops');

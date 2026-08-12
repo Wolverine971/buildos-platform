@@ -128,6 +128,7 @@ function createHarness(
 		preparedPrompt?: PreparedPromptClient | null;
 		waitForPreparedPrompt?: StreamControllerPrewarmDeps['waitForPreparedPrompt'];
 		enableWorkerAdoption?: boolean;
+		requiresLegacyToolSurface?: StreamControllerDeps['requiresLegacyToolSurface'];
 	} = {}
 ) {
 	let inputValue = overrides.inputValue ?? 'hello';
@@ -255,6 +256,7 @@ function createHarness(
 		getLastTurnContext: () => lastTurnContext,
 		getIsLoadingSession: () => false,
 		getActiveRestoredTurnRunId: () => null,
+		requiresLegacyToolSurface: overrides.requiresLegacyToolSurface,
 		getPrewarm: () => prewarm,
 		attachments: {
 			buildReadyRefs: vi.fn((includePreviewUrl = false) =>
@@ -682,6 +684,47 @@ describe('AgentChatStreamController', () => {
 		h.streamProcessor.runs[0]!.complete();
 		await send;
 		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('completed');
+	});
+
+	it('offers only legacy transport when the turn needs external account tools', async () => {
+		const sessionId = 'd2000000-0000-4000-8000-000000000001';
+		let negotiationBody: Record<string, unknown> | null = null;
+		const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
+			if (String(input) === '/api/agent/v2/transport') {
+				negotiationBody = JSON.parse(String(init?.body ?? '{}'));
+				return Response.json({
+					success: true,
+					data: {
+						mode: 'legacy_sse',
+						contractVersion: 'legacy_internal_v1',
+						decisionId: 'd3000000-0000-4000-8000-000000000001',
+						token: 'actl1.claims.signature',
+						expiresAt: '2026-08-04T03:00:00.000Z'
+					}
+				});
+			}
+			return new Response('', { status: 200 });
+		});
+		const requiresLegacyToolSurface = vi.fn(() => true);
+		const h = createHarness({
+			inputValue: 'yes',
+			currentSession: makeSession({ id: sessionId }),
+			fetchImpl,
+			enableWorkerAdoption: true,
+			requiresLegacyToolSurface
+		});
+
+		const send = h.controller.sendMessage();
+		await flushMicrotasks(10);
+
+		expect(requiresLegacyToolSurface).toHaveBeenCalledWith('yes');
+		expect(negotiationBody).toMatchObject({
+			supportedModes: ['legacy_sse'],
+			supportedContractVersions: ['legacy_internal_v1']
+		});
+		h.streamProcessor.runs[0]!.progress({ type: 'done' });
+		h.streamProcessor.runs[0]!.complete();
+		await send;
 	});
 
 	it('bypasses worker negotiation for attachments and retains legacy attachment behavior', async () => {

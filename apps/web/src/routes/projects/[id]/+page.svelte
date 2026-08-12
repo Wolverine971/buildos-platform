@@ -8,7 +8,7 @@
 	  │  │  Recently Done | Up Next                        │    │
 	  │  └─────────────────────────────────────────────────┘    │
 	  │  ┌─ EntityTabStrip ────────────────────────────────┐    │
-	  │  │  Briefs · Activity · Graph · Goals · Milestones │    │
+	  │  │  Calendar · Briefs · Activity · Graph · Goals    │    │
 	  │  │  · Plans · Risks · Events                       │    │
 	  │  └─────────────────────────────────────────────────┘    │
 	  │  ┌─ TaskKanbanBoard ───────────────────────────────┐    │
@@ -72,7 +72,11 @@
 	import { preloadProjectEntityModal } from '$lib/components/project/project-entity-modal-loader';
 	import { Bell, BellOff, Calendar, Pencil, Trash2, Users } from 'lucide-svelte';
 	import type { Project, Task, Document, Plan, Goal, Milestone, Risk } from '$lib/types/onto';
-	import type { EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
+	import type {
+		EntityReference,
+		ProjectFocus,
+		ProjectLogEntityType
+	} from '@buildos/shared-types';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
@@ -176,6 +180,8 @@
 	let events = $state.raw<OntoEventWithSync[]>(
 		initialData.skeleton ? [] : ((initialData.events ?? []) as OntoEventWithSync[])
 	);
+	let projectCalendarRefreshKey = $state(0);
+	let goalConnectionRefreshKey = $state(0);
 	let hasCompleteProjectEvents = $state(
 		initialData.skeleton ? false : (initialData.events_coverage?.complete ?? true)
 	);
@@ -300,6 +306,9 @@
 	let showEventsModal = $state(false);
 	let showRecentChatsModal = $state(false);
 	let showRecentChatAgentModal = $state(false);
+	let showGoalChatModal = $state(false);
+	let goalChatFocus = $state<ProjectFocus | null>(null);
+	let goalChatDraft = $state<string | null>(null);
 	let selectedRecentChatSessionId = $state<string | null>(null);
 	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
 	let ProjectEventsModalComponent = $state<ProjectEventsModalLazy>(null);
@@ -955,7 +964,10 @@
 		if (!event || event.nonce === lastHandledMutationNonce) return;
 		lastHandledMutationNonce = event.nonce;
 		if (mutationAffectsProject(event.summary, data.projectId)) {
-			untrack(() => void refreshAndHighlight());
+			untrack(() => {
+				goalConnectionRefreshKey += 1;
+				void refreshAndHighlight();
+			});
 		}
 	});
 
@@ -1308,6 +1320,8 @@
 	// ============================================================
 
 	function handleTaskCreated(taskId: string) {
+		projectCalendarRefreshKey += 1;
+		goalConnectionRefreshKey += 1;
 		toastService.success('Task created');
 		showTaskCreateModal = false;
 		editingTaskId = taskId;
@@ -1317,6 +1331,8 @@
 	}
 
 	function handleTaskUpdated() {
+		projectCalendarRefreshKey += 1;
+		goalConnectionRefreshKey += 1;
 		const taskId = editingTaskId;
 		editingTaskId = null;
 		if (taskId) {
@@ -1327,6 +1343,8 @@
 	}
 
 	function handleTaskDeleted() {
+		projectCalendarRefreshKey += 1;
+		goalConnectionRefreshKey += 1;
 		const deletedId = editingTaskId;
 		if (deletedId) {
 			const deletedTask = tasks.find((task) => task.id === deletedId);
@@ -1342,6 +1360,8 @@
 	}
 
 	function handleTaskMoved(taskId: string, newState: Task['state_key'] | 'archived') {
+		projectCalendarRefreshKey += 1;
+		goalConnectionRefreshKey += 1;
 		let matchedExistingTask = false;
 		const previousTask = tasks.find((task) => task.id === taskId) ?? null;
 		if (newState === 'archived') {
@@ -1389,12 +1409,14 @@
 	// ============================================================
 
 	function handlePlanCreated(planId: string) {
+		goalConnectionRefreshKey += 1;
 		toastService.success('Plan created');
 		showPlanCreateModal = false;
 		editingPlanId = planId;
 		void refreshPlanById(planId);
 	}
 	function handlePlanUpdated() {
+		goalConnectionRefreshKey += 1;
 		const planId = editingPlanId;
 		editingPlanId = null;
 		if (planId) {
@@ -1404,18 +1426,21 @@
 		}
 	}
 	function handlePlanDeleted() {
+		goalConnectionRefreshKey += 1;
 		const id = editingPlanId;
 		if (id) plans = plans.filter((p) => p.id !== id);
 		editingPlanId = null;
 	}
 
 	function handleGoalCreated(goalId: string) {
+		goalConnectionRefreshKey += 1;
 		toastService.success('Goal created');
 		showGoalCreateModal = false;
 		editingGoalId = goalId;
 		void refreshGoalById(goalId);
 	}
 	function handleGoalUpdated() {
+		goalConnectionRefreshKey += 1;
 		const goalId = editingGoalId;
 		editingGoalId = null;
 		if (goalId) {
@@ -1425,6 +1450,7 @@
 		}
 	}
 	function handleGoalDeleted() {
+		goalConnectionRefreshKey += 1;
 		const id = editingGoalId;
 		if (id) {
 			goals = goals.filter((g) => g.id !== id);
@@ -1455,6 +1481,7 @@
 	}
 
 	function handleMilestoneCreated(milestoneId: string) {
+		goalConnectionRefreshKey += 1;
 		const goalId = milestoneCreateGoalContext?.goalId ?? null;
 		toastService.success('Milestone created');
 		showMilestoneCreateModal = false;
@@ -1463,6 +1490,7 @@
 		void refreshMilestoneById(milestoneId, goalId);
 	}
 	function handleMilestoneUpdated() {
+		goalConnectionRefreshKey += 1;
 		const milestoneId = editingMilestoneId;
 		editingMilestoneId = null;
 		if (milestoneId) {
@@ -1472,6 +1500,7 @@
 		}
 	}
 	function handleMilestoneDeleted() {
+		goalConnectionRefreshKey += 1;
 		const id = editingMilestoneId;
 		if (id) milestones = milestones.filter((m) => m.id !== id);
 		editingMilestoneId = null;
@@ -1486,16 +1515,19 @@
 	}
 
 	function handleEventCreated(eventId: string) {
+		projectCalendarRefreshKey += 1;
 		toastService.success('Event created');
 		showEventCreateModal = false;
 		editingEventId = eventId;
 		void loadProjectEvents();
 	}
 	function handleEventUpdated() {
+		projectCalendarRefreshKey += 1;
 		void loadProjectEvents();
 		editingEventId = null;
 	}
 	function handleEventDeleted() {
+		projectCalendarRefreshKey += 1;
 		const id = editingEventId;
 		if (id) events = events.filter((e) => e.id !== id);
 		editingEventId = null;
@@ -1600,6 +1632,24 @@
 	function closeRecentChatAgentModal(_summary?: DataMutationSummary) {
 		showRecentChatAgentModal = false;
 		selectedRecentChatSessionId = null;
+		// Refresh is handled globally via the dataMutationEvents subscription above.
+	}
+	async function openGoalChat(goal: Goal, initialDraft: string) {
+		goalChatFocus = {
+			focusType: 'goal',
+			focusEntityId: goal.id,
+			focusEntityName: goal.name,
+			projectId: project.id,
+			projectName: project.name
+		};
+		goalChatDraft = initialDraft;
+		await loadAgentChatModal();
+		showGoalChatModal = true;
+	}
+	function closeGoalChatModal(_summary?: DataMutationSummary) {
+		showGoalChatModal = false;
+		goalChatFocus = null;
+		goalChatDraft = null;
 		// Refresh is handled globally via the dataMutationEvents subscription above.
 	}
 	function handleCollaborationLeftProject() {
@@ -1877,12 +1927,12 @@
 		{/if}
 
 		<!-- Entity tabs (shared mobile + desktop). All entity surfaces live
-			 here: Briefs · Chats · Graph · Goals · Milestones · Plans · Risks
-			 · Events. Pills wrap on narrow screens. Chats, Graph, and Events
-			 open modals; the rest expand inline. -->
+			 here: Calendar · Briefs · Chats · Graph · Goals · Milestones · Plans
+			 · Risks · Events. Pills wrap on narrow screens. Chats, Graph, and
+			 Events open modals; the rest expand inline. -->
 		{#if isHydrating}
 			<div class="mb-2 sm:mb-3 flex flex-wrap gap-1.5 sm:gap-2">
-				{#each Array(9) as _, i (i)}
+				{#each Array(10) as _, i (i)}
 					<div
 						class="h-10 min-w-[88px] flex-1 sm:flex-none bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-status-pulse"
 					></div>
@@ -1901,6 +1951,8 @@
 					{events}
 					{milestonesByGoalId}
 					loadInboxPreview={canLoadSecondaryProjectRequests}
+					calendarRefreshKey={projectCalendarRefreshKey}
+					{goalConnectionRefreshKey}
 					onEditGoal={(id) => (editingGoalId = id)}
 					onEditMilestone={(id) => (editingMilestoneId = id)}
 					onEditPlan={(id) => (editingPlanId = id)}
@@ -1913,6 +1965,7 @@
 					onAddRisk={canEdit ? () => (showRiskCreateModal = true) : undefined}
 					onOpenRecentChats={openRecentChatsModal}
 					onOpenEvents={openEventsModal}
+					onDiscussGoal={openGoalChat}
 				/>
 			</div>
 		{/if}
@@ -2122,6 +2175,15 @@
 	/>
 {/if}
 
+{#if showGoalChatModal && goalChatFocus && AgentChatModalComponent}
+	<AgentChatModalComponent
+		isOpen={showGoalChatModal}
+		initialProjectFocus={goalChatFocus}
+		initialDraft={goalChatDraft}
+		onClose={closeGoalChatModal}
+	/>
+{/if}
+
 <!-- "Update project" from the memory card: fresh project-context chat whose
 	 mutations flow back through dataMutationEvents (and, at session end, the
 	 Start Here capture proposal path). -->
@@ -2218,7 +2280,7 @@
 				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 			>
 				<Calendar class="w-4 h-4 text-muted-foreground" />
-				Calendar
+				Calendar settings
 			</button>
 		{/if}
 		{#if canDeleteProject}

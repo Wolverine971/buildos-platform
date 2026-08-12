@@ -131,6 +131,8 @@
 		AGENT_CHAT_MAX_IMAGE_ATTACHMENTS,
 		createAttachmentController
 	} from './agent-chat-attachments.svelte';
+	import type { AgentClientActionCompletion } from './agent-chat-client-actions';
+	import { needsLegacyExternalAccountTools } from './external-account-tool-routing';
 	import {
 		createAgentChatShellRouter,
 		type AutoInitProjectConfig,
@@ -584,6 +586,7 @@
 		getLastTurnContext: () => lastTurnContext,
 		getIsLoadingSession: () => isLoadingSession,
 		getActiveRestoredTurnRunId: () => activeRestoredTurnRunId,
+		requiresLegacyToolSurface: (content) => needsLegacyExternalAccountTools(messages, content),
 		getPrewarm: () => prewarm,
 		attachments: {
 			buildReadyRefs: (includePreviewUrl) => attachments.buildReadyRefs(includePreviewUrl),
@@ -2225,6 +2228,42 @@
 		inputValue = text;
 	}
 
+	async function handleClientActionComplete(completion: AgentClientActionCompletion) {
+		const sameAccount =
+			completion.requestedEmailAddress.toLowerCase() ===
+			completion.connectedEmailAddress.toLowerCase();
+		toastService.success(`${completion.connectedEmailAddress} connected to Gmail`);
+
+		const followUp = sameAccount
+			? `Google OAuth completed for ${completion.connectedEmailAddress}. Re-check get_external_account_status for that exact address, then continue with the inbox or calendar options I requested.`
+			: `Google OAuth completed. I requested ${completion.requestedEmailAddress}, but the Google account actually connected was ${completion.connectedEmailAddress}. Re-check get_external_account_status for ${completion.connectedEmailAddress} and tell me about the mismatch before continuing.`;
+		const deadline = Date.now() + 30_000;
+		while (
+			(stream.isStreaming ||
+				stream.isStartingStream ||
+				isSessionBusy ||
+				activeRestoredTurnRunId !== null) &&
+			Date.now() < deadline
+		) {
+			await new Promise<void>((resolve) => setTimeout(resolve, 250));
+		}
+
+		if (
+			stream.isStreaming ||
+			stream.isStartingStream ||
+			isSessionBusy ||
+			activeRestoredTurnRunId !== null
+		) {
+			inputValue = followUp;
+			toastService.info(
+				'Gmail connected. Send the prepared follow-up when this response finishes.'
+			);
+			return;
+		}
+
+		await stream.sendMessage(followUp, { suppressInputClear: true });
+	}
+
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.key === 'Escape' && stream.isStreaming) {
 			event.preventDefault();
@@ -2857,6 +2896,7 @@
 						voiceNotesByGroupId={voice.notesByGroupId}
 						onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
 						onSelectSuggestion={handleSelectSuggestion}
+						onClientActionComplete={handleClientActionComplete}
 					/>
 				</div>
 			</div>

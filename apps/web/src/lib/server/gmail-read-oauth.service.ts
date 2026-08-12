@@ -323,6 +323,7 @@ export class GmailReadOAuthService {
 		redirectUri: string;
 		redirectPath?: string;
 		connectionId?: string | null;
+		loginHint?: string;
 	}): Promise<string> {
 		this.requireConfigured();
 		const redirectPath = normalizeRedirectPath(params.redirectPath);
@@ -400,7 +401,9 @@ export class GmailReadOAuthService {
 			include_granted_scopes: false,
 			code_challenge: codeChallenge,
 			code_challenge_method: CodeChallengeMethod.S256,
-			...(reconnectEmail ? { login_hint: reconnectEmail } : {})
+			...(reconnectEmail || params.loginHint
+				? { login_hint: reconnectEmail ?? params.loginHint }
+				: {})
 		});
 	}
 

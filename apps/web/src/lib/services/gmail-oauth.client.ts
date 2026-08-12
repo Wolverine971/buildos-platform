@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/gmail-oauth.client.ts
 import type { GmailConnectionSummary, GmailConnectionsPayload } from '$lib/types/gmail-integration';
 
 export const GMAIL_OAUTH_COMPLETE_MESSAGE = 'buildos:gmail-oauth-complete';
@@ -12,8 +13,9 @@ export type GmailOAuthCompletion = {
 	error: string | null;
 };
 
-type StartGmailOAuthOptions = {
+export type StartGmailOAuthOptions = {
 	connectionId?: string | null;
+	emailAddress?: string | null;
 	fallbackRedirectPath?: string;
 };
 
@@ -60,6 +62,7 @@ function currentReturnPath(): string {
 
 async function requestAuthorizationUrl(params: {
 	connectionId: string | null;
+	emailAddress: string | null;
 	redirectPath: string;
 }): Promise<string> {
 	const response = await fetch('/api/integrations/gmail/connections', {
@@ -122,6 +125,7 @@ export async function startGmailOAuth(
 	if (!popup) {
 		const authorizationUrl = await requestAuthorizationUrl({
 			connectionId: expectedConnectionId,
+			emailAddress: options.emailAddress ?? null,
 			redirectPath: options.fallbackRedirectPath ?? currentReturnPath()
 		});
 		window.location.assign(authorizationUrl);
@@ -134,6 +138,7 @@ export async function startGmailOAuth(
 	try {
 		const authorizationUrl = await requestAuthorizationUrl({
 			connectionId: expectedConnectionId,
+			emailAddress: options.emailAddress ?? null,
 			redirectPath: POPUP_COMPLETION_PATH
 		});
 		popup.location.assign(authorizationUrl);

@@ -1,9 +1,10 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/definitions/email.ts
 /**
- * Email (Gmail) Tool Definitions — Tier 1, read-only.
+ * Email (Gmail) Tool Definitions — account handoff + Tier 1 reads.
  *
- * Three read tools over the user's connected Gmail accounts, served through the
- * deployed read gateway. These tools NEVER send, save a Gmail draft, label,
+ * Account discovery + connection handoff and three read tools over the user's
+ * connected Gmail accounts, served through the deployed read gateway. These
+ * tools NEVER send, save a Gmail draft, label,
  * archive, or modify Gmail state — no such capability exists in any tier of the
  * registry. Every capability here is gated behind the EMAIL_CHAT_TOOLS_ENABLED
  * flag (default off).
@@ -19,6 +20,49 @@
 import type { ChatToolDefinition } from '@buildos/shared-types';
 
 export const EMAIL_TOOL_DEFINITIONS: ChatToolDefinition[] = [
+	{
+		type: 'function',
+		function: {
+			name: 'get_external_account_status',
+			description:
+				'Check whether an exact email address is connected to BuildOS for Gmail inbox reading and/or Google Calendar access. ALWAYS use this before claiming that a named address is connected or before asking to connect it. Returns separate inbox and calendar capabilities, their health, and safe next actions. This does not read Gmail or Calendar content.',
+			parameters: {
+				type: 'object',
+				properties: {
+					email_address: {
+						type: 'string',
+						description:
+							'Required. The exact email address the user named, such as dj@9takes.com.'
+					}
+				},
+				required: ['email_address']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'request_email_account_connection',
+			description:
+				'Stage a secure browser handoff to connect one Google account for read-only Gmail access. Call get_external_account_status first. Only set user_confirmed=true after the user explicitly agreed in a later message to connect that exact address. This tool never receives Google credentials and does not itself grant access; it returns a client_action that renders a user-clicked Google OAuth button. If the address is already connected, it returns that account instead of starting OAuth.',
+			parameters: {
+				type: 'object',
+				properties: {
+					email_address: {
+						type: 'string',
+						description:
+							'Required. The exact Google account email address the user wants to connect.'
+					},
+					user_confirmed: {
+						type: 'boolean',
+						description:
+							'Required. True only when the user explicitly consented in a later user message to launching OAuth for this exact address; otherwise false.'
+					}
+				},
+				required: ['email_address', 'user_confirmed']
+			}
+		}
+	},
 	{
 		type: 'function',
 		function: {

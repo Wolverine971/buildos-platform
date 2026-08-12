@@ -504,6 +504,35 @@ The tab is an earned overlay because it is the only entrance to the hidden panel
 attached to an edge or seam—never float over the canvas as a detached launcher. Use semantic Inkprint
 surface/border tokens, P2 radii, a fixed P9 icon box, and the P13 focus/target contract.
 
+### P24 · Dock a working surface; do not float it over the work
+
+**Finding:** a substantial secondary workflow (chat, console, inspector, preview) opens as a floating
+panel over the primary canvas. It hides the content the user needs to reference, competes with other
+drawers, and creates overlapping scroll regions.
+
+Give the secondary workflow real layout space:
+
+1. Render it as a sibling in the owning flex/grid shell so opening it resizes the primary workspace
+   instead of covering it. Keep `min-h-0`/`min-w-0` through the chain so both regions can shrink and
+   scroll internally.
+2. Choose the dock edge from the surrounding geometry. If the surface already owns a right-side
+   details rail, use a full-width bottom dock so both secondary contexts can remain visible without
+   compressing the primary content into a narrow strip.
+3. Bound the dock with a viewport-aware `clamp()` height. Keep the dock header fixed and give the
+   workflow body its own overflow owner; never let a composer or action footer scroll out of reach.
+4. Keep the launcher mounted and expose state with `aria-controls` + `aria-expanded`. A mounted but
+   closed keep-alive panel must be `hidden` or paired with `aria-hidden` + `inert` so its controls do
+   not remain tabbable (P13).
+5. On phone widths, allow only one bottom disclosure to consume vertical space at a time. Opening the
+   working dock should collapse competing metadata/comments panels while keeping their launchers
+   available.
+6. Use one restrained entry transition and remove it under reduced motion (P11). The dock is a
+   structural state change, not a signature effect.
+
+Use a strong border/seam rather than overlay shadow to communicate the split. The outer shell keeps
+the modal's Frame texture; the dock may use a Strip header and a plain readable body so one surface
+does not stack competing textures.
+
 ---
 
 ## Using this doc in an audit

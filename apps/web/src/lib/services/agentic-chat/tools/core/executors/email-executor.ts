@@ -28,7 +28,13 @@ import type { ExecutorContext } from './types';
 import { GmailReadGateway, GmailReadGatewayError } from '$lib/server/gmail-read-gateway';
 import { GmailOAuthError, GmailReadOAuthService } from '$lib/server/gmail-read-oauth.service';
 import { checkGmailReadRateLimit } from '$lib/server/gmail-read-rate-limit';
-import type { GmailMessageDetail, GmailMessageSearchPayload } from '$lib/types/gmail-integration';
+import { GoogleCalendarConnectionService } from '$lib/server/google-calendar-connection.service';
+import type {
+	GmailConnectionsPayload,
+	GmailMessageDetail,
+	GmailMessageSearchPayload
+} from '$lib/types/gmail-integration';
+import type { GoogleCalendarConnectionsPayload } from '$lib/types/google-calendar-integration';
 import { isEmailChatUserAllowed } from '../../email';
 
 // Per-turn safety bounds (executor instances are per-turn — see ChatToolExecutor).
@@ -42,12 +48,30 @@ const UNTRUSTED_CLOSE = '[END UNTRUSTED EMAIL CONTENT]';
 
 type GmailSearchPort = Pick<GmailReadGateway, 'searchMessages' | 'getMessage'>;
 type GmailConnectionsPort = Pick<GmailReadOAuthService, 'listConnections'>;
+type CalendarConnectionsPort = Pick<GoogleCalendarConnectionService, 'listConnections'>;
 type RateLimitPort = typeof checkGmailReadRateLimit;
 
 export interface EmailExecutorDeps {
 	gateway?: GmailSearchPort;
 	oauthService?: GmailConnectionsPort;
+	calendarService?: CalendarConnectionsPort;
 	checkRateLimit?: RateLimitPort;
+}
+
+interface ExternalAccountStatusArgs {
+	email_address?: unknown;
+	emailAddress?: unknown;
+}
+
+interface RequestEmailAccountConnectionArgs extends ExternalAccountStatusArgs {
+	user_confirmed?: unknown;
+	userConfirmed?: unknown;
+}
+
+interface ExternalAccountPayloads {
+	gmailPayload: GmailConnectionsPayload;
+	calendarPayload: GoogleCalendarConnectionsPayload | null;
+	calendarAvailable: boolean;
 }
 
 interface SearchEmailMessagesArgs {
@@ -77,6 +101,7 @@ export class EmailExecutor extends BaseExecutor {
 	private readonly deps: EmailExecutorDeps;
 	private _gateway?: GmailSearchPort;
 	private _oauthService?: GmailConnectionsPort;
+	private _calendarService?: CalendarConnectionsPort;
 	private accountsCache?: Map<string, AccountInfo>;
 
 	// Per-turn counters (the executor instance lives for a single chat turn).
@@ -102,6 +127,14 @@ export class EmailExecutor extends BaseExecutor {
 			this._oauthService = new GmailReadOAuthService(this.getAdminSupabase());
 		}
 		return this._oauthService;
+	}
+
+	private getCalendarService(): CalendarConnectionsPort {
+		if (this.deps.calendarService) return this.deps.calendarService;
+		if (!this._calendarService) {
+			this._calendarService = new GoogleCalendarConnectionService(this.getAdminSupabase());
+		}
+		return this._calendarService;
 	}
 
 	private checkRateLimit(params: { connectionIds: string[]; operation: 'search' | 'get' }): void {
@@ -186,6 +219,100 @@ export class EmailExecutor extends BaseExecutor {
 		return undefined;
 	}
 
+	private normalizeEmailAddress(...values: unknown[]): string {
+		const emailAddress = this.toStringArg(...values)?.toLowerCase() ?? '';
+		if (
+			!emailAddress ||
+			emailAddress.length > 320 ||
+			!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)
+		) {
+			throw new Error('A valid email_address is required.');
+		}
+		return emailAddress;
+	}
+
+	private async loadExternalAccountStatus(): Promise<ExternalAccountPayloads> {
+		const [gmailResult, calendarResult] = await Promise.allSettled([
+			this.getOAuthService().listConnections(this.userId),
+			this.getCalendarService().listConnections(this.userId)
+		]);
+
+		if (gmailResult.status === 'rejected') throw gmailResult.reason;
+		const calendarPayload = calendarResult.status === 'fulfilled' ? calendarResult.value : null;
+		return {
+			gmailPayload: gmailResult.value,
+			calendarPayload,
+			calendarAvailable: calendarPayload?.available === true
+		};
+	}
+
+	private buildExternalAccountStatus(
+		emailAddress: string,
+		payloads: ExternalAccountPayloads
+	): Record<string, unknown> {
+		const gmailConnection = payloads.gmailPayload.connections.find(
+			(connection) => connection.emailAddress.trim().toLowerCase() === emailAddress
+		);
+		const calendarConnection = payloads.calendarPayload?.connections.find(
+			(connection) => connection.emailAddress.trim().toLowerCase() === emailAddress
+		);
+		const readableCalendarSources =
+			calendarConnection?.sources.filter((source) => source.readEnabled) ?? [];
+		const writableCalendarSources =
+			calendarConnection?.sources.filter(
+				(source) => source.accessRole === 'owner' || source.accessRole === 'writer'
+			) ?? [];
+		const gmailUsable = Boolean(
+			gmailConnection?.status === 'active' && gmailConnection.readEnabled
+		);
+		const calendarUsable = Boolean(
+			calendarConnection?.status === 'active' && readableCalendarSources.length > 0
+		);
+		const suggestedActions: string[] = [];
+		if (gmailUsable) suggestedActions.push('search_email_inbox');
+		if (calendarUsable) suggestedActions.push('check_calendar');
+		if (!gmailConnection) suggestedActions.push('offer_read_only_gmail_connection');
+		if (gmailConnection?.status === 'reconnect_required') {
+			suggestedActions.push('offer_gmail_reconnect');
+		}
+
+		return {
+			account_lookup_version: 'external-account-status-v1',
+			email_address: emailAddress,
+			connected: Boolean(gmailConnection || calendarConnection),
+			capabilities: {
+				inbox: {
+					provider: 'google_gmail',
+					connected: Boolean(gmailConnection),
+					usable: gmailUsable,
+					status: gmailConnection?.status ?? 'not_connected',
+					connection_id: gmailConnection?.id ?? null,
+					account_label: gmailConnection?.accountLabel ?? null,
+					read_only: true,
+					reconnect_required: gmailConnection?.status === 'reconnect_required'
+				},
+				calendar: {
+					provider: 'google_calendar',
+					connected: Boolean(calendarConnection),
+					usable: calendarUsable,
+					status: calendarConnection?.status ?? 'not_connected',
+					connection_id: calendarConnection?.id ?? null,
+					account_label: calendarConnection?.accountLabel ?? null,
+					source_count: calendarConnection?.sources.length ?? 0,
+					readable_source_count: readableCalendarSources.length,
+					writable_source_count: writableCalendarSources.length,
+					reconnect_required: calendarConnection?.status === 'reconnect_required'
+				}
+			},
+			provider_availability: {
+				gmail: payloads.gmailPayload.available,
+				google_calendar: payloads.calendarAvailable
+			},
+			suggested_actions: suggestedActions,
+			notice: 'Gmail inbox and Google Calendar use separate OAuth connections. Only offer actions whose capability is connected and usable.'
+		};
+	}
+
 	private async getAccountsMap(): Promise<Map<string, AccountInfo>> {
 		if (!this.accountsCache) {
 			const payload = await this.getOAuthService().listConnections(this.userId);
@@ -268,6 +395,109 @@ export class EmailExecutor extends BaseExecutor {
 	// ============================================
 	// TOOLS
 	// ============================================
+
+	/** get_external_account_status — exact-address capability resolver; no provider content read. */
+	async getExternalAccountStatus(
+		args: ExternalAccountStatusArgs
+	): Promise<Record<string, unknown>> {
+		this.assertPilotAccess();
+		this.assertCallBudget();
+		const emailAddress = this.normalizeEmailAddress(args.email_address, args.emailAddress);
+		try {
+			const payloads = await this.loadExternalAccountStatus();
+			return this.buildExternalAccountStatus(emailAddress, payloads);
+		} catch (error) {
+			throw await this.toSafeToolError(error);
+		}
+	}
+
+	/**
+	 * request_email_account_connection — returns a browser action only after
+	 * explicit user consent. Google OAuth and credentials stay entirely in the
+	 * existing browser/server callback flow; the model never receives a token.
+	 */
+	async requestEmailAccountConnection(
+		args: RequestEmailAccountConnectionArgs
+	): Promise<Record<string, unknown>> {
+		this.assertPilotAccess();
+		this.assertCallBudget();
+		const emailAddress = this.normalizeEmailAddress(args.email_address, args.emailAddress);
+		const userConfirmed = args.user_confirmed === true || args.userConfirmed === true;
+
+		try {
+			const payloads = await this.loadExternalAccountStatus();
+			const status = this.buildExternalAccountStatus(emailAddress, payloads);
+			const inbox = (status.capabilities as Record<string, any>).inbox as Record<string, any>;
+			if (inbox.usable === true) {
+				return {
+					status: 'already_connected',
+					requires_user_action: false,
+					email_address: emailAddress,
+					account: inbox,
+					next_actions: ['search_email_inbox', 'check_calendar_capability'],
+					notice: `${emailAddress} already has active read-only Gmail access. Do not launch OAuth again.`
+				};
+			}
+
+			if (!userConfirmed) {
+				return {
+					status: 'confirmation_required',
+					requires_user_action: true,
+					email_address: emailAddress,
+					confirmation_prompt: `Do you want me to connect ${emailAddress} with read-only Gmail access so I can search that inbox?`,
+					notice: 'Wait for an explicit yes/no answer. On yes, call this tool again with user_confirmed=true. Do not claim OAuth has started yet.'
+				};
+			}
+
+			if (!payloads.gmailPayload.available) {
+				return {
+					status: 'unavailable',
+					requires_user_action: false,
+					email_address: emailAddress,
+					notice: 'Read-only Gmail OAuth is not configured in this environment.'
+				};
+			}
+
+			const existingConnection = payloads.gmailPayload.connections.find(
+				(connection) => connection.emailAddress.trim().toLowerCase() === emailAddress
+			);
+			if (
+				!existingConnection &&
+				payloads.gmailPayload.connections.length >= payloads.gmailPayload.maxConnections
+			) {
+				return {
+					status: 'connection_limit_reached',
+					requires_user_action: false,
+					email_address: emailAddress,
+					max_connections: payloads.gmailPayload.maxConnections,
+					notice: 'Disconnect an unused Gmail account in Profile → Email before connecting another.'
+				};
+			}
+
+			const mode = existingConnection ? 'reconnect' : 'connect';
+			return {
+				status: 'browser_handoff_required',
+				requires_user_action: true,
+				email_address: emailAddress,
+				client_action: {
+					kind: 'connect_google_gmail',
+					action_id: `gmail:${existingConnection?.id ?? emailAddress}`,
+					mode,
+					email_address: emailAddress,
+					connection_id: existingConnection?.id ?? null,
+					title: mode === 'reconnect' ? 'Reconnect Gmail' : 'Connect Gmail',
+					description: `Continue with Google and choose ${emailAddress}. BuildOS will request read-only Gmail access.`,
+					button_label:
+						mode === 'reconnect'
+							? `Reconnect ${emailAddress}`
+							: `Connect ${emailAddress}`
+				},
+				notice: 'The user must click the rendered Google OAuth button. After the callback, re-check get_external_account_status before reading email.'
+			};
+		} catch (error) {
+			throw await this.toSafeToolError(error);
+		}
+	}
 
 	/** list_email_accounts — read-only; no Gmail API call. */
 	async listEmailAccounts(): Promise<Record<string, unknown>> {

@@ -48,6 +48,27 @@ function renderNode(node: EnrichedDocTreeNode) {
 describe('DocTreeNode control quality', () => {
 	afterEach(() => cleanup());
 
+	it('keeps root document content close to the left edge and shows freshness metadata', () => {
+		const node = createNode();
+		render(DocTreeNode, {
+			props: {
+				node,
+				expandedIds: new Set<string>(),
+				onToggleExpand: vi.fn(),
+				onOpenDocument: vi.fn(),
+				onContextMenu: vi.fn(),
+				canDrag: true
+			}
+		});
+
+		const dragHandle = screen.getByRole('button', { name: 'Drag to reorder' });
+		const updatedAt = screen.getByText(/^Updated /);
+
+		expect(dragHandle).toHaveClass('order-last');
+		expect(updatedAt.tagName).toBe('TIME');
+		expect(updatedAt).toHaveAttribute('datetime', node.updated_at);
+	});
+
 	it('opens the action menu from the standard keyboard shortcut', async () => {
 		const node = createNode();
 		const { onContextMenu } = renderNode(node);

@@ -331,6 +331,27 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	// Gated behind EMAIL_CHAT_TOOLS_ENABLED (default off).
 	// ============================================
 
+	get_external_account_status: {
+		summary:
+			'Check an exact address for connected Gmail inbox and Google Calendar capabilities.',
+		capabilities: [
+			'Matches an exact email address across Gmail and Google Calendar connections',
+			'Returns separate connection health and usable capabilities',
+			'Does not read inbox or calendar content'
+		],
+		contexts: ['global', 'project'],
+		category: 'read'
+	},
+	request_email_account_connection: {
+		summary: 'Request a user-clicked Google OAuth handoff for read-only Gmail access.',
+		capabilities: [
+			'Requires explicit user confirmation for the exact address',
+			'Returns a browser client action; never receives Google credentials',
+			'Reuses the existing connection for reconnects and avoids duplicate connections'
+		],
+		contexts: ['global', 'project'],
+		category: 'write'
+	},
 	list_email_accounts: {
 		summary: 'List connected Gmail accounts BuildOS can read (read-only, no Gmail call).',
 		capabilities: [

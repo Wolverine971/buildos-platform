@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/gmail-oauth.client.test.ts
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -60,9 +61,18 @@ describe('startGmailOAuth', () => {
 		vi.stubGlobal('fetch', fetchMock);
 
 		const completion = startGmailOAuth({
-			connectionId: '11111111-1111-4111-8111-111111111111'
+			connectionId: '11111111-1111-4111-8111-111111111111',
+			emailAddress: 'work@example.com'
 		});
 		await vi.waitFor(() => expect(assign).toHaveBeenCalledOnce());
+		expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+			method: 'POST',
+			body: JSON.stringify({
+				connectionId: '11111111-1111-4111-8111-111111111111',
+				emailAddress: 'work@example.com',
+				redirectPath: '/auth/google/gmail-read/complete'
+			})
+		});
 
 		window.dispatchEvent(
 			new MessageEvent('message', {

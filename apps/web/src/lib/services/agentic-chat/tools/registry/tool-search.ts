@@ -75,6 +75,7 @@ const QUERY_SYNONYMS: Record<string, string[]> = {
 
 const WRITE_QUERY_TERMS = new Set([
 	'archive',
+	'connect',
 	'create',
 	'delete',
 	'link',

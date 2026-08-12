@@ -96,7 +96,7 @@ describe('buildPersistedToolTrace', () => {
 		expect(trace[0].duration_ms).toBeUndefined();
 	});
 
-	it('persists content-free summaries for every Gmail read tool', () => {
+	it('persists content-free summaries for every Gmail account tool', () => {
 		const secrets = [
 			'super-secret-query',
 			'connection-secret-id',
@@ -160,6 +160,37 @@ describe('buildPersistedToolTrace', () => {
 						body_truncated: false
 					}
 				})
+			},
+			{
+				toolCall: toolCall('get_external_account_status', {
+					email_address: 'recipient@example.com'
+				}),
+				result: result({
+					result: {
+						email_address: 'recipient@example.com',
+						connected: true,
+						capabilities: {
+							inbox: { connected: true, usable: true },
+							calendar: { connected: false, usable: false }
+						}
+					}
+				})
+			},
+			{
+				toolCall: toolCall('request_email_account_connection', {
+					email_address: 'recipient@example.com',
+					user_confirmed: true
+				}),
+				result: result({
+					result: {
+						status: 'browser_handoff_required',
+						requires_user_action: true,
+						client_action: {
+							kind: 'connect_google_gmail',
+							email_address: 'recipient@example.com'
+						}
+					}
+				})
 			}
 		]);
 
@@ -175,6 +206,10 @@ describe('buildPersistedToolTrace', () => {
 		);
 		expect(trace[2].result_preview).toBe(
 			'{"read_only":true,"body_returned":true,"body_truncated":false,"has_unsupported_attachments":false}'
+		);
+		expect(trace[3].arguments_preview).toBe('{"read_only":true,"email_address_present":true}');
+		expect(trace[4].result_preview).toBe(
+			'{"browser_handoff_only":true,"status":"browser_handoff_required","requires_user_action":true,"has_client_action":true}'
 		);
 	});
 
@@ -192,7 +227,7 @@ describe('buildPersistedToolTrace', () => {
 			}
 		]);
 
-		expect(trace[0].error).toBe('Gmail read tool failed.');
+		expect(trace[0].error).toBe('Email account tool failed.');
 		expect(JSON.stringify(trace)).not.toContain('sender@example.com');
 		expect(JSON.stringify(trace)).not.toContain('Confidential subject');
 	});

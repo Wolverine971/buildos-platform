@@ -386,8 +386,14 @@ export class ChatToolExecutor {
 				return this.calendarExecutor.setProjectCalendar(args);
 
 			// ==================
-			// EMAIL (GMAIL) READ TOOLS — read-only, flag-gated
+			// EMAIL (GMAIL) ACCOUNT HANDOFF + READ TOOLS — flag-gated
 			// ==================
+			case 'get_external_account_status':
+				return this.emailExecutor.getExternalAccountStatus(args);
+
+			case 'request_email_account_connection':
+				return this.emailExecutor.requestEmailAccountConnection(args);
+
 			case 'list_email_accounts':
 				return this.emailExecutor.listEmailAccounts();
 

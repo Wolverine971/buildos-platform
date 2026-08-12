@@ -5,7 +5,7 @@
 	A horizontal strip of pill tabs for project context that wasn't moved into
 	the kanban or pulse strip:
 
-	  [📔 Briefs]  [💬 Chats]  [🌿 Graph]  [🎯 Goals]  [🚩 Milestones]  [📅 Plans]  [⚠️ Risks]  [🕒 Events]
+	  [📅 Calendar]  [📔 Briefs]  [💬 Chats]  [🌿 Graph]  [🎯 Goals]  [🚩 Milestones]  [📅 Plans]  [⚠️ Risks]  [🕒 Events]
 
 	Single-expansion model: click a pill, it expands to full width with its
 	content body underneath. Other pills wrap above and below via flex-wrap
@@ -13,8 +13,8 @@
 	Chats, Graph, and Events are action pills that open modals instead of
 	expanding inline.
 
-	Briefs lazy-fetches on first expand; entity tabs render from props
-	passed in by the page.
+	Calendar and Briefs lazy-fetch on first expand; entity tabs render from
+	props passed in by the page.
 
 	Note: there used to be an "Activity" tab here, but PulseStrip's
 	"Recently done" surfaces the same activity-log signal in a more
@@ -42,6 +42,7 @@
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import {
 		fetchProjectBriefs,
+		fetchProjectGoalConnectionOverview,
 		type ProjectBriefSummary
 	} from '$lib/components/project/project-page-data-controller';
 	import { getUpcomingEvents } from '$lib/components/project/project-event-filters';
@@ -51,11 +52,16 @@
 	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import type { DailyBrief } from '$lib/types/daily-brief';
+	import type { CalendarItem } from '$lib/types/calendar-items';
+	import type {
+		GoalConnectionSummary,
+		ProjectGoalConnectionOverview
+	} from '$lib/types/goal-connection-summary';
 	import type { Goal, Milestone, OntoEvent, Plan, Risk } from '$lib/types/onto';
 
 	const recentlyCreated = getRecentlyCreatedContext();
 
-	type TabKey = 'briefs' | 'inbox' | 'goals' | 'milestones' | 'plans' | 'risks';
+	type TabKey = 'calendar' | 'briefs' | 'inbox' | 'goals' | 'milestones' | 'plans' | 'risks';
 	type TabActionKey = 'chats' | 'graph' | 'events';
 	type TabItemKey = TabKey | TabActionKey;
 
@@ -70,6 +76,8 @@
 		events = [],
 		milestonesByGoalId = new Map<string, Milestone[]>(),
 		loadInboxPreview = true,
+		calendarRefreshKey = 0,
+		goalConnectionRefreshKey = 0,
 		onEditGoal,
 		onEditMilestone,
 		onEditPlan,
@@ -81,7 +89,8 @@
 		onAddPlan,
 		onAddRisk,
 		onOpenRecentChats,
-		onOpenEvents
+		onOpenEvents,
+		onDiscussGoal
 	}: {
 		projectId: string;
 		projectName?: string;
@@ -93,6 +102,8 @@
 		events: OntoEvent[];
 		milestonesByGoalId: Map<string, Milestone[]>;
 		loadInboxPreview?: boolean;
+		calendarRefreshKey?: number;
+		goalConnectionRefreshKey?: number;
 		onEditGoal: (id: string) => void;
 		onEditMilestone: (id: string) => void;
 		onEditPlan: (id: string) => void;
@@ -105,15 +116,27 @@
 		onAddRisk?: () => void;
 		onOpenRecentChats?: () => void;
 		onOpenEvents?: () => void;
+		onDiscussGoal?: (goal: Goal, initialDraft: string) => void;
 	} = $props();
 
 	let expanded = $state<TabKey | null>(null);
+	type ProjectCalendarPanelLazy =
+		| typeof import('$lib/components/project/ProjectCalendarPanel.svelte').default
+		| null;
 	type ProjectInboxPanelLazy =
 		| typeof import('$lib/components/project/ProjectInboxPanel.svelte').default
 		| null;
 	let ProjectInboxPanelComponent = $state<ProjectInboxPanelLazy>(null);
+	let ProjectCalendarPanelComponent = $state<ProjectCalendarPanelLazy>(null);
+	let calendarPanelLoading = $state(false);
+	let calendarPanelError = $state<string | null>(null);
 	let inboxPanelLoading = $state(false);
 	let inboxPanelError = $state<string | null>(null);
+	let goalConnections = $state<ProjectGoalConnectionOverview | null>(null);
+	let goalConnectionsLoading = $state(false);
+	let goalConnectionsError = $state<string | null>(null);
+	let attemptedGoalConnectionsKey = $state<string | null>(null);
+	let goalConnectionsRequestId = 0;
 
 	async function loadInboxPanel() {
 		if (ProjectInboxPanelComponent || inboxPanelLoading) return;
@@ -129,9 +152,27 @@
 		}
 	}
 
+	async function loadCalendarPanel() {
+		if (ProjectCalendarPanelComponent || calendarPanelLoading) return;
+		calendarPanelLoading = true;
+		calendarPanelError = null;
+		try {
+			const mod = await import('$lib/components/project/ProjectCalendarPanel.svelte');
+			ProjectCalendarPanelComponent = mod.default;
+		} catch (error) {
+			calendarPanelError =
+				error instanceof Error ? error.message : 'Failed to load project calendar';
+		} finally {
+			calendarPanelLoading = false;
+		}
+	}
+
 	function toggle(key: TabKey) {
 		const nextExpanded = expanded === key ? null : key;
 		expanded = nextExpanded;
+		if (nextExpanded === 'calendar') {
+			void loadCalendarPanel();
+		}
 		if (nextExpanded === 'inbox') {
 			void loadInboxCount();
 			void loadInboxPanel();
@@ -209,6 +250,43 @@
 			void loadBriefs(true);
 		}
 	});
+
+	async function loadGoalConnections() {
+		const requestKey = `${projectId}:${goalConnectionRefreshKey}`;
+		const requestId = ++goalConnectionsRequestId;
+		attemptedGoalConnectionsKey = requestKey;
+		goalConnectionsLoading = true;
+		goalConnectionsError = null;
+		if (goalConnections?.project_id !== projectId) goalConnections = null;
+
+		try {
+			const overview = await fetchProjectGoalConnectionOverview(projectId);
+			if (requestId !== goalConnectionsRequestId) return;
+			goalConnections = overview;
+		} catch (error) {
+			if (requestId !== goalConnectionsRequestId) return;
+			goalConnectionsError =
+				error instanceof Error ? error.message : 'Failed to load goal connections';
+		} finally {
+			if (requestId === goalConnectionsRequestId) goalConnectionsLoading = false;
+		}
+	}
+
+	$effect(() => {
+		const requestKey = `${projectId}:${goalConnectionRefreshKey}`;
+		if (
+			expanded !== 'goals' ||
+			goalConnectionsLoading ||
+			attemptedGoalConnectionsKey === requestKey
+		) {
+			return;
+		}
+		void loadGoalConnections();
+	});
+
+	const goalSummaryById = $derived(
+		new Map(goalConnections?.goals.map((summary) => [summary.goal_id, summary]) ?? [])
+	);
 
 	function dateFromDateOnly(value: string): Date {
 		const [dateOnly] = value.split('T');
@@ -341,6 +419,14 @@
 
 	const tabs = $derived.by<TabDef[]>(() => {
 		const all: TabDef[] = [
+			{
+				key: 'calendar',
+				label: 'Calendar',
+				count: null,
+				icon: Calendar,
+				accent: 'text-info',
+				bg: 'bg-info/10'
+			},
 			{
 				key: 'briefs',
 				label: 'Briefs',
@@ -509,10 +595,83 @@
 		return !m.goal_id;
 	}
 
+	function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+		return `${count} ${count === 1 ? singular : plural}`;
+	}
+
+	function goalCoverageLabel(overview: ProjectGoalConnectionOverview): string {
+		if (overview.tasks.total === 0) return 'No project tasks yet';
+		const connected =
+			overview.tasks.connected === 0
+				? 'No tasks connected to goals'
+				: `${pluralize(overview.tasks.connected, 'connected task')}`;
+		return `${connected} · ${pluralize(overview.tasks.project_level, 'project-level task')}`;
+	}
+
+	function goalTaskLabel(summary: GoalConnectionSummary): string {
+		const { tasks } = summary;
+		if (tasks.total === 0) return 'No tasks';
+		if (tasks.todo === tasks.total) {
+			return `${pluralize(tasks.total, 'linked task')} · none started`;
+		}
+		const states: string[] = [];
+		if (tasks.in_progress > 0) states.push(`${tasks.in_progress} in progress`);
+		if (tasks.done > 0) states.push(`${tasks.done} done`);
+		if (tasks.blocked > 0) states.push(`${tasks.blocked} blocked`);
+		if (states.length === 0 && tasks.todo > 0) states.push(`${tasks.todo} to do`);
+		return `${pluralize(tasks.total, 'linked task')} · ${states.join(' · ')}`;
+	}
+
+	function goalPlanLabel(summary: GoalConnectionSummary): string {
+		if (summary.plans.total === 0) return 'No plan';
+		if (summary.plans.total === 1 && summary.plans.active === 1) return '1 active plan';
+		return pluralize(summary.plans.total, 'plan');
+	}
+
+	function goalTrackingLabel(summary: GoalConnectionSummary): string {
+		if (summary.tracking.source === 'none') return 'Tracking not set';
+		const progress = `${summary.tracking.completed}/${summary.tracking.total} checkpoints complete`;
+		return summary.milestones.overdue > 0
+			? `${progress} · ${pluralize(summary.milestones.overdue, 'overdue checkpoint')}`
+			: progress;
+	}
+
+	function goalHasNoSupportingWork(summary: GoalConnectionSummary): boolean {
+		return (
+			summary.tasks.total === 0 && summary.plans.total === 0 && summary.milestones.total === 0
+		);
+	}
+
+	function goalChatDraft(goal: Goal, summary: GoalConnectionSummary | undefined): string {
+		if (summary && goalHasNoSupportingWork(summary)) {
+			return `Help me structure the goal “${goal.name}”. Review the project context, then propose a small plan, checkpoints, and tasks. Do not create or link anything until I approve.`;
+		}
+		return `Review the goal “${goal.name}” and its explicitly connected work. Help me assess progress, gaps, and the next best move. Do not create or link anything until I approve.`;
+	}
+
+	function createdDateLabel(iso: string): string {
+		return new Date(iso).toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: new Date(iso).getFullYear() === new Date().getFullYear() ? undefined : 'numeric'
+		});
+	}
+
 	function handleAction(key: TabActionKey) {
 		if (key === 'chats') onOpenRecentChats?.();
 		else if (key === 'graph') onOpenGraph?.();
 		else onOpenEvents?.();
+	}
+
+	function handleCalendarItemSelect(item: CalendarItem) {
+		if (item.item_type === 'task' && item.task_id) {
+			onEntityClick('task', item.task_id);
+			return;
+		}
+
+		if (item.event_id) {
+			onEntityClick('event', item.event_id);
+		}
 	}
 </script>
 
@@ -589,7 +748,40 @@
 					class="border-t border-border"
 					transition:slide={slideMotion(140)}
 				>
-					{#if tab.key === 'briefs'}
+					{#if tab.key === 'calendar'}
+						<div class="max-h-[70vh] overflow-y-auto p-2 sm:p-3">
+							{#if ProjectCalendarPanelComponent}
+								<ProjectCalendarPanelComponent
+									{projectId}
+									refreshKey={calendarRefreshKey}
+									onItemSelect={handleCalendarItemSelect}
+								/>
+							{:else if calendarPanelError}
+								<div class="p-4 text-center">
+									<p class="text-xs text-destructive">
+										Unable to load the project calendar
+									</p>
+									<button
+										type="button"
+										onclick={loadCalendarPanel}
+										class="mt-2 rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-muted/50 pressable"
+									>
+										Retry
+									</button>
+								</div>
+							{:else}
+								<div
+									class="flex min-h-32 items-center justify-center"
+									aria-live="polite"
+								>
+									<LoaderCircle
+										class="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none"
+									/>
+									<span class="sr-only">Loading project calendar</span>
+								</div>
+							{/if}
+						</div>
+					{:else if tab.key === 'briefs'}
 						<div class="p-2 sm:p-3 space-y-2 max-h-[60vh] overflow-y-auto">
 							{#if briefsLoading && briefs.length === 0}
 								<div class="flex items-center justify-center py-6">
@@ -689,17 +881,41 @@
 						</div>
 					{:else if tab.key === 'goals'}
 						<div class="p-2 sm:p-3 space-y-2 max-h-[60vh] overflow-y-auto">
-							{#if canEdit && onAddGoal}
-								<div class="flex justify-end">
+							<div class="flex min-h-7 items-center justify-between gap-3 px-1">
+								<div class="min-w-0" aria-live="polite">
+									{#if goalConnections}
+										<p class="text-2xs text-muted-foreground">
+											{goalCoverageLabel(goalConnections)}
+										</p>
+									{:else if goalConnectionsError}
+										<div class="flex items-center gap-2">
+											<p class="text-2xs text-muted-foreground">
+												Connected work unavailable
+											</p>
+											<button
+												type="button"
+												onclick={() => (attemptedGoalConnectionsKey = null)}
+												class="rounded px-1.5 py-1 text-2xs font-medium text-foreground hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											>
+												Retry
+											</button>
+										</div>
+									{:else}
+										<p class="text-2xs text-muted-foreground">
+											Checking connected work…
+										</p>
+									{/if}
+								</div>
+								{#if canEdit && onAddGoal}
 									<button
 										type="button"
 										onclick={onAddGoal}
-										class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-2xs font-medium text-foreground/80 hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+										class="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-2xs font-medium text-foreground/80 hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 									>
 										<Plus class="w-3 h-3" /> New goal
 									</button>
-								</div>
-							{/if}
+								{/if}
+							</div>
 							{#if goals.length === 0}
 								<p class="text-xs text-muted-foreground italic px-1 py-3">
 									No goals yet. Define what success looks like for this project.
@@ -709,25 +925,29 @@
 									{@const goalMilestones = sortMilestones(
 										milestonesByGoalId.get(goal.id) ?? []
 									)}
-									{@const completedCount = goalMilestones.filter(
-										(m) => resolveMilestoneState(m).state === 'completed'
-									).length}
-									{@const chip = stateChip(goal.state_key, goalStateAccents)}
+									{@const summary = goalSummaryById.get(goal.id)}
+									{@const chip =
+										goal.state_key === 'active'
+											? null
+											: stateChip(goal.state_key, goalStateAccents)}
+									{@const hasNoSupportingWork = summary
+										? goalHasNoSupportingWork(summary)
+										: false}
 									{@const justCreated = recentlyCreated?.has(goal.id) ?? false}
 									<article
 										class="rounded-md border border-border bg-background overflow-hidden {justCreated
 											? 'entity-just-created'
 											: ''}"
 									>
-										<button
-											type="button"
-											onclick={() => onEditGoal(goal.id)}
-											class="w-full text-left px-3 py-2 hover:bg-muted/40 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-										>
+										<div class="px-3 py-2">
 											<div
 												class="flex items-start justify-between gap-2 min-w-0"
 											>
-												<div class="min-w-0 flex-1">
+												<button
+													type="button"
+													onclick={() => onEditGoal(goal.id)}
+													class="min-w-0 flex-1 rounded-sm text-left hover:text-foreground/80 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+												>
 													<p
 														class="text-xs sm:text-sm font-medium text-foreground line-clamp-2"
 													>
@@ -740,46 +960,78 @@
 															{goal.goal}
 														</p>
 													{/if}
-													<div
-														class="flex items-center gap-2 mt-1.5 flex-wrap"
-													>
-														{#if chip}
-															<span
-																class="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-medium border {chip.className}"
-																>{chip.label}</span
-															>
-														{/if}
-														{#if goalMilestones.length > 0}
-															<span
-																class="text-2xs text-muted-foreground inline-flex items-center gap-1"
-															>
-																<Flag class="w-2.5 h-2.5" />
-																{completedCount}/{goalMilestones.length}
-																milestones
-															</span>
-														{/if}
-														{#if goal.target_date}
-															{@const due = dueLabel(
-																goal.target_date
-															)}
-															{#if due}
-																<span
-																	class="text-2xs inline-flex items-center gap-1 {due.isOverdue
-																		? 'text-destructive font-medium'
-																		: 'text-muted-foreground'}"
-																>
-																	<Clock class="w-2.5 h-2.5" />
-																	{due.label}
-																</span>
-															{/if}
-														{/if}
-													</div>
-												</div>
+												</button>
 												<ExternalLink
 													class="w-3.5 h-3.5 text-muted-foreground/70 shrink-0 mt-0.5"
 												/>
 											</div>
-										</button>
+
+											<div class="mt-2 space-y-1">
+												{#if summary}
+													{#if hasNoSupportingWork}
+														<p class="text-xs text-foreground/80">
+															No supporting work is connected yet.
+														</p>
+													{/if}
+													<p class="text-2xs text-muted-foreground">
+														{goalTaskLabel(summary)}
+													</p>
+													<p class="text-2xs text-muted-foreground">
+														{goalTrackingLabel(summary)} · {goalPlanLabel(
+															summary
+														)} · {goal.target_date
+															? `Target ${dueLabel(goal.target_date)?.label ?? createdDateLabel(goal.target_date)}`
+															: 'No target date'}
+													</p>
+													<p class="text-2xs text-muted-foreground/80">
+														Activity {relativeTime(
+															summary.last_activity_at
+														)} · Created {createdDateLabel(
+															summary.created_at
+														)}
+													</p>
+												{:else if goalConnectionsError}
+													<p class="text-2xs text-muted-foreground">
+														Connected work unavailable · {goal.target_date
+															? `Target ${dueLabel(goal.target_date)?.label ?? createdDateLabel(goal.target_date)}`
+															: 'No target date'}
+													</p>
+												{:else}
+													<p class="text-2xs text-muted-foreground">
+														Checking connected work…
+													</p>
+												{/if}
+											</div>
+
+											<div class="mt-2 flex flex-wrap items-center gap-2">
+												{#if chip}
+													<span
+														class="inline-flex items-center rounded border px-1.5 py-0.5 text-2xs font-medium {chip.className}"
+													>
+														{chip.label}
+													</span>
+												{/if}
+												{#if onDiscussGoal}
+													<button
+														type="button"
+														onclick={() =>
+															onDiscussGoal(
+																goal,
+																goalChatDraft(goal, summary)
+															)}
+														class="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-border px-2 py-1 text-2xs font-medium text-foreground hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+														aria-label="{hasNoSupportingWork
+															? 'Structure'
+															: 'Discuss'} {goal.name} with chat"
+													>
+														<MessageCircle class="h-3 w-3 text-info" />
+														{hasNoSupportingWork
+															? 'Structure with chat'
+															: 'Discuss'}
+													</button>
+												{/if}
+											</div>
+										</div>
 										{#if goalMilestones.length > 0}
 											<div class="border-t border-border/60 bg-muted/20">
 												{#each goalMilestones as m (m.id)}

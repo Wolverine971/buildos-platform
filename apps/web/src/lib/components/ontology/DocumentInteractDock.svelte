@@ -13,7 +13,7 @@
 		projectName: string;
 		documentId: string;
 		documentTitle: string;
-		placement?: 'viewport' | 'container';
+		placement?: 'viewport' | 'container' | 'inline';
 		onClose?: (summary?: DataMutationSummary) => void;
 	}
 
@@ -40,10 +40,21 @@
 			projectName: projectName || 'Project'
 		})
 	);
-	const placementClasses = $derived(
-		placement === 'container'
-			? 'absolute inset-x-2 bottom-2 h-[min(72dvh,42rem)] sm:inset-x-auto sm:left-4 sm:bottom-4 sm:w-[24rem]'
-			: 'fixed inset-x-2 bottom-[max(0.5rem,env(safe-area-inset-bottom))] h-[min(72dvh,42rem)] sm:inset-x-auto sm:left-4 sm:bottom-4 sm:w-[24rem] lg:left-6'
+	const placementClasses = $derived.by(() => {
+		switch (placement) {
+			case 'inline':
+				return 'relative h-[clamp(18rem,42dvh,30rem)] w-full shrink-0 border-x-0 border-b-0';
+			case 'container':
+				return 'absolute inset-x-2 bottom-2 h-[min(72dvh,42rem)] sm:inset-x-auto sm:left-4 sm:bottom-4 sm:w-[24rem]';
+			case 'viewport':
+			default:
+				return 'fixed inset-x-2 bottom-[max(0.5rem,env(safe-area-inset-bottom))] h-[min(72dvh,42rem)] sm:inset-x-auto sm:left-4 sm:bottom-4 sm:w-[24rem] lg:left-6';
+		}
+	});
+	const surfaceClasses = $derived(
+		placement === 'inline'
+			? 'rounded-none border-t border-border-strong shadow-none'
+			: 'rounded-lg border border-border shadow-ink-strong'
 	);
 
 	async function loadChat() {
@@ -78,9 +89,12 @@
 {#if isOpen || ChatComponent}
 	<aside
 		id="document-interact-dock"
-		class={`${placementClasses} z-50 min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak motion-reduce:animate-none motion-reduce:transition-none
+		data-placement={placement}
+		class={`${placementClasses} ${surfaceClasses} z-50 min-h-0 flex-col overflow-hidden bg-card tx tx-frame tx-weak motion-reduce:animate-none motion-reduce:transition-none
 			${isOpen ? 'flex animate-ink-in' : 'hidden'}`}
 		aria-label="Document interaction"
+		aria-hidden={!isOpen}
+		inert={!isOpen}
 	>
 		<header
 			class="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-muted px-3 tx tx-strip tx-weak"
@@ -99,7 +113,7 @@
 			<button
 				type="button"
 				onclick={closeDock}
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink transition-colors pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink transition-colors pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				aria-label="Close document interaction"
 			>
 				<X class="h-4 w-4" />
@@ -144,3 +158,14 @@
 		</div>
 	</aside>
 {/if}
+
+<style>
+	/* A bottom dock can be much wider than the floating launcher. Keep long chat
+	   lines and the new-chat card readable without giving up the available width. */
+	@media (min-width: 768px) {
+		aside[data-placement='inline'] :global(.agent-chat-scroll > *) {
+			width: min(100%, 64rem);
+			margin-inline: auto;
+		}
+	}
+</style>

@@ -167,7 +167,8 @@ describe('GmailReadOAuthService', () => {
 		const authorizationUrl = await service.createAuthorizationUrl({
 			userId: 'user-1',
 			redirectUri: 'https://app.example.com/auth/google/gmail-read/callback',
-			redirectPath: '/profile?tab=email&gmail=1'
+			redirectPath: '/profile?tab=email&gmail=1',
+			loginHint: 'work@example.com'
 		});
 
 		expect(authorizationUrl).toBe('https://accounts.google.com/o/oauth2/v2/auth');
@@ -191,6 +192,7 @@ describe('GmailReadOAuthService', () => {
 				prompt: 'consent select_account',
 				scope: ['openid', 'email', GMAIL_READ_SCOPE],
 				state: 'raw-state-token',
+				login_hint: 'work@example.com',
 				include_granted_scopes: false,
 				code_challenge: 'pkce-challenge'
 			})

@@ -16,13 +16,19 @@
 		Info
 	} from 'lucide-svelte';
 	import type { ActivityType, ThinkingBlockMessage } from './agent-chat.types';
+	import AgentClientActionCard from './AgentClientActionCard.svelte';
+	import {
+		collectGmailConnectionClientActions,
+		type AgentClientActionCompletion
+	} from './agent-chat-client-actions';
 
 	interface Props {
 		block: ThinkingBlockMessage;
 		onToggleCollapse: (blockId: string) => void;
+		onClientActionComplete?: (completion: AgentClientActionCompletion) => void | Promise<void>;
 	}
 
-	let { block, onToggleCollapse }: Props = $props();
+	let { block, onToggleCollapse, onClientActionComplete }: Props = $props();
 
 	// Expanded state: false = compact (half height), true = full height
 	let isExpanded = $state(false);
@@ -54,6 +60,7 @@
 	);
 	const displayedActivityCount = $derived(displayedActivities.length);
 	const hasDisplayedActivities = $derived(displayedActivityCount > 0);
+	const clientActions = $derived(collectGmailConnectionClientActions(block.activities));
 	const compactLabel = $derived.by(() => {
 		if (block.status === 'error') return 'BuildOS hit an issue';
 		if (block.status === 'interrupted' || block.status === 'cancelled')
@@ -276,6 +283,10 @@
 		</div>
 	</div>
 </div>
+
+{#each clientActions as action (action.actionId)}
+	<AgentClientActionCard {action} onComplete={onClientActionComplete} />
+{/each}
 
 <style>
 	.thinking-block-wrap {

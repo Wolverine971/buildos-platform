@@ -7,8 +7,22 @@ import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../core/definitions';
 import { configureEmailRuntimeEnv, isEmailChatUserAllowed } from '../email';
 import { getAllEnabledTools, extractTools } from '../core/tools.config';
 
-const EMAIL_TOOL_NAMES = ['list_email_accounts', 'search_email_messages', 'get_email_message'];
-const EMAIL_READ_OPS = ['email.accounts.list', 'email.messages.search', 'email.messages.get'];
+const EMAIL_READ_TOOLS = [
+	'get_external_account_status',
+	'list_email_accounts',
+	'search_email_messages',
+	'get_email_message'
+];
+const EMAIL_CONNECTION_TOOLS = ['request_email_account_connection'];
+const EMAIL_TOOL_NAMES = [...EMAIL_READ_TOOLS, ...EMAIL_CONNECTION_TOOLS];
+const EMAIL_READ_OPS = [
+	'email.accounts.status',
+	'email.accounts.list',
+	'email.messages.search',
+	'email.messages.get'
+];
+const EMAIL_CONNECTION_OPS = ['email.accounts.connect'];
+const EMAIL_OPS = [...EMAIL_READ_OPS, ...EMAIL_CONNECTION_OPS];
 
 // Op/tool names that must never resolve to anything in any tier: a Gmail write of
 // any shape (send, save-to-gmail draft, modify, label, archive, trash, execute).
@@ -40,7 +54,7 @@ afterEach(() => {
 });
 
 describe('email tools — registry gating', () => {
-	it('flag ON: the three email ops resolve as reads', () => {
+	it('flag ON: account discovery and inbox reads resolve as reads; OAuth handoff is a write', () => {
 		const registry = withEmailFlag(true);
 		for (const op of EMAIL_READ_OPS) {
 			expect(registry.ops[op]).toBeDefined();
@@ -48,21 +62,24 @@ describe('email tools — registry gating', () => {
 			expect(registry.ops[op].group).toBe('email');
 			expect(registry.ops[op].chat_discoverable).toBe(true);
 		}
-		for (const name of EMAIL_TOOL_NAMES) {
+		for (const name of EMAIL_READ_TOOLS) {
 			expect(registry.byToolName[name]).toBeDefined();
 			expect(registry.byToolName[name].kind).toBe('read');
+		}
+		for (const op of EMAIL_CONNECTION_OPS) {
+			expect(registry.ops[op]).toMatchObject({ kind: 'write', group: 'email' });
+		}
+		for (const name of EMAIL_CONNECTION_TOOLS) {
+			expect(registry.byToolName[name]).toMatchObject({ kind: 'write', group: 'email' });
 		}
 	});
 
 	it('flag ON: no send/modify/execute/draft email op or tool name resolves to anything', () => {
 		const registry = withEmailFlag(true);
 
-		// Only the three read ops exist under the email.* namespace.
+		// Only discovery, read, and user-confirmed OAuth handoff ops exist here.
 		const emailOps = Object.keys(registry.ops).filter((op) => op.startsWith('email.'));
-		expect(emailOps.sort()).toEqual([...EMAIL_READ_OPS].sort());
-		for (const op of emailOps) {
-			expect(registry.ops[op].kind).toBe('read');
-		}
+		expect(emailOps.sort()).toEqual([...EMAIL_OPS].sort());
 
 		// No write-shaped email op name is present.
 		for (const op of Object.keys(registry.ops)) {
@@ -79,7 +96,7 @@ describe('email tools — registry gating', () => {
 
 	it('flag OFF (default): no email tool is present in the registry', () => {
 		const registry = withEmailFlag(false);
-		for (const op of EMAIL_READ_OPS) {
+		for (const op of EMAIL_OPS) {
 			expect(registry.ops[op]).toBeUndefined();
 		}
 		for (const name of EMAIL_TOOL_NAMES) {
@@ -140,7 +157,7 @@ describe('email tools — registry gating', () => {
 
 	it('delegated agents (agent-call gateway) get no email ops — email.* is not in the supported op policy', () => {
 		const supported = BUILDOS_AGENT_SUPPORTED_OPS as readonly string[];
-		for (const op of EMAIL_READ_OPS) {
+		for (const op of EMAIL_OPS) {
 			expect(supported).not.toContain(op);
 		}
 		expect(supported.some((op) => op.startsWith('email.'))).toBe(false);

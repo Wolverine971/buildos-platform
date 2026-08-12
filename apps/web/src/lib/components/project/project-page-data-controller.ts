@@ -18,6 +18,7 @@ import type {
 	ProjectEventsCoverage,
 	ProjectTasksCoverage
 } from '$lib/types/project-full-data';
+import type { ProjectGoalConnectionOverview } from '$lib/types/goal-connection-summary';
 
 export type OntoEventWithSync = OntoEvent & {
 	onto_event_sync?: Database['public']['Tables']['onto_event_sync']['Row'][];
@@ -441,6 +442,30 @@ export async function fetchProjectBriefs(options: {
 		briefs: requireArray<ProjectBriefSummary>(data.briefs, 'Invalid project briefs response'),
 		total: requireNumber(data.total, 'Invalid project briefs response'),
 		hasMore: requireBoolean(data.hasMore, 'Invalid project briefs response')
+	};
+}
+
+export async function fetchProjectGoalConnectionOverview(
+	projectId: string
+): Promise<ProjectGoalConnectionOverview> {
+	const data = await requestApiDataRecord(
+		`/api/onto/projects/${projectId}/goal-connections`,
+		'Failed to load goal connections'
+	);
+	const overview = requireRecord(data.overview, 'Invalid goal connections response');
+	const taskCoverage = requireRecord(overview.tasks, 'Invalid goal connections response');
+
+	return {
+		project_id: requireString(overview.project_id, 'Invalid goal connections response'),
+		goals: requireArray(overview.goals, 'Invalid goal connections response'),
+		tasks: {
+			total: requireNumber(taskCoverage.total, 'Invalid goal connections response'),
+			connected: requireNumber(taskCoverage.connected, 'Invalid goal connections response'),
+			project_level: requireNumber(
+				taskCoverage.project_level,
+				'Invalid goal connections response'
+			)
+		}
 	};
 }
 

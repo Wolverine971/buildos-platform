@@ -62,6 +62,8 @@ export function isEmailChatUserAllowed(userId: string, source: EnvLike = getRunt
 }
 
 const EMAIL_TOOL_NAMES = new Set([
+	'get_external_account_status',
+	'request_email_account_connection',
 	'list_email_accounts',
 	'search_email_messages',
 	'get_email_message'

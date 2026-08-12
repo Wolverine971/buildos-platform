@@ -77,10 +77,11 @@ const CALENDAR_OPS: Record<string, string> = {
 	set_project_calendar: 'cal.project.set'
 };
 
-// Read-only Gmail ops. There is no email write/send/modify/draft op in any tier —
-// this map only ever contains reads, and registry tests assert no email-write op
-// name resolves to anything.
+// Gmail content stays read-only. The write-classified `connect` op only stages a
+// user-confirmed browser OAuth handoff; it cannot send, draft, or modify email.
 const EMAIL_OPS: Record<string, string> = {
+	get_external_account_status: 'email.accounts.status',
+	request_email_account_connection: 'email.accounts.connect',
 	list_email_accounts: 'email.accounts.list',
 	search_email_messages: 'email.messages.search',
 	get_email_message: 'email.messages.get'

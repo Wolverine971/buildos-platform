@@ -20,6 +20,11 @@ export interface CalendarItem {
 	state_key: string | null;
 	type_key: string | null;
 	props: Record<string, unknown> | null;
+	calendar_source_id?: string | null;
+	calendar_source_ids?: string[];
+	calendar_source_label?: string | null;
+	calendar_connection_label?: string | null;
+	calendar_source_color?: string | null;
 	created_at: string;
 	updated_at: string;
 }

@@ -111,6 +111,44 @@ describe('CalendarView multi-day events', () => {
 });
 
 describe('CalendarView audit regressions', () => {
+	it('only splits timed event width inside the overlap cluster', () => {
+		render(CalendarView, {
+			props: {
+				viewMode: 'week',
+				currentDate: new Date(2026, 4, 11, 12),
+				workingHours,
+				events: [
+					{
+						summary: 'Solo morning event',
+						start: { dateTime: '2026-05-11T08:30:00' },
+						end: { dateTime: '2026-05-11T09:00:00' }
+					},
+					...['One', 'Two', 'Three'].map((summary) => ({
+						summary,
+						start: { dateTime: '2026-05-11T16:30:00' },
+						end: { dateTime: '2026-05-11T17:00:00' }
+					}))
+				]
+			}
+		});
+
+		const soloEvent = screen
+			.getAllByRole('button', { name: /Solo morning event/i })
+			.find((button) => button.getAttribute('style')?.includes('width: calc('));
+		expect(soloEvent).toBeDefined();
+		expect(soloEvent?.getAttribute('style')).toContain('width: calc(100% - 4px)');
+
+		for (const title of ['One', 'Two', 'Three']) {
+			const overlappingEvent = screen
+				.getAllByRole('button', { name: new RegExp(title) })
+				.find((button) => button.getAttribute('style')?.includes('width: calc('));
+			expect(overlappingEvent).toBeDefined();
+			expect(overlappingEvent?.getAttribute('style')).toContain(
+				'width: calc(33.3333% - 4px)'
+			);
+		}
+	});
+
 	it('labels task calendar markers by kind in day view', () => {
 		render(CalendarView, {
 			props: {

@@ -12,6 +12,7 @@
 	import type { VoiceNote } from '$lib/types/voice-notes';
 	import type { ChatContextType } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+	import type { AgentClientActionCompletion } from './agent-chat-client-actions';
 
 	interface Props {
 		messages: UIMessage[];
@@ -22,6 +23,7 @@
 		voiceNotesByGroupId?: Record<string, VoiceNote[]>;
 		onDeleteVoiceNote?: (groupId: string, noteId: string) => void;
 		onSelectSuggestion?: (text: string) => void;
+		onClientActionComplete?: (completion: AgentClientActionCompletion) => void | Promise<void>;
 		selectedContextType?: ChatContextType | null;
 		resolvedProjectFocus?: ProjectFocus | null;
 		/** Id of the assistant message currently receiving streamed text, if any. */
@@ -37,6 +39,7 @@
 		voiceNotesByGroupId = {},
 		onDeleteVoiceNote,
 		onSelectSuggestion,
+		onClientActionComplete,
 		selectedContextType = null,
 		resolvedProjectFocus = null,
 		streamingMessageId = null
@@ -442,6 +445,7 @@
 				<ThinkingBlock
 					block={message as ThinkingBlockMessage}
 					onToggleCollapse={onToggleThinkingBlock}
+					{onClientActionComplete}
 				/>
 			{:else if message.type === 'clarification'}
 				<!-- INKPRINT clarification: accent palette ("your turn" kin to user bubble) -->

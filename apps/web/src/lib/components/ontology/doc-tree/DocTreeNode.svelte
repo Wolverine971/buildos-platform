@@ -31,6 +31,7 @@
 	import type { DragState } from './useDragDrop.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { buildAbsolutePublicPageUrl, copyTextToClipboard } from '$lib/utils/public-page-url';
+	import { formatRelativeTime } from '$lib/utils/date-utils';
 	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
 
 	const recentlyCreated = getRecentlyCreatedContext();
@@ -272,14 +273,14 @@
 			{justCreated ? 'entity-just-created' : ''}"
 		style="padding-left: {indent + 4}px"
 	>
-		<!-- Drag handle (left side only) -->
+		<!-- Keep the drag affordance at the action edge so it does not indent every document title. -->
 		{#if canDrag}
 			<button
 				type="button"
 				tabindex="-1"
 				onmousedown={handleDragHandleMouseDown}
 				ontouchstart={handleDragHandleTouchStart}
-				class="doc-tree-drag-handle flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md transition-colors motion-reduce:transition-none
+				class="doc-tree-drag-handle order-last flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md transition-colors motion-reduce:transition-none
 					{dragState?.isDragging ? 'cursor-grabbing' : 'cursor-grab'}
 					hover:bg-accent/10"
 				aria-label="Drag to reorder"
@@ -341,6 +342,14 @@
 					<span class="sr-only">Has content</span>
 				</span>
 			{/if}
+
+			<!-- Freshness is useful at a glance, but stays out of the way on narrow screens. -->
+			<time
+				datetime={node.updated_at}
+				class="ml-2 hidden shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground sm:inline"
+			>
+				Updated {formatRelativeTime(node.updated_at)}
+			</time>
 
 			<!-- Converting indicator -->
 			{#if isConverting}

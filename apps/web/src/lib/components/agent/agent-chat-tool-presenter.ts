@@ -1535,6 +1535,23 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			action: 'Loading calendar',
 			target: args.date
 		}),
+		get_external_account_status: (args) => ({
+			action: 'Checking connected account',
+			target: args?.email_address ?? args?.emailAddress
+		}),
+		request_email_account_connection: (args) => ({
+			action: 'Preparing Gmail connection',
+			target: args?.email_address ?? args?.emailAddress
+		}),
+		list_email_accounts: () => ({
+			action: 'Listing connected inboxes'
+		}),
+		search_email_messages: () => ({
+			action: 'Searching connected inboxes'
+		}),
+		get_email_message: () => ({
+			action: 'Opening email message'
+		}),
 		list_calendar_events: (args) => ({
 			action: 'Listing calendar events',
 			target:

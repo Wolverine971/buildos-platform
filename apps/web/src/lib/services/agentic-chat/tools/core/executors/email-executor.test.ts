@@ -140,6 +140,116 @@ function makeExecutor(
 }
 
 describe('EmailExecutor', () => {
+	it('resolves inbox and calendar capability by exact email address', async () => {
+		const executor = makeExecutor('user-status', {
+			gateway: { searchMessages: vi.fn(), getMessage: vi.fn() },
+			oauthService: { listConnections: vi.fn().mockResolvedValue(connectionsPayload()) },
+			calendarService: {
+				listConnections: vi.fn().mockResolvedValue({
+					available: true,
+					maxConnections: 5,
+					defaultWriteCalendarSourceId: 'calendar-source-1',
+					connections: [
+						{
+							id: '33333333-3333-4333-8333-333333333333',
+							emailAddress: 'BUILDOS@example.com',
+							displayName: 'BuildOS Calendar',
+							accountLabel: 'BuildOS Calendar',
+							status: 'active',
+							connectedAt: '2026-07-01T00:00:00.000Z',
+							lastVerifiedAt: null,
+							lastUsedAt: null,
+							sources: [
+								{
+									id: 'calendar-source-1',
+									accessRole: 'owner',
+									readEnabled: true
+								}
+							]
+						}
+					]
+				} as any)
+			}
+		});
+
+		const result = (await executor.getExternalAccountStatus({
+			email_address: 'BuildOS@Example.com'
+		})) as any;
+
+		expect(result.email_address).toBe('buildos@example.com');
+		expect(result.connected).toBe(true);
+		expect(result.capabilities.inbox).toMatchObject({ connected: true, usable: true });
+		expect(result.capabilities.calendar).toMatchObject({
+			connected: true,
+			usable: true,
+			readable_source_count: 1,
+			writable_source_count: 1
+		});
+		expect(result.suggested_actions).toEqual(
+			expect.arrayContaining(['search_email_inbox', 'check_calendar'])
+		);
+	});
+
+	it('requires explicit consent before returning a Gmail OAuth browser action', async () => {
+		const listConnections = vi.fn().mockResolvedValue(connectionsPayload());
+		const executor = makeExecutor('user-consent', {
+			gateway: { searchMessages: vi.fn(), getMessage: vi.fn() },
+			oauthService: { listConnections },
+			calendarService: {
+				listConnections: vi
+					.fn()
+					.mockResolvedValue({ available: true, connections: [] } as any)
+			}
+		});
+
+		const beforeConsent = (await executor.requestEmailAccountConnection({
+			email_address: 'new@example.com',
+			user_confirmed: false
+		})) as any;
+		expect(beforeConsent).toMatchObject({
+			status: 'confirmation_required',
+			requires_user_action: true,
+			email_address: 'new@example.com'
+		});
+		expect(beforeConsent).not.toHaveProperty('client_action');
+
+		const afterConsent = (await executor.requestEmailAccountConnection({
+			email_address: 'new@example.com',
+			user_confirmed: true
+		})) as any;
+		expect(afterConsent).toMatchObject({
+			status: 'browser_handoff_required',
+			requires_user_action: true,
+			client_action: {
+				kind: 'connect_google_gmail',
+				mode: 'connect',
+				email_address: 'new@example.com',
+				connection_id: null
+			}
+		});
+	});
+
+	it('does not launch OAuth for an inbox that is already usable', async () => {
+		const executor = makeExecutor('user-already-connected', {
+			gateway: { searchMessages: vi.fn(), getMessage: vi.fn() },
+			oauthService: { listConnections: vi.fn().mockResolvedValue(connectionsPayload()) },
+			calendarService: {
+				listConnections: vi
+					.fn()
+					.mockResolvedValue({ available: true, connections: [] } as any)
+			}
+		});
+
+		const result = (await executor.requestEmailAccountConnection({
+			email_address: 'buildos@example.com',
+			user_confirmed: true
+		})) as any;
+
+		expect(result.status).toBe('already_connected');
+		expect(result.requires_user_action).toBe(false);
+		expect(result).not.toHaveProperty('client_action');
+	});
+
 	it('list_email_accounts returns provenance and flags reconnect-required accounts (no Gmail call)', async () => {
 		const searchMessages = vi.fn();
 		const getMessage = vi.fn();

@@ -139,7 +139,7 @@ describe('searchToolRegistry discovery surfaces', () => {
 		);
 	});
 
-	it('discovers all email reads under the first-class email group when enabled', () => {
+	it('discovers account status, OAuth handoff, and email reads in the email group', () => {
 		configureEmailRuntimeEnv({ EMAIL_CHAT_TOOLS_ENABLED: 'true' });
 		resetToolRegistryCache();
 
@@ -152,8 +152,22 @@ describe('searchToolRegistry discovery surfaces', () => {
 			group: 'email',
 			entity: 'message'
 		});
+		expect(registry.ops['email.accounts.status']).toMatchObject({
+			group: 'email',
+			kind: 'read'
+		});
+		expect(registry.ops['email.accounts.connect']).toMatchObject({
+			group: 'email',
+			kind: 'write'
+		});
 		expect(toolNames(searchToolRegistry({ query: 'gmail', group: 'email' })).sort()).toEqual(
-			['get_email_message', 'list_email_accounts', 'search_email_messages'].sort()
+			[
+				'get_email_message',
+				'get_external_account_status',
+				'list_email_accounts',
+				'request_email_account_connection',
+				'search_email_messages'
+			].sort()
 		);
 
 		const wrongGroup = searchToolRegistry({

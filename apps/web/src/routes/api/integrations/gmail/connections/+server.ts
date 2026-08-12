@@ -9,6 +9,7 @@ import { parseJsonRequest } from '$lib/utils/request-validation';
 const connectRequestSchema = z
 	.object({
 		connectionId: z.string().uuid().nullable().optional(),
+		emailAddress: z.string().email().max(320).nullable().optional(),
 		redirectPath: z.string().max(500).optional()
 	})
 	.strict();
@@ -79,7 +80,8 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 			userId: user.id,
 			redirectUri: `${url.origin}/auth/google/gmail-read/callback`,
 			redirectPath: parsed.data.redirectPath ?? '/profile?tab=email&gmail=1',
-			connectionId: parsed.data.connectionId ?? null
+			connectionId: parsed.data.connectionId ?? null,
+			loginHint: parsed.data.emailAddress ?? undefined
 		});
 
 		return ApiResponse.success({ authorizationUrl, readOnly: true as const });

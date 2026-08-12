@@ -189,7 +189,13 @@ export const TOOL_CATEGORIES = {
 		costTier: 'medium'
 	},
 	email: {
-		tools: ['list_email_accounts', 'search_email_messages', 'get_email_message'],
+		tools: [
+			'get_external_account_status',
+			'request_email_account_connection',
+			'list_email_accounts',
+			'search_email_messages',
+			'get_email_message'
+		],
 		averageTokens: 400,
 		costTier: 'low'
 	}

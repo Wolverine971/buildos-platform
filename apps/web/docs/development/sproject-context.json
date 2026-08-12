@@ -43,11 +43,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/email/EmailManager.svelte",
-			"type": "component",
-			"components": ["EmailComposer", "EmailPreview"]
-		},
-		{
 			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
 			"type": "component",
 			"components": [
@@ -62,6 +57,11 @@
 			"file": "src/lib/components/dashboard/DashboardInboxModal.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/email/EmailManager.svelte",
+			"type": "component",
+			"components": ["EmailComposer", "EmailPreview"]
 		},
 		{
 			"file": "src/lib/components/landing/HomepageV2.svelte",
@@ -262,11 +262,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/admin/chat/SessionFlowVisuals.svelte",
-			"type": "component",
-			"components": ["SessionTimeWaterfall", "SessionCostWaterfall"]
-		},
-		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
 			"type": "component",
 			"components": ["OntologyGraph", "NodeDetailsPanel"]
@@ -274,7 +269,12 @@
 		{
 			"file": "src/lib/components/project/v2/EntityTabStrip.svelte",
 			"type": "component",
-			"components": ["ProjectInboxPanel", "BriefChatModal"]
+			"components": ["ProjectCalendarPanel", "ProjectInboxPanel", "BriefChatModal"]
+		},
+		{
+			"file": "src/lib/components/admin/chat/SessionFlowVisuals.svelte",
+			"type": "component",
+			"components": ["SessionTimeWaterfall", "SessionCostWaterfall"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -402,7 +402,7 @@
 			"file": "src/lib/services/calendar-items.service.ts",
 			"type": "service",
 			"components": [],
-			"exports": ["fetchCalendarItems"]
+			"exports": ["fetchCalendarItems", "fetchConnectedGoogleCalendarEvents"]
 		},
 		{
 			"file": "src/lib/services/calendar-service.ts",
@@ -437,6 +437,16 @@
 				"resolveParkedChatSession",
 				"initChatSessionNotificationBridge",
 				"destroyChatSessionNotificationBridge"
+			]
+		},
+		{
+			"file": "src/lib/services/dashboard-calendar-items.ts",
+			"type": "service",
+			"components": [],
+			"exports": [
+				"getCalendarSourceIds",
+				"mapConnectedGoogleEvent",
+				"mergeDashboardCalendarItems"
 			]
 		},
 		{
@@ -916,6 +926,12 @@
 			]
 		},
 		{
+			"file": "src/lib/components/agent/agent-chat-client-actions.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["extractGmailConnectionClientAction", "collectGmailConnectionClientActions"]
+		},
+		{
 			"file": "src/lib/components/agent/agent-chat-formatters.ts",
 			"type": "component",
 			"components": [],
@@ -1053,6 +1069,12 @@
 			"type": "component",
 			"components": [],
 			"exports": ["isThinkingBlockMessage", "findThinkingBlockById"]
+		},
+		{
+			"file": "src/lib/components/agent/external-account-tool-routing.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["needsLegacyExternalAccountTools"]
 		},
 		{
 			"file": "src/lib/components/agent/project-entity-browser.ts",
@@ -1249,6 +1271,42 @@
 			"exports": ["createDragDropState"]
 		},
 		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"fetchLinkedEntities",
+				"fetchAvailableEntities",
+				"createEdges",
+				"linkEntities",
+				"deleteEdge",
+				"unlinkEntity",
+				"filterEntities"
+			]
+		},
+		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"ALLOWED_LINKS",
+				"canLink",
+				"RELATIONSHIP_MAP",
+				"getRelationship",
+				"getAllowedTargetKinds",
+				"ENTITY_SECTIONS",
+				"getEntityDisplayName",
+				"formatRelationshipLabel",
+				"getFilteredSections"
+			]
+		},
+		{
+			"file": "src/lib/components/project/v2/board-a11y.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
+		},
+		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 			"type": "component",
 			"components": [],
@@ -1309,42 +1367,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/project/v2/board-a11y.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"fetchLinkedEntities",
-				"fetchAvailableEntities",
-				"createEdges",
-				"linkEntities",
-				"deleteEdge",
-				"unlinkEntity",
-				"filterEntities"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"ALLOWED_LINKS",
-				"canLink",
-				"RELATIONSHIP_MAP",
-				"getRelationship",
-				"getAllowedTargetKinds",
-				"ENTITY_SECTIONS",
-				"getEntityDisplayName",
-				"formatRelationshipLabel",
-				"getFilteredSections"
-			]
-		},
-		{
 			"file": "src/lib/components/ui/codemirror/extensions.ts",
 			"type": "component",
 			"components": [],
@@ -1393,6 +1415,12 @@
 			]
 		},
 		{
+			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["prepareAgentRunChatEventDetail"]
+		},
+		{
 			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 			"type": "component",
 			"components": [],
@@ -1402,12 +1430,6 @@
 				"getCommander",
 				"formatTimelineYearRange"
 			]
-		},
-		{
-			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["prepareAgentRunChatEventDetail"]
 		},
 		{
 			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
@@ -1557,11 +1579,12 @@
 		"src/lib/components/project/ProjectHistorySection.svelte",
 		"src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte",
 		"src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte",
-		"src/lib/components/admin/chat/SessionFlowVisuals.svelte",
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
 		"src/lib/components/project/v2/EntityTabStrip.svelte",
+		"src/lib/components/admin/chat/SessionFlowVisuals.svelte",
 		"src/lib/components/admin/adminRoutes.ts",
 		"src/lib/components/agent/agent-chat-attachments.svelte.ts",
+		"src/lib/components/agent/agent-chat-client-actions.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat-prewarm.svelte.ts",
 		"src/lib/components/agent/agent-chat-session.ts",
@@ -1577,6 +1600,7 @@
 		"src/lib/components/agent/agent-chat-worker-ui-adapter.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
+		"src/lib/components/agent/external-account-tool-routing.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
 		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/notifications/notification-preview.ts",
@@ -1590,19 +1614,19 @@
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+		"src/lib/components/project/v2/board-a11y.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
 		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
-		"src/lib/components/project/v2/board-a11y.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
-		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.layout.ts",

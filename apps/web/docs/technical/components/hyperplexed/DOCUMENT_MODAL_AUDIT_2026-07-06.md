@@ -101,6 +101,25 @@ the existing bottom-panel treatment. Motion is synchronized at 280ms and removed
 motion. This is the reference implementation for the later goal/plan/task modal rollout (→ P23,
 stacking P2/P9/P11/P13).
 
+## Follow-up — docked Document Interact workbench (2026-08-12)
+
+Screenshot review exposed a second overlay problem: **Document Interact** opened as a 384px floating
+chat panel inside the document modal. It obscured the text the user was asking about, collided visually
+with the Details drawer, and introduced another detached scroll region.
+
+The interaction surface now opens as an in-flow bottom workbench across the modal. Opening it reserves
+a bounded `clamp(18rem, 42dvh, 30rem)` region and shrinks the editor instead of covering it. The Details
+drawer remains independently available on the right, so the document, interaction history/composer,
+and document settings can be visible together without turning the editor into a narrow center column
+(→ P1/P11/P13/P24).
+
+The launcher now toggles open/closed, exposes its active state, and retains `aria-controls` /
+`aria-expanded`. The dock uses `aria-hidden` + `inert` while its lazy-loaded chat remains mounted,
+the close target is 44px, long conversation content is capped to a readable measure on wide docks,
+and the panel's entry animation is removed under reduced motion. On smaller screens, opening Interact
+collapses the competing mobile details tab and desktop comments disclosure before claiming vertical
+space (→ P1/P9/P11/P13/P24).
+
 ## Streamlining note (product call, not a Hyperplexed pattern)
 
 Autosave (2s) and a manual **Save** coexist, and Save's real job is forcing a version snapshot —
@@ -114,7 +133,11 @@ visual pass, and it touches save semantics.
 - ✅ `pnpm format` (Prettier) applied.
 - ✅ 2026-08-04 edge-tab follow-up: focused `DocumentModal` suite passes 7/7; full
   `svelte-check` reports 0 errors / 0 warnings.
+- ✅ 2026-08-12 docked-interaction follow-up: Svelte autofixer and full `svelte-check` are clean;
+  the focused `DocumentModal` suite passes 9/9, including in-flow placement and simultaneous
+  Details visibility.
 - 🔶 Authenticated desktop-dark screenshots captured the first collapsible-drawer pass and exposed
   the busy-header regression. The refined edge-tab after-state plus light-mode and iPhone captures
-  remain owed. The original publish-panel, mobile scroll-fade, and phone More-menu checks remain part
-  of that pass.
+  remain owed. The docked interaction after-state also still needs authenticated desktop/iPhone
+  light/dark captures. The original publish-panel, mobile scroll-fade, and phone More-menu checks
+  remain part of that pass.

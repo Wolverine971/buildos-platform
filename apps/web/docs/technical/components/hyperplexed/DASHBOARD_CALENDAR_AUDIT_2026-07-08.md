@@ -12,8 +12,8 @@ Primary files:
 - `apps/web/src/lib/components/scheduling/CalendarItemDrawer.svelte`
 - `apps/web/src/lib/components/layout/Navigation.svelte` for the route-scoped chat label
 
-Status: Phase 1 + Phase 2 + Phase 3 plus regression coverage shipped 2026-07-08. Authenticated screenshot
-verification was waived by the user on 2026-07-08.
+Status: Phase 1 + Phase 2 + Phase 3 plus regression coverage shipped 2026-07-08. The multi-calendar
+display, per-source filtering, and weekly-layout follow-up shipped locally 2026-08-12.
 
 Live verification status: static + test verified. The local Vite server was already running on `localhost:5173`,
 but the in-app browser redirected `http://localhost:5173/dashboard/calendar` to `/auth/login`. The authenticated
@@ -132,7 +132,25 @@ Prior art stacked:
   task-marker labels, month overflow day drill-in, and empty mobile month state. Verification:
   `pnpm --filter @buildos/web test:run src/lib/components/scheduling/CalendarView.test.ts` passed 6 tests;
   `pnpm --filter @buildos/web check` passed with 0 errors and 0 warnings.
+- 2026-08-12: Multi-calendar display follow-up shipped locally. `/dashboard/calendar` now loads events from every
+  event-enabled Google Calendar source, defaults newly connected sources to visible, exposes source/account toggle
+  chips plus a direct Manage path, preserves provider color identity, and prefers richer internal BuildOS records
+  when provider reads contain the same event (P1/P4/P6/P8/P9/P13). The new local-state key resets existing users
+  to the month default once while preserving later view choices. Week timed events now calculate width per overlap
+  cluster, so an isolated event no longer stays compressed because another time of day has several simultaneous
+  events (P1/P4). Provider-only events open a useful read-only drawer with their Google link instead of an empty
+  BuildOS editor state. Verification: Svelte autofixer clean; 2 focused suites / 10 tests pass; `pnpm check` passes
+  with 0 errors and 0 warnings; scoped ESLint and `git diff --check` pass.
+- 2026-08-12: Source-identity follow-up shipped locally. The visibility strip now treats BuildOS as a first-class
+  source beside every event-enabled Google calendar, shows each Google account's exact email, and filters
+  source-aware internal records by their Google source instead of leaving them permanently visible. Calendar
+  entries and drawer subtitles identify BuildOS-only events versus the exact Google calendar/account, while
+  provider colors remain visible in dense month cells (P4/P6/P7/P9/P13). Production rollout variables were
+  refreshed for the exact `djwayne3@gmail.com` BuildOS user without deploying. Verification: Svelte autofixer
+  clean; 2 focused suites / 11 tests pass; `pnpm check` and scoped ESLint pass.
 
 ## Verification TODO
 
-- None for this pass. Authenticated screenshot verification was waived by the user on 2026-07-08.
+- After deployment, capture the connected-calendar strip and month/week views at desktop and iPhone widths in
+  light and dark mode. Confirm live provider colors, source toggles, and a dense weekly overlap cluster against the
+  2026-08-12 production before-state screenshot.

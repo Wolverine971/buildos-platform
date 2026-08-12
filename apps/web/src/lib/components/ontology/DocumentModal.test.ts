@@ -216,13 +216,25 @@ describe('DocumentModal document loading', () => {
 		});
 
 		await waitFor(() => expect(screen.getAllByDisplayValue('Document A')).toHaveLength(2));
-		const trigger = screen.getByRole('button', { name: 'Document Interact' });
+		const trigger = screen.getByRole('button', { name: 'Open Document Interact' });
 		expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
 		await fireEvent.click(trigger);
 
 		expect(trigger).toHaveAttribute('aria-expanded', 'true');
-		expect(screen.getByLabelText('Document interaction')).toBeInTheDocument();
+		expect(trigger).toHaveAccessibleName('Close Document Interact');
+		const interactDock = screen.getByLabelText('Document interaction');
+		expect(interactDock).toBeInTheDocument();
+		expect(interactDock).toHaveAttribute('data-placement', 'inline');
+		expect(interactDock).not.toHaveClass('absolute');
+		expect(interactDock).not.toHaveClass('fixed');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Open details panel' }));
+		expect(document.getElementById('document-details-panel')).toHaveAttribute(
+			'aria-hidden',
+			'false'
+		);
+		expect(interactDock).toHaveAttribute('aria-hidden', 'false');
 	});
 
 	it('portals the More actions menu above the modal clipping context', async () => {

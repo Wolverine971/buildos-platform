@@ -2320,8 +2320,20 @@
 	// Document interaction handlers
 	function openDocumentInteract() {
 		if (!activeDocumentId || !projectId) return;
+		// The bottom workbench should own the secondary vertical space on phones
+		// and avoid competing with the desktop comments disclosure.
+		activeMobileTab = null;
+		showComments = false;
 		documentInteractSession = captureDocumentSession();
 		isDocumentInteractOpen = true;
+	}
+
+	function toggleDocumentInteract() {
+		if (isDocumentInteractOpen) {
+			isDocumentInteractOpen = false;
+			return;
+		}
+		openDocumentInteract();
 	}
 
 	async function handleDocumentInteractClose(
@@ -3180,11 +3192,17 @@
 				{#if isEditing}
 					<button
 						type="button"
-						onclick={openDocumentInteract}
+						onclick={toggleDocumentInteract}
 						disabled={loading || blockingSave}
-						class="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-accent/30 bg-accent/10 px-2.5 text-xs font-semibold text-accent shadow-ink transition-all pressable hover:border-accent/60 hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
-						title="Document Interact"
-						aria-label="Document Interact"
+						class="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold shadow-ink transition-all pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper {isDocumentInteractOpen
+							? 'border-accent bg-accent text-accent-foreground hover:bg-accent/90'
+							: 'border-accent/30 bg-accent/10 text-accent hover:border-accent/60 hover:bg-accent/15'}"
+						title={isDocumentInteractOpen
+							? 'Close Document Interact'
+							: 'Open Document Interact'}
+						aria-label={isDocumentInteractOpen
+							? 'Close Document Interact'
+							: 'Open Document Interact'}
 						aria-controls="document-interact-dock"
 						aria-expanded={isDocumentInteractOpen}
 					>
@@ -4002,7 +4020,7 @@
 							projectName="Project"
 							documentId={activeDocumentId}
 							documentTitle={title || 'Untitled Document'}
-							placement="container"
+							placement="inline"
 							onClose={(summary) =>
 								void handleDocumentInteractClose(interactSession, summary)}
 						/>

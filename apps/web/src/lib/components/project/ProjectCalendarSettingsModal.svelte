@@ -1,7 +1,6 @@
 <!-- apps/web/src/lib/components/project/ProjectCalendarSettingsModal.svelte -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { addDays, startOfDay } from 'date-fns';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import TabNav from '$lib/components/ui/TabNav.svelte';
 	import type { Tab } from '$lib/components/ui/TabNav.svelte';
@@ -9,11 +8,9 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import CalendarView from '$lib/components/scheduling/CalendarView.svelte';
+	import ProjectCalendarPanel from '$lib/components/project/ProjectCalendarPanel.svelte';
 	import { toastService } from '$lib/stores/toast.store';
-	import { fetchCalendarItems } from '$lib/services/calendar-items.service';
 	import type { CalendarItem } from '$lib/types/calendar-items';
-	import { getWeekDates, getMonthDates } from '$lib/utils/schedulingUtils';
 	import {
 		Calendar,
 		Check,
@@ -38,7 +35,6 @@
 	} from '$lib/types/google-calendar-integration';
 
 	type ProjectCalendar = Database['public']['Tables']['project_calendars']['Row'];
-	type CalendarViewMode = 'day' | 'week' | 'month';
 	type CalendarModalTab = 'calendar' | 'settings';
 	type LazyComponent = Component<any, any, any> | null;
 	type ProjectCalendarSyncMode = 'actor_projection' | 'member_fanout';
@@ -134,8 +130,6 @@
 		onCalendarDeleted
 	}: Props = $props();
 
-	const BUFFER_DAYS = 7;
-
 	let loading = $state(false);
 	let saving = $state(false);
 	let deleting = $state(false);
@@ -165,12 +159,7 @@
 		{ id: 'settings', label: 'Settings', icon: Settings }
 	];
 
-	let viewMode = $state<CalendarViewMode>('month');
-	let currentDate = $state(new Date());
-	let calendarItems = $state<CalendarItem[]>([]);
-	let calendarLoading = $state(false);
-	let calendarRefreshing = $state(false);
-	let calendarError = $state<string | null>(null);
+	let calendarRefreshKey = $state(0);
 	let editingTaskId = $state<string | null>(null);
 	let editingEventId = $state<string | null>(null);
 	let TaskEditModalComponent = $state<LazyComponent>(null);
@@ -236,69 +225,10 @@
 						: Boolean(selectedConnectionId))))
 	);
 
-	let calendarWorkingHours = $derived({
-		work_start_time: '00:00',
-		work_end_time: '24:00',
-		working_days: [0, 1, 2, 3, 4, 5, 6]
-	});
-
-	function getItemColorClass(item: CalendarItem): string {
-		if (item.item_type === 'task') {
-			if (item.item_kind === 'range') {
-				return 'bg-success/10 border border-success/30';
-			}
-			if (item.item_kind === 'start') {
-				return 'bg-info/10 border border-info/30';
-			}
-			return 'bg-warning/10 border border-warning/30';
-		}
-		return 'bg-muted border border-border';
-	}
-
-	let calendarEvents = $derived(
-		calendarItems.map((item) => ({
-			summary: item.title || '(Untitled)',
-			start: { dateTime: item.start_at },
-			end: { dateTime: item.end_at || item.start_at },
-			allDay: item.all_day ?? false,
-			itemType: item.item_type,
-			itemKind: item.item_kind,
-			htmlLink: (item.props?.external_link as string | undefined) ?? undefined,
-			externalLink: (item.props?.external_link as string | undefined) ?? undefined,
-			colorClass: getItemColorClass(item),
-			calendarItem: item
-		}))
-	);
-
-	function getViewRange(date: Date, mode: CalendarViewMode): { start: Date; end: Date } {
-		if (mode === 'day') {
-			const start = startOfDay(date);
-			return { start, end: addDays(start, 1) };
-		}
-		if (mode === 'month') {
-			const monthDates = getMonthDates(date);
-			const monthStart = monthDates[0] ?? date;
-			const monthEnd = monthDates[monthDates.length - 1] ?? monthStart;
-			const start = startOfDay(monthStart);
-			const end = startOfDay(addDays(monthEnd, 1));
-			return { start, end };
-		}
-		const weekDates = getWeekDates(date);
-		const weekStart = weekDates[0] ?? date;
-		const weekEnd = weekDates[weekDates.length - 1] ?? weekStart;
-		const start = startOfDay(weekStart);
-		const end = startOfDay(addDays(weekEnd, 1));
-		return { start, end };
-	}
-
 	$effect(() => {
 		if (!browser) return;
 		if (!isOpen) {
 			activeTab = 'calendar';
-			viewMode = 'month';
-			currentDate = new Date();
-			calendarItems = [];
-			calendarError = null;
 			calendarConnections = null;
 			calendarConnectionsError = null;
 			calendarTargetMode = 'create';
@@ -322,36 +252,8 @@
 		}
 	});
 
-	$effect(() => {
-		if (!browser || !isOpen || !project?.id || activeTab !== 'calendar') return;
-		const selectedDate = currentDate;
-		const selectedView = viewMode;
-		void loadProjectCalendar(selectedDate, selectedView);
-	});
-
 	function handleTabChange(tabId: string) {
 		activeTab = tabId as CalendarModalTab;
-	}
-
-	function handleCalendarDateChange(date: Date) {
-		currentDate = date;
-	}
-
-	function handleCalendarViewModeChange(mode: CalendarViewMode) {
-		viewMode = mode;
-	}
-
-	function handleCalendarRefresh() {
-		void loadProjectCalendar(currentDate, viewMode, { refreshing: true });
-	}
-
-	function resolveCalendarItem(event: any): CalendarItem | null {
-		return (
-			event?.calendarItem ||
-			event?.originalEvent?.calendarItem ||
-			event?.originalEvent ||
-			null
-		);
 	}
 
 	async function loadTaskEditModal() {
@@ -370,13 +272,7 @@
 		return EventEditModalComponent;
 	}
 
-	async function handleCalendarEventClick(event: any) {
-		const item = resolveCalendarItem(event);
-		if (!item) {
-			toastService.warning('Could not open calendar item details');
-			return;
-		}
-
+	async function handleCalendarItemSelect(item: CalendarItem) {
 		if (item.item_type === 'task' && item.task_id) {
 			await loadTaskEditModal();
 			editingTaskId = item.task_id;
@@ -403,47 +299,7 @@
 	}
 
 	function handleEditorUpdated() {
-		void loadProjectCalendar(currentDate, viewMode, { refreshing: true });
-	}
-
-	async function loadProjectCalendar(
-		selectedDate: Date,
-		selectedView: CalendarViewMode,
-		options: { refreshing?: boolean } = {}
-	) {
-		const projectId = project?.id;
-		if (!projectId) return;
-
-		if (options.refreshing) {
-			calendarRefreshing = true;
-		} else {
-			calendarLoading = true;
-		}
-		calendarError = null;
-
-		try {
-			const range = getViewRange(selectedDate, selectedView);
-			const bufferedStart = addDays(range.start, -BUFFER_DAYS);
-			const bufferedEnd = addDays(range.end, BUFFER_DAYS);
-
-			calendarItems = await fetchCalendarItems({
-				start: bufferedStart.toISOString(),
-				end: bufferedEnd.toISOString(),
-				includeEvents: true,
-				includeTaskRange: true,
-				includeTaskStart: false,
-				includeTaskDue: false,
-				projectIds: [projectId]
-			});
-		} catch (error) {
-			console.error('[ProjectCalendarModal] Failed to load project calendar items:', error);
-			calendarError =
-				error instanceof Error ? error.message : 'Failed to load project calendar items';
-			calendarItems = [];
-		} finally {
-			calendarLoading = false;
-			calendarRefreshing = false;
-		}
+		calendarRefreshKey += 1;
 	}
 
 	async function loadCalendarConnections() {
@@ -905,42 +761,11 @@
 
 			{#if activeTab === 'calendar'}
 				<div class="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2">
-					{#if calendarError}
-						<div
-							class="p-2.5 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
-						>
-							<div class="flex items-start gap-2">
-								<AlertCircle
-									class="h-3.5 w-3.5 text-destructive mt-0.5 flex-shrink-0"
-								/>
-								<div class="flex-1">
-									<h3 class="text-xs font-semibold text-destructive">
-										Error loading calendar
-									</h3>
-									<p class="mt-0.5 text-xs text-destructive/80">
-										{calendarError}
-									</p>
-								</div>
-							</div>
-						</div>
-					{/if}
-
-					<div
-						class="flex-1 min-h-[32rem] rounded-lg border border-border bg-card overflow-hidden shadow-ink"
-					>
-						<CalendarView
-							{viewMode}
-							{currentDate}
-							events={calendarEvents}
-							workingHours={calendarWorkingHours}
-							loading={calendarLoading}
-							refreshing={calendarRefreshing}
-							ondateChange={handleCalendarDateChange}
-							onviewModeChange={handleCalendarViewModeChange}
-							onrefresh={handleCalendarRefresh}
-							oneventClick={handleCalendarEventClick}
-						/>
-					</div>
+					<ProjectCalendarPanel
+						projectId={project?.id ?? null}
+						refreshKey={calendarRefreshKey}
+						onItemSelect={handleCalendarItemSelect}
+					/>
 				</div>
 			{:else}
 				<div class="flex-1 overflow-y-auto bg-background tx tx-frame tx-weak">

@@ -3,16 +3,20 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { addDays, format, startOfDay } from 'date-fns';
 	import {
 		ArrowLeft,
 		Ban,
+		CalendarDays,
 		CheckCircle2,
 		ChevronRight,
 		Circle,
 		CircleDot,
 		Clock,
 		ExternalLink,
+		Eye,
+		EyeOff,
 		FileText,
 		FolderOpen,
 		ListChecks,
@@ -28,14 +32,34 @@
 	import CalendarItemDrawer from '$lib/components/scheduling/CalendarItemDrawer.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { debounce } from '$lib/utils/performance-optimization';
-	import { getWeekDates, getMonthDates } from '$lib/utils/schedulingUtils';
-	import { fetchCalendarItems } from '$lib/services/calendar-items.service';
+	import { getWeekDates, getMonthDates, parseLocalDate } from '$lib/utils/schedulingUtils';
+	import {
+		fetchCalendarItems,
+		fetchConnectedGoogleCalendarEvents
+	} from '$lib/services/calendar-items.service';
+	import {
+		BUILDOS_CALENDAR_SOURCE_ID,
+		decorateDashboardCalendarItems,
+		isConnectedGoogleCalendarItem,
+		isDashboardCalendarItemVisible,
+		mapConnectedGoogleEvent,
+		mergeDashboardCalendarItems
+	} from '$lib/services/dashboard-calendar-items';
 	import { apiRequest } from '$lib/utils/api-client-helpers';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { CalendarItem } from '$lib/types/calendar-items';
+	import type {
+		GoogleCalendarConnectionsPayload,
+		GoogleCalendarSourceSummary
+	} from '$lib/types/google-calendar-integration';
 	import type { Component } from 'svelte';
 
 	type ViewMode = 'day' | 'week' | 'month';
+	type DisplayCalendarSource = GoogleCalendarSourceSummary & {
+		connectionId: string;
+		connectionLabel: string;
+		emailAddress: string;
+	};
 
 	interface ProjectInfo {
 		id: string;
@@ -75,7 +99,7 @@
 		| { type: 'event'; data: any; project: ProjectInfo | null }
 		| null;
 
-	const LOCAL_STORAGE_KEY = 'dashboard_calendar_state_v2';
+	const LOCAL_STORAGE_KEY = 'dashboard_calendar_state_v3';
 	const BUFFER_DAYS = 7;
 
 	let viewMode = $state<ViewMode>('month');
@@ -85,6 +109,10 @@
 	let isRefreshing = $state(false);
 	let hasLoadedInitialData = $state(false);
 	let error = $state<string | null>(null);
+	let calendarReadWarning = $state<string | null>(null);
+	let calendarConnections = $state.raw<GoogleCalendarConnectionsPayload | null>(null);
+	let calendarConnectionsError = $state<string | null>(null);
+	let hiddenCalendarSourceIds = $state<string[]>([]);
 
 	let includeEvents = $state(true);
 	let includeTaskRange = $state(true);
@@ -141,8 +169,36 @@
 		items: CalendarItem[];
 	} | null>(null);
 
+	let enabledCalendarSources = $derived.by((): DisplayCalendarSource[] => {
+		if (!calendarConnections) return [];
+		return calendarConnections.connections.flatMap((connection) =>
+			connection.status === 'active'
+				? connection.sources
+						.filter((source) => source.readEnabled && !source.providerDeletedAt)
+						.map((source) => ({
+							...source,
+							connectionId: connection.id,
+							connectionLabel: connection.accountLabel,
+							emailAddress: connection.emailAddress
+						}))
+				: []
+		);
+	});
+	let hiddenCalendarSourceSet = $derived(new Set(hiddenCalendarSourceIds));
+	let calendarSourceLookup = $derived(
+		new Map(enabledCalendarSources.map((source) => [source.id, source] as const))
+	);
+	let totalCalendarSourceCount = $derived(enabledCalendarSources.length + 1);
+	let visibleCalendarSourceCount = $derived(
+		enabledCalendarSources.filter((source) => !hiddenCalendarSourceSet.has(source.id)).length +
+			(hiddenCalendarSourceSet.has(BUILDOS_CALENDAR_SOURCE_ID) ? 0 : 1)
+	);
+	let visibleItems = $derived(
+		items.filter((item) => isDashboardCalendarItemVisible(item, hiddenCalendarSourceSet))
+	);
+
 	const calendarEvents = $derived(
-		items.map((item) => ({
+		visibleItems.map((item) => ({
 			summary: item.title || '(Untitled)',
 			start: { dateTime: item.start_at },
 			end: { dateTime: item.end_at || item.start_at },
@@ -152,6 +208,8 @@
 			htmlLink: (item.props?.external_link as string | undefined) ?? undefined,
 			externalLink: (item.props?.external_link as string | undefined) ?? undefined,
 			colorClass: getItemColorClass(item),
+			colorStyle: getItemColorStyle(item),
+			sourceLabel: item.calendar_source_label ?? undefined,
 			calendarItem: item
 		}))
 	);
@@ -166,7 +224,34 @@
 			}
 			return 'bg-warning/10 border border-warning/30';
 		}
+		if (isConnectedGoogleCalendarItem(item)) {
+			return 'calendar-source-event bg-muted/60 border border-border';
+		}
 		return 'bg-muted border border-border';
+	}
+
+	function getItemColorStyle(item: CalendarItem): string | undefined {
+		if (
+			!isConnectedGoogleCalendarItem(item) ||
+			!item.calendar_source_color ||
+			!/^#[0-9a-f]{6}$/i.test(item.calendar_source_color)
+		) {
+			return undefined;
+		}
+		return [
+			`--calendar-source-color: ${item.calendar_source_color}`,
+			'border-left-width: 3px',
+			`border-left-color: ${item.calendar_source_color}`,
+			`background-color: color-mix(in srgb, ${item.calendar_source_color} 12%, hsl(var(--card)))`
+		].join('; ');
+	}
+
+	function getSafeCalendarColor(color: string | null): string {
+		return color && /^#[0-9a-f]{6}$/i.test(color) ? color : 'hsl(var(--muted-foreground))';
+	}
+
+	function getCalendarSourceDisplayName(source: DisplayCalendarSource): string {
+		return source.summaryOverride || source.summary || source.emailAddress;
 	}
 
 	function getViewRange(date: Date, mode: ViewMode): { start: Date; end: Date } {
@@ -231,6 +316,36 @@
 		}
 	}
 
+	async function loadCalendarConnections() {
+		calendarConnectionsError = null;
+		try {
+			const result = await apiRequest('/api/integrations/google-calendar/connections', {
+				method: 'GET'
+			});
+			if (!result.success || !result.data) {
+				calendarConnections = null;
+				return;
+			}
+
+			calendarConnections = result.data as GoogleCalendarConnectionsPayload;
+			const currentSourceIds = new Set(
+				calendarConnections.connections.flatMap((connection) =>
+					connection.sources
+						.filter((source) => source.readEnabled && !source.providerDeletedAt)
+						.map((source) => source.id)
+				)
+			);
+			currentSourceIds.add(BUILDOS_CALENDAR_SOURCE_ID);
+			hiddenCalendarSourceIds = hiddenCalendarSourceIds.filter((id) =>
+				currentSourceIds.has(id)
+			);
+		} catch (err) {
+			console.error('[DashboardCalendar] Failed to load connected calendars:', err);
+			calendarConnections = null;
+			calendarConnectionsError = 'Connected calendars could not be loaded.';
+		}
+	}
+
 	const persistPreferences = debounce(async () => {
 		if (!preferencesLoaded || suppressPreferenceSync) return;
 
@@ -275,18 +390,58 @@
 			isLoading = true;
 		}
 		error = null;
+		calendarReadWarning = null;
 
 		try {
-			const fetched = await fetchCalendarItems({
+			const rangeParams = {
 				start: bufferedStart.toISOString(),
-				end: bufferedEnd.toISOString(),
-				includeEvents,
-				includeTaskRange,
-				includeTaskStart,
-				includeTaskDue,
-				limit: 2000
-			});
+				end: bufferedEnd.toISOString()
+			};
+			const shouldLoadConnectedCalendars = includeEvents && enabledCalendarSources.length > 0;
+			const connectedEventsPromise = shouldLoadConnectedCalendars
+				? fetchConnectedGoogleCalendarEvents({
+						...rangeParams,
+						maxResults: 500
+					}).then(
+						(value) => ({ value, error: null }),
+						(fetchError: unknown) => ({ value: null, error: fetchError })
+					)
+				: Promise.resolve({ value: null, error: null });
 
+			const [internalItems, connectedEventsResult] = await Promise.all([
+				fetchCalendarItems({
+					...rangeParams,
+					includeEvents,
+					includeTaskRange,
+					includeTaskStart,
+					includeTaskDue,
+					limit: 2000
+				}),
+				connectedEventsPromise
+			]);
+
+			let providerItems: CalendarItem[] = [];
+			if (connectedEventsResult.error) {
+				console.warn(
+					'[DashboardCalendar] Failed to load connected Google calendars:',
+					connectedEventsResult.error
+				);
+				calendarReadWarning =
+					'BuildOS items loaded, but connected Google calendars could not be refreshed.';
+			} else if (connectedEventsResult.value) {
+				providerItems = connectedEventsResult.value.events
+					.map((event) => mapConnectedGoogleEvent(event, calendarSourceLookup))
+					.filter((item): item is CalendarItem => item !== null);
+				if (connectedEventsResult.value.partial) {
+					calendarReadWarning =
+						'Some connected calendars took too long to respond. The rest are shown.';
+				}
+			}
+
+			const fetched = decorateDashboardCalendarItems(
+				mergeDashboardCalendarItems(internalItems, providerItems),
+				calendarSourceLookup
+			);
 			items = fetched;
 			cache = {
 				start: bufferedStart,
@@ -308,7 +463,8 @@
 		if (!browser) return;
 		const payload = {
 			viewMode,
-			date: currentDate.toISOString()
+			date: currentDate.toISOString(),
+			hiddenCalendarSourceIds
 		};
 		localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
 	}
@@ -318,7 +474,11 @@
 		const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
 		if (!raw) return;
 		try {
-			const parsed = JSON.parse(raw) as { viewMode?: ViewMode; date?: string };
+			const parsed = JSON.parse(raw) as {
+				viewMode?: ViewMode;
+				date?: string;
+				hiddenCalendarSourceIds?: string[];
+			};
 			if (parsed.viewMode) {
 				viewMode = parsed.viewMode;
 			}
@@ -327,6 +487,11 @@
 				if (!Number.isNaN(parsedDate.getTime())) {
 					currentDate = parsedDate;
 				}
+			}
+			if (Array.isArray(parsed.hiddenCalendarSourceIds)) {
+				hiddenCalendarSourceIds = parsed.hiddenCalendarSourceIds.filter(
+					(id): id is string => typeof id === 'string'
+				);
 			}
 		} catch {
 			// Ignore corrupted local storage
@@ -347,6 +512,26 @@
 		handleToggleChange();
 	}
 
+	function toggleCalendarSource(calendarSourceId: string) {
+		hiddenCalendarSourceIds = hiddenCalendarSourceSet.has(calendarSourceId)
+			? hiddenCalendarSourceIds.filter((id) => id !== calendarSourceId)
+			: [...hiddenCalendarSourceIds, calendarSourceId];
+		saveLocalState();
+	}
+
+	function showAllCalendarSources() {
+		hiddenCalendarSourceIds = [];
+		saveLocalState();
+	}
+
+	function hideAllCalendarSources() {
+		hiddenCalendarSourceIds = [
+			BUILDOS_CALENDAR_SOURCE_ID,
+			...enabledCalendarSources.map((source) => source.id)
+		];
+		saveLocalState();
+	}
+
 	function handleDateChange(date: Date) {
 		currentDate = date;
 		saveLocalState();
@@ -359,8 +544,9 @@
 		void loadCalendarItems();
 	}
 
-	function handleRefresh() {
-		void loadCalendarItems({ force: true, refreshing: true });
+	async function handleRefresh() {
+		await loadCalendarConnections();
+		await loadCalendarItems({ force: true, refreshing: true });
 	}
 
 	function resolveCalendarItem(event: any): CalendarItem | null {
@@ -407,6 +593,23 @@
 		detailLoading = true;
 		detailError = null;
 		try {
+			if (item.source_table === 'google_calendar') {
+				const providerDetail: ItemDetail = {
+					type: 'event',
+					data: {
+						title: item.title,
+						description: item.props?.description ?? null,
+						location: item.props?.location ?? null,
+						external_link: item.props?.external_link ?? null,
+						organizer: item.props?.organizer ?? null
+					},
+					project: null
+				};
+				detail = providerDetail;
+				detailCache.set(cacheKey, providerDetail);
+				return;
+			}
+
 			if (item.item_type === 'task' && item.task_id) {
 				const [taskResponse, projectInfo] = await Promise.all([
 					fetch(`/api/onto/tasks/${item.task_id}`),
@@ -530,8 +733,8 @@
 	}
 
 	function formatRange(start: string, end: string | null, allDay: boolean | null) {
-		const startDate = new Date(start);
-		const endDate = new Date(end ?? start);
+		const startDate = parseLocalDate(start);
+		const endDate = parseLocalDate(end ?? start);
 		const sameDay = startDate.toDateString() === endDate.toDateString();
 		if (allDay) {
 			const displayEnd =
@@ -645,7 +848,7 @@
 
 	function openProject(projectId: string | null) {
 		if (!projectId) return;
-		const url = `/projects/${projectId}`;
+		const url = resolve('/projects/[id]', { id: projectId });
 		if (browser) {
 			window.open(url, '_blank', 'noopener');
 		} else {
@@ -655,7 +858,10 @@
 
 	function openTaskPage(taskId: string | null, projectId: string | null) {
 		if (!taskId || !projectId) return;
-		const url = `/projects/${projectId}/tasks/${taskId}`;
+		const url = resolve('/projects/[id]/tasks/[task_id]', {
+			id: projectId,
+			task_id: taskId
+		});
 		if (browser) {
 			window.open(url, '_blank', 'noopener');
 		} else {
@@ -665,7 +871,7 @@
 
 	onMount(async () => {
 		restoreLocalState();
-		await loadPreferences();
+		await Promise.all([loadPreferences(), loadCalendarConnections()]);
 		await loadCalendarItems();
 	});
 </script>
@@ -675,7 +881,7 @@
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 			<div class="space-y-0.5">
 				<button
-					onclick={() => goto('/dashboard')}
+					onclick={() => goto(resolve('/dashboard'))}
 					class="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground pressable"
 				>
 					<ArrowLeft class="h-3 w-3" />
@@ -695,6 +901,134 @@
 				</Button>
 			</div>
 		</div>
+
+		{#if calendarConnections}
+			<section
+				class="mt-3 rounded-lg border border-border bg-card p-3 shadow-ink tx tx-frame tx-weak"
+				aria-labelledby="calendar-sources-heading"
+			>
+				<div class="flex flex-wrap items-center justify-between gap-2">
+					<div class="flex min-w-0 items-center gap-2">
+						<div
+							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
+						>
+							<CalendarDays class="h-4 w-4" aria-hidden="true" />
+						</div>
+						<div class="min-w-0">
+							<h2
+								id="calendar-sources-heading"
+								class="text-sm font-semibold text-foreground"
+							>
+								Calendar sources
+							</h2>
+							<p class="truncate text-xs text-muted-foreground">
+								{visibleCalendarSourceCount} of {totalCalendarSourceCount} shown ·
+								{calendarConnections.connections.length} Google
+								{calendarConnections.connections.length === 1
+									? 'account'
+									: 'accounts'}
+							</p>
+						</div>
+					</div>
+					<div class="flex items-center gap-1.5">
+						<Button
+							variant="ghost"
+							size="sm"
+							onclick={visibleCalendarSourceCount === totalCalendarSourceCount
+								? hideAllCalendarSources
+								: showAllCalendarSources}
+						>
+							{#if visibleCalendarSourceCount === totalCalendarSourceCount}
+								<EyeOff class="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+								Hide all
+							{:else}
+								<Eye class="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+								Show all
+							{/if}
+						</Button>
+						<a
+							href={resolve('/profile?tab=calendar&calendar=1')}
+							class="inline-flex min-h-11 items-center rounded-md px-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+						>
+							Manage
+						</a>
+					</div>
+				</div>
+
+				<div class="mt-2.5 flex flex-wrap gap-2" aria-label="Calendar visibility">
+					{@const isBuildOsVisible = !hiddenCalendarSourceSet.has(
+						BUILDOS_CALENDAR_SOURCE_ID
+					)}
+					<button
+						type="button"
+						aria-pressed={isBuildOsVisible}
+						aria-label={`${isBuildOsVisible ? 'Hide' : 'Show'} BuildOS tasks and internal events`}
+						onclick={() => toggleCalendarSource(BUILDOS_CALENDAR_SOURCE_ID)}
+						class="flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-left shadow-ink transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable {isBuildOsVisible
+							? 'border-border-strong bg-background text-foreground'
+							: 'border-border bg-muted/40 text-muted-foreground'}"
+					>
+						<span
+							class="h-3 w-3 shrink-0 rounded-full bg-accent ring-1 ring-border-strong {isBuildOsVisible
+								? ''
+								: 'opacity-35'}"
+							aria-hidden="true"
+						></span>
+						<span class="min-w-0">
+							<span class="block truncate text-xs font-semibold">BuildOS</span>
+							<span class="block truncate text-2xs text-muted-foreground">
+								Tasks &amp; internal events
+							</span>
+						</span>
+					</button>
+
+					{#if enabledCalendarSources.length > 0}
+						{#each enabledCalendarSources as source (source.id)}
+							{@const isVisible = !hiddenCalendarSourceSet.has(source.id)}
+							<button
+								type="button"
+								aria-pressed={isVisible}
+								aria-label={`${isVisible ? 'Hide' : 'Show'} ${getCalendarSourceDisplayName(source)} from ${source.emailAddress}`}
+								onclick={() => toggleCalendarSource(source.id)}
+								class="flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-left shadow-ink transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable {isVisible
+									? 'border-border-strong bg-background text-foreground'
+									: 'border-border bg-muted/40 text-muted-foreground'}"
+							>
+								<span
+									class="h-3 w-3 shrink-0 rounded-full ring-1 ring-border-strong {isVisible
+										? ''
+										: 'opacity-35'}"
+									style:background-color={getSafeCalendarColor(
+										source.backgroundColor
+									)}
+									aria-hidden="true"
+								></span>
+								<span class="min-w-0">
+									<span class="block truncate text-xs font-semibold">
+										{getCalendarSourceDisplayName(source)}
+									</span>
+									<span class="block truncate text-2xs text-muted-foreground">
+										{source.emailAddress}
+									</span>
+								</span>
+							</button>
+						{/each}
+					{/if}
+				</div>
+				{#if enabledCalendarSources.length === 0}
+					<p class="mt-2.5 text-sm text-muted-foreground">
+						No Google calendars are enabled for display. Use Manage to turn on Events
+						for a calendar.
+					</p>
+				{/if}
+			</section>
+		{:else if calendarConnectionsError}
+			<div
+				class="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-sm text-foreground"
+			>
+				{calendarConnectionsError}
+			</div>
+		{/if}
 
 		{#if !showSettings && (!includeEvents || !includeTaskRange || !includeTaskStart || !includeTaskDue)}
 			<div
@@ -805,6 +1139,14 @@
 			</div>
 		{/if}
 
+		{#if calendarReadWarning}
+			<div
+				class="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-sm text-foreground"
+			>
+				{calendarReadWarning}
+			</div>
+		{/if}
+
 		<div class="mt-3 rounded-lg border border-border bg-card shadow-ink">
 			<CalendarView
 				{viewMode}
@@ -829,7 +1171,9 @@
 		title={selectedItem.title || 'Calendar item'}
 		subtitle={selectedItem.item_type === 'task'
 			? `Task · ${getTaskMarkerLabel(selectedItem.item_kind)}`
-			: 'Event'}
+			: isConnectedGoogleCalendarItem(selectedItem)
+				? `Google Calendar · ${selectedItem.calendar_source_label || 'Connected calendar'}`
+				: 'BuildOS event'}
 	>
 		<div class="space-y-3">
 			<!-- Status badges row -->
@@ -969,7 +1313,7 @@
 						<div class="space-y-2">
 							<h3 class="micro-label">Linked entities</h3>
 							<div class="space-y-1">
-								{#each le.plans as plan}
+								{#each le.plans as plan (plan.id)}
 									<div
 										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
 									>
@@ -979,7 +1323,7 @@
 										>
 									</div>
 								{/each}
-								{#each le.goals as goal}
+								{#each le.goals as goal (goal.id)}
 									<div
 										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
 									>
@@ -989,7 +1333,7 @@
 										>
 									</div>
 								{/each}
-								{#each le.milestones as milestone}
+								{#each le.milestones as milestone (milestone.id)}
 									<div
 										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
 									>
@@ -1008,7 +1352,7 @@
 										{/if}
 									</div>
 								{/each}
-								{#each le.documents as doc}
+								{#each le.documents as doc (doc.id)}
 									<div
 										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
 									>
@@ -1018,7 +1362,7 @@
 										>
 									</div>
 								{/each}
-								{#each le.dependentTasks as depTask}
+								{#each le.dependentTasks as depTask (depTask.id)}
 									<div
 										class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm"
 									>
@@ -1095,47 +1439,49 @@
 				{/if}
 
 				<!-- Actions -->
-				<div class="flex flex-wrap gap-2 pt-2 border-t border-border">
-					{#if selectedItem?.item_type === 'task'}
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={openTaskEditor}
-							disabled={!selectedItem?.task_id || !selectedItem?.project_id}
-						>
-							Edit Task
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							onclick={() =>
-								openTaskPage(
-									selectedItem?.task_id ?? null,
-									selectedItem?.project_id ?? null
-								)}
-						>
-							Full Page
-						</Button>
-					{:else}
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={openEventEditor}
-							disabled={!selectedItem?.event_id || !selectedItem?.project_id}
-						>
-							Edit Event
-						</Button>
-					{/if}
-					{#if !detail.project && selectedItem?.project_id}
-						<Button
-							variant="ghost"
-							size="sm"
-							onclick={() => openProject(selectedItem?.project_id ?? null)}
-						>
-							Open Project
-						</Button>
-					{/if}
-				</div>
+				{#if selectedItem?.item_type === 'task' || (selectedItem?.event_id && selectedItem?.project_id)}
+					<div class="flex flex-wrap gap-2 pt-2 border-t border-border">
+						{#if selectedItem?.item_type === 'task'}
+							<Button
+								variant="primary"
+								size="sm"
+								onclick={openTaskEditor}
+								disabled={!selectedItem?.task_id || !selectedItem?.project_id}
+							>
+								Edit Task
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={() =>
+									openTaskPage(
+										selectedItem?.task_id ?? null,
+										selectedItem?.project_id ?? null
+									)}
+							>
+								Full Page
+							</Button>
+						{:else if selectedItem?.event_id && selectedItem?.project_id}
+							<Button
+								variant="primary"
+								size="sm"
+								onclick={openEventEditor}
+								disabled={!selectedItem?.event_id || !selectedItem?.project_id}
+							>
+								Edit Event
+							</Button>
+						{/if}
+						{#if !detail.project && selectedItem?.project_id}
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={() => openProject(selectedItem?.project_id ?? null)}
+							>
+								Open Project
+							</Button>
+						{/if}
+					</div>
+				{/if}
 			{/if}
 		</div>
 	</CalendarItemDrawer>

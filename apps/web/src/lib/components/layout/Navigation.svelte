@@ -28,6 +28,7 @@
 	} from '$lib/icons/lucide';
 	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
+	import AnimatedBrainBolt from './AnimatedBrainBolt.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { logout } from '$lib/utils/auth';
 	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
@@ -946,31 +947,7 @@
 						btnType="container"
 					>
 						<div class="relative flex items-center justify-center">
-							<!-- brain-bolt icon - responsive sizing with dithering, light/dark mode switching -->
-							<!-- Light mode: light version by default, color on hover -->
-							<img
-								src="/brain-bolt.webp"
-								alt={chatLabel}
-								class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 group-hover:opacity-0 dark:hidden"
-							/>
-							<!-- Light mode hover: colored version -->
-							<img
-								src="/brain-bolt.webp"
-								alt={chatLabel}
-								class="absolute inset-0 w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:hidden"
-							/>
-							<!-- Dark mode: dark version by default, color on hover -->
-							<img
-								src="/brain-bolt.webp"
-								alt={chatLabel}
-								class="hidden w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 group-hover:opacity-0 dark:block"
-							/>
-							<!-- Dark mode hover: colored version -->
-							<img
-								src="/brain-bolt.webp"
-								alt={chatLabel}
-								class="hidden absolute inset-0 w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:block"
-							/>
+							<AnimatedBrainBolt class="w-8 sm:w-9 md:w-10 lg:w-11" />
 							<!-- Overlay icon - changes based on modal state -->
 							{#if showChatModal}
 								<!-- Zap icon when modal is open - centered on brain-bolt -->
