@@ -1,7 +1,6 @@
 // apps/web/src/routes/api/time-blocks/delete/[id]/+server.ts
 import type { RequestHandler } from './$types';
-import { TimeBlockService } from '$lib/services/time-block.service';
-import { CalendarService } from '$lib/services/calendar-service';
+import { createTimeBlockRuntimeService } from '$lib/server/time-block-runtime.service';
 import { ApiResponse } from '$lib/utils/api-response';
 
 export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession, supabase } }) => {
@@ -17,8 +16,7 @@ export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession,
 	}
 
 	try {
-		const calendarService = new CalendarService(supabase);
-		const timeBlockService = new TimeBlockService(supabase, user.id, calendarService);
+		const timeBlockService = createTimeBlockRuntimeService(supabase, user.id);
 
 		await timeBlockService.deleteTimeBlock(blockId);
 

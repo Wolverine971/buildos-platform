@@ -440,7 +440,7 @@ describe('consumePreparedPrompt', () => {
 		).resolves.toMatchObject({
 			hit: false,
 			reason: 'invalid_history',
-			diagnostics: { prepared_history_validation_error: 'history_attachments_deferred' }
+			diagnostics: { prepared_history_validation_error: 'invalid_attachments' }
 		});
 	});
 

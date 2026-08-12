@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/calendar-analysis.service.ts
 import { ApiService, type ServiceResponse } from './base/api-service';
 import { CalendarService, type CalendarEvent } from './calendar-service';
+import { env as privateEnv } from '$env/dynamic/private';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { instantiateProject } from '$lib/services/ontology/instantiation.service';
 import { queueProjectContextSnapshot } from '$lib/server/project-context-snapshot.service';
@@ -17,6 +18,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { ErrorLoggerService } from './errorLogger.service';
 import { generateProjectContextFramework } from './prompts/core/prompt-components';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
+import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
+import {
+	GoogleCalendarReadService,
+	type GoogleCalendarReadWarning,
+	type GoogleCalendarSourceReadStatus
+} from '$lib/server/google-calendar-read.service';
+import type { GoogleCalendarSourceEventIdentity } from '@buildos/shared-types';
 
 // Helper functions for date arithmetic (replacing dayjs)
 function addDays(date: Date, days: number): Date {
@@ -30,6 +38,39 @@ function formatDateYYYYMMDD(date: Date): string {
 	const month = String(date.getMonth() + 1).padStart(2, '0');
 	const day = String(date.getDate()).padStart(2, '0');
 	return `${year}-${month}-${day}`;
+}
+
+function providerEventId(event: AnalysisCalendarEvent): string {
+	return event.providerEventId || event.id || 'unknown';
+}
+
+function analysisEventKey(event: AnalysisCalendarEvent): string {
+	const externalId = providerEventId(event);
+	return event.calendarSourceId ? `${event.calendarSourceId}::${externalId}` : externalId;
+}
+
+function contributingSourceEvents(
+	event: AnalysisCalendarEvent
+): GoogleCalendarSourceEventIdentity[] {
+	const identities =
+		event.contributingSourceEvents?.length && event.contributingSourceEvents
+			? event.contributingSourceEvents
+			: event.calendarSourceId
+				? [
+						{
+							calendarSourceId: event.calendarSourceId,
+							providerEventId: providerEventId(event)
+						}
+					]
+				: [];
+	return Array.from(
+		new Map(
+			identities.map((identity) => [
+				`${identity.calendarSourceId}\u0000${identity.providerEventId}`,
+				identity
+			])
+		).values()
+	);
 }
 
 type CalendarAnalysis = Database['public']['Tables']['calendar_analyses']['Row'];
@@ -49,7 +90,33 @@ interface AnalysisResult {
 	analysisId: string;
 	suggestions: CalendarProjectSuggestion[];
 	eventsAnalyzed: number;
+	partial: boolean;
+	warnings: GoogleCalendarReadWarning[];
+	calendarSourceIds: string[];
 }
+
+type AnalysisCalendarEvent = CalendarEvent & {
+	calendarSourceId?: string;
+	contributingCalendarSourceIds?: string[];
+	contributingSourceEvents?: GoogleCalendarSourceEventIdentity[];
+	connectionId?: string;
+	providerCalendarId?: string;
+	providerEventId?: string;
+};
+
+type CalendarAnalysisServiceOptions = {
+	multiCalendarAllowed?: (userId: string) => boolean;
+	multiCalendarReadService?: Pick<GoogleCalendarReadService, 'listEvents'>;
+};
+
+type AnalysisEventReadResult = {
+	events: AnalysisCalendarEvent[];
+	partial: boolean;
+	warnings: GoogleCalendarReadWarning[];
+	sourceStatuses: GoogleCalendarSourceReadStatus[];
+	calendarSourceIds: string[];
+	providerCalendarIds: string[];
+};
 
 interface ProjectSuggestion {
 	// Reference to source event group from Part 1
@@ -94,6 +161,7 @@ interface ProjectSuggestion {
 		recurrence_ends?: string; // YYYY-MM-DD
 		recurrence_rrule?: string;
 		event_id?: string; // Link to calendar event
+		calendar_source_id?: string; // Source-qualified provenance for the linked event
 		tags?: string[];
 	}>;
 }
@@ -244,9 +312,14 @@ export class CalendarAnalysisService extends ApiService {
 	private supabase: SupabaseClient<Database>;
 	private calendarService: CalendarService;
 	private llmService: SmartLLMService;
+	private multiCalendarAllowed: (userId: string) => boolean;
+	private multiCalendarReadService: Pick<GoogleCalendarReadService, 'listEvents'> | null;
 	public errorLogger: ErrorLoggerService;
 
-	private constructor(supabase: SupabaseClient<Database>) {
+	private constructor(
+		supabase: SupabaseClient<Database>,
+		options: CalendarAnalysisServiceOptions = {}
+	) {
 		super('/api/calendar/analysis');
 		this.supabase = supabase;
 		this.calendarService = new CalendarService(supabase);
@@ -254,12 +327,82 @@ export class CalendarAnalysisService extends ApiService {
 			supabase,
 			appName: 'BuildOS Calendar Analysis'
 		});
+		this.multiCalendarAllowed =
+			options.multiCalendarAllowed ??
+			((userId) => isMultiCalendarUserAllowed(userId, privateEnv));
+		this.multiCalendarReadService = options.multiCalendarReadService ?? null;
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 	}
 
-	public static getInstance(supabase: SupabaseClient<Database>): CalendarAnalysisService {
-		this.instance = new CalendarAnalysisService(supabase);
+	public static getInstance(
+		supabase: SupabaseClient<Database>,
+		options: CalendarAnalysisServiceOptions = {}
+	): CalendarAnalysisService {
+		this.instance = new CalendarAnalysisService(supabase, options);
 		return this.instance;
+	}
+
+	private async readAnalysisEvents(
+		userId: string,
+		params: {
+			timeMin: string;
+			timeMax: string;
+			calendarSourceIds?: string[];
+			legacyCalendarIds?: string[];
+		}
+	): Promise<AnalysisEventReadResult> {
+		if (!this.multiCalendarAllowed(userId)) {
+			const eventsResponse = await this.calendarService.getCalendarEvents(userId, {
+				timeMin: params.timeMin,
+				timeMax: params.timeMax,
+				maxResults: 300,
+				calendarId: params.legacyCalendarIds?.[0] ?? 'primary'
+			});
+			return {
+				events: (eventsResponse.events ?? []) as AnalysisCalendarEvent[],
+				partial: false,
+				warnings: [],
+				sourceStatuses: [],
+				calendarSourceIds: [],
+				providerCalendarIds: params.legacyCalendarIds?.length
+					? Array.from(new Set(params.legacyCalendarIds))
+					: ['primary']
+			};
+		}
+
+		const readService =
+			this.multiCalendarReadService ??
+			new GoogleCalendarReadService(createAdminSupabaseClient());
+		const response = await readService.listEvents({
+			userId,
+			calendarSourceIds: params.calendarSourceIds,
+			timeMin: params.timeMin,
+			timeMax: params.timeMax,
+			maxResults: 300,
+			capability: 'analysis',
+			background: true,
+			budgetMs: 20_000
+		});
+		const events = response.events as unknown as AnalysisCalendarEvent[];
+		return {
+			events,
+			partial: response.partial,
+			warnings: response.warnings,
+			sourceStatuses: response.sourceStatuses,
+			calendarSourceIds: Array.from(
+				new Set([
+					...response.sourceStatuses.map((status) => status.calendarSourceId),
+					...events.flatMap(
+						(event) =>
+							event.contributingCalendarSourceIds ??
+							(event.calendarSourceId ? [event.calendarSourceId] : [])
+					)
+				])
+			),
+			providerCalendarIds: Array.from(
+				new Set(response.sourceStatuses.map((status) => status.providerCalendarId))
+			)
+		};
 	}
 
 	/**
@@ -271,6 +414,7 @@ export class CalendarAnalysisService extends ApiService {
 			daysBack?: number;
 			daysForward?: number;
 			calendarsToAnalyze?: string[];
+			calendarSourceIds?: string[];
 		} = {}
 	): Promise<AnalysisResult> {
 		const { daysBack = 30, daysForward = 60 } = options;
@@ -284,17 +428,26 @@ export class CalendarAnalysisService extends ApiService {
 		});
 
 		try {
-			// Fetch calendar events using the existing CalendarService
-			const eventsResponse = await this.calendarService.getCalendarEvents(userId, {
+			const eventsResponse = await this.readAnalysisEvents(userId, {
 				timeMin: addDays(now, -daysBack).toISOString(),
 				timeMax: addDays(now, daysForward).toISOString(),
-				maxResults: 300,
-				calendarId: 'primary' // Start with primary calendar
+				calendarSourceIds: options.calendarSourceIds,
+				legacyCalendarIds: options.calendarsToAnalyze
+			});
+			await this.updateAnalysisRecord(analysis.id, {
+				calendar_source_ids: eventsResponse.calendarSourceIds,
+				calendars_analyzed: eventsResponse.providerCalendarIds,
+				partial_result: eventsResponse.partial,
+				source_statuses: eventsResponse.sourceStatuses,
+				analysis_warnings: eventsResponse.warnings
 			});
 
-			// Check if we got events - the response directly contains events array
 			if (!eventsResponse.events || eventsResponse.events.length === 0) {
-				throw new Error('No calendar events found');
+				throw new Error(
+					eventsResponse.sourceStatuses.length === 0 && this.multiCalendarAllowed(userId)
+						? 'No analysis-enabled calendar sources found'
+						: 'No calendar events found'
+				);
 			}
 
 			const events = eventsResponse.events;
@@ -349,7 +502,10 @@ export class CalendarAnalysisService extends ApiService {
 				return {
 					analysisId: analysis.id,
 					suggestions: [],
-					eventsAnalyzed: relevantEvents.length
+					eventsAnalyzed: relevantEvents.length,
+					partial: eventsResponse.partial,
+					warnings: eventsResponse.warnings,
+					calendarSourceIds: eventsResponse.calendarSourceIds
 				};
 			}
 
@@ -369,7 +525,7 @@ export class CalendarAnalysisService extends ApiService {
 			}
 
 			// Store suggestions in database
-			await this.storeSuggestions(analysis.id, userId, suggestions);
+			await this.storeSuggestions(analysis.id, userId, suggestions, relevantEvents);
 
 			// Get the stored suggestions with full data
 			const storedSuggestions = await this.getSuggestionsForAnalysis(analysis.id);
@@ -390,7 +546,10 @@ export class CalendarAnalysisService extends ApiService {
 			return {
 				analysisId: analysis.id,
 				suggestions: storedSuggestions,
-				eventsAnalyzed: relevantEvents.length
+				eventsAnalyzed: relevantEvents.length,
+				partial: eventsResponse.partial,
+				warnings: eventsResponse.warnings,
+				calendarSourceIds: eventsResponse.calendarSourceIds
 			};
 		} catch (error) {
 			await this.updateAnalysisRecord(analysis.id, {
@@ -413,7 +572,7 @@ export class CalendarAnalysisService extends ApiService {
 	/**
 	 * Filter out irrelevant events
 	 */
-	private filterRelevantEvents(events: CalendarEvent[]): CalendarEvent[] {
+	private filterRelevantEvents(events: AnalysisCalendarEvent[]): AnalysisCalendarEvent[] {
 		return events.filter((event) => {
 			// Skip declined events
 			const selfAttendee = event.attendees?.find((a) => a.self);
@@ -491,7 +650,7 @@ export class CalendarAnalysisService extends ApiService {
 		events,
 		userId
 	}: {
-		events: CalendarEvent[];
+		events: AnalysisCalendarEvent[];
 		userId: string;
 	}): Promise<EventGroup[]> {
 		if (events.length === 0) {
@@ -502,7 +661,7 @@ export class CalendarAnalysisService extends ApiService {
 
 		// Create lightweight event format for pattern analysis
 		const lightweightEvents: LightweightCalendarEvent[] = events.map((e) => ({
-			id: e.id || 'unknown',
+			id: analysisEventKey(e),
 			title: e.summary,
 			description_snippet: e.description?.substring(0, 200),
 			start: e.start?.dateTime || e.start?.date || '',
@@ -716,7 +875,7 @@ Return JSON with this structure:
 		userId
 	}: {
 		eventGroups: EventGroup[];
-		events: CalendarEvent[];
+		events: AnalysisCalendarEvent[];
 		userId: string;
 	}): Promise<ProjectSuggestion[]> {
 		if (eventGroups.length === 0) {
@@ -731,7 +890,7 @@ Return JSON with this structure:
 		}
 
 		// Create a map of events for quick lookup
-		const eventMap = new Map(events.map((e) => [e.id, e]));
+		const eventMap = new Map(events.map((event) => [analysisEventKey(event), event]));
 
 		// Separate events into past and upcoming for context
 		const pastEvents = events.filter((e) => {
@@ -750,7 +909,7 @@ Return JSON with this structure:
 				// Get full event details for events in this group
 				const groupEvents = group.event_ids
 					.map((id) => eventMap.get(id))
-					.filter((e): e is CalendarEvent => e !== undefined);
+					.filter((e): e is AnalysisCalendarEvent => e !== undefined);
 
 				// Separate into past and upcoming
 				const groupPastEvents = groupEvents.filter((e) => {
@@ -1070,7 +1229,7 @@ When an event has a "recurrence" field with RRULE:
 		minConfidence = DEFAULT_CONFIDENCE_THRESHOLD,
 		userId
 	}: {
-		events: CalendarEvent[];
+		events: AnalysisCalendarEvent[];
 		minConfidence?: number;
 		userId: string;
 	}): Promise<ProjectSuggestion[]> {
@@ -1450,11 +1609,16 @@ When an event has a "recurrence" field with RRULE:
 		}
 	}
 
-	private async storeAnalysisEvents(analysisId: string, events: CalendarEvent[]): Promise<void> {
+	private async storeAnalysisEvents(
+		analysisId: string,
+		events: AnalysisCalendarEvent[]
+	): Promise<void> {
 		const eventRecords = events.map((event) => ({
 			analysis_id: analysisId,
-			calendar_id: 'primary', // TODO: Get actual calendar ID
-			calendar_event_id: event.id || 'unknown',
+			calendar_id: event.providerCalendarId || 'primary',
+			calendar_source_id: event.calendarSourceId ?? null,
+			calendar_event_id: providerEventId(event),
+			contributing_source_event_ids: contributingSourceEvents(event),
 			event_title: event.summary,
 			event_description: event.description,
 			event_start: event.start?.dateTime || event.start?.date,
@@ -1485,30 +1649,71 @@ When an event has a "recurrence" field with RRULE:
 	private async storeSuggestions(
 		analysisId: string,
 		userId: string,
-		suggestions: ProjectSuggestion[]
+		suggestions: ProjectSuggestion[],
+		events: AnalysisCalendarEvent[]
 	): Promise<void> {
 		if (suggestions.length === 0) return;
 
-		const suggestionRecords = suggestions.map((suggestion) => ({
-			analysis_id: analysisId,
-			user_id: userId,
-			suggested_name: suggestion.name,
-			suggested_description: suggestion.description,
-			suggested_context: suggestion.context,
-			confidence_score: suggestion.confidence,
-			calendar_event_ids: suggestion.event_ids,
-			event_count: suggestion.event_ids.length,
-			ai_reasoning: suggestion.reasoning,
-			detected_keywords: suggestion.keywords,
-			suggested_tasks: suggestion.suggested_tasks || [],
-			// Store additional metadata in event_patterns for now
-			event_patterns: {
-				start_date: suggestion.start_date,
-				end_date: suggestion.end_date,
-				tags: suggestion.tags
-			},
-			status: 'pending' as const
-		}));
+		const eventByAnalysisKey = new Map(events.map((event) => [analysisEventKey(event), event]));
+		const suggestionRecords = suggestions.map((suggestion) => {
+			const referencedEvents = suggestion.event_ids
+				.map((eventId) => eventByAnalysisKey.get(eventId))
+				.filter((event): event is AnalysisCalendarEvent => Boolean(event));
+			const calendarEventIds = suggestion.event_ids.map((eventId) => {
+				const event = eventByAnalysisKey.get(eventId);
+				return event ? providerEventId(event) : eventId;
+			});
+			const sourceEventIds = Array.from(
+				new Map(
+					referencedEvents
+						.flatMap((event) => contributingSourceEvents(event))
+						.map((identity) => [
+							`${identity.calendarSourceId}\u0000${identity.providerEventId}`,
+							identity
+						])
+				).values()
+			);
+			const suggestedTasks = (suggestion.suggested_tasks || []).map((task) => {
+				if (!task.event_id) return task;
+				const event = eventByAnalysisKey.get(task.event_id);
+				return event
+					? {
+							...task,
+							event_id: providerEventId(event),
+							calendar_source_id: event.calendarSourceId
+						}
+					: task;
+			});
+
+			return {
+				analysis_id: analysisId,
+				user_id: userId,
+				suggested_name: suggestion.name,
+				suggested_description: suggestion.description,
+				suggested_context: suggestion.context,
+				confidence_score: suggestion.confidence,
+				calendar_event_ids: calendarEventIds,
+				calendar_ids: Array.from(
+					new Set(
+						referencedEvents
+							.map((event) => event.providerCalendarId)
+							.filter((calendarId): calendarId is string => Boolean(calendarId))
+					)
+				),
+				calendar_source_event_ids: sourceEventIds,
+				event_count: calendarEventIds.length,
+				ai_reasoning: suggestion.reasoning,
+				detected_keywords: suggestion.keywords,
+				suggested_tasks: suggestedTasks,
+				// Store additional metadata in event_patterns for now
+				event_patterns: {
+					start_date: suggestion.start_date,
+					end_date: suggestion.end_date,
+					tags: suggestion.tags
+				},
+				status: 'pending' as const
+			};
+		});
 
 		const { data, error } = await this.supabase
 			.from('calendar_project_suggestions')

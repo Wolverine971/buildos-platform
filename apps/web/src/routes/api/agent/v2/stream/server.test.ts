@@ -1902,6 +1902,98 @@ describe('/api/agent/v2/stream', () => {
 		}
 	});
 
+	it('persists mixed read and mutation telemetry with the trusted internal client', async () => {
+		const userSupabase = createStreamingSupabase();
+		const internalSupabase = createStreamingSupabase();
+		const mutationCall = {
+			id: 'call-update-task',
+			type: 'function',
+			function: {
+				name: 'update_onto_task',
+				arguments: JSON.stringify({ task_id: 'task-1', status: 'done' })
+			}
+		};
+		const mutationResult = {
+			tool_call_id: mutationCall.id,
+			result: { id: 'task-1', status: 'done' },
+			success: true
+		};
+		const readCall = {
+			id: 'call-list-tasks',
+			type: 'function',
+			function: {
+				name: 'list_onto_tasks',
+				arguments: JSON.stringify({ project_id: 'project-1' })
+			}
+		};
+		const readResult = {
+			tool_call_id: readCall.id,
+			result: { tasks: [{ id: 'task-1', status: 'done' }] },
+			success: true
+		};
+
+		mocks.streamFastChat.mockImplementationOnce(
+			async ({ onToolCall, onToolResult, onDelta }: Row) => {
+				await onToolCall?.(mutationCall);
+				await onToolResult?.({ toolCall: mutationCall, result: mutationResult });
+				await onToolCall?.(readCall);
+				await onToolResult?.({ toolCall: readCall, result: readResult });
+				await onDelta('Updated the task and verified the result.');
+				return {
+					assistantText: 'Updated the task and verified the result.',
+					finalAssistantText: 'Updated the task and verified the result.',
+					usage: { total_tokens: 24 },
+					finishedReason: 'stop',
+					toolExecutions: [
+						{ toolCall: mutationCall, result: mutationResult },
+						{ toolCall: readCall, result: readResult }
+					],
+					llmPasses: [],
+					toolRounds: 2,
+					toolCallsMade: 2,
+					supervisorDecisions: [],
+					finalizationGuard: undefined,
+					cancelled: false,
+					peakPromptTokens: undefined,
+					finalContextUsage: undefined
+				};
+			}
+		);
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Finish the task and confirm it',
+					context_type: 'global',
+					stream_run_id: 'mixed-tool-stream',
+					client_turn_id: 'mixed-tool-client'
+				})
+			}),
+			locals: {
+				supabase: userSupabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		await response.text();
+		expect(userSupabase.from).not.toHaveBeenCalledWith('chat_tool_executions');
+		expect(internalSupabase.insertedRows.chat_tool_executions).toEqual([
+			expect.objectContaining({
+				provider_tool_call_id: mutationCall.id,
+				message_id: 'assistant-message-1',
+				sequence_index: 1
+			}),
+			expect.objectContaining({
+				provider_tool_call_id: readCall.id,
+				message_id: 'assistant-message-1',
+				sequence_index: 2
+			})
+		]);
+	});
+
 	it('matches the Phase 4 deterministic partial-cancellation legacy golden', async () => {
 		vi.useFakeTimers({ toFake: ['Date'] });
 		vi.setSystemTime(new Date(AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1.clockIso));

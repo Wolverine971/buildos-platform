@@ -4,6 +4,10 @@
 		{
 			"path": "/api/cron/gmail-connection-health",
 			"schedule": "45 * * * *"
+		},
+		{
+			"path": "/api/cron/renew-webhooks",
+			"schedule": "15 * * * *"
 		}
 	]
 }

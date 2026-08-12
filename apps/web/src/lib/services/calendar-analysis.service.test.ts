@@ -54,6 +54,7 @@ type QueryResult = { data: unknown; error: null | { message: string } };
 
 function makeSupabase(script: Record<string, QueryResult[]>) {
 	const updates: Array<{ table: string; payload: Record<string, unknown> }> = [];
+	const inserts: Array<{ table: string; payload: unknown }> = [];
 	const supabase = {
 		from: vi.fn((table: string) => {
 			const builder: any = {
@@ -66,15 +67,27 @@ function makeSupabase(script: Record<string, QueryResult[]>) {
 					updates.push({ table, payload });
 					return builder;
 				}),
+				insert: vi.fn((payload: unknown) => {
+					inserts.push({ table, payload });
+					return builder;
+				}),
 				maybeSingle: vi.fn(
 					async () => script[table]?.shift() ?? { data: null, error: null }
 				),
-				single: vi.fn(async () => script[table]?.shift() ?? { data: null, error: null })
+				single: vi.fn(async () => script[table]?.shift() ?? { data: null, error: null }),
+				then: (
+					resolve: (result: QueryResult) => unknown,
+					reject: (reason: unknown) => unknown
+				) =>
+					Promise.resolve(script[table]?.shift() ?? { data: null, error: null }).then(
+						resolve,
+						reject
+					)
 			};
 			return builder;
 		})
 	};
-	return { supabase, updates };
+	return { supabase, updates, inserts };
 }
 
 function calendarSuggestion(overrides: Record<string, unknown> = {}) {
@@ -270,5 +283,84 @@ describe('CalendarAnalysisService.acceptSuggestion', () => {
 			'calendar_project_suggestions_created_project_id_fkey'
 		);
 		expect(mocks.instantiateProject).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('CalendarAnalysisService source provenance', () => {
+	it('stores source/event pairs for analysis snapshots, suggestions, and task provenance', async () => {
+		const { supabase, inserts } = makeSupabase({
+			calendar_analysis_events: [{ data: null, error: null }],
+			calendar_project_suggestions: [{ data: [], error: null }]
+		});
+		const service = CalendarAnalysisService.getInstance(supabase as any, {
+			multiCalendarAllowed: () => true
+		});
+		const event = {
+			id: 'provider-event-a',
+			providerEventId: 'provider-event-a',
+			providerCalendarId: 'work@example.com',
+			calendarSourceId: 'source-a',
+			contributingCalendarSourceIds: ['source-a', 'source-b'],
+			contributingSourceEvents: [
+				{ calendarSourceId: 'source-a', providerEventId: 'provider-event-a' },
+				{ calendarSourceId: 'source-b', providerEventId: 'provider-event-b' }
+			],
+			summary: 'Launch planning',
+			start: { dateTime: '2026-08-12T14:00:00.000Z' },
+			end: { dateTime: '2026-08-12T15:00:00.000Z' },
+			organizer: { email: 'owner@example.com', self: true },
+			attendees: []
+		};
+
+		await (service as any).storeAnalysisEvents('analysis-1', [event]);
+		await (service as any).storeSuggestions(
+			'analysis-1',
+			'user-1',
+			[
+				{
+					name: 'Launch',
+					description: 'Launch work',
+					context: 'Launch context',
+					event_ids: ['source-a::provider-event-a'],
+					confidence: 0.9,
+					reasoning: 'Recurring work',
+					keywords: ['launch'],
+					suggested_tasks: [
+						{
+							title: 'Follow up',
+							description: 'Send notes',
+							event_id: 'source-a::provider-event-a'
+						}
+					]
+				}
+			],
+			[event]
+		);
+
+		expect(
+			inserts.find((insert) => insert.table === 'calendar_analysis_events')?.payload
+		).toEqual([
+			expect.objectContaining({
+				calendar_source_id: 'source-a',
+				calendar_id: 'work@example.com',
+				calendar_event_id: 'provider-event-a',
+				contributing_source_event_ids: event.contributingSourceEvents
+			})
+		]);
+		expect(
+			inserts.find((insert) => insert.table === 'calendar_project_suggestions')?.payload
+		).toEqual([
+			expect.objectContaining({
+				calendar_event_ids: ['provider-event-a'],
+				calendar_ids: ['work@example.com'],
+				calendar_source_event_ids: event.contributingSourceEvents,
+				suggested_tasks: [
+					expect.objectContaining({
+						event_id: 'provider-event-a',
+						calendar_source_id: 'source-a'
+					})
+				]
+			})
+		]);
 	});
 });

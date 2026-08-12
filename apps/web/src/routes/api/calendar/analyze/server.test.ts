@@ -99,7 +99,8 @@ describe('POST /api/calendar/analyze', () => {
 		expect(analyzeUserCalendarMock).toHaveBeenCalledWith('user-1', {
 			daysBack: 7,
 			daysForward: 60,
-			calendarsToAnalyze: undefined
+			calendarsToAnalyze: undefined,
+			calendarSourceIds: undefined
 		});
 		expect(payload.data.analysisId).toBe('analysis-1');
 	});

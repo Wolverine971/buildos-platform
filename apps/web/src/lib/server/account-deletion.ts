@@ -2,6 +2,11 @@
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { StripeService } from '$lib/services/stripe-service';
 import { GmailOAuthError, GmailReadOAuthService } from '$lib/server/gmail-read-oauth.service';
+import {
+	GoogleCalendarConnectionError,
+	GoogleCalendarConnectionService
+} from '$lib/server/google-calendar-connection.service';
+import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
 import { chunkArray } from '$lib/utils/chunk-array';
 
 type DeletionRequestRow = {
@@ -27,11 +32,23 @@ type GmailDeletionCleanupResult = {
 	remoteRevocationsUnconfirmed: number;
 };
 
+type CalendarDeletionCleanupResult = GmailDeletionCleanupResult & {
+	legacyTokenDeleted: boolean;
+};
+
 const EMPTY_GMAIL_CLEANUP: GmailDeletionCleanupResult = {
 	connectionsFound: 0,
 	connectionsDeleted: 0,
 	remoteRevocationsSucceeded: 0,
 	remoteRevocationsUnconfirmed: 0
+};
+
+const EMPTY_CALENDAR_CLEANUP: CalendarDeletionCleanupResult = {
+	connectionsFound: 0,
+	connectionsDeleted: 0,
+	remoteRevocationsSucceeded: 0,
+	remoteRevocationsUnconfirmed: 0,
+	legacyTokenDeleted: false
 };
 
 const ACTIVE_SUBSCRIPTION_STATUSES = [
@@ -77,6 +94,34 @@ async function removeGmailConnectionsForAccountDeletion(
 	}
 }
 
+async function removeCalendarConnectionsForAccountDeletion(
+	userId: string
+): Promise<CalendarDeletionCleanupResult> {
+	const admin = createAdminSupabaseClient();
+	try {
+		await new CalendarWebhookService(admin).unregisterUserWebhooks(userId);
+	} catch (error) {
+		// Channel cleanup is best effort; credential revocation and local deletion must continue.
+		console.error(
+			'Account deletion Google Calendar webhook cleanup could not be completed:',
+			error instanceof Error ? error.message : 'unknown_error'
+		);
+	}
+	try {
+		return await new GoogleCalendarConnectionService(
+			admin
+		).disconnectAllConnectionsForAccountDeletion(userId);
+	} catch (error) {
+		// As with Gmail, the final database purge is the local credential-deletion boundary. A
+		// provider outage must not postpone account deletion indefinitely.
+		console.error(
+			'Account deletion Google Calendar cleanup could not be completed:',
+			error instanceof GoogleCalendarConnectionError ? error.code : 'unknown_error'
+		);
+		return EMPTY_CALENDAR_CLEANUP;
+	}
+}
+
 export async function scheduleAccountDeletion(userId: string): Promise<{
 	requestId: string;
 	requestedAt: string;
@@ -97,7 +142,10 @@ export async function scheduleAccountDeletion(userId: string): Promise<{
 
 	// Revoke and remove integrations immediately when access to BuildOS is disabled, rather than
 	// retaining usable Gmail credentials during the 30-day deletion window.
-	await removeGmailConnectionsForAccountDeletion(userId);
+	await Promise.all([
+		removeGmailConnectionsForAccountDeletion(userId),
+		removeCalendarConnectionsForAccountDeletion(userId)
+	]);
 
 	return {
 		requestId: row.request_id,
@@ -207,6 +255,7 @@ async function removeAccountStorage(userId: string): Promise<number> {
 async function purgeAccount(request: DeletionRequestRow): Promise<{
 	storageObjects: number;
 	gmailCleanup: GmailDeletionCleanupResult;
+	calendarCleanup: CalendarDeletionCleanupResult;
 }> {
 	const admin = createAdminSupabaseClient();
 	await (admin as any)
@@ -224,6 +273,7 @@ async function purgeAccount(request: DeletionRequestRow): Promise<{
 
 	// Defense in depth for older requests or an integration outage at scheduling time.
 	const gmailCleanup = await removeGmailConnectionsForAccountDeletion(request.user_id);
+	const calendarCleanup = await removeCalendarConnectionsForAccountDeletion(request.user_id);
 
 	const storageObjects = await removeAccountStorage(request.user_id);
 	const { error: databaseError } = await (admin as any).rpc(
@@ -249,7 +299,7 @@ async function purgeAccount(request: DeletionRequestRow): Promise<{
 		.eq('id', request.id);
 	if (completionError) throw completionError;
 
-	return { storageObjects, gmailCleanup };
+	return { storageObjects, gmailCleanup, calendarCleanup };
 }
 
 export async function retryPendingDeletionSubscriptionCancellations(limit = 25): Promise<{
@@ -282,6 +332,10 @@ export async function processDueAccountDeletions(limit = 5): Promise<{
 	gmailConnectionsDeleted: number;
 	gmailRemoteRevocationsSucceeded: number;
 	gmailRemoteRevocationsUnconfirmed: number;
+	calendarConnectionsDeleted: number;
+	calendarLegacyTokensDeleted: number;
+	calendarRemoteRevocationsSucceeded: number;
+	calendarRemoteRevocationsUnconfirmed: number;
 }> {
 	const admin = createAdminSupabaseClient();
 	const { data, error } = await (admin as any).rpc('claim_due_account_deletions', {
@@ -297,6 +351,10 @@ export async function processDueAccountDeletions(limit = 5): Promise<{
 	let gmailConnectionsDeleted = 0;
 	let gmailRemoteRevocationsSucceeded = 0;
 	let gmailRemoteRevocationsUnconfirmed = 0;
+	let calendarConnectionsDeleted = 0;
+	let calendarLegacyTokensDeleted = 0;
+	let calendarRemoteRevocationsSucceeded = 0;
+	let calendarRemoteRevocationsUnconfirmed = 0;
 
 	for (const request of requests) {
 		try {
@@ -306,6 +364,11 @@ export async function processDueAccountDeletions(limit = 5): Promise<{
 			gmailConnectionsDeleted += result.gmailCleanup.connectionsDeleted;
 			gmailRemoteRevocationsSucceeded += result.gmailCleanup.remoteRevocationsSucceeded;
 			gmailRemoteRevocationsUnconfirmed += result.gmailCleanup.remoteRevocationsUnconfirmed;
+			calendarConnectionsDeleted += result.calendarCleanup.connectionsDeleted;
+			calendarLegacyTokensDeleted += result.calendarCleanup.legacyTokenDeleted ? 1 : 0;
+			calendarRemoteRevocationsSucceeded += result.calendarCleanup.remoteRevocationsSucceeded;
+			calendarRemoteRevocationsUnconfirmed +=
+				result.calendarCleanup.remoteRevocationsUnconfirmed;
 		} catch (requestError) {
 			failed += 1;
 			const message =
@@ -332,6 +395,10 @@ export async function processDueAccountDeletions(limit = 5): Promise<{
 		storageObjectsRemoved,
 		gmailConnectionsDeleted,
 		gmailRemoteRevocationsSucceeded,
-		gmailRemoteRevocationsUnconfirmed
+		gmailRemoteRevocationsUnconfirmed,
+		calendarConnectionsDeleted,
+		calendarLegacyTokensDeleted,
+		calendarRemoteRevocationsSucceeded,
+		calendarRemoteRevocationsUnconfirmed
 	};
 }

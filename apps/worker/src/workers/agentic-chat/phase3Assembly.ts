@@ -93,6 +93,7 @@ import {
 	normalizeAgenticChatMutationCapabilitiesV1
 } from './mutationToolCatalog';
 import { AgenticChatUpdateOntoTaskMutationAdapter } from './updateOntoTaskMutationAdapter';
+import { SupabaseAgenticChatLiveVisionResolver } from './liveVision';
 
 export type AgenticChatPhase3Assembly = {
 	consumer: ReturnType<typeof createAgenticChatConsumer>;
@@ -143,6 +144,9 @@ export function createAgenticChatPhase3Assembly(options: {
 	client: SupabaseClient<Database>;
 	providerClient: AgenticChatReadOnlyProviderClientPortV1;
 	providerConfigured: boolean;
+	/** Separate default-off gate for ephemeral current-turn image resolution. */
+	liveVisionEnabled?: boolean;
+	liveVisionFetchImpl?: typeof fetch;
 	internalUserIds: readonly string[];
 	consumerConfig?: Partial<AgenticChatConsumerConfig>;
 	publisherConfig?: Partial<AgenticChatPublisherConfig>;
@@ -187,6 +191,13 @@ export function createAgenticChatPhase3Assembly(options: {
 	const promptSnapshots = new SupabaseAgenticChatPromptSnapshotAdapter(rpcClient);
 	const toolExecutions = new SupabaseAgenticChatToolExecutionAdapter(rpcClient);
 	const executionObservations = new SupabaseAgenticChatExecutionObservationAdapter(rpcClient);
+	const liveVision = options.liveVisionEnabled
+		? new SupabaseAgenticChatLiveVisionResolver({
+				client: options.client,
+				observations: executionObservations,
+				fetchImpl: options.liveVisionFetchImpl
+			})
+		: undefined;
 	const input = new SupabaseAgenticChatExecutionInputAdapter(options.client);
 	const broadcast = new SupabaseAgenticChatBroadcastAdapter(
 		options.client as unknown as AgenticChatRealtimeClient
@@ -209,7 +220,7 @@ export function createAgenticChatPhase3Assembly(options: {
 		concurrency: 1
 	});
 	const provider = new AgenticChatReadOnlyProviderAdapter(
-		{ client: options.providerClient, capacity: providerCapacity },
+		{ client: options.providerClient, capacity: providerCapacity, liveVision },
 		options.providerCooldownMs,
 		options.maxProviderRounds,
 		mutationProviderCapabilities

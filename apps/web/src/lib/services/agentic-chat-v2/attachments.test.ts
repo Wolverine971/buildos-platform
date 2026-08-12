@@ -161,6 +161,7 @@ describe('agentic chat attachments', () => {
 				{
 					content_type: 'image/png',
 					file_size_bytes: 1024,
+					checksum_sha256: 'a'.repeat(64),
 					storage_bucket: 'onto-assets',
 					storage_path: 'projects/p/assets/a/original.png'
 				},
@@ -172,6 +173,7 @@ describe('agentic chat attachments', () => {
 				{
 					content_type: 'application/pdf',
 					file_size_bytes: 1024,
+					checksum_sha256: 'a'.repeat(64),
 					storage_bucket: 'onto-assets',
 					storage_path: 'projects/p/assets/a/original.pdf'
 				},
@@ -183,6 +185,7 @@ describe('agentic chat attachments', () => {
 				{
 					content_type: 'image/png',
 					file_size_bytes: 4096,
+					checksum_sha256: 'a'.repeat(64),
 					storage_bucket: 'onto-assets',
 					storage_path: 'projects/p/assets/a/original.png'
 				},
@@ -194,12 +197,25 @@ describe('agentic chat attachments', () => {
 				{
 					content_type: 'image/png',
 					file_size_bytes: 1024,
+					checksum_sha256: 'a'.repeat(64),
 					storage_bucket: null,
 					storage_path: null
 				},
 				{ maxBytes: 2048 }
 			)
 		).toEqual({ eligible: false, reason: 'missing_storage_pointer' });
+		expect(
+			assessLiveVisionImageEligibility(
+				{
+					content_type: 'image/png',
+					file_size_bytes: 1024,
+					checksum_sha256: null,
+					storage_bucket: 'onto-assets',
+					storage_path: 'projects/p/assets/a/original.png'
+				},
+				{ maxBytes: 2048 }
+			)
+		).toEqual({ eligible: false, reason: 'missing_checksum' });
 	});
 
 	it('rejects new uploads when rate, byte, or project storage caps would be exceeded', () => {

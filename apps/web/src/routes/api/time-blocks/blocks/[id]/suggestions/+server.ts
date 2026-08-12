@@ -1,7 +1,6 @@
 // apps/web/src/routes/api/time-blocks/blocks/[id]/suggestions/+server.ts
 import type { RequestHandler } from './$types';
-import { CalendarService } from '$lib/services/calendar-service';
-import { TimeBlockService } from '$lib/services/time-block.service';
+import { createTimeBlockRuntimeService } from '$lib/server/time-block-runtime.service';
 import { ApiResponse } from '$lib/utils/api-response';
 
 export const POST: RequestHandler = async ({ params, locals: { safeGetSession, supabase } }) => {
@@ -17,8 +16,7 @@ export const POST: RequestHandler = async ({ params, locals: { safeGetSession, s
 	}
 
 	try {
-		const calendarService = new CalendarService(supabase);
-		const timeBlockService = new TimeBlockService(supabase, user.id, calendarService);
+		const timeBlockService = createTimeBlockRuntimeService(supabase, user.id);
 
 		const updatedBlock = await timeBlockService.regenerateSuggestions(blockId);
 

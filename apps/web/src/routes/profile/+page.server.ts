@@ -6,6 +6,7 @@ import { ActivityLogger } from '$lib/utils/activityLogger';
 import { StripeService } from '$lib/services/stripe-service';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
 import { CalendarDisconnectService } from '$lib/services/calendar-disconnect-service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { Database } from '@buildos/shared-types';
 
 // Type for subscription details
@@ -336,7 +337,7 @@ export const actions: Actions = {
 			const removeData = formData.get('removeData') === 'true';
 
 			// Unregister webhook first
-			const webhookService = new CalendarWebhookService(supabase);
+			const webhookService = new CalendarWebhookService(createAdminSupabaseClient());
 			await webhookService.unregisterWebhook(user.id, 'primary');
 
 			// Optionally remove calendar data

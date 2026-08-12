@@ -32,12 +32,23 @@
 		DEFAULT_CALENDAR_COLOR
 	} from '$lib/config/calendar-colors';
 	import type { Project } from '$lib/types/onto';
+	import type {
+		GoogleCalendarConnectionsPayload,
+		GoogleCalendarSourceSummary
+	} from '$lib/types/google-calendar-integration';
 
 	type ProjectCalendar = Database['public']['Tables']['project_calendars']['Row'];
 	type CalendarViewMode = 'day' | 'week' | 'month';
 	type CalendarModalTab = 'calendar' | 'settings';
 	type LazyComponent = Component<any, any, any> | null;
 	type ProjectCalendarSyncMode = 'actor_projection' | 'member_fanout';
+	type CalendarTargetMode = 'create' | 'link';
+
+	interface WritableProjectCalendarSource extends GoogleCalendarSourceSummary {
+		connectionId: string;
+		accountLabel: string;
+		emailAddress: string;
+	}
 
 	interface CollaborationMember {
 		actor_id: string;
@@ -131,6 +142,14 @@
 	let errors = $state<string[]>([]);
 
 	let calendarExists = $state(false);
+	let providerResourceManaged = $state(false);
+	let currentCalendarSourceId = $state<string | null>(null);
+	let calendarConnectionsLoading = $state(false);
+	let calendarConnectionsError = $state<string | null>(null);
+	let calendarConnections = $state.raw<GoogleCalendarConnectionsPayload | null>(null);
+	let calendarTargetMode = $state<CalendarTargetMode>('create');
+	let selectedConnectionId = $state('');
+	let selectedCalendarSourceId = $state('');
 	let collaborationLoading = $state(false);
 	let collaborationError = $state<string | null>(null);
 	let collaborationSummary = $state<CollaborationSummary | null>(null);
@@ -170,6 +189,52 @@
 		const calendarProps = (projectProps.calendar as Record<string, unknown> | null) ?? {};
 		return (calendarProps.color_id || DEFAULT_CALENDAR_COLOR) as GoogleColorId;
 	});
+
+	let writableProjectCalendarSources = $derived.by(() => {
+		if (!calendarConnections) return [];
+		const writableRoles = new Set(['writerWithoutPrivateAccess', 'writer', 'owner']);
+		return calendarConnections.connections
+			.filter((connection) => connection.status === 'active')
+			.flatMap((connection) =>
+				connection.sources
+					.filter(
+						(source) =>
+							writableRoles.has(source.accessRole) && !source.providerDeletedAt
+					)
+					.map(
+						(source): WritableProjectCalendarSource => ({
+							...source,
+							connectionId: connection.id,
+							accountLabel: connection.accountLabel,
+							emailAddress: connection.emailAddress
+						})
+					)
+			);
+	});
+
+	let writableConnections = $derived.by(() => {
+		const connectionIds = new Set(
+			writableProjectCalendarSources.map((source) => source.connectionId)
+		);
+		return (calendarConnections?.connections ?? []).filter(
+			(connection) => connection.status === 'active' && connectionIds.has(connection.id)
+		);
+	});
+
+	let currentCalendarSource = $derived(
+		writableProjectCalendarSources.find((source) => source.id === currentCalendarSourceId) ??
+			null
+	);
+
+	let calendarTargetReady = $derived(
+		calendarExists ||
+			(!calendarConnectionsLoading &&
+				!calendarConnectionsError &&
+				(!calendarConnections ||
+					(calendarTargetMode === 'link'
+						? Boolean(selectedCalendarSourceId)
+						: Boolean(selectedConnectionId))))
+	);
 
 	let calendarWorkingHours = $derived({
 		work_start_time: '00:00',
@@ -234,6 +299,13 @@
 			currentDate = new Date();
 			calendarItems = [];
 			calendarError = null;
+			calendarConnections = null;
+			calendarConnectionsError = null;
+			calendarTargetMode = 'create';
+			selectedConnectionId = '';
+			selectedCalendarSourceId = '';
+			currentCalendarSourceId = null;
+			providerResourceManaged = false;
 			collaborationSummary = null;
 			collaborationError = null;
 			syncHealthPayload = null;
@@ -243,6 +315,7 @@
 		}
 
 		if (project) {
+			void loadCalendarConnections();
 			void loadCalendarSettings();
 			void loadCollaborationSummary();
 			void loadSyncHealth();
@@ -373,6 +446,58 @@
 		}
 	}
 
+	async function loadCalendarConnections() {
+		calendarConnectionsLoading = true;
+		calendarConnectionsError = null;
+
+		try {
+			const response = await fetch('/api/integrations/google-calendar/connections');
+			if (response.status === 403) {
+				calendarConnections = null;
+				return;
+			}
+
+			const result = await response.json().catch(() => null);
+			if (!response.ok || !result?.success || !result.data) {
+				throw new Error(
+					result?.error || result?.message || 'Failed to load Google calendars'
+				);
+			}
+
+			const payload = result.data as GoogleCalendarConnectionsPayload;
+			calendarConnections = payload;
+			const writableRoles = new Set(['writerWithoutPrivateAccess', 'writer', 'owner']);
+			const sources = payload.connections
+				.filter((connection) => connection.status === 'active')
+				.flatMap((connection) =>
+					connection.sources
+						.filter(
+							(source) =>
+								writableRoles.has(source.accessRole) && !source.providerDeletedAt
+						)
+						.map((source) => ({ ...source, connectionId: connection.id }))
+				);
+			const preferred =
+				sources.find((source) => source.id === payload.defaultWriteCalendarSourceId) ??
+				sources[0];
+			if (preferred) {
+				selectedCalendarSourceId ||= preferred.id;
+				selectedConnectionId ||= preferred.connectionId;
+			}
+		} catch (error) {
+			console.error('Error loading connected Google calendars:', error);
+			calendarConnections = null;
+			calendarConnectionsError =
+				error instanceof Error ? error.message : 'Failed to load Google calendars';
+		} finally {
+			calendarConnectionsLoading = false;
+		}
+	}
+
+	function getCalendarSourceLabel(source: WritableProjectCalendarSource): string {
+		return `${source.accountLabel} — ${source.summaryOverride || source.summary}`;
+	}
+
 	async function loadCalendarSettings() {
 		if (!project?.id) return;
 
@@ -386,6 +511,8 @@
 			if (result.success && result.data) {
 				const calendar = result.data;
 				calendarExists = true;
+				providerResourceManaged = calendar.provider_resource_managed === true;
+				currentCalendarSourceId = calendar.calendar_source_id ?? null;
 				formData = {
 					calendarName: calendar.calendar_name,
 					calendarDescription: '',
@@ -395,6 +522,8 @@
 				};
 			} else {
 				calendarExists = false;
+				providerResourceManaged = false;
+				currentCalendarSourceId = null;
 				formData = {
 					calendarName: `${project.name} - Tasks`,
 					calendarDescription:
@@ -408,6 +537,8 @@
 			console.error('Error loading calendar settings:', error);
 			errors = ['Failed to load calendar settings'];
 			calendarExists = false;
+			providerResourceManaged = false;
+			currentCalendarSourceId = null;
 			formData = {
 				calendarName: `${project.name} - Tasks`,
 				calendarDescription: project.description || `Tasks and events for ${project.name}`,
@@ -596,19 +727,29 @@
 
 		try {
 			if (!calendarExists) {
+				if (!calendarTargetReady) {
+					throw new Error('Choose a writable Google Calendar target');
+				}
 				const response = await fetch(`/api/onto/projects/${project.id}/calendar`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						name: formData.calendarName,
 						description: formData.calendarDescription,
-						colorId: formData.selectedColorId
+						colorId: formData.selectedColorId,
+						...(calendarConnections
+							? calendarTargetMode === 'link'
+								? { calendarSourceId: selectedCalendarSourceId }
+								: { connectionId: selectedConnectionId }
+							: {})
 					})
 				});
 
 				const result = await response.json();
 				if (result.success) {
 					calendarExists = true;
+					providerResourceManaged = result.data?.provider_resource_managed === true;
+					currentCalendarSourceId = result.data?.calendar_source_id ?? null;
 					if (formData.syncMode !== 'actor_projection') {
 						try {
 							await persistProjectSyncMode(project.id, formData.syncMode);
@@ -663,11 +804,10 @@
 	async function deleteCalendar() {
 		if (!project?.id) return;
 
-		if (
-			!confirm(
-				'Are you sure you want to delete this project calendar? This cannot be undone.'
-			)
-		) {
+		const confirmation = providerResourceManaged
+			? 'Delete this project calendar from Google? This cannot be undone.'
+			: 'Unlink this Google calendar from the project? The Google calendar and its events will not be deleted.';
+		if (!confirm(confirmation)) {
 			return;
 		}
 
@@ -680,7 +820,11 @@
 			const result = await response.json();
 			if (result.success) {
 				calendarExists = false;
-				toastService.success('Calendar deleted successfully');
+				toastService.success(
+					providerResourceManaged
+						? 'Project calendar deleted successfully'
+						: 'Google calendar unlinked from project'
+				);
 				onCalendarDeleted?.();
 				handleClose();
 			} else {
@@ -820,7 +964,7 @@
 											</h3>
 											<div class="mt-1 text-xs text-destructive/80">
 												<ul class="list-disc space-y-0.5 pl-4">
-													{#each errors as error}
+													{#each errors as error (error)}
 														<li>{error}</li>
 													{/each}
 												</ul>
@@ -847,7 +991,11 @@
 												</p>
 												<p class="text-xs text-muted-foreground">
 													{calendarExists
-														? 'Connected to Google Calendar'
+														? currentCalendarSource
+															? getCalendarSourceLabel(
+																	currentCalendarSource
+																)
+															: 'Linked to Google Calendar'
 														: 'No calendar created yet'}
 												</p>
 											</div>
@@ -869,6 +1017,111 @@
 										{/if}
 									</div>
 								</div>
+
+								{#if !calendarExists && (calendarConnectionsLoading || calendarConnectionsError || calendarConnections)}
+									<div
+										class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
+									>
+										<div class="flex items-center gap-2 mb-2">
+											<div class="p-1.5 bg-accent/10 rounded-lg">
+												<Calendar class="w-3.5 h-3.5 text-accent" />
+											</div>
+											<div>
+												<p class="text-sm font-semibold text-foreground">
+													Google Calendar target
+												</p>
+												<p class="text-xs text-muted-foreground">
+													Choose the account and calendar this project
+													should use.
+												</p>
+											</div>
+										</div>
+
+										{#if calendarConnectionsLoading}
+											<div
+												class="flex items-center gap-2 py-3 text-xs text-muted-foreground"
+											>
+												<LoaderCircle class="h-4 w-4 animate-spin" />
+												Loading connected calendars…
+											</div>
+										{:else if calendarConnectionsError}
+											<p class="text-xs text-destructive">
+												{calendarConnectionsError}
+											</p>
+										{:else if writableProjectCalendarSources.length === 0}
+											<div
+												class="rounded-md border border-dashed border-border bg-muted/30 p-3"
+											>
+												<p class="text-xs text-muted-foreground">
+													No writable calendars are available. Connect or
+													refresh a Google account in Calendar settings
+													first.
+												</p>
+												<a
+													href="/profile?tab=calendar"
+													class="mt-2 inline-flex text-xs font-medium text-accent hover:underline"
+												>
+													Open Calendar settings
+												</a>
+											</div>
+										{:else}
+											<div class="space-y-3">
+												<FormField
+													label="Setup"
+													hint="Create a dedicated project calendar or link one you already use"
+												>
+													<select
+														bind:value={calendarTargetMode}
+														class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+													>
+														<option value="create"
+															>Create a new project calendar</option
+														>
+														<option value="link"
+															>Link an existing calendar</option
+														>
+													</select>
+												</FormField>
+
+												{#if calendarTargetMode === 'create'}
+													<FormField
+														label="Google account"
+														hint="The new calendar will be owned by this account"
+													>
+														<select
+															bind:value={selectedConnectionId}
+															class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+														>
+															{#each writableConnections as connection (connection.id)}
+																<option value={connection.id}>
+																	{connection.accountLabel} — {connection.emailAddress}
+																</option>
+															{/each}
+														</select>
+													</FormField>
+												{:else}
+													<FormField
+														label="Existing calendar"
+														hint="Unlinking later will not delete this calendar from Google"
+													>
+														<select
+															bind:value={selectedCalendarSourceId}
+															class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+														>
+															{#each writableProjectCalendarSources as source (source.id)}
+																<option value={source.id}
+																	>{getCalendarSourceLabel(
+																		source
+																	)}</option
+																>
+															{/each}
+														</select>
+													</FormField>
+												{/if}
+											</div>
+										{/if}
+									</div>
+								{/if}
 
 								<div
 									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
@@ -910,7 +1163,7 @@
 													No project events found for sync health.
 												</p>
 											{:else}
-												{#each syncHealthPayload.events as event}
+												{#each syncHealthPayload.events as event (event.event_id)}
 													<div
 														class="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
 													>
@@ -927,7 +1180,7 @@
 																	No sync targets recorded yet
 																</p>
 															{:else}
-																{#each event.targets as target}
+																{#each event.targets as target (target.user_id ?? `${target.email ?? target.display_name}:${target.retry_action}`)}
 																	{@const statusBadge =
 																		getSyncTargetBadge(target)}
 																	<div
@@ -1058,7 +1311,7 @@
 												</span>
 											</div>
 											<div class="max-h-44 overflow-y-auto space-y-1.5 pr-1">
-												{#each collaborationSummary.members as member}
+												{#each collaborationSummary.members as member (member.actor_id)}
 													{@const badge = getMemberSyncBadge(member)}
 													<div
 														class="flex items-start justify-between gap-2 rounded-md border border-border/80 bg-background/70 px-2.5 py-2"
@@ -1090,7 +1343,7 @@
 														</span>
 													</div>
 												{/each}
-												{#each collaborationSummary.pending_invites as invite}
+												{#each collaborationSummary.pending_invites as invite (invite.invitee_email)}
 													<div
 														class="flex items-start justify-between gap-2 rounded-md border border-dashed border-warning/40 bg-warning/5 px-2.5 py-2"
 													>
@@ -1173,7 +1426,7 @@
 									<div
 										class="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-12"
 									>
-										{#each Object.entries(GOOGLE_CALENDAR_COLORS) as [colorId, colorInfo]}
+										{#each Object.entries(GOOGLE_CALENDAR_COLORS) as [colorId, colorInfo] (colorId)}
 											<button
 												type="button"
 												onclick={() => selectColor(colorId)}
@@ -1277,8 +1530,14 @@
 							{:else}
 								<Trash2 class="mr-1.5 h-3.5 w-3.5" />
 							{/if}
-							<span class="hidden sm:inline">Delete Calendar</span>
-							<span class="sm:hidden">Delete</span>
+							<span class="hidden sm:inline"
+								>{providerResourceManaged
+									? 'Delete Calendar'
+									: 'Unlink Calendar'}</span
+							>
+							<span class="sm:hidden"
+								>{providerResourceManaged ? 'Delete' : 'Unlink'}</span
+							>
 						</Button>
 					{:else}
 						<div></div>
@@ -1297,7 +1556,7 @@
 						<Button
 							onclick={handleSubmit}
 							variant="primary"
-							disabled={saving || !formData.calendarName}
+							disabled={saving || !formData.calendarName || !calendarTargetReady}
 							size="sm"
 							class="shadow-ink pressable"
 						>

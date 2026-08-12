@@ -55,6 +55,7 @@
 		"gen:web": "pnpm run gen:blog-context && pnpm run gen:sitemap && pnpm run gen:sctx",
 		"gen:api-docs": "node --import tsx scripts/generate-api-docs.ts",
 		"cleanup:archived-doc-structure": "node --import tsx scripts/cleanup-archived-doc-structure.ts",
+		"calendar:migrate-connections": "vite-node --config scripts/vite-node.config.ts --mode production scripts/migrate-legacy-calendar-connections.ts",
 		"gen:route-docs": "node --import tsx scripts/generate-route-docs.ts",
 		"docs:api": "pnpm run gen:api-docs && pnpm run gen:route-docs",
 		"docs:serve": "vite preview --open /docs/api",

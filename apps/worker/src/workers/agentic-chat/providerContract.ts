@@ -82,9 +82,10 @@ export type AgenticChatProviderInputV1 = {
 export const AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION = 'agentic_chat_worker_prompt_v1' as const;
 
 /**
- * Exact provider-facing prompt captured during preparation, before the start
- * fence permits network I/O. The snapshot owns no delivery or event identity;
- * the fenced persistence adapter derives that from the turn.
+ * Exact durable text/tool prompt captured during preparation, before the start
+ * fence permits network I/O. Ephemeral signed media URLs are resolved only
+ * after that fence and never enter this snapshot; their immutable identities
+ * and validation outcomes use the private execution-observation ledger.
  */
 export type AgenticChatPreparedPromptSnapshotV1 = {
 	snapshotVersion: typeof AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION;

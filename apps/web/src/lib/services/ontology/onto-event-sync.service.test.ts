@@ -459,3 +459,161 @@ describe('OntoEventSyncService project sync job version guards', () => {
 		});
 	});
 });
+
+describe('OntoEventSyncService source-qualified routing', () => {
+	function sourceWriter() {
+		return {
+			createStandaloneEvent: vi.fn().mockResolvedValue({
+				calendarSourceId: 'source-1',
+				connectionId: 'connection-1',
+				providerCalendarId: 'project@example.com',
+				providerEventId: 'google-event-1',
+				ontoEventSyncId: 'sync-1',
+				event: { id: 'google-event-1', htmlLink: 'https://calendar.google.com/event/1' }
+			}),
+			updateEvent: vi.fn().mockResolvedValue(undefined),
+			deleteEvent: vi.fn().mockResolvedValue({ deleted: true })
+		};
+	}
+
+	it('creates project events through the stored project source without checking legacy OAuth', async () => {
+		const event = {
+			id: 'event-1',
+			project_id: 'project-1',
+			title: 'Planning',
+			start_at: '2026-08-12T14:00:00.000Z',
+			end_at: '2026-08-12T14:30:00.000Z',
+			timezone: 'America/New_York',
+			props: {},
+			updated_at: '2026-08-12T12:00:00.000Z'
+		};
+		const query: any = {
+			update: vi.fn(() => query),
+			eq: vi.fn(() => query),
+			select: vi.fn(() => query),
+			single: vi.fn().mockResolvedValue({ data: event, error: null })
+		};
+		const writer = sourceWriter();
+		const service = new OntoEventSyncService({ from: vi.fn(() => query) } as any, {
+			calendarWriter: writer as any,
+			sourceRoutingEnabled: () => true
+		});
+		vi.spyOn(service as any, 'resolveProjectCalendar').mockResolvedValue({
+			id: 'project-calendar-1',
+			calendar_id: 'project@example.com',
+			calendar_source_id: 'source-1',
+			color_id: '7',
+			sync_enabled: true
+		});
+		vi.spyOn(service as any, 'buildCalendarEventDescription').mockResolvedValue('notes');
+		const legacyStatus = vi.spyOn((service as any).googleOAuthService, 'safeGetCalendarStatus');
+
+		const result = await (service as any).syncEventToCalendar('user-1', event, {
+			scope: 'project',
+			calendarId: null,
+			calendarSourceId: null,
+			createProjectCalendarIfMissing: false
+		});
+
+		expect(result.sync).toMatchObject({
+			success: true,
+			externalEventId: 'google-event-1',
+			calendarId: 'project-calendar-1'
+		});
+		expect(writer.createStandaloneEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userId: 'user-1',
+				selector: { projectId: 'project-1' },
+				ontoEventId: 'event-1'
+			})
+		);
+		expect(legacyStatus).not.toHaveBeenCalled();
+	});
+
+	it('updates an existing event through its ontology source mapping', async () => {
+		const writer = sourceWriter();
+		const service = new OntoEventSyncService({} as any, {
+			calendarWriter: writer as any,
+			sourceRoutingEnabled: () => true
+		});
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
+			id: 'event-2',
+			project_id: 'project-1',
+			title: 'Updated planning',
+			start_at: '2026-08-12T15:00:00.000Z',
+			end_at: '2026-08-12T15:30:00.000Z',
+			updated_at: '2026-08-12T13:00:00.000Z',
+			created_at: '2026-08-12T12:00:00.000Z',
+			deleted_at: null,
+			props: {},
+			onto_event_sync: []
+		});
+		vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue({
+			externalEventId: 'google-event-2',
+			calendarId: 'project@example.com',
+			calendarSourceId: 'source-1',
+			syncRowId: 'sync-2'
+		});
+		vi.spyOn(service as any, 'buildCalendarEventDescription').mockResolvedValue('notes');
+		vi.spyOn(service as any, 'markEventSynced').mockResolvedValue(undefined);
+		const legacyUpdate = vi.spyOn((service as any).calendarService, 'updateCalendarEvent');
+
+		await expect(
+			service.processProjectEventSyncJob({
+				action: 'upsert',
+				eventId: 'event-2',
+				projectId: 'project-1',
+				targetUserId: 'user-1'
+			})
+		).resolves.toEqual({ outcome: 'synced', reason: 'updated_external_event' });
+		expect(writer.updateEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userId: 'user-1',
+				providerEventId: 'google-event-2',
+				selector: { ontoEventId: 'event-2' }
+			})
+		);
+		expect(legacyUpdate).not.toHaveBeenCalled();
+	});
+
+	it('deletes an existing event through its ontology source mapping', async () => {
+		const writer = sourceWriter();
+		const service = new OntoEventSyncService({} as any, {
+			calendarWriter: writer as any,
+			sourceRoutingEnabled: () => true
+		});
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
+			id: 'event-3',
+			project_id: 'project-1',
+			updated_at: '2026-08-12T13:00:00.000Z',
+			created_at: '2026-08-12T12:00:00.000Z',
+			deleted_at: '2026-08-12T13:00:00.000Z',
+			props: {},
+			onto_event_sync: []
+		});
+		vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue({
+			externalEventId: 'google-event-3',
+			calendarId: 'project@example.com',
+			calendarSourceId: 'source-1',
+			syncRowId: 'sync-3'
+		});
+		vi.spyOn(service as any, 'markEventSynced').mockResolvedValue(undefined);
+		const legacyDelete = vi.spyOn((service as any).calendarService, 'deleteCalendarEvent');
+
+		await expect(
+			service.processProjectEventSyncJob({
+				action: 'delete',
+				eventId: 'event-3',
+				projectId: 'project-1',
+				targetUserId: 'user-1'
+			})
+		).resolves.toEqual({ outcome: 'deleted', reason: 'deleted_external_event' });
+		expect(writer.deleteEvent).toHaveBeenCalledWith({
+			userId: 'user-1',
+			providerEventId: 'google-event-3',
+			selector: { ontoEventId: 'event-3' },
+			sendUpdates: 'none'
+		});
+		expect(legacyDelete).not.toHaveBeenCalled();
+	});
+});

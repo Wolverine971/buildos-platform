@@ -22,6 +22,7 @@ export type AgenticChatPhase3ProviderConfig = {
 
 type AgenticChatPhase3BaseConfig = {
 	internalUserIds: readonly string[];
+	liveVisionEnabled: boolean;
 	consumer: AgenticChatConsumerConfig;
 	providerBudgetMs: number;
 	maxProviderRounds: number;
@@ -48,7 +49,16 @@ export type AgenticChatPhase3Config =
 export function loadAgenticChatPhase3Config(
 	environment: NodeJS.ProcessEnv = process.env
 ): AgenticChatPhase3Config {
-	const enabled = parseBoolean(environment.AGENTIC_CHAT_WORKER_ENABLED, false);
+	const enabled = parseBoolean(
+		environment.AGENTIC_CHAT_WORKER_ENABLED,
+		false,
+		'AGENTIC_CHAT_WORKER_ENABLED'
+	);
+	const liveVisionEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED,
+		false,
+		'AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED'
+	);
 	const internalUserIds = parseInternalUserIds(environment.AGENTIC_CHAT_INTERNAL_USER_IDS);
 	if (enabled && internalUserIds.length === 0) {
 		throw new Error(
@@ -107,6 +117,7 @@ export function loadAgenticChatPhase3Config(
 		return {
 			enabled: false,
 			internalUserIds,
+			liveVisionEnabled,
 			consumer,
 			providerBudgetMs,
 			maxProviderRounds,
@@ -119,6 +130,7 @@ export function loadAgenticChatPhase3Config(
 	return {
 		enabled: true,
 		internalUserIds,
+		liveVisionEnabled,
 		consumer,
 		providerBudgetMs,
 		maxProviderRounds,
@@ -134,11 +146,11 @@ export function isAgenticChatInternalUser(
 	return config.internalUserIds.includes(userId.toLowerCase());
 }
 
-function parseBoolean(value: string | undefined, fallback: boolean): boolean {
+function parseBoolean(value: string | undefined, fallback: boolean, name: string): boolean {
 	if (value === undefined || value.trim() === '') return fallback;
 	if (value === 'true') return true;
 	if (value === 'false') return false;
-	throw new Error('AGENTIC_CHAT_WORKER_ENABLED must be exactly true or false');
+	throw new Error(`${name} must be exactly true or false`);
 }
 
 function parsePositiveInteger(value: string | undefined, fallback: number, name: string): number {

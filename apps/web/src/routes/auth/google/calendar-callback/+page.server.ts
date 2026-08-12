@@ -1,14 +1,28 @@
 // apps/web/src/routes/auth/google/calendar-callback/+page.server.ts
 import type { PageServerLoad } from './$types';
-import { redirect } from '@sveltejs/kit';
+import { env as privateEnv } from '$env/dynamic/private';
+import { isRedirect, redirect } from '@sveltejs/kit';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
 import { logServerError } from '$lib/server/error-tracking';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import {
+	GoogleCalendarConnectionError,
+	GoogleCalendarConnectionService
+} from '$lib/server/google-calendar-connection.service';
+import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 import {
 	getSecurityEventLogOptions,
 	getSecurityRequestContext,
 	logSecurityEvent
 } from '$lib/server/security-event-logger';
+
+// Token exchange, identity verification, and calendar discovery can exceed Vercel's 10-second
+// default for accounts with many calendars. The OAuth state remains single-use, so timing out
+// after the credential commit would leave the user on an error page despite a valid connection.
+export const config = {
+	maxDuration: 60
+};
 
 export const load: PageServerLoad = async ({
 	url,
@@ -65,6 +79,146 @@ export const load: PageServerLoad = async ({
 		method: 'GET',
 		userId: user.id
 	} as const;
+
+	// New multi-account requests use opaque, hashed, single-use state. Legacy Calendar state embeds
+	// the user ID, so a valid legacy callback remains on the compatibility path below even for a
+	// canary user until the old connect surface has been replaced.
+	if (isMultiCalendarUserAllowed(user.id, privateEnv) && !stateMatchesUser) {
+		const admin = createAdminSupabaseClient();
+		const connectionService = new GoogleCalendarConnectionService(admin);
+		let authorizationState;
+		try {
+			authorizationState = await connectionService.consumeAuthorizationState(
+				stateParam,
+				user.id
+			);
+		} catch {
+			throw redirect(
+				303,
+				buildCalendarRedirect(DEFAULT_REDIRECT_PATH, { error: 'invalid_state' })
+			);
+		}
+
+		const multiAccountRedirectPath = normalizeRedirectPath(authorizationState.redirect_path);
+		if (error) {
+			const safeProviderError = error === 'access_denied' ? 'access_denied' : 'oauth_error';
+			await logSecurityEvent(
+				{
+					eventType: 'integration.calendar.oauth_failed',
+					category: 'integration',
+					outcome: 'failure',
+					severity: 'low',
+					actorType: 'user',
+					actorUserId: user.id,
+					reason: safeProviderError,
+					...requestContext,
+					metadata: {
+						provider: 'google_calendar',
+						reconnect: Boolean(authorizationState.connection_id)
+					}
+				},
+				securityEventOptions
+			);
+			throw redirect(
+				303,
+				buildCalendarRedirect(multiAccountRedirectPath, {
+					error: safeProviderError
+				})
+			);
+		}
+
+		if (!code) {
+			throw redirect(
+				303,
+				buildCalendarRedirect(multiAccountRedirectPath, {
+					error: 'no_authorization_code'
+				})
+			);
+		}
+
+		try {
+			const connection = await connectionService.exchangeAuthorizationCode({
+				userId: user.id,
+				code,
+				redirectUri: `${url.origin}/auth/google/calendar-callback`,
+				state: authorizationState
+			});
+			const webhookService = new CalendarWebhookService(admin);
+			const webhookUrl = `${url.origin}/webhooks/calendar-events`;
+			const webhookResults = await Promise.all(
+				connection.sources
+					.filter((source) => source.syncEnabled)
+					.map((source) =>
+						webhookService.registerWebhook(
+							user.id,
+							webhookUrl,
+							source.providerCalendarId,
+							source.id
+						)
+					)
+			);
+			const webhookFailures = webhookResults.filter((result) => !result.success).length;
+			await logSecurityEvent(
+				{
+					eventType: 'integration.calendar.connected',
+					category: 'integration',
+					outcome: 'success',
+					severity: 'info',
+					actorType: 'user',
+					actorUserId: user.id,
+					...requestContext,
+					metadata: {
+						provider: 'google_calendar',
+						connectionId: connection.id,
+						reconnect: Boolean(authorizationState.connection_id),
+						webhookAttempted: webhookResults.length,
+						webhookFailures
+					}
+				},
+				securityEventOptions
+			);
+			throw redirect(
+				303,
+				buildCalendarRedirect(multiAccountRedirectPath, {
+					success: 'calendar_connected',
+					connection: connection.id
+				})
+			);
+		} catch (connectionError) {
+			if (isRedirect(connectionError)) throw connectionError;
+			const safeCode =
+				connectionError instanceof GoogleCalendarConnectionError &&
+				[
+					'identity_verification_failed',
+					'scope_mismatch',
+					'refresh_token_required',
+					'account_mismatch',
+					'account_already_connected',
+					'connection_limit_exceeded',
+					'not_configured'
+				].includes(connectionError.code)
+					? connectionError.code
+					: 'connection_failed';
+			await logSecurityEvent(
+				{
+					eventType: 'integration.calendar.connect_failed',
+					category: 'integration',
+					outcome: 'blocked',
+					severity: 'low',
+					actorType: 'user',
+					actorUserId: user.id,
+					reason: safeCode,
+					...requestContext,
+					metadata: { provider: 'google_calendar' }
+				},
+				securityEventOptions
+			);
+			throw redirect(
+				303,
+				buildCalendarRedirect(multiAccountRedirectPath, { error: safeCode })
+			);
+		}
+	}
 
 	console.log('Calendar OAuth callback received:', {
 		hasCode: !!code,
@@ -247,7 +401,7 @@ export const load: PageServerLoad = async ({
 
 	// Register webhook for two-way sync
 	try {
-		const webhookService = new CalendarWebhookService(supabase);
+		const webhookService = new CalendarWebhookService(createAdminSupabaseClient());
 		const webhookUrl = `${url.origin}/webhooks/calendar-events`;
 
 		const webhookResult = await webhookService.registerWebhook(user.id, webhookUrl, 'primary');

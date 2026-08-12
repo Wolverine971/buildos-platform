@@ -1,9 +1,13 @@
 // apps/web/src/routes/profile/calendar/+server.ts
+import { env as privateEnv } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
+import { GoogleCalendarConnectionService } from '$lib/server/google-calendar-connection.service';
+import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logRouteError, routeErrorResponse } from '$lib/server/route-error';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 // Removed - now using GoogleOAuthService.generateCalendarAuthUrl()
 
@@ -33,8 +37,26 @@ export const GET: RequestHandler = async (event) => {
 	try {
 		// Create OAuth service instance
 		const oAuthService = new GoogleOAuthService(supabase);
-
-		const calendarStatusPromise = oAuthService.safeGetCalendarStatus(user.id);
+		const multiCalendarEnabled = isMultiCalendarUserAllowed(user.id, privateEnv);
+		const multiCalendar = multiCalendarEnabled
+			? await new GoogleCalendarConnectionService(
+					createAdminSupabaseClient()
+				).listConnections(user.id)
+			: null;
+		const activeConnections =
+			multiCalendar?.connections.filter((connection) => connection.status === 'active') ?? [];
+		const calendarStatusPromise = multiCalendarEnabled
+			? Promise.resolve({
+					isConnected: activeConnections.length > 0,
+					google_email: activeConnections[0]?.emailAddress ?? null,
+					lastSync:
+						activeConnections
+							.map((connection) => connection.lastUsedAt ?? connection.lastVerifiedAt)
+							.filter((value): value is string => Boolean(value))
+							.sort()
+							.at(-1) ?? null
+				})
+			: oAuthService.safeGetCalendarStatus(user.id);
 
 		// Load calendar data in parallel
 		const [calendarStatus, calendarPreferences, scheduledTasks] = await Promise.all([
@@ -199,13 +221,16 @@ export const GET: RequestHandler = async (event) => {
 		// Generate calendar auth URL, preserving optional redirect path
 		const calendarRedirectUri = `${url.origin}/auth/google/calendar-callback`;
 		const redirectPath = getSafeRedirectPath(url.searchParams.get('redirect'), url.origin);
-		const calendarAuthUrl = oAuthService.generateCalendarAuthUrl(calendarRedirectUri, user.id, {
-			redirectPath
-		});
+		const calendarAuthUrl = multiCalendarEnabled
+			? null
+			: oAuthService.generateCalendarAuthUrl(calendarRedirectUri, user.id, {
+					redirectPath
+				});
 
 		return ApiResponse.success({
 			calendarStatus,
 			calendarAuthUrl,
+			multiCalendar,
 			calendarPreferences,
 			scheduledTasks
 		});

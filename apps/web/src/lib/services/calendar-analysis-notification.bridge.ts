@@ -118,13 +118,21 @@ async function executeAnalysis(
 		const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
 		const eventsAnalyzed = typeof data.eventsAnalyzed === 'number' ? data.eventsAnalyzed : null;
 		const analysisId = typeof data.analysisId === 'string' ? data.analysisId : null;
+		const partial = data.partial === true;
+		const warnings = Array.isArray(data.warnings) ? data.warnings : [];
+		const calendarSourceIds = Array.isArray(data.calendarSourceIds)
+			? data.calendarSourceIds.filter(
+					(sourceId: unknown): sourceId is string => typeof sourceId === 'string'
+				)
+			: [];
 
 		notificationStore.update(controller.notificationId, {
-			status: 'success',
+			status: partial ? 'warning' : 'success',
 			progress: {
 				type: 'indeterminate',
-				message:
-					suggestions.length > 0
+				message: partial
+					? 'Analysis complete with partial calendar coverage'
+					: suggestions.length > 0
 						? `Found ${suggestions.length} suggestion${suggestions.length === 1 ? '' : 's'}`
 						: 'Analysis complete'
 			},
@@ -133,7 +141,10 @@ async function executeAnalysis(
 				daysForward: controller.daysForward,
 				analysisId: analysisId ?? undefined,
 				eventCount: eventsAnalyzed ?? undefined,
-				suggestions
+				suggestions,
+				partial,
+				warnings,
+				calendarSourceIds
 			}
 		});
 
@@ -147,7 +158,8 @@ async function executeAnalysis(
 						suggestions.length === 1 ? '' : 's'
 					}`
 				: 'Calendar analysis finished without suggestions';
-		toastService.success(successMessage);
+		if (partial) toastService.warning(`${successMessage}; some calendars were unavailable`);
+		else toastService.success(successMessage);
 		if (suggestions.length > 0) void loadAiInboxCount({ force: true });
 	} catch (error) {
 		if (error instanceof DOMException && error.name === 'AbortError') {

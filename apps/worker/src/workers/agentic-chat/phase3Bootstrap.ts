@@ -253,6 +253,8 @@ function createDefaultAssembly(
 		client: input.client,
 		providerClient,
 		providerConfigured: true,
+		liveVisionEnabled: input.config.liveVisionEnabled,
+		liveVisionFetchImpl: input.fetchImpl,
 		internalUserIds: input.config.internalUserIds,
 		consumerConfig: input.config.consumer,
 		providerBudgetMs: input.config.providerBudgetMs,

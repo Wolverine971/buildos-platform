@@ -62,6 +62,38 @@ describe('legacy notification modal accessibility', () => {
 		await waitFor(() => expect(dialog).toContainElement(document.activeElement as HTMLElement));
 	});
 
+	it('announces partial Calendar analysis coverage in the completed results dialog', async () => {
+		const notification: CalendarAnalysisNotification = {
+			...baseNotification(),
+			type: 'calendar-analysis',
+			status: 'warning',
+			data: {
+				daysBack: 7,
+				daysForward: 14,
+				partial: true,
+				suggestions: [],
+				warnings: [
+					{
+						code: 'CALENDAR_SOURCE_READ_FAILED',
+						message: 'Calendar unavailable',
+						calendarSourceId: 'source-a',
+						connectionId: 'connection-a'
+					}
+				]
+			},
+			progress: { type: 'indeterminate', message: 'Analysis complete with partial coverage' },
+			actions: {}
+		};
+
+		render(CalendarAnalysisModalContent, { props: { notification } });
+
+		const dialog = screen.getByRole('dialog', { name: 'Calendar analysis results' });
+		await waitFor(() => expect(dialog).toContainElement(document.activeElement as HTMLElement));
+		expect(screen.getByRole('status')).toHaveTextContent(
+			'Analysis completed with partial coverage. One calendar was unavailable.'
+		);
+	});
+
 	it('names the time-block dialog without referencing a suppressed default title', async () => {
 		const notification: TimeBlockNotification = {
 			...baseNotification(),

@@ -548,7 +548,7 @@ function resolveOntologyEventKind(row: OntoCalendarEventRow): CalendarBriefItemK
 
 type CalendarBriefSyncSourceRow = Pick<
 	OntoEventSyncRow,
-	| 'calendar_id'
+	| 'external_calendar_id'
 	| 'user_id'
 	| 'provider'
 	| 'external_event_id'
@@ -591,7 +591,8 @@ export function resolveCalendarBriefSource(params: {
 	const selectedSync = currentUserSync ?? legacySync ?? otherUserSync ?? null;
 
 	const googleEventId = selectedSync?.external_event_id ?? params.propExternalEventId ?? null;
-	const googleCalendarId = selectedSync?.calendar_id ?? params.propExternalCalendarId ?? null;
+	const googleCalendarId =
+		selectedSync?.external_calendar_id ?? params.propExternalCalendarId ?? null;
 	const selectedFailure = selectedSync
 		? hasCalendarSyncFailure(selectedSync.sync_status, selectedSync.sync_error)
 		: false;
@@ -2197,7 +2198,7 @@ export class OntologyBriefDataLoader {
 			onto_event_sync (
 				id,
 				event_id,
-				calendar_id,
+				external_calendar_id,
 				user_id,
 				provider,
 				external_event_id,

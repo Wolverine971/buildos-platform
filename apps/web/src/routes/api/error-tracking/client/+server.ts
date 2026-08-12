@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { getRequestIdFromHeaders, logServerError } from '$lib/server/error-tracking';
 import { shouldPersistGenericErrorEvent } from '$lib/utils/error-observability';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
+import { isSecondaryRouteLoadError } from '$lib/utils/client-route-recovery';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
 
 type ClientErrorPayload = {
@@ -89,6 +90,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const status = normalizeStatus(payload.status);
 	const statusText = typeof payload.statusText === 'string' ? payload.statusText : undefined;
 	const url = typeof payload.url === 'string' ? payload.url : undefined;
+	const clientError = buildClientError(payload, kind);
+
+	// Older clients canceled Vite's preload event, causing SvelteKit to emit this
+	// secondary exception after the original import failure was already reported.
+	if (kind === 'runtime' && isSecondaryRouteLoadError(clientError)) {
+		return new Response(null, { status: 204 });
+	}
+
 	const { user } = await locals.safeGetSession();
 	const operation =
 		kind === 'fetch_network'
@@ -108,7 +117,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	await logServerError({
-		error: buildClientError(payload, kind),
+		error: clientError,
 		endpoint,
 		method,
 		operation,

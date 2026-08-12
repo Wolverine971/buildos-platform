@@ -2167,10 +2167,70 @@ export type Database = {
           },
         ]
       }
+      calendar_access_audit_events: {
+        Row: {
+          calendar_source_id: string | null
+          connection_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          operation: string
+          outcome: string
+          reason_code: string | null
+          user_id: string
+        }
+        Insert: {
+          calendar_source_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          operation: string
+          outcome: string
+          reason_code?: string | null
+          user_id: string
+        }
+        Update: {
+          calendar_source_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          operation?: string
+          outcome?: string
+          reason_code?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_access_audit_events_calendar_source_id_fkey"
+            columns: ["calendar_source_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_access_audit_events_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_access_audit_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_analyses: {
         Row: {
           ai_model: string | null
           ai_model_version: string | null
+          analysis_warnings: Json
+          calendar_source_ids: string[]
           calendars_analyzed: string[] | null
           completed_at: string | null
           confidence_average: number | null
@@ -2181,9 +2241,11 @@ export type Database = {
           events_analyzed: number | null
           events_excluded: number | null
           id: string
+          partial_result: boolean
           processing_time_ms: number | null
           projects_created: number | null
           projects_suggested: number | null
+          source_statuses: Json
           started_at: string | null
           status: string | null
           tasks_created: number | null
@@ -2196,6 +2258,8 @@ export type Database = {
         Insert: {
           ai_model?: string | null
           ai_model_version?: string | null
+          analysis_warnings?: Json
+          calendar_source_ids?: string[]
           calendars_analyzed?: string[] | null
           completed_at?: string | null
           confidence_average?: number | null
@@ -2206,9 +2270,11 @@ export type Database = {
           events_analyzed?: number | null
           events_excluded?: number | null
           id?: string
+          partial_result?: boolean
           processing_time_ms?: number | null
           projects_created?: number | null
           projects_suggested?: number | null
+          source_statuses?: Json
           started_at?: string | null
           status?: string | null
           tasks_created?: number | null
@@ -2221,6 +2287,8 @@ export type Database = {
         Update: {
           ai_model?: string | null
           ai_model_version?: string | null
+          analysis_warnings?: Json
+          calendar_source_ids?: string[]
           calendars_analyzed?: string[] | null
           completed_at?: string | null
           confidence_average?: number | null
@@ -2231,9 +2299,11 @@ export type Database = {
           events_analyzed?: number | null
           events_excluded?: number | null
           id?: string
+          partial_result?: boolean
           processing_time_ms?: number | null
           projects_created?: number | null
           projects_suggested?: number | null
+          source_statuses?: Json
           started_at?: string | null
           status?: string | null
           tasks_created?: number | null
@@ -2260,6 +2330,8 @@ export type Database = {
           attendee_emails: string[] | null
           calendar_event_id: string
           calendar_id: string
+          calendar_source_id: string | null
+          contributing_source_event_ids: Json
           created_at: string | null
           event_description: string | null
           event_end: string | null
@@ -2280,6 +2352,8 @@ export type Database = {
           attendee_emails?: string[] | null
           calendar_event_id: string
           calendar_id: string
+          calendar_source_id?: string | null
+          contributing_source_event_ids?: Json
           created_at?: string | null
           event_description?: string | null
           event_end?: string | null
@@ -2300,6 +2374,8 @@ export type Database = {
           attendee_emails?: string[] | null
           calendar_event_id?: string
           calendar_id?: string
+          calendar_source_id?: string | null
+          contributing_source_event_ids?: Json
           created_at?: string | null
           event_description?: string | null
           event_end?: string | null
@@ -2320,6 +2396,13 @@ export type Database = {
             columns: ["analysis_id"]
             isOneToOne: false
             referencedRelation: "calendar_analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_analysis_events_calendar_source_id_fkey"
+            columns: ["calendar_source_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
             referencedColumns: ["id"]
           },
           {
@@ -2399,12 +2482,195 @@ export type Database = {
           },
         ]
       }
+      calendar_connection_credentials: {
+        Row: {
+          access_token_ciphertext: string
+          access_token_expires_at: string | null
+          connection_id: string
+          created_at: string
+          granted_scopes: string[]
+          id: string
+          key_version: number
+          last_refreshed_at: string | null
+          oauth_client_kind: string
+          refresh_token_ciphertext: string
+          refresh_token_expires_at: string | null
+          revoked_at: string | null
+          token_type: string
+          updated_at: string
+        }
+        Insert: {
+          access_token_ciphertext: string
+          access_token_expires_at?: string | null
+          connection_id: string
+          created_at?: string
+          granted_scopes?: string[]
+          id?: string
+          key_version?: number
+          last_refreshed_at?: string | null
+          oauth_client_kind?: string
+          refresh_token_ciphertext: string
+          refresh_token_expires_at?: string | null
+          revoked_at?: string | null
+          token_type?: string
+          updated_at?: string
+        }
+        Update: {
+          access_token_ciphertext?: string
+          access_token_expires_at?: string | null
+          connection_id?: string
+          created_at?: string
+          granted_scopes?: string[]
+          id?: string
+          key_version?: number
+          last_refreshed_at?: string | null
+          oauth_client_kind?: string
+          refresh_token_ciphertext?: string
+          refresh_token_expires_at?: string | null
+          revoked_at?: string | null
+          token_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_connection_credentials_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: true
+            referencedRelation: "user_calendar_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_event_orphan_receipts: {
+        Row: {
+          attempt_count: number
+          calendar_source_id: string
+          created_at: string
+          entity_id: string
+          entity_kind: string
+          id: string
+          last_attempted_at: string | null
+          operation: string
+          provider_event_id: string
+          reason_code: string
+          resolved_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          calendar_source_id: string
+          created_at?: string
+          entity_id: string
+          entity_kind: string
+          id?: string
+          last_attempted_at?: string | null
+          operation?: string
+          provider_event_id: string
+          reason_code: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempt_count?: number
+          calendar_source_id?: string
+          created_at?: string
+          entity_id?: string
+          entity_kind?: string
+          id?: string
+          last_attempted_at?: string | null
+          operation?: string
+          provider_event_id?: string
+          reason_code?: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_event_orphan_receipts_source_owner_fkey"
+            columns: ["calendar_source_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "calendar_event_orphan_receipts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_oauth_states: {
+        Row: {
+          code_verifier: string
+          connection_id: string | null
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          nonce: string
+          oauth_client_kind: string
+          redirect_path: string
+          state_hash: string
+          user_id: string
+        }
+        Insert: {
+          code_verifier: string
+          connection_id?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          nonce: string
+          oauth_client_kind?: string
+          redirect_path?: string
+          state_hash: string
+          user_id: string
+        }
+        Update: {
+          code_verifier?: string
+          connection_id?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          nonce?: string
+          oauth_client_kind?: string
+          redirect_path?: string
+          state_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_oauth_states_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_oauth_states_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_project_suggestions: {
         Row: {
           ai_reasoning: string | null
           analysis_id: string
           calendar_event_ids: string[]
           calendar_ids: string[] | null
+          calendar_source_event_ids: Json
           confidence_score: number
           created_at: string | null
           created_project_id: string | null
@@ -2432,6 +2698,7 @@ export type Database = {
           analysis_id: string
           calendar_event_ids: string[]
           calendar_ids?: string[] | null
+          calendar_source_event_ids?: Json
           confidence_score: number
           created_at?: string | null
           created_project_id?: string | null
@@ -2459,6 +2726,7 @@ export type Database = {
           analysis_id?: string
           calendar_event_ids?: string[]
           calendar_ids?: string[] | null
+          calendar_source_event_ids?: Json
           confidence_score?: number
           created_at?: string | null
           created_project_id?: string | null
@@ -2508,6 +2776,7 @@ export type Database = {
       calendar_webhook_channels: {
         Row: {
           calendar_id: string | null
+          calendar_source_id: string | null
           channel_id: string
           created_at: string
           expiration: number
@@ -2520,6 +2789,7 @@ export type Database = {
         }
         Insert: {
           calendar_id?: string | null
+          calendar_source_id?: string | null
           channel_id: string
           created_at?: string
           expiration: number
@@ -2532,6 +2802,7 @@ export type Database = {
         }
         Update: {
           calendar_id?: string | null
+          calendar_source_id?: string | null
           channel_id?: string
           created_at?: string
           expiration?: number
@@ -2543,6 +2814,13 @@ export type Database = {
           webhook_token?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "calendar_webhook_channels_calendar_source_owner_fkey"
+            columns: ["calendar_source_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
+            referencedColumns: ["id", "user_id"]
+          },
           {
             foreignKeyName: "calendar_webhook_channels_user_id_fkey"
             columns: ["user_id"]
@@ -4304,6 +4582,7 @@ export type Database = {
           recurrence_pattern: string | null
           source: string | null
           source_calendar_event_id: string | null
+          source_calendar_source_id: string | null
           start_date: string | null
           status: string | null
           task_steps: Json | null
@@ -4331,6 +4610,7 @@ export type Database = {
           recurrence_pattern?: string | null
           source?: string | null
           source_calendar_event_id?: string | null
+          source_calendar_source_id?: string | null
           start_date?: string | null
           status?: string | null
           task_steps?: Json | null
@@ -4358,6 +4638,7 @@ export type Database = {
           recurrence_pattern?: string | null
           source?: string | null
           source_calendar_event_id?: string | null
+          source_calendar_source_id?: string | null
           start_date?: string | null
           status?: string | null
           task_steps?: Json | null
@@ -4394,6 +4675,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "draft_tasks"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_tasks_source_calendar_source_owner_fkey"
+            columns: ["source_calendar_source_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
+            referencedColumns: ["id", "user_id"]
           },
           {
             foreignKeyName: "draft_tasks_user_id_fkey"
@@ -8557,12 +8845,15 @@ export type Database = {
       }
       onto_event_sync: {
         Row: {
-          calendar_id: string
+          calendar_id: string | null
+          calendar_source_id: string | null
           created_at: string
           event_id: string
+          external_calendar_id: string | null
           external_event_id: string
           id: string
           last_synced_at: string | null
+          project_calendar_id: string | null
           provider: string
           sync_error: string | null
           sync_status: string
@@ -8571,12 +8862,15 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          calendar_id: string
+          calendar_id?: string | null
+          calendar_source_id?: string | null
           created_at?: string
           event_id: string
+          external_calendar_id?: string | null
           external_event_id: string
           id?: string
           last_synced_at?: string | null
+          project_calendar_id?: string | null
           provider?: string
           sync_error?: string | null
           sync_status?: string
@@ -8585,12 +8879,15 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
-          calendar_id?: string
+          calendar_id?: string | null
+          calendar_source_id?: string | null
           created_at?: string
           event_id?: string
+          external_calendar_id?: string | null
           external_event_id?: string
           id?: string
           last_synced_at?: string | null
+          project_calendar_id?: string | null
           provider?: string
           sync_error?: string | null
           sync_status?: string
@@ -8607,10 +8904,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "onto_event_sync_calendar_source_owner_fkey"
+            columns: ["calendar_source_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
             foreignKeyName: "onto_event_sync_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "onto_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_event_sync_project_calendar_id_fkey"
+            columns: ["project_calendar_id"]
+            isOneToOne: false
+            referencedRelation: "project_calendars"
             referencedColumns: ["id"]
           },
           {
@@ -11312,6 +11623,7 @@ export type Database = {
         Row: {
           calendar_id: string
           calendar_name: string
+          calendar_source_id: string | null
           color_id: string | null
           created_at: string | null
           hex_color: string | null
@@ -11319,6 +11631,7 @@ export type Database = {
           is_primary: boolean | null
           last_synced_at: string | null
           project_id: string
+          provider_resource_managed: boolean
           sync_enabled: boolean | null
           sync_error: string | null
           sync_status:
@@ -11331,6 +11644,7 @@ export type Database = {
         Insert: {
           calendar_id: string
           calendar_name: string
+          calendar_source_id?: string | null
           color_id?: string | null
           created_at?: string | null
           hex_color?: string | null
@@ -11338,6 +11652,7 @@ export type Database = {
           is_primary?: boolean | null
           last_synced_at?: string | null
           project_id: string
+          provider_resource_managed?: boolean
           sync_enabled?: boolean | null
           sync_error?: string | null
           sync_status?:
@@ -11350,6 +11665,7 @@ export type Database = {
         Update: {
           calendar_id?: string
           calendar_name?: string
+          calendar_source_id?: string | null
           color_id?: string | null
           created_at?: string | null
           hex_color?: string | null
@@ -11357,6 +11673,7 @@ export type Database = {
           is_primary?: boolean | null
           last_synced_at?: string | null
           project_id?: string
+          provider_resource_managed?: boolean
           sync_enabled?: boolean | null
           sync_error?: string | null
           sync_status?:
@@ -11367,6 +11684,13 @@ export type Database = {
           visibility?: Database["public"]["Enums"]["calendar_visibility"] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "project_calendars_calendar_source_owner_fkey"
+            columns: ["calendar_source_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
+            referencedColumns: ["id", "user_id"]
+          },
           {
             foreignKeyName: "project_calendars_project_id_fkey"
             columns: ["project_id"]
@@ -12788,6 +13112,7 @@ export type Database = {
       recurring_task_instances: {
         Row: {
           calendar_event_id: string | null
+          calendar_source_id: string | null
           completed_at: string | null
           created_at: string | null
           id: string
@@ -12801,6 +13126,7 @@ export type Database = {
         }
         Insert: {
           calendar_event_id?: string | null
+          calendar_source_id?: string | null
           completed_at?: string | null
           created_at?: string | null
           id?: string
@@ -12814,6 +13140,7 @@ export type Database = {
         }
         Update: {
           calendar_event_id?: string | null
+          calendar_source_id?: string | null
           completed_at?: string | null
           created_at?: string | null
           id?: string
@@ -12826,6 +13153,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "recurring_task_instances_calendar_source_owner_fkey"
+            columns: ["calendar_source_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
+            referencedColumns: ["id", "user_id"]
+          },
           {
             foreignKeyName: "recurring_task_instances_task_id_fkey"
             columns: ["task_id"]
@@ -13153,6 +13487,7 @@ export type Database = {
       scheduled_sms_messages: {
         Row: {
           calendar_event_id: string | null
+          calendar_source_id: string | null
           cancelled_at: string | null
           created_at: string | null
           event_details: Json | null
@@ -13179,6 +13514,7 @@ export type Database = {
         }
         Insert: {
           calendar_event_id?: string | null
+          calendar_source_id?: string | null
           cancelled_at?: string | null
           created_at?: string | null
           event_details?: Json | null
@@ -13205,6 +13541,7 @@ export type Database = {
         }
         Update: {
           calendar_event_id?: string | null
+          calendar_source_id?: string | null
           cancelled_at?: string | null
           created_at?: string | null
           event_details?: Json | null
@@ -13230,6 +13567,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "scheduled_sms_messages_calendar_source_owner_fkey"
+            columns: ["calendar_source_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
+            referencedColumns: ["id", "user_id"]
+          },
           {
             foreignKeyName: "scheduled_sms_messages_sms_message_id_fkey"
             columns: ["sms_message_id"]
@@ -13814,6 +14158,7 @@ export type Database = {
           attendees: Json | null
           calendar_event_id: string
           calendar_id: string
+          calendar_source_id: string | null
           created_at: string | null
           event_end: string | null
           event_link: string | null
@@ -13845,6 +14190,7 @@ export type Database = {
           attendees?: Json | null
           calendar_event_id: string
           calendar_id: string
+          calendar_source_id?: string | null
           created_at?: string | null
           event_end?: string | null
           event_link?: string | null
@@ -13876,6 +14222,7 @@ export type Database = {
           attendees?: Json | null
           calendar_event_id?: string
           calendar_id?: string
+          calendar_source_id?: string | null
           created_at?: string | null
           event_end?: string | null
           event_link?: string | null
@@ -13904,6 +14251,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "task_calendar_events_calendar_source_owner_fkey"
+            columns: ["calendar_source_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
+            referencedColumns: ["id", "user_id"]
+          },
           {
             foreignKeyName: "task_calendar_events_project_calendar_id_fkey"
             columns: ["project_calendar_id"]
@@ -13964,6 +14318,7 @@ export type Database = {
             | null
           source: string | null
           source_calendar_event_id: string | null
+          source_calendar_source_id: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["task_status"]
           task_steps: string | null
@@ -13994,6 +14349,7 @@ export type Database = {
             | null
           source?: string | null
           source_calendar_event_id?: string | null
+          source_calendar_source_id?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           task_steps?: string | null
@@ -14024,6 +14380,7 @@ export type Database = {
             | null
           source?: string | null
           source_calendar_event_id?: string | null
+          source_calendar_source_id?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           task_steps?: string | null
@@ -14055,6 +14412,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tasks_source_calendar_source_owner_fkey"
+            columns: ["source_calendar_source_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
             foreignKeyName: "tasks_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -14069,6 +14433,7 @@ export type Database = {
           block_type: string
           calendar_event_id: string | null
           calendar_event_link: string | null
+          calendar_source_id: string | null
           created_at: string
           duration_minutes: number
           end_time: string
@@ -14091,6 +14456,7 @@ export type Database = {
           block_type?: string
           calendar_event_id?: string | null
           calendar_event_link?: string | null
+          calendar_source_id?: string | null
           created_at?: string
           duration_minutes: number
           end_time: string
@@ -14113,6 +14479,7 @@ export type Database = {
           block_type?: string
           calendar_event_id?: string | null
           calendar_event_link?: string | null
+          calendar_source_id?: string | null
           created_at?: string
           duration_minutes?: number
           end_time?: string
@@ -14131,6 +14498,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "time_blocks_calendar_source_owner_fkey"
+            columns: ["calendar_source_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
+            referencedColumns: ["id", "user_id"]
+          },
           {
             foreignKeyName: "time_blocks_project_id_fkey"
             columns: ["project_id"]
@@ -14464,10 +14838,70 @@ export type Database = {
           },
         ]
       }
+      user_calendar_connections: {
+        Row: {
+          account_label: string
+          connected_at: string
+          created_at: string
+          deleted_at: string | null
+          display_name: string | null
+          email_address: string
+          id: string
+          last_used_at: string | null
+          last_verified_at: string | null
+          provider: string
+          provider_account_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_label: string
+          connected_at?: string
+          created_at?: string
+          deleted_at?: string | null
+          display_name?: string | null
+          email_address: string
+          id?: string
+          last_used_at?: string | null
+          last_verified_at?: string | null
+          provider?: string
+          provider_account_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_label?: string
+          connected_at?: string
+          created_at?: string
+          deleted_at?: string | null
+          display_name?: string | null
+          email_address?: string
+          id?: string
+          last_used_at?: string | null
+          last_verified_at?: string | null
+          provider?: string
+          provider_account_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_calendar_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_calendar_preferences: {
         Row: {
           created_at: string
           default_task_duration_minutes: number | null
+          default_write_calendar_source_id: string | null
           exclude_holidays: boolean | null
           holiday_country_code: string | null
           id: string
@@ -14487,6 +14921,7 @@ export type Database = {
         Insert: {
           created_at?: string
           default_task_duration_minutes?: number | null
+          default_write_calendar_source_id?: string | null
           exclude_holidays?: boolean | null
           holiday_country_code?: string | null
           id?: string
@@ -14506,6 +14941,7 @@ export type Database = {
         Update: {
           created_at?: string
           default_task_duration_minutes?: number | null
+          default_write_calendar_source_id?: string | null
           exclude_holidays?: boolean | null
           holiday_country_code?: string | null
           id?: string
@@ -14524,9 +14960,115 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "user_calendar_preferences_default_write_calendar_source_id_fkey"
+            columns: ["default_write_calendar_source_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_sources"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "user_calendar_preferences_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_calendar_sources: {
+        Row: {
+          access_role: string
+          analysis_enabled: boolean
+          availability_enabled: boolean
+          background_color: string | null
+          color_id: string | null
+          connection_id: string
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          foreground_color: string | null
+          id: string
+          is_hidden: boolean
+          is_primary: boolean
+          is_selected_in_google: boolean
+          last_discovered_at: string
+          last_seen_at: string
+          provider_calendar_id: string
+          provider_deleted_at: string | null
+          read_enabled: boolean
+          summary: string
+          summary_override: string | null
+          sync_enabled: boolean
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_role: string
+          analysis_enabled?: boolean
+          availability_enabled?: boolean
+          background_color?: string | null
+          color_id?: string | null
+          connection_id: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          foreground_color?: string | null
+          id?: string
+          is_hidden?: boolean
+          is_primary?: boolean
+          is_selected_in_google?: boolean
+          last_discovered_at?: string
+          last_seen_at?: string
+          provider_calendar_id: string
+          provider_deleted_at?: string | null
+          read_enabled?: boolean
+          summary: string
+          summary_override?: string | null
+          sync_enabled?: boolean
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_role?: string
+          analysis_enabled?: boolean
+          availability_enabled?: boolean
+          background_color?: string | null
+          color_id?: string | null
+          connection_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          foreground_color?: string | null
+          id?: string
+          is_hidden?: boolean
+          is_primary?: boolean
+          is_selected_in_google?: boolean
+          last_discovered_at?: string
+          last_seen_at?: string
+          provider_calendar_id?: string
+          provider_deleted_at?: string | null
+          read_enabled?: boolean
+          summary?: string
+          summary_override?: string | null
+          sync_enabled?: boolean
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_calendar_sources_connection_owner_fkey"
+            columns: ["connection_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_calendar_connections"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "user_calendar_sources_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -16749,6 +17291,28 @@ export type Database = {
         }
         Returns: Json
       }
+      agentic_chat_frozen_attachment_v1_is_valid: {
+        Args: {
+          p_attachment: Json
+          p_require_resolution: boolean
+        }
+        Returns: Json
+      }
+      agentic_chat_frozen_attachments_v1_are_valid: {
+        Args: {
+          p_attachments: Json
+          p_require_resolution: boolean
+        }
+        Returns: Json
+      }
+      agentic_chat_normalize_frozen_attachment_v1: {
+        Args: {
+          p_attachment: Json
+          p_display_order: number
+          p_include_resolution: boolean
+        }
+        Returns: Json
+      }
       apply_graph_reorg_changes: {
         Args: {
           p_deletes: Json
@@ -17156,6 +17720,20 @@ export type Database = {
         Args: { p_job_id: string; p_processing_token?: string; p_result?: Json }
         Returns: boolean
       }
+      consume_calendar_oauth_state: {
+        Args: {
+          p_oauth_client_kind: string
+          p_state_hash: string
+          p_user_id: string
+        }
+        Returns: {
+          code_verifier: string
+          connection_id: string | null
+          nonce: string
+          redirect_path: string
+          state_id: string
+        }[]
+      }
       consume_email_oauth_state: {
         Args: {
           p_oauth_client_kind: string
@@ -17326,6 +17904,10 @@ export type Database = {
       }
       delete_onto_project: {
         Args: { p_project_id: string }
+        Returns: undefined
+      }
+      disable_calendar_connection: {
+        Args: { p_connection_id: string; p_user_id: string }
         Returns: undefined
       }
       email_relevance_discovery_batch_is_valid: {
@@ -18396,6 +18978,10 @@ export type Database = {
         }
         Returns: string
       }
+      mark_calendar_connection_reconnect_required: {
+        Args: { p_connection_id: string; p_user_id: string }
+        Returns: undefined
+      }
       mark_gmail_read_connection_reconnect_required: {
         Args: { p_connection_id: string; p_user_id: string }
         Returns: undefined
@@ -19087,6 +19673,27 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      rotate_google_calendar_credentials: {
+        Args: {
+          p_access_token_ciphertext: string
+          p_access_token_expires_at: string | null
+          p_connection_id: string
+          p_granted_scopes: string[]
+          p_key_version: number
+          p_oauth_client_kind: string
+          p_refresh_token_ciphertext: string
+          p_refresh_token_expires_at: string | null
+          p_token_type: string | null
+          p_user_id: string
+        }
+        Returns: Database["public"]["Tables"]["user_calendar_connections"]["Row"][]
+        SetofOptions: {
+          from: "*"
+          to: "user_calendar_connections"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       safe_inet: {
         Args: {
           p_value: string
@@ -19150,6 +19757,27 @@ export type Database = {
           id: string
           similarity: number
         }[]
+      }
+      set_calendar_source_preferences: {
+        Args: {
+          p_analysis_enabled?: boolean | null
+          p_availability_enabled?: boolean | null
+          p_calendar_source_id: string
+          p_read_enabled?: boolean | null
+          p_sync_enabled?: boolean | null
+          p_user_id: string
+        }
+        Returns: Database["public"]["Tables"]["user_calendar_sources"]["Row"][]
+        SetofOptions: {
+          from: "*"
+          to: "user_calendar_sources"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      set_default_calendar_source: {
+        Args: { p_calendar_source_id: string; p_user_id: string }
+        Returns: string
       }
       set_project_notification_settings: {
         Args: {
@@ -19428,6 +20056,57 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "user_email_connections"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      upsert_google_calendar_connection: {
+        Args: {
+          p_access_token_ciphertext: string
+          p_access_token_expires_at: string | null
+          p_default_account_label: string | null
+          p_display_name: string | null
+          p_email_address: string
+          p_expected_connection_id: string | null
+          p_granted_scopes: string[]
+          p_key_version: number
+          p_new_connection_id: string | null
+          p_oauth_client_kind: string
+          p_provider_account_id: string
+          p_refresh_token_ciphertext: string
+          p_refresh_token_expires_at: string | null
+          p_token_type: string | null
+          p_user_id: string
+        }
+        Returns: Database["public"]["Tables"]["user_calendar_connections"]["Row"][]
+        SetofOptions: {
+          from: "*"
+          to: "user_calendar_connections"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      upsert_google_calendar_source: {
+        Args: {
+          p_access_role: string
+          p_background_color: string | null
+          p_color_id: string | null
+          p_connection_id: string
+          p_description: string | null
+          p_foreground_color: string | null
+          p_is_hidden: boolean
+          p_is_primary: boolean
+          p_is_selected_in_google: boolean
+          p_provider_calendar_id: string
+          p_summary: string
+          p_summary_override: string | null
+          p_timezone: string | null
+          p_user_id: string
+        }
+        Returns: Database["public"]["Tables"]["user_calendar_sources"]["Row"][]
+        SetofOptions: {
+          from: "*"
+          to: "user_calendar_sources"
           isOneToOne: false
           isSetofReturn: true
         }

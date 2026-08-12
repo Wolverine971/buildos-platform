@@ -3,6 +3,8 @@
 import { createHash } from 'node:crypto';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+	appendAgenticChatAttachmentContextV1,
+	buildAgenticChatAttachmentDisplayTextV1,
 	type ChatToolCall,
 	type ChatToolDefinition,
 	type ChatToolResult,
@@ -52,6 +54,10 @@ import {
 	isAgenticChatProductionReadToolNameV1
 } from './readOnlyTool';
 import type { AgenticChatReadToolExecutionV1 } from './toolExecution';
+import type {
+	AgenticChatLiveVisionResolveInputV1,
+	AgenticChatLiveVisionResolverPortV1
+} from './liveVision';
 import {
 	AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1,
 	type AgenticChatProviderMutationCapabilitiesV1,
@@ -97,9 +103,16 @@ const WORKER_LOOP_CATALOG = Object.freeze({
 // worker installs reviewed reads plus capability-gated mutation identities.
 provideAgenticChatLoopToolCatalog(() => WORKER_LOOP_CATALOG);
 
+export type AgenticChatReadOnlyProviderContentPartV1 =
+	| { type: 'text'; text: string }
+	| {
+			type: 'image_url';
+			image_url: { url: string; detail: 'auto' | 'low' | 'high' };
+	  };
+
 export type AgenticChatReadOnlyProviderMessageV1 = {
 	role: 'system' | 'user' | 'assistant' | 'tool';
-	content: string;
+	content: string | AgenticChatReadOnlyProviderContentPartV1[];
 	tool_calls?: JsonObject[];
 	tool_call_id?: string;
 };
@@ -154,6 +167,7 @@ export type AgenticChatReadOnlyProviderClientPortV1 = {
 
 type ClientRequest = Parameters<AgenticChatReadOnlyProviderClientPortV1['stream']>[0] & {
 	logicalProviderRound: number;
+	liveVisionRequest?: Omit<AgenticChatLiveVisionResolveInputV1, 'signal'>;
 };
 
 type CompletedProviderToolCall = {
@@ -203,6 +217,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		private readonly ports: {
 			client: AgenticChatReadOnlyProviderClientPortV1;
 			capacity: AgenticChatProviderCapacity;
+			liveVision?: AgenticChatLiveVisionResolverPortV1;
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
 		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
@@ -234,7 +249,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			input.executionInput,
 			input.processingToken,
 			input.signal,
-			this.mutationCapabilities
+			this.mutationCapabilities,
+			Boolean(this.ports.liveVision)
 		);
 		const promptSnapshot = buildPromptSnapshot(request.messages);
 		let lease;
@@ -454,6 +470,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let streamedText = false;
 		const toolCalls = createToolCallAccumulator();
 		try {
+			request = await this.resolveLiveVision(request);
+			state.setCurrentRequest(request);
 			for await (const event of this.ports.client.stream(providerClientRequest(request))) {
 				throwIfAborted(request.signal);
 				if (finished) {
@@ -566,6 +584,30 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		} finally {
 			if (!keepLeaseForSynthesis) state.release();
 		}
+	}
+
+	private async resolveLiveVision(request: ClientRequest): Promise<ClientRequest> {
+		if (!request.liveVisionRequest || !this.ports.liveVision) return request;
+		const result = await this.ports.liveVision.resolve({
+			...request.liveVisionRequest,
+			signal: request.signal
+		});
+		throwIfAborted(request.signal);
+		if (result.images.length === 0) return request;
+
+		const messages = request.messages.map((message) => ({ ...message }));
+		const currentUserMessage = messages.at(-1);
+		if (currentUserMessage?.role !== 'user' || typeof currentUserMessage.content !== 'string') {
+			throw providerError('provider_live_vision_message_invalid', 'permanent');
+		}
+		currentUserMessage.content = [
+			{ type: 'text', text: currentUserMessage.content },
+			...result.images.map((image) => ({
+				type: 'image_url' as const,
+				image_url: { url: image.signedUrl, detail: image.detail }
+			}))
+		];
+		return { ...request, messages };
 	}
 
 	private async *streamContinuation(
@@ -1416,30 +1458,63 @@ function buildReadOnlyRequest(
 	input: AgenticChatWorkerExecutionInputV1,
 	processingToken: string,
 	signal: AbortSignal,
-	mutationCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>
+	mutationCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>,
+	liveVisionEnabled: boolean
 ): ClientRequest {
 	const systemPrompt = requiredContent(input.artifact.prepared.systemPrompt, 'system prompt');
-	const userMessage = requiredContent(input.requestPayload.message, 'user message');
-	const attachments = input.requestPayload.attachments;
-	if (!Array.isArray(attachments) || attachments.length !== 0) {
-		throw new AgenticChatProviderExecutionError(
-			'attachments_disabled',
-			'permanent',
-			'Attachments are disabled for the Phase 3 read-only provider slice'
+	const requestMessage = requiredContent(input.requestPayload.message, 'user message');
+	const requestAttachments = input.requestPayload.attachments;
+	if (!Array.isArray(requestAttachments)) {
+		throw providerError('attachment_contract_mismatch', 'permanent');
+	}
+	const currentTurn = input.artifact.prepared.currentTurn;
+	let userMessage = requestMessage;
+	if (currentTurn) {
+		const expectedDisplayMessage =
+			currentTurn.message ||
+			buildAgenticChatAttachmentDisplayTextV1(currentTurn.attachments.length);
+		const requestAttachmentEvidence = currentTurn.attachments.map((attachment) => ({
+			attachment_kind: attachment.attachment_kind,
+			media_type: attachment.media_type,
+			asset_id: attachment.asset_id,
+			temporary_attachment_id: attachment.temporary_attachment_id,
+			project_id: attachment.project_id,
+			role: attachment.role,
+			display_order: attachment.display_order,
+			file_name: attachment.file_name,
+			content_type: attachment.content_type,
+			file_size_bytes: attachment.file_size_bytes,
+			width: attachment.width,
+			height: attachment.height,
+			checksum_sha256: attachment.checksum_sha256,
+			ocr_status: attachment.ocr_status,
+			extraction_summary: attachment.extraction_summary,
+			extracted_text_preview: attachment.extracted_text_preview
+		}));
+		if (
+			requestMessage !== expectedDisplayMessage ||
+			canonicalizeAgenticChatJson(requestAttachments as JsonValue) !==
+				canonicalizeAgenticChatJson(requestAttachmentEvidence as JsonValue)
+		) {
+			throw providerError('attachment_contract_mismatch', 'permanent');
+		}
+		userMessage = appendAgenticChatAttachmentContextV1(
+			currentTurn.message,
+			currentTurn.attachments,
+			{
+				maxChars: currentTurn.attachmentContextMaxChars,
+				rawMediaPassedToModel:
+					liveVisionEnabled && (currentTurn.liveVision?.requested ?? false)
+			}
 		);
+	} else if (requestAttachments.length !== 0) {
+		throw providerError('attachments_missing_artifact_evidence', 'permanent');
 	}
 
 	const messages: AgenticChatReadOnlyProviderMessageV1[] = [
 		{ role: 'system', content: systemPrompt }
 	];
 	for (const history of input.artifact.history) {
-		if (history.attachments.length !== 0) {
-			throw new AgenticChatProviderExecutionError(
-				'history_attachments_disabled',
-				'permanent',
-				'History attachments are disabled for the Phase 3 read-only provider slice'
-			);
-		}
 		const message: AgenticChatReadOnlyProviderMessageV1 = {
 			role: history.role,
 			content: history.content
@@ -1470,14 +1545,31 @@ function buildReadOnlyRequest(
 		executionGeneration: input.claim.executionGeneration,
 		logicalProviderRound: 1,
 		providerRound: 'initial',
-		signal
+		signal,
+		...(liveVisionEnabled && currentTurn?.liveVision?.requested
+			? {
+					liveVisionRequest: {
+						turnRunId: input.claim.turnRunId,
+						queueJobId: input.claim.queueJobId,
+						processingToken,
+						userId: input.claim.userId,
+						executionGeneration: input.claim.executionGeneration,
+						policy: currentTurn.liveVision,
+						attachments: currentTurn.attachments
+					}
+				}
+			: {})
 	};
 }
 
 function providerClientRequest(
 	request: ClientRequest
 ): Parameters<AgenticChatReadOnlyProviderClientPortV1['stream']>[0] {
-	const { logicalProviderRound: _logicalProviderRound, ...clientRequest } = request;
+	const {
+		logicalProviderRound: _logicalProviderRound,
+		liveVisionRequest: _liveVisionRequest,
+		...clientRequest
+	} = request;
 	return clientRequest;
 }
 

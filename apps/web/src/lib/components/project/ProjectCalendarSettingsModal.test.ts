@@ -38,6 +38,82 @@ function buildProject() {
 	} as any;
 }
 
+function buildCalendarConnections() {
+	return {
+		available: true,
+		maxConnections: 5,
+		defaultWriteCalendarSourceId: '22222222-2222-4222-8222-222222222222',
+		connections: [
+			{
+				id: '33333333-3333-4333-8333-333333333333',
+				emailAddress: 'personal@example.com',
+				displayName: 'Personal',
+				accountLabel: 'Personal',
+				status: 'active',
+				connectedAt: new Date().toISOString(),
+				lastVerifiedAt: null,
+				lastUsedAt: null,
+				sources: [
+					{
+						id: '22222222-2222-4222-8222-222222222222',
+						providerCalendarId: 'personal@example.com',
+						summary: 'Personal',
+						summaryOverride: null,
+						timezone: 'America/New_York',
+						colorId: '7',
+						backgroundColor: null,
+						foregroundColor: null,
+						accessRole: 'owner',
+						isPrimary: true,
+						isHidden: false,
+						isSelectedInGoogle: true,
+						readEnabled: true,
+						availabilityEnabled: true,
+						analysisEnabled: true,
+						syncEnabled: true,
+						providerDeletedAt: null,
+						lastSeenAt: new Date().toISOString(),
+						isDefaultWriteSource: true
+					}
+				]
+			},
+			{
+				id: '44444444-4444-4444-8444-444444444444',
+				emailAddress: 'work@example.com',
+				displayName: 'Work',
+				accountLabel: 'Work',
+				status: 'active',
+				connectedAt: new Date().toISOString(),
+				lastVerifiedAt: null,
+				lastUsedAt: null,
+				sources: [
+					{
+						id: '55555555-5555-4555-8555-555555555555',
+						providerCalendarId: 'client@example.com',
+						summary: 'Client delivery',
+						summaryOverride: null,
+						timezone: 'America/New_York',
+						colorId: '8',
+						backgroundColor: null,
+						foregroundColor: null,
+						accessRole: 'owner',
+						isPrimary: false,
+						isHidden: false,
+						isSelectedInGoogle: true,
+						readEnabled: true,
+						availabilityEnabled: true,
+						analysisEnabled: true,
+						syncEnabled: true,
+						providerDeletedAt: null,
+						lastSeenAt: new Date().toISOString(),
+						isDefaultWriteSource: false
+					}
+				]
+			}
+		]
+	};
+}
+
 describe('ProjectCalendarSettingsModal sync coverage and health', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -51,10 +127,16 @@ describe('ProjectCalendarSettingsModal sync coverage and health', () => {
 			const url = String(input);
 			const method = init?.method || 'GET';
 
+			if (method === 'GET' && url === '/api/integrations/google-calendar/connections') {
+				return okJson({ success: true, data: buildCalendarConnections() });
+			}
+
 			if (method === 'GET' && url === `/api/onto/projects/${PROJECT_ID}/calendar`) {
 				return okJson({
 					success: true,
 					data: {
+						calendar_source_id: '22222222-2222-4222-8222-222222222222',
+						provider_resource_managed: false,
 						calendar_name: 'Launch Plan - Tasks',
 						color_id: '7',
 						sync_enabled: true,
@@ -202,6 +284,85 @@ describe('ProjectCalendarSettingsModal sync coverage and health', () => {
 					method: 'POST'
 				})
 			);
+		});
+	});
+
+	it('links a project to a calendar from a second Google account', async () => {
+		global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method || 'GET';
+			if (method === 'GET' && url === '/api/integrations/google-calendar/connections') {
+				return okJson({ success: true, data: buildCalendarConnections() });
+			}
+			if (method === 'GET' && url === `/api/onto/projects/${PROJECT_ID}/calendar`) {
+				return okJson({ success: true, data: null });
+			}
+			if (
+				method === 'GET' &&
+				url === `/api/onto/projects/${PROJECT_ID}/calendar/collaboration`
+			) {
+				return okJson({ success: true, data: null });
+			}
+			if (
+				method === 'GET' &&
+				url.startsWith(`/api/onto/projects/${PROJECT_ID}/calendar/sync-health`)
+			) {
+				return okJson({
+					success: true,
+					data: {
+						events: [],
+						summary: {
+							total_events: 0,
+							total_targets: 0,
+							failed_targets: 0,
+							active_queue_targets: 0
+						}
+					}
+				});
+			}
+			if (method === 'POST' && url === `/api/onto/projects/${PROJECT_ID}/calendar`) {
+				return okJson({
+					success: true,
+					data: {
+						calendar_source_id: '55555555-5555-4555-8555-555555555555',
+						provider_resource_managed: false
+					}
+				});
+			}
+			return okJson({ success: true, data: {} });
+		}) as any;
+
+		render(ProjectCalendarSettingsModal, {
+			props: {
+				isOpen: true,
+				project: buildProject()
+			}
+		});
+		await fireEvent.click(screen.getByRole('tab', { name: /settings/i }));
+		await waitFor(() => {
+			expect(screen.getByText('Google Calendar target')).toBeInTheDocument();
+		});
+
+		const setupSelect = screen.getAllByRole('combobox')[0]!;
+		await fireEvent.change(setupSelect, { target: { value: 'link' } });
+		const sourceSelect = screen.getAllByRole('combobox')[1]!;
+		await fireEvent.change(sourceSelect, {
+			target: { value: '55555555-5555-4555-8555-555555555555' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+		await waitFor(() => {
+			const createCall = vi
+				.mocked(global.fetch)
+				.mock.calls.find(
+					([input, init]) =>
+						String(input) === `/api/onto/projects/${PROJECT_ID}/calendar` &&
+						init?.method === 'POST'
+				);
+			expect(createCall).toBeDefined();
+			const payload = JSON.parse(String(createCall?.[1]?.body));
+			expect(payload.calendarSourceId).toBe('55555555-5555-4555-8555-555555555555');
+			expect(payload.connectionId).toBeUndefined();
 		});
 	});
 });

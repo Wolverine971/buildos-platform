@@ -301,7 +301,7 @@ describe('calendar brief selection', () => {
 					user_id: 'user-1',
 					provider: 'google',
 					external_event_id: 'google-1',
-					calendar_id: 'primary',
+					external_calendar_id: 'primary',
 					sync_status: 'synced',
 					sync_error: null,
 					last_synced_at: '2025-12-17T17:30:00.000Z'
@@ -325,7 +325,7 @@ describe('calendar brief selection', () => {
 					user_id: 'user-2',
 					provider: 'google',
 					external_event_id: 'google-other',
-					calendar_id: 'primary',
+					external_calendar_id: 'primary',
 					sync_status: 'synced',
 					sync_error: null,
 					last_synced_at: '2025-12-17T17:30:00.000Z'
@@ -347,7 +347,7 @@ describe('calendar brief selection', () => {
 					user_id: null,
 					provider: 'google',
 					external_event_id: 'google-legacy',
-					calendar_id: 'primary',
+					external_calendar_id: 'primary',
 					sync_status: 'synced',
 					sync_error: null,
 					last_synced_at: '2025-12-17T17:30:00.000Z'
@@ -384,7 +384,7 @@ describe('calendar brief selection', () => {
 					user_id: 'user-1',
 					provider: 'google',
 					external_event_id: 'google-stale',
-					calendar_id: 'primary',
+					external_calendar_id: 'primary',
 					sync_status: 'synced',
 					sync_error: null,
 					last_synced_at: '2025-12-17T10:00:00.000Z'
@@ -406,7 +406,7 @@ describe('calendar brief selection', () => {
 					user_id: 'user-1',
 					provider: 'google',
 					external_event_id: 'google-failed',
-					calendar_id: 'primary',
+					external_calendar_id: 'primary',
 					sync_status: 'failed',
 					sync_error: 'quota exceeded',
 					last_synced_at: '2025-12-17T17:30:00.000Z'

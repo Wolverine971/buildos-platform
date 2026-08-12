@@ -563,4 +563,81 @@ describe('Agentic Chat worker turn preparation', () => {
 		expect(retry.preparedPromptUsed).toBe(false);
 		expect(first.args.p_request_hash).toBe(retry.args.p_request_hash);
 	});
+
+	it('freezes server-resolved current-turn attachment evidence and the authored message', async () => {
+		const projectId = 'a1000000-0000-4000-8000-000000000001';
+		const assetId = 'a2000000-0000-4000-8000-000000000002';
+		mocks.loadValidatedChatAttachments.mockResolvedValue({
+			assets: [],
+			attachments: [
+				{
+					attachment_kind: 'onto_asset',
+					media_type: 'image',
+					asset_id: assetId,
+					project_id: projectId,
+					storage_bucket: 'onto-assets',
+					storage_path: `projects/${projectId}/${assetId}.png`,
+					file_name: 'diagram.png',
+					content_type: 'image/png',
+					file_size_bytes: 1024,
+					width: 640,
+					height: 480,
+					checksum_sha256: 'a'.repeat(64),
+					ocr_status: 'complete',
+					extraction_summary: null,
+					extracted_text_preview: 'Visible OCR text',
+					role: 'analysis_target',
+					display_order: 0
+				}
+			]
+		});
+
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: {} as never,
+			userId: USER_ID,
+			command: command({
+				context: { type: 'project', entityId: projectId, projectId },
+				message: '  Review this diagram.  ',
+				attachments: [
+					{ attachment_kind: 'onto_asset', media_type: 'image', asset_id: assetId }
+				]
+			}) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		expect(result.args.p_artifact_prepared).toMatchObject({
+			currentTurn: {
+				message: 'Review this diagram.',
+				attachmentContextMaxChars: 7000,
+				liveVision: {
+					requested: false,
+					maxImages: 2,
+					maxImageBytes: 8 * 1024 * 1024,
+					renderWidth: 1600,
+					signedUrlTtlSeconds: 900
+				},
+				attachments: [
+					expect.objectContaining({
+						asset_id: assetId,
+						project_id: projectId,
+						display_order: 0,
+						checksum_sha256: 'a'.repeat(64),
+						storage_bucket: 'onto-assets',
+						storage_path: `projects/${projectId}/${assetId}.png`,
+						expires_at: null
+					})
+				]
+			}
+		});
+		expect(result.args.p_request_payload).toMatchObject({
+			message: 'Review this diagram.',
+			attachments: [expect.objectContaining({ asset_id: assetId, display_order: 0 })]
+		});
+	});
 });

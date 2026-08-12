@@ -1,17 +1,22 @@
 // apps/web/src/routes/api/calendar/analyze/+server.ts
 import type { RequestHandler } from './$types';
+import { env as privateEnv } from '$env/dynamic/private';
 import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarAnalysisService } from '$lib/services/calendar-analysis.service';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { parseJsonRequest } from '$lib/utils/request-validation';
+import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { GoogleCalendarConnectionService } from '$lib/server/google-calendar-connection.service';
 
 const calendarAnalyzeSchema = z
 	.object({
 		daysBack: z.number().optional().default(30),
 		daysForward: z.number().optional().default(60),
-		calendarsToAnalyze: z.array(z.string()).optional()
+		calendarsToAnalyze: z.array(z.string()).optional(),
+		calendarSourceIds: z.array(z.string().uuid()).max(100).optional()
 	})
 	.strict();
 
@@ -23,8 +28,13 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		// Check if user has calendar connected
-		const calendarService = new CalendarService(supabase);
-		const hasCalendarConnection = await calendarService.hasValidConnection(session.user.id);
+		const hasCalendarConnection = isMultiCalendarUserAllowed(session.user.id, privateEnv)
+			? (
+					await new GoogleCalendarConnectionService(
+						createAdminSupabaseClient()
+					).listConnections(session.user.id)
+				).connections.some((connection) => connection.status === 'active')
+			: await new CalendarService(supabase).hasValidConnection(session.user.id);
 
 		if (!hasCalendarConnection) {
 			return ApiResponse.error(
@@ -37,7 +47,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		const parsed = await parseJsonRequest(request, calendarAnalyzeSchema);
 		if (!parsed.ok) return parsed.response;
-		const { daysBack, daysForward, calendarsToAnalyze } = parsed.data;
+		const { daysBack, daysForward, calendarsToAnalyze, calendarSourceIds } = parsed.data;
 
 		// Validate input
 		if (daysBack < 0 || daysBack > 365) {
@@ -53,7 +63,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const result = await analysisService.analyzeUserCalendar(session.user.id, {
 			daysBack,
 			daysForward,
-			calendarsToAnalyze
+			calendarsToAnalyze,
+			calendarSourceIds
 		});
 
 		return ApiResponse.success(result);

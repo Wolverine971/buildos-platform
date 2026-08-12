@@ -31,13 +31,66 @@ describe('prepared-prompt-history', () => {
 		]);
 	});
 
+	it('preserves bounded prepared attachment references and derived text', () => {
+		const attachment = {
+			attachment_kind: 'onto_asset',
+			media_type: 'image',
+			asset_id: 'a1000000-0000-4000-8000-000000000001',
+			temporary_attachment_id: null,
+			project_id: 'a2000000-0000-4000-8000-000000000002',
+			storage_bucket: 'onto-assets',
+			storage_path: 'projects/a2000000-0000-4000-8000-000000000002/image.png',
+			file_name: 'diagram.png',
+			content_type: 'image/png',
+			file_size_bytes: 1024,
+			width: 640,
+			height: 480,
+			checksum_sha256: 'a'.repeat(64),
+			ocr_status: 'complete',
+			extraction_summary: null,
+			extracted_text_preview: 'Visible OCR text',
+			role: 'analysis_target',
+			display_order: 0,
+			expires_at: null
+		};
+
+		expect(
+			inspectPreparedHistorySnapshot({
+				historyForModel: [
+					{
+						role: 'user',
+						content: 'Earlier request with context',
+						attachments: [attachment]
+					}
+				],
+				historyStrategy: 'raw_history',
+				historyCompressed: false,
+				rawHistoryCount: 1,
+				historyForModelCount: 1
+			})
+		).toMatchObject({
+			ok: true,
+			history: [
+				{
+					attachments: [
+						expect.objectContaining({
+							asset_id: attachment.asset_id,
+							checksum_sha256: attachment.checksum_sha256,
+							extracted_text_preview: 'Visible OCR text'
+						})
+					]
+				}
+			]
+		});
+	});
+
 	it.each([
 		[[{ role: 'developer', content: 'Unsupported' }], 'invalid_message'],
 		[[{ role: 'user', content: 42 }], 'invalid_message'],
 		[[null], 'invalid_message'],
 		[
 			[{ role: 'user', content: 'Attached', attachments: [{ id: 'asset-1' }] }],
-			'history_attachments_deferred'
+			'invalid_attachments'
 		],
 		[
 			[{ role: 'assistant', content: 'Bad call', tool_calls: ['not-an-object'] }],

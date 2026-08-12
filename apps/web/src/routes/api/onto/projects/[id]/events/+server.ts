@@ -131,10 +131,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const taskId = body.task_id as string | undefined;
 	const calendarScope = body.calendar_scope as 'project' | 'user' | 'calendar_id' | undefined;
 	const calendarId = body.calendar_id as string | undefined;
+	const calendarSourceId = body.calendar_source_id as string | undefined;
 	const syncToCalendar = body.sync_to_calendar as boolean | undefined;
 
 	if (!title || !startAt) {
 		return ApiResponse.badRequest('title and start_at are required');
+	}
+	if (calendarSourceId && !isValidUUID(calendarSourceId)) {
+		return ApiResponse.badRequest('calendar_source_id must be a valid UUID');
 	}
 
 	let resolvedOwnerType = ownerType;
@@ -223,6 +227,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			createdBy: actorId,
 			calendarScope,
 			calendarId,
+			calendarSourceId,
 			syncToCalendar,
 			deferCalendarSync: true,
 			activityLog: {

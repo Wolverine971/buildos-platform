@@ -251,6 +251,14 @@ export interface CalendarAnalysisNotification extends BaseNotification {
 		daysForward: number;
 		eventCount?: number;
 		suggestions?: any[];
+		partial?: boolean;
+		warnings?: Array<{
+			code: string;
+			message: string;
+			calendarSourceId: string;
+			connectionId: string;
+		}>;
+		calendarSourceIds?: string[];
 		error?: string;
 	};
 	progress: NotificationProgress;

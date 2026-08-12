@@ -1,7 +1,6 @@
 // apps/web/src/routes/api/time-blocks/blocks/[id]/+server.ts
 import type { RequestHandler } from './$types';
-import { CalendarService } from '$lib/services/calendar-service';
-import { TimeBlockService } from '$lib/services/time-block.service';
+import { createTimeBlockRuntimeService } from '$lib/server/time-block-runtime.service';
 import type { UpdateTimeBlockParams } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { jsonObjectSchema, parseJsonRequest } from '$lib/utils/request-validation';
@@ -34,8 +33,7 @@ export const PATCH: RequestHandler = async ({
 	};
 
 	try {
-		const calendarService = new CalendarService(supabase);
-		const timeBlockService = new TimeBlockService(supabase, user.id, calendarService);
+		const timeBlockService = createTimeBlockRuntimeService(supabase, user.id);
 
 		const updatedBlock = await timeBlockService.updateTimeBlock(blockId, updateParams);
 
@@ -59,8 +57,7 @@ export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession,
 	}
 
 	try {
-		const calendarService = new CalendarService(supabase);
-		const timeBlockService = new TimeBlockService(supabase, user.id, calendarService);
+		const timeBlockService = createTimeBlockRuntimeService(supabase, user.id);
 
 		await timeBlockService.deleteTimeBlock(blockId);
 

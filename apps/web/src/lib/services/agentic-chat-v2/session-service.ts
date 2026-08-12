@@ -819,7 +819,7 @@ export function createFastChatSessionService(
 			const { data: attachmentRows, error: attachmentError } = await (supabase as any)
 				.from('chat_message_attachments')
 				.select(
-					'message_id, asset_id, project_id, attachment_kind, media_type, role, display_order, metadata, asset:onto_assets(id, project_id, original_filename, content_type, file_size_bytes, width, height, checksum_sha256, ocr_status, extraction_summary, extracted_text)'
+					'message_id, asset_id, project_id, attachment_kind, media_type, role, display_order, metadata, asset:onto_assets(id, project_id, storage_bucket, storage_path, original_filename, content_type, file_size_bytes, width, height, checksum_sha256, ocr_status, extraction_summary, extracted_text)'
 				)
 				.in('message_id', messageIds)
 				.eq('session_id', sessionId)

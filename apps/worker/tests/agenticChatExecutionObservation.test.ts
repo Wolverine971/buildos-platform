@@ -91,6 +91,44 @@ describe('Agentic Chat private execution observations', () => {
 		).rejects.toBeInstanceOf(AgenticChatExecutionObservationError);
 	});
 
+	it('accepts the redacted provider-media boundary introduced by S4', async () => {
+		const observationKey = createStableAgenticChatExecutionObservationKeyV1({
+			turnRunId: TURN_RUN_ID,
+			scope: 'live-vision:current-turn',
+			boundary: 'provider_media_resolved'
+		});
+		const mediaInput: AgenticChatExecutionObservationInputV1 = {
+			...input,
+			observationKey,
+			eventType: 'provider_media_resolved',
+			payload: {
+				requested: true,
+				policy: {
+					max_images: 2,
+					max_image_bytes: 8 * 1024 * 1024,
+					render_width: 1600,
+					signed_url_ttl_seconds: 900
+				},
+				resolved: [],
+				failed: [],
+				skipped_by_limit: 0
+			}
+		};
+		const rpc = vi.fn(async () => ({
+			data: receipt({
+				observation_key: observationKey,
+				event_type: 'provider_media_resolved'
+			}),
+			error: null
+		}));
+		await expect(
+			new SupabaseAgenticChatExecutionObservationAdapter({ rpc }).observe(
+				mediaInput,
+				new AbortController().signal
+			)
+		).resolves.toBeUndefined();
+	});
+
 	it('aborts a hung observation RPC at its local deadline', async () => {
 		let deadlineSignal: AbortSignal | null = null;
 		const response = Object.assign(new Promise<never>(() => undefined), {

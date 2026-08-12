@@ -190,7 +190,7 @@ function validateCalendarToolArguments(
 	args: ToolArguments,
 	errors: string[]
 ): void {
-	for (const key of ['project_id', 'task_id', 'onto_event_id']) {
+	for (const key of ['project_id', 'task_id', 'onto_event_id', 'calendar_source_id']) {
 		const raw = args[key];
 		if (typeof raw !== 'string' || !raw.trim()) continue;
 		if (!isValidUUID(raw.trim())) addErrorOnce(errors, `Invalid ${key}: expected UUID`);

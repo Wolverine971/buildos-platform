@@ -7,6 +7,7 @@ export * from './validation';
 export * from './api-types';
 export * from './feature-flags.types';
 export * from './time-block.types';
+export * from './google-calendar.types';
 
 // Export notification system types
 export * from './notification.types';

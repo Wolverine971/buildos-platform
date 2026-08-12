@@ -72,6 +72,8 @@ export async function loadValidatedChatAttachments(params: {
 	tempAttachmentPathPrefix: string;
 	storageBucket: string;
 	maxTempImageBytes: number;
+	maxTempLifetimeSeconds?: number;
+	nowMs?: number;
 	createAdminClient?: CreateStorageAdminClient;
 }): Promise<ChatAttachmentValidationResult> {
 	const projectAttachments = params.attachments.filter(
@@ -176,6 +178,11 @@ export async function loadValidatedChatAttachments(params: {
 		const storagePath = attachment.storage_path?.trim();
 		const contentType = attachment.content_type?.trim().toLowerCase() ?? '';
 		const fileSizeBytes = Number(attachment.file_size_bytes ?? 0);
+		const expiresAt = attachment.expires_at?.trim() ?? '';
+		const expiresAtMs = Date.parse(expiresAt);
+		const nowMs = params.nowMs ?? Date.now();
+		const maximumExpiryMs =
+			nowMs + (params.maxTempLifetimeSeconds ?? 24 * 60 * 60) * 1000 + 5 * 60 * 1000;
 		const expectedPrefix = `${params.tempAttachmentPathPrefix}/${params.userId}/chat-temp/${temporaryAttachmentId}/`;
 		if (
 			!temporaryAttachmentId ||
@@ -185,7 +192,10 @@ export async function loadValidatedChatAttachments(params: {
 			!contentType.startsWith('image/') ||
 			!Number.isFinite(fileSizeBytes) ||
 			fileSizeBytes <= 0 ||
-			fileSizeBytes > params.maxTempImageBytes
+			fileSizeBytes > params.maxTempImageBytes ||
+			!Number.isFinite(expiresAtMs) ||
+			expiresAtMs <= nowMs ||
+			expiresAtMs > maximumExpiryMs
 		) {
 			return { error: ApiResponse.badRequest('Invalid temporary image attachment') };
 		}
@@ -234,6 +244,7 @@ export async function loadValidatedChatAttachments(params: {
 			temporary_attachment_id: temporaryAttachmentId,
 			storage_bucket: storageBucket,
 			storage_path: storagePath,
+			expires_at: expiresAt,
 			ocr_status: 'skipped',
 			role: 'analysis_target',
 			display_order: attachment.display_order ?? index
@@ -242,7 +253,10 @@ export async function loadValidatedChatAttachments(params: {
 
 	return {
 		assets: orderedAssets,
-		attachments: orderedAttachments
+		attachments: orderedAttachments.map((attachment, displayOrder) => ({
+			...attachment,
+			display_order: displayOrder
+		}))
 	};
 }
 

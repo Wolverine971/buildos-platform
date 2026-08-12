@@ -39,6 +39,7 @@
 	import TabHeader from './_shared/TabHeader.svelte';
 	import SettingsCard from './_shared/SettingsCard.svelte';
 	import CheckboxField from './_shared/CheckboxField.svelte';
+	import MultiCalendarConnections from './MultiCalendarConnections.svelte';
 
 	// Props
 	interface Props {
@@ -531,108 +532,124 @@
 		</div>
 	{:else if calendarData}
 		<!-- Google Calendar Integration -->
-		<SettingsCard
-			icon={Calendar}
-			title={calendarConnected
-				? calendarData.calendarStatus?.google_email || 'Calendar Connected'
-				: 'Google Calendar'}
-			description={calendarConnected ? '' : 'Connect to schedule tasks automatically'}
-			labelledById="calendar-integration-heading"
-			bodyClass="bg-muted/50"
-		>
-			{#snippet actions()}
-				{#if calendarConnected}
-					<div class="flex items-center gap-1.5 text-xs">
-						<CircleCheck class="w-3.5 h-3.5 text-success" />
-						<span class="font-medium text-success">Connected</span>
-						{#if calendarData.calendarStatus?.lastSync}
-							<span class="text-muted-foreground">
-								· Last sync {formatLastSync(calendarData.calendarStatus.lastSync)}
-							</span>
-						{/if}
-					</div>
+		{#if calendarData.multiCalendar}
+			<MultiCalendarConnections
+				payload={calendarData.multiCalendar}
+				onchanged={() => refreshCalendarData()}
+				{onerror}
+			/>
+		{:else}
+			<SettingsCard
+				icon={Calendar}
+				title={calendarConnected
+					? calendarData.calendarStatus?.google_email || 'Calendar Connected'
+					: 'Google Calendar'}
+				description={calendarConnected ? '' : 'Connect to schedule tasks automatically'}
+				labelledById="calendar-integration-heading"
+				bodyClass="bg-muted/50"
+			>
+				{#snippet actions()}
+					{#if calendarConnected}
+						<div class="flex items-center gap-1.5 text-xs">
+							<CircleCheck class="w-3.5 h-3.5 text-success" />
+							<span class="font-medium text-success">Connected</span>
+							{#if calendarData.calendarStatus?.lastSync}
+								<span class="text-muted-foreground">
+									· Last sync {formatLastSync(
+										calendarData.calendarStatus.lastSync
+									)}
+								</span>
+							{/if}
+						</div>
 
-					<Button
-						onclick={() => refreshCalendarData()}
-						disabled={refreshingCalendar}
-						variant="ghost"
-						size="sm"
-						title="Refresh calendar data"
-						aria-label="Refresh calendar"
-						icon={RefreshCw}
-						loading={refreshingCalendar}
-					></Button>
+						<Button
+							onclick={() => refreshCalendarData()}
+							disabled={refreshingCalendar}
+							variant="ghost"
+							size="sm"
+							title="Refresh calendar data"
+							aria-label="Refresh calendar"
+							icon={RefreshCw}
+							loading={refreshingCalendar}
+						></Button>
 
-					<Button
-						onclick={handleDisconnectClick}
-						variant="danger"
-						size="sm"
-						icon={Unlink}
-						disabled={checkingDependencies || disconnecting}
-						loading={checkingDependencies || disconnecting}
-					>
-						Disconnect
-					</Button>
-				{:else}
-					<Button
-						onclick={connectCalendar}
-						variant="primary"
-						size="sm"
-						icon={Link}
-						class="shadow-ink pressable"
-					>
-						Connect Calendar
-					</Button>
-				{/if}
-			{/snippet}
+						<Button
+							onclick={handleDisconnectClick}
+							variant="danger"
+							size="sm"
+							icon={Unlink}
+							disabled={checkingDependencies || disconnecting}
+							loading={checkingDependencies || disconnecting}
+						>
+							Disconnect
+						</Button>
+					{:else}
+						<Button
+							onclick={connectCalendar}
+							variant="primary"
+							size="sm"
+							icon={Link}
+							class="shadow-ink pressable"
+						>
+							Connect Calendar
+						</Button>
+					{/if}
+				{/snippet}
 
-			<!-- Features List -->
-			<h4 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-				Calendar Features
-			</h4>
-			<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-				<div class="flex items-start gap-2">
-					<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
-					<div class="min-w-0">
-						<p class="text-xs sm:text-sm font-medium text-foreground">
-							Automatic Task Scheduling
-						</p>
-						<p class="text-xs text-muted-foreground">
-							Schedule tasks directly to your calendar
-						</p>
+				<!-- Features List -->
+				<h4
+					class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2"
+				>
+					Calendar Features
+				</h4>
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+					<div class="flex items-start gap-2">
+						<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+						<div class="min-w-0">
+							<p class="text-xs sm:text-sm font-medium text-foreground">
+								Automatic Task Scheduling
+							</p>
+							<p class="text-xs text-muted-foreground">
+								Schedule tasks directly to your calendar
+							</p>
+						</div>
+					</div>
+					<div class="flex items-start gap-2">
+						<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+						<div class="min-w-0">
+							<p class="text-xs sm:text-sm font-medium text-foreground">
+								Smart Time Slots
+							</p>
+							<p class="text-xs text-muted-foreground">
+								Find slots based on your preferences
+							</p>
+						</div>
+					</div>
+					<div class="flex items-start gap-2">
+						<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+						<div class="min-w-0">
+							<p class="text-xs sm:text-sm font-medium text-foreground">
+								Two-way Sync
+							</p>
+							<p class="text-xs text-muted-foreground">
+								Tasks and calendar events stay in sync
+							</p>
+						</div>
+					</div>
+					<div class="flex items-start gap-2">
+						<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+						<div class="min-w-0">
+							<p class="text-xs sm:text-sm font-medium text-foreground">
+								Holiday Awareness
+							</p>
+							<p class="text-xs text-muted-foreground">
+								Avoid scheduling on holidays
+							</p>
+						</div>
 					</div>
 				</div>
-				<div class="flex items-start gap-2">
-					<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
-					<div class="min-w-0">
-						<p class="text-xs sm:text-sm font-medium text-foreground">
-							Smart Time Slots
-						</p>
-						<p class="text-xs text-muted-foreground">
-							Find slots based on your preferences
-						</p>
-					</div>
-				</div>
-				<div class="flex items-start gap-2">
-					<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
-					<div class="min-w-0">
-						<p class="text-xs sm:text-sm font-medium text-foreground">Two-way Sync</p>
-						<p class="text-xs text-muted-foreground">
-							Tasks and calendar events stay in sync
-						</p>
-					</div>
-				</div>
-				<div class="flex items-start gap-2">
-					<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
-					<div class="min-w-0">
-						<p class="text-xs sm:text-sm font-medium text-foreground">
-							Holiday Awareness
-						</p>
-						<p class="text-xs text-muted-foreground">Avoid scheduling on holidays</p>
-					</div>
-				</div>
-			</div>
-		</SettingsCard>
+			</SettingsCard>
+		{/if}
 
 		<!-- Calendar Preferences -->
 		{#if calendarConnected && calendarPreferences}
@@ -697,7 +714,7 @@
 								Working Days
 							</legend>
 							<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-								{#each DAY_NAMES as day, index}
+								{#each DAY_NAMES as day, index (day)}
 									<label
 										class="flex items-center space-x-2 cursor-pointer min-h-[44px] py-1"
 									>
@@ -786,7 +803,7 @@
 									required
 									size="md"
 								>
-									{#each CALENDAR_TIMEZONES as tz}
+									{#each CALENDAR_TIMEZONES as tz (tz)}
 										<option value={tz}>{tz}</option>
 									{/each}
 								</Select>
@@ -865,7 +882,7 @@
 					bodyClass="p-0"
 				>
 					<div class="divide-y divide-border">
-						{#each scheduledTasksPreview as task}
+						{#each scheduledTasksPreview as task (task.id)}
 							<div class="px-4 sm:px-5 py-3 hover:bg-muted/60 transition-colors">
 								<div class="flex items-center justify-between gap-3">
 									<div class="flex-1 min-w-0">
@@ -975,7 +992,7 @@
 								</h4>
 							</div>
 							<div class="space-y-2">
-								{#each calendarProjects.slice(0, 5) as project}
+								{#each calendarProjects.slice(0, 5) as project (project.id)}
 									<a
 										href="/projects/{project.id}"
 										class="block p-3 bg-card border border-border rounded-lg hover:shadow-ink transition-all motion-reduce:transition-none hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset pressable"

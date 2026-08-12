@@ -2,7 +2,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+	hasRecentRouteLoadRecovery,
 	isRecoverableRouteLoadError,
+	isSecondaryRouteLoadError,
 	recoverFromRouteLoadError,
 	type RouteLoadRecoveryContext
 } from './client-route-recovery';
@@ -43,6 +45,32 @@ describe('client route recovery', () => {
 
 	it('does not treat ordinary application errors as deployment skew', () => {
 		expect(isRecoverableRouteLoadError(new Error('Task save failed'))).toBe(false);
+	});
+
+	it('separates the canceled-preload symptom from the root import error', () => {
+		expect(
+			isSecondaryRouteLoadError(
+				new TypeError("Cannot read properties of undefined (reading 'universal')")
+			)
+		).toBe(true);
+		expect(
+			isSecondaryRouteLoadError(
+				new TypeError('Failed to fetch dynamically imported module: /nodes/102.js')
+			)
+		).toBe(false);
+	});
+
+	it('detects a recovery already in progress for the current route', () => {
+		const route = '/projects/project-1/tasks/task-1';
+		const storage = createStorage(
+			JSON.stringify({ route, attemptedAt: 90_000, moduleUrl: '/nodes/102.js' })
+		);
+
+		expect(hasRecentRouteLoadRecovery({ route, storage, now: 100_000 })).toBe(true);
+		expect(
+			hasRecentRouteLoadRecovery({ route: '/projects/project-2', storage, now: 100_000 })
+		).toBe(false);
+		expect(hasRecentRouteLoadRecovery({ route, storage, now: 200_000 })).toBe(false);
 	});
 
 	it('marks the route and reloads once for a recoverable error', () => {

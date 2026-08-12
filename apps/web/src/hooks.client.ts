@@ -9,7 +9,9 @@ import {
 	shouldTrackFailedClientResponse
 } from '$lib/utils/client-error-reporting';
 import {
+	hasRecentRouteLoadRecovery,
 	isRecoverableRouteLoadError,
+	isSecondaryRouteLoadError,
 	recoverFromRouteLoadError
 } from '$lib/utils/client-route-recovery';
 
@@ -82,32 +84,23 @@ function recoverRouteLoad(error: unknown): boolean {
 	}
 }
 
+function hasActiveRouteLoadRecovery(): boolean {
+	if (!browser) return false;
+
+	try {
+		return hasRecentRouteLoadRecovery({
+			route: `${window.location.pathname}${window.location.search}`,
+			storage: window.sessionStorage
+		});
+	} catch {
+		return false;
+	}
+}
+
 // CSRF token handling remains the same
 if (browser) {
 	const originalFetch = window.fetch.bind(window);
 	rawBrowserFetch = originalFetch;
-
-	window.addEventListener('vite:preloadError', (event) => {
-		const error = (event as Event & { payload?: unknown }).payload;
-		if (!isRecoverableRouteLoadError(error)) return;
-
-		event.preventDefault();
-		void reportClientError(
-			{
-				kind: 'runtime',
-				error,
-				endpoint: window.location.pathname,
-				method: 'CLIENT',
-				url: window.location.href,
-				metadata: {
-					source: 'hooks.client.vitePreloadError',
-					recovery: 'reload'
-				}
-			},
-			originalFetch
-		);
-		recoverRouteLoad(error);
-	});
 
 	window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 		const request = resolveRequestDetails(input);
@@ -191,6 +184,8 @@ export const handleError: HandleClientError = ({ error, event }) => {
 	const errorId = Math.random().toString(36).substr(2, 9);
 	const errorMessage = error instanceof Error ? error.message : String(error);
 	const shouldRecoverRoute = browser && isRecoverableRouteLoadError(error);
+	const recoveryAlreadyInProgress = shouldRecoverRoute && hasActiveRouteLoadRecovery();
+	const isSecondaryRouteError = isSecondaryRouteLoadError(error);
 	let didStartRouteRecovery = false;
 
 	console.error(`[${errorId}] Client error:`, {
@@ -199,7 +194,7 @@ export const handleError: HandleClientError = ({ error, event }) => {
 		timestamp: new Date().toISOString()
 	});
 
-	if (browser && rawBrowserFetch) {
+	if (browser && rawBrowserFetch && !isSecondaryRouteError) {
 		void reportClientError(
 			{
 				kind: 'runtime',
@@ -209,19 +204,25 @@ export const handleError: HandleClientError = ({ error, event }) => {
 				url: event.url?.toString(),
 				metadata: {
 					source: 'hooks.client.handleError',
-					errorId
+					errorId,
+					...(shouldRecoverRoute
+						? { recovery: recoveryAlreadyInProgress ? 'in_progress' : 'reload' }
+						: {})
 				}
 			},
 			rawBrowserFetch
 		);
 	}
 
-	if (shouldRecoverRoute) {
+	if (shouldRecoverRoute && !recoveryAlreadyInProgress) {
 		didStartRouteRecovery = recoverRouteLoad(error);
 	}
 
 	return {
-		message: didStartRouteRecovery ? 'Updating BuildOS…' : 'Something went wrong',
+		message:
+			recoveryAlreadyInProgress || didStartRouteRecovery
+				? 'Updating BuildOS…'
+				: 'Something went wrong',
 		errorId
 	};
 };

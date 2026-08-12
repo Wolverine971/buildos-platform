@@ -42,7 +42,20 @@ export function isRecoverableRouteLoadError(error: unknown): boolean {
 		/Failed to fetch dynamically imported module/i.test(normalized) ||
 		/Error loading dynamically imported module/i.test(normalized) ||
 		/Importing a module script failed/i.test(normalized) ||
-		/Cannot read properties of undefined \(reading ['"]universal['"]\)/i.test(normalized)
+		isSecondaryRouteLoadError(error)
+	);
+}
+
+/**
+ * Vite returns `undefined` from its preload helper when a `vite:preloadError`
+ * event is canceled. SvelteKit then reads `universal` from that missing route
+ * module. Keep recognizing this legacy symptom for recovery, but do not report
+ * it as a separate application error from the original failed import.
+ */
+export function isSecondaryRouteLoadError(error: unknown): boolean {
+	const { name, message } = getErrorDetails(error);
+	return /Cannot read properties of undefined \(reading ['"]universal['"]\)/i.test(
+		`${name}: ${message}`
 	);
 }
 
@@ -77,6 +90,25 @@ function readRecoveryAttempt(storage: RouteLoadRecoveryContext['storage']): Reco
 	}
 }
 
+function isRecentRecoveryAttempt(
+	attempt: RecoveryAttempt | null,
+	route: string,
+	now: number
+): boolean {
+	return Boolean(
+		attempt?.route === route &&
+			now >= attempt.attemptedAt &&
+			now - attempt.attemptedAt < RECOVERY_ATTEMPT_WINDOW_MS
+	);
+}
+
+export function hasRecentRouteLoadRecovery(
+	context: Pick<RouteLoadRecoveryContext, 'route' | 'storage' | 'now'>
+): boolean {
+	const now = context.now ?? Date.now();
+	return isRecentRecoveryAttempt(readRecoveryAttempt(context.storage), context.route, now);
+}
+
 /**
  * Recover when a client route module belongs to a deployment that is no longer
  * available at the edge. A failed immutable module is refreshed before the
@@ -93,11 +125,7 @@ export function recoverFromRouteLoadError(
 	const moduleUrl = getFailedModuleUrl(error);
 	const previousAttempt = readRecoveryAttempt(context.storage);
 	const upgradesToModuleRefresh = Boolean(moduleUrl && !previousAttempt?.moduleUrl);
-	if (
-		previousAttempt?.route === context.route &&
-		now - previousAttempt.attemptedAt < RECOVERY_ATTEMPT_WINDOW_MS &&
-		!upgradesToModuleRefresh
-	) {
+	if (isRecentRecoveryAttempt(previousAttempt, context.route, now) && !upgradesToModuleRefresh) {
 		return false;
 	}
 

@@ -50,4 +50,28 @@ describe('/api/error-tracking/client', () => {
 			})
 		);
 	});
+
+	it('drops the legacy secondary route-module error', async () => {
+		const safeGetSession = vi.fn();
+		const response = await POST({
+			request: new Request('http://localhost/api/error-tracking/client', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					kind: 'runtime',
+					endpoint: '/skills',
+					error: {
+						name: 'TypeError',
+						message: "Cannot read properties of undefined (reading 'universal')"
+					}
+				})
+			}),
+			locals: { safeGetSession }
+		} as any);
+
+		expect(response.status).toBe(204);
+		expect(safeGetSession).not.toHaveBeenCalled();
+		expect(shouldPersistGenericErrorEventMock).not.toHaveBeenCalled();
+		expect(logServerErrorMock).not.toHaveBeenCalled();
+	});
 });

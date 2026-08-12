@@ -150,7 +150,7 @@ export class CalendarMigrationService {
 						if (event.project_calendar_id && event.calendar_event_id) {
 							await this.client.from('onto_event_sync').insert({
 								event_id: ontoEvent.id,
-								calendar_id: event.project_calendar_id,
+								project_calendar_id: event.project_calendar_id,
 								provider: event.sync_source ?? 'google',
 								external_event_id: event.calendar_event_id,
 								sync_status: event.sync_status ?? 'pending',

@@ -525,6 +525,10 @@ export class TaskTimeSlotFinder {
 			parent_task_id: typeof props.parent_task_id === 'string' ? props.parent_task_id : null,
 			task_steps: typeof props.task_steps === 'string' ? props.task_steps : null,
 			source: typeof props.source === 'string' ? props.source : null,
+			source_calendar_source_id:
+				typeof props.source_calendar_source_id === 'string'
+					? props.source_calendar_source_id
+					: null,
 			source_calendar_event_id:
 				typeof props.source_calendar_event_id === 'string'
 					? props.source_calendar_event_id

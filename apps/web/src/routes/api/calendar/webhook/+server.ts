@@ -2,11 +2,12 @@
 import type { RequestHandler } from './$types';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
 import { dev } from '$app/environment';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 import { ApiResponse } from '$lib/utils/api-response';
 
 // Register webhook for current user
-export const POST: RequestHandler = async ({ locals: { safeGetSession, supabase }, url }) => {
+export const POST: RequestHandler = async ({ locals: { safeGetSession }, url }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -18,7 +19,7 @@ export const POST: RequestHandler = async ({ locals: { safeGetSession, supabase 
 		return ApiResponse.error('Webhooks not available in development mode', 400);
 	}
 
-	const webhookService = new CalendarWebhookService(supabase);
+	const webhookService = new CalendarWebhookService(createAdminSupabaseClient());
 
 	// Construct the webhook URL
 	const protocol = url.protocol;
@@ -35,13 +36,13 @@ export const POST: RequestHandler = async ({ locals: { safeGetSession, supabase 
 };
 
 // Unregister webhook
-export const DELETE: RequestHandler = async ({ locals: { safeGetSession, supabase } }) => {
+export const DELETE: RequestHandler = async ({ locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
 	}
 
-	const webhookService = new CalendarWebhookService(supabase);
+	const webhookService = new CalendarWebhookService(createAdminSupabaseClient());
 
 	await webhookService.unregisterWebhook(user.id);
 

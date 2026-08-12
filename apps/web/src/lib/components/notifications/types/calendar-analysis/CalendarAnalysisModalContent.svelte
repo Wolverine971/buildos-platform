@@ -4,7 +4,7 @@
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { LoaderCircle, X, ChevronDown } from '$lib/icons/lucide';
+	import { AlertTriangle, LoaderCircle, X, ChevronDown } from '$lib/icons/lucide';
 	import { notificationStore } from '$lib/stores/notification.store';
 	import CalendarAnalysisResults from '$lib/components/calendar/CalendarAnalysisResults.svelte';
 	import type { CalendarAnalysisNotification } from '$lib/types/notification.types';
@@ -37,6 +37,7 @@
 		Array.isArray(notification.data.suggestions) ? notification.data.suggestions : []
 	);
 	const errorMessage = $derived(notification.data.error ?? null);
+	const partialWarningCount = $derived(notification.data.warnings?.length ?? 0);
 </script>
 
 {#if isProcessing}
@@ -128,6 +129,22 @@
 		{/snippet}
 
 		{#snippet children()}
+			{#if notification.data.partial}
+				<div
+					class="mx-4 mt-4 flex gap-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground"
+					role="status"
+				>
+					<AlertTriangle
+						class="mt-0.5 h-4 w-4 shrink-0 text-warning"
+						aria-hidden="true"
+					/>
+					<p>
+						Analysis completed with partial coverage. {partialWarningCount === 1
+							? 'One calendar was unavailable.'
+							: `${partialWarningCount} calendars were unavailable.`}
+					</p>
+				</div>
+			{/if}
 			<!-- Embedded CalendarAnalysisResults without its own Modal wrapper -->
 			<CalendarAnalysisResults
 				isOpen={true}

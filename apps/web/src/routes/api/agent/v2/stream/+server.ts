@@ -3187,7 +3187,7 @@ export const POST: RequestHandler = async ({
 							if (isMutationExecution) {
 								try {
 									await persistIncrementalToolExecutionRow({
-										supabase,
+										supabase: internalSupabase,
 										sessionId: session.id,
 										turnRunId,
 										streamRunId,
@@ -4030,7 +4030,7 @@ export const POST: RequestHandler = async ({
 				}
 
 				const interruptedToolExecutionPersistPromise = persistToolExecutionRows({
-					supabase,
+					supabase: internalSupabase,
 					sessionId: session.id,
 					messageId: interruptedMessage?.id ?? null,
 					turnRunId,
@@ -4259,7 +4259,7 @@ export const POST: RequestHandler = async ({
 			}
 
 			const toolExecutionPersistPromise = persistToolExecutionRows({
-				supabase,
+				supabase: internalSupabase,
 				sessionId: session.id,
 				messageId: assistantMessage?.id ?? null,
 				turnRunId,
@@ -4573,7 +4573,7 @@ export const POST: RequestHandler = async ({
 			}
 			if (completedToolExecutions.length > 0 && timingSessionId) {
 				await persistToolExecutionRows({
-					supabase,
+					supabase: internalSupabase,
 					sessionId: timingSessionId,
 					messageId: null,
 					turnRunId,

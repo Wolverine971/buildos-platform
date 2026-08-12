@@ -31,7 +31,7 @@ export const GET: RequestHandler = async ({ request }) => {
 		await admin.from('cron_logs').insert({
 			job_name: 'account_deletions',
 			status: 'success',
-			message: `Claimed ${deletion.claimed}; completed ${deletion.completed}; failed ${deletion.failed}; removed ${deletion.storageObjectsRemoved} storage object(s) and ${deletion.gmailConnectionsDeleted} Gmail connection(s); confirmed ${deletion.gmailRemoteRevocationsSucceeded} Gmail revocation(s), ${deletion.gmailRemoteRevocationsUnconfirmed} unconfirmed; retried ${billing.processed} billing cancellation(s); deleted ${expiredAcceptanceIntents} expired acceptance intent(s).`,
+			message: `Claimed ${deletion.claimed}; completed ${deletion.completed}; failed ${deletion.failed}; removed ${deletion.storageObjectsRemoved} storage object(s), ${deletion.gmailConnectionsDeleted} Gmail connection(s), ${deletion.calendarConnectionsDeleted} Calendar connection(s), and ${deletion.calendarLegacyTokensDeleted} legacy Calendar token row(s); confirmed ${deletion.gmailRemoteRevocationsSucceeded} Gmail revocation(s), ${deletion.gmailRemoteRevocationsUnconfirmed} unconfirmed; confirmed ${deletion.calendarRemoteRevocationsSucceeded} Calendar revocation(s), ${deletion.calendarRemoteRevocationsUnconfirmed} unconfirmed; retried ${billing.processed} billing cancellation(s); deleted ${expiredAcceptanceIntents} expired acceptance intent(s).`,
 			executed_at: executedAt
 		});
 

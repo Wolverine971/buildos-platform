@@ -198,6 +198,7 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 		expect(loadAgenticChatPhase3Config({})).toEqual({
 			enabled: false,
 			internalUserIds: [],
+			liveVisionEnabled: false,
 			consumer: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
 			providerBudgetMs: 150_000,
 			maxProviderRounds: 16,
@@ -207,6 +208,15 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 		expect(() => loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_ENABLED: 'true' })).toThrow(
 			'must contain at least one canonical UUID'
 		);
+	});
+
+	it('keeps worker live vision default-off and parses only an exact explicit gate', () => {
+		expect(
+			loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED: 'true' })
+		).toMatchObject({ enabled: false, liveVisionEnabled: true });
+		expect(() =>
+			loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED: 'TRUE' })
+		).toThrow('AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED must be exactly true or false');
 	});
 
 	it('parses an exact internal cohort and independently bounded queue policy', () => {
@@ -230,6 +240,7 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 		expect(config).toEqual({
 			enabled: true,
 			internalUserIds: [second, first],
+			liveVisionEnabled: false,
 			consumer: {
 				concurrency: 1,
 				pollIntervalMs: 1500,

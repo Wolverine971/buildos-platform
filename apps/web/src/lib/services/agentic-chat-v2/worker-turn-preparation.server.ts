@@ -4,12 +4,17 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_INPUT_RETENTION_MS,
+	AGENTIC_CHAT_LIVE_VISION_MAX_IMAGE_BYTES,
+	AGENTIC_CHAT_LIVE_VISION_MAX_IMAGES,
+	AGENTIC_CHAT_LIVE_VISION_MAX_RENDER_WIDTH,
+	AGENTIC_CHAT_LIVE_VISION_MAX_SIGNED_URL_TTL_SECONDS,
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	hashCanonicalAdmissionRequestV1,
 	hashTurnInputArtifactContentV1,
 	normalizeAgenticChatText,
 	normalizeTurnInputArtifactContentV1,
+	shouldUseAgenticChatLiveVisionV1,
 	validateTurnInputArtifactV1,
 	type AgentChatTransportContextV1,
 	type AgenticChatContextUsageSnapshotV1,
@@ -41,6 +46,7 @@ import { checkDailyBriefAccess, checkProjectAccess } from './access-checks';
 import {
 	appendAttachmentContextToMessage,
 	buildAttachmentOnlyDisplayText,
+	freezeChatAttachmentsForArtifact,
 	normalizeChatAttachmentsForAdmission,
 	sanitizeAttachmentRefsForMetadata
 } from './attachments';
@@ -99,10 +105,36 @@ const ATTACHMENT_CONTEXT_MAX_CHARS = positiveInt(
 	7000,
 	100_000
 );
+const LIVE_VISION_ENABLED = process.env.AGENT_CHAT_LIVE_VISION_ENABLED === 'true';
+const LIVE_VISION_MAX_IMAGES = positiveInt(
+	process.env.AGENT_CHAT_LIVE_VISION_MAX_IMAGES_PER_TURN,
+	2,
+	AGENTIC_CHAT_LIVE_VISION_MAX_IMAGES
+);
+const LIVE_VISION_MAX_IMAGE_BYTES = positiveInt(
+	process.env.AGENT_CHAT_LIVE_VISION_MAX_IMAGE_BYTES,
+	8 * 1024 * 1024,
+	AGENTIC_CHAT_LIVE_VISION_MAX_IMAGE_BYTES
+);
+const LIVE_VISION_RENDER_WIDTH = positiveInt(
+	process.env.AGENT_CHAT_LIVE_VISION_RENDER_WIDTH,
+	1600,
+	AGENTIC_CHAT_LIVE_VISION_MAX_RENDER_WIDTH
+);
+const LIVE_VISION_SIGNED_URL_TTL_SECONDS = positiveInt(
+	process.env.AGENT_CHAT_LIVE_VISION_SIGNED_URL_TTL_SECONDS,
+	900,
+	AGENTIC_CHAT_LIVE_VISION_MAX_SIGNED_URL_TTL_SECONDS
+);
 const TEMP_IMAGE_MAX_BYTES = positiveInt(
 	process.env.AGENT_CHAT_IMAGE_MAX_BYTES,
 	25 * 1024 * 1024,
 	100 * 1024 * 1024
+);
+const TEMP_IMAGE_TTL_SECONDS = positiveInt(
+	process.env.AGENT_CHAT_TEMPORARY_IMAGE_TTL_SECONDS,
+	24 * 60 * 60,
+	7 * 24 * 60 * 60
 );
 const STORAGE_BUCKET = 'onto-assets';
 const TEMP_ATTACHMENT_PATH_PREFIX = 'users';
@@ -219,6 +251,8 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		tempAttachmentPathPrefix: TEMP_ATTACHMENT_PATH_PREFIX,
 		storageBucket: STORAGE_BUCKET,
 		maxTempImageBytes: TEMP_IMAGE_MAX_BYTES,
+		maxTempLifetimeSeconds: TEMP_IMAGE_TTL_SECONDS,
+		nowMs,
 		createAdminClient: () => input.serviceClient as never
 	});
 	if ('error' in attachmentValidation) {
@@ -465,6 +499,22 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		prepared: {
 			...preparedArtifact,
 			historyState,
+			currentTurn: {
+				message: normalizedMessage,
+				attachmentContextMaxChars: ATTACHMENT_CONTEXT_MAX_CHARS,
+				liveVision: {
+					requested: shouldUseAgenticChatLiveVisionV1({
+						message: normalizedMessage,
+						attachmentCount: attachments.length,
+						liveVisionEnabled: LIVE_VISION_ENABLED
+					}),
+					maxImages: LIVE_VISION_MAX_IMAGES,
+					maxImageBytes: LIVE_VISION_MAX_IMAGE_BYTES,
+					renderWidth: LIVE_VISION_RENDER_WIDTH,
+					signedUrlTtlSeconds: LIVE_VISION_SIGNED_URL_TTL_SECONDS
+				},
+				attachments: freezeChatAttachmentsForArtifact(attachments)
+			},
 			sessionSnapshot,
 			contextUsageSnapshot
 		}
@@ -800,7 +850,7 @@ function freezeHistory(history: HistoryWithLineage[]): FrozenHistoryMessageV1[] 
 		sourceMessageId: message.sourceMessageId,
 		role: message.role,
 		content: message.content,
-		attachments: normalizeChatAttachmentsForAdmission(message.attachments ?? []),
+		attachments: freezeChatAttachmentsForArtifact(message.attachments ?? []),
 		toolCalls: (message.tool_calls ?? []).map((toolCall) => toJsonObject(toolCall)),
 		toolCallId: message.tool_call_id ?? null
 	}));

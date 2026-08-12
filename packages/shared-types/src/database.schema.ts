@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-11T17:41:14.860Z
+// Generated on: 2026-08-12T15:16:59.462Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -530,9 +530,22 @@ export type DatabaseSchema = {
 		to_frozen_reason: string | null;
 		user_id: string;
 	};
+	calendar_access_audit_events: {
+		calendar_source_id: string | null;
+		connection_id: string | null;
+		created_at: string;
+		id: string;
+		metadata: Json;
+		operation: string;
+		outcome: string;
+		reason_code: string | null;
+		user_id: string;
+	};
 	calendar_analyses: {
 		ai_model: string | null;
 		ai_model_version: string | null;
+		analysis_warnings: Json;
+		calendar_source_ids: string[];
 		calendars_analyzed: string[] | null;
 		completed_at: string | null;
 		confidence_average: number | null;
@@ -543,9 +556,11 @@ export type DatabaseSchema = {
 		events_analyzed: number | null;
 		events_excluded: number | null;
 		id: string;
+		partial_result: boolean;
 		processing_time_ms: number | null;
 		projects_created: number | null;
 		projects_suggested: number | null;
+		source_statuses: Json;
 		started_at: string | null;
 		status: string | null;
 		tasks_created: number | null;
@@ -561,6 +576,8 @@ export type DatabaseSchema = {
 		attendee_emails: string[] | null;
 		calendar_event_id: string;
 		calendar_id: string;
+		calendar_source_id: string | null;
+		contributing_source_event_ids: Json;
 		created_at: string | null;
 		event_description: string | null;
 		event_end: string | null;
@@ -594,11 +611,57 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
+	calendar_connection_credentials: {
+		access_token_ciphertext: string;
+		access_token_expires_at: string | null;
+		connection_id: string;
+		created_at: string;
+		granted_scopes: string[];
+		id: string;
+		key_version: number;
+		last_refreshed_at: string | null;
+		oauth_client_kind: string;
+		refresh_token_ciphertext: string;
+		refresh_token_expires_at: string | null;
+		revoked_at: string | null;
+		token_type: string;
+		updated_at: string;
+	};
+	calendar_event_orphan_receipts: {
+		attempt_count: number;
+		calendar_source_id: string;
+		created_at: string;
+		entity_id: string;
+		entity_kind: string;
+		id: string;
+		last_attempted_at: string | null;
+		operation: string;
+		provider_event_id: string;
+		reason_code: string;
+		resolved_at: string | null;
+		status: string;
+		updated_at: string;
+		user_id: string;
+	};
+	calendar_oauth_states: {
+		code_verifier: string;
+		connection_id: string | null;
+		consumed_at: string | null;
+		created_at: string;
+		expires_at: string;
+		id: string;
+		nonce: string;
+		oauth_client_kind: string;
+		redirect_path: string;
+		state_hash: string;
+		user_id: string;
+	};
 	calendar_project_suggestions: {
 		ai_reasoning: string | null;
 		analysis_id: string;
 		calendar_event_ids: string[];
 		calendar_ids: string[] | null;
+		calendar_source_event_ids: Json;
 		confidence_score: number;
 		created_at: string | null;
 		created_project_id: string | null;
@@ -623,6 +686,7 @@ export type DatabaseSchema = {
 	};
 	calendar_webhook_channels: {
 		calendar_id: string | null;
+		calendar_source_id: string | null;
 		channel_id: string;
 		created_at: string;
 		expiration: number;
@@ -1103,6 +1167,7 @@ export type DatabaseSchema = {
 		recurrence_pattern: string | null;
 		source: string | null;
 		source_calendar_event_id: string | null;
+		source_calendar_source_id: string | null;
 		start_date: string | null;
 		status: string | null;
 		task_steps: Json | null;
@@ -2135,12 +2200,15 @@ export type DatabaseSchema = {
 		src_kind: string;
 	};
 	onto_event_sync: {
-		calendar_id: string;
+		calendar_id: string | null;
+		calendar_source_id: string | null;
 		created_at: string;
 		event_id: string;
+		external_calendar_id: string | null;
 		external_event_id: string;
 		id: string;
 		last_synced_at: string | null;
+		project_calendar_id: string | null;
 		provider: string;
 		sync_error: string | null;
 		sync_status: string;
@@ -2782,6 +2850,7 @@ export type DatabaseSchema = {
 	project_calendars: {
 		calendar_id: string;
 		calendar_name: string;
+		calendar_source_id: string | null;
 		color_id: string | null;
 		created_at: string | null;
 		hex_color: string | null;
@@ -2789,6 +2858,7 @@ export type DatabaseSchema = {
 		is_primary: boolean | null;
 		last_synced_at: string | null;
 		project_id: string;
+		provider_resource_managed: boolean;
 		sync_enabled: boolean | null;
 		sync_error: string | null;
 		sync_status: string | null;
@@ -3160,6 +3230,7 @@ export type DatabaseSchema = {
 	};
 	recurring_task_instances: {
 		calendar_event_id: string | null;
+		calendar_source_id: string | null;
 		completed_at: string | null;
 		created_at: string | null;
 		id: string;
@@ -3246,6 +3317,7 @@ export type DatabaseSchema = {
 	};
 	scheduled_sms_messages: {
 		calendar_event_id: string | null;
+		calendar_source_id: string | null;
 		cancelled_at: string | null;
 		created_at: string | null;
 		event_details: Json | null;
@@ -3422,6 +3494,7 @@ export type DatabaseSchema = {
 		attendees: Json | null;
 		calendar_event_id: string;
 		calendar_id: string;
+		calendar_source_id: string | null;
 		created_at: string | null;
 		event_end: string | null;
 		event_link: string | null;
@@ -3467,6 +3540,7 @@ export type DatabaseSchema = {
 		recurrence_pattern: string | null;
 		source: string | null;
 		source_calendar_event_id: string | null;
+		source_calendar_source_id: string | null;
 		start_date: string | null;
 		status: string;
 		task_steps: string | null;
@@ -3480,6 +3554,7 @@ export type DatabaseSchema = {
 		block_type: string;
 		calendar_event_id: string | null;
 		calendar_event_link: string | null;
+		calendar_source_id: string | null;
 		created_at: string;
 		duration_minutes: number;
 		end_time: string;
@@ -3576,9 +3651,26 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	user_calendar_connections: {
+		account_label: string;
+		connected_at: string;
+		created_at: string;
+		deleted_at: string | null;
+		display_name: string | null;
+		email_address: string;
+		id: string;
+		last_used_at: string | null;
+		last_verified_at: string | null;
+		provider: string;
+		provider_account_id: string;
+		status: string;
+		updated_at: string;
+		user_id: string;
+	};
 	user_calendar_preferences: {
 		created_at: string;
 		default_task_duration_minutes: number | null;
+		default_write_calendar_source_id: string | null;
 		exclude_holidays: boolean | null;
 		holiday_country_code: string | null;
 		id: string;
@@ -3594,6 +3686,33 @@ export type DatabaseSchema = {
 		work_end_time: string | null;
 		work_start_time: string | null;
 		working_days: number[] | null;
+	};
+	user_calendar_sources: {
+		access_role: string;
+		analysis_enabled: boolean;
+		availability_enabled: boolean;
+		background_color: string | null;
+		color_id: string | null;
+		connection_id: string;
+		created_at: string;
+		deleted_at: string | null;
+		description: string | null;
+		foreground_color: string | null;
+		id: string;
+		is_hidden: boolean;
+		is_primary: boolean;
+		is_selected_in_google: boolean;
+		last_discovered_at: string;
+		last_seen_at: string;
+		provider_calendar_id: string;
+		provider_deleted_at: string | null;
+		read_enabled: boolean;
+		summary: string;
+		summary_override: string | null;
+		sync_enabled: boolean;
+		timezone: string | null;
+		updated_at: string;
+		user_id: string;
 	};
 	user_calendar_tokens: {
 		access_token: string;
@@ -4094,9 +4213,13 @@ export const tableNames = [
 	'billing_ops_anomalies',
 	'billing_ops_snapshots',
 	'billing_state_transitions',
+	'calendar_access_audit_events',
 	'calendar_analyses',
 	'calendar_analysis_events',
 	'calendar_analysis_preferences',
+	'calendar_connection_credentials',
+	'calendar_event_orphan_receipts',
+	'calendar_oauth_states',
 	'calendar_project_suggestions',
 	'calendar_webhook_channels',
 	'chat_compressions',
@@ -4272,7 +4395,9 @@ export const tableNames = [
 	'user_behavioral_profiles',
 	'user_brief_preferences',
 	'user_buildos_agents',
+	'user_calendar_connections',
 	'user_calendar_preferences',
+	'user_calendar_sources',
 	'user_calendar_tokens',
 	'user_contact_access_audit',
 	'user_contact_links',

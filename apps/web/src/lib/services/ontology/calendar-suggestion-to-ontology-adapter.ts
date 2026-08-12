@@ -273,6 +273,7 @@ export interface CalendarSuggestionTask {
 	recurrence_ends?: string;
 	recurrence_rrule?: string;
 	event_id?: string;
+	calendar_source_id?: string;
 	tags?: string[];
 }
 
@@ -332,6 +333,7 @@ export function convertCalendarSuggestionToProjectSpec(
 		suggestion_id: suggestion.id,
 		calendar_event_ids: suggestion.calendar_event_ids,
 		calendar_ids: suggestion.calendar_ids ?? undefined,
+		calendar_source_event_ids: suggestion.calendar_source_event_ids,
 		event_count: suggestion.event_count ?? undefined,
 		confidence: suggestion.confidence_score,
 		detected_keywords: detectedKeywords.length ? detectedKeywords : undefined,
@@ -390,6 +392,8 @@ export function convertCalendarSuggestionToProjectSpec(
 					description: task.description,
 					details: task.details,
 					calendar_event_id: task.event_id,
+					source_calendar_event_id: task.event_id,
+					source_calendar_source_id: task.calendar_source_id,
 					task_type: task.task_type,
 					task_state_key: task.state_key,
 					task_type_key: task.type_key,

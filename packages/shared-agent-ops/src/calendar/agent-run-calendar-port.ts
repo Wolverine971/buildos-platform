@@ -756,7 +756,7 @@ class AgentRunCalendarPort implements CalendarPort {
 						});
 						await this.upsertEventSync({
 							eventId: updated.id,
-							projectCalendarId: sync.calendar_id,
+							projectCalendarId: sync.project_calendar_id,
 							externalEventId: sync.external_event_id,
 							status: 'synced',
 							error: null
@@ -841,7 +841,7 @@ class AgentRunCalendarPort implements CalendarPort {
 					await this.deleteGoogleEvent(googleCalendarId, sync.external_event_id);
 					await this.upsertEventSync({
 						eventId: existing.id,
-						projectCalendarId: sync.calendar_id,
+						projectCalendarId: sync.project_calendar_id,
 						externalEventId: sync.external_event_id,
 						status: 'deleted',
 						error: null
@@ -1204,12 +1204,13 @@ class AgentRunCalendarPort implements CalendarPort {
 	}
 
 	private async resolveGoogleCalendarIdForSyncRow(
-		sync: Pick<OntoEventSyncRow, 'calendar_id'>
+		sync: Pick<OntoEventSyncRow, 'project_calendar_id'>
 	): Promise<string | null> {
+		if (!sync.project_calendar_id) return null;
 		const { data, error } = await this.admin
 			.from('project_calendars')
 			.select('calendar_id')
-			.eq('id', sync.calendar_id)
+			.eq('id', sync.project_calendar_id)
 			.eq('user_id', this.userId)
 			.maybeSingle();
 
@@ -1282,7 +1283,7 @@ class AgentRunCalendarPort implements CalendarPort {
 				`*,
 				onto_event_sync (
 					id,
-					calendar_id,
+					project_calendar_id,
 					user_id,
 					provider,
 					external_event_id,
@@ -1320,7 +1321,7 @@ class AgentRunCalendarPort implements CalendarPort {
 				`*,
 				onto_event_sync (
 					id,
-					calendar_id,
+					project_calendar_id,
 					user_id,
 					provider,
 					external_event_id,
@@ -1495,7 +1496,7 @@ class AgentRunCalendarPort implements CalendarPort {
 
 	private async upsertEventSync(input: {
 		eventId: string;
-		projectCalendarId: string;
+		projectCalendarId: string | null;
 		externalEventId: string;
 		status: string;
 		error: string | null;
@@ -1505,7 +1506,7 @@ class AgentRunCalendarPort implements CalendarPort {
 			event_id: input.eventId,
 			user_id: this.userId,
 			provider: 'google',
-			calendar_id: input.projectCalendarId,
+			project_calendar_id: input.projectCalendarId,
 			external_event_id: input.externalEventId,
 			sync_status: input.status,
 			sync_error: input.error,

@@ -318,6 +318,50 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 		]);
 	});
 
+	it('forwards deterministic multimodal current-turn content without rewriting signed URLs', async () => {
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				JSON.stringify({ choices: [{ delta: { content: 'Seen.' } }] }),
+				JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
+				'[DONE]'
+			])
+		) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		const signedUrl = 'https://storage.example/signed/image?token=ephemeral';
+		await collect(
+			test.client.stream({
+				...input(),
+				messages: [
+					{ role: 'system', content: 'System prompt' },
+					{
+						role: 'user',
+						content: [
+							{ type: 'text', text: 'Inspect the current image.' },
+							{
+								type: 'image_url',
+								image_url: { url: signedUrl, detail: 'auto' }
+							}
+						]
+					}
+				]
+			})
+		);
+		const body = JSON.parse(String(vi.mocked(fetchImpl).mock.calls[0]?.[1]?.body));
+		expect(body.messages).toEqual([
+			{ role: 'system', content: 'System prompt' },
+			{
+				role: 'user',
+				content: [
+					{ type: 'text', text: 'Inspect the current image.' },
+					{
+						type: 'image_url',
+						image_url: { url: signedUrl, detail: 'auto' }
+					}
+				]
+			}
+		]);
+	});
+
 	it('passes through one streamed read-tool call with the exact artifact-scoped HTTP surface', async () => {
 		const fetchImpl = vi.fn(async () =>
 			sseResponse([

@@ -9,6 +9,7 @@ import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2,
 	AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES,
+	AGENTIC_CHAT_LIVE_VISION_MAX_IMAGES,
 	AGENTIC_CHAT_RECONCILE_MAX_DURABLE_EVENTS,
 	AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
 	AGENTIC_CHAT_REALTIME_STREAM_EVENT,
@@ -21,6 +22,7 @@ import {
 	AGENTIC_CHAT_TEXT_BATCH_MAX_BYTES,
 	AGENTIC_CHAT_TERMINAL_RETENTION_MS,
 	canPublishAgenticChatStreamWriteV1,
+	assessAgenticChatLiveVisionEligibilityV1,
 	canonicalizeAdmissionRequestV1,
 	canonicalizeAgenticChatJson,
 	createAgentStreamEventIdV1,
@@ -32,6 +34,7 @@ import {
 	hashTurnInputArtifactContentV1,
 	normalizeTurnInputArtifactContentV1,
 	parseAgentStreamEventIdV1,
+	shouldUseAgenticChatLiveVisionV1,
 	validateTurnInputArtifactV1,
 	type CanonicalAdmissionRequestV1,
 	type AgenticChatCancellationObservationRpcResultV1,
@@ -166,6 +169,53 @@ describe('agentic chat worker v1 contract fixtures', () => {
 		).toBe('{"array":[{"x":false,"y":true},"second"],"nested":{"a":1,"b":2},"z":null}');
 		expect(() => canonicalizeAgenticChatJson([undefined] as never)).toThrow(/Undefined/);
 		expect(() => canonicalizeAgenticChatJson({ value: Number.NaN })).toThrow(/Non-finite/);
+	});
+
+	it('pins shared live-vision intent and immutable source eligibility', () => {
+		expect(
+			shouldUseAgenticChatLiveVisionV1({
+				message: 'Inspect this diagram.',
+				attachmentCount: 1,
+				liveVisionEnabled: true
+			})
+		).toBe(true);
+		expect(
+			shouldUseAgenticChatLiveVisionV1({
+				message: 'Store this as context for later.',
+				attachmentCount: 1,
+				liveVisionEnabled: true
+			})
+		).toBe(false);
+
+		const source = {
+			...ATTACHMENT_A,
+			display_order: 0,
+			storage_bucket: 'onto-assets',
+			storage_path: 'projects/project/diagram.png',
+			expires_at: null
+		};
+		expect(assessAgenticChatLiveVisionEligibilityV1(source, { maxBytes: 4096 })).toEqual({
+			eligible: true
+		});
+		expect(
+			assessAgenticChatLiveVisionEligibilityV1(
+				{ ...source, checksum_sha256: null },
+				{ maxBytes: 4096 }
+			)
+		).toEqual({ eligible: false, reason: 'missing_checksum' });
+		const expiredTemporarySource = {
+			...source,
+			attachment_kind: 'temporary_file' as const,
+			asset_id: null,
+			temporary_attachment_id: 'temp-1',
+			expires_at: '2026-08-12T00:00:00.000Z'
+		};
+		expect(
+			assessAgenticChatLiveVisionEligibilityV1(expiredTemporarySource, {
+				maxBytes: 4096,
+				nowMs: Date.parse('2026-08-12T00:00:01.000Z')
+			})
+		).toEqual({ eligible: false, reason: 'expired_temporary_attachment' });
 	});
 
 	it('pins the normalized semantic admission request SHA-256 fixture', async () => {
@@ -444,6 +494,84 @@ describe('agentic chat worker v1 contract fixtures', () => {
 		expect(await validateTurnInputArtifactV1(inconsistent)).toMatchObject({
 			ok: false,
 			code: 'invalid_history_state'
+		});
+	});
+
+	it('validates bounded immutable current-turn attachment evidence while retaining rolling artifacts', async () => {
+		const rollingArtifact = artifactFixture();
+		rollingArtifact.contentHash = await hashTurnInputArtifactContentV1(rollingArtifact);
+		expect(await validateTurnInputArtifactV1(rollingArtifact)).toMatchObject({ ok: true });
+
+		const artifact = artifactFixture();
+		artifact.history[1]!.attachments = [
+			{
+				...ATTACHMENT_B,
+				display_order: 0,
+				storage_bucket: 'onto-assets',
+				storage_path: 'projects/20000000-0000-4000-8000-000000000001/timeline.png',
+				expires_at: null
+			}
+		];
+		artifact.prepared.currentTurn = {
+			message: 'Review the diagram.',
+			attachmentContextMaxChars: 7000,
+			liveVision: {
+				requested: true,
+				maxImages: 2,
+				maxImageBytes: 8 * 1024 * 1024,
+				renderWidth: 1600,
+				signedUrlTtlSeconds: 900
+			},
+			attachments: [
+				{
+					...ATTACHMENT_A,
+					display_order: 0,
+					storage_bucket: 'onto-assets',
+					storage_path: 'projects/20000000-0000-4000-8000-000000000001/diagram.png',
+					expires_at: null
+				}
+			]
+		};
+		artifact.contentHash = await hashTurnInputArtifactContentV1(artifact);
+		expect(await validateTurnInputArtifactV1(artifact)).toMatchObject({ ok: true });
+
+		const invalidPolicy = structuredClone(artifact);
+		invalidPolicy.prepared.currentTurn!.liveVision!.maxImages =
+			AGENTIC_CHAT_LIVE_VISION_MAX_IMAGES + 1;
+		invalidPolicy.contentHash = await hashTurnInputArtifactContentV1(invalidPolicy);
+		expect(await validateTurnInputArtifactV1(invalidPolicy)).toMatchObject({
+			ok: false,
+			code: 'invalid_current_turn'
+		});
+
+		const malformed = artifactFixture();
+		malformed.history[1]!.attachments = [
+			{
+				...ATTACHMENT_B,
+				display_order: 0,
+				storage_bucket: 'onto-assets',
+				storage_path: 'projects/20000000-0000-4000-8000-000000000001/timeline.png',
+				expires_at: null
+			}
+		];
+		malformed.prepared.currentTurn = {
+			message: 'Review the diagram.',
+			attachmentContextMaxChars: 7000,
+			attachments: [
+				{
+					...ATTACHMENT_A,
+					display_order: 0,
+					checksum_sha256: 'not-a-checksum',
+					storage_bucket: 'onto-assets',
+					storage_path: 'projects/20000000-0000-4000-8000-000000000001/diagram.png',
+					expires_at: null
+				}
+			]
+		};
+		malformed.contentHash = await hashTurnInputArtifactContentV1(malformed);
+		expect(await validateTurnInputArtifactV1(malformed)).toMatchObject({
+			ok: false,
+			code: 'invalid_current_turn'
 		});
 	});
 

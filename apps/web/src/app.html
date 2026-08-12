@@ -58,37 +58,56 @@
 		<meta name="apple-touch-fullscreen" content="yes" />
 
 		<!--
-			Recover tabs that are still running a previous deployment. Vercel removes
-			old hashed chunks, so a client-side navigation can otherwise fail when
-			Vite tries to import an asset that no longer exists.
+			Recover before the application hooks load. Keep Vite's preload event
+			uncanceled so the original import failure reaches SvelteKit; canceling it
+			turns the missing route module into an unhelpful `undefined.universal` error.
 		-->
 		<script>
 			(() => {
-				const reloadKey = 'buildos:preload-error-reload';
+				const recoveryKey = 'buildos:route-load-recovery';
 				const reloadCooldownMs = 60_000;
 
 				window.addEventListener('vite:preloadError', (event) => {
-					let lastReloadAt = 0;
+					const reloadAt = Date.now();
+					const route = `${window.location.pathname}${window.location.search}`;
+					let previousAttempt = null;
 
 					try {
-						lastReloadAt = Number(window.sessionStorage.getItem(reloadKey) ?? 0);
+						const serialized = window.sessionStorage.getItem(recoveryKey);
+						previousAttempt = serialized ? JSON.parse(serialized) : null;
+					} catch {
+						previousAttempt = null;
+					}
+
+					if (
+						previousAttempt?.route === route &&
+						reloadAt >= previousAttempt.attemptedAt &&
+						reloadAt - previousAttempt.attemptedAt < reloadCooldownMs
+					) {
+						return;
+					}
+
+					const payload = event.payload;
+					const message =
+						payload && typeof payload.message === 'string' ? payload.message : '';
+					const dynamicImportMatch = message.match(
+						/(?:Failed to fetch|Error loading) dynamically imported module:\s*(\S+)/i
+					);
+					const immutableAssetMatch = message.match(
+						/https?:\/\/\S+\/_app\/immutable\/\S+\.js/i
+					);
+					const moduleUrl = dynamicImportMatch?.[1] ?? immutableAssetMatch?.[0] ?? null;
+
+					try {
+						window.sessionStorage.setItem(
+							recoveryKey,
+							JSON.stringify({ route, attemptedAt: reloadAt, moduleUrl })
+						);
 					} catch {
 						// Without a persisted guard, reloading could create a loop.
 						return;
 					}
 
-					const reloadAt = Date.now();
-					if (reloadAt - lastReloadAt < reloadCooldownMs) {
-						return;
-					}
-
-					try {
-						window.sessionStorage.setItem(reloadKey, String(reloadAt));
-					} catch {
-						return;
-					}
-
-					event.preventDefault();
 					window.location.reload();
 				});
 			})();

@@ -2,7 +2,6 @@
 import type { LayoutServerLoad } from './$types';
 import { OnboardingProgressService } from '$lib/services/onboardingProgress.service';
 import { StripeService } from '$lib/services/stripe-service';
-import { checkAndRegisterWebhookIfNeeded } from '$lib/services/calendar-webhook-check';
 import { fetchBillingContext } from '$lib/server/billing-context';
 import {
 	getCachedBillingContext,
@@ -52,11 +51,9 @@ type CacheEntry<T> = {
 
 const PENDING_INVITES_TTL_MS = 20_000;
 const ONBOARDING_PROGRESS_TTL_MS = 60_000;
-const WEBHOOK_CHECK_TTL_MS = 5 * 60_000;
 
 const pendingInvitesCache = new Map<string, CacheEntry<PendingProjectInvite[]>>();
 const onboardingProgressCache = new Map<string, CacheEntry<number>>();
-const webhookCheckThrottle = new Map<string, number>();
 
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string, nowMs: number): T | null {
 	const entry = cache.get(key);
@@ -156,15 +153,6 @@ export const load: LayoutServerLoad = async ({
 			routePath === '/today' ||
 			routePath.startsWith('/onboarding'));
 	const shouldLoadBillingContext = stripeEnabled && !routePath.startsWith('/auth');
-
-	const webhookThrottleKey = `${user.id}:${url.origin}`;
-	const lastWebhookCheck = webhookCheckThrottle.get(webhookThrottleKey) ?? 0;
-	if (nowMs - lastWebhookCheck >= WEBHOOK_CHECK_TTL_MS) {
-		webhookCheckThrottle.set(webhookThrottleKey, nowMs);
-		checkAndRegisterWebhookIfNeeded(supabase, user.id, url.origin).catch((error) => {
-			console.error('Background webhook check failed:', error);
-		});
-	}
 
 	// Run all remaining queries in parallel instead of sequentially/streamed.
 	// Awaiting here prevents layout shifts from TrialBanner/PaymentWarning

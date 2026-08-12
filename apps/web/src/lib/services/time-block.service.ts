@@ -30,6 +30,52 @@ interface CalendarSyncPayload {
 	start: Date;
 	end: Date;
 	timezone?: string;
+	calendarSourceId?: string;
+}
+
+export interface SourceAwareTimeBlockCalendar {
+	createStandaloneEvent(params: {
+		userId: string;
+		selector?: { calendarSourceId?: string };
+		summary: string;
+		description?: string;
+		start: Date;
+		end: Date;
+		timeZone?: string;
+		colorId?: string;
+	}): Promise<{
+		calendarSourceId: string;
+		providerEventId: string;
+		event: { htmlLink?: string | null };
+	}>;
+	updateEvent(params: {
+		userId: string;
+		providerEventId: string;
+		selector: { calendarSourceId: string };
+		requestBody: {
+			summary?: string;
+			description?: string;
+			start?: { dateTime: string; timeZone?: string };
+			end?: { dateTime: string; timeZone?: string };
+		};
+	}): Promise<unknown>;
+	deleteEvent(params: {
+		userId: string;
+		providerEventId: string;
+		selector: { calendarSourceId: string };
+	}): Promise<unknown>;
+	compensateUnmappedCreatedEvent(params: {
+		userId: string;
+		calendarSourceId: string;
+		providerEventId: string;
+		entityKind: 'time_block';
+		entityId: string;
+	}): Promise<'deleted' | 'orphan_recorded'>;
+}
+
+export interface TimeBlockServiceOptions {
+	suggestionService?: TimeBlockSuggestionService;
+	sourceAwareCalendar?: SourceAwareTimeBlockCalendar;
 }
 
 const DEFAULT_TIMEZONE = 'America/New_York';
@@ -52,12 +98,18 @@ function validateColorId(colorId: string | null | undefined): string {
 const APP_BASE_URL = (PUBLIC_APP_URL || FALLBACK_APP_URL).replace(/\/$/, '');
 
 export class TimeBlockService {
+	private suggestionService?: TimeBlockSuggestionService;
+	private readonly sourceAwareCalendar?: SourceAwareTimeBlockCalendar;
+
 	constructor(
 		private readonly supabase: TypedSupabaseClient,
 		private readonly userId: string,
 		private readonly calendarService: CalendarService,
-		private suggestionService?: TimeBlockSuggestionService
-	) {}
+		options: TimeBlockServiceOptions = {}
+	) {
+		this.suggestionService = options.suggestionService;
+		this.sourceAwareCalendar = options.sourceAwareCalendar;
+	}
 
 	private getSuggestionService(): TimeBlockSuggestionService {
 		if (!this.suggestionService) {
@@ -231,6 +283,7 @@ export class TimeBlockService {
 			suggestions: [],
 			suggestionSummary: null
 		});
+		const timeBlockId = crypto.randomUUID();
 
 		const calendarEvent = await this.syncToGoogleCalendar({
 			summary: calendarContent.summary,
@@ -238,7 +291,8 @@ export class TimeBlockService {
 			colorId: calendarContent.colorId,
 			start: startTime,
 			end: endTime,
-			timezone
+			timezone,
+			calendarSourceId: params.calendar_source_id
 		});
 
 		const nowIso = new Date().toISOString();
@@ -246,6 +300,7 @@ export class TimeBlockService {
 		const { data: timeBlock, error } = await this.supabase
 			.from('time_blocks')
 			.insert({
+				id: timeBlockId,
 				user_id: this.userId,
 				block_type: blockType,
 				project_id: projectId,
@@ -255,6 +310,7 @@ export class TimeBlockService {
 				timezone,
 				calendar_event_id: calendarEvent.eventId,
 				calendar_event_link: calendarEvent.eventLink ?? null,
+				calendar_source_id: calendarEvent.calendarSourceId ?? null,
 				ai_suggestions: null,
 				suggestions_summary: null,
 				suggestions_generated_at: null,
@@ -272,7 +328,11 @@ export class TimeBlockService {
 			.single();
 
 		if (error) {
-			await this.rollbackCalendarEvent(calendarEvent.eventId);
+			await this.rollbackCalendarEvent({
+				eventId: calendarEvent.eventId,
+				calendarSourceId: calendarEvent.calendarSourceId,
+				timeBlockId
+			});
 			throw error;
 		}
 
@@ -354,8 +414,7 @@ export class TimeBlockService {
 
 			if (updatedBlock?.calendar_event_id) {
 				try {
-					await this.calendarService.updateCalendarEvent(this.userId, {
-						event_id: updatedBlock.calendar_event_id,
+					await this.updateCalendarEvent(updatedBlock, {
 						summary: calendarContent.summary,
 						description: calendarContent.description,
 						start_time: startTime.toISOString(),
@@ -495,8 +554,7 @@ export class TimeBlockService {
 		// Update Google Calendar event
 		if (existingBlock.calendar_event_id) {
 			try {
-				await this.calendarService.updateCalendarEvent(this.userId, {
-					event_id: existingBlock.calendar_event_id,
+				await this.updateCalendarEvent(existingBlock, {
 					summary: calendarContent.summary,
 					description: calendarContent.description,
 					start_time: startTime.toISOString(),
@@ -721,7 +779,7 @@ export class TimeBlockService {
 	async deleteTimeBlock(blockId: string): Promise<void> {
 		const { data: timeBlock, error: fetchError } = await this.supabase
 			.from('time_blocks')
-			.select('calendar_event_id')
+			.select('calendar_event_id, calendar_source_id')
 			.eq('id', blockId)
 			.eq('user_id', this.userId)
 			.maybeSingle();
@@ -736,9 +794,7 @@ export class TimeBlockService {
 
 		if (timeBlock.calendar_event_id) {
 			try {
-				await this.calendarService.deleteCalendarEvent(this.userId, {
-					event_id: timeBlock.calendar_event_id
-				});
+				await this.deleteCalendarEvent(timeBlock);
 			} catch (error) {
 				console.error('[TimeBlockService] Failed to delete calendar event:', error);
 			}
@@ -768,7 +824,28 @@ export class TimeBlockService {
 	private async syncToGoogleCalendar(params: CalendarSyncPayload): Promise<{
 		eventId: string;
 		eventLink?: string;
+		calendarSourceId?: string;
 	}> {
+		if (this.sourceAwareCalendar) {
+			const result = await this.sourceAwareCalendar.createStandaloneEvent({
+				userId: this.userId,
+				selector: params.calendarSourceId
+					? { calendarSourceId: params.calendarSourceId }
+					: undefined,
+				summary: params.summary,
+				description: params.description,
+				start: params.start,
+				end: params.end,
+				timeZone: params.timezone ?? DEFAULT_TIMEZONE,
+				colorId: params.colorId ?? DEFAULT_PROJECT_COLOR
+			});
+			return {
+				eventId: result.providerEventId,
+				eventLink: result.event.htmlLink ?? undefined,
+				calendarSourceId: result.calendarSourceId
+			};
+		}
+
 		const result = await this.calendarService.createStandaloneEvent(this.userId, {
 			summary: params.summary,
 			description: params.description,
@@ -781,16 +858,86 @@ export class TimeBlockService {
 		return result;
 	}
 
-	private async rollbackCalendarEvent(eventId: string | null | undefined): Promise<void> {
-		if (!eventId) {
+	private async rollbackCalendarEvent(params: {
+		eventId: string | null | undefined;
+		calendarSourceId?: string;
+		timeBlockId: string;
+	}): Promise<void> {
+		if (!params.eventId) {
 			return;
 		}
 
 		try {
-			await this.calendarService.deleteCalendarEvent(this.userId, { event_id: eventId });
+			if (this.sourceAwareCalendar && params.calendarSourceId) {
+				await this.sourceAwareCalendar.compensateUnmappedCreatedEvent({
+					userId: this.userId,
+					calendarSourceId: params.calendarSourceId,
+					providerEventId: params.eventId,
+					entityKind: 'time_block',
+					entityId: params.timeBlockId
+				});
+				return;
+			}
+			await this.calendarService.deleteCalendarEvent(this.userId, {
+				event_id: params.eventId
+			});
 		} catch (error) {
 			console.error('[TimeBlockService] Failed to rollback calendar event:', error);
 		}
+	}
+
+	private async updateCalendarEvent(
+		block: Pick<TimeBlockWithProject, 'calendar_event_id' | 'calendar_source_id'>,
+		params: {
+			summary: string;
+			description: string;
+			start_time: string;
+			end_time: string;
+			timeZone: string;
+		}
+	): Promise<void> {
+		if (!block.calendar_event_id) return;
+		if (this.sourceAwareCalendar) {
+			if (!block.calendar_source_id) {
+				throw new Error('Time block calendar source is missing');
+			}
+			await this.sourceAwareCalendar.updateEvent({
+				userId: this.userId,
+				providerEventId: block.calendar_event_id,
+				selector: { calendarSourceId: block.calendar_source_id },
+				requestBody: {
+					summary: params.summary,
+					description: params.description,
+					start: { dateTime: params.start_time, timeZone: params.timeZone },
+					end: { dateTime: params.end_time, timeZone: params.timeZone }
+				}
+			});
+			return;
+		}
+		await this.calendarService.updateCalendarEvent(this.userId, {
+			event_id: block.calendar_event_id,
+			...params
+		});
+	}
+
+	private async deleteCalendarEvent(
+		block: Pick<TimeBlockWithProject, 'calendar_event_id' | 'calendar_source_id'>
+	): Promise<void> {
+		if (!block.calendar_event_id) return;
+		if (this.sourceAwareCalendar) {
+			if (!block.calendar_source_id) {
+				throw new Error('Time block calendar source is missing');
+			}
+			await this.sourceAwareCalendar.deleteEvent({
+				userId: this.userId,
+				providerEventId: block.calendar_event_id,
+				selector: { calendarSourceId: block.calendar_source_id }
+			});
+			return;
+		}
+		await this.calendarService.deleteCalendarEvent(this.userId, {
+			event_id: block.calendar_event_id
+		});
 	}
 
 	private validateTimeBlockParams(params: CreateTimeBlockParams): void {

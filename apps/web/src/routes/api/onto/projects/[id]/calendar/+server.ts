@@ -1,11 +1,14 @@
 // apps/web/src/routes/api/onto/projects/[id]/calendar/+server.ts
+import { env as privateEnv } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { ProjectCalendarService } from '$lib/services/project-calendar.service';
+import { createProjectCalendarRuntimeService } from '$lib/server/project-calendar-runtime.service';
+import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
-import type { GoogleColorId } from '$lib/config/calendar-colors';
+import { GOOGLE_CALENDAR_COLORS, type GoogleColorId } from '$lib/config/calendar-colors';
 import type { ProjectCalendarSyncMode } from '$lib/services/project-calendar.service';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 type ProjectAccessResult =
 	| {
@@ -42,7 +45,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	const access = await requireProjectAccess(locals, projectId, 'read');
 	if (!access.ok) return access.response;
 
-	const service = new ProjectCalendarService(locals.supabase);
+	const service = createProjectCalendarRuntimeService(locals.supabase, access.userId);
 	return service.getProjectCalendar(projectId, access.userId);
 };
 
@@ -56,28 +59,58 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	if (!access.ok) return access.response;
 
 	const body = await request.json().catch(() => null);
-	const name = body?.name as string | undefined;
-	const description = body?.description as string | undefined;
-	const colorId = body?.colorId as GoogleColorId | undefined;
-	const timeZone = body?.timeZone as string | undefined;
+	if (!body || typeof body !== 'object' || Array.isArray(body)) {
+		return ApiResponse.badRequest('Invalid request body');
+	}
+	const name = typeof body.name === 'string' ? body.name : undefined;
+	const description = typeof body.description === 'string' ? body.description : undefined;
+	const colorId = typeof body.colorId === 'string' ? body.colorId : undefined;
+	const timeZone = typeof body.timeZone === 'string' ? body.timeZone : undefined;
 	const calendarId =
-		(body?.calendarId as string | undefined) || (body?.calendar_id as string | undefined);
-
-	const oAuthService = new GoogleOAuthService(locals.supabase);
-	const status = await oAuthService.safeGetCalendarStatus(access.userId);
-	if (!status.isConnected) {
-		return ApiResponse.error('Google Calendar is not connected', 409);
+		(typeof body.calendarId === 'string' ? body.calendarId : undefined) ||
+		(typeof body.calendar_id === 'string' ? body.calendar_id : undefined);
+	const calendarSourceId =
+		(typeof body.calendarSourceId === 'string' ? body.calendarSourceId : undefined) ||
+		(typeof body.calendar_source_id === 'string' ? body.calendar_source_id : undefined);
+	const connectionId =
+		(typeof body.connectionId === 'string' ? body.connectionId : undefined) ||
+		(typeof body.connection_id === 'string' ? body.connection_id : undefined);
+	if (colorId && !(colorId in GOOGLE_CALENDAR_COLORS)) {
+		return ApiResponse.badRequest('colorId must be a valid Google Calendar color');
+	}
+	if (calendarSourceId && !isValidUUID(calendarSourceId)) {
+		return ApiResponse.badRequest('calendarSourceId must be a valid UUID');
+	}
+	if (connectionId && !isValidUUID(connectionId)) {
+		return ApiResponse.badRequest('connectionId must be a valid UUID');
+	}
+	if (calendarSourceId && connectionId) {
+		return ApiResponse.badRequest('Choose either calendarSourceId or connectionId, not both');
+	}
+	const multiCalendarEnabled = isMultiCalendarUserAllowed(access.userId, privateEnv);
+	if ((calendarSourceId || connectionId) && !multiCalendarEnabled) {
+		return ApiResponse.badRequest('Project calendar source selection is not enabled.');
 	}
 
-	const service = new ProjectCalendarService(locals.supabase);
+	if (!multiCalendarEnabled) {
+		const oAuthService = new GoogleOAuthService(locals.supabase);
+		const status = await oAuthService.safeGetCalendarStatus(access.userId);
+		if (!status.isConnected) {
+			return ApiResponse.error('Google Calendar is not connected', 409);
+		}
+	}
+
+	const service = createProjectCalendarRuntimeService(locals.supabase, access.userId);
 	return service.createProjectCalendar({
 		projectId,
 		userId: access.userId,
 		name,
 		description,
-		colorId,
+		colorId: colorId as GoogleColorId | undefined,
 		timeZone,
-		calendarId
+		calendarId,
+		calendarSourceId,
+		connectionId
 	});
 };
 
@@ -95,7 +128,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.badRequest('Invalid request body');
 	}
 
-	const service = new ProjectCalendarService(locals.supabase);
+	const service = createProjectCalendarRuntimeService(locals.supabase, access.userId);
 	const syncMode =
 		(body?.syncMode as ProjectCalendarSyncMode | undefined) ||
 		(body?.sync_mode as ProjectCalendarSyncMode | undefined);
@@ -137,6 +170,6 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 	const access = await requireProjectAccess(locals, projectId, 'write');
 	if (!access.ok) return access.response;
 
-	const service = new ProjectCalendarService(locals.supabase);
+	const service = createProjectCalendarRuntimeService(locals.supabase, access.userId);
 	return service.deleteProjectCalendar(projectId, access.userId);
 };

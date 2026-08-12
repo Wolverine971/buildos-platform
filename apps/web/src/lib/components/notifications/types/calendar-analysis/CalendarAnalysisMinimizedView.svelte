@@ -29,6 +29,8 @@
 			<CheckCircle class="h-5 w-5 text-success" aria-hidden="true" />
 		{:else if notification.status === 'error'}
 			<AlertCircle class="h-5 w-5 text-destructive" aria-hidden="true" />
+		{:else if notification.status === 'warning'}
+			<AlertCircle class="h-5 w-5 text-warning" aria-hidden="true" />
 		{:else}
 			<CalendarClock class="h-5 w-5 text-info" aria-hidden="true" />
 		{/if}

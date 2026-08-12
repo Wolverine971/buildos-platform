@@ -6,6 +6,10 @@ import { resolveQueueJobPublicId } from '$lib/server/queue-job-id';
 import { CalendarService } from './calendar-service';
 import { ApiResponse } from '$lib/utils/api-response';
 import { GOOGLE_CALENDAR_COLORS, type GoogleColorId } from '$lib/config/calendar-colors';
+import type {
+	GoogleCalendarProjectResource,
+	GoogleCalendarProjectResourceService
+} from '$lib/server/google-calendar-project-resource.service';
 
 type ProjectCalendar = Database['public']['Tables']['project_calendars']['Row'];
 type ProjectCalendarInsert = Database['public']['Tables']['project_calendars']['Insert'];
@@ -100,6 +104,8 @@ export interface CreateProjectCalendarOptions {
 	colorId?: GoogleColorId;
 	timeZone?: string;
 	calendarId?: string;
+	calendarSourceId?: string;
+	connectionId?: string;
 }
 
 export interface UpdateProjectCalendarOptions {
@@ -110,13 +116,24 @@ export interface UpdateProjectCalendarOptions {
 	syncMode?: ProjectCalendarSyncMode;
 }
 
+type ProjectCalendarResourceGateway = Pick<
+	GoogleCalendarProjectResourceService,
+	'resolveLinkedSource' | 'createCalendar' | 'updateCalendar' | 'deleteCalendar' | 'shareCalendar'
+>;
+
+export interface ProjectCalendarServiceOptions {
+	projectResourceService?: ProjectCalendarResourceGateway;
+}
+
 export class ProjectCalendarService {
 	private supabase: SupabaseClient<Database>;
 	private calendarService: CalendarService;
+	private projectResourceService?: ProjectCalendarResourceGateway;
 
-	constructor(supabase: SupabaseClient<Database>) {
+	constructor(supabase: SupabaseClient<Database>, options: ProjectCalendarServiceOptions = {}) {
 		this.supabase = supabase;
 		this.calendarService = new CalendarService(supabase);
+		this.projectResourceService = options.projectResourceService;
 	}
 
 	private parseProjectSyncMode(
@@ -286,11 +303,55 @@ export class ProjectCalendarService {
 
 			let resolvedColorId = options.colorId || propsColorId || '7';
 			let mappedGoogleCalendarId: string | null = null;
+			let mappedCalendarSourceId: string | null = null;
 			let mappedCalendarName = calendarName;
 			let createdGoogleCalendarId: string | null = null;
+			let providerResourceManaged = false;
+			let sourceAwareResource: GoogleCalendarProjectResource | null = null;
 
 			const requestedCalendarId = options.calendarId?.trim();
-			if (requestedCalendarId) {
+			const requestedCalendarSourceId = options.calendarSourceId?.trim();
+			if (this.projectResourceService) {
+				if (requestedCalendarId && !requestedCalendarSourceId) {
+					return ApiResponse.badRequest(
+						'calendarSourceId is required for source-aware project calendar mapping'
+					);
+				}
+
+				if (requestedCalendarSourceId) {
+					sourceAwareResource = await this.projectResourceService.resolveLinkedSource(
+						options.userId,
+						requestedCalendarSourceId
+					);
+				} else {
+					const { data: user } = await this.supabase
+						.from('users')
+						.select('timezone')
+						.eq('id', options.userId)
+						.single();
+					sourceAwareResource = await this.projectResourceService.createCalendar({
+						userId: options.userId,
+						connectionId: options.connectionId?.trim() || undefined,
+						name: calendarName,
+						description: calendarDescription,
+						colorId: resolvedColorId,
+						timeZone: options.timeZone || user?.timezone || 'America/New_York'
+					});
+					providerResourceManaged = true;
+					createdGoogleCalendarId = sourceAwareResource.providerCalendarId;
+				}
+
+				mappedGoogleCalendarId = sourceAwareResource.providerCalendarId;
+				mappedCalendarSourceId = sourceAwareResource.calendarSourceId;
+				mappedCalendarName = options.name || sourceAwareResource.summary || calendarName;
+				if (
+					!options.colorId &&
+					sourceAwareResource.colorId &&
+					sourceAwareResource.colorId in GOOGLE_CALENDAR_COLORS
+				) {
+					resolvedColorId = sourceAwareResource.colorId as GoogleColorId;
+				}
+			} else if (requestedCalendarId) {
 				const listResult = await this.calendarService.listUserCalendars(options.userId);
 				if (!listResult.success || !listResult.calendars) {
 					return ApiResponse.error(
@@ -367,13 +428,15 @@ export class ProjectCalendarService {
 				project_id: options.projectId,
 				user_id: options.userId,
 				calendar_id: mappedGoogleCalendarId,
+				calendar_source_id: mappedCalendarSourceId,
 				calendar_name: mappedCalendarName,
 				color_id: resolvedColorId,
 				hex_color: GOOGLE_CALENDAR_COLORS[resolvedColorId as GoogleColorId].hex,
 				is_primary: false,
 				sync_enabled: true,
 				visibility: 'private',
-				sync_status: 'active'
+				sync_status: 'active',
+				provider_resource_managed: providerResourceManaged
 			};
 
 			const { data: projectCalendar, error: insertError } = await this.supabase
@@ -384,7 +447,16 @@ export class ProjectCalendarService {
 
 			if (insertError || !projectCalendar) {
 				// Roll back only when this call created a new Google Calendar
-				if (createdGoogleCalendarId) {
+				if (
+					createdGoogleCalendarId &&
+					mappedCalendarSourceId &&
+					this.projectResourceService
+				) {
+					await this.projectResourceService.deleteCalendar({
+						userId: options.userId,
+						calendarSourceId: mappedCalendarSourceId
+					});
+				} else if (createdGoogleCalendarId) {
 					await this.calendarService.deleteProjectCalendar(
 						options.userId,
 						createdGoogleCalendarId
@@ -990,21 +1062,38 @@ export class ProjectCalendarService {
 
 			// Update Google Calendar properties if needed
 			if (updates.name || updates.description || updates.colorId) {
-				const updateResult = await this.calendarService.updateCalendarProperties(
-					userId,
-					existingCalendar.calendar_id,
-					{
-						summary: updates.name,
+				if (this.projectResourceService) {
+					if (!existingCalendar.calendar_source_id) {
+						return ApiResponse.error(
+							'Project calendar source is unavailable. Re-link the calendar before updating it.',
+							409
+						);
+					}
+					await this.projectResourceService.updateCalendar({
+						userId,
+						calendarSourceId: existingCalendar.calendar_source_id,
+						providerResourceManaged: existingCalendar.provider_resource_managed,
+						name: updates.name,
 						description: updates.description,
 						colorId: updates.colorId
-					}
-				);
-
-				if (!updateResult.success) {
-					return ApiResponse.error(
-						updateResult.error || 'Failed to update Google Calendar',
-						500
+					});
+				} else {
+					const updateResult = await this.calendarService.updateCalendarProperties(
+						userId,
+						existingCalendar.calendar_id,
+						{
+							summary: updates.name,
+							description: updates.description,
+							colorId: updates.colorId
+						}
 					);
+
+					if (!updateResult.success) {
+						return ApiResponse.error(
+							updateResult.error || 'Failed to update Google Calendar',
+							500
+						);
+					}
 				}
 			}
 
@@ -1076,17 +1165,19 @@ export class ProjectCalendarService {
 				return ApiResponse.error('Project calendar not found', 404);
 			}
 
-			// Delete from Google Calendar
-			const deleteResult = await this.calendarService.deleteProjectCalendar(
-				userId,
-				existingCalendar.calendar_id
-			);
-
-			if (!deleteResult.success) {
-				return ApiResponse.error(
-					deleteResult.error || 'Failed to delete Google Calendar',
-					500
-				);
+			// Existing linked calendars are unlinked only. Provider deletion is allowed only for a
+			// source-qualified calendar that BuildOS created and explicitly owns.
+			if (existingCalendar.provider_resource_managed) {
+				if (!this.projectResourceService || !existingCalendar.calendar_source_id) {
+					return ApiResponse.error(
+						'Project calendar source is unavailable. Reconnect the owning Google account before deleting it.',
+						409
+					);
+				}
+				await this.projectResourceService.deleteCalendar({
+					userId,
+					calendarSourceId: existingCalendar.calendar_source_id
+				});
 			}
 
 			// Delete from database
@@ -1289,15 +1380,29 @@ export class ProjectCalendarService {
 				return ApiResponse.error('Project calendar not found', 404);
 			}
 
-			// Share via Google Calendar API
-			const shareResult = await this.calendarService.shareCalendar(
-				userId,
-				projectCalendar.calendar_id,
-				shares
-			);
+			// Share through the credential that owns the stored project source.
+			if (this.projectResourceService) {
+				if (!projectCalendar.calendar_source_id) {
+					return ApiResponse.error(
+						'Project calendar source is unavailable. Re-link the calendar before sharing it.',
+						409
+					);
+				}
+				await this.projectResourceService.shareCalendar({
+					userId,
+					calendarSourceId: projectCalendar.calendar_source_id,
+					shares
+				});
+			} else {
+				const shareResult = await this.calendarService.shareCalendar(
+					userId,
+					projectCalendar.calendar_id,
+					shares
+				);
 
-			if (!shareResult.success) {
-				return ApiResponse.error(shareResult.error || 'Failed to share calendar', 500);
+				if (!shareResult.success) {
+					return ApiResponse.error(shareResult.error || 'Failed to share calendar', 500);
+				}
 			}
 
 			// Update visibility if sharing

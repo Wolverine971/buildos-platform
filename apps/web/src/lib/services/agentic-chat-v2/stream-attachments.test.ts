@@ -38,6 +38,8 @@ function temporaryAttachment(overrides: Partial<ChatAttachmentRef> = {}): ChatAt
 		file_size_bytes: 1024,
 		width: 640,
 		height: 480,
+		checksum_sha256: 'a'.repeat(64),
+		expires_at: '2026-08-12T13:00:00.000Z',
 		...overrides
 	};
 }
@@ -53,7 +55,7 @@ function imageAsset(overrides: Partial<ChatAttachmentAssetRow> = {}): ChatAttach
 		file_size_bytes: 1024,
 		width: 640,
 		height: 480,
-		checksum_sha256: 'checksum',
+		checksum_sha256: 'a'.repeat(64),
 		ocr_status: 'complete',
 		extraction_summary: null,
 		extracted_text: null,
@@ -122,6 +124,7 @@ describe('stream attachment helpers', () => {
 			tempAttachmentPathPrefix: 'users',
 			storageBucket: 'onto-assets',
 			maxTempImageBytes: 1024 * 1024,
+			nowMs: Date.parse('2026-08-12T12:00:00.000Z'),
 			createAdminClient: () => admin as any
 		});
 

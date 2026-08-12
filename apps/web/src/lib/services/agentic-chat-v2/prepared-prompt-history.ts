@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-history.ts
 import type { FastChatHistoryMessage } from '$lib/services/agentic-chat-v2';
 import type { FastChatHistoryCompositionResult } from './history-composer';
-import type { AgenticChatHistoryStateV1 } from '@buildos/shared-types';
+import type { AgenticChatHistoryStateV1, ChatAttachmentRef } from '@buildos/shared-types';
 
 const PREPARED_HISTORY_ROLES = new Set<FastChatHistoryMessage['role']>([
 	'user',
@@ -24,7 +24,7 @@ export type PreparedHistoryValidationErrorCode =
 	| 'not_array'
 	| 'too_many_messages'
 	| 'invalid_message'
-	| 'history_attachments_deferred'
+	| 'invalid_attachments'
 	| 'invalid_tool_calls'
 	| 'invalid_strategy'
 	| 'invalid_counts';
@@ -93,12 +93,8 @@ function inspectPreparedHistoryForModel(raw: unknown): PreparedHistoryMessagesIn
 			return { ok: false, code: 'invalid_message' };
 		}
 		if (typeof content !== 'string') return { ok: false, code: 'invalid_message' };
-		if (
-			message.attachments !== undefined &&
-			(!Array.isArray(message.attachments) || message.attachments.length > 0)
-		) {
-			return { ok: false, code: 'history_attachments_deferred' };
-		}
+		const attachments = inspectPreparedAttachments(message.attachments);
+		if (!attachments) return { ok: false, code: 'invalid_attachments' };
 		if (
 			message.tool_calls !== undefined &&
 			(!Array.isArray(message.tool_calls) ||
@@ -126,9 +122,142 @@ function inspectPreparedHistoryForModel(raw: unknown): PreparedHistoryMessagesIn
 		if (typeof message.tool_call_id === 'string') {
 			normalized.tool_call_id = message.tool_call_id;
 		}
+		if (attachments.length > 0) normalized.attachments = attachments;
 		history.push(normalized);
 	}
 	return { ok: true, history };
+}
+
+function inspectPreparedAttachments(value: unknown): ChatAttachmentRef[] | null {
+	if (value === undefined) return [];
+	if (!Array.isArray(value) || value.length > 16) return null;
+	const attachments: ChatAttachmentRef[] = [];
+	const identities = new Set<string>();
+	const displayOrders = new Set<number>();
+	for (const [index, raw] of value.entries()) {
+		if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+		const attachment = raw as Record<string, unknown>;
+		const attachmentKind = attachment.attachment_kind;
+		const displayOrder = attachment.display_order ?? index;
+		if (
+			(attachmentKind !== 'onto_asset' && attachmentKind !== 'temporary_file') ||
+			attachment.media_type !== 'image' ||
+			!Number.isSafeInteger(displayOrder) ||
+			(displayOrder as number) < 0 ||
+			(displayOrder as number) > 100 ||
+			displayOrders.has(displayOrder as number)
+		) {
+			return null;
+		}
+		const assetId = readNullableString(attachment.asset_id, 256);
+		const temporaryAttachmentId = readNullableString(attachment.temporary_attachment_id, 256);
+		const projectId = readNullableString(attachment.project_id, 256);
+		const storageBucket = readNullableString(attachment.storage_bucket, 128);
+		const storagePath = readNullableString(attachment.storage_path, 2048);
+		const expiresAt = readNullableTimestamp(attachment.expires_at);
+		const fileName = readNullableString(attachment.file_name, 1024);
+		const contentType = readNullableString(attachment.content_type, 256);
+		const ocrStatus = readNullableString(attachment.ocr_status, 128);
+		if (
+			assetId === undefined ||
+			temporaryAttachmentId === undefined ||
+			projectId === undefined ||
+			storageBucket === undefined ||
+			storagePath === undefined ||
+			expiresAt === undefined ||
+			fileName === undefined ||
+			contentType === undefined ||
+			ocrStatus === undefined
+		) {
+			return null;
+		}
+		const identity =
+			attachmentKind === 'onto_asset'
+				? assetId &&
+					!temporaryAttachmentId &&
+					projectId &&
+					storageBucket &&
+					storagePath &&
+					expiresAt === null
+					? `asset:${assetId}`
+					: null
+				: temporaryAttachmentId && !assetId && !projectId && expiresAt
+					? `temporary:${temporaryAttachmentId}`
+					: null;
+		if (!identity || identities.has(identity)) return null;
+		const checksum = readNullableString(attachment.checksum_sha256, 64);
+		if (checksum === undefined) return null;
+		if (checksum !== null && !/^[0-9a-f]{64}$/.test(checksum)) return null;
+		const fileSize = readNullableInteger(attachment.file_size_bytes, 100 * 1024 * 1024);
+		const width = readNullableInteger(attachment.width, 100_000);
+		const height = readNullableInteger(attachment.height, 100_000);
+		const extractionSummary = readNullableString(attachment.extraction_summary, 700);
+		const extractedTextPreview = readNullableString(attachment.extracted_text_preview, 20_000);
+		if (
+			fileSize === undefined ||
+			width === undefined ||
+			height === undefined ||
+			extractionSummary === undefined ||
+			extractedTextPreview === undefined
+		) {
+			return null;
+		}
+		if (
+			attachmentKind === 'temporary_file' &&
+			(attachment.ocr_status !== 'skipped' ||
+				extractionSummary !== null ||
+				extractedTextPreview !== null ||
+				!storageBucket ||
+				!storagePath)
+		) {
+			return null;
+		}
+
+		attachments.push({
+			attachment_kind: attachmentKind,
+			media_type: 'image',
+			asset_id: assetId ?? undefined,
+			temporary_attachment_id: temporaryAttachmentId ?? undefined,
+			project_id: projectId,
+			storage_bucket: storageBucket,
+			storage_path: storagePath,
+			file_name: fileName,
+			content_type: contentType,
+			file_size_bytes: fileSize,
+			width,
+			height,
+			checksum_sha256: checksum,
+			ocr_status: ocrStatus,
+			extraction_summary: extractionSummary,
+			extracted_text_preview: extractedTextPreview,
+			role: attachment.role === 'analysis_target' ? 'analysis_target' : 'attachment',
+			display_order: displayOrder as number,
+			expires_at: expiresAt,
+			metadata: null
+		});
+		identities.add(identity);
+		displayOrders.add(displayOrder as number);
+	}
+	return attachments;
+}
+
+function readNullableString(value: unknown, maximum: number): string | null | undefined {
+	if (value === undefined || value === null) return null;
+	return typeof value === 'string' && value.length > 0 && value.length <= maximum
+		? value
+		: undefined;
+}
+
+function readNullableInteger(value: unknown, maximum: number): number | null | undefined {
+	if (value === undefined || value === null) return null;
+	return Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= maximum
+		? (value as number)
+		: undefined;
+}
+
+function readNullableTimestamp(value: unknown): string | null | undefined {
+	if (value === undefined || value === null) return null;
+	return typeof value === 'string' && Number.isFinite(Date.parse(value)) ? value : undefined;
 }
 
 export function normalizePreparedHistoryStrategy(

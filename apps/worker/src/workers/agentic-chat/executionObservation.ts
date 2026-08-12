@@ -21,6 +21,7 @@ export type AgenticChatExecutionObservationRpcClient = {
 export type AgenticChatExecutionObservationEventTypeV1 =
 	| 'provider_attempt_started'
 	| 'provider_attempt_ended'
+	| 'provider_media_resolved'
 	| 'tool_execution_started'
 	| 'tool_execution_ended';
 
@@ -149,7 +150,7 @@ function validateInput(input: AgenticChatExecutionObservationInputV1): void {
 		throw invalid('observation key is invalid');
 	}
 	if (
-		(input.phase === 'provider' && !input.eventType.startsWith('provider_attempt_')) ||
+		(input.phase === 'provider' && !input.eventType.startsWith('provider_')) ||
 		(input.phase === 'tool' && !input.eventType.startsWith('tool_execution_')) ||
 		(input.phase !== 'provider' && input.phase !== 'tool')
 	) {

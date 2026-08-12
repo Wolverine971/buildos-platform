@@ -166,6 +166,11 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						description:
 							'Specific Google calendar id (used when scope=user or calendar_id)'
 					},
+					calendar_source_id: {
+						type: 'string',
+						description:
+							'Opaque Google calendar source UUID. Prefer this over calendar_id when targeting a connected account.'
+					},
 					sync_to_calendar: {
 						type: 'boolean',
 						description: 'Whether to sync to Google Calendar'

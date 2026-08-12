@@ -63,6 +63,7 @@ interface CreateCalendarEventArgs {
 	task_id?: string;
 	calendar_scope?: CalendarScope;
 	calendar_id?: string;
+	calendar_source_id?: string;
 	sync_to_calendar?: boolean;
 }
 
@@ -521,7 +522,7 @@ export class CalendarExecutor extends BaseExecutor {
 					`*,
 					onto_event_sync (
 						id,
-						calendar_id,
+						project_calendar_id,
 						user_id,
 						provider,
 						external_event_id,
@@ -819,6 +820,10 @@ export class CalendarExecutor extends BaseExecutor {
 			throw new Error('project_id is required when calendar_scope is project');
 		}
 		const requestedCalendarId = this.normalizeCalendarId(args.calendar_id);
+		const requestedCalendarSourceId = this.getUuidArg(
+			'calendar_source_id',
+			args.calendar_source_id
+		);
 		if (scope === 'calendar_id' && !requestedCalendarId) {
 			throw new Error('calendar_id must be a valid Google Calendar ID');
 		}
@@ -873,6 +878,7 @@ export class CalendarExecutor extends BaseExecutor {
 			props,
 			calendarScope: scope,
 			calendarId: requestedCalendarId,
+			calendarSourceId: requestedCalendarSourceId,
 			syncToCalendar: args.sync_to_calendar,
 			activityLog: this.buildEventActivityLog(actorId)
 		});

@@ -1,8 +1,7 @@
 // apps/web/src/routes/api/time-blocks/generate-suggestions/+server.ts
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
-import { CalendarService } from '$lib/services/calendar-service';
-import { TimeBlockService } from '$lib/services/time-block.service';
+import { createTimeBlockRuntimeService } from '$lib/server/time-block-runtime.service';
 import { ApiResponse } from '$lib/utils/api-response';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 
@@ -29,8 +28,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		return ApiResponse.badRequest('time_block_id is required');
 	}
 
-	const calendarService = new CalendarService(supabase);
-	const timeBlockService = new TimeBlockService(supabase, user.id, calendarService);
+	const timeBlockService = createTimeBlockRuntimeService(supabase, user.id);
 
 	try {
 		const timeBlock = await timeBlockService.generateSuggestionsForTimeBlock(timeBlockId);

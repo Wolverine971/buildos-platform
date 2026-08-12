@@ -6,8 +6,12 @@ import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { GoogleOAuthConnectionError, GoogleOAuthService } from '$lib/services/google-oauth-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { GoogleCalendarProjectResourceService } from '$lib/server/google-calendar-project-resource.service';
+import { GoogleCalendarWriteService } from '$lib/server/google-calendar-write.service';
+import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 import { OntoEventService, type OntoEventOwner } from './onto-event.service';
 import { PUBLIC_APP_URL } from '$env/static/public';
+import { env as privateEnv } from '$env/dynamic/private';
 import {
 	logCreateAsync,
 	logDeleteAsync,
@@ -50,6 +54,7 @@ export interface CreateOntoEventRequest {
 	createdBy: string;
 	calendarScope?: CalendarScope;
 	calendarId?: string | null;
+	calendarSourceId?: string | null;
 	syncToCalendar?: boolean;
 	deferCalendarSync?: boolean;
 	createProjectCalendarIfMissing?: boolean;
@@ -92,6 +97,20 @@ export interface CreateOntoEventResult {
 		calendarId?: string | null;
 		error?: string;
 	};
+}
+
+type OntoEventCalendarWriter = Pick<
+	GoogleCalendarWriteService,
+	'createStandaloneEvent' | 'updateEvent' | 'deleteEvent'
+>;
+
+type OntoEventProjectCalendarService = Pick<ProjectCalendarService, 'ensureProjectCalendar'>;
+
+export interface OntoEventSyncServiceOptions {
+	calendarWriter?: OntoEventCalendarWriter;
+	projectCalendarService?: OntoEventProjectCalendarService;
+	sourceProjectCalendarService?: OntoEventProjectCalendarService;
+	sourceRoutingEnabled?: (userId: string) => boolean;
 }
 
 const DEFAULT_EVENT_DURATION_MINUTES = 30;
@@ -189,15 +208,48 @@ function parseGoogleEventMappingFromExternalLink(link: string | null | undefined
 
 export class OntoEventSyncService {
 	private readonly calendarService: CalendarService;
-	private readonly projectCalendarService: ProjectCalendarService;
+	private readonly projectCalendarService: OntoEventProjectCalendarService;
+	private sourceProjectCalendarService?: OntoEventProjectCalendarService;
+	private calendarWriter?: OntoEventCalendarWriter;
+	private readonly sourceRoutingEnabled: (userId: string) => boolean;
 	private readonly googleOAuthService: GoogleOAuthService;
 	private readonly errorLogger: ErrorLoggerService;
 
-	constructor(private readonly supabase: SupabaseClient<Database>) {
+	constructor(
+		private readonly supabase: SupabaseClient<Database>,
+		options: OntoEventSyncServiceOptions = {}
+	) {
 		this.calendarService = new CalendarService(supabase);
-		this.projectCalendarService = new ProjectCalendarService(supabase);
+		this.projectCalendarService =
+			options.projectCalendarService ?? new ProjectCalendarService(supabase);
+		this.sourceProjectCalendarService = options.sourceProjectCalendarService;
+		this.calendarWriter = options.calendarWriter;
+		this.sourceRoutingEnabled =
+			options.sourceRoutingEnabled ??
+			(options.calendarWriter
+				? () => true
+				: (userId) => isMultiCalendarUserAllowed(userId, privateEnv));
 		this.googleOAuthService = new GoogleOAuthService(supabase);
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
+	}
+
+	private usesSourceRouting(userId: string): boolean {
+		return this.sourceRoutingEnabled(userId);
+	}
+
+	private getCalendarWriter(): OntoEventCalendarWriter {
+		this.calendarWriter ??= new GoogleCalendarWriteService(createAdminSupabaseClient());
+		return this.calendarWriter;
+	}
+
+	private getProjectCalendarService(userId: string): OntoEventProjectCalendarService {
+		if (!this.usesSourceRouting(userId)) return this.projectCalendarService;
+		this.sourceProjectCalendarService ??= new ProjectCalendarService(this.supabase, {
+			projectResourceService: new GoogleCalendarProjectResourceService(
+				createAdminSupabaseClient()
+			)
+		});
+		return this.sourceProjectCalendarService;
 	}
 
 	private async logGoogleDeleteFailure(params: {
@@ -264,10 +316,12 @@ export class OntoEventSyncService {
 				`*,
 				onto_event_sync (
 					id,
-					calendar_id,
+					project_calendar_id,
+					calendar_source_id,
 					user_id,
 					provider,
 					external_event_id,
+					external_calendar_id,
 					sync_status,
 					sync_error,
 					last_synced_at
@@ -324,10 +378,12 @@ export class OntoEventSyncService {
 				`*,
 				onto_event_sync (
 					id,
-					calendar_id,
+					project_calendar_id,
+					calendar_source_id,
 					user_id,
 					provider,
 					external_event_id,
+					external_calendar_id,
 					sync_status,
 					sync_error,
 					last_synced_at
@@ -417,6 +473,7 @@ export class OntoEventSyncService {
 		const syncOptions = {
 			scope: request.calendarScope ?? 'project',
 			calendarId: request.calendarId ?? null,
+			calendarSourceId: request.calendarSourceId ?? null,
 			createProjectCalendarIfMissing: request.createProjectCalendarIfMissing ?? true
 		};
 
@@ -702,22 +759,36 @@ export class OntoEventSyncService {
 		options: {
 			scope: CalendarScope;
 			calendarId: string | null;
+			calendarSourceId: string | null;
 			createProjectCalendarIfMissing: boolean;
 			expectedEventVersion?: string | null;
 		}
 	): Promise<CreateOntoEventResult> {
 		const nowIso = new Date().toISOString();
-		const status = await this.googleOAuthService.safeGetCalendarStatus(userId);
-
-		if (!status.isConnected) {
-			await this.markEventSyncError(event.id, 'calendar_not_connected');
+		const sourceAware = this.usesSourceRouting(userId);
+		if (options.calendarSourceId && !sourceAware) {
+			await this.markEventSyncError(event.id, 'calendar_source_selection_not_enabled');
 			return {
 				event,
 				sync: {
 					success: false,
-					error: 'Google Calendar is not connected'
+					error: 'Google Calendar source selection is not enabled'
 				}
 			};
+		}
+		if (!sourceAware) {
+			const status = await this.googleOAuthService.safeGetCalendarStatus(userId);
+
+			if (!status.isConnected) {
+				await this.markEventSyncError(event.id, 'calendar_not_connected');
+				return {
+					event,
+					sync: {
+						success: false,
+						error: 'Google Calendar is not connected'
+					}
+				};
+			}
 		}
 
 		if (options.scope === 'project') {
@@ -751,39 +822,64 @@ export class OntoEventSyncService {
 
 			try {
 				const description = await this.buildCalendarEventDescription(event);
-				const calendarEvent = await this.calendarService.createStandaloneEvent(userId, {
-					summary: event.title,
-					description,
-					start: new Date(event.start_at),
-					end: new Date(event.end_at ?? event.start_at),
-					timeZone: event.timezone ?? undefined,
-					colorId: projectCalendar.color_id ?? undefined,
-					calendar_id: projectCalendar.calendar_id
-				});
+				let externalEventId: string;
+				let eventLink: string | null;
+				let calendarSourceId: string | null = projectCalendar.calendar_source_id;
 
-				const { data: syncRow } = await this.supabase
-					.from('onto_event_sync')
-					.upsert(
-						{
-							event_id: event.id,
-							calendar_id: projectCalendar.id,
-							user_id: userId,
-							provider: 'google',
-							external_event_id: calendarEvent.eventId,
-							sync_status: 'synced',
-							last_synced_at: nowIso
-						},
-						{
-							onConflict: 'event_id,user_id,provider'
-						}
-					)
-					.select('*')
-					.single();
+				if (sourceAware) {
+					const calendarEvent = await this.getCalendarWriter().createStandaloneEvent({
+						userId,
+						selector: { projectId: event.project_id ?? undefined },
+						summary: event.title,
+						description,
+						start: new Date(event.start_at),
+						end: new Date(event.end_at ?? event.start_at),
+						timeZone: event.timezone ?? undefined,
+						colorId: projectCalendar.color_id ?? undefined,
+						ontoEventId: event.id
+					});
+					externalEventId = calendarEvent.providerEventId;
+					eventLink = calendarEvent.event.htmlLink ?? null;
+					calendarSourceId = calendarEvent.calendarSourceId;
+				} else {
+					const calendarEvent = await this.calendarService.createStandaloneEvent(userId, {
+						summary: event.title,
+						description,
+						start: new Date(event.start_at),
+						end: new Date(event.end_at ?? event.start_at),
+						timeZone: event.timezone ?? undefined,
+						colorId: projectCalendar.color_id ?? undefined,
+						calendar_id: projectCalendar.calendar_id
+					});
+					externalEventId = calendarEvent.eventId;
+					eventLink = calendarEvent.eventLink ?? null;
+
+					const { error: mappingError } = await this.supabase
+						.from('onto_event_sync')
+						.upsert(
+							{
+								event_id: event.id,
+								project_calendar_id: projectCalendar.id,
+								user_id: userId,
+								provider: 'google',
+								external_event_id: calendarEvent.eventId,
+								sync_status: 'synced',
+								last_synced_at: nowIso
+							},
+							{
+								onConflict: 'event_id,user_id,provider'
+							}
+						)
+						.select('id')
+						.single();
+					if (mappingError) throw new Error(mappingError.message);
+				}
 
 				const nextProps = {
 					...(event.props as Record<string, unknown>),
-					external_event_id: calendarEvent.eventId,
+					external_event_id: externalEventId,
 					external_calendar_id: projectCalendar.calendar_id,
+					external_calendar_source_id: calendarSourceId,
 					provider: 'google'
 				};
 
@@ -791,7 +887,7 @@ export class OntoEventSyncService {
 					.from('onto_events')
 					.update({
 						props: nextProps,
-						external_link: calendarEvent.eventLink ?? null,
+						external_link: eventLink,
 						last_synced_at: nowIso,
 						sync_status: 'synced',
 						sync_error: null
@@ -811,8 +907,8 @@ export class OntoEventSyncService {
 					sync: {
 						success: true,
 						provider: 'google',
-						externalEventId: syncRow?.external_event_id ?? calendarEvent.eventId,
-						calendarId: syncRow?.calendar_id ?? projectCalendar.id
+						externalEventId,
+						calendarId: projectCalendar.id
 					}
 				};
 			} catch (error) {
@@ -836,19 +932,47 @@ export class OntoEventSyncService {
 		const googleCalendarId = options.calendarId ?? 'primary';
 		try {
 			const description = await this.buildCalendarEventDescription(event);
-			const calendarEvent = await this.calendarService.createStandaloneEvent(userId, {
-				summary: event.title,
-				description,
-				start: new Date(event.start_at),
-				end: new Date(event.end_at ?? event.start_at),
-				timeZone: event.timezone ?? undefined,
-				calendar_id: googleCalendarId
-			});
+			let externalEventId: string;
+			let providerCalendarId = googleCalendarId;
+			let calendarSourceId: string | null = null;
+			let eventLink: string | null;
+			if (sourceAware) {
+				const calendarEvent = await this.getCalendarWriter().createStandaloneEvent({
+					userId,
+					selector: options.calendarSourceId
+						? { calendarSourceId: options.calendarSourceId }
+						: options.calendarId
+							? { calendarId: options.calendarId }
+							: undefined,
+					summary: event.title,
+					description,
+					start: new Date(event.start_at),
+					end: new Date(event.end_at ?? event.start_at),
+					timeZone: event.timezone ?? undefined,
+					ontoEventId: event.id
+				});
+				externalEventId = calendarEvent.providerEventId;
+				providerCalendarId = calendarEvent.providerCalendarId;
+				calendarSourceId = calendarEvent.calendarSourceId;
+				eventLink = calendarEvent.event.htmlLink ?? null;
+			} else {
+				const calendarEvent = await this.calendarService.createStandaloneEvent(userId, {
+					summary: event.title,
+					description,
+					start: new Date(event.start_at),
+					end: new Date(event.end_at ?? event.start_at),
+					timeZone: event.timezone ?? undefined,
+					calendar_id: googleCalendarId
+				});
+				externalEventId = calendarEvent.eventId;
+				eventLink = calendarEvent.eventLink ?? null;
+			}
 
 			const nextProps = {
 				...(event.props as Record<string, unknown>),
-				external_event_id: calendarEvent.eventId,
-				external_calendar_id: googleCalendarId,
+				external_event_id: externalEventId,
+				external_calendar_id: providerCalendarId,
+				external_calendar_source_id: calendarSourceId,
 				provider: 'google'
 			};
 
@@ -856,7 +980,7 @@ export class OntoEventSyncService {
 				.from('onto_events')
 				.update({
 					props: nextProps,
-					external_link: calendarEvent.eventLink ?? null,
+					external_link: eventLink,
 					last_synced_at: nowIso,
 					sync_status: 'synced',
 					sync_error: null
@@ -873,8 +997,8 @@ export class OntoEventSyncService {
 				sync: {
 					success: true,
 					provider: 'google',
-					externalEventId: calendarEvent.eventId,
-					calendarId: googleCalendarId
+					externalEventId,
+					calendarId: providerCalendarId
 				}
 			};
 		} catch (error) {
@@ -916,14 +1040,17 @@ export class OntoEventSyncService {
 					return;
 				}
 
-				const status = await this.googleOAuthService.safeGetCalendarStatus(userId);
-				if (!status.isConnected) {
-					return;
+				if (!this.usesSourceRouting(userId)) {
+					const status = await this.googleOAuthService.safeGetCalendarStatus(userId);
+					if (!status.isConnected) {
+						return;
+					}
 				}
 
 				await this.syncEventToCalendar(userId, event, {
 					scope: 'project',
 					calendarId: null,
+					calendarSourceId: null,
 					createProjectCalendarIfMissing: false,
 					expectedEventVersion: event.updated_at ?? event.created_at
 				});
@@ -933,16 +1060,41 @@ export class OntoEventSyncService {
 
 		try {
 			const description = await this.buildCalendarEventDescription(event);
-			await this.calendarService.updateCalendarEvent(userId, {
-				event_id: mapping.externalEventId,
-				calendar_id: mapping.calendarId,
-				start_time: event.start_at,
-				end_time: event.end_at ?? undefined,
-				summary: event.title,
-				description,
-				location: event.location ?? undefined,
-				timeZone: event.timezone ?? undefined
-			});
+			if (this.usesSourceRouting(userId)) {
+				await this.getCalendarWriter().updateEvent({
+					userId,
+					providerEventId: mapping.externalEventId,
+					selector: mapping.syncRowId
+						? { ontoEventId: event.id }
+						: mapping.calendarSourceId
+							? { calendarSourceId: mapping.calendarSourceId }
+							: undefined,
+					requestBody: {
+						summary: event.title,
+						description,
+						location: event.location ?? undefined,
+						start: {
+							dateTime: event.start_at,
+							timeZone: event.timezone ?? undefined
+						},
+						end: {
+							dateTime: event.end_at ?? event.start_at,
+							timeZone: event.timezone ?? undefined
+						}
+					}
+				});
+			} else {
+				await this.calendarService.updateCalendarEvent(userId, {
+					event_id: mapping.externalEventId,
+					calendar_id: mapping.calendarId,
+					start_time: event.start_at,
+					end_time: event.end_at ?? undefined,
+					summary: event.title,
+					description,
+					location: event.location ?? undefined,
+					timeZone: event.timezone ?? undefined
+				});
+			}
 
 			const nowIso = new Date().toISOString();
 			let syncRowId = mapping.syncRowId;
@@ -971,12 +1123,25 @@ export class OntoEventSyncService {
 		if (!mapping) return;
 
 		try {
-			await this.calendarService.deleteCalendarEvent(userId, {
-				event_id: mapping.externalEventId,
-				calendar_id: mapping.calendarId,
-				send_notifications: false,
-				sendUpdates: 'none'
-			});
+			if (this.usesSourceRouting(userId)) {
+				await this.getCalendarWriter().deleteEvent({
+					userId,
+					providerEventId: mapping.externalEventId,
+					selector: mapping.syncRowId
+						? { ontoEventId: event.id }
+						: mapping.calendarSourceId
+							? { calendarSourceId: mapping.calendarSourceId }
+							: undefined,
+					sendUpdates: 'none'
+				});
+			} else {
+				await this.calendarService.deleteCalendarEvent(userId, {
+					event_id: mapping.externalEventId,
+					calendar_id: mapping.calendarId,
+					send_notifications: false,
+					sendUpdates: 'none'
+				});
+			}
 
 			const nowIso = new Date().toISOString();
 			await this.markEventSynced(event.id, nowIso, mapping.syncRowId, 'cancelled');
@@ -1004,6 +1169,7 @@ export class OntoEventSyncService {
 	): Promise<{
 		externalEventId: string;
 		calendarId: string;
+		calendarSourceId?: string;
 		syncRowId?: string;
 	} | null> {
 		if (syncRows.length > 0) {
@@ -1012,16 +1178,26 @@ export class OntoEventSyncService {
 			);
 
 			for (const syncRow of userCandidates) {
+				if (syncRow.calendar_source_id && syncRow.external_calendar_id) {
+					return {
+						externalEventId: syncRow.external_event_id,
+						calendarId: syncRow.external_calendar_id,
+						calendarSourceId: syncRow.calendar_source_id,
+						syncRowId: syncRow.id
+					};
+				}
+				if (!syncRow.project_calendar_id) continue;
 				const calendar = await this.supabase
 					.from('project_calendars')
-					.select('calendar_id, user_id')
-					.eq('id', syncRow.calendar_id)
+					.select('calendar_id, calendar_source_id, user_id')
+					.eq('id', syncRow.project_calendar_id)
 					.maybeSingle();
 
 				if (calendar.data?.calendar_id && calendar.data.user_id === userId) {
 					return {
 						externalEventId: syncRow.external_event_id,
 						calendarId: calendar.data.calendar_id,
+						calendarSourceId: calendar.data.calendar_source_id ?? undefined,
 						syncRowId: syncRow.id
 					};
 				}
@@ -1033,15 +1209,27 @@ export class OntoEventSyncService {
 			typeof props.external_event_id === 'string' ? props.external_event_id.trim() : '';
 		const externalCalendarId =
 			typeof props.external_calendar_id === 'string' ? props.external_calendar_id.trim() : '';
+		const externalCalendarSourceId =
+			typeof props.external_calendar_source_id === 'string'
+				? props.external_calendar_source_id.trim()
+				: '';
 		const linkMapping = parseGoogleEventMappingFromExternalLink(event.external_link);
 
 		if (event.project_id) {
 			const recoveredEventId = externalEventId || linkMapping?.externalEventId;
 			const recoveredCalendarId = externalCalendarId || linkMapping?.calendarId;
 			if (recoveredEventId && recoveredCalendarId) {
+				const projectCalendar = this.usesSourceRouting(userId)
+					? await this.resolveProjectCalendar(event.project_id, userId, false)
+					: null;
 				return {
 					externalEventId: recoveredEventId,
-					calendarId: recoveredCalendarId
+					calendarId: recoveredCalendarId,
+					calendarSourceId:
+						externalCalendarSourceId ||
+						(projectCalendar?.calendar_id === recoveredCalendarId
+							? (projectCalendar.calendar_source_id ?? undefined)
+							: undefined)
 				};
 			}
 
@@ -1054,7 +1242,8 @@ export class OntoEventSyncService {
 				if (projectCalendar?.calendar_id) {
 					return {
 						externalEventId: recoveredEventId,
-						calendarId: projectCalendar.calendar_id
+						calendarId: projectCalendar.calendar_id,
+						calendarSourceId: projectCalendar.calendar_source_id ?? undefined
 					};
 				}
 			}
@@ -1065,7 +1254,8 @@ export class OntoEventSyncService {
 		if (externalEventId && externalCalendarId) {
 			return {
 				externalEventId,
-				calendarId: externalCalendarId
+				calendarId: externalCalendarId,
+				calendarSourceId: externalCalendarSourceId || undefined
 			};
 		}
 
@@ -1111,7 +1301,7 @@ export class OntoEventSyncService {
 
 		const { data: projectCalendar } = await this.supabase
 			.from('project_calendars')
-			.select('id, calendar_id')
+			.select('id, calendar_id, calendar_source_id')
 			.eq('project_id', event.project_id)
 			.eq('user_id', userId)
 			.maybeSingle();
@@ -1129,10 +1319,12 @@ export class OntoEventSyncService {
 			.upsert(
 				{
 					event_id: event.id,
-					calendar_id: projectCalendar.id,
+					project_calendar_id: projectCalendar.id,
+					calendar_source_id: projectCalendar.calendar_source_id,
 					user_id: userId,
 					provider: 'google',
 					external_event_id: externalEventId,
+					external_calendar_id: calendarId,
 					sync_status: 'synced',
 					sync_error: null,
 					last_synced_at: timestamp
@@ -1168,7 +1360,10 @@ export class OntoEventSyncService {
 		if (existing) return existing;
 		if (!createIfMissing) return null;
 
-		const response = await this.projectCalendarService.ensureProjectCalendar(projectId, userId);
+		const response = await this.getProjectCalendarService(userId).ensureProjectCalendar(
+			projectId,
+			userId
+		);
 		const payload = await response.json().catch(() => null);
 		if (!payload?.success) {
 			return null;
@@ -1336,10 +1531,17 @@ export class OntoEventSyncService {
 		}
 
 		if (!error || typeof error !== 'object') return false;
-		const candidate = error as { name?: unknown; requiresReconnection?: unknown };
+		const candidate = error as {
+			name?: unknown;
+			code?: unknown;
+			requiresReconnection?: unknown;
+		};
 		return (
-			candidate.name === 'GoogleOAuthConnectionError' &&
-			candidate.requiresReconnection === true
+			(candidate.name === 'GoogleOAuthConnectionError' &&
+				candidate.requiresReconnection === true) ||
+			(candidate.name === 'GoogleCalendarConnectionError' &&
+				(candidate.code === 'reconnect_required' ||
+					candidate.code === 'connection_not_found'))
 		);
 	}
 
@@ -1388,12 +1590,25 @@ export class OntoEventSyncService {
 			}
 
 			try {
-				await this.calendarService.deleteCalendarEvent(input.targetUserId, {
-					event_id: mapping.externalEventId,
-					calendar_id: mapping.calendarId,
-					send_notifications: false,
-					sendUpdates: 'none'
-				});
+				if (this.usesSourceRouting(input.targetUserId)) {
+					await this.getCalendarWriter().deleteEvent({
+						userId: input.targetUserId,
+						providerEventId: mapping.externalEventId,
+						selector: mapping.syncRowId
+							? { ontoEventId: event.id }
+							: mapping.calendarSourceId
+								? { calendarSourceId: mapping.calendarSourceId }
+								: undefined,
+						sendUpdates: 'none'
+					});
+				} else {
+					await this.calendarService.deleteCalendarEvent(input.targetUserId, {
+						event_id: mapping.externalEventId,
+						calendar_id: mapping.calendarId,
+						send_notifications: false,
+						sendUpdates: 'none'
+					});
+				}
 
 				const nowIso = new Date().toISOString();
 				await this.markEventSynced(
@@ -1475,12 +1690,16 @@ export class OntoEventSyncService {
 				};
 			}
 
-			const status = await this.googleOAuthService.safeGetCalendarStatus(input.targetUserId);
-			if (!status.isConnected) {
-				return {
-					outcome: 'skipped',
-					reason: 'calendar_not_connected'
-				};
+			if (!this.usesSourceRouting(input.targetUserId)) {
+				const status = await this.googleOAuthService.safeGetCalendarStatus(
+					input.targetUserId
+				);
+				if (!status.isConnected) {
+					return {
+						outcome: 'skipped',
+						reason: 'calendar_not_connected'
+					};
+				}
 			}
 
 			const projectCalendar = await this.resolveProjectCalendar(
@@ -1498,6 +1717,7 @@ export class OntoEventSyncService {
 			const syncResult = await this.syncEventToCalendar(input.targetUserId, event, {
 				scope: 'project',
 				calendarId: null,
+				calendarSourceId: null,
 				createProjectCalendarIfMissing: input.createCalendarIfMissing ?? false,
 				expectedEventVersion: eventVersion
 			});
@@ -1514,16 +1734,41 @@ export class OntoEventSyncService {
 
 		try {
 			const description = await this.buildCalendarEventDescription(event);
-			await this.calendarService.updateCalendarEvent(input.targetUserId, {
-				event_id: mapping.externalEventId,
-				calendar_id: mapping.calendarId,
-				start_time: event.start_at,
-				end_time: event.end_at ?? undefined,
-				summary: event.title,
-				description,
-				location: event.location ?? undefined,
-				timeZone: event.timezone ?? undefined
-			});
+			if (this.usesSourceRouting(input.targetUserId)) {
+				await this.getCalendarWriter().updateEvent({
+					userId: input.targetUserId,
+					providerEventId: mapping.externalEventId,
+					selector: mapping.syncRowId
+						? { ontoEventId: event.id }
+						: mapping.calendarSourceId
+							? { calendarSourceId: mapping.calendarSourceId }
+							: undefined,
+					requestBody: {
+						summary: event.title,
+						description,
+						location: event.location ?? undefined,
+						start: {
+							dateTime: event.start_at,
+							timeZone: event.timezone ?? undefined
+						},
+						end: {
+							dateTime: event.end_at ?? event.start_at,
+							timeZone: event.timezone ?? undefined
+						}
+					}
+				});
+			} else {
+				await this.calendarService.updateCalendarEvent(input.targetUserId, {
+					event_id: mapping.externalEventId,
+					calendar_id: mapping.calendarId,
+					start_time: event.start_at,
+					end_time: event.end_at ?? undefined,
+					summary: event.title,
+					description,
+					location: event.location ?? undefined,
+					timeZone: event.timezone ?? undefined
+				});
+			}
 
 			const nowIso = new Date().toISOString();
 			let syncRowId = mapping.syncRowId;

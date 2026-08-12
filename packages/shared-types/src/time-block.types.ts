@@ -36,6 +36,7 @@ export interface TimeBlock {
   timezone: string;
   calendar_event_id: string | null;
   calendar_event_link: string | null;
+  calendar_source_id: string | null;
   sync_status: TimeBlockSyncStatus;
   sync_source: TimeBlockSyncSource | null;
   last_synced_at: string | null;
@@ -59,6 +60,7 @@ export interface TimeBlockWithProject extends TimeBlock {
 export interface CreateTimeBlockParams {
   block_type: TimeBlockType;
   project_id?: string | null;
+  calendar_source_id?: string;
   start_time: Date;
   end_time: Date;
   timezone?: string;

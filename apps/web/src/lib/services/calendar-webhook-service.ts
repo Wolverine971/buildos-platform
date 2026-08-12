@@ -5,6 +5,11 @@ import { GoogleOAuthService } from './google-oauth-service';
 import { ScheduledSmsUpdateService } from './scheduledSmsUpdate.service';
 import { ErrorLoggerService } from './errorLogger.service';
 import * as crypto from 'crypto';
+import { GoogleCalendarConnectionService } from '$lib/server/google-calendar-connection.service';
+import {
+	GoogleCalendarTargetService,
+	type CalendarTarget
+} from '$lib/server/google-calendar-target.service';
 
 export interface WebhookChannel {
 	id: string;
@@ -12,6 +17,7 @@ export interface WebhookChannel {
 	channel_id: string;
 	resource_id: string;
 	calendar_id: string;
+	calendar_source_id: string | null;
 	expiration: number;
 	sync_token: string | null;
 	webhook_token: string;
@@ -32,11 +38,29 @@ interface RetryConfig {
 	factor: number;
 }
 
+type CalendarApi = Pick<calendar_v3.Calendar, 'events' | 'channels'>;
+
+type CalendarWebhookServiceOptions = {
+	connectionService?: Pick<GoogleCalendarConnectionService, 'getAuthenticatedClient'>;
+	targetService?: Pick<GoogleCalendarTargetService, 'resolveExplicitSource'>;
+	createCalendarApi?: (auth: unknown) => CalendarApi;
+};
+
+type CalendarRuntime = {
+	calendar: CalendarApi;
+	providerCalendarId: string;
+	calendarSourceId: string | null;
+	target: CalendarTarget | null;
+};
+
 export class CalendarWebhookService {
 	private supabase: SupabaseClient;
 	private errorLogger: ErrorLoggerService;
 	private oAuthService: GoogleOAuthService;
 	private smsUpdateService: ScheduledSmsUpdateService;
+	private connectionService: Pick<GoogleCalendarConnectionService, 'getAuthenticatedClient'>;
+	private targetService: Pick<GoogleCalendarTargetService, 'resolveExplicitSource'>;
+	private createCalendarApi: (auth: unknown) => CalendarApi;
 	private readonly retryConfig: RetryConfig = {
 		maxRetries: 5,
 		initialDelay: 1000, // 1 second
@@ -44,11 +68,77 @@ export class CalendarWebhookService {
 		factor: 2 // exponential factor
 	};
 
-	constructor(supabase: SupabaseClient) {
+	constructor(supabase: SupabaseClient, options: CalendarWebhookServiceOptions = {}) {
 		this.supabase = supabase;
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 		this.oAuthService = new GoogleOAuthService(supabase);
 		this.smsUpdateService = new ScheduledSmsUpdateService(supabase);
+		this.connectionService =
+			options.connectionService ?? new GoogleCalendarConnectionService(supabase as any);
+		this.targetService =
+			options.targetService ?? new GoogleCalendarTargetService(supabase as any);
+		this.createCalendarApi =
+			options.createCalendarApi ??
+			((auth) => google.calendar({ version: 'v3', auth: auth as any }));
+	}
+
+	private async resolveCalendarRuntime(
+		userId: string,
+		calendarId: string,
+		calendarSourceId?: string | null
+	): Promise<CalendarRuntime> {
+		if (!calendarSourceId) {
+			const auth = await this.oAuthService.getAuthenticatedClient(userId);
+			return {
+				calendar: this.createCalendarApi(auth),
+				providerCalendarId: calendarId,
+				calendarSourceId: null,
+				target: null
+			};
+		}
+
+		const target = await this.targetService.resolveExplicitSource(
+			userId,
+			calendarSourceId,
+			'sync'
+		);
+		const auth = await this.connectionService.getAuthenticatedClient(
+			userId,
+			target.connectionId
+		);
+		return {
+			calendar: this.createCalendarApi(auth),
+			providerCalendarId: target.providerCalendarId,
+			calendarSourceId: target.calendarSourceId,
+			target
+		};
+	}
+
+	private channelIdentityQuery(
+		query: any,
+		userId: string,
+		calendarId: string,
+		calendarSourceId?: string | null
+	): any {
+		const owned = query.eq('user_id', userId);
+		return calendarSourceId
+			? owned.eq('calendar_source_id', calendarSourceId)
+			: owned.is('calendar_source_id', null).eq('calendar_id', calendarId);
+	}
+
+	private eventIdentityQuery(query: any, calendarSourceId?: string | null): any {
+		return calendarSourceId
+			? query.eq('calendar_source_id', calendarSourceId)
+			: query.is('calendar_source_id', null);
+	}
+
+	private tokensMatch(expected: string, received: string): boolean {
+		const expectedBytes = Buffer.from(expected);
+		const receivedBytes = Buffer.from(received);
+		return (
+			expectedBytes.length === receivedBytes.length &&
+			crypto.timingSafeEqual(expectedBytes, receivedBytes)
+		);
 	}
 
 	/**
@@ -91,15 +181,27 @@ export class CalendarWebhookService {
 	async registerWebhook(
 		userId: string,
 		webhookUrl: string,
-		calendarId: string = 'primary'
+		calendarId: string = 'primary',
+		calendarSourceId?: string | null
 	): Promise<{ success: boolean; error?: string }> {
+		let runtime: CalendarRuntime | null = null;
+		let channelId: string | null = null;
+		let resourceId: string | null = null;
 		try {
-			// Get authenticated client
-			const auth = await this.oAuthService.getAuthenticatedClient(userId);
-			const calendar = google.calendar({ version: 'v3', auth });
+			runtime = await this.resolveCalendarRuntime(userId, calendarId, calendarSourceId);
+			const calendar = runtime.calendar;
+			const providerCalendarId = runtime.providerCalendarId;
+			const existingResult = await this.channelIdentityQuery(
+				this.supabase.from('calendar_webhook_channels').select('*'),
+				userId,
+				providerCalendarId,
+				runtime.calendarSourceId
+			).maybeSingle();
+			if (existingResult.error) throw existingResult.error;
+			const previousChannel = (existingResult.data as WebhookChannel | null) ?? null;
 
 			// Generate unique channel ID and security token
-			const channelId = `channel-${userId}-${Date.now()}`;
+			channelId = `calendar-${crypto.randomUUID()}`;
 			const webhookToken = crypto.randomBytes(32).toString('hex');
 
 			// Set expiration to 7 days from now (max allowed is 30 days)
@@ -107,7 +209,7 @@ export class CalendarWebhookService {
 
 			// Register the webhook with Google
 			const response = await calendar.events.watch({
-				calendarId: calendarId,
+				calendarId: providerCalendarId,
 				requestBody: {
 					id: channelId,
 					type: 'web_hook',
@@ -123,42 +225,77 @@ export class CalendarWebhookService {
 			if (!response.data.resourceId) {
 				throw new Error('No resource ID returned from Google');
 			}
+			resourceId = response.data.resourceId;
 
 			// Store webhook channel info in database
-			const { error: dbError } = await this.supabase.from('calendar_webhook_channels').upsert(
-				{
-					user_id: userId,
-					channel_id: channelId,
-					resource_id: response.data.resourceId,
-					calendar_id: calendarId,
-					expiration: response.data.expiration
-						? parseInt(response.data.expiration)
-						: expiration,
-					webhook_token: webhookToken,
-					sync_token: null,
-					updated_at: new Date().toISOString()
-				},
-				{
-					onConflict: 'user_id,calendar_id'
-				}
-			);
+			const channelPayload = {
+				user_id: userId,
+				channel_id: channelId,
+				resource_id: resourceId,
+				calendar_id: providerCalendarId,
+				calendar_source_id: runtime.calendarSourceId,
+				expiration: response.data.expiration
+					? parseInt(response.data.expiration)
+					: expiration,
+				webhook_token: webhookToken,
+				// A channel rotation does not invalidate Google's incremental event cursor.
+				sync_token: previousChannel?.sync_token ?? null,
+				updated_at: new Date().toISOString()
+			};
+
+			// Both identities use select/update-or-insert instead of an ON CONFLICT target. The
+			// database deliberately has two partial unique indexes: source identity for new rows and
+			// (user, calendar) identity only for compatibility rows. Postgres cannot infer either
+			// partial index from the legacy onConflict column list.
+			const writeResult = previousChannel
+				? await this.supabase
+						.from('calendar_webhook_channels')
+						.update(channelPayload)
+						.eq('id', previousChannel.id)
+				: await this.supabase.from('calendar_webhook_channels').insert(channelPayload);
+			const dbError = writeResult.error;
 
 			if (dbError) {
 				console.error('Failed to store webhook channel:', dbError);
 				throw new Error('Failed to store webhook registration');
 			}
 
-			// Perform initial sync to get sync token
-			await this.performInitialSync(userId, calendarId);
+			if (previousChannel) {
+				try {
+					await calendar.channels.stop({
+						requestBody: {
+							id: previousChannel.channel_id,
+							resourceId: previousChannel.resource_id
+						}
+					});
+				} catch {
+					// The prior channel expires naturally; the newly persisted channel is authoritative.
+				}
+			}
+
+			// Only a brand-new channel needs a cursor seed. Rotations preserve the cursor above.
+			if (!previousChannel) {
+				await this.performInitialSync(userId, providerCalendarId, runtime.calendarSourceId);
+			}
 
 			console.log(`Webhook registered for user ${userId}:`, {
 				channelId,
-				resourceId: response.data.resourceId,
+				resourceId,
+				calendarSourceId: runtime.calendarSourceId,
 				expiration: new Date(expiration).toISOString()
 			});
 
 			return { success: true };
 		} catch (error: any) {
+			if (runtime && channelId && resourceId) {
+				try {
+					await runtime.calendar.channels.stop({
+						requestBody: { id: channelId, resourceId }
+					});
+				} catch {
+					// Best-effort compensation; Google will expire an unpersisted channel automatically.
+				}
+			}
 			console.error('Failed to register webhook:', error);
 			await this.errorLogger.logAPIError(
 				error,
@@ -168,7 +305,8 @@ export class CalendarWebhookService {
 				{
 					operation: 'registerWebhook',
 					errorType: 'calendar_webhook_registration_failure',
-					calendarId,
+					calendarId: runtime?.providerCalendarId ?? calendarId,
+					calendarSourceId: runtime?.calendarSourceId ?? calendarSourceId ?? null,
 					webhookUrl,
 					hasAuth: !!error.message?.includes('authentication')
 				}
@@ -183,29 +321,38 @@ export class CalendarWebhookService {
 	/**
 	 * Perform initial sync to get sync token
 	 */
-	private async performInitialSync(userId: string, calendarId: string): Promise<void> {
+	private async performInitialSync(
+		userId: string,
+		calendarId: string,
+		calendarSourceId?: string | null
+	): Promise<void> {
 		try {
-			const auth = await this.oAuthService.getAuthenticatedClient(userId);
-			const calendar = google.calendar({ version: 'v3', auth });
-
-			// List events to get initial sync token (with rate limiting)
-			const response = await this.executeWithBackoff(() =>
-				calendar.events.list({
-					calendarId: calendarId,
-					maxResults: 1,
-					showDeleted: true
-				})
-			);
-
-			if (response.data.nextSyncToken) {
-				await this.supabase
-					.from('calendar_webhook_channels')
-					.update({
-						sync_token: response.data.nextSyncToken,
-						updated_at: new Date().toISOString()
+			const runtime = await this.resolveCalendarRuntime(userId, calendarId, calendarSourceId);
+			let pageToken: string | undefined;
+			let nextSyncToken: string | undefined;
+			do {
+				const response = await this.executeWithBackoff(() =>
+					runtime.calendar.events.list({
+						calendarId: runtime.providerCalendarId,
+						maxResults: 2500,
+						showDeleted: true,
+						pageToken
 					})
-					.eq('user_id', userId)
-					.eq('calendar_id', calendarId);
+				);
+				pageToken = response.data.nextPageToken ?? undefined;
+				nextSyncToken = response.data.nextSyncToken ?? nextSyncToken;
+			} while (pageToken);
+
+			if (nextSyncToken) {
+				await this.channelIdentityQuery(
+					this.supabase.from('calendar_webhook_channels').update({
+						sync_token: nextSyncToken,
+						updated_at: new Date().toISOString()
+					}),
+					userId,
+					runtime.providerCalendarId,
+					runtime.calendarSourceId
+				);
 			}
 		} catch (error) {
 			console.error('Initial sync failed:', error);
@@ -227,7 +374,11 @@ export class CalendarWebhookService {
 	 * Perform full resync when sync token expires
 	 * This fetches recent changes and processes them
 	 */
-	private async performFullResync(userId: string, calendarId: string): Promise<number> {
+	private async performFullResync(
+		userId: string,
+		calendarId: string,
+		calendarSourceId?: string | null
+	): Promise<number> {
 		console.log('[RESYNC] Starting full resync for user:', {
 			userId,
 			calendarId,
@@ -235,8 +386,10 @@ export class CalendarWebhookService {
 		});
 
 		try {
-			const auth = await this.oAuthService.getAuthenticatedClient(userId);
-			const calendar = google.calendar({ version: 'v3', auth });
+			const runtime = await this.resolveCalendarRuntime(userId, calendarId, calendarSourceId);
+			const calendar = runtime.calendar;
+			calendarId = runtime.providerCalendarId;
+			calendarSourceId = runtime.calendarSourceId;
 
 			// Get user creation date to determine the earliest relevant event
 			const { data: userData } = await this.supabase
@@ -289,23 +442,13 @@ export class CalendarWebhookService {
 				}
 
 				pageToken = response.data.nextPageToken || undefined;
+				newSyncToken = response.data.nextSyncToken || newSyncToken;
 			} while (pageToken);
 
 			console.log(
 				`[RESYNC] Finished fetching events: ${allEvents.length} total events found`
 			);
 
-			// Now get a fresh sync token for future incremental syncs
-			console.log('[RESYNC] Getting fresh sync token...');
-			const syncTokenResponse = await this.executeWithBackoff(() =>
-				calendar.events.list({
-					calendarId: calendarId,
-					maxResults: 1,
-					showDeleted: true
-				})
-			);
-
-			newSyncToken = syncTokenResponse.data.nextSyncToken || undefined;
 			console.log('[RESYNC] New sync token obtained:', Boolean(newSyncToken));
 
 			// Process batch of events that might be linked to our tasks
@@ -315,7 +458,8 @@ export class CalendarWebhookService {
 			const processedCount = await this.processBatchEventChanges(
 				userId,
 				allEvents,
-				calendarId
+				calendarId,
+				calendarSourceId
 			);
 			const skippedCount = allEvents.length - processedCount;
 
@@ -328,14 +472,15 @@ export class CalendarWebhookService {
 			// Update with the new sync token
 			if (newSyncToken) {
 				console.log('[RESYNC] Updating database with new sync token...');
-				const { error: updateError } = await this.supabase
-					.from('calendar_webhook_channels')
-					.update({
+				const { error: updateError } = await this.channelIdentityQuery(
+					this.supabase.from('calendar_webhook_channels').update({
 						sync_token: newSyncToken,
 						updated_at: new Date().toISOString()
-					})
-					.eq('user_id', userId)
-					.eq('calendar_id', calendarId);
+					}),
+					userId,
+					calendarId,
+					calendarSourceId
+				);
 
 				if (updateError) {
 					console.error('[RESYNC] Failed to update sync token in database:', updateError);
@@ -372,14 +517,15 @@ export class CalendarWebhookService {
 				reason: error.message
 			});
 
-			await this.supabase
-				.from('calendar_webhook_channels')
-				.update({
+			await this.channelIdentityQuery(
+				this.supabase.from('calendar_webhook_channels').update({
 					sync_token: null,
 					updated_at: new Date().toISOString()
-				})
-				.eq('user_id', userId)
-				.eq('calendar_id', calendarId);
+				}),
+				userId,
+				calendarId,
+				calendarSourceId
+			);
 
 			throw error;
 		}
@@ -429,13 +575,14 @@ export class CalendarWebhookService {
 			console.log('[WEBHOOK] Channel found:', {
 				userId: channel.user_id,
 				calendarId: channel.calendar_id,
+				calendarSourceId: channel.calendar_source_id,
 				expiration: new Date(channel.expiration).toISOString(),
 				hasToken: !!channel.webhook_token,
 				hasSyncToken: !!channel.sync_token
 			});
 
 			// Verify security token
-			if (channel.webhook_token !== token) {
+			if (!this.tokensMatch(channel.webhook_token, token)) {
 				console.error('[WEBHOOK] Token mismatch:', {
 					expectedTokenPresent: Boolean(channel.webhook_token),
 					receivedTokenPresent: Boolean(token)
@@ -466,7 +613,9 @@ export class CalendarWebhookService {
 				processed = await this.syncCalendarChanges(
 					channel.user_id,
 					channel.calendar_id,
-					channel.sync_token
+					channel.sync_token,
+					false,
+					channel.calendar_source_id
 				);
 			} catch (syncError: any) {
 				console.error(`[WEBHOOK] Sync error for user ${channel.user_id}:`, {
@@ -553,7 +702,8 @@ export class CalendarWebhookService {
 		userId: string,
 		calendarId: string,
 		syncToken: string | null,
-		isRetry: boolean = false
+		isRetry: boolean = false,
+		calendarSourceId?: string | null
 	): Promise<number> {
 		// Validate inputs
 		if (!userId || typeof userId !== 'string') {
@@ -574,11 +724,10 @@ export class CalendarWebhookService {
 		});
 
 		try {
-			const auth = await this.oAuthService.getAuthenticatedClient(userId);
-			if (!auth) {
-				throw new Error('Failed to get authenticated client');
-			}
-			const calendar = google.calendar({ version: 'v3', auth });
+			const runtime = await this.resolveCalendarRuntime(userId, calendarId, calendarSourceId);
+			const calendar = runtime.calendar;
+			calendarId = runtime.providerCalendarId;
+			calendarSourceId = runtime.calendarSourceId;
 
 			// Get user creation date to filter out old events
 			const { data: userData } = await this.supabase
@@ -621,15 +770,14 @@ export class CalendarWebhookService {
 						maxResults: 100
 					};
 
-					// Add timeMin to filter events before user creation
-					// NOTE: When using syncToken, timeMin cannot be used on the first request
-					// but can be used on subsequent pagination requests
+					// timeMin is only valid for a fresh listing. A sync-token pagination chain must
+					// retain the same query shape and may only add pageToken on later requests.
 					if (requestCount === 1 && syncToken) {
 						listParams.syncToken = syncToken;
 						// Cannot use timeMin with syncToken
 					} else if (pageToken && requestCount > 1) {
 						listParams.pageToken = pageToken;
-						if (userCreatedAt) {
+						if (!syncToken && userCreatedAt) {
 							listParams.timeMin = userCreatedAt.toISOString();
 						}
 					} else if (!syncToken && userCreatedAt) {
@@ -713,20 +861,22 @@ export class CalendarWebhookService {
 			const processedCount = await this.processBatchEventChanges(
 				userId,
 				relevantChanges,
-				calendarId
+				calendarId,
+				calendarSourceId
 			);
 
 			// Update sync token
 			if (newSyncToken && typeof newSyncToken === 'string') {
 				console.log('[SYNC] Updating sync token in database');
-				const { error: updateError } = await this.supabase
-					.from('calendar_webhook_channels')
-					.update({
+				const { error: updateError } = await this.channelIdentityQuery(
+					this.supabase.from('calendar_webhook_channels').update({
 						sync_token: newSyncToken,
 						updated_at: new Date().toISOString()
-					})
-					.eq('user_id', userId)
-					.eq('calendar_id', calendarId);
+					}),
+					userId,
+					calendarId,
+					calendarSourceId
+				);
 
 				if (updateError) {
 					console.error('[SYNC] Failed to update sync token:', updateError);
@@ -790,7 +940,11 @@ export class CalendarWebhookService {
 
 				console.log('[SYNC] Initiating full resync to recover from expired token');
 				try {
-					const resyncCount = await this.performFullResync(userId, calendarId);
+					const resyncCount = await this.performFullResync(
+						userId,
+						calendarId,
+						calendarSourceId
+					);
 					console.log(
 						`[SYNC] Full resync completed successfully with ${resyncCount} events processed`
 					);
@@ -838,7 +992,8 @@ export class CalendarWebhookService {
 	private async processBatchEventChanges(
 		userId: string,
 		events: calendar_v3.Schema$Event[],
-		calendarId: string
+		calendarId: string,
+		calendarSourceId?: string | null
 	): Promise<number> {
 		try {
 			if (!events || events.length === 0) {
@@ -859,11 +1014,14 @@ export class CalendarWebhookService {
 			);
 
 			// Batch query all task events at once
-			const { data: taskEvents, error } = await this.supabase
-				.from('task_calendar_events')
-				.select('*')
-				.in('calendar_event_id', eventIds)
-				.eq('user_id', userId);
+			const { data: taskEvents, error } = await this.eventIdentityQuery(
+				this.supabase
+					.from('task_calendar_events')
+					.select('*')
+					.in('calendar_event_id', eventIds)
+					.eq('user_id', userId),
+				calendarSourceId
+			);
 
 			if (error) {
 				console.error('[BATCH_PROCESS] Error fetching task events:', error);
@@ -871,19 +1029,24 @@ export class CalendarWebhookService {
 			}
 
 			// Also batch query time blocks
-			const { data: timeBlocks, error: timeBlockError } = await this.supabase
-				.from('time_blocks')
-				.select('*')
-				.in('calendar_event_id', eventIds)
-				.eq('user_id', userId);
+			const { data: timeBlocks, error: timeBlockError } = await this.eventIdentityQuery(
+				this.supabase
+					.from('time_blocks')
+					.select('*')
+					.in('calendar_event_id', eventIds)
+					.eq('user_id', userId),
+				calendarSourceId
+			);
 
 			if (timeBlockError) {
 				console.error('[BATCH_PROCESS] Error fetching time blocks:', timeBlockError);
 				// Don't return - continue with task events if we have them
 			}
 
-			const taskEventsFound = (taskEvents || []).length;
-			const timeBlocksFound = (timeBlocks || []).length;
+			const taskEventRows = (taskEvents ?? []) as any[];
+			const timeBlockRows = (timeBlocks ?? []) as any[];
+			const taskEventsFound = taskEventRows.length;
+			const timeBlocksFound = timeBlockRows.length;
 			const totalFound = taskEventsFound + timeBlocksFound;
 
 			if (totalFound === 0) {
@@ -898,11 +1061,11 @@ export class CalendarWebhookService {
 			);
 
 			// Create maps for quick lookup
-			const taskEventMap = new Map(
-				(taskEvents || []).map((te) => [te.calendar_event_id, te])
+			const taskEventMap = new Map<string, any>(
+				taskEventRows.map((taskEvent) => [taskEvent.calendar_event_id, taskEvent])
 			);
-			const timeBlockMap = new Map(
-				(timeBlocks || []).map((tb) => [tb.calendar_event_id, tb])
+			const timeBlockMap = new Map<string, any>(
+				timeBlockRows.map((timeBlock) => [timeBlock.calendar_event_id, timeBlock])
 			);
 
 			// Prepare batch updates
@@ -1041,6 +1204,7 @@ export class CalendarWebhookService {
 								status: 'cancelled',
 								user_id: userId,
 								calendar_event_id: event.id,
+								calendar_source_id: calendarSourceId ?? null,
 								updated_at: new Date().toISOString()
 							});
 							console.log(
@@ -1161,6 +1325,7 @@ export class CalendarWebhookService {
 								completed_at: isCompleted ? new Date().toISOString() : null,
 								user_id: userId,
 								calendar_event_id: event.id,
+								calendar_source_id: calendarSourceId ?? null,
 								notes: JSON.stringify({
 									modified: true,
 									newStart: startDate.toISOString(),
@@ -1177,6 +1342,7 @@ export class CalendarWebhookService {
 								user_id: userId,
 								calendar_event_id: event.id,
 								calendar_id: calendarId,
+								calendar_source_id: calendarSourceId ?? null,
 								event_start: startDate.toISOString(),
 								event_end: endDate.toISOString(),
 								event_title: event.summary || taskEvent.event_title,
@@ -1452,7 +1618,8 @@ export class CalendarWebhookService {
 	private async processEventChange(
 		userId: string,
 		event: calendar_v3.Schema$Event,
-		calendarId: string
+		calendarId: string,
+		calendarSourceId?: string | null
 	): Promise<boolean> {
 		try {
 			if (!event || !event.id) {
@@ -1461,12 +1628,14 @@ export class CalendarWebhookService {
 			}
 
 			// Check if this event is linked to a task
-			const { data: taskEvent, error } = await this.supabase
-				.from('task_calendar_events')
-				.select('*')
-				.eq('calendar_event_id', event.id)
-				.eq('user_id', userId)
-				.single();
+			const { data: taskEvent, error } = await this.eventIdentityQuery(
+				this.supabase
+					.from('task_calendar_events')
+					.select('*')
+					.eq('calendar_event_id', event.id)
+					.eq('user_id', userId),
+				calendarSourceId
+			).single();
 
 			if (error || !taskEvent) {
 				// Not a task-related event, ignore
@@ -1726,23 +1895,28 @@ export class CalendarWebhookService {
 	/**
 	 * Unregister webhook
 	 */
-	async unregisterWebhook(userId: string, calendarId: string = 'primary'): Promise<void> {
+	async unregisterWebhook(
+		userId: string,
+		calendarId: string = 'primary',
+		calendarSourceId?: string | null
+	): Promise<void> {
 		try {
 			// Get channel info
-			const { data: channel } = await this.supabase
-				.from('calendar_webhook_channels')
-				.select('*')
-				.eq('user_id', userId)
-				.eq('calendar_id', calendarId)
-				.single();
+			const { data: channel } = await this.channelIdentityQuery(
+				this.supabase.from('calendar_webhook_channels').select('*'),
+				userId,
+				calendarId,
+				calendarSourceId
+			).maybeSingle();
 
 			if (channel) {
-				// Stop the channel with Google
-				const auth = await this.oAuthService.getAuthenticatedClient(userId);
-				const calendar = google.calendar({ version: 'v3', auth });
-
 				try {
-					await calendar.channels.stop({
+					const runtime = await this.resolveCalendarRuntime(
+						userId,
+						channel.calendar_id,
+						channel.calendar_source_id
+					);
+					await runtime.calendar.channels.stop({
 						requestBody: {
 							id: channel.channel_id,
 							resourceId: channel.resource_id
@@ -1751,7 +1925,8 @@ export class CalendarWebhookService {
 				} catch (error) {
 					console.error('Error stopping Google channel:', error);
 
-					// Log channel stop error
+					// Provider cleanup is best effort. Delete the local channel below so a stale or
+					// no-longer-capable source cannot be renewed forever.
 					await this.errorLogger.logAPIError(
 						error,
 						'https://www.googleapis.com/calendar/v3/channels/stop',
@@ -1761,13 +1936,18 @@ export class CalendarWebhookService {
 							operation: 'unregisterWebhook_stopChannel',
 							errorType: 'calendar_channel_stop_failure',
 							channelId: channel.channel_id,
-							calendarId
+							calendarId: channel.calendar_id,
+							calendarSourceId: channel.calendar_source_id
 						}
 					);
 				}
 
 				// Delete from database
-				await this.supabase.from('calendar_webhook_channels').delete().eq('id', channel.id);
+				const { error: deleteError } = await this.supabase
+					.from('calendar_webhook_channels')
+					.delete()
+					.eq('id', channel.id);
+				if (deleteError) throw deleteError;
 			}
 		} catch (error) {
 			console.error('Error unregistering webhook:', error);
@@ -1781,10 +1961,124 @@ export class CalendarWebhookService {
 				{
 					operation: 'unregisterWebhook',
 					errorType: 'calendar_webhook_unregister_failure',
-					calendarId
+					calendarId,
+					calendarSourceId: calendarSourceId ?? null
 				}
 			);
 		}
+	}
+
+	async unregisterConnectionWebhooks(userId: string, connectionId: string): Promise<number> {
+		const { data: sources, error } = await this.supabase
+			.from('user_calendar_sources')
+			.select('id, provider_calendar_id')
+			.eq('user_id', userId)
+			.eq('connection_id', connectionId)
+			.is('deleted_at', null);
+		if (error) throw error;
+
+		let attempted = 0;
+		for (const source of sources ?? []) {
+			await this.unregisterWebhook(userId, source.provider_calendar_id, source.id);
+			attempted += 1;
+		}
+		return attempted;
+	}
+
+	async unregisterUserWebhooks(userId: string): Promise<number> {
+		const { data: channels, error } = await this.supabase
+			.from('calendar_webhook_channels')
+			.select('calendar_id, calendar_source_id')
+			.eq('user_id', userId);
+		if (error) throw error;
+
+		let attempted = 0;
+		for (const channel of channels ?? []) {
+			await this.unregisterWebhook(
+				userId,
+				channel.calendar_id ?? 'primary',
+				channel.calendar_source_id
+			);
+			attempted += 1;
+		}
+		return attempted;
+	}
+
+	async reconcileSourceWebhooks(
+		webhookUrl: string,
+		limit = 100
+	): Promise<{
+		attempted: number;
+		registered: number;
+		failed: number;
+		hasMore: boolean;
+	}> {
+		const boundedLimit = Math.max(1, Math.min(limit, 100));
+		const scanPageSize = 500;
+		let offset = 0;
+		let scannedAllSources = false;
+		const missing: Array<{ id: string; user_id: string; provider_calendar_id: string }> = [];
+
+		// Scan until we have one page of repair work (plus one has-more sentinel). This avoids
+		// repeatedly inspecting the same healthy first page and starving later users.
+		while (!scannedAllSources && missing.length <= boundedLimit) {
+			const { data: sources, error } = await this.supabase
+				.from('user_calendar_sources')
+				.select('id, user_id, provider_calendar_id')
+				.eq('sync_enabled', true)
+				.is('provider_deleted_at', null)
+				.is('deleted_at', null)
+				.order('created_at', { ascending: true })
+				.range(offset, offset + scanPageSize - 1);
+			if (error) throw error;
+
+			const sourcePage = (sources ?? []) as Array<{
+				id: string;
+				user_id: string;
+				provider_calendar_id: string;
+			}>;
+			if (sourcePage.length === 0) break;
+			const sourceIds = sourcePage.map((source) => source.id);
+			const { data: channels, error: channelError } = await this.supabase
+				.from('calendar_webhook_channels')
+				.select('calendar_source_id')
+				.in('calendar_source_id', sourceIds);
+			if (channelError) throw channelError;
+
+			const registeredSourceIds = new Set(
+				(channels ?? [])
+					.map((channel) => channel.calendar_source_id)
+					.filter((sourceId): sourceId is string => typeof sourceId === 'string')
+			);
+			for (const source of sourcePage) {
+				if (!registeredSourceIds.has(source.id)) missing.push(source);
+				if (missing.length > boundedLimit) break;
+			}
+
+			offset += sourcePage.length;
+			scannedAllSources = sourcePage.length < scanPageSize;
+		}
+
+		const repairPage = missing.slice(0, boundedLimit);
+		let registered = 0;
+		let failed = 0;
+		for (const source of repairPage) {
+			const result = await this.registerWebhook(
+				source.user_id,
+				webhookUrl,
+				source.provider_calendar_id,
+				source.id
+			);
+			if (result.success) registered += 1;
+			else failed += 1;
+		}
+
+		return {
+			attempted: repairPage.length,
+			registered,
+			failed,
+			hasMore: missing.length > boundedLimit || !scannedAllSources
+		};
 	}
 
 	/**
@@ -1793,12 +2087,19 @@ export class CalendarWebhookService {
 	async renewExpiringWebhooks(
 		webhookUrl: string,
 		options: { rotateAll?: boolean } = {}
-	): Promise<{ attempted: number; renewed: number; failed: number; rotateAll: boolean }> {
+	): Promise<{
+		attempted: number;
+		renewed: number;
+		failed: number;
+		rotateAll: boolean;
+		hasMore: boolean;
+	}> {
 		const summary = {
 			attempted: 0,
 			renewed: 0,
 			failed: 0,
-			rotateAll: options.rotateAll === true
+			rotateAll: options.rotateAll === true,
+			hasMore: false
 		};
 		try {
 			// Find webhooks expiring in next 24 hours
@@ -1807,7 +2108,8 @@ export class CalendarWebhookService {
 			let channelsQuery = this.supabase
 				.from('calendar_webhook_channels')
 				.select('*')
-				.order('created_at', { ascending: true });
+				.order('updated_at', { ascending: true })
+				.limit(101);
 			if (!summary.rotateAll) {
 				channelsQuery = channelsQuery.lt('expiration', expirationThreshold);
 			}
@@ -1815,7 +2117,8 @@ export class CalendarWebhookService {
 			if (channelsError) throw channelsError;
 
 			if (expiringChannels && expiringChannels.length > 0) {
-				for (const channel of expiringChannels) {
+				summary.hasMore = expiringChannels.length > 100;
+				for (const channel of expiringChannels.slice(0, 100)) {
 					summary.attempted += 1;
 					console.log(
 						`${summary.rotateAll ? 'Rotating' : 'Renewing'} webhook for user ${channel.user_id}`
@@ -1826,7 +2129,9 @@ export class CalendarWebhookService {
 						await this.syncCalendarChanges(
 							channel.user_id,
 							channel.calendar_id,
-							channel.sync_token
+							channel.sync_token,
+							false,
+							channel.calendar_source_id
 						);
 					} catch (syncError) {
 						console.error(
@@ -1849,17 +2154,24 @@ export class CalendarWebhookService {
 						);
 					}
 
-					// Unregister old webhook
-					await this.unregisterWebhook(channel.user_id, channel.calendar_id);
-
-					// Register new webhook
+					// Registration rotates atomically: it persists the replacement before stopping
+					// the prior provider channel and preserves the incremental sync cursor.
 					const registration = await this.registerWebhook(
 						channel.user_id,
 						webhookUrl,
-						channel.calendar_id
+						channel.calendar_id,
+						channel.calendar_source_id
 					);
-					if (registration.success) summary.renewed += 1;
-					else summary.failed += 1;
+					if (registration.success) {
+						summary.renewed += 1;
+					} else {
+						summary.failed += 1;
+						// Move a persistently failing row to the back of the fair renewal queue.
+						await this.supabase
+							.from('calendar_webhook_channels')
+							.update({ updated_at: new Date().toISOString() })
+							.eq('id', channel.id);
+					}
 				}
 			}
 		} catch (error) {
@@ -1889,18 +2201,19 @@ export class CalendarWebhookService {
 	 */
 	async manualResync(
 		userId: string,
-		calendarId: string = 'primary'
+		calendarId: string = 'primary',
+		calendarSourceId?: string | null
 	): Promise<{ success: boolean; processed: number; error?: string }> {
 		try {
 			console.log(`Manual resync triggered for user ${userId}, calendar ${calendarId}`);
 
 			// Check if webhook channel exists
-			const { data: channel } = await this.supabase
-				.from('calendar_webhook_channels')
-				.select('*')
-				.eq('user_id', userId)
-				.eq('calendar_id', calendarId)
-				.single();
+			const { data: channel } = await this.channelIdentityQuery(
+				this.supabase.from('calendar_webhook_channels').select('*'),
+				userId,
+				calendarId,
+				calendarSourceId
+			).maybeSingle();
 
 			if (!channel) {
 				return {
@@ -1911,7 +2224,11 @@ export class CalendarWebhookService {
 			}
 
 			// Perform full resync
-			const processedCount = await this.performFullResync(userId, calendarId);
+			const processedCount = await this.performFullResync(
+				userId,
+				channel.calendar_id,
+				channel.calendar_source_id
+			);
 
 			return {
 				success: true,
@@ -1941,15 +2258,16 @@ export class CalendarWebhookService {
 	async checkAndRepairWebhook(
 		userId: string,
 		calendarId: string = 'primary',
-		webhookUrl?: string
+		webhookUrl?: string,
+		calendarSourceId?: string | null
 	): Promise<{ healthy: boolean; repaired: boolean; error?: string }> {
 		try {
-			const { data: channel } = await this.supabase
-				.from('calendar_webhook_channels')
-				.select('*')
-				.eq('user_id', userId)
-				.eq('calendar_id', calendarId)
-				.single();
+			const { data: channel } = await this.channelIdentityQuery(
+				this.supabase.from('calendar_webhook_channels').select('*'),
+				userId,
+				calendarId,
+				calendarSourceId
+			).maybeSingle();
 
 			if (!channel) {
 				return { healthy: false, repaired: false, error: 'No webhook channel found' };
@@ -1965,9 +2283,14 @@ export class CalendarWebhookService {
 					};
 				}
 
-				// Attempt to renew
-				await this.unregisterWebhook(userId, calendarId);
-				const result = await this.registerWebhook(userId, webhookUrl, calendarId);
+				// Attempt an atomic renewal; registerWebhook preserves the old channel until the
+				// replacement is persisted.
+				const result = await this.registerWebhook(
+					userId,
+					webhookUrl,
+					channel.calendar_id,
+					channel.calendar_source_id
+				);
 
 				return {
 					healthy: result.success,
@@ -1978,13 +2301,16 @@ export class CalendarWebhookService {
 
 			// Check if sync token is valid by attempting a small sync
 			try {
-				const auth = await this.oAuthService.getAuthenticatedClient(userId);
-				const calendar = google.calendar({ version: 'v3', auth });
+				const runtime = await this.resolveCalendarRuntime(
+					userId,
+					channel.calendar_id,
+					channel.calendar_source_id
+				);
 
 				// Check with rate limiting protection
 				await this.executeWithBackoff(() =>
-					calendar.events.list({
-						calendarId: calendarId,
+					runtime.calendar.events.list({
+						calendarId: runtime.providerCalendarId,
 						syncToken: channel.sync_token || undefined,
 						maxResults: 1
 					})
@@ -1994,7 +2320,11 @@ export class CalendarWebhookService {
 			} catch (error: any) {
 				if (error.code === 410) {
 					// Sync token expired, perform full resync
-					await this.performFullResync(userId, calendarId);
+					await this.performFullResync(
+						userId,
+						channel.calendar_id,
+						channel.calendar_source_id
+					);
 					return {
 						healthy: true,
 						repaired: true,
