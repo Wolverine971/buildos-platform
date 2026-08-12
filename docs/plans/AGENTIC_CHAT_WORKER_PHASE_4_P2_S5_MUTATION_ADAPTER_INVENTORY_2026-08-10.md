@@ -4,7 +4,7 @@
 
 **Prepared:** 2026-08-10
 
-**Status:** inventory complete; 20 mutation tools have reviewed adapters, including bounded document relationships, exact edge link/unlink, project-row update/create, atomic task move, and notification-only entity tag; required task SQL hosted; production gates remain OFF
+**Status:** P2 exit complete; executable policy partitions all 38 signed writes into 20 reviewed adapters and 18 explicit deferrals; required task SQL hosted; production gates remain OFF
 
 **Governing plan:** `AGENTIC_CHAT_WORKER_PHASE_4_P2_MUTATION_EFFECT_PARITY_PLAN_2026-08-09.md`
 
@@ -536,3 +536,20 @@ changing SQL tokens; committed source SHA-256 is
 Hosted catalog verification confirms the trigger guard, invoker security, fixed
 search path, anonymous/authenticated denial, and retained service-role table
 access. Production gates remain OFF.
+
+## P2 exit closure (2026-08-11)
+
+The inventory is now enforced in code rather than trusted only as prose.
+`AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1` names all 18 excluded writes and their
+reconciliation reason, while the module-load surface audit requires the exact
+union of those entries plus the 20 reviewed specs to equal every shared signed
+`write` tool. It fails on overlap, newly unclassified writes, or stale
+deferrals. Assembly additionally proves that every enabled adapter capability
+installs exactly one matching router entry.
+
+The complete P2 exit packet is
+`evidence/AGENTIC_CHAT_WORKER_PHASE_4_P2_EXIT_EVIDENCE_2026-08-11.md`. P2 is
+complete for the bounded reviewed surface; the 18 excluded tools require new
+contracts in their owning later packages rather than generic mutation
+admission. Production provider capabilities, adapter capabilities, routing,
+deployment, provider spend, and live mutations remain OFF.

@@ -56,6 +56,16 @@ Hosted catalog verification confirms the exact trigger guard, security-invoker
 function, fixed search path, anonymous/authenticated denial, and retained
 service-role effect-ledger access. No production gate changed.
 
+**P2 closure update (2026-08-11): COMPLETE for the bounded reviewed surface.**
+An executable fail-closed policy now proves the exact 38 signed writes = 20
+reviewed adapters + 18 explicit reconciliation deferrals, and assembly verifies
+that every enabled adapter capability installs exactly one router entry. The
+full exit battery is green; no deployment, provider spend, live mutation, or
+production capability/routing change occurred. Authoritative evidence:
+`docs/plans/evidence/AGENTIC_CHAT_WORKER_PHASE_4_P2_EXIT_EVIDENCE_2026-08-11.md`.
+The next package is tasker/51 P3. Do not reopen the historical S5 instructions
+or silently absorb the deferred calendar/delete/contact/control tools.
+
 ## Read this first
 
 Read these in order before editing:

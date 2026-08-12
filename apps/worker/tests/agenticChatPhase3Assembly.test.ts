@@ -1,6 +1,10 @@
 // apps/worker/tests/agenticChatPhase3Assembly.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { createAgenticChatPhase3Assembly } from '../src/workers/agentic-chat/phase3Assembly';
+import {
+	assertAgenticChatMutationAdapterCoverageV1,
+	createAgenticChatPhase3Assembly
+} from '../src/workers/agentic-chat/phase3Assembly';
+import { normalizeAgenticChatMutationCapabilitiesV1 } from '../src/workers/agentic-chat/mutationToolCatalog';
 
 const INTERNAL_USER_ID = 'd1000000-0000-4000-8000-000000000001';
 
@@ -74,6 +78,15 @@ describe('createAgenticChatPhase3Assembly', () => {
 				mutationProviderCapabilities: { updateOntoTask: true }
 			})
 		).toThrow('update_onto_task provider capability requires its mutation adapter');
+	});
+
+	it('fails closed when an enabled adapter capability has no installed router entry', () => {
+		expect(() =>
+			assertAgenticChatMutationAdapterCoverageV1(
+				normalizeAgenticChatMutationCapabilitiesV1({ updateOntoTask: true }),
+				[]
+			)
+		).toThrow('missing=update_onto_task');
 	});
 
 	it('fails closed when create_onto_task is advertised without its adapter', () => {

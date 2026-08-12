@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S4 complete; S5 inventory plus 20 reviewed mutation tools complete, including bounded document relationships, exact edge link/unlink, project-row update/create, atomic task move, and notification-only entity tag; required task SQL plus the null-effect telemetry trigger correction are hosted; graph reorganization/delete and remaining provider/control branches next; production mutations remain disabled
+**Status:** P2 COMPLETE (2026-08-11) for the bounded reviewed surface: 38 signed writes are exhaustively partitioned into 20 independently gated worker adapters and 18 explicit reconciliation deferrals; required SQL is hosted; production capabilities and routing remain OFF. Exit evidence: `evidence/AGENTIC_CHAT_WORKER_PHASE_4_P2_EXIT_EVIDENCE_2026-08-11.md`
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -719,16 +719,20 @@ Cross-cutting null-effect telemetry correction completed and hosted on
 
 ## P2 exit gate
 
-- The mutation differential passes on both adapters with only ratified effect
-  receipt asymmetry.
-- Every reachable mutating adapter accepts the stable effect identity.
-- Every adapter is classified idempotent/queryable or one-attempt/uncertain, with
-  recovery tests for the latter.
-- Reserve/begin/cancel/commit/receipt interleavings are covered in TypeScript and
-  disposable PostgreSQL.
-- Tool rows are effect-linked, ordered, terminally attached, and included in
+- ✅ The mutation differential runs on both adapters with zero mutation-specific
+  contested differences. Effect receipt/link fields are the ratified P2
+  asymmetry; the global timing/done-event ledger remains assigned to P6.
+- ✅ Every reachable mutating adapter accepts the stable effect identity.
+- ✅ Every reviewed adapter is classified downstream-replayable or
+  one-attempt/uncertain, with recovery coverage. The executable surface audit
+  fails closed unless all 38 signed writes are reviewed or explicitly deferred.
+- ✅ Reserve/begin/cancel/commit/receipt interleavings are covered in TypeScript
+  and disposable PostgreSQL.
+- ✅ Tool rows are effect-linked, ordered, terminally attached, and included in
   database-authoritative call counts.
-- Full worker/runtime/legacy/PostgreSQL/typecheck/lint gates pass.
-- Production routing remains OFF. Any later live mutation gate requires an
-  isolated test project, exact one-user cohort, explicit spend/write authorization,
-  verified worker/web deploys, and unconditional routing-OFF cleanup.
+- ✅ Full worker/runtime/legacy/PostgreSQL/typecheck/lint gates pass. Exact
+  evidence and counts are in the P2 exit packet.
+- ✅ Production routing and both mutation capability sets remain OFF. Any later
+  live mutation gate requires an isolated test project, exact one-user cohort,
+  explicit spend/write authorization, verified worker/web deploys, and
+  unconditional routing-OFF cleanup.

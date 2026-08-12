@@ -4,6 +4,7 @@ import {
 	type BuildosAgentAllowedOp,
 	type JsonObject
 } from '@buildos/shared-types';
+import { TOOL_METADATA } from '@buildos/agentic-chat-runtime/loop';
 
 export type AgenticChatMutationCapabilityNameV1 =
 	| 'createOntoDocument'
@@ -495,6 +496,81 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 
 export type AgenticChatReviewedMutationToolNameV1 =
 	keyof typeof AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1;
+
+export type AgenticChatDeferredMutationReasonV1 =
+	| 'calendar_provider_reconciliation'
+	| 'compound_partial_commit'
+	| 'control_plane_effect_mapping'
+	| 'irreversible_delete_without_tombstone'
+	| 'opaque_external_mutation'
+	| 'sensitive_contact_reconciliation';
+
+/**
+ * Explicit P2 boundary for signed writes that are not worker-admitted. Keeping
+ * this beside the reviewed catalog turns the 38/20/18 inventory into a
+ * fail-closed executable contract: a newly signed write must be reviewed or
+ * deliberately deferred before the worker can start.
+ */
+export const AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1 = Object.freeze({
+	call_corsair_mcp_tool: 'opaque_external_mutation',
+	commit_change_set: 'compound_partial_commit',
+	create_calendar_event: 'calendar_provider_reconciliation',
+	delegate_task: 'control_plane_effect_mapping',
+	delete_calendar_event: 'irreversible_delete_without_tombstone',
+	delete_onto_document: 'irreversible_delete_without_tombstone',
+	delete_onto_goal: 'irreversible_delete_without_tombstone',
+	delete_onto_milestone: 'irreversible_delete_without_tombstone',
+	delete_onto_plan: 'irreversible_delete_without_tombstone',
+	delete_onto_project: 'irreversible_delete_without_tombstone',
+	delete_onto_risk: 'irreversible_delete_without_tombstone',
+	delete_onto_task: 'irreversible_delete_without_tombstone',
+	link_user_contact: 'sensitive_contact_reconciliation',
+	reorganize_onto_project_graph: 'compound_partial_commit',
+	resolve_user_contact_candidate: 'sensitive_contact_reconciliation',
+	set_project_calendar: 'calendar_provider_reconciliation',
+	update_calendar_event: 'calendar_provider_reconciliation',
+	upsert_user_contact: 'sensitive_contact_reconciliation'
+} as const satisfies Record<string, AgenticChatDeferredMutationReasonV1>);
+
+export type AgenticChatMutationSurfaceAuditV1 = {
+	signedToolNames: readonly string[];
+	reviewedToolNames: readonly AgenticChatReviewedMutationToolNameV1[];
+	deferredToolNames: readonly string[];
+};
+
+export function auditAgenticChatMutationSurfaceV1(): AgenticChatMutationSurfaceAuditV1 {
+	const signedToolNames = Object.entries(TOOL_METADATA)
+		.filter(([, metadata]) => metadata.category === 'write')
+		.map(([toolName]) => toolName)
+		.sort();
+	const reviewedToolNames = (
+		Object.keys(
+			AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1
+		) as AgenticChatReviewedMutationToolNameV1[]
+	).sort();
+	const deferredToolNames = Object.keys(AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1).sort();
+	const deferred = new Set<string>(deferredToolNames);
+	const overlap = reviewedToolNames.filter((toolName) => deferred.has(toolName));
+	const declaredToolNames = [...reviewedToolNames, ...deferredToolNames].sort();
+	const signed = new Set(signedToolNames);
+	const declared = new Set(declaredToolNames);
+	const missingPolicy = signedToolNames.filter((toolName) => !declared.has(toolName));
+	const noLongerSigned = declaredToolNames.filter((toolName) => !signed.has(toolName));
+
+	if (overlap.length > 0 || missingPolicy.length > 0 || noLongerSigned.length > 0) {
+		throw new Error(
+			`Agentic Chat mutation surface policy drift: overlap=${overlap.join(',') || 'none'}; missing_policy=${missingPolicy.join(',') || 'none'}; no_longer_signed=${noLongerSigned.join(',') || 'none'}`
+		);
+	}
+
+	return Object.freeze({
+		signedToolNames: Object.freeze(signedToolNames),
+		reviewedToolNames: Object.freeze(reviewedToolNames),
+		deferredToolNames: Object.freeze(deferredToolNames)
+	});
+}
+
+export const AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1 = auditAgenticChatMutationSurfaceV1();
 
 export const AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1 = Object.freeze(
 	Object.entries(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1).map(

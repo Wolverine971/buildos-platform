@@ -3,7 +3,7 @@
 # 51 — Phase 4: full worker behavioral parity
 
 **Created:** 2026-08-07  
-**Status:** P0 COMPLETE (2026-08-07, Slice 17 — `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_SLICE_17_PARITY_SCENARIO_REGISTRY_EVIDENCE_2026-08-07.md`; all local gates green, no deploy required). P1 COMPLETE (2026-08-09, Slice 18; live gate 9/9 completed and assertion-passing). P2 IN PROGRESS (2026-08-11; effect fence/differential/mixed bridge plus 20 independently gated reviewed mutation adapters complete; production gates remain OFF). Phase 3 is exited (`AGENTIC_CHAT_WORKER_PHASE_3_EXIT_GATE_PACKET_2026-08-07.md`, recommendation GO; carried partials: live queued-window Stop, live worker-restart-mid-turn). tasker/50's remaining operator gates continue to govern future live runs. Next: finish P2 only through bounded, reconciliation-proven adapters; do not widen routing. Master plan: `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 4 (lines 857–886).
+**Status:** P0 COMPLETE (2026-08-07). P1 COMPLETE (2026-08-09; live read gate 9/9). P2 COMPLETE (2026-08-11; 38 signed writes exhaustively partitioned into 20 reviewed worker adapters and 18 explicit deferrals; evidence `docs/plans/evidence/AGENTIC_CHAT_WORKER_PHASE_4_P2_EXIT_EVIDENCE_2026-08-11.md`; production gates OFF). Phase 3 is exited; tasker/50's remaining operator gates continue to govern future live runs. Next: P3 prepared-prompt/session/history/context, attachment, and vision parity; do not widen routing. Master plan: `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 4 (lines 857–886).
 **Mission:** Make the worker path as capable as the legacy web path — full tool catalog, mutations behind effect reservations, attachments, supervisor, telemetry, billing — proven by differential tests that run legacy and worker against identical fixtures, so routing can eventually stay ON instead of flipping per canary. Internal-only throughout; cohort widening is Phase 6.
 
 ## Why this work exists
@@ -38,7 +38,7 @@ Replace the Phase 3 single-tool `readOnlyProvider` with the real orchestration l
 
 **S1 COMPLETE (2026-08-08).** Multi-round fence with the existing single tool: `continueWithToolResults` on the provider contract (`synthesize` retained as the deprecated Phase 3 alias, fence byte-identical without the new method), executor-owned budgets `maxProviderRounds`/`maxToolCalls` (defaults 16/40, envs `CHAT_MAX_TOOL_ROUNDS`/`CHAT_MAX_TOOL_CALLS` via `loadAgenticChatPhase3Config`, specific failure codes `provider_round_budget_exceeded`/`provider_tool_call_budget_exceeded`), real `tool_round_count` in the executor's finalize metadata, `read_only_tools` golden extended to two rounds on BOTH sides (worker diff still exactly the registered done-event inventory; other three goldens byte-unchanged), lifecycle projection widened to N tool pairs, two-row disposable-Postgres ledger proof. Known live divergences registered durably in the Slice 18 plan §Known live divergences: the `get_project_overview` payload gap (close in S3) plus a NEW S1 finding — `finalize_agentic_chat_turn` derives durable `tool_round_count` capped at 1 (ledger rows carry no round attribution), owned by S5. Next: S2 (loop-leaf extraction to `agentic-chat-runtime/src/loop/*`).
 
-### P2 — Mutating tools behind effect reservations
+### P2 — Mutating tools behind effect reservations — ✅ COMPLETE 2026-08-11
 
 Adapter-by-adapter enablement through the Phase 2B effect ledger (`reserve → begin → receipt`). Every reachable mutating adapter must accept the reserved `effect_id`; adapters without downstream idempotency get classified no-retry/uncertain with reconciliation coverage (plan line 883). Includes the cancellation boundaries around reservation from §7.8.
 
@@ -61,6 +61,14 @@ and delete tools are blocked on partial-change/tombstone reconciliation
 evidence, while calendar mutations must not be developed on top of the
 concurrent calendar refactor without first re-auditing its settled boundary.
 Routing, deployment, provider spend, and live model writes remain OFF.
+
+**Exit closure:** the code now enforces the exact 38/20/18 partition at module
+load and rejects adapter-capability/router drift. Focused mutation proof passes
+187/187; full worker 913 passed with one intentional skip; runtime 183/183;
+legacy route 42/42; PostgreSQL 13/13; typecheck/build/lint/Svelte gates are
+green. The 18 deferred calendar/delete/contact/external/control writes remain
+outside the worker catalog until their owning later packages supply exact
+reconciliation contracts. See the P2 exit evidence packet above.
 
 ### P3 — Session, prewarm, context, history, attachment, and vision parity
 

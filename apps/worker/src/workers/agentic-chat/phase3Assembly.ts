@@ -109,6 +109,31 @@ export type AgenticChatPhase3Assembly = {
 	capacity: AgenticChatWorkerCapacityCollector;
 };
 
+export function assertAgenticChatMutationAdapterCoverageV1(
+	capabilities: AgenticChatProviderMutationCapabilitiesV1,
+	entries: ReadonlyArray<AgenticChatMutationAdapterEntry>
+): void {
+	const expectedToolNames = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
+		([capability]) => capabilities[capability]
+	)
+		.map(([, toolName]) => toolName)
+		.sort();
+	const installedToolNames = entries.map(([toolName]) => toolName).sort();
+	const installed = new Set(installedToolNames);
+	const expected = new Set(expectedToolNames);
+	const duplicates = installedToolNames.filter(
+		(toolName, index) => installedToolNames.indexOf(toolName) !== index
+	);
+	const missing = expectedToolNames.filter((toolName) => !installed.has(toolName));
+	const unexpected = installedToolNames.filter((toolName) => !expected.has(toolName));
+
+	if (duplicates.length > 0 || missing.length > 0 || unexpected.length > 0) {
+		throw new Error(
+			`Agentic Chat mutation adapter coverage mismatch: duplicate=${[...new Set(duplicates)].join(',') || 'none'}; missing=${missing.join(',') || 'none'}; unexpected=${unexpected.join(',') || 'none'}`
+		);
+	}
+}
+
 /**
  * Compose the hosted Phase 3 read-only worker without starting it. The caller
  * must still explicitly start `runtime`; this module is intentionally absent
@@ -271,6 +296,7 @@ export function createAgenticChatPhase3Assembly(options: {
 			mutationAdapters.push([toolName, edgeAdapter]);
 		}
 	}
+	assertAgenticChatMutationAdapterCoverageV1(mutationAdapterCapabilities, mutationAdapters);
 	const mutation =
 		mutationAdapters.length > 0
 			? new AgenticChatFixtureMutationExecutor({
