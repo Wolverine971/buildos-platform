@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** S1-S4 complete; S5 inventory plus 20 reviewed mutation tools complete, including bounded document relationships, exact edge link/unlink, project-row update/create, atomic task move, and notification-only entity tag; all required task SQL hosted; graph reorganization/delete and remaining provider/control branches next; production mutations remain disabled
+**Status:** S1-S4 complete; S5 inventory plus 20 reviewed mutation tools complete, including bounded document relationships, exact edge link/unlink, project-row update/create, atomic task move, and notification-only entity tag; required task SQL plus the null-effect telemetry trigger correction are hosted; graph reorganization/delete and remaining provider/control branches next; production mutations remain disabled
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -683,6 +683,39 @@ Notification-only entity tagging completed locally on 2026-08-11:
   skip, shared-agent-ops 107/107, focused web tag referees, shared/worker
   typechecks and build, worker lint/HTTP guard, and Svelte diagnostics with zero
   errors and zero warnings.
+
+Cross-cutting null-effect telemetry correction completed and hosted on
+2026-08-11:
+
+- The legacy SSE path can persist a mutation tool row incrementally and later
+  reconcile it with an end-of-turn `INSERT ... ON CONFLICT DO UPDATE`. That
+  update names `turn_run_id`, so PostgreSQL fires the effect-scope trigger even
+  when `effect_id` remains null. The trigger then queried the service-only
+  `chat_turn_effects` table under the authenticated caller and rejected an
+  otherwise valid legacy reconciliation.
+- Migration
+  `20260811230000_agentic_chat_effect_scope_trigger_null_guard.sql` adds a
+  trigger `WHEN (NEW.effect_id IS NOT NULL)` guard. Null-effect legacy
+  telemetry bypasses the irrelevant protected-table lookup; every effect-linked
+  worker insert/update still executes the existing exact effect-to-turn scope
+  validation.
+- The composed disposable PostgreSQL suite passes 13/13, including the exact
+  authenticated incremental-write/end-of-turn UPSERT reproduction and a
+  cross-turn worker-effect denial.
+- A fresh receipt-isolated directory fetched the 85 hosted receipts and staged
+  only `20260811230000`. The dry run named only that migration, application
+  succeeded, hosted history now matches the local receipt, and the post-apply
+  dry run is empty. The pre-apply source/isolated SHA-256 was
+  `ce7af2d65378d2496c5f258b6465cc35c03e80da3add885c38407aa9fc3b8c2c`;
+  removing one trailing blank line after application changed no SQL tokens and
+  produced committed source SHA-256
+  `ac9be4c7f7a9cbb9670089857d9faf5a57d7eb33fa81521e0175a612778a87fd`.
+- A read-only hosted catalog query verifies the installed trigger contains
+  `WHEN ((new.effect_id IS NOT NULL))`; its function remains security-invoker
+  with fixed `search_path=pg_catalog, public`; anonymous/authenticated callers
+  have neither function execution nor effect-ledger table access; and
+  `service_role` retains effect-ledger access. No capability, routing, worker
+  deployment, provider-spend, or live mutation gate was enabled.
 
 ## P2 exit gate
 

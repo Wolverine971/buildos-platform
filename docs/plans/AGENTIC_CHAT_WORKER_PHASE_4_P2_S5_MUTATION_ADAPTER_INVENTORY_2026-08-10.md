@@ -515,3 +515,24 @@ Production provider capability, adapter capability, routing, worker deploy,
 and live model mutations remain OFF. The next unresolved ontology candidates
 are compound graph reorganization and irreversible deletes, both of which need
 stronger partial-change or tombstone reconciliation contracts.
+
+## Cross-cutting legacy telemetry correction (2026-08-11)
+
+The adapter count and classifications above are unchanged. Migration
+`20260811230000_agentic_chat_effect_scope_trigger_null_guard.sql` corrects an
+interaction between the existing effect-scope trigger and legacy null-effect
+tool telemetry: an authenticated end-of-turn UPSERT that names `turn_run_id`
+must not query the service-only effect ledger when `effect_id` is null. The
+trigger now runs only when `NEW.effect_id IS NOT NULL`, so effect-linked worker
+rows retain the exact scope check.
+
+The composed disposable PostgreSQL suite passes 13/13. A receipt-isolated
+linked dry run named only `20260811230000`; source and isolated SHA-256 matched
+at `ce7af2d65378d2496c5f258b6465cc35c03e80da3add885c38407aa9fc3b8c2c`;
+application succeeded; the local/hosted receipt matches; and the post-apply dry
+run is empty. A post-apply cleanup removed one trailing blank line without
+changing SQL tokens; committed source SHA-256 is
+`ac9be4c7f7a9cbb9670089857d9faf5a57d7eb33fa81521e0175a612778a87fd`.
+Hosted catalog verification confirms the trigger guard, invoker security, fixed
+search path, anonymous/authenticated denial, and retained service-role table
+access. Production gates remain OFF.

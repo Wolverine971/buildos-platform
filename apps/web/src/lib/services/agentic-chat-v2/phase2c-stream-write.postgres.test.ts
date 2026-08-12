@@ -43,6 +43,7 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	let validationFailureLedgerOutput = '';
 	let trueToolRoundCountOutput = '';
 	let mutationToolLedgerOutput = '';
+	let effectScopeNullGuardOutput = '';
 	let trueToolRoundCountReplayOutput = '';
 
 	const applySqlFile = (path: string): string =>
@@ -156,7 +157,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			'20260808130000_agentic_chat_tool_validation_failure_ledger.sql',
 			'20260808140000_agentic_chat_true_tool_round_count.sql',
 			'20260809010000_agentic_chat_mutation_tool_execution_ledger.sql',
-			'20260809020000_agentic_chat_mutation_tool_execution_legacy_category.sql'
+			'20260809020000_agentic_chat_mutation_tool_execution_legacy_category.sql',
+			'20260811230000_agentic_chat_effect_scope_trigger_null_guard.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}
@@ -193,6 +195,9 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			sqlPath(
 				'supabase/tests/20260809010000_agentic_chat_mutation_tool_execution_ledger.test.sql'
 			),
+			sqlPath(
+				'supabase/tests/20260811230000_agentic_chat_effect_scope_trigger_null_guard.test.sql'
+			),
 			sqlPath('supabase/tests/20260806020000_agentic_chat_timing_evidence_repair.test.sql')
 		]);
 		timingOutput = terminalParityOutput;
@@ -202,6 +207,7 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 		validationFailureLedgerOutput = terminalParityOutput;
 		trueToolRoundCountOutput = terminalParityOutput;
 		mutationToolLedgerOutput = terminalParityOutput;
+		effectScopeNullGuardOutput = terminalParityOutput;
 	}, 60_000);
 
 	afterAll(() => {
@@ -266,6 +272,12 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	it('links succeeded mutation effects to fenced durable tool telemetry', () => {
 		expect(mutationToolLedgerOutput).toContain(
 			'phase4_p2_slice1_mutation_tool_execution_ledger_ok'
+		);
+	});
+
+	it('lets legacy null-effect telemetry reconcile without weakening worker effect scope', () => {
+		expect(effectScopeNullGuardOutput).toContain(
+			'agentic_chat_effect_scope_trigger_null_guard_ok'
 		);
 	});
 
