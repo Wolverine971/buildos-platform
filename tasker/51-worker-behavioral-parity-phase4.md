@@ -3,7 +3,7 @@
 # 51 — Phase 4: full worker behavioral parity
 
 **Created:** 2026-08-07  
-**Status:** P0 COMPLETE (2026-08-07). P1 COMPLETE (2026-08-09; live read gate 9/9). P2 COMPLETE (2026-08-11; 38 signed writes exhaustively partitioned into 20 reviewed worker adapters and 18 explicit deferrals; evidence `docs/plans/evidence/AGENTIC_CHAT_WORKER_PHASE_4_P2_EXIT_EVIDENCE_2026-08-11.md`; production gates OFF). Phase 3 is exited; tasker/50's remaining operator gates continue to govern future live runs. Next: P3 prepared-prompt/session/history/context, attachment, and vision parity; do not widen routing. Master plan: `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 4 (lines 857–886).
+**Status:** P0 COMPLETE (2026-08-07). P1 COMPLETE (2026-08-09; live read gate 9/9). P2 COMPLETE (2026-08-11; 38 signed writes exhaustively partitioned into 20 reviewed worker adapters and 18 explicit deferrals; evidence `docs/plans/evidence/AGENTIC_CHAT_WORKER_PHASE_4_P2_EXIT_EVIDENCE_2026-08-11.md`; production gates OFF). P3 S1 COMPLETE (2026-08-11; prepared-history divergence now falls back on both paths and fails closed at atomic artifact insertion; hosted receipt `20260812000000`). Phase 3 is exited; tasker/50's remaining operator gates continue to govern future live runs. Next: P3 S2 exact prepared-history/strategy/count contract, then attachment and vision parity; do not widen routing. Plan: `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_P3_SESSION_HISTORY_ATTACHMENT_VISION_PLAN_2026-08-11.md`. Master plan: `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 4 (lines 857–886).
 **Mission:** Make the worker path as capable as the legacy web path — full tool catalog, mutations behind effect reservations, attachments, supervisor, telemetry, billing — proven by differential tests that run legacy and worker against identical fixtures, so routing can eventually stay ON instead of flipping per canary. Internal-only throughout; cohort widening is Phase 6.
 
 ## Why this work exists
@@ -73,6 +73,17 @@ reconciliation contracts. See the P2 exit evidence packet above.
 ### P3 — Session, prewarm, context, history, attachment, and vision parity
 
 Prepared-prompt consumption beyond the canary shape, history strategies (compression, cutoffs), attachment references and live vision through the immutable input artifact.
+
+**S1 complete (2026-08-11):** the aspirational
+`agentic_chat_prepared_history_divergence` rule is now real. Worker inspection
+rejects a prepared snapshot older than the latest persisted session message;
+legacy consumption skips its just-admitted user row and applies the same rule
+to the prior tail; lookup errors fail closed. Migration `20260812000000` repeats
+the check at immutable artifact insertion after the admission lock and is
+hosted through a receipt-isolated apply. App proof is 55/55 and the disposable
+database proof covers current/stale/cross-scope/security cases. Next is S2:
+exact prepared-row-to-artifact history validation plus trusted strategy,
+compression, cutoff, and count evidence. See the P3 plan linked in Status.
 
 ### P4 — Supervisor/checkpoint + research/forward-carry parity
 

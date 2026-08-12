@@ -34,6 +34,8 @@ export type PreparedPromptCacheMissReason =
 	| 'session_mismatch'
 	| 'scope_mismatch'
 	| 'stale_harness'
+	| 'stale_history'
+	| 'history_check_failed'
 	| 'surface_missing'
 	| 'update_failed'
 	| 'parse_error';

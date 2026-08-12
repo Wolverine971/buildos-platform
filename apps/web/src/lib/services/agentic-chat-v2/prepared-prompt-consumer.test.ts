@@ -92,6 +92,8 @@ function createSupabaseMock(params: {
 	row?: PreparedPromptRow | null;
 	selectResult?: QueryResult;
 	updateResult?: QueryResult;
+	historyRows?: Array<{ id: string; created_at: string }>;
+	historyResult?: QueryResult;
 }) {
 	const updatePatches: Record<string, unknown>[] = [];
 	const builders: Array<{
@@ -99,14 +101,18 @@ function createSupabaseMock(params: {
 		update: ReturnType<typeof vi.fn>;
 		eq: ReturnType<typeof vi.fn>;
 		is: ReturnType<typeof vi.fn>;
+		order: ReturnType<typeof vi.fn>;
+		limit: ReturnType<typeof vi.fn>;
 		maybeSingle: ReturnType<typeof vi.fn>;
+		then: ReturnType<typeof vi.fn>;
 	}> = [];
 
 	const from = vi.fn((table: string) => {
-		if (table !== 'agentic_chat_prepared_prompts') {
+		if (table !== 'agentic_chat_prepared_prompts' && table !== 'chat_messages') {
 			throw new Error(`Unexpected table: ${table}`);
 		}
 		let mode: 'select' | 'update' = 'select';
+		let limitCount = 1;
 		const builder = {
 			select: vi.fn(() => builder),
 			update: vi.fn((patch: Record<string, unknown>) => {
@@ -116,11 +122,34 @@ function createSupabaseMock(params: {
 			}),
 			eq: vi.fn(() => builder),
 			is: vi.fn(() => builder),
+			order: vi.fn(() => builder),
+			limit: vi.fn((count: number) => {
+				limitCount = count;
+				return builder;
+			}),
 			maybeSingle: vi.fn(async () => {
+				if (table === 'chat_messages') {
+					return (
+						params.historyResult ?? {
+							data: params.historyRows?.[0] ?? null,
+							error: null
+						}
+					);
+				}
 				if (mode === 'update') {
 					return params.updateResult ?? { data: { id: params.row?.id }, error: null };
 				}
 				return params.selectResult ?? { data: params.row ?? null, error: null };
+			}),
+			then: vi.fn((onfulfilled) => {
+				const result =
+					table === 'chat_messages'
+						? (params.historyResult ?? {
+								data: (params.historyRows ?? []).slice(0, limitCount),
+								error: null
+							})
+						: (params.selectResult ?? { data: params.row ?? null, error: null });
+				return Promise.resolve(result).then(onfulfilled);
 			})
 		};
 		builders.push(builder);
@@ -278,6 +307,112 @@ describe('consumePreparedPrompt', () => {
 		});
 		expect(mock.updatePatches).toEqual([]);
 		expect(mock.builders[0]?.update).not.toHaveBeenCalled();
+	});
+
+	it('rejects worker prepared history when a session message landed after prewarm', async () => {
+		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
+		const preparedPrompt = buildPreparedPromptRow({
+			tools,
+			overrides: { created_at: '2026-08-11T10:00:00.000Z' }
+		});
+		const mock = createSupabaseMock({
+			row: preparedPrompt.row,
+			historyRows: [
+				{
+					id: '22222222-2222-4222-8222-222222222222',
+					created_at: '2026-08-11T10:00:01.000Z'
+				}
+			]
+		});
+
+		const result = await inspectPreparedPromptForWorkerAdmission({
+			supabase: mock.supabase as any,
+			key: preparedPrompt.key,
+			userId: 'user-1',
+			sessionId: 'session-1',
+			cacheKey: 'v2|global|none|none|none',
+			surfaceProfile: 'global_basic',
+			contextType: 'global',
+			tools,
+			nowMs: Date.parse('2026-08-11T10:00:02.000Z')
+		});
+
+		expect(result).toMatchObject({
+			hit: false,
+			reason: 'stale_history',
+			diagnostics: {
+				prepared_prompt_id: preparedPrompt.row.id,
+				prepared_history_created_at: '2026-08-11T10:00:00.000Z',
+				latest_session_message_id: '22222222-2222-4222-8222-222222222222',
+				latest_session_message_created_at: '2026-08-11T10:00:01.000Z',
+				prepared_history_current: false
+			}
+		});
+		expect(mock.updatePatches).toEqual([]);
+	});
+
+	it('legacy consumption ignores the newly admitted message but rejects an earlier mid-draft message', async () => {
+		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
+		const preparedPrompt = buildPreparedPromptRow({
+			tools,
+			overrides: { created_at: '2026-08-11T10:00:00.000Z' }
+		});
+		const mock = createSupabaseMock({
+			row: preparedPrompt.row,
+			historyRows: [
+				{
+					id: '33333333-3333-4333-8333-333333333333',
+					created_at: '2026-08-11T10:00:02.000Z'
+				},
+				{
+					id: '22222222-2222-4222-8222-222222222222',
+					created_at: '2026-08-11T10:00:01.000Z'
+				}
+			]
+		});
+
+		await expect(
+			consumePreparedPrompt({
+				supabase: mock.supabase as any,
+				key: preparedPrompt.key,
+				userId: 'user-1',
+				sessionId: 'session-1',
+				cacheKey: 'v2|global|none|none|none',
+				surfaceProfile: 'global_basic',
+				contextType: 'global',
+				tools
+			})
+		).resolves.toMatchObject({
+			hit: false,
+			reason: 'stale_history',
+			diagnostics: {
+				latest_session_message_id: '22222222-2222-4222-8222-222222222222'
+			}
+		});
+		expect(mock.updatePatches).toEqual([]);
+	});
+
+	it('fails closed when prepared-history currency cannot be established', async () => {
+		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
+		const preparedPrompt = buildPreparedPromptRow({ tools });
+		const mock = createSupabaseMock({
+			row: preparedPrompt.row,
+			historyResult: { data: null, error: { message: 'history unavailable' } }
+		});
+
+		await expect(
+			inspectPreparedPromptForWorkerAdmission({
+				supabase: mock.supabase as any,
+				key: preparedPrompt.key,
+				userId: 'user-1',
+				sessionId: 'session-1',
+				cacheKey: 'v2|global|none|none|none',
+				surfaceProfile: 'global_basic',
+				contextType: 'global',
+				tools
+			})
+		).resolves.toMatchObject({ hit: false, reason: 'history_check_failed' });
+		expect(mock.updatePatches).toEqual([]);
 	});
 
 	it('returns empty admission lineage when the nonce or immutable scope does not match', async () => {

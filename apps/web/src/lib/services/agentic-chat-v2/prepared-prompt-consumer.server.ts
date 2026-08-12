@@ -42,6 +42,17 @@ export type PreparedPromptConsumeMissDiagnostics = {
 	harness_match?: boolean;
 	tool_names_match?: boolean;
 	tool_definitions_match?: boolean;
+	prepared_history_created_at?: string;
+	latest_session_message_id?: string;
+	latest_session_message_created_at?: string;
+	prepared_history_current?: boolean;
+};
+
+type PreparedHistoryCurrencyInspection = {
+	current: boolean;
+	preparedHistoryCreatedAt: string;
+	latestSessionMessageId?: string;
+	latestSessionMessageCreatedAt?: string;
 };
 
 export type PreparedPromptConsumeResult =
@@ -192,6 +203,38 @@ export async function inspectPreparedPromptForWorkerAdmission(params: {
 			})
 		};
 	}
+	const historyInspection = await inspectPreparedHistoryCurrency({
+		supabase: params.supabase,
+		row,
+		userId: params.userId,
+		sessionId: params.sessionId,
+		skipNewestMessage: false
+	});
+	if (!historyInspection) {
+		return {
+			hit: false,
+			reason: 'history_check_failed',
+			diagnostics: buildPreparedPromptRowDiagnostics({
+				row,
+				params,
+				surface,
+				surfaceInspection
+			})
+		};
+	}
+	if (!historyInspection.current) {
+		return {
+			hit: false,
+			reason: 'stale_history',
+			diagnostics: buildPreparedPromptRowDiagnostics({
+				row,
+				params,
+				surface,
+				surfaceInspection,
+				historyInspection
+			})
+		};
+	}
 
 	return {
 		hit: true,
@@ -283,6 +326,41 @@ export async function consumePreparedPrompt(params: {
 			})
 		};
 	}
+	// Legacy atomic admission has already persisted this turn's user message.
+	// Skip that newest row, then compare the prepared snapshot with the latest
+	// message that could have existed while the user was still composing.
+	const historyInspection = await inspectPreparedHistoryCurrency({
+		supabase: params.supabase,
+		row,
+		userId: params.userId,
+		sessionId: params.sessionId,
+		skipNewestMessage: true
+	});
+	if (!historyInspection) {
+		return {
+			hit: false,
+			reason: 'history_check_failed',
+			diagnostics: buildPreparedPromptRowDiagnostics({
+				row,
+				params,
+				surface,
+				surfaceInspection
+			})
+		};
+	}
+	if (!historyInspection.current) {
+		return {
+			hit: false,
+			reason: 'stale_history',
+			diagnostics: buildPreparedPromptRowDiagnostics({
+				row,
+				params,
+				surface,
+				surfaceInspection,
+				historyInspection
+			})
+		};
+	}
 
 	const consumedAt = new Date().toISOString();
 	const { claimed, error: updateError } = await claimPreparedPromptContent({
@@ -317,6 +395,7 @@ function buildPreparedPromptRowDiagnostics(params: {
 	};
 	surface?: PreparedPromptSurface | null;
 	surfaceInspection?: ReturnType<typeof inspectPreparedPromptSurfaceCurrent>;
+	historyInspection?: PreparedHistoryCurrencyInspection;
 }): PreparedPromptConsumeMissDiagnostics {
 	const surfaceProfiles = Object.keys(params.row.prepared_surfaces ?? {});
 	const surface =
@@ -326,6 +405,7 @@ function buildPreparedPromptRowDiagnostics(params: {
 		? resolveCacheAgeSeconds(surface.created_at)
 		: undefined;
 	const inspection = params.surfaceInspection;
+	const historyInspection = params.historyInspection;
 	return {
 		prepared_prompt_id: params.row.id,
 		prepared_prompt_age_seconds: ageSeconds,
@@ -354,6 +434,58 @@ function buildPreparedPromptRowDiagnostics(params: {
 						surface.tool_definitions_sha256 ===
 						inspection.actual_tool_definitions_sha256
 				}
+			: {}),
+		...(historyInspection
+			? {
+					prepared_history_created_at: historyInspection.preparedHistoryCreatedAt,
+					...(historyInspection.latestSessionMessageId
+						? { latest_session_message_id: historyInspection.latestSessionMessageId }
+						: {}),
+					...(historyInspection.latestSessionMessageCreatedAt
+						? {
+								latest_session_message_created_at:
+									historyInspection.latestSessionMessageCreatedAt
+							}
+						: {}),
+					prepared_history_current: historyInspection.current
+				}
 			: {})
+	};
+}
+
+async function inspectPreparedHistoryCurrency(params: {
+	supabase: FastChatSupabaseClient;
+	row: PreparedPromptRow;
+	userId: string;
+	sessionId: string;
+	skipNewestMessage: boolean;
+}): Promise<PreparedHistoryCurrencyInspection | null> {
+	const preparedHistoryCreatedAtMs = Date.parse(params.row.created_at);
+	if (!Number.isFinite(preparedHistoryCreatedAtMs)) return null;
+
+	const query = params.supabase
+		.from('chat_messages')
+		.select('id, created_at')
+		.eq('session_id', params.sessionId)
+		.eq('user_id', params.userId)
+		.order('created_at', { ascending: false })
+		.limit(params.skipNewestMessage ? 2 : 1);
+	const { data, error } = await query;
+	if (error) return null;
+	const latest = Array.isArray(data) ? data[params.skipNewestMessage ? 1 : 0] : null;
+	if (!latest) {
+		return {
+			current: true,
+			preparedHistoryCreatedAt: params.row.created_at
+		};
+	}
+	if (typeof latest.id !== 'string' || typeof latest.created_at !== 'string') return null;
+	const latestCreatedAtMs = Date.parse(latest.created_at);
+	if (!Number.isFinite(latestCreatedAtMs)) return null;
+	return {
+		current: latestCreatedAtMs <= preparedHistoryCreatedAtMs,
+		preparedHistoryCreatedAt: params.row.created_at,
+		latestSessionMessageId: latest.id,
+		latestSessionMessageCreatedAt: latest.created_at
 	};
 }
