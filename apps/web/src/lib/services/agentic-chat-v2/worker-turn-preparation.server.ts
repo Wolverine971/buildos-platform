@@ -13,6 +13,7 @@ import {
 	validateTurnInputArtifactV1,
 	type AgentChatTransportContextV1,
 	type AgenticChatContextUsageSnapshotV1,
+	type AgenticChatHistoryStateV1,
 	type AgenticChatSessionEventSnapshotV1,
 	type ChatAttachmentRef,
 	type ChatContextType,
@@ -50,7 +51,6 @@ import {
 	inspectPreparedPromptAdmissionLineage,
 	inspectPreparedPromptForWorkerAdmission
 } from './prepared-prompt-consumer.server';
-import { normalizePreparedHistoryForModel } from './prepared-prompt-history';
 import { resolveFastChatScaffoldConfigFromEnv } from './scaffold-variant';
 import { projectWorkerFrozenHistorySnapshot } from './session-service';
 import { loadFastChatPromptContext } from './context-loader';
@@ -311,12 +311,15 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	let preparedPromptId: string | null = null;
 	let preparedContextPayloadSha256: string | null = null;
 	let preparedSurfaceProfile: string | null = null;
+	let historyState: AgenticChatHistoryStateV1;
 
 	if (preparedInspection.hit) {
 		historySource = 'prepared_prompt';
-		modelHistory = normalizePreparedHistoryForModel(
-			preparedInspection.row.history_for_model
-		).map((message) => ({ ...message, sourceMessageId: null }));
+		modelHistory = preparedInspection.history.history.map((message) => ({
+			...message,
+			sourceMessageId: null
+		}));
+		historyState = preparedInspection.history.state;
 		preparedPromptId = preparedInspection.row.id;
 		preparedContextPayloadSha256 = canonicalSha256(
 			preparedInspection.row.context_payload_sha256
@@ -359,6 +362,12 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			...message,
 			sourceMessageId: readHistorySourceMessageId(message)
 		}));
+		historyState = {
+			strategy: historyComposition.strategy,
+			compressed: historyComposition.compressed,
+			rawHistoryCount: historyComposition.rawHistoryCount,
+			historyForModelCount: historyComposition.historyForModel.length
+		};
 		const pendingIntentMessage = buildPendingTurnIntentSystemMessage(
 			turnPreparation.turnIntent
 		);
@@ -425,9 +434,19 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		preparedContextPayloadSha256 = null;
 		preparedSurfaceProfile = null;
 		preparedArtifact = { ...preparedArtifact, sourcePreparedPromptId: null };
+		historyState = {
+			strategy: 'raw_history',
+			compressed: false,
+			rawHistoryCount: 0,
+			historyForModelCount: 0
+		};
 	}
 
 	const frozenHistory = freezeHistory(modelHistory);
+	historyState = {
+		...historyState,
+		historyForModelCount: frozenHistory.length
+	};
 	const sessionSnapshot = buildWorkerSessionEventSnapshot({
 		session: sessionIntent.session,
 		inlineAgentMetadata: turnPreparation.sessionMetadata
@@ -445,6 +464,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		history: frozenHistory,
 		prepared: {
 			...preparedArtifact,
+			historyState,
 			sessionSnapshot,
 			contextUsageSnapshot
 		}

@@ -36,6 +36,7 @@ export type PreparedPromptCacheMissReason =
 	| 'stale_harness'
 	| 'stale_history'
 	| 'history_check_failed'
+	| 'invalid_history'
 	| 'surface_missing'
 	| 'update_failed'
 	| 'parse_error';

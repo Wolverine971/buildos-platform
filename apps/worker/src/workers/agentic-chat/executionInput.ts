@@ -268,6 +268,19 @@ export class SupabaseAgenticChatExecutionInputAdapter implements AgenticChatExec
 				'Worker timing baseline does not match its immutable input artifact'
 			);
 		}
+		const historyState = validation.normalizedContent.prepared.historyState;
+		if (
+			historyState &&
+			(timingBaseline.historyStrategy !== historyState.strategy ||
+				timingBaseline.historyCompressed !== historyState.compressed ||
+				timingBaseline.rawHistoryCount !== historyState.rawHistoryCount ||
+				timingBaseline.historyForModelCount !== historyState.historyForModelCount)
+		) {
+			throw new AgenticChatExecutionInputError(
+				'invalid_timing_source',
+				'Worker history timing evidence does not match its immutable input artifact'
+			);
+		}
 		if (Date.parse(artifact.retainUntil) <= this.now()) {
 			throw new AgenticChatExecutionInputError(
 				'artifact_expired',

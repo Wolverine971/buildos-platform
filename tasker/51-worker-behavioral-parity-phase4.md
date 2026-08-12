@@ -3,7 +3,7 @@
 # 51 — Phase 4: full worker behavioral parity
 
 **Created:** 2026-08-07  
-**Status:** P0 COMPLETE (2026-08-07). P1 COMPLETE (2026-08-09; live read gate 9/9). P2 COMPLETE (2026-08-11; 38 signed writes exhaustively partitioned into 20 reviewed worker adapters and 18 explicit deferrals; evidence `docs/plans/evidence/AGENTIC_CHAT_WORKER_PHASE_4_P2_EXIT_EVIDENCE_2026-08-11.md`; production gates OFF). P3 S1 COMPLETE (2026-08-11; prepared-history divergence now falls back on both paths and fails closed at atomic artifact insertion; hosted receipt `20260812000000`). Phase 3 is exited; tasker/50's remaining operator gates continue to govern future live runs. Next: P3 S2 exact prepared-history/strategy/count contract, then attachment and vision parity; do not widen routing. Plan: `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_P3_SESSION_HISTORY_ATTACHMENT_VISION_PLAN_2026-08-11.md`. Master plan: `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 4 (lines 857–886).
+**Status:** P0 COMPLETE (2026-08-07). P1 COMPLETE (2026-08-09; live read gate 9/9). P2 COMPLETE (2026-08-11; 38 signed writes exhaustively partitioned into 20 reviewed worker adapters and 18 explicit deferrals; evidence `docs/plans/evidence/AGENTIC_CHAT_WORKER_PHASE_4_P2_EXIT_EVIDENCE_2026-08-11.md`; production gates OFF). P3 S1-S2 COMPLETE (2026-08-11; prepared-history divergence and exact history/strategy/count evidence now fail closed in application, atomic artifact insertion, and worker execution; hosted receipts `20260812000000` + `20260812010000`). Phase 3 is exited; tasker/50's remaining operator gates continue to govern future live runs. Next: P3 S3 attachment-reference parity, then live vision parity; do not widen routing. Plan: `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_P3_SESSION_HISTORY_ATTACHMENT_VISION_PLAN_2026-08-11.md`. Master plan: `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 4 (lines 857–886).
 **Mission:** Make the worker path as capable as the legacy web path — full tool catalog, mutations behind effect reservations, attachments, supervisor, telemetry, billing — proven by differential tests that run legacy and worker against identical fixtures, so routing can eventually stay ON instead of flipping per canary. Internal-only throughout; cohort widening is Phase 6.
 
 ## Why this work exists
@@ -83,7 +83,21 @@ the check at immutable artifact insertion after the admission lock and is
 hosted through a receipt-isolated apply. App proof is 55/55 and the disposable
 database proof covers current/stale/cross-scope/security cases. Next is S2:
 exact prepared-row-to-artifact history validation plus trusted strategy,
-compression, cutoff, and count evidence. See the P3 plan linked in Status.
+compression, cutoff, and count evidence; its closure is recorded below. See the
+P3 plan linked in Status.
+
+**S2 complete (2026-08-11):** prepared history validation is strict and
+fail-closed, preserves tool-call evidence, and defers attachment-bearing
+prepared snapshots to S3 rather than dropping attachment state. New artifacts
+hash exact `historyState` strategy/compression/count evidence. Hosted migration
+`20260812010000` proves the frozen prepared history against the locked prepared
+row and copies all four values onto the parent turn transactionally; worker
+execution compares them back before provider work. The receipt-isolated apply
+named only S2, the post-apply dry run is empty, and hosted catalog checks prove
+the trigger body/security boundary. Local gates: shared 25/25, focused web
+67/67, worker input 9/9, disposable PostgreSQL 11/11, and typechecks/Svelte
+clean. Next is S3 attachment-reference parity; routing and capability gates
+remain off.
 
 ### P4 — Supervisor/checkpoint + research/forward-carry parity
 

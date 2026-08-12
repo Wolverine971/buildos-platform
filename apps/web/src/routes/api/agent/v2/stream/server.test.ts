@@ -873,6 +873,9 @@ function buildPreparedPromptRow(overrides: Row = {}): { key: string; row: Row } 
 			history_compressed: false,
 			history_strategy: 'raw_history',
 			raw_history_count: 0,
+			history_for_model_count: Array.isArray(overrides.history_for_model)
+				? overrides.history_for_model.length
+				: 0,
 			nonce_sha256: nonceSha256,
 			expires_at: '2099-01-01T00:00:00.000Z',
 			consumed_at: null,

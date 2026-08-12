@@ -78,6 +78,7 @@ function buildPreparedPromptRow(params: {
 			history_compressed: false,
 			history_strategy: 'raw_history',
 			raw_history_count: 0,
+			history_for_model_count: 0,
 			nonce_sha256: nonceSha256,
 			expires_at: '2099-01-01T00:00:00.000Z',
 			consumed_at: null,
@@ -94,6 +95,7 @@ function createSupabaseMock(params: {
 	updateResult?: QueryResult;
 	historyRows?: Array<{ id: string; created_at: string }>;
 	historyResult?: QueryResult;
+	activeLegacyUserMessageId?: string | null;
 }) {
 	const updatePatches: Record<string, unknown>[] = [];
 	const builders: Array<{
@@ -108,7 +110,11 @@ function createSupabaseMock(params: {
 	}> = [];
 
 	const from = vi.fn((table: string) => {
-		if (table !== 'agentic_chat_prepared_prompts' && table !== 'chat_messages') {
+		if (
+			table !== 'agentic_chat_prepared_prompts' &&
+			table !== 'chat_messages' &&
+			table !== 'chat_turn_runs'
+		) {
 			throw new Error(`Unexpected table: ${table}`);
 		}
 		let mode: 'select' | 'update' = 'select';
@@ -128,6 +134,14 @@ function createSupabaseMock(params: {
 				return builder;
 			}),
 			maybeSingle: vi.fn(async () => {
+				if (table === 'chat_turn_runs') {
+					return {
+						data: params.activeLegacyUserMessageId
+							? { user_message_id: params.activeLegacyUserMessageId }
+							: null,
+						error: null
+					};
+				}
 				if (table === 'chat_messages') {
 					return (
 						params.historyResult ?? {
@@ -190,7 +204,10 @@ describe('consumePreparedPrompt', () => {
 	it('consumes a valid prepared prompt and marks it consumed', async () => {
 		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
 		const preparedPrompt = buildPreparedPromptRow({ tools });
-		const mock = createSupabaseMock({ row: preparedPrompt.row });
+		const mock = createSupabaseMock({
+			row: preparedPrompt.row,
+			activeLegacyUserMessageId: '33333333-3333-4333-8333-333333333333'
+		});
 
 		const result = await consumePreparedPrompt({
 			supabase: mock.supabase as any,
@@ -303,7 +320,17 @@ describe('consumePreparedPrompt', () => {
 		expect(result).toMatchObject({
 			hit: true,
 			row: { id: preparedPrompt.row.id },
-			surface: { surface_profile: 'global_basic' }
+			surface: { surface_profile: 'global_basic' },
+			history: {
+				ok: true,
+				history: [],
+				state: {
+					strategy: 'raw_history',
+					compressed: false,
+					rawHistoryCount: 0,
+					historyForModelCount: 0
+				}
+			}
 		});
 		expect(mock.updatePatches).toEqual([]);
 		expect(mock.builders[0]?.update).not.toHaveBeenCalled();
@@ -351,6 +378,72 @@ describe('consumePreparedPrompt', () => {
 		expect(mock.updatePatches).toEqual([]);
 	});
 
+	it('fails closed before currency checks when prepared history metadata is inconsistent', async () => {
+		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
+		const preparedPrompt = buildPreparedPromptRow({
+			tools,
+			overrides: {
+				history_for_model: [{ role: 'assistant', content: 'Earlier answer' }],
+				history_for_model_count: 0
+			}
+		});
+		const mock = createSupabaseMock({ row: preparedPrompt.row });
+
+		await expect(
+			inspectPreparedPromptForWorkerAdmission({
+				supabase: mock.supabase as any,
+				key: preparedPrompt.key,
+				userId: 'user-1',
+				sessionId: 'session-1',
+				cacheKey: 'v2|global|none|none|none',
+				surfaceProfile: 'global_basic',
+				contextType: 'global',
+				tools
+			})
+		).resolves.toMatchObject({
+			hit: false,
+			reason: 'invalid_history',
+			diagnostics: { prepared_history_validation_error: 'invalid_counts' }
+		});
+		expect(mock.from).toHaveBeenCalledTimes(1);
+	});
+
+	it('defers prepared history attachments instead of silently dropping them', async () => {
+		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
+		const preparedPrompt = buildPreparedPromptRow({
+			tools,
+			overrides: {
+				history_for_model: [
+					{
+						role: 'user',
+						content: 'Review this image',
+						attachments: [{ asset_id: 'asset-1' }]
+					}
+				],
+				raw_history_count: 1,
+				history_for_model_count: 1
+			}
+		});
+		const mock = createSupabaseMock({ row: preparedPrompt.row });
+
+		await expect(
+			inspectPreparedPromptForWorkerAdmission({
+				supabase: mock.supabase as any,
+				key: preparedPrompt.key,
+				userId: 'user-1',
+				sessionId: 'session-1',
+				cacheKey: 'v2|global|none|none|none',
+				surfaceProfile: 'global_basic',
+				contextType: 'global',
+				tools
+			})
+		).resolves.toMatchObject({
+			hit: false,
+			reason: 'invalid_history',
+			diagnostics: { prepared_history_validation_error: 'history_attachments_deferred' }
+		});
+	});
+
 	it('legacy consumption ignores the newly admitted message but rejects an earlier mid-draft message', async () => {
 		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
 		const preparedPrompt = buildPreparedPromptRow({
@@ -359,6 +452,7 @@ describe('consumePreparedPrompt', () => {
 		});
 		const mock = createSupabaseMock({
 			row: preparedPrompt.row,
+			activeLegacyUserMessageId: '33333333-3333-4333-8333-333333333333',
 			historyRows: [
 				{
 					id: '33333333-3333-4333-8333-333333333333',

@@ -18,6 +18,10 @@ import {
 	claimPreparedPromptContent,
 	readPreparedPromptContent
 } from './prepared-prompt-store.server';
+import {
+	inspectPreparedHistorySnapshot,
+	type PreparedHistoryInspection
+} from './prepared-prompt-history';
 
 type FastChatSupabaseClient = SupabaseClient<Database>;
 
@@ -46,6 +50,7 @@ export type PreparedPromptConsumeMissDiagnostics = {
 	latest_session_message_id?: string;
 	latest_session_message_created_at?: string;
 	prepared_history_current?: boolean;
+	prepared_history_validation_error?: string;
 };
 
 type PreparedHistoryCurrencyInspection = {
@@ -60,6 +65,7 @@ export type PreparedPromptConsumeResult =
 			hit: true;
 			row: PreparedPromptRow;
 			surface: PreparedPromptSurface;
+			history: Extract<PreparedHistoryInspection, { ok: true }>;
 			ageSeconds: number;
 	  }
 	| {
@@ -78,6 +84,7 @@ export type PreparedPromptWorkerInspectionResult =
 			hit: true;
 			row: PreparedPromptRow;
 			surface: PreparedPromptSurface;
+			history: Extract<PreparedHistoryInspection, { ok: true }>;
 			ageSeconds: number;
 	  }
 	| {
@@ -203,12 +210,26 @@ export async function inspectPreparedPromptForWorkerAdmission(params: {
 			})
 		};
 	}
+	const history = inspectPreparedPromptHistory(row);
+	if (!history.ok) {
+		return {
+			hit: false,
+			reason: 'invalid_history',
+			diagnostics: buildPreparedPromptRowDiagnostics({
+				row,
+				params,
+				surface,
+				surfaceInspection,
+				historyValidationError: history.code
+			})
+		};
+	}
 	const historyInspection = await inspectPreparedHistoryCurrency({
 		supabase: params.supabase,
 		row,
 		userId: params.userId,
 		sessionId: params.sessionId,
-		skipNewestMessage: false
+		excludeActiveLegacyUserMessage: false
 	});
 	if (!historyInspection) {
 		return {
@@ -240,6 +261,7 @@ export async function inspectPreparedPromptForWorkerAdmission(params: {
 		hit: true,
 		row,
 		surface,
+		history,
 		ageSeconds: resolveCacheAgeSeconds(row.created_at)
 	};
 }
@@ -326,15 +348,29 @@ export async function consumePreparedPrompt(params: {
 			})
 		};
 	}
+	const history = inspectPreparedPromptHistory(row);
+	if (!history.ok) {
+		return {
+			hit: false,
+			reason: 'invalid_history',
+			diagnostics: buildPreparedPromptRowDiagnostics({
+				row,
+				params,
+				surface,
+				surfaceInspection,
+				historyValidationError: history.code
+			})
+		};
+	}
 	// Legacy atomic admission has already persisted this turn's user message.
-	// Skip that newest row, then compare the prepared snapshot with the latest
-	// message that could have existed while the user was still composing.
+	// Exclude that exact linked identity before comparing the prepared snapshot
+	// with the latest message that could have landed while the user was composing.
 	const historyInspection = await inspectPreparedHistoryCurrency({
 		supabase: params.supabase,
 		row,
 		userId: params.userId,
 		sessionId: params.sessionId,
-		skipNewestMessage: true
+		excludeActiveLegacyUserMessage: true
 	});
 	if (!historyInspection) {
 		return {
@@ -383,6 +419,7 @@ export async function consumePreparedPrompt(params: {
 			consumed_at: consumedAt
 		},
 		surface,
+		history,
 		ageSeconds: resolveCacheAgeSeconds(row.created_at)
 	};
 }
@@ -396,6 +433,7 @@ function buildPreparedPromptRowDiagnostics(params: {
 	surface?: PreparedPromptSurface | null;
 	surfaceInspection?: ReturnType<typeof inspectPreparedPromptSurfaceCurrent>;
 	historyInspection?: PreparedHistoryCurrencyInspection;
+	historyValidationError?: string;
 }): PreparedPromptConsumeMissDiagnostics {
 	const surfaceProfiles = Object.keys(params.row.prepared_surfaces ?? {});
 	const surface =
@@ -449,8 +487,21 @@ function buildPreparedPromptRowDiagnostics(params: {
 						: {}),
 					prepared_history_current: historyInspection.current
 				}
+			: {}),
+		...(params.historyValidationError
+			? { prepared_history_validation_error: params.historyValidationError }
 			: {})
 	};
+}
+
+function inspectPreparedPromptHistory(row: PreparedPromptRow): PreparedHistoryInspection {
+	return inspectPreparedHistorySnapshot({
+		historyForModel: row.history_for_model,
+		historyStrategy: row.history_strategy,
+		historyCompressed: row.history_compressed,
+		rawHistoryCount: row.raw_history_count,
+		historyForModelCount: row.history_for_model_count
+	});
 }
 
 async function inspectPreparedHistoryCurrency(params: {
@@ -458,10 +509,14 @@ async function inspectPreparedHistoryCurrency(params: {
 	row: PreparedPromptRow;
 	userId: string;
 	sessionId: string;
-	skipNewestMessage: boolean;
+	excludeActiveLegacyUserMessage: boolean;
 }): Promise<PreparedHistoryCurrencyInspection | null> {
 	const preparedHistoryCreatedAtMs = Date.parse(params.row.created_at);
 	if (!Number.isFinite(preparedHistoryCreatedAtMs)) return null;
+	const excludedMessageId = params.excludeActiveLegacyUserMessage
+		? await loadActiveLegacyUserMessageId(params)
+		: null;
+	if (params.excludeActiveLegacyUserMessage && excludedMessageId === null) return null;
 
 	const query = params.supabase
 		.from('chat_messages')
@@ -469,10 +524,12 @@ async function inspectPreparedHistoryCurrency(params: {
 		.eq('session_id', params.sessionId)
 		.eq('user_id', params.userId)
 		.order('created_at', { ascending: false })
-		.limit(params.skipNewestMessage ? 2 : 1);
+		.limit(excludedMessageId === null ? 1 : 2);
 	const { data, error } = await query;
 	if (error) return null;
-	const latest = Array.isArray(data) ? data[params.skipNewestMessage ? 1 : 0] : null;
+	const latest = Array.isArray(data)
+		? data.find((message) => message.id !== excludedMessageId)
+		: null;
 	if (!latest) {
 		return {
 			current: true,
@@ -488,4 +545,22 @@ async function inspectPreparedHistoryCurrency(params: {
 		latestSessionMessageId: latest.id,
 		latestSessionMessageCreatedAt: latest.created_at
 	};
+}
+
+async function loadActiveLegacyUserMessageId(params: {
+	supabase: FastChatSupabaseClient;
+	userId: string;
+	sessionId: string;
+}): Promise<string | null> {
+	const { data, error } = await params.supabase
+		.from('chat_turn_runs')
+		.select('user_message_id')
+		.eq('session_id', params.sessionId)
+		.eq('user_id', params.userId)
+		.eq('status', 'running')
+		.eq('execution_mode', 'legacy_sse')
+		.order('started_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	return !error && typeof data?.user_message_id === 'string' ? data.user_message_id : null;
 }

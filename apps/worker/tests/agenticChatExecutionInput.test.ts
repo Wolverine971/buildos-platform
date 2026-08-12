@@ -84,6 +84,12 @@ async function artifactFixture(): Promise<{
 			systemPrompt: 'You are a fixture-only agent.',
 			promptSections: [],
 			toolSurface: { names: ['fixture_read'] },
+			historyState: {
+				strategy: 'raw_history',
+				compressed: false,
+				rawHistoryCount: 1,
+				historyForModelCount: 1
+			},
 			sessionSnapshot: {
 				summary: null,
 				agent_metadata: {}
@@ -304,9 +310,37 @@ describe('SupabaseAgenticChatExecutionInputAdapter', () => {
 		});
 	});
 
+	it('pins the admission-owned history cutoff inside the admitted-to-worker window', async () => {
+		const { row } = await artifactFixture();
+		const { client } = clientFor(
+			turnFixture({ history_cutoff_at: '2026-08-03T11:59:56.999Z' }),
+			row
+		);
+
+		await expect(
+			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
+		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+			code: 'invalid_timing_source'
+		});
+	});
+
 	it('rejects timing counts that do not match the immutable model history', async () => {
 		const { row } = await artifactFixture();
 		const { client } = clientFor(turnFixture({ history_for_model_count: 2 }), row);
+
+		await expect(
+			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)
+		).rejects.toMatchObject<Partial<AgenticChatExecutionInputError>>({
+			code: 'invalid_timing_source'
+		});
+	});
+
+	it('rejects timing strategy evidence that diverges from the immutable artifact', async () => {
+		const { row } = await artifactFixture();
+		const { client } = clientFor(
+			turnFixture({ history_strategy: 'compressed_history', history_compressed: true }),
+			row
+		);
 
 		await expect(
 			new SupabaseAgenticChatExecutionInputAdapter(client, () => NOW).load(claim)

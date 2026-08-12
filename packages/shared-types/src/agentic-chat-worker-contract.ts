@@ -90,6 +90,15 @@ type TurnInputArtifactPreparedBaseV1 = {
 	systemPrompt: string;
 	promptSections: JsonObject[];
 	toolSurface: JsonObject;
+	/** Prospective history evidence; optional only for retained rolling v2/v3 artifacts. */
+	historyState?: AgenticChatHistoryStateV1;
+};
+
+export type AgenticChatHistoryStateV1 = {
+	strategy: 'raw_history' | 'continuity_only' | 'compressed_history';
+	compressed: boolean;
+	rawHistoryCount: number;
+	historyForModelCount: number;
 };
 
 /**
@@ -137,6 +146,7 @@ export type TurnInputArtifactValidationErrorCodeV1 =
 	| 'invalid_version'
 	| 'invalid_history_source'
 	| 'invalid_content'
+	| 'invalid_history_state'
 	| 'invalid_hash_format'
 	| 'hash_mismatch'
 	| 'invalid_lifecycle_snapshot'
@@ -909,7 +919,18 @@ export function normalizeTurnInputArtifactContentV1(
 			promptSections: artifact.prepared.promptSections.map((section) =>
 				cloneCanonicalJson(section)
 			),
-			toolSurface: cloneCanonicalJson(artifact.prepared.toolSurface)
+			toolSurface: cloneCanonicalJson(artifact.prepared.toolSurface),
+			...(artifact.prepared.historyState
+				? {
+						historyState: {
+							strategy: artifact.prepared.historyState.strategy,
+							compressed: artifact.prepared.historyState.compressed,
+							rawHistoryCount: artifact.prepared.historyState.rawHistoryCount,
+							historyForModelCount:
+								artifact.prepared.historyState.historyForModelCount
+						}
+					}
+				: {})
 		}
 	};
 	if (artifact.artifactVersion === AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2) {
@@ -998,6 +1019,16 @@ export async function validateTurnInputArtifactV1(
 			ok: false,
 			code: 'invalid_content',
 			detail: 'Artifact history and prepared content have invalid shapes'
+		};
+	}
+	if (
+		artifact.prepared.historyState !== undefined &&
+		!isValidAgenticChatHistoryStateV1(artifact.prepared.historyState, artifact.history.length)
+	) {
+		return {
+			ok: false,
+			code: 'invalid_history_state',
+			detail: 'Artifact history strategy and counts are invalid or inconsistent'
 		};
 	}
 	if (
@@ -1274,6 +1305,32 @@ function isValidSessionEventSnapshot(value: unknown): value is AgenticChatSessio
 		typeof value === 'object' &&
 		!Array.isArray(value) &&
 		!Object.prototype.hasOwnProperty.call(value, 'id')
+	);
+}
+
+function isValidAgenticChatHistoryStateV1(
+	value: unknown,
+	historyLength: number
+): value is AgenticChatHistoryStateV1 {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+	const state = value as Partial<AgenticChatHistoryStateV1>;
+	const strategyValid =
+		state.strategy === 'raw_history' ||
+		state.strategy === 'continuity_only' ||
+		state.strategy === 'compressed_history';
+	return (
+		strategyValid &&
+		typeof state.compressed === 'boolean' &&
+		state.compressed === (state.strategy === 'compressed_history') &&
+		Number.isSafeInteger(state.rawHistoryCount) &&
+		state.rawHistoryCount! >= 0 &&
+		state.rawHistoryCount! <= 50 &&
+		Number.isSafeInteger(state.historyForModelCount) &&
+		state.historyForModelCount === historyLength &&
+		state.historyForModelCount! >= 0 &&
+		state.historyForModelCount! <= 50 &&
+		(state.strategy !== 'continuity_only' ||
+			(state.rawHistoryCount === 0 && state.historyForModelCount === 1))
 	);
 }
 

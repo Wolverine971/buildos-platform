@@ -265,6 +265,12 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		expect(result.args.p_request_hash).toBe(expectedHash);
 		expect(result.args.p_artifact_prepared).toMatchObject({
+			historyState: {
+				strategy: 'raw_history',
+				compressed: false,
+				rawHistoryCount: 0,
+				historyForModelCount: 0
+			},
 			sessionSnapshot: {
 				summary: null,
 				agent_metadata: { trusted: true }
@@ -312,6 +318,16 @@ describe('Agentic Chat worker turn preparation', () => {
 		mocks.inspectPreparedPromptForWorkerAdmission.mockResolvedValue({
 			hit: true,
 			ageSeconds: 3,
+			history: {
+				ok: true,
+				history: [{ role: 'assistant', content: 'Earlier answer' }],
+				state: {
+					strategy: 'raw_history',
+					compressed: false,
+					rawHistoryCount: 1,
+					historyForModelCount: 1
+				}
+			},
 			row: {
 				id: preparedId,
 				context_payload: { contextType: 'global', data: { source: 'prepared' } },
@@ -319,7 +335,9 @@ describe('Agentic Chat worker turn preparation', () => {
 				conversation_summary: 'Trusted conversation summary',
 				history_for_model: [{ role: 'assistant', content: 'Earlier answer' }],
 				history_compressed: false,
-				history_strategy: 'raw_history'
+				history_strategy: 'raw_history',
+				raw_history_count: 1,
+				history_for_model_count: 1
 			},
 			surface: {
 				system_prompt: 'Prepared system prompt',
@@ -362,6 +380,12 @@ describe('Agentic Chat worker turn preparation', () => {
 			sourcePreparedPromptId: preparedId,
 			systemPrompt: 'Prepared system prompt',
 			surfaceProfile: 'global_basic',
+			historyState: {
+				strategy: 'raw_history',
+				compressed: false,
+				rawHistoryCount: 1,
+				historyForModelCount: 1
+			},
 			sessionSnapshot: {
 				user_id: USER_ID,
 				context_type: 'global',
@@ -455,6 +479,14 @@ describe('Agentic Chat worker turn preparation', () => {
 				content: 'Earlier answer'
 			})
 		]);
+		expect(result.args.p_artifact_prepared).toMatchObject({
+			historyState: {
+				strategy: 'raw_history',
+				compressed: false,
+				rawHistoryCount: 2,
+				historyForModelCount: 2
+			}
+		});
 	});
 
 	it('keeps prepared-prompt request-hash lineage stable after consumption changes the usable copy', async () => {
@@ -483,6 +515,16 @@ describe('Agentic Chat worker turn preparation', () => {
 			.mockResolvedValueOnce({
 				hit: true,
 				ageSeconds: 1,
+				history: {
+					ok: true,
+					history: [],
+					state: {
+						strategy: 'raw_history',
+						compressed: false,
+						rawHistoryCount: 0,
+						historyForModelCount: 0
+					}
+				},
 				row: {
 					id: preparedId,
 					context_payload: { contextType: 'global', data: {} },
@@ -490,7 +532,9 @@ describe('Agentic Chat worker turn preparation', () => {
 					conversation_summary: null,
 					history_for_model: [],
 					history_compressed: false,
-					history_strategy: 'raw_history'
+					history_strategy: 'raw_history',
+					raw_history_count: 0,
+					history_for_model_count: 0
 				},
 				surface: { system_prompt: 'Prepared prompt', sections: [] }
 			})

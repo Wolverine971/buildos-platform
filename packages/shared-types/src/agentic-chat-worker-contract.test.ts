@@ -414,6 +414,39 @@ describe('agentic chat worker v1 contract fixtures', () => {
 		});
 	});
 
+	it('hashes and validates immutable history strategy/count evidence while retaining old artifacts', async () => {
+		const rollingArtifact = artifactFixture();
+		rollingArtifact.contentHash = await hashTurnInputArtifactContentV1(rollingArtifact);
+		expect(await validateTurnInputArtifactV1(rollingArtifact)).toMatchObject({ ok: true });
+
+		const artifact = artifactFixture();
+		artifact.prepared.historyState = {
+			strategy: 'raw_history',
+			compressed: false,
+			rawHistoryCount: 2,
+			historyForModelCount: 2
+		};
+		artifact.contentHash = await hashTurnInputArtifactContentV1(artifact);
+		expect(await validateTurnInputArtifactV1(artifact)).toMatchObject({ ok: true });
+		expect(artifact.contentHash).not.toBe(rollingArtifact.contentHash);
+
+		const inconsistent = {
+			...artifact,
+			prepared: {
+				...artifact.prepared,
+				historyState: {
+					...artifact.prepared.historyState,
+					historyForModelCount: 1
+				}
+			}
+		} as TurnInputArtifactV1;
+		inconsistent.contentHash = await hashTurnInputArtifactContentV1(inconsistent);
+		expect(await validateTurnInputArtifactV1(inconsistent)).toMatchObject({
+			ok: false,
+			code: 'invalid_history_state'
+		});
+	});
+
 	it('freezes exact history and excludes the newly admitted user message', () => {
 		const source = artifactFixture().history;
 		source.push({
