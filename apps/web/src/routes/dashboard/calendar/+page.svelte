@@ -189,6 +189,7 @@
 		new Map(enabledCalendarSources.map((source) => [source.id, source] as const))
 	);
 	let totalCalendarSourceCount = $derived(enabledCalendarSources.length + 1);
+	let isBuildOsVisible = $derived(!hiddenCalendarSourceSet.has(BUILDOS_CALENDAR_SOURCE_ID));
 	let visibleCalendarSourceCount = $derived(
 		enabledCalendarSources.filter((source) => !hiddenCalendarSourceSet.has(source.id)).length +
 			(hiddenCalendarSourceSet.has(BUILDOS_CALENDAR_SOURCE_ID) ? 0 : 1)
@@ -956,9 +957,6 @@
 				</div>
 
 				<div class="mt-2.5 flex flex-wrap gap-2" aria-label="Calendar visibility">
-					{@const isBuildOsVisible = !hiddenCalendarSourceSet.has(
-						BUILDOS_CALENDAR_SOURCE_ID
-					)}
 					<button
 						type="button"
 						aria-pressed={isBuildOsVisible}
