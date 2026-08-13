@@ -259,10 +259,12 @@
 
 	// Task modals
 	let showTaskCreateModal = $state(false);
+	let taskCreateGoalContext = $state<{ goalId: string; goalName: string } | null>(null);
 	let editingTaskId = $state<string | null>(null);
 
 	// Plan modals
 	let showPlanCreateModal = $state(false);
+	let planCreateGoalContext = $state<{ goalId: string; goalName: string } | null>(null);
 	let editingPlanId = $state<string | null>(null);
 
 	// Goal modals
@@ -404,17 +406,6 @@
 	// ============================================================
 	// DERIVED
 	// ============================================================
-
-	const milestonesByGoalId = $derived.by(() => {
-		const map = new Map<string, Milestone[]>();
-		for (const m of milestones) {
-			if (!m.goal_id) continue;
-			const list = map.get(m.goal_id) ?? [];
-			list.push(m);
-			map.set(m.goal_id, list);
-		}
-		return map;
-	});
 
 	const documentTypeOptions = $derived.by(() => {
 		const set = new Set<string>();
@@ -1324,10 +1315,23 @@
 		goalConnectionRefreshKey += 1;
 		toastService.success('Task created');
 		showTaskCreateModal = false;
+		taskCreateGoalContext = null;
 		editingTaskId = taskId;
 		void (tasksCoverage.complete
 			? refreshTaskById(taskId, { isNew: true })
 			: refreshSilently());
+	}
+	function openTaskCreateModal() {
+		taskCreateGoalContext = null;
+		showTaskCreateModal = true;
+	}
+	function closeTaskCreateModal() {
+		showTaskCreateModal = false;
+		taskCreateGoalContext = null;
+	}
+	function handleAddTaskFromGoal(goalId: string, goalName: string) {
+		taskCreateGoalContext = { goalId, goalName };
+		showTaskCreateModal = true;
 	}
 
 	function handleTaskUpdated() {
@@ -1412,8 +1416,21 @@
 		goalConnectionRefreshKey += 1;
 		toastService.success('Plan created');
 		showPlanCreateModal = false;
+		planCreateGoalContext = null;
 		editingPlanId = planId;
 		void refreshPlanById(planId);
+	}
+	function openPlanCreateModal() {
+		planCreateGoalContext = null;
+		showPlanCreateModal = true;
+	}
+	function closePlanCreateModal() {
+		showPlanCreateModal = false;
+		planCreateGoalContext = null;
+	}
+	function handleAddPlanFromGoal(goalId: string, goalName: string) {
+		planCreateGoalContext = { goalId, goalName };
+		showPlanCreateModal = true;
 	}
 	function handlePlanUpdated() {
 		goalConnectionRefreshKey += 1;
@@ -1448,6 +1465,12 @@
 		} else {
 			void refreshSilently();
 		}
+	}
+	function handleGoalTrackingChanged(updatedGoal: Goal) {
+		goals = goals.map((goal) =>
+			goal.id === updatedGoal.id ? { ...goal, ...updatedGoal } : goal
+		);
+		goalConnectionRefreshKey += 1;
 	}
 	function handleGoalDeleted() {
 		goalConnectionRefreshKey += 1;
@@ -1949,7 +1972,6 @@
 					{plans}
 					{risks}
 					{events}
-					{milestonesByGoalId}
 					loadInboxPreview={canLoadSecondaryProjectRequests}
 					calendarRefreshKey={projectCalendarRefreshKey}
 					{goalConnectionRefreshKey}
@@ -1960,12 +1982,16 @@
 					onEntityClick={handleEntityClick}
 					onOpenGraph={() => (showGraphModal = true)}
 					onAddGoal={canEdit ? () => (showGoalCreateModal = true) : undefined}
+					onAddTaskFromGoal={canEdit ? handleAddTaskFromGoal : undefined}
 					onAddMilestoneFromGoal={canEdit ? handleAddMilestoneFromGoal : undefined}
-					onAddPlan={canEdit ? () => (showPlanCreateModal = true) : undefined}
+					onAddPlanFromGoal={canEdit ? handleAddPlanFromGoal : undefined}
+					onAddPlan={canEdit ? openPlanCreateModal : undefined}
 					onAddRisk={canEdit ? () => (showRiskCreateModal = true) : undefined}
 					onOpenRecentChats={openRecentChatsModal}
 					onOpenEvents={openEventsModal}
 					onDiscussGoal={openGoalChat}
+					onGoalConnectionsChanged={() => (goalConnectionRefreshKey += 1)}
+					onGoalTrackingChanged={handleGoalTrackingChanged}
 				/>
 			</div>
 		{/if}
@@ -1985,7 +2011,7 @@
 						{tasksCoverage}
 						{canEdit}
 						onEditTask={(id) => (editingTaskId = id)}
-						onCreateTask={() => (showTaskCreateModal = true)}
+						onCreateTask={openTaskCreateModal}
 						onTaskMoved={handleTaskMoved}
 						onLoadMoreTasks={loadMoreProjectTasks}
 					/>
@@ -2003,7 +2029,7 @@
 							{tasksCoverage}
 							{canEdit}
 							onEditTask={(id) => (editingTaskId = id)}
-							onCreateTask={() => (showTaskCreateModal = true)}
+							onCreateTask={openTaskCreateModal}
 							onLoadMoreTasks={loadMoreProjectTasks}
 						/>
 					</div>
@@ -2074,8 +2100,10 @@
 			{deleteDocumentHasChildren}
 			{deleteDocumentChildCount}
 			{showTaskCreateModal}
+			{taskCreateGoalContext}
 			{editingTaskId}
 			{showPlanCreateModal}
+			{planCreateGoalContext}
 			{editingPlanId}
 			{showGoalCreateModal}
 			{editingGoalId}
@@ -2100,12 +2128,12 @@
 			onMoveDocumentConfirm={handleMoveDocumentConfirm}
 			onCloseDeleteDocConfirmModal={closeDeleteDocumentConfirmModal}
 			onDeleteDocumentConfirm={handleDeleteDocumentConfirm}
-			onCloseTaskCreateModal={() => (showTaskCreateModal = false)}
+			onCloseTaskCreateModal={closeTaskCreateModal}
 			onTaskCreated={handleTaskCreated}
 			onCloseTaskEditModal={closeTaskEditModal}
 			onTaskUpdated={handleTaskUpdated}
 			onTaskDeleted={handleTaskDeleted}
-			onClosePlanCreateModal={() => (showPlanCreateModal = false)}
+			onClosePlanCreateModal={closePlanCreateModal}
 			onPlanCreated={handlePlanCreated}
 			onClosePlanEditModal={closePlanEditModal}
 			onPlanUpdated={handlePlanUpdated}

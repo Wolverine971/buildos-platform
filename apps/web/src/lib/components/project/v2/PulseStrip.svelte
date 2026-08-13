@@ -170,6 +170,8 @@
 		const seen = new Set<string>();
 		const out: RecentTile[] = [];
 		for (const log of logs) {
+			// Relationships are structural graph plumbing, not meaningful user activity.
+			if (log.entity_type === 'edge') continue;
 			const key = mode === 'workspace' ? log.id : `${log.entity_type}:${log.entity_id}`;
 			if (mode === 'pulse') {
 				if (seen.has(key)) continue;

@@ -120,6 +120,22 @@ and the panel's entry animation is removed under reduced motion. On smaller scre
 collapses the competing mobile details tab and desktop comments disclosure before claiming vertical
 space (→ P1/P9/P11/P13/P24).
 
+## Follow-up — minimal editor and dense, scrollable Details (2026-08-12)
+
+The main workspace no longer repeats the editable title above the document or labels the editor
+`CONTENT`. The header remains the compact read-only identity and save-status surface; title,
+description, and state editing now live together in one shared Details-fields snippet rendered in
+the desktop rail and mobile Details tab. This intentionally supersedes P23's earlier document-title
+carve-out at the user's direction. A title validation failure opens both responsive Details states,
+so create mode still leads directly to the required field (→ P4/P6/P13/P23).
+
+The desktop rail now has a non-scrolling compact header and one explicit
+`min-h-0 flex-1 overflow-y-auto` body instead of asking the entire rail to own overflow. Compact
+field spacing removes unused optional/error reservation, created/updated metadata shares a two-column
+row, and Linked Entities owns one collapsed disclosure rather than appearing under a duplicate outer
+heading. The result fits more settings before the fold while expanded publishing, link, media, and
+history sections remain independently scrollable (→ P1/P4/P6).
+
 ## Streamlining note (product call, not a Hyperplexed pattern)
 
 Autosave (2s) and a manual **Save** coexist, and Save's real job is forcing a version snapshot —
@@ -136,6 +152,9 @@ visual pass, and it touches save semantics.
 - ✅ 2026-08-12 docked-interaction follow-up: Svelte autofixer and full `svelte-check` are clean;
   the focused `DocumentModal` suite passes 9/9, including in-flow placement and simultaneous
   Details visibility.
+- ✅ 2026-08-12 editor/details density follow-up: Svelte autofixer and full `svelte-check` are clean;
+  the focused `DocumentModal` suite passes 10/10, including the dedicated rail scroll owner,
+  duplicate-title removal, and required-title Details reveal.
 - 🔶 Authenticated desktop-dark screenshots captured the first collapsible-drawer pass and exposed
   the busy-header regression. The refined edge-tab after-state plus light-mode and iPhone captures
   remain owed. The docked interaction after-state also still needs authenticated desktop/iPhone

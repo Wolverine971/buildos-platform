@@ -253,7 +253,7 @@
 					<Flag class="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />
 					<p class="text-xs text-muted-foreground">No milestones yet</p>
 					<p class="text-2xs text-muted-foreground/70 mt-0.5">
-						Break this goal into measurable checkpoints
+						Break this goal into measurable milestones
 					</p>
 					{#if canEdit && !isGoalTerminal}
 						<button

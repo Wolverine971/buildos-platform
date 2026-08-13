@@ -164,6 +164,10 @@
 		/** Submit a voice turn when the user stops recording from the composer. */
 		autoSendVoiceOnStop?: boolean;
 		embedded?: boolean;
+		/** Conversation-first embedded surface: messages and composer only. */
+		conversationOnly?: boolean;
+		/** Optional host-specific composer placeholder for focused embedded chats. */
+		composerPlaceholder?: string;
 		inboxResolutionActions?: AgentChatResolutionAction[];
 		/** Reports the active chat session id so embedding surfaces can render
 		 * session-level chrome (e.g. ChatSessionAuditActions) in their own header. */
@@ -185,6 +189,8 @@
 		autoSendInitialDraft = false,
 		autoSendVoiceOnStop = false,
 		embedded = false,
+		conversationOnly = false,
+		composerPlaceholder,
 		inboxResolutionActions = [],
 		onSessionChange
 	}: Props = $props();
@@ -2819,6 +2825,24 @@
 	});
 </script>
 
+{#snippet messageList(compact: boolean)}
+	<AgentMessageList
+		{messages}
+		{displayContextLabel}
+		selectedContextType={shellRouter.selectedContextType}
+		{resolvedProjectFocus}
+		streamingMessageId={currentAssistantMessageId}
+		onToggleThinkingBlock={toggleThinkingBlockCollapse}
+		bind:container={messagesContainer}
+		onScroll={handleScroll}
+		voiceNotesByGroupId={voice.notesByGroupId}
+		onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
+		onSelectSuggestion={handleSelectSuggestion}
+		onClientActionComplete={handleClientActionComplete}
+		{compact}
+	/>
+{/snippet}
+
 {#snippet chatConversationPane(
 	showSessionLoadingState: boolean,
 	showSessionLoadErrorState: boolean,
@@ -2868,37 +2892,36 @@
 	{:else}
 		<div class={`flex min-h-0 flex-1 flex-col ${brainDumpContext ? 'lg:flex-row' : ''}`}>
 			<div class="flex min-h-0 flex-1 flex-col">
-				<AgentChatActivityTabs
-					activeTab={activeChatTab}
-					timelineItems={agentTimelineItems}
-					onTabChange={handleChatTabChange}
-					onAskAboutItem={handleAskAboutTimelineItem}
-				/>
+				{#if !conversationOnly}
+					<AgentChatActivityTabs
+						activeTab={activeChatTab}
+						timelineItems={agentTimelineItems}
+						onTabChange={handleChatTabChange}
+						onAskAboutItem={handleAskAboutTimelineItem}
+					/>
+				{/if}
 				<!-- Kept mounted (hidden, not unmounted) when another tab is active:
 				     unmounting reset the scroll position to the top of the whole
 				     conversation and replayed every entrance animation on return. -->
-				<div
-					class={`${activeChatTab === 'chat' ? 'flex' : 'hidden'} min-h-0 flex-1 flex-col`}
-					role="tabpanel"
-					id="agent-chat-panel-chat"
-					tabindex="0"
-					aria-labelledby="agent-chat-tab-chat"
-				>
-					<AgentMessageList
-						{messages}
-						{displayContextLabel}
-						selectedContextType={shellRouter.selectedContextType}
-						{resolvedProjectFocus}
-						streamingMessageId={currentAssistantMessageId}
-						onToggleThinkingBlock={toggleThinkingBlockCollapse}
-						bind:container={messagesContainer}
-						onScroll={handleScroll}
-						voiceNotesByGroupId={voice.notesByGroupId}
-						onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
-						onSelectSuggestion={handleSelectSuggestion}
-						onClientActionComplete={handleClientActionComplete}
-					/>
-				</div>
+				{#if conversationOnly}
+					<div
+						class="flex min-h-0 flex-1 flex-col"
+						role="region"
+						aria-label="Document conversation"
+					>
+						{@render messageList(true)}
+					</div>
+				{:else}
+					<div
+						class={`${activeChatTab === 'chat' ? 'flex' : 'hidden'} min-h-0 flex-1 flex-col`}
+						role="tabpanel"
+						id="agent-chat-panel-chat"
+						tabindex="0"
+						aria-labelledby="agent-chat-tab-chat"
+					>
+						{@render messageList(false)}
+					</div>
+				{/if}
 			</div>
 			{#if brainDumpContext}
 				<BrainDumpContextPanel
@@ -2923,17 +2946,21 @@
 		</div>
 	{/if}
 
-	<AgentRunDock
-		runs={sessionAgentRuns}
-		activeCount={activeSessionAgentRunCount}
-		onOpen={openAgentRun}
-	/>
+	{#if !conversationOnly}
+		<AgentRunDock
+			runs={sessionAgentRuns}
+			activeCount={activeSessionAgentRunCount}
+			onOpen={openAgentRun}
+		/>
+	{/if}
 {/snippet}
 
 {#snippet chatComposerFooter()}
 	<div
 		bind:this={composerContainer}
-		class="flex-shrink-0 overflow-visible bg-background/60 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3"
+		class="flex-shrink-0 overflow-visible bg-background/60 {conversationOnly
+			? 'border-t border-border/60 px-2 py-2 sm:px-3'
+			: 'px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3'}"
 	>
 		{#if showExistingImagePicker && attachmentProjectId}
 			<div
@@ -2969,6 +2996,7 @@
 			{isSendDisabled}
 			allowSendWhileStreaming={isTouchDevice}
 			{displayContextLabel}
+			placeholderOverride={composerPlaceholder}
 			disabled={isSessionBusy}
 			disabledReason={sessionStatusLabel}
 			vocabularyTerms={chatComposerVocabularyTerms}

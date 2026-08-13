@@ -1,3 +1,4 @@
+// apps/web/src/routes/api/onto/projects/[id]/goal-connections/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
@@ -22,22 +23,23 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 					.from('onto_goals')
 					.select('id, created_at, updated_at')
 					.eq('project_id', projectId)
-					.is('deleted_at', null),
+					.is('deleted_at', null)
+					.is('archived_at', null),
 				supabase
 					.from('onto_tasks')
-					.select('id, state_key, props, created_at, updated_at')
+					.select('id, title, state_key, due_at, props, created_at, updated_at')
 					.eq('project_id', projectId)
 					.is('deleted_at', null)
 					.is('archived_at', null),
 				supabase
 					.from('onto_plans')
-					.select('id, state_key, props, created_at, updated_at')
+					.select('id, name, state_key, props, created_at, updated_at')
 					.eq('project_id', projectId)
 					.is('deleted_at', null)
 					.is('archived_at', null),
 				supabase
 					.from('onto_milestones')
-					.select('id, state_key, due_at, props, created_at, updated_at')
+					.select('id, title, state_key, due_at, props, created_at, updated_at')
 					.eq('project_id', projectId)
 					.is('deleted_at', null)
 					.is('archived_at', null),
@@ -45,6 +47,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 					.from('onto_edges')
 					.select('src_kind, src_id, rel, dst_kind, dst_id, created_at')
 					.eq('project_id', projectId)
+					.in('rel', [
+						'has_task',
+						'supports_goal',
+						'achieved_by',
+						'supports',
+						'has_plan',
+						'has_milestone',
+						'has'
+					])
 					.or('src_kind.eq.goal,dst_kind.eq.goal')
 			]);
 

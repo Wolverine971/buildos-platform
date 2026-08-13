@@ -316,7 +316,7 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 		function: {
 			name: 'create_onto_milestone',
 			description: `Create a new milestone in the ontology system.
-Milestones mark major checkpoints and should usually connect to a goal.`,
+Milestones mark major dates or outcomes and should usually connect to a goal.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -723,7 +723,7 @@ IMPORTANT: Do not include documents. Documents are flat and managed only via ont
 			description: `Create a project from a ProjectSpec. Always include project, entities, relationships; use [] when empty.
 Hard rules: project.type_key starts with project. e.g. project.creative.novel. Entity labels: goal/plan/metric name; task/milestone/document/risk title; requirement text; source uri. A milestone requires due_at grounded in an explicit user schedule; use plans or documents for undated phases and never invent a date.
 Use project.state_key for status values: planning, active, paused, completed, cancelled. Use props.facets.stage only for lifecycle stage: discovery, planning, execution, launch, maintenance, complete. Never put active/paused/completed/cancelled in props.facets.stage.
-Infer name/type_key when clear; ask one clarification only if too vague. Start minimal: one goal for an explicit outcome, tasks for explicit actions, plans for explicit phases or workstreams, and milestones only for explicitly dated checkpoints.
+Infer name/type_key when clear; ask one clarification only if too vague. Start minimal: one goal for an explicit outcome, tasks for explicit actions, plans for explicit phases or workstreams, and milestones only for explicitly dated project markers.
 Extract concrete details into description/props. Use temp_id + kind refs for relationships.`,
 			parameters: {
 				type: 'object',

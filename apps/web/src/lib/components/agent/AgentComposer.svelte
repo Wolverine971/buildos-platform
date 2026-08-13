@@ -23,6 +23,7 @@
 		isSendDisabled: boolean;
 		allowSendWhileStreaming?: boolean;
 		displayContextLabel: string;
+		placeholderOverride?: string;
 		disabled?: boolean;
 		/** Optional human-readable reason the composer is disabled (e.g. "Loading session"). */
 		disabledReason?: string | null;
@@ -56,6 +57,7 @@
 		isSendDisabled,
 		allowSendWhileStreaming = false,
 		displayContextLabel,
+		placeholderOverride,
 		disabled = false,
 		disabledReason = null,
 		vocabularyTerms = '',
@@ -105,6 +107,7 @@
 	};
 
 	const placeholder = $derived.by(() => {
+		if (placeholderOverride?.trim()) return placeholderOverride.trim();
 		const label = displayContextLabel.trim().toLowerCase();
 		if (CONTEXT_PLACEHOLDERS[label]) {
 			return CONTEXT_PLACEHOLDERS[label];

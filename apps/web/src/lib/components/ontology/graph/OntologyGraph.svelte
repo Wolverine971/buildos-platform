@@ -16,7 +16,7 @@
 	- Task: ellipse (atomic work)
 	- Plan: round-rectangle dashed (temporal scaffolding)
 	- Document: rectangle (knowledge page)
-	- Milestone: triangle (checkpoint)
+	- Milestone: triangle (project marker)
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';

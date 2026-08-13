@@ -78,6 +78,36 @@ export class GoogleOAuthConnectionError extends Error {
 	}
 }
 
+export function isGoogleOAuthReconnectError(error: unknown): boolean {
+	if (error instanceof GoogleOAuthConnectionError) {
+		return error.requiresReconnection;
+	}
+	if (!error || typeof error !== 'object') return false;
+	const candidate = error as { name?: unknown; requiresReconnection?: unknown };
+	return (
+		candidate.name === 'GoogleOAuthConnectionError' && candidate.requiresReconnection === true
+	);
+}
+
+function isPermanentGoogleGrantFailure(error: unknown): boolean {
+	if (!error || typeof error !== 'object') return false;
+	const candidate = error as {
+		message?: unknown;
+		response?: { data?: { error?: unknown; error_description?: unknown } };
+	};
+	const providerCode = candidate.response?.data?.error;
+	const description = candidate.response?.data?.error_description;
+	const message = [candidate.message, description]
+		.filter((value): value is string => typeof value === 'string')
+		.join(' ')
+		.toLowerCase();
+	return (
+		providerCode === 'invalid_grant' ||
+		message.includes('invalid_grant') ||
+		message.includes('expired or revoked')
+	);
+}
+
 export class GoogleOAuthService {
 	private supabase: SupabaseClient;
 	private errorLogger: ErrorLoggerService;
@@ -345,6 +375,16 @@ export class GoogleOAuthService {
 				oauth2Client.setCredentials(credentials);
 			} catch (refreshError: any) {
 				console.error('Token refresh failed:', refreshError);
+				if (isPermanentGoogleGrantFailure(refreshError)) {
+					try {
+						await this.disconnectCalendar(userId);
+					} catch (disconnectError) {
+						console.error(
+							'Failed to quarantine expired calendar connection:',
+							disconnectError
+						);
+					}
+				}
 				await this.errorLogger.logAPIError(
 					refreshError,
 					'https://oauth2.googleapis.com/token',
@@ -357,7 +397,7 @@ export class GoogleOAuthService {
 					}
 				);
 				throw new GoogleOAuthConnectionError(
-					'Calendar authentication expired. Connection has been reset.',
+					'Calendar authentication expired. Reconnect Google Calendar to resume sync.',
 					true
 				);
 			}
@@ -576,6 +616,16 @@ export class GoogleOAuthService {
 				);
 
 				if (requiresReconnect) {
+					if (isPermanentGoogleGrantFailure(refreshError)) {
+						try {
+							await this.disconnectCalendar(userId);
+						} catch (disconnectError) {
+							console.error(
+								'Failed to quarantine expired calendar connection:',
+								disconnectError
+							);
+						}
+					}
 					return {
 						success: false,
 						error: 'Calendar authorization has expired. Please reconnect your calendar.',
@@ -751,7 +801,18 @@ export class GoogleOAuthService {
 	 */
 	async disconnectCalendar(userId: string): Promise<void> {
 		try {
-			await this.supabase.from('user_calendar_tokens').delete().eq('user_id', userId);
+			const { error: channelError } = await this.supabase
+				.from('calendar_webhook_channels')
+				.delete()
+				.eq('user_id', userId)
+				.is('calendar_source_id', null);
+			if (channelError) throw channelError;
+
+			const { error: tokenError } = await this.supabase
+				.from('user_calendar_tokens')
+				.delete()
+				.eq('user_id', userId);
+			if (tokenError) throw tokenError;
 			this.clientCache.delete(userId);
 		} catch (error) {
 			console.error('Error disconnecting calendar:', error);

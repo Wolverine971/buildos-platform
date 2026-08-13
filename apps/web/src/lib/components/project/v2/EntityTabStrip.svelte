@@ -31,14 +31,18 @@
 		ExternalLink,
 		Flag,
 		GitBranch,
+		Gauge,
 		Inbox,
+		Layers,
+		Link2,
+		ListChecks,
 		LoaderCircle,
 		MessageCircle,
 		MessagesSquare,
 		Plus,
 		Sparkles,
 		Target
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import {
 		fetchProjectBriefs,
@@ -47,6 +51,16 @@
 	} from '$lib/components/project/project-page-data-controller';
 	import { getUpcomingEvents } from '$lib/components/project/project-event-filters';
 	import { resolveMilestoneState } from '$lib/utils/milestone-state';
+	import LinkPickerModal from '$lib/components/ontology/linked-entities/LinkPickerModal.svelte';
+	import {
+		fetchAvailableEntities,
+		linkEntities
+	} from '$lib/components/ontology/linked-entities/linked-entities.service';
+	import type {
+		AvailableEntity,
+		EntityKind
+	} from '$lib/components/ontology/linked-entities/linked-entities.types';
+	import { toastService } from '$lib/stores/toast.store';
 	import type { ProjectLogEntityType } from '@buildos/shared-types';
 	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
 	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
@@ -57,6 +71,7 @@
 		GoalConnectionSummary,
 		ProjectGoalConnectionOverview
 	} from '$lib/types/goal-connection-summary';
+	import { buildGoalTrackingView, readGoalTrackingConfig } from '$lib/types/goal-tracking';
 	import type { Goal, Milestone, OntoEvent, Plan, Risk } from '$lib/types/onto';
 
 	const recentlyCreated = getRecentlyCreatedContext();
@@ -74,7 +89,6 @@
 		plans = [],
 		risks = [],
 		events = [],
-		milestonesByGoalId = new Map<string, Milestone[]>(),
 		loadInboxPreview = true,
 		calendarRefreshKey = 0,
 		goalConnectionRefreshKey = 0,
@@ -85,12 +99,16 @@
 		onEntityClick,
 		onOpenGraph,
 		onAddGoal,
+		onAddTaskFromGoal,
 		onAddMilestoneFromGoal,
+		onAddPlanFromGoal,
 		onAddPlan,
 		onAddRisk,
 		onOpenRecentChats,
 		onOpenEvents,
-		onDiscussGoal
+		onDiscussGoal,
+		onGoalConnectionsChanged,
+		onGoalTrackingChanged
 	}: {
 		projectId: string;
 		projectName?: string;
@@ -100,7 +118,6 @@
 		plans: Plan[];
 		risks: Risk[];
 		events: OntoEvent[];
-		milestonesByGoalId: Map<string, Milestone[]>;
 		loadInboxPreview?: boolean;
 		calendarRefreshKey?: number;
 		goalConnectionRefreshKey?: number;
@@ -111,12 +128,16 @@
 		onEntityClick: (kind: ProjectLogEntityType, id: string) => void;
 		onOpenGraph?: () => void;
 		onAddGoal?: () => void;
+		onAddTaskFromGoal?: (goalId: string, goalName: string) => void;
 		onAddMilestoneFromGoal?: (goalId: string, goalName: string) => void;
+		onAddPlanFromGoal?: (goalId: string, goalName: string) => void;
 		onAddPlan?: () => void;
 		onAddRisk?: () => void;
 		onOpenRecentChats?: () => void;
 		onOpenEvents?: () => void;
 		onDiscussGoal?: (goal: Goal, initialDraft: string) => void;
+		onGoalConnectionsChanged?: () => void;
+		onGoalTrackingChanged?: (goal: Goal) => void;
 	} = $props();
 
 	let expanded = $state<TabKey | null>(null);
@@ -137,6 +158,46 @@
 	let goalConnectionsError = $state<string | null>(null);
 	let attemptedGoalConnectionsKey = $state<string | null>(null);
 	let goalConnectionsRequestId = 0;
+	let expandedGoalWorkId = $state<string | null>(null);
+	type GoalLinkKind = Extract<EntityKind, 'task' | 'plan' | 'milestone'>;
+	let goalLinkContext = $state<{ goalId: string; kind: GoalLinkKind } | null>(null);
+	let availableGoalLinkEntities = $state<AvailableEntity[]>([]);
+	let goalLinkLoadingKey = $state<string | null>(null);
+	let isAddingGoalLinks = $state(false);
+	let goalLinkLoadRequestId = 0;
+	let goalLinkLoadController: AbortController | null = null;
+	type GoalTrackingModalLazy =
+		| typeof import('$lib/components/project/v2/GoalTrackingModal.svelte').default
+		| null;
+	let GoalTrackingModalComponent = $state<GoalTrackingModalLazy>(null);
+	let trackingGoalContext = $state<{
+		goal: Goal;
+		summary: GoalConnectionSummary | null;
+	} | null>(null);
+	let openingTrackingGoalId = $state<string | null>(null);
+
+	async function openGoalTracking(goal: Goal, summary: GoalConnectionSummary | undefined) {
+		if (openingTrackingGoalId) return;
+		openingTrackingGoalId = goal.id;
+		try {
+			if (!GoalTrackingModalComponent) {
+				const module = await import('$lib/components/project/v2/GoalTrackingModal.svelte');
+				GoalTrackingModalComponent = module.default;
+			}
+			trackingGoalContext = { goal, summary: summary ?? null };
+		} catch (error) {
+			toastService.error(
+				error instanceof Error ? error.message : 'Failed to open goal tracking'
+			);
+		} finally {
+			openingTrackingGoalId = null;
+		}
+	}
+
+	function handleGoalTrackingSaved(updatedGoal: Goal) {
+		onGoalTrackingChanged?.(updatedGoal);
+		trackingGoalContext = null;
+	}
 
 	async function loadInboxPanel() {
 		if (ProjectInboxPanelComponent || inboxPanelLoading) return;
@@ -287,6 +348,84 @@
 	const goalSummaryById = $derived(
 		new Map(goalConnections?.goals.map((summary) => [summary.goal_id, summary]) ?? [])
 	);
+
+	function goalConnectedWorkTotal(summary: GoalConnectionSummary): number {
+		return summary.tasks.total + summary.plans.total + summary.milestones.total;
+	}
+
+	function linkedIdsForGoal(summary: GoalConnectionSummary, kind: GoalLinkKind): string[] {
+		if (kind === 'task') return summary.tasks.items.map((item) => item.id);
+		if (kind === 'plan') return summary.plans.items.map((item) => item.id);
+		return summary.milestones.items.map((item) => item.id);
+	}
+
+	function goalLinkLabel(kind: GoalLinkKind, plural = false): string {
+		if (kind === 'milestone') return plural ? 'milestones' : 'milestone';
+		return plural ? `${kind}s` : kind;
+	}
+
+	async function openGoalLinkPicker(
+		goal: Goal,
+		summary: GoalConnectionSummary,
+		kind: GoalLinkKind
+	) {
+		goalLinkLoadController?.abort();
+		const controller = new AbortController();
+		const requestId = ++goalLinkLoadRequestId;
+		goalLinkLoadController = controller;
+		goalLinkLoadingKey = `${goal.id}:${kind}`;
+
+		try {
+			const available = await fetchAvailableEntities(
+				goal.id,
+				'goal',
+				projectId,
+				kind,
+				linkedIdsForGoal(summary, kind),
+				{ signal: controller.signal }
+			);
+			if (requestId !== goalLinkLoadRequestId || controller.signal.aborted) return;
+			availableGoalLinkEntities = available;
+			goalLinkContext = { goalId: goal.id, kind };
+		} catch (error) {
+			if (controller.signal.aborted) return;
+			toastService.error(
+				error instanceof Error
+					? error.message
+					: `Failed to load available ${goalLinkLabel(kind, true)}`
+			);
+		} finally {
+			if (requestId === goalLinkLoadRequestId) {
+				goalLinkLoadingKey = null;
+				goalLinkLoadController = null;
+			}
+		}
+	}
+
+	async function handleGoalLinksAdded(targetIds: string[]) {
+		if (!goalLinkContext || targetIds.length === 0 || isAddingGoalLinks) return;
+		const context = goalLinkContext;
+		isAddingGoalLinks = true;
+		try {
+			await linkEntities({
+				sourceId: context.goalId,
+				sourceKind: 'goal',
+				targetIds,
+				targetKind: context.kind,
+				projectId
+			});
+			toastService.success(
+				`Linked ${targetIds.length} ${goalLinkLabel(context.kind, targetIds.length !== 1)}`
+			);
+			goalLinkContext = null;
+			availableGoalLinkEntities = [];
+			onGoalConnectionsChanged?.();
+		} catch (error) {
+			toastService.error(error instanceof Error ? error.message : 'Failed to connect work');
+		} finally {
+			isAddingGoalLinks = false;
+		}
+	}
 
 	function dateFromDateOnly(value: string): Date {
 		const [dateOnly] = value.split('T');
@@ -564,6 +703,12 @@
 		achieved: 'bg-success/10 text-success border-success/30',
 		abandoned: 'bg-destructive/10 text-destructive border-destructive/30'
 	};
+	const taskStateAccents: Record<string, string> = {
+		todo: 'bg-muted/40 text-muted-foreground border-border/60',
+		in_progress: 'bg-info/10 text-info border-info/30',
+		blocked: 'bg-destructive/10 text-destructive border-destructive/30',
+		done: 'bg-success/10 text-success border-success/30'
+	};
 	const planStateAccents: Record<string, string> = {
 		draft: 'bg-muted/40 text-muted-foreground border-border/60',
 		active: 'bg-accent/10 text-accent border-accent/30',
@@ -581,15 +726,6 @@
 		occurred: 'bg-destructive/10 text-destructive border-destructive/30',
 		closed: 'bg-muted/40 text-muted-foreground border-border/60'
 	};
-
-	// Sort milestones inside each goal by due date
-	function sortMilestones(list: Milestone[]): Milestone[] {
-		return [...list].sort((a, b) => {
-			const da = a.due_at ? new Date(a.due_at).getTime() : Infinity;
-			const db = b.due_at ? new Date(b.due_at).getTime() : Infinity;
-			return da - db;
-		});
-	}
 
 	function isMilestoneStandalone(m: Milestone): boolean {
 		return !m.goal_id;
@@ -628,14 +764,6 @@
 		return pluralize(summary.plans.total, 'plan');
 	}
 
-	function goalTrackingLabel(summary: GoalConnectionSummary): string {
-		if (summary.tracking.source === 'none') return 'Tracking not set';
-		const progress = `${summary.tracking.completed}/${summary.tracking.total} checkpoints complete`;
-		return summary.milestones.overdue > 0
-			? `${progress} · ${pluralize(summary.milestones.overdue, 'overdue checkpoint')}`
-			: progress;
-	}
-
 	function goalHasNoSupportingWork(summary: GoalConnectionSummary): boolean {
 		return (
 			summary.tasks.total === 0 && summary.plans.total === 0 && summary.milestones.total === 0
@@ -644,7 +772,7 @@
 
 	function goalChatDraft(goal: Goal, summary: GoalConnectionSummary | undefined): string {
 		if (summary && goalHasNoSupportingWork(summary)) {
-			return `Help me structure the goal “${goal.name}”. Review the project context, then propose a small plan, checkpoints, and tasks. Do not create or link anything until I approve.`;
+			return `Help me structure the goal “${goal.name}”. Review the project context, then propose a small plan, milestones, and tasks. Do not create or link anything until I approve.`;
 		}
 		return `Review the goal “${goal.name}” and its explicitly connected work. Help me assess progress, gaps, and the next best move. Do not create or link anything until I approve.`;
 	}
@@ -922,10 +1050,16 @@
 								</p>
 							{:else}
 								{#each goals as goal (goal.id)}
-									{@const goalMilestones = sortMilestones(
-										milestonesByGoalId.get(goal.id) ?? []
-									)}
 									{@const summary = goalSummaryById.get(goal.id)}
+									{@const trackingConfig = readGoalTrackingConfig(goal.props)}
+									{@const trackingView = buildGoalTrackingView(
+										trackingConfig,
+										summary
+									)}
+									{@const connectedWorkTotal = summary
+										? goalConnectedWorkTotal(summary)
+										: 0}
+									{@const connectedWorkExpanded = expandedGoalWorkId === goal.id}
 									{@const chip =
 										goal.state_key === 'active'
 											? null
@@ -977,9 +1111,10 @@
 														{goalTaskLabel(summary)}
 													</p>
 													<p class="text-2xs text-muted-foreground">
-														{goalTrackingLabel(summary)} · {goalPlanLabel(
-															summary
-														)} · {goal.target_date
+														{trackingView.method === 'none'
+															? trackingView.label
+															: `${trackingView.label}: ${trackingView.detail}`}
+														· {goalPlanLabel(summary)} · {goal.target_date
 															? `Target ${dueLabel(goal.target_date)?.label ?? createdDateLabel(goal.target_date)}`
 															: 'No target date'}
 													</p>
@@ -1003,6 +1138,39 @@
 												{/if}
 											</div>
 
+											{#if trackingView.method !== 'none' && trackingView.percent !== null}
+												<div
+													class="mt-2"
+													aria-label="{trackingView.label}: {trackingView.percent}%"
+												>
+													<div
+														class="flex items-center justify-between gap-3 text-2xs"
+													>
+														<span
+															class="truncate font-medium text-foreground"
+															>{trackingView.label}</span
+														>
+														<span
+															class="shrink-0 font-semibold tabular-nums text-foreground"
+															>{trackingView.percent}%</span
+														>
+													</div>
+													<div
+														class="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"
+														role="progressbar"
+														aria-label="{trackingView.label}: {trackingView.percent}%"
+														aria-valuemin="0"
+														aria-valuemax="100"
+														aria-valuenow={trackingView.percent}
+													>
+														<div
+															class="h-full rounded-full bg-accent transition-[width] duration-200 motion-reduce:transition-none"
+															style:width={`${trackingView.percent}%`}
+														></div>
+													</div>
+												</div>
+											{/if}
+
 											<div class="mt-2 flex flex-wrap items-center gap-2">
 												{#if chip}
 													<span
@@ -1019,7 +1187,7 @@
 																goal,
 																goalChatDraft(goal, summary)
 															)}
-														class="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-border px-2 py-1 text-2xs font-medium text-foreground hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+														class="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-2 py-1 text-2xs font-medium text-foreground hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 														aria-label="{hasNoSupportingWork
 															? 'Structure'
 															: 'Discuss'} {goal.name} with chat"
@@ -1030,70 +1198,291 @@
 															: 'Discuss'}
 													</button>
 												{/if}
-											</div>
-										</div>
-										{#if goalMilestones.length > 0}
-											<div class="border-t border-border/60 bg-muted/20">
-												{#each goalMilestones as m (m.id)}
-													{@const mState = resolveMilestoneState(m).state}
-													{@const mChip = stateChip(
-														mState,
-														milestoneStateAccents
-													)}
-													{@const mDue = dueLabel(m.due_at)}
-													<button
-														type="button"
-														onclick={() => onEditMilestone(m.id)}
-														class="w-full text-left px-3 py-1.5 flex items-center justify-between gap-2 hover:bg-muted/40 border-t border-border/40 first:border-t-0 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-													>
-														<div
-															class="flex items-center gap-2 min-w-0"
-														>
-															<Flag
-																class="w-2.5 h-2.5 shrink-0 {mState ===
-																'completed'
-																	? 'text-success'
-																	: 'text-muted-foreground'}"
-															/>
-															<span
-																class="text-2xs text-foreground truncate {mState ===
-																'completed'
-																	? 'line-through text-muted-foreground'
-																	: ''}">{m.title}</span
-															>
-														</div>
-														<div
-															class="flex items-center gap-1.5 shrink-0"
-														>
-															{#if mDue}
-																<span
-																	class="text-2xs {mDue.isOverdue
-																		? 'text-destructive font-medium'
-																		: 'text-muted-foreground'}"
-																	>{mDue.label}</span
-																>
-															{/if}
-															{#if mChip}
-																<span
-																	class="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-medium border {mChip.className}"
-																	>{mChip.label}</span
-																>
-															{/if}
-														</div>
-													</button>
-												{/each}
-												{#if canEdit && onAddMilestoneFromGoal}
+												{#if canEdit}
 													<button
 														type="button"
 														onclick={() =>
-															onAddMilestoneFromGoal(
-																goal.id,
-																goal.name
-															)}
-														class="w-full text-left px-3 py-1.5 text-2xs text-muted-foreground hover:text-foreground hover:bg-muted/40 border-t border-border/40 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset inline-flex items-center gap-1"
+															openGoalTracking(goal, summary)}
+														disabled={openingTrackingGoalId !== null}
+														class="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-2 py-1 text-2xs font-medium text-foreground hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+														aria-label="{trackingView.method === 'none'
+															? 'Track progress for'
+															: 'Edit progress tracking for'} {goal.name}"
 													>
-														<Plus class="w-2.5 h-2.5" /> Add milestone
+														<Gauge
+															class="h-3 w-3 text-warning {openingTrackingGoalId ===
+															goal.id
+																? 'animate-spin motion-reduce:animate-none'
+																: ''}"
+														/>
+														{trackingView.method === 'none'
+															? 'Track progress'
+															: 'Edit tracking'}
 													</button>
+												{/if}
+												{#if summary}
+													<button
+														type="button"
+														onclick={() =>
+															(expandedGoalWorkId =
+																connectedWorkExpanded
+																	? null
+																	: goal.id)}
+														class="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-2 py-1 text-2xs font-medium text-foreground hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+														aria-expanded={connectedWorkExpanded}
+														aria-controls="goal-connected-work-{goal.id}"
+													>
+														<Link2 class="h-3 w-3 text-accent" />
+														{connectedWorkTotal > 0
+															? `Connected work · ${connectedWorkTotal}`
+															: 'Set up connected work'}
+														<ChevronDown
+															class="h-3 w-3 transition-transform duration-[140ms] motion-reduce:transition-none {connectedWorkExpanded
+																? 'rotate-180'
+																: ''}"
+														/>
+													</button>
+												{/if}
+											</div>
+										</div>
+										{#if summary && connectedWorkExpanded}
+											<div
+												id="goal-connected-work-{goal.id}"
+												class="border-t border-border/60 bg-muted/20"
+												transition:slide={slideMotion(140)}
+											>
+												{#if connectedWorkTotal === 0}
+													<p
+														class="px-3 py-2 text-2xs text-muted-foreground"
+													>
+														Start with one concrete task, a lightweight
+														plan, or a milestone.
+													</p>
+												{:else}
+													{#if summary.tasks.items.length > 0}
+														<div class="border-b border-border/50 py-1">
+															<p
+																class="flex items-center gap-1.5 px-3 py-1 text-2xs font-semibold text-muted-foreground"
+															>
+																<ListChecks
+																	class="h-3 w-3 text-success"
+																/> Tasks
+															</p>
+															{#each summary.tasks.items as task (task.id)}
+																{@const taskChip = stateChip(
+																	task.state_key,
+																	taskStateAccents
+																)}
+																{@const taskDue = dueLabel(
+																	task.due_at
+																)}
+																<button
+																	type="button"
+																	onclick={() =>
+																		onEntityClick(
+																			'task',
+																			task.id
+																		)}
+																	class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+																>
+																	<span
+																		class="truncate text-2xs text-foreground {task.state_key ===
+																		'done'
+																			? 'line-through text-muted-foreground'
+																			: ''}"
+																		>{task.title}</span
+																	>
+																	<span
+																		class="flex shrink-0 items-center gap-1.5"
+																	>
+																		{#if taskDue}<span
+																				class="text-2xs {taskDue.isOverdue
+																					? 'font-medium text-destructive'
+																					: 'text-muted-foreground'}"
+																				>{taskDue.label}</span
+																			>{/if}
+																		{#if taskChip}<span
+																				class="rounded border px-1.5 py-0.5 text-2xs font-medium {taskChip.className}"
+																				>{taskChip.label}</span
+																			>{/if}
+																	</span>
+																</button>
+															{/each}
+														</div>
+													{/if}
+													{#if summary.plans.items.length > 0}
+														<div class="border-b border-border/50 py-1">
+															<p
+																class="flex items-center gap-1.5 px-3 py-1 text-2xs font-semibold text-muted-foreground"
+															>
+																<Layers
+																	class="h-3 w-3 text-accent"
+																/> Plans
+															</p>
+															{#each summary.plans.items as plan (plan.id)}
+																{@const planChip = stateChip(
+																	plan.state_key,
+																	planStateAccents
+																)}
+																<button
+																	type="button"
+																	onclick={() =>
+																		onEntityClick(
+																			'plan',
+																			plan.id
+																		)}
+																	class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+																>
+																	<span
+																		class="truncate text-2xs text-foreground"
+																		>{plan.name}</span
+																	>
+																	{#if planChip}<span
+																			class="shrink-0 rounded border px-1.5 py-0.5 text-2xs font-medium {planChip.className}"
+																			>{planChip.label}</span
+																		>{/if}
+																</button>
+															{/each}
+														</div>
+													{/if}
+													{#if summary.milestones.items.length > 0}
+														<div class="border-b border-border/50 py-1">
+															<p
+																class="flex items-center gap-1.5 px-3 py-1 text-2xs font-semibold text-muted-foreground"
+															>
+																<Flag
+																	class="h-3 w-3 text-warning"
+																/> Milestones
+															</p>
+															{#each summary.milestones.items as milestone (milestone.id)}
+																{@const milestoneChip = stateChip(
+																	milestone.state_key,
+																	milestoneStateAccents
+																)}
+																{@const milestoneDue = dueLabel(
+																	milestone.due_at
+																)}
+																<button
+																	type="button"
+																	onclick={() =>
+																		onEntityClick(
+																			'milestone',
+																			milestone.id
+																		)}
+																	class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-muted/50 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+																>
+																	<span
+																		class="truncate text-2xs text-foreground {milestone.state_key ===
+																		'completed'
+																			? 'line-through text-muted-foreground'
+																			: ''}"
+																		>{milestone.title}</span
+																	>
+																	<span
+																		class="flex shrink-0 items-center gap-1.5"
+																	>
+																		{#if milestoneDue}<span
+																				class="text-2xs {milestoneDue.isOverdue &&
+																				milestone.state_key !==
+																					'completed'
+																					? 'font-medium text-destructive'
+																					: 'text-muted-foreground'}"
+																				>{milestoneDue.label}</span
+																			>{/if}
+																		{#if milestoneChip}<span
+																				class="rounded border px-1.5 py-0.5 text-2xs font-medium {milestoneChip.className}"
+																				>{milestoneChip.label}</span
+																			>{/if}
+																	</span>
+																</button>
+															{/each}
+														</div>
+													{/if}
+												{/if}
+
+												{#if canEdit}
+													<div class="space-y-1.5 px-3 py-2">
+														<div
+															class="flex flex-wrap items-center gap-1.5"
+														>
+															<span
+																class="mr-1 text-2xs font-medium text-muted-foreground"
+																>Create</span
+															>
+															{#if onAddTaskFromGoal}<button
+																	type="button"
+																	onclick={() =>
+																		onAddTaskFromGoal(
+																			goal.id,
+																			goal.name
+																		)}
+																	aria-label="Create task for {goal.name}"
+																	class="rounded border border-border bg-background px-2 py-1 text-2xs font-medium text-foreground hover:bg-muted/50 pressable"
+																	><Plus
+																		class="mr-1 inline h-2.5 w-2.5"
+																	/>Task</button
+																>{/if}
+															{#if onAddPlanFromGoal}<button
+																	type="button"
+																	onclick={() =>
+																		onAddPlanFromGoal(
+																			goal.id,
+																			goal.name
+																		)}
+																	aria-label="Create plan for {goal.name}"
+																	class="rounded border border-border bg-background px-2 py-1 text-2xs font-medium text-foreground hover:bg-muted/50 pressable"
+																	><Plus
+																		class="mr-1 inline h-2.5 w-2.5"
+																	/>Plan</button
+																>{/if}
+															{#if onAddMilestoneFromGoal}<button
+																	type="button"
+																	onclick={() =>
+																		onAddMilestoneFromGoal(
+																			goal.id,
+																			goal.name
+																		)}
+																	aria-label="Create milestone for {goal.name}"
+																	class="rounded border border-border bg-background px-2 py-1 text-2xs font-medium text-foreground hover:bg-muted/50 pressable"
+																	><Plus
+																		class="mr-1 inline h-2.5 w-2.5"
+																	/>Milestone</button
+																>{/if}
+														</div>
+														<div
+															class="flex flex-wrap items-center gap-1.5"
+														>
+															<span
+																class="mr-1 text-2xs font-medium text-muted-foreground"
+																>Link existing</span
+															>
+															{#each ['task', 'plan', 'milestone'] as kind (kind)}
+																<button
+																	type="button"
+																	onclick={() =>
+																		openGoalLinkPicker(
+																			goal,
+																			summary,
+																			kind as GoalLinkKind
+																		)}
+																	disabled={goalLinkLoadingKey !==
+																		null}
+																	aria-label="Link existing {goalLinkLabel(
+																		kind as GoalLinkKind
+																	)} to {goal.name}"
+																	class="rounded px-2 py-1 text-2xs font-medium text-foreground hover:bg-muted/50 pressable disabled:opacity-50"
+																>
+																	{#if goalLinkLoadingKey === `${goal.id}:${kind}`}<LoaderCircle
+																			class="mr-1 inline h-2.5 w-2.5 animate-spin motion-reduce:animate-none"
+																		/>{:else}<Link2
+																			class="mr-1 inline h-2.5 w-2.5"
+																		/>{/if}{goalLinkLabel(
+																		kind as GoalLinkKind
+																	)}
+																</button>
+															{/each}
+														</div>
+													</div>
 												{/if}
 											</div>
 										{/if}
@@ -1302,6 +1691,27 @@
 		</div>
 	{/each}
 </section>
+
+{#if goalLinkContext}
+	<LinkPickerModal
+		kind={goalLinkContext.kind}
+		availableEntities={availableGoalLinkEntities}
+		onClose={() => {
+			goalLinkContext = null;
+			availableGoalLinkEntities = [];
+		}}
+		onConfirm={handleGoalLinksAdded}
+	/>
+{/if}
+
+{#if GoalTrackingModalComponent && trackingGoalContext}
+	<GoalTrackingModalComponent
+		goal={trackingGoalContext.goal}
+		summary={trackingGoalContext.summary}
+		onClose={() => (trackingGoalContext = null)}
+		onSaved={handleGoalTrackingSaved}
+	/>
+{/if}
 
 {#if BriefChatModal && showBriefChatModal && briefChatBrief}
 	<BriefChatModal

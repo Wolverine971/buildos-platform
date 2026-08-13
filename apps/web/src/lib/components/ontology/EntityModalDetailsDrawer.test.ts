@@ -14,6 +14,12 @@ const modalCases = [
 	['../time-blocks/TimeBlockDetailModal.svelte', 'Time block details']
 ] as const;
 
+const denseReviewedCases = [
+	['TaskEditModal.svelte', 'Task details'],
+	['PlanEditModal.svelte', 'Plan details'],
+	['GoalEditModal.svelte', 'Goal details']
+] as const;
+
 describe('EntityModalDetailsDrawer rollout', () => {
 	it('keeps the shared desktop drawer closed by default and anchored to the right', () => {
 		const source = readFileSync(
@@ -28,6 +34,13 @@ describe('EntityModalDetailsDrawer rollout', () => {
 		expect(source).toContain("new MediaQuery('(min-width: 1024px)', false)");
 		expect(source).toContain('lg:col-start-2 lg:row-start-1 lg:block lg:w-80');
 		expect(source).toContain('lg:absolute lg:inset-y-0 lg:right-0');
+		expect(source).toContain('lg:sticky lg:top-0 lg:flex');
+		expect(source).toContain('lg:h-[calc(85dvh-10.125rem)]');
+		expect(source).toContain('lg:max-h-full lg:min-h-0 lg:flex-col lg:overflow-hidden');
+		expect(source).toContain('showDesktopHeader?: boolean');
+		expect(source).toContain('lg:min-h-0 lg:flex-1 lg:overflow-y-auto');
+		expect(source).toContain('lg:overscroll-contain');
+		expect(source).toContain('lg:[scrollbar-gutter:stable]');
 	});
 
 	it.each(modalCases)('uses the shared drawer in %s', (fileName, panelLabel) => {
@@ -39,6 +52,21 @@ describe('EntityModalDetailsDrawer rollout', () => {
 		expect(source).toContain('lg:overflow-x-clip');
 		expect(source).not.toContain('grid-cols-1 lg:grid-cols-3');
 	});
+
+	it.each(denseReviewedCases)(
+		'keeps %s dense, labeled, and progressively disclosed',
+		(fileName, panelLabel) => {
+			const source = readFileSync(new URL(`./${fileName}`, import.meta.url), 'utf8');
+
+			expect(source).toContain(`panelLabel="${panelLabel}"`);
+			expect(source).toContain('showDesktopHeader={true}');
+			expect(source).toContain('let showLinkedEntities = $state(false)');
+			expect(source).toContain('class="w-full py-2 flex items-center');
+			expect(source).toContain('transition:slide={slideMotion()}');
+			expect(source).not.toContain('Plan operations');
+			expect(source).not.toContain('Goal operations');
+		}
+	);
 
 	it('mounts project edit modals conditionally so each open gets fresh drawer state', () => {
 		const projectHost = readFileSync(

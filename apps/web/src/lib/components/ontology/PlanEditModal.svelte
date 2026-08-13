@@ -14,6 +14,8 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { slide } from 'svelte/transition';
+	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import {
 		Activity,
 		ChevronDown,
@@ -38,7 +40,6 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
@@ -130,7 +131,7 @@
 	let showDocumentModal = $state(false);
 	let selectedDocumentIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
-	let showLinkedEntities = $state(true);
+	let showLinkedEntities = $state(false);
 	let showImages = $state(false);
 	let showActivityLog = $state(false);
 
@@ -620,22 +621,8 @@
 					</div>
 
 					<!-- Sidebar (Right column) -->
-					<EntityModalDetailsDrawer panelLabel="Plan details">
+					<EntityModalDetailsDrawer panelLabel="Plan details" showDesktopHeader={true}>
 						<Card variant="elevated" class="wt-card">
-							<CardHeader variant="muted" texture="strip">
-								<div class="flex items-center justify-between gap-3">
-									<div>
-										<p
-											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-										>
-											Controls
-										</p>
-										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Plan operations
-										</h3>
-									</div>
-								</div>
-							</CardHeader>
 							<CardBody padding="none">
 								<div class="divide-y divide-border/70">
 									<EntityCollaborationAction
@@ -809,13 +796,13 @@
 										</section>
 									{/if}
 
-									<!-- Linked Entities (collapsible, default open) -->
+									<!-- Linked Entities (collapsible, default closed for density) -->
 									<section class="px-3 sm:px-4">
 										<button
 											type="button"
 											onclick={() =>
 												(showLinkedEntities = !showLinkedEntities)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
 											aria-expanded={showLinkedEntities}
 										>
 											<div class="flex items-center gap-2">
@@ -831,7 +818,7 @@
 											/>
 										</button>
 										{#if showLinkedEntities}
-											<div class="pb-3">
+											<div class="pb-3" transition:slide={slideMotion()}>
 												<LinkedEntities
 													sourceId={planId}
 													sourceKind="plan"
@@ -850,7 +837,7 @@
 										<button
 											type="button"
 											onclick={() => (showImages = !showImages)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
 											aria-expanded={showImages}
 										>
 											<div class="flex items-center gap-2">
@@ -864,7 +851,7 @@
 											/>
 										</button>
 										{#if showImages}
-											<div class="pb-3">
+											<div class="pb-3" transition:slide={slideMotion()}>
 												<ImageAssetsPanel
 													{projectId}
 													entityKind="plan"
@@ -885,7 +872,7 @@
 										<button
 											type="button"
 											onclick={() => (showActivityLog = !showActivityLog)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
 											aria-expanded={showActivityLog}
 										>
 											<div class="flex items-center gap-2">
@@ -899,7 +886,7 @@
 											/>
 										</button>
 										{#if showActivityLog}
-											<div class="pb-3">
+											<div class="pb-3" transition:slide={slideMotion()}>
 												<EntityActivityLog
 													entityType="plan"
 													entityId={planId}

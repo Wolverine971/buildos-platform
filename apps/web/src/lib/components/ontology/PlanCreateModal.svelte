@@ -7,7 +7,7 @@
 	- API Endpoint: /apps/web/src/routes/api/onto/plans/create/+server.ts
 -->
 <script lang="ts">
-	import { Calendar, CircleCheck, ChevronRight, Clock, Search, Target } from 'lucide-svelte';
+	import { Calendar, ChevronRight, Clock, Search, Target } from '$lib/icons/lucide';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -87,11 +87,13 @@
 
 	interface Props {
 		projectId: string;
+		goalId?: string | null;
+		goalName?: string | null;
 		onClose: () => void;
 		onCreated?: (planId: string) => void;
 	}
 
-	let { projectId, onClose, onCreated }: Props = $props();
+	let { projectId, goalId = null, goalName = null, onClose, onCreated }: Props = $props();
 
 	let templateSearch = $state('');
 	let showTemplateSelection = $state(false);
@@ -233,6 +235,7 @@
 		try {
 			const body = {
 				project_id: projectId,
+				goal_id: goalId,
 				name: name.trim(),
 				plan: (normalizeMarkdownInput(planDetails) ?? '').trim() || null,
 				description: description.trim() || null,
@@ -289,8 +292,8 @@
 					>
 						{name || 'New Plan'}
 					</h2>
-					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5">
-						Type will be auto-classified
+					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5 truncate">
+						{goalName ? `Connected to ${goalName}` : 'Type will be auto-classified'}
 					</p>
 				</div>
 			</div>
@@ -371,7 +374,7 @@
 									</div>
 								{:else}
 									<div class="space-y-6">
-										{#each Object.entries(templateCategories) as [category, categoryTemplates]}
+										{#each Object.entries(templateCategories) as [category, categoryTemplates] (category)}
 											<section class="space-y-3">
 												<div class="flex items-center justify-between">
 													<h4
@@ -389,7 +392,7 @@
 												<div
 													class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
 												>
-													{#each categoryTemplates as template}
+													{#each categoryTemplates as template (template.id)}
 														<button
 															type="button"
 															onclick={() => selectTemplate(template)}
@@ -564,7 +567,7 @@
 												showOptional={false}
 											>
 												<Select id="plan-state" bind:value={stateKey}>
-													{#each stateOptions as option}
+													{#each stateOptions as option (option.value)}
 														<option value={option.value}
 															>{option.label}</option
 														>

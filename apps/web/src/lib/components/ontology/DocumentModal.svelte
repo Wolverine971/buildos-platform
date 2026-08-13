@@ -90,12 +90,14 @@
 		AlertTriangle,
 		LoaderCircle,
 		MessageSquare,
-		Download,
+		FileCode2,
+		FileType2,
 		Globe,
 		ExternalLink,
 		Link,
 		Clock,
-		MoreHorizontal
+		MoreHorizontal,
+		Printer
 	} from 'lucide-svelte';
 	import { MessageCircle, PanelRightClose, PanelRightOpen } from '$lib/icons/lucide';
 	import { handleRovingTabKeydown } from '$lib/components/project/v2/board-a11y';
@@ -539,7 +541,6 @@
 
 	// Details panel collapsible sections
 	let showPublicPage = $state(false);
-	let showLinkedEntities = $state(true);
 	let showImages = $state(false);
 	let showVersionHistory = $state(false);
 	let showVoiceNotes = $state(false);
@@ -1670,6 +1671,10 @@
 	function validateForm(): boolean {
 		if (!title.trim()) {
 			formError = 'Title is required';
+			// Title editing lives in Details, so reveal the appropriate responsive
+			// details surface when validation needs the user's attention.
+			showDetailsPanel = true;
+			activeMobileTab = 'details';
 			return false;
 		}
 		return true;
@@ -2781,23 +2786,92 @@
 	{/if}
 {/snippet}
 
+{#snippet documentDetailsFields(idSuffix: string)}
+	<div class="space-y-2">
+		<FormField
+			label="Title"
+			labelFor={`document-title${idSuffix}`}
+			required={true}
+			error={titleFieldError}
+			uppercase={false}
+			size="sm"
+			showOptional={false}
+			class="[&>label]:!mb-1 [&>div:last-child]:!min-h-0"
+		>
+			<TextInput
+				id={`document-title${idSuffix}`}
+				bind:value={title}
+				placeholder="Document title"
+				aria-label="Document title"
+				aria-required="true"
+				error={Boolean(titleFieldError)}
+				size="sm"
+				class="text-sm font-medium"
+				disabled={blockingSave}
+			/>
+		</FormField>
+
+		<FormField
+			label="Description"
+			labelFor={`document-description${idSuffix}`}
+			uppercase={false}
+			size="sm"
+			showOptional={false}
+			class="[&>label]:!mb-1 [&>div:last-child]:!min-h-0"
+		>
+			<Textarea
+				id={`document-description${idSuffix}`}
+				bind:value={description}
+				placeholder="Short summary"
+				rows={2}
+				disabled={blockingSave}
+				size="sm"
+			/>
+		</FormField>
+
+		<FormField
+			label="State"
+			labelFor={`document-state${idSuffix}`}
+			uppercase={false}
+			size="sm"
+			showOptional={false}
+			class="[&>label]:!mb-1 [&>div:last-child]:!min-h-0"
+		>
+			<Select
+				id={`document-state${idSuffix}`}
+				bind:value={stateKey}
+				size="sm"
+				class="w-full text-xs"
+				disabled={blockingSave || isArchivedDocument}
+			>
+				{#each stateOptions as option (option.value)}
+					<option value={option.value}>{option.label}</option>
+				{/each}
+			</Select>
+		</FormField>
+	</div>
+{/snippet}
+
 {#snippet metadataBlock()}
-	<dl class="space-y-1">
-		<div class="flex items-center justify-between gap-2">
+	<dl class="grid grid-cols-2 gap-x-3 gap-y-1.5">
+		<div class="min-w-0">
 			<dt class="micro-label text-muted-foreground/70">CREATED</dt>
-			<dd class="text-xs font-mono text-foreground">
+			<dd class="mt-0.5 truncate text-xs font-mono text-foreground">
 				{createdAt ? new Date(createdAt).toLocaleDateString() : '—'}
 			</dd>
 		</div>
-		<div class="flex items-center justify-between gap-2">
+		<div class="min-w-0">
 			<dt class="micro-label text-muted-foreground/70">UPDATED</dt>
-			<dd class="text-xs font-mono text-foreground">
+			<dd class="mt-0.5 truncate text-xs font-mono text-foreground">
 				{updatedAt ? new Date(updatedAt).toLocaleDateString() : '—'}
 			</dd>
 		</div>
-		<div class="flex items-start justify-between gap-2">
+		<div class="col-span-2 flex min-w-0 items-center justify-between gap-2">
 			<dt class="micro-label text-muted-foreground/70 shrink-0">ID</dt>
-			<dd class="text-xs font-mono text-foreground truncate text-right">
+			<dd
+				class="truncate text-right text-xs font-mono text-foreground"
+				title={activeDocumentId ?? undefined}
+			>
 				{activeDocumentId}
 			</dd>
 		</div>
@@ -3063,25 +3137,27 @@
 							</Badge>
 						{/if}
 					</div>
-					<!-- Use micro-label pattern for metadata + save status (desktop only, mobile shows in content area) -->
-					<p
-						class="micro-label text-muted-foreground/70 mt-0.5 hidden lg:flex items-center gap-1.5 flex-wrap"
-					>
-						<span>
-							{#if createdAt}CREATED {new Date(createdAt).toLocaleDateString(
-									undefined,
-									{
+					<!-- Keep document timing and save state in the modal chrome so the editor can stay minimal. -->
+					{#if createdAt || isEditing}
+						<p
+							class="micro-label mt-0.5 flex items-center gap-1.5 text-muted-foreground/70"
+						>
+							<span class="truncate">
+								{#if createdAt}CREATED {new Date(createdAt).toLocaleDateString(
+										undefined,
+										{
+											month: 'short',
+											day: 'numeric'
+										}
+									)}{/if}{#if updatedAt && updatedAt !== createdAt}
+									· UPDATED {new Date(updatedAt).toLocaleDateString(undefined, {
 										month: 'short',
 										day: 'numeric'
-									}
-								)}{/if}{#if updatedAt && updatedAt !== createdAt}
-								· UPDATED {new Date(updatedAt).toLocaleDateString(undefined, {
-									month: 'short',
-									day: 'numeric'
-								})}{/if}
-						</span>
-						{@render saveStatusIndicator()}
-					</p>
+									})}{/if}
+							</span>
+							{@render saveStatusIndicator()}
+						</p>
+					{/if}
 				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
@@ -3115,7 +3191,7 @@
 					{#if showExportMenu}
 						<div
 							use:portal
-							class="fixed z-[10000] w-48 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
+							class="fixed z-[10000] w-64 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
 							style="top: {exportMenuPos.top}px; right: {exportMenuPos.right}px;"
 							role="menu"
 							tabindex="-1"
@@ -3155,35 +3231,59 @@
 								</button>
 								<div class="my-1 border-t border-border/60"></div>
 							{/if}
+							<div class="px-3 pb-1 pt-1.5" role="presentation">
+								<p class="micro-label text-muted-foreground/70">EXPORT DOCUMENT</p>
+							</div>
+							<button
+								type="button"
+								onclick={() => handleExport('pdf')}
+								disabled={exportingFormat !== null}
+								class="flex w-full items-center gap-3 px-3 py-2 text-left text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+								role="menuitem"
+								aria-label="Export document as PDF"
+							>
+								<Printer class="h-4 w-4 shrink-0 text-accent" />
+								<span class="min-w-0">
+									<span class="block text-xs font-semibold">PDF</span>
+									<span
+										class="block text-[11px] font-normal text-muted-foreground"
+										>Polished print layout</span
+									>
+								</span>
+							</button>
 							<button
 								type="button"
 								onclick={() => handleExport('docx')}
 								disabled={exportingFormat !== null}
-								class="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								class="flex w-full items-center gap-3 px-3 py-2 text-left text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
 								role="menuitem"
+								aria-label="Export document as DOCX"
 							>
-								<Download class="w-3.5 h-3.5 shrink-0" />
-								Export as DOCX
+								<FileType2 class="h-4 w-4 shrink-0 text-muted-foreground" />
+								<span class="min-w-0">
+									<span class="block text-xs font-semibold">DOCX</span>
+									<span
+										class="block text-[11px] font-normal text-muted-foreground"
+										>Editable Word document</span
+									>
+								</span>
 							</button>
 							<button
 								type="button"
 								onclick={() => handleExport('html')}
 								disabled={exportingFormat !== null}
-								class="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								class="flex w-full items-center gap-3 px-3 py-2 text-left text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
 								role="menuitem"
+								aria-label="Export document as HTML"
 							>
-								<Download class="w-3.5 h-3.5 shrink-0" />
-								Export as HTML
-							</button>
-							<button
-								type="button"
-								onclick={() => handleExport('pdf')}
-								disabled={exportingFormat !== null}
-								class="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-								role="menuitem"
-							>
-								<Download class="w-3.5 h-3.5 shrink-0" />
-								Export as PDF
+								<FileCode2 class="h-4 w-4 shrink-0 text-muted-foreground" />
+								<span class="min-w-0">
+									<span class="block text-xs font-semibold">HTML</span>
+									<span
+										class="block text-[11px] font-normal text-muted-foreground"
+										>Standalone web page</span
+									>
+								</span>
 							</button>
 						</div>
 					{/if}
@@ -3282,77 +3382,21 @@
 							aria-label="Document details"
 							aria-hidden={!showDetailsPanel}
 							inert={!showDetailsPanel}
-							class="hidden lg:flex lg:h-full lg:w-64 xl:w-72 lg:flex-col flex-shrink-0 lg:border-l border-border bg-muted overflow-y-auto shadow-ink-strong transition-[margin-right,transform] duration-[280ms] ease-out motion-reduce:transition-none {showDetailsPanel
+							class="hidden lg:flex lg:h-full lg:min-h-0 lg:w-64 xl:w-72 lg:flex-col flex-shrink-0 lg:border-l border-border bg-muted overflow-hidden shadow-ink-strong transition-[margin-right,transform] duration-[280ms] ease-out motion-reduce:transition-none {showDetailsPanel
 								? 'translate-x-0 mr-0'
 								: 'translate-x-full -mr-64 xl:-mr-72'} tx tx-frame tx-weak"
 						>
 							<div
-								class="sticky top-0 z-10 border-b border-border/70 px-3 py-2.5 bg-muted/95 tx tx-strip tx-weak"
+								class="shrink-0 border-b border-border/70 bg-muted/95 px-3 py-2 tx tx-strip tx-weak"
 							>
-								<div class="min-w-0">
-									<p class="micro-label text-foreground">DOCUMENT DETAILS</p>
-									<p class="mt-0.5 text-xs text-muted-foreground">
-										Settings, connections, and history
-									</p>
-								</div>
+								<p class="micro-label text-foreground">DETAILS</p>
 							</div>
-							<div class="p-3 space-y-3">
+							<div
+								id="document-details-content"
+								class="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain p-3 [scrollbar-gutter:stable]"
+							>
 								<!-- Settings: Title / Description / State -->
-								<div class="space-y-2">
-									<!-- Title field -->
-									<FormField
-										label="Title"
-										labelFor="document-title"
-										required={true}
-										error={titleFieldError}
-										uppercase={false}
-									>
-										<TextInput
-											id="document-title"
-											bind:value={title}
-											required
-											placeholder="Document title"
-											aria-label="Document title"
-											class="text-sm"
-											disabled={blockingSave}
-										/>
-									</FormField>
-
-									<!-- Description -->
-									<FormField
-										label="Description"
-										labelFor="document-description"
-										uppercase={false}
-									>
-										<Textarea
-											id="document-description"
-											bind:value={description}
-											placeholder="Short summary"
-											rows={2}
-											disabled={blockingSave}
-											size="sm"
-										/>
-									</FormField>
-
-									<!-- State -->
-									<FormField
-										label="State"
-										labelFor="document-state"
-										uppercase={false}
-									>
-										<Select
-											id="document-state"
-											bind:value={stateKey}
-											size="sm"
-											class="w-full text-xs"
-											disabled={blockingSave || isArchivedDocument}
-										>
-											{#each stateOptions as option (option.value)}
-												<option value={option.value}>{option.label}</option>
-											{/each}
-										</Select>
-									</FormField>
-								</div>
+								{@render documentDetailsFields('')}
 
 								{#if isEditing && activeDocumentId}
 									<EntityCollaborationAction
@@ -3366,7 +3410,7 @@
 
 								<!-- Tags + Metadata strip -->
 								{#if isEditing}
-									<div class="pt-3 border-t border-border space-y-2">
+									<div class="space-y-2 border-t border-border pt-2.5">
 										{#if hasTags}
 											<TagsDisplay props={documentProps} />
 										{/if}
@@ -3376,7 +3420,7 @@
 
 								<!-- Public Page (collapsible; auto-expands when live) -->
 								{#if isEditing && activeDocumentId}
-									<div class="pt-3 border-t border-border">
+									<div class="border-t border-border pt-2.5">
 										<button
 											type="button"
 											onclick={() => (showPublicPage = !showPublicPage)}
@@ -3428,51 +3472,22 @@
 
 								<!-- Collapsible group: Linked Entities / Images / Version History / Voice Notes / Activity Log -->
 								{#if isEditing && activeDocumentId}
-									<div class="pt-3 border-t border-border">
+									<div class="border-t border-border pt-2.5">
 										<div class="divide-y divide-border/50">
-											<!-- Linked Entities -->
-											<div class="py-0.5">
-												<button
-													type="button"
-													onclick={() =>
-														(showLinkedEntities = !showLinkedEntities)}
-													class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
-												>
-													<span class="flex items-center gap-2">
-														<span class="micro-label text-foreground"
-															>LINKED ENTITIES</span
-														>
-														{#if linkedCount > 0}
-															<span
-																class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-2xs font-semibold bg-accent/20 text-accent rounded-full"
-															>
-																{linkedCount}
-															</span>
-														{/if}
-													</span>
-													{#if showLinkedEntities}
-														<ChevronUp
-															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-														/>
-													{:else}
-														<ChevronDown
-															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-														/>
-													{/if}
-												</button>
-												{#if showLinkedEntities}
-													<div class="pt-2 pb-1">
-														<LinkedEntities
-															sourceId={activeDocumentId}
-															sourceKind="document"
-															{projectId}
-															initialLinkedEntities={linkedEntities}
-															onLoaded={handleLinkedEntitiesLoaded}
-															onEntityClick={handleLinkedEntityClick}
-															onLinksChanged={handleLinksChanged}
-														/>
-													</div>
-												{/if}
+											<!-- Let the linked-entities card own its disclosure so the rail
+												 doesn't repeat the same heading twice. -->
+											<div class="pb-2.5">
+												<LinkedEntities
+													sourceId={activeDocumentId}
+													sourceKind="document"
+													{projectId}
+													initialLinkedEntities={linkedEntities}
+													onLoaded={handleLinkedEntitiesLoaded}
+													onEntityClick={handleLinkedEntityClick}
+													onLinksChanged={handleLinksChanged}
+													collapsible={true}
+													defaultExpanded={false}
+												/>
 											</div>
 
 											<!-- Images -->
@@ -3613,7 +3628,7 @@
 
 									<!-- Move to... button -->
 									{#if !isArchivedDocument}
-										<div class="pt-3 border-t border-border">
+										<div class="border-t border-border pt-2.5">
 											{@render moveButton()}
 										</div>
 									{/if}
@@ -3641,64 +3656,8 @@
 									onNavigate={handleComparisonNavigate}
 								/>
 							{:else}
-								<!-- Content editor - the main focus -->
-								<div class="px-3 pt-1.5 pb-1 flex-1 flex flex-col min-h-0">
-									<div
-										class="mb-1.5 shrink-0 space-y-1 {showDetailsPanel
-											? 'lg:hidden'
-											: ''}"
-									>
-										<label
-											for="document-title-inline"
-											class="micro-label text-muted-foreground/70"
-										>
-											TITLE
-										</label>
-										<TextInput
-											id="document-title-inline"
-											bind:value={title}
-											required
-											placeholder="Document title"
-											aria-label="Document title"
-											class="text-base font-semibold"
-											disabled={blockingSave}
-										/>
-										{#if titleFieldError}
-											<p class="text-xs text-destructive">
-												{titleFieldError}
-											</p>
-										{/if}
-									</div>
-									<div
-										class="flex items-center justify-between gap-2 mb-1.5 shrink-0"
-									>
-										<h4 class="micro-label text-foreground">CONTENT</h4>
-										<!-- Mobile/tablet: date + save status next to content label -->
-										<p
-											class="micro-label text-muted-foreground/70 lg:hidden flex items-center gap-1.5"
-										>
-											{#if updatedAt && updatedAt !== createdAt}
-												<span
-													>UPDATED {new Date(
-														updatedAt
-													).toLocaleDateString(undefined, {
-														month: 'short',
-														day: 'numeric'
-													})}</span
-												>
-											{:else if createdAt}
-												<span
-													>CREATED {new Date(
-														createdAt
-													).toLocaleDateString(undefined, {
-														month: 'short',
-														day: 'numeric'
-													})}</span
-												>
-											{/if}
-											{@render saveStatusIndicator()}
-										</p>
-									</div>
+								<!-- The editor is the entire main surface; title and metadata live in Details. -->
+								<div class="flex min-h-0 flex-1 flex-col p-1.5 sm:p-2">
 									<div class="flex-1 min-h-0 flex flex-col">
 										<RichMarkdownEditor
 											bind:this={markdownEditorRef}
@@ -3781,40 +3740,7 @@
 									>
 										<!-- Details tab content -->
 										{#if activeMobileTab === 'details'}
-											<FormField
-												label="Description"
-												labelFor="document-description-mobile"
-												uppercase={false}
-											>
-												<Textarea
-													id="document-description-mobile"
-													bind:value={description}
-													placeholder="Short summary"
-													rows={2}
-													disabled={blockingSave}
-													size="sm"
-												/>
-											</FormField>
-
-											<FormField
-												label="State"
-												labelFor="document-state-mobile"
-												uppercase={false}
-											>
-												<Select
-													id="document-state-mobile"
-													bind:value={stateKey}
-													size="sm"
-													class="w-full text-xs"
-													disabled={blockingSave || isArchivedDocument}
-												>
-													{#each stateOptions as option (option.value)}
-														<option value={option.value}
-															>{option.label}</option
-														>
-													{/each}
-												</Select>
-											</FormField>
+											{@render documentDetailsFields('-mobile')}
 
 											{#if isEditing && activeDocumentId}
 												<EntityCollaborationAction
@@ -4104,7 +4030,7 @@
 					variant="primary"
 					size="sm"
 					loading={blockingSave}
-					disabled={saving || !title.trim() || isArchivedDocument}
+					disabled={saving || isArchivedDocument}
 					class="text-xs h-8 pressable tx tx-grain tx-weak wt-card"
 				>
 					<Save class="w-3.5 h-3.5" />

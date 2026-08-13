@@ -116,7 +116,7 @@ const PROJECT_CREATE_WORKFLOW_LITE = [
 	'- A START HERE context document is created automatically for new projects. Include context_document only when the user supplied durable orientation prose that should seed it.',
 	'- Always include entities: [] and relationships: [] arrays even when empty.',
 	'- If the user stated an outcome, add one goal. If they listed concrete actions, add only those task entities. Use plans for explicitly described undated phases or workstreams.',
-	'- Create milestones only for dated checkpoints grounded in an explicit project schedule or deadline from the user. Never invent `due_at` to turn an undated phase, narrative part, or conceptual stage into a milestone.',
+	'- Create milestones only for dated project markers grounded in an explicit schedule or deadline from the user. Never invent `due_at` to turn an undated phase, narrative part, or conceptual stage into a milestone.',
 	'- Entity labels: goal / plan / metric use `name`; task / milestone / document / risk use `title`; requirement uses `text`; source uses `uri`. Milestones also require `due_at`.',
 	"- For goal entities, use dedicated fields like target_date and measurement_criteria instead of burying them only in props. If the user gives a month/day without a year, infer the next plausible future date in the user's locale.",
 	'- **Connect the graph.** When the user has both a goal and tasks, emit containment relationships linking every task (child) to that goal (parent). A project with 1 goal + N tasks should produce exactly N goal-task containment edges; leaving tasks unlinked defeats the graph model.',

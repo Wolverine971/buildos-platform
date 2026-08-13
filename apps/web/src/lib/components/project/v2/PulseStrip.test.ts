@@ -128,6 +128,29 @@ describe('PulseStrip', () => {
 		expect(screen.queryByText(/late/i)).not.toBeInTheDocument();
 	});
 
+	it('does not display structural edge logs in recent activity', async () => {
+		vi.useRealTimers();
+		fetchProjectLogsMock.mockResolvedValue({
+			logs: [
+				createLog({
+					entity_type: 'edge',
+					entity_name: 'references'
+				}),
+				createLog({
+					entity_type: 'document',
+					entity_name: 'Visible project brief'
+				})
+			],
+			total: 2,
+			hasMore: false
+		});
+
+		renderPulseStrip([]);
+
+		expect((await screen.findAllByText('Visible project brief')).length).toBeGreaterThan(0);
+		expect(screen.queryByText('references')).not.toBeInTheDocument();
+	});
+
 	it('loads complete history pages in workspace mode', async () => {
 		vi.useRealTimers();
 		fetchProjectLogsMock

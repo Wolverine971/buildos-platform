@@ -1,3 +1,4 @@
+// apps/web/src/lib/server/project-goal-connection-summary.test.ts
 import { describe, expect, it } from 'vitest';
 import { buildProjectGoalConnectionOverview } from './project-goal-connection-summary';
 
@@ -8,7 +9,9 @@ const OTHER_GOAL_ID = '33333333-3333-4333-8333-333333333333';
 function task(id: string, state_key: 'todo' | 'in_progress' | 'blocked' | 'done', goalId?: string) {
 	return {
 		id,
+		title: `Task ${id}`,
 		state_key,
+		due_at: null,
 		props: goalId ? { goal_id: goalId } : {},
 		created_at: '2026-08-01T12:00:00.000Z',
 		updated_at: '2026-08-02T12:00:00.000Z'
@@ -49,17 +52,18 @@ describe('buildProjectGoalConnectionOverview', () => {
 		});
 
 		expect(overview.tasks).toEqual({ total: 3, connected: 2, project_level: 1 });
-		expect(overview.goals[0]?.tasks).toEqual({
+		expect(overview.goals[0]?.tasks).toMatchObject({
 			total: 2,
 			todo: 1,
 			in_progress: 1,
 			blocked: 0,
 			done: 0
 		});
+		expect(overview.goals[0]?.tasks.items.map((item) => item.id)).toEqual(['task-2', 'task-1']);
 		expect(overview.goals[1]?.tasks.total).toBe(0);
 	});
 
-	it('accepts current and legacy plan/checkpoint relationships in either direction', () => {
+	it('accepts current and legacy plan/milestone relationships in either direction', () => {
 		const overview = buildProjectGoalConnectionOverview({
 			projectId: PROJECT_ID,
 			goals: [
@@ -73,6 +77,7 @@ describe('buildProjectGoalConnectionOverview', () => {
 			plans: [
 				{
 					id: 'plan-1',
+					name: 'Validation plan',
 					state_key: 'active',
 					props: {},
 					created_at: '2026-08-01T00:00:00.000Z',
@@ -82,6 +87,7 @@ describe('buildProjectGoalConnectionOverview', () => {
 			milestones: [
 				{
 					id: 'milestone-1',
+					title: 'Interview families',
 					state_key: 'completed',
 					due_at: '2026-08-05T00:00:00.000Z',
 					props: {},
@@ -90,6 +96,7 @@ describe('buildProjectGoalConnectionOverview', () => {
 				},
 				{
 					id: 'milestone-2',
+					title: 'Confirm deposits',
 					state_key: 'pending',
 					due_at: '2026-08-09T00:00:00.000Z',
 					props: {},
@@ -108,6 +115,13 @@ describe('buildProjectGoalConnectionOverview', () => {
 		const summary = overview.goals[0];
 		expect(summary?.plans).toMatchObject({ total: 1, active: 1 });
 		expect(summary?.milestones).toMatchObject({ total: 2, completed: 1, overdue: 1 });
+		expect(summary?.plans.items).toEqual([
+			expect.objectContaining({ id: 'plan-1', name: 'Validation plan', state_key: 'active' })
+		]);
+		expect(summary?.milestones.items.map((item) => item.id)).toEqual([
+			'milestone-2',
+			'milestone-1'
+		]);
 		expect(summary?.tracking).toEqual({
 			source: 'milestones',
 			completed: 1,
@@ -117,7 +131,7 @@ describe('buildProjectGoalConnectionOverview', () => {
 		expect(summary?.last_activity_at).toBe('2026-08-05T00:00:00.000Z');
 	});
 
-	it('returns tracking not set when a goal has no checkpoints', () => {
+	it('returns tracking not set when a goal has no milestones', () => {
 		const overview = buildProjectGoalConnectionOverview({
 			projectId: PROJECT_ID,
 			goals: [{ id: GOAL_ID, created_at: '2026-08-01T00:00:00.000Z', updated_at: null }],

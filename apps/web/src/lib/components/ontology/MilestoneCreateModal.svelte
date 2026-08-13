@@ -317,8 +317,7 @@
 											Select a Goal
 										</h3>
 										<p class="text-sm text-muted-foreground">
-											Milestones are checkpoints that help track progress
-											toward a goal
+											Milestones mark meaningful progress toward a goal
 										</p>
 									</div>
 								</div>

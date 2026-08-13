@@ -144,7 +144,7 @@ describe('OntologyGraphService label display data', () => {
 			{
 				id: 'milestone-1',
 				project_id: 'project-1',
-				title: 'Launch checkpoint',
+				title: 'Launch milestone',
 				state_key: 'pending',
 				props: {},
 				created_by: 'actor-1',

@@ -6,13 +6,19 @@ import type { ComponentProps } from 'svelte';
 import EntityTabStrip from './EntityTabStrip.svelte';
 import type { Goal } from '$lib/types/onto';
 
-const { fetchCalendarItemsMock, fetchProjectBriefsMock, fetchGoalConnectionsMock } = vi.hoisted(
-	() => ({
-		fetchCalendarItemsMock: vi.fn(),
-		fetchProjectBriefsMock: vi.fn(),
-		fetchGoalConnectionsMock: vi.fn()
-	})
-);
+const {
+	fetchCalendarItemsMock,
+	fetchProjectBriefsMock,
+	fetchGoalConnectionsMock,
+	fetchAvailableEntitiesMock,
+	linkEntitiesMock
+} = vi.hoisted(() => ({
+	fetchCalendarItemsMock: vi.fn(),
+	fetchProjectBriefsMock: vi.fn(),
+	fetchGoalConnectionsMock: vi.fn(),
+	fetchAvailableEntitiesMock: vi.fn(),
+	linkEntitiesMock: vi.fn()
+}));
 
 vi.mock('$lib/services/calendar-items.service', () => ({
 	fetchCalendarItems: fetchCalendarItemsMock
@@ -21,6 +27,15 @@ vi.mock('$lib/services/calendar-items.service', () => ({
 vi.mock('$lib/components/project/project-page-data-controller', () => ({
 	fetchProjectBriefs: fetchProjectBriefsMock,
 	fetchProjectGoalConnectionOverview: fetchGoalConnectionsMock
+}));
+
+vi.mock('$lib/components/ontology/linked-entities/linked-entities.service', () => ({
+	fetchAvailableEntities: fetchAvailableEntitiesMock,
+	linkEntities: linkEntitiesMock,
+	filterEntities: (entities: Array<{ title?: string }>, query: string) =>
+		entities.filter((entity) =>
+			(entity.title ?? '').toLowerCase().includes(query.toLowerCase())
+		)
 }));
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
@@ -82,6 +97,7 @@ describe('EntityTabStrip', () => {
 			};
 			return animation as Animation;
 		});
+		Object.defineProperty(window, 'scrollTo', { value: vi.fn(), writable: true });
 		fetchCalendarItemsMock.mockResolvedValue([]);
 		fetchProjectBriefsMock.mockResolvedValue({
 			briefs: [],
@@ -93,6 +109,8 @@ describe('EntityTabStrip', () => {
 			goals: [],
 			tasks: { total: 0, connected: 0, project_level: 0 }
 		});
+		fetchAvailableEntitiesMock.mockResolvedValue([]);
+		linkEntitiesMock.mockResolvedValue({ created: 0 });
 	});
 
 	it('shows Calendar as the first chip before Briefs', () => {
@@ -130,8 +148,8 @@ describe('EntityTabStrip', () => {
 					created_at: '2026-08-01T12:00:00.000Z',
 					updated_at: '2026-08-02T12:00:00.000Z',
 					last_activity_at: '2026-08-03T12:00:00.000Z',
-					tasks: { total: 4, todo: 4, in_progress: 0, blocked: 0, done: 0 },
-					plans: { total: 0, draft: 0, active: 0, completed: 0 },
+					tasks: { total: 4, todo: 4, in_progress: 0, blocked: 0, done: 0, items: [] },
+					plans: { total: 0, draft: 0, active: 0, completed: 0, items: [] },
 					milestones: {
 						total: 0,
 						pending: 0,
@@ -139,7 +157,8 @@ describe('EntityTabStrip', () => {
 						completed: 0,
 						missed: 0,
 						overdue: 0,
-						next_due_at: null
+						next_due_at: null,
+						items: []
 					},
 					tracking: { source: 'none', completed: 0, total: 0, percent: null }
 				}
@@ -155,6 +174,7 @@ describe('EntityTabStrip', () => {
 		).toBeInTheDocument();
 		expect(screen.getByText('4 linked tasks · none started')).toBeInTheDocument();
 		expect(screen.getByText('Tracking not set · No plan · No target date')).toBeInTheDocument();
+		expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
 		expect(screen.queryByText(/^active$/i)).not.toBeInTheDocument();
 		expect(
 			screen.getByRole('button', { name: `Discuss ${goal.name} with chat` })
@@ -171,8 +191,8 @@ describe('EntityTabStrip', () => {
 					created_at: goal.created_at,
 					updated_at: goal.updated_at,
 					last_activity_at: goal.updated_at,
-					tasks: { total: 0, todo: 0, in_progress: 0, blocked: 0, done: 0 },
-					plans: { total: 0, draft: 0, active: 0, completed: 0 },
+					tasks: { total: 0, todo: 0, in_progress: 0, blocked: 0, done: 0, items: [] },
+					plans: { total: 0, draft: 0, active: 0, completed: 0, items: [] },
 					milestones: {
 						total: 0,
 						pending: 0,
@@ -180,7 +200,8 @@ describe('EntityTabStrip', () => {
 						completed: 0,
 						missed: 0,
 						overdue: 0,
-						next_due_at: null
+						next_due_at: null,
+						items: []
 					},
 					tracking: { source: 'none', completed: 0, total: 0, percent: null }
 				}
@@ -212,5 +233,179 @@ describe('EntityTabStrip', () => {
 		expect(
 			screen.getByRole('button', { name: `Discuss ${goal.name} with chat` })
 		).toBeInTheDocument();
+	});
+
+	it('shows a progress bar only after the goal has an explicit tracking method', async () => {
+		fetchGoalConnectionsMock.mockResolvedValue({
+			project_id: PROJECT_ID,
+			goals: [
+				{
+					goal_id: GOAL_ID,
+					created_at: goal.created_at,
+					updated_at: goal.updated_at,
+					last_activity_at: goal.updated_at,
+					tasks: {
+						total: 4,
+						todo: 1,
+						in_progress: 1,
+						blocked: 0,
+						done: 2,
+						items: []
+					},
+					plans: { total: 0, draft: 0, active: 0, completed: 0, items: [] },
+					milestones: {
+						total: 0,
+						pending: 0,
+						in_progress: 0,
+						completed: 0,
+						missed: 0,
+						overdue: 0,
+						next_due_at: null,
+						items: []
+					},
+					tracking: { source: 'none', completed: 0, total: 0, percent: null }
+				}
+			],
+			tasks: { total: 4, connected: 4, project_level: 0 }
+		});
+		renderEntityTabStrip({
+			goals: [
+				{
+					...goal,
+					props: {
+						goal_tracking: { version: 1, method: 'tasks', updated_at: goal.updated_at }
+					}
+				}
+			]
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: /^Goals\b/ }));
+		const progress = await screen.findByRole('progressbar', { name: /Task progress: 50%/ });
+		expect(progress).toHaveAttribute('aria-valuenow', '50');
+		expect(
+			screen.getByText('Task progress: 2/4 done · No plan · No target date')
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole('button', { name: `Edit progress tracking for ${goal.name}` })
+		).toBeInTheDocument();
+	});
+
+	it('inspects connected work inline and offers goal-scoped create actions', async () => {
+		const onAddTaskFromGoal = vi.fn();
+		const onAddPlanFromGoal = vi.fn();
+		const onAddMilestoneFromGoal = vi.fn();
+		const onGoalConnectionsChanged = vi.fn();
+		fetchAvailableEntitiesMock.mockResolvedValue([
+			{
+				id: 'task-2',
+				title: 'Send the deposit survey',
+				state_key: 'todo',
+				isLinked: false
+			}
+		]);
+		linkEntitiesMock.mockResolvedValue({ created: 1 });
+		fetchGoalConnectionsMock.mockResolvedValue({
+			project_id: PROJECT_ID,
+			goals: [
+				{
+					goal_id: GOAL_ID,
+					created_at: goal.created_at,
+					updated_at: goal.updated_at,
+					last_activity_at: '2026-08-04T12:00:00.000Z',
+					tasks: {
+						total: 1,
+						todo: 0,
+						in_progress: 1,
+						blocked: 0,
+						done: 0,
+						items: [
+							{
+								id: 'task-1',
+								title: 'Interview ten families',
+								state_key: 'in_progress',
+								due_at: null,
+								updated_at: '2026-08-04T12:00:00.000Z'
+							}
+						]
+					},
+					plans: {
+						total: 1,
+						draft: 0,
+						active: 1,
+						completed: 0,
+						items: [
+							{
+								id: 'plan-1',
+								name: 'Demand validation plan',
+								state_key: 'active',
+								updated_at: '2026-08-03T12:00:00.000Z'
+							}
+						]
+					},
+					milestones: {
+						total: 1,
+						pending: 1,
+						in_progress: 0,
+						completed: 0,
+						missed: 0,
+						overdue: 0,
+						next_due_at: '2026-08-20T12:00:00.000Z',
+						items: [
+							{
+								id: 'milestone-1',
+								title: 'Confirm twenty deposits',
+								state_key: 'pending',
+								due_at: '2026-08-20T12:00:00.000Z',
+								updated_at: '2026-08-02T12:00:00.000Z'
+							}
+						]
+					},
+					tracking: { source: 'milestones', completed: 0, total: 1, percent: 0 }
+				}
+			],
+			tasks: { total: 1, connected: 1, project_level: 0 }
+		});
+		renderEntityTabStrip({
+			goals: [goal],
+			onAddTaskFromGoal,
+			onAddPlanFromGoal,
+			onAddMilestoneFromGoal,
+			onGoalConnectionsChanged
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: /^Goals\b/ }));
+		await fireEvent.click(await screen.findByRole('button', { name: /Connected work · 3/ }));
+
+		expect(screen.getByText('Interview ten families')).toBeInTheDocument();
+		expect(screen.getByText('Demand validation plan')).toBeInTheDocument();
+		expect(screen.getByText('Confirm twenty deposits')).toBeInTheDocument();
+		expect(screen.getAllByText('Milestones')).not.toHaveLength(0);
+		expect(screen.queryByText(/Checkpoint/i)).not.toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: `Create task for ${goal.name}` }));
+		expect(onAddTaskFromGoal).toHaveBeenCalledWith(goal.id, goal.name);
+		await fireEvent.click(
+			screen.getByRole('button', { name: `Create milestone for ${goal.name}` })
+		);
+		expect(onAddMilestoneFromGoal).toHaveBeenCalledWith(goal.id, goal.name);
+
+		await fireEvent.click(
+			screen.getByRole('button', { name: `Link existing task to ${goal.name}` })
+		);
+		await fireEvent.click(
+			await screen.findByRole('button', { name: /Send the deposit survey/ })
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Add Selected (1)' }));
+
+		await waitFor(() => {
+			expect(linkEntitiesMock).toHaveBeenCalledWith({
+				sourceId: goal.id,
+				sourceKind: 'goal',
+				targetIds: ['task-2'],
+				targetKind: 'task',
+				projectId: PROJECT_ID
+			});
+			expect(onGoalConnectionsChanged).toHaveBeenCalledOnce();
+		});
 	});
 });

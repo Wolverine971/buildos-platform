@@ -924,10 +924,10 @@
 					<button
 						type="button"
 						class="summary-link"
-						aria-label="Open next checkpoint {nextMilestone.title}"
+						aria-label="Open next milestone {nextMilestone.title}"
 						onclick={() => openEntity('milestone', nextMilestone.id)}
 					>
-						Checkpoint {formatDate(nextMilestone.due_at)}
+						Milestone {formatDate(nextMilestone.due_at)}
 					</button>
 				{/if}
 			</div>
@@ -1364,7 +1364,7 @@
 												Milestones
 											</h2>
 											<p class="text-xs text-muted-foreground">
-												Upcoming checkpoints
+												Upcoming milestones
 											</p>
 										</div>
 									</div>

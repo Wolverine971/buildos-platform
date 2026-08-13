@@ -14,7 +14,7 @@
 		ListChecks,
 		Sparkles,
 		LoaderCircle
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -94,11 +94,13 @@
 
 	interface Props {
 		projectId: string;
+		goalId?: string | null;
+		goalName?: string | null;
 		onClose: () => void;
 		onCreated?: (taskId: string) => void;
 	}
 
-	let { projectId, onClose, onCreated }: Props = $props();
+	let { projectId, goalId = null, goalName = null, onClose, onCreated }: Props = $props();
 
 	let selectedTemplate = $state<TaskType | null>(null);
 	let showTemplateSelection = $state(false);
@@ -191,6 +193,7 @@
 		try {
 			const requestBody = {
 				project_id: projectId,
+				goal_id: goalId,
 				title: title.trim(),
 				description: description.trim() || null,
 				priority: Number(priority),
@@ -276,8 +279,8 @@
 					>
 						{title || 'New Task'}
 					</h2>
-					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5">
-						Type will be auto-classified
+					<p class="text-2xs sm:text-xs text-muted-foreground mt-0.5 truncate">
+						{goalName ? `Connected to ${goalName}` : 'Type will be auto-classified'}
 					</p>
 				</div>
 			</div>
@@ -333,7 +336,7 @@
 								</div>
 
 								<div class="space-y-4 sm:space-y-6">
-									{#each Object.entries(templateCategories) as [category, categoryTemplates]}
+									{#each Object.entries(templateCategories) as [category, categoryTemplates] (category)}
 										<div>
 											<h3
 												class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
@@ -343,7 +346,7 @@
 												{category}
 											</h3>
 											<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-												{#each categoryTemplates as template}
+												{#each categoryTemplates as template (template.id)}
 													<button
 														type="button"
 														onclick={() => selectTemplate(template)}
@@ -542,7 +545,7 @@
 											size="md"
 											placeholder="Select state"
 										>
-											{#each TASK_STATES as state}
+											{#each TASK_STATES as state (state)}
 												<option value={state}>
 													{state === 'todo'
 														? 'To Do'

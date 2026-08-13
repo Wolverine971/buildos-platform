@@ -11,7 +11,11 @@ vi.mock('./errorLogger.service', () => ({
 	}
 }));
 
-import { GoogleOAuthService } from './google-oauth-service';
+import {
+	GoogleOAuthConnectionError,
+	GoogleOAuthService,
+	isGoogleOAuthReconnectError
+} from './google-oauth-service';
 
 function createJsonResponse(body: Record<string, unknown>, ok = true) {
 	return {
@@ -155,5 +159,72 @@ describe('GoogleOAuthService calendar token exchange', () => {
 		expect(decryptCalendarToken(updatePayload.refresh_token).value).toBe(
 			'existing-refresh-token'
 		);
+	});
+
+	it('removes only legacy webhook state when disconnecting a legacy calendar grant', async () => {
+		const operations: Array<{
+			table: string;
+			action: string;
+			filters: Array<[string, unknown]>;
+		}> = [];
+		const supabase = {
+			from: vi.fn((table: string) => {
+				const operation = {
+					table,
+					action: 'select',
+					filters: [] as Array<[string, unknown]>
+				};
+				operations.push(operation);
+				const builder: any = {
+					delete: () => {
+						operation.action = 'delete';
+						return builder;
+					},
+					eq: (column: string, value: unknown) => {
+						operation.filters.push([column, value]);
+						return builder;
+					},
+					is: (column: string, value: unknown) => {
+						operation.filters.push([column, value]);
+						return builder;
+					},
+					then: (resolve: (value: { error: null }) => unknown) =>
+						Promise.resolve({ error: null }).then(resolve)
+				};
+				return builder;
+			})
+		};
+		const service = new GoogleOAuthService(supabase as any);
+
+		await service.disconnectCalendar('user-1');
+
+		expect(operations).toContainEqual({
+			table: 'calendar_webhook_channels',
+			action: 'delete',
+			filters: [
+				['user_id', 'user-1'],
+				['calendar_source_id', null]
+			]
+		});
+		expect(operations).toContainEqual({
+			table: 'user_calendar_tokens',
+			action: 'delete',
+			filters: [['user_id', 'user-1']]
+		});
+	});
+
+	it('recognizes reconnect errors across service boundaries', () => {
+		expect(
+			isGoogleOAuthReconnectError(
+				new GoogleOAuthConnectionError('Reconnect Google Calendar', true)
+			)
+		).toBe(true);
+		expect(
+			isGoogleOAuthReconnectError({
+				name: 'GoogleOAuthConnectionError',
+				requiresReconnection: true
+			})
+		).toBe(true);
+		expect(isGoogleOAuthReconnectError(new Error('Temporary provider timeout'))).toBe(false);
 	});
 });

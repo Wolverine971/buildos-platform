@@ -201,7 +201,7 @@ describe('project domain profiles', () => {
 		).toEqual({ mode: 'living_reference' });
 	});
 
-	it('rejects invented milestone dates but allows explicitly scheduled checkpoints', () => {
+	it('rejects invented milestone dates but allows explicitly scheduled milestones', () => {
 		const args = {
 			entities: [
 				{

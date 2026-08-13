@@ -43,3 +43,18 @@ The final static breadth scan found no other modal sidebar layouts outside the a
 - Targeted ESLint: 0 errors; 5 pre-existing unused-code warnings outside this rollout
 - Production client/server compilation completed; Vercel adapter packaging later stalled after existing optional Sharp-platform warnings and was terminated
 - Authenticated desktop light/dark and phone screenshots remain pending
+
+## Dense scroll-body follow-up — 2026-08-12
+
+Task Edit, Plan Edit, and Goal Edit were re-audited alongside the document reference surface. The shared desktop drawer now uses a sticky, viewport-bounded shell with one `min-h-0 flex-1 overflow-y-auto` content region, scroll containment, and a stable scrollbar gutter. This keeps the drawer label and edge handle stationary while long controls, linked records, images, and activity remain reachable.
+
+The three reviewed edit modals now opt into a compact desktop drawer label. Linked Entities starts closed, disclosure rows use tighter vertical spacing, and Plan/Goal disclosures use the same reduced-motion-safe slide behavior already used by Task. Redundant nested “Controls / operations” card headers were removed from Plan and Goal so the first useful control appears sooner. Mobile details remain inline.
+
+Applied patterns: P1/P4/P6 overflow and density, P11 motion consistency, P13 explicit panel relationships, and P23 compact edge controls.
+
+Follow-up verification:
+
+- Svelte autofixer: clean for the shared drawer, Task Edit, Plan Edit, and Goal Edit
+- Focused regression suites: 31/31 passing across the shared drawer, Task Edit interaction, and Document modal
+- Full `svelte-check`: no diagnostics in the touched modal files; the repository-wide command is currently blocked by one unrelated existing `{@const}` placement error in `routes/dashboard/calendar/+page.svelte`
+- Authenticated local desktop functional verification passed on real Task, Plan, and Goal records at 1280×720. Each drawer opened from the edge handle, kept its label fixed, exposed a 421px independent scroll viewport, reached its measured scroll maximum (Task 205px, Plan 85px, Goal 106px), and left Linked Entities closed initially. Task closed/open/end-of-scroll screenshots were inspected; light-theme and phone captures remain pending.

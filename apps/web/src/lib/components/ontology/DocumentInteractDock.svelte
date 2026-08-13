@@ -43,7 +43,7 @@
 	const placementClasses = $derived.by(() => {
 		switch (placement) {
 			case 'inline':
-				return 'relative h-[clamp(18rem,42dvh,30rem)] w-full shrink-0 border-x-0 border-b-0';
+				return 'relative h-[clamp(15rem,34dvh,24rem)] w-full shrink-0 border-x-0 border-b-0';
 			case 'container':
 				return 'absolute inset-x-2 bottom-2 h-[min(72dvh,42rem)] sm:inset-x-auto sm:left-4 sm:bottom-4 sm:w-[24rem]';
 			case 'viewport':
@@ -97,23 +97,16 @@
 		inert={!isOpen}
 	>
 		<header
-			class="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-muted px-3 tx tx-strip tx-weak"
+			class="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-border/70 bg-card px-3"
 		>
-			<div class="flex min-w-0 items-center gap-2.5">
-				<span
-					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-accent/20 bg-accent/10 text-accent"
-				>
-					<MessageCircle class="h-4 w-4" />
-				</span>
-				<div class="min-w-0">
-					<p class="micro-label text-accent">DOCUMENT INTERACT</p>
-					<p class="truncate text-xs text-muted-foreground">{documentTitle}</p>
-				</div>
+			<div class="flex min-w-0 items-center gap-2 text-muted-foreground">
+				<MessageCircle class="h-3.5 w-3.5 shrink-0" />
+				<p class="micro-label truncate">DOCUMENT CHAT</p>
 			</div>
 			<button
 				type="button"
 				onclick={closeDock}
-				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink transition-colors pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors pressable hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				aria-label="Close document interaction"
 			>
 				<X class="h-4 w-4" />
@@ -128,6 +121,8 @@
 					embedded={true}
 					initialProjectFocus={focus}
 					autoSendVoiceOnStop={true}
+					conversationOnly={true}
+					composerPlaceholder="Ask about or update this document..."
 					onClose={handleChatClose}
 				/>
 			{:else if loadError}
@@ -160,11 +155,11 @@
 {/if}
 
 <style>
-	/* A bottom dock can be much wider than the floating launcher. Keep long chat
-	   lines and the new-chat card readable without giving up the available width. */
+	/* A bottom dock can be much wider than the floating launcher. Keep message
+	   lines readable without giving up the available width. */
 	@media (min-width: 768px) {
 		aside[data-placement='inline'] :global(.agent-chat-scroll > *) {
-			width: min(100%, 64rem);
+			width: min(100%, 56rem);
 			margin-inline: auto;
 		}
 	}

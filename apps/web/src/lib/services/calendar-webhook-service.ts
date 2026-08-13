@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/calendar-webhook-service.ts
 import { google, calendar_v3 } from 'googleapis';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { GoogleOAuthService } from './google-oauth-service';
+import { GoogleOAuthService, isGoogleOAuthReconnectError } from './google-oauth-service';
 import { ScheduledSmsUpdateService } from './scheduledSmsUpdate.service';
 import { ErrorLoggerService } from './errorLogger.service';
 import * as crypto from 'crypto';
@@ -41,6 +41,7 @@ interface RetryConfig {
 type CalendarApi = Pick<calendar_v3.Calendar, 'events' | 'channels'>;
 
 type CalendarWebhookServiceOptions = {
+	legacyOAuthService?: Pick<GoogleOAuthService, 'getAuthenticatedClient'>;
 	connectionService?: Pick<GoogleCalendarConnectionService, 'getAuthenticatedClient'>;
 	targetService?: Pick<GoogleCalendarTargetService, 'resolveExplicitSource'>;
 	createCalendarApi?: (auth: unknown) => CalendarApi;
@@ -56,7 +57,7 @@ type CalendarRuntime = {
 export class CalendarWebhookService {
 	private supabase: SupabaseClient;
 	private errorLogger: ErrorLoggerService;
-	private oAuthService: GoogleOAuthService;
+	private oAuthService: Pick<GoogleOAuthService, 'getAuthenticatedClient'>;
 	private smsUpdateService: ScheduledSmsUpdateService;
 	private connectionService: Pick<GoogleCalendarConnectionService, 'getAuthenticatedClient'>;
 	private targetService: Pick<GoogleCalendarTargetService, 'resolveExplicitSource'>;
@@ -71,7 +72,7 @@ export class CalendarWebhookService {
 	constructor(supabase: SupabaseClient, options: CalendarWebhookServiceOptions = {}) {
 		this.supabase = supabase;
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
-		this.oAuthService = new GoogleOAuthService(supabase);
+		this.oAuthService = options.legacyOAuthService ?? new GoogleOAuthService(supabase);
 		this.smsUpdateService = new ScheduledSmsUpdateService(supabase);
 		this.connectionService =
 			options.connectionService ?? new GoogleCalendarConnectionService(supabase as any);
@@ -297,20 +298,22 @@ export class CalendarWebhookService {
 				}
 			}
 			console.error('Failed to register webhook:', error);
-			await this.errorLogger.logAPIError(
-				error,
-				'https://www.googleapis.com/calendar/v3/events/watch',
-				'POST',
-				userId,
-				{
-					operation: 'registerWebhook',
-					errorType: 'calendar_webhook_registration_failure',
-					calendarId: runtime?.providerCalendarId ?? calendarId,
-					calendarSourceId: runtime?.calendarSourceId ?? calendarSourceId ?? null,
-					webhookUrl,
-					hasAuth: !!error.message?.includes('authentication')
-				}
-			);
+			if (!isGoogleOAuthReconnectError(error)) {
+				await this.errorLogger.logAPIError(
+					error,
+					'https://www.googleapis.com/calendar/v3/events/watch',
+					'POST',
+					userId,
+					{
+						operation: 'registerWebhook',
+						errorType: 'calendar_webhook_registration_failure',
+						calendarId: runtime?.providerCalendarId ?? calendarId,
+						calendarSourceId: runtime?.calendarSourceId ?? calendarSourceId ?? null,
+						webhookUrl,
+						hasAuth: !!error.message?.includes('authentication')
+					}
+				);
+			}
 			return {
 				success: false,
 				error: error.message || 'Failed to register webhook'
@@ -909,6 +912,11 @@ export class CalendarWebhookService {
 				statusText: error.statusText,
 				response: error.response?.data
 			});
+
+			if (isGoogleOAuthReconnectError(error)) {
+				console.warn('[SYNC] Calendar connection requires reconnection; sync is paused.');
+				throw error;
+			}
 
 			// Handle sync token expiration with multiple checks
 			const isTokenExpired =
@@ -2138,6 +2146,14 @@ export class CalendarWebhookService {
 							`Failed to sync before renewal for user ${channel.user_id}:`,
 							syncError
 						);
+
+						if (isGoogleOAuthReconnectError(syncError)) {
+							// GoogleOAuthService has quarantined the unusable legacy grant and removed
+							// its compatibility channel. Do not re-register it or duplicate the one
+							// actionable invalid-grant incident on every cron cycle.
+							summary.failed += 1;
+							continue;
+						}
 
 						// Log sync error before renewal
 						await this.errorLogger.logCalendarError(

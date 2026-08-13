@@ -88,11 +88,25 @@ describe('TaskEditModal task loading', () => {
 		const openButton = screen.getByRole('button', { name: 'Open Task details' });
 		const panelId = openButton.getAttribute('aria-controls');
 		const panel = document.getElementById(String(panelId));
+		const panelContent = document.getElementById(`${panelId}-content`);
 
 		expect(openButton).toHaveAttribute('aria-expanded', 'false');
 		expect(openButton.parentElement).toHaveClass('right-0');
 		expect(panel).toHaveAttribute('aria-hidden', 'true');
 		expect((panel as HTMLElement & { inert: boolean }).inert).toBe(true);
+		expect(panel?.firstElementChild).toHaveClass(
+			'lg:sticky',
+			'lg:top-0',
+			'lg:h-[calc(85dvh-10.125rem)]',
+			'lg:overflow-hidden'
+		);
+		expect(panelContent).toHaveClass(
+			'lg:min-h-0',
+			'lg:flex-1',
+			'lg:overflow-y-auto',
+			'lg:overscroll-contain',
+			'lg:[scrollbar-gutter:stable]'
+		);
 
 		await fireEvent.click(openButton);
 
@@ -101,6 +115,11 @@ describe('TaskEditModal task loading', () => {
 		expect(closeButton.parentElement).toHaveClass('right-80');
 		expect(panel).toHaveAttribute('aria-hidden', 'false');
 		expect((panel as HTMLElement & { inert: boolean }).inert).toBe(false);
+		expect(screen.getByText('TASK DETAILS')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Linked Entities' })).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
 	});
 
 	it('keeps task details available inline below the desktop breakpoint', async () => {

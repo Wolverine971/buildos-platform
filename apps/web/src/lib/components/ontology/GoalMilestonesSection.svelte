@@ -11,7 +11,7 @@
 
 	Semantic Justification:
 	- Goals (tx-bloom) = aspirational, ideation
-	- Milestones (tx-frame) = canonical checkpoints, achievements
+	- Milestones (tx-frame) = meaningful project markers and achievements
 	- Emerald = success, completion (milestone identity)
 	- Nested but visually grouped within parent goal
 

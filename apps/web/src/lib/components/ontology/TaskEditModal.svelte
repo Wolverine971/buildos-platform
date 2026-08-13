@@ -184,7 +184,7 @@
 	let selectedLinkedTaskId = $state<string | null>(null);
 	let showChatModal = $state(false);
 	let showActivityLog = $state(false);
-	let showLinkedEntities = $state(true);
+	let showLinkedEntities = $state(false);
 	let showImages = $state(false);
 
 	type SurfaceBadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
@@ -1134,7 +1134,7 @@
 					</div>
 
 					<!-- Sidebar (right column, row 1) -->
-					<EntityModalDetailsDrawer panelLabel="Task details">
+					<EntityModalDetailsDrawer panelLabel="Task details" showDesktopHeader={true}>
 						<Card variant="elevated" class="wt-card">
 							<CardBody padding="none">
 								<div class="divide-y divide-border/70">
@@ -1452,13 +1452,13 @@
 										</section>
 									{/if}
 
-									<!-- Linked Entities (collapsible, default open) -->
+									<!-- Linked Entities (collapsible, default closed for density) -->
 									<section class="px-3 sm:px-4">
 										<button
 											type="button"
 											onclick={() =>
 												(showLinkedEntities = !showLinkedEntities)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
 											aria-expanded={showLinkedEntities}
 										>
 											<div class="flex items-center gap-2">
@@ -1491,7 +1491,7 @@
 										<button
 											type="button"
 											onclick={() => (showImages = !showImages)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
 											aria-expanded={showImages}
 										>
 											<div class="flex items-center gap-2">
@@ -1526,7 +1526,7 @@
 										<button
 											type="button"
 											onclick={() => (showActivityLog = !showActivityLog)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
 											aria-expanded={showActivityLog}
 										>
 											<div class="flex items-center gap-2">

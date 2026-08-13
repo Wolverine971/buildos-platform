@@ -54,6 +54,8 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			.from('onto_project_logs')
 			.select('*', { count: 'exact' })
 			.eq('project_id', projectId)
+			// Relationship rows are implementation detail, not user-facing activity.
+			.neq('entity_type', 'edge')
 			.order('created_at', { ascending: false })
 			.range(offset, offset + limit - 1);
 

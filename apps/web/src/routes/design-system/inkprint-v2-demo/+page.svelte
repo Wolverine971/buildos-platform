@@ -619,7 +619,7 @@
 									<p
 										class="text-2xs sm:text-xs text-muted-foreground hidden sm:block"
 									>
-										Checkpoints and dates
+										Milestones and dates
 									</p>
 								</div>
 							</button>

@@ -3,7 +3,7 @@
  * Milestone Creation API Endpoint
  *
  * Creates a new milestone within the BuildOS ontology system.
- * Milestones represent key dates and deliverable checkpoints in projects.
+ * Milestones represent key dates and meaningful deliverables in projects.
  *
  * Documentation:
  * - Ontology System: /apps/web/docs/features/ontology/README.md

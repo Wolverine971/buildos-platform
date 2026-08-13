@@ -28,6 +28,8 @@
 		resolvedProjectFocus?: ProjectFocus | null;
 		/** Id of the assistant message currently receiving streamed text, if any. */
 		streamingMessageId?: string | null;
+		/** Reduce empty-state and message chrome for constrained embedded conversations. */
+		compact?: boolean;
 	}
 
 	let {
@@ -42,7 +44,8 @@
 		onClientActionComplete,
 		selectedContextType = null,
 		resolvedProjectFocus = null,
-		streamingMessageId = null
+		streamingMessageId = null,
+		compact = false
 	}: Props = $props();
 
 	const proseClasses = getProseClasses('sm');
@@ -223,45 +226,55 @@
 <div
 	bind:this={container}
 	onscroll={onScroll}
-	class="agent-chat-scroll flex-1 min-h-0 space-y-3 overflow-y-auto overscroll-contain bg-muted p-3 sm:p-4 lg:px-6 lg:py-4"
+	class="agent-chat-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain {compact
+		? 'agent-chat-scroll-compact space-y-2 bg-card p-2 sm:p-3'
+		: 'space-y-3 bg-muted p-3 sm:p-4 lg:px-6 lg:py-4'}"
 	style="overflow-anchor: none; -webkit-overflow-scrolling: touch;"
 >
 	{#if messages.length === 0}
-		<!-- INKPRINT empty state card with Bloom texture (creation/new) -->
-		<div
-			class="rounded-lg border border-dashed border-border bg-card p-3 tx tx-bloom tx-weak shadow-ink sm:p-4"
-		>
-			<div class="space-y-2.5">
-				<!-- INKPRINT micro-label heading -->
-				<p class="micro-label font-semibold text-accent">
-					New chat · {displayContextLabel}
+		{#if compact}
+			<div class="flex h-full min-h-24 items-center justify-center px-4 text-center">
+				<p class="max-w-md text-xs leading-relaxed text-muted-foreground">
+					Ask BuildOS to explain, rewrite, or update this document.
 				</p>
-				<!-- Body text -->
-				<p class="text-sm font-medium leading-relaxed text-foreground">
-					Ask BuildOS to plan, explain, or take the next step — or try one of these:
-				</p>
-				<!-- Suggestion buttons: prefill the composer on click -->
-				<ul class="space-y-1.5">
-					{#each emptyStateSuggestions as suggestion}
-						<li>
-							<button
-								type="button"
-								class="group flex w-full items-start gap-2 rounded-lg border border-border bg-background/60 px-2.5 py-2 text-left text-sm font-medium text-muted-foreground shadow-ink transition pressable hover:border-accent hover:bg-accent/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
-								disabled={!onSelectSuggestion}
-								onclick={() => onSelectSuggestion?.(suggestion)}
-							>
-								<span
-									aria-hidden="true"
-									class="mt-0.5 text-accent transition-transform group-hover:translate-x-0.5"
-									>▸</span
-								>
-								<span class="min-w-0 flex-1">{suggestion}</span>
-							</button>
-						</li>
-					{/each}
-				</ul>
 			</div>
-		</div>
+		{:else}
+			<!-- INKPRINT empty state card with Bloom texture (creation/new) -->
+			<div
+				class="rounded-lg border border-dashed border-border bg-card p-3 tx tx-bloom tx-weak shadow-ink sm:p-4"
+			>
+				<div class="space-y-2.5">
+					<!-- INKPRINT micro-label heading -->
+					<p class="micro-label font-semibold text-accent">
+						New chat · {displayContextLabel}
+					</p>
+					<!-- Body text -->
+					<p class="text-sm font-medium leading-relaxed text-foreground">
+						Ask BuildOS to plan, explain, or take the next step — or try one of these:
+					</p>
+					<!-- Suggestion buttons: prefill the composer on click -->
+					<ul class="space-y-1.5">
+						{#each emptyStateSuggestions as suggestion}
+							<li>
+								<button
+									type="button"
+									class="group flex w-full items-start gap-2 rounded-lg border border-border bg-background/60 px-2.5 py-2 text-left text-sm font-medium text-muted-foreground shadow-ink transition pressable hover:border-accent hover:bg-accent/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+									disabled={!onSelectSuggestion}
+									onclick={() => onSelectSuggestion?.(suggestion)}
+								>
+									<span
+										aria-hidden="true"
+										class="mt-0.5 text-accent transition-transform group-hover:translate-x-0.5"
+										>▸</span
+									>
+									<span class="min-w-0 flex-1">{suggestion}</span>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			</div>
+		{/if}
 	{:else}
 		{#each messages as message (message.id)}
 			{#if message.type === 'user'}
@@ -539,6 +552,12 @@
 	.agent-chat-scroll > :global(*) {
 		content-visibility: auto;
 		contain-intrinsic-size: auto 120px;
+	}
+
+	.agent-chat-scroll-compact :global([data-testid='agent-chat-user-message']),
+	.agent-chat-scroll-compact :global([data-testid='agent-chat-assistant-message']) {
+		padding: 0.625rem;
+		box-shadow: none;
 	}
 
 	.agent-resp-div :global(p) {

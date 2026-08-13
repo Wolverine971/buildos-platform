@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/calendar-webhook-source-routing.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { CalendarWebhookService, type WebhookChannel } from './calendar-webhook-service';
+import { GoogleOAuthConnectionError } from './google-oauth-service';
 import type { CalendarTarget } from '$lib/server/google-calendar-target.service';
 
 type QueryResult = { data: any; error: any };
@@ -27,6 +28,10 @@ function createDatabase(results: Record<string, QueryResult>) {
 				return builder;
 			},
 			is: (column: string, value: unknown) => {
+				entry.filters.push([column, value]);
+				return builder;
+			},
+			lt: (column: string, value: unknown) => {
 				entry.filters.push([column, value]);
 				return builder;
 			},
@@ -254,5 +259,52 @@ describe('CalendarWebhookService source routing', () => {
 		).resolves.toEqual({ success: false, processed: 0, error: 'Invalid token' });
 		expect(connectionService.getAuthenticatedClient).not.toHaveBeenCalled();
 		expect(api.events.list).not.toHaveBeenCalled();
+	});
+
+	it('does not retry or duplicate-log a legacy channel that requires reconnection', async () => {
+		const expiredLegacyChannel = channel({
+			calendar_id: 'primary',
+			calendar_source_id: null,
+			expiration: Date.now() - 60_000
+		});
+		const { database, operations } = createDatabase({
+			calendar_webhook_channels: { data: [expiredLegacyChannel], error: null }
+		});
+		const legacyOAuthService = {
+			getAuthenticatedClient: vi
+				.fn()
+				.mockRejectedValue(
+					new GoogleOAuthConnectionError('Reconnect Google Calendar', true)
+				)
+		};
+		const api = {
+			events: {
+				watch: vi.fn(),
+				list: vi.fn()
+			},
+			channels: { stop: vi.fn() }
+		};
+		const service = new CalendarWebhookService(database, {
+			legacyOAuthService,
+			createCalendarApi: () => api as any
+		});
+
+		await expect(
+			service.renewExpiringWebhooks('https://build-os.com/webhooks/calendar-events')
+		).resolves.toEqual({
+			attempted: 1,
+			renewed: 0,
+			failed: 1,
+			rotateAll: false,
+			hasMore: false
+		});
+
+		expect(legacyOAuthService.getAuthenticatedClient).toHaveBeenCalledOnce();
+		expect(api.events.watch).not.toHaveBeenCalled();
+		expect(
+			operations.filter(
+				(operation) => operation.table === 'error_logs' || operation.action === 'insert'
+			)
+		).toEqual([]);
 	});
 });

@@ -1,3 +1,4 @@
+// apps/web/src/lib/types/goal-connection-summary.ts
 export type GoalTaskConnectionCounts = {
 	total: number;
 	todo: number;
@@ -6,11 +7,26 @@ export type GoalTaskConnectionCounts = {
 	done: number;
 };
 
+export type GoalConnectedTaskSummary = {
+	id: string;
+	title: string;
+	state_key: 'todo' | 'in_progress' | 'blocked' | 'done';
+	due_at: string | null;
+	updated_at: string | null;
+};
+
 export type GoalPlanConnectionCounts = {
 	total: number;
 	draft: number;
 	active: number;
 	completed: number;
+};
+
+export type GoalConnectedPlanSummary = {
+	id: string;
+	name: string;
+	state_key: 'draft' | 'active' | 'completed';
+	updated_at: string | null;
 };
 
 export type GoalMilestoneConnectionCounts = {
@@ -21,6 +37,14 @@ export type GoalMilestoneConnectionCounts = {
 	missed: number;
 	overdue: number;
 	next_due_at: string | null;
+};
+
+export type GoalConnectedMilestoneSummary = {
+	id: string;
+	title: string;
+	state_key: 'pending' | 'in_progress' | 'completed' | 'missed';
+	due_at: string | null;
+	updated_at: string | null;
 };
 
 export type GoalTrackingSummary = {
@@ -35,9 +59,9 @@ export type GoalConnectionSummary = {
 	created_at: string;
 	updated_at: string | null;
 	last_activity_at: string;
-	tasks: GoalTaskConnectionCounts;
-	plans: GoalPlanConnectionCounts;
-	milestones: GoalMilestoneConnectionCounts;
+	tasks: GoalTaskConnectionCounts & { items: GoalConnectedTaskSummary[] };
+	plans: GoalPlanConnectionCounts & { items: GoalConnectedPlanSummary[] };
+	milestones: GoalMilestoneConnectionCounts & { items: GoalConnectedMilestoneSummary[] };
 	tracking: GoalTrackingSummary;
 };
 

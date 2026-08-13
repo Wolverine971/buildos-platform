@@ -157,8 +157,11 @@ describe('DocumentModal document loading', () => {
 		const detailsPanel = document.getElementById('document-details-panel');
 		const openButton = screen.getByRole('button', { name: 'Open details panel' });
 		const tabPositioner = openButton.parentElement;
+		const detailsContent = document.getElementById('document-details-content');
 		expect(detailsPanel).toHaveAttribute('aria-hidden', 'true');
 		expect(detailsPanel).toHaveProperty('inert', true);
+		expect(detailsPanel).toHaveClass('lg:min-h-0', 'overflow-hidden');
+		expect(detailsContent).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto');
 		expect(openButton).toHaveAttribute('aria-expanded', 'false');
 		expect(openButton.closest('.document-modal-header')).toBeNull();
 		expect(tabPositioner).toHaveClass('right-0');
@@ -194,6 +197,27 @@ describe('DocumentModal document loading', () => {
 		});
 	});
 
+	it('reveals Details when a new document needs a title', async () => {
+		render(DocumentModal, {
+			props: {
+				projectId: 'project-1',
+				isOpen: true
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+		expect(document.getElementById('document-details-panel')).toHaveAttribute(
+			'aria-hidden',
+			'false'
+		);
+		expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute(
+			'aria-selected',
+			'true'
+		);
+		expect(screen.getAllByText('Title is required').length).toBeGreaterThan(0);
+	});
+
 	it('shows Document Interact in the document header and opens its dock', async () => {
 		const fetchMock = vi.fn((input: RequestInfo | URL) => {
 			const url = String(input);
@@ -215,7 +239,9 @@ describe('DocumentModal document loading', () => {
 			}
 		});
 
-		await waitFor(() => expect(screen.getAllByDisplayValue('Document A')).toHaveLength(2));
+		await waitFor(() => expect(screen.getByDisplayValue('Document A')).toBeInTheDocument());
+		expect(screen.getAllByLabelText('Document title')).toHaveLength(1);
+		expect(screen.queryByText('CONTENT')).not.toBeInTheDocument();
 		const trigger = screen.getByRole('button', { name: 'Open Document Interact' });
 		expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
@@ -228,6 +254,25 @@ describe('DocumentModal document loading', () => {
 		expect(interactDock).toHaveAttribute('data-placement', 'inline');
 		expect(interactDock).not.toHaveClass('absolute');
 		expect(interactDock).not.toHaveClass('fixed');
+		expect(interactDock).toHaveClass('h-[clamp(15rem,34dvh,24rem)]');
+
+		await waitFor(() => {
+			expect(screen.getByText('DOCUMENT CHAT')).toBeInTheDocument();
+			expect(
+				screen.getByText('Ask BuildOS to explain, rewrite, or update this document.')
+			).toBeInTheDocument();
+			expect(
+				screen.getByPlaceholderText('Ask about or update this document...')
+			).toBeInTheDocument();
+		});
+		expect(screen.queryByRole('tab', { name: 'Chat' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('tab', { name: /^Steps/ })).not.toBeInTheDocument();
+		expect(screen.queryByRole('tab', { name: /^Tools/ })).not.toBeInTheDocument();
+		expect(screen.queryByRole('tab', { name: /^Changes/ })).not.toBeInTheDocument();
+		expect(screen.queryByText(/New chat ·/i)).not.toBeInTheDocument();
+		expect(
+			screen.getByRole('button', { name: 'Close document interaction' })
+		).toBeInTheDocument();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Open details panel' }));
 		expect(document.getElementById('document-details-panel')).toHaveAttribute(
@@ -258,7 +303,7 @@ describe('DocumentModal document loading', () => {
 			}
 		});
 
-		await waitFor(() => expect(screen.getAllByDisplayValue('Document A')).toHaveLength(2));
+		await waitFor(() => expect(screen.getByDisplayValue('Document A')).toBeInTheDocument());
 		await fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
 
 		const menu = screen.getByRole('menu');
@@ -328,13 +373,13 @@ describe('DocumentModal document loading', () => {
 		).toBe(true);
 
 		documentB.resolve(documentResponse('document-b', 'Document B'));
-		await waitFor(() => expect(screen.getAllByDisplayValue('Document B')).toHaveLength(2));
+		await waitFor(() => expect(screen.getByDisplayValue('Document B')).toBeInTheDocument());
 		expect(onLoaded).toHaveBeenCalledTimes(1);
 
 		// Simulate a transport that ignores abort and still resolves the obsolete request.
 		documentA.resolve(documentResponse('document-a', 'Document A'));
 		await waitFor(() => {
-			expect(screen.getAllByDisplayValue('Document B')).toHaveLength(2);
+			expect(screen.getByDisplayValue('Document B')).toBeInTheDocument();
 			expect(screen.queryAllByDisplayValue('Document A')).toHaveLength(0);
 			expect(onLoaded).toHaveBeenCalledTimes(1);
 		});
@@ -438,8 +483,8 @@ describe('DocumentModal document loading', () => {
 			}
 		});
 
-		await waitFor(() => expect(screen.getAllByDisplayValue('Document A')).toHaveLength(2));
-		await fireEvent.input(screen.getAllByLabelText('Document title')[0], {
+		await waitFor(() => expect(screen.getByDisplayValue('Document A')).toBeInTheDocument());
+		await fireEvent.input(screen.getByLabelText('Document title'), {
 			target: { value: 'Document A edited' }
 		});
 		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -457,8 +502,8 @@ describe('DocumentModal document loading', () => {
 			onSaved,
 			onClose
 		});
-		await waitFor(() => expect(screen.getAllByDisplayValue('Document B')).toHaveLength(2));
-		await fireEvent.input(screen.getAllByLabelText('Document title')[0], {
+		await waitFor(() => expect(screen.getByDisplayValue('Document B')).toBeInTheDocument());
+		await fireEvent.input(screen.getByLabelText('Document title'), {
 			target: { value: 'Document B edited' }
 		});
 		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -481,7 +526,7 @@ describe('DocumentModal document loading', () => {
 		);
 		await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-		expect(screen.getAllByDisplayValue('Document B edited')).toHaveLength(2);
+		expect(screen.getByDisplayValue('Document B edited')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
 		expect(onSaved).not.toHaveBeenCalled();
 		expect(onClose).not.toHaveBeenCalled();
@@ -497,7 +542,7 @@ describe('DocumentModal document loading', () => {
 			})
 		);
 		await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
-		expect(screen.getAllByDisplayValue('Document B edited')).toHaveLength(2);
+		expect(screen.getByDisplayValue('Document B edited')).toBeInTheDocument();
 	});
 
 	it('does not close a replacement document when an obsolete delete resolves', async () => {
@@ -532,7 +577,7 @@ describe('DocumentModal document loading', () => {
 			}
 		});
 
-		await waitFor(() => expect(screen.getAllByDisplayValue('Document A')).toHaveLength(2));
+		await waitFor(() => expect(screen.getByDisplayValue('Document A')).toBeInTheDocument());
 		await fireEvent.click(screen.getByText('Delete Permanently').closest('button')!);
 		await waitFor(() =>
 			expect(screen.getByText('Delete archived document')).toBeInTheDocument()
@@ -552,12 +597,12 @@ describe('DocumentModal document loading', () => {
 			onDeleted,
 			onClose
 		});
-		await waitFor(() => expect(screen.getAllByDisplayValue('Document B')).toHaveLength(2));
+		await waitFor(() => expect(screen.getByDisplayValue('Document B')).toBeInTheDocument());
 
 		deleteA.resolve(jsonResponse({ data: { deleted: true } }));
 		await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-		expect(screen.getAllByDisplayValue('Document B')).toHaveLength(2);
+		expect(screen.getByDisplayValue('Document B')).toBeInTheDocument();
 		expect(onDeleted).not.toHaveBeenCalled();
 		expect(onClose).not.toHaveBeenCalled();
 	});
@@ -625,7 +670,7 @@ describe('DocumentModal document loading', () => {
 			}
 		});
 
-		await waitFor(() => expect(screen.getAllByDisplayValue('Document A')).toHaveLength(2));
+		await waitFor(() => expect(screen.getByDisplayValue('Document A')).toBeInTheDocument());
 		expect(idleCallbacks.length).toBeGreaterThanOrEqual(3);
 		runIdleCallbacks();
 		await waitFor(() => {
@@ -644,7 +689,7 @@ describe('DocumentModal document loading', () => {
 			documentId: 'document-b',
 			isOpen: true
 		});
-		await waitFor(() => expect(screen.getAllByDisplayValue('Document B')).toHaveLength(2));
+		await waitFor(() => expect(screen.getByDisplayValue('Document B')).toBeInTheDocument());
 		expect(idleCallbacks.length).toBeGreaterThanOrEqual(3);
 		runIdleCallbacks();
 
@@ -661,7 +706,7 @@ describe('DocumentModal document loading', () => {
 		treeA.resolve(docTreeResponse('parent-a', 'A Parent', 'document-a'));
 		await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-		expect(screen.getAllByDisplayValue('Document B')).toHaveLength(2);
+		expect(screen.getByDisplayValue('Document B')).toBeInTheDocument();
 		expect(screen.getAllByText('/p/b-public').length).toBeGreaterThan(0);
 		expect(screen.getByText('B Parent')).toBeInTheDocument();
 		expect(screen.queryByText('/p/a-public')).not.toBeInTheDocument();

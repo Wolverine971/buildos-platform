@@ -139,7 +139,7 @@ Use get_onto_document_details when full document content is needed.`,
 		function: {
 			name: 'list_onto_milestones',
 			description: `List milestones from the ontology system (onto_milestones table). Returns milestone summaries with dates and state.
-Use for project timelines, checkpoints, or delivery milestones.`,
+Use for project timelines or milestones.`,
 			parameters: {
 				type: 'object',
 				properties: {

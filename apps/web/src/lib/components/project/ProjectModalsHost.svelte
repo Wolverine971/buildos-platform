@@ -37,8 +37,10 @@
 		deleteDocumentHasChildren,
 		deleteDocumentChildCount,
 		showTaskCreateModal,
+		taskCreateGoalContext = null,
 		editingTaskId,
 		showPlanCreateModal,
+		planCreateGoalContext = null,
 		editingPlanId,
 		showGoalCreateModal,
 		editingGoalId,
@@ -128,8 +130,10 @@
 		deleteDocumentHasChildren: boolean;
 		deleteDocumentChildCount: number;
 		showTaskCreateModal: boolean;
+		taskCreateGoalContext?: { goalId: string; goalName: string } | null;
 		editingTaskId: string | null;
 		showPlanCreateModal: boolean;
+		planCreateGoalContext?: { goalId: string; goalName: string } | null;
 		editingPlanId: string | null;
 		showGoalCreateModal: boolean;
 		editingGoalId: string | null;
@@ -253,6 +257,8 @@
 	{#await import('$lib/components/ontology/TaskCreateModal.svelte') then { default: TaskCreateModal }}
 		<TaskCreateModal
 			projectId={project.id}
+			goalId={taskCreateGoalContext?.goalId}
+			goalName={taskCreateGoalContext?.goalName}
 			onClose={onCloseTaskCreateModal}
 			onCreated={onTaskCreated}
 		/>
@@ -278,6 +284,8 @@
 	{#await import('$lib/components/ontology/PlanCreateModal.svelte') then { default: PlanCreateModal }}
 		<PlanCreateModal
 			projectId={project.id}
+			goalId={planCreateGoalContext?.goalId}
+			goalName={planCreateGoalContext?.goalName}
 			onClose={onClosePlanCreateModal}
 			onCreated={onPlanCreated}
 		/>

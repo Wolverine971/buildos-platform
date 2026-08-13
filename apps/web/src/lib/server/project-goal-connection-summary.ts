@@ -1,6 +1,10 @@
+// apps/web/src/lib/server/project-goal-connection-summary.ts
 import type { Database } from '@buildos/shared-types';
 import type {
 	GoalConnectionSummary,
+	GoalConnectedMilestoneSummary,
+	GoalConnectedPlanSummary,
+	GoalConnectedTaskSummary,
 	GoalMilestoneConnectionCounts,
 	GoalPlanConnectionCounts,
 	GoalTaskConnectionCounts,
@@ -13,15 +17,15 @@ export type GoalConnectionGoalRow = Pick<
 >;
 export type GoalConnectionTaskRow = Pick<
 	Database['public']['Tables']['onto_tasks']['Row'],
-	'id' | 'state_key' | 'props' | 'created_at' | 'updated_at'
+	'id' | 'title' | 'state_key' | 'due_at' | 'props' | 'created_at' | 'updated_at'
 >;
 export type GoalConnectionPlanRow = Pick<
 	Database['public']['Tables']['onto_plans']['Row'],
-	'id' | 'state_key' | 'props' | 'created_at' | 'updated_at'
+	'id' | 'name' | 'state_key' | 'props' | 'created_at' | 'updated_at'
 >;
 export type GoalConnectionMilestoneRow = Pick<
 	Database['public']['Tables']['onto_milestones']['Row'],
-	'id' | 'state_key' | 'due_at' | 'props' | 'created_at' | 'updated_at'
+	'id' | 'title' | 'state_key' | 'due_at' | 'props' | 'created_at' | 'updated_at'
 >;
 export type GoalConnectionEdgeRow = Pick<
 	Database['public']['Tables']['onto_edges']['Row'],
@@ -60,15 +64,17 @@ function latestTimestamp(...timestamps: Array<string | null | undefined>): strin
 	return latest ?? timestamps.find((timestamp): timestamp is string => Boolean(timestamp)) ?? '';
 }
 
-function emptyTaskCounts(): GoalTaskConnectionCounts {
-	return { total: 0, todo: 0, in_progress: 0, blocked: 0, done: 0 };
+function emptyTaskCounts(): GoalTaskConnectionCounts & { items: GoalConnectedTaskSummary[] } {
+	return { total: 0, todo: 0, in_progress: 0, blocked: 0, done: 0, items: [] };
 }
 
-function emptyPlanCounts(): GoalPlanConnectionCounts {
-	return { total: 0, draft: 0, active: 0, completed: 0 };
+function emptyPlanCounts(): GoalPlanConnectionCounts & { items: GoalConnectedPlanSummary[] } {
+	return { total: 0, draft: 0, active: 0, completed: 0, items: [] };
 }
 
-function emptyMilestoneCounts(): GoalMilestoneConnectionCounts {
+function emptyMilestoneCounts(): GoalMilestoneConnectionCounts & {
+	items: GoalConnectedMilestoneSummary[];
+} {
 	return {
 		total: 0,
 		pending: 0,
@@ -76,8 +82,36 @@ function emptyMilestoneCounts(): GoalMilestoneConnectionCounts {
 		completed: 0,
 		missed: 0,
 		overdue: 0,
-		next_due_at: null
+		next_due_at: null,
+		items: []
 	};
+}
+
+const TASK_STATE_ORDER: Record<GoalConnectedTaskSummary['state_key'], number> = {
+	blocked: 0,
+	in_progress: 1,
+	todo: 2,
+	done: 3
+};
+
+const PLAN_STATE_ORDER: Record<GoalConnectedPlanSummary['state_key'], number> = {
+	active: 0,
+	draft: 1,
+	completed: 2
+};
+
+const MILESTONE_STATE_ORDER: Record<GoalConnectedMilestoneSummary['state_key'], number> = {
+	in_progress: 0,
+	pending: 1,
+	missed: 2,
+	completed: 3
+};
+
+function compareOptionalDates(a: string | null, b: string | null): number {
+	if (a && b) return Date.parse(a) - Date.parse(b);
+	if (a) return -1;
+	if (b) return 1;
+	return 0;
 }
 
 function addExplicitPropertyConnections<T extends { id: string; props: unknown }>(
@@ -191,6 +225,13 @@ export function buildProjectGoalConnectionOverview(options: {
 			connectedTaskIds.add(task.id);
 			taskCounts.total += 1;
 			taskCounts[task.state_key] += 1;
+			taskCounts.items.push({
+				id: task.id,
+				title: task.title,
+				state_key: task.state_key,
+				due_at: task.due_at,
+				updated_at: task.updated_at
+			});
 			activityTimestamps.push(latestEntityActivity(task));
 		}
 
@@ -199,6 +240,12 @@ export function buildProjectGoalConnectionOverview(options: {
 			if (!plan) continue;
 			planCounts.total += 1;
 			planCounts[plan.state_key] += 1;
+			planCounts.items.push({
+				id: plan.id,
+				name: plan.name,
+				state_key: plan.state_key,
+				updated_at: plan.updated_at
+			});
 			activityTimestamps.push(latestEntityActivity(plan));
 		}
 
@@ -208,6 +255,13 @@ export function buildProjectGoalConnectionOverview(options: {
 			if (!milestone) continue;
 			milestoneCounts.total += 1;
 			milestoneCounts[milestone.state_key] += 1;
+			milestoneCounts.items.push({
+				id: milestone.id,
+				title: milestone.title,
+				state_key: milestone.state_key,
+				due_at: milestone.due_at,
+				updated_at: milestone.updated_at
+			});
 			activityTimestamps.push(latestEntityActivity(milestone));
 			if (
 				milestone.due_at &&
@@ -220,6 +274,24 @@ export function buildProjectGoalConnectionOverview(options: {
 		}
 		milestoneCounts.next_due_at =
 			incompleteDueDates.sort((a, b) => Date.parse(a) - Date.parse(b))[0] ?? null;
+
+		taskCounts.items.sort((a, b) => {
+			const stateDifference = TASK_STATE_ORDER[a.state_key] - TASK_STATE_ORDER[b.state_key];
+			if (stateDifference !== 0) return stateDifference;
+			const dueDifference = compareOptionalDates(a.due_at, b.due_at);
+			return dueDifference !== 0 ? dueDifference : a.title.localeCompare(b.title);
+		});
+		planCounts.items.sort((a, b) => {
+			const stateDifference = PLAN_STATE_ORDER[a.state_key] - PLAN_STATE_ORDER[b.state_key];
+			return stateDifference !== 0 ? stateDifference : a.name.localeCompare(b.name);
+		});
+		milestoneCounts.items.sort((a, b) => {
+			const stateDifference =
+				MILESTONE_STATE_ORDER[a.state_key] - MILESTONE_STATE_ORDER[b.state_key];
+			if (stateDifference !== 0) return stateDifference;
+			const dueDifference = compareOptionalDates(a.due_at, b.due_at);
+			return dueDifference !== 0 ? dueDifference : a.title.localeCompare(b.title);
+		});
 
 		return {
 			goal_id: goal.id,

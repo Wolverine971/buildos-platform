@@ -128,7 +128,7 @@ the reused widgets without changing the workspace's core information architectur
 - Split overdue and blocked work into separate actions instead of presenting one ambiguous
   “blocked or overdue” number.
 - Made all three Work signals operational: `Now` focuses the in-progress column, overdue and blocked
-  actions focus their matching columns, and `Next checkpoint` opens the milestone.
+  actions focus their matching columns, and `Next milestone` opens the milestone.
 - Added explicit `Show all` / `Show fewer` controls wherever Overview previously truncated goals,
   plans, milestones, risks, or events without disclosure.
 - Restored Graph access on mobile while keeping the compact header.
@@ -320,6 +320,66 @@ contract:
 The trade-off remains deliberate: empty chapters stay visible for orientation, dense direction
 lists retain their five-item initial limit, and long briefs remain one explicit action away instead
 of consuming the entire first viewport.
+
+## Goal tracking Tier 1–3 follow-up — 2026-08-12
+
+The Goals panel now makes relationship coverage visible without inventing a generic completion
+percentage:
+
+- Removed the redundant `Active` badge while preserving exceptional lifecycle states.
+- Added a lazy, batched project summary for explicit goal-to-task, goal-to-plan, and
+  goal-to-milestone relationships. The request is deferred until Goals opens and does not rely on
+  the project page's intentionally windowed task payload (**P4 / P20 / P22**).
+- Added project-level task coverage plus per-goal task state, plan coverage, milestone coverage,
+  target-date coverage, activity, and creation metadata (**P4 / P6**).
+- Added neutral missing-data states for no tasks, no plan, tracking not set, no supporting work, and
+  relationship-summary failure. Missing structure is actionable context rather than a warning badge
+  (**P4 / P8**).
+- Added persistent `Discuss` / `Structure with chat` actions. Chat opens focused on the goal with a
+  review-first draft that requires approval before creating or linking work (**P8 / P13**).
+- Kept the standalone Milestones surface for now because legacy relationships are not yet fully
+  normalized. Goal cards use the same Milestones terminology for progress evidence.
+- Added one collapsed-by-default `Connected work` disclosure per goal. It reveals flat, grouped
+  task, plan, and milestone rows with factual state/due metadata, and each row opens the existing
+  entity detail flow (**P4 / P8 / P13**).
+- Added explicit `Create` and `Link existing` action groups for tasks, plans, and milestones. Goal
+  context is carried through the existing atomic create and relationship flows rather than linked in
+  a second best-effort mutation (**P6 / P20 / P22**).
+- Empty goals use the same inspector as a lightweight setup surface; populated goals do not gain a
+  second card stack or an always-visible detail list (**P1 / P2 / P4**).
+- Added explicit progress-method selection: no score, milestones, tasks, metric, or manual. The
+  choice persists in the goal's merge-safe props, so this slice does not introduce a migration or a
+  second save path (**P6 / P20 / P22**).
+- Progress bars now appear only after a method is chosen and its required data exists. Selecting an
+  empty task/milestone source remains a factual no-data state rather than becoming `0%`; metric
+  tracking supports increasing and decreasing targets (**P4 / P8 / P19**).
+- The tracking editor is lazy-loaded from a compact card action, previews the selected method, and
+  refreshes the goal plus its connection summary after save (**P2 / P6 / P13 / P20**).
+- Historical trends remain deferred until there is a trustworthy snapshot/event source. A saved
+  preference timestamp is not presented as progress history.
+- A P6 terminology follow-up removes the `Checkpoint` alias from goal and milestone surfaces,
+  setup prompts, and tracking copy. The product now uses the existing `Milestone` concept
+  consistently; the stored method was already `milestones`, so no data migration was needed.
+
+The implementation plan and progress policy live in
+[`PROJECT_GOAL_TRACKING_TIER1_PLAN_2026-08-12.md`](../../../../../../docs/plans/PROJECT_GOAL_TRACKING_TIER1_PLAN_2026-08-12.md).
+
+### Verification
+
+- Official Svelte analyzer: no issues in the tracking editor, goal strip, or project page. Its
+  async-effect suggestions are expected for lazy request orchestration.
+- Focused Vitest: 4 files / 16 tests pass, covering relationship aliases and direction,
+  deduplication, project-level task coverage, milestone progress, active-tag removal, populated and
+  unstructured cards, inline inspection, goal-scoped create actions, review-first chat, and
+  unavailable metadata, plus persisted manual tracking, defensive config parsing, task/milestone
+  calculations, and increasing/decreasing metric targets.
+- Full `svelte-check` completed with no diagnostics in this surface; the workspace command is
+  currently blocked by one unrelated invalid `{@const}` placement in
+  `routes/dashboard/calendar/+page.svelte`.
+- Scoped ESLint, Prettier, the Supabase select guardrail, and `git diff --check` pass. The global
+  Lucide wrapper guard is blocked by three unrelated Document modal exports in the shared dirty
+  worktree; this goal surface imports only existing wrapper exports.
+- Authenticated desktop/mobile light/dark visual verification remains pending.
 
 ## Verification
 

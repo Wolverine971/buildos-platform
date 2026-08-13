@@ -22,6 +22,8 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { slide } from 'svelte/transition';
+	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import {
 		Save,
 		Loader,
@@ -130,7 +132,7 @@
 	let showMilestoneCreateModal = $state(false);
 	let showMilestoneEditModal = $state(false);
 	let editingMilestoneId = $state<string | null>(null);
-	let showLinkedEntities = $state(true);
+	let showLinkedEntities = $state(false);
 	let showImages = $state(false);
 	let showActivityLog = $state(false);
 
@@ -755,7 +757,11 @@
 					</div>
 
 					<!-- Sidebar (Right column) -->
-					<EntityModalDetailsDrawer panelLabel="Goal details" class="space-y-3">
+					<EntityModalDetailsDrawer
+						panelLabel="Goal details"
+						showDesktopHeader={true}
+						class="space-y-3"
+					>
 						<!-- Milestones (goal-specific, self-contained card) -->
 						<GoalMilestonesSidebarSection
 							{milestones}
@@ -771,20 +777,6 @@
 						/>
 
 						<Card variant="elevated" class="wt-card">
-							<CardHeader variant="muted" texture="strip">
-								<div class="flex items-center justify-between gap-3">
-									<div>
-										<p
-											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-										>
-											Controls
-										</p>
-										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Goal operations
-										</h3>
-									</div>
-								</div>
-							</CardHeader>
 							<CardBody padding="none">
 								<div class="divide-y divide-border/70">
 									<EntityCollaborationAction
@@ -910,13 +902,13 @@
 										</section>
 									{/if}
 
-									<!-- Linked Entities (collapsible, default open) -->
+									<!-- Linked Entities (collapsible, default closed for density) -->
 									<section class="px-3 sm:px-4">
 										<button
 											type="button"
 											onclick={() =>
 												(showLinkedEntities = !showLinkedEntities)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
 											aria-expanded={showLinkedEntities}
 										>
 											<div class="flex items-center gap-2">
@@ -932,7 +924,7 @@
 											/>
 										</button>
 										{#if showLinkedEntities}
-											<div class="pb-3">
+											<div class="pb-3" transition:slide={slideMotion()}>
 												<LinkedEntities
 													sourceId={goalId}
 													sourceKind="goal"
@@ -951,7 +943,7 @@
 										<button
 											type="button"
 											onclick={() => (showImages = !showImages)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
 											aria-expanded={showImages}
 										>
 											<div class="flex items-center gap-2">
@@ -965,7 +957,7 @@
 											/>
 										</button>
 										{#if showImages}
-											<div class="pb-3">
+											<div class="pb-3" transition:slide={slideMotion()}>
 												<ImageAssetsPanel
 													{projectId}
 													entityKind="goal"
@@ -986,7 +978,7 @@
 										<button
 											type="button"
 											onclick={() => (showActivityLog = !showActivityLog)}
-											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											class="w-full py-2 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
 											aria-expanded={showActivityLog}
 										>
 											<div class="flex items-center gap-2">
@@ -1000,7 +992,7 @@
 											/>
 										</button>
 										{#if showActivityLog}
-											<div class="pb-3">
+											<div class="pb-3" transition:slide={slideMotion()}>
 												<EntityActivityLog
 													entityType="goal"
 													entityId={goalId}

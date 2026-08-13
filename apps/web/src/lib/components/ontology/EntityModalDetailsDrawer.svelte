@@ -8,6 +8,7 @@
 		panelLabel: string;
 		children: Snippet;
 		mobileDetailsFirst?: boolean;
+		showDesktopHeader?: boolean;
 		class?: string;
 	}
 
@@ -15,6 +16,7 @@
 		panelLabel,
 		children,
 		mobileDetailsFirst = false,
+		showDesktopHeader = false,
 		class: className = ''
 	}: Props = $props();
 
@@ -74,11 +76,28 @@
 	aria-label={panelLabel}
 	aria-hidden={hiddenFromDesktopFlow}
 	inert={hiddenFromDesktopFlow}
-	class="min-w-0 lg:absolute lg:inset-y-0 lg:right-0 lg:z-10 lg:w-80 lg:overflow-y-auto lg:pl-4 xl:w-96 transition-[transform,visibility] duration-[280ms] ease-out motion-reduce:transition-none {mobileDetailsFirst
+	class="min-w-0 lg:absolute lg:inset-y-0 lg:right-0 lg:z-10 lg:w-80 xl:w-96 transition-[transform,visibility] duration-[280ms] ease-out motion-reduce:transition-none {mobileDetailsFirst
 		? 'order-1 lg:order-none'
-		: ''} {open
-		? 'lg:visible lg:translate-x-0'
-		: 'lg:invisible lg:translate-x-full'} {className}"
+		: ''} {open ? 'lg:visible lg:translate-x-0' : 'lg:invisible lg:translate-x-full'}"
 >
-	{@render children()}
+	<!-- Bound the sticky desktop rail to the standard modal's 85dvh content viewport after its
+		 compact header, footer, and body padding. max-h-full protects shorter modal grids. -->
+	<div
+		class="min-w-0 lg:sticky lg:top-0 lg:flex lg:h-[calc(85dvh-10.125rem)] lg:max-h-full lg:min-h-0 lg:flex-col lg:overflow-hidden"
+	>
+		{#if showDesktopHeader}
+			<div
+				class="ml-4 hidden shrink-0 border-b border-border/70 bg-muted/95 px-3 py-2 tx tx-strip tx-weak lg:block"
+			>
+				<p class="micro-label text-foreground">{panelLabel.toUpperCase()}</p>
+			</div>
+		{/if}
+
+		<div
+			id={`${panelId}-content`}
+			class="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:py-2 lg:pl-4 lg:[scrollbar-gutter:stable] {className}"
+		>
+			{@render children()}
+		</div>
+	</div>
 </aside>
