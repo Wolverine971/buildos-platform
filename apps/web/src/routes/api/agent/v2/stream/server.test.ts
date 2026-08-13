@@ -9,8 +9,12 @@ import {
 	AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1,
 	AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1,
 	AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1,
+	AGENTIC_CHAT_SUPERVISOR_QUESTION_FIXTURE_V1,
+	AGENTIC_CHAT_SUPERVISOR_QUESTION_GOLDEN_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1,
+	AGENTIC_CHAT_TIMEOUT_FIXTURE_V1,
+	AGENTIC_CHAT_TIMEOUT_GOLDEN_V1,
 	createAgenticChatLegacyParityCoverageTrackerV1,
 	normalizeAgenticChatParityRunV1
 } from '@buildos/agentic-chat-runtime';
@@ -2199,6 +2203,84 @@ describe('/api/agent/v2/stream', () => {
 			});
 			const evaluation = parityCoverage.evaluate('provider_error', run);
 			expect(run).toEqual(AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1);
+			expect(evaluation.matchesContract).toBe(true);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('captures the Phase 4 deterministic provider-timeout legacy golden', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date(AGENTIC_CHAT_TIMEOUT_FIXTURE_V1.clockIso));
+		try {
+			mocks.resolveSession.mockResolvedValueOnce({
+				session: {
+					id: AGENTIC_CHAT_TIMEOUT_FIXTURE_V1.request.sessionId,
+					summary: null,
+					agent_metadata: {}
+				}
+			});
+			mocks.streamFastChat.mockRejectedValueOnce(
+				new Error('Provider execution deadline exceeded')
+			);
+			const supabase = createStreamingSupabase();
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: AGENTIC_CHAT_TIMEOUT_FIXTURE_V1.request.message,
+						context_type: AGENTIC_CHAT_TIMEOUT_FIXTURE_V1.request.contextType,
+						stream_run_id: 'phase-4-timeout-legacy-stream',
+						client_turn_id: 'phase-4-timeout-legacy-client'
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+			const events = parseSseEvents(await response.text());
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			const userMessage = supabase.insertedRows.chat_messages?.[0] ?? {};
+			const terminalTurn = [...(supabase.updatedRows.chat_turn_runs ?? [])]
+				.reverse()
+				.find((row) => row.status === 'failed');
+			const doneEvent = [...events].reverse().find((event) => event.type === 'done');
+			const run = normalizeAgenticChatParityRunV1({
+				events: events as never,
+				messages: [{ role: userMessage.role, content: userMessage.content }],
+				toolExecutions: (supabase.insertedRows.chat_tool_executions ?? []).map((row) => ({
+					tool_name: row.tool_name,
+					status: row.status
+				})),
+				checkpoints: (supabase.insertedRows.chat_turn_checkpoints ?? []).map((row) => ({
+					checkpoint_type: row.checkpoint_type,
+					status: row.status
+				})),
+				outcome: {
+					status: terminalTurn?.status,
+					finished_reason: terminalTurn?.finished_reason,
+					assistant_message_linked: Boolean(terminalTurn?.assistant_message_id),
+					total_tokens: doneEvent?.usage?.total_tokens ?? null
+				},
+				metadata: {
+					admission: {
+						status: supabase.insertedRows.chat_turn_runs?.[0]?.status,
+						context_type: supabase.insertedRows.chat_turn_runs?.[0]?.context_type,
+						user_message_linked:
+							supabase.insertedRows.chat_turn_runs?.[0]?.user_message_id ===
+							userMessage.id
+					},
+					lifecycle_events: (supabase.insertedRows.chat_turn_events ?? []).map(
+						(event) => ({ phase: event.phase, event_type: event.event_type })
+					),
+					prompt_snapshot_count: (supabase.insertedRows.chat_prompt_snapshots ?? [])
+						.length
+				}
+			});
+			const evaluation = parityCoverage.evaluate('timeout', run);
+			expect(run).toEqual(AGENTIC_CHAT_TIMEOUT_GOLDEN_V1);
 			expect(evaluation.matchesContract).toBe(true);
 		} finally {
 			vi.useRealTimers();
@@ -4648,6 +4730,144 @@ describe('/api/agent/v2/stream', () => {
 				triggers: { repeated_failures: 1 }
 			})
 		);
+	});
+
+	it('matches the Phase 4 clarification and supervisor-checkpoint legacy golden', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date(AGENTIC_CHAT_SUPERVISOR_QUESTION_FIXTURE_V1.clockIso));
+		try {
+			const fixture = AGENTIC_CHAT_SUPERVISOR_QUESTION_FIXTURE_V1;
+			mocks.resolveSession.mockResolvedValueOnce({
+				session: {
+					id: fixture.request.sessionId,
+					summary: null,
+					agent_metadata: {}
+				}
+			});
+			mocks.persistMessage.mockImplementationOnce(
+				async ({ role, content, metadata }: Row) => ({
+					id: `${role}-message-supervisor-1`,
+					role,
+					content,
+					metadata,
+					created_at: fixture.clockIso
+				})
+			);
+			mocks.streamFastChat.mockImplementationOnce(
+				async ({ onDelta, onSupervisorDecision }: Row) => {
+					await onSupervisorDecision({
+						decision: fixture.decision,
+						digest: fixture.checkpoint.digest,
+						at: fixture.clockIso,
+						source: 'monitor',
+						trigger: 'repeated_failures'
+					});
+					await onDelta(fixture.response.question);
+					return {
+						assistantText: fixture.response.question,
+						finalAssistantText: fixture.response.question,
+						usage: {
+							prompt_tokens: fixture.response.usage.promptTokens,
+							completion_tokens: fixture.response.usage.completionTokens,
+							total_tokens: fixture.response.usage.totalTokens
+						},
+						finishedReason: fixture.response.finishedReason,
+						toolExecutions: [],
+						llmPasses: [],
+						toolRounds: 0,
+						toolCallsMade: 0,
+						supervisorDecisions: [
+							{
+								decision: fixture.decision,
+								digest: fixture.checkpoint.digest,
+								at: fixture.clockIso,
+								source: 'monitor',
+								trigger: 'repeated_failures'
+							}
+						],
+						finalizationGuard: undefined,
+						cancelled: false,
+						peakPromptTokens: undefined,
+						finalContextUsage: undefined
+					};
+				}
+			);
+
+			const supabase = createStreamingSupabase();
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/stream', {
+					method: 'POST',
+					body: JSON.stringify({
+						message: fixture.request.message,
+						context_type: fixture.request.contextType,
+						stream_run_id: 'phase-4-supervisor-stream',
+						client_turn_id: 'phase-4-supervisor-client'
+					})
+				}),
+				locals: {
+					supabase,
+					safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+				},
+				fetch: vi.fn()
+			} as any);
+			expect(response.status).toBe(200);
+			const events = parseSseEvents(await response.text());
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			const userMessage = supabase.insertedRows.chat_messages?.[0] ?? {};
+			const assistantCall = mocks.persistMessage.mock.calls.find(
+				([input]) => input.role === 'assistant'
+			)?.[0];
+			const terminalTurn = [...(supabase.updatedRows.chat_turn_runs ?? [])]
+				.reverse()
+				.find((row) => row.status === 'completed');
+			const doneEvent = [...events].reverse().find((event) => event.type === 'done');
+			const run = normalizeAgenticChatParityRunV1({
+				events: events as never,
+				messages: [
+					{ role: userMessage.role, content: userMessage.content },
+					{
+						role: assistantCall?.role,
+						content: assistantCall?.content,
+						metadata: {
+							completion_status: assistantCall?.metadata?.completion_status,
+							answer_source: assistantCall?.metadata?.answer_source,
+							supervisor_question_checkpoint: {
+								failed: assistantCall?.metadata?.supervisor_question_checkpoint
+									?.failed
+							}
+						}
+					}
+				],
+				toolExecutions: [],
+				checkpoints: (supabase.insertedRows.chat_turn_checkpoints ?? []).map((row) => ({
+					checkpoint_type: row.checkpoint_type,
+					status: row.status,
+					reason: row.reason,
+					question: row.question,
+					digest: row.digest,
+					resume_context: row.resume_context,
+					supervisor_decision: row.supervisor_decision
+				})),
+				outcome: {
+					status: terminalTurn?.status,
+					finished_reason: terminalTurn?.finished_reason,
+					assistant_message_linked: Boolean(terminalTurn?.assistant_message_id),
+					tool_round_count: terminalTurn?.tool_round_count,
+					tool_call_count: terminalTurn?.tool_call_count,
+					total_tokens: doneEvent?.usage?.total_tokens ?? null
+				},
+				metadata: {
+					checkpoint_count: (supabase.insertedRows.chat_turn_checkpoints ?? []).length
+				}
+			});
+			expect(run).toEqual(AGENTIC_CHAT_SUPERVISOR_QUESTION_GOLDEN_V1);
+			for (const scenarioClass of ['clarification', 'supervisor_checkpoint'] as const) {
+				expect(parityCoverage.evaluate(scenarioClass, run).matchesContract).toBe(true);
+			}
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('injects an active supervisor checkpoint into the next turn and marks it resumed', async () => {

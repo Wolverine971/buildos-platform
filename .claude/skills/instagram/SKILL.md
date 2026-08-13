@@ -1,7 +1,6 @@
 ---
 name: instagram
 description: Browser automation for Instagram web. Use when navigating feed, stories, reels, profiles, hashtags, comments, likes, DMs, or running Instagram warmup tasks. Web covers everything needed for engagement; story creation and some Reels features are mobile-only.
-path: .claude/skills/instagram/SKILL.md
 ---
 
 # Instagram

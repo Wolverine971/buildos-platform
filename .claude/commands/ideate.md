@@ -1,5 +1,3 @@
-<!-- .claude/commands/ideate.md -->
-
 # Ideate — Scene-to-Asset Workshop for BuildOS (direct, don't prompt)
 
 You take a **scene, idea, or post draft** the user hands you — a half-formed picture, a feeling, or a finished LinkedIn/X/IG post that needs a visual — and **workshop it** into a finished, production-ready **BuildOS marketing asset plan**. The job is to get the **idea, emotional truth, and story** right _before_ a single asset is specified. The output is a per-scene **asset-plan doc**: a locked concept + emotional truth + the directed asset(s) + a copy-pasteable production brief with variation/kill guidance.

@@ -67,6 +67,52 @@ export type AgenticChatProviderStepV1 =
 			downstreamIdempotencySupported: boolean;
 	  }
 	| {
+			/**
+			 * A supervisor-rejected call that must cross the same ledger/publication
+			 * fence as other tool results without invoking a tool adapter.
+			 */
+			type: 'pre_execution_tool_failure';
+			callTransitionId: string;
+			resultTransitionId: string;
+			providerToolCallId: string;
+			toolName: string;
+			arguments: JsonObject;
+			failure: {
+				kind: 'supervisor_block';
+				error: string;
+				toolCategory: string | null;
+				modelPayload: JsonObject;
+			};
+	  }
+	| {
+			/** Best-effort supervisor evaluation telemetry; never a public stream event. */
+			type: 'supervisor_evaluation';
+			transitionId: string;
+			reason: string;
+			sequence: number;
+			executionGeneration: number;
+	  }
+	| {
+			/**
+			 * A deterministic supervisor clarification terminal. The executor must
+			 * durably persist this exact checkpoint before publishing the waiting
+			 * state or assistant question.
+			 */
+			type: 'supervisor_question';
+			transitionId: string;
+			sequence: number;
+			executionGeneration: number;
+			reason: string;
+			question: string;
+			checkpoint: {
+				digest: JsonObject;
+				resumeContext: JsonObject;
+				supervisorDecision: JsonObject;
+			};
+			finishedReason: 'supervisor_question';
+			usage: AgenticChatProviderUsageV1 | null;
+	  }
+	| {
 			type: 'finish';
 			finishedReason: string;
 			usage: AgenticChatProviderUsageV1 | null;
@@ -90,8 +136,10 @@ export const AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION = 'agentic_chat_worker_
 export type AgenticChatPreparedPromptSnapshotV1 = {
 	snapshotVersion: typeof AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION;
 	modelMessages: JsonObject[];
+	toolDefinitions: JsonObject[];
 	systemPromptSha256: string;
 	messagesSha256: string;
+	toolsSha256: string;
 	systemPromptChars: number;
 	messageChars: number;
 	approxPromptTokens: number;
@@ -156,9 +204,22 @@ export type AgenticChatProviderMutationSynthesisInputV1 = {
 	};
 };
 
+export type AgenticChatProviderFailedToolSynthesisInputV1 = {
+	providerToolCallId: string;
+	toolName: string;
+	arguments: JsonObject;
+	failure: {
+		kind: 'supervisor_block' | 'known_execution_failure';
+		error: string;
+		toolCategory: string | null;
+		modelPayload: JsonObject;
+	};
+};
+
 export type AgenticChatProviderToolSynthesisInputV1 =
 	| AgenticChatProviderReadSynthesisInputV1
-	| AgenticChatProviderMutationSynthesisInputV1;
+	| AgenticChatProviderMutationSynthesisInputV1
+	| AgenticChatProviderFailedToolSynthesisInputV1;
 
 export type AgenticChatProviderToolRoundInputV1 = {
 	/** 1-based provider round about to start; the initial `stream()` pass is round 1. */

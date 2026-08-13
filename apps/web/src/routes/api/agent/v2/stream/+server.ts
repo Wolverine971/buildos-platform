@@ -265,7 +265,7 @@ import {
 	loadLatestActiveCheckpoint,
 	markCheckpointResumed,
 	markCheckpointResuming,
-	recoverStaleResumingCheckpoints,
+	recoverCheckpointResumeLifecycle,
 	restoreCheckpointToActive,
 	type ChatTurnCheckpoint
 } from '$lib/services/agentic-chat-v2/turn-supervisor/checkpoint-service.server';
@@ -1768,10 +1768,11 @@ export const POST: RequestHandler = async ({
 					const staleBefore = new Date(
 						Date.now() - FASTCHAT_SUPERVISOR_RESUMING_STALE_AFTER_MS
 					).toISOString();
-					await recoverStaleResumingCheckpoints({
+					await recoverCheckpointResumeLifecycle({
 						supabase: internalSupabase,
 						userId,
-						staleBefore
+						staleBefore,
+						recoveredAt: new Date().toISOString()
 					});
 				} catch (error) {
 					logFastChatError({

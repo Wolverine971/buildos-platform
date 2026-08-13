@@ -8,7 +8,7 @@ export const KIMI_EXPERIMENT_MODELS = [KIMI_EXPERIMENT_MODEL, KIMI_CODING_MODEL]
 export const KIMI_K3_MODEL = 'moonshotai/kimi-k3' as const;
 export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
 export const GPT_56_LUNA_MODEL = 'openai/gpt-5.6-luna' as const;
-export const GROK_45_MODEL = 'x-ai/grok-4.5' as const;
+export const GROK_46_MODEL = 'x-ai/grok-4.6' as const;
 export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
 export const DEEPSEEK_V4_PRO_MODEL = 'deepseek/deepseek-v4-pro' as const;
 export const MINIMAX_M3_MODEL = 'minimax/minimax-m3' as const;
@@ -20,7 +20,7 @@ export const NEX_N2_MINI_MODEL = 'nex-agi/nex-n2-mini' as const;
 export const POOLSIDE_LAGUNA_XS_21_MODEL = 'poolside/laguna-xs-2.1' as const;
 export const GEMINI_31_FLASH_LITE_MODEL = 'google/gemini-3.1-flash-lite' as const;
 export const ACTIVE_EXPERIMENT_MODEL = GPT_56_LUNA_MODEL;
-export const ACTIVE_EXPERIMENT_MODELS = [GPT_56_LUNA_MODEL, GROK_45_MODEL] as const;
+export const ACTIVE_EXPERIMENT_MODELS = [GPT_56_LUNA_MODEL, GROK_46_MODEL] as const;
 export const MAXIMUM_WORK_MODEL = KIMI_K3_MODEL;
 // Universal last-resort fallback used only when lane resolution yields no models.
 // Deliberately decoupled from ACTIVE_EXPERIMENT_MODEL so rotating the current
@@ -372,18 +372,20 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
-	[GROK_45_MODEL]: {
-		id: GROK_45_MODEL,
-		name: 'Grok 4.5',
+	[GROK_46_MODEL]: {
+		id: GROK_46_MODEL,
+		name: 'Grok 4.6',
 		speed: 3.8,
 		smartness: 5,
-		creativity: 4.8,
+		creativity: 4.9,
 		cost: 2,
 		outputCost: 6,
 		provider: 'x-ai',
 		bestFor: [
 			'premium-reasoning',
+			'long-running-agents',
 			'agentic-coding',
+			'visual-application-development',
 			'complex-synthesis',
 			'structured-output',
 			'tool-calling',
@@ -391,7 +393,11 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			'500k-context',
 			'quality-profile'
 		],
-		limitations: ['higher-cost-than-defaults', 'premium-evaluation-lane'],
+		limitations: [
+			'higher-cost-than-defaults',
+			'premium-evaluation-lane',
+			'launch-telemetry-limited'
+		],
 		capabilities: {
 			jsonMode: true,
 			structuredOutputs: true,
@@ -505,7 +511,7 @@ export function modelSupportsCapability(
 	return MODEL_CATALOG[modelId]?.capabilities?.[capability] === true;
 }
 
-// Reviewed 2026-07-17 against OpenRouter model pages/API and production
+// Reviewed 2026-08-13 against OpenRouter model pages/API and production
 // telemetry. Keep models without response_format out of JSON routes, keep
 // premium candidates out of automatic lanes, and reserve K3 for an explicit
 // maximum profile.
@@ -558,13 +564,13 @@ const JSON_POWERFUL_ROUTE = [
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_45_MODEL,
+	GROK_46_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL
 ] as const;
 const JSON_MAXIMUM_ROUTE = [
 	KIMI_K3_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_45_MODEL,
+	GROK_46_MODEL,
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
@@ -580,21 +586,21 @@ const TEXT_QUALITY_ROUTE = [
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_45_MODEL,
+	GROK_46_MODEL,
 	MINIMAX_M3_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL
 ] as const;
 const TEXT_CREATIVE_ROUTE = [
 	GLM_52_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_45_MODEL,
+	GROK_46_MODEL,
 	MINIMAX_M3_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 const TEXT_MAXIMUM_ROUTE = [
 	KIMI_K3_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_45_MODEL,
+	GROK_46_MODEL,
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;

@@ -13,6 +13,9 @@ export type LiteTurnResult = {
 	toolCalls: ChatToolCall[];
 	finishedReason?: string;
 	model?: string;
+	provider?: string;
+	usage?: Record<string, unknown>;
+	durationMs: number;
 };
 
 /**
@@ -119,15 +122,20 @@ export async function runLiteTurn(params: {
 	userMessage: string;
 	contextType: ChatContextType;
 	tools?: ChatToolDefinition[];
+	/** Exact model pin for opt-in live model evaluations. */
+	model?: string;
 }): Promise<LiteTurnResult> {
 	const llm = new SmartLLMService();
 	const tools = params.tools ?? getDefaultToolsForContextType(params.contextType);
 	const hasTools = tools.length > 0;
+	const startedAt = performance.now();
 
 	let assistantText = '';
 	const toolCalls: ChatToolCall[] = [];
 	let finishedReason: string | undefined;
 	let model: string | undefined;
+	let provider: string | undefined;
+	let usage: Record<string, unknown> | undefined;
 
 	for await (const event of llm.streamText({
 		messages: [
@@ -140,6 +148,7 @@ export async function runLiteTurn(params: {
 		userId: 'llm-test-suite',
 		sessionId: randomUUID(),
 		profile: 'balanced',
+		model: params.model,
 		maxTokens: 2048,
 		operationType: 'llm_test_suite',
 		contextType: params.contextType
@@ -151,10 +160,20 @@ export async function runLiteTurn(params: {
 		} else if (event.type === 'done') {
 			finishedReason = event.finished_reason;
 			model = event.model;
+			provider = event.provider;
+			usage = event.usage as Record<string, unknown> | undefined;
 		} else if (event.type === 'error') {
 			throw new Error(event.error || 'LLM stream error');
 		}
 	}
 
-	return { assistantText, toolCalls, finishedReason, model };
+	return {
+		assistantText,
+		toolCalls,
+		finishedReason,
+		model,
+		provider,
+		usage,
+		durationMs: Math.round(performance.now() - startedAt)
+	};
 }

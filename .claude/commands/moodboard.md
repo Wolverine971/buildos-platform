@@ -1,5 +1,3 @@
-<!-- .claude/commands/moodboard.md -->
-
 # Moodboard — BuildOS Per-Persona/Campaign Art-Direction & Proof Pipeline
 
 You lock the **visual vision** for a persona or campaign _before_ anyone builds a single asset. The output is a **moodboard doc**: a locked Inkprint vision (palette · texture logic · tone) + a ranked set of **workflow moments** (what this maker actually _lives_) + a directed **asset list** (card / before-after / storyboard per moment, with composition, accent, and the real receipt each one rides on) + finished production briefs. This doc then feeds a carousel/campaign and `/ideate` (and any other BuildOS asset build) so the visuals stop being flat, generic, or off-brand.

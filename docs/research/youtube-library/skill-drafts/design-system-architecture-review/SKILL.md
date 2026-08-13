@@ -1,4 +1,5 @@
 ---
+skill_id: design-system-architecture-review
 name: design-system-architecture-review
 description: Source-backed child skill for reviewing design-system hierarchy, tokens, governance, releases, intake, adoption, migration, and product outcomes.
 path: docs/research/youtube-library/skill-drafts/design-system-architecture-review/SKILL.md

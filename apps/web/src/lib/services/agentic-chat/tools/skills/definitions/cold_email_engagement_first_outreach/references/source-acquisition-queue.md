@@ -65,7 +65,7 @@ Already acquired / analyze next:
 - FTC CAN-SPAM guide.
 - ICO PECR/electronic mail marketing guidance.
 - CRTC CASL FAQ.
-- Provider requirement matrix: `apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_deliverability_readiness/references/provider-requirement-matrix.md`.
+- Provider requirement matrix: Knowledge block of `apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_deliverability_readiness/SKILL.md`.
 
 Output:
 

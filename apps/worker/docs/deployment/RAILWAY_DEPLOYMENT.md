@@ -71,6 +71,8 @@ PRIVATE_BUILDOS_WEBHOOK_SECRET=
 
 # Agentic Chat Phase 3 (required together when enabled)
 AGENTIC_CHAT_WORKER_ENABLED=false
+AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED=false
+PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE=false
 AGENTIC_CHAT_INTERNAL_USER_IDS=<canonical UUID list>
 AGENTIC_CHAT_OPENROUTER_MODEL=<provider/model>
 CHAT_CONCURRENCY=1
@@ -88,6 +90,12 @@ Notes:
   key, exact `CHAT_CONCURRENCY=1`, and chat drain at or below 22 seconds are all
   startup requirements. Set the dependent values in the same Railway update as
   the flag so an intermediate deployment cannot fail health checks.
+- `AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED` is independently default-off. Keep it
+  false until the P4 checkpoint/clarification slices and their live gate are complete.
+- `PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE` must match the web service. When
+  enabled, the worker re-evaluates `evaluate_user_consumption_gate` after an
+  execution starts and before terminal finalization; failure is reported but
+  never strands terminal turn truth.
 
 ## Optional Variables
 

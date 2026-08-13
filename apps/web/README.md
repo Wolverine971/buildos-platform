@@ -30,31 +30,31 @@ pnpm install
 pnpm dev --filter=web     # http://localhost:5173
 ```
 
-Requires Node ≥ 20.19 and pnpm ≥ 9. Copy the root `.env.example` to `.env` first.
+Requires Node ≥ 20.19 and pnpm ≥ 11 (the root package pins `pnpm@11.7.0`). Copy the root `.env.example` to `.env` first.
 
 ## Directory Layout
 
 ```
 apps/web/src/
 ├── routes/
-│   ├── api/                # ~49 API route groups (REST + SSE)
+│   ├── api/                # ~50 API route groups (REST + SSE)
 │   ├── (public)/           # Public marketing / content pages
 │   └── ...                 # App routes
 ├── lib/
 │   ├── components/         # UI components, organized by feature
+│   │   └── ui/             # Design-system primitives ($ui alias)
 │   ├── services/           # Client + shared services (brain dump, chat, calendar, ...)
 │   ├── server/             # Server-only: billing, braindump processing, OCR, ontology...
 │   ├── stores/             # Svelte stores
 │   ├── config/             # Feature configuration
 │   ├── supabase/           # Supabase clients (server + admin)
 │   ├── types/              # App-specific types
-│   ├── ui/                 # Design-system primitives
 │   └── utils/              # Helpers incl. ApiResponse
 ├── hooks.server.ts         # Auth, consumption billing guard, server timing
 └── app.html
 ```
 
-Path aliases: `$components` → `src/lib/components`, `$ui` → `src/lib/ui`, `$utils` → `src/lib/utils`.
+Path aliases: `$components` → `src/lib/components`, `$ui` → `src/lib/components/ui`, `$utils` → `src/lib/utils`.
 
 ## Key Conventions
 
@@ -113,8 +113,8 @@ Current system is **Inkprint** — see [`docs/technical/components/INKPRINT_DESI
 ```bash
 # Dev
 pnpm dev              # Vite dev server
-pnpm dev:fast         # Skip type checking
 pnpm dev:split        # Dev + svelte-check in parallel (recommended)
+pnpm dev:clean        # Clear .svelte-kit + Vite cache, then dev
 
 # Checks
 pnpm check            # svelte-kit sync + svelte-check
@@ -126,9 +126,6 @@ pnpm test:llm         # LLM prompt tests (real API — costs money)
 # Build
 pnpm build
 pnpm build:analyze    # Bundle analyzer
-
-# Pre-push
-pnpm pre-push         # check + test + lint + build:prod
 
 # Generation
 pnpm gen:web          # blog context + sitemap + streamlined project context
@@ -144,12 +141,7 @@ Set in env (see root `.env.example`):
 
 ## Deployment (Vercel)
 
-- `vercel.json` defines the build command (`turbo build --force --filter=@buildos/web...`), security headers, long-cache static assets, and cron jobs:
-    - `/api/cron/dunning` — daily 09:00 UTC
-    - `/api/cron/trial-reminders` — daily 10:00 UTC
-    - `/api/cron/billing-ops-monitoring` — daily 11:00 UTC
-    - `/api/cron/welcome-sequence` — hourly
-    - `/api/cron/security-events-retention` — daily 04:30 UTC
+- `vercel.json` defines the build command (`turbo build --filter=@buildos/web...`), security headers, long-cache static assets, and ~10 cron jobs (billing/trial lifecycle, welcome/reactivation sequences, Gmail maintenance, webhook renewal, account deletions, retention cleanup — see `vercel.json` for paths and schedules).
 - Adapter: `@sveltejs/adapter-vercel` with `runtime: 'nodejs22.x'`.
 
 ## Documentation
@@ -163,4 +155,4 @@ Set in env (see root `.env.example`):
 
 ## Contributing
 
-Follow the monorepo workflow. Before pushing: `pnpm pre-push` from the repo root, or `pnpm pre-push` inside `apps/web` for web-only checks. Conventions live in the root [CLAUDE.md](../../CLAUDE.md).
+Follow the monorepo workflow. Before pushing: `pnpm pre-push` from the repo root (add `--filter=@buildos/web` to scope it to web). Conventions live in the root [CLAUDE.md](../../CLAUDE.md).

@@ -34,16 +34,9 @@ describe('agentic chat parity scenario registry', () => {
 		expect(new Set(registered).size).toBe(registered.length);
 	});
 
-	it('names the blocking tasker/51 work package on every blocked scenario', () => {
+	it('has no blocked deterministic scenario classes', () => {
 		const blocked = listBlockedAgenticChatParityScenariosV1();
-		expect(blocked.map((scenario) => scenario.scenarioClass).sort()).toEqual([
-			'clarification',
-			'supervisor_checkpoint',
-			'timeout'
-		]);
-		for (const scenario of blocked) {
-			expect(scenario.blockedOn).toMatch(/tasker\/51 P[0-9]/);
-		}
+		expect(blocked).toEqual([]);
 	});
 
 	it('anchors every implemented scenario to its golden timing and done events', () => {
@@ -63,6 +56,13 @@ describe('agentic chat parity scenario registry', () => {
 					`/events/${resultIndex}/payload/result/effect_id`,
 					`/events/${resultIndex}/payload/result/replayed`,
 					'/toolExecutions/0/effect_id'
+				]);
+			} else if (scenario.scenarioClass === 'timeout') {
+				expect(scenario.workerDeliberateDivergencePrefixes).toEqual([
+					`/events/${timingIndex}/payload/timing/`,
+					'/outcome/total_tokens',
+					'/metadata/lifecycle_events/3',
+					'/metadata/prompt_snapshot_count'
 				]);
 			} else {
 				expect(scenario.workerDeliberateDivergencePrefixes).toHaveLength(1);
@@ -146,10 +146,10 @@ describe('worker parity evaluation', () => {
 		expect(evaluation.contested.map(({ path }) => path)).toContain('/outcome/status');
 	});
 
-	it('refuses to evaluate a blocked scenario', () => {
-		expect(() => evaluateAgenticChatWorkerParityRunV1('timeout', successGolden())).toThrow(
-			/blocked, not implemented/
-		);
+	it('rejects a different implemented scenario golden', () => {
+		const evaluation = evaluateAgenticChatWorkerParityRunV1('timeout', successGolden());
+		expect(evaluation.matchesContract).toBe(false);
+		expect(evaluation.contested.length).toBeGreaterThan(0);
 	});
 });
 

@@ -94,6 +94,27 @@ import {
 } from './mutationToolCatalog';
 import { AgenticChatUpdateOntoTaskMutationAdapter } from './updateOntoTaskMutationAdapter';
 import { SupabaseAgenticChatLiveVisionResolver } from './liveVision';
+import { AgenticChatWorkerSupervisorBridge } from './workerSupervisor';
+import {
+	type AgenticChatSupervisorCheckpointPortV1,
+	type AgenticChatSupervisorCheckpointRpcClient,
+	SupabaseAgenticChatSupervisorCheckpointAdapter
+} from './supervisorCheckpoint';
+import {
+	type AgenticChatResearchCapturePortV1,
+	type AgenticChatResearchCaptureRpcClient,
+	SupabaseAgenticChatResearchCaptureAdapter
+} from './researchCapture';
+import {
+	type AgenticChatStatedFutureCapturePortV1,
+	type AgenticChatStatedFutureCaptureRpcClient,
+	SupabaseAgenticChatStatedFutureCaptureAdapter
+} from './statedFutureCapture';
+import {
+	type AgenticChatConsumptionBillingPortV1,
+	type AgenticChatConsumptionBillingRpcClient,
+	SupabaseAgenticChatConsumptionBillingAdapter
+} from './consumptionBilling';
 
 export type AgenticChatPhase3Assembly = {
 	consumer: ReturnType<typeof createAgenticChatConsumer>;
@@ -104,6 +125,10 @@ export type AgenticChatPhase3Assembly = {
 	promptSnapshots: AgenticChatPromptSnapshotPortV1;
 	toolExecutions: AgenticChatToolExecutionPortV1;
 	executionObservations: AgenticChatExecutionObservationPortV1;
+	supervisorCheckpoints: AgenticChatSupervisorCheckpointPortV1;
+	researchCapture: AgenticChatResearchCapturePortV1;
+	statedFutureCapture: AgenticChatStatedFutureCapturePortV1;
+	consumptionBilling: AgenticChatConsumptionBillingPortV1 | null;
 	publisher: AgenticChatStreamPublisher;
 	cancellation: AgenticChatCancellationObserver;
 	recovery: AgenticChatStalledRecoverySweep;
@@ -146,6 +171,10 @@ export function createAgenticChatPhase3Assembly(options: {
 	providerConfigured: boolean;
 	/** Separate default-off gate for ephemeral current-turn image resolution. */
 	liveVisionEnabled?: boolean;
+	/** Separate default-off gate for deterministic supervisor decisions. */
+	supervisorEnabled?: boolean;
+	/** Shared default-off gate for terminal consumption-billing re-evaluation. */
+	consumptionBillingEnabled?: boolean;
 	liveVisionFetchImpl?: typeof fetch;
 	internalUserIds: readonly string[];
 	consumerConfig?: Partial<AgenticChatConsumerConfig>;
@@ -161,6 +190,9 @@ export function createAgenticChatPhase3Assembly(options: {
 	mutationAdapterCapabilities?: Partial<AgenticChatProviderMutationCapabilitiesV1>;
 	onPromptSnapshotError?: (error: unknown) => void;
 	onExecutionObservationError?: (error: unknown) => void;
+	onResearchCaptureError?: (error: unknown) => void;
+	onStatedFutureCaptureError?: (error: unknown) => void;
+	onConsumptionBillingError?: (error: unknown) => void;
 }): AgenticChatPhase3Assembly {
 	if (
 		options.cancellationConfig?.consumerConcurrency !== undefined &&
@@ -185,12 +217,25 @@ export function createAgenticChatPhase3Assembly(options: {
 		AgenticChatRecoverySnapshotRpcClient &
 		AgenticChatPromptSnapshotRpcClient &
 		AgenticChatToolExecutionRpcClient &
-		AgenticChatExecutionObservationRpcClient;
+		AgenticChatExecutionObservationRpcClient &
+		AgenticChatSupervisorCheckpointRpcClient &
+		AgenticChatResearchCaptureRpcClient &
+		AgenticChatStatedFutureCaptureRpcClient &
+		AgenticChatConsumptionBillingRpcClient;
 	const control = new SupabaseAgenticChatExecutionControlAdapter(rpcClient);
 	const effectControl = new SupabaseAgenticChatEffectControlAdapter(rpcClient);
 	const promptSnapshots = new SupabaseAgenticChatPromptSnapshotAdapter(rpcClient);
 	const toolExecutions = new SupabaseAgenticChatToolExecutionAdapter(rpcClient);
 	const executionObservations = new SupabaseAgenticChatExecutionObservationAdapter(rpcClient);
+	const supervisorCheckpoints = new SupabaseAgenticChatSupervisorCheckpointAdapter(rpcClient);
+	const researchCapture = new SupabaseAgenticChatResearchCaptureAdapter(rpcClient);
+	const statedFutureCapture = new SupabaseAgenticChatStatedFutureCaptureAdapter(
+		rpcClient,
+		effectControl
+	);
+	const consumptionBilling = options.consumptionBillingEnabled
+		? new SupabaseAgenticChatConsumptionBillingAdapter(rpcClient)
+		: null;
 	const liveVision = options.liveVisionEnabled
 		? new SupabaseAgenticChatLiveVisionResolver({
 				client: options.client,
@@ -220,7 +265,14 @@ export function createAgenticChatPhase3Assembly(options: {
 		concurrency: 1
 	});
 	const provider = new AgenticChatReadOnlyProviderAdapter(
-		{ client: options.providerClient, capacity: providerCapacity, liveVision },
+		{
+			client: options.providerClient,
+			capacity: providerCapacity,
+			liveVision,
+			supervisorFactory: options.supervisorEnabled
+				? (executionInput) => new AgenticChatWorkerSupervisorBridge(executionInput)
+				: undefined
+		},
 		options.providerCooldownMs,
 		options.maxProviderRounds,
 		mutationProviderCapabilities
@@ -331,6 +383,12 @@ export function createAgenticChatPhase3Assembly(options: {
 			onExecutionObservationError:
 				options.onExecutionObservationError ??
 				((error) => console.error('Agentic Chat execution observation failed', error)),
+			onResearchCaptureError:
+				options.onResearchCaptureError ??
+				((error) => console.error('Agentic Chat research capture failed', error)),
+			onStatedFutureCaptureError:
+				options.onStatedFutureCaptureError ??
+				((error) => console.error('Agentic Chat stated-future capture failed', error)),
 			onTerminalControlError: (report) =>
 				console.error(
 					`Agentic Chat terminal control ${report.stage} failed turn=${report.turnRunId} generation=${report.executionGeneration}`,
@@ -338,6 +396,14 @@ export function createAgenticChatPhase3Assembly(options: {
 				),
 			readTool,
 			toolExecutions,
+			supervisorCheckpoints,
+			researchCapture,
+			statedFutureCapture,
+			consumptionBilling: consumptionBilling ?? undefined,
+			onConsumptionBillingError:
+				options.onConsumptionBillingError ??
+				((error) =>
+					console.error('Agentic Chat consumption billing evaluation failed', error)),
 			mutation
 		},
 		{
@@ -396,6 +462,10 @@ export function createAgenticChatPhase3Assembly(options: {
 		promptSnapshots,
 		toolExecutions,
 		executionObservations,
+		supervisorCheckpoints,
+		researchCapture,
+		statedFutureCapture,
+		consumptionBilling,
 		publisher,
 		cancellation,
 		recovery,

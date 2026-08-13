@@ -1,3 +1,4 @@
+// apps/worker/tests/agenticChatMutationSurfacePolicy.test.ts
 import { describe, expect, it } from 'vitest';
 import {
 	AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1,
@@ -8,9 +9,12 @@ import {
 
 describe('Agentic Chat mutation surface policy', () => {
 	it('partitions every signed write into the reviewed or explicitly deferred surface', () => {
-		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.signedToolNames).toHaveLength(38);
+		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.signedToolNames).toHaveLength(39);
 		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames).toHaveLength(20);
-		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.deferredToolNames).toHaveLength(18);
+		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.deferredToolNames).toHaveLength(19);
+		expect(AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1.request_email_account_connection).toBe(
+			'browser_user_action_handoff'
+		);
 		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.deferredToolNames).toEqual(
 			Object.keys(AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1).sort()
 		);

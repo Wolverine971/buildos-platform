@@ -20,6 +20,8 @@ buildos-platform/
 │   ├── smart-llm/            # LLM abstraction (OpenRouter + fallbacks)
 │   ├── supabase-client/      # Shared Supabase client configuration
 │   ├── twilio-service/       # SMS / Twilio integration
+│   ├── agentic-chat-runtime/ # Transport-neutral agentic chat contracts, loop + supervisor
+│   ├── agent-orchestrator/   # Agent-first orchestration core (not yet wired into apps)
 │   └── buildos-mcp-server/   # Local stdio MCP bridge to the remote BuildOS connector
 ├── docs/                     # Cross-cutting docs (architecture, marketing, ops)
 ├── scripts/                  # Type generation, schema extraction, tooling
@@ -128,7 +130,7 @@ Always use `pnpm`. Never `npm` or `yarn`.
 
 ## Deployment
 
-- **Web** → Vercel. Config in `vercel.json`. Cron jobs for dunning, trial reminders, billing ops, welcome sequence, reactivation sequence, and security retention run from Vercel.
+- **Web** → Vercel. Config in `vercel.json`, including ~10 cron jobs (billing/trial lifecycle, welcome/reactivation sequences, Gmail maintenance, webhook renewal, account deletions, retention cleanup — see `vercel.json` for the current list).
 - **Worker** → Railway. Deploys from repository root `/` using `railway.toml` +
   `nixpacks.toml` on Node 22. Healthcheck at `/health`.
 

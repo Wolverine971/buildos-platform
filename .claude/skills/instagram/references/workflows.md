@@ -96,14 +96,28 @@ Before any scan, comment, like, save, or DM action:
    - avatar alt text includes `<handle>'s profile picture`
    - profile link points to `/<handle>/`
    - sidebar/top-right widget text shows the intended handle/name
-3. If the active account is wrong, use one of the known-good switch paths below.
+3. If the active account is wrong, switch via the known-good paths below: try Path C first (default), then Path A, then Path B.
 4. After switching, reload once and repeat the two-signal verification.
 5. If the target handle is not visible in the picker, stop and log `browser_limitation: instagram_account_not_in_picker`; do not proceed on a neighboring account.
 6. If the target handle appears but a protected route redirects to `/accounts/login/`, stop and log `browser_limitation: instagram_session_logged_out`; DJ must refresh that account's login manually.
 
-### Path A: Settings -> Switch accounts (logged-in session)
+### Path C: Top-right Switch button (default)
 
-Use this when Instagram is already logged into a wrong account and the sidebar "Switch" label is collapsed or has a zero-size hit target.
+Fastest known route when Instagram is already logged in as a wrong account. Proven 2026-05-22, reproduced 2026-05-23, and used again 2026-06-23/24/25 — the default switch path.
+
+1. Navigate to `https://www.instagram.com/`. When logged in, the top-right widget shows the active handle/name with a visible **Switch** button next to the account name (observed near coordinates (1291, 70) on 5/22 and (1268, 75) on 5/23 — locate it by the "Switch" label next to the handle, not by fixed coordinates).
+2. Click **Switch**. The Switch accounts modal opens directly — no Settings detour — listing the available handles with a check on the current one.
+3. Click the target handle row. Handles normally render as `div[role="button"]` rows.
+4. Wait for the switch to land — the row click can show a ~2.5s spinner; reload `https://www.instagram.com/` once if the avatar alt has not flipped to the target handle.
+5. Verify the active account from two account signals before acting.
+
+Known 2026-05-22 pattern: logged-in `@9takesdotcom` session showed **Switch** at ~(1291, 70) next to `9takesdotcom` in the top-right widget; clicking it opened the modal (`9takesdotcom` ✓, `djwayne3`, `build.os`, `dj_pew_pew`) and the `djwayne3` row click switched cleanly.
+
+If the top-right widget shows no Switch button, or its hit target is collapsed/zero-size, fall back to Path A.
+
+### Path A: Settings -> Switch accounts (fallback, logged-in session)
+
+Fallback when Instagram is already logged into a wrong account but the top-right/sidebar "Switch" label is missing, collapsed, or has a zero-size hit target.
 
 1. Click the Settings gear in the left sidebar. If the visible text target is collapsed, click the parent link around `svg[aria-label="Settings"]`.
 2. In the popup, click the `div[role="button"]` row labeled **Switch accounts**.
@@ -112,9 +126,9 @@ Use this when Instagram is already logged into a wrong account and the sidebar "
 
 Known 2026-05-21 pattern: logged-in `@9takesdotcom` session switched to `@djwayne3` by Settings gear -> Switch accounts -> `djwayne3` row. The sidebar "Switch" span had `w=0/h=0`, so the Settings path was the reliable route.
 
-### Path B: Login/account picker row (logged-out or relabeled picker)
+### Path B: Login/account picker row (fallback, logged-out or relabeled picker)
 
-When Chrome lands on the logged-out account picker but the target handle is visible, the account can often be restored without the normal Switch Accounts modal:
+Fallback for the logged-out state, where Paths C and A don't apply. When Chrome lands on the logged-out account picker but the target handle is visible, the account can often be restored without the normal Switch Accounts modal:
 
 1. Confirm the target handle is listed in the picker.
 2. Click the text row/span for the target handle, not a nearby blank area.

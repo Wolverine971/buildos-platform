@@ -27,6 +27,7 @@ const FORBIDDEN_ASSISTANT_PATTERNS = [
 	'Communication pattern',
 	'# BuildOS Agentic Chat'
 ];
+const LIVE_TEST_MODEL = process.env.LLM_TEST_MODEL?.trim() || undefined;
 
 function expectCleanAssistantText(text: string): void {
 	for (const pattern of FORBIDDEN_ASSISTANT_PATTERNS) {
@@ -47,7 +48,8 @@ describe('lite prompt live smoke (real LLM calls — costs money)', () => {
 		const result = await runLiteTurn({
 			systemPrompt: envelope.systemPrompt,
 			userMessage: 'Give me a quick rundown of what is on my plate right now.',
-			contextType: 'global'
+			contextType: 'global',
+			model: LIVE_TEST_MODEL
 		});
 
 		// Pass 1 must produce something: prose grounded in the loaded projects,
@@ -81,7 +83,8 @@ describe('lite prompt live smoke (real LLM calls — costs money)', () => {
 			systemPrompt: envelope.systemPrompt,
 			userMessage:
 				'I want to start a rooftop garden consulting side business. Set up the project — first steps are building a pricing sheet and finding my first three clients.',
-			contextType: 'project_create'
+			contextType: 'project_create',
+			model: LIVE_TEST_MODEL
 		});
 
 		const createCall = result.toolCalls.find(
@@ -108,7 +111,8 @@ describe('lite prompt live smoke (real LLM calls — costs money)', () => {
 			systemPrompt: envelope.systemPrompt,
 			userMessage: 'In one or two sentences, what can you help me with here?',
 			contextType: 'global',
-			tools: []
+			tools: [],
+			model: LIVE_TEST_MODEL
 		});
 
 		expect(result.assistantText.trim().length).toBeGreaterThan(0);

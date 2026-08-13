@@ -1,15 +1,7 @@
 <!-- apps/web/src/lib/components/project/ProjectInboxPanel.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		AlertCircle,
-		Check,
-		ClipboardCheck,
-		FileText,
-		Inbox,
-		RefreshCw,
-		Sparkles
-	} from '$lib/icons/lucide';
+	import { AlertCircle, Check, Inbox, RefreshCw, Sparkles } from '$lib/icons/lucide';
 	import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 	import { toastService } from '$lib/stores/toast.store';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -19,6 +11,8 @@
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
 	import InboxFindingControls from '$lib/components/inbox/InboxFindingControls.svelte';
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
+	import InboxReviewDetails from '$lib/components/inbox/InboxReviewDetails.svelte';
+	import { formatInboxAttentionSummary } from '$lib/components/inbox/inbox-presentation';
 	import type {
 		AgentChatResolutionAction,
 		DataMutationSummary
@@ -71,6 +65,8 @@
 
 	type InboxPayload = {
 		items?: InboxItem[];
+		total?: number;
+		heldTotal?: number;
 		repairedCount?: number;
 		backfilledCount?: number;
 	};
@@ -125,6 +121,8 @@
 	let items = $state<InboxItem[]>([]);
 	let latestRun = $state<ProjectLoopRun | null>(null);
 	let loading = $state(true);
+	let totalAvailable = $state(0);
+	let heldTotal = $state(0);
 	let loadError = $state<string | null>(null);
 	let refreshing = $state(false);
 	let triggering = $state(false);
@@ -147,10 +145,10 @@
 		return [
 			{
 				id: 'mark-handled-from-chat',
-				label: activeChatItem && isFinding(activeChatItem) ? 'Address' : 'Mark handled',
+				label: 'Mark handled',
 				title:
 					activeChatItem && isFinding(activeChatItem)
-						? 'Record this finding as addressed after the chat'
+						? 'Mark this finding handled after the discussion'
 						: 'Remove this inbox item after this chat',
 				intent: 'primary',
 				disabled: Boolean(resolvingChatAction),
@@ -176,20 +174,6 @@
 	const notifiedRunIds = new Set<string>();
 
 	const runActive = $derived(isRunActive(latestRun));
-
-	type TierMeta = { label: string; cls: string };
-	const tierMeta: Record<number, TierMeta> = {
-		1: { label: 'Low risk', cls: 'border-accent/30 bg-accent/10 text-accent' },
-		2: { label: 'Review', cls: 'border-warning/30 bg-warning/10 text-warning' },
-		3: {
-			label: 'High risk',
-			cls: 'border-destructive/30 bg-destructive/10 text-destructive'
-		}
-	};
-	const fallbackTier: TierMeta = {
-		label: 'Review',
-		cls: 'border-border bg-muted text-muted-foreground'
-	};
 
 	const kindLabel: Record<string, string> = {
 		doc_org: 'Organize',
@@ -218,7 +202,7 @@
 			items: [] as InboxItem[]
 		};
 		const audits = { key: 'audits', label: 'Complete audits', items: [] as InboxItem[] };
-		const drift = { key: 'drift', label: 'Project drift', items: [] as InboxItem[] };
+		const drift = { key: 'drift', label: 'Needs attention', items: [] as InboxItem[] };
 		const other = { key: 'other', label: 'Other proposals', items: [] as InboxItem[] };
 		const groups = [audits, safe, decision, drift, other];
 		for (const item of items) {
@@ -267,11 +251,6 @@
 			pollTimer = null;
 		}
 		pollingRunId = null;
-	}
-
-	function tierFor(value: number | null | undefined): TierMeta {
-		if (!value) return fallbackTier;
-		return tierMeta[value] ?? fallbackTier;
 	}
 
 	function asRecord(value: unknown): Record<string, unknown> | null {
@@ -343,16 +322,8 @@
 
 	function reviewRunLabel(run: ProjectLoopRunContext | null): string | null {
 		if (!run) return null;
-		const trigger =
-			run.trigger_reason === 'manual'
-				? 'Manual review'
-				: run.trigger_reason === 'burst'
-					? 'Burst review'
-					: run.trigger_reason === 'end_of_day'
-						? 'Scheduled review'
-						: 'Project review';
 		const date = formatShortDate(run.finished_at ?? run.created_at);
-		return date ? `${trigger} · ${date}` : trigger;
+		return date ? `Reviewed ${date}` : null;
 	}
 
 	function auditGroupLabel(audit: ProjectAuditContext): string {
@@ -374,10 +345,26 @@
 		return 'Project review';
 	}
 
-	function sourceIcon(item: InboxItem): typeof Inbox {
-		if (item.source_type === 'agent_run') return Sparkles;
-		if (item.source_type === 'project_suggestion') return ClipboardCheck;
-		return FileText;
+	function riskDetail(value: number | null | undefined): string | null {
+		if (value === 1) return 'Low risk';
+		if (value === 3) return 'High risk';
+		return null;
+	}
+
+	function reviewMetadata(
+		item: InboxItem,
+		payload: ProjectSuggestion | null,
+		run: ProjectLoopRunContext | null,
+		audit: ProjectAuditContext | null
+	): string[] {
+		return [
+			sourceLabel(item),
+			payload?.kind ? (kindLabel[payload.kind] ?? payload.kind) : null,
+			reviewRunLabel(run),
+			riskDetail(item.risk_tier ?? payload?.risk_tier),
+			auditRecommendationLabel(audit),
+			audit?.delivery_confidence ? `${audit.delivery_confidence} confidence` : null
+		].filter((value): value is string => Boolean(value));
 	}
 
 	function changeCount(item: InboxItem): number {
@@ -431,7 +418,10 @@
 	function removeItemsFromInbox(itemIds: Iterable<string>) {
 		const ids = new Set(itemIds);
 		if (ids.size === 0) return;
+		const previousCount = items.length;
 		items = items.filter((item) => !ids.has(item.id));
+		const removedCount = previousCount - items.length;
+		totalAvailable = Math.max(items.length, totalAvailable - removedCount);
 		selectedIds = new Set([...selectedIds].filter((id) => !ids.has(id)));
 		decisionNoteById = Object.fromEntries(
 			Object.entries(decisionNoteById).filter(([id]) => !ids.has(id))
@@ -621,6 +611,8 @@
 
 			const data = (inboxJson.data ?? {}) as InboxPayload;
 			items = data.items ?? [];
+			totalAvailable = Math.max(items.length, data.total ?? items.length);
+			heldTotal = Math.max(0, data.heldTotal ?? 0);
 			loadError = null;
 			onCountChange?.(items.length);
 			latestRun = loopResult?.latestRun ?? null;
@@ -738,13 +730,13 @@
 				action === 'approve'
 					? 'Review item applied.'
 					: action === 'address'
-						? 'Response recorded.'
+						? 'Finding marked handled.'
 						: 'Review item dismissed.';
 			let title =
 				action === 'approve'
 					? 'Review item applied'
 					: action === 'address'
-						? 'Finding addressed'
+						? 'Finding marked handled'
 						: 'Review item dismissed';
 			let toastKind: 'success' | 'info' | 'error' = 'success';
 			if (json.data?.superseded) {
@@ -898,17 +890,21 @@
 <div class="min-w-0 space-y-0 overflow-x-hidden">
 	<div class="flex flex-wrap items-center justify-between gap-2 px-2 py-2 sm:px-3">
 		<div class="min-w-0">
-			<p class="text-xs font-semibold text-foreground">
+			<p class="text-xs font-semibold text-foreground" aria-live="polite">
 				{#if loading}
 					Loading inbox
-				{:else if items.length}
-					{items.length} pending item{items.length === 1 ? '' : 's'}
+				{:else if totalAvailable || heldTotal}
+					{formatInboxAttentionSummary({
+						loaded: items.length,
+						total: totalAvailable,
+						held: heldTotal
+					})}
 				{:else if runActive || pollingRunId}
 					Review running
 				{:else if latestRun?.status === 'failed'}
 					Project review needs attention
 				{:else}
-					No pending review items
+					Nothing needs attention
 				{/if}
 			</p>
 			{#if latestRun?.summary && !items.length && !runActive && !pollingRunId}
@@ -1048,10 +1044,17 @@
 	{:else if items.length === 0}
 		<div class="border-t border-border px-3 py-6 text-center">
 			<Inbox class="mx-auto h-5 w-5 text-muted-foreground" />
-			<p class="mt-2 text-xs font-medium text-foreground">Inbox is clear</p>
-			<p class="mt-1 text-2xs text-muted-foreground">
-				New review items will appear here when an agent proposes project changes.
-			</p>
+			{#if heldTotal > 0}
+				<p class="mt-2 text-xs font-medium text-foreground">Nothing needs attention now</p>
+				<p class="mt-1 text-2xs text-muted-foreground">
+					{heldTotal} review item{heldTotal === 1 ? ' is' : 's are'} held for later.
+				</p>
+			{:else}
+				<p class="mt-2 text-xs font-medium text-foreground">Inbox is clear</p>
+				<p class="mt-1 text-2xs text-muted-foreground">
+					New review items will appear here when an agent proposes project changes.
+				</p>
+			{/if}
 		</div>
 	{:else}
 		<div class="min-w-0 overflow-x-hidden border-t border-border">
@@ -1064,13 +1067,10 @@
 					{@const agent = agentRun(item)}
 					{@const reviewRun = projectLoopRunContext(item)}
 					{@const audit = projectAuditContext(item)}
-					{@const reviewRunText = reviewRunLabel(reviewRun)}
 					{@const project = itemProject(item)}
 					{@const changeSet = agentChangeSet(item)}
 					{@const failedChangeSet = agentFailedChangeSet(item)}
-					{@const auditRecommendations = auditRecommendationLabel(audit)}
-					{@const tier = tierFor(item.risk_tier ?? payload?.risk_tier)}
-					{@const Icon = sourceIcon(item)}
+					{@const metadata = reviewMetadata(item, payload, reviewRun, audit)}
 					{@const evidence = arrayValue<ProjectSuggestionEvidenceRef>(
 						payload?.evidence_refs
 					).slice(0, 3)}
@@ -1080,7 +1080,7 @@
 							class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 						>
 							<div class="min-w-0 flex-1">
-								<InboxProjectBadge {project} />
+								<InboxProjectBadge {project} variant="compact" />
 								<div class="flex flex-wrap items-center gap-2">
 									{#if canBatchApprove(item)}
 										<label
@@ -1102,88 +1102,31 @@
 											>
 										</label>
 									{/if}
-									<span
-										class="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-2xs font-semibold {tier.cls}"
-									>
-										<Icon class="h-3 w-3" />
-										{tier.label}
-									</span>
-									<span class="micro-label font-medium text-muted-foreground">
-										{sourceLabel(item)}
-									</span>
-									{#if payload?.kind}
-										<span class="micro-label font-medium text-muted-foreground">
-											{kindLabel[payload.kind] ?? payload.kind}
-										</span>
-									{/if}
-									{#if reviewRunText}
-										<span
-											class="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
-										>
-											{reviewRunText}
-										</span>
-									{/if}
-								</div>
-								<p
-									class="mt-1.5 line-clamp-2 break-words text-sm font-semibold text-foreground"
-								>
-									{item.title || payload?.title || agent?.label || 'Review item'}
-								</p>
-								{#if payload?.why_now}
 									<p
-										class="mt-1 line-clamp-3 break-words text-xs text-foreground/80"
+										class="min-w-0 flex-1 break-words text-sm font-semibold text-foreground"
 									>
+										{item.title ||
+											payload?.title ||
+											agent?.label ||
+											'Review item'}
+									</p>
+								</div>
+								{#if payload?.why_now}
+									<p class="mt-1 break-words text-xs text-foreground/80">
 										<span class="font-semibold">Why now:</span>
 										{payload.why_now}
 									</p>
 								{:else if item.summary || payload?.rationale || agent?.goal}
-									<p
-										class="mt-1 line-clamp-3 break-words text-xs text-muted-foreground"
-									>
+									<p class="mt-1 break-words text-xs text-muted-foreground">
 										{item.summary ?? payload?.rationale ?? agent?.goal}
 									</p>
 								{/if}
-								{#if payload?.preview?.summary}
-									<p
-										class="mt-1.5 line-clamp-3 break-words border-l-2 border-accent/30 pl-2 text-xs text-muted-foreground"
-									>
-										<span class="font-semibold text-foreground/80"
-											>Preview:</span
-										>
-										{payload.preview.summary}
-									</p>
-								{/if}
-								{#if item.source_type === 'project_audit' && audit}
-									<div class="mt-2 flex flex-wrap gap-1.5">
-										{#if auditRecommendations}
-											<span
-												class="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
-											>
-												{auditRecommendations}
-											</span>
-										{/if}
-										{#if audit.delivery_confidence}
-											<span
-												class="rounded-md border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs text-accent"
-											>
-												{audit.delivery_confidence} confidence
-											</span>
-										{/if}
-									</div>
-								{/if}
-								{#if evidence.length}
-									<div class="mt-2 flex flex-wrap gap-1.5">
-										{#each evidence as ref, index (`${ref.entity_type}-${ref.entity_id ?? ref.title}-${index}`)}
-											<span
-												class="inline-block max-w-full truncate rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground sm:max-w-[18rem]"
-												title={evidenceLabel(ref)}
-											>
-												{evidenceLabel(ref)}
-											</span>
-										{/each}
-									</div>
-								{/if}
-								{#if item.source_type === 'project_suggestion' && (changes || payload?.preview)}
+								<InboxReviewDetails
+									{metadata}
+									summary={payload?.preview?.summary ?? null}
+									evidence={evidence.map(evidenceLabel)}
+								/>
+								{#if item.source_type === 'project_suggestion' && changes > 0}
 									<InboxChangeDetails
 										operations={payload?.operations ?? []}
 										preview={payload?.preview ?? null}
@@ -1198,10 +1141,11 @@
 										<ChangeSetReview
 											runId={item.source_ref_id}
 											{changeSet}
-											acceptLabel="Accept"
+											acceptLabel="Approve"
 											dismissLabel="Dismiss"
-											approveAllLabel="Accept"
+											approveAllLabel="Approve"
 											rejectAllLabel="Dismiss"
+											chatLabel="Discuss"
 											openingChat={isOpeningChat(item)}
 											snoozing={pendingIds.has(item.id)}
 											onApplied={() => handleAgentRunApplied(item)}

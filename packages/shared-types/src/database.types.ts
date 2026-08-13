@@ -3623,6 +3623,7 @@ export type Database = {
           checkpoint_type: string
           created_at: string
           digest: Json
+          execution_generation: number | null
           expires_at: string | null
           id: string
           question: string | null
@@ -3634,6 +3635,8 @@ export type Database = {
           session_id: string
           status: string
           supervisor_decision: Json
+          supervisor_sequence: number | null
+          supervisor_transition_id: string | null
           turn_run_id: string
           updated_at: string
           user_id: string
@@ -3642,6 +3645,7 @@ export type Database = {
           checkpoint_type: string
           created_at?: string
           digest?: Json
+          execution_generation?: number | null
           expires_at?: string | null
           id?: string
           question?: string | null
@@ -3653,6 +3657,8 @@ export type Database = {
           session_id: string
           status?: string
           supervisor_decision?: Json
+          supervisor_sequence?: number | null
+          supervisor_transition_id?: string | null
           turn_run_id: string
           updated_at?: string
           user_id: string
@@ -3661,6 +3667,7 @@ export type Database = {
           checkpoint_type?: string
           created_at?: string
           digest?: Json
+          execution_generation?: number | null
           expires_at?: string | null
           id?: string
           question?: string | null
@@ -3672,6 +3679,8 @@ export type Database = {
           session_id?: string
           status?: string
           supervisor_decision?: Json
+          supervisor_sequence?: number | null
+          supervisor_transition_id?: string | null
           turn_run_id?: string
           updated_at?: string
           user_id?: string
@@ -17285,9 +17294,21 @@ export type Database = {
         }
         Returns: Json
       }
+      agentic_chat_domain_reference_map_v1_is_valid: {
+        Args: {
+          p_map: Json
+        }
+        Returns: Json
+      }
       agentic_chat_epoch_ms: {
         Args: {
           ts: string
+        }
+        Returns: Json
+      }
+      agentic_chat_expected_write_tool_names_v1: {
+        Args: {
+          p_intent: Json
         }
         Returns: Json
       }
@@ -17305,11 +17326,72 @@ export type Database = {
         }
         Returns: Json
       }
+      agentic_chat_jsonb_array_of_objects_v1_is_valid: {
+        Args: {
+          p_array: Json
+          p_limit: number
+        }
+        Returns: Json
+      }
+      agentic_chat_merge_domain_gap_v1: {
+        Args: {
+          p_candidate: Json
+          p_observed_at: string
+          p_state: Json
+        }
+        Returns: Json
+      }
+      agentic_chat_merge_domain_ids_v1: {
+        Args: {
+          p_left: Json
+          p_limit?: number
+          p_right: Json
+        }
+        Returns: Json
+      }
+      agentic_chat_merge_used_domain_signal_v1: {
+        Args: {
+          p_observed_at: string
+          p_signal: Json
+          p_state: Json
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       agentic_chat_normalize_frozen_attachment_v1: {
         Args: {
           p_attachment: Json
           p_display_order: number
           p_include_resolution: boolean
+        }
+        Returns: Json
+      }
+      agentic_chat_research_log_entries: {
+        Args: {
+          p_content: string
+        }
+        Returns: Json
+      }
+      agentic_chat_research_result_urls: {
+        Args: {
+          p_depth?: number
+          p_value: Json
+        }
+        Returns: Json
+      }
+      apply_agentic_chat_research_capture: {
+        Args: {
+          p_canonical_argument_hash: string
+          p_description: string
+          p_effect_id: string
+          p_execution_generation: number
+          p_processing_token: string
+          p_project_id: string
+          p_queue_job_id: string
+          p_rendered_entry: string
+          p_stream_run_id: string
+          p_turn_run_id: string
+          p_user_id: string
         }
         Returns: Json
       }
@@ -18930,6 +19012,26 @@ export type Database = {
           status: string
         }[]
       }
+      load_agentic_chat_research_capture_evidence: {
+        Args: {
+          p_execution_generation: number
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      load_agentic_chat_stated_future_evidence: {
+        Args: {
+          p_execution_generation: number
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       load_fastchat_context: {
         Args: {
           p_context_type: string
@@ -19256,6 +19358,25 @@ export type Database = {
         }
         Returns: Json
       }
+      persist_agentic_chat_prompt_snapshot_v2: {
+        Args: {
+          p_approx_prompt_tokens: number
+          p_execution_generation: number
+          p_message_chars: number
+          p_messages_sha256: string
+          p_model_messages: Json
+          p_processing_token: string
+          p_prompt_snapshot_id: string
+          p_queue_job_id: string
+          p_system_prompt_chars: number
+          p_system_prompt_sha256: string
+          p_tool_definitions: Json
+          p_tools_sha256: string
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       persist_agentic_chat_read_tool_execution: {
         Args: {
           p_affected_entities: Json
@@ -19291,6 +19412,24 @@ export type Database = {
           p_queue_job_id: string
           p_transition_id: string
           p_turn_run_id: string
+        }
+        Returns: Json
+      }
+      persist_agentic_chat_supervisor_question_checkpoint: {
+        Args: {
+          p_checkpoint_id: string
+          p_digest: Json
+          p_execution_generation: number
+          p_processing_token: string
+          p_question: string
+          p_queue_job_id: string
+          p_reason: string
+          p_resume_context: Json
+          p_sequence: number
+          p_supervisor_decision: Json
+          p_supervisor_transition_id: string
+          p_turn_run_id: string
+          p_user_id: string
         }
         Returns: Json
       }
@@ -19482,6 +19621,14 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      recover_agentic_chat_resume_checkpoints: {
+        Args: {
+          p_recovered_at: string
+          p_stale_before: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       recover_agentic_chat_turn: {
         Args: {

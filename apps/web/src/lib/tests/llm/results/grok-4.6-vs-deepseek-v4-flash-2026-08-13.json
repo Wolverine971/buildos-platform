@@ -1,0 +1,48 @@
+{
+	"run_date": "2026-08-13",
+	"scenario": "single-highest-leverage-workspace-action",
+	"request": "Across my workspace, decide the single highest-leverage next action for today. Explain why in no more than 120 words, grounded only in the loaded project context. Do not invent deadlines or facts.",
+	"candidate": {
+		"side": "B",
+		"requested_model": "x-ai/grok-4.6",
+		"actual_model": "x-ai/grok-4.6",
+		"text": "**Ship the Launch Alpha beta build.**\n\nThat is the only product-shipping next step in the loaded workspace. Launch Alpha is active and already names “Ship the beta build” as its next step; today’s only recorded change is an update to “Finish onboarding flow” on that same project, so momentum is already there. Newsletter Relaunch is also active, but its next step is only drafting issue #1’s outline. Nothing overdue or due soon is loaded, so the highest leverage is completing the in-motion launch work rather than starting the newsletter outline.",
+		"word_count": 90,
+		"duration_ms": 14093,
+		"prompt_tokens": 3083,
+		"completion_tokens": 941,
+		"reasoning_tokens": 826,
+		"total_tokens": 4024,
+		"cost_usd": 0.01162
+	},
+	"baseline": {
+		"side": "A",
+		"requested_model": "deepseek/deepseek-v4-flash",
+		"actual_model": "deepseek/deepseek-v4-flash",
+		"text": "Based on the loaded context, the highest-leverage action is to **ship the beta build for Launch Alpha**. The project has a task \"Finish onboarding flow\" that was updated today, indicating active progress. Shipping the beta unblocks user testing and real feedback, which is the fastest way to de-risk the project. The Newsletter Relaunch is still in the outline phase, making it less urgent. Pushing the beta across the finish line today turns active work into a tangible milestone, creating momentum and a concrete artifact to iterate on.",
+		"word_count": 87,
+		"duration_ms": 2102,
+		"prompt_tokens": 2829,
+		"completion_tokens": 108,
+		"reasoning_tokens": 0,
+		"total_tokens": 2937,
+		"cost_usd": 0.00027405
+	},
+	"judge": {
+		"requested_model": "z-ai/glm-5.2",
+		"actual_model": "z-ai/glm-5.2",
+		"zdr_required": true,
+		"winner": "B",
+		"candidate_outcome": "win",
+		"scores": {
+			"A": 3,
+			"B": 4
+		},
+		"reasoning": "Both pick shipping the Launch Alpha beta build, but B grounds the rationale more explicitly in what is actually loaded: it notes Launch Alpha names this as its next step, the only recorded change today is the onboarding-flow update, and no overdue/due-soon items exist in the loaded context. This makes the prioritization clearer and avoids implying urgency not supported by the supplied context. B also correctly contrasts the Newsletter Relaunch next step. Both are concise, but B's explanation is tighter and more defensible against the 'no invented facts' constraint.",
+		"cost_usd": 0.00094775
+	},
+	"comparison": {
+		"candidate_cost_multiple": 42.401,
+		"candidate_latency_multiple": 6.705
+	}
+}

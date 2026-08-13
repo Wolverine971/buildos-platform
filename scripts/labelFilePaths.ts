@@ -329,7 +329,13 @@ function processChangedFiles(
 		}
 		// Honor the same directory exclusions the full scan uses.
 		const relative = getRelativePath(fullPath, rootDir);
-		if (relative.split('/').some((segment) => EXCLUDED_DIRS.includes(segment))) {
+		const segments = relative.split('/');
+		if (segments.some((segment) => EXCLUDED_DIRS.includes(segment))) {
+			continue;
+		}
+		// The full scan skips dot-directories via shouldProcessDirectory; changed-mode must too,
+		// or files in .claude/.codex skill dirs get path labels their frontmatter rules forbid.
+		if (segments.slice(0, -1).some((segment) => segment.startsWith('.'))) {
 			continue;
 		}
 

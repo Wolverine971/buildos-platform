@@ -8,7 +8,7 @@ import {
 	createStableAgenticChatToolExecutionIdV1,
 	type AgenticChatMutationToolExecutionPersistInputV1,
 	type AgenticChatToolExecutionPersistInputV1,
-	type AgenticChatToolValidationFailurePersistInputV1
+	type AgenticChatToolFailurePersistInputV1
 } from '../src/workers/agentic-chat/toolExecution';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
@@ -42,7 +42,7 @@ const input: AgenticChatToolExecutionPersistInputV1 = {
 	}
 };
 
-const validationFailureInput: AgenticChatToolValidationFailurePersistInputV1 = {
+const validationFailureInput: AgenticChatToolFailurePersistInputV1 = {
 	turnRunId: TURN_RUN_ID,
 	userId: USER_ID,
 	queueJobId: QUEUE_JOB_ID,
@@ -133,9 +133,7 @@ describe('Agentic Chat read-tool execution ledger', () => {
 	it('persists a pre-execution validation failure through its fenced RPC', async () => {
 		const { adapter, rpc } = adapterFor(receipt());
 
-		await expect(
-			adapter.persistValidationFailure(validationFailureInput)
-		).resolves.toBeUndefined();
+		await expect(adapter.persistFailure(validationFailureInput)).resolves.toBeUndefined();
 		expect(rpc).toHaveBeenCalledWith('persist_agentic_chat_tool_validation_failure', {
 			p_turn_run_id: TURN_RUN_ID,
 			p_user_id: USER_ID,

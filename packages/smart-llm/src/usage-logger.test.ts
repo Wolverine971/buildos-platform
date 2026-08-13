@@ -185,4 +185,74 @@ describe('LLMUsageLogger', () => {
 			openrouter_byok: true
 		});
 	});
+
+	it('uses a stable caller id for replay-safe usage accounting', async () => {
+		const upsert = vi.fn(async () => ({ error: null }));
+		const insert = vi.fn(async () => ({ error: null }));
+		const logger = new LLMUsageLogger({
+			supabase: {
+				from: vi.fn(() => ({ insert, upsert }))
+			} as any,
+			failureMode: 'throw'
+		});
+		const params = {
+			id: '22222222-2222-5222-8222-222222222222',
+			userId: '11111111-1111-4111-8111-111111111111',
+			operationType: 'agentic_chat_worker_stream',
+			modelRequested: 'provider/model',
+			modelUsed: 'provider/model',
+			promptTokens: 10,
+			completionTokens: 2,
+			totalTokens: 12,
+			inputCost: 0.0001,
+			outputCost: 0.0002,
+			totalCost: 0.0003,
+			responseTimeMs: 100,
+			requestStartedAt: new Date('2026-08-13T12:00:00.000Z'),
+			requestCompletedAt: new Date('2026-08-13T12:00:00.100Z'),
+			status: 'success' as const
+		};
+
+		await logger.logUsageToDatabase(params);
+		await logger.logUsageToDatabase(params);
+
+		expect(insert).not.toHaveBeenCalled();
+		expect(upsert).toHaveBeenCalledTimes(2);
+		expect(upsert).toHaveBeenCalledWith(
+			expect.objectContaining({ id: params.id, total_tokens: 12 }),
+			{ onConflict: 'id', ignoreDuplicates: true }
+		);
+	});
+
+	it('can make database failure observable for terminally ordered worker accounting', async () => {
+		const logger = new LLMUsageLogger({
+			supabase: {
+				from: vi.fn(() => ({
+					insert: vi.fn(async () => ({
+						error: { code: '57014', message: 'usage insert unavailable' }
+					}))
+				}))
+			} as any,
+			failureMode: 'throw'
+		});
+
+		await expect(
+			logger.logUsageToDatabase({
+				userId: '11111111-1111-4111-8111-111111111111',
+				operationType: 'agentic_chat_worker_stream',
+				modelRequested: 'provider/model',
+				modelUsed: 'provider/model',
+				promptTokens: 10,
+				completionTokens: 2,
+				totalTokens: 12,
+				inputCost: 0,
+				outputCost: 0,
+				totalCost: 0,
+				responseTimeMs: 100,
+				requestStartedAt: new Date('2026-08-13T12:00:00.000Z'),
+				requestCompletedAt: new Date('2026-08-13T12:00:00.100Z'),
+				status: 'success'
+			})
+		).rejects.toThrow('usage insert unavailable');
+	});
 });

@@ -1,5 +1,10 @@
 // apps/worker/src/workers/agentic-chat/openRouterReadOnlyClient.ts
-import { buildOpenRouterChatCompletionBody, normalizeStreamingContent } from '@buildos/smart-llm';
+import { createHash } from 'node:crypto';
+import {
+	buildOpenRouterChatCompletionBody,
+	normalizeStreamingContent,
+	resolveModelPricingProfile
+} from '@buildos/smart-llm';
 import type { UsageLogger } from '@buildos/smart-llm';
 import {
 	type JsonObject,
@@ -27,6 +32,7 @@ const DEFAULT_MAX_TOKENS = 2_000;
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_SSE_BUFFER_BYTES = 256 * 1024;
 const PROVIDER_TELEMETRY_TIMEOUT_MS = 5_000;
+const USAGE_LOG_IDENTITY_VERSION = 'agentic_chat_provider_usage_v1';
 
 export type AgenticChatOpenRouterProviderRoutingV1 = {
 	allow_fallbacks?: boolean;
@@ -51,6 +57,7 @@ export type AgenticChatOpenAiCompatibleRouteV1 = {
 };
 
 export type AgenticChatProviderUsageObservationV1 = {
+	usageLogId: string;
 	status: 'success' | 'failure' | 'aborted';
 	requestStartedAtMs: number;
 	observedAtMs: number;
@@ -62,6 +69,7 @@ export type AgenticChatProviderUsageObservationV1 = {
 	contextType: string;
 	entityId: string | null;
 	projectId: string | null;
+	logicalProviderRound: number;
 	attemptedRouteIds: string[];
 	routeId: string | null;
 	modelRequested: string | null;
@@ -71,8 +79,17 @@ export type AgenticChatProviderUsageObservationV1 = {
 	promptTokens: number;
 	completionTokens: number;
 	totalTokens: number;
+	reasoningTokens?: number;
+	cachedPromptTokens?: number;
+	cacheWriteTokens?: number;
+	cacheStatus?: string;
 	estimated: boolean;
 	providerCost: number | null;
+	providerInputCost: number;
+	providerOutputCost: number;
+	costSource: 'provider_reported' | 'catalog_estimate' | 'unknown';
+	providerByok?: boolean;
+	providerUpstreamInferenceCost?: number;
 	retryable: boolean;
 	error: string | null;
 };
@@ -111,7 +128,15 @@ type ProviderUsage = {
 	promptTokens: number;
 	completionTokens: number;
 	totalTokens: number;
+	reasoningTokens: number;
+	cachedPromptTokens: number;
+	cacheWriteTokens: number;
+	cacheStatus: string;
 	cost: number | null;
+	byok: boolean | null;
+	upstreamInferenceCost: number | null;
+	upstreamPromptCost: number | null;
+	upstreamCompletionCost: number | null;
 };
 
 class AgenticChatProviderNetworkError extends Error {
@@ -232,8 +257,24 @@ export class AgenticChatOpenRouterReadOnlyClient
 			const promptTokens = exactUsage?.promptTokens ?? estimateTokens(inputChars);
 			const completionTokens =
 				exactUsage?.completionTokens ?? estimateTokens(state.completionChars);
+			const routeId = active?.route.id ?? lastAttemptedRoute?.id ?? 'none';
+			const modelRequested = active?.route.model ?? lastAttemptedRoute?.model ?? null;
+			const modelUsed = state.modelUsed ?? modelRequested;
+			const costs = resolveProviderUsageCosts({
+				usage: exactUsage,
+				modelRequested,
+				modelUsed,
+				promptTokens,
+				completionTokens
+			});
 			await this.observeUsage(
 				{
+					usageLogId: createStableAgenticChatProviderUsageLogIdV1({
+						turnRunId: input.turnRunId,
+						executionGeneration: input.executionGeneration,
+						logicalProviderRound: input.logicalProviderRound,
+						routeId
+					}),
 					status,
 					requestStartedAtMs,
 					observedAtMs: Date.now(),
@@ -245,18 +286,38 @@ export class AgenticChatOpenRouterReadOnlyClient
 					contextType: input.contextType,
 					entityId: input.entityId,
 					projectId: input.projectId,
+					logicalProviderRound: input.logicalProviderRound,
 					attemptedRouteIds: [...attemptedRouteIds],
-					routeId: active?.route.id ?? lastAttemptedRoute?.id ?? null,
-					modelRequested: active?.route.model ?? lastAttemptedRoute?.model ?? null,
-					modelUsed:
-						state.modelUsed ?? active?.route.model ?? lastAttemptedRoute?.model ?? null,
+					routeId: routeId === 'none' ? null : routeId,
+					modelRequested,
+					modelUsed,
 					provider: state.provider ?? active?.route.id ?? lastAttemptedRoute?.id ?? null,
 					requestId: state.requestId ?? active?.requestId ?? null,
 					promptTokens,
 					completionTokens,
 					totalTokens: exactUsage?.totalTokens ?? promptTokens + completionTokens,
+					...(exactUsage
+						? {
+								reasoningTokens: exactUsage.reasoningTokens,
+								cachedPromptTokens: exactUsage.cachedPromptTokens,
+								cacheWriteTokens: exactUsage.cacheWriteTokens,
+								cacheStatus: exactUsage.cacheStatus,
+								...(exactUsage.byok === null
+									? {}
+									: { providerByok: exactUsage.byok }),
+								...(exactUsage.upstreamInferenceCost === null
+									? {}
+									: {
+											providerUpstreamInferenceCost:
+												exactUsage.upstreamInferenceCost
+										})
+							}
+						: {}),
 					estimated: exactUsage === null,
 					providerCost: exactUsage?.cost ?? null,
+					providerInputCost: costs.inputCost,
+					providerOutputCost: costs.outputCost,
+					costSource: costs.source,
 					retryable,
 					error
 				},
@@ -271,6 +332,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 				const attemptStartedAtMs = Date.now();
 				await this.observeProviderAttempt(input, route, 'provider_attempt_started', {
 					round: input.providerRound,
+					logical_provider_round: input.logicalProviderRound,
 					route_id: route.id,
 					model_requested: route.model
 				});
@@ -284,6 +346,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 					failures.push(failure);
 					await this.observeProviderAttempt(input, route, 'provider_attempt_ended', {
 						round: input.providerRound,
+						logical_provider_round: input.logicalProviderRound,
 						route_id: route.id,
 						model_requested: route.model,
 						status: 'failure',
@@ -361,6 +424,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 			const exactUsage = normalizeProviderUsage(state.rawUsage);
 			await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
 				round: input.providerRound,
+				logical_provider_round: input.logicalProviderRound,
 				route_id: active.route.id,
 				model_requested: active.route.model,
 				model_used: state.modelUsed ?? active.route.model,
@@ -376,7 +440,10 @@ export class AgenticChatOpenRouterReadOnlyClient
 					? {
 							prompt_tokens: exactUsage.promptTokens,
 							completion_tokens: exactUsage.completionTokens,
-							total_tokens: exactUsage.totalTokens
+							total_tokens: exactUsage.totalTokens,
+							reasoning_tokens: exactUsage.reasoningTokens,
+							cached_prompt_tokens: exactUsage.cachedPromptTokens,
+							cache_write_tokens: exactUsage.cacheWriteTokens
 						}
 					: null
 			});
@@ -398,6 +465,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 				const aborted = input.signal.aborted;
 				await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
 					round: input.providerRound,
+					logical_provider_round: input.logicalProviderRound,
 					route_id: active.route.id,
 					model_requested: active.route.model,
 					model_used: state.modelUsed ?? active.route.model,
@@ -596,7 +664,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 							executionGeneration: input.executionGeneration,
 							observationKey: createStableAgenticChatExecutionObservationKeyV1({
 								turnRunId: input.turnRunId,
-								scope: `provider:${input.providerRound}:${route.id}`,
+								scope: `provider:${input.logicalProviderRound}:${input.providerRound}:${route.id}`,
 								boundary: eventType
 							}),
 							phase: 'provider',
@@ -622,6 +690,7 @@ export class AgenticChatLlmUsageObserver implements AgenticChatProviderUsageObse
 
 	observe(observation: AgenticChatProviderUsageObservationV1): Promise<void> {
 		return this.logger.logUsageToDatabase({
+			id: observation.usageLogId,
 			userId: observation.userId,
 			operationType: 'agentic_chat_worker_stream',
 			modelRequested: observation.modelRequested ?? 'unknown',
@@ -630,8 +699,8 @@ export class AgenticChatLlmUsageObserver implements AgenticChatProviderUsageObse
 			promptTokens: observation.promptTokens,
 			completionTokens: observation.completionTokens,
 			totalTokens: observation.totalTokens,
-			inputCost: 0,
-			outputCost: 0,
+			inputCost: observation.providerInputCost,
+			outputCost: observation.providerOutputCost,
 			totalCost: observation.providerCost ?? 0,
 			responseTimeMs: Math.max(0, observation.observedAtMs - observation.requestStartedAtMs),
 			requestStartedAt: new Date(observation.requestStartedAtMs),
@@ -646,12 +715,20 @@ export class AgenticChatLlmUsageObserver implements AgenticChatProviderUsageObse
 			clientTurnId: observation.clientTurnId,
 			openrouterRequestId: observation.requestId ?? undefined,
 			openrouterUsageCost: observation.providerCost ?? undefined,
+			openrouterCacheStatus: observation.cacheStatus,
+			openrouterByok: observation.providerByok,
+			openrouterUpstreamInferenceCost: observation.providerUpstreamInferenceCost,
+			reasoningTokens: observation.reasoningTokens,
+			cachedPromptTokens: observation.cachedPromptTokens,
+			cacheWriteTokens: observation.cacheWriteTokens,
 			metadata: {
 				contextType: observation.contextType,
 				entityId: observation.entityId,
 				routeId: observation.routeId,
+				logicalProviderRound: observation.logicalProviderRound,
 				attemptedRouteIds: observation.attemptedRouteIds,
 				estimatedUsage: observation.estimated,
+				costSource: observation.costSource,
 				retryable: observation.retryable,
 				providerStatus: observation.status
 			}
@@ -768,6 +845,18 @@ function normalizeProviderUsage(value: unknown): ProviderUsage | null {
 	const promptTokens = usage.prompt_tokens ?? usage.promptTokens;
 	const completionTokens = usage.completion_tokens ?? usage.completionTokens;
 	const totalTokens = usage.total_tokens ?? usage.totalTokens;
+	const promptTokenDetails = optionalRecord(
+		usage.prompt_tokens_details ?? usage.promptTokensDetails,
+		'provider prompt-token details'
+	);
+	const completionTokenDetails = optionalRecord(
+		usage.completion_tokens_details ?? usage.completionTokensDetails,
+		'provider completion-token details'
+	);
+	const costDetails = optionalRecord(
+		usage.cost_details ?? usage.costDetails,
+		'provider cost details'
+	);
 	if (promptTokens === undefined && completionTokens === undefined && totalTokens === undefined) {
 		return null;
 	}
@@ -782,12 +871,152 @@ function normalizeProviderUsage(value: unknown): ProviderUsage | null {
 			false
 		);
 	}
+	const cachedPromptTokens = optionalNonnegativeInteger(
+		promptTokenDetails?.cached_tokens ?? promptTokenDetails?.cachedTokens,
+		'provider cached prompt tokens'
+	);
 	return {
 		promptTokens,
 		completionTokens,
 		totalTokens,
-		cost: finiteNonnegativeNumber(usage.cost) ? usage.cost : null
+		reasoningTokens: optionalNonnegativeInteger(
+			completionTokenDetails?.reasoning_tokens ?? completionTokenDetails?.reasoningTokens,
+			'provider reasoning tokens'
+		),
+		cachedPromptTokens,
+		cacheWriteTokens: optionalNonnegativeInteger(
+			promptTokenDetails?.cache_write_tokens ?? promptTokenDetails?.cacheWriteTokens,
+			'provider cache-write tokens'
+		),
+		cacheStatus: describePromptCacheStatus(promptTokens, cachedPromptTokens),
+		cost: finiteNonnegativeNumber(usage.cost) ? usage.cost : null,
+		byok: optionalBoolean(usage.is_byok ?? usage.isByok, 'provider BYOK flag'),
+		upstreamInferenceCost: optionalNonnegativeNumber(
+			costDetails?.upstream_inference_cost ?? costDetails?.upstreamInferenceCost,
+			'provider upstream inference cost'
+		),
+		upstreamPromptCost: optionalNonnegativeNumber(
+			costDetails?.upstream_inference_prompt_cost ?? costDetails?.upstreamInferencePromptCost,
+			'provider upstream prompt cost'
+		),
+		upstreamCompletionCost: optionalNonnegativeNumber(
+			costDetails?.upstream_inference_completions_cost ??
+				costDetails?.upstreamInferenceCompletionsCost,
+			'provider upstream completion cost'
+		)
 	};
+}
+
+export function createStableAgenticChatProviderUsageLogIdV1(input: {
+	turnRunId: string;
+	executionGeneration: number;
+	logicalProviderRound: number;
+	routeId: string;
+}): string {
+	if (
+		!Number.isSafeInteger(input.executionGeneration) ||
+		input.executionGeneration < 1 ||
+		!Number.isSafeInteger(input.logicalProviderRound) ||
+		input.logicalProviderRound < 1 ||
+		!input.routeId ||
+		input.routeId !== input.routeId.trim()
+	) {
+		throw new Error('Invalid Agentic Chat provider usage identity');
+	}
+	const bytes = createHash('sha256')
+		.update(
+			`${USAGE_LOG_IDENTITY_VERSION}:${input.turnRunId}:${input.executionGeneration}:${input.logicalProviderRound}:${input.routeId}`,
+			'utf8'
+		)
+		.digest()
+		.subarray(0, 16);
+	bytes[6] = (bytes[6]! & 0x0f) | 0x50;
+	bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+	const hex = bytes.toString('hex');
+	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function resolveProviderUsageCosts(input: {
+	usage: ProviderUsage | null;
+	modelRequested: string | null;
+	modelUsed: string | null;
+	promptTokens: number;
+	completionTokens: number;
+}): {
+	inputCost: number;
+	outputCost: number;
+	source: AgenticChatProviderUsageObservationV1['costSource'];
+} {
+	const pricing = resolveModelPricingProfile(input.modelUsed ?? 'unknown', [
+		input.modelRequested ?? 'unknown'
+	])?.profile;
+	const estimatedInputCost = pricing ? (input.promptTokens / 1_000_000) * pricing.cost : 0;
+	const estimatedOutputCost = pricing
+		? (input.completionTokens / 1_000_000) * pricing.outputCost
+		: 0;
+	if (input.usage === null || input.usage.cost === null) {
+		return {
+			inputCost: estimatedInputCost,
+			outputCost: estimatedOutputCost,
+			source: pricing ? 'catalog_estimate' : 'unknown'
+		};
+	}
+	if (input.usage.upstreamPromptCost !== null || input.usage.upstreamCompletionCost !== null) {
+		return {
+			inputCost: input.usage.upstreamPromptCost ?? 0,
+			outputCost: input.usage.upstreamCompletionCost ?? 0,
+			source: 'provider_reported'
+		};
+	}
+	const estimatedTotalCost = estimatedInputCost + estimatedOutputCost;
+	if (estimatedTotalCost > 0) {
+		const scale = input.usage.cost / estimatedTotalCost;
+		return {
+			inputCost: estimatedInputCost * scale,
+			outputCost: estimatedOutputCost * scale,
+			source: 'provider_reported'
+		};
+	}
+	return { inputCost: 0, outputCost: 0, source: 'provider_reported' };
+}
+
+function describePromptCacheStatus(promptTokens: number, cachedPromptTokens: number): string {
+	if (cachedPromptTokens <= 0) return 'no cache';
+	if (promptTokens <= 0) return `cached ${cachedPromptTokens} prompt tokens`;
+	const hitRate = Math.round((cachedPromptTokens / promptTokens) * 1_000) / 10;
+	return `${hitRate}% cache hit`;
+}
+
+function optionalRecord(value: unknown, label: string): Record<string, unknown> | null {
+	if (value === undefined || value === null) return null;
+	if (typeof value !== 'object' || Array.isArray(value)) {
+		throw new AgenticChatProviderNetworkError(`${label} is malformed`, false);
+	}
+	return value as Record<string, unknown>;
+}
+
+function optionalNonnegativeInteger(value: unknown, label: string): number {
+	if (value === undefined || value === null) return 0;
+	if (!nonnegativeInteger(value)) {
+		throw new AgenticChatProviderNetworkError(`${label} is malformed`, false);
+	}
+	return value;
+}
+
+function optionalNonnegativeNumber(value: unknown, label: string): number | null {
+	if (value === undefined || value === null) return null;
+	if (!finiteNonnegativeNumber(value)) {
+		throw new AgenticChatProviderNetworkError(`${label} is malformed`, false);
+	}
+	return value;
+}
+
+function optionalBoolean(value: unknown, label: string): boolean | null {
+	if (value === undefined || value === null) return null;
+	if (typeof value !== 'boolean') {
+		throw new AgenticChatProviderNetworkError(`${label} is malformed`, false);
+	}
+	return value;
 }
 
 function providerFrameError(value: unknown): { message: string; retryable: boolean } {

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	AgenticChatLlmUsageObserver,
 	AgenticChatOpenRouterReadOnlyClient,
+	createStableAgenticChatProviderUsageLogIdV1,
 	type AgenticChatOpenAiCompatibleRouteV1,
 	type AgenticChatProviderUsageObservationV1
 } from '../src/workers/agentic-chat/openRouterReadOnlyClient';
@@ -39,6 +40,7 @@ function input(signal = new AbortController().signal) {
 		processingToken: PROCESSING_TOKEN,
 		executionGeneration: 2,
 		providerRound: 'initial' as const,
+		logicalProviderRound: 1,
 		signal
 	};
 }
@@ -137,6 +139,34 @@ async function collect(
 }
 
 describe('AgenticChatOpenRouterReadOnlyClient', () => {
+	it('pins replay-stable usage identities per logical provider round and route', () => {
+		const first = createStableAgenticChatProviderUsageLogIdV1({
+			turnRunId: TURN_RUN_ID,
+			executionGeneration: 2,
+			logicalProviderRound: 1,
+			routeId: 'openrouter'
+		});
+		expect(first).toMatch(
+			/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+		);
+		expect(
+			createStableAgenticChatProviderUsageLogIdV1({
+				turnRunId: TURN_RUN_ID,
+				executionGeneration: 2,
+				logicalProviderRound: 1,
+				routeId: 'openrouter'
+			})
+		).toBe(first);
+		expect(
+			createStableAgenticChatProviderUsageLogIdV1({
+				turnRunId: TURN_RUN_ID,
+				executionGeneration: 2,
+				logicalProviderRound: 2,
+				routeId: 'openrouter'
+			})
+		).not.toBe(first);
+	});
+
 	it('streams private reasoning separately, sends no tools, and accounts exact provider usage', async () => {
 		const fetchImpl = vi.fn(async () =>
 			sseResponse(
@@ -159,6 +189,17 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 							prompt_tokens: 8,
 							completion_tokens: 2,
 							total_tokens: 10,
+							prompt_tokens_details: {
+								cached_tokens: 3,
+								cache_write_tokens: 1
+							},
+							completion_tokens_details: { reasoning_tokens: 1 },
+							is_byok: true,
+							cost_details: {
+								upstream_inference_cost: 0.0008,
+								upstream_inference_prompt_cost: 0.00025,
+								upstream_inference_completions_cost: 0.00055
+							},
 							cost: 0.001
 						},
 						choices: []
@@ -208,7 +249,9 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 		expect(body).not.toHaveProperty('tools');
 		expect(test.observations).toEqual([
 			expect.objectContaining({
+				usageLogId: expect.stringMatching(/^[0-9a-f-]{36}$/),
 				status: 'success',
+				logicalProviderRound: 1,
 				attemptedRouteIds: ['openrouter'],
 				routeId: 'openrouter',
 				modelRequested: 'provider/primary',
@@ -218,8 +261,17 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 				promptTokens: 8,
 				completionTokens: 2,
 				totalTokens: 10,
+				reasoningTokens: 1,
+				cachedPromptTokens: 3,
+				cacheWriteTokens: 1,
+				cacheStatus: '37.5% cache hit',
 				estimated: false,
 				providerCost: 0.001,
+				providerInputCost: 0.00025,
+				providerOutputCost: 0.00055,
+				costSource: 'provider_reported',
+				providerByok: true,
+				providerUpstreamInferenceCost: 0.0008,
 				error: null
 			})
 		]);
@@ -229,6 +281,7 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 				eventType: 'provider_attempt_started',
 				payload: {
 					round: 'initial',
+					logical_provider_round: 1,
 					route_id: 'openrouter',
 					model_requested: 'provider/primary'
 				}
@@ -238,10 +291,18 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 				eventType: 'provider_attempt_ended',
 				payload: expect.objectContaining({
 					round: 'initial',
+					logical_provider_round: 1,
 					route_id: 'openrouter',
 					status: 'success',
 					finish_reason: 'stop',
-					usage: { prompt_tokens: 8, completion_tokens: 2, total_tokens: 10 }
+					usage: {
+						prompt_tokens: 8,
+						completion_tokens: 2,
+						total_tokens: 10,
+						reasoning_tokens: 1,
+						cached_prompt_tokens: 3,
+						cache_write_tokens: 1
+					}
 				})
 			})
 		]);
@@ -774,11 +835,43 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 		expect(onUsageError).toHaveBeenCalledOnce();
 	});
 
+	it('awaits usage accounting before exposing the provider terminal event', async () => {
+		let releaseUsage!: () => void;
+		const usageSettled = new Promise<void>((resolve) => {
+			releaseUsage = resolve;
+		});
+		const observe = vi.fn(() => usageSettled);
+		const client = new AgenticChatOpenRouterReadOnlyClient(
+			{ usage: { observe } },
+			{
+				routes: [route()],
+				httpReferer: 'https://build-os.com',
+				appName: 'BuildOS',
+				fetchImpl: vi.fn(async () => sseResponse(['[DONE]'])) as unknown as typeof fetch
+			}
+		);
+		const iterator = client.stream(input())[Symbol.asyncIterator]();
+		let terminalExposed = false;
+		const terminal = iterator.next().then((result) => {
+			terminalExposed = true;
+			return result;
+		});
+
+		await vi.waitFor(() => expect(observe).toHaveBeenCalledOnce());
+		expect(terminalExposed).toBe(false);
+		releaseUsage();
+		await expect(terminal).resolves.toEqual({
+			done: false,
+			value: { type: 'done', finishedReason: 'stop', usage: undefined }
+		});
+	});
+
 	it('maps observations into the durable shared usage logger contract', async () => {
 		const logger = { logUsageToDatabase: vi.fn(async () => undefined) };
 		const observer = new AgenticChatLlmUsageObserver(logger);
 
 		await observer.observe({
+			usageLogId: '60000000-0000-5000-8000-000000000006',
 			status: 'failure',
 			requestStartedAtMs: 1_000,
 			observedAtMs: 1_250,
@@ -790,6 +883,7 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			contextType: 'project',
 			entityId: 'project-1',
 			projectId: '40000000-0000-4000-8000-000000000004',
+			logicalProviderRound: 3,
 			attemptedRouteIds: ['openrouter', 'direct'],
 			routeId: 'direct',
 			modelRequested: 'direct/requested',
@@ -799,13 +893,23 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			promptTokens: 10,
 			completionTokens: 4,
 			totalTokens: 14,
+			reasoningTokens: 2,
+			cachedPromptTokens: 5,
+			cacheWriteTokens: 1,
+			cacheStatus: '50% cache hit',
 			estimated: true,
 			providerCost: 0.002,
+			providerInputCost: 0.0007,
+			providerOutputCost: 0.0013,
+			costSource: 'provider_reported',
+			providerByok: true,
+			providerUpstreamInferenceCost: 0.0015,
 			retryable: true,
 			error: 'rate limited'
 		});
 
 		expect(logger.logUsageToDatabase).toHaveBeenCalledWith({
+			id: '60000000-0000-5000-8000-000000000006',
 			userId: USER_ID,
 			operationType: 'agentic_chat_worker_stream',
 			modelRequested: 'direct/requested',
@@ -814,8 +918,8 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			promptTokens: 10,
 			completionTokens: 4,
 			totalTokens: 14,
-			inputCost: 0,
-			outputCost: 0,
+			inputCost: 0.0007,
+			outputCost: 0.0013,
 			totalCost: 0.002,
 			responseTimeMs: 250,
 			requestStartedAt: new Date(1_000),
@@ -830,12 +934,20 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			clientTurnId: 'client-turn-1',
 			openrouterRequestId: 'request-1',
 			openrouterUsageCost: 0.002,
+			openrouterCacheStatus: '50% cache hit',
+			openrouterByok: true,
+			openrouterUpstreamInferenceCost: 0.0015,
+			reasoningTokens: 2,
+			cachedPromptTokens: 5,
+			cacheWriteTokens: 1,
 			metadata: {
 				contextType: 'project',
 				entityId: 'project-1',
 				routeId: 'direct',
+				logicalProviderRound: 3,
 				attemptedRouteIds: ['openrouter', 'direct'],
 				estimatedUsage: true,
+				costSource: 'provider_reported',
 				retryable: true,
 				providerStatus: 'failure'
 			}

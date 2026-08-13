@@ -7,6 +7,11 @@ export const AGENTIC_CHAT_INPUT_ARTIFACT_VERSION = 'agentic_chat_input_v3' as co
 export const AGENTIC_CHAT_INPUT_ARTIFACT_MAX_BYTES = 2 * 1024 * 1024;
 export const AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES = 256 * 1024;
 export const AGENTIC_CHAT_INPUT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+export const AGENTIC_CHAT_RESUME_CONTEXT_MAX_BYTES = 256 * 1024;
+export const AGENTIC_CHAT_RESUME_MESSAGE_MAX_BYTES = 512 * 1024;
+export const AGENTIC_CHAT_DOMAIN_METADATA_MAX_BYTES = 512 * 1024;
+export const AGENTIC_CHAT_DOMAIN_REFERENCE_MAX_ENTRIES = 256;
+export const AGENTIC_CHAT_DOMAIN_REFERENCE_MAX_DOMAINS = 16;
 export const AGENTIC_CHAT_STREAM_TEXT_MAX_BYTES = 2 * 1024 * 1024;
 export const AGENTIC_CHAT_STREAM_SPILL_THRESHOLD_BYTES = 512 * 1024;
 export const AGENTIC_CHAT_TEXT_BATCH_MAX_BYTES = 512 * 1024;
@@ -83,6 +88,89 @@ export type AgenticChatCurrentTurnInputV1 = {
 	attachments: FrozenChatAttachmentV1[];
 };
 
+export type AgenticChatResumeCheckpointSnapshotV1 = {
+	checkpointId: string;
+	originalTurnRunId: string;
+	checkpointType: 'supervisor_question' | 'supervisor_resume';
+	reason: string;
+	question: string | null;
+	resumeContext: JsonObject;
+	resumeMessage: string;
+	sourceExecutionGeneration: number | null;
+	supervisorTransitionId: string | null;
+	supervisorSequence: number | null;
+};
+
+export type AgenticChatMutationActionV1 =
+	| 'create'
+	| 'update'
+	| 'delete'
+	| 'organize'
+	| 'link'
+	| 'unlink';
+
+export type AgenticChatMutationEntityKindV1 =
+	| 'document'
+	| 'task'
+	| 'project'
+	| 'event'
+	| 'goal'
+	| 'plan'
+	| 'milestone'
+	| 'risk'
+	| 'unknown';
+
+export type AgenticChatMutationOperationV1 = {
+	action: AgenticChatMutationActionV1;
+	entityKind: AgenticChatMutationEntityKindV1;
+};
+
+/**
+ * Admission-frozen semantic intent used for terminal session metadata. The
+ * expected tool list is derived from the same structured operations at
+ * admission and independently re-derived by the terminal database trigger.
+ */
+export type AgenticChatTurnIntentSnapshotV1 = {
+	version: 1;
+	requiresWrite: boolean;
+	action: AgenticChatMutationActionV1 | null;
+	entityKind: AgenticChatMutationEntityKindV1;
+	operations: AgenticChatMutationOperationV1[];
+	source: 'current_message' | 'pending_continuation' | 'none';
+	originalRequestText: string | null;
+	originatingTurnRunId: string | null;
+	clearPending: boolean;
+	expectedWriteToolNames: string[];
+};
+
+/**
+ * Admission-owned base for the terminal domain-state projection. The state is
+ * the exact legacy domain state after this turn's deterministic sensing pass;
+ * reference maps freeze the catalog fallback needed to interpret durable load
+ * results without reloading mutable web registries in the worker/database.
+ */
+export type AgenticChatDomainMetadataSnapshotV1 = {
+	version: 1;
+	sensingApplied: boolean;
+	state: JsonObject;
+	skillDomainIds: Record<string, string[]>;
+	outcomeCardDomainIds: Record<string, string[]>;
+};
+
+export function deriveAgenticChatExpectedWriteToolNamesV1(
+	intent: Pick<
+		AgenticChatTurnIntentSnapshotV1,
+		'requiresWrite' | 'action' | 'entityKind' | 'operations'
+	>
+): string[] {
+	if (!intent.requiresWrite || !intent.action) return [];
+	const operations =
+		intent.operations.length > 0
+			? intent.operations
+			: [{ action: intent.action, entityKind: intent.entityKind }];
+	return Array.from(new Set(operations.flatMap(agenticChatWriteToolNamesForOperationV1)));
+}
+
 /**
  * The hashed semantic command covers only user-authored/user-chosen fields.
  * Client-recomputed state (session id, last-turn context, project focus) is
@@ -130,6 +218,12 @@ type TurnInputArtifactPreparedBaseV1 = {
 	historyState?: AgenticChatHistoryStateV1;
 	/** Current-turn evidence; optional only for retained rolling v2/v3 artifacts. */
 	currentTurn?: AgenticChatCurrentTurnInputV1;
+	/** Admission-claimed supervisor state; execution must never reload its mutable source row. */
+	resumeCheckpoint?: AgenticChatResumeCheckpointSnapshotV1;
+	/** Structured intent for terminal metadata; optional only during rolling deployment. */
+	turnIntent?: AgenticChatTurnIntentSnapshotV1;
+	/** Deterministic domain projection base; optional only during rolling deployment. */
+	domainMetadata?: AgenticChatDomainMetadataSnapshotV1;
 };
 
 export type AgenticChatHistoryStateV1 = {
@@ -186,6 +280,9 @@ export type TurnInputArtifactValidationErrorCodeV1 =
 	| 'invalid_content'
 	| 'invalid_history_state'
 	| 'invalid_current_turn'
+	| 'invalid_resume_checkpoint'
+	| 'invalid_turn_intent'
+	| 'invalid_domain_metadata'
 	| 'invalid_attachments'
 	| 'invalid_hash_format'
 	| 'hash_mismatch'
@@ -899,6 +996,21 @@ export function normalizeAgenticChatText(value: string): string {
 	return value.replace(/\r\n?/g, '\n').normalize('NFC').trim();
 }
 
+export function buildAgenticChatCheckpointResumeSystemMessageV1(input: {
+	question: string | null;
+	resumeContext: JsonObject;
+}): string {
+	const question = input.question?.trim() || null;
+	return [
+		'Continue from the previous supervisor checkpoint.',
+		'Do not re-run completed reads or writes unless the user answer changes the target.',
+		question ? `Supervisor question that paused the previous turn: ${question}` : null,
+		`Checkpoint resume context: ${canonicalizeAgenticChatJson(input.resumeContext)}`
+	]
+		.filter((line): line is string => line !== null)
+		.join('\n');
+}
+
 const AGENTIC_CHAT_LIVE_VISION_DEFER_RE =
 	/\b(?:do\s+not|don't|dont|no\s+need\s+to)\s+(?:analy[sz]e|inspect|look\s+at|read|ocr|process)\b|\b(?:save|store|attach)\s+(?:this|these|it|them)\s+(?:for\s+later|as\s+context)\b/i;
 
@@ -1143,6 +1255,65 @@ export function normalizeTurnInputArtifactContentV1(
 							)
 						}
 					}
+				: {}),
+			...(artifact.prepared.resumeCheckpoint
+				? {
+						resumeCheckpoint: {
+							checkpointId: artifact.prepared.resumeCheckpoint.checkpointId,
+							originalTurnRunId: artifact.prepared.resumeCheckpoint.originalTurnRunId,
+							checkpointType: artifact.prepared.resumeCheckpoint.checkpointType,
+							reason: artifact.prepared.resumeCheckpoint.reason,
+							question: artifact.prepared.resumeCheckpoint.question,
+							resumeContext: cloneCanonicalJson(
+								artifact.prepared.resumeCheckpoint.resumeContext
+							),
+							resumeMessage: artifact.prepared.resumeCheckpoint.resumeMessage,
+							sourceExecutionGeneration:
+								artifact.prepared.resumeCheckpoint.sourceExecutionGeneration,
+							supervisorTransitionId:
+								artifact.prepared.resumeCheckpoint.supervisorTransitionId,
+							supervisorSequence:
+								artifact.prepared.resumeCheckpoint.supervisorSequence
+						}
+					}
+				: {}),
+			...(artifact.prepared.turnIntent
+				? {
+						turnIntent: {
+							version: 1 as const,
+							requiresWrite: artifact.prepared.turnIntent.requiresWrite,
+							action: artifact.prepared.turnIntent.action,
+							entityKind: artifact.prepared.turnIntent.entityKind,
+							operations: artifact.prepared.turnIntent.operations.map(
+								(operation) => ({
+									action: operation.action,
+									entityKind: operation.entityKind
+								})
+							),
+							source: artifact.prepared.turnIntent.source,
+							originalRequestText: artifact.prepared.turnIntent.originalRequestText,
+							originatingTurnRunId: artifact.prepared.turnIntent.originatingTurnRunId,
+							clearPending: artifact.prepared.turnIntent.clearPending,
+							expectedWriteToolNames: [
+								...artifact.prepared.turnIntent.expectedWriteToolNames
+							]
+						}
+					}
+				: {}),
+			...(artifact.prepared.domainMetadata
+				? {
+						domainMetadata: {
+							version: 1 as const,
+							sensingApplied: artifact.prepared.domainMetadata.sensingApplied,
+							state: cloneCanonicalJson(artifact.prepared.domainMetadata.state),
+							skillDomainIds: cloneCanonicalJson(
+								artifact.prepared.domainMetadata.skillDomainIds
+							) as Record<string, string[]>,
+							outcomeCardDomainIds: cloneCanonicalJson(
+								artifact.prepared.domainMetadata.outcomeCardDomainIds
+							) as Record<string, string[]>
+						}
+					}
 				: {})
 		}
 	};
@@ -1266,6 +1437,39 @@ export async function validateTurnInputArtifactV1(
 			ok: false,
 			code: 'invalid_current_turn',
 			detail: 'Artifact current-turn message or attachment evidence is invalid'
+		};
+	}
+	if (
+		artifact.prepared.resumeCheckpoint !== undefined &&
+		(artifact.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION ||
+			!isValidAgenticChatResumeCheckpointSnapshotV1(artifact.prepared.resumeCheckpoint))
+	) {
+		return {
+			ok: false,
+			code: 'invalid_resume_checkpoint',
+			detail: 'Artifact supervisor resume checkpoint is malformed or noncanonical'
+		};
+	}
+	if (
+		artifact.prepared.turnIntent !== undefined &&
+		(artifact.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION ||
+			!isValidAgenticChatTurnIntentSnapshotV1(artifact.prepared.turnIntent))
+	) {
+		return {
+			ok: false,
+			code: 'invalid_turn_intent',
+			detail: 'Artifact turn-intent snapshot is malformed or noncanonical'
+		};
+	}
+	if (
+		artifact.prepared.domainMetadata !== undefined &&
+		(artifact.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION ||
+			!isValidAgenticChatDomainMetadataSnapshotV1(artifact.prepared.domainMetadata))
+	) {
+		return {
+			ok: false,
+			code: 'invalid_domain_metadata',
+			detail: 'Artifact domain metadata snapshot is malformed or noncanonical'
 		};
 	}
 	if (
@@ -1607,6 +1811,289 @@ function isValidCurrentTurnInputV1(value: unknown): value is AgenticChatCurrentT
 	);
 }
 
+function isValidAgenticChatResumeCheckpointSnapshotV1(
+	value: unknown
+): value is AgenticChatResumeCheckpointSnapshotV1 {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+	const snapshot = value as Partial<AgenticChatResumeCheckpointSnapshotV1>;
+	if (
+		!isCanonicalUuid(snapshot.checkpointId) ||
+		!isCanonicalUuid(snapshot.originalTurnRunId) ||
+		(snapshot.checkpointType !== 'supervisor_question' &&
+			snapshot.checkpointType !== 'supervisor_resume') ||
+		!isCanonicalBoundedText(snapshot.reason, 256) ||
+		!(snapshot.question === null || isCanonicalBoundedText(snapshot.question, 4_000)) ||
+		snapshot.resumeContext === null ||
+		typeof snapshot.resumeContext !== 'object' ||
+		Array.isArray(snapshot.resumeContext) ||
+		typeof snapshot.resumeMessage !== 'string' ||
+		snapshot.resumeMessage.length === 0
+	) {
+		return false;
+	}
+	const hasWorkerIdentity =
+		Number.isSafeInteger(snapshot.sourceExecutionGeneration) &&
+		(snapshot.sourceExecutionGeneration as number) >= 1 &&
+		isCanonicalUuid(snapshot.supervisorTransitionId) &&
+		Number.isSafeInteger(snapshot.supervisorSequence) &&
+		(snapshot.supervisorSequence as number) >= 1;
+	const hasLegacyIdentity =
+		snapshot.sourceExecutionGeneration === null &&
+		snapshot.supervisorTransitionId === null &&
+		snapshot.supervisorSequence === null;
+	if (!hasWorkerIdentity && !hasLegacyIdentity) return false;
+	try {
+		if (
+			utf8ByteLength(canonicalizeAgenticChatJson(snapshot.resumeContext)) >
+			AGENTIC_CHAT_RESUME_CONTEXT_MAX_BYTES
+		) {
+			return false;
+		}
+		const expectedMessage = buildAgenticChatCheckpointResumeSystemMessageV1({
+			question: snapshot.question,
+			resumeContext: snapshot.resumeContext
+		});
+		return (
+			snapshot.resumeMessage === expectedMessage &&
+			utf8ByteLength(snapshot.resumeMessage) <= AGENTIC_CHAT_RESUME_MESSAGE_MAX_BYTES
+		);
+	} catch {
+		return false;
+	}
+}
+
+function isValidAgenticChatTurnIntentSnapshotV1(
+	value: unknown
+): value is AgenticChatTurnIntentSnapshotV1 {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+	const intent = value as Partial<AgenticChatTurnIntentSnapshotV1>;
+	if (
+		intent.version !== 1 ||
+		typeof intent.requiresWrite !== 'boolean' ||
+		!isAgenticChatMutationEntityKindV1(intent.entityKind) ||
+		typeof intent.clearPending !== 'boolean' ||
+		(intent.source !== 'current_message' &&
+			intent.source !== 'pending_continuation' &&
+			intent.source !== 'none') ||
+		!(
+			intent.originalRequestText === null ||
+			isCanonicalBoundedText(intent.originalRequestText, 1_200)
+		) ||
+		!(
+			intent.originatingTurnRunId === null ||
+			isCanonicalBoundedText(intent.originatingTurnRunId, 128)
+		) ||
+		!Array.isArray(intent.operations) ||
+		intent.operations.length > 16 ||
+		intent.operations.some(
+			(operation) =>
+				operation === null ||
+				typeof operation !== 'object' ||
+				Array.isArray(operation) ||
+				!isAgenticChatMutationActionV1(operation.action) ||
+				!isAgenticChatMutationEntityKindV1(operation.entityKind)
+		) ||
+		!Array.isArray(intent.expectedWriteToolNames) ||
+		intent.expectedWriteToolNames.length > 16 ||
+		intent.expectedWriteToolNames.some(
+			(name) => typeof name !== 'string' || !/^[a-z][a-z0-9_]{0,127}$/.test(name)
+		) ||
+		new Set(intent.expectedWriteToolNames).size !== intent.expectedWriteToolNames.length
+	) {
+		return false;
+	}
+
+	const actionValid = intent.action === null || isAgenticChatMutationActionV1(intent.action);
+	if (!actionValid) return false;
+	if (intent.requiresWrite) {
+		return (
+			intent.action !== null &&
+			intent.source !== 'none' &&
+			intent.operations.length > 0 &&
+			!intent.clearPending &&
+			arraysEqual(
+				intent.expectedWriteToolNames,
+				deriveAgenticChatExpectedWriteToolNamesV1(intent as AgenticChatTurnIntentSnapshotV1)
+			)
+		);
+	}
+	return (
+		intent.action === null &&
+		intent.entityKind === 'unknown' &&
+		intent.operations.length === 0 &&
+		intent.source === 'none' &&
+		intent.originalRequestText === null &&
+		intent.originatingTurnRunId === null &&
+		intent.expectedWriteToolNames.length === 0
+	);
+}
+
+function isValidAgenticChatDomainMetadataSnapshotV1(
+	value: unknown
+): value is AgenticChatDomainMetadataSnapshotV1 {
+	if (!isPlainJsonObject(value)) return false;
+	const snapshot = value as Partial<AgenticChatDomainMetadataSnapshotV1>;
+	if (
+		snapshot.version !== 1 ||
+		typeof snapshot.sensingApplied !== 'boolean' ||
+		!isPlainJsonObject(snapshot.state) ||
+		!hasExactObjectKeys(snapshot.state, [
+			'version',
+			'updated_at',
+			'active_domains',
+			'active_outcome_cards',
+			'coverage_gaps',
+			'research_backlog',
+			'used_domains',
+			'unknown_domain_interests',
+			'workflow_gap_candidates',
+			'recent_observations'
+		]) ||
+		snapshot.state.version !== 1 ||
+		!isCanonicalDatabaseTimestamp(snapshot.state.updated_at) ||
+		!isBoundedObjectArray(snapshot.state.active_domains, 6) ||
+		!isBoundedObjectArray(snapshot.state.active_outcome_cards, 6) ||
+		!isBoundedObjectArray(snapshot.state.coverage_gaps, 12) ||
+		!isBoundedObjectArray(snapshot.state.research_backlog, 16) ||
+		!isBoundedObjectArray(snapshot.state.used_domains, 24) ||
+		!isBoundedObjectArray(snapshot.state.unknown_domain_interests, 16) ||
+		!isBoundedObjectArray(snapshot.state.workflow_gap_candidates, 16) ||
+		!isBoundedObjectArray(snapshot.state.recent_observations, 8) ||
+		!isValidAgenticChatDomainReferenceMapV1(snapshot.skillDomainIds) ||
+		!isValidAgenticChatDomainReferenceMapV1(snapshot.outcomeCardDomainIds)
+	) {
+		return false;
+	}
+	try {
+		return (
+			utf8ByteLength(canonicalizeAgenticChatJson(value as JsonValue)) <=
+			AGENTIC_CHAT_DOMAIN_METADATA_MAX_BYTES
+		);
+	} catch {
+		return false;
+	}
+}
+
+function isValidAgenticChatDomainReferenceMapV1(value: unknown): boolean {
+	if (!isPlainJsonObject(value)) return false;
+	const entries = Object.entries(value);
+	if (entries.length > AGENTIC_CHAT_DOMAIN_REFERENCE_MAX_ENTRIES) return false;
+	return entries.every(([reference, domainIds]) => {
+		if (!/^[a-z0-9][a-z0-9._/-]{0,127}$/.test(reference) || !Array.isArray(domainIds)) {
+			return false;
+		}
+		if (domainIds.length > AGENTIC_CHAT_DOMAIN_REFERENCE_MAX_DOMAINS) return false;
+		const normalized = domainIds.filter(
+			(domainId): domainId is string =>
+				typeof domainId === 'string' && /^[a-z0-9][a-z0-9._/-]{0,127}$/.test(domainId)
+		);
+		return (
+			normalized.length === domainIds.length &&
+			new Set(normalized).size === normalized.length &&
+			normalized.every((domainId, index) => index === 0 || normalized[index - 1]! < domainId)
+		);
+	});
+}
+
+function isPlainJsonObject(value: unknown): value is JsonObject {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasExactObjectKeys(value: JsonObject, expected: string[]): boolean {
+	const actual = Object.keys(value).sort();
+	const sortedExpected = [...expected].sort();
+	return (
+		actual.length === sortedExpected.length &&
+		actual.every((key, index) => key === sortedExpected[index])
+	);
+}
+
+function isBoundedObjectArray(value: unknown, maximum: number): boolean {
+	return Array.isArray(value) && value.length <= maximum && value.every(isPlainJsonObject);
+}
+
+function isCanonicalDatabaseTimestamp(value: unknown): value is string {
+	return (
+		typeof value === 'string' &&
+		/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) &&
+		Number.isFinite(Date.parse(value))
+	);
+}
+
+function agenticChatWriteToolNamesForOperationV1(
+	operation: AgenticChatMutationOperationV1
+): string[] {
+	if (operation.action === 'link') return ['link_onto_entities'];
+	if (operation.action === 'unlink') return ['unlink_onto_edge'];
+	if (operation.entityKind === 'document') {
+		if (operation.action === 'create') return ['create_onto_document'];
+		if (operation.action === 'organize') return ['move_document_in_tree'];
+		if (operation.action === 'delete') return ['delete_onto_document'];
+		return ['update_onto_document'];
+	}
+	if (operation.entityKind === 'task') {
+		if (operation.action === 'create') return ['create_onto_task'];
+		if (operation.action === 'delete') return ['delete_onto_task'];
+		return ['update_onto_task'];
+	}
+	if (operation.entityKind === 'project') {
+		if (operation.action === 'create') return ['create_onto_project'];
+		if (operation.action === 'delete') return ['delete_onto_project'];
+		return ['update_onto_project'];
+	}
+	if (operation.entityKind === 'event') {
+		if (operation.action === 'create') return ['create_calendar_event'];
+		if (operation.action === 'delete') return ['delete_calendar_event'];
+		return ['update_calendar_event'];
+	}
+	if (
+		operation.entityKind === 'goal' ||
+		operation.entityKind === 'plan' ||
+		operation.entityKind === 'milestone' ||
+		operation.entityKind === 'risk'
+	) {
+		const prefix =
+			operation.action === 'create'
+				? 'create'
+				: operation.action === 'delete'
+					? 'delete'
+					: 'update';
+		return [`${prefix}_onto_${operation.entityKind}`];
+	}
+	return [];
+}
+
+function arraysEqual(left: readonly string[], right: readonly string[]): boolean {
+	return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function isAgenticChatMutationActionV1(value: unknown): value is AgenticChatMutationActionV1 {
+	return (
+		value === 'create' ||
+		value === 'update' ||
+		value === 'delete' ||
+		value === 'organize' ||
+		value === 'link' ||
+		value === 'unlink'
+	);
+}
+
+function isAgenticChatMutationEntityKindV1(
+	value: unknown
+): value is AgenticChatMutationEntityKindV1 {
+	return (
+		value === 'document' ||
+		value === 'task' ||
+		value === 'project' ||
+		value === 'event' ||
+		value === 'goal' ||
+		value === 'plan' ||
+		value === 'milestone' ||
+		value === 'risk' ||
+		value === 'unknown'
+	);
+}
+
 function isValidAgenticChatLiveVisionPolicyV1(value: unknown): boolean {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
 	const policy = value as Partial<AgenticChatLiveVisionPolicyV1>;
@@ -1743,6 +2230,23 @@ function isValidFrozenAttachmentsV1(value: unknown, requireResolutionEvidence: b
 
 function isBoundedString(value: unknown, maximum: number): value is string {
 	return typeof value === 'string' && value.length > 0 && value.length <= maximum;
+}
+
+function isCanonicalBoundedText(value: unknown, maximum: number): value is string {
+	return (
+		typeof value === 'string' &&
+		value.length > 0 &&
+		value.length <= maximum &&
+		value === value.trim()
+	);
+}
+
+function isCanonicalUuid(value: unknown): value is string {
+	return (
+		typeof value === 'string' &&
+		value === value.toLowerCase() &&
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)
+	);
 }
 
 function isNullableBoundedString(value: unknown, maximum: number): boolean {

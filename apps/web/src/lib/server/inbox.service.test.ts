@@ -374,7 +374,7 @@ describe('inbox service', () => {
 	});
 
 	it('returns the exact pending total when the visible inbox page is bounded', async () => {
-		const inboxItems = Array.from({ length: 30 }, (_, index) => ({
+		const pendingItems = Array.from({ length: 30 }, (_, index) => ({
 			id: `fragment-${index}`,
 			source_type: 'profile_fragment',
 			source_ref_id: `source-${index}`,
@@ -387,7 +387,22 @@ describe('inbox service', () => {
 			action_kinds: ['approve', 'reject'],
 			created_at: new Date(Date.UTC(2026, 6, 1, 0, index)).toISOString()
 		}));
-		const { supabase } = createSupabaseMock({ inbox_items: inboxItems });
+		const heldItems = Array.from({ length: 4 }, (_, index) => ({
+			id: `held-fragment-${index}`,
+			source_type: 'profile_fragment',
+			source_ref_id: `held-source-${index}`,
+			source_status: 'pending',
+			user_id: 'user-1',
+			project_id: null,
+			audience: 'user',
+			status: 'deferred',
+			title: `Held profile fragment ${index}`,
+			action_kinds: ['approve', 'reject'],
+			created_at: new Date(Date.UTC(2026, 6, 1, 1, index)).toISOString()
+		}));
+		const { supabase } = createSupabaseMock({
+			inbox_items: [...pendingItems, ...heldItems]
+		});
 
 		const result = await listInboxItems({
 			supabase,
@@ -395,11 +410,13 @@ describe('inbox service', () => {
 			userId: 'user-1',
 			status: 'pending',
 			sourceType: 'profile_fragment',
-			limit: 25
+			limit: 25,
+			repair: false
 		});
 
 		expect(result.items).toHaveLength(25);
 		expect(result.total).toBe(30);
+		expect(result.heldTotal).toBe(4);
 	});
 
 	it('uses the indexed fast path without source backfill or source reconciliation', async () => {

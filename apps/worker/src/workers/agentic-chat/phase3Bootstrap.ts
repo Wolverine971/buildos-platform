@@ -55,6 +55,7 @@ export type AgenticChatPhase3BootstrapAssemblyFactoryInput = {
 	config: EnabledPhase3Config;
 	fetchImpl?: typeof fetch;
 	onUsageError?: (error: unknown) => void;
+	onConsumptionBillingError?: (error: unknown) => void;
 };
 
 export type AgenticChatPhase3BootstrapOptions = {
@@ -62,6 +63,7 @@ export type AgenticChatPhase3BootstrapOptions = {
 	environment?: NodeJS.ProcessEnv;
 	fetchImpl?: typeof fetch;
 	onUsageError?: (error: unknown) => void;
+	onConsumptionBillingError?: (error: unknown) => void;
 	createAssembly?: (
 		input: AgenticChatPhase3BootstrapAssemblyFactoryInput
 	) => AgenticChatPhase3BootstrapAssemblyPort;
@@ -85,7 +87,8 @@ export function createAgenticChatPhase3Bootstrap(
 		client: options.client,
 		config,
 		fetchImpl: options.fetchImpl,
-		onUsageError: options.onUsageError
+		onUsageError: options.onUsageError,
+		onConsumptionBillingError: options.onConsumptionBillingError
 	});
 	return new AgenticChatPhase3Bootstrap(true, assembly);
 }
@@ -231,7 +234,13 @@ export class AgenticChatPhase3Bootstrap {
 function createDefaultAssembly(
 	input: AgenticChatPhase3BootstrapAssemblyFactoryInput
 ): AgenticChatPhase3BootstrapAssemblyPort {
-	const usageLogger = new LLMUsageLogger({ supabase: input.client });
+	// Worker terminal billing must observe committed current-turn usage whenever
+	// the database is healthy. The provider boundary still catches/report errors
+	// so strict accounting cannot strand terminal user-visible truth.
+	const usageLogger = new LLMUsageLogger({
+		supabase: input.client,
+		failureMode: 'throw'
+	});
 	const executionObservations = new SupabaseAgenticChatExecutionObservationAdapter(
 		input.client as unknown as AgenticChatExecutionObservationRpcClient
 	);
@@ -254,13 +263,16 @@ function createDefaultAssembly(
 		providerClient,
 		providerConfigured: true,
 		liveVisionEnabled: input.config.liveVisionEnabled,
+		supervisorEnabled: input.config.supervisorEnabled,
+		consumptionBillingEnabled: input.config.consumptionBillingEnabled,
 		liveVisionFetchImpl: input.fetchImpl,
 		internalUserIds: input.config.internalUserIds,
 		consumerConfig: input.config.consumer,
 		providerBudgetMs: input.config.providerBudgetMs,
 		maxProviderRounds: input.config.maxProviderRounds,
 		maxToolCalls: input.config.maxToolCalls,
-		onExecutionObservationError: input.onUsageError
+		onExecutionObservationError: input.onUsageError,
+		onConsumptionBillingError: input.onConsumptionBillingError ?? input.onUsageError
 	});
 }
 

@@ -8,7 +8,7 @@ import {
 	GEMINI_31_FLASH_LITE_MODEL,
 	GLM_52_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_45_MODEL,
+	GROK_46_MODEL,
 	JSON_PROFILE_MODELS,
 	KIMI_CODING_MODEL,
 	KIMI_EXPERIMENT_MODEL,
@@ -224,7 +224,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(GPT_56_LUNA_MODEL);
-		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(GROK_45_MODEL);
+		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(GROK_46_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(KIMI_K3_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(KIMI_CODING_MODEL);
@@ -237,7 +237,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(NEX_N2_MINI_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GPT_56_LUNA_MODEL);
-		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GROK_45_MODEL);
+		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GROK_46_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(KIMI_K3_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
@@ -253,7 +253,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GPT_56_LUNA_MODEL);
-		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GROK_45_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GROK_46_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(KIMI_K3_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(KIMI_CODING_MODEL);
@@ -272,14 +272,14 @@ describe('ensureToolCompatibleModels', () => {
 		expect(TEXT_PROFILE_MODELS.quality[0]).toBe(GLM_52_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(DEEPSEEK_V4_PRO_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(GPT_56_LUNA_MODEL);
-		expect(TEXT_PROFILE_MODELS.quality).toContain(GROK_45_MODEL);
+		expect(TEXT_PROFILE_MODELS.quality).toContain(GROK_46_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).not.toContain(KIMI_K3_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).not.toContain(KIMI_CODING_MODEL);
 		expect(TEXT_PROFILE_MODELS.creative[0]).toBe(GLM_52_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).toEqual([...MAXIMUM_WORK_MODEL_ORDER]);
 		expect(TEXT_PROFILE_MODELS.maximum[0]).toBe(MAXIMUM_WORK_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).toContain(GPT_56_LUNA_MODEL);
-		expect(TEXT_PROFILE_MODELS.maximum).toContain(GROK_45_MODEL);
+		expect(TEXT_PROFILE_MODELS.maximum).toContain(GROK_46_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).not.toContain(KIMI_CODING_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).not.toContain(KIMI_EXPERIMENT_MODEL);
 
@@ -288,7 +288,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(JSON_PROFILE_MODELS.powerful[0]).toBe(GLM_52_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum[0]).toBe(KIMI_K3_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).toContain(GPT_56_LUNA_MODEL);
-		expect(JSON_PROFILE_MODELS.maximum).toContain(GROK_45_MODEL);
+		expect(JSON_PROFILE_MODELS.maximum).toContain(GROK_46_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).not.toContain(KIMI_CODING_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).not.toContain(TENCENT_HY3_MODEL);
@@ -317,7 +317,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(supportsJsonMode(TENCENT_HY3_MODEL)).toBe(false);
 		expect(supportsJsonMode(POOLSIDE_LAGUNA_XS_21_MODEL)).toBe(false);
 		expect(supportsJsonMode(GPT_56_LUNA_MODEL)).toBe(true);
-		expect(supportsJsonMode(GROK_45_MODEL)).toBe(true);
+		expect(supportsJsonMode(GROK_46_MODEL)).toBe(true);
 		expect(supportsJsonMode(KIMI_K3_MODEL)).toBe(true);
 		expect(supportsJsonMode(KIMI_EXPERIMENT_MODEL)).toBe(true);
 		expect(supportsJsonMode(KIMI_CODING_MODEL)).toBe(true);

@@ -10,6 +10,7 @@ import {
 	AGENTIC_CHAT_LIVE_VISION_MAX_SIGNED_URL_TTL_SECONDS,
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+	deriveAgenticChatExpectedWriteToolNamesV1,
 	hashCanonicalAdmissionRequestV1,
 	hashTurnInputArtifactContentV1,
 	normalizeAgenticChatText,
@@ -18,8 +19,11 @@ import {
 	validateTurnInputArtifactV1,
 	type AgentChatTransportContextV1,
 	type AgenticChatContextUsageSnapshotV1,
+	type AgenticChatDomainMetadataSnapshotV1,
 	type AgenticChatHistoryStateV1,
+	type AgenticChatResumeCheckpointSnapshotV1,
 	type AgenticChatSessionEventSnapshotV1,
+	type AgenticChatTurnIntentSnapshotV1,
 	type ChatAttachmentRef,
 	type ChatContextType,
 	type ChatSession,
@@ -36,6 +40,13 @@ import {
 	buildLitePromptEnvelope,
 	LITE_PROMPT_VARIANT
 } from '$lib/services/agentic-chat-lite/prompt';
+import { listOutcomeCards } from '$lib/services/agentic-chat/tools/outcome-cards/catalog';
+import {
+	mergeDomainSessionState,
+	type DomainSessionState
+} from '$lib/services/agentic-chat/tools/domains/domain-session-state';
+import { getDomainIdsForSkillReference } from '$lib/services/agentic-chat/tools/domains/domain-used-signals';
+import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import { buildEntityResolutionHint } from './entity-resolution';
 import {
 	FASTCHAT_CONTEXT_CACHE_VERSION,
@@ -70,6 +81,11 @@ import {
 	type AgenticChatWorkerCapacityDecisionV1
 } from './worker-turn-capacity.server';
 import type { AgenticChatWorkerAdmissionRpcArgs } from './worker-turn-admission.server';
+import {
+	freezeCheckpointResumeSnapshot,
+	loadLatestActiveCheckpoint,
+	recoverCheckpointResumeLifecycle
+} from './turn-supervisor/checkpoint-service.server';
 
 const WORKER_TURNS_ENDPOINT = '/api/agent/v2/turns';
 const HISTORY_LIMIT = positiveInt(process.env.FASTCHAT_HISTORY_LOOKBACK_MESSAGES, 10, 50);
@@ -94,6 +110,11 @@ const CONTEXT_SHIFT_HINT_TTL_MS = positiveInt(
 	120_000,
 	3_600_000
 );
+const SUPERVISOR_RESUMING_STALE_AFTER_MS = positiveInt(
+	process.env.FASTCHAT_SUPERVISOR_RESUMING_STALE_AFTER_MS,
+	15 * 60 * 1000,
+	24 * 60 * 60 * 1000
+);
 const MAX_ATTACHMENTS = positiveInt(process.env.AGENT_CHAT_MAX_IMAGE_ATTACHMENTS_PER_TURN, 4, 16);
 const ATTACHMENT_TEXT_MAX_CHARS = positiveInt(
 	process.env.AGENT_CHAT_ATTACHMENT_TEXT_MAX_CHARS,
@@ -106,6 +127,9 @@ const ATTACHMENT_CONTEXT_MAX_CHARS = positiveInt(
 	100_000
 );
 const LIVE_VISION_ENABLED = process.env.AGENT_CHAT_LIVE_VISION_ENABLED === 'true';
+let cachedDomainReferenceMaps:
+	| Pick<AgenticChatDomainMetadataSnapshotV1, 'skillDomainIds' | 'outcomeCardDomainIds'>
+	| undefined;
 const LIVE_VISION_MAX_IMAGES = positiveInt(
 	process.env.AGENT_CHAT_LIVE_VISION_MAX_IMAGES_PER_TURN,
 	2,
@@ -188,6 +212,12 @@ export type AgenticChatWorkerPreparationDependencies = {
 	createId?: () => string;
 	nowMs?: () => number;
 	observeCapacity?: () => Promise<AgenticChatWorkerCapacityDecisionV1>;
+	loadResumeCheckpoint?: (input: {
+		serviceClient: FastChatSupabaseClient;
+		userId: string;
+		sessionId: string;
+		nowMs: number;
+	}) => Promise<AgenticChatResumeCheckpointSnapshotV1 | null>;
 };
 
 /**
@@ -207,6 +237,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	const createId = input.dependencies?.createId ?? randomUUID;
 	const nowMs = input.dependencies?.nowMs?.() ?? Date.now();
 	const nowIso = new Date(nowMs).toISOString();
+	const turnRunId = canonicalGeneratedUuid(createId(), 'turn');
 	if (!Number.isFinite(Date.parse(nowIso))) throw protocolError('Preparation time is invalid');
 
 	// Started here so the observation deadline overlaps the preparation work
@@ -278,6 +309,14 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		entityId,
 		projectFocus: input.command.projectFocus
 	});
+	const resumeCheckpoint = sessionIntent.session
+		? await (input.dependencies?.loadResumeCheckpoint ?? loadWorkerResumeCheckpoint)({
+				serviceClient: input.serviceClient,
+				userId: input.userId,
+				sessionId: sessionIntent.session.id,
+				nowMs
+			})
+		: null;
 	const conversationSummary =
 		typeof sessionIntent.session?.summary === 'string' ? sessionIntent.session.summary : null;
 	const agentMetadata = sessionIntent.session?.agent_metadata ?? sessionIntent.inlineMetadata;
@@ -499,6 +538,15 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		prepared: {
 			...preparedArtifact,
 			historyState,
+			turnIntent: freezeWorkerTurnIntent(turnPreparation.turnIntent),
+			domainMetadata: freezeWorkerDomainMetadata({
+				previousState: turnPreparation.previousDomainState,
+				domainSensing: turnPreparation.turnDomainSensing,
+				turnRunId,
+				streamRunId: input.command.streamRunId,
+				nowIso
+			}),
+			...(resumeCheckpoint ? { resumeCheckpoint } : {}),
 			currentTurn: {
 				message: normalizedMessage,
 				attachmentContextMaxChars: ATTACHMENT_CONTEXT_MAX_CHARS,
@@ -533,7 +581,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		throw protocolError(`Prepared input artifact is invalid: ${artifactValidation.code}`);
 	}
 
-	const turnRunId = canonicalGeneratedUuid(createId(), 'turn');
 	const userMessageId = canonicalGeneratedUuid(createId(), 'message');
 	const inputArtifactId = canonicalGeneratedUuid(createId(), 'artifact');
 	const correlationId = canonicalGeneratedUuid(createId(), 'correlation');
@@ -551,6 +598,11 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		userMessageMetadata.attachments = sanitizeAttachmentRefsForMetadata(
 			attachments
 		) as unknown as Json;
+	}
+	if (resumeCheckpoint) {
+		userMessageMetadata.supervisor_resume_checkpoint_id = resumeCheckpoint.checkpointId;
+		userMessageMetadata.supervisor_resume_original_turn_run_id =
+			resumeCheckpoint.originalTurnRunId;
 	}
 	const requestPayload = toJsonObject({
 		message: storedUserMessageContent,
@@ -610,6 +662,110 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		capacity,
 		preparedPromptUsed: preparedPromptId !== null
 	};
+}
+
+function freezeWorkerTurnIntent(
+	intent: Omit<AgenticChatTurnIntentSnapshotV1, 'expectedWriteToolNames'>
+): AgenticChatTurnIntentSnapshotV1 {
+	const snapshot = {
+		version: 1 as const,
+		requiresWrite: intent.requiresWrite,
+		action: intent.action,
+		entityKind: intent.entityKind,
+		operations: intent.operations.map((operation) => ({ ...operation })),
+		source: intent.source,
+		originalRequestText: intent.originalRequestText,
+		originatingTurnRunId: intent.originatingTurnRunId,
+		clearPending: intent.clearPending
+	};
+	return {
+		...snapshot,
+		expectedWriteToolNames: deriveAgenticChatExpectedWriteToolNamesV1(snapshot)
+	};
+}
+
+function freezeWorkerDomainMetadata(input: {
+	previousState: DomainSessionState | null;
+	domainSensing: Parameters<typeof mergeDomainSessionState>[1] | null;
+	turnRunId: string;
+	streamRunId: string;
+	nowIso: string;
+}): AgenticChatDomainMetadataSnapshotV1 {
+	const emptyState: DomainSessionState = {
+		version: 1,
+		updated_at: input.nowIso,
+		active_domains: [],
+		active_outcome_cards: [],
+		coverage_gaps: [],
+		research_backlog: [],
+		used_domains: [],
+		unknown_domain_interests: [],
+		workflow_gap_candidates: [],
+		recent_observations: []
+	};
+	const state = input.domainSensing
+		? mergeDomainSessionState(input.previousState, input.domainSensing, {
+				now: input.nowIso,
+				turnRunId: input.turnRunId,
+				streamRunId: input.streamRunId
+			})
+		: (input.previousState ?? emptyState);
+	const { skillDomainIds, outcomeCardDomainIds } = getWorkerDomainReferenceMaps();
+	return {
+		version: 1,
+		sensingApplied: input.domainSensing !== null,
+		state: toJsonObject(state),
+		skillDomainIds,
+		outcomeCardDomainIds
+	};
+}
+
+function getWorkerDomainReferenceMaps(): Pick<
+	AgenticChatDomainMetadataSnapshotV1,
+	'skillDomainIds' | 'outcomeCardDomainIds'
+> {
+	if (cachedDomainReferenceMaps) return cachedDomainReferenceMaps;
+	cachedDomainReferenceMaps = {
+		skillDomainIds: Object.fromEntries(
+			listAllSkills()
+				.map(
+					(skill) =>
+						[skill.id, sortedUnique(getDomainIdsForSkillReference(skill.id))] as const
+				)
+				.sort(([left], [right]) => left.localeCompare(right))
+		),
+		outcomeCardDomainIds: Object.fromEntries(
+			listOutcomeCards()
+				.map((card) => [card.id, sortedUnique(card.domainIds)] as const)
+				.sort(([left], [right]) => left.localeCompare(right))
+		)
+	};
+	return cachedDomainReferenceMaps;
+}
+
+function sortedUnique(values: string[]): string[] {
+	return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+
+async function loadWorkerResumeCheckpoint(input: {
+	serviceClient: FastChatSupabaseClient;
+	userId: string;
+	sessionId: string;
+	nowMs: number;
+}): Promise<AgenticChatResumeCheckpointSnapshotV1 | null> {
+	await recoverCheckpointResumeLifecycle({
+		supabase: input.serviceClient,
+		userId: input.userId,
+		staleBefore: new Date(input.nowMs - SUPERVISOR_RESUMING_STALE_AFTER_MS).toISOString(),
+		recoveredAt: new Date(input.nowMs).toISOString()
+	});
+	const checkpoint = await loadLatestActiveCheckpoint({
+		supabase: input.serviceClient,
+		userId: input.userId,
+		sessionId: input.sessionId,
+		now: new Date(input.nowMs).toISOString()
+	});
+	return checkpoint ? freezeCheckpointResumeSnapshot(checkpoint) : null;
 }
 
 type WorkerSessionIntent = {

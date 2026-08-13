@@ -199,6 +199,8 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			enabled: false,
 			internalUserIds: [],
 			liveVisionEnabled: false,
+			supervisorEnabled: false,
+			consumptionBillingEnabled: false,
 			consumer: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
 			providerBudgetMs: 150_000,
 			maxProviderRounds: 16,
@@ -217,6 +219,24 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 		expect(() =>
 			loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED: 'TRUE' })
 		).toThrow('AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED must be exactly true or false');
+	});
+
+	it('keeps the worker supervisor default-off and parses only an exact explicit gate', () => {
+		expect(
+			loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED: 'true' })
+		).toMatchObject({ enabled: false, supervisorEnabled: true });
+		expect(() =>
+			loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED: 'TRUE' })
+		).toThrow('AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED must be exactly true or false');
+	});
+
+	it('keeps terminal consumption billing aligned with the exact shared web gate', () => {
+		expect(
+			loadAgenticChatPhase3Config({ PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE: 'true' })
+		).toMatchObject({ enabled: false, consumptionBillingEnabled: true });
+		expect(() =>
+			loadAgenticChatPhase3Config({ PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE: 'TRUE' })
+		).toThrow('PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE must be exactly true or false');
 	});
 
 	it('parses an exact internal cohort and independently bounded queue policy', () => {
@@ -241,6 +261,8 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			enabled: true,
 			internalUserIds: [second, first],
 			liveVisionEnabled: false,
+			supervisorEnabled: false,
+			consumptionBillingEnabled: false,
 			consumer: {
 				concurrency: 1,
 				pollIntervalMs: 1500,

@@ -3,11 +3,11 @@ import { createHash } from 'node:crypto';
 
 import { z } from 'zod';
 
-export const BLIND_JUDGE_POLICY_VERSION = 'phase-a-a2-blind-v2' as const;
+export const BLIND_JUDGE_POLICY_VERSION = 'phase-a-a2-blind-v3' as const;
 
 export const BLIND_JUDGE_MODELS = [
 	'openai/gpt-5.6-luna',
-	'x-ai/grok-4.5',
+	'x-ai/grok-4.6',
 	'moonshotai/kimi-k3'
 ] as const;
 

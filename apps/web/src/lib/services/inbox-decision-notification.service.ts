@@ -22,7 +22,7 @@ const ERROR_REMOVE_MS = 5000;
 
 function decisionVerb(item: InboxDecisionNotificationItem, action: InboxDecisionAction): string {
 	if (action === 'snooze') return 'Snoozing';
-	if (action === 'address') return 'Addressing';
+	if (action === 'address') return 'Marking handled';
 	if (action === 'reject') {
 		return item.source_type === 'calendar_suggestion' ? 'Rejecting' : 'Dismissing';
 	}

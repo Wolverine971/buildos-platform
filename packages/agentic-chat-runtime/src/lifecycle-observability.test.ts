@@ -4,7 +4,8 @@ import {
 	AGENTIC_CHAT_PARTIAL_CANCELLATION_GOLDEN_V1,
 	AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1,
 	AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1,
-	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1
+	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1,
+	AGENTIC_CHAT_TIMEOUT_GOLDEN_V1
 } from './index';
 import { projectAgenticChatWorkerLifecycleObservationsV1 } from './lifecycle-observability';
 
@@ -82,6 +83,14 @@ describe('worker lifecycle observability projection', () => {
 				promptSnapshotCount: 1
 			})
 		).toEqual(AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1.metadata.lifecycle_events);
+		expect(
+			projectAgenticChatWorkerLifecycleObservationsV1({
+				admissionObserved: true,
+				publicEvents: [...baseEvents, { type: 'done', status: 'failed' }],
+				terminalStatus: 'failed',
+				promptSnapshotCount: 1
+			})
+		).toEqual(AGENTIC_CHAT_TIMEOUT_GOLDEN_V1.metadata.lifecycle_events);
 	});
 
 	it('projects one lifecycle pair per tool call in event order', () => {

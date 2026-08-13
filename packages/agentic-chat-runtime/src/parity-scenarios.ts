@@ -11,6 +11,8 @@ import { AGENTIC_CHAT_MUTATING_TOOL_GOLDEN_V1 } from './mutating-tool-parity-fix
 import { AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1 } from './provider-error-parity-fixture';
 import { AGENTIC_CHAT_READ_ONLY_TOOL_GOLDEN_V1 } from './read-only-tool-parity-fixture';
 import { AGENTIC_CHAT_TEXT_ONLY_SUCCESS_GOLDEN_V1 } from './text-only-success-parity-fixture';
+import { AGENTIC_CHAT_SUPERVISOR_QUESTION_GOLDEN_V1 } from './supervisor-question-parity-fixture';
+import { AGENTIC_CHAT_TIMEOUT_GOLDEN_V1 } from './timeout-parity-fixture';
 
 /**
  * The eight differential scenario classes the migration plan requires before
@@ -42,11 +44,9 @@ export type AgenticChatImplementedParityScenarioV1 = {
 	golden: AgenticChatParityRunV1;
 	/**
 	 * JSON-pointer prefixes whose differences are a ratified contract split,
-	 * not a parity gap. Today this is exclusively the worker's async timing
-	 * ownership (Phase 4 Slice 6): the worker publishes the terminal timing
-	 * payload under `agentic_chat_async_v1` after the public done event, so
-	 * its synchronous timing snapshot deliberately differs from the legacy
-	 * golden's fully-populated timing event.
+	 * not a parity gap. This includes the worker's async timing ownership and,
+	 * for a timeout before any provider response, its exact unknown-token and
+	 * no-first-response-snapshot semantics.
 	 */
 	workerDeliberateDivergencePrefixes: readonly string[];
 	/**
@@ -119,6 +119,29 @@ function mutationEffectDivergencePrefixes(golden: AgenticChatParityRunV1): reado
 	];
 }
 
+function timeoutDivergencePrefixes(golden: AgenticChatParityRunV1): readonly string[] {
+	const lifecycleEvents = golden.metadata.lifecycle_events;
+	if (!Array.isArray(lifecycleEvents)) {
+		throw new Error('Agentic Chat timeout golden must contain lifecycle events');
+	}
+	const snapshotIndex = lifecycleEvents.findIndex(
+		(event) =>
+			Boolean(event) &&
+			typeof event === 'object' &&
+			!Array.isArray(event) &&
+			(event as Record<string, unknown>).event_type === 'prompt_snapshot_created'
+	);
+	if (snapshotIndex < 0) {
+		throw new Error('Agentic Chat timeout golden must contain prompt snapshot lifecycle');
+	}
+	return [
+		timingDivergencePrefix(golden),
+		'/outcome/total_tokens',
+		`/metadata/lifecycle_events/${snapshotIndex}`,
+		'/metadata/prompt_snapshot_count'
+	];
+}
+
 export const AGENTIC_CHAT_PARITY_SCENARIOS_V1: readonly AgenticChatParityScenarioV1[] = [
 	{
 		scenarioClass: 'success',
@@ -131,9 +154,12 @@ export const AGENTIC_CHAT_PARITY_SCENARIOS_V1: readonly AgenticChatParityScenari
 	},
 	{
 		scenarioClass: 'clarification',
-		status: 'blocked',
-		blockedOn:
-			'tasker/51 P4 — supervisor/checkpoint and clarification-flow parity; the worker executor has no clarification outcome yet'
+		status: 'implemented',
+		golden: AGENTIC_CHAT_SUPERVISOR_QUESTION_GOLDEN_V1,
+		workerDeliberateDivergencePrefixes: [
+			timingDivergencePrefix(AGENTIC_CHAT_SUPERVISOR_QUESTION_GOLDEN_V1)
+		],
+		workerOpenDivergences: doneEventGapInventory(AGENTIC_CHAT_SUPERVISOR_QUESTION_GOLDEN_V1)
 	},
 	{
 		scenarioClass: 'read_only_tools',
@@ -156,9 +182,12 @@ export const AGENTIC_CHAT_PARITY_SCENARIOS_V1: readonly AgenticChatParityScenari
 	},
 	{
 		scenarioClass: 'supervisor_checkpoint',
-		status: 'blocked',
-		blockedOn:
-			'tasker/51 P4 — supervisor/checkpoint parity; the worker executor has no supervisor or chat_turn_checkpoints semantics yet'
+		status: 'implemented',
+		golden: AGENTIC_CHAT_SUPERVISOR_QUESTION_GOLDEN_V1,
+		workerDeliberateDivergencePrefixes: [
+			timingDivergencePrefix(AGENTIC_CHAT_SUPERVISOR_QUESTION_GOLDEN_V1)
+		],
+		workerOpenDivergences: doneEventGapInventory(AGENTIC_CHAT_SUPERVISOR_QUESTION_GOLDEN_V1)
 	},
 	{
 		scenarioClass: 'cancellation',
@@ -171,9 +200,12 @@ export const AGENTIC_CHAT_PARITY_SCENARIOS_V1: readonly AgenticChatParityScenari
 	},
 	{
 		scenarioClass: 'timeout',
-		status: 'blocked',
-		blockedOn:
-			'tasker/51 P6 — timeout golden not yet authored; worker timeout terminals exist (timeout_post_start, provider_budget_exhausted, read_tool_timeout) but no legacy-equal golden has been captured'
+		status: 'implemented',
+		golden: AGENTIC_CHAT_TIMEOUT_GOLDEN_V1,
+		workerDeliberateDivergencePrefixes: timeoutDivergencePrefixes(
+			AGENTIC_CHAT_TIMEOUT_GOLDEN_V1
+		),
+		workerOpenDivergences: doneEventGapInventory(AGENTIC_CHAT_TIMEOUT_GOLDEN_V1)
 	},
 	{
 		// Previously asserted only structurally; this exact inventory tightens

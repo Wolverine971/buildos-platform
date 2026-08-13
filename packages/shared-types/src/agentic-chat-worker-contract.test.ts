@@ -8,6 +8,7 @@ import {
 	AGENTIC_CHAT_CLIENT_MAX_TRACKED_TURNS,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2,
+	buildAgenticChatCheckpointResumeSystemMessageV1,
 	AGENTIC_CHAT_INPUT_HISTORY_MAX_BYTES,
 	AGENTIC_CHAT_LIVE_VISION_MAX_IMAGES,
 	AGENTIC_CHAT_RECONCILE_MAX_DURABLE_EVENTS,
@@ -28,6 +29,7 @@ import {
 	createAgentStreamEventIdV1,
 	decideAgenticChatRecoveryV1,
 	decideTerminalFinalizationV1,
+	deriveAgenticChatExpectedWriteToolNamesV1,
 	didAcknowledgeAgenticChatStreamDeliveryV1,
 	freezeTurnInputHistoryV1,
 	hashCanonicalAdmissionRequestV1,
@@ -461,6 +463,168 @@ describe('agentic chat worker v1 contract fixtures', () => {
 		expect(await validateTurnInputArtifactV1(oversizeHistory)).toMatchObject({
 			ok: false,
 			code: 'history_too_large'
+		});
+	});
+
+	it('freezes a canonical supervisor resume snapshot into the artifact hash', async () => {
+		const resumeContext = {
+			missing_field: 'task_id',
+			instruction: 'Continue after the user identifies the task.'
+		};
+		const resumeMessage = buildAgenticChatCheckpointResumeSystemMessageV1({
+			question: 'Which exact task should I use?',
+			resumeContext
+		});
+		expect(resumeMessage).toContain(
+			'Checkpoint resume context: {"instruction":"Continue after the user identifies the task.","missing_field":"task_id"}'
+		);
+
+		const artifact = artifactFixture();
+		if (artifact.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION) {
+			throw new Error('fixture must use the current input artifact version');
+		}
+		artifact.prepared.resumeCheckpoint = {
+			checkpointId: '81000000-0000-4000-8000-000000000001',
+			originalTurnRunId: '82000000-0000-4000-8000-000000000002',
+			checkpointType: 'supervisor_question',
+			reason: 'repeated_validation_failures',
+			question: 'Which exact task should I use?',
+			resumeContext,
+			resumeMessage,
+			sourceExecutionGeneration: 1,
+			supervisorTransitionId: '83000000-0000-5000-8000-000000000003',
+			supervisorSequence: 2
+		};
+		artifact.contentHash = await hashTurnInputArtifactContentV1(artifact);
+		await expect(validateTurnInputArtifactV1(artifact)).resolves.toMatchObject({ ok: true });
+
+		const sourceDrift = structuredClone(artifact);
+		if (sourceDrift.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION) {
+			throw new Error('fixture must use the current input artifact version');
+		}
+		sourceDrift.prepared.resumeCheckpoint!.resumeContext.missing_field = 'goal_id';
+		await expect(validateTurnInputArtifactV1(sourceDrift)).resolves.toMatchObject({
+			ok: false,
+			code: 'invalid_resume_checkpoint'
+		});
+
+		const mixedIdentity = structuredClone(artifact);
+		if (mixedIdentity.artifactVersion !== AGENTIC_CHAT_INPUT_ARTIFACT_VERSION) {
+			throw new Error('fixture must use the current input artifact version');
+		}
+		mixedIdentity.prepared.resumeCheckpoint!.supervisorSequence = null;
+		await expect(validateTurnInputArtifactV1(mixedIdentity)).resolves.toMatchObject({
+			ok: false,
+			code: 'invalid_resume_checkpoint'
+		});
+	});
+
+	it('freezes and validates structured terminal turn intent while retaining rolling artifacts', async () => {
+		const rollingArtifact = artifactFixture();
+		rollingArtifact.contentHash = await hashTurnInputArtifactContentV1(rollingArtifact);
+		await expect(validateTurnInputArtifactV1(rollingArtifact)).resolves.toMatchObject({
+			ok: true
+		});
+
+		const artifact = artifactFixture();
+		const structuredIntent = {
+			version: 1 as const,
+			requiresWrite: true,
+			action: 'update' as const,
+			entityKind: 'task' as const,
+			operations: [
+				{ action: 'update' as const, entityKind: 'task' as const },
+				{ action: 'create' as const, entityKind: 'document' as const }
+			],
+			source: 'current_message' as const,
+			originalRequestText: 'Mark the task done and create a document.',
+			originatingTurnRunId: null,
+			clearPending: false
+		};
+		artifact.prepared.turnIntent = {
+			...structuredIntent,
+			expectedWriteToolNames: deriveAgenticChatExpectedWriteToolNamesV1(structuredIntent)
+		};
+		expect(artifact.prepared.turnIntent.expectedWriteToolNames).toEqual([
+			'update_onto_task',
+			'create_onto_document'
+		]);
+		artifact.contentHash = await hashTurnInputArtifactContentV1(artifact);
+		await expect(validateTurnInputArtifactV1(artifact)).resolves.toMatchObject({ ok: true });
+		expect(artifact.contentHash).not.toBe(rollingArtifact.contentHash);
+
+		const driftedExpectedTools = structuredClone(artifact);
+		driftedExpectedTools.prepared.turnIntent!.expectedWriteToolNames = ['create_onto_document'];
+		driftedExpectedTools.contentHash =
+			await hashTurnInputArtifactContentV1(driftedExpectedTools);
+		await expect(validateTurnInputArtifactV1(driftedExpectedTools)).resolves.toMatchObject({
+			ok: false,
+			code: 'invalid_turn_intent'
+		});
+
+		const malformedRead = artifactFixture();
+		malformedRead.prepared.turnIntent = {
+			...structuredIntent,
+			requiresWrite: false,
+			expectedWriteToolNames: []
+		};
+		malformedRead.contentHash = await hashTurnInputArtifactContentV1(malformedRead);
+		await expect(validateTurnInputArtifactV1(malformedRead)).resolves.toMatchObject({
+			ok: false,
+			code: 'invalid_turn_intent'
+		});
+	});
+
+	it('freezes a bounded domain projection base and immutable catalog fallback maps', async () => {
+		const rollingArtifact = artifactFixture();
+		rollingArtifact.contentHash = await hashTurnInputArtifactContentV1(rollingArtifact);
+		await expect(validateTurnInputArtifactV1(rollingArtifact)).resolves.toMatchObject({
+			ok: true
+		});
+
+		const artifact = artifactFixture();
+		artifact.prepared.domainMetadata = {
+			version: 1,
+			sensingApplied: true,
+			state: {
+				version: 1,
+				updated_at: '2026-08-13T12:00:00.000Z',
+				active_domains: [],
+				active_outcome_cards: [],
+				coverage_gaps: [],
+				research_backlog: [],
+				used_domains: [],
+				unknown_domain_interests: [],
+				workflow_gap_candidates: [],
+				recent_observations: []
+			},
+			skillDomainIds: {
+				content_strategy_beyond_blogging: ['creator_growth', 'marketing.youtube_growth']
+			},
+			outcomeCardDomainIds: {
+				youtube_growth_strategy_plan: ['creator_growth', 'marketing.youtube_growth']
+			}
+		};
+		artifact.contentHash = await hashTurnInputArtifactContentV1(artifact);
+		await expect(validateTurnInputArtifactV1(artifact)).resolves.toMatchObject({ ok: true });
+		expect(artifact.contentHash).not.toBe(rollingArtifact.contentHash);
+
+		const unsortedDomains = structuredClone(artifact);
+		unsortedDomains.prepared.domainMetadata!.skillDomainIds = {
+			content_strategy_beyond_blogging: ['marketing.youtube_growth', 'creator_growth']
+		};
+		unsortedDomains.contentHash = await hashTurnInputArtifactContentV1(unsortedDomains);
+		await expect(validateTurnInputArtifactV1(unsortedDomains)).resolves.toMatchObject({
+			ok: false,
+			code: 'invalid_domain_metadata'
+		});
+
+		const malformedState = structuredClone(artifact);
+		delete malformedState.prepared.domainMetadata!.state.used_domains;
+		malformedState.contentHash = await hashTurnInputArtifactContentV1(malformedState);
+		await expect(validateTurnInputArtifactV1(malformedState)).resolves.toMatchObject({
+			ok: false,
+			code: 'invalid_domain_metadata'
 		});
 	});
 

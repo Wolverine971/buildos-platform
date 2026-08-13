@@ -72,6 +72,8 @@ Turborepo is pinned at `^2.10.5`. Keep it at 2.9.7 or newer so it can parse pnpm
 - **`packages/supabase-client`** — Shared Supabase client configuration
 - **`packages/twilio-service`** — SMS/Twilio integration
 - **`packages/shared-agent-ops`** — Agent operation layer shared by the web agent-call gateway and the worker Agent Run runner (op policy/scope, ontology mutation core, task/document state normalizers)
+- **`packages/agentic-chat-runtime`** — Transport-neutral contracts, ports, loop/supervisor logic, and parity fixtures for the agentic chat runtime (consumed by both web and worker)
+- **`packages/agent-orchestrator`** — Agent-first orchestration core (see `docs/architecture/agent-first-orchestration/`); not yet consumed by the apps
 - **`packages/buildos-mcp-server`** — Local stdio MCP bridge (`@buildos/mcp-server`) that proxies a local MCP client to the remote BuildOS connector at `/mcp/buildos`
 
 ### Web App (`apps/web`)
@@ -80,7 +82,7 @@ SvelteKit app with path aliases: `$components` → `src/lib/components`, `$ui` �
 
 **Key directories:**
 
-- `src/routes/api/` — ~49 API route groups (REST + SSE endpoints)
+- `src/routes/api/` — ~50 API route groups (REST + SSE endpoints)
 - `src/routes/(public)/` — Public-facing pages
 - `src/lib/services/` — Business logic services (brain dump, calendar, chat, dashboard, etc.)
 - `src/lib/server/` — Server-only modules (billing, braindump processing, onboarding, OCR, ontology classification, agent runs, Project Reviews, welcome/retargeting sequences)
@@ -106,7 +108,7 @@ Express server with three main components:
 
 **Queue system:** Redis-free. Jobs live in `queue_jobs`; workers claim rows atomically via Supabase RPCs (`add_queue_job`, `claim_pending_jobs`, `complete_queue_job`, `fail_queue_job`) using `FOR UPDATE SKIP LOCKED`. `SupabaseQueue` defaults: `pollInterval=5s`, `batchSize=5`, `stalledTimeout=5min`. The `JobAdapter` in `workers/shared/jobAdapter.ts` bridges the legacy BullMQ-style processor interface to the Supabase queue.
 
-**Active job types** (registered in `src/worker.ts`): `generate_daily_brief`, `onboarding_analysis`, `send_notification`, `project_activity_batch_flush`, `schedule_daily_sms`, `send_sms`, `classify_chat_session`, `process_onto_braindump`, `transcribe_voice_note`, `generate_brief_audio`, `extract_onto_asset_ocr`, `agent_run`, `build_project_context_snapshot`, `generate_project_icon`, `buildos_project_loop`, `sync_calendar`.
+**Active job types** (registered in `src/worker.ts`): `generate_daily_brief`, `onboarding_analysis`, `send_notification`, `project_activity_batch_flush`, `schedule_daily_sms`, `send_sms`, `classify_chat_session`, `process_onto_braindump`, `transcribe_voice_note`, `generate_brief_audio`, `extract_onto_asset_ocr`, `agent_run`, `build_project_context_snapshot`, `generate_project_icon`, `buildos_project_loop`, `sync_calendar`, `admin_question_tree`.
 
 ### LLM Integration (`packages/smart-llm`)
 
@@ -186,7 +188,7 @@ Notable feature flags:
 
 ## Deployment
 
-- **Web → Vercel.** `vercel.json` defines the build (`turbo build --filter=@buildos/web...`), security headers, long-cache asset rules, and cron jobs (dunning, trial reminders, billing-ops monitoring, welcome sequence, reactivation sequence, security-events retention). Adapter: `@sveltejs/adapter-vercel` pinned to `nodejs22.x`.
+- **Web → Vercel.** `vercel.json` defines the build (`turbo build --filter=@buildos/web...`), security headers, long-cache asset rules, and ~10 cron jobs (billing/trial lifecycle, welcome/reactivation sequences, Gmail maintenance, webhook renewal, account deletions, retention cleanup — see `vercel.json` for the current list). Adapter: `@sveltejs/adapter-vercel` pinned to `nodejs22.x`.
 - **Worker → Railway.** Railway root directory must be `/`. Repo-root `railway.toml` +
   `nixpacks.toml` install dev dependencies with frozen `pnpm@11.7.0`, build the worker and its
   workspace dependencies through Turbo, and start `node apps/worker/dist/index.js` on Node 22.

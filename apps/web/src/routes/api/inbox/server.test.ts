@@ -36,6 +36,7 @@ describe('GET /api/inbox', () => {
 		mocks.listInboxItems.mockResolvedValue({
 			items: [],
 			total: 0,
+			heldTotal: 0,
 			repairedCount: 0,
 			backfilledCount: 0
 		});
@@ -47,8 +48,10 @@ describe('GET /api/inbox', () => {
 				'http://localhost/api/inbox?status=pending&include_payload=1&limit=25&repair=none'
 			)
 		);
+		const json = await response.json();
 
 		expect(response.status).toBe(200);
+		expect(json.data.heldTotal).toBe(0);
 		expect(mocks.listInboxItems).toHaveBeenCalledWith(
 			expect.objectContaining({
 				userId: 'user-1',

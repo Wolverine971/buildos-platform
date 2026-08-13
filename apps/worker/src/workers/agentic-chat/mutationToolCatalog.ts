@@ -498,6 +498,7 @@ export type AgenticChatReviewedMutationToolNameV1 =
 	keyof typeof AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1;
 
 export type AgenticChatDeferredMutationReasonV1 =
+	| 'browser_user_action_handoff'
 	| 'calendar_provider_reconciliation'
 	| 'compound_partial_commit'
 	| 'control_plane_effect_mapping'
@@ -507,7 +508,7 @@ export type AgenticChatDeferredMutationReasonV1 =
 
 /**
  * Explicit P2 boundary for signed writes that are not worker-admitted. Keeping
- * this beside the reviewed catalog turns the 38/20/18 inventory into a
+ * this beside the reviewed catalog turns the 39/20/19 inventory into a
  * fail-closed executable contract: a newly signed write must be reviewed or
  * deliberately deferred before the worker can start.
  */
@@ -526,6 +527,7 @@ export const AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1 = Object.freeze({
 	delete_onto_task: 'irreversible_delete_without_tombstone',
 	link_user_contact: 'sensitive_contact_reconciliation',
 	reorganize_onto_project_graph: 'compound_partial_commit',
+	request_email_account_connection: 'browser_user_action_handoff',
 	resolve_user_contact_candidate: 'sensitive_contact_reconciliation',
 	set_project_calendar: 'calendar_provider_reconciliation',
 	update_calendar_event: 'calendar_provider_reconciliation',

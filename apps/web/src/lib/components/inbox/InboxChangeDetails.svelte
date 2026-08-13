@@ -81,7 +81,7 @@
 	);
 </script>
 
-{#if count > 0 || hasPreviewDetail}
+{#if count > 0}
 	<div class="mt-2">
 		<button
 			type="button"

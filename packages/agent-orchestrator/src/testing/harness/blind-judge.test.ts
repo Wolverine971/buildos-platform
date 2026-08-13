@@ -15,8 +15,8 @@ import {
 	type PairWinnerLabel
 } from './blind-judge';
 
-/** Frozen 2026-07-25 with the counterbalanced v2 mapping, before any scored output existed. */
-const EXPECTED_MECHANIC_SHA256 = 'ba2602e89290f76688b61ffc957f58591405de01547be0e493c657059ca774d2';
+/** Frozen 2026-08-13 after replacing Grok 4.5 with Grok 4.6 in the judge panel. */
+const EXPECTED_MECHANIC_SHA256 = '4e31a42e2ffb330653ee6f10cabd5b4d3867dc300c082594eb84e93a011d1249';
 
 const COMPARISON_SCENARIO_IDS = [
 	'a0-c06-single-source-article',
@@ -56,10 +56,10 @@ describe('Phase A A2 blind judge mechanic', () => {
 	it('pins the approved panel and the entire mechanic hash', () => {
 		expect(BLIND_JUDGE_MODELS).toEqual([
 			'openai/gpt-5.6-luna',
-			'x-ai/grok-4.5',
+			'x-ai/grok-4.6',
 			'moonshotai/kimi-k3'
 		]);
-		expect(BLIND_JUDGE_POLICY_VERSION).toBe('phase-a-a2-blind-v2');
+		expect(BLIND_JUDGE_POLICY_VERSION).toBe('phase-a-a2-blind-v3');
 		expect(BLIND_JUDGE_MECHANIC_SHA256).toBe(EXPECTED_MECHANIC_SHA256);
 	});
 

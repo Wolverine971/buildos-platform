@@ -17,8 +17,7 @@ import { listCapabilities } from '../registry/capability-catalog';
 //   and is the portable/external calendar skill; calendar_management is the native
 //   chat default, so google_calendar is deliberately kept out of domain routing to
 //   avoid a two-calendar-skill ambiguity.
-// - libri_knowledge is feature-flag gated and reached via skill_search when enabled.
-const SEARCH_ONLY_SKILLS = new Set(['google_calendar', 'libri_knowledge']);
+const SEARCH_ONLY_SKILLS = new Set(['google_calendar']);
 
 describe('skill discoverability', () => {
 	it('every registered skill is reachable via routing, as a child, or is intentionally search-only', () => {

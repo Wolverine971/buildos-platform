@@ -17,24 +17,25 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import {
+	buildResearchLogDescription,
+	buildResearchEntryFromCalls,
+	renderResearchEntry,
+	runMarker,
+	type ResearchEntryInput,
+	type ResearchToolCall,
+	RESEARCH_CAPTURE_MINIMUM_CALLS,
+	RESEARCH_ENTRY_MAX_CHARS,
+	RESEARCH_LOG_ARCHIVE_TITLE,
+	RESEARCH_LOG_MAX_BYTES,
+	RESEARCH_LOG_MAX_ENTRIES,
+	RESEARCH_LOG_TITLE,
+	RESEARCH_LOG_TYPE_KEY
+} from '@buildos/agentic-chat-runtime/loop';
+import {
 	createOrMergeDocumentVersion,
 	toDocumentSnapshot
 } from '$lib/services/ontology/versioning.service';
 import { addDocumentToTree } from '$lib/services/ontology/doc-structure.service';
-
-export const RESEARCH_LOG_TITLE = 'Research Log';
-export const RESEARCH_LOG_ARCHIVE_TITLE = 'Research Log (Archive)';
-export const RESEARCH_LOG_TYPE_KEY = 'document.knowledge.research';
-
-/** Rotation caps (DJ, 2026-07-26). Whichever trips first moves the oldest entries to the archive. */
-export const RESEARCH_LOG_MAX_ENTRIES = 20;
-export const RESEARCH_LOG_MAX_BYTES = 24_000;
-
-/** A single entry stays small on purpose — a turn that wants more should write a real document. */
-export const RESEARCH_ENTRY_MAX_CHARS = 600;
-
-const USER_MESSAGE_MAX_CHARS = 140;
-const LIST_ITEM_MAX = 6;
 
 const LOG_HEADER = [
 	`# ${RESEARCH_LOG_TITLE}`,
@@ -51,92 +52,26 @@ const ARCHIVE_HEADER = [
 	''
 ].join('\n');
 
-export interface ResearchEntryInput {
-	/** Idempotency key — one entry per turn, even if finalization runs twice. */
-	streamRunId: string;
-	userMessage: string;
-	queries: string[];
-	visitedUrls: string[];
-	findings?: string[];
-	unresolved?: string[];
-	/** ISO timestamp; injected so rendering stays pure and testable. */
-	capturedAt: string;
-}
-
-function clip(value: string, max: number): string {
-	const normalized = value.replace(/\s+/g, ' ').trim();
-	if (normalized.length <= max) return normalized;
-	return `${normalized.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
-}
-
-function uniqueClipped(values: string[], max: number, itemMax: number): string[] {
-	const seen = new Set<string>();
-	const out: string[] = [];
-	for (const raw of values) {
-		const value = clip(String(raw ?? ''), itemMax);
-		if (!value || seen.has(value)) continue;
-		seen.add(value);
-		out.push(value);
-		if (out.length >= max) break;
-	}
-	return out;
-}
-
-export function runMarker(streamRunId: string): string {
-	return `<!-- run:${streamRunId} -->`;
-}
+export {
+	buildResearchLogDescription as buildLogDescription,
+	buildResearchEntryFromCalls,
+	renderResearchEntry,
+	runMarker,
+	RESEARCH_CAPTURE_MINIMUM_CALLS,
+	RESEARCH_ENTRY_MAX_CHARS,
+	RESEARCH_LOG_ARCHIVE_TITLE,
+	RESEARCH_LOG_MAX_BYTES,
+	RESEARCH_LOG_MAX_ENTRIES,
+	RESEARCH_LOG_TITLE,
+	RESEARCH_LOG_TYPE_KEY,
+	type ResearchEntryInput,
+	type ResearchToolCall
+};
 
 /** True when this turn's entry is already in the log. Finalization can run more than once. */
 export function hasEntryForRun(content: string, streamRunId: string): boolean {
 	if (!streamRunId) return false;
 	return content.includes(runMarker(streamRunId));
-}
-
-/**
- * Renders one entry. Capped at RESEARCH_ENTRY_MAX_CHARS — the cap is enforced by trimming the
- * optional lines (findings, then unresolved, then visited) rather than truncating mid-URL, so what
- * survives stays parseable.
- */
-export function renderResearchEntry(input: ResearchEntryInput): string {
-	const date = input.capturedAt.slice(0, 10);
-	const topic = clip(input.userMessage || 'Research', USER_MESSAGE_MAX_CHARS);
-	const queries = uniqueClipped(input.queries ?? [], LIST_ITEM_MAX, 80);
-	const visited = uniqueClipped(input.visitedUrls ?? [], LIST_ITEM_MAX, 120);
-	const findings = uniqueClipped(input.findings ?? [], LIST_ITEM_MAX, 120);
-	const unresolved = uniqueClipped(input.unresolved ?? [], 3, 100);
-
-	const head = [`## ${date} · ${topic}`, runMarker(input.streamRunId), ''];
-
-	const build = (opts: {
-		includeFindings: boolean;
-		includeUnresolved: boolean;
-		visitedLimit: number;
-	}): string => {
-		const lines = [...head];
-		if (queries.length) lines.push(`- Queries: ${queries.join(' · ')}`);
-		const shownVisited = visited.slice(0, opts.visitedLimit);
-		if (shownVisited.length) lines.push(`- Visited: ${shownVisited.join(' , ')}`);
-		if (opts.includeFindings && findings.length)
-			lines.push(`- Findings: ${findings.join(' · ')}`);
-		if (opts.includeUnresolved && unresolved.length) {
-			lines.push(`- Unresolved: ${unresolved.join(' · ')}`);
-		}
-		return lines.join('\n').trimEnd();
-	};
-
-	// Degrade in a fixed order so the cap never produces a half-written URL.
-	const attempts = [
-		{ includeFindings: true, includeUnresolved: true, visitedLimit: visited.length },
-		{ includeFindings: true, includeUnresolved: false, visitedLimit: visited.length },
-		{ includeFindings: false, includeUnresolved: false, visitedLimit: visited.length },
-		{ includeFindings: false, includeUnresolved: false, visitedLimit: 2 },
-		{ includeFindings: false, includeUnresolved: false, visitedLimit: 0 }
-	];
-	for (const attempt of attempts) {
-		const rendered = build(attempt);
-		if (rendered.length <= RESEARCH_ENTRY_MAX_CHARS) return rendered;
-	}
-	return build(attempts[attempts.length - 1]!).slice(0, RESEARCH_ENTRY_MAX_CHARS);
 }
 
 /** Splits a log body into its entries (each begins with a level-2 heading), discarding the header. */
@@ -184,87 +119,6 @@ export function planRotation(content: string): RotationPlan | null {
 	return {
 		liveContent: joinEntries(LOG_HEADER, entries.slice(0, keep)),
 		rotatedEntries: entries.slice(keep)
-	};
-}
-
-/** The one-line index the model sees without opening the document. */
-export function buildLogDescription(input: ResearchEntryInput): string {
-	return clip(`Auto-captured research. Latest: ${input.userMessage || 'research'}`, 180);
-}
-
-/** Minimal shape the route passes in, so this module stays decoupled from orchestrator types. */
-export interface ResearchToolCall {
-	name: string;
-	args: Record<string, unknown> | null;
-	result?: unknown;
-}
-
-/** How many web research calls a turn needs before it is worth capturing. */
-export const RESEARCH_CAPTURE_MINIMUM_CALLS = 2;
-
-function isResearchToolName(name: string): boolean {
-	const normalized = name.trim().toLowerCase();
-	return (
-		normalized === 'web_search' ||
-		normalized === 'web_visit' ||
-		normalized === 'util.web.search' ||
-		normalized === 'util.web.visit'
-	);
-}
-
-/** Shallow sweep for `url`-ish string fields, since search result payload shapes vary by provider. */
-function collectUrls(value: unknown, depth = 0, out: string[] = []): string[] {
-	if (out.length >= 20 || depth > 3) return out;
-	if (typeof value === 'string') {
-		if (/^https?:\/\//i.test(value)) out.push(value);
-		return out;
-	}
-	if (Array.isArray(value)) {
-		for (const item of value) collectUrls(item, depth + 1, out);
-		return out;
-	}
-	if (value && typeof value === 'object') {
-		for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-			if (typeof item === 'string' && !/url|link|href/i.test(key)) continue;
-			collectUrls(item, depth + 1, out);
-		}
-	}
-	return out;
-}
-
-/**
- * Builds an entry from a turn's tool calls, or null when the turn does not meet the capture bar.
- * Pure — the caller supplies identity and time.
- */
-export function buildResearchEntryFromCalls(
-	calls: ResearchToolCall[],
-	context: { streamRunId: string; userMessage: string; capturedAt: string }
-): ResearchEntryInput | null {
-	const researchCalls = calls.filter((call) => isResearchToolName(call.name));
-	if (researchCalls.length < RESEARCH_CAPTURE_MINIMUM_CALLS) return null;
-
-	const queries: string[] = [];
-	const visitedUrls: string[] = [];
-	const findings: string[] = [];
-
-	for (const call of researchCalls) {
-		const args = call.args ?? {};
-		const query = args.query ?? args.q;
-		if (typeof query === 'string' && query.trim()) queries.push(query.trim());
-		const url = args.url;
-		if (typeof url === 'string' && url.trim()) visitedUrls.push(url.trim());
-		for (const found of collectUrls(call.result)) visitedUrls.push(found);
-		const answer = (call.result as Record<string, unknown> | undefined)?.answer;
-		if (typeof answer === 'string' && answer.trim()) findings.push(answer.trim());
-	}
-
-	return {
-		streamRunId: context.streamRunId,
-		userMessage: context.userMessage,
-		queries,
-		visitedUrls,
-		findings,
-		capturedAt: context.capturedAt
 	};
 }
 
@@ -397,7 +251,7 @@ export async function appendResearchEntry(
 	if (!entry.streamRunId) return { status: 'skipped', reason: 'no_stream_run_id' };
 
 	const actorId = params.actorId ?? (await resolveActorId(supabase, params.userId));
-	const description = buildLogDescription(entry);
+	const description = buildResearchLogDescription(entry);
 	const rendered = renderResearchEntry(entry);
 
 	const existing = await findLogDocument(supabase, projectId, RESEARCH_LOG_TITLE);

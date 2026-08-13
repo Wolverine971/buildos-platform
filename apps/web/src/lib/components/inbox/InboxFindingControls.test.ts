@@ -8,7 +8,7 @@ import InboxFindingControls from './InboxFindingControls.svelte';
 describe('InboxFindingControls', () => {
 	afterEach(cleanup);
 
-	it('uses one decision note for both Address and Dismiss', async () => {
+	it('uses one response for both Mark handled and Dismiss', async () => {
 		const onNoteChange = vi.fn();
 		const onAddress = vi.fn();
 		const onReject = vi.fn();
@@ -21,11 +21,11 @@ describe('InboxFindingControls', () => {
 			}
 		});
 
-		const note = screen.getByLabelText('Decision note');
-		const address = screen.getByRole('button', { name: 'Address' });
+		const note = screen.getByLabelText('Your response');
+		const markHandled = screen.getByRole('button', { name: 'Mark handled' });
 		const dismiss = screen.getByRole('button', { name: 'Dismiss' });
 
-		expect(address).toBeDisabled();
+		expect(markHandled).toBeDisabled();
 		await fireEvent.input(note, { target: { value: 'Already covered in the launch plan.' } });
 		expect(onNoteChange).toHaveBeenCalledWith('Already covered in the launch plan.');
 
@@ -37,8 +37,8 @@ describe('InboxFindingControls', () => {
 			onReject
 		});
 
-		expect(address).toBeEnabled();
-		await fireEvent.click(address);
+		expect(markHandled).toBeEnabled();
+		await fireEvent.click(markHandled);
 		await fireEvent.click(dismiss);
 
 		expect(onAddress).toHaveBeenCalledWith('Already covered in the launch plan.');
@@ -57,6 +57,25 @@ describe('InboxFindingControls', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
 
 		expect(onReject).toHaveBeenCalledWith('');
-		expect(screen.getByText('Required to address; optional to dismiss.')).toBeInTheDocument();
+		expect(
+			screen.getByText('Required to mark handled; optional as a dismissal note.')
+		).toBeInTheDocument();
+	});
+
+	it('uses decision-shaped labels for response and follow-up actions', () => {
+		render(InboxFindingControls, {
+			props: {
+				idPrefix: 'finding',
+				note: 'I will update the launch plan.',
+				canChat: true,
+				onAddress: vi.fn(),
+				onChat: vi.fn()
+			}
+		});
+
+		expect(screen.getByRole('button', { name: 'Mark handled' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Discuss' })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Address' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Respond' })).not.toBeInTheDocument();
 	});
 });

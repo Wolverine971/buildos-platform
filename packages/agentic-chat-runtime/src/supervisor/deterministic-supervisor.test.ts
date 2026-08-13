@@ -1,7 +1,37 @@
-// apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/deterministic-supervisor.test.ts
+// packages/agentic-chat-runtime/src/supervisor/deterministic-supervisor.test.ts
 import { describe, expect, it, vi } from 'vitest';
+import { provideAgenticChatLoopToolCatalog } from '../loop/tool-catalog';
 import { createDeterministicTurnSupervisor } from './deterministic-supervisor';
 import type { TurnSupervisorCreateParams, TurnSupervisorDecision } from './types';
+
+const TEST_TOOL_CATALOG = {
+	ops: {
+		search_project: {
+			op: 'search_project',
+			tool_name: 'search_project',
+			kind: 'read' as const
+		},
+		update_onto_task: {
+			op: 'update_onto_task',
+			tool_name: 'update_onto_task',
+			kind: 'write' as const
+		}
+	},
+	byToolName: {
+		search_project: {
+			op: 'search_project',
+			tool_name: 'search_project',
+			kind: 'read' as const
+		},
+		update_onto_task: {
+			op: 'update_onto_task',
+			tool_name: 'update_onto_task',
+			kind: 'write' as const
+		}
+	}
+};
+
+provideAgenticChatLoopToolCatalog(() => TEST_TOOL_CATALOG);
 
 function createSupervisor(overrides: Partial<TurnSupervisorCreateParams> = {}) {
 	return createDeterministicTurnSupervisor({
@@ -24,6 +54,14 @@ function createSupervisor(overrides: Partial<TurnSupervisorCreateParams> = {}) {
 }
 
 describe('createDeterministicTurnSupervisor', () => {
+	it('uses the explicit turn-start observation as its semantic clock epoch', () => {
+		const supervisor = createSupervisor();
+
+		supervisor.observe({ type: 'turn_started', at: 1_000 });
+
+		expect(supervisor.getDigest(1_125).elapsedMs).toBe(125);
+	});
+
 	it('emits a status decision after long-running tool work', () => {
 		vi.useFakeTimers();
 		try {

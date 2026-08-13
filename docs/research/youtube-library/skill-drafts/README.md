@@ -41,6 +41,17 @@ Use `lineage.yaml` when a skill combines multiple sources or when its subskills
 should be reusable elsewhere. The current draft schema lives at
 `docs/research/youtube-library/SKILL_LINEAGE_SCHEMA.md`.
 
+## Promotion Stamps
+
+The draft is canonical; the runtime skill and blog post are derived from it. When a
+draft is promoted, stamp its frontmatter so the draft stays the source of truth:
+
+- `status`: `registered | queued | archived | superseded-by: <id>`
+- `promoted_to`: path to the runtime skill (when registered in the agentic-chat skill
+  catalog)
+- `published_as`: path to the blog post (when published)
+- `last_promoted`: date of the most recent promotion
+
 Once the skill is ready for the public repo, move the final article draft into:
 
 ```txt

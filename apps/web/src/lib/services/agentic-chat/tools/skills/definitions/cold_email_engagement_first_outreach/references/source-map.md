@@ -30,7 +30,7 @@ Tactical gap-fill source cards added 2026-05-16:
 - Challenger Inc: Mobilizer/Talker/Blocker buying-group logic.
 - Black Swan Group: tactical empathy for objections and tense replies.
 - Muck Rack + PR News 2025: journalist workload, source packet, and audience-first media pitch standards.
-- Deliverability child skill: `../cold_email_deliverability_readiness/references/provider-requirement-matrix.md` for pass/blocked/manual-only sender-readiness decisions.
+- Deliverability child skill: the Provider Requirement Matrix in the Knowledge block of `../cold_email_deliverability_readiness/SKILL.md` for pass/blocked/manual-only sender-readiness decisions.
 
 Integrated prior source:
 

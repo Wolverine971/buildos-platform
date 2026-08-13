@@ -37,7 +37,7 @@
 			: 'w-full shrink-0 space-y-2 sm:w-64'
 	);
 	const canOpenChat = $derived(canChat && Boolean(onChat));
-	const canAddress = $derived(Boolean(note.trim()) && !pending);
+	const canMarkHandled = $derived(Boolean(note.trim()) && !pending);
 
 	function handleInput(event: Event) {
 		onNoteChange?.((event.currentTarget as HTMLInputElement).value);
@@ -47,7 +47,7 @@
 <div class={containerClass}>
 	<div>
 		<label for={`${idPrefix}-decision-note`} class="micro-label text-muted-foreground">
-			Decision note
+			Your response
 		</label>
 		<input
 			id={`${idPrefix}-decision-note`}
@@ -56,12 +56,12 @@
 			maxlength="1000"
 			disabled={pending}
 			oninput={handleInput}
-			placeholder="Why are you addressing or dismissing this?"
+			placeholder="What will you do next?"
 			aria-describedby={`${idPrefix}-note-help`}
-			class="mt-1 h-11 w-full rounded-md border border-border-strong bg-background px-3 text-xs text-foreground shadow-ink-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-accent focus:ring-1 focus:ring-accent/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60"
+			class="mt-1 h-11 w-full rounded-md border border-border-strong bg-background px-3 text-base text-foreground shadow-ink-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-accent focus:ring-1 focus:ring-accent/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
 		/>
 		<p id={`${idPrefix}-note-help`} class="mt-1 text-2xs text-muted-foreground">
-			Required to address; optional to dismiss.
+			Required to mark handled; optional as a dismissal note.
 		</p>
 	</div>
 	<div class="grid w-full grid-cols-2 gap-2">
@@ -71,10 +71,10 @@
 			icon={Check}
 			loading={pending}
 			onclick={() => onAddress?.(note.trim())}
-			disabled={!canAddress}
+			disabled={!canMarkHandled}
 			class="min-h-11 w-full text-xs"
 		>
-			Address
+			Mark handled
 		</Button>
 		<Button
 			variant="outline"
@@ -99,7 +99,7 @@
 					disabled={pending || openingChat}
 					class="min-h-11 w-full text-xs"
 				>
-					Chat
+					Discuss
 				</Button>
 			{/if}
 			{#if onSnooze}

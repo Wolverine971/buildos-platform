@@ -71,6 +71,7 @@ export type InboxItemWithPayload = InboxIndexRow & {
 export type ListInboxItemsResult = {
 	items: InboxItemWithPayload[];
 	total: number;
+	heldTotal: number;
 	repairedCount: number;
 	backfilledCount: number;
 };
@@ -200,6 +201,17 @@ async function countInboxRows(params: {
 	const { count, error } = await query;
 	if (error) throw error;
 	return Number(count ?? 0);
+}
+
+async function countHeldInboxRows(params: {
+	supabase: AnySupabase;
+	status?: InboxItemStatus | null;
+	projectId?: string | null;
+	sourceType?: InboxSourceType | null;
+	group?: InboxGroupFilter | null;
+}): Promise<number> {
+	if (params.status !== 'pending') return 0;
+	return countInboxRows({ ...params, status: 'deferred' });
 }
 
 async function loadInboxCountBreakdownRows(params: {
@@ -1285,25 +1297,32 @@ export async function listInboxItems(params: {
 	const totalRepairedCount = repairedCount + lifecycleRepairedCount;
 
 	if (!params.includePayload) {
-		const total = await measure(params.timing, 'inbox.total', () => countInboxRows(params));
+		const [total, heldTotal] = await measure(params.timing, 'inbox.total', () =>
+			Promise.all([countInboxRows(params), countHeldInboxRows(params)])
+		);
 		return {
 			items: visibleRows,
 			total,
+			heldTotal,
 			repairedCount: totalRepairedCount,
 			backfilledCount
 		};
 	}
 
-	const [total, capabilities, payloads] = await measure(params.timing, 'inbox.hydrate_base', () =>
-		Promise.all([
-			countInboxRows(params),
-			loadDecisionCapabilities({
-				supabase: params.supabase,
-				rows: visibleRows,
-				userId: params.userId
-			}),
-			loadSourcePayloads({ admin: params.admin, rows: visibleRows })
-		])
+	const [total, heldTotal, capabilities, payloads] = await measure(
+		params.timing,
+		'inbox.hydrate_base',
+		() =>
+			Promise.all([
+				countInboxRows(params),
+				countHeldInboxRows(params),
+				loadDecisionCapabilities({
+					supabase: params.supabase,
+					rows: visibleRows,
+					userId: params.userId
+				}),
+				loadSourcePayloads({ admin: params.admin, rows: visibleRows })
+			])
 	);
 	const contexts = await measure(params.timing, 'inbox.contexts', () =>
 		loadSourceContexts({
@@ -1343,6 +1362,7 @@ export async function listInboxItems(params: {
 			};
 		}),
 		total,
+		heldTotal,
 		repairedCount: totalRepairedCount,
 		backfilledCount
 	};

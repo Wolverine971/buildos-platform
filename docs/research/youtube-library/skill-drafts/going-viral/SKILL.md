@@ -1,4 +1,5 @@
 ---
+skill_id: going-viral
 name: Going Viral
 description: >-
     Child skill under Content Strategy Beyond Blogging. Orchestration layer that plans, drafts, or audits a single
@@ -69,6 +70,9 @@ reference_modules:
           - When writing or auditing LinkedIn posts, carousels, or a LinkedIn growth motion.
       path: references/linkedin.md
 path: docs/research/youtube-library/skill-drafts/going-viral/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/going_viral/SKILL.md
+last_promoted: '2026-06-11'
 ---
 
 # Going Viral — How Ideas Travel

@@ -3,9 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	buildCheckpointResumeSystemMessage,
 	createTurnCheckpoint,
+	freezeCheckpointResumeSnapshot,
 	loadLatestActiveCheckpoint,
 	markCheckpointResumed,
 	markCheckpointResuming,
+	recoverCheckpointResumeLifecycle,
 	recoverStaleResumingCheckpoints,
 	restoreCheckpointToActive,
 	type ChatTurnCheckpoint,
@@ -33,8 +35,7 @@ function createCheckpointSupabaseMock(
 
 	class QueryBuilder {
 		private filters: Array<(row: Row) => boolean> = [];
-		private orderField: string | null = null;
-		private orderAscending = true;
+		private orderFields: Array<{ field: string; ascending: boolean }> = [];
 		private rowLimit: number | null = null;
 		private patch: Row | null = null;
 		private insertPayload: Row[] | null = null;
@@ -83,8 +84,7 @@ function createCheckpointSupabaseMock(
 		}
 
 		order(field: string, options?: { ascending?: boolean }) {
-			this.orderField = field;
-			this.orderAscending = options?.ascending !== false;
+			this.orderFields.push({ field, ascending: options?.ascending !== false });
 			return this;
 		}
 
@@ -137,14 +137,16 @@ function createCheckpointSupabaseMock(
 					Object.assign(row, JSON.parse(JSON.stringify(this.patch)));
 				}
 			}
-			if (this.orderField) {
-				const field = this.orderField;
-				const ascending = this.orderAscending;
+			if (this.orderFields.length > 0) {
+				const orderFields = this.orderFields;
 				matched = [...matched].sort((left, right) => {
-					if (left[field] === right[field]) return 0;
-					return ascending
-						? String(left[field] ?? '').localeCompare(String(right[field] ?? ''))
-						: String(right[field] ?? '').localeCompare(String(left[field] ?? ''));
+					for (const { field, ascending } of orderFields) {
+						if (left[field] === right[field]) continue;
+						return ascending
+							? String(left[field] ?? '').localeCompare(String(right[field] ?? ''))
+							: String(right[field] ?? '').localeCompare(String(left[field] ?? ''));
+					}
+					return 0;
 				});
 			}
 			if (this.rowLimit !== null) {
@@ -317,6 +319,22 @@ describe('turn supervisor checkpoint service', () => {
 		expect(checkpoint?.id).toBe('older-active');
 	});
 
+	it('uses checkpoint id as the deterministic newest-row tiebreaker', async () => {
+		const supabase = createCheckpointSupabaseMock([
+			checkpointRow({ id: 'checkpoint-a', created_at: '2026-05-23T11:00:00.000Z' }),
+			checkpointRow({ id: 'checkpoint-b', created_at: '2026-05-23T11:00:00.000Z' })
+		]);
+
+		const checkpoint = await loadLatestActiveCheckpoint({
+			supabase,
+			sessionId: 'session-1',
+			userId: 'user-1',
+			now: '2026-05-23T12:00:00.000Z'
+		});
+
+		expect(checkpoint?.id).toBe('checkpoint-b');
+	});
+
 	it('soft consumes on resume start and hard consumes after successful completion', async () => {
 		const supabase = createCheckpointSupabaseMock([checkpointRow({ id: 'checkpoint-1' })]);
 
@@ -438,6 +456,57 @@ describe('turn supervisor checkpoint service', () => {
 		});
 	});
 
+	it('uses the atomic recovery RPC and validates its exact receipt', async () => {
+		const rpc = vi.fn(async () => ({
+			data: {
+				outcome: 'recovered',
+				user_id: 'user-1',
+				expired_checkpoint_ids: ['expired-1'],
+				marked_resumed_checkpoint_ids: ['resumed-1'],
+				restored_active_checkpoint_ids: ['active-1'],
+				recovered_at: '2026-05-23T12:00:00+00:00'
+			},
+			error: null
+		}));
+
+		const receipt = await recoverCheckpointResumeLifecycle({
+			supabase: { rpc } as never,
+			userId: 'user-1',
+			staleBefore: '2026-05-23T11:00:00.000Z',
+			recoveredAt: '2026-05-23T12:00:00.000Z'
+		});
+
+		expect(rpc).toHaveBeenCalledWith('recover_agentic_chat_resume_checkpoints', {
+			p_user_id: 'user-1',
+			p_stale_before: '2026-05-23T11:00:00.000Z',
+			p_recovered_at: '2026-05-23T12:00:00.000Z'
+		});
+		expect(receipt).toEqual({
+			outcome: 'recovered',
+			userId: 'user-1',
+			expiredCheckpointIds: ['expired-1'],
+			markedResumedCheckpointIds: ['resumed-1'],
+			restoredActiveCheckpointIds: ['active-1'],
+			recoveredAt: '2026-05-23T12:00:00+00:00'
+		});
+	});
+
+	it('fails closed on an invalid atomic recovery receipt', async () => {
+		await expect(
+			recoverCheckpointResumeLifecycle({
+				supabase: {
+					rpc: vi.fn(async () => ({
+						data: { outcome: 'recovered', user_id: 'another-user' },
+						error: null
+					}))
+				} as never,
+				userId: 'user-1',
+				staleBefore: '2026-05-23T11:00:00.000Z',
+				recoveredAt: '2026-05-23T12:00:00.000Z'
+			})
+		).rejects.toThrow('invalid receipt');
+	});
+
 	it('formats a compact resume system message', () => {
 		const checkpoint = checkpointRow({
 			question: 'Which task should I update?',
@@ -450,6 +519,17 @@ describe('turn supervisor checkpoint service', () => {
 		expect(message).toContain('Which task should I update?');
 		expect(message).toContain('"known_ids":["task-1"]');
 		expect(message).toContain('Do not re-run completed reads or writes');
+	});
+
+	it('fails closed when a stored checkpoint cannot satisfy the frozen contract', () => {
+		expect(() =>
+			freezeCheckpointResumeSnapshot(
+				checkpointRow({ checkpoint_type: 'unexpected_checkpoint_type' })
+			)
+		).toThrow('Unexpected turn checkpoint type');
+		expect(() =>
+			freezeCheckpointResumeSnapshot(checkpointRow({ resume_context: [] as any }))
+		).toThrow('Unexpected turn checkpoint resume context');
 	});
 });
 

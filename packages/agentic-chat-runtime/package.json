@@ -17,6 +17,11 @@
 			"import": "./dist/loop/index.mjs",
 			"require": "./dist/loop/index.js"
 		},
+		"./supervisor": {
+			"types": "./dist/supervisor/index.d.ts",
+			"import": "./dist/supervisor/index.mjs",
+			"require": "./dist/supervisor/index.js"
+		},
 		"./tools": {
 			"types": "./dist/tools/index.d.ts",
 			"import": "./dist/tools/index.mjs",
@@ -29,8 +34,8 @@
 		}
 	},
 	"scripts": {
-		"build": "tsup src/index.ts src/loop/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
-		"build:types": "tsup src/index.ts src/loop/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
+		"build": "tsup src/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
+		"build:types": "tsup src/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
 		"clean": "rm -rf dist .turbo",
 		"typecheck": "tsc --noEmit --skipLibCheck",
 		"test": "vitest",

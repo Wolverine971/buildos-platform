@@ -4,9 +4,13 @@
 
 > The fix side of the [Hyperplexed Design Playbook](./HYPERPLEXED_DESIGN_PLAYBOOK.md). The playbook
 > tells you what's wrong; this doc tells you the BuildOS-native fix, so each audit links a finding to
-> a pattern number instead of re-deriving the recipe. Patterns were extracted from the fixes the
-> 2026-06 audit wave actually shipped (project, projects-list, dashboard, history, profile, shell,
-> admin, agent-chat-modal) plus the effect recipes in playbook §2.
+> a pattern number instead of re-deriving the recipe. The catalog started from the fixes the
+> 2026-06 audit wave shipped plus the effect recipes in playbook §2, and has since grown beyond
+> taste into loading, state-truth, and structural patterns (P19+).
+>
+> **P-numbers are stable and append-only** (they're cited from every audit doc and tracker row);
+> **sections are thematic** — a new pattern takes the next number but files under the section it
+> belongs to, so numbers are not in file order past P18.
 >
 > Conventions assumed everywhere: **Inkprint tokens** (`bg-card`, `text-foreground`, `shadow-ink`,
 > `tx-*` — see `INKPRINT_DESIGN_SYSTEM.md`), **Svelte 5 runes**, **Tailwind**, light + dark mode,
@@ -380,6 +384,10 @@ usual text-color tokens, so this is exactly the kind of call the live verify pas
 Skip Linear's sparkle-stars layer unless the surface really earns it; if added, JS owns the whole
 cycle (playbook §2 "one timing owner") and the stars are `aria-hidden`.
 
+---
+
+## Color & semantic tokens
+
 ### P19 · Tint and foreground must describe the same surface
 
 **Finding:** text or controls use a `*-foreground` token intended for a solid semantic background
@@ -403,6 +411,10 @@ page foreground for body text and the semantic color only for a short label, ico
 Apply the same contract to `accent`, `success`, and `destructive` tokens. Color-only state changes
 do not need animation; if the component already transitions colors, add
 `motion-reduce:transition-none` so reduced-motion users receive the state instantly.
+
+---
+
+## Loading & paint performance
 
 ### P20 · Critical entity first, secondary context after first paint
 
@@ -456,6 +468,10 @@ Verify scroll height before/after, direct and clicked fragment links, deferred m
 demo, zero horizontal overflow, and light/dark rendering at desktop and phone widths. Browsers that
 do not support `content-visibility` receive the complete page with no behavioral fallback required.
 
+---
+
+## State truth & badges
+
 ### P22 · A badge counts only state owned by its destination
 
 **Finding:** a badge combines lifecycle states with different next actions, or appears on a control
@@ -476,6 +492,10 @@ Partition statuses once at the data/store layer, then bind each surface to the s
 
 Badges should update without attention-grabbing motion. If the destination is lazy-loaded, gate any
 loading spinner with `motion-reduce:animate-none` (P11) and keep the count chip static.
+
+---
+
+## Structural layout (drawers, docks, secondary panels)
 
 ### P23 · Edge-anchored tab for secondary modal context
 
@@ -538,5 +558,6 @@ does not stack competing textures.
 ## Using this doc in an audit
 
 In audit findings, cite patterns as `→ P1`, `→ P6+P1`, etc. If a fix doesn't match any pattern and
-you invent a new one that a second surface will plausibly need, add it here (next number, same
-When/Recipe shape) and link it from the audit — that's how this doc grows.
+you invent a new one that a second surface will plausibly need, add it here — next number, same
+When/Recipe shape, filed under the section it thematically belongs to (add a new section if none
+fits) — and link it from the audit. That's how this doc grows.

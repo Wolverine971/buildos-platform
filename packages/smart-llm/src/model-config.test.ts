@@ -5,7 +5,7 @@ import {
 	DEEPSEEK_V4_PRO_MODEL,
 	GLM_52_MODEL,
 	GPT_56_LUNA_MODEL,
-	GROK_45_MODEL,
+	GROK_46_MODEL,
 	KIMI_CODING_MODEL,
 	KIMI_K3_MODEL,
 	MINIMAX_M3_MODEL,
@@ -88,11 +88,12 @@ describe('resolveModelPricingProfile', () => {
 
 	it('prices the premium evaluation and maximum-work roster', () => {
 		const luna = resolveModelPricingProfile(GPT_56_LUNA_MODEL);
-		const grok = resolveModelPricingProfile(GROK_45_MODEL);
+		const grok = resolveModelPricingProfile(GROK_46_MODEL);
 		const kimi = resolveModelPricingProfile(KIMI_K3_MODEL);
 
 		expect(luna?.profile.cost).toBe(1);
 		expect(luna?.profile.outputCost).toBe(6);
+		expect(grok?.modelId).toBe(GROK_46_MODEL);
 		expect(grok?.profile.cost).toBe(2);
 		expect(grok?.profile.outputCost).toBe(6);
 		expect(kimi?.profile.cost).toBe(3);

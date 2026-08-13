@@ -3,16 +3,16 @@
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-	assessAgenticChatLiveVisionEligibilityV1,
 	type AgenticChatLiveVisionPolicyV1,
 	type Database,
 	type FrozenChatAttachmentV1,
-	type JsonObject
+	type JsonObject,
+	assessAgenticChatLiveVisionEligibilityV1
 } from '@buildos/shared-types';
 import { WorkerAgenticChatToolAccessAdapter } from './workerAccessAdapter';
 import {
-	createStableAgenticChatExecutionObservationKeyV1,
-	type AgenticChatExecutionObservationPortV1
+	type AgenticChatExecutionObservationPortV1,
+	createStableAgenticChatExecutionObservationKeyV1
 } from './executionObservation';
 
 const SOURCE_VALIDATION_SIGNED_URL_TTL_SECONDS = 60;
@@ -254,7 +254,7 @@ export class SupabaseAgenticChatLiveVisionResolver implements AgenticChatLiveVis
 				);
 			throwIfAborted(params.signal);
 			return error || !data?.signedUrl ? null : data.signedUrl;
-		} catch (error) {
+		} catch {
 			throwIfAborted(params.signal);
 			return null;
 		}
@@ -358,7 +358,7 @@ async function validateSignedSource(params: {
 			redirect: 'error',
 			signal: params.signal
 		});
-	} catch (error) {
+	} catch {
 		throwIfAborted(params.signal);
 		return 'source_fetch_failed';
 	}
@@ -400,7 +400,7 @@ async function validateSignedSource(params: {
 			}
 			hash.update(chunk.value);
 		}
-	} catch (error) {
+	} catch {
 		throwIfAborted(params.signal);
 		return 'source_fetch_failed';
 	} finally {

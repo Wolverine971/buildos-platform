@@ -2,6 +2,7 @@
 
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+	buildAgenticChatCheckpointResumeSystemMessageV1,
 	type AgenticChatTurnClaimResultV1,
 	type JsonObject,
 	type TurnInputArtifactV1
@@ -21,6 +22,16 @@ import {
 	AgenticChatReadOnlyProviderAdapter,
 	type AgenticChatReadOnlyProviderClientEventV1
 } from '../src/workers/agentic-chat/readOnlyProvider';
+import {
+	AgenticChatWorkerSupervisorBridge,
+	type AgenticChatWorkerSupervisorDecisionRecordV1,
+	type AgenticChatWorkerSupervisorPortV1
+} from '../src/workers/agentic-chat/workerSupervisor';
+import type {
+	TurnDigest,
+	TurnSupervisorDecision,
+	TurnSupervisorObservation
+} from '@buildos/agentic-chat-runtime/supervisor';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
@@ -300,6 +311,78 @@ function providerReadRound(
 	];
 }
 
+function supervisorDigest(): TurnDigest {
+	return {
+		turnRunId: TURN_RUN_ID,
+		sessionId: SESSION_ID,
+		userId: USER_ID,
+		contextType: 'project',
+		entityId: null,
+		projectId: null,
+		userMessage: 'Current request',
+		elapsedMs: 0,
+		msSinceVisibleText: null,
+		assistantTextChars: 0,
+		finalCandidateChars: 0,
+		llmPassCount: 0,
+		toolRoundCount: 0,
+		toolCallCount: 0,
+		validationFailureCount: 0,
+		recentTools: [],
+		progress: {
+			successfulWrites: 0,
+			failedWrites: 0,
+			readRounds: 0,
+			lowNoveltyReadRounds: 0,
+			repeatedToolPatternCount: 0,
+			repeatedFailureCount: 0,
+			discoveredEntityCount: 0
+		},
+		risks: []
+	};
+}
+
+function supervisorHarness(
+	decisionFor?: (observation: TurnSupervisorObservation) => TurnSupervisorDecision | null
+): {
+	port: AgenticChatWorkerSupervisorPortV1;
+	start: ReturnType<typeof vi.fn>;
+	observations: TurnSupervisorObservation[];
+} {
+	const observations: TurnSupervisorObservation[] = [];
+	let sequence = 0;
+	const records = (
+		decision: TurnSupervisorDecision | null
+	): readonly AgenticChatWorkerSupervisorDecisionRecordV1[] => {
+		if (!decision || decision.action === 'continue') return [];
+		sequence += 1;
+		return [
+			{
+				decision,
+				digest: supervisorDigest(),
+				at: '2026-08-13T12:00:00.000Z',
+				source: 'monitor',
+				transitionId: `3000000${sequence}-0000-4000-8000-000000000003`,
+				executionGeneration: 1,
+				sequence
+			}
+		];
+	};
+	const start = vi.fn(() => [] as readonly AgenticChatWorkerSupervisorDecisionRecordV1[]);
+	return {
+		observations,
+		start,
+		port: {
+			start,
+			observe: vi.fn((observation: TurnSupervisorObservation) => {
+				observations.push(observation);
+				return records(decisionFor?.(observation) ?? null);
+			}),
+			getDigest: () => supervisorDigest()
+		}
+	};
+}
+
 describe('AgenticChatReadOnlyProviderAdapter', () => {
 	it('reserves before start and defers the first client call until stream', async () => {
 		const client = clientWith([
@@ -329,12 +412,16 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				{ role: 'assistant', content: 'Frozen reply' },
 				{ role: 'user', content: 'Current request' }
 			],
+			toolDefinitions: [],
 			systemPromptChars: 14,
 			messageChars: 41,
 			approxPromptTokens: 11
 		});
 		expect(invocation.promptSnapshot?.systemPromptSha256).toMatch(/^[0-9a-f]{64}$/);
 		expect(invocation.promptSnapshot?.messagesSha256).toMatch(/^[0-9a-f]{64}$/);
+		expect(invocation.promptSnapshot?.toolsSha256).toBe(
+			'4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'
+		);
 
 		await expect(collect(invocation.stream())).resolves.toEqual([
 			{ type: 'text_delta', text: 'Visible answer' },
@@ -364,9 +451,749 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			processingToken: PROCESSING_TOKEN,
 			executionGeneration: 1,
 			providerRound: 'initial',
+			logicalProviderRound: 1,
 			signal
 		});
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('uses only the immutable checkpoint resume message in the initial provider prompt', async () => {
+		const input = executionInput();
+		const resumeContext = {
+			missing_field: 'task_id',
+			instruction: 'Continue after the user identifies the task.'
+		};
+		const resumeMessage = buildAgenticChatCheckpointResumeSystemMessageV1({
+			question: 'Which exact task should I use?',
+			resumeContext
+		});
+		input.artifact = {
+			...input.artifact,
+			artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+			prepared: {
+				...input.artifact.prepared,
+				sessionSnapshot: { summary: null, agent_metadata: {} },
+				contextUsageSnapshot: {
+					estimatedTokens: 12,
+					tokenBudget: 1_000,
+					usagePercent: 1,
+					tokensRemaining: 988,
+					status: 'ok'
+				},
+				resumeCheckpoint: {
+					checkpointId: 'a1000000-0000-4000-8000-000000000001',
+					originalTurnRunId: 'a2000000-0000-4000-8000-000000000002',
+					checkpointType: 'supervisor_question',
+					reason: 'repeated_validation_failures',
+					question: 'Which exact task should I use?',
+					resumeContext,
+					resumeMessage,
+					sourceExecutionGeneration: 1,
+					supervisorTransitionId: 'a3000000-0000-5000-8000-000000000003',
+					supervisorSequence: 2
+				}
+			}
+		};
+		const client = clientWith([
+			{ type: 'text', content: 'Continuing with the clarified task.' },
+			{ type: 'done', finishedReason: 'stop' }
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+		}).prepare({
+			executionInput: input,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		expect(client.stream.mock.calls[0]?.[0].messages).toEqual([
+			{ role: 'system', content: 'System prompt\n' },
+			{ role: 'assistant', content: 'Frozen reply' },
+			{ role: 'system', content: resumeMessage },
+			{ role: 'user', content: 'Current request' }
+		]);
+	});
+
+	it('starts the injected supervisor only at the execution stream fence', async () => {
+		const input = executionInput();
+		const harness = supervisorHarness();
+		const supervisorFactory = vi.fn(() => harness.port);
+		const client = clientWith([
+			{ type: 'text', content: 'Visible answer' },
+			{
+				type: 'done',
+				finishedReason: 'stop',
+				usage: { promptTokens: 8, completionTokens: 2, totalTokens: 10 }
+			}
+		]);
+		const adapter = new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+			supervisorFactory
+		});
+
+		const invocation = await adapter.prepare({
+			executionInput: input,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+		expect(supervisorFactory).toHaveBeenCalledOnce();
+		expect(supervisorFactory).toHaveBeenCalledWith(input);
+		expect(harness.start).not.toHaveBeenCalled();
+		expect(harness.observations).toEqual([]);
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			{ type: 'text_delta', text: 'Visible answer' },
+			{
+				type: 'finish',
+				finishedReason: 'stop',
+				usage: { promptTokens: 8, completionTokens: 2, totalTokens: 10 }
+			}
+		]);
+		expect(harness.start).toHaveBeenCalledOnce();
+		expect(harness.observations).toEqual([
+			{ type: 'assistant_text_delta', chars: 14 },
+			{
+				type: 'llm_pass_completed',
+				pass: 1,
+				finishedReason: 'stop',
+				usage: { prompt_tokens: 8, completion_tokens: 2, total_tokens: 10 }
+			},
+			{ type: 'final_candidate', text: 'Visible answer', finishedReason: 'stop' }
+		]);
+	});
+
+	it('publishes supervisor status effects in deterministic stream order', async () => {
+		const harness = supervisorHarness((observation) =>
+			observation.type === 'llm_pass_completed'
+				? {
+						action: 'emit_status',
+						message: 'Checking the answer.',
+						reason: 'test_status'
+					}
+				: null
+		);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client: clientWith([
+				{ type: 'text', content: 'Answer' },
+				{ type: 'done', finishedReason: 'stop' }
+			]),
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+			supervisorFactory: () => harness.port
+		}).prepare({
+			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			{ type: 'text_delta', text: 'Answer' },
+			expect.objectContaining({
+				type: 'semantic',
+				transitionId: '30000001-0000-4000-8000-000000000003',
+				currentActivity: 'Checking the answer.',
+				eventPayload: expect.objectContaining({
+					supervisor: {
+						action: 'emit_status',
+						reason: 'test_status',
+						sequence: 1,
+						execution_generation: 1
+					}
+				})
+			}),
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+	});
+
+	it('emits evaluation flags as private executor steps without failing the turn', async () => {
+		const harness = supervisorHarness((observation) =>
+			observation.type === 'final_candidate'
+				? { action: 'flag_eval', reason: 'test_evaluation_flag' }
+				: null
+		);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client: clientWith([
+				{ type: 'text', content: 'Answer' },
+				{ type: 'done', finishedReason: 'stop' }
+			]),
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+			supervisorFactory: () => harness.port
+		}).prepare({
+			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			{ type: 'text_delta', text: 'Answer' },
+			{
+				type: 'supervisor_evaluation',
+				transitionId: '30000001-0000-4000-8000-000000000003',
+				reason: 'test_evaluation_flag',
+				sequence: 1,
+				executionGeneration: 1
+			},
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+	});
+
+	it('observes a pre-execution validation failure only after its durable step resumes', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const definition = {
+			type: 'function' as const,
+			function: {
+				name: 'get_project_overview',
+				description: 'Read a project overview.',
+				parameters: {
+					type: 'object',
+					properties: { project_id: { type: 'string' } },
+					required: ['project_id']
+				}
+			}
+		};
+		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
+			providerReadRound('invalid-read', {}),
+			providerReadRound('repaired-read', { project_id: projectId })
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const harness = supervisorHarness();
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+			supervisorFactory: () => harness.port
+		}).prepare({
+			executionInput: executionInputWithReadSurface([definition]),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+		const iterator = invocation.stream()[Symbol.asyncIterator]();
+
+		const validationStep = await iterator.next();
+		expect(validationStep.value).toMatchObject({
+			type: 'read_tool',
+			providerToolCallId: 'invalid-read',
+			validationFailure: {
+				error: expect.stringContaining('Missing required parameter: project_id')
+			}
+		});
+		expect(harness.observations.map((observation) => observation.type)).toEqual([
+			'llm_pass_completed',
+			'tool_call_emitted'
+		]);
+
+		await iterator.next();
+		expect(harness.observations.map((observation) => observation.type)).toEqual([
+			'llm_pass_completed',
+			'tool_call_emitted',
+			'tool_result_received',
+			'tool_round_completed',
+			'llm_pass_completed',
+			'tool_call_emitted'
+		]);
+		expect(harness.observations[2]).toMatchObject({
+			type: 'tool_result_received',
+			toolCallId: 'invalid-read',
+			success: false,
+			error: expect.stringContaining('Missing required parameter: project_id')
+		});
+		await iterator.return?.();
+		invocation.release();
+	});
+
+	it('forces tool-free synthesis only after durable tool feedback reaches the supervisor', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
+			providerReadRound('provider-read-1', { project_id: projectId }),
+			[
+				{ type: 'text', content: 'The evidence is enough.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const harness = supervisorHarness((observation) =>
+			observation.type === 'tool_round_completed'
+				? {
+						action: 'force_synthesis',
+						instruction: 'Use the durable evidence and answer now.',
+						reason: 'test_force_synthesis'
+					}
+				: null
+		);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+			supervisorFactory: () => harness.port
+		}).prepare({
+			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		expect(
+			harness.observations.some((observation) => observation.type === 'tool_result_received')
+		).toBe(false);
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedback(
+							'provider-read-1',
+							{ project_id: projectId },
+							{ project: { id: projectId } }
+						)
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'The evidence is enough.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(harness.observations.map((observation) => observation.type)).toEqual([
+			'llm_pass_completed',
+			'tool_call_emitted',
+			'tool_result_received',
+			'tool_round_completed',
+			'llm_pass_completed',
+			'assistant_text_delta',
+			'final_candidate'
+		]);
+		expect(client.stream.mock.calls[1]?.[0]).toMatchObject({
+			tools: [],
+			toolChoice: 'none',
+			messages: expect.arrayContaining([
+				expect.objectContaining({
+					role: 'system',
+					content: 'Use the durable evidence and answer now.'
+				})
+			])
+		});
+	});
+
+	it('returns a supervisor question terminal without starting another provider pass', async () => {
+		const projectId = 'a4000000-0000-4000-8000-00000000004a';
+		const client = clientWith(
+			providerReadRound('call-question', { project_id: projectId }, 'get_project_overview', {
+				promptTokens: 7,
+				completionTokens: 3,
+				totalTokens: 10
+			})
+		);
+		const digest = supervisorDigest();
+		const checkpoint = {
+			digest,
+			resumeContext: {
+				missing_field: 'task_id',
+				instruction: 'Continue after the user identifies the task.'
+			}
+		};
+		const harness = supervisorHarness((observation) =>
+			observation.type === 'tool_round_completed'
+				? {
+						action: 'ask_user',
+						question: 'Which exact task should I update?',
+						reason: 'repeated_validation_failures',
+						checkpoint
+					}
+				: null
+		);
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const provider = new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity,
+			supervisorFactory: () => harness.port
+		});
+		const prepared = await provider.prepare({
+			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+		const first = await collect(prepared.stream());
+		expect(first).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'call-question'
+				})
+			])
+		);
+		expect(capacity.getSnapshot().activeRequests).toBe(1);
+
+		const terminal = await collect(
+			prepared.continueWithToolResults!({
+				round: 2,
+				results: [durableReadFeedback('call-question', { project_id: projectId })]
+			})
+		);
+		expect(terminal).toEqual([
+			{
+				type: 'supervisor_question',
+				transitionId: '30000001-0000-4000-8000-000000000003',
+				sequence: 1,
+				executionGeneration: 1,
+				reason: 'repeated_validation_failures',
+				question: 'Which exact task should I update?',
+				checkpoint: {
+					digest,
+					resumeContext: checkpoint.resumeContext,
+					supervisorDecision: {
+						action: 'ask_user',
+						question: 'Which exact task should I update?',
+						reason: 'repeated_validation_failures',
+						checkpoint
+					}
+				},
+				finishedReason: 'supervisor_question',
+				usage: { promptTokens: 7, completionTokens: 3, totalTokens: 10 }
+			}
+		]);
+		expect(client.stream).toHaveBeenCalledOnce();
+		expect(capacity.getSnapshot().activeRequests).toBe(0);
+	});
+
+	it('reaches the clarification terminal from the real supervisor after repeated write validation failures', async () => {
+		const invalidRound = (
+			providerToolCallId: string,
+			usage: { promptTokens: number; completionTokens: number; totalTokens: number }
+		) => providerReadRound(providerToolCallId, {}, 'update_onto_task', usage);
+		const streams = [
+			invalidRound('invalid-update-1', {
+				promptTokens: 3,
+				completionTokens: 1,
+				totalTokens: 4
+			}),
+			invalidRound('invalid-update-2', {
+				promptTokens: 5,
+				completionTokens: 1,
+				totalTokens: 6
+			})
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				capacity,
+				supervisorFactory: (input) =>
+					new AgenticChatWorkerSupervisorBridge(input, () =>
+						Date.parse('2026-08-13T12:00:00.000Z')
+					)
+			},
+			2_000,
+			16,
+			{ createOntoTask: false, updateOntoTask: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[updateTaskToolDefinition()],
+				['update_onto_task']
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const steps = await collect(invocation.stream());
+		expect(
+			steps.flatMap((step) =>
+				step.type === 'read_tool' && step.validationFailure ? [step.providerToolCallId] : []
+			)
+		).toEqual(['invalid-update-1', 'invalid-update-2']);
+		const terminal = steps.find((step) => step.type === 'supervisor_question');
+		expect(terminal).toMatchObject({
+			type: 'supervisor_question',
+			sequence: 1,
+			executionGeneration: 1,
+			reason: 'repeated_validation_failures',
+			question:
+				'Which exact task should I use? Send the name or ID, and I will continue from here.',
+			checkpoint: {
+				resumeContext: {
+					missing_field: 'task_id',
+					last_failed_tool: 'update_onto_task'
+				}
+			},
+			finishedReason: 'supervisor_question',
+			usage: { promptTokens: 8, completionTokens: 2, totalTokens: 10 }
+		});
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('returns supervisor-blocked calls as ordered failed feedback in a mixed tool round', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const mutationArguments = {
+			task_id: 'b0000000-0000-4000-8000-00000000000b',
+			state_key: 'done'
+		};
+		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'blocked-update',
+							type: 'function',
+							function: {
+								name: 'update_onto_task',
+								arguments: JSON.stringify(mutationArguments)
+							}
+						},
+						{
+							index: 1,
+							id: 'accepted-read',
+							type: 'function',
+							function: {
+								name: 'get_project_overview',
+								arguments: JSON.stringify({ project_id: projectId })
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			],
+			[
+				{ type: 'text', content: 'The read completed without retrying the write.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const harness = supervisorHarness((observation) =>
+			observation.type === 'tool_call_emitted' && observation.toolCallId === 'blocked-update'
+				? {
+						action: 'inject_recovery_instruction',
+						instruction: 'Correct the failed write instead of repeating it.',
+						reason: 'repeated_failed_write',
+						toolCallId: observation.toolCallId,
+						blockToolCall: true
+					}
+				: null
+		);
+		const readDefinition = readToolDefinition('get_project_overview');
+		const updateDefinition = updateTaskToolDefinition();
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+				supervisorFactory: () => harness.port
+			},
+			2_000,
+			16,
+			{ createOntoTask: false, updateOntoTask: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[updateDefinition, readDefinition],
+				['update_onto_task', 'get_project_overview']
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const firstRound = await collect(invocation.stream());
+		const blockedStep = firstRound.find((step) => step.type === 'pre_execution_tool_failure');
+		expect(firstRound.map((step) => step.type)).toEqual([
+			'semantic',
+			'pre_execution_tool_failure',
+			'read_tool'
+		]);
+		expect(blockedStep).toMatchObject({
+			type: 'pre_execution_tool_failure',
+			providerToolCallId: 'blocked-update',
+			toolName: 'update_onto_task',
+			arguments: mutationArguments,
+			failure: {
+				kind: 'supervisor_block',
+				error: expect.stringContaining('Supervisor blocked this exact write retry'),
+				toolCategory: 'write',
+				modelPayload: {
+					error: expect.stringContaining('Supervisor blocked this exact write retry'),
+					supervisor_recovery: { blocked_exact_retry: true }
+				}
+			}
+		});
+		if (!blockedStep || blockedStep.type !== 'pre_execution_tool_failure') {
+			throw new Error('Expected a supervisor-blocked provider step');
+		}
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						{
+							providerToolCallId: blockedStep.providerToolCallId,
+							toolName: blockedStep.toolName,
+							arguments: blockedStep.arguments,
+							failure: blockedStep.failure
+						},
+						durableReadFeedback(
+							'accepted-read',
+							{ project_id: projectId },
+							{ project: { id: projectId } }
+						)
+					]
+				})
+			)
+		).resolves.toEqual([
+			{
+				type: 'text_delta',
+				text: 'The read completed without retrying the write.'
+			},
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		const continuationRequest = client.stream.mock.calls[1]?.[0];
+		expect(
+			continuationRequest.messages
+				.filter((message: { role: string }) => message.role === 'tool')
+				.slice(-2)
+				.map((message: { tool_call_id?: string }) => message.tool_call_id)
+		).toEqual(['blocked-update', 'accepted-read']);
+		expect(
+			JSON.parse(
+				continuationRequest.messages.find(
+					(message: { tool_call_id?: string }) =>
+						message.tool_call_id === 'blocked-update'
+				)?.content ?? '{}'
+			)
+		).toMatchObject({ supervisor_recovery: { blocked_exact_retry: true } });
+		expect(continuationRequest.messages).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					role: 'system',
+					content: 'Correct the failed write instead of repeating it.'
+				})
+			])
+		);
+		expect(
+			harness.observations
+				.filter((observation) => observation.type === 'tool_result_received')
+				.map((observation) =>
+					observation.type === 'tool_result_received'
+						? [observation.toolCallId, observation.success]
+						: []
+				)
+		).toEqual([
+			['blocked-update', false],
+			['accepted-read', true]
+		]);
+	});
+
+	it('makes the real supervisor recovery and exact-retry block reachable from known failed feedback', async () => {
+		const mutationArguments = {
+			task_id: 'b0000000-0000-4000-8000-00000000000b',
+			state_key: 'done'
+		};
+		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
+			providerReadRound('failed-write', mutationArguments, 'update_onto_task'),
+			providerReadRound('blocked-retry', mutationArguments, 'update_onto_task')
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const updateDefinition = updateTaskToolDefinition();
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+				supervisorFactory: (input) =>
+					new AgenticChatWorkerSupervisorBridge(input, () =>
+						Date.parse('2026-08-13T12:00:00.000Z')
+					)
+			},
+			2_000,
+			16,
+			{ createOntoTask: false, updateOntoTask: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface([updateDefinition], ['update_onto_task']),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const firstRound = await collect(invocation.stream());
+		expect(firstRound).toEqual([
+			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
+			expect.objectContaining({
+				type: 'mutating_tool',
+				providerToolCallId: 'failed-write'
+			})
+		]);
+		const retryRound = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					{
+						providerToolCallId: 'failed-write',
+						toolName: 'update_onto_task',
+						arguments: mutationArguments,
+						failure: {
+							kind: 'known_execution_failure',
+							error: 'Task not found',
+							toolCategory: 'ontology_action',
+							modelPayload: { error: 'Task not found' }
+						}
+					}
+				]
+			})
+		);
+		expect(retryRound).toEqual([
+			expect.objectContaining({
+				type: 'pre_execution_tool_failure',
+				providerToolCallId: 'blocked-retry',
+				toolName: 'update_onto_task',
+				arguments: mutationArguments,
+				failure: expect.objectContaining({
+					kind: 'supervisor_block',
+					error: expect.stringContaining('Supervisor blocked this exact write retry'),
+					modelPayload: expect.objectContaining({
+						supervisor_recovery: { blocked_exact_retry: true }
+					})
+				})
+			})
+		]);
+		expect(client.stream.mock.calls[1]?.[0].messages).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					role: 'system',
+					content: expect.stringContaining('A write failed with not_found')
+				})
+			])
+		);
+		invocation.release();
 	});
 
 	it('reconstructs the shared untrusted context from immutable current-turn evidence', async () => {

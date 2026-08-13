@@ -37,9 +37,9 @@ It is expected (and fine) that Run A hits a few markers by accident — frontier
 
 ## The usage dimension
 
-Content quality is necessary but not sufficient — at runtime the agent sees only a catalog table (skill id + description for all 43 skills) and must call `skill_load(skill, format: short|full)`, then `skill_reference_load` per module. Every load is an extra API hop and latency. So each eval also records:
+Content quality is necessary but not sufficient — at runtime the agent sees only a catalog table (skill id + description for every registered skill) and must call `skill_load(skill, format: short|full)`, then `skill_reference_load` per module. Every load is an extra API hop and latency. So each eval also records:
 
-- **Expected load path.** Which format a well-behaved agent should use (`short` drops everything outside the parsed sections — `## When to Use`, `## Workflow`, `## Guardrails`, `## Notes` — so skills whose `## Output` contract or pillar tables live outside those sections need `full`), and which reference modules it should load for THIS task — **and which it should NOT**. Over-loading is a usage failure even when the answer is right.
+- **Expected load path.** Which format a well-behaved agent should use (`short` drops everything outside the parsed sections — `## Activation`, `## Procedure`, `## Policy`, `## Provenance`, `## Contract`, and their legacy aliases on unmigrated skills — so skills whose Identity/Judgment/Knowledge blocks or pillar tables carry the machinery need `full`), and which reference modules it should load for THIS task — **and which it should NOT**. Over-loading is a usage failure even when the answer is right.
 - **Discovery probe.** The task phrased in one line as a real user would phrase it. Pass = the skill's catalog `description` (frontmatter) would plausibly lead an agent scanning the catalog to pick this skill. This tests the description, not the body. Score it by reading the probe against the description — or, better, by giving a fresh agent the probe plus the full catalog table and asking which skill it would load.
 
 The usage dimension is checked separately from the A/B runs and recorded in the results log alongside the verdict.

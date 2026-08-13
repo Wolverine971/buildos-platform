@@ -1,4 +1,4 @@
-// apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/entity-index.test.ts
+// packages/agentic-chat-runtime/src/supervisor/entity-index.test.ts
 import { describe, expect, it } from 'vitest';
 import {
 	buildTurnSupervisorEntityIndexFromContextData,

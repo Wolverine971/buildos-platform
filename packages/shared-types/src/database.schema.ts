@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-13T03:27:13.365Z
+// Generated on: 2026-08-13T17:50:20.156Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -893,6 +893,7 @@ export type DatabaseSchema = {
 		checkpoint_type: string;
 		created_at: string;
 		digest: Json;
+		execution_generation: number | null;
 		expires_at: string | null;
 		id: string;
 		question: string | null;
@@ -904,6 +905,8 @@ export type DatabaseSchema = {
 		session_id: string;
 		status: string;
 		supervisor_decision: Json;
+		supervisor_sequence: number | null;
+		supervisor_transition_id: string | null;
 		turn_run_id: string;
 		updated_at: string;
 		user_id: string;

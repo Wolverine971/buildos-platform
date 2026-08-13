@@ -47,7 +47,7 @@ export type AgenticChatToolExecutionPersistInputV1 = AgenticChatExecutionIdentit
 	execution: AgenticChatReadToolExecutionV1;
 };
 
-export type AgenticChatToolValidationFailurePersistInputV1 = AgenticChatExecutionIdentityV1 & {
+export type AgenticChatToolFailurePersistInputV1 = AgenticChatExecutionIdentityV1 & {
 	userId: string;
 	executionGeneration: number;
 	toolExecutionId: string;
@@ -78,10 +78,7 @@ export type AgenticChatMutationToolExecutionPersistInputV1 = AgenticChatExecutio
 
 export type AgenticChatToolExecutionPortV1 = {
 	persistRead(input: AgenticChatToolExecutionPersistInputV1, signal: AbortSignal): Promise<void>;
-	persistValidationFailure(
-		input: AgenticChatToolValidationFailurePersistInputV1,
-		signal: AbortSignal
-	): Promise<void>;
+	persistFailure(input: AgenticChatToolFailurePersistInputV1, signal: AbortSignal): Promise<void>;
 	persistMutation(
 		input: AgenticChatMutationToolExecutionPersistInputV1,
 		signal: AbortSignal
@@ -166,11 +163,15 @@ export class SupabaseAgenticChatToolExecutionAdapter implements AgenticChatToolE
 		validatePersistReceipt(data, input);
 	}
 
-	async persistValidationFailure(
-		input: AgenticChatToolValidationFailurePersistInputV1,
+	async persistFailure(
+		input: AgenticChatToolFailurePersistInputV1,
 		signal: AbortSignal = new AbortController().signal
 	): Promise<void> {
-		validateValidationFailureInput(input);
+		validateFailureInput(input);
+		// The hosted RPC retains its historical validation-specific name, but its
+		// fenced row contract is the generic failed/no-result tool-attempt shape.
+		// S2 reuses that exact shape for known mutation failures and supervisor
+		// pre-execution blocks without changing hosted SQL.
 		const { data, error } = await runWithAbortableDeadline({
 			parentSignal: signal,
 			timeoutMs: this.timeoutMs,
@@ -303,9 +304,7 @@ function validateInput(input: AgenticChatToolExecutionPersistInputV1): void {
 	}
 }
 
-function validateValidationFailureInput(
-	input: AgenticChatToolValidationFailurePersistInputV1
-): void {
+function validateFailureInput(input: AgenticChatToolFailurePersistInputV1): void {
 	validateCommonInput(input);
 	if (input.toolCategory !== null) canonicalText(input.toolCategory, 128, 'toolCategory');
 	canonicalText(input.error, 4_000, 'error');

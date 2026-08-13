@@ -45,6 +45,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	let mutationToolLedgerOutput = '';
 	let effectScopeNullGuardOutput = '';
 	let trueToolRoundCountReplayOutput = '';
+	let terminalPendingIntentOutput = '';
+	let terminalDomainMetadataOutput = '';
 
 	const applySqlFile = (path: string): string =>
 		execFileSync(
@@ -165,6 +167,27 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 		trueToolRoundCountReplayOutput = applySqlFile(
 			sqlPath('supabase/migrations/20260808140000_agentic_chat_true_tool_round_count.sql')
 		);
+		applySqlFile(
+			sqlPath(
+				'supabase/migrations/20260804000000_agentic_chat_input_v3_lifecycle_snapshots.sql'
+			)
+		);
+		applySqlFile(
+			sqlPath(
+				'supabase/migrations/20260813060000_agentic_chat_terminal_pending_intent_metadata.sql'
+			)
+		);
+		applySqlFile(
+			sqlPath('supabase/migrations/20260813070000_agentic_chat_terminal_domain_metadata.sql')
+		);
+		applySqlFile(
+			sqlPath('supabase/migrations/20260813070000_agentic_chat_terminal_domain_metadata.sql')
+		);
+		applySqlFile(
+			sqlPath(
+				'supabase/migrations/20260813060000_agentic_chat_terminal_pending_intent_metadata.sql'
+			)
+		);
 
 		proofOutput = applySqlFile(
 			sqlPath('supabase/tests/20260802033200_agentic_chat_worker_stream_write_rpcs.test.sql')
@@ -198,7 +221,11 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			sqlPath(
 				'supabase/tests/20260811230000_agentic_chat_effect_scope_trigger_null_guard.test.sql'
 			),
-			sqlPath('supabase/tests/20260806020000_agentic_chat_timing_evidence_repair.test.sql')
+			sqlPath('supabase/tests/20260806020000_agentic_chat_timing_evidence_repair.test.sql'),
+			sqlPath(
+				'supabase/tests/20260813060000_agentic_chat_terminal_pending_intent_metadata.test.sql'
+			),
+			sqlPath('supabase/tests/20260813070000_agentic_chat_terminal_domain_metadata.test.sql')
 		]);
 		timingOutput = terminalParityOutput;
 		partialCancellationOutput = terminalParityOutput;
@@ -208,6 +235,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 		trueToolRoundCountOutput = terminalParityOutput;
 		mutationToolLedgerOutput = terminalParityOutput;
 		effectScopeNullGuardOutput = terminalParityOutput;
+		terminalPendingIntentOutput = terminalParityOutput;
+		terminalDomainMetadataOutput = terminalParityOutput;
 	}, 60_000);
 
 	afterAll(() => {
@@ -283,6 +312,16 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 
 	it('reconciles an already-installed S5 finalizer body without weakening its guard', () => {
 		expect(trueToolRoundCountReplayOutput).toContain('COMMIT');
+	});
+
+	it('merges immutable pending intent inside authoritative terminal truth', () => {
+		expect(terminalPendingIntentOutput).toContain(
+			'agentic_chat_terminal_pending_intent_metadata_ok'
+		);
+	});
+
+	it('projects frozen sensing and durable load outcomes into terminal domain metadata', () => {
+		expect(terminalDomainMetadataOutput).toContain('agentic_chat_terminal_domain_metadata_ok');
 	});
 
 	it('accepts truthful streamed-turn timing drafts and rejects microsecond drift', () => {

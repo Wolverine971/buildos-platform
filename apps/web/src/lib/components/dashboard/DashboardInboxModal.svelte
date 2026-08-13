@@ -1,17 +1,8 @@
 <!-- apps/web/src/lib/components/dashboard/DashboardInboxModal.svelte -->
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import {
-		CalendarDays,
-		ClipboardCheck,
-		FileText,
-		Inbox,
-		LoaderCircle,
-		Mail,
-		RefreshCw,
-		Settings,
-		Sparkles
-	} from '$lib/icons/lucide';
+	import { resolve } from '$app/paths';
+	import { Inbox, LoaderCircle, RefreshCw, Settings, Sparkles } from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ChangeSetFailureSummary from '$lib/components/notifications/types/agent-run/ChangeSetFailureSummary.svelte';
@@ -20,6 +11,8 @@
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
 	import InboxFindingControls from '$lib/components/inbox/InboxFindingControls.svelte';
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
+	import InboxReviewDetails from '$lib/components/inbox/InboxReviewDetails.svelte';
+	import { formatInboxAttentionSummary } from '$lib/components/inbox/inbox-presentation';
 	import type {
 		AgentChatResolutionAction,
 		DataMutationSummary
@@ -156,6 +149,7 @@
 	let error = $state<string | null>(null);
 	let loadedLimit = $state(25);
 	let totalAvailable = $state(0);
+	let heldTotal = $state(0);
 	let pendingIds = $state<Set<string>>(new Set());
 	let changedCount = $state(0);
 	let wasOpen = $state(false);
@@ -178,10 +172,10 @@
 		return [
 			{
 				id: 'mark-handled-from-chat',
-				label: activeChatItem && isFinding(activeChatItem) ? 'Address' : 'Mark handled',
+				label: 'Mark handled',
 				title:
 					activeChatItem && isFinding(activeChatItem)
-						? 'Record this finding as addressed after the chat'
+						? 'Mark this finding handled after the discussion'
 						: 'Remove this inbox item after this chat',
 				intent: 'primary',
 				disabled: Boolean(resolvingChatAction),
@@ -204,20 +198,6 @@
 	const INBOX_PAGE_SIZE = 25;
 	const MAX_INBOX_LIMIT = 200;
 	const SNOOZE_MS = 24 * 60 * 60 * 1000;
-
-	type TierMeta = { label: string; cls: string };
-	const tierMeta: Record<number, TierMeta> = {
-		1: { label: 'Low risk', cls: 'border-accent/30 bg-accent/10 text-accent' },
-		2: { label: 'Review', cls: 'border-warning/30 bg-warning/10 text-warning' },
-		3: {
-			label: 'High risk',
-			cls: 'border-destructive/30 bg-destructive/10 text-destructive'
-		}
-	};
-	const fallbackTier: TierMeta = {
-		label: 'Review',
-		cls: 'border-border bg-muted text-muted-foreground'
-	};
 
 	const kindLabel: Record<string, string> = {
 		doc_org: 'Organize',
@@ -259,7 +239,6 @@
 					key === accountGroupKey
 						? null
 						: (project?.id ?? groupItems[0]?.project_id ?? null),
-				actionableCount: groupItems.filter(canDecide).length,
 				items: groupItems
 			};
 		});
@@ -267,7 +246,6 @@
 	const activeGroup = $derived(
 		groupedItems.find((group) => group.key === activeGroupKey) ?? groupedItems[0] ?? null
 	);
-	const totalActionable = $derived(items.filter(canDecide).length);
 	const pendingProjectCount = $derived(
 		new Set(items.map((item) => itemProject(item)?.id ?? item.project_id).filter(Boolean)).size
 	);
@@ -450,16 +428,8 @@
 
 	function reviewRunLabel(run: ProjectLoopRunContext | null): string | null {
 		if (!run) return null;
-		const trigger =
-			run.trigger_reason === 'manual'
-				? 'Manual review'
-				: run.trigger_reason === 'burst'
-					? 'Burst review'
-					: run.trigger_reason === 'end_of_day'
-						? 'Scheduled review'
-						: 'Project review';
 		const date = formatShortDate(run.finished_at ?? run.created_at ?? undefined);
-		return date ? `${trigger} · ${date}` : trigger;
+		return date ? `Reviewed ${date}` : null;
 	}
 
 	function auditGroupLabel(audit: ProjectAuditContext, projectName: string): string {
@@ -474,9 +444,10 @@
 		return `${count} recommendation${count === 1 ? '' : 's'}`;
 	}
 
-	function tierFor(value: number | null | undefined): TierMeta {
-		if (!value) return fallbackTier;
-		return tierMeta[value] ?? fallbackTier;
+	function riskDetail(value: number | null | undefined): string | null {
+		if (value === 1) return 'Low risk';
+		if (value === 3) return 'High risk';
+		return null;
 	}
 
 	function sourceLabel(item: InboxItem): string {
@@ -487,12 +458,20 @@
 		return 'Project review';
 	}
 
-	function sourceIcon(item: InboxItem): typeof Inbox {
-		if (item.source_type === 'agent_run') return Sparkles;
-		if (item.source_type === 'project_suggestion') return ClipboardCheck;
-		if (item.source_type === 'calendar_suggestion') return CalendarDays;
-		if (item.source_type === 'integration_attention') return Mail;
-		return FileText;
+	function reviewMetadata(
+		item: InboxItem,
+		payload: ProjectSuggestion | null,
+		run: ProjectLoopRunContext | null,
+		audit: ProjectAuditContext | null
+	): string[] {
+		return [
+			sourceLabel(item),
+			payload?.kind ? (kindLabel[payload.kind] ?? payload.kind) : null,
+			reviewRunLabel(run),
+			riskDetail(item.risk_tier ?? payload?.risk_tier),
+			auditRecommendationLabel(audit),
+			audit?.delivery_confidence ? `${audit.delivery_confidence} confidence` : null
+		].filter((value): value is string => Boolean(value));
 	}
 
 	function changeCount(item: InboxItem): number {
@@ -744,6 +723,8 @@
 			totalAvailable = Number.isFinite(responseTotal)
 				? Math.max(items.length, responseTotal)
 				: items.length;
+			const responseHeldTotal = Number(json.data?.heldTotal);
+			heldTotal = Number.isFinite(responseHeldTotal) ? Math.max(0, responseHeldTotal) : 0;
 			setAiInboxRemainingCount(totalAvailable);
 			if (initialDataReadyPending) {
 				initialDataReadyPending = false;
@@ -816,13 +797,13 @@
 				action === 'approve'
 					? 'Review item applied.'
 					: action === 'address'
-						? 'Response recorded.'
+						? 'Finding marked handled.'
 						: 'Review item dismissed.';
 			let title =
 				action === 'approve'
 					? 'Review item applied'
 					: action === 'address'
-						? 'Finding addressed'
+						? 'Finding marked handled'
 						: 'Review item dismissed';
 			let toastKind: 'success' | 'info' | 'error' = 'success';
 			if (json.data?.superseded) {
@@ -955,6 +936,7 @@
 			initialDataReadyPending = true;
 			loadedLimit = INBOX_PAGE_SIZE;
 			totalAvailable = 0;
+			heldTotal = 0;
 			void loadInbox({ limit: INBOX_PAGE_SIZE });
 		} else if (!isOpen && wasOpen) {
 			wasOpen = false;
@@ -992,33 +974,24 @@
 	>
 		<div class="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
 			<div class="min-w-0">
-				<p class="text-sm font-semibold text-foreground">
+				<p class="text-sm font-semibold text-foreground" aria-live="polite">
 					{#if loading}
-						Loading review items
-					{:else if items.length}
-						{#if items.length < totalAvailable}
-							Showing {items.length} of {totalAvailable} pending items{pendingProjectCount >
-							1
-								? ` · ${pendingProjectCount} projects`
-								: ''}
-						{:else}
-							{totalAvailable} pending item{totalAvailable === 1
-								? ''
-								: 's'}{pendingProjectCount > 1
-								? ` · ${pendingProjectCount} projects`
-								: ''}
-						{/if}
+						Loading inbox
 					{:else}
-						Inbox is clear
+						{formatInboxAttentionSummary({
+							loaded: items.length,
+							total: totalAvailable,
+							held: heldTotal
+						})}
 					{/if}
 				</p>
 				{#if changedCount > 0}
 					<p class="mt-0.5 text-2xs text-muted-foreground">
 						{changedCount} handled this session
 					</p>
-				{:else if items.length && totalActionable !== items.length}
+				{:else if items.length && pendingProjectCount > 0}
 					<p class="mt-0.5 text-2xs text-muted-foreground">
-						{totalActionable} actionable
+						Across {pendingProjectCount} project{pendingProjectCount === 1 ? '' : 's'}
 					</p>
 				{/if}
 			</div>
@@ -1060,7 +1033,7 @@
 		{:else if items.length === 0}
 			<div class="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
 				<Inbox class="h-6 w-6 text-muted-foreground" />
-				<p class="mt-2 text-sm font-semibold text-foreground">No pending review items</p>
+				<p class="mt-2 text-sm font-semibold text-foreground">Nothing needs attention</p>
 				<p class="mt-1 max-w-sm text-xs text-muted-foreground">
 					Agent proposals and source-specific suggestions will appear here when they need
 					a decision.
@@ -1104,7 +1077,7 @@
 									{group.items.length}
 								</span>
 								<p class="mt-1 hidden text-2xs text-muted-foreground lg:block">
-									{group.actionableCount} actionable
+									{group.items.length} need attention
 								</p>
 							</button>
 						{/each}
@@ -1123,14 +1096,7 @@
 						>
 							<div class="min-w-0">
 								<p class="text-xs font-semibold text-foreground lg:hidden">
-									{activeGroup.items.length} item{activeGroup.items.length === 1
-										? ''
-										: 's'}
-									{#if activeGroup.actionableCount !== activeGroup.items.length}
-										<span class="font-normal text-muted-foreground">
-											· {activeGroup.actionableCount} actionable
-										</span>
-									{/if}
+									{activeGroup.items.length} need attention
 								</p>
 								<p
 									class="hidden truncate text-xs font-semibold text-foreground lg:block"
@@ -1140,17 +1106,10 @@
 										({activeGroup.items.length})
 									</span>
 								</p>
-								{#if activeGroup.actionableCount !== activeGroup.items.length}
-									<p
-										class="mt-0.5 hidden text-2xs text-muted-foreground lg:block"
-									>
-										{activeGroup.actionableCount} actionable
-									</p>
-								{/if}
 							</div>
 							{#if activeGroup.projectId}
 								<a
-									href="/projects/{activeGroup.projectId}"
+									href={resolve('/projects/[id]', { id: activeGroup.projectId })}
 									class="inline-flex min-h-11 shrink-0 items-center rounded-md px-2 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
 								>
 									Open project
@@ -1170,17 +1129,12 @@
 								{@const integration = integrationAttention(item)}
 								{@const reviewRun = projectLoopRunContext(item)}
 								{@const audit = projectAuditContext(item)}
-								{@const reviewRunText = reviewRunLabel(reviewRun)}
 								{@const project = itemProject(item)}
 								{@const taskPreview = calendarTasks(item)}
 								{@const eventPattern = calendarEventPattern(item)}
 								{@const dateRange = formatCalendarDateRange(eventPattern)}
 								{@const confidence = formatConfidence(calendar?.confidence_score)}
-								{@const auditRecommendations = auditRecommendationLabel(audit)}
-								{@const tier = tierFor(item.risk_tier ?? payload?.risk_tier)}
-								{@const Icon = sourceIcon(item)}
-								{@const showProjectBadge =
-									Boolean(project) && activeGroup.projectId !== project?.id}
+								{@const metadata = reviewMetadata(item, payload, reviewRun, audit)}
 								{@const evidence = arrayValue<ProjectSuggestionEvidenceRef>(
 									payload?.evidence_refs
 								).slice(0, 2)}
@@ -1192,64 +1146,29 @@
 										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 									>
 										<div class="min-w-0 flex-1">
-											<InboxProjectBadge
-												project={showProjectBadge ? project : null}
-											/>
+											<InboxProjectBadge {project} variant="compact" />
 											<p
-												class="line-clamp-2 break-words text-sm font-semibold text-foreground"
+												class="break-words text-sm font-semibold text-foreground"
 											>
 												{item.title ||
 													payload?.title ||
 													agent?.label ||
 													'Review item'}
 											</p>
-											<div class="mt-1.5 flex flex-wrap items-center gap-2">
-												<span
-													class="inline-flex min-w-0 items-center gap-1 rounded border px-1.5 py-0.5 text-2xs font-semibold {tier.cls}"
-												>
-													<Icon class="h-3 w-3 shrink-0" />
-													{tier.label}
-												</span>
-												<span class="micro-label text-muted-foreground">
-													{sourceLabel(item)}
-												</span>
-												{#if payload?.kind}
-													<span class="micro-label text-muted-foreground">
-														{kindLabel[payload.kind] ?? payload.kind}
-													</span>
-												{/if}
-												{#if reviewRunText}
-													<span
-														class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
-													>
-														{reviewRunText}
-													</span>
-												{/if}
-											</div>
 											{#if payload?.why_now}
 												<p
-													class="mt-1 line-clamp-3 break-words text-xs text-foreground/80"
+													class="mt-1 break-words text-xs text-foreground/80"
 												>
 													<span class="font-semibold">Why now:</span>
 													{payload.why_now}
 												</p>
 											{:else if item.summary || payload?.rationale || agent?.goal}
 												<p
-													class="mt-1 line-clamp-3 break-words text-xs text-muted-foreground"
+													class="mt-1 break-words text-xs text-muted-foreground"
 												>
 													{item.summary ??
 														payload?.rationale ??
 														agent?.goal}
-												</p>
-											{/if}
-											{#if payload?.preview?.summary}
-												<p
-													class="mt-1.5 line-clamp-3 break-words border-l-2 border-accent/30 pl-2 text-xs text-muted-foreground"
-												>
-													<span class="font-semibold text-foreground/80">
-														Preview:
-													</span>
-													{payload.preview.summary}
 												</p>
 											{/if}
 											{#if item.source_type === 'calendar_suggestion' && calendar}
@@ -1308,7 +1227,7 @@
 																Suggested tasks
 															</p>
 															<div class="mt-1.5 space-y-1">
-																{#each taskPreview.slice(0, 3) as task}
+																{#each taskPreview.slice(0, 3) as task, index (`${task.title}-${task.start_date ?? index}`)}
 																	<div
 																		class="flex items-start justify-between gap-2 text-2xs"
 																	>
@@ -1350,38 +1269,12 @@
 													{/if}
 												</div>
 											{/if}
-											{#if item.source_type === 'project_audit' && audit}
-												<div class="mt-2 flex flex-wrap gap-1.5">
-													{#if auditRecommendations}
-														<span
-															class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
-														>
-															{auditRecommendations}
-														</span>
-													{/if}
-													{#if audit.delivery_confidence}
-														<span
-															class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs text-accent"
-														>
-															{audit.delivery_confidence} confidence
-														</span>
-													{/if}
-												</div>
-											{/if}
-											{#if evidence.length}
-												<div class="mt-2 flex flex-wrap gap-1.5">
-													{#each evidence as ref}
-														{@const label = evidenceLabel(ref)}
-														<span
-															class="inline-block max-w-full truncate rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground sm:max-w-[18rem]"
-															title={label}
-														>
-															{label}
-														</span>
-													{/each}
-												</div>
-											{/if}
-											{#if item.source_type === 'project_suggestion' && (changes || payload?.preview)}
+											<InboxReviewDetails
+												{metadata}
+												summary={payload?.preview?.summary ?? null}
+												evidence={evidence.map(evidenceLabel)}
+											/>
+											{#if item.source_type === 'project_suggestion' && changes > 0}
 												<InboxChangeDetails
 													operations={payload?.operations ?? []}
 													preview={payload?.preview ?? null}
@@ -1398,10 +1291,11 @@
 													<ChangeSetReview
 														runId={item.source_ref_id}
 														{changeSet}
-														acceptLabel="Accept"
+														acceptLabel="Approve"
 														dismissLabel="Dismiss"
-														approveAllLabel="Accept"
+														approveAllLabel="Approve"
 														rejectAllLabel="Dismiss"
+														chatLabel="Discuss"
 														openingChat={isOpeningChat(item)}
 														snoozing={pendingIds.has(item.id)}
 														onApplied={() =>
@@ -1450,7 +1344,7 @@
 													Snooze 1 day
 												</Button>
 												<a
-													href="/profile?tab=email"
+													href={resolve('/profile?tab=email')}
 													class="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
 													title={integration?.email_address
 														? `Manage ${integration.email_address}`

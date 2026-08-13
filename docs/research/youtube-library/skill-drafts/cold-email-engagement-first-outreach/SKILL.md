@@ -6,6 +6,7 @@ skill_type: combo
 categories:
     - sales-and-growth
     - marketing-and-content
+lineage: lineage.yaml
 path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/SKILL.md
 status: registered
 promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_engagement_first_outreach/SKILL.md

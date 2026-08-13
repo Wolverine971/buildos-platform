@@ -4,7 +4,7 @@
 
 Rules for creating and structuring **agentic-chat runtime skills** (`definitions/<id>/SKILL.md`). Not for Claude Code skills — those live in `.claude/skills/` and follow `create-skill`.
 
-Derived from: `docs/research/youtube-library/SKILL_QUALITY_AUDIT_2026-06-10.md` (the delta test), `SKILL_ARCHITECTURE_EVALUATION_2026-06-10.md` (sizing rules + eval evidence), `SKILL_GAP_ANALYSIS_AND_ACQUISITION_PLAN_2026-06-11.md` (weak-model ingredients).
+Derived from: `docs/research/youtube-library/SKILL_QUALITY_AUDIT_2026-06-10.md` (the delta test), `SKILL_ARCHITECTURE_EVALUATION_2026-06-10.md` (sizing rules + eval evidence), `SKILL_GAP_ANALYSIS_AND_ACQUISITION_PLAN_2026-06-11.md` (weak-model ingredients). Linter: `skill-authoring-validation.ts`; parser: `markdown-skill.ts`.
 
 ## The two governing principles
 
@@ -15,13 +15,56 @@ Derived from: `docs/research/youtube-library/SKILL_QUALITY_AUDIT_2026-06-10.md` 
 
 The whole system is designed so less-capable models perform like strong ones. Audit every skill against this list — prose principles don't count:
 
-1. **Worked examples** — a completed, contract-perfect exemplar to imitate (`## Worked Example`). The single strongest lever. Manufacture them via the eval harness: strong-model run on the golden task → check markers → trim to ~50–80 lines → embed.
+1. **Worked examples** — a completed, contract-perfect exemplar to imitate (inside `## Examples`). The single strongest lever. Manufacture them via the eval harness: strong-model run on the golden task → check markers → trim to ~50–80 lines → embed.
 2. **Named patterns + closed vocabularies** — "the Delay pass," "fake warmth," "AI gradient." A weak model can match what it can't derive.
 3. **Numeric thresholds + closed scales** — replace judgment with lookup (≥4.5:1, ≤170 words, spacing ∈ {4,8,…}).
 4. **Templates and scaffolds** — fill-in-the-blank beats generate-from-scratch.
 5. **Decision trees + routing tables** — replace inference with branching.
 6. **Refusal + escalation rules** — explicit "refuse when X, route to Y." Weak models over-comply; this is the guardrail that matters most.
-7. **Output contracts + stop conditions** — `## Output` is parsed into `output_contract` and ships on every load format.
+7. **Output contracts + stop conditions** — `## Contract` is parsed into `output_contract` and ships on every load format.
+
+## Canonical block structure (the linter's contract)
+
+The body is a sequence of H2 blocks drawn from a closed menu, **in this fixed order**:
+
+`## Identity` → `## Activation` → `## Judgment` → `## Procedure` → `## Routing` → `## Contract` → `## Policy` → `## Knowledge` → `## Related Tools` → `## Examples` → `## Provenance`
+
+A skill is **migrated** iff its body has `## Identity` — author every new skill migrated. On migrated skills the block linter is all hard errors:
+
+- Any H2 outside the menu → `unknown_block`. Subordinate material goes under H3 _inside_ the owning block, never a new H2. (One tolerated spelling: `## Worked Example(s)` folds into the Examples slot.)
+- Each block at most once (`duplicate_block`); menu order enforced (`blocks_out_of_order`).
+- Required/forbidden blocks depend on `skill_type` (`missing_required_block` / `forbidden_block_present`). Identity + Activation are required everywhere; Related Tools + Examples are optional everywhere:
+
+| skill_type    | Also required                          | Forbidden                    |
+| ------------- | -------------------------------------- | ---------------------------- |
+| procedure     | Procedure, Contract                    | —                            |
+| strategy      | Judgment                               | —                            |
+| reference     | Knowledge, Provenance                  | Judgment, Procedure, Routing |
+| resource      | Contract                               | Routing                      |
+| policy        | Policy                                 | Procedure, Routing           |
+| orchestration | Judgment, Procedure, Routing, Contract | —                            |
+
+- **Orchestration extras:** frontmatter `dependencies` must be non-empty; a route marker is an arrow followed by a backticked id — `` → `skill_id` `` (backticks required). Every Procedure route marker must match a dependency (`dangling_route`), and every dependency must appear as a route marker or in the Routing block (`orphan_dependency`).
+
+**Legacy aliases (unmigrated skills only).** Old headings still parse on pending skills — `## When to Use`→Activation, `## Workflow`→Procedure, `## Guardrails`→Policy, `## Notes`→Provenance, `## Output`/`## Output Contract`→Contract — but on a migrated skill they are `unknown_block` errors. Never author new content with them.
+
+## Frontmatter (what's load-bearing)
+
+Fields the runtime parses: `name`, `description`, `catalog_line`, `skill_type`, `altitude`, `activation`, `dependencies`, `recommended_load_format`, `parent_id`, `depth`, `preserve_markdown`, `legacy_paths`, `child_skills`, `reference_modules`. Unknown keys are never rejected (Zod passthrough) but nothing reads them.
+
+Migrated skills **must** declare, or the linter errors (`migrated_missing_frontmatter` / `migrated_requires_preserve_markdown`):
+
+- `skill_type:` one of `procedure | strategy | reference | resource | policy | orchestration` — drives the required-block matrix
+- `altitude:` `task | domain | meta`
+- `activation:` `always_on | progressive | invoked`
+- `preserve_markdown: true` — Identity/Judgment/Routing/Knowledge have no structured-field equivalent; only the raw-body render path serves them, so without this the model never sees them
+
+Other load-bearing facts:
+
+- `description` is the entire discovery API (the catalog table row). Write it in user-request vocabulary; no two siblings may claim the same phrasing. `catalog_line` (≤140 chars) is the short trigger line in the always-on catalog table.
+- Body sections parsed into the short payload: `## Activation` (bullets), `## Procedure` (ordered list), `## Related Tools` (backticked bullets), `## Policy` (bullets), `## Examples` (### + bullets), `## Provenance` (bullets), `## Contract` (raw text → `output_contract`, ships on both formats). Everything else — Identity, Judgment, Routing, Knowledge, worked examples, tables — is served only via `preserve_markdown` + `full` loads.
+- `child_skills` / `reference_modules` entries need `id`, `summary`, and non-empty `when_to_load` — an empty `when_to_load` draws a `linked_resource_without_load_rule` warning.
+- Reference files auto-bundle from `definitions/<id>/references/*.md` (`import.meta.glob`); declared paths must be `references/….md` (no absolute paths, no `..`).
 
 ## Structure decision tree: inline vs. reference vs. child skill
 
@@ -53,29 +96,24 @@ Work top-down. Default is **inline in the shell**.
 | Child skill      | ≥4KB of own machinery + own discovery phrasing, or don't create it                          |
 | Worked example   | 50–80 lines, contract-perfect, elide repetition with "(…N more in the same shape…)"         |
 
-## Parser facts (what's load-bearing)
-
-- Frontmatter read by the runtime: `name`, `description`, `parent_id`, `depth`, `preserve_markdown`, `legacy_paths`, `child_skills`, `reference_modules`. Everything else is ignored (harmless, self-documentation only).
-- Body sections parsed into the short payload: `## When to Use` (bullets), `## Workflow` (ordered list; headings starting/ending with "workflow" match), `## Related Tools`, `## Guardrails`, `## Examples` (### + bullets), `## Notes`, and `## Output` / `## Output Contract` (raw text → `output_contract`, both formats).
-- Any other section (`## Worked Example`, principle tables, scorecards) survives ONLY via `preserve_markdown: true` + `full` loads — set it on every content-bearing skill.
-- `description` is the entire discovery API (the catalog table row). Write it in user-request vocabulary; no two siblings may claim the same phrasing.
-- Reference files auto-bundle from `definitions/<id>/references/*.md` (`import.meta.glob`); declare them in frontmatter with namespaced id, summary, sharp `when_to_load`, `references/…` path.
+**150-line root warning.** A root skill whose body exceeds 150 lines with no `child_skills` and no `reference_modules` draws an `oversized_root_skill` warning (`DEFAULT_ROOT_LINE_WARNING_THRESHOLD`). When a root shell grows past that, split its conditional material into references per the decision tree — or link the children it already implies — rather than shipping the warning.
 
 ## Birth checklist for a new runtime skill
 
 ```
 □ Delta test: name 3 things the base model wouldn't do unprompted
 □ Ingredients audit: which of the 7 does it carry? (1, 3, 6, 7 near-mandatory)
-□ description in user vocabulary; collision-checked against siblings
-□ ## When to Use / ## Workflow (steps name which section/reference applies when)
-□ ## Output contract + stop conditions; preserve_markdown: true
-□ ## Guardrails incl. at least one refusal/escalation rule with a named route
-□ Structure per the decision tree above (inline > reference > child)
-□ ## Worked Example (manufacture via eval harness if no natural exemplar)
+□ Frontmatter: skill_type + altitude + activation + preserve_markdown: true
+□ description in user vocabulary, collision-checked against siblings; catalog_line ≤140 chars
+□ Canonical blocks only, in menu order; required set for the skill_type (matrix above)
+□ ## Contract with output shape + stop conditions
+□ ## Policy incl. at least one refusal/escalation rule with a named route
+□ Structure per the decision tree (inline > reference > child); >150-line root ⇒ references or split
+□ Worked example inside ## Examples (manufacture via eval harness if no natural exemplar)
 □ evals.md with 1–3 golden tasks (fixtures embedded, binary delta markers, expected load path)
 □ Wire: wrapper .skill.ts import + registry.ts ALL_SKILLS + domains/catalog.ts useWhen
 □ Draft stamped: status: registered, promoted_to, last_promoted
-□ pnpm vitest run src/lib/services/agentic-chat/tools/skills/ — green
+□ pnpm vitest run src/lib/services/agentic-chat/tools/skills/ — green, zero authoring errors or warnings
 ```
 
 ## Maintenance triggers

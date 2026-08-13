@@ -23,6 +23,8 @@ export type AgenticChatPhase3ProviderConfig = {
 type AgenticChatPhase3BaseConfig = {
 	internalUserIds: readonly string[];
 	liveVisionEnabled: boolean;
+	supervisorEnabled: boolean;
+	consumptionBillingEnabled: boolean;
 	consumer: AgenticChatConsumerConfig;
 	providerBudgetMs: number;
 	maxProviderRounds: number;
@@ -58,6 +60,16 @@ export function loadAgenticChatPhase3Config(
 		environment.AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED,
 		false,
 		'AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED'
+	);
+	const supervisorEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED,
+		false,
+		'AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED'
+	);
+	const consumptionBillingEnabled = parseBoolean(
+		environment.PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE,
+		false,
+		'PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE'
 	);
 	const internalUserIds = parseInternalUserIds(environment.AGENTIC_CHAT_INTERNAL_USER_IDS);
 	if (enabled && internalUserIds.length === 0) {
@@ -118,6 +130,8 @@ export function loadAgenticChatPhase3Config(
 			enabled: false,
 			internalUserIds,
 			liveVisionEnabled,
+			supervisorEnabled,
+			consumptionBillingEnabled,
 			consumer,
 			providerBudgetMs,
 			maxProviderRounds,
@@ -131,6 +145,8 @@ export function loadAgenticChatPhase3Config(
 		enabled: true,
 		internalUserIds,
 		liveVisionEnabled,
+		supervisorEnabled,
+		consumptionBillingEnabled,
 		consumer,
 		providerBudgetMs,
 		maxProviderRounds,

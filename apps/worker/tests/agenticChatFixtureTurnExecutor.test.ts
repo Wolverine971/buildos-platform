@@ -10,11 +10,15 @@ import {
 	AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1,
 	AGENTIC_CHAT_PROVIDER_ERROR_GOLDEN_V1,
 	AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1,
+	AGENTIC_CHAT_SUPERVISOR_QUESTION_FIXTURE_V1,
 	AGENTIC_CHAT_TEXT_ONLY_SUCCESS_FIXTURE_V1,
+	AGENTIC_CHAT_TIMEOUT_FIXTURE_V1,
+	AGENTIC_CHAT_TIMEOUT_GOLDEN_V1,
 	createAgenticChatWorkerParityCoverageTrackerV1,
 	normalizeAgenticChatParityRunV1,
 	projectAgenticChatWorkerLifecycleObservationsV1
 } from '@buildos/agentic-chat-runtime';
+import { provideAgenticChatLoopToolCatalog } from '@buildos/agentic-chat-runtime/loop';
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessingJob } from '../src/lib/supabaseQueue';
 import { AgenticChatCancellationError } from '../src/workers/agentic-chat/cancellationObserver';
@@ -32,11 +36,19 @@ import {
 	type AgenticChatFixtureProviderStepV1
 } from '../src/workers/agentic-chat/fixtureTurnExecutor';
 import { AgenticChatProviderExecutionError } from '../src/workers/agentic-chat/providerContract';
-import type { AgenticChatPreparedPromptSnapshotV1 } from '../src/workers/agentic-chat/providerContract';
+import type {
+	AgenticChatPreparedPromptSnapshotV1,
+	AgenticChatProviderToolRoundInputV1
+} from '../src/workers/agentic-chat/providerContract';
 import { AgenticChatReadOnlyToolAdapter } from '../src/workers/agentic-chat/readOnlyTool';
 import { createStableAgenticChatPromptSnapshotIdV1 } from '../src/workers/agentic-chat/promptSnapshot';
 import type { AgenticChatRuntimeTimingSnapshotV1 } from '../src/workers/agentic-chat/runtimeTiming';
 import { AgenticChatStreamPublisher } from '../src/workers/agentic-chat/streamPublisher';
+import {
+	AgenticChatSupervisorCheckpointTimeoutError,
+	createStableAgenticChatSupervisorCheckpointIdV1
+} from '../src/workers/agentic-chat/supervisorCheckpoint';
+import { createStableAgenticChatSupervisorTransitionIdV1 } from '../src/workers/agentic-chat/workerSupervisor';
 import {
 	AgenticChatToolExecutionTimeoutError,
 	SupabaseAgenticChatToolExecutionAdapter
@@ -64,14 +76,18 @@ const LOGICAL_OPERATION_ID = 'c0000000-0000-4000-8000-00000000000c';
 const EFFECT_ID = 'd0000000-0000-5000-8000-00000000000d';
 const EXECUTION_GENERATION = 1;
 
+provideAgenticChatLoopToolCatalog(() => ({ ops: {}, byToolName: {} }));
+
 const fixturePromptSnapshot = {
 	snapshotVersion: 'agentic_chat_worker_prompt_v1',
 	modelMessages: [
 		{ role: 'system', content: 'Fixture only' },
 		{ role: 'user', content: 'Use the fixture' }
 	],
+	toolDefinitions: [],
 	systemPromptSha256: 'a'.repeat(64),
 	messagesSha256: 'b'.repeat(64),
+	toolsSha256: 'c'.repeat(64),
 	systemPromptChars: 12,
 	messageChars: 27,
 	approxPromptTokens: 7
@@ -239,6 +255,10 @@ function createHarness(
 		maxProviderRounds?: number;
 		maxToolCalls?: number;
 		failSemanticType?: string;
+		supervisorCheckpointError?: Error;
+		researchCaptureError?: Error;
+		statedFutureCaptureError?: Error;
+		consumptionBillingError?: Error;
 	} = {}
 ) {
 	let sequence = 0;
@@ -617,6 +637,9 @@ function createHarness(
 		})
 	};
 	const promptSnapshotErrors: unknown[] = [];
+	const researchCaptureErrors: unknown[] = [];
+	const statedFutureCaptureErrors: unknown[] = [];
+	const consumptionBillingErrors: unknown[] = [];
 	const terminalControlErrors: Array<{
 		stage: 'finalize' | 'finalize_retry' | 'recover';
 		turnRunId: string;
@@ -638,7 +661,7 @@ function createHarness(
 	};
 	const toolExecutions = {
 		persistRead: vi.fn(async () => undefined),
-		persistValidationFailure: vi.fn(async () => undefined),
+		persistFailure: vi.fn(async () => undefined),
 		persistMutation: vi.fn(async () => {
 			log.push('mutation_ledger');
 		})
@@ -647,6 +670,17 @@ function createHarness(
 	const executionObservations = {
 		observe: vi.fn(async (observation: AgenticChatExecutionObservationInputV1) => {
 			executionObservationInputs.push(observation);
+		})
+	};
+	const supervisorCheckpoints = {
+		persist: vi.fn(async (input: { checkpointId: string }) => {
+			log.push('supervisor_checkpoint');
+			if (options.supervisorCheckpointError) throw options.supervisorCheckpointError;
+			return {
+				outcome: 'persisted' as const,
+				checkpointId: input.checkpointId,
+				expiresAt: '2026-08-14T12:00:00.000Z'
+			};
 		})
 	};
 	const mutation = {
@@ -663,6 +697,34 @@ function createHarness(
 		registerTurn: vi.fn(() => cancellationController.signal),
 		unregisterTurn: vi.fn(() => true)
 	};
+	const researchCapture = options.researchCaptureError
+		? {
+				capture: vi.fn(async () => {
+					throw options.researchCaptureError;
+				})
+			}
+		: undefined;
+	const statedFutureCapture = options.statedFutureCaptureError
+		? {
+				capture: vi.fn(async () => {
+					throw options.statedFutureCaptureError;
+				})
+			}
+		: undefined;
+	const consumptionBilling = {
+		evaluate: vi.fn(async () => {
+			if (options.consumptionBillingError) throw options.consumptionBillingError;
+			return {
+				userId: USER_ID,
+				billingState: 'explorer_active',
+				billingTier: 'explorer',
+				isFrozen: false,
+				projectCount: 1,
+				lifetimeCreditsUsed: 10,
+				triggerReason: null
+			};
+		})
+	};
 	const executor = new AgenticChatFixtureTurnExecutor(
 		{
 			control: control as never,
@@ -673,9 +735,16 @@ function createHarness(
 			promptSnapshots,
 			executionObservations,
 			onPromptSnapshotError: (error) => promptSnapshotErrors.push(error),
+			onResearchCaptureError: (error) => researchCaptureErrors.push(error),
+			onStatedFutureCaptureError: (error) => statedFutureCaptureErrors.push(error),
+			onConsumptionBillingError: (error) => consumptionBillingErrors.push(error),
 			onTerminalControlError: (report) => terminalControlErrors.push(report),
 			readTool,
 			toolExecutions,
+			supervisorCheckpoints,
+			researchCapture,
+			statedFutureCapture,
+			consumptionBilling,
 			mutation,
 			createId: () => ASSISTANT_MESSAGE_ID,
 			timingClock: timingClockValues
@@ -707,11 +776,18 @@ function createHarness(
 		provider,
 		promptSnapshots,
 		promptSnapshotErrors,
+		researchCaptureErrors,
+		statedFutureCaptureErrors,
+		consumptionBillingErrors,
 		terminalControlErrors,
 		readTool,
 		toolExecutions,
 		executionObservations,
 		executionObservationInputs,
+		supervisorCheckpoints,
+		researchCapture,
+		statedFutureCapture,
+		consumptionBilling,
 		mutation,
 		cancellation,
 		cancellationController,
@@ -773,6 +849,152 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		expect(harness.promptSnapshotErrors).toEqual([error]);
 		expect(harness.control.finalize).toHaveBeenCalledWith(
 			expect.objectContaining({ assistantText: 'response survives' })
+		);
+		await harness.publisher.stop();
+	});
+
+	it('reports deterministic research-capture failure without overturning the completed answer', async () => {
+		const error = new Error('research log unavailable');
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'completed research answer' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{ researchCaptureError: error }
+		);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(harness.researchCapture?.capture).toHaveBeenCalledOnce();
+		expect(harness.researchCaptureErrors).toEqual([error]);
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				assistantText: 'completed research answer',
+				status: 'completed'
+			})
+		);
+		expect(harness.researchCapture!.capture.mock.invocationCallOrder[0]).toBeLessThan(
+			harness.control.finalize.mock.invocationCallOrder[0]!
+		);
+		await harness.publisher.stop();
+	});
+
+	it('reports deterministic stated-future failure without overturning the completed answer', async () => {
+		const error = new Error('stated-future task unavailable');
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'completed answer' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{ statedFutureCaptureError: error }
+		);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(harness.statedFutureCapture?.capture).toHaveBeenCalledOnce();
+		expect(harness.statedFutureCaptureErrors).toEqual([error]);
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({ assistantText: 'completed answer', status: 'completed' })
+		);
+		expect(harness.statedFutureCapture!.capture.mock.invocationCallOrder[0]).toBeLessThan(
+			harness.control.finalize.mock.invocationCallOrder[0]!
+		);
+		await harness.publisher.stop();
+	});
+
+	it('re-evaluates consumption billing after execution and before terminal finalization', async () => {
+		const harness = createHarness([
+			{ type: 'text_delta', text: 'accounted answer' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(harness.consumptionBilling.evaluate).toHaveBeenCalledOnce();
+		expect(harness.consumptionBilling.evaluate).toHaveBeenCalledWith(USER_ID);
+		expect(harness.consumptionBilling.evaluate.mock.invocationCallOrder[0]).toBeLessThan(
+			harness.control.finalize.mock.invocationCallOrder[0]!
+		);
+		await harness.publisher.stop();
+	});
+
+	it('reports consumption-billing failure without overturning terminal truth', async () => {
+		const error = new Error('billing gate unavailable');
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'answer survives billing telemetry failure' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{ consumptionBillingError: error }
+		);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(harness.consumptionBillingErrors).toEqual([error]);
+		expect(harness.control.finalize).toHaveBeenCalledOnce();
+		await harness.publisher.stop();
+	});
+
+	it('copies immutable structured turn intent and its durable outcome into terminal message metadata', async () => {
+		const harness = createHarness([
+			{ type: 'text_delta', text: 'I could not complete the write.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		harness.input.load.mockResolvedValueOnce({
+			...executionInput,
+			requestPayload: {
+				...executionInput.requestPayload,
+				context: { type: 'project', projectId: '22000000-0000-4000-8000-000000000022' }
+			},
+			artifact: {
+				...executionInput.artifact,
+				prepared: {
+					...executionInput.artifact.prepared,
+					turnIntent: {
+						version: 1,
+						requiresWrite: true,
+						action: 'create',
+						entityKind: 'document',
+						operations: [{ action: 'create', entityKind: 'document' }],
+						source: 'current_message',
+						originalRequestText: 'Create a handoff document.',
+						originatingTurnRunId: null,
+						clearPending: false,
+						expectedWriteToolNames: ['create_onto_document']
+					}
+				}
+			}
+		} as never);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				assistantMetadata: expect.objectContaining({
+					outcome_status: 'unfulfilled',
+					turn_intent: {
+						version: 1,
+						requiresWrite: true,
+						action: 'create',
+						entityKind: 'document',
+						operations: [{ action: 'create', entityKind: 'document' }],
+						source: 'current_message',
+						originalRequestText: 'Create a handoff document.',
+						originatingTurnRunId: null,
+						clearPending: false
+					}
+				})
+			})
 		);
 		await harness.publisher.stop();
 	});
@@ -1046,6 +1268,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		expect(harness.input.load).not.toHaveBeenCalled();
 		expect(harness.control.begin).not.toHaveBeenCalled();
 		expect(harness.provider.stream).not.toHaveBeenCalled();
+		expect(harness.consumptionBilling.evaluate).not.toHaveBeenCalled();
 		await harness.publisher.stop();
 	});
 
@@ -1420,6 +1643,396 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			})
 		);
 		await harness.publisher.stop();
+	});
+
+	it('persists and publishes a supervisor block before returning mixed round feedback', async () => {
+		const harness = createHarness([]);
+		const blockedError =
+			'Supervisor blocked this exact write retry because the same tool arguments already failed earlier in the turn. Use corrected arguments, the correct tool for the entity kind, or ask one concise clarifying question.';
+		const blockedArguments = {
+			task_id: 'da000000-0000-4000-8000-000000000001',
+			state_key: 'done'
+		};
+		const blockedFailure = {
+			kind: 'supervisor_block',
+			error: blockedError,
+			toolCategory: 'write',
+			modelPayload: {
+				error: blockedError,
+				supervisor_recovery: { blocked_exact_retry: true }
+			}
+		} as const;
+		const readArguments = {
+			project_id: 'db000000-0000-4000-8000-000000000002'
+		};
+		const readExecution = {
+			result: { project: { id: readArguments.project_id, name: 'Mixed round' } },
+			executionTimeMs: 12,
+			tokensConsumed: null,
+			affectedEntities: [],
+			toolCategory: 'utility',
+			resultCount: 1,
+			zeroResult: false,
+			requiresUserAction: false
+		};
+		harness.readTool.execute.mockResolvedValueOnce(readExecution);
+		harness.toolExecutions.persistFailure.mockImplementationOnce(async () => {
+			harness.log.push('blocked_ledger');
+		});
+		harness.toolExecutions.persistRead.mockImplementationOnce(async () => {
+			harness.log.push('read_ledger');
+		});
+		const continueWithToolResults = vi.fn((input: AgenticChatProviderToolRoundInputV1) => {
+			harness.log.push('continuation');
+			expect(input).toEqual({
+				round: 2,
+				results: [
+					{
+						providerToolCallId: 'blocked-update',
+						toolName: 'update_onto_task',
+						arguments: blockedArguments,
+						failure: blockedFailure
+					},
+					{
+						providerToolCallId: 'accepted-read',
+						toolName: 'get_project_overview',
+						arguments: readArguments,
+						execution: readExecution
+					}
+				]
+			});
+			return (async function* () {
+				yield {
+					type: 'supervisor_evaluation',
+					transitionId: THIRD_CALL_TRANSITION_ID,
+					reason: 'mixed_round_test_flag',
+					sequence: 9,
+					executionGeneration: EXECUTION_GENERATION
+				} as const;
+				yield { type: 'text_delta', text: 'The mixed round completed safely.' } as const;
+				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+			})();
+		});
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				promptSnapshot: fixturePromptSnapshot,
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'pre_execution_tool_failure',
+							callTransitionId: VALIDATION_CALL_TRANSITION_ID,
+							resultTransitionId: VALIDATION_RESULT_TRANSITION_ID,
+							providerToolCallId: 'blocked-update',
+							toolName: 'update_onto_task',
+							arguments: blockedArguments,
+							failure: blockedFailure
+						} as const;
+						yield {
+							type: 'read_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'accepted-read',
+							toolName: 'get_project_overview',
+							arguments: readArguments
+						} as const;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+
+		const processingJob = job();
+		try {
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			expect(harness.mutation.execute).not.toHaveBeenCalled();
+			expect(harness.readTool.execute).toHaveBeenCalledOnce();
+			expect(harness.toolExecutions.persistFailure).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sequenceIndex: 1,
+					providerToolCallId: 'blocked-update',
+					toolName: 'update_onto_task',
+					arguments: blockedArguments,
+					toolCategory: 'write',
+					error: blockedError
+				}),
+				expect.any(AbortSignal)
+			);
+			expect(harness.toolExecutions.persistRead.mock.calls[0]?.[0]).toMatchObject({
+				sequenceIndex: 2,
+				providerToolCallId: 'accepted-read'
+			});
+			const publicResultIndexes = harness.log
+				.map((entry, index) => ({ entry, index }))
+				.filter(({ entry }) => entry === 'semantic:tool_result:')
+				.map(({ index }) => index);
+			expect(publicResultIndexes).toHaveLength(2);
+			expect(harness.log.indexOf('blocked_ledger')).toBeLessThan(publicResultIndexes[0]!);
+			expect(harness.log.indexOf('read_ledger')).toBeLessThan(publicResultIndexes[1]!);
+			expect(publicResultIndexes[1]!).toBeLessThan(harness.log.indexOf('continuation'));
+			const publicResults = harness.semanticInputs
+				.filter((input) => input.event_type === 'tool_result')
+				.map((input) => input.event_payload as Record<string, unknown>);
+			expect(publicResults[0]).toMatchObject({
+				type: 'tool_result',
+				result: {
+					tool_call_id: 'blocked-update',
+					result: null,
+					success: false,
+					error: blockedError,
+					tool_name: 'update_onto_task'
+				}
+			});
+			expect(harness.control.finalize.mock.calls[0]?.[0].assistantMetadata).toMatchObject({
+				tool_round_count: 1,
+				tool_call_count: 2
+			});
+			expect(
+				processingJob.log.mock.calls
+					.map(([message]) => JSON.parse(message) as Record<string, unknown>)
+					.find(({ event }) => event === 'agentic_chat_supervisor_eval_flagged')
+			).toMatchObject({
+				turn_run_id: TURN_RUN_ID,
+				execution_generation: EXECUTION_GENERATION,
+				transition_id: THIRD_CALL_TRANSITION_ID,
+				sequence: 9,
+				reason: 'mixed_round_test_flag'
+			});
+			expect(
+				harness.semanticInputs.some(
+					(input) => input.event_type === 'supervisor_eval_flagged'
+				)
+			).toBe(false);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('persists a supervisor checkpoint before publishing the waiting state and question', async () => {
+		const fixture = AGENTIC_CHAT_SUPERVISOR_QUESTION_FIXTURE_V1;
+		const question = fixture.response.question;
+		const transitionId = createStableAgenticChatSupervisorTransitionIdV1({
+			turnRunId: TURN_RUN_ID,
+			executionGeneration: EXECUTION_GENERATION,
+			sequence: 1,
+			action: 'ask_user'
+		});
+		const digest = fixture.checkpoint.digest;
+		const resumeContext = fixture.checkpoint.resumeContext;
+		const supervisorDecision = fixture.checkpoint.supervisorDecision;
+		const harness = createHarness(
+			[
+				{
+					type: 'supervisor_question',
+					transitionId,
+					sequence: 1,
+					executionGeneration: EXECUTION_GENERATION,
+					reason: fixture.decision.reason,
+					question,
+					checkpoint: { digest, resumeContext, supervisorDecision },
+					finishedReason: fixture.response.finishedReason,
+					usage: fixture.response.usage
+				}
+			],
+			{ promptSnapshot: fixturePromptSnapshot }
+		);
+		const fixtureExecutionInput = {
+			...executionInput,
+			requestPayload: {
+				...executionInput.requestPayload,
+				message: fixture.request.message,
+				context: { type: fixture.request.contextType }
+			}
+		};
+		harness.input.load.mockResolvedValueOnce(fixtureExecutionInput);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		const checkpointId = createStableAgenticChatSupervisorCheckpointIdV1({
+			turnRunId: TURN_RUN_ID,
+			executionGeneration: EXECUTION_GENERATION,
+			supervisorTransitionId: transitionId
+		});
+		expect(harness.supervisorCheckpoints.persist).toHaveBeenCalledWith(
+			{
+				turnRunId: TURN_RUN_ID,
+				queueJobId: QUEUE_JOB_ID,
+				processingToken: PROCESSING_TOKEN,
+				userId: USER_ID,
+				sessionId: SESSION_ID,
+				executionGeneration: EXECUTION_GENERATION,
+				checkpointId,
+				supervisorTransitionId: transitionId,
+				sequence: 1,
+				reason: fixture.decision.reason,
+				question,
+				digest,
+				resumeContext,
+				supervisorDecision
+			},
+			expect.any(AbortSignal)
+		);
+		expect(harness.log.indexOf('supervisor_checkpoint')).toBeLessThan(
+			harness.log.indexOf('semantic:agent_state:')
+		);
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'completed',
+				finishedReason: 'supervisor_question',
+				assistantText: question,
+				promptTokens: 9,
+				completionTokens: 3,
+				totalTokens: 12,
+				assistantMetadata: expect.objectContaining({
+					supervisor_question_checkpoint: {
+						checkpoint_id: checkpointId,
+						failed: false
+					}
+				})
+			})
+		);
+		const waitingEvent = harness.semanticInputs.find(
+			(input) => (input.event_payload as Record<string, unknown>).state === 'waiting_on_user'
+		);
+		expect(waitingEvent).toEqual(
+			expect.objectContaining({
+				transition_id: transitionId,
+				event_type: 'agent_state',
+				event_payload: expect.objectContaining({
+					type: 'agent_state',
+					state: 'waiting_on_user',
+					details: 'Waiting on your direction to continue.'
+				})
+			})
+		);
+		const publicTypes = harness.broadcastMessages.map(
+			(message) => (message.payload as Record<string, unknown>).type
+		);
+		expect(publicTypes.indexOf('agent_state')).toBeLessThan(publicTypes.indexOf('text_delta'));
+		expect(publicTypes.at(-1)).toBe('done');
+
+		const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+		const checkpointInput = harness.supervisorCheckpoints.persist.mock.calls[0]?.[0] as
+			| Record<string, unknown>
+			| undefined;
+		if (!terminalInput || !checkpointInput) {
+			throw new Error('Supervisor parity fixture did not persist its terminal state');
+		}
+		const supervisorCheckpointMetadata = terminalInput.assistantMetadata
+			.supervisor_question_checkpoint as Record<string, unknown>;
+		const worker = normalizeAgenticChatParityRunV1({
+			events: harness.broadcastMessages.map((message) => message.payload) as never,
+			messages: [
+				{ role: 'user', content: fixtureExecutionInput.requestPayload.message },
+				{
+					role: 'assistant',
+					content: terminalInput.assistantText,
+					metadata: {
+						completion_status: terminalInput.assistantMetadata.completion_status,
+						answer_source: terminalInput.assistantMetadata.answer_source,
+						supervisor_question_checkpoint: {
+							failed: supervisorCheckpointMetadata.failed
+						}
+					}
+				}
+			],
+			toolExecutions: [],
+			checkpoints: [
+				{
+					checkpoint_type: 'supervisor_question',
+					status: 'active',
+					reason: checkpointInput.reason,
+					question: checkpointInput.question,
+					digest: checkpointInput.digest,
+					resume_context: checkpointInput.resumeContext,
+					supervisor_decision: checkpointInput.supervisorDecision
+				}
+			],
+			outcome: {
+				status: terminalInput.status,
+				finished_reason: terminalInput.finishedReason,
+				assistant_message_linked: terminalInput.assistantMessageId !== null,
+				tool_round_count: terminalInput.assistantMetadata.tool_round_count,
+				tool_call_count: terminalInput.assistantMetadata.tool_call_count,
+				total_tokens: terminalInput.totalTokens
+			},
+			metadata: { checkpoint_count: harness.supervisorCheckpoints.persist.mock.calls.length }
+		});
+		for (const scenarioClass of ['clarification', 'supervisor_checkpoint'] as const) {
+			const evaluation = parityCoverage.evaluate(scenarioClass, worker);
+			expect(evaluation.diff.truncated).toBe(false);
+			expect(evaluation.deliberate.length).toBeGreaterThan(0);
+			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
+				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
+			);
+			expect(evaluation.matchesContract).toBe(true);
+		}
+		await harness.publisher.stop();
+	});
+
+	it('requeues an indeterminate checkpoint timeout without publishing a question', async () => {
+		const fixture = AGENTIC_CHAT_SUPERVISOR_QUESTION_FIXTURE_V1;
+		const transitionId = createStableAgenticChatSupervisorTransitionIdV1({
+			turnRunId: TURN_RUN_ID,
+			executionGeneration: EXECUTION_GENERATION,
+			sequence: 1,
+			action: 'ask_user'
+		});
+		const harness = createHarness(
+			[
+				{
+					type: 'supervisor_question',
+					transitionId,
+					sequence: 1,
+					executionGeneration: EXECUTION_GENERATION,
+					reason: fixture.decision.reason,
+					question: fixture.response.question,
+					checkpoint: {
+						digest: fixture.checkpoint.digest,
+						resumeContext: fixture.checkpoint.resumeContext,
+						supervisorDecision: fixture.checkpoint.supervisorDecision
+					},
+					finishedReason: fixture.response.finishedReason,
+					usage: fixture.response.usage
+				}
+			],
+			{
+				promptSnapshot: fixturePromptSnapshot,
+				supervisorCheckpointError: new AgenticChatSupervisorCheckpointTimeoutError(10),
+				recovery: [recoveryReceipt('retry_scheduled')]
+			}
+		);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'requeued',
+				terminalStatus: null
+			});
+			expect(harness.control.recover).toHaveBeenCalledWith(
+				expect.objectContaining({
+					failureClass: 'transient_infra',
+					errorMessage: expect.stringContaining('checkpoint exceeded its 10ms deadline')
+				})
+			);
+			expect(harness.control.finalize).not.toHaveBeenCalled();
+			expect(
+				harness.broadcastMessages.some(
+					(message) =>
+						(message.payload as Record<string, unknown>).state === 'waiting_on_user'
+				)
+			).toBe(false);
+			expect(
+				harness.broadcastMessages.some(
+					(message) => (message.payload as Record<string, unknown>).type === 'text_delta'
+				)
+			).toBe(false);
+		} finally {
+			await harness.publisher.stop();
+		}
 	});
 
 	it('carries an acknowledged tool row into recovery when public result persistence fails', async () => {
@@ -1825,7 +2438,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			.mockResolvedValueOnce(firstReadExecution)
 			.mockResolvedValueOnce(secondReadExecution)
 			.mockResolvedValueOnce(thirdReadExecution);
-		harness.toolExecutions.persistValidationFailure.mockImplementationOnce(async () => {
+		harness.toolExecutions.persistFailure.mockImplementationOnce(async () => {
 			harness.log.push('validation_ledger');
 		});
 		const continueWithToolResults = vi.fn(
@@ -1969,24 +2582,21 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 						message_linked: terminalInput.assistantMessageId !== null
 					}
 				})),
-				...harness.toolExecutions.persistValidationFailure.mock.calls.map(
-					([input], index) => ({
-						order: harness.toolExecutions.persistValidationFailure.mock
-							.invocationCallOrder[index]!,
-						row: {
-							tool_name: input.toolName,
-							tool_category: input.toolCategory,
-							sequence_index: input.sequenceIndex,
-							arguments: input.arguments,
-							result: null,
-							execution_time_ms: null,
-							tokens_consumed: null,
-							success: false,
-							affected_entities: [],
-							message_linked: terminalInput.assistantMessageId !== null
-						}
-					})
-				)
+				...harness.toolExecutions.persistFailure.mock.calls.map(([input], index) => ({
+					order: harness.toolExecutions.persistFailure.mock.invocationCallOrder[index]!,
+					row: {
+						tool_name: input.toolName,
+						tool_category: input.toolCategory,
+						sequence_index: input.sequenceIndex,
+						arguments: input.arguments,
+						result: null,
+						execution_time_ms: null,
+						tokens_consumed: null,
+						success: false,
+						affected_entities: [],
+						message_linked: terminalInput.assistantMessageId !== null
+					}
+				}))
 			]
 				.sort((left, right) => left.order - right.order)
 				.map(({ row }) => row);
@@ -2045,7 +2655,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				[4, AGENTIC_CHAT_READ_ONLY_TOOL_FIXTURE_V1.thirdTool.name]
 			]);
 			expect(
-				harness.toolExecutions.persistValidationFailure.mock.calls.map(([input]) => [
+				harness.toolExecutions.persistFailure.mock.calls.map(([input]) => [
 					input.sequenceIndex,
 					input.toolName
 				])
@@ -2621,6 +3231,107 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		}
 	});
 
+	it('continues after a known failed mutation only after its failed row is durable and public', async () => {
+		const harness = createHarness([]);
+		const invalidateReadMemo = vi.fn();
+		harness.toolExecutions.persistFailure.mockImplementationOnce(async () => {
+			harness.log.push('known_failure_ledger');
+		});
+		harness.mutation.execute.mockRejectedValueOnce(
+			new AgenticChatEffectExecutionError('permanent', EFFECT_ID, 'Task not found')
+		);
+		const mutationArguments = {
+			task_id: 'db000000-0000-4000-8000-000000000002',
+			state_key: 'in_progress'
+		};
+		const continueWithToolResults = vi.fn((input: AgenticChatProviderToolRoundInputV1) => {
+			harness.log.push('known_failure_continuation');
+			expect(input).toEqual({
+				round: 2,
+				results: [
+					{
+						providerToolCallId: 'provider-known-failed-write',
+						toolName: 'update_onto_task',
+						arguments: mutationArguments,
+						failure: {
+							kind: 'known_execution_failure',
+							error: 'Task not found',
+							toolCategory: 'ontology_action',
+							modelPayload: { error: 'Task not found' }
+						}
+					}
+				]
+			});
+			return (async function* () {
+				yield { type: 'text_delta', text: 'I could not find that task.' } as const;
+				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+			})();
+		});
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'mutating_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							logicalOperationId: LOGICAL_OPERATION_ID,
+							providerToolCallId: 'provider-known-failed-write',
+							toolName: 'update_onto_task',
+							operationName: 'onto.task.update',
+							arguments: mutationArguments,
+							downstreamIdempotencySupported: false
+						} as const;
+					})(),
+				continueWithToolResults,
+				invalidateReadMemo,
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			expect(invalidateReadMemo).toHaveBeenCalledOnce();
+			expect(harness.toolExecutions.persistMutation).not.toHaveBeenCalled();
+			expect(harness.toolExecutions.persistFailure).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sequenceIndex: 1,
+					providerToolCallId: 'provider-known-failed-write',
+					toolName: 'update_onto_task',
+					arguments: mutationArguments,
+					toolCategory: 'ontology_action',
+					error: 'Task not found'
+				}),
+				expect.any(AbortSignal)
+			);
+			const publicResultIndex = harness.log.indexOf('semantic:tool_result:');
+			expect(harness.log.indexOf('known_failure_ledger')).toBeLessThan(publicResultIndex);
+			expect(publicResultIndex).toBeLessThan(
+				harness.log.indexOf('known_failure_continuation')
+			);
+			expect(harness.semanticInputs).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						event_type: 'tool_result',
+						event_payload: expect.objectContaining({
+							result: expect.objectContaining({
+								tool_call_id: 'provider-known-failed-write',
+								success: false,
+								error: 'Task not found',
+								effect_id: EFFECT_ID
+							})
+						})
+					})
+				])
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it('persists parallel provider reads sequentially before replaying the ordered round', async () => {
 		const harness = createHarness([]);
 		const continueWithToolResults = vi.fn(
@@ -3106,9 +3817,10 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			});
 			expect(harness.control.finalize).toHaveBeenCalledWith(
 				expect.objectContaining({
+					assistantText: 'I completed the requested change.',
 					lastTurnContext: expect.objectContaining({
 						context_type: 'project',
-						summary: 'Task moved successfully. Context switched to Destination.',
+						summary: 'I completed the requested change.',
 						data_accessed: expect.arrayContaining(['move_onto_task', 'context_shift'])
 					})
 				})
@@ -3543,6 +4255,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
 			failureClass: 'cancelled'
 		});
+		expect(harness.consumptionBilling.evaluate).not.toHaveBeenCalled();
 		await harness.publisher.stop();
 	});
 
@@ -3598,6 +4311,8 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			})
 		);
 		expect(harness.control.completeQueueJob).not.toHaveBeenCalled();
+		expect(harness.consumptionBilling.evaluate).toHaveBeenCalledOnce();
+		expect(harness.consumptionBilling.evaluate).toHaveBeenCalledWith(USER_ID);
 		expect(providerContinuedAfterAbort).toBe(true);
 		expect(harness.control.finalize.mock.calls[0]?.[0]).not.toMatchObject({
 			assistantText: expect.stringContaining('must-not-persist')
@@ -3857,11 +4572,13 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					status: 'failed',
 					failure_code: 'timeout_post_start'
 				})
-			]
+			],
+			promptSnapshot: fixturePromptSnapshot
 		});
 		const timeout = new AbortController();
 		Object.assign(harness.provider, {
 			prepare: vi.fn(async () => ({
+				promptSnapshot: fixturePromptSnapshot,
 				stream: () =>
 					(async function* () {
 						timeout.abort(new Error('Provider execution deadline exceeded'));
@@ -3870,6 +4587,15 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				release: vi.fn()
 			}))
 		});
+		const fixtureExecutionInput = {
+			...executionInput,
+			requestPayload: {
+				...executionInput.requestPayload,
+				message: AGENTIC_CHAT_TIMEOUT_FIXTURE_V1.request.message,
+				context: { type: AGENTIC_CHAT_TIMEOUT_FIXTURE_V1.request.contextType }
+			}
+		};
+		harness.input.load.mockResolvedValueOnce(fixtureExecutionInput);
 
 		try {
 			await expect(harness.executor.execute(job(timeout.signal))).resolves.toMatchObject({
@@ -3878,6 +4604,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				queueReconciled: true
 			});
 			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+			if (!terminalInput) throw new Error('Timeout worker fixture did not finalize');
 			expect(terminalInput).toMatchObject({
 				status: 'failed',
 				finishedReason: 'error',
@@ -3895,6 +4622,47 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					(message) => (message.payload as Record<string, unknown>).type
 				)
 			).toEqual(['turn_phase', 'session', 'context_usage', 'error', 'timing', 'done']);
+			const worker = normalizeAgenticChatParityRunV1({
+				events: harness.broadcastMessages.map((message) => message.payload) as never,
+				messages: [
+					{
+						role: 'user',
+						content: fixtureExecutionInput.requestPayload.message
+					}
+				],
+				toolExecutions: [],
+				checkpoints: [],
+				outcome: {
+					status: terminalInput.status,
+					finished_reason: terminalInput.finishedReason,
+					assistant_message_linked: terminalInput.assistantMessageId !== null,
+					total_tokens: terminalInput.totalTokens
+				},
+				metadata: {
+					admission: {
+						status: claim.status,
+						context_type: fixtureExecutionInput.requestPayload.context.type,
+						user_message_linked:
+							claim.userMessageId === fixtureExecutionInput.claim.userMessageId
+					},
+					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
+						admissionObserved: true,
+						publicEvents: harness.broadcastMessages.map((message) => message.payload),
+						terminalStatus: terminalInput.status,
+						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
+					}),
+					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
+				}
+			});
+			const evaluation = parityCoverage.evaluate('timeout', worker);
+			expect(evaluation.diff.truncated).toBe(false);
+			expect(evaluation.contested.map(({ path, kind }) => ({ path, kind }))).toEqual(
+				evaluation.expectedOpenDivergences.map(({ path, kind }) => ({ path, kind }))
+			);
+			expect(evaluation.matchesContract).toBe(true);
+			expect(worker.events.map(({ type }) => type)).toEqual(
+				AGENTIC_CHAT_TIMEOUT_GOLDEN_V1.events.map(({ type }) => type)
+			);
 		} finally {
 			await harness.publisher.stop();
 		}

@@ -17,6 +17,12 @@ const workspacePackageAliases = [
 		)
 	},
 	{
+		find: /^@buildos\/agentic-chat-runtime\/supervisor$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/agentic-chat-runtime/src/supervisor/index.ts', import.meta.url)
+		)
+	},
+	{
 		find: /^@buildos\/agentic-chat-runtime\/tools$/,
 		replacement: fileURLToPath(
 			new URL('../../packages/agentic-chat-runtime/src/tools/index.ts', import.meta.url)

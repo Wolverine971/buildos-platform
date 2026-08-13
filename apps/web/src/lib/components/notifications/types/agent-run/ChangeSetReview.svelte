@@ -18,6 +18,7 @@
 		dismissLabel = 'Reject',
 		approveAllLabel = 'Approve',
 		rejectAllLabel = 'Reject',
+		chatLabel = 'Chat',
 		openingChat = false,
 		snoozing = false,
 		onChat,
@@ -30,6 +31,7 @@
 		dismissLabel?: string;
 		approveAllLabel?: string;
 		rejectAllLabel?: string;
+		chatLabel?: string;
 		openingChat?: boolean;
 		snoozing?: boolean;
 		onChat?: () => void | Promise<void>;
@@ -310,7 +312,7 @@
 						loading={openingChat}
 						class="w-full text-xs sm:w-auto"
 					>
-						Chat
+						{chatLabel}
 					</Button>
 				{/if}
 				{#if onSnooze}

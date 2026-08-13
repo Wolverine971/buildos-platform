@@ -65,6 +65,7 @@ Registered in `src/worker.ts`:
 | `buildos_project_loop`           | `workers/project-loop/projectLoopWorker`           |
 | `generate_project_icon`          | `workers/project-icon/projectIconWorker`           |
 | `sync_calendar`                  | `workers/calendar/calendarSyncWorker`              |
+| `admin_question_tree`            | `workers/question-tree/questionTreeWorker`         |
 
 Adding a new job type is documented in [`src/workers/README.md`](./src/workers/README.md).
 

@@ -9,6 +9,7 @@ import {
 
 const PROMPT_SNAPSHOT_IDENTITY_VERSION = 'agentic_chat_prompt_snapshot_identity_v1';
 const MAX_MODEL_MESSAGES_BYTES = 2 * 1024 * 1024;
+const MAX_TOOL_DEFINITIONS_BYTES = 2 * 1024 * 1024;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const DATABASE_TIMESTAMP_PATTERN =
@@ -69,7 +70,7 @@ export class SupabaseAgenticChatPromptSnapshotAdapter implements AgenticChatProm
 		input: AgenticChatPromptSnapshotPersistInputV1
 	): Promise<AgenticChatPromptSnapshotPersistResultV1> {
 		validateInput(input);
-		const { data, error } = await this.client.rpc('persist_agentic_chat_prompt_snapshot', {
+		const { data, error } = await this.client.rpc('persist_agentic_chat_prompt_snapshot_v2', {
 			p_turn_run_id: input.turnRunId,
 			p_user_id: input.userId,
 			p_queue_job_id: input.queueJobId,
@@ -77,8 +78,10 @@ export class SupabaseAgenticChatPromptSnapshotAdapter implements AgenticChatProm
 			p_execution_generation: input.executionGeneration,
 			p_prompt_snapshot_id: input.promptSnapshotId,
 			p_model_messages: input.prompt.modelMessages,
+			p_tool_definitions: input.prompt.toolDefinitions,
 			p_system_prompt_sha256: input.prompt.systemPromptSha256,
 			p_messages_sha256: input.prompt.messagesSha256,
+			p_tools_sha256: input.prompt.toolsSha256,
 			p_system_prompt_chars: input.prompt.systemPromptChars,
 			p_message_chars: input.prompt.messageChars,
 			p_approx_prompt_tokens: input.prompt.approxPromptTokens
@@ -122,6 +125,9 @@ function validateInput(input: AgenticChatPromptSnapshotPersistInputV1): void {
 	if (!SHA256_PATTERN.test(input.prompt.messagesSha256)) {
 		throw protocolError('messages hash is invalid');
 	}
+	if (!SHA256_PATTERN.test(input.prompt.toolsSha256)) {
+		throw protocolError('tools hash is invalid');
+	}
 	if (!Array.isArray(input.prompt.modelMessages) || input.prompt.modelMessages.length < 2) {
 		throw protocolError('model messages are invalid');
 	}
@@ -154,6 +160,51 @@ function validateInput(input: AgenticChatPromptSnapshotPersistInputV1): void {
 	}
 	if (sha256(canonical) !== input.prompt.messagesSha256) {
 		throw protocolError('messages hash does not match the prepared prompt');
+	}
+	if (!Array.isArray(input.prompt.toolDefinitions)) {
+		throw protocolError('tool definitions are invalid');
+	}
+	const toolNames = new Set<string>();
+	for (const definition of input.prompt.toolDefinitions) {
+		if (
+			definition === null ||
+			typeof definition !== 'object' ||
+			Array.isArray(definition) ||
+			definition.type !== 'function' ||
+			definition.function === null ||
+			typeof definition.function !== 'object' ||
+			Array.isArray(definition.function)
+		) {
+			throw protocolError('tool definition shape is invalid');
+		}
+		const fn = definition.function as Record<string, unknown>;
+		if (
+			typeof fn.name !== 'string' ||
+			fn.name.length === 0 ||
+			fn.name.length > 256 ||
+			fn.name !== fn.name.trim() ||
+			typeof fn.description !== 'string' ||
+			fn.description.trim().length === 0 ||
+			fn.parameters === null ||
+			typeof fn.parameters !== 'object' ||
+			Array.isArray(fn.parameters) ||
+			(fn.parameters as Record<string, unknown>).type !== 'object'
+		) {
+			throw protocolError('tool definition shape is invalid');
+		}
+		if (toolNames.has(fn.name)) {
+			throw protocolError('tool definition names are duplicated');
+		}
+		toolNames.add(fn.name);
+	}
+	const canonicalTools = canonicalizeAgenticChatJson(
+		input.prompt.toolDefinitions as unknown as JsonValue
+	);
+	if (Buffer.byteLength(canonicalTools, 'utf8') > MAX_TOOL_DEFINITIONS_BYTES) {
+		throw protocolError('tool definitions exceed the snapshot bound');
+	}
+	if (sha256(canonicalTools) !== input.prompt.toolsSha256) {
+		throw protocolError('tools hash does not match the prepared prompt');
 	}
 	const messageChars = input.prompt.modelMessages.reduce(
 		(total, message) =>
@@ -200,6 +251,8 @@ function parseReceipt(
 			receipt.snapshot_version !== AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION ||
 			receipt.system_prompt_sha256 !== expected.prompt.systemPromptSha256 ||
 			receipt.messages_sha256 !== expected.prompt.messagesSha256 ||
+			receipt.tools_sha256 !== expected.prompt.toolsSha256 ||
+			receipt.tool_definition_count !== expected.prompt.toolDefinitions.length ||
 			!canonicalText(receipt.prompt_variant, 128) ||
 			receipt.system_prompt_chars !== expected.prompt.systemPromptChars ||
 			receipt.message_chars !== expected.prompt.messageChars ||

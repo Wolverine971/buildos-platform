@@ -40,6 +40,19 @@ describe('createAgenticChatPhase3Assembly', () => {
 			available: true,
 			activeRequests: 0
 		});
+		expect(assembly.consumptionBilling).toBeNull();
+	});
+
+	it('composes terminal consumption billing only behind its shared default-off gate', () => {
+		const assembly = createAgenticChatPhase3Assembly({
+			client: supabaseClient() as never,
+			providerClient: { stream: vi.fn() } as never,
+			providerConfigured: true,
+			internalUserIds: [INTERNAL_USER_ID],
+			consumptionBillingEnabled: true
+		});
+
+		expect(assembly.consumptionBilling).not.toBeNull();
 	});
 
 	it('keeps provider evidence closed when credentials are not configured', () => {

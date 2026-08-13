@@ -136,6 +136,21 @@ row, and Linked Entities owns one collapsed disclosure rather than appearing und
 heading. The result fits more settings before the fold while expanded publishing, link, media, and
 history sections remain independently scrollable (→ P1/P4/P6).
 
+## Follow-up — condensed Document Interact conversation (2026-08-12)
+
+The first docked workbench still reused the full agent-chat shell, so a repeated document header,
+Chat/Steps/Tools/Changes tabs, run telemetry, and a large new-chat suggestion card competed with the
+document. The document-focused variant now keeps the same conversation engine and composer while
+reducing the dock to a 36px context rail, one scrollable message region, and the existing input bar.
+It removes the activity tabs and run dock, uses a quiet document-specific empty state and placeholder,
+and shortens the workbench to `clamp(15rem, 34dvh, 24rem)` so the source document remains the dominant
+surface (→ P1/P4/P6/P24).
+
+The compact mode is an explicit option on the shared agent chat rather than a second implementation.
+Message history, streaming, document mutations, attachments, and voice input continue through the
+same underlying controllers; only the embedded presentation is reduced. Compact message cards also
+drop excess padding and shadow without changing the full-page agent-chat experience.
+
 ## Streamlining note (product call, not a Hyperplexed pattern)
 
 Autosave (2s) and a manual **Save** coexist, and Save's real job is forcing a version snapshot —
@@ -155,8 +170,15 @@ visual pass, and it touches save semantics.
 - ✅ 2026-08-12 editor/details density follow-up: Svelte autofixer and full `svelte-check` are clean;
   the focused `DocumentModal` suite passes 10/10, including the dedicated rail scroll owner,
   duplicate-title removal, and required-title Details reveal.
+- ✅ 2026-08-12 condensed-interaction follow-up: Svelte autofixer is clean; focused DocumentModal,
+  AgentComposer, and AgentChatActivityTabs suites pass 17/17. Authenticated desktop-dark inspection
+  confirms a 36px context rail, no activity tabs, a scrollable message region, and the
+  document-specific composer placeholder at a 1280×720 viewport.
+- 🔶 The current repository-wide `pnpm check` reaches no diagnostics in the touched interaction
+  files, but is blocked by an unrelated invalidly placed `{@const}` in
+  `src/routes/dashboard/calendar/+page.svelte:959`.
 - 🔶 Authenticated desktop-dark screenshots captured the first collapsible-drawer pass and exposed
   the busy-header regression. The refined edge-tab after-state plus light-mode and iPhone captures
-  remain owed. The docked interaction after-state also still needs authenticated desktop/iPhone
-  light/dark captures. The original publish-panel, mobile scroll-fade, and phone More-menu checks
-  remain part of that pass.
+  remain owed. The condensed interaction after-state still needs authenticated light-mode and iPhone
+  captures. The original publish-panel, mobile scroll-fade, and phone More-menu checks remain part of
+  that pass.

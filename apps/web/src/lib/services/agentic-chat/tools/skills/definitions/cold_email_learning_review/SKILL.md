@@ -9,7 +9,7 @@ depth: 1
 preserve_markdown: true
 dependencies:
     - id: cold_email_deliverability_readiness
-      owns: Provider/deliverability rules and compliance/placement remediation (its `references/provider-requirement-matrix.md` holds the provider requirements — not duplicated here).
+      owns: Provider/deliverability rules and compliance/placement remediation (its Knowledge block holds the provider requirement matrix — not duplicated here).
     - id: cold_email_reply_os
       owns: Reply handling and the one follow-through question per reply; logs and feeds the buyer-language file.
     - id: cold_email_icp_signal_design
@@ -68,7 +68,7 @@ Hard rule (Connor Murray): **never optimize a single composite "reply rate."** R
 
 Hard rule (Mailshake, State of Cold Email 2025): open rate is "a directional metric, not a definitive one... Use reply rate as your true north, not open rate." Opens are additionally unreliable due to privacy proxies — treat open deltas >10pts as signal, smaller moves as noise.
 
-2026 placement context: Google began server-level rejection (not just spam-foldering) of non-compliant bulk mail in Nov 2025, and Microsoft rejects unauthenticated 5k+/day senders (`550 5.7.515`). **Low opens in 2026 are more likely a compliance/placement failure than a copy failure.** Route to → `cold_email_deliverability_readiness` (its `references/provider-requirement-matrix.md` holds the provider rules — do not duplicate them here).
+2026 placement context: Google began server-level rejection (not just spam-foldering) of non-compliant bulk mail in Nov 2025, and Microsoft rejects unauthenticated 5k+/day senders (`550 5.7.515`). **Low opens in 2026 are more likely a compliance/placement failure than a copy failure.** Route to → `cold_email_deliverability_readiness` (its Knowledge block holds the provider rules — do not duplicate them here).
 
 ### Sample-size and test-validity rules
 
@@ -152,11 +152,11 @@ Diagnose → gate → memo. Sequence and intent only; the rubric, thresholds, an
 
 Ownership map for the narrow sub-problems this skill hands off. It diagnoses and decides; these siblings own what it routes to.
 
-| Trigger in the review                                                                           | Route to                              | That skill owns                                                                                       |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Compliance/placement suspected (low opens + auth/complaint signals; gate-tree placement branch) | `cold_email_deliverability_readiness` | Provider/deliverability rules (`references/provider-requirement-matrix.md`); compliance/placement fix |
-| A reply needs its one follow-through question; buyer-language logging                           | `cold_email_reply_os`                 | Reply handling and the buyer-language log/feed                                                        |
-| Decision-dynamics evidence (buying-committee) captured in the worksheet                         | `cold_email_icp_signal_design`        | ICP + signal design and the buying-committee map                                                      |
+| Trigger in the review                                                                           | Route to                              | That skill owns                                                               |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------- |
+| Compliance/placement suspected (low opens + auth/complaint signals; gate-tree placement branch) | `cold_email_deliverability_readiness` | Provider/deliverability rules (its Knowledge block); compliance/placement fix |
+| A reply needs its one follow-through question; buyer-language logging                           | `cold_email_reply_os`                 | Reply handling and the buyer-language log/feed                                |
+| Decision-dynamics evidence (buying-committee) captured in the worksheet                         | `cold_email_icp_signal_design`        | ICP + signal design and the buying-committee map                              |
 
 ## Contract
 

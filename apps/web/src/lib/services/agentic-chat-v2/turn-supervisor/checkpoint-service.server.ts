@@ -1,6 +1,12 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/checkpoint-service.server.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Json } from '@buildos/shared-types';
+import {
+	buildAgenticChatCheckpointResumeSystemMessageV1,
+	type AgenticChatResumeCheckpointSnapshotV1,
+	type Database,
+	type Json,
+	type JsonObject
+} from '@buildos/shared-types';
 import type { TurnDigest, TurnSupervisorDecision } from './types';
 
 const DEFAULT_TURN_CHECKPOINT_EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -79,6 +85,22 @@ export type RecoverStaleResumingCheckpointsResult = {
 	markedResumed: ChatTurnCheckpoint[];
 };
 
+export type RecoverCheckpointResumeLifecycleParams = {
+	supabase: SupabaseClient<Database>;
+	userId: string;
+	staleBefore: string;
+	recoveredAt?: string;
+};
+
+export type RecoverCheckpointResumeLifecycleReceipt = {
+	outcome: 'recovered';
+	userId: string;
+	expiredCheckpointIds: string[];
+	markedResumedCheckpointIds: string[];
+	restoredActiveCheckpointIds: string[];
+	recoveredAt: string;
+};
+
 export async function createTurnCheckpoint(
 	params: CreateTurnCheckpointParams
 ): Promise<ChatTurnCheckpoint> {
@@ -125,6 +147,7 @@ export async function loadLatestActiveCheckpoint(
 		.eq('status', 'active')
 		.or(`expires_at.is.null,expires_at.gt.${now}`)
 		.order('created_at', { ascending: false })
+		.order('id', { ascending: false })
 		.limit(1);
 
 	if (error) {
@@ -283,18 +306,82 @@ export async function recoverStaleResumingCheckpoints(
 	return { restoredActive, markedResumed };
 }
 
+/**
+ * Reconcile stale resume claims in one service-only database transaction.
+ * Unlike the legacy row-by-row helper, live queued/running resume turns stay
+ * claimed and cannot be admitted a second time.
+ */
+export async function recoverCheckpointResumeLifecycle(
+	params: RecoverCheckpointResumeLifecycleParams
+): Promise<RecoverCheckpointResumeLifecycleReceipt> {
+	const recoveredAt = params.recoveredAt ?? new Date().toISOString();
+	type RecoveryRpc = (
+		functionName: string,
+		args: Record<string, unknown>
+	) => PromiseLike<{ data: unknown; error: unknown }>;
+	const rpc = params.supabase.rpc as unknown as RecoveryRpc;
+	const { data, error } = await rpc('recover_agentic_chat_resume_checkpoints', {
+		p_user_id: params.userId,
+		p_stale_before: params.staleBefore,
+		p_recovered_at: recoveredAt
+	});
+	if (error) {
+		throw new Error(
+			`Failed to recover checkpoint resume lifecycle: ${readErrorMessage(error)}`
+		);
+	}
+	if (!isRecoveryReceipt(data, params.userId, recoveredAt)) {
+		throw new Error('Failed to recover checkpoint resume lifecycle: invalid receipt');
+	}
+	return {
+		outcome: 'recovered',
+		userId: data.user_id,
+		expiredCheckpointIds: data.expired_checkpoint_ids,
+		markedResumedCheckpointIds: data.marked_resumed_checkpoint_ids,
+		restoredActiveCheckpointIds: data.restored_active_checkpoint_ids,
+		recoveredAt: data.recovered_at
+	};
+}
+
 export function buildCheckpointResumeSystemMessage(checkpoint: ChatTurnCheckpoint): string {
-	const context = checkpoint.resume_context ?? {};
-	const question = checkpoint.question?.trim();
-	const serializedContext = safeJsonStringify(context);
-	return [
-		'Continue from the previous supervisor checkpoint.',
-		'Do not re-run completed reads or writes unless the user answer changes the target.',
-		question ? `Supervisor question that paused the previous turn: ${question}` : null,
-		`Checkpoint resume context: ${serializedContext}`
-	]
-		.filter((line): line is string => Boolean(line))
-		.join('\n');
+	return buildAgenticChatCheckpointResumeSystemMessageV1({
+		question: checkpoint.question,
+		resumeContext: toJsonObject(checkpoint.resume_context)
+	});
+}
+
+export function freezeCheckpointResumeSnapshot(
+	checkpoint: ChatTurnCheckpoint
+): AgenticChatResumeCheckpointSnapshotV1 {
+	if (
+		checkpoint.checkpoint_type !== 'supervisor_question' &&
+		checkpoint.checkpoint_type !== 'supervisor_resume'
+	) {
+		throw new Error(`Unexpected turn checkpoint type: ${checkpoint.checkpoint_type}`);
+	}
+	if (
+		checkpoint.resume_context === null ||
+		typeof checkpoint.resume_context !== 'object' ||
+		Array.isArray(checkpoint.resume_context)
+	) {
+		throw new Error('Unexpected turn checkpoint resume context');
+	}
+	const resumeContext = toJsonObject(checkpoint.resume_context);
+	return {
+		checkpointId: checkpoint.id,
+		originalTurnRunId: checkpoint.turn_run_id,
+		checkpointType: checkpoint.checkpoint_type,
+		reason: checkpoint.reason,
+		question: checkpoint.question,
+		resumeContext,
+		resumeMessage: buildAgenticChatCheckpointResumeSystemMessageV1({
+			question: checkpoint.question,
+			resumeContext
+		}),
+		sourceExecutionGeneration: checkpoint.execution_generation,
+		supervisorTransitionId: checkpoint.supervisor_transition_id,
+		supervisorSequence: checkpoint.supervisor_sequence
+	};
 }
 
 async function markStaleCheckpointsResumed(params: {
@@ -354,6 +441,35 @@ function toChatTurnCheckpoint(row: ChatTurnCheckpointRow): ChatTurnCheckpoint {
 	};
 }
 
+function isRecoveryReceipt(
+	value: unknown,
+	expectedUserId: string,
+	expectedRecoveredAt: string
+): value is {
+	outcome: 'recovered';
+	user_id: string;
+	expired_checkpoint_ids: string[];
+	marked_resumed_checkpoint_ids: string[];
+	restored_active_checkpoint_ids: string[];
+	recovered_at: string;
+} {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+	const receipt = value as Record<string, unknown>;
+	return (
+		receipt.outcome === 'recovered' &&
+		receipt.user_id === expectedUserId &&
+		typeof receipt.recovered_at === 'string' &&
+		Date.parse(receipt.recovered_at) === Date.parse(expectedRecoveredAt) &&
+		isStringArray(receipt.expired_checkpoint_ids) &&
+		isStringArray(receipt.marked_resumed_checkpoint_ids) &&
+		isStringArray(receipt.restored_active_checkpoint_ids)
+	);
+}
+
+function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
 function isTurnCheckpointStatus(value: string): value is TurnCheckpointStatus {
 	return (
 		value === 'active' ||
@@ -370,10 +486,6 @@ function readErrorMessage(error: unknown): string {
 	return typeof message === 'string' && message.trim() ? message : JSON.stringify(error);
 }
 
-function safeJsonStringify(value: unknown): string {
-	try {
-		return JSON.stringify(value);
-	} catch {
-		return '{}';
-	}
+function toJsonObject(value: Json): JsonObject {
+	return value && typeof value === 'object' && !Array.isArray(value) ? (value as JsonObject) : {};
 }

@@ -6,6 +6,8 @@ import type { ErrorLogger } from './types';
 import { resolveModelPricingProfile } from './model-config';
 
 export type UsageLogParams = {
+	/** Stable caller-owned identity for replay-safe accounting inserts. */
+	id?: string;
 	userId?: string; // Made optional to match TextGenerationOptions
 	operationType: string;
 	modelRequested: string;
@@ -50,6 +52,8 @@ export type UsageLogger = {
 	logUsageToDatabase(params: UsageLogParams): Promise<void>;
 };
 
+export type UsageLoggerFailureMode = 'swallow' | 'throw';
+
 type UsageLogInsert = Database['public']['Tables']['llm_usage_logs']['Insert'];
 type UsageLogForeignKeyColumn =
 	| 'brain_dump_id'
@@ -62,24 +66,37 @@ type UsageLogForeignKeyColumn =
 export class LLMUsageLogger {
 	private supabase?: SupabaseClient<Database>;
 	private errorLogger?: ErrorLogger;
+	private failureMode: UsageLoggerFailureMode;
 
-	constructor(config: { supabase?: SupabaseClient<Database>; errorLogger?: ErrorLogger }) {
+	constructor(config: {
+		supabase?: SupabaseClient<Database>;
+		errorLogger?: ErrorLogger;
+		failureMode?: UsageLoggerFailureMode;
+	}) {
 		this.supabase = config.supabase;
 		this.errorLogger = config.errorLogger;
+		this.failureMode = config.failureMode ?? 'swallow';
 	}
 
 	async logUsageToDatabase(params: UsageLogParams): Promise<void> {
 		if (!this.supabase) {
+			if (this.failureMode === 'throw') {
+				throw new Error('Supabase client not configured for strict usage logging');
+			}
 			console.warn('Supabase client not configured, skipping usage logging');
 			return;
 		}
 
 		try {
 			const sanitizedUserId = this.normalizeUserIdForLogging(params.userId);
+			const usageLogId = this.normalizeOptionalIdForLogging(params.id);
 
 			// Defensive check: Skip logging if user_id is invalid
 			// This prevents foreign key constraint violations
 			if (!sanitizedUserId) {
+				if (this.failureMode === 'throw') {
+					throw new Error('Invalid user_id for strict LLM usage logging');
+				}
 				console.warn('Invalid user_id for LLM usage logging, skipping database insert', {
 					providedUserId: params.userId,
 					operationType: params.operationType,
@@ -87,6 +104,9 @@ export class LLMUsageLogger {
 					status: params.status
 				});
 				return;
+			}
+			if (params.id && !usageLogId && this.failureMode === 'throw') {
+				throw new Error('Invalid id for strict LLM usage logging');
 			}
 
 			const projectId = this.normalizeProjectIdForLogging(params.projectId);
@@ -111,6 +131,7 @@ export class LLMUsageLogger {
 				openrouterUsageCost: params.openrouterUsageCost
 			});
 			const payload: UsageLogInsert = {
+				...(usageLogId ? { id: usageLogId } : {}),
 				user_id: sanitizedUserId,
 				operation_type: params.operationType,
 				model_requested: params.modelRequested,
@@ -160,9 +181,13 @@ export class LLMUsageLogger {
 			const clearedForeignKeyColumns = new Set<UsageLogForeignKeyColumn>();
 
 			for (let attempt = 0; attempt < 4; attempt += 1) {
-				const { error } = await this.supabase
-					.from('llm_usage_logs')
-					.insert(payloadForInsert);
+				const usageLogs = this.supabase.from('llm_usage_logs');
+				const { error } = usageLogId
+					? await usageLogs.upsert(payloadForInsert, {
+							onConflict: 'id',
+							ignoreDuplicates: true
+						})
+					: await usageLogs.insert(payloadForInsert);
 
 				if (!error) {
 					return;
@@ -170,6 +195,9 @@ export class LLMUsageLogger {
 
 				const foreignKeyColumn = this.getRetryableUsageForeignKeyColumn(error);
 				if (!foreignKeyColumn || clearedForeignKeyColumns.has(foreignKeyColumn)) {
+					if (this.failureMode === 'throw') {
+						throw usageInsertError(error);
+					}
 					console.error('Failed to log LLM usage to database:', error);
 					return;
 				}
@@ -178,11 +206,15 @@ export class LLMUsageLogger {
 				payloadForInsert = { ...payloadForInsert, [foreignKeyColumn]: null };
 			}
 
-			console.error('Failed to log LLM usage after clearing foreign-key columns:', {
-				clearedForeignKeyColumns: Array.from(clearedForeignKeyColumns)
-			});
+			const exhaustedError = new Error(
+				`Failed to log LLM usage after clearing foreign-key columns: ${Array.from(clearedForeignKeyColumns).join(', ') || 'none'}`
+			);
+			if (this.failureMode === 'throw') throw exhaustedError;
+			console.error(exhaustedError.message);
 		} catch (error) {
-			console.error('Exception while logging LLM usage:', error);
+			if (this.failureMode === 'swallow') {
+				console.error('Exception while logging LLM usage:', error);
+			}
 			if (this.errorLogger?.logDatabaseError) {
 				await this.errorLogger.logDatabaseError(
 					error,
@@ -198,6 +230,7 @@ export class LLMUsageLogger {
 					}
 				);
 			}
+			if (this.failureMode === 'throw') throw error;
 		}
 	}
 
@@ -317,4 +350,9 @@ export class LLMUsageLogger {
 
 		return { inputCost, outputCost, totalCost };
 	}
+}
+
+function usageInsertError(error: { code?: string; message?: string; details?: string }): Error {
+	const detail = [error.code, error.message, error.details].filter(Boolean).join(': ');
+	return new Error(`Failed to log LLM usage to database${detail ? `: ${detail}` : ''}`);
 }

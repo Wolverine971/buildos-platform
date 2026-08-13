@@ -252,8 +252,9 @@ texture-as-accent. The playbook adds _precision_ to the things Inkprint leaves t
 
 - **`/hyperplexed-audit <surface>`** (`.claude/commands/hyperplexed-audit.md`) — the entry point.
   Runs the whole loop: locate + prior art → region-by-region static audit → tiered findings with
-  `→ P#` citations → **stop for DJ's approval** → apply approved fixes → verify → update the
-  tracker and audit doc. Prefer invoking this over running an audit ad hoc.
+  `→ P#` citations → **stop for DJ's approval** → capture the before-state → apply approved fixes →
+  scoped verify + after-state capture → update the tracker and audit doc. Prefer invoking this over
+  running an audit ad hoc.
 - **[`HYPERPLEXED_AUDIT_TRACKER.md`](./HYPERPLEXED_AUDIT_TRACKER.md)** — the rollup: which surfaces are
   audited, what shipped, what's still unaudited, and the verification (before/after screenshot) status.
   Start there to pick the next surface; every new audit gets a row.

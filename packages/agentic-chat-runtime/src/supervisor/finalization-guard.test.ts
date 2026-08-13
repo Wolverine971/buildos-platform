@@ -1,7 +1,31 @@
-// apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/finalization-guard.test.ts
+// packages/agentic-chat-runtime/src/supervisor/finalization-guard.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
+import { provideAgenticChatLoopToolCatalog } from '../loop/tool-catalog';
 import { applyFinalizationGuard } from './finalization-guard';
+
+const TEST_TOOL_CATALOG = {
+	ops: {},
+	byToolName: Object.fromEntries(
+		[
+			['create_onto_document', 'write'],
+			['create_onto_milestone', 'write'],
+			['get_workspace_overview', 'read'],
+			['search_project', 'read'],
+			['tool_schema', 'read'],
+			['update_onto_task', 'write']
+		].map(([toolName, kind]) => [
+			toolName,
+			{
+				op: toolName,
+				tool_name: toolName,
+				kind: kind as 'read' | 'write'
+			}
+		])
+	)
+};
+
+provideAgenticChatLoopToolCatalog(() => TEST_TOOL_CATALOG);
 
 function toolCall(name: string, args: Record<string, unknown> = {}, id = name): ChatToolCall {
 	return {

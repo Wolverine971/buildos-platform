@@ -89,6 +89,7 @@ function dependencies() {
 	return {
 		createId: () => IDS[index++]!,
 		nowMs: () => NOW,
+		loadResumeCheckpoint: vi.fn(async () => null),
 		observeCapacity: vi.fn(async () => ({
 			available: true,
 			retryAfterSeconds: 2,
@@ -188,7 +189,17 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		mocks.resolveFastChatTurnPreparation.mockReturnValue({
 			sessionMetadata: { trusted: true },
-			turnIntent: { kind: 'general', requiresWrite: false },
+			turnIntent: {
+				version: 1,
+				requiresWrite: false,
+				action: null,
+				entityKind: 'unknown',
+				operations: [],
+				source: 'none',
+				originalRequestText: null,
+				originatingTurnRunId: null,
+				clearPending: false
+			},
 			priorDomainIds: [],
 			priorOutcomeCardIds: [],
 			turnDomainSensing: null,
@@ -250,6 +261,41 @@ describe('Agentic Chat worker turn preparation', () => {
 			p_capacity_available: true
 		});
 		expect(result.preparedPromptUsed).toBe(false);
+		expect(result.args.p_artifact_prepared).toMatchObject({
+			turnIntent: {
+				version: 1,
+				requiresWrite: false,
+				action: null,
+				entityKind: 'unknown',
+				operations: [],
+				source: 'none',
+				originalRequestText: null,
+				originatingTurnRunId: null,
+				clearPending: false,
+				expectedWriteToolNames: []
+			},
+			domainMetadata: {
+				version: 1,
+				sensingApplied: false,
+				state: {
+					version: 1,
+					updated_at: new Date(NOW).toISOString(),
+					active_domains: [],
+					used_domains: [],
+					recent_observations: []
+				},
+				skillDomainIds: expect.objectContaining({
+					content_strategy_beyond_blogging: expect.arrayContaining([
+						'marketing.youtube_growth'
+					])
+				}),
+				outcomeCardDomainIds: expect.objectContaining({
+					youtube_growth_strategy_plan: expect.arrayContaining([
+						'marketing.youtube_growth'
+					])
+				})
+			}
+		});
 		expect(mocks.inspectPreparedPromptAdmissionLineage).not.toHaveBeenCalled();
 		expect(mocks.inspectPreparedPromptForWorkerAdmission).not.toHaveBeenCalled();
 
@@ -413,6 +459,73 @@ describe('Agentic Chat worker turn preparation', () => {
 			}
 		});
 		expect(result.args.p_request_hash).toBe(expectedHash);
+	});
+
+	it('freezes the selected checkpoint and canonical resume message into the hashed artifact', async () => {
+		const serviceClient = serviceClientWithTables({
+			chat_sessions: [
+				{
+					id: SESSION_ID,
+					user_id: USER_ID,
+					context_type: 'global',
+					entity_id: null,
+					summary: null,
+					agent_metadata: {}
+				}
+			],
+			chat_messages: [],
+			chat_message_attachments: [],
+			chat_tool_executions: []
+		});
+		const resumeContext = {
+			missing_field: 'task_id',
+			instruction: 'Continue after the user identifies the task.'
+		};
+		const resumeMessage =
+			'Continue from the previous supervisor checkpoint.\nDo not re-run completed reads or writes unless the user answer changes the target.\nSupervisor question that paused the previous turn: Which exact task should I use?\nCheckpoint resume context: {"instruction":"Continue after the user identifies the task.","missing_field":"task_id"}';
+		const resumeCheckpoint = {
+			checkpointId: 'a1000000-0000-4000-8000-000000000001',
+			originalTurnRunId: 'a2000000-0000-4000-8000-000000000002',
+			checkpointType: 'supervisor_question' as const,
+			reason: 'repeated_validation_failures',
+			question: 'Which exact task should I use?',
+			resumeContext,
+			resumeMessage,
+			sourceExecutionGeneration: 1,
+			supervisorTransitionId: 'a3000000-0000-5000-8000-000000000003',
+			supervisorSequence: 2
+		};
+		const injected = dependencies();
+		injected.loadResumeCheckpoint.mockResolvedValueOnce(resumeCheckpoint);
+
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: serviceClient as never,
+			userId: USER_ID,
+			command: command({ sessionId: SESSION_ID }) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: injected
+		});
+
+		expect(result.args.p_artifact_prepared).toMatchObject({ resumeCheckpoint });
+		expect(result.args.p_user_message_metadata).toMatchObject({
+			supervisor_resume_checkpoint_id: resumeCheckpoint.checkpointId,
+			supervisor_resume_original_turn_run_id: resumeCheckpoint.originalTurnRunId
+		});
+		const artifact = {
+			artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+			historySource: result.args.p_history_source,
+			history: result.args.p_artifact_history,
+			prepared: result.args.p_artifact_prepared,
+			createdAt: new Date(NOW).toISOString(),
+			retainUntil: new Date(NOW + 7 * 24 * 60 * 60 * 1000).toISOString(),
+			contentHash: result.args.p_artifact_content_hash
+		} as TurnInputArtifactV1;
+		await expect(validateTurnInputArtifactV1(artifact)).resolves.toMatchObject({ ok: true });
 	});
 
 	it('freezes the exact server-owned model history with source-message lineage on a prepared miss', async () => {

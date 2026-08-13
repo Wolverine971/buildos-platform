@@ -3,14 +3,14 @@
 import { createHash } from 'node:crypto';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
-	appendAgenticChatAttachmentContextV1,
-	buildAgenticChatAttachmentDisplayTextV1,
 	type ChatToolCall,
 	type ChatToolDefinition,
 	type ChatToolResult,
 	type ContextUsageSnapshot,
 	type JsonObject,
 	type JsonValue,
+	appendAgenticChatAttachmentContextV1,
+	buildAgenticChatAttachmentDisplayTextV1,
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import {
@@ -40,6 +40,7 @@ import {
 	type AgenticChatPreparedProviderInvocationV1,
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderInputV1,
+	type AgenticChatProviderMutationSynthesisInputV1,
 	type AgenticChatProviderPortV1,
 	type AgenticChatProviderReadSynthesisInputV1,
 	type AgenticChatProviderStepV1,
@@ -58,6 +59,16 @@ import type {
 	AgenticChatLiveVisionResolveInputV1,
 	AgenticChatLiveVisionResolverPortV1
 } from './liveVision';
+import type {
+	AgenticChatWorkerSupervisorFactoryV1,
+	AgenticChatWorkerSupervisorPortV1
+} from './workerSupervisor';
+import {
+	type AgenticChatSupervisorBlockedToolCallV1,
+	type AgenticChatSupervisorTerminalRequestV1,
+	type AgenticChatWorkerSupervisorEffectsV1,
+	reduceAgenticChatWorkerSupervisorDecisionsV1
+} from './workerSupervisorDecisions';
 import {
 	AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1,
 	type AgenticChatProviderMutationCapabilitiesV1,
@@ -161,12 +172,12 @@ export type AgenticChatReadOnlyProviderClientPortV1 = {
 		processingToken: string;
 		executionGeneration: number;
 		providerRound: 'initial' | 'synthesis';
+		logicalProviderRound: number;
 		signal: AbortSignal;
 	}): AsyncIterable<AgenticChatReadOnlyProviderClientEventV1>;
 };
 
 type ClientRequest = Parameters<AgenticChatReadOnlyProviderClientPortV1['stream']>[0] & {
-	logicalProviderRound: number;
 	liveVisionRequest?: Omit<AgenticChatLiveVisionResolveInputV1, 'signal'>;
 };
 
@@ -179,12 +190,13 @@ type CompletedProviderToolCall = {
 
 type NormalizedProviderToolCall = CompletedProviderToolCall &
 	(
-		| { kind: 'read' }
+		| { kind: 'read'; supervisorFailure?: AgenticChatSupervisorBlockedToolCallV1 }
 		| {
 				kind: 'mutation';
 				logicalOperationId: string;
 				operationName: string;
 				downstreamIdempotencySupported: boolean;
+				supervisorFailure?: AgenticChatSupervisorBlockedToolCallV1;
 		  }
 	);
 
@@ -194,12 +206,119 @@ type PendingToolRound = {
 };
 
 type ToolRoundStreamState = {
+	supervisor: AgenticChatProviderSupervisorRuntime | null;
 	release(): void;
+	recordProviderToolCalls(count: number): void;
+	getProviderToolCallCount(): number;
 	setPendingToolRound(value: PendingToolRound): void;
 	markToolRoundCompleted(): void;
 	setCurrentRequest(value: ClientRequest): void;
 	resolveMemoServed(call: CompletedProviderToolCall): AgenticChatReadToolExecutionV1 | null;
 };
+
+class AgenticChatProviderSupervisorRuntime {
+	private started = false;
+	private readonly pendingSupervisorSteps: Extract<
+		AgenticChatProviderStepV1,
+		{ type: 'semantic' | 'supervisor_evaluation' }
+	>[] = [];
+	private readonly pendingProviderInstructions: string[] = [];
+	private readonly blockedToolCalls = new Map<string, AgenticChatSupervisorBlockedToolCallV1>();
+	private pendingTerminalRequest: AgenticChatSupervisorTerminalRequestV1 | null = null;
+	private forceSynthesis = false;
+
+	constructor(private readonly port: AgenticChatWorkerSupervisorPortV1) {}
+
+	start(): void {
+		if (this.started) {
+			throw providerError('provider_supervisor_reused', 'unknown');
+		}
+		this.started = true;
+		this.apply(reduceAgenticChatWorkerSupervisorDecisionsV1(this.port.start()));
+	}
+
+	observe(observation: Parameters<AgenticChatWorkerSupervisorPortV1['observe']>[0]): void {
+		if (!this.started) {
+			throw providerError('provider_supervisor_not_started', 'unknown');
+		}
+		this.apply(reduceAgenticChatWorkerSupervisorDecisionsV1(this.port.observe(observation)));
+	}
+
+	drainSteps(): Extract<
+		AgenticChatProviderStepV1,
+		{ type: 'semantic' | 'supervisor_evaluation' }
+	>[] {
+		return this.pendingSupervisorSteps.splice(0, this.pendingSupervisorSteps.length);
+	}
+
+	takeBlockedToolCalls(
+		calls: readonly CompletedProviderToolCall[]
+	): ReadonlyMap<string, AgenticChatSupervisorBlockedToolCallV1> {
+		const callIds = new Set(calls.map((call) => call.id));
+		for (const providerToolCallId of this.blockedToolCalls.keys()) {
+			if (!callIds.has(providerToolCallId)) {
+				throw providerError('provider_supervisor_block_identity_mismatch', 'permanent');
+			}
+		}
+		const blocked = new Map(this.blockedToolCalls);
+		this.blockedToolCalls.clear();
+		return blocked;
+	}
+
+	takeSupervisorQuestion(): Extract<
+		AgenticChatSupervisorTerminalRequestV1,
+		{ kind: 'ask_user' }
+	> | null {
+		if (this.pendingTerminalRequest?.kind !== 'ask_user') return null;
+		const terminal = this.pendingTerminalRequest;
+		this.pendingTerminalRequest = null;
+		return terminal;
+	}
+
+	applyProviderDirectives(request: ClientRequest): {
+		request: ClientRequest;
+		forceSynthesis: boolean;
+	} {
+		if (this.pendingTerminalRequest) {
+			throw providerError('provider_supervisor_terminal_not_consumed', 'unknown');
+		}
+		let next = request;
+		for (const instruction of this.pendingProviderInstructions.splice(
+			0,
+			this.pendingProviderInstructions.length
+		)) {
+			next = appendSystemInstruction(next, instruction);
+		}
+		const forceSynthesis = this.forceSynthesis;
+		this.forceSynthesis = false;
+		return {
+			request: forceSynthesis ? forceToolFreeRequest(next) : next,
+			forceSynthesis
+		};
+	}
+
+	private apply(effects: AgenticChatWorkerSupervisorEffectsV1): void {
+		this.pendingSupervisorSteps.push(...effects.semanticSteps, ...effects.evaluationFlags);
+		this.pendingProviderInstructions.push(...effects.providerInstructions);
+		this.forceSynthesis ||= effects.forceSynthesis;
+
+		for (const blocked of effects.blockedToolCalls) {
+			if (this.blockedToolCalls.has(blocked.providerToolCallId)) {
+				throw providerError('provider_supervisor_duplicate_block', 'permanent');
+			}
+			this.blockedToolCalls.set(blocked.providerToolCallId, blocked);
+		}
+		if (effects.terminalRequest?.kind === 'ask_user') {
+			if (this.pendingTerminalRequest) {
+				throw providerError('provider_supervisor_duplicate_terminal', 'permanent');
+			}
+			this.pendingTerminalRequest = effects.terminalRequest;
+		}
+		if (effects.terminalRequest?.kind === 'stop') {
+			throw providerError('provider_supervisor_stop_required', 'permanent');
+		}
+	}
+}
 
 /**
  * Default-off Phase 3 provider boundary. Preparation validates the immutable
@@ -218,6 +337,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			client: AgenticChatReadOnlyProviderClientPortV1;
 			capacity: AgenticChatProviderCapacity;
 			liveVision?: AgenticChatLiveVisionResolverPortV1;
+			supervisorFactory?: AgenticChatWorkerSupervisorFactoryV1;
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
 		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
@@ -252,7 +372,12 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			this.mutationCapabilities,
 			Boolean(this.ports.liveVision)
 		);
-		const promptSnapshot = buildPromptSnapshot(request.messages);
+		const promptSnapshot = buildPromptSnapshot(request.messages, request.tools);
+		const supervisor = this.ports.supervisorFactory
+			? new AgenticChatProviderSupervisorRuntime(
+					this.ports.supervisorFactory(input.executionInput)
+				)
+			: null;
 		let lease;
 		try {
 			lease = this.ports.capacity.acquire();
@@ -276,6 +401,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let currentRequest = request;
 		let nextProviderRound = 2;
 		let readOnlyRoundCount = 0;
+		let providerToolCallCount = 0;
 		let readLoopRepairRank = 0;
 		const readOps = new Set<string>();
 		// The executor clears this memo as soon as any call reaches the write
@@ -289,7 +415,14 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			lease.release();
 		};
 		const buildStreamState = (): ToolRoundStreamState => ({
+			supervisor,
 			release,
+			recordProviderToolCalls(count) {
+				providerToolCallCount += count;
+			},
+			getProviderToolCallCount() {
+				return providerToolCallCount;
+			},
 			setPendingToolRound(value) {
 				pendingToolRound = value;
 			},
@@ -321,7 +454,9 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					);
 				}
 				streamed = true;
-				return this.streamInitial(request, buildStreamState());
+				const state = buildStreamState();
+				state.supervisor?.start();
+				return this.streamInitial(request, state);
 			},
 			synthesize: (feedback) => {
 				if (released) {
@@ -348,11 +483,31 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 				validateReadFeedback(pendingCall, feedback);
 				synthesized = true;
-				return this.streamSynthesis(
-					buildSynthesisRequest(currentRequest, pendingCall, feedback),
-					pendingToolRound.usage,
-					release
+				const state = buildStreamState();
+				observeSupervisorDurableToolResults(state, [pendingCall], [feedback]);
+				state.supervisor?.observe({
+					type: 'tool_round_completed',
+					round: 1,
+					toolCallsMade: state.getProviderToolCallCount()
+				});
+				const supervisorQuestion = state.supervisor?.takeSupervisorQuestion();
+				if (supervisorQuestion) {
+					return this.streamSupervisorQuestion(
+						supervisorQuestion,
+						pendingToolRound.usage,
+						state
+					);
+				}
+				const baseSynthesisRequest = buildSynthesisRequest(
+					currentRequest,
+					pendingCall,
+					feedback
 				);
+				const directives = state.supervisor?.applyProviderDirectives(baseSynthesisRequest);
+				const synthesisRequest = directives?.request ?? baseSynthesisRequest;
+				return directives?.forceSynthesis
+					? this.streamForcedSynthesis(synthesisRequest, pendingToolRound.usage, state)
+					: this.streamSynthesis(synthesisRequest, pendingToolRound.usage, state);
 			},
 			continueWithToolResults: (input) => {
 				if (released) {
@@ -386,15 +541,33 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					if (
 						!roundContainsMutation &&
 						call.kind === 'read' &&
-						!isMutationFeedback(feedback)
+						!isMutationFeedback(feedback) &&
+						!isFailedToolFeedback(feedback)
 					) {
 						memoizeCompletedRead(turnReadMemo, call, feedback.execution);
 					}
 					return {
 						toolCall: completedProviderCallToChatToolCall(call),
-						result: executionToChatToolResult(call.id, feedback.execution)
+						result: feedbackToChatToolResult(call.id, feedback)
 					};
 				});
+				const state = buildStreamState();
+				observeSupervisorDurableToolResults(state, completedToolRound.calls, input.results);
+				state.supervisor?.observe({
+					type: 'tool_round_completed',
+					round: input.round - 1,
+					toolCallsMade: state.getProviderToolCallCount()
+				});
+				const supervisorQuestion = state.supervisor?.takeSupervisorQuestion();
+				if (supervisorQuestion) {
+					pendingToolRound = null;
+					toolRoundCompleted = false;
+					return this.streamSupervisorQuestion(
+						supervisorQuestion,
+						completedToolRound.usage,
+						state
+					);
+				}
 				const completedToolCalls = roundExecutions.map(({ toolCall }) => toolCall);
 				const pattern = buildRoundToolPattern(completedToolCalls);
 				for (const op of pattern.readOps) readOps.add(op);
@@ -438,6 +611,15 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						})
 					);
 				}
+				const supervisorDirectives =
+					state.supervisor?.applyProviderDirectives(currentRequest);
+				if (supervisorDirectives) currentRequest = supervisorDirectives.request;
+				if (supervisorDirectives?.forceSynthesis) {
+					readLoopRepairRank = Math.max(
+						readLoopRepairRank,
+						READ_LOOP_REPAIR_RANK.must_synthesize
+					);
+				}
 				const forceNoToolSynthesis =
 					ledgerObservation.forceSynthesis ||
 					readLoopRepairRank >= READ_LOOP_REPAIR_RANK.must_synthesize;
@@ -449,12 +631,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				toolRoundCompleted = false;
 				nextProviderRound += 1;
 				return forceNoToolSynthesis
-					? this.streamForcedSynthesis(currentRequest, completedToolRound.usage, release)
-					: this.streamContinuation(
-							currentRequest,
-							completedToolRound.usage,
-							buildStreamState()
-						);
+					? this.streamForcedSynthesis(currentRequest, completedToolRound.usage, state)
+					: this.streamContinuation(currentRequest, completedToolRound.usage, state);
 			},
 			invalidateReadMemo: () => turnReadMemo.clear(),
 			release
@@ -468,8 +646,10 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let finished = false;
 		let keepLeaseForSynthesis = false;
 		let streamedText = false;
+		let assistantCandidate = '';
 		const toolCalls = createToolCallAccumulator();
 		try {
+			yield* drainSupervisorSteps(state.supervisor);
 			request = await this.resolveLiveVision(request);
 			state.setCurrentRequest(request);
 			for await (const event of this.ports.client.stream(providerClientRequest(request))) {
@@ -480,7 +660,13 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (event.type === 'text') {
 					if (!event.content) throw providerError('provider_empty_text', 'unknown');
 					streamedText = true;
+					assistantCandidate += event.content;
 					yield { type: 'text_delta', text: event.content };
+					state.supervisor?.observe({
+						type: 'assistant_text_delta',
+						chars: event.content.length
+					});
+					yield* drainSupervisorSteps(state.supervisor);
 					continue;
 				}
 				if (event.type === 'reasoning') {
@@ -509,6 +695,14 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
+				const usage = normalizeUsage(event.usage);
+				state.supervisor?.observe({
+					type: 'llm_pass_completed',
+					pass: request.logicalProviderRound,
+					finishedReason,
+					usage: supervisorUsage(usage)
+				});
+				yield* drainSupervisorSteps(state.supervisor);
 				const calls = completeToolCalls(toolCalls);
 				finished = true;
 				if (calls.length > 0) {
@@ -519,7 +713,12 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						throw providerError('provider_tool_finish_reason_invalid', 'unknown');
 					}
 					for (const call of calls) assertAllowlistedCall(call, request.tools);
-					const validationIssues = validateCompletedProviderCalls(calls, request);
+					const blockedToolCalls = observeSupervisorToolCalls(state, calls);
+					yield* drainSupervisorSteps(state.supervisor);
+					const validationIssues = validateCompletedProviderCalls(
+						calls.filter((call) => !blockedToolCalls.has(call.id)),
+						request
+					);
 					if (validationIssues.length > 0) {
 						if (calls.length !== 1) {
 							throw providerError(
@@ -533,26 +732,39 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 							call,
 							validationIssues
 						);
-						const repairRequest = buildValidationRepairRequest(
+						observeSupervisorPreExecutionFailure(
+							state,
+							call,
+							validationFailureError(validationIssues),
+							request.logicalProviderRound
+						);
+						const supervisorQuestion = state.supervisor?.takeSupervisorQuestion();
+						if (supervisorQuestion) {
+							yield* this.streamSupervisorQuestion(supervisorQuestion, usage, state);
+							continue;
+						}
+						let repairRequest = buildValidationRepairRequest(
 							request,
 							call,
 							validationIssues
 						);
+						const directives = state.supervisor?.applyProviderDirectives(repairRequest);
+						if (directives) repairRequest = directives.request;
 						state.setCurrentRequest(repairRequest);
 						keepLeaseForSynthesis = true;
-						yield* this.streamContinuation(
-							repairRequest,
-							normalizeUsage(event.usage),
-							state,
-							1,
-							true
-						);
+						yield* directives?.forceSynthesis
+							? this.streamForcedSynthesis(repairRequest, usage, state)
+							: this.streamContinuation(repairRequest, usage, state, 1, true);
 						continue;
 					}
-					const normalizedCalls = normalizeCompletedProviderCalls(request, calls);
+					const normalizedCalls = normalizeCompletedProviderCalls(
+						request,
+						calls,
+						blockedToolCalls
+					);
 					state.setPendingToolRound({
 						calls: normalizedCalls,
-						usage: normalizeUsage(event.usage)
+						usage
 					});
 					keepLeaseForSynthesis = true;
 					yield buildPlanningStep(request, normalizedCalls[0]!.id);
@@ -570,6 +782,12 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						request.toolChoice === 'none' ? 'permanent' : 'unknown'
 					);
 				}
+				state.supervisor?.observe({
+					type: 'final_candidate',
+					text: assistantCandidate,
+					finishedReason
+				});
+				yield* drainSupervisorSteps(state.supervisor);
 				if (!streamedText) {
 					throw providerError('provider_no_assistant_text', 'permanent');
 				}
@@ -577,7 +795,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				yield {
 					type: 'finish',
 					finishedReason,
-					usage: normalizeUsage(event.usage)
+					usage
 				};
 			}
 			if (!finished) throw providerError('provider_missing_done', 'unknown');
@@ -620,15 +838,23 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let finished = false;
 		let keepLeaseForContinuation = false;
 		let streamedText = false;
+		let assistantCandidate = '';
 		const toolCalls = createToolCallAccumulator();
 		try {
+			yield* drainSupervisorSteps(state.supervisor);
 			for await (const event of this.ports.client.stream(providerClientRequest(request))) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
 					if (!event.content) throw providerError('provider_empty_text', 'unknown');
 					streamedText = true;
+					assistantCandidate += event.content;
 					yield { type: 'text_delta', text: event.content };
+					state.supervisor?.observe({
+						type: 'assistant_text_delta',
+						chars: event.content.length
+					});
+					yield* drainSupervisorSteps(state.supervisor);
 					continue;
 				}
 				if (event.type === 'reasoning') continue;
@@ -654,7 +880,15 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
 				const calls = completeToolCalls(toolCalls);
-				const aggregateUsage = combineUsage(priorUsage, normalizeUsage(event.usage));
+				const passUsage = normalizeUsage(event.usage);
+				const aggregateUsage = combineUsage(priorUsage, passUsage);
+				state.supervisor?.observe({
+					type: 'llm_pass_completed',
+					pass: request.logicalProviderRound,
+					finishedReason,
+					usage: supervisorUsage(passUsage)
+				});
+				yield* drainSupervisorSteps(state.supervisor);
 				finished = true;
 				if (calls.length > 0) {
 					if (request.toolChoice !== 'auto') {
@@ -664,7 +898,12 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						throw providerError('provider_tool_finish_reason_invalid', 'unknown');
 					}
 					for (const call of calls) assertAllowlistedCall(call, request.tools);
-					const validationIssues = validateCompletedProviderCalls(calls, request);
+					const blockedToolCalls = observeSupervisorToolCalls(state, calls);
+					yield* drainSupervisorSteps(state.supervisor);
+					const validationIssues = validateCompletedProviderCalls(
+						calls.filter((call) => !blockedToolCalls.has(call.id)),
+						request
+					);
 					if (validationIssues.length > 0) {
 						if (calls.length !== 1) {
 							throw providerError(
@@ -678,29 +917,52 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 							call,
 							validationIssues
 						);
+						observeSupervisorPreExecutionFailure(
+							state,
+							call,
+							validationFailureError(validationIssues),
+							request.logicalProviderRound
+						);
+						const supervisorQuestion = state.supervisor?.takeSupervisorQuestion();
+						if (supervisorQuestion) {
+							yield* this.streamSupervisorQuestion(
+								supervisorQuestion,
+								aggregateUsage,
+								state
+							);
+							continue;
+						}
 						if (validationRepairRounds >= MAX_VALIDATION_REPAIR_ROUNDS) {
 							throw providerError(
 								'provider_tool_validation_repair_exhausted',
 								'permanent'
 							);
 						}
-						const repairRequest = buildValidationRepairRequest(
+						let repairRequest = buildValidationRepairRequest(
 							request,
 							call,
 							validationIssues
 						);
+						const directives = state.supervisor?.applyProviderDirectives(repairRequest);
+						if (directives) repairRequest = directives.request;
 						state.setCurrentRequest(repairRequest);
 						keepLeaseForContinuation = true;
-						yield* this.streamContinuation(
-							repairRequest,
-							aggregateUsage,
-							state,
-							validationRepairRounds + 1,
-							emitPlanningSemantic
-						);
+						yield* directives?.forceSynthesis
+							? this.streamForcedSynthesis(repairRequest, aggregateUsage, state)
+							: this.streamContinuation(
+									repairRequest,
+									aggregateUsage,
+									state,
+									validationRepairRounds + 1,
+									emitPlanningSemantic
+								);
 						continue;
 					}
-					const normalizedCalls = normalizeCompletedProviderCalls(request, calls);
+					const normalizedCalls = normalizeCompletedProviderCalls(
+						request,
+						calls,
+						blockedToolCalls
+					);
 					state.setPendingToolRound({ calls: normalizedCalls, usage: aggregateUsage });
 					keepLeaseForContinuation = true;
 					if (emitPlanningSemantic) {
@@ -720,6 +982,12 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						request.toolChoice === 'none' ? 'permanent' : 'unknown'
 					);
 				}
+				state.supervisor?.observe({
+					type: 'final_candidate',
+					text: assistantCandidate,
+					finishedReason
+				});
+				yield* drainSupervisorSteps(state.supervisor);
 				if (!streamedText) {
 					throw providerError('provider_no_assistant_text', 'permanent');
 				}
@@ -735,11 +1003,12 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 	private async *streamForcedSynthesis(
 		request: ClientRequest,
 		priorUsage: AgenticChatProviderUsageV1 | null,
-		release: () => void
+		state: ToolRoundStreamState
 	): AsyncGenerator<AgenticChatProviderStepV1> {
 		let currentRequest = forceToolFreeRequest(request);
 		let accumulatedUsage = priorUsage;
 		try {
+			yield* drainSupervisorSteps(state.supervisor);
 			for (let retryCount = 0; retryCount <= MAX_FORCED_SYNTHESIS_RETRIES; retryCount += 1) {
 				let finished = false;
 				let requestedTools = false;
@@ -781,17 +1050,38 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					requestedTools ||=
 						finishedReason === 'tool_calls' || finishedReason === 'function_call';
 					passUsage = normalizeUsage(event.usage);
+					state.supervisor?.observe({
+						type: 'llm_pass_completed',
+						pass: currentRequest.logicalProviderRound + retryCount,
+						finishedReason,
+						usage: supervisorUsage(passUsage)
+					});
+					yield* drainSupervisorSteps(state.supervisor);
 					finished = true;
 				}
 				if (!finished) throw providerError('provider_missing_done', 'unknown');
 
 				accumulatedUsage = combineUsage(accumulatedUsage, passUsage);
 				const finalText = sanitizeAssistantFinalText(assistantCandidate);
-				if (!requestedTools && finalText) {
-					this.ports.capacity.markAvailable();
-					yield { type: 'text_delta', text: finalText };
-					yield { type: 'finish', finishedReason, usage: accumulatedUsage };
-					return;
+				if (!requestedTools) {
+					if (finalText) {
+						this.ports.capacity.markAvailable();
+						yield { type: 'text_delta', text: finalText };
+						state.supervisor?.observe({
+							type: 'assistant_text_delta',
+							chars: finalText.length
+						});
+					}
+					state.supervisor?.observe({
+						type: 'final_candidate',
+						text: finalText,
+						finishedReason
+					});
+					yield* drainSupervisorSteps(state.supervisor);
+					if (finalText) {
+						yield { type: 'finish', finishedReason, usage: accumulatedUsage };
+						return;
+					}
 				}
 
 				if (retryCount >= MAX_FORCED_SYNTHESIS_RETRIES) {
@@ -805,25 +1095,61 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				);
 			}
 		} finally {
-			release();
+			state.release();
+		}
+	}
+
+	private async *streamSupervisorQuestion(
+		terminal: Extract<AgenticChatSupervisorTerminalRequestV1, { kind: 'ask_user' }>,
+		usage: AgenticChatProviderUsageV1 | null,
+		state: ToolRoundStreamState
+	): AsyncGenerator<AgenticChatProviderStepV1> {
+		try {
+			yield* drainSupervisorSteps(state.supervisor);
+			this.ports.capacity.markAvailable();
+			yield {
+				type: 'supervisor_question',
+				transitionId: terminal.transitionId,
+				sequence: terminal.sequence,
+				executionGeneration: terminal.executionGeneration,
+				reason: terminal.reason,
+				question: terminal.question,
+				checkpoint: {
+					digest: terminal.checkpoint.digest as unknown as JsonObject,
+					resumeContext: terminal.checkpoint.resumeContext as JsonObject,
+					supervisorDecision: terminal.supervisorDecision
+				},
+				finishedReason: terminal.finishedReason,
+				usage
+			};
+		} finally {
+			state.release();
 		}
 	}
 
 	private async *streamSynthesis(
 		request: ClientRequest,
 		initialUsage: AgenticChatProviderUsageV1 | null,
-		release: () => void
+		state: ToolRoundStreamState
 	): AsyncGenerator<AgenticChatProviderStepV1> {
 		let finished = false;
 		let streamedText = false;
+		let assistantCandidate = '';
 		try {
+			yield* drainSupervisorSteps(state.supervisor);
 			for await (const event of this.ports.client.stream(providerClientRequest(request))) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
 					if (!event.content) throw providerError('provider_empty_text', 'unknown');
 					streamedText = true;
+					assistantCandidate += event.content;
 					yield { type: 'text_delta', text: event.content };
+					state.supervisor?.observe({
+						type: 'assistant_text_delta',
+						chars: event.content.length
+					});
+					yield* drainSupervisorSteps(state.supervisor);
 					continue;
 				}
 				if (event.type === 'reasoning') continue;
@@ -843,9 +1169,23 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					);
 				}
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
+				const usage = normalizeUsage(event.usage);
+				state.supervisor?.observe({
+					type: 'llm_pass_completed',
+					pass: request.logicalProviderRound,
+					finishedReason,
+					usage: supervisorUsage(usage)
+				});
+				yield* drainSupervisorSteps(state.supervisor);
 				if (finishedReason === 'tool_calls' || finishedReason === 'function_call') {
 					throw providerError('provider_additional_tool_round_disabled', 'permanent');
 				}
+				state.supervisor?.observe({
+					type: 'final_candidate',
+					text: assistantCandidate,
+					finishedReason
+				});
+				yield* drainSupervisorSteps(state.supervisor);
 				if (!streamedText) {
 					throw providerError('provider_no_assistant_text', 'permanent');
 				}
@@ -854,14 +1194,97 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				yield {
 					type: 'finish',
 					finishedReason,
-					usage: combineUsage(initialUsage, normalizeUsage(event.usage))
+					usage: combineUsage(initialUsage, usage)
 				};
 			}
 			if (!finished) throw providerError('provider_missing_done', 'unknown');
 		} finally {
-			release();
+			state.release();
 		}
 	}
+}
+
+function drainSupervisorSteps(
+	supervisor: AgenticChatProviderSupervisorRuntime | null
+): readonly Extract<AgenticChatProviderStepV1, { type: 'semantic' | 'supervisor_evaluation' }>[] {
+	return supervisor?.drainSteps() ?? [];
+}
+
+function observeSupervisorToolCalls(
+	state: ToolRoundStreamState,
+	calls: readonly CompletedProviderToolCall[]
+): ReadonlyMap<string, AgenticChatSupervisorBlockedToolCallV1> {
+	state.recordProviderToolCalls(calls.length);
+	for (const call of calls) {
+		state.supervisor?.observe({
+			type: 'tool_call_emitted',
+			toolName: call.name,
+			toolCallId: call.id,
+			argsPreview: call.arguments
+		});
+	}
+	return state.supervisor?.takeBlockedToolCalls(calls) ?? new Map();
+}
+
+function observeSupervisorPreExecutionFailure(
+	state: ToolRoundStreamState,
+	call: CompletedProviderToolCall,
+	error: string,
+	round: number
+): void {
+	state.supervisor?.observe({
+		type: 'tool_result_received',
+		toolName: call.name,
+		toolCallId: call.id,
+		success: false,
+		error,
+		resultSummary: error
+	});
+	state.supervisor?.observe({
+		type: 'tool_round_completed',
+		round,
+		toolCallsMade: state.getProviderToolCallCount()
+	});
+}
+
+function observeSupervisorDurableToolResults(
+	state: ToolRoundStreamState,
+	calls: readonly NormalizedProviderToolCall[],
+	feedback: readonly AgenticChatProviderToolSynthesisInputV1[]
+): void {
+	for (let index = 0; index < calls.length; index += 1) {
+		const call = calls[index]!;
+		const result = feedback[index]!;
+		if (isFailedToolFeedback(result)) {
+			state.supervisor?.observe({
+				type: 'tool_result_received',
+				toolName: call.name,
+				toolCallId: call.id,
+				success: false,
+				error: result.failure.error,
+				resultSummary: canonicalizeAgenticChatJson(result.failure.modelPayload as JsonValue)
+			});
+			continue;
+		}
+		state.supervisor?.observe({
+			type: 'tool_result_received',
+			toolName: call.name,
+			toolCallId: call.id,
+			success: true,
+			resultSummary: canonicalizeAgenticChatJson(result.execution.result as JsonValue)
+		});
+	}
+}
+
+function supervisorUsage(
+	usage: AgenticChatProviderUsageV1 | null
+): { prompt_tokens: number; completion_tokens: number; total_tokens: number } | undefined {
+	if (!usage) return undefined;
+	return {
+		prompt_tokens: usage.promptTokens,
+		completion_tokens: usage.completionTokens,
+		total_tokens: usage.totalTokens
+	};
 }
 
 type ProviderToolCallAccumulator = {
@@ -1011,6 +1434,33 @@ function validateToolFeedback(
 	) {
 		throw providerError('provider_read_feedback_mismatch', 'unknown');
 	}
+	if (call.supervisorFailure) {
+		if (
+			!isFailedToolFeedback(feedback) ||
+			feedback.failure.kind !== 'supervisor_block' ||
+			feedback.failure.error !== call.supervisorFailure.error ||
+			feedback.failure.toolCategory !== (TOOL_METADATA[call.name]?.category ?? null) ||
+			canonicalizeAgenticChatJson(feedback.failure.modelPayload as JsonValue) !==
+				canonicalizeAgenticChatJson(call.supervisorFailure.modelPayload as JsonValue)
+		) {
+			throw providerError('provider_tool_feedback_kind_mismatch', 'unknown');
+		}
+		return;
+	}
+	if (isFailedToolFeedback(feedback)) {
+		if (
+			call.kind !== 'mutation' ||
+			feedback.failure.kind !== 'known_execution_failure' ||
+			!isCanonicalProviderText(feedback.failure.error, 4_000) ||
+			(feedback.failure.toolCategory !== null &&
+				!isCanonicalProviderText(feedback.failure.toolCategory, 128)) ||
+			feedback.failure.modelPayload.error !== feedback.failure.error
+		) {
+			throw providerError('provider_tool_feedback_kind_mismatch', 'unknown');
+		}
+		canonicalizeAgenticChatJson(feedback.failure.modelPayload as JsonValue);
+		return;
+	}
 	canonicalizeAgenticChatJson(feedback.execution.result as JsonValue);
 	if (call.kind === 'read') {
 		if (isMutationFeedback(feedback)) {
@@ -1033,6 +1483,12 @@ function isMutationFeedback(
 	return 'mutation' in feedback;
 }
 
+function isFailedToolFeedback(
+	feedback: AgenticChatProviderToolSynthesisInputV1
+): feedback is Extract<AgenticChatProviderToolSynthesisInputV1, { failure: unknown }> {
+	return 'failure' in feedback;
+}
+
 function completedProviderCallToChatToolCall(call: CompletedProviderToolCall): ChatToolCall {
 	return {
 		id: call.id,
@@ -1043,7 +1499,9 @@ function completedProviderCallToChatToolCall(call: CompletedProviderToolCall): C
 
 function executionToChatToolResult(
 	toolCallId: string,
-	execution: AgenticChatProviderToolSynthesisInputV1['execution']
+	execution:
+		| AgenticChatProviderReadSynthesisInputV1['execution']
+		| AgenticChatProviderMutationSynthesisInputV1['execution']
 ): ChatToolResult {
 	return {
 		tool_call_id: toolCallId,
@@ -1055,6 +1513,21 @@ function executionToChatToolResult(
 			? { requires_user_action: execution.requiresUserAction }
 			: {})
 	};
+}
+
+function feedbackToChatToolResult(
+	toolCallId: string,
+	feedback: AgenticChatProviderToolSynthesisInputV1
+): ChatToolResult {
+	if (isFailedToolFeedback(feedback)) {
+		return {
+			tool_call_id: toolCallId,
+			result: null,
+			success: false,
+			error: feedback.failure.error
+		};
+	}
+	return executionToChatToolResult(toolCallId, feedback.execution);
 }
 
 function memoizeCompletedRead(
@@ -1164,11 +1637,13 @@ function buildReadToolStep(
 
 function normalizeCompletedProviderCalls(
 	request: ClientRequest,
-	calls: readonly CompletedProviderToolCall[]
+	calls: readonly CompletedProviderToolCall[],
+	blockedToolCalls: ReadonlyMap<string, AgenticChatSupervisorBlockedToolCallV1> = new Map()
 ): NormalizedProviderToolCall[] {
 	return calls.map((call, index) => {
+		const supervisorFailure = blockedToolCalls.get(call.id);
 		if (isAgenticChatProductionReadToolNameV1(call.name)) {
-			return { ...call, kind: 'read' };
+			return { ...call, kind: 'read', ...(supervisorFailure ? { supervisorFailure } : {}) };
 		}
 		const spec = reviewedAgenticChatMutationSpecV1(call.name);
 		if (spec) {
@@ -1181,7 +1656,8 @@ function normalizeCompletedProviderCalls(
 					callIndex: index + 1
 				}),
 				operationName: spec.operationName,
-				downstreamIdempotencySupported: spec.downstreamIdempotencySupported
+				downstreamIdempotencySupported: spec.downstreamIdempotencySupported,
+				...(supervisorFailure ? { supervisorFailure } : {})
 			};
 		}
 		throw providerError('provider_tool_not_allowlisted', 'permanent');
@@ -1193,6 +1669,30 @@ function buildProviderToolStep(
 	call: NormalizedProviderToolCall,
 	state: ToolRoundStreamState
 ): AgenticChatProviderStepV1 {
+	if (call.supervisorFailure) {
+		return {
+			type: 'pre_execution_tool_failure',
+			callTransitionId: createStableAgenticChatReadToolTransitionIdV1({
+				turnRunId,
+				providerToolCallId: call.id,
+				stage: 'call'
+			}),
+			resultTransitionId: createStableAgenticChatReadToolTransitionIdV1({
+				turnRunId,
+				providerToolCallId: call.id,
+				stage: 'result'
+			}),
+			providerToolCallId: call.id,
+			toolName: call.name,
+			arguments: call.arguments,
+			failure: {
+				kind: 'supervisor_block',
+				error: call.supervisorFailure.error,
+				toolCategory: TOOL_METADATA[call.name]?.category ?? null,
+				modelPayload: call.supervisorFailure.modelPayload
+			}
+		};
+	}
 	if (call.kind === 'read') {
 		return buildReadToolStep(turnRunId, call, state.resolveMemoServed(call));
 	}
@@ -1259,7 +1759,15 @@ function buildContinuationRequest(
 		throw providerError('provider_read_continuation_result_count_invalid', 'unknown');
 	}
 	const toolMessages = calls.map((call, index): AgenticChatReadOnlyProviderMessageV1 => {
-		const execution = feedback[index]!.execution;
+		const result = feedback[index]!;
+		if (isFailedToolFeedback(result)) {
+			return {
+				role: 'tool',
+				content: canonicalizeAgenticChatJson(result.failure.modelPayload as JsonValue),
+				tool_call_id: call.id
+			};
+		}
+		const execution = result.execution;
 		const modelPayload = buildToolPayloadForModel(
 			completedProviderCallToChatToolCall(call),
 			{
@@ -1422,10 +1930,13 @@ function combineUsage(
 }
 
 function buildPromptSnapshot(
-	messages: readonly AgenticChatReadOnlyProviderMessageV1[]
+	messages: readonly AgenticChatReadOnlyProviderMessageV1[],
+	tools: readonly AgenticChatReadOnlyProviderToolV1[]
 ): NonNullable<AgenticChatPreparedProviderInvocationV1['promptSnapshot']> {
 	const canonical = canonicalizeAgenticChatJson(messages as unknown as JsonValue);
 	const modelMessages = JSON.parse(canonical) as JsonObject[];
+	const canonicalTools = canonicalizeAgenticChatJson(tools as unknown as JsonValue);
+	const toolDefinitions = JSON.parse(canonicalTools) as JsonObject[];
 	const systemPrompt = modelMessages[0]?.content;
 	if (typeof systemPrompt !== 'string' || systemPrompt.length === 0) {
 		throw providerError('provider_snapshot_system_prompt_invalid', 'permanent');
@@ -1433,8 +1944,10 @@ function buildPromptSnapshot(
 	return {
 		snapshotVersion: AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
 		modelMessages,
+		toolDefinitions,
 		systemPromptSha256: sha256(systemPrompt),
 		messagesSha256: sha256(canonical),
+		toolsSha256: sha256(canonicalTools),
 		systemPromptChars: systemPrompt.length,
 		messageChars: modelMessages.reduce(
 			(total, message) =>
@@ -1523,6 +2036,10 @@ function buildReadOnlyRequest(
 		if (history.toolCallId) message.tool_call_id = history.toolCallId;
 		messages.push(message);
 	}
+	const resumeCheckpoint = input.artifact.prepared.resumeCheckpoint;
+	if (resumeCheckpoint) {
+		messages.push({ role: 'system', content: resumeCheckpoint.resumeMessage });
+	}
 	messages.push({ role: 'user', content: userMessage });
 
 	const context = requireRecord(input.requestPayload.context, 'request context');
@@ -1565,11 +2082,7 @@ function buildReadOnlyRequest(
 function providerClientRequest(
 	request: ClientRequest
 ): Parameters<AgenticChatReadOnlyProviderClientPortV1['stream']>[0] {
-	const {
-		logicalProviderRound: _logicalProviderRound,
-		liveVisionRequest: _liveVisionRequest,
-		...clientRequest
-	} = request;
+	const { liveVisionRequest: _liveVisionRequest, ...clientRequest } = request;
 	return clientRequest;
 }
 
@@ -1755,6 +2268,15 @@ function requireRecord(value: unknown, label: string): Record<string, unknown> {
 
 function nonnegativeInteger(value: unknown): value is number {
 	return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
+function isCanonicalProviderText(value: unknown, maximum: number): value is string {
+	return (
+		typeof value === 'string' &&
+		value.length > 0 &&
+		value.length <= maximum &&
+		value === value.trim()
+	);
 }
 
 function canonicalError(value: string): string {

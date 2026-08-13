@@ -153,7 +153,7 @@ Build:
 - Pass/blocked/manual-only decision tree.
 - Conservative send-volume table.
 - Monitoring and troubleshooting playbook.
-- Provider requirement matrix. Current runtime matrix exists at `../cold_email_deliverability_readiness/references/provider-requirement-matrix.md`; update it instead of duplicating provider rules.
+- Provider requirement matrix. Current runtime matrix lives in the Knowledge block of `../cold_email_deliverability_readiness/SKILL.md`; update it instead of duplicating provider rules.
 
 Questions:
 

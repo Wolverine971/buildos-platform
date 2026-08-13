@@ -45,7 +45,7 @@
 			disabled={pending}
 			class="min-h-11 w-full text-xs"
 		>
-			Accept
+			Approve change
 		</Button>
 		<Button
 			variant="outline"
@@ -70,7 +70,7 @@
 					disabled={pending || openingChat}
 					class="min-h-11 w-full text-xs"
 				>
-					Chat
+					Discuss
 				</Button>
 			{/if}
 			{#if onSnooze}

@@ -24,12 +24,25 @@ const modelMessages = [
 	{ role: 'assistant', content: 'Prior answer' },
 	{ role: 'user', content: 'Current request' }
 ];
+const toolDefinitions = [
+	{
+		type: 'function',
+		function: {
+			name: 'get_project_overview',
+			description: 'Read the project overview.',
+			parameters: { type: 'object', properties: {} }
+		}
+	}
+];
 const canonicalMessages = canonicalizeAgenticChatJson(modelMessages as JsonValue);
+const canonicalTools = canonicalizeAgenticChatJson(toolDefinitions as JsonValue);
 const prompt: AgenticChatPreparedPromptSnapshotV1 = {
 	snapshotVersion: AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
 	modelMessages,
+	toolDefinitions,
 	systemPromptSha256: sha256('System prompt'),
 	messagesSha256: sha256(canonicalMessages),
+	toolsSha256: sha256(canonicalTools),
 	systemPromptChars: 13,
 	messageChars: 40,
 	approxPromptTokens: 11
@@ -60,6 +73,8 @@ function receipt(overrides: Record<string, unknown> = {}) {
 		prompt_variant: 'fastchat_lite_v1',
 		system_prompt_sha256: prompt.systemPromptSha256,
 		messages_sha256: prompt.messagesSha256,
+		tools_sha256: prompt.toolsSha256,
+		tool_definition_count: prompt.toolDefinitions.length,
 		system_prompt_chars: prompt.systemPromptChars,
 		message_chars: prompt.messageChars,
 		approx_prompt_tokens: prompt.approxPromptTokens,
@@ -86,7 +101,7 @@ describe('Agentic Chat prompt snapshots', () => {
 			snapshotAvailable: true,
 			promptSnapshotId: PROMPT_SNAPSHOT_ID
 		});
-		expect(rpc).toHaveBeenCalledWith('persist_agentic_chat_prompt_snapshot', {
+		expect(rpc).toHaveBeenCalledWith('persist_agentic_chat_prompt_snapshot_v2', {
 			p_turn_run_id: TURN_RUN_ID,
 			p_user_id: USER_ID,
 			p_queue_job_id: QUEUE_JOB_ID,
@@ -94,8 +109,10 @@ describe('Agentic Chat prompt snapshots', () => {
 			p_execution_generation: 2,
 			p_prompt_snapshot_id: PROMPT_SNAPSHOT_ID,
 			p_model_messages: modelMessages,
+			p_tool_definitions: toolDefinitions,
 			p_system_prompt_sha256: prompt.systemPromptSha256,
 			p_messages_sha256: prompt.messagesSha256,
+			p_tools_sha256: prompt.toolsSha256,
 			p_system_prompt_chars: 13,
 			p_message_chars: 40,
 			p_approx_prompt_tokens: 11
@@ -145,10 +162,18 @@ describe('Agentic Chat prompt snapshots', () => {
 			})
 		).rejects.toBeInstanceOf(AgenticChatPromptSnapshotProtocolError);
 		expect(rpc).not.toHaveBeenCalled();
+
+		await expect(
+			adapter.persist({
+				...input,
+				prompt: { ...prompt, toolsSha256: 'f'.repeat(64) }
+			})
+		).rejects.toThrow('tools hash does not match the prepared prompt');
+		expect(rpc).not.toHaveBeenCalled();
 	});
 
 	it('rejects a successful receipt that drifts from the prepared prompt', async () => {
-		const { adapter } = adapterFor(receipt({ messages_sha256: 'f'.repeat(64) }));
+		const { adapter } = adapterFor(receipt({ tools_sha256: 'f'.repeat(64) }));
 		await expect(adapter.persist(input)).rejects.toThrow(
 			'persisted snapshot receipt is inconsistent'
 		);

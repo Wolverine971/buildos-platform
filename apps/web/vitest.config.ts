@@ -21,6 +21,12 @@ const workspacePackageRootAliases = [
 		)
 	},
 	{
+		find: /^@buildos\/agentic-chat-runtime\/supervisor$/,
+		replacement: fileURLToPath(
+			new URL('../../packages/agentic-chat-runtime/src/supervisor/index.ts', import.meta.url)
+		)
+	},
+	{
 		find: /^@buildos\/agentic-chat-runtime\/tools$/,
 		replacement: fileURLToPath(
 			new URL('../../packages/agentic-chat-runtime/src/tools/index.ts', import.meta.url)
@@ -69,6 +75,7 @@ const sharedAgentOpsTestAliases = [
 	'ontology/ontology-projects.service',
 	'ontology/task-move.service',
 	'ontology/doc-structure.service',
+	'ontology/project-graph-loader',
 	'ontology/versioning.service',
 	'ontology/instantiation.service',
 	'ops/async-activity-logger',

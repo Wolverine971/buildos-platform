@@ -1,6 +1,6 @@
 // packages/smart-llm/src/openrouter-request.test.ts
 import { describe, expect, it } from 'vitest';
-import { GPT_56_LUNA_MODEL, GROK_45_MODEL, KIMI_K3_MODEL } from './model-config';
+import { GPT_56_LUNA_MODEL, GROK_46_MODEL, KIMI_K3_MODEL } from './model-config';
 import {
 	buildOpenRouterChatCompletionBody,
 	resolveOpenRouterFallbackModels
@@ -113,7 +113,7 @@ describe('buildOpenRouterChatCompletionBody', () => {
 
 	it('keeps temperature for models that support it', () => {
 		const body = buildOpenRouterChatCompletionBody({
-			model: GROK_45_MODEL,
+			model: GROK_46_MODEL,
 			messages: [{ role: 'user', content: 'Analyze this.' }],
 			temperature: 0.4
 		});

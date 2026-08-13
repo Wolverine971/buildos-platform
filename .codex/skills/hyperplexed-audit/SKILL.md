@@ -1,7 +1,6 @@
 ---
 name: hyperplexed-audit
 description: Audit and polish UI surfaces with the Hyperplexed-derived design playbook. Use when Codex is asked to audit, review, redesign, refine, or implement UI fixes for a component/page/route using Hyperplexed's workflow; when the user invokes or references /hyperplexed-audit; or when BuildOS UI work should cite Hyperplexed P-patterns, update the Hyperplexed audit tracker, or apply the reusable Svelte/Tailwind/Inkprint recipes.
-path: .codex/skills/hyperplexed-audit/SKILL.md
 ---
 
 # Hyperplexed Audit

@@ -1,0 +1,5 @@
+# Before/after captures from /hyperplexed-audit runs.
+# Kept local-only: evidence persists on disk across sessions, referenced by
+# filename from the audit docs, without bloating the repo.
+*
+!.gitignore
