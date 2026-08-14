@@ -1653,7 +1653,6 @@
 	<ProjectBriefHubModal
 		isOpen={showProjectBriefModal}
 		projectId={project.id}
-		projectName={project.name || 'Project'}
 		{contextDocument}
 		{canEdit}
 		onClose={() => (showProjectBriefModal = false)}

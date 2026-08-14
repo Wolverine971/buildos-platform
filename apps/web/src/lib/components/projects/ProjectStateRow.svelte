@@ -1,21 +1,29 @@
 <!-- apps/web/src/lib/components/projects/ProjectStateRow.svelte -->
 <script lang="ts">
-	import { ArrowRight, Share2 } from '$lib/icons/lucide';
+	import { AlignLeft, ListTodo, Users } from '$lib/icons/lucide';
 	import { resolve } from '$app/paths';
 	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
 	import ProjectStateChip from './ProjectStateChip.svelte';
 	import { formatAccessRole } from '$lib/config/project-states';
-	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
-	import { formatProjectUpdatedLabel, formatProjectUpdatedTitle } from './project-list';
+	import {
+		formatProjectUpdatedLabel,
+		formatProjectUpdatedTitle,
+		type ProjectListSummary
+	} from './project-list';
 
 	interface Props {
-		project: OntologyProjectSummary;
-		onSelect?: (project: OntologyProjectSummary) => void;
+		project: ProjectListSummary;
+		onSelect?: (project: ProjectListSummary) => void;
 	}
 
 	const { project, onSelect }: Props = $props();
 
 	const accessRoleLabel = $derived(formatAccessRole(project.access_role));
+	const collaboratorTitle = $derived(
+		project.is_shared && accessRoleLabel
+			? `Has collaborators · Your role: ${accessRoleLabel}`
+			: 'Has collaborators'
+	);
 	const hasNextStep = $derived(Boolean(project.next_step_short?.trim()));
 	const resumeCue = $derived(
 		project.next_step_short?.trim() ||
@@ -40,7 +48,7 @@
 			<ProjectIcon svg={project.icon_svg} concept={project.icon_concept} size="sm" />
 		</div>
 		<div class="min-w-0 flex-1">
-			<div class="flex min-w-0 items-center justify-between gap-3">
+			<div class="flex min-w-0 items-start justify-between gap-2 sm:gap-3">
 				<div class="flex min-w-0 items-center gap-2">
 					<h4
 						class="min-w-0 truncate text-base font-semibold tracking-tight text-foreground sm:text-lg"
@@ -49,46 +57,41 @@
 					>
 						{project.name}
 					</h4>
-					{#if project.is_shared}
+					<ProjectStateChip state={project.state_key} size="xs" tone="neutral" />
+				</div>
+				<div class="flex shrink-0 flex-col items-end gap-0.5 text-right">
+					<time
+						datetime={project.updated_at}
+						title={updatedTitle}
+						class="whitespace-nowrap text-2xs text-muted-foreground sm:text-xs"
+					>
+						{updatedLabel}
+					</time>
+					{#if project.has_collaborators}
 						<span
-							class="inline-flex shrink-0 items-center gap-1 rounded-full border border-accent/20 bg-accent/15 px-1.5 py-0.5 text-2xs font-semibold text-accent"
+							title={collaboratorTitle}
+							class="inline-flex items-center gap-1 whitespace-nowrap text-2xs text-muted-foreground"
 						>
-							<Share2 class="h-2.5 w-2.5" aria-hidden="true" />
-							<span>Shared{accessRoleLabel ? `: ${accessRoleLabel}` : ''}</span>
+							<Users class="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
+							Has collaborators
 						</span>
-					{:else}
-						<ProjectStateChip state={project.state_key} size="xs" />
 					{/if}
 				</div>
-				<time
-					datetime={project.updated_at}
-					title={updatedTitle}
-					class="hidden shrink-0 whitespace-nowrap text-right text-xs font-medium text-muted-foreground sm:block"
-				>
-					{updatedLabel}
-				</time>
 			</div>
 
 			<p
-				class="mt-1 truncate text-xs sm:text-sm {hasNextStep
-					? 'font-medium text-accent'
-					: 'text-muted-foreground'}"
+				class="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground sm:text-sm"
 				title={hasNextStep ? (project.next_step_long ?? resumeCue) : resumeCue}
 			>
-				{hasNextStep ? 'Next: ' : ''}{resumeCue}
+				{#if hasNextStep}
+					<ListTodo class="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
+					<span class="sr-only">Next step: </span>
+				{:else}
+					<AlignLeft class="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden="true" />
+				{/if}
+				<span class="truncate">{resumeCue}</span>
 			</p>
-
-			<time
-				datetime={project.updated_at}
-				title={updatedTitle}
-				class="mt-1 block whitespace-nowrap text-2xs font-medium text-muted-foreground sm:hidden"
-			>
-				{updatedLabel}
-			</time>
 		</div>
-		<span class="project-dossier-arrow hidden shrink-0 sm:flex" aria-hidden="true">
-			<ArrowRight class="h-3.5 w-3.5 text-accent" />
-		</span>
 	</div>
 </a>
 
@@ -99,26 +102,11 @@
 
 	.project-dossier-row:hover,
 	.project-dossier-row:focus-visible {
-		box-shadow: inset 0 -1px 0 hsl(var(--accent) / 0.6);
-	}
-
-	.project-dossier-arrow {
-		opacity: 0;
-		transform: translateX(-2px);
-		transition:
-			opacity 180ms ease,
-			transform 180ms ease;
-	}
-
-	.project-dossier-row:hover .project-dossier-arrow,
-	.project-dossier-row:focus-visible .project-dossier-arrow {
-		opacity: 1;
-		transform: translateX(0);
+		box-shadow: inset 0 -1px 0 hsl(var(--border));
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.project-dossier-row,
-		.project-dossier-arrow {
+		.project-dossier-row {
 			transition: none;
 		}
 	}

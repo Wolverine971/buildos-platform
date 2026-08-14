@@ -5,9 +5,24 @@ import {
 	isPrimaryTier,
 	normalizeProjectState
 } from '$lib/config/project-states';
+import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 import type { ProjectState } from '$lib/types/onto';
 
 export type ProjectListScope = 'current' | 'all' | ProjectState;
+
+export type ProjectListSummary = OntologyProjectSummary & {
+	has_collaborators: boolean;
+};
+
+type ProjectCollaborationFields = Pick<
+	OntologyProjectSummary,
+	'id' | 'owner_actor_id' | 'is_shared'
+>;
+
+interface ActiveProjectMember {
+	project_id: string | null;
+	actor_id: string | null;
+}
 
 export const PROJECT_LIST_SCOPE_OPTIONS = [
 	'current',
@@ -37,6 +52,41 @@ export function matchesProjectListScope(
 	const normalized = normalizeProjectState(state);
 	if (scope === 'current') return isPrimaryTier(normalized);
 	return normalized === scope;
+}
+
+/**
+ * Add the collaboration signal used by the launcher without changing the
+ * shared project-summary contract. A null member list means the batched
+ * lookup failed, so shared-with-me projects remain truthfully identifiable.
+ */
+export function addProjectCollaborationFlags<T extends ProjectCollaborationFields>(
+	projects: readonly T[],
+	members: readonly ActiveProjectMember[] | null
+): Array<T & { has_collaborators: boolean }> {
+	if (members === null) {
+		return projects.map((project) => ({
+			...project,
+			has_collaborators: project.is_shared
+		}));
+	}
+
+	const actorIdsByProject = new Map<string, Set<string>>();
+	for (const member of members) {
+		if (!member.project_id || !member.actor_id) continue;
+		const actorIds = actorIdsByProject.get(member.project_id) ?? new Set<string>();
+		actorIds.add(member.actor_id);
+		actorIdsByProject.set(member.project_id, actorIds);
+	}
+
+	return projects.map((project) => {
+		const actorIds = new Set(actorIdsByProject.get(project.id) ?? []);
+		if (project.owner_actor_id) actorIds.add(project.owner_actor_id);
+
+		return {
+			...project,
+			has_collaborators: project.is_shared || actorIds.size > 1
+		};
+	});
 }
 
 function calendarDayDifference(older: Date, newer: Date): number {

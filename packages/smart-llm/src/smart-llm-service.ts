@@ -769,6 +769,9 @@ export class SmartLLMService {
 										'LLM validation retry aborted: caller cancelled'
 									);
 								}
+								// The repair call is a real model attempt. Exclude it from the outer
+								// failover loop if repair fails so route overlap cannot dispatch it twice.
+								attemptedModels.add(retryModel);
 								const retryCompletion = await this.callChatCompletions({
 									model: retryModel,
 									models: retryModels,

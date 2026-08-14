@@ -5,13 +5,13 @@ import {
 	AGENT_STATE_RECONCILIATION_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
+	GEMINI_37_FLASH_MODEL,
 	KIMI_EXPERIMENT_MODEL,
 	NEX_N2_MINI_MODEL,
 	OPENROUTER_V2_JSON_MODELS,
 	OPENROUTER_V2_MULTIMODAL_MODELS,
 	OPENROUTER_V2_TEXT_MODELS,
 	OPENROUTER_V2_TOOL_MODELS,
-	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from '@buildos/smart-llm';
 
@@ -385,9 +385,9 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[0]?.model).toBe(OPENROUTER_V2_JSON_MODELS[0]);
 		expect(requestBodies[0]?.response_format).toEqual({ type: 'json_object' });
 		expect(requestBodies[0]?.models).toEqual([
+			GEMINI_37_FLASH_MODEL,
 			XIAOMI_MIMO_V25_MODEL,
-			NEX_N2_MINI_MODEL,
-			GEMINI_31_FLASH_LITE_MODEL
+			NEX_N2_MINI_MODEL
 		]);
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
@@ -1318,7 +1318,8 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			{ type: 'text', text: 'Inspect this screenshot.' },
 			{ type: 'image_url', image_url: { url: 'https://signed.example/image.png' } }
 		]);
-		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
+		expect(requestBodies[0]).not.toHaveProperty('temperature');
+		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'medium', exclude: true });
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true,
@@ -1417,7 +1418,8 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		]);
 		expect(requestBodies[0]?.tools).toHaveLength(1);
 		expect(requestBodies[0]?.tool_choice).toBe('auto');
-		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
+		expect(requestBodies[0]).not.toHaveProperty('temperature');
+		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'medium', exclude: true });
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true,
@@ -1689,7 +1691,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(requestBodies[0]?.models).toEqual([
 			DEEPSEEK_V4_FLASH_MODEL,
 			GEMINI_31_FLASH_LITE_MODEL,
-			TENCENT_HY3_MODEL
+			GEMINI_37_FLASH_MODEL
 		]);
 		expect(events.find((event) => event.type === 'done')).toMatchObject({
 			type: 'done',

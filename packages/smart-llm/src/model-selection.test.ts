@@ -6,6 +6,7 @@ import {
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
+	GEMINI_37_FLASH_MODEL,
 	GLM_52_MODEL,
 	GPT_56_LUNA_MODEL,
 	GROK_46_MODEL,
@@ -221,6 +222,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(TENCENT_HY3_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(XIAOMI_MIMO_V25_MODEL);
+		expect(OPENROUTER_V2_TEXT_MODELS).toContain(GEMINI_37_FLASH_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(GPT_56_LUNA_MODEL);
@@ -235,6 +237,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(XIAOMI_MIMO_V25_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(MINIMAX_M3_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(NEX_N2_MINI_MODEL);
+		expect(OPENROUTER_V2_JSON_MODELS).toContain(GEMINI_37_FLASH_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GPT_56_LUNA_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GROK_46_MODEL);
@@ -251,6 +254,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(TENCENT_HY3_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(MINIMAX_M3_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS).toContain(GEMINI_37_FLASH_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GPT_56_LUNA_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GROK_46_MODEL);
@@ -258,7 +262,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(KIMI_CODING_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain('legacy/removed-qwen-plus');
-		expect(OPENROUTER_V2_MULTIMODAL_MODELS[0]).toBe(XIAOMI_MIMO_V25_MODEL);
+		expect(OPENROUTER_V2_MULTIMODAL_MODELS[0]).toBe(GEMINI_37_FLASH_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(MINIMAX_M3_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(NEX_N2_MINI_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
@@ -269,7 +273,8 @@ describe('ensureToolCompatibleModels', () => {
 		expect(TEXT_PROFILE_MODELS.speed[0]).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(TEXT_PROFILE_MODELS.speed).toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
 		expect(ACTIVE_EXPERIMENT_MODEL).toBe(GPT_56_LUNA_MODEL);
-		expect(TEXT_PROFILE_MODELS.quality[0]).toBe(GLM_52_MODEL);
+		expect(TEXT_PROFILE_MODELS.quality[0]).toBe(GEMINI_37_FLASH_MODEL);
+		expect(TEXT_PROFILE_MODELS.quality).toContain(GLM_52_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(DEEPSEEK_V4_PRO_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(GPT_56_LUNA_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(GROK_46_MODEL);
@@ -285,7 +290,8 @@ describe('ensureToolCompatibleModels', () => {
 
 		expect(JSON_PROFILE_MODELS.fast).not.toContain(DEEPSEEK_V4_PRO_MODEL);
 		expect(JSON_PROFILE_MODELS.fast).toContain(NEX_N2_MINI_MODEL);
-		expect(JSON_PROFILE_MODELS.powerful[0]).toBe(GLM_52_MODEL);
+		expect(JSON_PROFILE_MODELS.powerful[0]).toBe(GEMINI_37_FLASH_MODEL);
+		expect(JSON_PROFILE_MODELS.powerful).toContain(GLM_52_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum[0]).toBe(KIMI_K3_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).toContain(GPT_56_LUNA_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).toContain(GROK_46_MODEL);
@@ -306,6 +312,7 @@ describe('ensureToolCompatibleModels', () => {
 
 	it('recognizes the supported structured-output-capable OpenRouter models', () => {
 		expect(supportsJsonMode(QWEN_37_PLUS_EXPERIMENT_MODEL)).toBe(true);
+		expect(supportsJsonMode(GEMINI_37_FLASH_MODEL)).toBe(true);
 		expect(supportsJsonMode(GEMINI_31_FLASH_LITE_MODEL)).toBe(true);
 		expect(supportsJsonMode(DEEPSEEK_V4_FLASH_MODEL)).toBe(true);
 		expect(supportsJsonMode(DEEPSEEK_V4_PRO_MODEL)).toBe(true);

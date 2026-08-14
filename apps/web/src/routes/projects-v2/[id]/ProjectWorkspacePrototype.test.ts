@@ -1,7 +1,7 @@
 // apps/web/src/routes/projects-v2/[id]/ProjectWorkspacePrototype.test.ts
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { pushState } from '$app/navigation';
 import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
@@ -116,6 +116,7 @@ function plans(count: number) {
 describe('ProjectWorkspacePrototype edge states', () => {
 	beforeEach(() => {
 		window.history.replaceState({}, '', '/workspace?view=overview');
+		vi.stubGlobal('scrollTo', vi.fn());
 		vi.stubGlobal(
 			'fetch',
 			vi.fn(async (input: RequestInfo | URL) => {
@@ -202,6 +203,7 @@ describe('ProjectWorkspacePrototype edge states', () => {
 		await waitFor(() => {
 			expect(screen.getByRole('dialog', { name: 'Brief / Start Here' })).toBeInTheDocument();
 		});
+		const briefDialog = screen.getByRole('dialog', { name: 'Brief / Start Here' });
 		expect(screen.getByRole('tab', { name: 'Daily Brief' })).toHaveAttribute(
 			'aria-selected',
 			'true'
@@ -209,9 +211,22 @@ describe('ProjectWorkspacePrototype edge states', () => {
 		await waitFor(() => {
 			expect(screen.getByRole('heading', { name: "Today's focus" })).toBeInTheDocument();
 		});
+		expect(
+			within(briefDialog).queryByRole('heading', { name: 'Project' })
+		).not.toBeInTheDocument();
+		expect(within(briefDialog).getByLabelText(/^Brief date:/)).toHaveAttribute(
+			'datetime',
+			'2026-08-14'
+		);
 
 		await fireEvent.click(screen.getByRole('tab', { name: 'Start Here Document' }));
 		expect(screen.getByText('This is the canonical project brief.')).toBeInTheDocument();
+		expect(
+			within(briefDialog).queryByText('Canonical project context')
+		).not.toBeInTheDocument();
+		expect(
+			within(briefDialog).getAllByRole('heading', { name: 'START HERE - Project' })
+		).toHaveLength(1);
 		await fireEvent.click(screen.getByRole('button', { name: 'Open document' }));
 		expect(pushState).toHaveBeenCalledOnce();
 		const briefUrl = vi.mocked(pushState).mock.calls[0]?.[0];

@@ -18,6 +18,7 @@ export const TENCENT_HY3_MODEL = 'tencent/hy3' as const;
 export const GLM_52_MODEL = 'z-ai/glm-5.2' as const;
 export const NEX_N2_MINI_MODEL = 'nex-agi/nex-n2-mini' as const;
 export const POOLSIDE_LAGUNA_XS_21_MODEL = 'poolside/laguna-xs-2.1' as const;
+export const GEMINI_37_FLASH_MODEL = 'google/gemini-3.7-flash' as const;
 export const GEMINI_31_FLASH_LITE_MODEL = 'google/gemini-3.1-flash-lite' as const;
 export const ACTIVE_EXPERIMENT_MODEL = GPT_56_LUNA_MODEL;
 export const ACTIVE_EXPERIMENT_MODELS = [GPT_56_LUNA_MODEL, GROK_46_MODEL] as const;
@@ -31,6 +32,42 @@ export const AGENT_STATE_RECONCILIATION_MODEL = DEEPSEEK_V4_FLASH_MODEL;
 export const AGENT_STATE_RECONCILIATION_MODELS = [AGENT_STATE_RECONCILIATION_MODEL] as const;
 
 export const MODEL_CATALOG: Record<string, ModelProfile> = {
+	[GEMINI_37_FLASH_MODEL]: {
+		id: GEMINI_37_FLASH_MODEL,
+		name: 'Gemini 3.7 Flash',
+		speed: 4.5,
+		smartness: 4.95,
+		creativity: 4.6,
+		cost: 0.375,
+		outputCost: 1.875,
+		provider: 'google',
+		bestFor: [
+			'agentic-workflows',
+			'knowledge-work',
+			'agentic-coding',
+			'json-mode',
+			'structured-output',
+			'tool-calling',
+			'multimodal',
+			'document-understanding',
+			'computer-use',
+			'1m-context',
+			'quality-value-profile'
+		],
+		limitations: [
+			'launch-discount-temporary',
+			'single-zdr-provider-family',
+			'temperature-unsupported-on-zdr-routes'
+		],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
 	[GEMINI_31_FLASH_LITE_MODEL]: {
 		id: GEMINI_31_FLASH_LITE_MODEL,
 		name: 'Gemini 3.1 Flash Lite',
@@ -511,12 +548,13 @@ export function modelSupportsCapability(
 	return MODEL_CATALOG[modelId]?.capabilities?.[capability] === true;
 }
 
-// Reviewed 2026-08-13 against OpenRouter model pages/API and production
+// Reviewed 2026-08-14 against OpenRouter model pages/API and production
 // telemetry. Keep models without response_format out of JSON routes, keep
 // premium candidates out of automatic lanes, and reserve K3 for an explicit
 // maximum profile.
 const OPENROUTER_TEXT_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
+	GEMINI_37_FLASH_MODEL,
 	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
@@ -525,6 +563,7 @@ const OPENROUTER_TEXT_ROUTE = [
 ] as const;
 const OPENROUTER_JSON_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
+	GEMINI_37_FLASH_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	NEX_N2_MINI_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
@@ -533,6 +572,7 @@ const OPENROUTER_JSON_ROUTE = [
 ] as const;
 const OPENROUTER_TOOL_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
+	GEMINI_37_FLASH_MODEL,
 	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	POOLSIDE_LAGUNA_XS_21_MODEL,
@@ -541,6 +581,7 @@ const OPENROUTER_TOOL_ROUTE = [
 	MINIMAX_M3_MODEL
 ] as const;
 const OPENROUTER_MULTIMODAL_ROUTE = [
+	GEMINI_37_FLASH_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
 	NEX_N2_MINI_MODEL,
@@ -556,11 +597,13 @@ const EMERGENCY_TEXT_ROUTE = [
 ] as const;
 const JSON_FAST_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
+	GEMINI_37_FLASH_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	NEX_N2_MINI_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL
 ] as const;
 const JSON_POWERFUL_ROUTE = [
+	GEMINI_37_FLASH_MODEL,
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GPT_56_LUNA_MODEL,
@@ -583,6 +626,7 @@ const TEXT_SPEED_ROUTE = [
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 const TEXT_QUALITY_ROUTE = [
+	GEMINI_37_FLASH_MODEL,
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GPT_56_LUNA_MODEL,

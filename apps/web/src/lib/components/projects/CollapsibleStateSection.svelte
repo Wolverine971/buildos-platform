@@ -3,13 +3,13 @@
 	import { ChevronDown } from '$lib/icons/lucide';
 	import { PROJECT_STATE_META } from '$lib/config/project-states';
 	import type { ProjectState } from '$lib/types/onto';
-	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
+	import type { ProjectListSummary } from './project-list';
 	import ProjectStateRow from './ProjectStateRow.svelte';
 
 	interface Props {
 		projectState: ProjectState;
-		projects: OntologyProjectSummary[];
-		onSelect?: (project: OntologyProjectSummary) => void;
+		projects: ProjectListSummary[];
+		onSelect?: (project: ProjectListSummary) => void;
 	}
 
 	const { projectState, projects, onSelect }: Props = $props();

@@ -398,3 +398,78 @@ is preserved until that owner/destination decision is made.
   `?view=graph` direct route plus return action.
 - Focused project-list logic tests cover scope normalization/matching and relative-time labels.
 - No files under `/projects/[id]` or `/projects-v2/[id]` changed.
+
+---
+
+## Part 7 — Color and collaboration hierarchy follow-up (2026-08-14)
+
+The first launcher pass exposed one remaining hierarchy problem: lifecycle chips and next-step text
+still borrowed accent/semantic color even though neither item represented an alert or primary action.
+That made repeated rows compete with the header action and created a green/yellow/orange color clash.
+
+### Shipped
+
+- **Neutral lifecycle tags (P3/P4):** list-row state chips now use one understated neutral treatment
+  (`border`, muted surface, muted text) with normal capitalization and medium weight. Lifecycle meaning
+  remains readable and accessible without assigning every row a semantic color.
+- **Restrained resume cue (P4/P9):** removed the visible `Next:` prefix. A muted `ListTodo` icon marks
+  true next steps; description fallbacks use `AlignLeft`. Screen readers still receive the hidden
+  `Next step:` label. Resume text, row arrows, and row hover borders no longer use the accent color.
+- **Collaboration metadata (P4/P9):** accepted project membership is resolved with one batched,
+  project-scoped query after the streamed summaries load. Projects with more than one active member
+  show neutral `Has collaborators` metadata with the relative update time. Shared-with-me projects
+  remain truthfully flagged if the membership lookup fails; pending invitations do not count as
+  collaborators.
+- **Information hierarchy:** project title remains the strongest row signal, state is a quiet local
+  qualifier, the resume cue is secondary, and recency/collaboration form one tertiary metadata group.
+  Orange remains reserved for the page-level creation action and existing global navigation state.
+
+### Verification
+
+- Authenticated desktop and measured 391 CSS px phone passes in light and dark mode.
+- No horizontal overflow; long names and resume cues truncate without displacing metadata.
+- Live rows confirmed solo, owned-with-collaborators, and shared-with-me cases.
+- Focused project-list suite: 6 tests passing, including collaboration derivation and failure fallback.
+- Svelte analyzers: no component issues. Full web `svelte-check`: 0 errors / 0 warnings.
+- No application console errors; the occupied shared Vite HMR websocket port produced the expected
+  development-only reconnect warning.
+
+### Product decisions
+
+No new unresolved product decision was required. “Has collaborators” means at least two accepted,
+active project members; an unaccepted invitation is not presented as a collaborator. The previously
+recorded admin-graph destination remains the only open `/projects` launcher decision.
+
+---
+
+## Part 8 — Stable recency-column follow-up (2026-08-14)
+
+The final hierarchy pass makes row recency a fixed spatial standard instead of responsive metadata
+that moves between corners. This improves high-density scanning without adding another visual system.
+
+### Shipped
+
+- **One metadata anchor (P1/P4):** the relative update time now owns the top-right corner of every
+  project row at every breakpoint. When a project has collaborators, `Has collaborators` sits directly
+  beneath it in the same right-aligned column.
+- **Metadata, not another badge (P4/P9):** collaboration uses a small neutral icon and muted text with
+  no border, fill, or semantic color. The lifecycle state remains the row's only chip.
+- **One navigation affordance (P4/P7):** removed the redundant hover-only trailing arrow. The entire
+  row remains a link with the existing hover/focus treatment, so the right edge can carry information
+  instead of competing decoration.
+- **Compact phone behavior (P1/P6):** the same top-right hierarchy is retained at a measured 391 CSS
+  px width. Long project titles truncate earlier by design; resume cues retain their own full-width
+  line below and the existing title tooltip preserves the full project name.
+
+### Verification
+
+- Authenticated desktop light/dark and measured 391 CSS px phone light passes confirmed the same
+  top-right recency/collaboration order and no horizontal overflow.
+- Focused project-list suite: 6 tests passing. Svelte analyzer: no issues or suggestions. Full web
+  `svelte-check`: 0 errors / 0 warnings.
+- No files under `/projects/[id]` or `/projects-v2/[id]` changed by this work.
+
+### Product decisions
+
+No new unresolved product decision was required. Further reduction of the weak paper texture would be
+a brand-density preference rather than an evidence-backed hierarchy fix, so it remains unchanged.

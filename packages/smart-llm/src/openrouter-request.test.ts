@@ -1,6 +1,11 @@
 // packages/smart-llm/src/openrouter-request.test.ts
 import { describe, expect, it } from 'vitest';
-import { GPT_56_LUNA_MODEL, GROK_46_MODEL, KIMI_K3_MODEL } from './model-config';
+import {
+	GEMINI_37_FLASH_MODEL,
+	GPT_56_LUNA_MODEL,
+	GROK_46_MODEL,
+	KIMI_K3_MODEL
+} from './model-config';
 import {
 	buildOpenRouterChatCompletionBody,
 	resolveOpenRouterFallbackModels
@@ -109,6 +114,28 @@ describe('buildOpenRouterChatCompletionBody', () => {
 
 		expect(body).not.toHaveProperty('temperature');
 		expect(body.reasoning).toEqual({ effort: 'low', exclude: true });
+	});
+
+	it('omits Gemini 3.7 temperature and forces its tested medium reasoning effort', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: GEMINI_37_FLASH_MODEL,
+			messages: [{ role: 'user', content: 'Create a structured project plan.' }],
+			temperature: 0.2,
+			reasoning: { effort: 'low', exclude: true }
+		});
+
+		expect(body).not.toHaveProperty('temperature');
+		expect(body.reasoning).toEqual({ effort: 'medium', exclude: true });
+	});
+
+	it('preserves explicitly requested Gemini 3.7 reasoning above its medium floor', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: GEMINI_37_FLASH_MODEL,
+			messages: [{ role: 'user', content: 'Analyze this deeply.' }],
+			reasoning: { effort: 'high', exclude: false }
+		});
+
+		expect(body.reasoning).toEqual({ effort: 'high', exclude: false });
 	});
 
 	it('keeps temperature for models that support it', () => {

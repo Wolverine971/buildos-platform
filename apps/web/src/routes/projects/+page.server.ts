@@ -15,6 +15,7 @@ import {
 	ensureActorId,
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
+import { addProjectCollaborationFlags } from '$lib/components/projects/project-list';
 
 export const load: PageServerLoad = async ({ locals, depends }) => {
 	const { user } = await locals.safeGetSession();
@@ -61,12 +62,34 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 
 	// STREAMED: Full project data loaded in background
 	// Skeletons will be hydrated when this resolves
-	const projects = fetchProjectSummaries(locals.supabase, actorId, locals.serverTiming).catch(
-		(err) => {
+	const projects = fetchProjectSummaries(locals.supabase, actorId, locals.serverTiming)
+		.then(async (summaries) => {
+			if (summaries.length === 0) return addProjectCollaborationFlags(summaries, []);
+
+			const { data: memberRows, error: memberRowsError } = await measure(
+				'db.project_members.collaboration_flags',
+				() =>
+					locals.supabase
+						.from('onto_project_members')
+						.select('project_id, actor_id')
+						.in(
+							'project_id',
+							summaries.map((project) => project.id)
+						)
+						.is('removed_at', null)
+			);
+
+			if (memberRowsError) {
+				console.error('[Projects] Failed to load collaborator metadata:', memberRowsError);
+				return addProjectCollaborationFlags(summaries, null);
+			}
+
+			return addProjectCollaborationFlags(summaries, memberRows ?? []);
+		})
+		.catch((err) => {
 			console.error('[Ontology Dashboard] Failed to load project summaries', err);
 			throw err;
-		}
-	);
+		});
 
 	return {
 		actorId,

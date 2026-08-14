@@ -4,9 +4,9 @@ import { SmartLLMService } from './smart-llm-service';
 import {
 	ACTIVE_EXPERIMENT_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
+	GEMINI_37_FLASH_MODEL,
 	GLM_52_MODEL,
 	KIMI_K3_MODEL,
-	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from './model-config';
 
@@ -730,7 +730,7 @@ describe('SmartLLMService model failover', () => {
 		});
 
 		expect(result).toEqual({ ok: true });
-		expect(requestBodies[0]?.model).toBe(GLM_52_MODEL);
+		expect(requestBodies[0]?.model).toBe(GEMINI_37_FLASH_MODEL);
 		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'high', exclude: false });
 	});
 
@@ -820,12 +820,12 @@ describe('SmartLLMService model failover', () => {
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
-		expect(requestBodies[1]?.model).toBe(TENCENT_HY3_MODEL);
+		expect(requestBodies[1]?.model).toBe(GEMINI_37_FLASH_MODEL);
 		expect(events.some((event) => event.type === 'error')).toBe(false);
 		expect(events.some((event) => event.type === 'text')).toBe(true);
 		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
 			expect.objectContaining({
-				modelRequested: TENCENT_HY3_MODEL,
+				modelRequested: GEMINI_37_FLASH_MODEL,
 				modelUsed: ACTIVE_EXPERIMENT_MODEL,
 				status: 'success',
 				streaming: true
@@ -847,9 +847,9 @@ describe('SmartLLMService JSON model recovery', () => {
 			const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
 			requestBodies.push(body);
 			return buildJSONCompletion({
-				model: GLM_52_MODEL,
+				model: GEMINI_37_FLASH_MODEL,
 				content: 'not valid JSON',
-				provider: 'Z.AI',
+				provider: 'Google',
 				cost: 0.003
 			});
 		});
@@ -876,13 +876,13 @@ describe('SmartLLMService JSON model recovery', () => {
 		expect(dispatchOrder).toEqual(['reserved', 'fetch']);
 		expect(onSpendReservation).toHaveBeenCalledWith(
 			expect.objectContaining({
-				model: GLM_52_MODEL,
+				model: GEMINI_37_FLASH_MODEL,
 				maxTokens: expect.any(Number),
 				estimatedInputTokens: expect.any(Number),
 				reservedCostUsd: expect.any(Number)
 			})
 		);
-		expect(requestBodies[0]?.model).toBe(GLM_52_MODEL);
+		expect(requestBodies[0]?.model).toBe(GEMINI_37_FLASH_MODEL);
 		expect(requestBodies[0]).not.toHaveProperty('models');
 		expect(requestBodies[0]?.max_tokens).toEqual(expect.any(Number));
 		expect(requestBodies[0]?.max_tokens).toBeLessThan(100_000);
@@ -896,7 +896,7 @@ describe('SmartLLMService JSON model recovery', () => {
 		expect(onUsage).toHaveBeenCalledOnce();
 		expect(onUsage).toHaveBeenCalledWith(
 			expect.objectContaining({
-				model: GLM_52_MODEL,
+				model: GEMINI_37_FLASH_MODEL,
 				totalTokens: 15,
 				totalCost: expect.any(Number)
 			})
@@ -1211,7 +1211,7 @@ describe('SmartLLMService JSON model recovery', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(3);
 		expect(requestBodies.map((body) => body.model)).toEqual([
 			DEEPSEEK_V4_FLASH_MODEL,
-			GLM_52_MODEL,
+			GEMINI_37_FLASH_MODEL,
 			XIAOMI_MIMO_V25_MODEL
 		]);
 		expect(errorLogger.logAPIError).not.toHaveBeenCalled();

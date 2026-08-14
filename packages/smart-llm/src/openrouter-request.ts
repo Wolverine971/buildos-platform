@@ -1,6 +1,10 @@
 // packages/smart-llm/src/openrouter-request.ts
 
-import { GPT_56_LUNA_MODEL, KIMI_K3_MODEL } from './model-config';
+import {
+	GEMINI_37_FLASH_MODEL,
+	GPT_56_LUNA_MODEL,
+	KIMI_K3_MODEL
+} from './model-config';
 
 export type OpenRouterChatCompletionBodyParams = {
 	model: string;
@@ -39,6 +43,7 @@ export const OPENROUTER_PRIVATE_PROVIDER = Object.freeze({
 export type OpenRouterModelRequestPolicy = {
 	temperature: 'supported' | 'omit';
 	requiredReasoningEffort?: 'max';
+	minimumReasoningEffort?: 'medium';
 	includeReasoningDetails?: boolean;
 };
 
@@ -49,6 +54,12 @@ export const OPENROUTER_MODEL_REQUEST_POLICIES: Readonly<
 		temperature: 'omit' as const,
 		requiredReasoningEffort: 'max' as const,
 		includeReasoningDetails: true
+	}),
+	[GEMINI_37_FLASH_MODEL]: Object.freeze({
+		// OpenRouter's Google Vertex ZDR endpoints do not advertise temperature.
+		// Keeping it in a require_parameters request makes the route ineligible.
+		temperature: 'omit' as const,
+		minimumReasoningEffort: 'medium' as const
 	}),
 	[GPT_56_LUNA_MODEL]: Object.freeze({
 		temperature: 'omit' as const
@@ -70,12 +81,25 @@ export function resolveOpenRouterFallbackModels(model: string, models?: string[]
 
 function normalizeReasoningForModel(model: string, reasoning: unknown): unknown {
 	const policy = OPENROUTER_MODEL_REQUEST_POLICIES[model];
-	if (!policy?.requiredReasoningEffort) return reasoning;
+	if (!policy?.requiredReasoningEffort && !policy?.minimumReasoningEffort) return reasoning;
 
 	const suppliedReasoning =
 		reasoning && typeof reasoning === 'object' && !Array.isArray(reasoning)
 			? (reasoning as Record<string, unknown>)
 			: {};
+	if (policy.minimumReasoningEffort) {
+		const effortOrder = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
+		const suppliedEffortIndex = effortOrder.indexOf(String(suppliedReasoning.effort ?? ''));
+		const minimumEffortIndex = effortOrder.indexOf(policy.minimumReasoningEffort);
+		if (suppliedEffortIndex < minimumEffortIndex) {
+			return {
+				...suppliedReasoning,
+				effort: policy.minimumReasoningEffort
+			};
+		}
+	}
+
+	if (!policy.requiredReasoningEffort) return reasoning;
 
 	return {
 		...suppliedReasoning,

@@ -29,7 +29,6 @@
 	let {
 		isOpen,
 		projectId,
-		projectName,
 		contextDocument,
 		canEdit = false,
 		onClose,
@@ -37,7 +36,6 @@
 	}: {
 		isOpen: boolean;
 		projectId: string;
-		projectName: string;
 		contextDocument: Document | null;
 		canEdit?: boolean;
 		onClose: () => void;
@@ -71,8 +69,7 @@
 		const date = new Date(`${value}T12:00:00`);
 		if (Number.isNaN(date.getTime())) return 'Latest available brief';
 		return date.toLocaleDateString(undefined, {
-			weekday: 'long',
-			month: 'long',
+			month: 'short',
 			day: 'numeric',
 			year: 'numeric'
 		});
@@ -156,7 +153,7 @@
 		</div>
 
 		{#if activeTab === 'daily'}
-			<section
+			<div
 				id="project-brief-panel-daily"
 				role="tabpanel"
 				aria-labelledby="project-brief-tab-daily"
@@ -188,19 +185,18 @@
 						>
 					</div>
 				{:else if latestBrief}
-					<div class="mx-auto max-w-3xl">
-						<div class="mb-5 border-b border-border pb-4">
-							<p
-								class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+					<div class="brief-document relative mx-auto max-w-3xl">
+						<div
+							class="brief-utility mb-3 flex justify-end sm:absolute sm:right-0 sm:top-0 sm:z-[1] sm:mb-0"
+						>
+							<time
+								datetime={latestBrief.brief_date ?? latestBrief.created_at}
+								class="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-border/70 bg-card/90 px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm"
+								aria-label={`Brief date: ${formatBriefDate(latestBrief.brief_date)}`}
 							>
-								Daily Brief
-							</p>
-							<h2 class="mt-1 text-xl font-semibold tracking-tight text-foreground">
-								{projectName}
-							</h2>
-							<p class="mt-1 text-sm text-muted-foreground">
+								<CalendarDays class="h-3.5 w-3.5" />
 								{formatBriefDate(latestBrief.brief_date)}
-							</p>
+							</time>
 						</div>
 						<div
 							class="brief-prose prose prose-sm max-w-none overflow-x-auto break-words"
@@ -224,31 +220,19 @@
 						</p>
 					</div>
 				{/if}
-			</section>
+			</div>
 		{:else}
-			<section
+			<div
 				id="project-brief-panel-start-here"
 				role="tabpanel"
 				aria-labelledby="project-brief-tab-start-here"
 				class="px-4 py-5 sm:px-6 sm:py-6"
 			>
 				{#if contextDocument}
-					<div class="mx-auto max-w-3xl">
+					<div class="brief-document relative mx-auto max-w-3xl">
 						<div
-							class="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4"
+							class="brief-utility mb-3 flex justify-end sm:absolute sm:right-0 sm:top-0 sm:z-[1] sm:mb-0"
 						>
-							<div class="min-w-0">
-								<p
-									class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-								>
-									Canonical project context
-								</p>
-								<h2
-									class="mt-1 text-xl font-semibold tracking-tight text-foreground"
-								>
-									{contextDocument.title || 'Start Here'}
-								</h2>
-							</div>
 							<Button
 								variant="outline"
 								size="sm"
@@ -286,7 +270,7 @@
 						</p>
 					</div>
 				{/if}
-			</section>
+			</div>
 		{/if}
 	</div>
 </Modal>
@@ -342,6 +326,12 @@
 
 	.brief-prose :global(hr) {
 		border-color: hsl(var(--border));
+	}
+
+	@media (min-width: 640px) {
+		.brief-document .brief-prose :global(h1:first-child) {
+			padding-right: 11rem;
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {

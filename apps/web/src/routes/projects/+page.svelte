@@ -27,7 +27,6 @@
 		buildGraphRequestKey,
 		type GraphScopeFilters
 	} from '$lib/components/ontology/graph/lib/graph.filters';
-	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
 	import {
 		LoaderCircle,
@@ -54,7 +53,8 @@
 		getProjectListScopeLabel,
 		matchesProjectListScope,
 		normalizeProjectListScope,
-		type ProjectListScope
+		type ProjectListScope,
+		type ProjectListSummary
 	} from '$lib/components/projects/project-list';
 
 	let { data } = $props();
@@ -105,7 +105,7 @@
 	 * Set navigation data before navigating to project detail.
 	 * This enables instant skeleton rendering with accurate counts.
 	 */
-	function handleProjectClick(project: OntologyProjectSummary) {
+	function handleProjectClick(project: ProjectListSummary) {
 		setNavigationData({
 			id: project.id,
 			name: project.name,
@@ -183,11 +183,11 @@
 	const initialProjects = untrack(() => data.projects);
 	let projectsStreamVersion = 0;
 	let projectsLoading = $state(
-		isPromiseLike<OntologyProjectSummary[]>(initialProjects) ? true : false
+		isPromiseLike<ProjectListSummary[]>(initialProjects) ? true : false
 	);
 	let projectsError = $state<string | null>(null);
-	let projectSummaries = $state<OntologyProjectSummary[]>(
-		Array.isArray(initialProjects) ? (initialProjects as OntologyProjectSummary[]) : []
+	let projectSummaries = $state<ProjectListSummary[]>(
+		Array.isArray(initialProjects) ? (initialProjects as ProjectListSummary[]) : []
 	);
 
 	// SKELETON LOADING: Show skeletons based on projectCount while loading
@@ -199,7 +199,7 @@
 		const currentVersion = ++projectsStreamVersion;
 		projectsError = null;
 
-		if (isPromiseLike<OntologyProjectSummary[]>(incoming)) {
+		if (isPromiseLike<ProjectListSummary[]>(incoming)) {
 			projectsLoading = true;
 
 			incoming
@@ -217,7 +217,7 @@
 			return;
 		}
 
-		projectSummaries = Array.isArray(incoming) ? (incoming as OntologyProjectSummary[]) : [];
+		projectSummaries = Array.isArray(incoming) ? (incoming as ProjectListSummary[]) : [];
 		projectsLoading = false;
 	});
 
@@ -338,7 +338,7 @@
 			.sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a));
 	});
 
-	function parseProjectUpdatedAt(project: OntologyProjectSummary): number {
+	function parseProjectUpdatedAt(project: ProjectListSummary): number {
 		const timestamp = Date.parse(project.updated_at);
 		return Number.isNaN(timestamp) ? 0 : timestamp;
 	}

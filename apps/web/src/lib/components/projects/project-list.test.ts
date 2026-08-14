@@ -1,11 +1,40 @@
 // apps/web/src/lib/components/projects/project-list.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	addProjectCollaborationFlags,
 	formatProjectUpdatedLabel,
 	getProjectListScopeLabel,
 	matchesProjectListScope,
 	normalizeProjectListScope
 } from './project-list';
+
+describe('project collaboration flags', () => {
+	const projects = [
+		{ id: 'owned-solo', owner_actor_id: 'owner-a', is_shared: false },
+		{ id: 'owned-team', owner_actor_id: 'owner-a', is_shared: false },
+		{ id: 'shared-with-me', owner_actor_id: 'owner-b', is_shared: true }
+	];
+
+	it('marks accepted multi-member projects without treating solo projects as collaborative', () => {
+		const results = addProjectCollaborationFlags(projects, [
+			{ project_id: 'owned-solo', actor_id: 'owner-a' },
+			{ project_id: 'owned-team', actor_id: 'owner-a' },
+			{ project_id: 'owned-team', actor_id: 'collaborator-c' },
+			{ project_id: 'shared-with-me', actor_id: 'current-user' }
+		]);
+
+		expect(results.map(({ id, has_collaborators }) => ({ id, has_collaborators }))).toEqual([
+			{ id: 'owned-solo', has_collaborators: false },
+			{ id: 'owned-team', has_collaborators: true },
+			{ id: 'shared-with-me', has_collaborators: true }
+		]);
+	});
+
+	it('falls back to shared-with-me evidence when the membership lookup fails', () => {
+		const results = addProjectCollaborationFlags(projects, null);
+		expect(results.map((project) => project.has_collaborators)).toEqual([false, false, true]);
+	});
+});
 
 describe('project list scope', () => {
 	it('defaults to current work and preserves supported deep links', () => {
