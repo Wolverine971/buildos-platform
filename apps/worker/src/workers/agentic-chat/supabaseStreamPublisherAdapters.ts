@@ -32,6 +32,13 @@ export type AgenticChatSupabaseRpcClient = {
 
 export type AgenticChatRealtimeChannel = {
 	send(message: { type: 'broadcast'; event: string; payload: unknown }): PromiseLike<string>;
+	subscribe(
+		callback: (
+			status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR',
+			error?: Error
+		) => void,
+		timeout?: number
+	): AgenticChatRealtimeChannel;
 };
 
 export type AgenticChatRealtimeClient = {
@@ -116,10 +123,14 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 
 	constructor(
 		private readonly client: AgenticChatRealtimeClient,
-		private readonly maxCachedChannels = 256
+		private readonly maxCachedChannels = 256,
+		private readonly subscribeTimeoutMs = 10_000
 	) {
 		if (!Number.isSafeInteger(maxCachedChannels) || maxCachedChannels < 1) {
 			throw new Error('maxCachedChannels must be a positive safe integer');
+		}
+		if (!Number.isSafeInteger(subscribeTimeoutMs) || subscribeTimeoutMs < 1) {
+			throw new Error('subscribeTimeoutMs must be a positive safe integer');
 		}
 	}
 
@@ -170,7 +181,31 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 		const channel = this.client.channel(topic, {
 			config: { private: true, broadcast: { ack: true } }
 		});
+		try {
+			await this.subscribe(channel, topic);
+		} catch (error) {
+			try {
+				await this.client.removeChannel(channel);
+			} catch {
+				// Preserve the subscription failure; channel cleanup is best effort.
+			}
+			throw error;
+		}
 		this.channels.set(topic, channel);
 		return channel;
+	}
+
+	private subscribe(channel: AgenticChatRealtimeChannel, topic: string): Promise<void> {
+		return new Promise((resolve, reject) => {
+			channel.subscribe((status, error) => {
+				if (status === 'SUBSCRIBED') {
+					resolve();
+					return;
+				}
+				reject(
+					error ?? new Error(`Realtime channel ${topic} failed to subscribe: ${status}`)
+				);
+			}, this.subscribeTimeoutMs);
+		});
 	}
 }

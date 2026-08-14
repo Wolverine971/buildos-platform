@@ -201,6 +201,32 @@ describe('AgenticChatWorkerRealtimeInbox', () => {
 		expect(inbox.getSnapshot(TURN_ID)?.lastAppliedSequence).toBe(4);
 	});
 
+	it('accepts retained-event gaps covered by the reconciliation snapshot', () => {
+		const sink = observer();
+		const inbox = new AgenticChatWorkerRealtimeInbox();
+		inbox.registerTurn({
+			handle,
+			observer: sink.value,
+			executionGeneration: 1,
+			lastAppliedSequence: 2
+		});
+
+		expect(
+			inbox.applyReconciliation(
+				TURN_ID,
+				receipt(1, 5, {
+					projection_durable_sequence: 2,
+					durable_events: [event(4)]
+				})
+			)
+		).toBe(true);
+		expect(sink.reconciled).toHaveLength(1);
+		expect(inbox.getSnapshot(TURN_ID)).toMatchObject({
+			lastAppliedSequence: 5,
+			buffering: false
+		});
+	});
+
 	it('buffers a future generation until reconciliation adopts it', () => {
 		const sink = observer();
 		const inbox = new AgenticChatWorkerRealtimeInbox();
@@ -286,12 +312,16 @@ describe('AgenticChatWorkerRealtimeInbox', () => {
 			receipt(1, 2, { response_watermark: 1 }),
 			receipt(1, 2, {
 				projection_durable_sequence: 0,
-				durable_events: [event(2)]
+				durable_events: [event(2), event(1)]
 			})
 		]) {
 			const sink = observer();
 			const inbox = new AgenticChatWorkerRealtimeInbox();
-			inbox.registerTurn({ handle, observer: sink.value });
+			inbox.registerTurn({
+				handle,
+				observer: sink.value,
+				executionGeneration: 1
+			});
 
 			expect(inbox.applyReconciliation(TURN_ID, corrupt)).toBe(false);
 			expect(sink.reconciled).toEqual([]);

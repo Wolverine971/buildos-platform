@@ -105,6 +105,26 @@ describe('reconcileAgenticChatTurn', () => {
 		});
 	});
 
+	it('accepts sequence gaps covered by the authoritative text and projection snapshot', async () => {
+		const retained = (snapshot().durable_events as Array<Record<string, unknown>>)[0]!;
+		await expect(
+			reconcileAgenticChatTurn({
+				client: clientWith(
+					snapshot({
+						snapshot_sequence: 5,
+						durable_through_sequence: 5,
+						projection_durable_sequence: 2,
+						response_watermark: 5,
+						durable_events: [
+							{ ...retained, event_id: `${TURN_ID}:2:4`, sequence_index: 4 }
+						]
+					})
+				),
+				...request
+			})
+		).resolves.toMatchObject({ outcome: 'reconciled', response_watermark: 5 });
+	});
+
 	it('accepts ownership-safe not-found and legacy outcomes', async () => {
 		await expect(
 			reconcileAgenticChatTurn({
@@ -131,7 +151,10 @@ describe('reconcileAgenticChatTurn', () => {
 			snapshot({ response_watermark: 3 }),
 			snapshot({ terminal_event_id: { unexpected: true } }),
 			snapshot({
-				durable_events: [(snapshot().durable_events as Array<Record<string, unknown>>)[1]]
+				durable_events: [
+					(snapshot().durable_events as Array<Record<string, unknown>>)[1],
+					(snapshot().durable_events as Array<Record<string, unknown>>)[0]
+				]
 			}),
 			snapshot({
 				durable_events: [

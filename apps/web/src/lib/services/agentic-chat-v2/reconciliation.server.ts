@@ -161,9 +161,6 @@ function parseReconciliationReceipt(
 		});
 		previousSequence = (event as Record<string, unknown>).sequence_index as number;
 	}
-	if (previousSequence !== durableSequence) {
-		fail('durable event window is incomplete');
-	}
 
 	if (receipt.assistant_message !== null) {
 		const message = requireObject(receipt.assistant_message, 'assistant_message');
@@ -229,7 +226,7 @@ function validateDurableEvent(
 		event.client_turn_id !== expected.clientTurnId ||
 		event.execution_generation !== expected.executionGeneration ||
 		event.durable !== true ||
-		sequence !== expected.previousSequence + 1 ||
+		sequence <= expected.previousSequence ||
 		sequence > expected.durableSequence ||
 		event.event_id !==
 			createAgentStreamEventIdV1(
