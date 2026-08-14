@@ -57,16 +57,24 @@ export function enforceAgenticChatTerminalTextIntegrityV1(input: {
 		toolExecutions: input.toolExecutions,
 		mutationRequested
 	});
-	const assistantText = guard.applied ? guard.text : integrityText;
+	const guardedAssistantText = guard.applied ? guard.text : integrityText;
 	const finishedReason =
 		guard.finishedReason && input.finishedReason === 'stop'
 			? guard.finishedReason
 			: input.finishedReason;
+	const correctionDelta = buildCorrectionDelta(input.assistantText, guardedAssistantText);
+	// Stream text is append-only. When a terminal guard replaces an already-emitted
+	// answer, the correction is appended rather than substituted, so finalization
+	// must persist the exact resulting stream prefix as well.
+	const assistantText =
+		correctionDelta === null
+			? input.assistantText
+			: `${input.assistantText}${correctionDelta}`;
 
 	return {
 		assistantText,
 		finishedReason,
-		correctionDelta: buildCorrectionDelta(input.assistantText, assistantText),
+		correctionDelta,
 		finalizationGuard: guard.applied ? guard : null
 	};
 }

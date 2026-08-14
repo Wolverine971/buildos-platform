@@ -27,8 +27,9 @@ beforeAll(() => {
 
 describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 	it('corrects a mutation success claim when no write ran', () => {
+		const emittedText = 'Done — I marked the task complete.';
 		const result = enforceAgenticChatTerminalTextIntegrityV1({
-			assistantText: 'Done — I marked the task complete.',
+			assistantText: emittedText,
 			finishedReason: 'stop',
 			contextType: 'project',
 			userMessage: 'Mark the task complete.',
@@ -37,7 +38,9 @@ describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 
 		expect(result.assistantText).toContain('no write call ran');
 		expect(result.assistantText).toContain('Nothing changed');
-		expect(result.correctionDelta).toBe(`\n\n${result.assistantText}`);
+		expect(result.correctionDelta).toContain('no write call ran');
+		expect(result.assistantText).toBe(`${emittedText}${result.correctionDelta}`);
+		expect(result.assistantText.startsWith(emittedText)).toBe(true);
 		expect(result.finalizationGuard).toBeNull();
 	});
 

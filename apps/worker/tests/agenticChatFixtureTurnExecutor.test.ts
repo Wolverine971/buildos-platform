@@ -853,6 +853,31 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	it('finalizes an appended terminal correction with the immutable streamed prefix', async () => {
+		const emittedText = 'Done — I marked the task complete.';
+		const harness = createHarness([
+			{ type: 'text_delta', text: emittedText },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		harness.input.load.mockResolvedValueOnce({
+			...executionInput,
+			requestPayload: {
+				...executionInput.requestPayload,
+				message: 'Mark the task complete.'
+			}
+		} as never);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+		if (!terminalInput) throw new Error('Terminal correction fixture did not finalize');
+		expect(terminalInput.assistantText.startsWith(`${emittedText}\n\n`)).toBe(true);
+		expect(terminalInput.assistantText).toContain('Nothing changed');
+		await harness.publisher.stop();
+	});
+
 	it('reports deterministic research-capture failure without overturning the completed answer', async () => {
 		const error = new Error('research log unavailable');
 		const harness = createHarness(
