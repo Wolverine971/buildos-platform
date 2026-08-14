@@ -22,15 +22,27 @@ export type AgenticChatLoopToolCatalogV1 = {
 	byToolName: Readonly<Record<string, AgenticChatLoopCatalogOpV1>>;
 };
 
-let catalogProvider: (() => AgenticChatLoopToolCatalogV1) | null = null;
+type AgenticChatLoopToolCatalogProviderV1 = () => AgenticChatLoopToolCatalogV1;
+
+const CATALOG_PROVIDER_SLOT = Symbol.for(
+	'@buildos/agentic-chat-runtime/loop-tool-catalog-provider-v1'
+);
+
+function sharedCatalogProvider(): AgenticChatLoopToolCatalogProviderV1 | null {
+	const provider = (globalThis as unknown as Record<symbol, unknown>)[CATALOG_PROVIDER_SLOT];
+	return typeof provider === 'function'
+		? (provider as AgenticChatLoopToolCatalogProviderV1)
+		: null;
+}
 
 export function provideAgenticChatLoopToolCatalog(
 	provider: () => AgenticChatLoopToolCatalogV1
 ): void {
-	catalogProvider = provider;
+	(globalThis as unknown as Record<symbol, unknown>)[CATALOG_PROVIDER_SLOT] = provider;
 }
 
 export function getAgenticChatLoopToolCatalog(): AgenticChatLoopToolCatalogV1 {
+	const catalogProvider = sharedCatalogProvider();
 	if (!catalogProvider) {
 		throw new Error(
 			'Agentic Chat loop tool catalog is not installed. The host must call provideAgenticChatLoopToolCatalog during composition before loop classification runs.'
