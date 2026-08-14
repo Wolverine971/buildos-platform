@@ -204,7 +204,7 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			mutationProviderCapabilities: {},
 			mutationAdapterCapabilities: {},
 			consumer: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
-			providerBudgetMs: 150_000,
+			providerBudgetMs: 270_000,
 			maxProviderRounds: 16,
 			maxToolCalls: 40,
 			provider: null
