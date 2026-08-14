@@ -183,9 +183,9 @@ function job(signal: AbortSignal = new AbortController().signal) {
 }
 
 function executionBoundaryLogs(processingJob: ReturnType<typeof job>) {
-	return processingJob.log.mock.calls.map(
-		([message]) => JSON.parse(message) as Record<string, unknown>
-	);
+	return processingJob.log.mock.calls
+		.map(([message]) => JSON.parse(message) as Record<string, unknown>)
+		.filter((record) => record.event === 'agentic_chat_execution_boundary');
 }
 
 function recoveryReceipt(
@@ -4501,12 +4501,25 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			}
 		};
 		harness.input.load.mockResolvedValueOnce(fixtureExecutionInput);
+		const processingJob = job();
 
 		try {
-			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
 				outcome: 'failed',
 				terminalStatus: 'failed',
 				queueReconciled: true
+			});
+			const executionFailureLog = processingJob.log.mock.calls
+				.map(([message]) => JSON.parse(message) as Record<string, unknown>)
+				.find((record) => record.event === 'agentic_chat_typed_execution_failure');
+			expect(executionFailureLog).toEqual({
+				event: 'agentic_chat_typed_execution_failure',
+				turn_run_id: TURN_RUN_ID,
+				queue_job_id: QUEUE_JOB_ID,
+				execution_generation: EXECUTION_GENERATION,
+				execution_error_code: 'provider_stream_failed',
+				failure_class: 'permanent',
+				execution_started: true
 			});
 			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
 			if (!terminalInput) throw new Error('Provider-error worker fixture did not finalize');
