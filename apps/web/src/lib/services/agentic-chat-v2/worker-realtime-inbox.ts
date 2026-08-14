@@ -534,14 +534,13 @@ function parseReconciledReceipt(
 			!event ||
 			!eventMatchesHandle(event, handle) ||
 			event.execution_generation !== generation ||
-			event.sequence_index !== previousSequence + 1 ||
+			event.sequence_index <= previousSequence ||
 			event.sequence_index > watermark
 		) {
 			return null;
 		}
 		previousSequence = event.sequence_index;
 	}
-	if (previousSequence !== watermark) return null;
 	return value as AgenticChatWorkerReconciledReceipt;
 }
 

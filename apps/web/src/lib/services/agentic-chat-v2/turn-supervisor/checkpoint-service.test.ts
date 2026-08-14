@@ -491,6 +491,36 @@ describe('turn supervisor checkpoint service', () => {
 		});
 	});
 
+	it('preserves the Supabase client receiver when invoking the recovery RPC', async () => {
+		const rest = {};
+		const supabase = {
+			rest,
+			rpc: vi.fn(function (this: { rest: object }) {
+				expect(this.rest).toBe(rest);
+				return Promise.resolve({
+					data: {
+						outcome: 'recovered',
+						user_id: 'user-1',
+						expired_checkpoint_ids: [],
+						marked_resumed_checkpoint_ids: [],
+						restored_active_checkpoint_ids: [],
+						recovered_at: '2026-05-23T12:00:00+00:00'
+					},
+					error: null
+				});
+			})
+		};
+
+		await expect(
+			recoverCheckpointResumeLifecycle({
+				supabase: supabase as never,
+				userId: 'user-1',
+				staleBefore: '2026-05-23T11:00:00.000Z',
+				recoveredAt: '2026-05-23T12:00:00.000Z'
+			})
+		).resolves.toMatchObject({ outcome: 'recovered', userId: 'user-1' });
+	});
+
 	it('fails closed on an invalid atomic recovery receipt', async () => {
 		await expect(
 			recoverCheckpointResumeLifecycle({

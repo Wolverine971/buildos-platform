@@ -645,7 +645,11 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 
 	it('uses acknowledged private user channels and releases cached channels', async () => {
 		const send = vi.fn().mockResolvedValue('ok');
-		const channel = { send };
+		const subscribe = vi.fn((callback: (status: 'SUBSCRIBED') => void) => {
+			callback('SUBSCRIBED');
+			return channel;
+		});
+		const channel = { send, subscribe };
 		const removeChannel = vi.fn().mockResolvedValue(undefined);
 		const client = {
 			channel: vi.fn().mockReturnValue(channel),
@@ -669,12 +673,46 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 		expect(client.channel).toHaveBeenCalledWith('chat-user:user-1', {
 			config: { private: true, broadcast: { ack: true } }
 		});
+		expect(subscribe).toHaveBeenCalledOnce();
 		expect(send).toHaveBeenCalledWith({
 			type: 'broadcast',
 			event: 'agent-stream-reconcile',
 			payload: message.payload
 		});
 		await adapter.close();
+		expect(removeChannel).toHaveBeenCalledWith(channel);
+	});
+
+	it('fails closed and removes a private channel that cannot subscribe', async () => {
+		const send = vi.fn().mockResolvedValue('ok');
+		const channel = {
+			send,
+			subscribe: vi.fn((callback: (status: 'CHANNEL_ERROR', error?: Error) => void) => {
+				callback('CHANNEL_ERROR', new Error('private channel denied'));
+				return channel;
+			})
+		};
+		const removeChannel = vi.fn().mockResolvedValue(undefined);
+		const adapter = new SupabaseAgenticChatBroadcastAdapter({
+			channel: vi.fn().mockReturnValue(channel),
+			removeChannel
+		});
+
+		await expect(
+			adapter.publish({
+				kind: 'reconcile_hint',
+				topic: 'chat-user:user-1',
+				event: 'agent-stream-reconcile',
+				payload: {
+					contract_version: 'agentic_chat_worker_v1',
+					turn_run_id: 'turn-1',
+					session_id: 'session-1',
+					execution_generation: 1,
+					durable_through_sequence: 3
+				}
+			})
+		).resolves.toBe('failed');
+		expect(send).not.toHaveBeenCalled();
 		expect(removeChannel).toHaveBeenCalledWith(channel);
 	});
 });

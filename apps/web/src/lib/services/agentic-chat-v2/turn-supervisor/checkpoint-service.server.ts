@@ -315,12 +315,7 @@ export async function recoverCheckpointResumeLifecycle(
 	params: RecoverCheckpointResumeLifecycleParams
 ): Promise<RecoverCheckpointResumeLifecycleReceipt> {
 	const recoveredAt = params.recoveredAt ?? new Date().toISOString();
-	type RecoveryRpc = (
-		functionName: string,
-		args: Record<string, unknown>
-	) => PromiseLike<{ data: unknown; error: unknown }>;
-	const rpc = params.supabase.rpc as unknown as RecoveryRpc;
-	const { data, error } = await rpc('recover_agentic_chat_resume_checkpoints', {
+	const { data, error } = await params.supabase.rpc('recover_agentic_chat_resume_checkpoints', {
 		p_user_id: params.userId,
 		p_stale_before: params.staleBefore,
 		p_recovered_at: recoveredAt
