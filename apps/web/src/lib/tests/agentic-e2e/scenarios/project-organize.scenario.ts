@@ -77,7 +77,28 @@ export const projectOrganizeScenario: Scenario = {
 	category: 'organization',
 	seed: async (ctx): Promise<SeedResult> => {
 		const { projectId } = await seedProject(ctx, spec());
-		const docsBefore = await listDocuments(ctx.db.admin, projectId);
+		// Project instantiation also creates a managed START HERE document. It may
+		// legitimately evolve during organization; only scenario-authored source
+		// documents are subject to the content-preservation assertion below.
+		const expectedSourceByTitle = new Map(MESSY_DOCS.map((doc) => [doc.title, doc.body]));
+		const docsBefore = (await listDocuments(ctx.db.admin, projectId)).filter((doc) =>
+			expectedSourceByTitle.has(doc.title)
+		);
+		if (docsBefore.length !== MESSY_DOCS.length) {
+			throw new Error(
+				`[seed] expected ${MESSY_DOCS.length} messy source documents, found ${docsBefore.length}`
+			);
+		}
+		for (const doc of docsBefore) {
+			if (
+				normalizeComparableText(doc.content ?? '') !==
+				normalizeComparableText(expectedSourceByTitle.get(doc.title) ?? '')
+			) {
+				throw new Error(
+					`[seed] source document "${doc.title}" content does not match its fixture`
+				);
+			}
+		}
 		return {
 			projectId,
 			entityIds: {},
