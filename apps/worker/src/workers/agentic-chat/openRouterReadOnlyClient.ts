@@ -21,6 +21,10 @@ import {
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
 	isAgenticChatProductionReadToolNameV1
 } from './readOnlyTool';
+import {
+	AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1,
+	reviewedAgenticChatMutationSpecV1
+} from './mutationToolCatalog';
 import { runWithAbortableDeadline } from './abortableDeadline';
 import {
 	type AgenticChatExecutionObservationPortV1,
@@ -33,6 +37,9 @@ const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_SSE_BUFFER_BYTES = 256 * 1024;
 const PROVIDER_TELEMETRY_TIMEOUT_MS = 5_000;
 const USAGE_LOG_IDENTITY_VERSION = 'agentic_chat_provider_usage_v1';
+const MAX_REVIEWED_PROVIDER_TOOLS =
+	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.length +
+	AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames.length;
 
 export type AgenticChatOpenRouterProviderRoutingV1 = {
 	allow_fallbacks?: boolean;
@@ -1214,9 +1221,9 @@ function validateToolSurface(input: ClientInput): void {
 	if (
 		input.toolChoice !== 'auto' ||
 		input.tools.length < 1 ||
-		input.tools.length > AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.length
+		input.tools.length > MAX_REVIEWED_PROVIDER_TOOLS
 	) {
-		throw new Error('Agentic Chat toolChoice=auto requires a bounded read tool surface');
+		throw new Error('Agentic Chat toolChoice=auto requires a bounded reviewed tool surface');
 	}
 	const seen = new Set<string>();
 	for (const tool of input.tools) {
@@ -1234,7 +1241,8 @@ function validateReadToolDefinition(
 		typeof tool.function.name !== 'string' ||
 		!tool.function.name ||
 		tool.function.name !== tool.function.name.trim() ||
-		!isAgenticChatProductionReadToolNameV1(tool.function.name) ||
+		(!isAgenticChatProductionReadToolNameV1(tool.function.name) &&
+			reviewedAgenticChatMutationSpecV1(tool.function.name) === null) ||
 		seen.has(tool.function.name) ||
 		typeof tool.function.description !== 'string' ||
 		!tool.function.description.trim() ||

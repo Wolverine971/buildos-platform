@@ -9,6 +9,8 @@ import {
 } from '../src/workers/agentic-chat/openRouterReadOnlyClient';
 import type { AgenticChatReadOnlyProviderClientEventV1 } from '../src/workers/agentic-chat/readOnlyProvider';
 import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/executionObservation';
+import { AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1 } from '../src/workers/agentic-chat/mutationToolCatalog';
+import { AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 } from '../src/workers/agentic-chat/readOnlyTool';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';
@@ -514,6 +516,43 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			)
 		).rejects.toThrow('read tool definition is invalid');
 		expect(fetchImpl).not.toHaveBeenCalled();
+	});
+
+	it('accepts the full reviewed read and mutation provider surface', async () => {
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				JSON.stringify({ choices: [{ delta: { content: 'Ready.' } }] }),
+				JSON.stringify({
+					choices: [{ delta: {}, finish_reason: 'stop' }],
+					usage: { prompt_tokens: 7, completion_tokens: 2, total_tokens: 9 }
+				}),
+				'[DONE]'
+			])
+		) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		const tools = [
+			...AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
+			...AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames
+		].map(readToolDefinition);
+
+		await expect(
+			collect(
+				test.client.stream({
+					...input(),
+					tools,
+					toolChoice: 'auto'
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text', content: 'Ready.' },
+			{
+				type: 'done',
+				finishedReason: 'stop',
+				usage: { promptTokens: 7, completionTokens: 2, totalTokens: 9 }
+			}
+		]);
+		const body = JSON.parse(String(vi.mocked(fetchImpl).mock.calls[0]?.[1]?.body));
+		expect(body).toMatchObject({ tool_choice: 'auto', tools });
 	});
 
 	it('rejects multiple streamed choices instead of silently ignoring one', async () => {
