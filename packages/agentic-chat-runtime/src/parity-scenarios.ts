@@ -262,6 +262,10 @@ export type AgenticChatParityPartitionV1 = {
 	contested: readonly AgenticChatParityDifferenceV1[];
 };
 
+function matchesJsonPointerPrefix(path: string, prefix: string): boolean {
+	return path === prefix || path.startsWith(prefix.endsWith('/') ? prefix : `${prefix}/`);
+}
+
 export function partitionAgenticChatParityDifferencesV1(
 	differences: readonly AgenticChatParityDifferenceV1[],
 	deliberatePrefixes: readonly string[]
@@ -269,7 +273,9 @@ export function partitionAgenticChatParityDifferencesV1(
 	const deliberate: AgenticChatParityDifferenceV1[] = [];
 	const contested: AgenticChatParityDifferenceV1[] = [];
 	for (const difference of differences) {
-		if (deliberatePrefixes.some((prefix) => difference.path.startsWith(prefix))) {
+		if (
+			deliberatePrefixes.some((prefix) => matchesJsonPointerPrefix(difference.path, prefix))
+		) {
 			deliberate.push(difference);
 		} else {
 			contested.push(difference);

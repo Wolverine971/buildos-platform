@@ -10,7 +10,7 @@ cmds = ["npx --yes pnpm@11.7.0 install --prod=false --frozen-lockfile"]
 
 [phases.build]
 dependsOn = ["install"]
-cmds = ["npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker"]
+cmds = ["NODE_OPTIONS=--max-old-space-size=2048 npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker"]
 
 [start]
 cmd = "node apps/worker/dist/index.js"

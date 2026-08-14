@@ -97,6 +97,21 @@ describe('agentic chat parity scenario registry', () => {
 		expect(partition.deliberate).toEqual([timing]);
 		expect(partition.contested).toEqual([done]);
 	});
+
+	it('does not treat a sibling JSON pointer as a deliberate prefix match', () => {
+		const sibling = {
+			path: '/metadata/lifecycle_events/40',
+			kind: 'unexpected_in_actual' as const,
+			expected: { present: false, value: null },
+			actual: { present: true, value: 'unexpected' }
+		};
+		const partition = partitionAgenticChatParityDifferencesV1(
+			[sibling],
+			['/metadata/lifecycle_events/4']
+		);
+		expect(partition.deliberate).toEqual([]);
+		expect(partition.contested).toEqual([sibling]);
+	});
 });
 
 describe('worker parity evaluation', () => {

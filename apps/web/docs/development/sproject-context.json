@@ -59,11 +59,6 @@
 			"components": ["AgentChatModal"]
 		},
 		{
-			"file": "src/lib/components/landing/HomepageV2.svelte",
-			"type": "component",
-			"components": ["Modal", "PublicProjectView"]
-		},
-		{
 			"file": "src/lib/components/email/EmailManager.svelte",
 			"type": "component",
 			"components": ["EmailComposer", "EmailPreview"]
@@ -93,6 +88,11 @@
 				"TimeBlockModalContent",
 				"AgentRunModalContent"
 			]
+		},
+		{
+			"file": "src/lib/components/landing/HomepageV2.svelte",
+			"type": "component",
+			"components": ["Modal", "PublicProjectView"]
 		},
 		{
 			"file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
@@ -212,6 +212,11 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -224,11 +229,6 @@
 				"MobileTaskBoard",
 				"ProjectDocumentsSection"
 			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte",
@@ -1210,23 +1210,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/ui/live-transcript-preview.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["LIVE_TRANSCRIPT_PREVIEW_CHAR_LIMIT", "getLiveTranscriptPreview"]
-		},
-		{
-			"file": "src/lib/components/ui/rich-markdown-editor-voice.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"normalizeVoiceTranscript",
-				"preserveInsertedVoiceSpacing",
-				"canReplaceInsertedVoiceRange",
-				"shouldInsertCapturedVoiceFallback"
-			]
-		},
-		{
 			"file": "src/lib/components/admin/chat-users/chat-user-export.ts",
 			"type": "component",
 			"components": [],
@@ -1273,6 +1256,23 @@
 			]
 		},
 		{
+			"file": "src/lib/components/ui/live-transcript-preview.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["LIVE_TRANSCRIPT_PREVIEW_CHAR_LIMIT", "getLiveTranscriptPreview"]
+		},
+		{
+			"file": "src/lib/components/ui/rich-markdown-editor-voice.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"normalizeVoiceTranscript",
+				"preserveInsertedVoiceSpacing",
+				"canReplaceInsertedVoiceRange",
+				"shouldInsertCapturedVoiceFallback"
+			]
+		},
+		{
 			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
 			"type": "component",
 			"components": [],
@@ -1283,12 +1283,6 @@
 				"statusBadge",
 				"libriStatusClasses"
 			]
-		},
-		{
-			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["createDragDropState"]
 		},
 		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
@@ -1351,6 +1345,12 @@
 			]
 		},
 		{
+			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["createDragDropState"]
+		},
+		{
 			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 			"type": "component",
 			"components": [],
@@ -1385,6 +1385,17 @@
 			"type": "component",
 			"components": [],
 			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
+		},
+		{
+			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_COMMANDERS",
+				"DEFAULT_PUBLIC_PROJECT_ID",
+				"getCommander",
+				"formatTimelineYearRange"
+			]
 		},
 		{
 			"file": "src/lib/components/ui/codemirror/extensions.ts",
@@ -1432,17 +1443,6 @@
 				"hideVoiceWidget",
 				"hideVoiceInsertHint",
 				"voiceWidgetExtension"
-			]
-		},
-		{
-			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_COMMANDERS",
-				"DEFAULT_PUBLIC_PROJECT_ID",
-				"getCommander",
-				"formatTimelineYearRange"
 			]
 		},
 		{
@@ -1590,10 +1590,10 @@
 	},
 	"unusedComponents": [
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
-		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
+		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 		"src/lib/components/ontology/DocumentInteractDock.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
@@ -1629,24 +1629,24 @@
 		"src/lib/components/project/project-event-filters.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
-		"src/lib/components/ui/live-transcript-preview.ts",
-		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
+		"src/lib/components/ui/live-transcript-preview.ts",
+		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
-		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
 		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
+		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/project/v2/board-a11y.ts",
+		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
-		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",

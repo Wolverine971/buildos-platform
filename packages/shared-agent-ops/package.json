@@ -243,8 +243,8 @@
 		}
 	},
 	"scripts": {
-		"build": "tsup",
-		"dev": "tsup --watch",
+		"build": "tsup && tsc --emitDeclarationOnly --declarationMap false",
+		"dev": "tsup --watch --dts",
 		"clean": "rm -rf dist .turbo",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest",

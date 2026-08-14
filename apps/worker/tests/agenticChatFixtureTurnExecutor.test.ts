@@ -4650,7 +4650,8 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 						publicEvents: harness.broadcastMessages.map((message) => message.payload),
 						terminalStatus: terminalInput.status,
 						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length,
-						streamTerminalFailureObserved: true
+						streamTerminalFailureObserved:
+							terminalInput.failureCode === 'timeout_post_start'
 					}),
 					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}

@@ -56,7 +56,11 @@ export default defineConfig({
 		'src/utils/document-outline.ts'
 	],
 	format: ['cjs', 'esm'],
-	dts: true,
+	// Rollup's declaration bundler builds every entrypoint in one worker. This
+	// package has enough entrypoints that the worker exceeds Railway's heap
+	// limit. `tsc --emitDeclarationOnly` runs after tsup and emits the same
+	// exported declaration paths without that single-worker memory spike.
+	dts: false,
 	clean: true,
 	splitting: false,
 	sourcemap: false

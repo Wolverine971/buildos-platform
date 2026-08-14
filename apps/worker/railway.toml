@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker"
+buildCommand = "NODE_OPTIONS=--max-old-space-size=2048 npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker"
 watchPatterns = [
   "apps/worker/**",
   "packages/**",
