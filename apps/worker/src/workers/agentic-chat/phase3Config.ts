@@ -13,6 +13,10 @@ import {
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS,
 	DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS
 } from './fixtureTurnExecutor';
+import {
+	AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1,
+	type AgenticChatProviderMutationCapabilitiesV1
+} from './mutationToolCatalog';
 
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
@@ -25,6 +29,8 @@ type AgenticChatPhase3BaseConfig = {
 	liveVisionEnabled: boolean;
 	supervisorEnabled: boolean;
 	consumptionBillingEnabled: boolean;
+	mutationProviderCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>;
+	mutationAdapterCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>;
 	consumer: AgenticChatConsumerConfig;
 	providerBudgetMs: number;
 	maxProviderRounds: number;
@@ -71,6 +77,19 @@ export function loadAgenticChatPhase3Config(
 		false,
 		'PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE'
 	);
+	const mutationProviderCapabilities = parseMutationCapabilities(
+		environment.AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES,
+		'AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES'
+	);
+	const mutationAdapterCapabilities = parseMutationCapabilities(
+		environment.AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES,
+		'AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES'
+	);
+	for (const [capability, toolName] of AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1) {
+		if (mutationProviderCapabilities[capability] && !mutationAdapterCapabilities[capability]) {
+			throw new Error(`${toolName} provider capability requires its mutation adapter`);
+		}
+	}
 	const internalUserIds = parseInternalUserIds(environment.AGENTIC_CHAT_INTERNAL_USER_IDS);
 	if (enabled && internalUserIds.length === 0) {
 		throw new Error(
@@ -132,6 +151,8 @@ export function loadAgenticChatPhase3Config(
 			liveVisionEnabled,
 			supervisorEnabled,
 			consumptionBillingEnabled,
+			mutationProviderCapabilities,
+			mutationAdapterCapabilities,
 			consumer,
 			providerBudgetMs,
 			maxProviderRounds,
@@ -147,6 +168,8 @@ export function loadAgenticChatPhase3Config(
 		liveVisionEnabled,
 		supervisorEnabled,
 		consumptionBillingEnabled,
+		mutationProviderCapabilities,
+		mutationAdapterCapabilities,
 		consumer,
 		providerBudgetMs,
 		maxProviderRounds,
@@ -189,6 +212,36 @@ function parseInternalUserIds(value: string | undefined): string[] {
 			'AGENTIC_CHAT_INTERNAL_USER_IDS must be a comma-separated canonical UUID list'
 		);
 	}
+}
+
+function parseMutationCapabilities(
+	value: string | undefined,
+	name: string
+): Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>> {
+	if (value === undefined || value === '') return Object.freeze({});
+	const entries = value.split(',');
+	if (entries.some((entry) => !entry || entry !== entry.trim())) {
+		throw new Error(`${name} must be a comma-separated canonical capability list`);
+	}
+	if (entries.length > AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.length) {
+		throw new Error(
+			`${name} supports at most ${AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.length} capabilities`
+		);
+	}
+	if (new Set(entries).size !== entries.length) {
+		throw new Error(`${name} must not contain duplicates`);
+	}
+	const allowedCapabilities = new Set<string>(
+		AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.map(([capability]) => capability)
+	);
+	if (entries.some((entry) => !allowedCapabilities.has(entry))) {
+		throw new Error(`${name} contains an unknown capability`);
+	}
+	return Object.freeze(
+		Object.fromEntries(
+			entries.map((entry) => [entry, true])
+		) as Partial<AgenticChatProviderMutationCapabilitiesV1>
+	);
 }
 
 function loadProviderConfig(environment: NodeJS.ProcessEnv): AgenticChatPhase3ProviderConfig {

@@ -186,7 +186,7 @@ export function createAgenticChatPhase3Assembly(options: {
 	maxToolCalls?: number;
 	/** Separate provider-advertisement gate. Requires the matching adapter gate. */
 	mutationProviderCapabilities?: Partial<AgenticChatProviderMutationCapabilitiesV1>;
-	/** Separate irreversible-adapter gate. The production bootstrap leaves this off. */
+	/** Separate irreversible-adapter gate. Production configuration defaults this off. */
 	mutationAdapterCapabilities?: Partial<AgenticChatProviderMutationCapabilitiesV1>;
 	onPromptSnapshotError?: (error: unknown) => void;
 	onExecutionObservationError?: (error: unknown) => void;

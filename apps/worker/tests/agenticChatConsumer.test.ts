@@ -201,6 +201,8 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			liveVisionEnabled: false,
 			supervisorEnabled: false,
 			consumptionBillingEnabled: false,
+			mutationProviderCapabilities: {},
+			mutationAdapterCapabilities: {},
 			consumer: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
 			providerBudgetMs: 150_000,
 			maxProviderRounds: 16,
@@ -239,6 +241,45 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 		).toThrow('PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE must be exactly true or false');
 	});
 
+	it('keeps mutation capabilities default-off and requires exact dual-gate configuration', () => {
+		const capabilities = 'updateOntoTask,moveDocumentInTree';
+		expect(
+			loadAgenticChatPhase3Config({
+				AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES: capabilities,
+				AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: capabilities
+			})
+		).toMatchObject({
+			mutationProviderCapabilities: {
+				updateOntoTask: true,
+				moveDocumentInTree: true
+			},
+			mutationAdapterCapabilities: {
+				updateOntoTask: true,
+				moveDocumentInTree: true
+			}
+		});
+		expect(() =>
+			loadAgenticChatPhase3Config({
+				AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES: 'updateOntoTask'
+			})
+		).toThrow('update_onto_task provider capability requires its mutation adapter');
+		expect(() =>
+			loadAgenticChatPhase3Config({
+				AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: 'updateOntoTask,updateOntoTask'
+			})
+		).toThrow('AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES must not contain duplicates');
+		expect(() =>
+			loadAgenticChatPhase3Config({
+				AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: 'updateOntoTask, moveDocumentInTree'
+			})
+		).toThrow('must be a comma-separated canonical capability list');
+		expect(() =>
+			loadAgenticChatPhase3Config({
+				AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: 'update_onto_task'
+			})
+		).toThrow('AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES contains an unknown capability');
+	});
+
 	it('parses an exact internal cohort and independently bounded queue policy', () => {
 		const first = 'd1000000-0000-4000-8000-000000000002';
 		const second = 'd1000000-0000-4000-8000-000000000001';
@@ -263,6 +304,8 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			liveVisionEnabled: false,
 			supervisorEnabled: false,
 			consumptionBillingEnabled: false,
+			mutationProviderCapabilities: {},
+			mutationAdapterCapabilities: {},
 			consumer: {
 				concurrency: 1,
 				pollIntervalMs: 1500,
