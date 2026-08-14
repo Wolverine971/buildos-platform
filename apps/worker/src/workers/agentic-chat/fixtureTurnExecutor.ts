@@ -920,6 +920,14 @@ export class AgenticChatFixtureTurnExecutor {
 			});
 		} catch (error) {
 			const failureClass = classifyFailure(error, executionStarted, combined.signal);
+			logAgenticChatTypedExecutionFailure(
+				job,
+				claim,
+				error,
+				failureClass,
+				combined.signal,
+				executionStarted
+			);
 			const terminalFailureCode = specificTerminalFailureCode(error, combined.signal);
 			const assistantText = this.safeAssistantText(
 				claim.turnRunId,
@@ -3129,6 +3137,38 @@ function logAgenticChatExecutionBoundary(
 		// Diagnostic logging must never become part of the execution boundary.
 	}
 	return Promise.resolve();
+}
+
+function logAgenticChatTypedExecutionFailure(
+	job: Pick<ProcessingJob, 'log'>,
+	claim: TerminalClaim,
+	error: unknown,
+	failureClass: AgenticChatRecoveryFailureClassV1,
+	signal: AbortSignal,
+	executionStarted: boolean
+): void {
+	const reason = signal.aborted ? signal.reason : error;
+	const providerError =
+		reason instanceof AgenticChatProviderExecutionError
+			? reason
+			: error instanceof AgenticChatProviderExecutionError
+				? error
+				: null;
+	if (!providerError) return;
+	const record = {
+		event: 'agentic_chat_typed_execution_failure',
+		turn_run_id: claim.turnRunId,
+		queue_job_id: claim.queueJobId,
+		execution_generation: claim.executionGeneration,
+		execution_error_code: providerError.code,
+		failure_class: failureClass,
+		execution_started: executionStarted
+	};
+	try {
+		void job.log(JSON.stringify(record)).catch(() => undefined);
+	} catch {
+		// Provider diagnostics must never alter recovery or terminal truth.
+	}
 }
 
 function executionBoundaryFailure(error: unknown): Record<string, string> {
