@@ -13,6 +13,7 @@
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
 	import InboxReviewDetails from '$lib/components/inbox/InboxReviewDetails.svelte';
 	import { formatInboxAttentionSummary } from '$lib/components/inbox/inbox-presentation';
+	import type { VerifiedProjectSuggestionChangeSummary } from '@buildos/shared-agent-ops/proposal-context';
 	import type {
 		AgentChatResolutionAction,
 		DataMutationSummary
@@ -72,6 +73,9 @@
 		goal?: string | null;
 		label?: string | null;
 		change_set?: ChangeSet | null;
+	};
+	type ProjectSuggestionInboxPayload = ProjectSuggestion & {
+		verified_change_summary?: VerifiedProjectSuggestionChangeSummary;
 	};
 
 	type CalendarSuggestionPayload = {
@@ -310,8 +314,8 @@
 		return asRecord(item.source_payload) as T | null;
 	}
 
-	function projectSuggestion(item: InboxItem): ProjectSuggestion | null {
-		return sourcePayload<ProjectSuggestion & Record<string, unknown>>(item);
+	function projectSuggestion(item: InboxItem): ProjectSuggestionInboxPayload | null {
+		return sourcePayload<ProjectSuggestionInboxPayload & Record<string, unknown>>(item);
 	}
 
 	function agentRun(item: InboxItem): AgentRunPayload | null {
@@ -1271,13 +1275,15 @@
 											{/if}
 											<InboxReviewDetails
 												{metadata}
-												summary={payload?.preview?.summary ?? null}
+												summary={changes > 0
+													? null
+													: (payload?.preview?.summary ?? null)}
 												evidence={evidence.map(evidenceLabel)}
 											/>
 											{#if item.source_type === 'project_suggestion' && changes > 0}
 												<InboxChangeDetails
-													operations={payload?.operations ?? []}
-													preview={payload?.preview ?? null}
+													verifiedChangeSummary={payload?.verified_change_summary ??
+														null}
 												/>
 											{:else if changes}
 												<p class="mt-1.5 text-2xs text-muted-foreground">

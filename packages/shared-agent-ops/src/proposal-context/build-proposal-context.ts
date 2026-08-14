@@ -7,7 +7,8 @@ import type {
 	ProjectSuggestionPreview,
 	ProjectSuggestionStatus
 } from '@buildos/shared-types';
-import { decodeLoopOperations, type DecodedLoopOperation } from './decode-operations';
+import type { DecodedLoopOperation } from './decode-operations';
+import type { VerifiedProjectSuggestionChangeSummary } from './verify-operations';
 
 export type ProposalContextSuggestion = {
 	id: string;
@@ -40,6 +41,7 @@ export type BuildProposalContextOptions = {
 	suggestion: ProposalContextSuggestion;
 	projectName?: string | null;
 	loopRun?: ProposalContextLoopRun | null;
+	verifiedChangeSummary?: VerifiedProjectSuggestionChangeSummary | null;
 	maxEvidence?: number;
 };
 
@@ -167,14 +169,18 @@ export function buildProjectSuggestionProposalContext({
 	suggestion,
 	projectName,
 	loopRun,
+	verifiedChangeSummary = null,
 	maxEvidence = 5
 }: BuildProposalContextOptions): BuiltProposalContext {
 	const operations = normalizeOperations(suggestion.operations);
-	const decodedOperations = decodeLoopOperations(operations);
+	// Never place model-authored operation labels or arguments in a review prompt.
+	// Executable changes are shown only after their IDs have been resolved against
+	// current project state by verifyProjectSuggestionIntegrity.
+	const decodedOperations = verifiedChangeSummary?.operations ?? [];
 	const operationSummaries = decodedOperations.map(operationSummary);
 	const evidence = normalizeEvidence(suggestion.evidence_refs).slice(0, maxEvidence);
 	const evidenceSummaries = evidence.map(evidenceSummary);
-	const preview = normalizePreview(suggestion.preview);
+	const preview = operations.length > 0 ? null : normalizePreview(suggestion.preview);
 	const confidence = formatPercent(suggestion.confidence);
 	const risk = riskLabel[suggestion.risk_tier] ?? `Risk tier ${suggestion.risk_tier}`;
 	const kind = kindLabel[suggestion.kind] ?? suggestion.kind;
@@ -213,6 +219,7 @@ export function buildProjectSuggestionProposalContext({
 
 	appendSection(humanLines, 'Why now', compactText(suggestion.why_now, 700));
 	appendSection(humanLines, 'Rationale', compactText(suggestion.rationale, 900));
+	appendSection(humanLines, 'Verified change', verifiedChangeSummary?.headline ?? null);
 	appendSection(humanLines, 'Preview', previewLines);
 	appendSection(humanLines, 'Proposed changes', operationSummaries);
 	appendSection(humanLines, 'Evidence', evidenceSummaries);

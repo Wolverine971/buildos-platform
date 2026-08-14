@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
 	createAdminSupabaseClient: vi.fn(),
 	syncInboxItemForProjectAudit: vi.fn(),
 	syncInboxItemForProjectSuggestion: vi.fn(),
+	verifyProjectSuggestionIntegrity: vi.fn(),
+	quarantineProjectSuggestionInboxItem: vi.fn(),
 	isProjectSuggestionFresh: vi.fn(),
 	finalizeProjectLoopRunIfComplete: vi.fn(),
 	captureServerEvent: vi.fn()
@@ -25,7 +27,10 @@ vi.mock('$lib/supabase/admin', () => ({
 
 vi.mock('@buildos/shared-agent-ops', () => ({
 	syncInboxItemForProjectAudit: mocks.syncInboxItemForProjectAudit,
-	syncInboxItemForProjectSuggestion: mocks.syncInboxItemForProjectSuggestion
+	syncInboxItemForProjectSuggestion: mocks.syncInboxItemForProjectSuggestion,
+	verifyProjectSuggestionIntegrity: mocks.verifyProjectSuggestionIntegrity,
+	quarantineProjectSuggestionInboxItem: mocks.quarantineProjectSuggestionInboxItem,
+	readProjectSuggestionStructuralFingerprint: vi.fn(() => null)
 }));
 
 vi.mock('$lib/server/project-loop-snapshot.service', () => ({
@@ -87,9 +92,29 @@ function pendingSuggestion(overrides: Record<string, unknown> = {}) {
 describe('decideProjectSuggestion', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mocks.createAdminSupabaseClient.mockReturnValue({});
+		mocks.createAdminSupabaseClient.mockReturnValue({
+			from: vi.fn(() => {
+				const builder: any = {
+					select: vi.fn(() => builder),
+					eq: vi.fn(() => builder),
+					maybeSingle: vi.fn(async () => ({ data: null, error: null }))
+				};
+				return builder;
+			})
+		});
 		mocks.syncInboxItemForProjectAudit.mockResolvedValue(undefined);
 		mocks.syncInboxItemForProjectSuggestion.mockResolvedValue(undefined);
+		mocks.verifyProjectSuggestionIntegrity.mockResolvedValue({
+			ok: true,
+			summary: {
+				headline: 'Apply verified change.',
+				operation_count: 1,
+				operations: [],
+				structural_fingerprint: 'structural-fingerprint',
+				verified_at: '2026-08-13T12:00:00.000Z'
+			}
+		});
+		mocks.quarantineProjectSuggestionInboxItem.mockResolvedValue(undefined);
 		mocks.executeTool.mockResolvedValue({ success: true });
 	});
 
@@ -274,7 +299,7 @@ describe('decideProjectSuggestion', () => {
 			}
 		});
 		expect(mocks.syncInboxItemForProjectAudit).toHaveBeenCalledWith({
-			supabase: {},
+			supabase: expect.any(Object),
 			audit: reviewedAudit
 		});
 	});
@@ -321,6 +346,53 @@ describe('decideProjectSuggestion', () => {
 			}
 		});
 		expect(mocks.executeTool).not.toHaveBeenCalled();
+	});
+
+	it('fails closed and quarantines a proposal whose resolved entities do not match', async () => {
+		mocks.verifyProjectSuggestionIntegrity.mockResolvedValueOnce({
+			ok: false,
+			diagnostic: {
+				code: 'MODEL_ENTITY_MISMATCH',
+				message: 'Stored operation targets a different document'
+			}
+		});
+		const suggestion = pendingSuggestion({
+			title: 'Move The Mirror Moment',
+			operations: [
+				{
+					tool: 'move_document_in_tree',
+					args: {
+						project_id: 'project-1',
+						document_id: 'wrong-document',
+						new_parent_id: 'destination'
+					},
+					label: 'Move The Mirror Moment'
+				}
+			]
+		});
+		const { supabase, updates } = makeSupabase({
+			project_suggestions: [{ data: suggestion, error: null }]
+		});
+
+		const outcome = await decideProjectSuggestion({
+			supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'approve'
+		});
+
+		expect(outcome).toMatchObject({
+			ok: false,
+			status: 409,
+			message: expect.stringContaining('MODEL_ENTITY_MISMATCH')
+		});
+		expect(mocks.quarantineProjectSuggestionInboxItem).toHaveBeenCalledWith(
+			expect.objectContaining({ suggestion })
+		);
+		expect(mocks.isProjectSuggestionFresh).not.toHaveBeenCalled();
+		expect(mocks.executeTool).not.toHaveBeenCalled();
+		expect(updates).toHaveLength(0);
 	});
 
 	it('approves fresh suggestions with the run chat session and burst-skip fetch header', async () => {
@@ -400,6 +472,53 @@ describe('decideProjectSuggestion', () => {
 				operation_id: 'project_suggestion:suggestion-1',
 				entity_count: 1
 			}
+		});
+	});
+
+	it('records the explicit partial-failure policy when a later operation fails', async () => {
+		const operations = [
+			{
+				tool: 'update_onto_task',
+				args: { project_id: 'project-1', task_id: 'task-1', props: { priority: 'high' } }
+			},
+			{
+				tool: 'update_onto_task',
+				args: { project_id: 'project-1', task_id: 'task-2', props: { priority: 'low' } }
+			}
+		];
+		mocks.executeTool
+			.mockResolvedValueOnce({ success: true })
+			.mockResolvedValueOnce({ success: false, error: 'Second update failed' });
+		const { supabase, updates } = makeSupabase({
+			project_suggestions: [
+				{ data: pendingSuggestion({ operations }), error: null },
+				{ data: pendingSuggestion({ status: 'approved', operations }), error: null },
+				{ data: pendingSuggestion({ status: 'failed', operations }), error: null }
+			],
+			project_loop_runs: [{ data: { chat_session_id: 'chat-1' }, error: null }]
+		});
+
+		const outcome = await decideProjectSuggestion({
+			supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'approve'
+		});
+
+		expect(outcome).toMatchObject({
+			ok: true,
+			result: {
+				ok: false,
+				applied_operations: 1,
+				execution_policy: 'prevalidated_sequential',
+				partial_failure: true,
+				errors: [{ tool: 'update_onto_task', error: 'Second update failed' }]
+			}
+		});
+		expect(updates.at(-1)?.payload).toMatchObject({
+			status: 'failed',
+			result: expect.objectContaining({ partial_failure: true })
 		});
 	});
 });

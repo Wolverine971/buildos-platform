@@ -1,14 +1,12 @@
 <!-- apps/web/src/lib/components/inbox/InboxChangeDetails.svelte -->
 <!--
-	Decodes a project-review suggestion's declarative `operations[]` into a
-	human-readable list so the reviewer can see WHAT the change actually does
-	(update a task, change a status, move a doc, delete, etc.) before deciding.
+	Renders only the server-resolved operation summary so the reviewer sees the
+	current entities and destinations that approval would actually mutate.
 	Used by both the Dashboard AI Inbox modal and the project-page Inbox panel.
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import {
-		ArrowRight,
 		ChevronDown,
 		FilePlus2,
 		FileText,
@@ -18,19 +16,16 @@
 		Pencil,
 		Trash2
 	} from '$lib/icons/lucide';
-	import type { LoopOperation, ProjectSuggestionPreview } from '@buildos/shared-types';
-	import {
-		decodeLoopOperations,
-		type LoopOperationAction
+	import type {
+		LoopOperationAction,
+		VerifiedProjectSuggestionChangeSummary
 	} from '@buildos/shared-agent-ops/proposal-context';
 
 	let {
-		operations = [],
-		preview = null,
+		verifiedChangeSummary = null,
 		defaultOpen = false
 	}: {
-		operations?: LoopOperation[];
-		preview?: ProjectSuggestionPreview | null;
+		verifiedChangeSummary?: VerifiedProjectSuggestionChangeSummary | null;
 		defaultOpen?: boolean;
 	} = $props();
 
@@ -69,16 +64,8 @@
 		entities: Link2
 	};
 
-	const decoded = $derived(decodeLoopOperations(operations));
-	const count = $derived(operations.length);
-
-	const hasPreviewDetail = $derived(
-		Boolean(
-			(preview?.before && preview.before.length) ||
-				(preview?.after && preview.after.length) ||
-				preview?.impact
-		)
-	);
+	const decoded = $derived(verifiedChangeSummary?.operations ?? []);
+	const count = $derived(verifiedChangeSummary?.operation_count ?? 0);
 </script>
 
 {#if count > 0}
@@ -101,7 +88,7 @@
 
 		{#if open}
 			<div id={detailsId} class="mt-2 space-y-1.5">
-				{#each decoded as op, opIndex (opIndex)}
+				{#each decoded as op (op.key)}
 					{@const Icon = entityIcon[op.entityLabel] ?? actionMeta[op.action].icon}
 					<div class="rounded-md border border-border bg-muted/20 p-2">
 						<div class="flex flex-wrap items-center gap-1.5">
@@ -131,7 +118,7 @@
 
 						{#if op.changes.length}
 							<div class="mt-1.5 space-y-0.5">
-								{#each op.changes as change, changeIndex (changeIndex)}
+								{#each op.changes as change (`${change.label}:${change.value}`)}
 									<div class="flex items-baseline gap-1.5 text-2xs">
 										<span class="shrink-0 font-medium text-muted-foreground">
 											{change.label}:
@@ -145,50 +132,6 @@
 						{/if}
 					</div>
 				{/each}
-
-				{#if hasPreviewDetail}
-					<div class="rounded-md border border-border bg-muted/10 p-2">
-						{#if preview?.before?.length || preview?.after?.length}
-							<div class="flex flex-wrap items-start gap-2 text-2xs">
-								{#if preview?.before?.length}
-									<div class="min-w-0 flex-1">
-										<p class="micro-label text-muted-foreground">Before</p>
-										<ul class="mt-0.5 space-y-0.5">
-											{#each preview.before as line}
-												<li
-													class="break-words text-muted-foreground line-through"
-												>
-													{line}
-												</li>
-											{/each}
-										</ul>
-									</div>
-									<ArrowRight
-										class="mt-4 h-3 w-3 shrink-0 text-muted-foreground"
-									/>
-								{/if}
-								{#if preview?.after?.length}
-									<div class="min-w-0 flex-1">
-										<p class="micro-label text-muted-foreground">After</p>
-										<ul class="mt-0.5 space-y-0.5">
-											{#each preview.after as line}
-												<li class="break-words text-foreground/90">
-													{line}
-												</li>
-											{/each}
-										</ul>
-									</div>
-								{/if}
-							</div>
-						{/if}
-						{#if preview?.impact}
-							<p class="mt-1.5 break-words text-2xs text-muted-foreground">
-								<span class="font-semibold text-foreground/80">Impact:</span>
-								{preview.impact}
-							</p>
-						{/if}
-					</div>
-				{/if}
 			</div>
 		{/if}
 	</div>

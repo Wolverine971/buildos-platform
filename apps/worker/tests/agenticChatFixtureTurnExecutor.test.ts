@@ -4649,7 +4649,8 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 						admissionObserved: true,
 						publicEvents: harness.broadcastMessages.map((message) => message.payload),
 						terminalStatus: terminalInput.status,
-						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
+						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length,
+						streamTerminalFailureObserved: true
 					}),
 					prompt_snapshot_count: harness.promptSnapshots.persist.mock.calls.length
 				}

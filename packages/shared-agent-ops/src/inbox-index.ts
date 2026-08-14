@@ -3,6 +3,15 @@
 // Worker-safe helpers for maintaining the AI Inbox denormalized index. Source
 // tables remain authoritative; these functions only upsert/repair index rows.
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { LoopOperation, ProjectSuggestionPreview } from '@buildos/shared-types';
+import {
+	projectSuggestionQuarantinedSourceStatus,
+	projectSuggestionVerifiedSourceStatus,
+	readProjectSuggestionStructuralFingerprint,
+	serializeProjectSuggestionIntegrityDiagnostic,
+	verifyProjectSuggestionIntegrity,
+	type ProjectSuggestionIntegrityDiagnostic
+} from './proposal-context/verify-operations';
 
 export type InboxSourceType =
 	| 'agent_run'
@@ -462,8 +471,11 @@ export function mapProjectSuggestionToInboxItem(
 	const status = asString(suggestion.status) ?? 'pending';
 	const operations = Array.isArray(suggestion.operations) ? suggestion.operations : [];
 	const kind = asString(suggestion.kind);
-	const isFinding =
-		kind === 'drift' || kind === 'audit_recommendation' || operations.length === 0;
+	// Drift remains part of Project Review history and later synthesis evidence,
+	// but it is an observation rather than an executable change or bounded
+	// decision. It must not consume the attention inbox (tasker/52 WP-2).
+	if (kind === 'drift') return null;
+	const isFinding = kind === 'audit_recommendation' || operations.length === 0;
 	const inboxStatus: InboxItemStatus =
 		status === 'pending'
 			? 'pending'
@@ -503,6 +515,77 @@ export function mapProjectSuggestionToInboxItem(
 		),
 		created_at: asString(suggestion.created_at) ?? undefined
 	};
+}
+
+async function loadProjectSuggestionInboxSourceStatus(
+	supabase: AnySupabase,
+	suggestionId: string
+): Promise<string | null> {
+	const { data, error } = await (supabase as any)
+		.from('inbox_items')
+		.select('source_status')
+		.eq('source_type', 'project_suggestion')
+		.eq('source_ref_id', suggestionId)
+		.maybeSingle();
+	if (error) throw error;
+	return asString(data?.source_status);
+}
+
+export async function expireProjectSuggestionInboxItem(params: {
+	supabase: AnySupabase;
+	suggestionId: string;
+	sourceStatus: string;
+	reason: string;
+}): Promise<InboxIndexRow | null> {
+	const { data, error } = await (params.supabase as any)
+		.from('inbox_items')
+		.update({
+			status: 'expired',
+			source_status: params.sourceStatus,
+			decided_at: new Date().toISOString(),
+			blocked_reason: params.reason,
+			snoozed_until: null,
+			expires_at: null
+		})
+		.eq('source_type', 'project_suggestion')
+		.eq('source_ref_id', params.suggestionId)
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred'])
+		.select('*')
+		.maybeSingle();
+	if (error) throw error;
+	return (data ?? null) as InboxIndexRow | null;
+}
+
+export async function quarantineProjectSuggestionInboxItem(params: {
+	supabase: AnySupabase;
+	suggestion: Record<string, unknown>;
+	diagnostic: ProjectSuggestionIntegrityDiagnostic;
+}): Promise<InboxIndexRow | null> {
+	const mapped = mapProjectSuggestionToInboxItem(params.suggestion);
+	const suggestionId = asString(params.suggestion.id);
+	const projectId = asString(params.suggestion.project_id);
+	if (!suggestionId || !projectId) return null;
+	const diagnosticReason = serializeProjectSuggestionIntegrityDiagnostic(params.diagnostic);
+	return upsertInboxItem(params.supabase, {
+		...(mapped ?? {
+			source_type: 'project_suggestion' as const,
+			source_ref_id: suggestionId,
+			user_id: null,
+			project_id: projectId,
+			audience: 'project_members' as const,
+			title: asString(params.suggestion.title) ?? 'Quarantined project review proposal',
+			summary: asString(params.suggestion.why_now) ?? asString(params.suggestion.rationale),
+			risk_tier: null,
+			action_kinds: []
+		}),
+		status: 'expired',
+		source_status: projectSuggestionQuarantinedSourceStatus(params.diagnostic),
+		action_kinds: [],
+		blocked_reason: diagnosticReason,
+		decided_at: new Date().toISOString(),
+		expires_at: null,
+		snoozed_until: null
+	});
 }
 
 export function mapProjectAuditToInboxItem(audit: Record<string, unknown>): InboxIndexRow | null {
@@ -661,8 +744,53 @@ export async function syncInboxItemForProjectSuggestion(params: {
 			? markInboxItemExpired(params.supabase, 'project_suggestion', params.suggestionId)
 			: null;
 	}
+	const suggestionId = asString(suggestion.id) ?? params.suggestionId;
+	const kind = asString(suggestion.kind);
+	if (kind === 'drift') {
+		return suggestionId
+			? expireProjectSuggestionInboxItem({
+					supabase: params.supabase,
+					suggestionId,
+					sourceStatus: 'observation_not_admitted',
+					reason: 'Drift observations remain in Project Review history but are not attention items'
+				})
+			: null;
+	}
 	const row = mapProjectSuggestionToInboxItem(suggestion);
-	return row ? upsertInboxItem(params.supabase, row) : null;
+	if (!row) return null;
+
+	const operations = Array.isArray(suggestion.operations)
+		? (suggestion.operations as LoopOperation[])
+		: [];
+	const status = asString(suggestion.status) ?? 'pending';
+	if (operations.length > 0 && ['pending', 'approved', 'delegated'].includes(status)) {
+		const existingSourceStatus = suggestionId
+			? await loadProjectSuggestionInboxSourceStatus(params.supabase, suggestionId)
+			: null;
+		const expectedStructuralFingerprint =
+			readProjectSuggestionStructuralFingerprint(existingSourceStatus);
+		const verification = await verifyProjectSuggestionIntegrity(params.supabase, {
+			projectId: asString(suggestion.project_id) ?? '',
+			operations,
+			title: asString(suggestion.title),
+			preview: (suggestion.preview ?? null) as ProjectSuggestionPreview | null,
+			checkModelAlignment: !expectedStructuralFingerprint,
+			expectedStructuralFingerprint
+		});
+		if (!verification.ok) {
+			return quarantineProjectSuggestionInboxItem({
+				supabase: params.supabase,
+				suggestion,
+				diagnostic: verification.diagnostic
+			});
+		}
+		row.title = verification.summary.headline;
+		row.source_status = projectSuggestionVerifiedSourceStatus(
+			verification.summary.structural_fingerprint
+		);
+		row.blocked_reason = null;
+	}
+	return upsertInboxItem(params.supabase, row);
 }
 
 export async function syncInboxItemForProjectAudit(params: {

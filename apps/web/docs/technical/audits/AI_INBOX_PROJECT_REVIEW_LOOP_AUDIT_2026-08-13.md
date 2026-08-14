@@ -3,7 +3,7 @@
 # AI Inbox Project Review Loop Audit
 
 **Date:** 2026-08-13  
-**Status:** Audit complete; Tier 1 implemented and verified on 2026-08-13; Tiers 2-3 remain open  
+**Status:** Audit complete; independently verified 2026-08-13 (see addendum); Tier 1 committed in `d72960f5d`; remaining work handed off in [tasker/52](../../../../../tasker/52-ai-inbox-review-loop-remediation.md)  
 **Surface:** Dashboard AI Inbox, Project Review loops, Complete Project Audit recommendations  
 **Primary question:** Does the inbox help the owner understand what project is affected, what should change, and why the change matters now?
 
@@ -96,10 +96,10 @@ The baseline can be reproduced with read-only queries using these definitions:
 
 - **Current workload:** `inbox_items` for the seven screenshot projects, `source_type = 'project_suggestion'`, `audience = 'project_members'`, and status in `pending` or `deferred`.
 - **Visible workload:** the same set with `status = 'pending'`.
-- **Executable suggestion:** the linked `project_loop_suggestions.operations` value is a non-empty JSON array.
+- **Executable suggestion:** the linked `project_suggestions.operations` value is a non-empty JSON array.
 - **Finding:** kind is `drift` or `audit_recommendation`, or `operations` is empty, matching the current inbox mapper.
-- **August history:** `project_loop_suggestions.created_at >= 2026-08-01T00:00:00Z` for the seven projects.
-- **July history:** `project_loop_suggestions.created_at >= 2026-07-01T00:00:00Z` for the seven projects.
+- **August history:** `project_suggestions.created_at >= 2026-08-01T00:00:00Z` for the seven projects.
+- **July history:** `project_suggestions.created_at >= 2026-07-01T00:00:00Z` for the seven projects.
 - **Explicit user resolution:** status in `applied`, `addressed`, or `rejected`; `superseded` is treated as system lifecycle cleanup rather than a user decision.
 - **Light-review run volume:** `project_loop_runs` in the August window, grouped by `trigger_reason` and terminal status.
 - **Audit run volume:** `project_audits` in the August window, with child counts from `project_audit_suggestions`.
@@ -780,6 +780,25 @@ The implementation reviewer should explicitly confirm or challenge these recomme
 - [Project Review Loops Scope - 2026-06-13](../../../../../docs/specs/PROJECT_REVIEW_LOOPS_SCOPE_2026-06-13.md)
 - [Project Review Loop Audit Suggestion Families - 2026-06-25](../../../../../docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md)
 - [Project Loops Brainstorm - 2026-06-12](../../../../../docs/brainstorms/2026-06-12-project-loops-brainstorm.md)
+
+## Independent verification and ratified direction - addendum 2026-08-13
+
+A second agent independently verified this audit the same day: every cited code path was re-read and confirmed accurate, and the production claims were re-queried fresh (script preserved at `scripts/audits/verify-inbox-review-loop.mjs`).
+
+Key verification results:
+
+- **The proposal-integrity finding #1 was confirmed live in production.** The mismatched Instagram/Mood Board proposal was still pending; its first operation ID resolves to `03 — Quality Contract & Failure Recovery`, not the `The Mirror Moment` named in its label and preview. A second, older pending proposal covers the same reorganization with correct IDs — one pair demonstrating both the integrity bug and the semantic-duplication gap.
+- The unresolved workload had grown to 18 pending / 44 deferred / 62 total across nine projects by the evening re-query.
+- New finding: deferred rows are only promoted when a producer sync or inbox read touches the project, so deferred items in untouched projects never resurface (three projects had deferred-only backlogs).
+- Correction applied above: the suggestions table is `project_suggestions`, not `project_loop_suggestions` as originally written in the reproduction definitions.
+
+DJ ratified the audit direction on 2026-08-13 with these amendments, and the work is handed off in [tasker/52-ai-inbox-review-loop-remediation.md](../../../../../tasker/52-ai-inbox-review-loop-remediation.md):
+
+1. **Drift admission cut pulled forward** as an immediate quick win rather than waiting for synthesis (adoption data: document cleanup 12 applied : 1 rejected; drift and task conflicts effectively zero).
+2. **Phases 1+2+3 collapsed into one build** ("one brief per project"): synthesis output is the admission unit, and an audit packet is that brief when a complete audit ran.
+3. **The six-factor value-scoring rubric is skipped** at current scale.
+4. **Decision 7 rejected:** `Mark handled` stays lightweight; admission is the real fix for diagnosis-only items.
+5. Phase 0 remains first and unchanged in substance, with deterministic (non-LLM) mismatch checks and a retroactive sweep over unresolved proposals.
 
 ## Final recommendation
 

@@ -10,8 +10,11 @@ import type {
 } from '@buildos/shared-types';
 import type { ChatToolCall } from '@buildos/shared-types';
 import {
+	quarantineProjectSuggestionInboxItem,
+	readProjectSuggestionStructuralFingerprint,
 	syncInboxItemForProjectAudit,
-	syncInboxItemForProjectSuggestion
+	syncInboxItemForProjectSuggestion,
+	verifyProjectSuggestionIntegrity
 } from '@buildos/shared-agent-ops';
 import { isProjectSuggestionFresh } from '$lib/server/project-loop-snapshot.service';
 import { finalizeProjectLoopRunIfComplete } from '$lib/server/project-loop-run.service';
@@ -117,6 +120,20 @@ async function loadRunChatSessionId(params: {
 		.maybeSingle();
 	if (error) throw error;
 	return typeof data?.chat_session_id === 'string' ? data.chat_session_id : null;
+}
+
+async function loadVerifiedInboxStructuralFingerprint(params: {
+	supabase: AnySupabase;
+	suggestionId: string;
+}): Promise<string | null> {
+	const { data, error } = await params.supabase
+		.from('inbox_items')
+		.select('source_status')
+		.eq('source_type', 'project_suggestion')
+		.eq('source_ref_id', params.suggestionId)
+		.maybeSingle();
+	if (error) throw error;
+	return readProjectSuggestionStructuralFingerprint(data?.source_status);
 }
 
 const FEEDBACK_REASONS = new Set<ProjectSuggestionFeedback['reason']>([
@@ -437,8 +454,61 @@ export async function decideProjectSuggestion(params: {
 		};
 	}
 
+	// Resolve every target and destination again immediately before approval.
+	// This is deliberately separate from the display-time verification: entities
+	// can be moved, archived, deleted, or transferred after the inbox was read.
+	const admin = createAdminSupabaseClient();
+	let expectedStructuralFingerprint: string | null;
+	try {
+		expectedStructuralFingerprint = await loadVerifiedInboxStructuralFingerprint({
+			supabase: admin,
+			suggestionId
+		});
+	} catch (error) {
+		return {
+			ok: false,
+			status: 500,
+			message:
+				error instanceof Error
+					? `Failed to load proposal verification state: ${error.message}`
+					: 'Failed to load proposal verification state'
+		};
+	}
+	const integrity = await verifyProjectSuggestionIntegrity(admin as any, {
+		projectId,
+		operations: proposedOperations,
+		title: typeof current.title === 'string' ? current.title : null,
+		preview:
+			current.preview &&
+			typeof current.preview === 'object' &&
+			!Array.isArray(current.preview)
+				? (current.preview as Record<string, unknown>)
+				: null,
+		checkModelAlignment: !expectedStructuralFingerprint,
+		expectedStructuralFingerprint
+	});
+	if (!integrity.ok) {
+		try {
+			await quarantineProjectSuggestionInboxItem({
+				supabase: admin as any,
+				suggestion: current,
+				diagnostic: integrity.diagnostic
+			});
+		} catch (error) {
+			console.warn(
+				`[ProjectSuggestions] Failed to quarantine invalid proposal ${suggestionId}:`,
+				error instanceof Error ? error.message : error
+			);
+		}
+		return {
+			ok: false,
+			status: 409,
+			message: `This proposal can no longer be applied safely (${integrity.diagnostic.code}). Rerun Project Review.`
+		};
+	}
+
 	const suggestionBeforeClaim = current as unknown as ProjectSuggestion;
-	if (suggestionBeforeClaim.source_fingerprint) {
+	if (!expectedStructuralFingerprint && suggestionBeforeClaim.source_fingerprint) {
 		let fresh: boolean;
 		try {
 			fresh = await isProjectSuggestionFresh(supabase, projectId, suggestionBeforeClaim);
@@ -575,6 +645,8 @@ export async function decideProjectSuggestion(params: {
 	const result: ProjectSuggestionResult = {
 		ok: errors.length === 0,
 		applied_operations: appliedCount,
+		execution_policy: 'prevalidated_sequential',
+		partial_failure: appliedCount > 0 && errors.length > 0,
 		...(errors.length ? { errors } : {})
 	};
 

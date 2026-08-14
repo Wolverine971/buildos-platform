@@ -241,7 +241,7 @@ describe('inbox index mappers', () => {
 		).toBeNull();
 	});
 
-	it('maps non-mutating findings to Address and Dismiss instead of Accept', () => {
+	it('does not admit drift observations to the attention inbox', () => {
 		const row = mapProjectSuggestionToInboxItem({
 			id: 'finding-1',
 			project_id: 'project-1',
@@ -251,10 +251,48 @@ describe('inbox index mappers', () => {
 			operations: []
 		});
 
-		expect(row).toMatchObject({
-			status: 'pending',
-			action_kinds: ['address', 'reject']
+		expect(row).toBeNull();
+	});
+
+	it('retires an existing unresolved drift inbox row during source sync', async () => {
+		const { supabase, updates, upserts } = createSupabaseMock({
+			project_suggestions: [
+				{
+					id: 'drift-1',
+					project_id: 'project-1',
+					kind: 'drift',
+					status: 'pending',
+					title: 'Observed scope drift',
+					operations: []
+				}
+			],
+			inbox_items: [
+				{
+					id: 'inbox-drift-1',
+					source_type: 'project_suggestion',
+					source_ref_id: 'drift-1',
+					status: 'deferred'
+				}
+			]
 		});
+
+		const row = await syncInboxItemForProjectSuggestion({
+			supabase: supabase as any,
+			suggestionId: 'drift-1'
+		});
+
+		expect(row).toMatchObject({
+			status: 'expired',
+			source_status: 'observation_not_admitted'
+		});
+		expect(upserts).toHaveLength(0);
+		expect(updates).toContainEqual(
+			expect.objectContaining({
+				table: 'inbox_items',
+				status: 'expired',
+				source_status: 'observation_not_admitted'
+			})
+		);
 	});
 
 	it('does not map a clean project audit into the inbox', () => {

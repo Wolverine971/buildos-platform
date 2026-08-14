@@ -61,7 +61,7 @@ describe('agentic chat parity scenario registry', () => {
 				expect(scenario.workerDeliberateDivergencePrefixes).toEqual([
 					`/events/${timingIndex}/payload/timing/`,
 					'/outcome/total_tokens',
-					'/metadata/lifecycle_events/3',
+					'/metadata/lifecycle_events/4',
 					'/metadata/prompt_snapshot_count'
 				]);
 			} else {

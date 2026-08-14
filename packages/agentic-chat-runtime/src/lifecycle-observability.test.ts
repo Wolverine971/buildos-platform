@@ -88,7 +88,8 @@ describe('worker lifecycle observability projection', () => {
 				admissionObserved: true,
 				publicEvents: [...baseEvents, { type: 'done', status: 'failed' }],
 				terminalStatus: 'failed',
-				promptSnapshotCount: 1
+				promptSnapshotCount: 1,
+				streamTerminalFailureObserved: true
 			})
 		).toEqual(AGENTIC_CHAT_TIMEOUT_GOLDEN_V1.metadata.lifecycle_events);
 	});

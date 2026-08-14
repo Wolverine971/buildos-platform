@@ -7,6 +7,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
+import { ensureProjectSuggestionReviewIntegrity } from '$lib/server/project-suggestion-integrity.service';
 import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 import {
 	buildProjectSuggestionProposalContext,
@@ -142,6 +143,24 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 	}
 
 	const suggestionRow = suggestion as SuggestionRow;
+	let integrity: Awaited<ReturnType<typeof ensureProjectSuggestionReviewIntegrity>>;
+	try {
+		integrity = await ensureProjectSuggestionReviewIntegrity({
+			supabase,
+			suggestion: suggestionRow as unknown as Record<string, unknown>
+		});
+	} catch (error) {
+		return ApiResponse.error(
+			error instanceof Error
+				? `Failed to verify project suggestion: ${error.message}`
+				: 'Failed to verify project suggestion'
+		);
+	}
+	if (!integrity.ok) {
+		return ApiResponse.conflict(
+			`This project review item is no longer safe to discuss (${integrity.diagnostic.code}). Rerun Project Review.`
+		);
+	}
 	const existingChatSessionId = readString(suggestionRow.chat_session_id);
 	if (existingChatSessionId) {
 		const { data: existingSession, error: existingSessionError } = await supabase
@@ -182,7 +201,8 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 	const proposalContext = buildProjectSuggestionProposalContext({
 		suggestion: suggestionRow,
 		projectName,
-		loopRun: loopRun ?? null
+		loopRun: loopRun ?? null,
+		verifiedChangeSummary: integrity.summary
 	});
 	const now = new Date().toISOString();
 	const sessionMetadata: Record<string, unknown> = {

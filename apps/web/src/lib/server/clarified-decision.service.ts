@@ -2,6 +2,7 @@
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { isProjectSuggestionFresh } from '$lib/server/project-loop-snapshot.service';
 import { finalizeProjectLoopRunIfComplete } from '$lib/server/project-loop-run.service';
+import { ensureProjectSuggestionReviewIntegrity } from '$lib/server/project-suggestion-integrity.service';
 import {
 	countActiveAgentRuns,
 	dispatchAgentRun,
@@ -282,10 +283,36 @@ export async function decideProjectSuggestionWithClarification(params: {
 		clarification,
 		reason: params.reason
 	});
+	let reviewIntegrity: Awaited<ReturnType<typeof ensureProjectSuggestionReviewIntegrity>>;
+	try {
+		reviewIntegrity = await ensureProjectSuggestionReviewIntegrity({
+			supabase: admin,
+			suggestion: current
+		});
+	} catch (error) {
+		return {
+			ok: false,
+			status: 500,
+			message:
+				error instanceof Error
+					? `Failed to verify proposal integrity: ${error.message}`
+					: 'Failed to verify proposal integrity'
+		};
+	}
+	if (!reviewIntegrity.ok) {
+		return {
+			ok: false,
+			status: 409,
+			message: `This proposal can no longer be discussed or applied safely (${reviewIntegrity.diagnostic.code}). Rerun Project Review.`
+		};
+	}
 
 	if (params.action === 'approve') {
 		const suggestionBeforeClaim = current as unknown as ProjectSuggestion;
-		if (suggestionBeforeClaim.source_fingerprint) {
+		if (
+			!reviewIntegrity.expectedStructuralFingerprint &&
+			suggestionBeforeClaim.source_fingerprint
+		) {
 			let fresh: boolean;
 			try {
 				fresh = await isProjectSuggestionFresh(
@@ -407,7 +434,8 @@ export async function decideProjectSuggestionWithClarification(params: {
 	const proposalContext = buildProjectSuggestionProposalContext({
 		suggestion: claimed as ProjectSuggestion,
 		projectName,
-		loopRun
+		loopRun,
+		verifiedChangeSummary: reviewIntegrity.summary
 	});
 	const goal =
 		params.action === 'approve'

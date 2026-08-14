@@ -288,6 +288,7 @@ import {
 	buildPreparedPromptSurface
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
 import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
+import { LlmStreamPassTerminalError } from '$lib/services/agentic-chat-v2/stream-orchestrator/llm-pass-runner';
 
 type Row = Record<string, any>;
 
@@ -2221,7 +2222,27 @@ describe('/api/agent/v2/stream', () => {
 				}
 			});
 			mocks.streamFastChat.mockRejectedValueOnce(
-				new Error('Provider execution deadline exceeded')
+				new LlmStreamPassTerminalError(
+					'Provider execution deadline exceeded',
+					'timed_out',
+					{
+						pass: 1,
+						forcedNoToolSynthesis: false,
+						attempts: 2,
+						maxAttempts: 2,
+						retryCount: 1,
+						timeoutMs: 60_000,
+						durationMs: 60_000,
+						terminalEventReceived: false,
+						assistantTextCharsReceived: 0,
+						reasoningCharsReceived: 0,
+						toolCallsReceived: 0,
+						retryable: true,
+						attemptsExhausted: true,
+						lastErrorMessage: 'Provider execution deadline exceeded',
+						attemptRoutes: []
+					}
+				)
 			);
 			const supabase = createStreamingSupabase();
 			const response = await POST({

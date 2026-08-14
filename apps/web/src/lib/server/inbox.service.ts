@@ -4,11 +4,17 @@ import {
 	expireInboxItemsForProject,
 	PROJECT_ATTENTION_BUDGET,
 	PROJECT_DELETED_INBOX_REASON,
+	quarantineProjectSuggestionInboxItem,
 	syncInboxItemForSource,
 	type InboxIndexRow,
 	type InboxItemStatus,
 	type InboxSourceType
 } from '@buildos/shared-agent-ops/inbox-index';
+import {
+	readProjectSuggestionStructuralFingerprint,
+	verifyProjectSuggestionIntegrity
+} from '@buildos/shared-agent-ops/proposal-context';
+import type { LoopOperation, ProjectSuggestionPreview } from '@buildos/shared-types';
 import type { ServerTiming } from '$lib/server/server-timing';
 
 type AnySupabase = any;
@@ -642,9 +648,45 @@ async function loadSourcePayloads(params: {
 		})
 	);
 	for (const { sourceType, rows } of sourceRows) {
-		for (const row of rows) {
-			if (typeof row.id === 'string') payloads.set(sourceKey(sourceType, row.id), row);
-		}
+		await Promise.all(
+			rows.map(async (row) => {
+				if (typeof row.id !== 'string') return;
+				if (
+					sourceType === 'project_suggestion' &&
+					Array.isArray(row.operations) &&
+					row.operations.length > 0
+				) {
+					const inboxRow = params.rows.find(
+						(candidate) =>
+							candidate.source_type === sourceType &&
+							candidate.source_ref_id === row.id
+					);
+					const expectedStructuralFingerprint =
+						readProjectSuggestionStructuralFingerprint(inboxRow?.source_status);
+					const verification = await verifyProjectSuggestionIntegrity(params.admin, {
+						projectId: asString(row.project_id) ?? '',
+						operations: row.operations as LoopOperation[],
+						title: asString(row.title),
+						preview: (row.preview ?? null) as ProjectSuggestionPreview | null,
+						checkModelAlignment: !expectedStructuralFingerprint,
+						expectedStructuralFingerprint
+					});
+					if (verification.ok) {
+						row.verified_change_summary = verification.summary;
+						row.proposal_integrity_status = 'verified';
+					} else {
+						row.proposal_integrity_status = 'quarantined';
+						row.proposal_integrity_diagnostic = verification.diagnostic;
+						await quarantineProjectSuggestionInboxItem({
+							supabase: params.admin,
+							suggestion: row,
+							diagnostic: verification.diagnostic
+						});
+					}
+				}
+				payloads.set(sourceKey(sourceType, row.id), row);
+			})
+		);
 	}
 
 	return payloads;
@@ -1340,26 +1382,29 @@ export async function listInboxItems(params: {
 		})
 	);
 	return {
-		items: visibleRows.map((row) => {
+		items: visibleRows.flatMap((row) => {
 			const key = sourceKey(row.source_type, row.source_ref_id);
 			const payload = payloads.get(key) ?? null;
+			if (payload?.proposal_integrity_status === 'quarantined') return [];
 			const context = contexts.get(key) ?? null;
 			const capability = capabilities.get(rowKey(row));
 			const projectId = resolveInboxItemProjectId({ row, payload, context });
 			const project = projectId
 				? (projects.get(projectId) ?? { id: projectId, name: null })
 				: null;
-			return {
-				...row,
-				project_id: projectId,
-				project,
-				can_decide: capability?.can_decide ?? false,
-				decision_disabled_reason: capability
-					? capability.decision_disabled_reason
-					: 'Unsupported inbox source',
-				source_payload: payload,
-				source_context: context
-			};
+			return [
+				{
+					...row,
+					project_id: projectId,
+					project,
+					can_decide: capability?.can_decide ?? false,
+					decision_disabled_reason: capability
+						? capability.decision_disabled_reason
+						: 'Unsupported inbox source',
+					source_payload: payload,
+					source_context: context
+				}
+			];
 		}),
 		total,
 		heldTotal,

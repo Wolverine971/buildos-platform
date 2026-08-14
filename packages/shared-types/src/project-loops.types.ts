@@ -149,6 +149,10 @@ export interface ProjectSuggestion {
 export interface ProjectSuggestionResult {
 	ok: boolean;
 	applied_operations?: number;
+	/** All operations are prevalidated together, then replayed in stored order. */
+	execution_policy?: 'prevalidated_sequential';
+	/** True when an earlier operation applied before a later replay failed. */
+	partial_failure?: boolean;
 	errors?: Array<{ tool: string; error: string }>;
 }
 

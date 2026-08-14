@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/onto/projects/[id]/suggestions/[suggestion_id]/chat-session/server.test.ts
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const USER_ID = 'user-1';
 const PROJECT_ID = 'project-1';
@@ -8,7 +8,8 @@ const RUN_ID = 'run-1';
 const SESSION_ID = 'session-1';
 
 const mocks = vi.hoisted(() => ({
-	requireProjectMemberAccess: vi.fn()
+	requireProjectMemberAccess: vi.fn(),
+	ensureProjectSuggestionReviewIntegrity: vi.fn()
 }));
 
 vi.mock('$lib/server/ontology-project-access', () => ({
@@ -17,6 +18,10 @@ vi.mock('$lib/server/ontology-project-access', () => ({
 
 vi.mock('$lib/config/project-loops', () => ({
 	PROJECT_LOOPS_ENABLED: true
+}));
+
+vi.mock('$lib/server/project-suggestion-integrity.service', () => ({
+	ensureProjectSuggestionReviewIntegrity: mocks.ensureProjectSuggestionReviewIntegrity
 }));
 
 import { POST } from './+server';
@@ -238,6 +243,14 @@ async function callPost(supabase: unknown) {
 }
 
 describe('POST /api/onto/projects/[id]/suggestions/[suggestion_id]/chat-session', () => {
+	beforeEach(() => {
+		mocks.ensureProjectSuggestionReviewIntegrity.mockResolvedValue({
+			ok: true,
+			summary: null,
+			expectedStructuralFingerprint: null
+		});
+	});
+
 	it('reuses an existing linked discussion session', async () => {
 		const { supabase, operations } = createSupabaseMock({
 			existingChatSessionId: SESSION_ID

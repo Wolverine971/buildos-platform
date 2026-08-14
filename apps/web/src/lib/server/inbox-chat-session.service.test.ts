@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	createAgentRunChatSession: vi.fn(),
-	createOrReuseProjectAuditChatSession: vi.fn()
+	createOrReuseProjectAuditChatSession: vi.fn(),
+	ensureProjectSuggestionReviewIntegrity: vi.fn()
 }));
 
 vi.mock('./agent-run-chat-session.service', () => ({
@@ -12,6 +13,10 @@ vi.mock('./agent-run-chat-session.service', () => ({
 
 vi.mock('./project-audit-chat-session.service', () => ({
 	createOrReuseProjectAuditChatSession: mocks.createOrReuseProjectAuditChatSession
+}));
+
+vi.mock('./project-suggestion-integrity.service', () => ({
+	ensureProjectSuggestionReviewIntegrity: mocks.ensureProjectSuggestionReviewIntegrity
 }));
 
 import { createInboxChatSession } from './inbox-chat-session.service';
@@ -445,6 +450,11 @@ function findOperation(
 describe('createInboxChatSession', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.ensureProjectSuggestionReviewIntegrity.mockResolvedValue({
+			ok: true,
+			summary: null,
+			expectedStructuralFingerprint: null
+		});
 		mocks.createAgentRunChatSession.mockResolvedValue({
 			created: false,
 			seeded: true,

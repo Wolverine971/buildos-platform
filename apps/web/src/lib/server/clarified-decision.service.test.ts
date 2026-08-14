@@ -8,7 +8,8 @@ const mocks = vi.hoisted(() => ({
 	countActiveAgentRuns: vi.fn(),
 	dispatchAgentRun: vi.fn(),
 	buildProjectSuggestionProposalContext: vi.fn(),
-	syncInboxItemForProjectSuggestion: vi.fn()
+	syncInboxItemForProjectSuggestion: vi.fn(),
+	ensureProjectSuggestionReviewIntegrity: vi.fn()
 }));
 
 vi.mock('$lib/supabase/admin', () => ({
@@ -35,6 +36,10 @@ vi.mock('@buildos/shared-agent-ops/proposal-context', () => ({
 
 vi.mock('@buildos/shared-agent-ops', () => ({
 	syncInboxItemForProjectSuggestion: mocks.syncInboxItemForProjectSuggestion
+}));
+
+vi.mock('$lib/server/project-suggestion-integrity.service', () => ({
+	ensureProjectSuggestionReviewIntegrity: mocks.ensureProjectSuggestionReviewIntegrity
 }));
 
 import { decideProjectSuggestionWithClarification } from './clarified-decision.service';
@@ -99,6 +104,11 @@ describe('decideProjectSuggestionWithClarification', () => {
 			llmText: 'proposal context'
 		});
 		mocks.syncInboxItemForProjectSuggestion.mockResolvedValue(undefined);
+		mocks.ensureProjectSuggestionReviewIntegrity.mockResolvedValue({
+			ok: true,
+			summary: null,
+			expectedStructuralFingerprint: null
+		});
 	});
 
 	it('claims a pending suggestion, dispatches a source-linked agent run, and links the run id', async () => {
@@ -173,6 +183,30 @@ describe('decideProjectSuggestionWithClarification', () => {
 		expect(outcome).toMatchObject({ ok: false, status: 429 });
 		expect(mocks.dispatchAgentRun).not.toHaveBeenCalled();
 		expect(updates).toEqual([]);
+	});
+
+	it('blocks a corrupt proposal before claiming or dispatching a clarified decision', async () => {
+		mocks.ensureProjectSuggestionReviewIntegrity.mockResolvedValue({
+			ok: false,
+			diagnostic: { code: 'MODEL_ENTITY_MISMATCH', message: 'Wrong target label' }
+		});
+		const { supabase, updates } = makeSupabase({
+			project_suggestions: [{ data: pendingSuggestion(), error: null }]
+		});
+
+		const outcome = await decideProjectSuggestionWithClarification({
+			supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'approve',
+			clarification: 'Move only the intended document.'
+		});
+
+		expect(outcome).toMatchObject({ ok: false, status: 409 });
+		expect(updates).toEqual([]);
+		expect(mocks.countActiveAgentRuns).not.toHaveBeenCalled();
+		expect(mocks.dispatchAgentRun).not.toHaveBeenCalled();
 	});
 
 	it('restores the suggestion to pending when dispatch later returns 429', async () => {

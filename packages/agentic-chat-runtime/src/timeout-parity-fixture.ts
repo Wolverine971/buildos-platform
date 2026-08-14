@@ -1,3 +1,4 @@
+// packages/agentic-chat-runtime/src/timeout-parity-fixture.ts
 import type { AgenticChatParityRunV1 } from './parity';
 
 export const AGENTIC_CHAT_TIMEOUT_FIXTURE_V1 = {
@@ -122,6 +123,7 @@ export const AGENTIC_CHAT_TIMEOUT_GOLDEN_V1: AgenticChatParityRunV1 = {
 		lifecycle_events: [
 			{ event_type: 'turn_intent_resolved', phase: 'prompt' },
 			{ event_type: 'prepared_prompt_cache_checked', phase: 'prompt' },
+			{ event_type: 'stream_terminal_failure', phase: 'llm' },
 			{ event_type: 'done_emitted', phase: 'finalize' },
 			{ event_type: 'prompt_snapshot_created', phase: 'prompt' }
 		],

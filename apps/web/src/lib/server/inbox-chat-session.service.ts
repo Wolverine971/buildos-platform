@@ -5,6 +5,7 @@ import {
 } from '@buildos/shared-agent-ops/proposal-context';
 import { createAgentRunChatSession } from './agent-run-chat-session.service';
 import { createOrReuseProjectAuditChatSession } from './project-audit-chat-session.service';
+import { ensureProjectSuggestionReviewIntegrity } from './project-suggestion-integrity.service';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 import type { Json } from '@buildos/shared-types';
 import {
@@ -346,6 +347,15 @@ async function buildProjectSuggestionContext(params: {
 	suggestion: Record<string, unknown>;
 	projectName: string | null;
 }): Promise<SourceContext> {
+	const integrity = await ensureProjectSuggestionReviewIntegrity({
+		supabase: params.supabase,
+		suggestion: params.suggestion
+	});
+	if (!integrity.ok) {
+		throw new Error(
+			`Project review item failed integrity verification (${integrity.diagnostic.code})`
+		);
+	}
 	const loopRun = await loadProjectSuggestionLoopRun(
 		params.supabase,
 		params.suggestion,
@@ -374,7 +384,8 @@ async function buildProjectSuggestionContext(params: {
 			created_at: readString(params.suggestion.created_at)
 		},
 		projectName: params.projectName,
-		loopRun
+		loopRun,
+		verifiedChangeSummary: integrity.summary
 	});
 
 	return {

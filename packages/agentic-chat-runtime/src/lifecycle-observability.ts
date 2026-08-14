@@ -1,7 +1,7 @@
 // packages/agentic-chat-runtime/src/lifecycle-observability.ts
 export type AgenticChatLifecycleObservationV1 = {
 	event_type: string;
-	phase: 'prompt' | 'tool' | 'stream' | 'finalize';
+	phase: 'prompt' | 'llm' | 'tool' | 'stream' | 'finalize';
 };
 
 export type AgenticChatWorkerLifecycleProjectionInputV1 = {
@@ -9,6 +9,8 @@ export type AgenticChatWorkerLifecycleProjectionInputV1 = {
 	publicEvents: readonly unknown[];
 	terminalStatus: 'completed' | 'cancelled' | 'failed' | null;
 	promptSnapshotCount: number;
+	/** Exact typed provider-pass failure observed before terminal recovery. */
+	streamTerminalFailureObserved?: boolean;
 };
 
 /**
@@ -45,6 +47,12 @@ export function projectAgenticChatWorkerLifecycleObservationsV1(
 		input.terminalStatus !== 'failed'
 	) {
 		throw new Error('Agentic Chat lifecycle terminal status is invalid');
+	}
+	if (
+		input.streamTerminalFailureObserved !== undefined &&
+		typeof input.streamTerminalFailureObserved !== 'boolean'
+	) {
+		throw new Error('Agentic Chat lifecycle terminal failure evidence is invalid');
 	}
 
 	const payloads = input.publicEvents.map((event, index) => {
@@ -127,6 +135,9 @@ export function projectAgenticChatWorkerLifecycleObservationsV1(
 		);
 	}
 	observations.push(...toolObservations);
+	if (input.streamTerminalFailureObserved === true) {
+		observations.push({ event_type: 'stream_terminal_failure', phase: 'llm' });
+	}
 	if (finalizingPhases.length === 1) {
 		observations.push({ event_type: 'turn_phase_changed', phase: 'stream' });
 	}
