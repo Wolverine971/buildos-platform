@@ -212,6 +212,26 @@ function createDocumentToolDefinition() {
 	};
 }
 
+function moveDocumentToolDefinition() {
+	return {
+		type: 'function' as const,
+		function: {
+			name: 'move_document_in_tree',
+			description: 'Move a document in the current project tree.',
+			parameters: {
+				type: 'object',
+				required: ['project_id', 'document_id'],
+				properties: {
+					project_id: { type: 'string' },
+					document_id: { type: 'string' },
+					new_parent_id: { type: ['string', 'null'] },
+					new_position: { type: 'number' }
+				}
+			}
+		}
+	};
+}
+
 async function collect(stream: AsyncIterable<AgenticChatProviderStepV1>) {
 	const result: AgenticChatProviderStepV1[] = [];
 	for await (const step of stream) result.push(step);
@@ -263,6 +283,34 @@ function durableMutationFeedback(input: {
 			effectId: 'a3000000-0000-4000-8000-00000000003a',
 			logicalOperationId: input.logicalOperationId,
 			operationName: 'onto.task.update',
+			replayed: false
+		}
+	};
+}
+
+function durableMoveMutationFeedback(input: {
+	providerToolCallId: string;
+	logicalOperationId: string;
+	arguments: JsonObject;
+}): AgenticChatProviderMutationSynthesisInputV1 {
+	return {
+		providerToolCallId: input.providerToolCallId,
+		toolName: 'move_document_in_tree',
+		arguments: input.arguments,
+		execution: {
+			result: { message: 'Document moved successfully.' },
+			executionTimeMs: null,
+			tokensConsumed: null,
+			affectedEntities: [],
+			toolCategory: 'ontology_action',
+			resultCount: null,
+			zeroResult: null,
+			requiresUserAction: false
+		},
+		mutation: {
+			effectId: 'a3000000-0000-4000-8000-00000000003a',
+			logicalOperationId: input.logicalOperationId,
+			operationName: 'onto.document.tree.move',
 			replayed: false
 		}
 	};
@@ -785,6 +833,165 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				})
 			])
 		});
+	});
+
+	it('reserves one move-only pass for a commissioned organization before forced synthesis', async () => {
+		const projectId = '41000000-0000-4000-8000-000000000004';
+		const documentId = '42000000-0000-4000-8000-000000000004';
+		const parentId = '43000000-0000-4000-8000-000000000004';
+		const moveArguments = {
+			project_id: projectId,
+			document_id: documentId,
+			new_parent_id: parentId
+		};
+		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
+			providerReadRound('provider-read-1', { project_id: projectId }),
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-move-1',
+							type: 'function',
+							function: {
+								name: 'move_document_in_tree',
+								arguments: JSON.stringify(moveArguments)
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			],
+			[
+				{ type: 'text', content: 'I grouped the related documents.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		let forceIssued = false;
+		const harness = supervisorHarness((observation) => {
+			if (forceIssued || observation.type !== 'tool_round_completed') return null;
+			forceIssued = true;
+			return {
+				action: 'force_synthesis',
+				instruction: 'Stop calling tools and answer from the gathered evidence.',
+				reason: 'many_tool_calls'
+			};
+		});
+		const baseInput = executionInputWithReadSurface(
+			[readToolDefinition('get_project_overview'), moveDocumentToolDefinition()],
+			['get_project_overview', 'move_document_in_tree']
+		);
+		const input: AgenticChatWorkerExecutionInputV1 = {
+			...baseInput,
+			requestPayload: {
+				...baseInput.requestPayload,
+				message: 'Help me get these project documents organized.'
+			},
+			artifact: {
+				...baseInput.artifact,
+				prepared: {
+					...baseInput.artifact.prepared,
+					turnIntent: {
+						version: 1,
+						requiresWrite: true,
+						action: 'organize',
+						entityKind: 'document',
+						operations: [{ action: 'organize', entityKind: 'document' }],
+						source: 'current_message',
+						originalRequestText: 'Help me get these project documents organized.',
+						originatingTurnRunId: null,
+						clearPending: false,
+						expectedWriteToolNames: ['move_document_in_tree']
+					}
+				}
+			}
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{ client, capacity, supervisorFactory: () => harness.port },
+			2_000,
+			16,
+			{ moveDocumentInTree: true }
+		).prepare({
+			executionInput: input,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		const carveOutSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedback(
+						'provider-read-1',
+						{ project_id: projectId },
+						{
+							project: { id: projectId },
+							documents: [
+								{ id: documentId, title: 'Pricing ideas' },
+								{ id: parentId, title: 'Pricing' }
+							]
+						}
+					)
+				]
+			})
+		);
+		const moveStep = carveOutSteps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+				step.type === 'mutating_tool'
+		);
+		expect(moveStep).toMatchObject({
+			providerToolCallId: 'provider-move-1',
+			toolName: 'move_document_in_tree',
+			operationName: 'onto.document.tree.move'
+		});
+		if (!moveStep) throw new Error('Expected the organization write carve-out');
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 3,
+					results: [
+						durableMoveMutationFeedback({
+							providerToolCallId: 'provider-move-1',
+							logicalOperationId: moveStep.logicalOperationId,
+							arguments: moveArguments
+						})
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'I grouped the related documents.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(client.stream.mock.calls[1]?.[0]).toMatchObject({
+			tools: [
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'move_document_in_tree' })
+				})
+			],
+			toolChoice: 'auto',
+			providerRound: 'synthesis'
+		});
+		expect(client.stream.mock.calls[1]?.[0].messages.at(-1)?.content).toContain(
+			'superseded for exactly this one pass'
+		);
+		expect(client.stream.mock.calls[2]?.[0]).toMatchObject({
+			tools: [],
+			toolChoice: 'none'
+		});
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
 	it('returns a supervisor question terminal without starting another provider pass', async () => {

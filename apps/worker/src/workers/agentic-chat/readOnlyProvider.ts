@@ -365,8 +365,9 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		input: AgenticChatProviderInputV1
 	): AgenticChatPreparedProviderInvocationV1 {
 		throwIfAborted(input.signal);
+		const executionInput = input.executionInput;
 		const request = buildReadOnlyRequest(
-			input.executionInput,
+			executionInput,
 			input.processingToken,
 			input.signal,
 			this.mutationCapabilities,
@@ -374,9 +375,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		);
 		const promptSnapshot = buildPromptSnapshot(request.messages, request.tools);
 		const supervisor = this.ports.supervisorFactory
-			? new AgenticChatProviderSupervisorRuntime(
-					this.ports.supervisorFactory(input.executionInput)
-				)
+			? new AgenticChatProviderSupervisorRuntime(this.ports.supervisorFactory(executionInput))
 			: null;
 		let lease;
 		try {
@@ -403,12 +402,14 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let readOnlyRoundCount = 0;
 		let providerToolCallCount = 0;
 		let readLoopRepairRank = 0;
+		let mutationRoundReached = false;
+		let organizeWriteCarveOutUsed = false;
 		const readOps = new Set<string>();
 		// The executor clears this memo as soon as any call reaches the write
 		// boundary (successful or not), matching the legacy invalidation fence.
 		const turnReadMemo = new Map<string, AgenticChatReadToolExecutionV1>();
 		const contextGatheringLedger = new ContextGatheringLedger();
-		const admissionContextUsage = getAdmissionContextUsage(input.executionInput);
+		const admissionContextUsage = getAdmissionContextUsage(executionInput);
 		const release = () => {
 			if (released) return;
 			released = true;
@@ -534,7 +535,10 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				const roundContainsMutation = completedToolRound.calls.some(
 					(call) => call.kind === 'mutation'
 				);
-				if (roundContainsMutation) turnReadMemo.clear();
+				if (roundContainsMutation) {
+					turnReadMemo.clear();
+					mutationRoundReached = true;
+				}
 				const roundExecutions = completedToolRound.calls.map((call, index) => {
 					const feedback = input.results[index]!;
 					validateToolFeedback(call, feedback);
@@ -623,14 +627,25 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				const forceNoToolSynthesis =
 					ledgerObservation.forceSynthesis ||
 					readLoopRepairRank >= READ_LOOP_REPAIR_RANK.must_synthesize;
-				if (forceNoToolSynthesis) {
+				const organizeWriteCarveOut =
+					forceNoToolSynthesis && !organizeWriteCarveOutUsed && !mutationRoundReached
+						? buildOrganizeWriteCarveOutRequest(
+								currentRequest,
+								request.tools,
+								executionInput
+							)
+						: null;
+				if (organizeWriteCarveOut) {
+					organizeWriteCarveOutUsed = true;
+					currentRequest = organizeWriteCarveOut;
+				} else if (forceNoToolSynthesis) {
 					currentRequest = forceToolFreeRequest(currentRequest);
 				}
 
 				pendingToolRound = null;
 				toolRoundCompleted = false;
 				nextProviderRound += 1;
-				return forceNoToolSynthesis
+				return forceNoToolSynthesis && !organizeWriteCarveOut
 					? this.streamForcedSynthesis(currentRequest, completedToolRound.usage, state)
 					: this.streamContinuation(currentRequest, completedToolRound.usage, state);
 			},
@@ -1591,6 +1606,42 @@ function latestToolPayloadChars(request: ClientRequest): number {
 
 function forceToolFreeRequest(request: ClientRequest): ClientRequest {
 	return { ...request, tools: [], toolChoice: 'none', providerRound: 'synthesis' };
+}
+
+function buildOrganizeWriteCarveOutRequest(
+	request: ClientRequest,
+	availableTools: readonly AgenticChatReadOnlyProviderToolV1[],
+	executionInput: AgenticChatWorkerExecutionInputV1
+): ClientRequest | null {
+	const intent = executionInput.artifact.prepared.turnIntent;
+	if (
+		intent?.requiresWrite !== true ||
+		intent.action !== 'organize' ||
+		intent.entityKind !== 'document' ||
+		!intent.expectedWriteToolNames.includes('move_document_in_tree')
+	) {
+		return null;
+	}
+	const moveTool = availableTools.find((tool) => tool.function.name === 'move_document_in_tree');
+	if (!moveTool) return null;
+
+	const next = appendSystemInstruction(
+		request,
+		[
+			'Supervisor exception: the user commissioned a document reorganization and no mutation has reached execution yet.',
+			'The earlier instruction to stop calling tools is superseded for exactly this one pass.',
+			'Use only move_document_in_tree and execute the reorganization now; multiple move calls in this response are expected.',
+			'Use only exact document UUIDs returned by the completed reads for both document_id and new_parent_id. Never invent a UUID.',
+			'Choose a few existing documents as sensible category anchors and move related documents under the same anchor; at least two related source documents should share one parent.',
+			'Do not call reads, searches, schemas, skills, or any other discovery tool in this pass.'
+		].join(' ')
+	);
+	return {
+		...next,
+		tools: [moveTool],
+		toolChoice: 'auto',
+		providerRound: 'synthesis'
+	};
 }
 
 function contextSaturationRepairRank(
