@@ -316,3 +316,49 @@ content, unusually long identity copy, and dense direction lists.
 - The neutral micro-label color measures approximately **5.26:1** on the live light focus band. The
   same design tokens calculate to approximately **6.16:1** in dark mode, both above the 4.5:1 target
   for small text.
+
+## Persistent shell simplification — shipped 2026-08-14
+
+A subsequent review with a populated 90-item project showed that the July shell correction stopped
+one layer too early. `Active now`, `Recommended next`, completion, overdue, and blocked signals still
+formed two navigation-like bands before the actual workspace tabs. On Docs and Activity in
+particular, those execution signals made the primary mode switcher look tertiary.
+
+The approved Tier 1 follow-up makes the persistent shell answer only two questions: which project is
+open, and which workspace mode is active.
+
+- Removed the global Active now / Recommended next band. Work and Overview remain the semantic owners
+  for execution focus and project guidance respectively (**P3, P4, P22**).
+- Removed the global completion, overdue, blocked, and milestone summary row. Those signals no longer
+  compete with navigation or appear on modes that cannot resolve them (**P4, P22**).
+- Moved Work, Overview, Docs, and Activity immediately beneath project identity in their own quiet
+  ruled surface. Tabs now have 48 px targets, a stronger active rule, and an active count treatment
+  without adding another card container (**P3, P13, P19**).
+- Added one compact `Brief` action that opens the canonical START HERE/context document through the
+  existing document modal and URL-owned entity history. It does not clone document content into a new
+  persistent surface (**P6, P8, P13, P20**).
+- Demoted Graph from an outlined peer action to a ghost secondary tool while preserving its named
+  desktop affordance and 44 px icon target on constrained widths (**P4, P8, P13**).
+- Left the four tab interiors and their contextual toolbars unchanged. This pass deliberately proves
+  the shell hierarchy before relocating execution signals inside Work or reconciling the Overview
+  description with START HERE.
+
+### Follow-up verification
+
+- Focused workspace tests cover the simplified shell, absence of the two removed bands, tab order,
+  and the Brief shortcut's document URL contract: **4 tests passed**.
+- The official Svelte analyzer completed without a correctness finding;
+  `pnpm --filter @buildos/web check` reports **0 errors and 0 warnings**. Prettier and
+  `git diff --check` are clean for the touched files.
+- The authenticated 9takes Docs workspace was verified at the app's 1920 × 1200 desktop rendering.
+  The project header ends at approximately **217 px**, the 49 px tab row spans **168–216 px**, and
+  the contextual toolbar begins at approximately **241 px**. Neither removed band exists in the DOM.
+- At the audited 520 × 1125 narrow rendering, the header ends at approximately **187 px**, tabs span
+  **138–186 px**, and the contextual toolbar begins at approximately **199 px**. The page has no
+  viewport-level horizontal overflow; Brief and Graph each retain a **44 × 44 px** target.
+- Activating `Brief` opened `START HERE - 9takes` in the production document modal and added
+  `entity=document&entity_id=<context-document>` while preserving `view=docs`, confirming that the
+  shortcut does not disrupt the selected workspace mode or Back-owned modal history.
+- Desktop and narrow dark-mode captures are complete. A refreshed light-mode capture remains owed;
+  the only browser-console findings were existing Vite development warnings about Node modules being
+  externalized, with no application error emitted by this interaction.

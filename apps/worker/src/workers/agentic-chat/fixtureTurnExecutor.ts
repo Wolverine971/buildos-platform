@@ -3155,6 +3155,12 @@ function logAgenticChatTypedExecutionFailure(
 				? error
 				: null;
 	if (!providerError) return;
+	let diagnostic: Record<string, string | number> = {};
+	try {
+		diagnostic = providerExecutionDiagnostic(providerError);
+	} catch {
+		// A malformed optional diagnostic must not suppress the base failure log.
+	}
 	const record = {
 		event: 'agentic_chat_typed_execution_failure',
 		turn_run_id: claim.turnRunId,
@@ -3162,13 +3168,59 @@ function logAgenticChatTypedExecutionFailure(
 		execution_generation: claim.executionGeneration,
 		execution_error_code: providerError.code,
 		failure_class: failureClass,
-		execution_started: executionStarted
+		execution_started: executionStarted,
+		...diagnostic
 	};
 	try {
 		void job.log(JSON.stringify(record)).catch(() => undefined);
 	} catch {
 		// Provider diagnostics must never alter recovery or terminal truth.
 	}
+}
+
+function providerExecutionDiagnostic(
+	error: AgenticChatProviderExecutionError
+): Record<string, string | number> {
+	const diagnostic = error.diagnostic;
+	if (!diagnostic || diagnostic.kind !== 'rejected_tool_name') return {};
+	const rejectedToolName = canonicalProviderToolDiagnosticName(diagnostic.rejectedToolName);
+	const repeatedAdvertisedToolName = canonicalProviderToolDiagnosticName(
+		diagnostic.repeatedAdvertisedToolName
+	);
+	const rejectedToolNameLength = boundedDiagnosticInteger(diagnostic.rejectedToolNameLength, 256);
+	const advertisedToolCount = boundedDiagnosticInteger(diagnostic.advertisedToolCount, 256);
+	const repeatedToolNameCount = boundedDiagnosticInteger(diagnostic.repeatedToolNameCount, 256);
+	return {
+		...(rejectedToolName ? { rejected_provider_tool_name: rejectedToolName } : {}),
+		...(rejectedToolNameLength !== null
+			? { rejected_provider_tool_name_length: rejectedToolNameLength }
+			: {}),
+		...(advertisedToolCount !== null ? { advertised_tool_count: advertisedToolCount } : {}),
+		...(repeatedAdvertisedToolName
+			? { repeated_advertised_tool_name: repeatedAdvertisedToolName }
+			: {}),
+		...(repeatedToolNameCount !== null
+			? { repeated_tool_name_count: repeatedToolNameCount }
+			: {})
+	};
+}
+
+function canonicalProviderToolDiagnosticName(value: unknown): string | null {
+	if (
+		typeof value !== 'string' ||
+		value.length < 1 ||
+		value.length > 256 ||
+		!/^[A-Za-z0-9_.:-]+$/.test(value)
+	) {
+		return null;
+	}
+	return value;
+}
+
+function boundedDiagnosticInteger(value: unknown, maximum: number): number | null {
+	return Number.isSafeInteger(value) && (value as number) >= 1 && (value as number) <= maximum
+		? (value as number)
+		: null;
 }
 
 function executionBoundaryFailure(error: unknown): Record<string, string> {

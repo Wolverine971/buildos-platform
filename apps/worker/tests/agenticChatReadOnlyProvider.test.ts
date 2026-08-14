@@ -3657,8 +3657,111 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 
 		await expect(collect(invocation.stream())).rejects.toMatchObject({
 			code: 'provider_tool_not_allowlisted',
-			failureClass: 'permanent'
+			failureClass: 'permanent',
+			diagnostic: {
+				kind: 'rejected_tool_name',
+				rejectedToolName: 'update_onto_project',
+				rejectedToolNameLength: 19,
+				advertisedToolCount: 1,
+				repeatedAdvertisedToolName: null,
+				repeatedToolNameCount: null
+			}
 		});
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('assembles fragmented provider tool names before allowlist validation', async () => {
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const adapter = new AgenticChatReadOnlyProviderAdapter({
+			client: clientWith([
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-read-1',
+							type: 'function',
+							function: {
+								name: 'get_project_',
+								arguments: '{"project_id":"40000000-0000-4000-8000-000000000004"}'
+							}
+						}
+					]
+				},
+				{
+					type: 'tool_call',
+					toolCall: [{ index: 0, function: { name: 'overview' } }]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			]),
+			capacity
+		});
+		const invocation = await adapter.prepare({
+			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
+			expect.objectContaining({
+				type: 'read_tool',
+				providerToolCallId: 'provider-read-1',
+				toolName: 'get_project_overview',
+				arguments: { project_id: '40000000-0000-4000-8000-000000000004' }
+			})
+		]);
+		expect(capacity.getSnapshot()).toMatchObject({ available: false, activeRequests: 1 });
+		invocation.release();
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('diagnoses a repeated full provider tool-name chunk without logging arguments', async () => {
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const adapter = new AgenticChatReadOnlyProviderAdapter({
+			client: clientWith([
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-read-1',
+							type: 'function',
+							function: {
+								name: 'get_project_overview',
+								arguments: '{"private":"must-not-enter-diagnostics"}'
+							}
+						}
+					]
+				},
+				{
+					type: 'tool_call',
+					toolCall: [{ index: 0, function: { name: 'get_project_overview' } }]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			]),
+			capacity
+		});
+		const invocation = await adapter.prepare({
+			executionInput: executionInputWithReadSurface(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const error = await collect(invocation.stream()).catch((value: unknown) => value);
+		expect(error).toMatchObject({
+			code: 'provider_tool_not_allowlisted',
+			failureClass: 'permanent',
+			diagnostic: {
+				kind: 'rejected_tool_name',
+				rejectedToolName: 'get_project_overviewget_project_overview',
+				rejectedToolNameLength: 40,
+				advertisedToolCount: 1,
+				repeatedAdvertisedToolName: 'get_project_overview',
+				repeatedToolNameCount: 2
+			}
+		});
+		expect(JSON.stringify(error)).not.toContain('must-not-enter-diagnostics');
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 

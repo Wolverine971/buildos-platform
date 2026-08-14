@@ -1,36 +1,29 @@
 <!-- apps/web/src/lib/components/projects/ProjectStateRow.svelte -->
 <script lang="ts">
-	import { ArrowRight, Share2 } from 'lucide-svelte';
+	import { ArrowRight, Share2 } from '$lib/icons/lucide';
+	import { resolve } from '$app/paths';
 	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
 	import ProjectStateChip from './ProjectStateChip.svelte';
 	import { formatAccessRole } from '$lib/config/project-states';
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
+	import { formatProjectUpdatedLabel, formatProjectUpdatedTitle } from './project-list';
 
 	interface Props {
 		project: OntologyProjectSummary;
-		variant?: 'primary' | 'secondary';
 		onSelect?: (project: OntologyProjectSummary) => void;
 	}
 
-	const { project, variant = 'primary', onSelect }: Props = $props();
+	const { project, onSelect }: Props = $props();
 
-	const isSecondary = $derived(variant === 'secondary');
 	const accessRoleLabel = $derived(formatAccessRole(project.access_role));
-	const entityCounts = $derived(
-		`Tasks ${project.task_count} · Goals ${project.goal_count} · Plans ${project.plan_count} · Docs ${project.document_count}`
+	const hasNextStep = $derived(Boolean(project.next_step_short?.trim()));
+	const resumeCue = $derived(
+		project.next_step_short?.trim() ||
+			project.description?.trim() ||
+			'Open this project to continue.'
 	);
-
-	function formatUpdatedAt(value: string): string {
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) return 'Updated recently';
-		return date.toLocaleString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric',
-			hour: 'numeric',
-			minute: '2-digit'
-		});
-	}
+	const updatedLabel = $derived(formatProjectUpdatedLabel(project.updated_at));
+	const updatedTitle = $derived(formatProjectUpdatedTitle(project.updated_at));
 
 	function handleClick() {
 		onSelect?.(project);
@@ -38,73 +31,65 @@
 </script>
 
 <a
-	href="/projects/{project.id}"
+	href={resolve('/projects/[id]', { id: project.id })}
 	onclick={handleClick}
-	class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
-	class:project-dossier-row--secondary={isSecondary}
+	class="project-dossier-row group block wt-paper p-3 pressable tx tx-frame tx-weak sm:p-4"
 >
-	<div class="flex items-start justify-between gap-3">
-		<div class="min-w-0 flex items-center gap-2.5">
+	<div class="flex min-w-0 items-start gap-2.5 sm:gap-3">
+		<div class="shrink-0">
 			<ProjectIcon svg={project.icon_svg} concept={project.icon_concept} size="sm" />
-			<div class="min-w-0 flex items-center gap-2 flex-wrap">
-				<h4
-					class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-					class:sm:text-lg={isSecondary}
-					style="view-transition-name: project-title-{project.id}; view-transition-class: project-title"
-				>
-					{project.name}
-				</h4>
-				<ProjectStateChip state={project.state_key} size="xs" />
-				{#if project.is_shared}
-					<span
-						class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs font-semibold bg-accent/15 text-accent border border-accent/20"
-					>
-						<Share2 class="h-2.5 w-2.5" aria-hidden="true" />
-						<span class="hidden sm:inline">
-							Shared{accessRoleLabel ? `: ${accessRoleLabel}` : ''}
-						</span>
-						<span class="sm:hidden">Shared</span>
-					</span>
-				{/if}
-			</div>
 		</div>
-		<div class="shrink-0 flex items-center gap-1.5">
+		<div class="min-w-0 flex-1">
+			<div class="flex min-w-0 items-center justify-between gap-3">
+				<div class="flex min-w-0 items-center gap-2">
+					<h4
+						class="min-w-0 truncate text-base font-semibold tracking-tight text-foreground sm:text-lg"
+						style="view-transition-name: project-title-{project.id}; view-transition-class: project-title"
+						title={project.name}
+					>
+						{project.name}
+					</h4>
+					{#if project.is_shared}
+						<span
+							class="inline-flex shrink-0 items-center gap-1 rounded-full border border-accent/20 bg-accent/15 px-1.5 py-0.5 text-2xs font-semibold text-accent"
+						>
+							<Share2 class="h-2.5 w-2.5" aria-hidden="true" />
+							<span>Shared{accessRoleLabel ? `: ${accessRoleLabel}` : ''}</span>
+						</span>
+					{:else}
+						<ProjectStateChip state={project.state_key} size="xs" />
+					{/if}
+				</div>
+				<time
+					datetime={project.updated_at}
+					title={updatedTitle}
+					class="hidden shrink-0 whitespace-nowrap text-right text-xs font-medium text-muted-foreground sm:block"
+				>
+					{updatedLabel}
+				</time>
+			</div>
+
+			<p
+				class="mt-1 truncate text-xs sm:text-sm {hasNextStep
+					? 'font-medium text-accent'
+					: 'text-muted-foreground'}"
+				title={hasNextStep ? (project.next_step_long ?? resumeCue) : resumeCue}
+			>
+				{hasNextStep ? 'Next: ' : ''}{resumeCue}
+			</p>
+
 			<time
 				datetime={project.updated_at}
-				class="text-2xs sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+				title={updatedTitle}
+				class="mt-1 block whitespace-nowrap text-2xs font-medium text-muted-foreground sm:hidden"
 			>
-				{formatUpdatedAt(project.updated_at)}
+				{updatedLabel}
 			</time>
-			<span class="project-dossier-arrow" aria-hidden="true">
-				<ArrowRight
-					class="h-3 w-3 sm:h-3.5 sm:w-3.5 {isSecondary
-						? 'text-muted-foreground'
-						: 'text-accent'}"
-				/>
-			</span>
 		</div>
+		<span class="project-dossier-arrow hidden shrink-0 sm:flex" aria-hidden="true">
+			<ArrowRight class="h-3.5 w-3.5 text-accent" />
+		</span>
 	</div>
-
-	<p class="mt-1 text-xs sm:text-sm text-muted-foreground truncate">
-		{project.description?.trim() || 'No description provided.'}
-	</p>
-
-	{#if project.next_step_short && !isSecondary}
-		<p
-			class="mt-1.5 text-2xs sm:text-xs font-medium text-accent/90 truncate"
-			title={project.next_step_long ?? project.next_step_short}
-		>
-			Next: {project.next_step_short}
-		</p>
-	{/if}
-
-	<p
-		class="mt-1 text-2xs sm:text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis {isSecondary
-			? 'text-muted-foreground/80'
-			: 'text-muted-foreground/90'}"
-	>
-		{entityCounts}
-	</p>
 </a>
 
 <style>
@@ -115,15 +100,6 @@
 	.project-dossier-row:hover,
 	.project-dossier-row:focus-visible {
 		box-shadow: inset 0 -1px 0 hsl(var(--accent) / 0.6);
-	}
-
-	.project-dossier-row--secondary {
-		opacity: 0.88;
-	}
-
-	.project-dossier-row--secondary:hover,
-	.project-dossier-row--secondary:focus-visible {
-		opacity: 1;
 	}
 
 	.project-dossier-arrow {
@@ -138,5 +114,12 @@
 	.project-dossier-row:focus-visible .project-dossier-arrow {
 		opacity: 1;
 		transform: translateX(0);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.project-dossier-row,
+		.project-dossier-arrow {
+			transition: none;
+		}
 	}
 </style>

@@ -38,6 +38,7 @@ import type { AgenticChatWorkerExecutionInputV1 } from './executionInput';
 import {
 	AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
 	type AgenticChatPreparedProviderInvocationV1,
+	type AgenticChatProviderExecutionDiagnosticV1,
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderInputV1,
 	type AgenticChatProviderMutationSynthesisInputV1,
@@ -1420,8 +1421,41 @@ function assertAllowlistedCall(
 	tools: readonly AgenticChatReadOnlyProviderToolV1[]
 ): void {
 	if (!tools.some((tool) => tool.function.name === call.name)) {
-		throw providerError('provider_tool_not_allowlisted', 'permanent');
+		throw providerToolNotAllowlistedError(call.name, tools);
 	}
+}
+
+function providerToolNotAllowlistedError(
+	rejectedToolName: string,
+	tools: readonly AgenticChatReadOnlyProviderToolV1[]
+): AgenticChatProviderExecutionError {
+	const repeated = tools
+		.map((tool) => tool.function.name)
+		.map((advertisedToolName) => {
+			if (
+				advertisedToolName.length === 0 ||
+				rejectedToolName.length <= advertisedToolName.length ||
+				rejectedToolName.length % advertisedToolName.length !== 0
+			) {
+				return null;
+			}
+			const count = rejectedToolName.length / advertisedToolName.length;
+			return advertisedToolName.repeat(count) === rejectedToolName
+				? { advertisedToolName, count }
+				: null;
+		})
+		.find((value): value is { advertisedToolName: string; count: number } => value !== null);
+	const diagnostic: AgenticChatProviderExecutionDiagnosticV1 = {
+		kind: 'rejected_tool_name',
+		rejectedToolName: /^[A-Za-z0-9_.:-]{1,256}$/.test(rejectedToolName)
+			? rejectedToolName
+			: null,
+		rejectedToolNameLength: rejectedToolName.length,
+		advertisedToolCount: tools.length,
+		repeatedAdvertisedToolName: repeated?.advertisedToolName ?? null,
+		repeatedToolNameCount: repeated?.count ?? null
+	};
+	return providerError('provider_tool_not_allowlisted', 'permanent', diagnostic);
 }
 
 function validateReadFeedback(
@@ -1711,7 +1745,7 @@ function normalizeCompletedProviderCalls(
 				...(supervisorFailure ? { supervisorFailure } : {})
 			};
 		}
-		throw providerError('provider_tool_not_allowlisted', 'permanent');
+		throw providerToolNotAllowlistedError(call.name, request.tools);
 	});
 }
 
@@ -2334,11 +2368,16 @@ function canonicalError(value: string): string {
 	return value.trim().slice(0, 2_000) || 'Agentic Chat provider failed';
 }
 
-function providerError(code: string, failureClass: 'permanent' | 'unknown') {
+function providerError(
+	code: string,
+	failureClass: 'permanent' | 'unknown',
+	diagnostic: AgenticChatProviderExecutionDiagnosticV1 | null = null
+) {
 	return new AgenticChatProviderExecutionError(
 		code,
 		failureClass,
-		`Agentic Chat read-only provider protocol failed: ${code}`
+		`Agentic Chat read-only provider protocol failed: ${code}`,
+		diagnostic
 	);
 }
 

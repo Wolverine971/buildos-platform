@@ -3,7 +3,7 @@
 	Project workspace prototype body
 
 	Information architecture:
-	- Work is the default operating surface: current focus + the real Kanban board.
+	- Work is the default operating surface: the real Kanban board.
 	- Overview answers why/where: memory, goals, milestones, plans, risks, and dates.
 	- Docs gives the real document tree a dedicated, full-width workspace.
 	- Activity owns change history and upcoming events.
@@ -38,25 +38,19 @@
 		type ProjectFullData
 	} from '$lib/components/project/project-page-data-controller';
 	import { parseDocStructure } from '$lib/services/ontology/doc-structure.service';
-	import {
-		createCompleteProjectTasksCoverage,
-		getProjectTaskAsOfMs,
-		groupProjectTasksByBucket
-	} from '$lib/utils/project-task-board';
+	import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
 	import { formatRelativeTime } from '$lib/utils/date-utils';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { Document, Goal, Milestone, Plan, Project, Risk, Task } from '$lib/types/onto';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import type {
 		ProjectActiveTaskBucketKey,
-		ProjectTaskBoardBucketKey,
 		ProjectTasksCoverage
 	} from '$lib/types/project-full-data';
 	import {
 		Activity,
 		AlertTriangle,
-		ArrowLeft,
-		ArrowRight,
+		BookOpen,
 		Calendar,
 		CalendarClock,
 		CheckCircle2,
@@ -65,17 +59,17 @@
 		FileText,
 		Flag,
 		LayoutDashboard,
-		ListChecks,
 		LoaderCircle,
 		Network,
 		Pencil,
 		Plus,
-		Sparkles,
 		Target,
 		Workflow
 	} from '$lib/icons/lucide';
 	import type { PageData } from './$types';
+	import ProjectBriefHubModal from './ProjectBriefHubModal.svelte';
 	import ProjectWorkspaceEntityModals from './ProjectWorkspaceEntityModals.svelte';
+	import ProjectWorkspaceOptionsMenu from './ProjectWorkspaceOptionsMenu.svelte';
 
 	type WorkspaceTab = 'work' | 'overview' | 'docs' | 'activity';
 	type WorkspaceCreateKind = 'goal' | 'plan' | 'milestone' | 'risk' | 'event';
@@ -215,6 +209,7 @@
 	let createEntityKind = $state<WorkspaceCreateKind | null>(null);
 	let editingEntity = $state<WorkspaceEditTarget | null>(null);
 	let showGraphModal = $state(false);
+	let showProjectBriefModal = $state(false);
 	let showAgentChatModal = $state(false);
 	let showAllGoals = $state(false);
 	let showAllPlans = $state(false);
@@ -242,31 +237,7 @@
 				}
 	);
 
-	const taskBuckets = $derived(
-		groupProjectTasksByBucket(tasks, getProjectTaskAsOfMs(tasksCoverage.as_of))
-	);
-	const taskSignals = $derived.by(() => {
-		const total = tasksCoverage.total || tasks.length;
-		const done = tasksCoverage.buckets.done?.total ?? taskBuckets.done.length;
-		const overdue = tasksCoverage.buckets.overdue?.total ?? taskBuckets.overdue.length;
-		return {
-			total,
-			done,
-			overdue,
-			completion: total > 0 ? Math.round((done / total) * 100) : 0
-		};
-	});
-	const taskStateSignals = $derived.by(() => {
-		let inProgress = 0;
-		let blocked = 0;
-		for (const task of tasks) {
-			if (task.deleted_at || task.state_key === 'done') continue;
-			if (task.state_key === 'in_progress') inProgress += 1;
-			if (task.state_key === 'blocked') blocked += 1;
-		}
-		return { inProgress, blocked };
-	});
-	const taskStateCountsMayBePartial = $derived(!tasksCoverage.complete);
+	const taskCount = $derived(tasksCoverage.total || tasks.length);
 
 	const activeGoals = $derived(
 		goals.filter(
@@ -313,8 +284,6 @@
 			.slice(0, 4)
 	);
 
-	const nextMilestone = $derived(upcomingMilestones[0] ?? null);
-	const activeTask = $derived(taskBuckets.in_progress[0] ?? null);
 	const projectStatusLabel = $derived(humanize(project.state_key || 'planning'));
 	const projectDescription = $derived(
 		project.description?.trim() ||
@@ -337,25 +306,6 @@
 		return value
 			.replace(/[._-]+/g, ' ')
 			.replace(/\b\w/g, (character) => character.toUpperCase());
-	}
-
-	function statusClass(state: string): string {
-		switch (state) {
-			case 'active':
-			case 'achieved':
-			case 'completed':
-				return 'border-success/30 bg-success/10 text-success';
-			case 'paused':
-			case 'draft':
-			case 'planning':
-				return 'border-warning/30 bg-warning/10 text-foreground';
-			case 'cancelled':
-			case 'abandoned':
-			case 'missed':
-				return 'border-destructive/30 bg-destructive/10 text-destructive';
-			default:
-				return 'border-border bg-muted/50 text-muted-foreground';
-		}
 	}
 
 	function formatDate(value: string | null | undefined, includeYear = false): string {
@@ -469,6 +419,11 @@
 			(nextIndex) => selectTab(TAB_ORDER[nextIndex]!),
 			focusTab
 		);
+	}
+
+	function openProjectBrief() {
+		showProjectBriefModal = true;
+		void hydrateContextDocument();
 	}
 
 	function resetEntityEditors() {
@@ -603,25 +558,6 @@
 	function handleWorkspaceEntityMutated() {
 		closeEntityEditor();
 		void refreshProject();
-	}
-
-	function focusTaskBucket(bucket: ProjectTaskBoardBucketKey) {
-		if (!browser) return;
-		const column = document.getElementById(`task-bucket-${bucket}`);
-		if (!(column instanceof HTMLElement)) return;
-		const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		column.focus({ preventScroll: true });
-		column.scrollIntoView({
-			behavior: reduceMotion ? 'auto' : 'smooth',
-			block: 'nearest',
-			inline: 'center'
-		});
-	}
-
-	function openTaskBucket(bucket: ProjectTaskBoardBucketKey) {
-		selectTab('work');
-		if (!browser) return;
-		requestAnimationFrame(() => focusTaskBucket(bucket));
 	}
 
 	function createDocument(parentId: string | null = null) {
@@ -782,39 +718,22 @@
 <div class="min-h-screen bg-background text-foreground">
 	<header class="border-b border-border bg-card tx tx-frame tx-weak">
 		<div class="mx-auto max-w-7xl px-2 pt-2 sm:px-4 sm:pt-3 lg:px-6">
-			<div class="flex min-w-0 items-start justify-between gap-2">
-				<div class="flex min-w-0 flex-1 items-start gap-1 sm:gap-2">
-					<a
-						href="/projects"
-						class="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-						aria-label="All projects"
-					>
-						<ArrowLeft class="h-4 w-4 shrink-0" />
-						<span class="hidden lg:inline">All projects</span>
-					</a>
-					<div class="flex min-w-0 flex-1 items-start gap-2 py-1">
+			<div class="flex min-w-0 items-center justify-between gap-2 pb-2 sm:gap-3 sm:pb-3">
+				<div class="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
+					<div class="flex min-w-0 flex-1 items-center gap-2 py-1">
 						<ProjectIcon
 							svg={project.icon_svg ?? null}
 							concept={project.icon_concept ?? null}
 							size="md"
 						/>
 						<div class="min-w-0 flex-1">
-							<div class="flex min-w-0 items-center gap-2">
-								<h1
-									class="min-w-0 flex-1 truncate text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-2xl"
-									style:view-transition-name="project-title-{project.id}"
-									style:view-transition-class="project-title"
-								>
-									{project.name || 'Untitled project'}
-								</h1>
-								<span
-									class="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-2xs font-semibold {statusClass(
-										project.state_key
-									)}"
-								>
-									{projectStatusLabel}
-								</span>
-							</div>
+							<h1
+								class="min-w-0 flex-1 truncate text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-2xl"
+								style:view-transition-name="project-title-{project.id}"
+								style:view-transition-class="project-title"
+							>
+								{project.name || 'Untitled project'}
+							</h1>
 							<p
 								class="mt-0.5 hidden max-w-3xl truncate text-sm text-muted-foreground sm:block"
 							>
@@ -824,115 +743,46 @@
 					</div>
 				</div>
 
-				<Button
-					variant="outline"
-					size="sm"
-					icon={Network}
-					onclick={() => (showGraphModal = true)}
-				>
-					<span class="hidden sm:inline">Graph</span>
-					<span class="sr-only sm:hidden">Open project graph</span>
-				</Button>
-			</div>
-
-			<div
-				class="mt-2 grid border-y border-border bg-background/55 sm:grid-cols-2"
-				aria-label="Project focus"
-			>
-				<button
-					type="button"
-					class="operating-focus group border-b border-border sm:border-b-0 sm:border-r"
-					aria-label={activeTask
-						? `Open active task ${activeTask.title}`
-						: 'Jump to the in progress task column'}
-					onclick={() =>
-						activeTask
-							? openEntity('task', activeTask.id)
-							: openTaskBucket('in_progress')}
-				>
-					<div class="focus-icon bg-info/10">
-						<ListChecks class="h-4 w-4 text-info" />
-					</div>
-					<div class="min-w-0 flex-1">
-						<p class="micro-label">ACTIVE NOW</p>
-						<p class="truncate text-sm font-semibold text-foreground">
-							{activeTask?.title || 'No task is marked in progress'}
-						</p>
-						<p class="truncate text-xs text-muted-foreground">
-							{taskStateSignals.inProgress > 1
-								? `${taskStateSignals.inProgress}${taskStateCountsMayBePartial ? '+' : ''} active tasks`
-								: activeTask
-									? 'Open the task to continue'
-									: 'Move one task into In progress to set focus'}
-						</p>
-					</div>
-					<ArrowRight
-						class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
-					/>
-				</button>
-
-				<div class="operating-focus">
-					<div class="focus-icon bg-accent/10">
-						<Sparkles class="h-4 w-4 text-accent" />
-					</div>
-					<div class="min-w-0 flex-1">
-						<p class="micro-label">RECOMMENDED NEXT</p>
-						<p class="line-clamp-2 text-sm font-medium text-foreground">
-							{project.next_step_short ||
-								'Choose the next concrete move for this project.'}
-						</p>
-					</div>
-					<button
-						type="button"
-						class="plan-next-action"
-						onclick={() => (showAgentChatModal = true)}
+				<div class="flex shrink-0 items-center gap-1" aria-label="Project actions">
+					<Button
+						variant="outline"
+						size="sm"
+						icon={BookOpen}
+						class="rounded-md shadow-none"
+						aria-label="Open Brief / Start Here"
+						title="Open Brief / Start Here"
+						onclick={openProjectBrief}
 					>
-						Plan
-					</button>
+						<span class="hidden sm:inline">Brief</span>
+						<span class="sr-only sm:hidden">Open Brief / Start Here</span>
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						icon={Network}
+						class="rounded-md"
+						title="Open project graph"
+						onclick={() => (showGraphModal = true)}
+					>
+						<span class="hidden lg:inline">Graph</span>
+						<span class="sr-only lg:hidden">Open project graph</span>
+					</Button>
+					<ProjectWorkspaceOptionsMenu
+						{project}
+						{contextDocument}
+						{canEdit}
+						canAdmin={access.canAdmin}
+						canOpenCollaboration={access.canViewLogs}
+						canDeleteProject={access.isOwner}
+						onProjectSaved={refreshProject}
+					/>
 				</div>
 			</div>
 
-			<div
-				class="flex min-h-[44px] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
-				aria-label="Project status summary"
+			<nav
+				class="workspace-tabs -mx-2 overflow-x-auto border-t border-border/80 bg-background/45 px-2 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6"
+				aria-label="Project workspace views"
 			>
-				<span>
-					<strong class="font-semibold tabular-nums text-foreground"
-						>{taskSignals.completion}%</strong
-					>
-					complete
-				</span>
-				{#if taskSignals.overdue > 0}
-					<button
-						type="button"
-						class="summary-link text-destructive"
-						onclick={() => openTaskBucket('overdue')}
-					>
-						{taskSignals.overdue} overdue
-					</button>
-				{/if}
-				{#if taskStateSignals.blocked > 0}
-					<button
-						type="button"
-						class="summary-link text-foreground"
-						onclick={() => openTaskBucket('blocked')}
-					>
-						{taskStateSignals.blocked}{taskStateCountsMayBePartial ? '+' : ''} blocked
-					</button>
-				{/if}
-				{#if nextMilestone}
-					<button
-						type="button"
-						class="summary-link"
-						aria-label="Open next milestone {nextMilestone.title}"
-						onclick={() => openEntity('milestone', nextMilestone.id)}
-					>
-						Milestone {formatDate(nextMilestone.due_at)}
-					</button>
-				{/if}
-			</div>
-
-			<nav class="-mb-px overflow-x-auto" aria-label="Project workspace views">
 				<div class="flex min-w-max gap-1" role="tablist" aria-orientation="horizontal">
 					<button
 						bind:this={tabButtons[0]}
@@ -948,7 +798,7 @@
 					>
 						<Columns2 class="h-4 w-4" />
 						Work
-						<span class="tab-count">{taskSignals.total}</span>
+						<span class="tab-count">{taskCount}</span>
 					</button>
 					<button
 						bind:this={tabButtons[1]}
@@ -1799,6 +1649,18 @@
 	onMutated={handleWorkspaceEntityMutated}
 />
 
+{#if showProjectBriefModal}
+	<ProjectBriefHubModal
+		isOpen={showProjectBriefModal}
+		projectId={project.id}
+		projectName={project.name || 'Project'}
+		{contextDocument}
+		{canEdit}
+		onClose={() => (showProjectBriefModal = false)}
+		onOpenStartHere={(documentId) => openEntity('document', documentId)}
+	/>
+{/if}
+
 <Modal
 	isOpen={showGraphModal}
 	onClose={() => (showGraphModal = false)}
@@ -1851,11 +1713,11 @@
 <style>
 	.workspace-tab {
 		display: inline-flex;
-		min-height: 44px;
+		min-height: 48px;
 		align-items: center;
 		gap: 0.5rem;
-		border-bottom: 2px solid transparent;
-		padding: 0.625rem 0.75rem;
+		border-bottom: 3px solid transparent;
+		padding: 0.75rem 0.875rem;
 		color: hsl(var(--muted-foreground));
 		font-size: 0.875rem;
 		font-weight: 600;
@@ -1878,7 +1740,13 @@
 
 	.workspace-tab-active {
 		border-bottom-color: hsl(var(--accent));
+		background: hsl(var(--card) / 0.72);
 		color: hsl(var(--foreground));
+	}
+
+	.workspace-tab-active .tab-count {
+		background: hsl(var(--accent) / 0.12);
+		color: hsl(var(--accent));
 	}
 
 	.tab-count {
@@ -1901,34 +1769,11 @@
 		padding-bottom: 0.75rem;
 	}
 
-	.operating-focus {
-		display: flex;
-		min-width: 0;
-		min-height: 76px;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.625rem 0.75rem;
-		text-align: left;
-	}
-
-	button.operating-focus {
-		cursor: pointer;
-		transition: background-color 120ms ease;
-	}
-
-	button.operating-focus:hover {
-		background: hsl(var(--muted) / 0.5);
-	}
-
-	button.operating-focus:focus-visible,
-	.plan-next-action:focus-visible,
-	.summary-link:focus-visible,
 	.view-all-row:focus-visible {
 		outline: 2px solid hsl(var(--ring));
 		outline-offset: -2px;
 	}
 
-	.focus-icon,
 	.section-icon {
 		display: flex;
 		height: 2.25rem;
@@ -1937,31 +1782,6 @@
 		align-items: center;
 		justify-content: center;
 		border-radius: 0.5rem;
-	}
-
-	.plan-next-action {
-		display: inline-flex;
-		min-height: 44px;
-		flex-shrink: 0;
-		align-items: center;
-		justify-content: center;
-		border: 1px solid hsl(var(--border));
-		border-radius: 0.5rem;
-		background: hsl(var(--card));
-		padding: 0 0.75rem;
-		color: hsl(var(--foreground));
-		font-size: 0.75rem;
-		font-weight: 650;
-		transition: background-color 120ms ease;
-	}
-
-	.plan-next-action:hover,
-	.summary-link:hover {
-		background: hsl(var(--muted) / 0.65);
-	}
-
-	.plan-next-action:hover {
-		border-color: hsl(var(--accent) / 0.45);
 	}
 
 	.brief-toggle {
@@ -1985,16 +1805,6 @@
 	.brief-toggle:focus-visible {
 		outline: 2px solid hsl(var(--ring));
 		outline-offset: -2px;
-	}
-
-	.summary-link {
-		display: inline-flex;
-		min-height: 44px;
-		align-items: center;
-		border-radius: 0.5rem;
-		padding: 0 0.5rem;
-		font-weight: 600;
-		transition: background-color 120ms ease;
 	}
 
 	.micro-label {
@@ -2217,10 +2027,7 @@
 	@media (prefers-reduced-motion: reduce) {
 		.workspace-tab,
 		.entity-row,
-		.operating-focus,
-		.plan-next-action,
 		.brief-toggle,
-		.summary-link,
 		.view-all-row,
 		.entity-create-row {
 			transition: none;

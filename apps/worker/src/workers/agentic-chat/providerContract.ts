@@ -238,11 +238,21 @@ export type AgenticChatProviderPortV1 = {
 	stream?(input: AgenticChatProviderInputV1): AsyncIterable<AgenticChatProviderStepV1>;
 };
 
+export type AgenticChatProviderExecutionDiagnosticV1 = Readonly<{
+	kind: 'rejected_tool_name';
+	rejectedToolName: string | null;
+	rejectedToolNameLength: number;
+	advertisedToolCount: number;
+	repeatedAdvertisedToolName: string | null;
+	repeatedToolNameCount: number | null;
+}>;
+
 export class AgenticChatProviderExecutionError extends Error {
 	constructor(
 		readonly code: string,
 		readonly failureClass: AgenticChatRecoveryFailureClassV1,
-		message: string
+		message: string,
+		readonly diagnostic: AgenticChatProviderExecutionDiagnosticV1 | null = null
 	) {
 		super(message);
 		this.name = 'AgenticChatProviderExecutionError';

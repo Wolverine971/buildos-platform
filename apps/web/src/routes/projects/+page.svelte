@@ -9,6 +9,7 @@
 	import { untrack } from 'svelte';
 	import { get } from 'svelte/store';
 	import { goto, invalidateAll } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
@@ -34,21 +35,27 @@
 		SlidersHorizontal,
 		ChevronDown,
 		Search,
-		Folder
-	} from 'lucide-svelte';
+		Folder,
+		X,
+		ArrowLeft
+	} from '$lib/icons/lucide';
 	import FilterGroup from '$lib/components/ui/FilterGroup.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
 	import CollapsibleStateSection from '$lib/components/projects/CollapsibleStateSection.svelte';
 	import ProjectStateRow from '$lib/components/projects/ProjectStateRow.svelte';
 	import {
-		PROJECT_STATE_ORDER,
-		PROJECT_STATE_META,
 		normalizeProjectState,
 		isPrimaryTier,
 		emptyProjectStateCounts
 	} from '$lib/config/project-states';
-	import type { ProjectState } from '$lib/types/onto';
+	import {
+		PROJECT_LIST_SCOPE_OPTIONS,
+		getProjectListScopeLabel,
+		matchesProjectListScope,
+		normalizeProjectListScope,
+		type ProjectListScope
+	} from '$lib/components/projects/project-list';
 
 	let { data } = $props();
 
@@ -66,7 +73,7 @@
 			} catch (err) {
 				console.error('Failed to load AgentChatModal:', err);
 				// Fallback to navigation
-				goto('/projects/create');
+				goto(resolve('/projects/create'));
 				return;
 			}
 		}
@@ -136,7 +143,9 @@
 	let graphComponentError = $state<string | null>(null);
 
 	let activeTab = $state<'overview' | 'graph'>(
-		get(page).url.searchParams.get('view') === 'graph' ? 'graph' : 'overview'
+		untrack(() =>
+			isAdmin && get(page).url.searchParams.get('view') === 'graph' ? 'graph' : 'overview'
+		)
 	);
 	let graphViewMode = $state<ViewMode>('projects'); // Default to Projects & Entities
 	let graphScopeFilters = $state<GraphScopeFilters>({ ...DEFAULT_GRAPH_SCOPE_FILTERS });
@@ -213,8 +222,7 @@
 	});
 
 	const projects = $derived(projectSummaries);
-	// State filtering is owned by the always-visible status count strip
-	// (single-select quick-filter); the panel handles Context/Scale/Stage only.
+	// Admin-only ontology facets stay available inside the secondary filter panel.
 	const availableContexts = $derived(
 		Array.from(
 			new Set(
@@ -247,7 +255,9 @@
 	const OWNERSHIP_FILTER_OPTIONS: readonly OwnershipFilter[] = ['all', 'owned', 'shared'];
 
 	let searchQuery = $state('');
-	let selectedStates = $state<ProjectState[]>([]);
+	let selectedScope = $state<ProjectListScope>(
+		normalizeProjectListScope(get(page).url.searchParams.get('state'))
+	);
 	let selectedOwnership = $state<OwnershipFilter>('all');
 	let selectedContexts = $state<string[]>([]);
 	let selectedScales = $state<string[]>([]);
@@ -257,7 +267,7 @@
 	const hasFilters = $derived(
 		Boolean(
 			searchQuery.trim() ||
-				selectedStates.length ||
+				selectedScope !== 'current' ||
 				selectedOwnership !== 'all' ||
 				selectedContexts.length ||
 				selectedScales.length ||
@@ -267,23 +277,19 @@
 
 	// Count of active filters (excluding search)
 	const activeFilterCount = $derived(
-		selectedStates.length +
+		(selectedScope !== 'current' ? 1 : 0) +
 			(selectedOwnership !== 'all' ? 1 : 0) +
 			selectedContexts.length +
 			selectedScales.length +
 			selectedStages.length
 	);
-	const activeSearchAndFilterCount = $derived(
-		activeFilterCount + (searchQuery.trim().length > 0 ? 1 : 0)
-	);
-
 	// Check if any filter options are available
 	const hasFilterOptions = $derived(
 		availableContexts.length > 0 || availableScales.length > 0 || availableStages.length > 0
 	);
 
-	// Apply every filter except the state filter. The status count strip uses
-	// this list so users can see counts in other states and swap between them.
+	// Apply every filter except project state so the status choices can show
+	// useful counts without becoming a second navigation bar.
 	const projectsMatchingNonStateFilters = $derived.by(() => {
 		const query = searchQuery.trim().toLowerCase();
 		return (projects ?? []).filter((project) => {
@@ -320,86 +326,24 @@
 	});
 
 	const filteredProjects = $derived.by(() => {
-		if (!selectedStates.length) return projectsMatchingNonStateFilters;
-		return projectsMatchingNonStateFilters.filter((project) => {
-			const normalized = normalizeProjectState(project.state_key);
-			return selectedStates.includes(normalized);
-		});
+		// Search is intentionally global by default so a known project never
+		// disappears only because it was paused or completed.
+		const searchAcrossAllStates = selectedScope === 'current' && searchQuery.trim().length > 0;
+		return projectsMatchingNonStateFilters
+			.filter(
+				(project) =>
+					searchAcrossAllStates ||
+					matchesProjectListScope(project.state_key, selectedScope)
+			)
+			.sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a));
 	});
-
-	const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
-
-	type ProjectRecencyGroups = {
-		recent: OntologyProjectSummary[];
-		olderThan7Days: OntologyProjectSummary[];
-		olderThan30Days: OntologyProjectSummary[];
-	};
 
 	function parseProjectUpdatedAt(project: OntologyProjectSummary): number {
 		const timestamp = Date.parse(project.updated_at);
 		return Number.isNaN(timestamp) ? 0 : timestamp;
 	}
 
-	function groupProjectsByRecency(projectList: OntologyProjectSummary[]): ProjectRecencyGroups {
-		const now = Date.now();
-		const recent: OntologyProjectSummary[] = [];
-		const olderThan7Days: OntologyProjectSummary[] = [];
-		const olderThan30Days: OntologyProjectSummary[] = [];
-
-		for (const project of projectList) {
-			const updatedAtMs = parseProjectUpdatedAt(project);
-			const ageDays =
-				updatedAtMs > 0 ? (now - updatedAtMs) / MILLIS_PER_DAY : Number.POSITIVE_INFINITY;
-
-			if (ageDays >= 30) {
-				olderThan30Days.push(project);
-				continue;
-			}
-
-			if (ageDays >= 7) {
-				olderThan7Days.push(project);
-				continue;
-			}
-
-			recent.push(project);
-		}
-
-		return {
-			recent,
-			olderThan7Days,
-			olderThan30Days
-		};
-	}
-
-	const projectsByState = $derived.by(() => {
-		const groups = new Map<ProjectState, OntologyProjectSummary[]>();
-		for (const state of PROJECT_STATE_ORDER) groups.set(state, []);
-		for (const project of filteredProjects) {
-			const state = normalizeProjectState(project.state_key);
-			groups.get(state)?.push(project);
-		}
-		for (const list of groups.values()) {
-			list.sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a));
-		}
-		return groups;
-	});
-
-	// Planning + Active render as one combined "Current Work" section. Mixed
-	// by updated_at; each row's state chip distinguishes Planning vs Active.
-	const primaryProjects = $derived.by(() => {
-		const merged = [
-			...(projectsByState.get('planning') ?? []),
-			...(projectsByState.get('active') ?? [])
-		];
-		return merged.sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a));
-	});
-
-	const primaryRecencyGroups = $derived(groupProjectsByRecency(primaryProjects));
-
-	const SECONDARY_STATES = PROJECT_STATE_ORDER.filter((state) => !isPrimaryTier(state));
-
-	// Counts shown in the status strip ignore the state filter so users can see
-	// how much work sits in each state and quick-switch between them.
+	// Counts remain available inside Filters without becoming a second tab bar.
 	const stateCounts = $derived.by(() => {
 		const counts = emptyProjectStateCounts();
 		for (const project of projectsMatchingNonStateFilters) {
@@ -412,22 +356,27 @@
 		return counts;
 	});
 
-	const stats = $derived.by(() => {
-		const taskTotal = primaryProjects.reduce((acc, p) => acc + (p.task_count ?? 0), 0);
-		const documentTotal = primaryProjects.reduce((acc, p) => acc + (p.document_count ?? 0), 0);
-		return {
-			currentWork: primaryProjects.length,
-			totalTasks: taskTotal,
-			totalDocuments: documentTotal,
-			activeProjects: projectsByState.get('active')?.length ?? 0
-		};
-	});
-
-	// Only surface the "No current work" empty state when the user hasn't
-	// explicitly filtered themselves into a secondary-only view. Filtering to
-	// just Completed shouldn't shout that there's no current work.
-	const primaryFilterActive = $derived(
-		selectedStates.length === 0 || selectedStates.some((state) => isPrimaryTier(state))
+	const completedProjects = $derived(
+		projectsMatchingNonStateFilters
+			.filter((project) => normalizeProjectState(project.state_key) === 'completed')
+			.sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a))
+	);
+	const showCompletedDisclosure = $derived(
+		selectedScope === 'current' &&
+			searchQuery.trim().length === 0 &&
+			completedProjects.length > 0
+	);
+	const visibleSectionLabel = $derived(
+		selectedScope === 'current' && searchQuery.trim().length > 0
+			? 'Search results'
+			: getProjectListScopeLabel(selectedScope)
+	);
+	const visibleSectionHelper = $derived(
+		selectedScope === 'current'
+			? searchQuery.trim().length > 0
+				? 'Across all project states'
+				: 'Planning and active, most recently updated first'
+			: 'Most recently updated first'
 	);
 
 	function toggleValue<T extends string>(list: T[], value: T): T[] {
@@ -436,15 +385,27 @@
 
 	function clearFilters() {
 		searchQuery = '';
-		selectedStates = [];
 		selectedOwnership = 'all';
 		selectedContexts = [];
 		selectedScales = [];
 		selectedStages = [];
+		void setProjectScope('current');
 	}
 
-	function quickFilterState(state: ProjectState) {
-		selectedStates = selectedStates.includes(state) ? [] : [state];
+	async function setProjectScope(scope: ProjectListScope) {
+		selectedScope = scope;
+		const params = new URLSearchParams($page.url.searchParams);
+		if (scope === 'current') params.delete('state');
+		else params.set('state', scope);
+
+		const query = params.toString();
+		const nextUrl = resolve(query ? `/projects?${query}` : '/projects');
+		if (nextUrl === `${$page.url.pathname}${$page.url.search}`) return;
+		await goto(resolve(query ? `/projects?${query}` : '/projects'), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	}
 
 	async function ensureGraphComponents() {
@@ -491,7 +452,7 @@
 		}
 
 		const query = params.toString();
-		await goto(`${$page.url.pathname}${query ? `?${query}` : ''}`, {
+		await goto(resolve(query ? `/projects?${query}` : '/projects'), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: tab === 'graph'
@@ -508,21 +469,18 @@
 	}
 
 	$effect(() => {
-		const viewParam = $page.url.searchParams.get('view') === 'graph' ? 'graph' : 'overview';
+		const viewParam =
+			isAdmin && $page.url.searchParams.get('view') === 'graph' ? 'graph' : 'overview';
 		if (viewParam !== activeTab) {
 			activeTab = viewParam;
 		}
 	});
 
-	// Deep-link support: /projects?state=active applies a state filter on load.
+	// Deep-link support: /projects?state=active applies the same scope used by Filters.
 	$effect(() => {
-		const stateParam = $page.url.searchParams.get('state');
-		if (!stateParam) return;
-		const normalized = stateParam.toLowerCase() as ProjectState;
-		if (!PROJECT_STATE_ORDER.includes(normalized)) return;
+		const scope = normalizeProjectListScope($page.url.searchParams.get('state'));
 		untrack(() => {
-			if (selectedStates.length === 1 && selectedStates[0] === normalized) return;
-			if (selectedStates.length === 0) selectedStates = [normalized];
+			if (selectedScope !== scope) selectedScope = scope;
 		});
 	});
 
@@ -568,56 +526,45 @@
 	disabled={isPullRefreshing || showChatModal || projectsLoading}
 >
 	<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4">
-		<!-- Page Header - Inkprint design with micro-label pattern -->
-		<header class="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<div class="space-y-1 sm:space-y-1.5 flex-1">
-				<p class="micro-label text-accent">YOUR WORKSPACE</p>
+		<header class="flex items-start justify-between gap-3 sm:gap-6">
+			<div class="min-w-0 flex-1 space-y-1">
 				<div class="flex items-center gap-2.5">
-					<h1 class="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">
-						Projects
+					<h1 class="text-2xl font-semibold text-foreground sm:text-3xl">
+						{activeTab === 'overview' ? 'Projects' : 'Ontology graph'}
 					</h1>
-					{#if projectsLoading}
+					{#if activeTab === 'overview' && projectsLoading}
 						<LoaderCircle
-							class="h-4 w-4 sm:h-5 sm:w-5 text-accent animate-spin motion-reduce:animate-none"
+							class="h-5 w-5 animate-spin text-accent motion-reduce:animate-none"
 						/>
 					{/if}
 				</div>
-				<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-					Your active projects and workflows. Context that compounds.
+				<p class="text-sm text-muted-foreground">
+					{activeTab === 'overview'
+						? 'Pick up where you left off, or start something new.'
+						: 'Admin tool for exploring project and entity relationships.'}
 				</p>
 			</div>
 
-			<!-- Graph/Overview toggle - Admin Only - Inkprint tab design with card weight -->
-			{#if isAdmin}
-				<nav
-					class="inline-flex wt-card p-0.5 sm:p-1 text-xs sm:text-sm font-semibold overflow-x-auto scrollbar-hide tx tx-frame tx-weak"
-					aria-label="Project view mode"
+			{#if activeTab === 'overview'}
+				<Button
+					variant="accent"
+					size="sm"
+					icon={Plus}
+					onclick={handleCreateProject}
+					class="shrink-0 whitespace-nowrap"
 				>
-					<button
-						type="button"
-						class={`relative rounded-md px-3 py-1.5 sm:px-4 sm:py-2 transition-all pressable motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${
-							activeTab === 'overview'
-								? 'bg-accent text-accent-foreground shadow-ink'
-								: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-						}`}
-						aria-pressed={activeTab === 'overview'}
-						onclick={() => setActiveTab('overview')}
-					>
-						Overview
-					</button>
-					<button
-						type="button"
-						class={`relative rounded-md px-3 py-1.5 sm:px-4 sm:py-2 transition-all pressable motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${
-							activeTab === 'graph'
-								? 'bg-accent text-accent-foreground shadow-ink'
-								: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-						}`}
-						aria-pressed={activeTab === 'graph'}
-						onclick={() => setActiveTab('graph')}
-					>
-						Graph
-					</button>
-				</nav>
+					New project
+				</Button>
+			{:else}
+				<Button
+					variant="outline"
+					size="sm"
+					icon={ArrowLeft}
+					onclick={() => setActiveTab('overview')}
+					class="shrink-0 whitespace-nowrap"
+				>
+					Back to projects
+				</Button>
 			{/if}
 		</header>
 
@@ -640,162 +587,97 @@
 							<Button
 								variant="primary"
 								size="sm"
-								onclick={() => goto('/projects', { replaceState: true })}
+								onclick={() => goto(resolve('/projects'), { replaceState: true })}
 							>
 								Try again
 							</Button>
 						</div>
 					</div>
 				{:else}
-					<div class="flex justify-end">
-						<Button
-							variant="accent"
-							size="sm"
-							icon={Plus}
-							onclick={handleCreateProject}
-							class="w-full sm:w-auto whitespace-nowrap"
-						>
-							<span>New Project</span>
-						</Button>
-					</div>
-
-					<!-- Stats Grid - Now counts current work (planning + active) instead of all-time -->
-					<div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-3">
-						<!-- Current work = planning + active -->
-						<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
-							<p class="micro-label text-muted-foreground">CURRENT WORK</p>
-							{#if showSkeletons}
-								<div
-									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded-md mt-1 animate-status-pulse motion-reduce:animate-none"
-								></div>
-							{:else}
-								<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
-									{stats.currentWork}
-								</p>
-							{/if}
-						</div>
-						<!-- Tasks across current work only -->
-						<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
-							<p class="micro-label text-muted-foreground">TASKS</p>
-							{#if showSkeletons}
-								<div
-									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded-md mt-1 animate-status-pulse motion-reduce:animate-none"
-								></div>
-							{:else}
-								<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
-									{stats.totalTasks}
-								</p>
-							{/if}
-						</div>
-						<!-- Docs across current work only -->
-						<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
-							<p class="micro-label text-muted-foreground">DOCS</p>
-							{#if showSkeletons}
-								<div
-									class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded-md mt-1 animate-status-pulse motion-reduce:animate-none"
-								></div>
-							{:else}
-								<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
-									{stats.totalDocuments}
-								</p>
-							{/if}
-						</div>
-						<!-- Active count - subset of current work -->
-						<div
-							class="wt-paper p-3 sm:p-4 tx tx-pulse tx-weak border-accent/30 bg-accent/5"
-						>
-							<p class="micro-label text-accent">ACTIVE</p>
-							{#if showSkeletons}
-								<div
-									class="h-6 sm:h-8 w-10 sm:w-14 bg-accent/20 rounded-md mt-1 animate-status-pulse motion-reduce:animate-none"
-								></div>
-							{:else}
-								<p class="text-xl sm:text-2xl font-semibold text-accent mt-1">
-									{stats.activeProjects}
-								</p>
-							{/if}
-						</div>
-					</div>
-
-					<!-- Status count strip - click any segment to quick-filter by state -->
-					{#if !showSkeletons && stateCounts.total > 0}
-						<div
-							class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs sm:text-sm"
-						>
-							{#each PROJECT_STATE_ORDER as state (state)}
-								{@const count = stateCounts[state]}
-								{@const meta = PROJECT_STATE_META[state]}
-								{@const isSelected =
-									selectedStates.length === 1 && selectedStates[0] === state}
-								<button
-									type="button"
-									class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-default {isSelected
-										? 'bg-accent/15 text-accent font-semibold'
-										: count === 0
-											? 'text-muted-foreground/60 hover:text-muted-foreground'
-											: 'text-muted-foreground hover:text-foreground'}"
-									onclick={() => quickFilterState(state)}
-									aria-pressed={isSelected}
-									disabled={count === 0 && !isSelected}
-								>
-									<span>{meta.label}</span>
-									<span class="font-semibold">{count}</span>
-								</button>
-							{/each}
-						</div>
-					{/if}
-
-					<!-- Search + Filters panel (collapsible) -->
-					<div class="wt-paper overflow-hidden tx tx-frame tx-weak">
-						<button
-							type="button"
-							class="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-muted/30 pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-							onclick={() => (filtersExpanded = !filtersExpanded)}
-							aria-expanded={filtersExpanded}
-							aria-controls="filter-panel-content"
-						>
-							<div class="flex items-center gap-2">
-								<SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
-								<span class="text-sm font-semibold text-foreground"
-									>Search & Filters</span
-								>
-								{#if activeSearchAndFilterCount > 0}
-									<span
-										class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-accent text-accent-foreground text-xs font-bold"
+					<div class="space-y-2">
+						<div class="flex min-w-0 items-stretch gap-2">
+							<div class="relative min-w-0 flex-1">
+								<Search
+									class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+								/>
+								<input
+									type="search"
+									aria-label="Search projects"
+									class="min-h-11 w-full rounded-lg border border-border-strong bg-card py-2 pl-10 pr-10 text-base text-foreground shadow-ink-inner transition placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm"
+									placeholder="Search projects..."
+									bind:value={searchQuery}
+								/>
+								{#if searchQuery}
+									<button
+										type="button"
+										class="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										onclick={() => (searchQuery = '')}
+										aria-label="Clear project search"
 									>
-										{activeSearchAndFilterCount}
-									</span>
+										<X class="h-4 w-4" />
+									</button>
 								{/if}
 							</div>
-							<ChevronDown
-								class="h-4 w-4 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none {filtersExpanded
-									? 'rotate-180'
-									: ''}"
-							/>
-						</button>
-
-						<div
-							id="filter-panel-content"
-							class="grid transition-all duration-200 ease-out motion-reduce:transition-none {filtersExpanded
-								? 'grid-rows-[1fr] opacity-100'
-								: 'grid-rows-[0fr] opacity-0'}"
-						>
-							<div
-								class="px-3 pb-3 pt-1 space-y-3 border-t border-border overflow-hidden"
+							<Button
+								variant="outline"
+								size="sm"
+								icon={SlidersHorizontal}
+								onclick={() => (filtersExpanded = !filtersExpanded)}
+								aria-expanded={filtersExpanded}
+								aria-controls="filter-panel-content"
+								class="shrink-0"
 							>
-								<div class="relative">
-									<input
-										type="search"
-										class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring shadow-ink-inner"
-										placeholder="Search projects by name or description..."
-										bind:value={searchQuery}
-									/>
-									<Search
-										class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-									/>
+								Filters
+								{#if activeFilterCount > 0}
+									<span
+										class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-bold text-accent-foreground"
+									>
+										{activeFilterCount}
+									</span>
+								{/if}
+								<ChevronDown
+									class="h-4 w-4 transition-transform motion-reduce:transition-none {filtersExpanded
+										? 'rotate-180'
+										: ''}"
+								/>
+							</Button>
+						</div>
+
+						{#if filtersExpanded}
+							<div
+								id="filter-panel-content"
+								class="wt-paper space-y-4 p-3 tx tx-frame tx-weak sm:p-4"
+							>
+								<div class="space-y-1.5">
+									<p class="micro-label text-muted-foreground">STATUS</p>
+									<div class="flex flex-wrap gap-1.5">
+										{#each PROJECT_LIST_SCOPE_OPTIONS as scope (scope)}
+											{@const scopeCount =
+												scope === 'current'
+													? stateCounts.primaryTotal
+													: scope === 'all'
+														? stateCounts.total
+														: stateCounts[scope]}
+											<button
+												type="button"
+												class="inline-flex min-h-11 items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-semibold transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-default {selectedScope ===
+												scope
+													? 'border-accent/40 bg-accent/15 text-accent'
+													: scopeCount === 0
+														? 'border-border text-muted-foreground/60'
+														: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'}"
+												onclick={() => setProjectScope(scope)}
+												aria-pressed={selectedScope === scope}
+												disabled={scopeCount === 0 &&
+													selectedScope !== scope}
+											>
+												<span>{getProjectListScopeLabel(scope)}</span>
+												<span class="text-xs font-bold">{scopeCount}</span>
+											</button>
+										{/each}
+									</div>
 								</div>
 
-								<!-- Ownership filter - available to all users -->
 								<div class="space-y-1.5">
 									<p class="micro-label text-muted-foreground">OWNERSHIP</p>
 									<div
@@ -804,7 +686,7 @@
 										{#each OWNERSHIP_FILTER_OPTIONS as option (option)}
 											<button
 												type="button"
-												class="px-3 py-1 rounded-md transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {selectedOwnership ===
+												class="min-h-11 rounded-md px-3 py-2 transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {selectedOwnership ===
 												option
 													? 'bg-accent text-accent-foreground shadow-ink'
 													: 'text-muted-foreground hover:text-foreground'}"
@@ -822,8 +704,6 @@
 								</div>
 
 								{#if isAdmin && hasFilterOptions}
-									<!-- State is filtered via the status count strip above; the
-									     panel covers Context/Scale/Stage only. -->
 									<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 										<FilterGroup
 											label="Context"
@@ -859,18 +739,83 @@
 								{/if}
 
 								{#if hasFilters}
-									<div class="pt-1">
-										<button
-											type="button"
-											class="rounded-md text-xs font-bold text-accent hover:text-accent/80 transition pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-											onclick={clearFilters}
-										>
-											Clear all filters
-										</button>
-									</div>
+									<Button variant="ghost" size="sm" onclick={clearFilters}>
+										Clear all filters
+									</Button>
 								{/if}
 							</div>
-						</div>
+						{/if}
+
+						{#if activeFilterCount > 0}
+							<div
+								class="flex flex-wrap items-center gap-1.5"
+								aria-label="Active filters"
+							>
+								{#if selectedScope !== 'current'}
+									<button
+										type="button"
+										class="inline-flex min-h-11 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										onclick={() => setProjectScope('current')}
+										aria-label="Clear status filter: {getProjectListScopeLabel(
+											selectedScope
+										)}"
+									>
+										Status: {getProjectListScopeLabel(selectedScope)}
+										<X class="h-3.5 w-3.5" />
+									</button>
+								{/if}
+								{#if selectedOwnership !== 'all'}
+									<button
+										type="button"
+										class="inline-flex min-h-11 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										onclick={() => (selectedOwnership = 'all')}
+										aria-label="Clear ownership filter"
+									>
+										{selectedOwnership === 'owned' ? 'Mine' : 'Shared'}
+										<X class="h-3.5 w-3.5" />
+									</button>
+								{/if}
+								{#each selectedContexts as value (value)}
+									<button
+										type="button"
+										class="inline-flex min-h-11 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										onclick={() =>
+											(selectedContexts = toggleValue(
+												selectedContexts,
+												value
+											))}
+										aria-label="Clear context filter: {value}"
+									>
+										Context: {value}
+										<X class="h-3.5 w-3.5" />
+									</button>
+								{/each}
+								{#each selectedScales as value (value)}
+									<button
+										type="button"
+										class="inline-flex min-h-11 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										onclick={() =>
+											(selectedScales = toggleValue(selectedScales, value))}
+										aria-label="Clear scale filter: {value}"
+									>
+										Scale: {value}
+										<X class="h-3.5 w-3.5" />
+									</button>
+								{/each}
+								{#each selectedStages as value (value)}
+									<button
+										type="button"
+										class="inline-flex min-h-11 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										onclick={() =>
+											(selectedStages = toggleValue(selectedStages, value))}
+										aria-label="Clear stage filter: {value}"
+									>
+										Stage: {value}
+										<X class="h-3.5 w-3.5" />
+									</button>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				{/if}
 			</section>
@@ -878,7 +823,7 @@
 			<!-- SKELETON LOADING: Show exact number of skeleton cards while loading -->
 			{#if showSkeletons}
 				<ProjectListSkeleton count={projectCount} />
-			{:else if filteredProjects.length === 0 && !projectsLoading}
+			{:else if projects.length === 0 && !projectsLoading}
 				<div
 					class="wt-paper border-dashed px-4 py-12 text-center tx tx-thread tx-weak sm:px-6 sm:py-16"
 				>
@@ -889,94 +834,69 @@
 					</div>
 					<h2 class="text-xl font-bold text-foreground">No projects yet</h2>
 					<p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
-						{projects.length === 0
-							? 'Create your first project and BuildOS will help you shape goals, tasks, and milestones.'
-							: 'No projects match the current filters. Adjust your search or clear filters to explore more.'}
+						Create your first project and BuildOS will help you shape goals, tasks, and
+						milestones.
 					</p>
-					<div class="mt-6 flex justify-center gap-3">
-						{#if projects.length === 0}
-							<Button variant="primary" size="sm" onclick={handleCreateProject}>
-								Create first project
-							</Button>
-						{:else if hasFilters}
-							<Button variant="outline" size="sm" onclick={clearFilters}>
-								Clear filters
-							</Button>
-						{/if}
+					<div class="mt-6 flex justify-center">
+						<Button variant="primary" size="sm" onclick={handleCreateProject}>
+							Create first project
+						</Button>
 					</div>
 				</div>
-			{:else if filteredProjects.length > 0}
+			{:else}
 				<div class="space-y-6">
-					<!-- Current Work — Planning + Active merged, sorted by updated_at desc -->
-					{#if primaryProjects.length > 0}
-						<section class="space-y-2" aria-labelledby="state-section-current-work">
-							<div class="flex items-baseline gap-2">
-								<p id="state-section-current-work" class="micro-label text-accent">
-									Current Work
+					{#if filteredProjects.length > 0}
+						<section class="space-y-2" aria-labelledby="project-list-heading">
+							<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+								<p id="project-list-heading" class="micro-label text-accent">
+									{visibleSectionLabel}
 								</p>
 								<span class="text-xs font-semibold text-muted-foreground">
-									{primaryProjects.length}
+									{filteredProjects.length}
 								</span>
 								<span
-									class="hidden sm:inline text-xs font-medium text-muted-foreground/80"
+									class="hidden text-xs font-medium text-muted-foreground/80 sm:inline"
 								>
-									· Planning and active projects
+									· {visibleSectionHelper}
 								</span>
 							</div>
 							<div class="space-y-2">
-								{#each primaryRecencyGroups.recent as project (project.id)}
-									<ProjectStateRow
-										{project}
-										variant="primary"
-										onSelect={handleProjectClick}
-									/>
+								{#each filteredProjects as project (project.id)}
+									<ProjectStateRow {project} onSelect={handleProjectClick} />
 								{/each}
-								{#if primaryRecencyGroups.olderThan7Days.length > 0}
-									<div class="project-recency-separator">
-										Not touched in last 7 days
-									</div>
-									{#each primaryRecencyGroups.olderThan7Days as project (project.id)}
-										<ProjectStateRow
-											{project}
-											variant="primary"
-											onSelect={handleProjectClick}
-										/>
-									{/each}
-								{/if}
-								{#if primaryRecencyGroups.olderThan30Days.length > 0}
-									<div class="project-recency-separator">
-										Not touched in last 30 days
-									</div>
-									{#each primaryRecencyGroups.olderThan30Days as project (project.id)}
-										<ProjectStateRow
-											{project}
-											variant="primary"
-											onSelect={handleProjectClick}
-										/>
-									{/each}
-								{/if}
 							</div>
 						</section>
-					{:else if primaryFilterActive}
+					{:else}
 						<div
-							class="wt-paper border-dashed px-4 py-6 text-center tx tx-thread tx-weak"
+							class="wt-paper border-dashed px-4 py-8 text-center tx tx-thread tx-weak"
 						>
-							<p class="text-sm font-semibold text-foreground">No current work</p>
-							<p class="mt-1 text-xs text-muted-foreground">
-								No Planning or Active projects match the current filters.
+							<p class="text-sm font-semibold text-foreground">
+								{selectedScope === 'current' && !searchQuery.trim()
+									? 'No current projects'
+									: 'No matching projects'}
 							</p>
+							<p class="mt-1 text-xs text-muted-foreground">
+								{selectedScope === 'current' && !searchQuery.trim()
+									? 'Planning and active projects will appear here.'
+									: 'Adjust your search or clear filters to explore more.'}
+							</p>
+							{#if hasFilters}
+								<div class="mt-4 flex justify-center">
+									<Button variant="outline" size="sm" onclick={clearFilters}>
+										Clear filters
+									</Button>
+								</div>
+							{/if}
 						</div>
 					{/if}
 
-					<!-- Secondary tiers: Completed, Cancelled, Paused -->
-					{#each SECONDARY_STATES as state (state)}
+					{#if showCompletedDisclosure}
 						<CollapsibleStateSection
-							projectState={state}
-							projects={projectsByState.get(state) ?? []}
-							variant="secondary"
+							projectState="completed"
+							projects={completedProjects}
 							onSelect={handleProjectClick}
 						/>
-					{/each}
+					{/if}
 				</div>
 			{/if}
 			<!-- Graph view - Admin Only -->
@@ -1102,16 +1022,3 @@
 {#if AgentChatModal && showChatModal}
 	<AgentChatModal isOpen={showChatModal} contextType="project_create" onClose={handleChatClose} />
 {/if}
-
-<style>
-	.project-recency-separator {
-		margin-top: 0.5rem;
-		padding-top: 0.75rem;
-		border-top: 1px solid hsl(var(--border));
-		font-size: 0.6875rem;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: hsl(var(--muted-foreground) / 0.85);
-	}
-</style>

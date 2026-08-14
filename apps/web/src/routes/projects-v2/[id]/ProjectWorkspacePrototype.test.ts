@@ -1,11 +1,14 @@
+// apps/web/src/routes/projects-v2/[id]/ProjectWorkspacePrototype.test.ts
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { pushState } from '$app/navigation';
 import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
 import ProjectWorkspacePrototype from './ProjectWorkspacePrototype.svelte';
 
 vi.mock('$app/navigation', () => ({
+	goto: vi.fn(),
 	pushState: vi.fn(),
 	replaceState: vi.fn()
 }));
@@ -22,6 +25,29 @@ const LONG_BRIEF = `Build a durable operating system for a complex launch spanni
 The work crosses several owners and time zones. This brief deliberately contains enough detail to test whether the page preserves scan speed without hiding the full context from people who need it.
 
 Success means the team can see the current objective, understand the sequence of commitments, and recover the reasoning behind important changes without scheduling another status meeting.`;
+const CONTEXT_DOCUMENT_ID = '33333333-3333-4333-8333-333333333333';
+
+function apiResponse(data: Record<string, unknown>) {
+	return new Response(JSON.stringify({ success: true, data }), {
+		status: 200,
+		headers: { 'Content-Type': 'application/json' }
+	});
+}
+
+function contextDocument() {
+	return {
+		id: CONTEXT_DOCUMENT_ID,
+		project_id: PROJECT_ID,
+		title: 'START HERE - Project',
+		type_key: 'document.context.project',
+		state_key: 'active',
+		content: '# START HERE - Project\n\nThis is the canonical project brief.',
+		props: {},
+		created_at: '2026-07-01T12:00:00.000Z',
+		updated_at: '2026-07-22T12:00:00.000Z',
+		deleted_at: null
+	};
+}
 
 function projectData(overrides: Record<string, unknown> = {}) {
 	return {
@@ -90,11 +116,129 @@ function plans(count: number) {
 describe('ProjectWorkspacePrototype edge states', () => {
 	beforeEach(() => {
 		window.history.replaceState({}, '', '/workspace?view=overview');
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input: RequestInfo | URL) => {
+				const url = String(input);
+				if (url.endsWith(`/api/projects/${PROJECT_ID}/briefs/latest`)) {
+					return apiResponse({
+						brief: {
+							id: 'brief-1',
+							project_id: PROJECT_ID,
+							brief_content:
+								"# Today's focus\n\nShip the simplified project workspace.",
+							brief_date: '2026-08-14',
+							generation_status: 'completed',
+							generation_error: null,
+							metadata: null,
+							created_at: '2026-08-14T12:00:00.000Z',
+							updated_at: '2026-08-14T12:00:00.000Z'
+						}
+					});
+				}
+				if (url.endsWith(`/api/onto/projects/${PROJECT_ID}/notification-settings`)) {
+					return apiResponse({
+						settings: {
+							project_id: PROJECT_ID,
+							member_count: 2,
+							is_shared_project: true,
+							project_default_enabled: true,
+							member_enabled: true,
+							effective_enabled: true,
+							member_overridden: false,
+							can_manage_default: true
+						}
+					});
+				}
+				throw new Error(`Unexpected fetch: ${url}`);
+			})
+		);
 	});
 
 	afterEach(() => {
 		cleanup();
+		vi.unstubAllGlobals();
 		vi.clearAllMocks();
+	});
+
+	it('keeps the persistent shell focused on project identity, the brief, and workspace tabs', async () => {
+		const { container } = render(ProjectWorkspacePrototype, {
+			props: {
+				data: projectData({ context_document: contextDocument() }) as any
+			}
+		});
+
+		await waitFor(() => {
+			expect(
+				screen.getByRole('navigation', { name: 'Project workspace views' })
+			).toBeInTheDocument();
+		});
+
+		const briefButton = screen.getByRole('button', {
+			name: 'Open Brief / Start Here'
+		});
+		expect(briefButton).toBeInTheDocument();
+		expect(screen.getByTitle('Open project graph')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Project options' })).toBeInTheDocument();
+		expect(screen.getAllByRole('tab').map((tab) => tab.textContent?.trim())).toEqual([
+			'Work 0',
+			'Overview',
+			'Docs 0',
+			'Activity'
+		]);
+
+		expect(container.querySelector('[aria-label="Project focus"]')).not.toBeInTheDocument();
+		expect(
+			container.querySelector('[aria-label="Project status summary"]')
+		).not.toBeInTheDocument();
+		expect(screen.queryByText('ACTIVE NOW')).not.toBeInTheDocument();
+		expect(screen.queryByText('RECOMMENDED NEXT')).not.toBeInTheDocument();
+		expect(
+			container.querySelector('header [aria-label="All projects"]')
+		).not.toBeInTheDocument();
+		expect(container.querySelector('header .rounded-full')).not.toBeInTheDocument();
+
+		await fireEvent.click(briefButton);
+		await waitFor(() => {
+			expect(screen.getByRole('dialog', { name: 'Brief / Start Here' })).toBeInTheDocument();
+		});
+		expect(screen.getByRole('tab', { name: 'Daily Brief' })).toHaveAttribute(
+			'aria-selected',
+			'true'
+		);
+		await waitFor(() => {
+			expect(screen.getByRole('heading', { name: "Today's focus" })).toBeInTheDocument();
+		});
+
+		await fireEvent.click(screen.getByRole('tab', { name: 'Start Here Document' }));
+		expect(screen.getByText('This is the canonical project brief.')).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Open document' }));
+		expect(pushState).toHaveBeenCalledOnce();
+		const briefUrl = vi.mocked(pushState).mock.calls[0]?.[0];
+		expect(briefUrl).toBeInstanceOf(URL);
+		expect((briefUrl as URL).searchParams.get('entity')).toBe('document');
+		expect((briefUrl as URL).searchParams.get('entity_id')).toBe(CONTEXT_DOCUMENT_ID);
+	});
+
+	it('restores the original project options without crowding the header', async () => {
+		render(ProjectWorkspacePrototype, {
+			props: {
+				data: projectData({ context_document: contextDocument() }) as any
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Project options' }));
+		const menu = await screen.findByRole('menu', { name: 'Project options' });
+		expect(menu).toBeInTheDocument();
+		expect(
+			screen.getByRole('menuitem', { name: 'Collaboration settings' })
+		).toBeInTheDocument();
+		expect(screen.getByRole('menuitem', { name: 'Edit project' })).toBeInTheDocument();
+		expect(screen.getByRole('menuitem', { name: 'Calendar settings' })).toBeInTheDocument();
+		expect(screen.getByRole('menuitem', { name: 'Delete project' })).toBeInTheDocument();
+		await waitFor(() => {
+			expect(screen.getByRole('menuitem', { name: 'Turn notifications off' })).toBeEnabled();
+		});
 	});
 
 	it('constrains long identity text and progressively discloses a long brief', async () => {

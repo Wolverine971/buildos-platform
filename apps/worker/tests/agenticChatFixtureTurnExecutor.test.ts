@@ -4487,7 +4487,15 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					throw new AgenticChatProviderExecutionError(
 						'provider_stream_failed',
 						'permanent',
-						'Provider stream failed after a partial response'
+						'Provider stream failed after a partial response',
+						{
+							kind: 'rejected_tool_name',
+							rejectedToolName: 'move_document_in_treemove_document_in_tree',
+							rejectedToolNameLength: 42,
+							advertisedToolCount: 54,
+							repeatedAdvertisedToolName: 'move_document_in_tree',
+							repeatedToolNameCount: 2
+						}
 					);
 				})(),
 			release: vi.fn()
@@ -4519,7 +4527,12 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				execution_generation: EXECUTION_GENERATION,
 				execution_error_code: 'provider_stream_failed',
 				failure_class: 'permanent',
-				execution_started: true
+				execution_started: true,
+				rejected_provider_tool_name: 'move_document_in_treemove_document_in_tree',
+				rejected_provider_tool_name_length: 42,
+				advertised_tool_count: 54,
+				repeated_advertised_tool_name: 'move_document_in_tree',
+				repeated_tool_name_count: 2
 			});
 			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
 			if (!terminalInput) throw new Error('Provider-error worker fixture did not finalize');

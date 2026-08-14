@@ -323,3 +323,78 @@ the latent duplicated `.project-recency-separator` path inside `CollapsibleState
 usage — primary tier renders inline); the New-Project mobile thumb-reach placement (a UX change, not a
 taste defect). Graph view (Surface 8) left out of scope. Confirm the texture + active-tier calls on the
 live dark-mode screenshot pass.
+
+---
+
+## Part 6 — Purpose simplification follow-up (2026-08-14)
+
+### Locked purpose
+
+> Find the project you want to continue, or start a new one.
+
+The authenticated before-pass confirmed that the previous page made four competing systems equally
+prominent before the first project: creation, workspace metrics, lifecycle counts, and collapsed
+search/filter controls. The follow-up makes the route a project launcher instead of a workspace
+dashboard while preserving the underlying data, creation flow, navigation, filters, and admin graph.
+
+### Shipped
+
+- **Header + creation (P1/P4/P6/P13):** removed the `YOUR WORKSPACE` eyebrow, changed the supporting
+  line to “Pick up where you left off, or start something new,” and moved the existing agent-chat-backed
+  `New project` action into the header. The lazy import and `/projects/create` fallback are unchanged;
+  the shared Button primitive retains a 44 px target.
+- **One launcher control surface (P4/P7/P8/P13):** search is always visible. `Filters` is a separate,
+  keyboard-operable disclosure containing status, ownership, and admin ontology facets. Status choices
+  use one URL-synced scope (`current`, `all`, or one lifecycle state), and active filters remain visible
+  as individually clearable 44 px chips.
+- **List structure (P1/P4/P6/P8):** removed the four metric cards and the always-visible lifecycle
+  count strip. Planning and Active now form the default `Current work` list, with every visible row in
+  one `updated_at`-descending sequence. The arbitrary 7-day/30-day separators and their duplicated
+  render path were removed.
+- **Resume-oriented rows (P1/P4/P6):** each row now shows project identity, at most one state/shared
+  signifier, one resume cue (`next_step_short` preferred, description fallback), and a relative update
+  label backed by `<time datetime>` plus an exact timestamp tooltip. Task/goal/plan/document totals are
+  no longer rendered.
+- **Historical work (P4/P7/P8):** Completed is one closed-by-default disclosure under the default
+  launcher. Completed, Paused, Cancelled, Planning, Active, All, and Current remain directly selectable
+  in Filters and deep-linkable with `?state=`. Default search intentionally spans all lifecycle states
+  so a known paused or completed project does not disappear.
+- **Admin graph (P4/P8):** removed the Graph/Overview mode toggle from the normal launcher. The existing
+  admin-only `/projects?view=graph` deep link still loads the graph and now has a clear `Back to projects`
+  action. No graph queries or graph components changed.
+
+### Product decisions resolved from evidence
+
+- **Default scope:** `Current work` means Planning + Active. It is the only default lifecycle slice.
+- **Creation label:** `New project`. The subcopy describes the result, not a new creation mode; the
+  underlying agent-chat creation behavior remains exactly as before.
+- **Metrics:** removed from this launch surface. Server-side counts and summary fields remain intact;
+  no unproven metrics destination was invented.
+- **Search:** global across states only while the default Current scope is selected. Choosing an
+  explicit lifecycle state scopes search to that state.
+- **Recent subset:** not introduced. No evidence supported a safe cutoff, so all current projects stay
+  available in one recency-sorted list.
+- **Paused:** filter-only, not a second default disclosure. **Completed:** the one default historical
+  disclosure. **Cancelled:** filter-only.
+
+### Open product decision
+
+The permanent home for the admin ontology graph is still unresolved. Evidence supports removing it
+from the everyday launcher, but not choosing a new admin navigation destination. The direct deep link
+is preserved until that owner/destination decision is made.
+
+### Verification
+
+- Authenticated Chrome pass against the current checkout at `localhost:5176`:
+    - desktop dark: `screenshots/projects-list-purpose/after-desktop-dark.png`
+    - desktop light: `screenshots/projects-list-purpose/after-desktop-light.png`
+    - 390 px phone dark/light: `screenshots/projects-list-purpose/after-phone-dark-390.png` and
+      `after-phone-light-390.png`
+    - before evidence: `before-desktop-dark.png` and `before-phone-dark.png`
+- Confirmed no horizontal overflow at a measured 391 CSS px viewport.
+- Confirmed keyboard Tab reaches Filters from Search and Enter opens/closes the disclosure.
+- Confirmed `?state=completed`, `?state=paused`, global search finding a paused project, active-filter
+  clearing, collapsed Completed, the unchanged `New project flow` agent-chat modal, and the admin-only
+  `?view=graph` direct route plus return action.
+- Focused project-list logic tests cover scope normalization/matching and relative-time labels.
+- No files under `/projects/[id]` or `/projects-v2/[id]` changed.
