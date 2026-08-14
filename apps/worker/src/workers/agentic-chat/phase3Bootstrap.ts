@@ -265,6 +265,8 @@ function createDefaultAssembly(
 		liveVisionEnabled: input.config.liveVisionEnabled,
 		supervisorEnabled: input.config.supervisorEnabled,
 		consumptionBillingEnabled: input.config.consumptionBillingEnabled,
+		mutationProviderCapabilities: input.config.mutationProviderCapabilities,
+		mutationAdapterCapabilities: input.config.mutationAdapterCapabilities,
 		liveVisionFetchImpl: input.fetchImpl,
 		internalUserIds: input.config.internalUserIds,
 		consumerConfig: input.config.consumer,

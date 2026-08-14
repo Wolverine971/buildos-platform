@@ -15,7 +15,9 @@ function environment(): NodeJS.ProcessEnv {
 		AGENTIC_CHAT_INTERNAL_USER_IDS: INTERNAL_USER_ID,
 		PRIVATE_OPENROUTER_API_KEY: 'provider-secret',
 		AGENTIC_CHAT_OPENROUTER_MODEL: 'provider/primary',
-		AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS: 'provider/fallback'
+		AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS: 'provider/fallback',
+		AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES: 'updateOntoTask,moveDocumentInTree',
+		AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: 'updateOntoTask,moveDocumentInTree'
 	};
 }
 
@@ -130,6 +132,14 @@ describe('Agentic Chat Phase 3 operational bootstrap', () => {
 				config: expect.objectContaining({
 					enabled: true,
 					internalUserIds: [INTERNAL_USER_ID],
+					mutationProviderCapabilities: {
+						updateOntoTask: true,
+						moveDocumentInTree: true
+					},
+					mutationAdapterCapabilities: {
+						updateOntoTask: true,
+						moveDocumentInTree: true
+					},
 					consumer: expect.objectContaining({ concurrency: 1 }),
 					provider: {
 						routes: [
