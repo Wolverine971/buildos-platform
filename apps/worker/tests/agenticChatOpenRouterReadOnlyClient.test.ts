@@ -494,6 +494,69 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 		expect(body).toMatchObject({ tool_choice: 'auto', tools });
 	});
 
+	it('requires a semantic disposition tool call with the exact restricted surface', async () => {
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				JSON.stringify({
+					choices: [
+						{
+							delta: {
+								tool_calls: [
+									{
+										index: 0,
+										id: 'provider-disposition-1',
+										type: 'function',
+										function: {
+											name: 'declare_read_only_turn',
+											arguments:
+												'{"reason":"The user requested analysis only."}'
+										}
+									}
+								]
+							}
+						}
+					]
+				}),
+				JSON.stringify({ choices: [{ delta: {}, finish_reason: 'tool_calls' }] }),
+				'[DONE]'
+			])
+		) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		const tools = [
+			readToolDefinition('declare_turn_contract'),
+			readToolDefinition('declare_read_only_turn'),
+			readToolDefinition('request_turn_clarification')
+		];
+
+		await expect(
+			collect(
+				test.client.stream({
+					...input(),
+					tools,
+					toolChoice: 'required'
+				})
+			)
+		).resolves.toEqual([
+			{
+				type: 'tool_call',
+				toolCall: [
+					{
+						index: 0,
+						id: 'provider-disposition-1',
+						type: 'function',
+						function: {
+							name: 'declare_read_only_turn',
+							arguments: '{"reason":"The user requested analysis only."}'
+						}
+					}
+				]
+			},
+			{ type: 'done', finishedReason: 'tool_calls', usage: undefined }
+		]);
+		const body = JSON.parse(String(vi.mocked(fetchImpl).mock.calls[0]?.[1]?.body));
+		expect(body).toMatchObject({ tool_choice: 'required', tools });
+	});
+
 	it('rejects a malformed artifact tool definition before opening the network', async () => {
 		const fetchImpl = vi.fn() as unknown as typeof fetch;
 		const test = harness(fetchImpl);

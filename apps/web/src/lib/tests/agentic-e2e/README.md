@@ -59,6 +59,7 @@ pnpm --filter @buildos/web test:agentic:modal:wiring # browser wiring, no model 
 pnpm --filter @buildos/web test:agentic:modal:live   # paid real-model browser smoke
 pnpm --filter @buildos/web test:agentic:modal        # all browser cases
 VITEST_SILENT=false pnpm --filter @buildos/web test:agentic   # show harness logs
+AGENTIC_E2E_RETRY_COUNT=0 pnpm --filter @buildos/web test:agentic # release gate: no retries
 ```
 
 The `@wiring` browser lane authenticates against the real app, opens the modal

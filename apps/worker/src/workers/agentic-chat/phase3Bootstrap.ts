@@ -2,7 +2,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import { LLMUsageLogger } from '@buildos/smart-llm';
+import { JSON_PROFILE_MODELS, LLMUsageLogger, modelSupportsCapability } from '@buildos/smart-llm';
 import type { AgenticChatWorkerCapacityEvidenceV1 } from './capacity';
 import type { AgenticChatConsumerRuntimeHealth } from './consumerRuntime';
 import {
@@ -244,23 +244,32 @@ function createDefaultAssembly(
 	const executionObservations = new SupabaseAgenticChatExecutionObservationAdapter(
 		input.client as unknown as AgenticChatExecutionObservationRpcClient
 	);
-	const providerClient = new AgenticChatOpenRouterReadOnlyClient(
-		{
-			usage: new AgenticChatLlmUsageObserver(usageLogger),
-			executionObservations,
-			onUsageError: input.onUsageError,
-			onExecutionObservationError: input.onUsageError
-		},
-		{
-			routes: input.config.provider.routes,
-			httpReferer: OPENROUTER_HTTP_REFERER,
-			appName: OPENROUTER_APP_NAME,
-			fetchImpl: input.fetchImpl
-		}
-	);
+	const usageObserver = new AgenticChatLlmUsageObserver(usageLogger);
+	const clientPorts = {
+		usage: usageObserver,
+		executionObservations,
+		onUsageError: input.onUsageError,
+		onExecutionObservationError: input.onUsageError
+	};
+	const clientOptions = {
+		httpReferer: OPENROUTER_HTTP_REFERER,
+		appName: OPENROUTER_APP_NAME,
+		fetchImpl: input.fetchImpl
+	};
+	const providerClient = new AgenticChatOpenRouterReadOnlyClient(clientPorts, {
+		...clientOptions,
+		routes: input.config.provider.routes
+	});
+	const semanticReviewerClient = new AgenticChatOpenRouterReadOnlyClient(clientPorts, {
+		...clientOptions,
+		routes: buildAgenticChatSemanticReviewerRoutes(input.config.provider.routes),
+		temperature: 0,
+		maxTokens: 1_200
+	});
 	return createAgenticChatPhase3Assembly({
 		client: input.client,
 		providerClient,
+		semanticReviewerClient,
 		providerConfigured: true,
 		liveVisionEnabled: input.config.liveVisionEnabled,
 		supervisorEnabled: input.config.supervisorEnabled,
@@ -276,6 +285,49 @@ function createDefaultAssembly(
 		onExecutionObservationError: input.onUsageError,
 		onConsumptionBillingError: input.onConsumptionBillingError ?? input.onUsageError
 	});
+}
+
+/**
+ * Reuse the validated OpenRouter credential/route policy, but select a
+ * reviewed tool-capable model that is distinct from the acting model whenever
+ * the catalog permits it. This is configuration-free by design.
+ */
+export function buildAgenticChatSemanticReviewerRoutes(
+	routes: EnabledPhase3Config['provider']['routes']
+): EnabledPhase3Config['provider']['routes'] {
+	const actingModels = new Set(
+		routes.flatMap((route) => [route.model, ...(route.fallbackModels ?? [])])
+	);
+	const reviewedCandidates = [
+		...JSON_PROFILE_MODELS.powerful,
+		...JSON_PROFILE_MODELS.maximum
+	].filter((model, index, models) => {
+		return (
+			models.indexOf(model) === index &&
+			modelSupportsCapability(model, 'tools') &&
+			!actingModels.has(model)
+		);
+	});
+	const fallbackCandidates = [
+		...JSON_PROFILE_MODELS.powerful,
+		...JSON_PROFILE_MODELS.maximum
+	].filter(
+		(model, index, models) =>
+			models.indexOf(model) === index && modelSupportsCapability(model, 'tools')
+	);
+	const candidates = reviewedCandidates.length > 0 ? reviewedCandidates : fallbackCandidates;
+	const model = candidates[0];
+	if (!model) throw new Error('No reviewed tool-capable semantic reviewer model is available');
+	return Object.freeze(
+		routes.map((route) =>
+			Object.freeze({
+				...route,
+				id: `${route.id}_semantic_reviewer`,
+				model,
+				fallbackModels: Object.freeze(candidates.slice(1, 4))
+			})
+		)
+	);
 }
 
 function canonicalError(error: unknown): string {

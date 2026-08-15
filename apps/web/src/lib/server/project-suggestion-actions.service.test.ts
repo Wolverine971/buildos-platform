@@ -15,10 +15,12 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('$lib/services/agentic-chat/tools/core/tool-executor', () => ({
-	ChatToolExecutor: vi.fn().mockImplementation((supabase, userId, sessionId, fetchFn) => {
-		mocks.chatExecutorConstructor(supabase, userId, sessionId, fetchFn);
-		return { execute: mocks.executeTool };
-	})
+	ChatToolExecutor: vi
+		.fn()
+		.mockImplementation((supabase, userId, sessionId, fetchFn, llm, options) => {
+			mocks.chatExecutorConstructor(supabase, userId, sessionId, fetchFn, llm, options);
+			return { execute: mocks.executeTool };
+		})
 }));
 
 vi.mock('$lib/supabase/admin', () => ({
@@ -395,7 +397,7 @@ describe('decideProjectSuggestion', () => {
 		expect(updates).toHaveLength(0);
 	});
 
-	it('approves fresh suggestions with the run chat session and burst-skip fetch header', async () => {
+	it('approves fresh suggestions without writing replay telemetry into the run chat session', async () => {
 		mocks.isProjectSuggestionFresh.mockResolvedValue(true);
 		const operation = {
 			tool: 'update_onto_task',
@@ -443,7 +445,9 @@ describe('decideProjectSuggestion', () => {
 			supabase,
 			'user-1',
 			'chat-1',
-			expect.any(Function)
+			expect.any(Function),
+			undefined,
+			{ logExecutions: false }
 		);
 		expect(mocks.executeTool).toHaveBeenCalledWith(
 			expect.objectContaining({

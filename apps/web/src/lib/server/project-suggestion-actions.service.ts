@@ -615,7 +615,15 @@ export async function decideProjectSuggestion(params: {
 		supabase,
 		userId,
 		chatSessionId ?? undefined,
-		projectLoopFetch
+		projectLoopFetch,
+		undefined,
+		{
+			// Suggestion approval is not a chat turn. The linked loop session can belong
+			// to a different project member, so a user-scoped ledger insert would either
+			// violate RLS or misattribute the replay. The durable audit is the suggestion's
+			// result below (plus the decision event), not chat_tool_executions.
+			logExecutions: false
+		}
 	);
 
 	const errors: Array<{ tool: string; error: string }> = [];

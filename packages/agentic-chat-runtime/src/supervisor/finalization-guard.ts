@@ -4,11 +4,13 @@ import { sanitizeAssistantFinalText } from '../loop/assistant-text-sanitization'
 import {
 	classifyToolExecution,
 	didGatewayExecSucceed,
+	doesToolExecutionRequireUserAction,
 	isDuplicateWriteSkippedExecution
 } from '../loop/tool-classification';
 
 export type FinalizationGuardReason =
 	| 'empty_after_tools'
+	| 'empty_after_user_action_required'
 	| 'lead_in_after_successful_writes'
 	| 'lead_in_after_reads'
 	| 'empty_after_successful_writes'
@@ -68,6 +70,23 @@ function isLikelyLeadIn(text: string): boolean {
 		return false;
 	}
 	return LEAD_IN_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+function findRequiredUserActionQuestion(toolExecutions: FastToolExecution[]): string | null {
+	for (let index = toolExecutions.length - 1; index >= 0; index -= 1) {
+		const execution = toolExecutions[index];
+		if (!execution || !doesToolExecutionRequireUserAction(execution)) continue;
+		let value: unknown = execution.result.result;
+		for (let depth = 0; depth < 4; depth += 1) {
+			if (!value || typeof value !== 'object' || Array.isArray(value)) break;
+			const record = value as Record<string, unknown>;
+			if (typeof record.question === 'string' && record.question.trim()) {
+				return record.question.trim().slice(0, 500);
+			}
+			value = record.result ?? record.data ?? record.tool_result;
+		}
+	}
+	return null;
 }
 
 function plural(count: number, singular: string, pluralValue = `${singular}s`): string {
@@ -454,6 +473,25 @@ export function applyFinalizationGuard(
 
 	if (toolExecutions.length === 0) {
 		return { text: candidate, applied: false };
+	}
+
+	// A successful tool result that explicitly requires user action is a semantic
+	// terminal state, not an unfinished mutation. Preserve the model's question even
+	// when it contains words such as "update" that the legacy lead-in heuristic would
+	// otherwise mistake for a promise to keep working.
+	const requiredUserActionExecution = toolExecutions.some(
+		(execution) =>
+			didGatewayExecSucceed(execution) && doesToolExecutionRequireUserAction(execution)
+	);
+	if (requiredUserActionExecution) {
+		if (candidate) return { text: candidate, applied: false };
+		return {
+			text:
+				findRequiredUserActionQuestion(toolExecutions) ??
+				'I need your input before I can safely continue. Which target or value should I use?',
+			applied: true,
+			reason: 'empty_after_user_action_required'
+		};
 	}
 
 	let successfulWrites = 0;

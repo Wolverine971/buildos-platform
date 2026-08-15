@@ -2011,7 +2011,6 @@
 						{tasksCoverage}
 						{canEdit}
 						onEditTask={(id) => (editingTaskId = id)}
-						onCreateTask={openTaskCreateModal}
 						onTaskMoved={handleTaskMoved}
 						onLoadMoreTasks={loadMoreProjectTasks}
 					/>

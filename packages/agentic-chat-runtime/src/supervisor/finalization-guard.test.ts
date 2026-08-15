@@ -283,6 +283,63 @@ describe('applyFinalizationGuard', () => {
 		expect(guard.text).toContain('nothing was updated');
 	});
 
+	it('preserves an explicit user-action question even when it contains a write verb', () => {
+		const readCall = toolCall('search_project', { query: 'email task' });
+		const clarificationCall = toolCall('request_turn_clarification', {
+			reason: 'Multiple tasks are plausible targets.',
+			question: 'Which matching task should I update?'
+		});
+		const guard = applyFinalizationGuard({
+			finalAssistantText: 'Which matching task should I update?',
+			assistantText: 'Which matching task should I update?',
+			mutationRequested: true,
+			toolExecutions: [
+				{ toolCall: readCall, result: toolResult(readCall, true, { results: [] }) },
+				{
+					toolCall: clarificationCall,
+					result: toolResult(clarificationCall, true, {
+						status: 'clarification_required',
+						question: 'Which matching task should I update?',
+						requires_user_action: true
+					})
+				}
+			]
+		});
+
+		expect(guard).toEqual({
+			text: 'Which matching task should I update?',
+			applied: false
+		});
+	});
+
+	it('recovers the validated clarification question when synthesis is empty', () => {
+		const clarificationCall = toolCall('request_turn_clarification', {
+			reason: 'Multiple tasks are plausible targets.',
+			question: 'Which matching task should I update?'
+		});
+		const guard = applyFinalizationGuard({
+			finalAssistantText: '',
+			assistantText: '',
+			mutationRequested: true,
+			toolExecutions: [
+				{
+					toolCall: clarificationCall,
+					result: toolResult(clarificationCall, true, {
+						status: 'clarification_required',
+						question: 'Which matching task should I update?',
+						requires_user_action: true
+					})
+				}
+			]
+		});
+
+		expect(guard).toEqual({
+			text: 'Which matching task should I update?',
+			applied: true,
+			reason: 'empty_after_user_action_required'
+		});
+	});
+
 	it('still credits a successful write even when mutationRequested is set', () => {
 		const call = toolCall('update_onto_task', { task_id: 'task_1', state_key: 'done' });
 		const guard = applyFinalizationGuard({

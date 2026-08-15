@@ -168,6 +168,7 @@ export function assertAgenticChatMutationAdapterCoverageV1(
 export function createAgenticChatPhase3Assembly(options: {
 	client: SupabaseClient<Database>;
 	providerClient: AgenticChatReadOnlyProviderClientPortV1;
+	semanticReviewerClient?: AgenticChatReadOnlyProviderClientPortV1;
 	providerConfigured: boolean;
 	/** Separate default-off gate for ephemeral current-turn image resolution. */
 	liveVisionEnabled?: boolean;
@@ -210,6 +211,14 @@ export function createAgenticChatPhase3Assembly(options: {
 		if (mutationProviderCapabilities[capability] && !mutationAdapterCapabilities[capability]) {
 			throw new Error(`${toolName} provider capability requires its mutation adapter`);
 		}
+	}
+	if (
+		Object.values(mutationProviderCapabilities).some(Boolean) &&
+		!options.semanticReviewerClient
+	) {
+		throw new Error(
+			'Agentic Chat mutation provider capabilities require an independent semantic reviewer client'
+		);
 	}
 	const rpcClient = options.client as unknown as AgenticChatExecutionRpcClient &
 		AgenticChatEffectRpcClient &
@@ -267,6 +276,7 @@ export function createAgenticChatPhase3Assembly(options: {
 	const provider = new AgenticChatReadOnlyProviderAdapter(
 		{
 			client: options.providerClient,
+			semanticReviewer: options.semanticReviewerClient,
 			capacity: providerCapacity,
 			liveVision,
 			supervisorFactory: options.supervisorEnabled

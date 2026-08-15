@@ -6,7 +6,9 @@ import {
 } from '$lib/services/agentic-chat/tools/core/tools.config';
 import {
 	CANCEL_TURN_CONTRACT_TOOL_DEFINITION,
+	DECLARE_READ_ONLY_TURN_TOOL_DEFINITION,
 	GATEWAY_TOOL_DEFINITIONS,
+	REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION,
 	TURN_CONTRACT_TOOL_DEFINITION
 } from './definitions/gateway';
 import { inferMaterializedToolsFromEntityResults } from './entity-result-materialization';
@@ -50,6 +52,8 @@ export type GatewaySurfaceProfileName = (typeof GATEWAY_SURFACE_PROFILE_NAMES)[n
 // through tool_search/tool_schema and the orchestrator's on-miss materialization.
 const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
 	'declare_turn_contract',
+	'declare_read_only_turn',
+	'request_turn_clarification',
 	'cancel_turn_contract',
 	'change_chat_context',
 	'get_workspace_overview',
@@ -76,6 +80,8 @@ const GLOBAL_WRITE_DIRECT_TOOL_NAMES = [
 
 const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
 	'declare_turn_contract',
+	'declare_read_only_turn',
+	'request_turn_clarification',
 	'cancel_turn_contract',
 	'change_chat_context',
 	'get_project_overview',
@@ -123,6 +129,8 @@ const PROJECT_WRITE_DOCUMENT_DIRECT_TOOL_NAMES = [
 
 const PROJECT_CALENDAR_DIRECT_TOOL_NAMES = [
 	'declare_turn_contract',
+	'declare_read_only_turn',
+	'request_turn_clarification',
 	'cancel_turn_contract',
 	'get_project_overview',
 	'list_calendar_events',
@@ -158,6 +166,8 @@ const GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE: Record<
 const GATEWAY_TOOL_DEFINITION_MAP = new Map(
 	[
 		TURN_CONTRACT_TOOL_DEFINITION,
+		DECLARE_READ_ONLY_TURN_TOOL_DEFINITION,
+		REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION,
 		CANCEL_TURN_CONTRACT_TOOL_DEFINITION,
 		...GATEWAY_TOOL_DEFINITIONS
 	]

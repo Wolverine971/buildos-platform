@@ -4,7 +4,7 @@
 
 	Information architecture:
 	- Work is the default operating surface: the real Kanban board.
-	- Overview answers why/where: memory, goals, milestones, plans, risks, and dates.
+	- Overview is the project map: direction, milestones, and risks.
 	- Docs gives the real document tree a dedicated, full-width workspace.
 	- Activity owns change history and upcoming events.
 
@@ -51,9 +51,6 @@
 		Activity,
 		AlertTriangle,
 		BookOpen,
-		Calendar,
-		CalendarClock,
-		CheckCircle2,
 		ChevronRight,
 		Columns2,
 		FileText,
@@ -215,8 +212,6 @@
 	let showAllPlans = $state(false);
 	let showAllMilestones = $state(false);
 	let showAllRisks = $state(false);
-	let showAllEvents = $state(false);
-	let showFullBrief = $state(false);
 	let entityHistoryOwned = false;
 	let entityClosePending = false;
 
@@ -269,13 +264,6 @@
 				return aDue - bDue;
 			});
 	});
-	const upcomingEvents = $derived.by(() => {
-		const now = Date.now();
-		return events
-			.filter((event) => Date.parse(event.start_at) >= now)
-			.slice()
-			.sort((a, b) => Date.parse(a.start_at) - Date.parse(b.start_at));
-	});
 	const recentDocuments = $derived(
 		documents
 			.filter((document) => !document.deleted_at)
@@ -284,22 +272,12 @@
 			.slice(0, 4)
 	);
 
-	const projectStatusLabel = $derived(humanize(project.state_key || 'planning'));
-	const projectDescription = $derived(
-		project.description?.trim() ||
-			'Add a concise description so collaborators can orient in seconds.'
-	);
-	const projectDescriptionNeedsDisclosure = $derived(
-		(project.description?.trim().length ?? 0) > 320 ||
-			(project.description?.match(/\n/g)?.length ?? 0) >= 4
-	);
 	const visibleGoals = $derived(showAllGoals ? activeGoals : activeGoals.slice(0, 5));
 	const visiblePlans = $derived(showAllPlans ? activePlans : activePlans.slice(0, 5));
 	const visibleMilestones = $derived(
 		showAllMilestones ? upcomingMilestones : upcomingMilestones.slice(0, 5)
 	);
 	const visibleRisks = $derived(showAllRisks ? openRisks : openRisks.slice(0, 5));
-	const visibleEvents = $derived(showAllEvents ? upcomingEvents : upcomingEvents.slice(0, 4));
 
 	function humanize(value: string | null | undefined): string {
 		if (!value) return 'Unknown';
@@ -316,19 +294,6 @@
 			month: 'short',
 			day: 'numeric',
 			...(includeYear ? { year: 'numeric' as const } : {})
-		});
-	}
-
-	function formatEventDate(event: OntoEventWithSync): string {
-		const date = new Date(event.start_at);
-		if (event.all_day) {
-			return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-		}
-		return date.toLocaleString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			hour: 'numeric',
-			minute: '2-digit'
 		});
 	}
 
@@ -983,47 +948,13 @@
 				tabindex="0"
 			>
 				<div class="space-y-6">
-					<section class="overview-brief" aria-labelledby="overview-brief-title">
-						<div class="min-w-0">
-							<p class="micro-label">PROJECT BRIEF</p>
-							<h2 id="overview-brief-title" class="sr-only">Project brief</h2>
-							<p
-								class="mt-2 max-w-4xl whitespace-pre-line text-base leading-relaxed text-foreground sm:text-lg {projectDescriptionNeedsDisclosure &&
-								!showFullBrief
-									? 'line-clamp-5'
-									: ''}"
-							>
-								{projectDescription}
-							</p>
-							{#if projectDescriptionNeedsDisclosure}
-								<button
-									type="button"
-									class="brief-toggle"
-									aria-expanded={showFullBrief}
-									onclick={() => (showFullBrief = !showFullBrief)}
-								>
-									{showFullBrief ? 'Show less' : 'Read full brief'}
-								</button>
-							{/if}
-						</div>
-						<dl class="overview-meta" aria-label="Project dates and status">
-							<div class="overview-meta-item">
-								<dt class="micro-label">STATUS</dt>
-								<dd class="mt-1 text-sm font-semibold">{projectStatusLabel}</dd>
-							</div>
-							<div class="overview-meta-item">
-								<dt class="micro-label">START</dt>
-								<dd class="mt-1 text-sm font-semibold">
-									{formatDate(project.start_at, true)}
-								</dd>
-							</div>
-							<div class="overview-meta-item">
-								<dt class="micro-label">TARGET</dt>
-								<dd class="mt-1 text-sm font-semibold">
-									{formatDate(project.end_at, true)}
-								</dd>
-							</div>
-						</dl>
+					<section class="overview-intro" aria-labelledby="overview-map-title">
+						<h2 id="overview-map-title" class="text-lg font-semibold tracking-tight">
+							Project map
+						</h2>
+						<p class="mt-1 text-sm text-muted-foreground">
+							See the project's direction, milestones, and risks in one place.
+						</p>
 					</section>
 
 					<div
@@ -1057,143 +988,169 @@
 										{activeGoals.length} goals · {activePlans.length} plans
 									</span>
 								</header>
-								<div
-									class="grid gap-0 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0"
-								>
-									<div class="p-3 sm:p-4">
-										<p class="micro-label mb-2">GOALS</p>
-										<div class="space-y-2">
-											{#each visibleGoals as goal (goal.id)}
-												{@const goalMilestones = milestones.filter(
-													(milestone) => milestone.goal_id === goal.id
-												)}
+								{#if activeGoals.length === 0 && activePlans.length === 0}
+									<div class="section-empty-state">
+										<Target class="h-5 w-5 shrink-0 text-muted-foreground" />
+										<div class="min-w-0 flex-1">
+											<p class="text-sm font-semibold">
+												No direction set yet
+											</p>
+											<p class="text-xs text-muted-foreground">
+												Add a goal or plan when the path becomes clear.
+											</p>
+										</div>
+										{#if canEdit}
+											<div class="flex shrink-0 flex-wrap justify-end gap-1">
 												<button
 													type="button"
-													class="entity-row"
-													onclick={() => openEntity('goal', goal.id)}
-												>
-													<div class="min-w-0 flex-1">
-														<p class="truncate text-sm font-semibold">
-															{goal.name}
-														</p>
-														<p
-															class="truncate text-xs text-muted-foreground"
-														>
-															{goalMilestones.length} milestone{goalMilestones.length ===
-															1
-																? ''
-																: 's'}
-															{goal.target_date
-																? ` · target ${formatDate(goal.target_date)}`
-																: ''}
-														</p>
-													</div>
-													<ChevronRight
-														class="h-4 w-4 shrink-0 text-muted-foreground"
-													/>
-												</button>
-											{:else}
-												<div class="empty-row">
-													<Target class="h-5 w-5" />
-													<p>No active goals yet</p>
-												</div>
-											{/each}
-											{#if activeGoals.length > 5}
-												<button
-													type="button"
-													class="view-all-row"
-													aria-expanded={showAllGoals}
-													onclick={() => (showAllGoals = !showAllGoals)}
-												>
-													{showAllGoals
-														? 'Show fewer goals'
-														: `Show all ${activeGoals.length} goals`}
-												</button>
-											{/if}
-											{#if canEdit}
-												<button
-													type="button"
-													class="entity-create-row"
+													class="section-empty-action"
 													onclick={() => createWorkspaceEntity('goal')}
 												>
-													<Plus class="h-3.5 w-3.5" />
 													Add goal
 												</button>
-											{/if}
-										</div>
-									</div>
-									<div class="p-3 sm:p-4">
-										<p class="micro-label mb-2">PLANS</p>
-										<div class="space-y-2">
-											{#each visiblePlans as plan (plan.id)}
 												<button
 													type="button"
-													class="entity-row"
-													onclick={() => openEntity('plan', plan.id)}
-												>
-													<div class="min-w-0 flex-1">
-														<p class="truncate text-sm font-semibold">
-															{plan.name}
-														</p>
-														<p
-															class="truncate text-xs text-muted-foreground"
-														>
-															{humanize(plan.state_key)}
-															{plan.description
-																? ` · ${plan.description}`
-																: ''}
-														</p>
-													</div>
-													<ChevronRight
-														class="h-4 w-4 shrink-0 text-muted-foreground"
-													/>
-												</button>
-											{:else}
-												<div class="empty-row">
-													<Workflow class="h-5 w-5" />
-													<p>No active plans yet</p>
-												</div>
-											{/each}
-											{#if activePlans.length > 5}
-												<button
-													type="button"
-													class="view-all-row"
-													aria-expanded={showAllPlans}
-													onclick={() => (showAllPlans = !showAllPlans)}
-												>
-													{showAllPlans
-														? 'Show fewer plans'
-														: `Show all ${activePlans.length} plans`}
-												</button>
-											{/if}
-											{#if canEdit}
-												<button
-													type="button"
-													class="entity-create-row"
+													class="section-empty-action"
 													onclick={() => createWorkspaceEntity('plan')}
 												>
-													<Plus class="h-3.5 w-3.5" />
 													Add plan
 												</button>
-											{/if}
+											</div>
+										{/if}
+									</div>
+								{:else}
+									<div
+										class="grid gap-0 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0"
+									>
+										<div class="p-3 sm:p-4">
+											<p class="micro-label mb-2">GOALS</p>
+											<div class="space-y-2">
+												{#each visibleGoals as goal (goal.id)}
+													{@const goalMilestones = milestones.filter(
+														(milestone) => milestone.goal_id === goal.id
+													)}
+													<button
+														type="button"
+														class="entity-row"
+														onclick={() => openEntity('goal', goal.id)}
+													>
+														<div class="min-w-0 flex-1">
+															<p
+																class="truncate text-sm font-semibold"
+															>
+																{goal.name}
+															</p>
+															<p
+																class="truncate text-xs text-muted-foreground"
+															>
+																{goalMilestones.length} milestone{goalMilestones.length ===
+																1
+																	? ''
+																	: 's'}
+																{goal.target_date
+																	? ` · target ${formatDate(goal.target_date)}`
+																	: ''}
+															</p>
+														</div>
+														<ChevronRight
+															class="h-4 w-4 shrink-0 text-muted-foreground"
+														/>
+													</button>
+												{:else}
+													<div class="empty-row">
+														<Target class="h-5 w-5" />
+														<p>No active goals yet</p>
+													</div>
+												{/each}
+												{#if activeGoals.length > 5}
+													<button
+														type="button"
+														class="view-all-row"
+														aria-expanded={showAllGoals}
+														onclick={() =>
+															(showAllGoals = !showAllGoals)}
+													>
+														{showAllGoals
+															? 'Show fewer goals'
+															: `Show all ${activeGoals.length} goals`}
+													</button>
+												{/if}
+												{#if canEdit}
+													<button
+														type="button"
+														class="entity-create-row"
+														onclick={() =>
+															createWorkspaceEntity('goal')}
+													>
+														<Plus class="h-3.5 w-3.5" />
+														Add goal
+													</button>
+												{/if}
+											</div>
+										</div>
+										<div class="p-3 sm:p-4">
+											<p class="micro-label mb-2">PLANS</p>
+											<div class="space-y-2">
+												{#each visiblePlans as plan (plan.id)}
+													<button
+														type="button"
+														class="entity-row"
+														onclick={() => openEntity('plan', plan.id)}
+													>
+														<div class="min-w-0 flex-1">
+															<p
+																class="truncate text-sm font-semibold"
+															>
+																{plan.name}
+															</p>
+															<p
+																class="truncate text-xs text-muted-foreground"
+															>
+																{humanize(plan.state_key)}
+																{plan.description
+																	? ` · ${plan.description}`
+																	: ''}
+															</p>
+														</div>
+														<ChevronRight
+															class="h-4 w-4 shrink-0 text-muted-foreground"
+														/>
+													</button>
+												{:else}
+													<div class="empty-row">
+														<Workflow class="h-5 w-5" />
+														<p>No active plans yet</p>
+													</div>
+												{/each}
+												{#if activePlans.length > 5}
+													<button
+														type="button"
+														class="view-all-row"
+														aria-expanded={showAllPlans}
+														onclick={() =>
+															(showAllPlans = !showAllPlans)}
+													>
+														{showAllPlans
+															? 'Show fewer plans'
+															: `Show all ${activePlans.length} plans`}
+													</button>
+												{/if}
+												{#if canEdit}
+													<button
+														type="button"
+														class="entity-create-row"
+														onclick={() =>
+															createWorkspaceEntity('plan')}
+													>
+														<Plus class="h-3.5 w-3.5" />
+														Add plan
+													</button>
+												{/if}
+											</div>
 										</div>
 									</div>
-								</div>
+								{/if}
 							</section>
-
-							{#if contextDocument}
-								{#await import('$lib/components/project/ProjectMemoryCard.svelte') then { default: ProjectMemoryCard }}
-									<ProjectMemoryCard
-										document={contextDocument}
-										nextStepShort={null}
-										showNextStep={false}
-										variant="flat"
-										{canEdit}
-										onOpenStartHere={(id) => openEntity('document', id)}
-										onUpdateProject={() => (showAgentChatModal = true)}
-									/>
-								{/await}
-							{/if}
 						</div>
 
 						<aside class="min-w-0 space-y-6">
@@ -1220,62 +1177,85 @@
 									</div>
 								</header>
 								<div class="pt-2">
-									{#each visibleMilestones as milestone (milestone.id)}
-										<button
-											type="button"
-											class="entity-row"
-											onclick={() => openEntity('milestone', milestone.id)}
-										>
-											<div
-												class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10"
+									{#if visibleMilestones.length > 0}
+										{#each visibleMilestones as milestone (milestone.id)}
+											<button
+												type="button"
+												class="entity-row"
+												onclick={() =>
+													openEntity('milestone', milestone.id)}
 											>
-												<Flag class="h-3.5 w-3.5 text-accent" />
-											</div>
-											<div class="min-w-0 flex-1">
-												<p class="truncate text-sm font-semibold">
-													{milestone.title}
-												</p>
-												<p class="truncate text-xs text-muted-foreground">
-													{milestone.due_at
-														? formatDate(milestone.due_at, true)
-														: 'No target date'}
-												</p>
-											</div>
-										</button>
+												<div
+													class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10"
+												>
+													<Flag class="h-3.5 w-3.5 text-accent" />
+												</div>
+												<div class="min-w-0 flex-1">
+													<p class="truncate text-sm font-semibold">
+														{milestone.title}
+													</p>
+													<p
+														class="truncate text-xs text-muted-foreground"
+													>
+														{milestone.due_at
+															? formatDate(milestone.due_at, true)
+															: 'No target date'}
+													</p>
+												</div>
+											</button>
+										{/each}
+										{#if upcomingMilestones.length > 5}
+											<button
+												type="button"
+												class="view-all-row"
+												aria-expanded={showAllMilestones}
+												onclick={() =>
+													(showAllMilestones = !showAllMilestones)}
+											>
+												{showAllMilestones
+													? 'Show fewer milestones'
+													: `Show all ${upcomingMilestones.length} milestones`}
+											</button>
+										{/if}
+										{#if canEdit}
+											<button
+												type="button"
+												class="entity-create-row"
+												onclick={() => createWorkspaceEntity('milestone')}
+											>
+												<Plus class="h-3.5 w-3.5" />
+												Add milestone
+											</button>
+										{/if}
 									{:else}
-										<div class="empty-row">
-											<Flag class="h-5 w-5" />
-											<p>No upcoming milestones</p>
+										<div class="section-empty-state">
+											<Flag class="h-5 w-5 shrink-0 text-muted-foreground" />
+											<div class="min-w-0 flex-1">
+												<p class="text-sm font-semibold">
+													No milestones yet
+												</p>
+												<p class="text-xs text-muted-foreground">
+													Add key commitments when dates matter.
+												</p>
+											</div>
+											{#if canEdit}
+												<button
+													type="button"
+													class="section-empty-action shrink-0"
+													onclick={() =>
+														createWorkspaceEntity('milestone')}
+												>
+													Add milestone
+												</button>
+											{/if}
 										</div>
-									{/each}
-									{#if upcomingMilestones.length > 5}
-										<button
-											type="button"
-											class="view-all-row"
-											aria-expanded={showAllMilestones}
-											onclick={() => (showAllMilestones = !showAllMilestones)}
-										>
-											{showAllMilestones
-												? 'Show fewer milestones'
-												: `Show all ${upcomingMilestones.length} milestones`}
-										</button>
-									{/if}
-									{#if canEdit}
-										<button
-											type="button"
-											class="entity-create-row"
-											onclick={() => createWorkspaceEntity('milestone')}
-										>
-											<Plus class="h-3.5 w-3.5" />
-											Add milestone
-										</button>
 									{/if}
 								</div>
 							</section>
 
 							<section
 								class="overview-section"
-								aria-labelledby="overview-watchlist-title"
+								aria-labelledby="overview-risks-title"
 							>
 								<header class="overview-section-header">
 									<div class="flex min-w-0 items-center gap-3">
@@ -1284,10 +1264,10 @@
 										</div>
 										<div class="min-w-0">
 											<h2
-												id="overview-watchlist-title"
+												id="overview-risks-title"
 												class="text-sm font-semibold"
 											>
-												Watchlist
+												Risks
 											</h2>
 											<p class="text-xs text-muted-foreground">
 												Open project risks
@@ -1296,127 +1276,77 @@
 									</div>
 								</header>
 								<div class="pt-2">
-									{#each visibleRisks as risk (risk.id)}
-										<button
-											type="button"
-											class="entity-row"
-											onclick={() => openEntity('risk', risk.id)}
-										>
+									{#if visibleRisks.length > 0}
+										{#each visibleRisks as risk (risk.id)}
+											<button
+												type="button"
+												class="entity-row"
+												onclick={() => openEntity('risk', risk.id)}
+											>
+												<div class="min-w-0 flex-1">
+													<p class="truncate text-sm font-semibold">
+														{risk.title}
+													</p>
+													<p
+														class="truncate text-xs text-muted-foreground"
+													>
+														{humanize(risk.impact)} impact
+														{risk.probability !== null &&
+														risk.probability !== undefined
+															? ` · ${Math.round(risk.probability * 100)}% likelihood`
+															: ''}
+													</p>
+												</div>
+												<span
+													class="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-2xs font-semibold text-destructive"
+												>
+													{humanize(risk.state_key)}
+												</span>
+											</button>
+										{/each}
+										{#if openRisks.length > 5}
+											<button
+												type="button"
+												class="view-all-row"
+												aria-expanded={showAllRisks}
+												onclick={() => (showAllRisks = !showAllRisks)}
+											>
+												{showAllRisks
+													? 'Show fewer risks'
+													: `Show all ${openRisks.length} risks`}
+											</button>
+										{/if}
+										{#if canEdit}
+											<button
+												type="button"
+												class="entity-create-row"
+												onclick={() => createWorkspaceEntity('risk')}
+											>
+												<Plus class="h-3.5 w-3.5" />
+												Add risk
+											</button>
+										{/if}
+									{:else}
+										<div class="section-empty-state">
+											<AlertTriangle
+												class="h-5 w-5 shrink-0 text-muted-foreground"
+											/>
 											<div class="min-w-0 flex-1">
-												<p class="truncate text-sm font-semibold">
-													{risk.title}
-												</p>
-												<p class="truncate text-xs text-muted-foreground">
-													{humanize(risk.impact)} impact
-													{risk.probability !== null &&
-													risk.probability !== undefined
-														? ` · ${Math.round(risk.probability * 100)}% likelihood`
-														: ''}
+												<p class="text-sm font-semibold">No open risks</p>
+												<p class="text-xs text-muted-foreground">
+													Nothing is currently flagged.
 												</p>
 											</div>
-											<span
-												class="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-2xs font-semibold text-destructive"
-											>
-												{humanize(risk.state_key)}
-											</span>
-										</button>
-									{:else}
-										<div class="empty-row">
-											<CheckCircle2 class="h-5 w-5 text-success" />
-											<p>No open risks</p>
+											{#if canEdit}
+												<button
+													type="button"
+													class="section-empty-action shrink-0"
+													onclick={() => createWorkspaceEntity('risk')}
+												>
+													Add risk
+												</button>
+											{/if}
 										</div>
-									{/each}
-									{#if openRisks.length > 5}
-										<button
-											type="button"
-											class="view-all-row"
-											aria-expanded={showAllRisks}
-											onclick={() => (showAllRisks = !showAllRisks)}
-										>
-											{showAllRisks
-												? 'Show fewer risks'
-												: `Show all ${openRisks.length} risks`}
-										</button>
-									{/if}
-									{#if canEdit}
-										<button
-											type="button"
-											class="entity-create-row"
-											onclick={() => createWorkspaceEntity('risk')}
-										>
-											<Plus class="h-3.5 w-3.5" />
-											Add risk
-										</button>
-									{/if}
-								</div>
-							</section>
-
-							<section
-								class="overview-section"
-								aria-labelledby="overview-events-title"
-							>
-								<header class="overview-section-header">
-									<div class="flex min-w-0 items-center gap-3">
-										<div class="section-icon bg-info/10">
-											<CalendarClock class="h-4 w-4 text-info" />
-										</div>
-										<div class="min-w-0">
-											<h2
-												id="overview-events-title"
-												class="text-sm font-semibold"
-											>
-												Coming up
-											</h2>
-											<p class="text-xs text-muted-foreground">
-												Project calendar
-											</p>
-										</div>
-									</div>
-								</header>
-								<div class="pt-2">
-									{#each visibleEvents as event (event.id)}
-										<button
-											type="button"
-											class="entity-row"
-											onclick={() => openEntity('event', event.id)}
-										>
-											<Calendar class="h-4 w-4 shrink-0 text-info" />
-											<div class="min-w-0 flex-1">
-												<p class="truncate text-sm font-semibold">
-													{event.title}
-												</p>
-												<p class="truncate text-xs text-muted-foreground">
-													{formatEventDate(event)}
-												</p>
-											</div>
-										</button>
-									{:else}
-										<div class="empty-row">
-											<Calendar class="h-5 w-5" />
-											<p>No upcoming events</p>
-										</div>
-									{/each}
-									{#if upcomingEvents.length > 4}
-										<button
-											type="button"
-											class="view-all-row"
-											aria-expanded={showAllEvents}
-											onclick={() => (showAllEvents = !showAllEvents)}
-										>
-											{showAllEvents
-												? 'Show fewer events'
-												: `Show all ${upcomingEvents.length} events`}
-										</button>
-									{/if}
-									{#if canEdit}
-										<button
-											type="button"
-											class="entity-create-row"
-											onclick={() => createWorkspaceEntity('event')}
-										>
-											<Plus class="h-3.5 w-3.5" />
-											Add event
-										</button>
 									{/if}
 								</div>
 							</section>
@@ -1783,61 +1713,15 @@
 		border-radius: 0.5rem;
 	}
 
-	.brief-toggle {
-		display: inline-flex;
-		min-height: 44px;
-		align-items: center;
-		border-radius: 0.5rem;
-		padding: 0 0.5rem;
-		color: hsl(var(--accent));
-		font-size: 0.75rem;
-		font-weight: 600;
-		transition:
-			background-color 120ms ease,
-			color 120ms ease;
-	}
-
-	.brief-toggle:hover {
-		background: hsl(var(--accent) / 0.08);
-	}
-
-	.brief-toggle:focus-visible {
-		outline: 2px solid hsl(var(--ring));
-		outline-offset: -2px;
-	}
-
 	.micro-label {
 		color: hsl(var(--muted-foreground));
 		font-weight: 600;
 	}
 
-	.overview-brief {
-		display: grid;
+	.overview-intro {
 		min-width: 0;
-		gap: 1rem;
-		border-top: 1px solid hsl(var(--border));
 		border-bottom: 1px solid hsl(var(--border));
-		padding: 1rem 0.25rem 1.25rem;
-	}
-
-	.overview-meta {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		border-top: 1px solid hsl(var(--border));
-		padding-top: 1rem;
-	}
-
-	.overview-meta-item {
-		min-width: 0;
-		padding: 0 0.75rem;
-	}
-
-	.overview-meta-item:first-child {
-		padding-left: 0;
-	}
-
-	.overview-meta-item + .overview-meta-item {
-		border-left: 1px solid hsl(var(--border));
+		padding: 0.25rem 0.25rem 1rem;
 	}
 
 	.overview-section {
@@ -1962,6 +1846,40 @@
 		font-size: 0.75rem;
 	}
 
+	.section-empty-state {
+		display: flex;
+		min-width: 0;
+		min-height: 52px;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.625rem;
+		padding: 0.5rem 0.625rem;
+	}
+
+	.section-empty-action {
+		display: inline-flex;
+		min-height: 44px;
+		align-items: center;
+		justify-content: center;
+		border-radius: 0.5rem;
+		padding: 0 0.625rem;
+		color: hsl(var(--accent));
+		font-size: 0.75rem;
+		font-weight: 600;
+		transition:
+			background-color 120ms ease,
+			color 120ms ease;
+	}
+
+	.section-empty-action:hover {
+		background: hsl(var(--accent) / 0.08);
+	}
+
+	.section-empty-action:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: -2px;
+	}
+
 	.workspace-panel {
 		min-width: 0;
 		border-radius: 0.75rem;
@@ -1989,19 +1907,6 @@
 		}
 	}
 
-	@media (min-width: 768px) {
-		.overview-brief {
-			grid-template-columns: minmax(0, 1fr) minmax(21rem, auto);
-			align-items: end;
-			gap: 2rem;
-		}
-
-		.overview-meta {
-			border-top: 0;
-			padding-top: 0;
-		}
-	}
-
 	@media (min-width: 1024px) {
 		.docs-recent-context {
 			border-top: 0;
@@ -2026,9 +1931,9 @@
 	@media (prefers-reduced-motion: reduce) {
 		.workspace-tab,
 		.entity-row,
-		.brief-toggle,
 		.view-all-row,
-		.entity-create-row {
+		.entity-create-row,
+		.section-empty-action {
 			transition: none;
 		}
 	}

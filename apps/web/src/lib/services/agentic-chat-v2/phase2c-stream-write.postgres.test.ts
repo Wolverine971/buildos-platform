@@ -48,6 +48,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	let terminalPendingIntentOutput = '';
 	let terminalPendingContractOutput = '';
 	let terminalPendingContractHardeningOutput = '';
+	let clarificationContractResetOutput = '';
+	let clarificationMissingPrerequisiteOutput = '';
 	let terminalDomainMetadataOutput = '';
 
 	const applySqlFile = (path: string): string =>
@@ -83,6 +85,28 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			],
 			{ encoding: 'utf8' }
 		);
+	const applySqlFileExpectingError = (path: string): string => {
+		const result = spawnSync(
+			'psql',
+			[
+				'-h',
+				socketDir,
+				'-p',
+				String(port),
+				'-d',
+				'postgres',
+				'-v',
+				'ON_ERROR_STOP=1',
+				'-f',
+				path
+			],
+			{ encoding: 'utf8' }
+		);
+		if (result.status === 0) {
+			throw new Error(`Expected SQL file to fail: ${path}`);
+		}
+		return `${result.stdout}\n${result.stderr}`;
+	};
 
 	beforeAll(async () => {
 		tempDir = mkdtempSync('/tmp/buildos-phase2c-stream-write-pg-');
@@ -111,6 +135,11 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 
 		applySqlFile(
 			sqlPath('supabase/tests/fixtures/agentic_chat_worker_phase2b_admission_claim_base.sql')
+		);
+		clarificationMissingPrerequisiteOutput = applySqlFileExpectingError(
+			sqlPath(
+				'supabase/migrations/20260815010000_agentic_chat_clarification_contract_reset.sql'
+			)
 		);
 		for (const migration of [
 			'20260731150000_agentic_chat_legacy_atomic_admission.sql',
@@ -245,6 +274,16 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			),
 			sqlPath(
 				'supabase/tests/20260814011000_agentic_chat_turn_contract_worker_hardening.test.sql'
+			),
+			sqlPath(
+				'supabase/migrations/20260815010000_agentic_chat_clarification_contract_reset.sql'
+			),
+			// A manual SQL-editor replay must be an idempotent no-op.
+			sqlPath(
+				'supabase/migrations/20260815010000_agentic_chat_clarification_contract_reset.sql'
+			),
+			sqlPath(
+				'supabase/tests/20260815010000_agentic_chat_clarification_contract_reset.test.sql'
 			)
 		]);
 		timingOutput = terminalParityOutput;
@@ -259,6 +298,7 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 		terminalDomainMetadataOutput = terminalParityOutput;
 		terminalPendingContractOutput = terminalParityOutput;
 		terminalPendingContractHardeningOutput = terminalParityOutput;
+		clarificationContractResetOutput = terminalParityOutput;
 	}, 60_000);
 
 	afterAll(() => {
@@ -351,6 +391,21 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	it('hardens worker contract cancellation, lifecycle evidence, fields, and scope', () => {
 		expect(terminalPendingContractHardeningOutput).toContain(
 			'agentic_chat_turn_contract_worker_hardening_ok'
+		);
+	});
+
+	it('replays clarification reset safely and preserves only prior in-scope work', () => {
+		expect(clarificationContractResetOutput).toContain(
+			'agentic_chat_clarification_contract_reset_ok'
+		);
+	});
+
+	it('identifies a missing terminal-contract prerequisite explicitly', () => {
+		expect(clarificationMissingPrerequisiteOutput).toContain(
+			'agentic_chat_clarification_reset_prerequisite_missing'
+		);
+		expect(clarificationMissingPrerequisiteOutput).toContain(
+			'Apply migrations 20260814010000 through 20260814013000'
 		);
 	});
 

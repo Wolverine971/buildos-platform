@@ -22,9 +22,13 @@ import {
 import { validateToolCalls, type ToolValidationIssue } from './tool-validation';
 import {
 	CANCEL_TURN_CONTRACT_TOOL_NAME,
+	DECLARE_READ_ONLY_TURN_TOOL_NAME,
 	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
 	executeCancelTurnContract,
-	executeDeclareTurnContract
+	executeDeclareReadOnlyTurn,
+	executeDeclareTurnContract,
+	executeRequestTurnClarification
 } from '@buildos/agentic-chat-runtime/loop';
 
 export type ToolCallExecutionPair = {
@@ -445,6 +449,18 @@ async function validateOrExecuteDirectToolCall(params: {
 		return {
 			executedToolCallDelta: 1,
 			result: executeDeclareTurnContract(params.executionToolCall)
+		};
+	}
+	if (params.executionToolCall.function.name === DECLARE_READ_ONLY_TURN_TOOL_NAME) {
+		return {
+			executedToolCallDelta: 1,
+			result: executeDeclareReadOnlyTurn(params.executionToolCall)
+		};
+	}
+	if (params.executionToolCall.function.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME) {
+		return {
+			executedToolCallDelta: 1,
+			result: executeRequestTurnClarification(params.executionToolCall)
 		};
 	}
 	if (params.executionToolCall.function.name === CANCEL_TURN_CONTRACT_TOOL_NAME) {

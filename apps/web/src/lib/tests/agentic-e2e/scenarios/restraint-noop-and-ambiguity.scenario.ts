@@ -25,6 +25,7 @@ import type { ProjectSpec } from '$lib/types/onto';
 import type { Scenario, SeedResult } from '../harness/types';
 import { harnessProjectName, seedProject } from '../harness/seed';
 import {
+	assertAnyToolCalled,
 	assertNoMutations,
 	assertNonEmptyAssistantText,
 	assertQuestionAsked,
@@ -112,6 +113,7 @@ export const restraintNoopAndAmbiguityScenario: Scenario = {
 			assert: async (turn, ctx, seed) => {
 				assertTurnSucceeded(turn);
 				assertNonEmptyAssistantText(turn);
+				assertAnyToolCalled(turn, ['request_turn_clarification']);
 
 				// Order matters: assert restraint BEFORE the question. An agent that
 				// guessed and then asked about its guess must fail on the write, and
@@ -125,6 +127,27 @@ export const restraintNoopAndAmbiguityScenario: Scenario = {
 
 				assertQuestionAsked(turn);
 				assertTurnRunCompleted(await waitForTurnRun(ctx.db.admin, turn.streamRunId!));
+
+				if (!turn.sessionId) {
+					throw new Error('[assert] clarification turn lost its session id');
+				}
+				const { data: session, error: sessionError } = await ctx.db.admin
+					.from('chat_sessions')
+					.select('agent_metadata')
+					.eq('id', turn.sessionId)
+					.eq('user_id', ctx.db.userId)
+					.single();
+				if (sessionError || !session) {
+					throw new Error(
+						`[assert] failed to read clarified session metadata: ${sessionError?.message ?? 'missing row'}`
+					);
+				}
+				const metadata = session.agent_metadata as Record<string, unknown> | null;
+				if (metadata?.fastchat_pending_turn_contract != null) {
+					throw new Error(
+						'[assert] terminal clarification retained a contract declared before the reviewer rejected it'
+					);
+				}
 
 				// A real disambiguation names the candidates. "Which one?" with no
 				// options means it never looked — the user has to do the work.

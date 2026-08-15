@@ -13,7 +13,12 @@ const ACTOR_ID = '90000000-0000-4000-8000-000000000009';
 const PROJECT_ID = '40000000-0000-4000-8000-000000000004';
 
 const SHARED_ALLOWLIST = [
+	'approve_mutation_batch_review',
+	'approve_read_only_turn_review',
+	'approve_turn_contract_review',
 	'declare_turn_contract',
+	'declare_read_only_turn',
+	'request_turn_clarification',
 	'cancel_turn_contract',
 	'list_onto_projects',
 	'list_onto_tasks',
@@ -216,6 +221,117 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 			reason: 'The user explicitly cancelled the prior commission.'
 		});
 		expect(client.from).not.toHaveBeenCalled();
+	});
+
+	it('acknowledges an explicit read-only disposition without touching project data', async () => {
+		const access = accessStub();
+		const client = fakeSharedClient();
+		const result = await adapterWith(client, access).execute(
+			requestFor('declare_read_only_turn', {
+				reason: 'The user asked for an explanation and did not commission a durable change.'
+			})
+		);
+
+		expect(result.result).toMatchObject({
+			status: 'read_only_declared',
+			reason: 'The user asked for an explanation and did not commission a durable change.'
+		});
+		expect(client.from).not.toHaveBeenCalled();
+		expect(access.getActorId).not.toHaveBeenCalled();
+	});
+
+	it('rejects a read-only disposition without a meaningful reason', async () => {
+		const access = accessStub();
+		const client = fakeSharedClient();
+
+		await expect(
+			adapterWith(client, access).execute(
+				requestFor('declare_read_only_turn', { reason: '   ' })
+			)
+		).rejects.toThrow(
+			'Read-only turn declaration failed: explain why the current request commissions no durable data change.'
+		);
+		expect(client.from).not.toHaveBeenCalled();
+		expect(access.getActorId).not.toHaveBeenCalled();
+	});
+
+	it('records a clarification as requiring user action without touching project data', async () => {
+		const access = accessStub();
+		const client = fakeSharedClient();
+		const result = await adapterWith(client, access).execute(
+			requestFor('request_turn_clarification', {
+				reason: 'Multiple accessible tasks remain plausible targets.',
+				question: 'Which matching task should I update?'
+			})
+		);
+
+		expect(result).toMatchObject({
+			result: {
+				status: 'clarification_required',
+				requires_user_action: true,
+				question: 'Which matching task should I update?'
+			},
+			requiresUserAction: true
+		});
+		expect(client.from).not.toHaveBeenCalled();
+		expect(access.getActorId).not.toHaveBeenCalled();
+	});
+
+	it('records an independently bound turn-contract approval without touching project data', async () => {
+		const access = accessStub();
+		const client = fakeSharedClient();
+		const contractSha256 = 'a'.repeat(64);
+		const result = await adapterWith(client, access).execute(
+			requestFor('approve_turn_contract_review', {
+				reason: 'The exact target and requested value are unambiguous.',
+				contract_sha256: contractSha256
+			})
+		);
+
+		expect(result.result).toMatchObject({
+			status: 'turn_contract_review_approved',
+			contract_sha256: contractSha256
+		});
+		expect(client.from).not.toHaveBeenCalled();
+		expect(access.getActorId).not.toHaveBeenCalled();
+	});
+
+	it('records an independently bound read-only approval without touching project data', async () => {
+		const access = accessStub();
+		const client = fakeSharedClient();
+		const dispositionSha256 = 'c'.repeat(64);
+		const result = await adapterWith(client, access).execute(
+			requestFor('approve_read_only_turn_review', {
+				reason: 'The user requested project information only.',
+				disposition_sha256: dispositionSha256
+			})
+		);
+
+		expect(result.result).toMatchObject({
+			status: 'read_only_turn_review_approved',
+			disposition_sha256: dispositionSha256
+		});
+		expect(client.from).not.toHaveBeenCalled();
+		expect(access.getActorId).not.toHaveBeenCalled();
+	});
+
+	it('records an independently bound mutation-batch approval without touching project data', async () => {
+		const access = accessStub();
+		const client = fakeSharedClient();
+		const batchSha256 = 'b'.repeat(64);
+		const result = await adapterWith(client, access).execute(
+			requestFor('approve_mutation_batch_review', {
+				reason: 'Every exact target and value is within the approved commission.',
+				batch_sha256: batchSha256
+			})
+		);
+
+		expect(result.result).toMatchObject({
+			status: 'mutation_batch_review_approved',
+			batch_sha256: batchSha256
+		});
+		expect(client.from).not.toHaveBeenCalled();
+		expect(access.getActorId).not.toHaveBeenCalled();
 	});
 
 	it('routes get_project_overview through the shared implementation and returns the legacy payload', async () => {

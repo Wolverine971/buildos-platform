@@ -256,8 +256,8 @@ describe('ProjectWorkspacePrototype edge states', () => {
 		});
 	});
 
-	it('constrains long identity text and progressively discloses a long brief', async () => {
-		const { container } = render(ProjectWorkspacePrototype, {
+	it('constrains long identity text without repeating the brief in Overview', async () => {
+		render(ProjectWorkspacePrototype, {
 			props: {
 				data: projectData({
 					project: {
@@ -277,18 +277,17 @@ describe('ProjectWorkspacePrototype edge states', () => {
 		expect(title).toHaveClass('min-w-0', 'flex-1', 'truncate');
 		expect(document.title).toBe(`${LONG_NAME} · BuildOS`);
 
-		const brief = container.querySelector('.overview-brief p.mt-2');
-		expect(brief).not.toBeNull();
-		const toggle = screen.getByRole('button', { name: 'Read full brief' });
-		expect(brief).toHaveClass('line-clamp-5');
-		expect(toggle).toHaveAttribute('aria-expanded', 'false');
-
-		await fireEvent.click(toggle);
-		expect(brief).not.toHaveClass('line-clamp-5');
-		expect(screen.getByRole('button', { name: 'Show less' })).toHaveAttribute(
-			'aria-expanded',
-			'true'
-		);
+		const overview = screen.getByRole('tabpanel', { name: 'Overview' });
+		expect(within(overview).getByRole('heading', { name: 'Project map' })).toBeInTheDocument();
+		expect(
+			within(overview).getByText(
+				"See the project's direction, milestones, and risks in one place."
+			)
+		).toBeInTheDocument();
+		expect(within(overview).queryByText(LONG_BRIEF)).not.toBeInTheDocument();
+		expect(within(overview).queryByText('PROJECT BRIEF')).not.toBeInTheDocument();
+		expect(within(overview).queryByText('STATUS')).not.toBeInTheDocument();
+		expect(within(overview).queryByText('TARGET')).not.toBeInTheDocument();
 	});
 
 	it('keeps dense direction lists curated until the user asks for all items', async () => {
@@ -319,18 +318,33 @@ describe('ProjectWorkspacePrototype edge states', () => {
 		);
 	});
 
-	it('uses flat placeholders for an empty Overview', async () => {
-		const { container } = render(ProjectWorkspacePrototype, {
-			props: { data: projectData() as any }
+	it('keeps an empty Overview compact and free of Brief or Activity content', async () => {
+		render(ProjectWorkspacePrototype, {
+			props: {
+				data: projectData({
+					context_document: contextDocument(),
+					events: [
+						{
+							id: 'event-1',
+							title: 'Launch review',
+							start_at: '2027-01-20T12:00:00.000Z',
+							all_day: false
+						}
+					]
+				}) as any
+			}
 		});
 
 		await waitFor(() => {
-			expect(screen.getByText('No active goals yet')).toBeInTheDocument();
+			expect(screen.getByText('No direction set yet')).toBeInTheDocument();
 		});
 
-		const emptyRows = container.querySelectorAll('.empty-row');
-		expect(emptyRows).toHaveLength(5);
-		expect(container.querySelector('.empty-compact')).not.toBeInTheDocument();
+		const overview = screen.getByRole('tabpanel', { name: 'Overview' });
+		expect(overview.querySelectorAll('.section-empty-state')).toHaveLength(3);
+		expect(overview.querySelector('.empty-row')).not.toBeInTheDocument();
+		expect(within(overview).queryByText('Coming up')).not.toBeInTheDocument();
+		expect(within(overview).queryByText('Launch review')).not.toBeInTheDocument();
+		expect(within(overview).queryByText('START HERE - Project')).not.toBeInTheDocument();
 
 		await fireEvent.click(screen.getByRole('tab', { name: 'Docs 0' }));
 		await waitFor(() => {

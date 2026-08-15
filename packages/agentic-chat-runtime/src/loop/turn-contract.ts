@@ -6,6 +6,8 @@ import { didGatewayExecSucceed, isWriteLedgerToolExecution } from './tool-classi
 import { buildWriteLedger, type WriteLedgerEntry } from './write-ledger';
 
 export const DECLARE_TURN_CONTRACT_TOOL_NAME = 'declare_turn_contract';
+export const DECLARE_READ_ONLY_TURN_TOOL_NAME = 'declare_read_only_turn';
+export const REQUEST_TURN_CLARIFICATION_TOOL_NAME = 'request_turn_clarification';
 export const CANCEL_TURN_CONTRACT_TOOL_NAME = 'cancel_turn_contract';
 export const FASTCHAT_PENDING_TURN_CONTRACT_METADATA_KEY = 'fastchat_pending_turn_contract';
 
@@ -132,10 +134,16 @@ function normalizeEntityKind(value: unknown): TurnContractEntityKind | null {
 }
 
 function normalizeFieldName(value: string): string {
-	return value
+	const normalized = value
 		.trim()
 		.replace(/[A-Z]/g, (character) => `_${character.toLowerCase()}`)
 		.toLowerCase();
+	// Tree creation and movement use different transport names for the same
+	// semantic placement dimensions. Contracts describe the durable property,
+	// not whichever adapter happened to carry it.
+	if (normalized === 'new_parent_id') return 'parent_id';
+	if (normalized === 'new_position') return 'position';
+	return normalized;
 }
 
 function normalizeOutcome(value: unknown, index: number): TurnContractOutcome | null {
@@ -154,7 +162,12 @@ function normalizeOutcome(value: unknown, index: number): TurnContractOutcome | 
 		record.minimum_successful_effects ?? record.minimumSuccessfulEffects,
 		Math.max(1, targetIds.length)
 	);
-	if (minimumSuccessfulEffects === null) return null;
+	if (
+		minimumSuccessfulEffects === null ||
+		(targetIds.length > 0 && minimumSuccessfulEffects > targetIds.length)
+	) {
+		return null;
+	}
 	return {
 		id: readString(record.id, 80) ?? `outcome_${index + 1}`,
 		action,
@@ -164,7 +177,7 @@ function normalizeOutcome(value: unknown, index: number): TurnContractOutcome | 
 			: {}),
 		targetIds,
 		requiredFields,
-		minimumSuccessfulEffects: Math.max(minimumSuccessfulEffects, targetIds.length)
+		minimumSuccessfulEffects
 	};
 }
 
@@ -288,6 +301,80 @@ export function executeDeclareTurnContract(toolCall: ChatToolCall): ChatToolResu
 	};
 }
 
+export function isDeclareReadOnlyTurnCall(toolCall: ChatToolCall): boolean {
+	return toolCall.function?.name === DECLARE_READ_ONLY_TURN_TOOL_NAME;
+}
+
+export function executeDeclareReadOnlyTurn(toolCall: ChatToolCall): ChatToolResult {
+	if (!isDeclareReadOnlyTurnCall(toolCall)) {
+		return {
+			tool_call_id: toolCall.id,
+			success: false,
+			result: null,
+			error: 'Read-only turn declaration failed: wrong control tool.'
+		};
+	}
+	const { args, error } = parseToolArguments(toolCall.function.arguments);
+	const reason = readString(args.reason, 240);
+	if (error || !reason) {
+		return {
+			tool_call_id: toolCall.id,
+			success: false,
+			result: null,
+			error: 'Read-only turn declaration failed: explain why the current request commissions no durable data change.'
+		};
+	}
+	return {
+		tool_call_id: toolCall.id,
+		success: true,
+		result: {
+			status: 'read_only_declared',
+			reason,
+			instruction:
+				'Continue with reads or answer from evidence; do not claim a durable mutation.'
+		}
+	};
+}
+
+export function isRequestTurnClarificationCall(toolCall: ChatToolCall): boolean {
+	return toolCall.function?.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
+}
+
+export function executeRequestTurnClarification(toolCall: ChatToolCall): ChatToolResult {
+	if (!isRequestTurnClarificationCall(toolCall)) {
+		return {
+			tool_call_id: toolCall.id,
+			success: false,
+			result: null,
+			error: 'Turn clarification failed: wrong control tool.'
+		};
+	}
+	const { args, error } = parseToolArguments(toolCall.function.arguments);
+	const reason = readString(args.reason, 240);
+	const question = readString(args.question, 500);
+	if (error || !reason || !question) {
+		return {
+			tool_call_id: toolCall.id,
+			success: false,
+			result: null,
+			error: 'Turn clarification failed: provide the unresolved semantic choice and a concise question for the user.'
+		};
+	}
+	return {
+		tool_call_id: toolCall.id,
+		success: true,
+		requires_user_action: true,
+		result: {
+			status: 'clarification_required',
+			reason,
+			question,
+			requires_user_action: true,
+			instruction:
+				'Ask the question and wait for the user. Do not perform a durable mutation in this turn.'
+		}
+	};
+}
+
 export function isCancelTurnContractCall(toolCall: ChatToolCall): boolean {
 	return toolCall.function?.name === CANCEL_TURN_CONTRACT_TOOL_NAME;
 }
@@ -405,7 +492,10 @@ export function resolveTurnContractFromExecutions(
 	for (let index = 0; index < executions.length; index += 1) {
 		const execution = executions[index];
 		if (!execution?.result.success) continue;
-		if (isCancelTurnContractCall(execution.toolCall)) {
+		if (
+			isCancelTurnContractCall(execution.toolCall) ||
+			isRequestTurnClarificationCall(execution.toolCall)
+		) {
 			contract = null;
 			lastCancellationIndex = index;
 			continue;
@@ -418,22 +508,11 @@ export function resolveTurnContractFromExecutions(
 		.filter(isWriteLedgerToolExecution);
 	if (!contract) return deriveImplicitTurnContract(writesAfterLastCancellation);
 
-	// Direct calls that match a declaration are evidence for it, not additional
-	// obligations. A separate direct write that is outside every declared
-	// outcome still forms its own implicit contract, so a failed new commission
-	// cannot disappear merely because an older pending contract exists.
-	const unmatchedWrites = writesAfterLastCancellation.filter((execution) => {
-		const entry = buildWriteLedger([execution])[0];
-		if (!entry?.action || !entry.entityKind) return false;
-		return !contract?.outcomes.some(
-			(outcome) =>
-				actionMatches(outcome.action, entry) &&
-				entityMatches(outcome.entityKind, entry.entityKind ?? '') &&
-				(outcome.targetIds.length === 0 ||
-					Boolean(entry.entityId && outcome.targetIds.includes(entry.entityId)))
-		);
-	});
-	return mergeTurnContracts(contract, deriveImplicitTurnContract(unmatchedWrites));
+	// A declaration is the reviewed authority for this turn. Calls outside it are
+	// rejected proposals, not evidence that the user commissioned another
+	// outcome, so they must never become durable carry-forward authority. The
+	// implicit fallback remains only for older/direct paths with no declaration.
+	return contract;
 }
 
 const SAFE_WRITE_TOOLS_BY_OUTCOME: Partial<
@@ -524,13 +603,17 @@ function resolveOutcome(
 		(entry) =>
 			entry.status === 'success' &&
 			Boolean(entry.action && actionMatches(outcome.action, entry)) &&
-			Boolean(entry.entityKind && entityMatches(outcome.entityKind, entry.entityKind))
+			Boolean(entry.entityKind && entityMatches(outcome.entityKind, entry.entityKind)) &&
+			(outcome.targetIds.length === 0 ||
+				Boolean(entry.entityId && outcome.targetIds.includes(entry.entityId)))
 	);
 	const requiredFields = outcome.requiredFields.map(normalizeFieldName);
 	const candidatesForTarget = (targetId: string): WriteLedgerEntry[] =>
 		candidates.filter((entry) => entry.entityId === targetId);
 	const entriesHaveRequiredFields = (entries: WriteLedgerEntry[]): boolean => {
-		const fields = new Set(entries.flatMap((entry) => entry.changedFields ?? []));
+		const fields = new Set(
+			entries.flatMap((entry) => (entry.changedFields ?? []).map(normalizeFieldName))
+		);
 		return requiredFields.every((field) => fields.has(field));
 	};
 	const matchedCandidateTargetIds = Array.from(
@@ -546,14 +629,18 @@ function resolveOutcome(
 						.filter(
 							(field) =>
 								!targetCandidates.some((entry) =>
-									(entry.changedFields ?? []).includes(field)
+									(entry.changedFields ?? [])
+										.map(normalizeFieldName)
+										.includes(field)
 								)
 						)
 						.map((field) => `${targetId}.${field}`);
 				})
 			: requiredFields.filter(
 					(field) =>
-						!candidates.some((entry) => (entry.changedFields ?? []).includes(field))
+						!candidates.some((entry) =>
+							(entry.changedFields ?? []).map(normalizeFieldName).includes(field)
+						)
 				);
 	const fieldCompleteCandidates = candidates.filter((entry) =>
 		entriesHaveRequiredFields([entry])
@@ -567,10 +654,13 @@ function resolveOutcome(
 							entry.entityId ?? entry.effectId ?? `${entry.toolName}:${index}`
 					)
 				).size;
-	const fulfilled =
-		missingTargetIds.length === 0 &&
-		missingRequiredFields.length === 0 &&
-		distinctEffects >= outcome.minimumSuccessfulEffects;
+	// targetIds bound the eligible target set; minimumSuccessfulEffects is the
+	// semantic completion cardinality. The default equals the target count, but
+	// an explicitly reviewed lower minimum permits a bounded partial outcome.
+	// Required fields are postconditions and therefore determine which effects
+	// count; missing optional candidates are diagnostic, not an extra hidden
+	// all-target requirement.
+	const fulfilled = distinctEffects >= outcome.minimumSuccessfulEffects;
 	return {
 		id: outcome.id,
 		fulfilled,

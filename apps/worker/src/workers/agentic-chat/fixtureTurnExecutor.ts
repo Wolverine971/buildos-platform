@@ -101,10 +101,12 @@ import type { AgenticChatConsumptionBillingPortV1 } from './consumptionBilling';
 
 const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_UI_PROJECTION_EVENTS = 128;
-// The retained Phase 0 acceptance baseline reaches 245,137 ms. Preserve that
-// behavior while leaving 90 seconds for finalization below the 360-second
-// worker timeout.
-export const DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS = 270_000;
+// The retained Phase 0 acceptance baseline reaches 245,137 ms, and independent
+// semantic review adds one bounded provider pass. Production organization
+// canaries have reached the former 270-second ceiling after completing every
+// approved write. Preserve a 60-second finalization reserve below the
+// 360-second worker timeout without adding deployment configuration.
+export const DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS = 300_000;
 export const DEFAULT_AGENTIC_CHAT_EXECUTOR_OVERHEAD_TIMEOUT_MS = 10_000;
 // Keep aligned with the legacy web loop defaults
 // (apps/web/src/lib/services/agentic-chat-v2/limits.ts FASTCHAT_LIMITS).

@@ -6,9 +6,12 @@ import {
 	buildFastChatPendingTurnContract,
 	deriveImplicitTurnContract,
 	executeCancelTurnContract,
+	executeDeclareReadOnlyTurn,
 	executeDeclareTurnContract,
+	executeRequestTurnClarification,
 	extractDeclaredTurnContract,
 	mergeTurnContracts,
+	parseDeclaredTurnContract,
 	readFastChatPendingTurnContract,
 	resolveTurnContractFromExecutions,
 	resolveTurnContractOutcome,
@@ -101,6 +104,84 @@ describe('semantic turn contracts', () => {
 				})
 			).success
 		).toBe(false);
+		expect(
+			executeDeclareTurnContract(
+				call('declare_turn_contract', {
+					outcomes: [
+						{
+							action: 'update',
+							entity_kind: 'task',
+							target_ids: ['task-a'],
+							minimum_successful_effects: 2
+						}
+					]
+				})
+			).success
+		).toBe(false);
+	});
+
+	it('records an explicit read-only semantic disposition without creating a durable contract', () => {
+		const disposition = call('declare_read_only_turn', {
+			reason: 'The user asked only for an explanation from current project data.'
+		});
+		expect(executeDeclareReadOnlyTurn(disposition)).toMatchObject({
+			success: true,
+			result: { status: 'read_only_declared' }
+		});
+		expect(executeDeclareReadOnlyTurn(call('declare_read_only_turn', {})).success).toBe(false);
+		expect(
+			resolveTurnContractFromExecutions([
+				{ toolCall: disposition, result: executeDeclareReadOnlyTurn(disposition) }
+			])
+		).toBeNull();
+	});
+
+	it('records a clarification disposition as requiring user action without creating a contract', () => {
+		const clarification = call('request_turn_clarification', {
+			reason: 'More than one accessible task is a plausible referent.',
+			question: 'Which of the matching tasks should I update?'
+		});
+		expect(executeRequestTurnClarification(clarification)).toMatchObject({
+			success: true,
+			requires_user_action: true,
+			result: { status: 'clarification_required', requires_user_action: true }
+		});
+		expect(
+			executeRequestTurnClarification(call('request_turn_clarification', { reason: 'x' }))
+				.success
+		).toBe(false);
+		expect(
+			resolveTurnContractFromExecutions([
+				{
+					toolCall: clarification,
+					result: executeRequestTurnClarification(clarification)
+				}
+			])
+		).toBeNull();
+		expect(
+			resolveTurnContractFromExecutions(
+				[
+					{
+						toolCall: clarification,
+						result: executeRequestTurnClarification(clarification)
+					}
+				],
+				{
+					version: 1,
+					source: 'declared',
+					outcomes: [
+						{
+							id: 'premature',
+							action: 'update',
+							entityKind: 'task',
+							targetIds: [],
+							requiredFields: [],
+							minimumSuccessfulEffects: 1
+						}
+					]
+				}
+			)
+		).toBeNull();
 	});
 
 	it('cancels a prior contract only through an explicit validated control call', () => {
@@ -201,6 +282,102 @@ describe('semantic turn contracts', () => {
 		expect(resolveTurnContractOutcome({ contract, toolExecutions: bothMoves }).fulfilled).toBe(
 			true
 		);
+	});
+
+	it('uses the reviewed minimum as cardinality within the bounded target set', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'organize',
+					entity_kind: 'document',
+					target_ids: ['doc-a', 'doc-b', 'special-context-doc'],
+					minimum_successful_effects: 2
+				}
+			]
+		});
+		expect(contract?.outcomes[0]?.minimumSuccessfulEffects).toBe(2);
+		expect(
+			resolveTurnContractOutcome({
+				contract,
+				toolExecutions: [
+					execution('move_document_in_tree', {
+						document_id: 'doc-a',
+						new_parent_id: 'folder-a'
+					}),
+					execution('move_document_in_tree', {
+						document_id: 'doc-b',
+						new_parent_id: 'folder-b'
+					}),
+					execution('move_document_in_tree', {
+						document_id: 'outside-reviewed-scope',
+						new_parent_id: 'folder-c'
+					})
+				]
+			})
+		).toMatchObject({
+			fulfilled: true,
+			outcomes: [
+				{
+					matchedEffects: 2,
+					missingTargetIds: ['special-context-doc']
+				}
+			]
+		});
+	});
+
+	it('treats create and move tree placement names as one semantic postcondition', () => {
+		const parsed = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'organize',
+					entity_kind: 'document',
+					target_ids: ['doc-a'],
+					required_fields: ['new_parent_id', 'new_position'],
+					minimum_successful_effects: 1
+				}
+			]
+		});
+		expect(parsed?.outcomes[0]?.requiredFields).toEqual(['parent_id', 'position']);
+		expect(
+			resolveTurnContractOutcome({
+				contract: parsed,
+				toolExecutions: [
+					execution('move_document_in_tree', {
+						document_id: 'doc-a',
+						new_parent_id: 'folder-a',
+						new_position: 2
+					})
+				]
+			}).fulfilled
+		).toBe(true);
+
+		const createContract: TurnContract = {
+			version: 1,
+			source: 'declared',
+			outcomes: [
+				{
+					id: 'root-folder',
+					action: 'create',
+					entityKind: 'document',
+					targetIds: [],
+					requiredFields: ['parent_id'],
+					minimumSuccessfulEffects: 1
+				}
+			]
+		};
+		expect(
+			resolveTurnContractOutcome({
+				contract: createContract,
+				toolExecutions: [
+					execution('create_onto_document', {
+						project_id: 'project-a',
+						title: 'Folder',
+						description: 'A folder',
+						parent_id: null
+					})
+				]
+			}).fulfilled
+		).toBe(true);
 	});
 
 	it('does not count failed writes or duplicate calls as fulfilled effects', () => {
@@ -398,6 +575,32 @@ describe('semantic turn contracts', () => {
 		).toHaveLength(1);
 	});
 
+	it('does not turn a rejected out-of-contract proposal into future authority', () => {
+		const declaration = execution('declare_turn_contract', {
+			outcomes: [
+				{
+					id: 'organize-documents',
+					action: 'organize',
+					entity_kind: 'document',
+					target_ids: ['document-a'],
+					minimum_successful_effects: 1
+				}
+			]
+		});
+		const rejectedConvenienceEdit = execution(
+			'update_onto_document',
+			{ document_id: 'special-context-doc', content: 'Unrequested convenience edit' },
+			{
+				success: false,
+				error: 'Mutation is outside the independently approved turn contract.'
+			}
+		);
+
+		expect(
+			resolveTurnContractFromExecutions([declaration, rejectedConvenienceEdit])?.outcomes
+		).toEqual([expect.objectContaining({ id: 'organize-documents', action: 'organize' })]);
+	});
+
 	it('derives an implicit contract from a direct write call', () => {
 		const directWrite = execution(
 			'update_onto_task',
@@ -505,5 +708,72 @@ describe('semantic turn contracts', () => {
 			projectId: 'project-a',
 			contract: { outcomes: [{ id: 'unfinished', targetIds: ['doc-b'] }] }
 		});
+	});
+
+	it('does not retain a fulfilled bounded organization or a rejected convenience edit', () => {
+		const looseDocumentIds = ['doc-a', 'doc-b', 'doc-c', 'doc-d', 'doc-e', 'doc-f'];
+		const declaration = execution('declare_turn_contract', {
+			outcomes: [
+				{
+					id: 'organize-loose-documents',
+					action: 'organize',
+					entity_kind: 'document',
+					target_ids: [...looseDocumentIds, 'special-context-doc'],
+					minimum_successful_effects: 4
+				},
+				{
+					id: 'create-folders',
+					action: 'create',
+					entity_kind: 'document',
+					minimum_successful_effects: 3
+				}
+			]
+		});
+		const writes = [
+			...['folder-a', 'folder-b', 'folder-c'].map((id) =>
+				execution(
+					'create_onto_document',
+					{ project_id: 'project-a', title: id },
+					{ result: { document: { id, title: id } } },
+					`create-${id}`
+				)
+			),
+			...looseDocumentIds.map((id, index) =>
+				execution(
+					'move_document_in_tree',
+					{ document_id: id, new_parent_id: `folder-${index % 3}` },
+					{},
+					`move-${id}`
+				)
+			),
+			execution(
+				'update_onto_document',
+				{ document_id: 'special-context-doc', content: 'Unrequested convenience edit' },
+				{
+					success: false,
+					error: 'Mutation is outside the independently approved turn contract.'
+				},
+				'rejected-convenience-edit'
+			)
+		];
+		const executions = [declaration, ...writes];
+		const contract = resolveTurnContractFromExecutions(executions);
+		const resolution = resolveTurnContractOutcome({ contract, toolExecutions: executions });
+
+		expect(resolution).toMatchObject({
+			fulfilled: true,
+			outcomes: [
+				{ id: 'organize-loose-documents', matchedEffects: 6 },
+				{ id: 'create-folders', matchedEffects: 3 }
+			]
+		});
+		expect(
+			buildFastChatPendingTurnContract({
+				resolution,
+				contextType: 'project',
+				projectId: 'project-a',
+				turnRunId: 'turn-live-regression'
+			})
+		).toBeNull();
 	});
 });

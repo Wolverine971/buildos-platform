@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatWorkerCapacityEvidenceV1 } from '../src/workers/agentic-chat/capacity';
 import type { AgenticChatConsumerRuntimeHealth } from '../src/workers/agentic-chat/consumerRuntime';
 import {
+	buildAgenticChatSemanticReviewerRoutes,
 	createAgenticChatPhase3Bootstrap,
 	type AgenticChatPhase3BootstrapAssemblyPort
 } from '../src/workers/agentic-chat/phase3Bootstrap';
@@ -86,6 +87,26 @@ function assembly(): AgenticChatPhase3BootstrapAssemblyPort & {
 }
 
 describe('Agentic Chat Phase 3 operational bootstrap', () => {
+	it('derives a distinct reviewed tool-capable route without new configuration', () => {
+		const routes = buildAgenticChatSemanticReviewerRoutes([
+			{
+				id: 'openrouter',
+				kind: 'openrouter',
+				baseUrl: 'https://openrouter.ai/api/v1',
+				apiKey: 'provider-secret',
+				model: 'deepseek/deepseek-v4-flash',
+				fallbackModels: []
+			}
+		]);
+
+		expect(routes[0]).toMatchObject({
+			id: 'openrouter_semantic_reviewer',
+			kind: 'openrouter'
+		});
+		expect(routes[0]?.model).not.toBe('deepseek/deepseek-v4-flash');
+		expect(routes[0]?.apiKey).toBe('provider-secret');
+	});
+
 	it('does not construct or touch dependencies while disabled', async () => {
 		const database = client();
 		const createAssembly = vi.fn();

@@ -9,8 +9,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	type AgenticChatSharedReadContextV1,
 	type AgenticChatToolAccessPortV1,
-	getDocumentPath,
 	getDocumentOutline,
+	getDocumentPath,
 	getDocumentTree,
 	getFieldInfo,
 	getOntoDocumentDetails,
@@ -45,7 +45,9 @@ import {
 } from '@buildos/agentic-chat-runtime/tools';
 import {
 	CANCEL_TURN_CONTRACT_TOOL_NAME,
+	DECLARE_READ_ONLY_TURN_TOOL_NAME,
 	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
 	TOOL_METADATA,
 	parseDeclaredTurnContract,
 	searchTelemetryColumns
@@ -56,6 +58,9 @@ import { AgenticChatProviderExecutionError } from './providerContract';
 import { WorkerAgenticChatToolAccessAdapter } from './workerAccessAdapter';
 
 const PROJECT_OVERVIEW_TOOL_NAME = 'get_project_overview';
+export const APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME = 'approve_turn_contract_review';
+export const APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME = 'approve_read_only_turn_review';
+export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME = 'approve_mutation_batch_review';
 const MAX_RESULT_BYTES = 480 * 1024;
 export const AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS = 30_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -78,32 +83,114 @@ type SharedReadToolRunner = (
  * transcribed from the web executor, so web and worker reject identically.
  */
 const SHARED_READ_TOOL_RUNNERS: Readonly<Record<string, SharedReadToolRunner>> = Object.freeze({
-	[CANCEL_TURN_CONTRACT_TOOL_NAME]: async (_context, args) => {
+	[APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME]: (_context, args) => {
+		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
+		const dispositionSha256 =
+			typeof args.disposition_sha256 === 'string' ? args.disposition_sha256.trim() : '';
+		if (!reason || !/^[0-9a-f]{64}$/.test(dispositionSha256)) {
+			throw new Error(
+				'Read-only turn review approval failed: provide a reason and the exact reviewed disposition SHA-256.'
+			);
+		}
+		return Promise.resolve({
+			status: 'read_only_turn_review_approved',
+			reason,
+			disposition_sha256: dispositionSha256,
+			instruction:
+				'The independently reviewed read-only disposition may proceed without durable mutations.'
+		});
+	},
+	[APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME]: (_context, args) => {
+		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
+		const batchSha256 = typeof args.batch_sha256 === 'string' ? args.batch_sha256.trim() : '';
+		if (!reason || !/^[0-9a-f]{64}$/.test(batchSha256)) {
+			throw new Error(
+				'Mutation batch review approval failed: provide a reason and the exact reviewed batch SHA-256.'
+			);
+		}
+		return Promise.resolve({
+			status: 'mutation_batch_review_approved',
+			reason,
+			batch_sha256: batchSha256,
+			instruction:
+				'The independently reviewed mutation batch may proceed exactly as proposed.'
+		});
+	},
+	[APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME]: (_context, args) => {
+		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
+		const contractSha256 =
+			typeof args.contract_sha256 === 'string' ? args.contract_sha256.trim() : '';
+		if (!reason || !/^[0-9a-f]{64}$/.test(contractSha256)) {
+			throw new Error(
+				'Turn contract review approval failed: provide a reason and the exact reviewed contract SHA-256.'
+			);
+		}
+		return Promise.resolve({
+			status: 'turn_contract_review_approved',
+			reason,
+			contract_sha256: contractSha256,
+			instruction:
+				'The independently reviewed contract may proceed. Execute only its approved semantic outcomes.'
+		});
+	},
+	[CANCEL_TURN_CONTRACT_TOOL_NAME]: (_context, args) => {
 		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 240) : '';
 		if (!reason) {
 			throw new Error(
 				'Turn contract cancellation failed: provide a concise reason grounded in the current user message.'
 			);
 		}
-		return {
+		return Promise.resolve({
 			status: 'cancelled',
 			reason,
 			instruction: 'Do not execute the cancelled durable outcomes.'
-		};
+		});
 	},
-	[DECLARE_TURN_CONTRACT_TOOL_NAME]: async (_context, args) => {
+	[DECLARE_READ_ONLY_TURN_TOOL_NAME]: (_context, args) => {
+		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 240) : '';
+		if (!reason) {
+			throw new Error(
+				'Read-only turn declaration failed: explain why the current request commissions no durable data change.'
+			);
+		}
+		return Promise.resolve({
+			status: 'read_only_declared',
+			reason,
+			instruction:
+				'Continue with reads or answer from evidence; do not claim a durable mutation.'
+		});
+	},
+	[REQUEST_TURN_CLARIFICATION_TOOL_NAME]: (_context, args) => {
+		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 240) : '';
+		const question =
+			typeof args.question === 'string' ? args.question.trim().slice(0, 500) : '';
+		if (!reason || !question) {
+			throw new Error(
+				'Turn clarification failed: provide the unresolved semantic choice and a concise question for the user.'
+			);
+		}
+		return Promise.resolve({
+			status: 'clarification_required',
+			reason,
+			question,
+			requires_user_action: true,
+			instruction:
+				'Ask the question and wait for the user. Do not perform a durable mutation in this turn.'
+		});
+	},
+	[DECLARE_TURN_CONTRACT_TOOL_NAME]: (_context, args) => {
 		const contract = parseDeclaredTurnContract(args);
 		if (!contract) {
 			throw new Error(
 				'Turn contract validation failed: provide at least one supported semantic outcome.'
 			);
 		}
-		return {
+		return Promise.resolve({
 			status: 'declared',
 			contract,
 			instruction:
 				'Continue until every declared outcome is backed by successful durable effects, or explain the concrete blocker.'
-		};
+		});
 	},
 	list_onto_projects: (context, args) => listOntoProjects(context, args as never),
 	list_onto_tasks: (context, args) => listOntoTasks(context, args as never),
@@ -295,7 +382,7 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 			toolCategory: TOOL_METADATA[input.toolName]?.category ?? null,
 			resultCount: telemetry.result_count,
 			zeroResult: telemetry.zero_result,
-			requiresUserAction: false
+			requiresUserAction: input.toolName === REQUEST_TURN_CLARIFICATION_TOOL_NAME
 		};
 	}
 

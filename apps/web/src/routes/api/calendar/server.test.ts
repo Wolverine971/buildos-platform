@@ -4,18 +4,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
 	legacyUpdateMock,
 	legacyDeleteMock,
+	legacyDisconnectMock,
 	writeCreateMock,
 	writeUpdateMock,
 	writeDeleteMock,
-	createAdminMock
-} = vi.hoisted(() => ({
-	legacyUpdateMock: vi.fn(),
-	legacyDeleteMock: vi.fn(),
-	writeCreateMock: vi.fn(),
-	writeUpdateMock: vi.fn(),
-	writeDeleteMock: vi.fn(),
-	createAdminMock: vi.fn(() => ({}))
-}));
+	createAdminMock,
+	adminClient
+} = vi.hoisted(() => {
+	const adminClient = { role: 'service' };
+	return {
+		legacyUpdateMock: vi.fn(),
+		legacyDeleteMock: vi.fn(),
+		legacyDisconnectMock: vi.fn(),
+		writeCreateMock: vi.fn(),
+		writeUpdateMock: vi.fn(),
+		writeDeleteMock: vi.fn(),
+		createAdminMock: vi.fn(() => adminClient),
+		adminClient
+	};
+});
 
 vi.mock('$env/dynamic/private', () => ({
 	env: {
@@ -29,9 +36,11 @@ vi.mock('$lib/supabase/admin', () => ({
 }));
 
 vi.mock('$lib/services/calendar-service', () => ({
-	CalendarService: vi.fn().mockImplementation(() => ({
+	CalendarService: vi.fn().mockImplementation((client) => ({
+		client,
 		updateCalendarEvent: legacyUpdateMock,
-		deleteCalendarEvent: legacyDeleteMock
+		deleteCalendarEvent: legacyDeleteMock,
+		disconnectCalendar: legacyDisconnectMock
 	}))
 }));
 
@@ -53,6 +62,7 @@ vi.mock('$lib/server/google-calendar-write.service', async (importOriginal) => {
 });
 
 import { POST } from './+server';
+import { CalendarService } from '$lib/services/calendar-service';
 
 function eventFor(body: Record<string, unknown>, supabase: Record<string, unknown> = {}) {
 	return {
@@ -144,6 +154,19 @@ describe('multi-account /api/calendar mutations', () => {
 		expect(response.status).toBe(200);
 		expect(payload.data.message).toBe('Event already deleted or not found');
 		expect(legacyDeleteMock).not.toHaveBeenCalled();
+	});
+
+	it('uses the service client for legacy disconnect cleanup', async () => {
+		legacyDisconnectMock.mockResolvedValue(undefined);
+
+		const response = await POST(eventFor({ method: 'disconnectCalendar' }));
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(createAdminMock).toHaveBeenCalledTimes(1);
+		expect(CalendarService).toHaveBeenCalledWith(adminClient);
+		expect(legacyDisconnectMock).toHaveBeenCalledWith('user-1');
+		expect(payload.data).toEqual({ disconnected: true });
 	});
 
 	it('creates and tracks a scheduled task on the selected source', async () => {

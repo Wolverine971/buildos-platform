@@ -406,3 +406,37 @@ already recognize.
   Archived, empty-lane, and partial-pagination states were exercised. Console findings were limited
   to existing local Vite websocket and background polling failures; no Work-board application error
   appeared.
+
+## Overview project-map simplification — shipped 2026-08-15
+
+Once the persistent `Brief` action owned Daily Brief and START HERE, the Overview tab still repeated
+the project description, status/dates, START HERE memory, and upcoming events before or alongside its
+structural content. That made Overview feel like another summary dashboard instead of a distinct,
+recognizable mode.
+
+- Kept the familiar `Overview` tab label, but named the interior `Project map` and gave it one plain
+  purpose line: see the project's direction, milestones, and risks in one place (**P4, P6**).
+- Removed the repeated project brief and status/date rail. Daily context and canonical project context
+  remain available through `Brief / Start Here`; the header still owns project identity (**P3, P22**).
+- Removed the flat Project memory copy of START HERE and the `Coming up` event chapter. Docs owns
+  knowledge and Activity owns events/change history, so each workspace mode now has one job (**P6,
+  P22**).
+- Renamed `Watchlist` to the literal `Risks`, matching the underlying entity and making the section
+  predictable before it is opened (**P6**).
+- Replaced the five empty chapter placeholders with three compact, actionable states for Direction,
+  Milestones, and Risks. Secondary setup actions retain 44 px targets and visible focus without
+  adding card chrome (**P4, P13**).
+
+### Overview follow-up verification
+
+- Five focused workspace tests pass, including non-duplication of Brief/Activity content, dense
+  Direction disclosure, and the compact three-state empty map.
+- Prettier and `git diff --check` are clean. The official Svelte analyzer reported only the
+  component's pre-existing shallow-history `resolve()` warnings and mature `bind:this` suggestions;
+  it found no Overview-specific issue.
+- The final package-wide Svelte check reports **0 errors and 0 warnings**. A stale classic-page prop
+  from the Work refactor was removed during this pass so the shared desktop board contract remains
+  valid in both project routes.
+- Authenticated desktop and phone-width visual verification remains owed. The local browser reached a
+  connection-refused page before the dev server restarted, after which its URL safety policy blocked
+  re-navigation; no alternate browser or bypass was used.

@@ -19,6 +19,7 @@ import { documentFromVagueDescriptionScenario } from './document-from-vague-desc
 import { researchLogReadbackScenario } from './research-log-readback.scenario';
 import { projectCatchupColdScenario } from './project-catchup-cold.scenario';
 import { bookWritingJourneyScenario } from './book-writing-journey.scenario';
+import { semanticContractCancellationScenario } from './semantic-contract-cancellation.scenario';
 
 export const scenarioCatalog: Scenario[] = [
 	documentCreateScenario,
@@ -36,5 +37,6 @@ export const scenarioCatalog: Scenario[] = [
 	documentFromVagueDescriptionScenario,
 	researchLogReadbackScenario,
 	projectCatchupColdScenario,
+	semanticContractCancellationScenario,
 	bookWritingJourneyScenario
 ];

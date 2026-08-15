@@ -7,7 +7,6 @@ import { REDACTED_DURABLE_TEXT } from './stream-orchestrator/tool-arguments';
 import type { FastChatHistoryMessage } from './types';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { getToolSchema } from '$lib/services/agentic-chat/tools/registry/tool-schema';
-import { resolveFastChatTurnIntent } from './turn-intent';
 
 function tools(names: string[]): ChatToolDefinition[] {
 	return materializeGatewayTools([], names).tools;
@@ -2885,6 +2884,108 @@ describe('streamFastChat direct tool orchestration', () => {
 			contract: null
 		});
 		expect(result.finalAssistantText).toBe('Understood—the prior update is cancelled.');
+	});
+
+	it('executes an explicit read-only semantic disposition locally without a gateway call', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'declare_read_only_turn',
+							{ reason: 'The user requested an explanation only.' },
+							'disposition:read-only'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Here is the requested explanation.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn();
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			history: [],
+			message: 'Explain the current project structure.',
+			tools: tools(['declare_turn_contract', 'declare_read_only_turn', 'search_project']),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(result.turnContract).toBeNull();
+		expect(result.turnContractResolution).toMatchObject({
+			fulfilled: true,
+			contract: null
+		});
+		expect(result.finalAssistantText).toBe('Here is the requested explanation.');
+	});
+
+	it('forces a tool-free question after an explicit clarification disposition', async () => {
+		let streamInvocation = 0;
+		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					toolNames: (params.tools ?? []).map(
+						(tool: ChatToolDefinition) => tool.function.name
+					)
+				});
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'request_turn_clarification',
+							{
+								reason: 'Multiple accessible tasks remain plausible targets.',
+								question: 'Which matching task should I update?'
+							},
+							'disposition:clarification'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Which matching task should I update?' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn();
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			history: [],
+			message: 'Mark the matching task complete.',
+			tools: tools([
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'update_onto_task'
+			]),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(streamParams[1]).toEqual({ toolChoice: 'none', toolNames: [] });
+		expect(result.turnContract).toBeNull();
+		expect(result.finalAssistantText).toBe('Which matching task should I update?');
 	});
 
 	it('forces a server-commissioned living-workspace capture after a prose-only stop', async () => {

@@ -178,6 +178,7 @@ describe('createAgenticChatPhase3Assembly', () => {
 		const assembly = createAgenticChatPhase3Assembly({
 			client: supabaseClient() as never,
 			providerClient: { stream: vi.fn() } as never,
+			semanticReviewerClient: { stream: vi.fn() } as never,
 			providerConfigured: true,
 			internalUserIds: [INTERNAL_USER_ID],
 			mutationProviderCapabilities: { updateOntoTask: true },
@@ -191,6 +192,7 @@ describe('createAgenticChatPhase3Assembly', () => {
 		const assembly = createAgenticChatPhase3Assembly({
 			client: supabaseClient() as never,
 			providerClient: { stream: vi.fn() } as never,
+			semanticReviewerClient: { stream: vi.fn() } as never,
 			providerConfigured: true,
 			internalUserIds: [INTERNAL_USER_ID],
 			mutationProviderCapabilities: {
@@ -234,6 +236,7 @@ describe('createAgenticChatPhase3Assembly', () => {
 		const assembly = createAgenticChatPhase3Assembly({
 			client: supabaseClient() as never,
 			providerClient: { stream: vi.fn() } as never,
+			semanticReviewerClient: { stream: vi.fn() } as never,
 			providerConfigured: true,
 			internalUserIds: [INTERNAL_USER_ID],
 			mutationProviderCapabilities: capabilities,
@@ -241,5 +244,18 @@ describe('createAgenticChatPhase3Assembly', () => {
 		});
 
 		expect(assembly.runtime.getHealth()).toMatchObject({ state: 'idle' });
+	});
+
+	it('fails closed when a mutation surface has no independent semantic reviewer', () => {
+		expect(() =>
+			createAgenticChatPhase3Assembly({
+				client: supabaseClient() as never,
+				providerClient: { stream: vi.fn() } as never,
+				providerConfigured: true,
+				internalUserIds: [INTERNAL_USER_ID],
+				mutationProviderCapabilities: { updateOntoTask: true },
+				mutationAdapterCapabilities: { updateOntoTask: true }
+			})
+		).toThrow('require an independent semantic reviewer client');
 	});
 });

@@ -122,17 +122,31 @@ const NON_EFFECT_ARGUMENTS = new Set([
 ]);
 
 function normalizeFieldName(value: string): string {
-	return value.replace(/[A-Z]/g, (character) => `_${character.toLowerCase()}`).toLowerCase();
+	const normalized = value
+		.replace(/[A-Z]/g, (character) => `_${character.toLowerCase()}`)
+		.toLowerCase();
+	if (normalized === 'new_parent_id') return 'parent_id';
+	if (normalized === 'new_position') return 'position';
+	return normalized;
 }
 
-function extractChangedFields(args: ParsedArgs): string[] {
-	return Object.entries(args)
+function extractChangedFields(toolName: string, args: ParsedArgs): string[] {
+	const fields = Object.entries(args)
 		.filter(
 			([key, value]) =>
 				!NON_EFFECT_ARGUMENTS.has(normalizeFieldName(key)) && value !== undefined
 		)
-		.map(([key]) => normalizeFieldName(key))
-		.sort();
+		.map(([key]) => normalizeFieldName(key));
+	// A tree parent is an identity-like routing argument at the adapter boundary,
+	// but changing or selecting it is the semantic effect of a document
+	// organization. Preserve null root placement via property presence.
+	if (
+		(toolName === 'move_document_in_tree' && Object.hasOwn(args, 'new_parent_id')) ||
+		(toolName === 'create_onto_document' && Object.hasOwn(args, 'parent_id'))
+	) {
+		fields.push('parent_id');
+	}
+	return Array.from(new Set(fields)).sort();
 }
 
 function extractIdFromArgs(entityKind: string | null, args: ParsedArgs): string | undefined {
@@ -255,7 +269,7 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 	if (action) entry.action = action;
 	if (entityKind) entry.entityKind = entityKind;
 	if (execution.toolCall.id) entry.effectId = execution.toolCall.id;
-	const changedFields = extractChangedFields(args);
+	const changedFields = extractChangedFields(toolName, args);
 	if (changedFields.length > 0) entry.changedFields = changedFields;
 	const entityId = extractIdFromResult(entityKind, result) ?? extractIdFromArgs(entityKind, args);
 	if (entityId) entry.entityId = entityId;

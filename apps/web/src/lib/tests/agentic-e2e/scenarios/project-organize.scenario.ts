@@ -120,6 +120,8 @@ export const projectOrganizeScenario: Scenario = {
 				'piled at the top level. Help me get it organized into something sensible.',
 			assert: async (turn, ctx, seed) => {
 				assertTurnSucceeded(turn);
+				assertAnyToolCalled(turn, ['declare_turn_contract']);
+				assertAnyToolCalled(turn, ['approve_turn_contract_review']);
 				assertAnyToolCalled(turn, ['move_document_in_tree', 'tool_exec']);
 				assertTurnRunCompleted(await waitForTurnRun(ctx.db.admin, turn.streamRunId!));
 

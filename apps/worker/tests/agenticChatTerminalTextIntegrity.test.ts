@@ -98,6 +98,28 @@ describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 			finalizationGuard: null
 		});
 	});
+
+	it('preserves a semantic clarification terminal without a supervisor finish reason', () => {
+		const execution = toolExecution('request_turn_clarification', true, {
+			status: 'clarification_required',
+			question: 'Which matching task should I update?',
+			requires_user_action: true
+		});
+		const result = enforceAgenticChatTerminalTextIntegrityV1({
+			assistantText: 'Which matching task should I update?',
+			finishedReason: 'stop',
+			contextType: 'project',
+			userMessage: 'Mark the email task complete.',
+			toolExecutions: [execution]
+		});
+
+		expect(result).toEqual({
+			assistantText: 'Which matching task should I update?',
+			finishedReason: 'stop',
+			correctionDelta: null,
+			finalizationGuard: null
+		});
+	});
 });
 
 function toolExecution(name: string, success: boolean, result: unknown): FastToolExecution {

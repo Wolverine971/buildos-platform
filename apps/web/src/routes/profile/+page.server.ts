@@ -347,7 +347,9 @@ export const actions: Actions = {
 			}
 
 			// Then disconnect calendar
-			const calendarService = new CalendarService(supabase);
+			// GoogleOAuthService removes service-only legacy webhook state as part of
+			// the disconnect, so this server-validated user action needs the admin client.
+			const calendarService = new CalendarService(createAdminSupabaseClient());
 			await calendarService.disconnectCalendar(user.id);
 
 			const activityLogger = new ActivityLogger(supabase);
@@ -381,7 +383,8 @@ export const actions: Actions = {
 			console.log('Reconnecting calendar with enhanced permissions for user:', user.id);
 
 			// First disconnect existing connection
-			const calendarService = new CalendarService(supabase);
+			// Keep reconnect cleanup on the same service-only path as disconnect.
+			const calendarService = new CalendarService(createAdminSupabaseClient());
 			await calendarService.disconnectCalendar(user.id);
 
 			// Then redirect to new OAuth flow with enhanced scopes

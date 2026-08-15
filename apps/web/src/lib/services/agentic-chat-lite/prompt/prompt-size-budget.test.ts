@@ -180,8 +180,17 @@ describe('total assembled prompt size budget', () => {
 		// tokens) — a 34% template cut. Real prod turns add live project data
 		// and history on top — these budgets guard the template + tool schemas,
 		// which is the part that drifts silently.
+		//
+		// Ratcheted 2026-08-15 after semantic turn contracts intentionally moved
+		// project turns from project_basic to the stable project_write_document
+		// surface. After the three-way disposition gate added explicit semantic
+		// clarification, the measured canonical payload is 37,515 chars (~9,379
+		// tokens).
+		// This spends static tool-schema tokens to avoid a separate intent-model
+		// round; production workers still intersect the artifact with their
+		// reviewed deployed capabilities. The new cap preserves ~10% headroom.
 		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(20_000);
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(31_500);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(7_900);
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(41_300);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(10_320);
 	});
 });

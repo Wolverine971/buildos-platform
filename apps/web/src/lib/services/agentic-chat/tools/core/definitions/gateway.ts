@@ -13,7 +13,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 	function: {
 		name: 'declare_turn_contract',
 		description:
-			'Declare the durable outcomes you are committing to complete in this turn when you must read or discover targets before writing. Call this alongside the first read calls, not after them. Do not use it for answer-only turns or when you can make the direct write immediately. This records a semantic commitment only; it does not mutate user data. Continue until every declared outcome is backed by successful write effects, or report the concrete blocker.',
+			'Declare durable outcomes this turn must complete when reads are needed before writing. Call with the first reads. Do not use for answer-only turns or when a direct write can run immediately. This records intent, not a mutation. If a required target or value remains ambiguous after reading context, call request_turn_clarification. Otherwise complete every outcome or report the blocker.',
 		parameters: {
 			type: 'object',
 			properties: {
@@ -80,21 +80,21 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 								maxItems: 50,
 								items: { type: 'string' },
 								description:
-									'Canonical target ids when already known. Omit until reads reveal them.'
+									'Known canonical ids bounding eligible targets. Omit until discovered; minimum_successful_effects applies within this set.'
 							},
 							required_fields: {
 								type: 'array',
 								maxItems: 30,
 								items: { type: 'string' },
 								description:
-									'Fields whose successful mutation is essential to the outcome.'
+									'Required durable postconditions, not tool arguments. For document-tree placement use parent_id and position.'
 							},
 							minimum_successful_effects: {
 								type: 'integer',
 								minimum: 1,
 								maximum: 100,
 								description:
-									'How many distinct durable effects are required. Use the real requested cardinality; never collapse multiple targets to one.'
+									'Required distinct successful effects within target_ids. Use the full target count when every target must change.'
 							}
 						},
 						required: ['action', 'entity_kind', 'minimum_successful_effects']
@@ -111,18 +111,62 @@ export const CANCEL_TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 	function: {
 		name: 'cancel_turn_contract',
 		description:
-			'Cancel the unfinished semantic turn contract only when the current user explicitly cancels or supersedes that prior commission. This is an internal control action and does not mutate user data. Never call it merely because execution is difficult or blocked.',
+			'Cancel an unfinished turn contract only when the user explicitly cancels or supersedes it. This is control only; never cancel merely because execution is blocked.',
 		parameters: {
 			type: 'object',
 			properties: {
 				reason: {
 					type: 'string',
 					maxLength: 240,
-					description:
-						'A concise explanation grounded in the current user message that cancelled or superseded the prior commission.'
+					description: 'How the current message cancelled or superseded it.'
 				}
 			},
 			required: ['reason']
+		}
+	}
+};
+
+export const DECLARE_READ_ONLY_TURN_TOOL_DEFINITION: ChatToolDefinition = {
+	type: 'function',
+	function: {
+		name: 'declare_read_only_turn',
+		description:
+			'Declare that this turn requires no durable data change. Never use this to replace an action the user commissioned with a proposal or approval request.',
+		parameters: {
+			type: 'object',
+			properties: {
+				reason: {
+					type: 'string',
+					maxLength: 240,
+					description: 'Why no durable mutation is requested.'
+				}
+			},
+			required: ['reason']
+		}
+	}
+};
+
+export const REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION: ChatToolDefinition = {
+	type: 'function',
+	function: {
+		name: 'request_turn_clarification',
+		description:
+			'Use when a durable change is commissioned but a required target or value remains ambiguous after reading context. Ask instead of guessing; do not use this to postpone safe work.',
+		parameters: {
+			type: 'object',
+			properties: {
+				reason: {
+					type: 'string',
+					maxLength: 240,
+					description: 'The unresolved choice.'
+				},
+				question: {
+					type: 'string',
+					maxLength: 500,
+					description: 'A concise question that lets the user resolve the choice.'
+				}
+			},
+			required: ['reason', 'question']
 		}
 	}
 };

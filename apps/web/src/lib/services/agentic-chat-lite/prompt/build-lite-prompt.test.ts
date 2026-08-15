@@ -247,15 +247,9 @@ describe('buildLitePromptEnvelope', () => {
 			'only the claims (task progress, document type, tree placement, linking) the tool results confirm'
 		);
 		expect(envelope.systemPrompt).not.toContain('"parameters"');
-		expect(envelope.toolsSummary.discoveryTools).toEqual([
-			'domain_search',
-			'skill_search',
-			'skill_load',
-			'skill_reference_load',
-			'tool_search',
-			'tool_schema'
-		]);
+		expect(envelope.toolsSummary.discoveryTools).toEqual(['skill_search', 'domain_search']);
 		expect(envelope.toolsSummary.directTools).toContain('get_workspace_overview');
+		expect(envelope.toolsSummary.directTools).toContain('declare_turn_contract');
 		expect(envelope.toolsSummary.directTools).not.toContain('resolve_libri_resource');
 		expect(envelope.contextInventory.dataSummary.arrayCounts.projects).toBe(1);
 		expect(envelope.contextInventory.timeline.facts).toContain(

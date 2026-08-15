@@ -155,7 +155,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const body = parsed.data as CalendarRequest;
 		const { method, params = {} } = body;
 
-		const calendarService = new CalendarService(locals.supabase);
+		// Webhook rows are service-only. Legacy disconnects therefore need the
+		// trusted server client after the multi-calendar RLS lockdown.
+		const calendarService = new CalendarService(
+			method === 'disconnectCalendar' ? createAdminSupabaseClient() : locals.supabase
+		);
 		const multiCalendarEnabled = isMultiCalendarUserAllowed(user.id, privateEnv);
 
 		// Route to appropriate CalendarService method

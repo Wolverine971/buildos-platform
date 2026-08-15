@@ -588,8 +588,8 @@ export class AgenticChatOpenRouterReadOnlyClient
 		input: ClientInput
 	): Record<string, unknown> {
 		const toolSurface =
-			input.toolChoice === 'auto'
-				? { tools: input.tools.map(copyTool), tool_choice: 'auto' as const }
+			input.toolChoice !== 'none'
+				? { tools: input.tools.map(copyTool), tool_choice: input.toolChoice }
 				: { tool_choice: 'none' as const };
 		if (route.kind === 'openrouter') {
 			return buildOpenRouterChatCompletionBody({
@@ -1219,11 +1219,13 @@ function validateToolSurface(input: ClientInput): void {
 		return;
 	}
 	if (
-		input.toolChoice !== 'auto' ||
+		(input.toolChoice !== 'auto' && input.toolChoice !== 'required') ||
 		input.tools.length < 1 ||
 		input.tools.length > MAX_REVIEWED_PROVIDER_TOOLS
 	) {
-		throw new Error('Agentic Chat toolChoice=auto requires a bounded reviewed tool surface');
+		throw new Error(
+			'Agentic Chat toolChoice=auto|required requires a bounded reviewed tool surface'
+		);
 	}
 	const seen = new Set<string>();
 	for (const tool of input.tools) {

@@ -66,7 +66,18 @@ function positiveIntegerEnv(name: string, fallback: number): number {
 	return parsed;
 }
 
+function nonNegativeIntegerEnv(name: string, fallback: number): number {
+	const raw = process.env[name]?.trim();
+	if (!raw) return fallback;
+	const parsed = Number(raw);
+	if (!Number.isSafeInteger(parsed) || parsed < 0) {
+		throw new Error(`[agentic-e2e] ${name} must be a non-negative integer; received ${raw}`);
+	}
+	return parsed;
+}
+
 const PHASE0_REPETITIONS = positiveIntegerEnv('AGENTIC_PHASE0_REPETITIONS', 1);
+const E2E_RETRY_COUNT = nonNegativeIntegerEnv('AGENTIC_E2E_RETRY_COUNT', 1);
 
 function requireCtx(): ScenarioContext {
 	if (!ctx) throw new Error('[agentic-e2e] harness context not initialized (beforeAll failed)');
@@ -211,7 +222,7 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 				`[${scenario.category}] ${scenario.title}${PHASE0_REPETITIONS > 1 ? ` [run ${repetition}/${PHASE0_REPETITIONS}]` : ''}`,
 				{
 					timeout: scenario.timeoutMs ?? 300000,
-					retry: PHASE0_CAPTURE ? 0 : 1
+					retry: PHASE0_CAPTURE ? 0 : E2E_RETRY_COUNT
 				},
 				async () => {
 					const c = requireCtx();
