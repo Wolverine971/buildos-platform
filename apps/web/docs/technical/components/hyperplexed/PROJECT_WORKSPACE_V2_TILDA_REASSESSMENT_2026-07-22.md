@@ -362,3 +362,47 @@ open, and which workspace mode is active.
 - Desktop and narrow dark-mode captures are complete. A refreshed light-mode capture remains owed;
   the only browser-console findings were existing Vite development warnings about Node modules being
   externalized, with no application error emitted by this interaction.
+
+## Work workflow simplification — shipped 2026-08-14
+
+The populated 9takes board made the remaining recognition problem concrete: seven peer columns mixed
+four persisted workflow states with two due-date views and one storage state. `Scheduled`, `Overdue`,
+and `Archived` looked like places work moved through even though the first two are derived from dates
+and the last is secondary recovery/storage. The Work tab now matches the familiar workflow users
+already recognize.
+
+- Replaced the seven always-visible columns with `Backlog → In progress → Blocked → Done`. Scheduled
+  todo work remains in Backlog; overdue work remains in its persisted workflow stage, with its date
+  signal on the card. Existing PATCH, archive, restore, optimistic-update, and completion-feedback
+  paths remain unchanged (**P4, P6, P22**).
+- Moved `Overdue` and `Scheduled` into one Filters disclosure. Selected filters remain visible as
+  removable chips, support an OR combination, and retain their authoritative derived-bucket counts
+  (**P7, P13, P22**).
+- Moved `Archived` behind a secondary 44 px disclosure. Opening it lazy-loads the existing archive
+  endpoint and restores the fifth drop target only when someone is intentionally managing removed
+  work (**P8, P13, P20**).
+- Tightened task cards to a two-line title, one-line description, and one capped metadata row. The
+  desktop board now uses all available width for four equal lanes; narrow screens keep snap scrolling
+  and begin with In progress before Backlog (**P1, P4, P13**).
+- Replaced per-derived-bucket pagination controls with one board-level `Load more` action that retains
+  the existing bucket API underneath. When a due filter is active, pagination narrows to the selected
+  derived buckets rather than loading unrelated work (**P6, P20**).
+
+### Work follow-up verification
+
+- Three focused board tests cover workflow grouping, combined due filters with visible chips, and
+  lazy Archived loading. Together with the five workspace-shell tests, the focused workspace set is
+  **8 tests**.
+- On the authenticated 9takes project, the default 55-task board grouped into Backlog 27, In progress
+  4, Blocked 2, and Done 20 while reporting the existing partial window as 53/55 loaded. Filtering the
+  ten overdue tasks yielded 8 / 1 / 1 / 0 across those same four stages; Scheduled reported one task.
+- At the default 1890 px desktop viewport, all four lanes measured approximately **298.5 px** and the
+  board scroller's client width equaled its scroll width (**1230 px**), so the primary workflow no
+  longer hides off-screen.
+- At the browser's constrained **487 px** phone rendering, the page had no viewport-level overflow;
+  the board retained `x mandatory` snap scrolling, opened on In progress, and the icon-only Archived
+  control measured **44 × 44 px**.
+- Desktop and phone-width captures were inspected in light and dark mode. Filter, selected-chip,
+  Archived, empty-lane, and partial-pagination states were exercised. Console findings were limited
+  to existing local Vite websocket and background polling failures; no Work-board application error
+  appeared.

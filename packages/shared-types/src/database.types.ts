@@ -15934,72 +15934,6 @@ export type Database = {
           },
         ]
       }
-      user_notification_preferences_backup: {
-        Row: {
-          batch_enabled: boolean | null
-          batch_interval_minutes: number | null
-          created_at: string | null
-          email_enabled: boolean | null
-          event_type: string | null
-          id: string | null
-          in_app_enabled: boolean | null
-          max_per_day: number | null
-          max_per_hour: number | null
-          priority: string | null
-          push_enabled: boolean | null
-          quiet_hours_enabled: boolean | null
-          quiet_hours_end: string | null
-          quiet_hours_start: string | null
-          should_email_daily_brief: boolean | null
-          should_sms_daily_brief: boolean | null
-          sms_enabled: boolean | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          batch_enabled?: boolean | null
-          batch_interval_minutes?: number | null
-          created_at?: string | null
-          email_enabled?: boolean | null
-          event_type?: string | null
-          id?: string | null
-          in_app_enabled?: boolean | null
-          max_per_day?: number | null
-          max_per_hour?: number | null
-          priority?: string | null
-          push_enabled?: boolean | null
-          quiet_hours_enabled?: boolean | null
-          quiet_hours_end?: string | null
-          quiet_hours_start?: string | null
-          should_email_daily_brief?: boolean | null
-          should_sms_daily_brief?: boolean | null
-          sms_enabled?: boolean | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          batch_enabled?: boolean | null
-          batch_interval_minutes?: number | null
-          created_at?: string | null
-          email_enabled?: boolean | null
-          event_type?: string | null
-          id?: string | null
-          in_app_enabled?: boolean | null
-          max_per_day?: number | null
-          max_per_hour?: number | null
-          priority?: string | null
-          push_enabled?: boolean | null
-          quiet_hours_enabled?: boolean | null
-          quiet_hours_end?: string | null
-          quiet_hours_start?: string | null
-          should_email_daily_brief?: boolean | null
-          should_sms_daily_brief?: boolean | null
-          sms_enabled?: boolean | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       user_notifications: {
         Row: {
           action_url: string | null
@@ -17291,6 +17225,20 @@ export type Database = {
         Args: {
           p_proposal_ids: string[]
           p_run_id: string
+        }
+        Returns: Json
+      }
+      agentic_chat_contract_effect_target_id_v1: {
+        Args: {
+          p_arguments: Json
+          p_result: Json
+          p_tool_name: string
+        }
+        Returns: string
+      }
+      agentic_chat_contract_tool_semantics_v1: {
+        Args: {
+          p_tool_name: string
         }
         Returns: Json
       }
@@ -19602,14 +19550,6 @@ export type Database = {
           adjudication_id: string
           replayed: boolean
         }[]
-      }
-      record_phase1_archive_receipt: {
-        Args: {
-          p_row_count: number
-          p_sha256: string
-          p_table_name: string
-        }
-        Returns: Json
       }
       record_sms_metric: {
         Args: {

@@ -52,7 +52,12 @@ function createSupabaseMock(sourcePayload: Record<string, unknown> | null) {
 	};
 }
 
-function createProjectSuggestionSupabaseMock(options: { suggestionUpdateError?: unknown } = {}) {
+function createProjectSuggestionSupabaseMock(
+	options: {
+		suggestionUpdateError?: unknown;
+		projectReviewRun?: Record<string, unknown>;
+	} = {}
+) {
 	const operations: Operation[] = [];
 	const suggestion = {
 		id: SUGGESTION_ID,
@@ -174,7 +179,7 @@ function createProjectSuggestionSupabaseMock(options: { suggestionUpdateError?: 
 			}
 			if (this.table === 'project_loop_runs' && this.action === 'select') {
 				return Promise.resolve({
-					data: {
+					data: options.projectReviewRun ?? {
 						id: 'loop-run-1',
 						trigger_reason: 'manual',
 						summary: 'Review completed.',
@@ -199,6 +204,12 @@ function createProjectSuggestionSupabaseMock(options: { suggestionUpdateError?: 
 						? null
 						: { id: SUGGESTION_ID, chat_session_id: SESSION_ID },
 					error: options.suggestionUpdateError ?? null
+				});
+			}
+			if (this.table === 'project_loop_runs' && this.action === 'update') {
+				return Promise.resolve({
+					data: { id: 'run-1', chat_session_id: SESSION_ID },
+					error: null
 				});
 			}
 			if (this.action === 'delete') {
@@ -593,6 +604,84 @@ describe('createInboxChatSession', () => {
 			userId: USER_ID,
 			projectId: PROJECT_ID
 		});
+	});
+
+	it('seeds project manager brief chat with the bottom line, recommendation, and decision', async () => {
+		const projectReviewRun = {
+			id: 'run-1',
+			project_id: PROJECT_ID,
+			user_id: USER_ID,
+			status: 'waiting_review',
+			brief: {
+				version: 2,
+				attention_level: 'decision',
+				bottom_line: 'Two launch documents now tell different stories.',
+				recommendation: 'Keep Launch plan as the main plan and fold useful notes into it.',
+				decision: {
+					question: 'Should I organize the launch documents this way?',
+					recommendation:
+						'Keep Launch plan as the main plan and fold useful notes into it.',
+					why_user_needed: 'This changes which document the team should follow.',
+					candidate_ids: ['suggestion-1'],
+					evidence_refs: [
+						{
+							entity_type: 'document',
+							entity_id: 'doc-1',
+							title: 'Launch plan'
+						}
+					]
+				},
+				issues: [],
+				candidate_ids: ['suggestion-1']
+			}
+		};
+		const { supabase, operations } = createProjectSuggestionSupabaseMock({
+			projectReviewRun
+		});
+		const item = {
+			id: 'inbox-review-1',
+			source_type: 'project_review' as const,
+			source_ref_id: 'run-1',
+			source_status: 'waiting_review',
+			user_id: USER_ID,
+			project_id: PROJECT_ID,
+			audience: 'project_members' as const,
+			status: 'pending' as const,
+			title: projectReviewRun.brief.bottom_line,
+			summary: projectReviewRun.brief.recommendation,
+			risk_tier: 2,
+			action_kinds: ['discuss', 'dismiss'],
+			created_at: '2026-08-14T12:00:00.000Z',
+			updated_at: '2026-08-14T12:00:00.000Z',
+			decided_at: null,
+			blocked_reason: null,
+			snoozed_until: null,
+			expires_at: null
+		};
+
+		const result = await createInboxChatSession({
+			supabase,
+			item,
+			userId: USER_ID
+		});
+
+		expect(result).toMatchObject({
+			created: true,
+			chat_session_id: SESSION_ID,
+			context_type: 'project',
+			project_id: PROJECT_ID
+		});
+		const message = findOperation(operations, 'chat_messages', 'insert')?.payload as any;
+		expect(message.content).toContain(
+			'Bottom line: Two launch documents now tell different stories.'
+		);
+		expect(message.content).toContain(
+			'Recommendation: Keep Launch plan as the main plan and fold useful notes into it.'
+		);
+		expect(message.content).toContain(
+			'Your decision: Should I organize the launch documents this way?'
+		);
+		expect(message.content).not.toContain('documentation_quality');
 	});
 
 	it('opens a project_suggestion chat even when the optional suggestion backlink update fails', async () => {

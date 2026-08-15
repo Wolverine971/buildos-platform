@@ -142,6 +142,39 @@ function readToolDefinition(name: string, description = `Read with ${name}.`) {
 	};
 }
 
+function turnContractToolDefinition() {
+	return {
+		type: 'function' as const,
+		function: {
+			name: 'declare_turn_contract',
+			description: 'Declare semantic durable outcomes before reading.',
+			parameters: {
+				type: 'object',
+				required: ['outcomes'],
+				properties: {
+					outcomes: {
+						type: 'array',
+						items: { type: 'object' }
+					}
+				}
+			}
+		}
+	};
+}
+
+function organizationContractArguments(documentId: string): JsonObject {
+	return {
+		outcomes: [
+			{
+				action: 'organize',
+				entity_kind: 'document',
+				target_ids: [documentId],
+				minimum_successful_effects: 1
+			}
+		]
+	};
+}
+
 function updateTaskToolDefinition() {
 	return {
 		type: 'function' as const,
@@ -243,9 +276,23 @@ function durableReadFeedback(
 	argumentsValue: JsonObject = {},
 	result: JsonObject = { ok: true }
 ): AgenticChatProviderReadSynthesisInputV1 {
+	return durableReadFeedbackFor(
+		providerToolCallId,
+		'get_project_overview',
+		argumentsValue,
+		result
+	);
+}
+
+function durableReadFeedbackFor(
+	providerToolCallId: string,
+	toolName: string,
+	argumentsValue: JsonObject = {},
+	result: JsonObject = { ok: true }
+): AgenticChatProviderReadSynthesisInputV1 {
 	return {
 		providerToolCallId,
-		toolName: 'get_project_overview',
+		toolName,
 		arguments: argumentsValue,
 		execution: {
 			result,
@@ -356,6 +403,38 @@ function providerReadRound(
 			]
 		},
 		{ type: 'done', finishedReason: 'tool_calls', ...(usage ? { usage } : {}) }
+	];
+}
+
+function providerContractAndReadRound(
+	documentId: string,
+	projectId: string
+): AgenticChatReadOnlyProviderClientEventV1[] {
+	return [
+		{
+			type: 'tool_call',
+			toolCall: [
+				{
+					index: 0,
+					id: 'provider-contract-1',
+					type: 'function',
+					function: {
+						name: 'declare_turn_contract',
+						arguments: JSON.stringify(organizationContractArguments(documentId))
+					}
+				},
+				{
+					index: 1,
+					id: 'provider-read-1',
+					type: 'function',
+					function: {
+						name: 'get_project_overview',
+						arguments: JSON.stringify({ project_id: projectId })
+					}
+				}
+			]
+		},
+		{ type: 'done', finishedReason: 'tool_calls' }
 	];
 }
 
@@ -845,7 +924,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			new_parent_id: parentId
 		};
 		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
-			providerReadRound('provider-read-1', { project_id: projectId }),
+			providerContractAndReadRound(documentId, projectId),
 			[
 				{
 					type: 'tool_call',
@@ -887,8 +966,12 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			};
 		});
 		const baseInput = executionInputWithReadSurface(
-			[readToolDefinition('get_project_overview'), moveDocumentToolDefinition()],
-			['get_project_overview', 'move_document_in_tree']
+			[
+				turnContractToolDefinition(),
+				readToolDefinition('get_project_overview'),
+				moveDocumentToolDefinition()
+			],
+			['declare_turn_contract', 'get_project_overview', 'move_document_in_tree']
 		);
 		const input: AgenticChatWorkerExecutionInputV1 = {
 			...baseInput,
@@ -932,6 +1015,12 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			invocation.continueWithToolResults!({
 				round: 2,
 				results: [
+					durableReadFeedbackFor(
+						'provider-contract-1',
+						'declare_turn_contract',
+						organizationContractArguments(documentId),
+						{ status: 'declared' }
+					),
 					durableReadFeedback(
 						'provider-read-1',
 						{ project_id: projectId },
@@ -990,6 +1079,165 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(client.stream.mock.calls[2]?.[0]).toMatchObject({
 			tools: [],
 			toolChoice: 'none'
+		});
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('replaces a commissioned organization proposal with one move-only execution pass', async () => {
+		const projectId = '44000000-0000-4000-8000-000000000004';
+		const documentId = '45000000-0000-4000-8000-000000000004';
+		const parentId = '46000000-0000-4000-8000-000000000004';
+		const moveArguments = {
+			project_id: projectId,
+			document_id: documentId,
+			new_parent_id: parentId
+		};
+		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
+			providerContractAndReadRound(documentId, projectId),
+			[
+				{ type: 'text', content: 'I suggest a structure. Does that sound right?' },
+				{ type: 'done', finishedReason: 'stop' }
+			],
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-move-1',
+							type: 'function',
+							function: {
+								name: 'move_document_in_tree',
+								arguments: JSON.stringify(moveArguments)
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			],
+			[
+				{ type: 'text', content: 'I grouped the related documents.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		];
+		const client = {
+			stream: vi.fn(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const baseInput = executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readToolDefinition('get_project_overview'),
+				moveDocumentToolDefinition()
+			],
+			['declare_turn_contract', 'get_project_overview', 'move_document_in_tree']
+		);
+		const input: AgenticChatWorkerExecutionInputV1 = {
+			...baseInput,
+			requestPayload: {
+				...baseInput.requestPayload,
+				message: 'Help me get these project documents organized.'
+			},
+			artifact: {
+				...baseInput.artifact,
+				prepared: {
+					...baseInput.artifact.prepared,
+					turnIntent: {
+						version: 1,
+						requiresWrite: true,
+						action: 'organize',
+						entityKind: 'document',
+						operations: [{ action: 'organize', entityKind: 'document' }],
+						source: 'current_message',
+						originalRequestText: 'Help me get these project documents organized.',
+						originatingTurnRunId: null,
+						clearPending: false,
+						expectedWriteToolNames: ['move_document_in_tree']
+					}
+				}
+			}
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{ client, capacity },
+			2_000,
+			16,
+			{ moveDocumentInTree: true }
+		).prepare({
+			executionInput: input,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		const recoverySteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-contract-1',
+						'declare_turn_contract',
+						organizationContractArguments(documentId),
+						{ status: 'declared' }
+					),
+					durableReadFeedback(
+						'provider-read-1',
+						{ project_id: projectId },
+						{
+							project: { id: projectId },
+							documents: [
+								{ id: documentId, title: 'Pricing ideas' },
+								{ id: parentId, title: 'Pricing' }
+							]
+						}
+					)
+				]
+			})
+		);
+		expect(recoverySteps).not.toContainEqual({
+			type: 'text_delta',
+			text: 'I suggest a structure. Does that sound right?'
+		});
+		const moveStep = recoverySteps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+				step.type === 'mutating_tool'
+		);
+		expect(moveStep).toMatchObject({
+			providerToolCallId: 'provider-move-1',
+			toolName: 'move_document_in_tree'
+		});
+		if (!moveStep) throw new Error('Expected the organization completion repair');
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 3,
+					results: [
+						durableMoveMutationFeedback({
+							providerToolCallId: 'provider-move-1',
+							logicalOperationId: moveStep.logicalOperationId,
+							arguments: moveArguments
+						})
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'I grouped the related documents.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(4);
+		expect(client.stream.mock.calls[2]?.[0]).toMatchObject({
+			tools: [
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'move_document_in_tree' })
+				})
+			],
+			toolChoice: 'auto',
+			providerRound: 'synthesis'
 		});
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});

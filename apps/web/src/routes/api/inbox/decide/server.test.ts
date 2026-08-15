@@ -49,7 +49,12 @@ import { POST } from './+server';
 
 type InboxItemFixture = {
 	id: string;
-	source_type: 'project_suggestion' | 'project_audit' | 'calendar_suggestion' | 'agent_run';
+	source_type:
+		| 'project_suggestion'
+		| 'project_review'
+		| 'project_audit'
+		| 'calendar_suggestion'
+		| 'agent_run';
 	source_ref_id: string;
 	source_status: string | null;
 	status: string;
@@ -62,7 +67,10 @@ type InboxItemFixture = {
 
 function createSupabaseMock(
 	inboxItem: InboxItemFixture,
-	options: { project?: Record<string, unknown> | null } = {}
+	options: {
+		project?: Record<string, unknown> | null;
+		rowsByTable?: Record<string, Record<string, unknown> | null>;
+	} = {}
 ) {
 	const updates: Array<{
 		table: string;
@@ -76,15 +84,21 @@ function createSupabaseMock(
 				action: 'select' | 'update';
 				payload: Record<string, unknown> | null;
 				filters: Array<[string, unknown]>;
+				inFilters: Array<[string, unknown[]]>;
 			} = {
 				action: 'select',
 				payload: null,
-				filters: []
+				filters: [],
+				inFilters: []
 			};
 			const builder: any = {
 				select: vi.fn(() => builder),
 				eq: vi.fn((column: string, value: unknown) => {
 					state.filters.push([column, value]);
+					return builder;
+				}),
+				in: vi.fn((column: string, values: unknown[]) => {
+					state.inFilters.push([column, values]);
 					return builder;
 				}),
 				update: vi.fn((payload: Record<string, unknown>) => {
@@ -103,6 +117,9 @@ function createSupabaseMock(
 									: options.project,
 							error: null
 						};
+					}
+					if (table in (options.rowsByTable ?? {})) {
+						return { data: options.rowsByTable?.[table] ?? null, error: null };
 					}
 					if (table !== 'inbox_items') return { data: null, error: null };
 					if (state.action === 'update') {
@@ -155,6 +172,17 @@ function pendingProjectSuggestionItem(): InboxItemFixture {
 		audience: 'project_members',
 		title: 'Resolve review item',
 		action_kinds: ['approve', 'reject']
+	};
+}
+
+function pendingProjectReviewItem(): InboxItemFixture {
+	return {
+		...pendingProjectSuggestionItem(),
+		id: 'inbox-review-1',
+		source_type: 'project_review',
+		source_ref_id: 'run-1',
+		title: 'Two launch documents now tell different stories.',
+		action_kinds: ['approve', 'discuss', 'snooze', 'dismiss']
 	};
 }
 
@@ -309,6 +337,50 @@ describe('POST /api/inbox/decide', () => {
 			})
 		);
 		expect(mocks.decideProjectSuggestionWithClarification).not.toHaveBeenCalled();
+	});
+
+	it('applies only the verified recommendation named by a project manager brief', async () => {
+		const inboxItem = pendingProjectReviewItem();
+		const { supabase } = createSupabaseMock(inboxItem);
+		const admin = createSupabaseMock(inboxItem, {
+			rowsByTable: {
+				project_loop_runs: {
+					id: 'run-1',
+					project_id: 'project-1',
+					status: 'waiting_review',
+					brief: {
+						version: 2,
+						candidate_ids: ['suggestion-1', 'suggestion-2'],
+						decision: { recommended_suggestion_id: 'suggestion-1' }
+					}
+				}
+			}
+		});
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.supabase);
+		mocks.decideProjectSuggestion.mockResolvedValue({
+			ok: true,
+			suggestion: { id: 'suggestion-1', status: 'applied' },
+			result: { ok: true }
+		});
+		const routeFetch = vi.fn();
+
+		const response = await POST({
+			request: makeRequest({ item_id: 'inbox-review-1', action: 'approve' }),
+			locals: makeLocals(supabase),
+			fetch: routeFetch
+		} as any);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(mocks.decideProjectSuggestion).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId: 'project-1',
+				suggestionId: 'suggestion-1',
+				action: 'approve',
+				fetchFn: routeFetch
+			})
+		);
+		expect(json.data.brief_resolution).toBe('recommendation_applied');
 	});
 
 	it('passes a shared decision note through as dismissal feedback without a reason', async () => {

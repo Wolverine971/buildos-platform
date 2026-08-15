@@ -2,10 +2,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	buildTaskConflictCandidatePairs,
+	buildHeuristicProjectManagerBrief,
 	generateDrift,
 	generateProjectBrief,
+	generateProjectManagerBrief,
 	generateTaskConflicts,
-	type LoopContext
+	type LoopContext,
+	type ProjectReviewSynthesisCandidate
 } from '../src/workers/project-loop/generators';
 import type { SmartLLMService } from '../src/lib/services/smart-llm-service';
 
@@ -40,7 +43,8 @@ function makeContext(): LoopContext {
 				state_key: 'todo',
 				updated_at: '2026-06-23T00:00:00.000Z'
 			}
-		]
+		],
+		priorDecisions: []
 	};
 }
 
@@ -62,6 +66,54 @@ function makeTrackedLlm(response: unknown): {
 }
 
 const onUsage = vi.fn(async () => undefined);
+
+function makeReviewCandidates(): ProjectReviewSynthesisCandidate[] {
+	return [
+		{
+			id: 'suggestion-1',
+			kind: 'doc_org',
+			risk_tier: 2,
+			title: 'Choose canonical project documents, then consolidate or expand them',
+			rationale: 'The launch plan and launch notes cover the same work.',
+			why_now: 'Complete audit follow-up for documentation_quality.',
+			evidence_refs: [
+				{
+					entity_type: 'document',
+					entity_id: 'doc-1',
+					title: 'Launch plan',
+					reason: 'Contains the current launch milestones.'
+				}
+			],
+			operations: [
+				{
+					tool: 'update_onto_document',
+					args: { document_id: 'doc-1', props: { title: 'Launch plan' } },
+					label: 'Update document'
+				}
+			],
+			reversible: true,
+			verified_change_headline: 'Keep Launch plan as the main launch document'
+		},
+		{
+			id: 'suggestion-2',
+			kind: 'doc_org',
+			risk_tier: 1,
+			title: 'Old launch notes may be stale',
+			rationale: 'The notes predate the current launch plan.',
+			why_now: null,
+			evidence_refs: [
+				{
+					entity_type: 'document',
+					entity_id: 'doc-2',
+					title: 'Old launch notes',
+					reason: 'Predates the current plan.'
+				}
+			],
+			operations: [],
+			reversible: null
+		}
+	];
+}
 
 describe('project loop generators', () => {
 	it('passes project loop attribution to suggestion LLM calls', async () => {
@@ -202,6 +254,84 @@ describe('project loop generators', () => {
 				})
 			})
 		);
+	});
+
+	it('produces a decision-first manager brief with reversible candidate clusters', () => {
+		const brief = buildHeuristicProjectManagerBrief({
+			ctx: makeContext(),
+			candidates: makeReviewCandidates(),
+			now: new Date('2026-08-14T12:00:00.000Z')
+		});
+
+		expect(brief).toMatchObject({
+			version: 2,
+			attention_level: 'decision',
+			decision: {
+				recommended_suggestion_id: 'suggestion-1',
+				candidate_ids: ['suggestion-1']
+			},
+			candidate_ids: ['suggestion-1', 'suggestion-2'],
+			cluster_members: [
+				{
+					label: expect.any(String),
+					member_candidate_ids: ['suggestion-1', 'suggestion-2']
+				}
+			]
+		});
+		expect(brief.bottom_line).toContain('Launch plan');
+		expect(brief.issues?.[0]?.evidence_refs).toEqual([
+			expect.objectContaining({ entity_id: 'doc-1', title: 'Launch plan' })
+		]);
+	});
+
+	it('does not admit a review that contains only minor notes', () => {
+		const candidate = makeReviewCandidates()[1];
+		const brief = buildHeuristicProjectManagerBrief({
+			ctx: makeContext(),
+			candidates: candidate ? [candidate] : []
+		});
+
+		expect(brief.attention_level).toBe('minor');
+		expect(brief.decision).toBeNull();
+		expect(brief.no_attention_reason).toContain('minor');
+	});
+
+	it('rejects academic audit copy, unknown ids, and model attempts to hide a decision', async () => {
+		const candidates = makeReviewCandidates();
+		const brief = await generateProjectManagerBrief({
+			llm: makeLlm({
+				brief: {
+					attention_level: 'minor',
+					bottom_line: 'Complete audit follow-up for documentation_quality.',
+					recommendation:
+						'Choose the canonical project documents, then consolidate or expand them.',
+					decision: {
+						question: 'What do you want to do?',
+						recommendation: 'Choose the canonical documents.',
+						why_user_needed: 'Complete audit follow-up.',
+						options: [],
+						recommended_option_id: null,
+						recommended_suggestion_id: 'invented-suggestion',
+						candidate_ids: ['invented-suggestion']
+					},
+					issues: [],
+					decision_item_ids: ['invented-suggestion'],
+					safe_cleanup_item_ids: [],
+					no_attention_reason: 'Nothing important.'
+				}
+			}),
+			ctx: makeContext(),
+			candidates,
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(brief.attention_level).toBe('decision');
+		expect(brief.bottom_line).not.toContain('audit follow-up');
+		expect(brief.recommendation).not.toContain('canonical');
+		expect(brief.decision?.recommended_suggestion_id).toBe('suggestion-1');
+		expect(brief.candidate_ids).toEqual(['suggestion-1', 'suggestion-2']);
+		expect(brief.decision_item_ids).toEqual([]);
 	});
 
 	it('turns task conflicts into reversible non-destructive task flags', async () => {

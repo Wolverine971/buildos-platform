@@ -4,7 +4,11 @@ import {
 	extractToolNamesFromDefinitions,
 	extractTools
 } from '$lib/services/agentic-chat/tools/core/tools.config';
-import { GATEWAY_TOOL_DEFINITIONS } from './definitions/gateway';
+import {
+	CANCEL_TURN_CONTRACT_TOOL_DEFINITION,
+	GATEWAY_TOOL_DEFINITIONS,
+	TURN_CONTRACT_TOOL_DEFINITION
+} from './definitions/gateway';
 import { inferMaterializedToolsFromEntityResults } from './entity-result-materialization';
 
 const GATEWAY_DISCOVERY_TOOL_NAMES = [
@@ -16,21 +20,16 @@ const GATEWAY_DISCOVERY_TOOL_NAMES = [
 	'tool_schema'
 ] as const;
 
-// Lean launch discovery set (2026-06-14, Tier 2 item 4). When FASTCHAT_LEAN_DISCOVERY
-// is on, only these two discovery entry points mount at turn start. The remaining
+// Lean launch discovery set (2026-06-14, Tier 2 item 4). Only these two discovery
+// entry points mount at turn start by default. The remaining
 // discovery tools (skill_load, skill_reference_load, tool_search, tool_schema) — and
 // any direct tool the model reaches for that was not preloaded — are materialized on
 // demand by the orchestrator (on-miss + discover-then-load paths). This keeps the
 // opening tool menu small without losing any capability.
 const GATEWAY_LAUNCH_DISCOVERY_TOOL_NAMES = ['skill_search', 'domain_search'] as const;
 
-const FASTCHAT_LEAN_DISCOVERY_ENV = 'FASTCHAT_LEAN_DISCOVERY';
-
 function isLeanDiscoveryEnabled(): boolean {
-	if (typeof process === 'undefined' || !process.env) return false;
-	const raw = process.env[FASTCHAT_LEAN_DISCOVERY_ENV];
-	if (!raw) return false;
-	return ['1', 'true', 'yes', 'on'].includes(String(raw).trim().toLowerCase());
+	return true;
 }
 
 export const GATEWAY_SURFACE_PROFILE_NAMES = [
@@ -50,6 +49,8 @@ export type GatewaySurfaceProfileName = (typeof GATEWAY_SURFACE_PROFILE_NAMES)[n
 // are intentionally not mounted on every launch surface. They remain available
 // through tool_search/tool_schema and the orchestrator's on-miss materialization.
 const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
+	'declare_turn_contract',
+	'cancel_turn_contract',
 	'change_chat_context',
 	'get_workspace_overview',
 	'get_project_overview',
@@ -74,6 +75,8 @@ const GLOBAL_WRITE_DIRECT_TOOL_NAMES = [
 ] as const;
 
 const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
+	'declare_turn_contract',
+	'cancel_turn_contract',
 	'change_chat_context',
 	'get_project_overview',
 	'get_onto_project_details',
@@ -119,6 +122,8 @@ const PROJECT_WRITE_DOCUMENT_DIRECT_TOOL_NAMES = [
 ] as const;
 
 const PROJECT_CALENDAR_DIRECT_TOOL_NAMES = [
+	'declare_turn_contract',
+	'cancel_turn_contract',
 	'get_project_overview',
 	'list_calendar_events',
 	'get_calendar_event_details',
@@ -128,7 +133,13 @@ const PROJECT_CALENDAR_DIRECT_TOOL_NAMES = [
 	'set_project_calendar'
 ] as const;
 
-const PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES = ['create_onto_project'] as const;
+// A failed create can carry an implicit contract into the next project-create
+// turn, so the otherwise-minimal surface still needs an explicit cancellation
+// path when the user abandons that commission.
+const PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES = [
+	'cancel_turn_contract',
+	'create_onto_project'
+] as const;
 
 const GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE: Record<
 	GatewaySurfaceProfileName,
@@ -145,9 +156,13 @@ const GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE: Record<
 };
 
 const GATEWAY_TOOL_DEFINITION_MAP = new Map(
-	GATEWAY_TOOL_DEFINITIONS.map((tool) => [tool.function?.name, tool]).filter(
-		(entry): entry is [string, ChatToolDefinition] => Boolean(entry[0] && entry[1])
-	)
+	[
+		TURN_CONTRACT_TOOL_DEFINITION,
+		CANCEL_TURN_CONTRACT_TOOL_DEFINITION,
+		...GATEWAY_TOOL_DEFINITIONS
+	]
+		.map((tool) => [tool.function?.name, tool])
+		.filter((entry): entry is [string, ChatToolDefinition] => Boolean(entry[0] && entry[1]))
 );
 
 function normalizeGatewayToolName(name: string): string {
@@ -178,7 +193,10 @@ export function resolveGatewaySurfaceProfileForContextType(
 			return 'project_calendar';
 		case 'project':
 		case 'ontology':
-			return 'project_basic';
+			// Common project reads and writes are a stable capability surface. The
+			// existing model call chooses semantically whether to use them; routing no
+			// longer guesses that choice from verb or noun strings.
+			return 'project_write_document';
 		case 'project_create':
 			return 'project_create_minimal';
 		// The daily brief is an action surface: "bump these tasks, reschedule

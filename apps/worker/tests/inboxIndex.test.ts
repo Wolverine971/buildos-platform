@@ -4,11 +4,13 @@ import {
 	mapAgentRunToInboxItem,
 	mapCalendarSuggestionToInboxItem,
 	mapProjectAuditToInboxItem,
+	mapProjectReviewToInboxItem,
 	mapProjectSuggestionToInboxItem,
 	expireInboxItemsForProject,
 	expireInboxItemsForProjectAuditChildSuggestions,
 	syncInboxItemForAgentRun,
 	syncInboxItemForProjectAudit,
+	syncInboxItemForProjectReview,
 	syncInboxItemForProjectSuggestion
 } from '../../../packages/shared-agent-ops/src/inbox-index';
 
@@ -229,16 +231,62 @@ describe('inbox index mappers', () => {
 		});
 	});
 
-	it('keeps ready audit reports out of the inbox so recommendations surface individually', () => {
+	it('maps a ready audit into one parent manager packet', () => {
 		expect(
 			mapProjectAuditToInboxItem({
 				id: 'audit-1',
 				project_id: 'project-1',
 				status: 'ready',
-				recommendations: [{ title: 'Choose the launch go/no-go owner' }],
-				unresolved_suggestion_count: 1
+				summary: 'Two launch blockers need one owner decision.',
+				recommendations: [
+					{
+						title: 'Choose the launch go/no-go owner',
+						summary: 'I recommend assigning one owner before adding launch work.'
+					}
+				],
+				unresolved_suggestion_count: 1,
+				created_at: '2026-08-14T12:00:00.000Z'
 			})
-		).toBeNull();
+		).toMatchObject({
+			source_type: 'project_audit',
+			status: 'pending',
+			title: 'Recommendation: Choose the launch go/no-go owner',
+			expires_at: '2026-08-28T12:00:00.000Z'
+		});
+	});
+
+	it('admits only decision-level project manager briefs', () => {
+		const decision = mapProjectReviewToInboxItem({
+			id: 'run-decision',
+			project_id: 'project-1',
+			user_id: 'user-1',
+			status: 'waiting_review',
+			created_at: '2026-07-01T12:00:00.000Z',
+			brief: {
+				version: 2,
+				attention_level: 'decision',
+				bottom_line: 'The launch plan and launch tasks disagree on timing.',
+				recommendation: 'Keep the current launch date and park the later work.',
+				decision: {
+					recommended_suggestion_id: null
+				}
+			}
+		});
+		const minor = mapProjectReviewToInboxItem({
+			id: 'run-minor',
+			project_id: 'project-1',
+			user_id: 'user-1',
+			status: 'completed',
+			brief: { version: 2, attention_level: 'minor' }
+		});
+
+		expect(decision).toMatchObject({
+			source_type: 'project_review',
+			status: 'pending',
+			title: 'The launch plan and launch tasks disagree on timing.',
+			action_kinds: ['discuss', 'snooze', 'dismiss']
+		});
+		expect(minor).toBeNull();
 	});
 
 	it('does not admit drift observations to the attention inbox', () => {
@@ -377,7 +425,7 @@ describe('inbox index mappers', () => {
 		});
 	});
 
-	it('expires a parent audit packet when its recommendations are indexed individually', async () => {
+	it('syncs a ready audit as one parent packet', async () => {
 		const { supabase, updates, upserts } = createSupabaseMock({
 			project_audits: [
 				{
@@ -392,7 +440,7 @@ describe('inbox index mappers', () => {
 						}
 					],
 					unresolved_suggestion_count: 1,
-					created_at: '2026-07-01T12:00:00.000Z'
+					created_at: '2026-08-14T12:00:00.000Z'
 				}
 			],
 			inbox_items: [
@@ -411,18 +459,47 @@ describe('inbox index mappers', () => {
 		});
 
 		expect(row).toMatchObject({
-			status: 'expired',
-			source_status: 'recommendations_indexed',
-			blocked_reason: 'Audit recommendations are available as individual inbox items'
+			status: 'pending',
+			source_type: 'project_audit',
+			source_status: 'ready'
 		});
-		expect(upserts).toHaveLength(0);
-		expect(updates).toContainEqual(
-			expect.objectContaining({
-				table: 'inbox_items',
-				status: 'expired',
-				source_status: 'recommendations_indexed'
-			})
-		);
+		expect(upserts).toHaveLength(1);
+		expect(updates).toHaveLength(0);
+	});
+
+	it('syncs one decision-level manager brief and leaves its candidates as payload evidence', async () => {
+		const { supabase, upserts } = createSupabaseMock({
+			project_loop_runs: [
+				{
+					id: 'run-1',
+					project_id: 'project-1',
+					user_id: 'user-1',
+					status: 'waiting_review',
+					created_at: '2026-08-14T12:00:00.000Z',
+					brief: {
+						version: 2,
+						attention_level: 'decision',
+						bottom_line: 'Two launch documents now tell different stories.',
+						recommendation:
+							'Keep Launch Plan as the main plan and archive the old draft.',
+						candidate_ids: ['suggestion-1', 'suggestion-2']
+					}
+				}
+			],
+			inbox_items: []
+		});
+
+		const row = await syncInboxItemForProjectReview({
+			supabase: supabase as any,
+			runId: 'run-1'
+		});
+
+		expect(row).toMatchObject({
+			source_type: 'project_review',
+			source_ref_id: 'run-1',
+			status: 'pending'
+		});
+		expect(upserts).toHaveLength(1);
 	});
 
 	it('expires an existing project audit inbox item when the completed audit has no action', async () => {

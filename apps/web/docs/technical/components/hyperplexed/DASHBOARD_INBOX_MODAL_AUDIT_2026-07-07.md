@@ -79,6 +79,27 @@ Live authenticated visual verification is still owed. The in-app browser loaded 
 with a `Log in` CTA and no AI Inbox, so this pass did not capture real AI Inbox desktop/iPhone,
 light/dark screenshots.
 
+## Project-manager brief follow-up - 2026-08-14
+
+An authenticated desktop screenshot supplied by DJ closed the outstanding real-data before-state
+check and exposed a semantic hierarchy problem that fixture data did not reveal:
+
+- The primary asks are detector output rather than human decisions (for example, "choose the
+  canonical project documents"). Renaming and reframing must precede further styling. -> P6
+- `Why now` leaks internal dimension keys such as `drift_scope_control` and
+  `documentation_quality`, which are implementation metadata rather than user context. -> P6
+- Evidence chips truncate the affected document names and do not give the brief enough readable,
+  linked entity context. -> P1+P6+P20
+- The response field asks the user to invent the next step even though the assistant should make a
+  recommendation and ask only for the missing judgment. -> P4+P8
+- Multiple audit findings repeat the project name and compete as independent inbox rows instead of
+  forming one project-level manager brief. -> P4+P8
+
+The corrective contract is
+[`docs/product/PROJECT_REVIEW_MANAGER_BRIEF.md`](../../../../../../docs/product/PROJECT_REVIEW_MANAGER_BRIEF.md).
+The target surface leads with status, bottom line, recommendation, and one bounded decision; linked
+work and secondary categorized findings follow underneath. Minor findings do not enter the inbox.
+
 ## Decision-note consolidation - 2026-07-18
 
 Authenticated screenshots exposed two competing text-entry paths on each project finding: a one-line

@@ -105,6 +105,7 @@ type InboxCountBreakdownRow = Pick<InboxIndexRow, 'status' | 'source_type' | 'pr
 const INBOX_SOURCE_TYPES = new Set<InboxSourceType>([
 	'agent_run',
 	'project_suggestion',
+	'project_review',
 	'project_audit',
 	'calendar_suggestion',
 	'profile_fragment',
@@ -115,6 +116,7 @@ const INBOX_SOURCE_TYPES = new Set<InboxSourceType>([
 const SUPPORTED_SOURCE_TYPES = new Set<InboxSourceType>([
 	'agent_run',
 	'project_suggestion',
+	'project_review',
 	'project_audit',
 	'calendar_suggestion'
 ]);
@@ -632,6 +634,7 @@ async function loadSourcePayloads(params: {
 	const tableBySource: Partial<Record<InboxSourceType, string>> = {
 		agent_run: 'agent_runs',
 		project_suggestion: 'project_suggestions',
+		project_review: 'project_loop_runs',
 		project_audit: 'project_audits',
 		calendar_suggestion: 'calendar_project_suggestions',
 		integration_attention: 'user_email_connections'
@@ -740,7 +743,9 @@ async function loadSourceContexts(params: {
 
 	for (const row of params.rows) {
 		const payload = params.payloads.get(sourceKey(row.source_type, row.source_ref_id));
-		if (row.source_type === 'project_suggestion') {
+		if (row.source_type === 'project_review') {
+			runIds.add(row.source_ref_id);
+		} else if (row.source_type === 'project_suggestion') {
 			suggestionIds.add(row.source_ref_id);
 			const runId = asString(payload?.run_id);
 			if (runId) runIds.add(runId);
@@ -809,6 +814,18 @@ async function loadSourceContexts(params: {
 			const auditId = asString(row.id);
 			if (auditId) auditsById.set(auditId, row);
 		}
+	}
+
+	for (const row of params.rows) {
+		if (row.source_type !== 'project_review') continue;
+		contexts.set(sourceKey(row.source_type, row.source_ref_id), {
+			project_loop_run:
+				runsById.get(row.source_ref_id) ??
+				mapProjectLoopRunContext(
+					params.payloads.get(sourceKey(row.source_type, row.source_ref_id)) ?? {}
+				),
+			project_audit: null
+		});
 	}
 
 	for (const row of params.rows) {
@@ -919,7 +936,8 @@ async function loadDecisionCapabilities(params: {
 				.filter(
 					(row) =>
 						row.status === 'pending' &&
-						row.source_type === 'project_suggestion' &&
+						(row.source_type === 'project_suggestion' ||
+							row.source_type === 'project_review') &&
 						Boolean(row.project_id)
 				)
 				.map((row) => row.project_id as string)
@@ -970,6 +988,22 @@ async function loadDecisionCapabilities(params: {
 			capabilities.set(rowKey(row), {
 				can_decide: false,
 				decision_disabled_reason: 'Open the audit packet to review recommendations'
+			});
+			continue;
+		}
+
+		if (row.source_type === 'project_review') {
+			if (!row.project_id) {
+				capabilities.set(rowKey(row), {
+					can_decide: false,
+					decision_disabled_reason: 'Missing project'
+				});
+				continue;
+			}
+			const canDecide = projectWriteAccess.get(row.project_id) === true;
+			capabilities.set(rowKey(row), {
+				can_decide: canDecide,
+				decision_disabled_reason: canDecide ? null : 'View-only project access'
 			});
 			continue;
 		}
@@ -1171,6 +1205,33 @@ async function backfillVisibleSourceRows(params: {
 			admin: params.admin,
 			sourceType: 'agent_run',
 			rows: (data ?? []) as Record<string, unknown>[]
+		});
+	}
+
+	if (
+		(!params.sourceType || params.sourceType === 'project_review') &&
+		params.group !== 'account'
+	) {
+		let query = params.supabase
+			.from('project_loop_runs')
+			.select('*')
+			.eq('status', 'waiting_review')
+			.order('created_at', { ascending: false })
+			.limit(limit);
+		if (params.projectId) query = query.eq('project_id', params.projectId);
+		const { data, error } = await query;
+		if (error) throw error;
+		const latestByProject = new Map<string, Record<string, unknown>>();
+		for (const row of (data ?? []) as Record<string, unknown>[]) {
+			const projectId = asString(row.project_id);
+			const brief = asRecord(row.brief);
+			if (!projectId || brief?.version !== 2 || latestByProject.has(projectId)) continue;
+			latestByProject.set(projectId, row);
+		}
+		synced += await syncRows({
+			admin: params.admin,
+			sourceType: 'project_review',
+			rows: [...latestByProject.values()]
 		});
 	}
 

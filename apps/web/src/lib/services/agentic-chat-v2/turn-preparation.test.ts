@@ -13,7 +13,7 @@ function toolNames(result: ReturnType<typeof resolveFastChatTurnPreparation>): s
 }
 
 describe('resolveFastChatTurnPreparation', () => {
-	it('routes a native task mutation without activating domain sensing', () => {
+	it('keeps lexical intent as shadow data while using stable project capabilities', () => {
 		const times = [100, 107];
 		const result = resolveFastChatTurnPreparation({
 			contextType: 'project',
@@ -32,13 +32,37 @@ describe('resolveFastChatTurnPreparation', () => {
 			action: 'update',
 			entityKind: 'task'
 		});
-		expect(result.domainSensingBypassed).toBe(true);
+		expect(result.domainSensingBypassed).toBe(false);
 		expect(result.turnDomainSensing).toBeNull();
 		expect(result.previousDomainState).toBeNull();
-		expect(result.selectedSurfaceProfile).toBe('project_write');
+		expect(result.selectedSurfaceProfile).toBe('project_write_document');
+		expect(toolNames(result)).toContain('declare_turn_contract');
 		expect(toolNames(result)).toContain('update_onto_task');
 		expect(result.cacheKey).toBe('v2|project|project-1|none|none');
 		expect(result.toolSelectionMs).toBe(7);
+	});
+
+	it('routes a pronoun-based document organization request to the move tool', () => {
+		const result = resolveFastChatTurnPreparation({
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			latestUserMessage:
+				"This project's documents are a mess — loose notes, raw meeting dumps, half-baked ideas, all " +
+				'piled at the top level. Help me get it organized into something sensible.',
+			conversationSummary: null,
+			agentMetadata: null,
+			contextShiftHintTtlMs: 120_000,
+			nowMs: NOW_MS
+		});
+
+		expect(result.turnIntent).toMatchObject({
+			requiresWrite: true,
+			action: 'organize',
+			entityKind: 'document'
+		});
+		expect(result.selectedSurfaceProfile).toBe('project_write_document');
+		expect(toolNames(result)).toContain('move_document_in_tree');
 	});
 
 	it('keeps subject-matter sensing active for advisory work', () => {
@@ -104,6 +128,45 @@ describe('resolveFastChatTurnPreparation', () => {
 		expect(result.recentContextShiftHint).toMatchObject({ context_type: 'global' });
 		expect(result.bypassContextCacheForShiftHint).toBe(true);
 		expect(result.cachedContext).toBe(cachedContext);
+	});
+
+	it('only admits a pending semantic contract in its original project scope', () => {
+		const pendingContract = {
+			version: 1,
+			contract: {
+				version: 1,
+				source: 'declared',
+				outcomes: [
+					{
+						id: 'rename-task',
+						action: 'update',
+						entityKind: 'task',
+						targetIds: ['task-1'],
+						requiredFields: ['title'],
+						minimumSuccessfulEffects: 1
+					}
+				]
+			},
+			contextType: 'project',
+			projectId: 'project-1',
+			originatingTurnRunId: 'turn-1',
+			createdAt: '2026-07-09T15:59:00.000Z',
+			finishedReason: 'length'
+		};
+		const resolve = (projectId: string) =>
+			resolveFastChatTurnPreparation({
+				contextType: 'project',
+				entityId: projectId,
+				projectId,
+				latestUserMessage: 'Continue.',
+				conversationSummary: null,
+				agentMetadata: { fastchat_pending_turn_contract: pendingContract },
+				contextShiftHintTtlMs: 120_000,
+				nowMs: NOW_MS
+			});
+
+		expect(resolve('project-1').pendingTurnContract).not.toBeNull();
+		expect(resolve('project-2').pendingTurnContract).toBeNull();
 	});
 });
 

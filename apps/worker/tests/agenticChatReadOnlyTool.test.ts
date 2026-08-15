@@ -13,6 +13,8 @@ const ACTOR_ID = '90000000-0000-4000-8000-000000000009';
 const PROJECT_ID = '40000000-0000-4000-8000-000000000004';
 
 const SHARED_ALLOWLIST = [
+	'declare_turn_contract',
+	'cancel_turn_contract',
 	'list_onto_projects',
 	'list_onto_tasks',
 	'list_onto_goals',
@@ -173,6 +175,47 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 		);
 		expect(isAgenticChatProductionReadToolNameV1('get_project_overview')).toBe(true);
 		expect(isAgenticChatProductionReadToolNameV1('update_onto_project')).toBe(false);
+	});
+
+	it('validates and acknowledges a semantic turn contract without touching project data', async () => {
+		const access = accessStub();
+		const client = fakeSharedClient();
+		const result = await adapterWith(client, access).execute(
+			requestFor('declare_turn_contract', {
+				outcomes: [
+					{
+						action: 'organize',
+						entity_kind: 'document',
+						minimum_successful_effects: 2
+					}
+				]
+			})
+		);
+
+		expect(result.result).toMatchObject({
+			status: 'declared',
+			contract: {
+				source: 'declared',
+				outcomes: [{ action: 'organize', entityKind: 'document' }]
+			}
+		});
+		expect(client.from).not.toHaveBeenCalled();
+	});
+
+	it('acknowledges an explicit contract cancellation without touching project data', async () => {
+		const access = accessStub();
+		const client = fakeSharedClient();
+		const result = await adapterWith(client, access).execute(
+			requestFor('cancel_turn_contract', {
+				reason: 'The user explicitly cancelled the prior commission.'
+			})
+		);
+
+		expect(result.result).toMatchObject({
+			status: 'cancelled',
+			reason: 'The user explicitly cancelled the prior commission.'
+		});
+		expect(client.from).not.toHaveBeenCalled();
 	});
 
 	it('routes get_project_overview through the shared implementation and returns the legacy payload', async () => {

@@ -37,6 +37,10 @@ describe('resolveFastChatScaffoldConfig', () => {
 		expect(resolveFastChatScaffoldConfig(variant).variant).toBe(variant);
 	});
 
+	it('keeps the fixed launch discovery surface lean without configuration', () => {
+		expect(resolveFastChatScaffoldConfig(undefined).routing.leanDiscovery).toBe(true);
+	});
+
 	it('applies compound model-led and server-routing ablations', () => {
 		expect(resolveFastChatScaffoldConfig('model-led-skill-discovery')).toMatchObject({
 			prompt: {

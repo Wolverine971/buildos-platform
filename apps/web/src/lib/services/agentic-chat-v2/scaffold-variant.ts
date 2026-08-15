@@ -78,7 +78,7 @@ export function resolveFastChatScaffoldConfig(
 			domainSensing: true,
 			skillPreload: true,
 			skillGateRepair: true,
-			leanDiscovery: parseBooleanFlag(environment.leanDiscovery, false),
+			leanDiscovery: parseBooleanFlag(environment.leanDiscovery, true),
 			legacySurfaceFallback: true
 		},
 		recovery: {

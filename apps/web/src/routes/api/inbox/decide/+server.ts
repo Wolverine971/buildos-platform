@@ -534,6 +534,151 @@ async function decideLoadedInboxItem(params: {
 		return { ok: true, payload };
 	}
 
+	if (item.source_type === 'project_review') {
+		if (!PROJECT_LOOPS_ENABLED) {
+			return {
+				ok: false,
+				message: 'Inbox item not found',
+				response: ApiResponse.notFound('Inbox item')
+			};
+		}
+		if (!item.project_id) {
+			return {
+				ok: false,
+				message: 'Project manager brief is missing project_id',
+				response: ApiResponse.badRequest('Project manager brief is missing project_id')
+			};
+		}
+
+		const access = await requireProjectMemberAccess({
+			locals,
+			user,
+			projectId: item.project_id,
+			requiredAccess: 'write'
+		});
+		if (!access.ok) {
+			return { ok: false, message: 'Project access denied', response: access.response };
+		}
+
+		const { data: run, error: runError } = await admin
+			.from('project_loop_runs')
+			.select('id, project_id, status, brief')
+			.eq('id', item.source_ref_id)
+			.eq('project_id', access.projectId)
+			.maybeSingle();
+		if (runError) throw runError;
+		if (!run) {
+			return {
+				ok: false,
+				message: 'Project manager brief not found',
+				response: ApiResponse.notFound('Project manager brief')
+			};
+		}
+		if (run.status !== 'waiting_review') {
+			const payload: DecisionPayload = { alreadyDecided: true };
+			payload.item = await syncResultItem(admin as any, item, action, payload);
+			return { ok: true, payload };
+		}
+
+		const brief = asRecord(run.brief);
+		const decision = asRecord(brief?.decision);
+		const candidateIds = Array.isArray(brief?.candidate_ids)
+			? brief.candidate_ids.filter(
+					(id): id is string => typeof id === 'string' && id.trim().length > 0
+				)
+			: [];
+		const now = new Date().toISOString();
+		let recommendationResult: Record<string, unknown> | null = null;
+
+		if (action === 'approve') {
+			const recommendedSuggestionId = asString(decision?.recommended_suggestion_id);
+			if (!recommendedSuggestionId || !candidateIds.includes(recommendedSuggestionId)) {
+				return {
+					ok: false,
+					message: 'This brief needs a discussion or choice before BuildOS can act',
+					response: ApiResponse.error(
+						'This brief needs a discussion or choice before BuildOS can act',
+						HttpStatus.UNPROCESSABLE_ENTITY,
+						'BRIEF_REQUIRES_DISCUSSION'
+					)
+				};
+			}
+			const outcome = await decideProjectSuggestion({
+				supabase: locals.supabase as any,
+				userId: user.id,
+				projectId: access.projectId,
+				suggestionId: recommendedSuggestionId,
+				action: 'approve',
+				fetchFn
+			});
+			if (!outcome.ok) {
+				return {
+					ok: false,
+					message: outcome.message,
+					response: ApiResponse.error(outcome.message, outcome.status)
+				};
+			}
+			recommendationResult = {
+				suggestion: outcome.suggestion,
+				result: outcome.result,
+				recommended_suggestion_id: recommendedSuggestionId
+			};
+			const secondaryIds = candidateIds.filter((id) => id !== recommendedSuggestionId);
+			if (secondaryIds.length > 0) {
+				const { error: secondaryError } = await admin
+					.from('project_suggestions')
+					.update({
+						status: 'superseded',
+						decided_at: now,
+						result: {
+							ok: true,
+							grouped_into_resolved_manager_brief: item.source_ref_id
+						},
+						updated_at: now
+					})
+					.eq('project_id', access.projectId)
+					.in('id', secondaryIds)
+					.eq('status', 'pending');
+				if (secondaryError) throw secondaryError;
+			}
+		} else if (action === 'reject') {
+			if (candidateIds.length > 0) {
+				const note = asString(body.note);
+				const { error: rejectError } = await admin
+					.from('project_suggestions')
+					.update({
+						status: 'rejected',
+						decided_at: now,
+						user_feedback: {
+							reason: asString(body.reason) ?? 'dismissed_without_note',
+							...(note ? { note } : {}),
+							created_at: now
+						},
+						updated_at: now
+					})
+					.eq('project_id', access.projectId)
+					.in('id', candidateIds)
+					.eq('status', 'pending');
+				if (rejectError) throw rejectError;
+			}
+		}
+
+		const { error: completeError } = await admin
+			.from('project_loop_runs')
+			.update({ status: 'completed', finished_at: now, updated_at: now })
+			.eq('id', item.source_ref_id)
+			.eq('project_id', access.projectId)
+			.eq('status', 'waiting_review');
+		if (completeError) throw completeError;
+
+		const payload: DecisionPayload = {
+			result: recommendationResult,
+			brief_resolution: action === 'approve' ? 'recommendation_applied' : 'dismissed'
+		};
+		payload.item = await syncResultItem(admin as any, item, action, payload);
+		return { ok: true, payload };
+	}
+
 	if (item.source_type === 'calendar_suggestion') {
 		const service = CalendarAnalysisService.getInstance(locals.supabase as any);
 		const result =

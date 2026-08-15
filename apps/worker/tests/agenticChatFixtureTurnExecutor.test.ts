@@ -968,7 +968,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
-	it('copies immutable structured turn intent and its durable outcome into terminal message metadata', async () => {
+	it('does not turn immutable lexical intent into terminal mutation authority', async () => {
 		const harness = createHarness([
 			{ type: 'text_delta', text: 'I could not complete the write.' },
 			{ type: 'finish', finishedReason: 'stop', usage: null }
@@ -1006,21 +1006,13 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		expect(harness.control.finalize).toHaveBeenCalledWith(
 			expect.objectContaining({
 				assistantMetadata: expect.objectContaining({
-					outcome_status: 'unfulfilled',
-					turn_intent: {
-						version: 1,
-						requiresWrite: true,
-						action: 'create',
-						entityKind: 'document',
-						operations: [{ action: 'create', entityKind: 'document' }],
-						source: 'current_message',
-						originalRequestText: 'Create a handoff document.',
-						originatingTurnRunId: null,
-						clearPending: false
-					}
+					outcome_status: 'fulfilled'
 				})
 			})
 		);
+		const metadata = harness.control.finalize.mock.calls[0]?.[0].assistantMetadata;
+		expect(metadata).not.toHaveProperty('turn_intent');
+		expect(metadata).not.toHaveProperty('turn_contract');
 		await harness.publisher.stop();
 	});
 

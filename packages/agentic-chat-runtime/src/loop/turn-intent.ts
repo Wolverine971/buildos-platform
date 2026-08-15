@@ -70,7 +70,8 @@ const READ_ONLY_STATUS_PATTERNS = [
 const CREATE_VERB = /\b(?:create|make|write|draft|build|generate|produce|add|schedule)\b/i;
 const UPDATE_VERB =
 	/\b(?:set|update|edit|revise|append|capture|save|change|rename|mark|complete|archive|unarchive|reopen|close|reschedule|assign|unassign|postpone|defer|push|merge|split|label|tag|prioritize|deprioritize)\b/i;
-const ORGANIZE_VERB = /\b(?:organize|reorganize|move|place|file|sort)\b/i;
+const ORGANIZE_VERB =
+	/\b(?:organize|organized|reorganize|reorganized|move|moved|place|placed|file|filed|sort|sorted)\b/i;
 const DELETE_VERB = /\b(?:delete|remove)\b/i;
 const CANCEL_VERB = /\bcancel\b/i;
 const LINK_VERB = /\blink\b/i;
@@ -118,6 +119,7 @@ const MILESTONE_NOUN = /\bmilestones?\b/i;
 const RISK_NOUN = /\brisks?\b/i;
 const OTHER_MUTATION_NOUN = /\b(?:title|name|status|state|priority|labels?|tags?)\b/i;
 const MUTATION_PRONOUN = /\b(?:this|that|it|them|these|those|the thing)\b/i;
+const SINGULAR_MUTATION_PRONOUN = /\b(?:this|that|it|the thing)\b/i;
 
 export function resolveFastChatTurnIntent(params: {
 	contextType: ChatContextType;
@@ -339,11 +341,26 @@ function classifyExplicitMutation(text: string): {
 			operations.push({ action: 'unlink', entityKind: 'unknown' });
 			continue;
 		}
-		const entityKinds = collectTargetEntityKinds(targetText);
+		let entityKinds = collectTargetEntityKinds(targetText);
+		if (entityKinds.length === 0 && ORGANIZE_VERB.test(command.verb)) {
+			// Resultative requests put the target before the verb ("get it
+			// organized"), unlike the usual command shape ("organize the docs").
+			entityKinds = collectTargetEntityKinds(clause);
+		}
+		if (entityKinds.length === 0 && MUTATION_PRONOUN.test(clause)) {
+			// A natural second sentence often carries the concrete target from the
+			// first: "The documents are a mess. Help me get them organized."
+			const contextualEntityKinds = collectTargetEntityKinds(text);
+			entityKinds = SINGULAR_MUTATION_PRONOUN.test(clause)
+				? contextualEntityKinds.slice(0, 1)
+				: contextualEntityKinds;
+		}
 		const targets =
 			entityKinds.length > 0
 				? entityKinds
-				: MUTATION_PRONOUN.test(targetText) || OTHER_MUTATION_NOUN.test(targetText)
+				: MUTATION_PRONOUN.test(targetText) ||
+					  MUTATION_PRONOUN.test(clause) ||
+					  OTHER_MUTATION_NOUN.test(targetText)
 					? (['unknown'] as const)
 					: [];
 		for (const entityKind of targets) {
@@ -390,7 +407,8 @@ function findMutationCommand(clause: string): { verb: string; verbIndex: number 
 		new RegExp(`^(?:okay|ok|sure)[,\\s]+(?:please\\s+)?(${verb})\\b`, 'i'),
 		new RegExp(`\\b(?:can|could|would|will)\\s+you(?:\\s+please)?\\s+(${verb})\\b`, 'i'),
 		new RegExp(`\\b(?:i need you to|i want you to|i want to)\\s+(${verb})\\b`, 'i'),
-		new RegExp(`\\bplease\\s+(${verb})\\b`, 'i')
+		new RegExp(`\\bplease\\s+(${verb})\\b`, 'i'),
+		/\bhelp\s+(?:me|us)\s+(?:(?:get|make)\s+(?:\S+\s+){0,6}?)?(organize|organized|reorganize|reorganized|move|moved|place|placed|file|filed|sort|sorted)\b/i
 	];
 	let best: { verb: string; verbIndex: number } | null = null;
 	for (const pattern of patterns) {

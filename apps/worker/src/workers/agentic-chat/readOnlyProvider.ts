@@ -26,13 +26,19 @@ import {
 	buildRoundToolPattern,
 	buildToolPayloadForModel,
 	buildToolValidationRepairInstruction,
+	CANCEL_TURN_CONTRACT_TOOL_NAME,
+	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	getSafeWriteToolNamesForTurnContract,
 	isPureReadToolName,
+	mergeTurnContracts,
+	parseDeclaredTurnContract,
 	parseToolArguments,
 	provideAgenticChatLoopToolCatalog,
 	sanitizeAssistantFinalText,
 	selectReadLoopRepairEscalation,
 	shouldMemoizeReadResult,
-	validateToolCalls
+	validateToolCalls,
+	type TurnContract
 } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatWorkerExecutionInputV1 } from './executionInput';
 import {
@@ -215,6 +221,8 @@ type ToolRoundStreamState = {
 	markToolRoundCompleted(): void;
 	setCurrentRequest(value: ClientRequest): void;
 	resolveMemoServed(call: CompletedProviderToolCall): AgenticChatReadToolExecutionV1 | null;
+	hasPendingTurnContractWrite(): boolean;
+	takeTurnContractWriteCarveOut(request: ClientRequest): ClientRequest | null;
 };
 
 class AgenticChatProviderSupervisorRuntime {
@@ -404,7 +412,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let providerToolCallCount = 0;
 		let readLoopRepairRank = 0;
 		let mutationRoundReached = false;
-		let organizeWriteCarveOutUsed = false;
+		let contractWriteCarveOutUsed = false;
+		let turnContract: TurnContract | null = null;
 		const readOps = new Set<string>();
 		// The executor clears this memo as soon as any call reaches the write
 		// boundary (successful or not), matching the legacy invalidation fence.
@@ -427,6 +436,17 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			},
 			setPendingToolRound(value) {
 				pendingToolRound = value;
+				for (const call of value.calls) {
+					if (call.name === CANCEL_TURN_CONTRACT_TOOL_NAME) {
+						turnContract = null;
+						continue;
+					}
+					if (call.name !== DECLARE_TURN_CONTRACT_TOOL_NAME) continue;
+					turnContract = mergeTurnContracts(
+						turnContract,
+						parseDeclaredTurnContract(call.arguments)
+					);
+				}
 			},
 			markToolRoundCompleted() {
 				toolRoundCompleted = true;
@@ -436,6 +456,21 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			},
 			resolveMemoServed(call) {
 				return resolveMemoServedExecution(turnReadMemo, call);
+			},
+			hasPendingTurnContractWrite() {
+				return Boolean(turnContract && !contractWriteCarveOutUsed && !mutationRoundReached);
+			},
+			takeTurnContractWriteCarveOut(value) {
+				if (!turnContract || contractWriteCarveOutUsed || mutationRoundReached) {
+					return null;
+				}
+				const carveOut = buildTurnContractWriteCarveOutRequest(
+					value,
+					request.tools,
+					turnContract
+				);
+				if (carveOut) contractWriteCarveOutUsed = true;
+				return carveOut;
 			}
 		});
 		return {
@@ -628,17 +663,11 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				const forceNoToolSynthesis =
 					ledgerObservation.forceSynthesis ||
 					readLoopRepairRank >= READ_LOOP_REPAIR_RANK.must_synthesize;
-				const organizeWriteCarveOut =
-					forceNoToolSynthesis && !organizeWriteCarveOutUsed && !mutationRoundReached
-						? buildOrganizeWriteCarveOutRequest(
-								currentRequest,
-								request.tools,
-								executionInput
-							)
-						: null;
-				if (organizeWriteCarveOut) {
-					organizeWriteCarveOutUsed = true;
-					currentRequest = organizeWriteCarveOut;
+				const contractWriteCarveOut = forceNoToolSynthesis
+					? state.takeTurnContractWriteCarveOut(currentRequest)
+					: null;
+				if (contractWriteCarveOut) {
+					currentRequest = contractWriteCarveOut;
 				} else if (forceNoToolSynthesis) {
 					currentRequest = forceToolFreeRequest(currentRequest);
 				}
@@ -646,7 +675,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				pendingToolRound = null;
 				toolRoundCompleted = false;
 				nextProviderRound += 1;
-				return forceNoToolSynthesis && !organizeWriteCarveOut
+				return forceNoToolSynthesis && !contractWriteCarveOut
 					? this.streamForcedSynthesis(currentRequest, completedToolRound.usage, state)
 					: this.streamContinuation(currentRequest, completedToolRound.usage, state);
 			},
@@ -855,6 +884,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let keepLeaseForContinuation = false;
 		let streamedText = false;
 		let assistantCandidate = '';
+		const holdAssistantTextForTurnContract = state.hasPendingTurnContractWrite();
 		const toolCalls = createToolCallAccumulator();
 		try {
 			yield* drainSupervisorSteps(state.supervisor);
@@ -865,6 +895,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					if (!event.content) throw providerError('provider_empty_text', 'unknown');
 					streamedText = true;
 					assistantCandidate += event.content;
+					if (holdAssistantTextForTurnContract) continue;
 					yield { type: 'text_delta', text: event.content };
 					state.supervisor?.observe({
 						type: 'assistant_text_delta',
@@ -997,6 +1028,21 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 							: 'provider_missing_tool_call',
 						request.toolChoice === 'none' ? 'permanent' : 'unknown'
 					);
+				}
+				if (holdAssistantTextForTurnContract) {
+					const carveOutRequest = state.takeTurnContractWriteCarveOut(request);
+					if (carveOutRequest) {
+						state.setCurrentRequest(carveOutRequest);
+						keepLeaseForContinuation = true;
+						yield* this.streamContinuation(
+							carveOutRequest,
+							aggregateUsage,
+							state,
+							validationRepairRounds,
+							emitPlanningSemantic
+						);
+						return;
+					}
 				}
 				state.supervisor?.observe({
 					type: 'final_candidate',
@@ -1642,37 +1688,29 @@ function forceToolFreeRequest(request: ClientRequest): ClientRequest {
 	return { ...request, tools: [], toolChoice: 'none', providerRound: 'synthesis' };
 }
 
-function buildOrganizeWriteCarveOutRequest(
+function buildTurnContractWriteCarveOutRequest(
 	request: ClientRequest,
 	availableTools: readonly AgenticChatReadOnlyProviderToolV1[],
-	executionInput: AgenticChatWorkerExecutionInputV1
+	contract: TurnContract
 ): ClientRequest | null {
-	const intent = executionInput.artifact.prepared.turnIntent;
-	if (
-		intent?.requiresWrite !== true ||
-		intent.action !== 'organize' ||
-		intent.entityKind !== 'document' ||
-		!intent.expectedWriteToolNames.includes('move_document_in_tree')
-	) {
-		return null;
-	}
-	const moveTool = availableTools.find((tool) => tool.function.name === 'move_document_in_tree');
-	if (!moveTool) return null;
+	const safeToolNames = new Set(getSafeWriteToolNamesForTurnContract(contract));
+	const writeTools = availableTools.filter((tool) => safeToolNames.has(tool.function.name));
+	if (writeTools.length === 0) return null;
 
 	const next = appendSystemInstruction(
 		request,
 		[
-			'Supervisor exception: the user commissioned a document reorganization and no mutation has reached execution yet.',
-			'The earlier instruction to stop calling tools is superseded for exactly this one pass.',
-			'Use only move_document_in_tree and execute the reorganization now; multiple move calls in this response are expected.',
-			'Use only exact document UUIDs returned by the completed reads for both document_id and new_parent_id. Never invent a UUID.',
-			'Choose a few existing documents as sensible category anchors and move related documents under the same anchor; at least two related source documents should share one parent.',
+			'Supervisor exception: the model declared durable turn outcomes and no mutation has reached execution yet.',
+			'Any earlier instruction to stop calling tools is superseded for exactly this one pass.',
+			`Use only the available contract write tools (${writeTools.map((tool) => tool.function.name).join(', ')}) and execute the declared outcomes now; make every distinct effect the contract requires.`,
+			`Declared semantic contract: ${JSON.stringify(contract)}`,
+			'Use only canonical target identifiers returned by completed reads. Never invent an identifier.',
 			'Do not call reads, searches, schemas, skills, or any other discovery tool in this pass.'
 		].join(' ')
 	);
 	return {
 		...next,
-		tools: [moveTool],
+		tools: writeTools,
 		toolChoice: 'auto',
 		providerRound: 'synthesis'
 	};

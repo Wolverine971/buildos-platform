@@ -10,7 +10,9 @@
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
 	import InboxFindingControls from '$lib/components/inbox/InboxFindingControls.svelte';
+	import InboxManagerBriefControls from '$lib/components/inbox/InboxManagerBriefControls.svelte';
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
+	import InboxProjectManagerBrief from '$lib/components/inbox/InboxProjectManagerBrief.svelte';
 	import InboxReviewDetails from '$lib/components/inbox/InboxReviewDetails.svelte';
 	import { formatInboxAttentionSummary } from '$lib/components/inbox/inbox-presentation';
 	import type { VerifiedProjectSuggestionChangeSummary } from '@buildos/shared-agent-ops/proposal-context';
@@ -38,6 +40,7 @@
 	type InboxSourceType =
 		| 'agent_run'
 		| 'project_suggestion'
+		| 'project_review'
 		| 'project_audit'
 		| 'calendar_suggestion'
 		| 'integration_attention';
@@ -318,6 +321,14 @@
 		return sourcePayload<ProjectSuggestionInboxPayload & Record<string, unknown>>(item);
 	}
 
+	function projectReviewPayload(item: InboxItem): Record<string, unknown> | null {
+		return item.source_type === 'project_review' ? sourcePayload(item) : null;
+	}
+
+	function projectAuditPayload(item: InboxItem): Record<string, unknown> | null {
+		return item.source_type === 'project_audit' ? sourcePayload(item) : null;
+	}
+
 	function agentRun(item: InboxItem): AgentRunPayload | null {
 		return sourcePayload<AgentRunPayload & Record<string, unknown>>(item);
 	}
@@ -456,10 +467,22 @@
 
 	function sourceLabel(item: InboxItem): string {
 		if (item.source_type === 'agent_run') return 'Agent proposal';
+		if (item.source_type === 'project_review') return 'Project manager brief';
 		if (item.source_type === 'project_audit') return 'Project audit';
 		if (item.source_type === 'calendar_suggestion') return 'Calendar suggestion';
 		if (item.source_type === 'integration_attention') return 'Gmail access';
 		return 'Project review';
+	}
+
+	function isManagerBriefItem(item: InboxItem): boolean {
+		return item.source_type === 'project_review' || item.source_type === 'project_audit';
+	}
+
+	function managerBriefHasDirectRecommendation(item: InboxItem): boolean {
+		const run = projectReviewPayload(item);
+		const brief = asRecord(run?.brief);
+		const decision = asRecord(brief?.decision);
+		return Boolean(readString(decision?.recommended_suggestion_id));
 	}
 
 	function reviewMetadata(
@@ -1150,182 +1173,208 @@
 										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 									>
 										<div class="min-w-0 flex-1">
-											<InboxProjectBadge {project} variant="compact" />
-											<p
-												class="break-words text-sm font-semibold text-foreground"
-											>
-												{item.title ||
-													payload?.title ||
-													agent?.label ||
-													'Review item'}
-											</p>
-											{#if payload?.why_now}
+											{#if isManagerBriefItem(item) && project}
+												<InboxProjectManagerBrief
+													brief={asRecord(
+														projectReviewPayload(item)?.brief
+													)}
+													audit={projectAuditPayload(item)}
+													projectId={project.id}
+												/>
+											{:else}
+												<InboxProjectBadge {project} variant="compact" />
 												<p
-													class="mt-1 break-words text-xs text-foreground/80"
+													class="break-words text-sm font-semibold text-foreground"
 												>
-													<span class="font-semibold">Why now:</span>
-													{payload.why_now}
+													{item.title ||
+														payload?.title ||
+														agent?.label ||
+														'Review item'}
 												</p>
-											{:else if item.summary || payload?.rationale || agent?.goal}
-												<p
-													class="mt-1 break-words text-xs text-muted-foreground"
-												>
-													{item.summary ??
-														payload?.rationale ??
-														agent?.goal}
-												</p>
-											{/if}
-											{#if item.source_type === 'calendar_suggestion' && calendar}
-												<div class="mt-2 space-y-2">
-													<div class="flex flex-wrap gap-1.5">
-														{#if calendar.event_count}
-															<span
-																class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
-															>
-																{calendar.event_count} event{calendar.event_count ===
-																1
-																	? ''
-																	: 's'}
-															</span>
-														{/if}
-														{#if taskPreview.length}
-															<span
-																class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
-															>
-																{taskPreview.length} task{taskPreview.length ===
-																1
-																	? ''
-																	: 's'}
-															</span>
-														{/if}
-														{#if dateRange}
-															<span
-																class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
-															>
-																{dateRange}
-															</span>
-														{/if}
-														{#if confidence}
-															<span
-																class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs text-accent"
-															>
-																{confidence}
-															</span>
-														{/if}
-													</div>
-													{#if calendar.suggested_description || calendar.suggested_context}
-														<p
-															class="line-clamp-3 break-words text-xs text-muted-foreground"
-														>
-															{calendar.suggested_description ??
-																calendar.suggested_context}
-														</p>
-													{/if}
-													{#if taskPreview.length}
-														<div
-															class="rounded-md border border-border bg-muted/20 p-2"
-														>
-															<p
-																class="micro-label text-muted-foreground"
-															>
-																Suggested tasks
-															</p>
-															<div class="mt-1.5 space-y-1">
-																{#each taskPreview.slice(0, 3) as task, index (`${task.title}-${task.start_date ?? index}`)}
-																	<div
-																		class="flex items-start justify-between gap-2 text-2xs"
-																	>
-																		<div class="min-w-0">
-																			<p
-																				class="truncate font-medium text-foreground"
-																			>
-																				{task.title}
-																			</p>
-																			{#if task.start_date || task.recurrence_pattern}
-																				<p
-																					class="mt-0.5 text-muted-foreground"
-																				>
-																					{formatShortDate(
-																						task.start_date
-																					) ??
-																						task.recurrence_pattern}
-																				</p>
-																			{/if}
-																		</div>
-																		{#if task.priority}
-																			<span
-																				class="shrink-0 rounded border border-border bg-card px-1.5 py-0.5 text-2xs text-muted-foreground"
-																			>
-																				{task.priority}
-																			</span>
-																		{/if}
-																	</div>
-																{/each}
-															</div>
-															{#if taskPreview.length > 3}
-																<p
-																	class="mt-1.5 text-2xs text-muted-foreground"
+												{#if payload?.why_now}
+													<p
+														class="mt-1 break-words text-xs text-foreground/80"
+													>
+														<span class="font-semibold">Why now:</span>
+														{payload.why_now}
+													</p>
+												{:else if item.summary || payload?.rationale || agent?.goal}
+													<p
+														class="mt-1 break-words text-xs text-muted-foreground"
+													>
+														{item.summary ??
+															payload?.rationale ??
+															agent?.goal}
+													</p>
+												{/if}
+												{#if item.source_type === 'calendar_suggestion' && calendar}
+													<div class="mt-2 space-y-2">
+														<div class="flex flex-wrap gap-1.5">
+															{#if calendar.event_count}
+																<span
+																	class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
 																>
-																	+{taskPreview.length - 3} more
-																</p>
+																	{calendar.event_count} event{calendar.event_count ===
+																	1
+																		? ''
+																		: 's'}
+																</span>
+															{/if}
+															{#if taskPreview.length}
+																<span
+																	class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
+																>
+																	{taskPreview.length} task{taskPreview.length ===
+																	1
+																		? ''
+																		: 's'}
+																</span>
+															{/if}
+															{#if dateRange}
+																<span
+																	class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
+																>
+																	{dateRange}
+																</span>
+															{/if}
+															{#if confidence}
+																<span
+																	class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs text-accent"
+																>
+																	{confidence}
+																</span>
 															{/if}
 														</div>
-													{/if}
-												</div>
-											{/if}
-											<InboxReviewDetails
-												{metadata}
-												summary={changes > 0
-													? null
-													: (payload?.preview?.summary ?? null)}
-												evidence={evidence.map(evidenceLabel)}
-											/>
-											{#if item.source_type === 'project_suggestion' && changes > 0}
-												<InboxChangeDetails
-													verifiedChangeSummary={payload?.verified_change_summary ??
-														null}
+														{#if calendar.suggested_description || calendar.suggested_context}
+															<p
+																class="line-clamp-3 break-words text-xs text-muted-foreground"
+															>
+																{calendar.suggested_description ??
+																	calendar.suggested_context}
+															</p>
+														{/if}
+														{#if taskPreview.length}
+															<div
+																class="rounded-md border border-border bg-muted/20 p-2"
+															>
+																<p
+																	class="micro-label text-muted-foreground"
+																>
+																	Suggested tasks
+																</p>
+																<div class="mt-1.5 space-y-1">
+																	{#each taskPreview.slice(0, 3) as task, index (`${task.title}-${task.start_date ?? index}`)}
+																		<div
+																			class="flex items-start justify-between gap-2 text-2xs"
+																		>
+																			<div class="min-w-0">
+																				<p
+																					class="truncate font-medium text-foreground"
+																				>
+																					{task.title}
+																				</p>
+																				{#if task.start_date || task.recurrence_pattern}
+																					<p
+																						class="mt-0.5 text-muted-foreground"
+																					>
+																						{formatShortDate(
+																							task.start_date
+																						) ??
+																							task.recurrence_pattern}
+																					</p>
+																				{/if}
+																			</div>
+																			{#if task.priority}
+																				<span
+																					class="shrink-0 rounded border border-border bg-card px-1.5 py-0.5 text-2xs text-muted-foreground"
+																				>
+																					{task.priority}
+																				</span>
+																			{/if}
+																		</div>
+																	{/each}
+																</div>
+																{#if taskPreview.length > 3}
+																	<p
+																		class="mt-1.5 text-2xs text-muted-foreground"
+																	>
+																		+{taskPreview.length - 3} more
+																	</p>
+																{/if}
+															</div>
+														{/if}
+													</div>
+												{/if}
+												<InboxReviewDetails
+													{metadata}
+													summary={changes > 0
+														? null
+														: (payload?.preview?.summary ?? null)}
+													evidence={evidence.map(evidenceLabel)}
 												/>
-											{:else if changes}
-												<p class="mt-1.5 text-2xs text-muted-foreground">
-													{changes} proposed change{changes === 1
-														? ''
-														: 's'}
-												</p>
-											{/if}
-											{#if changeSet && canDecide(item)}
-												<div class="mt-3">
-													<ChangeSetReview
-														runId={item.source_ref_id}
-														{changeSet}
-														acceptLabel="Approve"
-														dismissLabel="Dismiss"
-														approveAllLabel="Approve"
-														rejectAllLabel="Dismiss"
-														chatLabel="Discuss"
-														openingChat={isOpeningChat(item)}
-														snoozing={pendingIds.has(item.id)}
-														onApplied={() =>
-															handleAgentRunApplied(item)}
-														onSnooze={() => snooze(item)}
-														onChat={canChat(item)
-															? () => openChat(item)
-															: undefined}
+												{#if item.source_type === 'project_suggestion' && changes > 0}
+													<InboxChangeDetails
+														verifiedChangeSummary={payload?.verified_change_summary ??
+															null}
 													/>
-												</div>
-											{:else if failedChangeSet}
-												<div class="mt-3">
-													<ChangeSetFailureSummary
-														changeSet={failedChangeSet}
-														openingChat={isOpeningChat(item)}
-														onChat={canChat(item)
-															? () => openChat(item)
-															: undefined}
-													/>
-												</div>
+												{:else if changes}
+													<p
+														class="mt-1.5 text-2xs text-muted-foreground"
+													>
+														{changes} proposed change{changes === 1
+															? ''
+															: 's'}
+													</p>
+												{/if}
+												{#if changeSet && canDecide(item)}
+													<div class="mt-3">
+														<ChangeSetReview
+															runId={item.source_ref_id}
+															{changeSet}
+															acceptLabel="Approve"
+															dismissLabel="Dismiss"
+															approveAllLabel="Approve"
+															rejectAllLabel="Dismiss"
+															chatLabel="Discuss"
+															openingChat={isOpeningChat(item)}
+															snoozing={pendingIds.has(item.id)}
+															onApplied={() =>
+																handleAgentRunApplied(item)}
+															onSnooze={() => snooze(item)}
+															onChat={canChat(item)
+																? () => openChat(item)
+																: undefined}
+														/>
+													</div>
+												{:else if failedChangeSet}
+													<div class="mt-3">
+														<ChangeSetFailureSummary
+															changeSet={failedChangeSet}
+															openingChat={isOpeningChat(item)}
+															onChat={canChat(item)
+																? () => openChat(item)
+																: undefined}
+														/>
+													</div>
+												{/if}
 											{/if}
 										</div>
 
-										{#if item.source_type === 'integration_attention'}
+										{#if isManagerBriefItem(item)}
+											<InboxManagerBriefControls
+												pending={pendingIds.has(item.id)}
+												canApprove={canDecide(item) &&
+													managerBriefHasDirectRecommendation(item)}
+												canDismiss={item.source_type === 'project_review' &&
+													canDecide(item)}
+												canChat={canChat(item)}
+												openingChat={isOpeningChat(item)}
+												onApprove={() => decide(item, 'approve')}
+												onDismiss={() => decide(item, 'reject')}
+												onSnooze={() => snooze(item)}
+												onChat={() => openChat(item)}
+											/>
+										{:else if item.source_type === 'integration_attention'}
 											<div
 												class="flex w-full shrink-0 flex-col gap-2 sm:w-auto"
 											>

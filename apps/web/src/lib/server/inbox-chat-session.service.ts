@@ -21,7 +21,7 @@ type AnySupabase = any;
 
 type SupportedInboxSourceType = Extract<
 	InboxSourceType,
-	'agent_run' | 'project_suggestion' | 'project_audit' | 'calendar_suggestion'
+	'agent_run' | 'project_suggestion' | 'project_review' | 'project_audit' | 'calendar_suggestion'
 >;
 
 type SourceContext = {
@@ -61,6 +61,7 @@ export type InboxChatSessionResult = {
 const SOURCE_TABLE_BY_TYPE: Record<SupportedInboxSourceType, string> = {
 	agent_run: 'agent_runs',
 	project_suggestion: 'project_suggestions',
+	project_review: 'project_loop_runs',
 	project_audit: 'project_audits',
 	calendar_suggestion: 'calendar_project_suggestions'
 };
@@ -68,6 +69,7 @@ const SOURCE_TABLE_BY_TYPE: Record<SupportedInboxSourceType, string> = {
 const SOURCE_LABEL_BY_TYPE: Record<SupportedInboxSourceType, string> = {
 	agent_run: 'Agent proposal',
 	project_suggestion: 'Project review item',
+	project_review: 'Project manager brief',
 	project_audit: 'Project audit',
 	calendar_suggestion: 'Calendar project suggestion'
 };
@@ -257,6 +259,95 @@ function buildCalendarSuggestionContext(
 		llmText: llmLines.join('\n'),
 		displayTitle,
 		evidenceSummaries
+	};
+}
+
+function buildProjectReviewContext(
+	item: InboxIndexRow,
+	run: Record<string, unknown>,
+	projectName: string | null
+): SourceContext {
+	const brief = isRecord(run.brief) ? run.brief : null;
+	const decision = brief && isRecord(brief.decision) ? brief.decision : null;
+	const issues = brief ? normalizeArray(brief.issues).slice(0, 8) : [];
+	const evidence = new Map<string, string>();
+	const collectEvidence = (value: unknown) => {
+		for (const ref of normalizeArray(value)) {
+			const type = readString(ref.entity_type) ?? 'source';
+			const id = readString(ref.entity_id);
+			const title = readString(ref.title);
+			if (!title) continue;
+			evidence.set(`${type}:${id ?? title}`, `${type}: ${title}${id ? ` (${id})` : ''}`);
+		}
+	};
+	collectEvidence(decision?.evidence_refs);
+	for (const issue of issues) collectEvidence(issue.evidence_refs);
+
+	const bottomLine =
+		compactVisibleText(brief?.bottom_line, 420) ?? compactVisibleText(item.title, 420);
+	const recommendation =
+		compactVisibleText(decision?.recommendation, 700) ??
+		compactVisibleText(brief?.recommendation, 700) ??
+		compactVisibleText(item.summary, 700);
+	const question = compactVisibleText(decision?.question, 420);
+	const whyUser = compactVisibleText(decision?.why_user_needed, 520);
+	const visibleLines = [
+		`${projectName ?? 'Project'} — project manager brief`,
+		'',
+		bottomLine ? `Bottom line: ${bottomLine}` : null,
+		recommendation ? `Recommendation: ${recommendation}` : null,
+		question ? `Your decision: ${question}` : null,
+		whyUser ? `Why I need your input: ${whyUser}` : null
+	].filter((line): line is string => Boolean(line));
+	appendSection(visibleLines, 'Work involved', [...evidence.values()].slice(0, 8));
+	appendSection(
+		visibleLines,
+		'Other things I noticed',
+		issues.slice(1).map((issue) => {
+			const category = readString(issue.category)?.replaceAll('_', ' ') ?? 'project note';
+			return `${category}: ${readString(issue.headline) ?? readString(issue.summary) ?? 'Review item'}`;
+		})
+	);
+	visibleLines.push(
+		'',
+		'You can ask me to explain the recommendation, inspect the linked work, compare options, or carry out an approved project change.'
+	);
+
+	const llmLines = [
+		'You are discussing a BuildOS project manager brief with the user.',
+		'Lead with the bottom line and the manager recommendation. Do not expose internal detector keys.',
+		'Use project tools to inspect current entities when the user asks for more detail; do not invent evidence.',
+		'Only apply a project change when the user clearly authorizes it.',
+		'',
+		`Project: ${projectName ?? readString(run.project_id) ?? 'Project'}`,
+		bottomLine ? `Bottom line: ${bottomLine}` : null,
+		recommendation ? `Recommendation: ${recommendation}` : null,
+		question ? `Decision question: ${question}` : null,
+		whyUser ? `Why user judgment is needed: ${whyUser}` : null,
+		`Candidate ids: ${Array.isArray(brief?.candidate_ids) ? brief.candidate_ids.join(', ') : '(none)'}`
+	].filter((line): line is string => Boolean(line));
+	appendSection(llmLines, 'Evidence entities', [...evidence.values()]);
+	appendSection(
+		llmLines,
+		'Secondary issues',
+		issues.map((issue) =>
+			[
+				readString(issue.category),
+				readString(issue.severity),
+				readString(issue.headline),
+				readString(issue.summary),
+				readString(issue.recommendation)
+			]
+				.filter(Boolean)
+				.join(' — ')
+		)
+	);
+
+	return {
+		humanText: visibleLines.join('\n'),
+		llmText: llmLines.join('\n'),
+		displayTitle: bottomLine ?? 'Project decision',
+		evidenceSummaries: [...evidence.values()]
 	};
 }
 
@@ -704,18 +795,20 @@ export async function createInboxChatSession(params: {
 	});
 
 	const context =
-		params.item.source_type === 'project_suggestion'
-			? await buildProjectSuggestionContext({
-					supabase: params.supabase,
-					item: params.item,
-					suggestion: sourcePayload,
-					projectName
-				})
-			: buildCalendarSuggestionContext(
-					params.item,
-					sourcePayload,
-					await loadCalendarEvidenceEvents(params.supabase, sourcePayload)
-				);
+		params.item.source_type === 'project_review'
+			? buildProjectReviewContext(params.item, sourcePayload, projectName)
+			: params.item.source_type === 'project_suggestion'
+				? await buildProjectSuggestionContext({
+						supabase: params.supabase,
+						item: params.item,
+						suggestion: sourcePayload,
+						projectName
+					})
+				: buildCalendarSuggestionContext(
+						params.item,
+						sourcePayload,
+						await loadCalendarEvidenceEvents(params.supabase, sourcePayload)
+					);
 	const sessionMetadata = buildInboxSessionMetadata({
 		item: params.item,
 		scope,
@@ -841,6 +934,21 @@ export async function createInboxChatSession(params: {
 				inboxItemId: params.item.id ?? null,
 				sessionId,
 				error: updateError ?? 'No project_suggestions row returned'
+			});
+		}
+	}
+	if (params.item.source_type === 'project_review') {
+		const { error: updateError } = await params.supabase
+			.from('project_loop_runs')
+			.update({ chat_session_id: sessionId, updated_at: now })
+			.eq('id', params.item.source_ref_id)
+			.eq('project_id', scope.projectId);
+		if (updateError) {
+			console.warn('Failed to persist project manager brief chat session link', {
+				runId: params.item.source_ref_id,
+				inboxItemId: params.item.id ?? null,
+				sessionId,
+				error: updateError
 			});
 		}
 	}

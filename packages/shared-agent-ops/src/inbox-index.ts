@@ -16,6 +16,7 @@ import {
 export type InboxSourceType =
 	| 'agent_run'
 	| 'project_suggestion'
+	| 'project_review'
 	| 'project_audit'
 	| 'calendar_suggestion'
 	| 'profile_fragment'
@@ -65,6 +66,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const INBOX_REVIEW_EXPIRY_MS_BY_SOURCE: Record<InboxSourceType, number> = {
 	agent_run: 14 * DAY_MS,
 	project_suggestion: 7 * DAY_MS,
+	project_review: 14 * DAY_MS,
 	project_audit: 14 * DAY_MS,
 	calendar_suggestion: 7 * DAY_MS,
 	profile_fragment: 30 * DAY_MS,
@@ -203,6 +205,15 @@ function terminalDecidedAt(row: Record<string, unknown>): string | null {
 
 function projectAuditDecidedAt(row: Record<string, unknown>): string | null {
 	return asString(row.reviewed_at) ?? asString(row.archived_at) ?? terminalDecidedAt(row);
+}
+
+function projectReviewBrief(run: Record<string, unknown>): Record<string, unknown> | null {
+	const brief = asRecord(run.brief);
+	return brief?.version === 2 ? brief : null;
+}
+
+function projectReviewAttentionLevel(brief: Record<string, unknown> | null): string | null {
+	return asString(brief?.attention_level);
 }
 
 function parseTimestamp(value: string | null | undefined): number | null {
@@ -412,6 +423,38 @@ async function markProjectAuditInboxNoActionRequired(
 	return (data ?? null) as InboxIndexRow | null;
 }
 
+async function markProjectReviewInboxNoActionRequired(
+	supabase: AnySupabase,
+	runId: string,
+	params: { sourceStatus?: string; reason?: string } = {}
+): Promise<InboxIndexRow | null> {
+	const { data, error } = await (supabase as any)
+		.from('inbox_items')
+		.update({
+			status: 'expired',
+			source_status: params.sourceStatus ?? 'no_attention_required',
+			decided_at: new Date().toISOString(),
+			blocked_reason:
+				params.reason ??
+				'Project Review completed without anything that needs your attention',
+			snoozed_until: null,
+			expires_at: null
+		})
+		.eq('source_type', 'project_review')
+		.eq('source_ref_id', runId)
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred'])
+		.select('*')
+		.maybeSingle();
+	if (error) {
+		console.warn('[AI Inbox] Failed to expire no-attention project review item', {
+			runId,
+			error: error.message
+		});
+		return null;
+	}
+	return (data ?? null) as InboxIndexRow | null;
+}
+
 export function mapAgentRunToInboxItem(run: Record<string, unknown>): InboxIndexRow | null {
 	const runId = asString(run.id);
 	const userId = asString(run.user_id);
@@ -593,7 +636,7 @@ export function mapProjectAuditToInboxItem(audit: Record<string, unknown>): Inbo
 	const projectId = asString(audit.project_id);
 	if (!id || !projectId) return null;
 	const status = asString(audit.status) ?? 'queued';
-	if (status === 'queued' || status === 'running' || status === 'ready') return null;
+	if (status === 'queued' || status === 'running') return null;
 	const recommendations = readAuditInboxRecommendations(audit);
 	// Audit reports remain useful project history, but the inbox is reserved for
 	// concrete asks. Queued/running audits and clean audits must not create noise.
@@ -628,6 +671,57 @@ export function mapProjectAuditToInboxItem(audit: Record<string, unknown>): Inbo
 		decided_at: inboxStatus === 'pending' ? null : projectAuditDecidedAt(audit),
 		expires_at: reviewExpiresAt('project_audit', asString(audit.created_at), inboxStatus),
 		created_at: asString(audit.created_at) ?? undefined
+	};
+}
+
+/**
+ * The post-generator manager brief is the light Project Review admission unit.
+ * `none` and `minor` are successful review outcomes, but they do not interrupt
+ * the user in AI Inbox.
+ */
+export function mapProjectReviewToInboxItem(run: Record<string, unknown>): InboxIndexRow | null {
+	const id = asString(run.id);
+	const projectId = asString(run.project_id);
+	const userId = asString(run.user_id);
+	if (!id || !projectId) return null;
+
+	const status = asString(run.status) ?? 'queued';
+	if (status === 'queued' || status === 'running') return null;
+	const brief = projectReviewBrief(run);
+	if (!brief) return null;
+	const attentionLevel = projectReviewAttentionLevel(brief);
+	if (attentionLevel === 'none' || attentionLevel === 'minor') return null;
+	if (attentionLevel !== 'decision' && attentionLevel !== 'urgent') return null;
+
+	const inboxStatus: InboxItemStatus =
+		status === 'waiting_review' ? 'pending' : status === 'failed' ? 'blocked' : 'decided';
+	const decision = asRecord(brief.decision);
+	const hasDirectRecommendation = Boolean(asString(decision?.recommended_suggestion_id));
+
+	return {
+		source_type: 'project_review',
+		source_ref_id: id,
+		source_status: status,
+		user_id: userId,
+		project_id: projectId,
+		audience: 'project_members',
+		status: inboxStatus,
+		title:
+			compactText(brief.bottom_line, 180) ??
+			(attentionLevel === 'urgent' ? 'Urgent project decision' : 'Project decision needed'),
+		summary: compactText(brief.recommendation, 420),
+		risk_tier: attentionLevel === 'urgent' ? 3 : 2,
+		action_kinds: [
+			...(hasDirectRecommendation ? ['approve'] : []),
+			'discuss',
+			'snooze',
+			'dismiss'
+		],
+		blocked_reason: status === 'failed' ? asString(run.error_message) : null,
+		decided_at:
+			inboxStatus === 'pending' || inboxStatus === 'blocked' ? null : terminalDecidedAt(run),
+		expires_at: reviewExpiresAt('project_review', asString(run.created_at), inboxStatus),
+		created_at: asString(run.created_at) ?? undefined
 	};
 }
 
@@ -724,6 +818,63 @@ export async function syncInboxItemForAgentRun(params: {
 	return row ? upsertInboxItem(params.supabase, row) : null;
 }
 
+async function projectHasActiveManagerBrief(
+	supabase: AnySupabase,
+	projectId: string
+): Promise<boolean> {
+	const { data, error } = await (supabase as any)
+		.from('inbox_items')
+		.select('id')
+		.eq('source_type', 'project_review')
+		.eq('project_id', projectId)
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred']);
+	if (error) throw error;
+	return Array.isArray(data) && data.length > 0;
+}
+
+export async function syncInboxItemForProjectReview(params: {
+	supabase: AnySupabase;
+	run?: Record<string, unknown> | null;
+	runId?: string;
+}): Promise<InboxIndexRow | null> {
+	let run = params.run ?? null;
+	if (!run && params.runId) {
+		const { data, error } = await (params.supabase as any)
+			.from('project_loop_runs')
+			.select('*')
+			.eq('id', params.runId)
+			.maybeSingle();
+		if (error) throw error;
+		run = data;
+	}
+	if (!run) {
+		return params.runId
+			? markInboxItemExpired(params.supabase, 'project_review', params.runId)
+			: null;
+	}
+
+	const row = mapProjectReviewToInboxItem(run);
+	if (row) return upsertInboxItem(params.supabase, row);
+	const runId = asString(run.id) ?? params.runId;
+	const runStatus = asString(run.status);
+	if (!runId || !runStatus || runStatus === 'queued' || runStatus === 'running') return null;
+	const attentionLevel = projectReviewAttentionLevel(projectReviewBrief(run));
+	return markProjectReviewInboxNoActionRequired(params.supabase, runId, {
+		sourceStatus:
+			runStatus === 'failed'
+				? 'failed'
+				: attentionLevel === 'minor'
+					? 'minor_not_admitted'
+					: 'no_attention_required',
+		reason:
+			runStatus === 'failed'
+				? 'Project Review failed before producing a manager brief'
+				: attentionLevel === 'minor'
+					? 'Project Review found only minor issues, which do not interrupt the AI Inbox'
+					: 'Project Review completed without anything that needs your attention'
+	});
+}
+
 export async function syncInboxItemForProjectSuggestion(params: {
 	supabase: AnySupabase;
 	suggestion?: Record<string, unknown> | null;
@@ -746,6 +897,9 @@ export async function syncInboxItemForProjectSuggestion(params: {
 	}
 	const suggestionId = asString(suggestion.id) ?? params.suggestionId;
 	const kind = asString(suggestion.kind);
+	const existingSourceStatus = suggestionId
+		? await loadProjectSuggestionInboxSourceStatus(params.supabase, suggestionId)
+		: null;
 	if (kind === 'drift') {
 		return suggestionId
 			? expireProjectSuggestionInboxItem({
@@ -753,6 +907,31 @@ export async function syncInboxItemForProjectSuggestion(params: {
 					suggestionId,
 					sourceStatus: 'observation_not_admitted',
 					reason: 'Drift observations remain in Project Review history but are not attention items'
+				})
+			: null;
+	}
+	if (existingSourceStatus === 'grouped_into_project_review') {
+		return suggestionId
+			? expireProjectSuggestionInboxItem({
+					supabase: params.supabase,
+					suggestionId,
+					sourceStatus: 'grouped_into_project_review',
+					reason: 'Grouped into the project manager brief'
+				})
+			: null;
+	}
+	const projectId = asString(suggestion.project_id);
+	if (
+		projectId &&
+		['pending', 'approved', 'delegated'].includes(asString(suggestion.status) ?? 'pending') &&
+		(await projectHasActiveManagerBrief(params.supabase, projectId))
+	) {
+		return suggestionId
+			? expireProjectSuggestionInboxItem({
+					supabase: params.supabase,
+					suggestionId,
+					sourceStatus: 'grouped_into_project_review',
+					reason: 'Grouped into the project manager brief'
 				})
 			: null;
 	}
@@ -764,9 +943,6 @@ export async function syncInboxItemForProjectSuggestion(params: {
 		: [];
 	const status = asString(suggestion.status) ?? 'pending';
 	if (operations.length > 0 && ['pending', 'approved', 'delegated'].includes(status)) {
-		const existingSourceStatus = suggestionId
-			? await loadProjectSuggestionInboxSourceStatus(params.supabase, suggestionId)
-			: null;
 		const expectedStructuralFingerprint =
 			readProjectSuggestionStructuralFingerprint(existingSourceStatus);
 		const verification = await verifyProjectSuggestionIntegrity(params.supabase, {
@@ -877,6 +1053,28 @@ export async function expireInboxItemsForProjectAuditChildSuggestions(params: {
 		})
 		.eq('source_type', 'project_suggestion')
 		.in('source_ref_id', suggestionIds)
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred'])
+		.select('id');
+	if (error) throw error;
+	return (data ?? []).length;
+}
+
+export async function expireProjectSuggestionInboxItemsForManagerBrief(params: {
+	supabase: AnySupabase;
+	projectId: string;
+	reason?: string;
+}): Promise<number> {
+	const { data, error } = await (params.supabase as any)
+		.from('inbox_items')
+		.update({
+			status: 'expired',
+			source_status: 'grouped_into_project_review',
+			decided_at: new Date().toISOString(),
+			blocked_reason: params.reason ?? 'Grouped into the project manager brief',
+			snoozed_until: null
+		})
+		.eq('source_type', 'project_suggestion')
+		.eq('project_id', params.projectId)
 		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred'])
 		.select('id');
 	if (error) throw error;
@@ -1018,6 +1216,11 @@ export async function syncInboxItemForSource(params: {
 			return syncInboxItemForProjectSuggestion({
 				supabase: params.supabase,
 				suggestionId: params.sourceRefId
+			});
+		case 'project_review':
+			return syncInboxItemForProjectReview({
+				supabase: params.supabase,
+				runId: params.sourceRefId
 			});
 		case 'project_audit':
 			return syncInboxItemForProjectAudit({

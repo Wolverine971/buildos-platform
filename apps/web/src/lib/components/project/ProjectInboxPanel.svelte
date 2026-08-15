@@ -10,7 +10,9 @@
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
 	import InboxFindingControls from '$lib/components/inbox/InboxFindingControls.svelte';
+	import InboxManagerBriefControls from '$lib/components/inbox/InboxManagerBriefControls.svelte';
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
+	import InboxProjectManagerBrief from '$lib/components/inbox/InboxProjectManagerBrief.svelte';
 	import InboxReviewDetails from '$lib/components/inbox/InboxReviewDetails.svelte';
 	import { formatInboxAttentionSummary } from '$lib/components/inbox/inbox-presentation';
 	import type { VerifiedProjectSuggestionChangeSummary } from '@buildos/shared-agent-ops/proposal-context';
@@ -35,6 +37,7 @@
 	type InboxSourceType =
 		| 'agent_run'
 		| 'project_suggestion'
+		| 'project_review'
 		| 'project_audit'
 		| 'calendar_suggestion';
 	type InboxItemStatus = 'pending' | 'deciding' | 'decided' | 'blocked' | 'expired' | 'snoozed';
@@ -212,6 +215,10 @@
 		for (const item of items) {
 			const payload = projectSuggestion(item);
 			const audit = projectAuditContext(item);
+			if (item.source_type === 'project_review') {
+				decision.items.push(item);
+				continue;
+			}
 			if (item.source_type === 'project_audit') {
 				audits.items.push(item);
 				continue;
@@ -238,6 +245,23 @@
 		}
 		return [...auditGroups.values(), ...groups.filter((group) => group.items.length > 0)];
 	});
+	const latestRunHasInboxBrief = $derived(
+		Boolean(
+			latestRun &&
+				items.some(
+					(item) =>
+						item.source_type === 'project_review' &&
+						item.source_ref_id === latestRun?.id
+				)
+		)
+	);
+	const hasActiveAuditPacket = $derived(
+		items.some(
+			(item) =>
+				item.source_type === 'project_audit' &&
+				['pending', 'deciding', 'snoozed', 'blocked', 'deferred'].includes(item.status)
+		)
+	);
 
 	const selectedBatchIds = $derived.by(() =>
 		items
@@ -273,6 +297,14 @@
 
 	function projectSuggestion(item: InboxItem): ProjectSuggestionInboxPayload | null {
 		return sourcePayload<ProjectSuggestionInboxPayload & Record<string, unknown>>(item);
+	}
+
+	function projectReviewPayload(item: InboxItem): Record<string, unknown> | null {
+		return item.source_type === 'project_review' ? sourcePayload(item) : null;
+	}
+
+	function projectAuditPayload(item: InboxItem): Record<string, unknown> | null {
+		return item.source_type === 'project_audit' ? sourcePayload(item) : null;
 	}
 
 	function agentRun(item: InboxItem): AgentRunPayload | null {
@@ -344,9 +376,24 @@
 
 	function sourceLabel(item: InboxItem): string {
 		if (item.source_type === 'agent_run') return 'Agent proposal';
+		if (item.source_type === 'project_review') return 'Project manager brief';
 		if (item.source_type === 'project_audit') return 'Project audit';
 		if (item.source_type === 'calendar_suggestion') return 'Calendar suggestion';
 		return 'Project review';
+	}
+
+	function isManagerBriefItem(item: InboxItem): boolean {
+		return item.source_type === 'project_review' || item.source_type === 'project_audit';
+	}
+
+	function managerBriefHasDirectRecommendation(item: InboxItem): boolean {
+		const run = projectReviewPayload(item);
+		const brief = asRecord(run?.brief);
+		const decision = asRecord(brief?.decision);
+		return Boolean(
+			typeof decision?.recommended_suggestion_id === 'string' &&
+				decision.recommended_suggestion_id.trim()
+		);
 	}
 
 	function riskDetail(value: number | null | undefined): string | null {
@@ -964,7 +1011,11 @@
 		</div>
 	</div>
 
-	{#if latestRun?.brief}
+	{#if latestRun?.brief?.version === 2 && !latestRunHasInboxBrief && !hasActiveAuditPacket}
+		<div class="border-t border-border bg-muted/20 px-3 py-3">
+			<InboxProjectManagerBrief brief={latestRun.brief} {projectId} />
+		</div>
+	{:else if latestRun?.brief}
 		<div class="border-t border-border bg-muted/20 px-3 py-3">
 			<p class="micro-label font-semibold text-muted-foreground">Project brief</p>
 			{#if latestRun.brief.current_goal}
@@ -1084,96 +1135,120 @@
 							class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 						>
 							<div class="min-w-0 flex-1">
-								<InboxProjectBadge {project} variant="compact" />
-								<div class="flex flex-wrap items-center gap-2">
-									{#if canBatchApprove(item)}
-										<label
-											class="-my-2 -ml-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background"
-										>
-											<input
-												type="checkbox"
-												class="h-5 w-5 rounded-md border-border"
-												checked={selectedIds.has(item.id)}
-												onchange={(event) =>
-													updateSelected(
-														item,
-														(event.currentTarget as HTMLInputElement)
-															.checked
-													)}
-											/>
-											<span class="sr-only"
-												>Select {item.title || 'review item'}</span
-											>
-										</label>
-									{/if}
-									<p
-										class="min-w-0 flex-1 break-words text-sm font-semibold text-foreground"
-									>
-										{item.title ||
-											payload?.title ||
-											agent?.label ||
-											'Review item'}
-									</p>
-								</div>
-								{#if payload?.why_now}
-									<p class="mt-1 break-words text-xs text-foreground/80">
-										<span class="font-semibold">Why now:</span>
-										{payload.why_now}
-									</p>
-								{:else if item.summary || payload?.rationale || agent?.goal}
-									<p class="mt-1 break-words text-xs text-muted-foreground">
-										{item.summary ?? payload?.rationale ?? agent?.goal}
-									</p>
-								{/if}
-								<InboxReviewDetails
-									{metadata}
-									summary={changes > 0
-										? null
-										: (payload?.preview?.summary ?? null)}
-									evidence={evidence.map(evidenceLabel)}
-								/>
-								{#if item.source_type === 'project_suggestion' && changes > 0}
-									<InboxChangeDetails
-										verifiedChangeSummary={payload?.verified_change_summary ??
-											null}
+								{#if isManagerBriefItem(item)}
+									<InboxProjectManagerBrief
+										brief={asRecord(projectReviewPayload(item)?.brief)}
+										audit={projectAuditPayload(item)}
+										{projectId}
 									/>
-								{:else if changes}
-									<p class="mt-1.5 text-2xs text-muted-foreground">
-										{changes} proposed change{changes === 1 ? '' : 's'}
-									</p>
-								{/if}
-								{#if changeSet && canDecide(item)}
-									<div class="mt-3">
-										<ChangeSetReview
-											runId={item.source_ref_id}
-											{changeSet}
-											acceptLabel="Approve"
-											dismissLabel="Dismiss"
-											approveAllLabel="Approve"
-											rejectAllLabel="Dismiss"
-											chatLabel="Discuss"
-											openingChat={isOpeningChat(item)}
-											snoozing={pendingIds.has(item.id)}
-											onApplied={() => handleAgentRunApplied(item)}
-											onSnooze={() => snooze(item)}
-											onChat={canChat(item)
-												? () => openChat(item)
-												: undefined}
-										/>
+								{:else}
+									<InboxProjectBadge {project} variant="compact" />
+									<div class="flex flex-wrap items-center gap-2">
+										{#if canBatchApprove(item)}
+											<label
+												class="-my-2 -ml-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background"
+											>
+												<input
+													type="checkbox"
+													class="h-5 w-5 rounded-md border-border"
+													checked={selectedIds.has(item.id)}
+													onchange={(event) =>
+														updateSelected(
+															item,
+															(
+																event.currentTarget as HTMLInputElement
+															).checked
+														)}
+												/>
+												<span class="sr-only"
+													>Select {item.title || 'review item'}</span
+												>
+											</label>
+										{/if}
+										<p
+											class="min-w-0 flex-1 break-words text-sm font-semibold text-foreground"
+										>
+											{item.title ||
+												payload?.title ||
+												agent?.label ||
+												'Review item'}
+										</p>
 									</div>
-								{:else if failedChangeSet}
-									<div class="mt-3">
-										<ChangeSetFailureSummary
-											changeSet={failedChangeSet}
-											openingChat={isOpeningChat(item)}
-											onChat={canChat(item)
-												? () => openChat(item)
-												: undefined}
+									{#if payload?.why_now}
+										<p class="mt-1 break-words text-xs text-foreground/80">
+											<span class="font-semibold">Why now:</span>
+											{payload.why_now}
+										</p>
+									{:else if item.summary || payload?.rationale || agent?.goal}
+										<p class="mt-1 break-words text-xs text-muted-foreground">
+											{item.summary ?? payload?.rationale ?? agent?.goal}
+										</p>
+									{/if}
+									<InboxReviewDetails
+										{metadata}
+										summary={changes > 0
+											? null
+											: (payload?.preview?.summary ?? null)}
+										evidence={evidence.map(evidenceLabel)}
+									/>
+									{#if item.source_type === 'project_suggestion' && changes > 0}
+										<InboxChangeDetails
+											verifiedChangeSummary={payload?.verified_change_summary ??
+												null}
 										/>
-									</div>
+									{:else if changes}
+										<p class="mt-1.5 text-2xs text-muted-foreground">
+											{changes} proposed change{changes === 1 ? '' : 's'}
+										</p>
+									{/if}
+									{#if changeSet && canDecide(item)}
+										<div class="mt-3">
+											<ChangeSetReview
+												runId={item.source_ref_id}
+												{changeSet}
+												acceptLabel="Approve"
+												dismissLabel="Dismiss"
+												approveAllLabel="Approve"
+												rejectAllLabel="Dismiss"
+												chatLabel="Discuss"
+												openingChat={isOpeningChat(item)}
+												snoozing={pendingIds.has(item.id)}
+												onApplied={() => handleAgentRunApplied(item)}
+												onSnooze={() => snooze(item)}
+												onChat={canChat(item)
+													? () => openChat(item)
+													: undefined}
+											/>
+										</div>
+									{:else if failedChangeSet}
+										<div class="mt-3">
+											<ChangeSetFailureSummary
+												changeSet={failedChangeSet}
+												openingChat={isOpeningChat(item)}
+												onChat={canChat(item)
+													? () => openChat(item)
+													: undefined}
+											/>
+										</div>
+									{/if}
 								{/if}
 							</div>
-							{#if canDecide(item) && !changeSet}
+							{#if isManagerBriefItem(item)}
+								<InboxManagerBriefControls
+									pending={pendingIds.has(item.id)}
+									canApprove={canDecide(item) &&
+										managerBriefHasDirectRecommendation(item)}
+									canDismiss={item.source_type === 'project_review' &&
+										canDecide(item)}
+									canChat={canChat(item)}
+									openingChat={isOpeningChat(item)}
+									layout="project"
+									onApprove={() => decide(item, 'approve')}
+									onDismiss={() => decide(item, 'reject')}
+									onSnooze={() => snooze(item)}
+									onChat={() => openChat(item)}
+								/>
+							{:else if canDecide(item) && !changeSet}
 								{#if isFinding(item)}
 									<InboxFindingControls
 										idPrefix={`project-inbox-${item.id}`}

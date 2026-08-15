@@ -85,7 +85,73 @@ export interface ProjectSuggestionPreview {
 	impact?: string;
 }
 
+export type ProjectReviewAttentionLevel = 'none' | 'minor' | 'decision' | 'urgent';
+
+export type ProjectReviewIssueCategory =
+	| 'project_drift'
+	| 'document_drift'
+	| 'document_quality'
+	| 'task_drift'
+	| 'task_conflict'
+	| 'risk'
+	| 'other';
+
+export type ProjectReviewIssueSeverity = 'minor' | 'important' | 'critical';
+
+export interface ProjectReviewBriefClaim {
+	summary: string;
+	candidate_ids: string[];
+	evidence_refs: ProjectSuggestionEvidenceRef[];
+}
+
+export interface ProjectReviewBriefIssue extends ProjectReviewBriefClaim {
+	category: ProjectReviewIssueCategory;
+	severity: ProjectReviewIssueSeverity;
+	headline: string;
+	recommendation: string | null;
+}
+
+export interface ProjectReviewDecisionOption {
+	id: string;
+	label: string;
+	description: string | null;
+}
+
+export interface ProjectReviewBriefDecision {
+	question: string;
+	recommendation: string;
+	why_user_needed: string;
+	options: ProjectReviewDecisionOption[];
+	recommended_option_id: string | null;
+	/** Existing verified suggestion that the primary action may execute directly. */
+	recommended_suggestion_id: string | null;
+	candidate_ids: string[];
+	evidence_refs: ProjectSuggestionEvidenceRef[];
+}
+
+export interface ProjectReviewBriefCluster {
+	label: string;
+	member_candidate_ids: string[];
+}
+
 export interface ProjectLoopBrief {
+	/** v2 is the post-generator, evidence-bound project-manager synthesis. */
+	version?: 1 | 2;
+	attention_level?: ProjectReviewAttentionLevel;
+	state_summary?: string | null;
+	bottom_line?: string | null;
+	recommendation?: string | null;
+	decision?: ProjectReviewBriefDecision | null;
+	what_changed?: ProjectReviewBriefClaim[];
+	what_matters_now?: ProjectReviewBriefClaim[];
+	tensions_or_contradictions?: ProjectReviewBriefClaim[];
+	issues?: ProjectReviewBriefIssue[];
+	decision_item_ids?: string[];
+	safe_cleanup_item_ids?: string[];
+	cluster_members?: ProjectReviewBriefCluster[];
+	candidate_ids?: string[];
+	no_attention_reason?: string | null;
+	/** Legacy v1 fields remain readable for historical project-loop rows. */
 	current_goal: string | null;
 	recent_changes: string[];
 	open_decisions: string[];

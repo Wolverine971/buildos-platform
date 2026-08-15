@@ -73,6 +73,7 @@ import { projectWorkerFrozenHistorySnapshot } from './session-service';
 import { loadFastChatPromptContext } from './context-loader';
 import { loadValidatedChatAttachments } from './stream-attachments';
 import { buildPendingTurnIntentSystemMessage } from './turn-intent';
+import { buildPendingTurnContractSystemMessage } from './turn-contract';
 import { resolveFastChatTurnPreparation } from './turn-preparation';
 import type { FastChatHistoryMessage } from './types';
 import type { LegacyFallbackHistorySnapshot } from './turn-admission';
@@ -441,17 +442,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			rawHistoryCount: historyComposition.rawHistoryCount,
 			historyForModelCount: historyComposition.historyForModel.length
 		};
-		const pendingIntentMessage = buildPendingTurnIntentSystemMessage(
-			turnPreparation.turnIntent
-		);
-		if (pendingIntentMessage) {
-			modelHistory.push({
-				role: 'system',
-				content: pendingIntentMessage,
-				sourceMessageId: null
-			});
-		}
-
 		const trustedPromptContext = await resolveTrustedPromptContext({
 			userClient: input.userClient,
 			userId: input.userId,
@@ -496,6 +486,28 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 				turnPreparation.tools
 			)
 		};
+	}
+
+	// Pending commissions are current session state, not prepared-prompt state.
+	// Append them after either history path so a cached/prepared turn cannot
+	// silently lose an unfinished semantic contract during worker adoption.
+	const pendingIntentMessage = buildPendingTurnIntentSystemMessage(turnPreparation.turnIntent);
+	if (pendingIntentMessage) {
+		modelHistory.push({
+			role: 'system',
+			content: pendingIntentMessage,
+			sourceMessageId: null
+		});
+	}
+	const pendingContractMessage = buildPendingTurnContractSystemMessage(
+		turnPreparation.pendingTurnContract
+	);
+	if (pendingContractMessage) {
+		modelHistory.push({
+			role: 'system',
+			content: pendingContractMessage,
+			sourceMessageId: null
+		});
 	}
 
 	// A newly created inline session must stay history/lineage free even when a

@@ -31,6 +31,55 @@ const DEFAULT_END_OF_DAY_MAX_PROJECTS_PER_USER = 10;
 const STALE_RUNNING_RUN_MS = 60 * 60 * 1000; // 1 hour
 const STALE_QUEUED_RUN_MS = 6 * 60 * 60 * 1000; // 6 hours
 
+function isVersionTwoBrief(value: unknown): boolean {
+	return Boolean(
+		value &&
+			typeof value === 'object' &&
+			!Array.isArray(value) &&
+			(value as Record<string, unknown>).version === 2
+	);
+}
+
+/**
+ * An unresolved v2 brief already contains the project's current managerial
+ * ask. Automated reviews should replace it only when activity recorded after
+ * that brief gives the synthesis something new to say. Manual reviews bypass
+ * this gate because the user explicitly requested a fresh pass.
+ */
+async function unresolvedBriefHasNoNewEvidence(projectId: string): Promise<boolean> {
+	const { data: briefRun, error: briefError } = await supabase
+		.from('project_loop_runs')
+		.select('id, brief, created_at, finished_at')
+		.eq('project_id', projectId)
+		.eq('status', 'waiting_review')
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	if (briefError) {
+		console.warn(
+			`[ProjectLoops] Failed to inspect the unresolved manager brief for ${projectId}: ${briefError.message}`
+		);
+		return false;
+	}
+	if (!briefRun?.id || !isVersionTwoBrief(briefRun.brief)) return false;
+
+	const producedAt = briefRun.finished_at ?? briefRun.created_at;
+	if (!producedAt) return false;
+	const { data: newerSignals, error: signalError } = await supabase
+		.from('project_review_signals')
+		.select('id')
+		.eq('project_id', projectId)
+		.gt('last_seen_at', producedAt)
+		.limit(1);
+	if (signalError) {
+		console.warn(
+			`[ProjectLoops] Failed to inspect new review evidence for ${projectId}: ${signalError.message}`
+		);
+		return false;
+	}
+	return !newerSignals?.length;
+}
+
 async function resolveQueueJobDetails(
 	queueRecordId: string
 ): Promise<{ queueJobId: string; metadata: unknown }> {
@@ -154,6 +203,10 @@ export async function enqueueProjectLoop(params: {
 	}
 
 	if (params.triggerReason !== 'manual') {
+		if (await unresolvedBriefHasNoNewEvidence(params.projectId)) {
+			return { queued: false, reason: 'unresolved_brief_unchanged' };
+		}
+
 		const { data: lastRun } = await supabase
 			.from('project_loop_runs')
 			.select('finished_at')

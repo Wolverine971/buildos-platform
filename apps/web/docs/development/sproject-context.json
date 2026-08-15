@@ -212,20 +212,6 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"AgentChatModal",
-				"ProjectEventsModal",
-				"RecentProjectChatsModal",
-				"ProjectModalsHost",
-				"ProjectAuditTracker",
-				"TaskKanbanBoard",
-				"MobileTaskBoard",
-				"ProjectDocumentsSection"
-			]
-		},
-		{
 			"file": "src/routes/projects/create/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal"]
@@ -248,6 +234,15 @@
 			]
 		},
 		{
+			"file": "src/routes/projects-v2/[id]/ProjectWorkspaceOptionsMenu.svelte",
+			"type": "component",
+			"components": [
+				"ProjectCalendarSettingsModal",
+				"OntologyProjectEditModal",
+				"ProjectCollaborationModal"
+			]
+		},
+		{
 			"file": "src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte",
 			"type": "component",
 			"components": [
@@ -259,6 +254,20 @@
 				"DocumentModal",
 				"ProjectGraphSection",
 				"AgentChatModal"
+			]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"AgentChatModal",
+				"ProjectEventsModal",
+				"RecentProjectChatsModal",
+				"ProjectModalsHost",
+				"ProjectAuditTracker",
+				"TaskKanbanBoard",
+				"MobileTaskBoard",
+				"ProjectDocumentsSection"
 			]
 		},
 		{
@@ -1135,19 +1144,6 @@
 			"exports": ["getNotificationPreview", "notificationPreviewAriaLabel"]
 		},
 		{
-			"file": "src/lib/components/projects/project-list.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_LIST_SCOPE_OPTIONS",
-				"normalizeProjectListScope",
-				"getProjectListScopeLabel",
-				"matchesProjectListScope",
-				"formatProjectUpdatedLabel",
-				"formatProjectUpdatedTitle"
-			]
-		},
-		{
 			"file": "src/lib/components/project/project-entity-modal-loader.ts",
 			"type": "component",
 			"components": [
@@ -1220,6 +1216,20 @@
 				"flushPendingImageUploadOpen",
 				"buildProjectEntityOpenHref",
 				"resolveEntityOpenAction"
+			]
+		},
+		{
+			"file": "src/lib/components/projects/project-list.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_LIST_SCOPE_OPTIONS",
+				"normalizeProjectListScope",
+				"getProjectListScopeLabel",
+				"matchesProjectListScope",
+				"addProjectCollaborationFlags",
+				"formatProjectUpdatedLabel",
+				"formatProjectUpdatedTitle"
 			]
 		},
 		{
@@ -1448,12 +1458,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["prepareAgentRunChatEventDetail"]
-		},
-		{
 			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 			"type": "component",
 			"components": [],
@@ -1463,6 +1467,12 @@
 				"getCommander",
 				"formatTimelineYearRange"
 			]
+		},
+		{
+			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["prepareAgentRunChatEventDetail"]
 		},
 		{
 			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
@@ -1560,10 +1570,6 @@
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/EventEditModal.svelte"
 		],
-		"src/routes/projects/[id]/+page.svelte": [
-			"src/lib/components/project/ProjectModalsHost.svelte",
-			"src/lib/components/project/ProjectAuditTracker.svelte"
-		],
 		"src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte": [
 			"src/lib/components/ontology/PlanEditModal.svelte",
 			"src/lib/components/ontology/GoalEditModal.svelte",
@@ -1572,9 +1578,17 @@
 			"src/lib/components/ontology/EventEditModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
 		],
+		"src/routes/projects-v2/[id]/ProjectWorkspaceOptionsMenu.svelte": [
+			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
+			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
+		],
 		"src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/DocumentModal.svelte"
+		],
+		"src/routes/projects/[id]/+page.svelte": [
+			"src/lib/components/project/ProjectModalsHost.svelte",
+			"src/lib/components/project/ProjectAuditTracker.svelte"
 		],
 		"src/lib/components/project/v2/EntityTabStrip.svelte": [
 			"src/lib/components/project/ProjectInboxPanel.svelte"
@@ -1611,6 +1625,7 @@
 		"src/lib/components/ontology/DocumentInteractDock.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
 		"src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte",
+		"src/routes/projects-v2/[id]/ProjectWorkspaceOptionsMenu.svelte",
 		"src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte",
 		"src/lib/components/admin/chat/SessionFlowVisuals.svelte",
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -1638,11 +1653,11 @@
 		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/inbox/inbox-presentation.ts",
 		"src/lib/components/notifications/notification-preview.ts",
-		"src/lib/components/projects/project-list.ts",
 		"src/lib/components/project/project-entity-modal-loader.ts",
 		"src/lib/components/project/project-event-filters.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
+		"src/lib/components/projects/project-list.ts",
 		"src/lib/components/ui/live-transcript-preview.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
@@ -1660,8 +1675,8 @@
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
-		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.layout.ts",

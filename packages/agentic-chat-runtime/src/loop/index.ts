@@ -35,5 +35,6 @@ export * from './tool-validation';
 export * from './tool-metadata';
 export * from './tool-payload-compaction';
 export * from './turn-intent';
+export * from './turn-contract';
 export * from './turn-outcome';
 export * from './write-ledger';

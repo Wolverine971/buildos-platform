@@ -375,8 +375,8 @@
 		selectedScope === 'current'
 			? searchQuery.trim().length > 0
 				? 'Across all project states'
-				: 'Planning and active, most recently updated first'
-			: 'Most recently updated first'
+				: 'Planning and active · Newest updates first'
+			: 'Newest updates first'
 	);
 
 	function toggleValue<T extends string>(list: T[], value: T): T[] {
@@ -848,14 +848,17 @@
 					{#if filteredProjects.length > 0}
 						<section class="space-y-2" aria-labelledby="project-list-heading">
 							<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-								<p id="project-list-heading" class="micro-label text-accent">
+								<p
+									id="project-list-heading"
+									class="micro-label text-muted-foreground"
+								>
 									{visibleSectionLabel}
 								</p>
-								<span class="text-xs font-semibold text-muted-foreground">
+								<span class="text-2xs font-medium text-muted-foreground">
 									{filteredProjects.length}
 								</span>
 								<span
-									class="hidden text-xs font-medium text-muted-foreground/80 sm:inline"
+									class="hidden text-xs font-normal text-muted-foreground/80 sm:inline"
 								>
 									· {visibleSectionHelper}
 								</span>

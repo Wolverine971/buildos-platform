@@ -473,3 +473,44 @@ that moves between corners. This improves high-density scanning without adding a
 
 No new unresolved product decision was required. Further reduction of the weak paper texture would be
 a brand-density preference rather than an evidence-backed hierarchy fix, so it remains unchanged.
+
+---
+
+## Part 9 — Alignment and dense-launcher follow-up (2026-08-14)
+
+### Tier 1 — shipped
+
+- **Remove the phantom icon gutter (P1/P9):** `ProjectIcon` is intentionally disabled globally, but
+  each launcher row still rendered an empty flex child and its gap. Removing that dead slot aligns the
+  title and resume cue to the card's real content inset and returns 10–12 px to long names.
+- **Use dense-mode row padding (P1):** removed the desktop-only `p-4` override so launcher rows use the
+  same 12 px inset at every breakpoint. Solo rows now measure 77 px instead of 85 px; collaborator rows
+  measure 82 px instead of 90 px while retaining the same two-line hierarchy.
+- **Neutralize section metadata (P4/P6):** `Current work`, its count, and its helper now use neutral
+  metadata styling. The helper was shortened to `Planning and active · Newest updates first`, leaving
+  accent color to actions, selected controls, and global navigation.
+- **Remove dead row chrome:** removed the unused `group` class and the redundant wrapper left behind by
+  the disabled icon slot.
+
+### Tier 2 — no additional fix justified
+
+Creation, visible search, the one Filters disclosure, recency ordering, and the Completed disclosure
+now form a coherent launcher. Consolidating them further would hide useful behavior or change product
+scope rather than clean the existing hierarchy.
+
+### Tier 3 — intentionally deferred
+
+No signature effect was added. The weak Inkprint texture is the surface's one remaining brand texture;
+additional hover lighting, motion, or decoration would compete with list scanning.
+
+### Verification
+
+- Authenticated desktop and measured 391 CSS px phone passes in light and dark mode.
+- Project title and resume cue share the same content edge; the former empty child measured 0 px but
+  still consumed the 12 px flex gap before removal.
+- No horizontal overflow at 391 CSS px. The right-aligned recency/collaboration column and existing
+  title/resume truncation remain intact.
+- Browser console contained only the known development HMR websocket collision; no application error
+  was introduced.
+- Focused project-list suite: 6 tests passing. Targeted ESLint: clean. Full web `svelte-check`: 0
+  errors / 0 warnings.

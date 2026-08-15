@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-14T17:34:39.258Z
+// Generated on: 2026-08-15T04:47:47.306Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -3916,27 +3916,6 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
-	user_notification_preferences_backup: {
-		batch_enabled: boolean | null;
-		batch_interval_minutes: number | null;
-		created_at: string | null;
-		email_enabled: boolean | null;
-		event_type: string | null;
-		id: string | null;
-		in_app_enabled: boolean | null;
-		max_per_day: number | null;
-		max_per_hour: number | null;
-		priority: string | null;
-		push_enabled: boolean | null;
-		quiet_hours_enabled: boolean | null;
-		quiet_hours_end: string | null;
-		quiet_hours_start: string | null;
-		should_email_daily_brief: boolean | null;
-		should_sms_daily_brief: boolean | null;
-		sms_enabled: boolean | null;
-		updated_at: string | null;
-		user_id: string | null;
-	};
 	user_notifications: {
 		action_url: string | null;
 		created_at: string | null;
@@ -4412,7 +4391,6 @@ export const tableNames = [
 	'user_discounts',
 	'user_email_connections',
 	'user_notification_preferences',
-	'user_notification_preferences_backup',
 	'user_notifications',
 	'user_profiles',
 	'user_project_behavioral_profiles',

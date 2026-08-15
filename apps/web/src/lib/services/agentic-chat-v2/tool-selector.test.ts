@@ -164,20 +164,20 @@ describe('selectFastChatTools', () => {
 		expect(explicitIntent.requiresWrite).toBe(true);
 	});
 
-	it('can disable the legacy message-regex surface fallback', () => {
+	it('keeps the stable project surface independent of legacy fallback', () => {
 		expect(
 			resolveFastChatSurfaceProfileForTurn({
 				contextType: 'project',
 				latestUserMessage: 'Finished Chapter 2 today.'
 			})
-		).toBe('project_write');
+		).toBe('project_write_document');
 		expect(
 			resolveFastChatSurfaceProfileForTurn({
 				contextType: 'project',
 				latestUserMessage: 'Finished Chapter 2 today.',
 				allowLegacySurfaceFallback: false
 			})
-		).toBe('project_basic');
+		).toBe('project_write_document');
 	});
 
 	it('can force lean discovery independently of process environment', () => {
@@ -207,10 +207,10 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('skill_search');
 		expect(names).not.toContain('resource_search');
 		expect(names).not.toContain('resource_load');
-		expect(names).toContain('skill_load');
-		expect(names).toContain('skill_reference_load');
-		expect(names).toContain('tool_search');
-		expect(names).toContain('tool_schema');
+		expect(names).not.toContain('skill_load');
+		expect(names).not.toContain('skill_reference_load');
+		expect(names).not.toContain('tool_search');
+		expect(names).not.toContain('tool_schema');
 		expect(names).toContain('change_chat_context');
 		expect(names).toContain('get_workspace_overview');
 		expect(names).toContain('get_project_overview');
@@ -301,7 +301,7 @@ describe('selectFastChatTools', () => {
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);
 
-		expect(names).toEqual(['create_onto_project']);
+		expect(names).toEqual(['cancel_turn_contract', 'create_onto_project']);
 	});
 
 	it('materializes outcome card gateway tools without preloading them', () => {
@@ -407,7 +407,7 @@ describe('selectFastChatTools', () => {
 		expect(materialized.tools).toHaveLength(1);
 	});
 
-	it('keeps project context on the basic read profile', () => {
+	it('keeps common project reads and writes on one stable surface', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 		const tools = selectFastChatTools({ contextType: 'project' });
 		const names = tools.map((tool) => tool.function?.name).filter(Boolean);
@@ -419,8 +419,9 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('list_onto_tasks');
 		expect(names).not.toContain('search_onto_tasks');
 		expect(names).toContain('list_onto_documents');
-		expect(names).not.toContain('create_onto_task');
-		expect(names).not.toContain('update_onto_task');
+		expect(names).toContain('create_onto_task');
+		expect(names).toContain('update_onto_task');
+		expect(names).toContain('declare_turn_contract');
 	});
 
 	it('gives daily-brief turns cross-project task and calendar writes', () => {
@@ -437,7 +438,7 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('search_onto_projects');
 		expect(names).toContain('search_all_projects');
 		expect(names).toContain('get_project_overview');
-		expect(names).toContain('tool_search');
+		expect(names).not.toContain('tool_search');
 		// Direct writes so brief follow-ups never depend on a tool_search round
 		expect(names).toContain('create_onto_task');
 		expect(names).toContain('update_onto_task');
@@ -471,7 +472,7 @@ describe('selectFastChatTools', () => {
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);
 
-		expect(names).toEqual(['create_onto_project']);
+		expect(names).toEqual(['cancel_turn_contract', 'create_onto_project']);
 	});
 
 	it('exposes larger deterministic profiles when requested explicitly', () => {
@@ -600,14 +601,15 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('web_visit');
 	});
 
-	it('does not treat an informational document question as a write commission', () => {
+	it('keeps stable document capabilities available for informational questions', () => {
 		const names = selectFastChatTools({
 			contextType: 'project',
 			latestUserMessage: 'Do we need a pricing landscape document?'
 		}).map((tool) => tool.function?.name);
 
-		expect(names).not.toContain('create_onto_document');
-		expect(names).not.toContain('update_onto_document');
+		expect(names).toContain('create_onto_document');
+		expect(names).toContain('update_onto_document');
+		expect(names).toContain('declare_turn_contract');
 	});
 
 	it('routes noun-first organize requests to the document profile', () => {
@@ -630,7 +632,7 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('move_document_in_tree');
 	});
 
-	it('does not mount the document surface for a plain document question', () => {
+	it('does not use a plain document question to change the stable project surface', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
 		const names = selectFastChatTools({
@@ -640,7 +642,7 @@ describe('selectFastChatTools', () => {
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);
 
-		expect(names).not.toContain('move_document_in_tree');
+		expect(names).toContain('move_document_in_tree');
 	});
 
 	it('routes mixed task+document turns to the union write/document profile', () => {
@@ -685,7 +687,7 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('get_document_tree');
 	});
 
-	it('materializes safe goal writes at turn start but keeps deletes behind discovery', () => {
+	it('keeps uncommon goal writes and deletes behind discovery', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 		const createGoal = resolveFastChatTurnIntent({
 			contextType: 'project',
@@ -704,7 +706,7 @@ describe('selectFastChatTools', () => {
 			turnIntent: deleteGoal
 		}).map((tool) => tool.function?.name);
 
-		expect(createNames).toContain('create_onto_goal');
+		expect(createNames).not.toContain('create_onto_goal');
 		expect(deleteNames).not.toContain('delete_onto_goal');
 	});
 

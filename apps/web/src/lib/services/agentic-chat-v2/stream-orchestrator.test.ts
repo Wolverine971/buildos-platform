@@ -25,6 +25,114 @@ function toolCall(name: string, args: Record<string, unknown>, id = name): ChatT
 }
 
 describe('streamFastChat direct tool orchestration', () => {
+	it('executes declarations internally and fulfills semantic multi-effect contracts', async () => {
+		const projectId = '11111111-1111-4111-8111-111111111111';
+		const documentA = '22222222-2222-4222-8222-222222222222';
+		const documentB = '33333333-3333-4333-8333-333333333333';
+		const folderA = '44444444-4444-4444-8444-444444444444';
+		const folderB = '55555555-5555-4555-8555-555555555555';
+		let pass = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				pass += 1;
+				if (pass === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'declare_turn_contract',
+							{
+								summary: 'Organize both loose documents',
+								outcomes: [
+									{
+										action: 'organize',
+										entity_kind: 'document',
+										target_ids: [documentA, documentB],
+										minimum_successful_effects: 2
+									}
+								]
+							},
+							'contract-1'
+						)
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'get_document_tree',
+							{ project_id: projectId },
+							'tree-1'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (pass === 2) {
+					for (const [id, parent] of [
+						[documentA, folderA],
+						[documentB, folderB]
+					] as const) {
+						yield {
+							type: 'tool_call',
+							tool_call: toolCall(
+								'move_document_in_tree',
+								{
+									project_id: projectId,
+									document_id: id,
+									new_parent_id: parent
+								},
+								`move-${id}`
+							)
+						};
+					}
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Both loose documents are organized.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				success: true,
+				result:
+					call.function.name === 'get_document_tree'
+						? { documents: [{ id: documentA }, { id: documentB }] }
+						: { status: 'moved' }
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user-1',
+			sessionId: 'session-1',
+			contextType: 'project',
+			projectId,
+			history: [],
+			message: 'Please put all the loose material where it belongs.',
+			tools: tools(['declare_turn_contract', 'get_document_tree', 'move_document_in_tree']),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 4,
+			maxToolCalls: 8
+		});
+
+		expect(toolExecutor.mock.calls.map(([call]) => call.function.name)).toEqual([
+			'get_document_tree',
+			'move_document_in_tree',
+			'move_document_in_tree'
+		]);
+		expect(result.turnContractResolution).toMatchObject({
+			status: 'fulfilled',
+			fulfilled: true
+		});
+		expect(result.turnContractResolution?.outcomes[0]).toMatchObject({
+			id: 'outcome_1',
+			matchedEffects: 2,
+			requiredEffects: 2,
+			fulfilled: true
+		});
+	});
+
 	it('forces the one project-create tool, then finishes with tool-free synthesis', async () => {
 		let streamInvocation = 0;
 		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];
@@ -961,7 +1069,7 @@ describe('streamFastChat direct tool orchestration', () => {
 			error: expect.stringContaining('Missing required parameter: title')
 		});
 		expect(result.finalAssistantText).toContain('I need a document title before creating it.');
-		expect(result.finalAssistantText).toContain('One write did not complete');
+		expect(result.finalAssistantText).toContain('requested change has not run yet');
 	});
 
 	// BUG-1 (2026-06-15): skill_load surfaces canonical op names (related_ops) such
@@ -2076,7 +2184,7 @@ describe('streamFastChat direct tool orchestration', () => {
 				})
 			])
 		);
-		expect(result.finalAssistantText).toContain('Nothing changed');
+		expect(result.finalAssistantText.toLowerCase()).toContain('nothing was updated');
 	});
 
 	it('allows a corrected write after failed-write recovery', async () => {
@@ -2615,7 +2723,7 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.finalAssistantText).toBe('I saved the pricing landscape research.');
 	});
 
-	it('uses explicit turn intent to force a document write before synthesis', async () => {
+	it('uses a declared turn contract to reserve a document write before synthesis', async () => {
 		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
 		let streamInvocation = 0;
 		const passToolNames: string[][] = [];
@@ -2628,6 +2736,22 @@ describe('streamFastChat direct tool orchestration', () => {
 						.filter((name: string | undefined): name is string => Boolean(name))
 				);
 				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'declare_turn_contract',
+							{
+								outcomes: [
+									{
+										action: 'create',
+										entity_kind: 'document',
+										minimum_successful_effects: 1
+									}
+								]
+							},
+							'declare:handoff'
+						)
+					};
 					yield {
 						type: 'tool_call',
 						tool_call: toolCall(
@@ -2689,11 +2813,7 @@ describe('streamFastChat direct tool orchestration', () => {
 			projectId,
 			history: [],
 			message,
-			turnIntent: resolveFastChatTurnIntent({
-				contextType: 'project',
-				latestUserMessage: message
-			}),
-			tools: tools(['skill_search', 'search_project']),
+			tools: tools(['skill_search', 'declare_turn_contract', 'search_project']),
 			toolExecutor,
 			onDelta: async () => {},
 			maxToolRounds: 2
@@ -2706,6 +2826,65 @@ describe('streamFastChat direct tool orchestration', () => {
 		]);
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toBe('Created the Implementation Handoff document.');
+	});
+
+	it('cancels a prior semantic contract locally when the user explicitly supersedes it', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'cancel_turn_contract',
+							{ reason: 'The user replaced the prior commission.' },
+							'cancel:prior'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Understood—the prior update is cancelled.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn();
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			history: [],
+			message: 'Actually, cancel that update.',
+			tools: tools(['cancel_turn_contract', 'update_onto_task']),
+			initialTurnContract: {
+				version: 1,
+				source: 'declared',
+				outcomes: [
+					{
+						id: 'rename-task',
+						action: 'update',
+						entityKind: 'task',
+						targetIds: ['task-1'],
+						requiredFields: ['title'],
+						minimumSuccessfulEffects: 1
+					}
+				]
+			},
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(result.turnContract).toBeNull();
+		expect(result.turnContractResolution).toMatchObject({
+			fulfilled: true,
+			contract: null
+		});
+		expect(result.finalAssistantText).toBe('Understood—the prior update is cancelled.');
 	});
 
 	it('forces a server-commissioned living-workspace capture after a prose-only stop', async () => {

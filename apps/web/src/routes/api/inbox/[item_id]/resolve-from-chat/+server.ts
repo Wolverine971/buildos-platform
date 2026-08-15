@@ -39,6 +39,7 @@ type ExplicitChatResolution = {
 const SUPPORTED_SOURCE_TYPES = new Set<InboxSourceType>([
 	'agent_run',
 	'project_suggestion',
+	'project_review',
 	'project_audit',
 	'calendar_suggestion'
 ]);
@@ -376,6 +377,93 @@ async function resolveProjectAuditFromChat(params: {
 	};
 }
 
+async function resolveProjectReviewFromChat(params: {
+	admin: any;
+	item: InboxIndexRow;
+	summary?: ChatMutationSummary | null;
+	resolution?: ExplicitChatResolution | null;
+}): Promise<{ resolved: boolean; item: InboxIndexRow | null; reason?: string }> {
+	if (!params.item.project_id) {
+		return { resolved: false, item: params.item, reason: 'missing_project' };
+	}
+
+	const { data: run, error: runError } = await params.admin
+		.from('project_loop_runs')
+		.select('id, project_id, status, brief')
+		.eq('id', params.item.source_ref_id)
+		.eq('project_id', params.item.project_id)
+		.maybeSingle();
+	if (runError) throw runError;
+	if (!run) {
+		const repaired = await syncResolvedItem(params.admin, params.item);
+		return {
+			resolved: isTerminalInboxStatus(repaired?.status),
+			item: repaired,
+			reason: 'source_missing'
+		};
+	}
+
+	const now = new Date().toISOString();
+	const dismissed = params.resolution?.resolution === 'dismissed';
+	const brief = asRecord(run.brief);
+	const candidateIds = Array.isArray(brief?.candidate_ids)
+		? brief.candidate_ids.filter(
+				(id): id is string => typeof id === 'string' && id.trim().length > 0
+			)
+		: [];
+	if (candidateIds.length > 0) {
+		const candidatePatch = dismissed
+			? {
+					status: 'rejected',
+					decided_at: now,
+					user_feedback: {
+						reason: 'other',
+						note: params.resolution
+							? explicitResolutionNote(params.resolution)
+							: 'Dismissed with the project manager brief.',
+						created_at: now
+					},
+					updated_at: now
+				}
+			: {
+					status: 'addressed',
+					decided_at: now,
+					result: {
+						ok: true,
+						handled_in_manager_brief_chat: true,
+						chat_session_id:
+							params.summary?.sessionId ?? params.resolution?.sessionId ?? null,
+						mutation_count: params.summary?.totalMutations ?? 0,
+						affected_project_ids: params.summary?.affectedProjectIds ?? []
+					},
+					updated_at: now
+				};
+		const { error: candidateError } = await params.admin
+			.from('project_suggestions')
+			.update(candidatePatch)
+			.eq('project_id', params.item.project_id)
+			.in('id', candidateIds)
+			.eq('status', 'pending');
+		if (candidateError) throw candidateError;
+	}
+
+	const { data: updated, error } = await params.admin
+		.from('project_loop_runs')
+		.update({ status: 'completed', finished_at: now, updated_at: now })
+		.eq('id', params.item.source_ref_id)
+		.eq('project_id', params.item.project_id)
+		.eq('status', 'waiting_review')
+		.select('*')
+		.maybeSingle();
+	if (error) throw error;
+	const synced = await syncResolvedItem(params.admin, params.item);
+	return {
+		resolved: Boolean(updated) || isTerminalInboxStatus(synced?.status),
+		item: synced,
+		reason: updated ? undefined : 'source_not_waiting_review'
+	};
+}
+
 async function resolveAgentRunFromChat(params: {
 	admin: any;
 	item: InboxIndexRow;
@@ -437,6 +525,13 @@ async function resolveInboxItemWithMutations(params: {
 			summary: params.summary
 		});
 	}
+	if (params.item.source_type === 'project_review') {
+		return resolveProjectReviewFromChat({
+			admin: params.admin,
+			item: params.item,
+			summary: params.summary
+		});
+	}
 	return resolveAgentRunFromChat({
 		admin: params.admin,
 		item: params.item,
@@ -467,6 +562,13 @@ async function resolveInboxItemExplicitly(params: {
 	}
 	if (params.item.source_type === 'project_audit') {
 		return resolveProjectAuditFromChat({
+			admin: params.admin,
+			item: params.item,
+			resolution: params.resolution
+		});
+	}
+	if (params.item.source_type === 'project_review') {
+		return resolveProjectReviewFromChat({
 			admin: params.admin,
 			item: params.item,
 			resolution: params.resolution
@@ -526,12 +628,18 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.badRequest('Chat session does not match inbox item');
 	}
 
-	if (item.source_type === 'project_suggestion' || item.source_type === 'project_audit') {
+	if (
+		item.source_type === 'project_suggestion' ||
+		item.source_type === 'project_review' ||
+		item.source_type === 'project_audit'
+	) {
 		if (!item.project_id)
 			return ApiResponse.badRequest(
 				item.source_type === 'project_audit'
 					? 'Project audit is missing project_id'
-					: 'Project suggestion is missing project_id'
+					: item.source_type === 'project_review'
+						? 'Project manager brief is missing project_id'
+						: 'Project suggestion is missing project_id'
 			);
 		const access = await requireProjectMemberAccess({
 			locals,

@@ -11,6 +11,12 @@
 import type {
 	LoopOperation,
 	ProjectLoopBrief,
+	ProjectReviewAttentionLevel,
+	ProjectReviewBriefClaim,
+	ProjectReviewBriefDecision,
+	ProjectReviewBriefIssue,
+	ProjectReviewIssueCategory,
+	ProjectReviewIssueSeverity,
 	ProjectSuggestionEvidenceRef,
 	ProjectSuggestionEvidenceType,
 	ProjectSuggestionPreview,
@@ -75,6 +81,20 @@ export interface LoopContext {
 	docStructureSummary: string;
 	tasks: LoopTask[];
 	priorDecisions: LoopPriorDecision[];
+}
+
+export interface ProjectReviewSynthesisCandidate {
+	id: string;
+	kind: string;
+	risk_tier: number;
+	title: string;
+	rationale: string | null;
+	why_now: string | null;
+	evidence_refs: ProjectSuggestionEvidenceRef[];
+	operations: LoopOperation[];
+	reversible: boolean | null;
+	/** Canonical operation-derived copy, when the candidate is executable. */
+	verified_change_headline?: string | null;
 }
 
 interface RawSuggestion {
@@ -786,6 +806,623 @@ function sanitizeBrief(raw: Partial<ProjectLoopBrief> | null, ctx: LoopContext):
 		generated_at: new Date().toISOString(),
 		source: 'llm'
 	};
+}
+
+const REVIEW_ATTENTION_LEVELS = new Set<ProjectReviewAttentionLevel>([
+	'none',
+	'minor',
+	'decision',
+	'urgent'
+]);
+const REVIEW_ISSUE_CATEGORIES = new Set<ProjectReviewIssueCategory>([
+	'project_drift',
+	'document_drift',
+	'document_quality',
+	'task_drift',
+	'task_conflict',
+	'risk',
+	'other'
+]);
+const REVIEW_ISSUE_SEVERITIES = new Set<ProjectReviewIssueSeverity>([
+	'minor',
+	'important',
+	'critical'
+]);
+
+function plainBriefText(value: unknown, maxLength: number): string | null {
+	const text = truncate(value, maxLength);
+	if (!text) return null;
+	// Detector/dimension keys are useful internally but are never user-facing copy.
+	if (/\b[a-z][a-z0-9]*_[a-z0-9_]+\b/.test(text)) return null;
+	// Reject the exact academic/audit language that made the old inbox cards
+	// unintelligible. The evidence-bound fallback below names the affected work
+	// and gives the user a concrete recommendation instead.
+	if (
+		/\bcanonical (?:project )?documents?\b/i.test(text) ||
+		/\bconsolidate or expand\b/i.test(text) ||
+		/\bcomplete audit follow-up\b/i.test(text)
+	) {
+		return null;
+	}
+	return text;
+}
+
+const REVIEW_ATTENTION_RANK: Record<ProjectReviewAttentionLevel, number> = {
+	none: 0,
+	minor: 1,
+	decision: 2,
+	urgent: 3
+};
+
+function attentionAtLeast(
+	requested: ProjectReviewAttentionLevel,
+	floor: ProjectReviewAttentionLevel
+): ProjectReviewAttentionLevel {
+	return REVIEW_ATTENTION_RANK[requested] >= REVIEW_ATTENTION_RANK[floor] ? requested : floor;
+}
+
+function categoryForCandidate(
+	candidate: ProjectReviewSynthesisCandidate
+): ProjectReviewIssueCategory {
+	if (candidate.kind === 'doc_org') return 'document_quality';
+	if (candidate.kind === 'doc_outdated') return 'document_drift';
+	if (candidate.kind === 'drift') return 'project_drift';
+	if (candidate.kind === 'task_conflict') return 'task_conflict';
+	if (candidate.kind === 'audit_recommendation') {
+		const text = `${candidate.title} ${candidate.rationale ?? ''}`.toLowerCase();
+		if (text.includes('document')) return 'document_quality';
+		if (text.includes('task')) return 'task_drift';
+		if (text.includes('scope') || text.includes('direction')) return 'project_drift';
+		if (text.includes('risk') || text.includes('block')) return 'risk';
+	}
+	return 'other';
+}
+
+function severityForCandidate(
+	candidate: ProjectReviewSynthesisCandidate
+): ProjectReviewIssueSeverity {
+	if (candidate.risk_tier >= 3) return 'critical';
+	if (candidate.risk_tier >= 2 || candidate.kind === 'audit_recommendation') return 'important';
+	return 'minor';
+}
+
+function uniqueEvidence(
+	candidates: ProjectReviewSynthesisCandidate[]
+): ProjectSuggestionEvidenceRef[] {
+	const seen = new Set<string>();
+	const evidence: ProjectSuggestionEvidenceRef[] = [];
+	for (const candidate of candidates) {
+		for (const ref of candidate.evidence_refs) {
+			const key = `${ref.entity_type}:${ref.entity_id ?? ''}:${ref.title}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			evidence.push(ref);
+		}
+	}
+	return evidence.slice(0, 8);
+}
+
+function evidenceNames(candidate: ProjectReviewSynthesisCandidate, maxItems = 3): string[] {
+	return candidate.evidence_refs
+		.filter((ref) => ref.entity_type === 'document' || ref.entity_type === 'task')
+		.map((ref) => ref.title)
+		.filter(Boolean)
+		.slice(0, maxItems);
+}
+
+function fallbackIssueHeadline(candidate: ProjectReviewSynthesisCandidate): string {
+	const names = evidenceNames(candidate, 2);
+	const namedWork = names.length ? names.join(' and ') : null;
+	switch (categoryForCandidate(candidate)) {
+		case 'document_quality':
+			return namedWork
+				? `${namedWork} need a clearer place in the project`
+				: 'The project documents need a clearer structure';
+		case 'document_drift':
+			return namedWork
+				? `${namedWork} may no longer match the current plan`
+				: 'A project document may no longer match the current plan';
+		case 'project_drift':
+			return 'Recent work may be pulling the project in a new direction';
+		case 'task_conflict':
+		case 'task_drift':
+			return namedWork
+				? `${namedWork} appear to overlap or compete`
+				: 'Some active tasks appear to overlap or compete';
+		case 'risk':
+			return 'A project risk needs a clear owner or decision';
+		default:
+			return candidate.verified_change_headline ?? candidate.title;
+	}
+}
+
+function fallbackRecommendation(candidate: ProjectReviewSynthesisCandidate): string {
+	if (candidate.verified_change_headline) {
+		return `I recommend making this verified change: ${candidate.verified_change_headline}.`;
+	}
+	const names = evidenceNames(candidate, 3);
+	const namedWork = names.length ? names.join(', ') : 'the affected work';
+	switch (categoryForCandidate(candidate)) {
+		case 'document_quality':
+			return `I recommend choosing one clear home for ${namedWork} and folding duplicate planning material into it.`;
+		case 'document_drift':
+			return `I recommend checking ${namedWork} against the current plan, then updating or archiving what is stale.`;
+		case 'project_drift':
+			return 'I recommend keeping the current project direction and explicitly parking work that does not support it.';
+		case 'task_conflict':
+		case 'task_drift':
+			return `I recommend keeping one owner and next step for ${namedWork}, then closing or merging the duplicate work.`;
+		case 'risk':
+			return 'I recommend resolving the blocker before adding more project work.';
+		default:
+			return `I recommend reviewing ${namedWork} and choosing the smallest concrete next step.`;
+	}
+}
+
+function candidateClaim(candidate: ProjectReviewSynthesisCandidate): ProjectReviewBriefClaim {
+	return {
+		summary: candidate.rationale ?? candidate.why_now ?? fallbackIssueHeadline(candidate),
+		candidate_ids: [candidate.id],
+		evidence_refs: uniqueEvidence([candidate])
+	};
+}
+
+function fallbackDecision(lead: ProjectReviewSynthesisCandidate): ProjectReviewBriefDecision {
+	const recommendation = fallbackRecommendation(lead);
+	return {
+		question: lead.operations.length
+			? 'Do you want me to make this recommended change?'
+			: 'Do you want to follow this recommendation, or keep the project as it is?',
+		recommendation,
+		why_user_needed: lead.operations.length
+			? 'This changes the project structure, so I need your approval before applying it.'
+			: 'The evidence points to a tradeoff in project direction that requires your judgment.',
+		options: [],
+		recommended_option_id: null,
+		recommended_suggestion_id: lead.operations.length ? lead.id : null,
+		candidate_ids: [lead.id],
+		evidence_refs: uniqueEvidence([lead])
+	};
+}
+
+function clusterLabel(category: ProjectReviewIssueCategory): string {
+	switch (category) {
+		case 'project_drift':
+			return 'Project direction';
+		case 'document_drift':
+			return 'Documents that may be out of date';
+		case 'document_quality':
+			return 'Document organization';
+		case 'task_drift':
+		case 'task_conflict':
+			return 'Overlapping task work';
+		case 'risk':
+			return 'Project risks';
+		default:
+			return 'Related project notes';
+	}
+}
+
+function buildCandidateClusters(candidates: ProjectReviewSynthesisCandidate[]) {
+	const byCategory = new Map<ProjectReviewIssueCategory, string[]>();
+	for (const candidate of candidates) {
+		const category = categoryForCandidate(candidate);
+		const ids = byCategory.get(category) ?? [];
+		ids.push(candidate.id);
+		byCategory.set(category, ids);
+	}
+	return [...byCategory.entries()]
+		.filter(([, memberIds]) => memberIds.length > 1)
+		.map(([category, memberIds]) => ({
+			label: clusterLabel(category),
+			member_candidate_ids: memberIds
+		}));
+}
+
+export function buildHeuristicProjectManagerBrief(params: {
+	ctx: LoopContext;
+	candidates: ProjectReviewSynthesisCandidate[];
+	now?: Date;
+}): ProjectLoopBrief {
+	const now = params.now ?? new Date();
+	const candidates = [...params.candidates].sort(
+		(left, right) =>
+			right.risk_tier - left.risk_tier ||
+			Number(right.operations.length > 0) - Number(left.operations.length > 0)
+	);
+	const legacy = buildHeuristicProjectLoopBrief(params.ctx, now);
+	if (!candidates.length) {
+		return {
+			...legacy,
+			version: 2,
+			attention_level: 'none',
+			state_summary: legacy.current_goal,
+			bottom_line: null,
+			recommendation: null,
+			decision: null,
+			what_changed: [],
+			what_matters_now: [],
+			tensions_or_contradictions: [],
+			issues: [],
+			decision_item_ids: [],
+			safe_cleanup_item_ids: [],
+			cluster_members: [],
+			candidate_ids: [],
+			no_attention_reason:
+				'The review did not find anything important enough to interrupt you about.',
+			generated_at: now.toISOString(),
+			source: 'heuristic'
+		};
+	}
+
+	const lead = candidates[0];
+	const decisionCandidates = candidates.filter(
+		(candidate) =>
+			candidate.risk_tier >= 2 ||
+			candidate.kind === 'audit_recommendation' ||
+			candidate.operations.some((operation) => operation.tool === 'move_document_in_tree')
+	);
+	const safeCleanupCandidates = candidates.filter(
+		(candidate) =>
+			candidate.operations.length > 0 &&
+			candidate.risk_tier <= 1 &&
+			candidate.reversible !== false
+	);
+	const attentionLevel: ProjectReviewAttentionLevel = candidates.some(
+		(candidate) => candidate.risk_tier >= 3
+	)
+		? 'urgent'
+		: decisionCandidates.length
+			? 'decision'
+			: 'minor';
+	const issues: ProjectReviewBriefIssue[] = candidates.slice(0, 8).map((candidate) => ({
+		...candidateClaim(candidate),
+		category: categoryForCandidate(candidate),
+		severity: severityForCandidate(candidate),
+		headline: fallbackIssueHeadline(candidate),
+		recommendation: fallbackRecommendation(candidate)
+	}));
+	const decision =
+		attentionLevel === 'decision' || attentionLevel === 'urgent'
+			? fallbackDecision(decisionCandidates[0] ?? lead)
+			: null;
+	const bottomLine =
+		issues.length === 1
+			? issues[0].headline
+			: `${issues[0].headline}, with ${issues.length - 1} other project issue${issues.length === 2 ? '' : 's'} underneath it.`;
+
+	return {
+		...legacy,
+		version: 2,
+		attention_level: attentionLevel,
+		state_summary: legacy.current_goal,
+		bottom_line: bottomLine,
+		recommendation: decision?.recommendation ?? fallbackRecommendation(lead),
+		decision,
+		what_changed: candidates.slice(0, 5).map(candidateClaim),
+		what_matters_now: decisionCandidates.slice(0, 3).map(candidateClaim),
+		tensions_or_contradictions: candidates
+			.filter((candidate) => ['drift', 'task_conflict'].includes(candidate.kind))
+			.slice(0, 3)
+			.map(candidateClaim),
+		issues,
+		decision_item_ids: decisionCandidates.map((candidate) => candidate.id),
+		safe_cleanup_item_ids: safeCleanupCandidates.map((candidate) => candidate.id),
+		cluster_members: buildCandidateClusters(candidates),
+		candidate_ids: candidates.map((candidate) => candidate.id),
+		no_attention_reason:
+			attentionLevel === 'minor'
+				? 'The review found only minor project-health notes, so it did not interrupt you.'
+				: null,
+		generated_at: now.toISOString(),
+		source: 'heuristic'
+	};
+}
+
+function candidateIdsFrom(value: unknown, allowedIds: Set<string>, maxItems = 8): string[] {
+	if (!Array.isArray(value)) return [];
+	return [
+		...new Set(value.filter((id): id is string => typeof id === 'string' && allowedIds.has(id)))
+	].slice(0, maxItems);
+}
+
+function sanitizeManagerClaim(
+	value: unknown,
+	params: {
+		allowedIds: Set<string>;
+		candidateById: Map<string, ProjectReviewSynthesisCandidate>;
+		fallback?: ProjectReviewBriefClaim;
+	}
+): ProjectReviewBriefClaim | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return params.fallback ?? null;
+	const row = value as Record<string, unknown>;
+	const candidateIds = candidateIdsFrom(row.candidate_ids, params.allowedIds);
+	if (!candidateIds.length) return params.fallback ?? null;
+	const candidates = candidateIds
+		.map((id) => params.candidateById.get(id))
+		.filter((candidate): candidate is ProjectReviewSynthesisCandidate => Boolean(candidate));
+	const summary = plainBriefText(row.summary, 280) ?? params.fallback?.summary;
+	if (!summary) return params.fallback ?? null;
+	return {
+		summary,
+		candidate_ids: candidateIds,
+		evidence_refs: uniqueEvidence(candidates)
+	};
+}
+
+function sanitizeManagerBrief(params: {
+	raw: Partial<ProjectLoopBrief> | null;
+	ctx: LoopContext;
+	candidates: ProjectReviewSynthesisCandidate[];
+}): ProjectLoopBrief {
+	const fallback = buildHeuristicProjectManagerBrief({
+		ctx: params.ctx,
+		candidates: params.candidates
+	});
+	if (!params.raw) return fallback;
+	const candidateById = new Map(params.candidates.map((candidate) => [candidate.id, candidate]));
+	const allowedIds = new Set(candidateById.keys());
+	const raw = params.raw as Record<string, unknown>;
+	const requestedAttention = REVIEW_ATTENTION_LEVELS.has(
+		raw.attention_level as ProjectReviewAttentionLevel
+	)
+		? (raw.attention_level as ProjectReviewAttentionLevel)
+		: (fallback.attention_level ?? 'none');
+	// The model can promote a concern, but it cannot hide a verified change,
+	// material audit finding, or high-risk candidate below the deterministic
+	// admission floor.
+	const attention = attentionAtLeast(requestedAttention, fallback.attention_level ?? 'none');
+
+	const sanitizeClaimList = (value: unknown, fallbackList: ProjectReviewBriefClaim[]) => {
+		if (!Array.isArray(value)) return fallbackList;
+		return value
+			.map((claim, index) =>
+				sanitizeManagerClaim(claim, {
+					allowedIds,
+					candidateById,
+					fallback: fallbackList[index]
+				})
+			)
+			.filter((claim): claim is ProjectReviewBriefClaim => Boolean(claim))
+			.slice(0, 5);
+	};
+
+	const rawIssues = Array.isArray(raw.issues) ? raw.issues : [];
+	const issues = rawIssues
+		.map((value, index): ProjectReviewBriefIssue | null => {
+			if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+			const row = value as Record<string, unknown>;
+			const fallbackIssue = fallback.issues?.[index];
+			const claim = sanitizeManagerClaim(row, {
+				allowedIds,
+				candidateById,
+				fallback: fallbackIssue
+			});
+			if (!claim) return null;
+			const leadCandidate = candidateById.get(claim.candidate_ids[0]);
+			const category = REVIEW_ISSUE_CATEGORIES.has(row.category as ProjectReviewIssueCategory)
+				? (row.category as ProjectReviewIssueCategory)
+				: (fallbackIssue?.category ??
+					(leadCandidate ? categoryForCandidate(leadCandidate) : 'other'));
+			const severity = REVIEW_ISSUE_SEVERITIES.has(row.severity as ProjectReviewIssueSeverity)
+				? (row.severity as ProjectReviewIssueSeverity)
+				: (fallbackIssue?.severity ??
+					(leadCandidate ? severityForCandidate(leadCandidate) : 'minor'));
+			return {
+				...claim,
+				category,
+				severity,
+				headline:
+					plainBriefText(row.headline, 180) ??
+					fallbackIssue?.headline ??
+					(leadCandidate ? fallbackIssueHeadline(leadCandidate) : claim.summary),
+				recommendation:
+					plainBriefText(row.recommendation, 320) ?? fallbackIssue?.recommendation ?? null
+			};
+		})
+		.filter((issue): issue is ProjectReviewBriefIssue => Boolean(issue))
+		.slice(0, 8);
+
+	const rawDecision =
+		raw.decision && typeof raw.decision === 'object' && !Array.isArray(raw.decision)
+			? (raw.decision as Record<string, unknown>)
+			: null;
+	let decision = fallback.decision ?? null;
+	if (rawDecision && (attention === 'decision' || attention === 'urgent')) {
+		const decisionCandidateIds = candidateIdsFrom(rawDecision.candidate_ids, allowedIds);
+		const evidenceCandidates = decisionCandidateIds
+			.map((id) => candidateById.get(id))
+			.filter((candidate): candidate is ProjectReviewSynthesisCandidate =>
+				Boolean(candidate)
+			);
+		const requestedSuggestionId = plainBriefText(rawDecision.recommended_suggestion_id, 80);
+		const recommendedCandidate = requestedSuggestionId
+			? candidateById.get(requestedSuggestionId)
+			: null;
+		const options = Array.isArray(rawDecision.options)
+			? rawDecision.options
+					.map((option): ProjectReviewBriefDecision['options'][number] | null => {
+						if (!option || typeof option !== 'object' || Array.isArray(option))
+							return null;
+						const record = option as Record<string, unknown>;
+						const id = plainBriefText(record.id, 60);
+						const label = plainBriefText(record.label, 100);
+						if (!id || !label) return null;
+						return {
+							id,
+							label,
+							description: plainBriefText(record.description, 220)
+						};
+					})
+					.filter((option): option is ProjectReviewBriefDecision['options'][number] =>
+						Boolean(option)
+					)
+					.slice(0, 3)
+			: [];
+		decision = {
+			question:
+				plainBriefText(rawDecision.question, 220) ??
+				decision?.question ??
+				'What do you want to do?',
+			recommendation:
+				plainBriefText(rawDecision.recommendation, 360) ??
+				decision?.recommendation ??
+				fallback.recommendation ??
+				'',
+			why_user_needed:
+				plainBriefText(rawDecision.why_user_needed, 280) ??
+				decision?.why_user_needed ??
+				'This requires your judgment.',
+			options,
+			recommended_option_id: options.some(
+				(option) => option.id === rawDecision.recommended_option_id
+			)
+				? (rawDecision.recommended_option_id as string)
+				: null,
+			recommended_suggestion_id:
+				recommendedCandidate?.operations.length &&
+				decisionCandidateIds.includes(recommendedCandidate.id)
+					? recommendedCandidate.id
+					: (decision?.recommended_suggestion_id ?? null),
+			candidate_ids: decisionCandidateIds.length
+				? decisionCandidateIds
+				: (decision?.candidate_ids ?? []),
+			evidence_refs: evidenceCandidates.length
+				? uniqueEvidence(evidenceCandidates)
+				: (decision?.evidence_refs ?? [])
+		};
+	}
+
+	return {
+		...fallback,
+		version: 2,
+		attention_level: attention,
+		state_summary: plainBriefText(raw.state_summary, 320) ?? fallback.state_summary ?? null,
+		bottom_line: plainBriefText(raw.bottom_line, 260) ?? fallback.bottom_line ?? null,
+		recommendation:
+			plainBriefText(raw.recommendation, 380) ??
+			decision?.recommendation ??
+			fallback.recommendation ??
+			null,
+		decision: attention === 'decision' || attention === 'urgent' ? decision : null,
+		what_changed: sanitizeClaimList(raw.what_changed, fallback.what_changed ?? []),
+		what_matters_now: sanitizeClaimList(raw.what_matters_now, fallback.what_matters_now ?? []),
+		tensions_or_contradictions: sanitizeClaimList(
+			raw.tensions_or_contradictions,
+			fallback.tensions_or_contradictions ?? []
+		),
+		issues: issues.length ? issues : fallback.issues,
+		decision_item_ids: candidateIdsFrom(raw.decision_item_ids, allowedIds),
+		safe_cleanup_item_ids: candidateIdsFrom(raw.safe_cleanup_item_ids, allowedIds),
+		cluster_members: buildCandidateClusters(params.candidates),
+		candidate_ids: params.candidates.map((candidate) => candidate.id),
+		no_attention_reason:
+			attention === 'none' || attention === 'minor'
+				? (plainBriefText(raw.no_attention_reason, 300) ??
+					fallback.no_attention_reason ??
+					null)
+				: null,
+		generated_at: new Date().toISOString(),
+		source: 'llm'
+	};
+}
+
+function describeSynthesisCandidates(candidates: ProjectReviewSynthesisCandidate[]): string {
+	if (!candidates.length) return '(none)';
+	return candidates
+		.map((candidate) => {
+			const evidence = candidate.evidence_refs.length
+				? candidate.evidence_refs
+						.slice(0, 6)
+						.map(
+							(ref) =>
+								`  - ${ref.entity_type}:${ref.entity_id ?? 'none'} "${ref.title}"${ref.reason ? ` — ${ref.reason}` : ''}`
+						)
+						.join('\n')
+				: '  - (no entity evidence)';
+			return [
+				`Candidate [${candidate.id}] kind=${candidate.kind} risk=${candidate.risk_tier} reversible=${candidate.reversible ?? 'unknown'}`,
+				`Detector title: ${candidate.title}`,
+				candidate.verified_change_headline
+					? `Verified change: ${candidate.verified_change_headline}`
+					: null,
+				candidate.rationale ? `Finding: ${candidate.rationale}` : null,
+				candidate.why_now ? `Timing signal: ${candidate.why_now}` : null,
+				`Evidence:\n${evidence}`
+			]
+				.filter((line): line is string => Boolean(line))
+				.join('\n');
+		})
+		.join('\n\n');
+}
+
+export async function generateProjectManagerBrief(params: {
+	llm: SmartLLMService;
+	ctx: LoopContext;
+	candidates: ProjectReviewSynthesisCandidate[];
+	userId: string;
+	chatSessionId?: string;
+	runId?: string;
+	onUsage: (event: UsageEvent) => Promise<void>;
+}): Promise<ProjectLoopBrief> {
+	const systemPrompt = [
+		'You are the project manager responsible for briefing the user on one BuildOS project.',
+		'The detector candidates below are internal evidence, not user-facing messages.',
+		'Write the bottom line first. Use ordinary language. Name the affected work.',
+		'Make one concrete recommendation. Ask one direct question only when user judgment or approval is required.',
+		'Do not ask the user to invent a plan. Do not expose snake_case keys, review dimensions, generator names, or academic phrases such as "choose the canonical documents".',
+		'Group related project, document, and task issues. Put secondary findings under issues.',
+		'Use only candidate_ids and entity evidence supplied below. Never invent an id, document, task, date, or fact.',
+		'Attention policy: none=no useful action; minor=low-consequence note that must not ping; decision=a bounded choice or verified change needs the user; urgent=blocked work or material consequence.',
+		'When a verified executable candidate is your recommendation, set decision.recommended_suggestion_id to that candidate id. Otherwise use null.',
+		'Every claim, issue, and decision must cite one or more candidate_ids. Evidence links are attached deterministically from those ids after generation.',
+		'',
+		'Return ONLY JSON: { "brief": {',
+		'  "attention_level": "none"|"minor"|"decision"|"urgent",',
+		'  "state_summary": string|null,',
+		'  "bottom_line": string|null,',
+		'  "recommendation": string|null,',
+		'  "decision": null|{"question": string, "recommendation": string, "why_user_needed": string, "options": [{"id": string, "label": string, "description": string|null}], "recommended_option_id": string|null, "recommended_suggestion_id": string|null, "candidate_ids": string[]},',
+		'  "what_changed": [{"summary": string, "candidate_ids": string[]}],',
+		'  "what_matters_now": [{"summary": string, "candidate_ids": string[]}],',
+		'  "tensions_or_contradictions": [{"summary": string, "candidate_ids": string[]}],',
+		'  "issues": [{"category": "project_drift"|"document_drift"|"document_quality"|"task_drift"|"task_conflict"|"risk"|"other", "severity": "minor"|"important"|"critical", "headline": string, "summary": string, "recommendation": string|null, "candidate_ids": string[]}],',
+		'  "decision_item_ids": string[], "safe_cleanup_item_ids": string[],',
+		'  "no_attention_reason": string|null',
+		'} }'
+	].join('\n');
+	const userPrompt = [
+		PROJECT_HEADER(params.ctx),
+		'',
+		'Project review candidates:',
+		describeSynthesisCandidates(params.candidates),
+		'',
+		'Prior user decisions:',
+		priorDecisionContext(params.ctx)
+	].join('\n');
+
+	try {
+		const raw = await callBriefGenerator({
+			llm: params.llm,
+			userId: params.userId,
+			chatSessionId: params.chatSessionId,
+			projectId: params.ctx.projectId,
+			runId: params.runId,
+			systemPrompt,
+			userPrompt,
+			onUsage: params.onUsage
+		});
+		return sanitizeManagerBrief({ raw, ctx: params.ctx, candidates: params.candidates });
+	} catch (error) {
+		console.warn(
+			'[ProjectReviews] manager brief synthesis failed, falling back to heuristic:',
+			error instanceof Error ? error.message : error
+		);
+		return buildHeuristicProjectManagerBrief({
+			ctx: params.ctx,
+			candidates: params.candidates
+		});
+	}
 }
 
 const PROJECT_HEADER = (ctx: LoopContext): string => {

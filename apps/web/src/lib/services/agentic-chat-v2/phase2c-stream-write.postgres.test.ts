@@ -46,6 +46,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	let effectScopeNullGuardOutput = '';
 	let trueToolRoundCountReplayOutput = '';
 	let terminalPendingIntentOutput = '';
+	let terminalPendingContractOutput = '';
+	let terminalPendingContractHardeningOutput = '';
 	let terminalDomainMetadataOutput = '';
 
 	const applySqlFile = (path: string): string =>
@@ -225,7 +227,25 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 			sqlPath(
 				'supabase/tests/20260813060000_agentic_chat_terminal_pending_intent_metadata.test.sql'
 			),
-			sqlPath('supabase/tests/20260813070000_agentic_chat_terminal_domain_metadata.test.sql')
+			sqlPath('supabase/tests/20260813070000_agentic_chat_terminal_domain_metadata.test.sql'),
+			sqlPath(
+				'supabase/migrations/20260814010000_agentic_chat_terminal_pending_contract_metadata.sql'
+			),
+			sqlPath(
+				'supabase/tests/20260814010000_agentic_chat_terminal_pending_contract_metadata.test.sql'
+			),
+			sqlPath(
+				'supabase/migrations/20260814011000_agentic_chat_turn_contract_worker_hardening.sql'
+			),
+			sqlPath(
+				'supabase/migrations/20260814012000_agentic_chat_contract_rpc_surface_reload.sql'
+			),
+			sqlPath(
+				'supabase/migrations/20260814013000_agentic_chat_contract_internal_helpers.sql'
+			),
+			sqlPath(
+				'supabase/tests/20260814011000_agentic_chat_turn_contract_worker_hardening.test.sql'
+			)
 		]);
 		timingOutput = terminalParityOutput;
 		partialCancellationOutput = terminalParityOutput;
@@ -237,6 +257,8 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 		effectScopeNullGuardOutput = terminalParityOutput;
 		terminalPendingIntentOutput = terminalParityOutput;
 		terminalDomainMetadataOutput = terminalParityOutput;
+		terminalPendingContractOutput = terminalParityOutput;
+		terminalPendingContractHardeningOutput = terminalParityOutput;
 	}, 60_000);
 
 	afterAll(() => {
@@ -317,6 +339,18 @@ describePostgres('agentic-chat worker Phase 2C stream persistence PostgreSQL con
 	it('merges immutable pending intent inside authoritative terminal truth', () => {
 		expect(terminalPendingIntentOutput).toContain(
 			'agentic_chat_terminal_pending_intent_metadata_ok'
+		);
+	});
+
+	it('persists semantic pending contracts from durable multi-effect truth', () => {
+		expect(terminalPendingContractOutput).toContain(
+			'agentic_chat_terminal_pending_contract_metadata_ok'
+		);
+	});
+
+	it('hardens worker contract cancellation, lifecycle evidence, fields, and scope', () => {
+		expect(terminalPendingContractHardeningOutput).toContain(
+			'agentic_chat_turn_contract_worker_hardening_ok'
 		);
 	});
 

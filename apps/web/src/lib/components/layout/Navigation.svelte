@@ -770,11 +770,12 @@
 	});
 </script>
 
+<!-- Keep the app shell above page-local stacking contexts and below portal-backed modals. -->
 <nav
 	aria-label="Main navigation"
 	data-fixed-element
 	bind:this={element}
-	class="sticky top-0 z-10 bg-card border-b border-border shadow-ink transition-all duration-200 motion-reduce:transition-none {navHidden
+	class="sticky top-0 z-[100] bg-card border-b border-border shadow-ink transition-all duration-200 motion-reduce:transition-none {navHidden
 		? '-translate-y-full'
 		: 'translate-y-0'}"
 >

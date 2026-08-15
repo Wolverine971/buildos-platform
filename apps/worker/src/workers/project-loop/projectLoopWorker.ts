@@ -33,15 +33,16 @@ import {
 	type LoopPriorDecision,
 	type LoopTask,
 	type UsageEvent,
+	type ProjectReviewSynthesisCandidate,
 	generateDrift,
 	generateDocOrganization,
 	generateOutdatedDocs,
-	generateProjectBrief,
+	generateProjectManagerBrief,
 	generateTaskConflicts,
+	buildHeuristicProjectManagerBrief,
 	suggestionSuppressionKey
 } from './generators';
 import {
-	buildHeuristicProjectLoopBrief,
 	buildProjectLoopParentMap,
 	buildScopedSuggestionFingerprint,
 	extractProjectLoopSuggestionEntities,
@@ -58,8 +59,12 @@ import {
 import {
 	applyProjectAttentionBudget,
 	expireInboxItemsForProjectAuditChildSuggestions,
-	syncInboxItemForProjectAudit
+	expireProjectSuggestionInboxItemsForManagerBrief,
+	quarantineProjectSuggestionInboxItem,
+	syncInboxItemForProjectAudit,
+	syncInboxItemForProjectReview
 } from '@buildos/shared-agent-ops/inbox-index';
+import { verifyProjectSuggestionIntegrity } from '@buildos/shared-agent-ops/proposal-context';
 import {
 	processProjectAuditTriggerEvaluationJob,
 	queueProjectAuditFromWorker
@@ -164,6 +169,143 @@ export async function insertProjectLoopSuggestionRows(params: {
 	}
 
 	throw createCodedDatabaseError('Failed to insert suggestions', error);
+}
+
+async function loadProjectReviewSynthesisCandidates(
+	projectId: string
+): Promise<ProjectReviewSynthesisCandidate[]> {
+	const { data, error } = await supabase
+		.from('project_suggestions')
+		.select(
+			'id, project_id, kind, risk_tier, title, rationale, why_now, evidence_refs, preview, operations, reversible, created_at, updated_at'
+		)
+		.eq('project_id', projectId)
+		.eq('status', 'pending')
+		.in('kind', ['doc_org', 'doc_outdated', 'drift', 'task_conflict'])
+		.order('risk_tier', { ascending: false })
+		.order('updated_at', { ascending: false })
+		.limit(MAX_SUGGESTIONS);
+	if (error)
+		throw new Error(`Failed to load project review synthesis candidates: ${error.message}`);
+
+	const candidates: ProjectReviewSynthesisCandidate[] = [];
+	for (const row of (data ?? []) as Record<string, unknown>[]) {
+		const id = asString(row.id);
+		const kind = asString(row.kind);
+		const title = asString(row.title);
+		if (!id || !kind || !title) continue;
+		const operations = Array.isArray(row.operations) ? (row.operations as LoopOperation[]) : [];
+		let verifiedChangeHeadline: string | null = null;
+		if (operations.length > 0) {
+			const verification = await verifyProjectSuggestionIntegrity(supabase as any, {
+				projectId,
+				operations,
+				title,
+				preview: asRecord(row.preview),
+				checkModelAlignment: true
+			});
+			if (!verification.ok) {
+				await quarantineProjectSuggestionInboxItem({
+					supabase: supabase as any,
+					suggestion: row,
+					diagnostic: verification.diagnostic
+				});
+				continue;
+			}
+			verifiedChangeHeadline = verification.summary.headline;
+		}
+
+		const evidenceRefs = Array.isArray(row.evidence_refs)
+			? (row.evidence_refs as ProjectSuggestionEvidenceRef[]).filter(
+					(ref) =>
+						Boolean(ref) &&
+						typeof ref === 'object' &&
+						typeof ref.entity_type === 'string' &&
+						typeof ref.title === 'string'
+				)
+			: [];
+		candidates.push({
+			id,
+			kind,
+			risk_tier:
+				typeof row.risk_tier === 'number' && Number.isFinite(row.risk_tier)
+					? row.risk_tier
+					: 2,
+			title,
+			rationale: asString(row.rationale),
+			why_now: asString(row.why_now),
+			evidence_refs: evidenceRefs,
+			operations,
+			reversible: typeof row.reversible === 'boolean' ? row.reversible : null,
+			verified_change_headline: verifiedChangeHeadline
+		});
+	}
+
+	return candidates;
+}
+
+async function supersedeOlderProjectManagerBriefs(params: {
+	projectId: string;
+	runId?: string;
+}): Promise<number> {
+	const now = nowIso();
+	let query = supabase
+		.from('project_loop_runs')
+		.update({ status: 'completed', finished_at: now })
+		.eq('project_id', params.projectId)
+		.eq('status', 'waiting_review');
+	if (params.runId) query = query.neq('id', params.runId);
+	const { data, error } = await query.select('id');
+	if (error) {
+		console.warn(
+			`[ProjectReviews] Failed to supersede older manager briefs for ${params.projectId}:`,
+			error.message
+		);
+		return 0;
+	}
+
+	const olderRunIds = ((data ?? []) as Array<{ id?: unknown }>)
+		.map((row) => asString(row.id))
+		.filter((id): id is string => Boolean(id));
+	if (olderRunIds.length > 0) {
+		const { error: inboxError } = await supabase
+			.from('inbox_items')
+			.update({
+				status: 'expired',
+				source_status: 'superseded',
+				decided_at: now,
+				blocked_reason: 'Replaced by a newer project manager brief',
+				snoozed_until: null
+			})
+			.eq('source_type', 'project_review')
+			.in('source_ref_id', olderRunIds)
+			.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred']);
+		if (inboxError) {
+			console.warn(
+				`[ProjectReviews] Failed to retire older manager brief inbox rows for ${params.projectId}:`,
+				inboxError.message
+			);
+		}
+	}
+	return olderRunIds.length;
+}
+
+async function projectHasActiveAuditManagerBrief(projectId: string): Promise<boolean> {
+	const { data, error } = await supabase
+		.from('inbox_items')
+		.select('id')
+		.eq('project_id', projectId)
+		.eq('source_type', 'project_audit')
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred'])
+		.limit(1);
+	if (error) {
+		console.warn(
+			`[ProjectReviews] Failed to check for an active audit packet for ${projectId}:`,
+			error.message
+		);
+		return false;
+	}
+	return Boolean(data?.length);
 }
 
 function nowIso(): string {
@@ -1351,6 +1493,16 @@ function buildCompleteAuditPacket(params: {
 			updated_at: task.updated_at
 		})
 	);
+	const documentNames = ctx.documents
+		.slice(0, 3)
+		.map((document) => document.title)
+		.filter(Boolean);
+	const documentationRecommendation =
+		documentNames.length === 0
+			? 'Create one project brief that explains the goal, current plan, and next decision.'
+			: documentNames.length === 1
+				? `Use ${documentNames[0]} as the main project brief and add the current goal, plan, and next decision.`
+				: `Review ${documentNames.join(', ')} together. Keep the most current one as the main project brief and fold useful material from the others into it.`;
 
 	const dimensions: ProjectAuditDimension[] = [
 		dimension({
@@ -1385,10 +1537,7 @@ function buildCompleteAuditPacket(params: {
 						? 'The project has some documentation, but the document set is still thin.'
 						: 'No project documents were available in the audit context.',
 			evidence_refs: docEvidence,
-			recommendations:
-				metrics.documentCount >= 5
-					? []
-					: ['Choose the canonical project documents, then consolidate or expand them.']
+			recommendations: metrics.documentCount >= 5 ? [] : [documentationRecommendation]
 		}),
 		dimension({
 			key: 'plan_integrity',
@@ -2111,6 +2260,9 @@ async function synthesizeCompleteAuditPacket(params: {
 		'Focus on coherence: duplicated work, missing decisions, overloaded scope, stale evidence, blockers, and unclear dependencies.',
 		'Do not create mutation operations. Recommendations should be review follow-ups, not direct writes.',
 		'Lead with the bottom line: put the single most important user decision or action first in recommendations.',
+		'Write like the project manager who has already inspected the work: use ordinary language, name the affected documents or tasks, and make a concrete recommendation.',
+		'Do not expose audit dimension keys, snake_case labels, generator language, or academic phrases such as "choose the canonical documents".',
+		'Do not ask the user to invent the next step. If judgment is required, frame one bounded choice and state which option you recommend.',
 		'Each recommendation title must state exactly what to decide, change, update, or consider. Never use a status-only or category-only title.',
 		'Each recommendation summary must state your recommended stance and the 2-3 evidence-backed factors that should drive the decision.',
 		'Explicitly update any scaffold dimension you can resolve from evidence; use rating="green" with no dimension recommendation when the evidence shows no user action is needed.',
@@ -2227,7 +2379,7 @@ function buildAuditChildSuggestionDrafts(params: {
 					risk_tier: recommendationRiskTier(recommendation),
 					title,
 					rationale: summary,
-					why_now: `Complete audit follow-up${recommendation.dimension ? ` for ${recommendation.dimension}` : ''}.`,
+					why_now: summary,
 					confidence:
 						recommendation.priority === 'high'
 							? 0.78
@@ -2296,20 +2448,6 @@ async function createAuditChildSuggestions(params: {
 				suggestions.map((suggestion) => suggestion.id)
 			);
 		throw new Error(`Failed to link audit child suggestions: ${linkError.message}`);
-	}
-
-	for (const suggestion of suggestions) {
-		try {
-			await syncInboxItemForProjectSuggestion({
-				supabase: supabase as any,
-				suggestion: suggestion as unknown as Record<string, unknown>
-			});
-		} catch (syncError) {
-			console.warn(
-				`⚠️ Failed to sync AI Inbox item for audit recommendation ${suggestion.id}:`,
-				syncError instanceof Error ? syncError.message : syncError
-			);
-		}
 	}
 
 	return {
@@ -2638,9 +2776,18 @@ async function processCompleteProjectAuditJob(
 		}
 
 		try {
+			// A complete audit is the project's primary manager packet. Retire any
+			// unresolved light-review brief before admitting the audit so the user
+			// never sees competing asks from two project managers.
+			await supersedeOlderProjectManagerBriefs({ projectId });
 			await syncInboxItemForProjectAudit({
 				supabase: supabase as any,
 				auditId
+			});
+			await expireInboxItemsForProjectAuditChildSuggestions({
+				supabase: supabase as any,
+				auditId,
+				reason: 'Grouped into the complete project audit manager brief'
 			});
 		} catch (syncError) {
 			console.warn(
@@ -2895,30 +3042,6 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			return generator();
 		};
 
-		// The brief is now under the same cost cap as the reconciliation
-		// generators. It runs first, so on a healthy run the cap is not yet
-		// reached and the LLM brief is produced; if a prior cost ever pushes past
-		// the cap we fall back to the zero-cost heuristic brief instead of
-		// starving the suggestion generators that follow (audit §3 / Tier 1 #8).
-		let brief: ProjectLoopBrief;
-		if (totalCost >= PROJECT_LOOP_COST_CAP_USD) {
-			skippedGenerators.push('project brief');
-			await job.log(
-				`Skipping LLM project brief; cost cap reached ($${totalCost.toFixed(4)}) — using heuristic brief.`
-			);
-			brief = buildHeuristicProjectLoopBrief(ctx);
-		} else {
-			await heartbeat('Generating project brief');
-			brief = await generateProjectBrief({
-				llm,
-				ctx,
-				userId: run.user_id,
-				chatSessionId: run.chat_session_id ?? undefined,
-				runId,
-				onUsage
-			});
-		}
-
 		const docOrg = await runGenerator('doc organization', () =>
 			generateDocOrganization({
 				llm,
@@ -3082,19 +3205,6 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			if (insertResult.cancelled) {
 				return { success: true, runId, skipped: true };
 			}
-			for (const suggestion of insertResult.suggestions) {
-				try {
-					await syncInboxItemForProjectSuggestion({
-						supabase: supabase as any,
-						suggestion: suggestion as unknown as Record<string, unknown>
-					});
-				} catch (syncError) {
-					console.warn(
-						`⚠️ Failed to sync AI Inbox item for project suggestion ${suggestion.id}:`,
-						syncError instanceof Error ? syncError.message : syncError
-					);
-				}
-			}
 		}
 
 		const rotation = await rotateUnconfirmedPendingSuggestions({
@@ -3105,21 +3215,50 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			log: (message) => job.log(message)
 		});
 
-		try {
-			const budget = await applyProjectAttentionBudget({
-				supabase: supabase as any,
-				projectId
+		// Final synthesis owns admission. It runs only after candidate insertion,
+		// deterministic suppression/rotation, and executable-candidate integrity
+		// verification, so the persisted brief can reconcile the actual current
+		// findings instead of describing the pre-review snapshot.
+		await heartbeat('Synthesizing project manager brief');
+		const synthesisCandidates = await loadProjectReviewSynthesisCandidates(projectId);
+		let brief: ProjectLoopBrief;
+		if (totalCost >= PROJECT_LOOP_COST_CAP_USD) {
+			skippedGenerators.push('project manager brief');
+			await job.log(
+				`Skipping LLM project manager brief; cost cap reached ($${totalCost.toFixed(4)}) — using evidence-bound heuristic synthesis.`
+			);
+			brief = buildHeuristicProjectManagerBrief({ ctx, candidates: synthesisCandidates });
+		} else {
+			brief = await generateProjectManagerBrief({
+				llm,
+				ctx,
+				candidates: synthesisCandidates,
+				userId: run.user_id,
+				chatSessionId: run.chat_session_id ?? undefined,
+				runId,
+				onUsage
 			});
-			if (budget.deferredIds.length || budget.promotedIds.length) {
+		}
+		const synthesisRequiresAttention =
+			brief.attention_level === 'decision' || brief.attention_level === 'urgent';
+		const auditOwnsAttention =
+			synthesisRequiresAttention && (await projectHasActiveAuditManagerBrief(projectId));
+		const managerAttentionRequired = synthesisRequiresAttention && !auditOwnsAttention;
+		if (auditOwnsAttention) {
+			await job.log(
+				'Kept this light review out of AI Inbox because a complete project audit already owns the project decision.'
+			);
+		}
+		if (managerAttentionRequired) {
+			const supersededBriefCount = await supersedeOlderProjectManagerBriefs({
+				projectId,
+				runId
+			});
+			if (supersededBriefCount > 0) {
 				await job.log(
-					`Attention budget: ${budget.deferredIds.length} deferred, ${budget.promotedIds.length} promoted.`
+					`Replaced ${supersededBriefCount} older unresolved project manager brief${supersededBriefCount === 1 ? '' : 's'}.`
 				);
 			}
-		} catch (budgetError) {
-			console.warn(
-				`[ProjectLoops] Failed to apply attention budget for project ${projectId}:`,
-				budgetError instanceof Error ? budgetError.message : budgetError
-			);
 		}
 
 		const countKind = (kind: ProjectSuggestionKind): number =>
@@ -3137,7 +3276,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		const { error: terminalError } = await supabase
 			.from('project_loop_runs')
 			.update({
-				status: proposed.length ? 'waiting_review' : 'completed',
+				status: managerAttentionRequired ? 'waiting_review' : 'completed',
 				brief: brief as unknown as Json,
 				summary,
 				suggestion_count: proposed.length,
@@ -3157,6 +3296,29 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			);
 		}
 
+		try {
+			if (!auditOwnsAttention) {
+				await syncInboxItemForProjectReview({
+					supabase: supabase as any,
+					runId
+				});
+			}
+			const groupedCount = await expireProjectSuggestionInboxItemsForManagerBrief({
+				supabase: supabase as any,
+				projectId
+			});
+			if (groupedCount > 0) {
+				await job.log(
+					`Grouped ${groupedCount} standalone review item${groupedCount === 1 ? '' : 's'} into the project manager brief.`
+				);
+			}
+		} catch (inboxError) {
+			console.warn(
+				`[ProjectReviews] Failed to sync the manager brief for ${projectId}:`,
+				inboxError instanceof Error ? inboxError.message : inboxError
+			);
+		}
+
 		// Suggestion-lifecycle telemetry: the "generated" end of the loop that the
 		// AI Inbox decide events complete on the web side (audit Tier 1 #6). Lets us
 		// tell whether the loop is helping or nagging.
@@ -3170,6 +3332,11 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			repeated_after_dismissal_count: repeatedAfterDismissalCount,
 			reconfirmed_count: rotation.confirmedCount,
 			rotated_out_count: rotation.rotatedCount,
+			synthesis_candidate_count: synthesisCandidates.length,
+			brief_attention_level: brief.attention_level ?? 'legacy',
+			brief_admitted_count: managerAttentionRequired ? 1 : 0,
+			brief_decision_item_count: brief.decision_item_ids?.length ?? 0,
+			brief_safe_cleanup_item_count: brief.safe_cleanup_item_ids?.length ?? 0,
 			skipped_generators: skippedGenerators,
 			doc_org_count: countKind('doc_org'),
 			doc_outdated_count: countKind('doc_outdated'),

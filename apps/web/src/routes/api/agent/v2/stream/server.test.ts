@@ -186,6 +186,7 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 		FORCED_SYNTHESIS_MAX_TOKENS: 6000
 	},
 	FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY: 'fastchat_pending_turn_intent',
+	FASTCHAT_PENDING_TURN_CONTRACT_METADATA_KEY: 'fastchat_pending_turn_contract',
 	appendAttachmentContextToMessage: (message: string, attachments: Row[] = []) =>
 		attachments.length > 0
 			? [
@@ -208,6 +209,17 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 	}),
 	buildLiveVisionContentParts: ({ text }: { text: string }) => text,
 	buildFastChatPendingTurnIntent: () => null,
+	buildFastChatPendingTurnContract: ({ resolution }: { resolution: Row }) =>
+		resolution.fulfilled
+			? null
+			: {
+					version: 1,
+					contract: resolution.contract,
+					unresolved_outcome_ids: (resolution.outcomes ?? [])
+						.filter((outcome: Row) => !outcome.fulfilled)
+						.map((outcome: Row) => outcome.id)
+				},
+	buildPendingTurnContractSystemMessage: () => null,
 	buildPendingTurnIntentSystemMessage: () => null,
 	composeFastChatHistory: mocks.composeFastChatHistory,
 	createChatAttachmentRefFromAsset: vi.fn(),
@@ -265,6 +277,22 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 	resolveFastChatModelTieringConfig: () => null,
 	resolveFastChatForcedSynthesisRoutingConfig: () => null,
 	resolveFastChatTurnOutcome: mocks.resolveFastChatTurnOutcome,
+	resolveTurnContractOutcome: ({ contract }: { contract?: Row | null }) => {
+		const normalizedContract = contract ?? null;
+		return {
+			status: normalizedContract ? 'unfulfilled' : 'fulfilled',
+			fulfilled: normalizedContract === null,
+			contract: normalizedContract,
+			outcomes: (normalizedContract?.outcomes ?? []).map((outcome: Row) => ({
+				...outcome,
+				fulfilled: false,
+				matchedEffects: 0,
+				requiredEffects: outcome.minimumSuccessfulEffects ?? 1,
+				missingTargetIds: outcome.targetIds ?? [],
+				missingRequiredFields: outcome.requiredFields ?? []
+			}))
+		};
+	},
 	projectLegacyFallbackHistorySnapshot: ({ messages }: { messages: Row[] }) =>
 		messages.map((message) => ({
 			role: message.role,
@@ -4991,25 +5019,40 @@ describe('/api/agent/v2/stream', () => {
 		);
 	});
 
-	it('keeps a resumed checkpoint active when its mutation remains unfulfilled', async () => {
+	it('keeps a resumed checkpoint active when its semantic contract remains unfulfilled', async () => {
+		const pendingContract = {
+			version: 1,
+			contract: {
+				version: 1,
+				source: 'declared',
+				outcomes: [
+					{
+						id: 'update-launch-task',
+						action: 'update',
+						entityKind: 'task',
+						targetIds: ['task-launch-checklist'],
+						requiredFields: [],
+						minimumSuccessfulEffects: 1
+					}
+				]
+			},
+			contextType: 'global',
+			projectId: null,
+			originatingTurnRunId: 'turn-previous',
+			createdAt: '2026-08-14T12:00:00.000Z',
+			finishedReason: 'supervisor_question'
+		};
 		const supabase = createStreamingSupabase({
 			chat_turn_checkpoints: [buildCheckpointRow({ id: 'checkpoint-still-active' })]
 		});
-		mocks.resolveFastChatTurnIntent.mockReturnValueOnce({
-			version: 1,
-			requiresWrite: true,
-			action: 'update',
-			entityKind: 'task',
-			operations: [{ action: 'update', entityKind: 'task' }],
-			source: 'pending_continuation',
-			originalRequestText: 'Update the task.',
-			originatingTurnRunId: 'turn-previous',
-			clearPending: false
-		});
-		mocks.resolveFastChatTurnOutcome.mockReturnValueOnce({
-			status: 'unfulfilled',
-			fulfilled: false,
-			expectedWriteToolNames: ['update_onto_task']
+		mocks.resolveSession.mockResolvedValueOnce({
+			session: {
+				id: 'session-1',
+				summary: null,
+				agent_metadata: {
+					fastchat_pending_turn_contract: pendingContract
+				}
+			}
 		});
 		mocks.streamFastChat.mockResolvedValueOnce({
 			assistantText: 'I could not update the task.',
@@ -5021,7 +5064,8 @@ describe('/api/agent/v2/stream', () => {
 			toolRounds: 1,
 			toolCallsMade: 1,
 			supervisorDecisions: [],
-			cancelled: false
+			cancelled: false,
+			turnContract: pendingContract.contract
 		});
 
 		const response = await POST({
@@ -5055,7 +5099,7 @@ describe('/api/agent/v2/stream', () => {
 		).toMatchObject({
 			checkpoint_id: 'checkpoint-still-active',
 			outcome_status: 'unfulfilled',
-			intent_fulfilled: false
+			contract_fulfilled: false
 		});
 	});
 

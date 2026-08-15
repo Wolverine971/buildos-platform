@@ -27,6 +27,33 @@ describe('resolveFastChatTurnIntent', () => {
 		expect(getWriteToolNamesForTurnIntent(intent)).toEqual(['create_onto_document']);
 	});
 
+	it('classifies a pronoun-based help request to organize named documents', () => {
+		const intent = resolveFastChatTurnIntent({
+			contextType: 'project',
+			latestUserMessage:
+				"This project's documents are a mess — loose notes, raw meeting dumps, half-baked ideas, all " +
+				'piled at the top level. Help me get it organized into something sensible.'
+		});
+
+		expect(intent).toMatchObject({
+			requiresWrite: true,
+			action: 'organize',
+			entityKind: 'document',
+			operations: [{ action: 'organize', entityKind: 'document' }],
+			source: 'current_message'
+		});
+		expect(getWriteToolNamesForTurnIntent(intent)).toEqual(['move_document_in_tree']);
+	});
+
+	it('does not treat a descriptive organized state as a new mutation request', () => {
+		const intent = resolveFastChatTurnIntent({
+			contextType: 'project',
+			latestUserMessage: 'The documents are organized into sensible groups.'
+		});
+
+		expect(intent).toMatchObject({ requiresWrite: false, source: 'none' });
+	});
+
 	it('inherits a pending document create for the exact follow-up', () => {
 		const firstIntent = resolveFastChatTurnIntent({
 			contextType: 'project',

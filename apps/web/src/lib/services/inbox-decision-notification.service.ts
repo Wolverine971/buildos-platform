@@ -6,6 +6,7 @@ import { loadAiInboxCount } from '$lib/stores/aiInboxCount.store';
 type InboxDecisionSourceType =
 	| 'agent_run'
 	| 'project_suggestion'
+	| 'project_review'
 	| 'project_audit'
 	| 'calendar_suggestion'
 	| 'integration_attention';
@@ -33,6 +34,7 @@ function decisionVerb(item: InboxDecisionNotificationItem, action: InboxDecision
 function decisionNoun(item: InboxDecisionNotificationItem): string {
 	if (item.source_type === 'calendar_suggestion') return 'calendar suggestion';
 	if (item.source_type === 'agent_run') return 'agent proposal';
+	if (item.source_type === 'project_review') return 'project manager brief';
 	if (item.source_type === 'project_audit') return 'project audit';
 	if (item.source_type === 'integration_attention') return 'account alert';
 	return 'review item';

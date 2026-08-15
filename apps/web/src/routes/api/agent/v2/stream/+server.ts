@@ -107,10 +107,12 @@ import {
 	parseFastChatModelTieringSampleRate,
 	resolveFastChatModelTieringConfig,
 	resolveFastChatForcedSynthesisRoutingConfig,
-	buildFastChatPendingTurnIntent,
 	buildPendingTurnIntentSystemMessage,
-	resolveFastChatTurnOutcome,
+	buildFastChatPendingTurnContract,
+	buildPendingTurnContractSystemMessage,
+	resolveTurnContractOutcome,
 	FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY,
+	FASTCHAT_PENDING_TURN_CONTRACT_METADATA_KEY,
 	sanitizeAttachmentRefsForMetadata,
 	shouldUseLiveVisionForTurn,
 	streamFastChat,
@@ -1554,6 +1556,7 @@ export const POST: RequestHandler = async ({
 			const {
 				sessionMetadata,
 				pendingTurnIntent,
+				pendingTurnContract,
 				turnIntent,
 				previousDomainState,
 				priorDomainIds,
@@ -1738,6 +1741,7 @@ export const POST: RequestHandler = async ({
 			observabilityWriter.recordEvent('prompt', 'turn_intent_resolved', {
 				...turnIntent,
 				pending_intent_present: pendingTurnIntent !== null,
+				pending_contract_present: pendingTurnContract !== null,
 				domain_sensing_bypassed: domainSensingBypassed
 			} as Json);
 			if (bypassContextCacheForShiftHint && cachedContext) {
@@ -1948,6 +1952,15 @@ export const POST: RequestHandler = async ({
 				historyForModel = [
 					...historyForModel,
 					{ role: 'system', content: pendingIntentSystemMessage }
+				];
+				historyForModelCount = historyForModel.length;
+			}
+			const pendingContractSystemMessage =
+				buildPendingTurnContractSystemMessage(pendingTurnContract);
+			if (pendingContractSystemMessage) {
+				historyForModel = [
+					...historyForModel,
+					{ role: 'system', content: pendingContractSystemMessage }
 				];
 				historyForModelCount = historyForModel.length;
 			}
@@ -2959,6 +2972,8 @@ export const POST: RequestHandler = async ({
 				finalContextUsage,
 				skillGateViolationRepaired,
 				completionOutcome,
+				turnContract,
+				turnContractResolution,
 				orchestrationInterventions
 			} = await streamFastChat({
 				llm,
@@ -2970,6 +2985,7 @@ export const POST: RequestHandler = async ({
 				turnRunId,
 				streamRunId,
 				clientTurnId,
+				initialTurnContract: pendingTurnContract?.contract ?? null,
 				history: historyForModel,
 				message: messageForModel,
 				currentTurnContent,
@@ -3700,30 +3716,34 @@ export const POST: RequestHandler = async ({
 				}
 			}
 
-			const turnOutcome = resolveFastChatTurnOutcome({
-				intent: turnIntent,
-				toolExecutions: normalizedExecutions,
+			const semanticTurnOutcome =
+				turnContractResolution ??
+				resolveTurnContractOutcome({
+					contract: turnContract,
+					toolExecutions: normalizedExecutions,
+					finishedReason
+				});
+			// Compatibility aliases for persistence/checkpoint columns whose schema
+			// names predate semantic contracts.
+			const turnOutcomeStatus = semanticTurnOutcome.status;
+			const nextPendingTurnContract = buildFastChatPendingTurnContract({
+				resolution: semanticTurnOutcome,
+				contextType,
+				projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+				turnRunId,
 				finishedReason
 			});
-			const expectedIntentWriteToolNames = new Set(turnOutcome.expectedWriteToolNames);
-			const turnIntentFulfilled = turnOutcome.fulfilled;
-			const turnOutcomeStatus = turnOutcome.status;
-			let pendingIntentMetadataPersisted = false;
-			if (turnIntent.requiresWrite || turnIntent.clearPending) {
-				const nextPendingTurnIntent =
-					turnIntent.requiresWrite && !turnIntentFulfilled
-						? buildFastChatPendingTurnIntent({
-								intent: turnIntent,
-								contextType,
-								projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-								turnRunId,
-								finishedReason
-							})
-						: null;
-				pendingIntentMetadataPersisted = await updateAgentMetadata(
+			let pendingContractMetadataPersisted = false;
+			if (turnContract || pendingTurnContract || pendingTurnIntent) {
+				pendingContractMetadataPersisted = await updateAgentMetadata(
 					supabase,
 					session.id,
-					{ [FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY]: nextPendingTurnIntent },
+					{
+						[FASTCHAT_PENDING_TURN_CONTRACT_METADATA_KEY]: nextPendingTurnContract,
+						// Clear the lexical pending-intent record during migration. Only a
+						// model-declared or directly observed semantic contract carries over.
+						[FASTCHAT_PENDING_TURN_INTENT_METADATA_KEY]: null
+					},
 					{
 						errorLogger,
 						userId,
@@ -3732,16 +3752,16 @@ export const POST: RequestHandler = async ({
 				);
 			}
 			observabilityWriter.recordEvent('finalize', 'turn_outcome_resolved', {
-				outcome_status: turnOutcomeStatus,
+				outcome_status: semanticTurnOutcome.status,
 				completion_status: completionOutcome?.status ?? 'completed',
 				answer_source: completionOutcome?.answerSource ?? 'model',
-				intent_requires_write: turnIntent.requiresWrite,
-				intent_fulfilled: turnIntentFulfilled,
-				expected_write_tools: Array.from(expectedIntentWriteToolNames),
-				pending_intent_persisted:
-					turnIntent.requiresWrite &&
-					!turnIntentFulfilled &&
-					pendingIntentMetadataPersisted
+				contract_present: semanticTurnOutcome.contract !== null,
+				contract_source: semanticTurnOutcome.contract?.source ?? null,
+				contract_fulfilled: semanticTurnOutcome.fulfilled,
+				contract_outcomes: semanticTurnOutcome.outcomes,
+				lexical_intent_shadow: turnIntent,
+				pending_contract_persisted:
+					nextPendingTurnContract !== null && pendingContractMetadataPersisted
 			} as Json);
 			const normalizedToolCallCount = Math.max(
 				typeof toolCallsMade === 'number' && Number.isFinite(toolCallsMade)
@@ -4215,7 +4235,7 @@ export const POST: RequestHandler = async ({
 				} as Json;
 			}
 			const shouldResolveResumingCheckpoint =
-				!turnIntent.requiresWrite || turnIntentFulfilled || turnIntent.clearPending;
+				semanticTurnOutcome.contract === null || semanticTurnOutcome.fulfilled;
 			if (resumingSupervisorCheckpoint && shouldResolveResumingCheckpoint) {
 				assistantPersistMetadata.supervisor_resume_checkpoint = {
 					checkpoint_id: resumingSupervisorCheckpoint.id,
@@ -4493,7 +4513,7 @@ export const POST: RequestHandler = async ({
 						checkpoint_id: resumingSupervisorCheckpoint.id,
 						resume_turn_run_id: turnRunId,
 						outcome_status: turnOutcomeStatus,
-						intent_fulfilled: turnIntentFulfilled
+						contract_fulfilled: semanticTurnOutcome.fulfilled
 					} as Json
 				);
 			}

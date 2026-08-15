@@ -20,6 +20,12 @@ import {
 	type KnownEntity
 } from './entity-kind-repair';
 import { validateToolCalls, type ToolValidationIssue } from './tool-validation';
+import {
+	CANCEL_TURN_CONTRACT_TOOL_NAME,
+	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	executeCancelTurnContract,
+	executeDeclareTurnContract
+} from '@buildos/agentic-chat-runtime/loop';
 
 export type ToolCallExecutionPair = {
 	original: ChatToolCall;
@@ -433,6 +439,19 @@ async function validateOrExecuteDirectToolCall(params: {
 				}
 			};
 		}
+	}
+
+	if (params.executionToolCall.function.name === DECLARE_TURN_CONTRACT_TOOL_NAME) {
+		return {
+			executedToolCallDelta: 1,
+			result: executeDeclareTurnContract(params.executionToolCall)
+		};
+	}
+	if (params.executionToolCall.function.name === CANCEL_TURN_CONTRACT_TOOL_NAME) {
+		return {
+			executedToolCallDelta: 1,
+			result: executeCancelTurnContract(params.executionToolCall)
+		};
 	}
 
 	const duplicateWrite = params.findDuplicateSuccessfulWrite(params.executionToolCall);

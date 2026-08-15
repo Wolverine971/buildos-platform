@@ -33,7 +33,8 @@ describe('tool surface size report', () => {
 		expect(report.totalChars).toBeGreaterThan(0);
 		expect(report.estimatedTokens).toBeGreaterThan(0);
 		expect(report.tools[0]?.chars).toBeGreaterThanOrEqual(report.tools.at(-1)?.chars ?? 0);
-		expect(report.tools.map((tool) => tool.name)).toContain('skill_load');
+		expect(report.tools.map((tool) => tool.name)).toContain('declare_turn_contract');
+		expect(report.tools.map((tool) => tool.name)).not.toContain('skill_load');
 	});
 
 	it('formats a context/profile matrix for comparing canonical surfaces', () => {

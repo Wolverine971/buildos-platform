@@ -22,7 +22,12 @@ export type WriteLedgerEntry = {
 	toolName: string;
 	op?: string;
 	status: 'success' | 'failure';
+	/** Semantic effect dimensions used by turn-contract fulfillment. */
+	action?: string;
+	entityKind?: string;
+	effectId?: string;
 	entityId?: string;
+	changedFields?: string[];
 	title?: string;
 	stateKey?: string;
 	typeKey?: string;
@@ -53,6 +58,16 @@ function extractResultObject(result: unknown): ParsedArgs | null {
 
 function resolveEntityKind(toolName: string): string | null {
 	if (toolName === 'move_onto_task') return 'task';
+	if (toolName === 'move_document_in_tree' || toolName === 'create_task_document') {
+		return 'document';
+	}
+	if (toolName.includes('calendar_event')) return 'event';
+	if (toolName === 'set_project_calendar') return 'calendar';
+	if (toolName === 'link_onto_entities' || toolName === 'unlink_onto_edge') {
+		return 'relationship';
+	}
+	if (toolName === 'reorganize_onto_project_graph') return 'project';
+	if (toolName === 'tag_onto_entity') return 'entity';
 	const createMatch = toolName.match(/^create_onto_([a-z_]+)$/);
 	if (createMatch?.[1]) return createMatch[1];
 	const updateMatch = toolName.match(/^update_onto_([a-z_]+)$/);
@@ -60,6 +75,87 @@ function resolveEntityKind(toolName: string): string | null {
 	const deleteMatch = toolName.match(/^delete_onto_([a-z_]+)$/);
 	if (deleteMatch?.[1]) return deleteMatch[1];
 	return null;
+}
+
+function resolveAction(toolName: string): string | null {
+	for (const action of [
+		'create',
+		'update',
+		'delete',
+		'move',
+		'link',
+		'unlink',
+		'reorganize',
+		'set',
+		'assign',
+		'complete',
+		'archive',
+		'restore',
+		'tag'
+	]) {
+		if (toolName.startsWith(`${action}_`)) {
+			return action === 'reorganize' ? 'organize' : action;
+		}
+	}
+	return null;
+}
+
+const NON_EFFECT_ARGUMENTS = new Set([
+	'project_id',
+	'task_id',
+	'document_id',
+	'event_id',
+	'goal_id',
+	'plan_id',
+	'milestone_id',
+	'risk_id',
+	'edge_id',
+	'entity_id',
+	'new_parent_id',
+	'parent_id',
+	'expected_source_project_id',
+	'destination_project_id',
+	'confirmation_token',
+	'update_strategy',
+	'confirm',
+	'idempotency_key'
+]);
+
+function normalizeFieldName(value: string): string {
+	return value.replace(/[A-Z]/g, (character) => `_${character.toLowerCase()}`).toLowerCase();
+}
+
+function extractChangedFields(args: ParsedArgs): string[] {
+	return Object.entries(args)
+		.filter(
+			([key, value]) =>
+				!NON_EFFECT_ARGUMENTS.has(normalizeFieldName(key)) && value !== undefined
+		)
+		.map(([key]) => normalizeFieldName(key))
+		.sort();
+}
+
+function extractIdFromArgs(entityKind: string | null, args: ParsedArgs): string | undefined {
+	if (entityKind) {
+		const direct = readString(args[`${entityKind}_id`]);
+		if (direct) return direct;
+	}
+	for (const key of [
+		'document_id',
+		'task_id',
+		'project_id',
+		'event_id',
+		'goal_id',
+		'plan_id',
+		'milestone_id',
+		'risk_id',
+		'entity_id',
+		'edge_id'
+	]) {
+		const id = readString(args[key]);
+		if (id) return id;
+	}
+	return undefined;
 }
 
 function extractIdFromResult(
@@ -146,6 +242,7 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 	const args = extractArgs(execution.toolCall);
 	const result = extractResultObject(execution.result.result);
 	const entityKind = resolveEntityKind(toolName);
+	const action = resolveAction(toolName);
 
 	const entry: WriteLedgerEntry = {
 		toolName,
@@ -155,15 +252,24 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 				: undefined,
 		status: execution.result.success ? 'success' : 'failure'
 	};
+	if (action) entry.action = action;
+	if (entityKind) entry.entityKind = entityKind;
+	if (execution.toolCall.id) entry.effectId = execution.toolCall.id;
+	const changedFields = extractChangedFields(args);
+	if (changedFields.length > 0) entry.changedFields = changedFields;
+	const entityId = extractIdFromResult(entityKind, result) ?? extractIdFromArgs(entityKind, args);
+	if (entityId) entry.entityId = entityId;
+	// Lifecycle semantics describe the attempted durable effect as well as a
+	// successful one. Preserve the requested/result state on failures so a
+	// failed archive/restore/complete call remains evidence for its declaration
+	// instead of becoming an unrelated generic update obligation.
+	const stateKey = extractStateKey(result, args);
+	if (stateKey) entry.stateKey = stateKey;
 
 	if (execution.result.success) {
-		const id = extractIdFromResult(entityKind, result);
-		if (id) entry.entityId = id;
 		const title =
 			extractTitleFromResult(result) ?? readString(args.title) ?? readString(args.name);
 		if (title) entry.title = title;
-		const stateKey = extractStateKey(result, args);
-		if (stateKey) entry.stateKey = stateKey;
 		const typeKey = extractTypeKey(result) ?? readString(args.type_key);
 		if (typeKey) entry.typeKey = typeKey;
 		if (toolName === 'move_document_in_tree') {

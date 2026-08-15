@@ -2,17 +2,19 @@
 <!--
 	TaskKanbanBoard — v2 PoC component
 
-	Trello-style 7-column board on a single row:
-	  Backlog · In Progress · Scheduled · Overdue · Blocked · Done · Archived
+	Familiar 4-stage workflow on a single row:
+	  Backlog · In Progress · Blocked · Done
 
-	The row scrolls horizontally so each column keeps a comfortable 300px width
+	Scheduled and overdue are due-date filters, not workflow stages. Archived is
+	available on demand as a secondary column. The row scrolls horizontally so
+	each column keeps a comfortable width
 	(cards stay readable).
 
 	Drag-and-drop semantics:
 	  - State columns (Backlog/In Progress/Blocked/Done) accept any card.
 	    A card from Archived is restored first (POST /restore), then PATCHed.
 	  - Archived accepts any non-archived card (DELETE soft-delete).
-	  - Scheduled and Overdue are derived views — no drops accepted.
+	  - Scheduled and Overdue are derived filters, never drop targets.
 
 	Bucketing is mutually exclusive and combines `state_key`, `due_at`/`start_at`,
 	and `deleted_at`. Overdue takes precedence over state buckets so slipping
@@ -30,15 +32,16 @@
 	Drag rules:
 	  - Backlog / In Progress / Blocked / Done accept drops → PATCH state_key
 	  - Archived accepts drops → DELETE (soft-delete via deleted_at)
-	  - Overdue and Scheduled are derived views; no drops, but their cards
-	    can still be dragged out to a state column.
-	  - Archived cards cannot be dragged (no restore endpoint in PoC).
+	  - Overdue and Scheduled are derived filters; matching cards stay in their
+	    persisted workflow column and can be dragged normally.
+	  - Archived cards can be dragged back to a workflow column to restore them.
 
 	Archived cards are not in the standard project loader response, so the
 	column lazy-loads them from /api/onto/projects/[id]/tasks/archived.
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { slide } from 'svelte/transition';
 	import {
 		Archive,
 		AlertTriangle,
@@ -46,31 +49,34 @@
 		CheckCircle2,
 		Circle,
 		Clock,
+		Filter,
 		Flame,
 		ListChecks,
 		LoaderCircle,
 		PauseCircle,
-		Plus,
 		RefreshCw,
-		User
+		User,
+		X
 	} from '$lib/icons/lucide';
+	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import { toastService } from '$lib/stores/toast.store';
 	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
 	import type { Task, TaskState } from '$lib/types/onto';
 	import type {
 		ProjectActiveTaskBucketKey,
-		ProjectTaskBoardBucketKey,
 		ProjectTasksCoverage
 	} from '$lib/types/project-full-data';
 	import {
+		compareProjectTasksForBucket,
 		getProjectTaskAsOfMs,
-		getProjectTaskBoardBucket,
-		groupProjectTasksByBucket
+		getProjectTaskBoardBucket
 	} from '$lib/utils/project-task-board';
 
 	const recentlyCreated = getRecentlyCreatedContext();
 
-	type ColumnKey = ProjectTaskBoardBucketKey;
+	type WorkflowColumnKey = 'backlog' | 'in_progress' | 'blocked' | 'done';
+	type ColumnKey = WorkflowColumnKey | 'archived';
+	type DueFilterKey = 'scheduled' | 'overdue';
 
 	type ColumnDef = {
 		key: ColumnKey;
@@ -80,12 +86,12 @@
 		bg: string;
 		icon: typeof Circle;
 		/** What kind of drop this column accepts */
-		dropAction: 'state' | 'archive' | 'none';
+		dropAction: 'state' | 'archive';
 		/** State that gets PATCHed when dropping (only used when dropAction === 'state') */
 		targetState?: TaskState;
 	};
 
-	const COLUMNS: ColumnDef[] = [
+	const WORKFLOW_COLUMNS: ColumnDef[] = [
 		{
 			key: 'backlog',
 			label: 'Backlog',
@@ -107,24 +113,6 @@
 			targetState: 'in_progress'
 		},
 		{
-			key: 'scheduled',
-			label: 'Scheduled',
-			hint: 'On the calendar',
-			accent: 'text-accent',
-			bg: 'bg-accent/10',
-			icon: CalendarClock,
-			dropAction: 'none'
-		},
-		{
-			key: 'overdue',
-			label: 'Overdue',
-			hint: 'Past due date',
-			accent: 'text-destructive',
-			bg: 'bg-destructive/10',
-			icon: AlertTriangle,
-			dropAction: 'none'
-		},
-		{
 			key: 'blocked',
 			label: 'Blocked',
 			hint: 'Stuck or waiting',
@@ -143,15 +131,33 @@
 			icon: CheckCircle2,
 			dropAction: 'state',
 			targetState: 'done'
+		}
+	];
+
+	const ARCHIVED_COLUMN: ColumnDef = {
+		key: 'archived',
+		label: 'Archived',
+		hint: 'Removed from view',
+		accent: 'text-muted-foreground',
+		bg: 'bg-muted/40',
+		icon: Archive,
+		dropAction: 'archive'
+	};
+
+	const DUE_FILTERS: Array<{
+		key: DueFilterKey;
+		label: string;
+		icon: typeof CalendarClock;
+	}> = [
+		{
+			key: 'overdue',
+			label: 'Overdue',
+			icon: AlertTriangle
 		},
 		{
-			key: 'archived',
-			label: 'Archived',
-			hint: 'Soft-deleted',
-			accent: 'text-muted-foreground',
-			bg: 'bg-muted/40',
-			icon: Archive,
-			dropAction: 'archive'
+			key: 'scheduled',
+			label: 'Scheduled',
+			icon: CalendarClock
 		}
 	];
 
@@ -161,7 +167,6 @@
 		tasksCoverage,
 		canEdit,
 		onEditTask,
-		onCreateTask,
 		onTaskMoved,
 		onLoadMoreTasks
 	}: {
@@ -170,7 +175,6 @@
 		tasksCoverage?: ProjectTasksCoverage;
 		canEdit: boolean;
 		onEditTask: (taskId: string) => void;
-		onCreateTask?: () => void;
 		onTaskMoved?: (taskId: string, newState: TaskState | 'archived') => void;
 		onLoadMoreTasks?: (bucket: ProjectActiveTaskBucketKey) => Promise<void>;
 	} = $props();
@@ -244,9 +248,75 @@
 	// Bucketing
 	// ----------------------------------------------------------------
 
-	const tasksByColumn = $derived(
-		groupProjectTasksByBucket(localTasks, getProjectTaskAsOfMs(tasksCoverage?.as_of))
+	let showFilters = $state(false);
+	let showArchived = $state(false);
+	let activeDueFilters = $state<Set<DueFilterKey>>(new Set());
+
+	const asOfMs = $derived(getProjectTaskAsOfMs(tasksCoverage?.as_of));
+	const selectedDueFilters = $derived(
+		DUE_FILTERS.filter((filter) => activeDueFilters.has(filter.key))
 	);
+
+	function taskWorkflowColumn(task: Task): ColumnKey {
+		if (task.deleted_at) return 'archived';
+		if (task.state_key === 'done') return 'done';
+		if (task.state_key === 'in_progress') return 'in_progress';
+		if (task.state_key === 'blocked') return 'blocked';
+		return 'backlog';
+	}
+
+	function matchesDueFilters(task: Task): boolean {
+		if (activeDueFilters.size === 0) return true;
+		const dueBucket = getProjectTaskBoardBucket(task, asOfMs);
+		return (
+			(dueBucket === 'overdue' && activeDueFilters.has('overdue')) ||
+			(dueBucket === 'scheduled' && activeDueFilters.has('scheduled'))
+		);
+	}
+
+	const tasksByColumn = $derived.by(() => {
+		const grouped: Record<ColumnKey, Task[]> = {
+			backlog: [],
+			in_progress: [],
+			blocked: [],
+			done: [],
+			archived: []
+		};
+
+		for (const task of localTasks) {
+			const column = taskWorkflowColumn(task);
+			if (column === 'archived' || matchesDueFilters(task)) grouped[column].push(task);
+		}
+
+		for (const column of Object.keys(grouped) as ColumnKey[]) {
+			grouped[column].sort((a, b) => compareProjectTasksForBucket(column, a, b));
+		}
+		return grouped;
+	});
+
+	function toggleDueFilter(filter: DueFilterKey) {
+		const next = new Set(activeDueFilters);
+		if (next.has(filter)) next.delete(filter);
+		else next.add(filter);
+		activeDueFilters = next;
+	}
+
+	function clearDueFilters() {
+		activeDueFilters = new Set();
+	}
+
+	function dueFilterCount(filter: DueFilterKey): number {
+		return (
+			tasksCoverage?.buckets[filter]?.total ??
+			localTasks.filter((task) => getProjectTaskBoardBucket(task, asOfMs) === filter).length
+		);
+	}
+
+	async function toggleArchivedColumn() {
+		showArchived = !showArchived;
+		if (showArchived && !archivedLoaded) await loadArchived();
+	}
+
 	let loadingTaskBuckets = $state<Set<ProjectActiveTaskBucketKey>>(new Set());
 	let taskBucketErrors = $state<Partial<Record<ProjectActiveTaskBucketKey, string>>>({});
 
@@ -266,6 +336,36 @@
 			next.delete(bucket);
 			loadingTaskBuckets = next;
 		}
+	}
+
+	const incompleteTaskBuckets = $derived.by(() => {
+		if (!tasksCoverage || !onLoadMoreTasks) return [];
+		const relevantBuckets =
+			activeDueFilters.size > 0
+				? ([...activeDueFilters] as ProjectActiveTaskBucketKey[])
+				: (Object.keys(tasksCoverage.buckets) as ProjectActiveTaskBucketKey[]);
+		return relevantBuckets.filter((bucket) => !tasksCoverage?.buckets[bucket]?.complete);
+	});
+
+	const visibleTaskCoverage = $derived.by(() => {
+		if (!tasksCoverage) return null;
+		if (activeDueFilters.size === 0) {
+			return { returned: tasksCoverage.returned, total: tasksCoverage.total };
+		}
+		return [...activeDueFilters].reduce(
+			(summary, bucket) => {
+				const coverage = tasksCoverage?.buckets[bucket];
+				return {
+					returned: summary.returned + (coverage?.returned ?? 0),
+					total: summary.total + (coverage?.total ?? 0)
+				};
+			},
+			{ returned: 0, total: 0 }
+		);
+	});
+
+	async function loadMoreVisibleTasks() {
+		for (const bucket of incompleteTaskBuckets) await loadMoreTasks(bucket);
 	}
 
 	// ----------------------------------------------------------------
@@ -316,7 +416,6 @@
 
 	function handleDragOver(event: DragEvent, col: ColumnDef) {
 		if (!canEdit || !draggingTaskId) return;
-		if (col.dropAction === 'none') return;
 		event.preventDefault();
 		if (event.dataTransfer) {
 			event.dataTransfer.dropEffect = col.dropAction === 'archive' ? 'move' : 'move';
@@ -331,7 +430,6 @@
 	async function handleDrop(event: DragEvent, col: ColumnDef) {
 		event.preventDefault();
 		if (!canEdit) return;
-		if (col.dropAction === 'none') return;
 
 		const taskId = event.dataTransfer?.getData('text/plain') ?? draggingTaskId;
 		dragOverColumn = null;
@@ -344,11 +442,7 @@
 		const wasArchived = !!before.deleted_at;
 
 		// No-op guard: dropping on the column the task already lives in.
-		if (
-			getProjectTaskBoardBucket(before, getProjectTaskAsOfMs(tasksCoverage?.as_of)) ===
-			col.key
-		)
-			return;
+		if (taskWorkflowColumn(before) === col.key) return;
 
 		// ----- Re-archive of an already-archived card → no-op -----
 		if (col.dropAction === 'archive' && wasArchived) return;
@@ -531,36 +625,133 @@
 </script>
 
 <section class="overflow-hidden border-y border-border/70" aria-label="Task kanban board">
-	<header class="flex items-center justify-between gap-2 border-b border-border/60 px-1 py-2.5">
-		<div class="flex items-center gap-2">
+	<header
+		class="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-1 py-2.5"
+	>
+		<div class="flex min-w-0 items-center gap-2">
 			<ListChecks class="h-4 w-4 shrink-0 text-muted-foreground" />
-			<div>
+			<div class="min-w-0">
 				<p class="text-sm font-semibold text-foreground">Task board</p>
-				<p class="text-xs text-muted-foreground">
+				<p class="truncate text-xs text-muted-foreground">
 					{activeTaskCount()}
-					project tasks · drag to move
+					tasks · move work from Backlog to Done
 				</p>
 			</div>
 		</div>
-		{#if canEdit && onCreateTask}
+
+		<div class="flex items-center gap-1.5">
 			<button
 				type="button"
-				onclick={onCreateTask}
-				class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-accent hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable"
+				onclick={() => (showFilters = !showFilters)}
+				aria-controls="task-board-filters"
+				aria-expanded={showFilters}
+				aria-label={activeDueFilters.size > 0
+					? `Filters, ${activeDueFilters.size} active`
+					: 'Filters'}
+				class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable
+					{showFilters || activeDueFilters.size > 0
+					? 'bg-accent/10 text-accent'
+					: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
 			>
-				<Plus class="h-3.5 w-3.5" />
-				New task
+				<Filter class="h-3.5 w-3.5" />
+				Filters
+				{#if activeDueFilters.size > 0}
+					<span
+						class="inline-flex min-w-5 items-center justify-center rounded-md bg-accent px-1 text-2xs text-accent-foreground"
+					>
+						{activeDueFilters.size}
+					</span>
+				{/if}
 			</button>
-		{/if}
+			<button
+				type="button"
+				onclick={() => void toggleArchivedColumn()}
+				aria-controls="task-bucket-archived"
+				aria-expanded={showArchived}
+				aria-label={showArchived ? 'Hide archived tasks' : 'Show archived tasks'}
+				class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable
+					{showArchived
+					? 'bg-muted text-foreground'
+					: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
+			>
+				<Archive class="h-3.5 w-3.5" />
+				<span class="hidden sm:inline">Archived</span>
+				{#if archivedLoaded && archivedTotal > 0}
+					<span class="text-2xs text-muted-foreground">{archivedTotal}</span>
+				{/if}
+			</button>
+		</div>
 	</header>
+
+	{#if showFilters}
+		<div
+			id="task-board-filters"
+			class="border-b border-border/60 bg-muted/15 px-3 py-3"
+			transition:slide={slideMotion()}
+		>
+			<div
+				class="flex flex-wrap items-center gap-2"
+				role="group"
+				aria-label="Due date filters"
+			>
+				<span class="micro-label mr-1 text-muted-foreground">Due date</span>
+				{#each DUE_FILTERS as filter (filter.key)}
+					{@const isActive = activeDueFilters.has(filter.key)}
+					<button
+						type="button"
+						onclick={() => toggleDueFilter(filter.key)}
+						aria-pressed={isActive}
+						aria-label="Filter by {filter.label.toLowerCase()} tasks"
+						class="inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable
+							{isActive
+							? 'border-accent/40 bg-accent/10 text-foreground'
+							: 'border-border/70 bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
+					>
+						<filter.icon
+							class="h-3.5 w-3.5 {filter.key === 'overdue'
+								? 'text-destructive'
+								: 'text-accent'}"
+						/>
+						<span>{filter.label}</span>
+						<span class="text-2xs text-muted-foreground"
+							>{dueFilterCount(filter.key)}</span
+						>
+					</button>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	{#if selectedDueFilters.length > 0}
+		<div
+			class="flex flex-wrap items-center gap-1.5 border-b border-border/50 px-3 py-2"
+			aria-label="Active task filters"
+		>
+			{#each selectedDueFilters as filter (filter.key)}
+				<button
+					type="button"
+					onclick={() => toggleDueFilter(filter.key)}
+					aria-label="Remove {filter.label.toLowerCase()} filter"
+					class="inline-flex min-h-[32px] items-center gap-1.5 rounded-md bg-accent/10 px-2 text-xs font-medium text-foreground transition-colors hover:bg-accent/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+				>
+					{filter.label}
+					<X class="h-3 w-3 text-muted-foreground" />
+				</button>
+			{/each}
+			<button
+				type="button"
+				onclick={clearDueFilters}
+				class="min-h-[32px] rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+			>
+				Clear filters
+			</button>
+		</div>
+	{/if}
 
 	{#snippet columnView(col: ColumnDef)}
 		{@const items = tasksByColumn[col.key] ?? []}
 		{@const isOver = dragOverColumn === col.key}
-		{@const isViewOnly = col.dropAction === 'none'}
-		{@const isDanger = col.key === 'overdue'}
 		{@const isArchive = col.key === 'archived'}
-		{@const activeBucket = col.key === 'archived' ? null : col.key}
 		<div
 			id="task-bucket-{col.key}"
 			data-column-key={col.key}
@@ -568,9 +759,7 @@
 			class="kanban-column flex min-h-[220px] flex-col rounded-md border bg-card/45 transition-colors
 				{isOver
 				? 'border-foreground/60 bg-foreground/[0.06] ring-1 ring-foreground/20'
-				: 'border-border/60'}
-				{isViewOnly ? 'border-dashed' : ''}
-				{isDanger && items.length > 0 ? 'border-destructive/40 bg-destructive/5' : ''}"
+				: 'border-border/60'}"
 			ondragover={(e) => handleDragOver(e, col)}
 			ondragleave={() => handleDragLeave(col)}
 			ondrop={(e) => handleDrop(e, col)}
@@ -590,11 +779,7 @@
 						{col.label}
 					</span>
 					<span class="text-2xs shrink-0 text-muted-foreground">
-						{isArchive && archivedLoaded
-							? archivedTotal
-							: col.key !== 'archived'
-								? (tasksCoverage?.buckets[col.key]?.total ?? items.length)
-								: items.length}
+						{isArchive && archivedLoaded ? archivedTotal : items.length}
 					</span>
 				</div>
 				<span class="micro-label hidden shrink-0 text-muted-foreground/60 md:inline">
@@ -602,7 +787,7 @@
 				</span>
 			</div>
 
-			<!-- Archived column has a load button at the top -->
+			<!-- Archived tasks are fetched only after the secondary column is opened. -->
 			{#if isArchive && !archivedLoaded}
 				<div class="px-3 pt-2">
 					<button
@@ -616,7 +801,7 @@
 								class="w-3.5 h-3.5 animate-spin motion-reduce:animate-none"
 							/> Loading…
 						{:else}
-							<RefreshCw class="w-3.5 h-3.5" /> Load archived from server
+							<RefreshCw class="w-3.5 h-3.5" /> Try loading archived again
 						{/if}
 					</button>
 					{#if archivedError}
@@ -630,12 +815,12 @@
 					<div
 						class="rounded-md border border-dashed border-border/60 px-3 py-6 text-center text-xs text-muted-foreground/70 italic"
 					>
-						{#if isViewOnly}
-							Nothing here — that's good
-						{:else if isArchive}
+						{#if isArchive}
 							{archivedLoaded
 								? 'No archived tasks'
 								: 'Drag a card here to archive it'}
+						{:else if activeDueFilters.size > 0}
+							No matching tasks
 						{:else}
 							Drop tasks here
 						{/if}
@@ -658,7 +843,7 @@
 							ondragend={handleDragEnd}
 							onclick={() => onEditTask(task.id)}
 							title={isArchivedCard ? 'Drag to a state column to restore' : undefined}
-							class="group min-h-[44px] w-full rounded-md border border-border bg-card px-3 py-2.5 text-left shadow-none transition-all hover:border-foreground/20 hover:shadow-ink focus:outline-none focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable
+							class="group min-h-[44px] w-full rounded-md border border-border bg-card px-2.5 py-2 text-left shadow-none transition-all hover:border-foreground/20 hover:shadow-ink focus:outline-none focus-visible:shadow-ink-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable
 								{isDragging ? 'opacity-40 shadow-ink-strong' : ''}
 								{isPending ? 'opacity-70' : ''}
 								{isArchivedCard ? 'opacity-70' : ''}
@@ -674,13 +859,13 @@
 							</p>
 							{#if task.description}
 								<p
-									class="text-xs text-muted-foreground line-clamp-2 mt-1 leading-snug"
+									class="mt-0.5 line-clamp-1 text-xs leading-snug text-muted-foreground"
 								>
 									{task.description}
 								</p>
 							{/if}
 							{#if prio || due || assignee || archivedAt}
-								<div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-2.5">
+								<div class="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
 									{#if prio && !isArchivedCard}
 										<span class="text-2xs font-semibold {prio.className}"
 											>{prio.label}</span
@@ -722,32 +907,6 @@
 					{/each}
 				{/if}
 
-				{#if activeBucket && tasksCoverage?.buckets[activeBucket]?.complete === false}
-					<div class="pt-1 space-y-1.5">
-						<button
-							type="button"
-							onclick={() => void loadMoreTasks(activeBucket)}
-							disabled={loadingTaskBuckets.has(activeBucket)}
-							class="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-2 text-2xs font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50 motion-reduce:transition-none pressable"
-						>
-							{#if loadingTaskBuckets.has(activeBucket)}
-								<LoaderCircle
-									class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
-								/>
-								Loading…
-							{:else}
-								Load more ({items.length}/{tasksCoverage.buckets[activeBucket]
-									.total})
-							{/if}
-						</button>
-						{#if taskBucketErrors[activeBucket]}
-							<p class="text-xs text-destructive">
-								{taskBucketErrors[activeBucket]}
-							</p>
-						{/if}
-					</div>
-				{/if}
-
 				{#if isArchive && archivedLoaded && archivedHasMore}
 					<button
 						type="button"
@@ -769,16 +928,19 @@
 		</div>
 	{/snippet}
 
-	<!-- Board: single horizontally-scrollable row. Columns get a generous
-	     ~300px min width so cards have breathing room; the row scrolls. The
+	<!-- Board: single horizontally-scrollable row. Four workflow columns share
+	     the desktop width and keep a 270px minimum before the row scrolls. The
 	     right-edge fade makes "more columns" obvious when macOS hides the
 	     scrollbar (Hyperplexed: make scrollability visible). -->
 	<div class="relative">
 		<div class="kanban-scroll overflow-x-auto py-3">
-			<div class="grid grid-flow-col auto-cols-[300px] gap-3">
-				{#each COLUMNS as col (col.key)}
+			<div class="grid grid-flow-col auto-cols-[minmax(270px,1fr)] gap-3">
+				{#each WORKFLOW_COLUMNS as col (col.key)}
 					{@render columnView(col)}
 				{/each}
+				{#if showArchived}
+					{@render columnView(ARCHIVED_COLUMN)}
+				{/if}
 			</div>
 		</div>
 		<div
@@ -786,6 +948,38 @@
 			aria-hidden="true"
 		></div>
 	</div>
+
+	{#if incompleteTaskBuckets.length > 0 && visibleTaskCoverage}
+		<footer
+			class="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 px-3 py-2"
+		>
+			<div>
+				<p class="text-xs text-muted-foreground">
+					Showing {visibleTaskCoverage.returned} of {visibleTaskCoverage.total}
+					{activeDueFilters.size > 0 ? 'matching tasks' : 'tasks'}
+				</p>
+				{#each incompleteTaskBuckets as bucket (bucket)}
+					{#if taskBucketErrors[bucket]}
+						<p class="text-xs text-destructive">{taskBucketErrors[bucket]}</p>
+					{/if}
+				{/each}
+			</div>
+			<button
+				type="button"
+				onclick={() => void loadMoreVisibleTasks()}
+				disabled={loadingTaskBuckets.size > 0}
+				aria-label="Load more tasks ({visibleTaskCoverage.returned}/{visibleTaskCoverage.total})"
+				class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 motion-reduce:transition-none pressable"
+			>
+				{#if loadingTaskBuckets.size > 0}
+					<LoaderCircle class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
+					Loading…
+				{:else}
+					Load more
+				{/if}
+			</button>
+		</footer>
+	{/if}
 </section>
 
 <style>
@@ -823,28 +1017,20 @@
 			order: 1;
 		}
 
-		.kanban-column[data-column-key='scheduled'] {
+		.kanban-column[data-column-key='backlog'] {
 			order: 2;
 		}
 
-		.kanban-column[data-column-key='overdue'] {
+		.kanban-column[data-column-key='blocked'] {
 			order: 3;
 		}
 
-		.kanban-column[data-column-key='backlog'] {
+		.kanban-column[data-column-key='done'] {
 			order: 4;
 		}
 
-		.kanban-column[data-column-key='blocked'] {
-			order: 5;
-		}
-
-		.kanban-column[data-column-key='done'] {
-			order: 6;
-		}
-
 		.kanban-column[data-column-key='archived'] {
-			order: 7;
+			order: 5;
 		}
 	}
 

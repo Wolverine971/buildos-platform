@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 241 tables, grouped by domain.
+Complete column listing for all 240 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-08-14T17:34:39.258Z
+**Schema generated:** 2026-08-15T04:47:47.306Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -19,7 +19,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [Projects & Tasks (Legacy)](#projects--tasks-legacy) (21 tables)
 - [Chat & Agents](#chat--agents) (33 tables)
 - [Calendar](#calendar) (13 tables)
-- [Notifications](#notifications) (8 tables)
+- [Notifications](#notifications) (7 tables)
 - [SMS & Twilio](#sms--twilio) (7 tables)
 - [Email](#email) (28 tables)
 - [Billing](#billing) (14 tables)
@@ -553,10 +553,6 @@ click_count `number?` · created_at `string?` · delivery_id `string` · destina
 ### user_notification_preferences
 
 batch_enabled `boolean` · batch_interval_minutes `number?` · created_at `string` · email_enabled `boolean` · id `string` · in_app_enabled `boolean` · max_per_day `number?` · max_per_hour `number?` · priority `string` · push_enabled `boolean` · quiet_hours_enabled `boolean` · quiet_hours_end `string?` · quiet_hours_start `string?` · should_email_daily_brief `boolean` · should_sms_daily_brief `boolean` · sms_enabled `boolean` · updated_at `string` · user_id `string`
-
-### user_notification_preferences_backup
-
-batch_enabled `boolean?` · batch_interval_minutes `number?` · created_at `string?` · email_enabled `boolean?` · event_type `string?` · id `string?` · in_app_enabled `boolean?` · max_per_day `number?` · max_per_hour `number?` · priority `string?` · push_enabled `boolean?` · quiet_hours_enabled `boolean?` · quiet_hours_end `string?` · quiet_hours_start `string?` · should_email_daily_brief `boolean?` · should_sms_daily_brief `boolean?` · sms_enabled `boolean?` · updated_at `string?` · user_id `string?`
 
 ### user_notifications
 

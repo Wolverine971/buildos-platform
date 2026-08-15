@@ -8,6 +8,125 @@
 
 import type { ChatToolDefinition } from '@buildos/shared-types';
 
+export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
+	type: 'function',
+	function: {
+		name: 'declare_turn_contract',
+		description:
+			'Declare the durable outcomes you are committing to complete in this turn when you must read or discover targets before writing. Call this alongside the first read calls, not after them. Do not use it for answer-only turns or when you can make the direct write immediately. This records a semantic commitment only; it does not mutate user data. Continue until every declared outcome is backed by successful write effects, or report the concrete blocker.',
+		parameters: {
+			type: 'object',
+			properties: {
+				summary: {
+					type: 'string',
+					maxLength: 300,
+					description: 'A short description of the user-visible durable result.'
+				},
+				outcomes: {
+					type: 'array',
+					minItems: 1,
+					maxItems: 20,
+					description:
+						'Semantic effects required before this turn may claim completion. Describe outcomes, not implementation steps or tool names.',
+					items: {
+						type: 'object',
+						properties: {
+							id: {
+								type: 'string',
+								maxLength: 80,
+								description: 'Optional stable label for this outcome.'
+							},
+							action: {
+								type: 'string',
+								enum: [
+									'create',
+									'update',
+									'move',
+									'organize',
+									'link',
+									'unlink',
+									'delete',
+									'schedule',
+									'set',
+									'assign',
+									'complete',
+									'archive',
+									'restore',
+									'tag'
+								]
+							},
+							entity_kind: {
+								type: 'string',
+								enum: [
+									'project',
+									'task',
+									'document',
+									'event',
+									'goal',
+									'plan',
+									'milestone',
+									'risk',
+									'relationship',
+									'calendar',
+									'entity'
+								]
+							},
+							description: {
+								type: 'string',
+								maxLength: 240
+							},
+							target_ids: {
+								type: 'array',
+								maxItems: 50,
+								items: { type: 'string' },
+								description:
+									'Canonical target ids when already known. Omit until reads reveal them.'
+							},
+							required_fields: {
+								type: 'array',
+								maxItems: 30,
+								items: { type: 'string' },
+								description:
+									'Fields whose successful mutation is essential to the outcome.'
+							},
+							minimum_successful_effects: {
+								type: 'integer',
+								minimum: 1,
+								maximum: 100,
+								description:
+									'How many distinct durable effects are required. Use the real requested cardinality; never collapse multiple targets to one.'
+							}
+						},
+						required: ['action', 'entity_kind', 'minimum_successful_effects']
+					}
+				}
+			},
+			required: ['outcomes']
+		}
+	}
+};
+
+export const CANCEL_TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
+	type: 'function',
+	function: {
+		name: 'cancel_turn_contract',
+		description:
+			'Cancel the unfinished semantic turn contract only when the current user explicitly cancels or supersedes that prior commission. This is an internal control action and does not mutate user data. Never call it merely because execution is difficult or blocked.',
+		parameters: {
+			type: 'object',
+			properties: {
+				reason: {
+					type: 'string',
+					maxLength: 240,
+					description:
+						'A concise explanation grounded in the current user message that cancelled or superseded the prior commission.'
+				}
+			},
+			required: ['reason']
+		}
+	}
+};
+
 export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	{
 		type: 'function',

@@ -3,8 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { buildLastTurnContextDraftV1 } from '@buildos/agentic-chat-runtime';
 import {
 	extractContextShiftPayload,
-	resolveFastChatTurnOutcome,
-	type FastChatTurnIntent
+	resolveTurnContractFromExecutions,
+	resolveTurnContractOutcome
 } from '@buildos/agentic-chat-runtime/loop';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
@@ -2236,17 +2236,20 @@ export class AgenticChatFixtureTurnExecutor {
 				) as unknown as JsonObject)
 			: null;
 		const includesFailureEventPair = status === 'failed' && terminalEventContext;
-		const frozenTurnIntent =
+		const turnContract =
 			status === 'completed'
-				? terminalEventContext?.executionInput.artifact.prepared.turnIntent
-				: undefined;
-		const turnOutcome = frozenTurnIntent
-			? resolveFastChatTurnOutcome({
-					intent: frozenTurnIntent as FastChatTurnIntent,
-					toolExecutions: terminalEventContext?.terminalContext.toolExecutions,
-					finishedReason
-				})
-			: null;
+				? resolveTurnContractFromExecutions(
+						terminalEventContext?.terminalContext.toolExecutions
+					)
+				: null;
+		const turnOutcome =
+			status === 'completed'
+				? resolveTurnContractOutcome({
+						contract: turnContract,
+						toolExecutions: terminalEventContext?.terminalContext.toolExecutions,
+						finishedReason
+					})
+				: null;
 		const timingDraft =
 			includesTerminalEventPair || includesFailureEventPair
 				? this.buildTimingDraft(terminalEventContext.runtimeTiming, finishedReason)
@@ -2270,10 +2273,16 @@ export class AgenticChatFixtureTurnExecutor {
 				turn_run_id: claim.turnRunId,
 				execution_generation: claim.executionGeneration,
 				worker_runtime: 'agentic_chat_v1',
-				...(frozenTurnIntent && turnOutcome
+				...(turnOutcome
 					? {
 							outcome_status: turnOutcome.status,
-							turn_intent: toLegacyTurnIntentMetadata(frozenTurnIntent)
+							...(turnContract
+								? {
+										turn_contract: turnContract as unknown as JsonObject,
+										turn_contract_outcomes:
+											turnOutcome.outcomes as unknown as JsonObject[]
+									}
+								: {})
 						}
 					: {}),
 				tool_round_count: terminalEventContext?.terminalContext.toolRoundCount ?? 0,
@@ -2616,22 +2625,6 @@ export class AgenticChatFixtureTurnExecutor {
 		canonicalUuid(value, 'generated id');
 		return value;
 	}
-}
-
-function toLegacyTurnIntentMetadata(
-	intent: NonNullable<AgenticChatWorkerExecutionInputV1['artifact']['prepared']['turnIntent']>
-): JsonObject {
-	return {
-		version: intent.version,
-		requiresWrite: intent.requiresWrite,
-		action: intent.action,
-		entityKind: intent.entityKind,
-		operations: intent.operations as unknown as JsonObject[],
-		source: intent.source,
-		originalRequestText: intent.originalRequestText,
-		originatingTurnRunId: intent.originatingTurnRunId,
-		clearPending: intent.clearPending
-	};
 }
 
 function resolveAcknowledgementMessage(executionInput: AgenticChatWorkerExecutionInputV1): string {

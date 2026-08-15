@@ -43,7 +43,13 @@ import {
 	searchOntology,
 	searchProject
 } from '@buildos/agentic-chat-runtime/tools';
-import { TOOL_METADATA, searchTelemetryColumns } from '@buildos/agentic-chat-runtime/loop';
+import {
+	CANCEL_TURN_CONTRACT_TOOL_NAME,
+	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	TOOL_METADATA,
+	parseDeclaredTurnContract,
+	searchTelemetryColumns
+} from '@buildos/agentic-chat-runtime/loop';
 import { runWithAbortableDeadline } from './abortableDeadline';
 import type { AgenticChatFixtureReadToolPortV1 } from './fixtureTurnExecutor';
 import { AgenticChatProviderExecutionError } from './providerContract';
@@ -72,6 +78,33 @@ type SharedReadToolRunner = (
  * transcribed from the web executor, so web and worker reject identically.
  */
 const SHARED_READ_TOOL_RUNNERS: Readonly<Record<string, SharedReadToolRunner>> = Object.freeze({
+	[CANCEL_TURN_CONTRACT_TOOL_NAME]: async (_context, args) => {
+		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 240) : '';
+		if (!reason) {
+			throw new Error(
+				'Turn contract cancellation failed: provide a concise reason grounded in the current user message.'
+			);
+		}
+		return {
+			status: 'cancelled',
+			reason,
+			instruction: 'Do not execute the cancelled durable outcomes.'
+		};
+	},
+	[DECLARE_TURN_CONTRACT_TOOL_NAME]: async (_context, args) => {
+		const contract = parseDeclaredTurnContract(args);
+		if (!contract) {
+			throw new Error(
+				'Turn contract validation failed: provide at least one supported semantic outcome.'
+			);
+		}
+		return {
+			status: 'declared',
+			contract,
+			instruction:
+				'Continue until every declared outcome is backed by successful durable effects, or explain the concrete blocker.'
+		};
+	},
 	list_onto_projects: (context, args) => listOntoProjects(context, args as never),
 	list_onto_tasks: (context, args) => listOntoTasks(context, args as never),
 	list_onto_goals: (context, args) => listOntoGoals(context, args as never),

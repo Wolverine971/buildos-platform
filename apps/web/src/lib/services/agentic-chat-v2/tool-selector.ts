@@ -7,11 +7,7 @@ import {
 	resolveGatewaySurfaceProfileForContextType,
 	type GatewaySurfaceProfileName
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
-import {
-	getAutonomousWriteToolNamesForTurnIntent,
-	getWriteToolNamesForTurnIntent,
-	type FastChatTurnIntent
-} from './turn-intent';
+import { type FastChatTurnIntent } from './turn-intent';
 import { looksLikeWebResearchTurn } from '$lib/services/agentic-chat-lite/prompt/situational-rules';
 import {
 	LIVING_REFERENCE_MODE,
@@ -110,9 +106,6 @@ export function selectFastChatTools(params: {
 					leanDiscovery: params.leanDiscovery
 				});
 	}
-	const autonomousWriteTools = params.turnIntent
-		? getAutonomousWriteToolNamesForTurnIntent(params.turnIntent)
-		: [];
 	const crossProjectTools = looksLikeCrossProjectTaskMove(
 		params.contextType,
 		[
@@ -149,7 +142,6 @@ export function selectFastChatTools(params: {
 		? ['web_search', 'web_visit']
 		: [];
 	return materializeGatewayTools(tools, [
-		...autonomousWriteTools,
 		...crossProjectTools,
 		...delegatedResearchTools,
 		...webResearchTools
@@ -162,34 +154,17 @@ export function resolveFastChatSurfaceProfileForTurn(params: {
 	turnIntent?: FastChatTurnIntent | null;
 	allowLegacySurfaceFallback?: boolean;
 }): GatewaySurfaceProfileName {
-	const intentProfile = resolveSurfaceProfileForTurnIntent(params.contextType, params.turnIntent);
-	if (intentProfile) return intentProfile;
+	// Project turns always receive the same common read/write capability bundle.
+	// The model's tool call is the semantic decision; lexical intent inference is
+	// retained elsewhere for telemetry and compatibility, not tool authority.
+	if (params.contextType === 'project' || params.contextType === 'ontology') {
+		return 'project_write_document';
+	}
 	const routedProfile =
 		params.allowLegacySurfaceFallback === false
 			? null
 			: resolveProjectSurfaceProfileForTurn(params.contextType, params.latestUserMessage);
 	return routedProfile ?? resolveGatewaySurfaceProfileForContextType(params.contextType);
-}
-
-function resolveSurfaceProfileForTurnIntent(
-	contextType: ChatContextType,
-	turnIntent?: FastChatTurnIntent | null
-): GatewaySurfaceProfileName | null {
-	if (!turnIntent?.requiresWrite) return null;
-	if (contextType === 'project_create') return 'project_create_minimal';
-	if (contextType !== 'project' && contextType !== 'ontology') return null;
-	const expectedWriteTools = getWriteToolNamesForTurnIntent(turnIntent);
-	const hasDocumentOperation = expectedWriteTools.some((name) => name.includes('document'));
-	const hasNonDocumentOperation = expectedWriteTools.some((name) => !name.includes('document'));
-	if (hasDocumentOperation && hasNonDocumentOperation) return 'project_write_document';
-	if (hasDocumentOperation) return 'project_document';
-	if (
-		expectedWriteTools.length > 0 &&
-		expectedWriteTools.every((name) => name.includes('calendar_event'))
-	) {
-		return 'project_calendar';
-	}
-	return 'project_write';
 }
 
 function resolveProjectSurfaceProfileForTurn(

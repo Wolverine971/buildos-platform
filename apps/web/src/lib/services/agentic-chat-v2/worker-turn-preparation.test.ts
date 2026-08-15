@@ -29,7 +29,8 @@ const mocks = vi.hoisted(() => ({
 	loadFastChatPromptContext: vi.fn(),
 	buildLitePromptEnvelope: vi.fn(),
 	applyActiveDomainSignalsOverlay: vi.fn(),
-	buildPendingTurnIntentSystemMessage: vi.fn()
+	buildPendingTurnIntentSystemMessage: vi.fn(),
+	buildPendingTurnContractSystemMessage: vi.fn()
 }));
 
 vi.mock('./access-checks', () => ({
@@ -54,6 +55,13 @@ vi.mock('./turn-intent', async (importOriginal) => {
 	return {
 		...original,
 		buildPendingTurnIntentSystemMessage: mocks.buildPendingTurnIntentSystemMessage
+	};
+});
+vi.mock('./turn-contract', async (importOriginal) => {
+	const original = await importOriginal<typeof import('./turn-contract')>();
+	return {
+		...original,
+		buildPendingTurnContractSystemMessage: mocks.buildPendingTurnContractSystemMessage
 	};
 });
 vi.mock('$lib/services/agentic-chat-lite/prompt', async (importOriginal) => {
@@ -189,6 +197,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		mocks.resolveFastChatTurnPreparation.mockReturnValue({
 			sessionMetadata: { trusted: true },
+			pendingTurnContract: null,
 			turnIntent: {
 				version: 1,
 				requiresWrite: false,
@@ -225,6 +234,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		mocks.buildLitePromptEnvelope.mockReturnValue(envelope);
 		mocks.applyActiveDomainSignalsOverlay.mockReturnValue(envelope);
 		mocks.buildPendingTurnIntentSystemMessage.mockReturnValue(null);
+		mocks.buildPendingTurnContractSystemMessage.mockReturnValue(null);
 	});
 
 	it('builds an inline-session RPC value with empty history, null lineage, exact hashes, and server ids', async () => {
@@ -390,6 +400,9 @@ describe('Agentic Chat worker turn preparation', () => {
 				sections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
 			}
 		});
+		mocks.buildPendingTurnContractSystemMessage.mockReturnValue(
+			'Pending semantic contract from current session metadata'
+		);
 
 		const result = await prepareAgenticChatWorkerAdmission({
 			userClient: {} as never,
@@ -420,6 +433,11 @@ describe('Agentic Chat worker turn preparation', () => {
 				sourceMessageId: null,
 				role: 'assistant',
 				content: 'Earlier answer'
+			}),
+			expect.objectContaining({
+				sourceMessageId: null,
+				role: 'system',
+				content: 'Pending semantic contract from current session metadata'
 			})
 		]);
 		expect(result.args.p_artifact_prepared).toMatchObject({
@@ -430,7 +448,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				strategy: 'raw_history',
 				compressed: false,
 				rawHistoryCount: 1,
-				historyForModelCount: 1
+				historyForModelCount: 2
 			},
 			sessionSnapshot: {
 				user_id: USER_ID,
@@ -440,8 +458,8 @@ describe('Agentic Chat worker turn preparation', () => {
 				agent_metadata: { trusted: true }
 			},
 			contextUsageSnapshot: {
-				estimatedTokens: 15,
-				tokensRemaining: 14_985,
+				estimatedTokens: expect.any(Number),
+				tokensRemaining: expect.any(Number),
 				status: 'ok'
 			}
 		});

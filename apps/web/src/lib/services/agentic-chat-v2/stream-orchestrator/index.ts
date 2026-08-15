@@ -23,13 +23,7 @@ import {
 } from '$lib/services/agentic-chat-lite/prompt';
 import { FASTCHAT_LIMITS } from '../limits';
 import { buildLiveSnapshotFromTokens, FASTCHAT_TOKEN_BUDGETS } from '../context-usage';
-import {
-	getAutonomousWriteToolNamesForTurnIntent,
-	getWriteToolNamesForTurnIntent,
-	turnIntentRequestsTaskScheduling,
-	type FastChatTurnIntent
-} from '../turn-intent';
-import { looksLikeProjectDocumentOrganizeTurn } from '../tool-selector';
+import type { FastChatTurnIntent } from '../turn-intent';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
@@ -125,6 +119,13 @@ import {
 } from './finalization-runner';
 import * as readLoopEscalation from './read-loop-escalation';
 import type { ReadLoopRepairEscalation as ReadLoopRepairEscalationLevel } from './read-loop-escalation';
+import {
+	getSafeWriteToolNamesForTurnContract,
+	resolveTurnContractFromExecutions,
+	resolveTurnContractOutcome,
+	type TurnContract,
+	type TurnContractResolution
+} from '@buildos/agentic-chat-runtime/loop';
 
 type StreamFastChatParams = {
 	llm: SmartLLMService;
@@ -171,6 +172,7 @@ type StreamFastChatParams = {
 	/** Server-only eval override. When set, every pass uses this ordered model list. */
 	pinnedModels?: string[];
 	turnIntent?: FastChatTurnIntent | null;
+	initialTurnContract?: TurnContract | null;
 	/**
 	 * Trusted, server-derived write alternatives for an implicit durable-capture
 	 * commission. Unlike explicit turn intent, this requires at least one
@@ -349,6 +351,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	finalContextUsage?: ContextUsageSnapshot;
 	skillGateViolationRepaired?: boolean;
 	completionOutcome?: FastChatCompletionOutcome;
+	turnContract?: TurnContract | null;
+	turnContractResolution?: TurnContractResolution;
 	orchestrationInterventions: FastChatOrchestrationInterventions;
 }> {
 	const { llm, userId, sessionId, contextType, entityId, history, message, signal, onDelta } =
@@ -412,14 +416,36 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	// the same document are one projection and must not satisfy a 2-write floor.
 	const countSuccessfulCommissionedWrites = (): number =>
 		countDistinctSuccessfulWriteTargets(toolExecutions, commissionedWriteToolNames);
-	const mutationRequested =
-		params.turnIntent?.requiresWrite === true || commissionedWriteToolNames.length > 0;
-	const taskSchedulingRequested = turnIntentRequestsTaskScheduling(
-		params.turnIntent ?? emptyTurnIntent
-	);
-	const expectedWriteToolNames = getWriteToolNamesForTurnIntent(
-		params.turnIntent ?? emptyTurnIntent
-	);
+	const initialTurnContract = params.initialTurnContract ?? null;
+	let turnContract: TurnContract | null = initialTurnContract;
+	let mutationRequested = commissionedWriteToolNames.length > 0;
+	let taskSchedulingRequested = false;
+	let expectedWriteToolNames = [...commissionedWriteToolNames];
+	const refreshTurnContract = (): void => {
+		turnContract = resolveTurnContractFromExecutions(toolExecutions, initialTurnContract);
+		if (!turnContract) {
+			mutationRequested = commissionedWriteToolNames.length > 0;
+			expectedWriteToolNames = [...commissionedWriteToolNames];
+			taskSchedulingRequested = false;
+			return;
+		}
+		mutationRequested = true;
+		expectedWriteToolNames = getSafeWriteToolNamesForTurnContract(turnContract);
+		taskSchedulingRequested = turnContract.outcomes.some(
+			(outcome) =>
+				outcome.action === 'schedule' ||
+				(outcome.entityKind === 'task' &&
+					outcome.requiredFields.some((field) =>
+						['due_at', 'start_at', 'end_at'].includes(field)
+					))
+		);
+	};
+	const requiredSuccessfulContractEffects = (): number =>
+		turnContract?.outcomes.reduce(
+			(total, outcome) => total + outcome.minimumSuccessfulEffects,
+			0
+		) ?? 0;
+	refreshTurnContract();
 	// "Gateway mode" arms on-demand tool materialization (on-miss + discover-then-load)
 	// and the gateway recovery/repair machinery. It must key off discovery tools that
 	// actually remain on the launch surface. Under lean discovery (Tier 2 item 4) only
@@ -438,18 +464,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const maxValidationRepairRounds = gatewayModeActive ? 3 : 2;
 	const allowAutonomousRecovery = Boolean(params.allowAutonomousRecovery);
 	const allowForcedSynthesis = params.allowForcedSynthesis !== false;
-	// A commissioned document reorganization ("help me get these documents organized"). The
-	// read-loop ladder must steer this turn toward EXECUTING, not answering: measured 2026-07-26,
-	// the model correctly read all six documents, the ladder then said "answer from existing
-	// results", and it obeyed — prose plan, zero moves, 0/3 — while move_document_in_tree sat
-	// mounted and untouched. The tool names are re-checked against allowedToolNames at use time.
-	const docOrganizeCommission = looksLikeProjectDocumentOrganizeTurn(message ?? '');
 	const commissionWriteToolNames = (): string[] =>
-		docOrganizeCommission
-			? ['move_document_in_tree', 'create_onto_document'].filter((name) =>
-					allowedToolNames.has(name)
-				)
-			: [];
+		getSafeWriteToolNamesForTurnContract(turnContract).filter((name) =>
+			allowedToolNames.has(name)
+		);
 	let toolRounds = 0;
 	let toolCallsMade = 0;
 	let toolCallsExecuted = 0;
@@ -769,16 +787,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				writeToolNames.add(toolName);
 			}
 		}
-		for (const toolName of getAutonomousWriteToolNamesForTurnIntent(
-			params.turnIntent ?? emptyTurnIntent
-		)) {
+		for (const toolName of getSafeWriteToolNamesForTurnContract(turnContract)) {
 			const latestMatchingAttempt = [...toolExecutions]
 				.reverse()
 				.find((execution) => execution.toolCall.function?.name === toolName);
 			if (latestMatchingAttempt && didGatewayExecSucceed(latestMatchingAttempt)) continue;
 			materializeDirectTools(
 				[toolName],
-				`Pending ${params.turnIntent?.action ?? 'write'} ${params.turnIntent?.entityKind ?? 'entity'} intent was identified.`
+				'A declared semantic turn outcome is still pending.'
 			);
 			if (allowedToolNames.has(toolName)) writeToolNames.add(toolName);
 		}
@@ -1305,7 +1321,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			const passMessages: FastChatModelMessage[] = noToolSynthesisPass
 				? buildForcedSynthesisMessages({
 						latestUserText: message,
-						turnIntent: params.turnIntent,
+						// Lexical intent remains telemetry-only. The write ledger and
+						// semantic turn contract are the completion authority.
+						turnIntent: null,
 						toolExecutions,
 						recoveryDirectives: collectForcedSynthesisDirectives(messages),
 						retryCount: noToolSynthesisRetryCount,
@@ -1539,9 +1557,15 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					latestUserText: message,
 					mutationRequested,
 					expectedWriteToolNames,
-					allowClarifyingQuestionWithoutWrite: commissionedWriteToolNames.length === 0,
-					minimumSuccessfulWrites: commissionedWriteMinimumCount,
-					commissionedWriteToolNames,
+					allowClarifyingQuestionWithoutWrite:
+						commissionedWriteToolNames.length === 0 && turnContract === null,
+					minimumSuccessfulWrites: Math.max(
+						commissionedWriteMinimumCount,
+						requiredSuccessfulContractEffects()
+					),
+					commissionedWriteToolNames: Array.from(
+						new Set([...commissionedWriteToolNames, ...commissionWriteToolNames()])
+					),
 					gatewayModeActive,
 					projectCreateStopRepairInjected,
 					gatewayMutationStopRepairInjected,
@@ -1868,6 +1892,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				toolCallsMade += recorded.handledToolCallDelta;
 				roundModelPayloadChars += recorded.modelPayloadChars;
 				messages.push(recorded.toolMessage);
+				refreshTurnContract();
 			};
 
 			const isDispatchablePureReadPair = (pair: {
@@ -2479,6 +2504,12 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		finalContextUsage: liveContextUsage,
 		skillGateViolationRepaired: skillGateStopRepairInjected,
 		completionOutcome,
+		turnContract,
+		turnContractResolution: resolveTurnContractOutcome({
+			contract: turnContract,
+			toolExecutions,
+			finishedReason
+		}),
 		orchestrationInterventions: buildOrchestrationInterventions()
 	};
 }
@@ -2549,18 +2580,6 @@ function isUsableReadOnlyTransportPartial(text: string): boolean {
 	if (normalized.length < 120) return false;
 	return normalized.split(' ').filter(Boolean).length >= 18;
 }
-
-const emptyTurnIntent: FastChatTurnIntent = {
-	version: 1,
-	requiresWrite: false,
-	action: null,
-	entityKind: 'unknown',
-	operations: [],
-	source: 'none',
-	originalRequestText: null,
-	originatingTurnRunId: null,
-	clearPending: false
-};
 
 function isDestructiveWriteOperation(operation: string): boolean {
 	const normalized = operation.trim().toLowerCase();
