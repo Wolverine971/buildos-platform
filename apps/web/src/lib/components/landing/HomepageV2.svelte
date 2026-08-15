@@ -949,6 +949,69 @@
 		</div>
 	</section>
 
+	<!-- ─── §07 optional Google integrations ────────────────────────── -->
+	<section id="google-integrations" class="home-deferred border-b border-border">
+		<div class="mx-auto max-w-7xl px-2 py-12 sm:px-4 sm:py-16 lg:px-6">
+			<div class="mx-auto max-w-3xl text-center">
+				<p class="micro-label text-muted-foreground">Optional Google integrations</p>
+				<h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+					Connect Google only if you choose.
+				</h2>
+				<p
+					class="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base"
+				>
+					BuildOS works without a Google connection. Calendar and Gmail are separate,
+					opt-in integrations: you start each connection and approve its requested
+					permissions before BuildOS can access that Google account.
+				</p>
+			</div>
+
+			<div class="mx-auto mt-8 grid max-w-4xl gap-4 md:grid-cols-2">
+				<article class="rounded-lg border border-border bg-card p-5 sm:p-6">
+					<div class="flex items-center gap-2">
+						<Calendar class="h-4 w-4 text-muted-foreground" />
+						<p class="micro-label text-muted-foreground">Google Calendar</p>
+					</div>
+					<h3 class="mt-3 text-lg font-semibold tracking-tight">
+						Bring schedules together.
+					</h3>
+					<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+						Choose which connected calendars BuildOS displays. When you enable syncing
+						or request a calendar action, BuildOS can read availability and create,
+						update, or remove events using the permissions you approved.
+					</p>
+				</article>
+
+				<article class="rounded-lg border border-border bg-card p-5 sm:p-6">
+					<div class="flex items-center gap-2">
+						<Mail class="h-4 w-4 text-muted-foreground" />
+						<p class="micro-label text-muted-foreground">Gmail · read-only</p>
+					</div>
+					<h3 class="mt-3 text-lg font-semibold tracking-tight">
+						Find context when you ask.
+					</h3>
+					<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+						The current Gmail integration can search and read messages for features you
+						invoke. It cannot send, edit, delete, archive, label, or mark email as read.
+					</p>
+				</article>
+			</div>
+
+			<p
+				class="mx-auto mt-6 max-w-3xl text-center text-xs leading-relaxed text-muted-foreground sm:text-sm"
+			>
+				You can disconnect either integration at any time. See the
+				<a class="font-medium text-foreground underline underline-offset-4" href="/privacy"
+					>Privacy Policy</a
+				>
+				for how Google data is handled and the
+				<a class="font-medium text-foreground underline underline-offset-4" href="/terms"
+					>Terms of Service</a
+				>.
+			</p>
+		</div>
+	</section>
+
 	<!-- ─── Final CTA ───────────────────────────────────────────────── -->
 	<section class="home-deferred home-deferred-cta border-t border-border py-14 sm:py-20">
 		<div class="mx-auto max-w-3xl px-4 text-center sm:px-6">

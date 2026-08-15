@@ -212,11 +212,6 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -229,6 +224,11 @@
 				"MobileTaskBoard",
 				"ProjectDocumentsSection"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte",
@@ -1143,20 +1143,6 @@
 			"exports": ["getNotificationPreview", "notificationPreviewAriaLabel"]
 		},
 		{
-			"file": "src/lib/components/projects/project-list.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_LIST_SCOPE_OPTIONS",
-				"normalizeProjectListScope",
-				"getProjectListScopeLabel",
-				"matchesProjectListScope",
-				"addProjectCollaborationFlags",
-				"formatProjectUpdatedLabel",
-				"formatProjectUpdatedTitle"
-			]
-		},
-		{
 			"file": "src/lib/components/project/project-entity-modal-loader.ts",
 			"type": "component",
 			"components": [
@@ -1229,6 +1215,20 @@
 				"flushPendingImageUploadOpen",
 				"buildProjectEntityOpenHref",
 				"resolveEntityOpenAction"
+			]
+		},
+		{
+			"file": "src/lib/components/projects/project-list.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_LIST_SCOPE_OPTIONS",
+				"normalizeProjectListScope",
+				"getProjectListScopeLabel",
+				"matchesProjectListScope",
+				"addProjectCollaborationFlags",
+				"formatProjectUpdatedLabel",
+				"formatProjectUpdatedTitle"
 			]
 		},
 		{
@@ -1457,6 +1457,12 @@
 			]
 		},
 		{
+			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["prepareAgentRunChatEventDetail"]
+		},
+		{
 			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 			"type": "component",
 			"components": [],
@@ -1466,12 +1472,6 @@
 				"getCommander",
 				"formatTimelineYearRange"
 			]
-		},
-		{
-			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["prepareAgentRunChatEventDetail"]
 		},
 		{
 			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
@@ -1652,11 +1652,11 @@
 		"src/lib/components/agent/project-entity-browser.ts",
 		"src/lib/components/inbox/inbox-presentation.ts",
 		"src/lib/components/notifications/notification-preview.ts",
-		"src/lib/components/projects/project-list.ts",
 		"src/lib/components/project/project-entity-modal-loader.ts",
 		"src/lib/components/project/project-event-filters.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
+		"src/lib/components/projects/project-list.ts",
 		"src/lib/components/ui/live-transcript-preview.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
@@ -1674,8 +1674,8 @@
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
-		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.layout.ts",

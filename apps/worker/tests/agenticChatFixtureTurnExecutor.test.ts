@@ -4528,6 +4528,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			});
 			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
 			if (!terminalInput) throw new Error('Provider-error worker fixture did not finalize');
+			expect(terminalInput.failureCode).toBe('provider_stream_failed');
 			const worker = normalizeAgenticChatParityRunV1({
 				events: harness.broadcastMessages.map((message) => message.payload) as never,
 				messages: [

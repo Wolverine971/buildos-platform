@@ -3018,15 +3018,8 @@ function specificTerminalFailureCode(error: unknown, signal: AbortSignal): strin
 	const candidate = reason ?? error;
 	if (candidate instanceof AgenticChatToolExecutionTimeoutError) return candidate.code;
 	if (candidate instanceof AgenticChatSupervisorCheckpointTimeoutError) return candidate.code;
-	if (
-		candidate instanceof AgenticChatProviderExecutionError &&
-		(candidate.code === 'provider_budget_exhausted' ||
-			candidate.code === 'provider_no_assistant_text' ||
-			candidate.code === 'read_tool_timeout' ||
-			candidate.code === 'provider_round_budget_exceeded' ||
-			candidate.code === 'provider_tool_call_budget_exceeded')
-	) {
-		return candidate.code;
+	if (candidate instanceof AgenticChatProviderExecutionError) {
+		return canonicalText(candidate.code, 128) ? candidate.code : undefined;
 	}
 	return undefined;
 }

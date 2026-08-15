@@ -1142,7 +1142,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					usage: supervisorUsage(usage)
 				});
 				yield* drainSupervisorSteps(state.supervisor);
-				const calls = completeToolCalls(toolCalls);
+				const calls = completeToolCalls(toolCalls, request.tools);
 				finished = true;
 				if (calls.length > 0) {
 					if (request.toolChoice !== 'auto') {
@@ -1390,7 +1390,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 			}
 
-			let calls = fallbackReason ? [] : completeToolCalls(toolCalls);
+			let calls = fallbackReason ? [] : completeToolCalls(toolCalls, reviewRequest.tools);
 			if (!fallbackReason) {
 				if (!finished || calls.length !== 1) {
 					fallbackReason =
@@ -1513,7 +1513,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 			}
 
-			let calls = fallbackReason ? [] : completeToolCalls(toolCalls);
+			let calls = fallbackReason ? [] : completeToolCalls(toolCalls, reviewRequest.tools);
 			if (!fallbackReason) {
 				if (!finished || calls.length !== 1) {
 					fallbackReason =
@@ -1629,7 +1629,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 			}
 
-			let calls = fallbackReason ? [] : completeToolCalls(toolCalls);
+			let calls = fallbackReason ? [] : completeToolCalls(toolCalls, reviewRequest.tools);
 			if (!fallbackReason) {
 				if (!finished || calls.length !== 1) {
 					fallbackReason =
@@ -1754,7 +1754,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
-				const calls = completeToolCalls(toolCalls);
+				const calls = completeToolCalls(toolCalls, request.tools);
 				const passUsage = normalizeUsage(event.usage);
 				const aggregateUsage = combineUsage(priorUsage, passUsage);
 				state.supervisor?.observe({
@@ -2263,7 +2263,8 @@ function appendToolCallDelta(
 }
 
 function completeToolCalls(
-	state: ReturnType<typeof createToolCallAccumulator>
+	state: ReturnType<typeof createToolCallAccumulator>,
+	advertisedTools: readonly AgenticChatReadOnlyProviderToolV1[]
 ): CompletedProviderToolCall[] {
 	if (state.size === 0) return [];
 	const calls: CompletedProviderToolCall[] = [];
@@ -2296,12 +2297,40 @@ function completeToolCalls(
 		const canonicalArguments = canonicalizeAgenticChatJson(parsed as JsonValue);
 		calls.push({
 			id: call.id,
-			name: call.name,
+			name: normalizeRepeatedAdvertisedToolName(call.name, advertisedTools),
 			arguments: JSON.parse(canonicalArguments) as JsonObject,
 			canonicalArguments
 		});
 	}
 	return calls;
+}
+
+/**
+ * Some OpenAI-compatible providers resend the complete function name in a
+ * later SSE delta instead of sending only the next fragment. The wire format
+ * gives us no explicit replace/append bit, so only repair the unambiguous case:
+ * the assembled value is an exact repetition of one tool that this request
+ * advertised. Arguments still cross the normal schema and policy gates.
+ */
+function normalizeRepeatedAdvertisedToolName(
+	assembledName: string,
+	advertisedTools: readonly AgenticChatReadOnlyProviderToolV1[]
+): string {
+	if (advertisedTools.some((tool) => tool.function.name === assembledName)) {
+		return assembledName;
+	}
+	for (const tool of advertisedTools) {
+		const advertisedName = tool.function.name;
+		if (
+			advertisedName.length > 0 &&
+			assembledName.length > advertisedName.length &&
+			assembledName.length % advertisedName.length === 0 &&
+			advertisedName.repeat(assembledName.length / advertisedName.length) === assembledName
+		) {
+			return advertisedName;
+		}
+	}
+	return assembledName;
 }
 
 function assertAllowlistedCall(

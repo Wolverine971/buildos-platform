@@ -5522,7 +5522,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
-	it('diagnoses a repeated full provider tool-name chunk without logging arguments', async () => {
+	it('normalizes a repeated full provider tool-name chunk before allowlist validation', async () => {
 		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
 		const adapter = new AgenticChatReadOnlyProviderAdapter({
 			client: clientWith([
@@ -5535,7 +5535,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 							type: 'function',
 							function: {
 								name: 'get_project_overview',
-								arguments: '{"private":"must-not-enter-diagnostics"}'
+								arguments: '{"project_id":"40000000-0000-4000-8000-000000000004"}'
 							}
 						}
 					]
@@ -5554,20 +5554,17 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			signal: new AbortController().signal
 		});
 
-		const error = await collect(invocation.stream()).catch((value: unknown) => value);
-		expect(error).toMatchObject({
-			code: 'provider_tool_not_allowlisted',
-			failureClass: 'permanent',
-			diagnostic: {
-				kind: 'rejected_tool_name',
-				rejectedToolName: 'get_project_overviewget_project_overview',
-				rejectedToolNameLength: 40,
-				advertisedToolCount: 1,
-				repeatedAdvertisedToolName: 'get_project_overview',
-				repeatedToolNameCount: 2
-			}
-		});
-		expect(JSON.stringify(error)).not.toContain('must-not-enter-diagnostics');
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
+			expect.objectContaining({
+				type: 'read_tool',
+				providerToolCallId: 'provider-read-1',
+				toolName: 'get_project_overview',
+				arguments: { project_id: '40000000-0000-4000-8000-000000000004' }
+			})
+		]);
+		expect(capacity.getSnapshot()).toMatchObject({ available: false, activeRequests: 1 });
+		invocation.release();
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 

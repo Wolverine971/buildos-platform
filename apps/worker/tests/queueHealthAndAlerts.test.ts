@@ -85,11 +85,12 @@ describe('queue alerts', () => {
 	});
 
 	function fakeAlertClient(options: {
-		failedRows?: Array<{ job_type: string }>;
+		failedRows?: Array<{ job_type: string; metadata?: Record<string, unknown> }>;
+		turnFailures?: Array<{ id: string; failure_code: string | null }>;
 		oldestPending?: { job_type: string; scheduled_for: string; created_at: string } | null;
 	}) {
 		return {
-			from(_table: string) {
+			from(table: string) {
 				const builder: any = {
 					_mode: 'failed' as 'failed' | 'pending',
 					select() {
@@ -100,6 +101,9 @@ describe('queue alerts', () => {
 						return builder;
 					},
 					gte() {
+						return builder;
+					},
+					in() {
 						return builder;
 					},
 					lte() {
@@ -116,7 +120,13 @@ describe('queue alerts', () => {
 						error: null
 					}),
 					then(resolve: (value: unknown) => unknown) {
-						return resolve({ data: options.failedRows ?? [], error: null });
+						return resolve({
+							data:
+								table === 'chat_turn_runs'
+									? (options.turnFailures ?? [])
+									: (options.failedRows ?? []),
+							error: null
+						});
 					}
 				};
 				return builder;
@@ -150,6 +160,36 @@ describe('queue alerts', () => {
 
 		const alerts = await checkQueueAlerts(client);
 		expect(alerts.some((alert) => alert.code === 'oldest_pending_age')).toBe(true);
+	});
+
+	it('adds specific Agentic Chat failure codes to the alert details', async () => {
+		const ids = [
+			'10000000-0000-4000-8000-000000000001',
+			'10000000-0000-4000-8000-000000000002',
+			'10000000-0000-4000-8000-000000000003'
+		];
+		const client = fakeAlertClient({
+			failedRows: ids.map((turnRunId) => ({
+				job_type: 'agentic_chat_turn',
+				metadata: { turnRunId }
+			})),
+			turnFailures: ids.map((id, index) => ({
+				id,
+				failure_code:
+					index === 2 ? 'provider_budget_exhausted' : 'provider_tool_not_allowlisted'
+			}))
+		});
+
+		const alerts = await checkQueueAlerts(client);
+		expect(
+			alerts.find((alert) => alert.code === 'failed_jobs:agentic_chat_turn')?.details
+		).toMatchObject({
+			failureCodes: {
+				provider_tool_not_allowlisted: 2,
+				provider_budget_exhausted: 1
+			},
+			sampleTurnRunIds: ids
+		});
 	});
 
 	it('stays quiet when under thresholds', async () => {

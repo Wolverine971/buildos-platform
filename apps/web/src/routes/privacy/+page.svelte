@@ -133,9 +133,14 @@
 							or public pages.
 						</li>
 						<li>
-							<strong class="text-foreground">Calendar and integration data:</strong> Events,
-							attendees, scheduling information, connector grants, approved scopes, integration
-							settings, and the information returned by services you choose to connect.
+							<strong class="text-foreground"
+								>Optional Google integration data:</strong
+							>
+							Google Calendar events, attendees, availability, calendar metadata, and scheduling
+							information when you opt in to Calendar; and Gmail message metadata, snippets,
+							and message content when you separately opt in to the current read-only Gmail
+							integration and invoke a feature that needs it. We also process connector
+							grants, approved scopes, integration settings, and related security records.
 						</li>
 						<li>
 							<strong class="text-foreground">Phone and notification data:</strong> Your
@@ -262,7 +267,10 @@
 					<p class="text-muted-foreground mb-4">
 						You may connect Google services, third-party AI tools, agent clients, or
 						custom software through OAuth, agent keys, the BuildOS Connector, or similar
-						flows.
+						flows. These integrations are optional. BuildOS does not access a connected
+						service until you start its connection flow and approve the requested
+						permissions. Connecting one Google integration does not automatically
+						connect another.
 					</p>
 					<ul class="space-y-3 text-muted-foreground list-disc pl-6">
 						<li>
@@ -280,6 +288,11 @@
 							third party controls its own subsequent processing. Revoking access
 							blocks future BuildOS requests but does not retrieve copies already
 							received by the third party.
+						</li>
+						<li>
+							You can disconnect a Google account in BuildOS or revoke BuildOS from
+							your Google Account. Disconnecting stops future API access through that
+							connection.
 						</li>
 					</ul>
 				</div>
@@ -451,6 +464,42 @@
 							class="text-accent hover:text-accent/80 underline"
 							>Google API Services User Data Policy</a
 						>, including the Limited Use requirements.
+					</p>
+					<p>
+						Google integrations are optional and opt-in. BuildOS cannot access Google
+						Calendar or Gmail data until you initiate the applicable connection and
+						approve its permissions. Calendar and Gmail require separate connections,
+						and you may disconnect either one at any time.
+					</p>
+					<p>
+						<strong class="text-foreground">Google Calendar.</strong> If you enable Calendar,
+						BuildOS may list calendars; read events, attendees, and availability; display
+						and analyze selected calendars; and, when you enable synchronization or request
+						a calendar action, create, update, move, or delete events and manage calendars
+						using the permissions you approved.
+					</p>
+					<p>
+						<strong class="text-foreground">Gmail.</strong> The current Gmail integration
+						is read-only. When you invoke a Gmail-assisted feature, BuildOS may search message
+						headers, snippets, and other metadata and retrieve the content of messages needed
+						for that request. It cannot send, draft, edit, delete, archive, label, mark messages
+						read or unread, or download attachments. Any future capability that requires
+						additional Gmail permissions will require a new, explicit authorization.
+					</p>
+					<p>
+						When you expressly invoke an AI-assisted feature that needs selected Google
+						content, BuildOS may send the minimum relevant content to an AI provider
+						solely to provide that user-facing feature. BuildOS does not use Google
+						Workspace API data to train, improve, or develop generalized
+						artificial-intelligence or machine-learning models.
+					</p>
+					<p>
+						OAuth credentials are encrypted at rest. BuildOS stores Calendar data and
+						synchronization mappings only as needed to provide enabled Calendar
+						features. The read-only Gmail tool does not create a durable BuildOS copy of
+						retrieved message bodies; BuildOS may retain limited, content-free tool
+						traces and security metadata. Other retention and deletion practices are
+						described in Section 12.
 					</p>
 					<p>
 						We use Google data only to provide the integration you enable, maintain
@@ -629,7 +678,7 @@
 			<!-- Last Updated -->
 			<div class="border-t border-border pt-6">
 				<p class="text-sm text-muted-foreground">
-					Effective and last updated: July 16, 2026 (version 2026-07-16)
+					Effective and last updated: August 15, 2026 (version 2026-08-15)
 				</p>
 			</div>
 		</div>

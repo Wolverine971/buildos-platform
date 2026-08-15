@@ -42,7 +42,7 @@ export async function checkQueueAlerts(supabase: ServiceClient): Promise<QueueAl
 	const oneHourAgo = new Date(nowMs - 60 * 60_000).toISOString();
 	const { data: failedRows, error: failedError } = await supabase
 		.from('queue_jobs')
-		.select('job_type')
+		.select('job_type, metadata')
 		.eq('status', 'failed')
 		.gte('updated_at', oneHourAgo)
 		.limit(500);
@@ -61,11 +61,18 @@ export async function checkQueueAlerts(supabase: ServiceClient): Promise<QueueAl
 		}
 		for (const [jobType, count] of Object.entries(byType)) {
 			if (count >= FAILED_PER_HOUR_THRESHOLD) {
+				const agenticChatDetails =
+					jobType === 'agentic_chat_turn'
+						? await loadAgenticChatFailureDetails(
+								supabase,
+								failedRows.filter((row) => row.job_type === jobType)
+							)
+						: {};
 				alerts.push({
 					code: `failed_jobs:${jobType}`,
 					severity: 'critical',
 					message: `${count} ${jobType} job(s) failed in the last hour (threshold ${FAILED_PER_HOUR_THRESHOLD})`,
-					details: { jobType, count, windowMinutes: 60 }
+					details: { jobType, count, windowMinutes: 60, ...agenticChatDetails }
 				});
 			}
 		}
@@ -107,6 +114,44 @@ export async function checkQueueAlerts(supabase: ServiceClient): Promise<QueueAl
 
 	return alerts;
 }
+
+async function loadAgenticChatFailureDetails(
+	supabase: ServiceClient,
+	rows: readonly { metadata: unknown }[]
+): Promise<Record<string, unknown>> {
+	const turnRunIds = [
+		...new Set(
+			rows
+				.map((row) => turnRunIdFromMetadata(row.metadata))
+				.filter((value): value is string => value !== null)
+		)
+	].slice(0, 50);
+	if (turnRunIds.length === 0) return {};
+
+	const { data, error } = await supabase
+		.from('chat_turn_runs')
+		.select('id, failure_code')
+		.in('id', turnRunIds)
+		.limit(50);
+	if (error) {
+		return { failureDiagnosticError: error.message, sampleTurnRunIds: turnRunIds.slice(0, 10) };
+	}
+
+	const failureCodes: Record<string, number> = {};
+	for (const row of data ?? []) {
+		const code = row.failure_code ?? 'unknown';
+		failureCodes[code] = (failureCodes[code] ?? 0) + 1;
+	}
+	return { failureCodes, sampleTurnRunIds: turnRunIds.slice(0, 10) };
+}
+
+function turnRunIdFromMetadata(value: unknown): string | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const turnRunId = (value as Record<string, unknown>).turnRunId;
+	return typeof turnRunId === 'string' && UUID_PATTERN.test(turnRunId) ? turnRunId : null;
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 /**
  * Emit alerts that are not in cooldown: structured console.error always,
