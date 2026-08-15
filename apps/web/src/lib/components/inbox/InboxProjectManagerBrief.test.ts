@@ -138,4 +138,56 @@ describe('InboxProjectManagerBrief', () => {
 			screen.getByText('Do you want to organize the project documents this way?')
 		).toBeVisible();
 	});
+
+	it('renders separate issues when their manager-facing headlines match', () => {
+		const repeatedHeadline = 'Recent work may be pulling the project in a new direction';
+
+		render(InboxProjectManagerBrief, {
+			props: {
+				projectId: 'project-1',
+				brief: {
+					version: 2,
+					attention_level: 'decision',
+					bottom_line: 'The project needs a direction check.',
+					issues: [
+						{
+							category: 'risk',
+							severity: 'important',
+							headline: 'The launch date is at risk',
+							summary: 'A dependency is still unresolved.',
+							recommendation: 'Resolve the dependency first.',
+							candidate_ids: ['suggestion-1'],
+							evidence_refs: []
+						},
+						{
+							category: 'project_drift',
+							severity: 'important',
+							headline: repeatedHeadline,
+							summary: 'Recent design work is outside the launch scope.',
+							recommendation: 'Park the design work until after launch.',
+							candidate_ids: ['suggestion-2'],
+							evidence_refs: []
+						},
+						{
+							category: 'project_drift',
+							severity: 'minor',
+							headline: repeatedHeadline,
+							summary: 'A research task is exploring a different audience.',
+							recommendation: 'Keep the research separate from launch decisions.',
+							candidate_ids: ['suggestion-3'],
+							evidence_refs: []
+						}
+					],
+					current_goal: 'Launch',
+					recent_changes: [],
+					open_decisions: [],
+					stale_assumptions: [],
+					contradictions_or_drift: [],
+					next_best_action: null
+				}
+			}
+		});
+
+		expect(screen.getAllByText(repeatedHeadline)).toHaveLength(2);
+	});
 });

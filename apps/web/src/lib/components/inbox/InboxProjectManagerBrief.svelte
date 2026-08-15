@@ -174,6 +174,34 @@
 		};
 	}
 
+	function issueKey(issue: ProjectReviewBriefIssue): string {
+		return JSON.stringify([
+			issue.category,
+			issue.severity,
+			issue.headline,
+			issue.summary,
+			issue.recommendation,
+			[...issue.candidate_ids].sort(),
+			issue.evidence_refs.map((ref) => [
+				ref.entity_type,
+				ref.entity_id ?? '',
+				ref.title,
+				ref.reason ?? '',
+				ref.excerpt ?? ''
+			])
+		]);
+	}
+
+	function uniqueIssues(issues: ProjectReviewBriefIssue[]): ProjectReviewBriefIssue[] {
+		const seen = new Set<string>();
+		return issues.filter((issue) => {
+			const key = issueKey(issue);
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+	}
+
 	function issueWorkNames(issue: ProjectReviewBriefIssue): string[] {
 		return issue.evidence_refs
 			.filter((ref) => ref.entity_type === 'document' || ref.entity_type === 'task')
@@ -235,9 +263,11 @@
 
 	function fromProjectReview(value: Record<string, unknown>): BriefView {
 		const decision = asRecord(value.decision);
-		const issues = records(value.issues)
-			.map(normalizeIssue)
-			.filter((issue): issue is ProjectReviewBriefIssue => Boolean(issue));
+		const issues = uniqueIssues(
+			records(value.issues)
+				.map(normalizeIssue)
+				.filter((issue): issue is ProjectReviewBriefIssue => Boolean(issue))
+		);
 		const evidence = [
 			...normalizeEvidence(decision?.evidence_refs),
 			...issues.flatMap((issue) => issue.evidence_refs)
@@ -270,16 +300,18 @@
 				list.findIndex((item) => readString(item.title) === readString(candidate.title)) ===
 				index
 		);
-		const issues = recommendations
-			.map(normalizeIssue)
-			.filter((issue): issue is ProjectReviewBriefIssue => Boolean(issue))
-			.map((issue) => ({
-				...issue,
-				headline: readableManagerText(issue.headline) ?? auditIssueHeadline(issue),
-				summary: readableManagerText(issue.summary) ?? auditIssueHeadline(issue),
-				recommendation:
-					readableManagerText(issue.recommendation) ?? auditIssueRecommendation(issue)
-			}));
+		const issues = uniqueIssues(
+			recommendations
+				.map(normalizeIssue)
+				.filter((issue): issue is ProjectReviewBriefIssue => Boolean(issue))
+				.map((issue) => ({
+					...issue,
+					headline: readableManagerText(issue.headline) ?? auditIssueHeadline(issue),
+					summary: readableManagerText(issue.summary) ?? auditIssueHeadline(issue),
+					recommendation:
+						readableManagerText(issue.recommendation) ?? auditIssueRecommendation(issue)
+				}))
+		);
 		const lead = recommendations[0] ?? null;
 		const leadIssue = issues[0] ?? null;
 		const readableLeadTitle = readableManagerText(lead?.title);
@@ -446,7 +478,7 @@
 				/>
 			</summary>
 			<div class="space-y-2 pb-1 pt-1.5">
-				{#each secondaryIssues as issue (`${issue.category}-${issue.headline}`)}
+				{#each secondaryIssues as issue (issueKey(issue))}
 					<div class="rounded-md border border-border bg-muted/20 p-2.5">
 						<div class="flex flex-wrap items-center gap-1.5">
 							<span class="micro-label font-semibold text-muted-foreground">
