@@ -15,6 +15,7 @@ import {
 	isOntologyDurableWriteTool
 } from './durable-text-validation';
 import { parseToolArguments } from './tool-arguments';
+import { DECLARE_TURN_CONTRACT_TOOL_NAME, parseDeclaredTurnContract } from './turn-contract';
 
 const UPDATE_TOOL_PREFIX = 'update_onto_';
 const UUID_VALIDATED_TOOL_NAMES = new Set([
@@ -149,6 +150,18 @@ export function validateToolCalls(
 			if (typeof value === 'string' && value.trim().length === 0) {
 				errors.push(`Missing required parameter: ${required}`);
 			}
+		}
+
+		// Generic validation intentionally does not interpret every nested JSON
+		// Schema keyword. The turn-contract parser is the authoritative semantic
+		// validator, so run it before execution as well. Otherwise a model-emitted
+		// value such as minimum_successful_effects: 0 reaches the adapter, throws,
+		// and terminates the whole turn instead of entering the existing durable
+		// validation-repair loop.
+		if (toolName === DECLARE_TURN_CONTRACT_TOOL_NAME && !parseDeclaredTurnContract(args)) {
+			errors.push(
+				'Invalid turn contract: every outcome must use a supported action and entity kind, valid target/field arrays, and minimum_successful_effects from 1 to 100.'
+			);
 		}
 
 		const normalizedOp = registry.byToolName[toolName]?.op;

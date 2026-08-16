@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 import { ONTOLOGY_WRITE_TOOLS } from '$lib/services/agentic-chat/tools/core/definitions/ontology-write';
+import { TURN_CONTRACT_TOOL_DEFINITION } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
 import { validateToolCalls } from './tool-validation';
 
 const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
@@ -37,6 +38,47 @@ const updateDocumentTool: ChatToolDefinition = {
 };
 
 describe('tool validation', () => {
+	it('routes semantically invalid turn contracts through validation repair', () => {
+		const issues = validateToolCalls(
+			[
+				createToolCall('declare_turn_contract', {
+					outcomes: [
+						{
+							action: 'create',
+							entity_kind: 'task',
+							minimum_successful_effects: 0
+						}
+					]
+				})
+			],
+			[TURN_CONTRACT_TOOL_DEFINITION]
+		);
+
+		expect(issues).toHaveLength(1);
+		expect(issues[0]?.errors).toContain(
+			'Invalid turn contract: every outcome must use a supported action and entity kind, valid target/field arrays, and minimum_successful_effects from 1 to 100.'
+		);
+	});
+
+	it('accepts a semantically valid turn contract', () => {
+		const issues = validateToolCalls(
+			[
+				createToolCall('declare_turn_contract', {
+					outcomes: [
+						{
+							action: 'create',
+							entity_kind: 'task',
+							minimum_successful_effects: 1
+						}
+					]
+				})
+			],
+			[TURN_CONTRACT_TOOL_DEFINITION]
+		);
+
+		expect(issues).toEqual([]);
+	});
+
 	it('rejects document append calls that provide merge instructions but no content', () => {
 		const issues = validateToolCalls(
 			[

@@ -324,7 +324,8 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 						baseUrl: 'https://openrouter.ai/api/v1',
 						apiKey: 'provider-secret',
 						model: 'provider/primary',
-						fallbackModels: ['provider/fallback-1', 'provider/fallback-2']
+						fallbackModels: ['provider/fallback-1', 'provider/fallback-2'],
+						providerRouting: { sort: 'throughput' }
 					}
 				]
 			}

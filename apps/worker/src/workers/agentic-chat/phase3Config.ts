@@ -19,6 +19,11 @@ import {
 } from './mutationToolCatalog';
 
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+// The 2026-08-15 production canary measured a 140,517ms final synthesis attempt
+// on the default price-weighted StreamLake route. Prefer OpenRouter's live
+// throughput ordering to reduce that long tail without imposing a chat-level
+// hard cutoff or excluding healthy providers from fallback.
+const DEFAULT_OPENROUTER_PROVIDER_ROUTING = Object.freeze({ sort: 'throughput' });
 
 export type AgenticChatPhase3ProviderConfig = {
 	routes: readonly AgenticChatOpenAiCompatibleRouteV1[];
@@ -268,7 +273,8 @@ function loadProviderConfig(environment: NodeJS.ProcessEnv): AgenticChatPhase3Pr
 		baseUrl,
 		apiKey,
 		model,
-		fallbackModels
+		fallbackModels,
+		providerRouting: DEFAULT_OPENROUTER_PROVIDER_ROUTING
 	});
 	return Object.freeze({ routes: Object.freeze([route]) });
 }
