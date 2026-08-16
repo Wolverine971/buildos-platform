@@ -325,9 +325,10 @@ export function assertExactVisiblyLabeledOptions(turn: TurnResult, expected: num
 }
 
 /**
- * The agent said what it was about to do before it started doing it. SSE events
- * are ordered, so "narrate before acting" is mechanically checkable: some text
- * must precede the first tool_call. Guards the long-silent-pause failure.
+ * The user saw what the agent was about to do before it started doing it. The
+ * semantic worker intentionally withholds unreviewed model prose, so either
+ * assistant text or a visible activity-log agent state counts as narration.
+ * SSE events are ordered, making the long-silent-pause failure mechanical.
  */
 export function assertNarratedBeforeActing(turn: TurnResult): void {
 	const firstText = turn.rawEvents.findIndex(
@@ -336,14 +337,23 @@ export function assertNarratedBeforeActing(turn: TurnResult): void {
 			typeof ev.content === 'string' &&
 			ev.content.trim().length > 0
 	);
+	const firstVisibleActivity = turn.rawEvents.findIndex(
+		(ev) =>
+			ev.type === 'agent_state' &&
+			(ev.activity_visibility === 'activity_log' ||
+				(typeof ev.details === 'string' && ev.details.trim().length > 0))
+	);
+	const firstNarration = [firstText, firstVisibleActivity]
+		.filter((index) => index >= 0)
+		.sort((a, b) => a - b)[0];
 	const firstToolCall = turn.rawEvents.findIndex((ev) => ev.type === 'tool_call');
 	if (firstToolCall < 0) {
 		throw new Error('[assert] no tool call was made, so narration order is unverifiable');
 	}
-	if (firstText < 0 || firstText > firstToolCall) {
+	if (firstNarration === undefined || firstNarration > firstToolCall) {
 		throw new Error(
 			`[assert] the agent acted before saying anything: first tool_call at event ` +
-				`${firstToolCall}, first text at ${firstText < 0 ? 'never' : firstText}. ` +
+				`${firstToolCall}, first visible narration at ${firstNarration ?? 'never'}. ` +
 				`The user watches a silent pause while tools run.`
 		);
 	}

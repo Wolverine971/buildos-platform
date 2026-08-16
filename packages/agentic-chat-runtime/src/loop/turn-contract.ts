@@ -154,9 +154,15 @@ function normalizeOutcome(value: unknown, index: number): TurnContractOutcome | 
 	if (!action || !entityKind) return null;
 	const rawTargetIds = record.target_ids ?? record.targetIds;
 	const rawRequiredFields = record.required_fields ?? record.requiredFields;
-	const targetIds = readStringArray(rawTargetIds ?? []);
+	const parsedTargetIds = readStringArray(rawTargetIds ?? []);
 	const parsedRequiredFields = readStringArray(rawRequiredFields ?? [], 30);
-	if (!targetIds || !parsedRequiredFields) return null;
+	if (!parsedTargetIds || !parsedRequiredFields) return null;
+	// A create has no durable entity id until after it executes. Models sometimes
+	// put the containing project id in target_ids, but target_ids means existing
+	// entity ids and would make both pre-execution authorization and completion
+	// impossible. Exact parent/project scope remains protected by the independently
+	// reviewed mutation batch.
+	const targetIds = action === 'create' ? [] : parsedTargetIds;
 	const requiredFields = Array.from(new Set(parsedRequiredFields.map(normalizeFieldName)));
 	const minimumSuccessfulEffects = readPositiveInteger(
 		record.minimum_successful_effects ?? record.minimumSuccessfulEffects,

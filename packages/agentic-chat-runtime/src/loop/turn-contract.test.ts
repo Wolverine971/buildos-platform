@@ -67,6 +67,34 @@ describe('semantic turn contracts', () => {
 		expect(executeDeclareTurnContract(toolCall).success).toBe(true);
 	});
 
+	it('does not treat a containing project id as the target id of a create outcome', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'create',
+					entity_kind: 'task',
+					target_ids: ['project-a'],
+					required_fields: ['title'],
+					minimum_successful_effects: 1
+				}
+			]
+		});
+
+		expect(contract?.outcomes[0]?.targetIds).toEqual([]);
+		expect(
+			resolveTurnContractOutcome({
+				contract,
+				toolExecutions: [
+					execution(
+						'create_onto_task',
+						{ project_id: 'project-a', title: 'Enterprise SSO' },
+						{ result: { task: { id: 'task-new', title: 'Enterprise SSO' } } }
+					)
+				]
+			}).fulfilled
+		).toBe(true);
+	});
+
 	it('rejects a malformed declaration rather than silently weakening it', () => {
 		const result = executeDeclareTurnContract(
 			call('declare_turn_contract', {

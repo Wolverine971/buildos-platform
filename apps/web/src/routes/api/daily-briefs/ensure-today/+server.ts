@@ -7,6 +7,7 @@ import {
 	PUBLIC_RAILWAY_WORKER_URL
 } from '$lib/server/railway-worker-env';
 import { createQueueCorrelationId } from '$lib/server/queue-job-id';
+import { recordAuthenticatedUserActivity } from '$lib/server/authenticated-user-activity';
 import { mapOntologyDailyBriefRow } from '$lib/services/dailyBrief/ontology-mappers';
 
 type EnsureTodayState =
@@ -185,7 +186,8 @@ async function queueTodayBrief(params: {
 			forceRegenerate: false,
 			forceImmediate: true,
 			options: {
-				useOntology: true
+				useOntology: true,
+				suppressNotificationIfPastPreferredTime: true
 			}
 		})
 	});
@@ -226,11 +228,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	try {
-		const { data: userRow, error: userError } = await supabase
-			.from('users')
-			.select('timezone')
-			.eq('id', user.id)
-			.single();
+		const [{ data: userRow, error: userError }] = await Promise.all([
+			supabase.from('users').select('timezone').eq('id', user.id).single(),
+			recordAuthenticatedUserActivity(supabase, user.id)
+		]);
 
 		if (userError) {
 			throw userError;

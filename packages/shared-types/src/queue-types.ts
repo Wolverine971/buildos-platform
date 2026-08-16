@@ -10,6 +10,13 @@ export type OntologyEntityType = 'task' | 'plan' | 'goal' | 'risk' | 'milestone'
 
 export type OntologyClassificationSource = 'create_modal';
 
+export type BriefNotificationSuppressionReason =
+	| 'inactive_preference'
+	| 'invalid_preference'
+	| 'preferred_time_passed'
+	| 'preference_lookup_failed'
+	| 'preference_missing';
+
 export interface OntologyClassificationRequest {
 	entityType: OntologyEntityType;
 	entityId: string;
@@ -47,7 +54,13 @@ export interface DailyBriefJobMetadata {
 		isReengagement?: boolean;
 		daysSinceLastLogin?: number;
 		engagementStage?: 'standard' | 'reengagement' | 'dormant';
+		// Implicit app-open generation can create the in-app brief without
+		// emitting email/SMS/push notifications.
+		suppressNotification?: boolean;
+		notificationSuppressionReason?: BriefNotificationSuppressionReason;
 	};
+	notificationOutcome?: 'emitted' | 'suppressed' | 'failed';
+	notificationOutcomeAt?: string;
 	generation_progress?: BriefGenerationProgress;
 	notificationScheduledFor?: string; // ISO 8601 timestamp for when to send notification
 }

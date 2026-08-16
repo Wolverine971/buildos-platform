@@ -117,6 +117,7 @@ type ActiveResponse = {
 	route: AgenticChatOpenAiCompatibleRouteV1;
 	response: Response;
 	requestId: string | null;
+	signal: AbortSignal;
 	cleanup(): void;
 	timedOut(): boolean;
 };
@@ -391,7 +392,11 @@ export class AgenticChatOpenRouterReadOnlyClient
 			let providerDone = false;
 
 			while (!providerDone) {
-				const chunk = await reader.read();
+				// Some fetch implementations resolve once response headers arrive but do
+				// not reliably reject a pending body read when that request signal later
+				// aborts. Race the read ourselves so the configured request deadline
+				// bounds the complete SSE response, not only the header wait.
+				const chunk = await abortableProviderRead(reader.read(), active.signal);
 				if (chunk.done) {
 					buffer += decoder.decode();
 					break;
@@ -502,7 +507,10 @@ export class AgenticChatOpenRouterReadOnlyClient
 				error instanceof AgenticChatProviderNetworkError
 					? error.retryable
 					: active?.timedOut() === true || isRetryableUnknownError(error);
-			const message = canonicalError(error);
+			const message =
+				active?.timedOut() === true
+					? `Agentic Chat provider request timed out after ${this.requestTimeoutMs}ms`
+					: canonicalError(error);
 			await account('failure', message, retryable);
 			yield { type: 'error', error: message, retryable };
 		} finally {
@@ -567,6 +575,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 				requestId:
 					canonicalOptionalHeader(response.headers.get('x-request-id')) ??
 					canonicalOptionalHeader(response.headers.get('x-openrouter-request-id')),
+				signal: attempt.signal,
 				cleanup: attempt.cleanup,
 				timedOut: attempt.timedOut
 			};
@@ -1067,6 +1076,24 @@ function createAttemptSignal(
 		},
 		timedOut: () => didTimeout
 	};
+}
+
+function abortableProviderRead<T>(read: Promise<T>, signal: AbortSignal): Promise<T> {
+	if (signal.aborted) {
+		return Promise.reject(
+			signal.reason instanceof Error ? signal.reason : new Error('Provider request aborted')
+		);
+	}
+	return new Promise<T>((resolve, reject) => {
+		const onAbort = () =>
+			reject(
+				signal.reason instanceof Error
+					? signal.reason
+					: new Error('Provider request aborted')
+			);
+		signal.addEventListener('abort', onAbort, { once: true });
+		read.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+	});
 }
 
 function validateRoutes(

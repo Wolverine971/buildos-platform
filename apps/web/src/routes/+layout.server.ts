@@ -8,6 +8,7 @@ import {
 	setCachedBillingContext,
 	type CachedBillingContext
 } from '$lib/server/billing-context-cache';
+import { recordAuthenticatedUserActivity } from '$lib/server/authenticated-user-activity';
 
 const clampProgress = (progress?: number | null) => {
 	if (typeof progress !== 'number' || Number.isNaN(progress)) {
@@ -245,7 +246,11 @@ export const load: LayoutServerLoad = async ({
 					})
 				: createEmptyBillingContext(false),
 
-			measure('db.agent_connections', () => hasConnectedAgents(supabase, user.id))
+			measure('db.agent_connections', () => hasConnectedAgents(supabase, user.id)),
+
+			measure('db.authenticated_activity', () =>
+				recordAuthenticatedUserActivity(supabase, user.id)
+			)
 		]);
 
 	return {

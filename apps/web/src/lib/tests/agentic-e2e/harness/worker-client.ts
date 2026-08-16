@@ -39,7 +39,10 @@ import {
 } from './sse-client';
 
 const REALTIME_READY_TIMEOUT_MS = 10_000;
-const WORKER_TURN_TIMEOUT_MS = 300_000;
+// The production worker owns a 300-second provider budget and still needs a
+// short terminalization/reconciliation window. Matching that budget exactly
+// makes the harness race a durable terminal event that lands just after it.
+const WORKER_TURN_TIMEOUT_MS = 315_000;
 
 export type AgenticE2EExecutionMode = 'legacy_sse' | 'worker_realtime';
 
@@ -236,6 +239,14 @@ export class AgenticE2EWorkerClient {
 				WORKER_TURN_TIMEOUT_MS,
 				`worker turn ${descriptor.handle.turnRunId} did not terminate`
 			);
+		} catch (error) {
+			// Return a normal TurnResult so deterministic assertions and Phase 0
+			// capture can retain the failed/timed-out turn instead of losing it when
+			// the transport promise rejects before the runner reaches its finally.
+			const message = error instanceof Error ? error.message : String(error);
+			if (!result.errors.some((entry) => entry.error === message)) {
+				result.errors.push({ error: message });
+			}
 		} finally {
 			adoption.clear('teardown');
 			result.timing.totalDurationMs = performance.now() - requestStartedMs;

@@ -18,7 +18,7 @@ describe('agentic E2E worker client boundaries', () => {
 	});
 
 	it('prefixes product-relative requests and carries the authenticated cookie', async () => {
-		const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+		const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
 		vi.stubGlobal('fetch', fetchMock);
 		const authenticatedFetch = createAuthenticatedHarnessFetch(
 			'https://build-os.example/base',

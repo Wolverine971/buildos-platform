@@ -26,9 +26,15 @@ export interface BriefJobData extends Omit<DailyBriefJobMetadata, 'briefDate' | 
 		engagementStage?: 'standard' | 'reengagement' | 'dormant';
 		// Ontology brief generation flag
 		useOntology?: boolean;
-		// Set for implicit (app-open) generations when the user has daily briefs
-		// turned off — generate the brief but emit no brief.* notification events.
+		// Set for implicit (app-open) generations when delivery is not allowed:
+		// briefs are off, the preferred time passed, or the preference is invalid.
 		suppressNotification?: boolean;
+		notificationSuppressionReason?:
+			| 'inactive_preference'
+			| 'invalid_preference'
+			| 'preferred_time_passed'
+			| 'preference_lookup_failed'
+			| 'preference_missing';
 	};
 }
 

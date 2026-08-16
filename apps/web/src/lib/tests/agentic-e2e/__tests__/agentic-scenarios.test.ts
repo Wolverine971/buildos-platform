@@ -50,6 +50,10 @@ let workerClient: AgenticE2EWorkerClient | null = null;
 const phase0Turns: Phase0TurnEvidence[] = [];
 const phase0FatalCaptureErrors: string[] = [];
 const PHASE0_CAPTURE = process.env.AGENTIC_PHASE0_CAPTURE === 'true';
+// Includes a worker turn (315s reconciliation bound), deterministic checks,
+// retained evidence, and the judge's 90s hard wall. A 300s whole-test default
+// incorrectly classified completed worker turns as scenario timeouts.
+const DEFAULT_SCENARIO_TIMEOUT_MS = 450_000;
 const EXECUTION_MODE = resolveAgenticE2EExecutionMode();
 const WORKER_PREFLIGHT_ONLY = process.env.AGENTIC_E2E_WORKER_PREFLIGHT_ONLY === 'true';
 const PHASE0_OUTPUT_PATH =
@@ -221,7 +225,7 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 			runner(
 				`[${scenario.category}] ${scenario.title}${PHASE0_REPETITIONS > 1 ? ` [run ${repetition}/${PHASE0_REPETITIONS}]` : ''}`,
 				{
-					timeout: scenario.timeoutMs ?? 300000,
+					timeout: scenario.timeoutMs ?? DEFAULT_SCENARIO_TIMEOUT_MS,
 					retry: PHASE0_CAPTURE ? 0 : E2E_RETRY_COUNT
 				},
 				async () => {

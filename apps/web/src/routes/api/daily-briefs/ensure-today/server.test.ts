@@ -6,6 +6,14 @@ vi.mock('$lib/server/railway-worker-env', () => ({
 	PRIVATE_RAILWAY_WORKER_TOKEN: 'worker-token'
 }));
 
+const activityMocks = vi.hoisted(() => ({
+	recordAuthenticatedUserActivity: vi.fn().mockResolvedValue(undefined)
+}));
+
+vi.mock('$lib/server/authenticated-user-activity', () => ({
+	recordAuthenticatedUserActivity: activityMocks.recordAuthenticatedUserActivity
+}));
+
 import { POST } from './+server';
 
 type QueryResponse = {
@@ -100,6 +108,10 @@ describe('POST /api/daily-briefs/ensure-today', () => {
 			brief: { id: 'brief-1', summary_content: 'Ready brief' }
 		});
 		expect(fetch).not.toHaveBeenCalled();
+		expect(activityMocks.recordAuthenticatedUserActivity).toHaveBeenCalledWith(
+			supabase,
+			'user-1'
+		);
 	});
 
 	it('returns an active processing job instead of project checks when generation is already running', async () => {
@@ -224,7 +236,10 @@ describe('POST /api/daily-briefs/ensure-today', () => {
 			timezone: 'America/New_York',
 			forceRegenerate: false,
 			forceImmediate: true,
-			options: { useOntology: true }
+			options: {
+				useOntology: true,
+				suppressNotificationIfPastPreferredTime: true
+			}
 		});
 	});
 

@@ -823,6 +823,43 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 		});
 	});
 
+	it('applies the request timeout after headers while the SSE body is stalled', async () => {
+		vi.useFakeTimers();
+		const fetchImpl = vi.fn(
+			async () =>
+				new Response(new ReadableStream<Uint8Array>({ start: () => undefined }), {
+					status: 200,
+					headers: { 'content-type': 'text/event-stream' }
+				})
+		) as unknown as typeof fetch;
+		const observations: AgenticChatProviderUsageObservationV1[] = [];
+		const client = new AgenticChatOpenRouterReadOnlyClient(
+			{ usage: { observe: (observation) => observations.push(observation) } },
+			{
+				routes: [route()],
+				httpReferer: 'https://build-os.com',
+				appName: 'BuildOS',
+				fetchImpl,
+				requestTimeoutMs: 1_000
+			}
+		);
+		const collecting = collect(client.stream(input()));
+		await vi.advanceTimersByTimeAsync(1_000);
+
+		await expect(collecting).resolves.toEqual([
+			{
+				type: 'error',
+				error: 'Agentic Chat provider request timed out after 1000ms',
+				retryable: true
+			}
+		]);
+		expect(observations[0]).toMatchObject({
+			status: 'failure',
+			retryable: true,
+			estimated: true
+		});
+	});
+
 	it('bounds route configuration and the SSE buffer before any provider use', async () => {
 		expect(
 			() =>

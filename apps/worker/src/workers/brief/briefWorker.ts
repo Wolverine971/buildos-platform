@@ -16,11 +16,59 @@ import { LegacyJob } from '../shared/jobAdapter';
 import { generateOntologyDailyBrief } from './ontologyBriefGenerator';
 import { generateCorrelationId } from '@buildos/shared-utils';
 import {
-	getExistingBriefJobDecision,
 	type ExistingBriefJobDecision,
+	getExistingBriefJobDecision,
 	getStaleBriefJobDecision
 } from './briefDateGuard';
 import { enqueueBriefAudioIfEnabled } from '../briefAudio/enqueueBriefAudio';
+
+type BriefNotificationOutcome = 'emitted' | 'suppressed' | 'failed';
+
+async function mergeBriefJobMetadata(
+	job: LegacyJob<BriefJobData>,
+	updates: Record<string, unknown>,
+	operation: string
+) {
+	let readQuery = supabase.from('queue_jobs').select('metadata').eq('queue_job_id', job.id);
+
+	if (job.processingToken) {
+		readQuery = readQuery.eq('processing_token', job.processingToken);
+	}
+
+	const { data: currentJob, error: readError } = await readQuery.maybeSingle();
+	if (readError) {
+		console.warn(
+			`Failed to read queue metadata before ${operation} for job ${job.id}: ${readError.message}`
+		);
+		return;
+	}
+
+	const persistedMetadata =
+		currentJob?.metadata &&
+		typeof currentJob.metadata === 'object' &&
+		!Array.isArray(currentJob.metadata)
+			? (currentJob.metadata as Record<string, unknown>)
+			: {};
+	const metadata = {
+		...job.data,
+		...persistedMetadata,
+		...updates
+	};
+
+	let updateQuery = supabase
+		.from('queue_jobs')
+		.update({ metadata: metadata as unknown as Json })
+		.eq('queue_job_id', job.id);
+
+	if (job.processingToken) {
+		updateQuery = updateQuery.eq('processing_token', job.processingToken);
+	}
+
+	const { error: updateError } = await updateQuery;
+	if (updateError) {
+		console.warn(`Failed to ${operation} for job ${job.id}: ${updateError.message}`);
+	}
+}
 
 /**
  * Validates if a timezone string is valid
@@ -39,38 +87,45 @@ function isValidTimezone(timezone: string): boolean {
 
 async function recordSkippedBriefJobMetadata(
 	job: LegacyJob<BriefJobData>,
-	decision: ExistingBriefJobDecision
+	decision: ExistingBriefJobDecision,
+	notificationOutcome?: BriefNotificationOutcome
 ) {
 	if (!decision.reason) return;
 
-	const skippedAt = new Date().toISOString();
-	const metadata = {
-		...job.data,
-		skipReason: decision.reason,
-		skippedAt,
-		existingBriefId: decision.existingBriefId
-	};
+	const now = new Date().toISOString();
+	await mergeBriefJobMetadata(
+		job,
+		{
+			skipReason: decision.reason,
+			skippedAt: now,
+			existingBriefId: decision.existingBriefId,
+			notificationOutcome,
+			notificationOutcomeAt: notificationOutcome ? now : undefined
+		},
+		'record skipped brief metadata'
+	);
+}
 
-	let query = supabase
-		.from('queue_jobs')
-		.update({ metadata: metadata as unknown as Json })
-		.eq('queue_job_id', job.id);
-
-	if (job.processingToken) {
-		query = query.eq('processing_token', job.processingToken);
-	}
-
-	const { error } = await query;
-	if (error) {
-		console.warn(`Failed to record skipped brief metadata for job ${job.id}: ${error.message}`);
-	}
+async function recordBriefNotificationOutcome(
+	job: LegacyJob<BriefJobData>,
+	notificationOutcome: BriefNotificationOutcome
+) {
+	await mergeBriefJobMetadata(
+		job,
+		{
+			notificationOutcome,
+			notificationOutcomeAt: new Date().toISOString()
+		},
+		'record brief notification outcome'
+	);
 }
 
 /**
  * Builds the brief.completed payload from persisted brief rows and emits it.
  * Safe to call for an already-emitted brief: emit_notification_event dedupes on
  * (event_type, user, brief_id) and returns the existing event without creating
- * new deliveries. Never throws — emission failures must not fail the brief job.
+ * new deliveries. Returns false rather than throwing so notification recovery
+ * can be recorded without turning a generated brief into a failed brief.
  */
 async function emitBriefCompletedEvent(params: {
 	userId: string;
@@ -79,7 +134,7 @@ async function emitBriefCompletedEvent(params: {
 	timezone: string;
 	notificationScheduledFor?: string;
 	useOntology: boolean;
-}) {
+}): Promise<boolean> {
 	const { userId, briefId, briefDate, timezone, useOntology } = params;
 
 	try {
@@ -172,36 +227,45 @@ async function emitBriefCompletedEvent(params: {
 		);
 
 		// Type assertion needed until database types are regenerated after migration
-		await (serviceClient.rpc as any)('emit_notification_event', {
-			p_event_type: 'brief.completed',
-			p_event_source: 'worker_job',
-			p_target_user_id: userId,
-			p_payload: {
-				brief_id: briefId,
-				brief_date: briefDate,
-				timezone: timezone,
-				task_count: todaysTaskCount, // Keep for backward compatibility
-				todays_task_count: todaysTaskCount,
-				overdue_task_count: overdueTaskCount,
-				upcoming_task_count: upcomingTaskCount,
-				next_seven_days_task_count: nextSevenDaysTaskCount,
-				recently_completed_count: recentlyCompletedCount,
-				blocked_task_count: blockedTaskCount,
-				project_count: projectCount,
-				correlationId, // Add correlation ID to payload
-				is_ontology_brief: useOntology // Flag for downstream consumers
-			},
-			p_metadata: {
-				correlationId, // Add correlation ID to metadata for tracking
-				is_ontology_brief: useOntology
-			},
-			p_scheduled_for: notificationScheduledFor?.toISOString() // Schedule at user's preferred time
-		});
+		const { error: notificationEventError } = await (serviceClient.rpc as any)(
+			'emit_notification_event',
+			{
+				p_event_type: 'brief.completed',
+				p_event_source: 'worker_job',
+				p_target_user_id: userId,
+				p_payload: {
+					brief_id: briefId,
+					brief_date: briefDate,
+					timezone: timezone,
+					task_count: todaysTaskCount, // Keep for backward compatibility
+					todays_task_count: todaysTaskCount,
+					overdue_task_count: overdueTaskCount,
+					upcoming_task_count: upcomingTaskCount,
+					next_seven_days_task_count: nextSevenDaysTaskCount,
+					recently_completed_count: recentlyCompletedCount,
+					blocked_task_count: blockedTaskCount,
+					project_count: projectCount,
+					correlationId, // Add correlation ID to payload
+					is_ontology_brief: useOntology // Flag for downstream consumers
+				},
+				p_metadata: {
+					correlationId, // Add correlation ID to metadata for tracking
+					is_ontology_brief: useOntology
+				},
+				p_scheduled_for: notificationScheduledFor?.toISOString() // Schedule at user's preferred time
+			}
+		);
+
+		if (notificationEventError) {
+			throw new Error(`emit_notification_event failed: ${notificationEventError.message}`);
+		}
 
 		console.log(`📬 Emitted brief.completed notification event for user ${userId}`);
+		return true;
 	} catch (notificationError) {
 		// Log error but don't fail the brief job
 		console.error('Failed to emit notification event:', notificationError);
+		return false;
 	}
 }
 
@@ -306,8 +370,8 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 					`⏭️ Skipping duplicate daily brief job ${job.id} for user ${job.data.userId}: ${reason}`
 				);
 				await job.log(reason);
-				await recordSkippedBriefJobMetadata(job, existingBriefDecision);
-				await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
+
+				let notificationOutcome: BriefNotificationOutcome | undefined;
 
 				// A completed brief may exist without its notification ever having been
 				// emitted (e.g. the generating attempt timed out after persisting the
@@ -318,7 +382,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 					existingBriefDecision.existingBriefId &&
 					!suppressNotification
 				) {
-					await emitBriefCompletedEvent({
+					const notificationEmitted = await emitBriefCompletedEvent({
 						userId: job.data.userId,
 						briefId: existingBriefDecision.existingBriefId,
 						briefDate: validatedBriefDate,
@@ -326,7 +390,20 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 						notificationScheduledFor: job.data.notificationScheduledFor,
 						useOntology: true
 					});
+					notificationOutcome = notificationEmitted ? 'emitted' : 'failed';
+				} else if (
+					existingBriefDecision.reason === 'skipped_existing_brief' &&
+					suppressNotification
+				) {
+					notificationOutcome = 'suppressed';
 				}
+
+				await recordSkippedBriefJobMetadata(
+					job,
+					existingBriefDecision,
+					notificationOutcome
+				);
+				await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
 				return;
 			}
 		}
@@ -432,21 +509,15 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 			);
 		}
 
-		await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
-
-		captureWorkerEvent(job.data.userId, 'brief_generated', {
-			brief_id: brief.id,
-			brief_date: validatedBriefDate,
-			timezone
-		});
-
 		// Emit notification event for brief completion
+		let notificationOutcome: BriefNotificationOutcome;
 		if (suppressNotification) {
 			console.log(
-				`🔕 Skipping brief.completed notification for user ${job.data.userId} (daily briefs disabled by user)`
+				`🔕 Skipping brief.completed notification for user ${job.data.userId} (implicit delivery suppressed: ${job.data.options?.notificationSuppressionReason ?? 'unspecified'})`
 			);
+			notificationOutcome = 'suppressed';
 		} else {
-			await emitBriefCompletedEvent({
+			const notificationEmitted = await emitBriefCompletedEvent({
 				userId: job.data.userId,
 				briefId: brief.id,
 				briefDate: validatedBriefDate,
@@ -454,7 +525,21 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 				notificationScheduledFor: job.data.notificationScheduledFor,
 				useOntology
 			});
+			notificationOutcome = notificationEmitted ? 'emitted' : 'failed';
 		}
+
+		await recordBriefNotificationOutcome(job, notificationOutcome);
+		await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
+
+		captureWorkerEvent(job.data.userId, 'brief_generated', {
+			brief_id: brief.id,
+			brief_date: validatedBriefDate,
+			timezone,
+			notification_suppressed: suppressNotification,
+			notification_suppression_reason:
+				job.data.options?.notificationSuppressionReason ?? null,
+			notification_outcome: notificationOutcome
+		});
 
 		console.log(`✅ Completed brief generation for user ${job.data.userId}
    → Brief ID: ${brief.id}
@@ -478,7 +563,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 		// Emit notification event for brief failure (opt-in via subscriptions)
 		if (suppressNotification) {
 			console.log(
-				`🔕 Skipping brief.failed notification for user ${job.data.userId} (daily briefs disabled by user)`
+				`🔕 Skipping brief.failed notification for user ${job.data.userId} (implicit delivery suppressed: ${job.data.options?.notificationSuppressionReason ?? 'unspecified'})`
 			);
 			throw error;
 		}

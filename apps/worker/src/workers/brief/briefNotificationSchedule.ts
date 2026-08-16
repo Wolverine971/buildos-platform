@@ -9,6 +9,34 @@ interface FutureNotificationScheduleParams {
 	now?: Date;
 }
 
+interface ImmediateBriefNotificationParams extends FutureNotificationScheduleParams {
+	suppressIfPastPreferredTime?: boolean;
+}
+
+export type BriefNotificationSuppressionReason =
+	| 'inactive_preference'
+	| 'invalid_preference'
+	| 'preferred_time_passed'
+	| 'preference_lookup_failed'
+	| 'preference_missing';
+
+export type ImmediateBriefNotificationDecision =
+	| {
+			notificationScheduledFor: Date;
+			suppressNotification: false;
+			reason: 'preferred_time_pending';
+	  }
+	| {
+			notificationScheduledFor?: undefined;
+			suppressNotification: false;
+			reason: 'notify_immediately';
+	  }
+	| {
+			notificationScheduledFor?: undefined;
+			suppressNotification: true;
+			reason: 'inactive_preference' | 'invalid_preference' | 'preferred_time_passed';
+	  };
+
 function parseTimeOfDay(timeOfDay?: string | null) {
 	const parts = (timeOfDay || '09:00:00').split(':');
 	if (parts.length < 2) return null;
@@ -41,22 +69,85 @@ export function getFutureNotificationScheduledFor({
 	isActive,
 	now = new Date()
 }: FutureNotificationScheduleParams): Date | undefined {
-	if (isActive === false) return undefined;
+	return resolveImmediateBriefNotification({
+		briefDate,
+		timeOfDay,
+		timezone,
+		isActive,
+		now,
+		suppressIfPastPreferredTime: true
+	}).notificationScheduledFor;
+}
+
+/**
+ * Resolves notification behavior for an immediately generated brief.
+ *
+ * A missing scheduled timestamp normally means "notify now" downstream, so
+ * callers that generate a quiet app-open catch-up need an explicit suppression
+ * decision after the user's preferred time has passed.
+ */
+export function resolveImmediateBriefNotification({
+	briefDate,
+	timeOfDay,
+	timezone,
+	isActive,
+	now = new Date(),
+	suppressIfPastPreferredTime = false
+}: ImmediateBriefNotificationParams): ImmediateBriefNotificationDecision {
+	if (isActive === false) {
+		return {
+			suppressNotification: true,
+			reason: 'inactive_preference'
+		};
+	}
 
 	const time = parseTimeOfDay(timeOfDay);
-	if (!time) return undefined;
-
 	const [year, month, day] = briefDate.split('-').map(Number);
-	if (!year || !month || !day) return undefined;
+	if (!time || !year || !month || !day) {
+		return {
+			suppressNotification: true,
+			reason: 'invalid_preference'
+		};
+	}
 
 	const localTimestamp = `${briefDate} ${String(time.hours).padStart(2, '0')}:${String(
 		time.minutes
 	).padStart(2, '0')}:${String(time.seconds).padStart(2, '0')}`;
-	const targetUtcTime = fromZonedTime(localTimestamp, timezone);
 
-	if (targetUtcTime.getTime() <= now.getTime()) {
-		return undefined;
+	let targetUtcTime: Date;
+	try {
+		targetUtcTime = fromZonedTime(localTimestamp, timezone);
+	} catch {
+		return {
+			suppressNotification: true,
+			reason: 'invalid_preference'
+		};
 	}
 
-	return targetUtcTime;
+	if (Number.isNaN(targetUtcTime.getTime())) {
+		return {
+			suppressNotification: true,
+			reason: 'invalid_preference'
+		};
+	}
+
+	if (targetUtcTime.getTime() > now.getTime()) {
+		return {
+			notificationScheduledFor: targetUtcTime,
+			suppressNotification: false,
+			reason: 'preferred_time_pending'
+		};
+	}
+
+	if (suppressIfPastPreferredTime) {
+		return {
+			suppressNotification: true,
+			reason: 'preferred_time_passed'
+		};
+	}
+
+	return {
+		suppressNotification: false,
+		reason: 'notify_immediately'
+	};
 }

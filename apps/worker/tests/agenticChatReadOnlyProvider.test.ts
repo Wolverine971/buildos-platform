@@ -1632,6 +1632,137 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 	});
 
+	it('authorizes reviewed folder creation inside a targeted organization contract', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const documentId = '42000000-0000-4000-8000-000000000004';
+		const contractArguments = organizationContractArguments(documentId);
+		const normalizedContract = parseDeclaredTurnContract(contractArguments);
+		if (!normalizedContract) throw new Error('Expected a valid test turn contract');
+		const contractReviewSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
+			.digest('hex');
+		const contractApprovalArguments = {
+			reason: 'The user delegated a sensible organization of the targeted document.',
+			contract_sha256: contractReviewSha256
+		};
+		const createArguments = {
+			project_id: projectId,
+			title: 'Reference',
+			description: 'Stable reference material'
+		};
+		const batchSha256 = mutationBatchReviewSha256([
+			{
+				id: 'provider-create-folder-1',
+				name: 'create_onto_document',
+				arguments: createArguments
+			}
+		]);
+		const batchApprovalArguments = {
+			reason: 'This folder is a reasonable implementation of the delegated organization.',
+			batch_sha256: batchSha256
+		};
+		const client = clientWithRounds([
+			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
+			providerReadRound('provider-create-folder-1', createArguments, 'create_onto_document')
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-contract-approval-1',
+				contractApprovalArguments,
+				'approve_turn_contract_review'
+			),
+			providerReadRound(
+				'reviewer-batch-approval-1',
+				batchApprovalArguments,
+				'approve_mutation_batch_review'
+			)
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ createOntoDocument: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					createDocumentToolDefinition()
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'create_onto_document'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-contract-1',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-contract-approval-1',
+						'approve_turn_contract_review',
+						contractApprovalArguments,
+						{
+							status: 'turn_contract_review_approved',
+							contract_sha256: contractReviewSha256
+						}
+					)
+				]
+			})
+		);
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 4,
+					results: [
+						durableReadFeedbackFor(
+							'reviewer-batch-approval-1',
+							'approve_mutation_batch_review',
+							batchApprovalArguments,
+							{
+								status: 'mutation_batch_review_approved',
+								batch_sha256: batchSha256
+							}
+						)
+					]
+				})
+			)
+		).resolves.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'mutating_tool',
+					providerToolCallId: 'provider-create-folder-1',
+					toolName: 'create_onto_document'
+				})
+			])
+		);
+	});
+
 	it('lets the independent reviewer reject an exact mutation batch after approving its contract', async () => {
 		const documentId = '42000000-0000-4000-8000-000000000004';
 		const contractArguments: JsonObject = {

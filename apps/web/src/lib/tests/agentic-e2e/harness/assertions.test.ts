@@ -118,7 +118,7 @@ describe('restraint assertion helpers', () => {
 		).not.toThrow();
 	});
 
-	it('requires text before the first tool call', () => {
+	it('requires user-visible narration before the first tool call', () => {
 		const narrated = turn({
 			rawEvents: [
 				{ type: 'text', content: 'Let me look that up.' },
@@ -130,6 +130,20 @@ describe('restraint assertion helpers', () => {
 			rawEvents: [{ type: 'tool_call' }, { type: 'text', content: 'Here you go.' }]
 		});
 		expect(() => assertNarratedBeforeActing(narrated)).not.toThrow();
+		expect(() =>
+			assertNarratedBeforeActing(
+				turn({
+					rawEvents: [
+						{
+							type: 'agent_state',
+							details: 'Planning the first step...',
+							activity_visibility: 'activity_log'
+						},
+						{ type: 'tool_call' }
+					]
+				})
+			)
+		).not.toThrow();
 		expect(() => assertNarratedBeforeActing(silent)).toThrow('acted before saying anything');
 		// Whitespace-only text does not count as narration.
 		expect(() =>

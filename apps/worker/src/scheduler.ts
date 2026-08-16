@@ -34,6 +34,12 @@ import { BriefBackoffCalculator } from './lib/briefBackoffCalculator';
 import { type Alert, smsAlertsService, smsMetricsService } from '@buildos/shared-utils';
 import { resolveScheduledBriefDate } from './workers/brief/briefDateGuard';
 import {
+	BRIEF_SCHEDULE_BLOCKING_STATUSES,
+	type ExistingBriefScheduleJob,
+	getBlockingBriefScheduleKeys,
+	getBriefScheduleKey
+} from './workers/brief/briefScheduleIdempotency';
+import {
 	agentRunCostReconciliationEnabled,
 	runAgentRunCostReconciliation
 } from './workers/agent-run/agentRunCostReconciler';
@@ -860,6 +866,7 @@ async function checkAndScheduleBriefs() {
 			preference: any;
 			nextRunTime: Date;
 			generationStartTime: Date;
+			briefDate: string;
 			engagementMetadata?: {
 				isReengagement: boolean;
 				daysSinceLastLogin: number;
@@ -957,6 +964,11 @@ async function checkAndScheduleBriefs() {
 				preference,
 				nextRunTime: scheduledRunTime, // User's scheduled notification time
 				generationStartTime, // When to start generating
+				briefDate: resolveScheduledBriefDate({
+					scheduledFor: generationStartTime,
+					notificationScheduledFor: scheduledRunTime,
+					timezone: userTimezoneMap.get(preference.user_id) || 'UTC'
+				}),
 				engagementMetadata
 			});
 		}
@@ -966,40 +978,55 @@ async function checkAndScheduleBriefs() {
 			return;
 		}
 
-		// PHASE 3: Batch check for existing jobs (single query for all users)
+		// PHASE 3: Check for an active same-user/date job or a terminal quiet
+		// catch-up. Completed jobs without a durable notification outcome retain
+		// one idempotent recovery pass after persisting the brief.
 		console.log(`🔍 Checking for existing jobs for ${usersToSchedule.length} user(s)...`);
-		const userIdsToCheck = usersToSchedule.map((u) => u.preference.user_id);
-		const timeWindow = 30 * 60 * 1000; // 30 minutes tolerance
+		const schedulesByBriefDate = new Map<string, typeof usersToSchedule>();
+		for (const schedule of usersToSchedule) {
+			const schedules = schedulesByBriefDate.get(schedule.briefDate) ?? [];
+			schedules.push(schedule);
+			schedulesByBriefDate.set(schedule.briefDate, schedules);
+		}
 
-		const { data: existingJobs } = await supabase
-			.from('queue_jobs')
-			.select('user_id, scheduled_for')
-			.in('user_id', userIdsToCheck)
-			.eq('job_type', 'generate_daily_brief')
-			.in('status', ['pending', 'processing']);
+		const existingJobResults = await Promise.all(
+			Array.from(schedulesByBriefDate.entries()).map(async ([briefDate, schedules]) => {
+				const userIds = Array.from(
+					new Set(schedules.map(({ preference }) => preference.user_id))
+				);
+				const { data, error: existingJobsError } = await supabase
+					.from('queue_jobs')
+					.select('user_id, status, metadata')
+					.in('user_id', userIds)
+					.eq('job_type', 'generate_daily_brief')
+					.in('status', BRIEF_SCHEDULE_BLOCKING_STATUSES)
+					.contains('metadata', { briefDate });
 
-		// Create map of existing jobs for quick lookup
-		const existingJobsMap = new Map<string, Date[]>();
-		existingJobs?.forEach((job) => {
-			if (!existingJobsMap.has(job.user_id)) {
-				existingJobsMap.set(job.user_id, []);
-			}
-			existingJobsMap.get(job.user_id)!.push(new Date(job.scheduled_for));
-		});
+				return { data, error: existingJobsError, briefDate };
+			})
+		);
+
+		const failedExistingJobCheck = existingJobResults.find(({ error }) => error);
+		if (failedExistingJobCheck) {
+			console.error(
+				`Failed to check existing brief jobs for ${failedExistingJobCheck.briefDate}:`,
+				failedExistingJobCheck.error
+			);
+			// Fail closed. The next scheduler tick can retry safely; queueing without
+			// an idempotency check can send a duplicate brief today.
+			return;
+		}
+
+		const existingJobs = existingJobResults.flatMap(
+			({ data }) => (data ?? []) as ExistingBriefScheduleJob[]
+		);
+		const blockingScheduleKeys = getBlockingBriefScheduleKeys(existingJobs);
 
 		// Filter out users who already have jobs scheduled
-		const usersToQueue = usersToSchedule.filter(({ preference, generationStartTime }) => {
-			const userJobs = existingJobsMap.get(preference.user_id) || [];
-			const windowStart = new Date(generationStartTime.getTime() - timeWindow);
-			const windowEnd = new Date(generationStartTime.getTime() + timeWindow);
-
-			const hasConflict = userJobs.some(
-				(jobTime) => jobTime >= windowStart && jobTime <= windowEnd
-			);
-
-			if (hasConflict) {
+		const usersToQueue = usersToSchedule.filter(({ preference, briefDate }) => {
+			if (blockingScheduleKeys.has(getBriefScheduleKey(preference.user_id, briefDate))) {
 				const userName = userNameMap.get(preference.user_id) || preference.user_id;
-				console.log(`⏭️ Brief already scheduled for user ${userName}`);
+				console.log(`⏭️ Brief already handled for user ${userName} on ${briefDate}`);
 				return false;
 			}
 

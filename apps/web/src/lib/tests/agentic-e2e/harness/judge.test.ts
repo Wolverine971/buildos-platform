@@ -28,6 +28,7 @@ describe('judgeQuality', () => {
 			reasoning: 'Specific and complete.'
 		});
 		expect(getJSONResponse).toHaveBeenCalledTimes(1);
+		expect(getJSONResponse.mock.calls[0]?.[0]?.signal).toBeInstanceOf(AbortSignal);
 	});
 
 	it('retries one provider failure without changing the rubric or threshold', async () => {
@@ -47,6 +48,9 @@ describe('judgeQuality', () => {
 			reasoning: 'The recommendation was generic.'
 		});
 		expect(getJSONResponse).toHaveBeenCalledTimes(2);
+		expect(getJSONResponse.mock.calls[0]?.[0]?.signal).toBe(
+			getJSONResponse.mock.calls[1]?.[0]?.signal
+		);
 	});
 
 	it('surfaces the provider failure after the bounded retry', async () => {

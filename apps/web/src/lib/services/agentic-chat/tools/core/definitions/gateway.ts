@@ -80,7 +80,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 								maxItems: 50,
 								items: { type: 'string' },
 								description:
-									'Known canonical ids bounding eligible targets. Omit until discovered; minimum_successful_effects applies within this set.'
+									'Known canonical ids of existing entities bounding eligible targets. Omit for create outcomes: a new entity has no id yet, and its containing project is not the created entity target. Omit until existing targets are discovered; minimum_successful_effects applies within this set.'
 							},
 							required_fields: {
 								type: 'array',

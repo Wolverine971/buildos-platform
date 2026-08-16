@@ -3,13 +3,8 @@ import type { RequestHandler } from './$types';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const POST: RequestHandler = async ({
-	request,
-	getClientAddress,
-	locals: { supabase, safeGetSession }
-}) => {
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	try {
-		const { user } = await safeGetSession();
 		// Parse request body
 		const body = await parseRequestBody<{ visitor_id: string }>(request);
 
@@ -37,20 +32,6 @@ export const POST: RequestHandler = async ({
 			ip_address,
 			user_agent
 		});
-
-		if (user?.id) {
-			const { error: userUpdateError } = await supabase
-				.from('users')
-				.update({
-					last_visit: new Date().toISOString(),
-					updated_at: new Date().toISOString()
-				})
-				.eq('id', user?.id);
-
-			if (userUpdateError) {
-				console.error(userUpdateError);
-			}
-		}
 
 		// If there's a conflict (visitor already tracked today), that's expected
 		if (error) {

@@ -9,6 +9,7 @@ import { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { JudgeResult } from './types';
 
 const JUDGE_MAX_ATTEMPTS = 2;
+const JUDGE_DEADLINE_MS = 90_000;
 
 const JUDGE_SYSTEM_PROMPT = `You are a strict QA judge evaluating an AI assistant that operates inside a
 productivity app (it manages projects, documents, and tasks via tools).
@@ -36,6 +37,10 @@ export async function judgeQuality(params: {
 }): Promise<JudgeResult> {
 	const threshold = params.threshold ?? 3;
 	let raw: { score?: number; reasoning?: string } | null = null;
+	// One hard wall covers the initial attempt and the single bounded retry.
+	// SmartLLM can otherwise route across several models, each with its own
+	// timeout, after the scenario's worker turn has already completed.
+	const signal = AbortSignal.timeout(JUDGE_DEADLINE_MS);
 
 	for (let attempt = 1; attempt <= JUDGE_MAX_ATTEMPTS; attempt += 1) {
 		try {
@@ -46,6 +51,7 @@ export async function judgeQuality(params: {
 				profile: 'powerful',
 				temperature: 0,
 				maxTokens: 600,
+				signal,
 				userId: 'agentic-e2e-judge',
 				operationType: 'agentic_e2e_judge'
 			});

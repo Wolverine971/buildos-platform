@@ -38,7 +38,10 @@ import {
 } from './worker';
 import type { Server } from 'node:http';
 import { classifyOntologyEntity } from './workers/ontology/ontologyClassifier';
-import { getFutureNotificationScheduledFor } from './workers/brief/briefNotificationSchedule';
+import {
+	type BriefNotificationSuppressionReason,
+	resolveImmediateBriefNotification
+} from './workers/brief/briefNotificationSchedule';
 
 // Log email configuration at startup
 console.log('🚀 Application starting...');
@@ -312,7 +315,10 @@ app.post('/queue/brief', async (req, res) => {
 
 		let notificationScheduledFor: Date | undefined;
 		let suppressNotification = false;
+		let notificationSuppressionReason: BriefNotificationSuppressionReason | undefined;
 		if (shouldForceImmediate && !shouldForceRegenerate) {
+			const suppressIfPastPreferredTime =
+				requestOptions?.suppressNotificationIfPastPreferredTime === true;
 			const { data: briefPreference, error: briefPreferenceError } = await supabase
 				.from('user_brief_preferences')
 				.select('time_of_day, is_active')
@@ -323,17 +329,31 @@ app.post('/queue/brief', async (req, res) => {
 				console.warn(
 					`Failed to fetch brief preferences for user ${userId}: ${briefPreferenceError.message}`
 				);
+				// An implicit catch-up must fail quiet when the preferred delivery
+				// time cannot be established.
+				suppressNotification = suppressIfPastPreferredTime;
+				notificationSuppressionReason = suppressIfPastPreferredTime
+					? 'preference_lookup_failed'
+					: undefined;
 			} else if (briefPreference) {
-				// Users who turned daily briefs off (is_active=false) may still generate
-				// implicitly on app open, but must not receive brief notifications —
-				// unset notificationScheduledFor would otherwise mean "notify now".
-				suppressNotification = briefPreference.is_active === false;
-				notificationScheduledFor = getFutureNotificationScheduledFor({
+				const notificationDecision = resolveImmediateBriefNotification({
 					briefDate,
 					timeOfDay: briefPreference.time_of_day,
 					timezone,
-					isActive: briefPreference.is_active
+					isActive: briefPreference.is_active,
+					now: scheduleTime,
+					suppressIfPastPreferredTime
 				});
+				suppressNotification = notificationDecision.suppressNotification;
+				notificationScheduledFor = notificationDecision.notificationScheduledFor;
+				notificationSuppressionReason = notificationDecision.suppressNotification
+					? notificationDecision.reason
+					: undefined;
+			} else if (suppressIfPastPreferredTime) {
+				// No active preference means there is no user-approved delivery time
+				// for an automatically generated catch-up.
+				suppressNotification = true;
+				notificationSuppressionReason = 'preference_missing';
 			}
 		}
 
@@ -347,7 +367,8 @@ app.post('/queue/brief', async (req, res) => {
 				useOntology: requestOptions?.useOntology ?? true, // Default to ontology-based briefs
 				includeProjects: requestOptions?.includeProjects,
 				excludeProjects: requestOptions?.excludeProjects,
-				suppressNotification: suppressNotification || undefined
+				suppressNotification: suppressNotification || undefined,
+				notificationSuppressionReason
 			}
 		};
 

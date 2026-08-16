@@ -40,6 +40,14 @@ const mocks = vi.hoisted(() => {
 		queueUpdate: {
 			data: null,
 			error: null as { code?: string; message: string } | null
+		},
+		queueJob: {
+			data: {
+				metadata: {
+					generation_progress: { step: 'completed', progress: 100 }
+				}
+			} as { metadata: Record<string, unknown> } | null,
+			error: null as { code?: string; message: string } | null
 		}
 	};
 	const mockUpdates = [] as Array<{
@@ -62,6 +70,7 @@ const mocks = vi.hoisted(() => {
 			}
 			return Promise.resolve(mockResponses.existingBrief);
 		}
+		if (table === 'queue_jobs') return Promise.resolve(mockResponses.queueJob);
 		return Promise.resolve({ data: null, error: null });
 	}
 
@@ -207,6 +216,14 @@ describe('processBriefJob stale daily brief guard', () => {
 			data: null,
 			error: null
 		};
+		mocks.mockResponses.queueJob = {
+			data: {
+				metadata: {
+					generation_progress: { step: 'completed', progress: 100 }
+				}
+			},
+			error: null
+		};
 		mocks.mockGenerateOntologyDailyBrief.mockResolvedValue({
 			id: 'new-brief-1'
 		});
@@ -300,8 +317,10 @@ describe('processBriefJob stale daily brief guard', () => {
 					table: 'queue_jobs',
 					payload: expect.objectContaining({
 						metadata: expect.objectContaining({
+							generation_progress: { step: 'completed', progress: 100 },
 							skipReason: 'skipped_existing_brief',
-							existingBriefId: 'existing-brief-1'
+							existingBriefId: 'existing-brief-1',
+							notificationOutcome: 'emitted'
 						})
 					})
 				})
@@ -333,6 +352,61 @@ describe('processBriefJob stale daily brief guard', () => {
 		expect(mocks.mockGenerateOntologyDailyBrief).not.toHaveBeenCalled();
 		expect(mocks.mockCreateServiceClient).not.toHaveBeenCalled();
 		expect(mocks.mockRpc).not.toHaveBeenCalled();
+		expect(mocks.mockUpdates).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					table: 'queue_jobs',
+					payload: expect.objectContaining({
+						metadata: expect.objectContaining({
+							notificationOutcome: 'suppressed'
+						})
+					})
+				})
+			])
+		);
+	});
+
+	it('reports a notification RPC error instead of logging a false successful emission', async () => {
+		const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		mocks.mockResponses.existingBrief = {
+			data: {
+				id: 'existing-brief-1',
+				generation_status: 'completed',
+				updated_at: '2026-04-12T13:55:00.000Z'
+			},
+			error: null
+		};
+		mocks.mockRpc.mockResolvedValueOnce({
+			data: null,
+			error: { message: 'notification database unavailable' }
+		});
+		const job = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York'
+		});
+
+		await processBriefJob(job);
+
+		expect(errorLog).toHaveBeenCalledWith(
+			'Failed to emit notification event:',
+			expect.objectContaining({
+				message: 'emit_notification_event failed: notification database unavailable'
+			})
+		);
+		expect(mocks.mockUpdates).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					table: 'queue_jobs',
+					payload: expect.objectContaining({
+						metadata: expect.objectContaining({
+							notificationOutcome: 'failed'
+						})
+					})
+				})
+			])
+		);
+		errorLog.mockRestore();
 	});
 
 	it('regenerates an already completed brief when forceRegenerate is true', async () => {
@@ -369,6 +443,19 @@ describe('processBriefJob stale daily brief guard', () => {
 					payload: expect.objectContaining({
 						metadata: expect.objectContaining({
 							skipReason: 'skipped_existing_brief'
+						})
+					})
+				})
+			])
+		);
+		expect(mocks.mockUpdates).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					table: 'queue_jobs',
+					payload: expect.objectContaining({
+						metadata: expect.objectContaining({
+							generation_progress: { step: 'completed', progress: 100 },
+							notificationOutcome: 'emitted'
 						})
 					})
 				})
