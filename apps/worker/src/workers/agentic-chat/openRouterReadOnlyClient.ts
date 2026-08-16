@@ -1085,14 +1085,26 @@ function abortableProviderRead<T>(read: Promise<T>, signal: AbortSignal): Promis
 		);
 	}
 	return new Promise<T>((resolve, reject) => {
-		const onAbort = () =>
+		const cleanup = () => signal.removeEventListener('abort', onAbort);
+		const onAbort = () => {
+			cleanup();
 			reject(
 				signal.reason instanceof Error
 					? signal.reason
 					: new Error('Provider request aborted')
 			);
+		};
 		signal.addEventListener('abort', onAbort, { once: true });
-		read.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+		void read.then(
+			(value) => {
+				cleanup();
+				resolve(value);
+			},
+			(error) => {
+				cleanup();
+				reject(error);
+			}
+		);
 	});
 }
 

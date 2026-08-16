@@ -33,9 +33,22 @@ export async function runWithAbortableDeadline<T>(input: AbortableDeadlineInput<
 function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
 	throwIfAborted(signal);
 	return new Promise<T>((resolve, reject) => {
-		const onAbort = () => reject(abortReason(signal, 'Execution aborted'));
+		const cleanup = () => signal.removeEventListener('abort', onAbort);
+		const onAbort = () => {
+			cleanup();
+			reject(abortReason(signal, 'Execution aborted'));
+		};
 		signal.addEventListener('abort', onAbort, { once: true });
-		promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+		void promise.then(
+			(value) => {
+				cleanup();
+				resolve(value);
+			},
+			(error) => {
+				cleanup();
+				reject(error);
+			}
+		);
 	});
 }
 
