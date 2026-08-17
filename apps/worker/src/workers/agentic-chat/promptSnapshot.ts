@@ -70,7 +70,7 @@ export class SupabaseAgenticChatPromptSnapshotAdapter implements AgenticChatProm
 		input: AgenticChatPromptSnapshotPersistInputV1
 	): Promise<AgenticChatPromptSnapshotPersistResultV1> {
 		validateInput(input);
-		const { data, error } = await this.client.rpc('persist_agentic_chat_prompt_snapshot_v2', {
+		const { data, error } = await this.client.rpc('persist_agentic_chat_prompt_snapshot_v3', {
 			p_turn_run_id: input.turnRunId,
 			p_user_id: input.userId,
 			p_queue_job_id: input.queueJobId,

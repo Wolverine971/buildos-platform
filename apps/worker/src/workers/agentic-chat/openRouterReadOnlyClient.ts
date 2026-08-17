@@ -122,6 +122,14 @@ type ActiveResponse = {
 	signal: AbortSignal;
 	cleanup(): void;
 	timedOut(): boolean;
+	timing(): ProviderAttemptTiming;
+};
+
+type ProviderAttemptTiming = {
+	networkStartedAtMs: number;
+	deadlineAtMs: number;
+	responseOpenedAtMs: number | null;
+	timeoutFiredAtMs: number | null;
 };
 
 type StreamState = {
@@ -401,7 +409,8 @@ export class AgenticChatOpenRouterReadOnlyClient
 				active.response.headers.get('x-openrouter-provider')
 			);
 			state.providerSlug = normalizeProviderSlug(state.provider) ?? null;
-			reader = active.response.body!.getReader();
+			const activeReader = active.response.body!.getReader();
+			reader = activeReader;
 			const decoder = new TextDecoder();
 			let buffer = '';
 			let providerDone = false;
@@ -411,7 +420,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 				// not reliably reject a pending body read when that request signal later
 				// aborts. Race the read ourselves so the configured request deadline
 				// bounds the complete SSE response, not only the header wait.
-				const chunk = await abortableProviderRead(reader.read(), active.signal);
+				const chunk = await abortableProviderRead(() => activeReader.read(), active.signal);
 				if (chunk.done) {
 					buffer += decoder.decode();
 					break;
@@ -449,6 +458,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 			}
 
 			const exactUsage = normalizeProviderUsage(state.rawUsage);
+			const attemptEndedAtMs = Date.now();
 			await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
 				round: input.providerRound,
 				logical_provider_round: input.logicalProviderRound,
@@ -459,8 +469,9 @@ export class AgenticChatOpenRouterReadOnlyClient
 				status: 'success',
 				duration_ms: boundedDuration(
 					activeAttemptStartedAtMs ?? requestStartedAtMs,
-					Date.now()
+					attemptEndedAtMs
 				),
+				provider_timing: providerAttemptTimingPayload(active.timing(), attemptEndedAtMs),
 				finish_reason: state.finishReason ?? 'stop',
 				error_class: null,
 				usage: exactUsage
@@ -502,6 +513,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 			}
 			if (active && !activeAttemptEnded) {
 				const aborted = input.signal.aborted;
+				const attemptEndedAtMs = Date.now();
 				await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
 					round: input.providerRound,
 					logical_provider_round: input.logicalProviderRound,
@@ -512,7 +524,11 @@ export class AgenticChatOpenRouterReadOnlyClient
 					status: aborted ? 'aborted' : 'failure',
 					duration_ms: boundedDuration(
 						activeAttemptStartedAtMs ?? requestStartedAtMs,
-						Date.now()
+						attemptEndedAtMs
+					),
+					provider_timing: providerAttemptTimingPayload(
+						active.timing(),
+						attemptEndedAtMs
 					),
 					finish_reason: state.finishReason,
 					error_class: aborted
@@ -575,6 +591,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 				body: JSON.stringify(this.requestBody(route, input)),
 				signal: attempt.signal
 			});
+			attempt.markResponseOpened();
 			if (!response.ok) {
 				const message = await responseErrorMessage(response);
 				throw new AgenticChatProviderNetworkError(
@@ -605,7 +622,8 @@ export class AgenticChatOpenRouterReadOnlyClient
 					canonicalOptionalHeader(response.headers.get('x-openrouter-request-id')),
 				signal: attempt.signal,
 				cleanup: attempt.cleanup,
-				timedOut: attempt.timedOut
+				timedOut: attempt.timedOut,
+				timing: attempt.timing
 			};
 		} catch (error) {
 			attempt.cleanup();
@@ -1181,14 +1199,21 @@ function createAttemptSignal(
 	signal: AbortSignal;
 	cleanup(): void;
 	timedOut(): boolean;
+	markResponseOpened(): void;
+	timing(): ProviderAttemptTiming;
 } {
 	const controller = new AbortController();
+	const networkStartedAtMs = Date.now();
+	const deadlineAtMs = networkStartedAtMs + timeoutMs;
 	let didTimeout = false;
+	let responseOpenedAtMs: number | null = null;
+	let timeoutFiredAtMs: number | null = null;
 	const onAbort = () => controller.abort(external.reason);
 	if (external.aborted) controller.abort(external.reason);
 	else external.addEventListener('abort', onAbort, { once: true });
 	const timer = setTimeout(() => {
 		didTimeout = true;
+		timeoutFiredAtMs = Date.now();
 		controller.abort(new Error(`Agentic Chat provider timeout after ${timeoutMs}ms`));
 	}, timeoutMs);
 	timer.unref?.();
@@ -1198,16 +1223,47 @@ function createAttemptSignal(
 			clearTimeout(timer);
 			external.removeEventListener('abort', onAbort);
 		},
-		timedOut: () => didTimeout
+		timedOut: () => didTimeout,
+		markResponseOpened: () => {
+			responseOpenedAtMs ??= Date.now();
+		},
+		timing: () => ({
+			networkStartedAtMs,
+			deadlineAtMs,
+			responseOpenedAtMs,
+			timeoutFiredAtMs
+		})
 	};
 }
 
-function abortableProviderRead<T>(read: Promise<T>, signal: AbortSignal): Promise<T> {
+function providerAttemptTimingPayload(
+	timing: ProviderAttemptTiming,
+	endedAtMs: number
+): JsonObject {
+	return {
+		network_started_at_ms: timing.networkStartedAtMs,
+		deadline_at_ms: timing.deadlineAtMs,
+		response_opened_at_ms: timing.responseOpenedAtMs,
+		timeout_fired_at_ms: timing.timeoutFiredAtMs,
+		timeout_overshoot_ms:
+			timing.timeoutFiredAtMs === null
+				? null
+				: Math.max(0, timing.timeoutFiredAtMs - timing.deadlineAtMs),
+		post_timeout_cleanup_ms:
+			timing.timeoutFiredAtMs === null
+				? null
+				: Math.max(0, endedAtMs - timing.timeoutFiredAtMs),
+		network_boundary_ms: boundedDuration(timing.networkStartedAtMs, endedAtMs)
+	};
+}
+
+function abortableProviderRead<T>(read: () => Promise<T>, signal: AbortSignal): Promise<T> {
 	if (signal.aborted) {
 		return Promise.reject(
 			signal.reason instanceof Error ? signal.reason : new Error('Provider request aborted')
 		);
 	}
+	const pendingRead = read();
 	return new Promise<T>((resolve, reject) => {
 		const cleanup = () => signal.removeEventListener('abort', onAbort);
 		const onAbort = () => {
@@ -1219,7 +1275,7 @@ function abortableProviderRead<T>(read: Promise<T>, signal: AbortSignal): Promis
 			);
 		};
 		signal.addEventListener('abort', onAbort, { once: true });
-		void read.then(
+		void pendingRead.then(
 			(value) => {
 				cleanup();
 				resolve(value);

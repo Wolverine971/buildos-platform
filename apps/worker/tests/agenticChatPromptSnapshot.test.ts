@@ -101,7 +101,7 @@ describe('Agentic Chat prompt snapshots', () => {
 			snapshotAvailable: true,
 			promptSnapshotId: PROMPT_SNAPSHOT_ID
 		});
-		expect(rpc).toHaveBeenCalledWith('persist_agentic_chat_prompt_snapshot_v2', {
+		expect(rpc).toHaveBeenCalledWith('persist_agentic_chat_prompt_snapshot_v3', {
 			p_turn_run_id: TURN_RUN_ID,
 			p_user_id: USER_ID,
 			p_queue_job_id: QUEUE_JOB_ID,

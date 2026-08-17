@@ -28,7 +28,7 @@ async function availablePort(): Promise<number> {
 const postgresAvailable = hasCommand('initdb') && hasCommand('pg_ctl') && hasCommand('psql');
 const describePostgres = postgresAvailable ? describe : describe.skip;
 
-describePostgres('agentic-chat P5 exact prompt-tool snapshot PostgreSQL contract', () => {
+describePostgres('agentic-chat P5 exact prompt snapshot PostgreSQL contract', () => {
 	let tempDir = '';
 	let dataDir = '';
 	let socketDir = '';
@@ -94,9 +94,19 @@ describePostgres('agentic-chat P5 exact prompt-tool snapshot PostgreSQL contract
 				'supabase/migrations/20260813050000_agentic_chat_prompt_snapshot_tool_definitions.sql'
 			)
 		);
+		applySqlFile(
+			sqlPath(
+				'supabase/migrations/20260817010000_agentic_chat_prompt_snapshot_runtime_augmentation.sql'
+			)
+		);
+		applySqlFile(
+			sqlPath(
+				'supabase/migrations/20260817010000_agentic_chat_prompt_snapshot_runtime_augmentation.sql'
+			)
+		);
 		output = applySqlFile(
 			sqlPath(
-				'supabase/tests/20260813050000_agentic_chat_prompt_snapshot_tool_definitions.test.sql'
+				'supabase/tests/20260817010000_agentic_chat_prompt_snapshot_runtime_augmentation.test.sql'
 			)
 		);
 	}, 30_000);
@@ -108,7 +118,8 @@ describePostgres('agentic-chat P5 exact prompt-tool snapshot PostgreSQL contract
 		if (tempDir) rmSync(tempDir, { recursive: true, force: true });
 	});
 
-	it('passes exact tool persistence, replay, artifact-surface, atomicity, and ACL checks', () => {
+	it('passes exact messages/tools, runtime augmentation, replay, atomicity, and ACL checks', () => {
 		expect(output).toContain('agentic_chat_prompt_snapshot_tool_definitions_ok');
+		expect(output).toContain('agentic_chat_prompt_snapshot_runtime_augmentation_ok');
 	});
 });

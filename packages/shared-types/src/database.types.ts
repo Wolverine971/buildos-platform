@@ -19325,6 +19325,25 @@ export type Database = {
         }
         Returns: Json
       }
+      persist_agentic_chat_prompt_snapshot_v3: {
+        Args: {
+          p_approx_prompt_tokens: number
+          p_execution_generation: number
+          p_message_chars: number
+          p_messages_sha256: string
+          p_model_messages: Json
+          p_processing_token: string
+          p_prompt_snapshot_id: string
+          p_queue_job_id: string
+          p_system_prompt_chars: number
+          p_system_prompt_sha256: string
+          p_tool_definitions: Json
+          p_tools_sha256: string
+          p_turn_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       persist_agentic_chat_read_tool_execution: {
         Args: {
           p_affected_entities: Json

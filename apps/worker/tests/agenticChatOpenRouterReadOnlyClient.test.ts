@@ -923,8 +923,14 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 				})
 		) as unknown as typeof fetch;
 		const observations: AgenticChatProviderUsageObservationV1[] = [];
+		const lifecycleObservations: AgenticChatExecutionObservationInputV1[] = [];
 		const client = new AgenticChatOpenRouterReadOnlyClient(
-			{ usage: { observe: (observation) => observations.push(observation) } },
+			{
+				usage: { observe: (observation) => observations.push(observation) },
+				executionObservations: {
+					observe: (observation) => lifecycleObservations.push(observation)
+				}
+			},
 			{
 				routes: [route()],
 				httpReferer: 'https://build-os.com',
@@ -948,6 +954,22 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			retryable: true,
 			estimated: true
 		});
+		const providerTiming = lifecycleObservations[1]?.payload.provider_timing as
+			| Record<string, unknown>
+			| undefined;
+		expect(providerTiming).toMatchObject({
+			network_started_at_ms: expect.any(Number),
+			deadline_at_ms: expect.any(Number),
+			response_opened_at_ms: expect.any(Number),
+			timeout_fired_at_ms: expect.any(Number),
+			timeout_overshoot_ms: 0,
+			post_timeout_cleanup_ms: 0,
+			network_boundary_ms: 1_000
+		});
+		expect(providerTiming?.deadline_at_ms).toBe(
+			Number(providerTiming?.network_started_at_ms) + 1_000
+		);
+		expect(providerTiming?.timeout_fired_at_ms).toBe(providerTiming?.deadline_at_ms);
 	});
 
 	it('does not leak a rejected body read when timeout aborts the provider stream', async () => {
@@ -996,6 +1018,69 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 				}
 			]);
 			await Promise.resolve();
+			expect(unhandled).toEqual([]);
+		} finally {
+			process.off('unhandledRejection', onUnhandled);
+		}
+	});
+
+	it('does not start an unhandled body read after timeout while an SSE event is yielded', async () => {
+		vi.useFakeTimers();
+		const encoder = new TextEncoder();
+		const fetchImpl = vi.fn(
+			async (_url: string | URL | Request, request?: RequestInit) =>
+				new Response(
+					new ReadableStream<Uint8Array>({
+						start(controller) {
+							controller.enqueue(
+								encoder.encode(
+									'data: {"choices":[{"delta":{"content":"Partial"}}]}\n\n'
+								)
+							);
+							request?.signal?.addEventListener(
+								'abort',
+								() =>
+									controller.error(
+										request.signal?.reason ?? new Error('timed out')
+									),
+								{ once: true }
+							);
+						}
+					}),
+					{ status: 200, headers: { 'content-type': 'text/event-stream' } }
+				)
+		) as unknown as typeof fetch;
+		const client = new AgenticChatOpenRouterReadOnlyClient(
+			{ usage: { observe: vi.fn() } },
+			{
+				routes: [route()],
+				httpReferer: 'https://build-os.com',
+				appName: 'BuildOS',
+				fetchImpl,
+				requestTimeoutMs: 1_000
+			}
+		);
+		const iterator = client.stream(input())[Symbol.asyncIterator]();
+		const unhandled: unknown[] = [];
+		const onUnhandled = (reason: unknown) => unhandled.push(reason);
+		process.on('unhandledRejection', onUnhandled);
+
+		try {
+			await expect(iterator.next()).resolves.toEqual({
+				done: false,
+				value: { type: 'text', content: 'Partial' }
+			});
+			await vi.advanceTimersByTimeAsync(1_000);
+			await expect(iterator.next()).resolves.toEqual({
+				done: false,
+				value: {
+					type: 'error',
+					error: 'Agentic Chat provider request timed out after 1000ms',
+					retryable: true
+				}
+			});
+			await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined });
+			await vi.advanceTimersByTimeAsync(0);
 			expect(unhandled).toEqual([]);
 		} finally {
 			process.off('unhandledRejection', onUnhandled);
