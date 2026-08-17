@@ -163,7 +163,25 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			createStableAgenticChatProviderUsageLogIdV1({
 				turnRunId: TURN_RUN_ID,
 				executionGeneration: 2,
+				logicalProviderRound: 1,
+				providerAttempt: 1,
+				routeId: 'openrouter'
+			})
+		).toBe(first);
+		expect(
+			createStableAgenticChatProviderUsageLogIdV1({
+				turnRunId: TURN_RUN_ID,
+				executionGeneration: 2,
 				logicalProviderRound: 2,
+				routeId: 'openrouter'
+			})
+		).not.toBe(first);
+		expect(
+			createStableAgenticChatProviderUsageLogIdV1({
+				turnRunId: TURN_RUN_ID,
+				executionGeneration: 2,
+				logicalProviderRound: 1,
+				providerAttempt: 2,
 				routeId: 'openrouter'
 			})
 		).not.toBe(first);
@@ -1305,6 +1323,7 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 			entityId: 'project-1',
 			projectId: '40000000-0000-4000-8000-000000000004',
 			logicalProviderRound: 3,
+			providerAttempt: 2,
 			attemptedRouteIds: ['openrouter', 'direct'],
 			routeId: 'direct',
 			modelRequested: 'direct/requested',
@@ -1366,6 +1385,7 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 				entityId: 'project-1',
 				routeId: 'direct',
 				logicalProviderRound: 3,
+				providerAttempt: 2,
 				attemptedRouteIds: ['openrouter', 'direct'],
 				estimatedUsage: true,
 				costSource: 'provider_reported',

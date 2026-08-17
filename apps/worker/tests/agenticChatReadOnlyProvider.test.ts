@@ -664,6 +664,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			executionGeneration: 1,
 			providerRound: 'initial',
 			logicalProviderRound: 1,
+			providerAttempt: 1,
 			signal
 		});
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
@@ -5539,7 +5540,47 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
-	it('turns retryable provider errors into bounded pressure evidence', async () => {
+	it('atomically discards a failed partial pass and retries once with a new attempt identity', async () => {
+		const client = clientWithRounds([
+			[
+				{ type: 'text', content: 'discarded partial' },
+				{ type: 'error', error: 'provider stalled', retryable: true }
+			],
+			[
+				{ type: 'text', content: 'Recovered answer' },
+				{
+					type: 'done',
+					finishedReason: 'stop',
+					usage: { promptTokens: 8, completionTokens: 2, totalTokens: 10 }
+				}
+			]
+		]);
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity
+		}).prepare({
+			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			{ type: 'text_delta', text: 'Recovered answer' },
+			{
+				type: 'finish',
+				finishedReason: 'stop',
+				usage: { promptTokens: 8, completionTokens: 2, totalTokens: 10 }
+			}
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(client.stream.mock.calls.map(([request]) => request.providerAttempt)).toEqual([
+			1, 2
+		]);
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('turns exhausted retryable provider errors into bounded pressure evidence', async () => {
 		let nowMs = 1_000;
 		const client = clientWith([{ type: 'error', error: 'rate limited', retryable: true }]);
 		const capacity = new AgenticChatProviderCapacity({
@@ -5558,6 +5599,10 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			code: 'provider_stream_error',
 			failureClass: 'provider_throttle'
 		});
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(client.stream.mock.calls.map(([request]) => request.providerAttempt)).toEqual([
+			1, 2
+		]);
 		expect(capacity.getSnapshot()).toMatchObject({
 			available: false,
 			activeRequests: 0,

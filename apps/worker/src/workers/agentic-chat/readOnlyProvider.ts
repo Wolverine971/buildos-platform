@@ -92,6 +92,8 @@ const DEFAULT_MAX_PROVIDER_ROUNDS = 16;
 const MAX_PROVIDER_TOOL_CALLS_PER_ROUND = 40;
 const MAX_VALIDATION_REPAIR_ROUNDS = 2;
 const MAX_FORCED_SYNTHESIS_RETRIES = 1;
+const MAX_RETRYABLE_PROVIDER_PASS_RETRIES = 1;
+const MAX_BUFFERED_PROVIDER_PASS_BYTES = 512 * 1024;
 const CANONICAL_UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -186,6 +188,7 @@ export type AgenticChatReadOnlyProviderClientPortV1 = {
 		executionGeneration: number;
 		providerRound: 'initial' | 'synthesis';
 		logicalProviderRound: number;
+		providerAttempt?: number;
 		signal: AbortSignal;
 	}): AsyncIterable<AgenticChatReadOnlyProviderClientEventV1>;
 };
@@ -1076,6 +1079,74 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		};
 	}
 
+	/**
+	 * Hold one complete provider pass behind an atomic boundary. OpenRouter can
+	 * only fall back before response headers; once a stream opens, a timeout can
+	 * otherwise leak partial assistant text that cannot be retracted. A single
+	 * retryable failure is discarded and retried with a distinct physical
+	 * attempt identity. The network client records the failed provider in its
+	 * turn-local health map, so the retry excludes that provider when known.
+	 */
+	private async *streamBufferedProviderPass(
+		request: ClientRequest,
+		client: AgenticChatReadOnlyProviderClientPortV1 = this.ports.client
+	): AsyncGenerator<AgenticChatReadOnlyProviderClientEventV1> {
+		const firstAttempt = request.providerAttempt ?? 1;
+		for (
+			let retryCount = 0;
+			retryCount <= MAX_RETRYABLE_PROVIDER_PASS_RETRIES;
+			retryCount += 1
+		) {
+			const providerAttempt = firstAttempt + retryCount;
+			const buffered: AgenticChatReadOnlyProviderClientEventV1[] = [];
+			let bufferedBytes = 0;
+			let retry = false;
+			let terminal = false;
+
+			for await (const event of client.stream(
+				providerClientRequest({ ...request, providerAttempt })
+			)) {
+				throwIfAborted(request.signal);
+				if (event.type === 'reasoning') continue;
+				if (event.type === 'error') {
+					if (event.retryable && retryCount < MAX_RETRYABLE_PROVIDER_PASS_RETRIES) {
+						this.ports.capacity.markTemporarilyUnavailable(
+							this.retryableFailureCooldownMs
+						);
+						retry = true;
+						break;
+					}
+					buffered.length = 0;
+					buffered.push(event);
+					terminal = true;
+					break;
+				}
+
+				bufferedBytes += Buffer.byteLength(JSON.stringify(event), 'utf8');
+				if (bufferedBytes > MAX_BUFFERED_PROVIDER_PASS_BYTES) {
+					throw providerError('provider_pass_buffer_exceeded', 'permanent');
+				}
+				buffered.push(event);
+				if (event.type === 'done') {
+					terminal = true;
+					break;
+				}
+			}
+
+			if (retry) continue;
+			if (!terminal) {
+				const incompleteToolCall = buffered.find((event) => event.type === 'tool_call');
+				if (incompleteToolCall) {
+					yield incompleteToolCall;
+					return;
+				}
+				throw providerError('provider_missing_done', 'unknown');
+			}
+			for (const event of buffered) yield event;
+			return;
+		}
+	}
+
 	private async *streamInitial(
 		request: ClientRequest,
 		state: ToolRoundStreamState
@@ -1090,7 +1161,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			yield* drainSupervisorSteps(state.supervisor);
 			request = await this.resolveLiveVision(request);
 			state.setCurrentRequest(request);
-			for await (const event of this.ports.client.stream(providerClientRequest(request))) {
+			for await (const event of this.streamBufferedProviderPass(request)) {
 				throwIfAborted(request.signal);
 				if (finished) {
 					throw providerError('provider_event_after_done', 'unknown');
@@ -1361,7 +1432,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					semantic_review: { read_only_disposition_sha256: dispositionReviewSha256 }
 				}
 			};
-			for await (const event of reviewer.stream(providerClientRequest(reviewRequest))) {
+			for await (const event of this.streamBufferedProviderPass(reviewRequest, reviewer)) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'reasoning' || event.type === 'text') continue;
@@ -1484,7 +1555,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					semantic_review: { contract_sha256: contractReviewSha256 }
 				}
 			};
-			for await (const event of reviewer.stream(providerClientRequest(reviewRequest))) {
+			for await (const event of this.streamBufferedProviderPass(reviewRequest, reviewer)) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'reasoning' || event.type === 'text') continue;
@@ -1600,7 +1671,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					semantic_review: { mutation_batch_sha256: pending.batchSha256 }
 				}
 			};
-			for await (const event of reviewer.stream(providerClientRequest(reviewRequest))) {
+			for await (const event of this.streamBufferedProviderPass(reviewRequest, reviewer)) {
 				throwIfAborted(pending.request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'reasoning' || event.type === 'text') continue;
@@ -1716,7 +1787,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		const toolCalls = createToolCallAccumulator();
 		try {
 			yield* drainSupervisorSteps(state.supervisor);
-			for await (const event of this.ports.client.stream(providerClientRequest(request))) {
+			for await (const event of this.streamBufferedProviderPass(request)) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
@@ -1920,9 +1991,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				let finishedReason = 'stop';
 				let passUsage: AgenticChatProviderUsageV1 | null = null;
 
-				for await (const event of this.ports.client.stream(
-					providerClientRequest(currentRequest)
-				)) {
+				for await (const event of this.streamBufferedProviderPass(currentRequest)) {
 					throwIfAborted(currentRequest.signal);
 					if (finished) throw providerError('provider_event_after_done', 'unknown');
 					if (event.type === 'text') {
@@ -1956,7 +2025,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					passUsage = normalizeUsage(event.usage);
 					state.supervisor?.observe({
 						type: 'llm_pass_completed',
-						pass: currentRequest.logicalProviderRound + retryCount,
+						pass: currentRequest.logicalProviderRound,
 						finishedReason,
 						usage: supervisorUsage(passUsage)
 					});
@@ -1992,7 +2061,11 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					throw providerError('provider_forced_synthesis_failed', 'permanent');
 				}
 				currentRequest = appendSystemInstruction(
-					currentRequest,
+					{
+						...currentRequest,
+						logicalProviderRound: currentRequest.logicalProviderRound + 1,
+						providerAttempt: undefined
+					},
 					requestedTools
 						? NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE
 						: NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE
@@ -2041,7 +2114,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let assistantCandidate = '';
 		try {
 			yield* drainSupervisorSteps(state.supervisor);
-			for await (const event of this.ports.client.stream(providerClientRequest(request))) {
+			for await (const event of this.streamBufferedProviderPass(request)) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {

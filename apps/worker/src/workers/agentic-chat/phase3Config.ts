@@ -19,11 +19,11 @@ import {
 } from './mutationToolCatalog';
 
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
-// Production canaries measured long-tail final synthesis on StreamLake
-// (140,517ms), Sail Research (103,669ms), and Baidu (90,027ms). Keep fallbacks
-// inside the tool-capable pool that has not produced those tails, with
-// DeepInfra first after a measured 4,148ms network boundary. `only` matters:
-// OpenRouter cannot change providers after a streaming response has opened.
+// Production canaries measured long-tail final synthesis on StreamLake,
+// Sail Research, Baidu, and Alibaba. Prefer the faster observed pool, but do
+// not use `only`: this route is also cloned for the Gemini semantic reviewer,
+// and a cross-model provider allowlist can force an unrelated fallback model.
+// Mid-stream recovery is owned by the adapter's atomic buffered-pass retry.
 const DEFAULT_OPENROUTER_PROVIDER_POOL = Object.freeze([
 	'deepinfra',
 	'deepseek',
@@ -32,8 +32,7 @@ const DEFAULT_OPENROUTER_PROVIDER_POOL = Object.freeze([
 ]);
 const DEFAULT_OPENROUTER_PROVIDER_ROUTING = Object.freeze({
 	allow_fallbacks: true,
-	order: DEFAULT_OPENROUTER_PROVIDER_POOL,
-	only: DEFAULT_OPENROUTER_PROVIDER_POOL
+	order: DEFAULT_OPENROUTER_PROVIDER_POOL
 });
 
 export type AgenticChatPhase3ProviderConfig = {

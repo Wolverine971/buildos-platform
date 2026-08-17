@@ -79,6 +79,7 @@ export type AgenticChatProviderUsageObservationV1 = {
 	entityId: string | null;
 	projectId: string | null;
 	logicalProviderRound: number;
+	providerAttempt: number;
 	attemptedRouteIds: string[];
 	routeId: string | null;
 	modelRequested: string | null;
@@ -246,6 +247,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 	async *stream(input: ClientInput): AsyncGenerator<AgenticChatReadOnlyProviderClientEventV1> {
 		validateToolSurface(input);
 		throwIfAborted(input.signal);
+		const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
 		const inputChars =
 			JSON.stringify(input.messages).length + JSON.stringify(input.tools).length;
 		const requestStartedAtMs = Date.now();
@@ -301,6 +303,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 						turnRunId: input.turnRunId,
 						executionGeneration: input.executionGeneration,
 						logicalProviderRound: input.logicalProviderRound,
+						providerAttempt,
 						routeId
 					}),
 					status,
@@ -315,6 +318,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 					entityId: input.entityId,
 					projectId: input.projectId,
 					logicalProviderRound: input.logicalProviderRound,
+					providerAttempt,
 					attemptedRouteIds: [...attemptedRouteIds],
 					routeId: routeId === 'none' ? null : routeId,
 					modelRequested,
@@ -805,6 +809,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 		payload: JsonObject
 	): Promise<void> {
 		if (!this.ports.executionObservations) return;
+		const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
 		try {
 			const observationSignal = input.signal.aborted
 				? new AbortController().signal
@@ -824,7 +829,10 @@ export class AgenticChatOpenRouterReadOnlyClient
 							executionGeneration: input.executionGeneration,
 							observationKey: createStableAgenticChatExecutionObservationKeyV1({
 								turnRunId: input.turnRunId,
-								scope: `provider:${input.logicalProviderRound}:${input.providerRound}:${route.id}`,
+								scope:
+									`provider:${input.logicalProviderRound}:${input.providerRound}:` +
+									`${route.id}` +
+									(providerAttempt === 1 ? '' : `:attempt:${providerAttempt}`),
 								boundary: eventType
 							}),
 							phase: 'provider',
@@ -886,6 +894,7 @@ export class AgenticChatLlmUsageObserver implements AgenticChatProviderUsageObse
 				entityId: observation.entityId,
 				routeId: observation.routeId,
 				logicalProviderRound: observation.logicalProviderRound,
+				providerAttempt: observation.providerAttempt,
 				attemptedRouteIds: observation.attemptedRouteIds,
 				estimatedUsage: observation.estimated,
 				costSource: observation.costSource,
@@ -1082,8 +1091,10 @@ export function createStableAgenticChatProviderUsageLogIdV1(input: {
 	turnRunId: string;
 	executionGeneration: number;
 	logicalProviderRound: number;
+	providerAttempt?: number;
 	routeId: string;
 }): string {
+	const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
 	if (
 		!Number.isSafeInteger(input.executionGeneration) ||
 		input.executionGeneration < 1 ||
@@ -1096,7 +1107,9 @@ export function createStableAgenticChatProviderUsageLogIdV1(input: {
 	}
 	const bytes = createHash('sha256')
 		.update(
-			`${USAGE_LOG_IDENTITY_VERSION}:${input.turnRunId}:${input.executionGeneration}:${input.logicalProviderRound}:${input.routeId}`,
+			`${USAGE_LOG_IDENTITY_VERSION}:${input.turnRunId}:${input.executionGeneration}:` +
+				`${input.logicalProviderRound}:${input.routeId}` +
+				(providerAttempt === 1 ? '' : `:attempt:${providerAttempt}`),
 			'utf8'
 		)
 		.digest()
@@ -1446,6 +1459,7 @@ function copyTool(tool: AgenticChatReadOnlyProviderToolV1) {
 }
 
 function validateToolSurface(input: ClientInput): void {
+	canonicalProviderAttempt(input.providerAttempt);
 	if (!Array.isArray(input.tools)) {
 		throw new Error('Agentic Chat provider tool surface must be an array');
 	}
@@ -1468,6 +1482,14 @@ function validateToolSurface(input: ClientInput): void {
 	for (const tool of input.tools) {
 		validateReadToolDefinition(tool, seen);
 	}
+}
+
+function canonicalProviderAttempt(value: number | undefined): number {
+	const attempt = value ?? 1;
+	if (!Number.isSafeInteger(attempt) || attempt < 1 || attempt > 8) {
+		throw new Error('Agentic Chat provider attempt must be between 1 and 8');
+	}
+	return attempt;
 }
 
 function validateReadToolDefinition(
