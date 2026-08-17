@@ -327,7 +327,8 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 						fallbackModels: ['provider/fallback-1', 'provider/fallback-2'],
 						providerRouting: {
 							allow_fallbacks: true,
-							order: ['baidu', 'deepseek', 'alibaba']
+							order: ['deepinfra', 'deepseek', 'alibaba', 'cloudflare'],
+							only: ['deepinfra', 'deepseek', 'alibaba', 'cloudflare']
 						}
 					}
 				]
