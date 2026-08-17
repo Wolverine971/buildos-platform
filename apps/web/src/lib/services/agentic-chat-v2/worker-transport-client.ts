@@ -8,7 +8,11 @@ import type {
 
 const TRANSPORT_ENDPOINT = '/api/agent/v2/transport';
 const WORKER_TURNS_ENDPOINT = '/api/agent/v2/turns';
-const TRANSPORT_TIMEOUT_MS = 3_000;
+// The server may spend 5s on its first worker-capacity observation and another
+// 2.5s on the one permitted fresh observation. Keep the client alive beyond
+// that full bounded retry budget so it does not manufacture a legacy fallback
+// while the server is still making a valid routing decision.
+const TRANSPORT_TIMEOUT_MS = 10_000;
 const MAX_LEASE_TOKEN_LENGTH = 8 * 1024;
 const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 

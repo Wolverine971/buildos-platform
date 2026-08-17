@@ -43,6 +43,43 @@ describe('Agentic Chat worker transport client', () => {
 		expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toEqual(request);
 	});
 
+	it('keeps negotiation alive through the server capacity retry budget', async () => {
+		vi.useFakeTimers();
+		try {
+			const fetchImpl = vi.fn<typeof fetch>(
+				async (_input, init) =>
+					await new Promise<Response>((resolve, reject) => {
+						const timer = setTimeout(
+							() =>
+								resolve(
+									Response.json({
+										success: true,
+										data: workerLease,
+										timestamp: new Date().toISOString()
+									})
+								),
+							7_501
+						);
+						init?.signal?.addEventListener(
+							'abort',
+							() => {
+								clearTimeout(timer);
+								reject(new DOMException('Aborted', 'AbortError'));
+							},
+							{ once: true }
+						);
+					})
+			);
+
+			const lease = requestAgenticChatTransportLease({ request, fetchImpl });
+			await vi.advanceTimersByTimeAsync(7_501);
+
+			await expect(lease).resolves.toEqual(workerLease);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('falls back before admission for HTTP, transport, and malformed lease responses', async () => {
 		for (const fetchImpl of [
 			vi.fn<typeof fetch>(async () => new Response('', { status: 503 })),
