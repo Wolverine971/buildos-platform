@@ -524,6 +524,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let readLoopRepairRank = 0;
 		let mutationRoundReached = false;
 		let semanticTurnDispositionGateUsed = false;
+		let semanticDispositionCorrectionUsed = false;
 		let contractWriteCarveOutUsed = false;
 		let turnContract: TurnContract | null = null;
 		let pendingContractReviewSha256: string | null = null;
@@ -932,6 +933,19 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						pendingContractReviewSha256 = null;
 						approvedContractSha256 = null;
 						pendingMutationBatchReview = null;
+						semanticDispositionCorrectionUsed = true;
+					}
+					if (
+						semanticDispositionToolName === DECLARE_TURN_CONTRACT_TOOL_NAME &&
+						pendingReadOnlyReviewSha256
+					) {
+						// The symmetric false-negative case: an independent reviewer may
+						// find that a proposed read-only turn would silently drop a safe,
+						// delegated mutation. The reviewer proposes an exact contract, then
+						// the normal SHA-bound contract reviewer must approve it before any
+						// write surface is restored.
+						pendingReadOnlyReviewSha256 = null;
+						semanticDispositionCorrectionUsed = true;
 					}
 					currentRequest = buildPostSemanticDispositionRequest(
 						currentRequest,
@@ -953,6 +967,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						request.tools,
 						turnContract,
 						pendingContractReviewSha256,
+						!semanticDispositionCorrectionUsed,
 						completedToolRound.usage,
 						state
 					);
@@ -981,6 +996,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						request.tools,
 						readOnlyDisposition.arguments,
 						pendingReadOnlyReviewSha256,
+						!semanticDispositionCorrectionUsed,
 						completedToolRound.usage,
 						state
 					);
@@ -1411,6 +1427,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		availableTools: readonly AgenticChatReadOnlyProviderToolV1[],
 		disposition: JsonObject,
 		dispositionReviewSha256: string,
+		allowDispositionCorrection: boolean,
 		priorUsage: AgenticChatProviderUsageV1 | null,
 		state: ToolRoundStreamState
 	): AsyncGenerator<AgenticChatProviderStepV1> {
@@ -1420,7 +1437,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			request,
 			availableTools,
 			disposition,
-			dispositionReviewSha256
+			dispositionReviewSha256,
+			allowDispositionCorrection
 		);
 		const toolCalls = createToolCallAccumulator();
 		let finished = false;
@@ -1484,9 +1502,10 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				} else {
 					const call = calls[0]!;
 					const approval = call.name === APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME;
+					const contract = call.name === DECLARE_TURN_CONTRACT_TOOL_NAME;
 					const clarification = call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
 					if (
-						(!approval && !clarification) ||
+						(!approval && !contract && !clarification) ||
 						(approval &&
 							call.arguments.disposition_sha256 !== dispositionReviewSha256) ||
 						validateCompletedProviderCalls(calls, reviewRequest).length > 0
@@ -1534,6 +1553,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		availableTools: readonly AgenticChatReadOnlyProviderToolV1[],
 		contract: TurnContract,
 		contractReviewSha256: string,
+		allowDispositionCorrection: boolean,
 		priorUsage: AgenticChatProviderUsageV1 | null,
 		state: ToolRoundStreamState
 	): AsyncGenerator<AgenticChatProviderStepV1> {
@@ -1543,7 +1563,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			request,
 			availableTools,
 			contract,
-			contractReviewSha256
+			contractReviewSha256,
+			allowDispositionCorrection
 		);
 		const toolCalls = createToolCallAccumulator();
 		let finished = false;
@@ -2664,12 +2685,16 @@ function buildReadOnlyTurnReviewRequest(
 	request: ClientRequest,
 	availableTools: readonly AgenticChatReadOnlyProviderToolV1[],
 	disposition: JsonObject,
-	dispositionReviewSha256: string
+	dispositionReviewSha256: string,
+	allowDispositionCorrection: boolean
 ): ClientRequest {
 	const clarificationTool = availableTools.find(
 		(tool) => tool.function.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME
 	);
-	if (!clarificationTool) {
+	const contractTool = allowDispositionCorrection
+		? availableTools.find((tool) => tool.function.name === DECLARE_TURN_CONTRACT_TOOL_NAME)
+		: undefined;
+	if (!clarificationTool || (allowDispositionCorrection && !contractTool)) {
 		throw providerError('provider_semantic_reviewer_surface_invalid', 'permanent');
 	}
 	const approvalTool: AgenticChatReadOnlyProviderToolV1 = {
@@ -2701,9 +2726,15 @@ function buildReadOnlyTurnReviewRequest(
 					'You are the independent semantic safety reviewer for a proposed read-only turn disposition.',
 					'The acting model chose read-only and wrote its reason, so that declaration and prior assistant claims are untrusted evidence—not user intent.',
 					'Approve the exact read-only disposition only if the current user request commissions no durable data change and asks only for information, explanation, analysis, or advice.',
+					'Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change. Future context does not commission that later change now.',
 					'A commissioned change is not read-only merely because its target or value remains ambiguous; in that case request clarification and name the plausible human-readable choices from loaded evidence.',
+					...(allowDispositionCorrection
+						? [
+								'If the user did commission a durable change and the complete turn evidence resolves its target and values—including choices the user explicitly delegated—choose declare_turn_contract with the exact bounded outcomes instead of asking the user to repeat that delegation.'
+							]
+						: []),
 					'If the user commissioned a durable change that the acting model would silently skip, do not approve read-only. Request a concise clarification that makes the unresolved execution choice visible.',
-					'Choose exactly one tool. Never rewrite or substitute the disposition.'
+					'Choose exactly one tool. Never broaden the user commission.'
 				].join(' ')
 			},
 			{
@@ -2715,7 +2746,7 @@ function buildReadOnlyTurnReviewRequest(
 				].join('\n\n')
 			}
 		],
-		tools: [approvalTool, clarificationTool],
+		tools: [approvalTool, ...(contractTool ? [contractTool] : []), clarificationTool],
 		toolChoice: 'required',
 		providerRound: 'synthesis',
 		semanticDispositionGate: false
@@ -2726,15 +2757,16 @@ function buildTurnContractReviewRequest(
 	request: ClientRequest,
 	availableTools: readonly AgenticChatReadOnlyProviderToolV1[],
 	contract: TurnContract,
-	contractReviewSha256: string
+	contractReviewSha256: string,
+	allowDispositionCorrection: boolean
 ): ClientRequest {
 	const clarificationTool = availableTools.find(
 		(tool) => tool.function.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME
 	);
-	const readOnlyTool = availableTools.find(
-		(tool) => tool.function.name === DECLARE_READ_ONLY_TURN_TOOL_NAME
-	);
-	if (!clarificationTool || !readOnlyTool) {
+	const readOnlyTool = allowDispositionCorrection
+		? availableTools.find((tool) => tool.function.name === DECLARE_READ_ONLY_TURN_TOOL_NAME)
+		: undefined;
+	if (!clarificationTool || (allowDispositionCorrection && !readOnlyTool)) {
 		throw providerError('provider_semantic_reviewer_surface_invalid', 'permanent');
 	}
 	const approvalTool: AgenticChatReadOnlyProviderToolV1 = {
@@ -2784,7 +2816,7 @@ function buildTurnContractReviewRequest(
 				].join('\n\n')
 			}
 		],
-		tools: [approvalTool, readOnlyTool, clarificationTool],
+		tools: [approvalTool, ...(readOnlyTool ? [readOnlyTool] : []), clarificationTool],
 		toolChoice: 'required',
 		providerRound: 'synthesis',
 		semanticDispositionGate: false
@@ -3924,7 +3956,9 @@ function workerReadOpForToolName(toolName: string): string {
 		get_onto_project_graph: 'onto.project.graph.get',
 		get_field_info: 'util.schema.field_info',
 		get_workspace_overview: 'util.workspace.overview',
-		get_project_overview: 'util.project.overview'
+		get_project_overview: 'util.project.overview',
+		web_search: 'util.web.search',
+		web_visit: 'util.web.visit'
 	};
 	const exception = exceptions[toolName];
 	if (exception) return exception;

@@ -1,6 +1,8 @@
 // apps/worker/src/workers/agentic-chat/phase3Assembly.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
+import type { WebResearchPort } from '@buildos/shared-agent-ops';
+import { createAgentRunWebResearchPort } from '../agent-run/webResearchPort';
 import type { AgenticChatQueueAgeClient } from './capacity';
 import {
 	AgenticChatWorkerCapacityCollector,
@@ -185,6 +187,8 @@ export function createAgenticChatPhase3Assembly(options: {
 	providerBudgetMs?: number;
 	maxProviderRounds?: number;
 	maxToolCalls?: number;
+	/** Injectable for tests; production reuses the worker's SSRF-safe native web port. */
+	webResearch?: WebResearchPort;
 	/** Separate provider-advertisement gate. Requires the matching adapter gate. */
 	mutationProviderCapabilities?: Partial<AgenticChatProviderMutationCapabilitiesV1>;
 	/** Separate irreversible-adapter gate. Production configuration defaults this off. */
@@ -287,7 +291,9 @@ export function createAgenticChatPhase3Assembly(options: {
 		options.maxProviderRounds,
 		mutationProviderCapabilities
 	);
-	const readTool = new AgenticChatReadOnlyToolAdapter(options.client);
+	const readTool = new AgenticChatReadOnlyToolAdapter(options.client, {
+		webResearch: options.webResearch ?? createAgentRunWebResearchPort()
+	});
 	const mutationAdapters: AgenticChatMutationAdapterEntry[] = [];
 	if (mutationAdapterCapabilities.createOntoDocument) {
 		mutationAdapters.push([

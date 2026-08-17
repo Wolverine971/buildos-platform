@@ -6,6 +6,7 @@ import {
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { type WebResearchPort, WebResearchPortError } from '@buildos/shared-agent-ops';
 import {
 	type AgenticChatSharedReadContextV1,
 	type AgenticChatToolAccessPortV1,
@@ -63,6 +64,7 @@ export const APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME = 'approve_read_only_turn_r
 export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME = 'approve_mutation_batch_review';
 const MAX_RESULT_BYTES = 480 * 1024;
 export const AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS = 30_000;
+export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_TIMEOUT_MS = 60_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 type SharedReadToolRunner = (
@@ -228,9 +230,15 @@ const SHARED_READ_TOOL_RUNNERS: Readonly<Record<string, SharedReadToolRunner>> =
 	get_field_info: async (_context, args) => getFieldInfo(args as never)
 });
 
-export const AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 = Object.freeze(
-	Object.keys(SHARED_READ_TOOL_RUNNERS)
-);
+export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1 = Object.freeze([
+	'web_search',
+	'web_visit'
+] as const);
+
+export const AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 = Object.freeze([
+	...Object.keys(SHARED_READ_TOOL_RUNNERS),
+	...AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1
+]);
 
 /**
  * Keep the provider and executor on the same reviewed name catalog. The actual
@@ -253,6 +261,7 @@ export function isAgenticChatProductionReadToolNameV1(value: unknown): value is 
 export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToolPortV1 {
 	private readonly now: () => number;
 	private readonly timeoutMs: number;
+	private readonly webResearchTimeoutMs: number;
 	private readonly createAccessAdapter: (userId: string) => AgenticChatToolAccessPortV1;
 	/**
 	 * Access adapters are cached per user so the actorId RPC amortizes across
@@ -267,11 +276,16 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 		options: {
 			now?: () => number;
 			timeoutMs?: number;
+			webResearchTimeoutMs?: number;
+			webResearch?: WebResearchPort;
 			createAccessAdapter?: (userId: string) => AgenticChatToolAccessPortV1;
 		} = {}
 	) {
 		this.now = options.now ?? Date.now;
 		this.timeoutMs = options.timeoutMs ?? AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS;
+		this.webResearchTimeoutMs =
+			options.webResearchTimeoutMs ?? AGENTIC_CHAT_WEB_RESEARCH_TOOL_TIMEOUT_MS;
+		this.webResearch = options.webResearch;
 		this.createAccessAdapter =
 			options.createAccessAdapter ??
 			((userId) => new WorkerAgenticChatToolAccessAdapter({ client: this.client, userId }));
@@ -280,10 +294,13 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 	async execute(
 		input: Parameters<AgenticChatFixtureReadToolPortV1['execute']>[0]
 	): ReturnType<AgenticChatFixtureReadToolPortV1['execute']> {
-		if (!Object.hasOwn(SHARED_READ_TOOL_RUNNERS, input.toolName)) {
+		if (!isAgenticChatProductionReadToolNameV1(input.toolName)) {
 			throw providerError('read_tool_not_allowlisted', 'permanent');
 		}
-		const runner = SHARED_READ_TOOL_RUNNERS[input.toolName]!;
+		const webResearchTool = AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1.includes(
+			input.toolName as (typeof AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1)[number]
+		);
+		const runner = webResearchTool ? null : SHARED_READ_TOOL_RUNNERS[input.toolName]!;
 		throwIfAborted(input.signal);
 		if (input.toolName === PROJECT_OVERVIEW_TOOL_NAME) {
 			// Pre-swap context guard, kept exactly where it observably applied
@@ -300,23 +317,41 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 				throw providerError('read_tool_context_invalid', 'permanent');
 			}
 		}
-		const sharedContext: AgenticChatSharedReadContextV1 = {
-			client: this.client,
-			access: this.accessAdapterFor(input.executionInput.claim.userId)
-		};
+		const sharedContext: AgenticChatSharedReadContextV1 | null = webResearchTool
+			? null
+			: {
+					client: this.client,
+					access: this.accessAdapterFor(input.executionInput.claim.userId)
+				};
 		const startedAt = this.now();
 		let rawResult: Record<string, unknown>;
 		try {
 			rawResult = await runWithAbortableDeadline({
 				parentSignal: input.signal,
-				timeoutMs: this.timeoutMs,
+				timeoutMs: webResearchTool ? this.webResearchTimeoutMs : this.timeoutMs,
 				createTimeoutError: () =>
 					new AgenticChatProviderExecutionError(
 						'read_tool_timeout',
 						'transient_infra',
-						`Agentic Chat read tool exceeded its ${this.timeoutMs}ms deadline`
+						`Agentic Chat read tool exceeded its ${
+							webResearchTool ? this.webResearchTimeoutMs : this.timeoutMs
+						}ms deadline`
 					),
-				run: () => runner(sharedContext, input.arguments)
+				run: async () => {
+					if (!webResearchTool) return runner!(sharedContext!, input.arguments);
+					const executeWebResearch =
+						input.toolName === 'web_search'
+							? this.webResearch?.search
+							: this.webResearch?.visit;
+					if (!executeWebResearch) {
+						throw new AgenticChatProviderExecutionError(
+							'read_tool_execution_failed',
+							'transient_infra',
+							`Agentic Chat ${input.toolName} is not configured`
+						);
+					}
+					return requireResultRecord(await executeWebResearch(input.arguments));
+				}
 			});
 		} catch (error) {
 			// Deadline and envelope errors pass through untouched, as do parent
@@ -327,7 +362,7 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 			if (input.signal.aborted) throw error;
 			throw new AgenticChatProviderExecutionError(
 				'read_tool_execution_failed',
-				sharedToolFailureClass(error),
+				readToolFailureClass(error, webResearchTool),
 				canonicalError(error)
 			);
 		}
@@ -396,6 +431,8 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 		this.accessAdapters.set(userId, created);
 		return created;
 	}
+
+	private readonly webResearch: WebResearchPort | undefined;
 }
 
 /**
@@ -413,6 +450,24 @@ function sharedToolFailureClass(error: unknown): 'permanent' | 'unknown' {
 		return 'unknown';
 	}
 	return 'permanent';
+}
+
+function readToolFailureClass(
+	error: unknown,
+	webResearchTool: boolean
+): 'permanent' | 'transient_infra' | 'unknown' {
+	if (!webResearchTool) return sharedToolFailureClass(error);
+	if (error instanceof WebResearchPortError) {
+		return error.code === 'VALIDATION_ERROR' ? 'permanent' : 'transient_infra';
+	}
+	return 'transient_infra';
+}
+
+function requireResultRecord(value: unknown): Record<string, unknown> {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		throw new WebResearchPortError('Web research result is not an object');
+	}
+	return value as Record<string, unknown>;
 }
 
 function canonicalUuidOrNull(value: unknown): string | null {

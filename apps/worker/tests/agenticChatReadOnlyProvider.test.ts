@@ -1213,6 +1213,9 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 					function: expect.objectContaining({ name: 'approve_read_only_turn_review' })
 				}),
 				expect.objectContaining({
+					function: expect.objectContaining({ name: 'declare_turn_contract' })
+				}),
+				expect.objectContaining({
 					function: expect.objectContaining({ name: 'request_turn_clarification' })
 				})
 			]
@@ -1355,10 +1358,208 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 					})
 				}),
 				expect.objectContaining({
+					function: expect.objectContaining({ name: 'declare_turn_contract' })
+				}),
+				expect.objectContaining({
 					function: expect.objectContaining({ name: 'request_turn_clarification' })
 				})
 			]
 		});
+	});
+
+	it('lets the read-only reviewer restore a delegated mutation through exact contract review', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const dispositionArguments = {
+			reason: 'The assistant can answer from the roadmap without changing data.'
+		};
+		const contractArguments: JsonObject = {
+			summary: 'Track the missing roadmap work',
+			outcomes: [
+				{
+					action: 'create',
+					entity_kind: 'task',
+					description: 'Create a task for the delegated missing roadmap item',
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const normalizedContract = parseDeclaredTurnContract(contractArguments);
+		if (!normalizedContract) throw new Error('Expected a valid delegated-mutation contract');
+		const contractSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
+			.digest('hex');
+		const contractApprovalArguments = {
+			reason: 'The user delegated creation of missing roadmap tasks.',
+			contract_sha256: contractSha256
+		};
+		const createArguments = {
+			project_id: projectId,
+			title: 'Track enterprise SSO roadmap work'
+		};
+		const batchSha256 = mutationBatchReviewSha256([
+			{ id: 'provider-create-task-1', name: 'create_onto_task', arguments: createArguments }
+		]);
+		const batchApprovalArguments = {
+			reason: 'The task is the exact missing roadmap work authorized by the user.',
+			batch_sha256: batchSha256
+		};
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-false-read-only-1',
+				dispositionArguments,
+				'declare_read_only_turn'
+			),
+			providerReadRound('provider-create-task-1', createArguments, 'create_onto_task')
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound('reviewer-contract-1', contractArguments, 'declare_turn_contract'),
+			providerReadRound(
+				'reviewer-contract-approval-1',
+				contractApprovalArguments,
+				'approve_turn_contract_review'
+			),
+			providerReadRound(
+				'reviewer-batch-approval-1',
+				batchApprovalArguments,
+				'approve_mutation_batch_review'
+			)
+		]);
+		const providerInput = executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readOnlyTurnToolDefinition(),
+				clarificationToolDefinition(),
+				createTaskToolDefinition()
+			],
+			[
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'create_onto_task'
+			]
+		);
+		providerInput.requestPayload = {
+			...providerInput.requestPayload,
+			message:
+				'Check the roadmap and open tasks, then add anything on the roadmap that is not tracked yet.'
+		};
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ createOntoTask: true }
+		).prepare({
+			executionInput: providerInput,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		const contractSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-false-read-only-1',
+						'declare_read_only_turn',
+						dispositionArguments,
+						{ status: 'read_only_declared' }
+					)
+				]
+			})
+		);
+		expect(contractSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'reviewer-contract-1',
+					toolName: 'declare_turn_contract'
+				})
+			])
+		);
+		const readOnlyReviewRequest = semanticReviewer.stream.mock.calls[0]?.[0];
+		expect(readOnlyReviewRequest).toMatchObject({
+			tools: [
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'approve_read_only_turn_review' })
+				}),
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'declare_turn_contract' })
+				}),
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'request_turn_clarification' })
+				})
+			]
+		});
+
+		const contractApprovalSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-contract-1',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		expect(contractApprovalSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					providerToolCallId: 'reviewer-contract-approval-1',
+					toolName: 'approve_turn_contract_review'
+				})
+			])
+		);
+		// One correction is the hard bound: the exact contract-review pass may
+		// approve or clarify, but cannot bounce back to read-only indefinitely.
+		expect(semanticReviewer.stream.mock.calls[1]?.[0].tools).toEqual([
+			expect.objectContaining({
+				function: expect.objectContaining({ name: 'approve_turn_contract_review' })
+			}),
+			expect.objectContaining({
+				function: expect.objectContaining({ name: 'request_turn_clarification' })
+			})
+		]);
+
+		const mutationReviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-contract-approval-1',
+						'approve_turn_contract_review',
+						contractApprovalArguments,
+						{
+							status: 'turn_contract_review_approved',
+							contract_sha256: contractSha256
+						}
+					)
+				]
+			})
+		);
+		expect(mutationReviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					providerToolCallId: 'reviewer-batch-approval-1',
+					toolName: 'approve_mutation_batch_review'
+				})
+			])
+		);
+		expect(client.stream.mock.calls[1]?.[0].tools).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'create_onto_task' })
+				})
+			])
+		);
+		invocation.release();
 	});
 
 	it('lets the contract reviewer downgrade future-looking research to reviewed read-only', async () => {
@@ -3860,6 +4061,8 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		const workspace = readToolDefinition('get_workspace_overview', 'Workspace schema.');
 		const project = readToolDefinition('get_project_overview', 'Project schema.');
 		const tasks = readToolDefinition('list_onto_tasks', 'Task-list schema.');
+		const webSearch = readToolDefinition('web_search', 'Live-web search schema.');
+		const webVisit = readToolDefinition('web_visit', 'Live-web visit schema.');
 		const excludedWrite = readToolDefinition('update_onto_project', 'Write schema.');
 		const reviewedButDisabledWrite = updateTaskToolDefinition();
 		const absentFromNames = readToolDefinition('get_field_info', 'Field schema.');
@@ -3879,14 +4082,18 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 					project,
 					absentFromNames,
 					duplicateProject,
-					tasks
+					tasks,
+					webSearch,
+					webVisit
 				],
 				[
 					'get_workspace_overview',
 					'update_onto_project',
 					'update_onto_task',
 					'get_project_overview',
-					'list_onto_tasks'
+					'list_onto_tasks',
+					'web_search',
+					'web_visit'
 				]
 			),
 			processingToken: PROCESSING_TOKEN,
@@ -3897,7 +4104,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(client.stream).toHaveBeenCalledWith(
 			expect.objectContaining({
 				toolChoice: 'auto',
-				tools: [workspace, project, tasks]
+				tools: [workspace, project, tasks, webSearch, webVisit]
 			})
 		);
 		const surfaceOverride = client.stream.mock.calls[0]?.[0].messages.find(

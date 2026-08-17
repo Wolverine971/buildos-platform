@@ -1,6 +1,7 @@
 // apps/worker/tests/agenticChatReadOnlyTool.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatToolAccessPortV1 } from '@buildos/agentic-chat-runtime/tools';
+import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
 import {
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
@@ -53,7 +54,9 @@ const SHARED_ALLOWLIST = [
 	'get_document_path',
 	'get_workspace_overview',
 	'get_project_overview',
-	'get_field_info'
+	'get_field_info',
+	'web_search',
+	'web_visit'
 ];
 
 function executionInput(): AgenticChatWorkerExecutionInputV1 {
@@ -150,7 +153,12 @@ function fakeSharedClient(tables: Record<string, unknown[]> = {}): {
 function adapterWith(
 	client: { from: unknown },
 	access: AgenticChatToolAccessPortV1,
-	options: { now?: () => number; timeoutMs?: number } = {}
+	options: {
+		now?: () => number;
+		timeoutMs?: number;
+		webResearchTimeoutMs?: number;
+		webResearch?: WebResearchPort;
+	} = {}
 ): AgenticChatReadOnlyToolAdapter {
 	return new AgenticChatReadOnlyToolAdapter(client as never, {
 		...options,
@@ -179,7 +187,60 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 			'get_user_profile_overview'
 		);
 		expect(isAgenticChatProductionReadToolNameV1('get_project_overview')).toBe(true);
+		expect(isAgenticChatProductionReadToolNameV1('web_search')).toBe(true);
+		expect(isAgenticChatProductionReadToolNameV1('web_visit')).toBe(true);
 		expect(isAgenticChatProductionReadToolNameV1('update_onto_project')).toBe(false);
+	});
+
+	it('executes worker-native web search and visit through the bounded research port', async () => {
+		const webResearch = {
+			search: vi.fn(async () => ({
+				query: 'scheduling pricing',
+				results: [
+					{ title: 'A', url: 'https://a.example/pricing' },
+					{ title: 'B', url: 'https://b.example/pricing' }
+				],
+				info: { search_depth: 'advanced' }
+			})),
+			visit: vi.fn(async () => ({
+				url: 'https://a.example/pricing',
+				final_url: 'https://a.example/pricing',
+				content: 'Pricing evidence',
+				info: { fetched_at: '2026-08-17T12:00:00.000Z' }
+			}))
+		} satisfies WebResearchPort;
+		const adapter = adapterWith(fakeSharedClient(), accessStub(), { webResearch });
+
+		await expect(
+			adapter.execute(requestFor('web_search', { query: 'scheduling pricing' }))
+		).resolves.toMatchObject({
+			result: { query: 'scheduling pricing', results: [{ title: 'A' }, { title: 'B' }] },
+			toolCategory: 'search',
+			resultCount: null,
+			zeroResult: null
+		});
+		await expect(
+			adapter.execute(requestFor('web_visit', { url: 'https://a.example/pricing' }))
+		).resolves.toMatchObject({
+			result: { content: 'Pricing evidence' },
+			toolCategory: 'read'
+		});
+		expect(webResearch.search).toHaveBeenCalledWith({ query: 'scheduling pricing' });
+		expect(webResearch.visit).toHaveBeenCalledWith({
+			url: 'https://a.example/pricing'
+		});
+	});
+
+	it('fails web research closed when its worker port is unavailable', async () => {
+		await expect(
+			adapterWith(fakeSharedClient(), accessStub()).execute(
+				requestFor('web_search', { query: 'pricing' })
+			)
+		).rejects.toMatchObject({
+			code: 'read_tool_execution_failed',
+			failureClass: 'transient_infra',
+			message: 'Agentic Chat web_search is not configured'
+		});
 	});
 
 	it('validates and acknowledges a semantic turn contract without touching project data', async () => {
