@@ -49,9 +49,9 @@ export type AgenticChatOpenRouterProviderRoutingV1 = {
 	data_collection?: 'allow' | 'deny';
 	zdr?: boolean;
 	sort?: 'price' | 'throughput' | 'latency';
-	order?: string[];
-	only?: string[];
-	ignore?: string[];
+	order?: readonly string[];
+	only?: readonly string[];
+	ignore?: readonly string[];
 };
 
 export type AgenticChatOpenAiCompatibleRouteV1 = {

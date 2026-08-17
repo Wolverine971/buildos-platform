@@ -325,7 +325,10 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 						apiKey: 'provider-secret',
 						model: 'provider/primary',
 						fallbackModels: ['provider/fallback-1', 'provider/fallback-2'],
-						providerRouting: { sort: 'throughput' }
+						providerRouting: {
+							allow_fallbacks: true,
+							order: ['baidu', 'deepseek', 'alibaba']
+						}
 					}
 				]
 			}
