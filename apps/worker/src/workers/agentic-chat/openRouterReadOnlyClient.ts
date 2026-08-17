@@ -436,8 +436,16 @@ export class AgenticChatOpenRouterReadOnlyClient
 				const lines = buffer.split('\n');
 				buffer = lines.pop() ?? '';
 				for (const line of lines) {
+					throwIfAborted(active.signal);
 					const outcome = parseSseLine(line, state);
-					for (const event of outcome.events) yield event;
+					for (const event of outcome.events) {
+						throwIfAborted(active.signal);
+						yield event;
+						// Async generators pause at `yield`. If the provider deadline fires
+						// while the downstream consumer persists that event, do not drain
+						// already-buffered SSE frames after the consumer resumes.
+						throwIfAborted(active.signal);
+					}
 					if (outcome.done) {
 						providerDone = true;
 						break;
@@ -446,8 +454,13 @@ export class AgenticChatOpenRouterReadOnlyClient
 			}
 
 			if (!providerDone && buffer.trim()) {
+				throwIfAborted(active.signal);
 				const outcome = parseSseLine(buffer, state);
-				for (const event of outcome.events) yield event;
+				for (const event of outcome.events) {
+					throwIfAborted(active.signal);
+					yield event;
+					throwIfAborted(active.signal);
+				}
 				providerDone = outcome.done;
 			}
 			if (state.finishReason === 'error') {

@@ -1087,6 +1087,61 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 		}
 	});
 
+	it('does not drain buffered SSE events after timeout while an event is yielded', async () => {
+		vi.useFakeTimers();
+		const encoder = new TextEncoder();
+		const fetchImpl = vi.fn(
+			async (_url: string | URL | Request, request?: RequestInit) =>
+				new Response(
+					new ReadableStream<Uint8Array>({
+						start(controller) {
+							controller.enqueue(
+								encoder.encode(
+									'data: {"choices":[{"delta":{"content":"First"}}]}\n\n' +
+										'data: {"choices":[{"delta":{"content":"Second"}}]}\n\n'
+								)
+							);
+							request?.signal?.addEventListener(
+								'abort',
+								() =>
+									controller.error(
+										request.signal?.reason ?? new Error('timed out')
+									),
+								{ once: true }
+							);
+						}
+					}),
+					{ status: 200, headers: { 'content-type': 'text/event-stream' } }
+				)
+		) as unknown as typeof fetch;
+		const client = new AgenticChatOpenRouterReadOnlyClient(
+			{ usage: { observe: vi.fn() } },
+			{
+				routes: [route()],
+				httpReferer: 'https://build-os.com',
+				appName: 'BuildOS',
+				fetchImpl,
+				requestTimeoutMs: 1_000
+			}
+		);
+		const iterator = client.stream(input())[Symbol.asyncIterator]();
+
+		await expect(iterator.next()).resolves.toEqual({
+			done: false,
+			value: { type: 'text', content: 'First' }
+		});
+		await vi.advanceTimersByTimeAsync(1_000);
+		await expect(iterator.next()).resolves.toEqual({
+			done: false,
+			value: {
+				type: 'error',
+				error: 'Agentic Chat provider request timed out after 1000ms',
+				retryable: true
+			}
+		});
+		await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined });
+	});
+
 	it('bounds route configuration and the SSE buffer before any provider use', async () => {
 		expect(
 			() =>
