@@ -46,7 +46,9 @@ import type {
 	OpenRouterToolCall,
 	OpenRouterToolChoice,
 	OpenRouterUsage,
-	OpenRouterStreamEvent
+	OpenRouterStreamEvent,
+	OpenRouterRouteObservation,
+	OpenRouterRoutingMetadataSummary
 } from '$lib/services/openrouter-v2/types';
 
 const DEFAULT_MOONSHOT_CHAT_COMPLETIONS_URL = 'https://api.moonshot.ai/v1/chat/completions';
@@ -446,6 +448,51 @@ function extractReasoningDelta(
 	return {
 		...(reasoning ? { reasoning } : {}),
 		...(reasoningDetails ? { reasoning_details: reasoningDetails } : {})
+	};
+}
+
+function normalizeOpenRouterRoutingMetadataSummary(
+	value: unknown
+): OpenRouterRoutingMetadataSummary | undefined {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+	const record = value as Record<string, unknown>;
+	const strategy = typeof record.strategy === 'string' ? record.strategy.trim().slice(0, 80) : '';
+	const summary = typeof record.summary === 'string' ? record.summary.trim().slice(0, 500) : '';
+	const attempt =
+		typeof record.attempt === 'number' && Number.isSafeInteger(record.attempt)
+			? record.attempt
+			: undefined;
+	const attempts = Array.isArray(record.attempts) ? record.attempts : [];
+	const lastAttemptValue = attempts.at(-1);
+	const lastAttempt =
+		lastAttemptValue && typeof lastAttemptValue === 'object' && !Array.isArray(lastAttemptValue)
+			? (lastAttemptValue as Record<string, unknown>)
+			: null;
+	const lastAttemptProvider =
+		typeof lastAttempt?.provider === 'string' ? lastAttempt.provider.trim().slice(0, 128) : '';
+	const lastAttemptModel =
+		typeof lastAttempt?.model === 'string' ? lastAttempt.model.trim().slice(0, 256) : '';
+	const lastAttemptStatus =
+		typeof lastAttempt?.status === 'number' && Number.isSafeInteger(lastAttempt.status)
+			? lastAttempt.status
+			: undefined;
+	if (
+		!strategy &&
+		!summary &&
+		attempt === undefined &&
+		!lastAttemptProvider &&
+		!lastAttemptModel &&
+		lastAttemptStatus === undefined
+	) {
+		return undefined;
+	}
+	return {
+		...(strategy ? { strategy } : {}),
+		...(summary ? { summary } : {}),
+		...(attempt !== undefined ? { attempt } : {}),
+		...(lastAttemptProvider ? { lastAttemptProvider } : {}),
+		...(lastAttemptModel ? { lastAttemptModel } : {}),
+		...(lastAttemptStatus !== undefined ? { lastAttemptStatus } : {})
 	};
 }
 
@@ -1591,6 +1638,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		model?: string;
 		models?: string[];
 		providerRouting?: OpenRouterRequestProviderRouting;
+		onRouteObserved?: (observation: OpenRouterRouteObservation) => void | Promise<void>;
 		signal?: AbortSignal;
 		operationType?: string;
 		contextType?: string;
@@ -1838,8 +1886,29 @@ export class OpenRouterV2Service extends SmartLLMService {
 		let terminalFinishReason: string | undefined;
 		let streamRequestId = requestId;
 		let streamSystemFingerprint = responseSystemFingerprint;
+		let routerMetadataSummary: OpenRouterRoutingMetadataSummary | undefined;
+		let lastRouteObservationFingerprint = '';
 		let usageLogged = false;
 		let emittedTextChars = 0;
+		const observeRoute = async (): Promise<void> => {
+			if (!options.onRouteObserved) return;
+			const observation: OpenRouterRouteObservation = {
+				model: resolvedModel || requestModelForStartedStream,
+				...(resolvedProvider ? { provider: resolvedProvider } : {}),
+				...(resolvedProviderSlug ? { provider_slug: resolvedProviderSlug } : {}),
+				...(streamRequestId ? { request_id: streamRequestId } : {}),
+				...(routerMetadataSummary ? { router_metadata: routerMetadataSummary } : {})
+			};
+			const fingerprint = JSON.stringify(observation);
+			if (fingerprint === lastRouteObservationFingerprint) return;
+			lastRouteObservationFingerprint = fingerprint;
+			try {
+				await options.onRouteObserved(observation);
+			} catch {
+				// Route telemetry must never interrupt the provider stream.
+			}
+		};
+		await observeRoute();
 		const logUsage = (
 			usageFrame: OpenRouterUsage | undefined,
 			status:
@@ -1933,6 +2002,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 					requestedProviderIgnore: normalizeOpenRouterProviderSlugList(
 						options.providerRouting?.ignore
 					),
+					openRouterRouting: routerMetadataSummary ?? null,
 					fallbackFrom: providerRoute === 'direct' ? 'openrouter' : undefined,
 					fallbackProvider,
 					fallbackReason: fallbackReason ?? null,
@@ -2013,23 +2083,6 @@ export class OpenRouterV2Service extends SmartLLMService {
 						continue;
 					}
 
-					// D11: OpenRouter can emit a mid-stream error frame (`{ error: ... }`)
-					// with no `choices`. Previously this fell through and was `continue`d,
-					// so an upstream failure was silently ignored and the truncated buffer
-					// shipped as a complete answer. Treat it as a real error.
-					if (chunk?.error) {
-						const errPayload = chunk.error;
-						const errMessage =
-							typeof errPayload === 'string'
-								? errPayload
-								: errPayload &&
-									  typeof errPayload === 'object' &&
-									  typeof errPayload.message === 'string'
-									? errPayload.message
-									: 'OpenRouter stream returned an error frame';
-						throw new Error(errMessage);
-					}
-
 					if (typeof chunk?.id === 'string' && chunk.id.trim().length > 0) {
 						streamRequestId = chunk.id;
 					}
@@ -2051,6 +2104,33 @@ export class OpenRouterV2Service extends SmartLLMService {
 					if (typeof chunk?.provider === 'string' && chunk.provider.trim().length > 0) {
 						resolvedProvider = chunk.provider.trim();
 						resolvedProviderSlug = normalizeOpenRouterProviderSlug(resolvedProvider);
+					}
+					routerMetadataSummary =
+						normalizeOpenRouterRoutingMetadataSummary(chunk?.openrouter_metadata) ??
+						routerMetadataSummary;
+					if (routerMetadataSummary?.lastAttemptModel) {
+						resolvedModel = routerMetadataSummary.lastAttemptModel;
+					}
+					if (routerMetadataSummary?.lastAttemptProvider) {
+						resolvedProvider = routerMetadataSummary.lastAttemptProvider;
+						resolvedProviderSlug = normalizeOpenRouterProviderSlug(resolvedProvider);
+					}
+					await observeRoute();
+
+					// D11: OpenRouter can emit a mid-stream error frame (`{ error: ... }`)
+					// with no `choices`. Capture its route identity first, then surface it
+					// so the turn-scoped circuit breaker can avoid the same failed route.
+					if (chunk?.error) {
+						const errPayload = chunk.error;
+						const errMessage =
+							typeof errPayload === 'string'
+								? errPayload
+								: errPayload &&
+									  typeof errPayload === 'object' &&
+									  typeof errPayload.message === 'string'
+									? errPayload.message
+									: 'OpenRouter stream returned an error frame';
+						throw new Error(errMessage);
 					}
 					if (chunk?.usage && typeof chunk.usage === 'object') {
 						usage = chunk.usage as OpenRouterUsage;

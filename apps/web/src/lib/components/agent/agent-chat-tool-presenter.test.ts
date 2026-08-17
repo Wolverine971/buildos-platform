@@ -56,6 +56,19 @@ function makeHarness(): TestHarness {
 }
 
 describe('agent-chat-tool-presenter — formatToolMessage', () => {
+	it('presents read-only control calls as a no-change confirmation', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+		expect(presenter.formatToolMessage('declare_read_only_turn', {}, 'pending')).toBe(
+			'Confirming no changes requested...'
+		);
+		expect(presenter.formatToolMessage('declare_read_only_turn', {}, 'completed')).toBe(
+			'Confirmed no changes requested'
+		);
+		expect(presenter.formatToolMessage('approve_read_only_turn_review', {}, 'completed')).toBe(
+			'Reviewed no-change request'
+		);
+	});
+
 	it('formats a pending create_onto_task with inline target', () => {
 		const h = makeHarness();
 		const presenter = createToolPresenter(h.ctx);

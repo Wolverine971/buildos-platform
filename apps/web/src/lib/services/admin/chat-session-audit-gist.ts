@@ -207,11 +207,24 @@ export const deriveAuditGist = (payload: ChatSessionAuditPayload): AuditGist => 
 			asString(operation.status) === 'failed' || asString(operation.error_message) !== null
 	);
 	const turnFailures = turnRuns.some((run) => asString(run.status) === 'failed');
-	const hardErrorSignal = messageErrors || operationFailures || turnFailures || llmFailures > 0;
+	const recoveredLlmFailures =
+		llmFailures > 0 &&
+		Boolean(finalAssistantMessage) &&
+		asString(lastTurn?.status) === 'completed' &&
+		lastFinishedReason !== 'tool_calls' &&
+		!messageErrors &&
+		!operationFailures &&
+		!turnFailures;
+	const hardErrorSignal =
+		messageErrors ||
+		operationFailures ||
+		turnFailures ||
+		(llmFailures > 0 && !recoveredLlmFailures);
 	const unattributedSessionError =
 		payload.session.has_errors &&
 		!hardErrorSignal &&
 		toolFailures === 0 &&
+		llmFailures === 0 &&
 		validationFailures === 0;
 
 	let outcome: AuditOutcome;
@@ -257,11 +270,21 @@ export const deriveAuditGist = (payload: ChatSessionAuditPayload): AuditGist => 
 
 	const outcomeLabel = (() => {
 		switch (outcome) {
-			case 'completed':
+			case 'completed': {
+				const recoveries: string[] = [];
 				if (toolFailures > 0) {
-					return `COMPLETED — recovered after ${toolFailures} tool failure${toolFailures === 1 ? '' : 's'}`;
+					recoveries.push(`${toolFailures} tool failure${toolFailures === 1 ? '' : 's'}`);
+				}
+				if (recoveredLlmFailures) {
+					recoveries.push(
+						`${llmFailures} LLM attempt failure${llmFailures === 1 ? '' : 's'}`
+					);
+				}
+				if (recoveries.length > 0) {
+					return `COMPLETED — recovered after ${recoveries.join(' and ')}`;
 				}
 				return 'COMPLETED';
+			}
 			case 'errored':
 				return reason ? `FAILED — ${reason}` : 'FAILED';
 			case 'incomplete':

@@ -155,7 +155,8 @@ export class OpenRouterV2Client {
 					Authorization: `Bearer ${this.apiKey}`,
 					'Content-Type': 'application/json',
 					'HTTP-Referer': this.httpReferer,
-					'X-Title': this.appName
+					'X-Title': this.appName,
+					'X-OpenRouter-Metadata': 'enabled'
 				},
 				body: JSON.stringify(body),
 				signal

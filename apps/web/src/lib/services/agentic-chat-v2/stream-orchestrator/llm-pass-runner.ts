@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/llm-pass-runner.ts
 import type { ChatContextType, ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
+import type { OpenRouterRouteObservation } from '$lib/services/openrouter-v2/types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import { FASTCHAT_LIMITS } from '../limits';
 import type { FastChatLlmPassRole, FastChatPassModelRouting } from '../model-tiering';
@@ -61,6 +62,16 @@ export type LlmStreamTurnProgressSnapshot = {
 	toolRounds: number;
 	toolCallsMade: number;
 	toolExecutionCount: number;
+};
+
+export type LlmRouteHealthObservation = {
+	status: 'success' | 'failure';
+	pass: number;
+	attempt: number;
+	model?: string;
+	requestedModel?: string;
+	providerSlug?: string;
+	requestId?: string;
 };
 
 export type LlmStreamRecoveryBlockedReason =
@@ -144,6 +155,7 @@ export async function runLlmStreamPass(params: {
 	observeSupervisor: (observation: TurnSupervisorObservation) => Promise<void>;
 	onToolCall?: (toolCall: ChatToolCall) => Promise<void> | void;
 	onStreamRetry?: (error: Error, attempt: number) => Promise<void> | void;
+	onRouteHealthObservation?: (observation: LlmRouteHealthObservation) => Promise<void> | void;
 	retryDelayMs?: (attempt: number) => number;
 	passTimeoutMs?: number;
 	commissionedDocumentUpdateFallbackContent?: string;
@@ -173,9 +185,11 @@ export async function runLlmStreamPass(params: {
 	let toolCallsReceived = 0;
 	let bestPartialAssistantText = '';
 	const attemptRoutes: LLMStreamAttemptRoute[] = [];
+	const failedProviderSlugsThisPass = new Set<string>();
 
 	for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
 		attemptsStarted = attempt;
+		const attemptStartedAtMs = Date.now();
 		let assistantBuffer = '';
 		let assistantReasoningForReplay = '';
 		const assistantReasoningDetailsForReplay: unknown[] = [];
@@ -189,6 +203,9 @@ export async function runLlmStreamPass(params: {
 		let finishedReason: string | undefined;
 		let llmDoneReceived = false;
 		let firstTokenAtMs: number | null = null;
+		let attemptAssistantTextCharsReceived = 0;
+		let attemptReasoningCharsReceived = 0;
+		let attemptToolCallsReceived = 0;
 		const metadata = createPassMetadata(
 			params.passNumber,
 			params.noToolSynthesisPass,
@@ -199,14 +216,23 @@ export async function runLlmStreamPass(params: {
 			attempt,
 			params.modelRouting?.retryModelRotation === true
 		);
-		attemptRoutes.push({
+		const attemptIgnoredProviderSlugs = Array.from(
+			new Set([
+				...(params.modelRouting?.ignoredProviderSlugs ?? []),
+				...failedProviderSlugsThisPass
+			])
+		);
+		const attemptRoute: LLMStreamAttemptRoute = {
 			attempt,
 			...(attemptModelCandidates?.length ? { models: [...attemptModelCandidates] } : {}),
-			...(params.modelRouting?.ignoredProviderSlugs?.length
-				? { ignoredProviderSlugs: [...params.modelRouting.ignoredProviderSlugs] }
+			...(attemptIgnoredProviderSlugs.length
+				? { ignoredProviderSlugs: attemptIgnoredProviderSlugs }
 				: {}),
-			maxTokens
-		});
+			maxTokens,
+			...(attemptModelCandidates?.[0] ? { selectedModel: attemptModelCandidates[0] } : {}),
+			startedAtMs: attemptStartedAtMs
+		};
+		attemptRoutes.push(attemptRoute);
 		metadata.attemptRoutes = cloneAttemptRoutes(attemptRoutes);
 		metadata.startedAtMs = startedAtMs;
 		if (attempt > 1) {
@@ -247,9 +273,12 @@ export async function runLlmStreamPass(params: {
 				clientTurnId: params.clientTurnId ?? undefined,
 				profile: modelProfile,
 				models: attemptModelCandidates,
-				providerRouting: params.modelRouting?.ignoredProviderSlugs?.length
-					? { ignore: params.modelRouting.ignoredProviderSlugs }
+				providerRouting: attemptIgnoredProviderSlugs.length
+					? { ignore: attemptIgnoredProviderSlugs }
 					: undefined,
+				onRouteObserved: (observation) => {
+					populateAttemptRouteObservation(attemptRoute, observation);
+				},
 				// Keep the per-pass output cap above the service default so long
 				// answers and tool-call argument payloads are not cut mid-stream.
 				maxTokens,
@@ -261,6 +290,7 @@ export async function runLlmStreamPass(params: {
 			})) {
 				if (event.type === 'text' && event.content) {
 					assistantTextCharsReceived += event.content.length;
+					attemptAssistantTextCharsReceived += event.content.length;
 					if (firstTokenAtMs === null) firstTokenAtMs = Date.now();
 					assistantBuffer += event.content;
 					if (assistantBuffer.trim().length >= bestPartialAssistantText.trim().length) {
@@ -274,7 +304,9 @@ export async function runLlmStreamPass(params: {
 						await params.tryEmitEarlyAssistantLeadIn(assistantBuffer);
 					}
 				} else if (event.type === 'reasoning') {
-					reasoningCharsReceived += measureReasoningEventChars(event);
+					const reasoningChars = measureReasoningEventChars(event);
+					reasoningCharsReceived += reasoningChars;
+					attemptReasoningCharsReceived += reasoningChars;
 					if (firstTokenAtMs === null) firstTokenAtMs = Date.now();
 					const reasoningEvent = event as SmartLlmStreamEvent & {
 						reasoning?: string;
@@ -304,6 +336,7 @@ export async function runLlmStreamPass(params: {
 						(metadata.reasoningChannelChars ?? 0) + reasoningLen;
 				} else if (event.type === 'tool_call' && event.tool_call) {
 					toolCallsReceived += 1;
+					attemptToolCallsReceived += 1;
 					if (firstTokenAtMs === null) firstTokenAtMs = Date.now();
 					const normalizedToolCall = backfillCommissionedDocumentUpdateContent(
 						normalizeToolCallDefaults(event.tool_call, params.projectId ?? undefined),
@@ -352,6 +385,7 @@ export async function runLlmStreamPass(params: {
 						metadata.finishedReason = event.finished_reason;
 					}
 					populateDoneEventMetadata(metadata, event);
+					populateAttemptRouteFromDoneEvent(attemptRoute, event);
 				} else if (event.type === 'error') {
 					throw new LlmStreamPassAttemptError(event.error || 'LLM stream error');
 				}
@@ -362,6 +396,18 @@ export async function runLlmStreamPass(params: {
 					? createLlmPassTimeoutError(passAbortSignal.timeoutMs)
 					: error
 			);
+			finalizeAttemptRoute(attemptRoute, {
+				outcome: classifyTerminalOutcome(normalizedError, params.signal),
+				terminalEventReceived: llmDoneReceived,
+				assistantTextCharsReceived: attemptAssistantTextCharsReceived,
+				reasoningCharsReceived: attemptReasoningCharsReceived,
+				toolCallsReceived: attemptToolCallsReceived,
+				startedAtMs: attemptStartedAtMs
+			});
+			if (attemptRoute.providerSlug) {
+				failedProviderSlugsThisPass.add(attemptRoute.providerSlug);
+			}
+			await notifyRouteHealthObservation(params, attemptRoute, 'failure');
 			if (shouldRetryStreamAttempt(normalizedError, params.signal, attempt, maxAttempts)) {
 				lastRetryError = normalizedError;
 				clearLlmHeartbeatOnce();
@@ -394,6 +440,18 @@ export async function runLlmStreamPass(params: {
 						? createLlmPassTimeoutMessage(passAbortSignal.timeoutMs)
 						: 'LLM stream ended without a completion event'
 			);
+			finalizeAttemptRoute(attemptRoute, {
+				outcome: classifyTerminalOutcome(missingDoneError, params.signal),
+				terminalEventReceived: false,
+				assistantTextCharsReceived: attemptAssistantTextCharsReceived,
+				reasoningCharsReceived: attemptReasoningCharsReceived,
+				toolCallsReceived: attemptToolCallsReceived,
+				startedAtMs: attemptStartedAtMs
+			});
+			if (attemptRoute.providerSlug) {
+				failedProviderSlugsThisPass.add(attemptRoute.providerSlug);
+			}
+			await notifyRouteHealthObservation(params, attemptRoute, 'failure');
 			if (shouldRetryStreamAttempt(missingDoneError, params.signal, attempt, maxAttempts)) {
 				lastRetryError = missingDoneError;
 				await prepareForStreamRetry(params, attempt, maxAttempts, missingDoneError);
@@ -413,6 +471,16 @@ export async function runLlmStreamPass(params: {
 				attemptRoutes
 			});
 		}
+
+		finalizeAttemptRoute(attemptRoute, {
+			outcome: 'completed',
+			terminalEventReceived: true,
+			assistantTextCharsReceived: attemptAssistantTextCharsReceived,
+			reasoningCharsReceived: attemptReasoningCharsReceived,
+			toolCallsReceived: attemptToolCallsReceived,
+			startedAtMs: attemptStartedAtMs
+		});
+		await notifyRouteHealthObservation(params, attemptRoute, 'success');
 
 		metadata.firstTokenAtMs = firstTokenAtMs;
 		metadata.timeToFirstTokenMs = firstTokenAtMs !== null ? firstTokenAtMs - startedAtMs : null;
@@ -934,6 +1002,81 @@ function populateDoneEventMetadata(
 	if (cacheStatus) metadata.cacheStatus = cacheStatus;
 	if (typeof reasoningTokens === 'number') {
 		metadata.reasoningTokens = reasoningTokens;
+	}
+}
+
+function populateAttemptRouteObservation(
+	attemptRoute: LLMStreamAttemptRoute,
+	observation: OpenRouterRouteObservation
+): void {
+	const model = readStringMeta(observation.model);
+	const provider = readStringMeta(observation.provider);
+	const providerSlug = readStringMeta(observation.provider_slug)?.toLowerCase();
+	const requestId = readStringMeta(observation.request_id);
+	const routerStrategy = readStringMeta(observation.router_metadata?.strategy);
+	const routerSummary = readStringMeta(observation.router_metadata?.summary);
+	const routerAttempt = readNumberMeta(observation.router_metadata?.attempt);
+	if (model) attemptRoute.selectedModel = model;
+	if (provider) attemptRoute.provider = provider;
+	if (providerSlug) attemptRoute.providerSlug = providerSlug;
+	if (requestId) attemptRoute.requestId = requestId;
+	if (routerStrategy) attemptRoute.routerStrategy = routerStrategy;
+	if (routerSummary) attemptRoute.routerSummary = routerSummary;
+	if (typeof routerAttempt === 'number') attemptRoute.routerAttempt = routerAttempt;
+}
+
+function populateAttemptRouteFromDoneEvent(
+	attemptRoute: LLMStreamAttemptRoute,
+	event: SmartLlmStreamEvent
+): void {
+	const eventRecord = event as Record<string, unknown>;
+	populateAttemptRouteObservation(attemptRoute, {
+		model: readStringMeta(eventRecord.model),
+		provider: readStringMeta(eventRecord.provider),
+		provider_slug: readStringMeta(eventRecord.provider_slug),
+		request_id: readStringMeta(eventRecord.request_id) ?? readStringMeta(eventRecord.requestId)
+	});
+}
+
+function finalizeAttemptRoute(
+	attemptRoute: LLMStreamAttemptRoute,
+	params: {
+		outcome: LlmStreamPassTerminalOutcome;
+		terminalEventReceived: boolean;
+		assistantTextCharsReceived: number;
+		reasoningCharsReceived: number;
+		toolCallsReceived: number;
+		startedAtMs: number;
+	}
+): void {
+	attemptRoute.durationMs = Math.max(0, Date.now() - params.startedAtMs);
+	attemptRoute.terminalOutcome = params.outcome;
+	attemptRoute.terminalEventReceived = params.terminalEventReceived;
+	attemptRoute.partialOutputDiscarded =
+		params.outcome !== 'completed' && params.assistantTextCharsReceived > 0;
+	attemptRoute.assistantTextCharsReceived = params.assistantTextCharsReceived;
+	attemptRoute.reasoningCharsReceived = params.reasoningCharsReceived;
+	attemptRoute.toolCallsReceived = params.toolCallsReceived;
+}
+
+async function notifyRouteHealthObservation(
+	params: Parameters<typeof runLlmStreamPass>[0],
+	attemptRoute: LLMStreamAttemptRoute,
+	status: LlmRouteHealthObservation['status']
+): Promise<void> {
+	if (!params.onRouteHealthObservation) return;
+	try {
+		await params.onRouteHealthObservation({
+			status,
+			pass: params.passNumber,
+			attempt: attemptRoute.attempt,
+			...(attemptRoute.selectedModel ? { model: attemptRoute.selectedModel } : {}),
+			...(attemptRoute.models?.[0] ? { requestedModel: attemptRoute.models[0] } : {}),
+			...(attemptRoute.providerSlug ? { providerSlug: attemptRoute.providerSlug } : {}),
+			...(attemptRoute.requestId ? { requestId: attemptRoute.requestId } : {})
+		});
+	} catch {
+		// Health bookkeeping must never break a model pass.
 	}
 }
 

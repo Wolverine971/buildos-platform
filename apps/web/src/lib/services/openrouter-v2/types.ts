@@ -171,6 +171,23 @@ export type OpenRouterStreamEvent =
 			error: string;
 	  };
 
+export type OpenRouterRoutingMetadataSummary = {
+	strategy?: string;
+	summary?: string;
+	attempt?: number;
+	lastAttemptProvider?: string;
+	lastAttemptModel?: string;
+	lastAttemptStatus?: number;
+};
+
+export type OpenRouterRouteObservation = {
+	model?: string;
+	provider?: string;
+	provider_slug?: string;
+	request_id?: string;
+	router_metadata?: OpenRouterRoutingMetadataSummary;
+};
+
 export type OpenRouterChatRequest = {
 	model: string;
 	messages: OpenRouterChatMessage[];

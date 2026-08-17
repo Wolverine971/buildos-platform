@@ -11,6 +11,21 @@ export type LLMStreamAttemptRoute = {
 	models?: string[];
 	ignoredProviderSlugs?: string[];
 	maxTokens: number;
+	selectedModel?: string;
+	provider?: string;
+	providerSlug?: string;
+	requestId?: string;
+	routerStrategy?: string;
+	routerSummary?: string;
+	routerAttempt?: number;
+	startedAtMs?: number;
+	durationMs?: number;
+	terminalOutcome?: LLMStreamPassTerminalOutcome;
+	terminalEventReceived?: boolean;
+	partialOutputDiscarded?: boolean;
+	assistantTextCharsReceived?: number;
+	reasoningCharsReceived?: number;
+	toolCallsReceived?: number;
 };
 
 export type LLMStreamPassTerminalOutcome =

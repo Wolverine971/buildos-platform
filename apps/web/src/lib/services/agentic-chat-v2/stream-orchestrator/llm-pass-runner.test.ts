@@ -389,6 +389,94 @@ describe('runLlmStreamPass', () => {
 		);
 	});
 
+	it('carries failed provider health into the retry and records per-attempt telemetry', async () => {
+		let invocation = 0;
+		const routeHealth = vi.fn();
+		const streamText = vi.fn(async function* (options: {
+			onRouteObserved?: (observation: Record<string, unknown>) => void;
+		}) {
+			invocation += 1;
+			if (invocation === 1) {
+				options.onRouteObserved?.({
+					model: 'deepseek/model',
+					provider: 'DigitalOcean',
+					provider_slug: 'digitalocean',
+					request_id: 'gen-deepseek',
+					router_metadata: { strategy: 'fallback', attempt: 3 }
+				});
+				yield { type: 'text', content: 'Incomplete draft.' };
+				yield { type: 'error', error: 'provider stream timeout' };
+				return;
+			}
+			options.onRouteObserved?.({
+				model: 'google/model',
+				provider: 'Google',
+				provider_slug: 'google',
+				request_id: 'gen-google'
+			});
+			yield { type: 'text', content: 'Recovered answer.' };
+			yield { type: 'done', finished_reason: 'stop', model: 'google/model' };
+		});
+		const { params } = baseParams({
+			llm: { streamText } as any,
+			modelRouting: {
+				passRole: 'tool_followup',
+				profile: 'balanced',
+				models: ['deepseek/model', 'google/model'],
+				retryModelRotation: true
+			},
+			onRouteHealthObservation: routeHealth,
+			retryDelayMs: () => 0
+		});
+
+		const result = await runLlmStreamPass(params);
+
+		expect(streamText.mock.calls[1]?.[0]).toMatchObject({
+			models: ['google/model', 'deepseek/model'],
+			providerRouting: { ignore: ['digitalocean'] }
+		});
+		expect(result.metadata.attemptRoutes).toMatchObject([
+			{
+				attempt: 1,
+				selectedModel: 'deepseek/model',
+				providerSlug: 'digitalocean',
+				requestId: 'gen-deepseek',
+				routerStrategy: 'fallback',
+				routerAttempt: 3,
+				terminalOutcome: 'timed_out',
+				terminalEventReceived: false,
+				partialOutputDiscarded: true,
+				assistantTextCharsReceived: 'Incomplete draft.'.length
+			},
+			{
+				attempt: 2,
+				selectedModel: 'google/model',
+				providerSlug: 'google',
+				requestId: 'gen-google',
+				terminalOutcome: 'completed',
+				terminalEventReceived: true,
+				partialOutputDiscarded: false,
+				assistantTextCharsReceived: 'Recovered answer.'.length
+			}
+		]);
+		expect(routeHealth).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				status: 'failure',
+				model: 'deepseek/model',
+				providerSlug: 'digitalocean'
+			})
+		);
+		expect(routeHealth).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				status: 'success',
+				model: 'google/model',
+				providerSlug: 'google'
+			})
+		);
+	});
+
 	it('rotates the dedicated synthesis model route and carries provider policy across retries', async () => {
 		let invocation = 0;
 		const streamText = vi.fn(async function* (_options?: Record<string, unknown>) {

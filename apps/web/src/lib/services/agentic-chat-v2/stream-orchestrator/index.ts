@@ -115,6 +115,11 @@ import {
 	type FastChatModelMessage
 } from './llm-pass-runner';
 import {
+	applyTurnRouteHealth,
+	createTurnRouteHealth,
+	observeTurnRouteHealth
+} from './turn-route-health';
+import {
 	resolveLengthContinuation,
 	runCancellationFinalization,
 	runNoToolCallFinalization,
@@ -401,6 +406,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	// Cleared whenever an execution reaches the write executor — see read-memo.ts.
 	const turnReadMemo = new Map<string, ChatToolResult>();
 	const llmStreamPasses: LLMStreamPassMetadata[] = [];
+	const turnRouteHealth = createTurnRouteHealth();
 	let tools = params.tools ?? [];
 	let allowedToolNames = new Set(
 		tools.map((tool) => tool.function?.name).filter((name): name is string => Boolean(name))
@@ -1325,16 +1331,20 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				passTools.length === 1 &&
 				passTools[0]?.function?.name === 'create_onto_project' &&
 				hasActionableProjectCreateInput(message);
-			const modelRouting = resolveFastChatPassModelRouting({
-				passNumber,
-				hasTools: passTools.length > 0,
-				noToolSynthesisPass,
-				writeIntentToolPass: Boolean(writeIntentToolPass),
-				noToolSynthesisRetryCount,
-				modelTiering: params.modelTiering ?? null,
-				forcedSynthesisRouting: params.forcedSynthesisRouting ?? null,
-				pinnedModels: params.pinnedModels
-			});
+			const modelRouting = applyTurnRouteHealth(
+				resolveFastChatPassModelRouting({
+					passNumber,
+					hasTools: passTools.length > 0,
+					noToolSynthesisPass,
+					writeIntentToolPass: Boolean(writeIntentToolPass),
+					noToolSynthesisRetryCount,
+					modelTiering: params.modelTiering ?? null,
+					forcedSynthesisRouting: params.forcedSynthesisRouting ?? null,
+					pinnedModels: params.pinnedModels
+				}),
+				turnRouteHealth,
+				{ preserveModelOrder: Boolean(params.pinnedModels?.length) }
+			);
 			activeAssistantBuffer = '';
 			activePendingToolCallCount = 0;
 			const runtimeBudgetMessage = buildRuntimeToolBudgetMessage({
@@ -1401,6 +1411,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					onStreamRetry: noToolSynthesisPass
 						? async () => notifyTurnPhase('recovering')
 						: undefined,
+					onRouteHealthObservation: (observation) => {
+						observeTurnRouteHealth(turnRouteHealth, observation);
+					},
 					modelRouting
 				});
 			} catch (error) {

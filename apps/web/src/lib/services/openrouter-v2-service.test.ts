@@ -154,7 +154,8 @@ describe('OpenRouterV2Service model routing', () => {
 		});
 		expect(requestHeaders[0]).toMatchObject({
 			'HTTP-Referer': 'https://buildos.test',
-			'X-Title': 'OpenRouter V2 Test'
+			'X-Title': 'OpenRouter V2 Test',
+			'X-OpenRouter-Metadata': 'enabled'
 		});
 	});
 
@@ -1573,6 +1574,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 
 	it('applies a request-scoped provider exclusion and reports the normalized provider slug', async () => {
 		const requestBodies: any[] = [];
+		const routeObservations: unknown[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
 				requestBodies.push(JSON.parse(init.body));
@@ -1587,6 +1589,11 @@ describe('OpenRouterV2Service visible text filtering', () => {
 					JSON.stringify({
 						provider: 'DigitalOcean',
 						choices: [{ delta: {}, finish_reason: 'stop' }],
+						openrouter_metadata: {
+							strategy: 'fallback',
+							summary: 'available=3, selected=DigitalOcean',
+							attempt: 3
+						},
 						usage: { prompt_tokens: 20, completion_tokens: 4, total_tokens: 24 }
 					}),
 					'[DONE]'
@@ -1603,6 +1610,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			userId: 'user_1',
 			models: [DEEPSEEK_V4_FLASH_MODEL],
 			providerRouting: { ignore: ['DigitalOcean'] },
+			onRouteObserved: (observation) => routeObservations.push(observation),
 			maxTokens: 6000
 		})) {
 			events.push(event);
@@ -1624,6 +1632,16 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			provider: 'DigitalOcean',
 			provider_raw: 'DigitalOcean',
 			provider_slug: 'digitalocean'
+		});
+		expect(routeObservations.at(-1)).toMatchObject({
+			model: DEEPSEEK_V4_FLASH_MODEL,
+			provider: 'DigitalOcean',
+			provider_slug: 'digitalocean',
+			request_id: 'stream-synthesis-route',
+			router_metadata: {
+				strategy: 'fallback',
+				attempt: 3
+			}
 		});
 	});
 
@@ -1840,6 +1858,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		// silently skipped and the stream ended as a successful `done`, shipping the
 		// truncated buffer as a complete answer. It must now surface as an error.
 		const insertMock = vi.fn(async () => ({ error: null }));
+		const routeObservations: unknown[] = [];
 		const encoder = new TextEncoder();
 		const fetchMock = vi.fn(async () => {
 			let stage = 0;
@@ -1863,6 +1882,17 @@ describe('OpenRouterV2Service visible text filtering', () => {
 						controller.enqueue(
 							encoder.encode(
 								`data: ${JSON.stringify({
+									openrouter_metadata: {
+										strategy: 'fallback',
+										attempt: 2,
+										attempts: [
+											{
+												provider: 'DigitalOcean',
+												model: ACTIVE_EXPERIMENT_MODEL,
+												status: 429
+											}
+										]
+									},
 									error: { message: 'upstream rate limited', code: 429 }
 								})}\n\n`
 							)
@@ -1888,7 +1918,8 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			model: ACTIVE_EXPERIMENT_MODEL,
 			models: [ACTIVE_EXPERIMENT_MODEL],
 			chatSessionId: '22222222-2222-4222-8222-222222222222',
-			operationType: 'agentic_chat_v2_stream'
+			operationType: 'agentic_chat_v2_stream',
+			onRouteObserved: (observation) => routeObservations.push(observation)
 		})) {
 			events.push(event);
 		}
@@ -1900,6 +1931,17 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(errorEvent?.error).toContain('upstream rate limited');
 		// It must NOT terminate as a successful done.
 		expect(events.some((event) => event.type === 'done')).toBe(false);
+		expect(routeObservations.at(-1)).toMatchObject({
+			model: ACTIVE_EXPERIMENT_MODEL,
+			provider: 'DigitalOcean',
+			provider_slug: 'digitalocean',
+			router_metadata: {
+				strategy: 'fallback',
+				attempt: 2,
+				lastAttemptProvider: 'DigitalOcean',
+				lastAttemptStatus: 429
+			}
+		});
 		await vi.waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
 		expect(insertMock.mock.calls[0]?.[0]).toMatchObject({ status: 'failure' });
 	});

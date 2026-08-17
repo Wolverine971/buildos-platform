@@ -421,6 +421,28 @@ describe('deriveAuditGist', () => {
 		expect(gist.flags).toContain('1 tool failure');
 	});
 
+	it('classifies discarded failed LLM attempts as recovered when the turn completed', () => {
+		const payload = buildFixturePayload();
+		payload.session.has_errors = true;
+		payload.metrics.llm_failures = 2;
+		payload.messages[1].content = 'The fallback model completed the reply.';
+
+		const gist = deriveAuditGist(payload);
+		expect(gist.outcome).toBe('completed');
+		expect(gist.outcomeLabel).toBe('COMPLETED — recovered after 2 LLM attempt failures');
+		expect(gist.flags).toContain('2 LLM failures');
+	});
+
+	it('keeps an LLM failure classified as failed when the turn itself failed', () => {
+		const payload = buildFixturePayload();
+		payload.metrics.llm_failures = 1;
+		payload.turn_runs[1].status = 'failed';
+
+		const gist = deriveAuditGist(payload);
+		expect(gist.outcome).toBe('errored');
+		expect(gist.outcomeLabel).toBe('FAILED — 1 LLM failure');
+	});
+
 	it('classifies an unrecovered tool failure as failed', () => {
 		const payload = buildFixturePayload();
 		payload.session.has_errors = true;

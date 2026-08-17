@@ -696,6 +696,96 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 		});
 	});
 
+	it('keeps failed model and provider health for later retries in the same turn', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			if (requests.length === 1) {
+				return sseResponse([
+					JSON.stringify({
+						openrouter_metadata: {
+							strategy: 'fallback',
+							attempt: 2,
+							attempts: [
+								{
+									model: 'deepseek/deepseek-v4',
+									provider: 'DigitalOcean',
+									status: 408
+								}
+							]
+						},
+						error: { code: 408, message: 'provider timed out' }
+					})
+				]);
+			}
+			return sseResponse([
+				JSON.stringify({
+					model: 'google/gemini-2.5-flash',
+					provider: 'google-vertex',
+					choices: [{ delta: { content: 'Recovered' }, finish_reason: 'stop' }]
+				}),
+				'[DONE]'
+			]);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl, [
+			route({
+				model: 'deepseek/deepseek-v4',
+				fallbackModels: ['google/gemini-2.5-flash']
+			})
+		]);
+
+		await expect(collect(test.client.stream(input()))).resolves.toEqual([
+			{ type: 'error', error: 'provider timed out', retryable: true }
+		]);
+		await expect(
+			collect(
+				test.client.stream({
+					...input(),
+					streamRunId: 'stream-run-2',
+					logicalProviderRound: 2
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text', content: 'Recovered' },
+			{ type: 'done', finishedReason: 'stop', usage: undefined }
+		]);
+		await collect(
+			test.client.stream({
+				...input(),
+				streamRunId: 'stream-run-3',
+				logicalProviderRound: 3
+			})
+		);
+		await collect(
+			test.client.stream({
+				...input(),
+				turnRunId: '30000000-0000-4000-8000-000000000099',
+				streamRunId: 'stream-run-other-turn',
+				logicalProviderRound: 1
+			})
+		);
+
+		expect(requests[1]).toMatchObject({
+			model: 'google/gemini-2.5-flash',
+			models: ['deepseek/deepseek-v4'],
+			provider: { ignore: ['digitalocean'] }
+		});
+		expect(requests[2]).toMatchObject({
+			model: 'google/gemini-2.5-flash',
+			provider: { ignore: ['digitalocean'] }
+		});
+		expect(requests[3]).toMatchObject({
+			model: 'deepseek/deepseek-v4',
+			models: ['google/gemini-2.5-flash']
+		});
+		expect(requests[3]?.provider).not.toMatchObject({ ignore: expect.anything() });
+		const firstHeaders = vi.mocked(fetchImpl).mock.calls[0]?.[1]?.headers as Record<
+			string,
+			string
+		>;
+		expect(firstHeaders['X-OpenRouter-Metadata']).toBe('enabled');
+	});
+
 	it('handles split CRLF frames and completes safely without an explicit DONE marker', async () => {
 		const fetchImpl = vi.fn(async () =>
 			splitSseResponse([

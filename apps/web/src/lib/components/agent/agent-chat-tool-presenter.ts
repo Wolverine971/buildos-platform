@@ -1123,6 +1123,12 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		string,
 		(args: any) => { action: string; target?: string }
 	> = {
+		declare_read_only_turn: () => ({
+			action: 'Confirming no changes requested'
+		}),
+		approve_read_only_turn_review: () => ({
+			action: 'Reviewing no-change request'
+		}),
 		search_ontology: (args) => ({
 			action: 'Searching workspace',
 			target: args?.query || args?.search

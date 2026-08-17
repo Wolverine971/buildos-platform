@@ -36,6 +36,8 @@ const DEFAULT_MAX_TOKENS = 2_000;
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_SSE_BUFFER_BYTES = 256 * 1024;
 const PROVIDER_TELEMETRY_TIMEOUT_MS = 5_000;
+const TURN_ROUTE_HEALTH_TTL_MS = 10 * 60_000;
+const MAX_TURN_ROUTE_HEALTH_ENTRIES = 256;
 const USAGE_LOG_IDENTITY_VERSION = 'agentic_chat_provider_usage_v1';
 const MAX_REVIEWED_PROVIDER_TOOLS =
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.length +
@@ -127,9 +129,17 @@ type StreamState = {
 	finishReason: string | null;
 	modelUsed: string | null;
 	provider: string | null;
+	providerSlug: string | null;
 	requestId: string | null;
 	inThinkingBlock: boolean;
 	completionChars: number;
+};
+
+type TurnRouteHealth = {
+	failedModels: Set<string>;
+	failedProviderSlugs: Set<string>;
+	preferredModels: string[];
+	updatedAtMs: number;
 };
 
 type ProviderUsage = {
@@ -171,6 +181,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 	private readonly maxTokens: number;
 	private readonly temperature: number;
 	private readonly maxSseBufferBytes: number;
+	private readonly turnRouteHealth = new Map<string, TurnRouteHealth>();
 
 	constructor(
 		private readonly ports: {
@@ -243,6 +254,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 			finishReason: null,
 			modelUsed: null,
 			provider: null,
+			providerSlug: null,
 			requestId: null,
 			inThinkingBlock: false,
 			completionChars: 0
@@ -334,7 +346,8 @@ export class AgenticChatOpenRouterReadOnlyClient
 		};
 
 		try {
-			for (const route of this.routes) {
+			for (const configuredRoute of this.routes) {
+				const route = this.applyTurnRouteHealth(configuredRoute, input.turnRunId);
 				lastAttemptedRoute = route;
 				attemptedRouteIds.push(route.id);
 				const attemptStartedAtMs = Date.now();
@@ -350,6 +363,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 					break;
 				} catch (error) {
 					if (input.signal.aborted) throwAbort(input.signal);
+					this.observeTurnRouteFailure(input.turnRunId, route.model, null);
 					const failure = routeFailure(route.id, error);
 					failures.push(failure);
 					await this.observeProviderAttempt(input, route, 'provider_attempt_ended', {
@@ -386,6 +400,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 			state.provider = canonicalOptionalHeader(
 				active.response.headers.get('x-openrouter-provider')
 			);
+			state.providerSlug = normalizeProviderSlug(state.provider) ?? null;
 			reader = active.response.body!.getReader();
 			const decoder = new TextDecoder();
 			let buffer = '';
@@ -460,6 +475,11 @@ export class AgenticChatOpenRouterReadOnlyClient
 					: null
 			});
 			activeAttemptEnded = true;
+			this.observeTurnRouteSuccess(
+				input.turnRunId,
+				state.modelUsed ?? active.route.model,
+				active.route.model
+			);
 			await account('success', null, false);
 			yield {
 				type: 'done',
@@ -473,6 +493,13 @@ export class AgenticChatOpenRouterReadOnlyClient
 					: undefined
 			};
 		} catch (error) {
+			if (active && !input.signal.aborted) {
+				this.observeTurnRouteFailure(
+					input.turnRunId,
+					state.modelUsed ?? active.route.model,
+					state.providerSlug ?? normalizeProviderSlug(state.provider)
+				);
+			}
 			if (active && !activeAttemptEnded) {
 				const aborted = input.signal.aborted;
 				await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
@@ -542,6 +569,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 					Accept: 'text/event-stream',
 					'HTTP-Referer': this.httpReferer,
 					'X-Title': this.appName,
+					...(route.kind === 'openrouter' ? { 'X-OpenRouter-Metadata': 'enabled' } : {}),
 					...(route.headers ?? {})
 				},
 				body: JSON.stringify(this.requestBody(route, input)),
@@ -590,6 +618,91 @@ export class AgenticChatOpenRouterReadOnlyClient
 			}
 			throw error;
 		}
+	}
+
+	private applyTurnRouteHealth(
+		route: AgenticChatOpenAiCompatibleRouteV1,
+		turnRunId: string
+	): AgenticChatOpenAiCompatibleRouteV1 {
+		const health = this.getTurnRouteHealth(turnRunId, false);
+		if (!health || route.kind !== 'openrouter') return route;
+		const models = [route.model, ...(route.fallbackModels ?? [])];
+		const preferred = models.filter((model) => health.preferredModels.includes(model));
+		const healthy = models.filter(
+			(model) => !health.preferredModels.includes(model) && !health.failedModels.has(model)
+		);
+		const failed = models.filter((model) => health.failedModels.has(model));
+		const reordered = [...preferred, ...healthy, ...failed];
+		const ignoredProviders = Array.from(
+			new Set([...(route.providerRouting?.ignore ?? []), ...health.failedProviderSlugs])
+		);
+		return {
+			...route,
+			model: reordered[0] ?? route.model,
+			fallbackModels: reordered.slice(1),
+			providerRouting: {
+				...(route.providerRouting ?? {}),
+				...(ignoredProviders.length > 0 ? { ignore: ignoredProviders } : {})
+			}
+		};
+	}
+
+	private observeTurnRouteFailure(
+		turnRunId: string,
+		model: string | null,
+		providerSlug: string | null
+	): void {
+		const health = this.getTurnRouteHealth(turnRunId, true)!;
+		if (model) {
+			health.failedModels.add(model);
+			health.preferredModels = health.preferredModels.filter(
+				(candidate) => candidate !== model
+			);
+		}
+		if (providerSlug) health.failedProviderSlugs.add(providerSlug);
+		health.updatedAtMs = Date.now();
+	}
+
+	private observeTurnRouteSuccess(
+		turnRunId: string,
+		model: string,
+		requestedModel: string
+	): void {
+		const health = this.getTurnRouteHealth(turnRunId, true)!;
+		const recoveredFromFailure =
+			health.failedModels.size > 0 || health.failedProviderSlugs.size > 0;
+		const resolvedFallback = model !== requestedModel;
+		health.failedModels.delete(model);
+		if (!recoveredFromFailure && !resolvedFallback) return;
+		health.preferredModels = [
+			model,
+			...health.preferredModels.filter((candidate) => candidate !== model)
+		];
+		health.updatedAtMs = Date.now();
+	}
+
+	private getTurnRouteHealth(turnRunId: string, create: boolean): TurnRouteHealth | null {
+		const now = Date.now();
+		for (const [candidateTurnRunId, health] of this.turnRouteHealth) {
+			if (now - health.updatedAtMs > TURN_ROUTE_HEALTH_TTL_MS) {
+				this.turnRouteHealth.delete(candidateTurnRunId);
+			}
+		}
+		const existing = this.turnRouteHealth.get(turnRunId);
+		if (existing || !create) return existing ?? null;
+		while (this.turnRouteHealth.size >= MAX_TURN_ROUTE_HEALTH_ENTRIES) {
+			const oldestTurnRunId = this.turnRouteHealth.keys().next().value as string | undefined;
+			if (!oldestTurnRunId) break;
+			this.turnRouteHealth.delete(oldestTurnRunId);
+		}
+		const health: TurnRouteHealth = {
+			failedModels: new Set(),
+			failedProviderSlugs: new Set(),
+			preferredModels: [],
+			updatedAtMs: now
+		};
+		this.turnRouteHealth.set(turnRunId, health);
+		return health;
 	}
 
 	private requestBody(
@@ -772,13 +885,24 @@ function parseSseLine(
 		);
 	}
 	const chunk = requireRecord(value, 'provider chunk');
+	const routerAttempt = lastOpenRouterAttempt(chunk.openrouter_metadata);
+	state.requestId = canonicalOptionalText(chunk.id) ?? state.requestId;
+	state.modelUsed =
+		canonicalOptionalText(routerAttempt?.model) ??
+		canonicalOptionalText(chunk.model) ??
+		state.modelUsed;
+	state.provider =
+		canonicalOptionalText(routerAttempt?.provider) ??
+		canonicalOptionalText(chunk.provider) ??
+		state.provider;
+	state.providerSlug =
+		canonicalOptionalText(chunk.provider_slug) ??
+		normalizeProviderSlug(state.provider) ??
+		state.providerSlug;
 	if (chunk.error !== undefined && chunk.error !== null) {
 		const error = providerFrameError(chunk.error);
 		throw new AgenticChatProviderNetworkError(error.message, error.retryable);
 	}
-	state.requestId = canonicalOptionalText(chunk.id) ?? state.requestId;
-	state.modelUsed = canonicalOptionalText(chunk.model) ?? state.modelUsed;
-	state.provider = canonicalOptionalText(chunk.provider) ?? state.provider;
 	if (chunk.usage !== undefined && chunk.usage !== null) state.rawUsage = chunk.usage;
 
 	const choices = chunk.choices;
@@ -1216,9 +1340,14 @@ function validateHeaders(
 			throw new Error('Agentic Chat provider route header name is invalid');
 		}
 		if (
-			['authorization', 'content-type', 'accept', 'http-referer', 'x-title'].includes(
-				key.toLowerCase()
-			)
+			[
+				'authorization',
+				'content-type',
+				'accept',
+				'http-referer',
+				'x-title',
+				'x-openrouter-metadata'
+			].includes(key.toLowerCase())
 		) {
 			throw new Error('Agentic Chat provider route cannot override protected headers');
 		}
@@ -1397,6 +1526,34 @@ function canonicalOptionalHeader(value: string | null): string | null {
 
 function canonicalOptionalText(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() ? value.trim().slice(0, 512) : null;
+}
+
+const PROVIDER_DISPLAY_NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+	'baidu qianfan': 'baidu',
+	'digital ocean': 'digitalocean',
+	'google vertex': 'google-vertex',
+	'moonshot ai': 'moonshotai',
+	nvidia: 'nvidia',
+	'weights & biases': 'wandb',
+	'z.ai': 'z-ai'
+});
+
+function normalizeProviderSlug(value: string | null | undefined): string | null {
+	const normalized = value?.trim().toLowerCase();
+	if (!normalized) return null;
+	const alias = PROVIDER_DISPLAY_NAME_ALIASES[normalized];
+	if (alias) return alias;
+	return /^[a-z0-9]+(?:[-/][a-z0-9]+)*$/.test(normalized) ? normalized : null;
+}
+
+function lastOpenRouterAttempt(value: unknown): Record<string, unknown> | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const attempts = (value as Record<string, unknown>).attempts;
+	if (!Array.isArray(attempts)) return null;
+	const lastAttempt = attempts.at(-1);
+	return lastAttempt && typeof lastAttempt === 'object' && !Array.isArray(lastAttempt)
+		? (lastAttempt as Record<string, unknown>)
+		: null;
 }
 
 function canonicalRequiredText(value: unknown, label: string, maximum: number): string {
