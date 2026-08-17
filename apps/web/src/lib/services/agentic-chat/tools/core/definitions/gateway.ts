@@ -13,7 +13,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 	function: {
 		name: 'declare_turn_contract',
 		description:
-			'Declare durable outcomes this turn must complete when reads are needed before writing. Call with the first reads. Do not use for answer-only turns or when a direct write can run immediately. This records intent, not a mutation. If a required target or value remains ambiguous after reading context, call request_turn_clarification. Otherwise complete every outcome or report the blocker.',
+			'Declare durable outcomes this turn must complete when reads are needed before writing. Call with the first reads. Do not use for answer-only turns, research that only informs a later possible change, or when a direct write can run immediately. Future context is not a commission to perform that later change now. This records intent, not a mutation. If a required target or value remains ambiguous after reading context, call request_turn_clarification. Otherwise complete every outcome or report the blocker.',
 		parameters: {
 			type: 'object',
 			properties: {
@@ -131,7 +131,7 @@ export const DECLARE_READ_ONLY_TURN_TOOL_DEFINITION: ChatToolDefinition = {
 	function: {
 		name: 'declare_read_only_turn',
 		description:
-			'Declare that this turn requires no durable data change. Never use this to replace an action the user commissioned with a proposal or approval request.',
+			'Declare that this turn requires no durable data change. Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change. Never use this to replace an action the user commissioned with a proposal or approval request.',
 		parameters: {
 			type: 'object',
 			properties: {
@@ -151,7 +151,7 @@ export const REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION: ChatToolDefinition = {
 	function: {
 		name: 'request_turn_clarification',
 		description:
-			'Use when a durable change is commissioned but a required target or value remains ambiguous after reading context. Ask instead of guessing; do not use this to postpone safe work.',
+			'Use when a durable change is commissioned but a required target or value remains ambiguous after reading context. Ask instead of guessing; do not use this to postpone safe work or because informational research will inform a later possible change.',
 		parameters: {
 			type: 'object',
 			properties: {

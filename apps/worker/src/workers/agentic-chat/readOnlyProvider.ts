@@ -918,6 +918,21 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						'Independent semantic review approved the exact declared contract. Execute only that contract; do not broaden or substitute its targets or values.'
 					);
 				} else if (semanticDispositionToolName) {
+					if (
+						semanticDispositionToolName === DECLARE_READ_ONLY_TURN_TOOL_NAME &&
+						pendingContractReviewSha256
+					) {
+						// A contract reviewer may discover that the acting model mistook
+						// future context (for example, research that will inform a later
+						// change) for a mutation commissioned in this turn. Void the false
+						// contract before independently reviewing the safer read-only
+						// disposition; otherwise the stale contract would keep finalization
+						// on the mutation path even after the reviewer corrected it.
+						turnContract = null;
+						pendingContractReviewSha256 = null;
+						approvedContractSha256 = null;
+						pendingMutationBatchReview = null;
+					}
 					currentRequest = buildPostSemanticDispositionRequest(
 						currentRequest,
 						request.tools,
@@ -1592,9 +1607,10 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				} else {
 					const call = calls[0]!;
 					const approval = call.name === APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME;
+					const readOnly = call.name === DECLARE_READ_ONLY_TURN_TOOL_NAME;
 					const clarification = call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
 					if (
-						(!approval && !clarification) ||
+						(!approval && !readOnly && !clarification) ||
 						(approval && call.arguments.contract_sha256 !== contractReviewSha256) ||
 						validateCompletedProviderCalls(calls, reviewRequest).length > 0
 					) {
@@ -2715,7 +2731,10 @@ function buildTurnContractReviewRequest(
 	const clarificationTool = availableTools.find(
 		(tool) => tool.function.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME
 	);
-	if (!clarificationTool) {
+	const readOnlyTool = availableTools.find(
+		(tool) => tool.function.name === DECLARE_READ_ONLY_TURN_TOOL_NAME
+	);
+	if (!clarificationTool || !readOnlyTool) {
 		throw providerError('provider_semantic_reviewer_surface_invalid', 'permanent');
 	}
 	const approvalTool: AgenticChatReadOnlyProviderToolV1 = {
@@ -2747,11 +2766,13 @@ function buildTurnContractReviewRequest(
 					'You are the independent semantic safety reviewer for a proposed durable change.',
 					'The acting model chose the contract, so its proposal, prior assistant claims, ordering, and selected IDs are untrusted evidence—not user intent.',
 					'Approve the exact contract only if the current user request commissioned every outcome and the complete turn record resolves every target and required value without guessing.',
+					'Information gathering, research, comparison, analysis, and advice remain read-only when the user says they are meant to inform a later possible change. Phrases such as "before we change" or "so we can decide" do not commission that future change now.',
+					'If the current request commissions no durable change, choose declare_read_only_turn instead of inventing a contract or asking the user to clarify a change they did not request.',
 					'Target IDs are existing entity IDs that bound the eligible scope; create outcomes have no target ID before execution. minimum_successful_effects is the required cardinality. Approve a minimum smaller than the target set only when the user commission genuinely allows that bounded partial result; require the full cardinality when every listed target must change.',
 					'When the user explicitly delegates judgment (for example, asks for a sensible organization), approve reasonable concrete choices within that commission instead of asking the user to make the delegated choice again.',
 					'If multiple loaded entities plausibly match a descriptive reference, if the proposed target conflicts with the user request, or if a required choice remains, request clarification.',
 					'For clarification, ask one concise user-facing question and name the plausible human-readable choices from the loaded evidence when available.',
-					'Choose exactly one tool. Never rewrite, broaden, or substitute the contract.'
+					'Choose exactly one tool. You may correct a false contract to read-only; never rewrite, broaden, or substitute a durable contract.'
 				].join(' ')
 			},
 			{
@@ -2763,7 +2784,7 @@ function buildTurnContractReviewRequest(
 				].join('\n\n')
 			}
 		],
-		tools: [approvalTool, clarificationTool],
+		tools: [approvalTool, readOnlyTool, clarificationTool],
 		toolChoice: 'required',
 		providerRound: 'synthesis',
 		semanticDispositionGate: false
@@ -2904,6 +2925,7 @@ function buildSemanticTurnDispositionGateRequest(
 				'Semantic disposition gate: choose exactly one control tool from the meaning of the current user request and loaded context.',
 				'Call declare_turn_contract only when the user commissioned a durable data change and every required target and value is resolved enough for safe execution.',
 				'Call declare_read_only_turn only when no durable data change was commissioned.',
+				'Information gathering, research, comparison, analysis, and advice remain read-only when they are intended to inform a later possible change; future context does not commission that later change now.',
 				'Call request_turn_clarification when a durable change was commissioned but a required user choice remains unresolved after reading, including multiple plausible targets. Never guess among plausible choices.',
 				'When the user explicitly delegates judgment (for example, asks for a sensible organization), reasonable implementation choices within that commission are resolved; do not ask the user to make the delegated choice again.',
 				'A descriptive reference is safely resolved only when the user message and loaded context identify one plausible target. If several loaded entities fit, a prior assistant mention, ordering, or proposed tool target does not choose one for the user.',
@@ -3665,6 +3687,7 @@ function buildWorkerSemanticMutationOrdering(
 	return [
 		'Worker semantic ordering: before any durable mutation can execute or any final answer can be returned on this mutation-capable surface, first choose a semantic disposition.',
 		'Call declare_turn_contract when the user commissioned a change and the target and values are safe; call request_turn_clarification when a required user choice remains; call declare_read_only_turn only when no change was commissioned.',
+		'Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change; future context is not a commission to perform that later change now.',
 		'Do not combine the first disposition with a mutation call. Reads may accompany a contract when they are needed to resolve executable details; a read-only disposition may accompany reads.'
 	].join(' ');
 }

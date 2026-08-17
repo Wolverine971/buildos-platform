@@ -1361,6 +1361,181 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 	});
 
+	it('lets the contract reviewer downgrade future-looking research to reviewed read-only', async () => {
+		const contractArguments: JsonObject = {
+			summary: 'Prepare a paid tier',
+			outcomes: [
+				{
+					action: 'create',
+					entity_kind: 'task',
+					description: 'Create the paid-tier implementation task',
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const dispositionArguments = {
+			reason: 'The user requested research to inform a possible later change, not the change.'
+		};
+		const dispositionSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(dispositionArguments), 'utf8')
+			.digest('hex');
+		const approvalArguments = {
+			reason: 'The current request asks only for pricing research.',
+			disposition_sha256: dispositionSha256
+		};
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-false-contract-1',
+				contractArguments,
+				'declare_turn_contract'
+			),
+			[
+				{ type: 'text', content: 'Here is the requested pricing research.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-read-only-1',
+				dispositionArguments,
+				'declare_read_only_turn'
+			),
+			providerReadRound(
+				'reviewer-read-only-approval-1',
+				approvalArguments,
+				'approve_read_only_turn_review'
+			)
+		]);
+		const providerInput = executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readOnlyTurnToolDefinition(),
+				clarificationToolDefinition(),
+				createTaskToolDefinition()
+			],
+			[
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'create_onto_task'
+			]
+		);
+		providerInput.requestPayload = {
+			...providerInput.requestPayload,
+			message: 'Look into what scheduling tools charge before we put a paid tier together.'
+		};
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ createOntoTask: true }
+		).prepare({
+			executionInput: providerInput,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		const downgradeSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-false-contract-1',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		expect(downgradeSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'reviewer-read-only-1',
+					toolName: 'declare_read_only_turn'
+				})
+			])
+		);
+		const contractReviewRequest = semanticReviewer.stream.mock.calls[0]?.[0];
+		expect(contractReviewRequest).toMatchObject({
+			toolChoice: 'required',
+			tools: [
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'approve_turn_contract_review' })
+				}),
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'declare_read_only_turn' })
+				}),
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'request_turn_clarification' })
+				})
+			]
+		});
+		expect(
+			contractReviewRequest?.messages.find((message) => message.role === 'system')?.content
+		).toContain('future change now');
+
+		const approvalSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-read-only-1',
+						'declare_read_only_turn',
+						dispositionArguments,
+						{ status: 'read_only_declared' }
+					)
+				]
+			})
+		);
+		expect(approvalSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'reviewer-read-only-approval-1',
+					toolName: 'approve_read_only_turn_review'
+				})
+			])
+		);
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 4,
+					results: [
+						durableReadFeedbackFor(
+							'reviewer-read-only-approval-1',
+							'approve_read_only_turn_review',
+							approvalArguments,
+							{
+								status: 'read_only_turn_review_approved',
+								disposition_sha256: dispositionSha256
+							}
+						)
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'Here is the requested pricing research.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(client.stream.mock.calls[1]?.[0].tools).not.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'create_onto_task' })
+				})
+			])
+		);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+	});
+
 	it('restores the reviewed write surface after the disposition gate declares a contract', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
 		const documentId = '42000000-0000-4000-8000-000000000004';
@@ -1614,6 +1789,9 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			tools: [
 				expect.objectContaining({
 					function: expect.objectContaining({ name: 'approve_turn_contract_review' })
+				}),
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'declare_read_only_turn' })
 				}),
 				expect.objectContaining({
 					function: expect.objectContaining({ name: 'request_turn_clarification' })
