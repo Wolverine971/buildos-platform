@@ -175,6 +175,7 @@ export function resolveFastChatTurnPreparation({
 	const tools = selectFastChatTools({
 		contextType,
 		surfaceProfile: selectedSurfaceProfile,
+		latestUserMessage,
 		turnIntent,
 		leanDiscovery: scaffold?.routing.leanDiscovery
 	});

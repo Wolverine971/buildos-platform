@@ -65,6 +65,25 @@ describe('resolveFastChatTurnPreparation', () => {
 		expect(toolNames(result)).toContain('move_document_in_tree');
 	});
 
+	it('admits live web tools for explicit comparative market research', () => {
+		const result = resolveFastChatTurnPreparation({
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			latestUserMessage:
+				'Look into what other scheduling tools for small service businesses charge — ' +
+				'I want a sense of the pricing landscape before we put a paid tier together.',
+			conversationSummary: null,
+			agentMetadata: null,
+			contextShiftHintTtlMs: 120_000,
+			nowMs: NOW_MS
+		});
+
+		expect(result.selectedSurfaceProfile).toBe('project_write_document');
+		expect(toolNames(result)).toContain('web_search');
+		expect(toolNames(result)).toContain('web_visit');
+	});
+
 	it('keeps subject-matter sensing active for advisory work', () => {
 		const result = resolveFastChatTurnPreparation({
 			contextType: 'project',
