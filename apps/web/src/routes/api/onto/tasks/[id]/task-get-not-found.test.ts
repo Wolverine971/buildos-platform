@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/onto/tasks/[id]/task-get-not-found.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { GET } from './+server';
 
 const logOntologyApiErrorMock = vi.hoisted(() => vi.fn());
 
@@ -75,7 +76,6 @@ describe('GET /api/onto/tasks/[id] not-found behavior', () => {
 
 	it('returns 404 without logging a database error when the task is absent', async () => {
 		const { supabase, maybeSingle } = createSupabaseMock({ data: null, error: null });
-		const { GET } = await import('./+server');
 		const taskId = 'f544b10d-c28f-4309-8952-18cefc33be8a';
 
 		const response = await GET({
@@ -100,7 +100,6 @@ describe('GET /api/onto/tasks/[id] not-found behavior', () => {
 			hint: null
 		};
 		const { supabase } = createSupabaseMock({ data: null, error: databaseError });
-		const { GET } = await import('./+server');
 
 		const response = await GET({
 			params: { id: 'f544b10d-c28f-4309-8952-18cefc33be8a' },

@@ -85,6 +85,7 @@ describe('TaskEditModal task loading', () => {
 		});
 
 		await screen.findByDisplayValue('Task A');
+		expect(screen.getByRole('dialog', { name: 'Task A' })).toBeInTheDocument();
 		const openButton = screen.getByRole('button', { name: 'Open Task details' });
 		const panelId = openButton.getAttribute('aria-controls');
 		const panel = document.getElementById(String(panelId));

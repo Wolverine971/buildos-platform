@@ -1,5 +1,5 @@
 // packages/twilio-service/src/__tests__/sms.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SMSService } from '../services/sms.service';
 import { TwilioClient } from '../client';
 
@@ -75,6 +75,10 @@ describe('SMS Service', () => {
 		smsService = new SMSService(mockTwilioClient, mockSupabase);
 	});
 
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it('should send task reminder SMS', async () => {
 		const params = {
 			userId: 'user-123',
@@ -133,6 +137,9 @@ describe('SMS Service', () => {
 	});
 
 	it('should format relative time correctly', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2026-08-18T12:00:00.000Z'));
+
 		const params = {
 			userId: 'user-123',
 			phoneNumber: '+15551234567',

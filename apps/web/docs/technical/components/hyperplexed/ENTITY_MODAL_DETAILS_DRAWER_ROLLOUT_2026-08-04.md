@@ -58,3 +58,23 @@ Follow-up verification:
 - Focused regression suites: 31/31 passing across the shared drawer, Task Edit interaction, and Document modal
 - Full `svelte-check`: no diagnostics in the touched modal files; the repository-wide command is currently blocked by one unrelated existing `{@const}` placement error in `routes/dashboard/calendar/+page.svelte`
 - Authenticated local desktop functional verification passed on real Task, Plan, and Goal records at 1280×720. Each drawer opened from the edge handle, kept its label fixed, exposed a 421px independent scroll viewport, reached its measured scroll maximum (Task 205px, Plan 85px, Goal 106px), and left Linked Entities closed initially. Task closed/open/end-of-scroll screenshots were inspected; light-theme and phone captures remain pending.
+
+## Minimal header follow-up — 2026-08-18
+
+Task, goal, plan, risk, milestone, event, and project editors now use one
+`EntityModalHeader` identity shell based on the document modal's compact geometry. Each header is a
+single row containing only its fixed icon, overflow-safe title, and existing modal-wide actions.
+State, priority, impact, due/sync indicators, and created/updated dates remain in their owning forms
+or Details surfaces instead of being duplicated in the modal chrome.
+
+The follow-up audit also gives every custom-header dialog an explicit accessible name, and names the
+Event editor's external-calendar icon action for assistive technology.
+
+The document modal remains independent and unchanged. Its breadcrumb, lifecycle badge, timing/save
+state, overflow menu, Document Interact action, and close action are intentional workspace context.
+
+Applied patterns: P1/P4/P6/P9/P13/P25.
+
+Verification: Svelte autofixer clean across the shared family; 33/33 focused header, drawer, Task,
+and Project tests pass; full `svelte-check` reports 0 errors and 0 warnings. Refreshed authenticated
+desktop/phone light/dark screenshots remain pending.

@@ -67,6 +67,7 @@ describe('DocTreeNode control quality', () => {
 		expect(dragHandle).toHaveClass('order-last');
 		expect(updatedAt.tagName).toBe('TIME');
 		expect(updatedAt).toHaveAttribute('datetime', node.updated_at);
+		expect(screen.queryByText('Has content')).not.toBeInTheDocument();
 	});
 
 	it('opens the action menu from the standard keyboard shortcut', async () => {

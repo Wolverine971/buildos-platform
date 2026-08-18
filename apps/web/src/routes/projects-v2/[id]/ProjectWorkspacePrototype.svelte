@@ -39,7 +39,6 @@
 	} from '$lib/components/project/project-page-data-controller';
 	import { parseDocStructure } from '$lib/services/ontology/doc-structure.service';
 	import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
-	import { formatRelativeTime } from '$lib/utils/date-utils';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { Document, Goal, Milestone, Plan, Project, Risk, Task } from '$lib/types/onto';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
@@ -264,14 +263,6 @@
 				return aDue - bDue;
 			});
 	});
-	const recentDocuments = $derived(
-		documents
-			.filter((document) => !document.deleted_at)
-			.slice()
-			.sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))
-			.slice(0, 4)
-	);
-
 	const visibleGoals = $derived(showAllGoals ? activeGoals : activeGoals.slice(0, 5));
 	const visiblePlans = $derived(showAllPlans ? activePlans : activePlans.slice(0, 5));
 	const visibleMilestones = $derived(
@@ -1368,83 +1359,47 @@
 							<FileText class="h-4 w-4 text-info" />
 						</div>
 						<div class="min-w-0">
-							<h2 class="text-base font-semibold">Project knowledge</h2>
+							<h2 class="text-base font-semibold">Project documents</h2>
 							<p class="text-sm text-muted-foreground">
-								Specs, decisions, research, and the context that keeps work
-								coherent.
+								Find, open, and organize the knowledge behind this project.
 							</p>
 						</div>
 					</div>
 				</div>
 
-				<div
-					class="grid gap-5 lg:gap-6 {recentDocuments.length > 0
-						? 'lg:grid-cols-[minmax(0,1fr)_18rem]'
-						: ''}"
-				>
-					<div class="min-w-0">
-						{#if isHydrating}
+				<div class="min-w-0">
+					{#if isHydrating}
+						<div
+							class="min-h-[420px] animate-pulse border-y border-border bg-card/40 motion-reduce:animate-none"
+							aria-label="Loading project documents"
+						></div>
+					{:else}
+						{#await import('$lib/components/project/ProjectDocumentsSection.svelte')}
 							<div
-								class="min-h-[420px] animate-pulse rounded-lg border border-border bg-card shadow-ink motion-reduce:animate-none"
+								class="min-h-[420px] animate-pulse border-y border-border bg-card/40 motion-reduce:animate-none"
 								aria-label="Loading project documents"
 							></div>
-						{:else}
-							{#await import('$lib/components/project/ProjectDocumentsSection.svelte')}
-								<div
-									class="min-h-[420px] animate-pulse rounded-lg border border-border bg-card shadow-ink motion-reduce:animate-none"
-									aria-label="Loading project documents"
-								></div>
-							{:then { default: ProjectDocumentsSection }}
-								<ProjectDocumentsSection
-									projectId={project.id}
-									{documents}
-									{canEdit}
-									{activeDocumentId}
-									onCreateDocument={createDocument}
-									onOpenDocument={(id) => openEntity('document', id)}
-									onMoveDocument={moveDocument}
-									onDeleteDocument={archiveDocument}
-									onDataLoaded={handleDocTreeDataLoaded}
-									onTreeRefChange={(ref) => (docTreeViewRef = ref)}
-									initialStructure={docTreeStructure}
-									initialDocuments={docTreeDocuments}
-									initialUnlinked={docTreeUnlinked}
-									initialArchived={docTreeArchived}
-									pollInterval={30000}
-									variant="workspace"
-								/>
-							{/await}
-						{/if}
-					</div>
-
-					{#if recentDocuments.length > 0}
-						<aside class="docs-recent-context order-first h-fit min-w-0 lg:order-last">
-							<header class="mb-2 flex items-end justify-between gap-3">
-								<p class="micro-label">RECENTLY UPDATED</p>
-								<p class="hidden text-xs text-muted-foreground lg:block">
-									Quick access
-								</p>
-							</header>
-							<div class="docs-recent-list">
-								{#each recentDocuments as document (document.id)}
-									<button
-										type="button"
-										class="entity-row docs-recent-row"
-										onclick={() => openEntity('document', document.id)}
-									>
-										<FileText class="h-4 w-4 shrink-0 text-info" />
-										<div class="min-w-0 flex-1">
-											<p class="truncate text-sm font-semibold">
-												{document.title}
-											</p>
-											<p class="truncate text-xs text-muted-foreground">
-												Updated {formatRelativeTime(document.updated_at)}
-											</p>
-										</div>
-									</button>
-								{/each}
-							</div>
-						</aside>
+						{:then { default: ProjectDocumentsSection }}
+							<ProjectDocumentsSection
+								projectId={project.id}
+								{documents}
+								{canEdit}
+								{activeDocumentId}
+								onCreateDocument={createDocument}
+								onOpenDocument={(id) => openEntity('document', id)}
+								onMoveDocument={moveDocument}
+								onDeleteDocument={archiveDocument}
+								onDataLoaded={handleDocTreeDataLoaded}
+								onTreeRefChange={(ref) => (docTreeViewRef = ref)}
+								initialStructure={docTreeStructure}
+								initialDocuments={docTreeDocuments}
+								initialUnlinked={docTreeUnlinked}
+								initialArchived={docTreeArchived}
+								maxInitialDepth={1}
+								pollInterval={30000}
+								variant="workspace"
+							/>
+						{/await}
 					{/if}
 				</div>
 			</div>
@@ -1739,29 +1694,6 @@
 		padding: 0 0.25rem 0.75rem;
 	}
 
-	.docs-recent-context {
-		border-top: 1px solid hsl(var(--border));
-		padding-top: 0.75rem;
-	}
-
-	.docs-recent-list {
-		display: flex;
-		min-width: 0;
-		gap: 0.5rem;
-		overflow-x: auto;
-		overscroll-behavior-x: contain;
-		padding-bottom: 0.375rem;
-		scroll-padding-inline: 0.125rem;
-		scroll-snap-type: x mandatory;
-	}
-
-	.docs-recent-row {
-		flex: 0 0 min(16rem, 78vw);
-		border: 1px solid hsl(var(--border));
-		background: hsl(var(--card));
-		scroll-snap-align: start;
-	}
-
 	.entity-row {
 		display: flex;
 		width: 100%;
@@ -1904,27 +1836,6 @@
 	@media (prefers-reduced-motion: no-preference) {
 		.workspace-panel {
 			animation: workspace-panel-in 180ms cubic-bezier(0.4, 0, 0.2, 1);
-		}
-	}
-
-	@media (min-width: 1024px) {
-		.docs-recent-context {
-			border-top: 0;
-			border-left: 1px solid hsl(var(--border));
-			padding-top: 0;
-			padding-left: 1rem;
-		}
-
-		.docs-recent-list {
-			display: block;
-			overflow: visible;
-			padding-bottom: 0;
-		}
-
-		.docs-recent-row {
-			width: 100%;
-			border: 0;
-			background: transparent;
 		}
 	}
 

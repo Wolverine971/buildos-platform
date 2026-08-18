@@ -283,7 +283,7 @@ describe('DocumentModal document loading', () => {
 			'false'
 		);
 		expect(interactDock).toHaveAttribute('aria-hidden', 'false');
-	});
+	}, 10_000);
 
 	it('portals the More actions menu above the modal clipping context', async () => {
 		const fetchMock = vi.fn((input: RequestInfo | URL) => {

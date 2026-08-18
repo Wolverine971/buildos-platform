@@ -109,7 +109,7 @@
 	let documents = $state<Record<string, OntoDocument>>(getInitialDocuments());
 	let unlinked = $state<OntoDocument[]>(getInitialUnlinked());
 	let archived = $state<OntoDocument[]>(getInitialArchived());
-	let archivedExpanded = $state(true);
+	let archivedExpanded = $state(false);
 	let expandedIds = $state<Set<string>>(new Set());
 	let currentVersion = $state(getInitialStructure()?.version ?? 0);
 	let hasUpdate = $state(false);

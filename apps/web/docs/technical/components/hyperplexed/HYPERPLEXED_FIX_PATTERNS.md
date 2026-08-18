@@ -553,6 +553,28 @@ Use a strong border/seam rather than overlay shadow to communicate the split. Th
 the modal's Frame texture; the dock may use a Strip header and a plain readable body so one surface
 does not stack competing textures.
 
+### P25 · Keep entity editor headers identity-only
+
+**Finding:** sibling entity editors repeat state, priority, impact, and date metadata in their modal
+headers even though the form or details rail already owns those controls. The duplicated metadata
+makes some members of the family two or three rows taller and causes the header geometry to drift.
+
+Use one shared identity shell for routine entity editors:
+
+1. Reserve the header for the entity icon, a single overflow-safe title, and modal-wide actions such
+   as chat, open-external, and close.
+2. Keep lifecycle state, priority, dates, impact, sync state, and similar record metadata in the
+   primary form or details surface where it can be understood and changed.
+3. Let purpose-built workspaces retain extra header context only when it directly supports the
+   primary task. BuildOS documents keep their breadcrumb, save state, and document actions because
+   the editor is the workspace; this is an explicit exception, not the default entity pattern.
+4. Centralize padding, icon geometry, title type, truncation, and the action seam in one component.
+   Keep action content extensible through a snippet instead of adding metadata props to the shell.
+5. The identity shell itself is static and introduces no motion. Any action feedback must retain the
+   shared reduced-motion behavior (P11), accessible names, and focus treatment (P13).
+
+Pair this with P1 shrink safety, P4 metadata demotion, P6 decluttering, and P9 fixed icon geometry.
+
 ---
 
 ## Using this doc in an audit

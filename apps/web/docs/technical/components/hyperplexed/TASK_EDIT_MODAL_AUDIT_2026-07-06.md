@@ -50,7 +50,7 @@ Scope applied (DJ, 2026-07-06): **Recommended 80% = all Tier 1 + T2-1 + T2-2 + T
 ### Deferred / carved-out
 
 - **T2-3 Destructive series management (deferred — needs DJ input).** "Delete Series" → two red buttons (Delete Upcoming / Force Delete All) still lives inside the Timeline sub-section next to the date fields. It's a distinct, dangerous action co-located with routine editing ("add separation between distinct actions"). Not moved — DJ to decide the target (own sub-block vs. overflow).
-- **T3-1 Header status badge (deferred — optional).** `stateMeta`/`priorityMeta` (rich labels + variants) are computed but used only in aria-labels; surfacing a quiet state/priority badge in the header would make status glanceable with no new data. Not applied.
+- **T3-1 Header status badge (closed — declined 2026-08-18).** Entity edit headers now intentionally stay identity-only; state and priority remain in the form/details surface instead of being duplicated in modal chrome. → P4+P25
 - **Brain-bolt `.webp` chat button (accepted brand exception).** A raster glyph among lucide icons (the "chat-launcher img stack" deferred from the nav audit). DJ chose to keep it as a deliberate brand mark; only its container radius was aligned. Not a defect to fix — documented as an intentional carve-out. → P9
 - **Cross-modal note (out of scope).** `TaskCreateModal` uses an uppercase `tracking-wider` Title label while this modal uses sentence-case; the edit modal's sentence case is the cleaner pattern. Reconcile when the create modal is audited.
 

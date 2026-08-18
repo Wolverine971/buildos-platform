@@ -24,6 +24,7 @@
 		initialDocuments = {},
 		initialUnlinked = [],
 		initialArchived = [],
+		maxInitialDepth = 3,
 		pollInterval = 30000,
 		variant = 'collapsible'
 	}: {
@@ -48,6 +49,7 @@
 		initialDocuments?: Record<string, OntoDocument>;
 		initialUnlinked?: OntoDocument[];
 		initialArchived?: OntoDocument[];
+		maxInitialDepth?: number;
 		pollInterval?: number;
 		variant?: 'collapsible' | 'workspace';
 	} = $props();
@@ -73,6 +75,7 @@
 		{initialDocuments}
 		{initialUnlinked}
 		{initialArchived}
+		{maxInitialDepth}
 		{pollInterval}
 		enableDragDrop={canEdit}
 		selectedDocumentId={activeDocumentId}
@@ -80,7 +83,9 @@
 {/snippet}
 
 <section
-	class="overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak"
+	class="overflow-hidden {variant === 'workspace'
+		? 'border-y border-border bg-card/40'
+		: 'rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak'}"
 	aria-label={variant === 'workspace' ? 'Project document tree' : undefined}
 >
 	{#if variant === 'collapsible'}

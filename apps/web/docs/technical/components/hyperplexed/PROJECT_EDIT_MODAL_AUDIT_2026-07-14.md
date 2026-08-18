@@ -21,7 +21,7 @@
 
 - **Settings header:** redundant “Controls / Project operations” copy became the single plain label “Project settings.” → P6
 - **Mobile density:** the main editor no longer imposes a `50vh` minimum on phones; shell gaps, rail padding, and footer padding step up only at larger breakpoints. No fields or actions were hidden. → P3+P8
-- **Date metadata:** shared defensive date formatters now drive both header subtext and record metadata, while the modal has an accessible dialog label. → P4+P13
+- **Date metadata:** shared defensive date formatters drive record metadata, while the modal retains an accessible dialog label. The 2026-08-18 family pass removed duplicated dates from the identity-only header. → P4+P13+P25
 
 ## Tier 3 — polish/signature
 

@@ -46,6 +46,7 @@
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import EntityModalDetailsDrawer from './EntityModalDetailsDrawer.svelte';
+	import EntityModalHeader from './EntityModalHeader.svelte';
 	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import EntityCollaborationAction from './EntityCollaborationAction.svelte';
 	import { PLAN_STATES, type Plan } from '$lib/types/onto';
@@ -457,73 +458,52 @@
 	}
 </script>
 
+{#snippet headerIcon()}
+	<Clock class="w-5 h-5" />
+{/snippet}
+
+{#snippet headerActions()}
+	<!-- Chat about this plan button -->
+	<button
+		type="button"
+		onclick={openChatAbout}
+		disabled={isLoading || isSaving || !plan}
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+		title="Chat about this plan"
+	>
+		<img
+			src="/brain-bolt.webp"
+			alt="Chat about this plan"
+			class="w-6 h-6 rounded object-cover"
+		/>
+	</button>
+	<!-- Close button -->
+	<button
+		type="button"
+		onclick={handleClose}
+		disabled={isSaving || isDeleting}
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+		aria-label="Close modal"
+	>
+		<X class="w-5 h-5" />
+	</button>
+{/snippet}
+
 <Modal
 	bind:isOpen={modalOpen}
 	size="xl"
 	onClose={handleClose}
 	closeOnEscape={!isSaving && !isDeleting}
 	showCloseButton={false}
+	ariaLabel={name || plan?.name || 'Plan'}
 	customClasses="wt-plate"
 >
 	{#snippet header()}
-		<!-- Compact Inkprint header -->
-		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
-		>
-			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
-				>
-					<Clock class="w-5 h-5" />
-				</div>
-				<div class="min-w-0 flex-1">
-					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
-					>
-						{name || plan?.name || 'Plan'}
-					</h2>
-					<div class="mt-1 flex flex-wrap items-center gap-1.5">
-						<Badge variant={stateMeta.variant} size="sm">{stateMeta.label}</Badge>
-					</div>
-					<p class="text-2xs sm:text-xs text-muted-foreground mt-1">
-						{#if plan?.created_at}Created {new Date(plan.created_at).toLocaleDateString(
-								undefined,
-								{ month: 'short', day: 'numeric' }
-							)}{/if}{#if plan?.updated_at && plan.updated_at !== plan.created_at}
-							· Updated {new Date(plan.updated_at).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							})}{/if}
-					</p>
-				</div>
-			</div>
-			<div class="flex items-center gap-1.5">
-				<!-- Chat about this plan button -->
-				<button
-					type="button"
-					onclick={openChatAbout}
-					disabled={isLoading || isSaving || !plan}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-					title="Chat about this plan"
-				>
-					<img
-						src="/brain-bolt.webp"
-						alt="Chat about this plan"
-						class="w-6 h-6 rounded object-cover"
-					/>
-				</button>
-				<!-- Close button -->
-				<button
-					type="button"
-					onclick={handleClose}
-					disabled={isSaving || isDeleting}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-					aria-label="Close modal"
-				>
-					<X class="w-5 h-5" />
-				</button>
-			</div>
-		</div>
+		<EntityModalHeader
+			title={name || plan?.name || 'Plan'}
+			icon={headerIcon}
+			actions={headerActions}
+		/>
 	{/snippet}
 
 	{#snippet children()}

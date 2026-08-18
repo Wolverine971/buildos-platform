@@ -55,6 +55,7 @@
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import EntityModalDetailsDrawer from './EntityModalDetailsDrawer.svelte';
+	import EntityModalHeader from './EntityModalHeader.svelte';
 	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -373,83 +374,52 @@
 	}
 </script>
 
+{#snippet headerIcon()}
+	<AlertTriangle class="w-5 h-5" />
+{/snippet}
+
+{#snippet headerActions()}
+	<!-- Chat about this risk button -->
+	<button
+		type="button"
+		onclick={openChatAbout}
+		disabled={isLoading || isSaving || !risk}
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+		title="Chat about this risk"
+	>
+		<img
+			src="/brain-bolt.webp"
+			alt="Chat about this risk"
+			class="w-6 h-6 rounded object-cover"
+		/>
+	</button>
+	<!-- Inkprint close button -->
+	<button
+		type="button"
+		onclick={handleClose}
+		disabled={isSaving || isDeleting}
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+		aria-label="Close modal"
+	>
+		<X class="w-5 h-5" />
+	</button>
+{/snippet}
+
 <Modal
 	bind:isOpen={modalOpen}
 	size="xl"
 	onClose={handleClose}
 	closeOnEscape={!isSaving && !isDeleting}
 	showCloseButton={false}
+	ariaLabel={title || risk?.title || 'Risk'}
 	customClasses="wt-plate"
 >
 	{#snippet header()}
-		<!-- Compact Inkprint header -->
-		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
-		>
-			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
-				>
-					<AlertTriangle class="w-5 h-5" />
-				</div>
-				<div class="min-w-0 flex-1">
-					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
-					>
-						{title || risk?.title || 'Risk'}
-					</h2>
-					<div class="mt-1 flex flex-wrap items-center gap-1.5">
-						<Badge variant={stateMeta.variant} size="sm">{stateMeta.label}</Badge>
-						{#if impactBadge}
-							<Badge
-								variant={impact === 'critical'
-									? 'error'
-									: impact === 'high'
-										? 'warning'
-										: 'default'}
-								size="sm">{impactBadge.label} Impact</Badge
-							>
-						{/if}
-					</div>
-					<p class="text-2xs sm:text-xs text-muted-foreground mt-1">
-						{#if risk?.created_at}Created {new Date(risk.created_at).toLocaleDateString(
-								undefined,
-								{ month: 'short', day: 'numeric' }
-							)}{/if}{#if risk?.updated_at && risk.updated_at !== risk.created_at}
-							· Updated {new Date(risk.updated_at).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							})}{/if}
-					</p>
-				</div>
-			</div>
-			<div class="flex items-center gap-1.5">
-				<!-- Chat about this risk button -->
-				<button
-					type="button"
-					onclick={openChatAbout}
-					disabled={isLoading || isSaving || !risk}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
-					title="Chat about this risk"
-				>
-					<img
-						src="/brain-bolt.webp"
-						alt="Chat about this risk"
-						class="w-6 h-6 rounded object-cover"
-					/>
-				</button>
-				<!-- Inkprint close button -->
-				<button
-					type="button"
-					onclick={handleClose}
-					disabled={isSaving || isDeleting}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
-					aria-label="Close modal"
-				>
-					<X class="w-5 h-5" />
-				</button>
-			</div>
-		</div>
+		<EntityModalHeader
+			title={title || risk?.title || 'Risk'}
+			icon={headerIcon}
+			actions={headerActions}
+		/>
 	{/snippet}
 
 	{#snippet children()}

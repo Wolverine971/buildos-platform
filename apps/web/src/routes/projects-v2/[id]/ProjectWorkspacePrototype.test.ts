@@ -49,6 +49,22 @@ function contextDocument() {
 	};
 }
 
+function projectDocument() {
+	return {
+		id: '44444444-4444-4444-8444-444444444444',
+		project_id: PROJECT_ID,
+		title: 'Launch research',
+		type_key: 'document',
+		state_key: 'active',
+		content: '# Launch research',
+		props: {},
+		created_by: '22222222-2222-4222-8222-222222222222',
+		created_at: '2026-08-01T12:00:00.000Z',
+		updated_at: '2026-08-14T12:00:00.000Z',
+		deleted_at: null
+	};
+}
+
 function projectData(overrides: Record<string, unknown> = {}) {
 	return {
 		skeleton: false,
@@ -351,5 +367,37 @@ describe('ProjectWorkspacePrototype edge states', () => {
 			expect(screen.getByRole('tabpanel', { name: 'Docs 0' })).toBeInTheDocument();
 		});
 		expect(screen.queryByText('RECENTLY UPDATED')).not.toBeInTheDocument();
+	});
+
+	it('gives documents one full-width hierarchy without a duplicate recent list', async () => {
+		const document = projectDocument();
+		render(ProjectWorkspacePrototype, {
+			props: {
+				data: projectData({
+					documents: [document],
+					project: {
+						...projectData().project,
+						doc_structure: {
+							version: 1,
+							root: [{ id: document.id, order: 0 }]
+						}
+					}
+				}) as any
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('tab', { name: 'Docs 1' }));
+		const docs = await screen.findByRole('tabpanel', { name: 'Docs 1' });
+
+		expect(
+			within(docs).getByRole('heading', { name: 'Project documents' })
+		).toBeInTheDocument();
+		expect(
+			within(docs).getByText('Find, open, and organize the knowledge behind this project.')
+		).toBeInTheDocument();
+		expect(await within(docs).findByLabelText('Project document tree')).toBeInTheDocument();
+		expect(within(docs).getByText('Launch research')).toBeInTheDocument();
+		expect(within(docs).queryByText('RECENTLY UPDATED')).not.toBeInTheDocument();
+		expect(within(docs).queryByText('Quick access')).not.toBeInTheDocument();
 	});
 });

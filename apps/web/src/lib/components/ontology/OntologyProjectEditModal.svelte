@@ -43,6 +43,7 @@
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import EntityModalDetailsDrawer from './EntityModalDetailsDrawer.svelte';
+	import EntityModalHeader from './EntityModalHeader.svelte';
 	import { PROJECT_STATES, type Project, type Document } from '$lib/types/onto';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { hasEntityReferences } from '$lib/utils/entity-reference-parser';
@@ -231,15 +232,8 @@
 		});
 	}
 
-	const createdDateShort = $derived(formatDateLabel(project?.created_at));
-	const updatedDateShort = $derived(formatDateLabel(project?.updated_at));
 	const createdDateLong = $derived(formatDateLabel(project?.created_at, true));
 	const updatedDateLong = $derived(formatDateLabel(project?.updated_at, true));
-	const showUpdatedDate = $derived(
-		Boolean(
-			project?.updated_at && project.updated_at !== project.created_at && updatedDateShort
-		)
-	);
 
 	// Computed: has existing next step
 	const hasNextStep = $derived(!!nextStepShort.trim());
@@ -661,6 +655,54 @@
 	}
 </script>
 
+{#snippet headerIcon()}
+	<Compass class="w-5 h-5" />
+{/snippet}
+
+{#snippet headerActions()}
+	<!--
+		Project image generation is temporarily disabled.
+		Icon Studio trigger intentionally commented out.
+	-->
+	<!--
+	<Button
+		type="button"
+		onclick={handleOpenIconStudio}
+		variant="ghost"
+		size="sm"
+		class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-thread tx-weak"
+		disabled={isSaving || !project}
+		title="Open icon studio"
+	>
+		<Sparkles class="w-4 h-4 sm:w-5 sm:h-5" />
+	</Button>
+	-->
+	<!-- Chat about this project button -->
+	<button
+		type="button"
+		onclick={openChatAbout}
+		disabled={isSaving || !project}
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+		title="Chat about this project"
+	>
+		<img
+			src="/brain-bolt.webp"
+			alt="Chat about this project"
+			class="w-6 h-6 rounded object-cover"
+		/>
+	</button>
+	<!-- Inkprint close button -->
+	<button
+		type="button"
+		onclick={handleClose}
+		disabled={isSaving}
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+		aria-label="Close modal"
+	>
+		<X class="h-5 w-5" />
+	</button>
+{/snippet}
+
 <Modal
 	bind:isOpen
 	onClose={handleClose}
@@ -671,83 +713,11 @@
 	customClasses="!h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem-var(--keyboard-height,0px))] sm:!h-auto sm:!max-h-[92dvh] lg:!max-w-7xl"
 >
 	{#snippet header()}
-		<!-- Compact Inkprint header -->
-		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
-		>
-			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div class="min-w-0 flex-1">
-					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
-					>
-						{name || project?.name || 'Project Settings'}
-					</h2>
-					{#if createdDateShort || showUpdatedDate}
-						<p
-							class="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1 text-2xs leading-tight text-muted-foreground"
-						>
-							{#if createdDateShort && project?.created_at}
-								<span class="whitespace-nowrap"
-									>Created <time datetime={project.created_at}
-										>{createdDateShort}</time
-									></span
-								>
-							{/if}
-							{#if showUpdatedDate && project?.updated_at}
-								<span class="inline-flex items-center gap-1 whitespace-nowrap">
-									{#if createdDateShort}<span aria-hidden="true">·</span>{/if}
-									Updated
-									<time datetime={project.updated_at}>{updatedDateShort}</time>
-								</span>
-							{/if}
-						</p>
-					{/if}
-				</div>
-			</div>
-			<div class="flex items-center gap-1.5">
-				<!--
-					Project image generation is temporarily disabled.
-					Icon Studio trigger intentionally commented out.
-				-->
-				<!--
-				<Button
-					type="button"
-					onclick={handleOpenIconStudio}
-					variant="ghost"
-					size="sm"
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-thread tx-weak"
-					disabled={isSaving || !project}
-					title="Open icon studio"
-				>
-					<Sparkles class="w-4 h-4 sm:w-5 sm:h-5" />
-				</Button>
-				-->
-				<!-- Chat about this project button -->
-				<button
-					type="button"
-					onclick={openChatAbout}
-					disabled={isSaving || !project}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
-					title="Chat about this project"
-				>
-					<img
-						src="/brain-bolt.webp"
-						alt="Chat about this project"
-						class="w-6 h-6 rounded object-cover"
-					/>
-				</button>
-				<!-- Inkprint close button -->
-				<button
-					type="button"
-					onclick={handleClose}
-					disabled={isSaving}
-					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-					aria-label="Close modal"
-				>
-					<X class="h-4 w-4" />
-				</button>
-			</div>
-		</div>
+		<EntityModalHeader
+			title={name || project?.name || 'Project Settings'}
+			icon={headerIcon}
+			actions={headerActions}
+		/>
 	{/snippet}
 
 	{#snippet children()}

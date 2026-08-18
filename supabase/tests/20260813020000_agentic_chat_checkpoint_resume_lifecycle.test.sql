@@ -106,7 +106,7 @@ INSERT INTO public.chat_turn_checkpoints(
 	'{"instruction":"Continue after the user identifies the task.","missing_field":"task_id"}',
 	'{"action":"ask_user"}',
 	'Which exact task should I update?',
-	'2026-08-14T12:00:00Z',
+	transaction_timestamp() + interval '1 day',
 	'2026-08-13T10:00:00Z'
 );
 
@@ -205,7 +205,7 @@ INSERT INTO public.chat_turn_checkpoints(
 	'fa100000-0000-4000-8000-000000000001',
 	'supervisor_question', 'active', 'legacy_resume', '{}',
 	'{"known":"value"}', '{}', 'Continue?',
-	'2026-08-14T12:00:00Z', '2026-08-13T10:05:00Z'
+	transaction_timestamp() + interval '1 day', '2026-08-13T10:05:00Z'
 );
 
 SET ROLE service_role;
@@ -293,7 +293,7 @@ SELECT pg_temp.assert_true(
 
 -- Expired active rows do not require a resume snapshot.
 UPDATE public.chat_turn_checkpoints
-SET expires_at = '2026-08-12T00:00:00Z'
+SET expires_at = transaction_timestamp() - interval '1 day'
 WHERE id = 'c5000000-0000-4000-8000-000000000002';
 SET ROLE service_role;
 INSERT INTO public.chat_turn_runs(
@@ -443,7 +443,7 @@ INSERT INTO public.chat_turn_checkpoints(
 	'eb200000-0000-4000-8000-000000000002',
 	'ea100000-0000-4000-8000-000000000001',
 	'supervisor_resume', 'active', 'concurrent_resume', '{}',
-	'{"known":"race"}', '{}', '2026-08-14T12:00:00Z'
+	'{"known":"race"}', '{}', transaction_timestamp() + interval '1 day'
 );
 
 CREATE OR REPLACE FUNCTION public.test_admit_checkpoint_resume_race(

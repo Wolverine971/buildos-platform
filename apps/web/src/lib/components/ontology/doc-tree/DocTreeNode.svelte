@@ -336,13 +336,6 @@
 				{node.title}
 			</span>
 
-			<!-- Content indicator -->
-			{#if !isFolder && node.has_content}
-				<span class="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent" title="Has content">
-					<span class="sr-only">Has content</span>
-				</span>
-			{/if}
-
 			<!-- Freshness is useful at a glance, but stays out of the way on narrow screens. -->
 			<time
 				datetime={node.updated_at}

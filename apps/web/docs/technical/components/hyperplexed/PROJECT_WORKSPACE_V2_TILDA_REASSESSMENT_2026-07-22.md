@@ -440,3 +440,44 @@ recognizable mode.
 - Authenticated desktop and phone-width visual verification remains owed. The local browser reached a
   connection-refused page before the dev server restarted, after which its URL safety policy blocked
   re-navigation; no alternate browser or bypass was used.
+
+## Docs workspace simplification — shipped 2026-08-18
+
+The Docs tab still split attention between the document tree and a duplicate Recently Updated rail,
+then added card chrome, content-presence dots, three levels of automatic expansion, and an open
+Archived section. The result looked like a dashboard about documents instead of the familiar place
+where people find, open, create, and organize them.
+
+- Renamed the interior from `Project knowledge` to the literal `Project documents` and added one
+  purpose line: find, open, and organize the knowledge behind this project (**P4, P6**).
+- Removed the Recently Updated / Quick access duplicate. Search and the canonical tree remain the
+  only primary discovery surfaces, so a document no longer appears twice in the same viewport
+  (**P6, P22**).
+- Let the tree occupy the full workspace width and replaced the rounded, elevated workspace card
+  with a quiet ruled surface. The classic collapsible Documents section keeps its existing card
+  treatment on the original project route (**P2, P3, P22**).
+- Removed the decorative content-presence dot while retaining useful Updated metadata and the
+  exceptional Public action/badge (**P4, P8**).
+- Reduced automatic tree disclosure from three levels to one for this workspace and collapsed
+  Archived by default. Both nested and archived documents remain available through explicit,
+  familiar disclosure controls; saved user expansion state still takes precedence (**P4, P7,
+  P13**).
+- Preserved search, New document, opening, drag/reorder, context actions, public sharing, move,
+  archive, Unlinked recovery, Archived recovery, polling, and the existing document modals
+  (**P13, P20**).
+
+### Docs follow-up verification
+
+- The focused set now has **14 passing tests**: six workspace-shell/content tests, three Work-board
+  tests, three document-row control tests, and two new tree progressive-disclosure tests.
+- The official Svelte analyzer found no issue in the three shared Docs components. Its findings in
+  the workspace component are the existing shallow-history `resolve()` warnings and mature
+  `bind:this` suggestions; the full web `svelte-check` reports **0 errors and 0 warnings**.
+- Authenticated local verification on the populated Fading Crown project confirmed one **1230 px**
+  full-width tree at the 1280 px desktop viewport, eight rendered rows with a **44 px** minimum row
+  height, and no Recent rail or content dots.
+- At the audited **390 × 844 px** viewport, the document tree measured **372 px** inside the page and
+  the document search measured **320 px**. The document hierarchy remained readable with **zero
+  horizontal overflow**.
+- Console findings were limited to the existing Vite websocket collision and development-time
+  module-externalization warnings; no Docs workspace application error appeared.
