@@ -4,20 +4,18 @@
 
 	Two layouts in one component, CSS-toggled by viewport:
 
-	Desktop (sm+): two-column "what's happening" header
-		- Left: Recently Done — derived from project activity logs
-		- Right: Up Next — upcoming scheduled work, sorted by date
+	Desktop (sm+): two-column activity workspace
+		- Left: Change history from project activity logs
+		- Right: Schedule of overdue and upcoming dated work
 
-	Mobile (< sm): single card with a segmented Recent / Up next tab strip.
+	Mobile (< sm): single surface with a segmented History / Schedule tab strip.
 		Only one list is visible at a time. Tap targets and meta rows are
 		tuned for thumb use.
 
-	Tiles are dense so the page reads as a status board, not a doc index.
-	Click a tile to open its entity.
+	Rows stay dense and clickable so the page reads like a familiar activity feed.
 -->
 <script lang="ts">
 	import {
-		ArrowRight,
 		Calendar,
 		Clock,
 		FileText,
@@ -384,10 +382,6 @@
 				return 'chat';
 			case 'brain_dump':
 				return 'brain dump';
-			case 'form':
-				return 'form';
-			case 'api':
-				return 'api';
 			case 'agent_call':
 				return 'agent call';
 			default:
@@ -453,12 +447,12 @@
 				? 'text-foreground bg-muted/40 border-b-2 border-accent -mb-px'
 				: 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-b-2 border-transparent'}"
 		>
-			<ArrowRight
+			<Calendar
 				class="w-3.5 h-3.5 {mobileTab === 'next'
 					? 'text-foreground'
 					: 'text-muted-foreground'}"
 			/>
-			<span>Up next</span>
+			<span>Schedule</span>
 			{#if upcomingItems.length > 0}
 				<span class="text-2xs text-muted-foreground/80">
 					({mode === 'workspace' ? allUpcomingItems.length : upcomingItems.length})
@@ -476,8 +470,7 @@
 		>
 			{#if upcomingItems.length === 0}
 				<p class="text-xs text-muted-foreground px-2 py-4 text-center italic">
-					Nothing scheduled. Add a date to a task, milestone, goal, or event to see it
-					here.
+					No dated work or events yet. Add a date to see it here.
 				</p>
 			{:else}
 				{#each upcomingItems as item (item.id)}
@@ -541,8 +534,8 @@
 						onclick={() => (showAllUpcoming = !showAllUpcoming)}
 					>
 						{showAllUpcoming
-							? 'Show fewer upcoming items'
-							: `Show all ${allUpcomingItems.length} upcoming items`}
+							? 'Show fewer dated items'
+							: `Show all ${allUpcomingItems.length} dated items`}
 					</button>
 				{/if}
 			{/if}
@@ -659,8 +652,10 @@
 				</div>
 			</div>
 			{#if !logsLoading}
-				<span class="micro-label text-muted-foreground/70">
-					{mode === 'workspace' ? logsTotal : recentTiles.length}
+				<span class="shrink-0 text-2xs font-medium text-muted-foreground">
+					{mode === 'workspace'
+						? `${logsTotal} ${logsTotal === 1 ? 'change' : 'changes'}`
+						: recentTiles.length}
 				</span>
 			{/if}
 		</header>
@@ -749,7 +744,7 @@
 		</div>
 	</div>
 
-	<!-- Up Next -->
+	<!-- Schedule -->
 	<div
 		class={mode === 'workspace'
 			? 'activity-workspace-section min-w-0'
@@ -763,18 +758,20 @@
 		>
 			<div class="flex items-center gap-2">
 				<div class="w-7 h-7 rounded-md bg-warning/10 flex items-center justify-center">
-					<ArrowRight class="w-3.5 h-3.5 text-warning" />
+					<Calendar class="w-3.5 h-3.5 text-warning" />
 				</div>
 				<div>
-					<p class="text-xs sm:text-sm font-semibold text-foreground">Up next</p>
+					<p class="text-xs sm:text-sm font-semibold text-foreground">Schedule</p>
 					<p class="text-2xs text-muted-foreground sm:text-xs">
-						Scheduled tasks, milestones, goals &amp; events
+						Overdue and upcoming project dates
 					</p>
 				</div>
 			</div>
 			{#if upcomingItems.length > 0}
-				<span class="micro-label text-muted-foreground/70">
-					{mode === 'workspace' ? allUpcomingItems.length : upcomingItems.length}
+				<span class="shrink-0 text-2xs font-medium text-muted-foreground">
+					{mode === 'workspace'
+						? `${allUpcomingItems.length} ${allUpcomingItems.length === 1 ? 'item' : 'items'}`
+						: upcomingItems.length}
 				</span>
 			{/if}
 		</header>
@@ -782,8 +779,7 @@
 		<div class={mode === 'workspace' ? 'activity-workspace-list' : 'space-y-1.5 p-2 sm:p-3'}>
 			{#if upcomingItems.length === 0}
 				<p class="text-xs text-muted-foreground px-1 py-3 italic">
-					Nothing scheduled. Add a date to a task, milestone, goal, or event to see it
-					here.
+					No dated work or events yet. Add a date to see it here.
 				</p>
 			{:else}
 				{#each upcomingItems as item (item.id)}
@@ -853,8 +849,8 @@
 						onclick={() => (showAllUpcoming = !showAllUpcoming)}
 					>
 						{showAllUpcoming
-							? 'Show fewer upcoming items'
-							: `Show all ${allUpcomingItems.length} upcoming items`}
+							? 'Show fewer dated items'
+							: `Show all ${allUpcomingItems.length} dated items`}
 					</button>
 				{/if}
 			{/if}

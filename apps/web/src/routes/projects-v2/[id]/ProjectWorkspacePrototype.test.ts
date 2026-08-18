@@ -167,6 +167,9 @@ describe('ProjectWorkspacePrototype edge states', () => {
 						}
 					});
 				}
+				if (url.includes(`/api/onto/projects/${PROJECT_ID}/logs?`)) {
+					return apiResponse({ logs: [], total: 0, hasMore: false });
+				}
 				throw new Error(`Unexpected fetch: ${url}`);
 			})
 		);
@@ -399,5 +402,40 @@ describe('ProjectWorkspacePrototype edge states', () => {
 		expect(within(docs).getByText('Launch research')).toBeInTheDocument();
 		expect(within(docs).queryByText('RECENTLY UPDATED')).not.toBeInTheDocument();
 		expect(within(docs).queryByText('Quick access')).not.toBeInTheDocument();
+	});
+
+	it('keeps Activity focused on change history and the project schedule', async () => {
+		render(ProjectWorkspacePrototype, {
+			props: {
+				data: projectData({
+					events: [
+						{
+							id: 'event-1',
+							title: 'Launch review',
+							state_key: 'scheduled',
+							start_at: '2027-01-20T12:00:00.000Z',
+							end_at: '2027-01-20T13:00:00.000Z',
+							all_day: false,
+							deleted_at: null
+						}
+					]
+				}) as any
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('tab', { name: 'Activity' }));
+		const activity = await screen.findByRole('tabpanel', { name: 'Activity' });
+
+		expect(
+			within(activity).getByRole('heading', { name: 'Project activity' })
+		).toBeInTheDocument();
+		expect(
+			within(activity).getByText('See what changed and what is scheduled.')
+		).toBeInTheDocument();
+		expect(within(activity).getAllByText('Change history').length).toBeGreaterThan(0);
+		expect(within(activity).getAllByText('Schedule').length).toBeGreaterThan(0);
+		expect(within(activity).queryByText('Up next')).not.toBeInTheDocument();
+		expect(screen.queryByRole('region', { name: 'Project search' })).not.toBeInTheDocument();
+		expect(screen.queryByPlaceholderText('Find a project entity...')).not.toBeInTheDocument();
 	});
 });

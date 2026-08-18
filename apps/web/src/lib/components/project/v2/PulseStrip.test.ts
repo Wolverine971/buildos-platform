@@ -94,9 +94,9 @@ describe('PulseStrip', () => {
 	});
 
 	// Both mobile (tabbed) and desktop (two-column) layouts are in the DOM,
-	// gated only by CSS. The mobile tab defaults to History, while upcoming
+	// gated only by CSS. The mobile tab defaults to History, while scheduled
 	// items remain present in the desktop layout.
-	it('does not show events that have already ended in Up next', () => {
+	it('does not show events that have already ended in Schedule', () => {
 		renderPulseStrip([
 			createEvent({
 				title: 'Past review',
@@ -188,5 +188,44 @@ describe('PulseStrip', () => {
 
 		expect(screen.getAllByRole('region', { name: 'Project activity' })).toHaveLength(2);
 		expect(screen.getByRole('tablist', { name: 'Project activity views' })).toBeInTheDocument();
+		expect(screen.getByRole('tab', { name: 'History' })).toBeInTheDocument();
+		expect(screen.getByRole('tab', { name: 'Schedule' })).toBeInTheDocument();
+		expect(screen.queryByRole('tab', { name: /Up next/ })).not.toBeInTheDocument();
+	});
+
+	it('labels workspace counts and hides implementation-only API sources', async () => {
+		vi.useRealTimers();
+		fetchProjectLogsMock.mockResolvedValue({
+			logs: [
+				createLog({
+					id: 'api-log',
+					entity_name: 'Imported task',
+					change_source: 'api'
+				}),
+				createLog({
+					id: 'chat-log',
+					entity_name: 'Discussed task',
+					change_source: 'chat'
+				})
+			],
+			total: 2,
+			hasMore: false
+		});
+
+		renderPulseStrip(
+			[
+				createEvent({
+					title: 'Project review',
+					start_at: '2027-05-09T17:00:00.000Z',
+					end_at: '2027-05-09T18:00:00.000Z'
+				})
+			],
+			{ mode: 'workspace' }
+		);
+
+		expect(await screen.findByText('2 changes')).toBeInTheDocument();
+		expect(screen.getByText('1 item')).toBeInTheDocument();
+		expect(screen.getByText('via chat')).toBeInTheDocument();
+		expect(screen.queryByText('via api')).not.toBeInTheDocument();
 	});
 });

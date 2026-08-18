@@ -196,6 +196,7 @@ export type AgenticChatReadOnlyProviderClientPortV1 = {
 type ClientRequest = Parameters<AgenticChatReadOnlyProviderClientPortV1['stream']>[0] & {
 	liveVisionRequest?: Omit<AgenticChatLiveVisionResolveInputV1, 'signal'>;
 	semanticDispositionGate?: boolean;
+	unavailableSkillRepairAttempted?: boolean;
 };
 
 const TURN_CONTRACT_REVIEW_APPROVAL_TOOL: AgenticChatReadOnlyProviderToolV1 = Object.freeze({
@@ -1249,6 +1250,16 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
 						throw providerError('provider_tool_finish_reason_invalid', 'unknown');
 					}
+					const unavailableSkillRepair = buildUnavailableSkillRepairRequest(
+						request,
+						calls
+					);
+					if (unavailableSkillRepair) {
+						state.setCurrentRequest(unavailableSkillRepair);
+						keepLeaseForSynthesis = true;
+						yield* this.streamContinuation(unavailableSkillRepair, usage, state);
+						return;
+					}
 					for (const call of calls) assertAllowlistedCall(call, request.tools);
 					assertSemanticDispositionCalls(calls, request.semanticDispositionGate === true);
 					const preMutationSemanticDispositionGate =
@@ -1876,6 +1887,22 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
 						throw providerError('provider_tool_finish_reason_invalid', 'unknown');
 					}
+					const unavailableSkillRepair = buildUnavailableSkillRepairRequest(
+						request,
+						calls
+					);
+					if (unavailableSkillRepair) {
+						state.setCurrentRequest(unavailableSkillRepair);
+						keepLeaseForContinuation = true;
+						yield* this.streamContinuation(
+							unavailableSkillRepair,
+							aggregateUsage,
+							state,
+							validationRepairRounds,
+							emitPlanningSemantic
+						);
+						return;
+					}
 					for (const call of calls) assertAllowlistedCall(call, request.tools);
 					assertSemanticDispositionCalls(calls, request.semanticDispositionGate === true);
 					const blockedToolCalls = observeSupervisorToolCalls(state, calls);
@@ -2448,6 +2475,33 @@ function assertAllowlistedCall(
 	}
 }
 
+function buildUnavailableSkillRepairRequest(
+	request: ClientRequest,
+	calls: readonly CompletedProviderToolCall[]
+): ClientRequest | null {
+	if (request.unavailableSkillRepairAttempted || calls.length === 0) return null;
+	const advertisedNames = new Set(request.tools.map((tool) => tool.function.name));
+	const rejectedCalls = calls.filter((call) => !advertisedNames.has(call.name));
+	if (rejectedCalls.length === 0 || !rejectedCalls.every((call) => call.name === 'skill_load')) {
+		return null;
+	}
+	const semanticGate = buildSemanticTurnDispositionGateRequest(request, request.tools);
+	if (!semanticGate) return null;
+	return appendSystemInstruction(
+		{
+			...semanticGate,
+			logicalProviderRound: request.logicalProviderRound + 1,
+			providerRound: 'synthesis',
+			unavailableSkillRepairAttempted: true
+		},
+		[
+			'Unavailable worker skill repair: the previous pass called skill_load, but skill_load is not callable in this turn and the call was rejected without execution.',
+			'Do not call skill_load again. Use only the exact tools present in this request.',
+			'Choose the semantic disposition from the user request and loaded evidence now; use an available read only when durable context is genuinely missing, and request clarification only when a required user choice remains unresolved.'
+		].join(' ')
+	);
+}
+
 function providerToolNotAllowlistedError(
 	rejectedToolName: string,
 	tools: readonly AgenticChatReadOnlyProviderToolV1[]
@@ -2962,6 +3016,10 @@ function buildSemanticTurnDispositionGateRequest(
 				'Call request_turn_clarification when a durable change was commissioned but a required user choice remains unresolved after reading, including multiple plausible targets. Never guess among plausible choices.',
 				'When the user explicitly delegates judgment (for example, asks for a sensible organization), reasonable implementation choices within that commission are resolved; do not ask the user to make the delegated choice again.',
 				'A descriptive reference is safely resolved only when the user message and loaded context identify one plausible target. If several loaded entities fit, a prior assistant mention, ordering, or proposed tool target does not choose one for the user.',
+				'Past-tense reports that tracked work was completed commission the matching state change when exactly one loaded entity fits; conversational or dictated wording does not turn the report into a request for confirmation.',
+				'A direct reschedule or priority instruction commissions that update when the target and requested value are uniquely resolved. An exact title is not required when one descriptive match remains after available reads.',
+				'Several explicitly commissioned changes in one utterance belong to one contract; preserve every resolved clause instead of asking the user to reconfirm the batch.',
+				'Delegated organization may include creating reasonable parent containers and moving existing items within the commissioned project, while preserving original content and avoiding unrelated edits.',
 				'A proposal or request for approval is not read-only when the user already commissioned the action.',
 				'Describe semantic outcomes and real cardinality, not implementation steps or tool names.'
 			].join(' ')
@@ -3735,6 +3793,7 @@ function providerClientRequest(
 	const {
 		liveVisionRequest: _liveVisionRequest,
 		semanticDispositionGate: _semanticDispositionGate,
+		unavailableSkillRepairAttempted: _unavailableSkillRepairAttempted,
 		...clientRequest
 	} = request;
 	return clientRequest;

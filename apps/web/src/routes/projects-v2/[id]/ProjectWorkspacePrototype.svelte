@@ -839,56 +839,61 @@
 			</div>
 		{/if}
 
-		<div class="workspace-toolbar mb-3">
-			{#if isHydrating}
-				<div
-					class="h-11 flex-1 animate-pulse rounded-lg border border-border bg-card motion-reduce:animate-none"
-					aria-label="Loading project search"
-				></div>
-			{:else}
-				<div class="min-w-0 flex-1">
-					<ProjectEntitySearchCombobox
-						projectId={project.id}
-						scope={activeTab}
-						variant="toolbar"
-						placeholder={activeTab === 'work'
-							? 'Search tasks...'
-							: activeTab === 'overview'
-								? 'Search goals, plans, milestones...'
-								: activeTab === 'docs'
-									? 'Search documents...'
-									: 'Find a project entity...'}
-						onSelectEntity={(type, id) => openEntity(type, id)}
-					/>
-				</div>
-			{/if}
-			{#if canEdit && activeTab === 'work'}
-				<Button
-					variant="outline"
-					size="sm"
-					icon={Plus}
-					onclick={() => (showTaskCreateModal = true)}
-				>
-					<span class="hidden sm:inline">New task</span>
-					<span class="sr-only sm:hidden">New task</span>
-				</Button>
-			{:else if canEdit && activeTab === 'overview'}
-				<Button
-					variant="outline"
-					size="sm"
-					icon={Pencil}
-					onclick={() => openEntity('project', project.id)}
-				>
-					<span class="hidden sm:inline">Edit project</span>
-					<span class="sr-only sm:hidden">Edit project</span>
-				</Button>
-			{:else if canEdit && activeTab === 'docs'}
-				<Button variant="outline" size="sm" icon={Plus} onclick={() => createDocument()}>
-					<span class="hidden sm:inline">New document</span>
-					<span class="sr-only sm:hidden">New document</span>
-				</Button>
-			{/if}
-		</div>
+		{#if activeTab !== 'activity'}
+			<div class="workspace-toolbar mb-3">
+				{#if isHydrating}
+					<div
+						class="h-11 flex-1 animate-pulse rounded-lg border border-border bg-card motion-reduce:animate-none"
+						aria-label="Loading project search"
+					></div>
+				{:else}
+					<div class="min-w-0 flex-1">
+						<ProjectEntitySearchCombobox
+							projectId={project.id}
+							scope={activeTab}
+							variant="toolbar"
+							placeholder={activeTab === 'work'
+								? 'Search tasks...'
+								: activeTab === 'overview'
+									? 'Search goals, plans, milestones...'
+									: 'Search documents...'}
+							onSelectEntity={(type, id) => openEntity(type, id)}
+						/>
+					</div>
+				{/if}
+				{#if canEdit && activeTab === 'work'}
+					<Button
+						variant="outline"
+						size="sm"
+						icon={Plus}
+						onclick={() => (showTaskCreateModal = true)}
+					>
+						<span class="hidden sm:inline">New task</span>
+						<span class="sr-only sm:hidden">New task</span>
+					</Button>
+				{:else if canEdit && activeTab === 'overview'}
+					<Button
+						variant="outline"
+						size="sm"
+						icon={Pencil}
+						onclick={() => openEntity('project', project.id)}
+					>
+						<span class="hidden sm:inline">Edit project</span>
+						<span class="sr-only sm:hidden">Edit project</span>
+					</Button>
+				{:else if canEdit && activeTab === 'docs'}
+					<Button
+						variant="outline"
+						size="sm"
+						icon={Plus}
+						onclick={() => createDocument()}
+					>
+						<span class="hidden sm:inline">New document</span>
+						<span class="sr-only sm:hidden">New document</span>
+					</Button>
+				{/if}
+			</div>
+		{/if}
 
 		{#if activeTab === 'work'}
 			<div
@@ -1418,14 +1423,14 @@
 					<div>
 						<h2 class="text-base font-semibold">Project activity</h2>
 						<p class="text-sm text-muted-foreground">
-							Review the full change history alongside what is due next.
+							See what changed and what is scheduled.
 						</p>
 					</div>
 				</div>
 
 				{#if isHydrating}
 					<div
-						class="min-h-[360px] animate-pulse rounded-lg border border-border bg-card shadow-ink motion-reduce:animate-none"
+						class="min-h-[360px] animate-pulse border-y border-border bg-card/40 motion-reduce:animate-none"
 						aria-label="Loading project activity"
 					></div>
 				{:else}

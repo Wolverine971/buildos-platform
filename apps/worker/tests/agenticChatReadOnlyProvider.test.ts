@@ -1082,6 +1082,18 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(dispositionMessages[0]?.content).toContain(
 			'If more durable context is required for that decision, call only the available pure-read tools'
 		);
+		expect(dispositionMessages[0]?.content).toContain(
+			'Past-tense reports that tracked work was completed commission the matching state change'
+		);
+		expect(dispositionMessages[0]?.content).toContain(
+			'A direct reschedule or priority instruction commissions that update'
+		);
+		expect(dispositionMessages[0]?.content).toContain(
+			'Several explicitly commissioned changes in one utterance belong to one contract'
+		);
+		expect(dispositionMessages[0]?.content).toContain(
+			'Delegated organization may include creating reasonable parent containers'
+		);
 		expect(client.stream.mock.calls[1]?.[0]).toMatchObject({
 			toolChoice: 'required',
 			tools: expect.arrayContaining([
@@ -6116,6 +6128,131 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			}
 		});
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('repairs one unavailable skill_load call through the exact semantic gate without executing it', async () => {
+		const clarificationArguments = {
+			reason: 'A required user choice still remains after checking the available evidence.',
+			question: 'Which matching task should I update?'
+		};
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-unavailable-skill-1',
+				{ skill_id: 'task-planning' },
+				'skill_load'
+			),
+			providerReadRound(
+				'provider-clarification-1',
+				clarificationArguments,
+				'request_turn_clarification'
+			)
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					updateTaskToolDefinition()
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'update_onto_task'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'provider-clarification-1',
+					toolName: 'request_turn_clarification'
+				})
+			])
+		);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		const repairRequest = client.stream.mock.calls[1]?.[0];
+		expect(repairRequest).toMatchObject({
+			toolChoice: 'required',
+			providerRound: 'synthesis'
+		});
+		expect(repairRequest?.tools.some((tool) => tool.function.name === 'skill_load')).toBe(
+			false
+		);
+		expect(
+			repairRequest?.messages.some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'skill_load is not callable in this turn and the call was rejected without execution'
+					)
+			)
+		).toBe(true);
+	});
+
+	it('bounds unavailable skill_load repair to one non-executing retry', async () => {
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-unavailable-skill-1',
+				{ skill_id: 'task-planning' },
+				'skill_load'
+			),
+			providerReadRound(
+				'provider-unavailable-skill-2',
+				{ skill_id: 'task-planning' },
+				'skill_load'
+			)
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					updateTaskToolDefinition()
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'update_onto_task'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).rejects.toMatchObject({
+			code: 'provider_tool_not_allowlisted',
+			failureClass: 'permanent',
+			diagnostic: expect.objectContaining({
+				kind: 'rejected_tool_name',
+				rejectedToolName: 'skill_load'
+			})
+		});
+		expect(client.stream).toHaveBeenCalledTimes(2);
 	});
 
 	it('assembles fragmented provider tool names before allowlist validation', async () => {
