@@ -287,7 +287,7 @@ describe('turn input artifact store', () => {
 		).rejects.toMatchObject({ code: 'artifact_expired' });
 	});
 
-	it('converts malformed stored JSON into a typed invalid-content failure', async () => {
+	it("preserves the validator's typed malformed-attachment failure for stored JSON", async () => {
 		const mock = createSupabaseMock({
 			row: await storedRowFixture({ history: [null] })
 		});
@@ -302,7 +302,7 @@ describe('turn input artifact store', () => {
 				excludedMessageId: IDS.admittedMessage,
 				nowMs: Date.parse(CREATED_AT) + 1
 			})
-		).rejects.toMatchObject({ code: 'invalid_content' });
+		).rejects.toMatchObject({ code: 'invalid_attachments' });
 	});
 
 	it('converts malformed write content into a typed failure before insertion', async () => {

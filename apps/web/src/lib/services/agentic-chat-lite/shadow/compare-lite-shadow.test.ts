@@ -114,7 +114,8 @@ describe('buildLiteShadowComparison', () => {
 		expect(comparison.v2.section_costs.map((section) => section.id)).toContain(
 			'context_payload'
 		);
-		expect(comparison.tool_names.kept).toContain('skill_load');
+		expect(comparison.tool_names.kept).not.toContain('skill_load');
+		expect(comparison.tool_names.removed_from_lite).toContain('skill_load');
 		expect(comparison.tool_names.removed_from_lite).toContain('legacy_direct_tool');
 		expect(comparison.tool_names.added_in_lite).toContain('get_workspace_overview');
 		expect(comparison.context_key_comparison.kept).toEqual(['context_meta', 'projects']);

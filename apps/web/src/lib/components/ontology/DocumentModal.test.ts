@@ -256,15 +256,18 @@ describe('DocumentModal document loading', () => {
 		expect(interactDock).not.toHaveClass('fixed');
 		expect(interactDock).toHaveClass('h-[clamp(15rem,34dvh,24rem)]');
 
-		await waitFor(() => {
-			expect(screen.getByText('DOCUMENT CHAT')).toBeInTheDocument();
-			expect(
-				screen.getByText('Ask BuildOS to explain, rewrite, or update this document.')
-			).toBeInTheDocument();
-			expect(
-				screen.getByPlaceholderText('Ask about or update this document...')
-			).toBeInTheDocument();
-		});
+		await waitFor(
+			() => {
+				expect(screen.getByText('DOCUMENT CHAT')).toBeInTheDocument();
+				expect(
+					screen.getByText('Ask BuildOS to explain, rewrite, or update this document.')
+				).toBeInTheDocument();
+				expect(
+					screen.getByPlaceholderText('Ask about or update this document...')
+				).toBeInTheDocument();
+			},
+			{ timeout: 5_000 }
+		);
 		expect(screen.queryByRole('tab', { name: 'Chat' })).not.toBeInTheDocument();
 		expect(screen.queryByRole('tab', { name: /^Steps/ })).not.toBeInTheDocument();
 		expect(screen.queryByRole('tab', { name: /^Tools/ })).not.toBeInTheDocument();

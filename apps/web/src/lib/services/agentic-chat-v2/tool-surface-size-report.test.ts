@@ -112,9 +112,14 @@ describe('tool surface size report', () => {
 		// reads materialize on demand instead of sitting in every launch profile.
 		// Baselines from the pre-trim report: global_write 24,847 chars,
 		// project_basic 15,482, project_write 23,710, project_write_document 25,870.
-		expect(globalWrite?.totalChars).toBeLessThanOrEqual(19_900);
-		expect(projectBasic?.totalChars).toBeLessThanOrEqual(11_000);
+		// The 2026-08-15 semantic turn-contract tools intentionally moved the measured
+		// global_write/project_basic/project_write_document profiles to
+		// 20,038/11,074/20,946 chars. These caps retain 126-162 chars of headroom and
+		// remain at least 18.4% below the pre-trim baselines; do not trim
+		// behavior-critical guidance merely to preserve the older caps.
+		expect(globalWrite?.totalChars).toBeLessThanOrEqual(20_200);
+		expect(projectBasic?.totalChars).toBeLessThanOrEqual(11_200);
 		expect(projectWrite?.totalChars).toBeLessThanOrEqual(19_000);
-		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(20_700);
+		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(21_100);
 	});
 });

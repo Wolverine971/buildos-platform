@@ -22,11 +22,9 @@ describe('GET /.well-known/oauth-protected-resource/mcp/buildos', () => {
 		expect(body.authorization_servers).toEqual(['https://build-os.com']);
 	});
 
-	it('advertises read, write, and offline scopes with header-only bearer auth', async () => {
+	it('advertises the MCP resource read scope with header-only bearer auth', async () => {
 		const { body } = await fetchMetadata('https://build-os.com');
-		expect(body.scopes_supported).toEqual(
-			expect.arrayContaining(['buildos.read', 'buildos.write', 'offline_access'])
-		);
+		expect(body.scopes_supported).toEqual(['buildos.read']);
 		expect(body.bearer_methods_supported).toEqual(['header']);
 	});
 

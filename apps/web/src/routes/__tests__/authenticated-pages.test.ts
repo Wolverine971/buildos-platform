@@ -38,6 +38,9 @@ function createCountQuery(count: number) {
 	const query: any = {
 		select: vi.fn(() => query),
 		eq: vi.fn(() => query),
+		in: vi.fn(() => ({
+			is: vi.fn(() => Promise.resolve({ data: [], error: null }))
+		})),
 		is: vi.fn(() => Promise.resolve({ count, error: null }))
 	};
 	return query;
@@ -135,7 +138,9 @@ describe('Authenticated Pages', () => {
 			expect(depends).toHaveBeenCalledWith('ontology:projects');
 			expect(result.actorId).toBe('actor-1');
 			expect(result.projectCount).toBe(3);
-			expect(await result.projects).toEqual([{ id: 'proj-1', name: 'Test project' }]);
+			expect(await result.projects).toEqual([
+				{ id: 'proj-1', name: 'Test project', has_collaborators: false }
+			]);
 		});
 
 		it('rejects unauthenticated users', async () => {
