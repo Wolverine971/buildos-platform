@@ -2,7 +2,12 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import { JSON_PROFILE_MODELS, LLMUsageLogger, modelSupportsCapability } from '@buildos/smart-llm';
+import {
+	GPT_56_LUNA_MODEL,
+	JSON_PROFILE_MODELS,
+	LLMUsageLogger,
+	modelSupportsCapability
+} from '@buildos/smart-llm';
 import type { AgenticChatWorkerCapacityEvidenceV1 } from './capacity';
 import type { AgenticChatConsumerRuntimeHealth } from './consumerRuntime';
 import {
@@ -298,20 +303,23 @@ export function buildAgenticChatSemanticReviewerRoutes(
 	const actingModels = new Set(
 		routes.flatMap((route) => [route.model, ...(route.fallbackModels ?? [])])
 	);
-	const reviewedCandidates = [
+	// Production evidence showed the cheaper GLM fallback turning an explicitly
+	// informational pricing-research request into an irrelevant clarification.
+	// This lane is a bounded, temperature-zero safety adjudication, so prefer the
+	// stronger reviewed Luna model before the general-purpose JSON profile order.
+	const reviewerCandidates = [
+		GPT_56_LUNA_MODEL,
 		...JSON_PROFILE_MODELS.powerful,
 		...JSON_PROFILE_MODELS.maximum
-	].filter((model, index, models) => {
+	];
+	const reviewedCandidates = [...reviewerCandidates].filter((model, index, models) => {
 		return (
 			models.indexOf(model) === index &&
 			modelSupportsCapability(model, 'tools') &&
 			!actingModels.has(model)
 		);
 	});
-	const fallbackCandidates = [
-		...JSON_PROFILE_MODELS.powerful,
-		...JSON_PROFILE_MODELS.maximum
-	].filter(
+	const fallbackCandidates = [...reviewerCandidates].filter(
 		(model, index, models) =>
 			models.indexOf(model) === index && modelSupportsCapability(model, 'tools')
 	);

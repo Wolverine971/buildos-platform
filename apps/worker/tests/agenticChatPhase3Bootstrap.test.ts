@@ -101,7 +101,8 @@ describe('Agentic Chat Phase 3 operational bootstrap', () => {
 
 		expect(routes[0]).toMatchObject({
 			id: 'openrouter_semantic_reviewer',
-			kind: 'openrouter'
+			kind: 'openrouter',
+			model: 'openai/gpt-5.6-luna'
 		});
 		expect(routes[0]?.model).not.toBe('deepseek/deepseek-v4-flash');
 		expect(routes[0]?.apiKey).toBe('provider-secret');

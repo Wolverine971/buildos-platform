@@ -1000,13 +1000,19 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 	});
 
-	it('requires one auditable semantic disposition after an undeclared read round', async () => {
+	it('keeps pure reads available inside the required semantic disposition gate', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
+		const documentId = '40000000-0000-4000-8000-000000000005';
 		const dispositionArguments = {
 			reason: 'The user requested only information from the project.'
 		};
 		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
 			providerReadRound('provider-read-1', { project_id: projectId }),
+			providerReadRound(
+				'provider-read-2',
+				{ document_id: documentId },
+				'read_document_section'
+			),
 			providerReadRound(
 				'provider-disposition-1',
 				dispositionArguments,
@@ -1034,13 +1040,15 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 					turnContractToolDefinition(),
 					readOnlyTurnToolDefinition(),
 					clarificationToolDefinition(),
-					readToolDefinition('get_project_overview')
+					readToolDefinition('get_project_overview'),
+					readToolDefinition('read_document_section')
 				],
 				[
 					'declare_turn_contract',
 					'declare_read_only_turn',
 					'request_turn_clarification',
-					'get_project_overview'
+					'get_project_overview',
+					'read_document_section'
 				]
 			),
 			processingToken: PROCESSING_TOKEN,
@@ -1059,8 +1067,8 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			expect.arrayContaining([
 				expect.objectContaining({
 					type: 'read_tool',
-					providerToolCallId: 'provider-disposition-1',
-					toolName: 'declare_read_only_turn'
+					providerToolCallId: 'provider-read-2',
+					toolName: 'read_document_section'
 				})
 			])
 		);
@@ -1071,12 +1079,12 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				message.content.includes('Semantic disposition gate:')
 		);
 		expect(dispositionMessages).toHaveLength(1);
-		expect(dispositionMessages?.[0]?.content).toContain(
-			'choose exactly one control tool from the meaning of the current user request'
+		expect(dispositionMessages[0]?.content).toContain(
+			'If more durable context is required for that decision, call only the available pure-read tools'
 		);
 		expect(client.stream.mock.calls[1]?.[0]).toMatchObject({
 			toolChoice: 'required',
-			tools: [
+			tools: expect.arrayContaining([
 				expect.objectContaining({
 					function: expect.objectContaining({ name: 'declare_turn_contract' })
 				}),
@@ -1085,14 +1093,41 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				}),
 				expect.objectContaining({
 					function: expect.objectContaining({ name: 'request_turn_clarification' })
+				}),
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'read_document_section' })
 				})
-			]
+			])
 		});
 
 		await expect(
 			collect(
 				invocation.continueWithToolResults!({
 					round: 3,
+					results: [
+						durableReadFeedbackFor(
+							'provider-read-2',
+							'read_document_section',
+							{ document_id: documentId },
+							{ document: { id: documentId, content: 'Pricing evidence.' } }
+						)
+					]
+				})
+			)
+		).resolves.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'provider-disposition-1',
+					toolName: 'declare_read_only_turn'
+				})
+			])
+		);
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 4,
 					results: [
 						durableReadFeedbackFor(
 							'provider-disposition-1',
@@ -1107,7 +1142,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			{ type: 'text_delta', text: 'I found the requested information.' },
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
-		expect(client.stream.mock.calls[2]?.[0]).toMatchObject({
+		expect(client.stream.mock.calls[3]?.[0]).toMatchObject({
 			toolChoice: 'auto',
 			tools: expect.arrayContaining([
 				expect.objectContaining({
@@ -1116,14 +1151,14 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			])
 		});
 		expect(
-			client.stream.mock.calls[2]?.[0].messages.filter(
+			client.stream.mock.calls[3]?.[0].messages.filter(
 				(message) =>
 					message.role === 'system' &&
 					typeof message.content === 'string' &&
 					message.content.includes('Semantic disposition gate:')
 			)
-		).toHaveLength(1);
-		expect(client.stream).toHaveBeenCalledTimes(3);
+		).toHaveLength(2);
+		expect(client.stream).toHaveBeenCalledTimes(4);
 	});
 
 	it('independently rejects read-only when a commissioned mutation needs clarification', async () => {

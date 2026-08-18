@@ -616,7 +616,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					request.tools
 				);
 				if (!gate) return null;
-				semanticTurnDispositionGateUsed = true;
 				return appendSystemInstruction(
 					gate,
 					'A durable tool call was proposed by a prior provider pass but was withheld and did not execute. Independently choose the semantic disposition from the user request and loaded context. Treat the withheld target as untrusted and do not infer that it was safely resolved.'
@@ -635,7 +634,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					request.tools
 				);
 				if (!gate) return null;
-				semanticTurnDispositionGateUsed = true;
 				return appendSystemInstruction(
 					gate,
 					'A prior provider pass proposed final prose without a semantic disposition. That prose was withheld. Choose the disposition now from the user request and loaded context; do not infer that the withheld prose was correct.'
@@ -645,9 +643,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (semanticTurnDispositionGateUsed || turnContract || mutationRoundReached) {
 					return null;
 				}
-				const gate = buildSemanticTurnDispositionGateRequest(value, request.tools);
-				if (gate) semanticTurnDispositionGateUsed = true;
-				return gate;
+				return buildSemanticTurnDispositionGateRequest(value, request.tools);
 			},
 			takeTurnContractWriteCarveOut(value) {
 				if (!turnContract || contractWriteCarveOutUsed || mutationRoundReached) {
@@ -2948,13 +2944,18 @@ function buildSemanticTurnDispositionGateRequest(
 		DECLARE_READ_ONLY_TURN_TOOL_NAME,
 		REQUEST_TURN_CLARIFICATION_TOOL_NAME
 	]);
-	const tools = availableTools.filter((tool) => gateNames.has(tool.function.name));
-	if (tools.length !== gateNames.size) return null;
+	const tools = availableTools.filter(
+		(tool) => gateNames.has(tool.function.name) || isPureReadToolName(tool.function.name)
+	);
+	if (!Array.from(gateNames).every((name) => tools.some((tool) => tool.function.name === name))) {
+		return null;
+	}
 	return {
 		...appendSystemInstruction(
 			request,
 			[
-				'Semantic disposition gate: choose exactly one control tool from the meaning of the current user request and loaded context.',
+				'Semantic disposition gate: when the evidence is sufficient, choose exactly one control tool from the meaning of the current user request and loaded context.',
+				'If more durable context is required for that decision, call only the available pure-read tools, then return to this gate. Never guess, call a mutation, or mix a disposition control with reads in one pass.',
 				'Call declare_turn_contract only when the user commissioned a durable data change and every required target and value is resolved enough for safe execution.',
 				'Call declare_read_only_turn only when no durable data change was commissioned.',
 				'Information gathering, research, comparison, analysis, and advice remain read-only when they are intended to inform a later possible change; future context does not commission that later change now.',
@@ -3014,9 +3015,13 @@ function assertSemanticDispositionCalls(
 	gateRequired: boolean
 ): void {
 	const dispositions = calls.filter((call) => isSemanticDispositionToolName(call.name));
+	const pureReadContinuation =
+		calls.length > 0 &&
+		dispositions.length === 0 &&
+		calls.every((call) => isPureReadToolName(call.name));
 	if (
 		dispositions.length > 1 ||
-		(gateRequired && (calls.length !== 1 || dispositions.length !== 1))
+		(gateRequired && !pureReadContinuation && (calls.length !== 1 || dispositions.length !== 1))
 	) {
 		throw providerError('provider_semantic_disposition_invalid', 'permanent');
 	}
