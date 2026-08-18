@@ -3245,8 +3245,7 @@
 								<Printer class="h-4 w-4 shrink-0 text-accent" />
 								<span class="min-w-0">
 									<span class="block text-xs font-semibold">PDF</span>
-									<span
-										class="block text-[11px] font-normal text-muted-foreground"
+									<span class="block text-xs font-normal text-muted-foreground"
 										>Polished print layout</span
 									>
 								</span>
@@ -3262,8 +3261,7 @@
 								<FileType2 class="h-4 w-4 shrink-0 text-muted-foreground" />
 								<span class="min-w-0">
 									<span class="block text-xs font-semibold">DOCX</span>
-									<span
-										class="block text-[11px] font-normal text-muted-foreground"
+									<span class="block text-xs font-normal text-muted-foreground"
 										>Editable Word document</span
 									>
 								</span>
@@ -3279,8 +3277,7 @@
 								<FileCode2 class="h-4 w-4 shrink-0 text-muted-foreground" />
 								<span class="min-w-0">
 									<span class="block text-xs font-semibold">HTML</span>
-									<span
-										class="block text-[11px] font-normal text-muted-foreground"
+									<span class="block text-xs font-normal text-muted-foreground"
 										>Standalone web page</span
 									>
 								</span>

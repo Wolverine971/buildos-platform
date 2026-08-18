@@ -890,11 +890,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 		const iterator = invocation.stream()[Symbol.asyncIterator]();
 
-		const narrationStep = await iterator.next();
-		expect(narrationStep.value).toMatchObject({
-			type: 'text_delta',
-			text: 'I’ll check the relevant details before I answer.'
-		});
 		const validationStep = await iterator.next();
 		expect(validationStep.value).toMatchObject({
 			type: 'read_tool',
@@ -905,21 +900,19 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 		expect(harness.observations.map((observation) => observation.type)).toEqual([
 			'llm_pass_completed',
-			'assistant_text_delta',
 			'tool_call_emitted'
 		]);
 
 		await iterator.next();
 		expect(harness.observations.map((observation) => observation.type)).toEqual([
 			'llm_pass_completed',
-			'assistant_text_delta',
 			'tool_call_emitted',
 			'tool_result_received',
 			'tool_round_completed',
 			'llm_pass_completed',
 			'tool_call_emitted'
 		]);
-		expect(harness.observations[3]).toMatchObject({
+		expect(harness.observations[2]).toMatchObject({
 			type: 'tool_result_received',
 			toolCallId: 'invalid-read',
 			success: false,
@@ -988,7 +981,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		]);
 		expect(harness.observations.map((observation) => observation.type)).toEqual([
 			'llm_pass_completed',
-			'assistant_text_delta',
 			'tool_call_emitted',
 			'tool_result_received',
 			'tool_round_completed',
@@ -2721,14 +2713,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			])
 		);
 		expect(firstRound.some((step) => step.type === 'mutating_tool')).toBe(false);
-		expect(firstRound).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'text_delta',
-					text: 'I’ll check the relevant details, then make the requested change.'
-				})
-			])
-		);
 		expect(client.stream.mock.calls[1]?.[0]).toMatchObject({
 			toolChoice: 'required'
 		});
@@ -2819,14 +2803,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 
 		const firstRound = await collect(invocation.stream());
-		expect(firstRound).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'text_delta',
-					text: 'I’ll check the relevant details before I answer.'
-				})
-			])
-		);
 		expect(firstRound).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -3483,7 +3459,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		const firstRound = await collect(invocation.stream());
 		const blockedStep = firstRound.find((step) => step.type === 'pre_execution_tool_failure');
 		expect(firstRound.map((step) => step.type)).toEqual([
-			'text_delta',
 			'semantic',
 			'pre_execution_tool_failure',
 			'read_tool'
@@ -3608,10 +3583,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 
 		const firstRound = await collect(invocation.stream());
 		expect(firstRound).toEqual([
-			expect.objectContaining({
-				type: 'text_delta',
-				text: 'I’ll check the relevant details, then make the requested change.'
-			}),
 			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
 			expect.objectContaining({
 				type: 'mutating_tool',
@@ -3955,6 +3926,54 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
+	it('never forces live web research or injects narration the model did not write', async () => {
+		// Regression guard. A prior revision matched the user's message against an
+		// "investigate + market" regex, force-called web_search/web_visit, and hard
+		// failed the turn when the model declined. It also streamed canned assistant
+		// text before tool calls. Both coerced production behavior to satisfy a
+		// scenario assertion; the honest signal is the agent_state planning step.
+		const webSearch = readToolDefinition('web_search', 'Search the live web.');
+		const webVisit = readToolDefinition('web_visit', 'Inspect a live web source.');
+		const client = clientWithRounds([
+			[
+				{ type: 'text', content: 'Answering from what is already loaded.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity });
+		const baseExecution = executionInputWithReadSurface(
+			[webSearch, webVisit],
+			['web_search', 'web_visit']
+		);
+		const invocation = await adapter.prepare({
+			executionInput: {
+				...baseExecution,
+				requestPayload: {
+					...baseExecution.requestPayload,
+					message:
+						'Look into what other scheduling tools charge and summarize the pricing landscape.'
+				}
+			},
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		// The model's own single pass finalizes. No forced research round, no retry.
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			{ type: 'text_delta', text: 'Answering from what is already loaded.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(1);
+
+		// No system message may command the model to make live web calls.
+		const sentMessages = client.stream.mock.calls[0]?.[0]?.messages ?? [];
+		for (const message of sentMessages) {
+			expect(String(message.content ?? '')).not.toMatch(/web_search|web_visit/);
+		}
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
 	it('runs one allowlisted read round and synthesizes only from the durable feedback', async () => {
 		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
 			[
@@ -4014,10 +4033,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 
 		const initial = await collect(invocation.stream());
 		expect(initial).toEqual([
-			{
-				type: 'text_delta',
-				text: 'I’ll check the relevant details before I answer.'
-			},
 			{
 				type: 'semantic',
 				transitionId: createStableAgenticChatReadToolTransitionIdV1({
@@ -4188,121 +4203,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(surfaceOverride?.content).not.toContain('update_onto_task,');
 	});
 
-	it('requires live search and source inspection before finalizing explicit market research', async () => {
-		const webSearch = readToolDefinition('web_search', 'Search the live web.');
-		const webVisit = readToolDefinition('web_visit', 'Inspect a live web source.');
-		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
-			[
-				{ type: 'text', content: 'Unsupported pricing summary.' },
-				{ type: 'done', finishedReason: 'stop' }
-			],
-			providerReadRound('web-search-1', { query: 'scheduling tool pricing' }, 'web_search'),
-			[
-				{ type: 'text', content: 'Premature summary after search only.' },
-				{ type: 'done', finishedReason: 'stop' }
-			],
-			providerReadRound(
-				'web-visit-1',
-				{ url: 'https://example.com/scheduling-pricing' },
-				'web_visit'
-			),
-			[
-				{ type: 'text', content: 'Grounded pricing summary.' },
-				{ type: 'done', finishedReason: 'stop' }
-			]
-		];
-		const client = clientWithRounds(streams);
-		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
-		const adapter = new AgenticChatReadOnlyProviderAdapter({ client, capacity });
-		const baseExecution = executionInputWithReadSurface(
-			[webSearch, webVisit],
-			['web_search', 'web_visit']
-		);
-		const invocation = await adapter.prepare({
-			executionInput: {
-				...baseExecution,
-				requestPayload: {
-					...baseExecution.requestPayload,
-					message:
-						'Look into what other scheduling tools charge and summarize the pricing landscape.'
-				}
-			},
-			processingToken: PROCESSING_TOKEN,
-			signal: new AbortController().signal
-		});
-
-		await expect(collect(invocation.stream())).resolves.toEqual([
-			{
-				type: 'text_delta',
-				text: 'I’ll research this now and come back with the evidence.'
-			},
-			expect.objectContaining({
-				type: 'read_tool',
-				providerToolCallId: 'web-search-1',
-				toolName: 'web_search'
-			})
-		]);
-		expect(client.stream.mock.calls[0]?.[0].messages).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					role: 'system',
-					content: expect.stringContaining('external market evidence')
-				})
-			])
-		);
-		expect(client.stream.mock.calls[1]?.[0]).toMatchObject({
-			toolChoice: 'required',
-			tools: [webSearch]
-		});
-
-		await expect(
-			collect(
-				invocation.continueWithToolResults!({
-					round: 2,
-					results: [
-						durableReadFeedbackFor(
-							'web-search-1',
-							'web_search',
-							{ query: 'scheduling tool pricing' },
-							{ resultCount: 3 }
-						)
-					]
-				})
-			)
-		).resolves.toEqual([
-			expect.objectContaining({
-				type: 'read_tool',
-				providerToolCallId: 'web-visit-1',
-				toolName: 'web_visit'
-			})
-		]);
-		expect(client.stream.mock.calls[3]?.[0]).toMatchObject({
-			toolChoice: 'required',
-			tools: [webVisit]
-		});
-
-		await expect(
-			collect(
-				invocation.continueWithToolResults!({
-					round: 3,
-					results: [
-						durableReadFeedbackFor(
-							'web-visit-1',
-							'web_visit',
-							{ url: 'https://example.com/scheduling-pricing' },
-							{ inspected: true }
-						)
-					]
-				})
-			)
-		).resolves.toEqual([
-			{ type: 'text_delta', text: 'Grounded pricing summary.' },
-			{ type: 'finish', finishedReason: 'stop', usage: null }
-		]);
-		expect(client.stream).toHaveBeenCalledTimes(5);
-		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
-	});
-
 	it('bridges an explicitly enabled mixed read/write round in provider order', async () => {
 		const taskId = 'db000000-0000-4000-8000-000000000002';
 		const mutationArguments = { task_id: taskId, state_key: 'in_progress' };
@@ -4369,10 +4269,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 
 		const firstRound = await collect(invocation.stream());
 		expect(firstRound).toEqual([
-			expect.objectContaining({
-				type: 'text_delta',
-				text: 'I’ll check the relevant details, then make the requested change.'
-			}),
 			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
 			expect.objectContaining({
 				type: 'read_tool',
@@ -4478,10 +4374,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 
 		await expect(collect(invocation.stream())).resolves.toEqual([
-			expect.objectContaining({
-				type: 'text_delta',
-				text: 'I’ll check the relevant details, then make the requested change.'
-			}),
 			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
 			expect.objectContaining({
 				type: 'mutating_tool',
@@ -4553,10 +4445,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 
 		await expect(collect(invocation.stream())).resolves.toEqual([
-			expect.objectContaining({
-				type: 'text_delta',
-				text: 'I’ll check the relevant details, then make the requested change.'
-			}),
 			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
 			expect.objectContaining({
 				type: 'mutating_tool',
@@ -4842,10 +4730,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 
 		await expect(collect(invocation.stream())).resolves.toEqual([
-			expect.objectContaining({
-				type: 'text_delta',
-				text: 'I’ll check the relevant details, then make the requested change.'
-			}),
 			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
 			expect.objectContaining({
 				type: 'mutating_tool',
@@ -5481,10 +5365,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 
 		await expect(collect(invocation.stream())).resolves.toEqual([
-			expect.objectContaining({
-				type: 'text_delta',
-				text: 'I’ll check the relevant details before I answer.'
-			}),
 			expect.objectContaining({
 				type: 'read_tool',
 				providerToolCallId: 'invalid-read',
@@ -6271,10 +6151,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 
 		await expect(collect(invocation.stream())).resolves.toEqual([
-			expect.objectContaining({
-				type: 'text_delta',
-				text: 'I’ll check the relevant details before I answer.'
-			}),
 			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
 			expect.objectContaining({
 				type: 'read_tool',
@@ -6321,10 +6197,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 
 		await expect(collect(invocation.stream())).resolves.toEqual([
-			expect.objectContaining({
-				type: 'text_delta',
-				text: 'I’ll check the relevant details before I answer.'
-			}),
 			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
 			expect.objectContaining({
 				type: 'read_tool',
@@ -6413,10 +6285,6 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 
 		await expect(collect(invocation.stream())).resolves.toEqual([
-			expect.objectContaining({
-				type: 'text_delta',
-				text: 'I’ll check the relevant details before I answer.'
-			}),
 			expect.objectContaining({ type: 'semantic', eventType: 'agent_state' }),
 			expect.objectContaining({
 				type: 'read_tool',

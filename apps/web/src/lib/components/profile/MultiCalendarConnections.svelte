@@ -264,20 +264,20 @@
 														>
 													{/if}
 												</p>
-												<p class="text-[11px] text-muted-foreground">
+												<p class="text-xs text-muted-foreground">
 													{source.accessRole}
 												</p>
 											</div>
 											{#if source.isDefaultWriteSource}
 												<span
-													class="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent"
+													class="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent"
 												>
 													Default write
 												</span>
 											{/if}
 										</div>
 										<div
-											class="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-muted-foreground"
+											class="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground"
 										>
 											<label class="flex items-center gap-1.5">
 												<input
@@ -377,7 +377,7 @@
 				{/each}
 			{/each}
 		</select>
-		<p class="mt-1.5 text-[11px] text-muted-foreground">
+		<p class="mt-1.5 text-xs text-muted-foreground">
 			Changing this only affects future events. Existing events stay with their original
 			account.
 		</p>

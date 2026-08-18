@@ -93,8 +93,6 @@ const MAX_PROVIDER_TOOL_CALLS_PER_ROUND = 40;
 const MAX_VALIDATION_REPAIR_ROUNDS = 2;
 const MAX_FORCED_SYNTHESIS_RETRIES = 1;
 const MAX_RETRYABLE_PROVIDER_PASS_RETRIES = 1;
-const MAX_REQUIRED_WEB_RESEARCH_REPAIR_ROUNDS = 2;
-const REQUIRED_EXTERNAL_WEB_RESEARCH_CALLS = 2;
 const MAX_BUFFERED_PROVIDER_PASS_BYTES = 512 * 1024;
 const CANONICAL_UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -198,8 +196,6 @@ export type AgenticChatReadOnlyProviderClientPortV1 = {
 type ClientRequest = Parameters<AgenticChatReadOnlyProviderClientPortV1['stream']>[0] & {
 	liveVisionRequest?: Omit<AgenticChatLiveVisionResolveInputV1, 'signal'>;
 	semanticDispositionGate?: boolean;
-	requiredWebResearchCalls?: number;
-	webResearchRepair?: boolean;
 };
 
 const TURN_CONTRACT_REVIEW_APPROVAL_TOOL: AgenticChatReadOnlyProviderToolV1 = Object.freeze({
@@ -322,14 +318,12 @@ type ToolRoundStreamState = {
 	setCurrentRequest(value: ClientRequest): void;
 	resolveMemoServed(call: CompletedProviderToolCall): AgenticChatReadToolExecutionV1 | null;
 	hasPendingTurnContractWrite(): boolean;
-	hasPendingRequiredWebResearch(): boolean;
 	takePreMutationSemanticDispositionGate(
 		request: ClientRequest,
 		calls: readonly CompletedProviderToolCall[]
 	): ClientRequest | null;
 	takePreFinalSemanticDispositionGate(request: ClientRequest): ClientRequest | null;
 	takeSemanticTurnDispositionGate(request: ClientRequest): ClientRequest | null;
-	takeRequiredWebResearchRepair(request: ClientRequest): ClientRequest | null;
 	takeTurnContractWriteCarveOut(request: ClientRequest): ClientRequest | null;
 	validateApprovedMutations(calls: readonly CompletedProviderToolCall[]): ToolValidationIssue[];
 	stageMutationBatchReview(
@@ -539,12 +533,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let pendingMutationBatchReview: PendingMutationBatchReview | null = null;
 		const semanticReviewRequired = Boolean(this.ports.semanticReviewer);
 		const readOps = new Set<string>();
-		const requiredWebResearchToolNames = ['web_search', 'web_visit'].slice(
-			0,
-			request.requiredWebResearchCalls ?? 0
-		);
-		const successfulWebResearchToolNames = new Set<string>();
-		let requiredWebResearchRepairRounds = 0;
 		// The executor clears this memo as soon as any call reaches the write
 		// boundary (successful or not), matching the legacy invalidation fence.
 		const turnReadMemo = new Map<string, AgenticChatReadToolExecutionV1>();
@@ -610,11 +598,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			hasPendingTurnContractWrite() {
 				return Boolean(turnContract && !contractWriteCarveOutUsed && !mutationRoundReached);
 			},
-			hasPendingRequiredWebResearch() {
-				return requiredWebResearchToolNames.some(
-					(toolName) => !successfulWebResearchToolNames.has(toolName)
-				);
-			},
 			takePreMutationSemanticDispositionGate(value, calls) {
 				if (
 					semanticTurnDispositionGateUsed ||
@@ -661,19 +644,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					return null;
 				}
 				return buildSemanticTurnDispositionGateRequest(value, request.tools);
-			},
-			takeRequiredWebResearchRepair(value) {
-				const missingToolNames = requiredWebResearchToolNames.filter(
-					(toolName) => !successfulWebResearchToolNames.has(toolName)
-				);
-				if (missingToolNames.length === 0) return null;
-				if (requiredWebResearchRepairRounds >= MAX_REQUIRED_WEB_RESEARCH_REPAIR_ROUNDS) {
-					throw providerError('provider_required_web_research_missing', 'permanent');
-				}
-				requiredWebResearchRepairRounds += 1;
-				// Force one evidence step per pass so web_visit is chosen from the
-				// preceding search result instead of being guessed in parallel.
-				return buildRequiredWebResearchRequest(value, request.tools, missingToolNames.slice(0, 1));
 			},
 			takeTurnContractWriteCarveOut(value) {
 				if (!turnContract || contractWriteCarveOutUsed || mutationRoundReached) {
@@ -855,16 +825,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						result: feedbackToChatToolResult(call.id, feedback)
 					};
 				});
-				for (const [index, call] of completedToolRound.calls.entries()) {
-					const feedback = input.results[index];
-					if (
-						isWebResearchToolName(call.name) &&
-						feedback !== undefined &&
-						!isFailedToolFeedback(feedback)
-					) {
-						successfulWebResearchToolNames.add(call.name);
-					}
-				}
 				const state = buildStreamState();
 				observeSupervisorDurableToolResults(state, completedToolRound.calls, input.results);
 				state.supervisor?.observe({
@@ -887,15 +847,11 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				for (const op of pattern.readOps) readOps.add(op);
 				if (pattern.readOps.length > 0) readOnlyRoundCount += 1;
 
-				const continuingRequiredWebResearch = currentRequest.webResearchRepair === true;
 				currentRequest = buildContinuationRequest(
 					currentRequest,
 					completedToolRound.calls,
 					input.results
 				);
-				if (continuingRequiredWebResearch) {
-					currentRequest = { ...currentRequest, toolChoice: 'auto' };
-				}
 				if (readOnlyReviewApproval) {
 					const approvalIndex = completedToolRound.calls.indexOf(readOnlyReviewApproval);
 					const approvalFeedback = input.results[approvalIndex];
@@ -1225,11 +1181,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let finished = false;
 		let keepLeaseForSynthesis = false;
 		let streamedText = false;
-		let publicTextEmitted = false;
 		let assistantCandidate = '';
-		const holdAssistantTextForMutationGate =
-			canRequirePreMutationSemanticDisposition(request) ||
-			(request.requiredWebResearchCalls ?? 0) > 0;
+		const holdAssistantTextForMutationGate = canRequirePreMutationSemanticDisposition(request);
 		const toolCalls = createToolCallAccumulator();
 		try {
 			yield* drainSupervisorSteps(state.supervisor);
@@ -1246,7 +1199,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					assistantCandidate += event.content;
 					if (holdAssistantTextForMutationGate) continue;
 					yield { type: 'text_delta', text: event.content };
-					publicTextEmitted = true;
 					state.supervisor?.observe({
 						type: 'assistant_text_delta',
 						chars: event.content.length
@@ -1299,16 +1251,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					}
 					for (const call of calls) assertAllowlistedCall(call, request.tools);
 					assertSemanticDispositionCalls(calls, request.semanticDispositionGate === true);
-					if (!publicTextEmitted && state.getProviderToolCallCount() === 0) {
-						const narration = buildPreToolNarration(calls);
-						yield { type: 'text_delta', text: narration };
-						publicTextEmitted = true;
-						state.supervisor?.observe({
-							type: 'assistant_text_delta',
-							chars: narration.length
-						});
-						yield* drainSupervisorSteps(state.supervisor);
-					}
 					const preMutationSemanticDispositionGate =
 						state.takePreMutationSemanticDispositionGate(request, calls);
 					if (preMutationSemanticDispositionGate) {
@@ -1411,36 +1353,9 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				const preFinalSemanticDispositionGate =
 					state.takePreFinalSemanticDispositionGate(request);
 				if (preFinalSemanticDispositionGate) {
-					if (!publicTextEmitted && state.getProviderToolCallCount() === 0) {
-						const narration = buildPreToolNarration([]);
-						yield { type: 'text_delta', text: narration };
-						publicTextEmitted = true;
-						state.supervisor?.observe({
-							type: 'assistant_text_delta',
-							chars: narration.length
-						});
-						yield* drainSupervisorSteps(state.supervisor);
-					}
 					state.setCurrentRequest(preFinalSemanticDispositionGate);
 					keepLeaseForSynthesis = true;
 					yield* this.streamContinuation(preFinalSemanticDispositionGate, usage, state);
-					return;
-				}
-				const requiredWebResearchRepair = state.takeRequiredWebResearchRepair(request);
-				if (requiredWebResearchRepair) {
-					if (!publicTextEmitted && state.getProviderToolCallCount() === 0) {
-						const narration = 'I’ll research this now and come back with the evidence.';
-						yield { type: 'text_delta', text: narration };
-						publicTextEmitted = true;
-						state.supervisor?.observe({
-							type: 'assistant_text_delta',
-							chars: narration.length
-						});
-						yield* drainSupervisorSteps(state.supervisor);
-					}
-					state.setCurrentRequest(requiredWebResearchRepair);
-					keepLeaseForSynthesis = true;
-					yield* this.streamContinuation(requiredWebResearchRepair, usage, state);
 					return;
 				}
 				if (holdAssistantTextForMutationGate && assistantCandidate) {
@@ -1901,9 +1816,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let streamedText = false;
 		let assistantCandidate = '';
 		const holdAssistantTextForTurnContract =
-			state.hasPendingTurnContractWrite() ||
-			request.semanticDispositionGate === true ||
-			state.hasPendingRequiredWebResearch();
+			state.hasPendingTurnContractWrite() || request.semanticDispositionGate === true;
 		const toolCalls = createToolCallAccumulator();
 		try {
 			yield* drainSupervisorSteps(state.supervisor);
@@ -2076,19 +1989,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						);
 						return;
 					}
-				}
-				const requiredWebResearchRepair = state.takeRequiredWebResearchRepair(request);
-				if (requiredWebResearchRepair) {
-					state.setCurrentRequest(requiredWebResearchRepair);
-					keepLeaseForContinuation = true;
-					yield* this.streamContinuation(
-						requiredWebResearchRepair,
-						aggregateUsage,
-						state,
-						validationRepairRounds,
-						emitPlanningSemantic
-					);
-					return;
 				}
 				state.supervisor?.observe({
 					type: 'final_candidate',
@@ -3073,52 +2973,6 @@ function buildSemanticTurnDispositionGateRequest(
 	};
 }
 
-function buildRequiredWebResearchRequest(
-	request: ClientRequest,
-	availableTools: readonly AgenticChatReadOnlyProviderToolV1[],
-	missingToolNames: readonly string[]
-): ClientRequest {
-	const missing = new Set(missingToolNames);
-	const tools = availableTools.filter((tool) => missing.has(tool.function.name));
-	if (tools.length !== missing.size) {
-		throw providerError('provider_required_web_research_surface_missing', 'permanent');
-	}
-	return {
-		...appendSystemInstruction(
-			request,
-			[
-				'The user explicitly requested current external market evidence, but the turn is about to finalize without the required live research.',
-				`Call the remaining required web-research tools now: ${missingToolNames.join(', ')}.`,
-				'Use web_search to discover current relevant sources and web_visit to inspect a concrete result. Do not answer from memory or emit final prose in this pass.'
-			].join(' ')
-		),
-		tools,
-		toolChoice: 'required',
-		providerRound: 'synthesis',
-		semanticDispositionGate: false,
-		webResearchRepair: true
-	};
-}
-
-function requiresExternalWebResearch(
-	userMessage: string,
-	tools: readonly AgenticChatReadOnlyProviderToolV1[]
-): boolean {
-	const toolNames = new Set(tools.map((tool) => tool.function.name));
-	if (!toolNames.has('web_search') || !toolNames.has('web_visit')) return false;
-	const requestsInvestigation =
-		/\b(?:look into|research|investigate|compare|benchmark|find out)\b/i.test(userMessage);
-	const requestsExternalMarketEvidence =
-		/\b(?:competitors?|alternatives?|market|landscape|industry|pricing|prices?|charge|costs?|other\s+[\w-]+\s+tools?)\b/i.test(
-			userMessage
-		);
-	return requestsInvestigation && requestsExternalMarketEvidence;
-}
-
-function isWebResearchToolName(toolName: string): boolean {
-	return toolName === 'web_search' || toolName === 'web_visit';
-}
-
 function buildPostSemanticDispositionRequest(
 	request: ClientRequest,
 	availableTools: readonly AgenticChatReadOnlyProviderToolV1[],
@@ -3208,16 +3062,6 @@ function contextSaturationRepairRank(
 	if (status === 'saturated') return READ_LOOP_REPAIR_RANK.stop_and_answer;
 	if (status === 'must_synthesize') return READ_LOOP_REPAIR_RANK.must_synthesize;
 	return 0;
-}
-
-function buildPreToolNarration(calls: readonly CompletedProviderToolCall[]): string {
-	if (calls.some((call) => isWebResearchToolName(call.name))) {
-		return 'I’ll research this now and come back with the evidence.';
-	}
-	if (calls.some((call) => reviewedAgenticChatMutationSpecV1(call.name))) {
-		return 'I’ll check the relevant details, then make the requested change.';
-	}
-	return 'I’ll check the relevant details before I answer.';
 }
 
 function buildPlanningStep(
@@ -3791,9 +3635,6 @@ function buildReadOnlyRequest(
 	const context = requireRecord(input.requestPayload.context, 'request context');
 	const contextType = canonicalRequiredText(context.type, 'context type');
 	const tools = productionToolsFor(input, mutationCapabilities);
-	const requiredWebResearchCalls = requiresExternalWebResearch(requestMessage, tools)
-		? REQUIRED_EXTERNAL_WEB_RESEARCH_CALLS
-		: 0;
 	const workerToolSurfaceOverride = buildWorkerToolSurfaceOverride(input, tools);
 	if (workerToolSurfaceOverride) {
 		messages.push({ role: 'system', content: workerToolSurfaceOverride });
@@ -3801,13 +3642,6 @@ function buildReadOnlyRequest(
 	const semanticMutationOrdering = buildWorkerSemanticMutationOrdering(tools);
 	if (semanticMutationOrdering) {
 		messages.push({ role: 'system', content: semanticMutationOrdering });
-	}
-	if (requiredWebResearchCalls > 0) {
-		messages.push({
-			role: 'system',
-			content:
-				'This request explicitly asks for external market evidence. Do not answer from model memory alone. Before finalizing, make at least two successful live web-research calls: use web_search to discover current sources, then web_visit to inspect at least one relevant source.'
-		});
 	}
 	messages.push({ role: 'user', content: userMessage });
 	return {
@@ -3828,7 +3662,6 @@ function buildReadOnlyRequest(
 		logicalProviderRound: 1,
 		providerRound: 'initial',
 		signal,
-		...(requiredWebResearchCalls > 0 ? { requiredWebResearchCalls } : {}),
 		...(liveVisionEnabled && currentTurn?.liveVision?.requested
 			? {
 					liveVisionRequest: {
@@ -3902,8 +3735,6 @@ function providerClientRequest(
 	const {
 		liveVisionRequest: _liveVisionRequest,
 		semanticDispositionGate: _semanticDispositionGate,
-		requiredWebResearchCalls: _requiredWebResearchCalls,
-		webResearchRepair: _webResearchRepair,
 		...clientRequest
 	} = request;
 	return clientRequest;
