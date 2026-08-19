@@ -78,7 +78,7 @@ describe('InboxProjectManagerBrief', () => {
 		expect(screen.getByText('Should I organize the launch documents this way?')).toBeVisible();
 		expect(screen.getByRole('link', { name: 'Launch plan' })).toHaveAttribute(
 			'href',
-			'/projects/project-1/documents/doc-1'
+			'/projects/project-1?entity=document&entity_id=doc-1'
 		);
 
 		const secondary = screen.getByText('Other things I noticed (1)').closest('summary');

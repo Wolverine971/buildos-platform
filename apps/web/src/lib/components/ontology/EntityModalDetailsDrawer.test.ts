@@ -75,7 +75,7 @@ describe('EntityModalDetailsDrawer rollout', () => {
 		);
 		const workspaceHost = readFileSync(
 			new URL(
-				'../../../routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte',
+				'../../../routes/projects/[id]/ProjectWorkspaceEntityModals.svelte',
 				import.meta.url
 			),
 			'utf8'
