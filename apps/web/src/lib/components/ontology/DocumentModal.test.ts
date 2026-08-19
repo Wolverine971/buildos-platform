@@ -4,6 +4,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/sv
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DocumentModal from './DocumentModal.svelte';
 
+// Start the heavy dynamic import during collection so this test's behavioral
+// timeout measures dock interaction/rendering instead of loaded-suite transform contention.
+const agentChatModalModule = import('$lib/components/agent/AgentChatModal.svelte');
+
 interface Deferred<T> {
 	promise: Promise<T>;
 	resolve: (value: T) => void;
@@ -219,6 +223,7 @@ describe('DocumentModal document loading', () => {
 	});
 
 	it('shows Document Interact in the document header and opens its dock', async () => {
+		await agentChatModalModule;
 		const fetchMock = vi.fn((input: RequestInfo | URL) => {
 			const url = String(input);
 			if (url.includes('/documents/document-a/full')) {
