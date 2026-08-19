@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/projects-v2/[id]/ProjectWorkspacePrototype.svelte -->
+<!-- apps/web/src/routes/projects/[id]/ProjectWorkspacePrototype.svelte -->
 <!--
 	Project workspace prototype body
 

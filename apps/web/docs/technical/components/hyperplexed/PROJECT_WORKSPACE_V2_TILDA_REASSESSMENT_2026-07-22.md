@@ -481,3 +481,41 @@ where people find, open, create, and organize them.
   horizontal overflow**.
 - Console findings were limited to the existing Vite websocket collision and development-time
   module-externalization warnings; no Docs workspace application error appeared.
+
+## Activity chronology simplification — shipped 2026-08-18
+
+Activity already had the right two-part model—past changes beside dated work—but several labels and
+controls obscured it. A full-width project-entity finder did not search the activity feed, `Up next`
+also contained overdue items, bare numeric counts had no meaning until interpreted, and `via api`
+exposed implementation detail in almost every seeded history row.
+
+- Removed the shared entity-search toolbar from Activity. Work, Overview, and Docs retain contextual
+  search, while Activity now begins directly with the chronology it owns (**P6, P22**).
+- Tightened the purpose line to `See what changed and what is scheduled.` The two desktop regions
+  remain Change history and Schedule, preserving a familiar past/future scan (**P4, P6**).
+- Renamed `Up next` to `Schedule`, paired it with the calendar icon, and described it as overdue and
+  upcoming project dates. Late items no longer sit under a future-only label (**P6, P9**).
+- Replaced bare `29` / `7` header numbers with `29 changes` / `7 items`, while keeping compact counts
+  inside the narrow History / Schedule switch (**P4**).
+- Hid implementation-only `api` and `form` source labels. Human-meaningful provenance such as chat,
+  brain dump, and agent call remains visible (**P4, P6**).
+- Flattened the hydration placeholder to the same ruled surface as the loaded workspace. Existing
+  history pagination, chronological rows, date sorting, overdue emphasis, entity opening, mobile
+  roving tabs, reduced-motion behavior, and 44 px targets remain intact (**P2, P11, P13, P20**).
+
+### Activity follow-up verification
+
+- The focused workspace set now has **21 passing tests**: seven workspace tests, six Activity/Pulse
+  tests, three Work-board tests, three document-row tests, and two tree-disclosure tests.
+- The official Svelte analyzer found no Activity-specific correctness issue. Its remaining output is
+  the workspace's existing shallow-history `resolve()` warnings plus mature async-load, reassigned
+  state, `Set`, and `bind:this` suggestions. The full web `svelte-check` reports **0 errors and 0
+  warnings**.
+- Authenticated local verification on Fading Crown confirmed **29 changes** and **7 scheduled items**
+  at the 1280 px desktop viewport, with no project search, `Up next`, or `via api` copy and **zero
+  horizontal overflow**.
+- At **390 × 844 px**, History and Schedule render as 44–45 px roving tabs. Schedule rows measure
+  **58 px**, late and future dates remain aligned on the right edge, and the page has **zero
+  horizontal overflow**.
+- Console findings were limited to the existing Vite websocket collision and development-time
+  module-externalization warnings; no Activity application error appeared.

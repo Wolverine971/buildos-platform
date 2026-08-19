@@ -859,10 +859,8 @@
 
 	function openTaskPage(taskId: string | null, projectId: string | null) {
 		if (!taskId || !projectId) return;
-		const url = resolve('/projects/[id]/tasks/[task_id]', {
-			id: projectId,
-			task_id: taskId
-		});
+		const params = new URLSearchParams({ entity: 'task', entity_id: taskId });
+		const url = `${resolve('/projects/[id]', { id: projectId })}?${params}`;
 		if (browser) {
 			window.open(url, '_blank', 'noopener');
 		} else {

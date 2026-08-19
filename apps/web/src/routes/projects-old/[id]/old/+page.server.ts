@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects/[id]/old/+page.server.ts
+// apps/web/src/routes/projects-old/[id]/old/+page.server.ts
 /**
  * Legacy project detail page (the pre-redesign workspace).
  *

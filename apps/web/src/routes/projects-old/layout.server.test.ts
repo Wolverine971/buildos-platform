@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects/layout.server.test.ts
+// apps/web/src/routes/projects-old/layout.server.test.ts
 import { describe, expect, it, vi } from 'vitest';
 
 import { load } from './+layout.server';

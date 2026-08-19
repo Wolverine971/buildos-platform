@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/projects-v2/[id]/ProjectWorkspaceEntityModals.svelte -->
+<!-- apps/web/src/routes/projects/[id]/ProjectWorkspaceEntityModals.svelte -->
 <!--
 	Native entity modal host for the V2 project workspace.
 

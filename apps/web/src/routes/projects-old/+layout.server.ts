@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects/+layout.server.ts
+// apps/web/src/routes/projects-old/+layout.server.ts
 /**
  * Ontology Layout Server
  * Ensures user is authenticated to access ontology routes

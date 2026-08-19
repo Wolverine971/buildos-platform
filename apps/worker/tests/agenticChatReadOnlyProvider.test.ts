@@ -2371,6 +2371,11 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				clarificationArguments,
 				'request_turn_clarification'
 			),
+			providerReadRound(
+				'suppressed-read-after-clarification',
+				{ project_id: projectId },
+				'get_project_overview'
+			),
 			[
 				{
 					type: 'text',
@@ -2449,6 +2454,11 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			toolChoice: 'none',
 			providerRound: 'synthesis'
 		});
+		expect(client.stream.mock.calls[3]?.[0]).toMatchObject({
+			tools: [],
+			toolChoice: 'none',
+			providerRound: 'synthesis'
+		});
 		expect(
 			client.stream.mock.calls[2]?.[0].messages.some(
 				(message) =>
@@ -2457,7 +2467,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 					message.content.includes('Clarification is required.')
 			)
 		).toBe(true);
-		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(client.stream).toHaveBeenCalledTimes(4);
 	});
 
 	it("lets an independent reviewer reject the acting model's ambiguous write contract", async () => {
@@ -6243,6 +6253,86 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				})
 			])
 		});
+	});
+
+	it('repairs unavailable skill_search without executing it and restores the admitted surface', async () => {
+		const clarificationArguments = {
+			reason: 'The available project evidence does not require a separate skill search.',
+			question: 'How would you like these project documents grouped?'
+		};
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-unavailable-skill-search-1',
+				{ query: 'project organization' },
+				'skill_search'
+			),
+			providerReadRound(
+				'provider-clarification-1',
+				clarificationArguments,
+				'request_turn_clarification'
+			)
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					updateTaskToolDefinition()
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'update_onto_task'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const steps = await collect(invocation.stream());
+		expect(steps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'provider-clarification-1',
+					toolName: 'request_turn_clarification'
+				})
+			])
+		);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		const repairRequest = client.stream.mock.calls[1]?.[0];
+		expect(repairRequest).toMatchObject({
+			toolChoice: 'required',
+			providerRound: 'synthesis',
+			tools: expect.arrayContaining([
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'update_onto_task' })
+				})
+			])
+		});
+		expect(
+			repairRequest?.messages.some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'skill_search is not callable in this turn and the call was rejected without execution'
+					)
+			)
+		).toBe(true);
+		expect(repairRequest?.tools.some((tool) => tool.function.name === 'skill_search')).toBe(
+			false
+		);
 	});
 
 	it('bounds unavailable skill_load repair to one non-executing retry', async () => {

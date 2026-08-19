@@ -128,7 +128,7 @@
 	let lastScrollY = $state(0);
 	let navHidden = $state(false);
 
-	const currentPath = $derived($page.url.pathname);
+	const currentPath: string = $derived($page.url.pathname);
 	const projectDetailMatch = $derived(currentPath.match(/^\/projects\/([^/]+)$/));
 	const projectTaskMatch = $derived(
 		currentPath.match(/^\/projects\/([^/]+)\/tasks\/([^/]+)\/?$/)

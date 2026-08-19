@@ -1,3 +1,4 @@
+<!-- apps/web/src/routes/projects/[id]/ProjectWorkspaceOptionsMenu.svelte -->
 <!-- Project-level controls restored from the original project workspace. -->
 <script lang="ts">
 	import { goto } from '$app/navigation';

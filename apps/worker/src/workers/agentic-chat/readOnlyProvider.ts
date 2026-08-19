@@ -94,6 +94,7 @@ const MAX_VALIDATION_REPAIR_ROUNDS = 2;
 const MAX_FORCED_SYNTHESIS_RETRIES = 1;
 const MAX_RETRYABLE_PROVIDER_PASS_RETRIES = 1;
 const MAX_BUFFERED_PROVIDER_PASS_BYTES = 512 * 1024;
+const UNAVAILABLE_SKILL_REPAIR_TOOL_NAMES = new Set(['skill_load', 'skill_search']);
 const CANONICAL_UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -1090,6 +1091,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				const forceNoToolSynthesis =
 					ledgerObservation.forceSynthesis ||
 					readLoopRepairRank >= READ_LOOP_REPAIR_RANK.must_synthesize;
+				const clarificationRequiresToolFreeSynthesis =
+					semanticDispositionToolName === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
 				const contractWriteCarveOut = forceNoToolSynthesis
 					? state.takeTurnContractWriteCarveOut(currentRequest)
 					: null;
@@ -1108,7 +1111,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				pendingToolRound = null;
 				toolRoundCompleted = false;
 				nextProviderRound += 1;
-				return forceNoToolSynthesis && !contractWriteCarveOut && !semanticDispositionGate
+				return clarificationRequiresToolFreeSynthesis ||
+					(forceNoToolSynthesis && !contractWriteCarveOut && !semanticDispositionGate)
 					? this.streamForcedSynthesis(currentRequest, completedToolRound.usage, state)
 					: this.streamContinuation(currentRequest, completedToolRound.usage, state);
 			},
@@ -2509,9 +2513,17 @@ function buildUnavailableSkillRepairRequest(
 	if (request.unavailableSkillRepairAttempted || calls.length === 0) return null;
 	const advertisedNames = new Set(request.tools.map((tool) => tool.function.name));
 	const rejectedCalls = calls.filter((call) => !advertisedNames.has(call.name));
-	if (rejectedCalls.length === 0 || !rejectedCalls.every((call) => call.name === 'skill_load')) {
+	if (
+		rejectedCalls.length === 0 ||
+		!rejectedCalls.every((call) => UNAVAILABLE_SKILL_REPAIR_TOOL_NAMES.has(call.name))
+	) {
 		return null;
 	}
+	const rejectedSkillNames = Array.from(new Set(rejectedCalls.map((call) => call.name))).sort();
+	const unavailableSkillDescription =
+		rejectedSkillNames.length === 1
+			? `${rejectedSkillNames[0]} is not callable in this turn and the call was rejected without execution.`
+			: `${rejectedSkillNames.join(', ')} are not callable in this turn and the calls were rejected without execution.`;
 	const restoredRequest: ClientRequest = {
 		...request,
 		tools: admittedTools,
@@ -2527,8 +2539,8 @@ function buildUnavailableSkillRepairRequest(
 			unavailableSkillRepairAttempted: true
 		},
 		[
-			'Unavailable worker skill repair: the previous pass called skill_load, but skill_load is not callable in this turn and the call was rejected without execution.',
-			'Do not call skill_load again. The exact admitted worker surface has been restored; use only the tools present in this request.',
+			`Unavailable worker skill repair: the previous pass called an unavailable skill tool, but ${unavailableSkillDescription}`,
+			`Do not call ${rejectedSkillNames.join(' or ')} again. The exact admitted worker surface has been restored; use only the tools present in this request.`,
 			'Choose a semantic disposition control before any mutation. Use an available read only when durable context is genuinely missing, and request clarification only when a required user choice remains unresolved.'
 		].join(' ')
 	);

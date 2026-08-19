@@ -1,3 +1,4 @@
+<!-- apps/web/src/routes/projects/[id]/ProjectBriefHubModal.svelte -->
 <!--
 	Project workspace brief hub.
 

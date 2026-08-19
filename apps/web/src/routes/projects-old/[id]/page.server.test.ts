@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects/[id]/page.server.test.ts
+// apps/web/src/routes/projects-old/[id]/page.server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { ensureActorIdMock } = vi.hoisted(() => ({

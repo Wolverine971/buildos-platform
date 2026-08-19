@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects-v2/[id]/ProjectWorkspacePrototype.test.ts
+// apps/web/src/routes/projects/[id]/ProjectWorkspacePrototype.test.ts
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';

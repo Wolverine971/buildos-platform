@@ -99,17 +99,12 @@
 
 	function evidenceHref(ref: ProjectSuggestionEvidenceRef): string | null {
 		if (!ref.entity_id) return null;
-		if (ref.entity_type === 'document') {
-			return resolve('/projects/[id]/documents/[document_id]', {
-				id: projectId,
-				document_id: ref.entity_id
+		if (ref.entity_type === 'document' || ref.entity_type === 'task') {
+			const params = new URLSearchParams({
+				entity: ref.entity_type,
+				entity_id: ref.entity_id
 			});
-		}
-		if (ref.entity_type === 'task') {
-			return resolve('/projects/[id]/tasks/[task_id]', {
-				id: projectId,
-				task_id: ref.entity_id
-			});
+			return `${resolve('/projects/[id]', { id: projectId })}?${params}`;
 		}
 		if (ref.entity_type === 'project' || ref.entity_type === 'goal') {
 			return resolve('/projects/[id]', { id: projectId });
