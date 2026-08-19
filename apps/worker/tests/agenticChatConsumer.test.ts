@@ -404,7 +404,8 @@ describe('Phase 3 Agentic Chat lifecycle', () => {
 		const runtime = new AgenticChatConsumerRuntime(consumer.queue, {
 			publisher: service('publisher', calls),
 			cancellation: service('cancellation', calls),
-			recovery: service('recovery', calls)
+			recovery: service('recovery', calls),
+			realtime: realtimeHealth()
 		});
 
 		await runtime.start();
@@ -449,7 +450,8 @@ describe('Phase 3 Agentic Chat lifecycle', () => {
 		const runtime = new AgenticChatConsumerRuntime(consumer.queue, {
 			publisher,
 			cancellation,
-			recovery
+			recovery,
+			realtime: realtimeHealth()
 		});
 
 		await expect(runtime.start()).rejects.toThrow('recovery unavailable');
@@ -481,7 +483,8 @@ describe('Phase 3 Agentic Chat lifecycle', () => {
 		const runtime = new AgenticChatConsumerRuntime(consumer.queue, {
 			publisher,
 			cancellation,
-			recovery
+			recovery,
+			realtime: realtimeHealth()
 		});
 		await runtime.start();
 		calls.length = 0;
@@ -504,7 +507,8 @@ describe('Phase 3 Agentic Chat lifecycle', () => {
 				new AgenticChatConsumerRuntime(consumer.queue, {
 					publisher: service('publisher', []),
 					cancellation: service('cancellation', []),
-					recovery: service('recovery', [])
+					recovery: service('recovery', []),
+					realtime: realtimeHealth()
 				})
 		).toThrow('requires one isolated agentic_chat_turn queue');
 	});
@@ -518,6 +522,18 @@ function service(name: string, calls: string[]) {
 		stop: vi.fn(async () => {
 			calls.push(`${name}.stop`);
 		})
+	};
+}
+
+function realtimeHealth() {
+	return {
+		getHealth: vi.fn(() => ({
+			healthy: true,
+			status: 'idle' as const,
+			activeChannels: 0,
+			lastTransitionAt: null,
+			consecutiveFailures: 0
+		}))
 	};
 }
 

@@ -39,10 +39,19 @@ function health(
 		healthy,
 		...(healthy ? {} : { reason: `runtime_${state}` }),
 		state,
+		activeTurns: 0,
+		realtime: {
+			healthy: true,
+			status: 'idle',
+			activeChannels: 0,
+			lastTransitionAt: null,
+			consecutiveFailures: 0
+		},
 		queue: {
 			healthy,
 			...(healthy ? {} : { reason: 'queue_not_started' }),
 			startedAt: healthy ? new Date(0).toISOString() : null,
+			lastSuccessfulClaimAt: healthy ? new Date(0).toISOString() : null,
 			lastPollSuccessAt: healthy ? new Date(0).toISOString() : null,
 			consecutiveClaimFailures: 0,
 			processingBatch: false,

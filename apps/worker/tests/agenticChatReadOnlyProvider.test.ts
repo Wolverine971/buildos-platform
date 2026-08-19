@@ -2597,6 +2597,207 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(semanticReviewer.stream).toHaveBeenCalledOnce();
 	});
 
+	it('keeps a uniquely matched completion executable without optional metadata', async () => {
+		const taskId = '41000000-0000-4000-8000-000000000004';
+		const contractArguments: JsonObject = {
+			summary: 'Complete the uniquely matched Northwind intro-call task.',
+			outcomes: [
+				{
+					action: 'complete',
+					entity_kind: 'task',
+					target_ids: [taskId],
+					required_fields: ['state_key'],
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const normalizedContract = parseDeclaredTurnContract(contractArguments);
+		if (!normalizedContract) throw new Error('Expected a valid completion contract');
+		const contractReviewSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
+			.digest('hex');
+		const contractApprovalArguments = {
+			reason: 'Exactly one loaded task matches the reported completed call.',
+			contract_sha256: contractReviewSha256
+		};
+		const mutationArguments = { task_id: taskId, state_key: 'done' };
+		const mutationBatchSha256 = mutationBatchReviewSha256([
+			{
+				id: 'provider-complete-task-1',
+				name: 'update_onto_task',
+				arguments: mutationArguments
+			}
+		]);
+		const mutationApprovalArguments = {
+			reason: 'The state-only update completes the unique commissioned task without guessing.',
+			batch_sha256: mutationBatchSha256
+		};
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-completion-contract-1',
+				contractArguments,
+				'declare_turn_contract'
+			),
+			providerReadRound('provider-complete-task-1', mutationArguments, 'update_onto_task'),
+			[
+				{ type: 'text', content: 'I marked the Northwind intro call done.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-completion-contract-1',
+				contractApprovalArguments,
+				'approve_turn_contract_review'
+			),
+			providerReadRound(
+				'reviewer-completion-batch-1',
+				mutationApprovalArguments,
+				'approve_mutation_batch_review'
+			)
+		]);
+		const providerInput = executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readOnlyTurnToolDefinition(),
+				clarificationToolDefinition(),
+				updateTaskToolDefinition()
+			],
+			[
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'update_onto_task'
+			]
+		);
+		providerInput.requestPayload = {
+			...providerInput.requestPayload,
+			message:
+				'hey so the task where i was gonna talk to that company northwind, just talked to them, it went well and now i am waiting to hear back'
+		};
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: providerInput,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		const contractReviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-completion-contract-1',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		expect(contractReviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					providerToolCallId: 'reviewer-completion-contract-1',
+					toolName: 'approve_turn_contract_review'
+				})
+			])
+		);
+		const mutationReviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-completion-contract-1',
+						'approve_turn_contract_review',
+						contractApprovalArguments,
+						{
+							status: 'turn_contract_review_approved',
+							contract_sha256: contractReviewSha256
+						}
+					)
+				]
+			})
+		);
+		expect(mutationReviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					providerToolCallId: 'reviewer-completion-batch-1',
+					toolName: 'approve_mutation_batch_review'
+				})
+			])
+		);
+		const mutationSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-completion-batch-1',
+						'approve_mutation_batch_review',
+						mutationApprovalArguments,
+						{
+							status: 'mutation_batch_review_approved',
+							batch_sha256: mutationBatchSha256
+						}
+					)
+				]
+			})
+		);
+		const mutationStep = mutationSteps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+				step.type === 'mutating_tool'
+		);
+		expect(mutationStep).toMatchObject({
+			providerToolCallId: 'provider-complete-task-1',
+			toolName: 'update_onto_task'
+		});
+		if (!mutationStep) throw new Error('Expected the unique completion mutation');
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 5,
+					results: [
+						durableMutationFeedback({
+							providerToolCallId: 'provider-complete-task-1',
+							logicalOperationId: mutationStep.logicalOperationId,
+							arguments: mutationArguments
+						})
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'I marked the Northwind intro call done.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+
+		const uniqueCompletionGuidance =
+			'Once that completion target is unique, missing optional metadata is not a required user choice';
+		expect(
+			client.stream.mock.calls[0]?.[0].messages.some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(uniqueCompletionGuidance)
+			)
+		).toBe(true);
+		for (const reviewerCall of semanticReviewer.stream.mock.calls) {
+			expect(
+				reviewerCall[0].messages.find((message) => message.role === 'system')?.content
+			).toContain(uniqueCompletionGuidance);
+		}
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+	});
+
 	it('fails a malformed reviewer approval closed to a durable clarification', async () => {
 		const taskId = '41000000-0000-4000-8000-000000000004';
 		const contractArguments: JsonObject = {

@@ -187,7 +187,7 @@ phaseADescribe('Phase A frozen-corpus control baseline (paid, real endpoint)', (
 		const db = await provisionTestUser({ userId, email: env.testUserEmail });
 		await warmupPing({ baseUrl: env.baseUrl, cookie });
 		await sweepStaleOrphanProjects(db);
-		ctx = { baseUrl: env.baseUrl, cookie, db };
+		ctx = { baseUrl: env.baseUrl, cookie, db, executionMode: 'legacy_sse' };
 	}, 60_000);
 
 	afterAll(async () => {

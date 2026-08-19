@@ -92,7 +92,9 @@ export class WorkerRuntimeLifecycle {
 		}
 		if (this.state === 'stopping' || this.state === 'stopped') {
 			return {
-				healthy: true,
+				// Stop advertising readiness before either queue begins its bounded
+				// drain. Existing work may finish, but no new work belongs here.
+				healthy: false,
 				state: this.state,
 				reason: this.state,
 				queue,

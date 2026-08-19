@@ -670,6 +670,12 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 		} as const;
 
 		await expect(adapter.publish(message)).resolves.toBe('sent');
+		expect(adapter.getHealth()).toMatchObject({
+			healthy: true,
+			status: 'connected',
+			activeChannels: 1,
+			consecutiveFailures: 0
+		});
 		expect(client.channel).toHaveBeenCalledWith('chat-user:user-1', {
 			config: { private: true, broadcast: { ack: true } }
 		});
@@ -681,6 +687,13 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 		});
 		await adapter.close();
 		expect(removeChannel).toHaveBeenCalledWith(channel);
+		expect(adapter.getHealth()).toMatchObject({
+			healthy: false,
+			status: 'closed',
+			activeChannels: 0
+		});
+		await expect(adapter.publish(message)).resolves.toBe('failed');
+		expect(client.channel).toHaveBeenCalledOnce();
 	});
 
 	it('fails closed and removes a private channel that cannot subscribe', async () => {
@@ -714,5 +727,60 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 		).resolves.toBe('failed');
 		expect(send).not.toHaveBeenCalled();
 		expect(removeChannel).toHaveBeenCalledWith(channel);
+		expect(adapter.getHealth()).toMatchObject({
+			healthy: false,
+			status: 'degraded',
+			activeChannels: 0
+		});
+	});
+
+	it('evicts a channel that degrades after subscribing and reconnects on the next event', async () => {
+		let observeStatus!: (
+			status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR'
+		) => void;
+		const channel = {
+			send: vi.fn().mockResolvedValue('ok'),
+			subscribe: vi.fn((callback: typeof observeStatus) => {
+				observeStatus = callback;
+				callback('SUBSCRIBED');
+				return channel;
+			})
+		};
+		const client = {
+			channel: vi.fn().mockReturnValue(channel),
+			removeChannel: vi.fn().mockResolvedValue(undefined)
+		};
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(client);
+		const message = {
+			kind: 'reconcile_hint',
+			topic: 'chat-user:user-1',
+			event: 'agent-stream-reconcile',
+			payload: {
+				contract_version: 'agentic_chat_worker_v1',
+				turn_run_id: 'turn-1',
+				session_id: 'session-1',
+				execution_generation: 1,
+				durable_through_sequence: 3
+			}
+		} as const;
+
+		await expect(adapter.publish(message)).resolves.toBe('sent');
+		observeStatus('CHANNEL_ERROR');
+		await Promise.resolve();
+		expect(adapter.getHealth()).toMatchObject({
+			healthy: false,
+			status: 'degraded',
+			activeChannels: 0
+		});
+		expect(client.removeChannel).toHaveBeenCalledWith(channel);
+
+		await expect(adapter.publish(message)).resolves.toBe('sent');
+		expect(client.channel).toHaveBeenCalledTimes(2);
+		expect(adapter.getHealth()).toMatchObject({
+			healthy: true,
+			status: 'connected',
+			activeChannels: 1,
+			consecutiveFailures: 0
+		});
 	});
 });

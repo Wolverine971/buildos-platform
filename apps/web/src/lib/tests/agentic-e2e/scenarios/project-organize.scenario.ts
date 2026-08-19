@@ -9,6 +9,7 @@ import type { Scenario, SeedResult } from '../harness/types';
 import { harnessProjectName, seedProject } from '../harness/seed';
 import {
 	assertAnyToolCalled,
+	assertToolCalledForExecutionMode,
 	assertTurnRunCompleted,
 	assertTurnSucceeded,
 	buildTranscript,
@@ -121,7 +122,14 @@ export const projectOrganizeScenario: Scenario = {
 			assert: async (turn, ctx, seed) => {
 				assertTurnSucceeded(turn);
 				assertAnyToolCalled(turn, ['declare_turn_contract']);
-				assertAnyToolCalled(turn, ['approve_turn_contract_review']);
+				// The worker publishes its semantic review as a durable control-tool call.
+				// Legacy has no equivalent tool, so parity is graded on the shared outcome below.
+				assertToolCalledForExecutionMode(
+					turn,
+					'approve_turn_contract_review',
+					ctx.executionMode,
+					'worker_realtime'
+				);
 				assertAnyToolCalled(turn, ['move_document_in_tree', 'tool_exec']);
 				assertTurnRunCompleted(await waitForTurnRun(ctx.db.admin, turn.streamRunId!));
 

@@ -28,7 +28,7 @@ import {
 	resolveEffectiveProjectId
 } from '$lib/services/agentic-chat-v2/scope';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import type { HarnessContextType, TurnResult } from './types';
+import type { AgenticE2EExecutionMode, HarnessContextType, TurnResult } from './types';
 import {
 	applyTurnEvent,
 	createEmptyTurnResult,
@@ -44,7 +44,7 @@ const REALTIME_READY_TIMEOUT_MS = 10_000;
 // makes the harness race a durable terminal event that lands just after it.
 const WORKER_TURN_TIMEOUT_MS = 315_000;
 
-export type AgenticE2EExecutionMode = 'legacy_sse' | 'worker_realtime';
+export type { AgenticE2EExecutionMode } from './types';
 
 export function resolveAgenticE2EExecutionMode(
 	value = process.env.AGENTIC_E2E_EXECUTION_MODE

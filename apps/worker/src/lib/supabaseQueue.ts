@@ -858,16 +858,22 @@ export class SupabaseQueue {
 		healthy: boolean;
 		reason?: string;
 		startedAt: string | null;
+		lastSuccessfulClaimAt: string | null;
 		lastPollSuccessAt: string | null;
 		consecutiveClaimFailures: number;
 		processingBatch: boolean;
 		draining: boolean;
 	} {
+		const lastSuccessfulClaimAt = this.lastPollSuccessAtMs
+			? new Date(this.lastPollSuccessAtMs).toISOString()
+			: null;
 		const snapshot = {
 			startedAt: this.startedAtMs ? new Date(this.startedAtMs).toISOString() : null,
-			lastPollSuccessAt: this.lastPollSuccessAtMs
-				? new Date(this.lastPollSuccessAtMs).toISOString()
-				: null,
+			// The claim RPC succeeding is the queue's authoritative DB-connectivity
+			// observation, even when it returns no jobs. Keep the legacy field while
+			// exposing the Phase 5 operational name explicitly.
+			lastSuccessfulClaimAt,
+			lastPollSuccessAt: lastSuccessfulClaimAt,
 			consecutiveClaimFailures: this.consecutiveClaimFailures,
 			processingBatch: this.activeJobs.size > 0,
 			draining: this.stopping !== null

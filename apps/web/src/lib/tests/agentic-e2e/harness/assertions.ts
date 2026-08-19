@@ -2,7 +2,7 @@
 //
 // Deterministic assertion helpers. Each throws an Error with a rich, debuggable
 // message (captured tool list, telemetry, text) so a failure explains itself.
-import type { TurnResult } from './types';
+import type { AgenticE2EExecutionMode, TurnResult } from './types';
 import type { ToolExecutionRow, TurnRunRow } from './telemetry';
 
 // Phrases that must never appear in user-visible assistant text: self-correction
@@ -55,6 +55,16 @@ export function assertToolCalled(turn: TurnResult, name: string): void {
 				`Assistant text: "${turn.assistantText.slice(0, 200)}"`
 		);
 	}
+}
+
+/** Require a tool only on the implementation path that owns it. */
+export function assertToolCalledForExecutionMode(
+	turn: TurnResult,
+	name: string,
+	executionMode: AgenticE2EExecutionMode,
+	requiredMode: AgenticE2EExecutionMode
+): void {
+	if (executionMode === requiredMode) assertToolCalled(turn, name);
 }
 
 /** The model called at least one of `names` this turn. Returns the ones it did call. */

@@ -10,6 +10,7 @@ import {
 	assertNonEmptyAssistantText,
 	assertNumericPriorityAtMost,
 	assertRowsUnchanged,
+	assertToolCalledForExecutionMode,
 	extractMarkdownSection,
 	mutatingToolCalls,
 	nextWeekdayDate,
@@ -106,6 +107,36 @@ describe('restraint assertion helpers', () => {
 		expect(() => assertNoMutations(t, 'test')).toThrow('update_onto_task');
 		expect(() =>
 			assertNoMutations(turn({ toolCalls: [call('search_onto_tasks')] }), 'test')
+		).not.toThrow();
+	});
+
+	it('requires implementation-specific tools only on their owning execution mode', () => {
+		const withoutApproval = turn();
+		const withApproval = turn({ toolCalls: [call('approve_turn_contract_review')] });
+
+		expect(() =>
+			assertToolCalledForExecutionMode(
+				withoutApproval,
+				'approve_turn_contract_review',
+				'legacy_sse',
+				'worker_realtime'
+			)
+		).not.toThrow();
+		expect(() =>
+			assertToolCalledForExecutionMode(
+				withoutApproval,
+				'approve_turn_contract_review',
+				'worker_realtime',
+				'worker_realtime'
+			)
+		).toThrow('approve_turn_contract_review');
+		expect(() =>
+			assertToolCalledForExecutionMode(
+				withApproval,
+				'approve_turn_contract_review',
+				'worker_realtime',
+				'worker_realtime'
+			)
 		).not.toThrow();
 	});
 

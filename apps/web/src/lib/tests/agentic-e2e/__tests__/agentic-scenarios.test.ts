@@ -129,7 +129,7 @@ beforeAll(async () => {
 	// 3. Clear only old crashed-run fixtures. Live concurrent runs remain isolated.
 	await sweepStaleOrphanProjects(db);
 
-	ctx = { baseUrl: env.baseUrl, cookie, db };
+	ctx = { baseUrl: env.baseUrl, cookie, db, executionMode: EXECUTION_MODE };
 }, 60000);
 
 afterAll(async () => {

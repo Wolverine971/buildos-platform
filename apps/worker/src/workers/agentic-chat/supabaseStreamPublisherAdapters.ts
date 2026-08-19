@@ -49,6 +49,14 @@ export type AgenticChatRealtimeClient = {
 	removeChannel: (channel: AgenticChatRealtimeChannel) => PromiseLike<unknown>;
 };
 
+export type AgenticChatRealtimeHealthV1 = {
+	healthy: boolean;
+	status: 'idle' | 'connected' | 'degraded' | 'closed';
+	activeChannels: number;
+	lastTransitionAt: string | null;
+	consecutiveFailures: number;
+};
+
 export class SupabaseAgenticChatPersistenceAdapter implements AgenticChatPersistencePortV1 {
 	constructor(private readonly client: AgenticChatSupabaseRpcClient) {}
 
@@ -120,6 +128,10 @@ export class SupabaseAgenticChatPersistenceAdapter implements AgenticChatPersist
 
 export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcastPortV1 {
 	private readonly channels = new Map<string, AgenticChatRealtimeChannel>();
+	private status: AgenticChatRealtimeHealthV1['status'] = 'idle';
+	private lastTransitionAt: string | null = null;
+	private consecutiveFailures = 0;
+	private closed = false;
 
 	constructor(
 		private readonly client: AgenticChatRealtimeClient,
@@ -135,18 +147,35 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 	}
 
 	async publish(message: AgenticChatBroadcastMessageV1): Promise<'sent' | 'failed'> {
+		if (this.closed) return 'failed';
 		try {
 			const channel = await this.channelFor(message.topic);
-			return (await channel.send({
-				type: 'broadcast',
-				event: message.event,
-				payload: message.payload
-			})) === 'ok'
-				? 'sent'
-				: 'failed';
+			const result =
+				(await channel.send({
+					type: 'broadcast',
+					event: message.event,
+					payload: message.payload
+				})) === 'ok';
+			if (!result) {
+				this.observeFailure();
+				return 'failed';
+			}
+			this.observeConnected();
+			return 'sent';
 		} catch {
+			this.observeFailure();
 			return 'failed';
 		}
+	}
+
+	getHealth(): AgenticChatRealtimeHealthV1 {
+		return {
+			healthy: this.status === 'idle' || this.status === 'connected',
+			status: this.status,
+			activeChannels: this.channels.size,
+			lastTransitionAt: this.lastTransitionAt,
+			consecutiveFailures: this.consecutiveFailures
+		};
 	}
 
 	async releaseTopic(topic: string): Promise<void> {
@@ -157,9 +186,14 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 	}
 
 	async close(): Promise<void> {
+		this.closed = true;
 		const channels = [...this.channels.values()];
 		this.channels.clear();
-		await Promise.all(channels.map((channel) => this.client.removeChannel(channel)));
+		try {
+			await Promise.all(channels.map((channel) => this.client.removeChannel(channel)));
+		} finally {
+			this.transitionTo('closed');
+		}
 	}
 
 	private async channelFor(topic: string): Promise<AgenticChatRealtimeChannel> {
@@ -197,15 +231,46 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 
 	private subscribe(channel: AgenticChatRealtimeChannel, topic: string): Promise<void> {
 		return new Promise((resolve, reject) => {
+			let settled = false;
 			channel.subscribe((status, error) => {
 				if (status === 'SUBSCRIBED') {
+					this.observeConnected();
+					if (settled) return;
+					settled = true;
 					resolve();
 					return;
 				}
+				this.observeFailure();
+				if (settled) {
+					// A cached channel can fail after its initial subscription. Evict it
+					// so the next durable event attempts a fresh Realtime connection.
+					if (this.channels.get(topic) === channel) this.channels.delete(topic);
+					void Promise.resolve(this.client.removeChannel(channel)).catch(() => undefined);
+					return;
+				}
+				settled = true;
 				reject(
 					error ?? new Error(`Realtime channel ${topic} failed to subscribe: ${status}`)
 				);
 			}, this.subscribeTimeoutMs);
 		});
+	}
+
+	private observeConnected(): void {
+		if (this.closed) return;
+		this.consecutiveFailures = 0;
+		this.transitionTo('connected');
+	}
+
+	private observeFailure(): void {
+		if (this.closed) return;
+		this.consecutiveFailures += 1;
+		this.transitionTo('degraded');
+	}
+
+	private transitionTo(status: AgenticChatRealtimeHealthV1['status']): void {
+		if (this.status === status) return;
+		this.status = status;
+		this.lastTransitionAt = new Date().toISOString();
 	}
 }

@@ -1,6 +1,7 @@
 // apps/worker/src/workers/agentic-chat/consumerRuntime.ts
 
 import type { SupabaseQueue } from '../../lib/supabaseQueue';
+import type { AgenticChatRealtimeHealthV1 } from './supabaseStreamPublisherAdapters';
 
 type StartStopService = {
 	start(): void | Promise<void>;
@@ -11,6 +12,9 @@ export type AgenticChatConsumerRuntimeServices = {
 	publisher: StartStopService;
 	cancellation: StartStopService;
 	recovery: StartStopService;
+	realtime: {
+		getHealth(): AgenticChatRealtimeHealthV1;
+	};
 };
 
 export type AgenticChatConsumerRuntimeState =
@@ -24,6 +28,8 @@ export type AgenticChatConsumerRuntimeHealth = {
 	healthy: boolean;
 	reason?: string;
 	state: AgenticChatConsumerRuntimeState;
+	activeTurns: number;
+	realtime: AgenticChatRealtimeHealthV1;
 	queue: ReturnType<SupabaseQueue['getHealth']>;
 };
 
@@ -52,7 +58,9 @@ export class AgenticChatConsumerRuntime {
 			return this.startPromise;
 		}
 		if (this.state !== 'idle') {
-			return Promise.reject(new Error(`Agentic Chat runtime cannot start from ${this.state}`));
+			return Promise.reject(
+				new Error(`Agentic Chat runtime cannot start from ${this.state}`)
+			);
 		}
 		this.state = 'starting';
 		this.startPromise = this.startOwnedServices();
@@ -72,15 +80,28 @@ export class AgenticChatConsumerRuntime {
 
 	getHealth(): AgenticChatConsumerRuntimeHealth {
 		const queue = this.queue.getHealth();
+		const activeTurns = this.queue.getCapacitySnapshot().activeJobs;
+		const realtime = this.services.realtime.getHealth();
+		const operational = { activeTurns, realtime, queue };
 		if (this.state === 'running') {
 			return queue.healthy
-				? { healthy: true, state: this.state, queue }
-				: { healthy: false, reason: queue.reason ?? 'queue_unhealthy', state: this.state, queue };
+				? { healthy: true, state: this.state, ...operational }
+				: {
+						healthy: false,
+						reason: queue.reason ?? 'queue_unhealthy',
+						state: this.state,
+						...operational
+					};
 		}
 		if (this.state === 'stopping' || this.state === 'stopped') {
-			return { healthy: true, reason: this.state, state: this.state, queue };
+			return { healthy: true, reason: this.state, state: this.state, ...operational };
 		}
-		return { healthy: false, reason: `runtime_${this.state}`, state: this.state, queue };
+		return {
+			healthy: false,
+			reason: `runtime_${this.state}`,
+			state: this.state,
+			...operational
+		};
 	}
 
 	private async startOwnedServices(): Promise<void> {
@@ -144,10 +165,7 @@ export class AgenticChatConsumerRuntime {
 		await this.queue.stop().catch(() => undefined);
 	}
 
-	private async captureStopError(
-		stop: () => Promise<unknown>,
-		errors: unknown[]
-	): Promise<void> {
+	private async captureStopError(stop: () => Promise<unknown>, errors: unknown[]): Promise<void> {
 		try {
 			await stop();
 		} catch (error) {

@@ -457,7 +457,8 @@ export function createAgenticChatPhase3Assembly(options: {
 			}
 		},
 		cancellation,
-		recovery
+		recovery,
+		realtime: broadcast
 	});
 	const capacity = new AgenticChatWorkerCapacityCollector({
 		runtime,

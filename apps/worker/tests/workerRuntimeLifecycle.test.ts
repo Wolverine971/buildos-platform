@@ -20,6 +20,7 @@ function queueHealth(healthy = true) {
 		healthy,
 		...(healthy ? {} : { reason: 'queue_unhealthy' }),
 		startedAt: healthy ? new Date(0).toISOString() : null,
+		lastSuccessfulClaimAt: healthy ? new Date(0).toISOString() : null,
 		lastPollSuccessAt: healthy ? new Date(0).toISOString() : null,
 		consecutiveClaimFailures: healthy ? 0 : 3,
 		processingBatch: false,
@@ -77,9 +78,14 @@ describe('WorkerRuntimeLifecycle', () => {
 		expect(workerSource).not.toContain("queue.process('agentic_chat_turn'");
 		expect(workerSource).toContain('agenticChatBootstrap.collectCapacityEvidence().finally');
 		expect(indexSource).toContain('const workerHealth = getWorkerHealth()');
+		expect(indexSource).toContain('buildWorkerOperationalHealthChecks(');
 		expect(indexSource).toContain('agenticChat: workerHealth.agenticChat');
 		expect(indexSource).toContain('app.get(AGENTIC_CHAT_CAPACITY_PATH');
 		expect(indexSource).toContain('Promise.race([shutdownWorker(), timer])');
+		expect(indexSource).toContain('const workerShutdown: Promise<{ error: unknown | null }>');
+		expect(
+			indexSource.indexOf('const workerShutdown: Promise<{ error: unknown | null }>')
+		).toBeLessThan(indexSource.indexOf('server.closeIdleConnections()'));
 		expect(indexSource).toContain("await crashExit('startup')");
 		expect(indexSource).not.toContain('Promise.race([queue.stop(), timer])');
 	});
@@ -155,6 +161,11 @@ describe('WorkerRuntimeLifecycle', () => {
 		await lifecycle.start();
 
 		const stopping = lifecycle.stop();
+		expect(lifecycle.getHealth()).toMatchObject({
+			healthy: false,
+			state: 'stopping',
+			reason: 'stopping'
+		});
 		await vi.waitFor(() => {
 			expect(owned.queue.stop).toHaveBeenCalledOnce();
 			expect(owned.agenticChat.stop).toHaveBeenCalledOnce();

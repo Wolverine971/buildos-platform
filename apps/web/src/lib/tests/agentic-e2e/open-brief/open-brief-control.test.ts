@@ -468,7 +468,7 @@ controlDescribe('Open-brief cohort 1 — production v2 control lane (paid)', () 
 		const db = await provisionTestUser({ userId, email: env.testUserEmail });
 		await warmupPing({ baseUrl: env.baseUrl, cookie });
 		await sweepStaleOrphanProjects(db);
-		ctx = { baseUrl: env.baseUrl, cookie, db };
+		ctx = { baseUrl: env.baseUrl, cookie, db, executionMode: 'legacy_sse' };
 	}, 60_000);
 
 	afterAll(async () => {

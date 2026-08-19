@@ -7,6 +7,9 @@ import type { TypedSupabaseClient } from '@buildos/supabase-client';
 /** A chat context mode accepted by POST /api/agent/v2/stream. */
 export type HarnessContextType = 'global' | 'project' | 'project_create' | 'daily_brief';
 
+/** Production transport selected for this harness run. */
+export type AgenticE2EExecutionMode = 'legacy_sse' | 'worker_realtime';
+
 /** Client-observed stream timing; durations are relative to the fetch start. */
 export interface TurnTiming {
 	requestStartedAt: string;
@@ -83,6 +86,7 @@ export interface ScenarioContext {
 	baseUrl: string;
 	cookie: string;
 	db: DbView;
+	executionMode: AgenticE2EExecutionMode;
 }
 
 export interface JudgeResult {

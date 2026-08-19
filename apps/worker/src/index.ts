@@ -30,6 +30,10 @@ import smsScheduledRoutes from './routes/sms/scheduled';
 import { startScheduler } from './scheduler';
 import { queueConfig } from './config/queueConfig';
 import {
+	WorkerEventLoopLagMonitor,
+	buildWorkerOperationalHealthChecks
+} from './lib/workerOperationalHealth';
+import {
 	collectAgenticChatWorkerCapacityEvidence,
 	getWorkerHealth,
 	queue,
@@ -58,6 +62,7 @@ const PORT = parseInt(process.env.PORT || '3001', 10);
 
 // HTTP server handle, assigned in start(); used by graceful shutdown.
 let server: Server | null = null;
+const eventLoopLagMonitor = new WorkerEventLoopLagMonitor();
 
 // Define allowed origins
 const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
@@ -153,11 +158,16 @@ app.use('/sms/scheduled', smsScheduledRoutes);
 // want when the claim loop is wedged or DB credentials have died.
 app.get('/health', (_req, res) => {
 	const workerHealth = getWorkerHealth();
+	const checks = buildWorkerOperationalHealthChecks(
+		workerHealth,
+		eventLoopLagMonitor.getSnapshot()
+	);
 	res.status(workerHealth.healthy ? 200 : 503).json({
 		status: workerHealth.healthy ? 'healthy' : 'unhealthy',
 		timestamp: new Date().toISOString(),
 		service: 'daily-brief-worker',
 		runtimeState: workerHealth.state,
+		checks,
 		queue: workerHealth.queue,
 		agenticChat: workerHealth.agenticChat
 	});
@@ -960,6 +970,14 @@ async function gracefulShutdown(signal: string): Promise<void> {
 	hardKill.unref();
 
 	try {
+		// 1. Stop both claim loops and mark health/capacity as draining before
+		// closing the listener. Attach a rejection handler immediately so a drain
+		// failure cannot become an unhandled rejection while HTTP is closing.
+		const workerShutdown: Promise<{ error: unknown | null }> = shutdownWorker().then(
+			() => ({ error: null }),
+			(error: unknown) => ({ error })
+		);
+
 		// 1. Stop accepting new HTTP requests. Bounded: server.close() waits for
 		// ALL connections including idle keep-alive sockets (e.g. Railway health
 		// checks), which would otherwise eat the whole drain window and let the
@@ -976,8 +994,9 @@ async function gracefulShutdown(signal: string): Promise<void> {
 			});
 		});
 
-		// 2. Drain in-flight queue jobs (bounded by QUEUE_DRAIN_TIMEOUT_MS)
-		await shutdownWorker();
+		// 2. Drain in-flight queue jobs (bounded by QUEUE_DRAIN_TIMEOUT_MS).
+		const shutdownResult = await workerShutdown;
+		if (shutdownResult.error !== null) throw shutdownResult.error;
 
 		// 3. Flush buffered analytics events
 		await shutdownPostHog();
@@ -985,6 +1004,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
 		console.error('❌ Error during graceful shutdown:', error);
 	} finally {
 		clearTimeout(hardKill);
+		eventLoopLagMonitor.stop();
 		process.exit(0);
 	}
 }
