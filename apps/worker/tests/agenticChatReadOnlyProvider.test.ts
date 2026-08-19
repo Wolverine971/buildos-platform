@@ -1267,6 +1267,13 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				})
 			]
 		});
+		expect(
+			semanticReviewer.stream.mock.calls[0]?.[0].messages.find(
+				(message) => message.role === 'system'
+			)?.content
+		).toContain(
+			'Past-tense reports that tracked work was completed commission the matching state change'
+		);
 
 		await expect(
 			collect(
@@ -1728,6 +1735,22 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(
 			contractReviewRequest?.messages.find((message) => message.role === 'system')?.content
 		).toContain('future change now');
+		expect(
+			contractReviewRequest?.messages.find((message) => message.role === 'system')?.content
+		).toContain(
+			'Past-tense reports that tracked work was completed commission the matching state change'
+		);
+		expect(
+			contractReviewRequest?.messages.find((message) => message.role === 'system')?.content
+		).toContain('A direct reschedule or priority instruction commissions that update');
+		expect(
+			contractReviewRequest?.messages.find((message) => message.role === 'system')?.content
+		).toContain(
+			'Several explicitly commissioned changes in one utterance belong to one contract'
+		);
+		expect(
+			contractReviewRequest?.messages.find((message) => message.role === 'system')?.content
+		).toContain('Delegated organization may include creating reasonable parent containers');
 
 		const approvalSteps = await collect(
 			invocation.continueWithToolResults!({
@@ -6130,7 +6153,9 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
-	it('repairs one unavailable skill_load call through the exact semantic gate without executing it', async () => {
+	it('restores the admitted surface after skill repair and still withholds a direct mutation behind the semantic gate', async () => {
+		const taskId = '41000000-0000-4000-8000-000000000004';
+		const mutationArguments = { task_id: taskId, state_key: 'done' };
 		const clarificationArguments = {
 			reason: 'A required user choice still remains after checking the available evidence.',
 			question: 'Which matching task should I update?'
@@ -6141,6 +6166,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				{ skill_id: 'task-planning' },
 				'skill_load'
 			),
+			providerReadRound('withheld-update-1', mutationArguments, 'update_onto_task'),
 			providerReadRound(
 				'provider-clarification-1',
 				clarificationArguments,
@@ -6174,7 +6200,8 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			signal: new AbortController().signal
 		});
 
-		await expect(collect(invocation.stream())).resolves.toEqual(
+		const steps = await collect(invocation.stream());
+		expect(steps).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
 					type: 'read_tool',
@@ -6183,11 +6210,17 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				})
 			])
 		);
-		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(client.stream).toHaveBeenCalledTimes(3);
 		const repairRequest = client.stream.mock.calls[1]?.[0];
 		expect(repairRequest).toMatchObject({
 			toolChoice: 'required',
-			providerRound: 'synthesis'
+			providerRound: 'synthesis',
+			tools: expect.arrayContaining([
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'update_onto_task' })
+				})
+			])
 		});
 		expect(repairRequest?.tools.some((tool) => tool.function.name === 'skill_load')).toBe(
 			false
@@ -6202,6 +6235,14 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 					)
 			)
 		).toBe(true);
+		expect(client.stream.mock.calls[2]?.[0]).toMatchObject({
+			toolChoice: 'required',
+			tools: expect.not.arrayContaining([
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'update_onto_task' })
+				})
+			])
+		});
 	});
 
 	it('bounds unavailable skill_load repair to one non-executing retry', async () => {

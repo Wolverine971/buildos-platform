@@ -199,6 +199,14 @@ type ClientRequest = Parameters<AgenticChatReadOnlyProviderClientPortV1['stream'
 	unavailableSkillRepairAttempted?: boolean;
 };
 
+const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
+	'When the user explicitly delegates judgment (for example, asks for a sensible organization), reasonable implementation choices within that commission are resolved; do not ask the user to make the delegated choice again.',
+	'Past-tense reports that tracked work was completed commission the matching state change when exactly one loaded entity fits; conversational or dictated wording does not turn the report into a request for confirmation.',
+	'A direct reschedule or priority instruction commissions that update when the target and requested value are uniquely resolved. An exact title is not required when one descriptive match remains after available reads.',
+	'Several explicitly commissioned changes in one utterance belong to one contract; preserve every resolved clause instead of asking the user to reconfirm the batch.',
+	'Delegated organization may include creating reasonable parent containers and moving existing items within the commissioned project, while preserving original content and avoiding unrelated edits.'
+]);
+
 const TURN_CONTRACT_REVIEW_APPROVAL_TOOL: AgenticChatReadOnlyProviderToolV1 = Object.freeze({
 	type: 'function',
 	function: {
@@ -312,6 +320,7 @@ type PendingMutationBatchReview = {
 type ToolRoundStreamState = {
 	supervisor: AgenticChatProviderSupervisorRuntime | null;
 	release(): void;
+	getAdmittedTools(): readonly AgenticChatReadOnlyProviderToolV1[];
 	recordProviderToolCalls(count: number): void;
 	getProviderToolCallCount(): number;
 	setPendingToolRound(value: PendingToolRound): void;
@@ -547,6 +556,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		const buildStreamState = (): ToolRoundStreamState => ({
 			supervisor,
 			release,
+			getAdmittedTools: () => request.tools,
 			recordProviderToolCalls(count) {
 				providerToolCallCount += count;
 			},
@@ -1252,7 +1262,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					}
 					const unavailableSkillRepair = buildUnavailableSkillRepairRequest(
 						request,
-						calls
+						calls,
+						state.getAdmittedTools()
 					);
 					if (unavailableSkillRepair) {
 						state.setCurrentRequest(unavailableSkillRepair);
@@ -1889,7 +1900,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					}
 					const unavailableSkillRepair = buildUnavailableSkillRepairRequest(
 						request,
-						calls
+						calls,
+						state.getAdmittedTools()
 					);
 					if (unavailableSkillRepair) {
 						state.setCurrentRequest(unavailableSkillRepair);
@@ -1905,6 +1917,20 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					}
 					for (const call of calls) assertAllowlistedCall(call, request.tools);
 					assertSemanticDispositionCalls(calls, request.semanticDispositionGate === true);
+					const preMutationSemanticDispositionGate =
+						state.takePreMutationSemanticDispositionGate(request, calls);
+					if (preMutationSemanticDispositionGate) {
+						state.setCurrentRequest(preMutationSemanticDispositionGate);
+						keepLeaseForContinuation = true;
+						yield* this.streamContinuation(
+							preMutationSemanticDispositionGate,
+							aggregateUsage,
+							state,
+							validationRepairRounds,
+							emitPlanningSemantic
+						);
+						return;
+					}
 					const blockedToolCalls = observeSupervisorToolCalls(state, calls);
 					yield* drainSupervisorSteps(state.supervisor);
 					const executableCalls = calls.filter((call) => !blockedToolCalls.has(call.id));
@@ -2477,7 +2503,8 @@ function assertAllowlistedCall(
 
 function buildUnavailableSkillRepairRequest(
 	request: ClientRequest,
-	calls: readonly CompletedProviderToolCall[]
+	calls: readonly CompletedProviderToolCall[],
+	admittedTools: readonly AgenticChatReadOnlyProviderToolV1[]
 ): ClientRequest | null {
 	if (request.unavailableSkillRepairAttempted || calls.length === 0) return null;
 	const advertisedNames = new Set(request.tools.map((tool) => tool.function.name));
@@ -2485,19 +2512,24 @@ function buildUnavailableSkillRepairRequest(
 	if (rejectedCalls.length === 0 || !rejectedCalls.every((call) => call.name === 'skill_load')) {
 		return null;
 	}
-	const semanticGate = buildSemanticTurnDispositionGateRequest(request, request.tools);
-	if (!semanticGate) return null;
+	const restoredRequest: ClientRequest = {
+		...request,
+		tools: admittedTools,
+		toolChoice: 'required',
+		providerRound: 'synthesis',
+		semanticDispositionGate: false
+	};
+	if (!canRequirePreMutationSemanticDisposition(restoredRequest)) return null;
 	return appendSystemInstruction(
 		{
-			...semanticGate,
+			...restoredRequest,
 			logicalProviderRound: request.logicalProviderRound + 1,
-			providerRound: 'synthesis',
 			unavailableSkillRepairAttempted: true
 		},
 		[
 			'Unavailable worker skill repair: the previous pass called skill_load, but skill_load is not callable in this turn and the call was rejected without execution.',
-			'Do not call skill_load again. Use only the exact tools present in this request.',
-			'Choose the semantic disposition from the user request and loaded evidence now; use an available read only when durable context is genuinely missing, and request clarification only when a required user choice remains unresolved.'
+			'Do not call skill_load again. The exact admitted worker surface has been restored; use only the tools present in this request.',
+			'Choose a semantic disposition control before any mutation. Use an available read only when durable context is genuinely missing, and request clarification only when a required user choice remains unresolved.'
 		].join(' ')
 	);
 }
@@ -2777,6 +2809,7 @@ function buildReadOnlyTurnReviewRequest(
 					'The acting model chose read-only and wrote its reason, so that declaration and prior assistant claims are untrusted evidence—not user intent.',
 					'Approve the exact read-only disposition only if the current user request commissions no durable data change and asks only for information, explanation, analysis, or advice.',
 					'Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change. Future context does not commission that later change now.',
+					...SEMANTIC_COMMISSION_GUIDANCE,
 					'A commissioned change is not read-only merely because its target or value remains ambiguous; in that case request clarification and name the plausible human-readable choices from loaded evidence.',
 					...(allowDispositionCorrection
 						? [
@@ -2849,9 +2882,9 @@ function buildTurnContractReviewRequest(
 					'The acting model chose the contract, so its proposal, prior assistant claims, ordering, and selected IDs are untrusted evidence—not user intent.',
 					'Approve the exact contract only if the current user request commissioned every outcome and the complete turn record resolves every target and required value without guessing.',
 					'Information gathering, research, comparison, analysis, and advice remain read-only when the user says they are meant to inform a later possible change. Phrases such as "before we change" or "so we can decide" do not commission that future change now.',
+					...SEMANTIC_COMMISSION_GUIDANCE,
 					'If the current request commissions no durable change, choose declare_read_only_turn instead of inventing a contract or asking the user to clarify a change they did not request.',
 					'Target IDs are existing entity IDs that bound the eligible scope; create outcomes have no target ID before execution. minimum_successful_effects is the required cardinality. Approve a minimum smaller than the target set only when the user commission genuinely allows that bounded partial result; require the full cardinality when every listed target must change.',
-					'When the user explicitly delegates judgment (for example, asks for a sensible organization), approve reasonable concrete choices within that commission instead of asking the user to make the delegated choice again.',
 					'If multiple loaded entities plausibly match a descriptive reference, if the proposed target conflicts with the user request, or if a required choice remains, request clarification.',
 					'For clarification, ask one concise user-facing question and name the plausible human-readable choices from the loaded evidence when available.',
 					'Choose exactly one tool. You may correct a false contract to read-only; never rewrite, broaden, or substitute a durable contract.'
@@ -3014,12 +3047,8 @@ function buildSemanticTurnDispositionGateRequest(
 				'Call declare_read_only_turn only when no durable data change was commissioned.',
 				'Information gathering, research, comparison, analysis, and advice remain read-only when they are intended to inform a later possible change; future context does not commission that later change now.',
 				'Call request_turn_clarification when a durable change was commissioned but a required user choice remains unresolved after reading, including multiple plausible targets. Never guess among plausible choices.',
-				'When the user explicitly delegates judgment (for example, asks for a sensible organization), reasonable implementation choices within that commission are resolved; do not ask the user to make the delegated choice again.',
 				'A descriptive reference is safely resolved only when the user message and loaded context identify one plausible target. If several loaded entities fit, a prior assistant mention, ordering, or proposed tool target does not choose one for the user.',
-				'Past-tense reports that tracked work was completed commission the matching state change when exactly one loaded entity fits; conversational or dictated wording does not turn the report into a request for confirmation.',
-				'A direct reschedule or priority instruction commissions that update when the target and requested value are uniquely resolved. An exact title is not required when one descriptive match remains after available reads.',
-				'Several explicitly commissioned changes in one utterance belong to one contract; preserve every resolved clause instead of asking the user to reconfirm the batch.',
-				'Delegated organization may include creating reasonable parent containers and moving existing items within the commissioned project, while preserving original content and avoiding unrelated edits.',
+				...SEMANTIC_COMMISSION_GUIDANCE,
 				'A proposal or request for approval is not read-only when the user already commissioned the action.',
 				'Describe semantic outcomes and real cardinality, not implementation steps or tool names.'
 			].join(' ')
