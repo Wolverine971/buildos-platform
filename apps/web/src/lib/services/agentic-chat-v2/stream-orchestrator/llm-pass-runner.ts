@@ -111,14 +111,15 @@ export class LlmStreamPassTerminalError extends Error {
 /**
  * Project creation can produce a large, structured tool payload (for example a
  * fiction workspace with several fully seeded documents). Tool arguments are
- * often delivered only when the provider finishes the call, so the ordinary
- * 60-second pass limit can abort a healthy generation with zero visible chunks.
+ * often delivered only when the provider finishes the call, so every pass in
+ * this context needs more than the ordinary 60-second limit. Restricting the
+ * allowance to forced-tool passes left valid automatic passes at 60 seconds.
  */
 export function resolveLlmPassTimeoutMs(params: {
 	normalizedContext: ChatContextType;
 	forcedToolChoice?: 'required';
 }): number {
-	return params.normalizedContext === 'project_create' && params.forcedToolChoice === 'required'
+	return params.normalizedContext === 'project_create'
 		? PROJECT_CREATE_LLM_PASS_TIMEOUT_MS
 		: LLM_PASS_TIMEOUT_MS;
 }

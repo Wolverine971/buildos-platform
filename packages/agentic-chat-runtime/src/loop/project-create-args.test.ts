@@ -106,4 +106,34 @@ describe('project create argument normalization', () => {
 		expect(errors).toContain('Missing required parameter: entities');
 		expect(errors).toContain('Missing required parameter: relationships');
 	});
+
+	it('extracts a leading risk severity and preserves misplaced explanatory prose', () => {
+		const incidentImpact =
+			'high compliance penalties can prematurely end games if validation rules are poorly balanced against player marketing choices.';
+		const args = {
+			project: {
+				name: 'Chocolate Wars',
+				type_key: 'project.software.game'
+			},
+			entities: [
+				{
+					temp_id: 'risk-1',
+					kind: 'risk',
+					title: 'Compliance penalties end games prematurely',
+					impact: incidentImpact
+				}
+			],
+			relationships: []
+		};
+
+		const normalized = normalizeProjectCreateArgs(args);
+
+		expect(normalized.entities[0]).toEqual({
+			...args.entities[0],
+			impact: 'high',
+			content: incidentImpact
+		});
+		expect(args.entities[0]).not.toHaveProperty('content');
+		expect(validateProjectCreateArgs(normalized)).toEqual([]);
+	});
 });

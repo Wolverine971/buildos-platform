@@ -206,4 +206,27 @@ describe('validateProjectSpec', () => {
 		expect(errors).toHaveLength(0);
 		expect(ProjectSpecSchema.parse(spec).entities[0]?.impact).toBe('medium');
 	});
+
+	it('extracts a valid severity from a risk impact containing model-generated prose', () => {
+		const spec = {
+			project: {
+				name: 'Chocolate Wars',
+				type_key: 'project.software.game'
+			},
+			entities: [
+				{
+					temp_id: 'risk-1',
+					kind: 'risk',
+					title: 'Compliance penalties end games prematurely',
+					impact: 'high compliance penalties can prematurely end games if validation rules are poorly balanced against player marketing choices.'
+				}
+			],
+			relationships: []
+		};
+
+		const { valid, errors } = validateProjectSpec(spec);
+		expect(valid).toBe(true);
+		expect(errors).toHaveLength(0);
+		expect(ProjectSpecSchema.parse(spec).entities[0]?.impact).toBe('high');
+	});
 });

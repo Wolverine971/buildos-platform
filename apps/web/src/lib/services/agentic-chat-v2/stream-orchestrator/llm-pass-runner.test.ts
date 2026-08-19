@@ -66,7 +66,12 @@ describe('runLlmStreamPass', () => {
 		vi.useRealTimers();
 	});
 
-	it('allows forced project creation payloads more time than ordinary passes', () => {
+	it('allows every project creation pass more time than ordinary passes', () => {
+		expect(
+			resolveLlmPassTimeoutMs({
+				normalizedContext: 'project_create'
+			})
+		).toBe(120_000);
 		expect(
 			resolveLlmPassTimeoutMs({
 				normalizedContext: 'project_create',
@@ -76,7 +81,7 @@ describe('runLlmStreamPass', () => {
 		expect(resolveLlmPassTimeoutMs({ normalizedContext: 'project' })).toBe(60_000);
 	});
 
-	it('does not abort a healthy large project-create tool call at 60 seconds', async () => {
+	it('does not abort an automatic healthy project-create tool call at 60 seconds', async () => {
 		vi.useFakeTimers();
 		const createCall = toolCall('create_onto_project', {
 			project: { name: 'Book workspace' },
@@ -102,7 +107,6 @@ describe('runLlmStreamPass', () => {
 					}
 				}
 			],
-			forcedToolChoice: 'required',
 			normalizedContext: 'project_create'
 		});
 

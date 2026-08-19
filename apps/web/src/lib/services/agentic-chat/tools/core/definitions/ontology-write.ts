@@ -411,7 +411,8 @@ Risks capture potential issues and mitigation planning.`,
 					},
 					impact: {
 						type: 'string',
-						description: 'Impact level (required): low, medium, high, critical'
+						description: 'Impact severity only; put explanatory prose in content.',
+						enum: ['low', 'medium', 'high', 'critical']
 					},
 					probability: {
 						type: 'number',
@@ -836,7 +837,12 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 								start_date: { type: 'string' },
 								end_date: { type: 'string' },
 								body_markdown: { type: 'string' },
-								impact: { type: 'string' },
+								impact: {
+									type: 'string',
+									description:
+										'Risk severity only; put explanatory prose in content.',
+									enum: ['low', 'medium', 'high', 'critical']
+								},
 								probability: { type: 'number' },
 								content: { type: 'string' },
 								unit: { type: 'string' },
@@ -1454,7 +1460,8 @@ Use for edits to title, impact, probability, state, or mitigation metadata.`,
 					},
 					impact: {
 						type: 'string',
-						description: 'Impact level (low, medium, high, critical)'
+						description: 'Impact severity only; put explanatory prose in content.',
+						enum: ['low', 'medium', 'high', 'critical']
 					},
 					probability: {
 						type: 'number',

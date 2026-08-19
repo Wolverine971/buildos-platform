@@ -11,6 +11,21 @@ function getToolProperties(toolName: string): Record<string, unknown> {
 }
 
 describe('ontology write tool definitions', () => {
+	it('constrains risk impact fields to severity enums', () => {
+		const expectedImpactSchema = expect.objectContaining({
+			type: 'string',
+			enum: ['low', 'medium', 'high', 'critical']
+		});
+
+		expect(getToolProperties('create_onto_risk').impact).toEqual(expectedImpactSchema);
+		expect(getToolProperties('update_onto_risk').impact).toEqual(expectedImpactSchema);
+
+		const projectEntities = getToolProperties('create_onto_project').entities as {
+			items?: { properties?: Record<string, unknown> };
+		};
+		expect(projectEntities.items?.properties?.impact).toEqual(expectedImpactSchema);
+	});
+
 	it('exposes document merge strategy only on document updates', () => {
 		for (const toolName of [
 			'update_onto_task',

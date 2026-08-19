@@ -50,10 +50,13 @@ export const RiskStateSchema = z.enum(RISK_STATES);
 
 export const RISK_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
 export type RiskImpact = (typeof RISK_IMPACTS)[number];
-export const RiskImpactSchema = z.preprocess(
-	(value) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
-	z.enum(RISK_IMPACTS)
-);
+export const RiskImpactSchema = z.preprocess((value) => {
+	if (typeof value !== 'string') return value;
+	const normalized = value.trim().toLowerCase();
+	// Keep the schema boundary tolerant of the same model error repaired by
+	// normalizeProjectCreateArgs, including direct ProjectSpec API callers.
+	return normalized.match(/^(low|medium|high|critical)\b/)?.[1] ?? normalized;
+}, z.enum(RISK_IMPACTS));
 
 /**
  * Get valid states for an entity kind

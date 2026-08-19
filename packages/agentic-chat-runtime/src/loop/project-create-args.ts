@@ -256,9 +256,20 @@ function normalizeProjectFacets<T extends JsonRecord>(args: T): T {
 	} as T;
 }
 
-function normalizeRiskImpact(value: unknown): string | null {
-	const normalized = normalizeEnumToken(value);
-	return normalized && RISK_IMPACT_VALUES.has(normalized) ? normalized : null;
+function normalizeRiskImpact(value: unknown): { impact: string; narrative: string | null } | null {
+	const raw = toNonEmptyString(value);
+	if (!raw) return null;
+
+	const normalized = normalizeEnumToken(raw);
+	if (normalized && RISK_IMPACT_VALUES.has(normalized)) {
+		return { impact: normalized, narrative: null };
+	}
+
+	// Models occasionally put the risk explanation in the enum field, prefixed
+	// by the intended severity (for example, "high compliance penalties can …").
+	// Recover the enum without discarding the explanation.
+	const leadingSeverity = raw.toLowerCase().match(/^(low|medium|high|critical)\b/);
+	return leadingSeverity ? { impact: leadingSeverity[1] as string, narrative: raw } : null;
 }
 
 function normalizeEntityEnums(entity: unknown): unknown {
@@ -266,12 +277,24 @@ function normalizeEntityEnums(entity: unknown): unknown {
 		return entity;
 	}
 
-	const impact = normalizeRiskImpact(entity.impact);
-	if (!impact) return entity;
+	const normalizedImpact = normalizeRiskImpact(entity.impact);
+	if (!normalizedImpact) return entity;
+
+	const existingContent = toNonEmptyString(entity.content);
+	const shouldPreserveNarrative =
+		normalizedImpact.narrative !== null &&
+		(!existingContent || !existingContent.includes(normalizedImpact.narrative));
 
 	return {
 		...entity,
-		impact
+		impact: normalizedImpact.impact,
+		...(shouldPreserveNarrative
+			? {
+					content: existingContent
+						? `${existingContent}\n\n${normalizedImpact.narrative}`
+						: normalizedImpact.narrative
+				}
+			: {})
 	};
 }
 
