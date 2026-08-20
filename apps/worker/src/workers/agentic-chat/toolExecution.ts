@@ -8,6 +8,7 @@ import {
 } from '@buildos/shared-types';
 import type { AgenticChatExecutionIdentityV1 } from './executionControl';
 import { runWithAbortableDeadline } from './abortableDeadline';
+import { agenticChatGenerationWriteFenceArgsV1 } from './writeFence';
 
 const IDENTITY_VERSION = 'agentic_chat_read_tool_execution_identity_v1';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -137,11 +138,8 @@ export class SupabaseAgenticChatToolExecutionAdapter implements AgenticChatToolE
 			createTimeoutError: () => new AgenticChatToolExecutionTimeoutError(this.timeoutMs),
 			run: (deadlineSignal) => {
 				const request = this.client.rpc('persist_agentic_chat_read_tool_execution', {
-					p_turn_run_id: input.turnRunId,
+					...agenticChatGenerationWriteFenceArgsV1(input),
 					p_user_id: input.userId,
-					p_queue_job_id: input.queueJobId,
-					p_processing_token: input.processingToken,
-					p_execution_generation: input.executionGeneration,
 					p_tool_execution_id: input.toolExecutionId,
 					p_sequence_index: input.sequenceIndex,
 					p_provider_tool_call_id: input.providerToolCallId,
@@ -178,11 +176,8 @@ export class SupabaseAgenticChatToolExecutionAdapter implements AgenticChatToolE
 			createTimeoutError: () => new AgenticChatToolExecutionTimeoutError(this.timeoutMs),
 			run: (deadlineSignal) => {
 				const request = this.client.rpc('persist_agentic_chat_tool_validation_failure', {
-					p_turn_run_id: input.turnRunId,
+					...agenticChatGenerationWriteFenceArgsV1(input),
 					p_user_id: input.userId,
-					p_queue_job_id: input.queueJobId,
-					p_processing_token: input.processingToken,
-					p_execution_generation: input.executionGeneration,
 					p_tool_execution_id: input.toolExecutionId,
 					p_sequence_index: input.sequenceIndex,
 					p_provider_tool_call_id: input.providerToolCallId,
@@ -215,11 +210,8 @@ export class SupabaseAgenticChatToolExecutionAdapter implements AgenticChatToolE
 			createTimeoutError: () => new AgenticChatToolExecutionTimeoutError(this.timeoutMs),
 			run: (deadlineSignal) => {
 				const request = this.client.rpc('persist_agentic_chat_mutation_tool_execution', {
-					p_turn_run_id: input.turnRunId,
+					...agenticChatGenerationWriteFenceArgsV1(input),
 					p_user_id: input.userId,
-					p_queue_job_id: input.queueJobId,
-					p_processing_token: input.processingToken,
-					p_execution_generation: input.executionGeneration,
 					p_effect_id: input.effectId,
 					p_canonical_argument_hash: input.canonicalArgumentHash,
 					p_tool_execution_id: input.toolExecutionId,

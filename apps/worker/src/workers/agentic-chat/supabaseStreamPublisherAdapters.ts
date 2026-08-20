@@ -11,6 +11,7 @@ import type {
 	AgenticChatBroadcastPortV1,
 	AgenticChatPersistencePortV1
 } from './streamPublisher';
+import { agenticChatGenerationWriteFenceArgsV1 } from './writeFence';
 
 type RpcError = { code?: string; message: string };
 type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }>;
@@ -83,10 +84,12 @@ export class SupabaseAgenticChatPersistenceAdapter implements AgenticChatPersist
 		return this.call<AgenticChatSemanticEventRpcResultV1>(
 			'persist_agentic_chat_semantic_event',
 			{
-				p_turn_run_id: input.turn_run_id,
-				p_queue_job_id: input.queue_job_id,
-				p_processing_token: input.processing_token,
-				p_execution_generation: input.execution_generation,
+				...agenticChatGenerationWriteFenceArgsV1({
+					turnRunId: input.turn_run_id,
+					queueJobId: input.queue_job_id,
+					processingToken: input.processing_token,
+					executionGeneration: input.execution_generation
+				}),
 				p_transition_id: input.transition_id,
 				p_assistant_text: input.assistant_text,
 				p_phase: input.phase,
@@ -107,10 +110,12 @@ export class SupabaseAgenticChatPersistenceAdapter implements AgenticChatPersist
 		return this.call<AgenticChatStreamDeliveryAckRpcResultV1>(
 			'acknowledge_agentic_chat_stream_delivery',
 			{
-				p_turn_run_id: input.turn_run_id,
-				p_queue_job_id: input.queue_job_id,
-				p_processing_token: input.processing_token,
-				p_execution_generation: input.execution_generation,
+				...agenticChatGenerationWriteFenceArgsV1({
+					turnRunId: input.turn_run_id,
+					queueJobId: input.queue_job_id,
+					processingToken: input.processing_token,
+					executionGeneration: input.execution_generation
+				}),
 				p_acknowledged_sequence: input.acknowledged_sequence
 			}
 		);

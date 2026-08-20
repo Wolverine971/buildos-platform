@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import type { JsonObject } from '@buildos/shared-types';
 import type { AgenticChatExecutionIdentityV1 } from './executionControl';
 import { runWithAbortableDeadline } from './abortableDeadline';
+import { agenticChatGenerationWriteFenceArgsV1 } from './writeFence';
 
 const OBSERVATION_IDENTITY_VERSION = 'agentic_chat_execution_observation_identity_v1';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -78,11 +79,8 @@ export class SupabaseAgenticChatExecutionObservationAdapter
 				),
 			run: (deadlineSignal) => {
 				const request = this.client.rpc('persist_agentic_chat_execution_observation', {
-					p_turn_run_id: input.turnRunId,
+					...agenticChatGenerationWriteFenceArgsV1(input),
 					p_user_id: input.userId,
-					p_queue_job_id: input.queueJobId,
-					p_processing_token: input.processingToken,
-					p_execution_generation: input.executionGeneration,
 					p_observation_key: input.observationKey,
 					p_phase: input.phase,
 					p_event_type: input.eventType,

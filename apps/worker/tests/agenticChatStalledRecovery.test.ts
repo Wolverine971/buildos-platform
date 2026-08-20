@@ -210,9 +210,7 @@ describe('AgenticChatStalledRecoverySweep', () => {
 		expect(harness.control.finalize).toHaveBeenCalledWith(
 			expect.objectContaining({
 				status: 'failed',
-				assistantMessageId: expect.stringMatching(
-					/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
-				),
+				assistantMessageId: null,
 				assistantText: 'durable partial',
 				projection: snapshot.projection,
 				assistantMetadata: expect.objectContaining({ recovered_from_stall: true })
@@ -320,7 +318,10 @@ describe('AgenticChatStalledRecoverySweep', () => {
 		expect(harness.control.finalize).toHaveBeenCalledTimes(2);
 		expect(harness.control.finalize.mock.calls[1]?.[0]).toMatchObject({
 			status: 'cancelled',
-			failureCode: 'cancelled'
+			failureCode: 'cancelled',
+			assistantMessageId: expect.stringMatching(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+			)
 		});
 	});
 

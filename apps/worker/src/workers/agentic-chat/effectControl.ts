@@ -7,6 +7,7 @@ import {
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import type { AgenticChatExecutionIdentityV1 } from './executionControl';
+import { agenticChatGenerationWriteFenceArgsV1 } from './writeFence';
 
 type RpcError = { code?: string; message: string };
 type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }>;
@@ -71,11 +72,8 @@ export class SupabaseAgenticChatEffectControlAdapter implements AgenticChatEffec
 	async reserve(input: AgenticChatEffectReservationInputV1): Promise<ChatTurnEffectRpcResultV1> {
 		validateReservationInput(input);
 		const value = await this.call('reserve_agentic_chat_effect', {
+			...agenticChatGenerationWriteFenceArgsV1(input),
 			p_effect_id: input.effectId,
-			p_turn_run_id: input.turnRunId,
-			p_queue_job_id: input.queueJobId,
-			p_processing_token: input.processingToken,
-			p_execution_generation: input.executionGeneration,
 			p_tool_name: input.toolName,
 			p_operation_name: input.operationName,
 			p_canonical_argument_hash: input.canonicalArgumentHash,
@@ -89,11 +87,8 @@ export class SupabaseAgenticChatEffectControlAdapter implements AgenticChatEffec
 		validateEffectIdentity(input);
 		validateProviderToolCallId(input.providerToolCallId);
 		const value = await this.call('begin_agentic_chat_effect', {
+			...agenticChatGenerationWriteFenceArgsV1(input),
 			p_effect_id: input.effectId,
-			p_turn_run_id: input.turnRunId,
-			p_queue_job_id: input.queueJobId,
-			p_processing_token: input.processingToken,
-			p_execution_generation: input.executionGeneration,
 			p_canonical_argument_hash: input.canonicalArgumentHash,
 			p_provider_tool_call_id: input.providerToolCallId
 		});
@@ -105,11 +100,8 @@ export class SupabaseAgenticChatEffectControlAdapter implements AgenticChatEffec
 	): Promise<ChatTurnEffectRpcResultV1> {
 		validateReconciliationInput(input);
 		const value = await this.call('reconcile_agentic_chat_effect', {
+			...agenticChatGenerationWriteFenceArgsV1(input),
 			p_effect_id: input.effectId,
-			p_turn_run_id: input.turnRunId,
-			p_queue_job_id: input.queueJobId,
-			p_processing_token: input.processingToken,
-			p_execution_generation: input.executionGeneration,
 			p_canonical_argument_hash: input.canonicalArgumentHash,
 			p_target_state: input.targetState,
 			p_downstream_receipt: input.downstreamReceipt,

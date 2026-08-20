@@ -499,7 +499,7 @@ function buildTerminalInput(
 		finishedReason: status === 'cancelled' ? 'cancelled' : 'worker_interrupted',
 		failureCode: normalizedFailureCode,
 		assistantMessageId:
-			snapshot.assistantText.length > 0
+			status === 'cancelled' && snapshot.assistantText.length > 0
 				? stableRecoveryMessageId(candidate.turnRunId, snapshot.executionGeneration)
 				: null,
 		assistantText: snapshot.assistantText,

@@ -10,6 +10,7 @@ import {
 	canonicalizeAgenticChatJson,
 	createAgentStreamEventIdV1
 } from '@buildos/shared-types';
+import { agenticChatGenerationWriteFenceArgsV1 } from './writeFence';
 
 type RpcError = { code?: string; message: string };
 type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }>;
@@ -126,10 +127,7 @@ export class SupabaseAgenticChatExecutionControlAdapter
 		validateExecutionIdentity(input);
 		positiveInteger(input.executionGeneration, 'executionGeneration');
 		const value = await this.call('begin_agentic_chat_turn_execution', {
-			p_turn_run_id: input.turnRunId,
-			p_queue_job_id: input.queueJobId,
-			p_processing_token: input.processingToken,
-			p_execution_generation: input.executionGeneration
+			...agenticChatGenerationWriteFenceArgsV1(input)
 		});
 		return parseBeginReceipt(value, input);
 	}
@@ -148,10 +146,7 @@ export class SupabaseAgenticChatExecutionControlAdapter
 			throw protocolError('recovery error message is invalid');
 		}
 		const value = await this.call('recover_agentic_chat_turn', {
-			p_turn_run_id: input.turnRunId,
-			p_queue_job_id: input.queueJobId,
-			p_processing_token: input.processingToken,
-			p_execution_generation: input.executionGeneration,
+			...agenticChatGenerationWriteFenceArgsV1(input),
 			p_failure_class: input.failureClass,
 			p_error_message: input.errorMessage
 		});
@@ -179,8 +174,13 @@ export class SupabaseAgenticChatExecutionControlAdapter
 		if (input.assistantMessageId !== null) {
 			canonicalUuid(input.assistantMessageId, 'assistantMessageId');
 		}
-		if (input.status === 'completed' && input.assistantMessageId === null) {
-			throw protocolError('completed finalization requires an assistant message id');
+		const persistsAssistantMessage =
+			input.status === 'completed' ||
+			(input.status === 'cancelled' && input.assistantText.length > 0);
+		if (persistsAssistantMessage !== (input.assistantMessageId !== null)) {
+			throw protocolError(
+				'terminal status, assistant text, and assistant message id are inconsistent'
+			);
 		}
 		for (const [name, value] of [
 			['promptTokens', input.promptTokens],
@@ -263,10 +263,7 @@ export class SupabaseAgenticChatExecutionControlAdapter
 						? 'finalize_agentic_chat_turn_with_last_context'
 						: 'finalize_agentic_chat_turn_with_terminal_events';
 		const args: Record<string, unknown> = {
-			p_turn_run_id: input.turnRunId,
-			p_queue_job_id: input.queueJobId,
-			p_processing_token: input.processingToken,
-			p_execution_generation: input.executionGeneration,
+			...agenticChatGenerationWriteFenceArgsV1(input),
 			p_user_id: input.userId,
 			p_status: input.status,
 			p_finished_reason: input.finishedReason,

@@ -9,6 +9,7 @@ import {
 import type { AgenticChatExecutionIdentityV1 } from './executionControl';
 import { runWithAbortableDeadline } from './abortableDeadline';
 import { createStableAgenticChatSupervisorTransitionIdV1 } from './workerSupervisor';
+import { agenticChatGenerationWriteFenceArgsV1 } from './writeFence';
 
 const CHECKPOINT_IDENTITY_VERSION = 'agentic_chat_supervisor_checkpoint_identity_v1';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -114,11 +115,8 @@ export class SupabaseAgenticChatSupervisorCheckpointAdapter
 				const request = this.client.rpc(
 					'persist_agentic_chat_supervisor_question_checkpoint',
 					{
-						p_turn_run_id: input.turnRunId,
+						...agenticChatGenerationWriteFenceArgsV1(input),
 						p_user_id: input.userId,
-						p_queue_job_id: input.queueJobId,
-						p_processing_token: input.processingToken,
-						p_execution_generation: input.executionGeneration,
 						p_checkpoint_id: input.checkpointId,
 						p_supervisor_transition_id: input.supervisorTransitionId,
 						p_sequence: input.sequence,

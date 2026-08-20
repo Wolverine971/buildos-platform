@@ -23,6 +23,7 @@ import {
 	AgenticChatFixtureMutationAdapterError,
 	AgenticChatFixtureMutationExecutor
 } from './fixtureMutationExecutor';
+import { agenticChatGenerationWriteFenceArgsV1 } from './writeFence';
 
 const TOOL_NAME = 'agentic_chat_stated_future_capture';
 const OPERATION_NAME = 'agentic_chat.stated_future_capture';
@@ -127,11 +128,11 @@ export class SupabaseAgenticChatStatedFutureCaptureAdapter
 
 		const evidenceValue = await this.callEvidence(
 			{
-				p_turn_run_id: claim.turnRunId,
-				p_user_id: claim.userId,
-				p_queue_job_id: claim.queueJobId,
-				p_processing_token: input.processingToken,
-				p_execution_generation: claim.executionGeneration
+				...agenticChatGenerationWriteFenceArgsV1({
+					...claim,
+					processingToken: input.processingToken
+				}),
+				p_user_id: claim.userId
 			},
 			input.signal
 		);

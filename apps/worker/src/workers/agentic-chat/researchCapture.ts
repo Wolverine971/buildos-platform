@@ -13,6 +13,7 @@ import {
 } from '@buildos/shared-types';
 import { runWithAbortableDeadline } from './abortableDeadline';
 import type { AgenticChatWorkerExecutionInputV1 } from './executionInput';
+import { agenticChatGenerationWriteFenceArgsV1 } from './writeFence';
 
 const RESEARCH_CAPTURE_IDENTITY_VERSION = 'agentic_chat_research_capture_identity_v1';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -102,11 +103,11 @@ export class SupabaseAgenticChatResearchCaptureAdapter implements AgenticChatRes
 		const evidenceValue = await this.call(
 			'load_agentic_chat_research_capture_evidence',
 			{
-				p_turn_run_id: claim.turnRunId,
-				p_user_id: claim.userId,
-				p_queue_job_id: claim.queueJobId,
-				p_processing_token: input.processingToken,
-				p_execution_generation: claim.executionGeneration
+				...agenticChatGenerationWriteFenceArgsV1({
+					...claim,
+					processingToken: input.processingToken
+				}),
+				p_user_id: claim.userId
 			},
 			input.signal
 		);
@@ -134,11 +135,11 @@ export class SupabaseAgenticChatResearchCaptureAdapter implements AgenticChatRes
 		const applyValue = await this.call(
 			'apply_agentic_chat_research_capture',
 			{
-				p_turn_run_id: claim.turnRunId,
+				...agenticChatGenerationWriteFenceArgsV1({
+					...claim,
+					processingToken: input.processingToken
+				}),
 				p_user_id: claim.userId,
-				p_queue_job_id: claim.queueJobId,
-				p_processing_token: input.processingToken,
-				p_execution_generation: claim.executionGeneration,
 				p_effect_id: identity.effectId,
 				p_canonical_argument_hash: identity.canonicalArgumentHash,
 				p_project_id: projectId,

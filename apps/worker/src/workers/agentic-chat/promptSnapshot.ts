@@ -6,6 +6,7 @@ import {
 	AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
 	type AgenticChatPreparedPromptSnapshotV1
 } from './providerContract';
+import { agenticChatGenerationWriteFenceArgsV1 } from './writeFence';
 
 const PROMPT_SNAPSHOT_IDENTITY_VERSION = 'agentic_chat_prompt_snapshot_identity_v1';
 const MAX_MODEL_MESSAGES_BYTES = 2 * 1024 * 1024;
@@ -71,11 +72,8 @@ export class SupabaseAgenticChatPromptSnapshotAdapter implements AgenticChatProm
 	): Promise<AgenticChatPromptSnapshotPersistResultV1> {
 		validateInput(input);
 		const { data, error } = await this.client.rpc('persist_agentic_chat_prompt_snapshot_v3', {
-			p_turn_run_id: input.turnRunId,
+			...agenticChatGenerationWriteFenceArgsV1(input),
 			p_user_id: input.userId,
-			p_queue_job_id: input.queueJobId,
-			p_processing_token: input.processingToken,
-			p_execution_generation: input.executionGeneration,
 			p_prompt_snapshot_id: input.promptSnapshotId,
 			p_model_messages: input.prompt.modelMessages,
 			p_tool_definitions: input.prompt.toolDefinitions,

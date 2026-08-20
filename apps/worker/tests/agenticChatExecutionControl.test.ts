@@ -593,6 +593,59 @@ describe('SupabaseAgenticChatExecutionControlAdapter', () => {
 		);
 	});
 
+	it('keeps failed partial text in stream state without creating an assistant history row', async () => {
+		const { adapter, rpc } = adapterFor([
+			terminalReceipt({
+				status: 'failed',
+				finished_reason: 'worker_interrupted',
+				failure_code: 'stale_context',
+				assistant_message_id: null
+			})
+		]);
+
+		await expect(
+			adapter.finalize(
+				finalizeInput({
+					status: 'failed',
+					finishedReason: 'worker_interrupted',
+					failureCode: 'stale_context',
+					assistantMessageId: null,
+					assistantText: 'Reconnect-only partial response.',
+					promptTokens: null,
+					completionTokens: null,
+					totalTokens: null
+				})
+			)
+		).resolves.toMatchObject({ status: 'failed', assistant_message_id: null });
+		expect(rpc).toHaveBeenCalledWith(
+			'finalize_agentic_chat_turn',
+			expect.objectContaining({
+				p_status: 'failed',
+				p_assistant_message_id: null,
+				p_assistant_text: 'Reconnect-only partial response.'
+			})
+		);
+	});
+
+	it('rejects an assistant history ID for failed reconnect-only text before the RPC', async () => {
+		const { adapter, rpc } = adapterFor([]);
+
+		await expect(
+			adapter.finalize(
+				finalizeInput({
+					status: 'failed',
+					finishedReason: 'worker_interrupted',
+					failureCode: 'stale_context',
+					assistantText: 'Reconnect-only partial response.',
+					promptTokens: null,
+					completionTokens: null,
+					totalTokens: null
+				})
+			)
+		).rejects.toThrow('assistant message id are inconsistent');
+		expect(rpc).not.toHaveBeenCalled();
+	});
+
 	it('rejects a forged database-owned timing summary', async () => {
 		const lastTurnContext = {
 			summary: 'Completed the request.',
