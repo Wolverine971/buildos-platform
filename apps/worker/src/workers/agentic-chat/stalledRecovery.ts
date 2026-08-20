@@ -507,7 +507,11 @@ function buildTerminalInput(
 			transport_contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 			turn_run_id: candidate.turnRunId,
 			execution_generation: snapshot.executionGeneration,
-			recovered_from_stall: true
+			recovered_from_stall: true,
+			// The interrupted process no longer owns the exact in-memory round count.
+			// Finalization derives calls from the durable ledger and treats zero as the
+			// conservative one-round fallback for failed/cancelled turns with ledger rows.
+			tool_round_count: 0
 		},
 		promptTokens: null,
 		completionTokens: null,
