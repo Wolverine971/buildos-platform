@@ -3,7 +3,7 @@
 Complete column listing for all 240 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-08-20T02:19:36.117Z
+**Schema generated:** 2026-08-20T16:55:29.693Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -448,7 +448,7 @@ checkpoint_type `string` · created_at `string` · digest `Json` · execution_ge
 
 ### chat_turn_effects
 
-canonical_argument_hash `string` · created_at `string` · downstream_idempotency_supported `boolean` · downstream_receipt `Json?` · execution_generation `number` · failure_code `string?` · finished_at `string?` · id `string` · operation_name `string` · provider_tool_call_id `string?` · reserved_at `string` · session_id `string` · started_at `string?` · state `string` · tool_name `string` · turn_run_id `string` · updated_at `string` · user_id `string`
+canonical_argument_hash `string` · created_at `string` · downstream_idempotency_supported `boolean` · downstream_receipt `Json?` · execution_generation `number` · failure_code `string?` · finished_at `string?` · id `string` · operation_name `string` · provider_tool_call_id `string?` · reserved_at `string` · session_id `string` · started_at `string?` · state `string` · tool_name `string` · turn_run_id `string` · uncertain_reconciled_at `string?` · updated_at `string` · user_id `string`
 
 ### chat_turn_events
 

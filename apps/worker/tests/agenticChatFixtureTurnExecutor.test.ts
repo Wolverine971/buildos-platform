@@ -188,6 +188,12 @@ function executionBoundaryLogs(processingJob: ReturnType<typeof job>) {
 		.filter((record) => record.event === 'agentic_chat_execution_boundary');
 }
 
+function typedExecutionFailureLog(processingJob: ReturnType<typeof job>) {
+	return processingJob.log.mock.calls
+		.map(([message]) => JSON.parse(message) as Record<string, unknown>)
+		.find((record) => record.event === 'agentic_chat_typed_execution_failure');
+}
+
 function recoveryReceipt(
 	outcome:
 		| 'retry_scheduled'
@@ -3941,8 +3947,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				'connection closed after possible commit'
 			)
 		);
+		const processingJob = job();
 
-		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+		await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
 			outcome: 'effect_reconciliation_required',
 			terminalStatus: null,
 			queueReconciled: false
@@ -3951,6 +3958,11 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			expect.objectContaining({ failureClass: 'uncertain_external_commit' })
 		);
 		expect(harness.control.finalize).not.toHaveBeenCalled();
+		expect(typedExecutionFailureLog(processingJob)).toMatchObject({
+			failure_class: 'uncertain_external_commit',
+			retry_classification: 'uncertain_external_commit',
+			execution_started: true
+		});
 		await harness.publisher.stop();
 	});
 
@@ -3961,8 +3973,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		harness.input.load.mockRejectedValueOnce(
 			new AgenticChatExecutionInputError('database_error', 'temporary database error')
 		);
+		const processingJob = job();
 
-		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+		await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
 			outcome: 'requeued',
 			queueReconciled: false
 		});
@@ -3974,6 +3987,12 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		);
 		expect(harness.control.begin).not.toHaveBeenCalled();
 		expect(harness.provider.stream).not.toHaveBeenCalled();
+		expect(typedExecutionFailureLog(processingJob)).toMatchObject({
+			execution_error_code: 'database_error',
+			failure_class: 'transient_infra',
+			retry_classification: 'transient_safe',
+			execution_started: false
+		});
 		await harness.publisher.stop();
 	});
 
@@ -3983,8 +4002,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		});
 		const timeout = new AbortController();
 		timeout.abort(new Error('Queue processing deadline exceeded'));
+		const processingJob = job(timeout.signal);
 
-		await expect(harness.executor.execute(job(timeout.signal))).resolves.toMatchObject({
+		await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
 			outcome: 'requeued',
 			terminalStatus: null,
 			queueReconciled: false
@@ -3996,6 +4016,11 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		expect(harness.control.begin).not.toHaveBeenCalled();
 		expect(harness.provider.stream).not.toHaveBeenCalled();
 		expect(harness.control.finalize).not.toHaveBeenCalled();
+		expect(typedExecutionFailureLog(processingJob)).toMatchObject({
+			failure_class: 'timeout_pre_start',
+			retry_classification: 'safe_before_start',
+			execution_started: false
+		});
 		await harness.publisher.stop();
 	});
 
@@ -4509,9 +4534,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				terminalStatus: 'failed',
 				queueReconciled: true
 			});
-			const executionFailureLog = processingJob.log.mock.calls
-				.map(([message]) => JSON.parse(message) as Record<string, unknown>)
-				.find((record) => record.event === 'agentic_chat_typed_execution_failure');
+			const executionFailureLog = typedExecutionFailureLog(processingJob);
 			expect(executionFailureLog).toEqual({
 				event: 'agentic_chat_typed_execution_failure',
 				turn_run_id: TURN_RUN_ID,
@@ -4519,6 +4542,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				execution_generation: EXECUTION_GENERATION,
 				execution_error_code: 'provider_stream_failed',
 				failure_class: 'permanent',
+				retry_classification: 'permanent',
 				execution_started: true,
 				rejected_provider_tool_name: 'move_document_in_treemove_document_in_tree',
 				rejected_provider_tool_name_length: 42,

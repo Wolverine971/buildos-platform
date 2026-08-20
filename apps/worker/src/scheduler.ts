@@ -665,6 +665,40 @@ export async function checkAndScheduleAgentOperatives(now: Date = new Date()): P
 	}
 }
 
+async function runAgenticChatWorkerRetentionCleanup(): Promise<void> {
+	try {
+		const { data, error } = await supabase.rpc('cleanup_agentic_chat_worker_artifacts');
+		if (error) {
+			console.warn('⚠️ Scheduled Agentic Chat worker artifact cleanup failed:', error);
+			return;
+		}
+
+		const summary = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+		const eventsDeleted = numericSummaryValue(summary, 'turn_events_deleted');
+		const streamStatesDeleted = numericSummaryValue(summary, 'stream_states_deleted');
+		const signalsDeleted = numericSummaryValue(summary, 'turn_signals_deleted');
+		const inputArtifactsDeleted = numericSummaryValue(summary, 'input_artifacts_deleted');
+		const effectsDeleted = numericSummaryValue(summary, 'effects_deleted');
+		if (
+			eventsDeleted > 0 ||
+			streamStatesDeleted > 0 ||
+			signalsDeleted > 0 ||
+			inputArtifactsDeleted > 0 ||
+			effectsDeleted > 0
+		) {
+			console.log(
+				`✅ Scheduled Agentic Chat worker artifact cleanup complete: events=${eventsDeleted}, streamStates=${streamStatesDeleted}, signals=${signalsDeleted}, inputs=${inputArtifactsDeleted}, effects=${effectsDeleted}`
+			);
+		}
+	} catch (error) {
+		console.error('❌ Scheduled Agentic Chat worker artifact cleanup failed:', error);
+	}
+}
+
+function numericSummaryValue(summary: Record<string, unknown>, key: string): number {
+	return typeof summary[key] === 'number' ? summary[key] : 0;
+}
+
 async function runPreparedPromptRetentionCleanup(): Promise<void> {
 	try {
 		const { data, error } = await (supabase as any).rpc(
@@ -745,6 +779,7 @@ export async function runQueueRetentionCleanup() {
 		console.error('❌ Scheduled queue retention cleanup failed:', error);
 	}
 
+	await runAgenticChatWorkerRetentionCleanup();
 	await runPreparedPromptRetentionCleanup();
 }
 

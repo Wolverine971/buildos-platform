@@ -1,7 +1,11 @@
+// apps/worker/tests/agenticChatReliabilityContractAudit.test.ts
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1 } from '../src/workers/agentic-chat/mutationToolCatalog';
+import {
+	AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1,
+	AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1
+} from '../src/workers/agentic-chat/mutationToolCatalog';
 import { agenticChatGenerationWriteFenceArgsV1 } from '../src/workers/agentic-chat/writeFence';
 
 const AGENTIC_CHAT_SOURCE_DIR = fileURLToPath(
@@ -73,5 +77,14 @@ describe('Agentic Chat Phase 5 reliability contract audit', () => {
 			);
 		}
 		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames).toHaveLength(20);
+	});
+
+	it('limits automatic uncertain-commit replay to the reviewed idempotent downstreams', () => {
+		const retryable = Object.entries(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1)
+			.filter(([, spec]) => spec.downstreamIdempotencySupported)
+			.map(([toolName]) => toolName)
+			.sort();
+		expect(retryable).toEqual(['create_onto_task', 'create_task_document']);
+		expect(Object.keys(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1)).toHaveLength(20);
 	});
 });

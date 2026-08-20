@@ -470,17 +470,45 @@ export type AgenticChatExecutionStartRpcResultV1 =
 			invoke_provider: false;
 	  });
 
+export const AGENTIC_CHAT_RECOVERY_FAILURE_CLASSES_V1 = [
+	'transient_infra',
+	'provider_throttle',
+	'timeout_pre_start',
+	'permanent',
+	'stale_context',
+	'publisher_overload',
+	'timeout_post_start',
+	'cancelled',
+	'uncertain_external_commit',
+	'unknown'
+] as const;
+
 export type AgenticChatRecoveryFailureClassV1 =
-	| 'transient_infra'
-	| 'provider_throttle'
-	| 'timeout_pre_start'
+	(typeof AGENTIC_CHAT_RECOVERY_FAILURE_CLASSES_V1)[number];
+
+export type AgenticChatRetryClassificationV1 =
+	| 'safe_before_start'
+	| 'transient_safe'
 	| 'permanent'
-	| 'stale_context'
-	| 'publisher_overload'
-	| 'timeout_post_start'
 	| 'cancelled'
-	| 'uncertain_external_commit'
-	| 'unknown';
+	| 'uncertain_external_commit';
+
+/**
+ * Phase 5 operational retry taxonomy. This classifies the failure, but does
+ * not itself authorize whole-turn replay; execution/effect boundaries remain
+ * authoritative in decideAgenticChatRecoveryV1.
+ */
+export function classifyAgenticChatRetryV1(
+	failureClass: AgenticChatRecoveryFailureClassV1
+): AgenticChatRetryClassificationV1 {
+	if (failureClass === 'timeout_pre_start') return 'safe_before_start';
+	if (failureClass === 'transient_infra' || failureClass === 'provider_throttle') {
+		return 'transient_safe';
+	}
+	if (failureClass === 'cancelled') return 'cancelled';
+	if (failureClass === 'uncertain_external_commit') return 'uncertain_external_commit';
+	return 'permanent';
+}
 
 export type AgenticChatRecoveryDecisionV1 =
 	| { decision: 'reconcile_terminal_queue' }
@@ -1684,10 +1712,9 @@ export function decideAgenticChatRecoveryV1(input: {
 		return { decision: 'effect_reconciliation_required' };
 	}
 
+	const retryClassification = classifyAgenticChatRetryV1(input.failureClass);
 	const retryableClass =
-		input.failureClass === 'transient_infra' ||
-		input.failureClass === 'provider_throttle' ||
-		input.failureClass === 'timeout_pre_start';
+		retryClassification === 'safe_before_start' || retryClassification === 'transient_safe';
 	const beforeAllExecutionBoundaries =
 		!input.executionStarted &&
 		!input.mutationReserved &&

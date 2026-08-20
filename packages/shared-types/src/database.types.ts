@@ -3734,6 +3734,7 @@ export type Database = {
           state: string
           tool_name: string
           turn_run_id: string
+          uncertain_reconciled_at: string | null
           updated_at: string
           user_id: string
         }
@@ -3754,6 +3755,7 @@ export type Database = {
           state?: string
           tool_name: string
           turn_run_id: string
+          uncertain_reconciled_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -3774,6 +3776,7 @@ export type Database = {
           state?: string
           tool_name?: string
           turn_run_id?: string
+          uncertain_reconciled_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -17661,6 +17664,15 @@ export type Database = {
           p_batch_size?: number
           p_prompt_snapshot_retention_days?: number
           p_rendered_dump_retention_days?: number
+        }
+        Returns: Json
+      }
+      cleanup_agentic_chat_worker_artifacts: {
+        Args: {
+          p_batch_size?: number
+          p_effect_retention_days?: number
+          p_terminal_retention_days?: number
+          p_uncertain_effect_retention_days?: number
         }
         Returns: Json
       }

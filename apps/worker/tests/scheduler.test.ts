@@ -223,13 +223,36 @@ describe('Brief Scheduler', () => {
 	});
 
 	describe('runQueueRetentionCleanup', () => {
-		it('runs the prompt artifact cleanup RPC on the queue retention path', async () => {
+		it('runs worker and prompt artifact cleanup RPCs on the queue retention path', async () => {
 			await runQueueRetentionCleanup();
 
 			expect(schedulerMocks.cleanupStaleJobs).toHaveBeenCalledOnce();
 			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
+				'cleanup_agentic_chat_worker_artifacts'
+			);
+			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
 				'cleanup_agentic_chat_prompt_artifacts'
 			);
+			expect(schedulerMocks.supabaseRpc.mock.calls.map(([name]) => name)).toEqual([
+				'cleanup_agentic_chat_worker_artifacts',
+				'cleanup_agentic_chat_prompt_artifacts'
+			]);
+		});
+
+		it('keeps prompt retention running when worker artifact cleanup is unavailable', async () => {
+			schedulerMocks.supabaseRpc.mockImplementation(async (fn: string) => {
+				if (fn === 'cleanup_agentic_chat_worker_artifacts') {
+					return { data: null, error: { code: 'PGRST202' } };
+				}
+				return { data: {}, error: null };
+			});
+
+			await runQueueRetentionCleanup();
+
+			expect(schedulerMocks.supabaseRpc.mock.calls.map(([name]) => name)).toEqual([
+				'cleanup_agentic_chat_worker_artifacts',
+				'cleanup_agentic_chat_prompt_artifacts'
+			]);
 		});
 
 		it('falls back to prepared prompt cleanup when the broader cleanup RPC is unavailable', async () => {

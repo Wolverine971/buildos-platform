@@ -14,6 +14,7 @@ import {
 	AGENTIC_CHAT_RECONCILE_MAX_DURABLE_EVENTS,
 	AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
 	AGENTIC_CHAT_REALTIME_STREAM_EVENT,
+	AGENTIC_CHAT_RECOVERY_FAILURE_CLASSES_V1,
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
 	AGENTIC_CHAT_SIGNAL_VERSION,
 	AGENTIC_CHAT_STREAM_SPILL_THRESHOLD_BYTES,
@@ -26,6 +27,7 @@ import {
 	assessAgenticChatLiveVisionEligibilityV1,
 	canonicalizeAdmissionRequestV1,
 	canonicalizeAgenticChatJson,
+	classifyAgenticChatRetryV1,
 	createAgentStreamEventIdV1,
 	decideAgenticChatRecoveryV1,
 	decideTerminalFinalizationV1,
@@ -824,6 +826,26 @@ describe('agentic chat worker v1 contract fixtures', () => {
 				cancelRequestedAt: null
 			})
 		).toEqual({ decision: 'invalid_status' });
+	});
+
+	it('classifies every recovery failure in the Phase 5 operational retry taxonomy', () => {
+		const expected = {
+			transient_infra: 'transient_safe',
+			provider_throttle: 'transient_safe',
+			timeout_pre_start: 'safe_before_start',
+			permanent: 'permanent',
+			stale_context: 'permanent',
+			publisher_overload: 'permanent',
+			timeout_post_start: 'permanent',
+			cancelled: 'cancelled',
+			uncertain_external_commit: 'uncertain_external_commit',
+			unknown: 'permanent'
+		} as const;
+
+		expect(AGENTIC_CHAT_RECOVERY_FAILURE_CLASSES_V1).toEqual(Object.keys(expected));
+		for (const failureClass of AGENTIC_CHAT_RECOVERY_FAILURE_CLASSES_V1) {
+			expect(classifyAgenticChatRetryV1(failureClass)).toBe(expected[failureClass]);
+		}
 	});
 
 	it('allows whole-turn retry only before every execution boundary', () => {

@@ -21,6 +21,7 @@ import {
 	type ContextShiftPayload,
 	type JsonObject,
 	canonicalizeAgenticChatJson,
+	classifyAgenticChatRetryV1,
 	createAgentStreamEventIdV1
 } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
@@ -3142,20 +3143,22 @@ function logAgenticChatTypedExecutionFailure(
 			: error instanceof AgenticChatProviderExecutionError
 				? error
 				: null;
-	if (!providerError) return;
 	let diagnostic: Record<string, string | number> = {};
-	try {
-		diagnostic = providerExecutionDiagnostic(providerError);
-	} catch {
-		// A malformed optional diagnostic must not suppress the base failure log.
+	if (providerError) {
+		try {
+			diagnostic = providerExecutionDiagnostic(providerError);
+		} catch {
+			// A malformed optional diagnostic must not suppress the base failure log.
+		}
 	}
 	const record = {
 		event: 'agentic_chat_typed_execution_failure',
 		turn_run_id: claim.turnRunId,
 		queue_job_id: claim.queueJobId,
 		execution_generation: claim.executionGeneration,
-		execution_error_code: providerError.code,
+		execution_error_code: providerError?.code ?? executionErrorCode(error, signal),
 		failure_class: failureClass,
+		retry_classification: classifyAgenticChatRetryV1(failureClass),
 		execution_started: executionStarted,
 		...diagnostic
 	};

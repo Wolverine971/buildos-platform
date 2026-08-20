@@ -278,6 +278,82 @@ describe('AgenticChatWorkerRealtimeCoordinator', () => {
 		coordinator.stop();
 	});
 
+	it('keeps polling through a persistent Realtime outage and converges to terminal truth', async () => {
+		vi.useFakeTimers();
+		const runningReceipt = receipt({
+			requested_execution_generation: 0,
+			execution_generation: 1,
+			generation_changed: true,
+			status: 'running',
+			snapshot_sequence: 1,
+			durable_through_sequence: 1,
+			projection_durable_sequence: 1,
+			response_watermark: 1
+		});
+		const terminalReceipt = receipt({
+			...runningReceipt,
+			requested_execution_generation: 1,
+			generation_changed: false,
+			status: 'completed',
+			assistant_message: {
+				id: 'd6000000-0000-4000-8000-000000000002',
+				role: 'assistant',
+				content: 'durable completion',
+				metadata: { turn_run_id: TURN_ID, execution_generation: 1 },
+				prompt_tokens: null,
+				completion_tokens: null,
+				total_tokens: null,
+				created_at: '2026-08-02T23:00:02.000Z'
+			},
+			terminal_event_id: `${TURN_ID}:1:1`,
+			terminalized_at: '2026-08-02T23:00:02.000Z',
+			updated_at: '2026-08-02T23:00:02.000Z'
+		});
+		const fetchImpl = vi
+			.fn()
+			.mockResolvedValueOnce(apiResponse(runningReceipt))
+			.mockResolvedValueOnce(
+				apiResponse({
+					...runningReceipt,
+					requested_execution_generation: 1,
+					generation_changed: false
+				})
+			)
+			.mockResolvedValueOnce(apiResponse(terminalReceipt));
+		const observer = applicationObserver();
+		const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+			fetchImpl: fetchImpl as typeof fetch,
+			changedWatchdogMs: 2_000,
+			unchangedWatchdogMs: 5_000,
+			random: () => 0.5
+		});
+		coordinator.start();
+		coordinator.registerTurn({ handle, observer });
+		await flushAsync();
+
+		// Channel loss requests immediate durable truth. The channel never recovers
+		// in this fixture, so the unchanged watchdog must continue from there.
+		coordinator.inbox.notifyChannelUnavailable();
+		await flushAsync();
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		expect(fetchImpl.mock.calls[1]?.[0]).toContain('reason=channel_unavailable');
+
+		await vi.advanceTimersByTimeAsync(4_999);
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		await vi.advanceTimersByTimeAsync(1);
+		await flushAsync();
+
+		expect(fetchImpl).toHaveBeenCalledTimes(3);
+		expect(fetchImpl.mock.calls[2]?.[0]).toContain('reason=watchdog');
+		expect(observer.applyReconciliation).toHaveBeenLastCalledWith(
+			expect.objectContaining({ status: 'completed', text: '' })
+		);
+
+		await vi.advanceTimersByTimeAsync(30_000);
+		expect(fetchImpl).toHaveBeenCalledTimes(3);
+		coordinator.stop();
+	});
+
 	it('stops polling when durable truth is terminal', async () => {
 		vi.useFakeTimers();
 		const fetchImpl = vi.fn(async () =>

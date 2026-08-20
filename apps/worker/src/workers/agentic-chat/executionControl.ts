@@ -1,5 +1,6 @@
 // apps/worker/src/workers/agentic-chat/executionControl.ts
 import {
+	AGENTIC_CHAT_RECOVERY_FAILURE_CLASSES_V1,
 	type AgenticChatExecutionStartRpcResultV1,
 	type AgenticChatRecoveryFailureClassV1,
 	type AgenticChatRecoveryRpcResultV1,
@@ -931,18 +932,9 @@ function protocolError(message: string): AgenticChatExecutionControlProtocolErro
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const DATABASE_TIMESTAMP_PATTERN =
 	/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2})$/;
-const FAILURE_CLASSES = new Set<AgenticChatRecoveryFailureClassV1>([
-	'transient_infra',
-	'provider_throttle',
-	'timeout_pre_start',
-	'permanent',
-	'stale_context',
-	'publisher_overload',
-	'timeout_post_start',
-	'cancelled',
-	'uncertain_external_commit',
-	'unknown'
-]);
+const FAILURE_CLASSES = new Set<AgenticChatRecoveryFailureClassV1>(
+	AGENTIC_CHAT_RECOVERY_FAILURE_CLASSES_V1
+);
 const RECOVERY_OUTCOMES = new Set([
 	'retry_scheduled',
 	'already_requeued',
