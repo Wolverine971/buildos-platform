@@ -545,8 +545,20 @@ export class AgentChatStreamController {
 				currentPrewarmKey
 			);
 			let sessionForTurn = this.#deps.getCurrentSession();
+			// Worker transport negotiation needs a durable session id before the
+			// turn can be admitted. Text-only user turns therefore always bootstrap
+			// a session up front, even when a fresh prepared prompt would have let
+			// the legacy stream create one — otherwise a prewarm hit silently
+			// bypasses the worker cohort (Phase 6 review, 2026-08-20).
+			const workerTransportCandidate =
+				senderType === 'user' &&
+				streamAttachmentRefs.length === 0 &&
+				!activeVoiceNoteGroupId &&
+				Boolean(this.#deps.adoptWorkerAdmissionResponse);
 			const canUseStreamCreatedSession =
-				senderType === 'user' && Boolean(matchingPreparedPrompt);
+				senderType === 'user' &&
+				Boolean(matchingPreparedPrompt) &&
+				!workerTransportCandidate;
 
 			if (!sessionForTurn?.id && !canUseStreamCreatedSession) {
 				try {
@@ -561,11 +573,20 @@ export class AgentChatStreamController {
 					if ((sessionError as DOMException)?.name === 'AbortError') {
 						return;
 					}
-					this.error =
-						sessionError instanceof Error
-							? sessionError.message
-							: 'Unable to prepare a chat session right now.';
-					return;
+					if (!matchingPreparedPrompt) {
+						this.error =
+							sessionError instanceof Error
+								? sessionError.message
+								: 'Unable to prepare a chat session right now.';
+						return;
+					}
+					// Session bootstrap only ran to unlock worker transport; a fresh
+					// prepared prompt can still start the turn sessionless on legacy.
+					this.#deps.logDebug?.(
+						'[agent-chat] session bootstrap failed; falling back to sessionless legacy turn',
+						sessionError
+					);
+					sessionForTurn = null;
 				}
 
 				matchingPreparedPrompt = await this.#resolvePreparedPromptForSend(
@@ -596,13 +617,8 @@ export class AgentChatStreamController {
 					projectFocus: requestProjectFocus
 				})
 			};
-			const canAttemptWorkerTextCanary = Boolean(
-				senderType === 'user' &&
-					sessionForTurn?.id &&
-					streamAttachmentRefs.length === 0 &&
-					!activeVoiceNoteGroupId &&
-					this.#deps.adoptWorkerAdmissionResponse
-			);
+			const canAttemptWorkerTextCanary =
+				workerTransportCandidate && Boolean(sessionForTurn?.id);
 			const requiresLegacyToolSurface =
 				senderType === 'user' && this.#deps.requiresLegacyToolSurface?.(trimmed) === true;
 			const transportLease = canAttemptWorkerTextCanary

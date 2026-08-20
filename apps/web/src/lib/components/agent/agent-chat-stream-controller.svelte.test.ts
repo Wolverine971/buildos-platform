@@ -831,6 +831,104 @@ describe('AgentChatStreamController', () => {
 		expect(h.streamProcessor.runs).toHaveLength(0);
 	});
 
+	it('bootstraps a session before negotiating worker transport even when a prepared prompt is fresh', async () => {
+		const turnRunId = 'd4000000-0000-4000-8000-000000000011';
+		const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
+			const url = String(input);
+			const request = JSON.parse(String(init?.body ?? '{}'));
+			if (url === '/api/agent/v2/transport') {
+				return Response.json({
+					success: true,
+					data: {
+						mode: 'worker_realtime',
+						contractVersion: 'agentic_chat_worker_v1',
+						decisionId: 'd3000000-0000-4000-8000-000000000011',
+						token: 'actl1.claims.signature',
+						expiresAt: '2026-08-04T03:00:00.000Z'
+					}
+				});
+			}
+			if (url === '/api/agent/v2/turns') {
+				return Response.json(
+					{
+						success: true,
+						data: {
+							outcome: 'newly_admitted',
+							handle: {
+								contractVersion: 'agentic_chat_worker_v1',
+								executionMode: 'worker_realtime',
+								turnRunId,
+								sessionId: request.sessionId,
+								streamRunId: request.streamRunId,
+								clientTurnId: request.clientTurnId
+							},
+							status: 'queued'
+						}
+					},
+					{ status: 202 }
+				);
+			}
+			throw new Error(`unexpected request: ${url}`);
+		});
+		const h = createHarness({
+			currentSession: null,
+			inputValue: 'First turn',
+			fetchImpl,
+			enableWorkerAdoption: true
+		});
+
+		await h.controller.sendMessage();
+
+		// A prewarm hit must not bypass worker negotiation: the session is
+		// bootstrapped first, then transport is negotiated with worker mode offered.
+		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
+		expect(fetchImpl.mock.calls.map(([input]) => String(input))).toEqual([
+			'/api/agent/v2/transport',
+			'/api/agent/v2/turns'
+		]);
+		expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toMatchObject({
+			sessionId: 'ensured-session',
+			supportedModes: ['legacy_sse', 'worker_realtime']
+		});
+		expect(JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body))).toMatchObject({
+			message: 'First turn',
+			sessionId: 'ensured-session',
+			preparedPromptKey: 'prepared-key'
+		});
+		expect(h.streamProcessor.runs).toHaveLength(0);
+		expect(h.controller.activeTurnHandle).toMatchObject({
+			executionMode: 'worker_realtime',
+			turnRunId,
+			sessionId: 'ensured-session'
+		});
+	});
+
+	it('falls back to a sessionless legacy turn when the worker-only session bootstrap fails', async () => {
+		const h = createHarness({
+			currentSession: null,
+			inputValue: 'First turn',
+			enableWorkerAdoption: true
+		});
+		h.ensureSessionReady.mockRejectedValueOnce(new Error('session service down'));
+
+		const sendPromise = h.controller.sendMessage();
+		await flushMicrotasks();
+
+		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
+		expect(h.controller.error).toBeNull();
+		expect(h.streamFetchCalls).toHaveLength(1);
+		const requestBody = parseBody(h.streamFetchCalls[0]!);
+		expect(requestBody).not.toHaveProperty('session_id');
+		expect(requestBody).toMatchObject({
+			message: 'First turn',
+			preparedPromptKey: 'prepared-key'
+		});
+
+		h.streamProcessor.runs[0]!.progress({ type: 'done' });
+		h.streamProcessor.runs[0]!.complete();
+		await sendPromise;
+	});
+
 	it('waits briefly for an in-flight prepared prompt before first send', async () => {
 		const prepared: PreparedPromptClient = {
 			id: 'prepared-late',

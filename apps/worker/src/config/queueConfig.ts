@@ -156,6 +156,8 @@ function validateConfig(config: QueueConfiguration): QueueConfiguration {
 	return validated;
 }
 
+let resolvedProfileName: 'production' | 'development' | 'none' = 'none';
+
 /**
  * Resolve the runtime configuration: env var > profile default > base default.
  */
@@ -165,10 +167,10 @@ function loadQueueConfig(): QueueConfiguration {
 	let profile: Partial<QueueConfiguration> = {};
 	if (env === 'production') {
 		profile = productionConfig;
-		console.log('🏭 Using production queue configuration profile');
+		resolvedProfileName = 'production';
 	} else if (env === 'development' || env === 'dev') {
 		profile = developmentConfig;
-		console.log('🔧 Using development queue configuration profile');
+		resolvedProfileName = 'development';
 	}
 
 	const config: QueueConfiguration = {
@@ -212,34 +214,46 @@ function loadQueueConfig(): QueueConfiguration {
 		cleanupBatchSize: envInt('QUEUE_CLEANUP_BATCH_SIZE') ?? profile.cleanupBatchSize ?? 500
 	};
 
-	const validated = validateConfig(config);
+	return validateConfig(config);
+}
 
+// THE resolved runtime configuration. Import this everywhere.
+export const queueConfig = loadQueueConfig();
+
+/**
+ * Print the resolved general-queue configuration. Deliberately NOT called at
+ * import time: this module is also pulled in by the dedicated Agentic Chat
+ * worker (via supabaseQueue/progressTracker), and echoing scheduler/retention
+ * settings there misreads as the general worker starting on the wrong service.
+ * Only general-worker entrypoints should call this.
+ */
+export function logQueueConfiguration(config: QueueConfiguration = queueConfig): void {
+	if (resolvedProfileName === 'production') {
+		console.log('🏭 Using production queue configuration profile');
+	} else if (resolvedProfileName === 'development') {
+		console.log('🔧 Using development queue configuration profile');
+	}
 	console.log('📋 Queue Configuration (resolved):');
-	console.log(`   - Poll interval: ${validated.pollInterval}ms`);
-	console.log(`   - Batch size: ${validated.batchSize}`);
-	console.log(`   - Stalled timeout: ${validated.stalledTimeout}ms`);
-	console.log(`   - Max retries: ${validated.maxRetries}`);
-	console.log(`   - Worker timeout: ${validated.workerTimeout}ms`);
+	console.log(`   - Poll interval: ${config.pollInterval}ms`);
+	console.log(`   - Batch size: ${config.batchSize}`);
+	console.log(`   - Stalled timeout: ${config.stalledTimeout}ms`);
+	console.log(`   - Max retries: ${config.maxRetries}`);
+	console.log(`   - Worker timeout: ${config.workerTimeout}ms`);
 	console.log(
 		`   - Per-type timeouts: ${
-			Object.entries(validated.workerTimeoutByType)
+			Object.entries(config.workerTimeoutByType)
 				.map(([type, ms]) => `${type}=${ms}ms`)
 				.join(', ') || 'none'
 		}`
 	);
 	console.log(
-		`   - Retention cleanup: ${validated.enableRetentionCleanup ? 'enabled' : 'disabled'}`
+		`   - Retention cleanup: ${config.enableRetentionCleanup ? 'enabled' : 'disabled'}`
 	);
-	console.log(`   - Retention cron: ${validated.retentionCleanupCron}`);
-	console.log(`   - Stale threshold: ${validated.staleJobThresholdHours}h`);
-	console.log(`   - Completed retention: ${validated.completedJobsRetentionDays}d`);
-	console.log(`   - Cleanup batch size: ${validated.cleanupBatchSize}`);
-
-	return validated;
+	console.log(`   - Retention cron: ${config.retentionCleanupCron}`);
+	console.log(`   - Stale threshold: ${config.staleJobThresholdHours}h`);
+	console.log(`   - Completed retention: ${config.completedJobsRetentionDays}d`);
+	console.log(`   - Cleanup batch size: ${config.cleanupBatchSize}`);
 }
-
-// THE resolved runtime configuration. Import this everywhere.
-export const queueConfig = loadQueueConfig();
 
 /**
  * Worker timeout for a specific job type (per-type override or global default).
