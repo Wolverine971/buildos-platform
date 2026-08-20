@@ -1,5 +1,10 @@
 <!-- apps/web/docs/design/home-page-design-review.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-06-22; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Home Page Design Review
 
 Reviewed against `youtube-design-principles-guide.md`. Target file: `apps/web/src/routes/+page.svelte`.

@@ -499,6 +499,38 @@ describe('Phase 3 Agentic Chat lifecycle', () => {
 		expect(runtime.getHealth()).toMatchObject({ state: 'stopped' });
 	});
 
+	it('turns runtime health unhealthy after repeated stalled-sweep failures', async () => {
+		vi.mocked(supabase.rpc).mockResolvedValue({ data: [], error: null } as never);
+		const consumer = createAgenticChatConsumer(testExecutor(), consumerOptions());
+		const recovery = service('recovery', []);
+		const runtime = new AgenticChatConsumerRuntime(consumer.queue, {
+			publisher: service('publisher', []),
+			cancellation: service('cancellation', []),
+			recovery,
+			realtime: realtimeHealth()
+		});
+		await runtime.start();
+		recovery.getHealth.mockReturnValue(
+			recoveryHealth({
+				healthy: false,
+				reason: 'repeated_sweep_failures',
+				consecutiveSweepFailures: 3,
+				lastError: 'database unavailable'
+			})
+		);
+
+		expect(runtime.getHealth()).toMatchObject({
+			healthy: false,
+			state: 'running',
+			reason: 'repeated_sweep_failures',
+			recovery: {
+				consecutiveSweepFailures: 3,
+				lastError: 'database unavailable'
+			}
+		});
+		await runtime.stop();
+	});
+
 	it('refuses a mixed or general queue at construction', () => {
 		const consumer = createAgenticChatConsumer(testExecutor(), consumerOptions());
 		consumer.queue.process('send_notification', vi.fn());
@@ -521,7 +553,23 @@ function service(name: string, calls: string[]) {
 		}),
 		stop: vi.fn(async () => {
 			calls.push(`${name}.stop`);
-		})
+		}),
+		getHealth: vi.fn(() => recoveryHealth())
+	};
+}
+
+function recoveryHealth(overrides: Record<string, unknown> = {}) {
+	return {
+		healthy: true,
+		state: 'running' as const,
+		lastSweepStartedAt: null,
+		lastSweepFinishedAt: null,
+		lastSuccessfulSweepAt: null,
+		consecutiveSweepFailures: 0,
+		lastError: null,
+		lastCandidateCount: 0,
+		lastAttentionRequiredCount: 0,
+		...overrides
 	};
 }
 

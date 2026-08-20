@@ -1,5 +1,10 @@
 <!-- apps/web/docs/operations/deployment/READY_TO_DEPLOY.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-01-13. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # ✅ Implementation Ready for Deployment
 
 **Status**: All code integrated and typechecking successfully

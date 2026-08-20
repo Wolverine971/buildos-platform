@@ -4,7 +4,7 @@ created: 2026-03-11
 status: draft
 owner: DJ Wayne
 related_docs:
-    - /thoughts/shared/ideas/how-to-move-like-stalin.md
+    - docs/archive/thoughts/root/shared/ideas/how-to-move-like-stalin.md
     - /docs/marketing/strategy/thinking-environment-creator-strategy.md
     - /docs/marketing/strategy/anti-ai-show-dont-tell-strategy.md
     - /docs/marketing/brand/brand-guide-1-pager.md

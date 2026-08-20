@@ -606,7 +606,7 @@ Per-session analytics computed at session close or timeout.
 CREATE TABLE chat_session_analytics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  session_id UUID NOT NULL, -- References agent_chat_sessions.id
+  session_id UUID NOT NULL, -- References chat_sessions.id
 
   -- Outcome classification
   outcome TEXT NOT NULL CHECK (outcome IN (

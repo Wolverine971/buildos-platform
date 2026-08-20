@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/AGENTIC_CHAT_READ_TOOL_PARALLELIZATION_PLAN_2026-07-06.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-07; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Read Tool Parallelization Plan - 2026-07-06
 
 ## Target Finding

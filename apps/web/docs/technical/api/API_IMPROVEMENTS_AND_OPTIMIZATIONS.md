@@ -1,5 +1,12 @@
 <!-- apps/web/docs/technical/api/API_IMPROVEMENTS_AND_OPTIMIZATIONS.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-05. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
+<!-- doc-health: ignore-schema — Proposes tables (e.g. `api_keys`) that were never built. -->
+
 # API Improvements and Optimizations
 
 **Date:** 2025-01-15

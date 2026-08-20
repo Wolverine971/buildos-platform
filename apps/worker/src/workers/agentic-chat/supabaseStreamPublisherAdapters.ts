@@ -148,8 +148,9 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 
 	async publish(message: AgenticChatBroadcastMessageV1): Promise<'sent' | 'failed'> {
 		if (this.closed) return 'failed';
+		let channel: AgenticChatRealtimeChannel | null = null;
 		try {
-			const channel = await this.channelFor(message.topic);
+			channel = await this.channelFor(message.topic);
 			const result =
 				(await channel.send({
 					type: 'broadcast',
@@ -157,12 +158,14 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 					payload: message.payload
 				})) === 'ok';
 			if (!result) {
+				await this.evictChannel(message.topic, channel);
 				this.observeFailure();
 				return 'failed';
 			}
 			this.observeConnected();
 			return 'sent';
 		} catch {
+			if (channel) await this.evictChannel(message.topic, channel);
 			this.observeFailure();
 			return 'failed';
 		}
@@ -244,8 +247,7 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 				if (settled) {
 					// A cached channel can fail after its initial subscription. Evict it
 					// so the next durable event attempts a fresh Realtime connection.
-					if (this.channels.get(topic) === channel) this.channels.delete(topic);
-					void Promise.resolve(this.client.removeChannel(channel)).catch(() => undefined);
+					void this.evictChannel(topic, channel);
 					return;
 				}
 				settled = true;
@@ -254,6 +256,15 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 				);
 			}, this.subscribeTimeoutMs);
 		});
+	}
+
+	private async evictChannel(topic: string, channel: AgenticChatRealtimeChannel): Promise<void> {
+		if (this.channels.get(topic) === channel) this.channels.delete(topic);
+		try {
+			await this.client.removeChannel(channel);
+		} catch {
+			// Reconnection must not depend on cleanup of the failed socket.
+		}
 	}
 
 	private observeConnected(): void {

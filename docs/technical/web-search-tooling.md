@@ -35,6 +35,8 @@
       Agentic Chat and durable Agent Runs.
     - `native-search-cache.ts`: versioned cache keys, L1/L2 orchestration, durable claim polling,
       Supabase RPC adaptation, and fail-open discovery behavior.
+    - `native-search-evidence.ts`: Unicode-safe content hashing/chunking plus service-only immutable
+      page-version receipt loading and persistence.
     - `search-cache.ts`: normalized request keys plus bounded local cache/single-flight behavior.
 - Web adapter: `apps/web/src/lib/services/agentic-chat/tools/websearch/`
     - `types.ts`: aliases the shared tool-facing contracts.
@@ -45,7 +47,8 @@
     - `ChatToolExecutor` switch handles `web_search` by delegating to `performWebSearch`, reusing the injected `fetchFn`.
     - `tools.config` registers `web_search` in the `web_research` category and the `base` group; `WEB_TOOLS` export added for convenience.
     - Agentic Chat's compact tool payload preserves the two fetched page bodies and their
-      provenance so BuildOS synthesis can use the evidence rather than only discovery snippets.
+      immutable version/chunk provenance so BuildOS synthesis can use the evidence rather than only
+      discovery snippets.
     - Durable Agent Runs use the same shared contracts while retaining worker-specific paid-tool
       reservation and settlement hooks.
 
@@ -77,5 +80,9 @@
 - Durable hits retain provider/request provenance but strip provider credits and Agent Run billing,
   so cached work is never charged again.
 - Persistent page cache entries store HTTP validators and revalidate stale content with conditional requests.
-- The next architecture step after the cache migration rollout is immutable evidence versions; see
-  the linked plan.
+- Public cache-eligible pages are content-addressed into immutable page versions and bounded chunks.
+  Search results may include `page_visit_id`, `page_version_id`, `page_version_number`,
+  `page_content_hash`, and body-free `page_evidence_chunks` references with stable character
+  selectors.
+- Migrations `20260804020000` and `20260804020100` are deployed. The next architecture step is the
+  bounded JavaScript-render escalation described in the linked plan.

@@ -38,6 +38,7 @@ export type AgenticChatStalledReadClient = {
 export type AgenticChatStalledCandidateV1 = AgenticChatExecutionIdentityV1 & {
 	userId: string;
 	correlationId: string;
+	startedAt: string;
 	stalledAt: string;
 };
 
@@ -56,7 +57,13 @@ export class AgenticChatStalledCandidateSourceError extends Error {
 export class SupabaseAgenticChatStalledCandidateSource
 	implements AgenticChatStalledCandidateSourcePortV1
 {
-	constructor(private readonly client: AgenticChatStalledReadClient) {}
+	constructor(
+		private readonly client: AgenticChatStalledReadClient,
+		private readonly onInvalidCandidate: (
+			error: AgenticChatStalledCandidateSourceError,
+			index: number
+		) => void = () => undefined
+	) {}
 
 	async list(input: {
 		stalledBefore: string;
@@ -68,7 +75,7 @@ export class SupabaseAgenticChatStalledCandidateSource
 		}
 		const { data, error } = await this.client
 			.from('queue_jobs')
-			.select('id, processing_token, user_id, updated_at, metadata')
+			.select('id, processing_token, user_id, started_at, updated_at, metadata')
 			.eq('job_type', 'agentic_chat_turn')
 			.eq('status', 'processing')
 			.lt('updated_at', input.stalledBefore)
@@ -78,31 +85,23 @@ export class SupabaseAgenticChatStalledCandidateSource
 		if (!Array.isArray(data)) throw sourceError('candidate rows are not an array');
 
 		const seen = new Set<string>();
-		return data.map((value) => {
-			const row = requireRecord(value, 'candidate row');
-			canonicalUuid(row.id, 'queue job id');
-			canonicalUuid(row.processing_token, 'processing token');
-			canonicalUuid(row.user_id, 'user id');
-			if (
-				!isTimestamp(row.updated_at) ||
-				Date.parse(row.updated_at) >= Date.parse(input.stalledBefore)
-			) {
-				throw sourceError('candidate timestamp is not before the cutoff');
+		const candidates: AgenticChatStalledCandidateV1[] = [];
+		for (const [index, value] of data.entries()) {
+			try {
+				candidates.push(parseCandidate(value, input.stalledBefore, seen));
+			} catch (error) {
+				const invalid =
+					error instanceof AgenticChatStalledCandidateSourceError
+						? error
+						: sourceError(errorMessage(error));
+				try {
+					this.onInvalidCandidate(invalid, index);
+				} catch {
+					// Invalid-row telemetry cannot hide other recoverable candidates.
+				}
 			}
-			const metadata = requireRecord(row.metadata, 'candidate metadata');
-			canonicalUuid(metadata.turnRunId, 'metadata turnRunId');
-			canonicalUuid(metadata.correlationId, 'metadata correlationId');
-			if (seen.has(row.id)) throw sourceError('duplicate queue candidate identity');
-			seen.add(row.id);
-			return {
-				turnRunId: metadata.turnRunId,
-				queueJobId: row.id,
-				processingToken: row.processing_token,
-				userId: row.user_id,
-				correlationId: metadata.correlationId,
-				stalledAt: row.updated_at
-			};
-		});
+		}
+		return candidates;
 	}
 }
 
@@ -122,6 +121,8 @@ export type AgenticChatStalledRecoveryOutcomeV1 =
 export type AgenticChatStalledRecoveryResultV1 = {
 	turnRunId: string;
 	queueJobId: string;
+	startedAt: string;
+	stalledAt: string;
 	executionGeneration: number | null;
 	outcome: AgenticChatStalledRecoveryOutcomeV1;
 	error: string | null;
@@ -134,6 +135,19 @@ export type AgenticChatStalledRecoveryReportV1 = {
 	results: AgenticChatStalledRecoveryResultV1[];
 };
 
+export type AgenticChatStalledRecoveryHealthV1 = {
+	healthy: boolean;
+	state: 'idle' | 'running' | 'stopping' | 'stopped';
+	reason?: 'not_started' | 'stopping' | 'stopped' | 'repeated_sweep_failures';
+	lastSweepStartedAt: string | null;
+	lastSweepFinishedAt: string | null;
+	lastSuccessfulSweepAt: string | null;
+	consecutiveSweepFailures: number;
+	lastError: string | null;
+	lastCandidateCount: number;
+	lastAttentionRequiredCount: number;
+};
+
 export class AgenticChatStalledRecoverySweep {
 	private readonly options: {
 		stallTimeoutMs: number;
@@ -142,10 +156,20 @@ export class AgenticChatStalledRecoverySweep {
 		drainTimeoutMs: number;
 		now: () => Date;
 		onError: (error: unknown) => void;
+		onReport: (report: AgenticChatStalledRecoveryReportV1) => void;
 	};
 	private timer: NodeJS.Timeout | null = null;
 	private inFlight: Promise<AgenticChatStalledRecoveryReportV1> | null = null;
+	private started = false;
 	private stopping = false;
+	private stopped = false;
+	private lastSweepStartedAt: string | null = null;
+	private lastSweepFinishedAt: string | null = null;
+	private lastSuccessfulSweepAt: string | null = null;
+	private consecutiveSweepFailures = 0;
+	private lastError: string | null = null;
+	private lastCandidateCount = 0;
+	private lastAttentionRequiredCount = 0;
 
 	constructor(
 		private readonly ports: {
@@ -160,6 +184,7 @@ export class AgenticChatStalledRecoverySweep {
 			drainTimeoutMs: number;
 			now: () => Date;
 			onError: (error: unknown) => void;
+			onReport: (report: AgenticChatStalledRecoveryReportV1) => void;
 		}> = {}
 	) {
 		this.options = {
@@ -168,7 +193,8 @@ export class AgenticChatStalledRecoverySweep {
 			batchSize: options.batchSize ?? 32,
 			drainTimeoutMs: options.drainTimeoutMs ?? 25_000,
 			now: options.now ?? (() => new Date()),
-			onError: options.onError ?? (() => undefined)
+			onError: options.onError ?? (() => undefined),
+			onReport: options.onReport ?? (() => undefined)
 		};
 		validatePositiveInteger(this.options.stallTimeoutMs, 'stallTimeoutMs', 1);
 		validatePositiveInteger(this.options.intervalMs, 'intervalMs', 250);
@@ -179,6 +205,7 @@ export class AgenticChatStalledRecoverySweep {
 	start(): void {
 		if (this.stopping) throw new Error('Agentic Chat stalled recovery sweep is stopping');
 		if (this.timer) return;
+		this.started = true;
 		void this.runOnce().catch((error) => this.reportError(error));
 		this.timer = setInterval(() => {
 			void this.runOnce().catch((error) => this.reportError(error));
@@ -193,10 +220,13 @@ export class AgenticChatStalledRecoverySweep {
 			this.timer = null;
 		}
 		const active = this.inFlight;
-		if (!active) return true;
+		if (!active) {
+			this.stopped = true;
+			return true;
+		}
 		let timer: NodeJS.Timeout | null = null;
 		try {
-			return await Promise.race([
+			const drained = await Promise.race([
 				active.then(
 					() => true,
 					() => true
@@ -205,6 +235,8 @@ export class AgenticChatStalledRecoverySweep {
 					timer = setTimeout(() => resolve(false), this.options.drainTimeoutMs);
 				})
 			]);
+			if (drained) this.stopped = true;
+			return drained;
 		} finally {
 			if (timer) clearTimeout(timer);
 		}
@@ -215,11 +247,51 @@ export class AgenticChatStalledRecoverySweep {
 			return Promise.reject(new Error('Agentic Chat stalled recovery sweep is stopping'));
 		}
 		if (this.inFlight) return this.inFlight;
-		const sweep = this.executeSweep().finally(() => {
-			if (this.inFlight === sweep) this.inFlight = null;
-		});
+		const sweep = this.executeSweep()
+			.then(
+				(report) => {
+					this.observeSweepSuccess(report);
+					this.reportSweep(report);
+					return report;
+				},
+				(error: unknown) => {
+					this.observeSweepFailure(error);
+					throw error;
+				}
+			)
+			.finally(() => {
+				if (this.inFlight === sweep) this.inFlight = null;
+				if (this.stopping) this.stopped = true;
+			});
 		this.inFlight = sweep;
 		return sweep;
+	}
+
+	getHealth(): AgenticChatStalledRecoveryHealthV1 {
+		const state: AgenticChatStalledRecoveryHealthV1['state'] = this.stopped
+			? 'stopped'
+			: this.stopping
+				? 'stopping'
+				: this.started
+					? 'running'
+					: 'idle';
+		const base = {
+			state,
+			lastSweepStartedAt: this.lastSweepStartedAt,
+			lastSweepFinishedAt: this.lastSweepFinishedAt,
+			lastSuccessfulSweepAt: this.lastSuccessfulSweepAt,
+			consecutiveSweepFailures: this.consecutiveSweepFailures,
+			lastError: this.lastError,
+			lastCandidateCount: this.lastCandidateCount,
+			lastAttentionRequiredCount: this.lastAttentionRequiredCount
+		};
+		if (state === 'idle') return { healthy: false, reason: 'not_started', ...base };
+		if (state === 'stopping') return { healthy: true, reason: 'stopping', ...base };
+		if (state === 'stopped') return { healthy: true, reason: 'stopped', ...base };
+		if (this.consecutiveSweepFailures >= MAX_CONSECUTIVE_SWEEP_FAILURES) {
+			return { healthy: false, reason: 'repeated_sweep_failures', ...base };
+		}
+		return { healthy: true, ...base };
 	}
 
 	private reportError(error: unknown): void {
@@ -230,8 +302,17 @@ export class AgenticChatStalledRecoverySweep {
 		}
 	}
 
+	private reportSweep(report: AgenticChatStalledRecoveryReportV1): void {
+		try {
+			this.options.onReport(report);
+		} catch {
+			// Operational reporting cannot change a fenced recovery decision.
+		}
+	}
+
 	private async executeSweep(): Promise<AgenticChatStalledRecoveryReportV1> {
 		const started = this.options.now();
+		this.lastSweepStartedAt = started.toISOString();
 		const stalledBefore = new Date(
 			started.getTime() - this.options.stallTimeoutMs
 		).toISOString();
@@ -252,6 +333,24 @@ export class AgenticChatStalledRecoverySweep {
 			candidateCount: candidates.length,
 			results
 		};
+	}
+
+	private observeSweepSuccess(report: AgenticChatStalledRecoveryReportV1): void {
+		this.lastSweepStartedAt = report.startedAt;
+		this.lastSweepFinishedAt = report.finishedAt;
+		this.lastSuccessfulSweepAt = report.finishedAt;
+		this.consecutiveSweepFailures = 0;
+		this.lastError = null;
+		this.lastCandidateCount = report.candidateCount;
+		this.lastAttentionRequiredCount = report.results.filter((result) =>
+			ATTENTION_REQUIRED_OUTCOMES.has(result.outcome)
+		).length;
+	}
+
+	private observeSweepFailure(error: unknown): void {
+		this.lastSweepFinishedAt = this.options.now().toISOString();
+		this.consecutiveSweepFailures += 1;
+		this.lastError = errorMessage(error);
 	}
 
 	private async recoverCandidate(
@@ -467,9 +566,46 @@ function recoveryResult(
 	return {
 		turnRunId: candidate.turnRunId,
 		queueJobId: candidate.queueJobId,
+		startedAt: candidate.startedAt,
+		stalledAt: candidate.stalledAt,
 		executionGeneration,
 		outcome,
 		error
+	};
+}
+
+function parseCandidate(
+	value: unknown,
+	stalledBefore: string,
+	seen: Set<string>
+): AgenticChatStalledCandidateV1 {
+	const row = requireRecord(value, 'candidate row');
+	canonicalUuid(row.id, 'queue job id');
+	canonicalUuid(row.processing_token, 'processing token');
+	canonicalUuid(row.user_id, 'user id');
+	if (!isTimestamp(row.started_at)) throw sourceError('candidate started_at is invalid');
+	if (
+		!isTimestamp(row.updated_at) ||
+		Date.parse(row.updated_at) >= Date.parse(stalledBefore)
+	) {
+		throw sourceError('candidate timestamp is not before the cutoff');
+	}
+	if (Date.parse(row.started_at) > Date.parse(row.updated_at)) {
+		throw sourceError('candidate started_at is after its last progress timestamp');
+	}
+	const metadata = requireRecord(row.metadata, 'candidate metadata');
+	canonicalUuid(metadata.turnRunId, 'metadata turnRunId');
+	canonicalUuid(metadata.correlationId, 'metadata correlationId');
+	if (seen.has(row.id)) throw sourceError('duplicate queue candidate identity');
+	seen.add(row.id);
+	return {
+		turnRunId: metadata.turnRunId,
+		queueJobId: row.id,
+		processingToken: row.processing_token,
+		userId: row.user_id,
+		correlationId: metadata.correlationId,
+		startedAt: row.started_at,
+		stalledAt: row.updated_at
 	};
 }
 
@@ -517,4 +653,10 @@ function isOwnershipLoss(error: unknown): boolean {
 }
 
 const MAX_CONVERGENCE_STEPS = 4;
+const MAX_CONSECUTIVE_SWEEP_FAILURES = 3;
+const ATTENTION_REQUIRED_OUTCOMES = new Set<AgenticChatStalledRecoveryOutcomeV1>([
+	'effect_reconciliation_required',
+	'manual_recovery_required',
+	'failed'
+]);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;

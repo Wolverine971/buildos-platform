@@ -1,5 +1,12 @@
 <!-- apps/web/docs/technical/deployment/runbooks/database-recovery.md -->
 
+<!-- doc-status: stale-runbook -->
+
+> ⚠️ **Verify before executing.** This runbook was last reviewed 2025-09-26 and predates the
+> ontology schema migration. Several queries below were written against tables that have since
+> been renamed or dropped. Confirm every table name against
+> `packages/shared-types/src/database.types.ts` before running anything during an incident.
+
 # Database Recovery Procedures
 
 > **Purpose**: Procedures for diagnosing and recovering from database issues in BuildOS (Supabase PostgreSQL)
@@ -180,7 +187,7 @@ ORDER BY size_bytes DESC;
 
 -- Analyze query performance
 EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
-SELECT * FROM brain_dumps
+SELECT * FROM onto_braindumps
 WHERE user_id = 'some-user-id'
 ORDER BY created_at DESC;
 ```
@@ -189,8 +196,8 @@ ORDER BY created_at DESC;
 
 ```sql
 -- Add missing indexes for common queries
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_brain_dumps_user_created
-ON brain_dumps(user_id, created_at DESC);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_onto_braindumps_user_created
+ON onto_braindumps(user_id, created_at DESC);
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_projects_user_status
 ON projects(user_id, status);
@@ -199,12 +206,12 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tasks_project_status
 ON tasks(project_id, status);
 
 -- Update table statistics
-ANALYZE brain_dumps;
+ANALYZE onto_braindumps;
 ANALYZE projects;
 ANALYZE tasks;
 
 -- Vacuum large tables if needed (during maintenance window)
-VACUUM (ANALYZE, VERBOSE) brain_dumps;
+VACUUM (ANALYZE, VERBOSE) onto_braindumps;
 ```
 
 ### Type 3: Data Corruption
@@ -250,7 +257,7 @@ SET project_id = NULL
 WHERE project_id NOT IN (SELECT id FROM projects);
 
 -- Clean up invalid data
-DELETE FROM brain_dumps
+DELETE FROM onto_braindumps
 WHERE created_at > NOW()
    OR user_id NOT IN (SELECT id FROM users);
 
@@ -295,7 +302,7 @@ RESET ROLE;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE brain_dumps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE onto_braindumps ENABLE ROW LEVEL SECURITY;
 
 -- Recreate essential RLS policies
 DROP POLICY IF EXISTS "Users can view own data" ON users;

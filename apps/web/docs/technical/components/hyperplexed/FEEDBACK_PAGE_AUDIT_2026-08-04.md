@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/FEEDBACK_PAGE_AUDIT_2026-08-04.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-04; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Feedback Page Hyperplexed Audit — 2026-08-04
 
 **Surface:** `/feedback`  

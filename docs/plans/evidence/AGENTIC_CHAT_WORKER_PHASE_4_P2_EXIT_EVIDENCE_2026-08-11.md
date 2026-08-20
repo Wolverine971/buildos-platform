@@ -1,5 +1,10 @@
 <!-- docs/plans/evidence/AGENTIC_CHAT_WORKER_PHASE_4_P2_EXIT_EVIDENCE_2026-08-11.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-11; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Phase 4 P2 — mutation/effect parity exit evidence
 
 **Gate date:** 2026-08-11
@@ -21,6 +26,11 @@ project, exact cohort, explicit write/spend authorization, verified deploys,
 and unconditional routing-OFF cleanup.
 
 ## Executable 38/20/18 boundary
+
+> Historical exit snapshot. On 2026-08-13 the signed surface gained
+> `request_email_account_connection`; the executable policy now classifies that
+> browser-only OAuth client-action handoff as an explicit deferral, making the
+> current boundary 39/20/19 without widening worker capabilities.
 
 `mutationToolCatalog.ts` now audits the shared signed metadata at module load:
 

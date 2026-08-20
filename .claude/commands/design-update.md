@@ -329,12 +329,11 @@ Only consider those if the user explicitly asks for a stronger editorial moment.
 **Never edit files in `src/lib/components/ui/`**. These are base UI primitives and should be treated as protected unless the user explicitly asks to adjust the design system itself.
 
 **Never create new CSS files.** All styles go through existing files:
-- `src/lib/styles/inkprint.css`
-- `src/lib/styles/containment.css`
-- `src/lib/styles/performance-optimizations.css`
-- `src/lib/styles/animation-utils.css`
-- `src/app.css`
-- `tailwind.config.js`
+- `apps/web/src/lib/styles/inkprint.css`
+- `apps/web/src/lib/styles/pwa.css`
+- `apps/web/src/app.css`
+- `apps/web/src/app-fallback.css`
+- `apps/web/tailwind.config.js`
 
 Route-specific CSS is acceptable only for page-specific layouts or motion that fits the BuildOS posture.
 

@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/ontology/TEMPLATE_REMOVAL_MIGRATION.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-01-12. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Template Removal Migration Specification
 
 **Date**: December 10, 2025

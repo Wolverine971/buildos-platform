@@ -1,5 +1,10 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_PHASE_1_HOSTED_GATE_FAILURE_INVESTIGATION_2026-07-31.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-31; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Phase 1 Hosted Gate Failure Investigation Handoff
 
 **Prepared:** 2026-07-31

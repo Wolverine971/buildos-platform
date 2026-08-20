@@ -1,4 +1,5 @@
 <!-- docs/specs/tree-agent/tree-agent-context-selection-spec.md -->
+<!-- doc-health: ignore-schema — Specification for an unbuilt system; `tree_agent_runs` does not exist. -->
 
 # Tree Agent: Context Selection Implementation Spec
 

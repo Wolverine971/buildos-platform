@@ -677,19 +677,24 @@ graph LR
 
 ## Monitoring & Observability
 
-### Queue Statistics
+### Queue Monitoring
 
 ```typescript
-// Worker: Log queue stats every 5 minutes
-const stats = await supabase.rpc('get_queue_stats');
+// On-demand diagnostics: inspect cumulative counts when investigating.
+// This is the `queue_jobs_stats` view, not an RPC.
+const { data: stats } = await supabase.from('queue_jobs_stats').select('*');
 
 // Returns:
 // [
-//   { job_type: 'generate_daily_brief', status: 'pending', count: 45 },
-//   { job_type: 'generate_daily_brief', status: 'processing', count: 3 },
-//   { job_type: 'send_sms', status: 'completed', count: 1204 }
+//   { job_type: 'generate_daily_brief', status: 'pending', count: 45,
+//     oldest_job: '...', newest_job: '...', avg_duration_seconds: 12.4 },
+//   { job_type: 'send_sms', status: 'completed', count: 1204, ... }
 // ]
 ```
+
+The worker's periodic monitor stays quiet during healthy operation. Every interval it checks
+recent failure spikes and the age of the oldest runnable pending job, then logs only alerts that
+cross configured thresholds. Duplicate alerts are suppressed by a per-code cooldown.
 
 ### Health Checks
 

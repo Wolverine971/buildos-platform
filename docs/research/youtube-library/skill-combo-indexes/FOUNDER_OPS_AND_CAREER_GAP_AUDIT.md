@@ -1,5 +1,10 @@
 <!-- docs/research/youtube-library/skill-combo-indexes/FOUNDER_OPS_AND_CAREER_GAP_AUDIT.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-29; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Founder Ops And Career Gap Audit
 
 ## Purpose

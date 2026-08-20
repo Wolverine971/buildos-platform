@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/onboarding/ONBOARDING_V2_UPDATE_ASSESSMENT.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-01-07; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Onboarding V2 Update Assessment
 
 **Date**: 2026-01-07

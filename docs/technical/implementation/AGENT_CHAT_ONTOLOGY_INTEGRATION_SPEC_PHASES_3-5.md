@@ -1,5 +1,10 @@
 <!-- docs/technical/implementation/AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC_PHASES_3-5.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2025-12-09; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # BuildOS Agent Chat Enhancement - Phases 3-5 Complete Implementation
 
 ## PHASE 3: Update API Endpoint (COMPLETE)

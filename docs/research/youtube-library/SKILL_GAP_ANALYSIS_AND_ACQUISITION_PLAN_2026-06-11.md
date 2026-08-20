@@ -1,5 +1,10 @@
 <!-- docs/research/youtube-library/SKILL_GAP_ANALYSIS_AND_ACQUISITION_PLAN_2026-06-11.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-06-11; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Skill Gap Analysis & Acquisition Plan — 2026-06-11
 
 The operating thesis this plan serves: **run less-capable models on an extremely good harness with extremely good skills, and still get top-tier output.** Every gap below is scored against that thesis: would closing it make a _weak_ model perform like a strong one?

@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/DESIGN_AUDIT_2026-06-12.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-06-15; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # BuildOS Complete Design Audit — 2026-06-12
 
 Full-system design audit: color theory, contrast math, hierarchy, rhythm, spacing, proportion, repetition, white space, plus design-system bugs. Audited against the Inkprint design system (`apps/web/src/lib/styles/inkprint.css`, `tailwind.config.js`) and the canonical brand docs.

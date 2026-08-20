@@ -1,5 +1,10 @@
 <!-- apps/worker/docs/features/daily-briefs/DAILY_BRIEF_CLEANUP_PLAN_2026-07-06.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-07; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Daily Brief Cleanup Plan — 2026-07-06
 
 > **Source audit:** `DAILY_BRIEF_FLOW_AUDIT_2026-07-06.md` (finding IDs B1–B8, Q1–Q16, E1–E8 referenced throughout).

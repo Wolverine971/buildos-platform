@@ -1,4 +1,5 @@
 <!-- apps/web/docs/features/ontology/BATCH_TASK_MIGRATION_SPEC.md -->
+<!-- doc-health: ignore-schema — Describes the template system (`onto_templates`) that was removed in the template-removal migration. -->
 
 # Batch Task Migration Spec
 

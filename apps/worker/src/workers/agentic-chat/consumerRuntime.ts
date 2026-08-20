@@ -1,6 +1,7 @@
 // apps/worker/src/workers/agentic-chat/consumerRuntime.ts
 
 import type { SupabaseQueue } from '../../lib/supabaseQueue';
+import type { AgenticChatStalledRecoveryHealthV1 } from './stalledRecovery';
 import type { AgenticChatRealtimeHealthV1 } from './supabaseStreamPublisherAdapters';
 
 type StartStopService = {
@@ -11,7 +12,9 @@ type StartStopService = {
 export type AgenticChatConsumerRuntimeServices = {
 	publisher: StartStopService;
 	cancellation: StartStopService;
-	recovery: StartStopService;
+	recovery: StartStopService & {
+		getHealth(): AgenticChatStalledRecoveryHealthV1;
+	};
 	realtime: {
 		getHealth(): AgenticChatRealtimeHealthV1;
 	};
@@ -30,6 +33,7 @@ export type AgenticChatConsumerRuntimeHealth = {
 	state: AgenticChatConsumerRuntimeState;
 	activeTurns: number;
 	realtime: AgenticChatRealtimeHealthV1;
+	recovery: AgenticChatStalledRecoveryHealthV1;
 	queue: ReturnType<SupabaseQueue['getHealth']>;
 };
 
@@ -82,16 +86,26 @@ export class AgenticChatConsumerRuntime {
 		const queue = this.queue.getHealth();
 		const activeTurns = this.queue.getCapacitySnapshot().activeJobs;
 		const realtime = this.services.realtime.getHealth();
-		const operational = { activeTurns, realtime, queue };
+		const recovery = this.services.recovery.getHealth();
+		const operational = { activeTurns, realtime, recovery, queue };
 		if (this.state === 'running') {
-			return queue.healthy
-				? { healthy: true, state: this.state, ...operational }
-				: {
-						healthy: false,
-						reason: queue.reason ?? 'queue_unhealthy',
-						state: this.state,
-						...operational
-					};
+			if (!queue.healthy) {
+				return {
+					healthy: false,
+					reason: queue.reason ?? 'queue_unhealthy',
+					state: this.state,
+					...operational
+				};
+			}
+			if (!recovery.healthy) {
+				return {
+					healthy: false,
+					reason: recovery.reason ?? 'recovery_unhealthy',
+					state: this.state,
+					...operational
+				};
+			}
+			return { healthy: true, state: this.state, ...operational };
 		}
 		if (this.state === 'stopping' || this.state === 'stopped') {
 			return { healthy: true, reason: this.state, state: this.state, ...operational };

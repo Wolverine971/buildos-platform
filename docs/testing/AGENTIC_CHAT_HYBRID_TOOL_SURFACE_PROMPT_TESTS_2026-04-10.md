@@ -1,5 +1,10 @@
 <!-- docs/testing/AGENTIC_CHAT_HYBRID_TOOL_SURFACE_PROMPT_TESTS_2026-04-10.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-14; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Hybrid Tool Surface Prompt Tests
 
 Date: 2026-04-10  

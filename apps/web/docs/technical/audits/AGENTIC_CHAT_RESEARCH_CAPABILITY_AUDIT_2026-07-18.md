@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/AGENTIC_CHAT_RESEARCH_CAPABILITY_AUDIT_2026-07-18.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-20; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat — Research Capability & Model Escalation Audit (2026-07-18)
 
 **Scope:** model catalog + escalation reality, web_search/web_visit quality (code review + live tests), deep-research readiness, internal parallelism.

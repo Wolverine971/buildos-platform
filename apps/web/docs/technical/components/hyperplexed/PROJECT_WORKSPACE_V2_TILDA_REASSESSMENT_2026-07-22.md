@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/PROJECT_WORKSPACE_V2_TILDA_REASSESSMENT_2026-07-22.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-19; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Project Workspace V2 — Tilda Principles Reassessment
 
 **Surface:** `/projects-v2/[id]`

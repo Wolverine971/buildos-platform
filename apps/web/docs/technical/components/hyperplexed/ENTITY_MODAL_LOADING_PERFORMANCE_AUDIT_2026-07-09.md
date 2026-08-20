@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/ENTITY_MODAL_LOADING_PERFORMANCE_AUDIT_2026-07-09.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-10; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Project Entity Modal Loading — Performance Audit (2026-07-09)
 
 **Surface:** dashboard recent activity → project page → task, document, goal, and plan edit modals.

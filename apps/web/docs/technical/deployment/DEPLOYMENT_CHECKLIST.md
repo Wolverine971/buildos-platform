@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/deployment/DEPLOYMENT_CHECKLIST.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2025-12-09. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Build OS - Production Deployment Checklist
 
 **Target**: Vercel Production Deployment

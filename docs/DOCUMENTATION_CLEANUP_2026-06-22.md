@@ -1,5 +1,10 @@
 <!-- docs/DOCUMENTATION_CLEANUP_2026-06-22.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-03; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Documentation Cleanup Tracker — 2026-06-22
 
 Living tracker for the monorepo-wide doc cleanup. Started 2026-06-22.
@@ -95,8 +100,8 @@ All moves used `git mv` (history-preserving) where tracked. Breadcrumb headers +
 | `home-page-design-review.md`                       | `apps/web/docs/design/home-page-design-review.md`                                        |                                                                                       |
 | `AUDIT-WEB-2026-04-17.md`                          | `apps/web/docs/technical/audits/WEB_AUDIT_2026-04-17.md`                                 | Renamed to audit-folder convention                                                    |
 | `buildos_api_audit.md`                             | `apps/web/docs/technical/audits/API_AUDIT_2026-05-01.md`                                 | Renamed + dated                                                                       |
-| `PICKUP-2026-04-18.md`                             | `thoughts/shared/archive/2026-04-18_pickup.md`                                           | Point-in-time status → archive                                                        |
-| `Knowledge_Graphs_Study_Notes.md`                  | `thoughts/shared/research/2026-04-30_knowledge-graphs-study-notes.md`                    |                                                                                       |
+| `PICKUP-2026-04-18.md`                             | `docs/archive/thoughts/root/shared/archive/2026-04-18_pickup.md`                         | Point-in-time status → archive                                                        |
+| `Knowledge_Graphs_Study_Notes.md`                  | `docs/archive/thoughts/root/shared/research/2026-04-30_knowledge-graphs-study-notes.md`  |                                                                                       |
 | `LIBRI_BUILDOS_DYNAMIC_TOOL_MANIFEST_SPEC.md`      | `docs/archive/specs/libri/`                                                              | **Dead** — added ARCHIVED banner (Corsair brokers integrations per 2026-05-21)        |
 | `BUILDOS_LIBRI_DYNAMIC_DISCOVERY_BRIDGE.md`        | `docs/archive/specs/libri/`                                                              | Same — ARCHIVED banner added                                                          |
 

@@ -1,9 +1,15 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_P1_IMPLEMENTATION_HANDOFF_2026-08-07.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-07; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Phase 4 P1 Implementation Handoff — Read-Loop Parity (start at S1)
 
 **Prepared:** 2026-08-07, at the close of the P0 session (commits `6898acbd6` P0, `4ae990c63` P1 plan).
-**Status (2026-08-08):** **S1 COMPLETE** (`32b2b2dfb`; evidence `AGENTIC_CHAT_WORKER_PHASE_4_SLICE_18_S1_EVIDENCE_2026-08-08.md`). **S2 COMPLETE** (`e114416a4` closing commit; pre-push 35/35). **S3 IN PROGRESS** — extraction map + T1/T3/T4/T5 + worker composition landed; current working ledger is `AGENTIC_CHAT_WORKER_PHASE_4_S3_EXTRACTION_MAP_2026-08-08.md` and the Slice 18 plan's Status line. This handoff's S1 section is historical; start from the S3 map for what remains (provider catalog swap, ≥3-tool golden, T6-T11, then S4/S5). No deploys, no routing flips, no spend needed until S3's live gate and S5's E2E battery.
+**Status (2026-08-08):** **S1 COMPLETE** (`32b2b2dfb`; evidence `AGENTIC_CHAT_WORKER_PHASE_4_SLICE_18_S1_EVIDENCE_2026-08-08.md`). **S2 COMPLETE** (`e114416a4` closing commit; pre-push 35/35). **S3 COMPLETE through T11** with the hosted category-constraint gate verified; the authoritative extraction ledger is `AGENTIC_CHAT_WORKER_PHASE_4_S3_EXTRACTION_MAP_2026-08-08.md`. **S4 COMPLETE (working tree + hosted gate):** the production adapter implements sequential `continueWithToolResults`, durable-result payload compaction, canonical round analysis/read-loop escalation, bounded shared validation repair, and a fenced failed-execution trace that never invokes the read adapter. The single `read_only_tools` golden covers validation failure → repair → success on both adapters. Worker 802/803 (one intentional skip), runtime 180/180, legacy goldens 40/40, composed Postgres 9/9, typechecks, Svelte 0/0, lint, and formatting are green. The receipt-isolated dry run named only `20260808130000_agentic_chat_tool_validation_failure_ledger.sql`; its staged hash matched the source (`c23e5b39a9560015413274c7ff745d2864bc0f14f16687368c7cfc0cf70439eb`), application succeeded, the linked receipt matches, and the post-apply dry run is empty. Live catalog/PostgREST checks verified the exact 12 required arguments, invoker security, fixed search path, expected body markers, service-role access, and anonymous/client denial. S5 follows; no worker deploy, routing flip, or provider spend occurred for this schema gate. This handoff's S1 mechanics are historical.
+**S5 update (2026-08-08, unit 1 complete; hosted apply operator-reported):** shared nested context-shift extraction/emission and terminal carry-forward now match the two-sided real-tool golden; worker `get_project_overview` affected-entity/result telemetry was corrected to legacy empty/null semantics; and `20260808140000_agentic_chat_true_tool_round_count.sql` validates executor-owned provider rounds against ledger-derived calls instead of collapsing every nonempty turn to one round. Local gates are worker 803/804 (one intentional skip), runtime 183/183, legacy 40/40, Postgres 10/10, clean typechecks/Svelte/guardrails/formatting. DJ reports the migration applied; independent receipt/function-body verification remains pending. Continue with `AGENTIC_CHAT_WORKER_PHASE_4_SLICE_18_S5_CONTINUATION_HANDOFF_2026-08-08.md`: worker read memo + context-gathering ledger + the applicable read-only finalization semantics. The quality battery remains spend-gated on DJ.
 **Authority chain:** master plan `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 4 → `tasker/51-worker-behavioral-parity-phase4.md` P1 → ratified architecture `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_SLICE_18_READ_LOOP_PARITY_PLAN_2026-08-07.md` (the plan; this doc is the how).
 
 ## Read these first, in order
@@ -55,10 +61,10 @@ Already N-round capable — `toolExecution.ts:112` sends `p_sequence_index`, `:1
 ### Tests to add/extend
 
 1. `agenticChatFixtureTurnExecutor.test.ts` — new cases through `createHarness`:
-   - two `read_tool` steps across two rounds via a `prepare` mock exposing `continueWithToolResults` → completed, two `persistRead` calls with `sequenceIndex` 1 and 2, two `tool_result` publishes, fence order held per round;
-   - round-budget exceeded → executor-written failed terminal with the new failure code;
-   - tool-call budget exceeded → same;
-   - Phase 3 shape (no `continueWithToolResults`) → second read round still fails `provider_read_round_limit_exceeded` (regression pin).
+    - two `read_tool` steps across two rounds via a `prepare` mock exposing `continueWithToolResults` → completed, two `persistRead` calls with `sequenceIndex` 1 and 2, two `tool_result` publishes, fence order held per round;
+    - round-budget exceeded → executor-written failed terminal with the new failure code;
+    - tool-call budget exceeded → same;
+    - Phase 3 shape (no `continueWithToolResults`) → second read round still fails `provider_read_round_limit_exceeded` (regression pin).
 2. Disposable-Postgres proof (S1 exit gate): two ledger rows, `sequence_index` 1,2, distinct stable ids, prod-compatible `tool_category`. Extend `supabase/tests/…agentic_chat_read_tool_execution_ledger.test.sql` (runs inside the composed suite driven by `apps/web/src/lib/services/agentic-chat-v2/phase2c-stream-write.postgres.test.ts`; needs local `initdb`/`pg_ctl`/`psql`, auto-skips otherwise).
 3. `agenticChatReadOnlyProvider.test.ts` — the production adapter accepts N tool calls once it implements `continueWithToolResults` (S1 may implement it on the adapter or defer the adapter to S4; implementing the contract on the fixture path alone is acceptable for S1 as long as the Phase 3 adapter regression-pins hold).
 

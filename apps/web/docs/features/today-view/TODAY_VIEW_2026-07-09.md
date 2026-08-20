@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/today-view/TODAY_VIEW_2026-07-09.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-10; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Today View (`/today`)
 
 **Created 2026-07-09.** First slice of the re-envisioned dashboard from the thinking-loop work

@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/ADMIN_CHAT_SESSION_FLOW_VISUALIZATION_PLAN_2026-08-03.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-03; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Admin Chat Session Flow Visualizations
 
 Date: 2026-08-03

@@ -1,5 +1,10 @@
 <!-- apps/web/docs/content/AI_AGENT_SKILLS_LIBRARY_PLAN.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-05-20; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # BuildOS AI Agent Skills Library Plan
 
 ## Goal

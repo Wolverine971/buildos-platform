@@ -1,5 +1,10 @@
 <!-- apps/web/docs/content/AI_AGENT_CAPABILITY_SYSTEM_PLAN.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-03; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # BuildOS AI Agent Capability System Plan
 
 ## Purpose

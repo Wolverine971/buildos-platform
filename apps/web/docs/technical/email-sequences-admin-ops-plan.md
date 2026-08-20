@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/email-sequences-admin-ops-plan.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-05-07; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Email Sequences Admin Operations Plan
 
 Date: 2026-05-06

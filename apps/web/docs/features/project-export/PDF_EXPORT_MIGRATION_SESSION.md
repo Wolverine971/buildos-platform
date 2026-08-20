@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/project-export/PDF_EXPORT_MIGRATION_SESSION.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2025-12-09. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # PDF Export Migration Session Summary
 
 **Date:** 2025-10-15

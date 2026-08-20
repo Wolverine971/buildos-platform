@@ -1,5 +1,10 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_PHASE_2_EXIT_GATE_DECISION_PACKET_2026-08-03.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-06; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Worker Phase 2 — Exit-Gate Decision Packet
 
 **Prepared:** 2026-08-03 EDT  

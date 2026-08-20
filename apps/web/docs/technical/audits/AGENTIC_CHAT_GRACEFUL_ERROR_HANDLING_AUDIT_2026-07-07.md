@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/AGENTIC_CHAT_GRACEFUL_ERROR_HANDLING_AUDIT_2026-07-07.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-07; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat — Graceful Error Handling Audit — 2026-07-07
 
 **Companion to:** `AGENTIC_CHAT_BACKEND_AUDIT_2026-07-01_DEEP.md` (and its predecessor). Those docs asked _"does this produce wrong data / can it be exploited?"_ and covered the correctness/data-loss/security surface deeply. **This doc asks a different question:** _when something goes wrong mid-conversation, does the system anticipate it, degrade gracefully, tell the user something useful, stay diagnosable, and recover?_ Graceful error handling is a distinct property from correctness — a turn can lose no data and leak nothing and still leave the user staring at a spinner for five minutes, then retype their message.

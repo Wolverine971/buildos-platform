@@ -1,5 +1,10 @@
 <!-- docs/example-projects/GRRM_REVIEW.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2025-12-21; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # GRRM Writing Example Project Review
 
 **Project:** A Song of Ice and Fire: The Writing

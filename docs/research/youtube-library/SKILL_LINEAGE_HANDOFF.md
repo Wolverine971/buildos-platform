@@ -1,5 +1,10 @@
 <!-- docs/research/youtube-library/SKILL_LINEAGE_HANDOFF.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-05-01; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Skill Lineage Handoff
 
 This document explains the current BuildOS skill-lineage direction for another

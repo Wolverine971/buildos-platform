@@ -32,7 +32,7 @@ import { PRIVATE_SUPABASE_SERVICE_KEY } from '$env/static/private';
  * export const POST: RequestHandler = async ({ request }) => {
  *   const event = StripeService.verifyWebhookSignature(...); // Verified!
  *   const supabase = createAdminSupabaseClient();
- *   await supabase.from('subscriptions').update({ status: 'active' });
+ *   await supabase.from('customer_subscriptions').update({ status: 'active' });
  * };
  *
  * // ❌ Bad: User input could control the query

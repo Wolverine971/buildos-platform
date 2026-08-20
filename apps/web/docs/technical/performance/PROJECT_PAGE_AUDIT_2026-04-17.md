@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/performance/PROJECT_PAGE_AUDIT_2026-04-17.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-18; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Project Detail Page Smoothness & Loading Audit - `/projects/[id]`
 
 **Date:** 2026-04-17

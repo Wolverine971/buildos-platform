@@ -1,5 +1,10 @@
 <!-- docs/testing/MANUAL_AGENT_WORK_SMOKE_TESTS_2026-06-20.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-02; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Manual Agent Work Smoke Tests
 
 Date: 2026-06-20  

@@ -1,5 +1,10 @@
 <!-- docs/research/youtube-library/skill-drafts/build-quality-ui-ux/references/child-skill-source-plan.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-05-15; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Build Quality UI/UX Child Skill Source Plan
 
 ## Intake Checklist

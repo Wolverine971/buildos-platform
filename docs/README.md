@@ -50,11 +50,14 @@ For **package documentation**:
 
 **Key Rules:**
 
-- ✅ Research documents → `/thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
-- ✅ System architecture → `/docs/architecture/`
+- ✅ Research → `/docs/research/`
+- ✅ Plans, handoffs, evidence → `/docs/plans/` (evidence in `/docs/plans/evidence/`)
+- ✅ System architecture → `/docs/architecture/` (ADRs in `/docs/architecture/decisions/`)
 - ✅ Web app docs → `/apps/web/docs/`
 - ✅ Worker docs → `/apps/worker/docs/`
+- ✅ Point-in-time docs (audits, plans, handoffs) carry a status banner — run `pnpm fix:doc-health`
 - ❌ Don't create random docs at root level
+- ❌ Don't re-create `thoughts/` — it was archived to `/docs/archive/thoughts/` on 2026-08-19
 
 ## Quick Navigation
 

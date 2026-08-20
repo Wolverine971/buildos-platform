@@ -1,5 +1,10 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_SLICE_18_S5_CONTINUATION_HANDOFF_2026-08-08.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-11; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Phase 4 Slice 18 — S5 Continuation Handoff
 
 **Prepared:** 2026-08-08
@@ -65,6 +70,273 @@ production capability/routing change occurred. Authoritative evidence:
 `docs/plans/evidence/AGENTIC_CHAT_WORKER_PHASE_4_P2_EXIT_EVIDENCE_2026-08-11.md`.
 The next package is tasker/51 P3. Do not reopen the historical S5 instructions
 or silently absorb the deferred calendar/delete/contact/control tools.
+
+**P3 closure update (2026-08-12): COMPLETE, hosted, and default off.** Session
+currency, exact history strategy/copies, immutable current/history attachment
+references, shared untrusted attachment context, and post-start live-image
+resolution are complete. The S4 worker revalidates actor/project ownership and
+source metadata, streams raw bytes through byte/content-type/SHA-256 checks,
+keeps signed URLs out of durable state, and persists a mandatory redacted
+generation/lease-fenced receipt before the provider call. Migrations
+`20260812000000`, `20260812010000`, `20260812030000`, and `20260812040000` are
+hosted with empty post-apply dry runs. The final worker battery passes 355/355;
+focused web/PostgreSQL passes 30/30; shared passes 27/27; worker typecheck and
+Svelte diagnostics are clean. Worker routing, live vision, mutation gates, and
+cohort widening remain OFF. Current authority:
+`docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_P3_SESSION_HISTORY_ATTACHMENT_VISION_PLAN_2026-08-11.md`.
+Do not resume the historical S5 instructions below.
+
+**P4 continuation update (2026-08-13): S1 complete; S2a host bridge complete
+locally and unmounted.** The supervisor semantic core is now shared through
+`@buildos/agentic-chat-runtime/supervisor`, and the worker host seam derives
+scope/entity evidence only from immutable execution input. A correctness audit
+removed the core's constructor-time wall clock: the explicit `turn_started`
+observation now owns the semantic epoch. Worker action records are ordered,
+generation-scoped, and replay-stable; malformed scope and invalid/regressing
+timestamps fail closed. Focused proof is shared 10/10 and worker 7/7 plus
+declarations and worker typecheck. No SQL, provider call, runtime flag, routing,
+or capability change occurred. The authoritative current plan is
+`docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_P4_SUPERVISOR_CHECKPOINT_RESEARCH_PLAN_2026-08-13.md`.
+Next is S2b: the cross-executor/provider observation coordinator and complete
+non-terminal decision application, with durable failed pre-execution result
+parity for exact-retry blocks. Do not mount the bridge behind a flag until that
+coordinator can apply every reachable decision.
+
+**P4 S2b unit 1 update (2026-08-13): complete locally.** The exhaustive worker
+action reducer maps status, instruction, forced synthesis, exact-retry block,
+eval, and terminal decisions into typed effects and rejects inconsistent or
+unknown batches. It remains unmounted pending unit 2's executor/provider
+observation coordinator and durable application. The broad audit also restored
+the fail-closed mutation inventory after the signed Gmail OAuth browser action
+was added: it is explicitly deferred as `browser_user_action_handoff`, so the
+current partition is 39/20/19 and the full worker suite passes 939 with one
+intentional skip. No capability, environment, SQL, deployment, or routing gate
+changed.
+
+**P4 S2b unit 2 update (2026-08-13): S2 complete locally.** The prepared
+provider now owns the cross-provider/executor coordinator, starts the immutable
+supervisor only at the execution stream fence, and observes tool outcomes only
+after durable/public executor feedback. Status, recovery, forced synthesis,
+stable eval telemetry, and exact-retry blocks are applied. Known failed writes
+continue as durable/public failed feedback; uncertain writes still stop for
+effect reconciliation. Blocked retries use a distinct failed pre-execution
+step and the existing failed-row RPC before provider continuation, including
+mixed rounds. The separate exact-boolean
+`AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED` assembly gate defaults false and has
+not been set in a hosted environment. No SQL or deployment was needed. Shared
+runtime is 193/193 plus declarations, focused worker is 140/140, full worker is
+949 passed plus one intentional skip, and typecheck/diff checks are clean. Next
+is P4 S3 fenced clarification checkpoint and terminal; keep the supervisor gate
+off until S3's durable checkpoint contract exists.
+
+**P4 S3 update (2026-08-13): complete; schema hosted.** The worker now carries
+the full `ask_user` decision through a typed `supervisor_question` terminal and
+persists a deterministic checkpoint before any `waiting_on_user`, question, or
+terminal publication. The service-only RPC fences exact turn/job/user/session,
+processing token, generation, running/cancellation state, and replay payload;
+an indeterminate timeout requeues without leaking question semantics. The real
+supervisor integration reaches the terminal after two durable repeated write
+validation failures and starts no third provider pass. Both `clarification`
+and `supervisor_checkpoint` are implemented and exercised by the legacy and
+worker coverage trackers against one shared golden. Migration `20260813010000`
+was applied receipt-isolated with matching source/staged SHA-256
+`47ae1d882d78973e4757c777bae41584aa68971bf8b44bee751d71e65bdcbbdc`;
+the linked ledger and exact 13-argument service RPC are visible, and the
+post-apply dry run is empty. Final proof is runtime 193/193, legacy route 43/43,
+full worker 959 passed plus one intentional skip, worker typecheck, and
+disposable PostgreSQL 1/1. All production gates remain off. Next is P4 S4:
+atomically claim/freeze the active checkpoint into the immutable admission
+artifact and implement replay-safe resuming/resumed/restore/expiry transitions.
+
+**P4 S4 update (2026-08-13): complete; schema hosted.** Worker admission now
+freezes the exact selected checkpoint and canonical resume message into the
+hashed input artifact, and an artifact-insert trigger claims that row inside the
+existing admission transaction. Bad/missing/drifting snapshots roll back the
+whole admission. Worker provider assembly consumes only the frozen message;
+terminal database truth consumes or restores the linked checkpoint, and one
+service-only recovery RPC handles expiry/stale replay without stealing live
+queued/running claims. The legacy route also uses the corrected atomic recovery
+path. Migration `20260813020000` is receipt-isolated and hosted with matching
+source/staged SHA-256
+`067ee493c88139b6821d03f399b4f8432a408154c0659f2487eca37add157195`; its
+linked receipt is present, the post-apply dry run is empty, live service/anon
+probes are correct, and generated types align with 261 hosted RPC names. Proof
+includes a real two-connection claim race. Final gates are worker 960 plus one
+intentional skip, runtime 193/193, shared 28/28, focused web/route/SQL 61/61,
+all relevant typechecks, and Svelte 0/0. All production gates remain off. Next
+is P4 S5 deterministic research capture from terminal durable tool evidence.
+
+**P4 S5 update (2026-08-13): complete; schema hosted.** The legacy and worker
+hosts now share the exact name-only research qualifier and deterministic
+Research Log renderer. Worker eligibility comes only from bounded projections
+of durable terminal tool rows, never the provider-local buffer. The live/
+archive document mutation and its stable terminal effect commit atomically;
+capture failure is durable but cannot overturn a completed answer. Replay,
+cancellation, failure isolation, rotation, ACL, and migration replay proofs are
+green. Migration `20260813030000` was applied receipt-isolated with matching
+source/staged SHA-256
+`208e51a9920e079edf0b518b66cad8c821358930658508eb5a1509e308cbd84c`;
+the linked receipt exists, the post-apply dry run is empty, live service/anon
+probes are correct, and generated types align with 265 hosted RPC names. Final
+gates are worker 964 plus one intentional skip, runtime 195/195, shared 28/28,
+focused web/route/PostgreSQL 78/78, clean typechecks/builds, and Svelte 0/0.
+All production gates remain off. Next is P4 S6 deterministic forward carry
+from raw user text plus terminal durable write evidence.
+
+**P4 S6 update (2026-08-13): complete; schema hosted.** Exact legacy title,
+description, source, type, conservative raw-message detection, clause extraction,
+and successful-write/no-new-record semantics are shared. The worker reads only
+bounded generation-fenced durable tool evidence, then creates the forward-carry
+task through one stable effect and the legacy downstream idempotency key.
+Ambiguous responses retry safely, coded failures reconcile terminally, and an
+optional capture failure cannot overturn an otherwise completed answer.
+Migration `20260813040000` is hosted receipt-isolated with SHA-256
+`eb0bf83002dd36806f58a479383c173640ed64c3295abb15450bb5f4f9178452`, an empty
+post-apply dry run, correct live ACL probes, and 266-name generated RPC parity.
+Final gates: worker 970 plus one skip, runtime 197/197, shared 28/28, focused
+legacy/shared/PostgreSQL 105/105, clean typechecks/builds, and Svelte 0/0. All
+production gates remain off. Next is P4 S7: inventory and close or explicitly
+defer the remaining route-side finalization safeguards, then run package exit.
+
+**P4 S7 update (2026-08-13): complete locally; no migration required.** The
+legacy finalization guard is now shared through
+`@buildos/agentic-chat-runtime/supervisor`, with web retaining a compatibility
+shim. Worker terminalization applies the exact shared mutation-outcome and
+finalization policies from raw admitted text plus the generation-fenced tool
+ledger, durably publishes any correction before the provider-finish timing
+boundary, and persists only the corrected assistant/last-turn text. Supervisor
+questions are exempt. S4 already owns checkpoint cleanup; S5/S6 own the durable
+research and forward-carry floors. Project-create/general mutation repair,
+skill-load repair, organization fallback, and pending-intent metadata are
+explicitly deferred because the worker artifact lacks their structured intent/
+skill/commission inputs or the reviewed compound effect/session-metadata
+transaction; none may be inferred from prompt prose. Exit proof: runtime
+212/212 plus declarations, worker 976/976 plus one intentional live-eval skip,
+legacy supervisor/finalization/route 124/124, shared types 28/28, clean
+typechecks, Svelte 0/0, and `git diff --check`. The paid quality battery was not
+run; all production gates remain off. P4 is complete and P5 is next.
+
+**P5 S1 update (2026-08-13): terminal consumption-billing parity complete
+locally; no migration required.** Web and worker now share one immutable limits
+constant. Worker usage observation is explicitly proven to settle before a
+provider terminal event, and every post-start completion/cancellation/failure
+attempts the existing `evaluate_user_consumption_gate` RPC before terminal CAS
+or recovery. Strict result validation catches ambiguous/cross-user receipts;
+bounded failures are reported without stranding terminal truth. Pre-start and
+cohort-rejection paths skip the re-check. The shared flag remains default-off
+and must match web; no deployment, provider spend, routing, or capability gate
+changed. Focused proof is 112/112 plus shared/worker typechecks, shared
+declarations, and Svelte 0/0. Current plan:
+`docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_P5_TELEMETRY_BILLING_PLAN_2026-08-13.md`.
+Next is S2 prompt/timing/cost differential audit.
+
+**P5 S2 update (2026-08-13): complete and hosted.** Prompt evidence now
+persists the canonical provider tool definitions actually sent on the first
+response, with an independent hash, exact replay/conflict checks, artifact
+surface validation, and rollout-safe old-worker backfill through service-only
+`persist_agentic_chat_prompt_snapshot_v2`. Migration `20260813050000` was
+applied receipt-isolated with source/staged SHA-256
+`9d8b095b28ab8e981db243860f3fc820b3d9b5278d37caf2deb9b6bad111e8bd`;
+the post-apply dry run is empty, live ACL/OpenAPI probes are correct, and shared
+database types are regenerated. Provider usage now has a stable identity over
+turn/generation/logical-round/route, replay-safe strict upsert, exact upstream
+input/output cost retention, and legacy-compatible provider-total/catalog
+fallback accounting. Async timing is exact for DB-owned lifecycle events;
+`done_emitted_at=null` remains deliberate because DB commit cannot prove client
+delivery. Final gates: worker 986 plus one intentional skip, smart-LLM 72/72,
+shared 28/28, disposable PostgreSQL 1/1, clean typechecks/builds, worker check
+with zero errors, Svelte 0/0, and `git diff --check`. The awaited five-second
+usage writer still favors terminal availability during DB outage; a durable
+delayed-retry job is not silently implied. All production gates remain off and
+the paid provider battery was not run. Next is P5 S3's immutable structured
+turn-intent/session-metadata transaction; detached model reconciliation stays
+deferred until it has its own durable job/receipt contract.
+
+**P5 S3 unit 1 update (2026-08-13): structured pending intent complete and
+hosted.** New v3 admissions freeze the canonical turn-intent structure and an
+independently derived ordered write-tool expectation; the field stays optional
+for already-queued rolling artifacts. Shared and database validation reject
+shape, consistency, duplicate, and derived-tool drift. Every finalizer wrapper
+still reaches the base terminal CAS, whose new status trigger derives
+fulfillment only from immutable intent plus durable successful write rows and
+shallow-merges `fastchat_pending_turn_intent` in the same transaction as the
+assistant message, terminal event, and turn truth. Unfulfilled writes retain a
+legacy-compatible 24-hour pending continuation; fulfilled or explicit-clear
+turns store JSON null and preserve unrelated metadata. The worker also uses the
+shared legacy outcome resolver for terminal assistant metadata. Migration
+`20260813060000` was applied receipt-isolated with matching source/staged
+SHA-256
+`822ba7ee6536fd2987949b27bb2358560770177aad5849b01778985a1e42c7f6`;
+the linked receipt exists and the post-apply dry run is empty. Live service
+invocation returns the exact ordered tools, anon is denied, generated types
+include the helper, and the 268-function RPC drift check passes. Final proof:
+worker 987 plus one intentional skip, runtime 212/212, shared 29/29, focused web
+52/52, composed PostgreSQL 14/14, clean typechecks/builds, worker check with
+zero errors, Svelte 0/0, and `git diff --check`. No paid provider run,
+application deployment, routing/capability widening, or flag change occurred.
+Next is S3 unit 2: inventory admission-known deterministic used-domain and
+loaded-skill inputs before extending the same terminal transaction. Never infer
+them from prompt text. Detached model reconciliation remains deferred to an
+owned durable job/receipt contract.
+
+**P5 S3 unit 2 update (2026-08-13): deterministic domain-session metadata
+complete and hosted.** New v3 admissions freeze the exact post-sensing legacy
+domain state plus bounded sorted skill/outcome-card domain maps; the optional
+field keeps older queued artifacts valid. Shared and database validators enforce
+the canonical bounded shape. The base terminal status transition now
+shallow-merges only `fastchat_domain_state` atomically: sensing survives every
+terminal status, while completed/cancelled turns additionally project only
+successful durable domain/skill/resource/outcome/work-capability loads. Signals,
+coverage gaps, and research backlog are stably deduplicated and bounded; scope
+or projection failure rolls back terminal truth. Loaded-skill continuity needs
+no duplicate session patch because successful `skill_load` rows already feed
+subsequent admission history. Migration `20260813070000` was applied
+receipt-isolated with matching source/staged SHA-256
+`ba0fdbb76ef1d5446912749c33ad2a133e77c9ea90fe3fd57a4a6c2b7a485aca`;
+the linked receipt exists, the post-apply dry run is empty, service probes return
+the expected map/union values, anon is denied, generated types contain all five
+helpers, and the 273-function RPC drift check is aligned. Proof: worker 987 plus
+one intentional skip, runtime 212/212, smart-LLM 72/72, shared 30/30, focused
+web 52/52, composed PostgreSQL 15/15, clean typechecks/builds, worker check zero
+errors, Svelte 0/0, and clean diffs before the docs/type regeneration pass. No
+paid provider run, application deployment, routing/capability widening, or flag
+change occurred. Next is P5 S4 package exit; detached model reconciliation
+remains deferred to an owned durable job/receipt contract.
+
+Post-deploy checksum note: a concurrent edit added only the migration's leading
+file-path comment. The current source hash is
+`348feeca79d47e6987b87fabe23a37c95f51fdc6e4b830eeced86e74d6e0b643`;
+removing that comment leaves a byte-identical match to the deployed `ba0f...`
+copy above, so no executable SQL drift or follow-up deployment exists.
+
+**P5 S4 update (2026-08-13): package complete.** The post-generation exit rerun
+passed worker 987 plus one intentional skip, runtime 212/212, smart-LLM 72/72,
+shared 30/30, focused web 52/52, composed PostgreSQL 15/15, worker check with
+zero errors, Svelte 0/0, aligned 273-function RPC drift, and clean diffs. Local
+and documented production defaults keep worker runtime, web routing, live
+vision, supervisor, billing, and cohort widening off. P5 exits without an
+application deployment, provider spend, route/capability change, or billing
+flag change.
+
+**P6 deterministic differential update (2026-08-13): all eight classes
+complete.** A new provider-deadline fixture captures the legacy timeout surface
+before any provider response and drives both the legacy route and real worker
+executor with the actual typed `timed_out` terminal error rather than a generic
+exception carrying timeout-looking text. The worker matches terminal status,
+public event order/error, the private `stream_terminal_failure` lifecycle row,
+message persistence, and prompt evidence semantics. Timeout-only
+contract differences are narrowly registered: async timing ownership, exact
+unknown token usage (`null` rather than legacy's fabricated zero), and no
+first-response prompt snapshot/lifecycle claim when no response occurred. The
+existing worker-only done status/failure-code fields remain the same explicit
+open payload difference carried by all scenarios. Both adapter coverage
+trackers now exercise success, clarification, read-only tools, mutating tools,
+supervisor checkpoint, cancellation, timeout, and provider error with no
+blocked class. Focused proof: legacy route 44/44, worker fixture 61/61, runtime
+212/212, and the spend-free agentic E2E instrument suite 44/44. Remaining Phase
+4 work is the hosted 24/24 quality battery against the retained Phase 0
+baseline; it still requires explicit provider-spend/application-deployment
+authorization. Do not run it or enable production gates implicitly.
 
 ## Read this first
 

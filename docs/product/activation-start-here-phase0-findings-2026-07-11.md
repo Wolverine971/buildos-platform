@@ -1,5 +1,10 @@
 <!-- docs/product/activation-start-here-phase0-findings-2026-07-11.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-16; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Phase 0 Findings — Start Here Quality Sampling (Ticket 1)
 
 Date: 2026-07-11

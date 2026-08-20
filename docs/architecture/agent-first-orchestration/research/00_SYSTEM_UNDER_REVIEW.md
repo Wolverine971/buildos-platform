@@ -1,5 +1,10 @@
 <!-- docs/architecture/agent-first-orchestration/research/00_SYSTEM_UNDER_REVIEW.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # System Under Review — brief for external researchers
 
 **Date:** 2026-07-25

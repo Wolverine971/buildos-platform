@@ -1,5 +1,10 @@
 <!-- docs/specs/AGENTIC_CHAT_TURN_SUPERVISOR_SPEC_2026-05-23.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-02; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Turn Supervisor Spec
 
 Date: 2026-05-23

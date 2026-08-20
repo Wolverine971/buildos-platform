@@ -1,5 +1,10 @@
 <!-- docs/technical/web-research-assessment.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-01-30; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat – Web Search + Web Visit Assessment
 
 ## Scope
@@ -11,10 +16,13 @@ This document assesses the current **`web_search`** and **`web_visit`** tools in
 - `apps/web/src/lib/services/agentic-chat/tools/core/definitions/utility.ts`
 - `apps/web/src/lib/services/agentic-chat/tools/core/executors/external-executor.ts`
 - `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts`
+- `packages/shared-agent-ops/src/web/native-search.ts`
+- `packages/shared-agent-ops/src/web/native-search-discovery.ts`
 
 ## At-a-glance
 
-- **`web_search`**: Tavily-backed live search with optional synthesized answer and a small set of ranked sources.
+- **`web_search`**: BuildOS-owned search pipeline with Tavily Advanced as its current replaceable
+  discovery adapter, bounded source normalization, and direct page enrichment.
 - **`web_visit`**: Direct HTTP fetch for a specific URL with SSRF protections, HTML parsing, optional LLM markdown conversion, and global caching.
 - **Data scope**: External web content + Tavily search results; internal persistence in `web_page_visits` and tool execution logs.
 
@@ -30,15 +38,19 @@ This document assesses the current **`web_search`** and **`web_visit`** tools in
 
 - `query` (required)
 - `search_depth`: `basic | advanced` (default: `advanced`)
-- `max_results`: `1–10` (default: `5`)
-- `include_answer`: boolean (default: `true`)
+- `max_results`: `1–10` (default: `4`)
+- `include_answer`: boolean (default: `false`)
 - `include_domains` / `exclude_domains`: array of domains
 
 **Behavior**
 
-- Calls Tavily via `tavilySearch` (`apps/web/src/lib/services/agentic-chat/tools/websearch/tavily-client.ts`).
-- Forces `include_raw_content=false` and `include_images=false`.
-- Normalizes and trims result snippets to **~400 chars**.
+- Both interactive chat and Agent Runs call the versioned, shared `tavily-v1` discovery adapter.
+- The adapter owns request shaping, timeout behavior, response validation, URL/title normalization,
+  and provider diagnostics. Runtime wrappers inject secrets, fetch, and Agent Run billing hooks.
+- Forces `include_raw_content=false`, `include_images=false`, and requests provider usage metadata.
+- Normalizes and trims result snippets to **1,600 chars**.
+- Fetches the best two valid pages among the first four candidates concurrently and attaches the
+  extracted page evidence to those results.
 - Returns:
     - `query`, `answer`, `results[]` (`title`, `url`, `snippet`, `score`, `published_date`)
     - `follow_up_questions`
@@ -47,7 +59,7 @@ This document assesses the current **`web_search`** and **`web_visit`** tools in
 **Timeouts**
 
 - Tool metadata sets **60s** timeout (enforced by `ToolExecutionService`).
-- No explicit fetch timeout inside the Tavily client.
+- Shared discovery-adapter timeout: **30s**.
 
 ---
 
@@ -100,7 +112,7 @@ This document assesses the current **`web_search`** and **`web_visit`** tools in
 
 ### External
 
-- **Tavily Search API** (search index + synthesized answers).
+- **Tavily Search API** (discovery results and usage diagnostics; synthesis is off by default).
 - **Public web pages** via direct HTTP GET for:
     - `text/html`
     - `text/plain`
@@ -125,6 +137,8 @@ This document assesses the current **`web_search`** and **`web_visit`** tools in
 - Basic/advanced search depth.
 - Domain allow/deny lists.
 - Returns ranked sources with snippets, plus an optional synthesized answer.
+- Five-minute normalized-query caching with concurrent single-flight deduplication.
+- Best-two-of-four direct page enrichment for stronger evidence than provider snippets alone.
 
 ### Web visit
 
@@ -140,9 +154,9 @@ This document assesses the current **`web_search`** and **`web_visit`** tools in
 
 ### Web search
 
-- No caching or dedupe; repeated queries always call Tavily.
-- No explicit fetch timeout at the Tavily client layer.
-- Result content is **snippet-only** (no raw/full page data).
+- Query caching is process-local, so separate web/worker instances can still repeat a paid search.
+- Discovery has a timeout but no automatic retry strategy.
+- Only two result pages are enriched per search; remaining results are snippet-only.
 - No parameters for recency, language, or region beyond domain filters.
 
 ### Web visit
@@ -152,7 +166,9 @@ This document assesses the current **`web_search`** and **`web_visit`** tools in
 - Output truncation: max 12k chars returned even if more content is available.
 - Markdown conversion can be lossy or fail (fallback to text).
 - `include_links` returns at most **one link per host** (can miss relevant deep links).
-- Global cache is **cross-user** (no per-user scoping or TTL).
+- The page cache is cross-user for eligible public URLs, with a 15-minute freshness TTL and
+  conditional revalidation. Signed, tokenized, credential-bearing, and authenticated URLs are not
+  globally cached.
 
 ---
 
@@ -167,7 +183,7 @@ This document assesses the current **`web_search`** and **`web_visit`** tools in
 
 **Gaps / risks**
 
-- `web_search` has no client-level timeout or retry strategy.
+- `web_search` has no retry strategy or cross-instance query cache yet.
 - `web_visit` does not enforce allow/deny domain lists (only hardcoded SSRF rules).
 - Global cache (`web_page_visits`) is shared across all authenticated users.
 - Dynamic sites and document formats are unsupported, limiting coverage for modern sources.
@@ -179,8 +195,8 @@ The web tooling is **robust for static, public text content** and safe by defaul
 
 ## Recommended next steps (optional)
 
-1. Add **timeout + retry** support to the Tavily client.
+1. Add the distributed query cache and atomic cross-instance single-flight claim.
 2. Add **domain allow/deny** support to `web_visit` (configurable env allowlist/denylist).
-3. Add **TTL or per-user cache scope** for `web_page_visits`.
+3. Split page identity from immutable page/evidence versions for citation provenance.
 4. Add **PDF/text extraction** for common document types.
-5. Consider **JS-rendered mode** via a headless browser for dynamic pages.
+5. Add bounded JS-rendered escalation via a headless-browser queue for dynamic pages.

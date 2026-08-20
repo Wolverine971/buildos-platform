@@ -81,6 +81,17 @@ function enabledHealth(): WorkerRuntimeLifecycleHealth {
 					lastTransitionAt: CHAT_CLAIM,
 					consecutiveFailures: 1
 				},
+				recovery: {
+					healthy: true,
+					state: 'running',
+					lastSweepStartedAt: CHAT_CLAIM,
+					lastSweepFinishedAt: CHAT_CLAIM,
+					lastSuccessfulSweepAt: CHAT_CLAIM,
+					consecutiveSweepFailures: 0,
+					lastError: null,
+					lastCandidateCount: 0,
+					lastAttentionRequiredCount: 0
+				},
 				queue: queueHealth({
 					lastSuccessfulClaimAt: CHAT_CLAIM,
 					lastPollSuccessAt: CHAT_CLAIM

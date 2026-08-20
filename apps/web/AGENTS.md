@@ -6,13 +6,9 @@ These instructions apply to work under `apps/web`.
 
 ## Svelte workflow
 
-- When creating, editing, debugging, or reviewing `.svelte`, `.svelte.ts`, or `.svelte.js`
-  files, load the official `svelte-code-writer` and `svelte-core-bestpractices` skills.
-- Prefer the `svelte-file-editor` agent for bounded Svelte-file work when it is available.
-- Use the Svelte MCP documentation tools when syntax or framework behavior is uncertain.
-- Run the Svelte autofixer on every touched Svelte component or module. Resolve actionable
-  issues and re-run it until the touched code is clean.
 - After Svelte edits, run `pnpm --filter @buildos/web check` from the repository root.
+  This runs `svelte-kit sync && svelte-check` and is the only Svelte validation gate
+  wired up in this repo.
 
 ## Project constraints
 

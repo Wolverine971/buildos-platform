@@ -1,4 +1,5 @@
 <!-- docs/integrations/stripe/runbooks/webhook-failures.md -->
+<!-- doc-health: ignore-schema — Queries a `webhook_logs` table that does not exist. -->
 
 # Stripe Webhook Signature Validation Failure Procedures
 

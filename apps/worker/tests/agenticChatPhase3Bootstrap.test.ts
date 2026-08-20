@@ -47,6 +47,17 @@ function health(
 			lastTransitionAt: null,
 			consecutiveFailures: 0
 		},
+		recovery: {
+			healthy: true,
+			state: 'running',
+			lastSweepStartedAt: null,
+			lastSweepFinishedAt: null,
+			lastSuccessfulSweepAt: null,
+			consecutiveSweepFailures: 0,
+			lastError: null,
+			lastCandidateCount: 0,
+			lastAttentionRequiredCount: 0
+		},
 		queue: {
 			healthy,
 			...(healthy ? {} : { reason: 'queue_not_started' }),

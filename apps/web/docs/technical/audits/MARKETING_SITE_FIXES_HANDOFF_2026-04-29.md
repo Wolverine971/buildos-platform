@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/MARKETING_SITE_FIXES_HANDOFF_2026-04-29.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-29; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Marketing Site Design Fixes — Handoff
 
 **Created:** 2026-04-29

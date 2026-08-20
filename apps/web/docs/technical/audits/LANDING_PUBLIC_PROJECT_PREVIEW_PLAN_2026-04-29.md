@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/LANDING_PUBLIC_PROJECT_PREVIEW_PLAN_2026-04-29.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-29; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Landing Public Project Preview — Implementation Plan
 
 **Created:** 2026-04-29

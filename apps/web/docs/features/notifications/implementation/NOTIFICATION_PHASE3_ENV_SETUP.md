@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/notifications/implementation/NOTIFICATION_PHASE3_ENV_SETUP.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Notification System Phase 3 - Environment Setup
 
 ## Required Environment Variables

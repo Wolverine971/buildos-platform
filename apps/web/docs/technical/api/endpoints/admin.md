@@ -1,4 +1,5 @@
 <!-- apps/web/docs/technical/api/endpoints/admin.md -->
+<!-- doc-health: ignore-schema — Describes an `admin_audit_log` table that does not exist. -->
 
 # Admin API
 

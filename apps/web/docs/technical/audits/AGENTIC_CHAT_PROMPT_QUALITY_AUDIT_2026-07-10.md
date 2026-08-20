@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/AGENTIC_CHAT_PROMPT_QUALITY_AUDIT_2026-07-10.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-25; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Prompt Quality Audit — 2026-07-10
 
 **Scope:** The live `lite_seed_v1` prompt system (`apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts`) plus its feeder surfaces: domain sensing, skill catalog, tool descriptions, per-turn injections. Audited against real production prompt dumps (`.prompt-dumps/`, July 7–8 2026) and current (2025–2026) prompt-engineering research.

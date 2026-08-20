@@ -1,5 +1,10 @@
 <!-- docs/specs/buildos-mcp-audit-fixes-2026-06-28.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # BuildOS MCP Server — Audit Findings & Fix Tracker
 
 **Date:** 2026-06-28

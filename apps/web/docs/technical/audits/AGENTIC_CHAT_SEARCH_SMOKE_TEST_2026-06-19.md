@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/AGENTIC_CHAT_SEARCH_SMOKE_TEST_2026-06-19.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-06-19; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Search — Manual Smoke Test & Live Telemetry
 
 | Attribute       | Value                                                                                                                      |

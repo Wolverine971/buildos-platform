@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/ENTITY_MODAL_DETAILS_DRAWER_ROLLOUT_2026-08-04.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-18; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Entity modal details drawer rollout — 2026-08-04
 
 ## Outcome

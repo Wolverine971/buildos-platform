@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/PROJECTS_LIST_PAGE_AUDIT_2026-06-26.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-15; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Projects **List** Page — Hyperplexed Design Audit
 
 > Second live application of the [Hyperplexed Design Playbook](./HYPERPLEXED_DESIGN_PLAYBOOK.md).

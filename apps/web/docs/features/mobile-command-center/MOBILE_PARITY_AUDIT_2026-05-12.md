@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/mobile-command-center/MOBILE_PARITY_AUDIT_2026-05-12.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-05-13; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Project Detail — Mobile Parity Audit (2026-05-12)
 
 Snapshot of how the `/projects/[id]` mobile experience compares to the v2 desktop redesign that landed May 8–9, 2026, plus the prioritized fix list.

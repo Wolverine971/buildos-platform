@@ -1,5 +1,10 @@
 <!-- docs/research/youtube-library/SKILL_QUALITY_AUDIT_2026-06-10.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-25; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Skill System Quality Audit — 2026-06-10
 
 An end-to-end assessment of the YouTube → skill pipeline: what's working, which skills are actually usable by the agent, where the system is leaking value, and a proposed quality standard.

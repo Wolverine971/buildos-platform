@@ -1,4 +1,5 @@
 <!-- apps/web/docs/technical/development/sveltekit-patterns.md -->
+<!-- doc-health: ignore-schema — RPC names in the examples (`get_user_stats`) are illustrative placeholders, not real functions. -->
 
 # SvelteKit + Supabase Patterns Cheat Sheet
 

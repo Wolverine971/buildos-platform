@@ -1,5 +1,10 @@
 <!-- docs/research/youtube-library/SOURCE_ANALYSIS_PUBLISHING_PLAN.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-05-04; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Source Analysis Publishing Plan
 
 Tracking doc for splitting agent-skill content into three layered artifacts and publishing source analyses as their own public posts.

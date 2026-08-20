@@ -1,5 +1,10 @@
 <!-- docs/technical/repo-health-stabilization-plan-2026-04-11.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-11; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 <!-- docs/technical/repo-health-stabilization-plan-2026-04-11.md -->
 
 # Repo Health Stabilization Plan - 2026-04-11

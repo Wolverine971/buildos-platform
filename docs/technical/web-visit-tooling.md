@@ -36,6 +36,8 @@
     - `url`, `final_url`, `status_code`, `content_type`, `title`
     - `content` (markdown by default), `content_format`, `excerpt`, `truncated` (boolean)
     - `meta`, `canonical_url`, `visit_id`, `stored`
+    - when persisted: `page_version_id`, `page_version_number`, `content_hash`, and body-free
+      `evidence_chunks` with stable Unicode character selectors
     - `links` (optional, `{ url, text }[]`)
     - `info`: `fetched_at`, `mode`, `bytes`, `fetch_ms`, `parser`, `html_chars`, `markdown_chars`, `llm_*`
 
@@ -48,7 +50,10 @@
     - `index.ts`: fetch + parse orchestration (no markdown conversion).
 - Tool wiring:
     - `ExternalExecutor` handles `web_visit` and reuses injected `fetchFn`.
-    - `ExternalExecutor` converts HTML to markdown via `SmartLLMService` and persists to `web_page_visits`.
+    - `ExternalExecutor` converts HTML to markdown deterministically by default; `llm_markdown` is
+      an explicit slower fallback for poorly rendered pages.
+    - Cache-eligible public content is persisted to `web_page_visits` and the service-only immutable
+      page-version/evidence store.
     - `tool-executor-refactored.ts` switch routes `web_visit` to the external executor.
     - `tools.config.ts` registers `web_visit` in `web_research` and `base`.
 
@@ -62,16 +67,20 @@
     - `text/plain` or `text/markdown`: pass through with whitespace normalization.
     - Unsupported types: return a clear error with `content_type`.
 5. Trim HTML and normalize relative links to absolute.
-6. Convert trimmed HTML to markdown via LLM.
+6. Convert trimmed HTML to Markdown deterministically; use LLM cleanup only when explicitly requested.
 7. Truncate output to `max_chars`, set `truncated=true` if clipped.
 8. Optional: extract top N links (dedupe by host, cap 20).
-9. Persist markdown + metadata to `web_page_visits` (global dedupe).
+9. Persist the mutable cache snapshot plus an immutable, content-addressed page version and stable
+   evidence chunks (global dedupe only for cache-eligible public URLs).
 
 ## Caching
 
 - If `persist=true`, `output_format=markdown`, and `force_refresh=false`, reuse the latest
   stored markdown for the normalized URL.
 - Cache hits still bump `visit_count` and update `last_visited_at`.
+- Stale entries use `ETag`/`Last-Modified` conditional revalidation and serve a marked stale fallback
+  if revalidation fails.
+- Cached responses load the current immutable version receipt, including the stored content format.
 
 ## Security and safety
 
@@ -98,7 +107,6 @@
 
 ## Future enhancements
 
-- JS-rendered mode via Browserless/Playwright for dynamic pages.
+- Bounded JS-rendered mode via Playwright for deterministic static-extraction failures.
 - PDF/Docx extraction when `content_type` is supported.
-- Per-session caching to avoid repeat fetches.
 - Shallow link-following (`depth=1`) for small site maps.

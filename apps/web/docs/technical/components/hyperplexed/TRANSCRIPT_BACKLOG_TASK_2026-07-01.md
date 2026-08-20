@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/TRANSCRIPT_BACKLOG_TASK_2026-07-01.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-01; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Task: Pull + Analyze the 7 Missing Tier-2 Transcripts
 
 > **STATUS 2026-07-01: §1–§3 DONE.** All 7 transcripts pulled (no IP block), playbook §0/§1/§2/§4

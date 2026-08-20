@@ -1,5 +1,10 @@
 <!-- docs/architecture/agent-first-orchestration/PHASE_A_AUDIT_HANDOFF_2026-07-25.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Phase A audit handoff — work completed through 2026-07-25
 
 > **Superseded 2026-07-25.** This document is the pre-audit state of the world and is retained as

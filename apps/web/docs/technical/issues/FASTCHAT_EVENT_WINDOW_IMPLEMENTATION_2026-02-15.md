@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/issues/FASTCHAT_EVENT_WINDOW_IMPLEMENTATION_2026-02-15.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-02-15; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # FastChat Event Window Plan and Implementation (2026-02-15)
 
 ## Goal

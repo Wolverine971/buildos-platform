@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/ontology/OVERDUE_PROJECT_BATCH_TRIAGE_SPEC.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-10. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Project-Batched Overdue Task Triage Spec
 
 **Last Updated**: July 9, 2026

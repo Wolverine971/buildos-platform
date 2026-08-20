@@ -132,13 +132,13 @@ Know where the data lives before asking the user for it. Start from `packages/sh
 
 ### ⚠️ Legacy vs. ontology split (read this first)
 
-BuildOS is mid-migration from a legacy schema to an ontology-backed schema. The **current** user-facing system uses the `onto_*` tables. The legacy tables still contain historical data but are no longer authoritative for new activity. When writing any cohort query, you must pick the right side — or union both — and say which you did.
+BuildOS is largely migrated from a legacy schema to an ontology-backed schema. The **current** user-facing system uses the `onto_*` tables. Some legacy tables still exist and hold historical data; others have been dropped outright. Verify a table exists in `packages/shared-types/src/database.types.ts` before you query it, and say which side you used.
 
 | Concept      | Legacy table         | Current (ontology) table    | Notes                                                                 |
 | ------------ | -------------------- | --------------------------- | --------------------------------------------------------------------- |
-| Brain dumps  | `brain_dumps`        | `onto_braindumps`           | `ontology_daily_briefs` references onto side                          |
+| Brain dumps  | _(dropped)_          | `onto_braindumps`           | Legacy `brain_dumps` no longer exists — do not query it               |
 | Projects     | `projects`           | `onto_projects`             | `projects_history` has legacy versioning                              |
-| Tasks        | `tasks`              | `onto_tasks`                | `phase_tasks` is legacy; `onto_phases` is current                     |
+| Tasks        | `tasks`              | `onto_tasks`                | Ontology work state is `onto_plans` / `onto_milestones` — there is no `onto_phases` |
 | Daily briefs | `daily_briefs`       | `ontology_daily_briefs`     | `brief_email_stats` view aggregates both deliveries                   |
 | Per-project  | `project_daily_briefs` | `ontology_project_briefs` | Sub-briefs rolled up into the daily brief                             |
 | Activity log | `user_activity_logs` | `onto_project_logs`         | `onto_project_logs` is the richer recent-change stream — prefer it    |
@@ -153,7 +153,8 @@ If you see `user_migration_stats` or `global_migration_progress` in a query, you
 - `user_behavioral_profiles` — computed dimensions, patterns, onboarding_seed, session_count (good signal for engagement tier)
 - `user_project_behavioral_profiles` — per-project engagement shape
 - `user_activity_logs` — generic activity events (legacy, sparse)
-- `visitors` + `web_page_visits` — anonymous traffic (ip_address, user_agent, path, referrer — verify which columns are populated before trusting)
+- `visitors` — anonymous traffic. Columns are only `visitor_id`, `ip_address`, `user_agent`, `created_at`, `updated_at`. **No path, no referrer.**
+- `web_page_visits` — **not an analytics table.** It is the fetched-web-page cache (markdown, etag, content_hash, LLM token counts) used by research/scraping. Do not use it for traffic analysis.
 - `beta_signups` — signup_status, full_name, email, created_at
 - `beta_members` — is_active, beta_tier, joined_at, last_active_at, total_feedback_submitted
 - `retargeting_founder_pilot_members` — a frozen cohort for a specific pilot (useful as a reference cohort)
@@ -161,17 +162,16 @@ If you see `user_migration_stats` or `global_migration_progress` in a query, you
 ### Core activation / engagement tables
 
 - `onto_braindumps` — user_id, title, summary, created_at — the **core activation event**
-- `brain_dumps` (legacy) — still contains historical dumps, status enum, parsed_results
 - `onto_projects` — user_id, created_at, name — core "project created" event
 - `onto_project_logs` — project_id, entity_type, action, before/after_data, changed_by, created_at — **the richest recent-activity stream**
-- `onto_tasks`, `onto_phases`, `onto_milestones` — structured work state
+- `onto_tasks`, `onto_plans`, `onto_milestones` — structured work state
 - `ontology_daily_briefs` — brief_date, generation_status, user_id, created_at — **core retention event**
 - `ontology_project_briefs` — per-project sub-briefs
 - `calendar_analyses` — events_analyzed, projects_suggested, projects_created, confidence_average — watch `projects_suggested` vs `projects_created` ratio as a decision-friction metric
 - `calendar_project_suggestions` — per-suggestion acceptance
 - `calendar_webhook_channels`, `user_calendar_tokens`, `user_calendar_preferences` — calendar connection state
-- `agent_chat_sessions` — chat_session_type, status, user_id, created_at — agentic chat usage
-- `chat_sessions`, `chat_messages`, `agent_chat_messages` — message-level chat telemetry
+- `chat_sessions` — chat_session_type, status, user_id, created_at — agentic chat usage (the live table; `agent_chat_sessions` was dropped)
+- `chat_messages` — message-level chat telemetry (`agent_chat_messages` was dropped)
 - `chat_tool_executions` — which tools the agent actually called (leading indicator of whether memory is being used)
 - `voice_notes`, `voice_note_groups` — voice input path
 
@@ -259,9 +259,9 @@ Grep `rpc\(['"]` under `apps/web/src/lib/services/admin/` and `apps/web/src/rout
 ### Known gaps to flag
 
 - **No dedicated product analytics tool** (no PostHog, Mixpanel, GA4 confirmed in the schema). Cohort retention, funnel stitching, and activation-correlation queries must be built from domain tables. If the user wants serious cohort or activation-correlation work, propose either (a) a thin `user_events` stream table, or (b) adopting PostHog for the instrumentation layer.
-- **No UTM capture on signups.** `visitors` / `web_page_visits` have `referrer_host` at most — `users` does not have `utm_source`, `utm_campaign`, or `signup_source`. This means channel attribution on paid or organic acquisition is impossible as-is. Flag this early on any channel-efficiency question.
+- **No UTM capture on signups.** There is no referrer column anywhere — `visitors` stores only IP and user-agent — and `users` has no `utm_source`, `utm_campaign`, or `signup_source`. This means channel attribution on paid or organic acquisition is impossible as-is. Flag this early on any channel-efficiency question.
 - **Legacy/onto seam** (see above) — any cohort query that crosses the migration date must explicitly handle both sides or declare the window it applies to.
-- **No explicit "first brain dump succeeded" event.** You must synthesize it from `onto_braindumps.created_at` + `brain_dumps.status` (legacy) + `onto_projects.created_at` (a project-created event implies a successful dump parse for a meaningful subset of flows).
+- **No explicit "first brain dump succeeded" event.** You must synthesize it from `onto_braindumps.created_at` + `onto_projects.created_at` (a project-created event implies a successful dump parse for a meaningful subset of flows).
 - **No unified aha-moment reached column on `users`.** Must stitch from behavioral profile, project logs, and brief deliveries.
 
 ## Standing diagnostic checklist
@@ -293,7 +293,7 @@ Apply this to every BuildOS growth question:
 The brain dump is to BuildOS what the give-first gate is to a community product: the highest-leverage place you can work. If first brain dump fails to parse, or the parsed result feels wrong, the entire loop is dead. Always examine:
 
 - **Signup → first brain dump time** — from `users.created_at` to `min(onto_braindumps.created_at) per user`. Median >1 day is bad. Users who do not dump on day 0 rarely return.
-- **First brain dump → first project** — did the parse produce a structured project? Check `onto_projects.created_at` stitched to the dump via `brain_dump_links` or timestamp proximity. A dump that does not produce a project is a failed aha.
+- **First brain dump → first project** — did the parse produce a structured project? Check `onto_projects.created_at` stitched to the dump via `onto_edges` or timestamp proximity (`brain_dump_links` was dropped). A dump that does not produce a project is a failed aha.
 - **First brain dump parse error rate** — stitch `error_logs` with user_id and brain_dump context. If first dumps are erroring silently, no downstream fix matters.
 - **First brief → first action** — did the user do anything (task update, phase change, calendar acceptance) within 24h of receiving their first brief? (`ontology_daily_briefs` → `onto_project_logs` within window). This is the "brief was useful" proxy.
 - **Calendar connect rate and timing** — `users` with `onboarding_v2_skipped_calendar = false` versus actual `user_calendar_tokens`. Users who connect calendar during onboarding retain meaningfully better. Measure the delta.
@@ -345,7 +345,7 @@ BuildOS is a solo-founder motion. Paid acquisition, sales teams, and heavy SEO c
 - **Wait-list velocity carousel.** Publish `beta_signups` growth as a weekly number. Social proof loop.
 - **Testimonial → carousel pipeline.** `beta_feedback` + `feedback` rows with `rating ≥ 4` become source material for weekly carousels. Measure: carousel save rate, follow-through signups.
 - **Templated brain dumps for authors/YouTubers.** A "starter dump" template in the onboarding flow that guarantees a good first parse. Reduces time-to-aha and produces a proof asset at the same time.
-- **Creator partner swaps.** One author + one YouTuber per month, recorded workflow demo, co-published. Measure: signup spike by day and referrer_host where possible.
+- **Creator partner swaps.** One author + one YouTuber per month, recorded workflow demo, co-published. Measure: signup spike by day (no referrer data exists — use date correlation only).
 - **"Unbundle your stack" comparison page.** Not a feature-grid page — a visual "your stack is the problem" story. Matches the Week 4 Guerrilla campaign thesis.
 - **Referral loop via project sharing.** If/when `onto_public_pages` is user-facing, a shared project page with "made in BuildOS" attribution becomes a passive referral loop. Verify: is this shipped? Check `onto_public_pages` row count and public route existence.
 - **SMS brief as the sticky surface.** Audit SMS opt-in rate from onboarding (`users.onboarding_v2_skipped_sms`). Users on SMS briefs retain differently. If the delta is real, push SMS harder in onboarding.

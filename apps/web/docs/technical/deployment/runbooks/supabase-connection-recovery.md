@@ -1,5 +1,12 @@
 <!-- apps/web/docs/technical/deployment/runbooks/supabase-connection-recovery.md -->
 
+<!-- doc-status: stale-runbook -->
+
+> ⚠️ **Verify before executing.** This runbook was last reviewed 2025-09-26 and predates the
+> ontology schema migration. Several queries below were written against tables that have since
+> been renamed or dropped. Confirm every table name against
+> `packages/shared-types/src/database.types.ts` before running anything during an incident.
+
 # Supabase Connection Recovery Runbook
 
 > **Purpose**: Procedures for diagnosing and recovering from Supabase connection failures in BuildOS
@@ -251,7 +258,8 @@ WHERE state != 'idle'
     export async function GET() {
     	try {
     		const start = Date.now();
-    		const { data, error } = await supabase.from('health_check').select('*').limit(1);
+    		// There is no `health_check` table; probe a real, tiny, RLS-safe read instead.
+    		const { data, error } = await supabase.from('users').select('id').limit(1);
     		const duration = Date.now() - start;
 
     		if (error) throw error;

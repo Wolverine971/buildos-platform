@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/AGENTIC_CHAT_DOMAINS_CAPABILITIES_SKILLS_TOOLS_AUDIT_2026-06-15.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-25; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat — Domains / Capabilities / Skills / Tools Audit (2026-06-15)
 
 **Scope:** Evaluate the four-layer routing surface the agentic chat agent uses —

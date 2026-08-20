@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/agentic-chat-harness-audit-tracker-2026-07-12.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-19; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Harness Audit Tracker
 
 **Date:** 2026-07-12

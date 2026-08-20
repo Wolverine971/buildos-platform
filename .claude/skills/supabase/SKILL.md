@@ -83,7 +83,7 @@ For complete table definitions, see: `references/schema.md`
 | Domain | Tables | Description |
 |--------|--------|-------------|
 | **Users** | `users`, `user_context`, `user_*_preferences` | User accounts and settings |
-| **Projects** | `projects`, `tasks`, `phases`, `brain_dumps` | Core productivity entities |
+| **Projects** | `onto_projects`, `onto_tasks`, `onto_braindumps` (current) · `projects`, `tasks`, `phases` (legacy) | Core productivity entities |
 | **Ontology** | `onto_*` | New entity system (projects, tasks, goals, etc.) |
 | **Chat/AI** | `chat_sessions`, `chat_messages`, `llm_usage_logs` | AI interactions |
 | **Notifications** | `notification_*`, `user_notifications` | Notification system |

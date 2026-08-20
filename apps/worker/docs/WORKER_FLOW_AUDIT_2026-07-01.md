@@ -1,5 +1,10 @@
 <!-- apps/worker/docs/WORKER_FLOW_AUDIT_2026-07-01.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-14; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Worker Flow Audit - 2026-07-01
 
 Historical audit only. Do not use this file as the current worker contract.

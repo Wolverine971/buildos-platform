@@ -1,5 +1,10 @@
 <!-- docs/architecture/agent-first-orchestration/PHASE_A_RESULTS.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Phase A — Recorded Decision
 
 **Date:** 2026-07-26
@@ -13,12 +18,12 @@ does **not** authorize Phase B.
 
 ## 1. Final scored state
 
-| Question | Final state |
-| --- | --- |
-| Route accuracy (A1) | **Change** band: 61/72 frozen routes (mitigation v2); cold holdout 15/15 fast-path only. Gate was ≥65/72. |
-| Gate reachability | **Never cleanly reachable.** Reanalysis max = 63/72 with C09 counted as an error; label exercise found 3 contested items, and the pre-registered arithmetic says two 50/50 items already cap the score at 63/72 — below the gate with a perfect router. |
-| Quality delta (A2) | **Unscored.** Built, blocked behind the route gate, zero workflow outputs entered a blind comparison. |
-| Cost / latency | Direct-path latency bounds passed at A1. Workflow bounds never exercised. |
+| Question            | Final state                                                                                                                                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Route accuracy (A1) | **Change** band: 61/72 frozen routes (mitigation v2); cold holdout 15/15 fast-path only. Gate was ≥65/72.                                                                                                                                               |
+| Gate reachability   | **Never cleanly reachable.** Reanalysis max = 63/72 with C09 counted as an error; label exercise found 3 contested items, and the pre-registered arithmetic says two 50/50 items already cap the score at 63/72 — below the gate with a perfect router. |
+| Quality delta (A2)  | **Unscored.** Built, blocked behind the route gate, zero workflow outputs entered a blind comparison.                                                                                                                                                   |
+| Cost / latency      | Direct-path latency bounds passed at A1. Workflow bounds never exercised.                                                                                                                                                                               |
 
 ## 2. Why the track is closed rather than restated
 

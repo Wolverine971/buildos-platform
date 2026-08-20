@@ -1,5 +1,10 @@
 <!-- docs/plans/2026-04-23-security-layered-defense-plan.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Security Hardening Plan
 
 Date: 2026-04-23

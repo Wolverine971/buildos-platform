@@ -1,5 +1,10 @@
 <!-- docs/research/youtube-library/SKILL_ARCHITECTURE_EVALUATION_2026-06-10.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-06-11; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Skill Architecture Evaluation: Root vs. Niche — 2026-06-10
 
 An evaluation of the root-skill / niche-skill information architecture against the design principle DJ stated, using the loader code, the size distribution of all 43 runtime skills, and the first two executed golden-task evals as evidence.

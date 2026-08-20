@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/AI_INBOX_NOTIFICATION_MODAL_FIX_2026-07-03.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-14; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # AI Inbox Notification Modal Fix — 2026-07-03
 
 ## Scope

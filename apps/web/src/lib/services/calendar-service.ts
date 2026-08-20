@@ -1405,17 +1405,6 @@ export class CalendarService {
 			});
 		}
 
-		// Log deletion reason for analytics if provided
-		if (reason && successCount > 0) {
-			await this.supabase.from('calendar_sync_logs').insert({
-				user_id: userId,
-				operation: 'bulk_delete_events',
-				reason,
-				event_count: successCount,
-				created_at: new Date().toISOString()
-			});
-		}
-
 		return {
 			success: failCount === 0,
 			warnings,

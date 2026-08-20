@@ -2,7 +2,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	assertAgenticChatMutationAdapterCoverageV1,
-	createAgenticChatPhase3Assembly
+	createAgenticChatPhase3Assembly,
+	reportAgenticChatStalledRecovery
 } from '../src/workers/agentic-chat/phase3Assembly';
 import { normalizeAgenticChatMutationCapabilitiesV1 } from '../src/workers/agentic-chat/mutationToolCatalog';
 
@@ -257,5 +258,43 @@ describe('createAgenticChatPhase3Assembly', () => {
 				mutationAdapterCapabilities: { updateOntoTask: true }
 			})
 		).toThrow('require an independent semantic reviewer client');
+	});
+});
+
+describe('reportAgenticChatStalledRecovery', () => {
+	it('emits a structured alert for an aged or unresolved orphan', () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+
+		reportAgenticChatStalledRecovery({
+			startedAt: '2026-08-19T12:10:00.000Z',
+			finishedAt: '2026-08-19T12:10:01.000Z',
+			candidateCount: 1,
+			results: [
+				{
+					turnRunId: 'turn-1',
+					queueJobId: 'job-1',
+					startedAt: '2026-08-19T11:50:00.000Z',
+					stalledAt: '2026-08-19T12:00:00.000Z',
+					executionGeneration: 1,
+					outcome: 'manual_recovery_required',
+					error: null
+				}
+			]
+		});
+
+		expect(error).toHaveBeenCalledWith(
+			'Agentic Chat stalled recovery requires attention',
+			expect.objectContaining({
+				event: 'agentic_chat_stalled_recovery_report',
+				alert: true,
+				oldestCandidateAgeMs: 1_201_000,
+				attentionRequiredCount: 1,
+				candidateCount: 1
+			})
+		);
+		expect(info).not.toHaveBeenCalled();
+		error.mockRestore();
+		info.mockRestore();
 	});
 });

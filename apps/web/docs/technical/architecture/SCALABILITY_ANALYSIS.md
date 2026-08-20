@@ -1,4 +1,5 @@
 <!-- apps/web/docs/technical/architecture/SCALABILITY_ANALYSIS.md -->
+<!-- doc-health: ignore-schema — Illustrative partitioning examples use pre-ontology table names that no longer exist. -->
 
 # Build OS Scalability Analysis
 

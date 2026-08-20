@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/notifications/implementation/NOTIFICATION_PHASE1_FILES.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Notification System Phase 1 - Files Created
 
 All files have been created for Phase 1 of the Extensible Notification System. Below is a complete list organized by category.

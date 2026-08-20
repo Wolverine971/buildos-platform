@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/type-audit-2026-05-01.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-20; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Type System Audit — 2026-05-01
 
 Audit of SQL-generated types, shared-types package, and app-level types across the BuildOS monorepo. Goal: find drift, duplicates, and unsafe patterns that mask runtime bugs.

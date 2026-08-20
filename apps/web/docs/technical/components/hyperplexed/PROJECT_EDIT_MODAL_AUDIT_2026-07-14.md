@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/PROJECT_EDIT_MODAL_AUDIT_2026-07-14.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-18; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Project Edit Modal Mobile Audit — 2026-07-14
 
 ## Target and evidence

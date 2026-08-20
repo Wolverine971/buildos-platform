@@ -2794,6 +2794,30 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				reviewerCall[0].messages.find((message) => message.role === 'system')?.content
 			).toContain(uniqueCompletionGuidance);
 		}
+
+		// Regression guard, 2026-08-19 live battery: the follow-up-entity restraint
+		// made the model ANNOUNCE that the user's stated next step would not be
+		// recorded (LLM judge 2/5 — "explicitly declined to record the stated next
+		// step anywhere durable"), even though the deterministic stated-future floor
+		// captured it. Declining to create an entity must never license narrating
+		// that the stated future is dropped. Pinned on the acting prompt and on every
+		// reviewer prompt so it cannot regress on one surface only.
+		const noDroppedFutureNarration =
+			'declining that creation is never a reason to tell the user their stated next step will go unrecorded';
+		expect(
+			client.stream.mock.calls[0]?.[0].messages.some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(noDroppedFutureNarration)
+			)
+		).toBe(true);
+		for (const reviewerCall of semanticReviewer.stream.mock.calls) {
+			expect(
+				reviewerCall[0].messages.find((message) => message.role === 'system')?.content
+			).toContain(noDroppedFutureNarration);
+		}
+
 		expect(client.stream).toHaveBeenCalledTimes(3);
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
 	});

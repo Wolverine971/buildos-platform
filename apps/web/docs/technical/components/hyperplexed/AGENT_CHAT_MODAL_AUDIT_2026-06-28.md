@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/AGENT_CHAT_MODAL_AUDIT_2026-06-28.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-01; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # AgentChatModal — Hyperplexed Design Audit
 
 > Region-by-region audit of the agentic-chat modal surface against the

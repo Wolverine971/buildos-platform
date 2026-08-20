@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/TOOLING_AUDIT_2025-12-21.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2025-12-21; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # BuildOS Web App Tooling Audit Report
 
 **Date:** December 21, 2025

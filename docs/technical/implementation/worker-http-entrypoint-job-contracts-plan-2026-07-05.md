@@ -1,5 +1,10 @@
 <!-- docs/technical/implementation/worker-http-entrypoint-job-contracts-plan-2026-07-05.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-07; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Worker HTTP Entrypoint and Job Contracts Plan
 
 Date: 2026-07-05

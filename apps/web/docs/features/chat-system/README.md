@@ -441,10 +441,10 @@ For complete admin monitoring documentation, see:
 
 ### Design Documents
 
-- [Chat Context & Tools Design](/thoughts/shared/archive/ideas/chat-context-and-tools-design.md)
-- [Chat Specification v2](/thoughts/shared/archive/ideas/chat-spec-improved-v2.md)
-- [Task Integration Notes](/thoughts/shared/archive/ideas/chat-task-integration.md)
-- [Implementation Index](/thoughts/shared/archive/ideas/chat-implementation-index.md)
+- [Chat Context & Tools Design](docs/archive/thoughts/root/shared/archive/ideas/chat-context-and-tools-design.md)
+- [Chat Specification v2](docs/archive/thoughts/root/shared/archive/ideas/chat-spec-improved-v2.md)
+- [Task Integration Notes](docs/archive/thoughts/root/shared/archive/ideas/chat-task-integration.md)
+- [Implementation Index](docs/archive/thoughts/root/shared/archive/ideas/chat-implementation-index.md)
 
 ---
 

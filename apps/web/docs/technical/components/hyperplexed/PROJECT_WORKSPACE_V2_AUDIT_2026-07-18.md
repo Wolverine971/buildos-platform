@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/PROJECT_WORKSPACE_V2_AUDIT_2026-07-18.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-12; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Project Workspace V2 — Hyperplexed Audit and Prototype
 
 **Surface:** `/projects-v2/[id]`  

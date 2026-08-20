@@ -1,5 +1,26 @@
 <!-- packages/shared-types/src/functions/function-defs.md -->
 
+<!-- doc-health: ignore-schema — a historical dump; it deliberately contains definitions that no longer match prod. -->
+
+> ⚠️ **STALE SNAPSHOT — do not treat as the live database.**
+>
+> This is a hand-captured dump of function definitions, last refreshed 2026-08-07. Nothing
+> regenerates it, so it drifts. It is already missing every function added by the August 2026
+> migrations, and it still shows `search_all_content` / `search_by_type` selecting
+> `FROM brain_dumps` — a table dropped in `20260804030000_phase2_retire_decisions_notes_braindumps.sql`.
+>
+> **That is the snapshot being wrong, not prod.** Both RPCs were probed against production on
+> 2026-08-19 and returned HTTP 200, confirming the fix in
+> `20260430000004_remove_brain_dump_search_results.sql` is live.
+>
+> Authoritative sources, in order:
+>
+> 1. `packages/shared-types/src/database.types.ts` — which functions exist (generated, `pnpm gen:types`)
+> 2. the individual `*.sql` files in this directory — intended definitions
+> 3. `supabase/migrations/` — what was actually applied
+>
+> Do not cite this file as evidence of a production defect.
+
 [
 {
 "args": "token_hash text, p_actor_id uuid, p_user_email text",

@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/email/HANDOFF-TIER1-GMAIL-CHAT-TOOLS.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-25; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Handoff — Build Tier 1 Gmail Chat Tools
 
 **Created:** 2026-07-22

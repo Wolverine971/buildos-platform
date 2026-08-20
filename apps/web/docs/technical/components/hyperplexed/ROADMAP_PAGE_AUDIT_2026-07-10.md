@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/ROADMAP_PAGE_AUDIT_2026-07-10.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-10; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Roadmap Page Audit — 2026-07-10
 
 ## Scope

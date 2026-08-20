@@ -1,5 +1,10 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_CONTINUATION_HANDOFF_2026-08-18.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-19; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Worker Phase 4 — Continuation Handoff (2026-08-18)
 
 **Prepared:** 2026-08-18
@@ -15,6 +20,64 @@ changes are outside this campaign and must not be included in a campaign commit.
 worth reading for the P0–P6 package history and the deployment/restore mechanics, but its exit
 policy, its "run the full 8×3 battery next" instruction, and its section 8 prerequisites are all
 retired. Where the two disagree, this one wins.
+
+**PHASE 4 EXITED — 2026-08-19 (DJ decision). This supersedes every "NO EXIT" verdict below.**
+
+The exit was closed by measuring the thing nobody had measured: **legacy, on the exact current
+scenario definitions, on the same production server, same day, 3 repetitions, zero retries.**
+
+| Scenario                         |  07-31 bar |             Worker | **Legacy same-day** |
+| -------------------------------- | ---------: | -----------------: | ------------------: |
+| `project-catchup-cold`           |    100.00% |                3/3 |             **2/3** |
+| `project-organize`               |     83.33% |                0/3 |             **0/3** |
+| `restraint-noop-and-ambiguity`   |    100.00% |                2/3 |             **1/3** |
+| `task-complete-cold-reference`   |     91.67% |                1/3 |             **3/3** |
+| `task-multi-update`              |    100.00% |                2/3 |             **3/3** |
+| `task-reschedule-cold-reference` |     75.00% |                3/3 |             **3/3** |
+| **All six**                      | **91.67%** | **11/18 (61.11%)** |  **12/18 (66.67%)** |
+
+**The gate was requiring the worker to beat the reference implementation by 25 points.** Legacy
+scores 66.67% against a bar of 91.67%. That bar came from 2026-07-31 artifacts, and two of the six
+scenarios were made materially stricter on 2026-08-15 (commit `665ba01fc`) — after it was measured.
+`declare_turn_contract` first appears anywhere in the repository on 2026-08-15, so legacy's 83.33%
+on `project-organize` was recorded against a scenario that could not have required it. Section 3.2
+caught this pattern once ("the comparator was itself tuned until green"); it recurred in a new form
+and went unnoticed for four days.
+
+Run provenance: clean detached worktree at exact `11c50cb2bae7206d9f756f0990ccc6c706c124da`,
+`AGENTIC_E2E_EXECUTION_MODE=legacy_sse` against `https://build-os.com`, `$0.29185278` provider cost
+(plus a `$0.01031364` one-turn preflight). **No production routing, cohort, or capability value was
+read, changed, or restored** — `legacy_sse` posts directly to `/api/agent/v2/stream` and performs no
+transport negotiation, so it cannot reach the worker regardless of flag state. Legacy emitted
+**0 stream errors and 0 capture errors** across 21 turns; the worker emitted 2, both in
+`project-organize`, both repaired in `6c73357ae`.
+
+Evidence:
+`docs/plans/evidence/AGENTIC_CHAT_WORKER_PHASE_4_LEGACY_SAME_DAY_COMPARATOR_2026-08-19.md`;
+artifact `agentic_chat_worker_phase4_six_class_LEGACY_comparator_2026-08-19_11c50cb2b.json`
+(SHA-256 `e973464ff64aff43609066d36ed770b51982cf64e7364fb314faa378f046996a`).
+
+**Two residuals, tracked separately, neither blocking:**
+
+1. **`project-organize` is unsatisfiable by any implementation** — `tasker/55`. Its 08-15
+   assertion requires `approve_turn_contract_review`, which exists **only** in
+   `apps/worker/src/workers/agentic-chat/readOnlyTool.ts`. There is no definition anywhere under
+   `apps/web/src`, so legacy structurally cannot call it. Legacy performs the organization work
+   correctly (repeated `move_document_in_tree`) and fails the assertion anyway. This scenario drove
+   two rounds of worker provider repair while carrying no parity signal.
+2. **`task-complete-cold-reference` is the one real worker regression** — `tasker/56`. Legacy 3/3,
+   worker 1/3, worker over-clarifying instead of completing a uniquely matched task. Prime suspect
+   is the worker-only independent semantic reviewer (`readOnlyProvider.ts:545`), which legacy has no
+   counterpart for and whose withholding gate was _tightened_ during the 08-19 remediation.
+
+**Latency is a runtime property, not a migration cost.** Legacy turns ran 90–151s against
+production in this same comparator; the worker battery measured p50 53.7s / max 151.0s. Carry it to
+Phase 5 as a product problem in its own right, not as worker debt.
+
+**Next: Phase 5** — reliability verification and operational hardening
+(`AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 5, line 889).
+
+---
 
 **Latest continuation update (2026-08-19):** The authorized exact-`33b4faec` second remediation
 retest is complete. The zero-spend worker lease preflight passed 1/1 in 7.823 seconds; the one

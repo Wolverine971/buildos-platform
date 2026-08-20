@@ -518,6 +518,71 @@ describe('AgenticChatStreamPublisher', () => {
 		await publisher.stop();
 	});
 
+	it('reconnects after a failed terminal send instead of retrying the dead channel', async () => {
+		const context = turn('terminal-reconnect');
+		const channels: Array<{
+			send: ReturnType<typeof vi.fn>;
+			subscribe: ReturnType<typeof vi.fn>;
+		}> = [];
+		const client = {
+			channel: vi.fn(() => {
+				const sendResult = channels.length === 0 ? 'failed' : 'ok';
+				const channel = {
+					send: vi.fn().mockResolvedValue(sendResult),
+					subscribe: vi.fn((callback: (status: 'SUBSCRIBED') => void) => {
+						callback('SUBSCRIBED');
+						return channel;
+					})
+				};
+				channels.push(channel);
+				return channel;
+			}),
+			removeChannel: vi.fn().mockResolvedValue(undefined)
+		};
+		const broadcast = new SupabaseAgenticChatBroadcastAdapter(client);
+		const publisher = new AgenticChatStreamPublisher({
+			persistence: createPersistence([context]),
+			broadcast,
+			sleep: async () => undefined
+		});
+		publisher.start();
+		publisher.registerTurn(context);
+
+		await expect(
+			publisher.publishTerminal(
+				context.turnRunId,
+				{
+					turn_run_id: context.turnRunId,
+					session_id: context.sessionId,
+					user_id: context.userId,
+					queue_job_id: context.queueJobId,
+					execution_generation: 1,
+					status: 'completed',
+					finished_reason: 'stop',
+					failure_code: null,
+					assistant_message_id: 'message-terminal-reconnect',
+					terminal_event_id: `${context.turnRunId}:1:1`,
+					terminal_sequence_index: 1,
+					terminalized_at: '2026-08-19T20:00:00.000Z'
+				},
+				{ type: 'done', status: 'completed' }
+			)
+		).resolves.toBe('broadcast_acknowledged');
+		expect(client.channel).toHaveBeenCalledTimes(2);
+		expect(channels[0]?.send).toHaveBeenCalledOnce();
+		expect(channels[1]?.send).toHaveBeenCalledOnce();
+		expect(client.removeChannel).toHaveBeenCalledWith(channels[0]);
+		expect(broadcast.getHealth()).toMatchObject({
+			healthy: true,
+			status: 'connected',
+			activeChannels: 1,
+			consecutiveFailures: 0
+		});
+
+		await publisher.stop();
+		await broadcast.close();
+	});
+
 	it('publishes an atomically committed semantic receipt before terminal done', async () => {
 		const context = turn('committed-context');
 		const log: string[] = [];

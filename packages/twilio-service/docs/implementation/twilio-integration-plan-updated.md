@@ -1,5 +1,10 @@
 <!-- packages/twilio-service/docs/implementation/twilio-integration-plan-updated.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-06-22; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Twilio SMS Integration for BuildOS Platform
 
 ## Tailored Implementation Plan

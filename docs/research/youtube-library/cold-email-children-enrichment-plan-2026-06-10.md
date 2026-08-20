@@ -8,6 +8,11 @@ purpose: Per-child enrichment plan with distilled, agent-checkable material for 
 path: docs/research/youtube-library/cold-email-children-enrichment-plan-2026-06-10.md
 ---
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-06-11; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Cold Email Children Enrichment Plan — 2026-06-10
 
 Raw material for five enrichment agents. Each child section contains (a) current state, (b) distilled material ready to become reference modules, (c) a proposed reference-module split, and (d) what stays in the shell. Every block cites its source inline.

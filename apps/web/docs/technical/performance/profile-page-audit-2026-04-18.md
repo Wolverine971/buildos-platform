@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/performance/profile-page-audit-2026-04-18.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-17; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Profile Page Backend Query Audit — 2026-04-18
 
 Audit of `/profile` (all tabs) focused on query correctness and latency. The page currently fans out to many duplicate and serial requests on tab mount; this doc catalogs what was found and the fix plan.

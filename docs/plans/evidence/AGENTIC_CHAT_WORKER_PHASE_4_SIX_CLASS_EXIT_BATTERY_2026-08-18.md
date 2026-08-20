@@ -1,5 +1,10 @@
 <!-- docs/plans/evidence/AGENTIC_CHAT_WORKER_PHASE_4_SIX_CLASS_EXIT_BATTERY_2026-08-18.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-19; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Worker Phase 4 — Six-Class Exit Battery
 
 **Run date:** 2026-08-18

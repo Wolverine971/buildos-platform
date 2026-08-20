@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/ontology/GRAPH_AUDIT_2026-05-01.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-05-04; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # BuildOS Graph Audit
 
 > **Date:** 2026-05-01

@@ -1,5 +1,10 @@
 <!-- docs/technical/2026-04-10_agentic-tool-schemas-and-openai-tool-pattern-review.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-13; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Tool Schemas and OpenAI Tool Pattern Review
 
 Date: 2026-04-10

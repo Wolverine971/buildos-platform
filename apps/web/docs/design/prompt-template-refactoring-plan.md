@@ -13,6 +13,11 @@ implementation_completed: 2025-09-07
 path: apps/web/docs/design/prompt-template-refactoring-plan.md
 ---
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2025-12-09. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Research: PromptTemplate Service Simplification and Refactoring
 
 **Date**: 2025-09-07T03:53:25+0000

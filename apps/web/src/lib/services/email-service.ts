@@ -881,36 +881,6 @@ ${unsubscribeUrl}${this.getPostalAddressText()}`;
 		}
 	}
 
-	/**
-	 * Send a templated email by replacing token placeholders.
-	 */
-	async sendTemplatedEmail(
-		to: string,
-		templateId: string,
-		variables: Record<string, string>
-	): Promise<void> {
-		const { data: template } = await this.supabase
-			.from('email_templates')
-			.select('subject, body')
-			.eq('id', templateId)
-			.single();
-
-		if (!template) {
-			throw new Error(`Email template ${templateId} not found`);
-		}
-
-		let subject = template.subject;
-		let body = template.body;
-
-		Object.entries(variables).forEach(([key, value]) => {
-			const regex = new RegExp(`{{${key}}}`, 'g');
-			subject = subject.replace(regex, value);
-			body = body.replace(regex, value);
-		});
-
-		await this.sendEmail({ to, subject, body });
-	}
-
 	async getUserEmailLogs(userId: string, limit = 50): Promise<any[]> {
 		const { data } = await this.supabase
 			.from('email_logs')

@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/AGENTIC_CHAT_FLOW_AUDIT_FOLLOWUPS_2026-07-06.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-07; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Flow Audit Followups - 2026-07-06
 
 These are the non-P1 findings from the full agentic chat flow audit. The P1 timeout/abort propagation issue was fixed separately in the service and streaming endpoint.

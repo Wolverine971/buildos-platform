@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/TASK_RADIUS_CONVERGENCE_2026-06-12.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-06-14; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # TASK: Border-Radius Convergence (Inkprint)
 
 > **Handoff doc.** Self-contained task for an agent to resolve the BuildOS radius split-brain. Source finding: [DESIGN_AUDIT_2026-06-12.md](./DESIGN_AUDIT_2026-06-12.md) §3b. Created 2026-06-12.

@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/ANIMATION_PERFORMANCE_AUDIT.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-08. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Animation Performance Audit & Optimization Plan
 
 > ⚠️ **HISTORICAL — references deleted utilities.** The `.gpu-accelerate`, `.hover-scale`, `.transition-*-gpu`, `.fade-transition` and similar utility classes referenced throughout this document lived in `animation-utils.css`, which was **removed in the 2026-04-08 dead-weight cleanup**. The audit's principles (use specific transitions, GPU-accelerate sparingly, manage `will-change`) remain valid, but the shared utility layer is gone — apply patterns inline per component.

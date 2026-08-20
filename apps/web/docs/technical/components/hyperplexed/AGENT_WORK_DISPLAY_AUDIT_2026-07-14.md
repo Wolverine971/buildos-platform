@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/AGENT_WORK_DISPLAY_AUDIT_2026-07-14.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-15; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agent Work and Notification Clarity Audit — 2026-07-14
 
 ## Scope

@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/HYPERPLEXED_AUDIT_TRACKER.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-19; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Hyperplexed Audit Tracker
 
 > Rollup for the audit program driven by the

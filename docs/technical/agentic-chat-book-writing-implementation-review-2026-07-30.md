@@ -1,5 +1,10 @@
 <!-- docs/technical/agentic-chat-book-writing-implementation-review-2026-07-30.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-02; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Book-Writing Workflow — Implementation and Review Record
 
 - Date: 2026-07-30

@@ -1,4 +1,5 @@
 <!-- docs/api/sms-api-reference.md -->
+<!-- doc-health: ignore-schema — References an `email_templates` table that does not exist in the schema. -->
 
 # SMS API Reference
 

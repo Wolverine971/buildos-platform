@@ -1,4 +1,5 @@
 <!-- apps/web/docs/features/ontology/MIGRATION_ENHANCEMENT_SPEC.md -->
+<!-- doc-health: ignore-schema — References `onto_templates`, removed in the template-removal migration. -->
 
 # Migration System Enhancement Specification
 

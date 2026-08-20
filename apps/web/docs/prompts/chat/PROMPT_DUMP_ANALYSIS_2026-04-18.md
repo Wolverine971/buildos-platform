@@ -1,5 +1,10 @@
 <!-- apps/web/docs/prompts/chat/PROMPT_DUMP_ANALYSIS_2026-04-18.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-20; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Prompt Dump Analysis — 2026-04-18
 
 **Source:** `apps/web/.prompt-dumps/fb-2026-04-18T07-34-45-468Z-lite-turn3.txt` and sibling turn1/turn2 dumps from the same session (`06d5b279-...`).

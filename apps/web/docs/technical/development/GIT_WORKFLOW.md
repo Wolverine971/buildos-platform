@@ -1,4 +1,5 @@
 <!-- apps/web/docs/technical/development/GIT_WORKFLOW.md -->
+<!-- doc-health: ignore-paths — file paths in the git examples are illustrative placeholders, not real files. -->
 
 # Git Workflow Guide
 

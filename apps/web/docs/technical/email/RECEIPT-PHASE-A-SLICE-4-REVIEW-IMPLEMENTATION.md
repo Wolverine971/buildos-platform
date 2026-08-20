@@ -1,3 +1,9 @@
+<!-- apps/web/docs/technical/email/RECEIPT-PHASE-A-SLICE-4-REVIEW-IMPLEMENTATION.md -->
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Receipt — Gmail Relevance Phase A, Slice 4 Review Implementation
 
 **Implementation date:** 2026-07-24  

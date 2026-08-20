@@ -1,5 +1,10 @@
 <!-- docs/example-projects/MIGRATION_REVIEW_MASTER.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-13; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Example Project Migration Review - Master Document
 
 **Review Date:** 2025-12-21 (Updated)

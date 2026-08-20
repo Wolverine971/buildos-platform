@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/ADMIN_CHAT_TOOL_EVENT_DETAIL_AUDIT_2026-08-03.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-03; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Admin Chat Tool Event Detail — Hyperplexed Audit
 
 > Surface: the expanded tool-call cards inside `/admin/chat/sessions?chat_session_id=…`.

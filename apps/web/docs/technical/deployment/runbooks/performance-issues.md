@@ -1,4 +1,12 @@
 <!-- apps/web/docs/technical/deployment/runbooks/performance-issues.md -->
+<!-- doc-health: ignore-schema — Some example queries target tables that do not exist; see the banner above. -->
+
+<!-- doc-status: stale-runbook -->
+
+> ⚠️ **Verify before executing.** This runbook was last reviewed 2025-09-26 and predates the
+> ontology schema migration. Several queries below were written against tables that have since
+> been renamed or dropped. Confirm every table name against
+> `packages/shared-types/src/database.types.ts` before running anything during an incident.
 
 # Performance Troubleshooting Guide
 
@@ -259,8 +267,8 @@ ORDER BY p.created_at DESC;
 
 ```sql
 -- Common query patterns in BuildOS
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_brain_dumps_user_created
-ON brain_dumps(user_id, created_at DESC);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_onto_braindumps_user_created
+ON onto_braindumps(user_id, created_at DESC);
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_projects_user_status
 ON projects(user_id, status);
@@ -272,8 +280,8 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tasks_user_due_date
 ON tasks(user_id, due_date) WHERE due_date IS NOT NULL;
 
 -- Composite index for brain dump processing
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_brain_dumps_processing
-ON brain_dumps(status, created_at) WHERE status IN ('processing', 'queued');
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_onto_braindumps_processing
+ON onto_braindumps(status, created_at) WHERE status IN ('processing', 'queued');
 ```
 
 #### 2. Optimize Common Queries
@@ -387,7 +395,7 @@ async function syncCalendarEvents(calendarId: string) {
 			updated_at: new Date().toISOString()
 		})) || [];
 
-	await supabase.from('calendar_events').upsert(updates);
+	await supabase.from('task_calendar_events').upsert(updates);
 }
 ```
 
@@ -448,6 +456,8 @@ SELECT
   round(percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_ms)) as p50_ms,
   round(percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms)) as p95_ms,
   round(percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms)) as p99_ms
+-- NOTE: there is no `performance_metrics` table. Request timing is exposed via
+-- Server-Timing headers (PERF_TIMING=true) and Vercel analytics, not the database.
 FROM performance_metrics
 WHERE timestamp > now() - interval '24 hours'
   AND status = 200
@@ -460,6 +470,8 @@ SELECT
   count(*) as total_requests,
   count(*) FILTER (WHERE status >= 400) as error_count,
   round(100.0 * count(*) FILTER (WHERE status >= 400) / count(*), 2) as error_rate_percent
+-- NOTE: there is no `performance_metrics` table. Request timing is exposed via
+-- Server-Timing headers (PERF_TIMING=true) and Vercel analytics, not the database.
 FROM performance_metrics
 WHERE timestamp > now() - interval '24 hours'
 GROUP BY endpoint

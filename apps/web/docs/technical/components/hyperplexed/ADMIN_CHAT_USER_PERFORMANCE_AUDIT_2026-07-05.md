@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/ADMIN_CHAT_USER_PERFORMANCE_AUDIT_2026-07-05.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-06; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Admin Chat User Performance - Audit And Refactor Plan
 
 > Route-level audit for `/admin/chat/users`, captured 2026-07-05.

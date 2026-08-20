@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/project-loops-flow-audit-handoff-2026-07-04.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-07; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Project Loops Flow Audit Handoff - 2026-07-04
 
 ## Purpose

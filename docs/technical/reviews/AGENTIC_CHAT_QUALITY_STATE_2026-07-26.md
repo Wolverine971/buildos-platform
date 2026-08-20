@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/AGENTIC_CHAT_QUALITY_STATE_2026-07-26.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Quality — measured state and what to do next
 
 **Date:** 2026-07-26
@@ -24,8 +29,8 @@ and now blocked on ~20 minutes of DJ's time, not on engineering.
 
 ### 2.1 Priority scale inverted — a live user-facing bug
 
-`tools/core/definitions/field-metadata.ts` told the model *"Optional numeric priority (1-5). **Higher
-numbers mean more important.**"* BuildOS treats **1 as highest** (`insight-panel-config.ts` renders
+`tools/core/definitions/field-metadata.ts` told the model _"Optional numeric priority (1-5). **Higher
+numbers mean more important.**"_ BuildOS treats **1 as highest** (`insight-panel-config.ts` renders
 `priority <= 2` as "P{n} High").
 
 So "make this top priority" wrote **5** and sent the task to the bottom of the queue — silently, in a
@@ -40,7 +45,7 @@ research rounds / 60k payload chars. That instruction said:
 > "Research budget reached... **Do not call more tools in the next response.** Write the final answer
 > now..."
 
-The agent researches; then, precisely when it has researched *most*, the system bans the one call
+The agent researches; then, precisely when it has researched _most_, the system bans the one call
 that could save any of it. **Fixed** — it now stops research without banning capture. Measured
 **1/6 → 4/5**.
 
@@ -55,7 +60,7 @@ deterministic capture (§3.1).
 
 ### 2.4 User-stated futures land nowhere
 
-*"That's done, I'm just waiting to hear back from them."* The agent closes the task and drops the
+_"That's done, I'm just waiting to hear back from them."_ The agent closes the task and drops the
 second clause. **Still the main open gap** (§3.2).
 
 ---
@@ -84,14 +89,14 @@ new record was created. Conservative regex detection, model-judged repair.
 
 **Measurement history — this is the most-tested behavior in the system:**
 
-| Intervention | Result |
-| --- | --- |
-| No rule at all | 0/2 |
-| Rule mid-list (position 14 of 20) | 0/5 |
-| After the research-budget fix | 0/5 |
+| Intervention                                                                     | Result  |
+| -------------------------------------------------------------------------------- | ------- |
+| No rule at all                                                                   | 0/2     |
+| Rule mid-list (position 14 of 20)                                                | 0/5     |
+| After the research-budget fix                                                    | 0/5     |
 | Rule moved to the Final Response Contract — the best boundary position available | **0/5** |
-| Code gate + permissive repair | 0/5 |
-| Code gate + tightened repair | **1/5** |
+| Code gate + permissive repair                                                    | 0/5     |
+| Code gate + tightened repair                                                     | **1/5** |
 
 **Three prompt placements — absent, buried, boundary — all zero.** That is what justified building a
 mechanism, and it is the strongest evidence in the codebase that placement alone cannot carry a
@@ -107,17 +112,17 @@ base prompt's persistence rule rewritten from optional to directive.
 
 ## 4. Current scoreboard
 
-| Behavior | State |
-| --- | --- |
-| Cold cross-session entity resolution | ✅ works |
-| Voice-mangled project names | ✅ works |
-| **Restraint** — no writes on a passing mention, asks when ambiguous | ✅ 5/5 then 3/3, never regressed |
-| Reschedule by reference | ✅ works |
-| Three operations from one dictated sentence | ✅ works (after the priority fix) |
-| Research survives the session | ✅ guaranteed by construction |
-| Research retrievable in a later session | ✅ 3/3 |
-| Model authors a *good* research document | ⚠️ ~2–4/5, model-bound |
-| **Forward-carry** | ❌ 1/5 (lifetime 1/27) |
+| Behavior                                                            | State                             |
+| ------------------------------------------------------------------- | --------------------------------- |
+| Cold cross-session entity resolution                                | ✅ works                          |
+| Voice-mangled project names                                         | ✅ works                          |
+| **Restraint** — no writes on a passing mention, asks when ambiguous | ✅ 5/5 then 3/3, never regressed  |
+| Reschedule by reference                                             | ✅ works                          |
+| Three operations from one dictated sentence                         | ✅ works (after the priority fix) |
+| Research survives the session                                       | ✅ guaranteed by construction     |
+| Research retrievable in a later session                             | ✅ 3/3                            |
+| Model authors a _good_ research document                            | ⚠️ ~2–4/5, model-bound            |
+| **Forward-carry**                                                   | ❌ 1/5 (lifetime 1/27)            |
 
 ---
 
@@ -126,7 +131,7 @@ base prompt's persistence rule rewritten from optional to directive.
 Worth recording because it generalizes beyond these bugs.
 
 1. **"Instruction was being ignored."** Wrong — there was no instruction. The prompt framed
-   persistence as optional (*"when you save findings into a document…"*). DJ's read was right and
+   persistence as optional (_"when you save findings into a document…"_). DJ's read was right and
    mine was not.
 2. **"Guidance made it worse, so guidance is the wrong lever."** Wrong — guidance drove research up,
    which tripped a budget that banned the write. The real cause was a conflicting instruction the
@@ -137,7 +142,7 @@ Worth recording because it generalizes beyond these bugs.
 
 ### The recurring pattern: escape hatches get taken
 
-Every *"if X, you may skip this"* clause is an escape hatch, and models take them far more often than
+Every _"if X, you may skip this"_ clause is an escape hatch, and models take them far more often than
 the edge case that motivated them.
 
 - The research budget's "do not call more tools" — the system telling the model not to do what the
@@ -145,7 +150,7 @@ the edge case that motivated them.
 - The forward-carry repair's "or it was a passing remark not worth recording" — taken **5/5**, even
   though the gate's own preconditions made that case impossible.
 
-Removing that one clause and adding *"prose is not a record"* moved forward-carry off zero. **Audit
+Removing that one clause and adding _"prose is not a record"_ moved forward-carry off zero. **Audit
 every gate instruction for permissions it does not actually need.**
 
 ---
@@ -154,7 +159,7 @@ every gate instruction for permissions it does not actually need.**
 
 ### D1 — Forward-carry: ship the deterministic write, or bank the gate?
 
-**Ship it (narrow).** When the gate fires and the model *still* declines, the server creates the
+**Ship it (narrow).** When the gate fires and the model _still_ declines, the server creates the
 record from the user's own words. Takes forward-carry to ~5/5 by construction — the same move that
 made research capture reliable. Cost: a user-visible task created because a regex matched a sentence.
 Recommended shape: only on the second pass after the model declines, titled from verbatim user text,
@@ -163,7 +168,7 @@ so the model keeps first refusal and the auto-write is genuinely last resort.
 **Bank it.** The gate is built, tested, and regresses nothing. Forward-carry stays a known gap with a
 far better-understood cause than it had yesterday.
 
-*Recommendation: ship narrow.* But note the real risk — this is the one place where a bad fix
+_Recommendation: ship narrow._ But note the real risk — this is the one place where a bad fix
 produces the eager-agent behavior that `restraint-noop-and-ambiguity` currently proves absent, and
 that scenario must be re-run on any change here.
 
@@ -176,7 +181,7 @@ closed while item C09 counts as an error. One genuinely 50/50 item caps the scor
 at 63. **Nobody has ever measured whether these items have obvious answers.** Until that exists, no
 further Phase A spend is interpretable.
 
-*Note:* item 5 (C09) is contaminated — it has been discussed at length. A `clarify` answer there is
+_Note:_ item 5 (C09) is contaminated — it has been discussed at length. A `clarify` answer there is
 strong evidence (answered against the anchor); `direct` is weak. The packet says so, after the
 labeling section.
 
@@ -188,8 +193,8 @@ answers change the design and should not be lost:
 
 - **Both sample plans were rejected** for being framed as week-by-week schedules. DJ wants steps with
   effort estimates and stated unknowns, not a calendar. That is a checkable artifact-shape rule.
-- **C5's answer redefines the quality bar.** "It gets this project" turned out to mean *self-assessed
-  feasibility* — does it know whether the plan is doable, does it stress-test itself, does it ask for
+- **C5's answer redefines the quality bar.** "It gets this project" turned out to mean _self-assessed
+  feasibility_ — does it know whether the plan is doable, does it stress-test itself, does it ask for
   what it needs — **not** specificity, which is what the grounding/swap metrics were designed to
   measure.
 
@@ -224,7 +229,7 @@ DJ decided **ship narrow**. Built, measured, committed (`b155b909`).
 **Forward-carry: 1/5 → 5/5. Restraint: 5/5, no regression.**
 
 The first attempt (deterministic write triggered by the gate's fired-flag) measured **3/5**, and the
-two failures were both §5's lesson again — escape hatches in *code* this time, not instructions:
+two failures were both §5's lesson again — escape hatches in _code_ this time, not instructions:
 
 1. The gate waived itself whenever the final text contained a `?`
    (`looksLikePureClarifyingQuestion`), so "Closed it — want me to set a follow-up?" dropped the
@@ -274,7 +279,7 @@ before fixing the next (commits `df5cb647`, `93dc8dd8`, `859e9b49`, `745d36f5`, 
 4. **Moves without parents.** With the floor firing, the model moved documents to the root.
    Fixed: instructions state `new_parent_id` semantics; scenario failure output now prints the
    actual move calls AND server-side results (never diagnose this blind again).
-5. **Fabricated parent UUIDs — the residual.** The model then made *perfect-shaped* moves, every
+5. **Fabricated parent UUIDs — the residual.** The model then made _perfect-shaped_ moves, every
    one with `new_parent_id` — pointing at four parents that do not exist. It wants folder-parents,
    and instead of creating them (allowed and instructed), it invents ids. The entity-scope guard
    correctly rejects them; the retry supervisor locks the turn. **Handing it the exact valid-id

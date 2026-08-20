@@ -1,4 +1,5 @@
 <!-- apps/web/docs/features/ontology/GRAPH_ENHANCEMENT_SPEC.md -->
+<!-- doc-health: ignore-schema — References `onto_templates`, removed in the template-removal migration. -->
 
 # Ontology Graph Enhancement Specification
 

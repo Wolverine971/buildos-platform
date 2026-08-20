@@ -1,5 +1,10 @@
 <!-- docs/testing/MANUAL_AI_INBOX_SMOKE_TESTS_2026-06-25.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-23; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Manual AI Inbox Smoke Tests
 
 Date: 2026-06-25

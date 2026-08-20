@@ -1,5 +1,10 @@
 <!-- docs/example-projects/HAIL_MARY_REVIEW.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2025-12-21; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Project Hail Mary Example Project Review
 
 **Project:** Project Hail Mary: Save Two Worlds

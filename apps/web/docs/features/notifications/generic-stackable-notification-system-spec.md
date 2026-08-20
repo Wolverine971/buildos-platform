@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/notifications/generic-stackable-notification-system-spec.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-02-25. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Generic Stackable Notification System - Comprehensive Specification
 
 **Date:** 2025-09-30 (Updated: 2025-10-01)

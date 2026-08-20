@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/project-activity-logging/IMPLEMENTATION_PLAN.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-01-13; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Project Activity Logging & Next Steps Feature
 
 ## Overview

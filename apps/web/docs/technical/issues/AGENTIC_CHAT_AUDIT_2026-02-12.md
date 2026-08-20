@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/issues/AGENTIC_CHAT_AUDIT_2026-02-12.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-02-12; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat V2 End-to-End Audit (2026-02-12)
 
 ## Executive Summary

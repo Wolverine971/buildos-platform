@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/LAZY_LOADING_OPPORTUNITIES_ANALYSIS.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-05-15. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Comprehensive Lazy Loading Opportunities Analysis
 
 **Date:** November 21, 2025

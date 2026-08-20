@@ -1,5 +1,10 @@
 <!-- docs/engineering/agentic-chat-yield-audit.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-02-05; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Responsiveness & Yield Audit (BuildOS)
 
 Date: 2026-02-05

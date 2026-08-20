@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/AGENT_CHAT_MODAL_AUDIT_2026-07-09.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-25; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # AgentChatModal Deep Audit — 2026-07-09
 
 **Scope:** `apps/web/src/lib/components/agent/AgentChatModal.svelte` (2,758 lines), its 10 controller modules (`agent-chat-*.ts` / `*.svelte.ts`, ~9,500 LOC), its 13 UI subcomponents, `ui/Modal.svelte`, and the full frontend↔backend contract against `/api/agent/v2/stream`, `/api/chat/sessions/[id]*`, prewarm, close/classify, braindumps, and agent-to-agent endpoints.

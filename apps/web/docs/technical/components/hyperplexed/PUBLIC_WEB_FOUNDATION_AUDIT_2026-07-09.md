@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/PUBLIC_WEB_FOUNDATION_AUDIT_2026-07-09.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-10; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Public Web Foundation Audit — 2026-07-09
 
 ## Scope

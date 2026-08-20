@@ -1,3 +1,4 @@
+// apps/worker/tests/agenticChatStalledRecovery.test.ts
 import { createAgentStreamEventIdV1 } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
 import { AgenticChatExecutionControlRpcError } from '../src/workers/agentic-chat/executionControl';
@@ -25,6 +26,7 @@ const candidate = {
 	processingToken: PROCESSING_TOKEN,
 	userId: USER_ID,
 	correlationId: CORRELATION_ID,
+	startedAt: '2026-08-03T11:55:00.000Z',
 	stalledAt: '2026-08-03T12:00:00.000Z'
 } as const;
 
@@ -131,6 +133,7 @@ describe('SupabaseAgenticChatStalledCandidateSource', () => {
 				id: QUEUE_JOB_ID,
 				processing_token: PROCESSING_TOKEN,
 				user_id: USER_ID,
+				started_at: '2026-08-03T11:55:00.000Z',
 				updated_at: '2026-08-03T12:00:00.000Z',
 				metadata: { turnRunId: TURN_RUN_ID, correlationId: CORRELATION_ID }
 			}
@@ -152,19 +155,27 @@ describe('SupabaseAgenticChatStalledCandidateSource', () => {
 		]);
 	});
 
-	it('fails closed on malformed or duplicate queue envelopes', async () => {
-		const invalidRows = [
-			[{ ...candidateRow(), processing_token: null }],
-			[candidateRow(), candidateRow()]
+	it('isolates malformed and duplicate rows without hiding a valid candidate', async () => {
+		const invalid = vi.fn();
+		const rows = [
+			{ ...candidateRow(), processing_token: null },
+			candidateRow(),
+			candidateRow()
 		];
-		for (const rows of invalidRows) {
-			const source = new SupabaseAgenticChatStalledCandidateSource({
-				from: () => ({ select: () => createQuery(rows, []) })
-			});
-			await expect(
-				source.list({ stalledBefore: '2026-08-03T12:03:00.000Z', limit: 32 })
-			).rejects.toBeInstanceOf(AgenticChatStalledCandidateSourceError);
-		}
+		const source = new SupabaseAgenticChatStalledCandidateSource(
+			{ from: () => ({ select: () => createQuery(rows, []) }) },
+			invalid
+		);
+
+		await expect(
+			source.list({ stalledBefore: '2026-08-03T12:03:00.000Z', limit: 32 })
+		).resolves.toEqual([candidate]);
+		expect(invalid).toHaveBeenCalledTimes(2);
+		expect(invalid.mock.calls[0]?.[0]).toBeInstanceOf(
+			AgenticChatStalledCandidateSourceError
+		);
+		expect(invalid.mock.calls[0]?.[1]).toBe(0);
+		expect(invalid.mock.calls[1]?.[1]).toBe(2);
 	});
 });
 
@@ -209,6 +220,51 @@ describe('AgenticChatStalledRecoverySweep', () => {
 		expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
 			failureClass: 'timeout_post_start'
 		});
+	});
+
+	it('reconciles a terminal domain row without rerunning or refinalizing the turn', async () => {
+		const harness = createSweep({
+			claim: claimed({
+				outcome: 'already_terminal',
+				executionMayStart: false,
+				status: 'completed'
+			}),
+			recoveries: [
+				recovery('queue_reconciled', {
+					status: 'completed',
+					failure_code: null
+				})
+			]
+		});
+
+		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
+			results: [{ outcome: 'terminal_reconciled' }]
+		});
+		expect(harness.control.recover).toHaveBeenCalledWith(
+			expect.objectContaining({ failureClass: 'unknown' })
+		);
+		expect(harness.snapshots.load).not.toHaveBeenCalled();
+		expect(harness.control.finalize).not.toHaveBeenCalled();
+	});
+
+	it('converges after a committed finalization response is lost', async () => {
+		const harness = createSweep({
+			claim: claimed({ outcome: 'matching_current_claim', executionMayStart: false }),
+			recoveries: [
+				recovery('finalize_failed'),
+				recovery('queue_reconciled', { status: 'failed' })
+			]
+		});
+		harness.control.finalize.mockRejectedValueOnce(
+			new Error('connection dropped after commit')
+		);
+
+		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
+			results: [{ outcome: 'terminal_reconciled' }]
+		});
+		expect(harness.snapshots.load).toHaveBeenCalledOnce();
+		expect(harness.control.finalize).toHaveBeenCalledOnce();
+		expect(harness.control.recover).toHaveBeenCalledTimes(2);
 	});
 
 	it('rechecks durable cancellation when it wins failed finalization', async () => {
@@ -278,6 +334,81 @@ describe('AgenticChatStalledRecoverySweep', () => {
 		});
 	});
 
+	it('stops immediately when recovery reports that the generation is stale', async () => {
+		const harness = createSweep({ recoveries: [recovery('stale_generation')] });
+
+		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
+			results: [{ outcome: 'stale_owner', executionGeneration: GENERATION }]
+		});
+		expect(harness.snapshots.load).not.toHaveBeenCalled();
+		expect(harness.control.finalize).not.toHaveBeenCalled();
+	});
+
+	it('trips health after repeated sweep failures and recovers after a successful pass', async () => {
+		const candidates = {
+			list: vi.fn().mockRejectedValue(new Error('database unavailable'))
+		};
+		const onError = vi.fn();
+		const onReport = vi.fn();
+		const sweep = new AgenticChatStalledRecoverySweep(
+			{
+				candidates,
+				control: {} as never,
+				snapshots: {} as never
+			},
+			{ now: () => NOW, intervalMs: 60_000, onError, onReport }
+		);
+
+		expect(sweep.getHealth()).toMatchObject({
+			healthy: false,
+			state: 'idle',
+			reason: 'not_started'
+		});
+		sweep.start();
+		await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce());
+		await expect(sweep.runOnce()).rejects.toThrow('database unavailable');
+		await expect(sweep.runOnce()).rejects.toThrow('database unavailable');
+		expect(sweep.getHealth()).toMatchObject({
+			healthy: false,
+			state: 'running',
+			reason: 'repeated_sweep_failures',
+			consecutiveSweepFailures: 3,
+			lastError: 'database unavailable'
+		});
+
+		candidates.list.mockResolvedValueOnce([]);
+		await expect(sweep.runOnce()).resolves.toMatchObject({ candidateCount: 0 });
+		expect(onReport).toHaveBeenCalledWith(
+			expect.objectContaining({ candidateCount: 0, results: [] })
+		);
+		expect(sweep.getHealth()).toMatchObject({
+			healthy: true,
+			state: 'running',
+			consecutiveSweepFailures: 0,
+			lastError: null,
+			lastSuccessfulSweepAt: NOW.toISOString()
+		});
+		await expect(sweep.stop()).resolves.toBe(true);
+		expect(sweep.getHealth()).toMatchObject({
+			healthy: true,
+			state: 'stopped',
+			reason: 'stopped'
+		});
+	});
+
+	it('surfaces candidates that still require operator or reconciliation attention', async () => {
+		const harness = createSweep({
+			claim: claimed({ outcome: 'matching_current_claim', executionMayStart: false }),
+			recoveries: [recovery('effect_reconciliation_required')]
+		});
+
+		await harness.sweep.runOnce();
+		expect(harness.sweep.getHealth()).toMatchObject({
+			lastCandidateCount: 1,
+			lastAttentionRequiredCount: 1
+		});
+	});
+
 	it('coalesces overlapping sweeps and drains an in-flight run on stop', async () => {
 		let release!: () => void;
 		const wait = new Promise<void>((resolve) => {
@@ -341,6 +472,7 @@ function candidateRow() {
 		id: QUEUE_JOB_ID,
 		processing_token: PROCESSING_TOKEN,
 		user_id: USER_ID,
+		started_at: '2026-08-03T11:55:00.000Z',
 		updated_at: '2026-08-03T12:00:00.000Z',
 		metadata: { turnRunId: TURN_RUN_ID, correlationId: CORRELATION_ID }
 	};

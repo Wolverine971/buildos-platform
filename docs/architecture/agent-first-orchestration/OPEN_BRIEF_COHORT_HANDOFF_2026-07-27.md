@@ -1,5 +1,10 @@
 <!-- docs/architecture/agent-first-orchestration/OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-27; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Handoff: run the first open-brief cohort (3 lanes → DJ blind pass → recorded verdict)
 
 **Date:** 2026-07-27
@@ -27,12 +32,12 @@ time this handoff is allowed to consume before the blind pass: **~10 minutes.**
   [`corpus/open-brief-v1.json`](./corpus/open-brief-v1.json) — read `design_corrections`,
   `output_contract`, `clarification_policy_rule`, `acceptance_bar_global`, `pending_from_dj`.
   Two corrections are load-bearing and easy to violate accidentally:
-  1. **Steps, not schedules.** Week-by-week framing is an L0 violation even when content is good.
-  2. **The quality bar is feasibility self-assessment, not specificity.** Grounding ratio and the
-     swap test are anti-template detectors, not the headline metric (methodology §6.4).
+    1. **Steps, not schedules.** Week-by-week framing is an L0 violation even when content is good.
+    2. **The quality bar is feasibility self-assessment, not specificity.** Grounding ratio and the
+       swap test are anti-template detectors, not the headline metric (methodology §6.4).
 - **The control got stronger this week** — the v2 chat path gained deterministic floors
   (research capture, forward-carry), seven organize-commission fixes, and a verified prompt
-  restructure. The team architecture must beat *this* baseline, not July-24's.
+  restructure. The team architecture must beat _this_ baseline, not July-24's.
 - **The catalog is 15 e2e scenarios**, all green except two known model-bound bands. That suite
   is the control lane's regression guard, not your instrument — yours is the open-brief harness
   you are about to build.
@@ -98,15 +103,15 @@ anchor brief against both snapshots (`corpus/fixtures/`), strips entity names, m
 
 Machine-checkable part: does the artifact contain an explicit doability/stress-test section
 (does it say whether context suffices, weigh difficulty, name what it needs)? Judge/L3 part:
-both DJ questions per output — *"would you execute this?"* (4-point) and *"did it know whether
-it could be executed?"*. Wire both into the blind packet.
+both DJ questions per output — _"would you execute this?"_ (4-point) and _"did it know whether
+it could be executed?"_. Wire both into the blind packet.
 
 ### WP-5 — Three lanes, model held fixed
 
-| Lane | What runs | Notes |
-| --- | --- | --- |
-| **Control** | the production v2 chat path | drive `POST /api/agent/v2/stream` like the e2e harness does; pin the model |
-| **Workflow** | the Phase A A2 lane | code exists in `packages/agent-orchestrator`; reuse, do not rebuild |
+| Lane                    | What runs                                                  | Notes                                                                                                                           |
+| ----------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Control**             | the production v2 chat path                                | drive `POST /api/agent/v2/stream` like the e2e harness does; pin the model                                                      |
+| **Workflow**            | the Phase A A2 lane                                        | code exists in `packages/agent-orchestrator`; reuse, do not rebuild                                                             |
 | **Single strong agent** | ONE powerful-tier model, same read tools, no orchestration | the rival Phase A deferred; external evidence says it usually wins — if the team can't beat this lane, Phase B should not exist |
 
 Non-negotiables from the Phase A post-mortems: the **same model tier writes the final text in

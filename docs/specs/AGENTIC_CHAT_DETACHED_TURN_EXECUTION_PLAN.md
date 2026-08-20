@@ -1,5 +1,10 @@
 <!-- docs/specs/AGENTIC_CHAT_DETACHED_TURN_EXECUTION_PLAN.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-30; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Detached Turn Execution Plan
 
 Date: 2026-04-30

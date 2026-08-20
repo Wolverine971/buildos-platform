@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/AGENTIC_CHAT_SKILL_INFRASTRUCTURE_AUDIT_2026-07-07.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-07; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Skill Infrastructure Audit - 2026-07-07
 
 **Companion to:** `AGENTIC_CHAT_BACKEND_AUDIT_2026-07-01_DEEP.md`.

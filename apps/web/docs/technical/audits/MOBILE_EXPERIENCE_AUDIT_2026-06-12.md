@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/MOBILE_EXPERIENCE_AUDIT_2026-06-12.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-06-13; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Mobile Experience Audit — 2026-06-12
 
 Full-system audit of BuildOS web on mobile/iPhone: modals, inputs, responsive layout, iOS-specific behavior. Scope: all 56 `*Modal*` components, form primitives, main routes at 390px, global CSS/JS infrastructure.

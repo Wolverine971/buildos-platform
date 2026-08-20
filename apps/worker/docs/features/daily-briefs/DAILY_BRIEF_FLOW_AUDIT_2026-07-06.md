@@ -1,5 +1,10 @@
 <!-- apps/worker/docs/features/daily-briefs/DAILY_BRIEF_FLOW_AUDIT_2026-07-06.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-06; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Daily Brief Flow Audit — 2026-07-06
 
 > **Scope:** (1) auto-generate the brief when a user opens BuildOS on a new day, with single-flight guarantees; (2) brief content quality (data + prompts); (3) email delivery correctness + re-engagement effectiveness.

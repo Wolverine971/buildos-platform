@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/architecture/agent-work/AGENT_RUN_CHAT_CONTEXT_BRIDGE_EXPLAINER_2026-06-29.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-06-30; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agent Run → Chat Context Bridge: How It Works & What We Fixed
 
 **Date:** 2026-06-29

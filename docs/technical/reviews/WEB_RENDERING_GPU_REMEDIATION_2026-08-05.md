@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/WEB_RENDERING_GPU_REMEDIATION_2026-08-05.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-07; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Web Rendering and GPU Remediation
 
 - **Date:** 2026-08-05

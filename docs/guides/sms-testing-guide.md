@@ -1,5 +1,10 @@
 <!-- docs/guides/sms-testing-guide.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-06. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # SMS Testing Guide
 
 This guide provides comprehensive testing strategies for the BuildOS SMS integration, including unit tests, integration tests, and end-to-end testing scenarios.

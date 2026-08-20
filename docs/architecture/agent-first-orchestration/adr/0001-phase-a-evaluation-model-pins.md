@@ -1,5 +1,10 @@
 <!-- docs/architecture/agent-first-orchestration/adr/0001-phase-a-evaluation-model-pins.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # ADR 0001: Phase A evaluation model pins
 
 - **Status:** Accepted for Phase A; route role amended after A1 Change evidence

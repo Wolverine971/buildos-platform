@@ -46,6 +46,7 @@ import {
 } from './recoverySnapshot';
 import {
 	type AgenticChatStalledReadClient,
+	type AgenticChatStalledRecoveryReportV1,
 	AgenticChatStalledRecoverySweep,
 	SupabaseAgenticChatStalledCandidateSource
 } from './stalledRecovery';
@@ -432,17 +433,22 @@ export function createAgenticChatPhase3Assembly(options: {
 		internalUserIds: options.internalUserIds,
 		config: options.consumerConfig
 	});
+	const stalledCandidates = new SupabaseAgenticChatStalledCandidateSource(
+		options.client as unknown as AgenticChatStalledReadClient,
+		(error, index) =>
+			console.error(`Agentic Chat stalled candidate ${index} was invalid`, error)
+	);
 	const recovery = new AgenticChatStalledRecoverySweep(
 		{
-			candidates: new SupabaseAgenticChatStalledCandidateSource(
-				options.client as unknown as AgenticChatStalledReadClient
-			),
+			candidates: stalledCandidates,
 			control,
 			snapshots: new SupabaseAgenticChatRecoverySnapshotAdapter(rpcClient)
 		},
 		{
 			stallTimeoutMs: consumer.config.stalledTimeoutMs,
-			drainTimeoutMs: consumer.config.drainTimeoutMs
+			drainTimeoutMs: consumer.config.drainTimeoutMs,
+			onError: (error) => console.error('Agentic Chat stalled recovery sweep failed', error),
+			onReport: reportAgenticChatStalledRecovery
 		}
 	);
 	const runtime = new AgenticChatConsumerRuntime(consumer.queue, {
@@ -489,6 +495,40 @@ export function createAgenticChatPhase3Assembly(options: {
 		capacity
 	};
 }
+
+export function reportAgenticChatStalledRecovery(
+	report: AgenticChatStalledRecoveryReportV1
+): void {
+	if (report.candidateCount === 0) return;
+	const finishedAtMs = Date.parse(report.finishedAt);
+	const oldestCandidateAgeMs = report.results.reduce(
+		(oldest, result) => Math.max(oldest, finishedAtMs - Date.parse(result.startedAt)),
+		0
+	);
+	const attentionRequiredCount = report.results.filter((result) =>
+		STALLED_RECOVERY_ATTENTION_OUTCOMES.has(result.outcome)
+	).length;
+	const payload = {
+		event: 'agentic_chat_stalled_recovery_report',
+		alert:
+			attentionRequiredCount > 0 || oldestCandidateAgeMs >= STALLED_TURN_ALERT_AGE_MS,
+		oldestCandidateAgeMs,
+		attentionRequiredCount,
+		...report
+	};
+	if (payload.alert) {
+		console.error('Agentic Chat stalled recovery requires attention', payload);
+		return;
+	}
+	console.info('Agentic Chat stalled recovery completed', payload);
+}
+
+const STALLED_TURN_ALERT_AGE_MS = 10 * 60_000;
+const STALLED_RECOVERY_ATTENTION_OUTCOMES = new Set([
+	'effect_reconciliation_required',
+	'manual_recovery_required',
+	'failed'
+]);
 
 function disabledToolPort(code: 'mutating_tools_disabled') {
 	return {

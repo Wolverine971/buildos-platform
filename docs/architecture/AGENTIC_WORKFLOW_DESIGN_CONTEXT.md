@@ -1,4 +1,5 @@
 <!-- docs/architecture/AGENTIC_WORKFLOW_DESIGN_CONTEXT.md -->
+<!-- doc-health: ignore-schema — Design exploration for a workflow engine that was never built; `agentic_workflows` does not exist. -->
 
 # Agentic Workflow Design Context
 

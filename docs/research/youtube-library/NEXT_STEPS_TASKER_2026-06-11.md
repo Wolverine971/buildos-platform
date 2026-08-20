@@ -1,5 +1,10 @@
 <!-- docs/research/youtube-library/NEXT_STEPS_TASKER_2026-06-11.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-25; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Skill System — Next Steps Tasker (handoff, 2026-06-11)
 
 Self-contained work order for the next agent/session. Execute top-to-bottom within each priority band; tasks in the same band are parallel-safe unless noted. Everything from the 2026-06-10/11 program is **uncommitted in the working tree** — do not assume a clean baseline; do not revert existing changes.

@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/AGENTIC_CHAT_STREAM_TIMEOUT_SYNTHESIS_RECOVERY_RECOMMENDATIONS_2026-07-22.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-23; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Stream Timeout and Synthesis Recovery Investigation
 
 - **Date:** 2026-07-22

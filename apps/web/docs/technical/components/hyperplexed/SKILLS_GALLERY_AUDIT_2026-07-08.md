@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/SKILLS_GALLERY_AUDIT_2026-07-08.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-15; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Skills Gallery Audit 2026-07-08
 
 Target: `/skills`, `/skills/[slug]`, `/skills/people/[slug]`, `/skills/preview/[slug]`, `/skills/domain/[domain]`, `/skills/family/[family]`, `/skills/path/[path]`, and the skill/path Try launchers

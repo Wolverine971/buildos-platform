@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/DEEP_RESEARCH_V01_AUDIT_2026-07-20.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-22; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Deep Research V0.1 — Implementation & Plan Audit
 
 **Date:** 2026-07-20 (updated 2026-07-22)

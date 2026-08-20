@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/audits/AGENTIC_CHAT_BACKEND_AUDIT_2026-07-01_DEEP.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-07; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat Backend — Deep Audit (Companion) — 2026-07-01
 
 **Companion to:** `AGENTIC_CHAT_BACKEND_AUDIT_2026-07-01.md` (the original). That doc's 6 top findings + lower-priority list still stand; this one goes deeper and does **not** re-report them except where a new angle changes the severity.

@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/architecture/agent-stream-v2-assessment-2026-06-13.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-06-14; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agent Stream V2 Route — Progress Check & Remaining-Work Assessment
 
 **File:** `apps/web/src/routes/api/agent/v2/stream/+server.ts`

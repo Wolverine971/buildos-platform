@@ -1,5 +1,10 @@
 <!-- docs/architecture/agent-first-orchestration/TIER_1_RESULTS_2026-07-25.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Tier 1 Breadth — First Scored Run
 
 **Date:** 2026-07-25

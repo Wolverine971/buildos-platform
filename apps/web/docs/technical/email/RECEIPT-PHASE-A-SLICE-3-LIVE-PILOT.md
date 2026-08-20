@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/email/RECEIPT-PHASE-A-SLICE-3-LIVE-PILOT.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-07-24; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Receipt — Gmail Relevance Phase A, Slice 3 Live Pilot
 
 **Run date:** 2026-07-23 EDT / 2026-07-24 UTC  

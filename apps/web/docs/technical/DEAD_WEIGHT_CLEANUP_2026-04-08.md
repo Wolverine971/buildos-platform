@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/DEAD_WEIGHT_CLEANUP_2026-04-08.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-04-08; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Dead-Weight Cleanup — 2026-04-08
 
 > Tracking doc for the apps/web dead-code audit and cleanup pass.

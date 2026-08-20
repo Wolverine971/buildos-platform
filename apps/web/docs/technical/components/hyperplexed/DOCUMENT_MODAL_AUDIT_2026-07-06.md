@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/DOCUMENT_MODAL_AUDIT_2026-07-06.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-13; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Document Modal — Hyperplexed Audit (2026-07-06)
 
 > Surface: `apps/web/src/lib/components/ontology/DocumentModal.svelte` (the markdown
