@@ -284,6 +284,7 @@ function createDefaultAssembly(
 		liveVisionFetchImpl: input.fetchImpl,
 		internalUserIds: input.config.internalUserIds,
 		consumerConfig: input.config.consumer,
+		publisherConfig: input.config.publisher,
 		providerBudgetMs: input.config.providerBudgetMs,
 		maxProviderRounds: input.config.maxProviderRounds,
 		maxToolCalls: input.config.maxToolCalls,

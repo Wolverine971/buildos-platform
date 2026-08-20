@@ -4,6 +4,7 @@ import {
 	evaluateAgenticChatWorkerCapacity,
 	observeAgenticChatWorkerCapacity,
 	observeAgenticChatWorkerCapacityWithRetry,
+	selectAgenticChatWorkerUrl,
 	type AgenticChatWorkerCapacityEvidenceV1
 } from './worker-turn-capacity.server';
 
@@ -22,6 +23,16 @@ function evidence(
 }
 
 describe('Agentic Chat worker capacity boundary', () => {
+	it('prefers the server-only chat worker URL and falls back only while it is absent', () => {
+		expect(
+			selectAgenticChatWorkerUrl('https://chat-worker.test', 'https://general-worker.test')
+		).toBe('https://chat-worker.test');
+		expect(selectAgenticChatWorkerUrl(undefined, 'https://general-worker.test')).toBe(
+			'https://general-worker.test'
+		);
+		expect(selectAgenticChatWorkerUrl('', 'https://general-worker.test')).toBe('');
+	});
+
 	it('defaults closed until complete live evidence and transport configuration are supplied', async () => {
 		expect(evaluateAgenticChatWorkerCapacity(null, NOW)).toMatchObject({
 			available: false,

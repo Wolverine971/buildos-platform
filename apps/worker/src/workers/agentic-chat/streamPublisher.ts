@@ -277,7 +277,7 @@ export class AgenticChatStreamPublisher {
 		config: Partial<AgenticChatPublisherConfig> = {}
 	) {
 		this.config = { ...DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG, ...config };
-		validateConfig(this.config);
+		validateAgenticChatPublisherConfig(this.config);
 	}
 
 	start(): void {
@@ -1126,7 +1126,7 @@ export class AgenticChatStreamPublisher {
 	}
 }
 
-function validateConfig(config: AgenticChatPublisherConfig): void {
+export function validateAgenticChatPublisherConfig(config: AgenticChatPublisherConfig): void {
 	for (const [name, value] of Object.entries(config)) {
 		if (!Number.isSafeInteger(value) || value < 1)
 			throw new Error(`Invalid publisher config ${name}`);

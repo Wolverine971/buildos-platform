@@ -1,6 +1,7 @@
 // apps/worker/src/lib/workerOperationalHealth.ts
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import type { WorkerRuntimeLifecycleHealth } from './workerRuntimeLifecycle';
+import type { AgenticChatPhase3BootstrapHealth } from '../workers/agentic-chat/phase3Bootstrap';
 
 export type WorkerEventLoopLagSnapshot = {
 	meanMs: number;
@@ -27,6 +28,12 @@ export type WorkerOperationalHealthChecks = {
 	};
 	activeTurns: number;
 	eventLoopLag: WorkerEventLoopLagSnapshot;
+};
+
+export type AgenticChatOperationalHealthChecks = Omit<WorkerOperationalHealthChecks, 'claims'> & {
+	claims: {
+		agenticChatLastSuccessfulAt: string | null;
+	};
 };
 
 export class WorkerEventLoopLagMonitor {
@@ -77,6 +84,38 @@ export function buildWorkerOperationalHealthChecks(
 			consecutiveClaimFailures:
 				health.queue.consecutiveClaimFailures +
 				(runtime?.queue.consecutiveClaimFailures ?? 0)
+		},
+		realtime,
+		activeTurns: runtime?.activeTurns ?? 0,
+		eventLoopLag
+	};
+}
+
+/**
+ * Chat-only health projection for the physically isolated service. Keeping a
+ * separate builder prevents the dedicated process from manufacturing a fake
+ * general-queue health signal just to reuse the combined worker projection.
+ */
+export function buildAgenticChatOperationalHealthChecks(
+	health: AgenticChatPhase3BootstrapHealth,
+	eventLoopLag: WorkerEventLoopLagSnapshot
+): AgenticChatOperationalHealthChecks {
+	const runtime = health.runtime;
+	const lastSuccessfulClaimAt = runtime?.queue.lastSuccessfulClaimAt ?? null;
+	const realtime = runtime?.realtime ?? {
+		healthy: false,
+		status: 'unavailable' as const,
+		activeChannels: 0,
+		lastTransitionAt: null,
+		consecutiveFailures: 0
+	};
+
+	return {
+		lastSuccessfulClaimAt,
+		claims: { agenticChatLastSuccessfulAt: lastSuccessfulClaimAt },
+		database: {
+			connected: health.enabled && runtime?.queue.healthy === true,
+			consecutiveClaimFailures: runtime?.queue.consecutiveClaimFailures ?? 0
 		},
 		realtime,
 		activeTurns: runtime?.activeTurns ?? 0,

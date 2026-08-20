@@ -17,6 +17,11 @@ import {
 	AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1,
 	type AgenticChatProviderMutationCapabilitiesV1
 } from './mutationToolCatalog';
+import {
+	type AgenticChatPublisherConfig,
+	DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG,
+	validateAgenticChatPublisherConfig
+} from './streamPublisher';
 
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 // Production canaries measured long-tail final synthesis on StreamLake,
@@ -47,6 +52,7 @@ type AgenticChatPhase3BaseConfig = {
 	mutationProviderCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>;
 	mutationAdapterCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>;
 	consumer: AgenticChatConsumerConfig;
+	publisher: AgenticChatPublisherConfig;
 	providerBudgetMs: number;
 	maxProviderRounds: number;
 	maxToolCalls: number;
@@ -72,6 +78,9 @@ export type AgenticChatPhase3Config =
 export function loadAgenticChatPhase3Config(
 	environment: NodeJS.ProcessEnv = process.env
 ): AgenticChatPhase3Config {
+	if (isProductionProfile(environment.AGENTIC_CHAT_WORKER_PROFILE)) {
+		requireExplicitProductionConfig(environment);
+	}
 	const enabled = parseBoolean(
 		environment.AGENTIC_CHAT_WORKER_ENABLED,
 		false,
@@ -140,6 +149,7 @@ export function loadAgenticChatPhase3Config(
 		)
 	};
 	validateAgenticChatConsumerConfig(consumer);
+	const publisher = loadPublisherConfig(environment);
 	const providerBudgetMs = parsePositiveInteger(
 		environment.CHAT_PROVIDER_BUDGET_MS,
 		DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS,
@@ -169,6 +179,7 @@ export function loadAgenticChatPhase3Config(
 			mutationProviderCapabilities,
 			mutationAdapterCapabilities,
 			consumer,
+			publisher,
 			providerBudgetMs,
 			maxProviderRounds,
 			maxToolCalls,
@@ -186,11 +197,92 @@ export function loadAgenticChatPhase3Config(
 		mutationProviderCapabilities,
 		mutationAdapterCapabilities,
 		consumer,
+		publisher,
 		providerBudgetMs,
 		maxProviderRounds,
 		maxToolCalls,
 		provider: loadProviderConfig(environment)
 	};
+}
+
+function isProductionProfile(value: string | undefined): boolean {
+	if (value === undefined) return false;
+	if (value === 'production') return true;
+	throw new Error('AGENTIC_CHAT_WORKER_PROFILE must be exactly production when set');
+}
+
+const PRODUCTION_REQUIRED_CONFIG = Object.freeze([
+	'CHAT_CONCURRENCY',
+	'CHAT_POLL_INTERVAL_MS',
+	'CHAT_WORKER_TIMEOUT_MS',
+	'CHAT_PROVIDER_BUDGET_MS',
+	'CHAT_STALLED_TIMEOUT_MS',
+	'CHAT_DRAIN_TIMEOUT_MS',
+	'CHAT_PUBLISHER_TURN_PENDING_SOFT_BYTES',
+	'CHAT_PUBLISHER_TURN_PENDING_HARD_BYTES',
+	'CHAT_PUBLISHER_WORKER_PENDING_SOFT_BYTES',
+	'CHAT_PUBLISHER_WORKER_PENDING_HARD_BYTES',
+	'CHAT_PUBLISHER_TURN_PENDING_SOFT_EVENTS',
+	'CHAT_PUBLISHER_TURN_PENDING_HARD_EVENTS',
+	'CHAT_PUBLISHER_WORKER_PENDING_SOFT_EVENTS',
+	'CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS'
+] as const);
+
+function requireExplicitProductionConfig(environment: NodeJS.ProcessEnv): void {
+	for (const name of PRODUCTION_REQUIRED_CONFIG) {
+		const value = environment[name];
+		if (value === undefined || value.trim() === '') {
+			throw new Error(`${name} must be explicitly configured for the production profile`);
+		}
+	}
+}
+
+function loadPublisherConfig(environment: NodeJS.ProcessEnv): AgenticChatPublisherConfig {
+	const config: AgenticChatPublisherConfig = {
+		...DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG,
+		turnPendingSoftBytes: parsePositiveInteger(
+			environment.CHAT_PUBLISHER_TURN_PENDING_SOFT_BYTES,
+			DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG.turnPendingSoftBytes,
+			'CHAT_PUBLISHER_TURN_PENDING_SOFT_BYTES'
+		),
+		turnPendingHardBytes: parsePositiveInteger(
+			environment.CHAT_PUBLISHER_TURN_PENDING_HARD_BYTES,
+			DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG.turnPendingHardBytes,
+			'CHAT_PUBLISHER_TURN_PENDING_HARD_BYTES'
+		),
+		workerPendingSoftBytes: parsePositiveInteger(
+			environment.CHAT_PUBLISHER_WORKER_PENDING_SOFT_BYTES,
+			DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG.workerPendingSoftBytes,
+			'CHAT_PUBLISHER_WORKER_PENDING_SOFT_BYTES'
+		),
+		workerPendingHardBytes: parsePositiveInteger(
+			environment.CHAT_PUBLISHER_WORKER_PENDING_HARD_BYTES,
+			DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG.workerPendingHardBytes,
+			'CHAT_PUBLISHER_WORKER_PENDING_HARD_BYTES'
+		),
+		turnPendingSoftEvents: parsePositiveInteger(
+			environment.CHAT_PUBLISHER_TURN_PENDING_SOFT_EVENTS,
+			DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG.turnPendingSoftEvents,
+			'CHAT_PUBLISHER_TURN_PENDING_SOFT_EVENTS'
+		),
+		turnPendingHardEvents: parsePositiveInteger(
+			environment.CHAT_PUBLISHER_TURN_PENDING_HARD_EVENTS,
+			DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG.turnPendingHardEvents,
+			'CHAT_PUBLISHER_TURN_PENDING_HARD_EVENTS'
+		),
+		workerPendingSoftEvents: parsePositiveInteger(
+			environment.CHAT_PUBLISHER_WORKER_PENDING_SOFT_EVENTS,
+			DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG.workerPendingSoftEvents,
+			'CHAT_PUBLISHER_WORKER_PENDING_SOFT_EVENTS'
+		),
+		workerPendingHardEvents: parsePositiveInteger(
+			environment.CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS,
+			DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG.workerPendingHardEvents,
+			'CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS'
+		)
+	};
+	validateAgenticChatPublisherConfig(config);
+	return Object.freeze(config);
 }
 
 export function isAgenticChatInternalUser(

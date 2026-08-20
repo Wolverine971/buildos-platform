@@ -12,6 +12,7 @@ import {
 	isAgenticChatInternalUser,
 	loadAgenticChatPhase3Config
 } from '../src/workers/agentic-chat/phase3Config';
+import { DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG } from '../src/workers/agentic-chat/streamPublisher';
 
 vi.mock('../src/lib/supabase', () => ({
 	supabase: {
@@ -204,6 +205,7 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			mutationProviderCapabilities: {},
 			mutationAdapterCapabilities: {},
 			consumer: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
+			publisher: DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG,
 			providerBudgetMs: 300_000,
 			maxProviderRounds: 16,
 			maxToolCalls: 40,
@@ -313,6 +315,7 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 				stalledTimeoutMs: 3000,
 				drainTimeoutMs: 1000
 			},
+			publisher: DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG,
 			providerBudgetMs: 1200,
 			maxProviderRounds: 4,
 			maxToolCalls: 9,
@@ -337,6 +340,78 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 		expect(isAgenticChatInternalUser(config, 'd1000000-0000-4000-8000-000000000003')).toBe(
 			false
 		);
+	});
+
+	it('requires explicit capacity, timeout, cadence, and publisher high-water values in the production profile', () => {
+		const productionEnvironment = {
+			...PHASE_3_PROVIDER_ENV,
+			AGENTIC_CHAT_WORKER_PROFILE: 'production',
+			AGENTIC_CHAT_WORKER_ENABLED: 'true',
+			AGENTIC_CHAT_INTERNAL_USER_IDS: INTERNAL_USER_ID,
+			CHAT_CONCURRENCY: '1',
+			CHAT_POLL_INTERVAL_MS: '1000',
+			CHAT_WORKER_TIMEOUT_MS: '360000',
+			CHAT_PROVIDER_BUDGET_MS: '270000',
+			CHAT_STALLED_TIMEOUT_MS: '420000',
+			CHAT_DRAIN_TIMEOUT_MS: '22000',
+			CHAT_PUBLISHER_TURN_PENDING_SOFT_BYTES: '262144',
+			CHAT_PUBLISHER_TURN_PENDING_HARD_BYTES: '1048576',
+			CHAT_PUBLISHER_WORKER_PENDING_SOFT_BYTES: '2097152',
+			CHAT_PUBLISHER_WORKER_PENDING_HARD_BYTES: '8388608',
+			CHAT_PUBLISHER_TURN_PENDING_SOFT_EVENTS: '32',
+			CHAT_PUBLISHER_TURN_PENDING_HARD_EVENTS: '128',
+			CHAT_PUBLISHER_WORKER_PENDING_SOFT_EVENTS: '256',
+			CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS: '1024'
+		};
+
+		expect(loadAgenticChatPhase3Config(productionEnvironment)).toMatchObject({
+			enabled: true,
+			publisher: {
+				turnPendingSoftBytes: 262_144,
+				turnPendingHardBytes: 1_048_576,
+				workerPendingSoftBytes: 2_097_152,
+				workerPendingHardBytes: 8_388_608,
+				turnPendingSoftEvents: 32,
+				turnPendingHardEvents: 128,
+				workerPendingSoftEvents: 256,
+				workerPendingHardEvents: 1024
+			}
+		});
+		for (const requiredName of [
+			'CHAT_CONCURRENCY',
+			'CHAT_POLL_INTERVAL_MS',
+			'CHAT_WORKER_TIMEOUT_MS',
+			'CHAT_PROVIDER_BUDGET_MS',
+			'CHAT_STALLED_TIMEOUT_MS',
+			'CHAT_DRAIN_TIMEOUT_MS',
+			'CHAT_PUBLISHER_TURN_PENDING_SOFT_BYTES',
+			'CHAT_PUBLISHER_TURN_PENDING_HARD_BYTES',
+			'CHAT_PUBLISHER_WORKER_PENDING_SOFT_BYTES',
+			'CHAT_PUBLISHER_WORKER_PENDING_HARD_BYTES',
+			'CHAT_PUBLISHER_TURN_PENDING_SOFT_EVENTS',
+			'CHAT_PUBLISHER_TURN_PENDING_HARD_EVENTS',
+			'CHAT_PUBLISHER_WORKER_PENDING_SOFT_EVENTS',
+			'CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS'
+		] as const) {
+			expect(() =>
+				loadAgenticChatPhase3Config({
+					...productionEnvironment,
+					[requiredName]: undefined
+				})
+			).toThrow(`${requiredName} must be explicitly configured for the production profile`);
+		}
+		expect(() =>
+			loadAgenticChatPhase3Config({
+				...productionEnvironment,
+				CHAT_PUBLISHER_WORKER_PENDING_SOFT_BYTES: '8388608'
+			})
+		).toThrow('worker pending-byte soft limit must be below the hard limit');
+		expect(() =>
+			loadAgenticChatPhase3Config({
+				...productionEnvironment,
+				AGENTIC_CHAT_WORKER_PROFILE: 'Production'
+			})
+		).toThrow('AGENTIC_CHAT_WORKER_PROFILE must be exactly production when set');
 	});
 
 	it('fails closed on ambiguous flags, duplicate users, and out-of-envelope values', () => {
