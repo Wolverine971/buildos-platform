@@ -382,6 +382,7 @@ export class AgenticChatStalledRecoverySweep {
 		initialFailureClass: AgenticChatRecoveryFailureClassV1
 	): Promise<AgenticChatStalledRecoveryResultV1> {
 		let failureClass = initialFailureClass;
+		let lastConvergenceError: string | null = null;
 		for (let attempt = 0; attempt < MAX_CONVERGENCE_STEPS; attempt += 1) {
 			const recovery = await this.ports.control.recover({
 				turnRunId: candidate.turnRunId,
@@ -401,7 +402,8 @@ export class AgenticChatStalledRecoverySweep {
 				return recoveryResult(
 					candidate,
 					claim.executionGeneration,
-					'manual_recovery_required'
+					'manual_recovery_required',
+					`Recovery returned unsupported outcome: ${recovery.outcome}`
 				);
 			}
 
@@ -412,9 +414,10 @@ export class AgenticChatStalledRecoverySweep {
 					userId: candidate.userId,
 					executionGeneration: claim.executionGeneration
 				});
-			} catch {
+			} catch (error) {
 				// Durable truth may have changed after the recovery decision. Re-run
 				// the fenced recovery RPC before classifying this candidate as failed.
+				lastConvergenceError = `Recovery snapshot failed: ${errorMessage(error)}`;
 				continue;
 			}
 			if (isTerminalStatus(snapshot.status)) {
@@ -425,7 +428,8 @@ export class AgenticChatStalledRecoverySweep {
 				return recoveryResult(
 					candidate,
 					claim.executionGeneration,
-					'manual_recovery_required'
+					'manual_recovery_required',
+					`Recovery snapshot has unsupported status: ${snapshot.status}`
 				);
 			}
 
@@ -435,8 +439,9 @@ export class AgenticChatStalledRecoverySweep {
 				terminal = await this.ports.control.finalize(
 					buildTerminalInput(candidate, snapshot, status, recovery.failure_code)
 				);
-			} catch {
+			} catch (error) {
 				// A lost finalize response is resolved by the next recovery call.
+				lastConvergenceError = `Recovery finalization failed: ${errorMessage(error)}`;
 				continue;
 			}
 			if (terminal.outcome === 'stale_generation') {
@@ -448,7 +453,12 @@ export class AgenticChatStalledRecoverySweep {
 			}
 			failureClass = terminalFailureClass(terminal.status);
 		}
-		return recoveryResult(candidate, claim.executionGeneration, 'manual_recovery_required');
+		return recoveryResult(
+			candidate,
+			claim.executionGeneration,
+			'manual_recovery_required',
+			lastConvergenceError ?? 'Recovery did not converge within the bounded retry window'
+		);
 	}
 }
 
@@ -489,7 +499,7 @@ function buildTerminalInput(
 		finishedReason: status === 'cancelled' ? 'cancelled' : 'worker_interrupted',
 		failureCode: normalizedFailureCode,
 		assistantMessageId:
-			status === 'cancelled' && snapshot.assistantText.length > 0
+			snapshot.assistantText.length > 0
 				? stableRecoveryMessageId(candidate.turnRunId, snapshot.executionGeneration)
 				: null,
 		assistantText: snapshot.assistantText,
@@ -584,10 +594,7 @@ function parseCandidate(
 	canonicalUuid(row.processing_token, 'processing token');
 	canonicalUuid(row.user_id, 'user id');
 	if (!isTimestamp(row.started_at)) throw sourceError('candidate started_at is invalid');
-	if (
-		!isTimestamp(row.updated_at) ||
-		Date.parse(row.updated_at) >= Date.parse(stalledBefore)
-	) {
+	if (!isTimestamp(row.updated_at) || Date.parse(row.updated_at) >= Date.parse(stalledBefore)) {
 		throw sourceError('candidate timestamp is not before the cutoff');
 	}
 	if (Date.parse(row.started_at) > Date.parse(row.updated_at)) {

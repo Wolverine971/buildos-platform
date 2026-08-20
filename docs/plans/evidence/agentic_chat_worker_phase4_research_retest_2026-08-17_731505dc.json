@@ -1,0 +1,737 @@
+{
+	"schemaVersion": 1,
+	"contractFamily": "agentic_chat_worker_v1",
+	"runId": "phase4-research-retest-7-d41b332f-955",
+	"generatedAt": "2026-08-17T04:49:08.420Z",
+	"repository": {
+		"root": "/private/tmp/buildos-phase4-research-retest.ARwuwQ/repo",
+		"head": "731505dc84ad217667f13e5dbcc9da57e18cc538",
+		"headTree": "61b27d8220d470aa189d400d04ea78bb70f96a1a",
+		"branch": "",
+		"dirty": false,
+		"status": []
+	},
+	"configuration": {
+		"baseUrl": "https://build-os.com",
+		"executionMode": "worker_realtime",
+		"scenarioIds": ["research-turn-finalizes", "research-log-readback"],
+		"repetitions": 1,
+		"retryCount": 0
+	},
+	"turns": [
+		{
+			"scenarioId": "research-turn-finalizes",
+			"scenarioTitle": "A multi-tool synthesis turn narrates, then finishes with a real answer",
+			"scenarioCategory": "document",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": null,
+			"streamRunId": "d7c68695-af0a-4c1a-b97b-a3aacb3032fd",
+			"clientTurnId": "1594a99f-4b31-4db6-ad42-ad4af309aeda",
+			"sessionId": "46e2cd7b-925e-4d81-be35-2b640ee7a181",
+			"assertionPassed": false,
+			"assertionError": "[assert] turn emitted 2 error event(s): An error occurred while streaming. | provider_stream_error",
+			"completed": true,
+			"finishedReason": "error",
+			"streamErrors": ["An error occurred while streaming.", "provider_stream_error"],
+			"clientTiming": {
+				"requestStartedAt": "2026-08-17T04:43:35.166Z",
+				"responseHeadersMs": 2068.3082919999997,
+				"firstSseEventMs": 3710.9127089999984,
+				"ttftMs": 7657.305499999999,
+				"terminalEventMs": 150501.13708400002,
+				"totalDurationMs": 150502.298917
+			},
+			"serverTiming": {
+				"phases": {
+					"queue_wait_ms": 794,
+					"total_request_ms": 148175.259,
+					"response_generation_ms": 142277.81141899992,
+					"time_to_first_event_ms": 1290,
+					"time_to_first_response_ms": 5711,
+					"admission_to_acceptance_ms": 20,
+					"provider_authority_to_finish_ms": 146799.495476,
+					"provider_finish_to_terminal_call_ms": 88.91320100007579,
+					"worker_start_to_provider_authority_ms": 377,
+					"provider_authority_to_first_event_persistence_ms": 99,
+					"provider_authority_to_first_response_persistence_ms": 4520
+				},
+				"accepted_at": "2026-08-17T04:43:36.979345+00:00",
+				"admitted_at": "2026-08-17T04:43:36.95975+00:00",
+				"first_event_at": "2026-08-17T04:43:38.249125+00:00",
+				"done_emitted_at": null,
+				"finished_reason": "error",
+				"history_strategy": "raw_history",
+				"cache_age_seconds": null,
+				"first_response_at": "2026-08-17T04:43:42.670847+00:00",
+				"raw_history_count": 0,
+				"worker_started_at": "2026-08-17T04:43:37.773844+00:00",
+				"history_compressed": false,
+				"request_started_at": "2026-08-17T04:43:36.95975+00:00",
+				"prepared_prompt_hit": false,
+				"terminal_committed_at": "2026-08-17T04:46:05.135009+00:00",
+				"assistant_persisted_at": null,
+				"provider_authorized_at": "2026-08-17T04:43:38.150326+00:00",
+				"history_for_model_count": 0,
+				"timing_contract_version": "agentic_chat_async_v1",
+				"prepared_surface_profile": null,
+				"request_prewarmed_context": false,
+				"prepared_prompt_miss_reason": null
+			},
+			"eventTimings": [
+				{
+					"type": "turn_phase",
+					"phase": "stream",
+					"sequenceIndex": 1,
+					"observedMs": 3710.9127089999984
+				},
+				{
+					"type": "session",
+					"phase": "stream",
+					"sequenceIndex": 2,
+					"observedMs": 3895.376791999999
+				},
+				{
+					"type": "context_usage",
+					"phase": "stream",
+					"sequenceIndex": 3,
+					"observedMs": 4479.810750000001
+				},
+				{
+					"type": "agent_state",
+					"phase": "stream",
+					"sequenceIndex": 5,
+					"observedMs": 7961.837499999998
+				},
+				{
+					"type": "tool_call",
+					"phase": "tool",
+					"sequenceIndex": 6,
+					"observedMs": 8578.78125
+				},
+				{
+					"type": "tool_result",
+					"phase": "tool",
+					"sequenceIndex": 7,
+					"observedMs": 9179.161292
+				},
+				{
+					"type": "tool_call",
+					"phase": "tool",
+					"sequenceIndex": 8,
+					"observedMs": 9464.468042
+				},
+				{
+					"type": "tool_result",
+					"phase": "tool",
+					"sequenceIndex": 9,
+					"observedMs": 10155.943374999999
+				},
+				{
+					"type": "tool_call",
+					"phase": "tool",
+					"sequenceIndex": 10,
+					"observedMs": 12577.380916999999
+				},
+				{
+					"type": "tool_result",
+					"phase": "tool",
+					"sequenceIndex": 11,
+					"observedMs": 13061.083374999998
+				},
+				{
+					"type": "agent_state",
+					"phase": "stream",
+					"sequenceIndex": 12,
+					"observedMs": 13457.701208999999
+				},
+				{
+					"type": "agent_state",
+					"phase": "stream",
+					"sequenceIndex": 13,
+					"observedMs": 16265.293249999999
+				},
+				{
+					"type": "tool_call",
+					"phase": "tool",
+					"sequenceIndex": 14,
+					"observedMs": 16543.087084
+				},
+				{
+					"type": "tool_result",
+					"phase": "tool",
+					"sequenceIndex": 15,
+					"observedMs": 17035.816167
+				},
+				{
+					"type": "tool_call",
+					"phase": "tool",
+					"sequenceIndex": 16,
+					"observedMs": 20115.754542
+				},
+				{
+					"type": "tool_result",
+					"phase": "tool",
+					"sequenceIndex": 17,
+					"observedMs": 20864.534167
+				},
+				{
+					"type": "agent_state",
+					"phase": "stream",
+					"sequenceIndex": 18,
+					"observedMs": 26804.580791999997
+				},
+				{
+					"type": "agent_state",
+					"phase": "stream",
+					"sequenceIndex": 19,
+					"observedMs": 29384.395333999997
+				},
+				{
+					"type": "tool_call",
+					"phase": "tool",
+					"sequenceIndex": 20,
+					"observedMs": 29384.436083999997
+				},
+				{
+					"type": "tool_result",
+					"phase": "tool",
+					"sequenceIndex": 21,
+					"observedMs": 29853.172792
+				},
+				{
+					"type": "agent_state",
+					"phase": "stream",
+					"sequenceIndex": 22,
+					"observedMs": 30048.78225
+				},
+				{
+					"type": "tool_call",
+					"phase": "tool",
+					"sequenceIndex": 23,
+					"observedMs": 30375.299042000002
+				},
+				{
+					"type": "tool_result",
+					"phase": "tool",
+					"sequenceIndex": 24,
+					"observedMs": 31950.88625
+				},
+				{
+					"type": "error",
+					"phase": "finalize",
+					"sequenceIndex": 282,
+					"observedMs": 150094.508834
+				},
+				{
+					"type": "timing",
+					"phase": "finalize",
+					"sequenceIndex": 283,
+					"observedMs": 150500.713542
+				},
+				{
+					"type": "done",
+					"phase": "finalize",
+					"sequenceIndex": 284,
+					"observedMs": 150501.13708400002
+				}
+			],
+			"toolExecutions": [
+				{
+					"name": "get_document_outline",
+					"op": null,
+					"success": true,
+					"sequenceIndex": 1,
+					"executionTimeMs": 385
+				},
+				{
+					"name": "list_onto_tasks",
+					"op": null,
+					"success": true,
+					"sequenceIndex": 2,
+					"executionTimeMs": 179
+				},
+				{
+					"name": "declare_turn_contract",
+					"op": null,
+					"success": true,
+					"sequenceIndex": 3,
+					"executionTimeMs": 1
+				},
+				{
+					"name": "approve_turn_contract_review",
+					"op": null,
+					"success": true,
+					"sequenceIndex": 4,
+					"executionTimeMs": 0
+				},
+				{
+					"name": "read_document_section",
+					"op": null,
+					"success": true,
+					"sequenceIndex": 5,
+					"executionTimeMs": 265
+				},
+				{
+					"name": "approve_mutation_batch_review",
+					"op": null,
+					"success": true,
+					"sequenceIndex": 6,
+					"executionTimeMs": 0
+				},
+				{
+					"name": "create_onto_task",
+					"op": "onto.task.create",
+					"success": true,
+					"sequenceIndex": 7,
+					"executionTimeMs": null
+				}
+			],
+			"usage": {
+				"requestCount": 7,
+				"promptTokens": 61974,
+				"completionTokens": 2245,
+				"totalTokens": 64219,
+				"totalCostUsd": 0.023144279999999996,
+				"models": ["deepseek/deepseek-v4-flash", "google/gemini-3.7-flash"],
+				"providers": ["Alibaba", "CoreWeave", "Google AI Studio"],
+				"profiles": [],
+				"operations": ["agentic_chat_worker_stream"]
+			},
+			"turnRun": {
+				"id": "cf9d1baf-538f-45dd-9a2d-0240a8aca81b",
+				"session_id": "46e2cd7b-925e-4d81-be35-2b640ee7a181",
+				"execution_mode": "worker_realtime",
+				"transport_contract_version": "agentic_chat_worker_v1",
+				"status": "failed",
+				"created_at": "2026-08-17T04:43:36.95975+00:00",
+				"started_at": "2026-08-17T04:43:36.979345+00:00",
+				"finished_at": "2026-08-17T04:46:05.135009+00:00",
+				"finished_reason": "error",
+				"tool_call_count": 7,
+				"tool_round_count": 6,
+				"first_canonical_op": null,
+				"assistant_message_id": null,
+				"user_message_id": "09e298c4-35b0-4c10-89ec-ccdb771801f5",
+				"timing_metric_id": null
+			},
+			"persistence": {
+				"kind": "retained_chat_path_rows_v1",
+				"tables": [
+					{
+						"table": "chat_turn_runs",
+						"retainedRows": 1,
+						"approxJsonBytes": 3435,
+						"error": null
+					},
+					{
+						"table": "chat_turn_events",
+						"retainedRows": 26,
+						"approxJsonBytes": 25619,
+						"error": null
+					},
+					{
+						"table": "chat_turn_checkpoints",
+						"retainedRows": 0,
+						"approxJsonBytes": 2,
+						"error": null
+					},
+					{
+						"table": "chat_tool_executions",
+						"retainedRows": 7,
+						"approxJsonBytes": 10944,
+						"error": null
+					},
+					{
+						"table": "chat_prompt_snapshots",
+						"retainedRows": 0,
+						"approxJsonBytes": 2,
+						"error": null
+					},
+					{
+						"table": "timing_metrics",
+						"retainedRows": 0,
+						"approxJsonBytes": 2,
+						"error": null
+					},
+					{
+						"table": "chat_messages",
+						"retainedRows": 1,
+						"approxJsonBytes": 870,
+						"error": null
+					},
+					{
+						"table": "llm_usage_logs",
+						"retainedRows": 7,
+						"approxJsonBytes": 11296,
+						"error": null
+					}
+				],
+				"totalRetainedRows": 42,
+				"totalApproxJsonBytes": 52170,
+				"measurementDurationMs": 148175.259,
+				"retainedRowsPerSecond": 0.28344812948833786,
+				"note": "Counts final retained chat-path rows and their serialized JSON size. It does not measure update frequency, WAL bytes, or concurrent database traffic."
+			},
+			"captureErrors": []
+		},
+		{
+			"scenarioId": "research-log-readback",
+			"scenarioTitle": "Research captured in one session is found again in a cold session",
+			"scenarioCategory": "document",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": null,
+			"streamRunId": "1d5be6e8-1250-48af-b6ba-5a53176ab544",
+			"clientTurnId": "d915de6b-a8ee-434c-b088-e5dc05c84711",
+			"sessionId": "7ea94b04-0df5-4ca4-b920-60366014f0ad",
+			"assertionPassed": false,
+			"assertionError": "[assert] turn emitted 2 error event(s): An error occurred while streaming. | provider_stream_error",
+			"completed": true,
+			"finishedReason": "error",
+			"streamErrors": ["An error occurred while streaming.", "provider_stream_error"],
+			"clientTiming": {
+				"requestStartedAt": "2026-08-17T04:46:10.340Z",
+				"responseHeadersMs": 2015.727125000005,
+				"firstSseEventMs": 3290.186791999993,
+				"ttftMs": 16825.384791999997,
+				"terminalEventMs": 175274.657459,
+				"totalDurationMs": 175275.09350000002
+			},
+			"serverTiming": {
+				"phases": {
+					"queue_wait_ms": 537,
+					"total_request_ms": 172877.047,
+					"response_generation_ms": 157871.74713000003,
+					"time_to_first_event_ms": 1006,
+					"time_to_first_response_ms": 14833,
+					"admission_to_acceptance_ms": 7,
+					"provider_authority_to_finish_ms": 171791.12088599987,
+					"provider_finish_to_terminal_call_ms": 87.12389500020072,
+					"worker_start_to_provider_authority_ms": 370,
+					"provider_authority_to_first_event_persistence_ms": 92,
+					"provider_authority_to_first_response_persistence_ms": 13919
+				},
+				"accepted_at": "2026-08-17T04:46:12.259474+00:00",
+				"admitted_at": "2026-08-17T04:46:12.252046+00:00",
+				"first_event_at": "2026-08-17T04:46:13.25871+00:00",
+				"done_emitted_at": null,
+				"finished_reason": "error",
+				"history_strategy": "raw_history",
+				"cache_age_seconds": null,
+				"first_response_at": "2026-08-17T04:46:27.085+00:00",
+				"raw_history_count": 0,
+				"worker_started_at": "2026-08-17T04:46:12.796489+00:00",
+				"history_compressed": false,
+				"request_started_at": "2026-08-17T04:46:12.252046+00:00",
+				"prepared_prompt_hit": false,
+				"terminal_committed_at": "2026-08-17T04:49:05.129093+00:00",
+				"assistant_persisted_at": null,
+				"provider_authorized_at": "2026-08-17T04:46:13.166145+00:00",
+				"history_for_model_count": 0,
+				"timing_contract_version": "agentic_chat_async_v1",
+				"prepared_surface_profile": null,
+				"request_prewarmed_context": false,
+				"prepared_prompt_miss_reason": null
+			},
+			"eventTimings": [
+				{
+					"type": "turn_phase",
+					"phase": "stream",
+					"sequenceIndex": 1,
+					"observedMs": 3290.186791999993
+				},
+				{
+					"type": "session",
+					"phase": "stream",
+					"sequenceIndex": 2,
+					"observedMs": 3290.2469170000113
+				},
+				{
+					"type": "context_usage",
+					"phase": "stream",
+					"sequenceIndex": 3,
+					"observedMs": 3342.219542000006
+				},
+				{
+					"type": "agent_state",
+					"phase": "stream",
+					"sequenceIndex": 4,
+					"observedMs": 9946.417000000016
+				},
+				{
+					"type": "tool_call",
+					"phase": "tool",
+					"sequenceIndex": 5,
+					"observedMs": 10330.330625000002
+				},
+				{
+					"type": "tool_result",
+					"phase": "tool",
+					"sequenceIndex": 6,
+					"observedMs": 10790.057709000015
+				},
+				{
+					"type": "agent_state",
+					"phase": "stream",
+					"sequenceIndex": 7,
+					"observedMs": 10969.264416999999
+				},
+				{
+					"type": "agent_state",
+					"phase": "stream",
+					"sequenceIndex": 8,
+					"observedMs": 13559.302334000007
+				},
+				{
+					"type": "tool_call",
+					"phase": "tool",
+					"sequenceIndex": 9,
+					"observedMs": 13559.31362500001
+				},
+				{
+					"type": "tool_result",
+					"phase": "tool",
+					"sequenceIndex": 10,
+					"observedMs": 14074.788459000003
+				},
+				{
+					"type": "error",
+					"phase": "finalize",
+					"sequenceIndex": 357,
+					"observedMs": 174863.53333400004
+				},
+				{
+					"type": "timing",
+					"phase": "finalize",
+					"sequenceIndex": 358,
+					"observedMs": 175274.49904199998
+				},
+				{
+					"type": "done",
+					"phase": "finalize",
+					"sequenceIndex": 359,
+					"observedMs": 175274.657459
+				}
+			],
+			"toolExecutions": [
+				{
+					"name": "declare_read_only_turn",
+					"op": null,
+					"success": true,
+					"sequenceIndex": 1,
+					"executionTimeMs": 0
+				},
+				{
+					"name": "approve_read_only_turn_review",
+					"op": null,
+					"success": true,
+					"sequenceIndex": 2,
+					"executionTimeMs": 1
+				}
+			],
+			"usage": {
+				"requestCount": 3,
+				"promptTokens": 20032,
+				"completionTokens": 1569,
+				"totalTokens": 21601,
+				"totalCostUsd": 0.007331379999999999,
+				"models": ["deepseek/deepseek-v4-flash", "google/gemini-3.7-flash"],
+				"providers": ["Alibaba", "Google AI Studio"],
+				"profiles": [],
+				"operations": ["agentic_chat_worker_stream"]
+			},
+			"turnRun": {
+				"id": "5b50b590-e12b-46a7-a851-b05ada81656e",
+				"session_id": "7ea94b04-0df5-4ca4-b920-60366014f0ad",
+				"execution_mode": "worker_realtime",
+				"transport_contract_version": "agentic_chat_worker_v1",
+				"status": "failed",
+				"created_at": "2026-08-17T04:46:12.252046+00:00",
+				"started_at": "2026-08-17T04:46:12.259474+00:00",
+				"finished_at": "2026-08-17T04:49:05.129093+00:00",
+				"finished_reason": "error",
+				"tool_call_count": 2,
+				"tool_round_count": 2,
+				"first_canonical_op": null,
+				"assistant_message_id": null,
+				"user_message_id": "0bcd60e1-b71e-4f3b-89fb-16a485dfe3d8",
+				"timing_metric_id": null
+			},
+			"persistence": {
+				"kind": "retained_chat_path_rows_v1",
+				"tables": [
+					{
+						"table": "chat_turn_runs",
+						"retainedRows": 1,
+						"approxJsonBytes": 3248,
+						"error": null
+					},
+					{
+						"table": "chat_turn_events",
+						"retainedRows": 13,
+						"approxJsonBytes": 11432,
+						"error": null
+					},
+					{
+						"table": "chat_turn_checkpoints",
+						"retainedRows": 0,
+						"approxJsonBytes": 2,
+						"error": null
+					},
+					{
+						"table": "chat_tool_executions",
+						"retainedRows": 2,
+						"approxJsonBytes": 2423,
+						"error": null
+					},
+					{
+						"table": "chat_prompt_snapshots",
+						"retainedRows": 0,
+						"approxJsonBytes": 2,
+						"error": null
+					},
+					{
+						"table": "timing_metrics",
+						"retainedRows": 0,
+						"approxJsonBytes": 2,
+						"error": null
+					},
+					{
+						"table": "chat_messages",
+						"retainedRows": 1,
+						"approxJsonBytes": 807,
+						"error": null
+					},
+					{
+						"table": "llm_usage_logs",
+						"retainedRows": 3,
+						"approxJsonBytes": 4871,
+						"error": null
+					}
+				],
+				"totalRetainedRows": 20,
+				"totalApproxJsonBytes": 22787,
+				"measurementDurationMs": 172877.047,
+				"retainedRowsPerSecond": 0.11568915797132977,
+				"note": "Counts final retained chat-path rows and their serialized JSON size. It does not measure update frequency, WAL bytes, or concurrent database traffic."
+			},
+			"captureErrors": []
+		}
+	],
+	"summary": {
+		"turnCount": 2,
+		"assertionPassCount": 0,
+		"completedCount": 2,
+		"streamErrorTurnCount": 2,
+		"captureErrorTurnCount": 0,
+		"totalModelCostUsd": 0.030475659999999995,
+		"client": {
+			"responseHeadersMs": {
+				"samples": 2,
+				"min": 2015.727125000005,
+				"p50": 2015.727125000005,
+				"p95": 2068.3082919999997,
+				"max": 2068.3082919999997
+			},
+			"firstSseEventMs": {
+				"samples": 2,
+				"min": 3290.186791999993,
+				"p50": 3290.186791999993,
+				"p95": 3710.9127089999984,
+				"max": 3710.9127089999984
+			},
+			"ttftMs": {
+				"samples": 2,
+				"min": 7657.305499999999,
+				"p50": 7657.305499999999,
+				"p95": 16825.384791999997,
+				"max": 16825.384791999997
+			},
+			"terminalEventMs": {
+				"samples": 2,
+				"min": 150501.13708400002,
+				"p50": 150501.13708400002,
+				"p95": 175274.657459,
+				"max": 175274.657459
+			},
+			"totalDurationMs": {
+				"samples": 2,
+				"min": 150502.298917,
+				"p50": 150502.298917,
+				"p95": 175275.09350000002,
+				"max": 175275.09350000002
+			}
+		},
+		"server": {
+			"turnAdmissionMs": {
+				"samples": 0,
+				"min": null,
+				"p50": null,
+				"p95": null,
+				"max": null
+			},
+			"timeToFirstEventMs": {
+				"samples": 2,
+				"min": 1006,
+				"p50": 1006,
+				"p95": 1290,
+				"max": 1290
+			},
+			"timeToFirstResponseMs": {
+				"samples": 2,
+				"min": 5711,
+				"p50": 5711,
+				"p95": 14833,
+				"max": 14833
+			},
+			"assistantPersistMs": {
+				"samples": 0,
+				"min": null,
+				"p50": null,
+				"p95": null,
+				"max": null
+			},
+			"finalizationMs": {
+				"samples": 0,
+				"min": null,
+				"p50": null,
+				"p95": null,
+				"max": null
+			},
+			"totalRequestMs": {
+				"samples": 2,
+				"min": 148175.259,
+				"p50": 148175.259,
+				"p95": 172877.047,
+				"max": 172877.047
+			}
+		},
+		"toolExecutionMs": {
+			"samples": 8,
+			"min": 0,
+			"p50": 1,
+			"p95": 385,
+			"max": 385
+		},
+		"retainedRowsPerTurn": {
+			"samples": 2,
+			"min": 20,
+			"p50": 20,
+			"p95": 42,
+			"max": 42
+		},
+		"retainedBytesPerTurn": {
+			"samples": 2,
+			"min": 22787,
+			"p50": 22787,
+			"p95": 52170,
+			"max": 52170
+		}
+	},
+	"limitations": [
+		"The retained-row footprint is a final-state parity baseline, not a PostgreSQL WAL or statement-rate measurement.",
+		"Provider latency is included in end-to-end and first-response timing; later worker comparisons must separate BuildOS queue/transport overhead.",
+		"Prompt, message, tool-argument, tool-result, and event payload bodies are measured in memory for byte size but are not retained in this artifact."
+	]
+}

@@ -171,9 +171,7 @@ describe('SupabaseAgenticChatStalledCandidateSource', () => {
 			source.list({ stalledBefore: '2026-08-03T12:03:00.000Z', limit: 32 })
 		).resolves.toEqual([candidate]);
 		expect(invalid).toHaveBeenCalledTimes(2);
-		expect(invalid.mock.calls[0]?.[0]).toBeInstanceOf(
-			AgenticChatStalledCandidateSourceError
-		);
+		expect(invalid.mock.calls[0]?.[0]).toBeInstanceOf(AgenticChatStalledCandidateSourceError);
 		expect(invalid.mock.calls[0]?.[1]).toBe(0);
 		expect(invalid.mock.calls[1]?.[1]).toBe(2);
 	});
@@ -212,6 +210,9 @@ describe('AgenticChatStalledRecoverySweep', () => {
 		expect(harness.control.finalize).toHaveBeenCalledWith(
 			expect.objectContaining({
 				status: 'failed',
+				assistantMessageId: expect.stringMatching(
+					/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+				),
 				assistantText: 'durable partial',
 				projection: snapshot.projection,
 				assistantMetadata: expect.objectContaining({ recovered_from_stall: true })
@@ -265,6 +266,28 @@ describe('AgenticChatStalledRecoverySweep', () => {
 		expect(harness.snapshots.load).toHaveBeenCalledOnce();
 		expect(harness.control.finalize).toHaveBeenCalledOnce();
 		expect(harness.control.recover).toHaveBeenCalledTimes(2);
+	});
+
+	it('reports the terminal contract failure when bounded recovery cannot converge', async () => {
+		const harness = createSweep({
+			claim: claimed({ outcome: 'matching_current_claim', executionMayStart: false }),
+			recoveries: Array.from({ length: 4 }, () => recovery('finalize_failed'))
+		});
+		harness.control.finalize.mockRejectedValue(
+			new Error('agentic_chat_finalize_invalid_assistant_message')
+		);
+
+		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
+			results: [
+				{
+					outcome: 'manual_recovery_required',
+					error: expect.stringContaining(
+						'agentic_chat_finalize_invalid_assistant_message'
+					)
+				}
+			]
+		});
+		expect(harness.control.finalize).toHaveBeenCalledTimes(4);
 	});
 
 	it('rechecks durable cancellation when it wins failed finalization', async () => {
