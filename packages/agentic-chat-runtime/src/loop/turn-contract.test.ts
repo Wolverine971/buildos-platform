@@ -15,7 +15,8 @@ import {
 	readFastChatPendingTurnContract,
 	resolveTurnContractFromExecutions,
 	resolveTurnContractOutcome,
-	type TurnContract
+	type TurnContract,
+	type TurnContractOutcome
 } from './turn-contract';
 
 function call(name: string, args: Record<string, unknown>, id = `${name}-1`): ChatToolCall {
@@ -803,5 +804,246 @@ describe('semantic turn contracts', () => {
 				turnRunId: 'turn-live-regression'
 			})
 		).toBeNull();
+	});
+});
+
+describe('turn contract changes', () => {
+	function heterogeneousDeclaration(): Record<string, unknown> {
+		return {
+			summary: 'Finish two tasks and re-prioritize a third',
+			outcomes: [
+				{
+					id: 'finished',
+					action: 'update',
+					entity_kind: 'task',
+					target_ids: ['resume', 'linkedin'],
+					changes: [{ field: 'state_key', value: 'done' }],
+					minimum_successful_effects: 2
+				},
+				{
+					id: 'top-priority',
+					action: 'update',
+					entity_kind: 'task',
+					target_ids: ['halcyon'],
+					changes: [{ field: 'priority', value: 1 }],
+					minimum_successful_effects: 1
+				}
+			]
+		};
+	}
+
+	it('parses changes per outcome and unions their fields into required fields', () => {
+		const contract = parseDeclaredTurnContract(heterogeneousDeclaration());
+		expect(contract?.outcomes[0]).toEqual({
+			id: 'finished',
+			action: 'update',
+			entityKind: 'task',
+			targetIds: ['resume', 'linkedin'],
+			requiredFields: ['state_key'],
+			changes: [{ field: 'state_key', value: 'done' }],
+			minimumSuccessfulEffects: 2
+		});
+		expect(contract?.outcomes[1]).toMatchObject({
+			requiredFields: ['priority'],
+			changes: [{ field: 'priority', value: '1' }]
+		});
+		// The reviewer reads the serialized contract, so the values must survive it.
+		expect(JSON.stringify(contract)).toContain('"changes":[{"field":"priority","value":"1"}]');
+	});
+
+	it('keeps explicit required_fields and omits changes when none were declared', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'update',
+					entity_kind: 'task',
+					target_ids: ['task-a'],
+					required_fields: ['title'],
+					changes: [{ field: 'priority', value: '2' }],
+					minimum_successful_effects: 1
+				},
+				{
+					action: 'update',
+					entity_kind: 'task',
+					target_ids: ['task-b'],
+					required_fields: ['title'],
+					minimum_successful_effects: 1
+				}
+			]
+		});
+		expect(contract?.outcomes[0]?.requiredFields).toEqual(['title', 'priority']);
+		expect(contract?.outcomes[1]?.requiredFields).toEqual(['title']);
+		expect(contract?.outcomes[1]).not.toHaveProperty('changes');
+	});
+
+	it('normalizes change field names, stringifies scalar values, and keeps the last value per field', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'organize',
+					entity_kind: 'document',
+					target_ids: ['doc-a'],
+					changes: [
+						{ field: 'stateKey', value: 'in_progress' },
+						{ field: 'new_parent_id', value: 'folder-a' },
+						{ field: 'state_key', value: 'done' },
+						{ field: 'is_pinned', value: true },
+						{ field: 'due_at', value: null }
+					],
+					minimum_successful_effects: 1
+				}
+			]
+		});
+		expect(contract?.outcomes[0]?.changes).toEqual([
+			{ field: 'state_key', value: 'done' },
+			{ field: 'parent_id', value: 'folder-a' },
+			{ field: 'is_pinned', value: 'true' },
+			{ field: 'due_at', value: 'null' }
+		]);
+		expect(contract?.outcomes[0]?.requiredFields).toEqual([
+			'state_key',
+			'parent_id',
+			'is_pinned',
+			'due_at'
+		]);
+	});
+
+	it.each([
+		['a non-array', 'state_key=done'],
+		['an entry without a value', [{ field: 'state_key' }]],
+		['an entry without a field', [{ value: 'done' }]],
+		['a blank field', [{ field: '   ', value: 'done' }]],
+		['a blank value', [{ field: 'state_key', value: '   ' }]],
+		['an object value', [{ field: 'props', value: { nested: true } }]],
+		['a non-object entry', ['state_key']],
+		[
+			'more than twenty entries',
+			Array.from({ length: 21 }, (_, index) => ({ field: `field_${index}`, value: 'x' }))
+		]
+	])('rejects the whole declaration when changes contains %s', (_label, changes) => {
+		const result = executeDeclareTurnContract(
+			call('declare_turn_contract', {
+				outcomes: [
+					{
+						action: 'update',
+						entity_kind: 'task',
+						target_ids: ['task-a'],
+						changes,
+						minimum_successful_effects: 1
+					}
+				]
+			})
+		);
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('validation failed');
+	});
+
+	it('treats outcomes that differ only by their changes as distinct when merging', () => {
+		const base: Omit<TurnContractOutcome, 'changes'> = {
+			id: 'x',
+			action: 'update',
+			entityKind: 'task',
+			targetIds: ['task-a'],
+			requiredFields: ['priority'],
+			minimumSuccessfulEffects: 1
+		};
+		const priorityOne: TurnContract = {
+			version: 1,
+			source: 'declared',
+			outcomes: [{ ...base, changes: [{ field: 'priority', value: '1' }] }]
+		};
+		const priorityTwo: TurnContract = {
+			version: 1,
+			source: 'declared',
+			outcomes: [{ ...base, changes: [{ field: 'priority', value: '2' }] }]
+		};
+		expect(mergeTurnContracts(priorityOne, priorityTwo)?.outcomes).toHaveLength(2);
+		expect(mergeTurnContracts(priorityOne, priorityOne)?.outcomes).toHaveLength(1);
+	});
+
+	it('fulfills a change only when the target write actually sets that field', () => {
+		const contract: TurnContract = {
+			version: 1,
+			source: 'declared',
+			outcomes: [
+				{
+					id: 'top-priority',
+					action: 'update',
+					entityKind: 'task',
+					targetIds: ['halcyon'],
+					requiredFields: ['priority'],
+					changes: [{ field: 'priority', value: '1' }],
+					minimumSuccessfulEffects: 1
+				}
+			]
+		};
+		expect(
+			resolveTurnContractOutcome({
+				contract,
+				toolExecutions: [
+					execution('update_onto_task', { task_id: 'halcyon', state_key: 'done' })
+				]
+			})
+		).toMatchObject({
+			fulfilled: false,
+			outcomes: [
+				{ missingTargetIds: ['halcyon'], missingRequiredFields: ['halcyon.priority'] }
+			]
+		});
+		expect(
+			resolveTurnContractOutcome({
+				contract,
+				toolExecutions: [execution('update_onto_task', { task_id: 'halcyon', priority: 1 })]
+			}).fulfilled
+		).toBe(true);
+	});
+
+	it('resolves a heterogeneous declaration from mixed writes and carries changes forward', () => {
+		const declaration = execution('declare_turn_contract', heterogeneousDeclaration());
+		const finished = ['resume', 'linkedin'].map((id) =>
+			execution('update_onto_task', { task_id: id, state_key: 'done' }, {}, `done-${id}`)
+		);
+		const contract = resolveTurnContractFromExecutions([declaration, ...finished]);
+		const partial = resolveTurnContractOutcome({
+			contract,
+			toolExecutions: [declaration, ...finished]
+		});
+		expect(partial).toMatchObject({
+			fulfilled: false,
+			outcomes: [
+				{ id: 'finished', fulfilled: true, matchedEffects: 2 },
+				{
+					id: 'top-priority',
+					fulfilled: false,
+					missingRequiredFields: ['halcyon.priority']
+				}
+			]
+		});
+
+		const pending = buildFastChatPendingTurnContract({
+			resolution: partial,
+			contextType: 'project',
+			projectId: 'project-a'
+		});
+		expect(readFastChatPendingTurnContract(pending)?.contract.outcomes).toEqual([
+			expect.objectContaining({
+				id: 'top-priority',
+				requiredFields: ['priority'],
+				changes: [{ field: 'priority', value: '1' }]
+			})
+		]);
+
+		const reprioritized = execution(
+			'update_onto_task',
+			{ task_id: 'halcyon', priority: 1 },
+			{},
+			'priority-halcyon'
+		);
+		expect(
+			resolveTurnContractOutcome({
+				contract,
+				toolExecutions: [declaration, ...finished, reprioritized]
+			}).fulfilled
+		).toBe(true);
 	});
 });

@@ -3,7 +3,9 @@
 # /railway.chat.toml so the repo-root general-worker config cannot override
 # the isolated entrypoint.
 [build]
-builder = "NIXPACKS"
+# Railpack passes Railway variables to build steps as BuildKit secrets instead
+# of baking secret-bearing ARG/ENV instructions into a generated Dockerfile.
+builder = "RAILPACK"
 buildCommand = "NODE_OPTIONS=--max-old-space-size=2048 npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker"
 watchPatterns = [
   "apps/worker/**",
@@ -13,8 +15,7 @@ watchPatterns = [
   "package.json",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
-  "railway.chat.toml",
-  "nixpacks.toml"
+  "railway.chat.toml"
 ]
 
 [deploy]

@@ -49,6 +49,7 @@ import {
 	type AgenticChatStreamPublisher
 } from './streamPublisher';
 import {
+	type AgenticChatControlDecisionAuthorV1,
 	type AgenticChatPreparedProviderInvocationV1,
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderFailedToolSynthesisInputV1,
@@ -133,6 +134,8 @@ export type AgenticChatFixtureReadToolPortV1 = {
 		toolName: string;
 		arguments: JsonObject;
 		providerToolCallId: string;
+		/** Author of a control-tool decision; undefined for ordinary reads. */
+		decidedBy?: AgenticChatControlDecisionAuthorV1;
 		executionInput: AgenticChatWorkerExecutionInputV1;
 		signal: AbortSignal;
 	}): Promise<AgenticChatReadToolExecutionV1>;
@@ -1622,6 +1625,7 @@ export class AgenticChatFixtureTurnExecutor {
 						toolName: step.toolName,
 						arguments: step.arguments,
 						providerToolCallId: step.providerToolCallId,
+						...(step.decidedBy ? { decidedBy: step.decidedBy } : {}),
 						executionInput,
 						signal
 					}),

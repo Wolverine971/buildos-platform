@@ -14,6 +14,20 @@ export type AgenticChatProviderUsageV1 = {
 	totalTokens: number;
 };
 
+/**
+ * Which decision-maker authored a control-tool call. Reviewer lanes and harness
+ * fallbacks are distinct models/paths from the acting model; recording the
+ * author on the durable row is what lets a later investigation attribute a
+ * clarification or approval without joining provider usage logs by timestamp.
+ */
+export type AgenticChatControlDecisionAuthorV1 =
+	| 'acting_model'
+	| 'contract_reviewer'
+	| 'mutation_batch_reviewer'
+	| 'read_only_reviewer'
+	| 'harness_review_fallback'
+	| 'harness_candidate_gate';
+
 export type AgenticChatProviderStepV1 =
 	| { type: 'text_delta'; text: string }
 	| {
@@ -31,6 +45,8 @@ export type AgenticChatProviderStepV1 =
 			providerToolCallId: string;
 			toolName: string;
 			arguments: JsonObject;
+			/** Present on control-tool calls; absent on ordinary reads. */
+			decidedBy?: AgenticChatControlDecisionAuthorV1;
 	  } & (
 			| {
 					/**

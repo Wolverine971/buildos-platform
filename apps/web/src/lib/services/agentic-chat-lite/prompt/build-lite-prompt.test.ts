@@ -1176,7 +1176,9 @@ describe('buildLitePromptEnvelope', () => {
 		// 2026-07-02 fix: with the Timeline section skipped, project_create had no
 		// "current time" anywhere, so relative deadlines ("end of July") resolved
 		// into the past (2025-07-31 observed in a live 2026-07-02 session).
-		expect(envelope.systemPrompt).toContain('Current date: 2026-04-16 (timezone UTC)');
+		expect(envelope.systemPrompt).toContain(
+			'Current date: 2026-04-16 (Thursday) in timezone UTC'
+		);
 		expect(envelope.systemPrompt).toContain('never resolve them into the past');
 		expect(envelope.systemPrompt).toContain(
 			'Project creation scope:\n- This chat is in project_create mode before a project exists.'
@@ -1635,5 +1637,92 @@ describe('buildLitePromptEnvelope', () => {
 			// should be absent in both and content should match.
 			expect(projectSection?.content).toBe(globalSection?.content);
 		}
+	});
+});
+
+describe('prompt clock renders the local date', () => {
+	// Live defect (2026-08-20): at 20:17 EDT the prompt said it was Friday
+	// 2026-08-21 (the UTC date) with `Timezone: UTC`, so "push it to friday"
+	// landed on 08-28. The frame must carry the user's local calendar date.
+	const THURSDAY_EVENING_EDT = '2026-08-21T00:17:43.256Z';
+
+	function timelineSection(envelope: ReturnType<typeof buildLitePromptEnvelope>) {
+		const section = envelope.sections.find((s) => s.id === 'timeline_recent_activity');
+		if (!section) throw new Error('Expected a timeline_recent_activity section');
+		return section;
+	}
+
+	it('renders the local date, weekday, and zone for a Thursday evening in New York', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			now: THURSDAY_EVENING_EDT,
+			timezone: 'America/New_York'
+		});
+		const section = timelineSection(envelope);
+
+		expect(section.content).toContain(
+			'- Current date: 2026-08-20 (Thursday), 20:17 local time in America/New_York'
+		);
+		expect(section.content).toContain('- Current time (UTC instant): 2026-08-21T00:17:43.256Z');
+		expect(section.content).toContain('- Timezone: America/New_York');
+		expect(section.content).toContain(
+			'Resolve relative dates ("friday", "tomorrow", "end of day") from the local date above.'
+		);
+		expect(section.slots).toMatchObject({
+			timezone: 'America/New_York',
+			localDate: '2026-08-20',
+			weekday: 'Thursday'
+		});
+		// The old frame must be gone — it is what the model read the wrong day from.
+		expect(section.content).not.toContain('- Current time: 2026-08-21T00:17:43.256Z');
+		expect(section.content).not.toContain('Timezone: UTC');
+	});
+
+	it('falls back to the UTC calendar date when no timezone is supplied', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			now: THURSDAY_EVENING_EDT
+		});
+		const section = timelineSection(envelope);
+
+		expect(section.content).toContain(
+			'- Current date: 2026-08-21 (Friday), 00:17 local time in UTC'
+		);
+		expect(section.content).toContain('- Timezone: UTC');
+		expect(section.slots).toMatchObject({ localDate: '2026-08-21', weekday: 'Friday' });
+	});
+
+	it('falls back to UTC without throwing when the timezone is not a valid IANA name', () => {
+		const build = () =>
+			buildLitePromptEnvelope({
+				contextType: 'project',
+				entityId: 'project-1',
+				now: THURSDAY_EVENING_EDT,
+				timezone: 'Mars/Olympus_Mons'
+			});
+
+		expect(build).not.toThrow();
+		const section = timelineSection(build());
+		expect(section.content).toContain('- Current date: 2026-08-21 (Friday)');
+		expect(section.content).toContain('- Timezone: UTC');
+		expect(section.slots).toMatchObject({ timezone: 'UTC' });
+	});
+
+	it('gives project_create the same local weekday-enriched date', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project_create',
+			entityId: null,
+			now: THURSDAY_EVENING_EDT,
+			timezone: 'America/New_York'
+		});
+
+		expect(envelope.systemPrompt).toContain(
+			'- Current date: 2026-08-20 (Thursday) in timezone America/New_York. Resolve relative or year-less dates'
+		);
+		expect(envelope.systemPrompt).toContain('never resolve them into the past');
+		// project_create keeps date-only granularity for prepared-prompt reuse.
+		expect(envelope.systemPrompt).not.toContain('20:17 local time');
 	});
 });

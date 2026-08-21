@@ -13,7 +13,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 	function: {
 		name: 'declare_turn_contract',
 		description:
-			'Declare durable outcomes this turn must complete when reads are needed before writing. Call with the first reads. Do not use for answer-only turns, research that only informs a later possible change, or when a direct write can run immediately. Future context is not a commission to perform that later change now. This records intent, not a mutation. If a required target or value remains ambiguous after reading context, call request_turn_clarification. Otherwise complete every outcome or report the blocker.',
+			'Declare durable outcomes this turn must complete when reads are needed before writing. Call with the first reads. Do not use for answer-only turns, research that only informs a later possible change, or when a direct write can run immediately. Future context is not a commission to perform that later change now. This records intent, not a mutation. If a required target or value remains ambiguous after reading context, call request_turn_clarification. Otherwise complete every outcome or report the blocker. One outcome per distinct change; targets that receive different values go in separate outcomes.',
 		parameters: {
 			type: 'object',
 			properties: {
@@ -27,7 +27,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 					minItems: 1,
 					maxItems: 20,
 					description:
-						'Semantic effects required before this turn may claim completion. Describe outcomes, not implementation steps or tool names.',
+						'Semantic effects required before this turn may claim completion. Describe outcomes, not implementation steps or tool names. One outcome per distinct change. Never put targets that receive different values in the same outcome: "mark A and B done and make C top priority" is two outcomes (A,B → state_key=done; C → priority=1), not one update with three targets.',
 					items: {
 						type: 'object',
 						properties: {
@@ -88,6 +88,20 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 								items: { type: 'string' },
 								description:
 									'Required durable postconditions, not tool arguments. For document-tree placement use parent_id and position.'
+							},
+							changes: {
+								type: 'array',
+								maxItems: 20,
+								items: {
+									type: 'object',
+									properties: {
+										field: { type: 'string', maxLength: 80 },
+										value: { type: 'string', maxLength: 160 }
+									},
+									required: ['field', 'value']
+								},
+								description:
+									'The durable field values this outcome sets on every target, e.g. [{"field":"state_key","value":"done"}] or [{"field":"priority","value":"1"}]. Targets that receive different values belong in separate outcomes.'
 							},
 							minimum_successful_effects: {
 								type: 'integer',

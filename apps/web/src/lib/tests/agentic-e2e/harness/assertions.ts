@@ -4,6 +4,7 @@
 // message (captured tool list, telemetry, text) so a failure explains itself.
 import type { AgenticE2EExecutionMode, TurnResult } from './types';
 import type { ToolExecutionRow, TurnRunRow } from './telemetry';
+import { HARNESS_TIMEZONE } from './timezone';
 
 // Phrases that must never appear in user-visible assistant text: self-correction
 // spirals and prompt-scaffolding echoes. Mirrors lite-prompt-live.test.ts.
@@ -467,7 +468,7 @@ export function assertNumericPriorityAtMost(
 	}
 }
 
-export function nextWeekdayDate(now: Date, weekday: number, timeZone = 'America/New_York'): string {
+export function nextWeekdayDate(now: Date, weekday: number, timeZone = HARNESS_TIMEZONE): string {
 	const zonedToday = formatDateInZone(now, timeZone);
 	const date = new Date(`${zonedToday}T12:00:00.000Z`);
 	date.setUTCDate(date.getUTCDate() + ((weekday - date.getUTCDay() + 7) % 7));
@@ -478,7 +479,7 @@ export function assertIsoDate(
 	actual: string | null,
 	expectedDate: string,
 	label: string,
-	timeZone = 'America/New_York'
+	timeZone = HARNESS_TIMEZONE
 ): void {
 	const literalDate = actual?.slice(0, 10) ?? null;
 	const parsed = actual ? new Date(actual) : null;

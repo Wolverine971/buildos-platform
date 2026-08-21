@@ -2286,6 +2286,7 @@ export const POST: RequestHandler = async ({
 							focusEntityId: promptContext.focusEntityId ?? null,
 							focusEntityName: promptContext.focusEntityName ?? null,
 							contextLoadSource,
+							timezone: promptContext.timezone ?? null,
 							data: promptContext.data ?? null
 						}
 					});

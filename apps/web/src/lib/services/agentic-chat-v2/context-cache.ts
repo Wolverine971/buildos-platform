@@ -21,6 +21,8 @@ export type FastChatPromptContextSnapshot = {
 		| 'fallback'
 		| 'none'
 		| 'unknown_cached';
+	/** IANA zone the prompt clock renders in; null means "fall back to UTC". */
+	timezone?: string | null;
 	data?: Record<string, unknown> | string | null;
 };
 
@@ -117,6 +119,7 @@ export function normalizeFastChatContextSnapshot(
 		focusEntityId: readString(record, 'focusEntityId', 'focus_entity_id'),
 		focusEntityName: readString(record, 'focusEntityName', 'focus_entity_name'),
 		contextLoadSource,
+		timezone: readString(record, 'timezone', 'timezone'),
 		data:
 			data && typeof data === 'object' && !Array.isArray(data)
 				? (data as Record<string, unknown>)
@@ -168,6 +171,7 @@ export function buildFastChatContextCacheEntry(params: {
 			focusEntityId: params.context.focusEntityId ?? null,
 			focusEntityName: params.context.focusEntityName ?? null,
 			contextLoadSource: params.context.contextLoadSource ?? undefined,
+			timezone: params.context.timezone ?? null,
 			data: params.context.data ?? null
 		}
 	};

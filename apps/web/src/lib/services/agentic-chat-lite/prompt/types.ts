@@ -24,6 +24,11 @@ export type MasterPromptContext = {
 		| 'fallback'
 		| 'none'
 		| 'unknown_cached';
+	/**
+	 * IANA zone the prompt clock renders in (from `users.timezone`). Loaders
+	 * always set it; absent/invalid values fall back to UTC at render time.
+	 */
+	timezone?: string | null;
 	conversationSummary?: string | null;
 	entityResolutionHint?: string | null;
 	data?: Record<string, unknown> | string | null;

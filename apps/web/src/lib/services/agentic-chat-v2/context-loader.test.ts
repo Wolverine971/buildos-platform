@@ -21,12 +21,35 @@ type QueryCallRecord = {
 	limitCalls: number[];
 };
 
+const MOCK_USER_TIMEZONE = 'America/New_York';
+
+/**
+ * `loadFastChatPromptContext` reads `users.timezone` alongside every context
+ * load (select('timezone').eq('id', userId).maybeSingle()). Mock factories
+ * below serve it so the lookup resolves instead of tripping their
+ * unexpected-table guards.
+ */
+function createUsersTimezoneQuery(result: QueryResult) {
+	const maybeSingle = vi.fn().mockResolvedValue(result);
+	const eq = vi.fn().mockReturnValue({ maybeSingle });
+	const select = vi.fn().mockReturnValue({ eq });
+	return { select };
+}
+
+function usersTimezoneRow(timezone: string | null): QueryResult {
+	return { data: { timezone }, error: null };
+}
+
 function createDailyBriefSupabaseMock(config: {
 	dailyBrief: QueryResult;
 	projectBriefs: QueryResult;
 	entities: QueryResult;
 }) {
 	const from = vi.fn().mockImplementation((table: string) => {
+		if (table === 'users') {
+			return createUsersTimezoneQuery(usersTimezoneRow(MOCK_USER_TIMEZONE));
+		}
+
 		if (table === 'ontology_daily_briefs') {
 			const maybeSingle = vi.fn().mockResolvedValue(config.dailyBrief);
 			const eqUser = vi.fn().mockReturnValue({ maybeSingle });
@@ -61,6 +84,9 @@ function createProjectRpcSupabaseMock(
 ) {
 	const rpc = vi.fn().mockResolvedValue({ data: payload, error: null });
 	const from = vi.fn().mockImplementation((table: string) => {
+		if (table === 'users') {
+			return createUsersTimezoneQuery(usersTimezoneRow(MOCK_USER_TIMEZONE));
+		}
 		if (table === 'onto_documents') {
 			const startHereResult = options.startHere ?? { data: [], error: null };
 			const normalizedStartHereResult =
@@ -111,7 +137,10 @@ function createGlobalRpcSupabaseMock(payload: Record<string, unknown>) {
 		}
 		throw new Error(`Unexpected RPC in global RPC mock: ${fn}`);
 	});
-	const from = vi.fn().mockImplementation(() => {
+	const from = vi.fn().mockImplementation((table: string) => {
+		if (table === 'users') {
+			return createUsersTimezoneQuery(usersTimezoneRow(MOCK_USER_TIMEZONE));
+		}
 		throw new Error('Unexpected fallback query path for global RPC mock');
 	});
 	return { rpc, from } as any;
@@ -137,6 +166,9 @@ function createGlobalFallbackSupabaseMock(config: {
 		return Promise.resolve({ data: null, error: null });
 	});
 	const from = vi.fn().mockImplementation((table: string) => {
+		if (table === 'users') {
+			return createUsersTimezoneQuery(usersTimezoneRow(MOCK_USER_TIMEZONE));
+		}
 		if (table === 'onto_projects') {
 			const is = vi.fn().mockResolvedValue({
 				data: config.projectSummaries.map((project) => ({
@@ -328,6 +360,104 @@ function createContextFallbackSupabaseMock(config: {
 
 afterEach(() => {
 	vi.useRealTimers();
+});
+
+describe('loadFastChatPromptContext timezone', () => {
+	// daily_brief without an entityId is the one path that touches no table
+	// other than `users`, so it isolates the timezone lookup.
+	function createTimezoneProbeSupabaseMock(
+		users: QueryResult | (() => never),
+		onFrom?: (table: string) => void
+	) {
+		const from = vi.fn().mockImplementation((table: string) => {
+			onFrom?.(table);
+			if (table !== 'users') throw new Error(`Unexpected table in timezone probe: ${table}`);
+			if (typeof users === 'function') return users();
+			return createUsersTimezoneQuery(users);
+		});
+		return { from, rpc: vi.fn() } as any;
+	}
+
+	it('carries a valid users.timezone onto the returned context', async () => {
+		const supabase = createTimezoneProbeSupabaseMock(usersTimezoneRow('America/New_York'));
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'daily_brief'
+		});
+
+		expect(context.timezone).toBe('America/New_York');
+		expect(context.data).toBeNull();
+	});
+
+	it('falls back to UTC for a missing row, a blank value, or an invalid IANA name', async () => {
+		for (const users of [
+			{ data: null, error: null },
+			usersTimezoneRow(null),
+			usersTimezoneRow('   '),
+			usersTimezoneRow('Mars/Olympus_Mons')
+		]) {
+			const context = await loadFastChatPromptContext({
+				supabase: createTimezoneProbeSupabaseMock(users),
+				userId: 'user-1',
+				contextType: 'daily_brief'
+			});
+			expect(context.timezone).toBe('UTC');
+		}
+	});
+
+	it('falls back to UTC and reports, without failing the load, when the lookup errors', async () => {
+		const onError = vi.fn();
+		const errored = createTimezoneProbeSupabaseMock({
+			data: null,
+			error: { message: 'permission denied' }
+		});
+		const throwing = createTimezoneProbeSupabaseMock(() => {
+			throw new Error('connection reset');
+		});
+
+		for (const supabase of [errored, throwing]) {
+			const context = await loadFastChatPromptContext({
+				supabase,
+				userId: 'user-1',
+				contextType: 'daily_brief',
+				onError
+			});
+			expect(context.timezone).toBe('UTC');
+		}
+		expect(onError).toHaveBeenCalledTimes(2);
+		expect(onError.mock.calls.every(([event]) => event.stage === 'users.timezone')).toBe(true);
+	});
+
+	it('attaches the timezone to every return path, including loaded daily briefs', async () => {
+		const supabase = createDailyBriefSupabaseMock({
+			dailyBrief: {
+				data: {
+					id: 'brief-tz',
+					brief_date: '2026-08-20',
+					executive_summary: 'Summary',
+					priority_actions: [],
+					generation_status: 'completed',
+					llm_analysis: null,
+					metadata: {}
+				},
+				error: null
+			},
+			projectBriefs: { data: [], error: null },
+			entities: { data: [], error: null }
+		});
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'daily_brief',
+			entityId: 'brief-tz'
+		});
+
+		expect(context.timezone).toBe(MOCK_USER_TIMEZONE);
+		expect(context.contextLoadSource).toBe('fallback');
+	});
 });
 
 describe('loadFastChatPromptContext daily_brief', () => {
@@ -552,7 +682,10 @@ describe('loadFastChatPromptContext global', () => {
 			}
 		});
 		expect(supabase.rpc).toHaveBeenCalledTimes(1);
-		expect(supabase.from).not.toHaveBeenCalled();
+		// The RPC path still loads no context tables; the only table read is
+		// the users.timezone lookup that runs alongside every context load.
+		expect(supabase.from.mock.calls.map(([table]: [string]) => table)).toEqual(['users']);
+		expect(context.timezone).toBe(MOCK_USER_TIMEZONE);
 	});
 
 	it('builds compact portfolio summaries from the fallback loader with per-project limits and no doc_structure', async () => {

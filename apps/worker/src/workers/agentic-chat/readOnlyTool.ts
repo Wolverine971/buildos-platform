@@ -62,6 +62,29 @@ const PROJECT_OVERVIEW_TOOL_NAME = 'get_project_overview';
 export const APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME = 'approve_turn_contract_review';
 export const APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME = 'approve_read_only_turn_review';
 export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME = 'approve_mutation_batch_review';
+/**
+ * Reviewer-only exit that returns a flawed proposal to the acting model instead
+ * of the user. Before this existed, every defect a reviewer found in a model
+ * artifact (lumped targets, a cardinality typo, an invented value, a partial
+ * batch) had exactly one non-approving exit — ask the user — which is how
+ * "over-clarification" was born.
+ */
+export const REQUEST_PROPOSAL_REVISION_TOOL_NAME = 'request_proposal_revision';
+export const AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1 = Object.freeze([
+	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	DECLARE_READ_ONLY_TURN_TOOL_NAME,
+	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
+	CANCEL_TURN_CONTRACT_TOOL_NAME,
+	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
+	APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
+	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
+	REQUEST_PROPOSAL_REVISION_TOOL_NAME
+] as const);
+const AGENTIC_CHAT_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1);
+
+export function isAgenticChatControlToolNameV1(value: unknown): value is string {
+	return typeof value === 'string' && AGENTIC_CHAT_CONTROL_TOOL_NAME_SET_V1.has(value);
+}
 const MAX_RESULT_BYTES = 480 * 1024;
 export const AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS = 30_000;
 export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_TIMEOUT_MS = 60_000;
@@ -133,6 +156,25 @@ const SHARED_READ_TOOL_RUNNERS: Readonly<Record<string, SharedReadToolRunner>> =
 			contract_sha256: contractSha256,
 			instruction:
 				'The independently reviewed contract may proceed. Execute only its approved semantic outcomes.'
+		});
+	},
+	[REQUEST_PROPOSAL_REVISION_TOOL_NAME]: (_context, args) => {
+		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 400) : '';
+		const requiredCorrection =
+			typeof args.required_correction === 'string'
+				? args.required_correction.trim().slice(0, 400)
+				: '';
+		if (!reason || !requiredCorrection) {
+			throw new Error(
+				'Proposal revision failed: state what is wrong with the proposal and the exact correction required.'
+			);
+		}
+		return Promise.resolve({
+			status: 'revision_required',
+			reason,
+			required_correction: requiredCorrection,
+			instruction:
+				'Independent review returned this proposal to the acting model for correction. Correct it; do not ask the user.'
 		});
 	},
 	[CANCEL_TURN_CONTRACT_TOOL_NAME]: (_context, args) => {
@@ -377,6 +419,11 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 			throw providerError('read_tool_result_invalid', 'unknown');
 		}
 		const payload = parsed as JsonObject;
+		// Control decisions record their author on the durable row so a reviewer
+		// veto is never mistaken for acting-model hesitation after the fact.
+		if (input.decidedBy && isAgenticChatControlToolNameV1(input.toolName)) {
+			payload.decided_by = input.decidedBy;
+		}
 
 		const affectedEntities: JsonObject[] = [];
 		if (input.toolName === PROJECT_OVERVIEW_TOOL_NAME) {

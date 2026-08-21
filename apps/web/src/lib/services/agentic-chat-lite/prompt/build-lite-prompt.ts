@@ -433,11 +433,14 @@ function buildFocusPurposeSection(
 		// The Timeline section (the only other carrier of "Current time") is
 		// skipped for project_create, so this line is what anchors relative
 		// dates like "end of July". Date-only granularity keeps the section
-		// stable across prepared-prompt reuse within a day.
+		// stable across prepared-prompt reuse within a day. The date is the
+		// user's LOCAL date — after ~20:00 US time the UTC date is already
+		// tomorrow, which used to push "friday" a week out.
+		const localClock = describeLocalClock(clock.nowIso, clock.timezone);
 		const coreContent = [
 			'Current focus:',
 			'- The user is trying to create a new BuildOS project right now.',
-			`- Current date: ${clock.nowIso.slice(0, 10)} (timezone ${clock.timezone}). Resolve relative or year-less dates ("end of July", "March 15") forward from this date; never resolve them into the past.`,
+			`- Current date: ${localClock.localDate}${localClock.weekday ? ` (${localClock.weekday})` : ''} in timezone ${localClock.timezone}. Resolve relative or year-less dates ("end of July", "March 15") forward from this date; never resolve them into the past.`,
 			'- No existing project or focus entity exists yet; treat the user message as the source of truth for the initial project.',
 			'',
 			'Your job here:',
@@ -714,15 +717,82 @@ function buildProjectKnowledgeMapSection(
 	});
 }
 
+type LitePromptLocalClock = {
+	/** Calendar date in the resolved zone, YYYY-MM-DD. */
+	localDate: string;
+	/** Long weekday name in the resolved zone, or null when the instant is unparseable. */
+	weekday: string | null;
+	/** HH:mm in the resolved zone, or null when the instant is unparseable. */
+	localTime: string | null;
+	/** The zone actually used — the input when valid, otherwise UTC. */
+	timezone: string;
+};
+
+/**
+ * Render an ISO instant as the user's local calendar clock. The model resolves
+ * "friday" / "tomorrow" from the DATE line, so that date must be the user's
+ * local date, not the UTC date (which is already tomorrow after ~20:00 US
+ * time). Invalid zones fall back to UTC rather than throwing; an unparseable
+ * instant degrades to its first ten characters so the prompt still renders.
+ */
+export function describeLocalClock(nowIso: string, timezone: string | null | undefined) {
+	const requestedZone = typeof timezone === 'string' ? timezone.trim() : '';
+	const date = new Date(nowIso);
+	const clockFor = (timeZone: string): LitePromptLocalClock => {
+		const parts = new Intl.DateTimeFormat('en-US', {
+			timeZone,
+			hourCycle: 'h23',
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			weekday: 'long',
+			hour: '2-digit',
+			minute: '2-digit'
+		}).formatToParts(date);
+		const value = (type: Intl.DateTimeFormatPartTypes) =>
+			parts.find((part) => part.type === type)?.value ?? '';
+		return {
+			localDate: `${value('year')}-${value('month')}-${value('day')}`,
+			weekday: value('weekday') || null,
+			localTime: `${value('hour')}:${value('minute')}`,
+			timezone: timeZone
+		};
+	};
+
+	if (Number.isNaN(date.getTime())) {
+		return {
+			localDate: nowIso.slice(0, 10),
+			weekday: null,
+			localTime: null,
+			timezone: requestedZone || DEFAULT_TIMEZONE
+		} satisfies LitePromptLocalClock;
+	}
+	if (requestedZone) {
+		try {
+			return clockFor(requestedZone);
+		} catch {
+			// Invalid IANA name — fall through to UTC.
+		}
+	}
+	return clockFor(DEFAULT_TIMEZONE);
+}
+
 function buildTimelineRecentActivitySection(
 	timeline: LitePromptTimelineSummary,
 	focus: LitePromptFocus,
 	projectDigest: LitePromptProjectDigest | null
 ): LitePromptSection {
+	const localClock = describeLocalClock(timeline.generatedAt, timeline.timezone);
 	const frameLines = [
 		'Timeline frame:',
-		`- Current time: ${timeline.generatedAt}`,
-		`- Timezone: ${timeline.timezone}`,
+		`- Current date: ${localClock.localDate}${localClock.weekday ? ` (${localClock.weekday})` : ''}${
+			localClock.localTime
+				? `, ${localClock.localTime} local time in ${localClock.timezone}`
+				: ` in ${localClock.timezone}`
+		}`,
+		`- Current time (UTC instant): ${timeline.generatedAt}`,
+		`- Timezone: ${localClock.timezone}`,
+		'- Resolve relative dates ("friday", "tomorrow", "end of day") from the local date above. A weekday name means its next occurrence after today; if today is that weekday it means one week from today unless the user says "today".',
 		`- Scope: ${timeline.scope}`
 	];
 
@@ -760,7 +830,9 @@ function buildTimelineRecentActivitySection(
 		source: 'lite.timeline_context',
 		slots: {
 			generatedAt: timeline.generatedAt,
-			timezone: timeline.timezone,
+			timezone: localClock.timezone,
+			localDate: localClock.localDate,
+			weekday: localClock.weekday,
 			scope: timeline.scope,
 			factCount: timeline.facts.length,
 			renderMode: mode

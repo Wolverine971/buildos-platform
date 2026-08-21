@@ -20,6 +20,7 @@ import {
 	assertTurnSucceeded,
 	nextWeekdayDate
 } from '../harness/assertions';
+import { HARNESS_TIMEZONE } from '../harness/timezone';
 import { listTasks, waitForTurnRun } from '../harness/telemetry';
 
 const TARGET_TITLE = 'Send the launch announcement to the beta list';
@@ -43,7 +44,7 @@ export function buildRescheduleFixtureDates(now: Date): {
 	// such as “due this Friday,” and make this reschedule fixture explicit.
 	const isFridayInScenarioZone =
 		new Intl.DateTimeFormat('en-US', {
-			timeZone: 'America/New_York',
+			timeZone: HARNESS_TIMEZONE,
 			weekday: 'short'
 		}).format(now) === 'Fri';
 	const expectedFriday = isFridayInScenarioZone

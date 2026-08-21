@@ -9,6 +9,7 @@ import {
 	loadAgentChatSessionSnapshot,
 	prewarmAgentContext,
 	probeActiveTurnRun,
+	syncBrowserTimezone,
 	warmAgentChatStreamTransport
 } from './agent-chat-session';
 
@@ -752,5 +753,55 @@ describe('agent-chat-session helpers', () => {
 		await expect(loadAgentChatSessionSnapshot('missing-session')).rejects.toThrow(
 			'Session not found'
 		);
+	});
+});
+
+describe('syncBrowserTimezone', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('posts the browser zone to /api/users/timezone', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+		vi.stubGlobal('fetch', fetchMock);
+
+		const result = await syncBrowserTimezone({ timezone: 'America/Chicago', force: true });
+
+		expect(result).toBe(true);
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/users/timezone',
+			expect.objectContaining({
+				method: 'POST',
+				body: JSON.stringify({ timezone: 'America/Chicago' })
+			})
+		);
+	});
+
+	it('skips the request when the browser reports no zone or plain UTC', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+		vi.stubGlobal('fetch', fetchMock);
+
+		expect(await syncBrowserTimezone({ timezone: 'UTC', force: true })).toBe(false);
+		expect(await syncBrowserTimezone({ timezone: null, force: true })).toBe(false);
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('never throws when the request fails', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+
+		await expect(syncBrowserTimezone({ timezone: 'Europe/Berlin', force: true })).resolves.toBe(
+			false
+		);
+	});
+
+	it('runs at most once per page load unless forced', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+		vi.stubGlobal('fetch', fetchMock);
+
+		await syncBrowserTimezone({ timezone: 'Asia/Tokyo', force: true });
+		const second = await syncBrowserTimezone({ timezone: 'Asia/Tokyo' });
+
+		expect(second).toBe(false);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 });

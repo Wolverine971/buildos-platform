@@ -31,6 +31,7 @@ import type {
 } from './context-models';
 import { buildDocStructureSummary, collectDocStructureIds } from './context-models';
 import type { MasterPromptContext } from '$lib/services/agentic-chat-lite/prompt/types';
+import { isValidIanaTimezone } from '$lib/services/agentic-chat/tools/core/executors/calendar-datetime';
 import {
 	ensureActorId,
 	fetchProjectSummaries
@@ -3151,7 +3152,53 @@ async function loadDailyBriefContextData(params: {
 	};
 }
 
+const PROMPT_CONTEXT_DEFAULT_TIMEZONE = 'UTC';
+
+/**
+ * Resolve the IANA zone the prompt clock renders in. `users.timezone` is the
+ * centralized source of truth (see /api/users/calendar-preferences); a missing,
+ * blank, or invalid value falls back to UTC so the prompt always carries a
+ * usable zone. Never throws — a failed lookup must not fail the turn.
+ */
+async function resolveUserPromptTimezone(
+	supabase: LoadContextParams['supabase'],
+	userId: string,
+	onError: LoadContextParams['onError']
+): Promise<string> {
+	try {
+		const { data, error } = await supabase
+			.from('users')
+			.select('timezone')
+			.eq('id', userId)
+			.maybeSingle();
+		if (error) {
+			reportContextLoadError(onError, 'users.timezone', error, { userId });
+			return PROMPT_CONTEXT_DEFAULT_TIMEZONE;
+		}
+		const timezone = typeof data?.timezone === 'string' ? data.timezone.trim() : '';
+		return timezone && isValidIanaTimezone(timezone)
+			? timezone
+			: PROMPT_CONTEXT_DEFAULT_TIMEZONE;
+	} catch (error) {
+		reportContextLoadError(onError, 'users.timezone', error, { userId });
+		return PROMPT_CONTEXT_DEFAULT_TIMEZONE;
+	}
+}
+
 export async function loadFastChatPromptContext(
+	params: LoadContextParams
+): Promise<MasterPromptContext> {
+	// The timezone lookup runs alongside the context load (no added latency)
+	// and is attached after the fact so every return path below carries it,
+	// including the daily_brief and early-return branches.
+	const [timezone, context] = await Promise.all([
+		resolveUserPromptTimezone(params.supabase, params.userId, params.onError),
+		loadFastChatPromptContextBody(params)
+	]);
+	return { ...context, timezone };
+}
+
+async function loadFastChatPromptContextBody(
 	params: LoadContextParams
 ): Promise<MasterPromptContext> {
 	const { supabase, userId, contextType, entityId, projectFocus } = params;

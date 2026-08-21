@@ -17,6 +17,7 @@ export type FastChatResolvedPromptContext = {
 	focusEntityId?: string | null;
 	focusEntityName?: string | null;
 	contextLoadSource?: AgentTimingSummary['context_load_source'];
+	timezone?: string | null;
 	conversationSummary?: string | null;
 	entityResolutionHint?: string | null;
 	data?: Record<string, unknown> | string | null;

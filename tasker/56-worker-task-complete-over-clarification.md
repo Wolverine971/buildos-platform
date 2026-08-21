@@ -3,10 +3,128 @@
 # 56 — Worker over-clarifies on `task-complete-cold-reference` (legacy 3/3, worker 1/3)
 
 **Created:** 2026-08-19
-**Status:** Diagnosed to a strong hypothesis; not confirmed, not fixed.
+**Status:** Fixed and live-verified 2026-08-19. The over-clarification regression is GONE (3/3 completed
+the uniquely matched task with no clarification). Two NEW findings opened — see the result section.
 **Mission:** Close the one **genuine, reproducible** worker-vs-legacy behavioral regression the
 Phase 4 six-class campaign found. The worker asks for confirmation instead of completing a
 uniquely matched task; legacy just completes it.
+
+## Live result — 2026-08-19 worker battery (3 scenarios x 3 reps)
+
+Run against `https://build-os.com` in `worker_realtime` from a clean detached worktree at exact
+revision `36955954c` (= `origin/main`; Railway deployment built from the same commit), staged
+capabilities `createOntoDocument,createOntoTask,updateOntoTask` in both provider and adapter lists,
+one-user cohort, `--retry=0`, `AGENTIC_PHASE0_CAPTURE=true`. Zero-spend preflight passed 1/1 first.
+Provider cost `$0.03527355`.
+
+Artifact: `docs/plans/evidence/agentic_chat_tasker56_three_scenario_WORKER_3rep_2026-08-19_36955954c.json`,
+SHA-256 `286b18e9715ce9918419725829afd5cf5f78bea9fa172ae5de01fb9be03320b2`, runId
+`tasker56-three-scenario--60efd3dc-a0b`. Uncommitted per DJ's standing rule.
+
+### The regression this tracker exists for is CLOSED
+
+| Path                        | task-complete-cold-reference |
+| --------------------------- | ---------------------------- |
+| Legacy (08-19 comparator)   | 3/3                          |
+| Worker BEFORE fix (08-19)   | **1/3**                      |
+| Worker AFTER fix (this run) | **2/3**                      |
+
+The pass count understates it. **All three repetitions** emitted the identical tool sequence
+`declare_turn_contract -> approve_turn_contract_review -> approve_mutation_batch_review ->
+update_onto_task`, and **not one** emitted `request_turn_clarification`. The recorded failure mode
+("asked for unnecessary date/confirmation details instead of completing the uniquely matched task")
+did not occur in any repetition. The semantic reviewer approved the mutation every time.
+
+### NEW FINDING 1 — the second guidance line overcorrects (this is the 2/3, not over-clarification)
+
+Repetition 3 completed the task correctly and then failed the LLM judge 2/5:
+
+> "While the assistant successfully located and marked the intro call task as done without
+> unnecessary confirmation, it **explicitly declined to record the stated next step anywhere
+> durable**, which the rubric defines as the core failure."
+
+This traces to the second line added to `SEMANTIC_COMMISSION_GUIDANCE` in `36955954c`:
+
+> "Do not expand a completion report into a separate follow-up entity unless the user explicitly
+> commissioned that creation or delegated how the follow-up should be recorded."
+
+The model obeyed it and **announced the refusal to the user**. Note the four-surface DB assertion
+still passed, because the deterministic D1 stated-future floor wrote the record durably — so the
+next step _was_ captured while the assistant told the user it would not be. That user-visible
+contradiction is the defect, not the missing entity. The lever is the wording of that one line:
+it should suppress inventing an unrequested follow-up entity without licensing the model to
+announce that the stated future is being dropped.
+
+### Finding 1 FIXED — guidance reworded 2026-08-19 (local gates green, NOT yet live-tested)
+
+`SEMANTIC_COMMISSION_GUIDANCE` line 4 in `readOnlyProvider.ts` now reads:
+
+> "Do not expand a completion report into a separate follow-up entity unless the user explicitly
+> commissioned that creation or delegated how the follow-up should be recorded; **declining that
+> creation is never a reason to tell the user their stated next step will go unrecorded — carry it
+> on the matched entity instead.**"
+
+The restraint is preserved (still no unrequested entity); only the narration failure is closed, and
+it points at the alternative line 3 already licenses ("carry only user-supplied outcome or next-step
+text on the matched entity"). A regression guard was added to the existing unique-completion test in
+`agenticChatReadOnlyProvider.test.ts`, asserting the new clause reaches **both** the acting prompt
+and **every** reviewer prompt, so it cannot regress on one surface only.
+
+Gates: focused provider 61/61, full worker 1,063 passed + 1 intentional skip, TS7 typecheck clean,
+lint 0 errors (176 pre-existing warnings) + HTTP size guard OK, Prettier clean. **Uncommitted.**
+
+**Not yet live-verified.** Railway builds from `origin/main`, so validating this needs a commit +
+push + deploy. Deliberately batched with the tasker/57 termination slice so one staging ritual and
+one paid battery validate both — rather than paying the full ritual twice. That battery should run
+`task-complete-cold-reference`, `restraint-noop-and-ambiguity`, and `task-multi-update` together
+(the standing rule for this gate), and it finally gets `task-multi-update` its missing measurement.
+
+### NEW FINDING 2 — a non-terminating turn leaks worker capacity (hand to Phase 5 / tasker 57)
+
+`task-multi-update` scored 0/3 and **carries no semantic signal whatsoever**: all three
+repetitions were rejected at admission with HTTP 429 `WORKER_CAPACITY_EXCEEDED` after ~2s, with
+**zero tool calls**. No model turn ran.
+
+The cause is in the artifact timeline:
+
+| Turn                     | Started (UTC) | Duration  | Outcome                      |
+| ------------------------ | ------------- | --------- | ---------------------------- |
+| `restraint` rep3         | 22:05:29.599  | 317,102ms | **never terminated**         |
+| `task-multi-update` rep1 | 22:11:03.962  | 1,879ms   | 429 WORKER_CAPACITY_EXCEEDED |
+| `task-multi-update` rep2 | 22:11:23.177  | 2,084ms   | 429 WORKER_CAPACITY_EXCEEDED |
+| `task-multi-update` rep3 | 22:11:42.377  | 1,982ms   | 429 WORKER_CAPACITY_EXCEEDED |
+
+`restraint` rep3 was abandoned by the client at 22:10:46. The first 429 landed 17 seconds later
+and they continued for ~40s more. **Correction after investigation: this is not a leak.** The
+consumer's `workerTimeoutMs` is 360s (`consumer.ts:8`) and the turn ran 317s, so the worker was
+still legitimately holding the slot when the client gave up first — a timeout mismatch under
+`concurrency: 1`, not a slot that never releases. The turn itself never terminating IS a real
+defect, now fully characterized in [57](57-worker-phase5-reliability-hardening.md).
+Agentic chat concurrency is hard-defaulted to `1` (`apps/worker/src/workers/agentic-chat/consumer.ts:8`;
+`CHAT_CONCURRENCY` is unset in Railway) and `capacity.ts:103,151` actively asserts `concurrency === 1`.
+So exactly one stuck turn starves every subsequent turn. This is a reliability defect, not a
+behavioral one, and belongs to [57](57-worker-phase5-reliability-hardening.md).
+
+### `restraint-noop-and-ambiguity` did NOT regress
+
+This was the pre-registered risk: narrowing the reviewer gate could cost the worker its restraint
+edge (worker 2/3 vs legacy 1/3). It did not. Both repetitions that terminated passed **both** of
+their turns — `declare_read_only_turn` + `approve_read_only_turn_review` on the no-op, and
+`declare_turn_contract` + `request_turn_clarification` on the genuinely ambiguous one. The model
+still declines to guess. Repetition 3's miss is the non-termination above, not a restraint failure.
+
+### What is still unmeasured
+
+`task-multi-update` needs a rerun once Finding 2 is addressed; this battery produced no data for
+it. Per the majority-of-runs rule, neither the single non-termination nor the single judge miss is
+by itself a defect claim — but Finding 1 has a named, specific code cause and should be treated as
+real.
+
+### Production restoration
+
+Both Railway capability lists set back to exact empty strings and Vercel routing set to `false`,
+independently read back. Note the Vercel gotcha that also caused the first preflight failure: an
+env-var change does not reach running lambdas until a redeploy, so the restore required one.
 
 ## Why this work exists
 

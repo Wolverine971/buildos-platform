@@ -46,6 +46,16 @@ export const TURN_CONTRACT_ENTITY_KINDS = [
 
 export type TurnContractEntityKind = (typeof TURN_CONTRACT_ENTITY_KINDS)[number];
 
+/**
+ * A durable field value an outcome sets on every one of its targets. Targets
+ * that receive different values belong in separate outcomes, so an
+ * independent reviewer can tell "mark A and B done" from "make C top priority".
+ */
+export type TurnContractChange = {
+	field: string;
+	value: string;
+};
+
 export type TurnContractOutcome = {
 	id: string;
 	action: TurnContractAction;
@@ -53,6 +63,8 @@ export type TurnContractOutcome = {
 	description?: string;
 	targetIds: string[];
 	requiredFields: string[];
+	/** Present only when declared; every change field is also a required field. */
+	changes?: TurnContractChange[];
 	minimumSuccessfulEffects: number;
 };
 
@@ -146,6 +158,38 @@ function normalizeFieldName(value: string): string {
 	return normalized;
 }
 
+const MAX_CHANGES_PER_OUTCOME = 20;
+
+function readChangeValue(value: unknown): string | undefined {
+	if (typeof value === 'string') return readString(value, 160);
+	if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+		return String(value);
+	}
+	return undefined;
+}
+
+/**
+ * Returns the declared changes, `[]` when none were declared, or `null` when
+ * any entry is malformed. Like target_ids, a malformed entry rejects the whole
+ * outcome rather than silently weakening it. Repeated fields keep the last value.
+ */
+function readChanges(value: unknown): TurnContractChange[] | null {
+	if (value === undefined) return [];
+	if (!Array.isArray(value) || value.length > MAX_CHANGES_PER_OUTCOME) return null;
+	const valuesByField = new Map<string, string>();
+	for (const item of value) {
+		const record = asRecord(item);
+		if (!record) return null;
+		const rawField = readString(record.field, 80);
+		const changeValue = readChangeValue(record.value);
+		if (!rawField || changeValue === undefined) return null;
+		const field = normalizeFieldName(rawField);
+		if (!field) return null;
+		valuesByField.set(field, changeValue);
+	}
+	return Array.from(valuesByField, ([field, changeValue]) => ({ field, value: changeValue }));
+}
+
 function normalizeOutcome(value: unknown, index: number): TurnContractOutcome | null {
 	const record = asRecord(value);
 	if (!record) return null;
@@ -156,14 +200,22 @@ function normalizeOutcome(value: unknown, index: number): TurnContractOutcome | 
 	const rawRequiredFields = record.required_fields ?? record.requiredFields;
 	const parsedTargetIds = readStringArray(rawTargetIds ?? []);
 	const parsedRequiredFields = readStringArray(rawRequiredFields ?? [], 30);
-	if (!parsedTargetIds || !parsedRequiredFields) return null;
+	const changes = readChanges(record.changes);
+	if (!parsedTargetIds || !parsedRequiredFields || !changes) return null;
 	// A create has no durable entity id until after it executes. Models sometimes
 	// put the containing project id in target_ids, but target_ids means existing
 	// entity ids and would make both pre-execution authorization and completion
 	// impossible. Exact parent/project scope remains protected by the independently
 	// reviewed mutation batch.
 	const targetIds = action === 'create' ? [] : parsedTargetIds;
-	const requiredFields = Array.from(new Set(parsedRequiredFields.map(normalizeFieldName)));
+	// A declared change is a postcondition: the field must actually be written on
+	// each counted target, so it joins required_fields for fulfillment.
+	const requiredFields = Array.from(
+		new Set([
+			...parsedRequiredFields.map(normalizeFieldName),
+			...changes.map((change) => change.field)
+		])
+	);
 	const minimumSuccessfulEffects = readPositiveInteger(
 		record.minimum_successful_effects ?? record.minimumSuccessfulEffects,
 		Math.max(1, targetIds.length)
@@ -183,6 +235,7 @@ function normalizeOutcome(value: unknown, index: number): TurnContractOutcome | 
 			: {}),
 		targetIds,
 		requiredFields,
+		...(changes.length > 0 ? { changes } : {}),
 		minimumSuccessfulEffects
 	};
 }
@@ -423,6 +476,9 @@ function uniqueOutcomes(outcomes: TurnContractOutcome[]): TurnContractOutcome[] 
 			outcome.entityKind,
 			[...outcome.targetIds].sort(),
 			[...outcome.requiredFields].sort(),
+			(outcome.changes ?? [])
+				.map((change) => [change.field, change.value])
+				.sort(([left], [right]) => (left ?? '').localeCompare(right ?? '')),
 			outcome.minimumSuccessfulEffects
 		]);
 		if (seen.has(key)) return false;

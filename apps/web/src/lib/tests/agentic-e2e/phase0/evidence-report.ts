@@ -51,6 +51,13 @@ export interface Phase0ToolExecutionEvidence {
 	success: boolean;
 	sequenceIndex: number | null;
 	executionTimeMs: number | null;
+	decidedBy: string | null;
+}
+
+export interface Phase0ControlDecisionEvidence {
+	name: string;
+	decidedBy: string | null;
+	sequenceIndex: number | null;
 }
 
 export interface Phase0TurnEvidence {
@@ -72,6 +79,7 @@ export interface Phase0TurnEvidence {
 	serverTiming: AgentTimingSummary | null;
 	eventTimings: TurnEventTiming[];
 	toolExecutions: Phase0ToolExecutionEvidence[];
+	controlDecisions: Phase0ControlDecisionEvidence[];
 	usage: StreamUsageSummary;
 	turnRun: TurnRunRow | null;
 	persistence: Phase0PersistenceFootprint | null;
@@ -290,14 +298,44 @@ async function measurePersistenceFootprint(params: {
 	};
 }
 
+/** Control tools whose persisted `result` carries a `decided_by` reviewer attribution. */
+const CONTROL_TOOL_NAMES: readonly string[] = Object.freeze([
+	'declare_turn_contract',
+	'request_turn_clarification',
+	'approve_turn_contract_review',
+	'approve_mutation_batch_review',
+	'request_proposal_revision'
+]);
+
+function readDecidedBy(result: unknown): string | null {
+	if (!result || typeof result !== 'object') return null;
+	const value = (result as Record<string, unknown>).decided_by;
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed.slice(0, 64) : null;
+}
+
 function toolEvidence(rows: ToolExecutionRow[]): Phase0ToolExecutionEvidence[] {
 	return rows.map((row) => ({
 		name: row.tool_name,
 		op: row.gateway_op,
 		success: row.success,
 		sequenceIndex: row.sequence_index,
-		executionTimeMs: row.execution_time_ms
+		executionTimeMs: row.execution_time_ms,
+		decidedBy: readDecidedBy(row.result)
 	}));
+}
+
+function controlDecisionEvidence(
+	tools: Phase0ToolExecutionEvidence[]
+): Phase0ControlDecisionEvidence[] {
+	return tools
+		.filter((tool) => CONTROL_TOOL_NAMES.includes(tool.name))
+		.map((tool) => ({
+			name: tool.name,
+			decidedBy: tool.decidedBy,
+			sequenceIndex: tool.sequenceIndex
+		}));
 }
 
 export async function collectPhase0TurnEvidence(params: {
@@ -369,6 +407,8 @@ export async function collectPhase0TurnEvidence(params: {
 		captureErrors.push('No stream-correlated model usage row was observed.');
 	}
 
+	const toolExecutionEvidence = toolEvidence(tools);
+
 	return {
 		scenarioId: params.scenario.id,
 		scenarioTitle: params.scenario.title,
@@ -387,7 +427,8 @@ export async function collectPhase0TurnEvidence(params: {
 		clientTiming: params.result.timing,
 		serverTiming: params.result.serverTiming,
 		eventTimings: params.result.eventTimings,
-		toolExecutions: toolEvidence(tools),
+		toolExecutions: toolExecutionEvidence,
+		controlDecisions: controlDecisionEvidence(toolExecutionEvidence),
 		usage,
 		turnRun,
 		persistence,

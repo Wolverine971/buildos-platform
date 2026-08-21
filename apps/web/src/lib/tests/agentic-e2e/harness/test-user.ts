@@ -8,6 +8,7 @@
 //   3. an ontology actor (onto_* rows are actor-scoped)   -> ensureActorId RPC
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ensureActorId } from '@buildos/shared-agent-ops';
+import { HARNESS_TIMEZONE } from './timezone';
 import type { DbView } from './types';
 
 /** Best-effort creation of the auth user. Safe to call when the user exists. */
@@ -46,9 +47,15 @@ export async function provisionTestUser(params: {
 }): Promise<DbView> {
 	const admin = createAdminSupabaseClient();
 
+	// Pin the harness user's zone so the prompt clock (which reads
+	// `users.timezone`) and the scenario date assertions agree on "today" —
+	// otherwise they disagree for ~4 hours every evening US time.
 	const { error: upsertError } = await admin
 		.from('users')
-		.upsert({ id: params.userId, email: params.email }, { onConflict: 'id' });
+		.upsert(
+			{ id: params.userId, email: params.email, timezone: HARNESS_TIMEZONE },
+			{ onConflict: 'id' }
+		);
 	if (upsertError) {
 		throw new Error(`[agentic-e2e] Failed to upsert public.users row: ${upsertError.message}`);
 	}

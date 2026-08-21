@@ -59,8 +59,20 @@ function turn(overrides: Partial<Phase0TurnEvidence> = {}): Phase0TurnEvidence {
 				op: 'onto.task.create',
 				success: true,
 				sequenceIndex: 1,
-				executionTimeMs: 40
+				executionTimeMs: 40,
+				decidedBy: null
+			},
+			{
+				name: 'declare_turn_contract',
+				op: null,
+				success: true,
+				sequenceIndex: 2,
+				executionTimeMs: 15,
+				decidedBy: 'contract_reviewer'
 			}
+		],
+		controlDecisions: [
+			{ name: 'declare_turn_contract', decidedBy: 'contract_reviewer', sequenceIndex: 2 }
 		],
 		usage: {
 			requestCount: 1,
@@ -137,11 +149,18 @@ describe('Phase 0 evidence report', () => {
 			totalModelCostUsd: 0.03,
 			client: { ttftMs: { samples: 2, p50: 100, p95: 200 } },
 			server: { turnAdmissionMs: { samples: 2, p50: 15, p95: 15 } },
-			toolExecutionMs: { samples: 2, p50: 40, p95: 40 },
+			toolExecutionMs: { samples: 4, p50: 15, p95: 40 },
 			retainedRowsPerTurn: { samples: 2, p50: 8, p95: 10 },
 			retainedBytesPerTurn: { samples: 2, p50: 2_000, p95: 3_000 }
 		});
 		expect(report.configuration.executionMode).toBe('legacy_sse');
 		expect(report.limitations.join(' ')).toContain('not a PostgreSQL WAL');
+
+		const [firstTurn] = report.turns;
+		expect(firstTurn.toolExecutions[0].decidedBy).toBeNull();
+		expect(firstTurn.toolExecutions[1].decidedBy).toBe('contract_reviewer');
+		expect(firstTurn.controlDecisions).toEqual([
+			{ name: 'declare_turn_contract', decidedBy: 'contract_reviewer', sequenceIndex: 2 }
+		]);
 	});
 });

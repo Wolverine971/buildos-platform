@@ -21,6 +21,7 @@ const SHARED_ALLOWLIST = [
 	'declare_read_only_turn',
 	'request_turn_clarification',
 	'cancel_turn_contract',
+	'request_proposal_revision',
 	'list_onto_projects',
 	'list_onto_tasks',
 	'list_onto_goals',
@@ -336,6 +337,44 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 		});
 		expect(client.from).not.toHaveBeenCalled();
 		expect(access.getActorId).not.toHaveBeenCalled();
+	});
+
+	it('records a proposal revision and stamps the decision author on control results', async () => {
+		const access = accessStub();
+		const client = fakeSharedClient();
+		const result = await adapterWith(client, access).execute({
+			...requestFor('request_proposal_revision', {
+				reason: 'The single update outcome lumps the Halcyon task into the completion set.',
+				required_correction: 'Declare two outcomes: completions and the priority change.'
+			}),
+			decidedBy: 'contract_reviewer'
+		});
+
+		expect(result.result).toMatchObject({
+			status: 'revision_required',
+			decided_by: 'contract_reviewer',
+			required_correction: 'Declare two outcomes: completions and the priority change.'
+		});
+		expect(result.requiresUserAction).toBe(false);
+		expect(client.from).not.toHaveBeenCalled();
+		expect(access.getActorId).not.toHaveBeenCalled();
+	});
+
+	it('rejects a proposal revision without an actionable correction', async () => {
+		await expect(
+			adapterWith(fakeSharedClient(), accessStub()).execute(
+				requestFor('request_proposal_revision', { reason: 'Vague.' })
+			)
+		).rejects.toThrow('Proposal revision failed');
+	});
+
+	it('does not stamp an author on ordinary reads or unattributed control calls', async () => {
+		const access = accessStub();
+		const client = fakeSharedClient();
+		const result = await adapterWith(client, access).execute(
+			requestFor('declare_read_only_turn', { reason: 'The user asked a question.' })
+		);
+		expect(result.result).not.toHaveProperty('decided_by');
 	});
 
 	it('records an independently bound turn-contract approval without touching project data', async () => {

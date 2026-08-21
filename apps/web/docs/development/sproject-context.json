@@ -21,6 +21,16 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
+			"file": "src/routes/today/+page.svelte",
+			"type": "page",
+			"components": [
+				"TaskEditModal",
+				"AgentChatModal",
+				"DashboardInboxModal",
+				"OverdueTaskTriageModal"
+			]
+		},
+		{
 			"file": "src/routes/time-blocks/+page.svelte",
 			"type": "page",
 			"components": [
@@ -30,16 +40,6 @@
 				"TimeBlockList",
 				"AvailableSlotList",
 				"CalendarConnectionOverlay"
-			]
-		},
-		{
-			"file": "src/routes/today/+page.svelte",
-			"type": "page",
-			"components": [
-				"TaskEditModal",
-				"AgentChatModal",
-				"DashboardInboxModal",
-				"OverdueTaskTriageModal"
 			]
 		},
 		{
@@ -212,11 +212,6 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/ProjectWorkspaceEntityModals.svelte",
 			"type": "component",
 			"components": [
@@ -254,6 +249,11 @@
 				"ProjectGraphSection",
 				"AgentChatModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/projects-old/[id]/+page.svelte",
@@ -919,36 +919,6 @@
 			"exports": ["workRunsStore", "workRunsLoading", "loadWorkRuns", "mergeWorkRuns"]
 		},
 		{
-			"file": "src/lib/components/admin/adminRoutes.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"CHAT_ADMIN_ROOT",
-				"CHAT_ADMIN_TITLE",
-				"CHAT_ADMIN_NAV_ITEMS",
-				"isChatAdminSubpath"
-			]
-		},
-		{
-			"file": "src/lib/components/chat/project-selector-browser.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_PROJECT_SELECTOR_LIMIT",
-				"MAX_PROJECT_SELECTOR_LIMIT",
-				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
-				"normalizeProjectSelectionSearch",
-				"PROJECT_RECENCY_RECENT_MAX_DAYS",
-				"PROJECT_RECENCY_OLDER_MAX_DAYS",
-				"parseProjectUpdatedAt",
-				"formatRelativeProjectUpdate",
-				"groupProjectsByRecency",
-				"normalizeProjectSelectionLimit",
-				"clearProjectSelectionBrowserCache",
-				"fetchProjectSelectionSummaries"
-			]
-		},
-		{
 			"file": "src/lib/components/agent/agent-chat-attachments.svelte.ts",
 			"type": "component",
 			"components": [],
@@ -1006,6 +976,8 @@
 				"buildAgentRequestError",
 				"prewarmAgentContext",
 				"probeActiveTurnRun",
+				"resolveBrowserTimezone",
+				"syncBrowserTimezone",
 				"warmAgentChatStreamTransport",
 				"buildAgentChatSessionSnapshot",
 				"loadAgentChatSessionSnapshot"
@@ -1128,6 +1100,36 @@
 				"fetchProjectEntities",
 				"normalizeEntitySearch",
 				"normalizeEntityLimit"
+			]
+		},
+		{
+			"file": "src/lib/components/admin/adminRoutes.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"CHAT_ADMIN_ROOT",
+				"CHAT_ADMIN_TITLE",
+				"CHAT_ADMIN_NAV_ITEMS",
+				"isChatAdminSubpath"
+			]
+		},
+		{
+			"file": "src/lib/components/chat/project-selector-browser.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"DEFAULT_PROJECT_SELECTOR_LIMIT",
+				"MAX_PROJECT_SELECTOR_LIMIT",
+				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
+				"normalizeProjectSelectionSearch",
+				"PROJECT_RECENCY_RECENT_MAX_DAYS",
+				"PROJECT_RECENCY_OLDER_MAX_DAYS",
+				"parseProjectUpdatedAt",
+				"formatRelativeProjectUpdate",
+				"groupProjectsByRecency",
+				"normalizeProjectSelectionLimit",
+				"clearProjectSelectionBrowserCache",
+				"fetchProjectSelectionSummaries"
 			]
 		},
 		{
@@ -1313,36 +1315,6 @@
 			"exports": ["createDragDropState"]
 		},
 		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"fetchLinkedEntities",
-				"fetchAvailableEntities",
-				"createEdges",
-				"linkEntities",
-				"deleteEdge",
-				"unlinkEntity",
-				"filterEntities"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"ALLOWED_LINKS",
-				"canLink",
-				"RELATIONSHIP_MAP",
-				"getRelationship",
-				"getAllowedTargetKinds",
-				"ENTITY_SECTIONS",
-				"getEntityDisplayName",
-				"formatRelationshipLabel",
-				"getFilteredSections"
-			]
-		},
-		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 			"type": "component",
 			"components": [],
@@ -1400,6 +1372,36 @@
 				"getTaskPersonRelevanceScore",
 				"taskMatchesPersonFocusFilter",
 				"getTaskPersonRelevanceLabel"
+			]
+		},
+		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"fetchLinkedEntities",
+				"fetchAvailableEntities",
+				"createEdges",
+				"linkEntities",
+				"deleteEdge",
+				"unlinkEntity",
+				"filterEntities"
+			]
+		},
+		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"ALLOWED_LINKS",
+				"canLink",
+				"RELATIONSHIP_MAP",
+				"getRelationship",
+				"getAllowedTargetKinds",
+				"ENTITY_SECTIONS",
+				"getEntityDisplayName",
+				"formatRelationshipLabel",
+				"getFilteredSections"
 			]
 		},
 		{
@@ -1629,8 +1631,6 @@
 		"src/lib/components/admin/chat/SessionFlowVisuals.svelte",
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
 		"src/lib/components/project/v2/EntityTabStrip.svelte",
-		"src/lib/components/admin/adminRoutes.ts",
-		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/agent/agent-chat-attachments.svelte.ts",
 		"src/lib/components/agent/agent-chat-client-actions.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
@@ -1650,6 +1650,8 @@
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/external-account-tool-routing.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
+		"src/lib/components/admin/adminRoutes.ts",
+		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/inbox/inbox-presentation.ts",
 		"src/lib/components/notifications/notification-preview.ts",
 		"src/lib/components/projects/project-list.ts",
@@ -1663,12 +1665,12 @@
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
 		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/project/v2/board-a11y.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",

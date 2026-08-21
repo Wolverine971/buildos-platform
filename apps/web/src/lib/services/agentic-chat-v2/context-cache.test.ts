@@ -4,7 +4,8 @@ import {
 	FASTCHAT_CONTEXT_CACHE_TTL_MS,
 	buildFastChatContextCacheEntry,
 	buildFastChatContextCacheKey,
-	isFastChatContextCacheFresh
+	isFastChatContextCacheFresh,
+	normalizeFastChatContextSnapshot
 } from './context-cache';
 
 describe('fastchat context cache helpers', () => {
@@ -69,8 +70,31 @@ describe('fastchat context cache helpers', () => {
 				focusEntityType: null,
 				focusEntityId: null,
 				focusEntityName: null,
+				timezone: null,
 				data: null
 			}
 		});
+	});
+
+	it('round-trips the prompt timezone through cache entries and snapshot normalization', () => {
+		const entry = buildFastChatContextCacheEntry({
+			cacheKey: 'v2|global|none|none|none',
+			context: {
+				contextType: 'global',
+				timezone: 'America/New_York'
+			},
+			createdAt: '2026-03-10T12:00:00.000Z'
+		});
+
+		expect(entry.context.timezone).toBe('America/New_York');
+		expect(normalizeFastChatContextSnapshot(entry.context)?.timezone).toBe('America/New_York');
+		expect(
+			normalizeFastChatContextSnapshot(JSON.parse(JSON.stringify(entry.context)))?.timezone
+		).toBe('America/New_York');
+		// Legacy snapshots written before the field existed normalize to null,
+		// which the prompt builder renders as UTC.
+		expect(
+			normalizeFastChatContextSnapshot({ contextType: 'global', data: null })?.timezone
+		).toBeNull();
 	});
 });

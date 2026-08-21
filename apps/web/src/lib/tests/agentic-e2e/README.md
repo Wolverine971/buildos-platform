@@ -36,7 +36,13 @@ production SSE client, and rendered message list.
     Also needs the already-present `PUBLIC_SUPABASE_URL`,
     `PRIVATE_SUPABASE_SERVICE_KEY`, and `PRIVATE_OPENROUTER_API_KEY`.
 2. The test user (auth row + `public.users` row + ontology actor) is
-   auto-provisioned on first run using the service key.
+   auto-provisioned on first run using the service key. Its `users.timezone`
+   is pinned to `HARNESS_TIMEZONE` (`harness/timezone.ts`, `America/New_York`)
+   on every provision. The agentic prompt renders its clock from
+   `users.timezone`, and the harness date assertions (`nextWeekdayDate`,
+   `assertIsoDate`, the reschedule fixture) resolve "today"/"friday" in the
+   same constant — so the model and the scenario agree on the calendar day even
+   when a run starts after 20:00 Eastern, when UTC has already rolled over.
 3. For the browser/modal lane, install Chromium once:
     ```bash
     pnpm --filter @buildos/web exec playwright install chromium

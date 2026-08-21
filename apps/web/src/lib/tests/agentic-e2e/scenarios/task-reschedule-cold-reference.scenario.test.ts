@@ -21,4 +21,19 @@ describe('task reschedule cold-reference fixture', () => {
 		expect(dates.targetDueAt.slice(0, 10)).not.toBe(dates.expectedFriday);
 		expect(dates.controlDueAt).not.toBe(dates.targetDueAt);
 	});
+
+	// The live defect: at 20:17 EDT the UTC clock already reads Friday 08-21, so
+	// an unpinned prompt resolved "friday" to 08-28 while the scenario (pinned to
+	// HARNESS_TIMEZONE) expected 08-21. Both sides now resolve in New York.
+	it('treats a Thursday evening in New York as still-before-Friday', () => {
+		const dates = buildRescheduleFixtureDates(new Date('2026-08-21T00:17:43.256Z'));
+
+		expect(dates.expectedFriday).toBe('2026-08-21');
+	});
+
+	it('rolls a Friday daytime in New York forward to the following Friday', () => {
+		const dates = buildRescheduleFixtureDates(new Date('2026-08-21T16:00:00.000Z'));
+
+		expect(dates.expectedFriday).toBe('2026-08-28');
+	});
 });
