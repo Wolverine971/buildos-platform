@@ -1380,6 +1380,15 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				const contractWriteCarveOut = forceNoToolSynthesis
 					? state.takeTurnContractWriteCarveOut(currentRequest)
 					: null;
+				// Read-loop escalation is monotonic, so a turn that read a lot before
+				// its contract is forced tool-free after its first mutation round —
+				// exactly where the organize folders were created and the moves never
+				// proposed. An approved contract with untouched outcomes gets its one
+				// write-only completion pass instead of a tool-free answer.
+				const contractCompletion =
+					forceNoToolSynthesis && !contractWriteCarveOut
+						? state.takeContractCompletionContinuation(currentRequest)
+						: null;
 				const semanticDispositionGate =
 					pattern.readOps.length > 0 && !roundContainsSemanticDisposition
 						? state.takeSemanticTurnDispositionGate(currentRequest, {
@@ -1388,6 +1397,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						: null;
 				if (contractWriteCarveOut) {
 					currentRequest = contractWriteCarveOut;
+				} else if (contractCompletion) {
+					currentRequest = contractCompletion;
 				} else if (semanticDispositionGate) {
 					currentRequest = semanticDispositionGate;
 				} else if (forceNoToolSynthesis) {
@@ -1398,7 +1409,10 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				toolRoundCompleted = false;
 				nextProviderRound += 1;
 				return clarificationRequiresToolFreeSynthesis ||
-					(forceNoToolSynthesis && !contractWriteCarveOut && !semanticDispositionGate)
+					(forceNoToolSynthesis &&
+						!contractWriteCarveOut &&
+						!contractCompletion &&
+						!semanticDispositionGate)
 					? this.streamForcedSynthesis(currentRequest, completedToolRound.usage, state)
 					: this.streamContinuation(currentRequest, completedToolRound.usage, state);
 			},
@@ -3698,6 +3712,7 @@ function buildMutationBatchReviewRequest(
 					...SEMANTIC_COMMISSION_GUIDANCE,
 					'Reject unrelated cleanup, convenience edits, guessed targets, invented identifiers, broader scope, and follow-up changes that merely seem helpful.',
 					'Arguments the tool schema marks as required (listed below per tool) are never "invented values": when the contract does not specify one, the agent supplies a brief on-topic value — for example a one-line description or a default type for a new grouping document. Never return a batch to remove a required argument; the tool cannot execute without it. Judge only whether the value is reasonable for the commissioned outcome.',
+					'Likewise a short heading or one-line body as `content`, a default `state_key`, or a `type_key` on a new container are implementation defaults for that create; never return a batch merely to remove them.',
 					...(allowRevision
 						? [
 								'If a mutation carries an invented or unstated value, targets an entity outside the approved contract, or broadens scope while the user commission is clear, call request_proposal_revision with the exact correction; that returns the batch to the acting model, not the user.'
