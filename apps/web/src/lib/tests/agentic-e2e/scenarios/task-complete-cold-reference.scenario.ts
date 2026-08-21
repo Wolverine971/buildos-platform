@@ -130,6 +130,7 @@ export const taskCompleteColdReferenceScenario: Scenario = {
 	id: 'task-complete-cold-reference',
 	title: 'Close a task named only by company, cold, and carry the next step forward',
 	category: 'task',
+	requiredMutationTools: ['update_onto_task'],
 	seed: async (ctx): Promise<SeedResult> => {
 		const { projectId } = await seedProject(ctx, spec());
 		const tasks = await listTasks(ctx.db.admin, projectId);

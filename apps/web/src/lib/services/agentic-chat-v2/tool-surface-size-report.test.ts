@@ -121,9 +121,13 @@ describe('tool surface size report', () => {
 		// retain 160-196 chars of headroom and remain at least 15.6% below the
 		// pre-trim baselines; do not trim behavior-critical guidance merely to
 		// preserve the older caps.
-		expect(globalWrite?.totalChars).toBeLessThanOrEqual(21_100);
-		expect(projectBasic?.totalChars).toBeLessThanOrEqual(12_100);
-		expect(projectWrite?.totalChars).toBeLessThanOrEqual(19_700);
-		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(22_000);
+		// 2026-08-22: declare_turn_contract gained symbolic `label`/`parent_label`
+		// (create-then-move contracts were unreviewable without them), moving the
+		// four profiles to 21,755/12,791/20,358/22,663 chars. Caps keep ~190 chars
+		// of headroom each.
+		expect(globalWrite?.totalChars).toBeLessThanOrEqual(21_950);
+		expect(projectBasic?.totalChars).toBeLessThanOrEqual(12_980);
+		expect(projectWrite?.totalChars).toBeLessThanOrEqual(20_550);
+		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(22_850);
 	});
 });

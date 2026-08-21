@@ -104,9 +104,15 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.document.tree.move',
 		downstreamIdempotencySupported: false,
 		descriptionOverride:
-			'Move an existing document to an exact location in the current project document tree. Use only document and parent UUIDs returned by tree/document reads. Omit or set new_parent_id to null for root placement. Parent-by-title creation is not available in the worker.',
+			'Move an existing document in the current project document tree. To group documents under a parent, prefer new_parent_title with a short category name (e.g. "Pricing", "Meeting notes"): the server reuses the existing document with that title or creates the parent, so grouping is one call per document with no parent UUID needed. Reuse the exact same new_parent_title for every document in a category. Pass new_parent_id only for a parent UUID returned by a tree/document read; never invent a UUID. Omit both for root placement.',
 		requiredNames: ['project_id', 'document_id'],
-		reviewedArgumentNames: ['project_id', 'document_id', 'new_parent_id', 'new_position']
+		reviewedArgumentNames: [
+			'project_id',
+			'document_id',
+			'new_parent_id',
+			'new_parent_title',
+			'new_position'
+		]
 	},
 	create_task_document: {
 		capability: 'createTaskDocument',

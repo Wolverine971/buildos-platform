@@ -14,6 +14,11 @@ import {
 	AgenticChatLlmUsageObserver,
 	AgenticChatOpenRouterReadOnlyClient
 } from './openRouterReadOnlyClient';
+import {
+	AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1,
+	type AgenticChatMutationCapabilityNameV1,
+	type AgenticChatProviderMutationCapabilitiesV1
+} from './mutationToolCatalog';
 import { createAgenticChatPhase3Assembly } from './phase3Assembly';
 import { type AgenticChatPhase3Config, loadAgenticChatPhase3Config } from './phase3Config';
 import {
@@ -35,13 +40,50 @@ export type AgenticChatPhase3BootstrapState =
 	| 'stopped'
 	| 'failed';
 
+export type AgenticChatMutationCapabilitiesSummaryV1 = {
+	provider: { count: number; names: string[] };
+	adapter: { count: number; names: string[] };
+	advertisedMutationToolNames: string[];
+};
+
 export type AgenticChatPhase3BootstrapHealth = {
 	enabled: boolean;
 	healthy: boolean;
 	state: AgenticChatPhase3BootstrapState;
 	reason?: string;
 	runtime: AgenticChatConsumerRuntimeHealth | null;
+	mutationCapabilities: AgenticChatMutationCapabilitiesSummaryV1 | null;
 };
+
+/**
+ * Reduce the raw provider/adapter mutation-capability maps to the surface an
+ * operator or the e2e harness actually needs to read back: which capability
+ * names are turned on for each side, and which mutation tool names the
+ * provider can advertise because both the provider and its adapter agree the
+ * capability is live. Names only — this never touches env values.
+ */
+export function summarizeAgenticChatMutationCapabilitiesV1(
+	providerCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>> | undefined,
+	adapterCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>> | undefined
+): AgenticChatMutationCapabilitiesSummaryV1 {
+	const providerNames: AgenticChatMutationCapabilityNameV1[] = [];
+	const adapterNames: AgenticChatMutationCapabilityNameV1[] = [];
+	const advertisedMutationToolNames: string[] = [];
+
+	for (const [capability, toolName] of AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1) {
+		const providerEnabled = providerCapabilities?.[capability] === true;
+		const adapterEnabled = adapterCapabilities?.[capability] === true;
+		if (providerEnabled) providerNames.push(capability);
+		if (adapterEnabled) adapterNames.push(capability);
+		if (providerEnabled && adapterEnabled) advertisedMutationToolNames.push(toolName);
+	}
+
+	return {
+		provider: { count: providerNames.length, names: providerNames },
+		adapter: { count: adapterNames.length, names: adapterNames },
+		advertisedMutationToolNames
+	};
+}
 
 export type AgenticChatPhase3BootstrapAssemblyPort = {
 	runtime: {
@@ -87,6 +129,22 @@ export function createAgenticChatPhase3Bootstrap(
 	const config = loadAgenticChatPhase3Config(options.environment);
 	if (!config.enabled) return new AgenticChatPhase3Bootstrap(false, null);
 
+	const mutationCapabilities = summarizeAgenticChatMutationCapabilitiesV1(
+		config.mutationProviderCapabilities,
+		config.mutationAdapterCapabilities
+	);
+	// One-line, JSON-ish startup record of the write surface — capability and
+	// tool names/counts only, never env values — so operators and the e2e
+	// harness can confirm what mutation capability shipped without reading env.
+	console.log(
+		JSON.stringify({
+			event: 'agentic_chat_mutation_capabilities',
+			provider: mutationCapabilities.provider,
+			adapter: mutationCapabilities.adapter,
+			advertisedMutationToolNames: mutationCapabilities.advertisedMutationToolNames
+		})
+	);
+
 	const createAssembly = options.createAssembly ?? createDefaultAssembly;
 	const assembly = createAssembly({
 		client: options.client,
@@ -95,7 +153,7 @@ export function createAgenticChatPhase3Bootstrap(
 		onUsageError: options.onUsageError,
 		onConsumptionBillingError: options.onConsumptionBillingError
 	});
-	return new AgenticChatPhase3Bootstrap(true, assembly);
+	return new AgenticChatPhase3Bootstrap(true, assembly, mutationCapabilities);
 }
 
 export class AgenticChatPhase3Bootstrap {
@@ -106,7 +164,8 @@ export class AgenticChatPhase3Bootstrap {
 
 	constructor(
 		private readonly enabled: boolean,
-		private readonly assembly: AgenticChatPhase3BootstrapAssemblyPort | null
+		private readonly assembly: AgenticChatPhase3BootstrapAssemblyPort | null,
+		private readonly mutationCapabilities: AgenticChatMutationCapabilitiesSummaryV1 | null = null
 	) {
 		if (enabled !== (assembly !== null)) {
 			throw new Error('Agentic Chat bootstrap enabled state and assembly must agree');
@@ -160,20 +219,23 @@ export class AgenticChatPhase3Bootstrap {
 				healthy: true,
 				state: 'disabled',
 				reason: 'disabled',
-				runtime: null
+				runtime: null,
+				mutationCapabilities: null
 			};
 		}
 
 		const runtime = this.safeRuntimeHealth();
+		const mutationCapabilities = this.mutationCapabilities;
 		if (this.state === 'running') {
 			return runtime?.healthy
-				? { enabled: true, healthy: true, state: this.state, runtime }
+				? { enabled: true, healthy: true, state: this.state, runtime, mutationCapabilities }
 				: {
 						enabled: true,
 						healthy: false,
 						state: this.state,
 						reason: runtime?.reason ?? 'runtime_health_unavailable',
-						runtime
+						runtime,
+						mutationCapabilities
 					};
 		}
 		if (this.state === 'stopping' || this.state === 'stopped') {
@@ -182,7 +244,8 @@ export class AgenticChatPhase3Bootstrap {
 				healthy: true,
 				state: this.state,
 				reason: this.state,
-				runtime
+				runtime,
+				mutationCapabilities
 			};
 		}
 		return {
@@ -190,7 +253,8 @@ export class AgenticChatPhase3Bootstrap {
 			healthy: false,
 			state: this.state,
 			reason: this.state === 'failed' ? (this.lastError ?? 'bootstrap_failed') : this.state,
-			runtime
+			runtime,
+			mutationCapabilities
 		};
 	}
 

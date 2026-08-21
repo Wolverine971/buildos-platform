@@ -178,6 +178,8 @@ describe('document relationship gateway handlers', () => {
 		expect(result).toEqual({
 			project_id: PROJECT_ID,
 			document_id: DOCUMENT_ID,
+			parent_id: PARENT_ID,
+			parent_created: false,
 			structure: {
 				version: 4,
 				root: [
@@ -188,7 +190,54 @@ describe('document relationship gateway handlers', () => {
 					}
 				]
 			},
-			message: `Moved document ${DOCUMENT_ID} in doc structure.`
+			message: `Moved document ${DOCUMENT_ID} under parent ${PARENT_ID}.`
+		});
+	});
+
+	it('resolves a parent by title, reusing the existing document, and reports it in the receipt', async () => {
+		let lookup = 0;
+		const admin = {
+			from: vi.fn(() => {
+				const builder = {
+					select: vi.fn(() => builder),
+					eq: vi.fn(() => builder),
+					is: vi.fn(() => builder),
+					ilike: vi.fn(() => builder),
+					limit: vi.fn(() => builder),
+					maybeSingle: vi.fn(async () => {
+						lookup += 1;
+						return {
+							data: {
+								id: lookup === 1 ? DOCUMENT_ID : PARENT_ID,
+								project_id: PROJECT_ID
+							},
+							error: null
+						};
+					})
+				};
+				return builder;
+			})
+		};
+		const result = await EXTERNAL_OP_HANDLERS['onto.document.tree.move'](context(admin), {
+			project_id: PROJECT_ID,
+			document_id: DOCUMENT_ID,
+			new_parent_title: 'Planning',
+			new_position: 0
+		});
+
+		expect(mocks.moveDocument).toHaveBeenCalledWith(
+			admin,
+			PROJECT_ID,
+			DOCUMENT_ID,
+			{ newParentId: PARENT_ID, newPosition: 0 },
+			'actor-1'
+		);
+		expect(result).toMatchObject({
+			project_id: PROJECT_ID,
+			document_id: DOCUMENT_ID,
+			parent_id: PARENT_ID,
+			parent_created: false,
+			message: `Moved document ${DOCUMENT_ID} under parent ${PARENT_ID}.`
 		});
 	});
 

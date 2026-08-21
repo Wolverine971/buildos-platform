@@ -109,6 +109,20 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 								maximum: 100,
 								description:
 									'Distinct targets that must change, counted within target_ids and never more than its length: setting several fields on one target is still one effect. Use the full target count when every target must change.'
+							},
+							label: {
+								type: 'string',
+								maxLength: 40,
+								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
+								description:
+									'Create outcomes only: a short symbolic name for the one entity this outcome creates (e.g. "meeting-notes"), so later outcomes can reference it before it has an id. A labelled create has minimum_successful_effects 1 and declares its title in changes. Use one labelled create per new parent.'
+							},
+							parent_label: {
+								type: 'string',
+								maxLength: 40,
+								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
+								description:
+									'Move/organize outcomes only: the destination is the entity created by the outcome in this contract carrying this label. The id is bound by the system after that create executes; this is a resolved destination, not a missing value. Omit when moving into an existing parent (put its id in changes as parent_id) or when grouping by new_parent_title at execution.'
 							}
 						},
 						required: ['action', 'entity_kind', 'minimum_successful_effects']

@@ -1484,3 +1484,153 @@ describe('max-token truncation detection', () => {
 		expect(ended?.payload).toMatchObject({ finish_reason: 'length' });
 	});
 });
+
+describe('rejected tool-call receipt', () => {
+	function toolCallFrames(
+		call: { name: string; arguments?: unknown; id?: string },
+		finishReason = 'tool_calls'
+	) {
+		return [
+			JSON.stringify({
+				choices: [
+					{
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									id: call.id ?? 'provider-call-1',
+									type: 'function',
+									function: {
+										name: call.name,
+										arguments: call.arguments ?? '{"query":"9takes"}'
+									}
+								}
+							]
+						}
+					}
+				]
+			}),
+			JSON.stringify({
+				usage: { prompt_tokens: 9, completion_tokens: 2, total_tokens: 11 },
+				choices: [{ delta: {}, finish_reason: finishReason }]
+			}),
+			'[DONE]'
+		];
+	}
+
+	const tools = [
+		readToolDefinition('get_workspace_overview'),
+		readToolDefinition('get_project_overview'),
+		readToolDefinition('list_onto_tasks')
+	];
+
+	async function endedPayload(frames: string[], toolChoice: 'auto' | 'none' = 'auto') {
+		const fetchImpl = vi.fn(async () => sseResponse(frames)) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		await collect(
+			test.client.stream({
+				...input(),
+				tools: toolChoice === 'none' ? [] : tools,
+				toolChoice
+			})
+		);
+		const ended = test.lifecycleObservations.find(
+			(observation) => observation.eventType === 'provider_attempt_ended'
+		);
+		expect(ended).toBeDefined();
+		return ended!.payload;
+	}
+
+	it('names a tool call outside the advertised surface and the surface size', async () => {
+		const payload = await endedPayload(toolCallFrames({ name: 'skill_load' }));
+		expect(payload).toMatchObject({
+			status: 'success',
+			error_class: null,
+			rejected_tool_name: 'skill_load',
+			advertised_tool_count: 3
+		});
+	});
+
+	it('keeps an unrepresentable rejected name out of the receipt but still counts it', async () => {
+		const payload = await endedPayload(toolCallFrames({ name: 'drop table; --' }));
+		expect(payload).toMatchObject({ rejected_tool_name: null, advertised_tool_count: 3 });
+	});
+
+	it('names the tool whose assembled arguments are not a JSON object', async () => {
+		const truncated = await endedPayload(
+			toolCallFrames({ name: 'get_project_overview', arguments: '{"query":"9ta' })
+		);
+		expect(truncated).toMatchObject({
+			rejected_tool_name: 'get_project_overview',
+			advertised_tool_count: 3
+		});
+		const wrongShape = await endedPayload(
+			toolCallFrames({ name: 'list_onto_tasks', arguments: '[1,2]' })
+		);
+		expect(wrongShape).toMatchObject({ rejected_tool_name: 'list_onto_tasks' });
+		const wrongType = await endedPayload(
+			toolCallFrames({ name: 'list_onto_tasks', arguments: { query: 'x' } })
+		);
+		expect(wrongType).toMatchObject({ rejected_tool_name: 'list_onto_tasks' });
+	});
+
+	it('stays silent for an accepted call, including a provider-repeated advertised name', async () => {
+		const accepted = await endedPayload(toolCallFrames({ name: 'get_project_overview' }));
+		expect(accepted).not.toHaveProperty('rejected_tool_name');
+		expect(accepted).not.toHaveProperty('advertised_tool_count');
+		const repeated = await endedPayload(
+			toolCallFrames({ name: 'get_project_overviewget_project_overview' })
+		);
+		expect(repeated).not.toHaveProperty('rejected_tool_name');
+	});
+
+	it('stays silent when no tool surface was offered', async () => {
+		const payload = await endedPayload(toolCallFrames({ name: 'skill_load' }), 'none');
+		expect(payload).not.toHaveProperty('rejected_tool_name');
+		expect(payload).not.toHaveProperty('advertised_tool_count');
+	});
+
+	it('stays silent for an unrelated provider failure', async () => {
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				toolCallFrames({ name: 'skill_load' })[0]!,
+				JSON.stringify({ choices: [{ delta: {}, finish_reason: 'error' }] }),
+				'[DONE]'
+			])
+		) as unknown as typeof fetch;
+		const test = harness(fetchImpl);
+		const events = await collect(test.client.stream({ ...input(), tools, toolChoice: 'auto' }));
+		expect(events.at(-1)).toMatchObject({ type: 'error' });
+		const ended = test.lifecycleObservations.find(
+			(observation) => observation.eventType === 'provider_attempt_ended'
+		);
+		expect(ended?.payload).toMatchObject({ status: 'failure' });
+		expect(ended?.payload).not.toHaveProperty('rejected_tool_name');
+		expect(ended?.payload).not.toHaveProperty('advertised_tool_count');
+	});
+
+	it('never carries argument text, only the bounded name', async () => {
+		const payload = await endedPayload(
+			toolCallFrames({ name: 'skill_load', arguments: '{"secret":"do-not-retain"}' })
+		);
+		expect(JSON.stringify(payload)).not.toContain('do-not-retain');
+		expect(Object.keys(payload).sort()).toEqual(
+			[
+				'advertised_tool_count',
+				'duration_ms',
+				'error_class',
+				'finish_reason',
+				'logical_provider_round',
+				'model_requested',
+				'model_used',
+				'provider',
+				'provider_timing',
+				'rejected_tool_name',
+				'round',
+				'route_id',
+				'status',
+				'usage'
+			].sort()
+		);
+	});
+});

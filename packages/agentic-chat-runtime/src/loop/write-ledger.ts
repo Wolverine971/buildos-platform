@@ -34,6 +34,10 @@ export type WriteLedgerEntry = {
 	stateKey?: string;
 	typeKey?: string;
 	parentId?: string;
+	/** Title of the resolved parent for a tree move (from the receipt or the requested title). */
+	parentTitle?: string;
+	/** True when a parent-by-title move created the parent document. */
+	parentCreated?: boolean;
 	strategy?: string;
 	error?: string;
 };
@@ -128,8 +132,19 @@ function normalizeFieldName(value: string): string {
 		.replace(/[A-Z]/g, (character) => `_${character.toLowerCase()}`)
 		.toLowerCase();
 	if (normalized === 'new_parent_id') return 'parent_id';
+	// A parent chosen by title is still a parent placement; the resolved id
+	// comes back in the receipt.
+	if (normalized === 'new_parent_title' || normalized === 'parent_title') return 'parent_id';
 	if (normalized === 'new_position') return 'position';
 	return normalized;
+}
+
+function moveSelectsParent(toolName: string, args: ParsedArgs): boolean {
+	return (
+		(toolName === 'move_document_in_tree' &&
+			(Object.hasOwn(args, 'new_parent_id') || Object.hasOwn(args, 'new_parent_title'))) ||
+		(toolName === 'create_onto_document' && Object.hasOwn(args, 'parent_id'))
+	);
 }
 
 function extractChangedFields(toolName: string, args: ParsedArgs): string[] {
@@ -142,10 +157,7 @@ function extractChangedFields(toolName: string, args: ParsedArgs): string[] {
 	// A tree parent is an identity-like routing argument at the adapter boundary,
 	// but changing or selecting it is the semantic effect of a document
 	// organization. Preserve null root placement via property presence.
-	if (
-		(toolName === 'move_document_in_tree' && Object.hasOwn(args, 'new_parent_id')) ||
-		(toolName === 'create_onto_document' && Object.hasOwn(args, 'parent_id'))
-	) {
+	if (moveSelectsParent(toolName, args)) {
 		fields.push('parent_id');
 	}
 	return Array.from(new Set(fields)).sort();
@@ -164,7 +176,11 @@ function canonicalScalarEffectValue(value: unknown): string | undefined {
  * contracts can declare `priority=1`, for example; recording only `priority`
  * would let a successful write to priority 5 satisfy that contract.
  */
-function extractChangedValues(toolName: string, args: ParsedArgs): Record<string, string> {
+function extractChangedValues(
+	toolName: string,
+	args: ParsedArgs,
+	result: ParsedArgs | null
+): Record<string, string> {
 	const values: Record<string, string> = {};
 	for (const [key, value] of Object.entries(args)) {
 		const field = normalizeFieldName(key);
@@ -172,11 +188,16 @@ function extractChangedValues(toolName: string, args: ParsedArgs): Record<string
 		const canonical = canonicalScalarEffectValue(value);
 		if (canonical !== undefined) values[field] = canonical;
 	}
-	if (
-		(toolName === 'move_document_in_tree' && Object.hasOwn(args, 'new_parent_id')) ||
-		(toolName === 'create_onto_document' && Object.hasOwn(args, 'parent_id'))
-	) {
-		const value = Object.hasOwn(args, 'new_parent_id') ? args.new_parent_id : args.parent_id;
+	if (moveSelectsParent(toolName, args)) {
+		// The receipt's resolved parent wins: a parent selected by title only
+		// has an id after execution, and an exact-id move echoes the same id.
+		const resolved =
+			toolName === 'move_document_in_tree' && result
+				? readString((result as Record<string, unknown>).parent_id)
+				: undefined;
+		const value =
+			resolved ??
+			(Object.hasOwn(args, 'new_parent_id') ? args.new_parent_id : args.parent_id);
 		const canonical = canonicalScalarEffectValue(value);
 		if (canonical !== undefined) values.parent_id = canonical;
 	}
@@ -277,10 +298,13 @@ function extractTypeKey(result: ParsedArgs | null): string | undefined {
 }
 
 function extractParentIdFromMove(args: ParsedArgs, result: ParsedArgs | null): string | undefined {
-	const fromArgs = readString(args.new_parent_id) ?? readString(args.parent_id);
-	if (fromArgs) return fromArgs;
-	if (!result) return undefined;
-	return readString((result as Record<string, unknown>).new_parent_id);
+	if (result) {
+		const fromReceipt =
+			readString((result as Record<string, unknown>).parent_id) ??
+			readString((result as Record<string, unknown>).new_parent_id);
+		if (fromReceipt) return fromReceipt;
+	}
+	return readString(args.new_parent_id) ?? readString(args.parent_id);
 }
 
 function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry | null {
@@ -305,7 +329,11 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 	if (execution.toolCall.id) entry.effectId = execution.toolCall.id;
 	const changedFields = extractChangedFields(toolName, args);
 	if (changedFields.length > 0) entry.changedFields = changedFields;
-	const changedValues = extractChangedValues(toolName, args);
+	const changedValues = extractChangedValues(
+		toolName,
+		args,
+		execution.result.success ? result : null
+	);
 	if (Object.keys(changedValues).length > 0) entry.changedValues = changedValues;
 	const entityId = extractIdFromResult(entityKind, result) ?? extractIdFromArgs(entityKind, args);
 	if (entityId) entry.entityId = entityId;
@@ -325,6 +353,14 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 		if (toolName === 'move_document_in_tree') {
 			const parentId = extractParentIdFromMove(args, result);
 			if (parentId) entry.parentId = parentId;
+			const parentTitle =
+				(result
+					? readString((result as Record<string, unknown>).parent_title)
+					: undefined) ?? readString(args.new_parent_title);
+			if (parentTitle) entry.parentTitle = parentTitle;
+			if (result && (result as Record<string, unknown>).parent_created === true) {
+				entry.parentCreated = true;
+			}
 		}
 		if (toolName === 'update_onto_document') {
 			const strategy = readString(args.update_strategy as string);

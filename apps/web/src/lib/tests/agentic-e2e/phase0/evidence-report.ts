@@ -89,7 +89,10 @@ export interface Phase0ProviderUsageEvidence {
 
 /**
  * Content-free projection of the database-enforced execution-observation allowlist.
- * Prompt, argument, result, and message bodies never enter the report.
+ * Prompt, argument, result, and message bodies never enter the report. When the
+ * worker rejected a streamed tool call, the attempt row carries the rejected tool's
+ * name (a bounded identifier token) and the advertised surface size — never the
+ * call's arguments.
  */
 export interface Phase0ExecutionObservationEvidence {
 	executionGeneration: number;
@@ -110,6 +113,9 @@ export interface Phase0ExecutionObservationEvidence {
 	providerToolCallId: string | null;
 	sequenceIndex: number | null;
 	usage: Phase0ProviderUsageEvidence | null;
+	/** Present only on attempt rows where the worker rejected a streamed tool call. */
+	rejectedToolName?: string | null;
+	advertisedToolCount?: number | null;
 }
 
 export type Phase0ResultClass =
@@ -271,11 +277,24 @@ function providerUsageEvidence(value: unknown): Phase0ProviderUsageEvidence | nu
 	};
 }
 
-function executionObservationEvidence(
+const REJECTED_TOOL_NAME_PATTERN = /^[A-Za-z0-9_.:-]{1,256}$/;
+
+function rejectedToolName(value: unknown): string | null {
+	return typeof value === 'string' && REJECTED_TOOL_NAME_PATTERN.test(value) ? value : null;
+}
+
+export function executionObservationEvidence(
 	rows: ExecutionObservationRow[]
 ): Phase0ExecutionObservationEvidence[] {
 	return rows.map((row) => {
 		const payload = record(row.payload) ?? {};
+		const rejectedToolEvidence =
+			'rejected_tool_name' in payload || 'advertised_tool_count' in payload
+				? {
+						rejectedToolName: rejectedToolName(payload.rejected_tool_name),
+						advertisedToolCount: finiteNumber(payload.advertised_tool_count)
+					}
+				: {};
 		return {
 			executionGeneration: row.execution_generation,
 			phase: row.phase,
@@ -294,7 +313,8 @@ function executionObservationEvidence(
 			toolName: boundedText(payload.tool_name),
 			providerToolCallId: boundedText(payload.provider_tool_call_id, 512),
 			sequenceIndex: finiteNumber(payload.sequence_index),
-			usage: providerUsageEvidence(payload.usage)
+			usage: providerUsageEvidence(payload.usage),
+			...rejectedToolEvidence
 		};
 	});
 }
@@ -849,7 +869,7 @@ export function buildPhase0EvidenceReport(params: {
 			'The retained-row footprint is a final-state parity baseline, not a PostgreSQL WAL or statement-rate measurement.',
 			'Provider latency is included in end-to-end and first-response timing; later worker comparisons must separate BuildOS queue/transport overhead.',
 			'Prompt, message, tool-argument, tool-result, and event payload bodies are measured in memory for byte size but are not retained in this artifact.',
-			'Execution observations include only the database-enforced provider/tool metadata allowlist; prompt, argument, result, message, and hidden-reasoning content is excluded.'
+			'Execution observations include only the database-enforced provider/tool metadata allowlist; prompt, argument, result, message, and hidden-reasoning content is excluded. When the worker rejected a streamed tool call, the rejected tool name and advertised tool count are retained — never the call arguments.'
 		]
 	};
 }

@@ -76,6 +76,11 @@ export const projectOrganizeScenario: Scenario = {
 	id: 'project-organize',
 	title: 'Organize a project with messy, loose documents',
 	category: 'organization',
+	requiredMutationTools: [
+		'create_onto_document',
+		'move_document_in_tree',
+		'update_onto_document'
+	],
 	seed: async (ctx): Promise<SeedResult> => {
 		const { projectId } = await seedProject(ctx, spec());
 		// Project instantiation also creates a managed START HERE document. It may

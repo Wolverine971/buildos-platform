@@ -129,6 +129,57 @@ describe('Agentic Chat private execution observations', () => {
 		).resolves.toBeUndefined();
 	});
 
+	it('forwards the rejected-tool receipt keys unchanged on a provider attempt', async () => {
+		const observationKey = createStableAgenticChatExecutionObservationKeyV1({
+			turnRunId: TURN_RUN_ID,
+			scope: 'provider:1:initial:openrouter',
+			boundary: 'provider_attempt_ended'
+		});
+		const endedInput: AgenticChatExecutionObservationInputV1 = {
+			...input,
+			observationKey,
+			eventType: 'provider_attempt_ended',
+			payload: {
+				round: 'initial',
+				logical_provider_round: 1,
+				route_id: 'openrouter',
+				model_requested: 'provider/model',
+				model_used: 'provider/model',
+				provider: 'openrouter',
+				status: 'success',
+				duration_ms: 12,
+				finish_reason: 'tool_calls',
+				error_class: null,
+				usage: null,
+				rejected_tool_name: 'skill_load',
+				advertised_tool_count: 3
+			}
+		};
+		const rpc = vi.fn(async () => ({
+			data: receipt({
+				observation_key: observationKey,
+				event_type: 'provider_attempt_ended'
+			}),
+			error: null
+		}));
+		await expect(
+			new SupabaseAgenticChatExecutionObservationAdapter({ rpc }).observe(
+				endedInput,
+				new AbortController().signal
+			)
+		).resolves.toBeUndefined();
+		expect(rpc).toHaveBeenCalledWith(
+			'persist_agentic_chat_execution_observation',
+			expect.objectContaining({
+				p_event_type: 'provider_attempt_ended',
+				p_payload: expect.objectContaining({
+					rejected_tool_name: 'skill_load',
+					advertised_tool_count: 3
+				})
+			})
+		);
+	});
+
 	it('aborts a hung observation RPC at its local deadline', async () => {
 		let deadlineSignal: AbortSignal | null = null;
 		const response = Object.assign(new Promise<never>(() => undefined), {

@@ -66,7 +66,33 @@ export type TurnContractOutcome = {
 	/** Present only when declared; every change field is also a required field. */
 	changes?: TurnContractChange[];
 	minimumSuccessfulEffects: number;
+	/**
+	 * Symbolic name for the entity a `create` outcome will produce. Code binds it
+	 * to the created id after execution so later outcomes can reference a
+	 * destination that does not exist at declaration time.
+	 */
+	label?: string;
+	/**
+	 * For `move`/`organize` outcomes: the destination is the entity created by the
+	 * same-contract outcome carrying this label.
+	 */
+	parentLabel?: string;
 };
+
+export const TURN_CONTRACT_LABEL_PATTERN = /^[a-z0-9][a-z0-9_-]{0,39}$/;
+
+/**
+ * Title comparison key for binding a declared create outcome to the document
+ * the model actually created: models decorate titles with emoji, case, and
+ * punctuation that carry no identity ("📋 Planning & Tasks" is "Planning and
+ * Tasks" is "planning-&-tasks").
+ */
+export function titleKey(value: string): string {
+	return value
+		.normalize('NFKC')
+		.replace(/[^\p{L}\p{N}]/gu, '')
+		.toLowerCase();
+}
 
 export type TurnContract = {
 	version: 1;
@@ -82,6 +108,8 @@ export type TurnContractOutcomeResult = {
 	requiredEffects: number;
 	missingTargetIds: string[];
 	missingRequiredFields: string[];
+	/** Set when a move outcome's `parentLabel` never bound to a created entity. */
+	unboundParentLabel?: string;
 };
 
 export type TurnContractResolution = {
@@ -154,11 +182,18 @@ function normalizeFieldName(value: string): string {
 	// semantic placement dimensions. Contracts describe the durable property,
 	// not whichever adapter happened to carry it.
 	if (normalized === 'new_parent_id') return 'parent_id';
+	if (normalized === 'new_parent_title' || normalized === 'parent_title') return 'parent_id';
 	if (normalized === 'new_position') return 'position';
 	return normalized;
 }
 
 const MAX_CHANGES_PER_OUTCOME = 20;
+
+function readLabel(value: unknown): string | undefined {
+	if (typeof value !== 'string') return undefined;
+	const normalized = value.trim().toLowerCase();
+	return normalized ? normalized : undefined;
+}
 
 function readChangeValue(value: unknown): string | undefined {
 	if (typeof value === 'string') return readString(value, 160);
@@ -288,6 +323,59 @@ function normalizeOutcome(
 				`Either set minimum_successful_effects to at most ${targetIds.length}, or list every target this outcome must change in target_ids.`
 		);
 	}
+	// Symbolic references: a labelled create names exactly one entity, so it
+	// must be a single-effect outcome whose title is declared (the binding key).
+	const label = readLabel(record.label);
+	const parentLabel = readLabel(record.parent_label ?? record.parentLabel);
+	if (record.label !== undefined && record.label !== null && !label) {
+		return rejectOutcome(issues, index, 'label must be a non-empty string.');
+	}
+	if (label !== undefined) {
+		if (!TURN_CONTRACT_LABEL_PATTERN.test(label)) {
+			return rejectOutcome(
+				issues,
+				index,
+				`label ${JSON.stringify(label)} must match ${TURN_CONTRACT_LABEL_PATTERN.source} (lowercase letters, digits, "_" or "-", at most 40 characters).`
+			);
+		}
+		if (action !== 'create') {
+			return rejectOutcome(
+				issues,
+				index,
+				'label is only meaningful on a create outcome; other outcomes reference a created entity through parent_label.'
+			);
+		}
+		if (minimumSuccessfulEffects !== 1) {
+			return rejectOutcome(
+				issues,
+				index,
+				`a labelled create outcome names exactly one entity, so minimum_successful_effects must be 1 (received ${minimumSuccessfulEffects}). Split into one labelled create outcome per entity.`
+			);
+		}
+		if (!changes.some((change) => change.field === 'title')) {
+			return rejectOutcome(
+				issues,
+				index,
+				'a labelled create outcome must declare its title in changes, e.g. [{"field":"title","value":"Meeting notes"}]; the title is how the created entity is bound to the label.'
+			);
+		}
+	}
+	if (parentLabel !== undefined) {
+		if (!TURN_CONTRACT_LABEL_PATTERN.test(parentLabel)) {
+			return rejectOutcome(
+				issues,
+				index,
+				`parent_label ${JSON.stringify(parentLabel)} must match ${TURN_CONTRACT_LABEL_PATTERN.source}.`
+			);
+		}
+		if (action !== 'move' && action !== 'organize') {
+			return rejectOutcome(
+				issues,
+				index,
+				'parent_label is only meaningful on a move or organize outcome.'
+			);
+		}
+	}
 	return {
 		id: readString(record.id, 80) ?? `outcome_${index + 1}`,
 		action,
@@ -296,10 +384,60 @@ function normalizeOutcome(
 			? { description: readString(record.description, 240) }
 			: {}),
 		targetIds,
-		requiredFields,
+		requiredFields:
+			parentLabel !== undefined && !requiredFields.includes('parent_id')
+				? [...requiredFields, 'parent_id']
+				: requiredFields,
 		...(changes.length > 0 ? { changes } : {}),
-		minimumSuccessfulEffects
+		minimumSuccessfulEffects,
+		...(label !== undefined ? { label } : {}),
+		...(parentLabel !== undefined ? { parentLabel } : {})
 	};
+}
+
+/**
+ * Contract-level consistency for symbolic references. Per-outcome checks run
+ * first; these need the whole outcome set.
+ */
+function describeContractReferenceIssues(outcomes: TurnContractOutcome[]): string[] {
+	const issues: string[] = [];
+	const labelOwners = new Map<string, TurnContractOutcome>();
+	outcomes.forEach((outcome, index) => {
+		if (!outcome.label) return;
+		if (labelOwners.has(outcome.label)) {
+			issues.push(
+				`Outcome ${index + 1}: label ${JSON.stringify(outcome.label)} is already used by another outcome; labels must be unique within the contract.`
+			);
+			return;
+		}
+		labelOwners.set(outcome.label, outcome);
+	});
+	const destinationByDocument = new Map<string, string>();
+	outcomes.forEach((outcome, index) => {
+		if (!outcome.parentLabel) return;
+		const owner = labelOwners.get(outcome.parentLabel);
+		if (!owner) {
+			issues.push(
+				`Outcome ${index + 1}: parent_label ${JSON.stringify(outcome.parentLabel)} does not match the label of any create outcome in this contract. Declare the parent as a create outcome with that label and a title change, or move into an existing parent id instead.`
+			);
+			return;
+		}
+		if (owner.entityKind !== outcome.entityKind && owner.entityKind !== 'entity') {
+			issues.push(
+				`Outcome ${index + 1}: parent_label ${JSON.stringify(outcome.parentLabel)} refers to a ${owner.entityKind} create outcome, but this outcome moves ${outcome.entityKind} entities.`
+			);
+		}
+		for (const targetId of outcome.targetIds) {
+			const existing = destinationByDocument.get(targetId);
+			if (existing !== undefined && existing !== outcome.parentLabel) {
+				issues.push(
+					`Outcome ${index + 1}: target ${targetId} is also moved to parent_label ${JSON.stringify(existing)} by another outcome; a document has one destination.`
+				);
+			}
+			destinationByDocument.set(targetId, outcome.parentLabel);
+		}
+	});
+	return issues;
 }
 
 export function parseDeclaredTurnContract(
@@ -322,6 +460,11 @@ export function parseDeclaredTurnContract(
 		.map((outcome, index) => normalizeOutcome(outcome, index, issues))
 		.filter((outcome): outcome is TurnContractOutcome => Boolean(outcome));
 	if (outcomes.length !== rawOutcomes.length) return null;
+	const referenceIssues = describeContractReferenceIssues(outcomes);
+	if (referenceIssues.length > 0) {
+		for (const issue of referenceIssues) issues?.push(issue);
+		return null;
+	}
 	const summary = readString(record.summary, 300);
 	return {
 		version: 1,
@@ -378,10 +521,28 @@ export function buildFastChatPendingTurnContract(params: {
 	now?: Date;
 }): FastChatPendingTurnContract | null {
 	if (!params.resolution.contract || params.resolution.fulfilled) return null;
-	const unfinishedOutcomes = params.resolution.contract.outcomes.filter(
+	const unfinished = params.resolution.contract.outcomes.filter(
 		(_outcome, index) => params.resolution.outcomes[index]?.fulfilled !== true
 	);
-	if (unfinishedOutcomes.length === 0) return null;
+	if (unfinished.length === 0) return null;
+	// A fulfilled labelled create drops out of the pending contract, which would
+	// leave its dependents with a dangling parent_label that a strict re-parse
+	// rejects. Those moves keep the plain parent_id postcondition instead.
+	const remainingLabels = new Set(
+		unfinished
+			.map((outcome) => outcome.label)
+			.filter((label): label is string => Boolean(label))
+	);
+	const unfinishedOutcomes = unfinished.map((outcome) => {
+		if (!outcome.parentLabel || remainingLabels.has(outcome.parentLabel)) return outcome;
+		const { parentLabel: _dropped, ...rest } = outcome;
+		return {
+			...rest,
+			requiredFields: rest.requiredFields.includes('parent_id')
+				? rest.requiredFields
+				: [...rest.requiredFields, 'parent_id']
+		};
+	});
 	return {
 		version: 1,
 		contract: {
@@ -567,7 +728,9 @@ function uniqueOutcomes(outcomes: TurnContractOutcome[]): TurnContractOutcome[] 
 			(outcome.changes ?? [])
 				.map((change) => [change.field, change.value])
 				.sort(([left], [right]) => (left ?? '').localeCompare(right ?? '')),
-			outcome.minimumSuccessfulEffects
+			outcome.minimumSuccessfulEffects,
+			outcome.label ?? null,
+			outcome.parentLabel ?? null
 		]);
 		if (seen.has(key)) return false;
 		seen.add(key);
@@ -745,17 +908,142 @@ function entityMatches(expected: TurnContractEntityKind, actual: string): boolea
 	return expected === 'entity' || expected === actual;
 }
 
+export type TurnContractLabelBindings = ReadonlyMap<string, string>;
+
+function declaredTitle(outcome: TurnContractOutcome): string | undefined {
+	return outcome.changes?.find((change) => change.field === 'title')?.value;
+}
+
+/**
+ * Bind each labelled create outcome to the entity that fulfilled it. Pure and
+ * monotonic over the ledger; each ledger entry binds at most one label.
+ *
+ * Sources, in order: a successful same-kind create whose title key equals the
+ * declared title; unique containment between the two keys; elimination when
+ * exactly one labelled outcome and one unmatched create remain; and a
+ * successful parent-by-title move whose resolved parent title matches (the
+ * one-phase grouping path creates the parent without a separate create call).
+ */
+export function bindTurnContractLabels(
+	contract: TurnContract | null | undefined,
+	ledger: readonly WriteLedgerEntry[]
+): Map<string, string> {
+	const bindings = new Map<string, string>();
+	if (!contract) return bindings;
+	const labelled = contract.outcomes.filter(
+		(outcome): outcome is TurnContractOutcome & { label: string } =>
+			Boolean(outcome.label) && outcome.action === 'create'
+	);
+	if (labelled.length === 0) return bindings;
+	const creates = ledger.filter(
+		(entry) =>
+			entry.status === 'success' &&
+			entry.action === 'create' &&
+			Boolean(entry.entityId) &&
+			Boolean(entry.title)
+	);
+	const used = new Set<string>();
+	const bind = (label: string, entityId: string): void => {
+		if (bindings.has(label) || used.has(entityId)) return;
+		bindings.set(label, entityId);
+		used.add(entityId);
+	};
+	const kindMatches = (outcome: TurnContractOutcome, entry: WriteLedgerEntry): boolean =>
+		Boolean(entry.entityKind && entityMatches(outcome.entityKind, entry.entityKind));
+
+	// 1. Exact title key.
+	for (const outcome of labelled) {
+		const title = declaredTitle(outcome);
+		if (!title) continue;
+		const key = titleKey(title);
+		if (!key) continue;
+		const match = creates.find(
+			(entry) =>
+				!used.has(entry.entityId!) &&
+				kindMatches(outcome, entry) &&
+				titleKey(entry.title!) === key
+		);
+		if (match) bind(outcome.label, match.entityId!);
+	}
+	// 2. Unique containment (one key contains the other, exactly one pair).
+	for (const outcome of labelled) {
+		if (bindings.has(outcome.label)) continue;
+		const title = declaredTitle(outcome);
+		const key = title ? titleKey(title) : '';
+		if (!key) continue;
+		const matches = creates.filter((entry) => {
+			if (used.has(entry.entityId!) || !kindMatches(outcome, entry)) return false;
+			const entryKey = titleKey(entry.title!);
+			return entryKey.length > 0 && (entryKey.includes(key) || key.includes(entryKey));
+		});
+		if (matches.length === 1) bind(outcome.label, matches[0]!.entityId!);
+	}
+	// 3. Elimination: one unbound label, one unmatched create of that kind.
+	const unbound = labelled.filter((outcome) => !bindings.has(outcome.label));
+	if (unbound.length === 1) {
+		const outcome = unbound[0]!;
+		const remaining = creates.filter(
+			(entry) => !used.has(entry.entityId!) && kindMatches(outcome, entry)
+		);
+		if (remaining.length === 1) bind(outcome.label, remaining[0]!.entityId!);
+	}
+	// 4. Parent-by-title moves resolved the parent without a create call.
+	for (const outcome of labelled) {
+		if (bindings.has(outcome.label)) continue;
+		const title = declaredTitle(outcome);
+		const key = title ? titleKey(title) : '';
+		if (!key) continue;
+		const move = ledger.find(
+			(entry) =>
+				entry.status === 'success' &&
+				entry.toolName === 'move_document_in_tree' &&
+				Boolean(entry.parentId) &&
+				Boolean(entry.parentTitle) &&
+				titleKey(entry.parentTitle!) === key
+		);
+		if (move) bind(outcome.label, move.parentId!);
+	}
+	return bindings;
+}
+
 function resolveOutcome(
 	outcome: TurnContractOutcome,
-	ledger: WriteLedgerEntry[]
+	ledger: WriteLedgerEntry[],
+	bindings: TurnContractLabelBindings
 ): TurnContractOutcomeResult {
+	// A labelled create is fulfilled exactly when its label bound, from any source.
+	if (outcome.label && outcome.action === 'create') {
+		const bound = bindings.get(outcome.label);
+		return {
+			id: outcome.id,
+			fulfilled: Boolean(bound),
+			matchedEffects: bound ? 1 : 0,
+			requiredEffects: outcome.minimumSuccessfulEffects,
+			missingTargetIds: [],
+			missingRequiredFields: bound ? [] : ['title']
+		};
+	}
+	const boundParentId = outcome.parentLabel ? bindings.get(outcome.parentLabel) : undefined;
+	if (outcome.parentLabel && !boundParentId) {
+		return {
+			id: outcome.id,
+			fulfilled: false,
+			matchedEffects: 0,
+			requiredEffects: outcome.minimumSuccessfulEffects,
+			missingTargetIds: [...outcome.targetIds],
+			missingRequiredFields: ['parent_id'],
+			unboundParentLabel: outcome.parentLabel
+		};
+	}
 	const candidates = ledger.filter(
 		(entry) =>
 			entry.status === 'success' &&
 			Boolean(entry.action && actionMatches(outcome.action, entry)) &&
 			Boolean(entry.entityKind && entityMatches(outcome.entityKind, entry.entityKind)) &&
 			(outcome.targetIds.length === 0 ||
-				Boolean(entry.entityId && outcome.targetIds.includes(entry.entityId)))
+				Boolean(entry.entityId && outcome.targetIds.includes(entry.entityId))) &&
+			(boundParentId === undefined ||
+				(entry.changedValues?.parent_id ?? entry.parentId) === boundParentId)
 	);
 	const requiredFields = outcome.requiredFields.map(normalizeFieldName);
 	const candidatesForTarget = (targetId: string): WriteLedgerEntry[] =>
@@ -771,9 +1059,15 @@ function resolveOutcome(
 				finalValues.set(normalizeFieldName(field), value);
 			}
 		}
-		return (outcome.changes ?? []).every(
-			(change) => finalValues.get(normalizeFieldName(change.field)) === change.value
-		);
+		return (outcome.changes ?? []).every((change) => {
+			const field = normalizeFieldName(change.field);
+			const actual = finalValues.get(field);
+			if (actual === undefined) return false;
+			// Titles are compared by identity key: decoration is not a postcondition.
+			return field === 'title'
+				? titleKey(actual) === titleKey(change.value)
+				: actual === change.value;
+		});
 	};
 	const matchedCandidateTargetIds = Array.from(
 		new Set(candidates.map((entry) => entry.entityId).filter((id): id is string => Boolean(id)))
@@ -845,7 +1139,8 @@ export function resolveTurnContractOutcome(params: {
 		};
 	}
 	const ledger = buildWriteLedger(params.toolExecutions ?? []);
-	const outcomes = contract.outcomes.map((outcome) => resolveOutcome(outcome, ledger));
+	const bindings = bindTurnContractLabels(contract, ledger);
+	const outcomes = contract.outcomes.map((outcome) => resolveOutcome(outcome, ledger, bindings));
 	const fulfilled = outcomes.every((outcome) => outcome.fulfilled);
 	return {
 		status: fulfilled

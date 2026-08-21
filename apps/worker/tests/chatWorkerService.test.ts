@@ -51,6 +51,11 @@ describe('dedicated Agentic Chat worker composition', () => {
 				activeTurns: 1
 			}
 		});
+		expect(service.getHealth().agenticChat.mutationCapabilities).toEqual({
+			provider: { count: 2, names: ['moveDocumentInTree', 'updateOntoTask'] },
+			adapter: { count: 2, names: ['moveDocumentInTree', 'updateOntoTask'] },
+			advertisedMutationToolNames: ['move_document_in_tree', 'update_onto_task']
+		});
 
 		const unauthorized = responseHarness();
 		await service.respondWithCapacity({ headers: {} }, unauthorized.response);
@@ -194,6 +199,11 @@ function chatHealth(): AgenticChatPhase3BootstrapHealth {
 		enabled: true,
 		healthy: true,
 		state: 'running',
+		mutationCapabilities: {
+			provider: { count: 2, names: ['moveDocumentInTree', 'updateOntoTask'] },
+			adapter: { count: 2, names: ['moveDocumentInTree', 'updateOntoTask'] },
+			advertisedMutationToolNames: ['move_document_in_tree', 'update_onto_task']
+		},
 		runtime: {
 			healthy: true,
 			state: 'running',

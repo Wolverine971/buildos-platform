@@ -1,5 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createAuthenticatedHarnessFetch, resolveAgenticE2EExecutionMode } from './worker-client';
+import {
+	createAuthenticatedHarnessFetch,
+	requireAdvertisedMutationTools,
+	resolveAgenticE2EExecutionMode
+} from './worker-client';
+
+function healthResponse(body: unknown, status = 200): Response {
+	return new Response(JSON.stringify(body), {
+		status,
+		headers: { 'content-type': 'application/json' }
+	});
+}
 
 describe('agentic E2E worker client boundaries', () => {
 	afterEach(() => {
@@ -36,5 +47,101 @@ describe('agentic E2E worker client boundaries', () => {
 		const headers = new Headers(init?.headers);
 		expect(headers.get('accept')).toBe('application/json');
 		expect(headers.get('cookie')).toBe('sb-auth-token=secret-cookie');
+	});
+});
+
+describe('requireAdvertisedMutationTools', () => {
+	it('passes when the advertised tool set is a superset of what is required', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () =>
+			healthResponse({
+				agenticChat: {
+					mutationCapabilities: {
+						provider: { count: 2, names: ['create_onto_task', 'update_onto_task'] },
+						adapter: { count: 2, names: ['create_onto_task', 'update_onto_task'] },
+						advertisedMutationToolNames: [
+							'create_onto_task',
+							'update_onto_task',
+							'create_onto_document'
+						]
+					}
+				}
+			})
+		);
+
+		const result = await requireAdvertisedMutationTools({
+			healthUrl: 'https://worker.example',
+			required: ['create_onto_task', 'update_onto_task'],
+			fetchImpl
+		});
+
+		expect(result.advertised).toEqual([
+			'create_onto_task',
+			'update_onto_task',
+			'create_onto_document'
+		]);
+		expect(fetchImpl).toHaveBeenCalledWith('https://worker.example/health');
+	});
+
+	it('throws a distinct error when the worker predates capability readback', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () => healthResponse({ ok: true }));
+
+		await expect(
+			requireAdvertisedMutationTools({
+				healthUrl: 'https://worker.example',
+				required: ['create_onto_task'],
+				fetchImpl
+			})
+		).rejects.toThrow(
+			'[agentic-e2e] worker /health has no agenticChat.mutationCapabilities field — deployed worker predates the capability readback; deploy before running mutation scenarios'
+		);
+	});
+
+	it('throws listing the missing tools when the worker does not advertise them all', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () =>
+			healthResponse({
+				agenticChat: {
+					mutationCapabilities: {
+						provider: { count: 1, names: ['create_onto_task'] },
+						adapter: { count: 1, names: ['create_onto_task'] },
+						advertisedMutationToolNames: ['create_onto_task']
+					}
+				}
+			})
+		);
+
+		await expect(
+			requireAdvertisedMutationTools({
+				healthUrl: 'https://worker.example',
+				required: ['create_onto_task', 'update_onto_task'],
+				fetchImpl
+			})
+		).rejects.toThrow(
+			'[agentic-e2e] worker does not advertise required write tools: [update_onto_task]; advertised: [create_onto_task]; refusing to spend on a read-only worker'
+		);
+	});
+
+	it('skips the fetch entirely when no tools are required', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () => healthResponse({}));
+
+		const result = await requireAdvertisedMutationTools({
+			healthUrl: 'https://worker.example',
+			required: [],
+			fetchImpl
+		});
+
+		expect(result.advertised).toEqual([]);
+		expect(fetchImpl).not.toHaveBeenCalled();
+	});
+
+	it('throws on a non-2xx health response', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () => healthResponse({}, 503));
+
+		await expect(
+			requireAdvertisedMutationTools({
+				healthUrl: 'https://worker.example',
+				required: ['create_onto_task'],
+				fetchImpl
+			})
+		).rejects.toThrow('[agentic-e2e] worker health 503');
 	});
 });

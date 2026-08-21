@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildPhase0EvidenceReport,
 	classifyPhase0TurnResult,
+	executionObservationEvidence,
 	summarizePhase0Metric,
 	wilson95,
 	type Phase0RepositoryState,
@@ -271,6 +272,8 @@ describe('Phase 0 evidence report', () => {
 		expect(report.schemaVersion).toBe(2);
 		expect(report.configuration.executionMode).toBe('legacy_sse');
 		expect(report.limitations.join(' ')).toContain('not a PostgreSQL WAL');
+		expect(report.limitations.join(' ')).toContain('rejected tool name');
+		expect(report.limitations.join(' ')).toContain('never the call arguments');
 		expect(report.summary.scenarioResults[0]).toMatchObject({
 			scenarioId: 'task-create',
 			turnCount: 2,
@@ -284,5 +287,73 @@ describe('Phase 0 evidence report', () => {
 		expect(firstTurn.controlDecisions).toEqual([
 			{ name: 'declare_turn_contract', decidedBy: 'contract_reviewer', sequenceIndex: 2 }
 		]);
+	});
+});
+
+describe('executionObservationEvidence', () => {
+	const base = {
+		execution_generation: 1,
+		phase: 'provider',
+		event_type: 'provider_attempt_ended',
+		observed_at: '2026-07-30T12:00:00.400Z'
+	};
+	const attempt = {
+		round: 'initial',
+		logical_provider_round: 1,
+		route_id: 'route-a',
+		model_requested: 'model-a',
+		model_used: 'model-a',
+		provider: 'provider-a',
+		status: 'success',
+		duration_ms: 300,
+		finish_reason: 'tool_calls',
+		error_class: null,
+		usage: null
+	};
+
+	it('passes the rejected tool name and advertised count through', () => {
+		const [evidence] = executionObservationEvidence([
+			{
+				...base,
+				payload: { ...attempt, rejected_tool_name: 'skill_load', advertised_tool_count: 3 }
+			}
+		]);
+		expect(evidence).toMatchObject({
+			eventType: 'provider_attempt_ended',
+			status: 'success',
+			errorClass: null,
+			rejectedToolName: 'skill_load',
+			advertisedToolCount: 3
+		});
+	});
+
+	it('keeps a null rejected name alongside the count', () => {
+		const [evidence] = executionObservationEvidence([
+			{
+				...base,
+				payload: { ...attempt, rejected_tool_name: null, advertised_tool_count: 3 }
+			}
+		]);
+		expect(evidence).toMatchObject({ rejectedToolName: null, advertisedToolCount: 3 });
+	});
+
+	it('omits the optional fields entirely for rows that carry no rejection', () => {
+		const [evidence] = executionObservationEvidence([{ ...base, payload: attempt }]);
+		expect(evidence).not.toHaveProperty('rejectedToolName');
+		expect(evidence).not.toHaveProperty('advertisedToolCount');
+	});
+
+	it('refuses a rejected name that is not a bounded identifier token', () => {
+		const [evidence] = executionObservationEvidence([
+			{
+				...base,
+				payload: {
+					...attempt,
+					rejected_tool_name: '{"query":"free text"}',
+					advertised_tool_count: 3
+				}
+			}
+		]);
+		expect(evidence).toMatchObject({ rejectedToolName: null, advertisedToolCount: 3 });
 	});
 });

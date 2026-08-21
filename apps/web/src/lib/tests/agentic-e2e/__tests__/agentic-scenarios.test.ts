@@ -13,6 +13,7 @@ import { ensureTestAuthUser, provisionTestUser } from '../harness/test-user';
 import { runTurn, warmupPing } from '../harness/sse-client';
 import {
 	createAgenticE2EWorkerClient,
+	requireAdvertisedMutationTools,
 	resolveAgenticE2EExecutionMode,
 	type AgenticE2EWorkerClient
 } from '../harness/worker-client';
@@ -125,6 +126,31 @@ beforeAll(async () => {
 			admin: db.admin
 		});
 		await workerClient.requireWorkerLease();
+
+		// Fail-closed write-surface preflight: a valid transport lease only proves
+		// the worker is reachable, not that it advertises the write tools the
+		// selected scenarios need. Runs unconditionally in worker mode (including
+		// AGENTIC_E2E_WORKER_PREFLIGHT_ONLY) so a preflight-only run proves both.
+		const requiredMutationTools = [
+			...new Set(
+				selectedScenarios().flatMap((scenario) => scenario.requiredMutationTools ?? [])
+			)
+		];
+		if (requiredMutationTools.length > 0) {
+			if (!env.workerHealthUrl) {
+				throw new Error(
+					'[agentic-e2e] selected scenarios require write tools; set PRIVATE_AGENTIC_CHAT_WORKER_URL to run the write-surface preflight'
+				);
+			}
+			const { advertised } = await requireAdvertisedMutationTools({
+				healthUrl: env.workerHealthUrl,
+				required: requiredMutationTools
+			});
+			console.info(
+				'[agentic-e2e] worker advertises mutation tools',
+				JSON.stringify(advertised)
+			);
+		}
 	}
 
 	// 3. Clear only old crashed-run fixtures. Live concurrent runs remain isolated.

@@ -68,6 +68,60 @@ describe('buildWriteLedger', () => {
 		});
 	});
 
+	it('records the receipt-resolved parent for a parent-by-title document move', () => {
+		const entries = buildWriteLedger([
+			execution({
+				name: 'move_document_in_tree',
+				args: {
+					project_id: 'proj-1',
+					document_id: 'doc-1',
+					new_parent_title: 'Meeting notes',
+					new_position: 0
+				},
+				result: {
+					parent_id: 'folder-1',
+					parent_title: 'Meeting notes',
+					parent_created: true,
+					structure: { version: 2, root: [] },
+					message: 'Moved document doc-1 under "Meeting notes" (parent document created).'
+				}
+			})
+		]);
+
+		expect(entries).toHaveLength(1);
+		expect(entries[0]).toMatchObject({
+			toolName: 'move_document_in_tree',
+			status: 'success',
+			entityId: 'doc-1',
+			changedFields: ['parent_id', 'position'],
+			changedValues: { parent_id: 'folder-1', position: '0' },
+			parentId: 'folder-1',
+			parentTitle: 'Meeting notes',
+			parentCreated: true
+		});
+	});
+
+	it('prefers the receipt parent id over the requested one for an exact-id move', () => {
+		const entries = buildWriteLedger([
+			execution({
+				name: 'move_document_in_tree',
+				args: { project_id: 'proj-1', document_id: 'doc-1', new_parent_id: 'folder-1' },
+				result: {
+					parent_id: 'folder-1',
+					parent_created: false,
+					structure: { version: 3, root: [] }
+				}
+			})
+		]);
+
+		expect(entries[0]).toMatchObject({
+			changedFields: ['parent_id'],
+			changedValues: { parent_id: 'folder-1' },
+			parentId: 'folder-1'
+		});
+		expect(entries[0]?.parentCreated).toBeUndefined();
+	});
+
 	it('captures document append strategy from args when result lacks it', () => {
 		const entries = buildWriteLedger([
 			execution({

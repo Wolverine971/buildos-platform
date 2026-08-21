@@ -39,6 +39,12 @@ const PROVIDER_TELEMETRY_TIMEOUT_MS = 5_000;
 const TURN_ROUTE_HEALTH_TTL_MS = 10 * 60_000;
 const MAX_TURN_ROUTE_HEALTH_ENTRIES = 256;
 const USAGE_LOG_IDENTITY_VERSION = 'agentic_chat_provider_usage_v1';
+const REJECTED_TOOL_NAME_PATTERN = /^[A-Za-z0-9_.:-]{1,256}$/;
+// Mirrors the consumer's accumulator bounds; past them the consumer rejects the
+// pass without a name-level diagnostic, so the receipt must stay silent too.
+const MAX_OBSERVED_TOOL_CALLS = 40;
+const MAX_OBSERVED_TOOL_NAME_CHARS = 256;
+const MAX_OBSERVED_TOOL_ARGUMENT_BYTES = 64 * 1024;
 const MAX_REVIEWED_PROVIDER_TOOLS =
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.length +
 	AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames.length;
@@ -142,6 +148,24 @@ type StreamState = {
 	requestId: string | null;
 	inThinkingBlock: boolean;
 	completionChars: number;
+	toolCalls: Map<number, ObservedToolCall>;
+	toolCallsObservable: boolean;
+};
+
+/**
+ * Name-level shadow of the consumer's tool-call accumulator. The consumer
+ * (`readOnlyProvider`) decides whether a streamed call is acceptable only after
+ * this generator has closed, by which point the durable `provider_attempt_ended`
+ * receipt is already written under a replay-locked key. So the receipt can name
+ * a rejected tool only if this client recognises the rejection itself, from the
+ * same inputs: the assembled name against the advertised surface, and whether
+ * the assembled arguments form a JSON object. Argument text is held in memory
+ * solely for that parse test and never leaves this module.
+ */
+type ObservedToolCall = {
+	name: string;
+	argumentsText: string;
+	argumentsRejected: boolean;
 };
 
 type TurnRouteHealth = {
@@ -267,7 +291,9 @@ export class AgenticChatOpenRouterReadOnlyClient
 			providerSlug: null,
 			requestId: null,
 			inThinkingBlock: false,
-			completionChars: 0
+			completionChars: 0,
+			toolCalls: new Map(),
+			toolCallsObservable: true
 		};
 
 		const account = async (
@@ -510,7 +536,8 @@ export class AgenticChatOpenRouterReadOnlyClient
 							cached_prompt_tokens: exactUsage.cachedPromptTokens,
 							cache_write_tokens: exactUsage.cacheWriteTokens
 						}
-					: null
+					: null,
+				...rejectedToolCallPayload(state, input)
 			});
 			activeAttemptEnded = true;
 			this.observeTurnRouteSuccess(
@@ -995,10 +1022,122 @@ function parseSseLine(
 		}
 		if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) {
 			state.completionChars += JSON.stringify(delta.tool_calls).length;
+			observeToolCallDelta(state, delta.tool_calls);
 			events.push({ type: 'tool_call', toolCall: delta.tool_calls });
 		}
 	}
 	return { events, done: false };
+}
+
+/**
+ * Lenient mirror of the consumer's `appendToolCallDelta`. Anything the consumer
+ * would reject without a name-level diagnostic (malformed delta, oversized name
+ * or arguments, too many calls) makes the pass unobservable here rather than
+ * guessing; a non-string arguments delta is the consumer's `delta_type`
+ * rejection and is recorded against the call's name.
+ */
+function observeToolCallDelta(state: StreamState, value: readonly unknown[]): void {
+	if (!state.toolCallsObservable) return;
+	const unobservable = (): void => {
+		state.toolCallsObservable = false;
+		state.toolCalls.clear();
+	};
+	for (let position = 0; position < value.length; position += 1) {
+		const delta = value[position];
+		if (!delta || typeof delta !== 'object' || Array.isArray(delta)) return unobservable();
+		const record = delta as Record<string, unknown>;
+		const index = record.index ?? (value.length === 1 ? 0 : position);
+		if (
+			typeof index !== 'number' ||
+			!Number.isSafeInteger(index) ||
+			index < 0 ||
+			index >= MAX_OBSERVED_TOOL_CALLS
+		) {
+			return unobservable();
+		}
+		const call = state.toolCalls.get(index) ?? {
+			name: '',
+			argumentsText: '',
+			argumentsRejected: false
+		};
+		if (record.function !== undefined) {
+			const fn = record.function;
+			if (!fn || typeof fn !== 'object' || Array.isArray(fn)) return unobservable();
+			const { name, arguments: argumentsDelta } = fn as Record<string, unknown>;
+			if (name !== undefined) {
+				if (typeof name !== 'string') return unobservable();
+				call.name += name;
+				if (call.name.length > MAX_OBSERVED_TOOL_NAME_CHARS) return unobservable();
+			}
+			if (argumentsDelta !== undefined) {
+				if (typeof argumentsDelta !== 'string') {
+					call.argumentsRejected = true;
+				} else if (!call.argumentsRejected) {
+					call.argumentsText += argumentsDelta;
+					if (
+						Buffer.byteLength(call.argumentsText, 'utf8') >
+						MAX_OBSERVED_TOOL_ARGUMENT_BYTES
+					) {
+						return unobservable();
+					}
+				}
+			}
+		}
+		state.toolCalls.set(index, call);
+	}
+}
+
+/**
+ * The consumer accepts an assembled name that exactly matches an advertised
+ * tool, or that is an exact repetition of one (some providers resend the whole
+ * name per delta). Everything else is rejected as not allowlisted.
+ */
+function isAdvertisedToolName(name: string, advertised: readonly string[]): boolean {
+	if (advertised.includes(name)) return true;
+	return advertised.some(
+		(candidate) =>
+			candidate.length > 0 &&
+			name.length > candidate.length &&
+			name.length % candidate.length === 0 &&
+			candidate.repeat(name.length / candidate.length) === name
+	);
+}
+
+function acceptsToolArguments(call: ObservedToolCall): boolean {
+	if (call.argumentsRejected) return false;
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(call.argumentsText || '{}');
+	} catch {
+		return false;
+	}
+	return Boolean(parsed) && typeof parsed === 'object' && !Array.isArray(parsed);
+}
+
+/**
+ * Name-only receipt extension for a completed attempt whose streamed tool call
+ * the consumer will reject: the first such call's name (when it is a bounded
+ * identifier token) and the size of the advertised surface. Emits nothing when
+ * every call is acceptable, when the pass could not be observed faithfully, or
+ * when no tool surface was offered — that rejection is about the disabled
+ * surface, not a name.
+ */
+function rejectedToolCallPayload(state: StreamState, input: ClientInput): JsonObject {
+	if (!state.toolCallsObservable || state.toolCalls.size === 0 || input.toolChoice === 'none') {
+		return {};
+	}
+	const advertised = input.tools.map((tool) => tool.function.name);
+	const rejected = [...state.toolCalls.entries()]
+		.sort(([left], [right]) => left - right)
+		.map(([, call]) => call)
+		.find(
+			(call) => !isAdvertisedToolName(call.name, advertised) || !acceptsToolArguments(call)
+		);
+	if (!rejected) return {};
+	return {
+		rejected_tool_name: REJECTED_TOOL_NAME_PATTERN.test(rejected.name) ? rejected.name : null,
+		advertised_tool_count: input.tools.length
+	};
 }
 
 function extractReasoning(

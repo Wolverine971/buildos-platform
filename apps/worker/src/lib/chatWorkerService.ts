@@ -242,7 +242,8 @@ export class ChatWorkerService {
 				healthy: false,
 				state: 'failed',
 				reason: 'bootstrap_health_unavailable',
-				runtime: null
+				runtime: null,
+				mutationCapabilities: null
 			};
 		}
 	}

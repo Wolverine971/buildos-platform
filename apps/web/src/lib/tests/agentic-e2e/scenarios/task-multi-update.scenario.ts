@@ -82,6 +82,7 @@ export const taskMultiUpdateScenario: Scenario = {
 	id: 'task-multi-update',
 	title: 'Apply three operations from one dictated sentence',
 	category: 'task',
+	requiredMutationTools: ['update_onto_task'],
 	seed: async (ctx): Promise<SeedResult> => {
 		const { projectId } = await seedProject(ctx, spec());
 		const tasks = await listTasks(ctx.db.admin, projectId);

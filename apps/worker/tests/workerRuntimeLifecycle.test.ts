@@ -37,6 +37,7 @@ function chatHealth(
 		state: 'disabled',
 		reason: 'disabled',
 		runtime: null,
+		mutationCapabilities: null,
 		...overrides
 	};
 }

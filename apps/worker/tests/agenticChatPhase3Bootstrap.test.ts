@@ -2,9 +2,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatWorkerCapacityEvidenceV1 } from '../src/workers/agentic-chat/capacity';
 import type { AgenticChatConsumerRuntimeHealth } from '../src/workers/agentic-chat/consumerRuntime';
+import { AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1 } from '../src/workers/agentic-chat/mutationToolCatalog';
 import {
 	buildAgenticChatSemanticReviewerRoutes,
 	createAgenticChatPhase3Bootstrap,
+	summarizeAgenticChatMutationCapabilitiesV1,
 	type AgenticChatPhase3BootstrapAssemblyPort
 } from '../src/workers/agentic-chat/phase3Bootstrap';
 
@@ -147,7 +149,8 @@ describe('Agentic Chat Phase 3 operational bootstrap', () => {
 			healthy: true,
 			state: 'disabled',
 			reason: 'disabled',
-			runtime: null
+			runtime: null,
+			mutationCapabilities: null
 		});
 		await expect(bootstrap.start()).resolves.toBe('disabled');
 		await expect(bootstrap.collectCapacityEvidence()).resolves.toBeNull();
@@ -201,6 +204,11 @@ describe('Agentic Chat Phase 3 operational bootstrap', () => {
 			healthy: false,
 			state: 'ready',
 			reason: 'ready'
+		});
+		expect(bootstrap.getHealth().mutationCapabilities).toEqual({
+			provider: { count: 2, names: ['moveDocumentInTree', 'updateOntoTask'] },
+			adapter: { count: 2, names: ['moveDocumentInTree', 'updateOntoTask'] },
+			advertisedMutationToolNames: ['move_document_in_tree', 'update_onto_task']
 		});
 		const firstStart = bootstrap.start();
 		const secondStart = bootstrap.start();
@@ -296,5 +304,62 @@ describe('Agentic Chat Phase 3 operational bootstrap', () => {
 		await stopping;
 		expect(hosted.runtime.stop).toHaveBeenCalledOnce();
 		expect(bootstrap.getHealth()).toMatchObject({ state: 'stopped', healthy: true });
+	});
+});
+
+describe('summarizeAgenticChatMutationCapabilitiesV1', () => {
+	const moveDocumentInTree = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.find(
+		([capability]) => capability === 'moveDocumentInTree'
+	)?.[1];
+	const updateOntoTask = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.find(
+		([capability]) => capability === 'updateOntoTask'
+	)?.[1];
+	const createOntoTask = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.find(
+		([capability]) => capability === 'createOntoTask'
+	)?.[1];
+
+	it('reports counts and catalog-ordered names for a matched provider/adapter pair', () => {
+		const provider = { updateOntoTask: true, moveDocumentInTree: true };
+		const adapter = { updateOntoTask: true, moveDocumentInTree: true };
+
+		const expectedNames = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
+			([capability]) => capability === 'updateOntoTask' || capability === 'moveDocumentInTree'
+		).map(([capability]) => capability);
+		const expectedToolNames = AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1.filter(
+			([capability]) => capability === 'updateOntoTask' || capability === 'moveDocumentInTree'
+		).map(([, toolName]) => toolName);
+
+		expect(summarizeAgenticChatMutationCapabilitiesV1(provider, adapter)).toEqual({
+			provider: { count: 2, names: expectedNames },
+			adapter: { count: 2, names: expectedNames },
+			advertisedMutationToolNames: expectedToolNames
+		});
+		expect(summarizeAgenticChatMutationCapabilitiesV1(provider, adapter)).toEqual({
+			provider: { count: 2, names: ['moveDocumentInTree', 'updateOntoTask'] },
+			adapter: { count: 2, names: ['moveDocumentInTree', 'updateOntoTask'] },
+			advertisedMutationToolNames: [moveDocumentInTree, updateOntoTask]
+		});
+	});
+
+	it('excludes a capability the adapter has but the provider lacks from advertised tool names', () => {
+		const provider = { updateOntoTask: true };
+		const adapter = { updateOntoTask: true, createOntoTask: true };
+
+		const summary = summarizeAgenticChatMutationCapabilitiesV1(provider, adapter);
+
+		expect(summary.provider).toEqual({ count: 1, names: ['updateOntoTask'] });
+		expect(summary.adapter.count).toBe(2);
+		expect(summary.adapter.names).toContain('createOntoTask');
+		expect(summary.adapter.names).toContain('updateOntoTask');
+		expect(summary.advertisedMutationToolNames).toEqual([updateOntoTask]);
+		expect(summary.advertisedMutationToolNames).not.toContain(createOntoTask);
+	});
+
+	it('treats an undefined provider or adapter map as no capabilities enabled', () => {
+		expect(summarizeAgenticChatMutationCapabilitiesV1(undefined, undefined)).toEqual({
+			provider: { count: 0, names: [] },
+			adapter: { count: 0, names: [] },
+			advertisedMutationToolNames: []
+		});
 	});
 });

@@ -16,9 +16,12 @@ import {
 	readFastChatPendingTurnContract,
 	resolveTurnContractFromExecutions,
 	resolveTurnContractOutcome,
+	bindTurnContractLabels,
+	titleKey,
 	type TurnContract,
 	type TurnContractOutcome
 } from './turn-contract';
+import { buildWriteLedger } from './write-ledger';
 
 function call(name: string, args: Record<string, unknown>, id = `${name}-1`): ChatToolCall {
 	return {
@@ -1198,5 +1201,273 @@ describe('declared turn contract rejection reasons', () => {
 			}).join(' ')
 		).toMatch(/minimum_successful_effects/i);
 		expect(describeDeclaredTurnContractIssues({ outcomes: [] }).join(' ')).toMatch(/outcome/i);
+	});
+});
+
+describe('turn contract symbolic references (label / parent_label)', () => {
+	const DOC_A = '0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a';
+	const DOC_B = '0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b';
+	const FOLDER = '0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f';
+
+	function organizeContract(): TurnContract {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					action: 'create',
+					entity_kind: 'document',
+					label: 'meeting-notes',
+					changes: [{ field: 'title', value: '📋 Meeting Notes' }],
+					minimum_successful_effects: 1
+				},
+				{
+					action: 'move',
+					entity_kind: 'document',
+					target_ids: [DOC_A, DOC_B],
+					parent_label: 'meeting-notes',
+					minimum_successful_effects: 2
+				}
+			]
+		});
+		if (!contract) throw new Error('fixture contract must parse');
+		return contract;
+	}
+
+	it('normalizes titles to an identity key', () => {
+		expect(titleKey('📋 Planning & Tasks')).toBe('planningtasks');
+		expect(titleKey('planning-&-tasks')).toBe('planningtasks');
+		expect(titleKey('  Planning Tasks ')).toBe('planningtasks');
+	});
+
+	it('parses label and parent_label and adds parent_id as the move postcondition', () => {
+		const contract = organizeContract();
+		expect(contract.outcomes[0]).toMatchObject({
+			action: 'create',
+			label: 'meeting-notes',
+			minimumSuccessfulEffects: 1
+		});
+		expect(contract.outcomes[1]).toMatchObject({
+			action: 'move',
+			parentLabel: 'meeting-notes',
+			requiredFields: ['parent_id']
+		});
+	});
+
+	it('rejects a labelled create that is not single-effect or has no declared title', () => {
+		expect(
+			describeDeclaredTurnContractIssues({
+				outcomes: [
+					{
+						action: 'create',
+						entity_kind: 'document',
+						label: 'folders',
+						changes: [{ field: 'title', value: 'Folders' }],
+						minimum_successful_effects: 3
+					}
+				]
+			})
+		).toEqual([expect.stringContaining('minimum_successful_effects must be 1 (received 3)')]);
+		expect(
+			describeDeclaredTurnContractIssues({
+				outcomes: [
+					{
+						action: 'create',
+						entity_kind: 'document',
+						label: 'folder',
+						minimum_successful_effects: 1
+					}
+				]
+			})
+		).toEqual([expect.stringContaining('must declare its title in changes')]);
+		expect(
+			describeDeclaredTurnContractIssues({
+				outcomes: [
+					{
+						action: 'update',
+						entity_kind: 'task',
+						label: 'nope',
+						target_ids: [DOC_A],
+						minimum_successful_effects: 1
+					}
+				]
+			})
+		).toEqual([expect.stringContaining('label is only meaningful on a create outcome')]);
+	});
+
+	it('rejects a parent_label that resolves to nothing, a duplicate label, and two destinations for one document', () => {
+		expect(
+			describeDeclaredTurnContractIssues({
+				outcomes: [
+					{
+						action: 'move',
+						entity_kind: 'document',
+						target_ids: [DOC_A],
+						parent_label: 'ghost',
+						minimum_successful_effects: 1
+					}
+				]
+			})
+		).toEqual([expect.stringContaining('does not match the label of any create outcome')]);
+		const labelled = (label: string) => ({
+			action: 'create',
+			entity_kind: 'document',
+			label,
+			changes: [{ field: 'title', value: label }],
+			minimum_successful_effects: 1
+		});
+		expect(
+			describeDeclaredTurnContractIssues({
+				outcomes: [labelled('dup'), labelled('dup')]
+			})
+		).toEqual([expect.stringContaining('labels must be unique')]);
+		expect(
+			describeDeclaredTurnContractIssues({
+				outcomes: [
+					labelled('one'),
+					labelled('two'),
+					{
+						action: 'move',
+						entity_kind: 'document',
+						target_ids: [DOC_A],
+						parent_label: 'one',
+						minimum_successful_effects: 1
+					},
+					{
+						action: 'move',
+						entity_kind: 'document',
+						target_ids: [DOC_A],
+						parent_label: 'two',
+						minimum_successful_effects: 1
+					}
+				]
+			})
+		).toEqual([expect.stringContaining('a document has one destination')]);
+	});
+
+	it('binds a label by title key despite emoji and case, then fulfills dependent moves', () => {
+		const contract = organizeContract();
+		const executions = [
+			execution(
+				'create_onto_document',
+				{ project_id: 'p', title: 'Meeting notes', description: 'grouping' },
+				{ result: { document: { id: FOLDER, title: 'Meeting notes' } } }
+			),
+			execution(
+				'move_document_in_tree',
+				{ project_id: 'p', document_id: DOC_A, new_parent_id: FOLDER },
+				{ result: { parent_id: FOLDER, structure: { version: 1, root: [] } } }
+			),
+			execution(
+				'move_document_in_tree',
+				{ project_id: 'p', document_id: DOC_B, new_parent_id: FOLDER },
+				{ result: { parent_id: FOLDER, structure: { version: 1, root: [] } } }
+			)
+		];
+		const bindings = bindTurnContractLabels(contract, buildWriteLedger(executions));
+		expect(Object.fromEntries(bindings)).toEqual({ 'meeting-notes': FOLDER });
+
+		const resolution = resolveTurnContractOutcome({ contract, toolExecutions: executions });
+		expect(resolution.status).toBe('fulfilled');
+		expect(resolution.outcomes.map((outcome) => outcome.fulfilled)).toEqual([true, true]);
+	});
+
+	it('does not count a move into a different parent against a labelled destination', () => {
+		const contract = organizeContract();
+		const other = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+		const executions = [
+			execution(
+				'create_onto_document',
+				{ project_id: 'p', title: 'Meeting notes', description: 'grouping' },
+				{ result: { document: { id: FOLDER, title: 'Meeting notes' } } }
+			),
+			execution(
+				'move_document_in_tree',
+				{ project_id: 'p', document_id: DOC_A, new_parent_id: other },
+				{ result: { parent_id: other, structure: { version: 1, root: [] } } }
+			)
+		];
+		const resolution = resolveTurnContractOutcome({ contract, toolExecutions: executions });
+		expect(resolution.outcomes[1]).toMatchObject({
+			fulfilled: false,
+			matchedEffects: 0,
+			missingTargetIds: [DOC_A, DOC_B]
+		});
+	});
+
+	it('reports an unbound parent_label when the create never happened', () => {
+		const contract = organizeContract();
+		const resolution = resolveTurnContractOutcome({ contract, toolExecutions: [] });
+		expect(resolution.outcomes[0]).toMatchObject({ fulfilled: false, matchedEffects: 0 });
+		expect(resolution.outcomes[1]).toMatchObject({
+			fulfilled: false,
+			unboundParentLabel: 'meeting-notes',
+			missingRequiredFields: ['parent_id']
+		});
+	});
+
+	it('binds a label from a parent-by-title move and fulfills the create outcome without a create call', () => {
+		const contract = organizeContract();
+		const executions = [
+			execution(
+				'move_document_in_tree',
+				{ project_id: 'p', document_id: DOC_A, new_parent_title: 'Meeting notes' },
+				{
+					result: {
+						parent_id: FOLDER,
+						parent_title: 'Meeting notes',
+						parent_created: true,
+						structure: { version: 1, root: [] }
+					}
+				}
+			),
+			execution(
+				'move_document_in_tree',
+				{ project_id: 'p', document_id: DOC_B, new_parent_title: 'Meeting notes' },
+				{
+					result: {
+						parent_id: FOLDER,
+						parent_title: 'Meeting notes',
+						parent_created: false,
+						structure: { version: 1, root: [] }
+					}
+				}
+			)
+		];
+		const resolution = resolveTurnContractOutcome({ contract, toolExecutions: executions });
+		expect(resolution.status).toBe('fulfilled');
+	});
+
+	it('binds by elimination when one label and one unmatched create remain', () => {
+		const contract = organizeContract();
+		const executions = [
+			execution(
+				'create_onto_document',
+				{ project_id: 'p', title: 'Notes from meetings', description: 'grouping' },
+				{ result: { document: { id: FOLDER, title: 'Notes from meetings' } } }
+			)
+		];
+		expect(
+			Object.fromEntries(bindTurnContractLabels(contract, buildWriteLedger(executions)))
+		).toEqual({ 'meeting-notes': FOLDER });
+	});
+
+	it('strips a dangling parent_label from the carried-forward pending contract', () => {
+		const contract = organizeContract();
+		const executions = [
+			execution(
+				'create_onto_document',
+				{ project_id: 'p', title: 'Meeting notes', description: 'grouping' },
+				{ result: { document: { id: FOLDER, title: 'Meeting notes' } } }
+			)
+		];
+		const resolution = resolveTurnContractOutcome({ contract, toolExecutions: executions });
+		const pending = buildFastChatPendingTurnContract({
+			resolution,
+			contextType: 'project',
+			projectId: 'p'
+		});
+		expect(pending?.contract.outcomes).toHaveLength(1);
+		expect(pending?.contract.outcomes[0]).not.toHaveProperty('parentLabel');
+		expect(pending?.contract.outcomes[0]?.requiredFields).toContain('parent_id');
+		expect(readFastChatPendingTurnContract(pending)).not.toBeNull();
 	});
 });

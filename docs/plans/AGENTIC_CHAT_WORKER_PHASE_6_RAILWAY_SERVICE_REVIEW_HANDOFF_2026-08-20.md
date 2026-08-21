@@ -159,7 +159,7 @@ The following non-secret values were read back after deployment
 | `NODE_ENV`                                    | `production`                                                 |
 | `AGENTIC_CHAT_WORKER_ENABLED`                 | `true`                                                       |
 | `AGENTIC_CHAT_WORKER_PROFILE`                 | `production`                                                 |
-| `AGENTIC_CHAT_INTERNAL_USER_IDS`              | exactly one canonical UUID; must match the canary user below |
+| `AGENTIC_CHAT_INTERNAL_USER_IDS`              | exactly the canary user and the e2e harness account below (2026-08-22: two UUIDs) |
 | `CHAT_CONCURRENCY`                            | `1`                                                          |
 | `CHAT_POLL_INTERVAL_MS`                       | `1000`                                                       |
 | `CHAT_WORKER_TIMEOUT_MS`                      | `360000`                                                     |
@@ -185,7 +185,7 @@ Required credentials were present at the last check; values were not printed:
 - `PRIVATE_OPENROUTER_API_KEY`;
 - `PRIVATE_RAILWAY_WORKER_TOKEN`.
 
-The internal worker cohort must contain exactly:
+The internal worker cohort must contain exactly (canary user, plus the e2e harness account `76c04859-837c-4d13-88ea-9a39ed15ed81` added 2026-08-21 for paid batteries):
 
 `255735ad-a34b-4ca9-942c-397ed8cc1435`
 

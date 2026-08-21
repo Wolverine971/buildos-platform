@@ -93,6 +93,7 @@ export const taskRescheduleColdReferenceScenario: Scenario = {
 	id: 'task-reschedule-cold-reference',
 	title: 'Reschedule a task described, not named, in a cold session',
 	category: 'task',
+	requiredMutationTools: ['update_onto_task'],
 	seed: async (ctx): Promise<SeedResult> => {
 		const dates = buildRescheduleFixtureDates(new Date());
 		const { projectId } = await seedProject(ctx, spec(dates));

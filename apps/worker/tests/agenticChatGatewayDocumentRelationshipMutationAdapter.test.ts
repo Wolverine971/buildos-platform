@@ -108,7 +108,10 @@ describe('AgenticChatGatewayDocumentRelationshipMutationAdapter', () => {
 
 		await expect(adapter.execute(mutationInput(MOVE_CASE))).resolves.toEqual({
 			structure: STRUCTURE,
-			message: `Moved document ${DOCUMENT_ID} in doc structure.`
+			parent_id: PARENT_ID,
+			parent_title: null,
+			parent_created: false,
+			message: `Moved document ${DOCUMENT_ID} under "${PARENT_ID}".`
 		});
 		expect(runGateway).toHaveBeenCalledOnce();
 		expect(runGateway).toHaveBeenCalledWith({
@@ -177,14 +180,28 @@ describe('AgenticChatGatewayDocumentRelationshipMutationAdapter', () => {
 		);
 	});
 
-	it('rejects compound create/title branches and invalid placement before dispatch', async () => {
+	it('rejects the task-document create branch and invalid placement before dispatch', async () => {
 		const runGateway = vi.fn();
 		const adapter = new AgenticChatGatewayDocumentRelationshipMutationAdapter({} as never, {
 			runGateway: runGateway as never
 		});
-		const titledParent = mutationInput(MOVE_CASE) as any;
-		titledParent.arguments = { ...MOVE_CASE.arguments, new_parent_title: 'Planning' };
-		await expect(adapter.execute(titledParent)).rejects.toMatchObject({
+		const blankTitle = mutationInput(MOVE_CASE) as any;
+		blankTitle.arguments = {
+			...MOVE_CASE.arguments,
+			new_parent_id: null,
+			new_parent_title: '   '
+		};
+		await expect(adapter.execute(blankTitle)).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode: 'mutation_arguments_not_admitted'
+		});
+		const longTitle = mutationInput(MOVE_CASE) as any;
+		longTitle.arguments = {
+			...MOVE_CASE.arguments,
+			new_parent_id: null,
+			new_parent_title: 'x'.repeat(121)
+		};
+		await expect(adapter.execute(longTitle)).rejects.toMatchObject({
 			disposition: 'known_failed',
 			failureCode: 'mutation_arguments_not_admitted'
 		});
@@ -307,6 +324,156 @@ describe('AgenticChatGatewayDocumentRelationshipMutationAdapter', () => {
 		await expect(uncertainAdapter.execute(mutationInput(ATTACH_CASE))).rejects.toMatchObject({
 			disposition: 'outcome_uncertain',
 			failureCode: 'create_task_document_gateway_threw'
+		});
+	});
+	it('groups by title: passes new_parent_title through and proves the receipt parent', async () => {
+		const titledStructure = {
+			version: 8,
+			root: [
+				{
+					id: PARENT_ID,
+					title: 'Planning',
+					order: 0,
+					children: [{ id: DOCUMENT_ID, order: 0 }]
+				}
+			]
+		};
+		const runGateway = vi.fn(async () => ({
+			ok: true,
+			data: {
+				project_id: PROJECT_ID,
+				document_id: DOCUMENT_ID,
+				parent_id: PARENT_ID,
+				parent_created: true,
+				structure: titledStructure
+			}
+		}));
+		const adapter = new AgenticChatGatewayDocumentRelationshipMutationAdapter({} as never, {
+			runGateway: runGateway as never
+		});
+		const titled = mutationInput(MOVE_CASE) as any;
+		titled.arguments = {
+			project_id: PROJECT_ID,
+			document_id: DOCUMENT_ID,
+			new_parent_title: '  planning ',
+			new_position: 0
+		};
+
+		await expect(adapter.execute(titled)).resolves.toEqual({
+			structure: titledStructure,
+			parent_id: PARENT_ID,
+			parent_title: 'Planning',
+			parent_created: true,
+			message: `Moved document ${DOCUMENT_ID} under "Planning" (parent document created).`
+		});
+		expect(runGateway).toHaveBeenCalledWith(
+			expect.objectContaining({
+				args: {
+					project_id: PROJECT_ID,
+					document_id: DOCUMENT_ID,
+					new_parent_id: null,
+					new_parent_title: 'planning',
+					new_position: 0
+				}
+			})
+		);
+	});
+
+	it('lets an exact parent UUID win over a title and drops the title from dispatch', async () => {
+		const runGateway = vi.fn(async () => ({
+			ok: true,
+			data: {
+				project_id: PROJECT_ID,
+				document_id: DOCUMENT_ID,
+				parent_id: PARENT_ID,
+				parent_created: false,
+				structure: STRUCTURE
+			}
+		}));
+		const adapter = new AgenticChatGatewayDocumentRelationshipMutationAdapter({} as never, {
+			runGateway: runGateway as never
+		});
+		const both = mutationInput(MOVE_CASE) as any;
+		both.arguments = { ...MOVE_CASE.arguments, new_parent_title: 'Planning' };
+
+		await expect(adapter.execute(both)).resolves.toMatchObject({
+			parent_id: PARENT_ID,
+			parent_created: false
+		});
+		expect(runGateway).toHaveBeenCalledWith(
+			expect.objectContaining({ args: MOVE_CASE.arguments })
+		);
+	});
+
+	it('fails closed when a title move returns no resolved parent or a differently titled one', async () => {
+		const adapterFor = (data: Record<string, unknown>) =>
+			new AgenticChatGatewayDocumentRelationshipMutationAdapter({} as never, {
+				runGateway: vi.fn(async () => ({ ok: true, data })) as never
+			});
+		const titled = () => {
+			const input = mutationInput(MOVE_CASE) as any;
+			input.arguments = {
+				project_id: PROJECT_ID,
+				document_id: DOCUMENT_ID,
+				new_parent_title: 'Planning',
+				new_position: 0
+			};
+			return input;
+		};
+		const placed = {
+			version: 8,
+			root: [
+				{
+					id: PARENT_ID,
+					title: 'Pricing',
+					order: 0,
+					children: [{ id: DOCUMENT_ID, order: 0 }]
+				}
+			]
+		};
+
+		await expect(
+			adapterFor({
+				project_id: PROJECT_ID,
+				document_id: DOCUMENT_ID,
+				structure: placed
+			}).execute(titled())
+		).rejects.toMatchObject({
+			disposition: 'outcome_uncertain',
+			failureCode: 'move_document_in_tree_receipt_invalid'
+		});
+		await expect(
+			adapterFor({
+				project_id: PROJECT_ID,
+				document_id: DOCUMENT_ID,
+				parent_id: PARENT_ID,
+				parent_created: false,
+				structure: placed
+			}).execute(titled())
+		).rejects.toMatchObject({
+			disposition: 'outcome_uncertain',
+			failureCode: 'move_document_in_tree_receipt_invalid'
+		});
+	});
+
+	it('classifies a gateway failure on the title branch as uncertain, never known', async () => {
+		const adapter = new AgenticChatGatewayDocumentRelationshipMutationAdapter({} as never, {
+			runGateway: vi.fn(async () => ({
+				ok: false,
+				error: { code: 'VALIDATION_ERROR', message: 'Parent document is not linked.' }
+			})) as never
+		});
+		const titled = mutationInput(MOVE_CASE) as any;
+		titled.arguments = {
+			project_id: PROJECT_ID,
+			document_id: DOCUMENT_ID,
+			new_parent_title: 'Planning',
+			new_position: 0
+		};
+
+		await expect(adapter.execute(titled)).rejects.toMatchObject({
+			disposition: 'outcome_uncertain',
+			failureCode: 'move_document_in_tree_title_branch_uncertain'
 		});
 	});
 });

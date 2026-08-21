@@ -9,6 +9,12 @@ export interface HarnessEnv {
 	testUserEmail: string;
 	testUserPassword: string;
 	openRouterApiKey: string;
+	/**
+	 * Worker health origin used for the write-surface preflight
+	 * (`requireAdvertisedMutationTools`). Null when unset — scenarios with
+	 * `requiredMutationTools` then fail loudly instead of silently skipping it.
+	 */
+	workerHealthUrl: string | null;
 }
 
 function required(name: string, value: string | undefined): string {
@@ -35,7 +41,9 @@ export function loadHarnessEnv(): HarnessEnv {
 		openRouterApiKey: required(
 			'PRIVATE_OPENROUTER_API_KEY',
 			privateEnv.PRIVATE_OPENROUTER_API_KEY
-		)
+		),
+		workerHealthUrl:
+			privateEnv.PRIVATE_AGENTIC_CHAT_WORKER_URL?.trim().replace(/\/$/, '') || null
 	};
 
 	return cached;

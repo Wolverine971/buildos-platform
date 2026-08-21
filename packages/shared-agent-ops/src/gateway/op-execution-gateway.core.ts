@@ -1294,6 +1294,7 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 		typeof (args.new_parent_title ?? args.parent_title) === 'string'
 			? String(args.new_parent_title ?? args.parent_title).trim()
 			: '';
+	let parentCreated = false;
 	if (!newParentId && rawParentTitle) {
 		const { data: titledParent, error: titledParentError } = await context.admin
 			.from('onto_documents')
@@ -1330,6 +1331,7 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 				);
 			}
 			newParentId = createdParentId;
+			parentCreated = true;
 		}
 	}
 	if (newParentId && newParentId === documentId) {
@@ -1381,11 +1383,19 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 		getExternalAgentActivityContext(context)
 	);
 
+	// The resolved parent is part of the receipt so callers that grouped by title
+	// (and worker adapters that must prove placement) learn the destination id.
 	return {
 		project_id: project.id,
 		document_id: documentId,
+		parent_id: newParentId ?? null,
+		parent_created: parentCreated,
 		structure,
-		message: `Moved document ${documentId} in doc structure.`
+		message: newParentId
+			? parentCreated
+				? `Moved document ${documentId} under "${rawParentTitle}" (parent document created).`
+				: `Moved document ${documentId} under parent ${newParentId}.`
+			: `Moved document ${documentId} to the root of the doc structure.`
 	};
 }
 

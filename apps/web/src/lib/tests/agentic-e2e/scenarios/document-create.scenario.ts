@@ -32,6 +32,7 @@ export const documentCreateScenario: Scenario = {
 	id: 'document-create',
 	title: 'Add a structured document to a project',
 	category: 'document',
+	requiredMutationTools: ['create_onto_document'],
 	seed: (ctx) => seedScenarioProject(ctx, spec()),
 	turns: [
 		{

@@ -601,7 +601,8 @@ function uninitializedAgenticChatHealth(): AgenticChatPhase3BootstrapHealth {
 			healthy: false,
 			state: 'failed',
 			reason: flag === 'true' ? 'bootstrap_not_initialized' : 'bootstrap_flag_invalid',
-			runtime: null
+			runtime: null,
+			mutationCapabilities: null
 		};
 	}
 	return {
@@ -609,7 +610,8 @@ function uninitializedAgenticChatHealth(): AgenticChatPhase3BootstrapHealth {
 		healthy: true,
 		state: 'disabled',
 		reason: 'bootstrap_not_initialized',
-		runtime: null
+		runtime: null,
+		mutationCapabilities: null
 	};
 }
 

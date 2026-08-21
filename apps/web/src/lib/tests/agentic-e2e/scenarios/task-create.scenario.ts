@@ -32,6 +32,7 @@ export const taskCreateScenario: Scenario = {
 	id: 'task-create',
 	title: 'Create a scheduled, prioritized task',
 	category: 'task',
+	requiredMutationTools: ['create_onto_task'],
 	seed: async (ctx) => {
 		const seed = await seedScenarioProject(ctx, spec());
 		seed.notes.expectedFriday = nextWeekdayDate(new Date(), 5);

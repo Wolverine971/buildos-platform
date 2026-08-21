@@ -175,6 +175,12 @@ export interface Scenario {
 	timeoutMs?: number;
 	/** Return true to skip (e.g. calendar without a connected test calendar). */
 	skip?: () => boolean;
+	/**
+	 * Mutation tool names the worker must advertise (via /health
+	 * agenticChat.mutationCapabilities) before this scenario is allowed to run
+	 * in worker_realtime mode. Empty/unset scenarios skip the preflight.
+	 */
+	requiredMutationTools?: string[];
 	/** Create fixtures. Omit for global/project_create scenarios. */
 	seed?: (ctx: ScenarioContext) => Promise<SeedResult>;
 	/**

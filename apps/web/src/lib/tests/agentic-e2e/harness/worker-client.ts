@@ -56,6 +56,50 @@ export function resolveAgenticE2EExecutionMode(
 	);
 }
 
+/** Shape of `agenticChat.mutationCapabilities` on the worker's `/health` response. */
+export interface AdvertisedMutationCapabilities {
+	provider: { count: number; names: string[] };
+	adapter: { count: number; names: string[] };
+	advertisedMutationToolNames: string[];
+}
+
+/**
+ * Fail-closed write-surface preflight: proves the worker actually advertises the
+ * mutation tools a scenario needs before spending on a turn against it. Unlike
+ * `requireWorkerLease`, which only proves transport, this catches a worker that
+ * negotiated fine but is read-only (or predates capability readback entirely).
+ */
+export async function requireAdvertisedMutationTools(params: {
+	healthUrl: string;
+	required: string[];
+	fetchImpl?: typeof fetch;
+}): Promise<{ advertised: string[] }> {
+	const { healthUrl, required, fetchImpl = fetch } = params;
+	if (required.length === 0) return { advertised: [] };
+
+	const response = await fetchImpl(`${healthUrl.replace(/\/$/, '')}/health`);
+	if (!response.ok) {
+		throw new Error(`[agentic-e2e] worker health ${response.status}`);
+	}
+	const body = (await response.json()) as {
+		agenticChat?: { mutationCapabilities?: AdvertisedMutationCapabilities | null } | null;
+	};
+	const capabilities = body?.agenticChat?.mutationCapabilities;
+	if (!capabilities) {
+		throw new Error(
+			'[agentic-e2e] worker /health has no agenticChat.mutationCapabilities field — deployed worker predates the capability readback; deploy before running mutation scenarios'
+		);
+	}
+	const advertised = capabilities.advertisedMutationToolNames ?? [];
+	const missing = required.filter((tool) => !advertised.includes(tool));
+	if (missing.length > 0) {
+		throw new Error(
+			`[agentic-e2e] worker does not advertise required write tools: [${missing.join(', ')}]; advertised: [${advertised.join(', ')}]; refusing to spend on a read-only worker`
+		);
+	}
+	return { advertised };
+}
+
 type WorkerHarnessOptions = {
 	userId: string;
 	admin: TypedSupabaseClient;
