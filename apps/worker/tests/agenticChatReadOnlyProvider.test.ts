@@ -9040,4 +9040,108 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(afterCreate.some((step) => step.type === 'finish')).toBe(true);
 		expect(fixture.semanticReviewer.stream).toHaveBeenCalledTimes(2);
 	});
+	it('keeps an approval whose reference candidates form a set the contract mostly covers', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const looseA = '42000000-0000-4000-8000-000000000001';
+		const looseB = '42000000-0000-4000-8000-000000000002';
+		const startHere = '42000000-0000-4000-8000-000000000003';
+		const contractArguments: JsonObject = {
+			outcomes: [
+				{
+					action: 'organize',
+					entity_kind: 'document',
+					target_ids: [looseA, looseB],
+					required_fields: ['parent_id'],
+					minimum_successful_effects: 2
+				}
+			]
+		};
+		const normalizedContract = parseDeclaredTurnContract(contractArguments);
+		if (!normalizedContract) throw new Error('Expected a valid organize contract');
+		const contractReviewSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
+			.digest('hex');
+		const approvalArguments = {
+			reason: 'Delegated organization of the loose documents; START HERE stays put.',
+			contract_sha256: contractReviewSha256,
+			reference_candidates: [
+				{
+					reference: "this project's documents",
+					candidates: [
+						{ id: startHere, title: 'START HERE' },
+						{ id: looseA, title: 'notes' },
+						{ id: looseB, title: 'meeting 3-14 raw' }
+					]
+				}
+			]
+		};
+		const client = clientWithRounds([
+			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract')
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-contract-approval-1',
+				approvalArguments,
+				'approve_turn_contract_review'
+			)
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ moveDocumentInTree: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					moveDocumentToolDefinition()
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'move_document_in_tree'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		const reviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-contract-1',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		expect(reviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					toolName: 'approve_turn_contract_review',
+					decidedBy: 'contract_reviewer'
+				})
+			])
+		);
+		expect(
+			reviewSteps.some(
+				(step) =>
+					step.type === 'read_tool' && step.toolName === 'request_turn_clarification'
+			)
+		).toBe(false);
+		void projectId;
+	});
 });

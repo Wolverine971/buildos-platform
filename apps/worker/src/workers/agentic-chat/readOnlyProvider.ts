@@ -3826,6 +3826,14 @@ function findAmbiguousReferenceCandidates(
 		const covered = group.candidates.filter((candidate) =>
 			contractTargets.has(candidate.id)
 		).length;
+		// The floor guards a singular reference resolved to one of several
+		// plausible entities ("the email one" → three email tasks). A contract
+		// that already covers two or more of the listed candidates treated the
+		// reference as a set; which members of a delegated set to include (for
+		// example every loose document but the managed START HERE) is the
+		// reviewer's judgment, not a user choice. Live organize turns were
+		// converted from approval to clarification here.
+		if (covered >= 2) continue;
 		if (covered < group.candidates.length) return group;
 	}
 	return null;
