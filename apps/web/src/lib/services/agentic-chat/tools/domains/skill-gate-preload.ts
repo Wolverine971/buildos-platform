@@ -34,6 +34,8 @@ const PRELOAD_WHEN_TO_USE_LIMIT = 3;
 
 type SkillPreloadOptions = {
 	alreadyLoadedSkillIds?: string[];
+	/** Keep false for runtimes that can consume a preload but cannot execute skill_load. */
+	allowFollowupSkillLoad?: boolean;
 };
 
 export function resolveSkillGatePreload(
@@ -88,17 +90,24 @@ function resolveSkillPreload(
 		source,
 		format: 'short',
 		payload,
-		promptContent: renderPreloadedSkillPromptContent(payload, remainingCandidates),
+		promptContent: renderPreloadedSkillPromptContent(
+			payload,
+			remainingCandidates,
+			options.allowFollowupSkillLoad !== false
+		),
 		materializedToolNames: payload.materialized_tools ?? []
 	};
 }
 
 function renderPreloadedSkillPromptContent(
 	payload: SkillHelpPayload,
-	remainingCandidates: string[]
+	remainingCandidates: string[],
+	allowFollowupSkillLoad: boolean
 ): string {
 	const lines: string[] = [
-		`Preloaded skill: ${payload.id} (${payload.name}) — loaded at short format. It counts as loaded; do NOT call skill_load for it again at short format. Apply its workflow to this turn's work.`
+		allowFollowupSkillLoad
+			? `Preloaded skill: ${payload.id} (${payload.name}) — loaded at short format. It counts as loaded; do NOT call skill_load for it again at short format. Apply its workflow to this turn's work.`
+			: `Preloaded skill: ${payload.id} (${payload.name}) — already loaded at short format. Apply its workflow directly to this turn's work.`
 	];
 
 	// When-to-use is capped harder than the other lists (tasker/39 stage 4):
@@ -120,7 +129,7 @@ function renderPreloadedSkillPromptContent(
 	if (payload.output_contract) {
 		lines.push('', `Output contract: ${payload.output_contract}`);
 	}
-	if (payload.child_skills?.length) {
+	if (allowFollowupSkillLoad && payload.child_skills?.length) {
 		lines.push(
 			'',
 			`Linked child skills (load via skill_load only if this turn needs them): ${payload.child_skills
@@ -129,10 +138,12 @@ function renderPreloadedSkillPromptContent(
 				.join(', ')}`
 		);
 	}
-	lines.push(
-		'',
-		`Need more depth? Call skill_load with reference '${payload.id}' and format 'full' for the complete playbook.`
-	);
+	if (allowFollowupSkillLoad) {
+		lines.push(
+			'',
+			`Need more depth? Call skill_load with reference '${payload.id}' and format 'full' for the complete playbook.`
+		);
+	}
 	if (remainingCandidates.length) {
 		lines.push(
 			`Alternate skill candidates if this one does not fit: ${remainingCandidates.join(', ')}.`

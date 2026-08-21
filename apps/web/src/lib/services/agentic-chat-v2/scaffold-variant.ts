@@ -70,6 +70,7 @@ export function resolveFastChatScaffoldConfig(
 		prompt: {
 			staticSkillCatalog: true,
 			skillRoutingCoaching: true,
+			dynamicSkillTools: true,
 			retiredModelCoaching: true,
 			domainSensing: true,
 			situationalRules: true

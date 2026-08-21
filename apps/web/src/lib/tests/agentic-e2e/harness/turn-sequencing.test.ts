@@ -5,16 +5,24 @@ import { checkTurnBeforeFollowupRelease } from './turn-sequencing';
 describe('checkTurnBeforeFollowupRelease', () => {
 	it('checks assertions, judging, and evidence capture before releasing an intermediate turn', async () => {
 		const order: string[] = [];
+		let capturedJudgeStatus: string | null = null;
 
 		await checkTurnBeforeFollowupRelease({
 			hasFollowup: true,
 			assertTurn: async () => void order.push('assert'),
-			judgeTurn: async () => void order.push('judge'),
-			captureTurn: async (error) => void order.push(error ? 'capture-error' : 'capture'),
+			judgeTurn: async () => {
+				order.push('judge');
+				return { score: 4, passed: true, reasoning: 'Good result.', threshold: 3 };
+			},
+			captureTurn: async (outcome) => {
+				capturedJudgeStatus = outcome.judge.status;
+				order.push(outcome.overallError ? 'capture-error' : 'capture');
+			},
 			releaseForFollowup: async () => void order.push('release')
 		});
 
 		expect(order).toEqual(['assert', 'judge', 'capture', 'release']);
+		expect(capturedJudgeStatus).toBe('passed');
 	});
 
 	it('never releases the final turn', async () => {
@@ -47,11 +55,16 @@ describe('checkTurnBeforeFollowupRelease', () => {
 		).rejects.toThrow('assertion failed');
 		expect(judgeTurn).not.toHaveBeenCalled();
 		expect(captureTurn).toHaveBeenCalledOnce();
-		expect(captureTurn.mock.calls[0]?.[0]).toEqual(expect.any(Error));
+		expect(captureTurn.mock.calls[0]?.[0]).toMatchObject({
+			deterministicAssertionPassed: false,
+			deterministicAssertionError: expect.any(Error),
+			judge: { status: 'not_reached' },
+			overallError: expect.any(Error)
+		});
 		expect(releaseForFollowup).not.toHaveBeenCalled();
 	});
 
-	it('does not release a turn whose judge fails', async () => {
+	it('captures an explicit failed judge verdict before rejecting the turn', async () => {
 		const captureTurn = vi.fn();
 		const releaseForFollowup = vi.fn();
 
@@ -59,14 +72,47 @@ describe('checkTurnBeforeFollowupRelease', () => {
 			checkTurnBeforeFollowupRelease({
 				hasFollowup: true,
 				assertTurn: async () => undefined,
-				judgeTurn: async () => {
-					throw new Error('judge failed');
-				},
+				judgeTurn: async () => ({
+					score: 2,
+					passed: false,
+					reasoning: 'The requested structure was not created.',
+					threshold: 3
+				}),
 				captureTurn,
 				releaseForFollowup
 			})
-		).rejects.toThrow('judge failed');
+		).rejects.toThrow('LLM judge scored 2/5');
 		expect(captureTurn).toHaveBeenCalledOnce();
+		expect(captureTurn.mock.calls[0]?.[0]).toMatchObject({
+			deterministicAssertionPassed: true,
+			deterministicAssertionError: null,
+			judge: {
+				status: 'failed',
+				result: { score: 2, passed: false, threshold: 3 }
+			},
+			overallError: expect.any(Error)
+		});
 		expect(releaseForFollowup).not.toHaveBeenCalled();
+	});
+
+	it('distinguishes a judge provider error from a low quality score', async () => {
+		const captureTurn = vi.fn();
+
+		await expect(
+			checkTurnBeforeFollowupRelease({
+				hasFollowup: false,
+				assertTurn: async () => undefined,
+				judgeTurn: async () => {
+					throw new Error('judge provider unavailable');
+				},
+				captureTurn,
+				releaseForFollowup: async () => undefined
+			})
+		).rejects.toThrow('judge provider unavailable');
+		expect(captureTurn.mock.calls[0]?.[0]).toMatchObject({
+			deterministicAssertionPassed: true,
+			judge: { status: 'error', error: expect.any(Error) },
+			overallError: expect.any(Error)
+		});
 	});
 });

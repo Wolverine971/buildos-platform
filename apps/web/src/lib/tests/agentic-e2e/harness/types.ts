@@ -112,6 +112,32 @@ export interface TurnCheckpoint {
 	check: (turn: TurnResult, ctx: ScenarioContext, seed: SeedResult) => Promise<void> | void;
 }
 
+export type TurnEvidenceCheckCategory =
+	| 'transport'
+	| 'contract'
+	| 'mutation'
+	| 'effect'
+	| 'collateral';
+
+/**
+ * An independently evaluated diagnostic subcheck. Unlike a checkpoint, a miss
+ * never changes the official scenario verdict; it explains which layer failed
+ * even when an earlier deterministic assertion already stopped the main gate.
+ */
+export interface TurnEvidenceCheck {
+	name: string;
+	category: TurnEvidenceCheckCategory;
+	applies?: (ctx: ScenarioContext) => boolean;
+	check: (turn: TurnResult, ctx: ScenarioContext, seed: SeedResult) => Promise<void> | void;
+}
+
+export interface TurnEvidenceCheckResult {
+	name: string;
+	category: TurnEvidenceCheckCategory;
+	status: 'passed' | 'failed' | 'not_applicable';
+	error: string | null;
+}
+
 /** One turn in a (possibly multi-turn) scenario. */
 export interface TurnSpec {
 	/** Human-readable phase name used in journey diagnostics. */
@@ -131,6 +157,8 @@ export interface TurnSpec {
 	assert: (turn: TurnResult, ctx: ScenarioContext, seed: SeedResult) => Promise<void> | void;
 	/** Non-fatal quality checks accumulated until the scenario finishes. */
 	checkpoints?: TurnCheckpoint[];
+	/** Independent diagnostics retained in Phase 0 evidence, including after fail-fast gates. */
+	evidenceChecks?: TurnEvidenceCheck[];
 	/** Optional fuzzy-quality judge for this turn. */
 	judge?: (
 		turn: TurnResult,

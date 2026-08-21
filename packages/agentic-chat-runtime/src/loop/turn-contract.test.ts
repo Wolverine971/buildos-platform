@@ -999,6 +999,64 @@ describe('turn contract changes', () => {
 		).toBe(true);
 	});
 
+	it('fulfills a declared change only when the successful write sets the declared value', () => {
+		const contract: TurnContract = {
+			version: 1,
+			source: 'declared',
+			outcomes: [
+				{
+					id: 'top-priority',
+					action: 'update',
+					entityKind: 'task',
+					targetIds: ['halcyon'],
+					requiredFields: ['priority'],
+					changes: [{ field: 'priority', value: '1' }],
+					minimumSuccessfulEffects: 1
+				}
+			]
+		};
+
+		expect(
+			resolveTurnContractOutcome({
+				contract,
+				toolExecutions: [execution('update_onto_task', { task_id: 'halcyon', priority: 5 })]
+			}).fulfilled
+		).toBe(false);
+		expect(
+			resolveTurnContractOutcome({
+				contract,
+				toolExecutions: [
+					execution('update_onto_task', { task_id: 'halcyon', priority: 5 }, {}, 'wrong'),
+					execution(
+						'update_onto_task',
+						{ task_id: 'halcyon', priority: 1 },
+						{},
+						'correct'
+					)
+				]
+			}).fulfilled
+		).toBe(true);
+		expect(
+			resolveTurnContractOutcome({
+				contract,
+				toolExecutions: [
+					execution(
+						'update_onto_task',
+						{ task_id: 'halcyon', priority: 1 },
+						{},
+						'correct'
+					),
+					execution(
+						'update_onto_task',
+						{ task_id: 'halcyon', priority: 5 },
+						{},
+						'overwritten'
+					)
+				]
+			}).fulfilled
+		).toBe(false);
+	});
+
 	it('resolves a heterogeneous declaration from mixed writes and carries changes forward', () => {
 		const declaration = execution('declare_turn_contract', heterogeneousDeclaration());
 		const finished = ['resume', 'linkedin'].map((id) =>

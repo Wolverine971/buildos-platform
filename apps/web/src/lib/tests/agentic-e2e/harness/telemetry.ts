@@ -51,6 +51,14 @@ export interface LlmUsageLogRow {
 	request_completed_at: string;
 }
 
+export interface ExecutionObservationRow {
+	execution_generation: number;
+	phase: string;
+	event_type: string;
+	observed_at: string;
+	payload: unknown;
+}
+
 export interface StreamUsageSummary {
 	requestCount: number;
 	promptTokens: number;
@@ -89,7 +97,17 @@ export interface TaskRow {
 	description: string | null;
 	priority: number | null;
 	due_at: string | null;
+	start_at: string | null;
 	state_key: string;
+	type_key: string;
+	completed_at: string | null;
+	archived_at: string | null;
+	deleted_at: string | null;
+	facet_scale: string | null;
+	idempotency_key: string | null;
+	props: unknown;
+	created_at: string;
+	created_by: string;
 	updated_at: string;
 }
 
@@ -307,6 +325,25 @@ export async function getUsageLogsForStreamRun(
 	return (data as LlmUsageLogRow[] | null) ?? [];
 }
 
+/** Redacted provider/tool boundary observations retained for one durable worker turn. */
+export async function getExecutionObservations(
+	admin: TypedSupabaseClient,
+	turnRunId: string
+): Promise<ExecutionObservationRow[]> {
+	const { data, error } = await admin
+		.from('agentic_chat_execution_observations')
+		.select('execution_generation, phase, event_type, observed_at, payload')
+		.eq('turn_run_id', turnRunId)
+		.order('observed_at', { ascending: true })
+		.order('id', { ascending: true });
+	if (error) {
+		throw new Error(
+			`[agentic-e2e] failed to read execution observations for ${turnRunId}: ${error.message}`
+		);
+	}
+	return (data as ExecutionObservationRow[] | null) ?? [];
+}
+
 export function summarizeUsageLogs(rows: LlmUsageLogRow[]): StreamUsageSummary {
 	const unique = (values: Array<string | null>) =>
 		Array.from(new Set(values.filter((value): value is string => Boolean(value))));
@@ -417,7 +454,9 @@ export async function getDocumentById(
 export async function listTasks(admin: TypedSupabaseClient, projectId: string): Promise<TaskRow[]> {
 	const { data } = await admin
 		.from('onto_tasks')
-		.select('id, project_id, title, description, priority, due_at, state_key, updated_at')
+		.select(
+			'id, project_id, title, description, priority, due_at, start_at, state_key, type_key, completed_at, archived_at, deleted_at, facet_scale, idempotency_key, props, created_at, created_by, updated_at'
+		)
 		.eq('project_id', projectId)
 		.is('deleted_at', null)
 		.order('updated_at', { ascending: false });

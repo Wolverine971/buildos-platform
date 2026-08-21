@@ -28,6 +28,8 @@ export type WriteLedgerEntry = {
 	effectId?: string;
 	entityId?: string;
 	changedFields?: string[];
+	/** Canonical scalar values requested by a successful write, keyed by durable field. */
+	changedValues?: Record<string, string>;
 	title?: string;
 	stateKey?: string;
 	typeKey?: string;
@@ -147,6 +149,38 @@ function extractChangedFields(toolName: string, args: ParsedArgs): string[] {
 		fields.push('parent_id');
 	}
 	return Array.from(new Set(fields)).sort();
+}
+
+function canonicalScalarEffectValue(value: unknown): string | undefined {
+	if (typeof value === 'string') return value.trim();
+	if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+		return String(value);
+	}
+	return undefined;
+}
+
+/**
+ * Preserve exact scalar postconditions as well as field presence. Turn
+ * contracts can declare `priority=1`, for example; recording only `priority`
+ * would let a successful write to priority 5 satisfy that contract.
+ */
+function extractChangedValues(toolName: string, args: ParsedArgs): Record<string, string> {
+	const values: Record<string, string> = {};
+	for (const [key, value] of Object.entries(args)) {
+		const field = normalizeFieldName(key);
+		if (NON_EFFECT_ARGUMENTS.has(field) || value === undefined) continue;
+		const canonical = canonicalScalarEffectValue(value);
+		if (canonical !== undefined) values[field] = canonical;
+	}
+	if (
+		(toolName === 'move_document_in_tree' && Object.hasOwn(args, 'new_parent_id')) ||
+		(toolName === 'create_onto_document' && Object.hasOwn(args, 'parent_id'))
+	) {
+		const value = Object.hasOwn(args, 'new_parent_id') ? args.new_parent_id : args.parent_id;
+		const canonical = canonicalScalarEffectValue(value);
+		if (canonical !== undefined) values.parent_id = canonical;
+	}
+	return values;
 }
 
 function extractIdFromArgs(entityKind: string | null, args: ParsedArgs): string | undefined {
@@ -271,6 +305,8 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 	if (execution.toolCall.id) entry.effectId = execution.toolCall.id;
 	const changedFields = extractChangedFields(toolName, args);
 	if (changedFields.length > 0) entry.changedFields = changedFields;
+	const changedValues = extractChangedValues(toolName, args);
+	if (Object.keys(changedValues).length > 0) entry.changedValues = changedValues;
 	const entityId = extractIdFromResult(entityKind, result) ?? extractIdFromArgs(entityKind, args);
 	if (entityId) entry.entityId = entityId;
 	// Lifecycle semantics describe the attempted durable effect as well as a

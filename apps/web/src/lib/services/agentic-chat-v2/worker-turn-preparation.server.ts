@@ -47,6 +47,7 @@ import {
 } from '$lib/services/agentic-chat/tools/domains/domain-session-state';
 import { getDomainIdsForSkillReference } from '$lib/services/agentic-chat/tools/domains/domain-used-signals';
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
+import { resolveSkillGatePreload } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
 import { buildEntityResolutionHint } from './entity-resolution';
 import {
 	FASTCHAT_CONTEXT_CACHE_VERSION,
@@ -164,6 +165,21 @@ const TEMP_IMAGE_TTL_SECONDS = positiveInt(
 const STORAGE_BUCKET = 'onto-assets';
 const TEMP_ATTACHMENT_PATH_PREFIX = 'users';
 const SCAFFOLD = resolveFastChatScaffoldConfigFromEnv(process.env);
+// The dedicated worker executes the reviewed direct/control surface only. It
+// cannot run the web-owned dynamic skill discovery tools, so its prompt must
+// never commission those calls. Trusted server-selected skill preloads remain
+// available through the per-turn domain overlay below.
+const WORKER_PROMPT_SCAFFOLD = {
+	...SCAFFOLD.prompt,
+	dynamicSkillTools: false
+} as const;
+const WORKER_UNAVAILABLE_SKILL_TOOL_NAMES = new Set(['skill_search', 'skill_load']);
+// Prepared-prompt admission is byte-bound in the database to the stored legacy
+// prompt. Until prewarm stores a separate worker-capability variant, accepting
+// that lineage would either preserve the impossible skill instructions or make
+// the atomic admission reject a rebuilt prompt. Session context caching remains
+// available, so prefer correct per-turn assembly over an invalid cache claim.
+const WORKER_PREPARED_PROMPT_REUSE_ENABLED: boolean = false;
 
 type FastChatSupabaseClient = SupabaseClient<Database>;
 
@@ -334,16 +350,17 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		scaffold: SCAFFOLD
 	});
 
-	const preparedAdmissionLineage = sessionIntent.session
-		? await inspectPreparedPromptAdmissionLineage({
-				supabase: input.serviceClient,
-				key: input.command.preparedPromptKey,
-				userId: input.userId,
-				sessionId: sessionIntent.session.id,
-				cacheKey: turnPreparation.cacheKey,
-				surfaceProfile: turnPreparation.selectedSurfaceProfile
-			})
-		: null;
+	const preparedAdmissionLineage =
+		sessionIntent.session && WORKER_PREPARED_PROMPT_REUSE_ENABLED
+			? await inspectPreparedPromptAdmissionLineage({
+					supabase: input.serviceClient,
+					key: input.command.preparedPromptKey,
+					userId: input.userId,
+					sessionId: sessionIntent.session.id,
+					cacheKey: turnPreparation.cacheKey,
+					surfaceProfile: turnPreparation.selectedSurfaceProfile
+				})
+			: null;
 	const requestHash = await hashCanonicalAdmissionRequestV1({
 		version: AGENTIC_CHAT_REQUEST_HASH_VERSION,
 		clientTurnId: input.command.clientTurnId,
@@ -362,23 +379,38 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		}
 	});
 
-	const preparedInspection = sessionIntent.session
-		? await inspectPreparedPromptForWorkerAdmission({
-				supabase: input.serviceClient,
-				key: input.command.preparedPromptKey,
-				userId: input.userId,
-				sessionId: sessionIntent.session.id,
-				cacheKey: turnPreparation.cacheKey,
-				surfaceProfile: turnPreparation.selectedSurfaceProfile,
-				contextType,
-				tools: turnPreparation.tools,
-				scaffold: SCAFFOLD.prompt,
-				nowMs
-			})
-		: ({ hit: false, reason: 'missing_key' } as const);
+	const preparedInspection =
+		sessionIntent.session && WORKER_PREPARED_PROMPT_REUSE_ENABLED
+			? await inspectPreparedPromptForWorkerAdmission({
+					supabase: input.serviceClient,
+					key: input.command.preparedPromptKey,
+					userId: input.userId,
+					sessionId: sessionIntent.session.id,
+					cacheKey: turnPreparation.cacheKey,
+					surfaceProfile: turnPreparation.selectedSurfaceProfile,
+					contextType,
+					tools: turnPreparation.tools,
+					scaffold: SCAFFOLD.prompt,
+					nowMs
+				})
+			: ({ hit: false, reason: 'missing_key' } as const);
 
 	const requestLastTurnContext = input.command.lastTurnContext;
 	const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
+	const workerSkillGatePreload = SCAFFOLD.routing.skillPreload
+		? resolveSkillGatePreload(turnPreparation.turnDomainSensing, {
+				allowFollowupSkillLoad: false
+			})
+		: null;
+	// An unresolved dynamic skill gate would ask the worker to call a tool it
+	// cannot execute. Only carry domain sensing into the worker prompt after the
+	// trusted preload has already satisfied that gate.
+	const workerPromptDomainSensing = workerSkillGatePreload
+		? turnPreparation.turnDomainSensing
+		: null;
+	const workerPromptTools = turnPreparation.tools.filter(
+		(tool) => !WORKER_UNAVAILABLE_SKILL_TOOL_NAMES.has(tool.function?.name ?? '')
+	);
 	let modelHistory: HistoryWithLineage[];
 	let historySource: 'admission_window' | 'prepared_prompt';
 	let preparedArtifact: TurnInputArtifactContentV1['prepared'];
@@ -457,22 +489,22 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		};
 		let envelope = buildLitePromptEnvelope({
 			...promptContext,
-			tools: turnPreparation.tools,
+			tools: workerPromptTools,
 			productSurface: WORKER_TURNS_ENDPOINT,
 			conversationPosition: `worker admission ${input.command.streamRunId}`,
 			currentUserMessage: messageForModel,
 			domainSensingResult: null,
-			scaffold: SCAFFOLD.prompt
+			scaffold: WORKER_PROMPT_SCAFFOLD
 		});
 		envelope = applyActiveDomainSignalsOverlay(envelope, {
 			currentUserMessage: messageForModel,
 			conversationSummary,
 			priorDomainIds: turnPreparation.priorDomainIds,
 			priorOutcomeCardIds: turnPreparation.priorOutcomeCardIds,
-			domainSensingResult: turnPreparation.turnDomainSensing,
-			skillGatePreload: null,
+			domainSensingResult: workerPromptDomainSensing,
+			skillGatePreload: workerSkillGatePreload,
 			turnSituation: null,
-			scaffold: SCAFFOLD.prompt
+			scaffold: WORKER_PROMPT_SCAFFOLD
 		});
 		preparedArtifact = {
 			sourcePreparedPromptId: null,

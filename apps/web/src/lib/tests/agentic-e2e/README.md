@@ -100,6 +100,12 @@ Fuzzy scenarios (e.g. "get organized") add an **LLM judge** (strong `powerful`
 JSON route) that scores the outcome 1–5 against a rubric; the turn fails below
 the threshold.
 
+Phase 0 evidence schema v2 records deterministic assertions and judging as separate stages. A turn
+that fails before judging is `judge.status = "not_reached"`, not a score of zero; eligible turns
+retain the exact numeric score, threshold, pass/fail result, and bounded judge reasoning. The report
+also includes a content-free projection of the database-enforced provider/tool execution-observation
+allowlist (finish reasons, token counts, timings, and tool boundary metadata only).
+
 Long journeys can also declare **checkpoints**. Unlike hard preconditions, a
 checkpoint miss does not abort the next turn. The runner completes the journey
 and then reports all misses together, so weak opening organization does not hide

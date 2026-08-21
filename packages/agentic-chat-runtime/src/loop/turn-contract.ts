@@ -760,15 +760,24 @@ function resolveOutcome(
 	const requiredFields = outcome.requiredFields.map(normalizeFieldName);
 	const candidatesForTarget = (targetId: string): WriteLedgerEntry[] =>
 		candidates.filter((entry) => entry.entityId === targetId);
-	const entriesHaveRequiredFields = (entries: WriteLedgerEntry[]): boolean => {
+	const entriesMeetPostconditions = (entries: WriteLedgerEntry[]): boolean => {
 		const fields = new Set(
 			entries.flatMap((entry) => (entry.changedFields ?? []).map(normalizeFieldName))
 		);
-		return requiredFields.every((field) => fields.has(field));
+		if (!requiredFields.every((field) => fields.has(field))) return false;
+		const finalValues = new Map<string, string>();
+		for (const entry of entries) {
+			for (const [field, value] of Object.entries(entry.changedValues ?? {})) {
+				finalValues.set(normalizeFieldName(field), value);
+			}
+		}
+		return (outcome.changes ?? []).every(
+			(change) => finalValues.get(normalizeFieldName(change.field)) === change.value
+		);
 	};
 	const matchedCandidateTargetIds = Array.from(
 		new Set(candidates.map((entry) => entry.entityId).filter((id): id is string => Boolean(id)))
-	).filter((targetId) => entriesHaveRequiredFields(candidatesForTarget(targetId)));
+	).filter((targetId) => entriesMeetPostconditions(candidatesForTarget(targetId)));
 	const matchedTargetIds = new Set(matchedCandidateTargetIds);
 	const missingTargetIds = outcome.targetIds.filter((id) => !matchedTargetIds.has(id));
 	const missingRequiredFields =
@@ -793,7 +802,7 @@ function resolveOutcome(
 						)
 				);
 	const fieldCompleteCandidates = candidates.filter((entry) =>
-		entriesHaveRequiredFields([entry])
+		entriesMeetPostconditions([entry])
 	);
 	const distinctEffects =
 		outcome.targetIds.length > 0

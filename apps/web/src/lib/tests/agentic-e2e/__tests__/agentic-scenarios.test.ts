@@ -25,6 +25,7 @@ import {
 import { releaseTurnForFollowup, teardownChatSession, waitForTurnRun } from '../harness/telemetry';
 import { judgeQuality } from '../harness/judge';
 import { checkTurnBeforeFollowupRelease } from '../harness/turn-sequencing';
+import { evaluateTurnEvidenceChecks } from '../harness/evidence-checks';
 import { readTurnAttribution, readWorkerTurnAttribution } from '../harness/attribution';
 import { scenarioCatalog } from '../scenarios/catalog';
 import {
@@ -394,20 +395,24 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 								judgeTurn: turn.judge
 									? async () => {
 											const j = await turn.judge!(result, c, seed);
+											const threshold = j.threshold ?? 3;
 											const verdict = await judgeQuality({
 												rubric: j.rubric,
 												transcript: j.transcript,
-												threshold: j.threshold
+												threshold
 											});
-											expect(
-												verdict.passed,
-												`LLM judge scored ${verdict.score}/5 (needed ${j.threshold ?? 3}): ${verdict.reasoning}`
-											).toBe(true);
+											return { ...verdict, threshold };
 										}
 									: undefined,
 								captureTurn: PHASE0_CAPTURE
-									? async (checkError) => {
+									? async (checkOutcome) => {
 											try {
+												const subchecks = await evaluateTurnEvidenceChecks({
+													checks: turn.evidenceChecks ?? [],
+													turn: result,
+													ctx: c,
+													seed
+												});
 												phase0Turns.push(
 													await collectPhase0TurnEvidence({
 														admin: c.db.admin,
@@ -416,7 +421,8 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 														turnIndex: turnIndex + 1,
 														turnLabel: turn.label ?? null,
 														result,
-														assertionError: checkError
+														checkOutcome,
+														subchecks
 													})
 												);
 											} catch (error) {
@@ -443,6 +449,12 @@ describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 							for (const evidence of phase0Turns.slice(evidenceStartIndex)) {
 								evidence.assertionPassed = false;
 								evidence.assertionError = checkpointError.slice(0, 1_000);
+								evidence.deterministicAssertionPassed = false;
+								evidence.deterministicAssertionError = checkpointError.slice(
+									0,
+									1_000
+								);
+								evidence.resultClass = 'behavior_failure';
 							}
 							throw new Error(checkpointError);
 						}

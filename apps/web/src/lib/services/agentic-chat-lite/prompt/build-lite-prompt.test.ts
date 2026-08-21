@@ -17,6 +17,26 @@ function extractLoadedJson(prompt: string): Record<string, unknown> {
 }
 
 describe('buildLitePromptEnvelope', () => {
+	it('removes dynamic skill-tool instructions for runtimes that cannot execute them', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			currentUserMessage: 'Update all three tasks from my progress report.',
+			tools: [],
+			scaffold: { dynamicSkillTools: false }
+		});
+
+		expect(envelope.systemPrompt).not.toContain('skill_load');
+		expect(envelope.systemPrompt).not.toContain('skill_search');
+		expect(envelope.systemPrompt).not.toContain('Root skill catalog');
+		expect(envelope.sections.some((section) => section.id === 'active_domain_signals')).toBe(
+			false
+		);
+		expect(envelope.systemPrompt).toContain(
+			'trusted playbooks may be preloaded into Active Domain Signals'
+		);
+	});
+
 	it('executes prompt scaffold ablations instead of treating them as labels', () => {
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'project',

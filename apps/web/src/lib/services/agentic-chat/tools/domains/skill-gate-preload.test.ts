@@ -31,6 +31,18 @@ describe('resolveSkillGatePreload', () => {
 		expect(preload?.promptContent).toContain(preload!.skillId);
 	});
 
+	it('renders a preload without follow-up skill calls for worker-only execution', () => {
+		const preload = resolveSkillGatePreload(senseColdEmailTurn(), {
+			allowFollowupSkillLoad: false
+		});
+
+		expect(preload).not.toBeNull();
+		expect(preload?.promptContent).toContain('already loaded at short format');
+		expect(preload?.promptContent).not.toContain('skill_load');
+		expect(preload?.promptContent).not.toContain('Linked child skills');
+		expect(preload?.promptContent).not.toContain('Need more depth?');
+	});
+
 	it('returns null when sensing did not require a skill load', () => {
 		const sensing = senseDomains({
 			currentUserMessage: 'Rename the grocery list task to weekend errands.',

@@ -159,6 +159,8 @@ export type LitePromptEnvelope = {
 export type LitePromptScaffoldOptions = {
 	staticSkillCatalog?: boolean;
 	skillRoutingCoaching?: boolean;
+	/** Whether this runtime can execute model-requested skill_search/skill_load calls. */
+	dynamicSkillTools?: boolean;
 	retiredModelCoaching?: boolean;
 	domainSensing?: boolean;
 	situationalRules?: boolean;

@@ -151,6 +151,7 @@ function resolvePromptScaffold(
 	return {
 		staticSkillCatalog: scaffold?.staticSkillCatalog !== false,
 		skillRoutingCoaching: scaffold?.skillRoutingCoaching !== false,
+		dynamicSkillTools: scaffold?.dynamicSkillTools !== false,
 		retiredModelCoaching: scaffold?.retiredModelCoaching !== false,
 		domainSensing: scaffold?.domainSensing !== false,
 		situationalRules: scaffold?.situationalRules !== false
@@ -169,7 +170,9 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 	// project_create has no skill_load/domain tools, so a skill-load gate here
 	// would demand a tool call the surface cannot satisfy (WP-3).
 	const domainSignalSection =
-		input.contextType === 'project_create' || !scaffold.domainSensing
+		input.contextType === 'project_create' ||
+		!scaffold.domainSensing ||
+		(!scaffold.dynamicSkillTools && !input.skillGatePreload)
 			? null
 			: buildActiveDomainSignalsSection(input);
 	const situationalRulesSection =
@@ -280,9 +283,10 @@ export function applyActiveDomainSignalsOverlay(
 		return applyProjectCreateDomainProfileOverlay(envelope, input.currentUserMessage);
 	}
 	const scaffold = resolvePromptScaffold(input.scaffold);
-	const domainSignalSection = scaffold.domainSensing
-		? buildActiveDomainSignalsSection(input as LitePromptInput)
-		: null;
+	const domainSignalSection =
+		scaffold.domainSensing && (scaffold.dynamicSkillTools || input.skillGatePreload)
+			? buildActiveDomainSignalsSection(input as LitePromptInput)
+			: null;
 	const situationalRulesSection = buildSituationalRulesSection(
 		input.turnSituation ?? null,
 		scaffold
@@ -415,7 +419,7 @@ function buildFocusPurposeSection(
 	scaffold: Required<LitePromptScaffoldOptions>
 ): LitePromptSection {
 	const workflowBlock =
-		!scaffold.skillRoutingCoaching &&
+		(!scaffold.dynamicSkillTools || !scaffold.skillRoutingCoaching) &&
 		(focus.contextType === 'project' || focus.contextType === 'ontology')
 			? null
 			: (FOCUS_WORKFLOW_GUIDANCE[focus.contextType] ?? null);
@@ -914,7 +918,7 @@ function buildOperatingStrategySection(
 			// load when the situation is live. The skill_load rule stays: its
 			// absence is a measured routing-failure mode, but the craft enumeration
 			// duplicated the catalog rows above.
-			...(scaffold.skillRoutingCoaching
+			...(scaffold.dynamicSkillTools && scaffold.skillRoutingCoaching
 				? [
 						'- Call skill_load before answering whenever a registered skill covers the work: multi-step or related writes, uncertain required fields, or craft/judgment work listed in the root skill catalog. Producing skill-covered work from base knowledge without loading the matching skill is a routing failure, not a shortcut.'
 					]
@@ -1069,14 +1073,15 @@ function buildCapabilitiesSkillsToolsSection(
 	// 500-700 chars each and put ~2.2k tokens of prose in every turn). The full
 	// summary stays available through skill_search and skill_load. The fallback
 	// truncation guards skills that have not declared catalog_line yet.
-	const rootSkillRows = scaffold.staticSkillCatalog
-		? listRootSkills()
-				.sort((a, b) => a.id.localeCompare(b.id))
-				.map(
-					(skill) =>
-						`| \`${skill.id}\` | ${skill.catalogLine ?? truncateText(skill.summary, 220)} |`
-				)
-		: [];
+	const rootSkillRows =
+		scaffold.dynamicSkillTools && scaffold.staticSkillCatalog
+			? listRootSkills()
+					.sort((a, b) => a.id.localeCompare(b.id))
+					.map(
+						(skill) =>
+							`| \`${skill.id}\` | ${skill.catalogLine ?? truncateText(skill.summary, 220)} |`
+					)
+			: [];
 
 	const rootSkillTable =
 		rootSkillRows.length > 0
@@ -1091,9 +1096,11 @@ function buildCapabilitiesSkillsToolsSection(
 		content: [
 			'You work through two layers:',
 			'',
-			scaffold.staticSkillCatalog
-				? '1. Skills - playbooks for doing work well. The root-skill catalog below is the index; Operating Strategy says when calling skill_load is required.'
-				: '1. Skills - playbooks available through skill_search and skill_load when the task benefits from specialized guidance.',
+			!scaffold.dynamicSkillTools
+				? '1. Skills - trusted playbooks may be preloaded into Active Domain Signals by the runtime. Apply a preloaded playbook directly; otherwise work from the loaded context and current tool surface.'
+				: scaffold.staticSkillCatalog
+					? '1. Skills - playbooks for doing work well. The root-skill catalog below is the index; Operating Strategy says when calling skill_load is required.'
+					: '1. Skills - playbooks available through skill_search and skill_load when the task benefits from specialized guidance.',
 			'2. Tools - the execution surface. The current tool names are listed in Current Tool Surface below.',
 			'',
 			`BuildOS runtime capabilities: ${capabilityNames || 'none registered'}.`,
@@ -1101,13 +1108,13 @@ function buildCapabilitiesSkillsToolsSection(
 			// Strategy bullet both taught domain_search; one compact pointer
 			// survives here. The outcome-card / resource / gate vocabulary now
 			// arrives with the signals themselves, which carry their own next step.
-			...(scaffold.skillRoutingCoaching
+			...(scaffold.dynamicSkillTools && scaffold.skillRoutingCoaching
 				? [
 						'',
 						'Routing signals arrive in the Active Domain Signals section when your message matches a subject area; follow its next step. When routing is unclear and no signals arrived, `domain_search` browses subject areas.'
 					]
 				: []),
-			...(scaffold.staticSkillCatalog
+			...(scaffold.dynamicSkillTools && scaffold.staticSkillCatalog
 				? [
 						'',
 						'Root skill catalog (use `skill_load` to fetch the playbook):',

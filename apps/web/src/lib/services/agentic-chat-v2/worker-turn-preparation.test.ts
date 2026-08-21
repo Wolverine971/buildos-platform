@@ -7,6 +7,7 @@ import {
 	validateTurnInputArtifactV1,
 	type TurnInputArtifactV1
 } from '@buildos/shared-types';
+import { senseDomains } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 
 const USER_ID = 'd1000000-0000-4000-8000-000000000001';
 const SESSION_ID = 'd2000000-0000-4000-8000-000000000001';
@@ -104,15 +105,6 @@ function dependencies() {
 			reason: 'open' as const
 		}))
 	};
-}
-
-function serviceClientWithSession(session: Record<string, unknown>) {
-	const builder: Record<string, any> = {};
-	for (const method of ['select', 'eq', 'order', 'limit']) {
-		builder[method] = vi.fn(() => builder);
-	}
-	builder.maybeSingle = vi.fn(async () => ({ data: session, error: null }));
-	return { from: vi.fn(() => builder), rpc: vi.fn() };
 }
 
 function serviceClientWithTables(tables: Record<string, Array<Record<string, any>>>) {
@@ -308,6 +300,20 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		expect(mocks.inspectPreparedPromptAdmissionLineage).not.toHaveBeenCalled();
 		expect(mocks.inspectPreparedPromptForWorkerAdmission).not.toHaveBeenCalled();
+		expect(mocks.buildLitePromptEnvelope).toHaveBeenCalledWith(
+			expect.objectContaining({
+				currentUserMessage: 'Ship the next slice',
+				scaffold: expect.objectContaining({ dynamicSkillTools: false })
+			})
+		);
+		expect(mocks.applyActiveDomainSignalsOverlay).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				domainSensingResult: null,
+				skillGatePreload: null,
+				scaffold: expect.objectContaining({ dynamicSkillTools: false })
+			})
+		);
 
 		const expectedHash = await hashCanonicalAdmissionRequestV1({
 			version: AGENTIC_CHAT_REQUEST_HASH_VERSION,
@@ -356,16 +362,79 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 	});
 
-	it('copies a usable prepared prompt without consuming it and preserves stable lineage in the request hash', async () => {
+	it('preloads a sensed skill without exposing dynamic skill calls to the worker prompt', async () => {
+		const sensing = senseDomains({
+			currentUserMessage: 'Write a cold email to a newsletter creator about BuildOS.',
+			limit: 3
+		});
+		expect(sensing?.skill_load_required).toBe(true);
+		mocks.resolveFastChatTurnPreparation.mockReturnValue({
+			sessionMetadata: { trusted: true },
+			pendingTurnContract: null,
+			turnIntent: {
+				version: 1,
+				requiresWrite: false,
+				action: null,
+				entityKind: 'unknown',
+				operations: [],
+				source: 'none',
+				originalRequestText: null,
+				originatingTurnRunId: null,
+				clearPending: false
+			},
+			priorDomainIds: [],
+			priorOutcomeCardIds: [],
+			turnDomainSensing: sensing,
+			cacheKey: 'v2|global|none|none|none',
+			cachedContext: undefined,
+			bypassContextCacheForShiftHint: false,
+			selectedSurfaceProfile: 'global_basic',
+			tools: []
+		});
+
+		await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: {} as never,
+			userId: USER_ID,
+			command: command({
+				message: 'Write a cold email to a newsletter creator about BuildOS.'
+			}) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		expect(mocks.applyActiveDomainSignalsOverlay).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				domainSensingResult: sensing,
+				skillGatePreload: expect.objectContaining({
+					promptContent: expect.not.stringContaining('skill_load')
+				}),
+				scaffold: expect.objectContaining({ dynamicSkillTools: false })
+			})
+		);
+	});
+
+	it('bypasses legacy prepared-prompt lineage until a byte-bound worker prompt variant exists', async () => {
 		const preparedId = 'd8000000-0000-4000-8000-000000000001';
-		const contextSha = 'a'.repeat(64);
-		const serviceClient = serviceClientWithSession({
-			id: SESSION_ID,
-			user_id: USER_ID,
-			context_type: 'global',
-			entity_id: null,
-			summary: 'Trusted conversation summary',
-			agent_metadata: { trusted: true }
+		const serviceClient = serviceClientWithTables({
+			chat_sessions: [
+				{
+					id: SESSION_ID,
+					user_id: USER_ID,
+					context_type: 'global',
+					entity_id: null,
+					summary: 'Trusted conversation summary',
+					agent_metadata: { trusted: true }
+				}
+			],
+			chat_messages: [],
+			chat_message_attachments: [],
+			chat_tool_executions: []
 		});
 		mocks.inspectPreparedPromptAdmissionLineage.mockResolvedValue({
 			id: preparedId,
@@ -387,7 +456,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			row: {
 				id: preparedId,
 				context_payload: { contextType: 'global', data: { source: 'prepared' } },
-				context_payload_sha256: contextSha,
+				context_payload_sha256: 'a'.repeat(64),
 				conversation_summary: 'Trusted conversation summary',
 				history_for_model: [{ role: 'assistant', content: 'Earlier answer' }],
 				history_compressed: false,
@@ -400,10 +469,6 @@ describe('Agentic Chat worker turn preparation', () => {
 				sections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
 			}
 		});
-		mocks.buildPendingTurnContractSystemMessage.mockReturnValue(
-			'Pending semantic contract from current session metadata'
-		);
-
 		const result = await prepareAgenticChatWorkerAdmission({
 			userClient: {} as never,
 			serviceClient: serviceClient as never,
@@ -420,35 +485,24 @@ describe('Agentic Chat worker turn preparation', () => {
 			dependencies: dependencies()
 		});
 
-		expect(result.preparedPromptUsed).toBe(true);
+		expect(result.preparedPromptUsed).toBe(false);
 		expect(result.args).toMatchObject({
 			p_session_id: SESSION_ID,
-			p_history_source: 'prepared_prompt',
-			p_prepared_prompt_id: preparedId,
-			p_prepared_context_payload_sha256: contextSha,
-			p_prepared_surface_profile: 'global_basic'
+			p_history_source: 'admission_window',
+			p_prepared_prompt_id: null,
+			p_prepared_context_payload_sha256: null,
+			p_prepared_surface_profile: null
 		});
-		expect(result.args.p_artifact_history).toEqual([
-			expect.objectContaining({
-				sourceMessageId: null,
-				role: 'assistant',
-				content: 'Earlier answer'
-			}),
-			expect.objectContaining({
-				sourceMessageId: null,
-				role: 'system',
-				content: 'Pending semantic contract from current session metadata'
-			})
-		]);
+		expect(result.args.p_artifact_history).toEqual([]);
 		expect(result.args.p_artifact_prepared).toMatchObject({
-			sourcePreparedPromptId: preparedId,
-			systemPrompt: 'Prepared system prompt',
+			sourcePreparedPromptId: null,
+			systemPrompt: 'Trusted system prompt',
 			surfaceProfile: 'global_basic',
 			historyState: {
 				strategy: 'raw_history',
 				compressed: false,
-				rawHistoryCount: 1,
-				historyForModelCount: 2
+				rawHistoryCount: 0,
+				historyForModelCount: 0
 			},
 			sessionSnapshot: {
 				user_id: USER_ID,
@@ -463,6 +517,14 @@ describe('Agentic Chat worker turn preparation', () => {
 				status: 'ok'
 			}
 		});
+		expect(mocks.buildLitePromptEnvelope).toHaveBeenCalledWith(
+			expect.objectContaining({
+				currentUserMessage: 'Ship the next slice',
+				scaffold: expect.objectContaining({ dynamicSkillTools: false })
+			})
+		);
+		expect(mocks.inspectPreparedPromptAdmissionLineage).not.toHaveBeenCalled();
+		expect(mocks.inspectPreparedPromptForWorkerAdmission).not.toHaveBeenCalled();
 		const expectedHash = await hashCanonicalAdmissionRequestV1({
 			version: AGENTIC_CHAT_REQUEST_HASH_VERSION,
 			clientTurnId: 'client-turn-1',
@@ -471,10 +533,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			message: 'Ship the next slice',
 			attachments: [],
 			voiceNoteGroupId: null,
-			preparedPromptLineage: {
-				id: preparedId,
-				acceptedSurfaceProfile: 'global_basic'
-			}
+			preparedPromptLineage: { id: null, acceptedSurfaceProfile: null }
 		});
 		expect(result.args.p_request_hash).toBe(expectedHash);
 	});
@@ -620,7 +679,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 	});
 
-	it('keeps prepared-prompt request-hash lineage stable after consumption changes the usable copy', async () => {
+	it('keeps null prepared-prompt lineage stable while worker prompt reuse is disabled', async () => {
 		const preparedId = 'f1000000-0000-4000-8000-000000000001';
 		const contextSha = 'c'.repeat(64);
 		const serviceClient = serviceClientWithTables({
@@ -690,9 +749,11 @@ describe('Agentic Chat worker turn preparation', () => {
 		const first = await prepare();
 		const retry = await prepare();
 
-		expect(first.preparedPromptUsed).toBe(true);
+		expect(first.preparedPromptUsed).toBe(false);
 		expect(retry.preparedPromptUsed).toBe(false);
 		expect(first.args.p_request_hash).toBe(retry.args.p_request_hash);
+		expect(mocks.inspectPreparedPromptAdmissionLineage).not.toHaveBeenCalled();
+		expect(mocks.inspectPreparedPromptForWorkerAdmission).not.toHaveBeenCalled();
 	});
 
 	it('freezes server-resolved current-turn attachment evidence and the authored message', async () => {

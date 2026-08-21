@@ -21,13 +21,15 @@ import { harnessProjectName, seedProject } from '../harness/seed';
 import {
 	assertNonEmptyAssistantText,
 	assertNumericPriorityAtMost,
+	assertOnlyAllowedRowFieldsChanged,
 	assertTaskState,
-	assertToolCalled,
+	assertAnyToolCalled,
 	assertTurnRunCompleted,
 	assertTurnSucceeded,
-	buildTranscript
+	buildTranscript,
+	mutatingToolCalls
 } from '../harness/assertions';
-import { listTasks, waitForTurnRun } from '../harness/telemetry';
+import { listTasks, waitForTurnRun, type TaskRow } from '../harness/telemetry';
 
 const RESUME_TITLE = 'Update resume with the orchestration work';
 const LINKEDIN_TITLE = 'Refresh the LinkedIn headline and about section';
@@ -96,7 +98,7 @@ export const taskMultiUpdateScenario: Scenario = {
 				halcyon: byTitle(HALCYON_TITLE),
 				control: byTitle(CONTROL_TITLE)
 			},
-			notes: { seededTaskIds: tasks.map((t) => t.id) }
+			notes: { seededTaskIds: tasks.map((t) => t.id), seededTasks: tasks }
 		};
 	},
 	turns: [
@@ -110,7 +112,6 @@ export const taskMultiUpdateScenario: Scenario = {
 			assert: async (turn, ctx, seed) => {
 				assertTurnSucceeded(turn);
 				assertNonEmptyAssistantText(turn);
-				assertToolCalled(turn, 'update_onto_task');
 				assertTurnRunCompleted(await waitForTurnRun(ctx.db.admin, turn.streamRunId!));
 
 				const tasks = await listTasks(ctx.db.admin, seed.projectId!);
@@ -163,7 +164,103 @@ export const taskMultiUpdateScenario: Scenario = {
 							`[${created.map((t) => t.title).join(', ')}]`
 					);
 				}
+
+				const before = seed.notes.seededTasks as TaskRow[];
+				assertOnlyAllowedRowFieldsChanged(
+					before,
+					tasks,
+					{
+						[seed.entityIds.resume!]: ['state_key', 'completed_at', 'updated_at'],
+						[seed.entityIds.linkedin!]: ['state_key', 'completed_at', 'updated_at'],
+						[seed.entityIds.halcyon!]: ['priority', 'updated_at'],
+						[seed.entityIds.control!]: []
+					},
+					'task-multi-update seeded tasks'
+				);
 			},
+			evidenceChecks: [
+				{
+					name: 'stream-health',
+					category: 'transport',
+					check: (turn) => assertTurnSucceeded(turn)
+				},
+				{
+					name: 'worker-contract-approved',
+					category: 'contract',
+					applies: (ctx) => ctx.executionMode === 'worker_realtime',
+					check: (turn) => {
+						assertAnyToolCalled(turn, ['approve_turn_contract_review']);
+					}
+				},
+				{
+					name: 'task-mutation-executed',
+					category: 'mutation',
+					check: (turn) => {
+						const writes = mutatingToolCalls(turn);
+						if (writes.length === 0) {
+							throw new Error('no canonical ontology mutation tool was observed');
+						}
+					}
+				},
+				{
+					name: 'resume-done',
+					category: 'effect',
+					check: async (_turn, ctx, seed) => {
+						const tasks = await listTasks(ctx.db.admin, seed.projectId!);
+						const task = tasks.find(
+							(candidate) => candidate.id === seed.entityIds.resume
+						);
+						assertTaskState(task?.state_key, 'done', RESUME_TITLE);
+					}
+				},
+				{
+					name: 'linkedin-done',
+					category: 'effect',
+					check: async (_turn, ctx, seed) => {
+						const tasks = await listTasks(ctx.db.admin, seed.projectId!);
+						const task = tasks.find(
+							(candidate) => candidate.id === seed.entityIds.linkedin
+						);
+						assertTaskState(task?.state_key, 'done', LINKEDIN_TITLE);
+					}
+				},
+				{
+					name: 'halcyon-top-priority',
+					category: 'effect',
+					check: async (_turn, ctx, seed) => {
+						const tasks = await listTasks(ctx.db.admin, seed.projectId!);
+						const task = tasks.find(
+							(candidate) => candidate.id === seed.entityIds.halcyon
+						);
+						assertNumericPriorityAtMost(task?.priority ?? null, 2, HALCYON_TITLE);
+					}
+				},
+				{
+					name: 'collateral-preserved',
+					category: 'collateral',
+					check: async (_turn, ctx, seed) => {
+						assertOnlyAllowedRowFieldsChanged(
+							seed.notes.seededTasks as TaskRow[],
+							await listTasks(ctx.db.admin, seed.projectId!),
+							{
+								[seed.entityIds.resume!]: [
+									'state_key',
+									'completed_at',
+									'updated_at'
+								],
+								[seed.entityIds.linkedin!]: [
+									'state_key',
+									'completed_at',
+									'updated_at'
+								],
+								[seed.entityIds.halcyon!]: ['priority', 'updated_at'],
+								[seed.entityIds.control!]: []
+							},
+							'task-multi-update seeded tasks'
+						);
+					}
+				}
+			],
 			judge: async (turn) => ({
 				rubric:
 					'In one dictated sentence the user reported finishing two tasks (the resume update and ' +

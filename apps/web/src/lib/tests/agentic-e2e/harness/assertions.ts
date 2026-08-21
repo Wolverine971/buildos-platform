@@ -238,6 +238,64 @@ export function assertRowsUnchanged(before: string, after: string, label: string
 	}
 }
 
+function canonicalValue(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(canonicalValue);
+	if (value && typeof value === 'object') {
+		return Object.fromEntries(
+			Object.entries(value as Record<string, unknown>)
+				.sort(([left], [right]) => left.localeCompare(right))
+				.map(([key, entry]) => [key, canonicalValue(entry)])
+		);
+	}
+	return value;
+}
+
+function comparableValue(value: unknown): string {
+	return JSON.stringify(canonicalValue(value)) ?? 'undefined';
+}
+
+/**
+ * Fingerprint every field on a seeded row while allowing only the exact fields
+ * commissioned for that row. This catches collateral edits that ordinary
+ * state/count assertions miss (title, description, dates, priority, props,
+ * ownership, and lifecycle metadata).
+ */
+export function assertOnlyAllowedRowFieldsChanged<T extends { id: string }>(
+	beforeRows: readonly T[],
+	afterRows: readonly T[],
+	allowedFieldsById: Readonly<Record<string, readonly string[]>>,
+	label: string
+): void {
+	const beforeIds = beforeRows.map((row) => row.id).sort();
+	const afterIds = afterRows.map((row) => row.id).sort();
+	if (comparableValue(beforeIds) !== comparableValue(afterIds)) {
+		throw new Error(
+			`[assert] ${label} row identities changed. before=${comparableValue(beforeIds)} after=${comparableValue(afterIds)}`
+		);
+	}
+
+	const afterById = new Map(afterRows.map((row) => [row.id, row]));
+	const collateral: string[] = [];
+	for (const before of beforeRows) {
+		const after = afterById.get(before.id);
+		if (!after) continue;
+		const allowed = new Set(allowedFieldsById[before.id] ?? []);
+		const beforeRecord = before as Record<string, unknown>;
+		const afterRecord = after as Record<string, unknown>;
+		for (const field of new Set([...Object.keys(beforeRecord), ...Object.keys(afterRecord)])) {
+			if (allowed.has(field)) continue;
+			if (comparableValue(beforeRecord[field]) !== comparableValue(afterRecord[field])) {
+				collateral.push(`${before.id}.${field}`);
+			}
+		}
+	}
+	if (collateral.length > 0) {
+		throw new Error(
+			`[assert] ${label} changed uncommissioned field(s): ${collateral.join(', ')}`
+		);
+	}
+}
+
 /**
  * The assistant asked the user something. Paired with `assertNoMutations` for
  * the ambiguous-referent case: asking is only correct if it also held off.

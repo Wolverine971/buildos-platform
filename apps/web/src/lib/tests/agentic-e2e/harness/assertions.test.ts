@@ -9,6 +9,7 @@ import {
 	assertNoMutations,
 	assertNonEmptyAssistantText,
 	assertNumericPriorityAtMost,
+	assertOnlyAllowedRowFieldsChanged,
 	assertRowsUnchanged,
 	assertToolCalledForExecutionMode,
 	extractMarkdownSection,
@@ -214,5 +215,39 @@ describe('restraint assertion helpers', () => {
 		expect(() =>
 			assertRowsUnchanged(rowFingerprint(a), rowFingerprint(mutated), 'tasks')
 		).toThrow('changed during a turn');
+	});
+
+	it('permits only the commissioned fields on each seeded row', () => {
+		const before = [
+			{ id: 'resume', state_key: 'todo', title: 'Resume', priority: null, props: { a: 1 } },
+			{ id: 'control', state_key: 'todo', title: 'Control', priority: 4, props: {} }
+		];
+		const intended = [
+			{ ...before[0]!, state_key: 'done' },
+			{ ...before[1]!, props: {} }
+		];
+		expect(() =>
+			assertOnlyAllowedRowFieldsChanged(before, intended, { resume: ['state_key'] }, 'tasks')
+		).not.toThrow();
+
+		const collateral = intended.map((row) =>
+			row.id === 'control' ? { ...row, priority: 1 } : row
+		);
+		expect(() =>
+			assertOnlyAllowedRowFieldsChanged(
+				before,
+				collateral,
+				{ resume: ['state_key'] },
+				'tasks'
+			)
+		).toThrow('control.priority');
+		expect(() =>
+			assertOnlyAllowedRowFieldsChanged(
+				before,
+				intended.slice(0, 1),
+				{ resume: ['state_key'] },
+				'tasks'
+			)
+		).toThrow('row identities changed');
 	});
 });
