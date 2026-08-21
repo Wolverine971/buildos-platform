@@ -148,6 +148,7 @@ function createWriter(
 		logger?: { warn: ReturnType<typeof vi.fn> };
 		logError?: ReturnType<typeof vi.fn>;
 		createId?: () => string;
+		nowMs?: () => number;
 	} = {}
 ) {
 	const supabase = params.supabase ?? createSupabaseMock();
@@ -166,7 +167,7 @@ function createWriter(
 		logError,
 		getTimingState: () => timingState,
 		createId: params.createId ?? (() => 'metric-1'),
-		nowMs: () => 1_400
+		nowMs: params.nowMs ?? (() => 1_400)
 	});
 	writer.setTurnRunId('turn-1');
 	return { writer, supabase, logger, logError };
@@ -198,7 +199,14 @@ describe('TurnObservabilityWriter', () => {
 	});
 
 	it('increments event sequence indexes in insertion order', async () => {
-		const { writer, supabase } = createWriter();
+		let nowMs = 1_400;
+		const { writer, supabase } = createWriter({
+			nowMs: () => {
+				const observedAtMs = nowMs;
+				nowMs += 125;
+				return observedAtMs;
+			}
+		});
 
 		writer.recordEvent('prompt', 'prompt_snapshot_created', { prompt_snapshot_id: 'snap-1' });
 		writer.recordEvent('tool', 'tool_call_emitted', { tool_name: 'update_onto_task' });
@@ -210,11 +218,13 @@ describe('TurnObservabilityWriter', () => {
 				session_id: 'session-1',
 				user_id: 'user-1',
 				stream_run_id: 'stream-run-1',
+				created_at: '1970-01-01T00:00:01.400Z',
 				sequence_index: 1,
 				phase: 'prompt',
 				event_type: 'prompt_snapshot_created'
 			},
 			{
+				created_at: '1970-01-01T00:00:01.525Z',
 				sequence_index: 2,
 				phase: 'tool',
 				event_type: 'tool_call_emitted'

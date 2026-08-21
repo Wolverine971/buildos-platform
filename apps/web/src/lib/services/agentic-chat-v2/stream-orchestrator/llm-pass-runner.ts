@@ -16,7 +16,8 @@ import type {
 } from './shared';
 import {
 	backfillCommissionedDocumentUpdateContent,
-	normalizeToolCallDefaults
+	normalizeToolCallDefaults,
+	stampProjectCreateGenerationModel
 } from './tool-arguments';
 
 export type FastChatModelMessage = Omit<FastChatHistoryMessage, 'content'> & {
@@ -33,7 +34,8 @@ type SmartLlmStreamEvent =
 const MAX_LLM_STREAM_ATTEMPTS = 2;
 const MAX_WRITE_INTENT_STREAM_ATTEMPTS = 3;
 const LLM_PASS_TIMEOUT_MS = 60_000;
-const PROJECT_CREATE_LLM_PASS_TIMEOUT_MS = 120_000;
+const PROJECT_CREATE_LLM_PASS_TIMEOUT_MS = 45_000;
+const PROJECT_CREATE_REASONING_CHAR_BUDGET_WITHOUT_TOOL_CALL = 12_000;
 const LLM_STREAM_RETRY_BASE_DELAY_MS = 250;
 const LLM_STREAM_RETRY_JITTER_MS = 250;
 const MAX_RETRY_ERROR_METADATA_LENGTH = 240;
@@ -109,11 +111,9 @@ export class LlmStreamPassTerminalError extends Error {
 }
 
 /**
- * Project creation can produce a large, structured tool payload (for example a
- * fiction workspace with several fully seeded documents). Tool arguments are
- * often delivered only when the provider finishes the call, so every pass in
- * this context needs more than the ordinary 60-second limit. Restricting the
- * allowance to forced-tool passes left valid automatic passes at 60 seconds.
+ * Project creation is isolated to a dedicated, rotating model route. Bound each
+ * attempt below the ordinary lane's ceiling so a reasoning-only or silent
+ * provider fails over promptly instead of consuming most of the turn budget.
  */
 export function resolveLlmPassTimeoutMs(params: {
 	normalizedContext: ChatContextType;
@@ -335,13 +335,30 @@ export async function runLlmStreamPass(params: {
 					metadata.reasoningChannelChunks = (metadata.reasoningChannelChunks ?? 0) + 1;
 					metadata.reasoningChannelChars =
 						(metadata.reasoningChannelChars ?? 0) + reasoningLen;
+					if (
+						params.normalizedContext === 'project_create' &&
+						!params.noToolSynthesisPass &&
+						attemptToolCallsReceived === 0 &&
+						attemptReasoningCharsReceived >
+							PROJECT_CREATE_REASONING_CHAR_BUDGET_WITHOUT_TOOL_CALL
+					) {
+						throw new LlmStreamPassAttemptError(
+							'Project creation reasoning budget exceeded before a tool call'
+						);
+					}
 				} else if (event.type === 'tool_call' && event.tool_call) {
 					toolCallsReceived += 1;
 					attemptToolCallsReceived += 1;
 					if (firstTokenAtMs === null) firstTokenAtMs = Date.now();
-					const normalizedToolCall = backfillCommissionedDocumentUpdateContent(
-						normalizeToolCallDefaults(event.tool_call, params.projectId ?? undefined),
-						params.commissionedDocumentUpdateFallbackContent
+					const normalizedToolCall = stampProjectCreateGenerationModel(
+						backfillCommissionedDocumentUpdateContent(
+							normalizeToolCallDefaults(
+								event.tool_call,
+								params.projectId ?? undefined
+							),
+							params.commissionedDocumentUpdateFallbackContent
+						),
+						attemptRoute.selectedModel
 					);
 					if (params.noToolSynthesisPass) {
 						suppressedNoToolSynthesisToolCallCount += 1;
@@ -493,6 +510,13 @@ export async function runLlmStreamPass(params: {
 		metadata.toolCallsReceived = toolCallsReceived;
 		metadata.attemptsExhausted = false;
 		metadata.attemptRoutes = cloneAttemptRoutes(attemptRoutes);
+		// Some providers identify the served model only on the terminal event,
+		// after tool-call chunks have already arrived. Re-stamp the calls now so
+		// durable project metadata records the observed authoring model rather
+		// than merely the requested primary candidate.
+		const finalizedPendingToolCalls = pendingToolCalls.map((toolCall) =>
+			stampProjectCreateGenerationModel(toolCall, attemptRoute.selectedModel)
+		);
 
 		await params.observeSupervisor({
 			type: 'llm_pass_completed',
@@ -514,7 +538,7 @@ export async function runLlmStreamPass(params: {
 			assistantBuffer,
 			assistantReasoningForReplay,
 			assistantReasoningDetailsForReplay,
-			pendingToolCalls,
+			pendingToolCalls: finalizedPendingToolCalls,
 			suppressedNoToolSynthesisToolCallCount,
 			metadata,
 			usage,
@@ -811,6 +835,7 @@ function isRetryableLlmStreamError(error: Error): boolean {
 		message.includes('llm stream ended without a completion event') ||
 		message.includes('no response stream available') ||
 		message.includes('stream failed') ||
+		message.includes('reasoning budget exceeded') ||
 		message.includes('timeout') ||
 		message.includes('timed out') ||
 		message.includes('rate limit') ||
@@ -1054,7 +1079,10 @@ function finalizeAttemptRoute(
 	attemptRoute.terminalOutcome = params.outcome;
 	attemptRoute.terminalEventReceived = params.terminalEventReceived;
 	attemptRoute.partialOutputDiscarded =
-		params.outcome !== 'completed' && params.assistantTextCharsReceived > 0;
+		params.outcome !== 'completed' &&
+		(params.assistantTextCharsReceived > 0 ||
+			params.reasoningCharsReceived > 0 ||
+			params.toolCallsReceived > 0);
 	attemptRoute.assistantTextCharsReceived = params.assistantTextCharsReceived;
 	attemptRoute.reasoningCharsReceived = params.reasoningCharsReceived;
 	attemptRoute.toolCallsReceived = params.toolCallsReceived;

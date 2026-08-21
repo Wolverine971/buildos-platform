@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import type { FastToolExecution, LLMStreamPassMetadata } from './shared';
 import {
+	buildProjectCreateSuccessConfirmation,
 	resolveLengthContinuation,
 	runCancellationFinalization,
 	runNoToolCallFinalization,
@@ -35,6 +36,61 @@ function execution(params: {
 	};
 	return { toolCall: params.call, result };
 }
+
+describe('buildProjectCreateSuccessConfirmation', () => {
+	it('grounds the confirmation in the submitted payload and durable receipt', () => {
+		const createCall = toolCall('create_onto_project', {
+			project: { name: 'The Glass Harbor — Book Development' },
+			context_document: { title: 'START HERE — The Glass Harbor' },
+			entities: [
+				{ kind: 'goal', name: 'Complete a submission-ready novel draft' },
+				{ kind: 'plan', name: 'Phase 1 — Story Foundation' },
+				{ kind: 'plan', name: 'Phase 2 — Character Architecture' },
+				{ kind: 'plan', name: 'Phase 3 — Draft and Revise' },
+				{ kind: 'task', title: 'Write the one-sentence story premise', state_key: 'ready' },
+				{ kind: 'task', title: 'Draft chapter one', state_key: 'backlog' },
+				{ kind: 'document', title: 'Story Bible' },
+				{ kind: 'document', title: 'Character Bible' }
+			],
+			relationships: [{}, {}, {}, {}]
+		});
+		const confirmation = buildProjectCreateSuccessConfirmation([
+			execution({
+				call: createCall,
+				result: {
+					project_id: 'b50d7734-40d7-4232-88b6-b02274097940',
+					counts: { goals: 1, plans: 3, tasks: 2, documents: 3, edges: 4 }
+				}
+			})
+		]);
+
+		expect(confirmation).toContain(
+			'Created **The Glass Harbor — Book Development** successfully.'
+		);
+		expect(confirmation).toContain('Project ID: `b50d7734-40d7-4232-88b6-b02274097940`');
+		expect(confirmation).toContain(
+			'Structure: 1 goal, 3 plans, 2 tasks, 3 documents, and 4 relationships'
+		);
+		expect(confirmation).toContain('**Complete a submission-ready novel draft**');
+		expect(confirmation).toContain('- Phase 1 — Story Foundation');
+		expect(confirmation).toContain('- Phase 2 — Character Architecture');
+		expect(confirmation).toContain('- Phase 3 — Draft and Revise');
+		expect(confirmation).toContain('- Story Bible');
+		expect(confirmation).toContain('- START HERE — The Glass Harbor');
+		expect(confirmation).toContain('Start with **Write the one-sentence story premise**.');
+	});
+
+	it('does not manufacture a confirmation without a durable project ID', () => {
+		expect(
+			buildProjectCreateSuccessConfirmation([
+				execution({
+					call: toolCall('create_onto_project', { project: { name: 'Unconfirmed' } }),
+					result: { ok: true }
+				})
+			])
+		).toBeNull();
+	});
+});
 
 describe('resolveLengthContinuation', () => {
 	it('requests a continuation for length-truncated text-only passes', () => {

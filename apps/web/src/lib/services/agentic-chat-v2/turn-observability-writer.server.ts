@@ -88,6 +88,7 @@ type PendingTurnEventRow = {
 	session_id: string;
 	user_id: string;
 	stream_run_id: string;
+	created_at: string;
 	sequence_index: number;
 	phase: TurnEventPhase;
 	event_type: string;
@@ -217,6 +218,10 @@ export class TurnObservabilityWriter {
 			session_id: sessionId,
 			user_id: this.params.userId,
 			stream_run_id: this.params.streamRunId,
+			// Events are flushed as one batch at turn completion. Stamp them when
+			// observed so the trace reflects real model/tool/finalization timing
+			// instead of assigning the batch insert time to every event.
+			created_at: new Date(this.nowMs()).toISOString(),
 			sequence_index: sequenceIndex,
 			phase,
 			event_type: eventType,

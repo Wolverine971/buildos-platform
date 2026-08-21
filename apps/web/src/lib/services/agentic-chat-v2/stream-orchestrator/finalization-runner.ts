@@ -28,6 +28,7 @@ import {
 	shouldRepairSkillGateNoLoad
 } from './repair-instructions';
 import type { FastToolExecution, LLMStreamPassMetadata } from './shared';
+import { parseToolArguments } from './tool-arguments';
 import {
 	countVisiblyLabeledOptions,
 	findMissingExplicitOptionResponseAnchors,
@@ -37,6 +38,159 @@ import { classifyToolExecution, didGatewayExecSucceed } from './tool-classificat
 
 const LENGTH_CONTINUATION_MESSAGE =
 	'Your previous message was cut off because it reached the output length limit. Continue the answer from exactly where it stopped. Do not repeat text you already wrote, do not restart, and do not call any tools — just finish the answer.';
+
+const PROJECT_CREATE_CONFIRMATION_LIST_LIMIT = 12;
+
+export function buildProjectCreateSuccessConfirmation(
+	toolExecutions: FastToolExecution[]
+): string | null {
+	const execution = [...toolExecutions]
+		.reverse()
+		.find(
+			(candidate) =>
+				candidate.toolCall.function?.name === 'create_onto_project' &&
+				didGatewayExecSucceed(candidate)
+		);
+	if (!execution) return null;
+
+	const { args, error } = parseToolArguments(execution.toolCall.function.arguments);
+	if (error) return null;
+	const result = unwrapProjectCreateResult(execution.result.result);
+	const projectId =
+		readString(result?.project_id) ??
+		readNestedString(result, ['project', 'id']) ??
+		readNestedString(result, ['context_shift', 'entity_id']);
+	if (!projectId) return null;
+
+	const project = readRecord(args.project);
+	const projectName =
+		readString(project?.name) ??
+		readNestedString(result, ['project', 'name']) ??
+		readNestedString(result, ['context_shift', 'entity_name']) ??
+		'New project';
+	const entities = Array.isArray(args.entities)
+		? args.entities.filter((entity): entity is Record<string, unknown> =>
+				Boolean(entity && typeof entity === 'object' && !Array.isArray(entity))
+			)
+		: [];
+	const relationships = Array.isArray(args.relationships) ? args.relationships : [];
+	const counts = readRecord(result?.counts);
+	const countFor = (key: string, fallback: number): number =>
+		readNonNegativeInteger(counts?.[key]) ?? fallback;
+	const entitiesOfKind = (kind: string): Record<string, unknown>[] =>
+		entities.filter((entity) => entity.kind === kind);
+	const goalEntities = entitiesOfKind('goal');
+	const planEntities = entitiesOfKind('plan');
+	const taskEntities = entitiesOfKind('task');
+	const documentEntities = entitiesOfKind('document');
+	const contextDocument = readRecord(args.context_document);
+
+	const goalCount = countFor('goals', goalEntities.length);
+	const planCount = countFor('plans', planEntities.length);
+	const taskCount = countFor('tasks', taskEntities.length);
+	const documentCount = countFor(
+		'documents',
+		documentEntities.length + (contextDocument ? 1 : 0)
+	);
+	const relationshipCount = countFor('edges', relationships.length);
+	const goalNames = labelsFor(goalEntities, 'name');
+	const planNames = labelsFor(planEntities, 'name');
+	const documentNames = [
+		...labelsFor(documentEntities, 'title'),
+		...(contextDocument ? [readString(contextDocument.title) ?? 'START HERE'] : [])
+	];
+	const readyTask =
+		taskEntities.find((task) => task.state_key === 'ready') ?? taskEntities.at(0) ?? null;
+	const readyTaskTitle = readString(readyTask?.title);
+
+	const lines = [
+		`Created **${escapeMarkdownInline(projectName)}** successfully.`,
+		'',
+		`- Project ID: \`${escapeInlineCode(projectId)}\``,
+		`- Structure: ${formatCount(goalCount, 'goal')}, ${formatCount(planCount, 'plan')}, ${formatCount(taskCount, 'task')}, ${formatCount(documentCount, 'document')}, and ${formatCount(relationshipCount, 'relationship')}`
+	];
+	if (goalNames[0]) {
+		lines.push(`- Goal: **${escapeMarkdownInline(goalNames[0])}**`);
+	}
+	appendNamedSection(lines, 'Plans', planNames);
+	appendNamedSection(lines, 'Documents', documentNames);
+	if (readyTaskTitle) {
+		lines.push('', `Start with **${escapeMarkdownInline(readyTaskTitle)}**.`);
+	}
+
+	return lines.join('\n');
+}
+
+function unwrapProjectCreateResult(payload: unknown): Record<string, unknown> | null {
+	let current = readRecord(payload);
+	for (let depth = 0; depth < 3 && current; depth += 1) {
+		if (
+			readString(current.project_id) ||
+			readRecord(current.project) ||
+			readRecord(current.context_shift)
+		) {
+			return current;
+		}
+		current = readRecord(current.result) ?? readRecord(current.data);
+	}
+	return current;
+}
+
+function labelsFor(entities: Record<string, unknown>[], field: string): string[] {
+	return entities
+		.map((entity) => readString(entity[field]))
+		.filter((label): label is string => Boolean(label));
+}
+
+function appendNamedSection(lines: string[], title: string, names: string[]): void {
+	if (names.length === 0) return;
+	lines.push('', `${title}:`);
+	for (const name of names.slice(0, PROJECT_CREATE_CONFIRMATION_LIST_LIMIT)) {
+		lines.push(`- ${escapeMarkdownInline(name)}`);
+	}
+	if (names.length > PROJECT_CREATE_CONFIRMATION_LIST_LIMIT) {
+		lines.push(`- …and ${names.length - PROJECT_CREATE_CONFIRMATION_LIST_LIMIT} more`);
+	}
+}
+
+function readRecord(value: unknown): Record<string, unknown> | null {
+	return value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
+
+function readString(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const normalized = value
+		.replace(/[\u0000-\u001f\u007f]+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+	return normalized || null;
+}
+
+function readNestedString(record: Record<string, unknown> | null, path: string[]): string | null {
+	let current: unknown = record;
+	for (const segment of path) {
+		current = readRecord(current)?.[segment];
+	}
+	return readString(current);
+}
+
+function readNonNegativeInteger(value: unknown): number | null {
+	return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+function formatCount(count: number, noun: string): string {
+	return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+function escapeMarkdownInline(value: string): string {
+	return value.replace(/([\\`*_[\]<>])/g, '\\$1');
+}
+
+function escapeInlineCode(value: string): string {
+	return value.replace(/`/g, '\\`');
+}
 
 function buildNoToolSynthesisConstraintRetryMessage(
 	required: number,

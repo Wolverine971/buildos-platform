@@ -2,9 +2,12 @@
 import type { TextProfile } from '$lib/services/smart-llm-service';
 import {
 	DEEPSEEK_V4_PRO_MODEL,
+	GEMINI_37_FLASH_MODEL,
 	GLM_52_MODEL,
 	MINIMAX_M3_MODEL,
-	OPENROUTER_V2_TOOL_MODELS
+	OPENROUTER_V2_TOOL_MODELS,
+	POOLSIDE_LAGUNA_XS_21_MODEL,
+	XIAOMI_MIMO_V25_MODEL
 } from '@buildos/smart-llm';
 
 export const FASTCHAT_INITIAL_PLAN_FAST_MODELS = [
@@ -20,6 +23,19 @@ export const FASTCHAT_FORCED_SYNTHESIS_MODELS = [
 	MINIMAX_M3_MODEL
 ] as const;
 export const FASTCHAT_FORCED_SYNTHESIS_IGNORED_PROVIDER_SLUGS = ['digitalocean'] as const;
+
+// Project creation emits one comparatively large, schema-constrained tool call.
+// Production evidence from 2026-08-20 showed the generic fast tier spending 82s
+// in Tencent reasoning without emitting a tool, followed by a 120s DeepSeek
+// timeout. Keep this hot path on models that have completed the same structured
+// call reliably, with Gemini first and no Tencent candidate in the route.
+export const FASTCHAT_PROJECT_CREATE_TOOL_MODELS = [
+	GEMINI_37_FLASH_MODEL,
+	XIAOMI_MIMO_V25_MODEL,
+	POOLSIDE_LAGUNA_XS_21_MODEL,
+	DEEPSEEK_V4_PRO_MODEL
+] as const;
+export const FASTCHAT_PROJECT_CREATE_MAX_TOKENS = 6_500;
 
 export type FastChatModelTieringMode = 'off' | 'control' | 'fast_initial_plan' | 'ab';
 export type FastChatForcedSynthesisRoutingMode = 'off' | 'control' | 'dedicated' | 'ab';
@@ -249,6 +265,7 @@ export function resolveFastChatPassModelRouting(params: {
 	hasTools: boolean;
 	noToolSynthesisPass: boolean;
 	writeIntentToolPass: boolean;
+	projectCreateToolPass?: boolean;
 	noToolSynthesisRetryCount?: number;
 	modelTiering?: FastChatModelTieringConfig | null;
 	forcedSynthesisRouting?: FastChatForcedSynthesisRoutingConfig | null;
@@ -258,8 +275,14 @@ export function resolveFastChatPassModelRouting(params: {
 	const modelTieringVariant = params.modelTiering?.variant;
 	const fastInitialPlanModels = params.modelTiering?.initialPlanModels ?? [];
 	const forcedSynthesisRouting = params.forcedSynthesisRouting;
+	const useProjectCreateToolRoute =
+		!params.pinnedModels?.length &&
+		params.projectCreateToolPass === true &&
+		params.hasTools &&
+		!params.noToolSynthesisPass;
 	const useFastInitialPlan =
 		!params.pinnedModels?.length &&
+		!useProjectCreateToolRoute &&
 		modelTieringVariant === 'fast_initial_plan' &&
 		passRole === 'initial_plan' &&
 		fastInitialPlanModels.length > 0;
@@ -276,16 +299,19 @@ export function resolveFastChatPassModelRouting(params: {
 		!params.pinnedModels?.length &&
 		params.hasTools &&
 		!useDedicatedForcedSynthesis &&
+		!useProjectCreateToolRoute &&
 		!useFastInitialPlan
 			? [...OPENROUTER_V2_TOOL_MODELS]
 			: [];
 	const selectedModels = params.pinnedModels?.length
 		? [...params.pinnedModels]
-		: useDedicatedForcedSynthesis
-			? [...forcedSynthesisRouting.models]
-			: useFastInitialPlan
-				? [...fastInitialPlanModels]
-				: ordinaryToolModels;
+		: useProjectCreateToolRoute
+			? [...FASTCHAT_PROJECT_CREATE_TOOL_MODELS]
+			: useDedicatedForcedSynthesis
+				? [...forcedSynthesisRouting.models]
+				: useFastInitialPlan
+					? [...fastInitialPlanModels]
+					: ordinaryToolModels;
 	const retryModelRotation =
 		!params.pinnedModels?.length && selectedModels.length > 1 && params.hasTools;
 
@@ -303,15 +329,20 @@ export function resolveFastChatPassModelRouting(params: {
 		...(params.noToolSynthesisPass && forcedSynthesisRouting && !params.pinnedModels?.length
 			? { forcedSynthesisRoutingVariant: forcedSynthesisRouting.variant }
 			: {}),
-		...(useDedicatedForcedSynthesis
+		...(useProjectCreateToolRoute
 			? {
-					ignoredProviderSlugs: [...forcedSynthesisRouting.ignoredProviderSlugs],
-					maxTokens: forcedSynthesisRouting.maxTokens,
+					maxTokens: FASTCHAT_PROJECT_CREATE_MAX_TOKENS,
 					retryModelRotation: true
 				}
-			: retryModelRotation
-				? { retryModelRotation: true }
-				: {})
+			: useDedicatedForcedSynthesis
+				? {
+						ignoredProviderSlugs: [...forcedSynthesisRouting.ignoredProviderSlugs],
+						maxTokens: forcedSynthesisRouting.maxTokens,
+						retryModelRotation: true
+					}
+				: retryModelRotation
+					? { retryModelRotation: true }
+					: {})
 	};
 }
 

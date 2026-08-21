@@ -66,22 +66,22 @@ describe('runLlmStreamPass', () => {
 		vi.useRealTimers();
 	});
 
-	it('allows every project creation pass more time than ordinary passes', () => {
+	it('fails over project creation passes sooner than ordinary passes', () => {
 		expect(
 			resolveLlmPassTimeoutMs({
 				normalizedContext: 'project_create'
 			})
-		).toBe(120_000);
+		).toBe(45_000);
 		expect(
 			resolveLlmPassTimeoutMs({
 				normalizedContext: 'project_create',
 				forcedToolChoice: 'required'
 			})
-		).toBe(120_000);
+		).toBe(45_000);
 		expect(resolveLlmPassTimeoutMs({ normalizedContext: 'project' })).toBe(60_000);
 	});
 
-	it('does not abort an automatic healthy project-create tool call at 60 seconds', async () => {
+	it('allows a healthy project-create tool call to finish within its 45-second budget', async () => {
 		vi.useFakeTimers();
 		const createCall = toolCall('create_onto_project', {
 			project: { name: 'Book workspace' },
@@ -91,7 +91,7 @@ describe('runLlmStreamPass', () => {
 		const { params } = baseParams({
 			llm: {
 				streamText: vi.fn(async function* () {
-					await new Promise((resolve) => setTimeout(resolve, 70_000));
+					await new Promise((resolve) => setTimeout(resolve, 35_000));
 					yield { type: 'tool_call', tool_call: createCall };
 					yield { type: 'done', finished_reason: 'tool_calls' };
 				})
@@ -111,7 +111,7 @@ describe('runLlmStreamPass', () => {
 		});
 
 		const resultPromise = runLlmStreamPass(params);
-		await vi.advanceTimersByTimeAsync(70_000);
+		await vi.advanceTimersByTimeAsync(35_000);
 		const result = await resultPromise;
 
 		expect(params.llm.streamText).toHaveBeenCalledTimes(1);
@@ -479,6 +479,83 @@ describe('runLlmStreamPass', () => {
 				providerSlug: 'google'
 			})
 		);
+	});
+
+	it('rotates away from a reasoning-only project-create attempt and stamps the authoring model', async () => {
+		let invocation = 0;
+		const createCall = toolCall('create_onto_project', {
+			project: { name: 'Book workspace' },
+			entities: [],
+			relationships: [],
+			meta: { model: 'gpt-4o', confidence: 0.92 }
+		});
+		const streamText = vi.fn(async function* () {
+			invocation += 1;
+			if (invocation === 1) {
+				yield { type: 'reasoning', reasoning: 'x'.repeat(12_001) };
+				return;
+			}
+			yield { type: 'tool_call', tool_call: createCall };
+			yield {
+				type: 'done',
+				finished_reason: 'tool_calls',
+				model: 'xiaomi/mimo-v2.5-served'
+			};
+		});
+		const { params } = baseParams({
+			llm: { streamText } as any,
+			hasTools: true,
+			tools: [
+				{
+					type: 'function',
+					function: {
+						name: 'create_onto_project',
+						description: 'Create a project',
+						parameters: { type: 'object', properties: {} }
+					}
+				}
+			],
+			normalizedContext: 'project_create',
+			modelRouting: {
+				passRole: 'initial_plan',
+				profile: 'balanced',
+				models: ['google/gemini-3.7-flash', 'xiaomi/mimo-v2.5'],
+				retryModelRotation: true
+			},
+			retryDelayMs: () => 0
+		});
+
+		const result = await runLlmStreamPass(params);
+		const args = JSON.parse(result.pendingToolCalls[0]?.function.arguments ?? '{}');
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		expect(streamText.mock.calls[1]?.[0]).toMatchObject({
+			models: ['xiaomi/mimo-v2.5', 'google/gemini-3.7-flash']
+		});
+		expect(args.meta).toEqual({
+			model: 'xiaomi/mimo-v2.5-served',
+			confidence: 0.92
+		});
+		expect(result.metadata).toMatchObject({
+			attempts: 2,
+			streamRetryCount: 1,
+			lastStreamRetryError: 'Project creation reasoning budget exceeded before a tool call',
+			attemptRoutes: [
+				{
+					attempt: 1,
+					terminalOutcome: 'stream_error',
+					terminalEventReceived: false,
+					partialOutputDiscarded: true,
+					reasoningCharsReceived: 12_001
+				},
+				{
+					attempt: 2,
+					selectedModel: 'xiaomi/mimo-v2.5-served',
+					terminalOutcome: 'completed',
+					toolCallsReceived: 1
+				}
+			]
+		});
 	});
 
 	it('rotates the dedicated synthesis model route and carries provider policy across retries', async () => {

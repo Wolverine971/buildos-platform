@@ -132,7 +132,7 @@ describe('streamFastChat direct tool orchestration', () => {
 		});
 	});
 
-	it('forces the one project-create tool, then finishes with tool-free synthesis', async () => {
+	it('forces one project-create tool and confirms directly from its durable receipt', async () => {
 		let streamInvocation = 0;
 		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];
 		const llm = {
@@ -156,22 +156,67 @@ describe('streamFastChat direct tool orchestration', () => {
 								state_key: 'planning',
 								props: {}
 							},
-							entities: [],
-							relationships: []
+							context_document: {
+								title: 'START HERE — The Glass Harbor',
+								content: '# The Glass Harbor\n\nBegin with the premise.'
+							},
+							entities: [
+								{
+									temp_id: 'goal-1',
+									kind: 'goal',
+									name: 'Complete a submission-ready novel draft'
+								},
+								{
+									temp_id: 'plan-1',
+									kind: 'plan',
+									name: 'Phase 1 — Story Foundation'
+								},
+								{
+									temp_id: 'plan-2',
+									kind: 'plan',
+									name: 'Phase 2 — Draft and Revise'
+								},
+								{
+									temp_id: 'task-1',
+									kind: 'task',
+									title: 'Write the one-sentence story premise',
+									state_key: 'ready'
+								},
+								{ temp_id: 'document-1', kind: 'document', title: 'Story Bible' }
+							],
+							relationships: [
+								{
+									from: { temp_id: 'goal-1', kind: 'goal' },
+									to: { temp_id: 'plan-1', kind: 'plan' },
+									rel: 'contains'
+								},
+								{
+									from: { temp_id: 'goal-1', kind: 'goal' },
+									to: { temp_id: 'plan-2', kind: 'plan' },
+									rel: 'contains'
+								},
+								{
+									from: { temp_id: 'plan-1', kind: 'plan' },
+									to: { temp_id: 'task-1', kind: 'task' },
+									rel: 'contains'
+								}
+							]
 						})
 					};
 					yield { type: 'done', finished_reason: 'tool_calls' };
 					return;
 				}
 
-				yield { type: 'text', content: 'Your fiction workspace is ready.' };
-				yield { type: 'done', finished_reason: 'stop' };
+				throw new Error('A successful project receipt must not trigger a synthesis pass');
 			})
 		} as any;
 		const toolExecutor = vi.fn(
 			async (call: ChatToolCall): Promise<ChatToolResult> => ({
 				tool_call_id: call.id,
-				result: { project: { id: 'project-1', name: 'The Glass Harbor' } },
+				result: {
+					project: { id: 'project-1', name: 'The Glass Harbor' },
+					counts: { goals: 1, plans: 2, tasks: 1, documents: 2, edges: 3 }
+				},
 				success: true
 			})
 		);
@@ -191,12 +236,22 @@ describe('streamFastChat direct tool orchestration', () => {
 		});
 
 		expect(streamParams).toEqual([
-			{ toolChoice: 'required', toolNames: ['create_onto_project'] },
-			{ toolChoice: 'none', toolNames: [] }
+			{ toolChoice: 'required', toolNames: ['create_onto_project'] }
 		]);
+		expect(llm.streamText).toHaveBeenCalledTimes(1);
 		expect(toolExecutor).toHaveBeenCalledTimes(1);
-		expect(result.finalAssistantText).toBe('Your fiction workspace is ready.');
-		expect(result.llmPasses?.[1]?.forcedNoToolSynthesis).toBe(true);
+		expect(result.finalAssistantText).toContain('Created **The Glass Harbor** successfully.');
+		expect(result.finalAssistantText).toContain('Project ID: `project-1`');
+		expect(result.finalAssistantText).toContain(
+			'Structure: 1 goal, 2 plans, 1 task, 2 documents, and 3 relationships'
+		);
+		expect(result.finalAssistantText).toContain('- Phase 1 — Story Foundation');
+		expect(result.finalAssistantText).toContain('- START HERE — The Glass Harbor');
+		expect(result.finalAssistantText).toContain(
+			'Start with **Write the one-sentence story premise**.'
+		);
+		expect(result.llmPasses).toHaveLength(1);
+		expect(result.completionOutcome.answerSource).toBe('deterministic_evidence');
 	});
 
 	it('leaves the project-create tool optional when the user has not supplied a project idea', async () => {

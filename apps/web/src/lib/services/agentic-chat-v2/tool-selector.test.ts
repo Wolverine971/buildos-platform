@@ -301,7 +301,7 @@ describe('selectFastChatTools', () => {
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);
 
-		expect(names).toEqual(['cancel_turn_contract', 'create_onto_project']);
+		expect(names).toEqual(['create_onto_project']);
 	});
 
 	it('materializes outcome card gateway tools without preloading them', () => {
@@ -472,7 +472,7 @@ describe('selectFastChatTools', () => {
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);
 
-		expect(names).toEqual(['cancel_turn_contract', 'create_onto_project']);
+		expect(names).toEqual(['create_onto_project']);
 	});
 
 	it('exposes larger deterministic profiles when requested explicitly', () => {

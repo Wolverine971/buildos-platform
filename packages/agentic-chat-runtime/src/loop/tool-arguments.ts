@@ -235,6 +235,48 @@ export function normalizeToolCallDefaults(
 }
 
 /**
+ * Project creation metadata is durable audit data, so the model that authored
+ * the payload must be stamped by orchestration rather than trusted from model-
+ * generated arguments (which have historically claimed a stale `gpt-4o`).
+ */
+export function stampProjectCreateGenerationModel(
+	toolCall: ChatToolCall,
+	model: string | null | undefined
+): ChatToolCall {
+	if (toolCall.function?.name?.trim() !== 'create_onto_project') return toolCall;
+
+	const { args, error } = parseToolArguments(toolCall.function.arguments);
+	if (error) return toolCall;
+
+	const normalizedModel = typeof model === 'string' ? model.trim() : '';
+	const currentMeta =
+		args.meta && typeof args.meta === 'object' && !Array.isArray(args.meta)
+			? (args.meta as Record<string, unknown>)
+			: {};
+	const nextMeta = { ...currentMeta };
+	if (normalizedModel) {
+		nextMeta.model = normalizedModel;
+	} else {
+		delete nextMeta.model;
+	}
+
+	const normalizedArgs = { ...args };
+	if (Object.keys(nextMeta).length > 0) {
+		normalizedArgs.meta = nextMeta;
+	} else {
+		delete normalizedArgs.meta;
+	}
+
+	return {
+		...toolCall,
+		function: {
+			...toolCall.function,
+			arguments: JSON.stringify(normalizedArgs)
+		}
+	};
+}
+
+/**
  * A commissioned document-capture pass has one authoritative source available
  * even when a weak model emits only a target id and merge instructions: the
  * user's current message. Supply it as merge/append input before validation so

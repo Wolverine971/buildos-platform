@@ -120,6 +120,7 @@ import {
 	observeTurnRouteHealth
 } from './turn-route-health';
 import {
+	buildProjectCreateSuccessConfirmation,
 	resolveLengthContinuation,
 	runCancellationFinalization,
 	runNoToolCallFinalization,
@@ -521,6 +522,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let repeatedReadOpSetCount = 0;
 	let readLoopRepairRank = 0;
 	let forceNoToolSynthesisPass = false;
+	let deterministicProjectCreateConfirmationUsed = false;
 	let forceWriteIntentToolPass: ForcedWriteIntentToolPass | null = null;
 	let writeIntentCarveOutUsed = false;
 	let noToolSynthesisRetryCount = 0;
@@ -1337,6 +1339,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					hasTools: passTools.length > 0,
 					noToolSynthesisPass,
 					writeIntentToolPass: Boolean(writeIntentToolPass),
+					projectCreateToolPass:
+						normalizedContext === 'project_create' && !noToolSynthesisPass,
 					noToolSynthesisRetryCount,
 					modelTiering: params.modelTiering ?? null,
 					forcedSynthesisRouting: params.forcedSynthesisRouting ?? null,
@@ -2175,8 +2179,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			// Project creation has a single legitimate write. Once it succeeds,
-			// finish on a tool-free synthesis pass so the model cannot repeat the
-			// creation call and transport recovery can safely retry the final text.
+			// render the confirmation directly from the submitted payload and durable
+			// gateway receipt. This avoids a second model pass inventing names/counts
+			// and removes another latency/failure point after the write is complete.
 			if (
 				normalizedContext === 'project_create' &&
 				roundExecutions.some(
@@ -2185,6 +2190,24 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						didGatewayExecSucceed(execution)
 				)
 			) {
+				const confirmation = buildProjectCreateSuccessConfirmation(toolExecutions);
+				if (confirmation) {
+					finalAssistantText = confirmation;
+					finishedReason = 'stop';
+					deterministicProjectCreateConfirmationUsed = true;
+					activeAssistantBuffer = '';
+					activePendingToolCallCount = 0;
+					await observeSupervisor({
+						type: 'final_candidate',
+						text: confirmation,
+						finishedReason: 'stop'
+					});
+					await emitAssistantRemainder(confirmation);
+					break;
+				}
+
+				// A malformed or legacy receipt may not contain a project ID. Preserve
+				// the existing safe fallback in that exceptional case.
 				forceNoToolSynthesisPass = true;
 			}
 
@@ -2478,7 +2501,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 	let completionOutcome: FastChatCompletionOutcome = {
 		status: 'completed',
-		answerSource: 'model'
+		answerSource: deterministicProjectCreateConfirmationUsed
+			? 'deterministic_evidence'
+			: 'model'
 	};
 	if (synthesisTransportRecovery) {
 		if (finalAssistantText.trim()) {

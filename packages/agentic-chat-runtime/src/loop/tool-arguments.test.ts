@@ -4,7 +4,8 @@ import type { ChatToolCall } from '@buildos/shared-types';
 import {
 	backfillCommissionedDocumentUpdateContent,
 	REDACTED_DURABLE_TEXT,
-	sanitizeToolCallsForReplay
+	sanitizeToolCallsForReplay,
+	stampProjectCreateGenerationModel
 } from './tool-arguments';
 
 function toolCall(name: string, args: Record<string, unknown>): ChatToolCall {
@@ -38,6 +39,31 @@ describe('sanitizeToolCallsForReplay', () => {
 		expect(sanitizedArgs.props['chapter.notes']).toBe(REDACTED_DURABLE_TEXT);
 		expect(JSON.stringify(sanitizedCall)).not.toContain('<parameter');
 		expect(originalArgs.props['chapter.notes']).toContain('<parameter');
+	});
+});
+
+describe('stampProjectCreateGenerationModel', () => {
+	it('replaces model-authored attribution with the orchestrator-selected model', () => {
+		const original = toolCall('create_onto_project', {
+			project: { name: 'Book workspace' },
+			meta: { model: 'gpt-4o', confidence: 0.92 }
+		});
+
+		const stamped = stampProjectCreateGenerationModel(original, 'google/gemini-3.7-flash');
+
+		expect(JSON.parse(stamped.function.arguments).meta).toEqual({
+			model: 'google/gemini-3.7-flash',
+			confidence: 0.92
+		});
+		expect(JSON.parse(original.function.arguments).meta.model).toBe('gpt-4o');
+	});
+
+	it('does not alter unrelated tool calls', () => {
+		const original = toolCall('create_onto_task', {
+			meta: { model: 'model-authored-value' }
+		});
+
+		expect(stampProjectCreateGenerationModel(original, 'actual/model')).toBe(original);
 	});
 });
 

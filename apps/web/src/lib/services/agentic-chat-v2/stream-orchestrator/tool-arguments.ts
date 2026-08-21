@@ -6,6 +6,7 @@ export {
 	logToolArgumentAnomaly,
 	normalizeToolCallDefaults,
 	parseToolArguments,
+	stampProjectCreateGenerationModel,
 	sanitizeToolCallsForReplay,
 	type ToolArgumentAnomaly
 } from '@buildos/agentic-chat-runtime/loop';

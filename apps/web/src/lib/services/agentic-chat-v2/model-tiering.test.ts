@@ -4,6 +4,8 @@ import { OPENROUTER_V2_TOOL_MODELS } from '@buildos/smart-llm';
 import {
 	FASTCHAT_FORCED_SYNTHESIS_IGNORED_PROVIDER_SLUGS,
 	FASTCHAT_FORCED_SYNTHESIS_MODELS,
+	FASTCHAT_PROJECT_CREATE_MAX_TOKENS,
+	FASTCHAT_PROJECT_CREATE_TOOL_MODELS,
 	parseFastChatForcedSynthesisIgnoredProviderSlugs,
 	parseFastChatForcedSynthesisModels,
 	parseFastChatForcedSynthesisRoutingMode,
@@ -222,12 +224,39 @@ describe('fast chat model tiering', () => {
 		});
 	});
 
+	it('uses the bounded Gemini-first route for project creation tool passes', () => {
+		const routing = resolveFastChatPassModelRouting({
+			passNumber: 1,
+			hasTools: true,
+			noToolSynthesisPass: false,
+			writeIntentToolPass: false,
+			projectCreateToolPass: true,
+			modelTiering: {
+				variant: 'fast_initial_plan',
+				initialPlanModels: ['tencent/hy3', 'deepseek/deepseek-v4-flash']
+			}
+		});
+
+		expect(routing).toEqual({
+			passRole: 'initial_plan',
+			profile: 'balanced',
+			models: [...FASTCHAT_PROJECT_CREATE_TOOL_MODELS],
+			modelTieringVariant: 'fast_initial_plan',
+			maxTokens: FASTCHAT_PROJECT_CREATE_MAX_TOKENS,
+			retryModelRotation: true
+		});
+		expect(routing.models?.[0]).toMatch(/^google\//);
+		expect(routing.models).not.toContain('tencent/hy3');
+		expect(routing.models).not.toContain('deepseek/deepseek-v4-flash');
+	});
+
 	it('uses pinned eval models for every pass and disables tiering attribution', () => {
 		const routing = resolveFastChatPassModelRouting({
 			passNumber: 2,
 			hasTools: true,
 			noToolSynthesisPass: false,
 			writeIntentToolPass: false,
+			projectCreateToolPass: true,
 			modelTiering: {
 				variant: 'fast_initial_plan',
 				initialPlanModels: ['tier/model']

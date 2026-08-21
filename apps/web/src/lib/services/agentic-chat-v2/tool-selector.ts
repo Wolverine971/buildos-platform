@@ -106,6 +106,12 @@ export function selectFastChatTools(params: {
 					leanDiscovery: params.leanDiscovery
 				});
 	}
+	// Do not let message-shape enrichments (web research, delegation, cross-project
+	// movement) expand the one-tool creation surface. Pasted project source material
+	// can contain those words without commissioning those operations.
+	if (params.contextType === 'project_create') {
+		return tools.filter((tool) => tool.function?.name === 'create_onto_project');
+	}
 	const crossProjectTools = looksLikeCrossProjectTaskMove(
 		params.contextType,
 		[
