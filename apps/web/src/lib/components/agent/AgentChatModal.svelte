@@ -773,8 +773,14 @@
 		getSelectedEntityId: () => shellRouter.selectedEntityId,
 		getResolvedProjectFocus: () => resolvedProjectFocus,
 		getIsPreparingSession: () => isPreparingSession,
+		// A worker turn keeps its handle until terminal truth arrives even when the
+		// streaming flag flaps between reconcile ticks; without this the orchestrator
+		// re-issued and aborted a prewarm on every tick of a worker turn.
 		getIsTurnActive: () =>
-			stream.isStartingStream || stream.isStreaming || activeRestoredTurnRunId !== null,
+			stream.isStartingStream ||
+			stream.isStreaming ||
+			stream.activeTurnHandle !== null ||
+			activeRestoredTurnRunId !== null,
 		getCurrentSession: () => currentSession,
 		getCanPrimeActiveChatSession: () => canPrimeActiveChatSession,
 		getHasDraftInput: () => hasDraftInput,

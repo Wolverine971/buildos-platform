@@ -1421,6 +1421,103 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		});
 	});
 
+	it('withholds prose emitted alongside the read-only declaration so the reviewed continuation answers once', async () => {
+		const dispositionArguments = {
+			reason: 'The user requested a fixed acknowledgement only.'
+		};
+		const dispositionSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(dispositionArguments), 'utf8')
+			.digest('hex');
+		const approvalArguments = {
+			reason: 'No durable change was commissioned.',
+			disposition_sha256: dispositionSha256
+		};
+		const client = clientWithRounds([
+			[
+				// Production models sometimes answer in the same pass that declares
+				// the turn read-only; that prose must not reach the user twice.
+				{ type: 'text', content: 'canary complete.' },
+				...providerReadRound(
+					'provider-read-only-1',
+					dispositionArguments,
+					'declare_read_only_turn'
+				)
+			],
+			[
+				{ type: 'text', content: 'canary complete' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-read-only-approval-1',
+				approvalArguments,
+				'approve_read_only_turn_review'
+			)
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			semanticReviewer,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+		}).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					readToolDefinition('get_project_overview')
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'get_project_overview'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const initialSteps = await collect(invocation.stream());
+		expect(initialSteps.filter((step) => step.type === 'text_delta')).toEqual([]);
+		const reviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-read-only-1',
+						'declare_read_only_turn',
+						dispositionArguments,
+						{ status: 'read_only_declared' }
+					)
+				]
+			})
+		);
+		expect(reviewSteps.filter((step) => step.type === 'text_delta')).toEqual([]);
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 3,
+					results: [
+						durableReadFeedbackFor(
+							'reviewer-read-only-approval-1',
+							'approve_read_only_turn_review',
+							approvalArguments,
+							{
+								status: 'read_only_turn_review_approved',
+								disposition_sha256: dispositionSha256
+							}
+						)
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'canary complete' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+	});
+
 	it('lets the read-only reviewer restore a delegated mutation through exact contract review', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
 		const dispositionArguments = {

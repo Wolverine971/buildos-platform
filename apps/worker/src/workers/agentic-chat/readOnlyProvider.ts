@@ -1200,6 +1200,12 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let streamedText = false;
 		let assistantCandidate = '';
 		const holdAssistantTextForMutationGate = canRequirePreMutationSemanticDisposition(request);
+		// Provider passes are fully buffered upstream, so deferring the text flush
+		// to pass end costs no latency. Holding lets a pass that ends in a semantic
+		// disposition control call withhold its prose: the post-disposition pass
+		// owns the final answer, and flushing both doubled the reply in production.
+		const holdAssistantText =
+			holdAssistantTextForMutationGate || requestOffersSemanticDisposition(request);
 		const toolCalls = createToolCallAccumulator();
 		try {
 			yield* drainSupervisorSteps(state.supervisor);
@@ -1214,7 +1220,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					if (!event.content) throw providerError('provider_empty_text', 'unknown');
 					streamedText = true;
 					assistantCandidate += event.content;
-					if (holdAssistantTextForMutationGate) continue;
+					if (holdAssistantText) continue;
 					yield { type: 'text_delta', text: event.content };
 					state.supervisor?.observe({
 						type: 'assistant_text_delta',
@@ -1291,7 +1297,11 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						);
 						return;
 					}
-					if (holdAssistantTextForMutationGate && assistantCandidate) {
+					if (
+						holdAssistantText &&
+						assistantCandidate &&
+						!callsIncludeSemanticDisposition(calls)
+					) {
 						yield { type: 'text_delta', text: assistantCandidate };
 						state.supervisor?.observe({
 							type: 'assistant_text_delta',
@@ -1386,7 +1396,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					yield* this.streamContinuation(preFinalSemanticDispositionGate, usage, state);
 					return;
 				}
-				if (holdAssistantTextForMutationGate && assistantCandidate) {
+				if (holdAssistantText && assistantCandidate) {
 					yield { type: 'text_delta', text: assistantCandidate };
 					state.supervisor?.observe({
 						type: 'assistant_text_delta',
@@ -1845,6 +1855,10 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let assistantCandidate = '';
 		const holdAssistantTextForTurnContract =
 			state.hasPendingTurnContractWrite() || request.semanticDispositionGate === true;
+		// See streamInitial: prose emitted alongside a semantic disposition call is
+		// withheld so the post-disposition pass answers exactly once.
+		const holdAssistantText =
+			holdAssistantTextForTurnContract || requestOffersSemanticDisposition(request);
 		const toolCalls = createToolCallAccumulator();
 		try {
 			yield* drainSupervisorSteps(state.supervisor);
@@ -1855,7 +1869,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					if (!event.content) throw providerError('provider_empty_text', 'unknown');
 					streamedText = true;
 					assistantCandidate += event.content;
-					if (holdAssistantTextForTurnContract) continue;
+					if (holdAssistantText) continue;
 					yield { type: 'text_delta', text: event.content };
 					state.supervisor?.observe({
 						type: 'assistant_text_delta',
@@ -1936,6 +1950,19 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 							emitPlanningSemantic
 						);
 						return;
+					}
+					if (
+						holdAssistantText &&
+						!holdAssistantTextForTurnContract &&
+						assistantCandidate &&
+						!callsIncludeSemanticDisposition(calls)
+					) {
+						yield { type: 'text_delta', text: assistantCandidate };
+						state.supervisor?.observe({
+							type: 'assistant_text_delta',
+							chars: assistantCandidate.length
+						});
+						yield* drainSupervisorSteps(state.supervisor);
 					}
 					const blockedToolCalls = observeSupervisorToolCalls(state, calls);
 					yield* drainSupervisorSteps(state.supervisor);
@@ -2048,6 +2075,13 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						);
 						return;
 					}
+				} else if (holdAssistantText && assistantCandidate) {
+					yield { type: 'text_delta', text: assistantCandidate };
+					state.supervisor?.observe({
+						type: 'assistant_text_delta',
+						chars: assistantCandidate.length
+					});
+					yield* drainSupervisorSteps(state.supervisor);
 				}
 				state.supervisor?.observe({
 					type: 'final_candidate',
@@ -3102,6 +3136,14 @@ function buildPostSemanticDispositionRequest(
 		forceToolFreeRequest({ ...request, semanticDispositionGate: false }),
 		'Clarification is required. Ask the unresolved question now and wait for the user; do not perform a durable mutation in this turn.'
 	);
+}
+
+function requestOffersSemanticDisposition(request: ClientRequest): boolean {
+	return request.tools.some((tool) => isSemanticDispositionToolName(tool.function.name));
+}
+
+function callsIncludeSemanticDisposition(calls: readonly CompletedProviderToolCall[]): boolean {
+	return calls.some((call) => isSemanticDispositionToolName(call.name));
 }
 
 function isSemanticDispositionToolName(toolName: string): boolean {
