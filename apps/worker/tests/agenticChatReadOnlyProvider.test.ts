@@ -2611,6 +2611,101 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		);
 	});
 
+	it('removes pure reads from the semantic disposition gate at the hard read stop', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const documentId = '40000000-0000-4000-8000-000000000005';
+		const client = clientWithRounds([
+			providerReadRound('provider-read-1', { project_id: projectId }),
+			providerReadRound(
+				'provider-contract-1',
+				organizationContractArguments(documentId),
+				'declare_turn_contract'
+			)
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			3
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					readToolDefinition('get_project_overview')
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'get_project_overview'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedback(
+							'provider-read-1',
+							{ project_id: projectId },
+							{ project: { id: projectId } }
+						)
+					]
+				})
+			)
+		).resolves.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'provider-contract-1',
+					toolName: 'declare_turn_contract'
+				})
+			])
+		);
+
+		const hardStopGate = client.stream.mock.calls[1]?.[0];
+		if (!hardStopGate) throw new Error('Expected the hard-stop semantic disposition gate');
+		expect(hardStopGate).toMatchObject({
+			toolChoice: 'required',
+			tools: [
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'declare_turn_contract' })
+				}),
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'declare_read_only_turn' })
+				}),
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'request_turn_clarification' })
+				})
+			]
+		});
+		expect(hardStopGate.tools).not.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					function: expect.objectContaining({ name: 'get_project_overview' })
+				})
+			])
+		);
+		expect(
+			hardStopGate.messages.some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes('Context gathering is over for this turn')
+			)
+		).toBe(true);
+		invocation.release();
+	});
+
 	it('lets the independent reviewer reject an exact mutation batch after approving its contract', async () => {
 		const documentId = '42000000-0000-4000-8000-000000000004';
 		const contractArguments: JsonObject = {
@@ -6207,6 +6302,85 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			{ type: 'text_delta', text: 'Both repaired reads succeeded.' },
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
+	});
+
+	it('repairs a noncanonical project contract target before semantic review', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const documentId = '00c61dc1-7861-4ace-9750-96f2fa7bba24';
+		const malformedDocumentId = '00c61dc1-7861-ace-9750-96f2fa7bba24';
+		const contractFor = (targetId: string): JsonObject => ({
+			outcomes: [
+				{
+					action: 'organize',
+					entity_kind: 'document',
+					target_ids: [targetId],
+					minimum_successful_effects: 1
+				}
+			]
+		});
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-contract-invalid',
+				contractFor(malformedDocumentId),
+				'declare_turn_contract'
+			),
+			providerReadRound(
+				'provider-contract-repaired',
+				contractFor(documentId),
+				'declare_turn_contract'
+			)
+		]);
+		const input = executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readOnlyTurnToolDefinition(),
+				clarificationToolDefinition()
+			],
+			['declare_turn_contract', 'declare_read_only_turn', 'request_turn_clarification']
+		);
+		input.requestPayload.context = {
+			type: 'project',
+			entityId: projectId,
+			projectId
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity
+		}).prepare({
+			executionInput: input,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const steps = await collect(invocation.stream());
+		expect(steps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'provider-contract-invalid',
+					toolName: 'declare_turn_contract',
+					validationFailure: {
+						error: expect.stringContaining(
+							'must be a canonical UUID copied exactly from loaded context'
+						),
+						toolCategory: null
+					}
+				}),
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'provider-contract-repaired',
+					toolName: 'declare_turn_contract',
+					arguments: contractFor(documentId)
+				})
+			])
+		);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(client.stream.mock.calls[1]?.[0].messages.at(-1)?.content).toContain(
+			'must be a canonical UUID copied exactly from loaded context'
+		);
+		invocation.release();
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
 	it('bounds repeated validation repairs and releases provider capacity', async () => {

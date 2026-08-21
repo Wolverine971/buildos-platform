@@ -417,7 +417,10 @@ type ToolRoundStreamState = {
 		calls: readonly CompletedProviderToolCall[]
 	): ClientRequest | null;
 	takePreFinalSemanticDispositionGate(request: ClientRequest): ClientRequest | null;
-	takeSemanticTurnDispositionGate(request: ClientRequest): ClientRequest | null;
+	takeSemanticTurnDispositionGate(
+		request: ClientRequest,
+		options?: { allowReads?: boolean }
+	): ClientRequest | null;
 	takeTurnContractWriteCarveOut(request: ClientRequest): ClientRequest | null;
 	validateApprovedMutations(calls: readonly CompletedProviderToolCall[]): ToolValidationIssue[];
 	stageMutationBatchReview(
@@ -763,11 +766,11 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					'A prior provider pass proposed final prose without a semantic disposition. That prose was withheld. Choose the disposition now from the user request and loaded context; do not infer that the withheld prose was correct.'
 				);
 			},
-			takeSemanticTurnDispositionGate(value) {
+			takeSemanticTurnDispositionGate(value, options) {
 				if (semanticTurnDispositionGateUsed || turnContract || mutationRoundReached) {
 					return null;
 				}
-				return buildSemanticTurnDispositionGateRequest(value, request.tools);
+				return buildSemanticTurnDispositionGateRequest(value, request.tools, options);
 			},
 			takeTurnContractWriteCarveOut(value) {
 				if (!turnContract || contractWriteCarveOutUsed || mutationRoundReached) {
@@ -1237,7 +1240,9 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					: null;
 				const semanticDispositionGate =
 					pattern.readOps.length > 0 && !roundContainsSemanticDisposition
-						? state.takeSemanticTurnDispositionGate(currentRequest)
+						? state.takeSemanticTurnDispositionGate(currentRequest, {
+								allowReads: !forceNoToolSynthesis
+							})
 						: null;
 				if (contractWriteCarveOut) {
 					currentRequest = contractWriteCarveOut;
@@ -3573,15 +3578,19 @@ function canRequirePreMutationSemanticDisposition(request: ClientRequest): boole
 
 function buildSemanticTurnDispositionGateRequest(
 	request: ClientRequest,
-	availableTools: readonly AgenticChatReadOnlyProviderToolV1[]
+	availableTools: readonly AgenticChatReadOnlyProviderToolV1[],
+	options: { allowReads?: boolean } = {}
 ): ClientRequest | null {
+	const allowReads = options.allowReads !== false;
 	const gateNames = new Set([
 		DECLARE_TURN_CONTRACT_TOOL_NAME,
 		DECLARE_READ_ONLY_TURN_TOOL_NAME,
 		REQUEST_TURN_CLARIFICATION_TOOL_NAME
 	]);
 	const tools = availableTools.filter(
-		(tool) => gateNames.has(tool.function.name) || isPureReadToolName(tool.function.name)
+		(tool) =>
+			gateNames.has(tool.function.name) ||
+			(allowReads && isPureReadToolName(tool.function.name))
 	);
 	if (!Array.from(gateNames).every((name) => tools.some((tool) => tool.function.name === name))) {
 		return null;
@@ -3591,7 +3600,13 @@ function buildSemanticTurnDispositionGateRequest(
 			request,
 			[
 				'Semantic disposition gate: when the evidence is sufficient, choose exactly one control tool from the meaning of the current user request and loaded context.',
-				'If more durable context is required for that decision, call only the available pure-read tools, then return to this gate. Never guess, call a mutation, or mix a disposition control with reads in one pass.',
+				...(allowReads
+					? [
+							'If more durable context is required for that decision, call only the available pure-read tools, then return to this gate. Never guess, call a mutation, or mix a disposition control with reads in one pass.'
+						]
+					: [
+							'Context gathering is over for this turn. Choose a disposition now; no more read tools are available in this gate. Never guess or call a mutation.'
+						]),
 				'Call declare_turn_contract only when the user commissioned a durable data change and every required target and value is resolved enough for safe execution.',
 				'Call declare_read_only_turn only when no durable data change was commissioned.',
 				'Information gathering, research, comparison, analysis, and advice remain read-only when they are intended to inform a later possible change; future context does not commission that later change now.',
@@ -3927,7 +3942,7 @@ function validateCompletedProviderCalls(
 	calls: readonly CompletedProviderToolCall[],
 	request: ClientRequest
 ): ToolValidationIssue[] {
-	return validateToolCalls(
+	const issues = validateToolCalls(
 		calls.map(completedProviderCallToChatToolCall),
 		Array.from(request.tools) as unknown as ChatToolDefinition[],
 		{
@@ -3938,6 +3953,39 @@ function validateCompletedProviderCalls(
 					: null
 		}
 	);
+	// Hosted ontology ids are canonical UUIDs. A contract target typo previously
+	// survived semantic parsing, then made the candidate gate ask the user which
+	// member of an explicitly exhaustive set they meant. On a canonical
+	// project-scoped turn, return that model-authored typo through the existing
+	// bounded validation-repair loop before semantic review instead.
+	if (typeof request.projectId !== 'string' || !CANONICAL_UUID_PATTERN.test(request.projectId)) {
+		return issues;
+	}
+	for (const call of calls) {
+		if (call.name !== DECLARE_TURN_CONTRACT_TOOL_NAME) continue;
+		const contract = parseDeclaredTurnContract(call.arguments);
+		if (!contract) continue;
+		const uuidErrors = contract.outcomes.flatMap((outcome, index) =>
+			outcome.targetIds
+				.filter((targetId) => !CANONICAL_UUID_PATTERN.test(targetId))
+				.map(
+					(targetId) =>
+						`Invalid turn contract: Outcome ${index + 1}: target_ids entry ${JSON.stringify(targetId)} must be a canonical UUID copied exactly from loaded context.`
+				)
+		);
+		if (uuidErrors.length === 0) continue;
+		const existing = issues.find((issue) => issue.toolCall.id === call.id);
+		if (existing) {
+			existing.errors.push(...uuidErrors);
+		} else {
+			issues.push({
+				toolCall: completedProviderCallToChatToolCall(call),
+				toolName: call.name,
+				errors: uuidErrors
+			});
+		}
+	}
+	return issues;
 }
 
 /**
