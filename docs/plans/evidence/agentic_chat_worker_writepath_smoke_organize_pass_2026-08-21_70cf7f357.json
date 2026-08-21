@@ -1,0 +1,2365 @@
+{
+  "schemaVersion": 2,
+  "contractFamily": "agentic_chat_worker_v1",
+  "runId": "writepath-smoke-organize-a94eeeaa-bb2",
+  "generatedAt": "2026-08-21T20:53:53.641Z",
+  "repository": {
+    "root": "/private/tmp/claude-501/-Users-djwayne-buildos-platform/484bc570-4594-4c0b-92a6-3800ab9b582b/scratchpad/battery-wt",
+    "head": "70cf7f35735517acd7ac1becd1cf8d4b50018768",
+    "headTree": "24095438f06189b79fef3dc0a9181057d4ba7601",
+    "branch": "",
+    "dirty": false,
+    "status": []
+  },
+  "configuration": {
+    "baseUrl": "https://build-os.com",
+    "executionMode": "worker_realtime",
+    "scenarioIds": [
+      "project-organize"
+    ],
+    "repetitions": 1,
+    "retryCount": 0
+  },
+  "turns": [
+    {
+      "scenarioId": "project-organize",
+      "scenarioTitle": "Organize a project with messy, loose documents",
+      "scenarioCategory": "organization",
+      "repetition": 1,
+      "turnIndex": 1,
+      "turnLabel": null,
+      "streamRunId": "a9bc61f0-aa78-4e29-a0a3-1bb7cb8217a3",
+      "clientTurnId": "e8aed6dc-8148-4ef1-8060-2714dab91a13",
+      "sessionId": "a12ed127-9973-4246-ae4c-8bde1fad106e",
+      "assertionPassed": true,
+      "assertionError": null,
+      "deterministicAssertionPassed": true,
+      "deterministicAssertionError": null,
+      "judge": {
+        "status": "passed",
+        "threshold": 3,
+        "score": 5,
+        "passed": true,
+        "reasoning": "The assistant read and analyzed all loose documents, created four logical parent folders, and moved each document into an appropriate category while perfectly preserving all content.",
+        "error": null
+      },
+      "resultClass": "end_to_end_pass",
+      "subchecks": [],
+      "completed": true,
+      "finishedReason": "stop",
+      "streamErrors": [],
+      "clientTiming": {
+        "requestStartedAt": "2026-08-21T20:51:35.277Z",
+        "responseHeadersMs": 3288.7631249999977,
+        "firstSseEventMs": 4378.9912079999995,
+        "ttftMs": 7467.404583000003,
+        "terminalEventMs": 127051.219667,
+        "totalDurationMs": 127055.422208
+      },
+      "serverTiming": {
+        "phases": {
+          "queue_wait_ms": 441,
+          "total_request_ms": 123216.153,
+          "response_generation_ms": 118241.472471,
+          "time_to_first_event_ms": 910,
+          "time_to_first_response_ms": 4514,
+          "admission_to_acceptance_ms": 3,
+          "provider_authority_to_finish_ms": 121948.525586,
+          "provider_finish_to_terminal_call_ms": 322.2932809999911,
+          "worker_start_to_provider_authority_ms": 365,
+          "provider_authority_to_first_event_persistence_ms": 101,
+          "provider_authority_to_first_response_persistence_ms": 3705
+        },
+        "accepted_at": "2026-08-21T20:51:38.196531+00:00",
+        "admitted_at": "2026-08-21T20:51:38.193342+00:00",
+        "first_event_at": "2026-08-21T20:51:39.10307+00:00",
+        "done_emitted_at": null,
+        "finished_reason": "stop",
+        "history_strategy": "raw_history",
+        "cache_age_seconds": null,
+        "first_response_at": "2026-08-21T20:51:42.707329+00:00",
+        "raw_history_count": 0,
+        "worker_started_at": "2026-08-21T20:51:38.637367+00:00",
+        "history_compressed": false,
+        "request_started_at": "2026-08-21T20:51:38.193342+00:00",
+        "prepared_prompt_hit": false,
+        "terminal_committed_at": "2026-08-21T20:53:41.409495+00:00",
+        "assistant_persisted_at": "2026-08-21T20:53:41.409495+00:00",
+        "provider_authorized_at": "2026-08-21T20:51:39.002239+00:00",
+        "history_for_model_count": 0,
+        "timing_contract_version": "agentic_chat_async_v1",
+        "prepared_surface_profile": null,
+        "request_prewarmed_context": false,
+        "prepared_prompt_miss_reason": null
+      },
+      "eventTimings": [
+        {
+          "type": "turn_phase",
+          "phase": "stream",
+          "sequenceIndex": 1,
+          "observedMs": 4378.9912079999995
+        },
+        {
+          "type": "session",
+          "phase": "stream",
+          "sequenceIndex": 2,
+          "observedMs": 4442.585583
+        },
+        {
+          "type": "context_usage",
+          "phase": "stream",
+          "sequenceIndex": 3,
+          "observedMs": 4632.258249999999
+        },
+        {
+          "type": "agent_state",
+          "phase": "stream",
+          "sequenceIndex": 5,
+          "observedMs": 7822.752332999997
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 6,
+          "observedMs": 8253.234499999999
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 7,
+          "observedMs": 9856.121832999997
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 8,
+          "observedMs": 14250.729166999998
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 9,
+          "observedMs": 14611.63925
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 10,
+          "observedMs": 14911.346124999996
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 11,
+          "observedMs": 15633.943583
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 12,
+          "observedMs": 15908.024292000002
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 13,
+          "observedMs": 16867.406875
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 14,
+          "observedMs": 16912.972833
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 15,
+          "observedMs": 17720.592375
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 16,
+          "observedMs": 17958.209499999997
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 17,
+          "observedMs": 18767.963666999996
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 18,
+          "observedMs": 18977.666833000003
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 19,
+          "observedMs": 19673.837957999996
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 20,
+          "observedMs": 24604.607333
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 21,
+          "observedMs": 25334.793417
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 22,
+          "observedMs": 25622.942541999997
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 23,
+          "observedMs": 26353.121
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 24,
+          "observedMs": 26675.092833000002
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 25,
+          "observedMs": 27398.435292000002
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 26,
+          "observedMs": 27910.968667
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 27,
+          "observedMs": 28627.3615
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 28,
+          "observedMs": 28730.012208
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 29,
+          "observedMs": 29437.273542000003
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 30,
+          "observedMs": 29778.172625
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 31,
+          "observedMs": 30468.158833
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 32,
+          "observedMs": 32674.981042
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 33,
+          "observedMs": 33801.553625
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 34,
+          "observedMs": 47368.1055
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 35,
+          "observedMs": 47557.451582999995
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 36,
+          "observedMs": 58417.053416999996
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 37,
+          "observedMs": 58417.156708
+        },
+        {
+          "type": "agent_state",
+          "phase": "stream",
+          "sequenceIndex": 38,
+          "observedMs": 58613.217207999995
+        },
+        {
+          "type": "agent_state",
+          "phase": "stream",
+          "sequenceIndex": 39,
+          "observedMs": 71690.367792
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 40,
+          "observedMs": 71937.98091700001
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 41,
+          "observedMs": 72638.51079199999
+        },
+        {
+          "type": "agent_state",
+          "phase": "stream",
+          "sequenceIndex": 42,
+          "observedMs": 79537.89000000001
+        },
+        {
+          "type": "agent_state",
+          "phase": "stream",
+          "sequenceIndex": 43,
+          "observedMs": 84592.78691699999
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 44,
+          "observedMs": 84911.26791699999
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 45,
+          "observedMs": 85443.16775
+        },
+        {
+          "type": "agent_state",
+          "phase": "stream",
+          "sequenceIndex": 46,
+          "observedMs": 85601.79958299999
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 47,
+          "observedMs": 86071.37345799999
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 48,
+          "observedMs": 87523.58158299999
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 49,
+          "observedMs": 87765.80179200001
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 50,
+          "observedMs": 89452.16879200001
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 51,
+          "observedMs": 89612.29800000001
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 52,
+          "observedMs": 91574.57579199999
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 53,
+          "observedMs": 91781.364875
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 54,
+          "observedMs": 93769.34816699999
+        },
+        {
+          "type": "agent_state",
+          "phase": "stream",
+          "sequenceIndex": 56,
+          "observedMs": 102785.35404200002
+        },
+        {
+          "type": "agent_state",
+          "phase": "stream",
+          "sequenceIndex": 57,
+          "observedMs": 109971.274458
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 58,
+          "observedMs": 110387.622
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 59,
+          "observedMs": 110821.19870800001
+        },
+        {
+          "type": "agent_state",
+          "phase": "stream",
+          "sequenceIndex": 60,
+          "observedMs": 111042.33512500001
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 61,
+          "observedMs": 111255.979625
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 62,
+          "observedMs": 114418.497375
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 63,
+          "observedMs": 114418.511917
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 64,
+          "observedMs": 114609.176167
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 65,
+          "observedMs": 114812.3935
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 66,
+          "observedMs": 116492.23587500001
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 67,
+          "observedMs": 116492.410083
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 68,
+          "observedMs": 118479.354708
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 69,
+          "observedMs": 118479.58254200002
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 70,
+          "observedMs": 119630.736958
+        },
+        {
+          "type": "tool_call",
+          "phase": "tool",
+          "sequenceIndex": 71,
+          "observedMs": 119837.5495
+        },
+        {
+          "type": "tool_result",
+          "phase": "tool",
+          "sequenceIndex": 72,
+          "observedMs": 121880.355958
+        },
+        {
+          "type": "turn_phase",
+          "phase": "stream",
+          "sequenceIndex": 74,
+          "observedMs": 125943.27441700001
+        },
+        {
+          "type": "last_turn_context",
+          "phase": "finalize",
+          "sequenceIndex": 75,
+          "observedMs": 126294.736917
+        },
+        {
+          "type": "timing",
+          "phase": "finalize",
+          "sequenceIndex": 76,
+          "observedMs": 127050.3565
+        },
+        {
+          "type": "done",
+          "phase": "finalize",
+          "sequenceIndex": 77,
+          "observedMs": 127051.219667
+        }
+      ],
+      "toolExecutions": [
+        {
+          "name": "get_document_tree",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 1,
+          "executionTimeMs": 480,
+          "decidedBy": null
+        },
+        {
+          "name": "get_document_outline",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 2,
+          "executionTimeMs": 274,
+          "decidedBy": null
+        },
+        {
+          "name": "get_document_outline",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 3,
+          "executionTimeMs": 267,
+          "decidedBy": null
+        },
+        {
+          "name": "get_document_outline",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 4,
+          "executionTimeMs": 271,
+          "decidedBy": null
+        },
+        {
+          "name": "get_document_outline",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 5,
+          "executionTimeMs": 264,
+          "decidedBy": null
+        },
+        {
+          "name": "get_document_outline",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 6,
+          "executionTimeMs": 272,
+          "decidedBy": null
+        },
+        {
+          "name": "get_document_outline",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 7,
+          "executionTimeMs": 263,
+          "decidedBy": null
+        },
+        {
+          "name": "read_document_section",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 8,
+          "executionTimeMs": 258,
+          "decidedBy": null
+        },
+        {
+          "name": "read_document_section",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 9,
+          "executionTimeMs": 266,
+          "decidedBy": null
+        },
+        {
+          "name": "read_document_section",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 10,
+          "executionTimeMs": 260,
+          "decidedBy": null
+        },
+        {
+          "name": "read_document_section",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 11,
+          "executionTimeMs": 260,
+          "decidedBy": null
+        },
+        {
+          "name": "read_document_section",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 12,
+          "executionTimeMs": 265,
+          "decidedBy": null
+        },
+        {
+          "name": "read_document_section",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 13,
+          "executionTimeMs": 274,
+          "decidedBy": null
+        },
+        {
+          "name": "get_onto_project_details",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 14,
+          "executionTimeMs": 335,
+          "decidedBy": null
+        },
+        {
+          "name": "declare_turn_contract",
+          "op": null,
+          "success": false,
+          "sequenceIndex": 15,
+          "executionTimeMs": null,
+          "decidedBy": null
+        },
+        {
+          "name": "declare_turn_contract",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 16,
+          "executionTimeMs": 0,
+          "decidedBy": "acting_model"
+        },
+        {
+          "name": "approve_turn_contract_review",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 17,
+          "executionTimeMs": 0,
+          "decidedBy": "contract_reviewer"
+        },
+        {
+          "name": "approve_mutation_batch_review",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 18,
+          "executionTimeMs": 0,
+          "decidedBy": "mutation_batch_reviewer"
+        },
+        {
+          "name": "create_onto_document",
+          "op": "onto.document.create",
+          "success": true,
+          "sequenceIndex": 19,
+          "executionTimeMs": null,
+          "decidedBy": null
+        },
+        {
+          "name": "create_onto_document",
+          "op": "onto.document.create",
+          "success": true,
+          "sequenceIndex": 20,
+          "executionTimeMs": null,
+          "decidedBy": null
+        },
+        {
+          "name": "create_onto_document",
+          "op": "onto.document.create",
+          "success": true,
+          "sequenceIndex": 21,
+          "executionTimeMs": null,
+          "decidedBy": null
+        },
+        {
+          "name": "create_onto_document",
+          "op": "onto.document.create",
+          "success": true,
+          "sequenceIndex": 22,
+          "executionTimeMs": null,
+          "decidedBy": null
+        },
+        {
+          "name": "approve_mutation_batch_review",
+          "op": null,
+          "success": true,
+          "sequenceIndex": 23,
+          "executionTimeMs": 0,
+          "decidedBy": "mutation_batch_reviewer"
+        },
+        {
+          "name": "move_document_in_tree",
+          "op": "onto.document.tree.move",
+          "success": true,
+          "sequenceIndex": 24,
+          "executionTimeMs": null,
+          "decidedBy": null
+        },
+        {
+          "name": "move_document_in_tree",
+          "op": "onto.document.tree.move",
+          "success": true,
+          "sequenceIndex": 25,
+          "executionTimeMs": null,
+          "decidedBy": null
+        },
+        {
+          "name": "move_document_in_tree",
+          "op": "onto.document.tree.move",
+          "success": true,
+          "sequenceIndex": 26,
+          "executionTimeMs": null,
+          "decidedBy": null
+        },
+        {
+          "name": "move_document_in_tree",
+          "op": "onto.document.tree.move",
+          "success": true,
+          "sequenceIndex": 27,
+          "executionTimeMs": null,
+          "decidedBy": null
+        },
+        {
+          "name": "move_document_in_tree",
+          "op": "onto.document.tree.move",
+          "success": true,
+          "sequenceIndex": 28,
+          "executionTimeMs": null,
+          "decidedBy": null
+        },
+        {
+          "name": "move_document_in_tree",
+          "op": "onto.document.tree.move",
+          "success": true,
+          "sequenceIndex": 29,
+          "executionTimeMs": null,
+          "decidedBy": null
+        }
+      ],
+      "controlDecisions": [
+        {
+          "name": "declare_turn_contract",
+          "decidedBy": null,
+          "sequenceIndex": 15
+        },
+        {
+          "name": "declare_turn_contract",
+          "decidedBy": "acting_model",
+          "sequenceIndex": 16
+        },
+        {
+          "name": "approve_turn_contract_review",
+          "decidedBy": "contract_reviewer",
+          "sequenceIndex": 17
+        },
+        {
+          "name": "approve_mutation_batch_review",
+          "decidedBy": "mutation_batch_reviewer",
+          "sequenceIndex": 18
+        },
+        {
+          "name": "approve_mutation_batch_review",
+          "decidedBy": "mutation_batch_reviewer",
+          "sequenceIndex": 23
+        }
+      ],
+      "executionObservations": [
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_started",
+          "observedAt": "2026-08-21T20:51:40.236222+00:00",
+          "round": null,
+          "logicalProviderRound": 1,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_ended",
+          "observedAt": "2026-08-21T20:51:42.359288+00:00",
+          "round": null,
+          "logicalProviderRound": 1,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": "deepseek/deepseek-v4-flash",
+          "provider": "DeepInfra",
+          "status": "success",
+          "durationMs": 2285,
+          "finishReason": "tool_calls",
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": {
+            "promptTokens": 11683,
+            "completionTokens": 111,
+            "totalTokens": 11794,
+            "reasoningTokens": 0,
+            "cachedPromptTokens": 7680,
+            "cacheWriteTokens": 0
+          }
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:51:43.795781+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_tree",
+          "providerToolCallId": "chatcmpl-tool-bf5d84e85b9e4f3b",
+          "sequenceIndex": 1,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:51:44.681466+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 803,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_tree",
+          "providerToolCallId": "chatcmpl-tool-bf5d84e85b9e4f3b",
+          "sequenceIndex": 1,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_started",
+          "observedAt": "2026-08-21T20:51:45.263529+00:00",
+          "round": null,
+          "logicalProviderRound": 2,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_ended",
+          "observedAt": "2026-08-21T20:51:48.837097+00:00",
+          "round": null,
+          "logicalProviderRound": 2,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": "deepseek/deepseek-v4-flash",
+          "provider": "DeepInfra",
+          "status": "success",
+          "durationMs": 3732,
+          "finishReason": "tool_calls",
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": {
+            "promptTokens": 11754,
+            "completionTokens": 351,
+            "totalTokens": 12105,
+            "reasoningTokens": 0,
+            "cachedPromptTokens": 5376,
+            "cacheWriteTokens": 0
+          }
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:51:49.295817+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_outline",
+          "providerToolCallId": "chatcmpl-tool-8d44ca8dc2c294cc",
+          "sequenceIndex": 2,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:51:49.763597+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 458,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_outline",
+          "providerToolCallId": "chatcmpl-tool-8d44ca8dc2c294cc",
+          "sequenceIndex": 2,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:51:50.329923+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_outline",
+          "providerToolCallId": "chatcmpl-tool-a2338fc05bfe654c",
+          "sequenceIndex": 3,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:51:50.787066+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 453,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_outline",
+          "providerToolCallId": "chatcmpl-tool-a2338fc05bfe654c",
+          "sequenceIndex": 3,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:51:51.332435+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_outline",
+          "providerToolCallId": "chatcmpl-tool-9eb001e1fa4c4edd",
+          "sequenceIndex": 4,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:51:51.774626+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 442,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_outline",
+          "providerToolCallId": "chatcmpl-tool-9eb001e1fa4c4edd",
+          "sequenceIndex": 4,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:51:52.3787+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_outline",
+          "providerToolCallId": "chatcmpl-tool-881dce87be3fadc6",
+          "sequenceIndex": 5,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:51:52.819605+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 439,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_outline",
+          "providerToolCallId": "chatcmpl-tool-881dce87be3fadc6",
+          "sequenceIndex": 5,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:51:53.372098+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_outline",
+          "providerToolCallId": "chatcmpl-tool-ab217569469e6a66",
+          "sequenceIndex": 6,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:51:53.828895+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 449,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_outline",
+          "providerToolCallId": "chatcmpl-tool-ab217569469e6a66",
+          "sequenceIndex": 6,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:51:54.392371+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_outline",
+          "providerToolCallId": "chatcmpl-tool-929ed0e5ef5c0362",
+          "sequenceIndex": 7,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:51:54.827054+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 444,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_document_outline",
+          "providerToolCallId": "chatcmpl-tool-929ed0e5ef5c0362",
+          "sequenceIndex": 7,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_started",
+          "observedAt": "2026-08-21T20:51:55.101378+00:00",
+          "round": null,
+          "logicalProviderRound": 3,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_ended",
+          "observedAt": "2026-08-21T20:51:59.564524+00:00",
+          "round": null,
+          "logicalProviderRound": 3,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": "deepseek/deepseek-v4-flash",
+          "provider": "DeepInfra",
+          "status": "success",
+          "durationMs": 4450,
+          "finishReason": "tool_calls",
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": {
+            "promptTokens": 13832,
+            "completionTokens": 447,
+            "totalTokens": 14279,
+            "reasoningTokens": 0,
+            "cachedPromptTokens": 9984,
+            "cacheWriteTokens": 0
+          }
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:52:00.037597+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "read_document_section",
+          "providerToolCallId": "chatcmpl-tool-ac81b86538ed554f",
+          "sequenceIndex": 8,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:52:00.477972+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 445,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "read_document_section",
+          "providerToolCallId": "chatcmpl-tool-ac81b86538ed554f",
+          "sequenceIndex": 8,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:52:01.045127+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "read_document_section",
+          "providerToolCallId": "chatcmpl-tool-8c7ebb024e7a2a12",
+          "sequenceIndex": 9,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:52:01.494028+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 441,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "read_document_section",
+          "providerToolCallId": "chatcmpl-tool-8c7ebb024e7a2a12",
+          "sequenceIndex": 9,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:52:02.094421+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "read_document_section",
+          "providerToolCallId": "chatcmpl-tool-a5886b7a6567562f",
+          "sequenceIndex": 10,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:52:02.542299+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 447,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "read_document_section",
+          "providerToolCallId": "chatcmpl-tool-a5886b7a6567562f",
+          "sequenceIndex": 10,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:52:03.111799+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "read_document_section",
+          "providerToolCallId": "chatcmpl-tool-a3a2c646c9a1894f",
+          "sequenceIndex": 11,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:52:03.558511+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 445,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "read_document_section",
+          "providerToolCallId": "chatcmpl-tool-a3a2c646c9a1894f",
+          "sequenceIndex": 11,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:52:04.124516+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "read_document_section",
+          "providerToolCallId": "chatcmpl-tool-bd71c68a6ad07a68",
+          "sequenceIndex": 12,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:52:04.578712+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 452,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "read_document_section",
+          "providerToolCallId": "chatcmpl-tool-bd71c68a6ad07a68",
+          "sequenceIndex": 12,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:52:05.155889+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "read_document_section",
+          "providerToolCallId": "chatcmpl-tool-9194bc0e9521d05f",
+          "sequenceIndex": 13,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:52:05.613544+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 457,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "read_document_section",
+          "providerToolCallId": "chatcmpl-tool-9194bc0e9521d05f",
+          "sequenceIndex": 13,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_started",
+          "observedAt": "2026-08-21T20:52:05.891034+00:00",
+          "round": null,
+          "logicalProviderRound": 4,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_ended",
+          "observedAt": "2026-08-21T20:52:07.516275+00:00",
+          "round": null,
+          "logicalProviderRound": 4,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": "deepseek/deepseek-v4-flash",
+          "provider": "DeepInfra",
+          "status": "success",
+          "durationMs": 1614,
+          "finishReason": "tool_calls",
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": {
+            "promptTokens": 16100,
+            "completionTokens": 71,
+            "totalTokens": 16171,
+            "reasoningTokens": 0,
+            "cachedPromptTokens": 10752,
+            "cacheWriteTokens": 0
+          }
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:52:08.011939+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_onto_project_details",
+          "providerToolCallId": "chatcmpl-tool-aab62598a00ffd8b",
+          "sequenceIndex": 14,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:52:08.532141+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 514,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "get_onto_project_details",
+          "providerToolCallId": "chatcmpl-tool-aab62598a00ffd8b",
+          "sequenceIndex": 14,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_started",
+          "observedAt": "2026-08-21T20:52:08.82646+00:00",
+          "round": null,
+          "logicalProviderRound": 5,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_ended",
+          "observedAt": "2026-08-21T20:52:22.207531+00:00",
+          "round": null,
+          "logicalProviderRound": 5,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": "deepseek/deepseek-v4-flash",
+          "provider": "DeepInfra",
+          "status": "success",
+          "durationMs": 13378,
+          "finishReason": "tool_calls",
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": {
+            "promptTokens": 18269,
+            "completionTokens": 936,
+            "totalTokens": 19205,
+            "reasoningTokens": 0,
+            "cachedPromptTokens": 11776,
+            "cacheWriteTokens": 0
+          }
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_started",
+          "observedAt": "2026-08-21T20:52:22.979319+00:00",
+          "round": null,
+          "logicalProviderRound": 6,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_ended",
+          "observedAt": "2026-08-21T20:52:32.877416+00:00",
+          "round": null,
+          "logicalProviderRound": 6,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": "deepseek/deepseek-v4-flash",
+          "provider": "DeepInfra",
+          "status": "success",
+          "durationMs": 9891,
+          "finishReason": "tool_calls",
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": {
+            "promptTokens": 20026,
+            "completionTokens": 892,
+            "totalTokens": 20918,
+            "reasoningTokens": 0,
+            "cachedPromptTokens": 12544,
+            "cacheWriteTokens": 0
+          }
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:52:33.356453+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "declare_turn_contract",
+          "providerToolCallId": "chatcmpl-tool-947c012705acf993",
+          "sequenceIndex": 16,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:52:33.53627+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 177,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "declare_turn_contract",
+          "providerToolCallId": "chatcmpl-tool-947c012705acf993",
+          "sequenceIndex": 16,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_started",
+          "observedAt": "2026-08-21T20:52:34.039623+00:00",
+          "round": null,
+          "logicalProviderRound": 7,
+          "routeId": "openrouter_semantic_reviewer",
+          "modelRequested": "openai/gpt-5.6-luna",
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_ended",
+          "observedAt": "2026-08-21T20:52:46.682931+00:00",
+          "round": null,
+          "logicalProviderRound": 7,
+          "routeId": "openrouter_semantic_reviewer",
+          "modelRequested": "openai/gpt-5.6-luna",
+          "modelUsed": "openai/gpt-5.6-luna-20260709",
+          "provider": "OpenAI",
+          "status": "success",
+          "durationMs": 12648,
+          "finishReason": "tool_calls",
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": {
+            "promptTokens": 21820,
+            "completionTokens": 1521,
+            "totalTokens": 23341,
+            "reasoningTokens": 822,
+            "cachedPromptTokens": 0,
+            "cacheWriteTokens": 21698
+          }
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:52:47.353885+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "approve_turn_contract_review",
+          "providerToolCallId": "call_7qGGGJxlGeJAlY7PsPHzWFIa",
+          "sequenceIndex": 17,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:52:47.536877+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 174,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "approve_turn_contract_review",
+          "providerToolCallId": "call_7qGGGJxlGeJAlY7PsPHzWFIa",
+          "sequenceIndex": 17,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_started",
+          "observedAt": "2026-08-21T20:52:47.830378+00:00",
+          "round": null,
+          "logicalProviderRound": 8,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_ended",
+          "observedAt": "2026-08-21T20:52:54.573038+00:00",
+          "round": null,
+          "logicalProviderRound": 8,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": "deepseek/deepseek-v4-flash",
+          "provider": "DeepInfra",
+          "status": "success",
+          "durationMs": 6747,
+          "finishReason": "tool_calls",
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": {
+            "promptTokens": 25803,
+            "completionTokens": 731,
+            "totalTokens": 26534,
+            "reasoningTokens": 0,
+            "cachedPromptTokens": 11520,
+            "cacheWriteTokens": 0
+          }
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_started",
+          "observedAt": "2026-08-21T20:52:54.956959+00:00",
+          "round": null,
+          "logicalProviderRound": 8,
+          "routeId": "openrouter_semantic_reviewer",
+          "modelRequested": "openai/gpt-5.6-luna",
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_ended",
+          "observedAt": "2026-08-21T20:52:59.628485+00:00",
+          "round": null,
+          "logicalProviderRound": 8,
+          "routeId": "openrouter_semantic_reviewer",
+          "modelRequested": "openai/gpt-5.6-luna",
+          "modelUsed": "openai/gpt-5.6-luna",
+          "provider": "Azure",
+          "status": "success",
+          "durationMs": 4665,
+          "finishReason": "tool_calls",
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": {
+            "promptTokens": 23636,
+            "completionTokens": 245,
+            "totalTokens": 23881,
+            "reasoningTokens": 102,
+            "cachedPromptTokens": 0,
+            "cacheWriteTokens": 23514
+          }
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:53:00.345362+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "approve_mutation_batch_review",
+          "providerToolCallId": "call_JZodOeADeWVi6I3dzX6PGvxi",
+          "sequenceIndex": 18,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:53:00.525715+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 183,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "approve_mutation_batch_review",
+          "providerToolCallId": "call_JZodOeADeWVi6I3dzX6PGvxi",
+          "sequenceIndex": 18,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_started",
+          "observedAt": "2026-08-21T20:53:08.838649+00:00",
+          "round": null,
+          "logicalProviderRound": 10,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_ended",
+          "observedAt": "2026-08-21T20:53:17.105808+00:00",
+          "round": null,
+          "logicalProviderRound": 10,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": "deepseek/deepseek-v4-flash",
+          "provider": "DeepInfra",
+          "status": "success",
+          "durationMs": 8268,
+          "finishReason": "tool_calls",
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": {
+            "promptTokens": 27976,
+            "completionTokens": 1076,
+            "totalTokens": 29052,
+            "reasoningTokens": 0,
+            "cachedPromptTokens": 15616,
+            "cacheWriteTokens": 0
+          }
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_started",
+          "observedAt": "2026-08-21T20:53:17.968166+00:00",
+          "round": null,
+          "logicalProviderRound": 10,
+          "routeId": "openrouter_semantic_reviewer",
+          "modelRequested": "openai/gpt-5.6-luna",
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_ended",
+          "observedAt": "2026-08-21T20:53:25.005747+00:00",
+          "round": null,
+          "logicalProviderRound": 10,
+          "routeId": "openrouter_semantic_reviewer",
+          "modelRequested": "openai/gpt-5.6-luna",
+          "modelUsed": "openai/gpt-5.6-luna",
+          "provider": "Azure",
+          "status": "success",
+          "durationMs": 7012,
+          "finishReason": "tool_calls",
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": {
+            "promptTokens": 26034,
+            "completionTokens": 169,
+            "totalTokens": 26203,
+            "reasoningTokens": 38,
+            "cachedPromptTokens": 0,
+            "cacheWriteTokens": 25912
+          }
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_started",
+          "observedAt": "2026-08-21T20:53:25.734223+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "approve_mutation_batch_review",
+          "providerToolCallId": "call_tbiZBahwl1xohJNfDDLi4g3Z",
+          "sequenceIndex": 23,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "tool",
+          "eventType": "tool_execution_ended",
+          "observedAt": "2026-08-21T20:53:25.931399+00:00",
+          "round": null,
+          "logicalProviderRound": null,
+          "routeId": null,
+          "modelRequested": null,
+          "modelUsed": null,
+          "provider": null,
+          "status": "success",
+          "durationMs": 199,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": "approve_mutation_batch_review",
+          "providerToolCallId": "call_tbiZBahwl1xohJNfDDLi4g3Z",
+          "sequenceIndex": 23,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_started",
+          "observedAt": "2026-08-21T20:53:36.726873+00:00",
+          "round": null,
+          "logicalProviderRound": 12,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": null,
+          "provider": null,
+          "status": null,
+          "durationMs": null,
+          "finishReason": null,
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": null
+        },
+        {
+          "executionGeneration": 1,
+          "phase": "provider",
+          "eventType": "provider_attempt_ended",
+          "observedAt": "2026-08-21T20:53:40.356358+00:00",
+          "round": null,
+          "logicalProviderRound": 12,
+          "routeId": "openrouter",
+          "modelRequested": "deepseek/deepseek-v4-flash",
+          "modelUsed": "deepseek/deepseek-v4-flash",
+          "provider": "DeepInfra",
+          "status": "success",
+          "durationMs": 3628,
+          "finishReason": "stop",
+          "errorClass": null,
+          "toolName": null,
+          "providerToolCallId": null,
+          "sequenceIndex": null,
+          "usage": {
+            "promptTokens": 29929,
+            "completionTokens": 178,
+            "totalTokens": 30107,
+            "reasoningTokens": 0,
+            "cachedPromptTokens": 0,
+            "cacheWriteTokens": 0
+          }
+        }
+      ],
+      "usage": {
+        "requestCount": 12,
+        "promptTokens": 246862,
+        "completionTokens": 6728,
+        "totalTokens": 253590,
+        "totalCostUsd": 0.030684569999999998,
+        "models": [
+          "deepseek/deepseek-v4-flash",
+          "openai/gpt-5.6-luna-20260709",
+          "openai/gpt-5.6-luna"
+        ],
+        "providers": [
+          "DeepInfra",
+          "OpenAI",
+          "Azure"
+        ],
+        "profiles": [],
+        "operations": [
+          "agentic_chat_worker_stream"
+        ]
+      },
+      "turnRun": {
+        "id": "70c59323-4286-4812-ad01-602f1bb6263c",
+        "session_id": "a12ed127-9973-4246-ae4c-8bde1fad106e",
+        "execution_mode": "worker_realtime",
+        "transport_contract_version": "agentic_chat_worker_v1",
+        "status": "completed",
+        "created_at": "2026-08-21T20:51:38.193342+00:00",
+        "started_at": "2026-08-21T20:51:38.196531+00:00",
+        "finished_at": "2026-08-21T20:53:41.409495+00:00",
+        "finished_reason": "stop",
+        "tool_call_count": 29,
+        "tool_round_count": 11,
+        "first_canonical_op": null,
+        "assistant_message_id": "fda02938-0c72-4d9c-b453-6fe0e9344d77",
+        "user_message_id": "6ee1f40b-5b5b-4be4-a720-62661867e030",
+        "timing_metric_id": null
+      },
+      "persistence": {
+        "kind": "retained_chat_path_rows_v1",
+        "tables": [
+          {
+            "table": "chat_turn_runs",
+            "retainedRows": 1,
+            "approxJsonBytes": 3386,
+            "error": null
+          },
+          {
+            "table": "chat_turn_events",
+            "retainedRows": 74,
+            "approxJsonBytes": 104319,
+            "error": null
+          },
+          {
+            "table": "chat_turn_checkpoints",
+            "retainedRows": 0,
+            "approxJsonBytes": 2,
+            "error": null
+          },
+          {
+            "table": "chat_tool_executions",
+            "retainedRows": 29,
+            "approxJsonBytes": 69098,
+            "error": null
+          },
+          {
+            "table": "chat_prompt_snapshots",
+            "retainedRows": 1,
+            "approxJsonBytes": 127526,
+            "error": null
+          },
+          {
+            "table": "timing_metrics",
+            "retainedRows": 0,
+            "approxJsonBytes": 2,
+            "error": null
+          },
+          {
+            "table": "chat_messages",
+            "retainedRows": 2,
+            "approxJsonBytes": 7352,
+            "error": null
+          },
+          {
+            "table": "llm_usage_logs",
+            "retainedRows": 12,
+            "approxJsonBytes": 19603,
+            "error": null
+          },
+          {
+            "table": "agentic_chat_execution_observations",
+            "retainedRows": 60,
+            "approxJsonBytes": 37913,
+            "error": null
+          }
+        ],
+        "totalRetainedRows": 179,
+        "totalApproxJsonBytes": 369201,
+        "measurementDurationMs": 123216.153,
+        "retainedRowsPerSecond": 1.4527316073567074,
+        "note": "Counts final retained chat-path rows and their serialized JSON size. It does not measure update frequency, WAL bytes, or concurrent database traffic."
+      },
+      "captureErrors": []
+    }
+  ],
+  "summary": {
+    "turnCount": 1,
+    "assertionPassCount": 1,
+    "deterministicAssertionPassCount": 1,
+    "completedCount": 1,
+    "streamErrorTurnCount": 0,
+    "captureErrorTurnCount": 0,
+    "totalModelCostUsd": 0.030684569999999998,
+    "judge": {
+      "configuredCount": 1,
+      "eligibleCount": 1,
+      "passCount": 1,
+      "failCount": 0,
+      "errorCount": 0,
+      "notReachedCount": 0,
+      "score": {
+        "samples": 1,
+        "min": 5,
+        "p50": 5,
+        "p95": 5,
+        "max": 5
+      }
+    },
+    "resultClassCounts": {
+      "end_to_end_pass": 1,
+      "transport_failure": 0,
+      "behavior_failure": 0,
+      "quality_failure": 0,
+      "judge_infrastructure_failure": 0,
+      "instrument_failure": 0
+    },
+    "subchecks": {
+      "passedCount": 0,
+      "failedCount": 0,
+      "notApplicableCount": 0
+    },
+    "scenarioResults": [
+      {
+        "scenarioId": "project-organize",
+        "turnCount": 1,
+        "passCount": 1,
+        "passRate": 1,
+        "confidenceInterval95": {
+          "low": 0.20654931437723745,
+          "high": 1
+        },
+        "resultClassCounts": {
+          "end_to_end_pass": 1,
+          "transport_failure": 0,
+          "behavior_failure": 0,
+          "quality_failure": 0,
+          "judge_infrastructure_failure": 0,
+          "instrument_failure": 0
+        }
+      }
+    ],
+    "client": {
+      "responseHeadersMs": {
+        "samples": 1,
+        "min": 3288.7631249999977,
+        "p50": 3288.7631249999977,
+        "p95": 3288.7631249999977,
+        "max": 3288.7631249999977
+      },
+      "firstSseEventMs": {
+        "samples": 1,
+        "min": 4378.9912079999995,
+        "p50": 4378.9912079999995,
+        "p95": 4378.9912079999995,
+        "max": 4378.9912079999995
+      },
+      "ttftMs": {
+        "samples": 1,
+        "min": 7467.404583000003,
+        "p50": 7467.404583000003,
+        "p95": 7467.404583000003,
+        "max": 7467.404583000003
+      },
+      "terminalEventMs": {
+        "samples": 1,
+        "min": 127051.219667,
+        "p50": 127051.219667,
+        "p95": 127051.219667,
+        "max": 127051.219667
+      },
+      "totalDurationMs": {
+        "samples": 1,
+        "min": 127055.422208,
+        "p50": 127055.422208,
+        "p95": 127055.422208,
+        "max": 127055.422208
+      }
+    },
+    "server": {
+      "turnAdmissionMs": {
+        "samples": 0,
+        "min": null,
+        "p50": null,
+        "p95": null,
+        "max": null
+      },
+      "timeToFirstEventMs": {
+        "samples": 1,
+        "min": 910,
+        "p50": 910,
+        "p95": 910,
+        "max": 910
+      },
+      "timeToFirstResponseMs": {
+        "samples": 1,
+        "min": 4514,
+        "p50": 4514,
+        "p95": 4514,
+        "max": 4514
+      },
+      "assistantPersistMs": {
+        "samples": 0,
+        "min": null,
+        "p50": null,
+        "p95": null,
+        "max": null
+      },
+      "finalizationMs": {
+        "samples": 0,
+        "min": null,
+        "p50": null,
+        "p95": null,
+        "max": null
+      },
+      "totalRequestMs": {
+        "samples": 1,
+        "min": 123216.153,
+        "p50": 123216.153,
+        "p95": 123216.153,
+        "max": 123216.153
+      }
+    },
+    "toolExecutionMs": {
+      "samples": 18,
+      "min": 0,
+      "p50": 264,
+      "p95": 480,
+      "max": 480
+    },
+    "retainedRowsPerTurn": {
+      "samples": 1,
+      "min": 179,
+      "p50": 179,
+      "p95": 179,
+      "max": 179
+    },
+    "retainedBytesPerTurn": {
+      "samples": 1,
+      "min": 369201,
+      "p50": 369201,
+      "p95": 369201,
+      "max": 369201
+    },
+    "executionObservationsPerTurn": {
+      "samples": 1,
+      "min": 60,
+      "p50": 60,
+      "p95": 60,
+      "max": 60
+    }
+  },
+  "limitations": [
+    "The retained-row footprint is a final-state parity baseline, not a PostgreSQL WAL or statement-rate measurement.",
+    "Provider latency is included in end-to-end and first-response timing; later worker comparisons must separate BuildOS queue/transport overhead.",
+    "Prompt, message, tool-argument, tool-result, and event payload bodies are measured in memory for byte size but are not retained in this artifact.",
+    "Execution observations include only the database-enforced provider/tool metadata allowlist; prompt, argument, result, message, and hidden-reasoning content is excluded. When the worker rejected a streamed tool call, the rejected tool name and advertised tool count are retained — never the call arguments."
+  ]
+}

@@ -175,8 +175,8 @@ The following non-secret values were read back after deployment
 | `CHAT_PUBLISHER_WORKER_PENDING_SOFT_EVENTS`   | `256`                                                        |
 | `CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS`   | `1024`                                                       |
 | `AGENTIC_CHAT_OPENROUTER_MODEL`               | `deepseek/deepseek-v4-flash`                                 |
-| `AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES` | exact empty string                                           |
-| `AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES`  | exact empty string                                           |
+| `AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES` | all 20 reviewed capability names (enabled 2026-08-21; readback via `/health.agenticChat.mutationCapabilities`) |
+| `AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES`  | same 20 names as the provider list (set both in one `railway variable set` call) |
 
 Required credentials were present at the last check; values were not printed:
 
