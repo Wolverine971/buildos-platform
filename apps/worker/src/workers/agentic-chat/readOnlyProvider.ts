@@ -44,6 +44,7 @@ import {
 	parseDeclaredTurnContract,
 	parseToolArguments,
 	provideAgenticChatLoopToolCatalog,
+	resolveTurnContractOutcome,
 	sanitizeAssistantFinalText,
 	selectReadLoopRepairEscalation,
 	shouldMemoizeReadResult,
@@ -228,7 +229,9 @@ const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
 	"Once organization is delegated, the folder titles, which documents go under which folder, and their order are the agent's choices: a contract that names them is resolved, and a contract that leaves them to execution is also resolved. Never ask the user to choose or confirm folder titles or document placement.",
 	'For document move/organize outcomes, parent_id and position in required_fields are postconditions the agent satisfies at execution by choosing or creating a parent (for example by title); they are never values the user must supply. A destination expressed as parent_label (a folder this contract creates) is bound by the system after the create executes and is not a missing value.',
 	'A value that the field semantics of the product define — for example "top priority" meaning priority 1 — is resolved; never ask the user to confirm a value the schema already defines. This concerns values only; ambiguous targets still belong to the user.',
-	"A required_fields entry without a declared change is a postcondition the agent satisfies at execution, not a missing value. Implementation defaults such as type_key, state_key, position, or a description for a new container are the agent's choice and are validated or defaulted by the tool at execution; never revise a contract or ask the user over them."
+	"A required_fields entry without a declared change is a postcondition the agent satisfies at execution, not a missing value. Implementation defaults such as type_key, state_key, position, or a description or short heading for a new container are the agent's choice and are validated or defaulted by the tool at execution; never revise a contract or ask the user over them.",
+	"When the user gives a day without a time, the entity's existing time of day carries over; that is a resolved value, not a missing one. Never ask what time to use.",
+	'A priority, scheduling, or completion instruction commissions only that change. Do not add workflow-state transitions the user did not state (for example in_progress because something became top priority).'
 ]);
 
 const TURN_CONTRACT_REVIEW_APPROVAL_TOOL: AgenticChatReadOnlyProviderToolV1 = Object.freeze({
@@ -436,6 +439,10 @@ type ToolRoundStreamState = {
 		options?: { allowReads?: boolean }
 	): ClientRequest | null;
 	takeTurnContractWriteCarveOut(request: ClientRequest): ClientRequest | null;
+	/** An approved contract still has unfulfilled outcomes after a mutation round. */
+	hasIncompleteApprovedContract(): boolean;
+	/** One bounded pass that sends the model back to finish the approved contract. */
+	takeContractCompletionContinuation(request: ClientRequest): ClientRequest | null;
 	validateApprovedMutations(calls: readonly CompletedProviderToolCall[]): ToolValidationIssue[];
 	stageMutationBatchReview(
 		request: ClientRequest,
@@ -637,6 +644,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let semanticTurnDispositionGateUsed = false;
 		let semanticDispositionCorrectionUsed = false;
 		let contractWriteCarveOutUsed = false;
+		let contractCompletionContinuationUsed = false;
 		let turnContract: TurnContract | null = null;
 		let pendingContractReviewSha256: string | null = null;
 		let pendingReadOnlyReviewSha256: string | null = null;
@@ -666,6 +674,47 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			typeof executionInput.requestPayload.message === 'string'
 				? executionInput.requestPayload.message
 				: '';
+		// After the first mutation round the write carve-out is spent, yet the
+		// approved contract may still have outcomes left (create folders, then
+		// move documents into them). The live organize failures all ended here:
+		// folders created, moves never proposed, prose accepted. One bounded
+		// continuation returns the model to the unfinished outcomes.
+		const incompleteApprovedContractResolution = () => {
+			if (
+				!turnContract ||
+				!approvedContractSha256 ||
+				!mutationRoundReached ||
+				contractCompletionContinuationUsed ||
+				contractSha256(turnContract) !== approvedContractSha256
+			) {
+				return null;
+			}
+			const resolution = resolveTurnContractOutcome({
+				contract: turnContract,
+				toolExecutions: turnToolExecutions
+			});
+			if (resolution.fulfilled) return null;
+			// Only outcomes no successful write has touched at all are sent back.
+			// A partially or unverifiably executed outcome must never be re-run
+			// from here: that is how duplicate writes would be born.
+			const ledger = buildWriteLedger(turnToolExecutions);
+			const touched = (outcome: TurnContractOutcome): boolean =>
+				ledger.some(
+					(entry) =>
+						entry.status === 'success' &&
+						Boolean(entry.entityKind) &&
+						(outcome.entityKind === 'entity' ||
+							entry.entityKind === outcome.entityKind) &&
+						(outcome.targetIds.length === 0
+							? entry.action === 'create'
+							: Boolean(entry.entityId && outcome.targetIds.includes(entry.entityId)))
+				);
+			const untouched = turnContract.outcomes.some(
+				(outcome, index) =>
+					resolution.outcomes[index]?.fulfilled === false && !touched(outcome)
+			);
+			return untouched ? resolution : null;
+		};
 		const organizeExecutionInstruction = (): string | null => {
 			if (!turnContract || !looksLikeProjectDocumentOrganizeTurn(userMessageText)) {
 				return null;
@@ -836,6 +885,23 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				return organizeInstruction
 					? appendSystemInstruction(carveOut, organizeInstruction)
 					: carveOut;
+			},
+			hasIncompleteApprovedContract() {
+				return incompleteApprovedContractResolution() !== null;
+			},
+			takeContractCompletionContinuation(value) {
+				const resolution = incompleteApprovedContractResolution();
+				if (!resolution || !turnContract) return null;
+				const continuation = buildContractCompletionRequest(
+					value,
+					request.tools,
+					turnContract,
+					resolution,
+					labelBindings
+				);
+				if (!continuation) return null;
+				contractCompletionContinuationUsed = true;
+				return continuation;
 			},
 			validateApprovedMutations(calls) {
 				// Production assembly refuses mutation capabilities without this lane.
@@ -2158,7 +2224,9 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let streamedText = false;
 		let assistantCandidate = '';
 		const holdAssistantTextForTurnContract =
-			state.hasPendingTurnContractWrite() || request.semanticDispositionGate === true;
+			state.hasPendingTurnContractWrite() ||
+			state.hasIncompleteApprovedContract() ||
+			request.semanticDispositionGate === true;
 		// See streamInitial: prose emitted alongside a semantic disposition call is
 		// withheld so the post-disposition pass answers exactly once.
 		const holdAssistantText =
@@ -2238,6 +2306,19 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 						keepLeaseForContinuation = true;
 						yield* this.streamContinuation(
 							unavailableSkillRepair,
+							aggregateUsage,
+							state,
+							validationRepairRounds,
+							emitPlanningSemantic
+						);
+						return;
+					}
+					const reviewerMimicryRepair = buildReviewerMimicryRepairRequest(request, calls);
+					if (reviewerMimicryRepair) {
+						state.setCurrentRequest(reviewerMimicryRepair);
+						keepLeaseForContinuation = true;
+						yield* this.streamContinuation(
+							reviewerMimicryRepair,
 							aggregateUsage,
 							state,
 							validationRepairRounds,
@@ -2384,6 +2465,29 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 							emitPlanningSemantic
 						);
 						return;
+					}
+					const completionRequest = state.takeContractCompletionContinuation(request);
+					if (completionRequest) {
+						state.setCurrentRequest(completionRequest);
+						keepLeaseForContinuation = true;
+						yield* this.streamContinuation(
+							completionRequest,
+							aggregateUsage,
+							state,
+							validationRepairRounds,
+							emitPlanningSemantic
+						);
+						return;
+					}
+					// Nothing more to execute: release the withheld prose so the user
+					// still gets the answer exactly once.
+					if (assistantCandidate) {
+						yield { type: 'text_delta', text: assistantCandidate };
+						state.supervisor?.observe({
+							type: 'assistant_text_delta',
+							chars: assistantCandidate.length
+						});
+						yield* drainSupervisorSteps(state.supervisor);
 					}
 				} else if (holdAssistantText && assistantCandidate) {
 					yield { type: 'text_delta', text: assistantCandidate };
@@ -3007,6 +3111,47 @@ function buildUnavailableSkillRepairRequest(
 			`Unavailable worker skill repair: the previous pass called an unavailable skill tool, but ${unavailableSkillDescription}`,
 			`Do not call ${rejectedSkillNames.join(' or ')} again. The exact admitted worker surface has been restored; use only the tools present in this request.`,
 			'Choose a semantic disposition control before any mutation. Use an available read only when durable context is genuinely missing, and request clarification only when a required user choice remains unresolved.'
+		].join(' ')
+	);
+}
+
+const REVIEWER_ONLY_CONTROL_TOOL_NAMES = new Set([
+	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
+	APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
+	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
+	REQUEST_PROPOSAL_REVISION_TOOL_NAME
+]);
+
+/**
+ * The acting model sees the reviewer's approvals in its own transcript and
+ * sometimes imitates them ("approve_mutation_batch_review" on its own batch).
+ * The allowlist rightly refuses; turning that into a permanent stream failure
+ * threw away an approved, half-executed contract. One bounded repair restores
+ * the current surface and says who approves what.
+ */
+function buildReviewerMimicryRepairRequest(
+	request: ClientRequest,
+	calls: readonly CompletedProviderToolCall[]
+): ClientRequest | null {
+	if (request.unavailableSkillRepairAttempted || calls.length === 0) return null;
+	const advertisedNames = new Set(request.tools.map((tool) => tool.function.name));
+	const rejectedCalls = calls.filter((call) => !advertisedNames.has(call.name));
+	if (
+		rejectedCalls.length === 0 ||
+		!rejectedCalls.every((call) => REVIEWER_ONLY_CONTROL_TOOL_NAMES.has(call.name))
+	) {
+		return null;
+	}
+	const names = Array.from(new Set(rejectedCalls.map((call) => call.name))).sort();
+	return appendSystemInstruction(
+		{
+			...request,
+			logicalProviderRound: request.logicalProviderRound + 1,
+			unavailableSkillRepairAttempted: true
+		},
+		[
+			`${names.join(', ')} ${names.length === 1 ? 'is a reviewer-only control and was' : 'are reviewer-only controls and were'} rejected without execution: the independent reviewer calls it, never you.`,
+			'You propose mutation calls; the reviewer approves them. Continue with the tools present in this request: propose the remaining mutations for the approved contract, or finish with your answer if every outcome is already executed.'
 		].join(' ')
 	);
 }
@@ -3735,6 +3880,60 @@ function buildMutationBatchRevisionRequest(
 			'Propose the corrected mutation calls now using only the approved contract targets and values the user stated or delegated. Do not re-declare the contract, do not add unstated values, and do not narrate this correction to the user.'
 		].join(' ')
 	);
+}
+
+function buildContractCompletionRequest(
+	request: ClientRequest,
+	availableTools: readonly AgenticChatReadOnlyProviderToolV1[],
+	contract: TurnContract,
+	resolution: ReturnType<typeof resolveTurnContractOutcome>,
+	labelBindings: ReadonlyMap<string, string>
+): ClientRequest | null {
+	const safeToolNames = new Set(getSafeWriteToolNamesForTurnContract(contract));
+	const writeTools = availableTools.filter((tool) => safeToolNames.has(tool.function.name));
+	if (writeTools.length === 0) return null;
+	const declaredTitle = (label: string | undefined): string | undefined =>
+		label
+			? contract.outcomes
+					.find((outcome) => outcome.label === label)
+					?.changes?.find((change) => change.field === 'title')?.value
+			: undefined;
+	const unfinished = contract.outcomes
+		.map((outcome, index) => ({ outcome, result: resolution.outcomes[index] }))
+		.filter(({ result }) => result && !result.fulfilled)
+		.map(({ outcome, result }) => {
+			const destination = outcome.parentLabel
+				? ` into the folder labelled "${outcome.parentLabel}"` +
+					(labelBindings.get(outcome.parentLabel)
+						? ` (new_parent_id ${labelBindings.get(outcome.parentLabel)}` +
+							(declaredTitle(outcome.parentLabel)
+								? `, title "${declaredTitle(outcome.parentLabel)}")`
+								: ')')
+						: declaredTitle(outcome.parentLabel)
+							? ` (not created yet; use new_parent_title "${declaredTitle(outcome.parentLabel)}")`
+							: '')
+				: '';
+			const targets =
+				outcome.targetIds.length > 0 ? ` targets [${outcome.targetIds.join(', ')}]` : '';
+			const missing = result?.missingTargetIds.length
+				? ` still missing [${result.missingTargetIds.join(', ')}]`
+				: '';
+			return `- ${outcome.id}: ${outcome.action} ${outcome.entityKind}${targets}${destination}${missing}`;
+		});
+	if (unfinished.length === 0) return null;
+	return {
+		...appendSystemInstruction(
+			request,
+			[
+				'The independently approved contract is not finished: the outcomes below have no durable effect yet. Your previous prose was withheld.',
+				unfinished.join('\n'),
+				`Execute them now with the available contract write tools (${writeTools.map((tool) => tool.function.name).join(', ')}), one call per target, using the resolved ids above. Do not restate the plan, do not re-declare the contract, and do not finish until every listed outcome has been executed or you have named the exact blocker.`
+			].join('\n')
+		),
+		tools: writeTools,
+		toolChoice: 'auto',
+		providerRound: 'synthesis'
+	};
 }
 
 function canRequirePreMutationSemanticDisposition(request: ClientRequest): boolean {

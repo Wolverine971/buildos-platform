@@ -7551,6 +7551,15 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			[
 				{ type: 'text', content: 'Done: resume marked done.' },
 				{ type: 'done', finishedReason: 'stop' }
+			],
+			// Only one of three approved targets was written, so the worker withholds
+			// that answer and sends the model back once; this is its second answer.
+			[
+				{
+					type: 'text',
+					content: 'Done: resume marked done; LinkedIn and Halcyon still pending.'
+				},
+				{ type: 'done', finishedReason: 'stop' }
 			]
 		]);
 		const semanticReviewer = clientWithRounds([
@@ -7778,10 +7787,18 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				})
 			)
 		).resolves.toEqual([
-			{ type: 'text_delta', text: 'Done: resume marked done.' },
+			{
+				type: 'text_delta',
+				text: 'Done: resume marked done; LinkedIn and Halcyon still pending.'
+			},
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
-		expect(client.stream).toHaveBeenCalledTimes(4);
+		// The untouched outcomes (LinkedIn, Halcyon) triggered one completion
+		// continuation before the answer was accepted.
+		expect(client.stream).toHaveBeenCalledTimes(5);
+		expect(String(client.stream.mock.calls[4]?.[0].messages.at(-1)?.content)).toContain(
+			'is not finished'
+		);
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(3);
 	});
 
@@ -8780,5 +8797,247 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(second.length).toBeGreaterThan(0);
 		expect(new Set([...first, ...second]).size).toBe(first.length + second.length);
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+	});
+	function labelledOrganizeFixture(clientRounds: AgenticChatReadOnlyProviderClientEventV1[][]) {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const documentId = '42000000-0000-4000-8000-000000000004';
+		const folderId = '42000000-0000-4000-8000-000000000077';
+		const contractArguments: JsonObject = {
+			outcomes: [
+				{
+					action: 'create',
+					entity_kind: 'document',
+					label: 'meeting-notes',
+					changes: [{ field: 'title', value: 'Meeting notes' }],
+					minimum_successful_effects: 1
+				},
+				{
+					action: 'move',
+					entity_kind: 'document',
+					target_ids: [documentId],
+					parent_label: 'meeting-notes',
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const normalizedContract = parseDeclaredTurnContract(contractArguments);
+		if (!normalizedContract) throw new Error('Expected a valid labelled contract');
+		const contractReviewSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
+			.digest('hex');
+		const approvalArguments = {
+			reason: 'Delegated organization with a labelled folder.',
+			contract_sha256: contractReviewSha256,
+			reference_candidates: []
+		};
+		const createArguments = {
+			project_id: projectId,
+			title: 'Meeting notes',
+			description: 'Grouping document'
+		};
+		const createBatchSha256 = mutationBatchReviewSha256([
+			{ id: 'provider-create-1', name: 'create_onto_document', arguments: createArguments }
+		]);
+		const createBatchApproval = {
+			reason: 'The folder is inside the approved contract.',
+			batch_sha256: createBatchSha256
+		};
+		const client = clientWithRounds([
+			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
+			providerReadRound('provider-create-1', createArguments, 'create_onto_document'),
+			...clientRounds
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-contract-approval-1',
+				approvalArguments,
+				'approve_turn_contract_review'
+			),
+			providerReadRound(
+				'reviewer-batch-approval-1',
+				createBatchApproval,
+				'approve_mutation_batch_review'
+			)
+		]);
+		const adapter = new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ createOntoDocument: true, moveDocumentInTree: true }
+		);
+		const executionInput = executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readOnlyTurnToolDefinition(),
+				clarificationToolDefinition(),
+				createDocumentToolDefinition(),
+				moveDocumentToolDefinition()
+			],
+			[
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'create_onto_document',
+				'move_document_in_tree'
+			]
+		);
+		const runThroughCreate = async () => {
+			const invocation = await adapter.prepare({
+				executionInput,
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			await collect(invocation.stream());
+			await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedbackFor(
+							'provider-contract-1',
+							'declare_turn_contract',
+							contractArguments,
+							{ status: 'declared' }
+						)
+					]
+				})
+			);
+			await collect(
+				invocation.continueWithToolResults!({
+					round: 3,
+					results: [
+						durableReadFeedbackFor(
+							'reviewer-contract-approval-1',
+							'approve_turn_contract_review',
+							approvalArguments,
+							{
+								status: 'turn_contract_review_approved',
+								contract_sha256: contractReviewSha256
+							}
+						)
+					]
+				})
+			);
+			const createSteps = await collect(
+				invocation.continueWithToolResults!({
+					round: 4,
+					results: [
+						durableReadFeedbackFor(
+							'reviewer-batch-approval-1',
+							'approve_mutation_batch_review',
+							createBatchApproval,
+							{
+								status: 'mutation_batch_review_approved',
+								batch_sha256: createBatchSha256
+							}
+						)
+					]
+				})
+			);
+			const createStep = createSteps.find(
+				(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+					step.type === 'mutating_tool'
+			);
+			if (!createStep) throw new Error('Expected the folder create to reach execution');
+			const afterCreate = await collect(
+				invocation.continueWithToolResults!({
+					round: 5,
+					results: [
+						{
+							providerToolCallId: 'provider-create-1',
+							toolName: 'create_onto_document',
+							arguments: createArguments,
+							execution: {
+								result: {
+									document: {
+										id: folderId,
+										title: 'Meeting notes',
+										project_id: projectId
+									},
+									message: 'Created document "Meeting notes".'
+								},
+								executionTimeMs: null,
+								tokensConsumed: null,
+								affectedEntities: [],
+								toolCategory: 'ontology_action',
+								resultCount: null,
+								zeroResult: null,
+								requiresUserAction: false
+							},
+							mutation: {
+								effectId: 'a3000000-0000-4000-8000-00000000007a',
+								logicalOperationId: createStep.logicalOperationId,
+								operationName: 'onto.document.create',
+								replayed: false
+							}
+						}
+					]
+				})
+			);
+			return { invocation, afterCreate };
+		};
+		return { client, semanticReviewer, runThroughCreate, folderId, documentId };
+	}
+
+	it('sends the model back to finish an approved contract when it tries to answer after the first mutation round', async () => {
+		const fixture = labelledOrganizeFixture([
+			[
+				{
+					type: 'text',
+					content: 'I created the Meeting notes folder. Here is my plan for the moves.'
+				},
+				{ type: 'done', finishedReason: 'stop' }
+			],
+			[
+				{ type: 'text', content: 'Moved everything into Meeting notes.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const { afterCreate } = await fixture.runThroughCreate();
+
+		// The premature answer was withheld; the continuation names the unfinished
+		// outcome with its bound destination and offers only the contract's write tools.
+		const continuation = fixture.client.stream.mock.calls[3]?.[0];
+		expect(continuation?.tools.map((tool) => tool.function.name)).toEqual([
+			'create_onto_document',
+			'move_document_in_tree'
+		]);
+		const instruction = String(continuation?.messages.at(-1)?.content);
+		expect(instruction).toContain('is not finished');
+		expect(instruction).toContain(`new_parent_id ${fixture.folderId}`);
+		expect(instruction).toContain(fixture.documentId);
+		// One bounded continuation: the second answer is released to the user once.
+		expect(afterCreate.filter((step) => step.type === 'text_delta')).toEqual([
+			{ type: 'text_delta', text: 'Moved everything into Meeting notes.' }
+		]);
+		expect(afterCreate.at(-1)).toMatchObject({ type: 'finish', finishedReason: 'stop' });
+	});
+
+	it('repairs an acting-model call to a reviewer-only control instead of failing the turn', async () => {
+		const fixture = labelledOrganizeFixture([
+			providerReadRound(
+				'provider-mimic-1',
+				{ reason: 'I approve my own batch', batch_sha256: 'deadbeef' },
+				'approve_mutation_batch_review'
+			),
+			[
+				{ type: 'text', content: 'Understood; finishing the moves.' },
+				{ type: 'done', finishedReason: 'stop' }
+			],
+			[
+				{ type: 'text', content: 'Done.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const { afterCreate } = await fixture.runThroughCreate();
+
+		const repair = fixture.client.stream.mock.calls[3]?.[0];
+		expect(String(repair?.messages.at(-1)?.content)).toContain('reviewer-only control');
+		expect(repair?.tools.map((tool) => tool.function.name)).toContain('move_document_in_tree');
+		expect(afterCreate.some((step) => step.type === 'finish')).toBe(true);
+		expect(fixture.semanticReviewer.stream).toHaveBeenCalledTimes(2);
 	});
 });
