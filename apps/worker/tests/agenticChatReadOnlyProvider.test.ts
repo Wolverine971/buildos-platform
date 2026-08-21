@@ -8655,5 +8655,15 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			`Resolved contract labels (bound by the system from executed creates): {"meeting-notes":"${folderId}"}`
 		);
 		expect(String(moveReview?.messages[0]?.content)).toContain('parent_label');
+
+		// The create batch review told the reviewer which arguments the tool schema
+		// requires, so a required `description` is never treated as an invented value.
+		const createReview = semanticReviewer.stream.mock.calls[1]?.[0];
+		expect(String(createReview?.messages[1]?.content)).toContain(
+			'- create_onto_document requires: project_id, title, description'
+		);
+		expect(String(createReview?.messages[0]?.content)).toContain(
+			'Never return a batch to remove a required argument'
+		);
 	});
 });
