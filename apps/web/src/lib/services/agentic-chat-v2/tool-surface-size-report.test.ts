@@ -114,12 +114,16 @@ describe('tool surface size report', () => {
 		// project_basic 15,482, project_write 23,710, project_write_document 25,870.
 		// The 2026-08-15 semantic turn-contract tools intentionally moved the measured
 		// global_write/project_basic/project_write_document profiles to
-		// 20,038/11,074/20,946 chars. These caps retain 126-162 chars of headroom and
-		// remain at least 18.4% below the pre-trim baselines; do not trim
-		// behavior-critical guidance merely to preserve the older caps.
-		expect(globalWrite?.totalChars).toBeLessThanOrEqual(20_200);
-		expect(projectBasic?.totalChars).toBeLessThanOrEqual(11_200);
-		expect(projectWrite?.totalChars).toBeLessThanOrEqual(19_000);
-		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(21_100);
+		// 20,038/11,074/20,946 chars.
+		// 2026-08-21: making the bounded Gmail read surface available to every
+		// authenticated user moved global_write/project_basic/project_write/
+		// project_write_document to 20,904/11,940/19,507/21,812 chars. These caps
+		// retain 160-196 chars of headroom and remain at least 15.6% below the
+		// pre-trim baselines; do not trim behavior-critical guidance merely to
+		// preserve the older caps.
+		expect(globalWrite?.totalChars).toBeLessThanOrEqual(21_100);
+		expect(projectBasic?.totalChars).toBeLessThanOrEqual(12_100);
+		expect(projectWrite?.totalChars).toBeLessThanOrEqual(19_700);
+		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(22_000);
 	});
 });
