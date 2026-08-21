@@ -8666,4 +8666,119 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			'Never return a batch to remove a required argument'
 		);
 	});
+	it('gives an identical re-declaration after a revision a distinct review transition id', async () => {
+		const halcyonId = '41000000-0000-4000-8000-000000000013';
+		const contractArguments: JsonObject = {
+			outcomes: [
+				{
+					action: 'update',
+					entity_kind: 'task',
+					target_ids: [halcyonId],
+					changes: [{ field: 'priority', value: '1' }],
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const revisionArguments = {
+			reason: 'fixture: asks for a correction the model will ignore',
+			required_correction: 'fixture correction'
+		};
+		const client = clientWithRounds([
+			providerReadRound('provider-contract-1', contractArguments, 'declare_turn_contract'),
+			providerReadRound('provider-contract-2', contractArguments, 'declare_turn_contract')
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-revision-1',
+				revisionArguments,
+				'request_proposal_revision'
+			),
+			providerReadRound(
+				'reviewer-clarification-2',
+				{ reason: 'fixture', question: 'fixture?' },
+				'request_turn_clarification'
+			)
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					updateTaskToolDefinition()
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'update_onto_task'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+		const reviewTransitionIds = (steps: AgenticChatProviderStepV1[]) =>
+			steps
+				.filter(
+					(step): step is Extract<AgenticChatProviderStepV1, { type: 'semantic' }> =>
+						step.type === 'semantic'
+				)
+				.map((step) => step.transitionId);
+
+		await collect(invocation.stream());
+		const firstReview = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-contract-1',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-revision-1',
+						'request_proposal_revision',
+						revisionArguments,
+						{ status: 'revision_required', ...revisionArguments }
+					)
+				]
+			})
+		);
+		const secondReview = await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [
+					durableReadFeedbackFor(
+						'provider-contract-2',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		const first = reviewTransitionIds(firstReview);
+		const second = reviewTransitionIds(secondReview);
+		expect(first.length).toBeGreaterThan(0);
+		expect(second.length).toBeGreaterThan(0);
+		expect(new Set([...first, ...second]).size).toBe(first.length + second.length);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+	});
 });

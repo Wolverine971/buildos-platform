@@ -45,6 +45,7 @@ import {
 	type AgenticChatFixtureMutationExecutor
 } from './fixtureMutationExecutor';
 import {
+	AgenticChatPublisherBlockedError,
 	AgenticChatPublisherOverloadError,
 	type AgenticChatStreamPublisher
 } from './streamPublisher';
@@ -3164,7 +3165,12 @@ function logAgenticChatTypedExecutionFailure(
 		failure_class: failureClass,
 		retry_classification: classifyAgenticChatRetryV1(failureClass),
 		execution_started: executionStarted,
-		...diagnostic
+		...diagnostic,
+		// A blocked publisher names the guard that blocked it; without this the
+		// log says only "AgenticChatPublisherBlockedError" and the cause is lost.
+		...(error instanceof AgenticChatPublisherBlockedError
+			? { publisher_block_outcome: error.outcome.slice(0, 160) }
+			: {})
 	};
 	try {
 		void job.log(JSON.stringify(record)).catch(() => undefined);

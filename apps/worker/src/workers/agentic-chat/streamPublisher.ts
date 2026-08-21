@@ -924,8 +924,22 @@ export class AgenticChatStreamPublisher {
 			typeof error === 'object' && error !== null && 'code' in error
 				? String((error as { code?: unknown }).code ?? '')
 				: '';
-		if (!code || isRetryableDatabaseCode(code)) this.deferRetry(state);
-		else this.blockTurn(state, `persistence_error:${code}`);
+		if (!code || isRetryableDatabaseCode(code)) {
+			this.deferRetry(state);
+			return;
+		}
+		// The SQLSTATE alone ('P0001' for every RAISE EXCEPTION) cannot tell an
+		// operator which database guard fired; keep the bounded message token.
+		const message =
+			typeof error === 'object' && error !== null && 'message' in error
+				? String((error as { message?: unknown }).message ?? '')
+						.replace(/[^A-Za-z0-9_.:-]+/g, '_')
+						.slice(0, 120)
+				: '';
+		this.blockTurn(
+			state,
+			message ? `persistence_error:${code}:${message}` : `persistence_error:${code}`
+		);
 	}
 
 	private blockTurn(state: TurnState, outcome: string): void {

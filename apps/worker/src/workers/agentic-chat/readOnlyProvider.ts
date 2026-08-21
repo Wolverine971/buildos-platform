@@ -227,7 +227,8 @@ const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
 	'Delegated organization may include creating reasonable parent containers and moving existing items within the commissioned project, while preserving original content and avoiding unrelated edits.',
 	"Once organization is delegated, the folder titles, which documents go under which folder, and their order are the agent's choices: a contract that names them is resolved, and a contract that leaves them to execution is also resolved. Never ask the user to choose or confirm folder titles or document placement.",
 	'For document move/organize outcomes, parent_id and position in required_fields are postconditions the agent satisfies at execution by choosing or creating a parent (for example by title); they are never values the user must supply. A destination expressed as parent_label (a folder this contract creates) is bound by the system after the create executes and is not a missing value.',
-	'A value that the field semantics of the product define — for example "top priority" meaning priority 1 — is resolved; never ask the user to confirm a value the schema already defines. This concerns values only; ambiguous targets still belong to the user.'
+	'A value that the field semantics of the product define — for example "top priority" meaning priority 1 — is resolved; never ask the user to confirm a value the schema already defines. This concerns values only; ambiguous targets still belong to the user.',
+	"A required_fields entry without a declared change is a postcondition the agent satisfies at execution, not a missing value. Implementation defaults such as type_key, state_key, position, or a description for a new container are the agent's choice and are validated or defaulted by the tool at execution; never revise a contract or ask the user over them."
 ]);
 
 const TURN_CONTRACT_REVIEW_APPROVAL_TOOL: AgenticChatReadOnlyProviderToolV1 = Object.freeze({
@@ -1710,7 +1711,10 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				type: 'semantic',
 				transitionId: createStableAgenticChatReadToolTransitionIdV1({
 					turnRunId: request.turnRunId,
-					providerToolCallId: `read-only-review:${dispositionReviewSha256}`,
+					// Keyed by attempt as well as content: a disposition re-declared
+					// verbatim after a reviewer correction must not collide with the
+					// earlier review's durable transition (semantic_write_transition_conflict).
+					providerToolCallId: `read-only-review:${dispositionReviewSha256}:${request.logicalProviderRound}`,
 					stage: 'planning'
 				}),
 				phase: 'stream',
@@ -1855,7 +1859,10 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				type: 'semantic',
 				transitionId: createStableAgenticChatReadToolTransitionIdV1({
 					turnRunId: request.turnRunId,
-					providerToolCallId: `contract-review:${contractReviewSha256}`,
+					// Keyed by attempt as well as content: the acting model may re-declare
+					// an identical contract after a revision, and the second review's
+					// durable transition must not collide with the first.
+					providerToolCallId: `contract-review:${contractReviewSha256}:${request.logicalProviderRound}`,
 					stage: 'planning'
 				}),
 				phase: 'stream',
@@ -2005,7 +2012,8 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				type: 'semantic',
 				transitionId: createStableAgenticChatReadToolTransitionIdV1({
 					turnRunId: pending.request.turnRunId,
-					providerToolCallId: `mutation-review:${pending.batchSha256}`,
+					// Keyed by attempt as well as content (see contract review above).
+					providerToolCallId: `mutation-review:${pending.batchSha256}:${pending.request.logicalProviderRound}`,
 					stage: 'planning'
 				}),
 				phase: 'stream',
