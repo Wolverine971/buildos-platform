@@ -267,14 +267,11 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 		preparedPromptKey: input?.preparedPromptKey ?? input?.prepared_prompt_key ?? null
 	}),
 	normalizeFastContextType: (value?: string) => value ?? 'global',
-	parseFastChatInitialPlanModels: () => null,
 	parseFastChatForcedSynthesisIgnoredProviderSlugs: () => ['digitalocean'],
 	parseFastChatForcedSynthesisModels: () => ['synthesis/model'],
 	parseFastChatForcedSynthesisRoutingMode: () => 'off',
 	parseFastChatPinnedModels: () => [],
-	parseFastChatModelTieringMode: () => 'off',
-	parseFastChatModelTieringSampleRate: (_value?: string, fallback = 0.5) => fallback,
-	resolveFastChatModelTieringConfig: () => null,
+	parseFastChatRoutingSampleRate: (_value?: string, fallback = 0.5) => fallback,
 	resolveFastChatForcedSynthesisRoutingConfig: () => null,
 	resolveFastChatTurnOutcome: mocks.resolveFastChatTurnOutcome,
 	resolveTurnContractOutcome: ({ contract }: { contract?: Row | null }) => {

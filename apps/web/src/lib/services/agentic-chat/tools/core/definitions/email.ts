@@ -6,8 +6,8 @@
  * connected Gmail accounts, served through the deployed read gateway. These
  * tools NEVER send, save a Gmail draft, label,
  * archive, or modify Gmail state — no such capability exists in any tier of the
- * registry. Every capability here is gated behind the EMAIL_CHAT_TOOLS_ENABLED
- * flag (default off).
+ * registry. The tools are available to every authenticated BuildOS user and only
+ * operate on Gmail accounts that user has explicitly connected.
  *
  * Model-facing rules baked into the descriptions:
  *  - Account IDs come from `list_email_accounts` — never invent connection_ids.

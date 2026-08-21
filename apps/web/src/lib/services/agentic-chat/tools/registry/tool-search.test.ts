@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../core/definitions';
 import { buildToolRegistry, getToolRegistry, resetToolRegistryCache } from './tool-registry';
 import { searchToolRegistry } from './tool-search';
-import { configureEmailRuntimeEnv } from '../email';
 
 const CHAT_HIDDEN_LEGACY_SEARCH_TOOLS = [
 	'search_onto_goals',
@@ -21,7 +20,6 @@ function toolNames(result: Record<string, unknown>): string[] {
 }
 
 afterEach(() => {
-	configureEmailRuntimeEnv(null);
 	resetToolRegistryCache();
 });
 
@@ -140,9 +138,6 @@ describe('searchToolRegistry discovery surfaces', () => {
 	});
 
 	it('discovers account status, OAuth handoff, and email reads in the email group', () => {
-		configureEmailRuntimeEnv({ EMAIL_CHAT_TOOLS_ENABLED: 'true' });
-		resetToolRegistryCache();
-
 		const registry = getToolRegistry();
 		expect(registry.ops['email.accounts.list']).toMatchObject({
 			group: 'email',

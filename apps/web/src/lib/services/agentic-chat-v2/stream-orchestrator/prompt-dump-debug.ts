@@ -328,7 +328,7 @@ export function appendRuntimeMetadataToPromptDump(
 					`Pass ${pass.pass}: model=${pass.model ?? 'unknown'}, provider=${pass.provider ?? 'unknown'}, request_id=${pass.requestId ?? 'unknown'}`
 				);
 				lines.push(
-					`  role=${pass.passRole ?? 'unknown'}, requested_profile=${pass.requestedProfile ?? 'unknown'}, tiering=${pass.modelTieringVariant ?? 'none'}`
+					`  role=${pass.passRole ?? 'unknown'}, requested_profile=${pass.requestedProfile ?? 'unknown'}`
 				);
 				if (pass.requestedModels?.length) {
 					lines.push(`  requested_models=${pass.requestedModels.join(', ')}`);

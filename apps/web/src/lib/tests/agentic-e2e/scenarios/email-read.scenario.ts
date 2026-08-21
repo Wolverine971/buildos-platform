@@ -3,9 +3,8 @@
 // Tier 1 Gmail read tools, end-to-end over the real stream endpoint.
 //
 // Skipped by default (like calendar-move): it needs the test user to have a
-// connected, read-enabled Gmail account (a one-time manual OAuth step) AND the
-// EMAIL_CHAT_TOOLS_ENABLED flag turned on for the dev server. When those are in
-// place, set AGENTIC_TEST_EMAIL_READY=true to run it. It asserts the agent lists
+// connected, read-enabled Gmail account (a one-time manual OAuth step). Once it
+// is connected, set AGENTIC_TEST_EMAIL_READY=true to run it. It asserts the agent lists
 // accounts, searches, opens a message, and performs ZERO Gmail writes (there is
 // no Gmail write tool in any tier — this is a defense-in-depth guard).
 import type { Scenario, TurnResult } from '../harness/types';
@@ -42,7 +41,7 @@ export const emailReadScenario: Scenario = {
 	id: 'email-read',
 	title: 'Search connected Gmail and open a message (read-only)',
 	category: 'email',
-	// Requires a connected Gmail account + EMAIL_CHAT_TOOLS_ENABLED on the server.
+	// Requires a connected, read-enabled Gmail account for the test user.
 	skip: () => !isEmailReadReady(),
 	turns: [
 		{

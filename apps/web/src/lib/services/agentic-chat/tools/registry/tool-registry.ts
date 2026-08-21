@@ -8,7 +8,6 @@
 import type { ChatToolDefinition } from '@buildos/shared-types';
 import type { ToolMetadata, ToolContextScope } from '../core/definitions/types';
 import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../core/definitions';
-import { isEmailChatToolsEnabled, isEmailToolName } from '../email';
 
 export type RegistryOp = {
 	op: string;
@@ -139,7 +138,6 @@ export function buildToolRegistry(
 	for (const tool of tools) {
 		const toolName = tool.function?.name;
 		if (!toolName) continue;
-		if (isEmailToolName(toolName) && !isEmailChatToolsEnabled()) continue;
 
 		const op = deriveOpFromToolName(toolName) ?? `x.misc.${toolName}`;
 		opMap[op] = toolName;

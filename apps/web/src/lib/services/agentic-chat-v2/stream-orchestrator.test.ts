@@ -365,7 +365,7 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(secondBudgetMessage).toContain('With two or fewer tool rounds remaining');
 	});
 
-	it('routes only the first tool-capable planning pass to the fast model tier', async () => {
+	it('uses the ordinary balanced model route for initial and follow-up tool passes', async () => {
 		let streamInvocation = 0;
 		const streamParams: Array<{ profile?: string; models?: string[] }> = [];
 		const llm = {
@@ -412,16 +412,12 @@ describe('streamFastChat direct tool orchestration', () => {
 			toolExecutor,
 			onDelta: async () => {},
 			maxToolRounds: 3,
-			maxToolCalls: 5,
-			modelTiering: {
-				variant: 'fast_initial_plan',
-				initialPlanModels: ['tencent/hy3', 'deepseek/deepseek-v4-flash']
-			}
+			maxToolCalls: 5
 		});
 
 		expect(streamParams[0]).toEqual({
-			profile: 'speed',
-			models: ['tencent/hy3', 'deepseek/deepseek-v4-flash']
+			profile: 'balanced',
+			models: [...OPENROUTER_V2_TOOL_MODELS]
 		});
 		expect(streamParams[1]).toEqual({
 			profile: 'balanced',
@@ -429,15 +425,13 @@ describe('streamFastChat direct tool orchestration', () => {
 		});
 		expect(result.llmPasses?.[0]).toMatchObject({
 			passRole: 'initial_plan',
-			requestedProfile: 'speed',
-			requestedModels: ['tencent/hy3', 'deepseek/deepseek-v4-flash'],
-			modelTieringVariant: 'fast_initial_plan'
+			requestedProfile: 'balanced',
+			requestedModels: [...OPENROUTER_V2_TOOL_MODELS]
 		});
 		expect(result.llmPasses?.[1]).toMatchObject({
 			passRole: 'tool_followup',
 			requestedProfile: 'balanced',
-			requestedModels: [...OPENROUTER_V2_TOOL_MODELS],
-			modelTieringVariant: 'fast_initial_plan'
+			requestedModels: [...OPENROUTER_V2_TOOL_MODELS]
 		});
 	});
 

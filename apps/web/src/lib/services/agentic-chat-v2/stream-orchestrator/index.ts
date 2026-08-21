@@ -14,7 +14,6 @@ import { normalizeFastContextType } from '../scope';
 import {
 	resolveFastChatPassModelRouting,
 	type FastChatForcedSynthesisRoutingConfig,
-	type FastChatModelTieringConfig,
 	type FastChatPassModelRouting
 } from '../model-tiering';
 import {
@@ -177,7 +176,6 @@ type StreamFastChatParams = {
 	allowAutonomousRecovery?: boolean;
 	/** Disable soft supervisor/read-loop forced-synthesis interventions for ablation runs. */
 	allowForcedSynthesis?: boolean;
-	modelTiering?: FastChatModelTieringConfig | null;
 	forcedSynthesisRouting?: FastChatForcedSynthesisRoutingConfig | null;
 	/** Server-only eval override. When set, every pass uses this ordered model list. */
 	pinnedModels?: string[];
@@ -1342,7 +1340,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					projectCreateToolPass:
 						normalizedContext === 'project_create' && !noToolSynthesisPass,
 					noToolSynthesisRetryCount,
-					modelTiering: params.modelTiering ?? null,
 					forcedSynthesisRouting: params.forcedSynthesisRouting ?? null,
 					pinnedModels: params.pinnedModels
 				}),
@@ -2590,9 +2587,6 @@ function buildRecoveredSynthesisPassMetadata(params: {
 		passRole: measurements.passRole ?? modelRouting.passRole,
 		requestedProfile: modelRouting.profile,
 		...(modelRouting.models?.length ? { requestedModels: [...modelRouting.models] } : {}),
-		...(modelRouting.modelTieringVariant
-			? { modelTieringVariant: modelRouting.modelTieringVariant }
-			: {}),
 		...(modelRouting.forcedSynthesisRoutingVariant
 			? { forcedSynthesisRoutingVariant: modelRouting.forcedSynthesisRoutingVariant }
 			: {}),

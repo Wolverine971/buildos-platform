@@ -2,8 +2,7 @@
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import type {
 	FastChatForcedSynthesisRoutingVariant,
-	FastChatLlmPassRole,
-	FastChatModelTieringVariant
+	FastChatLlmPassRole
 } from './model-routing-types';
 
 export type LLMStreamAttemptRoute = {
@@ -96,7 +95,6 @@ export type LLMStreamPassMetadata = {
 	passRole?: FastChatLlmPassRole;
 	requestedProfile?: string;
 	requestedModels?: string[];
-	modelTieringVariant?: FastChatModelTieringVariant;
 	forcedSynthesisRoutingVariant?: FastChatForcedSynthesisRoutingVariant;
 	ignoredProviderSlugs?: string[];
 	maxTokens?: number;

@@ -745,9 +745,6 @@ function createPassMetadata(
 		if (modelRouting.models?.length) {
 			metadata.requestedModels = [...modelRouting.models];
 		}
-		if (modelRouting.modelTieringVariant) {
-			metadata.modelTieringVariant = modelRouting.modelTieringVariant;
-		}
 		if (modelRouting.forcedSynthesisRoutingVariant) {
 			metadata.forcedSynthesisRoutingVariant = modelRouting.forcedSynthesisRoutingVariant;
 		}

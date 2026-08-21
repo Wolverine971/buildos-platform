@@ -7,42 +7,38 @@
 
 # Agentic Chat V2 — Speed & Capability Fix Plan
 
-**Date:** 2026-07-08 (updated 2026-07-09)
+**Date:** 2026-07-08 (updated 2026-08-21)
 **Source audit:** `AGENTIC_CHAT_V2_SPEED_CAPABILITY_AUDIT_2026-07-08.md` (read that first — it has the telemetry, file:line evidence, and the "what NOT to do" list)
 **Cost model being attacked:** turn time ≈ LLM passes × ~7s/pass. LLM = 87% of wall clock. Every work package below reduces one of the two factors or makes them measurable.
 
 ## Status board
 
-| WP    | Item                                                                                                                            | Status                                                                                                                                                                        | Effort          |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| WP-1  | Enable model tiering in prod                                                                                                    | ✅ **DONE 2026-07-09** — DJ confirmed `FASTCHAT_INITIAL_PLAN_MODEL_TIERING=ab` is set. Verify via `model_tiering_variant` on `llm_pass_completed` once prod turns accumulate. | XS              |
-| WP-2  | Per-pass duration + TTFT telemetry                                                                                              | ✅ **DONE 2026-07-09**                                                                                                                                                        | S               |
-| WP-3  | Fix `get_calendar_event_details` (100% failure)                                                                                 | ✅ **DONE 2026-07-09**                                                                                                                                                        | S               |
-| WP-4  | Cache affinity — **CORRECTED: keys were never missing on the live path; the provider doesn't cache.** Provider steering shipped | ✅ **DONE 2026-07-09** — per-model defaults baked in (deepseek → Baidu,GMICloud); no env var needed. `PRIVATE_OPENROUTER_PROVIDER_ORDER` = override / `off` kill switch       | S               |
-| WP-5  | Append-only tool list within a turn                                                                                             | ✅ **CLOSED 2026-07-09 — verified, no change needed** (see section)                                                                                                           | —               |
-| WP-6  | Diff-audit the smart-llm refactor                                                                                               | ✅ **DONE 2026-07-09** — 8 gaps in the dormant base `streamText`; live path is the GOOD one; warning comment added; migration direction = DJ decision (see section)           | S               |
-| WP-7  | Skill-gate preload inversion                                                                                                    | ✅ **DONE 2026-07-09** (code + tests; live verification on a real cold-email turn pending)                                                                                    | M               |
-| WP-8  | Loaded-skill ledger durability + skip outcome_card_load pass-through                                                            | ✅ **DONE 2026-07-09** (code + tests)                                                                                                                                         | S               |
-| WP-9  | Model experiment upward (stronger tool-caller A/B)                                                                              | ⬜ open — needs WP-2 data to read results                                                                                                                                     | S code / M eval |
-| WP-10 | First-token affordance on first tool_call                                                                                       | ✅ **ALREADY SHIPPED 2026-07-08** (commit `99e47640`; the ⬜ here was stale)                                                                                                  | S               |
-| WP-11 | Total-prompt-size budget test + hot-section trim                                                                                | 🟡 **budget test DONE 2026-07-09**; trim deferred until WP-4 cache data lands                                                                                                 | S–M             |
-| WP-12 | Within-turn read memoization + `create_onto_project` profiling + parallel pre-LLM DB steps                                      | ✅ **ALL DONE 2026-07-09** — read memo + instantiation concurrency fix + pre-LLM overlap (see section)                                                                        | S               |
+| WP    | Item                                                                                                                            | Status                                                                                                                                                                  | Effort          |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| WP-1  | Initial-plan model tiering experiment                                                                                           | 🛑 **RETIRED 2026-08-21** — production data showed worse TTFT/tail cost; the Vercel switch, routing branch, and attribution were removed.                               | —               |
+| WP-2  | Per-pass duration + TTFT telemetry                                                                                              | ✅ **DONE 2026-07-09**                                                                                                                                                  | S               |
+| WP-3  | Fix `get_calendar_event_details` (100% failure)                                                                                 | ✅ **DONE 2026-07-09**                                                                                                                                                  | S               |
+| WP-4  | Cache affinity — **CORRECTED: keys were never missing on the live path; the provider doesn't cache.** Provider steering shipped | ✅ **DONE 2026-07-09** — per-model defaults baked in (deepseek → Baidu,GMICloud); no env var needed. `PRIVATE_OPENROUTER_PROVIDER_ORDER` = override / `off` kill switch | S               |
+| WP-5  | Append-only tool list within a turn                                                                                             | ✅ **CLOSED 2026-07-09 — verified, no change needed** (see section)                                                                                                     | —               |
+| WP-6  | Diff-audit the smart-llm refactor                                                                                               | ✅ **DONE 2026-07-09** — 8 gaps in the dormant base `streamText`; live path is the GOOD one; warning comment added; migration direction = DJ decision (see section)     | S               |
+| WP-7  | Skill-gate preload inversion                                                                                                    | ✅ **DONE 2026-07-09** (code + tests; live verification on a real cold-email turn pending)                                                                              | M               |
+| WP-8  | Loaded-skill ledger durability + skip outcome_card_load pass-through                                                            | ✅ **DONE 2026-07-09** (code + tests)                                                                                                                                   | S               |
+| WP-9  | Model experiment upward (stronger tool-caller A/B)                                                                              | ⬜ open — needs WP-2 data to read results                                                                                                                               | S code / M eval |
+| WP-10 | First-token affordance on first tool_call                                                                                       | ✅ **ALREADY SHIPPED 2026-07-08** (commit `99e47640`; the ⬜ here was stale)                                                                                            | S               |
+| WP-11 | Total-prompt-size budget test + hot-section trim                                                                                | 🟡 **budget test DONE 2026-07-09**; trim deferred until WP-4 cache data lands                                                                                           | S–M             |
+| WP-12 | Within-turn read memoization + `create_onto_project` profiling + parallel pre-LLM DB steps                                      | ✅ **ALL DONE 2026-07-09** — read memo + instantiation concurrency fix + pre-LLM overlap (see section)                                                                  | S               |
 
 ---
 
-## WP-1 — Enable model tiering in prod 🟡
+## WP-1 — Initial-plan model tiering 🛑 RETIRED 2026-08-21
 
-**What:** `FASTCHAT_INITIAL_PLAN_MODEL_TIERING` env var, read at `apps/web/src/routes/api/agent/v2/stream/+server.ts:301-309`, parsed by `parseFastChatModelTieringMode` (`model-tiering.ts:32`).
+The deterministic `FASTCHAT_INITIAL_PLAN_MODEL_TIERING=ab` experiment ran in Vercel production from 2026-07-09 through 2026-08-21. It assigned 91 observed live-UI turns: 40 control and 51 `fast_initial_plan`.
 
-**Done so far:** DJ set `=true` in local `apps/web/.env`. `true` parses to `fast_initial_plan` — every turn's first tool-capable pass uses the speed route (`tencent/hy3`, `xiaomi/mimo-v2.5`, `poolside/laguna-xs-2.1`, `deepseek-v4-flash`); all later passes stay `balanced`.
+**Readout:** Across project + global turns, treatment TTFT p50 was 2.51s versus 1.80s control (+39%), while pass-duration p50 was effectively flat (8.44s versus 8.72s). Across all contexts, treatment TTFT p95 was 62.0s versus 20.5s, pass-duration p95 was 74.6s versus 45.2s, and initial-pass median cost was 69% higher. The project-context slice was worse on both TTFT and pass duration. The small global slice improved duration, but not enough to justify the route.
 
-**Remaining:**
+**Disposition:** Do not graduate the fast arm. The environment variable was removed from Vercel Production and Preview, and the legacy routing/configuration/telemetry branch was deleted. The newer worker execution path already owns its acting-model policy independently, so any future routing experiment must be worker-native and use new treatment candidates.
 
-1. Set the same var in **Vercel project env** (production) and redeploy — local `.env` does nothing for prod.
-2. Decision: `true`/`fast_initial_plan` (100% on, fastest UX now) vs `ab` (50/50 deterministic split, measurable comparison). Recommendation: run `ab` for ~2 weeks so WP-2's per-pass data can prove the win, then flip to `fast_initial_plan`.
-3. Watch-item: with tiering on, pass 1 and pass 2+ run different models — a guaranteed provider-cache miss on the pass-1→2 transition (see WP-4). Expected to still net-win; verify with data.
-
-**Accept when:** `llm_pass_completed` events in prod show `model_tiering_variant` ≠ `off` and pass-1 `requested_models` includes the fast candidates.
+Historical telemetry remains in `chat_turn_events` and `llm_usage_logs`; no rows were deleted.
 
 ## WP-2 — Per-pass duration + TTFT telemetry ✅ DONE 2026-07-09
 
@@ -55,7 +51,7 @@
 - `llm_pass_completed` turn event (`+server.ts`) now carries `duration_ms`, `time_to_first_token_ms`, `started_at_ms`.
 - `buildLLMPassSummary` (`turn-persistence.ts`) adds `total_llm_duration_ms` + `max_pass_duration_ms` aggregates.
 
-**Use it:** per-pass p50/p95 by `pass_role` and `model_tiering_variant` is now one query over `chat_turn_events`. This is the readout for WP-1, WP-4, WP-7, WP-9.
+**Use it:** per-pass p50/p95 by `pass_role`, `requested_models`, and the actual `model` is one query over `chat_turn_events`. Historical WP-1 rows retain their retired variant attribution.
 
 ## WP-3 — Fix `get_calendar_event_details` ✅ DONE 2026-07-09
 
@@ -210,8 +206,8 @@ No harness rewrite. No embedding-based sensing yet. Don't relax `stale_harness` 
 
 After each WP lands, the readout is the same three queries (now cheap thanks to WP-2):
 
-1. Per-pass duration p50/p95 by `pass_role` × `model_tiering_variant` (`chat_turn_events` → `llm_pass_completed`).
+1. Per-pass duration p50/p95 by `pass_role` × actual `model` (`chat_turn_events` → `llm_pass_completed`).
 2. Cache-hit % by pass position (`llm_usage_logs.cached_prompt_tokens/prompt_tokens` by `stream_run_id` order).
 3. Passes/turn + duration by turn class (discovery vs plain tool vs write vs tool-less) (`chat_turn_runs` × `chat_tool_executions`).
 
-Targets: p50 project turn 24s → ~10-12s (2 passes × ~5s cached); discovery-turn tail 40s → ~25s; TTFT p50 9s → ~5-6s (tiering + affordance).
+Targets: p50 project turn 24s → ~10-12s (2 passes × ~5s cached); discovery-turn tail 40s → ~25s; TTFT p50 9s → ~5-6s.

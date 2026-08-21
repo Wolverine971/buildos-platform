@@ -15,7 +15,6 @@ import {
 	type ToolContextScope,
 	type ToolMetadata
 } from './tool-definitions';
-import { isEmailChatToolsEnabled, isEmailToolName } from '$lib/services/agentic-chat/tools/email';
 
 export { ENTITY_FIELD_INFO } from './tool-definitions';
 export { CHAT_TOOL_DEFINITIONS as CHAT_TOOLS } from './tool-definitions';
@@ -61,7 +60,7 @@ export function getDefaultToolNamesForContextType(contextType: ChatContextType):
 		}
 	}
 
-	return Array.from(names).filter((name) => isToolEnabledForContext(name, contextType));
+	return Array.from(names);
 }
 
 export function getDefaultToolsForContextType(contextType: ChatContextType): ChatToolDefinition[] {
@@ -375,33 +374,8 @@ export function isWriteToolName(toolName: string): boolean {
 	return TOOL_METADATA[toolName]?.category === 'write';
 }
 
-function isToolEnabled(toolName: string): boolean {
-	if (isEmailToolName(toolName) && !isEmailChatToolsEnabled()) return false;
-	return true;
-}
-
-function isToolEnabledForContext(toolName: string, _contextType: ChatContextType): boolean {
-	return isToolEnabled(toolName);
-}
-
-export function filterEnabledTools(tools: ChatToolDefinition[]): ChatToolDefinition[] {
-	return tools.filter((tool) => isToolEnabled(resolveToolName(tool)));
-}
-
-export function filterEnabledToolsForContext(
-	tools: ChatToolDefinition[],
-	contextType: ChatContextType
-): ChatToolDefinition[] {
-	return tools.filter((tool) => isToolEnabledForContext(resolveToolName(tool), contextType));
-}
-
-export function getAllEnabledTools(): ChatToolDefinition[] {
-	return filterEnabledTools(CHAT_TOOL_DEFINITIONS);
-}
-
 export function extractTools(names: string[]): ChatToolDefinition[] {
 	return names
-		.filter(isToolEnabled)
 		.map((name) => TOOL_DEFINITION_MAP.get(name))
 		.filter((tool): tool is ChatToolDefinition => Boolean(tool));
 }
@@ -482,7 +456,7 @@ export const WEB_TOOLS = extractTools(['web_search', 'web_visit']);
 
 export const DEFAULT_TOOLS = getToolsForContextType('global');
 
-export const ALL_TOOLS = getAllEnabledTools();
+export const ALL_TOOLS = CHAT_TOOL_DEFINITIONS;
 
 export function getToolCategory(toolName: string): keyof typeof TOOL_CATEGORIES | null {
 	for (const [category, config] of Object.entries(TOOL_CATEGORIES)) {

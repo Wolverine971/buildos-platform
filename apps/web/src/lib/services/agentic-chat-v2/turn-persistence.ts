@@ -392,8 +392,6 @@ export function buildLLMPassSummary(llmPasses: LLMStreamPassMetadata[] | undefin
 		if (pass.passRole !== undefined) entry.pass_role = pass.passRole;
 		if (pass.requestedProfile !== undefined) entry.requested_profile = pass.requestedProfile;
 		if (pass.requestedModels !== undefined) entry.requested_models = pass.requestedModels;
-		if (pass.modelTieringVariant !== undefined)
-			entry.model_tiering_variant = pass.modelTieringVariant;
 		if (pass.forcedSynthesisRoutingVariant !== undefined)
 			entry.forced_synthesis_routing_variant = pass.forcedSynthesisRoutingVariant;
 		if (pass.ignoredProviderSlugs !== undefined)

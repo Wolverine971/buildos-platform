@@ -9,7 +9,6 @@ import type {
 	GmailMessageDetail,
 	GmailMessageSearchPayload
 } from '$lib/types/gmail-integration';
-import { configureEmailRuntimeEnv } from '../../email';
 
 const ACTIVE_ID = '11111111-1111-4111-8111-111111111111';
 const RECONNECT_ID = '22222222-2222-4222-8222-222222222222';
@@ -124,15 +123,7 @@ function messageDetail(bodyText: string, bodyTruncated = false): GmailMessageDet
 	};
 }
 
-function makeExecutor(
-	userId: string,
-	deps: EmailExecutorDeps,
-	pilotUserIds = userId
-): EmailExecutor {
-	configureEmailRuntimeEnv({
-		EMAIL_CHAT_TOOLS_ENABLED: 'true',
-		EMAIL_CHAT_TOOLS_USER_IDS: pilotUserIds
-	});
+function makeExecutor(userId: string, deps: EmailExecutorDeps): EmailExecutor {
 	return new EmailExecutor(createContext(userId), {
 		checkRateLimit: () => ({ allowed: true, headers: {} }),
 		...deps
@@ -280,21 +271,17 @@ describe('EmailExecutor', () => {
 		expect(getMessage).not.toHaveBeenCalled();
 	});
 
-	it('fails closed before any provider call when the BuildOS user is not allowlisted', async () => {
+	it('checks connections for any authenticated BuildOS user without a rollout allowlist', async () => {
 		const searchMessages = vi.fn();
 		const getMessage = vi.fn();
-		const listConnections = vi.fn();
-		const executor = makeExecutor(
-			'user-blocked',
-			{
-				gateway: { searchMessages, getMessage },
-				oauthService: { listConnections }
-			},
-			'user-allowed'
-		);
+		const listConnections = vi.fn().mockResolvedValue(connectionsPayload());
+		const executor = makeExecutor('user-any', {
+			gateway: { searchMessages, getMessage },
+			oauthService: { listConnections }
+		});
 
-		await expect(executor.listEmailAccounts()).rejects.toThrow(/not enabled/i);
-		expect(listConnections).not.toHaveBeenCalled();
+		await expect(executor.listEmailAccounts()).resolves.toMatchObject({ count: 2 });
+		expect(listConnections).toHaveBeenCalledWith('user-any');
 		expect(searchMessages).not.toHaveBeenCalled();
 		expect(getMessage).not.toHaveBeenCalled();
 	});

@@ -98,14 +98,11 @@ import {
 	normalizeChatAttachmentRefs,
 	composeFastChatHistory,
 	normalizeFastAgentStreamRequest,
-	parseFastChatInitialPlanModels,
 	parseFastChatForcedSynthesisIgnoredProviderSlugs,
 	parseFastChatForcedSynthesisModels,
 	parseFastChatForcedSynthesisRoutingMode,
 	parseFastChatPinnedModels,
-	parseFastChatModelTieringMode,
-	parseFastChatModelTieringSampleRate,
-	resolveFastChatModelTieringConfig,
+	parseFastChatRoutingSampleRate,
 	resolveFastChatForcedSynthesisRoutingConfig,
 	buildPendingTurnIntentSystemMessage,
 	buildFastChatPendingTurnContract,
@@ -349,23 +346,13 @@ const FASTCHAT_CANCEL_REASON_RETRY_DELAY_MS = parsePositiveInt(
 	process.env.FASTCHAT_CANCEL_REASON_RETRY_DELAY_MS,
 	70
 );
-const FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODE = parseFastChatModelTieringMode(
-	process.env.FASTCHAT_INITIAL_PLAN_MODEL_TIERING
-);
-const FASTCHAT_INITIAL_PLAN_MODEL_TIERING_SAMPLE_RATE = parseFastChatModelTieringSampleRate(
-	process.env.FASTCHAT_INITIAL_PLAN_MODEL_TIERING_SAMPLE_RATE,
-	0.5
-);
-const FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODELS = parseFastChatInitialPlanModels(
-	process.env.FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODELS
-);
 const FASTCHAT_EVAL_PINNED_MODELS = parseFastChatPinnedModels(
 	process.env.FASTCHAT_EVAL_PINNED_MODELS
 );
 const FASTCHAT_FORCED_SYNTHESIS_ROUTING_MODE = parseFastChatForcedSynthesisRoutingMode(
 	process.env.FASTCHAT_FORCED_SYNTHESIS_ROUTING
 );
-const FASTCHAT_FORCED_SYNTHESIS_ROUTING_SAMPLE_RATE = parseFastChatModelTieringSampleRate(
+const FASTCHAT_FORCED_SYNTHESIS_ROUTING_SAMPLE_RATE = parseFastChatRoutingSampleRate(
 	process.env.FASTCHAT_FORCED_SYNTHESIS_ROUTING_SAMPLE_RATE,
 	0.1
 );
@@ -2942,12 +2929,6 @@ export const POST: RequestHandler = async ({
 						}
 					: null;
 			let firstToolCallPlanningCueEmitted = false;
-			const modelTiering = resolveFastChatModelTieringConfig({
-				mode: FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODE,
-				sampleRate: FASTCHAT_INITIAL_PLAN_MODEL_TIERING_SAMPLE_RATE,
-				bucketKey: clientTurnId ?? streamRunId ?? turnRunId ?? session.id,
-				initialPlanModels: FASTCHAT_INITIAL_PLAN_MODEL_TIERING_MODELS
-			});
 			const forcedSynthesisRouting = resolveFastChatForcedSynthesisRoutingConfig({
 				mode: FASTCHAT_FORCED_SYNTHESIS_ROUTING_MODE,
 				sampleRate: FASTCHAT_FORCED_SYNTHESIS_ROUTING_SAMPLE_RATE,
@@ -2995,7 +2976,6 @@ export const POST: RequestHandler = async ({
 				maxToolRounds: Math.max(1, gatewayRoundCap),
 				allowAutonomousRecovery: FASTCHAT_SCAFFOLD.recovery.autonomousRecovery,
 				allowForcedSynthesis: FASTCHAT_SCAFFOLD.recovery.softForcedSynthesis,
-				modelTiering,
 				forcedSynthesisRouting,
 				pinnedModels: FASTCHAT_EVAL_PINNED_MODELS,
 				turnIntent,
@@ -3920,7 +3900,6 @@ export const POST: RequestHandler = async ({
 					pass_role: pass.passRole ?? null,
 					requested_profile: pass.requestedProfile ?? null,
 					requested_models: pass.requestedModels ?? null,
-					model_tiering_variant: pass.modelTieringVariant ?? null,
 					forced_synthesis_routing_variant: pass.forcedSynthesisRoutingVariant ?? null,
 					ignored_provider_slugs: pass.ignoredProviderSlugs ?? null,
 					max_tokens: pass.maxTokens ?? FASTCHAT_LIMITS.SYNTHESIS_MAX_TOKENS,

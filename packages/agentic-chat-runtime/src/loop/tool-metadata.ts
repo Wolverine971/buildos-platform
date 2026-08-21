@@ -328,7 +328,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 
 	// ============================================
 	// EMAIL (GMAIL) READ TOOLS — Tier 1, read-only
-	// Gated behind EMAIL_CHAT_TOOLS_ENABLED (default off).
+	// Available for user-owned, explicitly connected Gmail accounts.
 	// ============================================
 
 	get_external_account_status: {

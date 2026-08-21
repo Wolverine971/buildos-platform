@@ -1,11 +1,10 @@
 // apps/web/src/lib/services/agentic-chat/tools/registry/email-tool-registry.test.ts
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { BUILDOS_AGENT_SUPPORTED_OPS } from '@buildos/shared-types';
 import { buildToolRegistry } from './tool-registry';
 import { getCapabilityByPath, listCapabilities } from './capability-catalog';
 import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../core/definitions';
-import { configureEmailRuntimeEnv, isEmailChatUserAllowed } from '../email';
-import { getAllEnabledTools, extractTools } from '../core/tools.config';
+import { ALL_TOOLS, extractTools } from '../core/tools.config';
 
 const EMAIL_READ_TOOLS = [
 	'get_external_account_status',
@@ -44,18 +43,13 @@ const FORBIDDEN_EMAIL_WRITE_TOOL_NAMES = [
 	'execute_email'
 ];
 
-function withEmailFlag(enabled: boolean): ReturnType<typeof buildToolRegistry> {
-	configureEmailRuntimeEnv({ EMAIL_CHAT_TOOLS_ENABLED: enabled ? 'true' : '' });
+function buildRegistry(): ReturnType<typeof buildToolRegistry> {
 	return buildToolRegistry(CHAT_TOOL_DEFINITIONS, TOOL_METADATA);
 }
 
-afterEach(() => {
-	configureEmailRuntimeEnv(null);
-});
-
-describe('email tools — registry gating', () => {
-	it('flag ON: account discovery and inbox reads resolve as reads; OAuth handoff is a write', () => {
-		const registry = withEmailFlag(true);
+describe('email tools — registry availability', () => {
+	it('account discovery and inbox reads resolve as reads; OAuth handoff is a write', () => {
+		const registry = buildRegistry();
 		for (const op of EMAIL_READ_OPS) {
 			expect(registry.ops[op]).toBeDefined();
 			expect(registry.ops[op].kind).toBe('read');
@@ -74,8 +68,8 @@ describe('email tools — registry gating', () => {
 		}
 	});
 
-	it('flag ON: no send/modify/execute/draft email op or tool name resolves to anything', () => {
-		const registry = withEmailFlag(true);
+	it('no send/modify/execute/draft email op or tool name resolves to anything', () => {
+		const registry = buildRegistry();
 
 		// Only discovery, read, and user-confirmed OAuth handoff ops exist here.
 		const emailOps = Object.keys(registry.ops).filter((op) => op.startsWith('email.'));
@@ -94,61 +88,15 @@ describe('email tools — registry gating', () => {
 		}
 	});
 
-	it('flag OFF (default): no email tool is present in the registry', () => {
-		const registry = withEmailFlag(false);
-		for (const op of EMAIL_OPS) {
-			expect(registry.ops[op]).toBeUndefined();
-		}
-		for (const name of EMAIL_TOOL_NAMES) {
-			expect(registry.byToolName[name]).toBeUndefined();
-		}
-		expect(Object.keys(registry.ops).some((op) => op.startsWith('email.'))).toBe(false);
-	});
-
-	it('flag OFF: email tools are not enabled/surfaced in tools.config', () => {
-		configureEmailRuntimeEnv({ EMAIL_CHAT_TOOLS_ENABLED: '' });
-		const enabledNames = getAllEnabledTools().map((tool) => tool.function.name);
-		for (const name of EMAIL_TOOL_NAMES) {
-			expect(enabledNames).not.toContain(name);
-			expect(extractTools([name])).toHaveLength(0);
-		}
-	});
-
-	it('flag ON: email tools become materializable via tools.config', () => {
-		configureEmailRuntimeEnv({ EMAIL_CHAT_TOOLS_ENABLED: 'true' });
-		const enabledNames = getAllEnabledTools().map((tool) => tool.function.name);
+	it('email tools are built in and materializable by default', () => {
+		const enabledNames = ALL_TOOLS.map((tool) => tool.function.name);
 		for (const name of EMAIL_TOOL_NAMES) {
 			expect(enabledNames).toContain(name);
 			expect(extractTools([name])).toHaveLength(1);
 		}
 	});
 
-	it('requires an exact, non-wildcard user allowlist match for execution', () => {
-		configureEmailRuntimeEnv({
-			EMAIL_CHAT_TOOLS_ENABLED: 'true',
-			EMAIL_CHAT_TOOLS_USER_IDS: ' user-a, user-b '
-		});
-		expect(isEmailChatUserAllowed('user-a')).toBe(true);
-		expect(isEmailChatUserAllowed('user-b')).toBe(true);
-		expect(isEmailChatUserAllowed('user-c')).toBe(false);
-		expect(isEmailChatUserAllowed('*')).toBe(false);
-
-		configureEmailRuntimeEnv({ EMAIL_CHAT_TOOLS_ENABLED: 'true' });
-		expect(isEmailChatUserAllowed('user-a')).toBe(false);
-
-		configureEmailRuntimeEnv({
-			EMAIL_CHAT_TOOLS_ENABLED: '',
-			EMAIL_CHAT_TOOLS_USER_IDS: 'user-a'
-		});
-		expect(isEmailChatUserAllowed('user-a')).toBe(false);
-	});
-
-	it('flag gates the email capability-catalog entry (discovery)', () => {
-		configureEmailRuntimeEnv({ EMAIL_CHAT_TOOLS_ENABLED: '' });
-		expect(getCapabilityByPath('capabilities.email_context')).toBeUndefined();
-		expect(listCapabilities().some((c) => c.id === 'email_context')).toBe(false);
-
-		configureEmailRuntimeEnv({ EMAIL_CHAT_TOOLS_ENABLED: 'true' });
+	it('exposes the email capability-catalog entry by default', () => {
 		const capability = getCapabilityByPath('capabilities.email_context');
 		expect(capability).toBeDefined();
 		expect(capability?.directPaths).toEqual(['email.accounts', 'email.messages']);

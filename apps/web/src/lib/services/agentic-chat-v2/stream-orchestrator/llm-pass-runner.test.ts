@@ -313,8 +313,7 @@ describe('runLlmStreamPass', () => {
 			modelRouting: {
 				passRole: 'initial_plan',
 				profile: 'speed',
-				models: ['tencent/hy3', 'deepseek/deepseek-v4-flash'],
-				modelTieringVariant: 'fast_initial_plan'
+				models: ['model/primary', 'model/fallback']
 			}
 		});
 
@@ -323,14 +322,13 @@ describe('runLlmStreamPass', () => {
 		expect(params.llm.streamText).toHaveBeenCalledWith(
 			expect.objectContaining({
 				profile: 'speed',
-				models: ['tencent/hy3', 'deepseek/deepseek-v4-flash']
+				models: ['model/primary', 'model/fallback']
 			})
 		);
 		expect(result.metadata).toMatchObject({
 			passRole: 'initial_plan',
 			requestedProfile: 'speed',
-			requestedModels: ['tencent/hy3', 'deepseek/deepseek-v4-flash'],
-			modelTieringVariant: 'fast_initial_plan'
+			requestedModels: ['model/primary', 'model/fallback']
 		});
 	});
 

@@ -35,7 +35,6 @@ import type {
 	GmailMessageSearchPayload
 } from '$lib/types/gmail-integration';
 import type { GoogleCalendarConnectionsPayload } from '$lib/types/google-calendar-integration';
-import { isEmailChatUserAllowed } from '../../email';
 
 // Per-turn safety bounds (executor instances are per-turn — see ChatToolExecutor).
 const MAX_EMAIL_TOOL_CALLS_PER_TURN = 8;
@@ -158,12 +157,6 @@ export class EmailExecutor extends BaseExecutor {
 				`Email tool call limit reached for this turn (max ${MAX_EMAIL_TOOL_CALLS_PER_TURN}). ` +
 					'Summarize what you already found or ask the user before reading more email.'
 			);
-		}
-	}
-
-	private assertPilotAccess(): void {
-		if (!isEmailChatUserAllowed(this.userId)) {
-			throw new Error('Gmail chat reading is not enabled for this BuildOS account.');
 		}
 	}
 
@@ -400,7 +393,6 @@ export class EmailExecutor extends BaseExecutor {
 	async getExternalAccountStatus(
 		args: ExternalAccountStatusArgs
 	): Promise<Record<string, unknown>> {
-		this.assertPilotAccess();
 		this.assertCallBudget();
 		const emailAddress = this.normalizeEmailAddress(args.email_address, args.emailAddress);
 		try {
@@ -419,7 +411,6 @@ export class EmailExecutor extends BaseExecutor {
 	async requestEmailAccountConnection(
 		args: RequestEmailAccountConnectionArgs
 	): Promise<Record<string, unknown>> {
-		this.assertPilotAccess();
 		this.assertCallBudget();
 		const emailAddress = this.normalizeEmailAddress(args.email_address, args.emailAddress);
 		const userConfirmed = args.user_confirmed === true || args.userConfirmed === true;
@@ -501,7 +492,6 @@ export class EmailExecutor extends BaseExecutor {
 
 	/** list_email_accounts — read-only; no Gmail API call. */
 	async listEmailAccounts(): Promise<Record<string, unknown>> {
-		this.assertPilotAccess();
 		this.assertCallBudget();
 		try {
 			const payload = await this.getOAuthService().listConnections(this.userId);
@@ -544,7 +534,6 @@ export class EmailExecutor extends BaseExecutor {
 
 	/** search_email_messages — bounded, read-only, multi-account. */
 	async searchEmailMessages(args: SearchEmailMessagesArgs): Promise<Record<string, unknown>> {
-		this.assertPilotAccess();
 		this.assertCallBudget();
 
 		const connectionIds = this.toStringArray(args.connection_ids, args.connectionIds);
@@ -649,7 +638,6 @@ export class EmailExecutor extends BaseExecutor {
 
 	/** get_email_message — one sanitized message, read-only. */
 	async getEmailMessage(args: GetEmailMessageArgs): Promise<Record<string, unknown>> {
-		this.assertPilotAccess();
 		this.assertCallBudget();
 
 		const connectionId = this.toStringArg(args.connection_id, args.connectionId);

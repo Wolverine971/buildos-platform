@@ -86,10 +86,9 @@ Every message result includes:
 - **Capability catalog:** new `email_context` entry in `registry/capability-catalog.ts`
   (`directPaths: ['email.accounts', 'email.messages', 'email.draft']`) so discovery, skill routing,
   and the tool-policy layers see it like calendar.
-- **Feature flags:** discovery is gated behind `EMAIL_CHAT_TOOLS_ENABLED` (default off). Execution
-  additionally requires the authenticated BuildOS user ID to appear exactly in
-  `EMAIL_CHAT_TOOLS_USER_IDS`. Missing/empty allowlists and wildcard values fail closed. The global
-  flag remains the immediate kill switch and is independent of the profile-tab UI.
+- **Availability:** email tools are discoverable for every authenticated BuildOS user. Execution
+  remains account-scoped: the Gmail gateway validates each connection ID against the authenticated
+  user, active read capability, stored read-only scopes, and connection health on every call.
 
 ## Account selection policy
 

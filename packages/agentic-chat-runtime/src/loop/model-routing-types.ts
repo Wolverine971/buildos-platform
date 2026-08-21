@@ -1,10 +1,7 @@
 // packages/agentic-chat-runtime/src/loop/model-routing-types.ts
 //
-// Pure routing-variant vocabulary shared by the loop's pass measurements.
-// Web's model-tiering module re-exports these; its runtime tiering logic
-// (model lists, env-driven config) stays host-side.
-
-export type FastChatModelTieringVariant = 'control' | 'fast_initial_plan';
+// Pure routing vocabulary shared by the loop's pass measurements.
+// Model lists and env-driven routing configuration stay host-side.
 
 export type FastChatForcedSynthesisRoutingVariant = 'control' | 'dedicated';
 

@@ -88,18 +88,19 @@ deterministic HTML-to-text sanitization, attachment blocking, rate limits, no-st
 metadata-only auditing, encrypted account-bound pagination, and a read-only message UI. Pagination
 continues one selected account at a time with a 15-minute cursor bound to the user, connection, and
 query, plus hard page and visible-result ceilings. The three Tier 1 chat tools now expose account
-listing, bounded search, and one-message retrieval through that same gateway. They are gated by
-`EMAIL_CHAT_TOOLS_ENABLED` and the exact-user `EMAIL_CHAT_TOOLS_USER_IDS` allowlist. Durable Gmail
+listing, bounded search, and one-message retrieval through that same gateway. They are available to
+every authenticated user and only operate on accounts that user explicitly connected. Durable Gmail
 tool traces are content-free: counts and booleans only, with no queries, account IDs, addresses,
 subjects, snippets, bodies, cursors, or deep links.
 
-The production pilot is enabled only for DJ's BuildOS user. Live validation confirmed all three
-accounts in the profile, a bounded three-account search, on-demand read of one sanitized message,
-and the absence of any message-detail write action. A fresh agentic-chat validation returned the
-versioned `gmail-read-v2` result, rendered exactly one **Open in Gmail** link for every selected
-account, and resolved all three links to the intended signed-in mailboxes. Browser-held search and
-opened-message state is reconstructed whenever the connection set changes so disconnected-account
-data cannot remain in the Email tab.
+The initial production pilot used DJ's BuildOS user. The rollout gates have since been removed and
+email chat is now a default capability for connected users. Live validation confirmed all three
+pilot accounts in the profile, a bounded three-account search, on-demand read of one sanitized
+message, and the absence of any message-detail write action. A fresh agentic-chat validation
+returned the versioned `gmail-read-v2` result, rendered exactly one **Open in Gmail** link for every
+selected account, and resolved all three links to the intended signed-in mailboxes. Browser-held
+search and opened-message state is reconstructed whenever the connection set changes so
+disconnected-account data cannot remain in the Email tab.
 
 Project-relevance Phase A has now completed one manually authorized, metadata-only production pilot
 over three connected accounts and three captured project profiles. The run processed 2,148 messages

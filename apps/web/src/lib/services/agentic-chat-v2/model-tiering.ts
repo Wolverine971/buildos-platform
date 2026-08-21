@@ -10,13 +10,6 @@ import {
 	XIAOMI_MIMO_V25_MODEL
 } from '@buildos/smart-llm';
 
-export const FASTCHAT_INITIAL_PLAN_FAST_MODELS = [
-	'tencent/hy3',
-	'xiaomi/mimo-v2.5',
-	'poolside/laguna-xs-2.1',
-	'deepseek/deepseek-v4-flash'
-] as const;
-
 export const FASTCHAT_FORCED_SYNTHESIS_MODELS = [
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
@@ -37,24 +30,16 @@ export const FASTCHAT_PROJECT_CREATE_TOOL_MODELS = [
 ] as const;
 export const FASTCHAT_PROJECT_CREATE_MAX_TOKENS = 6_500;
 
-export type FastChatModelTieringMode = 'off' | 'control' | 'fast_initial_plan' | 'ab';
 export type FastChatForcedSynthesisRoutingMode = 'off' | 'control' | 'dedicated' | 'ab';
 // The variant/pass-role vocabulary is owned by the shared loop package.
 export {
 	type FastChatForcedSynthesisRoutingVariant,
-	type FastChatLlmPassRole,
-	type FastChatModelTieringVariant
+	type FastChatLlmPassRole
 } from '@buildos/agentic-chat-runtime/loop';
 import type {
 	FastChatForcedSynthesisRoutingVariant,
-	FastChatLlmPassRole,
-	FastChatModelTieringVariant
+	FastChatLlmPassRole
 } from '@buildos/agentic-chat-runtime/loop';
-
-export type FastChatModelTieringConfig = {
-	variant: FastChatModelTieringVariant;
-	initialPlanModels: string[];
-};
 
 export type FastChatForcedSynthesisRoutingConfig = {
 	variant: FastChatForcedSynthesisRoutingVariant;
@@ -67,7 +52,6 @@ export type FastChatPassModelRouting = {
 	passRole: FastChatLlmPassRole;
 	profile: TextProfile;
 	models?: string[];
-	modelTieringVariant?: FastChatModelTieringVariant;
 	forcedSynthesisRoutingVariant?: FastChatForcedSynthesisRoutingVariant;
 	ignoredProviderSlugs?: string[];
 	maxTokens?: number;
@@ -102,39 +86,7 @@ export function parseFastChatForcedSynthesisRoutingMode(
 	return 'off';
 }
 
-export function parseFastChatModelTieringMode(
-	value: string | null | undefined
-): FastChatModelTieringMode {
-	const normalized = value?.trim().toLowerCase();
-	if (!normalized || normalized === 'false' || normalized === '0' || normalized === 'off') {
-		return 'off';
-	}
-	if (normalized === 'control') {
-		return 'control';
-	}
-	if (
-		normalized === 'ab' ||
-		normalized === 'a/b' ||
-		normalized === 'experiment' ||
-		normalized === 'rollout'
-	) {
-		return 'ab';
-	}
-	if (
-		normalized === 'true' ||
-		normalized === '1' ||
-		normalized === 'on' ||
-		normalized === 'enabled' ||
-		normalized === 'fast' ||
-		normalized === 'fast_initial_plan' ||
-		normalized === 'fast_initial_pass'
-	) {
-		return 'fast_initial_plan';
-	}
-	return 'off';
-}
-
-export function parseFastChatModelTieringSampleRate(
+export function parseFastChatRoutingSampleRate(
 	value: string | null | undefined,
 	fallback = 0.5
 ): number {
@@ -144,18 +96,6 @@ export function parseFastChatModelTieringSampleRate(
 	const parsed = Number.parseFloat(percent ? normalized.slice(0, -1) : normalized);
 	if (!Number.isFinite(parsed)) return clampSampleRate(fallback);
 	return clampSampleRate(percent ? parsed / 100 : parsed);
-}
-
-export function parseFastChatInitialPlanModels(
-	value: string | null | undefined,
-	fallback: readonly string[] = FASTCHAT_INITIAL_PLAN_FAST_MODELS
-): string[] {
-	const parsed = (value ?? '')
-		.split(',')
-		.map((model) => model.trim())
-		.filter(Boolean);
-	const models = parsed.length > 0 ? parsed : [...fallback];
-	return Array.from(new Set(models));
 }
 
 export function parseFastChatForcedSynthesisModels(
@@ -183,37 +123,6 @@ export function parseFastChatPinnedModels(value: string | null | undefined): str
 				.filter(Boolean)
 		)
 	);
-}
-
-export function resolveFastChatModelTieringConfig(params: {
-	mode: FastChatModelTieringMode;
-	sampleRate?: number;
-	bucketKey?: string | null;
-	initialPlanModels?: string[];
-}): FastChatModelTieringConfig | null {
-	if (params.mode === 'off') return null;
-
-	const initialPlanModels =
-		params.initialPlanModels && params.initialPlanModels.length > 0
-			? params.initialPlanModels
-			: [...FASTCHAT_INITIAL_PLAN_FAST_MODELS];
-
-	if (params.mode === 'control') {
-		return { variant: 'control', initialPlanModels };
-	}
-	if (params.mode === 'fast_initial_plan') {
-		return { variant: 'fast_initial_plan', initialPlanModels };
-	}
-
-	const sampleRate = clampSampleRate(params.sampleRate ?? 0.5);
-	const bucket =
-		typeof params.bucketKey === 'string' && params.bucketKey.trim()
-			? stableBucket(params.bucketKey)
-			: 1;
-	return {
-		variant: bucket < sampleRate ? 'fast_initial_plan' : 'control',
-		initialPlanModels
-	};
 }
 
 export function resolveFastChatForcedSynthesisRoutingConfig(params: {
@@ -267,25 +176,16 @@ export function resolveFastChatPassModelRouting(params: {
 	writeIntentToolPass: boolean;
 	projectCreateToolPass?: boolean;
 	noToolSynthesisRetryCount?: number;
-	modelTiering?: FastChatModelTieringConfig | null;
 	forcedSynthesisRouting?: FastChatForcedSynthesisRoutingConfig | null;
 	pinnedModels?: string[];
 }): FastChatPassModelRouting {
 	const passRole = resolvePassRole(params);
-	const modelTieringVariant = params.modelTiering?.variant;
-	const fastInitialPlanModels = params.modelTiering?.initialPlanModels ?? [];
 	const forcedSynthesisRouting = params.forcedSynthesisRouting;
 	const useProjectCreateToolRoute =
 		!params.pinnedModels?.length &&
 		params.projectCreateToolPass === true &&
 		params.hasTools &&
 		!params.noToolSynthesisPass;
-	const useFastInitialPlan =
-		!params.pinnedModels?.length &&
-		!useProjectCreateToolRoute &&
-		modelTieringVariant === 'fast_initial_plan' &&
-		passRole === 'initial_plan' &&
-		fastInitialPlanModels.length > 0;
 	const useDedicatedForcedSynthesis =
 		!params.pinnedModels?.length &&
 		params.noToolSynthesisPass &&
@@ -299,8 +199,7 @@ export function resolveFastChatPassModelRouting(params: {
 		!params.pinnedModels?.length &&
 		params.hasTools &&
 		!useDedicatedForcedSynthesis &&
-		!useProjectCreateToolRoute &&
-		!useFastInitialPlan
+		!useProjectCreateToolRoute
 			? [...OPENROUTER_V2_TOOL_MODELS]
 			: [];
 	const selectedModels = params.pinnedModels?.length
@@ -309,9 +208,7 @@ export function resolveFastChatPassModelRouting(params: {
 			? [...FASTCHAT_PROJECT_CREATE_TOOL_MODELS]
 			: useDedicatedForcedSynthesis
 				? [...forcedSynthesisRouting.models]
-				: useFastInitialPlan
-					? [...fastInitialPlanModels]
-					: ordinaryToolModels;
+				: ordinaryToolModels;
 	const retryModelRotation =
 		!params.pinnedModels?.length && selectedModels.length > 1 && params.hasTools;
 
@@ -321,11 +218,8 @@ export function resolveFastChatPassModelRouting(params: {
 			useDedicatedForcedSynthesis ||
 			(params.noToolSynthesisPass && (params.noToolSynthesisRetryCount ?? 0) > 0)
 				? 'quality'
-				: useFastInitialPlan
-					? 'speed'
-					: 'balanced',
+				: 'balanced',
 		...(selectedModels.length > 0 ? { models: selectedModels } : {}),
-		...(modelTieringVariant && !params.pinnedModels?.length ? { modelTieringVariant } : {}),
 		...(params.noToolSynthesisPass && forcedSynthesisRouting && !params.pinnedModels?.length
 			? { forcedSynthesisRoutingVariant: forcedSynthesisRouting.variant }
 			: {}),

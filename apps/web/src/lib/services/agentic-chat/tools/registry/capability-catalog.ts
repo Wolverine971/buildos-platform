@@ -1,6 +1,4 @@
 // apps/web/src/lib/services/agentic-chat/tools/registry/capability-catalog.ts
-import { isEmailChatToolsEnabled } from '../email';
-
 export type CapabilityStatus = 'available' | 'planned';
 
 export interface CapabilityDefinition {
@@ -271,19 +269,9 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 	}
 ];
 
-/**
- * Some capabilities are gated behind a feature flag (default off) and must not be
- * discoverable when disabled — mirrors the tool-registry / tools.config gating.
- */
-function isCapabilityEnabled(capability: CapabilityDefinition): boolean {
-	if (capability.id === 'email_context') return isEmailChatToolsEnabled();
-	return true;
-}
-
 export function listCapabilities(status?: CapabilityStatus): CapabilityDefinition[] {
-	const enabled = ALL_CAPABILITIES.filter(isCapabilityEnabled);
-	if (!status) return enabled;
-	return enabled.filter((capability) => capability.status === status);
+	if (!status) return ALL_CAPABILITIES;
+	return ALL_CAPABILITIES.filter((capability) => capability.status === status);
 }
 
 export function listCapabilityDirectoryItems(status?: CapabilityStatus): CapabilityDirectoryItem[] {
@@ -297,7 +285,5 @@ export function listCapabilityDirectoryItems(status?: CapabilityStatus): Capabil
 }
 
 export function getCapabilityByPath(path: string): CapabilityDefinition | undefined {
-	const capability = ALL_CAPABILITIES.find((entry) => entry.path === path);
-	if (!capability || !isCapabilityEnabled(capability)) return undefined;
-	return capability;
+	return ALL_CAPABILITIES.find((entry) => entry.path === path);
 }

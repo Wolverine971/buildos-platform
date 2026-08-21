@@ -36,9 +36,8 @@ import { EMAIL_TOOL_DEFINITIONS } from './email';
  * Complete set of tools available to the chat system.
  * Tools are organized by category for the progressive disclosure pattern.
  *
- * Email tools are gated behind the EMAIL_CHAT_TOOLS_ENABLED flag; the registry
- * builder (buildToolRegistry) and tools.config (isToolEnabled) skip them when the
- * flag is off, so their presence in this array is inert until the flag is set.
+ * Email tools are always available for discovery. Their executors only read
+ * accounts owned and connected by the authenticated BuildOS user.
  */
 export const CHAT_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	...ONTOLOGY_READ_TOOLS,
