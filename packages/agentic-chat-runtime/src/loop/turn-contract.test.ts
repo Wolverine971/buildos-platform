@@ -11,6 +11,7 @@ import {
 	executeRequestTurnClarification,
 	extractDeclaredTurnContract,
 	mergeTurnContracts,
+	describeDeclaredTurnContractIssues,
 	parseDeclaredTurnContract,
 	readFastChatPendingTurnContract,
 	resolveTurnContractFromExecutions,
@@ -1045,5 +1046,99 @@ describe('turn contract changes', () => {
 				toolExecutions: [declaration, ...finished, reprioritized]
 			}).fulfilled
 		).toBe(true);
+	});
+});
+
+/**
+ * Live evidence: Agentic Chat worker Phase 6 / Phase 4 rerun 2026-08-20,
+ * scenario `task-multi-update` rep 2 (stream run 5536abdd, turn run 731d8b08).
+ * The acting model declared the same contract three times and the turn died with
+ * `provider_tool_validation_repair_exhausted`. The sole defect was outcome 3:
+ * one target with two declared `changes` and `minimum_successful_effects: 2`.
+ * The model counted changed fields as effects; the parser counts targets.
+ * Rejection is correct — the opaque single-sentence error is not, because the
+ * bounded repair loop had nothing specific to correct.
+ */
+describe('declared turn contract rejection reasons', () => {
+	const liveFailedContract = {
+		summary: 'Mark resume and LinkedIn tasks done, bump Halcyon prep to top priority',
+		outcomes: [
+			{
+				action: 'update',
+				changes: [{ field: 'state_key', value: 'done' }],
+				target_ids: ['439660c0-127d-4a0c-9d1e-7680a7e62991'],
+				entity_kind: 'task',
+				minimum_successful_effects: 1
+			},
+			{
+				action: 'update',
+				changes: [{ field: 'state_key', value: 'done' }],
+				target_ids: ['0ecb4ca9-c291-4177-932e-83da7dcdd66a'],
+				entity_kind: 'task',
+				minimum_successful_effects: 1
+			},
+			{
+				action: 'update',
+				changes: [
+					{ field: 'priority', value: '1' },
+					{ field: 'state_key', value: 'in_progress' }
+				],
+				target_ids: ['85a6eccc-6a72-449e-83ac-0fd06c0faa93'],
+				entity_kind: 'task',
+				minimum_successful_effects: 2
+			}
+		]
+	};
+
+	it('still rejects the live contract that exhausted validation repair', () => {
+		expect(parseDeclaredTurnContract(liveFailedContract)).toBeNull();
+	});
+
+	it('names the exact outcome and property instead of listing every possible cause', () => {
+		const issues = describeDeclaredTurnContractIssues(liveFailedContract);
+		expect(issues).toHaveLength(1);
+		const [issue] = issues;
+		expect(issue).toContain('Outcome 3');
+		expect(issue).toContain('minimum_successful_effects');
+		// The repair prompt must carry both observed numbers, not just the rule.
+		expect(issue).toContain('2');
+		expect(issue).toContain('1');
+		// And it must say which reading was wrong, since counting declared
+		// `changes` as effects is exactly what the live model did.
+		expect(issue).toMatch(/target/i);
+	});
+
+	it('reports no issues once minimum_successful_effects matches the target count', () => {
+		const repaired = {
+			...liveFailedContract,
+			outcomes: liveFailedContract.outcomes.map((outcome, index) =>
+				index === 2 ? { ...outcome, minimum_successful_effects: 1 } : outcome
+			)
+		};
+		expect(describeDeclaredTurnContractIssues(repaired)).toEqual([]);
+		expect(parseDeclaredTurnContract(repaired)).not.toBeNull();
+	});
+
+	it('names unsupported actions, entity kinds, and out-of-range minimums separately', () => {
+		expect(
+			describeDeclaredTurnContractIssues({
+				outcomes: [
+					{ action: 'frobnicate', entity_kind: 'task', minimum_successful_effects: 1 }
+				]
+			}).join(' ')
+		).toMatch(/action/i);
+		expect(
+			describeDeclaredTurnContractIssues({
+				outcomes: [
+					{ action: 'update', entity_kind: 'sandwich', minimum_successful_effects: 1 }
+				]
+			}).join(' ')
+		).toMatch(/entity_kind/i);
+		expect(
+			describeDeclaredTurnContractIssues({
+				outcomes: [{ action: 'create', entity_kind: 'task', minimum_successful_effects: 0 }]
+			}).join(' ')
+		).toMatch(/minimum_successful_effects/i);
+		expect(describeDeclaredTurnContractIssues({ outcomes: [] }).join(' ')).toMatch(/outcome/i);
 	});
 });

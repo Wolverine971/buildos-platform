@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/execution/tool-execution/gateway-executor.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { GATEWAY_TOOL_DEFINITIONS } from '../../tools/core/definitions';
 import { executeGatewayTool, GATEWAY_TOOL_NAMES, isGatewayToolName } from './gateway-executor';
@@ -113,5 +114,4 @@ describe('gateway executor', () => {
 			include_schema: false
 		});
 	});
-
 });

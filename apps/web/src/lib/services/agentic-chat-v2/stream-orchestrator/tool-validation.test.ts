@@ -55,9 +55,10 @@ describe('tool validation', () => {
 		);
 
 		expect(issues).toHaveLength(1);
-		expect(issues[0]?.errors).toContain(
-			'Invalid turn contract: every outcome must use a supported action and entity kind, valid target/field arrays, and minimum_successful_effects from 1 to 100.'
-		);
+		// The repair message must name the rejected outcome and property so the
+		// bounded repair loop can correct it, not restate every contract rule.
+		expect(issues[0]?.errors.join(' ')).toContain('Outcome 1');
+		expect(issues[0]?.errors.join(' ')).toContain('minimum_successful_effects');
 	});
 
 	it('accepts a semantically valid turn contract', () => {

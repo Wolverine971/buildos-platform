@@ -108,7 +108,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 								minimum: 1,
 								maximum: 100,
 								description:
-									'Required distinct successful effects within target_ids. Use the full target count when every target must change.'
+									'Distinct targets that must change, counted within target_ids and never more than its length: setting several fields on one target is still one effect. Use the full target count when every target must change.'
 							}
 						},
 						required: ['action', 'entity_kind', 'minimum_successful_effects']

@@ -254,14 +254,45 @@ export type AgenticChatProviderPortV1 = {
 	stream?(input: AgenticChatProviderInputV1): AsyncIterable<AgenticChatProviderStepV1>;
 };
 
-export type AgenticChatProviderExecutionDiagnosticV1 = Readonly<{
-	kind: 'rejected_tool_name';
-	rejectedToolName: string | null;
-	rejectedToolNameLength: number;
-	advertisedToolCount: number;
-	repeatedAdvertisedToolName: string | null;
-	repeatedToolNameCount: number | null;
-}>;
+export type AgenticChatProviderExecutionDiagnosticV1 =
+	| Readonly<{
+			kind: 'rejected_tool_name';
+			rejectedToolName: string | null;
+			rejectedToolNameLength: number;
+			advertisedToolCount: number;
+			repeatedAdvertisedToolName: string | null;
+			repeatedToolNameCount: number | null;
+	  }>
+	/**
+	 * Why a provider's streamed tool arguments could not be accepted, carrying
+	 * only shape and position — never argument content. Added after the
+	 * 2026-08-20 battery, where `provider_tool_arguments_invalid` alone could not
+	 * distinguish a model emitting malformed JSON from a generation truncated at
+	 * its token cap, and the retained evidence named neither.
+	 */
+	| Readonly<{
+			kind: 'rejected_tool_arguments';
+			toolName: string | null;
+			/** Which acceptance step rejected the arguments. */
+			stage: 'delta_type' | 'json_parse' | 'json_shape';
+			/** Assembled argument bytes at rejection. */
+			argumentBytes: number;
+			/** SHA-256 of the assembled arguments, for correlating repeats. */
+			argumentSha256: string;
+			/** Byte offset JSON.parse reported, when it reported one. */
+			parseErrorOffset: number | null;
+			/** Coarse parse category; never the offending text. */
+			parseErrorCategory:
+				| 'unexpected_end'
+				| 'unterminated'
+				| 'unexpected_token'
+				| 'other'
+				| null;
+			/** The provider's claimed finish reason for this pass, when known. */
+			finishedReason: string | null;
+			/** True when the pass consumed its entire completion budget. */
+			completionBudgetExhausted: boolean;
+	  }>;
 
 export class AgenticChatProviderExecutionError extends Error {
 	constructor(

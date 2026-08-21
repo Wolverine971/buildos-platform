@@ -475,6 +475,16 @@ export class AgenticChatOpenRouterReadOnlyClient
 			}
 
 			const exactUsage = normalizeProviderUsage(state.rawUsage);
+			// A generation that produced exactly the completion budget we sent was
+			// cut off at the cap, whatever finish_reason the provider reports.
+			// Azure-hosted reasoning models returned `tool_calls` on capped
+			// responses in the 2026-08-20 battery, so the truncated tool arguments
+			// reached the JSON parser as if the model had finished writing them.
+			// `max_tokens` is a value we chose, so this correction never guesses.
+			const finishedReason =
+				exactUsage && exactUsage.completionTokens >= this.maxTokens
+					? 'length'
+					: (state.finishReason ?? 'stop');
 			const attemptEndedAtMs = Date.now();
 			await this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
 				round: input.providerRound,
@@ -489,7 +499,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 					attemptEndedAtMs
 				),
 				provider_timing: providerAttemptTimingPayload(active.timing(), attemptEndedAtMs),
-				finish_reason: state.finishReason ?? 'stop',
+				finish_reason: finishedReason,
 				error_class: null,
 				usage: exactUsage
 					? {
@@ -511,7 +521,7 @@ export class AgenticChatOpenRouterReadOnlyClient
 			await account('success', null, false);
 			yield {
 				type: 'done',
-				finishedReason: state.finishReason ?? 'stop',
+				finishedReason,
 				usage: exactUsage
 					? {
 							promptTokens: exactUsage.promptTokens,

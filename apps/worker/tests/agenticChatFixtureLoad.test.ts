@@ -1,3 +1,4 @@
+// apps/worker/tests/agenticChatFixtureLoad.test.ts
 import type {
 	AgenticChatCancellationObservationInputV1,
 	AgenticChatCancellationObservationV1,
@@ -84,8 +85,8 @@ describe('Agentic Chat 100-turn fixture load', () => {
 		for (const context of turns) publisher.registerTurn(context);
 
 		const text = 'x'.repeat(TEXT_BYTES_PER_TURN);
-		const deliveries = turns.map((context) =>
-			publisher.appendText(context.turnRunId, text).delivery
+		const deliveries = turns.map(
+			(context) => publisher.appendText(context.turnRunId, text).delivery
 		);
 		const peak = publisher.getWorkerSnapshot();
 		expect(peak).toMatchObject({

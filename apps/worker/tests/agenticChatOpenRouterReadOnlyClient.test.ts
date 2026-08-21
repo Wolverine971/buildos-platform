@@ -106,7 +106,11 @@ function splitSseResponse(chunks: string[]): Response {
 	);
 }
 
-function harness(fetchImpl: typeof fetch, routes = [route()]) {
+function harness(
+	fetchImpl: typeof fetch,
+	routes = [route()],
+	options: { maxTokens?: number } = {}
+) {
 	const observations: AgenticChatProviderUsageObservationV1[] = [];
 	const lifecycleObservations: AgenticChatExecutionObservationInputV1[] = [];
 	const usage = {
@@ -126,7 +130,8 @@ function harness(fetchImpl: typeof fetch, routes = [route()]) {
 			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS Agentic Chat Worker',
 			fetchImpl,
-			requestTimeoutMs: 10_000
+			requestTimeoutMs: 10_000,
+			...options
 		}
 	);
 	return { client, usage, observations, executionObservations, lifecycleObservations };
@@ -1393,5 +1398,89 @@ describe('AgenticChatOpenRouterReadOnlyClient', () => {
 				providerStatus: 'failure'
 			}
 		});
+	});
+});
+
+/**
+ * Live evidence: Agentic Chat worker Phase 6 / Phase 4 rerun 2026-08-20,
+ * `project-organize` reps 1 and 2 (stream runs ce06a335 / b95927e8). The semantic
+ * reviewer runs with `maxTokens: 1_200`. Both turns recorded `completion_tokens:
+ * 1200` — exactly the cap — and both died with `provider_tool_arguments_invalid`.
+ * Of 32 reviewer calls in that battery only these two reached the cap; the next
+ * highest was 909. `agentic_chat_execution_observations` shows the provider
+ * nevertheless reported `finish_reason: "tool_calls"`, so every downstream
+ * truncation guard was bypassed and truncated tool arguments were parsed as if
+ * they were complete. The cap we sent is ground truth the provider's claim is not.
+ */
+describe('max-token truncation detection', () => {
+	const cappedFrames = [
+		JSON.stringify({
+			choices: [
+				{
+					delta: {
+						tool_calls: [
+							{
+								index: 0,
+								id: 'reviewer-call-1',
+								type: 'function',
+								function: {
+									name: 'approve_turn_contract_review',
+									arguments:
+										'{"contract_sha256":"abc","reason":"the six loose doc'
+								}
+							}
+						]
+					}
+				}
+			]
+		}),
+		JSON.stringify({
+			choices: [{ delta: {}, finish_reason: 'tool_calls' }],
+			usage: { prompt_tokens: 8896, completion_tokens: 1200, total_tokens: 10096 }
+		}),
+		'[DONE]'
+	];
+
+	it('reports a capped generation as truncated even when the provider claims tool_calls', async () => {
+		const fetchImpl = vi.fn(async () => sseResponse(cappedFrames));
+		const { client } = harness(fetchImpl as unknown as typeof fetch, [route()], {
+			maxTokens: 1_200
+		});
+		const events = await collect(client.stream({ ...input(), tools: [], toolChoice: 'none' }));
+		const done = events.find((event) => event.type === 'done');
+		expect(done).toMatchObject({ type: 'done', finishedReason: 'length' });
+	});
+
+	it('leaves an uncapped generation’s finish reason untouched', async () => {
+		const frames = [
+			cappedFrames[0]!,
+			JSON.stringify({
+				choices: [{ delta: {}, finish_reason: 'tool_calls' }],
+				usage: { prompt_tokens: 8896, completion_tokens: 909, total_tokens: 9805 }
+			}),
+			'[DONE]'
+		];
+		const fetchImpl = vi.fn(async () => sseResponse(frames));
+		const { client } = harness(fetchImpl as unknown as typeof fetch, [route()], {
+			maxTokens: 1_200
+		});
+		const events = await collect(client.stream({ ...input(), tools: [], toolChoice: 'none' }));
+		expect(events.find((event) => event.type === 'done')).toMatchObject({
+			finishedReason: 'tool_calls'
+		});
+	});
+
+	it('records the corrected finish reason on the provider attempt observation', async () => {
+		const fetchImpl = vi.fn(async () => sseResponse(cappedFrames));
+		const { client, lifecycleObservations } = harness(
+			fetchImpl as unknown as typeof fetch,
+			[route()],
+			{ maxTokens: 1_200 }
+		);
+		await collect(client.stream({ ...input(), tools: [], toolChoice: 'none' }));
+		const ended = lifecycleObservations.find(
+			(observation) => observation.eventType === 'provider_attempt_ended'
+		);
+		expect(ended?.payload).toMatchObject({ finish_reason: 'length' });
 	});
 });

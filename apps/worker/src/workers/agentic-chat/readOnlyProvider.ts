@@ -1400,7 +1400,15 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					usage: supervisorUsage(usage)
 				});
 				yield* drainSupervisorSteps(state.supervisor);
-				const calls = completeToolCalls(toolCalls, request.tools);
+				// Judge the pass before parsing what it produced. A pass that stopped
+				// for any reason other than tool calls left its arguments unfinished,
+				// and reporting that as malformed JSON hides a recoverable condition
+				// behind a permanent protocol error.
+				assertToolCallFinishReason(toolCalls, finishedReason, request.toolChoice, 'auto');
+				const calls = completeToolCalls(toolCalls, request.tools, {
+					finishedReason,
+					completionBudgetExhausted: finishedReason === 'length'
+				});
 				finished = true;
 				if (calls.length > 0) {
 					if (request.toolChoice !== 'auto') {
@@ -1615,6 +1623,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let finished = false;
 		let reviewerUsage: AgenticChatProviderUsageV1 | null = null;
 		let fallbackReason: string | null = null;
+		let reviewFinishedReason: string | null = null;
 		let pendingReviewTool = false;
 		try {
 			yield {
@@ -1652,6 +1661,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				finished = true;
 				reviewerUsage = normalizeUsage(event.usage);
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
+				reviewFinishedReason = finishedReason;
 				state.supervisor?.observe({
 					type: 'llm_pass_completed',
 					pass: reviewRequest.logicalProviderRound,
@@ -1665,7 +1675,18 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 			}
 
-			let calls = fallbackReason ? [] : completeToolCalls(toolCalls, reviewRequest.tools);
+			let calls: CompletedProviderToolCall[] = [];
+			if (!fallbackReason && finished) {
+				const completion = completeReviewerToolCalls(toolCalls, reviewRequest.tools, {
+					finishedReason: reviewFinishedReason,
+					completionBudgetExhausted: reviewFinishedReason === 'length'
+				});
+				if (completion.rejectionCode) {
+					fallbackReason = `Independent read-only review did not return a readable decision (${completion.rejectionCode}).`;
+				} else {
+					calls = completion.calls;
+				}
+			}
 			if (!fallbackReason) {
 				if (!finished || calls.length !== 1) {
 					fallbackReason =
@@ -1747,6 +1768,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let finished = false;
 		let reviewerUsage: AgenticChatProviderUsageV1 | null = null;
 		let fallbackReason: string | null = null;
+		let reviewFinishedReason: string | null = null;
 		let pendingReviewTool = false;
 		try {
 			yield {
@@ -1784,6 +1806,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				finished = true;
 				reviewerUsage = normalizeUsage(event.usage);
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
+				reviewFinishedReason = finishedReason;
 				state.supervisor?.observe({
 					type: 'llm_pass_completed',
 					pass: reviewRequest.logicalProviderRound,
@@ -1797,7 +1820,18 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 			}
 
-			let calls = fallbackReason ? [] : completeToolCalls(toolCalls, reviewRequest.tools);
+			let calls: CompletedProviderToolCall[] = [];
+			if (!fallbackReason && finished) {
+				const completion = completeReviewerToolCalls(toolCalls, reviewRequest.tools, {
+					finishedReason: reviewFinishedReason,
+					completionBudgetExhausted: reviewFinishedReason === 'length'
+				});
+				if (completion.rejectionCode) {
+					fallbackReason = `Independent semantic review did not return a readable decision (${completion.rejectionCode}).`;
+				} else {
+					calls = completion.calls;
+				}
+			}
 			if (!fallbackReason) {
 				if (!finished || calls.length !== 1) {
 					fallbackReason =
@@ -1884,6 +1918,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let finished = false;
 		let reviewerUsage: AgenticChatProviderUsageV1 | null = null;
 		let fallbackReason: string | null = null;
+		let reviewFinishedReason: string | null = null;
 		let pendingReviewTool = false;
 		try {
 			yield {
@@ -1921,6 +1956,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				finished = true;
 				reviewerUsage = normalizeUsage(event.usage);
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
+				reviewFinishedReason = finishedReason;
 				state.supervisor?.observe({
 					type: 'llm_pass_completed',
 					pass: reviewRequest.logicalProviderRound,
@@ -1934,7 +1970,18 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 			}
 
-			let calls = fallbackReason ? [] : completeToolCalls(toolCalls, reviewRequest.tools);
+			let calls: CompletedProviderToolCall[] = [];
+			if (!fallbackReason && finished) {
+				const completion = completeReviewerToolCalls(toolCalls, reviewRequest.tools, {
+					finishedReason: reviewFinishedReason,
+					completionBudgetExhausted: reviewFinishedReason === 'length'
+				});
+				if (completion.rejectionCode) {
+					fallbackReason = `Independent mutation review did not return a readable decision (${completion.rejectionCode}).`;
+				} else {
+					calls = completion.calls;
+				}
+			}
 			if (!fallbackReason) {
 				if (!finished || calls.length !== 1) {
 					fallbackReason =
@@ -2069,7 +2116,13 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				}
 
 				const finishedReason = canonicalFinishedReason(event.finishedReason);
-				const calls = completeToolCalls(toolCalls, request.tools);
+				// See streamInitial: the finish reason decides whether the assembled
+				// arguments can be trusted, so it is consulted before they are parsed.
+				assertToolCallFinishReason(toolCalls, finishedReason, request.toolChoice, 'none');
+				const calls = completeToolCalls(toolCalls, request.tools, {
+					finishedReason,
+					completionBudgetExhausted: finishedReason === 'length'
+				});
 				const passUsage = normalizeUsage(event.usage);
 				const aggregateUsage = combineUsage(priorUsage, passUsage);
 				state.supervisor?.observe({
@@ -2618,7 +2671,7 @@ function appendToolCallDelta(
 			}
 			if (fn.arguments !== undefined) {
 				if (typeof fn.arguments !== 'string') {
-					throw providerError('provider_tool_arguments_invalid', 'permanent');
+					throw rejectedToolArgumentsError(call, 'delta_type', null);
 				}
 				call.argumentsText += fn.arguments;
 				if (Buffer.byteLength(call.argumentsText, 'utf8') > 64 * 1024) {
@@ -2630,9 +2683,128 @@ function appendToolCallDelta(
 	}
 }
 
+/**
+ * What the pass reported when its tool arguments were rejected. Truncation and
+ * malformed JSON reach the same parse failure, so the distinguishing facts —
+ * the claimed finish reason and whether the completion budget ran out — have to
+ * travel with the rejection or the cause is unrecoverable after the fact.
+ */
+type ToolCallCompletionContext = {
+	finishedReason?: string | null;
+	completionBudgetExhausted?: boolean;
+};
+
+function toolArgumentParseCategory(error: unknown): {
+	category: 'unexpected_end' | 'unterminated' | 'unexpected_token' | 'other';
+	offset: number | null;
+} {
+	const message = error instanceof Error ? error.message : '';
+	const offsetMatch = /position (\d+)/i.exec(message);
+	const parsedOffset = offsetMatch ? Number.parseInt(offsetMatch[1]!, 10) : null;
+	const category = /unexpected end of (json|data)/i.test(message)
+		? 'unexpected_end'
+		: /unterminated/i.test(message)
+			? 'unterminated'
+			: /unexpected (non-whitespace )?token/i.test(message)
+				? 'unexpected_token'
+				: 'other';
+	return {
+		category,
+		offset: parsedOffset !== null && Number.isSafeInteger(parsedOffset) ? parsedOffset : null
+	};
+}
+
+/**
+ * Records only shape and position: byte length, parse offset, a coarse category,
+ * and a content hash for correlating repeats. Never the argument text itself.
+ */
+function rejectedToolArgumentsError(
+	call: Pick<ProviderToolCallAccumulator, 'name' | 'argumentsText'>,
+	stage: 'delta_type' | 'json_parse' | 'json_shape',
+	error: unknown,
+	context: ToolCallCompletionContext = {}
+): AgenticChatProviderExecutionError {
+	const { category, offset } =
+		stage === 'json_parse'
+			? toolArgumentParseCategory(error)
+			: { category: null, offset: null };
+	const argumentBytes = Buffer.byteLength(call.argumentsText, 'utf8');
+	const finishedReason = context.finishedReason ?? null;
+	// A parser that consumed the whole string before failing ran out of input:
+	// the arguments stop mid-value rather than containing a bad one. That holds
+	// across engine message wording, so it backs up the message categories.
+	const failedAtEndOfInput =
+		category === 'unexpected_end' ||
+		category === 'unterminated' ||
+		(offset !== null && argumentBytes > 0 && offset >= argumentBytes - 1);
+	const truncated =
+		context.completionBudgetExhausted === true ||
+		finishedReason === 'length' ||
+		(stage === 'json_parse' && failedAtEndOfInput);
+	return providerError(
+		truncated ? 'provider_tool_arguments_truncated' : 'provider_tool_arguments_invalid',
+		'permanent',
+		{
+			kind: 'rejected_tool_arguments',
+			toolName: /^[A-Za-z0-9_.:-]{1,256}$/.test(call.name) ? call.name : null,
+			stage,
+			argumentBytes,
+			argumentSha256: createHash('sha256').update(call.argumentsText, 'utf8').digest('hex'),
+			parseErrorOffset: offset,
+			parseErrorCategory: category,
+			finishedReason,
+			completionBudgetExhausted: context.completionBudgetExhausted === true
+		}
+	);
+}
+
+/**
+ * A reviewer that could not finish writing its decision has not decided. Its
+ * pass must degrade to the existing clarification fallback, never kill the turn
+ * and never be read as an approval — a truncated `approve_*` call can carry a
+ * complete, correctly SHA-bound prefix and still be a decision the model never
+ * made. Returns the rejection code so the fallback text can name the cause.
+ */
+/**
+ * Preserves the pre-existing rejection order for a pass that streamed tool-call
+ * deltas — disabled tool surface first, then an unusable finish reason — but
+ * runs it before argument parsing so a truncated pass is classified by why it
+ * stopped rather than by the malformed JSON that stopping left behind.
+ */
+function assertToolCallFinishReason(
+	state: ReturnType<typeof createToolCallAccumulator>,
+	finishedReason: string,
+	toolChoice: ClientRequest['toolChoice'],
+	disabledWhen: 'auto' | 'none'
+): void {
+	if (state.size === 0) return;
+	if (disabledWhen === 'auto' ? toolChoice !== 'auto' : toolChoice === 'none') {
+		throw providerError('provider_tool_call_disabled', 'permanent');
+	}
+	if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
+		throw providerError('provider_tool_finish_reason_invalid', 'unknown');
+	}
+}
+
+function completeReviewerToolCalls(
+	state: ReturnType<typeof createToolCallAccumulator>,
+	advertisedTools: readonly AgenticChatReadOnlyProviderToolV1[],
+	context: ToolCallCompletionContext
+): { calls: CompletedProviderToolCall[]; rejectionCode: string | null } {
+	try {
+		return { calls: completeToolCalls(state, advertisedTools, context), rejectionCode: null };
+	} catch (error) {
+		if (error instanceof AgenticChatProviderExecutionError) {
+			return { calls: [], rejectionCode: error.code };
+		}
+		throw error;
+	}
+}
+
 function completeToolCalls(
 	state: ReturnType<typeof createToolCallAccumulator>,
-	advertisedTools: readonly AgenticChatReadOnlyProviderToolV1[]
+	advertisedTools: readonly AgenticChatReadOnlyProviderToolV1[],
+	context: ToolCallCompletionContext = {}
 ): CompletedProviderToolCall[] {
 	if (state.size === 0) return [];
 	const calls: CompletedProviderToolCall[] = [];
@@ -2656,11 +2828,11 @@ function completeToolCalls(
 		let parsed: unknown;
 		try {
 			parsed = JSON.parse(call.argumentsText || '{}');
-		} catch {
-			throw providerError('provider_tool_arguments_invalid', 'permanent');
+		} catch (error) {
+			throw rejectedToolArgumentsError(call, 'json_parse', error, context);
 		}
 		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-			throw providerError('provider_tool_arguments_invalid', 'permanent');
+			throw rejectedToolArgumentsError(call, 'json_shape', null, context);
 		}
 		const canonicalArguments = canonicalizeAgenticChatJson(parsed as JsonValue);
 		calls.push({

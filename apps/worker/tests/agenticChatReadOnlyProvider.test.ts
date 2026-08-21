@@ -1911,6 +1911,292 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
 	});
 
+	/**
+	 * Live evidence: Agentic Chat worker Phase 6 / Phase 4 rerun 2026-08-20,
+	 * `project-organize` reps 1 and 2. The semantic reviewer hit its 1_200-token
+	 * cap mid-`arguments` and the provider still reported `finish_reason:
+	 * "tool_calls"`, so the truncated JSON reached `completeToolCalls` and the
+	 * whole turn died with a permanent `provider_tool_arguments_invalid`. A
+	 * reviewer that fails to produce a decision must fall back to clarification —
+	 * the existing safety behaviour — not kill the turn.
+	 */
+	it('falls back to clarification when a reviewer decision is truncated mid-arguments', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const documentId = '42000000-0000-4000-8000-000000000004';
+		const contractArguments = organizationContractArguments(documentId);
+		const client = clientWithRounds([
+			providerContractAndReadRound(documentId, projectId),
+			[
+				{ type: 'text', content: 'Which folder should these go under?' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		// A capped generation: the argument string stops mid-token. The client now
+		// reports this as `length`; assert the provider degrades safely either way.
+		const semanticReviewer = clientWithRounds([
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'reviewer-truncated-1',
+							type: 'function',
+							function: {
+								name: 'approve_turn_contract_review',
+								arguments: '{"contract_sha256":"abc","reason":"the six loose doc'
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'length' }
+			]
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ moveDocumentInTree: true, updateOntoDocument: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					readToolDefinition('get_project_overview'),
+					moveDocumentToolDefinition(),
+					updateDocumentToolDefinition()
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'get_project_overview',
+					'move_document_in_tree',
+					'update_onto_document'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		const reviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-contract-1',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					),
+					durableReadFeedback('provider-read-1', { project_id: projectId })
+				]
+			})
+		);
+		// The turn survives as a clarification, and no mutation is authorized by a
+		// decision the reviewer never finished writing.
+		expect(reviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					toolName: 'request_turn_clarification'
+				})
+			])
+		);
+		expect(reviewSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
+	});
+
+	it('never treats a truncated reviewer decision as an approval', async () => {
+		const projectId = '40000000-0000-4000-8000-000000000004';
+		const documentId = '42000000-0000-4000-8000-000000000004';
+		const contractArguments = organizationContractArguments(documentId);
+		const normalizedContract = parseDeclaredTurnContract(contractArguments);
+		if (!normalizedContract) throw new Error('Expected a valid test turn contract');
+		const contractReviewSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
+			.digest('hex');
+		const client = clientWithRounds([
+			providerContractAndReadRound(documentId, projectId),
+			[
+				{ type: 'text', content: 'Which folder should these go under?' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		// The truncation lands after a complete, correctly SHA-bound prefix: the
+		// dangerous shape, because the visible bytes look like a real approval.
+		const truncated = `{"contract_sha256":"${contractReviewSha256}","reason":"approved because the user asked for exactly thi`;
+		const semanticReviewer = clientWithRounds([
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'reviewer-truncated-approval-1',
+							type: 'function',
+							function: {
+								name: 'approve_turn_contract_review',
+								arguments: truncated
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			]
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ moveDocumentInTree: true, updateOntoDocument: true }
+		).prepare({
+			executionInput: executionInputWithReadSurface(
+				[
+					turnContractToolDefinition(),
+					readOnlyTurnToolDefinition(),
+					clarificationToolDefinition(),
+					readToolDefinition('get_project_overview'),
+					moveDocumentToolDefinition(),
+					updateDocumentToolDefinition()
+				],
+				[
+					'declare_turn_contract',
+					'declare_read_only_turn',
+					'request_turn_clarification',
+					'get_project_overview',
+					'move_document_in_tree',
+					'update_onto_document'
+				]
+			),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await collect(invocation.stream());
+		const reviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-contract-1',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					),
+					durableReadFeedback('provider-read-1', { project_id: projectId })
+				]
+			})
+		);
+		expect(
+			reviewSteps.some(
+				(step) =>
+					step.type === 'read_tool' && step.toolName === 'approve_turn_contract_review'
+			)
+		).toBe(false);
+		expect(reviewSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
+	});
+
+	it('classifies truncated acting-model arguments with payload-free diagnostics', async () => {
+		const client = clientWithRounds([
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-truncated-read-1',
+							type: 'function',
+							function: {
+								name: 'get_project_overview',
+								arguments: '{"project_id":"40000000-0000-4000-8000-0000000'
+							}
+						}
+					]
+				},
+				// The provider claims a clean tool-call finish on a capped generation,
+				// which is exactly what Azure returned in the 2026-08-20 battery.
+				{ type: 'done', finishedReason: 'tool_calls' }
+			]
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+		}).prepare({
+			executionInput: executionInputWithReadSurface([
+				readToolDefinition('get_project_overview')
+			]),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const error = await collect(invocation.stream()).then(
+			() => null,
+			(caught: unknown) => caught as AgenticChatProviderExecutionError
+		);
+		// Truncation is named as truncation, not as a malformed-JSON protocol
+		// violation, so an equivalent future failure is self-classifying.
+		expect(error?.code).toBe('provider_tool_arguments_truncated');
+		expect(error?.diagnostic).toMatchObject({
+			kind: 'rejected_tool_arguments',
+			stage: 'json_parse',
+			toolName: 'get_project_overview',
+			parseErrorCategory: 'unterminated',
+			finishedReason: 'tool_calls'
+		});
+		// Shape and position travel; argument content never does.
+		expect(error?.diagnostic).toMatchObject({ argumentBytes: 46 });
+		expect(JSON.stringify(error?.diagnostic)).not.toContain('project_id');
+	});
+
+	it('still rejects genuinely malformed arguments as invalid, not truncated', async () => {
+		const client = clientWithRounds([
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-malformed-read-1',
+							type: 'function',
+							function: {
+								name: 'get_project_overview',
+								arguments: '{"project_id": }'
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			]
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+		}).prepare({
+			executionInput: executionInputWithReadSurface([
+				readToolDefinition('get_project_overview')
+			]),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const error = await collect(invocation.stream()).then(
+			() => null,
+			(caught: unknown) => caught as AgenticChatProviderExecutionError
+		);
+		expect(error?.code).toBe('provider_tool_arguments_invalid');
+		expect(error?.diagnostic).toMatchObject({ parseErrorCategory: 'unexpected_token' });
+	});
+
 	it('restores the reviewed write surface after the disposition gate declares a contract', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
 		const documentId = '42000000-0000-4000-8000-000000000004';

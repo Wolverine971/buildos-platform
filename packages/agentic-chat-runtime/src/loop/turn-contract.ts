@@ -190,18 +190,70 @@ function readChanges(value: unknown): TurnContractChange[] | null {
 	return Array.from(valuesByField, ([field, changeValue]) => ({ field, value: changeValue }));
 }
 
-function normalizeOutcome(value: unknown, index: number): TurnContractOutcome | null {
+/**
+ * Collects why an outcome was rejected so the bounded validation-repair loop can
+ * name the exact property instead of restating every rule. The 2026-08-20
+ * `task-multi-update` failure exhausted repair because a single catch-all
+ * sentence never told the model which of four candidate causes actually fired.
+ */
+type TurnContractIssueSink = { push(issue: string): void } | undefined;
+
+function rejectOutcome(issues: TurnContractIssueSink, index: number, reason: string): null {
+	issues?.push(`Outcome ${index + 1}: ${reason}`);
+	return null;
+}
+
+function normalizeOutcome(
+	value: unknown,
+	index: number,
+	issues?: TurnContractIssueSink
+): TurnContractOutcome | null {
 	const record = asRecord(value);
-	if (!record) return null;
+	if (!record) {
+		return rejectOutcome(issues, index, 'must be a JSON object.');
+	}
 	const action = normalizeAction(record.action);
 	const entityKind = normalizeEntityKind(record.entity_kind ?? record.entityKind);
-	if (!action || !entityKind) return null;
+	if (!action) {
+		return rejectOutcome(
+			issues,
+			index,
+			`action ${JSON.stringify(record.action ?? null)} is not supported. Use one of: ${TURN_CONTRACT_ACTIONS.join(', ')}.`
+		);
+	}
+	if (!entityKind) {
+		return rejectOutcome(
+			issues,
+			index,
+			`entity_kind ${JSON.stringify(record.entity_kind ?? record.entityKind ?? null)} is not supported. Use one of: ${TURN_CONTRACT_ENTITY_KINDS.join(', ')}.`
+		);
+	}
 	const rawTargetIds = record.target_ids ?? record.targetIds;
 	const rawRequiredFields = record.required_fields ?? record.requiredFields;
 	const parsedTargetIds = readStringArray(rawTargetIds ?? []);
 	const parsedRequiredFields = readStringArray(rawRequiredFields ?? [], 30);
 	const changes = readChanges(record.changes);
-	if (!parsedTargetIds || !parsedRequiredFields || !changes) return null;
+	if (!parsedTargetIds) {
+		return rejectOutcome(
+			issues,
+			index,
+			'target_ids must be an array of at most 50 non-empty id strings.'
+		);
+	}
+	if (!parsedRequiredFields) {
+		return rejectOutcome(
+			issues,
+			index,
+			'required_fields must be an array of at most 30 non-empty field-name strings.'
+		);
+	}
+	if (!changes) {
+		return rejectOutcome(
+			issues,
+			index,
+			`changes must be an array of at most ${MAX_CHANGES_PER_OUTCOME} objects, each with a non-empty "field" and a string, number, boolean, or null "value".`
+		);
+	}
 	// A create has no durable entity id until after it executes. Models sometimes
 	// put the containing project id in target_ids, but target_ids means existing
 	// entity ids and would make both pre-execution authorization and completion
@@ -220,11 +272,21 @@ function normalizeOutcome(value: unknown, index: number): TurnContractOutcome | 
 		record.minimum_successful_effects ?? record.minimumSuccessfulEffects,
 		Math.max(1, targetIds.length)
 	);
-	if (
-		minimumSuccessfulEffects === null ||
-		(targetIds.length > 0 && minimumSuccessfulEffects > targetIds.length)
-	) {
-		return null;
+	if (minimumSuccessfulEffects === null) {
+		return rejectOutcome(
+			issues,
+			index,
+			`minimum_successful_effects ${JSON.stringify(record.minimum_successful_effects ?? record.minimumSuccessfulEffects ?? null)} must be a whole number from 1 to 100.`
+		);
+	}
+	if (targetIds.length > 0 && minimumSuccessfulEffects > targetIds.length) {
+		return rejectOutcome(
+			issues,
+			index,
+			`minimum_successful_effects is ${minimumSuccessfulEffects} but target_ids lists only ${targetIds.length} ${targetIds.length === 1 ? 'target' : 'targets'}. ` +
+				'An effect is one target that changed, not one field changed on a target: setting several fields on a single target is still one effect. ' +
+				`Either set minimum_successful_effects to at most ${targetIds.length}, or list every target this outcome must change in target_ids.`
+		);
 	}
 	return {
 		id: readString(record.id, 80) ?? `outcome_${index + 1}`,
@@ -240,13 +302,24 @@ function normalizeOutcome(value: unknown, index: number): TurnContractOutcome | 
 	};
 }
 
-export function parseDeclaredTurnContract(value: unknown): TurnContract | null {
+export function parseDeclaredTurnContract(
+	value: unknown,
+	issues?: TurnContractIssueSink
+): TurnContract | null {
 	const record = asRecord(value);
-	if (!record) return null;
+	if (!record) {
+		issues?.push('The turn contract must be a JSON object with an "outcomes" array.');
+		return null;
+	}
 	const rawOutcomes = Array.isArray(record.outcomes) ? record.outcomes : [];
-	if (rawOutcomes.length < 1 || rawOutcomes.length > 20) return null;
+	if (rawOutcomes.length < 1 || rawOutcomes.length > 20) {
+		issues?.push(
+			`outcomes must be an array of 1 to 20 outcomes; received ${Array.isArray(record.outcomes) ? rawOutcomes.length : JSON.stringify(record.outcomes ?? null)}.`
+		);
+		return null;
+	}
 	const outcomes = rawOutcomes
-		.map(normalizeOutcome)
+		.map((outcome, index) => normalizeOutcome(outcome, index, issues))
 		.filter((outcome): outcome is TurnContractOutcome => Boolean(outcome));
 	if (outcomes.length !== rawOutcomes.length) return null;
 	const summary = readString(record.summary, 300);
@@ -256,6 +329,21 @@ export function parseDeclaredTurnContract(value: unknown): TurnContract | null {
 		...(summary ? { summary } : {}),
 		outcomes
 	};
+}
+
+/**
+ * Returns one human-readable issue per rejected outcome, or `[]` when the
+ * contract parses. Used by pre-execution validation so a repair round tells the
+ * model which property to change rather than repeating the whole rule set.
+ */
+export function describeDeclaredTurnContractIssues(value: unknown): string[] {
+	const issues: string[] = [];
+	if (parseDeclaredTurnContract(value, issues)) return [];
+	return issues.length > 0
+		? issues
+		: [
+				'Every outcome must use a supported action and entity kind, valid target/field arrays, and minimum_successful_effects from 1 to 100.'
+			];
 }
 
 export function readFastChatPendingTurnContract(

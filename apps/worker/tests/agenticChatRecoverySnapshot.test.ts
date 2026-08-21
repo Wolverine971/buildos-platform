@@ -1,3 +1,4 @@
+// apps/worker/tests/agenticChatRecoverySnapshot.test.ts
 import { createAgentStreamEventIdV1 } from '@buildos/shared-types';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -100,27 +101,27 @@ describe('SupabaseAgenticChatRecoverySnapshotAdapter', () => {
 
 	it('accepts exact terminal truth with its deterministic done event and partial message', async () => {
 		const terminalReceipt = receipt({
-				status: 'failed',
-				snapshot_sequence: 3,
-				durable_through_sequence: 3,
-				projection_durable_sequence: 3,
-				durable_events: [],
-				response_watermark: 3,
-				assistant_message: {
-					id: MESSAGE_ID,
-					role: 'assistant',
-					content: 'partial',
-					metadata: { turn_run_id: TURN_RUN_ID, execution_generation: GENERATION },
-					prompt_tokens: null,
-					completion_tokens: null,
-					total_tokens: null,
-					created_at: '2026-08-03T12:00:01.000Z'
-				},
-				terminal_event_id: createAgentStreamEventIdV1(TURN_RUN_ID, GENERATION, 3),
-				terminalized_at: '2026-08-03T12:00:01.000Z',
-				finished_reason: 'worker_interrupted',
-				failure_code: 'timeout_post_start'
-			});
+			status: 'failed',
+			snapshot_sequence: 3,
+			durable_through_sequence: 3,
+			projection_durable_sequence: 3,
+			durable_events: [],
+			response_watermark: 3,
+			assistant_message: {
+				id: MESSAGE_ID,
+				role: 'assistant',
+				content: 'partial',
+				metadata: { turn_run_id: TURN_RUN_ID, execution_generation: GENERATION },
+				prompt_tokens: null,
+				completion_tokens: null,
+				total_tokens: null,
+				created_at: '2026-08-03T12:00:01.000Z'
+			},
+			terminal_event_id: createAgentStreamEventIdV1(TURN_RUN_ID, GENERATION, 3),
+			terminalized_at: '2026-08-03T12:00:01.000Z',
+			finished_reason: 'worker_interrupted',
+			failure_code: 'timeout_post_start'
+		});
 		const { adapter } = adapterFor(terminalReceipt);
 
 		await expect(

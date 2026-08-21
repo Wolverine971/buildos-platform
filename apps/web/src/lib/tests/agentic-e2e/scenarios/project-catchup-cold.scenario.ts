@@ -110,8 +110,14 @@ export const projectCatchupColdScenario: Scenario = {
 				// weak model's wording still matches; two of three proves it read past the
 				// stale summary.
 				const freshSignals: Array<{ label: string; hit: boolean }> = [
-					{ label: 'proposal sent/done', hit: /(sent|delivered|completed|done)/.test(text) },
-					{ label: 'waiting on reply', hit: /(waiting|hear back|awaiting|response)/.test(text) },
+					{
+						label: 'proposal sent/done',
+						hit: /(sent|delivered|completed|done)/.test(text)
+					},
+					{
+						label: 'waiting on reply',
+						hit: /(waiting|hear back|awaiting|response)/.test(text)
+					},
 					{ label: 'monthly pricing decision', hit: /monthly/.test(text) }
 				];
 				const hits = freshSignals.filter((signal) => signal.hit);
@@ -141,7 +147,7 @@ export const projectCatchupColdScenario: Scenario = {
 			judge: async (turn) => ({
 				rubric:
 					'In a brand-new chat with no history, the user asked to be caught up on the project. ' +
-					'The project\'s START HERE summary is stale: it says the proposal is still being drafted ' +
+					"The project's START HERE summary is stale: it says the proposal is still being drafted " +
 					'and pricing is undecided. The live state says the proposal was SENT (task done), the team ' +
 					'is WAITING to hear back, and pricing was DECIDED as monthly. A good catch-up reports the ' +
 					'live state accurately and briefly, ideally noting what is next (waiting on Meridian). ' +

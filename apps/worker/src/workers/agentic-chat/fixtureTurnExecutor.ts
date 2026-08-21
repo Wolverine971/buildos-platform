@@ -3177,7 +3177,32 @@ function providerExecutionDiagnostic(
 	error: AgenticChatProviderExecutionError
 ): Record<string, string | number> {
 	const diagnostic = error.diagnostic;
-	if (!diagnostic || diagnostic.kind !== 'rejected_tool_name') return {};
+	if (!diagnostic) return {};
+	if (diagnostic.kind === 'rejected_tool_arguments') {
+		// Shape and position only. Never the argument text, the prompt, or hidden
+		// reasoning — the hash exists so repeats can be correlated without them.
+		const toolName = canonicalProviderToolDiagnosticName(diagnostic.toolName);
+		const argumentBytes = boundedDiagnosticInteger(diagnostic.argumentBytes, 64 * 1024);
+		const parseErrorOffset = boundedDiagnosticInteger(diagnostic.parseErrorOffset, 64 * 1024);
+		return {
+			rejected_tool_arguments_stage: diagnostic.stage,
+			...(toolName ? { rejected_provider_tool_name: toolName } : {}),
+			...(argumentBytes !== null ? { rejected_tool_argument_bytes: argumentBytes } : {}),
+			...(parseErrorOffset !== null
+				? { rejected_tool_argument_parse_offset: parseErrorOffset }
+				: {}),
+			...(diagnostic.parseErrorCategory
+				? { rejected_tool_argument_parse_category: diagnostic.parseErrorCategory }
+				: {}),
+			...(diagnostic.finishedReason &&
+			/^[A-Za-z0-9_.:-]{1,64}$/.test(diagnostic.finishedReason)
+				? { provider_finished_reason: diagnostic.finishedReason }
+				: {}),
+			completion_budget_exhausted: diagnostic.completionBudgetExhausted ? 1 : 0,
+			rejected_tool_argument_sha256: diagnostic.argumentSha256
+		};
+	}
+	if (diagnostic.kind !== 'rejected_tool_name') return {};
 	const rejectedToolName = canonicalProviderToolDiagnosticName(diagnostic.rejectedToolName);
 	const repeatedAdvertisedToolName = canonicalProviderToolDiagnosticName(
 		diagnostic.repeatedAdvertisedToolName

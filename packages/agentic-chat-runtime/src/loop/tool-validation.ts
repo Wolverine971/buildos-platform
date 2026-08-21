@@ -15,7 +15,10 @@ import {
 	isOntologyDurableWriteTool
 } from './durable-text-validation';
 import { parseToolArguments } from './tool-arguments';
-import { DECLARE_TURN_CONTRACT_TOOL_NAME, parseDeclaredTurnContract } from './turn-contract';
+import {
+	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	describeDeclaredTurnContractIssues
+} from './turn-contract';
 
 const UPDATE_TOOL_PREFIX = 'update_onto_';
 const UUID_VALIDATED_TOOL_NAMES = new Set([
@@ -158,10 +161,14 @@ export function validateToolCalls(
 		// value such as minimum_successful_effects: 0 reaches the adapter, throws,
 		// and terminates the whole turn instead of entering the existing durable
 		// validation-repair loop.
-		if (toolName === DECLARE_TURN_CONTRACT_TOOL_NAME && !parseDeclaredTurnContract(args)) {
-			errors.push(
-				'Invalid turn contract: every outcome must use a supported action and entity kind, valid target/field arrays, and minimum_successful_effects from 1 to 100.'
-			);
+		if (toolName === DECLARE_TURN_CONTRACT_TOOL_NAME) {
+			// Name the exact rejected outcome and property. A single catch-all
+			// sentence listing every rule gave the bounded repair loop nothing to
+			// act on, so the 2026-08-20 `task-multi-update` turn resent the same
+			// invalid contract until repair rounds were exhausted.
+			for (const issue of describeDeclaredTurnContractIssues(args)) {
+				errors.push(`Invalid turn contract: ${issue}`);
+			}
 		}
 
 		const normalizedOp = registry.byToolName[toolName]?.op;

@@ -269,7 +269,7 @@ function createDefaultAssembly(
 		...clientOptions,
 		routes: buildAgenticChatSemanticReviewerRoutes(input.config.provider.routes),
 		temperature: 0,
-		maxTokens: 1_200
+		maxTokens: AGENTIC_CHAT_SEMANTIC_REVIEWER_MAX_TOKENS
 	});
 	return createAgenticChatPhase3Assembly({
 		client: input.client,
@@ -298,6 +298,22 @@ function createDefaultAssembly(
  * reviewed tool-capable model that is distinct from the acting model whenever
  * the catalog permits it. This is configuration-free by design.
  */
+/**
+ * The reviewer's completion budget covers hidden reasoning as well as the
+ * decision it writes. `reasoning: { exclude: true }` keeps reasoning out of the
+ * stream but not out of this budget, so a reasoning model can spend most of the
+ * allowance thinking and then be cut off mid-`arguments`.
+ *
+ * At the previous 1_200 the 2026-08-20 battery lost both `project-organize`
+ * turns exactly that way: 1007 and 593 reasoning tokens against a 1200 cap, both
+ * reported by the provider as `finish_reason: "tool_calls"`. Across 32 reviewer
+ * calls in that battery the largest that completed was 909, so this leaves real
+ * headroom for reasoning plus a long decision while staying a firm bound. Only
+ * tokens actually generated are billed, so raising the ceiling does not raise
+ * the cost of the calls that already fit.
+ */
+export const AGENTIC_CHAT_SEMANTIC_REVIEWER_MAX_TOKENS = 4_000;
+
 export function buildAgenticChatSemanticReviewerRoutes(
 	routes: EnabledPhase3Config['provider']['routes']
 ): EnabledPhase3Config['provider']['routes'] {
