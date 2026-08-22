@@ -121,7 +121,8 @@
 	import { createAgentChatWorkerUiAdapter } from './agent-chat-worker-ui-adapter';
 	import {
 		appendUniqueThinkingActivity,
-		finalizeWorkerThinkingBlock
+		finalizeWorkerThinkingBlock,
+		upsertWorkerThinkingBlock
 	} from './agent-chat-thinking-state';
 	import {
 		downloadAgentChatStepsMarkdown,
@@ -773,9 +774,9 @@
 		getSelectedEntityId: () => shellRouter.selectedEntityId,
 		getResolvedProjectFocus: () => resolvedProjectFocus,
 		getIsPreparingSession: () => isPreparingSession,
-		// A worker turn keeps its handle until terminal truth arrives even when the
-		// streaming flag flaps between reconcile ticks; without this the orchestrator
-		// re-issued and aborted a prewarm on every tick of a worker turn.
+		// A worker turn keeps its handle until terminal truth arrives. Include that
+		// authoritative ownership so adoption/reconciliation transitions can never
+		// restart prewarm while the worker is still active.
 		getIsTurnActive: () =>
 			stream.isStartingStream ||
 			stream.isStreaming ||
@@ -2349,9 +2350,6 @@
 			setCurrentActivity: (label) => {
 				stream.currentActivity = label;
 			},
-			setIsStreaming: (value) => {
-				stream.isStreaming = value;
-			},
 			setError: (message) => {
 				stream.error = message;
 			},
@@ -2483,19 +2481,6 @@
 		handleSSEMessage.resetTurnState();
 
 		const blockId = `worker-thinking:${input.handle.turnRunId}:${input.executionGeneration}`;
-		messages = messages.filter((message) => {
-			if (message.id === `active-turn-${input.handle.turnRunId}`) return false;
-			return !(
-				message.type === 'thinking_block' &&
-				message.metadata?.turn_run_id === input.handle.turnRunId &&
-				message.id !== blockId
-			);
-		});
-		const existingIndex = messages.findIndex((message) => message.id === blockId);
-		if (existingIndex >= 0) {
-			currentThinkingBlockId = blockId;
-			return;
-		}
 		const thinkingBlock: ThinkingBlockMessage = {
 			id: blockId,
 			type: 'thinking_block',
@@ -2518,7 +2503,7 @@
 				execution_mode: 'worker_realtime'
 			}
 		};
-		messages = [...messages, thinkingBlock];
+		messages = upsertWorkerThinkingBlock(messages, currentThinkingBlockId, thinkingBlock);
 		currentThinkingBlockId = blockId;
 	}
 

@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/projects-old/+page.svelte -->
+<!-- apps/web/src/routes/projects/+page.svelte -->
 <!--
   PERFORMANCE OPTIMIZATIONS (Dec 2024):
   - projectCount available immediately for skeleton rendering

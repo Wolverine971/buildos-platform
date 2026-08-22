@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects-old/+page.server.ts
+// apps/web/src/routes/projects/+page.server.ts
 /**
  * Ontology Dashboard - Server Load
  * Fetches all projects for the dashboard view
@@ -9,7 +9,7 @@
  * - Zero layout shift - exact number of skeleton cards rendered from start
  */
 
-import type { PageServerLoad } from './$types';
+import type { PageServerLoad } from '../projects-old/$types';
 import { error } from '@sveltejs/kit';
 import {
 	ensureActorId,

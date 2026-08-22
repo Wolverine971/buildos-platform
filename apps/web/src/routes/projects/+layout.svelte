@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/projects-old/+layout.svelte -->
+<!-- apps/web/src/routes/projects/+layout.svelte -->
 <script lang="ts">
 	let { children } = $props();
 </script>

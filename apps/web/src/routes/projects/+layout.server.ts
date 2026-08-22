@@ -1,11 +1,11 @@
-// apps/web/src/routes/projects-old/+layout.server.ts
+// apps/web/src/routes/projects/+layout.server.ts
 /**
  * Ontology Layout Server
  * Ensures user is authenticated to access ontology routes
  */
 
 import { redirect } from '@sveltejs/kit';
-import type { LayoutServerLoad } from './$types';
+import type { LayoutServerLoad } from '../projects-old/$types';
 
 interface OntologyUser {
 	id: string;

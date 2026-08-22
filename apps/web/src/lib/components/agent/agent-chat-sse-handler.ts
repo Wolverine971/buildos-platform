@@ -351,7 +351,6 @@ export interface ModalStateDeps {
 	setLastTurnContext(ctx: LastTurnContext | null): void;
 	setProjectFocus(focus: ProjectFocus | null): void;
 	setCurrentActivity(label: string): void;
-	setIsStreaming(value: boolean): void;
 	setError(message: string | null): void;
 	setSelectedContext(params: {
 		contextType: ChatContextType;
@@ -643,8 +642,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 			deps.addCreatedEntitiesMessage(createdEntitiesBuffer);
 		}
 		createdEntitiesBuffer = [];
-		// Note: isStreaming is also set to false by onComplete; this is for immediate UI response
-		state.setIsStreaming(false);
 		if (state.isAgentToAgentMode() && state.getAgentLoopActive()) {
 			const remaining = state.getAgentTurnsRemaining();
 			if (remaining > 0) {
@@ -660,7 +657,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 	function handleError(event: Extract<AgentSSEMessage, { type: 'error' }>): void {
 		const streamErrorMessage = event.error || 'An error occurred';
 		state.setError(streamErrorMessage);
-		state.setIsStreaming(false);
 		state.setCurrentActivity('');
 		// Drop any buffered create cards from this failed turn (the close-time refresh
 		// still surfaces whatever actually committed).

@@ -358,7 +358,6 @@ interface HandlerHarness {
 	};
 	snapshot: {
 		currentActivity: string;
-		isStreaming: boolean;
 		error: string | null;
 		selectedContextType: string | null;
 		selectedEntityId: string | undefined;
@@ -389,7 +388,6 @@ function createHarness(
 ): HandlerHarness {
 	const snapshot: HandlerHarness['snapshot'] = {
 		currentActivity: '',
-		isStreaming: true,
 		error: null,
 		selectedContextType: null,
 		selectedEntityId: undefined,
@@ -505,9 +503,6 @@ function createHarness(
 		},
 		setCurrentActivity(label) {
 			snapshot.currentActivity = label;
-		},
-		setIsStreaming(value) {
-			snapshot.isStreaming = value;
 		},
 		setError(message) {
 			snapshot.error = message;
@@ -1000,12 +995,11 @@ describe('createSSEHandler — context_shift', () => {
 });
 
 describe('createSSEHandler — done + error', () => {
-	it('finalizes assistant message, thinking block, and clears isStreaming on done', () => {
+	it('finalizes presentation state on done without owning transport lifecycle state', () => {
 		const h = createHarness();
 		h.handler({ type: 'done' });
 		expect(h.calls.finalizeAssistantMessage).toBe(1);
 		expect(h.calls.finalize[0]).toEqual({ status: undefined, note: undefined });
-		expect(h.snapshot.isStreaming).toBe(false);
 		expect(h.snapshot.currentActivity).toBe('');
 	});
 
@@ -1112,13 +1106,12 @@ describe('createSSEHandler — done + error', () => {
 		}
 	});
 
-	it('sets error and finalizes thinking block with error status', () => {
+	it('sets error and finalizes thinking presentation without owning transport state', () => {
 		const h = createHarness();
 		// Seed a thinking block so finalize is reachable
 		h.deps.thinking.ensure();
 		h.handler({ type: 'error', error: 'Stream died' });
 		expect(h.snapshot.error).toBe('Stream died');
-		expect(h.snapshot.isStreaming).toBe(false);
 		expect(h.calls.finalize[0]).toEqual({ status: 'error', note: undefined });
 	});
 
