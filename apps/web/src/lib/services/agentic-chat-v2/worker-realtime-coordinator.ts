@@ -28,6 +28,7 @@ export type AgenticChatWorkerRealtimeCoordinatorOptions = {
 	changedWatchdogMs?: number;
 	unchangedWatchdogMs?: number;
 	retryMs?: number;
+	requestTimeoutMs?: number;
 	random?: () => number;
 	onError?: (error: unknown) => void;
 };
@@ -63,12 +64,20 @@ export class AgenticChatReconciliationProtocolError extends Error {
 	}
 }
 
+export class AgenticChatReconciliationTimeoutError extends Error {
+	constructor(readonly timeoutMs: number) {
+		super(`Agentic Chat reconciliation exceeded ${timeoutMs}ms`);
+		this.name = 'AgenticChatReconciliationTimeoutError';
+	}
+}
+
 export class AgenticChatWorkerRealtimeCoordinator {
 	readonly inbox: AgenticChatWorkerRealtimeInbox;
 	readonly #fetch: typeof fetch;
 	readonly #changedWatchdogMs: number;
 	readonly #unchangedWatchdogMs: number;
 	readonly #retryMs: number;
+	readonly #requestTimeoutMs: number;
 	readonly #random: () => number;
 	readonly #onError?: (error: unknown) => void;
 	readonly #turns = new Map<string, CoordinatedTurn>();
@@ -87,6 +96,10 @@ export class AgenticChatWorkerRealtimeCoordinator {
 			'unchangedWatchdogMs'
 		);
 		this.#retryMs = positiveSafeInteger(options.retryMs ?? 5_000, 'retryMs');
+		this.#requestTimeoutMs = positiveSafeInteger(
+			options.requestTimeoutMs ?? 15_000,
+			'requestTimeoutMs'
+		);
 		this.#random = options.random ?? Math.random;
 		this.#onError = options.onError;
 	}
@@ -317,22 +330,51 @@ export class AgenticChatWorkerRealtimeCoordinator {
 			// during the 2026-08-06 canary) names its own cause next time.
 			reason: request.reason
 		});
-		const response = await this.#fetch(
-			`/api/agent/v2/turns/${encodeURIComponent(request.handle.turnRunId)}/reconcile?${query}`,
-			{
-				method: 'GET',
-				headers: { Accept: 'application/json' },
-				credentials: 'same-origin',
-				cache: 'no-store',
-				signal
+		const controller = new AbortController();
+		let timeout: ReturnType<typeof setTimeout> | null = null;
+		let abortListener: (() => void) | null = null;
+		const operation = (async () => {
+			const response = await this.#fetch(
+				`/api/agent/v2/turns/${encodeURIComponent(request.handle.turnRunId)}/reconcile?${query}`,
+				{
+					method: 'GET',
+					headers: { Accept: 'application/json' },
+					credentials: 'same-origin',
+					cache: 'no-store',
+					signal: controller.signal
+				}
+			);
+			if (!response.ok) throw new AgenticChatReconciliationHttpError(response.status);
+			const payload: unknown = await response.json();
+			if (!isRecord(payload) || payload.success !== true || !('data' in payload)) {
+				throw new Error('Invalid Agentic Chat reconciliation API response');
 			}
-		);
-		if (!response.ok) throw new AgenticChatReconciliationHttpError(response.status);
-		const payload: unknown = await response.json();
-		if (!isRecord(payload) || payload.success !== true || !('data' in payload)) {
-			throw new Error('Invalid Agentic Chat reconciliation API response');
+			return payload.data as AgenticChatReconcileRpcResultV1;
+		})();
+		const lifecycleAbort = new Promise<never>((_resolve, reject) => {
+			abortListener = () => {
+				controller.abort();
+				reject(createAbortError());
+			};
+			if (signal.aborted) abortListener();
+			else signal.addEventListener('abort', abortListener, { once: true });
+		});
+		const requestTimeout = new Promise<never>((_resolve, reject) => {
+			timeout = setTimeout(() => {
+				// Reject the authoritative deadline first so a fetch implementation that
+				// reports its abort synchronously cannot make this look like lifecycle
+				// teardown and accidentally suppress the retry.
+				reject(new AgenticChatReconciliationTimeoutError(this.#requestTimeoutMs));
+				controller.abort();
+			}, this.#requestTimeoutMs);
+		});
+
+		try {
+			return await Promise.race([operation, lifecycleAbort, requestTimeout]);
+		} finally {
+			if (timeout !== null) clearTimeout(timeout);
+			if (abortListener) signal.removeEventListener('abort', abortListener);
 		}
-		return payload.data as AgenticChatReconcileRpcResultV1;
 	}
 
 	#schedule(state: CoordinatedTurn, delayMs: number, throttleQueuedRequest = false): void {
@@ -412,4 +454,11 @@ function isAbortError(value: unknown): boolean {
 	return value instanceof DOMException
 		? value.name === 'AbortError'
 		: value instanceof Error && value.name === 'AbortError';
+}
+
+function createAbortError(): Error {
+	if (typeof DOMException !== 'undefined') return new DOMException('Aborted', 'AbortError');
+	const error = new Error('Aborted');
+	error.name = 'AbortError';
+	return error;
 }

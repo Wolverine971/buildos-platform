@@ -43,6 +43,10 @@ const REALTIME_READY_TIMEOUT_MS = 10_000;
 // short terminalization/reconciliation window. Matching that budget exactly
 // makes the harness race a durable terminal event that lands just after it.
 const WORKER_TURN_TIMEOUT_MS = 315_000;
+// A suspended test process can resume after the worker has already terminalized.
+// Give durable reconciliation one bounded chance to recover the terminal receipt
+// before classifying a missed Realtime broadcast as a transport failure.
+const WORKER_TERMINAL_RECOVERY_TIMEOUT_MS = 30_000;
 
 export type { AgenticE2EExecutionMode } from './types';
 
@@ -278,11 +282,11 @@ export class AgenticE2EWorkerClient {
 			) {
 				throw new Error('[agentic-e2e] worker admission returned the wrong turn identity');
 			}
-			await withTimeout(
+			await waitForWorkerTerminalWithRecovery({
 				terminal,
-				WORKER_TURN_TIMEOUT_MS,
-				`worker turn ${descriptor.handle.turnRunId} did not terminate`
-			);
+				turnRunId: descriptor.handle.turnRunId,
+				requestReconciliation: () => this.#runtime.coordinator.requestAll('watchdog')
+			});
 		} catch (error) {
 			// Return a normal TurnResult so deterministic assertions and Phase 0
 			// capture can retain the failed/timed-out turn instead of losing it when
@@ -440,10 +444,51 @@ async function withTimeout<T>(
 		return await Promise.race([
 			operation,
 			new Promise<T>((_resolve, reject) => {
-				timer = setTimeout(() => reject(new Error(`[agentic-e2e] ${message}`)), timeoutMs);
+				timer = setTimeout(
+					() =>
+						reject(
+							new AgenticE2EWorkerTerminalTimeoutError(`[agentic-e2e] ${message}`)
+						),
+					timeoutMs
+				);
 			})
 		]);
 	} finally {
 		if (timer !== null) clearTimeout(timer);
+	}
+}
+
+export async function waitForWorkerTerminalWithRecovery(params: {
+	terminal: Promise<void>;
+	turnRunId: string;
+	requestReconciliation: () => void;
+	timeoutMs?: number;
+	recoveryTimeoutMs?: number;
+}): Promise<void> {
+	const timeoutMs = params.timeoutMs ?? WORKER_TURN_TIMEOUT_MS;
+	const recoveryTimeoutMs = params.recoveryTimeoutMs ?? WORKER_TERMINAL_RECOVERY_TIMEOUT_MS;
+	try {
+		await withTimeout(
+			params.terminal,
+			timeoutMs,
+			`worker turn ${params.turnRunId} did not terminate`
+		);
+		return;
+	} catch (error) {
+		if (!(error instanceof AgenticE2EWorkerTerminalTimeoutError)) throw error;
+	}
+
+	params.requestReconciliation();
+	await withTimeout(
+		params.terminal,
+		recoveryTimeoutMs,
+		`worker turn ${params.turnRunId} did not terminate after final durable reconciliation`
+	);
+}
+
+class AgenticE2EWorkerTerminalTimeoutError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'AgenticE2EWorkerTerminalTimeoutError';
 	}
 }

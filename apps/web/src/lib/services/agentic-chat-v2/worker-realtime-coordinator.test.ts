@@ -5,7 +5,10 @@ import {
 	type TurnHandleV1
 } from '@buildos/shared-types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AgenticChatWorkerRealtimeCoordinator } from './worker-realtime-coordinator';
+import {
+	AgenticChatReconciliationTimeoutError,
+	AgenticChatWorkerRealtimeCoordinator
+} from './worker-realtime-coordinator';
 
 const USER_ID = 'd1000000-0000-4000-8000-000000000001';
 const SESSION_ID = 'd2000000-0000-4000-8000-000000000001';
@@ -70,6 +73,8 @@ function applicationObserver() {
 }
 
 async function flushAsync(): Promise<void> {
+	await Promise.resolve();
+	await Promise.resolve();
 	await Promise.resolve();
 	await Promise.resolve();
 	await Promise.resolve();
@@ -189,6 +194,76 @@ describe('AgenticChatWorkerRealtimeCoordinator', () => {
 		await flushAsync();
 		expect(fetchImpl).toHaveBeenCalledTimes(2);
 		expect(observer.applyReconciliation).toHaveBeenCalledOnce();
+		coordinator.stop();
+	});
+
+	it('times out a stuck reconciliation request, then retries to terminal truth', async () => {
+		vi.useFakeTimers();
+		const errors: unknown[] = [];
+		const terminalReceipt = receipt({
+			requested_execution_generation: 0,
+			execution_generation: 1,
+			generation_changed: true,
+			status: 'completed',
+			snapshot_sequence: 1,
+			durable_through_sequence: 1,
+			projection_durable_sequence: 1,
+			response_watermark: 1,
+			assistant_message: {
+				id: 'd6000000-0000-4000-8000-000000000003',
+				role: 'assistant',
+				content: 'recovered after a stuck request',
+				metadata: { turn_run_id: TURN_ID, execution_generation: 1 },
+				prompt_tokens: null,
+				completion_tokens: null,
+				total_tokens: null,
+				created_at: '2026-08-02T23:00:02.000Z'
+			},
+			terminal_event_id: `${TURN_ID}:1:1`,
+			terminalized_at: '2026-08-02T23:00:02.000Z',
+			updated_at: '2026-08-02T23:00:02.000Z'
+		});
+		const fetchImpl = vi
+			.fn()
+			.mockImplementationOnce((_input: RequestInfo | URL, init?: RequestInit) => {
+				return new Promise<Response>((_resolve, reject) => {
+					(init?.signal as AbortSignal | undefined)?.addEventListener(
+						'abort',
+						() => reject(new DOMException('Aborted', 'AbortError')),
+						{ once: true }
+					);
+				});
+			})
+			.mockResolvedValueOnce(apiResponse(terminalReceipt));
+		const observer = applicationObserver();
+		const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+			fetchImpl: fetchImpl as typeof fetch,
+			requestTimeoutMs: 100,
+			retryMs: 50,
+			onError: (error) => errors.push(error)
+		});
+		coordinator.start();
+		coordinator.registerTurn({ handle, observer });
+		await flushAsync();
+
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		await vi.advanceTimersByTimeAsync(100);
+		await flushAsync();
+		expect(errors[0]).toBeInstanceOf(AgenticChatReconciliationTimeoutError);
+		expect(coordinator.inbox.getSnapshot(TURN_ID)).toMatchObject({
+			buffering: true,
+			reconciliationRequested: false
+		});
+
+		await vi.advanceTimersByTimeAsync(50);
+		await flushAsync();
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		expect(observer.applyReconciliation).toHaveBeenLastCalledWith(
+			expect.objectContaining({ status: 'completed' })
+		);
+
+		await vi.advanceTimersByTimeAsync(30_000);
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
 		coordinator.stop();
 	});
 

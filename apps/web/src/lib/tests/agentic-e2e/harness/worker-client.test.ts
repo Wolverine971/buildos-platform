@@ -1,8 +1,10 @@
+// apps/web/src/lib/tests/agentic-e2e/harness/worker-client.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	createAuthenticatedHarnessFetch,
 	requireAdvertisedMutationTools,
-	resolveAgenticE2EExecutionMode
+	resolveAgenticE2EExecutionMode,
+	waitForWorkerTerminalWithRecovery
 } from './worker-client';
 
 function healthResponse(body: unknown, status = 200): Response {
@@ -14,6 +16,7 @@ function healthResponse(body: unknown, status = 200): Response {
 
 describe('agentic E2E worker client boundaries', () => {
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.unstubAllGlobals();
 		delete process.env.AGENTIC_E2E_EXECUTION_MODE;
 	});
@@ -47,6 +50,62 @@ describe('agentic E2E worker client boundaries', () => {
 		const headers = new Headers(init?.headers);
 		expect(headers.get('accept')).toBe('application/json');
 		expect(headers.get('cookie')).toBe('sb-auth-token=secret-cookie');
+	});
+
+	it('recovers a missed terminal broadcast from durable truth after the deadline', async () => {
+		vi.useFakeTimers();
+		let resolveTerminal!: () => void;
+		const terminal = new Promise<void>((resolve) => {
+			resolveTerminal = resolve;
+		});
+		const requestReconciliation = vi.fn(() => {
+			setTimeout(resolveTerminal, 10);
+		});
+		const waiting = waitForWorkerTerminalWithRecovery({
+			terminal,
+			turnRunId: 'd4000000-0000-4000-8000-000000000001',
+			requestReconciliation,
+			timeoutMs: 100,
+			recoveryTimeoutMs: 50
+		});
+
+		await vi.advanceTimersByTimeAsync(100);
+		expect(requestReconciliation).toHaveBeenCalledOnce();
+		await vi.advanceTimersByTimeAsync(10);
+		await expect(waiting).resolves.toBeUndefined();
+	});
+
+	it('reports a distinct failure when final durable reconciliation also misses', async () => {
+		vi.useFakeTimers();
+		const requestReconciliation = vi.fn();
+		const waiting = waitForWorkerTerminalWithRecovery({
+			terminal: new Promise<void>(() => undefined),
+			turnRunId: 'd4000000-0000-4000-8000-000000000001',
+			requestReconciliation,
+			timeoutMs: 100,
+			recoveryTimeoutMs: 50
+		});
+		const rejected = expect(waiting).rejects.toThrow(
+			'did not terminate after final durable reconciliation'
+		);
+
+		await vi.advanceTimersByTimeAsync(150);
+		await rejected;
+		expect(requestReconciliation).toHaveBeenCalledOnce();
+	});
+
+	it('does not hide a non-timeout terminal observer failure behind reconciliation', async () => {
+		const requestReconciliation = vi.fn();
+		await expect(
+			waitForWorkerTerminalWithRecovery({
+				terminal: Promise.reject(new Error('terminal observer failed')),
+				turnRunId: 'd4000000-0000-4000-8000-000000000001',
+				requestReconciliation,
+				timeoutMs: 100,
+				recoveryTimeoutMs: 50
+			})
+		).rejects.toThrow('terminal observer failed');
+		expect(requestReconciliation).not.toHaveBeenCalled();
 	});
 });
 
