@@ -55,6 +55,10 @@ export class AgenticChatWorkerTurnAdoption {
 	readonly #onReleased?: AgenticChatWorkerTurnAdoptionOptions['onReleased'];
 	readonly #onError?: AgenticChatWorkerTurnAdoptionOptions['onError'];
 	readonly #registrations = new Map<string, Registration>();
+	// Terminal truth is immutable for a turn id. Keep a mount-scoped tombstone so
+	// an already-buffered discovery response cannot recreate a fresh UI observer
+	// after the terminal observer has finished the turn.
+	readonly #terminalTurnIds = new Set<string>();
 	readonly #discoveryEpochs = new Map<string, number>();
 	#epoch = 0;
 
@@ -77,6 +81,10 @@ export class AgenticChatWorkerTurnAdoption {
 
 	adoptAdmissionResponse(value: unknown): AgenticChatWorkerTurnDescriptorV1 {
 		const parsed = parseAdmissionResponse(value);
+		// The admission POST is newer authority than any session discovery that
+		// started before it. Fence those responses before installing the handle so
+		// an old empty lookup cannot immediately prune the newly admitted turn.
+		this.#invalidateSessionDiscoveries(parsed.descriptor.handle.sessionId);
 		return this.#adopt(parsed.descriptor, parsed.source);
 	}
 
@@ -129,7 +137,7 @@ export class AgenticChatWorkerTurnAdoption {
 	}
 
 	releaseSession(sessionId: string): void {
-		this.#discoveryEpochs.set(sessionId, (this.#discoveryEpochs.get(sessionId) ?? 0) + 1);
+		this.#invalidateSessionDiscoveries(sessionId);
 		for (const [turnRunId, registration] of this.#registrations) {
 			if (registration.descriptor.handle.sessionId === sessionId) {
 				this.#release(turnRunId, 'session_changed');
@@ -143,6 +151,11 @@ export class AgenticChatWorkerTurnAdoption {
 		for (const turnRunId of [...this.#registrations.keys()]) {
 			this.#release(turnRunId, reason);
 		}
+		this.#terminalTurnIds.clear();
+	}
+
+	#invalidateSessionDiscoveries(sessionId: string): void {
+		this.#discoveryEpochs.set(sessionId, (this.#discoveryEpochs.get(sessionId) ?? 0) + 1);
 	}
 
 	#adopt(
@@ -155,14 +168,19 @@ export class AgenticChatWorkerTurnAdoption {
 			if (!sameWorkerHandle(existing.descriptor.handle, descriptor.handle)) {
 				throw new Error('Authoritative worker handle changed after registration');
 			}
+			if (this.#terminalTurnIds.has(turnRunId)) return descriptor;
 			existing.descriptor = descriptor;
 			this.#notifyAdopted(descriptor, source);
 			return descriptor;
 		}
+		if (this.#terminalTurnIds.has(turnRunId)) return descriptor;
 
 		const observer = this.#createObserver({
 			handle: descriptor.handle,
 			onTerminal: (status) => {
+				// Fence re-adoption synchronously. The actual unregister remains deferred
+				// so the inbox can finish applying the terminal receipt safely.
+				this.#terminalTurnIds.add(turnRunId);
 				queueMicrotask(() => this.#release(turnRunId, 'terminal', status));
 			}
 		});

@@ -182,6 +182,24 @@ describe('AgenticChatWorkerTurnAdoption', () => {
 		);
 	});
 
+	it('does not let a pre-admission empty discovery prune the newly admitted turn', async () => {
+		let resolveResponse!: (response: Response) => void;
+		const fetchImpl = vi.fn<typeof fetch>(
+			() => new Promise<Response>((resolve) => (resolveResponse = resolve))
+		);
+		const h = harness(fetchImpl);
+		const staleDiscovery = h.manager.discoverSession(SESSION_1);
+
+		h.manager.adoptAdmissionResponse(admission('newly_admitted'));
+		resolveResponse(discovery([]));
+
+		await expect(staleDiscovery).resolves.toEqual([]);
+		expect(h.registerTurn).toHaveBeenCalledOnce();
+		expect(h.unregister).not.toHaveBeenCalled();
+		expect(h.released).not.toHaveBeenCalled();
+		expect(h.manager.trackedTurnCount).toBe(1);
+	});
+
 	it('refuses legacy, malformed, cross-session, and terminal discovery data', async () => {
 		const h = harness(
 			vi.fn<typeof fetch>().mockResolvedValue(
@@ -242,6 +260,30 @@ describe('AgenticChatWorkerTurnAdoption', () => {
 			reason: 'terminal',
 			status: 'completed'
 		});
+	});
+
+	it('does not re-adopt a terminal turn from a duplicate or stale discovery response', async () => {
+		let resolveResponse!: (response: Response) => void;
+		const fetchImpl = vi.fn<typeof fetch>(
+			() => new Promise<Response>((resolve) => (resolveResponse = resolve))
+		);
+		const h = harness(fetchImpl);
+		h.manager.adoptOwnedDescriptor(descriptor());
+		const staleDiscovery = h.manager.discoverSession(SESSION_1);
+
+		h.observers.get(TURN_1)!.onTerminal('completed');
+		// This can happen in the same microtask when a replayed session event causes
+		// discovery to race the observer's deferred unregister.
+		h.manager.adoptOwnedDescriptor(descriptor());
+		resolveResponse(discovery([descriptor()]));
+
+		await staleDiscovery;
+		await Promise.resolve();
+
+		expect(h.registerTurn).toHaveBeenCalledOnce();
+		expect(h.adopted).toHaveBeenCalledOnce();
+		expect(h.unregister).toHaveBeenCalledOnce();
+		expect(h.manager.trackedTurnCount).toBe(0);
 	});
 
 	it('fences a late discovery response after session or auth cleanup', async () => {

@@ -264,6 +264,11 @@
 	let activeChatTab = $state<AgentChatPanelTab>('chat');
 	let brainDumpContext = $state<AgentBrainDumpContext | null>(null);
 	let currentSession = $state<ChatSession | null>(null);
+	// Worker reconciliation can replay a fresh session object on every receipt.
+	// Effects that own session-scoped resources must depend on the stable scalar
+	// identity, not the object assignment, or the replay tears down and re-adopts
+	// the same worker observer between reconcile ticks.
+	const currentSessionId = $derived(currentSession?.id ?? null);
 	const liveTimelineItems = $derived.by(() =>
 		timelineItemsFromMessages(currentSession?.id ?? 'local-session', messages)
 	);
@@ -396,7 +401,7 @@
 
 	// Keep the realtime subscription pinned to the active session.
 	$effect(() => {
-		const sid = currentSession?.id;
+		const sid = currentSessionId;
 		if (sid) subscribeSessionMessages(sid);
 	});
 
@@ -414,7 +419,7 @@
 	// Owned active-session discovery is the only reload/second-tab adoption path.
 	// It cannot select worker transport or construct a handle from local state.
 	$effect(() => {
-		const sessionId = currentSession?.id;
+		const sessionId = currentSessionId;
 		if (!browser || !isSurfaceActive || !sessionId || !workerAdoption) return;
 		const controller = new AbortController();
 		void workerAdoption
