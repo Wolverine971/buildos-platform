@@ -26,14 +26,28 @@ beforeAll(() => {
 });
 
 describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
-	it('corrects a mutation success claim when no write ran', () => {
+	it('corrects a mutation success claim when a declared contract has no write evidence', () => {
 		const emittedText = 'Done — I marked the task complete.';
+		const contract = toolExecution(
+			'declare_turn_contract',
+			true,
+			{ status: 'declared' },
+			{
+				outcomes: [
+					{
+						action: 'complete',
+						entity_kind: 'task',
+						target_ids: ['task_1'],
+						minimum_successful_effects: 1
+					}
+				]
+			}
+		);
 		const result = enforceAgenticChatTerminalTextIntegrityV1({
 			assistantText: emittedText,
 			finishedReason: 'stop',
 			contextType: 'project',
-			userMessage: 'Mark the task complete.',
-			toolExecutions: []
+			toolExecutions: [contract]
 		});
 
 		expect(result.assistantText).toContain('no write call ran');
@@ -52,7 +66,6 @@ describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 			assistantText: '',
 			finishedReason: 'stop',
 			contextType: 'project',
-			userMessage: 'Find the launch plan task.',
 			toolExecutions: [execution]
 		});
 
@@ -70,7 +83,6 @@ describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 			assistantText: 'Marked the task complete.',
 			finishedReason: 'stop',
 			contextType: 'project',
-			userMessage: 'Mark the task complete.',
 			toolExecutions: [execution]
 		});
 
@@ -87,7 +99,6 @@ describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 			assistantText: 'Which task should I update?',
 			finishedReason: 'supervisor_question',
 			contextType: 'project',
-			userMessage: 'Update it.',
 			toolExecutions: []
 		});
 
@@ -109,7 +120,6 @@ describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 			assistantText: 'Which matching task should I update?',
 			finishedReason: 'stop',
 			contextType: 'project',
-			userMessage: 'Mark the email task complete.',
 			toolExecutions: [execution]
 		});
 
@@ -122,11 +132,16 @@ describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 	});
 });
 
-function toolExecution(name: string, success: boolean, result: unknown): FastToolExecution {
+function toolExecution(
+	name: string,
+	success: boolean,
+	result: unknown,
+	args: Record<string, unknown> = {}
+): FastToolExecution {
 	const toolCall: ChatToolCall = {
 		id: `${name}:1`,
 		type: 'function',
-		function: { name, arguments: '{}' }
+		function: { name, arguments: JSON.stringify(args) }
 	};
 	const toolResult: ChatToolResult = {
 		tool_call_id: toolCall.id,

@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/execution/tool-execution/tool-policies.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ServiceContext } from '../../shared/types';
 import { SameTurnDocumentRegistry } from './same-turn-document-registry';
@@ -38,7 +39,6 @@ describe('tool preflight policies', () => {
 			postAuthorization: [
 				'duplicate_document_create',
 				'project_creation_profile_and_grounding',
-				'fiction_living_reference_defaults',
 				'project_creation_context_confirmation',
 				'document_description_requirements'
 			]
@@ -215,7 +215,7 @@ describe('tool preflight policies', () => {
 		).toBe(true);
 	});
 
-	it('adds author source only to living-fiction structure updates', () => {
+	it('does not rewrite authorized document content from user-message wording', () => {
 		const source =
 			'Chapter 5 opens Part II the morning after Ilyan chooses not to report Mara.';
 		const result = runPostAuthorizationPreflight({
@@ -258,8 +258,8 @@ describe('tool preflight policies', () => {
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
-		expect(result.args.content).toContain('## Chapter 5');
-		expect(result.args.content).toContain(source);
+		expect(result.args.content).toBe('## Chapter 5\n\nPart II begins.');
+		expect(result.args.content).not.toContain(source);
 	});
 
 	it('preserves exact document-description validation and trimming', () => {

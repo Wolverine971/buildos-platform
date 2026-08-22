@@ -11,6 +11,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
+import { normalizeTaskStateInput } from '@buildos/shared-agent-ops/ontology/task-state';
 import { buildSearchFilter } from '@buildos/shared-agent-ops/utils/search-filter';
 import {
 	collectOutlineAnchors,
@@ -24,6 +25,7 @@ import {
 	type AgenticChatToolAccessPortV1
 } from './access-port';
 import { pickStartHereDocument } from './start-here-selector';
+import { prepareAgenticChatSearchTerm } from './search-term';
 
 // ============================================
 // CONTEXT
@@ -185,45 +187,6 @@ export interface SharedReadDocumentSectionArgs {
 // the web class keeps its own copies for the executors that stay web-side)
 // ============================================
 
-/**
- * Prepare a search term by removing special characters.
- */
-function prepareSearchTerm(term?: string): string {
-	if (!term) return '';
-	return term.replace(/[%]/g, '').replace(/,/g, ' ').trim();
-}
-
-function normalizeTaskState(state?: string | null): string | undefined {
-	if (!state) return undefined;
-
-	const normalized = state
-		.trim()
-		.toLowerCase()
-		.replace(/[\s-]+/g, '_');
-	if (!normalized) return undefined;
-
-	const stateMap: Record<string, string> = {
-		pending: 'todo',
-		not_started: 'todo',
-		backlog: 'todo',
-		inprogress: 'in_progress',
-		started: 'in_progress',
-		working: 'in_progress',
-		active: 'in_progress',
-		completed: 'done',
-		complete: 'done'
-	};
-
-	const candidate = stateMap[normalized] ?? normalized;
-	if (['todo', 'in_progress', 'blocked', 'done'].includes(candidate)) {
-		return candidate;
-	}
-
-	// Legacy web logs a warning here; the shared module stays logger-free and
-	// simply drops the invalid value (same returned behavior).
-	return undefined;
-}
-
 function normalizeProjectState(state?: string | null): string | undefined {
 	if (!state) return undefined;
 
@@ -266,7 +229,7 @@ function normalizeProjectState(state?: string | null): string | undefined {
 }
 
 function resolveSearchTerm(args: { query?: string; search?: string }): string {
-	return prepareSearchTerm(args.query ?? args.search);
+	return prepareAgenticChatSearchTerm(args.query ?? args.search);
 }
 
 function expandBooleanSearchTerms(term: string): string[] {
@@ -282,7 +245,7 @@ function expandBooleanSearchTerms(term: string): string[] {
 		new Set(
 			normalized
 				.split(/\s+\bOR\b\s+|\s*\|\s*/i)
-				.map((part) => prepareSearchTerm(part))
+				.map((part) => prepareAgenticChatSearchTerm(part))
 				.filter(Boolean)
 		)
 	).slice(0, 12);
@@ -331,7 +294,7 @@ function tokenizeForKeywordSearch(term: string): string[] {
 		new Set(
 			term
 				.split(/\s+/)
-				.map((part) => prepareSearchTerm(part))
+				.map((part) => prepareAgenticChatSearchTerm(part))
 				.filter((part) => part.length >= 2 && !SEARCH_STOPWORDS.has(part.toLowerCase()))
 		)
 	).slice(0, 12);
@@ -855,7 +818,7 @@ export async function listOntoTasks(
 	query = applyArchivedReadFilter(query, args);
 	({ q: query } = await scopeEntityQueryToReadableProject(context, query, args.project_id));
 
-	const normalizedState = normalizeTaskState(args.state_key);
+	const normalizedState = normalizeTaskStateInput(args.state_key);
 	if (normalizedState) {
 		query = query.eq('state_key', normalizedState);
 	}
@@ -1157,7 +1120,7 @@ export async function searchOntoTasks(
 	query = applyArchivedReadFilter(query, args);
 	({ q: query } = await scopeEntityQueryToReadableProject(context, query, args.project_id));
 
-	const normalizedState = normalizeTaskState(args.state_key);
+	const normalizedState = normalizeTaskStateInput(args.state_key);
 	if (normalizedState) {
 		query = query.eq('state_key', normalizedState);
 	}

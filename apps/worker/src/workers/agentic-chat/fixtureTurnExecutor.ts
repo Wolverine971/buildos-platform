@@ -1,6 +1,6 @@
 // apps/worker/src/workers/agentic-chat/fixtureTurnExecutor.ts
 import { randomUUID } from 'node:crypto';
-import { buildLastTurnContextDraftV1 } from '@buildos/agentic-chat-runtime';
+import { buildLastTurnContextDraftV1 } from '@buildos/agentic-chat-runtime/context';
 import {
 	extractContextShiftPayload,
 	resolveTurnContractFromExecutions,
@@ -879,7 +879,6 @@ export class AgenticChatFixtureTurnExecutor {
 				finishedReason,
 				contextType:
 					typeof requestContext.type === 'string' ? requestContext.type : 'global',
-				userMessage: String(executionInput.requestPayload.message),
 				toolExecutions: terminalContext.toolExecutions
 			});
 			finishedReason = terminalTextIntegrity.finishedReason;

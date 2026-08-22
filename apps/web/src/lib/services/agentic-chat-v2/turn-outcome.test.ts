@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-outcome.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
-import { resolveFastChatTurnIntent, type FastChatTurnIntent } from './turn-intent';
+import type { FastChatTurnIntent } from './turn-intent';
 import { resolveFastChatTurnOutcome } from './turn-outcome';
 
 function execution(name: string, success = true) {
@@ -20,10 +20,20 @@ function execution(name: string, success = true) {
 
 describe('resolveFastChatTurnOutcome', () => {
 	it('requires every expected write for a compound mutation', () => {
-		const intent = resolveFastChatTurnIntent({
-			contextType: 'project',
-			latestUserMessage: 'Mark the task done and create a document for the handoff.'
-		});
+		const intent: FastChatTurnIntent = {
+			version: 1,
+			requiresWrite: true,
+			action: 'update',
+			entityKind: 'task',
+			operations: [
+				{ action: 'update', entityKind: 'task' },
+				{ action: 'create', entityKind: 'document' }
+			],
+			source: 'current_message',
+			originalRequestText: null,
+			originatingTurnRunId: null,
+			clearPending: false
+		};
 
 		expect(
 			resolveFastChatTurnOutcome({
@@ -67,10 +77,17 @@ describe('resolveFastChatTurnOutcome', () => {
 	});
 
 	it('does not accept a failed expected write', () => {
-		const intent = resolveFastChatTurnIntent({
-			contextType: 'project',
-			latestUserMessage: 'Create a document.'
-		});
+		const intent: FastChatTurnIntent = {
+			version: 1,
+			requiresWrite: true,
+			action: 'create',
+			entityKind: 'document',
+			operations: [{ action: 'create', entityKind: 'document' }],
+			source: 'current_message',
+			originalRequestText: null,
+			originatingTurnRunId: null,
+			clearPending: false
+		};
 
 		expect(
 			resolveFastChatTurnOutcome({

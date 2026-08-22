@@ -370,6 +370,7 @@ describe('runTerminalFinalization', () => {
 			toolLimitNotice: null,
 			answerTruncated: false,
 			latestUserText: 'Mark the task done.',
+			mutationRequested: true,
 			toolExecutions: [readExecution],
 			emitAssistantDelta: vi.fn(),
 			emitAssistantRemainder,

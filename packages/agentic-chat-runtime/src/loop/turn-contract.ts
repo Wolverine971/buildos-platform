@@ -11,6 +11,39 @@ export const REQUEST_TURN_CLARIFICATION_TOOL_NAME = 'request_turn_clarification'
 export const CANCEL_TURN_CONTRACT_TOOL_NAME = 'cancel_turn_contract';
 export const FASTCHAT_PENDING_TURN_CONTRACT_METADATA_KEY = 'fastchat_pending_turn_contract';
 
+export const AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1 = Object.freeze([
+	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	DECLARE_READ_ONLY_TURN_TOOL_NAME,
+	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
+	CANCEL_TURN_CONTRACT_TOOL_NAME
+] as const);
+
+export type AgenticChatStandardControlToolNameV1 =
+	(typeof AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1)[number];
+
+const AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(
+	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1
+);
+
+export function isAgenticChatStandardControlToolNameV1(
+	value: unknown
+): value is AgenticChatStandardControlToolNameV1 {
+	return typeof value === 'string' && AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAME_SET_V1.has(value);
+}
+
+export type AgenticChatStandardControlExecutionV1 =
+	| {
+			success: true;
+			result: UnknownRecord;
+			requiresUserAction: boolean;
+	  }
+	| {
+			success: false;
+			result: null;
+			error: string;
+			requiresUserAction: false;
+	  };
+
 export const TURN_CONTRACT_ACTIONS = [
 	'create',
 	'update',
@@ -233,6 +266,28 @@ function readChanges(value: unknown): TurnContractChange[] | null {
  */
 type TurnContractIssueSink = { push(issue: string): void } | undefined;
 
+/**
+ * Echoes a rejected value back to the model so it can see what it sent, bounded
+ * because the value is model-controlled and the message travels into the repair
+ * prompt, `chat_tool_executions.error_message`, and the activity log. Every
+ * other reader in this file bounds its input; an error path must too.
+ */
+const MAX_ECHOED_VALUE_CHARS = 80;
+const MAX_REPORTED_CONTRACT_ISSUES = 5;
+
+function echoRejectedValue(value: unknown): string {
+	let rendered: string;
+	try {
+		rendered = JSON.stringify(value ?? null) ?? 'null';
+	} catch {
+		// Cyclic or otherwise unserializable input still has to produce a message.
+		return '[unserializable]';
+	}
+	return rendered.length > MAX_ECHOED_VALUE_CHARS
+		? `${rendered.slice(0, MAX_ECHOED_VALUE_CHARS)}… (${rendered.length} chars)`
+		: rendered;
+}
+
 function rejectOutcome(issues: TurnContractIssueSink, index: number, reason: string): null {
 	issues?.push(`Outcome ${index + 1}: ${reason}`);
 	return null;
@@ -253,14 +308,14 @@ function normalizeOutcome(
 		return rejectOutcome(
 			issues,
 			index,
-			`action ${JSON.stringify(record.action ?? null)} is not supported. Use one of: ${TURN_CONTRACT_ACTIONS.join(', ')}.`
+			`action ${echoRejectedValue(record.action)} is not supported. Use one of: ${TURN_CONTRACT_ACTIONS.join(', ')}.`
 		);
 	}
 	if (!entityKind) {
 		return rejectOutcome(
 			issues,
 			index,
-			`entity_kind ${JSON.stringify(record.entity_kind ?? record.entityKind ?? null)} is not supported. Use one of: ${TURN_CONTRACT_ENTITY_KINDS.join(', ')}.`
+			`entity_kind ${echoRejectedValue(record.entity_kind ?? record.entityKind)} is not supported. Use one of: ${TURN_CONTRACT_ENTITY_KINDS.join(', ')}.`
 		);
 	}
 	const rawTargetIds = record.target_ids ?? record.targetIds;
@@ -311,7 +366,7 @@ function normalizeOutcome(
 		return rejectOutcome(
 			issues,
 			index,
-			`minimum_successful_effects ${JSON.stringify(record.minimum_successful_effects ?? record.minimumSuccessfulEffects ?? null)} must be a whole number from 1 to 100.`
+			`minimum_successful_effects ${echoRejectedValue(record.minimum_successful_effects ?? record.minimumSuccessfulEffects)} must be a whole number from 1 to 100.`
 		);
 	}
 	if (targetIds.length > 0 && minimumSuccessfulEffects > targetIds.length) {
@@ -452,7 +507,7 @@ export function parseDeclaredTurnContract(
 	const rawOutcomes = Array.isArray(record.outcomes) ? record.outcomes : [];
 	if (rawOutcomes.length < 1 || rawOutcomes.length > 20) {
 		issues?.push(
-			`outcomes must be an array of 1 to 20 outcomes; received ${Array.isArray(record.outcomes) ? rawOutcomes.length : JSON.stringify(record.outcomes ?? null)}.`
+			`outcomes must be an array of 1 to 20 outcomes; received ${Array.isArray(record.outcomes) ? rawOutcomes.length : echoRejectedValue(record.outcomes)}.`
 		);
 		return null;
 	}
@@ -482,11 +537,21 @@ export function parseDeclaredTurnContract(
 export function describeDeclaredTurnContractIssues(value: unknown): string[] {
 	const issues: string[] = [];
 	if (parseDeclaredTurnContract(value, issues)) return [];
-	return issues.length > 0
-		? issues
-		: [
-				'Every outcome must use a supported action and entity kind, valid target/field arrays, and minimum_successful_effects from 1 to 100.'
-			];
+	if (issues.length === 0) {
+		return [
+			'Every outcome must use a supported action and entity kind, valid target/field arrays, and minimum_successful_effects from 1 to 100.'
+		];
+	}
+	// A contract may declare up to 20 outcomes and every one of them can be
+	// wrong. Repairing the first few is what unblocks the turn, and the whole
+	// list travels into the repair prompt, so cap what is echoed rather than
+	// spending the next pass's budget restating the same mistake 20 times.
+	if (issues.length <= MAX_REPORTED_CONTRACT_ISSUES) return issues;
+	const remaining = issues.length - MAX_REPORTED_CONTRACT_ISSUES;
+	return [
+		...issues.slice(0, MAX_REPORTED_CONTRACT_ISSUES),
+		`${remaining} further outcome${remaining === 1 ? '' : 's'} were rejected for similar reasons; fix these first.`
+	];
 }
 
 export function readFastChatPendingTurnContract(
@@ -587,9 +652,121 @@ export function extractDeclaredTurnContract(toolCall: ChatToolCall): TurnContrac
 	return parseDeclaredTurnContract(args);
 }
 
+function standardControlFailure(error: string): AgenticChatStandardControlExecutionV1 {
+	return { success: false, result: null, error, requiresUserAction: false };
+}
+
+/**
+ * Executes the deterministic semantics shared by every host for the four
+ * standard turn-control tools. Provider call ids, persistence, decision
+ * authorship, deadlines, and error classification remain host concerns.
+ */
+export function executeAgenticChatStandardControlToolV1(input: {
+	toolName: AgenticChatStandardControlToolNameV1;
+	arguments: unknown;
+}): AgenticChatStandardControlExecutionV1 {
+	const { args, error } = parseToolArguments(input.arguments);
+
+	switch (input.toolName) {
+		case DECLARE_TURN_CONTRACT_TOOL_NAME: {
+			const contract = error ? null : parseDeclaredTurnContract(args);
+			if (!contract) {
+				return standardControlFailure(
+					'Turn contract validation failed: provide at least one outcome with a supported action and entity_kind.'
+				);
+			}
+			return {
+				success: true,
+				result: {
+					status: 'declared',
+					contract,
+					instruction:
+						'Continue this turn until every declared outcome is backed by successful durable effects, or explain the concrete blocker.'
+				},
+				requiresUserAction: false
+			};
+		}
+		case DECLARE_READ_ONLY_TURN_TOOL_NAME: {
+			const reason = readString(args.reason, 240);
+			if (error || !reason) {
+				return standardControlFailure(
+					'Read-only turn declaration failed: explain why the current request commissions no durable data change.'
+				);
+			}
+			return {
+				success: true,
+				result: {
+					status: 'read_only_declared',
+					reason,
+					instruction:
+						'Continue with reads or answer from evidence; do not claim a durable mutation.'
+				},
+				requiresUserAction: false
+			};
+		}
+		case REQUEST_TURN_CLARIFICATION_TOOL_NAME: {
+			const reason = readString(args.reason, 240);
+			const question = readString(args.question, 500);
+			if (error || !reason || !question) {
+				return standardControlFailure(
+					'Turn clarification failed: provide the unresolved semantic choice and a concise question for the user.'
+				);
+			}
+			return {
+				success: true,
+				result: {
+					status: 'clarification_required',
+					reason,
+					question,
+					requires_user_action: true,
+					instruction:
+						'Ask the question and wait for the user. Do not perform a durable mutation in this turn.'
+				},
+				requiresUserAction: true
+			};
+		}
+		case CANCEL_TURN_CONTRACT_TOOL_NAME: {
+			const reason = readString(args.reason, 240);
+			if (error || !reason) {
+				return standardControlFailure(
+					'Turn contract cancellation failed: provide a concise reason grounded in the current user message.'
+				);
+			}
+			return {
+				success: true,
+				result: {
+					status: 'cancelled',
+					reason,
+					instruction: 'Do not execute the cancelled durable outcomes.'
+				},
+				requiresUserAction: false
+			};
+		}
+	}
+}
+
+function standardControlChatToolResult(
+	toolCallId: string,
+	execution: AgenticChatStandardControlExecutionV1
+): ChatToolResult {
+	if (!execution.success) {
+		return {
+			tool_call_id: toolCallId,
+			success: false,
+			result: null,
+			error: execution.error
+		};
+	}
+	return {
+		tool_call_id: toolCallId,
+		success: true,
+		result: execution.result,
+		...(execution.requiresUserAction ? { requires_user_action: true } : {})
+	};
+}
+
 export function executeDeclareTurnContract(toolCall: ChatToolCall): ChatToolResult {
-	const contract = extractDeclaredTurnContract(toolCall);
-	if (!contract) {
+	if (toolCall.function?.name !== DECLARE_TURN_CONTRACT_TOOL_NAME) {
 		return {
 			tool_call_id: toolCall.id,
 			success: false,
@@ -597,16 +774,13 @@ export function executeDeclareTurnContract(toolCall: ChatToolCall): ChatToolResu
 			error: 'Turn contract validation failed: provide at least one outcome with a supported action and entity_kind.'
 		};
 	}
-	return {
-		tool_call_id: toolCall.id,
-		success: true,
-		result: {
-			status: 'declared',
-			contract,
-			instruction:
-				'Continue this turn until every declared outcome is backed by successful durable effects, or explain the concrete blocker.'
-		}
-	};
+	return standardControlChatToolResult(
+		toolCall.id,
+		executeAgenticChatStandardControlToolV1({
+			toolName: DECLARE_TURN_CONTRACT_TOOL_NAME,
+			arguments: toolCall.function.arguments
+		})
+	);
 }
 
 export function isDeclareReadOnlyTurnCall(toolCall: ChatToolCall): boolean {
@@ -622,26 +796,13 @@ export function executeDeclareReadOnlyTurn(toolCall: ChatToolCall): ChatToolResu
 			error: 'Read-only turn declaration failed: wrong control tool.'
 		};
 	}
-	const { args, error } = parseToolArguments(toolCall.function.arguments);
-	const reason = readString(args.reason, 240);
-	if (error || !reason) {
-		return {
-			tool_call_id: toolCall.id,
-			success: false,
-			result: null,
-			error: 'Read-only turn declaration failed: explain why the current request commissions no durable data change.'
-		};
-	}
-	return {
-		tool_call_id: toolCall.id,
-		success: true,
-		result: {
-			status: 'read_only_declared',
-			reason,
-			instruction:
-				'Continue with reads or answer from evidence; do not claim a durable mutation.'
-		}
-	};
+	return standardControlChatToolResult(
+		toolCall.id,
+		executeAgenticChatStandardControlToolV1({
+			toolName: DECLARE_READ_ONLY_TURN_TOOL_NAME,
+			arguments: toolCall.function.arguments
+		})
+	);
 }
 
 export function isRequestTurnClarificationCall(toolCall: ChatToolCall): boolean {
@@ -657,30 +818,13 @@ export function executeRequestTurnClarification(toolCall: ChatToolCall): ChatToo
 			error: 'Turn clarification failed: wrong control tool.'
 		};
 	}
-	const { args, error } = parseToolArguments(toolCall.function.arguments);
-	const reason = readString(args.reason, 240);
-	const question = readString(args.question, 500);
-	if (error || !reason || !question) {
-		return {
-			tool_call_id: toolCall.id,
-			success: false,
-			result: null,
-			error: 'Turn clarification failed: provide the unresolved semantic choice and a concise question for the user.'
-		};
-	}
-	return {
-		tool_call_id: toolCall.id,
-		success: true,
-		requires_user_action: true,
-		result: {
-			status: 'clarification_required',
-			reason,
-			question,
-			requires_user_action: true,
-			instruction:
-				'Ask the question and wait for the user. Do not perform a durable mutation in this turn.'
-		}
-	};
+	return standardControlChatToolResult(
+		toolCall.id,
+		executeAgenticChatStandardControlToolV1({
+			toolName: REQUEST_TURN_CLARIFICATION_TOOL_NAME,
+			arguments: toolCall.function.arguments
+		})
+	);
 }
 
 export function isCancelTurnContractCall(toolCall: ChatToolCall): boolean {
@@ -696,25 +840,13 @@ export function executeCancelTurnContract(toolCall: ChatToolCall): ChatToolResul
 			error: 'Turn contract cancellation failed: wrong control tool.'
 		};
 	}
-	const { args, error } = parseToolArguments(toolCall.function.arguments);
-	const reason = readString(args.reason, 240);
-	if (error || !reason) {
-		return {
-			tool_call_id: toolCall.id,
-			success: false,
-			result: null,
-			error: 'Turn contract cancellation failed: provide a concise reason grounded in the current user message.'
-		};
-	}
-	return {
-		tool_call_id: toolCall.id,
-		success: true,
-		result: {
-			status: 'cancelled',
-			reason,
-			instruction: 'Do not execute the cancelled durable outcomes.'
-		}
-	};
+	return standardControlChatToolResult(
+		toolCall.id,
+		executeAgenticChatStandardControlToolV1({
+			toolName: CANCEL_TURN_CONTRACT_TOOL_NAME,
+			arguments: toolCall.function.arguments
+		})
+	);
 }
 
 function uniqueOutcomes(outcomes: TurnContractOutcome[]): TurnContractOutcome[] {

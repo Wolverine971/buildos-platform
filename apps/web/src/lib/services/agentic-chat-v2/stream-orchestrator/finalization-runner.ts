@@ -16,7 +16,6 @@ import {
 	buildSkillGateNoLoadRepairInstruction,
 	collectGatewayWriteIntentOps,
 	enforceMutationOutcomeIntegrity,
-	looksLikeExplicitMutationRequest,
 	buildOrganizeCommissionRepairInstruction,
 	buildResearchNoPersistRepairInstruction,
 	buildStatedFutureRepairInstruction,
@@ -381,6 +380,7 @@ export async function runNoToolCallFinalization(params: {
 	researchNoPersistStopRepairInjected: boolean;
 	statedFutureStopRepairInjected: boolean;
 	organizeCommissionStopRepairInjected: boolean;
+	organizeCommissioned?: boolean;
 	skillGate?: {
 		required: boolean;
 		recommendedSkillIds: string[];
@@ -472,7 +472,7 @@ export async function runNoToolCallFinalization(params: {
 	// reads everything, proposes a structure in prose, and moves nothing.
 	if (
 		shouldRepairOrganizeCommissionNoExecution({
-			latestUserText: params.latestUserText,
+			organizeCommissioned: params.organizeCommissioned === true,
 			toolExecutions: params.toolExecutions,
 			repairAlreadyInjected: params.organizeCommissionStopRepairInjected
 		})
@@ -570,10 +570,7 @@ export async function runTerminalFinalization(params: {
 
 	const mutationRequested =
 		params.mutationRequested === true ||
-		didTurnHaveUnfulfilledMutationIntent({
-			latestUserText: params.latestUserText,
-			toolExecutions: params.toolExecutions
-		});
+		didTurnHaveUnfulfilledMutationIntent(params.toolExecutions);
 
 	if (params.toolLimitNotice) {
 		const toolLimitFinalizationGuard = applyFinalizationGuard({
@@ -646,14 +643,10 @@ export async function runTerminalFinalization(params: {
 	};
 }
 
-function didTurnHaveUnfulfilledMutationIntent(params: {
-	latestUserText: string;
-	toolExecutions: FastToolExecution[];
-}): boolean {
+function didTurnHaveUnfulfilledMutationIntent(toolExecutions: FastToolExecution[]): boolean {
 	return (
-		(looksLikeExplicitMutationRequest(params.latestUserText) ||
-			collectGatewayWriteIntentOps(params.toolExecutions).length > 0) &&
-		!params.toolExecutions.some(
+		collectGatewayWriteIntentOps(toolExecutions).length > 0 &&
+		!toolExecutions.some(
 			(execution) =>
 				classifyToolExecution(execution) === 'write' && didGatewayExecSucceed(execution)
 		)

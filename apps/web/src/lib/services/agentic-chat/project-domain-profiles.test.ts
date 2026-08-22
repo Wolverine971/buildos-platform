@@ -2,11 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import {
 	AGENT_WORKSPACE_PROP,
-	applyFictionStructureUpdateSourceDefault,
 	applyProjectCreationProfileDefaults,
 	hasExplicitProjectScheduleSignal,
 	looksLikeFictionStoryCraftTurn,
-	looksLikeLivingWorkspaceCaptureTurn,
 	looksLikeLivingWorkspaceCommission,
 	resolveAgentWorkspaceFromContextData,
 	resolveProjectDomainRuntimeSkillId,
@@ -20,50 +18,6 @@ import {
 } from './project-domain-profiles';
 
 describe('project domain profiles', () => {
-	it('retains the complete author source in an incremental fiction structure update', () => {
-		const source =
-			'Ilyan catches Mara hiding a forbidden map and chooses not to report her. Mara reads that as loyalty, but he is using her to reach the Salt Archive. Chapter 5 opens Part II on the morning after that choice.';
-		const result = applyFictionStructureUpdateSourceDefault(
-			{
-				document_id: 'structure-doc',
-				content: '## Chapter 5\n\nPart II begins the next morning.',
-				update_strategy: 'append'
-			},
-			source
-		);
-
-		expect(result.content).toContain('## Author canon');
-		expect(result.content).toContain(source);
-		expect(result.content).toContain('Part II begins the next morning.');
-	});
-
-	it('places a raw commissioned source under Author canon before a structure merge', () => {
-		const source =
-			'Ilyan catches Mara hiding a forbidden map and chooses not to report her. Chapter 5 opens Part II the next morning.';
-		const result = applyFictionStructureUpdateSourceDefault(
-			{
-				document_id: 'structure-doc',
-				content: source,
-				update_strategy: 'merge_llm'
-			},
-			source
-		);
-
-		expect(result.content).toMatch(/^## Author canon\n\n/);
-		expect(result.content.match(/Ilyan catches Mara/g)).toHaveLength(1);
-	});
-
-	it('skips structure-source augmentation when the model content is not top-level', () => {
-		const source = 'Chapter 5 opens Part II on the morning after that choice.';
-		const args = {
-			document_id: 'structure-doc',
-			document: { body_markdown: 'MODEL CONTENT UNDER A NESTED ALIAS' }
-		};
-		// Augmenting would fabricate a canon-only top-level body that replaces
-		// the model's nested content under the default replace strategy.
-		expect(applyFictionStructureUpdateSourceDefault(args, source)).toBe(args);
-	});
-
 	it('never demands a character sheet for determiner-led places or objects', () => {
 		const args = {
 			project: { name: 'Bellwether', type_key: 'project.creative.book' },
@@ -83,23 +37,6 @@ describe('project domain profiles', () => {
 				'The Iron Council is the governing body of the port.'
 		);
 		expect(errors).toEqual([]);
-	});
-
-	it('treats question-mark-free speculation as read-only, not capture', () => {
-		expect(looksLikeLivingWorkspaceCaptureTurn('Do you think Mara would forgive him')).toBe(
-			false
-		);
-		expect(looksLikeLivingWorkspaceCaptureTurn('I wonder if Ilyan should betray Mara')).toBe(
-			false
-		);
-		expect(looksLikeLivingWorkspaceCaptureTurn('Maybe Ilyan should refuse the mission')).toBe(
-			false
-		);
-		expect(
-			looksLikeLivingWorkspaceCaptureTurn(
-				'Ilyan keeps a contraband brass whistle in his evidence drawer.'
-			)
-		).toBe(true);
 	});
 
 	it('recognizes fiction projects without treating ordinary booking language as fiction', () => {
@@ -489,23 +426,6 @@ describe('project domain profiles', () => {
 				userMessage
 			)
 		).toEqual([]);
-	});
-
-	it('captures declarative canon but leaves questions and option generation read-only', () => {
-		expect(
-			looksLikeLivingWorkspaceCaptureTurn(
-				'Ilyan hides the brass key because it belonged to his sister.'
-			)
-		).toBe(true);
-		expect(
-			looksLikeLivingWorkspaceCaptureTurn(
-				'What should happen to Ilyan next? Give me three options.'
-			)
-		).toBe(false);
-		expect(looksLikeLivingWorkspaceCaptureTurn('Thanks!')).toBe(false);
-		expect(
-			looksLikeLivingWorkspaceCaptureTurn('Write a scene where Ilyan confronts Mara.')
-		).toBe(false);
 	});
 
 	it('reads persisted workspace metadata from bounded START HERE context', () => {

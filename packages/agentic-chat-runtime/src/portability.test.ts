@@ -1,3 +1,4 @@
+// packages/agentic-chat-runtime/src/portability.test.ts
 import { readFile, readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +12,8 @@ const forbiddenProductionImports = [
 	'@sveltejs/kit',
 	'vercel',
 	'railway',
+	'apps/worker/',
+	'@buildos/worker',
 	'supabase/admin',
 	'process.env'
 ];

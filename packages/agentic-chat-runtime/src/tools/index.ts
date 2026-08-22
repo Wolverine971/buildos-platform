@@ -19,4 +19,5 @@ export * from './ontology-task-detail';
 export * from './ontology-task-documents';
 export * from './overview-helper';
 export * from './overview-reads';
+export * from './shared-read-dispatch';
 export * from './start-here-selector';

@@ -16,12 +16,25 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { streamFastChat } from './stream-orchestrator/index';
-import { resolveFastChatTurnIntent } from './turn-intent';
 
 const TASK_ID = '0b19a1af-6d5b-4b58-9f6a-1de1a58f2f7a';
 const PROJECT_ID = 'b7f5c9e2-4a31-4d0a-9be6-0f2f8f4f9d3a';
 const INCIDENT_MESSAGE =
 	"push the beta list email thing to friday, i'm not gonna get to it before then";
+const RESCHEDULE_CONTRACT = {
+	version: 1 as const,
+	source: 'declared' as const,
+	outcomes: [
+		{
+			id: 'reschedule-task',
+			action: 'update' as const,
+			entityKind: 'task' as const,
+			targetIds: [TASK_ID],
+			requiredFields: ['due_at'],
+			minimumSuccessfulEffects: 1
+		}
+	]
+};
 
 function tools(names: string[]): ChatToolDefinition[] {
 	return materializeGatewayTools([], names).tools;
@@ -109,11 +122,7 @@ describe('reschedule no-op update loop (incident 2026-07-31)', () => {
 			projectId: PROJECT_ID,
 			history: [],
 			message: INCIDENT_MESSAGE,
-			turnIntent: resolveFastChatTurnIntent({
-				contextType: 'project',
-				projectId: PROJECT_ID,
-				latestUserMessage: INCIDENT_MESSAGE
-			}),
+			initialTurnContract: RESCHEDULE_CONTRACT,
 			tools: tools(['update_onto_task']),
 			toolExecutor,
 			onDelta: async () => {}
@@ -181,11 +190,7 @@ describe('reschedule no-op update loop (incident 2026-07-31)', () => {
 			projectId: PROJECT_ID,
 			history: [],
 			message: INCIDENT_MESSAGE,
-			turnIntent: resolveFastChatTurnIntent({
-				contextType: 'project',
-				projectId: PROJECT_ID,
-				latestUserMessage: INCIDENT_MESSAGE
-			}),
+			initialTurnContract: RESCHEDULE_CONTRACT,
 			tools: tools(['update_onto_task']),
 			toolExecutor,
 			onDelta: async () => {}

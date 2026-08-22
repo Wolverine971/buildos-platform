@@ -4,7 +4,6 @@ import { getAgenticChatLoopSkillLookup, type SkillLoadFormat } from './skill-loo
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution, GatewayRequiredFieldFailure } from './shared';
 import type { ToolValidationIssue } from './tool-validation';
-import { looksLikeFastChatMutationRequest } from './turn-intent';
 import {
 	doesToolExecutionRequireUserAction,
 	didGatewayExecSucceed,
@@ -17,7 +16,6 @@ import {
 	isWriteLikeOperation
 } from './tool-classification';
 import { extractGatewayRequiredFieldFailuresFromValidationIssues } from './round-analysis';
-import { looksLikeProjectDocumentOrganizeTurn } from './turn-intent';
 import { getDocumentUpdateContentCandidate } from '@buildos/shared-agent-ops/ops/update-value-validation';
 import {
 	classifyToolFailure,
@@ -581,12 +579,12 @@ export function shouldRepairResearchNoPersist(params: {
  * this week).
  */
 export function shouldRepairOrganizeCommissionNoExecution(params: {
-	latestUserText: string;
+	organizeCommissioned: boolean;
 	toolExecutions: FastToolExecution[];
 	repairAlreadyInjected: boolean;
 }): boolean {
 	if (params.repairAlreadyInjected) return false;
-	if (!looksLikeProjectDocumentOrganizeTurn(params.latestUserText)) return false;
+	if (!params.organizeCommissioned) return false;
 	const wrote = params.toolExecutions.some(
 		(execution) => isWriteLedgerToolExecution(execution) && execution.result.success === true
 	);
@@ -718,9 +716,7 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 	if (floorSatisfyingWrites >= minimumSuccessfulWrites) return false;
 
 	const writeIntentOps = collectGatewayWriteIntentOps(params.toolExecutions);
-	const explicitUserWriteIntent =
-		params.explicitMutationRequested === true ||
-		looksLikeExplicitMutationRequest(params.latestUserText ?? '');
+	const explicitUserWriteIntent = params.explicitMutationRequested === true;
 	if (writeIntentOps.length === 0 && !explicitUserWriteIntent) return false;
 
 	if (
@@ -839,8 +835,7 @@ export function enforceMutationOutcomeIntegrity(
 	).filter((toolName) => !successfulWriteToolNames.has(toolName));
 	if (
 		mutationOutcomes.attempted === 0 &&
-		(params.explicitMutationRequested === true ||
-			looksLikeExplicitMutationRequest(params.latestUserText ?? '')) &&
+		params.explicitMutationRequested === true &&
 		looksLikeMutationSuccessClaim(finalText)
 	) {
 		return buildNoExecutionMutationFailureMessage();
@@ -1377,10 +1372,6 @@ export function collectGatewayWriteIntentOps(toolExecutions: FastToolExecution[]
 
 function looksLikePureClarifyingQuestion(text: string): boolean {
 	return text.includes('?') && !looksLikeActionSuccessClaim(text);
-}
-
-export function looksLikeExplicitMutationRequest(text: string): boolean {
-	return looksLikeFastChatMutationRequest(text);
 }
 
 function looksLikeActionSuccessClaim(text: string): boolean {

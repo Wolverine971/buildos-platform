@@ -2,7 +2,7 @@
 	"name": "@buildos/agentic-chat-runtime",
 	"version": "0.1.0",
 	"private": true,
-	"description": "Transport-neutral contracts and ports for the BuildOS agentic chat runtime",
+	"description": "Deterministic, host-neutral semantics and shared read tools for BuildOS agentic chat",
 	"main": "./dist/index.js",
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
@@ -16,6 +16,11 @@
 			"types": "./dist/loop/index.d.ts",
 			"import": "./dist/loop/index.mjs",
 			"require": "./dist/loop/index.js"
+		},
+		"./context": {
+			"types": "./dist/context/index.d.ts",
+			"import": "./dist/context/index.mjs",
+			"require": "./dist/context/index.js"
 		},
 		"./supervisor": {
 			"types": "./dist/supervisor/index.d.ts",
@@ -34,8 +39,8 @@
 		}
 	},
 	"scripts": {
-		"build": "tsup src/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
-		"build:types": "tsup src/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
+		"build": "tsup src/index.ts src/context/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
+		"build:types": "tsup src/index.ts src/context/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
 		"clean": "rm -rf dist .turbo",
 		"typecheck": "tsc --noEmit --skipLibCheck",
 		"test": "vitest",

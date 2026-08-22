@@ -8,49 +8,18 @@ import {
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { type WebResearchPort, WebResearchPortError } from '@buildos/shared-agent-ops';
 import {
+	AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
 	type AgenticChatSharedReadContextV1,
 	type AgenticChatToolAccessPortV1,
-	getDocumentOutline,
-	getDocumentPath,
-	getDocumentTree,
-	getFieldInfo,
-	getOntoDocumentDetails,
-	getOntoGoalDetails,
-	getOntoMilestoneDetails,
-	getOntoPlanDetails,
-	getOntoProjectDetails,
-	getOntoProjectGraph,
-	getOntoRiskDetails,
-	getOntoTaskDetails,
-	getProjectOverview,
-	getWorkspaceOverview,
-	listOntoDocuments,
-	listOntoGoals,
-	listOntoMilestones,
-	listOntoPlans,
-	listOntoProjects,
-	listOntoRisks,
-	listOntoTasks,
-	listTaskDocuments,
-	readDocumentSection,
-	searchAllProjects,
-	searchOntoDocuments,
-	searchOntoGoals,
-	searchOntoMilestones,
-	searchOntoPlans,
-	searchOntoProjects,
-	searchOntoRisks,
-	searchOntoTasks,
-	searchOntology,
-	searchProject
+	executeAgenticChatSharedReadToolV1,
+	isAgenticChatSharedReadToolNameV1
 } from '@buildos/agentic-chat-runtime/tools';
 import {
-	CANCEL_TURN_CONTRACT_TOOL_NAME,
-	DECLARE_READ_ONLY_TURN_TOOL_NAME,
-	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
 	TOOL_METADATA,
-	parseDeclaredTurnContract,
+	executeAgenticChatStandardControlToolV1,
+	isAgenticChatStandardControlToolNameV1,
 	searchTelemetryColumns
 } from '@buildos/agentic-chat-runtime/loop';
 import { runWithAbortableDeadline } from './abortableDeadline';
@@ -70,15 +39,15 @@ export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME = 'approve_mutation_batch_r
  * "over-clarification" was born.
  */
 export const REQUEST_PROPOSAL_REVISION_TOOL_NAME = 'request_proposal_revision';
-export const AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1 = Object.freeze([
-	DECLARE_TURN_CONTRACT_TOOL_NAME,
-	DECLARE_READ_ONLY_TURN_TOOL_NAME,
-	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
-	CANCEL_TURN_CONTRACT_TOOL_NAME,
+const WORKER_REVIEW_CONTROL_TOOL_NAMES_V1 = Object.freeze([
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
+] as const);
+export const AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1 = Object.freeze([
+	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
+	...WORKER_REVIEW_CONTROL_TOOL_NAMES_V1
 ] as const);
 const AGENTIC_CHAT_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1);
 
@@ -90,25 +59,22 @@ export const AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS = 30_000;
 export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_TIMEOUT_MS = 60_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-type SharedReadToolRunner = (
-	context: AgenticChatSharedReadContextV1,
-	args: JsonObject
-) => Promise<Record<string, unknown>>;
+type WorkerReviewControlToolNameV1 = (typeof WORKER_REVIEW_CONTROL_TOOL_NAMES_V1)[number];
+type WorkerReviewControlToolRunnerV1 = (args: JsonObject) => Promise<Record<string, unknown>>;
+const WORKER_REVIEW_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(WORKER_REVIEW_CONTROL_TOOL_NAMES_V1);
+
+function isWorkerReviewControlToolNameV1(value: unknown): value is WorkerReviewControlToolNameV1 {
+	return typeof value === 'string' && WORKER_REVIEW_CONTROL_TOOL_NAME_SET_V1.has(value);
+}
 
 /**
- * The shared-allowlist dispatch table (Slice 18 S3): every read tool exported
- * by `@buildos/agentic-chat-runtime/tools` — the 31 ontology reads plus
- * get_workspace_overview / get_project_overview / get_field_info.
- * Deliberately excluded:
- * - change_chat_context: needs the web-only resolveDirectToolNames port and
- *   mutates session context;
- * - get_user_profile_overview: unmoved pending the usage_scope decision.
- * Arguments are passed through unvalidated at the envelope (`as never`): the
- * shared free functions carry the legacy executor's own argument validation,
- * transcribed from the web executor, so web and worker reject identically.
+ * These controls belong to the worker's independent-review protocol, not the
+ * host-neutral runtime. Promote them only if a second host adopts that protocol.
  */
-const SHARED_READ_TOOL_RUNNERS: Readonly<Record<string, SharedReadToolRunner>> = Object.freeze({
-	[APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME]: (_context, args) => {
+const WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1: Readonly<
+	Record<WorkerReviewControlToolNameV1, WorkerReviewControlToolRunnerV1>
+> = Object.freeze({
+	[APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME]: (args) => {
 		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
 		const dispositionSha256 =
 			typeof args.disposition_sha256 === 'string' ? args.disposition_sha256.trim() : '';
@@ -125,7 +91,7 @@ const SHARED_READ_TOOL_RUNNERS: Readonly<Record<string, SharedReadToolRunner>> =
 				'The independently reviewed read-only disposition may proceed without durable mutations.'
 		});
 	},
-	[APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME]: (_context, args) => {
+	[APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME]: (args) => {
 		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
 		const batchSha256 = typeof args.batch_sha256 === 'string' ? args.batch_sha256.trim() : '';
 		if (!reason || !/^[0-9a-f]{64}$/.test(batchSha256)) {
@@ -141,7 +107,7 @@ const SHARED_READ_TOOL_RUNNERS: Readonly<Record<string, SharedReadToolRunner>> =
 				'The independently reviewed mutation batch may proceed exactly as proposed.'
 		});
 	},
-	[APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME]: (_context, args) => {
+	[APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME]: (args) => {
 		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 500) : '';
 		const contractSha256 =
 			typeof args.contract_sha256 === 'string' ? args.contract_sha256.trim() : '';
@@ -158,7 +124,7 @@ const SHARED_READ_TOOL_RUNNERS: Readonly<Record<string, SharedReadToolRunner>> =
 				'The independently reviewed contract may proceed. Execute only its approved semantic outcomes.'
 		});
 	},
-	[REQUEST_PROPOSAL_REVISION_TOOL_NAME]: (_context, args) => {
+	[REQUEST_PROPOSAL_REVISION_TOOL_NAME]: (args) => {
 		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 400) : '';
 		const requiredCorrection =
 			typeof args.required_correction === 'string'
@@ -176,100 +142,7 @@ const SHARED_READ_TOOL_RUNNERS: Readonly<Record<string, SharedReadToolRunner>> =
 			instruction:
 				'Independent review returned this proposal to the acting model for correction. Correct it; do not ask the user.'
 		});
-	},
-	[CANCEL_TURN_CONTRACT_TOOL_NAME]: (_context, args) => {
-		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 240) : '';
-		if (!reason) {
-			throw new Error(
-				'Turn contract cancellation failed: provide a concise reason grounded in the current user message.'
-			);
-		}
-		return Promise.resolve({
-			status: 'cancelled',
-			reason,
-			instruction: 'Do not execute the cancelled durable outcomes.'
-		});
-	},
-	[DECLARE_READ_ONLY_TURN_TOOL_NAME]: (_context, args) => {
-		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 240) : '';
-		if (!reason) {
-			throw new Error(
-				'Read-only turn declaration failed: explain why the current request commissions no durable data change.'
-			);
-		}
-		return Promise.resolve({
-			status: 'read_only_declared',
-			reason,
-			instruction:
-				'Continue with reads or answer from evidence; do not claim a durable mutation.'
-		});
-	},
-	[REQUEST_TURN_CLARIFICATION_TOOL_NAME]: (_context, args) => {
-		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 240) : '';
-		const question =
-			typeof args.question === 'string' ? args.question.trim().slice(0, 500) : '';
-		if (!reason || !question) {
-			throw new Error(
-				'Turn clarification failed: provide the unresolved semantic choice and a concise question for the user.'
-			);
-		}
-		return Promise.resolve({
-			status: 'clarification_required',
-			reason,
-			question,
-			requires_user_action: true,
-			instruction:
-				'Ask the question and wait for the user. Do not perform a durable mutation in this turn.'
-		});
-	},
-	[DECLARE_TURN_CONTRACT_TOOL_NAME]: (_context, args) => {
-		const contract = parseDeclaredTurnContract(args);
-		if (!contract) {
-			throw new Error(
-				'Turn contract validation failed: provide at least one supported semantic outcome.'
-			);
-		}
-		return Promise.resolve({
-			status: 'declared',
-			contract,
-			instruction:
-				'Continue until every declared outcome is backed by successful durable effects, or explain the concrete blocker.'
-		});
-	},
-	list_onto_projects: (context, args) => listOntoProjects(context, args as never),
-	list_onto_tasks: (context, args) => listOntoTasks(context, args as never),
-	list_onto_goals: (context, args) => listOntoGoals(context, args as never),
-	list_onto_plans: (context, args) => listOntoPlans(context, args as never),
-	list_onto_documents: (context, args) => listOntoDocuments(context, args as never),
-	list_onto_milestones: (context, args) => listOntoMilestones(context, args as never),
-	list_onto_risks: (context, args) => listOntoRisks(context, args as never),
-	search_onto_projects: (context, args) => searchOntoProjects(context, args as never),
-	search_onto_tasks: (context, args) => searchOntoTasks(context, args as never),
-	search_onto_goals: (context, args) => searchOntoGoals(context, args as never),
-	search_onto_plans: (context, args) => searchOntoPlans(context, args as never),
-	search_onto_documents: (context, args) => searchOntoDocuments(context, args as never),
-	search_onto_milestones: (context, args) => searchOntoMilestones(context, args as never),
-	search_onto_risks: (context, args) => searchOntoRisks(context, args as never),
-	search_all_projects: (context, args) => searchAllProjects(context, args as never),
-	search_buildos: (context, args) => searchAllProjects(context, args as never),
-	search_project: (context, args) => searchProject(context, args as never),
-	search_ontology: (context, args) => searchOntology(context, args as never),
-	get_onto_project_details: (context, args) => getOntoProjectDetails(context, args as never),
-	get_onto_project_graph: (context, args) => getOntoProjectGraph(context, args as never),
-	get_onto_document_details: (context, args) => getOntoDocumentDetails(context, args as never),
-	get_onto_goal_details: (context, args) => getOntoGoalDetails(context, args as never),
-	get_onto_plan_details: (context, args) => getOntoPlanDetails(context, args as never),
-	get_onto_milestone_details: (context, args) => getOntoMilestoneDetails(context, args as never),
-	get_onto_risk_details: (context, args) => getOntoRiskDetails(context, args as never),
-	get_onto_task_details: (context, args) => getOntoTaskDetails(context, args as never),
-	list_task_documents: (context, args) => listTaskDocuments(context, args as never),
-	get_document_outline: (context, args) => getDocumentOutline(context, args as never),
-	read_document_section: (context, args) => readDocumentSection(context, args as never),
-	get_document_tree: (context, args) => getDocumentTree(context, args as never),
-	get_document_path: (context, args) => getDocumentPath(context, args as never),
-	get_workspace_overview: (context, args) => getWorkspaceOverview(context, args as never),
-	[PROJECT_OVERVIEW_TOOL_NAME]: (context, args) => getProjectOverview(context, args as never),
-	get_field_info: async (_context, args) => getFieldInfo(args as never)
+	}
 });
 
 export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1 = Object.freeze([
@@ -278,20 +151,27 @@ export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1 = Object.freeze([
 ] as const);
 
 export const AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 = Object.freeze([
-	...Object.keys(SHARED_READ_TOOL_RUNNERS),
+	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
+	...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
+	...WORKER_REVIEW_CONTROL_TOOL_NAMES_V1,
 	...AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1
 ]);
 
 /**
  * Keep the provider and executor on the same reviewed name catalog. The actual
- * schemas remain the immutable admission artifact's definitions so the worker
- * preserves the exact context-specific surface selected by the web host.
+ * schemas remain the immutable admission artifact's definitions so execution
+ * preserves the exact context-specific surface selected at admission.
  */
 const AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAME_SET_V1 = new Set(
-	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1
+	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 as readonly string[]
 );
 
-export function isAgenticChatProductionReadToolNameV1(value: unknown): value is string {
+type AgenticChatProductionReadToolNameV1 =
+	(typeof AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1)[number];
+
+export function isAgenticChatProductionReadToolNameV1(
+	value: unknown
+): value is AgenticChatProductionReadToolNameV1 {
 	return typeof value === 'string' && AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAME_SET_V1.has(value);
 }
 
@@ -336,13 +216,16 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 	async execute(
 		input: Parameters<AgenticChatFixtureReadToolPortV1['execute']>[0]
 	): ReturnType<AgenticChatFixtureReadToolPortV1['execute']> {
-		if (!isAgenticChatProductionReadToolNameV1(input.toolName)) {
+		const toolName = input.toolName;
+		if (!isAgenticChatProductionReadToolNameV1(toolName)) {
 			throw providerError('read_tool_not_allowlisted', 'permanent');
 		}
 		const webResearchTool = AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1.includes(
-			input.toolName as (typeof AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1)[number]
+			toolName as (typeof AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1)[number]
 		);
-		const runner = webResearchTool ? null : SHARED_READ_TOOL_RUNNERS[input.toolName]!;
+		const standardControlTool = isAgenticChatStandardControlToolNameV1(toolName);
+		const sharedReadTool = isAgenticChatSharedReadToolNameV1(toolName);
+		const reviewControlTool = isWorkerReviewControlToolNameV1(toolName);
 		throwIfAborted(input.signal);
 		if (input.toolName === PROJECT_OVERVIEW_TOOL_NAME) {
 			// Pre-swap context guard, kept exactly where it observably applied
@@ -359,12 +242,12 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 				throw providerError('read_tool_context_invalid', 'permanent');
 			}
 		}
-		const sharedContext: AgenticChatSharedReadContextV1 | null = webResearchTool
-			? null
-			: {
+		const sharedContext: AgenticChatSharedReadContextV1 | null = sharedReadTool
+			? {
 					client: this.client,
 					access: this.accessAdapterFor(input.executionInput.claim.userId)
-				};
+				}
+			: null;
 		const startedAt = this.now();
 		let rawResult: Record<string, unknown>;
 		try {
@@ -380,7 +263,24 @@ export class AgenticChatReadOnlyToolAdapter implements AgenticChatFixtureReadToo
 						}ms deadline`
 					),
 				run: async () => {
-					if (!webResearchTool) return runner!(sharedContext!, input.arguments);
+					if (standardControlTool) {
+						const execution = executeAgenticChatStandardControlToolV1({
+							toolName,
+							arguments: input.arguments
+						});
+						if (!execution.success) throw new Error(execution.error);
+						return execution.result;
+					}
+					if (sharedReadTool) {
+						return executeAgenticChatSharedReadToolV1({
+							toolName,
+							context: sharedContext!,
+							arguments: input.arguments
+						});
+					}
+					if (reviewControlTool) {
+						return WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1[toolName](input.arguments);
+					}
 					const executeWebResearch =
 						input.toolName === 'web_search'
 							? this.webResearch?.search

@@ -7,7 +7,6 @@ import {
 	buildSkillGateNoLoadRepairInstruction,
 	buildToolValidationRepairInstruction,
 	enforceMutationOutcomeIntegrity,
-	looksLikeExplicitMutationRequest,
 	shouldRepairGatewayMutationNoExecution,
 	shouldRepairProjectCreateNoExecution,
 	shouldRepairResearchNoPersist,
@@ -52,32 +51,6 @@ function createExecution(params: {
 	};
 	return { toolCall, result };
 }
-
-describe('looksLikeExplicitMutationRequest', () => {
-	it.each([
-		'update me on the project',
-		'please update me on this task',
-		'catch me up on the project',
-		'what is the status of the meeting?',
-		'where are we on the project plan?',
-		'is the meeting still on?'
-	])('does not classify read/status phrasing as a mutation: %s', (message) => {
-		expect(looksLikeExplicitMutationRequest(message)).toBe(false);
-	});
-
-	it.each([
-		'assign this to me',
-		'postpone the meeting to Friday',
-		'merge these tasks',
-		'rename the project',
-		'mark the task done',
-		'move the doc under Research',
-		'prioritize this',
-		'tag that as urgent'
-	])('classifies explicit mutation phrasing: %s', (message) => {
-		expect(looksLikeExplicitMutationRequest(message)).toBe(true);
-	});
-});
 
 describe('repair instruction policy', () => {
 	it('keeps task-create missing-title repair guidance through shared classification', () => {
@@ -163,7 +136,8 @@ describe('repair instruction policy', () => {
 				finalText: 'Done — Safe Write Target is back to todo status.',
 				toolExecutions: [],
 				repairAlreadyInjected: false,
-				latestUserText: 'Set the task named A Safe Write Target back to todo/open.'
+				latestUserText: 'Set the task named A Safe Write Target back to todo/open.',
+				explicitMutationRequested: true
 			})
 		).toBe(true);
 	});
@@ -173,7 +147,8 @@ describe('repair instruction policy', () => {
 			enforceMutationOutcomeIntegrity('Done — Safe Write Target is back to todo status.', {
 				contextType: 'project',
 				toolExecutions: [],
-				latestUserText: 'Set the task named A Safe Write Target back to todo/open.'
+				latestUserText: 'Set the task named A Safe Write Target back to todo/open.',
+				explicitMutationRequested: true
 			})
 		).toBe(
 			'I was unable to complete that change because no write call ran. Nothing changed yet; I need to retry with the exact target and valid arguments.'
@@ -254,7 +229,8 @@ describe('repair instruction policy', () => {
 				finalText: 'Done — I updated the task name.',
 				toolExecutions: [],
 				repairAlreadyInjected: false,
-				latestUserText: 'Please edit the task name for Safe Write Target.'
+				latestUserText: 'Please edit the task name for Safe Write Target.',
+				explicitMutationRequested: true
 			})
 		).toBe(true);
 
@@ -262,7 +238,8 @@ describe('repair instruction policy', () => {
 			enforceMutationOutcomeIntegrity('Done — I updated the task name.', {
 				contextType: 'project',
 				toolExecutions: [],
-				latestUserText: 'Please edit the task name for Safe Write Target.'
+				latestUserText: 'Please edit the task name for Safe Write Target.',
+				explicitMutationRequested: true
 			})
 		).toBe(
 			'I was unable to complete that change because no write call ran. Nothing changed yet; I need to retry with the exact target and valid arguments.'
@@ -1336,14 +1313,10 @@ describe('didWriteWithoutDurableRecord', () => {
 });
 
 describe('shouldRepairOrganizeCommissionNoExecution', () => {
-	const ORGANIZE_MESSAGE =
-		"This project's documents are a mess — loose notes, raw meeting dumps, half-baked ideas, " +
-		'all piled at the top level. Help me get it organized into something sensible.';
-
 	it('fires when an organize commission ends with zero writes', () => {
 		expect(
 			shouldRepairOrganizeCommissionNoExecution({
-				latestUserText: ORGANIZE_MESSAGE,
+				organizeCommissioned: true,
 				toolExecutions: [
 					createExecution({ name: 'get_document_tree', args: {} }),
 					createExecution({ name: 'get_document_outline', args: { document_id: 'd1' } })
@@ -1356,7 +1329,7 @@ describe('shouldRepairOrganizeCommissionNoExecution', () => {
 	it('is cleared by a successful move', () => {
 		expect(
 			shouldRepairOrganizeCommissionNoExecution({
-				latestUserText: ORGANIZE_MESSAGE,
+				organizeCommissioned: true,
 				toolExecutions: [
 					createExecution({
 						name: 'move_document_in_tree',
@@ -1368,10 +1341,10 @@ describe('shouldRepairOrganizeCommissionNoExecution', () => {
 		).toBe(false);
 	});
 
-	it('does not fire on a non-organize message', () => {
+	it('does not fire without a semantic organize contract', () => {
 		expect(
 			shouldRepairOrganizeCommissionNoExecution({
-				latestUserText: 'Which documents do we have in this project?',
+				organizeCommissioned: false,
 				toolExecutions: [],
 				repairAlreadyInjected: false
 			})
@@ -1381,7 +1354,7 @@ describe('shouldRepairOrganizeCommissionNoExecution', () => {
 	it('never injects twice in one turn', () => {
 		expect(
 			shouldRepairOrganizeCommissionNoExecution({
-				latestUserText: ORGANIZE_MESSAGE,
+				organizeCommissioned: true,
 				toolExecutions: [],
 				repairAlreadyInjected: true
 			})

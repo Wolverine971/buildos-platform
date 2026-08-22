@@ -177,10 +177,7 @@ import {
 } from '$lib/services/agentic-chat/tools/domains/domain-session-state';
 import { deriveUsedDomainSignalsFromToolExecutions } from '$lib/services/agentic-chat/tools/domains/domain-used-signals';
 import { buildEntityResolutionHint } from '$lib/services/agentic-chat-v2/entity-resolution';
-import {
-	applyLivingWorkspaceToolProfile,
-	looksLikeImpliedProjectDocumentCommission
-} from '$lib/services/agentic-chat-v2/tool-selector';
+import { applyLivingWorkspaceToolProfile } from '$lib/services/agentic-chat-v2/tool-selector';
 import {
 	resolveAgentWorkspaceFromContextData,
 	resolveProjectDomainRuntimeSkillId
@@ -2322,28 +2319,6 @@ export const POST: RequestHandler = async ({
 				commissionedWriteMinimumCount =
 					livingWorkspaceToolSelection.commissionedWriteMinimumCount;
 
-				const impliedDocumentCommission =
-					(contextType === 'project' || contextType === 'ontology') &&
-					looksLikeImpliedProjectDocumentCommission(messageForModel);
-				if (impliedDocumentCommission) {
-					tools = materializeGatewayTools(tools, [
-						'create_onto_document',
-						'update_onto_document'
-					]).tools;
-					toolsRequiringProjectId = getToolsRequiringProjectId(tools);
-					commissionedWriteToolNames = [
-						...new Set([
-							...commissionedWriteToolNames,
-							...['update_onto_document', 'create_onto_document'].filter((name) =>
-								extractToolNamesFromDefinitions(tools).includes(name)
-							)
-						])
-					];
-					commissionedWriteMinimumCount = Math.max(1, commissionedWriteMinimumCount);
-					observabilityWriter.recordEvent('prompt', 'document_commission_activated', {
-						tool_names: commissionedWriteToolNames
-					} as Json);
-				}
 				if (livingWorkspaceToolSelection.implicitCapture) {
 					observabilityWriter.recordEvent(
 						'prompt',

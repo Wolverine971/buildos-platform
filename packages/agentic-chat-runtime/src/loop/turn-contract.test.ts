@@ -6,6 +6,7 @@ import {
 	buildFastChatPendingTurnContract,
 	deriveImplicitTurnContract,
 	executeCancelTurnContract,
+	executeAgenticChatStandardControlToolV1,
 	executeDeclareReadOnlyTurn,
 	executeDeclareTurnContract,
 	executeRequestTurnClarification,
@@ -50,6 +51,36 @@ function execution(
 }
 
 describe('semantic turn contracts', () => {
+	it('executes structured standard controls without a provider-specific tool-call envelope', () => {
+		expect(
+			executeAgenticChatStandardControlToolV1({
+				toolName: 'request_turn_clarification',
+				arguments: {
+					reason: 'Two tasks remain plausible.',
+					question: 'Which task should I update?'
+				}
+			})
+		).toMatchObject({
+			success: true,
+			requiresUserAction: true,
+			result: {
+				status: 'clarification_required',
+				requires_user_action: true
+			}
+		});
+		expect(
+			executeAgenticChatStandardControlToolV1({
+				toolName: 'declare_read_only_turn',
+				arguments: { reason: '   ' }
+			})
+		).toEqual({
+			success: false,
+			result: null,
+			error: 'Read-only turn declaration failed: explain why the current request commissions no durable data change.',
+			requiresUserAction: false
+		});
+	});
+
 	it('accepts a declared semantic outcome without tool names or curated phrases', () => {
 		const toolCall = call('declare_turn_contract', {
 			summary: 'Put the loose research into its requested homes',
@@ -1178,6 +1209,51 @@ describe('declared turn contract rejection reasons', () => {
 		};
 		expect(describeDeclaredTurnContractIssues(repaired)).toEqual([]);
 		expect(parseDeclaredTurnContract(repaired)).not.toBeNull();
+	});
+
+	it('bounds model-controlled values echoed into rejection messages', () => {
+		// These messages travel into the repair prompt, chat_tool_executions.error_message,
+		// and the activity log. An unbounded echo would let one malformed field spend the
+		// next pass's completion budget restating itself.
+		const huge = 'x'.repeat(50_000);
+		const cases: unknown[] = [
+			{ outcomes: huge },
+			{ outcomes: [{ action: huge, entity_kind: 'task', minimum_successful_effects: 1 }] },
+			{ outcomes: [{ action: 'update', entity_kind: huge, minimum_successful_effects: 1 }] },
+			{
+				outcomes: [
+					{ action: 'update', entity_kind: 'task', minimum_successful_effects: huge }
+				]
+			}
+		];
+		for (const value of cases) {
+			const issues = describeDeclaredTurnContractIssues(value);
+			expect(issues.length).toBeGreaterThan(0);
+			expect(issues.join(' ').length).toBeLessThan(600);
+			expect(issues.join(' ')).not.toContain('x'.repeat(200));
+		}
+	});
+
+	it('caps how many rejected outcomes it restates and says how many were elided', () => {
+		const issues = describeDeclaredTurnContractIssues({
+			outcomes: Array.from({ length: 20 }, () => ({
+				action: 'frobnicate',
+				entity_kind: 'task',
+				minimum_successful_effects: 1
+			}))
+		});
+		expect(issues).toHaveLength(6);
+		expect(issues.at(-1)).toContain('15 further outcomes');
+		expect(issues.join(' ').length).toBeLessThan(2_000);
+	});
+
+	it('survives an unserializable rejected value', () => {
+		const cyclic: Record<string, unknown> = { toJSON: undefined };
+		cyclic.self = cyclic;
+		const issues = describeDeclaredTurnContractIssues({
+			outcomes: [{ action: cyclic, entity_kind: 'task', minimum_successful_effects: 1 }]
+		});
+		expect(issues.join(' ')).toContain('[unserializable]');
 	});
 
 	it('names unsupported actions, entity kinds, and out-of-range minimums separately', () => {

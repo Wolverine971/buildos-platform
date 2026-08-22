@@ -13,7 +13,7 @@ function toolNames(result: ReturnType<typeof resolveFastChatTurnPreparation>): s
 }
 
 describe('resolveFastChatTurnPreparation', () => {
-	it('keeps lexical intent as shadow data while using stable project capabilities', () => {
+	it('uses stable project capabilities without classifying message text', () => {
 		const times = [100, 107];
 		const result = resolveFastChatTurnPreparation({
 			contextType: 'project',
@@ -28,9 +28,9 @@ describe('resolveFastChatTurnPreparation', () => {
 		});
 
 		expect(result.turnIntent).toMatchObject({
-			requiresWrite: true,
-			action: 'update',
-			entityKind: 'task'
+			requiresWrite: false,
+			action: null,
+			originalRequestText: null
 		});
 		expect(result.domainSensingBypassed).toBe(false);
 		expect(result.turnDomainSensing).toBeNull();
@@ -42,7 +42,7 @@ describe('resolveFastChatTurnPreparation', () => {
 		expect(result.toolSelectionMs).toBe(7);
 	});
 
-	it('routes a pronoun-based document organization request to the move tool', () => {
+	it('mounts document organization tools without lexical routing', () => {
 		const result = resolveFastChatTurnPreparation({
 			contextType: 'project',
 			entityId: 'project-1',
@@ -57,9 +57,9 @@ describe('resolveFastChatTurnPreparation', () => {
 		});
 
 		expect(result.turnIntent).toMatchObject({
-			requiresWrite: true,
-			action: 'organize',
-			entityKind: 'document'
+			requiresWrite: false,
+			action: null,
+			entityKind: 'unknown'
 		});
 		expect(result.selectedSurfaceProfile).toBe('project_write_document');
 		expect(toolNames(result)).toContain('move_document_in_tree');

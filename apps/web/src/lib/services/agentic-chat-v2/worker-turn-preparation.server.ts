@@ -10,7 +10,6 @@ import {
 	AGENTIC_CHAT_LIVE_VISION_MAX_SIGNED_URL_TTL_SECONDS,
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
-	deriveAgenticChatExpectedWriteToolNamesV1,
 	hashCanonicalAdmissionRequestV1,
 	hashTurnInputArtifactContentV1,
 	normalizeAgenticChatText,
@@ -23,7 +22,6 @@ import {
 	type AgenticChatHistoryStateV1,
 	type AgenticChatResumeCheckpointSnapshotV1,
 	type AgenticChatSessionEventSnapshotV1,
-	type AgenticChatTurnIntentSnapshotV1,
 	type ChatAttachmentRef,
 	type ChatContextType,
 	type ChatSession,
@@ -38,8 +36,13 @@ import {
 import {
 	applyActiveDomainSignalsOverlay,
 	buildLitePromptEnvelope,
-	LITE_PROMPT_VARIANT
+	LITE_PROMPT_VARIANT,
+	resolveLitePromptTurnSituation
 } from '$lib/services/agentic-chat-lite/prompt';
+import {
+	LIVING_REFERENCE_MODE,
+	resolveAgentWorkspaceFromContextData
+} from '$lib/services/agentic-chat/project-domain-profiles';
 import { listOutcomeCards } from '$lib/services/agentic-chat/tools/outcome-cards/catalog';
 import {
 	mergeDomainSessionState,
@@ -73,7 +76,6 @@ import { resolveFastChatScaffoldConfigFromEnv } from './scaffold-variant';
 import { projectWorkerFrozenHistorySnapshot } from './session-service';
 import { loadFastChatPromptContext } from './context-loader';
 import { loadValidatedChatAttachments } from './stream-attachments';
-import { buildPendingTurnIntentSystemMessage } from './turn-intent';
 import { buildPendingTurnContractSystemMessage } from './turn-contract';
 import { resolveFastChatTurnPreparation } from './turn-preparation';
 import type { FastChatHistoryMessage } from './types';
@@ -487,6 +489,17 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			conversationSummary,
 			entityResolutionHint: buildEntityResolutionHint(requestLastTurnContext)
 		};
+		const agentWorkspace = resolveAgentWorkspaceFromContextData(promptContext.data);
+		const turnSituation = resolveLitePromptTurnSituation({
+			toolNames: workerPromptTools.map((tool) => tool.function?.name ?? '').filter(Boolean),
+			latestUserMessage: messageForModel,
+			livingWorkspace: agentWorkspace?.mode === LIVING_REFERENCE_MODE,
+			// The semantic disposition gate decides whether this particular message
+			// is a capture; admission does not classify it from its wording.
+			livingWorkspaceCapture: false,
+			domainProfile: agentWorkspace?.domain_profile ?? null,
+			domainAffinity: agentWorkspace?.domain_affinity ?? null
+		});
 		let envelope = buildLitePromptEnvelope({
 			...promptContext,
 			tools: workerPromptTools,
@@ -503,7 +516,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			priorOutcomeCardIds: turnPreparation.priorOutcomeCardIds,
 			domainSensingResult: workerPromptDomainSensing,
 			skillGatePreload: workerSkillGatePreload,
-			turnSituation: null,
+			turnSituation,
 			scaffold: WORKER_PROMPT_SCAFFOLD
 		});
 		preparedArtifact = {
@@ -523,14 +536,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	// Pending commissions are current session state, not prepared-prompt state.
 	// Append them after either history path so a cached/prepared turn cannot
 	// silently lose an unfinished semantic contract during worker adoption.
-	const pendingIntentMessage = buildPendingTurnIntentSystemMessage(turnPreparation.turnIntent);
-	if (pendingIntentMessage) {
-		modelHistory.push({
-			role: 'system',
-			content: pendingIntentMessage,
-			sourceMessageId: null
-		});
-	}
 	const pendingContractMessage = buildPendingTurnContractSystemMessage(
 		turnPreparation.pendingTurnContract
 	);
@@ -582,7 +587,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		prepared: {
 			...preparedArtifact,
 			historyState,
-			turnIntent: freezeWorkerTurnIntent(turnPreparation.turnIntent),
 			domainMetadata: freezeWorkerDomainMetadata({
 				previousState: turnPreparation.previousDomainState,
 				domainSensing: turnPreparation.turnDomainSensing,
@@ -705,26 +709,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		},
 		capacity,
 		preparedPromptUsed: preparedPromptId !== null
-	};
-}
-
-function freezeWorkerTurnIntent(
-	intent: Omit<AgenticChatTurnIntentSnapshotV1, 'expectedWriteToolNames'>
-): AgenticChatTurnIntentSnapshotV1 {
-	const snapshot = {
-		version: 1 as const,
-		requiresWrite: intent.requiresWrite,
-		action: intent.action,
-		entityKind: intent.entityKind,
-		operations: intent.operations.map((operation) => ({ ...operation })),
-		source: intent.source,
-		originalRequestText: intent.originalRequestText,
-		originatingTurnRunId: intent.originatingTurnRunId,
-		clearPending: intent.clearPending
-	};
-	return {
-		...snapshot,
-		expectedWriteToolNames: deriveAgenticChatExpectedWriteToolNamesV1(snapshot)
 	};
 }
 

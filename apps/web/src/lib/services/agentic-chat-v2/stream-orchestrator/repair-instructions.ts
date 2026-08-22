@@ -25,7 +25,6 @@ export {
 	extractStatedFutureClause,
 	hasGatewayCreateFieldNoProgressFailure,
 	looksLikeConservativeStatedFuture,
-	looksLikeExplicitMutationRequest,
 	looksLikeStatedFuture,
 	shouldRepairGatewayMutationNoExecution,
 	shouldRepairOrganizeCommissionNoExecution,

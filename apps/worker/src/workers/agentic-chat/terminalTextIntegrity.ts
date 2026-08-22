@@ -3,7 +3,7 @@ import {
 	type FastToolExecution,
 	collectGatewayWriteIntentOps,
 	enforceMutationOutcomeIntegrity,
-	looksLikeExplicitMutationRequest
+	resolveTurnContractFromExecutions
 } from '@buildos/agentic-chat-runtime/loop';
 import {
 	type FinalizationGuardResult,
@@ -21,16 +21,14 @@ export type AgenticChatTerminalTextIntegrityResultV1 = {
  * Apply the same deterministic terminal safety floors as the legacy loop after
  * every provider/tool round is durable and before the worker's terminal CAS.
  *
- * The worker artifact does not yet carry the legacy turn-intent write minimum
- * or commissioned tool list, so this deliberately uses only facts available
- * without prompt-text reconstruction: the raw admitted user message, context,
- * and the generation-fenced tool ledger.
+ * Mutation state comes only from structured control/write executions. Natural
+ * language is interpreted by the reviewed semantic-disposition path, not by a
+ * second regex classifier at finalization.
  */
 export function enforceAgenticChatTerminalTextIntegrityV1(input: {
 	assistantText: string;
 	finishedReason: string;
 	contextType: string;
-	userMessage: string;
 	toolExecutions: FastToolExecution[];
 }): AgenticChatTerminalTextIntegrityResultV1 {
 	if (input.finishedReason === 'supervisor_question') {
@@ -43,12 +41,11 @@ export function enforceAgenticChatTerminalTextIntegrityV1(input: {
 	}
 
 	const mutationRequested =
-		looksLikeExplicitMutationRequest(input.userMessage) ||
+		resolveTurnContractFromExecutions(input.toolExecutions) !== null ||
 		collectGatewayWriteIntentOps(input.toolExecutions).length > 0;
 	const integrityText = enforceMutationOutcomeIntegrity(input.assistantText, {
 		contextType: input.contextType,
 		toolExecutions: input.toolExecutions,
-		latestUserText: input.userMessage,
 		explicitMutationRequested: mutationRequested
 	});
 	const guard = applyFinalizationGuard({
@@ -67,9 +64,7 @@ export function enforceAgenticChatTerminalTextIntegrityV1(input: {
 	// answer, the correction is appended rather than substituted, so finalization
 	// must persist the exact resulting stream prefix as well.
 	const assistantText =
-		correctionDelta === null
-			? input.assistantText
-			: `${input.assistantText}${correctionDelta}`;
+		correctionDelta === null ? input.assistantText : `${input.assistantText}${correctionDelta}`;
 
 	return {
 		assistantText,

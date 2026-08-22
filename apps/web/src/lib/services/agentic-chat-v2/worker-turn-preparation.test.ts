@@ -20,6 +20,29 @@ const IDS = [
 ];
 const NOW = Date.parse('2026-08-03T12:00:00.000Z');
 
+function buildWhitespaceBoundaryMessage(targetLength: number, suffix: string): string {
+	const prefix = 'I want to write the book that is my life.';
+	const trailingFillerLength = targetLength - 1_200 - suffix.length;
+	if (targetLength <= 1_200 || prefix.length >= 1_199 || trailingFillerLength < 0) {
+		throw new Error('Test message length must leave room for the former clipping boundary');
+	}
+	return `${prefix}${'x'.repeat(1_199 - prefix.length)} ${'y'.repeat(trailingFillerLength)}${suffix}`;
+}
+
+const OVER_1_500_TAIL = 'FINAL REQUEST: summarize only.';
+const OVER_1_500_MESSAGE = buildWhitespaceBoundaryMessage(1_501, OVER_1_500_TAIL);
+
+function buildUnicodeMultilineMessage(targetLength: number, suffix: string): string {
+	const prefix = 'Notes for the novel — preserve the complete context.\n';
+	const seed = '章: Mara visits the café — retain every detail.\n';
+	const bodyLength = targetLength - prefix.length - suffix.length;
+	if (bodyLength <= 0) throw new Error('Test message target is too short');
+	return `${prefix}${seed.repeat(Math.ceil(bodyLength / seed.length)).slice(0, bodyLength)}${suffix}`;
+}
+
+const OVER_3_000_TAIL = '\nFINAL REQUEST: explain the ending without changing any documents. 終';
+const OVER_3_000_UNICODE_MESSAGE = buildUnicodeMultilineMessage(3_001, OVER_3_000_TAIL);
+
 const mocks = vi.hoisted(() => ({
 	checkDailyBriefAccess: vi.fn(),
 	checkProjectAccess: vi.fn(),
@@ -30,7 +53,6 @@ const mocks = vi.hoisted(() => ({
 	loadFastChatPromptContext: vi.fn(),
 	buildLitePromptEnvelope: vi.fn(),
 	applyActiveDomainSignalsOverlay: vi.fn(),
-	buildPendingTurnIntentSystemMessage: vi.fn(),
 	buildPendingTurnContractSystemMessage: vi.fn()
 }));
 
@@ -51,13 +73,6 @@ vi.mock('./turn-preparation', () => ({
 vi.mock('./context-loader', () => ({
 	loadFastChatPromptContext: mocks.loadFastChatPromptContext
 }));
-vi.mock('./turn-intent', async (importOriginal) => {
-	const original = await importOriginal<typeof import('./turn-intent')>();
-	return {
-		...original,
-		buildPendingTurnIntentSystemMessage: mocks.buildPendingTurnIntentSystemMessage
-	};
-});
 vi.mock('./turn-contract', async (importOriginal) => {
 	const original = await importOriginal<typeof import('./turn-contract')>();
 	return {
@@ -225,7 +240,6 @@ describe('Agentic Chat worker turn preparation', () => {
 		};
 		mocks.buildLitePromptEnvelope.mockReturnValue(envelope);
 		mocks.applyActiveDomainSignalsOverlay.mockReturnValue(envelope);
-		mocks.buildPendingTurnIntentSystemMessage.mockReturnValue(null);
 		mocks.buildPendingTurnContractSystemMessage.mockReturnValue(null);
 	});
 
@@ -264,18 +278,6 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		expect(result.preparedPromptUsed).toBe(false);
 		expect(result.args.p_artifact_prepared).toMatchObject({
-			turnIntent: {
-				version: 1,
-				requiresWrite: false,
-				action: null,
-				entityKind: 'unknown',
-				operations: [],
-				source: 'none',
-				originalRequestText: null,
-				originatingTurnRunId: null,
-				clearPending: false,
-				expectedWriteToolNames: []
-			},
 			domainMetadata: {
 				version: 1,
 				sensingApplied: false,
@@ -298,6 +300,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				})
 			}
 		});
+		expect(result.args.p_artifact_prepared).not.toHaveProperty('turnIntent');
 		expect(mocks.inspectPreparedPromptAdmissionLineage).not.toHaveBeenCalled();
 		expect(mocks.inspectPreparedPromptForWorkerAdmission).not.toHaveBeenCalled();
 		expect(mocks.buildLitePromptEnvelope).toHaveBeenCalledWith(
@@ -360,6 +363,78 @@ describe('Agentic Chat worker turn preparation', () => {
 			contentBytes: result.args.p_artifact_content_bytes,
 			historyBytes: result.args.p_artifact_history_bytes
 		});
+	});
+
+	it.each([
+		{
+			label: 'an ASCII message over 1,500 characters with whitespace at the former clip edge',
+			message: OVER_1_500_MESSAGE,
+			minimumCharacters: 1_500,
+			tailMarker: OVER_1_500_TAIL,
+			multibyte: false
+		},
+		{
+			label: 'a multiline Unicode message over 3,000 characters',
+			message: OVER_3_000_UNICODE_MESSAGE,
+			minimumCharacters: 3_000,
+			tailMarker: OVER_3_000_TAIL,
+			multibyte: true
+		}
+	])('admits $label intact without lexical turn-intent metadata', async (testCase) => {
+		const { message, minimumCharacters, tailMarker, multibyte } = testCase;
+		expect(message.length).toBeGreaterThan(minimumCharacters);
+		expect(message.endsWith(tailMarker)).toBe(true);
+		if (minimumCharacters === 1_500) {
+			expect(message).toHaveLength(1_501);
+			expect(message.slice(0, 1_200)).toMatch(/\s$/);
+		}
+		if (multibyte) {
+			expect(message).toHaveLength(3_001);
+			expect(new TextEncoder().encode(message).byteLength).toBeGreaterThan(message.length);
+			expect(message).toContain('\n');
+		}
+
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: {} as never,
+			userId: USER_ID,
+			command: command({ message }) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		expect(result.args.p_request_message).toBe(message);
+		expect(result.args.p_user_message_content).toBe(message);
+		expect(result.args.p_artifact_prepared).not.toHaveProperty('turnIntent');
+		expect(mocks.buildLitePromptEnvelope).toHaveBeenCalledWith(
+			expect.objectContaining({ currentUserMessage: message })
+		);
+		const expectedHash = await hashCanonicalAdmissionRequestV1({
+			version: AGENTIC_CHAT_REQUEST_HASH_VERSION,
+			clientTurnId: 'client-turn-1',
+			streamRunId: 'stream-run-1',
+			context: { type: 'global', entityId: null, projectId: null },
+			message,
+			attachments: [],
+			voiceNoteGroupId: null,
+			preparedPromptLineage: { id: null, acceptedSurfaceProfile: null }
+		});
+		expect(result.args.p_request_hash).toBe(expectedHash);
+
+		const artifact = {
+			artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
+			historySource: result.args.p_history_source,
+			history: result.args.p_artifact_history,
+			prepared: result.args.p_artifact_prepared,
+			createdAt: new Date(NOW).toISOString(),
+			retainUntil: new Date(NOW + 7 * 24 * 60 * 60 * 1000).toISOString(),
+			contentHash: result.args.p_artifact_content_hash
+		} as TurnInputArtifactV1;
+		await expect(validateTurnInputArtifactV1(artifact)).resolves.toMatchObject({ ok: true });
 	});
 
 	it('preloads a sensed skill without exposing dynamic skill calls to the worker prompt', async () => {

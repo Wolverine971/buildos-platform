@@ -2106,6 +2106,49 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(reviewSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
 	});
 
+	it('rejects tool calls arriving on a pass that did not finish for tool calls', async () => {
+		// assertToolCallFinishReason is now the sole enforcement point for this
+		// invariant; the duplicate inline checks after completeToolCalls were
+		// unreachable and were removed. Guard the surviving copy directly.
+		const client = clientWithRounds([
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'provider-read-after-stop-1',
+							type: 'function',
+							function: {
+								name: 'get_project_overview',
+								arguments: JSON.stringify({
+									project_id: '40000000-0000-4000-8000-000000000004'
+								})
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+		}).prepare({
+			executionInput: executionInputWithReadSurface([
+				readToolDefinition('get_project_overview')
+			]),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		// Well-formed arguments, so this is decided by the finish reason alone.
+		await expect(collect(invocation.stream())).rejects.toMatchObject({
+			code: 'provider_tool_finish_reason_invalid',
+			failureClass: 'unknown'
+		});
+	});
+
 	it('classifies truncated acting-model arguments with payload-free diagnostics', async () => {
 		const client = clientWithRounds([
 			[

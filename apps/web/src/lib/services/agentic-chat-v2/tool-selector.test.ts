@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 describe('selectFastChatTools', () => {
-	it('mounts direct document writes for living-reference capture without redundant discovery', () => {
+	it('mounts living-reference document tools without classifying the message', () => {
 		const baseTools = selectFastChatTools({
 			contextType: 'project',
 			surfaceProfile: 'project_basic'
@@ -35,15 +35,13 @@ describe('selectFastChatTools', () => {
 		});
 		const names = selection.tools.map((tool) => tool.function?.name).filter(Boolean);
 
-		expect(selection.implicitCapture).toBe(true);
-		expect(selection.commissionedWriteMinimumCount).toBe(1);
+		expect(selection.implicitCapture).toBe(false);
+		expect(selection.commissionedWriteMinimumCount).toBe(0);
 		expect(names).toContain('create_onto_document');
 		expect(names).toContain('update_onto_document');
-		expect(names).not.toContain('tool_search');
-		expect(names).not.toContain('tool_schema');
 	});
 
-	it('treats a declarative chapter beat as living-reference capture', () => {
+	it('does not assign a write cardinality from chapter wording', () => {
 		const baseTools = selectFastChatTools({
 			contextType: 'project',
 			surfaceProfile: 'project_basic'
@@ -60,14 +58,14 @@ describe('selectFastChatTools', () => {
 		});
 		const names = selection.tools.map((tool) => tool.function?.name).filter(Boolean);
 
-		expect(selection.implicitCapture).toBe(true);
-		expect(selection.commissionedWriteMinimumCount).toBe(2);
+		expect(selection.implicitCapture).toBe(false);
+		expect(selection.commissionedWriteMinimumCount).toBe(0);
 		expect(names).toEqual(
 			expect.arrayContaining(['create_onto_document', 'update_onto_document'])
 		);
 	});
 
-	it('keeps ordinary facts using structural common words on the one-write floor', () => {
+	it('does not infer different write floors from structural words', () => {
 		const baseTools = selectFastChatTools({
 			contextType: 'project',
 			surfaceProfile: 'project_basic'
@@ -89,15 +87,15 @@ describe('selectFastChatTools', () => {
 				workspace: fictionWorkspace,
 				latestUserMessage: message
 			});
-			expect(selection.implicitCapture).toBe(true);
-			expect(selection.commissionedWriteMinimumCount).toBe(1);
+			expect(selection.implicitCapture).toBe(false);
+			expect(selection.commissionedWriteMinimumCount).toBe(0);
 		}
 		const structural = applyLivingWorkspaceToolProfile({
 			tools: baseTools,
 			workspace: fictionWorkspace,
 			latestUserMessage: 'The final chapter reveals who rang the Bellwether.'
 		});
-		expect(structural.commissionedWriteMinimumCount).toBe(2);
+		expect(structural.commissionedWriteMinimumCount).toBe(0);
 	});
 
 	it('keeps speculation without a question mark read-only', () => {
@@ -125,7 +123,7 @@ describe('selectFastChatTools', () => {
 		}
 	});
 
-	it('keeps living-reference questions read-only and explicit mutations on their normal surface', () => {
+	it('keeps one capability surface for living-reference questions and commands', () => {
 		const baseTools = selectFastChatTools({
 			contextType: 'project',
 			surfaceProfile: 'project_basic'
@@ -151,17 +149,12 @@ describe('selectFastChatTools', () => {
 			turnIntent: explicitIntent
 		});
 
-		expect(adviceSelection).toEqual({
-			tools: baseTools,
-			implicitCapture: false,
-			commissionedWriteMinimumCount: 0
-		});
-		expect(mutationSelection).toEqual({
-			tools: baseTools,
-			implicitCapture: false,
-			commissionedWriteMinimumCount: 0
-		});
-		expect(explicitIntent.requiresWrite).toBe(true);
+		expect(adviceSelection.implicitCapture).toBe(false);
+		expect(mutationSelection.implicitCapture).toBe(false);
+		expect(adviceSelection.commissionedWriteMinimumCount).toBe(0);
+		expect(mutationSelection.commissionedWriteMinimumCount).toBe(0);
+		expect(adviceSelection.tools).toEqual(mutationSelection.tools);
+		expect(explicitIntent.requiresWrite).toBe(false);
 	});
 
 	it('keeps the stable project surface independent of legacy fallback', () => {

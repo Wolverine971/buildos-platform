@@ -5,6 +5,7 @@ import { buildSearchFilter } from '@buildos/shared-agent-ops/utils/search-filter
 import { isValidUUID } from '@buildos/shared-agent-ops/utils/validation-utils';
 import { inferMaterializedToolsFromEntityResults } from '../loop/entity-result-materialization';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
+import { prepareAgenticChatSearchTerm } from './search-term';
 import {
 	dedupeSearchRows,
 	eventSearchScore,
@@ -134,11 +135,6 @@ function normalizeAgenticSearchTypes(types?: string[]): string[] | undefined {
 		)
 	);
 	return normalized.length > 0 ? normalized : undefined;
-}
-
-function prepareSearchTerm(term?: string): string {
-	if (!term) return '';
-	return term.replace(/[%]/g, '').replace(/,/g, ' ').trim();
 }
 
 async function searchEventsForQuery(input: {
@@ -361,7 +357,7 @@ async function runAgenticSearch(
 	context: AgenticChatSharedReadContextV1,
 	args: SharedSearchAllProjectsArgs & { scope: 'workspace' | 'project' }
 ): Promise<OntologySearchPayload & { materialized_tools: string[] }> {
-	const query = prepareSearchTerm(args.query);
+	const query = prepareAgenticChatSearchTerm(args.query);
 	if (!query) {
 		throw new Error(
 			args.scope === 'project'
@@ -417,7 +413,7 @@ export async function searchOntology(
 	context: AgenticChatSharedReadContextV1,
 	args: SharedSearchOntologyArgs
 ): Promise<OntologySearchPayload> {
-	const query = prepareSearchTerm(args.query);
+	const query = prepareAgenticChatSearchTerm(args.query);
 	if (!query) throw new Error('Query is required for search_ontology');
 	const requestedLimit =
 		typeof args.limit === 'number' && Number.isFinite(args.limit) && args.limit > 0

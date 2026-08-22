@@ -39,7 +39,6 @@ import {
 	buildToolValidationRepairInstruction,
 	getSafeWriteToolNamesForTurnContract,
 	isPureReadToolName,
-	looksLikeProjectDocumentOrganizeTurn,
 	mergeTurnContracts,
 	parseDeclaredTurnContract,
 	parseToolArguments,
@@ -670,10 +669,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		const surfaceCanWrite = request.tools.some((tool) =>
 			reviewedAgenticChatMutationSpecV1(tool.function.name)
 		);
-		const userMessageText =
-			typeof executionInput.requestPayload.message === 'string'
-				? executionInput.requestPayload.message
-				: '';
 		// After the first mutation round the write carve-out is spent, yet the
 		// approved contract may still have outcomes left (create folders, then
 		// move documents into them). The live organize failures all ended here:
@@ -716,9 +711,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			return untouched ? resolution : null;
 		};
 		const organizeExecutionInstruction = (): string | null => {
-			if (!turnContract || !looksLikeProjectDocumentOrganizeTurn(userMessageText)) {
-				return null;
-			}
+			if (!turnContract) return null;
 			const organizesDocuments = turnContract.outcomes.some(
 				(outcome) =>
 					outcome.entityKind === 'document' &&
@@ -1572,12 +1565,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				});
 				finished = true;
 				if (calls.length > 0) {
-					if (request.toolChoice !== 'auto') {
-						throw providerError('provider_tool_call_disabled', 'permanent');
-					}
-					if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
-						throw providerError('provider_tool_finish_reason_invalid', 'unknown');
-					}
 					const unavailableSkillRepair = buildUnavailableSkillRepairRequest(
 						request,
 						calls,
@@ -2304,12 +2291,6 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				yield* drainSupervisorSteps(state.supervisor);
 				finished = true;
 				if (calls.length > 0) {
-					if (request.toolChoice === 'none') {
-						throw providerError('provider_tool_call_disabled', 'permanent');
-					}
-					if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
-						throw providerError('provider_tool_finish_reason_invalid', 'unknown');
-					}
 					const unavailableSkillRepair = buildUnavailableSkillRepairRequest(
 						request,
 						calls,
@@ -2972,10 +2953,15 @@ function rejectedToolArgumentsError(
  * made. Returns the rejection code so the fallback text can name the cause.
  */
 /**
- * Preserves the pre-existing rejection order for a pass that streamed tool-call
- * deltas — disabled tool surface first, then an unusable finish reason — but
- * runs it before argument parsing so a truncated pass is classified by why it
- * stopped rather than by the malformed JSON that stopping left behind.
+ * The single enforcement point for both tool-call pass invariants: a disabled
+ * tool surface is rejected first, then an unusable finish reason. Rejection
+ * order matches what the inline checks used to do, but this runs before
+ * argument parsing so a truncated pass is classified by why it stopped rather
+ * than by the malformed JSON that stopping left behind.
+ *
+ * Callers must not re-check these after `completeToolCalls`: any pass that
+ * produced calls has `state.size > 0`, so this already ran and a second copy
+ * would be unreachable.
  */
 function assertToolCallFinishReason(
 	state: ReturnType<typeof createToolCallAccumulator>,

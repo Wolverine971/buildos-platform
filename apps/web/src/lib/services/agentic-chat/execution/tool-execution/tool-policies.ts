@@ -1,10 +1,7 @@
-import { getDocumentUpdateContentCandidate } from '../../shared/update-value-validation';
+// apps/web/src/lib/services/agentic-chat/execution/tool-execution/tool-policies.ts
 import {
 	AGENT_WORKSPACE_PROP,
-	applyFictionStructureUpdateSourceDefault,
 	applyProjectCreationProfileDefaults,
-	looksLikeLivingWorkspaceCaptureTurn,
-	readAgentWorkspaceMetadata,
 	validateProjectCreationProfileGrounding
 } from '../../project-domain-profiles';
 import { normalizeProjectCreateArgs } from '../../tools/core/project-create-args';
@@ -26,7 +23,6 @@ export const DOMAIN_PREFLIGHT_POLICY_ORDER = {
 	postAuthorization: [
 		'duplicate_document_create',
 		'project_creation_profile_and_grounding',
-		'fiction_living_reference_defaults',
 		'project_creation_context_confirmation',
 		'document_description_requirements'
 	]
@@ -97,8 +93,6 @@ export function runPostAuthorizationPreflight(params: {
 	if (!projectProfile.ok) return projectProfile;
 	args = projectProfile.args;
 
-	args = applyFictionLivingReferenceDocumentUpdateDefaults(toolName, args, context);
-
 	const projectContextResult = guardProjectCreateFromProjectContext({
 		toolName,
 		args,
@@ -130,36 +124,6 @@ function applyProjectCreationProfilePolicy(params: {
 		};
 	}
 	return { ok: true, args };
-}
-
-function applyFictionLivingReferenceDocumentUpdateDefaults(
-	toolName: string,
-	args: ToolArguments,
-	context: ServiceContext
-): ToolArguments {
-	if (toolName !== 'update_onto_document') return args;
-	const userMessage = getLatestUserMessageText(context);
-	if (!looksLikeLivingWorkspaceCaptureTurn(userMessage)) return args;
-
-	const project = context.ontologyContext?.entities?.project;
-	const workspace = readAgentWorkspaceMetadata(project?.props);
-	if (workspace?.mode !== 'living_reference' || workspace.domain_profile !== 'fiction_story') {
-		return args;
-	}
-
-	const documentId = readTrimmedString(args.document_id);
-	if (!documentId || !getDocumentUpdateContentCandidate(args)) return args;
-	const document = findContextDocument(context, documentId);
-	const documentIdentity = normalizeDocumentTitleIdentity(
-		`${typeof document?.type_key === 'string' ? document.type_key : ''} ${typeof document?.title === 'string' ? document.title : ''}`
-	);
-	if (
-		!/document creative structure|\b(?:story|plot|structure|chapter)\b/.test(documentIdentity)
-	) {
-		return args;
-	}
-
-	return applyFictionStructureUpdateSourceDefault(args, userMessage);
 }
 
 function guardProjectCreateFromProjectContext(params: {

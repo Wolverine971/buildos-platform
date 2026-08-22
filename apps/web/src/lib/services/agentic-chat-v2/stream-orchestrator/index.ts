@@ -22,11 +22,7 @@ import {
 } from '$lib/services/agentic-chat-lite/prompt';
 import { FASTCHAT_LIMITS } from '../limits';
 import { buildLiveSnapshotFromTokens, FASTCHAT_TOKEN_BUDGETS } from '../context-usage';
-import {
-	getWriteToolNamesForTurnIntent,
-	turnIntentRequestsTaskScheduling,
-	type FastChatTurnIntent
-} from '../turn-intent';
+import type { FastChatTurnIntent } from '../turn-intent';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
@@ -426,44 +422,28 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const countSuccessfulCommissionedWrites = (): number =>
 		countDistinctSuccessfulWriteTargets(toolExecutions, commissionedWriteToolNames);
 	const initialTurnContract = params.initialTurnContract ?? null;
-	// Semantic contracts own completion. The lexical intent remains a conservative
-	// legacy-path safety floor for transport recovery and no-op schedule validation:
-	// it may demand disclosure or a repair, but it cannot satisfy a write outcome.
-	const lexicalMutationSafetyFloor = params.turnIntent?.requiresWrite === true;
-	const lexicalExpectedWriteToolNames = params.turnIntent
-		? getWriteToolNamesForTurnIntent(params.turnIntent)
-		: [];
-	const lexicalTaskSchedulingSafetyFloor = params.turnIntent
-		? turnIntentRequestsTaskScheduling(params.turnIntent)
-		: false;
 	let turnContract: TurnContract | null = initialTurnContract;
-	let mutationRequested = lexicalMutationSafetyFloor || commissionedWriteToolNames.length > 0;
-	let taskSchedulingRequested = lexicalTaskSchedulingSafetyFloor;
-	let expectedWriteToolNames = Array.from(
-		new Set([...lexicalExpectedWriteToolNames, ...commissionedWriteToolNames])
-	);
+	let mutationRequested = commissionedWriteToolNames.length > 0;
+	let taskSchedulingRequested = false;
+	let expectedWriteToolNames = [...commissionedWriteToolNames];
 	const refreshTurnContract = (): void => {
 		turnContract = resolveTurnContractFromExecutions(toolExecutions, initialTurnContract);
 		if (!turnContract) {
-			mutationRequested = lexicalMutationSafetyFloor || commissionedWriteToolNames.length > 0;
-			expectedWriteToolNames = Array.from(
-				new Set([...lexicalExpectedWriteToolNames, ...commissionedWriteToolNames])
-			);
-			taskSchedulingRequested = lexicalTaskSchedulingSafetyFloor;
+			mutationRequested = commissionedWriteToolNames.length > 0;
+			expectedWriteToolNames = [...commissionedWriteToolNames];
+			taskSchedulingRequested = false;
 			return;
 		}
 		mutationRequested = true;
 		expectedWriteToolNames = getSafeWriteToolNamesForTurnContract(turnContract);
-		taskSchedulingRequested =
-			lexicalTaskSchedulingSafetyFloor ||
-			turnContract.outcomes.some(
-				(outcome) =>
-					outcome.action === 'schedule' ||
-					(outcome.entityKind === 'task' &&
-						outcome.requiredFields.some((field) =>
-							['due_at', 'start_at', 'end_at'].includes(field)
-						))
-			);
+		taskSchedulingRequested = turnContract.outcomes.some(
+			(outcome) =>
+				outcome.action === 'schedule' ||
+				(outcome.entityKind === 'task' &&
+					outcome.requiredFields.some((field) =>
+						['due_at', 'start_at', 'end_at'].includes(field)
+					))
+		);
 	};
 	const requiredSuccessfulContractEffects = (): number =>
 		turnContract?.outcomes.reduce(
@@ -1614,6 +1594,12 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					researchNoPersistStopRepairInjected,
 					statedFutureStopRepairInjected,
 					organizeCommissionStopRepairInjected,
+					organizeCommissioned:
+						turnContract?.outcomes.some(
+							(outcome) =>
+								outcome.entityKind === 'document' &&
+								(outcome.action === 'organize' || outcome.action === 'move')
+						) === true,
 					skillGate: params.skillGate,
 					assistantText,
 					finishedReason,

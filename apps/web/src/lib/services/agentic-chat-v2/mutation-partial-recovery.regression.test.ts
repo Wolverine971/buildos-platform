@@ -19,11 +19,24 @@ import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { streamFastChat } from './stream-orchestrator/index';
 import { LlmStreamPassTerminalError } from './stream-orchestrator/llm-pass-runner';
-import { resolveFastChatTurnIntent } from './turn-intent';
 
 const PROJECT_ID = 'b7f5c9e2-4a31-4d0a-9be6-0f2f8f4f9d3a';
 const MESSAGE =
 	'Look at the Q3 roadmap, check what tasks exist, recommend what I should work on next, and add a task for anything untracked.';
+const CONDITIONAL_CREATE_CONTRACT = {
+	version: 1 as const,
+	source: 'declared' as const,
+	outcomes: [
+		{
+			id: 'capture-untracked-task',
+			action: 'create' as const,
+			entityKind: 'task' as const,
+			targetIds: [],
+			requiredFields: ['title'],
+			minimumSuccessfulEffects: 1
+		}
+	]
+};
 
 // >= 120 chars and >= 18 words, with no write-success claim.
 const USABLE_PARTIAL =
@@ -76,11 +89,7 @@ function runConditionalMutationTurn(params: {
 		projectId: PROJECT_ID,
 		history: [],
 		message: MESSAGE,
-		turnIntent: resolveFastChatTurnIntent({
-			contextType: 'project',
-			projectId: PROJECT_ID,
-			latestUserMessage: MESSAGE
-		}),
+		initialTurnContract: CONDITIONAL_CREATE_CONTRACT,
 		tools: tools(params.toolNames),
 		toolExecutor: vi.fn(params.toolExecutor),
 		onDelta: async () => {}

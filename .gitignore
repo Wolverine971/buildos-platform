@@ -11,6 +11,8 @@ build
 .tsbuildinfo
 *.tsbuildinfo
 
+
+videos/*
 # Environment variables
 .env
 .env.*
@@ -108,3 +110,5 @@ output
 .temp
 .tmp
 practice-tests
+
+docs/marketing/visual-assets/projects

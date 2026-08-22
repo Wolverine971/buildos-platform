@@ -124,34 +124,8 @@ function shouldEnableLivingReference(
 	return Boolean(profile && /\b(?:ongoing|living)\s+workspace\b/i.test(normalized));
 }
 
-const ADVICE_OR_PROPOSAL_PATTERN =
-	/\?|\b(?:what\s+should|what\s+happens?|how\s+should|give\s+me|show\s+me|tell\s+me|explain|summari[sz]e|recap|compare|analy[sz]e|evaluate|critique|suggest|brainstorm|options?|possibilities|help\s+me\s+decide|could\s+(?:happen|be)|would\s+it)\b/i;
-// Musings phrased without a question mark are still questions, not canon:
-// "Do you think Mara would forgive him", "I wonder if Ilyan should betray
-// Mara", "Maybe Ilyan should refuse". Never convert speculation into a
-// commissioned durable write.
-const SPECULATION_PATTERN =
-	/\b(?:do\s+you\s+think|don'?t\s+you\s+think|i\s+wonder|i'?m\s+wondering|what\s+if|should\s+(?:i|we)\b)|^\s*(?:maybe|perhaps|possibly)\b/i;
-const GENERATED_CONTENT_REQUEST_PATTERN =
-	/\b(?:draft|write|generate|compose|continue|outline)\b[\s\S]{0,45}\b(?:scene|chapter|passage|paragraph|dialogue|prose|version|draft|outline)\b/i;
 const CASUAL_ACKNOWLEDGEMENT_PATTERN =
 	/^(?:ok(?:ay)?|thanks?(?:\s+you)?|got\s+it|sounds?\s+good|great|perfect|nice|cool|yes|no|yep|nope|agreed|continue|go\s+ahead)[.!\s]*$/i;
-
-/**
- * A living-reference commission turns plain declarative additions into an
- * implicit capture request. Questions and option-generation requests remain
- * read-only unless the user separately asks to save a choice.
- */
-export function looksLikeLivingWorkspaceCaptureTurn(message: string | null | undefined): boolean {
-	const normalized = normalizeText(message);
-	if (!normalized || normalized.length < 3) return false;
-	return !(
-		ADVICE_OR_PROPOSAL_PATTERN.test(normalized) ||
-		SPECULATION_PATTERN.test(normalized) ||
-		GENERATED_CONTENT_REQUEST_PATTERN.test(normalized) ||
-		CASUAL_ACKNOWLEDGEMENT_PATTERN.test(normalized)
-	);
-}
 
 const FICTION_CRAFT_DIRECT_PATTERN =
 	/\b(?:what\s+(?:should|could|might)\s+happen|what\s+happens?\s+next|where\s+should\s+(?:the\s+)?story\s+go|give\s+me\s+(?:some\s+)?options?|which\s+(?:option|direction|path))\b/i;
@@ -418,8 +392,6 @@ const FICTION_STRUCTURE_SOURCE_INTRO =
 	/\b(?:the\s+)?(?:book|story|novel|screenplay|plot)\s+(?:has|uses|follows|contains|is\s+(?:divided|organized|structured)\s+into)\b/i;
 const FICTION_NAMED_STRUCTURE_UNIT =
 	/\b(?:part|act|chapter|scene)\s+(?:[ivxlcdm]+|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/gi;
-const FICTION_STRUCTURE_UNIT_SIGNAL =
-	/\b(?:part|act|chapter|scene)\s+(?:[ivxlcdm]+|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i;
 const FICTION_CONTROLLING_STORY_PRESSURE =
 	/\b(?:wants?|must|needs?|tries?|seeks?|races?)\b[^.!?]{0,240}\bbefore\b|\b(?:emotional|thematic)\s+spine\b|\b(?:central|core|main)\s+conflict\b/i;
 
@@ -555,38 +527,6 @@ function addAuthorCanonSentences(
 	}
 
 	return { ...entity, [bodyKey]: nextBody };
-}
-
-/**
- * Keep an author's complete structural capture inspectable in an incremental
- * structure-document update. The caller owns domain/workspace/target routing;
- * this helper only performs a lossless content augmentation.
- */
-export function applyFictionStructureUpdateSourceDefault<T extends JsonRecord>(
-	args: T,
-	userMessage: string | null | undefined
-): T {
-	const sourceMessage = normalizeText(userMessage);
-	if (!sourceMessage || !FICTION_STRUCTURE_UNIT_SIGNAL.test(sourceMessage)) return args;
-	// Augment only when the model's content sits in a top-level field this
-	// helper writes back to. If the content arrived under a nested alias the
-	// caller failed to hoist, skipping is a safe no-op — augmenting would
-	// build a canon-only body that replaces the model's actual update.
-	const hasTopLevelContent =
-		(typeof args.content === 'string' && args.content.trim().length > 0) ||
-		(typeof args.body_markdown === 'string' && args.body_markdown.trim().length > 0);
-	if (!hasTopLevelContent) return args;
-	const bodyKey = typeof args.content === 'string' ? 'content' : 'body_markdown';
-	const body = normalizeText(args[bodyKey]);
-	if (normalizeSourceCoverageText(body) === normalizeSourceCoverageText(sourceMessage)) {
-		return {
-			...args,
-			[bodyKey]: `## Author canon\n\n${body}`
-		} as T;
-	}
-	return addAuthorCanonSentences(args, [sourceMessage], {
-		requireAuthorCanonSection: true
-	}) as T;
 }
 
 /**

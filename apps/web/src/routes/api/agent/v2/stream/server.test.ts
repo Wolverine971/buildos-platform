@@ -124,7 +124,6 @@ vi.mock('$lib/services/agentic-chat-v2/tool-selector', () => ({
 		implicitCapture: false,
 		commissionedWriteMinimumCount: 0
 	}),
-	looksLikeImpliedProjectDocumentCommission: () => false,
 	resolveFastChatSurfaceProfileForTurn: () => 'general',
 	selectFastChatTools: mocks.selectFastChatTools
 }));

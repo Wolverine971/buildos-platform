@@ -861,17 +861,55 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 
 	it('finalizes an appended terminal correction with the immutable streamed prefix', async () => {
 		const emittedText = 'Done — I marked the task complete.';
+		const contractArguments = {
+			outcomes: [
+				{
+					action: 'complete',
+					entity_kind: 'task',
+					target_ids: ['task-1'],
+					required_fields: ['state_key'],
+					minimum_successful_effects: 1
+				}
+			]
+		};
 		const harness = createHarness([
+			{
+				type: 'read_tool',
+				callTransitionId: CALL_TRANSITION_ID,
+				resultTransitionId: RESULT_TRANSITION_ID,
+				providerToolCallId: 'provider-declare-contract',
+				toolName: 'declare_turn_contract',
+				arguments: contractArguments
+			},
 			{ type: 'text_delta', text: emittedText },
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
-		harness.input.load.mockResolvedValueOnce({
-			...executionInput,
-			requestPayload: {
-				...executionInput.requestPayload,
-				message: 'Mark the task complete.'
-			}
-		} as never);
+		harness.readTool.execute.mockResolvedValueOnce({
+			result: {
+				status: 'declared',
+				contract: {
+					version: 1,
+					source: 'declared',
+					outcomes: [
+						{
+							id: 'declared-1',
+							action: 'complete',
+							entityKind: 'task',
+							targetIds: ['task-1'],
+							requiredFields: ['state_key'],
+							minimumSuccessfulEffects: 1
+						}
+					]
+				}
+			},
+			executionTimeMs: 0,
+			tokensConsumed: null,
+			affectedEntities: [],
+			toolCategory: 'control',
+			resultCount: null,
+			zeroResult: null,
+			requiresUserAction: false
+		});
 
 		await expect(harness.executor.execute(job())).resolves.toMatchObject({
 			outcome: 'completed',

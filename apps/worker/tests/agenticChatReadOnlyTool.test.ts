@@ -1,10 +1,15 @@
 // apps/worker/tests/agenticChatReadOnlyTool.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import type { AgenticChatToolAccessPortV1 } from '@buildos/agentic-chat-runtime/tools';
+import {
+	AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
+	type AgenticChatToolAccessPortV1
+} from '@buildos/agentic-chat-runtime/tools';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/executionInput';
 import {
+	AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1,
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
+	AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1,
 	AgenticChatReadOnlyToolAdapter,
 	isAgenticChatProductionReadToolNameV1
 } from '../src/workers/agentic-chat/readOnlyTool';
@@ -12,53 +17,6 @@ import {
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const ACTOR_ID = '90000000-0000-4000-8000-000000000009';
 const PROJECT_ID = '40000000-0000-4000-8000-000000000004';
-
-const SHARED_ALLOWLIST = [
-	'approve_mutation_batch_review',
-	'approve_read_only_turn_review',
-	'approve_turn_contract_review',
-	'declare_turn_contract',
-	'declare_read_only_turn',
-	'request_turn_clarification',
-	'cancel_turn_contract',
-	'request_proposal_revision',
-	'list_onto_projects',
-	'list_onto_tasks',
-	'list_onto_goals',
-	'list_onto_plans',
-	'list_onto_documents',
-	'list_onto_milestones',
-	'list_onto_risks',
-	'search_onto_projects',
-	'search_onto_tasks',
-	'search_onto_goals',
-	'search_onto_plans',
-	'search_onto_documents',
-	'search_onto_milestones',
-	'search_onto_risks',
-	'search_all_projects',
-	'search_buildos',
-	'search_project',
-	'search_ontology',
-	'get_onto_project_details',
-	'get_onto_project_graph',
-	'get_onto_document_details',
-	'get_onto_goal_details',
-	'get_onto_plan_details',
-	'get_onto_milestone_details',
-	'get_onto_risk_details',
-	'get_onto_task_details',
-	'list_task_documents',
-	'get_document_outline',
-	'read_document_section',
-	'get_document_tree',
-	'get_document_path',
-	'get_workspace_overview',
-	'get_project_overview',
-	'get_field_info',
-	'web_search',
-	'web_visit'
-];
 
 function executionInput(): AgenticChatWorkerExecutionInputV1 {
 	return {
@@ -179,8 +137,16 @@ function requestFor(toolName: string, args: Record<string, unknown>) {
 
 describe('AgenticChatReadOnlyToolAdapter', () => {
 	it('allowlists exactly the shared read tools for provider and executor composition', () => {
+		const composedNames = [
+			...AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1,
+			...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
+			...AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1
+		];
 		expect([...AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1].sort()).toEqual(
-			[...SHARED_ALLOWLIST].sort()
+			composedNames.sort()
+		);
+		expect(new Set(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).size).toBe(
+			AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.length
 		);
 		// Deliberately absent from the shared allowlist.
 		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).not.toContain('change_chat_context');
