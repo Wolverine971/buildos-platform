@@ -1,6 +1,7 @@
 // packages/smart-llm/src/moonshot-client.ts
 
 import type { ErrorLogger, OpenRouterResponse } from './types';
+import { LLMRequestTimeoutError } from './errors';
 
 export class MoonshotClient {
 	private apiKey: string;
@@ -146,18 +147,35 @@ export class MoonshotClient {
 
 			return data;
 		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') {
+			// AbortSignal.timeout() rejects with a DOMException named TimeoutError,
+			// not AbortError. Surface the same typed error as the OpenRouter client so
+			// callers and usage logging classify Moonshot timeouts identically.
+			if (
+				error instanceof Error &&
+				(error.name === 'TimeoutError' || error.name === 'AbortError')
+			) {
+				const timeoutMs = params.timeoutMs ?? 120000;
+				const timeoutError = new LLMRequestTimeoutError(timeoutMs, params.model, {
+					generationId: null
+				});
+				(timeoutError as Error & { cause?: unknown }).cause = error;
 				if (this.errorLogger) {
-					await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', undefined, {
-						operation: 'callMoonshot_timeout',
-						errorType: 'llm_api_timeout',
-						modelRequested: params.model,
-						timeoutMs: params.timeoutMs ?? 120000,
-						temperature: params.temperature,
-						maxTokens: params.max_tokens
-					});
+					await this.errorLogger.logAPIError(
+						timeoutError,
+						this.apiUrl,
+						'POST',
+						undefined,
+						{
+							operation: 'callMoonshot_timeout',
+							errorType: 'llm_api_timeout',
+							modelRequested: params.model,
+							timeoutMs,
+							temperature: params.temperature,
+							maxTokens: params.max_tokens
+						}
+					);
 				}
-				throw new Error(`Request timeout for model ${params.model}`);
+				throw timeoutError;
 			}
 			throw error;
 		}

@@ -1468,3 +1468,43 @@ describe('SmartLLMService JSON model recovery', () => {
 		expect(errorLogger.logAPIError).not.toHaveBeenCalled();
 	});
 });
+
+describe('SmartLLMService text generation timeout classification', () => {
+	it('records a text-path accepted timeout with status timeout, not failure', async () => {
+		// Regression: the typed timeout message says "timed out", so the old
+		// message.includes('timeout') heuristic misclassified text-path timeouts.
+		const usageLogger = {
+			logUsageToDatabase: vi.fn(async () => undefined)
+		};
+		const cause = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+		const timedOutResponse = {
+			ok: true,
+			headers: new Headers({ 'x-generation-id': 'gen-text-timeout' }),
+			json: vi.fn().mockRejectedValue(cause)
+		} as unknown as Response;
+		const fetchMock = vi.fn().mockResolvedValue(timedOutResponse);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			usageLogger,
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.generateText({
+				prompt: 'Exercise text-path timeout classification.',
+				userId: 'text-timeout-test',
+				timeoutMs: 42
+			})
+		).rejects.toBeInstanceOf(Error);
+
+		expect(fetchMock).toHaveBeenCalled();
+		await vi.waitFor(() => {
+			expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'timeout' })
+			);
+		});
+		expect(usageLogger.logUsageToDatabase).not.toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'failure' })
+		);
+	});
+});
