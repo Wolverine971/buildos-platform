@@ -264,6 +264,10 @@ describe('ProjectWorkspacePrototype edge states', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Project options' }));
 		const menu = await screen.findByRole('menu', { name: 'Project options' });
 		expect(menu).toBeInTheDocument();
+		expect(menu.parentElement).toBe(document.body);
+		expect(document.querySelector('[data-project-options-dismiss-layer]')?.parentElement).toBe(
+			document.body
+		);
 		expect(
 			screen.getByRole('menuitem', { name: 'Collaboration settings' })
 		).toBeInTheDocument();

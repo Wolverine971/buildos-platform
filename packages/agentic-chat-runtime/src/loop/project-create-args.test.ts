@@ -107,6 +107,43 @@ describe('project create argument normalization', () => {
 		expect(errors).toContain('Missing required parameter: relationships');
 	});
 
+	it('keeps accepting legacy two-item relationship pairs at runtime', () => {
+		const args = {
+			project: {
+				name: 'Launch',
+				type_key: 'project.business.launch'
+			},
+			entities: [
+				{ temp_id: 'goal-1', kind: 'goal', name: 'Launch well' },
+				{ temp_id: 'task-1', kind: 'task', title: 'Prepare launch' }
+			],
+			relationships: [
+				[
+					{ temp_id: 'goal-1', kind: 'goal' },
+					{ temp_id: 'task-1', kind: 'task' }
+				]
+			]
+		};
+
+		expect(validateProjectCreateArgs(args)).toEqual([]);
+	});
+
+	it('rejects null relationship placeholders so the repair loop can correct them', () => {
+		const errors = validateProjectCreateArgs({
+			project: {
+				name: 'Launch',
+				type_key: 'project.business.launch'
+			},
+			entities: [{ temp_id: 'goal-1', kind: 'goal', name: 'Launch well' }],
+			relationships: [null, null]
+		});
+
+		expect(errors).toEqual([
+			'Invalid relationships[0]: expected { from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }.',
+			'Invalid relationships[1]: expected { from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }.'
+		]);
+	});
+
 	it('extracts a leading risk severity and preserves misplaced explanatory prose', () => {
 		const incidentImpact =
 			'high compliance penalties can prematurely end games if validation rules are poorly balanced against player marketing choices.';

@@ -45,7 +45,7 @@ Project creation playbook for turning a user idea into the smallest valid BuildO
 4. Extract concrete details into project.description and project.props when the user provided them. Use `snake_case` props, `is_`/`has_` booleans, `*_count` counts, and `target_*` goals. Do not leave props empty when clear attributes were stated.
 5. If the user stated an outcome, add one goal entity. If the user listed concrete actions, add only those task entities. Add plans or milestones only when the user clearly described phases, workstreams, or date-driven structure.
 6. Always include entities and relationships arrays, even when they are empty.
-7. When you include relationships, each relationship item must use entity refs with temp_id and kind. Valid forms are [ { temp_id, kind }, { temp_id, kind } ] or { from: { temp_id, kind }, to: { temp_id, kind } }.
+7. When you include relationships, every item must use the canonical object form `{ from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }`.
 8. Use clarifications[] only when critical information cannot be reasonably inferred. If clarification is needed, still send the project skeleton instead of abandoning the create call.
 9. After creation succeeds, summarize the new project briefly and continue in the created project context.
 
@@ -68,7 +68,7 @@ Stop conditions before replying: `project`, `entities`, and `relationships` are 
 - Do not omit project, entities, or relationships from the payload.
 - Do not leave project.name or project.type_key blank when they can be inferred from the user message.
 - Do not add goals, plans, milestones, risks, or documents the user did not mention.
-- Do not encode relationships as raw temp_id strings like ["g1", "t1"]. Include temp_id and kind for both sides.
+- Do not encode relationships as pair arrays or raw temp_id strings like `["g1", "t1"]`. Use the canonical object form and include `temp_id` and `kind` for both sides.
 - Do not over-structure a new project just because the schema allows it.
 - Do not silently create a second project from inside an existing project chat; ask the confirmation warning first.
 

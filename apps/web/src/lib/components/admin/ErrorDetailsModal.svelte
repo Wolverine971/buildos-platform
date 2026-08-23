@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/admin/ErrorDetailsModal.svelte -->
 <script lang="ts">
 	import { ArrowUpRight, Check, CircleCheck } from 'lucide-svelte';
+	import { resolve } from '$app/paths';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import type { ErrorLogEntry } from '$lib/types/error-logging';
@@ -66,19 +67,9 @@
 		return entry?.user?.id || entry?.user_id;
 	}
 
-	function getAdminUserHref(entry: ErrorLogEntry | null | undefined): string | undefined {
-		const userId = getErrorUserId(entry);
-		return userId ? `/admin/users?search=${encodeURIComponent(userId)}` : undefined;
-	}
-
-	function getAdminChatSessionHref(sessionId: unknown): string | undefined {
-		if (typeof sessionId !== 'string' || !sessionId.trim()) return undefined;
-		return `/admin/chat/sessions?chat_session_id=${encodeURIComponent(sessionId.trim())}`;
-	}
-
-	function getProjectHref(projectId: unknown): string | undefined {
-		if (typeof projectId !== 'string' || !projectId.trim()) return undefined;
-		return `/projects/${projectId.trim()}`;
+	function getNonEmptyString(value: unknown): string | undefined {
+		if (typeof value !== 'string' || !value.trim()) return undefined;
+		return value.trim();
 	}
 
 	function getProjectLabel(entry: ErrorLogEntry, fallbackProjectId: unknown): string {
@@ -108,6 +99,14 @@
 			}
 		}
 		return undefined;
+	}
+
+	function getCorrelationValue(
+		metadata: Record<string, any> | undefined,
+		operationPayload: Record<string, any> | undefined,
+		...keys: string[]
+	): unknown {
+		return getMetadataValue(metadata, ...keys) ?? getMetadataValue(operationPayload, ...keys);
 	}
 
 	function formatMetadataValue(value: unknown): string {
@@ -164,7 +163,7 @@
 		{@const modalStyles = getSeverityStyles(error.severity)}
 		{@const metadata = getMetadataRecord(error.metadata)}
 		{@const isToolExecution = isToolExecutionError(error)}
-		{@const operationPayload = error.operation_payload}
+		{@const operationPayload = getMetadataRecord(error.operation_payload)}
 		{@const toolName = getMetadataValue(metadata, 'toolName', 'tool_name')}
 		{@const toolCategory = getMetadataValue(metadata, 'toolCategory', 'tool_category')}
 		{@const toolCallId = getMetadataValue(metadata, 'toolCallId', 'tool_call_id')}
@@ -176,28 +175,65 @@
 		{@const toolTimeoutMs = getMetadataValue(metadata, 'timeoutMs', 'timeout_ms')}
 		{@const toolDurationMs = getMetadataValue(metadata, 'durationMs', 'duration_ms')}
 		{@const toolArgs = getMetadataValue(metadata, 'args', 'arguments') ?? operationPayload}
-		{@const userAdminHref = getAdminUserHref(error)}
+		{@const errorUserId = getErrorUserId(error)}
 		{@const routeId = getMetadataValue(metadata, 'routeId', 'route_id')}
 		{@const responseStatus = getMetadataValue(metadata, 'status')}
-		{@const chatSessionId = getMetadataValue(metadata, 'sessionId', 'session_id')}
-		{@const streamRunId = getMetadataValue(metadata, 'streamRunId', 'stream_run_id')}
-		{@const clientTurnId = getMetadataValue(metadata, 'clientTurnId', 'client_turn_id')}
-		{@const turnRunId = getMetadataValue(metadata, 'turnRunId', 'turn_run_id')}
-		{@const contextType = getMetadataValue(metadata, 'contextType', 'context_type')}
-		{@const entityId = getMetadataValue(metadata, 'entityId', 'entity_id')}
-		{@const metadataProjectId = getMetadataValue(metadata, 'projectId', 'project_id')}
+		{@const chatSessionId = getCorrelationValue(
+			metadata,
+			operationPayload,
+			'chatSessionId',
+			'chat_session_id',
+			'sessionId',
+			'session_id'
+		)}
+		{@const streamRunId = getCorrelationValue(
+			metadata,
+			operationPayload,
+			'streamRunId',
+			'stream_run_id'
+		)}
+		{@const clientTurnId = getCorrelationValue(
+			metadata,
+			operationPayload,
+			'clientTurnId',
+			'client_turn_id'
+		)}
+		{@const turnRunId = getCorrelationValue(
+			metadata,
+			operationPayload,
+			'turnRunId',
+			'turn_run_id'
+		)}
+		{@const contextType = getCorrelationValue(
+			metadata,
+			operationPayload,
+			'contextType',
+			'context_type'
+		)}
+		{@const entityId = getCorrelationValue(metadata, operationPayload, 'entityId', 'entity_id')}
+		{@const correlatedProjectId = getCorrelationValue(
+			metadata,
+			operationPayload,
+			'projectId',
+			'project_id'
+		)}
 		{@const displayProjectId =
 			error.project_id ??
-			(typeof metadataProjectId === 'string' ? metadataProjectId : undefined)}
-		{@const projectHref = getProjectHref(displayProjectId)}
-		{@const activeTurnConflict = getMetadataValue(metadata, 'activeTurnConflict')}
+			(typeof correlatedProjectId === 'string' ? correlatedProjectId : undefined)}
+		{@const displayProjectIdString = getNonEmptyString(displayProjectId)}
+		{@const activeTurnConflict = getCorrelationValue(
+			metadata,
+			operationPayload,
+			'activeTurnConflict',
+			'active_turn_conflict'
+		)}
 		{@const originalError = getMetadataRecord(
 			getMetadataValue(metadata, 'originalError', 'original_error')
 		)}
 		{@const originalErrorCode = getMetadataValue(originalError, 'code')}
 		{@const originalErrorDetails = getMetadataValue(originalError, 'details')}
 		{@const originalErrorHint = getMetadataValue(originalError, 'hint')}
-		{@const chatSessionHref = getAdminChatSessionHref(chatSessionId)}
+		{@const chatSessionIdString = getNonEmptyString(chatSessionId)}
 		<div class="px-4 py-3">
 			<div class="space-y-3">
 				<div class="grid grid-cols-2 gap-3">
@@ -263,10 +299,12 @@
 								{error.user_id}
 							</p>
 						{/if}
-						{#if userAdminHref}
+						{#if errorUserId}
 							<div class="mt-3 pt-3 border-t border-info/20">
 								<a
-									href={userAdminHref}
+									href={resolve(
+										`/admin/users?search=${encodeURIComponent(errorUserId)}`
+									)}
 									class="inline-flex items-center gap-1.5 rounded-md border border-info/30 bg-background px-2.5 py-1.5 text-xs font-medium text-info transition-colors hover:bg-info/10"
 								>
 									<span>Open in Users</span>
@@ -343,27 +381,31 @@
 					</div>
 				{/if}
 
-				{#if chatSessionId || streamRunId || clientTurnId || turnRunId || contextType || entityId || metadataProjectId || activeTurnConflict !== undefined}
+				{#if chatSessionId || streamRunId || clientTurnId || turnRunId || contextType || entityId || correlatedProjectId || activeTurnConflict !== undefined}
 					<div class="bg-accent/5 border border-accent/20 rounded-lg p-3">
 						<p class="text-2xs uppercase tracking-wider text-accent mb-2">
 							Chat Correlation
 						</p>
 						<div class="grid grid-cols-2 gap-2 text-xs">
+							{#if chatSessionIdString}
+								<div class="col-span-2 border-b border-accent/20 pb-3">
+									<a
+										href={resolve(
+											`/admin/chat/sessions?chat_session_id=${encodeURIComponent(chatSessionIdString)}`
+										)}
+										class="inline-flex min-h-11 items-center gap-2 rounded-md border border-accent/30 bg-background px-3 py-2 text-sm font-semibold text-accent shadow-ink transition-colors hover:border-accent/50 hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									>
+										<span>Open Chat Logs</span>
+										<ArrowUpRight class="h-4 w-4 shrink-0" />
+									</a>
+								</div>
+							{/if}
 							{#if chatSessionId}
 								<div class="col-span-2">
 									<span class="text-muted-foreground">Session ID:</span>
 									<p class="text-foreground font-mono text-2xs break-all">
 										{formatMetadataValue(chatSessionId)}
 									</p>
-									{#if chatSessionHref}
-										<a
-											href={chatSessionHref}
-											class="mt-1 inline-flex items-center gap-1 text-2xs font-medium text-accent hover:underline"
-										>
-											<span>Open chat audit</span>
-											<ArrowUpRight class="w-3 h-3" />
-										</a>
-									{/if}
 								</div>
 							{/if}
 							{#if turnRunId}
@@ -409,9 +451,11 @@
 							{#if displayProjectId}
 								<div>
 									<span class="text-muted-foreground">Project:</span>
-									{#if projectHref}
+									{#if displayProjectIdString}
 										<a
-											href={projectHref}
+											href={resolve('/projects/[id]', {
+												id: displayProjectIdString
+											})}
 											class="inline-flex max-w-full items-center gap-1 text-foreground hover:text-accent transition-colors"
 										>
 											<span class="truncate"
@@ -654,9 +698,11 @@
 							{#if displayProjectId}
 								<div>
 									<span class="text-muted-foreground">Project:</span>
-									{#if projectHref}
+									{#if displayProjectIdString}
 										<a
-											href={projectHref}
+											href={resolve('/projects/[id]', {
+												id: displayProjectIdString
+											})}
 											class="inline-flex max-w-full items-center gap-1 text-foreground hover:text-accent transition-colors"
 										>
 											<span class="truncate"

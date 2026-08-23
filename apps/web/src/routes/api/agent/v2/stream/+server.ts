@@ -948,14 +948,15 @@ export const POST: RequestHandler = async ({
 	const requestIpAddress = getClientIpFromHeaders(request.headers);
 	const skipProjectLoopBurst = request.headers.get('X-Skip-Project-Loop-Burst') === 'true';
 
-	const logFastChatError = (params: {
+	type FastChatErrorLogParams = {
 		error: unknown;
 		operationType: string;
 		projectId?: string;
 		tableName?: string;
 		recordId?: string;
 		metadata?: Record<string, unknown>;
-	}): void => {
+	};
+	const persistFastChatError = (params: FastChatErrorLogParams): Promise<string | null> => {
 		const sanitizedMetadata = params.metadata ? sanitizeLogData(params.metadata) : undefined;
 		const metadata =
 			sanitizedMetadata &&
@@ -966,19 +967,77 @@ export const POST: RequestHandler = async ({
 					? { value: sanitizedMetadata }
 					: undefined;
 
-		void errorLogger.logError(params.error, {
-			userId,
-			projectId: params.projectId,
-			endpoint: FASTCHAT_STREAM_ENDPOINT,
-			httpMethod: FASTCHAT_STREAM_METHOD,
-			requestId,
-			userAgent: requestUserAgent,
-			ipAddress: requestIpAddress,
-			operationType: params.operationType,
-			tableName: params.tableName,
-			recordId: params.recordId,
-			metadata
-		});
+		return errorLogger
+			.logError(params.error, {
+				userId,
+				projectId: params.projectId,
+				endpoint: FASTCHAT_STREAM_ENDPOINT,
+				httpMethod: FASTCHAT_STREAM_METHOD,
+				requestId,
+				userAgent: requestUserAgent,
+				ipAddress: requestIpAddress,
+				operationType: params.operationType,
+				tableName: params.tableName,
+				recordId: params.recordId,
+				metadata
+			})
+			.catch((loggingError) => {
+				logger.warn('FastChat error-log persistence failed', {
+					loggingError,
+					operationType: params.operationType
+				});
+				return null;
+			});
+	};
+	const logFastChatError = (params: FastChatErrorLogParams): void => {
+		void persistFastChatError(params);
+	};
+	const pendingProjectCreateValidationErrorLogs: Array<{
+		failedToolCallId: string;
+		errorLogId: Promise<string | null>;
+	}> = [];
+	const resolveRecoveredProjectCreateValidationErrors = async (
+		successfulToolCallId: string
+	): Promise<void> => {
+		if (pendingProjectCreateValidationErrorLogs.length === 0) return;
+
+		const pending = pendingProjectCreateValidationErrorLogs.splice(
+			0,
+			pendingProjectCreateValidationErrorLogs.length
+		);
+		const logResults = await Promise.allSettled(pending.map((entry) => entry.errorLogId));
+		const errorLogIds = logResults.flatMap((result) =>
+			result.status === 'fulfilled' && result.value ? [result.value] : []
+		);
+		const rejectedLogCount = logResults.filter((result) => result.status === 'rejected').length;
+		if (rejectedLogCount > 0) {
+			logger.warn('Project-create validation error logging failed before retry recovery', {
+				rejectedLogCount,
+				successfulToolCallId
+			});
+		}
+		if (errorLogIds.length === 0) return;
+
+		const failedToolCallIds = pending.map((entry) => entry.failedToolCallId).join(', ');
+		const { error } = await internalSupabase
+			.from('error_logs')
+			.update({
+				resolved: true,
+				resolved_at: new Date().toISOString(),
+				resolution_notes:
+					`Automatically resolved after create_onto_project succeeded on retry ${successfulToolCallId} in the same turn. ` +
+					`Recovered validation call(s): ${failedToolCallIds}.`
+			})
+			.in('id', errorLogIds)
+			.eq('resolved', false);
+
+		if (error) {
+			logger.warn('Failed to resolve recovered project-create validation errors', {
+				error,
+				errorLogIds,
+				successfulToolCallId
+			});
+		}
 	};
 
 	let streamRequest: FastAgentStreamRequest;
@@ -3322,7 +3381,7 @@ export const POST: RequestHandler = async ({
 										patchedCall.function.arguments
 									)
 								});
-								logFastChatError({
+								const errorLogId = persistFastChatError({
 									error: new Error(
 										result.error ?? 'FastChat tool validation failed'
 									),
@@ -3336,6 +3395,12 @@ export const POST: RequestHandler = async ({
 										)
 									}
 								});
+								if (patchedCall.function.name === 'create_onto_project') {
+									pendingProjectCreateValidationErrorLogs.push({
+										failedToolCallId: patchedCall.id,
+										errorLogId
+									});
+								}
 							} else {
 								logFastChatError({
 									error: new Error(
@@ -3346,6 +3411,9 @@ export const POST: RequestHandler = async ({
 									metadata: toolFailureMetadata
 								});
 							}
+						}
+						if (result.success && patchedCall.function.name === 'create_onto_project') {
+							await resolveRecoveredProjectCreateValidationErrors(patchedCall.id);
 						}
 
 						const contextShift = extractContextShiftPayload(result);

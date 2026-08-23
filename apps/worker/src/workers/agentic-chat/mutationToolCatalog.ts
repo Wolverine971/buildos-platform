@@ -478,6 +478,13 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			relationships: {
 				type: 'array',
 				maxItems: 0,
+				// Replace any item schema captured in an older immutable web artifact.
+				// The reviewed worker path admits no relationship items, so retaining a
+				// historical union only adds misleading provider guidance.
+				items: {
+					type: 'object',
+					additionalProperties: false
+				},
 				description:
 					'Must be empty for the reviewed worker project-shell path. Link entities separately after creation.'
 			}

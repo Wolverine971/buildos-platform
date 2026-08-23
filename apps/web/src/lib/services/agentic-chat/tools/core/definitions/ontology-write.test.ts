@@ -26,6 +26,29 @@ describe('ontology write tool definitions', () => {
 		expect(projectEntities.items?.properties?.impact).toEqual(expectedImpactSchema);
 	});
 
+	it('publishes one canonical project relationship shape to model providers', () => {
+		const relationships = getToolProperties('create_onto_project').relationships as {
+			description?: string;
+			items?: {
+				type?: string;
+				oneOf?: unknown;
+				required?: string[];
+				properties?: Record<string, { required?: string[] }>;
+			};
+		};
+
+		expect(relationships.description).toContain('Every item must be { from:');
+		expect(relationships.items).toMatchObject({
+			type: 'object',
+			required: ['from', 'to'],
+			properties: {
+				from: { required: ['temp_id', 'kind'] },
+				to: { required: ['temp_id', 'kind'] }
+			}
+		});
+		expect(relationships.items).not.toHaveProperty('oneOf');
+	});
+
 	it('exposes document merge strategy only on document updates', () => {
 		for (const toolName of [
 			'update_onto_task',

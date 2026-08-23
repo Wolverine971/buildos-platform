@@ -1047,10 +1047,10 @@ export function buildToolValidationRepairInstruction(
 			);
 			if (hasProjectCreateRelationshipIssue) {
 				lines.push(
-					'Project-create relationships must use entity refs with temp_id and kind. Valid forms are [ { temp_id, kind }, { temp_id, kind } ] or { from: { temp_id, kind }, to: { temp_id, kind } }.'
+					'Project-create relationships must use the canonical object form { from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }.'
 				);
 				lines.push(
-					'Do not use raw string pairs like ["g1","t1"] unless the runtime can infer both kinds from input.entities; prefer the explicit object form.'
+					'Do not use pair arrays or raw string pairs like ["g1","t1"]. Use the explicit object form for every relationship.'
 				);
 			}
 		}

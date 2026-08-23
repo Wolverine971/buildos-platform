@@ -2,6 +2,7 @@
 <!-- Project-level controls restored from the original project workspace. -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { portal } from '$lib/actions/portal';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import {
@@ -212,13 +213,16 @@
 
 {#if showMenu}
 	<button
+		use:portal
 		type="button"
 		tabindex="-1"
 		aria-hidden="true"
+		data-project-options-dismiss-layer
 		class="fixed inset-0 z-[9998] bg-transparent"
 		onclick={() => closeMenu()}
 	></button>
 	<div
+		use:portal
 		bind:this={menuRef}
 		role="menu"
 		aria-label="Project options"

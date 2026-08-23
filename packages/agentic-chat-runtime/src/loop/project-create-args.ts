@@ -441,7 +441,7 @@ export function validateProjectCreateArgs(args: JsonRecord): string[] {
 		if (Array.isArray(relationship)) {
 			if (relationship.length !== 2) {
 				errors.push(
-					`Invalid ${label}: expected a two-item relationship pair with from/to entity refs.`
+					`Invalid ${label}: expected { from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }.`
 				);
 				continue;
 			}
@@ -453,14 +453,14 @@ export function validateProjectCreateArgs(args: JsonRecord): string[] {
 
 		if (!isRecord(relationship)) {
 			errors.push(
-				`Invalid ${label}: expected [ { temp_id, kind }, { temp_id, kind } ] or { from, to, rel?, intent? }.`
+				`Invalid ${label}: expected { from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }.`
 			);
 			continue;
 		}
 
 		if (!('from' in relationship) || !('to' in relationship)) {
 			errors.push(
-				`Invalid ${label}: expected [ { temp_id, kind }, { temp_id, kind } ] or { from, to, rel?, intent? }.`
+				`Invalid ${label}: expected { from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }.`
 			);
 			continue;
 		}

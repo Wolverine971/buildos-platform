@@ -58,9 +58,11 @@ Three layers, all in `apps/web`:
 {"query":"read email inbox gmail"}
 ```
 
-The first is structurally guaranteed zero results even with email enabled. (The second also returned nothing because `EMAIL_CHAT_TOOLS_ENABLED` is default-off — the flag-off state is intentional per tasker/35; the taxonomy hole is not.)
+The first was structurally guaranteed zero results even when email was available. (At the time of
+this receipt, the second also returned nothing because the email-chat pilot was default-off; that
+rollout gate has since been removed. The taxonomy hole was a separate bug.)
 
-Note: email tool descriptions DO contain "Gmail", and the `email_context` capability card exists with `directPaths: ['email.accounts','email.messages']` — so query-only and capability-filtered searches would work once the flag is on. Only the group/entity path is broken.
+Note: email tool descriptions DO contain "Gmail", and the `email_context` capability card exists with `directPaths: ['email.accounts','email.messages']` — so query-only and capability-filtered searches work. Only the group/entity path was broken.
 
 ### F2 — Scorer is naive substring-token matching: zero-result cliffs and junk noise. **[quality]**
 
@@ -113,7 +115,8 @@ Work items in priority order. Keep each change small and separately verifiable.
 - Decide the fate of `x`: `x.search.*` + `onto.search` are cross-project search tools; consider group `'search'` or keep `x` but **expose it in the enum**.
 - Update the `group` enum in BOTH `tool_search` definitions surfaces: `gateway.ts` (~line 365) and the external gateway's equivalent if it declares its own (check `external-tool-gateway.ts` and `public-tool-registry.ts`).
 - Update `ToolSearchOptions['group']` type in `tool-search.ts`.
-- **Landmine:** registry tests assert email gating — `email-tool-registry.test.ts` asserts no email-write op resolves. Don't break the flag gating (`isEmailChatToolsEnabled` filters in both `buildToolRegistry` and `capability-catalog.ts`).
+- **Landmine:** `email-tool-registry.test.ts` asserts no email-write op resolves. Preserve that
+  read-only boundary while changing discovery behavior.
 - **Landmine:** `computeRegistryVersion` hashes the registry — group changes will change the version string. That's expected/fine, but confirm nothing caches ops by version across sessions.
 
 ### W2 — Upgrade the scorer (F2)

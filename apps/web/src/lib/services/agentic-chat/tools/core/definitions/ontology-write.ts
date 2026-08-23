@@ -860,89 +860,59 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 					relationships: {
 						type: 'array',
 						description:
-							'Top-level directional temp_id connections between entities defined in the entities array; never nest this under project and use [] when empty. The project itself is implicit and must NOT be a relationship endpoint. Items can be [from, to] or { from, to, rel?, intent? }.',
+							'Top-level directional temp_id connections between entities defined in the entities array; never nest this under project and use [] when empty. The project itself is implicit and must NOT be a relationship endpoint. Every item must be { from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }.',
 						items: {
-							oneOf: [
-								{
-									type: 'array',
-									minItems: 2,
-									maxItems: 2,
-									items: {
-										type: 'object',
-										properties: {
-											temp_id: { type: 'string' },
-											kind: {
-												type: 'string',
-												enum: [
-													'goal',
-													'milestone',
-													'plan',
-													'task',
-													'document',
-													'risk',
-													'requirement',
-													'metric',
-													'source'
-												]
-											}
-										},
-										required: ['temp_id', 'kind']
-									}
-								},
-								{
+							type: 'object',
+							properties: {
+								from: {
 									type: 'object',
 									properties: {
-										from: {
-											type: 'object',
-											properties: {
-												temp_id: { type: 'string' },
-												kind: {
-													type: 'string',
-													enum: [
-														'goal',
-														'milestone',
-														'plan',
-														'task',
-														'document',
-														'risk',
-														'requirement',
-														'metric',
-														'source'
-													]
-												}
-											},
-											required: ['temp_id', 'kind']
-										},
-										to: {
-											type: 'object',
-											properties: {
-												temp_id: { type: 'string' },
-												kind: {
-													type: 'string',
-													enum: [
-														'goal',
-														'milestone',
-														'plan',
-														'task',
-														'document',
-														'risk',
-														'requirement',
-														'metric',
-														'source'
-													]
-												}
-											},
-											required: ['temp_id', 'kind']
-										},
-										rel: { type: 'string' },
-										intent: {
+										temp_id: { type: 'string' },
+										kind: {
 											type: 'string',
-											enum: ['containment', 'semantic']
+											enum: [
+												'goal',
+												'milestone',
+												'plan',
+												'task',
+												'document',
+												'risk',
+												'requirement',
+												'metric',
+												'source'
+											]
 										}
 									},
-									required: ['from', 'to']
+									required: ['temp_id', 'kind']
+								},
+								to: {
+									type: 'object',
+									properties: {
+										temp_id: { type: 'string' },
+										kind: {
+											type: 'string',
+											enum: [
+												'goal',
+												'milestone',
+												'plan',
+												'task',
+												'document',
+												'risk',
+												'requirement',
+												'metric',
+												'source'
+											]
+										}
+									},
+									required: ['temp_id', 'kind']
+								},
+								rel: { type: 'string' },
+								intent: {
+									type: 'string',
+									enum: ['containment', 'semantic']
 								}
-							]
+							},
+							required: ['from', 'to']
 						}
 					},
 					context_document: {

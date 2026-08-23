@@ -5430,7 +5430,14 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 							field,
 							field === 'update_strategy'
 								? { type: 'string', enum: ['replace', 'append', 'merge_llm'] }
-								: { type: 'string' }
+								: field === 'relationships'
+									? {
+											type: 'array',
+											items: {
+												oneOf: [{ type: 'array' }, { type: 'object' }]
+											}
+										}
+									: { type: 'string' }
 						])
 					)
 				}
@@ -5631,6 +5638,15 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			projected.find((entry) => entry.function.name === 'create_onto_project')?.function
 				.parameters.properties.entities
 		).toMatchObject({ maxItems: 0 });
+		const projectedProjectRelationships = projected.find(
+			(entry) => entry.function.name === 'create_onto_project'
+		)?.function.parameters.properties.relationships as JsonObject | undefined;
+		expect(projectedProjectRelationships).toMatchObject({
+			type: 'array',
+			maxItems: 0,
+			items: { type: 'object', additionalProperties: false }
+		});
+		expect(projectedProjectRelationships?.items).not.toHaveProperty('oneOf');
 		expect(
 			projected.find((entry) => entry.function.name === 'create_onto_project')?.function
 				.description
@@ -5667,6 +5683,89 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			projected.find((entry) => entry.function.name === 'tag_onto_entity')?.function
 				.description
 		).toContain('never edits entity content');
+	});
+
+	it('repairs invalid project relationships before admitting the worker project shell', async () => {
+		const definition = {
+			type: 'function' as const,
+			function: {
+				name: 'create_onto_project',
+				description: 'Create a project.',
+				parameters: {
+					type: 'object',
+					properties: {
+						project: { type: 'object' },
+						entities: { type: 'array', items: { type: 'object' } },
+						relationships: {
+							type: 'array',
+							items: {
+								oneOf: [{ type: 'array' }, { type: 'object' }]
+							}
+						}
+					},
+					required: ['project', 'entities', 'relationships']
+				}
+			}
+		};
+		const project = {
+			name: 'Launch Site',
+			type_key: 'project.business.product_launch'
+		};
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-create-project-invalid',
+				{ project, entities: [], relationships: [null] },
+				'create_onto_project'
+			),
+			providerReadRound(
+				'provider-create-project-repaired',
+				{ project, entities: [], relationships: [] },
+				'create_onto_project'
+			)
+		]);
+		const input = executionInputWithReadSurface([definition], ['create_onto_project']);
+		input.requestPayload.context = { type: 'project_create' };
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ createOntoProject: true }
+		).prepare({
+			executionInput: input,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const steps = await collect(invocation.stream());
+		expect(steps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'provider-create-project-invalid',
+					toolName: 'create_onto_project',
+					validationFailure: {
+						error: expect.stringContaining('relationships[0]'),
+						toolCategory: 'write'
+					}
+				}),
+				expect.objectContaining({
+					type: 'mutating_tool',
+					providerToolCallId: 'provider-create-project-repaired',
+					toolName: 'create_onto_project',
+					operationName: 'onto.project.create',
+					arguments: { project, entities: [], relationships: [] }
+				})
+			])
+		);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		const repairInstruction = client.stream.mock.calls[1]?.[0].messages.at(-1)?.content ?? '';
+		expect(repairInstruction).toContain(
+			'expected { from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }'
+		);
+		expect(repairInstruction).not.toContain('[ { temp_id, kind }, { temp_id, kind } ]');
 	});
 
 	it('continues sequential read rounds with compacted durable feedback', async () => {

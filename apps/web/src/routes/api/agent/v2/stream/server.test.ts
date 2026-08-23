@@ -917,6 +917,7 @@ function buildPreparedPromptRow(overrides: Row = {}): { key: string; row: Row } 
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	mocks.logError.mockResolvedValue(null);
 	for (const key of Object.keys(runtimeEnv.values)) {
 		delete runtimeEnv.values[key];
 	}
@@ -3510,6 +3511,133 @@ describe('/api/agent/v2/stream', () => {
 				requires_user_action: true
 			})
 		);
+	});
+
+	it('resolves a project-create validation error after a successful retry', async () => {
+		const errorLogId = '26a0067d-0ffc-4450-a509-d2fafbcba4bb';
+		const supabase = createStreamingSupabase({
+			error_logs: [{ id: errorLogId, resolved: false }]
+		});
+		mocks.logError.mockImplementation(async (_error: unknown, context: Row) => {
+			if (context?.metadata?.toolCallId === 'call-invalid-project-log-failure') {
+				throw new Error('logging unavailable');
+			}
+			return context?.metadata?.failureStage === 'fastchat_tool_validation'
+				? errorLogId
+				: null;
+		});
+
+		const failedCall = {
+			id: 'call-invalid-project',
+			type: 'function',
+			function: {
+				name: 'create_onto_project',
+				arguments: JSON.stringify({
+					project: { name: 'Launch', type_key: 'project.business.launch' },
+					entities: [{ temp_id: 'goal-1', kind: 'goal', name: 'Launch well' }],
+					relationships: [null]
+				})
+			}
+		};
+		const successfulCall = {
+			...failedCall,
+			id: 'call-valid-project',
+			function: {
+				...failedCall.function,
+				arguments: JSON.stringify({
+					project: { name: 'Launch', type_key: 'project.business.launch' },
+					entities: [{ temp_id: 'goal-1', kind: 'goal', name: 'Launch well' }],
+					relationships: []
+				})
+			}
+		};
+		const unloggedFailedCall = {
+			...failedCall,
+			id: 'call-invalid-project-log-failure'
+		};
+
+		mocks.streamFastChat.mockImplementationOnce(async ({ onToolResult, onDelta }: Row) => {
+			await onToolResult?.({
+				toolCall: failedCall,
+				result: {
+					tool_call_id: failedCall.id,
+					result: null,
+					success: false,
+					error: 'Tool validation failed: Invalid relationships[0]: expected an object.'
+				}
+			});
+			await onToolResult?.({
+				toolCall: unloggedFailedCall,
+				result: {
+					tool_call_id: unloggedFailedCall.id,
+					result: null,
+					success: false,
+					error: 'Tool validation failed: Invalid relationships[0]: expected an object.'
+				}
+			});
+			await onToolResult?.({
+				toolCall: successfulCall,
+				result: {
+					tool_call_id: successfulCall.id,
+					result: { project_id: 'project-1' },
+					success: true
+				}
+			});
+			await onDelta('Created the project.');
+			return {
+				assistantText: 'Created the project.',
+				finalAssistantText: 'Created the project.',
+				usage: { total_tokens: 12 },
+				finishedReason: 'stop',
+				toolExecutions: [],
+				llmPasses: [],
+				toolRounds: 2,
+				toolCallsMade: 2,
+				supervisorDecisions: [],
+				finalizationGuard: undefined,
+				cancelled: false,
+				peakPromptTokens: undefined,
+				finalContextUsage: undefined
+			};
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Create a launch project',
+					context_type: 'project_create',
+					stream_run_id: 'stream-run-project-retry',
+					client_turn_id: 'client-turn-project-retry'
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		await response.text();
+		expect(mocks.logError).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({
+				operationType: 'tool_execution',
+				metadata: expect.objectContaining({
+					failureStage: 'fastchat_tool_validation',
+					toolCallId: failedCall.id
+				})
+			})
+		);
+		expect(supabase.updatedRows.error_logs).toEqual([
+			expect.objectContaining({
+				id: errorLogId,
+				resolved: true,
+				resolved_at: expect.any(String),
+				resolution_notes: expect.stringContaining(successfulCall.id)
+			})
+		]);
 	});
 
 	it('retains completed reads and emits timing when a later LLM pass fails', async () => {
