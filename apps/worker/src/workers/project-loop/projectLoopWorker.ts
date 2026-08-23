@@ -7,13 +7,13 @@
 import type {
 	Database,
 	Json,
+	LoopOperation,
 	ProjectAuditDeliveryConfidence,
 	ProjectAuditDimension,
 	ProjectAuditDimensionKey,
 	ProjectAuditEvidenceRef,
 	ProjectAuditRecommendation,
 	ProjectAuditSuggestionRole,
-	LoopOperation,
 	ProjectLoopBrief,
 	ProjectLoopJobMetadata,
 	ProjectLoopRun,
@@ -26,33 +26,34 @@ import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
 import { logWorkerError } from '../../lib/errorLogger';
+import { PermanentQueueError } from '../../lib/queueErrors';
 import { captureWorkerEvent } from '../../lib/posthog';
 import {
 	type LoopContext,
 	type LoopDocument,
 	type LoopPriorDecision,
 	type LoopTask,
-	type UsageEvent,
 	type ProjectReviewSynthesisCandidate,
-	generateDrift,
+	type UsageEvent,
+	buildHeuristicProjectManagerBrief,
 	generateDocOrganization,
+	generateDrift,
 	generateOutdatedDocs,
 	generateProjectManagerBrief,
 	generateTaskConflicts,
-	buildHeuristicProjectManagerBrief,
 	suggestionSuppressionKey
 } from './generators';
 import {
+	MAX_PROJECT_LOOP_CONTEXT_DOCUMENTS,
+	PROJECT_REVIEW_SIGNAL_QUEUE_MODE,
+	PROJECT_REVIEW_SIGNAL_TRIGGER_REASON,
+	type ProjectLoopScopedEntity,
 	buildProjectLoopParentMap,
 	buildScopedSuggestionFingerprint,
 	extractProjectLoopSuggestionEntities,
 	loadProjectLoopSuggestionEntityStates,
-	MAX_PROJECT_LOOP_CONTEXT_DOCUMENTS,
 	projectLoopDocumentRecencyMs,
 	projectReviewSignalDedupKey,
-	PROJECT_REVIEW_SIGNAL_QUEUE_MODE,
-	PROJECT_REVIEW_SIGNAL_TRIGGER_REASON,
-	type ProjectLoopScopedEntity,
 	summarizeProjectLoopDocTree,
 	syncInboxItemForProjectSuggestion
 } from '@buildos/shared-agent-ops';
@@ -70,6 +71,7 @@ import {
 	queueProjectAuditFromWorker
 } from './auditEnqueue';
 import { enqueueProjectLoop } from './enqueue';
+import { type SkippedLens, classifyDetectorFailure } from './detectorFailure';
 
 function isProjectAuditTriggerReason(
 	value: ProjectLoopJobMetadata['triggerReason']
@@ -110,8 +112,8 @@ const SUGGESTION_SUPPRESSION_STATUSES = [
 // cycle) before a finding is declared stale (tasker/28 WP-1).
 const SUGGESTION_ROTATION_GRACE_MS = 72 * 60 * 60 * 1000;
 const LIGHT_LOOP_ROTATION_KINDS = ['doc_org', 'doc_outdated', 'drift', 'task_conflict'];
-// runGenerator labels → suggestion kinds, so a generator skipped by the cost
-// cap never rotates out the findings it produced on earlier runs (no evidence
+// runGenerator labels → suggestion kinds, so a generator that did not finish
+// never rotates out the findings it produced on earlier runs (no evidence
 // either way this run).
 const GENERATOR_LABEL_TO_KIND: Record<string, string> = {
 	'doc organization': 'doc_org',
@@ -119,6 +121,49 @@ const GENERATOR_LABEL_TO_KIND: Record<string, string> = {
 	drift: 'drift',
 	'task conflicts': 'task_conflict'
 };
+
+const GENERATOR_LABEL_TO_USER_FACING_LENS: Record<string, string> = {
+	'doc organization': 'document organization',
+	'outdated docs': 'outdated documents',
+	drift: 'drift',
+	'task conflicts': 'task conflicts'
+};
+
+function getErrorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+function getProviderRequestId(error: unknown): string | null {
+	let candidate = error;
+	const seen = new Set<object>();
+	while (candidate && typeof candidate === 'object' && !seen.has(candidate)) {
+		seen.add(candidate);
+		const record = candidate as {
+			openrouter?: { generationId?: unknown };
+			cause?: unknown;
+		};
+		const generationId = record.openrouter?.generationId;
+		if (typeof generationId === 'string' && generationId.trim()) return generationId;
+		candidate = record.cause;
+	}
+	return null;
+}
+
+function buildSkippedLensSummary(skippedLenses: SkippedLens[]): string {
+	if (!skippedLenses.length) return '';
+	const sentences: string[] = [];
+	const costCapLabels = skippedLenses
+		.filter((lens) => lens.reason === 'cost_cap')
+		.map((lens) => lens.label);
+	if (costCapLabels.length) {
+		sentences.push(`Skipped ${costCapLabels.join(', ')} after cost cap.`);
+	}
+	for (const lens of skippedLenses.filter((item) => item.reason !== 'cost_cap')) {
+		const userFacingLens = GENERATOR_LABEL_TO_USER_FACING_LENS[lens.label] ?? lens.label;
+		sentences.push(`The ${userFacingLens} check didn't finish this pass.`);
+	}
+	return sentences.join(' ');
+}
 
 type ProjectSuggestionInsert = Database['public']['Tables']['project_suggestions']['Insert'];
 type ProjectSuggestionRow = Database['public']['Tables']['project_suggestions']['Row'];
@@ -2954,7 +2999,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 	if (run.project_id !== projectId) {
 		const message = `Project loop queue metadata mismatch: run ${runId} belongs to project ${run.project_id}, not ${projectId}`;
 		await failRun(runId, message);
-		throw new Error(message);
+		throw new PermanentQueueError('project_loop_metadata_mismatch', message);
 	}
 
 	// Heartbeat touches queue_jobs.updated_at so the 5-min stall sweeper never
@@ -2978,6 +3023,14 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			);
 		}
 	};
+	const throwIfOwnershipLost = (): void => {
+		if (!job.signal.aborted) return;
+		const reason = job.signal.reason;
+		if (reason instanceof Error) throw reason;
+		throw new Error(
+			typeof reason === 'string' && reason.trim() ? reason : 'Project loop caller cancelled'
+		);
+	};
 
 	await heartbeat('Loading project context');
 
@@ -2996,6 +3049,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 
 	try {
 		const ctx = await loadLoopContext(projectId);
+		throwIfOwnershipLost();
 		if (!ctx) {
 			await job.log('Project inactive/archived; nothing to reconcile.');
 			const { error: inactiveError } = await supabase
@@ -3024,22 +3078,47 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		});
 		// Freshness fingerprints are now scoped per suggestion (see the stamp block
 		// below), so the whole-project fingerprint is no longer used on this path.
-		const skippedGenerators: string[] = [];
+		const skippedLenses: SkippedLens[] = [];
 		const runGenerator = async (
 			label: string,
 			generator: () => Promise<ProposedSuggestion[]>
 		): Promise<ProposedSuggestion[]> => {
+			throwIfOwnershipLost();
+			const kind = GENERATOR_LABEL_TO_KIND[label] ?? null;
 			if (totalCost >= PROJECT_LOOP_COST_CAP_USD) {
-				skippedGenerators.push(label);
+				skippedLenses.push({ label, kind, reason: 'cost_cap' });
 				await job.log(
 					`Skipping ${label}; project loop cost cap reached ($${totalCost.toFixed(4)})`
 				);
+				throwIfOwnershipLost();
 				return [];
 			}
 			// Heartbeat before each LLM generator so the stall sweeper never
 			// reclaims this job mid-run.
 			await heartbeat(`Generating ${label}`);
-			return generator();
+			throwIfOwnershipLost();
+			try {
+				const suggestions = await generator();
+				throwIfOwnershipLost();
+				return suggestions;
+			} catch (error) {
+				// Once queue ownership is lost, no subsequent detector or durable write
+				// is safe, even when the abort reason happens to contain "timeout".
+				if (job.signal.aborted) throw error;
+				const reason = classifyDetectorFailure(error);
+				if (!reason) throw error;
+
+				const detail = getErrorMessage(error);
+				skippedLenses.push({
+					label,
+					kind,
+					reason,
+					detail,
+					providerRequestId: getProviderRequestId(error)
+				});
+				await job.log(`Skipping ${label}: ${reason} (${detail})`);
+				return [];
+			}
 		};
 
 		const docOrg = await runGenerator('doc organization', () =>
@@ -3049,6 +3128,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				userId: run.user_id,
 				chatSessionId: run.chat_session_id ?? undefined,
 				runId,
+				signal: job.signal,
 				onUsage
 			})
 		);
@@ -3059,6 +3139,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				userId: run.user_id,
 				chatSessionId: run.chat_session_id ?? undefined,
 				runId,
+				signal: job.signal,
 				onUsage
 			})
 		);
@@ -3069,6 +3150,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				userId: run.user_id,
 				chatSessionId: run.chat_session_id ?? undefined,
 				runId,
+				signal: job.signal,
 				onUsage
 			})
 		);
@@ -3079,6 +3161,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				userId: run.user_id,
 				chatSessionId: run.chat_session_id ?? undefined,
 				runId,
+				signal: job.signal,
 				onUsage
 			})
 		);
@@ -3095,7 +3178,9 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			...docOrg,
 			...drift
 		];
+		throwIfOwnershipLost();
 		const existingKeys = await loadExistingSuggestionKeys(projectId);
+		throwIfOwnershipLost();
 		const seenThisRunKeys = new Set<string>();
 		let suppressedCount = 0;
 		let repeatedAfterDismissalCount = 0;
@@ -3135,13 +3220,15 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			if (key) confirmedKeys.add(key);
 		}
 		const skippedKinds = new Set<string>(
-			skippedGenerators
-				.map((label) => GENERATOR_LABEL_TO_KIND[label])
-				.filter((kind): kind is string => Boolean(kind))
+			skippedLenses.map((lens) => lens.kind).filter((kind): kind is string => Boolean(kind))
 		);
+		const uncheckedLenses = skippedLenses
+			.filter((lens) => Boolean(lens.kind))
+			.map((lens) => GENERATOR_LABEL_TO_USER_FACING_LENS[lens.label] ?? lens.label);
 
 		if (proposed.length) {
 			await heartbeat('Writing suggestions');
+			throwIfOwnershipLost();
 
 			// Stamp each suggestion with a freshness fingerprint scoped to just the
 			// entities its operations mutate (Tier 1 #4). Batch-load every referenced
@@ -3160,6 +3247,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				taskIds: [...allTaskIds],
 				docIds: [...allDocIds]
 			});
+			throwIfOwnershipLost();
 			const scopedStateByKey = new Map<string, ProjectLoopScopedEntity>(
 				scopedStates.map((e) => [`${e.kind}:${e.id}`, e])
 			);
@@ -3196,6 +3284,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				status: 'pending' as const,
 				sort_order: s.sort_order ?? index
 			}));
+			throwIfOwnershipLost();
 			const insertResult = await insertProjectLoopSuggestionRows({
 				rows,
 				runId,
@@ -3205,8 +3294,10 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			if (insertResult.cancelled) {
 				return { success: true, runId, skipped: true };
 			}
+			throwIfOwnershipLost();
 		}
 
+		throwIfOwnershipLost();
 		const rotation = await rotateUnconfirmedPendingSuggestions({
 			projectId,
 			runId,
@@ -3214,20 +3305,31 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			skippedKinds,
 			log: (message) => job.log(message)
 		});
+		throwIfOwnershipLost();
 
 		// Final synthesis owns admission. It runs only after candidate insertion,
 		// deterministic suppression/rotation, and executable-candidate integrity
 		// verification, so the persisted brief can reconcile the actual current
 		// findings instead of describing the pre-review snapshot.
 		await heartbeat('Synthesizing project manager brief');
+		throwIfOwnershipLost();
 		const synthesisCandidates = await loadProjectReviewSynthesisCandidates(projectId);
+		throwIfOwnershipLost();
 		let brief: ProjectLoopBrief;
 		if (totalCost >= PROJECT_LOOP_COST_CAP_USD) {
-			skippedGenerators.push('project manager brief');
+			skippedLenses.push({
+				label: 'project manager brief',
+				kind: null,
+				reason: 'cost_cap'
+			});
 			await job.log(
 				`Skipping LLM project manager brief; cost cap reached ($${totalCost.toFixed(4)}) — using evidence-bound heuristic synthesis.`
 			);
-			brief = buildHeuristicProjectManagerBrief({ ctx, candidates: synthesisCandidates });
+			brief = buildHeuristicProjectManagerBrief({
+				ctx,
+				candidates: synthesisCandidates,
+				uncheckedLenses
+			});
 		} else {
 			brief = await generateProjectManagerBrief({
 				llm,
@@ -3236,13 +3338,17 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				userId: run.user_id,
 				chatSessionId: run.chat_session_id ?? undefined,
 				runId,
+				uncheckedLenses,
+				signal: job.signal,
 				onUsage
 			});
 		}
+		throwIfOwnershipLost();
 		const synthesisRequiresAttention =
 			brief.attention_level === 'decision' || brief.attention_level === 'urgent';
 		const auditOwnsAttention =
 			synthesisRequiresAttention && (await projectHasActiveAuditManagerBrief(projectId));
+		throwIfOwnershipLost();
 		const managerAttentionRequired = synthesisRequiresAttention && !auditOwnsAttention;
 		if (auditOwnsAttention) {
 			await job.log(
@@ -3250,6 +3356,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			);
 		}
 		if (managerAttentionRequired) {
+			throwIfOwnershipLost();
 			const supersededBriefCount = await supersedeOlderProjectManagerBriefs({
 				projectId,
 				runId
@@ -3259,20 +3366,25 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 					`Replaced ${supersededBriefCount} older unresolved project manager brief${supersededBriefCount === 1 ? '' : 's'}.`
 				);
 			}
+			throwIfOwnershipLost();
 		}
 
 		const countKind = (kind: ProjectSuggestionKind): number =>
 			proposed.filter((s) => s.kind === kind).length;
 		const summaryBase = proposed.length
 			? `${proposed.length} suggestion${proposed.length === 1 ? '' : 's'}: ${countKind('doc_org')} organization, ${countKind('doc_outdated')} outdated-doc, ${countKind('drift')} drift, ${countKind('task_conflict')} task-conflict.`
-			: 'No reconciliation suggestions — project looks tidy.';
+			: uncheckedLenses.length
+				? 'No reconciliation suggestions from the checks that finished.'
+				: 'No reconciliation suggestions — project looks tidy.';
 		const summaryWithSuppressed = suppressedCount
 			? `${summaryBase} Suppressed ${suppressedCount} duplicate${suppressedCount === 1 ? '' : 's'}.`
 			: summaryBase;
-		const summary = skippedGenerators.length
-			? `${summaryWithSuppressed} Skipped ${skippedGenerators.join(', ')} after cost cap.`
+		const skippedLensSummary = buildSkippedLensSummary(skippedLenses);
+		const summary = skippedLensSummary
+			? `${summaryWithSuppressed} ${skippedLensSummary}`
 			: summaryWithSuppressed;
 
+		throwIfOwnershipLost();
 		const { error: terminalError } = await supabase
 			.from('project_loop_runs')
 			.update({
@@ -3337,7 +3449,8 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			brief_admitted_count: managerAttentionRequired ? 1 : 0,
 			brief_decision_item_count: brief.decision_item_ids?.length ?? 0,
 			brief_safe_cleanup_item_count: brief.safe_cleanup_item_ids?.length ?? 0,
-			skipped_generators: skippedGenerators,
+			skipped_generators: skippedLenses.map((lens) => lens.label),
+			skipped_lenses: skippedLenses,
 			doc_org_count: countKind('doc_org'),
 			doc_outdated_count: countKind('doc_outdated'),
 			drift_count: countKind('drift'),
@@ -3349,6 +3462,10 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		return { success: true, runId, suggestionCount: proposed.length };
 	} catch (error: unknown) {
 		const message = error instanceof Error ? error.message : 'Unknown error';
+		if (job.signal.aborted) {
+			await job.log(`Project loop lost ownership: ${message}`);
+			throw error;
+		}
 		const usageForError = lastUsage as UsageEvent | null;
 		await job.log(`Project loop failed: ${message}`);
 		await failRun(runId, message, { totalCost });
@@ -3392,6 +3509,6 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				lastModel: usageForError?.model ?? null
 			}
 		});
-		throw error;
+		throw new PermanentQueueError('project_loop_run_failed', message);
 	}
 }

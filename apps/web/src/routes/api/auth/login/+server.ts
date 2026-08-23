@@ -102,6 +102,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 			await errorLogger.logError(
 				error,
 				{
+					submittedEmail: normalizedEmail,
 					endpoint: '/api/auth/login',
 					httpMethod: 'POST',
 					operationType: 'auth_login',

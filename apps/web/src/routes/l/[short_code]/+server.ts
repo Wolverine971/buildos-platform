@@ -1,7 +1,7 @@
 // apps/web/src/routes/l/[short_code]/+server.ts
 
 import type { RequestHandler } from './$types';
-import { redirect } from '@sveltejs/kit';
+import { isRedirect, redirect } from '@sveltejs/kit';
 import { createLogger } from '@buildos/shared-utils';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
@@ -162,7 +162,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		throw redirect(302, link.destination_url);
 	} catch (error) {
 		// If it's a redirect, let it through
-		if (error instanceof Response && error.status === 302) {
+		if (isRedirect(error)) {
 			throw error;
 		}
 

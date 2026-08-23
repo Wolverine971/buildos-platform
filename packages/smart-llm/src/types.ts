@@ -75,6 +75,15 @@ export interface JSONRequestOptions<T = unknown> {
 	maxTokens?: number;
 	timeoutMs?: number;
 	/**
+	 * OpenRouter provider steering. The service-owned `zdr` and
+	 * `data_collection` policy cannot be overridden here.
+	 */
+	providerRouting?: {
+		order?: string[];
+		ignore?: string[];
+		allow_fallbacks?: boolean;
+	};
+	/**
 	 * Caller-owned cancellation (e.g. worker timeout/shutdown). An aborted
 	 * signal cancels the in-flight provider request and suppresses retries.
 	 */

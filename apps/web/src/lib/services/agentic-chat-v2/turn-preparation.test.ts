@@ -13,6 +13,30 @@ function toolNames(result: ReturnType<typeof resolveFastChatTurnPreparation>): s
 }
 
 describe('resolveFastChatTurnPreparation', () => {
+	it('admits the exact reviewed project shell, goal, and task creation surface', () => {
+		const result = resolveFastChatTurnPreparation({
+			contextType: 'project_create',
+			latestUserMessage:
+				'Create Agentic Worker PC1 with one dated goal and three standalone tasks.',
+			conversationSummary: null,
+			agentMetadata: null,
+			contextShiftHintTtlMs: 120_000,
+			nowMs: NOW_MS
+		});
+
+		expect(result.selectedSurfaceProfile).toBe('project_create_minimal');
+		expect(toolNames(result)).toEqual([
+			'declare_turn_contract',
+			'declare_read_only_turn',
+			'request_turn_clarification',
+			'cancel_turn_contract',
+			'create_onto_project',
+			'create_onto_goal',
+			'create_onto_task'
+		]);
+		expect(toolNames(result)).not.toContain('link_onto_entities');
+	});
+
 	it('uses stable project capabilities without classifying message text', () => {
 		const times = [100, 107];
 		const result = resolveFastChatTurnPreparation({

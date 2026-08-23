@@ -491,6 +491,16 @@ export class ErrorLoggerService {
 		};
 	}
 
+	// Error metadata normally redacts all email-shaped strings. Some anonymous
+	// auth failures have no user ID, so retain an explicitly supplied, valid
+	// email to make those failures attributable in the admin error browser.
+	private normalizeSubmittedEmailForStorage(value?: string): string | undefined {
+		const normalized = value?.trim().toLowerCase();
+		if (!normalized || normalized.length > 254) return undefined;
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return undefined;
+		return normalized;
+	}
+
 	// error_logs.ip_address is a PostgreSQL inet column and the sanitizer's
 	// phone-number redaction rewrites IPv4 digit runs into "[redacted-phone]",
 	// which the insert then rejects. Validate the ORIGINAL value and store a
@@ -569,6 +579,7 @@ export class ErrorLoggerService {
 			const normalizedProject = this.normalizeUuidForStorage(context?.projectId);
 			const normalizedBrainDump = this.normalizeUuidForStorage(context?.brainDumpId);
 			const normalizedRecord = this.normalizeUuidForStorage(context?.recordId);
+			const submittedEmail = this.normalizeSubmittedEmailForStorage(context?.submittedEmail);
 
 			const errorEntry = {
 				error_type: errorType,
@@ -603,6 +614,7 @@ export class ErrorLoggerService {
 
 				metadata: {
 					...sanitizedContext?.metadata,
+					...(submittedEmail ? { submittedEmail } : {}),
 					...(normalizedUser.invalidValue
 						? {
 								invalid_context_user_id: normalizedUser.invalidValue,

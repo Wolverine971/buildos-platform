@@ -32,6 +32,8 @@ import {
 	resolveModelPricingProfile
 } from './model-config';
 import {
+	LLMRequestCancelledError,
+	LLMRequestTimeoutError,
 	OpenRouterEmptyContentError,
 	buildOpenRouterEmptyContentError,
 	hasOpenRouterGenerationId,
@@ -458,6 +460,7 @@ export class SmartLLMService {
 		stream?: boolean;
 		transforms?: string[];
 		providerMaxPrice?: { prompt: number; completion: number; request: 0 };
+		providerRouting?: JSONRequestOptions['providerRouting'];
 	}): Promise<{
 		response: OpenRouterResponse;
 		route: ProviderRoute;
@@ -486,6 +489,19 @@ export class SmartLLMService {
 			return { response, route };
 		}
 
+		// Callers may steer among providers, but privacy policy is owned here.
+		// Strip protected keys defensively in case an untyped caller supplies them.
+		const {
+			zdr: _ignoredZdr,
+			data_collection: _ignoredDataCollection,
+			...providerRouting
+		} = (params.providerRouting ?? {}) as Record<string, unknown>;
+		const provider = {
+			...providerRouting,
+			...this.openRouterProviderPolicy,
+			...(params.providerMaxPrice ? { max_price: params.providerMaxPrice } : {})
+		};
+
 		const response = await this.openRouterClient.callOpenRouter({
 			model: route.requestModel,
 			models: params.models,
@@ -498,12 +514,7 @@ export class SmartLLMService {
 			reasoning: params.reasoning,
 			stream: params.stream,
 			transforms: params.transforms,
-			provider: params.providerMaxPrice
-				? {
-						...this.openRouterProviderPolicy,
-						max_price: params.providerMaxPrice
-					}
-				: this.openRouterProviderPolicy
+			provider
 		});
 		response.model = response.model ? this.canonicalizeModelId(response.model) : params.model;
 		return { response, route };
@@ -640,12 +651,10 @@ export class SmartLLMService {
 				// Caller cancellation (worker timeout/shutdown): stop immediately,
 				// never burn another paid attempt on work nobody owns anymore.
 				if (options.signal?.aborted) {
-					throw new Error(
-						`LLM request aborted: ${
-							options.signal.reason instanceof Error
-								? options.signal.reason.message
-								: 'caller cancelled'
-						}`
+					throw new LLMRequestCancelledError(
+						options.signal.reason instanceof Error
+							? options.signal.reason.message
+							: 'caller cancelled'
 					);
 				}
 				const remainingModels = preferredModels.filter(
@@ -677,7 +686,8 @@ export class SmartLLMService {
 						timeoutMs: options.timeoutMs ?? this.defaultTimeoutMs,
 						signal: options.signal,
 						transforms,
-						providerMaxPrice: spendPlan?.providerMaxPrice
+						providerMaxPrice: spendPlan?.providerMaxPrice,
+						providerRouting: options.providerRouting
 					});
 					const response = completion.response;
 					lastRequestApiUrl = completion.route.apiUrl;
@@ -765,10 +775,13 @@ export class SmartLLMService {
 							try {
 								// Try again with powerful profile
 								if (options.signal?.aborted) {
-									throw new Error(
-										'LLM validation retry aborted: caller cancelled'
+									throw new LLMRequestCancelledError(
+										options.signal.reason instanceof Error
+											? options.signal.reason.message
+											: 'caller cancelled'
 									);
 								}
+								lastRequestedModel = retryModel;
 								// The repair call is a real model attempt. Exclude it from the outer
 								// failover loop if repair fails so route overlap cannot dispatch it twice.
 								attemptedModels.add(retryModel);
@@ -784,7 +797,8 @@ export class SmartLLMService {
 									max_tokens: maxTokens,
 									timeoutMs: options.timeoutMs ?? this.defaultTimeoutMs,
 									signal: options.signal,
-									transforms
+									transforms,
+									providerRouting: options.providerRouting
 								});
 								const retryResponse = retryCompletion.response;
 								lastRequestApiUrl = retryCompletion.route.apiUrl;
@@ -834,6 +848,16 @@ export class SmartLLMService {
 									`Retry also failed after ${retryCount} attempts:`,
 									retryError
 								);
+								// Preserve ownership cancellation and any accepted/typed timeout
+								// from the paid repair call. Replacing either with the original
+								// parse error could dispatch another paid attempt after lost work.
+								if (
+									retryError instanceof LLMRequestCancelledError ||
+									retryError instanceof LLMRequestTimeoutError ||
+									hasOpenRouterGenerationId(retryError)
+								) {
+									throw retryError;
+								}
 								// The outer model loop still has a chance to recover. Logging here created
 								// actionable incidents for intermediate failures even when a later model
 								// succeeded; terminal failures are logged by the outer catch below.
@@ -1006,6 +1030,7 @@ export class SmartLLMService {
 					lastError = error as Error;
 					attemptedModels.add(requestedModel);
 					const shouldRetry =
+						!(error instanceof LLMRequestCancelledError) &&
 						!hasOpenRouterGenerationId(error) &&
 						(error instanceof OpenRouterEmptyContentError ||
 							error instanceof SyntaxError ||
@@ -1034,13 +1059,35 @@ export class SmartLLMService {
 				(error as any)?.openrouter && typeof (error as any).openrouter === 'object'
 					? (error as any).openrouter
 					: undefined;
-			const failureProviderRequestId =
-				lastResponse?.id ||
-				(typeof openrouterErrorDetails?.generationId === 'string'
-					? openrouterErrorDetails.generationId
-					: undefined);
+			const errorGenerationId =
+				typeof openrouterErrorDetails?.generationId === 'string' &&
+				openrouterErrorDetails.generationId.trim()
+					? openrouterErrorDetails.generationId.trim()
+					: undefined;
+			// A repair/failover request can fail after an earlier response was parsed.
+			// Prefer the terminal error's accepted generation so reconciliation does
+			// not attribute that timeout to the preceding malformed response.
+			const failureProviderRequestId = errorGenerationId ?? lastResponse?.id;
 			const modelsAttempted = Array.from(attemptedModels);
-			const lastModel = lastResponse?.model || lastRequestedModel || baseModel;
+			const terminalAttemptFailed =
+				lastError instanceof LLMRequestTimeoutError ||
+				lastError instanceof LLMRequestCancelledError ||
+				Boolean(errorGenerationId);
+			// A response retained from an earlier parse/failover attempt does not
+			// describe the terminal request. Reusing it here would mark an accepted
+			// timeout as settled and keep the real generation out of reconciliation.
+			const failureResponse = terminalAttemptFailed ? null : lastResponse;
+			const lastModel = terminalAttemptFailed
+				? lastRequestedModel || baseModel
+				: failureResponse?.model || lastRequestedModel || baseModel;
+			const errorProviderName =
+				typeof openrouterErrorDetails?.providerName === 'string' &&
+				openrouterErrorDetails.providerName.trim()
+					? openrouterErrorDetails.providerName.trim()
+					: undefined;
+			const failureProvider = terminalAttemptFailed
+				? errorProviderName
+				: failureResponse?.provider || lastProvider;
 			const definitivePreGenerationRejection =
 				isOpenRouterDefinitivePreGenerationRejection(error);
 			const failurePricing = resolveModelPricingProfile(lastModel, [
@@ -1048,15 +1095,16 @@ export class SmartLLMService {
 				baseModel
 			]);
 			const failurePromptTokens =
-				lastResponse?.usage?.prompt_tokens ??
+				failureResponse?.usage?.prompt_tokens ??
 				(spendPlan ? spendPlan.estimatedInputTokens : 0);
 			const failureCompletionTokens =
-				lastResponse?.usage?.completion_tokens ?? (spendPlan ? spendPlan.maxTokens : 0);
+				failureResponse?.usage?.completion_tokens ?? (spendPlan ? spendPlan.maxTokens : 0);
 			const failureTotalTokens =
-				lastResponse?.usage?.total_tokens ?? failurePromptTokens + failureCompletionTokens;
+				failureResponse?.usage?.total_tokens ??
+				failurePromptTokens + failureCompletionTokens;
 			const hasFailureTokenUsage =
-				typeof lastResponse?.usage?.prompt_tokens === 'number' &&
-				typeof lastResponse.usage.completion_tokens === 'number';
+				typeof failureResponse?.usage?.prompt_tokens === 'number' &&
+				typeof failureResponse.usage.completion_tokens === 'number';
 			const failureInputCost =
 				hasFailureTokenUsage && failurePricing
 					? (failurePromptTokens / 1_000_000) * failurePricing.profile.cost
@@ -1066,10 +1114,10 @@ export class SmartLLMService {
 					? (failureCompletionTokens / 1_000_000) * failurePricing.profile.outputCost
 					: 0;
 			const failureReportedCost =
-				typeof lastResponse?.usage?.cost === 'number' &&
-				Number.isFinite(lastResponse.usage.cost) &&
-				lastResponse.usage.cost >= 0
-					? lastResponse.usage.cost
+				typeof failureResponse?.usage?.cost === 'number' &&
+				Number.isFinite(failureResponse.usage.cost) &&
+				failureResponse.usage.cost >= 0
+					? failureResponse.usage.cost
 					: null;
 			const failureTotalCost = definitivePreGenerationRejection
 				? 0
@@ -1114,7 +1162,7 @@ export class SmartLLMService {
 				await options.onUsage({
 					model: lastModel,
 					billingProvider: lastBillingProvider,
-					provider: lastResponse?.provider || lastProvider,
+					provider: failureProvider,
 					providerRequestId: failureProviderRequestId,
 					promptTokens: accountedFailurePromptTokens,
 					completionTokens: accountedFailureCompletionTokens,
@@ -1144,7 +1192,7 @@ export class SmartLLMService {
 						modelRequested: baseModel,
 						profile,
 						complexity,
-						isTimeout: lastError.message.includes('timeout'),
+						isTimeout: lastError instanceof LLMRequestTimeoutError,
 						projectId: options.projectId,
 						brainDumpId: options.brainDumpId,
 						taskId: options.taskId,
@@ -1153,7 +1201,7 @@ export class SmartLLMService {
 						lastRequestedModel,
 						lastModel,
 						openrouterRequestId: failureProviderRequestId,
-						openrouterProvider: lastResponse?.provider,
+						openrouterProvider: failureProvider,
 						openrouterErrorDetails: openrouterErrorDetails ?? null,
 						emptyContentDetails: emptyContentDetails ?? null
 					}
@@ -1167,6 +1215,7 @@ export class SmartLLMService {
 					operationType: options.operationType || 'other',
 					modelRequested: baseModel,
 					modelUsed: lastModel,
+					provider: failureProvider,
 					promptTokens: accountedFailurePromptTokens,
 					completionTokens: accountedFailureCompletionTokens,
 					totalTokens: accountedFailureTotalTokens,
@@ -1176,7 +1225,7 @@ export class SmartLLMService {
 					responseTimeMs: Math.round(duration),
 					requestStartedAt,
 					requestCompletedAt,
-					status: lastError.message.includes('timeout') ? 'timeout' : 'failure',
+					status: lastError instanceof LLMRequestTimeoutError ? 'timeout' : 'failure',
 					errorMessage: lastError.message,
 					temperature: options.temperature,
 					maxTokens,
@@ -1200,12 +1249,24 @@ export class SmartLLMService {
 						lastModel,
 						billingDisposition,
 						openrouterRequestId: failureProviderRequestId,
-						openrouterProvider: lastResponse?.provider,
+						openrouterProvider: failureProvider,
 						openrouterErrorDetails: openrouterErrorDetails ?? null,
 						emptyContentDetails: emptyContentDetails ?? null
 					}
 				})
 				.catch((err) => console.error('Failed to log error:', err));
+
+			if (
+				lastError instanceof LLMRequestTimeoutError ||
+				lastError instanceof LLMRequestCancelledError
+			) {
+				(
+					lastError as Error & {
+						attemptedModels?: string[];
+					}
+				).attemptedModels = modelsAttempted;
+				throw lastError;
+			}
 
 			const wrappedError = new Error(`Failed to generate valid JSON: ${lastError?.message}`);
 			(wrappedError as Error & { cause?: unknown }).cause = lastError;

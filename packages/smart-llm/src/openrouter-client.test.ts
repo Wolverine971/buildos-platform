@@ -1,5 +1,6 @@
 // packages/smart-llm/src/openrouter-client.test.ts
 import { describe, expect, it, vi } from 'vitest';
+import { LLMRequestCancelledError, LLMRequestTimeoutError } from './errors';
 import { OpenRouterClient } from './openrouter-client';
 
 function createClient(fetchImpl: typeof fetch) {
@@ -32,6 +33,75 @@ describe('OpenRouterClient.callOpenRouter', () => {
 				generationId: 'gen-lost-body'
 			}
 		});
+	});
+
+	it('turns a body-read TimeoutError into a typed timeout and preserves the generation id', async () => {
+		const cause = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+		const response = {
+			ok: true,
+			headers: new Headers({ 'x-generation-id': 'gen-timed-out-body' }),
+			json: vi.fn().mockRejectedValue(cause)
+		} as unknown as Response;
+		const client = createClient(vi.fn().mockResolvedValue(response) as unknown as typeof fetch);
+
+		let thrown: unknown;
+		try {
+			await client.callOpenRouter({
+				model: 'openai/gpt-5-mini',
+				messages: [{ role: 'user', content: 'Return JSON.' }],
+				timeoutMs: 42
+			});
+		} catch (error) {
+			thrown = error;
+		}
+
+		expect(thrown).toBeInstanceOf(LLMRequestTimeoutError);
+		expect(thrown).toMatchObject({
+			timeoutMs: 42,
+			requestedModel: 'openai/gpt-5-mini',
+			openrouter: { generationId: 'gen-timed-out-body' },
+			cause
+		});
+	});
+
+	it('types a timeout before response headers with a null generation id', async () => {
+		const cause = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+		const client = createClient(vi.fn().mockRejectedValue(cause) as unknown as typeof fetch);
+
+		await expect(
+			client.callOpenRouter({
+				model: 'openai/gpt-5-mini',
+				messages: [{ role: 'user', content: 'Return JSON.' }],
+				timeoutMs: 42
+			})
+		).rejects.toMatchObject({
+			name: 'LLMRequestTimeoutError',
+			openrouter: { generationId: null },
+			cause
+		});
+	});
+
+	it('classifies a caller abort reason as cancellation rather than timeout', async () => {
+		const controller = new AbortController();
+		const abortReason = new Error('Worker timeout after 600000ms for buildos_project_loop');
+		const fetchMock = vi.fn(async () => {
+			controller.abort(abortReason);
+			throw abortReason;
+		});
+		const client = createClient(fetchMock as unknown as typeof fetch);
+
+		await expect(
+			client.callOpenRouter({
+				model: 'openai/gpt-5-mini',
+				messages: [{ role: 'user', content: 'Return JSON.' }],
+				signal: controller.signal
+			})
+		).rejects.toEqual(
+			expect.objectContaining<Partial<LLMRequestCancelledError>>({
+				name: 'LLMRequestCancelledError',
+				reason: abortReason.message
+			})
+		);
 	});
 });
 

@@ -1,6 +1,8 @@
 // packages/smart-llm/src/errors.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	LLMRequestCancelledError,
+	LLMRequestTimeoutError,
 	isOpenRouterDefinitivePreGenerationRejection,
 	isOpenRouterModelAvailabilityError,
 	isRetryableOpenRouterError,
@@ -26,6 +28,15 @@ describe('isRetryableOpenRouterError', () => {
 		};
 
 		expect(isRetryableOpenRouterError(error)).toBe(true);
+	});
+
+	it('retries typed request timeouts but never caller cancellations', () => {
+		expect(isRetryableOpenRouterError(new LLMRequestTimeoutError(120_000, 'test/model'))).toBe(
+			true
+		);
+		expect(isRetryableOpenRouterError(new LLMRequestCancelledError('worker shutdown'))).toBe(
+			false
+		);
 	});
 
 	it('treats 404 model removals as failover-worthy', () => {

@@ -20,6 +20,7 @@ import { researchLogReadbackScenario } from './research-log-readback.scenario';
 import { projectCatchupColdScenario } from './project-catchup-cold.scenario';
 import { bookWritingJourneyScenario } from './book-writing-journey.scenario';
 import { semanticContractCancellationScenario } from './semantic-contract-cancellation.scenario';
+import { projectCreateContractScenario } from './project-create-contract.scenario';
 
 export const scenarioCatalog: Scenario[] = [
 	documentCreateScenario,
@@ -38,5 +39,6 @@ export const scenarioCatalog: Scenario[] = [
 	researchLogReadbackScenario,
 	projectCatchupColdScenario,
 	semanticContractCancellationScenario,
+	projectCreateContractScenario,
 	bookWritingJourneyScenario
 ];

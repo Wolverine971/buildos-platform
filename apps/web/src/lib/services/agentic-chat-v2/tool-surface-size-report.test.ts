@@ -107,7 +107,12 @@ describe('tool surface size report', () => {
 			(report) => report.profile === 'project_write_document'
 		);
 
-		expect(projectCreate?.totalChars).toBeLessThanOrEqual(9000);
+		// 2026-08-22: project creation became a contract-first composite flow.
+		// Four semantic controls plus goal/task creation now accompany the shell,
+		// moving the bounded surface to 14,615 chars. The 14,850 cap preserves
+		// headroom while preventing unrelated discovery/relationship tools from
+		// leaking into this latency-sensitive path.
+		expect(projectCreate?.totalChars).toBeLessThanOrEqual(14_850);
 		// 2026-07-07 D1 trim: rare bridge/orchestration tools and full-body document
 		// reads materialize on demand instead of sitting in every launch profile.
 		// Baselines from the pre-trim report: global_write 24,847 chars,

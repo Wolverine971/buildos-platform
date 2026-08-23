@@ -308,6 +308,32 @@ describe('ErrorLoggerService', () => {
 		expect(insertedEntries[0]?.error_message).toContain('[redacted]');
 	});
 
+	it('retains an explicitly submitted login email for admin diagnostics', async () => {
+		const insertedEntries: Array<Record<string, any>> = [];
+		const supabase = createLoggingSupabase(insertedEntries, 'logged-auth-error');
+		const service = ErrorLoggerService.getInstance(
+			supabase as unknown as SupabaseClient<Database>
+		);
+
+		await service.logError(new Error('Email not confirmed'), {
+			submittedEmail: ' Login.User@AOL.com ',
+			endpoint: '/api/auth/login',
+			httpMethod: 'POST',
+			operationType: 'auth_login',
+			metadata: {
+				emailDomain: 'aol.com',
+				password: 'never-store-this'
+			}
+		});
+
+		expect(insertedEntries[0]?.metadata).toMatchObject({
+			submittedEmail: 'login.user@aol.com',
+			emailDomain: 'aol.com',
+			password: '[redacted]'
+		});
+		expect(JSON.stringify(insertedEntries[0])).not.toContain('never-store-this');
+	});
+
 	it('scans past suppressed noise and paginates displayable errors', async () => {
 		const baseTime = Date.parse('2026-04-03T12:00:00.000Z');
 		const noise = Array.from({ length: 260 }, (_, index) =>

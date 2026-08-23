@@ -44,10 +44,12 @@ export function buildProjectCreateNoExecutionRepairInstruction(): string {
 		'You are in project_create context and no successful onto.project.create call has happened yet.',
 		'Do not end the turn with a success summary unless onto.project.create has actually succeeded.',
 		'You already have enough guidance to continue. Do not call more project creation help paths unless a new schema detail is genuinely missing.',
-		'Your next response must do one of two things only: emit a valid create_onto_project call with complete arguments, or ask one concise clarifying question if critical information is still missing.',
+		'If the commissioned durable outcomes do not yet have an approved turn contract, declare their exact project, goal, and task outcomes first. If that contract is already approved, continue execution without re-declaring it or asking the user to confirm again.',
+		'Create the project shell first with create_onto_project. Its entities and relationships arrays must both be empty.',
 		'Minimal valid create shape: create_onto_project({ project: { name: "Project Name", type_key: "project.business.initiative" }, entities: [], relationships: [] }).',
 		'If a previous onto.project.create attempt already included a full payload, reuse that payload and patch only the failing fields. Never replace a prior complete create payload with input:{}.',
-		'If the user stated an outcome, add one goal. If they stated concrete actions, add only those tasks. Keep the payload minimal.'
+		'After the shell returns its project id, create any commissioned goal with create_onto_goal and each commissioned task with create_onto_task under that exact project id. Do not embed child entities or relationships in create_onto_project.',
+		'Ask one concise clarifying question only when a critical user choice is genuinely unresolved; do not use clarification as redundant confirmation for a fully specified request.'
 	].join(' ');
 }
 
@@ -1003,7 +1005,7 @@ export function buildToolValidationRepairInstruction(
 			'If the skill or current context already identifies the exact op, skip tool_search. Otherwise use tool_search only when the exact op is unknown. Search for the operation you need, not workspace data. Good examples: {"capability":"overview"}, {"entity":"task","kind":"write","query":"update existing task state"}, or {"group":"onto","entity":"document","kind":"write","query":"move document in tree"}.'
 		);
 		lines.push(
-			'If the work is multi-step or easy to get wrong, load the relevant skill first. Exception: in project_create context, project creation guidance and the direct create_onto_project tool are already preloaded, so retry create_onto_project directly when the payload can be inferred.'
+			'If the work is multi-step or easy to get wrong, load the relevant skill first. Exception: in project_create context, the bounded contract-first creation tools are already preloaded. Declare the exact contract before mutation; after approval, retry only the failing canonical create call without asking the user to confirm again.'
 		);
 		lines.push(
 			'For first-time or uncertain writes, call tool_schema({ op: "<exact op>" }) before retrying the direct tool.'
@@ -1034,23 +1036,23 @@ export function buildToolValidationRepairInstruction(
 		}
 		if (hasProjectCreateIssue) {
 			lines.push(
-				'onto.project.create requires input.project, input.entities, and input.relationships. input.project must include name and type_key.'
+				'onto.project.create requires project, entities, and relationships. project must include name and type_key; entities and relationships must both be empty arrays for the initial shell.'
 			);
 			lines.push(
 				'Minimal valid example: create_onto_project({ project: { name: "Project Name", type_key: "project.business.initiative" }, entities: [], relationships: [] }).'
 			);
 			lines.push(
-				'Keep project creation minimal. Add one goal only if the user stated the outcome, add tasks only for concrete actions mentioned, and use clarifications[] only when critical information cannot be inferred.'
+				'Never embed goals, tasks, or relationships in create_onto_project. After the shell returns its project id, use create_onto_goal for a commissioned goal and one create_onto_task call per commissioned task.'
 			);
 			lines.push(
 				'If a previous onto.project.create attempt already included a full payload, reuse that payload and patch only the failing fields. Never replace a prior complete create payload with input:{}.'
 			);
 			if (hasProjectCreateRelationshipIssue) {
 				lines.push(
-					'Project-create relationships must use the canonical object form { from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }.'
+					'Project-create relationships must be an empty array on the shell call.'
 				);
 				lines.push(
-					'Do not use pair arrays or raw string pairs like ["g1","t1"]. Use the explicit object form for every relationship.'
+					'Do not retry nested relationship objects or pair arrays. Relationship creation is a separate canonical mutation and is not admitted on the bounded project-create surface.'
 				);
 			}
 		}
@@ -1166,9 +1168,9 @@ export function buildGatewayRequiredFieldRepairInstruction(
 			: []),
 		...(hasProjectCreateFailure
 			? [
-					'For onto.project.create, include input.project with project.name and project.type_key, plus input.entities and input.relationships arrays.',
+					'For onto.project.create, include project with project.name and project.type_key, plus entities: [] and relationships: [].',
 					'Minimal valid project creation shape: { project: { name, type_key }, entities: [], relationships: [] }.',
-					'If the user gave an outcome, add one goal. If the user gave explicit actions, add only those tasks. If critical detail is missing, include clarifications[] and still send the project skeleton.',
+					'Do not embed goals or tasks in the project shell. After it succeeds, create each already-contracted goal/task with create_onto_goal or create_onto_task using the returned project id.',
 					'If a previous onto.project.create attempt already included a full payload, reuse that payload and patch only the failing fields. Never replace a prior complete create payload with input:{}.'
 				]
 			: []),

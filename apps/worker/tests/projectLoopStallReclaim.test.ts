@@ -1,6 +1,10 @@
 // apps/worker/tests/projectLoopStallReclaim.test.ts
 import { describe, expect, it } from 'vitest';
-import { PROJECT_LOOPS_ENABLED } from '../src/config/projectLoops';
+import {
+	PROJECT_LOOPS_ENABLED,
+	PROJECT_LOOP_JSON_PROVIDER_ORDER,
+	resolveProjectLoopJsonProviderOrder
+} from '../src/config/projectLoops';
 import {
 	getProjectLoopEndOfDayWindow,
 	projectLoopDedupKey,
@@ -10,6 +14,18 @@ import {
 describe('PROJECT_LOOPS_ENABLED', () => {
 	it('is always on and does not depend on deployment env configuration', () => {
 		expect(PROJECT_LOOPS_ENABLED).toBe(true);
+	});
+
+	it('uses the verified fast provider order by default and supports an env kill switch', () => {
+		expect(resolveProjectLoopJsonProviderOrder(undefined)).toEqual([
+			...PROJECT_LOOP_JSON_PROVIDER_ORDER
+		]);
+		expect(resolveProjectLoopJsonProviderOrder(' Novita, parasail,novita ')).toEqual([
+			'novita',
+			'parasail'
+		]);
+		expect(resolveProjectLoopJsonProviderOrder('off')).toEqual([]);
+		expect(resolveProjectLoopJsonProviderOrder('default')).toEqual([]);
 	});
 });
 

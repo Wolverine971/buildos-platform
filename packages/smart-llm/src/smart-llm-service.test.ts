@@ -1,6 +1,7 @@
 // packages/smart-llm/src/smart-llm-service.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { SmartLLMService } from './smart-llm-service';
+import { LLMRequestCancelledError, LLMRequestTimeoutError } from './errors';
 import {
 	ACTIVE_EXPERIMENT_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
@@ -701,6 +702,92 @@ describe('SmartLLMService OpenRouter data policy', () => {
 		});
 		expect(body?.provider).not.toHaveProperty('zdr');
 	});
+
+	it('merges caller routing while preventing privacy-policy overrides', async () => {
+		const requestBodies: Array<Record<string, unknown>> = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+			return buildJSONCompletion({
+				model: GLM_52_MODEL,
+				content: '{"ok":true}',
+				provider: 'Novita'
+			});
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await llm.getJSONResponse({
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'Exercise provider steering.',
+			model: GLM_52_MODEL,
+			models: [],
+			userId: 'provider-routing-test',
+			providerRouting: {
+				order: ['novita', 'parasail'],
+				allow_fallbacks: true,
+				zdr: false,
+				data_collection: 'allow'
+			} as any
+		});
+
+		expect(requestBodies[0]?.provider).toEqual({
+			order: ['novita', 'parasail'],
+			allow_fallbacks: true,
+			data_collection: 'deny',
+			zdr: true
+		});
+	});
+
+	it('keeps provider steering on the JSON validation-repair attempt', async () => {
+		const requestBodies: Array<Record<string, unknown>> = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+			return requestBodies.length === 1
+				? buildJSONCompletion({
+						model: GLM_52_MODEL,
+						content: 'not valid JSON',
+						provider: 'Novita'
+					})
+				: buildJSONCompletion({
+						model: GEMINI_37_FLASH_MODEL,
+						content: '{"ok":true}',
+						provider: 'Novita'
+					});
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const result = await llm.getJSONResponse<{ ok: boolean }>({
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'Repair malformed JSON.',
+			model: GLM_52_MODEL,
+			models: [],
+			userId: 'provider-routing-repair-test',
+			providerRouting: { order: ['novita'], allow_fallbacks: true },
+			validation: { retryOnParseError: true, maxRetries: 1 }
+		});
+
+		expect(result).toEqual({ ok: true });
+		expect(requestBodies).toHaveLength(2);
+		expect(requestBodies.map((body) => body.provider)).toEqual([
+			{
+				order: ['novita'],
+				allow_fallbacks: true,
+				data_collection: 'deny',
+				zdr: true
+			},
+			{
+				order: ['novita'],
+				allow_fallbacks: true,
+				data_collection: 'deny',
+				zdr: true
+			}
+		]);
+	});
 });
 
 describe('SmartLLMService model failover', () => {
@@ -835,6 +922,170 @@ describe('SmartLLMService model failover', () => {
 });
 
 describe('SmartLLMService JSON model recovery', () => {
+	it('records an accepted timeout once and rethrows the typed error unwrapped', async () => {
+		const usageLogger = {
+			logUsageToDatabase: vi.fn(async () => undefined)
+		};
+		const cause = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+		const timedOutResponse = {
+			ok: true,
+			headers: new Headers({ 'x-generation-id': 'gen-accepted-timeout' }),
+			json: vi.fn().mockRejectedValue(cause)
+		} as unknown as Response;
+		const fetchMock = vi.fn().mockResolvedValue(timedOutResponse);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			usageLogger,
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		let thrown: unknown;
+		try {
+			await llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Exercise accepted timeout handling.',
+				userId: 'accepted-timeout-test',
+				model: GLM_52_MODEL,
+				models: [],
+				timeoutMs: 42
+			});
+		} catch (error) {
+			thrown = error;
+		}
+
+		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(thrown).toBeInstanceOf(LLMRequestTimeoutError);
+		expect(thrown).toMatchObject({
+			openrouter: { generationId: 'gen-accepted-timeout' }
+		});
+		await vi.waitFor(() => {
+			expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'timeout',
+					metadata: expect.objectContaining({
+						billingDisposition: 'uncertain',
+						openrouterRequestId: 'gen-accepted-timeout'
+					})
+				})
+			);
+		});
+	});
+
+	it('fails over after a pre-header timeout with no accepted generation', async () => {
+		const cause = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+		const fetchMock = vi
+			.fn()
+			.mockRejectedValueOnce(cause)
+			.mockResolvedValueOnce(
+				buildJSONCompletion({
+					model: DEEPSEEK_V4_FLASH_MODEL,
+					content: '{"ok":true}',
+					provider: 'Novita'
+				})
+			);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const result = await llm.getJSONResponse<{ ok: boolean }>({
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'Fail over safely.',
+			userId: 'pre-header-timeout-test',
+			model: GLM_52_MODEL,
+			models: [],
+			timeoutMs: 42
+		});
+
+		expect(result).toEqual({ ok: true });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not retry a caller cancellation', async () => {
+		const controller = new AbortController();
+		const abortReason = new Error('Worker timeout after 600000ms for buildos_project_loop');
+		const fetchMock = vi.fn(async () => {
+			controller.abort(abortReason);
+			throw abortReason;
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Stop when ownership is lost.',
+				userId: 'cancelled-test',
+				model: GLM_52_MODEL,
+				models: [],
+				signal: controller.signal
+			})
+		).rejects.toBeInstanceOf(LLMRequestCancelledError);
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it('does not hide an accepted timeout from the validation-repair call', async () => {
+		const usageLogger = {
+			logUsageToDatabase: vi.fn(async () => undefined)
+		};
+		const cause = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+		const timedOutResponse = {
+			ok: true,
+			headers: new Headers({ 'x-generation-id': 'gen-repair-timeout' }),
+			json: vi.fn().mockRejectedValue(cause)
+		} as unknown as Response;
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				buildJSONCompletion({
+					model: GLM_52_MODEL,
+					content: 'not valid JSON',
+					provider: 'Novita'
+				})
+			)
+			.mockResolvedValue(timedOutResponse);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			usageLogger,
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Exercise repair timeout handling.',
+				userId: 'repair-timeout-test',
+				model: GLM_52_MODEL,
+				models: [],
+				timeoutMs: 42,
+				validation: { retryOnParseError: true, maxRetries: 1 }
+			})
+		).rejects.toMatchObject({
+			name: 'LLMRequestTimeoutError',
+			openrouter: { generationId: 'gen-repair-timeout' }
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		await vi.waitFor(() => {
+			expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelUsed: GEMINI_37_FLASH_MODEL,
+					promptTokens: 0,
+					completionTokens: 0,
+					totalTokens: 0,
+					status: 'timeout',
+					metadata: expect.objectContaining({
+						lastRequestedModel: GEMINI_37_FLASH_MODEL,
+						lastModel: GEMINI_37_FLASH_MODEL,
+						billingDisposition: 'uncertain',
+						openrouterRequestId: 'gen-repair-timeout'
+					})
+				})
+			);
+		});
+	});
+
 	it('uses one priced attempt with a bounded output when a spend limit is supplied', async () => {
 		const requestBodies: Array<Record<string, unknown>> = [];
 		const dispatchOrder: string[] = [];

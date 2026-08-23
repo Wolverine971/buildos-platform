@@ -24,6 +24,7 @@ import type {
 } from '@buildos/shared-types';
 import { buildHeuristicProjectLoopBrief } from '@buildos/shared-agent-ops';
 import type { SmartLLMService } from '../../lib/services/smart-llm-service';
+import { PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED } from '../../config/projectLoops';
 
 /**
  * LLM usage/cost event emitted by the smart-llm service on each call. Relocated
@@ -549,13 +550,21 @@ async function callGenerator(params: {
 	generator: Exclude<ProjectLoopOperationType, 'project_loop_brief'>;
 	systemPrompt: string;
 	userPrompt: string;
+	signal?: AbortSignal;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<RawSuggestion[]> {
+	const providerOrder = Array.isArray(PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED)
+		? PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED
+		: [];
 	const result = await params.llm.getJSONResponse<RawSuggestionEnvelope>({
 		systemPrompt: params.systemPrompt,
 		userPrompt: params.userPrompt,
 		userId: params.userId,
 		profile: 'balanced',
+		signal: params.signal,
+		providerRouting: providerOrder.length
+			? { order: providerOrder, allow_fallbacks: true }
+			: undefined,
 		validation: { retryOnParseError: true, maxRetries: 2 },
 		operationType: params.generator,
 		projectId: params.projectId,
@@ -579,13 +588,21 @@ async function callBriefGenerator(params: {
 	runId?: string;
 	systemPrompt: string;
 	userPrompt: string;
+	signal?: AbortSignal;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<Partial<ProjectLoopBrief> | null> {
+	const providerOrder = Array.isArray(PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED)
+		? PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED
+		: [];
 	const result = await params.llm.getJSONResponse<RawBriefEnvelope>({
 		systemPrompt: params.systemPrompt,
 		userPrompt: params.userPrompt,
 		userId: params.userId,
 		profile: 'balanced',
+		signal: params.signal,
+		providerRouting: providerOrder.length
+			? { order: providerOrder, allow_fallbacks: true }
+			: undefined,
 		validation: { retryOnParseError: true, maxRetries: 2 },
 		operationType: 'project_loop_brief',
 		projectId: params.projectId,
@@ -1019,12 +1036,20 @@ function buildCandidateClusters(candidates: ProjectReviewSynthesisCandidate[]) {
 		}));
 }
 
+function formatLensList(lenses: string[]): string {
+	if (lenses.length <= 1) return lenses[0] ?? '';
+	if (lenses.length === 2) return `${lenses[0]} and ${lenses[1]}`;
+	return `${lenses.slice(0, -1).join(', ')}, and ${lenses.at(-1)}`;
+}
+
 export function buildHeuristicProjectManagerBrief(params: {
 	ctx: LoopContext;
 	candidates: ProjectReviewSynthesisCandidate[];
+	uncheckedLenses?: string[];
 	now?: Date;
 }): ProjectLoopBrief {
 	const now = params.now ?? new Date();
+	const uncheckedLenses = [...new Set(params.uncheckedLenses ?? [])];
 	const candidates = [...params.candidates].sort(
 		(left, right) =>
 			right.risk_tier - left.risk_tier ||
@@ -1048,8 +1073,9 @@ export function buildHeuristicProjectManagerBrief(params: {
 			safe_cleanup_item_ids: [],
 			cluster_members: [],
 			candidate_ids: [],
-			no_attention_reason:
-				'The review did not find anything important enough to interrupt you about.',
+			no_attention_reason: uncheckedLenses.length
+				? `The checks that finished found nothing important enough to interrupt you about. The ${formatLensList(uncheckedLenses)} check${uncheckedLenses.length === 1 ? '' : 's'} didn't finish this pass.`
+				: 'The review did not find anything important enough to interrupt you about.',
 			generated_at: now.toISOString(),
 			source: 'heuristic'
 		};
@@ -1154,10 +1180,12 @@ function sanitizeManagerBrief(params: {
 	raw: Partial<ProjectLoopBrief> | null;
 	ctx: LoopContext;
 	candidates: ProjectReviewSynthesisCandidate[];
+	uncheckedLenses: string[];
 }): ProjectLoopBrief {
 	const fallback = buildHeuristicProjectManagerBrief({
 		ctx: params.ctx,
-		candidates: params.candidates
+		candidates: params.candidates,
+		uncheckedLenses: params.uncheckedLenses
 	});
 	if (!params.raw) return fallback;
 	const candidateById = new Map(params.candidates.map((candidate) => [candidate.id, candidate]));
@@ -1317,11 +1345,13 @@ function sanitizeManagerBrief(params: {
 		cluster_members: buildCandidateClusters(params.candidates),
 		candidate_ids: params.candidates.map((candidate) => candidate.id),
 		no_attention_reason:
-			attention === 'none' || attention === 'minor'
-				? (plainBriefText(raw.no_attention_reason, 300) ??
-					fallback.no_attention_reason ??
-					null)
-				: null,
+			attention === 'none' && params.uncheckedLenses.length
+				? fallback.no_attention_reason
+				: attention === 'none' || attention === 'minor'
+					? (plainBriefText(raw.no_attention_reason, 300) ??
+						fallback.no_attention_reason ??
+						null)
+					: null,
 		generated_at: new Date().toISOString(),
 		source: 'llm'
 	};
@@ -1363,8 +1393,11 @@ export async function generateProjectManagerBrief(params: {
 	userId: string;
 	chatSessionId?: string;
 	runId?: string;
+	uncheckedLenses?: string[];
+	signal?: AbortSignal;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProjectLoopBrief> {
+	const uncheckedLenses = [...new Set(params.uncheckedLenses ?? [])];
 	const systemPrompt = [
 		'You are the project manager responsible for briefing the user on one BuildOS project.',
 		'The detector candidates below are internal evidence, not user-facing messages.',
@@ -1394,6 +1427,13 @@ export async function generateProjectManagerBrief(params: {
 	const userPrompt = [
 		PROJECT_HEADER(params.ctx),
 		'',
+		...(uncheckedLenses.length
+			? [
+					'Lenses NOT checked this pass (do not describe these areas as clean or unchanged):',
+					uncheckedLenses.join(', '),
+					''
+				]
+			: []),
 		'Project review candidates:',
 		describeSynthesisCandidates(params.candidates),
 		'',
@@ -1410,17 +1450,25 @@ export async function generateProjectManagerBrief(params: {
 			runId: params.runId,
 			systemPrompt,
 			userPrompt,
+			signal: params.signal,
 			onUsage: params.onUsage
 		});
-		return sanitizeManagerBrief({ raw, ctx: params.ctx, candidates: params.candidates });
+		return sanitizeManagerBrief({
+			raw,
+			ctx: params.ctx,
+			candidates: params.candidates,
+			uncheckedLenses
+		});
 	} catch (error) {
+		if (params.signal?.aborted) throw error;
 		console.warn(
 			'[ProjectReviews] manager brief synthesis failed, falling back to heuristic:',
 			error instanceof Error ? error.message : error
 		);
 		return buildHeuristicProjectManagerBrief({
 			ctx: params.ctx,
-			candidates: params.candidates
+			candidates: params.candidates,
+			uncheckedLenses
 		});
 	}
 }
@@ -1495,6 +1543,7 @@ export async function generateDocOrganization(params: {
 	userId: string;
 	chatSessionId?: string;
 	runId?: string;
+	signal?: AbortSignal;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProposedSuggestion[]> {
 	const { ctx } = params;
@@ -1540,6 +1589,7 @@ export async function generateDocOrganization(params: {
 		generator: 'project_loop_doc_organization',
 		systemPrompt,
 		userPrompt,
+		signal: params.signal,
 		onUsage: params.onUsage
 	});
 
@@ -1584,6 +1634,7 @@ export async function generateOutdatedDocs(params: {
 	userId: string;
 	chatSessionId?: string;
 	runId?: string;
+	signal?: AbortSignal;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProposedSuggestion[]> {
 	const { ctx } = params;
@@ -1633,6 +1684,7 @@ export async function generateOutdatedDocs(params: {
 		generator: 'project_loop_outdated_docs',
 		systemPrompt,
 		userPrompt,
+		signal: params.signal,
 		onUsage: params.onUsage
 	});
 
@@ -1679,6 +1731,7 @@ export async function generateDrift(params: {
 	userId: string;
 	chatSessionId?: string;
 	runId?: string;
+	signal?: AbortSignal;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProposedSuggestion[]> {
 	const { ctx } = params;
@@ -1720,6 +1773,7 @@ export async function generateDrift(params: {
 		generator: 'project_loop_drift',
 		systemPrompt,
 		userPrompt,
+		signal: params.signal,
 		onUsage: params.onUsage
 	});
 
@@ -1757,6 +1811,7 @@ export async function generateTaskConflicts(params: {
 	userId: string;
 	chatSessionId?: string;
 	runId?: string;
+	signal?: AbortSignal;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProposedSuggestion[]> {
 	const { ctx } = params;
@@ -1806,6 +1861,7 @@ export async function generateTaskConflicts(params: {
 		generator: 'project_loop_task_conflicts',
 		systemPrompt,
 		userPrompt,
+		signal: params.signal,
 		onUsage: params.onUsage
 	});
 

@@ -123,7 +123,9 @@ export interface GoalRow {
 	id: string;
 	project_id: string;
 	name: string;
+	description: string | null;
 	state_key: string;
+	target_date: string | null;
 }
 
 export interface PlanRow {
@@ -502,7 +504,7 @@ export async function listStatedFutureTasks(
 export async function listGoals(admin: TypedSupabaseClient, projectId: string): Promise<GoalRow[]> {
 	const { data } = await admin
 		.from('onto_goals')
-		.select('id, project_id, name, state_key')
+		.select('id, project_id, name, description, state_key, target_date')
 		.eq('project_id', projectId)
 		.is('deleted_at', null);
 	return (data as GoalRow[] | null) ?? [];

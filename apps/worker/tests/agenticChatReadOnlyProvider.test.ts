@@ -285,6 +285,45 @@ function createTaskToolDefinition() {
 	};
 }
 
+function createGoalToolDefinition() {
+	return {
+		type: 'function' as const,
+		function: {
+			name: 'create_onto_goal',
+			description: 'Create a project goal.',
+			parameters: {
+				type: 'object',
+				required: ['project_id', 'name'],
+				properties: {
+					project_id: { type: 'string' },
+					name: { type: 'string' },
+					description: { type: 'string' },
+					target_date: { type: 'string' }
+				}
+			}
+		}
+	};
+}
+
+function createProjectToolDefinition() {
+	return {
+		type: 'function' as const,
+		function: {
+			name: 'create_onto_project',
+			description: 'Create a standard project shell.',
+			parameters: {
+				type: 'object',
+				required: ['project', 'entities', 'relationships'],
+				properties: {
+					project: { type: 'object' },
+					entities: { type: 'array', items: { type: 'object' } },
+					relationships: { type: 'array', items: { type: 'object' } }
+				}
+			}
+		}
+	};
+}
+
 function createDocumentToolDefinition() {
 	return {
 		type: 'function' as const,
@@ -443,6 +482,44 @@ function durableMoveMutationFeedback(input: {
 			effectId: 'a3000000-0000-4000-8000-00000000003a',
 			logicalOperationId: input.logicalOperationId,
 			operationName: 'onto.document.tree.move',
+			replayed: false
+		}
+	};
+}
+
+function durableProjectCreateMutationFeedback(input: {
+	providerToolCallId: string;
+	logicalOperationId: string;
+	arguments: JsonObject;
+	projectId: string;
+}): AgenticChatProviderMutationSynthesisInputV1 {
+	return {
+		providerToolCallId: input.providerToolCallId,
+		toolName: 'create_onto_project',
+		arguments: input.arguments,
+		execution: {
+			result: {
+				project_id: input.projectId,
+				message: 'Project created successfully.',
+				context_shift: {
+					new_context: 'project',
+					entity_id: input.projectId,
+					entity_name: 'Agentic Worker PC1',
+					entity_type: 'project'
+				}
+			},
+			executionTimeMs: null,
+			tokensConsumed: null,
+			affectedEntities: [{ kind: 'project', id: input.projectId }],
+			toolCategory: 'ontology_action',
+			resultCount: null,
+			zeroResult: null,
+			requiresUserAction: false
+		},
+		mutation: {
+			effectId: 'a3000000-0000-4000-8000-00000000003a',
+			logicalOperationId: input.logicalOperationId,
+			operationName: 'onto.project.create',
 			replayed: false
 		}
 	};
@@ -5768,6 +5845,589 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(repairInstruction).not.toContain('[ { temp_id, kind }, { temp_id, kind } ]');
 	});
 
+	it('validates the shell inside a composite contract and forces it before goal and task creates', async () => {
+		const projectId = 'f2000000-0000-4000-8000-000000000002';
+		const invalidContractArguments = {
+			summary: 'Create the podcast launch project and starter structure',
+			outcomes: [
+				{
+					id: 'project_shell',
+					action: 'create',
+					entity_kind: 'project',
+					required_fields: ['entities'],
+					minimum_successful_effects: 1
+				},
+				{
+					id: 'launch_goal',
+					action: 'create',
+					entity_kind: 'goal',
+					changes: [{ field: 'target_date', value: '2026-09-15' }],
+					minimum_successful_effects: 1
+				},
+				{
+					id: 'task_book_guests',
+					action: 'create',
+					entity_kind: 'task',
+					changes: [{ field: 'title', value: 'Book the first three guests' }],
+					minimum_successful_effects: 1
+				},
+				{
+					id: 'task_record_trailer',
+					action: 'create',
+					entity_kind: 'task',
+					changes: [{ field: 'title', value: 'Record the show trailer' }],
+					minimum_successful_effects: 1
+				},
+				{
+					id: 'task_publish_episode',
+					action: 'create',
+					entity_kind: 'task',
+					changes: [{ field: 'title', value: 'Publish episode one' }],
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const contractArguments = {
+			...invalidContractArguments,
+			outcomes: [
+				{
+					id: 'project_shell',
+					action: 'create',
+					entity_kind: 'project',
+					minimum_successful_effects: 1
+				},
+				...invalidContractArguments.outcomes.slice(1)
+			]
+		};
+		const normalizedContract = parseDeclaredTurnContract(contractArguments);
+		if (!normalizedContract) throw new Error('Expected a valid composite contract');
+		const contractSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
+			.digest('hex');
+		const contractApprovalArguments = {
+			reason: 'The request commissions this exact project, goal, and three-task structure.',
+			contract_sha256: contractSha256,
+			reference_candidates: []
+		};
+		const projectArguments = {
+			project: {
+				name: 'Agentic Worker PC1',
+				type_key: 'project.media.podcast',
+				description: 'Publish the first three podcast episodes.',
+				state_key: 'planning'
+			},
+			entities: [],
+			relationships: []
+		};
+		const batchSha256 = mutationBatchReviewSha256([
+			{
+				id: 'provider-create-composite-project',
+				name: 'create_onto_project',
+				arguments: projectArguments
+			}
+		]);
+		const batchApprovalArguments = {
+			reason: 'The shell is the first phase of the approved composite contract.',
+			batch_sha256: batchSha256
+		};
+		const goalArguments = {
+			project_id: projectId,
+			name: 'Publish the first three podcast episodes',
+			target_date: '2026-09-15'
+		};
+		const taskArguments = [
+			{ project_id: projectId, title: 'Book the first three guests' },
+			{ project_id: projectId, title: 'Record the show trailer' },
+			{ project_id: projectId, title: 'Publish episode one' }
+		];
+		const childCalls = [
+			{
+				id: 'provider-create-composite-goal',
+				name: 'create_onto_goal',
+				arguments: goalArguments
+			},
+			...taskArguments.map((argumentsValue, index) => ({
+				id: `provider-create-composite-task-${index + 1}`,
+				name: 'create_onto_task',
+				arguments: argumentsValue
+			}))
+		];
+		const childBatchSha256 = mutationBatchReviewSha256(childCalls);
+		const childBatchApprovalArguments = {
+			reason: 'The goal and three tasks exactly complete the approved contract.',
+			batch_sha256: childBatchSha256
+		};
+		const childRound: AgenticChatReadOnlyProviderClientEventV1[] = [
+			{
+				type: 'tool_call',
+				toolCall: childCalls.map((call, index) => ({
+					index,
+					id: call.id,
+					type: 'function' as const,
+					function: {
+						name: call.name,
+						arguments: JSON.stringify(call.arguments)
+					}
+				}))
+			},
+			{ type: 'done', finishedReason: 'tool_calls' }
+		];
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-invalid-composite-contract',
+				invalidContractArguments,
+				'declare_turn_contract'
+			),
+			providerReadRound(
+				'provider-composite-contract',
+				contractArguments,
+				'declare_turn_contract'
+			),
+			providerReadRound(
+				'provider-create-composite-project',
+				projectArguments,
+				'create_onto_project'
+			),
+			childRound
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-composite-contract',
+				contractApprovalArguments,
+				'approve_turn_contract_review'
+			),
+			providerReadRound(
+				'reviewer-composite-project-batch',
+				batchApprovalArguments,
+				'approve_mutation_batch_review'
+			),
+			providerReadRound(
+				'reviewer-composite-child-batch',
+				childBatchApprovalArguments,
+				'approve_mutation_batch_review'
+			)
+		]);
+		const input = executionInputWithReadSurface(
+			[createProjectToolDefinition(), createGoalToolDefinition(), createTaskToolDefinition()],
+			['create_onto_project', 'create_onto_goal', 'create_onto_task']
+		);
+		input.requestPayload.context = { type: 'project_create' };
+		input.requestPayload.message =
+			'Create Agentic Worker PC1 with a September 15 goal and three starter tasks.';
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ createOntoProject: true, createOntoGoal: true, createOntoTask: true }
+		).prepare({
+			executionInput: input,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const declarationSteps = await collect(invocation.stream());
+		expect(declarationSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					providerToolCallId: 'provider-invalid-composite-contract',
+					toolName: 'declare_turn_contract',
+					validationFailure: expect.objectContaining({
+						error: expect.stringContaining(
+							'The project shell outcome must omit required_fields'
+						)
+					})
+				}),
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'provider-composite-contract',
+					toolName: 'declare_turn_contract'
+				})
+			])
+		);
+		expect(semanticReviewer.stream).not.toHaveBeenCalled();
+
+		const contractReviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-composite-contract',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		expect(contractReviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					providerToolCallId: 'reviewer-composite-contract',
+					toolName: 'approve_turn_contract_review'
+				})
+			])
+		);
+
+		const batchReviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-composite-contract',
+						'approve_turn_contract_review',
+						contractApprovalArguments,
+						{
+							status: 'turn_contract_review_approved',
+							contract_sha256: contractSha256
+						}
+					)
+				]
+			})
+		);
+		expect(batchReviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					providerToolCallId: 'reviewer-composite-project-batch',
+					toolName: 'approve_mutation_batch_review'
+				})
+			])
+		);
+		expect(client.stream.mock.calls[2]?.[0].tools.map((tool) => tool.function.name)).toEqual([
+			'create_onto_project'
+		]);
+		expect(
+			client.stream.mock.calls[2]?.[0].messages.some(
+				(message) =>
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'Goals, tasks, documents, milestones, risks, and relationships are separate outcomes'
+					)
+			)
+		).toBe(true);
+
+		const projectMutationSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-composite-project-batch',
+						'approve_mutation_batch_review',
+						batchApprovalArguments,
+						{
+							status: 'mutation_batch_review_approved',
+							batch_sha256: batchSha256
+						}
+					)
+				]
+			})
+		);
+		const projectMutation = projectMutationSteps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+				step.type === 'mutating_tool'
+		);
+		if (!projectMutation) throw new Error('Expected reviewed project-shell mutation');
+
+		const childBatchReviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 5,
+				results: [
+					durableProjectCreateMutationFeedback({
+						providerToolCallId: 'provider-create-composite-project',
+						logicalOperationId: projectMutation.logicalOperationId,
+						arguments: projectArguments,
+						projectId
+					})
+				]
+			})
+		);
+		expect(childBatchReviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					providerToolCallId: 'reviewer-composite-child-batch',
+					toolName: 'approve_mutation_batch_review'
+				})
+			])
+		);
+		expect(client.stream.mock.calls[3]?.[0].tools.map((tool) => tool.function.name)).toEqual([
+			'create_onto_goal',
+			'create_onto_task'
+		]);
+
+		const childMutationSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 6,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-composite-child-batch',
+						'approve_mutation_batch_review',
+						childBatchApprovalArguments,
+						{
+							status: 'mutation_batch_review_approved',
+							batch_sha256: childBatchSha256
+						}
+					)
+				]
+			})
+		);
+		const childMutations = childMutationSteps.filter(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+				step.type === 'mutating_tool'
+		);
+		expect(childMutations).toHaveLength(4);
+		expect(childMutations.map((step) => step.toolName)).toEqual([
+			'create_onto_goal',
+			'create_onto_task',
+			'create_onto_task',
+			'create_onto_task'
+		]);
+		expect(childMutations.every((step) => step.arguments.project_id === projectId)).toBe(true);
+	});
+
+	it('mounts semantic controls and reviews a project shell before creating it', async () => {
+		const projectId = 'f1000000-0000-4000-8000-000000000001';
+		const contractArguments = {
+			summary: 'Create the requested podcast project shell',
+			outcomes: [
+				{
+					id: 'create_project_shell',
+					action: 'create',
+					entity_kind: 'project',
+					description: 'Create Agentic Worker PC1 for the podcast launch.',
+					minimum_successful_effects: 1
+				}
+			]
+		};
+		const normalizedContract = parseDeclaredTurnContract(contractArguments);
+		if (!normalizedContract) throw new Error('Expected a valid project-create contract');
+		const contractSha256 = createHash('sha256')
+			.update(canonicalizeAgenticChatJson(normalizedContract as never), 'utf8')
+			.digest('hex');
+		const contractApprovalArguments = {
+			reason: 'The fully specified request commissions this exact project shell.',
+			contract_sha256: contractSha256,
+			reference_candidates: []
+		};
+		const projectArguments = {
+			project: {
+				name: 'Agentic Worker PC1',
+				type_key: 'project.media.podcast',
+				description: 'Publish the first 3 podcast episodes by September 15, 2026.',
+				state_key: 'planning'
+			},
+			entities: [],
+			relationships: []
+		};
+		const batchSha256 = mutationBatchReviewSha256([
+			{
+				id: 'provider-create-project',
+				name: 'create_onto_project',
+				arguments: projectArguments
+			}
+		]);
+		const batchApprovalArguments = {
+			reason: 'The exact empty-graph shell matches the approved project outcome.',
+			batch_sha256: batchSha256
+		};
+		const projectDefinition = {
+			type: 'function' as const,
+			function: {
+				name: 'create_onto_project',
+				description: 'Create a project from a ProjectSpec.',
+				parameters: {
+					type: 'object',
+					required: ['project', 'entities', 'relationships'],
+					properties: {
+						project: { type: 'object' },
+						entities: { type: 'array', items: { type: 'object' } },
+						relationships: { type: 'array', items: { type: 'object' } }
+					}
+				}
+			}
+		};
+		const client = clientWithRounds([
+			providerReadRound(
+				'provider-contract-project',
+				contractArguments,
+				'declare_turn_contract'
+			),
+			providerReadRound('provider-create-project', projectArguments, 'create_onto_project'),
+			[
+				{ type: 'text', content: 'Created Agentic Worker PC1.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const semanticReviewer = clientWithRounds([
+			providerReadRound(
+				'reviewer-project-contract',
+				contractApprovalArguments,
+				'approve_turn_contract_review'
+			),
+			providerReadRound(
+				'reviewer-project-batch',
+				batchApprovalArguments,
+				'approve_mutation_batch_review'
+			)
+		]);
+		const input = executionInputWithReadSurface([projectDefinition], ['create_onto_project']);
+		input.requestPayload.context = { type: 'project_create' };
+		input.requestPayload.message =
+			'Create Agentic Worker PC1 with a podcast goal and three starter tasks.';
+		const invocation = await new AgenticChatReadOnlyProviderAdapter(
+			{
+				client,
+				semanticReviewer,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ createOntoProject: true }
+		).prepare({
+			executionInput: input,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const declarationSteps = await collect(invocation.stream());
+		expect(declarationSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'provider-contract-project',
+					toolName: 'declare_turn_contract'
+				})
+			])
+		);
+		expect(declarationSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
+		const firstRequest = client.stream.mock.calls[0]?.[0];
+		expect(firstRequest?.toolChoice).toBe('required');
+		expect(firstRequest?.tools.map((tool) => tool.function.name)).toEqual([
+			'declare_turn_contract',
+			'declare_read_only_turn',
+			'request_turn_clarification'
+		]);
+		expect(
+			firstRequest?.messages.some(
+				(message) =>
+					typeof message.content === 'string' &&
+					message.content.includes('Project-create shell boundary')
+			)
+		).toBe(true);
+
+		const contractReviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 2,
+				results: [
+					durableReadFeedbackFor(
+						'provider-contract-project',
+						'declare_turn_contract',
+						contractArguments,
+						{ status: 'declared' }
+					)
+				]
+			})
+		);
+		expect(contractReviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'reviewer-project-contract',
+					toolName: 'approve_turn_contract_review'
+				})
+			])
+		);
+
+		const batchReviewSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 3,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-project-contract',
+						'approve_turn_contract_review',
+						contractApprovalArguments,
+						{
+							status: 'turn_contract_review_approved',
+							contract_sha256: contractSha256
+						}
+					)
+				]
+			})
+		);
+		expect(batchReviewSteps).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'read_tool',
+					providerToolCallId: 'reviewer-project-batch',
+					toolName: 'approve_mutation_batch_review'
+				})
+			])
+		);
+		expect(batchReviewSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
+
+		const mutationSteps = await collect(
+			invocation.continueWithToolResults!({
+				round: 4,
+				results: [
+					durableReadFeedbackFor(
+						'reviewer-project-batch',
+						'approve_mutation_batch_review',
+						batchApprovalArguments,
+						{
+							status: 'mutation_batch_review_approved',
+							batch_sha256: batchSha256
+						}
+					)
+				]
+			})
+		);
+		const createStep = mutationSteps.find(
+			(step): step is Extract<AgenticChatProviderStepV1, { type: 'mutating_tool' }> =>
+				step.type === 'mutating_tool'
+		);
+		expect(createStep).toMatchObject({
+			providerToolCallId: 'provider-create-project',
+			toolName: 'create_onto_project',
+			operationName: 'onto.project.create',
+			arguments: projectArguments
+		});
+		if (!createStep) throw new Error('Expected independently reviewed project create');
+
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 5,
+					results: [
+						durableProjectCreateMutationFeedback({
+							providerToolCallId: 'provider-create-project',
+							logicalOperationId: createStep.logicalOperationId,
+							arguments: projectArguments,
+							projectId
+						})
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'Created Agentic Worker PC1.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(
+			[
+				...declarationSteps,
+				...contractReviewSteps,
+				...batchReviewSteps,
+				...mutationSteps
+			].some(
+				(step) =>
+					step.type === 'read_tool' && step.toolName === 'request_turn_clarification'
+			)
+		).toBe(false);
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(semanticReviewer.stream).toHaveBeenCalledTimes(2);
+	});
+
 	it('continues sequential read rounds with compacted durable feedback', async () => {
 		const streams: AgenticChatReadOnlyProviderClientEventV1[][] = [
 			[
@@ -9141,10 +9801,11 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		const { afterCreate } = await fixture.runThroughCreate();
 
 		// The premature answer was withheld; the continuation names the unfinished
-		// outcome with its bound destination and offers only the contract's write tools.
+		// outcome with its bound destination and offers only tools that can still
+		// make progress. The fulfilled create is deliberately unavailable so the
+		// model cannot duplicate it while finishing the move.
 		const continuation = fixture.client.stream.mock.calls[3]?.[0];
 		expect(continuation?.tools.map((tool) => tool.function.name)).toEqual([
-			'create_onto_document',
 			'move_document_in_tree'
 		]);
 		const instruction = String(continuation?.messages.at(-1)?.content);

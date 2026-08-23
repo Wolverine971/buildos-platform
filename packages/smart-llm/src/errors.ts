@@ -2,6 +2,26 @@
 
 import type { OpenRouterMessageContentSummary, OpenRouterResponse } from './types';
 
+export class LLMRequestTimeoutError extends Error {
+	public override name = 'LLMRequestTimeoutError';
+
+	constructor(
+		public readonly timeoutMs: number,
+		public readonly requestedModel: string,
+		public openrouter?: { generationId: string | null }
+	) {
+		super(`LLM request timed out after ${timeoutMs}ms (${requestedModel})`);
+	}
+}
+
+export class LLMRequestCancelledError extends Error {
+	public override name = 'LLMRequestCancelledError';
+
+	constructor(public readonly reason: string) {
+		super(`LLM request cancelled: ${reason}`);
+	}
+}
+
 export class OpenRouterEmptyContentError extends Error {
 	public override name = 'OpenRouterEmptyContentError';
 	public details: Record<string, unknown>;
@@ -90,6 +110,12 @@ export function isRetryableOpenRouterError(error: unknown): boolean {
 	if (!error || typeof error !== 'object') {
 		return false;
 	}
+	if (error instanceof LLMRequestCancelledError) {
+		return false;
+	}
+	if (error instanceof LLMRequestTimeoutError) {
+		return true;
+	}
 
 	const maybeError = error as { status?: number; message?: string; code?: string; name?: string };
 	const status = maybeError.status;
@@ -120,7 +146,7 @@ export function isRetryableOpenRouterError(error: unknown): boolean {
 		return true;
 	}
 
-	if (maybeError.name === 'AbortError') {
+	if (maybeError.name === 'AbortError' || maybeError.name === 'TimeoutError') {
 		return true;
 	}
 

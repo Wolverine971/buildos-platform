@@ -170,7 +170,7 @@ export interface TurnSpec {
 export interface Scenario {
 	id: string;
 	title: string;
-	category: 'document' | 'task' | 'organization' | 'calendar' | 'email' | 'creative';
+	category: 'project' | 'document' | 'task' | 'organization' | 'calendar' | 'email' | 'creative';
 	/** Override for long, multi-turn journeys. Defaults to the runner's 5 minutes. */
 	timeoutMs?: number;
 	/** Return true to skip (e.g. calendar without a connected test calendar). */

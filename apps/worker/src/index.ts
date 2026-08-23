@@ -29,6 +29,7 @@ import { registerEmailTrackingRoute } from './routes/email-tracking';
 import smsScheduledRoutes from './routes/sms/scheduled';
 import { startScheduler } from './scheduler';
 import { logQueueConfiguration, queueConfig } from './config/queueConfig';
+import { logProjectLoopProviderConfiguration } from './config/projectLoops';
 import {
 	WorkerEventLoopLagMonitor,
 	buildWorkerOperationalHealthChecks
@@ -50,6 +51,7 @@ import {
 // Log email configuration at startup
 console.log('🚀 Application starting...');
 logQueueConfiguration();
+logProjectLoopProviderConfiguration();
 console.log('📧 Email Configuration:');
 console.log(
 	`   → USE_WEBHOOK_EMAIL: "${process.env.USE_WEBHOOK_EMAIL}" (type: ${typeof process.env.USE_WEBHOOK_EMAIL})`

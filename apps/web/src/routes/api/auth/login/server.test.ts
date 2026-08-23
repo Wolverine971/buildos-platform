@@ -187,4 +187,54 @@ describe('POST /api/auth/login', () => {
 			})
 		);
 	});
+
+	it('includes the submitted email when an unconfirmed login is logged', async () => {
+		const authError = {
+			name: 'AuthApiError',
+			message: 'Email not confirmed',
+			code: 'email_not_confirmed',
+			status: 400
+		};
+		const locals = {
+			supabase: {
+				auth: {
+					signInWithPassword: vi.fn().mockResolvedValue({
+						data: { user: null, session: null },
+						error: authError
+					})
+				}
+			},
+			safeGetSession: vi.fn(),
+			session: null,
+			user: null
+		};
+
+		const response = await POST({
+			request: new Request('http://localhost/api/auth/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					email: ' Login.User@AOL.com ',
+					password: 'Password123'
+				})
+			}),
+			locals
+		} as any);
+		const payload = await response.json();
+
+		expect(response.status).toBe(401);
+		expect(payload.code).toBe('EMAIL_NOT_CONFIRMED');
+		expect(logErrorMock).toHaveBeenCalledWith(
+			authError,
+			expect.objectContaining({
+				submittedEmail: 'login.user@aol.com',
+				operationType: 'auth_login',
+				metadata: expect.objectContaining({
+					emailDomain: 'aol.com',
+					reason: 'email_not_confirmed'
+				})
+			}),
+			'warning'
+		);
+	});
 });

@@ -320,6 +320,15 @@ toggle, and all dashboard controls at least 40px with primary controls at 44px. 
 official Svelte autofixer reports no issues in the new components. Authenticated real-data capture remains
 owed because local protected routes redirected both browser sessions to sign-in.
 
+**Error-to-chat correlation deep link (shipped 2026-08-22):** the `/admin/errors` detail modal now
+resolves chat correlation from both `metadata` and `operation_payload`, accepting camelCase and snake_case
+session keys. Correlated errors expose a prominent, 44px **Open Chat Logs** action that deep-links to
+`/admin/chat/sessions?chat_session_id=…`, where the matching session detail opens directly; the project link
+remains separate context rather than the only destination (P6/P8/P13). Two focused component regressions
+cover the payload-only shape from the reported timeout and the metadata snake_case shape; `svelte-check`
+passes with 0 errors and 0 warnings, and the official Svelte autofixer reports no issues. Authenticated
+real-data capture remains owed.
+
 **Deferred (structural — flagged, logic untouched):**
 
 - **Security event-detail modal** (`security/+page.svelte:1105-1224`) — hand-rolled overlay with no ESC /

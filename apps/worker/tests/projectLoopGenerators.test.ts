@@ -11,6 +11,7 @@ import {
 	type ProjectReviewSynthesisCandidate
 } from '../src/workers/project-loop/generators';
 import type { SmartLLMService } from '../src/lib/services/smart-llm-service';
+import { PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED } from '../src/config/projectLoops';
 
 function makeContext(): LoopContext {
 	return {
@@ -118,6 +119,7 @@ function makeReviewCandidates(): ProjectReviewSynthesisCandidate[] {
 describe('project loop generators', () => {
 	it('passes project loop attribution to suggestion LLM calls', async () => {
 		const { llm, getJSONResponse } = makeTrackedLlm({ suggestions: [] });
+		const controller = new AbortController();
 
 		await generateTaskConflicts({
 			llm,
@@ -125,12 +127,20 @@ describe('project loop generators', () => {
 			userId: 'user-1',
 			chatSessionId: 'chat-1',
 			runId: 'run-1',
+			signal: controller.signal,
 			onUsage
 		});
 
 		expect(getJSONResponse).toHaveBeenCalledWith(
 			expect.objectContaining({
 				userId: 'user-1',
+				signal: controller.signal,
+				providerRouting: PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED.length
+					? {
+							order: PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED,
+							allow_fallbacks: true
+						}
+					: undefined,
 				operationType: 'project_loop_task_conflicts',
 				projectId: 'project-1',
 				chatSessionId: 'chat-1',
@@ -294,6 +304,61 @@ describe('project loop generators', () => {
 		expect(brief.attention_level).toBe('minor');
 		expect(brief.decision).toBeNull();
 		expect(brief.no_attention_reason).toContain('minor');
+	});
+
+	it('makes incomplete detector coverage explicit in heuristic and LLM manager briefs', async () => {
+		const heuristic = buildHeuristicProjectManagerBrief({
+			ctx: makeContext(),
+			candidates: [],
+			uncheckedLenses: ['drift']
+		});
+		expect(heuristic.attention_level).toBe('none');
+		expect(heuristic.no_attention_reason).toContain("drift check didn't finish this pass");
+
+		const { llm, getJSONResponse } = makeTrackedLlm({
+			brief: {
+				attention_level: 'none',
+				no_attention_reason: 'Everything looks clean.'
+			}
+		});
+		const brief = await generateProjectManagerBrief({
+			llm,
+			ctx: makeContext(),
+			candidates: [],
+			uncheckedLenses: ['drift'],
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(getJSONResponse.mock.calls[0]?.[0]?.userPrompt).toContain(
+			'Lenses NOT checked this pass'
+		);
+		expect(getJSONResponse.mock.calls[0]?.[0]?.userPrompt).toContain('drift');
+		expect(brief.no_attention_reason).toContain("drift check didn't finish this pass");
+		expect(brief.no_attention_reason).not.toContain('Everything looks clean');
+	});
+
+	it('does not convert caller cancellation into a heuristic manager brief', async () => {
+		const controller = new AbortController();
+		const cancellation = new Error('worker ownership lost');
+		const llm = {
+			getJSONResponse: vi.fn(async () => {
+				controller.abort(cancellation);
+				throw cancellation;
+			})
+		} as unknown as SmartLLMService;
+
+		await expect(
+			generateProjectManagerBrief({
+				llm,
+				ctx: makeContext(),
+				candidates: [],
+				uncheckedLenses: [],
+				userId: 'user-1',
+				signal: controller.signal,
+				onUsage
+			})
+		).rejects.toBe(cancellation);
 	});
 
 	it('rejects academic audit copy, unknown ids, and model attempts to hide a decision', async () => {

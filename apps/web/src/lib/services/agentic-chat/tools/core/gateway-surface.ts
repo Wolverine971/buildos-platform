@@ -141,11 +141,19 @@ const PROJECT_CALENDAR_DIRECT_TOOL_NAMES = [
 	'set_project_calendar'
 ] as const;
 
-// Project creation is a single-operation hot path. Keeping every unrelated
-// tool off this surface makes `tool_choice: required` unambiguous and reduces
-// schema/context overhead. Pending-intent cancellation is resolved by turn
-// admission metadata before orchestration, not by the creation model.
-const PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES = ['create_onto_project'] as const;
+// Project creation is a bounded contract-first hot path. The project adapter
+// creates only the shell, so independently reviewed goal/task calls complete
+// fully specified creation requests after the shell returns its project id.
+// Relationship and unrelated tools remain outside this immutable surface.
+const PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES = [
+	'declare_turn_contract',
+	'declare_read_only_turn',
+	'request_turn_clarification',
+	'cancel_turn_contract',
+	'create_onto_project',
+	'create_onto_goal',
+	'create_onto_task'
+] as const;
 
 const GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE: Record<
 	GatewaySurfaceProfileName,

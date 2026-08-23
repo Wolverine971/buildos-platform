@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/email-tracking/[tracking_id]/click/+server.ts
 
-import { redirect } from '@sveltejs/kit';
+import { isRedirect, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createLogger } from '@buildos/shared-utils';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -184,7 +184,6 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		// Update each recipient's click tracking
 		if (recipients.length > 0) {
 			for (const recipient of recipients) {
-				const now = new Date().toISOString();
 				const isFirstClick = !clickedRecipientIds.has(recipient.id);
 
 				logger.info('Tracking email click', {
@@ -297,7 +296,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		throw redirect(302, destination);
 	} catch (error) {
 		// If it's a redirect, re-throw it
-		if (error instanceof Response && error.status === 302) {
+		if (isRedirect(error)) {
 			throw error;
 		}
 

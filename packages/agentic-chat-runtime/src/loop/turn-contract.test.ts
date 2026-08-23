@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import type { FastToolExecution } from './shared';
 import {
+	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1,
 	buildFastChatPendingTurnContract,
 	deriveImplicitTurnContract,
 	executeCancelTurnContract,
@@ -51,6 +52,28 @@ function execution(
 }
 
 describe('semantic turn contracts', () => {
+	it('publishes canonical schemas for every standard semantic control', () => {
+		const definitions = new Map(
+			AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1.map((definition) => [
+				definition.function.name,
+				definition
+			])
+		);
+
+		expect([...definitions.keys()]).toEqual([
+			'declare_turn_contract',
+			'declare_read_only_turn',
+			'request_turn_clarification',
+			'cancel_turn_contract'
+		]);
+		expect(
+			definitions.get('declare_turn_contract')?.function.parameters.properties.outcomes
+		).toMatchObject({ minItems: 1, maxItems: 20 });
+		expect(definitions.get('request_turn_clarification')?.function.parameters.required).toEqual(
+			['reason', 'question']
+		);
+	});
+
 	it('executes structured standard controls without a provider-specific tool-call envelope', () => {
 		expect(
 			executeAgenticChatStandardControlToolV1({

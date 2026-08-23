@@ -14,22 +14,21 @@ import {
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import {
+	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1,
 	CANCEL_TURN_CONTRACT_TOOL_NAME,
 	ContextGatheringLedger,
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
 	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	type FastToolExecution,
 	NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE,
 	NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE,
 	READ_LOOP_REPAIR_RANK,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
 	TOOL_METADATA,
-	type FastToolExecution,
 	type ToolValidationIssue,
 	type TurnContract,
 	type TurnContractOutcome,
 	bindTurnContractLabels,
-	buildWriteLedger,
-	titleKey,
 	buildMemoServedResult,
 	buildOrganizeCommissionRepairInstruction,
 	buildReadLoopRepairInstruction,
@@ -37,6 +36,7 @@ import {
 	buildRoundToolPattern,
 	buildToolPayloadForModel,
 	buildToolValidationRepairInstruction,
+	buildWriteLedger,
 	getSafeWriteToolNamesForTurnContract,
 	isPureReadToolName,
 	mergeTurnContracts,
@@ -47,6 +47,7 @@ import {
 	sanitizeAssistantFinalText,
 	selectReadLoopRepairEscalation,
 	shouldMemoizeReadResult,
+	titleKey,
 	validateToolCalls
 } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatWorkerExecutionInputV1 } from './executionInput';
@@ -608,9 +609,13 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			input.processingToken,
 			input.signal,
 			this.mutationCapabilities,
-			Boolean(this.ports.liveVision)
+			Boolean(this.ports.liveVision),
+			Boolean(this.ports.semanticReviewer)
 		);
-		const promptSnapshot = buildPromptSnapshot(request.messages, request.tools);
+		const initialRequest = this.ports.semanticReviewer
+			? (buildProjectCreateInitialContractGateRequest(request) ?? request)
+			: request;
+		const promptSnapshot = buildPromptSnapshot(initialRequest.messages, initialRequest.tools);
 		const supervisor = this.ports.supervisorFactory
 			? new AgenticChatProviderSupervisorRuntime(this.ports.supervisorFactory(executionInput))
 			: null;
@@ -634,7 +639,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 		let continued = false;
 		let pendingToolRound: PendingToolRound | null = null;
 		let toolRoundCompleted = false;
-		let currentRequest = request;
+		let currentRequest = initialRequest;
 		let nextProviderRound = 2;
 		let readOnlyRoundCount = 0;
 		let providerToolCallCount = 0;
@@ -955,7 +960,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				streamed = true;
 				const state = buildStreamState();
 				state.supervisor?.start();
-				return this.streamInitial(request, state);
+				return this.streamInitial(initialRequest, state);
 			},
 			synthesize: (feedback) => {
 				if (released) {
@@ -1095,6 +1100,14 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					completedToolRound.calls,
 					input.results
 				);
+				if (roundContainsMutation && request.contextType === 'project_create') {
+					// The shell receipt carries the new project id. Switch surfaces before
+					// asking the acting model for another pass so the shell cannot be
+					// duplicated and child calls can use that durable id immediately.
+					const completionRequest =
+						state.takeContractCompletionContinuation(currentRequest);
+					if (completionRequest) currentRequest = completionRequest;
+				}
 				const proposalRevision = pendingProposalRevision;
 				if (
 					proposalRevision &&
@@ -1176,12 +1189,22 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					}
 					pendingContractReviewSha256 = null;
 					approvedContractSha256 = approvalResult.contract_sha256;
+					const approvedExecutionRequest = buildPostSemanticDispositionRequest(
+						currentRequest,
+						request.tools,
+						DECLARE_TURN_CONTRACT_TOOL_NAME
+					);
+					const projectCreateShellRequest =
+						approvedExecutionRequest.contextType === 'project_create'
+							? buildTurnContractWriteCarveOutRequest(
+									approvedExecutionRequest,
+									request.tools,
+									turnContract
+								)
+							: null;
+					if (projectCreateShellRequest) contractWriteCarveOutUsed = true;
 					currentRequest = appendSystemInstruction(
-						buildPostSemanticDispositionRequest(
-							currentRequest,
-							request.tools,
-							DECLARE_TURN_CONTRACT_TOOL_NAME
-						),
+						projectCreateShellRequest ?? approvedExecutionRequest,
 						'Independent semantic review approved the exact declared contract. Execute only that contract; do not broaden or substitute its targets or values.'
 					);
 					const organizeInstruction = organizeExecutionInstruction();
@@ -1558,7 +1581,10 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				// for any reason other than tool calls left its arguments unfinished,
 				// and reporting that as malformed JSON hides a recoverable condition
 				// behind a permanent protocol error.
-				assertToolCallFinishReason(toolCalls, finishedReason, request.toolChoice, 'auto');
+				// Initial project-create requests can now start in a required semantic
+				// disposition gate. Reject calls only when tools are actually disabled;
+				// both `auto` and `required` are valid tool-enabled initial policies.
+				assertToolCallFinishReason(toolCalls, finishedReason, request.toolChoice, 'none');
 				const calls = completeToolCalls(toolCalls, request.tools, {
 					finishedReason,
 					completionBudgetExhausted: finishedReason === 'length'
@@ -1606,7 +1632,11 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					yield* drainSupervisorSteps(state.supervisor);
 					const executableCalls = calls.filter((call) => !blockedToolCalls.has(call.id));
 					const validationIssues = [
-						...validateCompletedProviderCalls(executableCalls, request),
+						...validateCompletedProviderCalls(
+							executableCalls,
+							request,
+							state.getAdmittedTools()
+						),
 						...state.validateApprovedMutations(executableCalls)
 					];
 					if (validationIssues.length > 0) {
@@ -2354,7 +2384,11 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					yield* drainSupervisorSteps(state.supervisor);
 					const executableCalls = calls.filter((call) => !blockedToolCalls.has(call.id));
 					const validationIssues = [
-						...validateCompletedProviderCalls(executableCalls, request),
+						...validateCompletedProviderCalls(
+							executableCalls,
+							request,
+							state.getAdmittedTools()
+						),
 						...state.validateApprovedMutations(executableCalls)
 					];
 					if (validationIssues.length > 0) {
@@ -3508,6 +3542,7 @@ function buildTurnContractReviewRequest(
 					'Approve the exact contract only if the current user request commissioned every outcome and the complete turn record resolves every target and required value without guessing.',
 					'Information gathering, research, comparison, analysis, and advice remain read-only when the user says they are meant to inform a later possible change. Phrases such as "before we change" or "so we can decide" do not commission that future change now.',
 					...SEMANTIC_COMMISSION_GUIDANCE,
+					...projectCreateShellGuidance(request.contextType, availableTools),
 					'If the current request commissions no durable change, choose declare_read_only_turn instead of inventing a contract or asking the user to clarify a change they did not request.',
 					'Target IDs are existing entity IDs that bound the eligible scope; create outcomes have no target ID before execution. minimum_successful_effects is the required cardinality. Approve a minimum smaller than the target set only when the user commission genuinely allows that bounded partial result; require the full cardinality when every listed target must change.',
 					"A create outcome may carry a label and a move outcome may carry parent_label: the move's destination is the entity that labelled create will produce, and the system binds the id after the create executes. Treat such a destination as resolved; do not ask for its id.",
@@ -3696,6 +3731,7 @@ function buildMutationBatchReviewRequest(
 					'A batch does not have to complete the approved contract: contracts routinely execute across several batches (for example, creating parent folders before moving documents into them). Judge only whether every mutation in this batch is inside the contract; the harness enforces completion of the remaining outcomes.',
 					'Contract outcomes may name a destination symbolically: a create outcome carries a label, and a move outcome carries parent_label. The system binds each label to the created entity id after that create executes (see "Resolved contract labels"). A move whose new_parent_id equals a bound id, or whose new_parent_title equals the declared title of the labelled create, is inside the contract by construction.',
 					...SEMANTIC_COMMISSION_GUIDANCE,
+					...projectCreateShellGuidance(pending.request.contextType, pending.reviewTools),
 					'Reject unrelated cleanup, convenience edits, guessed targets, invented identifiers, broader scope, and follow-up changes that merely seem helpful.',
 					'Arguments the tool schema marks as required (listed below per tool) are never "invented values": when the contract does not specify one, the agent supplies a brief on-topic value — for example a one-line description or a default type for a new grouping document. Never return a batch to remove a required argument; the tool cannot execute without it. Judge only whether the value is reasonable for the commissioned outcome.',
 					'Likewise a short heading or one-line body as `content`, a default `state_key`, or a `type_key` on a new container are implementation defaults for that create; never return a batch merely to remove them.',
@@ -3898,7 +3934,15 @@ function buildContractCompletionRequest(
 	resolution: ReturnType<typeof resolveTurnContractOutcome>,
 	labelBindings: ReadonlyMap<string, string>
 ): ClientRequest | null {
-	const safeToolNames = new Set(getSafeWriteToolNamesForTurnContract(contract));
+	const unfinishedOutcomes = contract.outcomes
+		.map((outcome, index) => ({ outcome, result: resolution.outcomes[index] }))
+		.filter(({ result }) => result && !result.fulfilled);
+	if (unfinishedOutcomes.length === 0) return null;
+	const unfinishedContract: TurnContract = {
+		...contract,
+		outcomes: unfinishedOutcomes.map(({ outcome }) => outcome)
+	};
+	const safeToolNames = new Set(getSafeWriteToolNamesForTurnContract(unfinishedContract));
 	const writeTools = availableTools.filter((tool) => safeToolNames.has(tool.function.name));
 	if (writeTools.length === 0) return null;
 	const declaredTitle = (label: string | undefined): string | undefined =>
@@ -3907,29 +3951,25 @@ function buildContractCompletionRequest(
 					.find((outcome) => outcome.label === label)
 					?.changes?.find((change) => change.field === 'title')?.value
 			: undefined;
-	const unfinished = contract.outcomes
-		.map((outcome, index) => ({ outcome, result: resolution.outcomes[index] }))
-		.filter(({ result }) => result && !result.fulfilled)
-		.map(({ outcome, result }) => {
-			const destination = outcome.parentLabel
-				? ` into the folder labelled "${outcome.parentLabel}"` +
-					(labelBindings.get(outcome.parentLabel)
-						? ` (new_parent_id ${labelBindings.get(outcome.parentLabel)}` +
-							(declaredTitle(outcome.parentLabel)
-								? `, title "${declaredTitle(outcome.parentLabel)}")`
-								: ')')
-						: declaredTitle(outcome.parentLabel)
-							? ` (not created yet; use new_parent_title "${declaredTitle(outcome.parentLabel)}")`
-							: '')
-				: '';
-			const targets =
-				outcome.targetIds.length > 0 ? ` targets [${outcome.targetIds.join(', ')}]` : '';
-			const missing = result?.missingTargetIds.length
-				? ` still missing [${result.missingTargetIds.join(', ')}]`
-				: '';
-			return `- ${outcome.id}: ${outcome.action} ${outcome.entityKind}${targets}${destination}${missing}`;
-		});
-	if (unfinished.length === 0) return null;
+	const unfinished = unfinishedOutcomes.map(({ outcome, result }) => {
+		const destination = outcome.parentLabel
+			? ` into the folder labelled "${outcome.parentLabel}"` +
+				(labelBindings.get(outcome.parentLabel)
+					? ` (new_parent_id ${labelBindings.get(outcome.parentLabel)}` +
+						(declaredTitle(outcome.parentLabel)
+							? `, title "${declaredTitle(outcome.parentLabel)}")`
+							: ')')
+					: declaredTitle(outcome.parentLabel)
+						? ` (not created yet; use new_parent_title "${declaredTitle(outcome.parentLabel)}")`
+						: '')
+			: '';
+		const targets =
+			outcome.targetIds.length > 0 ? ` targets [${outcome.targetIds.join(', ')}]` : '';
+		const missing = result?.missingTargetIds.length
+			? ` still missing [${result.missingTargetIds.join(', ')}]`
+			: '';
+		return `- ${outcome.id}: ${outcome.action} ${outcome.entityKind}${targets}${destination}${missing}`;
+	});
 	return {
 		...appendSystemInstruction(
 			request,
@@ -3952,6 +3992,58 @@ function canRequirePreMutationSemanticDisposition(request: ClientRequest): boole
 		toolNames.has(DECLARE_READ_ONLY_TURN_TOOL_NAME) &&
 		toolNames.has(REQUEST_TURN_CLARIFICATION_TOOL_NAME) &&
 		request.tools.some((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
+	);
+}
+
+function projectCreateShellGuidance(
+	contextType: string,
+	availableTools: readonly AgenticChatReadOnlyProviderToolV1[]
+): string[] {
+	if (
+		contextType !== 'project_create' ||
+		!availableTools.some((tool) => tool.function.name === 'create_onto_project')
+	) {
+		return [];
+	}
+	const mutationNames = new Set(
+		availableTools
+			.filter((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
+			.map((tool) => tool.function.name)
+	);
+	const childCreationSupported = [
+		'create_onto_goal',
+		'create_onto_plan',
+		'create_onto_task',
+		'create_onto_document',
+		'create_onto_milestone',
+		'create_onto_risk',
+		'link_onto_entities'
+	].some((name) => mutationNames.has(name));
+	return [
+		'Project-create shell boundary: create_onto_project creates exactly one project plus its generated Context document and requires entities=[] and relationships=[].',
+		'Declare the shell as one outcome with action=create, entity_kind=project, minimum_successful_effects=1, no target_ids, and no required_fields or changes; the independently SHA-reviewed mutation batch binds the exact nested project values.',
+		childCreationSupported
+			? 'Goals, tasks, documents, milestones, risks, and relationships are separate outcomes executed only with their corresponding canonical mutation tools after the shell returns a project id.'
+			: 'No canonical child-entity creation tool is admitted in this turn. Contract and create the project shell now without asking the user to reconfirm; do not put requested goals, tasks, or relationships into create_onto_project, and disclose after success that those child records require a later project-scoped turn.'
+	];
+}
+
+function buildProjectCreateInitialContractGateRequest(
+	request: ClientRequest
+): ClientRequest | null {
+	if (
+		request.contextType !== 'project_create' ||
+		!request.tools.some((tool) => tool.function.name === 'create_onto_project')
+	) {
+		return null;
+	}
+	const gate = buildSemanticTurnDispositionGateRequest(request, request.tools, {
+		allowReads: false
+	});
+	if (!gate) return null;
+	return appendSystemInstruction(
+		gate,
+		projectCreateShellGuidance(request.contextType, request.tools).join(' ')
 	);
 }
 
@@ -4071,7 +4163,15 @@ function buildTurnContractWriteCarveOutRequest(
 	contract: TurnContract
 ): ClientRequest | null {
 	const safeToolNames = new Set(getSafeWriteToolNamesForTurnContract(contract));
-	const writeTools = availableTools.filter((tool) => safeToolNames.has(tool.function.name));
+	// Child creates require the durable project id returned by the shell. Keep
+	// the first approved mutation phase structurally incapable of inventing that
+	// id or racing goal/task calls alongside create_onto_project. Completion
+	// routing mounts only the unresolved child tools after the shell succeeds.
+	const firstPhaseToolNames =
+		request.contextType === 'project_create' && safeToolNames.has('create_onto_project')
+			? new Set(['create_onto_project'])
+			: safeToolNames;
+	const writeTools = availableTools.filter((tool) => firstPhaseToolNames.has(tool.function.name));
 	if (writeTools.length === 0) return null;
 
 	const next = appendSystemInstruction(
@@ -4319,7 +4419,8 @@ function buildContinuationRequest(
 
 function validateCompletedProviderCalls(
 	calls: readonly CompletedProviderToolCall[],
-	request: ClientRequest
+	request: ClientRequest,
+	admittedTools: readonly AgenticChatReadOnlyProviderToolV1[] = request.tools
 ): ToolValidationIssue[] {
 	const issues = validateToolCalls(
 		calls.map(completedProviderCallToChatToolCall),
@@ -4332,6 +4433,7 @@ function validateCompletedProviderCalls(
 					: null
 		}
 	);
+	validateProjectCreateShellContracts(calls, request, admittedTools, issues);
 	// Hosted ontology ids are canonical UUIDs. A contract target typo previously
 	// survived semantic parsing, then made the candidate gate ask the user which
 	// member of an explicitly exhaustive set they meant. On a canonical
@@ -4365,6 +4467,85 @@ function validateCompletedProviderCalls(
 		}
 	}
 	return issues;
+}
+
+function validateProjectCreateShellContracts(
+	calls: readonly CompletedProviderToolCall[],
+	request: ClientRequest,
+	admittedTools: readonly AgenticChatReadOnlyProviderToolV1[],
+	issues: ToolValidationIssue[]
+): void {
+	if (request.contextType !== 'project_create') return;
+	const mutationNames = new Set(
+		admittedTools
+			.filter((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
+			.map((tool) => tool.function.name)
+	);
+	if (!mutationNames.has('create_onto_project')) return;
+	const shellOnly = mutationNames.size === 1;
+	const supportedEntityKinds = new Set<TurnContractOutcome['entityKind']>(['project']);
+	if (mutationNames.has('create_onto_goal')) supportedEntityKinds.add('goal');
+	if (mutationNames.has('create_onto_task')) supportedEntityKinds.add('task');
+
+	for (const call of calls) {
+		if (call.name !== DECLARE_TURN_CONTRACT_TOOL_NAME) continue;
+		const contract = parseDeclaredTurnContract(call.arguments);
+		if (!contract) continue;
+		const errors: string[] = [];
+		const projectOutcomes = contract.outcomes.filter(
+			(outcome) => outcome.entityKind === 'project'
+		);
+		if (shellOnly && contract.outcomes.length !== 1) {
+			errors.push(
+				'Invalid turn contract: This project-create surface can execute only one project-shell outcome. Child goals, tasks, documents, and relationships require separately admitted canonical mutation tools after the project exists.'
+			);
+		}
+		const unsupportedKinds = Array.from(
+			new Set(
+				contract.outcomes
+					.map((outcome) => outcome.entityKind)
+					.filter((entityKind) => !supportedEntityKinds.has(entityKind))
+			)
+		);
+		if (unsupportedKinds.length > 0) {
+			errors.push(
+				`Invalid turn contract: This project-create surface does not admit canonical mutations for ${unsupportedKinds.join(', ')} outcomes.`
+			);
+		}
+		if (projectOutcomes.length !== 1) {
+			errors.push(
+				'Invalid turn contract: Project creation requires exactly one project-shell outcome.'
+			);
+		} else {
+			const outcome = projectOutcomes[0]!;
+			if (
+				outcome.action !== 'create' ||
+				outcome.entityKind !== 'project' ||
+				outcome.minimumSuccessfulEffects !== 1 ||
+				outcome.targetIds.length > 0
+			) {
+				errors.push(
+					'Invalid turn contract: The project shell must be one action=create, entity_kind=project outcome with minimum_successful_effects=1 and no target_ids.'
+				);
+			}
+			if (outcome.requiredFields.length > 0 || (outcome.changes?.length ?? 0) > 0) {
+				errors.push(
+					'Invalid turn contract: The project shell outcome must omit required_fields and changes because create_onto_project carries nested project values; the exact payload is independently SHA-reviewed at the mutation boundary.'
+				);
+			}
+		}
+		if (errors.length === 0) continue;
+		const existing = issues.find((issue) => issue.toolCall.id === call.id);
+		if (existing) {
+			existing.errors.push(...errors);
+		} else {
+			issues.push({
+				toolCall: completedProviderCallToChatToolCall(call),
+				toolName: call.name,
+				errors
+			});
+		}
+	}
 }
 
 /**
@@ -4694,7 +4875,8 @@ function buildReadOnlyRequest(
 	processingToken: string,
 	signal: AbortSignal,
 	mutationCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>,
-	liveVisionEnabled: boolean
+	liveVisionEnabled: boolean,
+	semanticReviewEnabled: boolean
 ): ClientRequest {
 	const systemPrompt = requiredContent(input.artifact.prepared.systemPrompt, 'system prompt');
 	const requestMessage = requiredContent(input.requestPayload.message, 'user message');
@@ -4765,12 +4947,12 @@ function buildReadOnlyRequest(
 
 	const context = requireRecord(input.requestPayload.context, 'request context');
 	const contextType = canonicalRequiredText(context.type, 'context type');
-	const tools = productionToolsFor(input, mutationCapabilities);
+	const tools = productionToolsFor(input, mutationCapabilities, semanticReviewEnabled);
 	const workerToolSurfaceOverride = buildWorkerToolSurfaceOverride(input, tools);
 	if (workerToolSurfaceOverride) {
 		messages.push({ role: 'system', content: workerToolSurfaceOverride });
 	}
-	const semanticMutationOrdering = buildWorkerSemanticMutationOrdering(tools);
+	const semanticMutationOrdering = buildWorkerSemanticMutationOrdering(tools, contextType);
 	if (semanticMutationOrdering) {
 		messages.push({ role: 'system', content: semanticMutationOrdering });
 	}
@@ -4841,7 +5023,8 @@ function buildWorkerToolSurfaceOverride(
 }
 
 function buildWorkerSemanticMutationOrdering(
-	tools: readonly AgenticChatReadOnlyProviderToolV1[]
+	tools: readonly AgenticChatReadOnlyProviderToolV1[],
+	contextType: string
 ): string | null {
 	const toolNames = new Set(tools.map((tool) => tool.function.name));
 	if (
@@ -4857,6 +5040,7 @@ function buildWorkerSemanticMutationOrdering(
 		'Call declare_turn_contract when the user commissioned a change and the target and values are safe; call request_turn_clarification when a required user choice remains; call declare_read_only_turn only when no change was commissioned.',
 		'Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change; future context is not a commission to perform that later change now.',
 		...SEMANTIC_COMMISSION_GUIDANCE,
+		...projectCreateShellGuidance(contextType, tools),
 		'Do not combine the first disposition with a mutation call. Reads may accompany a contract when they are needed to resolve executable details; a read-only disposition may accompany reads.'
 	].join(' ');
 }
@@ -4875,7 +5059,8 @@ function providerClientRequest(
 
 function productionToolsFor(
 	input: AgenticChatWorkerExecutionInputV1,
-	mutationCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>
+	mutationCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>,
+	mountStandardControls: boolean
 ): readonly AgenticChatReadOnlyProviderToolV1[] {
 	const surface = input.artifact.prepared.toolSurface;
 	if (!surface || typeof surface !== 'object' || Array.isArray(surface)) return [];
@@ -4905,6 +5090,24 @@ function productionToolsFor(
 		if (!reviewedTool) continue;
 		seen.add(tool.function.name);
 		tools.push(reviewedTool);
+	}
+
+	// Standard controls carry no data-mutation capability. Mutation-capable
+	// artifacts normally include them, but the legacy project-create surface was
+	// admitted with only create_onto_project. Mounting the shared deterministic
+	// control schemas closes that orchestration gap while the immutable artifact
+	// remains the authority for every mutation tool and its arguments.
+	if (
+		mountStandardControls &&
+		tools.some((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
+	) {
+		for (const definition of AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1) {
+			if (seen.has(definition.function.name)) continue;
+			const control = readArtifactToolDefinition(definition);
+			if (!control || !isAgenticChatProductionReadToolNameV1(control.function.name)) continue;
+			seen.add(control.function.name);
+			tools.push(control);
+		}
 	}
 	return tools;
 }

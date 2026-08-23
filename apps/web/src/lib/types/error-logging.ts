@@ -106,6 +106,11 @@ export interface ErrorContext {
 	userId?: string;
 	projectId?: string;
 	brainDumpId?: string;
+	/**
+	 * Email submitted with the failing request, retained for admin diagnostics.
+	 * Email-shaped strings in ordinary metadata remain redacted.
+	 */
+	submittedEmail?: string;
 	endpoint?: string;
 	httpMethod?: string;
 	requestId?: string;

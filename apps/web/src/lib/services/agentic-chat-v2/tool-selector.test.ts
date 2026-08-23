@@ -286,7 +286,7 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('search_onto_projects');
 	});
 
-	it('keeps project-create minimal unaffected by lean discovery', () => {
+	it('keeps bounded project-create controls and child creates unaffected by lean discovery', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 		vi.stubEnv('FASTCHAT_LEAN_DISCOVERY', 'true');
 
@@ -294,7 +294,15 @@ describe('selectFastChatTools', () => {
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);
 
-		expect(names).toEqual(['create_onto_project']);
+		expect(names).toEqual([
+			'declare_turn_contract',
+			'declare_read_only_turn',
+			'request_turn_clarification',
+			'cancel_turn_contract',
+			'create_onto_project',
+			'create_onto_goal',
+			'create_onto_task'
+		]);
 	});
 
 	it('materializes outcome card gateway tools without preloading them', () => {
@@ -458,14 +466,43 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('create_calendar_event');
 	});
 
-	it('uses the minimal project-create hot path', () => {
+	it('uses the bounded contract-first project-create hot path', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
 		const names = selectFastChatTools({ contextType: 'project_create' })
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);
 
-		expect(names).toEqual(['create_onto_project']);
+		expect(names).toEqual([
+			'declare_turn_contract',
+			'declare_read_only_turn',
+			'request_turn_clarification',
+			'cancel_turn_contract',
+			'create_onto_project',
+			'create_onto_goal',
+			'create_onto_task'
+		]);
+		expect(names).not.toContain('link_onto_entities');
+	});
+
+	it('does not broaden project-create when an explicit larger profile is supplied', () => {
+		const names = selectFastChatTools({
+			contextType: 'project_create',
+			surfaceProfile: 'project_write_document',
+			latestUserMessage: 'Research competitors, delegate it, and link every result.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).toEqual([
+			'declare_turn_contract',
+			'declare_read_only_turn',
+			'request_turn_clarification',
+			'cancel_turn_contract',
+			'create_onto_project',
+			'create_onto_goal',
+			'create_onto_task'
+		]);
 	});
 
 	it('exposes larger deterministic profiles when requested explicitly', () => {

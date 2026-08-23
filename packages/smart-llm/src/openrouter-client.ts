@@ -2,6 +2,13 @@
 
 import type { ErrorLogger, OpenRouterResponse, OpenRouterTranscriptionResponse } from './types';
 import { buildOpenRouterChatCompletionBody } from './openrouter-request';
+import { LLMRequestCancelledError, LLMRequestTimeoutError } from './errors';
+
+function reasonMessage(reason: unknown): string {
+	if (reason instanceof Error && reason.message.trim()) return reason.message;
+	if (typeof reason === 'string' && reason.trim()) return reason;
+	return 'caller cancelled';
+}
 
 export class OpenRouterClient {
 	private apiKey: string;
@@ -61,9 +68,9 @@ export class OpenRouterClient {
 			transforms: params.transforms,
 			provider: params.provider
 		});
+		const timeoutMs = params.timeoutMs ?? 120000;
 
 		try {
-			const timeoutMs = params.timeoutMs ?? 120000;
 			const timeoutSignal = AbortSignal.timeout(timeoutMs);
 			const requestSignal = params.signal
 				? AbortSignal.any([timeoutSignal, params.signal])
@@ -198,19 +205,45 @@ export class OpenRouterClient {
 
 			return data;
 		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') {
+			// AbortSignal.any() rejects with the caller's reason verbatim. The queue
+			// uses a plain Error, so cancellation must be checked before error.name.
+			if (params.signal?.aborted) {
+				throw new LLMRequestCancelledError(reasonMessage(params.signal.reason));
+			}
+
+			const abortLike =
+				error instanceof Error &&
+				(error.name === 'TimeoutError' || error.name === 'AbortError');
+			if (abortLike) {
+				const generationId =
+					(
+						error as Error & {
+							openrouter?: { generationId?: string | null };
+						}
+					).openrouter?.generationId ?? null;
+				const timeoutError = new LLMRequestTimeoutError(timeoutMs, params.model, {
+					generationId
+				});
+				(timeoutError as Error & { cause?: unknown }).cause = error;
 				if (this.errorLogger) {
-					await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', undefined, {
-						operation: 'callOpenRouter_timeout',
-						errorType: 'llm_api_timeout',
-						modelRequested: params.model,
-						alternativeModels: params.models?.join(', ') || 'none',
-						timeoutMs: params.timeoutMs ?? 120000,
-						temperature: params.temperature,
-						maxTokens: params.max_tokens
-					});
+					await this.errorLogger.logAPIError(
+						timeoutError,
+						this.apiUrl,
+						'POST',
+						undefined,
+						{
+							operation: 'callOpenRouter_timeout',
+							errorType: 'llm_api_timeout',
+							modelRequested: params.model,
+							alternativeModels: params.models?.join(', ') || 'none',
+							timeoutMs,
+							temperature: params.temperature,
+							maxTokens: params.max_tokens,
+							openrouterRequestId: generationId
+						}
+					);
 				}
-				throw new Error(`Request timeout for model ${params.model}`);
+				throw timeoutError;
 			}
 			throw error;
 		}
