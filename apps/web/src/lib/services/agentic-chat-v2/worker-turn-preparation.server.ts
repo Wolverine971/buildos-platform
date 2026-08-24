@@ -462,10 +462,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			surfaceProfile: preparedSurfaceProfile,
 			systemPrompt: preparedInspection.surface.system_prompt,
 			promptSections: toJsonObjectArray(preparedInspection.surface.sections),
-			toolSurface: buildToolSurface(
-				turnPreparation.selectedSurfaceProfile,
-				turnPreparation.tools
-			)
+			toolSurface: buildToolSurface(turnPreparation.selectedSurfaceProfile, workerPromptTools)
 		};
 	} else {
 		historySource = 'admission_window';
@@ -548,10 +545,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			surfaceProfile: turnPreparation.selectedSurfaceProfile,
 			systemPrompt: envelope.systemPrompt,
 			promptSections: toJsonObjectArray(envelope.sections),
-			toolSurface: buildToolSurface(
-				turnPreparation.selectedSurfaceProfile,
-				turnPreparation.tools
-			)
+			toolSurface: buildToolSurface(turnPreparation.selectedSurfaceProfile, workerPromptTools)
 		};
 	}
 

@@ -59,7 +59,6 @@ export const AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1 = Object.freeze([
 	'delete_onto_goal',
 	'delete_onto_plan',
 	'get_user_profile_overview',
-	'change_chat_context',
 	'search_user_contacts',
 	'upsert_user_contact',
 	'list_user_contact_candidates',
@@ -81,6 +80,7 @@ export const AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1 = Object.freeze([
  * explicitly classified so they cannot become a generic unknown-tool escape.
  */
 export const AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1 = Object.freeze([
+	'domain_search',
 	'skill_search',
 	'skill_load'
 ] as const);
@@ -88,6 +88,7 @@ export const AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1 = Object.freeze([
 export const AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1 = Object.freeze([
 	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
 	...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
+	'change_chat_context',
 	'web_search',
 	'web_visit',
 	...AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1

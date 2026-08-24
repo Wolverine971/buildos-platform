@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { TOOL_METADATA } from './loop';
 import {
 	AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1,
+	AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1,
 	AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1,
 	auditAgenticChatWorkerToolPolicyV1,
 	findAgenticChatWorkerUnavailableToolNamesV1
@@ -27,5 +28,11 @@ describe('Agentic Chat worker tool policy', () => {
 				'future_unclassified_tool'
 			])
 		).toEqual(['future_unclassified_tool', 'list_calendar_events']);
+	});
+
+	it('executes context changes and explicitly omits preloaded domain discovery', () => {
+		expect(AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1).toContain('change_chat_context');
+		expect(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1).toContain('domain_search');
+		expect(findAgenticChatWorkerUnavailableToolNamesV1(['change_chat_context'])).toEqual([]);
 	});
 });

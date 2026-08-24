@@ -140,6 +140,7 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 		const composedNames = [
 			...AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1,
 			...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
+			'change_chat_context',
 			...AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1
 		];
 		expect([...AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1].sort()).toEqual(
@@ -148,8 +149,8 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 		expect(new Set(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).size).toBe(
 			AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.length
 		);
+		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).toContain('change_chat_context');
 		// Deliberately absent from the shared allowlist.
-		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).not.toContain('change_chat_context');
 		expect(AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1).not.toContain(
 			'get_user_profile_overview'
 		);
@@ -157,6 +158,22 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 		expect(isAgenticChatProductionReadToolNameV1('web_search')).toBe(true);
 		expect(isAgenticChatProductionReadToolNameV1('web_visit')).toBe(true);
 		expect(isAgenticChatProductionReadToolNameV1('update_onto_project')).toBe(false);
+	});
+
+	it('executes a context shift and materializes the new surface on the following turn', async () => {
+		const adapter = adapterWith(fakeSharedClient(), accessStub());
+
+		await expect(
+			adapter.execute(requestFor('change_chat_context', { target: 'global' }))
+		).resolves.toMatchObject({
+			result: {
+				type: 'context_change',
+				changed: true,
+				target: 'global',
+				materialized_tools: [],
+				context_shift: { new_context: 'global', entity_id: null }
+			}
+		});
 	});
 
 	it('executes worker-native web search and visit through the bounded research port', async () => {
@@ -764,7 +781,7 @@ describe('AgenticChatReadOnlyToolAdapter', () => {
 	it('fails closed on tools outside the shared allowlist', async () => {
 		const adapter = adapterWith(fakeSharedClient(), accessStub());
 
-		for (const toolName of ['update_onto_project', 'change_chat_context', 'constructor']) {
+		for (const toolName of ['update_onto_project', 'domain_search', 'constructor']) {
 			await expect(adapter.execute(requestFor(toolName, {}))).rejects.toMatchObject({
 				code: 'read_tool_not_allowlisted',
 				failureClass: 'permanent'

@@ -401,6 +401,52 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 	});
 
+	it('admits a normal launch surface after omitting preloaded discovery tools', async () => {
+		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+			...mocks.resolveFastChatTurnPreparation(),
+			tools: [
+				'skill_search',
+				'domain_search',
+				'change_chat_context',
+				'get_project_overview'
+			].map((name) => ({
+				type: 'function',
+				function: {
+					name,
+					description: name,
+					parameters: { type: 'object', properties: {} }
+				}
+			}))
+		});
+
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: {} as never,
+			userId: USER_ID,
+			command: command() as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		expect(result.args.p_artifact_prepared).toMatchObject({
+			toolSurface: {
+				toolNames: ['change_chat_context', 'get_project_overview'],
+				definitions: [
+					expect.objectContaining({
+						function: expect.objectContaining({ name: 'change_chat_context' })
+					}),
+					expect.objectContaining({
+						function: expect.objectContaining({ name: 'get_project_overview' })
+					})
+				]
+			}
+		});
+	});
+
 	it.each([
 		{
 			label: 'an ASCII message over 1,500 characters with whitespace at the former clip edge',
