@@ -1,6 +1,11 @@
+// apps/worker/src/workers/agentic-chat/createOntoProjectMutationAdapter.ts
 import { runGatewayWriteOp } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import { type Database, type JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+	buildAgenticChatProjectContextDocumentV1,
+	normalizeAgenticChatProjectStateV1
+} from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatFixtureMutatingToolPortV1 } from './fixtureMutationExecutor';
 import {
 	type MutationInput,
@@ -299,34 +304,7 @@ function normalizeProjectProps(value: unknown): JsonObject {
 }
 
 function normalizeProjectState(value: unknown): string {
-	if (typeof value !== 'string') return '';
-	const normalized = value
-		.trim()
-		.toLowerCase()
-		.replace(/[\s-]+/g, '_');
-	const aliases: Record<string, string> = {
-		in_progress: 'active',
-		inprogress: 'active',
-		started: 'active',
-		working: 'active',
-		ongoing: 'active',
-		on_hold: 'paused',
-		hold: 'paused',
-		pending: 'planning',
-		planned: 'planning',
-		backlog: 'planning',
-		todo: 'planning',
-		draft: 'planning',
-		complete: 'completed',
-		done: 'completed',
-		finished: 'completed',
-		shipped: 'completed',
-		canceled: 'cancelled',
-		aborted: 'cancelled',
-		abandoned: 'cancelled',
-		archived: 'cancelled'
-	};
-	return aliases[normalized] ?? normalized;
+	return normalizeAgenticChatProjectStateV1(value) ?? '';
 }
 
 function normalizeProjectDate(
@@ -396,28 +374,11 @@ function calendarBoundary(
 }
 
 function buildContextDocument(project: JsonObject & { name: string }, now: number): JsonObject {
-	const summary = typeof project.description === 'string' ? project.description.trim() : '';
-	const body = [
-		`# ${project.name} Context Document`,
-		'## Vision & Summary',
-		summary || 'Not provided yet.',
-		'## Source Notes / Spark',
-		'Not provided yet.',
-		'## Initial Goals',
-		'No goals captured yet.',
-		'## Initial Tasks / Threads',
-		'No starter tasks captured yet.'
-	].join('\n\n');
-	return {
-		title: `${project.name} Context Document`,
-		body_markdown: body,
-		type_key: 'document.context.project',
-		state_key: 'active',
-		props: {
-			source: 'agent_project_creation',
-			generated_at: new Date(now).toISOString()
-		}
-	};
+	return buildAgenticChatProjectContextDocumentV1({
+		name: project.name,
+		description: typeof project.description === 'string' ? project.description : null,
+		generatedAt: new Date(now).toISOString()
+	});
 }
 
 function requireProjectShellReceipt(

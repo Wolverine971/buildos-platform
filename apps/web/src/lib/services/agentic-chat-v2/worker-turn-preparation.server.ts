@@ -34,6 +34,10 @@ import {
 	type TurnInputArtifactContentV1
 } from '@buildos/shared-types';
 import {
+	findAgenticChatWorkerUnavailableToolNamesV1,
+	AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1
+} from '@buildos/agentic-chat-runtime';
+import {
 	applyActiveDomainSignalsOverlay,
 	buildLitePromptEnvelope,
 	LITE_PROMPT_VARIANT,
@@ -175,7 +179,7 @@ const WORKER_PROMPT_SCAFFOLD = {
 	...SCAFFOLD.prompt,
 	dynamicSkillTools: false
 } as const;
-const WORKER_UNAVAILABLE_SKILL_TOOL_NAMES = new Set(['skill_search', 'skill_load']);
+const WORKER_OMITTED_TOOL_NAMES = new Set<string>(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1);
 // Prepared-prompt admission is byte-bound in the database to the stored legacy
 // prompt. Until prewarm stores a separate worker-capability variant, accepting
 // that lineage would either preserve the impossible skill instructions or make
@@ -214,6 +218,7 @@ export type AgenticChatWorkerPreparationErrorCode =
 	| 'invalid_command'
 	| 'access_denied'
 	| 'session_conflict'
+	| 'transport_renegotiate'
 	| 'database_error'
 	| 'protocol_error';
 
@@ -230,6 +235,7 @@ export class AgenticChatWorkerPreparationError extends Error {
 export type AgenticChatWorkerPreparationDependencies = {
 	createId?: () => string;
 	nowMs?: () => number;
+	liveVisionEnabled?: boolean;
 	observeCapacity?: () => Promise<AgenticChatWorkerCapacityDecisionV1>;
 	loadResumeCheckpoint?: (input: {
 		serviceClient: FastChatSupabaseClient;
@@ -312,6 +318,13 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		throw invalidCommand('One or more attachments are invalid');
 	}
 	const attachments = attachmentValidation.attachments;
+	const liveVisionEnabled = input.dependencies?.liveVisionEnabled ?? LIVE_VISION_ENABLED;
+	if (attachments.length > 0 && !liveVisionEnabled) {
+		throw new AgenticChatWorkerPreparationError(
+			'transport_renegotiate',
+			'Worker live vision is unavailable for attachment turns'
+		);
+	}
 	const normalizedAttachments = normalizeChatAttachmentsForAdmission(attachments);
 	const storedUserMessageContent =
 		normalizedMessage || buildAttachmentOnlyDisplayText(attachments.length);
@@ -411,8 +424,17 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		? turnPreparation.turnDomainSensing
 		: null;
 	const workerPromptTools = turnPreparation.tools.filter(
-		(tool) => !WORKER_UNAVAILABLE_SKILL_TOOL_NAMES.has(tool.function?.name ?? '')
+		(tool) => !WORKER_OMITTED_TOOL_NAMES.has(tool.function?.name ?? '')
 	);
+	const unavailableWorkerTools = findAgenticChatWorkerUnavailableToolNamesV1(
+		workerPromptTools.map((tool) => tool.function?.name ?? '').filter(Boolean)
+	);
+	if (unavailableWorkerTools.length > 0) {
+		throw new AgenticChatWorkerPreparationError(
+			'transport_renegotiate',
+			`Worker tool surface is unavailable: ${unavailableWorkerTools.join(', ')}`
+		);
+	}
 	let modelHistory: HistoryWithLineage[];
 	let historySource: 'admission_window' | 'prepared_prompt';
 	let preparedArtifact: TurnInputArtifactContentV1['prepared'];
@@ -580,6 +602,14 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			userMessage: messageForModel
 		})
 	) as AgenticChatContextUsageSnapshotV1;
+	const liveVisionRequested = shouldUseAgenticChatLiveVisionV1({
+		message: normalizedMessage,
+		attachmentCount: attachments.length,
+		liveVisionEnabled
+	});
+	const liveVisionAttachmentCount = liveVisionRequested
+		? Math.min(attachments.length, LIVE_VISION_MAX_IMAGES)
+		: 0;
 	const artifactContent = normalizeTurnInputArtifactContentV1({
 		artifactVersion: AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 		historySource,
@@ -599,11 +629,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 				message: normalizedMessage,
 				attachmentContextMaxChars: ATTACHMENT_CONTEXT_MAX_CHARS,
 				liveVision: {
-					requested: shouldUseAgenticChatLiveVisionV1({
-						message: normalizedMessage,
-						attachmentCount: attachments.length,
-						liveVisionEnabled: LIVE_VISION_ENABLED
-					}),
+					requested: liveVisionRequested,
 					maxImages: LIVE_VISION_MAX_IMAGES,
 					maxImageBytes: LIVE_VISION_MAX_IMAGE_BYTES,
 					renderWidth: LIVE_VISION_RENDER_WIDTH,
@@ -643,6 +669,8 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	if (attachments.length > 0) {
 		userMessageMetadata.attachment_count = attachments.length;
 		userMessageMetadata.attachment_only = normalizedMessage.length === 0;
+		userMessageMetadata.live_vision_requested = liveVisionRequested;
+		userMessageMetadata.live_vision_attachment_count = liveVisionAttachmentCount;
 		userMessageMetadata.attachments = sanitizeAttachmentRefsForMetadata(
 			attachments
 		) as unknown as Json;

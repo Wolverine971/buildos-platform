@@ -346,7 +346,6 @@ function createDefaultAssembly(
 		mutationProviderCapabilities: input.config.mutationProviderCapabilities,
 		mutationAdapterCapabilities: input.config.mutationAdapterCapabilities,
 		liveVisionFetchImpl: input.fetchImpl,
-		internalUserIds: input.config.internalUserIds,
 		consumerConfig: input.config.consumer,
 		publisherConfig: input.config.publisher,
 		providerBudgetMs: input.config.providerBudgetMs,

@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-round-runner.ts
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
+import { AGENTIC_CHAT_SUPERVISOR_BLOCKED_RETRY_ERROR_V1 } from '@buildos/agentic-chat-runtime/supervisor';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import type { FastChatHistoryMessage } from '../types';
@@ -68,8 +69,7 @@ export async function prepareToolRound(params: {
 		}
 
 		if (params.blockedRetryCallIdsInRound.has(toolCall.id)) {
-			const errorMessage =
-				'Supervisor blocked this exact write retry because the same tool arguments already failed earlier in the turn. Use corrected arguments, the correct tool for the entity kind, or ask one concise clarifying question.';
+			const errorMessage = AGENTIC_CHAT_SUPERVISOR_BLOCKED_RETRY_ERROR_V1;
 			const result: ChatToolResult = {
 				tool_call_id: toolCall.id,
 				result: null,

@@ -8,6 +8,9 @@ import {
 	GmailReadOAuthService
 } from './gmail-read-oauth.service';
 
+const USER_ID = '11111111-1111-4111-8111-111111111111';
+const CONNECTION_ID = '22222222-2222-4222-8222-222222222222';
+
 type QueryResult = { data: any; error: any };
 
 function createQuery(result: QueryResult = { data: null, error: null }) {
@@ -18,6 +21,7 @@ function createQuery(result: QueryResult = { data: null, error: null }) {
 		in: vi.fn(() => query),
 		lt: vi.fn(() => query),
 		order: vi.fn(() => query),
+		limit: vi.fn(() => query),
 		update: vi.fn(() => query),
 		delete: vi.fn(() => query),
 		insert: vi.fn().mockResolvedValue({ error: null }),
@@ -148,6 +152,64 @@ describe('GmailReadOAuthService', () => {
 		} else {
 			process.env.PRIVATE_GOOGLE_CLIENT_ID = originalGoogleClientId;
 		}
+	});
+
+	it('lists Gmail accounts through the shared ownership-filtered read port', async () => {
+		const { admin, queries } = createAdmin({
+			connection: {
+				data: [
+					{
+						id: CONNECTION_ID,
+						email_address: 'work@example.com',
+						display_name: 'Work Account',
+						account_label: 'Work',
+						status: 'active',
+						read_enabled: true,
+						connected_at: '2026-08-24T12:00:00.000Z',
+						last_verified_at: null,
+						last_used_at: null
+					}
+				],
+				error: null
+			},
+			capability: {
+				data: [{ connection_id: CONNECTION_ID, capability: 'read', status: 'enabled' }],
+				error: null
+			}
+		});
+		const service = new GmailReadOAuthService(admin, {
+			clientId: 'gmail-read-client',
+			clientSecret: 'gmail-read-secret'
+		});
+
+		await expect(service.listConnections(USER_ID)).resolves.toMatchObject({
+			available: true,
+			readOnly: true,
+			connections: [
+				{
+					id: CONNECTION_ID,
+					emailAddress: 'work@example.com',
+					capabilities: [{ capability: 'read', status: 'enabled' }]
+				}
+			]
+		});
+		expect(queries.user_email_connections.eq).toHaveBeenCalledWith('user_id', USER_ID);
+		expect(queries.user_email_connections.limit).toHaveBeenCalledWith(6);
+		expect(queries.email_capability_grants.in).toHaveBeenCalledWith('connection_id', [
+			CONNECTION_ID
+		]);
+	});
+
+	it('preserves shared-port invalid-request failures', async () => {
+		const { admin } = createAdmin();
+		const service = new GmailReadOAuthService(admin, {
+			clientId: 'gmail-read-client',
+			clientSecret: 'gmail-read-secret'
+		});
+
+		await expect(service.listConnections('not-a-uuid')).rejects.toMatchObject<GmailOAuthError>({
+			code: 'invalid_request'
+		});
 	});
 
 	it('creates a hashed, expiring state and requests only read-only Gmail access', async () => {

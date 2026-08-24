@@ -21,7 +21,6 @@
 	import ProjectActionSelector from './ProjectActionSelector.svelte';
 	import AgentChatHeader from './AgentChatHeader.svelte';
 	import AgentComposer from './AgentComposer.svelte';
-	import AgentAutomationWizard from './AgentAutomationWizard.svelte';
 	import AgentMessageList from './AgentMessageList.svelte';
 	import AgentChatActivityTabs from './AgentChatActivityTabs.svelte';
 	import BrainDumpContextPanel from './BrainDumpContextPanel.svelte';
@@ -46,10 +45,6 @@
 		ChatTurnStatusV1,
 		TurnHandleV1
 	} from '@buildos/shared-types';
-	import {
-		requestAgentToAgentMessage,
-		type AgentToAgentMessageHistory
-	} from '$lib/services/agentic-chat/agent-to-agent-service';
 	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
 	import { buildLiveContextUsageSnapshot } from './agent-chat-formatters';
@@ -61,7 +56,6 @@
 		type AgentChatHeaderAction,
 		type AgentLoopState,
 		type AgentChatPanelTab,
-		type AgentProjectSummary,
 		type AgentChatResolutionAction,
 		type AgentTimelineItem,
 		type CreatedEntityRef,
@@ -133,7 +127,6 @@
 		createAttachmentController
 	} from './agent-chat-attachments.svelte';
 	import type { AgentClientActionCompletion } from './agent-chat-client-actions';
-	import { needsLegacyExternalAccountTools } from './external-account-tool-routing';
 	import {
 		createAgentChatShellRouter,
 		type AutoInitProjectConfig,
@@ -203,10 +196,7 @@
 		},
 		stopVoice: () => voice.stop(),
 		isStreaming: () => stream.isStreaming,
-		logFocusActivity: (label, focus) => logFocusActivity(label, focus),
-		logError: (message, err) => console.error(message, err),
-		hasMultipleAgentHelpers: false,
-		researchAgentId: 'actionable_insight_agent'
+		logFocusActivity: (label, focus) => logFocusActivity(label, focus)
 	});
 	// Bumped whenever the agent shifts us into a (new) project context — drives a
 	// one-shot glimmer on the header title so landing on a freshly created project
@@ -598,7 +588,6 @@
 		getLastTurnContext: () => lastTurnContext,
 		getIsLoadingSession: () => isLoadingSession,
 		getActiveRestoredTurnRunId: () => activeRestoredTurnRunId,
-		requiresLegacyToolSurface: (content) => needsLegacyExternalAccountTools(messages, content),
 		getPrewarm: () => prewarm,
 		attachments: {
 			buildReadyRefs: (includePreviewUrl) => attachments.buildReadyRefs(includePreviewUrl),
@@ -703,13 +692,9 @@
 		if (shellRouter.showContextSelection && shellRouter.contextSelectionView === 'primary') {
 			return false;
 		}
-		// Sub-selectors (project action / focus / automation wizard) keep their
+		// Sub-selectors (project action / focus) keep their
 		// back affordance so users can return to the step before them.
-		if (
-			shellRouter.showProjectActionSelector ||
-			shellRouter.showFocusSelector ||
-			shellRouter.agentToAgentMode
-		) {
+		if (shellRouter.showProjectActionSelector || shellRouter.showFocusSelector) {
 			return true;
 		}
 		// Once the conversation is underway there's no "back" within a live chat —
@@ -730,7 +715,6 @@
 		) {
 			return false;
 		}
-		if (shellRouter.agentToAgentMode && shellRouter.agentToAgentStep !== 'chat') return false;
 		return true;
 	});
 
@@ -743,15 +727,13 @@
 		) {
 			return false;
 		}
-		if (shellRouter.agentToAgentMode && shellRouter.agentToAgentStep !== 'chat') return false;
 		return true;
 	});
 
 	const shouldShowComposer = $derived(
 		!shellRouter.showContextSelection &&
 			!shellRouter.showProjectActionSelector &&
-			!shellRouter.showFocusSelector &&
-			!shellRouter.agentToAgentMode
+			!shellRouter.showFocusSelector
 	);
 
 	const chatComposerVocabularyTerms = $derived(
@@ -761,7 +743,6 @@
 	const canPrimeActiveChatSession = $derived.by(() => {
 		if (!shellRouter.selectedContextType || !isOpen || currentSession?.id) return false;
 		if (shellRouter.showContextSelection || shellRouter.showProjectActionSelector) return false;
-		if (shellRouter.agentToAgentMode && shellRouter.agentToAgentStep !== 'chat') return false;
 		return true;
 	});
 
@@ -992,8 +973,7 @@
 	const hasSendableImageAttachments = $derived(attachments.hasSendableImageAttachments);
 	const hasBlockedImageAttachments = $derived(attachments.hasPendingOrFailedImageAttachments);
 	const isSendDisabled = $derived(
-		shellRouter.agentToAgentMode ||
-			!shellRouter.selectedContextType ||
+		!shellRouter.selectedContextType ||
 			isSessionBusy ||
 			activeRestoredTurnRunId !== null ||
 			stream.isStartingStream ||
@@ -1128,10 +1108,6 @@
 		shellRouter.handleContextSelect(selection);
 	}
 
-	function changeContext() {
-		shellRouter.changeContext();
-	}
-
 	function openFocusSelector() {
 		shellRouter.openFocusSelector();
 	}
@@ -1150,103 +1126,6 @@
 
 	function initializeFromAutoInit(config: AutoInitProjectConfig) {
 		shellRouter.initializeFromAutoInit(config);
-	}
-
-	function selectAgentForBridge(agentId: string) {
-		shellRouter.selectAgentForBridge(agentId);
-	}
-
-	function selectAgentProject(project: AgentProjectSummary) {
-		shellRouter.selectAgentProject(project);
-	}
-
-	function backToAgentSelection() {
-		shellRouter.backToAgentSelection();
-	}
-
-	function backToAgentProjectSelection() {
-		shellRouter.backToAgentProjectSelection();
-	}
-
-	function updateAgentTurnBudget(value: number) {
-		shellRouter.updateAgentTurnBudget(value);
-	}
-
-	function buildAgentToAgentHistory(): AgentToAgentMessageHistory[] {
-		return messages
-			.filter((message) => message.type === 'agent_peer' || message.type === 'assistant')
-			.map((message) => ({
-				role: message.type === 'assistant' ? ('buildos' as const) : ('agent' as const),
-				content: message.content
-			}))
-			.filter((item) => item.content?.trim());
-	}
-
-	async function runAgentToAgentTurn() {
-		if (
-			!shellRouter.agentToAgentMode ||
-			!shellRouter.agentLoopActive ||
-			shellRouter.agentMessageLoading
-		)
-			return;
-		if (!shellRouter.selectedAgentId) {
-			stream.error = 'Select a helper to continue.';
-			return;
-		}
-		if (!shellRouter.selectedEntityId || shellRouter.selectedContextType !== 'project') {
-			stream.error = 'Select a project for the automation loop.';
-			return;
-		}
-		if (!shellRouter.agentGoal.trim()) {
-			stream.error = 'Provide a goal for this automation.';
-			return;
-		}
-		if (shellRouter.agentTurnsRemaining <= 0) {
-			shellRouter.agentLoopActive = false;
-			return;
-		}
-		if (stream.isStreaming) return;
-
-		shellRouter.agentMessageLoading = true;
-		try {
-			const history = buildAgentToAgentHistory();
-			const response = await requestAgentToAgentMessage({
-				agentId: shellRouter.selectedAgentId,
-				projectId: shellRouter.selectedEntityId,
-				goal: shellRouter.agentGoal.trim(),
-				history
-			});
-			const agentMessage = response?.message?.trim();
-			if (!agentMessage) {
-				stream.error = 'BuildOS did not receive an update from the helper.';
-				shellRouter.agentLoopActive = false;
-				return;
-			}
-			await stream.sendMessage(agentMessage, {
-				senderType: 'agent_peer',
-				suppressInputClear: true
-			});
-		} catch (err) {
-			console.error('[AgentChat] Failed to run agent-to-agent turn', err);
-			stream.error = 'Failed to fetch the helper update.';
-			shellRouter.agentLoopActive = false;
-		} finally {
-			shellRouter.agentMessageLoading = false;
-		}
-	}
-
-	async function startAgentToAgentChat() {
-		const validationError = shellRouter.beginAgentToAgentChat();
-		if (validationError) {
-			stream.error = validationError;
-			return;
-		}
-		stream.error = null;
-		await runAgentToAgentTurn();
-	}
-
-	function stopAgentLoop() {
-		shellRouter.stopAgentLoop();
 	}
 
 	// Auto-initialize the modal when launched with a context preset or project preset
@@ -1640,27 +1519,6 @@
 	$effect(() => {
 		if (messageCount > 0) {
 			scrollToBottomIfNeeded();
-		}
-	});
-
-	$effect(() => {
-		if (!browser) return;
-		if (shellRouter.agentToAgentMode && shellRouter.agentToAgentStep === 'project') {
-			void shellRouter.loadAgentProjects();
-		}
-	});
-
-	$effect(() => {
-		if (!browser) return;
-		// Auto-run the next turn when the loop is active and idle
-		if (
-			shellRouter.agentToAgentMode &&
-			shellRouter.agentLoopActive &&
-			!shellRouter.agentMessageLoading &&
-			!stream.isStreaming &&
-			shellRouter.agentTurnsRemaining > 0
-		) {
-			runAgentToAgentTurn();
 		}
 	});
 
@@ -2339,9 +2197,6 @@
 			getCurrentSession: () => currentSession,
 			getSelectedContextLabel: () => shellRouter.selectedContextLabel,
 			getActiveStreamRunId: () => stream.activeStreamRunId,
-			isAgentToAgentMode: () => shellRouter.agentToAgentMode,
-			getAgentLoopActive: () => shellRouter.agentLoopActive,
-			getAgentTurnsRemaining: () => shellRouter.agentTurnsRemaining,
 			setContextUsage: (usage, overheadTokens) => {
 				contextUsage = usage;
 				contextUsageOverheadTokens = overheadTokens;
@@ -2376,12 +2231,6 @@
 			},
 			setCurrentSession: (session) => {
 				currentSession = session;
-			},
-			setAgentLoopActive: (value) => {
-				shellRouter.agentLoopActive = value;
-			},
-			setAgentTurnsRemaining: (value) => {
-				shellRouter.agentTurnsRemaining = value;
 			}
 		},
 		hydrateSessionFromEvent,
@@ -3102,7 +2951,7 @@
 					/>
 				</div>
 
-				<!-- Chat / wizard view - Same height constraint as selection -->
+				<!-- Chat view - Same height constraint as selection -->
 				<div
 					class={`${shellRouter.showContextSelection ? 'hidden' : 'flex'} h-full min-h-0 flex-col`}
 				>
@@ -3122,33 +2971,6 @@
 							currentFocus={resolvedProjectFocus}
 							onSelect={handleFocusSelection}
 						/>
-					{:else if shellRouter.agentToAgentMode && shellRouter.agentToAgentStep !== 'chat'}
-						<AgentAutomationWizard
-							step={shellRouter.agentToAgentStep ?? 'agent'}
-							agentProjects={shellRouter.agentProjects}
-							agentProjectsLoading={shellRouter.agentProjectsLoading}
-							agentProjectsError={shellRouter.agentProjectsError}
-							agentGoal={shellRouter.agentGoal}
-							agentTurnBudget={shellRouter.agentTurnBudget}
-							selectedAgentLabel={shellRouter.selectedAgentLabel}
-							selectedContextLabel={shellRouter.selectedContextLabel}
-							hasMultipleHelpers={shellRouter.hasMultipleAgentHelpers}
-							onUseActionableInsight={() =>
-								selectAgentForBridge(shellRouter.researchAgentId)}
-							onProjectSelect={(project) => selectAgentProject(project)}
-							onStartChat={startAgentToAgentChat}
-							onExit={() => {
-								shellRouter.agentToAgentMode = false;
-								shellRouter.agentToAgentStep = null;
-								changeContext();
-							}}
-							onGoalChange={(value) => (shellRouter.agentGoal = value)}
-							onTurnBudgetChange={updateAgentTurnBudget}
-							onJumpToStep={(target) => {
-								if (target === 'agent') backToAgentSelection();
-								else if (target === 'project') backToAgentProjectSelection();
-							}}
-						/>
 					{:else}
 						{@render chatConversationPane(
 							shouldShowSessionLoadingState,
@@ -3156,128 +2978,7 @@
 							initialChatSessionId
 						)}
 					{/if}
-
-					{#if !shellRouter.showContextSelection && !shellRouter.showProjectActionSelector && shellRouter.agentToAgentMode}
-						<!-- INKPRINT automation footer with Thread texture -->
-						<div
-							class="border-t border-border bg-muted px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] tx tx-thread tx-weak sm:px-4 sm:py-2.5"
-						>
-							<div
-								class="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
-							>
-								<div class="min-w-0 space-y-1">
-									<p class="text-xs font-semibold text-foreground">
-										Automation loop is {shellRouter.agentLoopActive
-											? 'active'
-											: 'paused'}.
-									</p>
-									<div class="space-y-0.5">
-										<div class="flex min-w-0 items-baseline gap-1.5">
-											<span
-												class="micro-label flex-shrink-0 text-muted-foreground"
-												>Helper</span
-											>
-											<span
-												class="min-w-0 flex-1 truncate text-xs font-medium text-foreground"
-												>{shellRouter.selectedAgentLabel}</span
-											>
-										</div>
-										<div class="flex min-w-0 items-baseline gap-1.5">
-											<span
-												class="micro-label flex-shrink-0 text-muted-foreground"
-												>Project</span
-											>
-											<span
-												class="min-w-0 flex-1 truncate text-xs font-medium text-foreground"
-												>{shellRouter.selectedContextLabel ??
-													'Select a project'}</span
-											>
-										</div>
-										<div class="flex min-w-0 items-baseline gap-1.5">
-											<span
-												class="micro-label flex-shrink-0 text-muted-foreground"
-												>Goal</span
-											>
-											<span
-												class="min-w-0 flex-1 truncate text-xs font-medium text-foreground"
-												>{shellRouter.agentGoal || 'Add a goal'}</span
-											>
-										</div>
-										<div class="flex items-baseline gap-1.5">
-											<span
-												class="micro-label flex-shrink-0 text-muted-foreground"
-												>Turns left</span
-											>
-											<span
-												class="text-xs font-semibold tabular-nums text-foreground"
-												>{shellRouter.agentTurnsRemaining} / {shellRouter.agentTurnBudget}</span
-											>
-										</div>
-									</div>
-								</div>
-								<!-- INKPRINT tactile buttons -->
-								<div class="flex flex-wrap items-center gap-2">
-									<button
-										type="button"
-										class="micro-label inline-flex items-center justify-center rounded-lg bg-accent px-3 py-2 font-bold text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
-										disabled={stream.isStreaming ||
-											shellRouter.agentMessageLoading ||
-											shellRouter.agentTurnsRemaining <= 0}
-										onclick={() => {
-											shellRouter.agentLoopActive = true;
-											runAgentToAgentTurn();
-										}}
-									>
-										{shellRouter.agentLoopActive
-											? 'Run next turn'
-											: 'Resume loop'}
-									</button>
-									<button
-										type="button"
-										class="micro-label inline-flex items-center justify-center rounded-lg border border-border bg-transparent px-3 py-2 font-semibold text-muted-foreground transition pressable hover:border-accent hover:bg-card hover:text-foreground"
-										onclick={stopAgentLoop}
-									>
-										Stop
-									</button>
-								</div>
-							</div>
-							<!-- INKPRINT micro-label controls -->
-							<div
-								class="micro-label mt-1.5 flex flex-wrap items-center gap-2 text-muted-foreground"
-							>
-								<label class="flex items-center gap-1.5">
-									<span class="font-bold">Turn limit</span>
-									<input
-										type="number"
-										min="1"
-										max="50"
-										class="w-16 rounded-lg border border-border bg-background px-2 py-1 text-2xs font-semibold text-foreground shadow-ink-inner focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-										value={shellRouter.agentTurnBudget}
-										disabled={shellRouter.agentLoopActive ||
-											shellRouter.agentMessageLoading ||
-											stream.isStreaming}
-										oninput={(e) =>
-											updateAgentTurnBudget(
-												Number((e.target as HTMLInputElement).value)
-											)}
-									/>
-								</label>
-								{#if shellRouter.agentTurnsRemaining <= 0}
-									<!-- INKPRINT warning badge with Static texture -->
-									<span
-										class="rounded-lg bg-warning/10 px-2.5 py-1.5 text-2xs font-semibold text-warning tx tx-static tx-weak"
-									>
-										Turn limit reached — adjust and resume.
-									</span>
-								{/if}
-							</div>
-							{#if shellRouter.agentMessageLoading}
-								<p class="micro-label mt-1 text-muted-foreground">
-									Fetching the next update...
-								</p>
-							{/if}
-						</div>
-					{:else if shouldShowComposer}
+					{#if shouldShowComposer}
 						<!-- INKPRINT composer footer -->
 						{@render chatComposerFooter()}
 					{/if}

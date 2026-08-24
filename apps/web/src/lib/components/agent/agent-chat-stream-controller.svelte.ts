@@ -16,6 +16,7 @@ import type {
 	AgenticChatWorkerTurnDescriptorV1,
 	TurnHandleV1
 } from '@buildos/shared-types';
+import { SvelteDate } from 'svelte/reactivity';
 import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { buildFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request-client';
 import { AgentStreamEventGuard } from '$lib/services/agentic-chat-v2/stream-protocol';
@@ -25,6 +26,7 @@ import {
 	resolveEffectiveProjectId
 } from '$lib/services/agentic-chat-v2/scope';
 import {
+	AgenticChatWorkerUnavailableResponseError,
 	requestAgenticChatTransportLease,
 	requestAgenticChatWorkerAdmission
 } from '$lib/services/agentic-chat-v2/worker-transport-client';
@@ -112,7 +114,6 @@ export interface StreamControllerDeps {
 	getLastTurnContext(): LastTurnContext | null;
 	getIsLoadingSession(): boolean;
 	getActiveRestoredTurnRunId(): string | null;
-	requiresLegacyToolSurface?(content: string): boolean;
 	getPrewarm(): StreamControllerPrewarmDeps;
 	attachments: StreamControllerAttachmentDeps;
 	voice: StreamControllerVoiceDeps;
@@ -133,7 +134,7 @@ export interface StreamControllerDeps {
 	clearPendingToolState(): void;
 	handleSSEMessage(event: AgentSSEMessage): void;
 	hydrateSessionFromEvent(session: ChatSession): void;
-	adoptWorkerAdmissionResponse?(value: unknown): AgenticChatWorkerTurnDescriptorV1;
+	adoptWorkerAdmissionResponse(value: unknown): AgenticChatWorkerTurnDescriptorV1;
 	discoverWorkerSession?(sessionId: string): Promise<unknown>;
 	reconcileTurnFromSession?(request: StreamTurnReconcileRequest): void | Promise<void>;
 	setUserHasScrolled(value: boolean): void;
@@ -197,12 +198,24 @@ const TURN_EVIDENCE_EVENT_TYPES = new Set<string>([
 	'operation'
 ]);
 
+/**
+ * Rejections that prove the worker never accepted the turn, so the optimistic
+ * message may be removed and the draft (text + images) restored. Anything not
+ * listed here is treated as possibly-admitted and the draft is preserved as
+ * sent, because a duplicate turn is worse than a lost one.
+ *
+ * `INVALID_FIELD` and `FORBIDDEN` are the two rejections an attachment turn is
+ * most likely to hit — request-schema failure and asset access denial — and
+ * both are decided before any durable write.
+ */
 const WORKER_KNOWN_NOT_ADMITTED_CODES = new Set([
 	'TRANSPORT_RENEGOTIATE',
 	'WORKER_LEASE_REQUIRED',
 	'WORKER_CAPACITY_EXCEEDED',
 	'WORKER_ADMISSION_CONFLICT',
 	'INVALID_WORKER_COMMAND',
+	'INVALID_FIELD',
+	'FORBIDDEN',
 	'WORKER_SESSION_CONFLICT'
 ]);
 
@@ -480,14 +493,12 @@ export class AgentChatStreamController {
 
 	async sendMessage(
 		contentOverride?: string,
-		options: { senderType?: 'user' | 'agent_peer'; suppressInputClear?: boolean } = {}
+		options: { suppressInputClear?: boolean } = {}
 	): Promise<void> {
-		const { senderType = 'user', suppressInputClear = false } = options;
+		const { suppressInputClear = false } = options;
 		const trimmed = (contentOverride ?? this.#deps.getInputValue()).trim();
-		const streamAttachmentRefs =
-			senderType === 'user' ? this.#deps.attachments.buildReadyRefs(false) : [];
-		const optimisticAttachmentRefs =
-			senderType === 'user' ? this.#deps.attachments.buildReadyRefs(true) : [];
+		const streamAttachmentRefs = this.#deps.attachments.buildReadyRefs(false);
+		const optimisticAttachmentRefs = this.#deps.attachments.buildReadyRefs(true);
 		const sentImageAttachments = this.#deps.attachments.getDraftSnapshot();
 		const activeVoiceNoteGroupId = this.#deps.voice.noteGroupId;
 		if (
@@ -498,7 +509,7 @@ export class AgentChatStreamController {
 		) {
 			return;
 		}
-		if (senderType === 'user' && sentImageAttachments.length > streamAttachmentRefs.length) {
+		if (sentImageAttachments.length > streamAttachmentRefs.length) {
 			this.error =
 				'Wait for image upload and OCR queueing to finish, or remove failed images.';
 			return;
@@ -545,22 +556,10 @@ export class AgentChatStreamController {
 				currentPrewarmKey
 			);
 			let sessionForTurn = this.#deps.getCurrentSession();
-			// Worker transport negotiation needs a durable session id before the
-			// turn can be admitted. Text-only user turns therefore always bootstrap
-			// a session up front, even when a fresh prepared prompt would have let
-			// the legacy stream create one — otherwise a prewarm hit silently
-			// bypasses the worker cohort (Phase 6 review, 2026-08-20).
-			const workerTransportCandidate =
-				senderType === 'user' &&
-				streamAttachmentRefs.length === 0 &&
-				!activeVoiceNoteGroupId &&
-				Boolean(this.#deps.adoptWorkerAdmissionResponse);
-			const canUseStreamCreatedSession =
-				senderType === 'user' &&
-				Boolean(matchingPreparedPrompt) &&
-				!workerTransportCandidate;
-
-			if (!sessionForTurn?.id && !canUseStreamCreatedSession) {
+			// Every UI send negotiates worker adoption, so admission needs a durable
+			// session id up front. A prepared prompt remains the emergency sessionless
+			// legacy path when session bootstrap itself is temporarily unavailable.
+			if (!sessionForTurn?.id) {
 				try {
 					sessionForTurn = await this.#deps.ensureSessionReady(
 						buildSessionBootstrapTarget(
@@ -574,16 +573,13 @@ export class AgentChatStreamController {
 						return;
 					}
 					if (!matchingPreparedPrompt) {
-						this.error =
-							sessionError instanceof Error
-								? sessionError.message
-								: 'Unable to prepare a chat session right now.';
-						return;
+						throw new AgenticChatWorkerUnavailableResponseError();
 					}
-					// Session bootstrap only ran to unlock worker transport; a fresh
-					// prepared prompt can still start the turn sessionless on legacy.
+					// Preserve the prepared prompt, but let server negotiation decide
+					// whether the emergency rollback permits sessionless legacy. A
+					// worker-enabled route must surface this as retryable unavailability.
 					this.#deps.logDebug?.(
-						'[agent-chat] session bootstrap failed; falling back to sessionless legacy turn',
+						'[agent-chat] session bootstrap failed before transport negotiation',
 						sessionError
 					);
 					sessionForTurn = null;
@@ -600,7 +596,7 @@ export class AgentChatStreamController {
 				return;
 			}
 
-			const now = new Date();
+			const now = new SvelteDate();
 			const clientTurnId = crypto.randomUUID();
 			const transportStreamRunId = crypto.randomUUID();
 			const normalizedContextType = normalizeFastContextType(requestContextType);
@@ -617,34 +613,27 @@ export class AgentChatStreamController {
 					projectFocus: requestProjectFocus
 				})
 			};
-			const canAttemptWorkerTextCanary =
-				workerTransportCandidate && Boolean(sessionForTurn?.id);
-			const requiresLegacyToolSurface =
-				senderType === 'user' && this.#deps.requiresLegacyToolSurface?.(trimmed) === true;
-			const transportLease = canAttemptWorkerTextCanary
-				? await requestAgenticChatTransportLease({
-						fetchImpl: this.#fetch,
-						request: {
-							clientTurnId,
-							streamRunId: transportStreamRunId,
-							sessionId: sessionForTurn?.id ?? null,
-							context: transportContext,
-							supportedModes: requiresLegacyToolSurface
-								? ['legacy_sse']
-								: ['legacy_sse', 'worker_realtime'],
-							supportedContractVersions: requiresLegacyToolSurface
-								? ['legacy_internal_v1']
-								: ['legacy_internal_v1', 'agentic_chat_worker_v1'],
-							priorDecisionId: null
-						}
-					})
-				: null;
+			let transportLease = await requestAgenticChatTransportLease({
+				fetchImpl: this.#fetch,
+				request: {
+					clientTurnId,
+					streamRunId: transportStreamRunId,
+					sessionId: sessionForTurn?.id ?? null,
+					context: transportContext,
+					supportedModes: ['legacy_sse', 'worker_realtime'],
+					supportedContractVersions: ['legacy_internal_v1', 'agentic_chat_worker_v1'],
+					priorDecisionId: null
+				}
+			});
+			if (transportLease?.mode === 'worker_realtime' && !sessionForTurn?.id) {
+				throw new AgenticChatWorkerUnavailableResponseError();
+			}
 
 			userMessage = {
 				id: crypto.randomUUID(),
 				session_id: sessionForTurn?.id,
 				user_id: undefined,
-				type: senderType as UIMessage['type'],
+				type: 'user',
 				role: 'user' as ChatRole,
 				content:
 					trimmed ||
@@ -700,7 +689,7 @@ export class AgentChatStreamController {
 				this.currentActivity = 'Submitting secure worker turn...';
 				this.#deps.thinking.updateState(
 					'thinking',
-					'BuildOS is starting the canary response...'
+					'BuildOS is starting the worker response...'
 				);
 				this.#deps.setUserHasScrolled(false);
 				prewarm.clearPreparedPrompt();
@@ -715,8 +704,10 @@ export class AgentChatStreamController {
 						sessionId: sessionForTurn.id,
 						context: transportContext,
 						message: trimmed,
+						attachments: streamAttachmentRefs,
 						projectFocus: requestProjectFocus,
 						lastTurnContext: this.#deps.getLastTurnContext(),
+						voiceNoteGroupId: activeVoiceNoteGroupId,
 						preparedPromptKey: matchingPreparedPrompt?.key ?? null
 					}
 				});
@@ -725,25 +716,47 @@ export class AgentChatStreamController {
 						admission.response,
 						'Unable to start the worker response. BuildOS is checking its status.'
 					);
-					if (
-						admissionError.code &&
-						WORKER_KNOWN_NOT_ADMITTED_CODES.has(admissionError.code)
-					) {
+					if (admissionError.code === 'TRANSPORT_RENEGOTIATE') {
 						workerAdmissionAttempted = false;
 						workerAdmissionSessionId = null;
+						transportLease = await requestAgenticChatTransportLease({
+							fetchImpl: this.#fetch,
+							request: {
+								clientTurnId,
+								streamRunId: transportStreamRunId,
+								sessionId: sessionForTurn.id,
+								context: transportContext,
+								supportedModes: ['legacy_sse'],
+								supportedContractVersions: ['legacy_internal_v1'],
+								priorDecisionId: null
+							}
+						});
+						if (transportLease?.mode !== 'legacy_sse') {
+							throw new AgenticChatWorkerUnavailableResponseError();
+						}
+					} else {
+						if (
+							admissionError.code &&
+							WORKER_KNOWN_NOT_ADMITTED_CODES.has(admissionError.code)
+						) {
+							workerAdmissionAttempted = false;
+							workerAdmissionSessionId = null;
+						}
+						throw admissionError;
 					}
-					throw admissionError;
+				} else {
+					const descriptor = this.#deps.adoptWorkerAdmissionResponse(admission.payload);
+					if (
+						descriptor.handle.clientTurnId !== clientTurnId ||
+						descriptor.handle.streamRunId !== transportStreamRunId
+					) {
+						throw new Error(
+							'Worker admission did not return the negotiated turn handle'
+						);
+					}
+					responseAccepted = true;
+					return;
 				}
-				const descriptor = this.#deps.adoptWorkerAdmissionResponse?.(admission.payload);
-				if (
-					!descriptor ||
-					descriptor.handle.clientTurnId !== clientTurnId ||
-					descriptor.handle.streamRunId !== transportStreamRunId
-				) {
-					throw new Error('Worker admission did not return the negotiated turn handle');
-				}
-				responseAccepted = true;
-				return;
 			}
 
 			this.activeStreamRunId = this.activeStreamRunId + 1;
@@ -902,7 +915,11 @@ export class AgentChatStreamController {
 						if (!this.#deps.getInputValue().trim()) {
 							this.#deps.setInputValue(trimmed);
 						}
-						if (!suppressInputClear && sentImageAttachments.length > 0) {
+						if (
+							!suppressInputClear &&
+							sentImageAttachments.length > 0 &&
+							this.#deps.attachments.getDraftSnapshot().length === 0
+						) {
 							this.#deps.attachments.restoreDraft(sentImageAttachments);
 						}
 					}
@@ -948,7 +965,8 @@ export class AgentChatStreamController {
 			}
 
 			this.error =
-				err instanceof AgentRequestError
+				err instanceof AgentRequestError ||
+				err instanceof AgenticChatWorkerUnavailableResponseError
 					? err.message
 					: 'Failed to send message. Please try again.';
 			this.isStreaming = false;
@@ -985,7 +1003,8 @@ export class AgentChatStreamController {
 			if (
 				!workerAdmissionAttempted &&
 				!suppressInputClear &&
-				sentImageAttachments.length > 0
+				sentImageAttachments.length > 0 &&
+				this.#deps.attachments.getDraftSnapshot().length === 0
 			) {
 				this.#deps.attachments.restoreDraft(sentImageAttachments);
 			}

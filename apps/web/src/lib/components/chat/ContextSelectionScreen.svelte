@@ -8,7 +8,7 @@
 
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { browser, dev } from '$app/environment';
+	import { browser } from '$app/environment';
 	import {
 		MessagesSquare,
 		FolderPlus,
@@ -31,7 +31,7 @@
 	} from './project-selector-browser';
 
 	export interface ContextSelection {
-		contextType: ChatContextType | 'agent_to_agent';
+		contextType: ChatContextType;
 		entityId?: string;
 		label?: string;
 	}
@@ -149,10 +149,6 @@
 	// Primary actions - Svelte 5 callback pattern
 	function selectGlobal() {
 		onSelect?.({ contextType: 'global', label: 'General chat' });
-	}
-
-	function selectAgentToAgent() {
-		onSelect?.({ contextType: 'agent_to_agent', label: 'Agent handoff' });
 	}
 
 	function selectProjectCreate() {
@@ -396,9 +392,7 @@
 							</h3>
 							<span class="h-px flex-1 bg-border"></span>
 						</div>
-						<div
-							class={`grid gap-2 sm:gap-3 ${dev ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}
-						>
+						<div class="grid gap-2 sm:grid-cols-1 sm:gap-3">
 							<button onclick={selectProjectCreate} class={setupCardClasses}>
 								<div class="flex items-start gap-3">
 									<div class={optionIconClasses}>
@@ -420,33 +414,6 @@
 									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
 								</div>
 							</button>
-
-							{#if dev}
-								<button onclick={selectAgentToAgent} class={setupCardClasses}>
-									<div class="flex items-start gap-3">
-										<div class={optionIconClasses}>
-											<MessagesSquare class="h-4 w-4 sm:h-5 sm:w-5" />
-										</div>
-										<div class="min-w-0 flex-1">
-											<p class="micro-label mb-1">DEV TOOL</p>
-											<h3
-												class="text-sm font-semibold text-foreground sm:text-base"
-											>
-												Agent handoff
-											</h3>
-											<p
-												class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
-											>
-												Hand the conversation to another agent with a
-												defined goal.
-											</p>
-										</div>
-										<ChevronRight
-											class="h-4 w-4 shrink-0 text-muted-foreground"
-										/>
-									</div>
-								</button>
-							{/if}
 						</div>
 					</section>
 				</div>

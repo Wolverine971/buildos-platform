@@ -2,6 +2,7 @@
 	"name": "@buildos/shared-agent-ops",
 	"version": "1.0.0",
 	"private": true,
+	"sideEffects": false,
 	"main": "./dist/index.js",
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
@@ -175,6 +176,11 @@
 			"types": "./dist/calendar/worker-task-event-mutation-port.d.ts",
 			"import": "./dist/calendar/worker-task-event-mutation-port.mjs",
 			"require": "./dist/calendar/worker-task-event-mutation-port.js"
+		},
+		"./email/gmail-account-read-port": {
+			"types": "./dist/email/gmail-account-read-port.d.ts",
+			"import": "./dist/email/gmail-account-read-port.mjs",
+			"require": "./dist/email/gmail-account-read-port.js"
 		},
 		"./web/safe-fetch": {
 			"types": "./dist/web/safe-fetch.d.ts",

@@ -203,6 +203,15 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			clientTurnId: parsed.data.clientTurnId
 		});
 		if (error instanceof AgenticChatWorkerPreparationError) {
+			if (error.code === 'transport_renegotiate') {
+				return privateResponse(
+					ApiResponse.error(
+						'This turn requires the legacy tool surface',
+						HttpStatus.CONFLICT,
+						'TRANSPORT_RENEGOTIATE'
+					)
+				);
+			}
 			if (error.code === 'invalid_command') {
 				return privateResponse(
 					ApiResponse.error(

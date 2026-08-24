@@ -9,7 +9,8 @@ const mocks = vi.hoisted(() => ({
 	env: {
 		AGENTIC_CHAT_TRANSPORT_LEASE_SECRET:
 			'route-agentic-chat-transport-secret-at-least-32-bytes',
-		AGENTIC_CHAT_WORKER_KILL_EPOCH: '0'
+		AGENTIC_CHAT_WORKER_KILL_EPOCH: '0',
+		AGENTIC_CHAT_WORKER_ROUTING_ENABLED: 'false'
 	},
 	createAdminSupabaseClient: vi.fn(),
 	resolveExistingAgenticChatTransportDecision: vi.fn(),
@@ -31,11 +32,19 @@ vi.mock('$lib/services/agentic-chat-v2/transport-decision.server', async (import
 			mocks.resolveExistingAgenticChatTransportDecision
 	};
 });
-vi.mock('$lib/services/agentic-chat-v2/worker-transport-routing.server', () => ({
-	selectAgenticChatNewTransport: mocks.selectAgenticChatNewTransport
-}));
+vi.mock('$lib/services/agentic-chat-v2/worker-transport-routing.server', async (importOriginal) => {
+	const original =
+		await importOriginal<
+			typeof import('$lib/services/agentic-chat-v2/worker-transport-routing.server')
+		>();
+	return {
+		...original,
+		selectAgenticChatNewTransport: mocks.selectAgenticChatNewTransport
+	};
+});
 
 import { AgenticChatTransportDecisionError } from '$lib/services/agentic-chat-v2/transport-decision.server';
+import { AgenticChatWorkerUnavailableError } from '$lib/services/agentic-chat-v2/worker-transport-routing.server';
 import { POST } from './+server';
 
 function body(overrides: Record<string, unknown> = {}) {
@@ -72,6 +81,7 @@ describe('POST /api/agent/v2/transport', () => {
 		mocks.env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET =
 			'route-agentic-chat-transport-secret-at-least-32-bytes';
 		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';
+		mocks.env.AGENTIC_CHAT_WORKER_ROUTING_ENABLED = 'false';
 		mocks.createAdminSupabaseClient.mockReturnValue({ from: vi.fn() });
 		mocks.resolveExistingAgenticChatTransportDecision.mockResolvedValue(null);
 		mocks.selectAgenticChatNewTransport.mockResolvedValue({
@@ -118,7 +128,6 @@ describe('POST /api/agent/v2/transport', () => {
 			request: body()
 		});
 		expect(mocks.selectAgenticChatNewTransport).toHaveBeenCalledWith({
-			userId: USER_ID,
 			supportedModes: body().supportedModes,
 			supportedContractVersions: body().supportedContractVersions,
 			environment: mocks.env
@@ -137,6 +146,19 @@ describe('POST /api/agent/v2/transport', () => {
 			mode: 'worker_realtime',
 			contractVersion: 'agentic_chat_worker_v1'
 		});
+	});
+
+	it('returns retryable worker-unavailable without issuing a legacy lease', async () => {
+		mocks.selectAgenticChatNewTransport.mockRejectedValueOnce(
+			new AgenticChatWorkerUnavailableError('queue_pressure', 2)
+		);
+		const response = await POST(event() as never);
+		const payload = await response.json();
+
+		expect(response.status).toBe(503);
+		expect(response.headers.get('retry-after')).toBe('2');
+		expect(payload.code).toBe('WORKER_UNAVAILABLE');
+		expect(payload).not.toHaveProperty('data.mode');
 	});
 
 	it('treats an unproven prior decision id only as a lookup hint', async () => {
@@ -195,7 +217,29 @@ describe('POST /api/agent/v2/transport', () => {
 		response = await POST(event() as never);
 		payload = await response.json();
 		expect(response.status).toBe(503);
+		expect(response.headers.get('retry-after')).toBeNull();
 		expect(payload.code).toBe('TRANSPORT_UNAVAILABLE');
 		expect(JSON.stringify(payload)).not.toContain('too short');
+	});
+
+	it('keeps legacy reachable when routing is off and the decision lookup fails', async () => {
+		mocks.resolveExistingAgenticChatTransportDecision.mockRejectedValueOnce(
+			new Error('temporary database outage')
+		);
+		const response = await POST(event() as never);
+		const payload = await response.json();
+
+		expect(response.status).toBe(503);
+		expect(payload.code).toBe('TRANSPORT_UNAVAILABLE');
+		expect(payload.message).not.toContain('database outage');
+	});
+
+	it('keeps worker-selected failures strict when routing is enabled', async () => {
+		mocks.env.AGENTIC_CHAT_WORKER_ROUTING_ENABLED = 'true';
+		mocks.resolveExistingAgenticChatTransportDecision.mockRejectedValueOnce(
+			new Error('temporary database outage')
+		);
+		const response = await POST(event() as never);
+		expect((await response.json()).code).toBe('WORKER_UNAVAILABLE');
 	});
 });

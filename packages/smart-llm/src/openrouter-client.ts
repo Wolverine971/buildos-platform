@@ -1,6 +1,6 @@
 // packages/smart-llm/src/openrouter-client.ts
 
-import type { ErrorLogger, OpenRouterResponse, OpenRouterTranscriptionResponse } from './types';
+import type { OpenRouterResponse, OpenRouterTranscriptionResponse } from './types';
 import { buildOpenRouterChatCompletionBody } from './openrouter-request';
 import { LLMRequestCancelledError, LLMRequestTimeoutError } from './errors';
 
@@ -15,7 +15,6 @@ export class OpenRouterClient {
 	private apiUrl: string;
 	private httpReferer: string;
 	private appName: string;
-	private errorLogger?: ErrorLogger;
 	private fetchImpl: typeof fetch;
 
 	constructor(config: {
@@ -23,14 +22,12 @@ export class OpenRouterClient {
 		apiUrl: string;
 		httpReferer: string;
 		appName: string;
-		errorLogger?: ErrorLogger;
 		fetchImpl?: typeof fetch;
 	}) {
 		this.apiKey = config.apiKey;
 		this.apiUrl = config.apiUrl;
 		this.httpReferer = config.httpReferer;
 		this.appName = config.appName;
-		this.errorLogger = config.errorLogger;
 		this.fetchImpl = config.fetchImpl ?? globalThis.fetch;
 	}
 
@@ -225,24 +222,12 @@ export class OpenRouterClient {
 					generationId
 				});
 				(timeoutError as Error & { cause?: unknown }).cause = error;
-				if (this.errorLogger) {
-					await this.errorLogger.logAPIError(
-						timeoutError,
-						this.apiUrl,
-						'POST',
-						undefined,
-						{
-							operation: 'callOpenRouter_timeout',
-							errorType: 'llm_api_timeout',
-							modelRequested: params.model,
-							alternativeModels: params.models?.join(', ') || 'none',
-							timeoutMs,
-							temperature: params.temperature,
-							maxTokens: params.max_tokens,
-							openrouterRequestId: generationId
-						}
-					);
-				}
+				// Deliberately not logged here. A timeout at this layer may still be
+				// recovered by the caller's model failover, and logging it created
+				// actionable incidents for requests that later succeeded — the same
+				// reason the JSON parse-retry path defers to its outer catch. The
+				// service-layer catch owns terminal logging and carries strictly more
+				// context (profile, attempts, models attempted, generation id).
 				throw timeoutError;
 			}
 			throw error;

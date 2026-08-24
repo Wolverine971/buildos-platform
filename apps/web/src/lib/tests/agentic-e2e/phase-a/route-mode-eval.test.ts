@@ -23,13 +23,13 @@ import {
 	WORKFLOW_SCOPE_SYSTEM_PROMPT,
 	type RouteModelCall,
 	type RouteModelPort
-} from '../../../../../../../packages/agent-orchestrator/src';
+} from '@buildos/agent-orchestrator';
 import {
 	buildRouteEvalReport,
 	isPlanCriticalScenario,
 	type RouteEvalRun,
 	type RouteEvalUsageEvent
-} from '../../../../../../../packages/agent-orchestrator/src/testing/harness/route-eval-report';
+} from '@buildos/agent-orchestrator/testing/harness';
 import { frozenPhaseACorpus, phaseAProjectSnapshot } from './fixtures';
 
 const ROUTE_EVAL_OUTPUT_PATH =

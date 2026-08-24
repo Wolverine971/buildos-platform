@@ -1,14 +1,14 @@
 // apps/web/src/lib/components/agent/agent-chat-shell-router.svelte.ts
 //
-// Owns AgentChatModal's shell routing state: context selection, project action
-// and focus screens, plus the agent-to-agent wizard state. Chat/session/message
-// lifecycle remains in the modal and stream controller.
+// Owns AgentChatModal's shell routing state: context selection, project action,
+// and focus screens. Chat/session/message lifecycle remains in the modal and
+// stream controller.
 
 import type { ChatContextType } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
 import { buildProjectWideFocus, isProjectContext } from './agent-chat-session';
-import type { AgentProjectSummary, AgentToAgentStep, ProjectAction } from './agent-chat.types';
+import type { ProjectAction } from './agent-chat.types';
 
 export interface AutoInitProjectConfig {
 	projectId: string;
@@ -17,10 +17,8 @@ export interface AutoInitProjectConfig {
 	initialAction?: ProjectAction;
 }
 
-export type ContextSelectionType = ChatContextType | 'agent_to_agent';
-
 export interface ContextSelectionDetail {
-	contextType: ContextSelectionType;
+	contextType: ChatContextType;
 	entityId?: string;
 	label?: string;
 }
@@ -31,10 +29,6 @@ export interface AgentChatShellRouterDeps {
 	stopVoice(): void;
 	isStreaming(): boolean;
 	logFocusActivity(label: string, focus: ProjectFocus): void;
-	fetchImpl?: typeof fetch;
-	logError?(message: string, err: unknown): void;
-	hasMultipleAgentHelpers?: boolean;
-	researchAgentId?: string;
 }
 
 export class AgentChatShellRouter {
@@ -50,27 +44,7 @@ export class AgentChatShellRouter {
 	autoInitDismissed = $state(false);
 	lastAutoInitProjectId = $state<string | null>(null);
 
-	agentToAgentMode = $state(false);
-	agentToAgentStep = $state<AgentToAgentStep | null>(null);
-	agentGoal = $state('');
-	selectedAgentId = $state<string | null>(null);
-	agentLoopActive = $state(false);
-	agentMessageLoading = $state(false);
-	agentTurnBudget = $state(5);
-	agentTurnsRemaining = $state(5);
-	agentProjects = $state<AgentProjectSummary[]>([]);
-	agentProjectsError = $state<string | null>(null);
-	agentProjectsLoading = $state(false);
-
-	readonly hasMultipleAgentHelpers: boolean;
-	readonly researchAgentId: string;
-	#fetch: typeof fetch;
-
-	constructor(private readonly deps: AgentChatShellRouterDeps) {
-		this.hasMultipleAgentHelpers = deps.hasMultipleAgentHelpers ?? false;
-		this.researchAgentId = deps.researchAgentId ?? 'actionable_insight_agent';
-		this.#fetch = deps.fetchImpl ?? fetch;
-	}
+	constructor(private readonly deps: AgentChatShellRouterDeps) {}
 
 	get contextDescriptor() {
 		return this.selectedContextType ? CONTEXT_DESCRIPTORS[this.selectedContextType] : null;
@@ -104,31 +78,15 @@ export class AgentChatShellRouter {
 		return this.projectFocus ?? this.defaultProjectFocus;
 	}
 
-	get selectedAgentLabel(): string {
-		return this.selectedAgentId ? 'Actionable Insight' : 'Select a helper';
-	}
-
 	resetConversationState(options: { preserveContext?: boolean } = {}): void {
 		const { preserveContext = true } = options;
 		this.showFocusSelector = false;
 		this.showProjectActionSelector = false;
-		this.agentLoopActive = false;
-		this.agentMessageLoading = false;
-		this.agentTurnBudget = 5;
-		this.agentTurnsRemaining = 5;
-
 		if (!preserveContext) {
 			this.selectedContextType = null;
 			this.selectedEntityId = undefined;
 			this.selectedContextLabel = null;
 			this.projectFocus = null;
-			this.agentToAgentMode = false;
-			this.agentToAgentStep = null;
-			this.selectedAgentId = null;
-			this.agentGoal = '';
-			this.agentProjects = [];
-			this.agentProjectsError = null;
-			this.agentProjectsLoading = false;
 		}
 	}
 
@@ -145,20 +103,6 @@ export class AgentChatShellRouter {
 			this.showProjectActionSelector = false;
 			this.deps.resetConversation({ preserveContext: false });
 			this.showContextSelection = true;
-		} else if (this.agentToAgentMode && this.agentToAgentStep === 'goal') {
-			this.backToAgentProjectSelection();
-		} else if (this.agentToAgentMode && this.agentToAgentStep === 'project') {
-			if (this.hasMultipleAgentHelpers) {
-				this.backToAgentSelection();
-			} else {
-				this.agentToAgentMode = false;
-				this.agentToAgentStep = null;
-				this.changeContext();
-			}
-		} else if (this.agentToAgentMode && this.agentToAgentStep === 'agent') {
-			this.agentToAgentMode = false;
-			this.agentToAgentStep = null;
-			this.changeContext();
 		} else {
 			this.changeContext();
 		}
@@ -172,27 +116,6 @@ export class AgentChatShellRouter {
 		this.deps.resetConversation();
 		this.autoInitDismissed = true;
 
-		if (selection.contextType === 'agent_to_agent') {
-			this.agentToAgentMode = true;
-			this.agentToAgentStep = 'agent';
-			this.selectedAgentId = null;
-			this.selectedContextType = null;
-			this.selectedContextLabel = selection.label ?? 'BuildOS automation';
-			this.projectFocus = null;
-			this.showContextSelection = false;
-
-			if (!this.hasMultipleAgentHelpers) {
-				this.selectAgentForBridge(this.researchAgentId);
-			}
-			return;
-		}
-
-		this.agentToAgentMode = false;
-		this.agentToAgentStep = null;
-		this.selectedAgentId = null;
-		this.agentGoal = '';
-		this.agentLoopActive = false;
-		this.agentMessageLoading = false;
 		this.selectedContextType = selection.contextType;
 		this.selectedEntityId = selection.entityId;
 		this.selectedContextLabel =
@@ -269,8 +192,6 @@ export class AgentChatShellRouter {
 		this.showContextSelection = false;
 		this.showProjectActionSelector = false;
 		this.showFocusSelector = false;
-		this.agentToAgentMode = false;
-		this.agentToAgentStep = null;
 	}
 
 	primeProjectContext(projectId: string, projectName: string | null | undefined): void {
@@ -283,8 +204,6 @@ export class AgentChatShellRouter {
 		this.showContextSelection = false;
 		this.showProjectActionSelector = true;
 		this.showFocusSelector = false;
-		this.agentToAgentMode = false;
-		this.agentToAgentStep = null;
 	}
 
 	handleProjectActionSelect(action: ProjectAction): void {
@@ -311,92 +230,6 @@ export class AgentChatShellRouter {
 		this.applyProjectAction(action, config.projectId, config.projectName, {
 			skipReset: true
 		});
-	}
-
-	async loadAgentProjects(force = false): Promise<void> {
-		if (this.agentProjectsLoading || (!force && this.agentProjects.length > 0)) return;
-		this.agentProjectsLoading = true;
-		this.agentProjectsError = null;
-		try {
-			const response = await this.#fetch('/api/onto/projects', {
-				method: 'GET',
-				credentials: 'same-origin',
-				cache: 'no-store',
-				headers: { Accept: 'application/json' }
-			});
-			const payload = await response.json();
-			if (!response.ok || payload?.success === false) {
-				this.agentProjectsError = payload?.error || 'Failed to load projects';
-				this.agentProjects = [];
-				return;
-			}
-			const fetched = payload?.data?.projects ?? payload?.projects ?? [];
-			this.agentProjects = fetched.map((project: any) => ({
-				id: project.id,
-				name: project.name ?? 'Untitled project',
-				description: project.description ?? null
-			}));
-		} catch (err) {
-			this.deps.logError?.('[AgentChat] Failed to load projects for agent bridge', err);
-			this.agentProjectsError = 'Failed to load projects';
-		} finally {
-			this.agentProjectsLoading = false;
-		}
-	}
-
-	selectAgentForBridge(agentId: string): void {
-		this.selectedAgentId = agentId;
-		this.agentToAgentStep = 'project';
-		void this.loadAgentProjects(true);
-	}
-
-	selectAgentProject(project: AgentProjectSummary): void {
-		this.selectedContextType = 'project';
-		this.selectedEntityId = project.id;
-		this.selectedContextLabel = project.name;
-		this.projectFocus = buildProjectWideFocus(project.id, project.name);
-		this.agentToAgentStep = 'goal';
-	}
-
-	backToAgentSelection(): void {
-		this.agentToAgentStep = 'agent';
-		this.agentLoopActive = false;
-	}
-
-	backToAgentProjectSelection(): void {
-		this.agentToAgentStep = 'project';
-		this.agentLoopActive = false;
-	}
-
-	updateAgentTurnBudget(value: number): void {
-		const sanitized = Math.max(1, Math.min(50, Math.round(value)));
-		this.agentTurnBudget = sanitized;
-		if (!this.agentLoopActive && !this.agentMessageLoading && !this.deps.isStreaming()) {
-			this.agentTurnsRemaining = sanitized;
-		}
-	}
-
-	beginAgentToAgentChat(): string | null {
-		if (this.deps.isStreaming() || this.agentMessageLoading) return null;
-		if (!this.selectedAgentId) return 'Select a helper to start.';
-		if (!this.selectedEntityId || this.selectedContextType !== 'project') {
-			return 'Select a project to start.';
-		}
-		if (!this.agentGoal.trim()) return 'Add a goal for BuildOS to pursue.';
-		if (this.agentTurnBudget <= 0) return 'Set at least 1 turn before starting.';
-
-		const selectedTurnBudget = this.agentTurnBudget;
-		this.deps.resetConversation({ preserveContext: true });
-		this.agentTurnBudget = selectedTurnBudget;
-		this.agentLoopActive = true;
-		this.agentToAgentMode = true;
-		this.agentToAgentStep = 'chat';
-		this.agentTurnsRemaining = selectedTurnBudget;
-		return null;
-	}
-
-	stopAgentLoop(): void {
-		this.agentLoopActive = false;
 	}
 
 	setDirectContext(params: {

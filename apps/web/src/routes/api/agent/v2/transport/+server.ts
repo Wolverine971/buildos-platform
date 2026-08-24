@@ -10,7 +10,6 @@ import {
 	type AgenticChatTransportDecisionClient
 } from '$lib/services/agentic-chat-v2/transport-decision.server';
 import {
-	AgenticChatTransportLeaseError,
 	issueAgenticChatTransportLease,
 	parseAgenticChatWorkerKillEpoch
 } from '$lib/services/agentic-chat-v2/transport-lease.server';
@@ -18,7 +17,10 @@ import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { normalizeFastContextType } from '$lib/services/agentic-chat-v2/scope';
-import { selectAgenticChatNewTransport } from '$lib/services/agentic-chat-v2/worker-transport-routing.server';
+import {
+	AgenticChatWorkerUnavailableError,
+	selectAgenticChatNewTransport
+} from '$lib/services/agentic-chat-v2/worker-transport-routing.server';
 
 const logger = createLogger('API:AgentTransportV2');
 
@@ -74,6 +76,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	});
 	if (!parsed.ok) return privateResponse(parsed.response);
 
+	let selectedMode: 'legacy_sse' | 'worker_realtime' | null = null;
 	try {
 		const existing = await resolveExistingAgenticChatTransportDecision({
 			client: createAdminSupabaseClient() as unknown as AgenticChatTransportDecisionClient,
@@ -83,12 +86,12 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		const selected = existing
 			? { mode: existing.mode, contractVersion: existing.contractVersion }
 			: await selectAgenticChatNewTransport({
-					userId: user.id,
 					supportedModes: parsed.data.supportedModes,
 					supportedContractVersions: parsed.data.supportedContractVersions,
 					environment: env
 				});
 		const { mode, contractVersion } = selected;
+		selectedMode = mode;
 		if (
 			!parsed.data.supportedModes.includes(mode) ||
 			!parsed.data.supportedContractVersions.includes(contractVersion)
@@ -103,7 +106,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		}
 
 		// Existing turns bypass live routing and retain their already-persisted
-		// immutable mode. New worker selection is exact-cohort and capacity-gated.
+		// immutable mode. New worker selection is server-enabled and capacity-gated.
 		const lease = issueAgenticChatTransportLease({
 			secret: env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET ?? '',
 			userId: user.id,
@@ -135,27 +138,51 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 				)
 			);
 		}
-		if (
-			error instanceof AgenticChatTransportLeaseError ||
-			error instanceof AgenticChatTransportDecisionError
-		) {
-			return privateResponse(
-				ApiResponse.error(
-					'Transport negotiation is temporarily unavailable',
-					HttpStatus.SERVICE_UNAVAILABLE,
-					'TRANSPORT_UNAVAILABLE'
-				)
-			);
+		if (error instanceof AgenticChatWorkerUnavailableError) {
+			return workerUnavailableResponse(error.retryAfterSeconds);
 		}
-		return privateResponse(
-			ApiResponse.error(
-				'Transport negotiation is temporarily unavailable',
-				HttpStatus.SERVICE_UNAVAILABLE,
-				'TRANSPORT_UNAVAILABLE'
-			)
-		);
+		// A failure is worker-unavailable only after worker transport was selected,
+		// or when the live routing policy could select it. The emergency rollback
+		// must remain outside the worker lease/database failure domain.
+		if (
+			selectedMode === 'worker_realtime' ||
+			(selectedMode === null && requestCouldSelectWorker(parsed.data, env))
+		) {
+			return workerUnavailableResponse();
+		}
+		return transportUnavailableResponse();
 	}
 };
+
+function requestCouldSelectWorker(
+	request: z.infer<typeof transportRequestSchema>,
+	environment: Record<string, string | undefined>
+): boolean {
+	return (
+		environment.AGENTIC_CHAT_WORKER_ROUTING_ENABLED === 'true' &&
+		request.supportedModes.includes('worker_realtime') &&
+		request.supportedContractVersions.includes('agentic_chat_worker_v1')
+	);
+}
+
+function transportUnavailableResponse(): Response {
+	const response = ApiResponse.error(
+		'Transport negotiation is unavailable; continue with legacy chat.',
+		HttpStatus.SERVICE_UNAVAILABLE,
+		'TRANSPORT_UNAVAILABLE'
+	);
+	return privateResponse(response);
+}
+
+function workerUnavailableResponse(retryAfterSeconds = 2): Response {
+	const response = ApiResponse.error(
+		'Worker chat is temporarily unavailable. Please try again shortly.',
+		HttpStatus.SERVICE_UNAVAILABLE,
+		'WORKER_UNAVAILABLE'
+	);
+	response.headers.set('Retry-After', String(retryAfterSeconds));
+	return privateResponse(response);
+}
 
 function privateResponse(response: Response): Response {
 	response.headers.set('Cache-Control', 'private, no-store');

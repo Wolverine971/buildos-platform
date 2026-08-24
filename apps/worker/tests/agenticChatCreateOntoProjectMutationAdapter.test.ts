@@ -1,3 +1,4 @@
+// apps/worker/tests/agenticChatCreateOntoProjectMutationAdapter.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { AgenticChatCreateOntoProjectMutationAdapter } from '../src/workers/agentic-chat/createOntoProjectMutationAdapter';
 
@@ -86,6 +87,17 @@ function successData(overrides: Record<string, unknown> = {}) {
 describe('AgenticChatCreateOntoProjectMutationAdapter', () => {
 	it('creates one project shell once and restores the compound legacy receipt', async () => {
 		const runGateway = vi.fn(async () => ({ ok: true, data: successData() }));
+		const expectedContextMarkdown = [
+			'# Launch Site Context Document',
+			'## Vision & Summary',
+			'Ship the new site.',
+			'## Source Notes / Spark',
+			'Not provided yet.',
+			'## Initial Goals',
+			'No goals captured yet.',
+			'## Initial Tasks / Threads',
+			'No starter tasks captured yet.'
+		].join('\n\n');
 		const adapter = new AgenticChatCreateOntoProjectMutationAdapter({} as never, {
 			runGateway: runGateway as never,
 			now: () => NOW
@@ -131,17 +143,8 @@ describe('AgenticChatCreateOntoProjectMutationAdapter', () => {
 				relationships: [],
 				context_document: {
 					title: 'Launch Site Context Document',
-					body_markdown: [
-						'# Launch Site Context Document',
-						'## Vision & Summary',
-						'Ship the new site.',
-						'## Source Notes / Spark',
-						'Not provided yet.',
-						'## Initial Goals',
-						'No goals captured yet.',
-						'## Initial Tasks / Threads',
-						'No starter tasks captured yet.'
-					].join('\n\n'),
+					content: expectedContextMarkdown,
+					body_markdown: expectedContextMarkdown,
 					type_key: 'document.context.project',
 					state_key: 'active',
 					props: {

@@ -1,6 +1,9 @@
 // packages/agentic-chat-runtime/src/supervisor/status-messages.ts
 import type { TurnDigest } from './types';
 
+export const AGENTIC_CHAT_SUPERVISOR_BLOCKED_RETRY_ERROR_V1 =
+	'Supervisor blocked this exact write retry because the same tool arguments already failed earlier in the turn. Use corrected arguments, the correct tool for the entity kind, or ask one concise clarifying question.';
+
 export function buildTurnStatusMessage(digest: TurnDigest): string {
 	if (digest.risks.includes('repeated_failures')) {
 		return 'BuildOS is checking the failed tool results and deciding whether it needs to ask for clarification.';

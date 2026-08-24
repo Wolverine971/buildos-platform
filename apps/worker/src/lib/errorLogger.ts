@@ -1,5 +1,6 @@
 // apps/worker/src/lib/errorLogger.ts
 import type { Database } from '@buildos/shared-types';
+import { LLMRequestTimeoutError } from '@buildos/smart-llm';
 import { supabase } from './supabase';
 
 type ErrorLogInsert = Database['public']['Tables']['error_logs']['Insert'];
@@ -71,6 +72,7 @@ function getErrorMessage(error: unknown): string {
 
 function inferErrorType(error: unknown, context?: WorkerErrorContext): ErrorType {
 	if (context?.errorType) return context.errorType;
+	if (error instanceof LLMRequestTimeoutError) return 'api_error';
 
 	// Database work can happen after a successful LLM call. Preserve SQLSTATE
 	// precedence so those failures are not mislabeled as model failures merely

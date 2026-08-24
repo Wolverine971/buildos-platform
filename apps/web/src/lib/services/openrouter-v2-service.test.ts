@@ -12,6 +12,7 @@ import {
 	OPENROUTER_V2_MULTIMODAL_MODELS,
 	OPENROUTER_V2_TEXT_MODELS,
 	OPENROUTER_V2_TOOL_MODELS,
+	OX_ALPHA_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from '@buildos/smart-llm';
 
@@ -241,6 +242,71 @@ describe('OpenRouterV2Service model routing', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true
+		});
+	});
+
+	it('uses a scoped non-ZDR zero-price Ox trial and restores ZDR on fallback', async () => {
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+
+			if (requestBodies.length === 1) {
+				return new Response(
+					JSON.stringify({
+						error: { message: 'Ox Alpha is temporarily unavailable.' }
+					}),
+					{ status: 429, headers: { 'content-type': 'application/json' } }
+				);
+			}
+
+			return new Response(
+				JSON.stringify({
+					id: 'chatcmpl-v2-ox-fallback',
+					model: DEEPSEEK_V4_FLASH_MODEL,
+					choices: [
+						{
+							index: 0,
+							message: { role: 'assistant', content: '{"ok":true}' },
+							finish_reason: 'stop'
+						}
+					],
+					usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 }
+				}),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			);
+		});
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = new OpenRouterV2Service({
+			apiKey: 'openrouter-test-key',
+			freeTrialPrimaryModel: OX_ALPHA_MODEL
+		});
+		const result = await service.getJSONResponse<{ ok: boolean }>({
+			systemPrompt: 'Return valid JSON.',
+			userPrompt: 'Respond with {"ok":true}.'
+		});
+
+		expect(result).toEqual({ ok: true });
+		expect(requestBodies[0]?.model).toBe(OX_ALPHA_MODEL);
+		// The client omits a redundant one-item `models` extension entirely. The
+		// important invariant is that no production fallback shares ox's relaxed
+		// provider policy in this request.
+		expect(requestBodies[0]?.models).toBeUndefined();
+		expect(requestBodies[0]?.provider).toEqual({
+			allow_fallbacks: true,
+			require_parameters: true,
+			data_collection: 'deny',
+			max_price: { prompt: 0, completion: 0, request: 0 }
+		});
+		expect(requestBodies[1]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(requestBodies[1]?.provider).toEqual({
+			allow_fallbacks: true,
+			require_parameters: true,
+			data_collection: 'deny',
+			zdr: true,
+			order: ['baidu', 'gmicloud']
 		});
 	});
 

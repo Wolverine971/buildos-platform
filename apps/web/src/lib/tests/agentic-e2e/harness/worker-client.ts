@@ -215,8 +215,10 @@ export class AgenticE2EWorkerClient {
 				sessionId,
 				context,
 				message: params.message,
+				attachments: [],
 				projectFocus: null,
 				lastTurnContext: params.lastTurnContext ?? null,
+				voiceNoteGroupId: null,
 				preparedPromptKey: null
 			}
 		});

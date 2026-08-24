@@ -48,7 +48,6 @@ The modal renders the shell and delegates stream transport to
 
 Related APIs used by the modal:
 
-- `POST /api/agentic-chat/agent-message` (agent-to-agent suggestion bridge)
 - `GET /api/chat/sessions/[id]` (resume existing session)
 - `POST /api/chat/sessions/[id]/close` (session finalize + classification trigger)
 - `POST /api/chat/sessions/[id]/classify` (fallback classification queue)

@@ -3,6 +3,9 @@
 import type { AgenticChatTurnJobV1 } from '@buildos/shared-types';
 import { type ProcessingJob, SupabaseQueue } from '../../lib/supabaseQueue';
 import { MAX_QUEUE_DRAIN_TIMEOUT_MS } from '../../config/shutdownBudget';
+import { MAX_AGENTIC_CHAT_CONCURRENCY } from './concurrencyBounds';
+
+export { MAX_AGENTIC_CHAT_CONCURRENCY };
 
 export const DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG = {
 	concurrency: 1,
@@ -18,15 +21,6 @@ export type AgenticChatConsumerConfig = {
 
 export type AgenticChatTurnExecutorPort = {
 	execute(job: ProcessingJob<AgenticChatTurnJobV1>): Promise<unknown>;
-	reject(
-		job: ProcessingJob<AgenticChatTurnJobV1>,
-		rejection: AgenticChatClaimRejectionV1
-	): Promise<unknown>;
-};
-
-export type AgenticChatClaimRejectionV1 = {
-	code: 'internal_cohort_rejected';
-	message: string;
 };
 
 export type AgenticChatConsumer = {
@@ -37,17 +31,7 @@ export type AgenticChatConsumer = {
 	wake(): Promise<void>;
 };
 
-export class AgenticChatInternalCohortError extends Error {
-	readonly code = 'internal_cohort_rejected';
-
-	constructor() {
-		super('Agentic Chat turn is outside the configured internal cohort');
-		this.name = 'AgenticChatInternalCohortError';
-	}
-}
-
 export type AgenticChatConsumerOptions = {
-	internalUserIds: readonly string[];
 	config?: Partial<AgenticChatConsumerConfig>;
 };
 
@@ -69,8 +53,6 @@ export function createAgenticChatConsumer(
 	};
 	validateAgenticChatConsumerConfig(resolved);
 	validateAgenticChatDrainTimeout(resolved.drainTimeoutMs);
-	const internalUserIds = normalizeInternalUserIds(options.internalUserIds);
-	const internalUsers = new Set(internalUserIds);
 
 	const queue = new SupabaseQueue({
 		batchSize: resolved.concurrency,
@@ -79,20 +61,10 @@ export function createAgenticChatConsumer(
 		drainTimeout: resolved.drainTimeoutMs,
 		genericStalledRecovery: false
 	});
-	queue.process<AgenticChatTurnJobV1>(
-		'agentic_chat_turn',
-		(job) => {
-			if (!internalUsers.has(job.userId.toLowerCase())) {
-				const error = new AgenticChatInternalCohortError();
-				return executor.reject(job, { code: error.code, message: error.message });
-			}
-			return executor.execute(job);
-		},
-		{
-			queueLifecycle: 'processor_managed',
-			workerTimeoutMs: resolved.workerTimeoutMs
-		}
-	);
+	queue.process<AgenticChatTurnJobV1>('agentic_chat_turn', (job) => executor.execute(job), {
+		queueLifecycle: 'processor_managed',
+		workerTimeoutMs: resolved.workerTimeoutMs
+	});
 
 	const registered = queue.getRegisteredJobTypes();
 	if (registered.length !== 1 || registered[0] !== 'agentic_chat_turn') {
@@ -112,8 +84,10 @@ export function validateAgenticChatConsumerConfig(config: AgenticChatConsumerCon
 			throw new Error(`${name} must be a positive safe integer`);
 		}
 	}
-	if (config.concurrency !== 1) {
-		throw new Error('Phase 3 Agentic Chat concurrency must remain 1 until the load-smoke gate');
+	if (config.concurrency > MAX_AGENTIC_CHAT_CONCURRENCY) {
+		throw new Error(
+			`Agentic Chat concurrency cannot exceed the reviewed bound of ${MAX_AGENTIC_CHAT_CONCURRENCY}`
+		);
 	}
 	if (config.pollIntervalMs < 1_000) {
 		throw new Error('Agentic Chat durable polling cannot be below 1000ms');
@@ -130,19 +104,3 @@ export function validateAgenticChatDrainTimeout(drainTimeoutMs: number): void {
 		);
 	}
 }
-
-export function normalizeInternalUserIds(userIds: readonly string[]): string[] {
-	if (userIds.length === 0) {
-		throw new Error('Agentic Chat consumer requires at least one internal user UUID');
-	}
-	const normalized = userIds.map((userId) => userId.toLowerCase());
-	if (normalized.some((userId) => !UUID_PATTERN.test(userId))) {
-		throw new Error('Agentic Chat internal user cohort must contain canonical UUIDs');
-	}
-	if (new Set(normalized).size !== normalized.length) {
-		throw new Error('Agentic Chat internal user cohort must not contain duplicates');
-	}
-	return normalized.sort();
-}
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;

@@ -7,6 +7,7 @@ import {
 	estimateResponseLength,
 	LAST_RESORT_MODEL,
 	KIMI_EXPERIMENT_MODEL,
+	OX_ALPHA_MODEL,
 	resolveModelPricingProfile,
 	repairTruncatedJSONResponse,
 	shouldFailoverToNextOpenRouterModel,
@@ -65,6 +66,11 @@ type DirectFallbackProviderConfig = {
 };
 
 type OpenRouterV2ServiceConfig = WebSmartLLMConfig & {
+	/**
+	 * Optional primary used only by an explicitly scoped trial service instance.
+	 * The trial route is capped at $0 and does not weaken fallback-model privacy.
+	 */
+	freeTrialPrimaryModel?: typeof OX_ALPHA_MODEL;
 	openai?: DirectFallbackProviderConfig;
 	directFallbacks?: {
 		enabled?: boolean;
@@ -613,7 +619,7 @@ function extractTextFromResponse(response: OpenRouterChatResponse): string {
 	return '';
 }
 
-type JSONRequestWithFallbackModels<T = any> = JSONRequestOptions<T> & {
+type JSONRequestWithFallbackModels = JSONRequestOptions & {
 	model?: string;
 	models?: string[];
 	allowedModelIds?: string[];
@@ -642,7 +648,7 @@ function isLikelyTruncatedJSONError(error: unknown, cleaned: string): boolean {
 
 function parseJSONContent<T>(
 	content: string,
-	options?: JSONRequestWithFallbackModels<T>['validation']
+	options?: JSONRequestWithFallbackModels['validation']
 ): T {
 	const cleaned = cleanJSONResponse(content);
 
@@ -684,6 +690,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 	private openAiFallbackApiKey?: string;
 	private openAiFallbackApiUrl: string;
 	private openAiFallbackModel?: string;
+	private freeTrialPrimaryModel?: typeof OX_ALPHA_MODEL;
 
 	constructor(config?: OpenRouterV2ServiceConfig) {
 		super({
@@ -700,6 +707,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 			process.env.OPENROUTER_V2_EXACTO_TOOLS_ENABLED,
 			false
 		);
+		this.freeTrialPrimaryModel = config?.freeTrialPrimaryModel;
 
 		const timeoutRaw = process.env.OPENROUTER_V2_TIMEOUT_MS;
 		const timeoutParsed = timeoutRaw ? Number.parseInt(timeoutRaw, 10) : NaN;
@@ -764,10 +772,16 @@ export class OpenRouterV2Service extends SmartLLMService {
 			includeDefaultModels?: boolean;
 		}
 	): string[] {
+		const trialPrimary = this.freeTrialPrimaryModel;
+		const requestedFallbacks = trialPrimary
+			? [model, ...(models ?? [])].filter((candidate): candidate is string =>
+					Boolean(candidate)
+				)
+			: models;
 		return resolveLaneModels({
 			lane,
-			model,
-			models,
+			model: trialPrimary ?? model,
+			models: requestedFallbacks,
 			exactoToolsEnabled: this.exactoToolsEnabled,
 			profile: selection?.profile,
 			estimatedLength: selection?.estimatedLength,
@@ -779,6 +793,15 @@ export class OpenRouterV2Service extends SmartLLMService {
 
 	private resolveTimeout(timeoutMs: number | undefined): number | undefined {
 		return timeoutMs ?? this.v2DefaultTimeoutMs;
+	}
+
+	private resolveOpenRouterRequestModels(model: string, candidates: string[]): string[] {
+		// The ox trial intentionally relaxes ZDR for one free endpoint. Do not let
+		// OpenRouter apply that provider block to production fallback models in the
+		// same request; application-level retries restore the normal ZDR policy.
+		return model === OX_ALPHA_MODEL && model === this.freeTrialPrimaryModel
+			? [model]
+			: candidates;
 	}
 
 	private resolveOpenRouterProviderConfig(
@@ -795,10 +818,15 @@ export class OpenRouterV2Service extends SmartLLMService {
 					}
 				: { allow_fallbacks: true, data_collection: 'deny' };
 
-		// Private workspace content defaults to Zero Data Retention. Operators can
-		// temporarily disable strict ZDR only as an explicit break-glass setting;
-		// data-collection denial remains enforced either way.
-		if (readPrivateEnv('PRIVATE_OPENROUTER_REQUIRE_ZDR') !== 'false') {
+		const isScopedFreeTrial = model === OX_ALPHA_MODEL && model === this.freeTrialPrimaryModel;
+
+		// Ox Alpha currently has no ZDR endpoint. Only an explicitly configured
+		// trial instance may omit ZDR, and its provider price is hard-capped at $0.
+		// If the free endpoint disappears or becomes paid, this attempt fails and
+		// the next application-level model attempt restores normal ZDR routing.
+		if (isScopedFreeTrial) {
+			config.max_price = { prompt: 0, completion: 0, request: 0 };
+		} else if (readPrivateEnv('PRIVATE_OPENROUTER_REQUIRE_ZDR') !== 'false') {
 			config.zdr = true;
 		}
 
@@ -1206,7 +1234,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		}).catch((error) => console.error('Failed to log OpenRouter V2 usage:', error));
 	}
 
-	async getJSONResponse<T = any>(options: JSONRequestWithFallbackModels<T>): Promise<T> {
+	async getJSONResponse<T = any>(options: JSONRequestWithFallbackModels): Promise<T> {
 		const requestStartedAt = new Date();
 		const startTime = performance.now();
 		const laneModels = this.resolveModels('json', options.model, options.models, {
@@ -1235,10 +1263,10 @@ export class OpenRouterV2Service extends SmartLLMService {
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
 			const model = laneModels[modelAttempt] || laneModels[0] || LAST_RESORT_MODEL;
-			const models = [
+			const models = this.resolveOpenRouterRequestModels(model, [
 				model,
 				...laneModels.slice(modelAttempt + 1).filter((entry) => entry !== model)
-			];
+			]);
 			openRouterModelsAttempted.add(model);
 			providersAttempted.add('openrouter');
 
@@ -1471,10 +1499,10 @@ export class OpenRouterV2Service extends SmartLLMService {
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
 			const model = laneModels[attempt] || laneModels[0] || LAST_RESORT_MODEL;
-			const models = [
+			const models = this.resolveOpenRouterRequestModels(model, [
 				model,
 				...laneModels.slice(attempt + 1).filter((entry) => entry !== model)
-			];
+			]);
 			openRouterModelsAttempted.add(model);
 			providersAttempted.add('openrouter');
 
@@ -1684,10 +1712,10 @@ export class OpenRouterV2Service extends SmartLLMService {
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
 			const model = laneModels[attempt] || laneModels[0] || LAST_RESORT_MODEL;
-			const models = [
+			const models = this.resolveOpenRouterRequestModels(model, [
 				model,
 				...laneModels.slice(attempt + 1).filter((entry) => entry !== model)
-			];
+			]);
 			resolvedModel = model;
 			openRouterModelsAttempted.add(model);
 			providersAttempted.add('openrouter');
@@ -1748,10 +1776,10 @@ export class OpenRouterV2Service extends SmartLLMService {
 			for (let attempt = 0; attempt < Math.max(fallbackLaneModels.length, 1); attempt++) {
 				const model =
 					fallbackLaneModels[attempt] || fallbackLaneModels[0] || LAST_RESORT_MODEL;
-				const models = [
+				const models = this.resolveOpenRouterRequestModels(model, [
 					model,
 					...fallbackLaneModels.slice(attempt + 1).filter((entry) => entry !== model)
-				];
+				]);
 				resolvedModel = model;
 				openRouterModelsAttempted.add(model);
 				providersAttempted.add('openrouter');

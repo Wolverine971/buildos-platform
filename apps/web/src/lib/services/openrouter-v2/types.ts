@@ -43,6 +43,11 @@ export type OpenRouterProviderConfig = {
 	require_parameters?: boolean;
 	data_collection?: 'allow' | 'deny';
 	zdr?: boolean;
+	max_price?: {
+		prompt?: number;
+		completion?: number;
+		request?: number;
+	};
 	sort?: 'price' | 'throughput' | 'latency';
 	order?: string[];
 	only?: string[];

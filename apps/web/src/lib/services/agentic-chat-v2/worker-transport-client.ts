@@ -2,6 +2,7 @@
 import type {
 	AgentChatTransportLeaseRequestV1,
 	AgentChatTransportLeaseV1,
+	ChatAttachmentRef,
 	LastTurnContext,
 	ProjectFocus
 } from '@buildos/shared-types';
@@ -16,15 +17,26 @@ const TRANSPORT_TIMEOUT_MS = 10_000;
 const MAX_LEASE_TOKEN_LENGTH = 8 * 1024;
 const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-export type AgenticChatWorkerTextCommand = {
+export class AgenticChatWorkerUnavailableResponseError extends Error {
+	readonly code = 'worker_unavailable';
+
+	constructor() {
+		super('Worker chat is temporarily unavailable. Please try again shortly.');
+		this.name = 'AgenticChatWorkerUnavailableResponseError';
+	}
+}
+
+export type AgenticChatWorkerCommand = {
 	leaseToken: string;
 	clientTurnId: string;
 	streamRunId: string;
 	sessionId: string;
 	context: AgentChatTransportLeaseRequestV1['context'];
 	message: string;
+	attachments: ChatAttachmentRef[];
 	projectFocus: ProjectFocus | null;
 	lastTurnContext: LastTurnContext | null;
+	voiceNoteGroupId: string | null;
 	preparedPromptKey: string | null;
 };
 
@@ -46,20 +58,34 @@ export async function requestAgenticChatTransportLease(input: {
 			signal: controller.signal,
 			body: JSON.stringify(input.request)
 		});
-		if (!response.ok) return null;
+		if (!response.ok) {
+			if (await isLegacyTransportUnavailableResponse(response)) return null;
+			throw new AgenticChatWorkerUnavailableResponseError();
+		}
 		const value: unknown = await response.json();
-		return parseTransportLeaseEnvelope(value);
-	} catch {
-		// Negotiation has no durable side effect. A transport failure before a
-		// worker lease is received may safely preserve the existing legacy path.
-		return null;
+		const lease = parseTransportLeaseEnvelope(value);
+		if (!lease) throw new AgenticChatWorkerUnavailableResponseError();
+		return lease;
+	} catch (error) {
+		if (error instanceof AgenticChatWorkerUnavailableResponseError) throw error;
+		throw new AgenticChatWorkerUnavailableResponseError();
 	} finally {
 		clearTimeout(timer);
 	}
 }
 
+async function isLegacyTransportUnavailableResponse(response: Response): Promise<boolean> {
+	if (response.status !== 503) return false;
+	try {
+		const value: unknown = await response.clone().json();
+		return isRecord(value) && value.code === 'TRANSPORT_UNAVAILABLE';
+	} catch {
+		return false;
+	}
+}
+
 export async function requestAgenticChatWorkerAdmission(input: {
-	command: AgenticChatWorkerTextCommand;
+	command: AgenticChatWorkerCommand;
 	fetchImpl?: typeof fetch;
 }): Promise<{ response: Response; payload: unknown | null }> {
 	const response = await (input.fetchImpl ?? fetch)(WORKER_TURNS_ENDPOINT, {
@@ -76,7 +102,7 @@ export async function requestAgenticChatWorkerAdmission(input: {
 	return { response, payload: await response.json() };
 }
 
-function buildWorkerAdmissionBody(command: AgenticChatWorkerTextCommand) {
+function buildWorkerAdmissionBody(command: AgenticChatWorkerCommand) {
 	return {
 		leaseToken: command.leaseToken,
 		clientTurnId: command.clientTurnId,
@@ -84,9 +110,7 @@ function buildWorkerAdmissionBody(command: AgenticChatWorkerTextCommand) {
 		sessionId: command.sessionId,
 		context: command.context,
 		message: command.message,
-		// Slice 7 is deliberately text-only. Image/voice admission stays on the
-		// legacy path until the canary proves lifecycle and receipt convergence.
-		attachments: [],
+		attachments: command.attachments.map(buildWorkerAttachmentBody),
 		projectFocus: command.projectFocus
 			? {
 					focusType: command.projectFocus.focusType,
@@ -97,9 +121,39 @@ function buildWorkerAdmissionBody(command: AgenticChatWorkerTextCommand) {
 				}
 			: null,
 		lastTurnContext: command.lastTurnContext,
-		voiceNoteGroupId: null,
+		voiceNoteGroupId: command.voiceNoteGroupId,
 		preparedPromptKey: command.preparedPromptKey
 	};
+}
+
+function buildWorkerAttachmentBody(attachment: ChatAttachmentRef) {
+	if (attachment.attachment_kind === 'onto_asset') {
+		return {
+			attachmentKind: 'onto_asset' as const,
+			mediaType: 'image' as const,
+			assetId: attachment.asset_id,
+			projectId: attachment.project_id ?? null,
+			displayOrder: attachment.display_order
+		};
+	}
+	if (attachment.attachment_kind === 'temporary_file') {
+		return {
+			attachmentKind: 'temporary_file' as const,
+			mediaType: 'image' as const,
+			temporaryAttachmentId: attachment.temporary_attachment_id,
+			storageBucket: attachment.storage_bucket,
+			storagePath: attachment.storage_path,
+			fileName: attachment.file_name ?? null,
+			contentType: attachment.content_type,
+			fileSizeBytes: attachment.file_size_bytes,
+			width: attachment.width ?? null,
+			height: attachment.height ?? null,
+			checksumSha256: attachment.checksum_sha256 ?? null,
+			expiresAt: attachment.expires_at ?? null,
+			displayOrder: attachment.display_order
+		};
+	}
+	throw new Error(`Unsupported worker attachment kind: ${attachment.attachment_kind}`);
 }
 
 function parseTransportLeaseEnvelope(value: unknown): AgentChatTransportLeaseV1 | null {

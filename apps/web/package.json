@@ -71,6 +71,7 @@
 		"clean:all": "pnpm run clean && rm -rf node_modules"
 	},
 	"devDependencies": {
+		"@buildos/agent-orchestrator": "workspace:*",
 		"@babel/parser": "^7.28.0",
 		"@babel/traverse": "^7.28.0",
 		"@babel/types": "^7.28.0",

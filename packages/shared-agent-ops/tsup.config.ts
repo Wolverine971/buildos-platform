@@ -39,6 +39,7 @@ export default defineConfig({
 		'src/calendar/agent-run-calendar-port.ts',
 		'src/calendar/task-event-sync.ts',
 		'src/calendar/worker-task-event-mutation-port.ts',
+		'src/email/gmail-account-read-port.ts',
 		'src/web/safe-fetch.ts',
 		'src/web/search-cache.ts',
 		'src/web/native-search.ts',

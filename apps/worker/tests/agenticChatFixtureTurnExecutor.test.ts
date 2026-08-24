@@ -1295,44 +1295,6 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
-	it('durably terminalizes an impossible out-of-cohort claimed row without provider work', async () => {
-		const harness = createHarness([], {
-			recovery: [
-				recoveryReceipt('queue_reconciled', {
-					status: 'failed',
-					failure_code: 'internal_cohort_rejected'
-				})
-			]
-		});
-
-		await expect(
-			harness.executor.reject(job(), {
-				code: 'internal_cohort_rejected',
-				message: 'Agentic Chat turn is outside the configured internal cohort'
-			})
-		).resolves.toMatchObject({
-			outcome: 'failed',
-			terminalStatus: 'failed',
-			queueReconciled: true
-		});
-		expect(harness.control.claim).toHaveBeenCalledOnce();
-		expect(harness.control.finalize).toHaveBeenCalledWith(
-			expect.objectContaining({
-				status: 'failed',
-				failureCode: 'internal_cohort_rejected',
-				assistantText: ''
-			})
-		);
-		expect(harness.control.recover).toHaveBeenCalledWith(
-			expect.objectContaining({ failureClass: 'permanent' })
-		);
-		expect(harness.input.load).not.toHaveBeenCalled();
-		expect(harness.control.begin).not.toHaveBeenCalled();
-		expect(harness.provider.stream).not.toHaveBeenCalled();
-		expect(harness.consumptionBilling.evaluate).not.toHaveBeenCalled();
-		await harness.publisher.stop();
-	});
-
 	it('streams text, executes a read-only tool, persists reconnect-safe projection, and finalizes', async () => {
 		const harness = createHarness([
 			{ type: 'text_delta', text: 'Hello ' },

@@ -10,6 +10,7 @@ import {
 	KIMI_K3_MODEL,
 	MINIMAX_M3_MODEL,
 	NEX_N2_MINI_MODEL,
+	OX_ALPHA_MODEL,
 	POOLSIDE_LAGUNA_XS_21_MODEL,
 	resolveModelPricingProfile,
 	TENCENT_HY3_MODEL,
@@ -18,6 +19,23 @@ import {
 } from './model-config';
 
 describe('resolveModelPricingProfile', () => {
+	it('catalogs Ox Alpha as a zero-cost explicit-only dev trial', () => {
+		const result = resolveModelPricingProfile(OX_ALPHA_MODEL);
+
+		expect(result?.modelId).toBe(OX_ALPHA_MODEL);
+		expect(result?.profile.cost).toBe(0);
+		expect(result?.profile.outputCost).toBe(0);
+		expect(result?.profile.capabilities).toMatchObject({
+			jsonMode: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		});
+		expect(result?.profile.limitations).toContain('not-default-production-routing');
+		expect(result?.profile.limitations).toContain('non-zdr-endpoint');
+	});
+
 	it('normalizes provider date-suffixed model ids for pricing', () => {
 		const result = resolveModelPricingProfile('deepseek/deepseek-v4-flash-20260423');
 

@@ -3,8 +3,10 @@ import type { JsonObject } from '@buildos/shared-types';
 import type { AgenticChatProviderStepV1 } from './providerContract';
 import type { AgenticChatWorkerSupervisorDecisionRecordV1 } from './workerSupervisor';
 
+import { AGENTIC_CHAT_SUPERVISOR_BLOCKED_RETRY_ERROR_V1 } from '@buildos/agentic-chat-runtime/supervisor';
+
 export const AGENTIC_CHAT_SUPERVISOR_BLOCKED_RETRY_ERROR =
-	'Supervisor blocked this exact write retry because the same tool arguments already failed earlier in the turn. Use corrected arguments, the correct tool for the entity kind, or ask one concise clarifying question.';
+	AGENTIC_CHAT_SUPERVISOR_BLOCKED_RETRY_ERROR_V1;
 
 export type AgenticChatSupervisorBlockedToolCallV1 = {
 	providerToolCallId: string;

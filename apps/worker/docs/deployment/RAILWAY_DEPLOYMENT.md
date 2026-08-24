@@ -69,13 +69,12 @@ PRIVATE_RAILWAY_WORKER_TOKEN=
 PUBLIC_APP_URL=https://build-os.com
 PRIVATE_BUILDOS_WEBHOOK_SECRET=
 
-# Agentic Chat Phase 3 (required together when enabled)
+# Agentic Chat (required together when enabled)
 AGENTIC_CHAT_WORKER_ENABLED=false
 AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED=false
 PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE=false
-AGENTIC_CHAT_INTERNAL_USER_IDS=<canonical UUID list>
 AGENTIC_CHAT_OPENROUTER_MODEL=<provider/model>
-CHAT_CONCURRENCY=1
+CHAT_CONCURRENCY=2
 CHAT_DRAIN_TIMEOUT_MS=22000
 ```
 
@@ -86,8 +85,8 @@ Notes:
   calling the worker.
 - `PRIVATE_BUILDOS_WEBHOOK_SECRET` must match the web app value because worker
   callbacks use it.
-- When `AGENTIC_CHAT_WORKER_ENABLED=true`, the cohort, explicit model, provider
-  key, exact `CHAT_CONCURRENCY=1`, and chat drain at or below 22 seconds are all
+- When `AGENTIC_CHAT_WORKER_ENABLED=true`, the explicit model, provider key,
+  bounded `CHAT_CONCURRENCY` (1–2), and chat drain at or below 22 seconds are all
   startup requirements. Set the dependent values in the same Railway update as
   the flag so an intermediate deployment cannot fail health checks.
 - `AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED` is independently default-off. Keep it

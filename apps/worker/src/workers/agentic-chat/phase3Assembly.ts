@@ -12,7 +12,13 @@ import {
 	AgenticChatCancellationObserver,
 	type AgenticChatCancellationObserverConfig
 } from './cancellationObserver';
-import { type AgenticChatConsumerConfig, createAgenticChatConsumer } from './consumer';
+import {
+	type AgenticChatConsumerConfig,
+	DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
+	createAgenticChatConsumer,
+	validateAgenticChatConsumerConfig,
+	validateAgenticChatDrainTimeout
+} from './consumer';
 import { AgenticChatConsumerRuntime } from './consumerRuntime';
 import {
 	type AgenticChatExecutionRpcClient,
@@ -180,7 +186,6 @@ export function createAgenticChatPhase3Assembly(options: {
 	/** Shared default-off gate for terminal consumption-billing re-evaluation. */
 	consumptionBillingEnabled?: boolean;
 	liveVisionFetchImpl?: typeof fetch;
-	internalUserIds: readonly string[];
 	consumerConfig?: Partial<AgenticChatConsumerConfig>;
 	publisherConfig?: Partial<AgenticChatPublisherConfig>;
 	cancellationConfig?: Partial<AgenticChatCancellationObserverConfig>;
@@ -200,11 +205,17 @@ export function createAgenticChatPhase3Assembly(options: {
 	onStatedFutureCaptureError?: (error: unknown) => void;
 	onConsumptionBillingError?: (error: unknown) => void;
 }): AgenticChatPhase3Assembly {
+	const consumerConfig: AgenticChatConsumerConfig = {
+		...DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
+		...options.consumerConfig
+	};
+	validateAgenticChatConsumerConfig(consumerConfig);
+	validateAgenticChatDrainTimeout(consumerConfig.drainTimeoutMs);
 	if (
 		options.cancellationConfig?.consumerConcurrency !== undefined &&
-		options.cancellationConfig.consumerConcurrency !== 1
+		options.cancellationConfig.consumerConcurrency !== consumerConfig.concurrency
 	) {
-		throw new Error('Phase 3 cancellation concurrency must match CHAT_CONCURRENCY=1');
+		throw new Error('Agentic Chat cancellation concurrency must match CHAT_CONCURRENCY');
 	}
 	const mutationProviderCapabilities = normalizeAgenticChatMutationCapabilitiesV1(
 		options.mutationProviderCapabilities
@@ -272,11 +283,11 @@ export function createAgenticChatPhase3Assembly(options: {
 		{
 			observation: new SupabaseAgenticChatCancellationObservationAdapter(rpcClient)
 		},
-		{ ...options.cancellationConfig, consumerConcurrency: 1 }
+		{ ...options.cancellationConfig, consumerConcurrency: consumerConfig.concurrency }
 	);
 	const providerCapacity = new AgenticChatProviderCapacity({
 		configured: options.providerConfigured,
-		concurrency: 1
+		concurrency: consumerConfig.concurrency
 	});
 	const provider = new AgenticChatReadOnlyProviderAdapter(
 		{
@@ -430,8 +441,7 @@ export function createAgenticChatPhase3Assembly(options: {
 		}
 	);
 	const consumer = createAgenticChatConsumer(executor, {
-		internalUserIds: options.internalUserIds,
-		config: options.consumerConfig
+		config: consumerConfig
 	});
 	const stalledCandidates = new SupabaseAgenticChatStalledCandidateSource(
 		options.client as unknown as AgenticChatStalledReadClient,
@@ -496,9 +506,7 @@ export function createAgenticChatPhase3Assembly(options: {
 	};
 }
 
-export function reportAgenticChatStalledRecovery(
-	report: AgenticChatStalledRecoveryReportV1
-): void {
+export function reportAgenticChatStalledRecovery(report: AgenticChatStalledRecoveryReportV1): void {
 	if (report.candidateCount === 0) return;
 	const finishedAtMs = Date.parse(report.finishedAt);
 	const oldestCandidateAgeMs = report.results.reduce(
@@ -510,8 +518,7 @@ export function reportAgenticChatStalledRecovery(
 	).length;
 	const payload = {
 		event: 'agentic_chat_stalled_recovery_report',
-		alert:
-			attentionRequiredCount > 0 || oldestCandidateAgeMs >= STALLED_TURN_ALERT_AGE_MS,
+		alert: attentionRequiredCount > 0 || oldestCandidateAgeMs >= STALLED_TURN_ALERT_AGE_MS,
 		oldestCandidateAgeMs,
 		attentionRequiredCount,
 		...report

@@ -1,5 +1,6 @@
 // apps/worker/tests/agenticChatMutationSurfacePolicy.test.ts
 import { describe, expect, it } from 'vitest';
+import { AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1 } from '@buildos/agentic-chat-runtime';
 import {
 	AGENTIC_CHAT_DEFERRED_MUTATION_TOOLS_V1,
 	AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1,
@@ -31,6 +32,12 @@ describe('Agentic Chat mutation surface policy', () => {
 
 		expect(Object.keys(capabilities)).toHaveLength(20);
 		expect(Object.values(capabilities).every((enabled) => enabled === false)).toBe(true);
+	});
+
+	it('matches the shared admission capability contract exactly', () => {
+		expect(Object.keys(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1).sort()).toEqual(
+			[...AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1].sort()
+		);
 	});
 
 	it('limits downstream replay claims to the two exact queryable/idempotent adapters', () => {

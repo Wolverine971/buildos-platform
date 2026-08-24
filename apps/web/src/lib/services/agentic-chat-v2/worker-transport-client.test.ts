@@ -1,9 +1,11 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-transport-client.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
+	AgenticChatWorkerUnavailableResponseError,
 	requestAgenticChatTransportLease,
 	requestAgenticChatWorkerAdmission
 } from './worker-transport-client';
+import { workerAdmissionRequestSchema } from '../../../routes/api/agent/v2/turns/worker-admission-schema';
 
 const SESSION_ID = 'd2000000-0000-4000-8000-000000000001';
 const DECISION_ID = 'd4000000-0000-4000-8000-000000000001';
@@ -80,9 +82,11 @@ describe('Agentic Chat worker transport client', () => {
 		}
 	});
 
-	it('falls back before admission for HTTP, transport, and malformed lease responses', async () => {
+	it('surfaces retryable unavailability for HTTP, transport, and malformed lease responses', async () => {
 		for (const fetchImpl of [
-			vi.fn<typeof fetch>(async () => new Response('', { status: 503 })),
+			vi.fn<typeof fetch>(
+				async () => new Response('', { status: 503, headers: { 'Retry-After': '2' } })
+			),
 			vi.fn<typeof fetch>(async () => {
 				throw new Error('offline');
 			}),
@@ -98,11 +102,18 @@ describe('Agentic Chat worker transport client', () => {
 		]) {
 			await expect(
 				requestAgenticChatTransportLease({ request, fetchImpl })
-			).resolves.toBeNull();
+			).rejects.toBeInstanceOf(AgenticChatWorkerUnavailableResponseError);
 		}
 	});
 
-	it('submits only the bounded text canary command to worker admission', async () => {
+	it('returns null only for the legacy-safe transport-unavailable sentinel', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () =>
+			Response.json({ code: 'TRANSPORT_UNAVAILABLE' }, { status: 503 })
+		);
+		await expect(requestAgenticChatTransportLease({ request, fetchImpl })).resolves.toBeNull();
+	});
+
+	it('submits text, attachment, and voice context to worker admission', async () => {
 		const fetchImpl = vi.fn<typeof fetch>(async () =>
 			Response.json({ success: true, data: { outcome: 'newly_admitted' } }, { status: 202 })
 		);
@@ -113,27 +124,79 @@ describe('Agentic Chat worker transport client', () => {
 				clientTurnId: request.clientTurnId,
 				streamRunId: request.streamRunId,
 				sessionId: SESSION_ID,
-				context: request.context,
-				message: 'Canary hello',
+				context: { type: 'project', entityId: SESSION_ID, projectId: SESSION_ID },
+				message: 'Worker hello',
+				attachments: [
+					{
+						attachment_kind: 'onto_asset',
+						media_type: 'image',
+						asset_id: 'd5000000-0000-4000-8000-000000000001',
+						project_id: SESSION_ID,
+						display_order: 0
+					},
+					{
+						attachment_kind: 'temporary_file',
+						media_type: 'image',
+						temporary_attachment_id: 'temporary-1',
+						storage_bucket: 'onto-assets',
+						storage_path:
+							'users/d1000000-0000-4000-8000-000000000001/chat-temp/temporary-1.png',
+						file_name: 'screenshot.png',
+						content_type: 'image/png',
+						file_size_bytes: 2048,
+						width: 640,
+						height: 480,
+						checksum_sha256: 'a'.repeat(64),
+						expires_at: '2026-08-25T03:00:00.000Z',
+						display_order: 1
+					}
+				],
 				projectFocus: {
 					focusType: 'project-wide',
 					projectId: SESSION_ID,
 					projectName: 'Canary Project'
 				},
 				lastTurnContext: null,
+				voiceNoteGroupId: 'd6000000-0000-4000-8000-000000000001',
 				preparedPromptKey: 'prepared-key'
 			}
 		});
 		expect(result.response.status).toBe(202);
 		expect(result.payload).toMatchObject({ success: true });
-		expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toEqual({
+		const submittedBody = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+		expect(workerAdmissionRequestSchema.safeParse(submittedBody).success).toBe(true);
+		expect(submittedBody).toEqual({
 			leaseToken: workerLease.token,
 			clientTurnId: request.clientTurnId,
 			streamRunId: request.streamRunId,
 			sessionId: SESSION_ID,
-			context: request.context,
-			message: 'Canary hello',
-			attachments: [],
+			context: { type: 'project', entityId: SESSION_ID, projectId: SESSION_ID },
+			message: 'Worker hello',
+			attachments: [
+				{
+					attachmentKind: 'onto_asset',
+					mediaType: 'image',
+					assetId: 'd5000000-0000-4000-8000-000000000001',
+					projectId: SESSION_ID,
+					displayOrder: 0
+				},
+				{
+					attachmentKind: 'temporary_file',
+					mediaType: 'image',
+					temporaryAttachmentId: 'temporary-1',
+					storageBucket: 'onto-assets',
+					storagePath:
+						'users/d1000000-0000-4000-8000-000000000001/chat-temp/temporary-1.png',
+					fileName: 'screenshot.png',
+					contentType: 'image/png',
+					fileSizeBytes: 2048,
+					width: 640,
+					height: 480,
+					checksumSha256: 'a'.repeat(64),
+					expiresAt: '2026-08-25T03:00:00.000Z',
+					displayOrder: 1
+				}
+			],
 			projectFocus: {
 				focusType: 'project-wide',
 				focusEntityId: null,
@@ -142,7 +205,7 @@ describe('Agentic Chat worker transport client', () => {
 				projectName: 'Canary Project'
 			},
 			lastTurnContext: null,
-			voiceNoteGroupId: null,
+			voiceNoteGroupId: 'd6000000-0000-4000-8000-000000000001',
 			preparedPromptKey: 'prepared-key'
 		});
 	});
@@ -157,9 +220,11 @@ describe('Agentic Chat worker transport client', () => {
 				streamRunId: request.streamRunId,
 				sessionId: SESSION_ID,
 				context: request.context,
-				message: 'Canary hello',
+				message: 'Worker hello',
+				attachments: [],
 				projectFocus: null,
 				lastTurnContext: null,
+				voiceNoteGroupId: null,
 				preparedPromptKey: null
 			}
 		});

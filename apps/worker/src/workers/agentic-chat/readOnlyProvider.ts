@@ -417,6 +417,7 @@ type PendingMutationBatchReview = {
 };
 
 type ToolRoundStreamState = {
+	turnRunId: string;
 	supervisor: AgenticChatProviderSupervisorRuntime | null;
 	release(): void;
 	getAdmittedTools(): readonly AgenticChatReadOnlyProviderToolV1[];
@@ -621,7 +622,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			: null;
 		let lease;
 		try {
-			lease = this.ports.capacity.acquire();
+			lease = this.ports.capacity.acquire(request.turnRunId);
 		} catch (error) {
 			if (error instanceof AgenticChatProviderCapacityError) {
 				throw new AgenticChatProviderExecutionError(
@@ -739,6 +740,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 			lease.release();
 		};
 		const buildStreamState = (): ToolRoundStreamState => ({
+			turnRunId: request.turnRunId,
 			supervisor,
 			release,
 			getAdmittedTools: () => request.tools,
@@ -1469,6 +1471,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (event.type === 'error') {
 					if (event.retryable && retryCount < MAX_RETRYABLE_PROVIDER_PASS_RETRIES) {
 						this.ports.capacity.markTemporarilyUnavailable(
+							request.turnRunId,
 							this.retryableFailureCooldownMs
 						);
 						retry = true;
@@ -1558,6 +1561,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (event.type === 'error') {
 					if (event.retryable) {
 						this.ports.capacity.markTemporarilyUnavailable(
+							request.turnRunId,
 							this.retryableFailureCooldownMs
 						);
 					}
@@ -1736,7 +1740,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (!streamedText) {
 					throw providerError('provider_no_assistant_text', 'permanent');
 				}
-				this.ports.capacity.markAvailable();
+				this.ports.capacity.markAvailable(request.turnRunId);
 				yield {
 					type: 'finish',
 					finishedReason,
@@ -1750,13 +1754,22 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 	}
 
 	private async resolveLiveVision(request: ClientRequest): Promise<ClientRequest> {
-		if (!request.liveVisionRequest || !this.ports.liveVision) return request;
+		if (!request.liveVisionRequest) return request;
+		if (!this.ports.liveVision) {
+			throw providerError('provider_live_vision_unavailable', 'permanent');
+		}
 		const result = await this.ports.liveVision.resolve({
 			...request.liveVisionRequest,
 			signal: request.signal
 		});
 		throwIfAborted(request.signal);
-		if (result.images.length === 0) return request;
+		// Admission promised the model raw media for this turn. Continuing with
+		// text-only content after every image failed resolution would both violate
+		// that contract and invite a confident answer about pixels the model never
+		// received.
+		if (result.images.length === 0) {
+			throw providerError('provider_live_vision_unavailable', 'permanent');
+		}
 
 		const messages = request.messages.map((message) => ({ ...message }));
 		const currentUserMessage = messages.at(-1);
@@ -2292,6 +2305,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (event.type === 'error') {
 					if (event.retryable) {
 						this.ports.capacity.markTemporarilyUnavailable(
+							request.turnRunId,
 							this.retryableFailureCooldownMs
 						);
 					}
@@ -2535,7 +2549,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (!streamedText) {
 					throw providerError('provider_no_assistant_text', 'permanent');
 				}
-				this.ports.capacity.markAvailable();
+				this.ports.capacity.markAvailable(request.turnRunId);
 				yield { type: 'finish', finishedReason, usage: aggregateUsage };
 			}
 			if (!finished) throw providerError('provider_missing_done', 'unknown');
@@ -2578,6 +2592,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					if (event.type === 'error') {
 						if (event.retryable) {
 							this.ports.capacity.markTemporarilyUnavailable(
+								request.turnRunId,
 								this.retryableFailureCooldownMs
 							);
 						}
@@ -2607,7 +2622,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				const finalText = sanitizeAssistantFinalText(assistantCandidate);
 				if (!requestedTools) {
 					if (finalText) {
-						this.ports.capacity.markAvailable();
+						this.ports.capacity.markAvailable(request.turnRunId);
 						yield { type: 'text_delta', text: finalText };
 						state.supervisor?.observe({
 							type: 'assistant_text_delta',
@@ -2652,7 +2667,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 	): AsyncGenerator<AgenticChatProviderStepV1> {
 		try {
 			yield* drainSupervisorSteps(state.supervisor);
-			this.ports.capacity.markAvailable();
+			this.ports.capacity.markAvailable(state.turnRunId);
 			yield {
 				type: 'supervisor_question',
 				transitionId: terminal.transitionId,
@@ -2705,6 +2720,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 				if (event.type === 'error') {
 					if (event.retryable) {
 						this.ports.capacity.markTemporarilyUnavailable(
+							request.turnRunId,
 							this.retryableFailureCooldownMs
 						);
 					}
@@ -2736,7 +2752,7 @@ export class AgenticChatReadOnlyProviderAdapter implements AgenticChatProviderPo
 					throw providerError('provider_no_assistant_text', 'permanent');
 				}
 				finished = true;
-				this.ports.capacity.markAvailable();
+				this.ports.capacity.markAvailable(request.turnRunId);
 				yield {
 					type: 'finish',
 					finishedReason,
@@ -4885,6 +4901,9 @@ function buildReadOnlyRequest(
 		throw providerError('attachment_contract_mismatch', 'permanent');
 	}
 	const currentTurn = input.artifact.prepared.currentTurn;
+	if (currentTurn?.liveVision?.requested && !liveVisionEnabled) {
+		throw providerError('provider_live_vision_unavailable', 'permanent');
+	}
 	let userMessage = requestMessage;
 	if (currentTurn) {
 		const expectedDisplayMessage =

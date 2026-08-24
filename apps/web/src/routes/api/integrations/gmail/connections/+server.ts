@@ -17,6 +17,8 @@ const connectRequestSchema = z
 function gmailErrorResponse(error: unknown): Response {
 	if (error instanceof GmailOAuthError) {
 		switch (error.code) {
+			case 'invalid_request':
+				return ApiResponse.badRequest(error.message);
 			case 'not_configured':
 				return ApiResponse.error(
 					'Gmail read-only connections are not available yet',

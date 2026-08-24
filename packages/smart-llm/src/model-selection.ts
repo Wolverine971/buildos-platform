@@ -108,7 +108,10 @@ export function selectModelsByRequirements(
 				REQUIREMENT_SELECTION_EXCLUDED_LIMITATIONS.has(limitation)
 			)
 	);
-	const rankedPool = deployableEligible.length > 0 ? deployableEligible : eligible;
+	// Requirement-based selection must never escape back to route-only, alpha,
+	// or unavailable aliases merely because all deployable models were filtered
+	// out by a custom cost/quality constraint.
+	const rankedPool = deployableEligible;
 
 	// Calculate value score for each model
 	const scored = rankedPool.map((model) => {

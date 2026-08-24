@@ -64,7 +64,7 @@ export interface JSONUsageEvent {
 	billingDisposition?: 'settled' | 'released' | 'uncertain';
 }
 
-export interface JSONRequestOptions<T = unknown> {
+export interface JSONRequestOptions {
 	systemPrompt: string;
 	userPrompt: string;
 	userId?: string; // Made optional to match LLMService interface expectations

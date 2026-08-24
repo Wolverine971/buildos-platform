@@ -334,6 +334,41 @@ describe('POST /api/agent/v2/turns', () => {
 		expect(mocks.admitAgenticChatWorkerTurn).toHaveBeenCalledTimes(1);
 	});
 
+	it('passes strict attachment references into trusted worker preparation', async () => {
+		const assetId = 'd9000000-0000-4000-8000-000000000001';
+		const response = await POST(
+			postEvent({
+				body: admissionBody({
+					attachments: [
+						{
+							attachmentKind: 'onto_asset',
+							mediaType: 'image',
+							assetId,
+							projectId: null,
+							displayOrder: 0
+						}
+					]
+				})
+			}) as never
+		);
+
+		expect(response.status).toBe(202);
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledWith(
+			expect.objectContaining({
+				command: expect.objectContaining({
+					attachments: [
+						expect.objectContaining({
+							attachment_kind: 'onto_asset',
+							media_type: 'image',
+							asset_id: assetId,
+							display_order: 0
+						})
+					]
+				})
+			})
+		);
+	});
+
 	it('returns a matching worker duplicate but never adopts a legacy duplicate', async () => {
 		mocks.admitAgenticChatWorkerTurn.mockResolvedValueOnce(
 			admitted({

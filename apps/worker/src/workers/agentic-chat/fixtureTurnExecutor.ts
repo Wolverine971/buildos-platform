@@ -29,7 +29,6 @@ import {
 	AgenticChatCancellationError,
 	type AgenticChatCancellationObserver
 } from './cancellationObserver';
-import type { AgenticChatClaimRejectionV1 } from './consumer';
 import {
 	type AgenticChatExecutionControlPortV1,
 	type AgenticChatExecutionIdentityV1,
@@ -282,68 +281,6 @@ export class AgenticChatFixtureTurnExecutor {
 		if (!Number.isSafeInteger(this.maxToolCalls) || this.maxToolCalls < 1) {
 			throw new Error('Agentic Chat tool-call budget must be a positive safe integer');
 		}
-	}
-
-	/**
-	 * Convert a claimed row that fails the local rollout cohort into durable
-	 * domain and queue terminal truth. Throwing from a processor-managed queue
-	 * would strand the processing row until the chat-specific stalled sweep.
-	 */
-	async reject(
-		job: ProcessingJob<AgenticChatTurnJobV1>,
-		rejection: AgenticChatClaimRejectionV1
-	): Promise<AgenticChatFixtureExecutionResultV1> {
-		let envelope: AgenticChatExecutionIdentityV1;
-		try {
-			envelope = validateJobEnvelope(job);
-		} catch {
-			return result('recovery_required', job.data?.turnRunId ?? job.id, null);
-		}
-
-		let claim: AgenticChatTurnClaimResultV1;
-		try {
-			claim = await this.awaitTerminal('turn claim', () =>
-				this.ports.control.claim(envelope)
-			);
-			validateClaimEnvelope(claim, job);
-		} catch {
-			return result('recovery_required', envelope.turnRunId, null);
-		}
-		const generation = claim.executionGeneration;
-		if (claim.outcome === 'already_terminal') {
-			return this.recover(
-				envelope,
-				generation,
-				'permanent',
-				rejection.message,
-				null,
-				emptyProjection(),
-				false
-			);
-		}
-		if (claim.outcome === 'cancel_requested') {
-			return this.recover(
-				envelope,
-				generation,
-				'cancelled',
-				'Cancellation was accepted before cohort rejection',
-				null,
-				emptyProjection(),
-				false
-			);
-		}
-
-		return this.finalize({
-			envelope,
-			claim,
-			status: 'failed',
-			finishedReason: 'error',
-			failureCode: rejection.code,
-			usage: null,
-			projection: emptyProjection(),
-			publisherRegistered: false,
-			assistantTextOverride: ''
-		});
 	}
 
 	async execute(

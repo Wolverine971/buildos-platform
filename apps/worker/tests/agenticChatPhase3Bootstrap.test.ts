@@ -10,12 +10,9 @@ import {
 	type AgenticChatPhase3BootstrapAssemblyPort
 } from '../src/workers/agentic-chat/phase3Bootstrap';
 
-const INTERNAL_USER_ID = 'd1000000-0000-4000-8000-000000000001';
-
 function environment(): NodeJS.ProcessEnv {
 	return {
 		AGENTIC_CHAT_WORKER_ENABLED: 'true',
-		AGENTIC_CHAT_INTERNAL_USER_IDS: INTERNAL_USER_ID,
 		PRIVATE_OPENROUTER_API_KEY: 'provider-secret',
 		AGENTIC_CHAT_OPENROUTER_MODEL: 'provider/primary',
 		AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS: 'provider/fallback',
@@ -176,7 +173,6 @@ describe('Agentic Chat Phase 3 operational bootstrap', () => {
 			expect.objectContaining({
 				config: expect.objectContaining({
 					enabled: true,
-					internalUserIds: [INTERNAL_USER_ID],
 					mutationProviderCapabilities: {
 						updateOntoTask: true,
 						moveDocumentInTree: true

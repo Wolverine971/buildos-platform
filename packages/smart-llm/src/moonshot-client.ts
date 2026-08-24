@@ -1,23 +1,16 @@
 // packages/smart-llm/src/moonshot-client.ts
 
-import type { ErrorLogger, OpenRouterResponse } from './types';
+import type { OpenRouterResponse } from './types';
 import { LLMRequestTimeoutError } from './errors';
 
 export class MoonshotClient {
 	private apiKey: string;
 	private apiUrl: string;
-	private errorLogger?: ErrorLogger;
 	private fetchImpl: typeof fetch;
 
-	constructor(config: {
-		apiKey: string;
-		apiUrl: string;
-		errorLogger?: ErrorLogger;
-		fetchImpl?: typeof fetch;
-	}) {
+	constructor(config: { apiKey: string; apiUrl: string; fetchImpl?: typeof fetch }) {
 		this.apiKey = config.apiKey;
 		this.apiUrl = config.apiUrl;
-		this.errorLogger = config.errorLogger;
 		this.fetchImpl = config.fetchImpl ?? globalThis.fetch;
 	}
 
@@ -159,22 +152,8 @@ export class MoonshotClient {
 					generationId: null
 				});
 				(timeoutError as Error & { cause?: unknown }).cause = error;
-				if (this.errorLogger) {
-					await this.errorLogger.logAPIError(
-						timeoutError,
-						this.apiUrl,
-						'POST',
-						undefined,
-						{
-							operation: 'callMoonshot_timeout',
-							errorType: 'llm_api_timeout',
-							modelRequested: params.model,
-							timeoutMs,
-							temperature: params.temperature,
-							maxTokens: params.max_tokens
-						}
-					);
-				}
+				// Terminal logging is owned by the service-layer catch; see the same
+				// note in openrouter-client.ts.
 				throw timeoutError;
 			}
 			throw error;

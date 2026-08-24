@@ -48,23 +48,35 @@ describe('AgenticChatProviderCapacity', () => {
 			now: () => nowMs
 		});
 
-		capacity.markTemporarilyUnavailable(2_000);
-		expect(capacity.getSnapshot()).toMatchObject({
+		capacity.markTemporarilyUnavailable('turn-a', 2_000);
+		expect(capacity.getSnapshot('turn-a')).toMatchObject({
 			available: false,
 			degradedUntilMs: 4_000
 		});
+		expect(capacity.getSnapshot()).toMatchObject({ available: true, degradedUntilMs: null });
+		expect(capacity.getSnapshot('turn-b')).toMatchObject({
+			available: true,
+			degradedUntilMs: null
+		});
 		nowMs = 3_999;
-		expect(capacity.getSnapshot().available).toBe(false);
+		expect(capacity.getSnapshot('turn-a').available).toBe(false);
 		nowMs = 4_000;
-		expect(capacity.getSnapshot()).toMatchObject({
+		expect(capacity.getSnapshot('turn-a')).toMatchObject({
 			available: true,
 			degradedUntilMs: null
 		});
 	});
 
-	it('rejects configuration outside the initial Phase 3 envelope', () => {
-		expect(() => new AgenticChatProviderCapacity({ configured: true, concurrency: 2 })).toThrow(
-			'must remain 1 until the load-smoke gate'
+	it('accepts the reviewed second slot and rejects configuration outside that bound', () => {
+		const bounded = new AgenticChatProviderCapacity({ configured: true, concurrency: 2 });
+		const first = bounded.acquire();
+		const second = bounded.acquire();
+		expect(bounded.getSnapshot()).toMatchObject({ available: false, activeRequests: 2 });
+		expect(() => bounded.acquire()).toThrow(AgenticChatProviderCapacityError);
+		first.release();
+		second.release();
+		expect(() => new AgenticChatProviderCapacity({ configured: true, concurrency: 3 })).toThrow(
+			'must be between 1 and 2'
 		);
 		expect(
 			() =>
@@ -77,6 +89,8 @@ describe('AgenticChatProviderCapacity', () => {
 			configured: true,
 			concurrency: 1
 		});
-		expect(() => capacity.markTemporarilyUnavailable(0)).toThrow('between 1ms and 60000ms');
+		expect(() => capacity.markTemporarilyUnavailable('turn-a', 0)).toThrow(
+			'between 1ms and 60000ms'
+		);
 	});
 });

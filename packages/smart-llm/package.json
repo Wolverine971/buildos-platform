@@ -18,6 +18,7 @@
 		"build:types": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
 		"dev": "tsup src/index.ts --format cjs,esm --sourcemap --watch",
 		"clean": "rm -rf dist .turbo",
+		"lint": "tsc --noEmit --skipLibCheck --noUnusedLocals --noUnusedParameters",
 		"typecheck": "tsc --noEmit --skipLibCheck",
 		"test": "vitest",
 		"test:run": "vitest run",

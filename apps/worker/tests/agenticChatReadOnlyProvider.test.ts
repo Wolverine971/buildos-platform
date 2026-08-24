@@ -4698,18 +4698,20 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				})();
 			})
 		};
-		const disabledInvocation = await new AgenticChatReadOnlyProviderAdapter({
-			client,
-			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
-		}).prepare({
-			executionInput: providerInput,
-			processingToken: PROCESSING_TOKEN,
-			signal: new AbortController().signal
+		await expect(
+			new AgenticChatReadOnlyProviderAdapter({
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			}).prepare({
+				executionInput: providerInput,
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			})
+		).rejects.toMatchObject({
+			code: 'provider_live_vision_unavailable',
+			failureClass: 'permanent'
 		});
-		expect(disabledInvocation.promptSnapshot?.modelMessages.at(-1)?.content).toContain(
-			'raw image pixels are not passed to the model'
-		);
-		disabledInvocation.release();
+		expect(client.stream).not.toHaveBeenCalled();
 
 		const adapter = new AgenticChatReadOnlyProviderAdapter({
 			client,
@@ -4762,6 +4764,100 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				])
 			})
 		);
+	});
+
+	it('fails closed when a requested live-vision turn resolves no images', async () => {
+		const input = executionInput();
+		const attachment = {
+			attachment_kind: 'onto_asset' as const,
+			media_type: 'image' as const,
+			asset_id: '20000000-0000-4000-8000-000000000001',
+			temporary_attachment_id: null,
+			project_id: '20000000-0000-4000-8000-000000000002',
+			role: 'context' as const,
+			display_order: 0,
+			file_name: 'diagram.png',
+			content_type: 'image/png',
+			file_size_bytes: 1024,
+			width: 100,
+			height: 100,
+			checksum_sha256: 'a'.repeat(64),
+			ocr_status: 'skipped' as const,
+			extraction_summary: null,
+			extracted_text_preview: null,
+			storage_bucket: 'onto-assets',
+			storage_path: 'projects/20000000-0000-4000-8000-000000000002/diagram.png',
+			expires_at: null
+		};
+		input.requestPayload = {
+			...input.requestPayload,
+			message: 'Review this image.',
+			attachments: [
+				{
+					attachment_kind: attachment.attachment_kind,
+					media_type: attachment.media_type,
+					asset_id: attachment.asset_id,
+					temporary_attachment_id: attachment.temporary_attachment_id,
+					project_id: attachment.project_id,
+					role: attachment.role,
+					display_order: attachment.display_order,
+					file_name: attachment.file_name,
+					content_type: attachment.content_type,
+					file_size_bytes: attachment.file_size_bytes,
+					width: attachment.width,
+					height: attachment.height,
+					checksum_sha256: attachment.checksum_sha256,
+					ocr_status: attachment.ocr_status,
+					extraction_summary: attachment.extraction_summary,
+					extracted_text_preview: attachment.extracted_text_preview
+				}
+			]
+		};
+		input.artifact = {
+			...input.artifact,
+			prepared: {
+				...input.artifact.prepared,
+				currentTurn: {
+					message: 'Review this image.',
+					attachmentContextMaxChars: 7000,
+					liveVision: {
+						requested: true,
+						maxImages: 2,
+						maxImageBytes: 8 * 1024 * 1024,
+						renderWidth: 1600,
+						signedUrlTtlSeconds: 900
+					},
+					attachments: [attachment]
+				}
+			}
+		};
+		const client = clientWith([
+			{ type: 'text', content: 'I can see the image.' },
+			{ type: 'done', finishedReason: 'stop' }
+		]);
+		const liveVision = {
+			resolve: vi.fn(async () => ({
+				images: [],
+				failed: [{ attachmentKey: `asset:${attachment.asset_id}`, reason: 'source_missing' }],
+				skippedByLimit: 0
+			}))
+		};
+		const invocation = await new AgenticChatReadOnlyProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+			liveVision
+		}).prepare({
+			executionInput: input,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).rejects.toMatchObject({
+			code: 'provider_live_vision_unavailable',
+			failureClass: 'permanent'
+		});
+		expect(liveVision.resolve).toHaveBeenCalledOnce();
+		expect(client.stream).not.toHaveBeenCalled();
 	});
 
 	it('rejects unfrozen attachment requests and tool-call outputs while releasing capacity', async () => {
@@ -7720,13 +7816,13 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(client.stream.mock.calls.map(([request]) => request.providerAttempt)).toEqual([
 			1, 2
 		]);
-		expect(capacity.getSnapshot()).toMatchObject({
+		expect(capacity.getSnapshot(TURN_RUN_ID)).toMatchObject({
 			available: false,
 			activeRequests: 0,
 			degradedUntilMs: 3_000
 		});
 		nowMs = 3_000;
-		expect(capacity.getSnapshot().available).toBe(true);
+		expect(capacity.getSnapshot(TURN_RUN_ID).available).toBe(true);
 	});
 
 	it('rejects a non-allowlisted provider call without executing another round', async () => {

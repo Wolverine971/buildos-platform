@@ -14,6 +14,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { AgenticChatToolAccessPortV1 } from '@buildos/agentic-chat-runtime/tools';
+import { normalizeAgenticChatProjectStateV1 } from '@buildos/agentic-chat-runtime/loop';
 import { createWebAgenticChatToolAccessAdapter } from './web-access-adapter';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -376,43 +377,6 @@ export class BaseExecutor {
 	}
 
 	protected normalizeProjectState(state?: string | null): string | undefined {
-		if (!state) return undefined;
-
-		const normalized = state
-			.trim()
-			.toLowerCase()
-			.replace(/[\s-]+/g, '_');
-		if (!normalized) return undefined;
-
-		const stateMap: Record<string, string> = {
-			in_progress: 'active',
-			inprogress: 'active',
-			started: 'active',
-			working: 'active',
-			ongoing: 'active',
-			paused: 'paused',
-			on_hold: 'paused',
-			hold: 'paused',
-			pending: 'planning',
-			planned: 'planning',
-			backlog: 'planning',
-			todo: 'planning',
-			draft: 'planning',
-			complete: 'completed',
-			completed: 'completed',
-			done: 'completed',
-			finished: 'completed',
-			shipped: 'completed',
-			cancelled: 'cancelled',
-			canceled: 'cancelled',
-			aborted: 'cancelled',
-			abandoned: 'cancelled',
-			archived: 'cancelled'
-		};
-
-		const candidate = stateMap[normalized] ?? normalized;
-		return ['planning', 'active', 'paused', 'completed', 'cancelled'].includes(candidate)
-			? candidate
-			: state;
+		return normalizeAgenticChatProjectStateV1(state) ?? undefined;
 	}
 }

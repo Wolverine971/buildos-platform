@@ -1,5 +1,7 @@
 // apps/worker/src/workers/agentic-chat/providerCapacity.ts
 
+import { MAX_AGENTIC_CHAT_CONCURRENCY } from './concurrencyBounds';
+
 export type AgenticChatProviderCapacitySnapshotV1 = {
 	observedAtMs: number;
 	configured: boolean;
@@ -29,7 +31,7 @@ export class AgenticChatProviderCapacityError extends Error {
  */
 export class AgenticChatProviderCapacity {
 	private activeRequests = 0;
-	private degradedUntilMs: number | null = null;
+	private readonly degradedUntilByTurn = new Map<string, number>();
 
 	constructor(
 		private readonly options: {
@@ -41,13 +43,19 @@ export class AgenticChatProviderCapacity {
 		if (typeof options.configured !== 'boolean') {
 			throw new Error('Provider configured state must be boolean');
 		}
-		if (!Number.isSafeInteger(options.concurrency) || options.concurrency !== 1) {
-			throw new Error('Phase 3 provider concurrency must remain 1 until the load-smoke gate');
+		if (
+			!Number.isSafeInteger(options.concurrency) ||
+			options.concurrency < 1 ||
+			options.concurrency > MAX_AGENTIC_CHAT_CONCURRENCY
+		) {
+			throw new Error(
+				`Agentic Chat provider concurrency must be between 1 and ${MAX_AGENTIC_CHAT_CONCURRENCY}`
+			);
 		}
 	}
 
-	acquire(): AgenticChatProviderCapacityLeaseV1 {
-		const snapshot = this.getSnapshot();
+	acquire(turnRunId?: string): AgenticChatProviderCapacityLeaseV1 {
+		const snapshot = this.getSnapshot(turnRunId);
 		if (!snapshot.available) {
 			throw new AgenticChatProviderCapacityError(
 				!snapshot.configured
@@ -68,32 +76,38 @@ export class AgenticChatProviderCapacity {
 		};
 	}
 
-	markTemporarilyUnavailable(cooldownMs: number): void {
+	markTemporarilyUnavailable(turnRunId: string, cooldownMs: number): void {
+		assertTurnRunId(turnRunId);
 		if (!Number.isSafeInteger(cooldownMs) || cooldownMs < 1 || cooldownMs > 60_000) {
 			throw new Error('Provider cooldown must be between 1ms and 60000ms');
 		}
-		this.degradedUntilMs = this.now() + cooldownMs;
+		this.degradedUntilByTurn.set(turnRunId, this.now() + cooldownMs);
 	}
 
-	markAvailable(): void {
-		this.degradedUntilMs = null;
+	markAvailable(turnRunId: string): void {
+		assertTurnRunId(turnRunId);
+		this.degradedUntilByTurn.delete(turnRunId);
 	}
 
-	getSnapshot(): AgenticChatProviderCapacitySnapshotV1 {
+	getSnapshot(turnRunId?: string): AgenticChatProviderCapacitySnapshotV1 {
+		if (turnRunId !== undefined) assertTurnRunId(turnRunId);
 		const observedAtMs = this.now();
-		if (this.degradedUntilMs !== null && this.degradedUntilMs <= observedAtMs) {
-			this.degradedUntilMs = null;
+		for (const [key, degradedUntilMs] of this.degradedUntilByTurn) {
+			if (degradedUntilMs <= observedAtMs) this.degradedUntilByTurn.delete(key);
 		}
+		const degradedUntilMs = turnRunId
+			? (this.degradedUntilByTurn.get(turnRunId) ?? null)
+			: null;
 		return {
 			observedAtMs,
 			configured: this.options.configured,
 			available:
 				this.options.configured &&
-				this.degradedUntilMs === null &&
+				degradedUntilMs === null &&
 				this.activeRequests < this.options.concurrency,
 			activeRequests: this.activeRequests,
 			concurrency: this.options.concurrency,
-			degradedUntilMs: this.degradedUntilMs
+			degradedUntilMs
 		};
 	}
 
@@ -103,5 +117,11 @@ export class AgenticChatProviderCapacity {
 			throw new Error('Provider capacity clock must return a nonnegative safe integer');
 		}
 		return value;
+	}
+}
+
+function assertTurnRunId(value: string): void {
+	if (typeof value !== 'string' || value.length === 0 || value !== value.trim()) {
+		throw new Error('Provider capacity turn scope must be canonical text');
 	}
 }

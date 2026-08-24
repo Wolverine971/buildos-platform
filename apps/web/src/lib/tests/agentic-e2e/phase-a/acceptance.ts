@@ -11,7 +11,7 @@ import {
 	evaluateHarnessAcceptance,
 	extractAnswerUrls,
 	type HarnessAcceptanceResult
-} from '../../../../../../../packages/agent-orchestrator/src/testing/harness/acceptance-eval';
+} from '@buildos/agent-orchestrator/testing/harness';
 import type { TurnResult } from '../harness/types';
 import type { FrozenAcceptanceCheck } from './fixtures';
 

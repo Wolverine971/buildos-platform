@@ -12,3 +12,4 @@ export * from './provider-error-parity-fixture';
 export * from './read-only-tool-parity-fixture';
 export * from './mutating-tool-parity-fixture';
 export * from './supervisor-question-parity-fixture';
+export * from './worker-tool-policy';

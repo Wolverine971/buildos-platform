@@ -9,6 +9,12 @@ import {
 } from 'google-auth-library';
 import { createHash, randomBytes } from 'node:crypto';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import {
+	GmailAccountReadPort,
+	GmailAccountReadPortError,
+	MAX_GMAIL_CONNECTIONS as SHARED_MAX_GMAIL_CONNECTIONS
+} from '@buildos/shared-agent-ops/email/gmail-account-read-port';
+import { createLogger } from '$lib/utils/logger';
 import type {
 	ConsumedEmailOauthState,
 	EmailConnectionCredentialRow,
@@ -21,15 +27,12 @@ import {
 	getActiveGmailTokenKeyVersion,
 	type GmailTokenContext
 } from './gmail-token-crypto';
-import type {
-	GmailConnectionCapability,
-	GmailConnectionSummary,
-	GmailConnectionsPayload
-} from '$lib/types/gmail-integration';
+import type { GmailConnectionSummary, GmailConnectionsPayload } from '$lib/types/gmail-integration';
 
 export const GMAIL_READ_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 export const GMAIL_READ_CONSENT_POLICY_VERSION = 'gmail-read-v1-2026-07-22';
-export const MAX_GMAIL_CONNECTIONS = 5;
+export const MAX_GMAIL_CONNECTIONS = SHARED_MAX_GMAIL_CONNECTIONS;
+const logger = createLogger('GmailReadOAuthService');
 
 const GMAIL_SCOPE_PREFIX = 'https://www.googleapis.com/auth/gmail.';
 const GMAIL_FULL_ACCESS_SCOPE = 'https://mail.google.com';
@@ -75,6 +78,7 @@ type CredentialsWithRefreshTokenExpiry = Credentials & {
 export class GmailOAuthError extends Error {
 	constructor(
 		public readonly code:
+			| 'invalid_request'
 			| 'not_configured'
 			| 'invalid_state'
 			| 'invalid_token_response'
@@ -178,6 +182,21 @@ function getDefaultLabel(emailAddress: string): string {
 	return (emailAddress.split('@')[0] || 'Gmail').slice(0, 60);
 }
 
+function isGmailReadRuntimeConfigured(input: {
+	clientId: string;
+	clientSecret: string;
+	tokenEncryptionKey?: string;
+	conflictingGoogleClientId?: string;
+}): boolean {
+	return Boolean(
+		input.clientId &&
+			input.clientSecret &&
+			input.tokenEncryptionKey &&
+			Buffer.byteLength(input.tokenEncryptionKey, 'utf8') >= 32 &&
+			(!input.conflictingGoogleClientId || input.conflictingGoogleClientId !== input.clientId)
+	);
+}
+
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	try {
@@ -261,61 +280,30 @@ export class GmailReadOAuthService {
 	}
 
 	async listConnections(userId: string): Promise<GmailConnectionsPayload> {
-		const { data: connectionData, error: connectionError } = await this.admin
-			.from('user_email_connections')
-			.select(
-				'id, email_address, display_name, account_label, status, read_enabled, connected_at, last_verified_at, last_used_at'
-			)
-			.eq('user_id', userId)
-			.eq('provider', 'google_gmail')
-			.is('deleted_at', null)
-			.order('connected_at', { ascending: true });
-
-		if (connectionError) {
+		try {
+			return await new GmailAccountReadPort(this.admin as unknown as TypedSupabaseClient, {
+				available: isGmailReadRuntimeConfigured({
+					clientId: this.clientId,
+					clientSecret: this.clientSecret,
+					tokenEncryptionKey: getPrivateEnv('PRIVATE_GMAIL_TOKEN_ENCRYPTION_KEY_V1'),
+					conflictingGoogleClientId: getPrivateEnv('PRIVATE_GOOGLE_CLIENT_ID')
+				})
+			}).listConnections(userId);
+		} catch (error) {
+			if (error instanceof GmailAccountReadPortError) {
+				if (error.code === 'invalid_request') {
+					throw new GmailOAuthError('invalid_request', error.message);
+				}
+				if (error.code === 'connection_not_found') {
+					throw new GmailOAuthError('connection_not_found', error.message);
+				}
+				if (error.code === 'read_not_enabled') {
+					throw new GmailOAuthError('read_capability_disabled', error.message);
+				}
+			}
+			logger.error('Shared Gmail account read failed', { error, userId });
 			throw new GmailOAuthError('database_error', 'Failed to load Gmail connections');
 		}
-
-		const rows = (connectionData ?? []) as EmailConnectionRow[];
-		const connectionIds = rows.map((row) => row.id);
-		let capabilityRows: Array<{
-			connection_id: string;
-			capability: GmailConnectionCapability['capability'];
-			status: GmailConnectionCapability['status'];
-		}> = [];
-
-		if (connectionIds.length > 0) {
-			const { data, error } = await this.admin
-				.from('email_capability_grants')
-				.select('connection_id, capability, status')
-				.in('connection_id', connectionIds);
-
-			if (error) {
-				throw new GmailOAuthError('database_error', 'Failed to load Gmail permissions');
-			}
-			capabilityRows = (data ?? []) as typeof capabilityRows;
-		}
-
-		return {
-			available: this.isConfigured(),
-			maxConnections: MAX_GMAIL_CONNECTIONS,
-			readOnly: true,
-			connections: rows.map(
-				(row): GmailConnectionSummary => ({
-					id: row.id,
-					emailAddress: row.email_address,
-					displayName: row.display_name,
-					accountLabel: row.account_label,
-					status: row.status,
-					readEnabled: row.read_enabled,
-					connectedAt: row.connected_at,
-					lastVerifiedAt: row.last_verified_at,
-					lastUsedAt: row.last_used_at,
-					capabilities: capabilityRows
-						.filter((capability) => capability.connection_id === row.id)
-						.map(({ capability, status }) => ({ capability, status }))
-				})
-			)
-		};
 	}
 
 	async createAuthorizationUrl(params: {

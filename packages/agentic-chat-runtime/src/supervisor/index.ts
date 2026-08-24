@@ -23,7 +23,10 @@ export {
 	type FinalizationGuardReason,
 	type FinalizationGuardResult
 } from './finalization-guard';
-export { buildTurnStatusMessage } from './status-messages';
+export {
+	AGENTIC_CHAT_SUPERVISOR_BLOCKED_RETRY_ERROR_V1,
+	buildTurnStatusMessage
+} from './status-messages';
 export type {
 	TurnDigest,
 	TurnSupervisor,

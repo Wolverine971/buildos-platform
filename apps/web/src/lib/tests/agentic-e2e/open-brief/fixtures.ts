@@ -2,8 +2,10 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import type { OpenBriefSnapshot } from '../../../../../../../packages/agent-orchestrator/src/testing/harness/open-brief-eval';
-import { OpenBriefSnapshotSchema } from '../../../../../../../packages/agent-orchestrator/src/testing/harness/open-brief-eval';
+import {
+	OpenBriefSnapshotSchema,
+	type OpenBriefSnapshot
+} from '@buildos/agent-orchestrator/testing/harness';
 import type { ProjectSpec } from '$lib/types/onto';
 import type { ScenarioContext, SeedResult } from '../harness/types';
 import { harnessProjectName, seedScenarioProject } from '../harness/seed';

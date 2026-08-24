@@ -1,5 +1,6 @@
 // packages/agentic-chat-runtime/src/loop/project-create-args.ts
 type JsonRecord = Record<string, any>;
+import { normalizeAgenticChatProjectStateV1 } from './project-semantics';
 
 type ProjectCreateRef = {
 	temp_id: string;
@@ -7,33 +8,6 @@ type ProjectCreateRef = {
 };
 
 const PROJECT_CREATE_COLLECTION_KEYS = ['entities', 'relationships'] as const;
-
-const PROJECT_STATE_VALUES = new Set(['planning', 'active', 'paused', 'completed', 'cancelled']);
-const PROJECT_STATE_ALIASES: Record<string, string> = {
-	in_progress: 'active',
-	inprogress: 'active',
-	started: 'active',
-	working: 'active',
-	ongoing: 'active',
-	paused: 'paused',
-	on_hold: 'paused',
-	hold: 'paused',
-	pending: 'planning',
-	planned: 'planning',
-	backlog: 'planning',
-	todo: 'planning',
-	draft: 'planning',
-	complete: 'completed',
-	completed: 'completed',
-	done: 'completed',
-	finished: 'completed',
-	shipped: 'completed',
-	cancelled: 'cancelled',
-	canceled: 'cancelled',
-	aborted: 'cancelled',
-	abandoned: 'cancelled',
-	archived: 'cancelled'
-};
 
 const FACET_STAGE_VALUES = new Set([
 	'discovery',
@@ -143,10 +117,7 @@ function normalizeEnumToken(value: unknown): string | null {
 }
 
 function normalizeProjectState(value: unknown): string | null {
-	const normalized = normalizeEnumToken(value);
-	if (!normalized) return null;
-	const candidate = PROJECT_STATE_ALIASES[normalized] ?? normalized;
-	return PROJECT_STATE_VALUES.has(candidate) ? candidate : null;
+	return normalizeAgenticChatProjectStateV1(value);
 }
 
 function normalizeMisplacedProjectStage(

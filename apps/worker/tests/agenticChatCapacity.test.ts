@@ -134,6 +134,35 @@ describe('AgenticChatWorkerCapacityCollector', () => {
 		});
 	});
 
+	it('accepts coherent queue and provider evidence at the reviewed two-slot bound', async () => {
+		const queue = {
+			getCapacitySnapshot: vi.fn(() => ({
+				concurrency: 2,
+				activeJobs: 1,
+				availableSlots: 1,
+				acceptingWork: true,
+				draining: false
+			}))
+		};
+		const provider = {
+			getSnapshot: vi.fn(() => ({
+				observedAtMs: NOW,
+				configured: true,
+				available: true,
+				activeRequests: 1,
+				concurrency: 2,
+				degradedUntilMs: null
+			}))
+		};
+		const collector = new AgenticChatWorkerCapacityCollector(
+			collectorPorts({ queue, provider }) as never
+		);
+
+		await expect(collector.collect()).resolves.toMatchObject({
+			provider: { available: true }
+		});
+	});
+
 	it('preserves valid pressure as closed evidence rather than hiding it', async () => {
 		const provider = {
 			getSnapshot: vi.fn(() => ({

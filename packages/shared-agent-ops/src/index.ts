@@ -46,6 +46,11 @@ export * from './gateway/op-execution';
 // Worker-safe calendar capability for Agent Runs (no SvelteKit imports)
 export * from './calendar/agent-run-calendar-port';
 
+// Worker-safe ports are subpath-only. They take explicit configuration, accept
+// a typed client, scope every service-role query by user_id, keep their tests
+// beside the module, and must not import SvelteKit or process environment.
+// Keeping them out of the barrel also preserves one error-class identity.
+
 // Staged-mutation commit
 export * from './gateway/change-set';
 

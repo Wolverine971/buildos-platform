@@ -18,6 +18,7 @@ const FASTCHAT_SSE_HEARTBEAT_INTERVAL_MS = 12_000;
 import type { RequestHandler } from './$types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { dev } from '$app/environment';
+import { OX_ALPHA_MODEL } from '@buildos/smart-llm';
 import { ApiResponse } from '$lib/utils/api-response';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { createLogger } from '$lib/utils/logger';
@@ -346,6 +347,11 @@ const FASTCHAT_CANCEL_REASON_RETRY_DELAY_MS = parsePositiveInt(
 const FASTCHAT_EVAL_PINNED_MODELS = parseFastChatPinnedModels(
 	process.env.FASTCHAT_EVAL_PINNED_MODELS
 );
+const FASTCHAT_DEV_OX_ALPHA_TRIAL_ENABLED =
+	dev &&
+	['1', 'true', 'yes', 'on', 'enabled'].includes(
+		(process.env.FASTCHAT_DEV_OX_ALPHA_TRIAL_ENABLED ?? 'false').trim().toLowerCase()
+	);
 const FASTCHAT_FORCED_SYNTHESIS_ROUTING_MODE = parseFastChatForcedSynthesisRoutingMode(
 	process.env.FASTCHAT_FORCED_SYNTHESIS_ROUTING
 );
@@ -1800,7 +1806,13 @@ export const POST: RequestHandler = async ({
 			const llm = new OpenRouterV2Service({
 				supabase,
 				httpReferer: request.headers.get('referer') ?? undefined,
-				appName: 'BuildOS Agentic Chat V2'
+				appName: 'BuildOS Agentic Chat V2',
+				// Local dev trial only. Ox gets a scoped non-ZDR, zero-price route;
+				// production and every fallback retain the normal privacy policy.
+				freeTrialPrimaryModel:
+					FASTCHAT_EVAL_PINNED_MODELS.length === 0 && FASTCHAT_DEV_OX_ALPHA_TRIAL_ENABLED
+						? OX_ALPHA_MODEL
+						: undefined
 			});
 			preparedSurfaceProfile = selectedSurfaceProfile;
 			toolSelectionMs = turnPreparation.toolSelectionMs;

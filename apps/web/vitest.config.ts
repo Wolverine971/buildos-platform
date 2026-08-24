@@ -93,7 +93,8 @@ const sharedAgentOpsTestAliases = [
 	'utils/search-filter',
 	'utils/validation-utils',
 	'web/native-search',
-	'web/safe-fetch'
+	'web/safe-fetch',
+	'email/gmail-account-read-port'
 ].map((sub) => ({
 	find: `@buildos/shared-agent-ops/${sub}`,
 	replacement: sharedAgentOpsSrc(`${sub}.ts`)

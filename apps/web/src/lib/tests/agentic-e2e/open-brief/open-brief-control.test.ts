@@ -10,12 +10,12 @@ import {
 	inspectOpenBriefCorpusReadiness,
 	OpenBriefCorpusSchema,
 	type OpenBriefCorpusCell
-} from '../../../../../../../packages/agent-orchestrator/src/testing/harness/open-brief-corpus';
+} from '@buildos/agent-orchestrator/testing/harness';
 import {
 	buildOpenBriefCohort1RunPlan,
 	OPEN_BRIEF_BLOCKED_FOLLOWUP,
 	OPEN_BRIEF_COHORT1_MAX_REPLACEMENTS_PER_RUN
-} from '../../../../../../../packages/agent-orchestrator/src/testing/harness/open-brief-cohort-plan';
+} from '@buildos/agent-orchestrator/testing/harness';
 import {
 	evaluateOpenBriefRun,
 	extractOpenBriefAssumptions,
@@ -23,7 +23,7 @@ import {
 	extractOpenBriefQuestions,
 	type OpenBriefEvaluationProfile,
 	type OpenBriefRunEvidence
-} from '../../../../../../../packages/agent-orchestrator/src/testing/harness/open-brief-eval';
+} from '@buildos/agent-orchestrator/testing/harness';
 import { excludeSystemDocuments } from '../harness/assertions';
 import { loginAndGetCookie } from '../harness/auth';
 import { loadHarnessEnv } from '../harness/env';

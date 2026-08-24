@@ -85,12 +85,13 @@ function makeSession(overrides: Partial<ChatSession> = {}): ChatSession {
 
 function makeAttachmentRef(overrides: Partial<ChatAttachmentRef> = {}): ChatAttachmentRef {
 	return {
-		kind: 'image',
-		asset_id: 'asset-1',
-		project_id: 'project-1',
+		attachment_kind: 'onto_asset',
+		media_type: 'image',
+		asset_id: 'd5000000-0000-4000-8000-000000000001',
+		project_id: 'd7000000-0000-4000-8000-000000000001',
 		ocr_status: 'pending',
 		...overrides
-	} as ChatAttachmentRef;
+	};
 }
 
 function makeDraftAttachment(
@@ -111,7 +112,7 @@ function makeDraftAttachment(
 	} as AgentChatImageAttachment;
 }
 
-async function flushMicrotasks(count = 4): Promise<void> {
+async function flushMicrotasks(count = 12): Promise<void> {
 	for (let index = 0; index < count; index += 1) {
 		await Promise.resolve();
 	}
@@ -123,12 +124,12 @@ function createHarness(
 		currentSession?: ChatSession | null;
 		hydrateOnEnsure?: boolean;
 		fetchImpl?: typeof fetch;
+		legacyStreamFetchImpl?: typeof fetch;
 		readyRefs?: ChatAttachmentRef[];
 		draftAttachments?: AgentChatImageAttachment[];
 		preparedPrompt?: PreparedPromptClient | null;
 		waitForPreparedPrompt?: StreamControllerPrewarmDeps['waitForPreparedPrompt'];
-		enableWorkerAdoption?: boolean;
-		requiresLegacyToolSurface?: StreamControllerDeps['requiresLegacyToolSurface'];
+		voiceNoteGroupId?: string | null;
 	} = {}
 ) {
 	let inputValue = overrides.inputValue ?? 'hello';
@@ -161,6 +162,18 @@ function createHarness(
 	const cancelFetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
 	const defaultFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = String(input);
+		if (url === '/api/agent/v2/transport') {
+			return Response.json({
+				success: true,
+				data: {
+					mode: 'legacy_sse',
+					contractVersion: 'legacy_internal_v1',
+					decisionId: '11111111-1111-4111-8111-111111111111',
+					token: 'actl1.test-token',
+					expiresAt: '2099-01-01T00:00:00.000Z'
+				}
+			});
+		}
 		if (url.includes('/cancel')) {
 			cancelFetchCalls.push({ input, init });
 			if (url.includes('/api/agent/v2/turns/')) {
@@ -168,6 +181,9 @@ function createHarness(
 			}
 		} else {
 			streamFetchCalls.push({ input, init });
+			if (overrides.legacyStreamFetchImpl) {
+				return overrides.legacyStreamFetchImpl(input, init);
+			}
 		}
 		return new Response('', { status: 200, statusText: 'OK' });
 	});
@@ -179,7 +195,7 @@ function createHarness(
 		isStopping: false,
 		isTranscribing: false,
 		pendingSendAfterTranscription: false,
-		noteGroupId: null,
+		noteGroupId: overrides.voiceNoteGroupId ?? null,
 		stop: vi.fn(async () => {
 			voice.isRecording = false;
 		})
@@ -256,7 +272,6 @@ function createHarness(
 		getLastTurnContext: () => lastTurnContext,
 		getIsLoadingSession: () => false,
 		getActiveRestoredTurnRunId: () => null,
-		requiresLegacyToolSurface: overrides.requiresLegacyToolSurface,
 		getPrewarm: () => prewarm,
 		attachments: {
 			buildReadyRefs: vi.fn((includePreviewUrl = false) =>
@@ -287,9 +302,8 @@ function createHarness(
 			sseEvents.push(event);
 		},
 		hydrateSessionFromEvent,
-		...(overrides.enableWorkerAdoption
-			? { adoptWorkerAdmissionResponse, discoverWorkerSession }
-			: {}),
+		adoptWorkerAdmissionResponse,
+		discoverWorkerSession,
 		reconcileTurnFromSession,
 		setUserHasScrolled: vi.fn(),
 		setExistingImagePickerOpen: vi.fn(),
@@ -541,20 +555,20 @@ describe('AgentChatStreamController', () => {
 		).toEqual(['first', 'second']);
 	});
 
-	it('uses a sessionless prepared prompt on first send without bootstrapping a session', async () => {
+	it('bootstraps a session before using a prepared prompt on first send', async () => {
 		const h = createHarness({ currentSession: null, inputValue: 'First turn' });
 
 		const sendPromise = h.controller.sendMessage();
 		await flushMicrotasks();
 
-		expect(h.ensureSessionReady).not.toHaveBeenCalled();
+		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
 		expect(h.messages).toHaveLength(1);
-		expect(h.messages[0]?.session_id).toBeUndefined();
+		expect(h.messages[0]?.session_id).toBe('ensured-session');
 
 		const requestBody = parseBody(h.streamFetchCalls[0]!);
-		expect(requestBody).not.toHaveProperty('session_id');
 		expect(requestBody).toMatchObject({
 			message: 'First turn',
+			session_id: 'ensured-session',
 			context_type: 'project',
 			entity_id: 'project-1',
 			preparedPromptKey: 'prepared-key'
@@ -581,7 +595,7 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('completed');
 	});
 
-	it('negotiates and adopts an exact text-only worker canary without opening legacy SSE', async () => {
+	it('negotiates and adopts a worker turn without opening legacy SSE', async () => {
 		const sessionId = 'd2000000-0000-4000-8000-000000000001';
 		const turnRunId = 'd4000000-0000-4000-8000-000000000001';
 		const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
@@ -622,10 +636,9 @@ describe('AgentChatStreamController', () => {
 			throw new Error(`unexpected request: ${url}`);
 		});
 		const h = createHarness({
-			inputValue: 'Canary hello',
+			inputValue: 'Worker hello',
 			currentSession: makeSession({ id: sessionId }),
-			fetchImpl,
-			enableWorkerAdoption: true
+			fetchImpl
 		});
 
 		await h.controller.sendMessage();
@@ -645,7 +658,7 @@ describe('AgentChatStreamController', () => {
 		});
 		expect(h.controller.isStreaming).toBe(true);
 		expect(JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body))).toMatchObject({
-			message: 'Canary hello',
+			message: 'Worker hello',
 			attachments: [],
 			voiceNoteGroupId: null
 		});
@@ -670,8 +683,7 @@ describe('AgentChatStreamController', () => {
 		});
 		const h = createHarness({
 			currentSession: makeSession({ id: sessionId }),
-			fetchImpl,
-			enableWorkerAdoption: true
+			fetchImpl
 		});
 
 		const send = h.controller.sendMessage();
@@ -686,39 +698,74 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('completed');
 	});
 
-	it('offers only legacy transport when the turn needs external account tools', async () => {
-		const sessionId = 'd2000000-0000-4000-8000-000000000001';
-		let negotiationBody: Record<string, unknown> | null = null;
-		const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
+	it('does not silently open legacy SSE when worker negotiation is unavailable', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async (input) => {
 			if (String(input) === '/api/agent/v2/transport') {
-				negotiationBody = JSON.parse(String(init?.body ?? '{}'));
+				return Response.json(
+					{ code: 'WORKER_UNAVAILABLE' },
+					{ status: 503, headers: { 'Retry-After': '2' } }
+				);
+			}
+			throw new Error(`unexpected request: ${String(input)}`);
+		});
+		const h = createHarness({
+			inputValue: 'Keep this draft',
+			currentSession: makeSession(),
+			fetchImpl
+		});
+
+		await h.controller.sendMessage();
+
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		expect(h.streamProcessor.runs).toHaveLength(0);
+		expect(h.messages).toHaveLength(0);
+		expect(h.inputValue).toBe('Keep this draft');
+		expect(h.controller.error).toContain('temporarily unavailable');
+	});
+
+	it('renegotiates legacy transport when worker admission rejects the resolved capability surface', async () => {
+		const sessionId = 'd2000000-0000-4000-8000-000000000001';
+		const negotiationBodies: Record<string, unknown>[] = [];
+		const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
+			const url = String(input);
+			if (url === '/api/agent/v2/transport') {
+				const negotiationBody = JSON.parse(String(init?.body ?? '{}'));
+				negotiationBodies.push(negotiationBody);
+				const legacyOnly = negotiationBody.supportedModes.length === 1;
 				return Response.json({
 					success: true,
 					data: {
-						mode: 'legacy_sse',
-						contractVersion: 'legacy_internal_v1',
+						mode: legacyOnly ? 'legacy_sse' : 'worker_realtime',
+						contractVersion: legacyOnly
+							? 'legacy_internal_v1'
+							: 'agentic_chat_worker_v1',
 						decisionId: 'd3000000-0000-4000-8000-000000000001',
 						token: 'actl1.claims.signature',
 						expiresAt: '2026-08-04T03:00:00.000Z'
 					}
 				});
 			}
+			if (url === '/api/agent/v2/turns') {
+				return Response.json(
+					{ code: 'TRANSPORT_RENEGOTIATE', message: 'Legacy capability required' },
+					{ status: 409 }
+				);
+			}
 			return new Response('', { status: 200 });
 		});
-		const requiresLegacyToolSurface = vi.fn(() => true);
 		const h = createHarness({
 			inputValue: 'yes',
 			currentSession: makeSession({ id: sessionId }),
-			fetchImpl,
-			enableWorkerAdoption: true,
-			requiresLegacyToolSurface
+			fetchImpl
 		});
 
 		const send = h.controller.sendMessage();
-		await flushMicrotasks(10);
+		await vi.waitFor(() => expect(negotiationBodies).toHaveLength(2));
 
-		expect(requiresLegacyToolSurface).toHaveBeenCalledWith('yes');
-		expect(negotiationBody).toMatchObject({
+		expect(negotiationBodies[0]).toMatchObject({
+			supportedModes: ['legacy_sse', 'worker_realtime']
+		});
+		expect(negotiationBodies[1]).toMatchObject({
 			supportedModes: ['legacy_sse'],
 			supportedContractVersions: ['legacy_internal_v1']
 		});
@@ -727,23 +774,76 @@ describe('AgentChatStreamController', () => {
 		await send;
 	});
 
-	it('bypasses worker negotiation for attachments and retains legacy attachment behavior', async () => {
+	it('admits attachments and voice-note context through the worker transport', async () => {
 		const ref = makeAttachmentRef();
 		const draft = makeDraftAttachment();
+		const sessionId = 'd2000000-0000-4000-8000-000000000001';
+		const voiceNoteGroupId = 'd6000000-0000-4000-8000-000000000001';
+		const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
+			const url = String(input);
+			const request = JSON.parse(String(init?.body ?? '{}'));
+			if (url === '/api/agent/v2/transport') {
+				return Response.json({
+					success: true,
+					data: {
+						mode: 'worker_realtime',
+						contractVersion: 'agentic_chat_worker_v1',
+						decisionId: 'd3000000-0000-4000-8000-000000000001',
+						token: 'actl1.claims.signature',
+						expiresAt: '2026-08-04T03:00:00.000Z'
+					}
+				});
+			}
+			if (url === '/api/agent/v2/turns') {
+				return Response.json(
+					{
+						success: true,
+						data: {
+							outcome: 'newly_admitted',
+							handle: {
+								contractVersion: 'agentic_chat_worker_v1',
+								executionMode: 'worker_realtime',
+								turnRunId: 'd4000000-0000-4000-8000-000000000001',
+								sessionId,
+								streamRunId: request.streamRunId,
+								clientTurnId: request.clientTurnId
+							},
+							status: 'queued'
+						}
+					},
+					{ status: 202 }
+				);
+			}
+			throw new Error(`unexpected request: ${url}`);
+		});
 		const h = createHarness({
-			currentSession: makeSession({ id: 'd2000000-0000-4000-8000-000000000001' }),
+			currentSession: makeSession({ id: sessionId }),
 			readyRefs: [ref],
 			draftAttachments: [draft],
-			enableWorkerAdoption: true
+			voiceNoteGroupId,
+			fetchImpl
 		});
-		const send = h.controller.sendMessage();
-		await flushMicrotasks();
-		expect(h.defaultFetch.mock.calls.map(([input]) => String(input))).toEqual([
-			'/api/agent/v2/stream'
+
+		await h.controller.sendMessage();
+
+		expect(fetchImpl.mock.calls.map(([input]) => String(input))).toEqual([
+			'/api/agent/v2/transport',
+			'/api/agent/v2/turns'
 		]);
-		h.streamProcessor.runs[0]!.progress({ type: 'done' });
-		h.streamProcessor.runs[0]!.complete();
-		await send;
+		expect(h.streamProcessor.runs).toHaveLength(0);
+		expect(JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body))).toMatchObject({
+			attachments: [
+				{
+					attachmentKind: 'onto_asset',
+					mediaType: 'image',
+					assetId: ref.asset_id,
+					projectId: ref.project_id
+				}
+			],
+			voiceNoteGroupId
+		});
+		expect(h.voice.noteGroupId).toBeNull();
+		expect(h.controller.activeTurnHandle?.executionMode).toBe('worker_realtime');
 	});
 
 	it('never falls back to legacy after worker admission becomes uncertain', async () => {
@@ -773,8 +873,7 @@ describe('AgentChatStreamController', () => {
 		const h = createHarness({
 			inputValue: 'Do not duplicate me',
 			currentSession: makeSession({ id: sessionId }),
-			fetchImpl,
-			enableWorkerAdoption: true
+			fetchImpl
 		});
 
 		await h.controller.sendMessage();
@@ -819,8 +918,7 @@ describe('AgentChatStreamController', () => {
 		const h = createHarness({
 			inputValue: 'Retry me safely',
 			currentSession: makeSession({ id: sessionId }),
-			fetchImpl,
-			enableWorkerAdoption: true
+			fetchImpl
 		});
 
 		await h.controller.sendMessage();
@@ -873,8 +971,7 @@ describe('AgentChatStreamController', () => {
 		const h = createHarness({
 			currentSession: null,
 			inputValue: 'First turn',
-			fetchImpl,
-			enableWorkerAdoption: true
+			fetchImpl
 		});
 
 		await h.controller.sendMessage();
@@ -903,21 +1000,43 @@ describe('AgentChatStreamController', () => {
 		});
 	});
 
-	it('falls back to a sessionless legacy turn when the worker-only session bootstrap fails', async () => {
+	it('uses sessionless legacy only when server negotiation explicitly selects rollback', async () => {
+		const calls: string[] = [];
+		const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+			const url = String(input);
+			calls.push(url);
+			if (url === '/api/agent/v2/transport') {
+				return Response.json({
+					success: true,
+					data: {
+						mode: 'legacy_sse',
+						contractVersion: 'legacy_internal_v1',
+						decisionId: 'd3000000-0000-4000-8000-000000000021',
+						token: 'actl1.claims.signature',
+						expiresAt: '2026-08-04T03:00:00.000Z'
+					}
+				});
+			}
+			if (url === '/api/agent/v2/stream') return new Response('', { status: 200 });
+			throw new Error(`unexpected request: ${url}`);
+		});
 		const h = createHarness({
 			currentSession: null,
 			inputValue: 'First turn',
-			enableWorkerAdoption: true
+			fetchImpl
 		});
 		h.ensureSessionReady.mockRejectedValueOnce(new Error('session service down'));
 
 		const sendPromise = h.controller.sendMessage();
-		await flushMicrotasks();
+		await vi.waitFor(() => expect(calls).toHaveLength(2));
 
 		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
 		expect(h.controller.error).toBeNull();
-		expect(h.streamFetchCalls).toHaveLength(1);
-		const requestBody = parseBody(h.streamFetchCalls[0]!);
+		expect(calls).toEqual(['/api/agent/v2/transport', '/api/agent/v2/stream']);
+		expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toMatchObject({
+			sessionId: null
+		});
+		const requestBody = JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body));
 		expect(requestBody).not.toHaveProperty('session_id');
 		expect(requestBody).toMatchObject({
 			message: 'First turn',
@@ -927,6 +1046,56 @@ describe('AgentChatStreamController', () => {
 		h.streamProcessor.runs[0]!.progress({ type: 'done' });
 		h.streamProcessor.runs[0]!.complete();
 		await sendPromise;
+	});
+
+	it('returns worker-unavailable when session bootstrap fails and routing selects worker', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+			if (String(input) === '/api/agent/v2/transport') {
+				return Response.json({
+					success: true,
+					data: {
+						mode: 'worker_realtime',
+						contractVersion: 'agentic_chat_worker_v1',
+						decisionId: 'd3000000-0000-4000-8000-000000000022',
+						token: 'actl1.claims.signature',
+						expiresAt: '2026-08-04T03:00:00.000Z'
+					}
+				});
+			}
+			throw new Error(`unexpected request: ${String(input)}`);
+		});
+		const h = createHarness({
+			currentSession: null,
+			inputValue: 'First turn',
+			fetchImpl
+		});
+		h.ensureSessionReady.mockRejectedValueOnce(new Error('session service down'));
+
+		await h.controller.sendMessage();
+
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		expect(h.streamProcessor.runs).toHaveLength(0);
+		expect(h.messages).toHaveLength(0);
+		expect(h.inputValue).toBe('First turn');
+		expect(h.controller.error).toContain('temporarily unavailable');
+	});
+
+	it('returns worker-unavailable when session bootstrap fails before negotiation', async () => {
+		const h = createHarness({
+			currentSession: null,
+			preparedPrompt: null,
+			inputValue: 'First turn'
+		});
+		h.ensureSessionReady.mockRejectedValueOnce(new Error('private session failure'));
+
+		await h.controller.sendMessage();
+
+		expect(h.defaultFetch).not.toHaveBeenCalled();
+		expect(h.streamProcessor.runs).toHaveLength(0);
+		expect(h.messages).toHaveLength(0);
+		expect(h.inputValue).toBe('First turn');
+		expect(h.controller.error).toContain('temporarily unavailable');
+		expect(h.controller.error).not.toContain('private session failure');
 	});
 
 	it('waits briefly for an in-flight prepared prompt before first send', async () => {
@@ -948,12 +1117,12 @@ describe('AgentChatStreamController', () => {
 		await flushMicrotasks();
 
 		expect(waitForPreparedPrompt).toHaveBeenCalledWith('cache-key', { timeoutMs: 250 });
-		expect(h.ensureSessionReady).not.toHaveBeenCalled();
+		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
 
 		const requestBody = parseBody(h.streamFetchCalls[0]!);
-		expect(requestBody).not.toHaveProperty('session_id');
 		expect(requestBody).toMatchObject({
 			message: 'First turn',
+			session_id: 'ensured-session',
 			context_type: 'project',
 			entity_id: 'project-1',
 			preparedPromptKey: 'prepared-late-key'
@@ -1019,7 +1188,7 @@ describe('AgentChatStreamController', () => {
 		const fetchImpl = vi.fn(async () => new Response('', { status: 500, statusText: 'Nope' }));
 		const h = createHarness({
 			inputValue: 'with attachment',
-			fetchImpl: fetchImpl as unknown as typeof fetch,
+			legacyStreamFetchImpl: fetchImpl as unknown as typeof fetch,
 			readyRefs: [ref],
 			draftAttachments: [draft]
 		});
@@ -1122,6 +1291,7 @@ describe('AgentChatStreamController', () => {
 
 	it('fails a non-terminal clean close when no session is available to reconcile', async () => {
 		const h = createHarness({ currentSession: null });
+		h.ensureSessionReady.mockResolvedValueOnce(null);
 		const sendPromise = h.controller.sendMessage();
 		await flushMicrotasks();
 
@@ -1153,7 +1323,7 @@ describe('AgentChatStreamController', () => {
 					{ status: 402, headers: { 'Content-Type': 'application/json' } }
 				)
 		) as unknown as typeof fetch;
-		const h = createHarness({ fetchImpl });
+		const h = createHarness({ legacyStreamFetchImpl: fetchImpl });
 
 		await h.controller.sendMessage();
 
@@ -1170,7 +1340,7 @@ describe('AgentChatStreamController', () => {
 					resolveFetch = resolve;
 				})
 		) as unknown as typeof fetch;
-		const h = createHarness({ fetchImpl });
+		const h = createHarness({ legacyStreamFetchImpl: fetchImpl });
 
 		const sendPromise = h.controller.sendMessage();
 		await flushMicrotasks();
@@ -1340,7 +1510,7 @@ describe('AgentChatStreamController', () => {
 
 		h.inputValue = 'second';
 		const secondSend = h.controller.sendMessage();
-		await flushMicrotasks(8);
+		await vi.waitFor(() => expect(h.streamProcessor.runs).toHaveLength(2));
 
 		expect(firstRun.signal?.aborted).toBe(true);
 		expect(h.cancelFetchCalls).toHaveLength(1);

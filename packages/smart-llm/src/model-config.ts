@@ -6,6 +6,7 @@ export const KIMI_EXPERIMENT_MODEL = 'moonshotai/kimi-k2.6' as const;
 export const KIMI_CODING_MODEL = 'moonshotai/kimi-k2.7-code' as const;
 export const KIMI_EXPERIMENT_MODELS = [KIMI_EXPERIMENT_MODEL, KIMI_CODING_MODEL] as const;
 export const KIMI_K3_MODEL = 'moonshotai/kimi-k3' as const;
+export const OX_ALPHA_MODEL = 'stealth/ox-alpha' as const;
 export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
 export const GPT_56_LUNA_MODEL = 'openai/gpt-5.6-luna' as const;
 export const GROK_46_MODEL = 'x-ai/grok-4.6' as const;
@@ -32,6 +33,40 @@ export const AGENT_STATE_RECONCILIATION_MODEL = DEEPSEEK_V4_FLASH_MODEL;
 export const AGENT_STATE_RECONCILIATION_MODELS = [AGENT_STATE_RECONCILIATION_MODEL] as const;
 
 export const MODEL_CATALOG: Record<string, ModelProfile> = {
+	[OX_ALPHA_MODEL]: {
+		id: OX_ALPHA_MODEL,
+		name: 'Ox Alpha',
+		speed: 4,
+		smartness: 4.9,
+		creativity: 4.6,
+		cost: 0,
+		outputCost: 0,
+		provider: 'stealth',
+		bestFor: [
+			'dev-trial',
+			'long-horizon-software-engineering',
+			'agentic-workflows',
+			'complex-reasoning',
+			'json-mode',
+			'tool-calling',
+			'multimodal',
+			'1m-context'
+		],
+		limitations: [
+			'alpha-model',
+			'not-default-production-routing',
+			'free-availability-temporary',
+			'non-zdr-endpoint',
+			'always-thinking'
+		],
+		capabilities: {
+			jsonMode: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
 	[GEMINI_37_FLASH_MODEL]: {
 		id: GEMINI_37_FLASH_MODEL,
 		name: 'Gemini 3.7 Flash',
@@ -651,6 +686,9 @@ const TEXT_MAXIMUM_ROUTE = [
 
 export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(
 	new Set<string>([
+		// Explicit-only dev trial model. It is intentionally absent from every
+		// production route and is excluded from requirement-based selection.
+		OX_ALPHA_MODEL,
 		...OPENROUTER_TEXT_ROUTE,
 		...OPENROUTER_JSON_ROUTE,
 		...OPENROUTER_TOOL_ROUTE,

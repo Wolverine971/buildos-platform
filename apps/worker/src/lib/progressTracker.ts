@@ -4,6 +4,7 @@
 import { supabase } from './supabase';
 import { JobProgress } from './supabaseQueue';
 import { queueConfig } from '../config/queueConfig';
+import { LLMRequestTimeoutError } from '@buildos/smart-llm';
 
 export interface ProgressUpdate {
 	jobId: string;
@@ -259,6 +260,7 @@ export class ProgressTracker {
 	 * Determine if an error is temporary and worth retrying
 	 */
 	private isTemporaryError(error: Error): boolean {
+		if (error instanceof LLMRequestTimeoutError) return true;
 		const errorMessage = error.message;
 
 		return (

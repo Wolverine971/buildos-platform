@@ -73,7 +73,7 @@ Turborepo is pinned at `^2.10.5`. Keep it at 2.9.7 or newer so it can parse pnpm
 - **`packages/twilio-service`** — SMS/Twilio integration
 - **`packages/shared-agent-ops`** — Agent operation layer shared by the web agent-call gateway and the worker Agent Run runner (op policy/scope, ontology mutation core, task/document state normalizers)
 - **`packages/agentic-chat-runtime`** — Transport-neutral contracts, ports, loop/supervisor logic, and parity fixtures for the agentic chat runtime (consumed by both web and worker)
-- **`packages/agent-orchestrator`** — Agent-first orchestration core (see `docs/architecture/agent-first-orchestration/`); not yet consumed by the apps
+- **`packages/agent-orchestrator`** — Agent-first orchestration core and the web app's Phase A/open-brief evaluation harness (see `docs/architecture/agent-first-orchestration/`)
 - **`packages/buildos-mcp-server`** — Local stdio MCP bridge (`@buildos/mcp-server`) that proxies a local MCP client to the remote BuildOS connector at `/mcp/buildos`
 
 ### Web App (`apps/web`)

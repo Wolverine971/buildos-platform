@@ -7,8 +7,6 @@ import {
 } from '../src/workers/agentic-chat/phase3Assembly';
 import { normalizeAgenticChatMutationCapabilitiesV1 } from '../src/workers/agentic-chat/mutationToolCatalog';
 
-const INTERNAL_USER_ID = 'd1000000-0000-4000-8000-000000000001';
-
 function supabaseClient() {
 	return {
 		rpc: vi.fn(),
@@ -24,8 +22,7 @@ describe('createAgenticChatPhase3Assembly', () => {
 		const assembly = createAgenticChatPhase3Assembly({
 			client: supabaseClient() as never,
 			providerClient: providerClient as never,
-			providerConfigured: true,
-			internalUserIds: [INTERNAL_USER_ID]
+			providerConfigured: true
 		});
 
 		expect(assembly.consumer.queue.getRegisteredJobTypes()).toEqual(['agentic_chat_turn']);
@@ -49,19 +46,34 @@ describe('createAgenticChatPhase3Assembly', () => {
 			client: supabaseClient() as never,
 			providerClient: { stream: vi.fn() } as never,
 			providerConfigured: true,
-			internalUserIds: [INTERNAL_USER_ID],
 			consumptionBillingEnabled: true
 		});
 
 		expect(assembly.consumptionBilling).not.toBeNull();
 	});
 
+	it('uses the same reviewed two-slot bound for consumer, provider, and cancellation', () => {
+		const assembly = createAgenticChatPhase3Assembly({
+			client: supabaseClient() as never,
+			providerClient: { stream: vi.fn() } as never,
+			providerConfigured: true,
+			consumerConfig: { concurrency: 2 }
+		});
+
+		expect(assembly.consumer.config.concurrency).toBe(2);
+		expect(assembly.providerCapacity.getSnapshot()).toMatchObject({ concurrency: 2 });
+		assembly.cancellation.registerTurn({ turnRunId: 'turn-1', executionGeneration: 1 });
+		assembly.cancellation.registerTurn({ turnRunId: 'turn-2', executionGeneration: 1 });
+		expect(() =>
+			assembly.cancellation.registerTurn({ turnRunId: 'turn-3', executionGeneration: 1 })
+		).toThrow('capacity 2 exceeded');
+	});
+
 	it('keeps provider evidence closed when credentials are not configured', () => {
 		const assembly = createAgenticChatPhase3Assembly({
 			client: supabaseClient() as never,
 			providerClient: { stream: vi.fn() } as never,
-			providerConfigured: false,
-			internalUserIds: [INTERNAL_USER_ID]
+			providerConfigured: false
 		});
 
 		expect(assembly.providerCapacity.getSnapshot()).toMatchObject({
@@ -76,10 +88,9 @@ describe('createAgenticChatPhase3Assembly', () => {
 				client: supabaseClient() as never,
 				providerClient: { stream: vi.fn() } as never,
 				providerConfigured: true,
-				internalUserIds: [INTERNAL_USER_ID],
 				cancellationConfig: { consumerConcurrency: 2 }
 			})
-		).toThrow('must match CHAT_CONCURRENCY=1');
+		).toThrow('must match CHAT_CONCURRENCY');
 	});
 
 	it('fails closed when the provider mutation surface is enabled without its adapter', () => {
@@ -88,7 +99,6 @@ describe('createAgenticChatPhase3Assembly', () => {
 				client: supabaseClient() as never,
 				providerClient: { stream: vi.fn() } as never,
 				providerConfigured: true,
-				internalUserIds: [INTERNAL_USER_ID],
 				mutationProviderCapabilities: { updateOntoTask: true }
 			})
 		).toThrow('update_onto_task provider capability requires its mutation adapter');
@@ -109,7 +119,6 @@ describe('createAgenticChatPhase3Assembly', () => {
 				client: supabaseClient() as never,
 				providerClient: { stream: vi.fn() } as never,
 				providerConfigured: true,
-				internalUserIds: [INTERNAL_USER_ID],
 				mutationProviderCapabilities: { createOntoTask: true }
 			})
 		).toThrow('create_onto_task provider capability requires its mutation adapter');
@@ -121,7 +130,6 @@ describe('createAgenticChatPhase3Assembly', () => {
 				client: supabaseClient() as never,
 				providerClient: { stream: vi.fn() } as never,
 				providerConfigured: true,
-				internalUserIds: [INTERNAL_USER_ID],
 				mutationProviderCapabilities: { createOntoDocument: true }
 			})
 		).toThrow('create_onto_document provider capability requires its mutation adapter');
@@ -133,7 +141,6 @@ describe('createAgenticChatPhase3Assembly', () => {
 				client: supabaseClient() as never,
 				providerClient: { stream: vi.fn() } as never,
 				providerConfigured: true,
-				internalUserIds: [INTERNAL_USER_ID],
 				mutationProviderCapabilities: { moveOntoTask: true }
 			})
 		).toThrow('move_onto_task provider capability requires its mutation adapter');
@@ -145,7 +152,6 @@ describe('createAgenticChatPhase3Assembly', () => {
 				client: supabaseClient() as never,
 				providerClient: { stream: vi.fn() } as never,
 				providerConfigured: true,
-				internalUserIds: [INTERNAL_USER_ID],
 				mutationProviderCapabilities: { tagOntoEntity: true }
 			})
 		).toThrow('tag_onto_entity provider capability requires its mutation adapter');
@@ -157,7 +163,6 @@ describe('createAgenticChatPhase3Assembly', () => {
 				client: supabaseClient() as never,
 				providerClient: { stream: vi.fn() } as never,
 				providerConfigured: true,
-				internalUserIds: [INTERNAL_USER_ID],
 				mutationProviderCapabilities: { createOntoMilestone: true }
 			})
 		).toThrow('create_onto_milestone provider capability requires its mutation adapter');
@@ -168,7 +173,6 @@ describe('createAgenticChatPhase3Assembly', () => {
 			client: supabaseClient() as never,
 			providerClient: { stream: vi.fn() } as never,
 			providerConfigured: true,
-			internalUserIds: [INTERNAL_USER_ID],
 			mutationAdapterCapabilities: { updateOntoTask: true }
 		});
 
@@ -181,7 +185,6 @@ describe('createAgenticChatPhase3Assembly', () => {
 			providerClient: { stream: vi.fn() } as never,
 			semanticReviewerClient: { stream: vi.fn() } as never,
 			providerConfigured: true,
-			internalUserIds: [INTERNAL_USER_ID],
 			mutationProviderCapabilities: { updateOntoTask: true },
 			mutationAdapterCapabilities: { updateOntoTask: true }
 		});
@@ -195,7 +198,6 @@ describe('createAgenticChatPhase3Assembly', () => {
 			providerClient: { stream: vi.fn() } as never,
 			semanticReviewerClient: { stream: vi.fn() } as never,
 			providerConfigured: true,
-			internalUserIds: [INTERNAL_USER_ID],
 			mutationProviderCapabilities: {
 				createOntoDocument: true,
 				createOntoTask: true,
@@ -239,7 +241,6 @@ describe('createAgenticChatPhase3Assembly', () => {
 			providerClient: { stream: vi.fn() } as never,
 			semanticReviewerClient: { stream: vi.fn() } as never,
 			providerConfigured: true,
-			internalUserIds: [INTERNAL_USER_ID],
 			mutationProviderCapabilities: capabilities,
 			mutationAdapterCapabilities: capabilities
 		});
@@ -253,7 +254,6 @@ describe('createAgenticChatPhase3Assembly', () => {
 				client: supabaseClient() as never,
 				providerClient: { stream: vi.fn() } as never,
 				providerConfigured: true,
-				internalUserIds: [INTERNAL_USER_ID],
 				mutationProviderCapabilities: { updateOntoTask: true },
 				mutationAdapterCapabilities: { updateOntoTask: true }
 			})

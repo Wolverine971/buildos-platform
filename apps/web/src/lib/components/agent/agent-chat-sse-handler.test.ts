@@ -369,8 +369,6 @@ interface HandlerHarness {
 		showFocusSelector: boolean;
 		showProjectActionSelector: boolean;
 		currentSession: ChatSession | null;
-		agentLoopActive: boolean;
-		agentTurnsRemaining: number;
 	};
 	presenter: ToolPresenter;
 	pendingToolResults: Map<string, PendingToolStatus>;
@@ -382,8 +380,6 @@ function createHarness(
 	options: {
 		messages?: UIMessage[];
 		inputValue?: string;
-		agentToAgentMode?: boolean;
-		agentTurnsRemaining?: number;
 	} = {}
 ): HandlerHarness {
 	const snapshot: HandlerHarness['snapshot'] = {
@@ -398,9 +394,7 @@ function createHarness(
 		contextUsageOverheadTokens: 0,
 		showFocusSelector: false,
 		showProjectActionSelector: false,
-		currentSession: null,
-		agentLoopActive: Boolean(options.agentToAgentMode),
-		agentTurnsRemaining: options.agentTurnsRemaining ?? 5
+		currentSession: null
 	};
 
 	const calls: HandlerHarness['calls'] = {
@@ -487,9 +481,6 @@ function createHarness(
 		getCurrentSession: () => snapshot.currentSession,
 		getSelectedContextLabel: () => snapshot.selectedContextLabel,
 		getActiveStreamRunId: () => 42,
-		isAgentToAgentMode: () => Boolean(options.agentToAgentMode),
-		getAgentLoopActive: () => snapshot.agentLoopActive,
-		getAgentTurnsRemaining: () => snapshot.agentTurnsRemaining,
 
 		setContextUsage(usage, overheadTokens) {
 			snapshot.contextUsage = usage;
@@ -520,12 +511,6 @@ function createHarness(
 		},
 		setCurrentSession(session) {
 			snapshot.currentSession = session;
-		},
-		setAgentLoopActive(value) {
-			snapshot.agentLoopActive = value;
-		},
-		setAgentTurnsRemaining(value) {
-			snapshot.agentTurnsRemaining = value;
 		}
 	};
 
@@ -1001,15 +986,6 @@ describe('createSSEHandler — done + error', () => {
 		expect(h.calls.finalizeAssistantMessage).toBe(1);
 		expect(h.calls.finalize[0]).toEqual({ status: undefined, note: undefined });
 		expect(h.snapshot.currentActivity).toBe('');
-	});
-
-	it('decrements turn budget in agent-to-agent mode and stops when exhausted', () => {
-		const h = createHarness({ agentToAgentMode: true, agentTurnsRemaining: 1 });
-		h.snapshot.agentLoopActive = true;
-		h.handler({ type: 'done' });
-		expect(h.snapshot.agentTurnsRemaining).toBe(0);
-		expect(h.snapshot.agentLoopActive).toBe(false);
-		expect(h.snapshot.currentActivity).toBe('Turn limit reached');
 	});
 
 	it('uses done.finished_reason when finalizing abnormal stream endings', () => {

@@ -4,6 +4,7 @@ import type { QueueCapacitySnapshot } from '../../lib/supabaseQueue';
 import type { AgenticChatConsumerRuntimeHealth } from './consumerRuntime';
 import type { AgenticChatProviderCapacitySnapshotV1 } from './providerCapacity';
 import type { AgenticChatPublisherWorkerSnapshotV1 } from './streamPublisher';
+import { MAX_AGENTIC_CHAT_CONCURRENCY } from './concurrencyBounds';
 
 const MAX_PROVIDER_SNAPSHOT_AGE_MS = 15_000;
 
@@ -100,7 +101,9 @@ export class AgenticChatWorkerCapacityCollector {
 				runtime.state !== 'running' ||
 				!queue.acceptingWork ||
 				queue.draining ||
-				queue.concurrency !== 1 ||
+				!Number.isSafeInteger(queue.concurrency) ||
+				queue.concurrency < 1 ||
+				queue.concurrency > MAX_AGENTIC_CHAT_CONCURRENCY ||
 				queue.activeJobs < 0 ||
 				queue.availableSlots < 0 ||
 				queue.activeJobs + queue.availableSlots !== queue.concurrency
@@ -110,7 +113,7 @@ export class AgenticChatWorkerCapacityCollector {
 
 			const provider = this.ports.provider.getSnapshot();
 			if (
-				!validProviderSnapshot(provider) ||
+				!validProviderSnapshot(provider, queue.concurrency) ||
 				nowMs - provider.observedAtMs < 0 ||
 				nowMs - provider.observedAtMs > MAX_PROVIDER_SNAPSHOT_AGE_MS
 			) {
@@ -139,7 +142,10 @@ export class AgenticChatWorkerCapacityCollector {
 	}
 }
 
-function validProviderSnapshot(value: AgenticChatProviderCapacitySnapshotV1): boolean {
+function validProviderSnapshot(
+	value: AgenticChatProviderCapacitySnapshotV1,
+	expectedConcurrency: number
+): boolean {
 	return (
 		Number.isSafeInteger(value.observedAtMs) &&
 		value.observedAtMs >= 0 &&
@@ -147,12 +153,14 @@ function validProviderSnapshot(value: AgenticChatProviderCapacitySnapshotV1): bo
 		typeof value.available === 'boolean' &&
 		Number.isSafeInteger(value.activeRequests) &&
 		value.activeRequests >= 0 &&
-		value.activeRequests <= 1 &&
-		value.concurrency === 1 &&
+		value.activeRequests <= expectedConcurrency &&
+		value.concurrency === expectedConcurrency &&
 		(value.degradedUntilMs === null ||
 			(Number.isSafeInteger(value.degradedUntilMs) && value.degradedUntilMs >= 0)) &&
 		value.available ===
-			(value.configured && value.activeRequests === 0 && value.degradedUntilMs === null)
+			(value.configured &&
+				value.activeRequests < value.concurrency &&
+				value.degradedUntilMs === null)
 	);
 }
 

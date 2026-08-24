@@ -4,14 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { supabase } from '../src/lib/supabase';
 import {
 	DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
-	AgenticChatInternalCohortError,
 	createAgenticChatConsumer
 } from '../src/workers/agentic-chat/consumer';
 import { AgenticChatConsumerRuntime } from '../src/workers/agentic-chat/consumerRuntime';
-import {
-	isAgenticChatInternalUser,
-	loadAgenticChatPhase3Config
-} from '../src/workers/agentic-chat/phase3Config';
+import { loadAgenticChatPhase3Config } from '../src/workers/agentic-chat/phase3Config';
 import { DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG } from '../src/workers/agentic-chat/streamPublisher';
 
 vi.mock('../src/lib/supabase', () => ({
@@ -49,11 +45,14 @@ describe('Phase 3 Agentic Chat consumer', () => {
 		expect(execute).not.toHaveBeenCalled();
 	});
 
-	it('holds the initial internal phase at one slot and preserves the one-second fallback', () => {
+	it('accepts the reviewed two-slot bound and preserves the one-second fallback', () => {
 		const executor = testExecutor();
+		expect(
+			createAgenticChatConsumer(executor, consumerOptions({ concurrency: 2 })).config
+		).toMatchObject({ concurrency: 2 });
 		expect(() =>
-			createAgenticChatConsumer(executor, consumerOptions({ concurrency: 2 }))
-		).toThrow('must remain 1 until the load-smoke gate');
+			createAgenticChatConsumer(executor, consumerOptions({ concurrency: 3 }))
+		).toThrow('cannot exceed the reviewed bound of 2');
 		expect(() =>
 			createAgenticChatConsumer(executor, consumerOptions({ pollIntervalMs: 999 }))
 		).toThrow('polling cannot be below 1000ms');
@@ -149,7 +148,7 @@ describe('Phase 3 Agentic Chat consumer', () => {
 		await consumer.queue.stop();
 	});
 
-	it('rejects an out-of-cohort claimed job before invoking the executor', async () => {
+	it('executes an admitted job without a second worker-local user cohort', async () => {
 		const job = { ...claimedChatJob(), user_id: 'd1000000-0000-4000-8000-000000000002' };
 		let claimCount = 0;
 		vi.mocked(supabase.rpc).mockImplementation(async (name) => {
@@ -157,19 +156,14 @@ describe('Phase 3 Agentic Chat consumer', () => {
 			claimCount += 1;
 			return { data: claimCount === 1 ? [job] : [], error: null } as never;
 		});
-		const execute = vi.fn();
+		const execute = vi.fn().mockResolvedValue({ outcome: 'completed' });
 		const executor = testExecutor(execute);
 		const consumer = createAgenticChatConsumer(executor, consumerOptions());
 
 		await consumer.queue.start();
 		await vi.waitFor(() => expect(claimCount).toBeGreaterThanOrEqual(2));
-		expect(execute).not.toHaveBeenCalled();
-		expect(executor.reject).toHaveBeenCalledWith(
-			expect.objectContaining({ userId: job.user_id, queueRowId: job.id }),
-			{
-				code: 'internal_cohort_rejected',
-				message: 'Agentic Chat turn is outside the configured internal cohort'
-			}
+		expect(execute).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ userId: job.user_id, queueRowId: job.id })
 		);
 		expect(
 			vi
@@ -180,25 +174,12 @@ describe('Phase 3 Agentic Chat consumer', () => {
 		).toBe(false);
 		await consumer.queue.stop();
 	});
-
-	it('requires a nonempty canonical cohort at construction', () => {
-		expect(() => createAgenticChatConsumer(testExecutor(), { internalUserIds: [] })).toThrow(
-			'requires at least one internal user UUID'
-		);
-		expect(() =>
-			createAgenticChatConsumer(testExecutor(), { internalUserIds: ['not-a-user-id'] })
-		).toThrow('must contain canonical UUIDs');
-		expect(new AgenticChatInternalCohortError()).toMatchObject({
-			code: 'internal_cohort_rejected'
-		});
-	});
 });
 
 describe('Phase 3 Agentic Chat startup configuration', () => {
-	it('is disabled by default and cannot enable without an explicit internal cohort', () => {
+	it('is disabled by default and can enable without a worker-local user cohort', () => {
 		expect(loadAgenticChatPhase3Config({})).toEqual({
 			enabled: false,
-			internalUserIds: [],
 			liveVisionEnabled: false,
 			supervisorEnabled: false,
 			consumptionBillingEnabled: false,
@@ -211,18 +192,21 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			maxToolCalls: 40,
 			provider: null
 		});
-		expect(() => loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_ENABLED: 'true' })).toThrow(
-			'must contain at least one canonical UUID'
-		);
+		expect(
+			loadAgenticChatPhase3Config({
+				...PHASE_3_PROVIDER_ENV,
+				AGENTIC_CHAT_WORKER_ENABLED: 'true'
+			})
+		).toMatchObject({ enabled: true });
 	});
 
-	it('keeps worker live vision default-off and parses only an exact explicit gate', () => {
+	it('uses the shared live vision gate name and parses only an exact explicit value', () => {
 		expect(
-			loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED: 'true' })
+			loadAgenticChatPhase3Config({ AGENT_CHAT_LIVE_VISION_ENABLED: 'true' })
 		).toMatchObject({ enabled: false, liveVisionEnabled: true });
 		expect(() =>
-			loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED: 'TRUE' })
-		).toThrow('AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED must be exactly true or false');
+			loadAgenticChatPhase3Config({ AGENT_CHAT_LIVE_VISION_ENABLED: 'TRUE' })
+		).toThrow('AGENT_CHAT_LIVE_VISION_ENABLED must be exactly true or false');
 	});
 
 	it('keeps the worker supervisor default-off and parses only an exact explicit gate', () => {
@@ -282,15 +266,12 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 		).toThrow('AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES contains an unknown capability');
 	});
 
-	it('parses an exact internal cohort and independently bounded queue policy', () => {
-		const first = 'd1000000-0000-4000-8000-000000000002';
-		const second = 'd1000000-0000-4000-8000-000000000001';
+	it('parses an independently bounded two-slot queue policy', () => {
 		const config = loadAgenticChatPhase3Config({
 			...PHASE_3_PROVIDER_ENV,
 			AGENTIC_CHAT_WORKER_ENABLED: 'true',
-			AGENTIC_CHAT_INTERNAL_USER_IDS: `${first},${second}`,
 			AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS: 'provider/fallback-1,provider/fallback-2',
-			CHAT_CONCURRENCY: '1',
+			CHAT_CONCURRENCY: '2',
 			CHAT_POLL_INTERVAL_MS: '1500',
 			CHAT_WORKER_TIMEOUT_MS: '2000',
 			CHAT_PROVIDER_BUDGET_MS: '1200',
@@ -302,14 +283,13 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 
 		expect(config).toEqual({
 			enabled: true,
-			internalUserIds: [second, first],
 			liveVisionEnabled: false,
 			supervisorEnabled: false,
 			consumptionBillingEnabled: false,
 			mutationProviderCapabilities: {},
 			mutationAdapterCapabilities: {},
 			consumer: {
-				concurrency: 1,
+				concurrency: 2,
 				pollIntervalMs: 1500,
 				workerTimeoutMs: 2000,
 				stalledTimeoutMs: 3000,
@@ -336,10 +316,6 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 				]
 			}
 		});
-		expect(isAgenticChatInternalUser(config, first.toUpperCase())).toBe(true);
-		expect(isAgenticChatInternalUser(config, 'd1000000-0000-4000-8000-000000000003')).toBe(
-			false
-		);
 	});
 
 	it('requires explicit capacity, timeout, cadence, and publisher high-water values in the production profile', () => {
@@ -347,8 +323,7 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			...PHASE_3_PROVIDER_ENV,
 			AGENTIC_CHAT_WORKER_PROFILE: 'production',
 			AGENTIC_CHAT_WORKER_ENABLED: 'true',
-			AGENTIC_CHAT_INTERNAL_USER_IDS: INTERNAL_USER_ID,
-			CHAT_CONCURRENCY: '1',
+			CHAT_CONCURRENCY: '2',
 			CHAT_POLL_INTERVAL_MS: '1000',
 			CHAT_WORKER_TIMEOUT_MS: '360000',
 			CHAT_PROVIDER_BUDGET_MS: '270000',
@@ -361,7 +336,8 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			CHAT_PUBLISHER_TURN_PENDING_SOFT_EVENTS: '32',
 			CHAT_PUBLISHER_TURN_PENDING_HARD_EVENTS: '128',
 			CHAT_PUBLISHER_WORKER_PENDING_SOFT_EVENTS: '256',
-			CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS: '1024'
+			CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS: '1024',
+			AGENT_CHAT_LIVE_VISION_ENABLED: 'true'
 		};
 
 		expect(loadAgenticChatPhase3Config(productionEnvironment)).toMatchObject({
@@ -391,7 +367,8 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			'CHAT_PUBLISHER_TURN_PENDING_SOFT_EVENTS',
 			'CHAT_PUBLISHER_TURN_PENDING_HARD_EVENTS',
 			'CHAT_PUBLISHER_WORKER_PENDING_SOFT_EVENTS',
-			'CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS'
+			'CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS',
+			'AGENT_CHAT_LIVE_VISION_ENABLED'
 		] as const) {
 			expect(() =>
 				loadAgenticChatPhase3Config({
@@ -414,18 +391,12 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 		).toThrow('AGENTIC_CHAT_WORKER_PROFILE must be exactly production when set');
 	});
 
-	it('fails closed on ambiguous flags, duplicate users, and out-of-envelope values', () => {
+	it('fails closed on ambiguous flags and out-of-envelope values', () => {
 		expect(() => loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_ENABLED: 'TRUE' })).toThrow(
 			'must be exactly true or false'
 		);
-		expect(() =>
-			loadAgenticChatPhase3Config({
-				AGENTIC_CHAT_INTERNAL_USER_IDS:
-					'd1000000-0000-4000-8000-000000000001,d1000000-0000-4000-8000-000000000001'
-			})
-		).toThrow('must not contain duplicates');
-		expect(() => loadAgenticChatPhase3Config({ CHAT_CONCURRENCY: '2' })).toThrow(
-			'must remain 1 until the load-smoke gate'
+		expect(() => loadAgenticChatPhase3Config({ CHAT_CONCURRENCY: '3' })).toThrow(
+			'cannot exceed the reviewed bound of 2'
 		);
 		expect(
 			loadAgenticChatPhase3Config({
@@ -437,21 +408,18 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			loadAgenticChatPhase3Config({
 				...PHASE_3_PROVIDER_ENV,
 				AGENTIC_CHAT_WORKER_ENABLED: 'true',
-				AGENTIC_CHAT_INTERNAL_USER_IDS: INTERNAL_USER_ID,
 				CHAT_DRAIN_TIMEOUT_MS: '22001'
 			})
 		).toThrow('cannot exceed 22000ms process budget');
 		expect(() =>
 			loadAgenticChatPhase3Config({
-				AGENTIC_CHAT_WORKER_ENABLED: 'true',
-				AGENTIC_CHAT_INTERNAL_USER_IDS: INTERNAL_USER_ID
+				AGENTIC_CHAT_WORKER_ENABLED: 'true'
 			})
 		).toThrow('PRIVATE_OPENROUTER_API_KEY');
 		expect(() =>
 			loadAgenticChatPhase3Config({
 				...PHASE_3_PROVIDER_ENV,
 				AGENTIC_CHAT_WORKER_ENABLED: 'true',
-				AGENTIC_CHAT_INTERNAL_USER_IDS: INTERNAL_USER_ID,
 				AGENTIC_CHAT_OPENROUTER_BASE_URL: 'http://openrouter.example/api/v1'
 			})
 		).toThrow('clean HTTPS base URL');
@@ -459,7 +427,6 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			loadAgenticChatPhase3Config({
 				...PHASE_3_PROVIDER_ENV,
 				AGENTIC_CHAT_WORKER_ENABLED: 'true',
-				AGENTIC_CHAT_INTERNAL_USER_IDS: INTERNAL_USER_ID,
 				AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS: 'provider/fallback,provider/fallback'
 			})
 		).toThrow('must be unique');
@@ -661,11 +628,11 @@ function realtimeHealth() {
 }
 
 function consumerOptions(config = {}) {
-	return { internalUserIds: [INTERNAL_USER_ID], config };
+	return { config };
 }
 
 function testExecutor(execute = vi.fn()) {
-	return { execute, reject: vi.fn().mockResolvedValue({ outcome: 'failed' }) };
+	return { execute };
 }
 
 function claimedChatJob() {

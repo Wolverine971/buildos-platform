@@ -17,6 +17,7 @@ export * from './entity-result-materialization';
 export * from './model-routing-types';
 export * from './no-tool-synthesis';
 export * from './project-create-args';
+export * from './project-semantics';
 export * from './read-loop-escalation';
 export * from './read-memo';
 export * from './research-capture';

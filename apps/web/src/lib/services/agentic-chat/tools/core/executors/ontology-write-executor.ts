@@ -12,6 +12,7 @@
  */
 
 import { ApiRequestError, BaseExecutor } from './base-executor';
+import { buildAgenticChatProjectContextDocumentV1 } from '@buildos/agentic-chat-runtime/loop';
 import {
 	buildTaskMoveToolResult,
 	type PublicTaskMoveResult
@@ -346,39 +347,15 @@ function buildContextDocumentSpec(
 		(entity) => entity && entity.kind === 'task'
 	) as Array<{ title: string; state_key?: string }>;
 
-	const goalsSection = (entityGoals ?? [])
-		.map((goal) => `- ${goal.name}${goal.description ? ` — ${goal.description}` : ''}`)
-		.join('\n');
-
-	const tasksSection = (entityTasks ?? [])
-		.map((task) => `- ${task.title}${task.state_key ? ` · ${task.state_key}` : ''}`)
-		.join('\n');
-
-	const body = [
-		`# ${args.project.name} Context Document`,
-		'## Vision & Summary',
-		summary || 'Not provided yet.',
-		'## Source Notes / Spark',
-		spark || 'Not provided yet.',
-		'## Initial Goals',
-		goalsSection || 'No goals captured yet.',
-		'## Initial Tasks / Threads',
-		tasksSection || 'No starter tasks captured yet.'
-	].join('\n\n');
-
-	return {
-		title: `${args.project.name} Context Document`,
-		content: body,
-		body_markdown: body, // Keep for backwards compat
-		type_key: 'document.context.project',
-		state_key: 'active',
-		props: {
-			source: 'agent_project_creation',
-			generated_at: new Date().toISOString(),
-			source_notes: spark || undefined,
-			...(agentWorkspace ? { [AGENT_WORKSPACE_PROP]: agentWorkspace } : {})
-		}
-	};
+	return buildAgenticChatProjectContextDocumentV1({
+		name: args.project.name,
+		description: summary,
+		spark,
+		goals: entityGoals,
+		tasks: entityTasks.map((task) => ({ title: task.title, stateKey: task.state_key })),
+		generatedAt: new Date().toISOString(),
+		props: agentWorkspace ? { [AGENT_WORKSPACE_PROP]: agentWorkspace } : undefined
+	});
 }
 
 function normalizeEntityDates(

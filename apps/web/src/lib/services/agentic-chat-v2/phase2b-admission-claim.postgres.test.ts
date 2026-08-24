@@ -82,6 +82,7 @@ describePostgres('agentic-chat worker Phase 2B admission/claim PostgreSQL contra
 		applySqlFile(
 			sqlPath('supabase/tests/fixtures/agentic_chat_worker_phase2b_admission_claim_base.sql')
 		);
+		applySqlFile(sqlPath('supabase/tests/fixtures/agentic_chat_voice_note_group_base.sql'));
 		for (const migration of [
 			'20260731150000_agentic_chat_legacy_atomic_admission.sql',
 			'20260801010000_agentic_chat_worker_phase2a_trust_foundation.sql',
@@ -96,7 +97,8 @@ describePostgres('agentic-chat worker Phase 2B admission/claim PostgreSQL contra
 			'20260801041000_agentic_chat_worker_effect_foundation.sql',
 			'20260801041100_agentic_chat_worker_effect_rpcs.sql',
 			'20260802020000_agentic_chat_worker_atomic_admission.sql',
-			'20260802020100_agentic_chat_worker_claim_fencing.sql'
+			'20260802020100_agentic_chat_worker_claim_fencing.sql',
+			'20260824205329_attach_worker_voice_note_groups.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}

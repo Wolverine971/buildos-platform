@@ -6,7 +6,6 @@ import type {
 	ErrorLogger,
 	JSONProfile,
 	JSONRequestOptions,
-	JSONSpendReservationEvent,
 	JSONUsageEvent,
 	OpenRouterResponse,
 	TextGenerationOptions,
@@ -17,7 +16,6 @@ import type {
 	TranscriptionResult
 } from './types';
 import {
-	JSON_MODELS,
 	TEXT_MODELS,
 	EMPTY_CONTENT_RETRY_INSTRUCTION,
 	EMPTY_CONTENT_RETRY_MIN_TOKENS,
@@ -227,7 +225,6 @@ export class SmartLLMService {
 			apiUrl: this.apiUrl,
 			httpReferer: this.httpReferer,
 			appName: this.appName,
-			errorLogger: this.errorLogger,
 			fetchImpl: this.fetchImpl
 		});
 
@@ -237,7 +234,6 @@ export class SmartLLMService {
 			this.moonshotClient = new MoonshotClient({
 				apiKey: moonshotApiKey,
 				apiUrl: this.moonshotApiUrl,
-				errorLogger: this.errorLogger,
 				fetchImpl: this.fetchImpl
 			});
 		}
@@ -575,7 +571,7 @@ export class SmartLLMService {
 	// JSON RESPONSE METHOD
 	// ============================================
 
-	async getJSONResponse<T = any>(options: JSONRequestOptions<T>): Promise<T> {
+	async getJSONResponse<T = any>(options: JSONRequestOptions): Promise<T> {
 		this.requireUserId(options.userId, 'getJSONResponse');
 		const requestStartedAt = new Date();
 		const startTime = performance.now();

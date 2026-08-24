@@ -1,30 +1,10 @@
 // apps/web/src/lib/types/gmail-integration.ts
-export type GmailConnectionStatus = 'active' | 'reconnect_required' | 'disabled' | 'error';
-
-export type GmailConnectionCapability = {
-	capability: 'read' | 'send' | 'save_gmail_draft' | 'modify_message';
-	status: 'enabled' | 'disabled' | 'reconnect_required';
-};
-
-export type GmailConnectionSummary = {
-	id: string;
-	emailAddress: string;
-	displayName: string | null;
-	accountLabel: string;
-	status: GmailConnectionStatus;
-	readEnabled: boolean;
-	connectedAt: string;
-	lastVerifiedAt: string | null;
-	lastUsedAt: string | null;
-	capabilities: GmailConnectionCapability[];
-};
-
-export type GmailConnectionsPayload = {
-	available: boolean;
-	maxConnections: number;
-	connections: GmailConnectionSummary[];
-	readOnly: true;
-};
+export type {
+	GmailConnectionCapability,
+	GmailConnectionStatus,
+	GmailConnectionSummary,
+	GmailConnectionsPayload
+} from '@buildos/shared-agent-ops/email/gmail-account-read-port';
 
 export type GmailReadAccountResult = {
 	connectionId: string;

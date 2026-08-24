@@ -144,6 +144,19 @@ VALUES (
 	'global_basic', repeat('b', 64), now() + interval '10 minutes', 'trusted summary'
 );
 
+INSERT INTO public.voice_note_groups (id, user_id, status)
+VALUES
+	(
+		'd9000000-0000-4000-8000-000000000001',
+		'd1000000-0000-4000-8000-000000000001',
+		'draft'
+	),
+	(
+		'd9000000-0000-4000-8000-000000000002',
+		'd1000000-0000-4000-8000-000000000002',
+		'draft'
+	);
+
 SET ROLE service_role;
 
 -- A prepared-prompt admission commits all five durable identities together.
@@ -163,6 +176,7 @@ INSERT INTO admission_results VALUES (
 			"streamRunId":"prepared-stream-1",
 			"requestHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			"message":"Use prepared context",
+			"messageMetadata":{"voice_note_group_id":"d9000000-0000-4000-8000-000000000001"},
 			"historySource":"prepared_prompt",
 			"artifactHistory":[{"sourceMessageId":null,"role":"system","content":"prepared history","attachments":[],"toolCalls":[],"toolCallId":null}],
 			"artifactHistoryBytes":128,
@@ -189,6 +203,53 @@ SELECT pg_temp.assert_true(
 		AND (SELECT count(*) FROM public.queue_jobs WHERE dedup_key = 'agentic-chat-turn:d4000000-0000-4000-8000-000000000001') = 1
 		AND (SELECT consumed_at IS NOT NULL FROM public.agentic_chat_prepared_prompts WHERE id = 'd3000000-0000-4000-8000-000000000001'),
 	'prepared admission did not commit exactly one turn/message/artifact/job/claim'
+);
+SELECT pg_temp.assert_true(
+	(
+		SELECT status = 'attached'
+			AND linked_entity_type = 'chat_message'
+			AND linked_entity_id = 'd5000000-0000-4000-8000-000000000001'
+			AND chat_session_id = 'd2000000-0000-4000-8000-000000000001'
+		FROM public.voice_note_groups
+		WHERE id = 'd9000000-0000-4000-8000-000000000001'
+	),
+	'worker admission did not atomically attach the voice-note group'
+);
+INSERT INTO public.chat_messages (id, session_id, user_id, role, content, metadata)
+VALUES (
+	'd5000000-0000-4000-8000-000000000002',
+	'd2000000-0000-4000-8000-000000000001',
+	'd1000000-0000-4000-8000-000000000001',
+	'user',
+	'Attempt to relink an attached voice note',
+	'{"voice_note_group_id":"d9000000-0000-4000-8000-000000000001"}'::jsonb
+);
+SELECT pg_temp.assert_true(
+	(
+		SELECT linked_entity_id = 'd5000000-0000-4000-8000-000000000001'
+		FROM public.voice_note_groups
+		WHERE id = 'd9000000-0000-4000-8000-000000000001'
+	),
+	'an already attached voice-note group was relinked by later message metadata'
+);
+INSERT INTO public.chat_messages (id, session_id, user_id, role, content, metadata)
+VALUES (
+	'd5f00000-0000-4000-8000-000000000001',
+	'd2000000-0000-4000-8000-000000000001',
+	'd1000000-0000-4000-8000-000000000001',
+	'user',
+	'Attempt to attach another user''s voice note',
+	'{"voice_note_group_id":"d9000000-0000-4000-8000-000000000002"}'::jsonb
+);
+SELECT pg_temp.assert_true(
+	(
+		SELECT status = 'draft'
+			AND linked_entity_id IS NULL
+			AND chat_session_id IS NULL
+		FROM public.voice_note_groups
+		WHERE id = 'd9000000-0000-4000-8000-000000000002'
+	),
+	'a chat message attached a voice-note group owned by another user'
 );
 SELECT pg_temp.assert_true(
 	(

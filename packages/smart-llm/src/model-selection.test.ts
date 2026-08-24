@@ -137,6 +137,38 @@ describe('ensureToolCompatibleModels', () => {
 		expect(result).not.toContain('alpha/model');
 	});
 
+	it('returns no model instead of escaping to an excluded alpha under a tight custom cap', () => {
+		const result = selectModelsByRequirements(
+			{
+				'alpha/model': {
+					id: 'alpha/model',
+					name: 'Alpha',
+					speed: 5,
+					smartness: 5,
+					cost: 0,
+					outputCost: 0,
+					provider: 'openrouter',
+					bestFor: ['testing'],
+					limitations: ['alpha-model']
+				},
+				'stable/model': {
+					id: 'stable/model',
+					name: 'Stable',
+					speed: 4,
+					smartness: 4,
+					cost: 0.2,
+					outputCost: 0.4,
+					provider: 'openai',
+					bestFor: ['testing']
+				}
+			},
+			{ maxCost: 0.01 },
+			'json'
+		);
+
+		expect(result).toEqual([]);
+	});
+
 	it('excludes models with no active endpoints from requirement-based selection', () => {
 		const result = selectModelsByRequirements(
 			{

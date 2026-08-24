@@ -3,7 +3,6 @@
 import {
 	type AgenticChatConsumerConfig,
 	DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
-	normalizeInternalUserIds,
 	validateAgenticChatConsumerConfig,
 	validateAgenticChatDrainTimeout
 } from './consumer';
@@ -45,7 +44,6 @@ export type AgenticChatPhase3ProviderConfig = {
 };
 
 type AgenticChatPhase3BaseConfig = {
-	internalUserIds: readonly string[];
 	liveVisionEnabled: boolean;
 	supervisorEnabled: boolean;
 	consumptionBillingEnabled: boolean;
@@ -71,9 +69,8 @@ export type AgenticChatPhase3Config =
 /**
  * Parse the Phase 3 startup envelope without mutating process state.
  *
- * Worker execution is disabled by default. Enabling it requires an explicit
- * canonical-UUID allowlist so a deploy cannot accidentally become a public
- * cohort. The allowlist is intentionally data, not an email/domain heuristic.
+ * Worker execution remains disabled by default. Once explicitly enabled, the
+ * consumer accepts every turn that crossed the web admission and lease gates.
  */
 export function loadAgenticChatPhase3Config(
 	environment: NodeJS.ProcessEnv = process.env
@@ -87,9 +84,9 @@ export function loadAgenticChatPhase3Config(
 		'AGENTIC_CHAT_WORKER_ENABLED'
 	);
 	const liveVisionEnabled = parseBoolean(
-		environment.AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED,
+		environment.AGENT_CHAT_LIVE_VISION_ENABLED,
 		false,
-		'AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED'
+		'AGENT_CHAT_LIVE_VISION_ENABLED'
 	);
 	const supervisorEnabled = parseBoolean(
 		environment.AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED,
@@ -114,13 +111,6 @@ export function loadAgenticChatPhase3Config(
 			throw new Error(`${toolName} provider capability requires its mutation adapter`);
 		}
 	}
-	const internalUserIds = parseInternalUserIds(environment.AGENTIC_CHAT_INTERNAL_USER_IDS);
-	if (enabled && internalUserIds.length === 0) {
-		throw new Error(
-			'AGENTIC_CHAT_INTERNAL_USER_IDS must contain at least one canonical UUID when the Agentic Chat worker is enabled'
-		);
-	}
-
 	const consumer: AgenticChatConsumerConfig = {
 		concurrency: parsePositiveInteger(
 			environment.CHAT_CONCURRENCY,
@@ -172,7 +162,6 @@ export function loadAgenticChatPhase3Config(
 	if (!enabled) {
 		return {
 			enabled: false,
-			internalUserIds,
 			liveVisionEnabled,
 			supervisorEnabled,
 			consumptionBillingEnabled,
@@ -190,7 +179,6 @@ export function loadAgenticChatPhase3Config(
 
 	return {
 		enabled: true,
-		internalUserIds,
 		liveVisionEnabled,
 		supervisorEnabled,
 		consumptionBillingEnabled,
@@ -225,7 +213,8 @@ const PRODUCTION_REQUIRED_CONFIG = Object.freeze([
 	'CHAT_PUBLISHER_TURN_PENDING_SOFT_EVENTS',
 	'CHAT_PUBLISHER_TURN_PENDING_HARD_EVENTS',
 	'CHAT_PUBLISHER_WORKER_PENDING_SOFT_EVENTS',
-	'CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS'
+	'CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS',
+	'AGENT_CHAT_LIVE_VISION_ENABLED'
 ] as const);
 
 function requireExplicitProductionConfig(environment: NodeJS.ProcessEnv): void {
@@ -285,13 +274,6 @@ function loadPublisherConfig(environment: NodeJS.ProcessEnv): AgenticChatPublish
 	return Object.freeze(config);
 }
 
-export function isAgenticChatInternalUser(
-	config: Pick<AgenticChatPhase3Config, 'internalUserIds'>,
-	userId: string
-): boolean {
-	return config.internalUserIds.includes(userId.toLowerCase());
-}
-
 function parseBoolean(value: string | undefined, fallback: boolean, name: string): boolean {
 	if (value === undefined || value.trim() === '') return fallback;
 	if (value === 'true') return true;
@@ -307,18 +289,6 @@ function parsePositiveInteger(value: string | undefined, fallback: number, name:
 		throw new Error(`${name} must be a positive safe integer`);
 	}
 	return parsed;
-}
-
-function parseInternalUserIds(value: string | undefined): string[] {
-	if (value === undefined || value.trim() === '') return [];
-	try {
-		return normalizeInternalUserIds(value.split(',').map((entry) => entry.trim()));
-	} catch (error) {
-		if (error instanceof Error && error.message.includes('duplicates')) throw error;
-		throw new Error(
-			'AGENTIC_CHAT_INTERNAL_USER_IDS must be a comma-separated canonical UUID list'
-		);
-	}
 }
 
 function parseMutationCapabilities(

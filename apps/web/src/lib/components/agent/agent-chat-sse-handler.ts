@@ -342,9 +342,6 @@ export interface ModalStateDeps {
 	getCurrentSession(): ChatSession | null;
 	getSelectedContextLabel(): string | null;
 	getActiveStreamRunId(): number;
-	isAgentToAgentMode(): boolean;
-	getAgentLoopActive(): boolean;
-	getAgentTurnsRemaining(): number;
 
 	// Writes
 	setContextUsage(usage: ContextUsageSnapshot | null, overheadTokens: number): void;
@@ -360,8 +357,6 @@ export interface ModalStateDeps {
 	setShowFocusSelector(value: boolean): void;
 	setShowProjectActionSelector(value: boolean): void;
 	setCurrentSession(session: ChatSession | null): void;
-	setAgentLoopActive(value: boolean): void;
-	setAgentTurnsRemaining(value: number): void;
 }
 
 export interface SSEHandlerDeps {
@@ -642,16 +637,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 			deps.addCreatedEntitiesMessage(createdEntitiesBuffer);
 		}
 		createdEntitiesBuffer = [];
-		if (state.isAgentToAgentMode() && state.getAgentLoopActive()) {
-			const remaining = state.getAgentTurnsRemaining();
-			if (remaining > 0) {
-				state.setAgentTurnsRemaining(Math.max(0, remaining - 1));
-			}
-			if (state.getAgentTurnsRemaining() <= 0) {
-				state.setAgentLoopActive(false);
-				state.setCurrentActivity('Turn limit reached');
-			}
-		}
 	}
 
 	function handleError(event: Extract<AgentSSEMessage, { type: 'error' }>): void {

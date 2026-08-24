@@ -90,7 +90,10 @@ vi.mock('$lib/services/agentic-chat-lite/prompt', async (importOriginal) => {
 	};
 });
 
-import { prepareAgenticChatWorkerAdmission } from './worker-turn-preparation.server';
+import {
+	AgenticChatWorkerPreparationError,
+	prepareAgenticChatWorkerAdmission
+} from './worker-turn-preparation.server';
 
 function command(overrides: Record<string, unknown> = {}) {
 	return {
@@ -362,6 +365,39 @@ describe('Agentic Chat worker turn preparation', () => {
 			ok: true,
 			contentBytes: result.args.p_artifact_content_bytes,
 			historyBytes: result.args.p_artifact_history_bytes
+		});
+	});
+
+	it('rejects an unavailable resolved tool surface before durable admission', async () => {
+		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+			...mocks.resolveFastChatTurnPreparation(),
+			tools: [
+				{
+					type: 'function',
+					function: {
+						name: 'list_calendar_events',
+						description: 'Calendar read',
+						parameters: { type: 'object', properties: {} }
+					}
+				}
+			]
+		});
+
+		await expect(
+			prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: {} as never,
+				userId: USER_ID,
+				command: command({ message: "What's on my calendar tomorrow?" }) as never,
+				lease: {
+					decisionId: DECISION_ID,
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				},
+				dependencies: dependencies()
+			})
+		).rejects.toMatchObject<Partial<AgenticChatWorkerPreparationError>>({
+			code: 'transport_renegotiate'
 		});
 	});
 
@@ -859,6 +895,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			]
 		});
 
+		const turnDependencies = { ...dependencies(), liveVisionEnabled: true };
 		const result = await prepareAgenticChatWorkerAdmission({
 			userClient: {} as never,
 			serviceClient: {} as never,
@@ -875,7 +912,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				mode: 'worker_realtime',
 				contractVersion: 'agentic_chat_worker_v1'
 			},
-			dependencies: dependencies()
+			dependencies: turnDependencies
 		});
 
 		expect(result.args.p_artifact_prepared).toMatchObject({
@@ -883,7 +920,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				message: 'Review this diagram.',
 				attachmentContextMaxChars: 7000,
 				liveVision: {
-					requested: false,
+					requested: true,
 					maxImages: 2,
 					maxImageBytes: 8 * 1024 * 1024,
 					renderWidth: 1600,
@@ -906,5 +943,69 @@ describe('Agentic Chat worker turn preparation', () => {
 			message: 'Review this diagram.',
 			attachments: [expect.objectContaining({ asset_id: assetId, display_order: 0 })]
 		});
+		expect(result.args.p_user_message_metadata).toMatchObject({
+			live_vision_requested: true,
+			live_vision_attachment_count: 1
+		});
+	});
+
+	it('renegotiates attachment turns when worker live vision is disabled', async () => {
+		mocks.loadValidatedChatAttachments.mockResolvedValue({
+			assets: [],
+			attachments: [
+				{
+					attachment_kind: 'temporary_file',
+					media_type: 'image',
+					asset_id: null,
+					project_id: null,
+					storage_bucket: 'onto-assets',
+					storage_path: `users/${USER_ID}/chat-temp/image.png`,
+					file_name: 'image.png',
+					content_type: 'image/png',
+					file_size_bytes: 1024,
+					width: 640,
+					height: 480,
+					checksum_sha256: null,
+					ocr_status: 'skipped',
+					extraction_summary: null,
+					extracted_text_preview: null,
+					role: 'analysis_target',
+					display_order: 0,
+					expires_at: new Date(NOW + 60_000).toISOString()
+				}
+			]
+		});
+
+		await expect(
+			prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: {} as never,
+				userId: USER_ID,
+				command: command({
+					message: 'Review this image',
+					attachments: [
+						{
+							attachment_kind: 'temporary_file',
+							media_type: 'image',
+							storage_bucket: 'onto-assets',
+							storage_path: `users/${USER_ID}/chat-temp/image.png`,
+							file_name: 'image.png',
+							content_type: 'image/png',
+							file_size_bytes: 1024,
+							width: 640,
+							height: 480,
+							expires_at: new Date(NOW + 60_000).toISOString(),
+							display_order: 0
+						}
+					]
+				}) as never,
+				lease: {
+					decisionId: DECISION_ID,
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				},
+				dependencies: { ...dependencies(), liveVisionEnabled: false }
+			})
+		).rejects.toMatchObject({ code: 'transport_renegotiate' });
 	});
 });
