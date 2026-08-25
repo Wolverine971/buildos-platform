@@ -7,6 +7,13 @@ import { EmailService } from '$lib/services/email-service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 
+// This route performs several idempotency/preference queries, a synchronous
+// Gmail SMTP send, and post-send tracking writes. The app-wide 10-second
+// default is too short for that external-I/O chain, especially on a cold start.
+export const config = {
+	maxDuration: 60
+};
+
 /**
  * Webhook endpoint for worker to send notification emails
  *

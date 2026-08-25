@@ -22,7 +22,7 @@ vi.mock('$lib/services/email-service', () => ({
 	}))
 }));
 
-import { POST } from './+server';
+import { config, POST } from './+server';
 
 function createEmailByIdQuery(email: Record<string, any> | null) {
 	const query: any = {
@@ -76,6 +76,10 @@ describe('/api/webhooks/send-notification-email', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		fromCalls.length = 0;
+	});
+
+	it('reserves enough runtime for Gmail delivery and post-send tracking', () => {
+		expect(config.maxDuration).toBe(60);
 	});
 
 	it('does not call Gmail when the delivery email was already sent', async () => {

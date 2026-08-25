@@ -3,7 +3,7 @@
 // configured (no PUBLIC_POSTHOG_KEY) or when running on the server, so callers
 // never need to guard. See docs/marketing/growth/posthog-analytics-workflow.md.
 import { browser, dev } from '$app/environment';
-import { env } from '$env/dynamic/public';
+import { PUBLIC_POSTHOG_HOST, PUBLIC_POSTHOG_KEY } from '$env/static/public';
 import { hasAnalyticsConsent } from './tracking-consent';
 
 const FIRST_TOUCH_STORAGE_KEY = 'buildos_first_touch';
@@ -64,9 +64,9 @@ function logHealth(
 }
 
 function isConfigured(): boolean {
-	if (!browser || !env.PUBLIC_POSTHOG_KEY) return false;
+	if (!browser || !PUBLIC_POSTHOG_KEY) return false;
 	// Dev captures are opt-in so localhost sessions don't pollute production data
-	if (dev && env.PUBLIC_POSTHOG_CAPTURE_DEV !== 'true') return false;
+	if (dev && import.meta.env.VITE_POSTHOG_CAPTURE_DEV !== 'true') return false;
 	return true;
 }
 
@@ -93,8 +93,8 @@ function ensurePostHogInitialized(): Promise<any | null> {
 				posthogClient = posthog;
 
 				if (!initialized) {
-					posthog.init(env.PUBLIC_POSTHOG_KEY!, {
-						api_host: env.PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+					posthog.init(PUBLIC_POSTHOG_KEY, {
+						api_host: PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
 						capture_pageview: 'history_change',
 						person_profiles: 'identified_only',
 						capture_pageleave: true,

@@ -8,7 +8,10 @@ import type {
 } from '$lib/types/daily-brief';
 import { get } from 'svelte/store';
 import { browser } from '$app/environment';
-import { env as publicEnv } from '$env/dynamic/public';
+import {
+	PUBLIC_BRIEF_MAX_POLLING_TIME,
+	PUBLIC_BRIEF_POLLING_INTERVAL
+} from '$env/static/public';
 import { RailwayWorkerService } from './railwayWorker.service';
 import { toastService } from '$lib/stores/toast.store';
 import { RealtimeBriefService } from './realtimeBrief.service';
@@ -54,12 +57,8 @@ export class BriefClientService {
 	};
 
 	// Configuration
-	private static readonly POLLING_INTERVAL = parseInt(
-		publicEnv.PUBLIC_BRIEF_POLLING_INTERVAL || '3000'
-	);
-	private static readonly MAX_POLLING_TIME = parseInt(
-		publicEnv.PUBLIC_BRIEF_MAX_POLLING_TIME || '300000'
-	);
+	private static readonly POLLING_INTERVAL = parseInt(PUBLIC_BRIEF_POLLING_INTERVAL || '3000');
+	private static readonly MAX_POLLING_TIME = parseInt(PUBLIC_BRIEF_MAX_POLLING_TIME || '300000');
 
 	/**
 	 * Start generation with Railway worker integration and fallback

@@ -4,7 +4,7 @@
 	import { goto, replaceState } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { toastService } from '$lib/stores/toast.store';
-	import { env as publicEnv } from '$env/dynamic/public';
+	import { PUBLIC_GOOGLE_CLIENT_ID } from '$env/static/public';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -152,7 +152,7 @@
 		googleLoading = true;
 		error = '';
 
-		const googleClientId = publicEnv.PUBLIC_GOOGLE_CLIENT_ID;
+		const googleClientId = PUBLIC_GOOGLE_CLIENT_ID;
 		if (!googleClientId) {
 			error = 'Google sign-up is temporarily unavailable';
 			googleLoading = false;

@@ -4,7 +4,7 @@
 	import { goto, replaceState } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { toastService } from '$lib/stores/toast.store';
-	import { env as publicEnv } from '$env/dynamic/public';
+	import { PUBLIC_GOOGLE_CLIENT_ID } from '$env/static/public';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 	import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
@@ -242,7 +242,7 @@
 		googleLoading = true;
 		error = '';
 
-		const googleClientId = publicEnv.PUBLIC_GOOGLE_CLIENT_ID;
+		const googleClientId = PUBLIC_GOOGLE_CLIENT_ID;
 		if (!googleClientId) {
 			error = 'Google sign-in is temporarily unavailable';
 			googleLoading = false;
