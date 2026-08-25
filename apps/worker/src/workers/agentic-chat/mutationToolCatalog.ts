@@ -4,7 +4,7 @@ import {
 	type BuildosAgentAllowedOp,
 	type JsonObject
 } from '@buildos/shared-types';
-import { TOOL_METADATA } from '@buildos/agentic-chat-runtime/loop';
+import { TOOL_METADATA } from '@buildos/agentic-chat-runtime/catalog';
 
 export type AgenticChatMutationCapabilityNameV1 =
 	| 'createOntoDocument'

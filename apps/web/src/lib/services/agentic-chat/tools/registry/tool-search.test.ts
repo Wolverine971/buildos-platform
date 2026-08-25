@@ -1,8 +1,7 @@
 // apps/web/src/lib/services/agentic-chat/tools/registry/tool-search.test.ts
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../core/definitions';
-import { buildToolRegistry, getToolRegistry, resetToolRegistryCache } from './tool-registry';
+import { getToolRegistry, resetToolRegistryCache } from '@buildos/agentic-chat-runtime/catalog';
 import { searchToolRegistry } from './tool-search';
 
 const CHAT_HIDDEN_LEGACY_SEARCH_TOOLS = [
@@ -38,27 +37,6 @@ describe('searchToolRegistry discovery surfaces', () => {
 			tool_name: 'search_onto_tasks',
 			chat_discoverable: true
 		});
-	});
-
-	it('does not let chat-only visibility change the registry version', () => {
-		const visibleMetadata = {
-			...TOOL_METADATA,
-			search_onto_goals: {
-				...TOOL_METADATA.search_onto_goals,
-				chatDiscovery: 'visible' as const
-			}
-		};
-		const hiddenMetadata = {
-			...TOOL_METADATA,
-			search_onto_goals: {
-				...TOOL_METADATA.search_onto_goals,
-				chatDiscovery: 'hidden' as const
-			}
-		};
-
-		expect(buildToolRegistry(CHAT_TOOL_DEFINITIONS, hiddenMetadata).version).toBe(
-			buildToolRegistry(CHAT_TOOL_DEFINITIONS, visibleMetadata).version
-		);
 	});
 
 	it('hides legacy entity search tools from the default chat surface only', () => {

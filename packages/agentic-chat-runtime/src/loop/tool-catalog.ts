@@ -10,12 +10,10 @@
 // composition defect and throws; a silently empty catalog would let every
 // tool fall through to name heuristics and drift classification unrefereed.
 
-export type AgenticChatLoopCatalogOpV1 = {
-	op: string;
-	tool_name: string;
-	kind: 'read' | 'write';
-	parameters_schema?: Record<string, unknown>;
-};
+import type { RegistryOp } from '@buildos/shared-types';
+
+export type AgenticChatLoopCatalogOpV1 = Pick<RegistryOp, 'op' | 'tool_name' | 'kind'> &
+	Partial<Pick<RegistryOp, 'parameters_schema'>>;
 
 export type AgenticChatLoopToolCatalogV1 = {
 	ops: Readonly<Record<string, AgenticChatLoopCatalogOpV1>>;

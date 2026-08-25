@@ -2,7 +2,7 @@
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
 import type { DomainSensingResult } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import type { SkillGatePreload } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
-import type { ProjectCreateExecutionWorkflow } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import type { ProjectCreateExecutionWorkflow } from '@buildos/agentic-chat-runtime/catalog';
 import type { LitePromptTurnSituation } from './situational-rules';
 
 /**

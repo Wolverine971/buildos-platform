@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/skill-reference-load.ts
-import { getToolRegistry } from '../registry/tool-registry';
+import { getToolRegistry } from '@buildos/agentic-chat-runtime/catalog';
 import { getSkillByReference } from './registry';
 import {
 	canReadSkillReference,

@@ -1,15 +1,15 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/tool-schema-compat.test.ts
 import { describe, expect, it } from 'vitest';
-import { AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1 } from '@buildos/agentic-chat-runtime/loop';
-import { getToolSchema } from '../registry/tool-schema';
-import { CHAT_TOOL_DEFINITIONS } from './tool-definitions';
 import {
+	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1,
 	CANCEL_TURN_CONTRACT_TOOL_DEFINITION,
+	CHAT_TOOL_DEFINITIONS,
 	DECLARE_READ_ONLY_TURN_TOOL_DEFINITION,
 	GATEWAY_TOOL_DEFINITIONS,
 	REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION,
 	TURN_CONTRACT_TOOL_DEFINITION
-} from './definitions/gateway';
+} from '@buildos/agentic-chat-runtime/catalog';
+import { getToolSchema } from '../registry/tool-schema';
 
 const FORBIDDEN_TOP_LEVEL_KEYS = ['oneOf', 'anyOf', 'allOf', 'not', 'enum'] as const;
 const CONTROL_TOOL_DEFINITIONS = [
@@ -23,16 +23,6 @@ const ALL_TOOL_DEFINITIONS = [
 	...GATEWAY_TOOL_DEFINITIONS,
 	...CONTROL_TOOL_DEFINITIONS
 ];
-
-function omitDescriptions(value: unknown): unknown {
-	if (Array.isArray(value)) return value.map(omitDescriptions);
-	if (!value || typeof value !== 'object') return value;
-	return Object.fromEntries(
-		Object.entries(value)
-			.filter(([key]) => key !== 'description')
-			.map(([key, nested]) => [key, omitDescriptions(nested)])
-	);
-}
 
 describe('Chat tool schema compatibility', () => {
 	it('keeps internal execution architecture out of model-visible definitions', () => {
@@ -60,7 +50,7 @@ describe('Chat tool schema compatibility', () => {
 		}
 	});
 
-	it('keeps web control schemas aligned with the shared runtime', () => {
+	it('keeps complete web control definitions aligned with the shared runtime', () => {
 		for (const localDefinition of CONTROL_TOOL_DEFINITIONS) {
 			const sharedDefinition = AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1.find(
 				(candidate) => candidate.function.name === localDefinition.function.name
@@ -69,9 +59,7 @@ describe('Chat tool schema compatibility', () => {
 				sharedDefinition,
 				`${localDefinition.function.name} shared definition`
 			).toBeDefined();
-			expect(omitDescriptions(localDefinition.function.parameters)).toEqual(
-				omitDescriptions(sharedDefinition?.function.parameters)
-			);
+			expect(sharedDefinition).toEqual(localDefinition);
 		}
 	});
 

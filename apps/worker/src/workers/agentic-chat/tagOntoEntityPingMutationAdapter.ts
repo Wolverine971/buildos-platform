@@ -7,7 +7,7 @@ import {
 } from '@buildos/shared-agent-ops/ops/entity-mention-ping.service';
 import { type Database, type JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AgenticChatFixtureMutatingToolPortV1 } from './fixtureMutationExecutor';
+import type { AgenticChatMutatingToolPortV1 } from './mutation-executor';
 import {
 	type MutationInput,
 	assertMutationAdapterBoundary,
@@ -38,7 +38,7 @@ type EntityMentionPingRunner = (input: EntityMentionPingInput) => Promise<Entity
  * idempotency key, so ambiguous delivery is never retried automatically.
  */
 export class AgenticChatTagOntoEntityPingMutationAdapter
-	implements AgenticChatFixtureMutatingToolPortV1
+	implements AgenticChatMutatingToolPortV1
 {
 	private readonly pingEntity: EntityMentionPingRunner;
 

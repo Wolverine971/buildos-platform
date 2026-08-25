@@ -6,7 +6,7 @@
  * information about field types, valid values, and descriptions.
  */
 
-import type { FieldInfo } from '../loop/definition-types';
+import type { FieldInfo } from '../catalog/types';
 
 export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 	ontology_project: {

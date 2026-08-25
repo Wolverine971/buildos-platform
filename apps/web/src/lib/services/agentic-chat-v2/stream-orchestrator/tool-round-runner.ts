@@ -2,14 +2,14 @@
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
 import { AGENTIC_CHAT_SUPERVISOR_BLOCKED_RETRY_ERROR_V1 } from '@buildos/agentic-chat-runtime/supervisor';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
-import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import type { FastChatHistoryMessage } from '../types';
 import type { TurnSupervisorObservation } from '../turn-supervisor';
 import { summarizeToolResult } from '../turn-supervisor/digest';
 import {
 	extractGatewayToolMaterializations,
+	getToolRegistry,
 	type GatewayToolMaterializationSource
-} from '$lib/services/agentic-chat/tools/core/gateway-surface';
+} from '@buildos/agentic-chat-runtime/catalog';
 import { buildToolPayloadForModel } from './tool-payload-compaction';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution } from './shared';

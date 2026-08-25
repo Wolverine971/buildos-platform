@@ -1,5 +1,6 @@
 // packages/agentic-chat-runtime/src/worker-tool-policy.ts
-import { AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1, TOOL_METADATA } from './loop';
+import { AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1 } from './catalog/definitions/controls';
+import { TOOL_METADATA } from './catalog/metadata';
 import { AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1 } from './tools';
 
 /**

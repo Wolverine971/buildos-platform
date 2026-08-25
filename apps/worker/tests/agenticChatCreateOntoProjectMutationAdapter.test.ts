@@ -51,6 +51,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 			artifact: {
 				prepared: {
 					toolSurface: {
+						surfaceProfile: 'test_create_project',
 						toolNames: ['create_onto_project'],
 						definitions: [
 							{
@@ -58,7 +59,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 								function: {
 									name: 'create_onto_project',
 									description: 'Create project shell',
-									parameters: { type: 'object' }
+									parameters: { type: 'object', properties: {} }
 								}
 							}
 						]

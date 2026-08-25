@@ -7,7 +7,7 @@ import {
 	createAgenticChatConsumer
 } from '../src/workers/agentic-chat/consumer';
 import { AgenticChatConsumerRuntime } from '../src/workers/agentic-chat/consumerRuntime';
-import { loadAgenticChatPhase3Config } from '../src/workers/agentic-chat/phase3Config';
+import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
 import { DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG } from '../src/workers/agentic-chat/streamPublisher';
 
 vi.mock('../src/lib/supabase', () => ({
@@ -178,7 +178,7 @@ describe('Phase 3 Agentic Chat consumer', () => {
 
 describe('Phase 3 Agentic Chat startup configuration', () => {
 	it('is disabled by default and can enable without a worker-local user cohort', () => {
-		expect(loadAgenticChatPhase3Config({})).toEqual({
+		expect(loadAgenticChatConfig({})).toEqual({
 			enabled: false,
 			liveVisionEnabled: false,
 			supervisorEnabled: false,
@@ -193,7 +193,7 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			provider: null
 		});
 		expect(
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				...PHASE_3_PROVIDER_ENV,
 				AGENTIC_CHAT_WORKER_ENABLED: 'true'
 			})
@@ -202,35 +202,35 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 
 	it('uses the shared live vision gate name and parses only an exact explicit value', () => {
 		expect(
-			loadAgenticChatPhase3Config({ AGENT_CHAT_LIVE_VISION_ENABLED: 'true' })
+			loadAgenticChatConfig({ AGENT_CHAT_LIVE_VISION_ENABLED: 'true' })
 		).toMatchObject({ enabled: false, liveVisionEnabled: true });
 		expect(() =>
-			loadAgenticChatPhase3Config({ AGENT_CHAT_LIVE_VISION_ENABLED: 'TRUE' })
+			loadAgenticChatConfig({ AGENT_CHAT_LIVE_VISION_ENABLED: 'TRUE' })
 		).toThrow('AGENT_CHAT_LIVE_VISION_ENABLED must be exactly true or false');
 	});
 
 	it('keeps the worker supervisor default-off and parses only an exact explicit gate', () => {
 		expect(
-			loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED: 'true' })
+			loadAgenticChatConfig({ AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED: 'true' })
 		).toMatchObject({ enabled: false, supervisorEnabled: true });
 		expect(() =>
-			loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED: 'TRUE' })
+			loadAgenticChatConfig({ AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED: 'TRUE' })
 		).toThrow('AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED must be exactly true or false');
 	});
 
 	it('keeps terminal consumption billing aligned with the exact shared web gate', () => {
 		expect(
-			loadAgenticChatPhase3Config({ PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE: 'true' })
+			loadAgenticChatConfig({ PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE: 'true' })
 		).toMatchObject({ enabled: false, consumptionBillingEnabled: true });
 		expect(() =>
-			loadAgenticChatPhase3Config({ PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE: 'TRUE' })
+			loadAgenticChatConfig({ PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE: 'TRUE' })
 		).toThrow('PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE must be exactly true or false');
 	});
 
 	it('keeps mutation capabilities default-off and requires exact dual-gate configuration', () => {
 		const capabilities = 'updateOntoTask,moveDocumentInTree';
 		expect(
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES: capabilities,
 				AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: capabilities
 			})
@@ -245,29 +245,29 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			}
 		});
 		expect(() =>
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES: 'updateOntoTask'
 			})
 		).toThrow('update_onto_task provider capability requires its mutation adapter');
 		expect(() =>
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: 'updateOntoTask,updateOntoTask'
 			})
 		).toThrow('AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES must not contain duplicates');
 		expect(() =>
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: 'updateOntoTask, moveDocumentInTree'
 			})
 		).toThrow('must be a comma-separated canonical capability list');
 		expect(() =>
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES: 'update_onto_task'
 			})
 		).toThrow('AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES contains an unknown capability');
 	});
 
 	it('parses an independently bounded two-slot queue policy', () => {
-		const config = loadAgenticChatPhase3Config({
+		const config = loadAgenticChatConfig({
 			...PHASE_3_PROVIDER_ENV,
 			AGENTIC_CHAT_WORKER_ENABLED: 'true',
 			AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS: 'provider/fallback-1,provider/fallback-2',
@@ -340,7 +340,7 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			AGENT_CHAT_LIVE_VISION_ENABLED: 'true'
 		};
 
-		expect(loadAgenticChatPhase3Config(productionEnvironment)).toMatchObject({
+		expect(loadAgenticChatConfig(productionEnvironment)).toMatchObject({
 			enabled: true,
 			publisher: {
 				turnPendingSoftBytes: 262_144,
@@ -371,20 +371,20 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 			'AGENT_CHAT_LIVE_VISION_ENABLED'
 		] as const) {
 			expect(() =>
-				loadAgenticChatPhase3Config({
+				loadAgenticChatConfig({
 					...productionEnvironment,
 					[requiredName]: undefined
 				})
 			).toThrow(`${requiredName} must be explicitly configured for the production profile`);
 		}
 		expect(() =>
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				...productionEnvironment,
 				CHAT_PUBLISHER_WORKER_PENDING_SOFT_BYTES: '8388608'
 			})
 		).toThrow('worker pending-byte soft limit must be below the hard limit');
 		expect(() =>
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				...productionEnvironment,
 				AGENTIC_CHAT_WORKER_PROFILE: 'Production'
 			})
@@ -392,39 +392,39 @@ describe('Phase 3 Agentic Chat startup configuration', () => {
 	});
 
 	it('fails closed on ambiguous flags and out-of-envelope values', () => {
-		expect(() => loadAgenticChatPhase3Config({ AGENTIC_CHAT_WORKER_ENABLED: 'TRUE' })).toThrow(
+		expect(() => loadAgenticChatConfig({ AGENTIC_CHAT_WORKER_ENABLED: 'TRUE' })).toThrow(
 			'must be exactly true or false'
 		);
-		expect(() => loadAgenticChatPhase3Config({ CHAT_CONCURRENCY: '3' })).toThrow(
+		expect(() => loadAgenticChatConfig({ CHAT_CONCURRENCY: '3' })).toThrow(
 			'cannot exceed the reviewed bound of 2'
 		);
 		expect(
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				AGENTIC_CHAT_WORKER_ENABLED: 'false',
 				CHAT_DRAIN_TIMEOUT_MS: '25000'
 			}).consumer.drainTimeoutMs
 		).toBe(25_000);
 		expect(() =>
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				...PHASE_3_PROVIDER_ENV,
 				AGENTIC_CHAT_WORKER_ENABLED: 'true',
 				CHAT_DRAIN_TIMEOUT_MS: '22001'
 			})
 		).toThrow('cannot exceed 22000ms process budget');
 		expect(() =>
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				AGENTIC_CHAT_WORKER_ENABLED: 'true'
 			})
 		).toThrow('PRIVATE_OPENROUTER_API_KEY');
 		expect(() =>
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				...PHASE_3_PROVIDER_ENV,
 				AGENTIC_CHAT_WORKER_ENABLED: 'true',
 				AGENTIC_CHAT_OPENROUTER_BASE_URL: 'http://openrouter.example/api/v1'
 			})
 		).toThrow('clean HTTPS base URL');
 		expect(() =>
-			loadAgenticChatPhase3Config({
+			loadAgenticChatConfig({
 				...PHASE_3_PROVIDER_ENV,
 				AGENTIC_CHAT_WORKER_ENABLED: 'true',
 				AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS: 'provider/fallback,provider/fallback'

@@ -2,6 +2,7 @@
 import type {
 	AgentRunJobMetadata,
 	AssetOcrJobMetadata,
+	CycleQueueJobMetadata,
 	GenerateBriefAudioJobMetadata,
 	ProjectContextSnapshotJobMetadata,
 	ProjectIconGenerationJobMetadata,
@@ -37,6 +38,7 @@ import { processCalendarSyncJob } from './workers/calendar/calendarSyncWorker';
 import { processQuestionTreeJob } from './workers/question-tree/questionTreeWorker';
 import type { QuestionTreeJobMetadata } from './workers/question-tree/questionTreeContracts';
 import { processBriefAudio as processBriefAudioJob } from './workers/briefAudio/briefAudioWorker';
+import { processCycleRun } from './workers/cycle/cycleWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
 import { validateEnvironment } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
@@ -49,10 +51,10 @@ import {
 	type WorkerRuntimeLifecycleHealth
 } from './lib/workerRuntimeLifecycle';
 import {
-	type AgenticChatPhase3Bootstrap,
-	type AgenticChatPhase3BootstrapHealth,
-	createAgenticChatPhase3Bootstrap
-} from './workers/agentic-chat/phase3Bootstrap';
+	type AgenticChatBootstrap,
+	type AgenticChatBootstrapHealth,
+	createAgenticChatBootstrap
+} from './workers/agentic-chat/bootstrap';
 import type { AgenticChatWorkerCapacityEvidenceV1 } from './workers/agentic-chat/capacity';
 
 // Validate environment before starting
@@ -66,7 +68,7 @@ if (!valid) {
 // Queue-monitoring interval; stored so graceful shutdown can clear it.
 let queueMonitoringInterval: NodeJS.Timeout | null = null;
 let workerRuntimeLifecycle: WorkerRuntimeLifecycle | null = null;
-let agenticChatBootstrap: AgenticChatPhase3Bootstrap | null = null;
+let agenticChatBootstrap: AgenticChatBootstrap | null = null;
 let agenticChatCapacityCollection: Promise<AgenticChatWorkerCapacityEvidenceV1 | null> | null =
 	null;
 
@@ -423,6 +425,7 @@ export async function startWorker() {
 
 	// Register processors
 	queue.process('generate_daily_brief', processBrief);
+	queue.process('run_cycle', (job: ProcessingJob<CycleQueueJobMetadata>) => processCycleRun(job));
 	queue.process('onboarding_analysis', processOnboarding);
 
 	// Register notification processor (multi-channel: push, email, in-app, SMS)
@@ -587,13 +590,13 @@ export function collectAgenticChatWorkerCapacityEvidence(): Promise<AgenticChatW
 
 function getOrCreateWorkerRuntimeLifecycle(): WorkerRuntimeLifecycle {
 	if (workerRuntimeLifecycle) return workerRuntimeLifecycle;
-	const agenticChat = createAgenticChatPhase3Bootstrap({ client: supabase });
+	const agenticChat = createAgenticChatBootstrap({ client: supabase });
 	agenticChatBootstrap = agenticChat;
 	workerRuntimeLifecycle = new WorkerRuntimeLifecycle({ queue, agenticChat });
 	return workerRuntimeLifecycle;
 }
 
-function uninitializedAgenticChatHealth(): AgenticChatPhase3BootstrapHealth {
+function uninitializedAgenticChatHealth(): AgenticChatBootstrapHealth {
 	const flag = process.env.AGENTIC_CHAT_WORKER_ENABLED;
 	if (flag !== undefined && flag !== '' && flag !== 'false') {
 		return {

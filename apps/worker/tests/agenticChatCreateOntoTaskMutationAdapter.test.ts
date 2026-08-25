@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AgenticChatCreateOntoTaskMutationAdapter } from '../src/workers/agentic-chat/createOntoTaskMutationAdapter';
-import { AgenticChatFixtureMutationAdapterError } from '../src/workers/agentic-chat/fixtureMutationExecutor';
+import { AgenticChatMutationAdapterError } from '../src/workers/agentic-chat/mutation-executor';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_PROJECT_ID = '22222222-2222-4222-8222-222222222222';
@@ -31,6 +31,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 			artifact: {
 				prepared: {
 					toolSurface: {
+						surfaceProfile: 'test_create_task',
 						toolNames: ['create_onto_task'],
 						definitions: [
 							{
@@ -38,7 +39,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 								function: {
 									name: 'create_onto_task',
 									description: 'Create a task',
-									parameters: { type: 'object' }
+									parameters: { type: 'object', properties: {} }
 								}
 							}
 						]
@@ -204,6 +205,6 @@ describe('AgenticChatCreateOntoTaskMutationAdapter', () => {
 		});
 		await expect(
 			adapter.execute(mutationInput({ downstreamIdempotencyKey: 'changed' }))
-		).rejects.toBeInstanceOf(AgenticChatFixtureMutationAdapterError);
+		).rejects.toBeInstanceOf(AgenticChatMutationAdapterError);
 	});
 });

@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-route-health.regression.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
-import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import { materializeGatewayTools } from '@buildos/agentic-chat-runtime/catalog';
 import { streamFastChat } from './stream-orchestrator';
 
 function tools(names: string[]): ChatToolDefinition[] {

@@ -6,6 +6,11 @@ import { defineConfig } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { visualizer } from 'rollup-plugin-visualizer';
 import viteCompression from 'vite-plugin-compression';
+import { createAgenticChatRuntimeSourceAliases } from '../../packages/agentic-chat-runtime/source-entrypoints';
+
+export const agenticChatRuntimeSourceAliases = createAgenticChatRuntimeSourceAliases(
+	new URL('../../packages/agentic-chat-runtime/', import.meta.url)
+);
 
 export default defineConfig(({ mode }) => {
 	const isDev = mode === 'development';
@@ -114,6 +119,7 @@ export default defineConfig(({ mode }) => {
 
 		resolve: {
 			alias: [
+				...(isDev ? agenticChatRuntimeSourceAliases : []),
 				{
 					find: /^lucide-svelte$/,
 					replacement: fileURLToPath(

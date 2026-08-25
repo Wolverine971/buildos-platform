@@ -1,10 +1,13 @@
 // apps/web/src/lib/services/agentic-chat/tools/registry/email-tool-registry.test.ts
 import { describe, expect, it } from 'vitest';
+import {
+	buildToolRegistry,
+	CHAT_TOOL_DEFINITIONS,
+	extractTools,
+	TOOL_METADATA
+} from '@buildos/agentic-chat-runtime/catalog';
 import { BUILDOS_AGENT_SUPPORTED_OPS } from '@buildos/shared-types';
-import { buildToolRegistry } from './tool-registry';
 import { getCapabilityByPath, listCapabilities } from './capability-catalog';
-import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../core/definitions';
-import { ALL_TOOLS, extractTools } from '../core/tools.config';
 
 const EMAIL_READ_TOOLS = [
 	'get_external_account_status',
@@ -89,7 +92,7 @@ describe('email tools — registry availability', () => {
 	});
 
 	it('email tools are built in and materializable by default', () => {
-		const enabledNames = ALL_TOOLS.map((tool) => tool.function.name);
+		const enabledNames = CHAT_TOOL_DEFINITIONS.map((tool) => tool.function.name);
 		for (const name of EMAIL_TOOL_NAMES) {
 			expect(enabledNames).toContain(name);
 			expect(extractTools([name])).toHaveLength(1);

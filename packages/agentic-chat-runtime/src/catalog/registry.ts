@@ -1,0 +1,294 @@
+// packages/agentic-chat-runtime/src/catalog/registry.ts
+/**
+ * Tool Registry Builder
+ *
+ * Generates a stable op-to-tool mapping and metadata index used by discovery and direct tools.
+ */
+
+import type { ChatToolDefinition, RegistryOp } from '@buildos/shared-types';
+import { CHAT_TOOL_DEFINITIONS } from './definitions';
+import { TOOL_METADATA } from './metadata';
+import type { ToolMetadata } from './types';
+
+export type { RegistryOp } from '@buildos/shared-types';
+
+export type ToolRegistry = {
+	version: string;
+	ops: Record<string, RegistryOp>;
+	byToolName: Record<string, RegistryOp>;
+};
+
+const OP_EXCEPTIONS: Record<string, string> = {
+	search_all_projects: 'x.search.all_projects',
+	search_project: 'x.search.project',
+	search_ontology: 'onto.search',
+	get_document_tree: 'onto.document.tree.get',
+	move_document_in_tree: 'onto.document.tree.move',
+	get_document_path: 'onto.document.path.get',
+	get_entity_relationships: 'onto.entity.relationships.get',
+	get_linked_entities: 'onto.entity.links.get',
+	list_task_documents: 'onto.task.docs.list',
+	create_task_document: 'onto.task.docs.create_or_attach',
+	move_onto_task: 'onto.task.move',
+	link_onto_entities: 'onto.edge.link',
+	unlink_onto_edge: 'onto.edge.unlink',
+	reorganize_onto_project_graph: 'onto.project.graph.reorganize',
+	get_onto_project_graph: 'onto.project.graph.get'
+};
+
+const UTIL_OPS: Record<string, string> = {
+	get_field_info: 'util.schema.field_info',
+	get_user_profile_overview: 'util.profile.overview',
+	get_workspace_overview: 'util.workspace.overview',
+	get_project_overview: 'util.project.overview',
+	search_user_contacts: 'util.contact.search',
+	upsert_user_contact: 'util.contact.upsert',
+	list_user_contact_candidates: 'util.contact.candidates.list',
+	resolve_user_contact_candidate: 'util.contact.candidate.resolve',
+	link_user_contact: 'util.contact.link',
+	web_search: 'util.web.search',
+	web_visit: 'util.web.visit',
+	list_corsair_mcp_tools: 'util.corsair_mcp.tools.list',
+	call_corsair_mcp_tool: 'util.corsair_mcp.tool.call',
+	get_buildos_overview: 'util.buildos.overview',
+	get_buildos_usage_guide: 'util.buildos.usage_guide',
+	delegate_task: 'util.agent.delegate',
+	commit_change_set: 'util.agent.commit_changes'
+};
+
+const CALENDAR_OPS: Record<string, string> = {
+	list_calendar_events: 'cal.event.list',
+	get_calendar_event_details: 'cal.event.get',
+	create_calendar_event: 'cal.event.create',
+	update_calendar_event: 'cal.event.update',
+	delete_calendar_event: 'cal.event.delete',
+	get_project_calendar: 'cal.project.get',
+	set_project_calendar: 'cal.project.set'
+};
+
+// Gmail content stays read-only. The write-classified `connect` op only stages a
+// user-confirmed browser OAuth handoff; it cannot send, draft, or modify email.
+const EMAIL_OPS: Record<string, string> = {
+	get_external_account_status: 'email.accounts.status',
+	request_email_account_connection: 'email.accounts.connect',
+	list_email_accounts: 'email.accounts.list',
+	search_email_messages: 'email.messages.search',
+	get_email_message: 'email.messages.get'
+};
+
+const ENTITY_ALIASES: Record<string, string> = {
+	project: 'project',
+	projects: 'project',
+	task: 'task',
+	tasks: 'task',
+	goal: 'goal',
+	goals: 'goal',
+	plan: 'plan',
+	plans: 'plan',
+	document: 'document',
+	documents: 'document',
+	milestone: 'milestone',
+	milestones: 'milestone',
+	risk: 'risk',
+	risks: 'risk'
+};
+
+const WRITE_PREFIXES = [
+	'create_',
+	'update_',
+	'delete_',
+	'link_',
+	'unlink_',
+	'move_',
+	'set_',
+	'reorganize_'
+];
+
+let cachedRegistry: ToolRegistry | null = null;
+
+export function getToolRegistry(): ToolRegistry {
+	if (!cachedRegistry) {
+		cachedRegistry = buildToolRegistry(CHAT_TOOL_DEFINITIONS, TOOL_METADATA);
+	}
+	return cachedRegistry;
+}
+
+export function resetToolRegistryCache(): void {
+	cachedRegistry = null;
+}
+
+/**
+ * Version the discovery-visibility policy independently from the stable registry
+ * schema version. Keeping these hashes separate preserves retained registry
+ * observability while making hidden/visible policy changes detectable.
+ */
+export function getToolDiscoveryPolicyVersion(
+	tools: ChatToolDefinition[] = CHAT_TOOL_DEFINITIONS,
+	metadata: Record<string, ToolMetadata> = TOOL_METADATA
+): string {
+	const input = JSON.stringify(
+		tools.map((tool) => {
+			const name = tool.function?.name ?? '';
+			return { name, chat_discoverable: metadata[name]?.chatDiscovery !== 'hidden' };
+		})
+	);
+	return `tool-discovery-policy/${fnv1a(input)}`;
+}
+
+export function buildToolRegistry(
+	tools: ChatToolDefinition[],
+	metadata: Record<string, ToolMetadata>
+): ToolRegistry {
+	const ops: Record<string, RegistryOp> = {};
+	const byToolName: Record<string, RegistryOp> = {};
+	const opMap: Record<string, string> = {};
+
+	for (const tool of tools) {
+		const toolName = tool.function?.name;
+		if (!toolName) continue;
+
+		const op = deriveOpFromToolName(toolName) ?? `x.misc.${toolName}`;
+		opMap[op] = toolName;
+
+		const description = tool.function?.description ?? '';
+		const parametersSchema = tool.function?.parameters ?? { type: 'object', properties: {} };
+		const toolMeta = metadata[toolName];
+
+		const group = resolveGroup(op);
+		const action = resolveAction(op);
+		const entity = resolveEntity(op, group);
+
+		const registryOp: RegistryOp = {
+			op,
+			tool_name: toolName,
+			description,
+			parameters_schema: parametersSchema,
+			group,
+			kind: inferKind(toolName, toolMeta),
+			entity,
+			action,
+			contexts: toolMeta?.contexts,
+			chat_discoverable: toolMeta?.chatDiscovery !== 'hidden'
+		};
+
+		ops[op] = registryOp;
+		byToolName[toolName] = registryOp;
+	}
+
+	return {
+		version: computeRegistryVersion(tools, metadata, opMap),
+		ops,
+		byToolName
+	};
+}
+
+function deriveOpFromToolName(toolName: string): string | null {
+	if (OP_EXCEPTIONS[toolName]) return OP_EXCEPTIONS[toolName];
+	if (UTIL_OPS[toolName]) return UTIL_OPS[toolName];
+	if (CALENDAR_OPS[toolName]) return CALENDAR_OPS[toolName];
+	if (EMAIL_OPS[toolName]) return EMAIL_OPS[toolName];
+
+	const match = toolName.match(/^(list|search|get|create|update|delete)_(onto_)?(.+)$/);
+	if (!match) return null;
+
+	const action = match[1];
+	let remainder = match[3] ?? '';
+	remainder = remainder.replace(/_details$/, '');
+	const entityKey = ENTITY_ALIASES[remainder] ?? remainder;
+	if (!entityKey) return null;
+
+	return `onto.${entityKey}.${action}`;
+}
+
+function resolveGroup(op: string): RegistryOp['group'] {
+	if (op.startsWith('email.')) return 'email';
+	if (op.startsWith('x.search.') || op === 'onto.search') return 'search';
+	if (op.startsWith('onto.')) return 'onto';
+	if (op.startsWith('util.')) return 'util';
+	if (op.startsWith('cal.')) return 'cal';
+	return 'x';
+}
+
+function resolveAction(op: string): string | undefined {
+	const parts = op.split('.');
+	if (parts.length === 0) return undefined;
+	return parts[parts.length - 1];
+}
+
+function resolveEntity(op: string, group: RegistryOp['group']): string | undefined {
+	const parts = op.split('.');
+	if (group === 'onto') {
+		if (parts.length < 3) return undefined;
+		return parts[1];
+	}
+	if (group === 'cal') {
+		if (parts.length < 3) return undefined;
+		return parts[1];
+	}
+	if (group === 'email') {
+		if (parts[1] === 'accounts') return 'account';
+		if (parts[1] === 'messages') return 'message';
+	}
+	return undefined;
+}
+
+function inferKind(toolName: string, meta?: ToolMetadata): 'read' | 'write' {
+	if (meta?.category === 'write') return 'write';
+	if (WRITE_PREFIXES.some((prefix) => toolName.startsWith(prefix))) return 'write';
+	return 'read';
+}
+
+function computeRegistryVersion(
+	tools: ChatToolDefinition[],
+	metadata: Record<string, ToolMetadata>,
+	opMap: Record<string, string>
+): string {
+	const toolPayload = tools.map((tool) => ({
+		name: tool.function?.name ?? '',
+		description: tool.function?.description ?? '',
+		parameters: tool.function?.parameters ?? {}
+	}));
+
+	const metaPayload = Object.entries(metadata)
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([key, meta]) => ({ key, meta: metadataForRegistryVersion(meta) }));
+
+	const taxonomyPayload = Object.keys(opMap)
+		.sort((a, b) => a.localeCompare(b))
+		.map((op) => {
+			const group = resolveGroup(op);
+			return { op, group, entity: resolveEntity(op, group) };
+		});
+
+	const input = JSON.stringify({
+		tools: toolPayload,
+		metadata: metaPayload,
+		opMap,
+		taxonomy: taxonomyPayload
+	});
+	return `tool-registry/${fnv1a(input)}`;
+}
+
+function metadataForRegistryVersion(meta: ToolMetadata): Omit<ToolMetadata, 'chatDiscovery'> {
+	const versioned: Omit<ToolMetadata, 'chatDiscovery'> = {
+		summary: meta.summary,
+		capabilities: meta.capabilities,
+		contexts: meta.contexts,
+		category: meta.category
+	};
+
+	if (meta.timeoutMs !== undefined) {
+		versioned.timeoutMs = meta.timeoutMs;
+	}
+
+	return versioned;
+}
+
+function fnv1a(input: string): string {
+	let hash = 2166136261;
+	for (let i = 0; i < input.length; i += 1) {
+		hash ^= input.charCodeAt(i);
+		hash = Math.imul(hash, 16777619);
+	}
+	return (hash >>> 0).toString(16);
+}

@@ -6,7 +6,7 @@ import {
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import { type Database, type JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AgenticChatFixtureMutatingToolPortV1 } from './fixtureMutationExecutor';
+import type { AgenticChatMutatingToolPortV1 } from './mutation-executor';
 import {
 	type MutationInput,
 	assertMutationAdapterBoundary,
@@ -38,7 +38,7 @@ type GatewayRunner = typeof runGatewayWriteOp;
  * an RPC replay, matching the legacy task-create contract.
  */
 export class AgenticChatCreateOntoTaskMutationAdapter
-	implements AgenticChatFixtureMutatingToolPortV1
+	implements AgenticChatMutatingToolPortV1
 {
 	private readonly runGateway: GatewayRunner;
 	private readonly taskSync: TaskSyncPort;

@@ -9,7 +9,7 @@
  */
 
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
-import { extractTools } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { extractTools } from '@buildos/agentic-chat-runtime/catalog';
 
 export function toolDefinitionRequiresProjectId(tool: ChatToolDefinition | undefined): boolean {
 	if (!tool) return false;

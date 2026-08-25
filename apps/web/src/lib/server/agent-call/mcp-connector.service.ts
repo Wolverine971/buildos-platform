@@ -34,7 +34,7 @@ import {
 } from './oauth-connector.service';
 import { executeBuildosAgentGatewayTool } from './external-tool-gateway';
 import { getPublicBuildosAgentTools } from './public-tool-registry';
-import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
+import { getToolRegistry } from '@buildos/agentic-chat-runtime/catalog';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import {
 	extractAllowedOpsFromPolicy,

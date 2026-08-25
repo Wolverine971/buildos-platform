@@ -4,7 +4,7 @@ import {
 	applyProjectCreationProfileDefaults,
 	validateProjectCreationProfileGrounding
 } from '../../project-domain-profiles';
-import { normalizeProjectCreateArgs } from '../../tools/core/project-create-args';
+import { normalizeProjectCreateArgs } from '@buildos/agentic-chat-runtime/loop';
 import type { ServiceContext, ToolExecutionResult } from '../../shared/types';
 import { resolveProjectIdFromContext } from './argument-pipeline';
 import type { ToolArguments } from './argument-values';

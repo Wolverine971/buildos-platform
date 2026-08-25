@@ -434,7 +434,10 @@ describe('Agentic Chat worker turn preparation', () => {
 
 		expect(result.args.p_artifact_prepared).toMatchObject({
 			toolSurface: {
+				version: 1,
 				toolNames: ['change_chat_context', 'get_project_overview'],
+				registryVersion: expect.stringMatching(/^tool-registry\/[0-9a-f]+$/),
+				discoveryPolicyVersion: expect.stringMatching(/^tool-discovery-policy\/[0-9a-f]+$/),
 				definitions: [
 					expect.objectContaining({
 						function: expect.objectContaining({ name: 'change_chat_context' })

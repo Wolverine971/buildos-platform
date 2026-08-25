@@ -9,42 +9,55 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
+			"development": "./src/index.ts",
 			"import": "./dist/index.mjs",
 			"require": "./dist/index.js"
 		},
+		"./catalog": {
+			"types": "./dist/catalog/index.d.ts",
+			"development": "./src/catalog/index.ts",
+			"import": "./dist/catalog/index.mjs",
+			"require": "./dist/catalog/index.js"
+		},
 		"./loop": {
 			"types": "./dist/loop/index.d.ts",
+			"development": "./src/loop/index.ts",
 			"import": "./dist/loop/index.mjs",
 			"require": "./dist/loop/index.js"
 		},
 		"./context": {
 			"types": "./dist/context/index.d.ts",
+			"development": "./src/context/index.ts",
 			"import": "./dist/context/index.mjs",
 			"require": "./dist/context/index.js"
 		},
 		"./supervisor": {
 			"types": "./dist/supervisor/index.d.ts",
+			"development": "./src/supervisor/index.ts",
 			"import": "./dist/supervisor/index.mjs",
 			"require": "./dist/supervisor/index.js"
 		},
 		"./tools": {
 			"types": "./dist/tools/index.d.ts",
+			"development": "./src/tools/index.ts",
 			"import": "./dist/tools/index.mjs",
 			"require": "./dist/tools/index.js"
 		},
 		"./tools/milestone-state": {
 			"types": "./dist/tools/milestone-state.d.ts",
+			"development": "./src/tools/milestone-state.ts",
 			"import": "./dist/tools/milestone-state.mjs",
 			"require": "./dist/tools/milestone-state.js"
 		}
 	},
 	"scripts": {
-		"build": "tsup src/index.ts src/context/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
-		"build:types": "tsup src/index.ts src/context/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
+		"build": "tsup src/index.ts src/catalog/index.ts src/context/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
+		"build:types": "tsup src/index.ts src/catalog/index.ts src/context/index.ts src/loop/index.ts src/supervisor/index.ts src/tools/index.ts src/tools/milestone-state.ts --format cjs,esm --dts --sourcemap",
 		"clean": "rm -rf dist .turbo",
 		"typecheck": "tsc --noEmit --skipLibCheck",
 		"test": "vitest",
-		"test:run": "vitest run"
+		"test:run": "vitest run",
+		"test:catalog-imports": "node scripts/smoke-catalog-import.cjs && node scripts/smoke-catalog-import.mjs"
 	},
 	"dependencies": {
 		"@buildos/shared-agent-ops": "workspace:*",

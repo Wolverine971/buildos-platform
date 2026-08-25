@@ -8,7 +8,7 @@ import {
 } from '@buildos/shared-agent-ops/ontology/task-move.service';
 import { type Database, type JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AgenticChatFixtureMutatingToolPortV1 } from './fixtureMutationExecutor';
+import type { AgenticChatMutatingToolPortV1 } from './mutation-executor';
 import {
 	type MutationInput,
 	assertMutationAdapterBoundary,
@@ -46,7 +46,7 @@ type TaskMoveRunner = (input: AtomicTaskMoveInput) => Promise<TaskMoveResult>;
  * idempotency and never retries an ambiguous outcome automatically.
  */
 export class AgenticChatMoveOntoTaskMutationAdapter
-	implements AgenticChatFixtureMutatingToolPortV1
+	implements AgenticChatMutatingToolPortV1
 {
 	private readonly moveTask: TaskMoveRunner;
 

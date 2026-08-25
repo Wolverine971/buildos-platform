@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/skill-load.ts
-import { getToolRegistry } from '../registry/tool-registry';
+import { getToolRegistry } from '@buildos/agentic-chat-runtime/catalog';
 import { normalizeGatewayOpName } from '../registry/gateway-op-aliases';
 import { getSkillByReference, listChildSkillsForSkill } from './registry';
 import { canReadSkillReference } from './skill-reference-visibility';

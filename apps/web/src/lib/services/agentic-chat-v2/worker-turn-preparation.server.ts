@@ -10,6 +10,7 @@ import {
 	AGENTIC_CHAT_LIVE_VISION_MAX_SIGNED_URL_TTL_SECONDS,
 	AGENTIC_CHAT_REQUEST_HASH_VERSION,
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+	buildAgenticChatToolSurfaceV1,
 	hashCanonicalAdmissionRequestV1,
 	hashTurnInputArtifactContentV1,
 	normalizeAgenticChatText,
@@ -22,9 +23,11 @@ import {
 	type AgenticChatHistoryStateV1,
 	type AgenticChatResumeCheckpointSnapshotV1,
 	type AgenticChatSessionEventSnapshotV1,
+	type AgenticChatToolSurfaceV1,
 	type ChatAttachmentRef,
 	type ChatContextType,
 	type ChatSession,
+	type ChatToolDefinition,
 	type Database,
 	type FrozenHistoryMessageV1,
 	type Json,
@@ -37,6 +40,10 @@ import {
 	findAgenticChatWorkerUnavailableToolNamesV1,
 	AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1
 } from '@buildos/agentic-chat-runtime';
+import {
+	getToolDiscoveryPolicyVersion,
+	getToolRegistry
+} from '@buildos/agentic-chat-runtime/catalog';
 import {
 	applyActiveDomainSignalsOverlay,
 	buildLitePromptEnvelope,
@@ -1055,17 +1062,15 @@ function readHistorySourceMessageId(message: FastChatHistoryMessage): string | n
 	return typeof value === 'string' ? value : null;
 }
 
-function buildToolSurface(surfaceProfile: string, tools: unknown[]): JsonObject {
-	return toJsonObject({
+function buildToolSurface(
+	surfaceProfile: string,
+	tools: ChatToolDefinition[]
+): AgenticChatToolSurfaceV1 {
+	return buildAgenticChatToolSurfaceV1({
 		surfaceProfile,
-		toolNames: tools
-			.map((tool) =>
-				isRecord(tool) && isRecord(tool.function) && typeof tool.function.name === 'string'
-					? tool.function.name
-					: null
-			)
-			.filter((name): name is string => Boolean(name)),
-		definitions: tools
+		definitions: tools,
+		registryVersion: getToolRegistry().version,
+		discoveryPolicyVersion: getToolDiscoveryPolicyVersion()
 	});
 }
 

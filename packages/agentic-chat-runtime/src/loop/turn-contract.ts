@@ -1,205 +1,30 @@
 // packages/agentic-chat-runtime/src/loop/turn-contract.ts
-import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
+import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
+import {
+	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1,
+	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
+	CANCEL_TURN_CONTRACT_TOOL_NAME,
+	DECLARE_READ_ONLY_TURN_TOOL_NAME,
+	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
+	type AgenticChatStandardControlToolNameV1
+} from '../catalog/definitions/controls';
 import type { FastToolExecution } from './shared';
 import { parseToolArguments } from './tool-arguments';
 import { didGatewayExecSucceed, isWriteLedgerToolExecution } from './tool-classification';
 import { buildWriteLedger, type WriteLedgerEntry } from './write-ledger';
 
-export const DECLARE_TURN_CONTRACT_TOOL_NAME = 'declare_turn_contract';
-export const DECLARE_READ_ONLY_TURN_TOOL_NAME = 'declare_read_only_turn';
-export const REQUEST_TURN_CLARIFICATION_TOOL_NAME = 'request_turn_clarification';
-export const CANCEL_TURN_CONTRACT_TOOL_NAME = 'cancel_turn_contract';
-export const FASTCHAT_PENDING_TURN_CONTRACT_METADATA_KEY = 'fastchat_pending_turn_contract';
-
-export const AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1 = Object.freeze([
-	DECLARE_TURN_CONTRACT_TOOL_NAME,
+export {
+	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1,
+	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
+	CANCEL_TURN_CONTRACT_TOOL_NAME,
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
+	DECLARE_TURN_CONTRACT_TOOL_NAME,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
-	CANCEL_TURN_CONTRACT_TOOL_NAME
-] as const);
+	type AgenticChatStandardControlToolNameV1
+};
 
-export type AgenticChatStandardControlToolNameV1 =
-	(typeof AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1)[number];
-
-/**
- * Host-neutral schemas for the standard semantic controls. Hosts normally
- * receive these definitions in their admitted tool surface, but keeping the
- * canonical definitions beside the deterministic executors lets a host mount
- * a missing control without inventing a second schema or granting a mutation.
- */
-export const AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1: readonly ChatToolDefinition[] =
-	Object.freeze([
-		{
-			type: 'function',
-			function: {
-				name: DECLARE_TURN_CONTRACT_TOOL_NAME,
-				description:
-					'Declare the exact durable outcomes commissioned for this turn before any mutation. This records intent; it does not mutate data. Use one outcome per distinct change, omit target_ids for creates, and request clarification only when a required user choice remains unresolved.',
-				parameters: {
-					type: 'object',
-					properties: {
-						summary: {
-							type: 'string',
-							maxLength: 300,
-							description: 'A short description of the user-visible durable result.'
-						},
-						outcomes: {
-							type: 'array',
-							minItems: 1,
-							maxItems: 20,
-							items: {
-								type: 'object',
-								properties: {
-									id: { type: 'string', maxLength: 80 },
-									action: {
-										type: 'string',
-										enum: [
-											'create',
-											'update',
-											'move',
-											'organize',
-											'link',
-											'unlink',
-											'delete',
-											'schedule',
-											'set',
-											'assign',
-											'complete',
-											'archive',
-											'restore',
-											'tag'
-										]
-									},
-									entity_kind: {
-										type: 'string',
-										enum: [
-											'project',
-											'task',
-											'document',
-											'event',
-											'goal',
-											'plan',
-											'milestone',
-											'risk',
-											'relationship',
-											'calendar',
-											'entity'
-										]
-									},
-									description: { type: 'string', maxLength: 240 },
-									target_ids: {
-										type: 'array',
-										maxItems: 50,
-										items: { type: 'string' },
-										description:
-											'Canonical ids of existing targets. Omit for create outcomes.'
-									},
-									required_fields: {
-										type: 'array',
-										maxItems: 30,
-										items: { type: 'string' },
-										description:
-											'Required durable postconditions, not tool arguments.'
-									},
-									changes: {
-										type: 'array',
-										maxItems: 20,
-										items: {
-											type: 'object',
-											properties: {
-												field: { type: 'string', maxLength: 80 },
-												value: { type: 'string', maxLength: 160 }
-											},
-											required: ['field', 'value']
-										}
-									},
-									minimum_successful_effects: {
-										type: 'integer',
-										minimum: 1,
-										maximum: 100
-									},
-									label: {
-										type: 'string',
-										maxLength: 40,
-										pattern: '^[a-z0-9][a-z0-9_-]{0,39}$'
-									},
-									parent_label: {
-										type: 'string',
-										maxLength: 40,
-										pattern: '^[a-z0-9][a-z0-9_-]{0,39}$'
-									}
-								},
-								required: ['action', 'entity_kind', 'minimum_successful_effects']
-							}
-						}
-					},
-					required: ['outcomes']
-				}
-			}
-		},
-		{
-			type: 'function',
-			function: {
-				name: DECLARE_READ_ONLY_TURN_TOOL_NAME,
-				description:
-					'Declare that this turn commissions no durable data change. Never use this to replace an action the user already commissioned.',
-				parameters: {
-					type: 'object',
-					properties: {
-						reason: {
-							type: 'string',
-							maxLength: 240,
-							description: 'Why no durable mutation is requested.'
-						}
-					},
-					required: ['reason']
-				}
-			}
-		},
-		{
-			type: 'function',
-			function: {
-				name: REQUEST_TURN_CLARIFICATION_TOOL_NAME,
-				description:
-					'Ask for the unresolved user choice that is required for safe durable execution. Do not use this to postpone a fully specified change.',
-				parameters: {
-					type: 'object',
-					properties: {
-						reason: {
-							type: 'string',
-							maxLength: 240,
-							description: 'The unresolved choice.'
-						},
-						question: {
-							type: 'string',
-							maxLength: 500,
-							description: 'A concise question that lets the user resolve the choice.'
-						}
-					},
-					required: ['reason', 'question']
-				}
-			}
-		},
-		{
-			type: 'function',
-			function: {
-				name: CANCEL_TURN_CONTRACT_TOOL_NAME,
-				description:
-					'Cancel an unfinished contract only when the user explicitly cancels or supersedes it.',
-				parameters: {
-					type: 'object',
-					properties: {
-						reason: {
-							type: 'string',
-							maxLength: 240,
-							description: 'How the current message cancelled or superseded it.'
-						}
-					},
-					required: ['reason']
-				}
-			}
-		}
-	]);
+export const FASTCHAT_PENDING_TURN_CONTRACT_METADATA_KEY = 'fastchat_pending_turn_contract';
 
 const AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(
 	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1

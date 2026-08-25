@@ -5,6 +5,8 @@
 // suggestions; the web app (apps/web) EXECUTES them on approval by replaying
 // each suggestion's declarative `operations` through the ChatToolExecutor.
 
+import type { AttentionLevel } from './attention.types';
+
 export type ProjectLoopTriggerReason =
 	| 'end_of_day'
 	| 'scheduled'
@@ -85,7 +87,7 @@ export interface ProjectSuggestionPreview {
 	impact?: string;
 }
 
-export type ProjectReviewAttentionLevel = 'none' | 'minor' | 'decision' | 'urgent';
+export type ProjectReviewAttentionLevel = AttentionLevel;
 
 export type ProjectReviewIssueCategory =
 	| 'project_drift'

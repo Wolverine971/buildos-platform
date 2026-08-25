@@ -1,7 +1,7 @@
 // apps/web/src/lib/tests/chat/progressive-flow.test.ts
 import { describe, it, expect, vi } from 'vitest';
+import { CHAT_TOOL_DEFINITIONS } from '@buildos/agentic-chat-runtime/catalog';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
-import { CHAT_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
 import type { ChatToolCall } from '@buildos/shared-types';
 
 function getToolName(tool: unknown): string {
@@ -17,8 +17,8 @@ function getToolDescription(tool: unknown): string {
 describe('Progressive Disclosure Flow', () => {
 	describe('Two-Tier Tool System', () => {
 		it('exposes both list/search and detail tools', () => {
-			const names = CHAT_TOOLS.map(getToolName).filter(Boolean);
-			const descriptions = CHAT_TOOLS.map(getToolDescription);
+			const names = CHAT_TOOL_DEFINITIONS.map(getToolName).filter(Boolean);
+			const descriptions = CHAT_TOOL_DEFINITIONS.map(getToolDescription);
 
 			const listOrSearch = names.filter(
 				(name) => name.startsWith('list_') || name.startsWith('search_')
@@ -37,7 +37,7 @@ describe('Progressive Disclosure Flow', () => {
 		});
 
 		it('keeps ontology tools namespaced (onto)', () => {
-			const names = CHAT_TOOLS.map(getToolName).filter(Boolean);
+			const names = CHAT_TOOL_DEFINITIONS.map(getToolName).filter(Boolean);
 			const ontoSearch = names.filter((name) => name.startsWith('search_onto_'));
 			const ontoDetail = names.filter((name) => name.startsWith('get_onto_'));
 

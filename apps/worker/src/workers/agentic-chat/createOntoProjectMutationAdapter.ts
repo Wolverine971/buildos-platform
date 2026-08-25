@@ -6,7 +6,7 @@ import {
 	buildAgenticChatProjectContextDocumentV1,
 	normalizeAgenticChatProjectStateV1
 } from '@buildos/agentic-chat-runtime/loop';
-import type { AgenticChatFixtureMutatingToolPortV1 } from './fixtureMutationExecutor';
+import type { AgenticChatMutatingToolPortV1 } from './mutation-executor';
 import {
 	type MutationInput,
 	assertMutationAdapterBoundary,
@@ -76,7 +76,7 @@ type GatewayRunner = typeof runGatewayWriteOp;
  * post-dispatch outcome is therefore uncertain and must never be replayed.
  */
 export class AgenticChatCreateOntoProjectMutationAdapter
-	implements AgenticChatFixtureMutatingToolPortV1
+	implements AgenticChatMutatingToolPortV1
 {
 	private readonly runGateway: GatewayRunner;
 

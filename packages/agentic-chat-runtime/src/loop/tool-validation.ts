@@ -1,5 +1,10 @@
 // packages/agentic-chat-runtime/src/loop/tool-validation.ts
-import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
+import type {
+	ChatToolCall,
+	ChatToolDefinition,
+	ToolJsonObjectSchema,
+	ToolJsonValue
+} from '@buildos/shared-types';
 import { normalizeGatewayOpName } from '@buildos/shared-agent-ops/ops/gateway-op-aliases';
 import { getAgenticChatLoopToolCatalog, type AgenticChatLoopToolCatalogV1 } from './tool-catalog';
 import { normalizeProjectCreateArgs, validateProjectCreateArgs } from './project-create-args';
@@ -134,10 +139,7 @@ export function validateToolCalls(
 		}
 
 		const toolDef = toolMap.get(toolName);
-		const paramSchema =
-			toolDef && (toolDef as any).function?.parameters
-				? (toolDef as any).function.parameters
-				: (toolDef as any)?.parameters;
+		const paramSchema = toolDef?.function.parameters;
 		const normalizedParsedArgs =
 			toolName === 'create_onto_project'
 				? normalizeProjectCreateArgs(parsedArgs)
@@ -225,35 +227,31 @@ export function validateToolCalls(
 
 function applySchemaDefaults(
 	args: Record<string, any>,
-	paramSchema: Record<string, any> | undefined
+	paramSchema: ToolJsonObjectSchema | undefined
 ): Record<string, any> {
-	if (!paramSchema || typeof paramSchema !== 'object') return args;
+	if (!paramSchema) return args;
 
-	const properties =
-		paramSchema.properties &&
-		typeof paramSchema.properties === 'object' &&
-		!Array.isArray(paramSchema.properties)
-			? (paramSchema.properties as Record<string, Record<string, any>>)
-			: {};
 	let resolved = args;
 
-	for (const [key, definition] of Object.entries(properties)) {
+	for (const [key, definition] of Object.entries(paramSchema.properties)) {
 		if (args[key] !== undefined && args[key] !== null) continue;
-		if (!definition || typeof definition !== 'object' || !('default' in definition)) {
-			continue;
-		}
-
 		const defaultValue = definition.default;
 		if (defaultValue === undefined) continue;
 		if (resolved === args) resolved = { ...args };
-		resolved[key] = Array.isArray(defaultValue)
-			? [...defaultValue]
-			: defaultValue && typeof defaultValue === 'object'
-				? { ...defaultValue }
-				: defaultValue;
+		resolved[key] = cloneToolJsonValue(defaultValue);
 	}
 
 	return resolved;
+}
+
+function cloneToolJsonValue(value: ToolJsonValue): ToolJsonValue {
+	if (Array.isArray(value)) return value.map(cloneToolJsonValue);
+	if (value && typeof value === 'object') {
+		return Object.fromEntries(
+			Object.entries(value).map(([key, entry]) => [key, cloneToolJsonValue(entry)])
+		);
+	}
+	return value;
 }
 
 function getValueByPath(value: Record<string, any>, path: string): unknown {
@@ -473,9 +471,7 @@ function applyGatewayValidationContext(
 	}
 
 	const schema = getAgenticChatLoopToolCatalog().ops[op]?.parameters_schema;
-	const requiresProjectId =
-		Array.isArray((schema as Record<string, any> | undefined)?.required) &&
-		((schema as Record<string, any>).required as string[]).includes('project_id');
+	const requiresProjectId = schema?.required?.includes('project_id') ?? false;
 	if (!requiresProjectId) {
 		return op === 'onto.project.create' ? normalizeProjectCreateArgs(args) : args;
 	}

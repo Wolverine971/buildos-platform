@@ -24,6 +24,29 @@ import { enqueueBriefAudioIfEnabled } from '../briefAudio/enqueueBriefAudio';
 
 type BriefNotificationOutcome = 'emitted' | 'suppressed' | 'failed';
 
+export interface BriefJobExecutionOptions {
+	/**
+	 * Legacy brief jobs own their queue row. A Cycle handler does not: its
+	 * generic processor owns queue completion and records domain state on the
+	 * Cycle Run instead.
+	 */
+	manageQueueRecord?: boolean;
+	/** Links emitted notification events back to the immutable Cycle Run. */
+	cycleRunId?: string;
+	/**
+	 * Legacy jobs announce a failure immediately. Generic Cycle jobs defer
+	 * failure routing until their shared retry policy reaches a terminal state.
+	 */
+	emitFailureEffects?: boolean;
+}
+
+export interface BriefJobExecutionResult {
+	status: 'generated' | 'existing' | 'already_processing' | 'stale';
+	briefId: string | null;
+	briefDate: string;
+	notificationOutcome?: BriefNotificationOutcome;
+}
+
 async function mergeBriefJobMetadata(
 	job: LegacyJob<BriefJobData>,
 	updates: Record<string, unknown>,
@@ -134,6 +157,7 @@ async function emitBriefCompletedEvent(params: {
 	timezone: string;
 	notificationScheduledFor?: string;
 	useOntology: boolean;
+	cycleRunId?: string;
 }): Promise<boolean> {
 	const { userId, briefId, briefDate, timezone, useOntology } = params;
 
@@ -227,37 +251,50 @@ async function emitBriefCompletedEvent(params: {
 		);
 
 		// Type assertion needed until database types are regenerated after migration
-		const { error: notificationEventError } = await (serviceClient.rpc as any)(
-			'emit_notification_event',
-			{
-				p_event_type: 'brief.completed',
-				p_event_source: 'worker_job',
-				p_target_user_id: userId,
-				p_payload: {
-					brief_id: briefId,
-					brief_date: briefDate,
-					timezone: timezone,
-					task_count: todaysTaskCount, // Keep for backward compatibility
-					todays_task_count: todaysTaskCount,
-					overdue_task_count: overdueTaskCount,
-					upcoming_task_count: upcomingTaskCount,
-					next_seven_days_task_count: nextSevenDaysTaskCount,
-					recently_completed_count: recentlyCompletedCount,
-					blocked_task_count: blockedTaskCount,
-					project_count: projectCount,
-					correlationId, // Add correlation ID to payload
-					is_ontology_brief: useOntology // Flag for downstream consumers
-				},
-				p_metadata: {
-					correlationId, // Add correlation ID to metadata for tracking
-					is_ontology_brief: useOntology
-				},
-				p_scheduled_for: notificationScheduledFor?.toISOString() // Schedule at user's preferred time
-			}
-		);
+		const { data: notificationEventId, error: notificationEventError } = await (
+			serviceClient.rpc as any
+		)('emit_notification_event', {
+			p_event_type: 'brief.completed',
+			p_event_source: 'worker_job',
+			p_target_user_id: userId,
+			p_payload: {
+				brief_id: briefId,
+				brief_date: briefDate,
+				timezone: timezone,
+				task_count: todaysTaskCount, // Keep for backward compatibility
+				todays_task_count: todaysTaskCount,
+				overdue_task_count: overdueTaskCount,
+				upcoming_task_count: upcomingTaskCount,
+				next_seven_days_task_count: nextSevenDaysTaskCount,
+				recently_completed_count: recentlyCompletedCount,
+				blocked_task_count: blockedTaskCount,
+				project_count: projectCount,
+				correlationId, // Add correlation ID to payload
+				is_ontology_brief: useOntology // Flag for downstream consumers
+			},
+			p_metadata: {
+				correlationId, // Add correlation ID to metadata for tracking
+				is_ontology_brief: useOntology,
+				cycle_run_id: params.cycleRunId
+			},
+			p_scheduled_for: notificationScheduledFor?.toISOString() // Schedule at user's preferred time
+		});
 
 		if (notificationEventError) {
 			throw new Error(`emit_notification_event failed: ${notificationEventError.message}`);
+		}
+
+		if (params.cycleRunId && typeof notificationEventId === 'string') {
+			const { error: cycleLinkError } = await (
+				serviceClient.from('notification_events') as any
+			)
+				.update({ cycle_run_id: params.cycleRunId })
+				.eq('id', notificationEventId);
+			if (cycleLinkError) {
+				console.warn(
+					`Failed to link brief notification ${notificationEventId} to Cycle Run ${params.cycleRunId}: ${cycleLinkError.message}`
+				);
+			}
 		}
 
 		console.log(`📬 Emitted brief.completed notification event for user ${userId}`);
@@ -269,16 +306,23 @@ async function emitBriefCompletedEvent(params: {
 	}
 }
 
-export async function processBriefJob(job: LegacyJob<BriefJobData>) {
+export async function processBriefJob(
+	job: LegacyJob<BriefJobData>,
+	options: BriefJobExecutionOptions = {}
+): Promise<BriefJobExecutionResult> {
 	console.log(`🏃 Processing brief job ${job.id} for user ${job.data.userId}`);
 
 	const suppressNotification = job.data.options?.suppressNotification === true;
+	const manageQueueRecord = options.manageQueueRecord !== false;
+	const emitFailureEffects = options.emitFailureEffects !== false;
 
 	try {
 		// Validate job data immediately to catch errors early
 		validateBriefJobData(job.data);
 
-		await updateJobStatus(job.id, 'processing', 'brief', undefined, job.processingToken);
+		if (manageQueueRecord) {
+			await updateJobStatus(job.id, 'processing', 'brief', undefined, job.processingToken);
+		}
 
 		// ALWAYS fetch user's timezone from users table (centralized source of truth)
 		const { data: user, error: userError } = await supabase
@@ -334,8 +378,14 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 				`⏭️ Skipping stale daily brief job ${job.id} for user ${job.data.userId}: ${reason}`
 			);
 			await job.log(reason);
-			await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
-			return;
+			if (manageQueueRecord) {
+				await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
+			}
+			return {
+				status: 'stale',
+				briefId: null,
+				briefDate: validatedBriefDate
+			};
 		}
 
 		const { data: existingBrief, error: existingBriefError } = await supabase
@@ -388,7 +438,8 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 						briefDate: validatedBriefDate,
 						timezone,
 						notificationScheduledFor: job.data.notificationScheduledFor,
-						useOntology: true
+						useOntology: true,
+						cycleRunId: options.cycleRunId
 					});
 					notificationOutcome = notificationEmitted ? 'emitted' : 'failed';
 				} else if (
@@ -398,13 +449,29 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 					notificationOutcome = 'suppressed';
 				}
 
-				await recordSkippedBriefJobMetadata(
-					job,
-					existingBriefDecision,
+				if (manageQueueRecord) {
+					await recordSkippedBriefJobMetadata(
+						job,
+						existingBriefDecision,
+						notificationOutcome
+					);
+					await updateJobStatus(
+						job.id,
+						'completed',
+						'brief',
+						undefined,
+						job.processingToken
+					);
+				}
+				return {
+					status:
+						existingBriefDecision.reason === 'skipped_existing_brief'
+							? 'existing'
+							: 'already_processing',
+					briefId: existingBriefDecision.existingBriefId ?? null,
+					briefDate: validatedBriefDate,
 					notificationOutcome
-				);
-				await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
-				return;
+				};
 			}
 		}
 
@@ -425,7 +492,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 			validatedBriefDate,
 			job.data.options,
 			timezone,
-			job.id
+			manageQueueRecord ? job.id : undefined
 		);
 		const brief: { id: string } = { id: ontologyBrief.id };
 
@@ -523,13 +590,16 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 				briefDate: validatedBriefDate,
 				timezone,
 				notificationScheduledFor: job.data.notificationScheduledFor,
-				useOntology
+				useOntology,
+				cycleRunId: options.cycleRunId
 			});
 			notificationOutcome = notificationEmitted ? 'emitted' : 'failed';
 		}
 
-		await recordBriefNotificationOutcome(job, notificationOutcome);
-		await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
+		if (manageQueueRecord) {
+			await recordBriefNotificationOutcome(job, notificationOutcome);
+			await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
+		}
 
 		captureWorkerEvent(job.data.userId, 'brief_generated', {
 			brief_id: brief.id,
@@ -548,19 +618,33 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
    → Brief Type: ${useOntology ? 'ONTOLOGY 🧬' : 'LEGACY'}
    → Email Preference: ${shouldEmailBrief ? 'ENABLED ✅ (will be sent via notification system)' : 'DISABLED ❌'}
    → SMS Preference: ${shouldSmsBrief ? 'ENABLED ✅ (will be sent via notification system)' : 'DISABLED ❌'}`);
+
+		return {
+			status: 'generated',
+			briefId: brief.id,
+			briefDate: validatedBriefDate,
+			notificationOutcome
+		};
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 		console.error(`❌ Failed to generate brief for user ${job.data.userId}:`, errorMessage);
 
-		await updateJobStatus(job.id, 'failed', 'brief', errorMessage, job.processingToken);
+		if (manageQueueRecord) {
+			await updateJobStatus(job.id, 'failed', 'brief', errorMessage, job.processingToken);
+		}
 
-		await broadcastUserEvent(job.data.userId, 'brief_failed', {
-			error: errorMessage,
-			jobId: job.id,
-			message: 'Brief generation failed. Click to retry.'
-		});
+		if (emitFailureEffects) {
+			await broadcastUserEvent(job.data.userId, 'brief_failed', {
+				error: errorMessage,
+				jobId: job.id,
+				message: 'Brief generation failed. Click to retry.'
+			});
+		}
 
 		// Emit notification event for brief failure (opt-in via subscriptions)
+		if (!emitFailureEffects) {
+			throw error;
+		}
 		if (suppressNotification) {
 			console.log(
 				`🔕 Skipping brief.failed notification for user ${job.data.userId} (implicit delivery suppressed: ${job.data.options?.notificationSuppressionReason ?? 'unspecified'})`

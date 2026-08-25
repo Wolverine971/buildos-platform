@@ -22,8 +22,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
-import { getToolExecutionCategory } from './tools.config';
-import { searchTelemetryColumns } from './search-telemetry';
+import { getToolExecutionCategory } from '@buildos/agentic-chat-runtime/catalog';
+import { searchTelemetryColumns } from '@buildos/agentic-chat-runtime/loop';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';

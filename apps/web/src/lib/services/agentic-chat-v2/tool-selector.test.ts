@@ -4,10 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	extractGatewayMaterializedToolNames,
 	extractGatewayToolMaterializations,
+	GATEWAY_TOOL_DEFINITIONS,
 	getGatewaySurfaceForProfile,
 	materializeGatewayTools
-} from '$lib/services/agentic-chat/tools/core/gateway-surface';
-import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
+} from '@buildos/agentic-chat-runtime/catalog';
 import {
 	applyLivingWorkspaceToolProfile,
 	resolveFastChatSurfaceProfileForTurn,

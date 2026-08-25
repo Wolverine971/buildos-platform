@@ -1,7 +1,7 @@
 // apps/worker/src/lib/workerOperationalHealth.ts
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import type { WorkerRuntimeLifecycleHealth } from './workerRuntimeLifecycle';
-import type { AgenticChatPhase3BootstrapHealth } from '../workers/agentic-chat/phase3Bootstrap';
+import type { AgenticChatBootstrapHealth } from '../workers/agentic-chat/bootstrap';
 
 export type WorkerEventLoopLagSnapshot = {
 	meanMs: number;
@@ -97,7 +97,7 @@ export function buildWorkerOperationalHealthChecks(
  * general-queue health signal just to reuse the combined worker projection.
  */
 export function buildAgenticChatOperationalHealthChecks(
-	health: AgenticChatPhase3BootstrapHealth,
+	health: AgenticChatBootstrapHealth,
 	eventLoopLag: WorkerEventLoopLagSnapshot
 ): AgenticChatOperationalHealthChecks {
 	const runtime = health.runtime;

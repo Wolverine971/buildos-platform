@@ -3,7 +3,7 @@ import { withComputedMilestoneState } from '@buildos/agentic-chat-runtime/tools/
 import { runGatewayWriteOp } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import { type Database, type JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AgenticChatFixtureMutatingToolPortV1 } from './fixtureMutationExecutor';
+import type { AgenticChatMutatingToolPortV1 } from './mutation-executor';
 import {
 	type MutationInput,
 	assertMutationAdapterBoundary,
@@ -114,7 +114,7 @@ export const AGENTIC_CHAT_GATEWAY_ENTITY_MUTATION_TOOL_NAMES_V1 = Object.freeze(
  * domain-level effect-key persistence or exact replay query.
  */
 export class AgenticChatGatewayEntityMutationAdapter
-	implements AgenticChatFixtureMutatingToolPortV1
+	implements AgenticChatMutatingToolPortV1
 {
 	private readonly runGateway: GatewayRunner;
 

@@ -1,10 +1,10 @@
 // apps/web/src/lib/services/agentic-chat/tools/registry/tool-search.ts
+import { getToolRegistry, type RegistryOp } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	getCapabilityByPath,
 	listCapabilities,
 	listCapabilityDirectoryItems
 } from './capability-catalog';
-import { getToolRegistry, type RegistryOp } from './tool-registry';
 import { listAllSkills } from '../skills/registry';
 
 export type ToolSearchOptions = {

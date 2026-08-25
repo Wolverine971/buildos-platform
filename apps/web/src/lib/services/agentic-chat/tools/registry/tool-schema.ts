@@ -1,44 +1,27 @@
 // apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts
+import { getToolRegistry, type RegistryOp } from '@buildos/agentic-chat-runtime/catalog';
+import type { ToolJsonObjectSchema, ToolJsonSchema } from '@buildos/shared-types';
 import { normalizeGatewayOpName } from './gateway-op-aliases';
-import { getToolRegistry, type RegistryOp } from './tool-registry';
 
 export type ToolSchemaOptions = {
 	include_examples?: boolean;
 	include_schema?: boolean;
 };
 
-type SchemaProperty = {
-	type?: string | string[];
-	description?: string;
-	enum?: unknown[];
-	default?: unknown;
-	format?: string;
-	pattern?: string;
-	minimum?: number;
-	exclusiveMinimum?: number;
-	minItems?: number;
-	items?: SchemaProperty;
-	properties?: Record<string, SchemaProperty>;
-	required?: string[];
-};
-
 function formatDirectUsage(toolName: string): string {
 	return `${toolName}({ ... })`;
 }
 
-function getSchemaRequiredArgs(schema: Record<string, any>): string[] {
-	return Array.isArray(schema.required)
-		? schema.required.filter((entry: unknown): entry is string => typeof entry === 'string')
-		: [];
+function getSchemaRequiredArgs(schema: ToolJsonSchema): string[] {
+	return schema.required ?? [];
 }
 
-function formatSchemaArgs(schema: Record<string, any>): Array<Record<string, unknown>> {
-	const properties =
-		schema.properties &&
-		typeof schema.properties === 'object' &&
-		!Array.isArray(schema.properties)
-			? (schema.properties as Record<string, SchemaProperty>)
-			: {};
+function getSchemaProperties(schema: ToolJsonSchema): Record<string, ToolJsonSchema> {
+	return schema.properties ?? {};
+}
+
+function formatSchemaArgs(schema: ToolJsonObjectSchema): Array<Record<string, unknown>> {
+	const properties = getSchemaProperties(schema);
 	const required = new Set(getSchemaRequiredArgs(schema));
 
 	return Object.entries(properties).map(([name, property]) => ({
@@ -51,14 +34,9 @@ function formatSchemaArgs(schema: Record<string, any>): Array<Record<string, unk
 	}));
 }
 
-function buildExampleArguments(schema: Record<string, any>): Record<string, unknown> {
+function buildExampleArguments(schema: ToolJsonSchema): Record<string, unknown> {
 	const args: Record<string, unknown> = {};
-	const properties =
-		schema.properties &&
-		typeof schema.properties === 'object' &&
-		!Array.isArray(schema.properties)
-			? (schema.properties as Record<string, SchemaProperty>)
-			: {};
+	const properties = getSchemaProperties(schema);
 
 	for (const name of getSchemaRequiredArgs(schema)) {
 		const property = properties[name];
@@ -68,17 +46,18 @@ function buildExampleArguments(schema: Record<string, any>): Record<string, unkn
 	return args;
 }
 
-function buildExampleValue(name: string, property: SchemaProperty): unknown {
+function buildExampleValue(name: string, property: ToolJsonSchema): unknown {
 	if (Object.prototype.hasOwnProperty.call(property, 'default')) return property.default;
 	if (Array.isArray(property.enum) && property.enum.length > 0) return property.enum[0];
 
 	const type = Array.isArray(property.type)
 		? (property.type.find((candidate) => candidate !== 'null') ?? property.type[0])
 		: property.type;
-	if (type === 'object') return buildExampleArguments(property as Record<string, any>);
+	if (type === 'object') return buildExampleArguments(property);
 	if (type === 'array') {
-		if ((property.minItems ?? 0) > 0 && property.items) {
-			return [buildExampleValue('item', property.items)];
+		const itemSchema = Array.isArray(property.items) ? property.items[0] : property.items;
+		if ((property.minItems ?? 0) > 0 && itemSchema) {
+			return [buildExampleValue('item', itemSchema)];
 		}
 		return [];
 	}

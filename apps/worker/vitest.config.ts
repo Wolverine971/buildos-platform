@@ -2,32 +2,14 @@
 import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 import { coverageConfig } from '../../vitest.coverage';
+import { createAgenticChatRuntimeSourceAliases } from '../../packages/agentic-chat-runtime/source-entrypoints';
+
+export const agenticChatRuntimeSourceAliases = createAgenticChatRuntimeSourceAliases(
+	new URL('../../packages/agentic-chat-runtime/', import.meta.url)
+);
 
 const workspacePackageAliases = [
-	{
-		find: /^@buildos\/agentic-chat-runtime$/,
-		replacement: fileURLToPath(
-			new URL('../../packages/agentic-chat-runtime/src/index.ts', import.meta.url)
-		)
-	},
-	{
-		find: /^@buildos\/agentic-chat-runtime\/loop$/,
-		replacement: fileURLToPath(
-			new URL('../../packages/agentic-chat-runtime/src/loop/index.ts', import.meta.url)
-		)
-	},
-	{
-		find: /^@buildos\/agentic-chat-runtime\/supervisor$/,
-		replacement: fileURLToPath(
-			new URL('../../packages/agentic-chat-runtime/src/supervisor/index.ts', import.meta.url)
-		)
-	},
-	{
-		find: /^@buildos\/agentic-chat-runtime\/tools$/,
-		replacement: fileURLToPath(
-			new URL('../../packages/agentic-chat-runtime/src/tools/index.ts', import.meta.url)
-		)
-	},
+	...agenticChatRuntimeSourceAliases,
 	{
 		find: /^@buildos\/shared-agent-ops$/,
 		replacement: fileURLToPath(

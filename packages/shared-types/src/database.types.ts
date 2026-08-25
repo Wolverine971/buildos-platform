@@ -20333,6 +20333,7 @@ export type Database = {
         | "agent_run"
         | "agentic_chat_turn"
         | "admin_question_tree"
+        | "run_cycle"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -20577,6 +20578,7 @@ export const Constants = {
         "agent_run",
         "agentic_chat_turn",
         "admin_question_tree",
+        "run_cycle",
       ],
       recurrence_end_reason: [
         "indefinite",

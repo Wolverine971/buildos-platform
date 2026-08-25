@@ -1,6 +1,9 @@
 // packages/shared-types/src/index.ts
 export * from './database.types';
 
+// Shared AI Inbox and notification admission vocabulary
+export * from './attention.types';
+
 // Export queue types with correct enums
 export * from './queue-types';
 export * from './validation';
@@ -18,6 +21,8 @@ export * from './brief.types';
 
 // Export chat system types
 export * from './chat.types';
+export * from './agentic-chat-tool.types';
+export * from './agentic-chat-tool-surface';
 
 // Export agent types
 export * from './agent.types';
@@ -44,3 +49,6 @@ export * from './agent-call.types';
 // Export Project Loops (reconciliation suggestions) types
 export * from './project-loops.types';
 export * from './project-audits.types';
+
+// Export Cycles (recurring work definitions and immutable run occurrences)
+export * from './cycle.types';

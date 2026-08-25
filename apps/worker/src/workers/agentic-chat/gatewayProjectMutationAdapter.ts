@@ -6,7 +6,7 @@ import {
 } from '@buildos/shared-agent-ops/utils/project-props-sanitizer';
 import { type Database, type JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AgenticChatFixtureMutatingToolPortV1 } from './fixtureMutationExecutor';
+import type { AgenticChatMutatingToolPortV1 } from './mutation-executor';
 import {
 	type MutationInput,
 	assertMutationAdapterBoundary,
@@ -31,7 +31,7 @@ type GatewayRunner = typeof runGatewayWriteOp;
  * contracts; this path admits only the signed legacy tool surface.
  */
 export class AgenticChatGatewayProjectMutationAdapter
-	implements AgenticChatFixtureMutatingToolPortV1
+	implements AgenticChatMutatingToolPortV1
 {
 	private readonly runGateway: GatewayRunner;
 

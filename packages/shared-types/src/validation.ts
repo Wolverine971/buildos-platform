@@ -25,6 +25,7 @@ import type {
 	OntoBraindumpProcessingJobMetadata
 } from './queue-types';
 import type { NotificationJobMetadata } from './notification.types';
+import { CYCLE_KINDS, type CycleQueueJobMetadata } from './cycle.types';
 
 // Validation error class
 export class ValidationError extends Error {
@@ -954,6 +955,28 @@ export function validateOntoBraindumpProcessingMetadata(
 	return meta as unknown as OntoBraindumpProcessingJobMetadata;
 }
 
+export function validateCycleQueueJobMetadata(metadata: unknown): CycleQueueJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+
+	const meta = metadata as Record<string, unknown>;
+	if (typeof meta.cycle_id !== 'string' || !isValidUUID(meta.cycle_id)) {
+		throw new ValidationError('cycle_id', meta.cycle_id, 'valid UUID');
+	}
+	if (typeof meta.cycle_run_id !== 'string' || !isValidUUID(meta.cycle_run_id)) {
+		throw new ValidationError('cycle_run_id', meta.cycle_run_id, 'valid UUID');
+	}
+	if (
+		typeof meta.kind !== 'string' ||
+		!CYCLE_KINDS.includes(meta.kind as (typeof CYCLE_KINDS)[number])
+	) {
+		throw new ValidationError('kind', meta.kind, 'valid CycleKind');
+	}
+
+	return meta as unknown as CycleQueueJobMetadata;
+}
+
 // Main validation function
 export function validateJobMetadata<T extends QueueJobType>(
 	jobType: T,
@@ -1000,6 +1023,8 @@ export function validateJobMetadata<T extends QueueJobType>(
 			return validateProjectContextSnapshotMetadata(metadata) as JobMetadataMap[T];
 		case 'process_onto_braindump':
 			return validateOntoBraindumpProcessingMetadata(metadata) as JobMetadataMap[T];
+		case 'run_cycle':
+			return validateCycleQueueJobMetadata(metadata) as JobMetadataMap[T];
 		case 'other':
 			return metadata as JobMetadataMap[T];
 		default:

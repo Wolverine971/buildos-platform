@@ -14,7 +14,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
-import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import { materializeGatewayTools } from '@buildos/agentic-chat-runtime/catalog';
 import { streamFastChat } from './stream-orchestrator/index';
 
 const TASK_ID = '0b19a1af-6d5b-4b58-9f6a-1de1a58f2f7a';

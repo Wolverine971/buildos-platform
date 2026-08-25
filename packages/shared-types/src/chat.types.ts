@@ -8,6 +8,7 @@
  */
 
 import type { Database } from './database.types';
+import type { ToolJsonObjectSchema } from './agentic-chat-tool.types';
 
 // =====================================================
 // Database Table Types (from Supabase)
@@ -308,11 +309,7 @@ export interface ChatToolDefinition {
 	function: {
 		name: string;
 		description: string;
-		parameters: {
-			type: 'object';
-			properties: Record<string, any>;
-			required?: string[];
-		};
+		parameters: ToolJsonObjectSchema;
 	};
 }
 

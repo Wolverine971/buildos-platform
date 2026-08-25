@@ -6,7 +6,7 @@ import {
 	buildLitePromptEnvelope,
 	type LitePromptEnvelope
 } from '$lib/services/agentic-chat-lite/prompt';
-import { getDefaultToolsForContextType } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { getDefaultToolsForContextType } from '@buildos/agentic-chat-runtime/catalog';
 
 export type LiteTurnResult = {
 	assistantText: string;

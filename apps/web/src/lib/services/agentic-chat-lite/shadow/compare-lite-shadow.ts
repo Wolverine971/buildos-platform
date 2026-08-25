@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-lite/shadow/compare-lite-shadow.ts
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
-import { extractToolNamesFromDefinitions } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { extractToolNamesFromDefinitions } from '@buildos/agentic-chat-runtime/catalog';
 import { normalizeFastContextType, selectFastChatTools } from '$lib/services/agentic-chat-v2';
 import {
 	buildPromptCostBreakdown,

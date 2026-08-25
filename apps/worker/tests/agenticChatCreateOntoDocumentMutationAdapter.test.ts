@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AgenticChatCreateOntoDocumentMutationAdapter } from '../src/workers/agentic-chat/createOntoDocumentMutationAdapter';
-import { AgenticChatFixtureMutationAdapterError } from '../src/workers/agentic-chat/fixtureMutationExecutor';
+import { AgenticChatMutationAdapterError } from '../src/workers/agentic-chat/mutation-executor';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_PROJECT_ID = '22222222-2222-4222-8222-222222222222';
@@ -33,6 +33,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 			artifact: {
 				prepared: {
 					toolSurface: {
+						surfaceProfile: 'test_create_document',
 						toolNames: ['create_onto_document'],
 						definitions: [
 							{
@@ -40,7 +41,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 								function: {
 									name: 'create_onto_document',
 									description: 'Create a document',
-									parameters: { type: 'object' }
+									parameters: { type: 'object', properties: {} }
 								}
 							}
 						]
@@ -226,7 +227,7 @@ describe('AgenticChatCreateOntoDocumentMutationAdapter', () => {
 		});
 		await expect(
 			adapter.execute(mutationInput({ downstreamIdempotencyKey: 'changed' }))
-		).rejects.toBeInstanceOf(AgenticChatFixtureMutationAdapterError);
+		).rejects.toBeInstanceOf(AgenticChatMutationAdapterError);
 		await expect(
 			adapter.execute(mutationInput({ downstreamIdempotencySupported: true }))
 		).rejects.toMatchObject({

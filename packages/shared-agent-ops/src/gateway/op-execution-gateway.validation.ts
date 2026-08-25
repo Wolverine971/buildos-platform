@@ -3,7 +3,7 @@
 // Shared gateway argument normalization and schema validation. External
 // execution, worker commit, and staged proposals all go through this module so
 // they reject malformed args the same way.
-import type { BuildosAgentAllowedOp } from '@buildos/shared-types';
+import type { BuildosAgentAllowedOp, ToolJsonObjectSchema } from '@buildos/shared-types';
 import { EXTERNAL_WRITE_OP_SCHEMAS } from './op-execution-gateway.config';
 
 export type GatewayArgValidationError = {
@@ -93,23 +93,22 @@ export function coerceGatewayArgs(value: unknown): Record<string, unknown> {
 }
 
 export function validateRequiredArgs(
-	schema: Record<string, any>,
+	schema: ToolJsonObjectSchema,
 	args: Record<string, unknown>
 ): string[] {
-	const required = Array.isArray(schema.required) ? (schema.required as string[]) : [];
+	const required = schema.required ?? [];
 	return required.filter((field) => args[field] === undefined);
 }
 
 export function validateUnexpectedArgs(
-	schema: Record<string, any>,
+	schema: ToolJsonObjectSchema,
 	args: Record<string, unknown>
 ): string[] {
 	if (schema.additionalProperties !== false) {
 		return [];
 	}
 
-	const properties = (schema.properties ?? {}) as Record<string, unknown>;
-	const allowed = new Set(Object.keys(properties));
+	const allowed = new Set(Object.keys(schema.properties));
 	return Object.keys(args).filter((field) => !allowed.has(field));
 }
 
@@ -193,7 +192,7 @@ export function detectGatewayLegacyArgAliases(
 }
 
 export function validateGatewayArgs(
-	schema: Record<string, any> | undefined,
+	schema: ToolJsonObjectSchema | undefined,
 	args: Record<string, unknown>
 ): GatewayArgValidationError | null {
 	if (!schema) {
@@ -222,7 +221,7 @@ export function validateGatewayArgs(
 export function normalizeAndValidateGatewayArgs(params: {
 	op: BuildosAgentAllowedOp;
 	args: unknown;
-	schema?: Record<string, any>;
+	schema?: ToolJsonObjectSchema;
 	allowLegacyAliases?: boolean;
 }): GatewayArgValidationResult {
 	const rawArgs = coerceGatewayArgs(params.args);

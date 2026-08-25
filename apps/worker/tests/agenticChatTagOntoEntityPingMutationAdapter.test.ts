@@ -35,6 +35,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 			artifact: {
 				prepared: {
 					toolSurface: {
+						surfaceProfile: 'test_tag_entity',
 						toolNames: ['tag_onto_entity'],
 						definitions: [
 							{
@@ -42,7 +43,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 								function: {
 									name: 'tag_onto_entity',
 									description: 'Tag collaborator',
-									parameters: { type: 'object' }
+									parameters: { type: 'object', properties: {} }
 								}
 							}
 						]

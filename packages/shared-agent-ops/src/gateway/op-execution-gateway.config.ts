@@ -2,9 +2,12 @@
 //
 // Static gateway catalogs, table mappings, and schema fragments shared by the
 // execution core, worker adapter, and staging adapter.
-import type { BuildosAgentAllowedOp } from '@buildos/shared-types';
+import type {
+	BuildosAgentAllowedOp,
+	RegistryOp,
+	ToolJsonObjectSchema
+} from '@buildos/shared-types';
 import { DOCUMENT_STATES } from '../ontology/onto';
-import type { RegistryOp } from './op-execution-gateway.types';
 
 export type ExternalEntityKind =
 	| 'project'
@@ -135,7 +138,8 @@ export const EXTERNAL_CUSTOM_OPS: Partial<Record<BuildosAgentAllowedOp, Registry
 		group: 'onto',
 		kind: 'read',
 		entity: 'project',
-		action: 'status.get'
+		action: 'status.get',
+		chat_discoverable: false
 	},
 	'onto.asset.search': {
 		op: 'onto.asset.search',
@@ -181,7 +185,8 @@ export const EXTERNAL_CUSTOM_OPS: Partial<Record<BuildosAgentAllowedOp, Registry
 		group: 'onto',
 		kind: 'read',
 		entity: 'asset',
-		action: 'search'
+		action: 'search',
+		chat_discoverable: false
 	},
 	'onto.asset.get': {
 		op: 'onto.asset.get',
@@ -207,7 +212,8 @@ export const EXTERNAL_CUSTOM_OPS: Partial<Record<BuildosAgentAllowedOp, Registry
 		group: 'onto',
 		kind: 'read',
 		entity: 'asset',
-		action: 'get'
+		action: 'get',
+		chat_discoverable: false
 	}
 };
 
@@ -302,7 +308,7 @@ export const ARCHIVABLE_ENTITY_KINDS = new Set<ExternalLinkEntityKind>([
 ]);
 
 export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
-	Record<BuildosAgentAllowedOp, Record<string, unknown>>
+	Record<BuildosAgentAllowedOp, ToolJsonObjectSchema>
 > = {
 	'onto.task.create': {
 		type: 'object',
@@ -590,21 +596,15 @@ const EXTERNAL_ARCHIVABLE_READ_OPS = new Set<BuildosAgentAllowedOp>([
 
 export function withExternalArchiveUpdateParameter(
 	op: BuildosAgentAllowedOp,
-	schema: Record<string, unknown>
-): Record<string, unknown> {
+	schema: ToolJsonObjectSchema
+): ToolJsonObjectSchema {
 	if (!EXTERNAL_ARCHIVABLE_UPDATE_OPS.has(op) && !EXTERNAL_ARCHIVABLE_READ_OPS.has(op)) {
 		return schema;
 	}
-	const properties =
-		schema.properties &&
-		typeof schema.properties === 'object' &&
-		!Array.isArray(schema.properties)
-			? (schema.properties as Record<string, unknown>)
-			: {};
 	return {
 		...schema,
 		properties: {
-			...properties,
+			...schema.properties,
 			archived: {
 				type: 'boolean',
 				description: EXTERNAL_ARCHIVABLE_UPDATE_OPS.has(op)

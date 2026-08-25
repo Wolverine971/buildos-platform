@@ -18,7 +18,7 @@
  * mid-turn notice covers tools that materialize after the seed.
  */
 
-import { isWriteToolName } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { isWriteToolName } from '@buildos/agentic-chat-runtime/catalog';
 
 export type LitePromptTurnSituation = {
 	writeIntent: boolean;

@@ -4,7 +4,7 @@ import type { ErrorContext } from '$lib/types/error-logging';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import { createLogger } from '$lib/utils/logger';
 import type { ServiceContext, ToolExecutionResult } from '../../shared/types';
-import { TOOL_METADATA } from '../../tools/core/definitions';
+import { TOOL_METADATA } from '@buildos/agentic-chat-runtime/catalog';
 import type { ToolArguments } from './argument-values';
 import { isToolCancellationResult } from './result-adapter';
 

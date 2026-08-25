@@ -3,35 +3,17 @@ import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { fileURLToPath } from 'node:url';
 import { coverageConfig } from '../../vitest.coverage';
+import { createAgenticChatRuntimeSourceAliases } from '../../packages/agentic-chat-runtime/source-entrypoints';
 
 const sharedAgentOpsSrc = (sub: string) =>
 	fileURLToPath(new URL(`../../packages/shared-agent-ops/src/${sub}`, import.meta.url));
 
+export const agenticChatRuntimeSourceAliases = createAgenticChatRuntimeSourceAliases(
+	new URL('../../packages/agentic-chat-runtime/', import.meta.url)
+);
+
 const workspacePackageRootAliases = [
-	{
-		find: /^@buildos\/agentic-chat-runtime$/,
-		replacement: fileURLToPath(
-			new URL('../../packages/agentic-chat-runtime/src/index.ts', import.meta.url)
-		)
-	},
-	{
-		find: /^@buildos\/agentic-chat-runtime\/loop$/,
-		replacement: fileURLToPath(
-			new URL('../../packages/agentic-chat-runtime/src/loop/index.ts', import.meta.url)
-		)
-	},
-	{
-		find: /^@buildos\/agentic-chat-runtime\/supervisor$/,
-		replacement: fileURLToPath(
-			new URL('../../packages/agentic-chat-runtime/src/supervisor/index.ts', import.meta.url)
-		)
-	},
-	{
-		find: /^@buildos\/agentic-chat-runtime\/tools$/,
-		replacement: fileURLToPath(
-			new URL('../../packages/agentic-chat-runtime/src/tools/index.ts', import.meta.url)
-		)
-	},
+	...agenticChatRuntimeSourceAliases,
 	{
 		find: /^@buildos\/shared-agent-ops$/,
 		replacement: fileURLToPath(

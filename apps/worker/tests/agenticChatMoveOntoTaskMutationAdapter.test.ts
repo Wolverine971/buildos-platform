@@ -33,6 +33,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 			artifact: {
 				prepared: {
 					toolSurface: {
+						surfaceProfile: 'test_move_task',
 						toolNames: ['move_onto_task'],
 						definitions: [
 							{
@@ -40,7 +41,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 								function: {
 									name: 'move_onto_task',
 									description: 'Move task',
-									parameters: { type: 'object' }
+									parameters: { type: 'object', properties: {} }
 								}
 							}
 						]

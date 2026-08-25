@@ -10,7 +10,7 @@
 // it, then bump the budget WITH a dated comment (see the tool-surface test
 // for the convention).
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import { getGatewaySurfaceForContextType } from '@buildos/agentic-chat-runtime/catalog';
 import { buildPromptCostBreakdown } from '$lib/services/agentic-chat-v2/prompt-cost-breakdown';
 import { buildLitePromptEnvelope } from './index';
 

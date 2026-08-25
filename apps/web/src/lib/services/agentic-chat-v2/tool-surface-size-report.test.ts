@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	getGatewaySurfaceForContextType,
 	getGatewaySurfaceForProfile
-} from '$lib/services/agentic-chat/tools/core/gateway-surface';
+} from '@buildos/agentic-chat-runtime/catalog';
 import {
 	buildCanonicalToolSurfaceSizeReports,
 	buildGatewayProfileToolSurfaceSizeReports,

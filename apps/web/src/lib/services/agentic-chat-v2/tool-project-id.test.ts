@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({ extractTools: vi.fn() }));
 
 // `toolCallRequiresProjectId` falls back to extractTools() when the tool name
 // isn't in the precomputed set; mock it so the unit stays pure.
-vi.mock('$lib/services/agentic-chat/tools/core/tools.config', () => ({
+vi.mock('@buildos/agentic-chat-runtime/catalog', () => ({
 	extractTools: mocks.extractTools
 }));
 

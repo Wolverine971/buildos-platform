@@ -1,18 +1,19 @@
 import {
 	type JsonObject,
 	type JsonValue,
-	canonicalizeAgenticChatJson
+	canonicalizeAgenticChatJson,
+	decodeAgenticChatToolSurfaceV1
 } from '@buildos/shared-types';
 import {
-	type AgenticChatFixtureMutatingToolPortV1,
-	AgenticChatFixtureMutationAdapterError
-} from './fixtureMutationExecutor';
+	type AgenticChatMutatingToolPortV1,
+	AgenticChatMutationAdapterError
+} from './mutation-executor';
 
 const MAX_RECEIPT_BYTES = 480 * 1024;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const KNOWN_PRECOMMIT_GATEWAY_CODES = new Set(['VALIDATION_ERROR', 'NOT_FOUND', 'FORBIDDEN']);
 
-export type MutationInput = Parameters<AgenticChatFixtureMutatingToolPortV1['execute']>[0];
+export type MutationInput = Parameters<AgenticChatMutatingToolPortV1['execute']>[0];
 
 /** Common fail-closed checks shared by every independently gated mutation adapter. */
 export function assertMutationAdapterBoundary(
@@ -56,19 +57,13 @@ export function assertMutationAdapterBoundary(
 	if (!isRecord(surface)) {
 		throw knownFailure('mutation_tool_not_admitted', 'Mutation tool surface is missing');
 	}
-	const selected = Array.isArray(surface.toolNames) && surface.toolNames.includes(spec.toolName);
+	const decodedSurface = decodeAgenticChatToolSurfaceV1(surface);
+	const selected = decodedSurface.ok && decodedSurface.surface.toolNames.includes(spec.toolName);
 	const defined =
-		Array.isArray(surface.definitions) &&
-		surface.definitions.some((definition) => {
-			if (
-				!isRecord(definition) ||
-				definition.type !== 'function' ||
-				!isRecord(definition.function)
-			) {
-				return false;
-			}
-			return definition.function.name === spec.toolName;
-		});
+		decodedSurface.ok &&
+		decodedSurface.surface.definitions.some(
+			(definition) => definition.function.name === spec.toolName
+		);
 	if (!selected || !defined) {
 		throw knownFailure(
 			'mutation_tool_not_admitted',
@@ -179,15 +174,15 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 export function knownFailure(
 	code: string,
 	message: string
-): AgenticChatFixtureMutationAdapterError {
-	return new AgenticChatFixtureMutationAdapterError('known_failed', code, message);
+): AgenticChatMutationAdapterError {
+	return new AgenticChatMutationAdapterError('known_failed', code, message);
 }
 
 export function uncertainFailure(
 	code: string,
 	message: string
-): AgenticChatFixtureMutationAdapterError {
-	return new AgenticChatFixtureMutationAdapterError('outcome_uncertain', code, message);
+): AgenticChatMutationAdapterError {
+	return new AgenticChatMutationAdapterError('outcome_uncertain', code, message);
 }
 
 export function canonicalGatewayError(error: unknown, toolName: string): string {

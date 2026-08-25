@@ -3,7 +3,7 @@ import type { ChatContextType, ChatToolDefinition, ProjectFocus } from '@buildos
 import type {
 	GatewaySurfaceProfileName,
 	ProjectCreateExecutionWorkflow
-} from '$lib/services/agentic-chat/tools/core/gateway-surface';
+} from '@buildos/agentic-chat-runtime/catalog';
 import {
 	getActiveDomainIds,
 	getActiveOutcomeCardIds,

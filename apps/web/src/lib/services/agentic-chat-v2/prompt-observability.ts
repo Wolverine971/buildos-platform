@@ -8,7 +8,7 @@ import type {
 	Json
 } from '@buildos/shared-types';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
-import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
+import { getToolRegistry } from '@buildos/agentic-chat-runtime/catalog';
 import { estimateTokensFromText } from './context-usage';
 import { buildPromptCostBreakdown, type PromptCostBreakdown } from './prompt-cost-breakdown';
 import { toJsonValue } from './prompt-json';

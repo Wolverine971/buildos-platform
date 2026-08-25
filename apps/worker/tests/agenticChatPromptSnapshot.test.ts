@@ -10,7 +10,7 @@ import {
 import {
 	AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
 	type AgenticChatPreparedPromptSnapshotV1
-} from '../src/workers/agentic-chat/providerContract';
+} from '../src/workers/agentic-chat/provider/contracts';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const SESSION_ID = '20000000-0000-4000-8000-000000000002';

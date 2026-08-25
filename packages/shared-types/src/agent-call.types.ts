@@ -1,4 +1,6 @@
 // packages/shared-types/src/agent-call.types.ts
+import type { ToolJsonObjectSchema } from './agentic-chat-tool.types';
+
 export type BuildosAgentCallMethod = 'call.dial' | 'tools/list' | 'tools/call' | 'call.hangup';
 
 export type UserBuildosAgentStatus = 'active' | 'paused' | 'revoked';
@@ -178,7 +180,7 @@ export type BuildosAgentRequest =
 export interface BuildosAgentToolDefinition {
 	name: BuildosAgentPublicToolName;
 	description: string;
-	inputSchema: Record<string, unknown>;
+	inputSchema: ToolJsonObjectSchema;
 }
 
 export interface BuildosAgentCallAcceptedResponse {

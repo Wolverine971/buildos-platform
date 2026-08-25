@@ -2,9 +2,9 @@
 
 import type { SupabaseQueue } from './supabaseQueue';
 import type {
-	AgenticChatPhase3BootstrapHealth,
-	AgenticChatPhase3BootstrapStartResult
-} from '../workers/agentic-chat/phase3Bootstrap';
+	AgenticChatBootstrapHealth,
+	AgenticChatBootstrapStartResult
+} from '../workers/agentic-chat/bootstrap';
 
 export type WorkerRuntimeLifecycleState =
 	| 'idle'
@@ -19,7 +19,7 @@ export type WorkerRuntimeLifecycleHealth = {
 	state: WorkerRuntimeLifecycleState;
 	reason?: string;
 	queue: ReturnType<SupabaseQueue['getHealth']>;
-	agenticChat: AgenticChatPhase3BootstrapHealth;
+	agenticChat: AgenticChatBootstrapHealth;
 };
 
 export type WorkerRuntimeLifecyclePorts = {
@@ -29,9 +29,9 @@ export type WorkerRuntimeLifecyclePorts = {
 		getHealth(): ReturnType<SupabaseQueue['getHealth']>;
 	};
 	agenticChat: {
-		start(): Promise<AgenticChatPhase3BootstrapStartResult>;
+		start(): Promise<AgenticChatBootstrapStartResult>;
 		stop(): Promise<void>;
-		getHealth(): AgenticChatPhase3BootstrapHealth;
+		getHealth(): AgenticChatBootstrapHealth;
 	};
 };
 

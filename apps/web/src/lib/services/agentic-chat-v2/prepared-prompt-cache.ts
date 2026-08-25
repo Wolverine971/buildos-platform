@@ -9,8 +9,10 @@ import type {
 	LitePromptToolsSummary
 } from '$lib/services/agentic-chat-lite/prompt';
 import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
-import type { GatewaySurfaceProfileName } from '$lib/services/agentic-chat/tools/core/gateway-surface';
-import { resolveGatewaySurfaceProfileForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import {
+	resolveGatewaySurfaceProfileForContextType,
+	type GatewaySurfaceProfileName
+} from '@buildos/agentic-chat-runtime/catalog';
 
 export const PREPARED_PROMPT_CACHE_VERSION = 1;
 export const PREPARED_PROMPT_KEY_PREFIX = 'pp_v1';

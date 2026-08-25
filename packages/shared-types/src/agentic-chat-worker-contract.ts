@@ -1,4 +1,6 @@
 // packages/shared-types/src/agentic-chat-worker-contract.ts
+import type { AgenticChatToolSurfaceArtifact } from './agentic-chat-tool-surface';
+
 export const AGENTIC_CHAT_WORKER_CONTRACT_VERSION = 'agentic_chat_worker_v1' as const;
 export const AGENTIC_CHAT_ASYNC_TIMING_CONTRACT_VERSION = 'agentic_chat_async_v1' as const;
 export const AGENTIC_CHAT_REQUEST_HASH_VERSION = 'agentic_chat_request_hash_v2' as const;
@@ -213,7 +215,7 @@ type TurnInputArtifactPreparedBaseV1 = {
 	surfaceProfile: string;
 	systemPrompt: string;
 	promptSections: JsonObject[];
-	toolSurface: JsonObject;
+	toolSurface: AgenticChatToolSurfaceArtifact;
 	/** Prospective history evidence; optional only for retained rolling v2/v3 artifacts. */
 	historyState?: AgenticChatHistoryStateV1;
 	/** Current-turn evidence; optional only for retained rolling v2/v3 artifacts. */

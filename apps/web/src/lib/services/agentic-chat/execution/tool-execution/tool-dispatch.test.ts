@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat/execution/tool-execution/tool-dispatch.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { GATEWAY_TOOL_DEFINITIONS } from '../../tools/core/definitions';
+import { GATEWAY_TOOL_DEFINITIONS } from '@buildos/agentic-chat-runtime/catalog';
 import type { ServiceContext, ToolExecutionResult } from '../../shared/types';
 import { dispatchToolExecution } from './execution-runner';
 

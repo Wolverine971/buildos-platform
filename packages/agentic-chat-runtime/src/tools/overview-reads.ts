@@ -9,8 +9,8 @@
 // port) produce byte-identical payloads. The pure payload builders already
 // live in ./overview-helper (T1); this module adds the data loaders and the
 // tool entry points. change_chat_context needs the host's launch tool surface
-// (a gateway concern that stays host-side), so it takes a minimal injected
-// resolver instead of importing the web gateway-surface module.
+// (host execution state), so it takes a minimal injected resolver rather than
+// importing an application composition layer.
 
 import {
 	buildProjectOverviewPayload,
@@ -56,10 +56,10 @@ export interface SharedChangeChatContextArgs {
 
 /**
  * Host port for change_chat_context: resolves the direct tool names the host
- * mounts at launch for a chat context type. Web supplies its gateway-surface
- * profile catalog; the worker supplies its own tool surface. Kept as a
- * function port because the surface catalog is host policy, not shared read
- * behavior.
+ * mounts at launch for a chat context type. Web resolves the shared catalog
+ * profile selected during admission; the worker supplies its decoded callable
+ * surface. Kept as a function port because the active mounted surface is host
+ * execution state, not shared read behavior.
  */
 export type SharedChangeChatContextPorts = {
 	resolveDirectToolNames: (contextType: 'global' | 'project') => string[];

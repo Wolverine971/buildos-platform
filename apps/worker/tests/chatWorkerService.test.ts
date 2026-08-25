@@ -7,7 +7,7 @@ import {
 	createChatWorkerService,
 	type ChatWorkerBootstrapPort
 } from '../src/lib/chatWorkerService';
-import type { AgenticChatPhase3BootstrapHealth } from '../src/workers/agentic-chat/phase3Bootstrap';
+import type { AgenticChatBootstrapHealth } from '../src/workers/agentic-chat/bootstrap';
 import { requireDedicatedChatWorkerProductionProfile } from '../src/config/chatWorkerProfile';
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
@@ -120,7 +120,7 @@ describe('dedicated Agentic Chat worker composition', () => {
 		for (const [, importedPath] of workerImports) {
 			expect(importedPath).toMatch(/^agentic-chat\//);
 		}
-		expect(entrypoint).toContain("from './workers/agentic-chat/phase3Bootstrap'");
+		expect(entrypoint).toContain("from './workers/agentic-chat/bootstrap'");
 		expect(entrypoint).not.toContain('startScheduler(');
 		expect(entrypoint).not.toContain('startWorker(');
 	});
@@ -194,7 +194,7 @@ function responseHarness() {
 	return { response, result: () => ({ status, body }) };
 }
 
-function chatHealth(): AgenticChatPhase3BootstrapHealth {
+function chatHealth(): AgenticChatBootstrapHealth {
 	return {
 		enabled: true,
 		healthy: true,

@@ -2,14 +2,14 @@
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
 import { estimateTokensFromText } from '$lib/services/agentic-chat-v2/context-usage';
 import {
+	extractToolNamesFromDefinitions,
 	getGatewaySurfaceForContextType,
 	getGatewaySurfaceForProfile
-} from '$lib/services/agentic-chat/tools/core/gateway-surface';
+} from '@buildos/agentic-chat-runtime/catalog';
 import {
 	renderDomainSensingPromptContent,
 	senseDomains
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
-import { extractToolNamesFromDefinitions } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
 import { listRootSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import type {

@@ -5,7 +5,7 @@ import type { AgenticChatExecutionIdentityV1 } from './executionControl';
 import {
 	AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
 	type AgenticChatPreparedPromptSnapshotV1
-} from './providerContract';
+} from './provider/contracts';
 import { agenticChatGenerationWriteFenceArgsV1 } from './writeFence';
 
 const PROMPT_SNAPSHOT_IDENTITY_VERSION = 'agentic_chat_prompt_snapshot_identity_v1';

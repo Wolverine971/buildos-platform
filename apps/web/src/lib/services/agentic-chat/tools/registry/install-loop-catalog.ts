@@ -7,8 +7,8 @@ import {
 	provideAgenticChatLoopSkillLookup,
 	provideAgenticChatLoopToolCatalog
 } from '@buildos/agentic-chat-runtime/loop';
+import { getToolRegistry } from '@buildos/agentic-chat-runtime/catalog';
 import { getSkillById, getSkillByReference } from '../skills/registry';
-import { getToolRegistry } from './tool-registry';
 
 provideAgenticChatLoopToolCatalog(() => getToolRegistry());
 provideAgenticChatLoopSkillLookup(() => ({

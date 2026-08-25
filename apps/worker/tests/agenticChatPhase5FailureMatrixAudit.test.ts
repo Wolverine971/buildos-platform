@@ -66,13 +66,13 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'capacity_general_saturated',
 		requirement: 'General queue saturation does not consume the chat slot.',
-		file: 'apps/worker/tests/agenticChatFixtureConsumer.test.ts',
+		file: 'apps/worker/tests/agenticChatConsumerFactory.test.ts',
 		anchor: 'keeps saturated general slots independent from bounded chat slots'
 	},
 	{
 		id: 'capacity_chat_saturated',
 		requirement: 'Chat saturation does not consume general queue capacity.',
-		file: 'apps/worker/tests/agenticChatFixtureConsumer.test.ts',
+		file: 'apps/worker/tests/agenticChatConsumerFactory.test.ts',
 		anchor: 'keeps saturated general slots independent from bounded chat slots'
 	},
 	{
@@ -84,31 +84,31 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'cancel_during_model_stream',
 		requirement: 'Cancellation during streaming commits the exact durable partial.',
-		file: 'apps/worker/tests/agenticChatFixtureTurnExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatTurnExecutor.test.ts',
 		anchor: 'finalizes exact durable partial text even when the provider ignores abort'
 	},
 	{
 		id: 'cancel_before_mutation_commit',
 		requirement: 'Cancellation before effect begin leaves the mutation uninvoked.',
-		file: 'apps/worker/tests/agenticChatFixtureMutationExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatMutationExecutor.test.ts',
 		anchor: 'closes a cancelled reservation before begin and never invokes the mutator'
 	},
 	{
 		id: 'cancel_after_mutation_commit',
 		requirement: 'A committed mutation receipt remains durable before cancellation.',
-		file: 'apps/worker/tests/agenticChatFixtureTurnExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatTurnExecutor.test.ts',
 		anchor: 'persists a committed mutation receipt before honoring post-begin cancellation'
 	},
 	{
 		id: 'cancel_reserved_before_started',
 		requirement: 'Reserved -> cancelled does not cross the irreversible boundary.',
-		file: 'apps/worker/tests/agenticChatFixtureMutationExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatMutationExecutor.test.ts',
 		anchor: 'closes a cancelled reservation before begin and never invokes the mutator'
 	},
 	{
 		id: 'effect_provider_call_id_changed',
 		requirement: 'Changed provider correlation still reuses the stable effect id.',
-		file: 'apps/worker/tests/agenticChatFixtureMutationExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatMutationExecutor.test.ts',
 		anchor: 'is stable across provider ids/generations and conflicts changed arguments'
 	},
 	{
@@ -121,13 +121,13 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'death_after_downstream_commit',
 		requirement: 'A lost response after downstream commit replays the existing receipt.',
-		file: 'apps/worker/tests/agenticChatFixtureMutationExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatMutationExecutor.test.ts',
 		anchor: 'replays an existing committed receipt without begin or reinvocation'
 	},
 	{
 		id: 'death_before_effect_receipt',
 		requirement: 'Ambiguous downstream completion remains uncertain and fail-closed.',
-		file: 'apps/worker/tests/agenticChatFixtureMutationExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatMutationExecutor.test.ts',
 		anchor: 'keeps an earlier ambiguous attempt uncertain when recovery fails closed'
 	},
 	{
@@ -175,7 +175,7 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'publisher_unpausable_hard_bound',
 		requirement: 'An unbounded provider becomes a typed failed terminal partial.',
-		file: 'apps/worker/tests/agenticChatFixtureTurnExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatTurnExecutor.test.ts',
 		anchor: 'turns publisher hard-bound overload into a failed terminal partial without retry'
 	},
 	{
@@ -259,31 +259,31 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'termination_before_provider',
 		requirement: 'Denied/lost provider-start authority never invokes the provider.',
-		file: 'apps/worker/tests/agenticChatFixtureTurnExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatTurnExecutor.test.ts',
 		anchor: 'releases a prepared provider without streaming when the start fence denies invocation'
 	},
 	{
 		id: 'termination_after_read_tool',
 		requirement: 'A committed read ledger row remains recoverable if publication fails.',
-		file: 'apps/worker/tests/agenticChatFixtureTurnExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatTurnExecutor.test.ts',
 		anchor: 'carries an acknowledged tool row into recovery when public result persistence fails'
 	},
 	{
 		id: 'termination_after_uncertain_mutation',
 		requirement: 'Uncertain mutation recovery stops at the effect boundary.',
-		file: 'apps/worker/tests/agenticChatFixtureTurnExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatTurnExecutor.test.ts',
 		anchor: 'stops at effect reconciliation when a non-queryable mutation outcome is uncertain'
 	},
 	{
 		id: 'timeout_provider_ignores_abort',
 		requirement: 'A never-resolving provider is terminalized inside the executor budget.',
-		file: 'apps/worker/tests/agenticChatFixtureTurnExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatTurnExecutor.test.ts',
 		anchor: 'terminalizes a never-resolving provider stream inside the executor budget'
 	},
 	{
 		id: 'stale_worker_event_publication',
 		requirement: 'A stale generation cannot publish provider output.',
-		file: 'apps/worker/tests/agenticChatFixtureTurnExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatTurnExecutor.test.ts',
 		anchor: 'cannot publish or finalize after the start fence reports a stale generation'
 	},
 	{
@@ -325,7 +325,7 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	{
 		id: 'queue_completion_rpc_failed',
 		requirement: 'Committed domain completion survives queue acknowledgement failure.',
-		file: 'apps/worker/tests/agenticChatFixtureTurnExecutor.test.ts',
+		file: 'apps/worker/tests/agenticChatTurnExecutor.test.ts',
 		anchor: 'keeps committed completion truth when queue completion cannot be acknowledged'
 	},
 	{

@@ -12,7 +12,12 @@
  */
 
 import { ApiRequestError, BaseExecutor } from './base-executor';
-import { buildAgenticChatProjectContextDocumentV1 } from '@buildos/agentic-chat-runtime/loop';
+import {
+	assertNoDurableTextViolations,
+	buildAgenticChatProjectContextDocumentV1,
+	normalizeProjectCreateArgs,
+	validateProjectCreateArgs
+} from '@buildos/agentic-chat-runtime/loop';
 import {
 	buildTaskMoveToolResult,
 	type PublicTaskMoveResult
@@ -56,8 +61,6 @@ import {
 	hasMeaningfulUpdateValue,
 	isAppendOrMergeUpdateStrategy
 } from '$lib/services/agentic-chat/shared/update-value-validation';
-import { assertNoDurableTextViolations } from '$lib/services/agentic-chat/shared/durable-text-validation';
-import { normalizeProjectCreateArgs, validateProjectCreateArgs } from '../project-create-args';
 import { TASK_STATES } from '$lib/types/onto';
 import {
 	AGENT_WORKSPACE_PROP,

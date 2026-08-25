@@ -237,6 +237,7 @@ function mutationInput(testCase: SuccessCase, overrides: Record<string, unknown>
 			artifact: {
 				prepared: {
 					toolSurface: {
+						surfaceProfile: 'test_gateway_entity',
 						toolNames: [testCase.toolName],
 						definitions: [
 							{
@@ -244,7 +245,7 @@ function mutationInput(testCase: SuccessCase, overrides: Record<string, unknown>
 								function: {
 									name: testCase.toolName,
 									description: 'Mutation fixture',
-									parameters: { type: 'object' }
+									parameters: { type: 'object', properties: {} }
 								}
 							}
 						]

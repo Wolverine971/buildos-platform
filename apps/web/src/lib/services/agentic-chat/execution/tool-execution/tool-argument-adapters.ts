@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/execution/tool-execution/tool-argument-adapters.ts
-import { normalizeProjectCreateArgs } from '../../tools/core/project-create-args';
+import { normalizeProjectCreateArgs } from '@buildos/agentic-chat-runtime/loop';
 import { isToolArgumentRecord, type ToolArguments } from './argument-values';
 
 type AliasRule = {

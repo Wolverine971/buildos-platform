@@ -1,6 +1,6 @@
 // packages/agentic-chat-runtime/src/worker-tool-policy.test.ts
 import { describe, expect, it } from 'vitest';
-import { TOOL_METADATA } from './loop';
+import { TOOL_METADATA } from './catalog/metadata';
 import {
 	AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1,
 	AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1,

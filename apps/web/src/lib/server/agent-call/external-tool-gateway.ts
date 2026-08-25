@@ -14,7 +14,8 @@ import type {
 	AgentCallScope,
 	BuildosAgentProjectScopeMode,
 	BuildosAgentDiscoveryToolName,
-	BuildosAgentToolDefinition
+	BuildosAgentToolDefinition,
+	ToolJsonObjectSchema
 } from '@buildos/shared-types';
 import {
 	buildExecError,
@@ -32,8 +33,7 @@ import {
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
-import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
-import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
+import { GATEWAY_TOOL_DEFINITIONS, getToolRegistry } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	buildToolSearchNoMatchesPayload,
 	computeToolMatchScore,
@@ -111,7 +111,7 @@ function createTaskSyncPort(admin: any): TaskSyncPort {
  * the shape the shared registry builder expects.
  */
 function getRegistryOps(): Record<string, RegistryOp> {
-	return getToolRegistry().ops as Record<string, RegistryOp>;
+	return getToolRegistry().ops;
 }
 
 function getRegistryVersion(): string {
@@ -165,7 +165,7 @@ export function getBuildosAgentGatewayTools(scope: AgentCallScope): BuildosAgent
 	).map((tool) => ({
 		name: tool.function.name,
 		description: tool.function.description,
-		inputSchema: tool.function.parameters ?? { type: 'object', properties: {} }
+		inputSchema: tool.function.parameters
 	}));
 
 	const registry = buildExternalGatewayRegistry(scope);
@@ -178,25 +178,16 @@ export function getBuildosAgentGatewayTools(scope: AgentCallScope): BuildosAgent
 	return [...discoveryTools, ...directTools];
 }
 
-function buildExternalDirectToolSchema(
-	entry: ExternalGatewayRegistryEntry
-): Record<string, unknown> {
+function buildExternalDirectToolSchema(entry: ExternalGatewayRegistryEntry): ToolJsonObjectSchema {
 	const schema = cloneSchema(entry.parameters_schema);
 	if (!isWriteOp(entry.op)) {
 		return schema;
 	}
 
-	const properties =
-		schema.properties &&
-		typeof schema.properties === 'object' &&
-		!Array.isArray(schema.properties)
-			? (schema.properties as Record<string, unknown>)
-			: {};
-
 	return {
 		...schema,
 		properties: {
-			...properties,
+			...schema.properties,
 			idempotency_key: {
 				type: 'string',
 				description:
@@ -210,11 +201,8 @@ function buildExternalDirectToolSchema(
 	};
 }
 
-function cloneSchema(schema: Record<string, unknown> | undefined): Record<string, unknown> {
-	return JSON.parse(JSON.stringify(schema ?? { type: 'object', properties: {} })) as Record<
-		string,
-		unknown
-	>;
+function cloneSchema(schema: ToolJsonObjectSchema): ToolJsonObjectSchema {
+	return structuredClone(schema);
 }
 
 function findExternalDirectTool(
@@ -347,12 +335,11 @@ function findKnownExternalCustomTool(toolName: string): RegistryOp | null {
 	);
 }
 
-function buildMinimalArgsTemplate(schema: Record<string, any>): Record<string, unknown> {
-	const properties = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
-	const required = new Set(Array.isArray(schema.required) ? (schema.required as string[]) : []);
+function buildMinimalArgsTemplate(schema: ToolJsonObjectSchema): Record<string, unknown> {
+	const required = new Set(schema.required ?? []);
 	const template: Record<string, unknown> = {};
 
-	for (const [name, definition] of Object.entries(properties)) {
+	for (const [name, definition] of Object.entries(schema.properties)) {
 		if (!required.has(name)) {
 			continue;
 		}
@@ -386,9 +373,8 @@ function buildExternalOpHelp(
 	includeExamples: boolean
 ): Record<string, unknown> {
 	const schema = buildExternalDirectToolSchema(entry);
-	const properties = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
-	const required = Array.isArray(schema.required) ? (schema.required as string[]) : [];
-	const args = Object.entries(properties).map(([name, definition]) => ({
+	const required = schema.required ?? [];
+	const args = Object.entries(schema.properties).map(([name, definition]) => ({
 		name,
 		type: Array.isArray(definition.type)
 			? definition.type.join(' | ')

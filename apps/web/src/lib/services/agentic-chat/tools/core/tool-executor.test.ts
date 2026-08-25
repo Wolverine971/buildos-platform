@@ -5,7 +5,11 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChatToolExecutor } from './tool-executor';
-import { getToolCategory, getToolExecutionCategory, isWriteToolName } from './tools.config';
+import {
+	getToolCategory,
+	getToolExecutionCategory,
+	isWriteToolName
+} from '@buildos/agentic-chat-runtime/catalog';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, ChatToolCall } from '@buildos/shared-types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';

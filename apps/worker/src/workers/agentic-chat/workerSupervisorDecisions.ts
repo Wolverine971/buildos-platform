@@ -1,6 +1,6 @@
 // apps/worker/src/workers/agentic-chat/workerSupervisorDecisions.ts
 import type { JsonObject } from '@buildos/shared-types';
-import type { AgenticChatProviderStepV1 } from './providerContract';
+import type { AgenticChatProviderStepV1 } from './provider/contracts';
 import type { AgenticChatWorkerSupervisorDecisionRecordV1 } from './workerSupervisor';
 
 import { AGENTIC_CHAT_SUPERVISOR_BLOCKED_RETRY_ERROR_V1 } from '@buildos/agentic-chat-runtime/supervisor';

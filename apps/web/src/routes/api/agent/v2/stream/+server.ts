@@ -76,7 +76,7 @@ import {
 	isSearchTool,
 	searchToolFamily,
 	searchTelemetryColumns
-} from '$lib/services/agentic-chat/tools/core/search-telemetry';
+} from '@buildos/agentic-chat-runtime/loop';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	AgentStateReconciliationService,
@@ -155,8 +155,10 @@ import {
 	resolveSkillGatePreload,
 	resolveSkillPreloadById
 } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
-import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
-import { extractToolNamesFromDefinitions } from '$lib/services/agentic-chat/tools/core/tools.config';
+import {
+	extractToolNamesFromDefinitions,
+	materializeGatewayTools
+} from '@buildos/agentic-chat-runtime/catalog';
 import {
 	deriveLoadedOutcomeCardGapSignalsFromToolExecutions,
 	getLoadedSkillIdsFromUsedDomains,

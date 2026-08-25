@@ -4,7 +4,7 @@ import 'dotenv/config';
 import { supabase } from './lib/supabase';
 import { type ChatWorkerService, createChatWorkerService } from './lib/chatWorkerService';
 import { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
-import { createAgenticChatPhase3Bootstrap } from './workers/agentic-chat/phase3Bootstrap';
+import { createAgenticChatBootstrap } from './workers/agentic-chat/bootstrap';
 import { requireDedicatedChatWorkerProductionProfile } from './config/chatWorkerProfile';
 
 const PROCESS_SHUTDOWN_TIMEOUT_MS = 28_000;
@@ -12,7 +12,7 @@ const PROCESS_SHUTDOWN_TIMEOUT_MS = 28_000;
 requireDedicatedChatWorkerProductionProfile(process.env);
 
 const service = createChatWorkerService({
-	bootstrap: createAgenticChatPhase3Bootstrap({ client: supabase }),
+	bootstrap: createAgenticChatBootstrap({ client: supabase }),
 	eventLoopLagMonitor: new WorkerEventLoopLagMonitor(),
 	port: resolvePort(process.env.PORT),
 	serviceName: 'agentic-chat-worker',

@@ -19,10 +19,10 @@ import { runWithAbortableDeadline } from './abortableDeadline';
 import type { AgenticChatEffectControlPortV1 } from './effectControl';
 import type { AgenticChatWorkerExecutionInputV1 } from './executionInput';
 import {
-	type AgenticChatFixtureMutatingToolPortV1,
-	AgenticChatFixtureMutationAdapterError,
-	AgenticChatFixtureMutationExecutor
-} from './fixtureMutationExecutor';
+	type AgenticChatMutatingToolPortV1,
+	AgenticChatMutationAdapterError,
+	AgenticChatMutationExecutor
+} from './mutation-executor';
 import { agenticChatGenerationWriteFenceArgsV1 } from './writeFence';
 
 const TOOL_NAME = 'agentic_chat_stated_future_capture';
@@ -84,7 +84,7 @@ export class SupabaseAgenticChatStatedFutureCaptureAdapter
 	implements AgenticChatStatedFutureCapturePortV1
 {
 	private readonly timeoutMs: number;
-	private readonly mutationExecutor: AgenticChatFixtureMutationExecutor;
+	private readonly mutationExecutor: AgenticChatMutationExecutor;
 
 	constructor(
 		private readonly client: AgenticChatStatedFutureCaptureRpcClient,
@@ -95,7 +95,7 @@ export class SupabaseAgenticChatStatedFutureCaptureAdapter
 		if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs < 1) {
 			throw invalid('stated-future capture timeout is invalid');
 		}
-		this.mutationExecutor = new AgenticChatFixtureMutationExecutor(
+		this.mutationExecutor = new AgenticChatMutationExecutor(
 			{
 				control,
 				mutatingTool: new StatedFutureTaskMutationAdapter(client, this.timeoutMs)
@@ -193,21 +193,21 @@ export class SupabaseAgenticChatStatedFutureCaptureAdapter
 	}
 }
 
-class StatedFutureTaskMutationAdapter implements AgenticChatFixtureMutatingToolPortV1 {
+class StatedFutureTaskMutationAdapter implements AgenticChatMutatingToolPortV1 {
 	constructor(
 		private readonly client: AgenticChatStatedFutureCaptureRpcClient,
 		private readonly timeoutMs: number
 	) {}
 
 	async execute(
-		input: Parameters<AgenticChatFixtureMutatingToolPortV1['execute']>[0]
+		input: Parameters<AgenticChatMutatingToolPortV1['execute']>[0]
 	): Promise<JsonObject> {
 		if (
 			input.toolName !== TOOL_NAME ||
 			input.operationName !== OPERATION_NAME ||
 			input.downstreamIdempotencySupported !== true
 		) {
-			throw new AgenticChatFixtureMutationAdapterError(
+			throw new AgenticChatMutationAdapterError(
 				'known_failed',
 				'stated_future_adapter_boundary_mismatch',
 				'Stated-future mutation adapter boundary mismatch'
@@ -437,12 +437,12 @@ function createStableStatedFutureLogicalOperationId(turnRunId: string): string {
 	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-function knownFailure(code: string, message: string): AgenticChatFixtureMutationAdapterError {
-	return new AgenticChatFixtureMutationAdapterError('known_failed', code, message);
+function knownFailure(code: string, message: string): AgenticChatMutationAdapterError {
+	return new AgenticChatMutationAdapterError('known_failed', code, message);
 }
 
-function uncertainFailure(code: string, message: string): AgenticChatFixtureMutationAdapterError {
-	return new AgenticChatFixtureMutationAdapterError('outcome_uncertain', code, message);
+function uncertainFailure(code: string, message: string): AgenticChatMutationAdapterError {
+	return new AgenticChatMutationAdapterError('outcome_uncertain', code, message);
 }
 
 function canonicalFailureCode(value: string | undefined): string | null {

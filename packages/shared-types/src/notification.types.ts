@@ -65,6 +65,8 @@ export interface NotificationEvent<T = any> {
   id?: string;
   event_type: EventType;
   event_source: EventSource;
+  /** Originating Cycle Run, when recurring work produced this event. */
+  cycle_run_id?: string;
   actor_user_id?: string;
   target_user_id?: string;
   payload: T;
@@ -313,6 +315,8 @@ export interface EventTypeMetrics {
 export interface EmitEventRequest<T = any> {
   event_type: EventType;
   event_source: EventSource;
+  /** Optional origin link; notification preferences never control whether the Cycle runs. */
+  cycle_run_id?: string;
   actor_user_id?: string;
   target_user_id?: string;
   payload: T;

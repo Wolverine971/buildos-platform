@@ -576,4 +576,36 @@ describe('processBriefJob stale daily brief guard', () => {
 			])
 		);
 	});
+
+	it('defers queue ownership and failure effects when invoked by a Cycle Run', async () => {
+		const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		mocks.mockGenerateOntologyDailyBrief.mockRejectedValueOnce(
+			new Error('transient generation failure')
+		);
+		const job = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York'
+		});
+
+		await expect(
+			processBriefJob(job, {
+				manageQueueRecord: false,
+				cycleRunId: 'cycle-run-1',
+				emitFailureEffects: false
+			})
+		).rejects.toThrow('transient generation failure');
+
+		expect(mocks.mockGenerateOntologyDailyBrief).toHaveBeenCalledWith(
+			'user-1',
+			'2026-04-12',
+			undefined,
+			'America/New_York',
+			undefined
+		);
+		expect(mocks.mockUpdateJobStatus).not.toHaveBeenCalled();
+		expect(mocks.mockBroadcastUserEvent).not.toHaveBeenCalled();
+		expect(mocks.mockCreateServiceClient).not.toHaveBeenCalled();
+		errorLog.mockRestore();
+	});
 });

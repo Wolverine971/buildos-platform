@@ -1,6 +1,6 @@
 // packages/agentic-chat-runtime/src/loop/tool-classification.ts
 import type { ChatToolCall } from '@buildos/shared-types';
-import { TOOL_METADATA } from './tool-metadata';
+import { TOOL_METADATA } from '../catalog/metadata';
 import { normalizeGatewayOpName } from '@buildos/shared-agent-ops/ops/gateway-op-aliases';
 import { getAgenticChatLoopToolCatalog } from './tool-catalog';
 import { parseToolArguments } from './tool-arguments';

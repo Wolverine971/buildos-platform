@@ -9,7 +9,7 @@
 // and the final-response contract (no phantom headers, no prompt echo).
 import { describe, expect, it } from 'vitest';
 import { PRIVATE_OPENROUTER_API_KEY } from '$env/static/private';
-import { getDefaultToolsForContextType } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { getDefaultToolsForContextType } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	buildGlobalTestEnvelope,
 	buildProjectCreateTestEnvelope,

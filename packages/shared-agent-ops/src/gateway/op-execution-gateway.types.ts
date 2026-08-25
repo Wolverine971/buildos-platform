@@ -4,27 +4,12 @@
 import type {
 	AgentCallScope,
 	BuildosAgentProjectScopeMode,
-	BuildosAgentScopeMode
+	BuildosAgentScopeMode,
+	RegistryOp
 } from '@buildos/shared-types';
 import type { ActivityLogActorContext } from '../ops/async-activity-logger';
 
-/**
- * Structural mirror of the web tool registry's RegistryOp. The package must not
- * depend on `$lib/services/agentic-chat/tools/registry/tool-registry`, so this
- * carries exactly the fields op-execution + registry building read.
- */
-export type RegistryOp = {
-	op: string;
-	tool_name: string;
-	description: string;
-	parameters_schema: Record<string, any>;
-	group: 'onto' | 'util' | 'cal' | 'email' | 'search' | 'x';
-	kind: 'read' | 'write';
-	entity?: string;
-	action?: string;
-	contexts?: unknown[];
-	chat_discoverable?: boolean;
-};
+export type { RegistryOp } from '@buildos/shared-types';
 
 /**
  * Port for calendar operations. The concrete implementation (CalendarExecutor)

@@ -1,8 +1,10 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-validation.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
-import { ONTOLOGY_WRITE_TOOLS } from '$lib/services/agentic-chat/tools/core/definitions/ontology-write';
-import { TURN_CONTRACT_TOOL_DEFINITION } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
+import {
+	ONTOLOGY_WRITE_TOOLS,
+	TURN_CONTRACT_TOOL_DEFINITION
+} from '@buildos/agentic-chat-runtime/catalog';
 import { validateToolCalls } from './tool-validation';
 
 const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';

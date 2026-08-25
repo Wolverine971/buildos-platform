@@ -62,7 +62,7 @@
 		"gen:route-docs": "node --import tsx scripts/generate-route-docs.ts",
 		"docs:api": "pnpm run gen:api-docs && pnpm run gen:route-docs",
 		"docs:serve": "vite preview --open /docs/api",
-		"report:agentic-tools": "node --import tsx scripts/report-agentic-tool-surface-sizes.ts",
+		"report:agentic-tools": "vite-node scripts/report-agentic-tool-surface-sizes.ts",
 		"analyze:codebase": "node --import tsx scripts/analyze-codebase.ts",
 		"mcp:repro": "node scripts/mcp-connector-repro.mjs",
 		"generate-configs": "node --import tsx scripts/generate-field-configs.ts",

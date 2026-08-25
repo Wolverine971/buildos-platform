@@ -36,6 +36,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 			artifact: {
 				prepared: {
 					toolSurface: {
+						surfaceProfile: 'test_gateway_project',
 						toolNames: ['update_onto_project'],
 						definitions: [
 							{
@@ -43,7 +44,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 								function: {
 									name: 'update_onto_project',
 									description: 'Update project',
-									parameters: { type: 'object' }
+									parameters: { type: 'object', properties: {} }
 								}
 							}
 						]

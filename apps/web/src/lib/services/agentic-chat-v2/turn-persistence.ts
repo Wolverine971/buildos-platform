@@ -9,8 +9,8 @@ import type {
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createLogger } from '$lib/utils/logger';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
-import { getToolExecutionCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
-import { searchTelemetryColumns } from '$lib/services/agentic-chat/tools/core/search-telemetry';
+import { getToolExecutionCategory } from '@buildos/agentic-chat-runtime/catalog';
+import { searchTelemetryColumns } from '@buildos/agentic-chat-runtime/loop';
 import { extractAffectedEntitiesFromToolExecution } from '$lib/services/agentic-chat/tools/core/affected-entities';
 import type {
 	AgentStateMessageSnapshot,

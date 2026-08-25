@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AgenticChatFixtureMutationAdapterError } from '../src/workers/agentic-chat/fixtureMutationExecutor';
+import { AgenticChatMutationAdapterError } from '../src/workers/agentic-chat/mutation-executor';
 import { AgenticChatUpdateOntoTaskMutationAdapter } from '../src/workers/agentic-chat/updateOntoTaskMutationAdapter';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
@@ -34,6 +34,8 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 			artifact: {
 				prepared: {
 					toolSurface: {
+						version: 1,
+						surfaceProfile: 'test_update_task',
 						toolNames: ['update_onto_task'],
 						definitions: [
 							{
@@ -41,7 +43,7 @@ function mutationInput(overrides: Record<string, unknown> = {}) {
 								function: {
 									name: 'update_onto_task',
 									description: 'Update a task',
-									parameters: { type: 'object' }
+									parameters: { type: 'object', properties: {} }
 								}
 							}
 						]
@@ -362,7 +364,7 @@ describe('AgenticChatUpdateOntoTaskMutationAdapter', () => {
 			adapter.execute(
 				mutationInput({ downstreamIdempotencyKey: 'chat-effect:not-the-effect' })
 			)
-		).rejects.toMatchObject<Partial<AgenticChatFixtureMutationAdapterError>>({
+		).rejects.toMatchObject<Partial<AgenticChatMutationAdapterError>>({
 			disposition: 'known_failed',
 			failureCode: 'mutation_effect_identity_invalid'
 		});
@@ -376,6 +378,24 @@ describe('AgenticChatUpdateOntoTaskMutationAdapter', () => {
 		});
 		const input = mutationInput() as any;
 		input.executionInput.artifact.prepared.toolSurface.toolNames = [];
+
+		await expect(adapter.execute(input)).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode: 'mutation_tool_not_admitted'
+		});
+		expect(runGateway).not.toHaveBeenCalled();
+	});
+
+	it('rejects a malformed retained surface at the mutation fence before dispatch', async () => {
+		const runGateway = vi.fn();
+		const adapter = new AgenticChatUpdateOntoTaskMutationAdapter({} as never, {
+			runGateway: runGateway as never
+		});
+		const input = mutationInput() as any;
+		delete input.executionInput.artifact.prepared.toolSurface.version;
+		input.executionInput.artifact.prepared.toolSurface.definitions[0].function.parameters = {
+			type: 'object'
+		};
 
 		await expect(adapter.execute(input)).rejects.toMatchObject({
 			disposition: 'known_failed',

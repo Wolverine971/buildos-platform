@@ -5,7 +5,7 @@ import { OPENROUTER_V2_TOOL_MODELS } from '@buildos/smart-llm';
 import { streamFastChat } from './stream-orchestrator/index';
 import { REDACTED_DURABLE_TEXT } from './stream-orchestrator/tool-arguments';
 import type { FastChatHistoryMessage } from './types';
-import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import { materializeGatewayTools } from '@buildos/agentic-chat-runtime/catalog';
 import { getToolSchema } from '$lib/services/agentic-chat/tools/registry/tool-schema';
 import { loadSkill } from '$lib/services/agentic-chat/tools/skills/skill-load';
 

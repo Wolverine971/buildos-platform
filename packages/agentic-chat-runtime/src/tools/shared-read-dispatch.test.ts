@@ -1,6 +1,6 @@
 // packages/agentic-chat-runtime/src/tools/shared-read-dispatch.test.ts
 import { describe, expect, it } from 'vitest';
-import { TOOL_METADATA } from '../loop/tool-metadata';
+import { TOOL_METADATA } from '../catalog/metadata';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
 import {
 	AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,

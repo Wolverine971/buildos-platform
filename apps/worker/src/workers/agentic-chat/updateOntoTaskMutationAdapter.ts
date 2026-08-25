@@ -6,7 +6,7 @@ import {
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import { type Database, type JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AgenticChatFixtureMutatingToolPortV1 } from './fixtureMutationExecutor';
+import type { AgenticChatMutatingToolPortV1 } from './mutation-executor';
 import {
 	type MutationInput,
 	assertMutationAdapterBoundary,
@@ -37,7 +37,7 @@ type GatewayRunner = typeof runGatewayWriteOp;
  * ambiguous gateway failure as an uncertain external commit.
  */
 export class AgenticChatUpdateOntoTaskMutationAdapter
-	implements AgenticChatFixtureMutatingToolPortV1
+	implements AgenticChatMutatingToolPortV1
 {
 	private readonly runGateway: GatewayRunner;
 	private readonly taskSync: TaskSyncPort;

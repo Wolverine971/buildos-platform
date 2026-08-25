@@ -11,14 +11,14 @@
  * get_project_overview, change_chat_context) live in
  * @buildos/agentic-chat-runtime/tools (Phase 4 Slice 18 S3-T5) as free
  * functions over an injected context; this class delegates to them with its
- * RLS client + web access adapter (and the web gateway-surface resolver for
+ * RLS client + web access adapter (and the shared catalog resolver for
  * change_chat_context). get_user_profile_overview stays web-side untouched
  * (usage_scope filter decision pending), as do the contacts tools,
  * delegate_task, commit_change_set, and the entity relationship tools.
  */
 
 import { BaseExecutor } from './base-executor';
-import { getGatewayDirectToolNamesForContextType } from '../gateway-surface';
+import { getGatewayDirectToolNamesForContextType } from '@buildos/agentic-chat-runtime/catalog';
 import { OntologyContextLoader } from '$lib/services/ontology-context-loader';
 import {
 	formatLinkedEntitiesFullDetail,

@@ -34,7 +34,8 @@ export interface BriefJobData extends Omit<DailyBriefJobMetadata, 'briefDate' | 
 			| 'invalid_preference'
 			| 'preferred_time_passed'
 			| 'preference_lookup_failed'
-			| 'preference_missing';
+			| 'preference_missing'
+			| 'cycle_delivery_suppressed';
 	};
 }
 

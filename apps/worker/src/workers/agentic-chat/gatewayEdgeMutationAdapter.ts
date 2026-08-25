@@ -12,7 +12,7 @@ import {
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AgenticChatFixtureMutatingToolPortV1 } from './fixtureMutationExecutor';
+import type { AgenticChatMutatingToolPortV1 } from './mutation-executor';
 import {
 	type MutationInput,
 	assertMutationAdapterBoundary,
@@ -81,7 +81,7 @@ type ReviewedDispatch = LinkDispatch | UnlinkDispatch;
  * Bounded exact-edge writes. Neither operation is retryable: general edges have
  * no uniqueness constraint and deletes have no durable tombstone.
  */
-export class AgenticChatGatewayEdgeMutationAdapter implements AgenticChatFixtureMutatingToolPortV1 {
+export class AgenticChatGatewayEdgeMutationAdapter implements AgenticChatMutatingToolPortV1 {
 	private readonly runGateway: GatewayRunner;
 
 	constructor(

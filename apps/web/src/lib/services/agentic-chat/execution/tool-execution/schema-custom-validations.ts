@@ -5,7 +5,7 @@ import {
 	hasMeaningfulUpdateValue,
 	isAppendOrMergeUpdateStrategy
 } from '../../shared/update-value-validation';
-import { validateProjectCreateArgs } from '../../tools/core/project-create-args';
+import { validateProjectCreateArgs } from '@buildos/agentic-chat-runtime/loop';
 import { isToolArgumentRecord, type ToolArguments } from './argument-values';
 
 export const ONTOLOGY_UPDATE_TOOL_PREFIX = 'update_onto_';

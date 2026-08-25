@@ -24,11 +24,11 @@ import { FASTCHAT_LIMITS } from '../limits';
 import { buildLiveSnapshotFromTokens, FASTCHAT_TOKEN_BUDGETS } from '../context-usage';
 import type { FastChatTurnIntent } from '../turn-intent';
 import {
+	getToolRegistry,
 	materializeGatewayTools,
 	type GatewayToolMaterializationSource
-} from '$lib/services/agentic-chat/tools/core/gateway-surface';
+} from '@buildos/agentic-chat-runtime/catalog';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
-import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { dev } from '$app/environment';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { sanitizeAssistantFinalText, sanitizeToolPassLeadIn } from './assistant-text-sanitization';

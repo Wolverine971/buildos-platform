@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-consumer.server.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatContextType, ChatToolDefinition, Database } from '@buildos/shared-types';
-import type { GatewaySurfaceProfileName } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import type { GatewaySurfaceProfileName } from '@buildos/agentic-chat-runtime/catalog';
 import type { LitePromptScaffoldOptions } from '$lib/services/agentic-chat-lite/prompt';
 import { resolveCacheAgeSeconds } from './context-cache-routing';
 import {

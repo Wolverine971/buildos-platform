@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
-import type { AgenticChatPhase3BootstrapHealth } from '../src/workers/agentic-chat/phase3Bootstrap';
+import type { AgenticChatBootstrapHealth } from '../src/workers/agentic-chat/bootstrap';
 import {
 	WorkerRuntimeLifecycle,
 	type WorkerRuntimeLifecyclePorts
@@ -29,8 +29,8 @@ function queueHealth(healthy = true) {
 }
 
 function chatHealth(
-	overrides: Partial<AgenticChatPhase3BootstrapHealth> = {}
-): AgenticChatPhase3BootstrapHealth {
+	overrides: Partial<AgenticChatBootstrapHealth> = {}
+): AgenticChatBootstrapHealth {
 	return {
 		enabled: false,
 		healthy: true,
@@ -73,7 +73,7 @@ describe('WorkerRuntimeLifecycle', () => {
 		const workerSource = readFileSync(join(WORKER_SRC, 'worker.ts'), 'utf8');
 		const indexSource = readFileSync(join(WORKER_SRC, 'index.ts'), 'utf8');
 
-		expect(workerSource).toContain('createAgenticChatPhase3Bootstrap({ client: supabase })');
+		expect(workerSource).toContain('createAgenticChatBootstrap({ client: supabase })');
 		expect(workerSource).toContain('await lifecycle.start()');
 		expect(workerSource).toContain('await workerRuntimeLifecycle.stop()');
 		expect(workerSource).not.toContain("queue.process('agentic_chat_turn'");

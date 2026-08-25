@@ -7,7 +7,7 @@ import {
 	resolveGatewaySurfaceProfileForContextType,
 	type GatewaySurfaceProfileName,
 	type ProjectCreateExecutionWorkflow
-} from '$lib/services/agentic-chat/tools/core/gateway-surface';
+} from '@buildos/agentic-chat-runtime/catalog';
 import { type FastChatTurnIntent } from './turn-intent';
 import { looksLikeWebResearchTurn } from '$lib/services/agentic-chat-lite/prompt/situational-rules';
 import {

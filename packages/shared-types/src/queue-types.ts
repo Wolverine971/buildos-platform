@@ -1,6 +1,7 @@
 // packages/shared-types/src/queue-types.ts
 import type { Database } from './database.types';
 import type { NotificationJobMetadata } from './notification.types';
+import { CYCLE_KINDS, type CycleQueueJobMetadata, type CycleRunOutcome } from './cycle.types';
 
 // Re-export database enums as the single source of truth, minus retired legacy jobs.
 export type QueueJobType = Exclude<Database['public']['Enums']['queue_type'], 'process_brain_dump'>;
@@ -15,7 +16,8 @@ export type BriefNotificationSuppressionReason =
 	| 'invalid_preference'
 	| 'preferred_time_passed'
 	| 'preference_lookup_failed'
-	| 'preference_missing';
+	| 'preference_missing'
+	| 'cycle_delivery_suppressed';
 
 export interface OntologyClassificationRequest {
 	entityType: OntologyEntityType;
@@ -281,6 +283,7 @@ export interface JobMetadataMap {
 	project_activity_batch_flush: ProjectActivityBatchFlushJobMetadata;
 	extract_onto_asset_ocr: AssetOcrJobMetadata;
 	admin_question_tree: AdminQuestionTreeJobMetadata;
+	run_cycle: CycleQueueJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -407,7 +410,14 @@ export interface JobResultMap {
 	generate_project_icon: ProjectIconGenerationResult;
 	project_activity_batch_flush: ProjectActivityBatchFlushResult;
 	extract_onto_asset_ocr: AssetOcrResult;
+	run_cycle: CycleQueueJobResult;
 	other: unknown;
+}
+
+export interface CycleQueueJobResult {
+	cycle_run_id: string;
+	outcome: CycleRunOutcome | null;
+	already_terminal: boolean;
 }
 
 export interface DailyBriefResult {
@@ -556,11 +566,24 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isProjectIconGenerationMetadata(metadata);
 		case 'project_activity_batch_flush':
 			return isProjectActivityBatchFlushMetadata(metadata);
+		case 'run_cycle':
+			return isCycleQueueJobMetadata(metadata);
 		case 'other':
 			return true;
 		default:
 			return true;
 	}
+}
+
+function isCycleQueueJobMetadata(obj: unknown): obj is CycleQueueJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return (
+		typeof meta.cycle_id === 'string' &&
+		typeof meta.cycle_run_id === 'string' &&
+		typeof meta.kind === 'string' &&
+		CYCLE_KINDS.includes(meta.kind as (typeof CYCLE_KINDS)[number])
+	);
 }
 
 function isDailyBriefMetadata(obj: unknown): obj is DailyBriefJobMetadata {

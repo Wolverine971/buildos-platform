@@ -2,7 +2,7 @@
 import { dev } from '$app/environment';
 import { createLogger } from '$lib/utils/logger';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
-import { TOOL_METADATA } from '../../tools/core/definitions';
+import { TOOL_METADATA } from '@buildos/agentic-chat-runtime/catalog';
 import type {
 	ServiceContext,
 	ToolExecutionResult,

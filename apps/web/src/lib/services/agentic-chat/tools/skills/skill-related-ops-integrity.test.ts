@@ -11,7 +11,7 @@
 // ops are `cal.event.*`) and libri_knowledge listed tool names as ops.
 import { describe, expect, it } from 'vitest';
 import { listAllSkills } from './registry';
-import { getToolRegistry } from '../registry/tool-registry';
+import { getToolRegistry } from '@buildos/agentic-chat-runtime/catalog';
 import { normalizeGatewayOpName } from '../registry/gateway-op-aliases';
 
 describe('skill relatedOps integrity', () => {

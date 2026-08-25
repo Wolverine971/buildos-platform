@@ -5,11 +5,11 @@ import {
 	GATEWAY_SURFACE_PROFILE_NAMES,
 	getGatewaySurfaceForContextType,
 	getGatewaySurfaceForProfile,
+	getToolRegistry,
 	materializeGatewayTools,
 	type GatewaySurfaceProfileName
-} from '$lib/services/agentic-chat/tools/core/gateway-surface';
+} from '@buildos/agentic-chat-runtime/catalog';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
-import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 
 export const TOOL_SURFACE_PROFILE_CANONICAL_GATEWAY = 'canonical_gateway' as const;

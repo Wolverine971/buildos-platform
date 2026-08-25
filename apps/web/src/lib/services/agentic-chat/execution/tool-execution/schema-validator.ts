@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat/execution/tool-execution/schema-validator.ts
 import type { ChatToolDefinition } from '@buildos/shared-types';
-import { GATEWAY_TOOL_DEFINITIONS } from '../../tools/core/definitions';
+import { GATEWAY_TOOL_DEFINITIONS } from '@buildos/agentic-chat-runtime/catalog';
 import { isToolArgumentRecord, type ToolArguments } from './argument-values';
 import { isGatewayToolName } from './gateway-executor';
 import { applyCustomToolValidation, validateUuidIdArguments } from './schema-custom-validations';

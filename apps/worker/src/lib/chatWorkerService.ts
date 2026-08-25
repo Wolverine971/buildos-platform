@@ -6,10 +6,10 @@ import {
 	respondWithAgenticChatCapacity
 } from '../http/agenticChatCapacity';
 import type {
-	AgenticChatPhase3Bootstrap,
-	AgenticChatPhase3BootstrapHealth,
-	AgenticChatPhase3BootstrapStartResult
-} from '../workers/agentic-chat/phase3Bootstrap';
+	AgenticChatBootstrap,
+	AgenticChatBootstrapHealth,
+	AgenticChatBootstrapStartResult
+} from '../workers/agentic-chat/bootstrap';
 import {
 	type WorkerEventLoopLagMonitor,
 	buildAgenticChatOperationalHealthChecks
@@ -18,7 +18,7 @@ import {
 const DEFAULT_HTTP_CLOSE_TIMEOUT_MS = 2_000;
 
 export type ChatWorkerBootstrapPort = Pick<
-	AgenticChatPhase3Bootstrap,
+	AgenticChatBootstrap,
 	'start' | 'stop' | 'getHealth' | 'collectCapacityEvidence'
 >;
 
@@ -49,7 +49,7 @@ export type ChatWorkerServiceHealth = {
 	service: string;
 	release: string;
 	checks: ReturnType<typeof buildAgenticChatOperationalHealthChecks>;
-	agenticChat: AgenticChatPhase3BootstrapHealth;
+	agenticChat: AgenticChatBootstrapHealth;
 };
 
 type ChatWorkerHttpServer = Pick<
@@ -233,7 +233,7 @@ export class ChatWorkerService {
 		return this.state;
 	}
 
-	private safeBootstrapHealth(): AgenticChatPhase3BootstrapHealth {
+	private safeBootstrapHealth(): AgenticChatBootstrapHealth {
 		try {
 			return this.options.bootstrap.getHealth();
 		} catch {
@@ -290,7 +290,7 @@ function assertPort(port: number): void {
 	}
 }
 
-function assertDedicatedRuntimeStarted(result: AgenticChatPhase3BootstrapStartResult): void {
+function assertDedicatedRuntimeStarted(result: AgenticChatBootstrapStartResult): void {
 	if (result !== 'started') {
 		throw new Error('Dedicated Agentic Chat worker cannot start while the runtime is disabled');
 	}
