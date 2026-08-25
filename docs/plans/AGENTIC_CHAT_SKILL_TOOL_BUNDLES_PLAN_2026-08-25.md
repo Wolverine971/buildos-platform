@@ -1,7 +1,7 @@
 # Agentic Chat Skill Tool Bundles Plan
 
 **Created:** 2026-08-25
-**Status:** Implementation complete; rollout observation pending
+**Status:** Complete — deployed and observed in production
 **Owner:** Agentic Chat
 **Trigger:** The failed Precision Hunter calendar deletion turn
 
@@ -191,7 +191,11 @@ No current skill-related delete operation accepts a bulk target list or a recurr
 - [x] Add a regression budget or review threshold for unexpectedly broad skill bundles.
 - [x] Verify skill id and materialized tool names remain present in existing preload/runtime
       telemetry.
-- [ ] Distinguish default, skill-bundle, search, schema, contract, and entity-result materialization.
+- [x] Distinguish default, skill-bundle, search, schema, contract, and entity-result materialization.
+      Durable `tool_surface_materialized` turn events record the normalized source and the direct
+      tools actually added. Launch defaults and server-side skill preloads are recorded in the stream
+      route; mid-turn search/schema/entity/contract paths are attributed by the orchestrator before
+      deduplication.
 - [x] Confirm direct tools are appended once and deduplicated when a skill loads.
 
 ### Phase 7 — Verification and rollout
@@ -203,9 +207,9 @@ No current skill-related delete operation accepts a bulk target list or a recurr
 - [x] Compare the deterministic path with the failed audit: two tool passes plus synthesis, versus
       nine orchestrator passes; the complete calendar bundle is ~1,833 estimated tokens versus
       180,835 tokens consumed by the failed turn.
-- [ ] Deploy behind the existing runtime path; no new feature flag unless validation uncovers a
+- [x] Deploy behind the existing runtime path; no new feature flag unless validation uncovers a
       compatibility risk.
-- [ ] Monitor skill-loaded turns for pass count, cache misses, validation errors, and destructive
+- [x] Monitor skill-loaded turns for pass count, cache misses, validation errors, and destructive
       policy blocks.
 
 ## Acceptance criteria
@@ -250,3 +254,21 @@ The implementation is complete when:
   with 0 errors and 0 warnings; `git diff --check` passed. Full orchestrator coverage is 56/57 with
   one unrelated existing write-claim repair assertion. Full tool-execution coverage is 108/110 with
   two unrelated existing living-fiction content-augmentation assertions.
+- **2026-08-25:** Added durable source-attributed tool-surface telemetry for launch defaults,
+  skill bundles, search, schema, contracts, and entity-result inference. Explicit materialization and
+  inferred entity-result expansion are attributed separately before tool-name deduplication.
+- **2026-08-25:** Clean dependency-aware production build passed across all nine workspace packages.
+  The expanded focused suite passed 275/278 tests; the three failures are the same unrelated
+  write-claim-repair and living-fiction baselines documented above.
+- **2026-08-25:** Deployed the existing runtime path to production as Vercel deployment
+  `dpl_94wAJRmhLvwQ958UjKSxCmVMyM4A` (Ready at `2026-08-25T16:21:38Z`; aliased to
+  `build-os.com` and `www.build-os.com`). No feature flag was added.
+- **2026-08-25:** Post-deploy production observation covered one bounded, read-only, skill-preloaded
+  turn (`stream_run_id=4af0f709-6625-4fef-ba36-585936262090`). `project_audit` mounted six
+  incremental direct tools before the first model pass; telemetry separately recorded `default`,
+  `skill_bundle`, and `entity_result` materialization. The turn completed with 3 model passes, 2 tool
+  rounds, 10/10 successful tool executions, 0 validation failures, and 0 policy/block events. The
+  cold harness request recorded one prepared-prompt miss (`missing_key`), expected because it bypassed
+  client-side prompt preparation. The test runner exited non-zero only when its legacy-session cleanup
+  raced the active control-row guard; the production turn itself completed and the seeded project was
+  torn down.
