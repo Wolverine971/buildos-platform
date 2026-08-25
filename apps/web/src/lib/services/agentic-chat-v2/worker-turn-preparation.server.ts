@@ -84,10 +84,6 @@ import { buildPendingTurnContractSystemMessage } from './turn-contract';
 import { resolveFastChatTurnPreparation } from './turn-preparation';
 import type { FastChatHistoryMessage } from './types';
 import type { LegacyFallbackHistorySnapshot } from './turn-admission';
-import {
-	observeAgenticChatWorkerCapacityWithRetry,
-	type AgenticChatWorkerCapacityDecisionV1
-} from './worker-turn-capacity.server';
 import type { AgenticChatWorkerAdmissionRpcArgs } from './worker-turn-admission.server';
 import {
 	freezeCheckpointResumeSnapshot,
@@ -210,7 +206,6 @@ export type AgenticChatWorkerLeaseAuthority = {
 
 export type AgenticChatWorkerPreparationResult = {
 	args: AgenticChatWorkerAdmissionRpcArgs;
-	capacity: AgenticChatWorkerCapacityDecisionV1;
 	preparedPromptUsed: boolean;
 };
 
@@ -236,7 +231,6 @@ export type AgenticChatWorkerPreparationDependencies = {
 	createId?: () => string;
 	nowMs?: () => number;
 	liveVisionEnabled?: boolean;
-	observeCapacity?: () => Promise<AgenticChatWorkerCapacityDecisionV1>;
 	loadResumeCheckpoint?: (input: {
 		serviceClient: FastChatSupabaseClient;
 		userId: string;
@@ -264,15 +258,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	const nowIso = new Date(nowMs).toISOString();
 	const turnRunId = canonicalGeneratedUuid(createId(), 'turn');
 	if (!Number.isFinite(Date.parse(nowIso))) throw protocolError('Preparation time is invalid');
-
-	// Started here so the observation deadline overlaps the preparation work
-	// below instead of stacking after it inside the route's bounded duration;
-	// the decision is awaited only when the admission args are assembled.
-	const capacityObservation = (
-		input.dependencies?.observeCapacity ??
-		(() => observeAgenticChatWorkerCapacityWithRetry('turn_admission'))
-	)();
-	capacityObservation.catch(() => {});
 
 	const contextType = input.command.context.type as ChatContextType;
 	const entityId = input.command.context.entityId;
@@ -688,8 +673,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		surfaceProfile: turnPreparation.selectedSurfaceProfile,
 		preparedPromptId
 	});
-	const capacity = await capacityObservation;
-
 	return {
 		args: {
 			p_user_id: input.userId,
@@ -727,9 +710,10 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			p_session_agent_metadata: toJsonObject(
 				sessionIntent.session ? {} : turnPreparation.sessionMetadata
 			) as Json,
-			p_capacity_available: capacity.available
+			// Kept true while the RPC parameter remains in the deployed contract.
+			// Admission no longer treats transient worker pressure as a rejection.
+			p_capacity_available: true
 		},
-		capacity,
 		preparedPromptUsed: preparedPromptId !== null
 	};
 }

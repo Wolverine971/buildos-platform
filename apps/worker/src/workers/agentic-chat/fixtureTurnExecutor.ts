@@ -103,6 +103,7 @@ import type { AgenticChatConsumptionBillingPortV1 } from './consumptionBilling';
 
 const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_UI_PROJECTION_EVENTS = 128;
+const DEFAULT_RUNNING_ACTIVITY = 'Processing...';
 // The retained Phase 0 acceptance baseline reaches 245,137 ms, and independent
 // semantic review adds one bounded provider pass. Production organization
 // canaries have reached the former 270-second ceiling after completing every
@@ -144,6 +145,7 @@ export type AgenticChatFixtureReadToolPortV1 = {
 type PublisherPort = Pick<
 	AgenticChatStreamPublisher,
 	| 'registerTurn'
+	| 'publishReconcileHint'
 	| 'appendText'
 	| 'publishSemantic'
 	| 'flushTurn'
@@ -393,6 +395,10 @@ export class AgenticChatFixtureTurnExecutor {
 				}
 			});
 			publisherRegistered = true;
+			// Do not add Realtime subscription latency to the provider path. The hint
+			// asks the browser to reconcile queued -> running; durable watchdog
+			// reconciliation remains authoritative if Broadcast is unavailable.
+			void this.ports.publisher.publishReconcileHint(claim.turnRunId);
 
 			if (this.ports.provider.prepare) {
 				preparedProvider = await this.awaitOverhead(
@@ -1200,7 +1206,7 @@ export class AgenticChatFixtureTurnExecutor {
 				transitionId: step.resultTransitionId,
 				phase: 'tool',
 				eventType: 'tool_result',
-				currentActivity: 'BuildOS is working...',
+				currentActivity: DEFAULT_RUNNING_ACTIVITY,
 				eventPayload: {
 					type: 'tool_result',
 					result: {
@@ -1234,7 +1240,7 @@ export class AgenticChatFixtureTurnExecutor {
 					}),
 					phase: 'tool',
 					eventType: 'context_shift',
-					currentActivity: 'BuildOS is working...',
+					currentActivity: DEFAULT_RUNNING_ACTIVITY,
 					eventPayload: {
 						type: 'context_shift',
 						context_shift: { ...contextShift } satisfies JsonObject
@@ -1322,7 +1328,7 @@ export class AgenticChatFixtureTurnExecutor {
 				transitionId: step.resultTransitionId,
 				phase: 'tool',
 				eventType: 'tool_result',
-				currentActivity: 'BuildOS is working...',
+				currentActivity: DEFAULT_RUNNING_ACTIVITY,
 				eventPayload: {
 					type: 'tool_result',
 					result: {
@@ -1452,7 +1458,7 @@ export class AgenticChatFixtureTurnExecutor {
 				transitionId: step.resultTransitionId,
 				phase: 'tool',
 				eventType: 'tool_result',
-				currentActivity: 'BuildOS is working...',
+				currentActivity: DEFAULT_RUNNING_ACTIVITY,
 				eventPayload: {
 					type: 'tool_result',
 					result: {
@@ -1719,7 +1725,7 @@ export class AgenticChatFixtureTurnExecutor {
 					transitionId: step.resultTransitionId,
 					phase: 'tool',
 					eventType: 'tool_result',
-					currentActivity: 'BuildOS is working...',
+					currentActivity: DEFAULT_RUNNING_ACTIVITY,
 					eventPayload: {
 						type: 'tool_result',
 						result: {
@@ -1758,7 +1764,7 @@ export class AgenticChatFixtureTurnExecutor {
 						}),
 						phase: 'tool',
 						eventType: 'context_shift',
-						currentActivity: 'BuildOS is working...',
+						currentActivity: DEFAULT_RUNNING_ACTIVITY,
 						eventPayload: {
 							type: 'context_shift',
 							context_shift: { ...contextShift } satisfies JsonObject
@@ -1856,7 +1862,7 @@ export class AgenticChatFixtureTurnExecutor {
 				transitionId: step.resultTransitionId,
 				phase: 'tool',
 				eventType: 'tool_result',
-				currentActivity: 'BuildOS is working...',
+				currentActivity: DEFAULT_RUNNING_ACTIVITY,
 				eventPayload: {
 					type: 'tool_result',
 					result: {
@@ -2622,7 +2628,7 @@ function validateClaimEnvelope(
 }
 
 function emptyProjection(): ProjectionState {
-	return { currentActivity: 'BuildOS is working...', semanticEvents: [] };
+	return { currentActivity: DEFAULT_RUNNING_ACTIVITY, semanticEvents: [] };
 }
 
 function toProjectionJson(projection: ProjectionState): JsonObject {

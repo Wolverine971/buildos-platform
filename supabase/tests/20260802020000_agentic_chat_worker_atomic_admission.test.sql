@@ -387,8 +387,8 @@ SELECT pg_temp.assert_true(
 	'worker admission did not resolve the existing canonical daily-brief session'
 );
 
--- A pressure rejection with sessionId=null cannot orphan a session or any
--- downstream object.
+-- Runtime pressure is operational metadata. It cannot reject a compatible
+-- turn before the durable session/turn/message/artifact/job transaction.
 CREATE TEMP TABLE pressure_counts AS
 SELECT
 	(SELECT count(*) FROM public.chat_sessions) AS sessions,
@@ -397,36 +397,40 @@ SELECT
 	(SELECT count(*) FROM public.chat_turn_input_artifacts) AS artifacts,
 	(SELECT count(*) FROM public.queue_jobs) AS jobs;
 INSERT INTO admission_results VALUES (
-	'pressure_rejected',
+	'pressure_queued',
 	public.test_create_agentic_chat_turn_with_job(
 		'{"userId":"d1000000-0000-4000-8000-000000000002","turnRunId":"d4000000-0000-4000-8000-000000000020","userMessageId":"d5000000-0000-4000-8000-000000000020","inputArtifactId":"d6000000-0000-4000-8000-000000000020","transportDecisionId":"d7000000-0000-4000-8000-000000000020","correlationId":"d8000000-0000-4000-8000-000000000020","clientTurnId":"pressure-client","capacityAvailable":false}'::jsonb
 	)
 );
 SELECT pg_temp.assert_true(
-	(SELECT result->>'outcome' = 'capacity_exceeded' AND result->>'capacity_reason' = 'pressure_closed' FROM admission_results WHERE name = 'pressure_rejected')
-		AND (SELECT (sessions, turns, messages, artifacts, jobs) = (
+	(SELECT result->>'outcome' = 'newly_admitted'
+		AND result->>'status' = 'queued'
+		AND result->>'queue_job_id' IS NOT NULL
+	 FROM admission_results WHERE name = 'pressure_queued')
+		AND (SELECT (sessions + 1, turns + 1, messages + 1, artifacts + 1, jobs + 1) = (
 			(SELECT count(*) FROM public.chat_sessions),
 			(SELECT count(*) FROM public.chat_turn_runs),
 			(SELECT count(*) FROM public.chat_messages),
 			(SELECT count(*) FROM public.chat_turn_input_artifacts),
 			(SELECT count(*) FROM public.queue_jobs)
 		) FROM pressure_counts),
-	'capacity rejection wrote an orphan session or downstream row'
+	'pressure-closed admission did not atomically enqueue every durable row'
 );
 
--- The database hard cap remains fixed even if the service pressure gate is open.
+-- A much higher emergency ceiling remains separate from the normal scaling
+-- threshold. It protects one account from unbounded database growth.
 INSERT INTO public.chat_sessions (id, user_id, context_type, status)
 SELECT gen_random_uuid(), 'd1000000-0000-4000-8000-000000000003', 'global', 'active'
-FROM generate_series(1, 20);
+FROM generate_series(1, 100);
 INSERT INTO public.chat_turn_runs (
 	id, session_id, user_id, stream_run_id, client_turn_id, context_type,
-	request_message, status
+	request_message, status, execution_mode
 )
 SELECT
 	gen_random_uuid(), sessions.id, sessions.user_id,
 	'capacity-stream-' || row_number() OVER (),
 	'capacity-client-' || row_number() OVER (),
-	'global', 'capacity fixture', 'queued'
+	'global', 'capacity fixture', 'queued', 'worker_realtime'
 FROM public.chat_sessions sessions
 WHERE sessions.user_id = 'd1000000-0000-4000-8000-000000000003';
 INSERT INTO admission_results VALUES (
@@ -438,9 +442,9 @@ INSERT INTO admission_results VALUES (
 SELECT pg_temp.assert_true(
 	(SELECT result->>'outcome' = 'capacity_exceeded'
 		AND result->>'capacity_reason' = 'max_queued'
-		AND (result->>'queued_count')::integer = 20
+		AND (result->>'queued_count')::integer = 100
 	FROM admission_results WHERE name = 'hard_cap_rejected'),
-	'database max_queued=20 cap was not enforced'
+	'database emergency max_queued=100 cap was not enforced'
 );
 
 -- A legacy turn with the same semantic identity is returned as the stored mode;

@@ -805,6 +805,10 @@ function createHarness(
 	};
 }
 
+function streamBroadcastMessages(messages: Array<Record<string, unknown>>) {
+	return messages.filter((message) => message.kind === 'event');
+}
+
 const parityCoverage = createAgenticChatWorkerParityCoverageTrackerV1();
 
 describe('AgenticChatFixtureTurnExecutor', () => {
@@ -1113,7 +1117,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				}
 			})
 		]);
-		const terminalTypes = harness.broadcastMessages
+		const terminalTypes = streamBroadcastMessages(harness.broadcastMessages)
 			.map((message) => (message.payload as Record<string, unknown>).type)
 			.filter((type) => type === 'last_turn_context' || type === 'timing' || type === 'done');
 		expect(terminalTypes).toEqual(['last_turn_context', 'timing', 'done']);
@@ -1226,7 +1230,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			terminalStatus: 'completed',
 			queueReconciled: true
 		});
-		const terminalTypes = harness.broadcastMessages
+		const terminalTypes = streamBroadcastMessages(harness.broadcastMessages)
 			.map((message) => (message.payload as Record<string, unknown>).type)
 			.filter((type) => type === 'last_turn_context' || type === 'timing' || type === 'done');
 		expect(terminalTypes).toEqual(['last_turn_context', 'timing']);
@@ -1269,7 +1273,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			}
 		});
 		expect(
-			harness.broadcastMessages.some(
+			streamBroadcastMessages(harness.broadcastMessages).some(
 				(message) => (message.payload as Record<string, unknown>).type === 'timing'
 			)
 		).toBe(true);
@@ -1498,7 +1502,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			}
 		]);
 		expect(
-			harness.broadcastMessages.map(
+			streamBroadcastMessages(harness.broadcastMessages).map(
 				(message) => (message.payload as Record<string, unknown>).type
 			)
 		).toEqual([
@@ -1545,7 +1549,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			terminalStatus: 'completed'
 		});
 		expect(
-			harness.broadcastMessages.map(
+			streamBroadcastMessages(harness.broadcastMessages).map(
 				(message) => (message.payload as Record<string, unknown>).type
 			)
 		).toEqual([
@@ -1932,7 +1936,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				})
 			})
 		);
-		const publicTypes = harness.broadcastMessages.map(
+		const publicTypes = streamBroadcastMessages(harness.broadcastMessages).map(
 			(message) => (message.payload as Record<string, unknown>).type
 		);
 		expect(publicTypes.indexOf('agent_state')).toBeLessThan(publicTypes.indexOf('text_delta'));
@@ -1948,7 +1952,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		const supervisorCheckpointMetadata = terminalInput.assistantMetadata
 			.supervisor_question_checkpoint as Record<string, unknown>;
 		const worker = normalizeAgenticChatParityRunV1({
-			events: harness.broadcastMessages.map((message) => message.payload) as never,
+			events: streamBroadcastMessages(harness.broadcastMessages).map(
+				(message) => message.payload
+			) as never,
 			messages: [
 				{ role: 'user', content: fixtureExecutionInput.requestPayload.message },
 				{
@@ -2043,13 +2049,13 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			);
 			expect(harness.control.finalize).not.toHaveBeenCalled();
 			expect(
-				harness.broadcastMessages.some(
+				streamBroadcastMessages(harness.broadcastMessages).some(
 					(message) =>
 						(message.payload as Record<string, unknown>).state === 'waiting_on_user'
 				)
 			).toBe(false);
 			expect(
-				harness.broadcastMessages.some(
+				streamBroadcastMessages(harness.broadcastMessages).some(
 					(message) => (message.payload as Record<string, unknown>).type === 'text_delta'
 				)
 			).toBe(false);
@@ -2368,7 +2374,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
 			if (!terminalInput) throw new Error('Phase 4 worker fixture did not finalize');
 			const worker = normalizeAgenticChatParityRunV1({
-				events: harness.broadcastMessages.map((message) => message.payload) as never,
+				events: streamBroadcastMessages(harness.broadcastMessages).map(
+					(message) => message.payload
+				) as never,
 				messages: [
 					{
 						role: 'user',
@@ -2400,7 +2408,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					},
 					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
 						admissionObserved: true,
-						publicEvents: harness.broadcastMessages.map((message) => message.payload),
+						publicEvents: streamBroadcastMessages(harness.broadcastMessages).map(
+							(message) => message.payload
+						),
 						terminalStatus: terminalInput.status,
 						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
 					}),
@@ -2411,7 +2421,12 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			expect(evaluation.diff.truncated).toBe(false);
 			expect(evaluation.deliberate.length).toBeGreaterThan(0);
 			expect(
-				(harness.broadcastMessages[6]?.payload as Record<string, unknown>).timing
+				(
+					streamBroadcastMessages(harness.broadcastMessages)[6]?.payload as Record<
+						string,
+						unknown
+					>
+				).timing
 			).toMatchObject({
 				timing_contract_version: 'agentic_chat_async_v1',
 				done_emitted_at: null
@@ -2624,7 +2639,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				.sort((left, right) => left.order - right.order)
 				.map(({ row }) => row);
 			const worker = normalizeAgenticChatParityRunV1({
-				events: harness.broadcastMessages.map((message) => message.payload) as never,
+				events: streamBroadcastMessages(harness.broadcastMessages).map(
+					(message) => message.payload
+				) as never,
 				messages: [
 					{
 						role: 'user',
@@ -2658,7 +2675,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					},
 					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
 						admissionObserved: true,
-						publicEvents: harness.broadcastMessages.map((message) => message.payload),
+						publicEvents: streamBroadcastMessages(harness.broadcastMessages).map(
+							(message) => message.payload
+						),
 						terminalStatus: terminalInput.status,
 						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
 					}),
@@ -2699,7 +2718,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				tool_call_count: 4
 			});
 			expect(
-				harness.broadcastMessages.map(
+				streamBroadcastMessages(harness.broadcastMessages).map(
 					(message) => (message.payload as Record<string, unknown>).type
 				)
 			).toEqual([
@@ -2910,7 +2929,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			const persistedMutation = harness.toolExecutions.persistMutation.mock.calls[0]?.[0];
 			if (!persistedMutation) throw new Error('Phase 4 mutation fixture was not persisted');
 			const worker = normalizeAgenticChatParityRunV1({
-				events: harness.broadcastMessages.map((message) => message.payload) as never,
+				events: streamBroadcastMessages(harness.broadcastMessages).map(
+					(message) => message.payload
+				) as never,
 				messages: [
 					{ role: 'user', content: fixtureExecutionInput.requestPayload.message },
 					{
@@ -2958,7 +2979,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					},
 					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
 						admissionObserved: true,
-						publicEvents: harness.broadcastMessages.map((message) => message.payload),
+						publicEvents: streamBroadcastMessages(harness.broadcastMessages).map(
+							(message) => message.payload
+						),
 						terminalStatus: terminalInput.status,
 						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
 					}),
@@ -3813,7 +3836,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				terminalStatus: 'completed'
 			});
 
-			const publicTypes = harness.broadcastMessages.map(
+			const publicTypes = streamBroadcastMessages(harness.broadcastMessages).map(
 				(message) => (message.payload as Record<string, unknown>).type
 			);
 			const toolResultIndex = publicTypes.indexOf('tool_result');
@@ -4254,7 +4277,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		expect(harness.provider.stream).not.toHaveBeenCalled();
 		expect(harness.control.finalize).not.toHaveBeenCalled();
 		expect(harness.semanticInputs).toHaveLength(0);
-		expect(harness.broadcastMessages).toHaveLength(0);
+		expect(streamBroadcastMessages(harness.broadcastMessages)).toHaveLength(0);
 		await harness.publisher.stop();
 	});
 
@@ -4289,8 +4312,8 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		});
 		expect(harness.provider.stream).not.toHaveBeenCalled();
 		expect(harness.semanticInputs).toHaveLength(0);
-		expect(harness.broadcastMessages).toHaveLength(1);
-		expect(harness.broadcastMessages[0]?.payload).toMatchObject({
+		expect(streamBroadcastMessages(harness.broadcastMessages)).toHaveLength(1);
+		expect(streamBroadcastMessages(harness.broadcastMessages)[0]?.payload).toMatchObject({
 			type: 'done',
 			status: 'cancelled'
 		});
@@ -4360,7 +4383,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			assistantText: expect.stringContaining('must-not-persist')
 		});
 		expect(
-			harness.broadcastMessages.some((message) =>
+			streamBroadcastMessages(harness.broadcastMessages).some((message) =>
 				JSON.stringify(message).includes('must-not-persist')
 			)
 		).toBe(false);
@@ -4422,7 +4445,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			if (!terminalInput)
 				throw new Error('Partial-cancellation worker fixture did not finalize');
 			const worker = normalizeAgenticChatParityRunV1({
-				events: harness.broadcastMessages.map((message) => message.payload) as never,
+				events: streamBroadcastMessages(harness.broadcastMessages).map(
+					(message) => message.payload
+				) as never,
 				messages: [
 					{
 						role: 'user',
@@ -4456,7 +4481,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					},
 					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
 						admissionObserved: true,
-						publicEvents: harness.broadcastMessages.map((message) => message.payload),
+						publicEvents: streamBroadcastMessages(harness.broadcastMessages).map(
+							(message) => message.payload
+						),
 						terminalStatus: terminalInput.status,
 						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
 					}),
@@ -4467,7 +4494,12 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			expect(evaluation.diff.truncated).toBe(false);
 			expect(evaluation.deliberate.length).toBeGreaterThan(0);
 			expect(
-				(harness.broadcastMessages[5]?.payload as Record<string, unknown>).timing
+				(
+					streamBroadcastMessages(harness.broadcastMessages)[5]?.payload as Record<
+						string,
+						unknown
+					>
+				).timing
 			).toMatchObject({
 				timing_contract_version: 'agentic_chat_async_v1',
 				done_emitted_at: null,
@@ -4554,7 +4586,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 			if (!terminalInput) throw new Error('Provider-error worker fixture did not finalize');
 			expect(terminalInput.failureCode).toBe('provider_stream_failed');
 			const worker = normalizeAgenticChatParityRunV1({
-				events: harness.broadcastMessages.map((message) => message.payload) as never,
+				events: streamBroadcastMessages(harness.broadcastMessages).map(
+					(message) => message.payload
+				) as never,
 				messages: [
 					{
 						role: 'user',
@@ -4578,7 +4612,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					},
 					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
 						admissionObserved: true,
-						publicEvents: harness.broadcastMessages.map((message) => message.payload),
+						publicEvents: streamBroadcastMessages(harness.broadcastMessages).map(
+							(message) => message.payload
+						),
 						terminalStatus: terminalInput.status,
 						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length
 					}),
@@ -4686,12 +4722,14 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				})
 			});
 			expect(
-				harness.broadcastMessages.map(
+				streamBroadcastMessages(harness.broadcastMessages).map(
 					(message) => (message.payload as Record<string, unknown>).type
 				)
 			).toEqual(['turn_phase', 'session', 'context_usage', 'error', 'timing', 'done']);
 			const worker = normalizeAgenticChatParityRunV1({
-				events: harness.broadcastMessages.map((message) => message.payload) as never,
+				events: streamBroadcastMessages(harness.broadcastMessages).map(
+					(message) => message.payload
+				) as never,
 				messages: [
 					{
 						role: 'user',
@@ -4715,7 +4753,9 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 					},
 					lifecycle_events: projectAgenticChatWorkerLifecycleObservationsV1({
 						admissionObserved: true,
-						publicEvents: harness.broadcastMessages.map((message) => message.payload),
+						publicEvents: streamBroadcastMessages(harness.broadcastMessages).map(
+							(message) => message.payload
+						),
 						terminalStatus: terminalInput.status,
 						promptSnapshotCount: harness.promptSnapshots.persist.mock.calls.length,
 						streamTerminalFailureObserved:
@@ -4774,7 +4814,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 				publicError: 'An error occurred while streaming.'
 			});
 			expect(
-				harness.broadcastMessages.map(
+				streamBroadcastMessages(harness.broadcastMessages).map(
 					(message) => (message.payload as Record<string, unknown>).type
 				)
 			).toEqual([
@@ -4821,7 +4861,7 @@ describe('AgenticChatFixtureTurnExecutor', () => {
 		});
 		expect(harness.control.completeQueueJob).not.toHaveBeenCalled();
 		expect(
-			harness.broadcastMessages.some(
+			streamBroadcastMessages(harness.broadcastMessages).some(
 				(message) => (message.payload as Record<string, unknown>).type === 'done'
 			)
 		).toBe(false);

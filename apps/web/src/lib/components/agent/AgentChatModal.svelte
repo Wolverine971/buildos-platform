@@ -113,6 +113,7 @@
 	} from '$lib/services/agentic-chat-v2/worker-realtime-runtime';
 	import { AgenticChatWorkerTurnAdoption } from '$lib/services/agentic-chat-v2/worker-turn-adoption';
 	import { createAgentChatWorkerUiAdapter } from './agent-chat-worker-ui-adapter';
+	import { workerActivityForStatus } from './agent-chat-worker-status';
 	import {
 		appendUniqueThinkingActivity,
 		finalizeWorkerThinkingBlock,
@@ -2339,10 +2340,7 @@
 			id: blockId,
 			type: 'thinking_block',
 			role: 'assistant',
-			content:
-				input.status === 'queued'
-					? 'BuildOS is waiting to start...'
-					: 'BuildOS is working...',
+			content: workerActivityForStatus(input.status),
 			activities: [],
 			status: 'active',
 			agentState: 'thinking',

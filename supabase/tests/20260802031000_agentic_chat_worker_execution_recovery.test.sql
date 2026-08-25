@@ -36,7 +36,8 @@ CREATE OR REPLACE FUNCTION pg_temp.seed_recovery_turn(
 	p_correlation_id uuid,
 	p_processing_token uuid,
 	p_attempts integer DEFAULT 0,
-	p_queue_age interval DEFAULT interval '0 seconds'
+	p_queue_age interval DEFAULT interval '0 seconds',
+	p_artifact_retention interval DEFAULT interval '7 days'
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -95,7 +96,7 @@ BEGIN
 	) VALUES (
 		v_artifact_id, p_turn_id, p_session_id, p_user_id,
 		'agentic_chat_input_v2', 'admission_window', '[]'::jsonb, '{}'::jsonb,
-		repeat('a', 64), 2, 4, now() + interval '7 days'
+		repeat('a', 64), 2, 4, now() + p_artifact_retention
 	);
 	UPDATE public.chat_turn_runs
 	SET input_artifact_id = v_artifact_id
@@ -133,7 +134,8 @@ SELECT pg_temp.seed_recovery_turn(
 	'f2000000-0000-4000-8000-000000000004',
 	'f3000000-0000-4000-8000-000000000004',
 	'f8000000-0000-4000-8000-000000000004',
-	'f9000000-0000-4000-8000-000000000004', 0, interval '301 seconds'
+	'f9000000-0000-4000-8000-000000000004', 0, interval '301 seconds',
+	interval '-1 second'
 );
 SELECT pg_temp.seed_recovery_turn(
 	'f4000000-0000-4000-8000-000000000005',
@@ -213,7 +215,8 @@ SELECT pg_temp.seed_recovery_turn(
 	'f2000000-0000-4000-8000-000000000014',
 	'f3000000-0000-4000-8000-000000000014',
 	'f8000000-0000-4000-8000-000000000014',
-	'f9000000-0000-4000-8000-000000000014', 0, interval '301 seconds'
+	'f9000000-0000-4000-8000-000000000014', 0, interval '301 seconds',
+	interval '-1 second'
 );
 SELECT pg_temp.seed_recovery_turn(
 	'f4000000-0000-4000-8000-000000000015',
@@ -222,6 +225,14 @@ SELECT pg_temp.seed_recovery_turn(
 	'f3000000-0000-4000-8000-000000000015',
 	'f8000000-0000-4000-8000-000000000015',
 	'f9000000-0000-4000-8000-000000000015'
+);
+SELECT pg_temp.seed_recovery_turn(
+	'f4000000-0000-4000-8000-000000000016',
+	'f1000000-0000-4000-8000-000000000016',
+	'f2000000-0000-4000-8000-000000000016',
+	'f3000000-0000-4000-8000-000000000016',
+	'f8000000-0000-4000-8000-000000000016',
+	'f9000000-0000-4000-8000-000000000016', 0, interval '301 seconds'
 );
 
 CREATE EXTENSION IF NOT EXISTS dblink;
@@ -344,6 +355,20 @@ SELECT pg_temp.assert_true(
 			FROM public.chat_turn_runs
 			WHERE id = 'f4000000-0000-4000-8000-000000000014'),
 	'stale input crossed the provider-start fence'
+);
+INSERT INTO execution_recovery_results VALUES (
+	'long_queue_wait_start',
+	public.begin_agentic_chat_turn_execution(
+		'f4000000-0000-4000-8000-000000000016',
+		'f3000000-0000-4000-8000-000000000016',
+		'f9000000-0000-4000-8000-000000000016', 1
+	)
+);
+SELECT pg_temp.assert_true(
+	(SELECT result->>'outcome' = 'started'
+		AND (result->>'invoke_provider')::boolean
+	 FROM execution_recovery_results WHERE name = 'long_queue_wait_start'),
+	'a valid frozen input was rejected after waiting more than five minutes'
 );
 
 -- Two current owners can race the same durable fence, but exactly one response

@@ -17,10 +17,7 @@ import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { normalizeFastContextType } from '$lib/services/agentic-chat-v2/scope';
-import {
-	AgenticChatWorkerUnavailableError,
-	selectAgenticChatNewTransport
-} from '$lib/services/agentic-chat-v2/worker-transport-routing.server';
+import { selectAgenticChatNewTransport } from '$lib/services/agentic-chat-v2/worker-transport-routing.server';
 
 const logger = createLogger('API:AgentTransportV2');
 
@@ -105,8 +102,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			);
 		}
 
-		// Existing turns bypass live routing and retain their already-persisted
-		// immutable mode. New worker selection is server-enabled and capacity-gated.
+		// Existing turns retain their persisted immutable mode. New compatible
+		// worker turns are server-enabled and wait in the durable queue as needed.
 		const lease = issueAgenticChatTransportLease({
 			secret: env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET ?? '',
 			userId: user.id,
@@ -137,9 +134,6 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 					'TRANSPORT_CONFLICT'
 				)
 			);
-		}
-		if (error instanceof AgenticChatWorkerUnavailableError) {
-			return workerUnavailableResponse(error.retryAfterSeconds);
 		}
 		// A failure is worker-unavailable only after worker transport was selected,
 		// or when the live routing policy could select it. The emergency rollback

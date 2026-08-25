@@ -326,6 +326,16 @@ export class AgenticChatStreamPublisher {
 		});
 	}
 
+	/**
+	 * Best-effort signal that a durable queued turn has been claimed. The client
+	 * reconciles authoritative status from Postgres, so a failed Broadcast never
+	 * blocks execution and the normal watchdog remains the delivery fallback.
+	 */
+	publishReconcileHint(turnRunId: string): Promise<void> {
+		const state = this.requireTurn(turnRunId);
+		return this.maybeHint(state, state.durableSequence);
+	}
+
 	appendText(turnRunId: string, textDelta: string): AgenticChatTextEnqueueResultV1 {
 		const state = this.requireWritableTurn(turnRunId);
 		if (!textDelta) throw new Error('textDelta must be nonempty');

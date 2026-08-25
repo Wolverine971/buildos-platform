@@ -11,6 +11,7 @@ import {
 } from '@buildos/shared-types';
 import type { AgenticChatWorkerApplicationObserver } from '$lib/services/agentic-chat-v2/worker-realtime-coordinator';
 import type { AgenticChatWorkerReconciledReceipt } from '$lib/services/agentic-chat-v2/worker-realtime-inbox';
+import { workerActivityForStatus } from './agent-chat-worker-status';
 
 const WORKER_UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 const MAX_PROJECTION_EVENTS = 128;
@@ -116,7 +117,7 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 		this.#port.updateTurnState({
 			handle: this.#handle,
 			status: receipt.status,
-			currentActivity: projection.currentActivity ?? defaultActivityForStatus(receipt.status)
+			currentActivity: projection.currentActivity ?? workerActivityForStatus(receipt.status)
 		});
 
 		if (isTerminalStatus(receipt.status)) {
@@ -385,12 +386,6 @@ function readTerminalStatus(value: Record<string, unknown>): WorkerTerminalStatu
 
 function readNullableString(value: Record<string, unknown>, key: string): string | null {
 	return typeof value[key] === 'string' ? (value[key] as string) : null;
-}
-
-function defaultActivityForStatus(status: ChatTurnStatusV1): string {
-	if (status === 'queued') return 'BuildOS is waiting to start...';
-	if (status === 'running') return 'BuildOS is working...';
-	return '';
 }
 
 function eventMatchesHandle(event: AgentStreamEventV1, handle: WorkerTurnHandle): boolean {

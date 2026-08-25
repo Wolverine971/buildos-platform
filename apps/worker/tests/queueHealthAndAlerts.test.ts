@@ -88,16 +88,24 @@ describe('queue alerts', () => {
 		failedRows?: Array<{ job_type: string; metadata?: Record<string, unknown> }>;
 		turnFailures?: Array<{ id: string; failure_code: string | null }>;
 		oldestPending?: { job_type: string; scheduled_for: string; created_at: string } | null;
+		agenticPending?: Array<{ scheduled_for: string; created_at: string }>;
+		agenticRunningCount?: number;
 	}) {
 		return {
 			from(table: string) {
 				const builder: any = {
 					_mode: 'failed' as 'failed' | 'pending',
-					select() {
+					_status: null as string | null,
+					_jobType: null as string | null,
+					_head: false,
+					select(_columns?: string, selectOptions?: { head?: boolean }) {
+						builder._head = selectOptions?.head === true;
 						return builder;
 					},
-					eq(_col: string, value: string) {
+					eq(column: string, value: string) {
 						if (value === 'pending') builder._mode = 'pending';
+						if (column === 'status') builder._status = value;
+						if (column === 'job_type') builder._jobType = value;
 						return builder;
 					},
 					gte() {
@@ -120,6 +128,21 @@ describe('queue alerts', () => {
 						error: null
 					}),
 					then(resolve: (value: unknown) => unknown) {
+						if (builder._jobType === 'agentic_chat_turn') {
+							const rows =
+								builder._status === 'pending'
+									? (options.agenticPending ?? []).slice(0, 1)
+									: [];
+							const count =
+								builder._status === 'pending'
+									? (options.agenticPending ?? []).length
+									: (options.agenticRunningCount ?? 0);
+							return resolve({
+								data: builder._head ? null : rows,
+								count,
+								error: null
+							});
+						}
 						return resolve({
 							data:
 								table === 'chat_turn_runs'
@@ -206,6 +229,30 @@ describe('queue alerts', () => {
 		expect(alerts).toHaveLength(0);
 	});
 
+	it('trips the global Agentic Chat scaling threshold with queue depth and age metadata', async () => {
+		const scheduledFor = new Date(Date.now() - 10_000).toISOString();
+		const client = fakeAlertClient({
+			agenticPending: Array.from({ length: 8 }, () => ({
+				scheduled_for: scheduledFor,
+				created_at: scheduledFor
+			})),
+			agenticRunningCount: 8
+		});
+
+		const alerts = await checkQueueAlerts(client);
+		expect(alerts.find((alert) => alert.code === 'agentic_chat_scale_threshold')).toMatchObject(
+			{
+				severity: 'warning',
+				details: {
+					pendingCount: 8,
+					runningCount: 8,
+					activeCapacity: 8,
+					pendingThreshold: 1
+				}
+			}
+		);
+	});
+
 	it('cooldown suppresses duplicate emissions', async () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const alert = {
@@ -231,6 +278,44 @@ describe('queue alerts', () => {
 				metadata: expect.objectContaining({ alertCode: 'failed_jobs:send_sms' })
 			})
 		);
+		errorSpy.mockRestore();
+	});
+
+	it('emails the operator when the Agentic Chat scaling threshold fires', async () => {
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }));
+		vi.stubGlobal('fetch', fetchMock);
+		process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET = 'test-secret';
+		process.env.PUBLIC_APP_URL = 'https://build-os.com/';
+
+		await emitQueueAlerts([
+			{
+				code: 'agentic_chat_scale_threshold',
+				severity: 'warning',
+				message: 'scale now',
+				details: {
+					pendingCount: 8,
+					runningCount: 8,
+					oldestPendingAgeSeconds: 12,
+					oldestScheduledFor: new Date().toISOString(),
+					activeCapacity: 8,
+					pendingThreshold: 8,
+					oldestPendingThresholdSeconds: 120
+				}
+			}
+		]);
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			'https://build-os.com/api/webhooks/agentic-chat-queue-alert',
+			expect.objectContaining({
+				method: 'POST',
+				headers: expect.objectContaining({ Authorization: 'Bearer test-secret' })
+			})
+		);
+
+		delete process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET;
+		delete process.env.PUBLIC_APP_URL;
+		vi.unstubAllGlobals();
 		errorSpy.mockRestore();
 	});
 });

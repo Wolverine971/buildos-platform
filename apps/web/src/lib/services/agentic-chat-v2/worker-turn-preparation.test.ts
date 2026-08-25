@@ -116,12 +116,7 @@ function dependencies() {
 	return {
 		createId: () => IDS[index++]!,
 		nowMs: () => NOW,
-		loadResumeCheckpoint: vi.fn(async () => null),
-		observeCapacity: vi.fn(async () => ({
-			available: true,
-			retryAfterSeconds: 2,
-			reason: 'open' as const
-		}))
+		loadResumeCheckpoint: vi.fn(async () => null)
 	};
 }
 

@@ -11,6 +11,9 @@
  * Env knobs:
  *   ALERT_FAILED_JOBS_PER_HOUR   default 3
  *   ALERT_OLDEST_PENDING_MINUTES default 15
+ *   ALERT_AGENTIC_CHAT_PENDING_JOBS default 1
+ *   ALERT_AGENTIC_CHAT_OLDEST_PENDING_SECONDS default 120
+ *   ALERT_AGENTIC_CHAT_ACTIVE_CAPACITY default 8 (4 replicas x 2 slots)
  *   ALERT_WEBHOOK_URL            optional; receives a JSON POST per alert batch
  *   ALERT_COOLDOWN_MINUTES       default 60 (per alert code)
  */
@@ -29,6 +32,18 @@ export interface QueueAlert {
 const FAILED_PER_HOUR_THRESHOLD = parseInt(process.env.ALERT_FAILED_JOBS_PER_HOUR || '3', 10);
 const OLDEST_PENDING_MINUTES = parseInt(process.env.ALERT_OLDEST_PENDING_MINUTES || '15', 10);
 const COOLDOWN_MS = parseInt(process.env.ALERT_COOLDOWN_MINUTES || '60', 10) * 60_000;
+const AGENTIC_CHAT_PENDING_THRESHOLD = parseInt(
+	process.env.ALERT_AGENTIC_CHAT_PENDING_JOBS || '1',
+	10
+);
+const AGENTIC_CHAT_OLDEST_PENDING_SECONDS = parseInt(
+	process.env.ALERT_AGENTIC_CHAT_OLDEST_PENDING_SECONDS || '120',
+	10
+);
+const AGENTIC_CHAT_ACTIVE_CAPACITY = parseInt(
+	process.env.ALERT_AGENTIC_CHAT_ACTIVE_CAPACITY || '8',
+	10
+);
 
 // Per-code cooldown so a persistent condition alerts once an hour, not once
 // per stats tick.
@@ -112,7 +127,69 @@ export async function checkQueueAlerts(supabase: ServiceClient): Promise<QueueAl
 		}
 	}
 
+	const scalingAlert = await loadAgenticChatScalingAlert(supabase, nowMs);
+	if (scalingAlert) alerts.push(scalingAlert);
+
 	return alerts;
+}
+
+async function loadAgenticChatScalingAlert(
+	supabase: ServiceClient,
+	nowMs: number
+): Promise<QueueAlert | null> {
+	const nowIso = new Date(nowMs).toISOString();
+	const [pending, running] = await Promise.all([
+		supabase
+			.from('queue_jobs')
+			.select('scheduled_for, created_at', { count: 'exact' })
+			.eq('job_type', 'agentic_chat_turn')
+			.eq('status', 'pending')
+			.lte('scheduled_for', nowIso)
+			.order('scheduled_for', { ascending: true })
+			.limit(1),
+		supabase
+			.from('queue_jobs')
+			.select('id', { count: 'exact', head: true })
+			.eq('job_type', 'agentic_chat_turn')
+			.eq('status', 'processing')
+	]);
+
+	if (pending.error || running.error) {
+		return {
+			code: 'alert_query_failed',
+			severity: 'warning',
+			message: `Agentic Chat scaling query failed: ${pending.error?.message ?? running.error?.message}`,
+			details: { query: 'agentic_chat_scaling' }
+		};
+	}
+
+	const pendingCount = pending.count ?? 0;
+	const runningCount = running.count ?? 0;
+	const oldestScheduledFor = pending.data?.[0]?.scheduled_for ?? null;
+	const oldestPendingAgeSeconds = oldestScheduledFor
+		? Math.max(0, Math.floor((nowMs - Date.parse(oldestScheduledFor)) / 1000))
+		: 0;
+	const saturatedWithWaiters =
+		runningCount >= AGENTIC_CHAT_ACTIVE_CAPACITY &&
+		pendingCount >= AGENTIC_CHAT_PENDING_THRESHOLD;
+	if (!saturatedWithWaiters && oldestPendingAgeSeconds < AGENTIC_CHAT_OLDEST_PENDING_SECONDS) {
+		return null;
+	}
+
+	return {
+		code: 'agentic_chat_scale_threshold',
+		severity: 'warning',
+		message: `Agentic Chat needs scaling attention: ${runningCount} running, ${pendingCount} waiting, oldest wait ${oldestPendingAgeSeconds}s`,
+		details: {
+			pendingCount,
+			runningCount,
+			oldestPendingAgeSeconds,
+			oldestScheduledFor,
+			activeCapacity: AGENTIC_CHAT_ACTIVE_CAPACITY,
+			pendingThreshold: AGENTIC_CHAT_PENDING_THRESHOLD,
+			oldestPendingThresholdSeconds: AGENTIC_CHAT_OLDEST_PENDING_SECONDS
+		}
+	};
 }
 
 async function loadAgenticChatFailureDetails(
@@ -171,14 +248,29 @@ export async function emitQueueAlerts(alerts: QueueAlert[]): Promise<void> {
 			`🚨 [QUEUE ALERT] ${alert.severity.toUpperCase()} ${alert.code}: ${alert.message}`,
 			JSON.stringify(alert.details)
 		);
-		await logWorkerError(new Error(alert.message), {
-			operationType: 'queue_alert',
-			severity: alert.severity,
-			metadata: {
-				alertCode: alert.code,
-				...alert.details
-			}
-		});
+		try {
+			await logWorkerError(new Error(alert.message), {
+				operationType: 'queue_alert',
+				severity: alert.severity,
+				metadata: {
+					alertCode: alert.code,
+					...alert.details
+				}
+			});
+		} catch (error) {
+			// Email/webhook delivery must remain independent of error-log storage.
+			console.error(
+				`Queue alert persistence failed for ${alert.code}:`,
+				error instanceof Error ? error.message : error
+			);
+		}
+	}
+
+	const scaleAlert = fresh.find((alert) => alert.code === 'agentic_chat_scale_threshold');
+	if (scaleAlert && !(await sendAgenticChatScalingEmail(scaleAlert, nowMs))) {
+		// Delivery failures are retryable on the next stats tick instead of being
+		// hidden for the full alert cooldown.
+		lastAlertAtByCode.delete(scaleAlert.code);
 	}
 
 	const webhookUrl = process.env.ALERT_WEBHOOK_URL;
@@ -203,6 +295,44 @@ export async function emitQueueAlerts(alerts: QueueAlert[]): Promise<void> {
 			'⚠️ Queue alert webhook delivery failed:',
 			error instanceof Error ? error.message : error
 		);
+	}
+}
+
+async function sendAgenticChatScalingEmail(alert: QueueAlert, nowMs: number): Promise<boolean> {
+	const secret = process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET?.trim();
+	if (!secret) {
+		console.error(
+			'Agentic Chat scaling email skipped: PRIVATE_BUILDOS_WEBHOOK_SECRET is missing'
+		);
+		return false;
+	}
+	const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com')
+		.trim()
+		.replace(/\/$/, '');
+	const incidentBucket = Math.floor(nowMs / COOLDOWN_MS);
+	try {
+		const response = await fetch(`${baseUrl}/api/webhooks/agentic-chat-queue-alert`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${secret}`
+			},
+			body: JSON.stringify({
+				incidentId: `${alert.code}:${incidentBucket}`,
+				observedAt: new Date(nowMs).toISOString(),
+				alert
+			}),
+			signal: AbortSignal.timeout(30_000)
+		});
+		if (response.ok) return true;
+		console.error(`Agentic Chat scaling email webhook returned ${response.status}`);
+		return false;
+	} catch (error) {
+		console.error(
+			'Agentic Chat scaling email delivery failed:',
+			error instanceof Error ? error.message : error
+		);
+		return false;
 	}
 }
 

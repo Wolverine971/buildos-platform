@@ -142,7 +142,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		});
 
 		if (result.outcome === 'capacity_exceeded') {
-			logger.warn('Worker turn admission capacity exceeded', {
+			logger.warn('Worker turn emergency queue safety ceiling reached', {
 				userId: user.id,
 				clientTurnId: parsed.data.clientTurnId,
 				capacityReason: result.capacityReason,
@@ -151,10 +151,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 				retryAfterSeconds: result.retryAfterSeconds
 			});
 			const response = ApiResponse.error(
-				'Worker turn capacity is temporarily unavailable',
-				result.capacityReason === 'pressure_closed'
-					? HttpStatus.SERVICE_UNAVAILABLE
-					: HttpStatus.TOO_MANY_REQUESTS,
+				'Too many worker turns are already waiting for this account',
+				HttpStatus.TOO_MANY_REQUESTS,
 				'WORKER_CAPACITY_EXCEEDED'
 			);
 			response.headers.set('Retry-After', String(result.retryAfterSeconds));

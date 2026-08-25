@@ -133,6 +133,33 @@ function createBroadcast(log: string[] = [], results: Array<'sent' | 'failed'> =
 }
 
 describe('AgenticChatStreamPublisher', () => {
+	it('emits a claim-time reconcile hint without a durable stream write', async () => {
+		const context = turn('claimed');
+		const broadcast = createBroadcast();
+		const publisher = new AgenticChatStreamPublisher({
+			persistence: createPersistence([context]),
+			broadcast
+		});
+		publisher.start();
+		publisher.registerTurn(context);
+
+		await publisher.publishReconcileHint(context.turnRunId);
+
+		expect(broadcast.messages).toEqual([
+			expect.objectContaining({
+				kind: 'reconcile_hint',
+				topic: `chat-user:${context.userId}`,
+				payload: expect.objectContaining({
+					turn_run_id: context.turnRunId,
+					session_id: context.sessionId,
+					durable_through_sequence: 0
+				})
+			})
+		]);
+		expect(publisher.getSnapshot(context.turnRunId).durableSequence).toBe(0);
+		await publisher.stop();
+	});
+
 	it('persists first text before Broadcast and exact-sequence acknowledgement', async () => {
 		const log: string[] = [];
 		const observations: unknown[] = [];

@@ -416,27 +416,30 @@ describe('POST /api/agent/v2/turns', () => {
 		}
 	});
 
-	it('returns bounded capacity with exact Retry-After and no successful writes', async () => {
+	it('returns 429 only for the emergency per-user queue safety ceiling', async () => {
 		mocks.admitAgenticChatWorkerTurn.mockResolvedValueOnce({
 			outcome: 'capacity_exceeded',
 			executionMayStart: false,
-			capacityReason: 'pressure_closed',
-			retryAfterSeconds: 2,
-			runningCount: 0,
-			queuedCount: 0
+			capacityReason: 'max_queued',
+			retryAfterSeconds: 30,
+			runningCount: 2,
+			queuedCount: 100
 		});
 		const response = await POST(postEvent() as never);
-		expect(response.status).toBe(503);
-		expect(response.headers.get('retry-after')).toBe('2');
+		expect(response.status).toBe(429);
+		expect(response.headers.get('retry-after')).toBe('30');
 		expect(response.headers.get('cache-control')).toBe('private, no-store');
-		expect(mocks.loggerWarn).toHaveBeenCalledWith('Worker turn admission capacity exceeded', {
-			userId: USER_ID,
-			clientTurnId: 'client-turn-1',
-			capacityReason: 'pressure_closed',
-			runningCount: 0,
-			queuedCount: 0,
-			retryAfterSeconds: 2
-		});
+		expect(mocks.loggerWarn).toHaveBeenCalledWith(
+			'Worker turn emergency queue safety ceiling reached',
+			{
+				userId: USER_ID,
+				clientTurnId: 'client-turn-1',
+				capacityReason: 'max_queued',
+				runningCount: 2,
+				queuedCount: 100,
+				retryAfterSeconds: 30
+			}
+		);
 	});
 
 	it('keeps preparation and corrupt database receipt details private', async () => {

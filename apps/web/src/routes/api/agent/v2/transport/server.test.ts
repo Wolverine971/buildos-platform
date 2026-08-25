@@ -44,7 +44,6 @@ vi.mock('$lib/services/agentic-chat-v2/worker-transport-routing.server', async (
 });
 
 import { AgenticChatTransportDecisionError } from '$lib/services/agentic-chat-v2/transport-decision.server';
-import { AgenticChatWorkerUnavailableError } from '$lib/services/agentic-chat-v2/worker-transport-routing.server';
 import { POST } from './+server';
 
 function body(overrides: Record<string, unknown> = {}) {
@@ -148,10 +147,9 @@ describe('POST /api/agent/v2/transport', () => {
 		});
 	});
 
-	it('returns retryable worker-unavailable without issuing a legacy lease', async () => {
-		mocks.selectAgenticChatNewTransport.mockRejectedValueOnce(
-			new AgenticChatWorkerUnavailableError('queue_pressure', 2)
-		);
+	it('returns retryable worker-unavailable when worker routing itself fails', async () => {
+		mocks.env.AGENTIC_CHAT_WORKER_ROUTING_ENABLED = 'true';
+		mocks.selectAgenticChatNewTransport.mockRejectedValueOnce(new Error('routing failed'));
 		const response = await POST(event() as never);
 		const payload = await response.json();
 

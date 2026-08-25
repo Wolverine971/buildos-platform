@@ -39,6 +39,7 @@ import { AgentRequestError, buildAgentRequestError } from './agent-chat-session'
 import type { PreparedPromptClient } from './agent-chat-session';
 import { PREPARED_PROMPT_SEND_WAIT_MS } from './agent-chat.constants';
 import type { AgentChatImageAttachment, UIMessage } from './agent-chat.types';
+import { workerActivityForStatus } from './agent-chat-worker-status';
 
 export interface SessionBootstrapTarget {
 	contextType: ChatContextType;
@@ -1269,12 +1270,6 @@ function parseWorkerCancelResponse(value: unknown): CancelTurnResultV1 {
 		};
 	}
 	throw new Error('Worker cancellation returned an invalid receipt');
-}
-
-function workerActivityForStatus(status: ChatTurnStatusV1): string {
-	if (status === 'queued') return 'BuildOS is waiting to start...';
-	if (status === 'running') return 'BuildOS is working...';
-	return '';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
