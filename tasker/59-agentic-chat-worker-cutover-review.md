@@ -16,11 +16,11 @@ executor for compatible turns, while any resolved capability it cannot execute i
 server-authorized legacy lease. This is a deliberate boundary, not a lexical browser heuristic.
 
 The corrected worker release is deployed at `e799f2b70`; the web attachment-fallback correction is
-deployed at `44331ee8a`. Railway configuration, release
-health, authenticated lease/capability preflight, and the live two-overlapping-turn smoke have all
-passed. Corrected image fallback, capacity closure, and rollback are also green. **Production routing
-intentionally remains disabled** until the remaining authenticated voice-note, Gmail, and Calendar
-fallback smokes are completed; see the deployment record below.
+deployed at `44331ee8a`, and external-account/source-aware Calendar fix `8279847ad` is included in
+production `main` commit `06ce40b72`. Railway configuration, release health, authenticated
+lease/capability preflight, overlapping-turn, image, voice, Gmail, Calendar, capacity-closure, and
+rollback smokes are green. **Production routing was activated on 2026-08-25**; see the final
+activation record below.
 
 | Work package | Result                                                                                                                                                                                                                                                                                                                                                   |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -115,10 +115,32 @@ separate optimization to take only when traffic justifies the larger trust bound
 - The Riley canary account has no external-account connections. The DJ account has three active,
   read-enabled Gmail connections and two active Calendar connections with 38 current sources, so
   those smokes must use DJ's authenticated context.
-- Remaining gate: real voice recording plus Gmail and Calendar legacy reads in a DJ-authenticated
-  routing-on protected canary. The in-app microphone stayed at “Preparing mic…” and produced no
-  group; local Chrome Google login is blocked by the unregistered localhost redirect URI. These are
-  not passes, so public routing remains disabled.
+- The supplied WAV passed the production-equivalent server transcription and attachment path. Voice
+  group `b8364298-98d9-45b4-9e0b-15dea6d94dc0`, note
+  `c495282b-2f19-4dd9-9fb5-11ca5ec58a32`, session
+  `a35b3f2b-9b11-4f4f-aeb4-8b968ad7d489`, and worker turn
+  `2e21d2cf-a5ca-4f80-b0fb-9173d510d5aa` completed with transcription, durable attachment, and
+  session hydration all green. The existing server transcription pipeline remains the chosen design;
+  no separate client-side transcription round trip was added.
+- Gmail turn `a30c101a-32a5-4e86-a662-9021d87697c4` in session
+  `b31ece59-b3ec-4103-bcf4-51bba76ef599` explicitly used `legacy_sse` and succeeded with
+  `list_email_accounts` plus three bounded `search_email_messages` calls. No email content was
+  retained in the cutover evidence.
+- Production Calendar validation passed after deploying source-aware reads with routing off. The
+  final routing-on turn `398eaef8-5455-478a-8f6a-61082dd18fbe` in session
+  `9e58ebfb-0943-4c12-89cd-ae77a5663b19` explicitly completed as `legacy_sse`; the successful
+  `list_calendar_events` result reported source-aware mode, two sources, two successful reads, zero
+  failed reads, and zero events in the bounded interval.
+- Vercel deployment `dpl_CGRinde1b5K3g3cXVdL2ppijpUYV` is Ready and aliased to `build-os.com` from
+  reviewed commit `06ce40b72`; the public alias returned HTTP 200. Sanitized production readback is
+  exact `AGENTIC_CHAT_WORKER_ROUTING_ENABLED=true` and
+  `AGENT_CHAT_LIVE_VISION_ENABLED=false`. The first flag write included a trailing newline and was
+  caught before traffic; exact four-byte `true` was then deployed, with no user-visible failure or
+  rollback.
+- Post-activation compatible turn `8d475977-ece7-471a-aef0-40160b93d4d1` in session
+  `15c6444a-34ba-4f20-bc80-3a199d9920e3` completed as `worker_realtime`. Railway health was healthy
+  and idle on release `e799f2b70`, with zero claim/Realtime/recovery failures, both 20-tool mutation
+  catalogs intact, and zero warning/error logs in the 15-minute post-activation window.
 
 ## Decisions recorded (DJ, 2026-08-24)
 

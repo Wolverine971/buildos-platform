@@ -67,7 +67,7 @@ Do not regress this boundary. The relevant sources are:
 
 | Host    | Variable / capability                             | Current production state                                   |
 | ------- | ------------------------------------------------- | ---------------------------------------------------------- |
-| Vercel  | `AGENTIC_CHAT_WORKER_ROUTING_ENABLED`             | `false` — intentional activation gate                      |
+| Vercel  | `AGENTIC_CHAT_WORKER_ROUTING_ENABLED`             | `true` — public worker routing activated 2026-08-25        |
 | Vercel  | `AGENT_CHAT_LIVE_VISION_ENABLED`                  | `false` — attachments must renegotiate to legacy           |
 | Vercel  | `AGENT_CHAT_LEGACY_LIVE_VISION_ENABLED`           | `true` — legacy fallback receives image pixels             |
 | Vercel  | `PRIVATE_AGENTIC_CHAT_WORKER_URL`                 | Present                                                    |
@@ -318,17 +318,48 @@ legacy external-account executor. Google/Gmail credentials and token-encryption 
 web host while those capabilities are classified worker-unavailable; they are not a worker cutover
 prerequisite. The routing flag alone is insufficient when the lease secret is absent.
 
-Status on 2026-08-25: exact-release deployment health, lease/capability preflight, Realtime receipts,
-two overlapping turns, corrected image fallback, capacity closure/draft preservation, and rollback
-are green. Voice-note persistence and DJ-authenticated Gmail/Calendar legacy-admission reads remain
-the final manual gates. `AGENTIC_CHAT_WORKER_ROUTING_ENABLED` therefore remains `false` in Vercel
-production.
+Status on 2026-08-25: **cutover complete.** Exact-release deployment health, lease/capability
+preflight, Realtime receipts, two overlapping turns, corrected image fallback, voice persistence,
+DJ-authenticated Gmail and source-aware Calendar reads, capacity closure/draft preservation, and
+rollback are green. Vercel production now has exact
+`AGENTIC_CHAT_WORKER_ROUTING_ENABLED=true` and `AGENT_CHAT_LIVE_VISION_ENABLED=false`; Gmail,
+Calendar, and image capabilities unavailable to the worker continue to receive an explicit
+server-authorized legacy lease.
 
-## Next-agent execution sequence
+### Final activation record — 2026-08-25
 
-The next agent's objective is to finish the activation gate, not to continue broad source refactoring
-or to port Gmail/Calendar into Railway. Keep the public routing flag false until every required check
-below has retained evidence.
+- Reviewed `main` commit `06ce40b72` contains external-account routing/source-aware Calendar fix
+  `8279847ad`. Production deployment `dpl_CGRinde1b5K3g3cXVdL2ppijpUYV` is Ready, is aliased to
+  `build-os.com`, and returned HTTP 200.
+- The supplied WAV completed server transcription and durable voice attachment. Group
+  `b8364298-98d9-45b4-9e0b-15dea6d94dc0`, note
+  `c495282b-2f19-4dd9-9fb5-11ca5ec58a32`, session
+  `a35b3f2b-9b11-4f4f-aeb4-8b968ad7d489`, and turn
+  `2e21d2cf-a5ca-4f80-b0fb-9173d510d5aa` completed as `worker_realtime`; the note transcription is
+  complete, the group is attached to the user message, and hydration includes both records.
+- Gmail turn `a30c101a-32a5-4e86-a662-9021d87697c4` in session
+  `b31ece59-b3ec-4103-bcf4-51bba76ef599` completed as `legacy_sse`. It successfully called
+  `list_email_accounts` and three bounded `search_email_messages` reads; no provider content was
+  retained in this record.
+- The routing-on compatible canary turn `8d475977-ece7-471a-aef0-40160b93d4d1` in session
+  `15c6444a-34ba-4f20-bc80-3a199d9920e3` completed as `worker_realtime`. Calendar turn
+  `398eaef8-5455-478a-8f6a-61082dd18fbe` in session
+  `9e58ebfb-0943-4c12-89cd-ae77a5663b19` explicitly completed as `legacy_sse`; its successful
+  `list_calendar_events` execution reported `source_aware`, two sources, two successful sources,
+  zero failed sources, and zero events in the bounded interval.
+- Post-traffic Railway health remained healthy and idle on release `e799f2b70`: database, queue,
+  Realtime, and recovery were healthy; active turns, consecutive claim failures, Realtime failures,
+  and recovery failures were zero; provider and adapter catalogs each exposed 20 mutation tools.
+  The 15-minute post-activation warning/error query returned zero warnings and zero errors.
+- The first CLI flag update included a trailing newline. Sanitized readback caught it before canary
+  traffic; strict routing therefore remained off. The value was corrected to exact four-byte
+  `true` and redeployed. There was no user-visible failure and no rollback event.
+
+## Completed execution sequence
+
+This sequence is retained as the completed activation and rollback runbook. Gmail and Calendar are
+still intentionally not ported into Railway; their explicit legacy lease remains the production
+boundary until worker-native implementations are separately justified and reviewed.
 
 ### A. Re-establish exact state
 
