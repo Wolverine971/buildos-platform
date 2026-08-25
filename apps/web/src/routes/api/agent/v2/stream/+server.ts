@@ -18,6 +18,7 @@ const FASTCHAT_SSE_HEARTBEAT_INTERVAL_MS = 12_000;
 import type { RequestHandler } from './$types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { dev } from '$app/environment';
+import { resolveAgenticChatLegacyLiveVisionEnabled } from '$lib/services/agentic-chat-v2/legacy-live-vision-config';
 import { OX_ALPHA_MODEL } from '@buildos/smart-llm';
 import { ApiResponse } from '$lib/utils/api-response';
 import { SSEResponse } from '$lib/utils/sse-response';
@@ -398,10 +399,10 @@ const FASTCHAT_ATTACHMENT_CONTEXT_MAX_CHARS = parsePositiveInt(
 	process.env.AGENT_CHAT_ATTACHMENT_CONTEXT_MAX_CHARS,
 	7000
 );
-const FASTCHAT_LIVE_VISION_ENABLED = parseBooleanFlag(
-	process.env.AGENT_CHAT_LIVE_VISION_ENABLED,
-	false
-);
+const FASTCHAT_LIVE_VISION_ENABLED = resolveAgenticChatLegacyLiveVisionEnabled({
+	AGENT_CHAT_LEGACY_LIVE_VISION_ENABLED: process.env.AGENT_CHAT_LEGACY_LIVE_VISION_ENABLED,
+	AGENT_CHAT_LIVE_VISION_ENABLED: process.env.AGENT_CHAT_LIVE_VISION_ENABLED
+});
 const FASTCHAT_LIVE_VISION_MAX_IMAGE_ATTACHMENTS_PER_TURN = Math.min(
 	FASTCHAT_MAX_IMAGE_ATTACHMENTS_PER_TURN,
 	parsePositiveInt(process.env.AGENT_CHAT_LIVE_VISION_MAX_IMAGES_PER_TURN, 2)
