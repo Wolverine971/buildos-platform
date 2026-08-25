@@ -6,6 +6,7 @@ const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
 const goalId = 'b4724346-2b1b-4e71-a9c8-1e25f1aa9b8e';
 const taskId = 'e1038564-6e3e-4e18-aa0a-a460fd2e3f80';
+const eventId = '288c1d31-4d47-40f7-a50a-e116cccedc62';
 
 describe('ontology scope evidence', () => {
 	it('extracts exact detail ownership from the returned entity record', () => {
@@ -26,6 +27,26 @@ describe('ontology scope evidence', () => {
 				result: {
 					goal: { id: taskId, project_id: projectId }
 				}
+			})
+		).toEqual([]);
+	});
+
+	it('extracts exact calendar-event ownership for a later scoped mutation', () => {
+		expect(
+			extractOntologyScopeEvidence({
+				toolName: 'get_calendar_event_details',
+				args: { onto_event_id: eventId, project_id: projectId },
+				result: { event: { id: eventId, project_id: projectId } }
+			})
+		).toEqual([{ kind: 'event', entityId: eventId, projectId }]);
+	});
+
+	it('does not trust a calendar-event detail result for a different requested id', () => {
+		expect(
+			extractOntologyScopeEvidence({
+				toolName: 'get_calendar_event_details',
+				args: { onto_event_id: eventId, project_id: projectId },
+				result: { event: { id: taskId, project_id: projectId } }
 			})
 		).toEqual([]);
 	});

@@ -183,6 +183,10 @@ function resolveRelatedOps(relatedOps: string[]): RelatedOpsResolution {
 		const normalizedOp = normalizeGatewayOpName(op);
 		const entry = registry.ops[normalizedOp];
 		if (!entry) continue;
+		// A skill's canonical related-op list defines its working tool bundle.
+		// Visibility is a context-budget concern; write authorization and
+		// destructive-action policy belong to the execution boundary.
+		materializedToolNames.add(entry.tool_name);
 
 		if (entry.kind === 'write') {
 			if (isDestructiveRelatedOp(entry)) {
@@ -194,7 +198,6 @@ function resolveRelatedOps(relatedOps: string[]): RelatedOpsResolution {
 		}
 
 		readOps.add(entry.op);
-		materializedToolNames.add(entry.tool_name);
 	}
 
 	return {

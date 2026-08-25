@@ -51,7 +51,7 @@ describe('skill activity helpers', () => {
 		});
 	});
 
-	it('extracts materialized read tools and gated write ops from loaded skill results', () => {
+	it('extracts materialized tools and classified ops from loaded skill results', () => {
 		const result = {
 			tool_call_id: 'skill_load:1',
 			success: true,

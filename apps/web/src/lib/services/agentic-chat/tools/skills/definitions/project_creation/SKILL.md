@@ -88,8 +88,7 @@ Stop conditions before replying: `project`, `entities`, and `relationships` are 
 ### Create a minimal project from a brief idea
 
 - Infer the project name and type_key from the message.
-- If the exact args are unclear, call `tool_schema({ op: "onto.project.create" })`.
-- Then call `create_onto_project({ ... })` with project plus empty entities and relationships arrays.
+- Call `create_onto_project({ ... })` with project plus empty entities and relationships arrays.
 - Only ask a clarifying question if the request is too vague to classify at all.
 
 ### Create a project with one outcome and a few explicit actions

@@ -7,6 +7,7 @@ import { REDACTED_DURABLE_TEXT } from './stream-orchestrator/tool-arguments';
 import type { FastChatHistoryMessage } from './types';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { getToolSchema } from '$lib/services/agentic-chat/tools/registry/tool-schema';
+import { loadSkill } from '$lib/services/agentic-chat/tools/skills/skill-load';
 
 function tools(names: string[]): ChatToolDefinition[] {
 	return materializeGatewayTools([], names).tools;
@@ -1118,6 +1119,111 @@ describe('streamFastChat direct tool orchestration', () => {
 		});
 		expect(result.finalAssistantText).toContain('I need a document title before creating it.');
 		expect(result.finalAssistantText).toContain('requested change has not run yet');
+	});
+
+	it('loads a complete calendar skill bundle and deletes directly without schema discovery', async () => {
+		const projectId = 'f7824d94-0de0-460c-80dd-67bf11f6445a';
+		const eventId = '288c1d31-4d47-40f7-a50a-e116cccedc62';
+		let streamInvocation = 0;
+		const passToolNames: string[][] = [];
+		const onToolMaterialization = vi.fn();
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				passToolNames.push(
+					(params.tools ?? [])
+						.map((tool: ChatToolDefinition) => tool.function?.name)
+						.filter((name: string | undefined): name is string => Boolean(name))
+				);
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'skill_load',
+							{ skill: 'calendar_management', format: 'short' },
+							'calendar-skill-load'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'delete_calendar_event',
+							{
+								onto_event_id: eventId,
+								project_id: projectId,
+								calendar_scope: 'project'
+							},
+							'calendar-delete'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Deleted the Precision Hunter Prep event.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				success: true,
+				result:
+					call.function.name === 'skill_load'
+						? loadSkill('calendar_management', {
+								format: 'short',
+								include_examples: false
+							})
+						: {
+								source: 'ontology',
+								event: { id: eventId, title: 'Precision Hunter Prep' }
+							}
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Delete the Precision Hunter Prep calendar event.',
+			tools: tools(['skill_load']),
+			toolExecutor,
+			onToolMaterialization,
+			onDelta: async () => {},
+			maxToolRounds: 4
+		});
+
+		expect(passToolNames[0]).not.toContain('delete_calendar_event');
+		expect(passToolNames[1]).toEqual(
+			expect.arrayContaining([
+				'create_calendar_event',
+				'delete_calendar_event',
+				'get_calendar_event_details',
+				'get_project_calendar',
+				'list_calendar_events',
+				'set_project_calendar',
+				'update_calendar_event'
+			])
+		);
+		expect(passToolNames[1]).not.toContain('tool_schema');
+		expect(toolExecutor.mock.calls.map(([call]) => call.function.name)).toEqual([
+			'skill_load',
+			'delete_calendar_event'
+		]);
+		expect(onToolMaterialization).toHaveBeenCalledWith(
+			expect.objectContaining({
+				source: 'skill_bundle',
+				toolNames: expect.arrayContaining(['delete_calendar_event'])
+			})
+		);
+		expect(result.finalAssistantText).toBe('Deleted the Precision Hunter Prep event.');
 	});
 
 	// BUG-1 (2026-06-15): skill_load surfaces canonical op names (related_ops) such

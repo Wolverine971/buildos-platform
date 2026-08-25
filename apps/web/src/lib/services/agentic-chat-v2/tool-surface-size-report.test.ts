@@ -7,6 +7,7 @@ import {
 import {
 	buildCanonicalToolSurfaceSizeReports,
 	buildGatewayProfileToolSurfaceSizeReports,
+	buildSkillToolBundleSizeReports,
 	buildToolSurfaceSizeReport,
 	formatToolSurfaceSizeMatrix,
 	formatToolSurfaceSizeReport
@@ -134,5 +135,31 @@ describe('tool surface size report', () => {
 		expect(projectBasic?.totalChars).toBeLessThanOrEqual(12_980);
 		expect(projectWrite?.totalChars).toBeLessThanOrEqual(20_550);
 		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(22_850);
+	});
+
+	it('reports complete skill bundles and fails closed on unresolved related ops', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
+
+		const reports = buildSkillToolBundleSizeReports();
+		const calendar = reports.find((report) => report.skillId === 'calendar_management');
+		const plan = reports.find((report) => report.skillId === 'plan_management');
+
+		expect(reports.flatMap((report) => report.unresolvedOps)).toEqual([]);
+		expect(calendar).toMatchObject({
+			relatedOpCount: 7,
+			resolvedToolCount: 7
+		});
+		expect(calendar?.materializedToolNames).toContain('delete_calendar_event');
+		expect(calendar?.incrementalByProfile.project_write_document).toMatchObject({
+			toolCount: 7
+		});
+		expect(calendar?.incrementalByProfile.project_calendar).toMatchObject({
+			toolCount: 1,
+			toolNames: ['delete_calendar_event']
+		});
+		expect(plan?.estimatedTokens).toBeLessThanOrEqual(4_500);
+		expect(Math.max(...reports.map((report) => report.estimatedTokens))).toBeLessThanOrEqual(
+			4_500
+		);
 	});
 });

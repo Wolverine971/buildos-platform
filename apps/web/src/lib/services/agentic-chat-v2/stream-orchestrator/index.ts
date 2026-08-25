@@ -23,7 +23,10 @@ import {
 import { FASTCHAT_LIMITS } from '../limits';
 import { buildLiveSnapshotFromTokens, FASTCHAT_TOKEN_BUDGETS } from '../context-usage';
 import type { FastChatTurnIntent } from '../turn-intent';
-import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import {
+	materializeGatewayTools,
+	type GatewayToolMaterializationSource
+} from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { dev } from '$app/environment';
@@ -159,6 +162,11 @@ type StreamFastChatParams = {
 	) => Promise<ChatToolResult[]>;
 	onToolCall?: (toolCall: ChatToolCall) => Promise<void> | void;
 	onToolResult?: (execution: FastToolExecution) => Promise<void> | void;
+	onToolMaterialization?: (event: {
+		source: GatewayToolMaterializationSource;
+		toolNames: string[];
+		reason: string;
+	}) => void;
 	onContextUsageUpdate?: (snapshot: ContextUsageSnapshot) => Promise<void> | void;
 	turnSupervisor?: TurnSupervisor;
 	supervisorContextData?: Record<string, unknown> | string | null;
@@ -731,7 +739,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			content: combined
 		});
 	};
-	const materializeDirectTools = (toolNames: string[], reason: string): string[] => {
+	const materializeDirectTools = (
+		toolNames: string[],
+		reason: string,
+		source: GatewayToolMaterializationSource = 'discovery'
+	): string[] => {
 		const materialized = materializeGatewayTools(tools, toolNames);
 		if (materialized.addedToolNames.length === 0) {
 			return [];
@@ -751,6 +763,17 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		if (!pendingMaterializationNotices.includes(notice)) {
 			pendingMaterializationNotices.push(notice);
 		}
+		if (params.onToolMaterialization) {
+			try {
+				params.onToolMaterialization({
+					source,
+					toolNames: materialized.addedToolNames,
+					reason
+				});
+			} catch {
+				// Telemetry callbacks must not crash tool orchestration.
+			}
+		}
 		return materialized.addedToolNames;
 	};
 	function buildResearchCaptureToolPass(): ForcedWriteIntentToolPass | null {
@@ -762,7 +785,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		const requestedToolNames = ['update_onto_document', 'create_onto_document'];
 		materializeDirectTools(
 			requestedToolNames,
-			'Research completed without a durable project record.'
+			'Research completed without a durable project record.',
+			'recovery'
 		);
 		const toolNames = requestedToolNames.filter((name) => allowedToolNames.has(name));
 		if (toolNames.length === 0) return null;
@@ -795,7 +819,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		for (const op of writeIntentOps) {
 			const toolName = registry.ops[normalizeGatewayOpName(op)]?.tool_name;
 			if (!toolName) continue;
-			materializeDirectTools([toolName], `Near-budget write intent ${op} was identified.`);
+			materializeDirectTools(
+				[toolName],
+				`Near-budget write intent ${op} was identified.`,
+				'recovery'
+			);
 			if (allowedToolNames.has(toolName)) {
 				writeToolNames.add(toolName);
 			}
@@ -807,7 +835,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			if (latestMatchingAttempt && didGatewayExecSucceed(latestMatchingAttempt)) continue;
 			materializeDirectTools(
 				[toolName],
-				'A declared semantic turn outcome is still pending.'
+				'A declared semantic turn outcome is still pending.',
+				'contract'
 			);
 			if (allowedToolNames.has(toolName)) writeToolNames.add(toolName);
 		}
@@ -931,7 +960,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		if (!directToolName) {
 			return null;
 		}
-		materializeDirectTools([directToolName], 'Autonomous recovery loaded required tool.');
+		materializeDirectTools(
+			[directToolName],
+			'Autonomous recovery loaded required tool.',
+			'recovery'
+		);
 		const toolCall: ChatToolCall = {
 			id: `auto_tool_${toolCallsExecuted + 1}`,
 			type: 'function',

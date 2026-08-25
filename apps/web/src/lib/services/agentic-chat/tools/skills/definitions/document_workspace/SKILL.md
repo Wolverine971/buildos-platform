@@ -93,8 +93,8 @@ Stop conditions before replying: hierarchy changes went through doc_structure / 
 ### Attach documentation to a specific task
 
 - Decide whether the document should live in the task workspace rather than the project doc tree.
-- If the exact args are unclear, call `tool_schema({ op: "onto.task.docs.create_or_attach" })`.
-- Then use the direct tool named by the schema instead of project doc tree ops.
+- Use the paired `create_task_document` tool instead of project doc tree ops.
+- Resolve the exact task and document intent before attaching; ask one focused question if the destination remains ambiguous.
 
 ## Provenance
 

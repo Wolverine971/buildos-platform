@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
 	extractGatewayMaterializedToolNames,
+	extractGatewayToolMaterializations,
 	getGatewaySurfaceForProfile,
 	materializeGatewayTools
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
@@ -415,6 +416,40 @@ describe('selectFastChatTools', () => {
 				]
 			})
 		).toEqual(['get_document_outline', 'read_document_section', 'get_onto_document_details']);
+	});
+
+	it('attributes materialization to skill bundles, searches, schemas, and entity results', () => {
+		expect(
+			extractGatewayToolMaterializations({
+				type: 'skill',
+				materialized_tools: ['delete_calendar_event']
+			})
+		).toEqual([{ source: 'skill_bundle', toolNames: ['delete_calendar_event'] }]);
+
+		expect(
+			extractGatewayToolMaterializations({
+				type: 'skill_search_results',
+				materialized_tools: ['skill_load']
+			})
+		).toEqual([{ source: 'search', toolNames: ['skill_load'] }]);
+
+		expect(
+			extractGatewayToolMaterializations({
+				type: 'tool_schema',
+				tool_name: 'delete_calendar_event'
+			})
+		).toEqual([{ source: 'schema', toolNames: ['delete_calendar_event'] }]);
+
+		expect(
+			extractGatewayToolMaterializations({
+				results: [{ id: 'task-1', type: 'task', title: 'Ship it' }]
+			})
+		).toEqual([
+			{
+				source: 'entity_result',
+				toolNames: ['get_onto_task_details', 'list_task_documents']
+			}
+		]);
 	});
 
 	it('normalizes legacy work capability materialization names to outcome cards', () => {

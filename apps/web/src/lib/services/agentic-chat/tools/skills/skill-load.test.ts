@@ -102,7 +102,7 @@ describe('skill loading', () => {
 		expect(result.reference_modules).toBeUndefined();
 	});
 
-	it('splits related ops and only auto-materializes read tools', () => {
+	it('classifies related ops while materializing the complete direct-tool bundle', () => {
 		const skill = defineMarkdownSkill({
 			id: 'mixed_related_ops',
 			markdown: `---
@@ -134,9 +134,32 @@ description: Skill fixture with read, write, and destructive related ops.
 		expect(payload.read_ops).toEqual(['onto.task.get', 'util.web.search']);
 		expect(payload.write_ops).toEqual(['onto.task.update']);
 		expect(payload.destructive_ops).toEqual(['onto.task.delete']);
-		expect(payload.materialized_tools).toEqual(['get_onto_task_details', 'web_search']);
-		expect(payload.materialized_tools).not.toContain('update_onto_task');
-		expect(payload.materialized_tools).not.toContain('delete_onto_task');
+		expect(payload.materialized_tools).toEqual([
+			'delete_onto_task',
+			'get_onto_task_details',
+			'update_onto_task',
+			'web_search'
+		]);
+		expect(payload.materialized_tools).not.toContain('tool_schema');
+	});
+
+	it('loads every canonical calendar tool, including the direct delete tool', () => {
+		const payload = loadSkill('calendar_management', {
+			format: 'short',
+			include_examples: false
+		}) as Record<string, any>;
+
+		expect(payload.destructive_ops).toContain('cal.event.delete');
+		expect(payload.materialized_tools).toEqual([
+			'create_calendar_event',
+			'delete_calendar_event',
+			'get_calendar_event_details',
+			'get_project_calendar',
+			'list_calendar_events',
+			'set_project_calendar',
+			'update_calendar_event'
+		]);
+		expect(payload.materialized_tools).not.toContain('tool_schema');
 	});
 
 	it('defaults source-preserved skills to their recommended full load format', () => {
@@ -584,5 +607,4 @@ reference_modules:
 		expect(fullPayload.markdown).toContain('cold_email_outreach.offer_crafting');
 		expect(fullPayload.markdown).not.toContain('Loaded child skill contents');
 	});
-
 });

@@ -73,7 +73,7 @@ Escalate to the child skill `task_state_updates` when the user reports task prog
 
 - Treat task work as two separate decisions: first choose the canonical op, then package the call.
 - Examples: use `onto.task.create` for a new tracked task, `onto.task.update` for changing an existing task, and `onto.task.list` or `onto.task.search` when the exact `task_id` is still unknown.
-- If the write shape is uncertain, call `tool_schema({ op: "<exact op>" })` before any execution attempt.
+- The skill's related direct tools are already paired with their callable schemas. If a required value is uncertain, resolve it with context, a read op, or one concise question before writing.
 
 #### Part 2: Package the direct tool call correctly
 
@@ -120,8 +120,7 @@ Stop conditions before replying: no write was emitted without an exact `task_id`
 - Confirm the request is future user work rather than work the agent can complete now.
 - Good create signals: "add a task", "track this", "remind me", a future phone call, meeting, review, approval, or persistent project checklist.
 - Do not create a task for work the agent can do now, such as research, analysis, brainstorming, summarizing, or drafting in the current conversation.
-- If the create shape is unclear, call `tool_schema({ op: "onto.task.create" })`.
-- Then call `create_onto_task({ ... })` with the right parent plan/goal/milestone when that relationship is already clear.
+- Call `create_onto_task({ ... })` with the right parent plan/goal/milestone when that relationship is already clear.
 - Example payload when project context is already known:
   `create_onto_task({ project_id: "4cfdbed1-840a-4fe4-9751-77c7884daa70", title: "Revise chapter 2 dialogue between Elena and Master Thorne", description: "Strengthen the dialogue beats in the Elena and Master Thorne scenes from chapter 2.", type_key: "task.refine" })`
 
@@ -137,7 +136,6 @@ Stop conditions before replying: no write was emitted without an exact `task_id`
 - Otherwise use onto.task.search, onto.task.list, or onto.task.get to discover the exact task_id first.
 - When project scope is known, prefer project-scoped task lookup before broader workspace lookup.
 - If ownership is changing, prefer assignee_handles unless actor IDs were just retrieved.
-- If the update shape is unclear, call `tool_schema({ op: "onto.task.update" })`.
 - Then call `update_onto_task({ ... })` with the exact task_id and the intended state/assignment changes.
 - Example when the task is already in structured context:
   `update_onto_task({ task_id: "440c2639-9000-4111-aeea-ee374f8fb925", state_key: "done" })`

@@ -47,6 +47,22 @@ export const GATEWAY_SURFACE_PROFILE_NAMES = [
 
 export type GatewaySurfaceProfileName = (typeof GATEWAY_SURFACE_PROFILE_NAMES)[number];
 
+export type GatewayToolMaterializationSource =
+	| 'default'
+	| 'skill_bundle'
+	| 'search'
+	| 'schema'
+	| 'contract'
+	| 'entity_result'
+	| 'discovery'
+	| 'direct_request'
+	| 'recovery';
+
+export type GatewayToolMaterialization = {
+	source: GatewayToolMaterializationSource;
+	toolNames: string[];
+};
+
 // Rare bridge/orchestration tools (Corsair MCP, delegate_task, commit_change_set)
 // are intentionally not mounted on every launch surface. They remain available
 // through tool_search/tool_schema and the orchestrator's on-miss materialization.
@@ -286,11 +302,18 @@ export function getGatewaySurfaceForProfile(
 }
 
 export function extractGatewayMaterializedToolNames(payload: unknown): string[] {
+	return uniqueToolNames(
+		extractGatewayToolMaterializations(payload).flatMap((entry) => entry.toolNames)
+	);
+}
+
+export function extractGatewayToolMaterializations(payload: unknown): GatewayToolMaterialization[] {
 	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
 		return [];
 	}
 
 	const record = payload as Record<string, unknown>;
+	const type = typeof record.type === 'string' ? record.type : '';
 	const materializedTools = Array.isArray(record.materialized_tools)
 		? record.materialized_tools
 				.map((name) => (typeof name === 'string' ? name.trim() : ''))
@@ -299,18 +322,31 @@ export function extractGatewayMaterializedToolNames(payload: unknown): string[] 
 		: [];
 	const inferredEntityTools =
 		inferMaterializedToolsFromEntityResults(record).map(normalizeGatewayToolName);
-	const combinedMaterializedTools = uniqueToolNames([
-		...materializedTools,
-		...inferredEntityTools
-	]);
-	if (combinedMaterializedTools.length > 0) {
-		return combinedMaterializedTools;
+	const materializations: GatewayToolMaterialization[] = [];
+	if (materializedTools.length > 0) {
+		const source: GatewayToolMaterializationSource =
+			type === 'skill'
+				? 'skill_bundle'
+				: type === 'tool_schema' || type === 'op'
+					? 'schema'
+					: type.endsWith('_search_results')
+						? 'search'
+						: 'discovery';
+		materializations.push({ source, toolNames: uniqueToolNames(materializedTools) });
+	}
+	if (inferredEntityTools.length > 0) {
+		materializations.push({
+			source: 'entity_result',
+			toolNames: uniqueToolNames(inferredEntityTools)
+		});
+	}
+	if (materializations.length > 0) {
+		return materializations;
 	}
 
-	const type = typeof record.type === 'string' ? record.type : '';
 	if (type === 'tool_search_results') {
 		const matches = Array.isArray(record.matches) ? record.matches : [];
-		return uniqueToolNames(
+		const toolNames = uniqueToolNames(
 			matches
 				.map((match) =>
 					match && typeof match === 'object'
@@ -322,12 +358,13 @@ export function extractGatewayMaterializedToolNames(payload: unknown): string[] 
 				)
 				.map((name) => normalizeGatewayToolName(name.trim()))
 		);
+		return toolNames.length > 0 ? [{ source: 'search', toolNames }] : [];
 	}
 
 	if (type === 'tool_schema' || type === 'op') {
 		const toolName = record.tool_name;
 		return typeof toolName === 'string' && toolName.trim().length > 0
-			? [normalizeGatewayToolName(toolName.trim())]
+			? [{ source: 'schema', toolNames: [normalizeGatewayToolName(toolName.trim())] }]
 			: [];
 	}
 

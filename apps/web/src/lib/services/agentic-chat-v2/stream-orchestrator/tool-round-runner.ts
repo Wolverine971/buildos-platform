@@ -6,7 +6,10 @@ import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-
 import type { FastChatHistoryMessage } from '../types';
 import type { TurnSupervisorObservation } from '../turn-supervisor';
 import { summarizeToolResult } from '../turn-supervisor/digest';
-import { extractGatewayMaterializedToolNames } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import {
+	extractGatewayToolMaterializations,
+	type GatewayToolMaterializationSource
+} from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { buildToolPayloadForModel } from './tool-payload-compaction';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution } from './shared';
@@ -195,7 +198,11 @@ export async function recordToolExecutionForRound(params: {
 	gatewayModeActive: boolean;
 	knownEntitiesById: Map<string, KnownEntity>;
 	rememberSuccessfulWriteForDedup: (execution: FastToolExecution) => void;
-	materializeDirectTools: (toolNames: string[], reason: string) => string[];
+	materializeDirectTools: (
+		toolNames: string[],
+		reason: string,
+		source?: GatewayToolMaterializationSource
+	) => string[];
 	observeSupervisor: (observation: TurnSupervisorObservation) => Promise<void>;
 	onToolResult?: (execution: FastToolExecution) => Promise<void> | void;
 }): Promise<RecordedToolExecutionForRound> {
@@ -218,10 +225,13 @@ export async function recordToolExecutionForRound(params: {
 	});
 
 	if (params.gatewayModeActive && result.success) {
-		params.materializeDirectTools(
-			extractGatewayMaterializedToolNames(result.result),
-			'Discovery loaded additional tools.'
-		);
+		for (const materialization of extractGatewayToolMaterializations(result.result)) {
+			params.materializeDirectTools(
+				materialization.toolNames,
+				'Discovery loaded additional tools.',
+				materialization.source
+			);
+		}
 	}
 	if (result.success) {
 		rememberKnownEntitiesFromToolResult({
@@ -269,7 +279,11 @@ export async function executeToolCallPair(params: {
 		toolCall: ChatToolCall,
 		availableTools?: ChatToolDefinition[]
 	) => Promise<ChatToolResult>;
-	materializeDirectTools: (toolNames: string[], reason: string) => string[];
+	materializeDirectTools: (
+		toolNames: string[],
+		reason: string,
+		source?: GatewayToolMaterializationSource
+	) => string[];
 	findDuplicateSuccessfulWrite: (toolCall: ChatToolCall) => FastToolExecution | undefined;
 	startToolExecutionHeartbeat: (details: { toolName: string; toolCallId: string }) => () => void;
 }): Promise<ToolExecutionDispatchResult> {
@@ -325,7 +339,8 @@ async function dispatchUnavailableToolCall(
 	let addedToolNames = params.gatewayModeActive
 		? params.materializeDirectTools(
 				[requestedName],
-				`The tool "${requestedName}" was not preloaded.`
+				`The tool "${requestedName}" was not preloaded.`,
+				'direct_request'
 			)
 		: [];
 	let resolvedOpToolName: string | null = null;
@@ -334,7 +349,8 @@ async function dispatchUnavailableToolCall(
 		if (opToolName && opToolName !== requestedName) {
 			addedToolNames = params.materializeDirectTools(
 				[opToolName],
-				`"${requestedName}" is an op reference, not a callable tool.`
+				`"${requestedName}" is an op reference, not a callable tool.`,
+				'direct_request'
 			);
 			if (addedToolNames.length > 0) {
 				resolvedOpToolName = opToolName;

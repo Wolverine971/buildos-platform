@@ -27,6 +27,7 @@ const PROJECT_SCOPED_ID_ARG_KINDS: Readonly<Record<string, ProjectScopedOntology
 	goal_id: 'goal',
 	plan_id: 'plan',
 	document_id: 'document',
+	onto_event_id: 'event',
 	milestone_id: 'milestone',
 	risk_id: 'risk',
 	parent_id: 'document',
@@ -48,6 +49,8 @@ const ENTITY_KIND_ALIASES: Readonly<Record<string, ProjectScopedOntologyKind>> =
 	documents: 'document',
 	doc: 'document',
 	docs: 'document',
+	event: 'event',
+	events: 'event',
 	milestone: 'milestone',
 	milestones: 'milestone',
 	risk: 'risk',
@@ -62,6 +65,7 @@ const ENTITY_PLURAL_KEYS: Readonly<Partial<Record<ProjectScopedOntologyKind, str
 	goal: 'goals',
 	plan: 'plans',
 	document: 'documents',
+	event: 'events',
 	milestone: 'milestones',
 	risk: 'risks',
 	requirement: 'requirements'
@@ -176,6 +180,7 @@ export function normalizeProjectScopedEntityKind(
 export function requiresKnownProjectForEntityIdMutation(toolName: string): boolean {
 	if (toolName.startsWith(ONTOLOGY_UPDATE_TOOL_PREFIX)) return true;
 	if (toolName.startsWith('delete_onto_')) return true;
+	if (toolName === 'delete_calendar_event') return true;
 	if (toolName.startsWith('create_onto_') && toolName !== 'create_onto_project') return true;
 	return (
 		toolName === 'create_task_document' ||

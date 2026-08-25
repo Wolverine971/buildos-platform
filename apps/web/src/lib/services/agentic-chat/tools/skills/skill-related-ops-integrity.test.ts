@@ -3,9 +3,9 @@
 // Referential-integrity guard for skill "Related Tools" sections.
 //
 // A skill's relatedOps are resolved to callable tool names via the tool registry
-// (skill-load.ts `resolveRelatedOps`). Read ops can auto-materialize; write and
-// destructive ops remain payload metadata. An op that does not resolve becomes a
-// dead reference either way, so this test fails fast on any such dead op.
+// (skill-load.ts `resolveRelatedOps`). Every resolved op materializes its direct
+// callable tool; read/write/destructive classification remains payload metadata.
+// An op that does not resolve becomes a dead reference, so this test fails fast.
 //
 // Caught BUG-4 (2026-06-15): google_calendar listed `google_calendar.*` ops (real
 // ops are `cal.event.*`) and libri_knowledge listed tool names as ops.

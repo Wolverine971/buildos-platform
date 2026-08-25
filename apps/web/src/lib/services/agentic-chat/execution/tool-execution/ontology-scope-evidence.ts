@@ -7,6 +7,7 @@ export type ProjectScopedOntologyKind =
 	| 'goal'
 	| 'plan'
 	| 'document'
+	| 'event'
 	| 'milestone'
 	| 'risk'
 	| 'requirement';
@@ -44,6 +45,7 @@ const TRUSTED_ONTOLOGY_READ_TOOLS = new Set([
 	'get_onto_document_details',
 	'get_onto_milestone_details',
 	'get_onto_risk_details',
+	'get_calendar_event_details',
 	'get_document_tree',
 	'get_document_outline',
 	'read_document_section',
@@ -63,6 +65,8 @@ const COLLECTION_KIND_BY_KEY: Record<string, ProjectScopedOntologyKind> = {
 	document: 'document',
 	documents: 'document',
 	context_document: 'document',
+	event: 'event',
+	events: 'event',
 	milestone: 'milestone',
 	milestones: 'milestone',
 	risk: 'risk',
@@ -84,6 +88,8 @@ const ENTITY_KIND_ALIASES: Record<string, ProjectScopedOntologyKind> = {
 	documents: 'document',
 	doc: 'document',
 	docs: 'document',
+	event: 'event',
+	events: 'event',
 	milestone: 'milestone',
 	milestones: 'milestone',
 	risk: 'risk',
@@ -114,7 +120,12 @@ const DETAIL_TOOL_EXPECTATIONS: Record<
 		resultKey: 'milestone',
 		argumentKey: 'milestone_id'
 	},
-	get_onto_risk_details: { kind: 'risk', resultKey: 'risk', argumentKey: 'risk_id' }
+	get_onto_risk_details: { kind: 'risk', resultKey: 'risk', argumentKey: 'risk_id' },
+	get_calendar_event_details: {
+		kind: 'event',
+		resultKey: 'event',
+		argumentKey: 'onto_event_id'
+	}
 };
 
 const DOCUMENT_PROJECTION_TOOLS = new Set(['get_document_outline', 'read_document_section']);

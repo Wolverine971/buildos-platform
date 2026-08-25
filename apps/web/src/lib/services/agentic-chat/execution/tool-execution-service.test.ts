@@ -998,6 +998,129 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).toHaveBeenCalledTimes(2);
 		});
 
+		it('allows an exact calendar event loaded in this project to be deleted in the same turn', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const eventId = '288c1d31-4d47-40f7-a50a-e116cccedc62';
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: {},
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			const getEventDefinition: ChatToolDefinition = {
+				name: 'get_calendar_event_details',
+				description: 'Get an exact calendar event',
+				parameters: {
+					type: 'object',
+					properties: {
+						onto_event_id: { type: 'string' },
+						project_id: { type: 'string' }
+					},
+					required: ['onto_event_id']
+				}
+			};
+			const deleteEventDefinition: ChatToolDefinition = {
+				name: 'delete_calendar_event',
+				description: 'Delete an exact calendar event',
+				parameters: {
+					type: 'object',
+					properties: {
+						onto_event_id: { type: 'string' },
+						project_id: { type: 'string' }
+					},
+					required: ['onto_event_id']
+				}
+			};
+			mockToolExecutor
+				.mockResolvedValueOnce({
+					data: {
+						event: {
+							id: eventId,
+							project_id: projectId,
+							title: 'Precision Hunter Prep'
+						}
+					}
+				})
+				.mockResolvedValueOnce({
+					data: { source: 'ontology', event: { id: eventId, project_id: projectId } }
+				});
+
+			const readResult = await service.executeTool(
+				{
+					id: 'call_load_event_scope',
+					name: 'get_calendar_event_details',
+					arguments: { onto_event_id: eventId, project_id: projectId }
+				},
+				scopedContext,
+				[getEventDefinition]
+			);
+			const deleteResult = await service.executeTool(
+				{
+					id: 'call_delete_loaded_event',
+					name: 'delete_calendar_event',
+					arguments: { onto_event_id: eventId, project_id: projectId }
+				},
+				scopedContext,
+				[deleteEventDefinition]
+			);
+
+			expect(readResult.success).toBe(true);
+			expect(deleteResult.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledTimes(2);
+		});
+
+		it('blocks an unknown ontology calendar event delete in a project-scoped turn', async () => {
+			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const eventId = '288c1d31-4d47-40f7-a50a-e116cccedc62';
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: projectId,
+				contextScope: { projectId },
+				ontologyContext: {
+					type: 'project',
+					entities: {},
+					metadata: {},
+					scope: { projectId }
+				} as any
+			};
+			const definition: ChatToolDefinition = {
+				name: 'delete_calendar_event',
+				description: 'Delete an exact calendar event',
+				parameters: {
+					type: 'object',
+					properties: {
+						onto_event_id: { type: 'string' },
+						project_id: { type: 'string' }
+					},
+					required: ['onto_event_id']
+				}
+			};
+
+			const result = await service.executeTool(
+				{
+					id: 'call_delete_unknown_event',
+					name: 'delete_calendar_event',
+					arguments: { onto_event_id: eventId, project_id: projectId }
+				},
+				scopedContext,
+				[definition]
+			);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('onto_event_id is not known to belong')
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
 		it('registers entities returned by a full project-detail load', async () => {
 			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 			const goalId = 'b4724346-2b1b-4e71-a9c8-1e25f1aa9b8e';

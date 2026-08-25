@@ -66,7 +66,7 @@ The decision spine for reading a project critically.
 11. Audit velocity and plan adherence: look for completed task counts, stale active tasks, overdue tasks, repeated date bumps, blocked work, and whether planned tasks are actually getting done. If historical completion data is thin, say what you can and cannot infer.
 12. Synthesize the audit into a ranked set of findings. For each material finding, include evidence, impact, and the smallest practical correction.
 13. Separate observations from recommendations: first report what is true, then suggest what should change.
-14. If the user asks you to fix issues after the audit, switch from analysis to the appropriate write skill, then use `tool_schema` before uncertain writes.
+14. If the user asks you to fix issues after the audit, switch from analysis to the appropriate write skill, then use that skill's paired direct tools after resolving exact targets and required fields.
 
 ## Contract
 

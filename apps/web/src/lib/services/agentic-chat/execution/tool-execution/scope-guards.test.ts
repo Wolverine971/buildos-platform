@@ -13,6 +13,8 @@ const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
 const destinationProjectId = '09684f0a-4f56-4a72-84b6-20fb10ab7890';
 const taskId = 'e1038564-6e3e-4e18-aa0a-a460fd2e3f80';
+const eventId = '288c1d31-4d47-40f7-a50a-e116cccedc62';
+const documentId = 'c16bbfc1-c8f6-433f-9d84-f7ed17861757';
 
 function contextForProject(scopedProjectId = projectId): ServiceContext {
 	return {
@@ -173,11 +175,69 @@ describe('scope guards', () => {
 		).toBeNull();
 	});
 
+	it('requires exact current-project event evidence before an ontology calendar delete', () => {
+		const base = {
+			toolName: 'delete_calendar_event',
+			args: { onto_event_id: eventId, project_id: projectId },
+			context: contextForProject(),
+			toolCallId: 'delete-event'
+		};
+
+		expect(
+			guardEntityIdsMatchContextScope({
+				...base,
+				sameTurnEntityProjectIds: new Map([[`event:${eventId}`, projectId]])
+			})
+		).toBeNull();
+		expect(
+			guardEntityIdsMatchContextScope({
+				...base,
+				sameTurnEntityProjectIds: new Map()
+			})
+		).toMatchObject({
+			error: 'Tool onto_event_id is not known to belong to the current project focus. Load or resolve the entity in the current project before mutating it.'
+		});
+		expect(
+			guardEntityIdsMatchContextScope({
+				...base,
+				sameTurnEntityProjectIds: new Map([[`event:${eventId}`, otherProjectId]])
+			})
+		).toMatchObject({
+			error: 'Tool onto_event_id belongs to a different project than the current project focus. Switch focus or ask for explicit cross-project confirmation before using another project.'
+		});
+	});
+
+	it('requires exact current-project document evidence before a document delete', () => {
+		const base = {
+			toolName: 'delete_onto_document',
+			args: { document_id: documentId },
+			context: contextForProject(),
+			toolCallId: 'delete-document'
+		};
+
+		expect(
+			guardEntityIdsMatchContextScope({
+				...base,
+				sameTurnEntityProjectIds: new Map([[`document:${documentId}`, projectId]])
+			})
+		).toBeNull();
+		expect(
+			guardEntityIdsMatchContextScope({
+				...base,
+				sameTurnEntityProjectIds: new Map()
+			})
+		).toMatchObject({
+			error: 'Tool document_id is not known to belong to the current project focus. Load or resolve the entity in the current project before mutating it.'
+		});
+	});
+
 	it('keeps mutation classification and entity aliases discoverable', () => {
 		expect(requiresKnownProjectForEntityIdMutation('create_onto_task')).toBe(true);
 		expect(requiresKnownProjectForEntityIdMutation('create_onto_project')).toBe(false);
+		expect(requiresKnownProjectForEntityIdMutation('delete_calendar_event')).toBe(true);
 		expect(requiresKnownProjectForEntityIdMutation('get_onto_task_details')).toBe(false);
 		expect(normalizeProjectScopedEntityKind('TASKS')).toBe('task');
 		expect(normalizeProjectScopedEntityKind('docs')).toBe('document');
+		expect(normalizeProjectScopedEntityKind('events')).toBe('event');
 	});
 });

@@ -85,17 +85,31 @@ describe('resolveSkillPreloadById', () => {
 		expect(preload?.promptContent).toContain('No project facts changed');
 		expect(preload?.materializedToolNames).toEqual(
 			expect.arrayContaining([
+				'create_onto_document',
 				'get_document_outline',
 				'read_document_section',
-				'search_project'
+				'search_project',
+				'update_onto_document'
 			])
-		);
-		expect(preload?.materializedToolNames).not.toEqual(
-			expect.arrayContaining(['create_onto_document', 'update_onto_document'])
 		);
 		expect(preload?.payload.write_ops).toEqual(
 			expect.arrayContaining(['onto.document.create', 'onto.document.update'])
 		);
+	});
+
+	it('preloads a complete calendar bundle before the first model pass', () => {
+		const preload = resolveSkillPreloadById('calendar_management');
+
+		expect(preload?.materializedToolNames).toEqual([
+			'create_calendar_event',
+			'delete_calendar_event',
+			'get_calendar_event_details',
+			'get_project_calendar',
+			'list_calendar_events',
+			'set_project_calendar',
+			'update_calendar_event'
+		]);
+		expect(preload?.payload.destructive_ops).toContain('cal.event.delete');
 	});
 
 	it('skips an affinity preload already present in the history ledger', () => {

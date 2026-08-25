@@ -43,7 +43,7 @@ Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes,
 3. Use timezone-safe ISO 8601 values for start_at and end_at, or supply timezone.
 4. For project calendar mapping questions, check cal.project.get before assuming a project calendar exists.
 5. For update/delete, discover and pass exact onto_event_id or event_id.
-6. For first-time or complex writes, inspect the exact tool schema with `tool_schema` before calling the direct calendar tool.
+6. For first-time or complex writes, inspect the existing event and verify the exact scope and fields before calling the paired direct calendar tool.
 7. After execution, tell the user what changed and mention sync implications when they matter.
 
 ## Contract
@@ -77,16 +77,15 @@ Stop conditions before replying: scope was chosen explicitly before the write; s
 
 ### Schedule a project work session tied to a task
 
-- If the exact args are unclear, call `tool_schema({ op: "cal.event.create" })`.
-- Then call `create_calendar_event({ ... })` with title, start_at, project_id, `calendar_scope: "project"`, and task_id when relevant.
+- Call `create_calendar_event({ ... })` with title, start_at, project_id, `calendar_scope: "project"`, and task_id when relevant.
+- If a required value is unclear, resolve it from project/calendar context or ask one focused question before writing.
 
 ### Reschedule an existing event safely
 
 - Use cal.event.list or cal.event.get to discover the exact onto_event_id or event_id.
-- If the update shape is unclear, call `tool_schema({ op: "cal.event.update" })`.
 - Then call `update_calendar_event({ ... })` with the exact identifier and updated fields.
 
 ## Provenance
 
 - Calendar reads and writes are often sensitive to scope, time zone normalization, and exact event identifiers.
-- Use `tool_schema` if the request depends on less common fields such as sync_to_calendar or calendar_id.
+- The paired calendar tools already provide their exact callable schemas; use fields such as sync_to_calendar or calendar_id only when the request and resolved scope require them.

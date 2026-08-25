@@ -5,8 +5,12 @@ import {
 	GATEWAY_SURFACE_PROFILE_NAMES,
 	getGatewaySurfaceForContextType,
 	getGatewaySurfaceForProfile,
+	materializeGatewayTools,
 	type GatewaySurfaceProfileName
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
+import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
+import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 
 export const TOOL_SURFACE_PROFILE_CANONICAL_GATEWAY = 'canonical_gateway' as const;
 
@@ -38,6 +42,26 @@ export type ToolSurfaceSizeReport = {
 	totalChars: number;
 	estimatedTokens: number;
 	tools: ToolDefinitionSize[];
+};
+
+export type SkillToolBundleIncrement = {
+	profile: GatewaySurfaceProfileName;
+	toolCount: number;
+	totalChars: number;
+	estimatedTokens: number;
+	toolNames: string[];
+};
+
+export type SkillToolBundleSizeReport = {
+	skillId: string;
+	relatedOpCount: number;
+	resolvedToolCount: number;
+	unresolvedOps: string[];
+	materializedToolNames: string[];
+	totalChars: number;
+	estimatedTokens: number;
+	tools: ToolDefinitionSize[];
+	incrementalByProfile: Record<GatewaySurfaceProfileName, SkillToolBundleIncrement>;
 };
 
 export function buildToolSurfaceSizeReport(params: {
@@ -90,6 +114,71 @@ export function buildGatewayProfileToolSurfaceSizeReports(
 			tools: getGatewaySurfaceForProfile(profile)
 		})
 	);
+}
+
+export function buildSkillToolBundleSizeReports(): SkillToolBundleSizeReport[] {
+	const registry = getToolRegistry();
+	return listAllSkills()
+		.map((skill) => {
+			const unresolvedOps: string[] = [];
+			const toolNames = Array.from(
+				new Set(
+					skill.relatedOps.flatMap((op) => {
+						const entry = registry.ops[normalizeGatewayOpName(op)];
+						if (!entry) {
+							unresolvedOps.push(op);
+							return [];
+						}
+						return [entry.tool_name];
+					})
+				)
+			).sort((a, b) => a.localeCompare(b));
+			const bundle = materializeGatewayTools([], toolNames).tools;
+			const bundleSize = buildToolSurfaceSizeReport({
+				profile: `skill:${skill.id}`,
+				contextType: 'skill_bundle',
+				tools: bundle
+			});
+			const incrementalByProfile = Object.fromEntries(
+				GATEWAY_SURFACE_PROFILE_NAMES.map((profile) => {
+					const base = getGatewaySurfaceForProfile(profile);
+					const expanded = materializeGatewayTools(base, toolNames);
+					const addedNames = new Set(expanded.addedToolNames);
+					const addedTools = expanded.tools.filter((tool) => {
+						const name = tool.function?.name;
+						return typeof name === 'string' && addedNames.has(name);
+					});
+					const incrementalSize = buildToolSurfaceSizeReport({
+						profile: `skill:${skill.id}+${profile}`,
+						contextType: profile,
+						tools: addedTools
+					});
+					return [
+						profile,
+						{
+							profile,
+							toolCount: incrementalSize.toolCount,
+							totalChars: incrementalSize.totalChars,
+							estimatedTokens: incrementalSize.estimatedTokens,
+							toolNames: incrementalSize.tools.map((tool) => tool.name).sort()
+						} satisfies SkillToolBundleIncrement
+					];
+				})
+			) as Record<GatewaySurfaceProfileName, SkillToolBundleIncrement>;
+
+			return {
+				skillId: skill.id,
+				relatedOpCount: skill.relatedOps.length,
+				resolvedToolCount: bundleSize.toolCount,
+				unresolvedOps: unresolvedOps.sort((a, b) => a.localeCompare(b)),
+				materializedToolNames: bundleSize.tools.map((tool) => tool.name).sort(),
+				totalChars: bundleSize.totalChars,
+				estimatedTokens: bundleSize.estimatedTokens,
+				tools: bundleSize.tools,
+				incrementalByProfile
+			};
+		})
+		.sort((a, b) => a.skillId.localeCompare(b.skillId));
 }
 
 export function formatToolSurfaceSizeReport(

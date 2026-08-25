@@ -245,7 +245,8 @@ describe('recordToolExecutionForRound', () => {
 		expect(rememberSuccessfulWriteForDedup).toHaveBeenCalledWith(recordedExecution);
 		expect(materializeDirectTools).toHaveBeenCalledWith(
 			expect.arrayContaining(['get_onto_task_details']),
-			'Discovery loaded additional tools.'
+			'Discovery loaded additional tools.',
+			'discovery'
 		);
 		expect(knownEntitiesById.get('task-1')).toMatchObject({
 			id: 'task-1',
