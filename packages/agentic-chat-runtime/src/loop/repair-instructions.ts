@@ -41,15 +41,14 @@ export function shouldRepairProjectCreateNoExecution(params: {
 
 export function buildProjectCreateNoExecutionRepairInstruction(): string {
 	return [
-		'You are in project_create context and no successful onto.project.create call has happened yet.',
-		'Do not end the turn with a success summary unless onto.project.create has actually succeeded.',
-		'You already have enough guidance to continue. Do not call more project creation help paths unless a new schema detail is genuinely missing.',
-		'If the commissioned durable outcomes do not yet have an approved turn contract, declare their exact project, goal, and task outcomes first. If that contract is already approved, continue execution without re-declaring it or asking the user to confirm again.',
-		'Create the project shell first with create_onto_project. Its entities and relationships arrays must both be empty.',
+		'You are in project_create context and create_onto_project has not succeeded yet.',
+		'Do not end the turn with a success summary unless create_onto_project actually succeeds.',
+		'create_onto_project is already available. Do not call project-creation discovery or help tools.',
+		'Build one complete create_onto_project call from the user request. Always include project, entities, and relationships; use empty arrays only when the user requested no initial records or connections.',
 		'Minimal valid create shape: create_onto_project({ project: { name: "Project Name", type_key: "project.business.initiative" }, entities: [], relationships: [] }).',
-		'If a previous onto.project.create attempt already included a full payload, reuse that payload and patch only the failing fields. Never replace a prior complete create payload with input:{}.',
-		'After the shell returns its project id, create any commissioned goal with create_onto_goal and each commissioned task with create_onto_task under that exact project id. Do not embed child entities or relationships in create_onto_project.',
-		'Ask one concise clarifying question only when a critical user choice is genuinely unresolved; do not use clarification as redundant confirmation for a fully specified request.'
+		'If the user requested initial goals, tasks, plans, documents, or other supported records, include them in entities in this same call. Relationships must reference those entities with from/to objects containing temp_id and kind.',
+		'If a previous create_onto_project attempt already included a full payload, reuse it and patch only the failing fields. Never replace a complete payload with empty arguments.',
+		'Ask one concise clarifying question only when a critical user choice is genuinely unresolved; do not ask for redundant confirmation.'
 	].join(' ');
 }
 
@@ -998,24 +997,30 @@ export function buildToolValidationRepairInstruction(
 					.filter((op): op is string => typeof op === 'string' && op.length > 0)
 			)
 		);
-		lines.push(
-			'Gateway pattern: start from context and capability, load a skill when the workflow matters, identify the exact op, inspect its schema if needed, then execute.'
-		);
-		lines.push(
-			'If the skill or current context already identifies the exact op, skip tool_search. Otherwise use tool_search only when the exact op is unknown. Search for the operation you need, not workspace data. Good examples: {"capability":"overview"}, {"entity":"task","kind":"write","query":"update existing task state"}, or {"group":"onto","entity":"document","kind":"write","query":"move document in tree"}.'
-		);
-		lines.push(
-			'If the work is multi-step or easy to get wrong, load the relevant skill first. Exception: in project_create context, the bounded contract-first creation tools are already preloaded. Declare the exact contract before mutation; after approval, retry only the failing canonical create call without asking the user to confirm again.'
-		);
-		lines.push(
-			'For first-time or uncertain writes, call tool_schema({ op: "<exact op>" }) before retrying the direct tool.'
-		);
-		lines.push(
-			'After tool_schema, call the direct tool named by the schema with concrete arguments. Reuse exact IDs from structured context or prior results, and do not send empty or guessed fields.'
-		);
-		lines.push(
-			'If a write still fails because an exact *_id is missing, use search/list/tree candidates and retry with the exact *_id.'
-		);
+		if (hasProjectCreateIssue) {
+			lines.push(
+				'create_onto_project is already available for this retry. Correct its arguments and call it directly; do not call tool_search, tool_schema, skill tools, or turn-contract tools.'
+			);
+		} else {
+			lines.push(
+				'Gateway pattern: start from context and capability, load a skill when the workflow matters, identify the exact op, inspect its schema if needed, then execute.'
+			);
+			lines.push(
+				'If the skill or current context already identifies the exact op, skip tool_search. Otherwise use tool_search only when the exact op is unknown. Search for the operation you need, not workspace data. Good examples: {"capability":"overview"}, {"entity":"task","kind":"write","query":"update existing task state"}, or {"group":"onto","entity":"document","kind":"write","query":"move document in tree"}.'
+			);
+			lines.push(
+				'If the work is multi-step or easy to get wrong, load the relevant skill first.'
+			);
+			lines.push(
+				'For first-time or uncertain writes, call tool_schema({ op: "<exact op>" }) before retrying the direct tool.'
+			);
+			lines.push(
+				'After tool_schema, call the direct tool named by the schema with concrete arguments. Reuse exact IDs from structured context or prior results, and do not send empty or guessed fields.'
+			);
+			lines.push(
+				'If a write still fails because an exact *_id is missing, use search/list/tree candidates and retry with the exact *_id.'
+			);
+		}
 		if (hasTaskCreateTitleIssue) {
 			lines.push(
 				'For onto.task.create, do not emit a blank create. Include a concrete title taken from the user request before calling create_onto_task.'
@@ -1029,35 +1034,32 @@ export function buildToolValidationRepairInstruction(
 				'Never emit onto.task.update with empty arguments. Include task_id plus at least one concrete field to change.'
 			);
 		}
-		if (hasSameRoundDiscoveryExecutionIssue) {
+		if (hasSameRoundDiscoveryExecutionIssue && !hasProjectCreateIssue) {
 			lines.push(
 				'Do not combine exact-op discovery and write execution in the same response. If you call tool_schema({ op: "<exact op>" }) for a write, stop there, wait for that result, and emit the direct tool call in the next response.'
 			);
 		}
 		if (hasProjectCreateIssue) {
 			lines.push(
-				'onto.project.create requires project, entities, and relationships. project must include name and type_key; entities and relationships must both be empty arrays for the initial shell.'
+				'create_onto_project requires project, entities, and relationships. project must include name and type_key; entities and relationships must be arrays and may be empty.'
 			);
 			lines.push(
 				'Minimal valid example: create_onto_project({ project: { name: "Project Name", type_key: "project.business.initiative" }, entities: [], relationships: [] }).'
 			);
 			lines.push(
-				'Never embed goals, tasks, or relationships in create_onto_project. After the shell returns its project id, use create_onto_goal for a commissioned goal and one create_onto_task call per commissioned task.'
+				'Keep any initial goals, tasks, plans, documents, or other supported records in entities in the same create_onto_project call.'
 			);
 			lines.push(
-				'If a previous onto.project.create attempt already included a full payload, reuse that payload and patch only the failing fields. Never replace a prior complete create payload with input:{}.'
+				'If a previous create_onto_project attempt included a full payload, reuse that payload and patch only the failing fields. Never replace a complete payload with empty arguments.'
 			);
 			if (hasProjectCreateRelationshipIssue) {
 				lines.push(
-					'Project-create relationships must be an empty array on the shell call.'
-				);
-				lines.push(
-					'Do not retry nested relationship objects or pair arrays. Relationship creation is a separate canonical mutation and is not admitted on the bounded project-create surface.'
+					'Each relationship must be an object with from and to objects; both endpoints require temp_id and kind. Do not use pair arrays, raw temp_id strings, or null items.'
 				);
 			}
 		}
 		lines.push(...buildGatewayCreateFieldRepairLines(gatewayRequiredFieldFailures));
-		if (exactHelpPaths.length > 0) {
+		if (exactHelpPaths.length > 0 && !hasProjectCreateIssue) {
 			lines.push(
 				`Load exact-op help before retrying: ${exactHelpPaths
 					.map((path) => `tool_schema({ op: "${path}" })`)
@@ -1143,18 +1145,25 @@ export function buildGatewayRequiredFieldRepairInstruction(
 	);
 	return [
 		`Repeated required-field validation failures detected: ${labels}.`,
-		'Do not use tools willy-nilly. A missing required parameter means you do not understand that op well enough to execute it yet.',
-		'For routine status questions, prefer get_workspace_overview or get_project_overview instead of repeating empty search/list calls.',
 		'Do not call write tools with empty argument objects.',
-		'For search ops, include query (for example onto.project.search, onto.task.search, onto.search).',
-		'If query is unclear, ask one concise clarifying question instead of repeating empty search args.',
-		'Before retrying any create/update/delete op, call tool_schema({ op: "<exact op>" }) and follow that schema exactly.',
-		'If exact IDs are already present in the current structured context, reuse them directly. If the named entity is already listed there, copy its exact UUID into the direct tool arguments instead of searching again.',
-		'Do not emit another empty update after tool_schema. Use the current structured context to fill the required *_id and include at least one concrete field to change.',
-		'If the missing value is user input rather than an ID, ask one concise clarifying question instead of calling a tool.',
-		'For onto.<entity>.update, include <entity>_id and at least one concrete field to change.',
-		'For onto.<entity>.delete, include <entity>_id.',
-		'For cal.event.update, include event_id or onto_event_id plus at least one concrete field to change.',
+		...(hasProjectCreateFailure
+			? [
+					'create_onto_project is already available. Correct and retry that tool directly; do not call search, schema, skill, or turn-contract tools.',
+					'Use the user request and the previous complete payload to restore required values. Ask one concise question only if a critical user value is genuinely missing.'
+				]
+			: [
+					'A missing required parameter means the current operation is not ready to execute.',
+					'For routine status questions, prefer get_workspace_overview or get_project_overview instead of repeating empty search/list calls.',
+					'For search ops, include query (for example onto.project.search, onto.task.search, onto.search).',
+					'If query is unclear, ask one concise clarifying question instead of repeating empty search args.',
+					'Before retrying any create/update/delete op, call tool_schema({ op: "<exact op>" }) and follow that schema exactly.',
+					'If exact IDs are already present in the current structured context, reuse them directly. If the named entity is already listed there, copy its exact UUID into the direct tool arguments instead of searching again.',
+					'Do not emit another empty update after tool_schema. Use the current structured context to fill the required *_id and include at least one concrete field to change.',
+					'If the missing value is user input rather than an ID, ask one concise clarifying question instead of calling a tool.',
+					'For onto.<entity>.update, include <entity>_id and at least one concrete field to change.',
+					'For onto.<entity>.delete, include <entity>_id.',
+					'For cal.event.update, include event_id or onto_event_id plus at least one concrete field to change.'
+				]),
 		...(hasTaskCreateTitleFailure
 			? [
 					'For onto.task.create, do not emit a blank create. Include a concrete title taken from the user request, for example "Revise chapter 2 dialogue between Elena and Master Thorne".'
@@ -1168,14 +1177,18 @@ export function buildGatewayRequiredFieldRepairInstruction(
 			: []),
 		...(hasProjectCreateFailure
 			? [
-					'For onto.project.create, include project with project.name and project.type_key, plus entities: [] and relationships: [].',
+					'For create_onto_project, include project with project.name and project.type_key, plus entities and relationships arrays.',
 					'Minimal valid project creation shape: { project: { name, type_key }, entities: [], relationships: [] }.',
-					'Do not embed goals or tasks in the project shell. After it succeeds, create each already-contracted goal/task with create_onto_goal or create_onto_task using the returned project id.',
-					'If a previous onto.project.create attempt already included a full payload, reuse that payload and patch only the failing fields. Never replace a prior complete create payload with input:{}.'
+					'Include any requested initial goals, tasks, plans, documents, and supported relationships in this same create_onto_project call.',
+					'If a previous create_onto_project attempt included a full payload, reuse it and patch only the failing fields. Never replace a complete payload with empty arguments.'
 				]
 			: []),
 		...buildGatewayCreateFieldRepairLines(failures),
-		'For document organization, get IDs from onto.document.tree.get result.unlinked/documents and pass exact input.document_id for delete/move.',
+		...(!hasProjectCreateFailure
+			? [
+					'For document organization, get IDs from onto.document.tree.get result.unlinked/documents and pass exact input.document_id for delete/move.'
+				]
+			: []),
 		'If IDs are still unclear, ask one concise clarifying question instead of repeating failed writes.'
 	].join(' ');
 }

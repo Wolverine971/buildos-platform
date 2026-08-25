@@ -13,8 +13,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
+import { requireProjectEntityAccess } from '$lib/server/ontology-api-access';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 type Locals = App.Locals;
+const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 
 interface VersionListItem {
 	id: string;
@@ -45,56 +48,35 @@ async function ensureDocumentReadAccess(
 	userId: string
 ): Promise<{ projectId: string } | { error: Response }> {
 	const supabase = locals.supabase;
-
-	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-		p_user_id: userId
+	const accessResult = await requireProjectEntityAccess({
+		supabase,
+		user: { id: userId },
+		loadEntity: () =>
+			supabase
+				.from('onto_documents')
+				.select('id, project_id')
+				.eq('id', documentId)
+				.is('deleted_at', null)
+				.maybeSingle(),
+		requiredAccess: 'read',
+		audit: {
+			endpoint: `/api/onto/documents/${documentId}/versions`,
+			method: 'GET',
+			entityType: 'document',
+			entityId: documentId,
+			consoleLabel: 'Versions API'
+		},
+		actorOperation: 'document_actor_resolve',
+		entityOperation: 'document_fetch',
+		accessOperation: 'document_access_check',
+		tableName: 'onto_documents',
+		notFoundResource: 'Document',
+		forbiddenMessage: 'You do not have permission to access this document'
 	});
-	if (actorError || !actorId) {
-		console.error('[Versions API] Failed to resolve actor:', actorError);
-		return {
-			error: ApiResponse.internalError(
-				actorError || new Error('Failed to resolve user actor'),
-				'Failed to resolve user identity'
-			)
-		};
-	}
 
-	const { data: document, error: documentError } = await supabase
-		.from('onto_documents')
-		.select('id, project_id')
-		.eq('id', documentId)
-		.is('deleted_at', null)
-		.maybeSingle();
-
-	if (documentError) {
-		console.error('[Versions API] Failed to fetch document:', documentError);
-		return { error: ApiResponse.databaseError(documentError) };
-	}
-
-	if (!document) {
-		return { error: ApiResponse.notFound('Document') };
-	}
-
-	const { data: hasAccess, error: accessError } = await supabase.rpc(
-		'current_actor_has_project_member_access',
-		{
-			p_project_id: document.project_id,
-			p_required_access: 'read'
-		}
-	);
-
-	if (accessError) {
-		console.error('[Versions API] Failed to check access:', accessError);
-		return { error: ApiResponse.internalError(accessError, 'Failed to check project access') };
-	}
-
-	if (!hasAccess) {
-		return {
-			error: ApiResponse.forbidden('You do not have permission to access this document')
-		};
-	}
-
-	return { projectId: document.project_id };
+	return accessResult.ok
+		? { projectId: accessResult.projectId }
+		: { error: accessResult.response };
 }
 
 export const GET: RequestHandler = async ({ params, url, locals }) => {
@@ -141,13 +123,36 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		}
 
 		if (userIdFilter) {
-			// Need to find actor ID for user
-			const { data: actorId } = await locals.supabase.rpc('ensure_actor_for_user', {
-				p_user_id: userIdFilter
-			});
-			if (actorId) {
-				query = query.eq('created_by', actorId);
+			// Filtering must never provision an actor for an arbitrary user. Resolve
+			// only an actor row visible to this project member; no match yields an
+			// empty result rather than silently dropping the requested filter.
+			let actorId = NIL_UUID;
+			if (isValidUUID(userIdFilter)) {
+				const { data: actor, error: actorFilterError } = await locals.supabase
+					.from('onto_actors')
+					.select('id')
+					.eq('user_id', userIdFilter)
+					.maybeSingle();
+
+				if (actorFilterError) {
+					await logOntologyApiError({
+						supabase: locals.supabase,
+						error: actorFilterError,
+						endpoint: `/api/onto/documents/${documentId}/versions`,
+						method: 'GET',
+						userId: session.user.id,
+						projectId: accessResult.projectId,
+						entityType: 'document',
+						entityId: documentId,
+						operation: 'versions_actor_filter',
+						tableName: 'onto_actors'
+					});
+					return ApiResponse.databaseError(actorFilterError);
+				}
+
+				actorId = actor?.id ?? NIL_UUID;
 			}
+			query = query.eq('created_by', actorId);
 		}
 
 		if (fromDate) {

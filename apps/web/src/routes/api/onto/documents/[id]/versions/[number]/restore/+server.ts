@@ -22,6 +22,7 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { requireProjectEntityAccess } from '$lib/server/ontology-api-access';
 
 type Locals = App.Locals;
 
@@ -33,61 +34,42 @@ interface RestoreAccessResult {
 async function ensureRestoreAccess(
 	locals: Locals,
 	documentId: string,
+	versionNumber: number,
 	userId: string
 ): Promise<RestoreAccessResult | { error: Response }> {
 	const supabase = locals.supabase;
-
-	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-		p_user_id: userId
+	const accessResult = await requireProjectEntityAccess({
+		supabase,
+		user: { id: userId },
+		loadEntity: () =>
+			supabase
+				.from('onto_documents')
+				.select('*')
+				.eq('id', documentId)
+				.is('deleted_at', null)
+				.maybeSingle(),
+		requiredAccess: 'admin',
+		audit: {
+			endpoint: `/api/onto/documents/${documentId}/versions/${versionNumber}/restore`,
+			method: 'POST',
+			entityType: 'document',
+			entityId: documentId,
+			consoleLabel: 'Restore API'
+		},
+		actorOperation: 'document_actor_resolve',
+		entityOperation: 'document_fetch',
+		accessOperation: 'document_access_check',
+		tableName: 'onto_documents',
+		notFoundResource: 'Document',
+		forbiddenMessage: 'Admin access required to restore document versions'
 	});
 
-	if (actorError || !actorId) {
-		console.error('[Restore API] Failed to resolve actor:', actorError);
-		return {
-			error: ApiResponse.internalError(
-				actorError || new Error('Failed to resolve user actor'),
-				'Failed to resolve user identity'
-			)
-		};
-	}
-
-	const { data: document, error: documentError } = await supabase
-		.from('onto_documents')
-		.select('*')
-		.eq('id', documentId)
-		.is('deleted_at', null)
-		.maybeSingle();
-
-	if (documentError) {
-		console.error('[Restore API] Failed to fetch document:', documentError);
-		return { error: ApiResponse.databaseError(documentError) };
-	}
-
-	if (!document) {
-		return { error: ApiResponse.notFound('Document') };
-	}
-
-	// Restore requires admin access
-	const { data: hasAccess, error: accessError } = await supabase.rpc(
-		'current_actor_has_project_member_access',
-		{
-			p_project_id: document.project_id,
-			p_required_access: 'admin'
-		}
-	);
-
-	if (accessError) {
-		console.error('[Restore API] Failed to check access:', accessError);
-		return { error: ApiResponse.internalError(accessError, 'Failed to check project access') };
-	}
-
-	if (!hasAccess) {
-		return {
-			error: ApiResponse.forbidden('Admin access required to restore document versions')
-		};
-	}
-
-	return { document: document as Record<string, unknown>, actorId };
+	return accessResult.ok
+		? {
+				document: accessResult.entity as Record<string, unknown>,
+				actorId: accessResult.actorId
+			}
+		: { error: accessResult.response };
 }
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
@@ -109,7 +91,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.badRequest('Valid version number required');
 		}
 
-		const accessResult = await ensureRestoreAccess(locals, documentId, session.user.id);
+		const accessResult = await ensureRestoreAccess(
+			locals,
+			documentId,
+			versionNumber,
+			session.user.id
+		);
 
 		if ('error' in accessResult) {
 			return accessResult.error;

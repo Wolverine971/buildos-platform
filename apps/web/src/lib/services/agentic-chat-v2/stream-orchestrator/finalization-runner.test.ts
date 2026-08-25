@@ -480,7 +480,7 @@ describe('runTerminalFinalization', () => {
 	});
 });
 
-describe('runNoToolCallFinalization research-capture floor', () => {
+describe('runNoToolCallFinalization repair routing', () => {
 	const base = {
 		assistantBuffer: 'Here is what I found about competitor pricing across five vendors.',
 		carriedTruncatedText: '',
@@ -496,6 +496,26 @@ describe('runNoToolCallFinalization research-capture floor', () => {
 		emitAssistantRemainder: async () => {},
 		observeSupervisor: async () => {}
 	};
+
+	it('retries project creation with the one-call web workflow', async () => {
+		const result = await runNoToolCallFinalization({
+			...base,
+			assistantBuffer: 'I created the project.',
+			contextType: 'project_create',
+			latestUserText: 'Create a launch project with one goal and two tasks.',
+			toolExecutions: []
+		});
+
+		expect(result.action).toBe('repair');
+		if (result.action === 'repair') {
+			expect(result.kind).toBe('project_create');
+			expect(result.instruction).toContain('one complete create_onto_project call');
+			expect(result.instruction).toContain('include them in entities in this same call');
+			expect(result.instruction).not.toContain('declare_turn_contract');
+			expect(result.instruction).not.toContain('create_onto_goal');
+			expect(result.instruction).not.toContain('create_onto_task');
+		}
+	});
 
 	it('returns a research_no_persist repair when research persisted nothing', async () => {
 		const result = await runNoToolCallFinalization({

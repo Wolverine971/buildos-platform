@@ -1,7 +1,7 @@
 ---
 name: Project Creation
-catalog_line: 'Build the smallest valid web-owned compound ProjectSpec from a user idea.'
-description: Web-owned compound project creation playbook with inferred name, type_key, props, and only the initial structure the user described.
+catalog_line: 'Turn a user idea into the smallest valid BuildOS project payload with only the structure the user described.'
+description: Project creation playbook with inferred name, type_key, props, and only the initial structure the user described.
 skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
 altitude: task # task | domain | meta
 activation: progressive # always_on | progressive | invoked
@@ -23,13 +23,13 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/project_cr
 
 ## Identity
 
-Project creation playbook for the web-owned compound flow: turn a user idea into the smallest valid BuildOS project payload with inferred name, type_key, props, and only the initial structure the user actually described. The reviewed worker flow supplies its own shell-first instructions and does not load this skill. This is a **procedure** skill at **task** altitude: an ordered runbook for emitting the create payload, with a small judgment layer for minimality calls and a per-type props taxonomy in Knowledge.
+Turn a user idea into the smallest valid BuildOS project payload with an inferred name, type_key, props, and only the initial structure the user actually described. This is a **procedure** skill at **task** altitude: an ordered runbook for emitting the create payload, with a small judgment layer for minimality calls and a per-type props taxonomy in Knowledge.
 
 ## Activation
 
 - The chat is in project_create mode
 - The user wants to start a new project from scratch
-- You need to infer project name, type_key, and a minimal initial graph from a rough idea
+- You need to infer project name, type_key, and minimal initial entities and relationships from a rough idea
 - If the chat is already inside a project and the user asks to create/start another project, ask: "You're already in this project. Are you sure you want to create a new project?" Do not call `change_chat_context` or `create_onto_project` until they confirm.
 
 ## Judgment
@@ -46,7 +46,7 @@ Project creation playbook for the web-owned compound flow: turn a user idea into
 5. If the user stated an outcome, add one goal entity. If the user listed concrete actions, add only those task entities. Add plans or milestones only when the user clearly described phases, workstreams, or date-driven structure.
 6. Always include entities and relationships arrays, even when they are empty.
 7. When you include relationships, every item must use the canonical object form `{ from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }`.
-8. Use clarifications[] only when critical information cannot be reasonably inferred. If clarification is needed, still send the project skeleton instead of abandoning the create call.
+8. Use clarifications[] only when critical information cannot be reasonably inferred. If clarification is needed, still call `create_onto_project` with the known project fields and required arrays.
 9. After creation succeeds, summarize the new project briefly and continue in the created project context.
 
 ## Contract
@@ -56,7 +56,7 @@ The create payload always has this shape:
 - `project`: `{ name, type_key }`, plus `description` and `props` when the user supplied concrete attributes.
 - `entities`: only the goals, tasks, plans, or milestones the user actually described (empty array otherwise).
 - `relationships`: entity refs with `temp_id` and `kind` on both sides (empty array otherwise).
-- `clarifications[]`: only for critical info that cannot be inferred — still send the skeleton alongside it.
+- `clarifications[]`: only for critical info that cannot be inferred; still include the known project fields and required arrays.
 
 After creation succeeds, briefly summarize the new project (name, type, and what initial structure was created) and continue in the created project context.
 
@@ -99,6 +99,6 @@ Stop conditions before replying: `project`, `entities`, and `relationships` are 
 
 ### Handle missing critical information without stalling
 
-- If the user gave enough signal to classify the project, still send the project skeleton.
+- If the user gave enough signal to classify the project, still call `create_onto_project` with the known fields and required arrays.
 - Use clarifications[] for only the missing critical points.
 - Do not wait for perfect detail before creating the project.

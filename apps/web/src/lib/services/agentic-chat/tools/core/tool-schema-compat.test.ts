@@ -35,6 +35,14 @@ function omitDescriptions(value: unknown): unknown {
 }
 
 describe('Chat tool schema compatibility', () => {
+	it('keeps internal execution architecture out of model-visible definitions', () => {
+		const serializedDefinitions = JSON.stringify(ALL_TOOL_DEFINITIONS);
+
+		expect(serializedDefinitions).not.toMatch(
+			/ProjectSpec|web-owned|reviewed worker|project shell|shell-first|model lane|provider synthesis|execution lane/i
+		);
+	});
+
 	it('uses OpenRouter/OpenAI-compatible top-level function parameter schemas', () => {
 		for (const tool of ALL_TOOL_DEFINITIONS) {
 			const toolName = tool.function?.name ?? 'unknown_tool';
@@ -104,9 +112,10 @@ describe('Chat tool schema compatibility', () => {
 			  }
 			| undefined;
 
-		expect(tool?.function?.description).toContain('BuildOS search pipeline');
+		expect(tool?.function?.description).toContain('Find current or external sources');
 		expect(tool?.function?.description).toContain('best two valid pages');
 		expect(tool?.function?.description).not.toContain('using the Tavily API');
+		expect(tool?.function?.description).not.toMatch(/provider synthesis|model lane/i);
 		expect(parameters?.properties?.search_depth?.default).toBe('advanced');
 		expect(parameters?.properties?.max_results).toMatchObject({
 			default: 4,
@@ -119,11 +128,20 @@ describe('Chat tool schema compatibility', () => {
 	});
 
 	it('returns exact create_onto_project schema details through tool_schema', () => {
+		const definition = CHAT_TOOL_DEFINITIONS.find(
+			(candidate) => candidate.function?.name === 'create_onto_project'
+		);
 		const schema = getToolSchema('onto.project.create', {
 			include_examples: true,
 			include_schema: true
 		}) as Record<string, any>;
 
+		expect(definition?.function?.description).toContain(
+			'Create a project and its optional initial structure'
+		);
+		expect(definition?.function?.description).not.toMatch(
+			/web-owned|reviewed|shell-first|execution lane/i
+		);
 		expect(schema.type).toBe('tool_schema');
 		expect(schema.tool_name).toBe('create_onto_project');
 		expect(schema.usage).toBe('create_onto_project({ ... })');

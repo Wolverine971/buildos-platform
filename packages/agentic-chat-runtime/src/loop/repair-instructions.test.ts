@@ -1,12 +1,13 @@
 // packages/agentic-chat-runtime/src/loop/repair-instructions.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	buildGatewayRequiredFieldRepairInstruction,
 	buildProjectCreateNoExecutionRepairInstruction,
 	buildToolValidationRepairInstruction
 } from './repair-instructions';
 
 describe('tool validation repair instructions', () => {
-	it('repairs project creation to an empty shell and separate canonical children', () => {
+	it('repairs web project relationships without switching execution workflows', () => {
 		const instruction = buildToolValidationRepairInstruction(
 			[
 				{
@@ -26,19 +27,38 @@ describe('tool validation repair instructions', () => {
 			true
 		);
 
-		expect(instruction).toContain('Project-create relationships must be an empty array');
-		expect(instruction).toContain('use create_onto_goal');
-		expect(instruction).toContain('one create_onto_task call per commissioned task');
-		expect(instruction).not.toContain('Use the explicit object form');
+		expect(instruction).toContain(
+			'Each relationship must be an object with from and to objects'
+		);
+		expect(instruction).toContain('Keep any initial goals, tasks, plans, documents');
+		expect(instruction).not.toContain('relationships must be an empty array');
+		expect(instruction).not.toContain('create_onto_goal');
+		expect(instruction).not.toContain('create_onto_task');
+		expect(instruction).toContain('do not call tool_search, tool_schema');
+		expect(instruction).not.toContain('Load exact-op help before retrying');
+		expect(instruction).not.toContain('For first-time or uncertain writes');
 	});
 
-	it('re-enters project creation through a contract and shell without redundant confirmation', () => {
+	it('retries web project creation using only the available one-call tool', () => {
 		const instruction = buildProjectCreateNoExecutionRepairInstruction();
 
-		expect(instruction).toContain('declare their exact project, goal, and task outcomes first');
-		expect(instruction).toContain('entities and relationships arrays must both be empty');
-		expect(instruction).toContain('create_onto_goal');
-		expect(instruction).toContain('create_onto_task');
-		expect(instruction).toContain('do not use clarification as redundant confirmation');
+		expect(instruction).toContain('Build one complete create_onto_project call');
+		expect(instruction).toContain('include them in entities in this same call');
+		expect(instruction).not.toContain('declare_turn_contract');
+		expect(instruction).not.toContain('create_onto_goal');
+		expect(instruction).not.toContain('create_onto_task');
+		expect(instruction).not.toMatch(/web-owned|reviewed flow|project shell|bounded surface/i);
+	});
+
+	it('repairs repeated web project fields without suggesting unavailable help tools', () => {
+		const instruction = buildGatewayRequiredFieldRepairInstruction([
+			{ op: 'onto.project.create', field: 'project.name', occurrences: 2 }
+		]);
+
+		expect(instruction).toContain('Correct and retry that tool directly');
+		expect(instruction).toContain('same create_onto_project call');
+		expect(instruction).not.toContain('tool_schema');
+		expect(instruction).not.toContain('create_onto_goal');
+		expect(instruction).not.toContain('create_onto_task');
 	});
 });

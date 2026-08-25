@@ -14,7 +14,8 @@ describe('skill loading', () => {
 
 		expect(skill).toBeDefined();
 		expect(skill?.name).toBe('Project Creation');
-		expect(skill?.summary).toContain('Web-owned compound project creation');
+		expect(skill?.summary).toContain('Project creation playbook');
+		expect(skill?.summary).not.toMatch(/web-owned|reviewed worker|shell-first/i);
 		expect(skill?.skillType).toBe('procedure');
 		expect(skill?.altitude).toBe('task');
 		expect(skill?.activation).toBe('progressive');
@@ -198,9 +199,11 @@ description: Skill fixture with read, write, and destructive related ops.
 		expect(result.id).toBe('project_creation');
 		expect(typeof result.markdown).toBe('string');
 		expect(result.markdown).toContain('# Project Creation');
-		expect(result.markdown).toContain('web-owned compound flow');
-		expect(result.markdown).toContain(
-			'The reviewed worker flow supplies its own shell-first instructions'
+		expect(result.markdown).toContain('create_onto_project');
+		expect(result.markdown).toContain('entities');
+		expect(result.markdown).toContain('relationships');
+		expect(result.markdown).not.toMatch(
+			/web-owned|reviewed worker|shell-first|reviewed_shell/i
 		);
 		// Canonical block ontology renamed Workflow -> Procedure.
 		expect(result.markdown).toContain('## Procedure');

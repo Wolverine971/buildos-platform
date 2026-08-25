@@ -5825,7 +5825,11 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		expect(
 			projected.find((entry) => entry.function.name === 'create_onto_project')?.function
 				.description
-		).toContain('standard project shell');
+		).toContain('Create one standard project and its generated Context document');
+		expect(
+			projected.find((entry) => entry.function.name === 'create_onto_project')?.function
+				.description
+		).not.toMatch(/web-owned|reviewed worker|project shell|shell-first/i);
 		expect(
 			projected.find((entry) => entry.function.name === 'update_onto_project')?.function
 				.parameters.required
@@ -6135,7 +6139,7 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 					toolName: 'declare_turn_contract',
 					validationFailure: expect.objectContaining({
 						error: expect.stringContaining(
-							'The project shell outcome must omit required_fields'
+							'The project outcome must omit required_fields'
 						)
 					})
 				}),
@@ -6202,10 +6206,15 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				(message) =>
 					typeof message.content === 'string' &&
 					message.content.includes(
-						'admitted in this turn: goals, tasks. Do not promise or attempt other child structure.'
+						'available tools for requested additional records: create_onto_goal (goals), create_onto_task (tasks)'
 					)
 			)
 		).toBe(true);
+		expect(
+			client.stream.mock.calls[2]?.[0].messages
+				.map((message) => (typeof message.content === 'string' ? message.content : ''))
+				.join(' ')
+		).not.toMatch(/web-owned|reviewed flow|project shell|bounded surface|SHA-reviewed/i);
 		expect(client.stream.mock.calls[2]?.[0].messages).not.toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -6420,10 +6429,17 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			firstRequest?.messages.some(
 				(message) =>
 					typeof message.content === 'string' &&
-					message.content.includes('Project-create shell boundary') &&
-					message.content.includes('No canonical child-entity creation tool is admitted')
+					message.content.includes('Project creation order') &&
+					message.content.includes(
+						'No goal, task, or relationship creation tool is available in this turn'
+					)
 			)
 		).toBe(true);
+		expect(
+			firstRequest?.messages
+				.map((message) => (typeof message.content === 'string' ? message.content : ''))
+				.join(' ')
+		).not.toMatch(/web-owned|reviewed flow|project shell|bounded surface|SHA-reviewed/i);
 
 		const contractReviewSteps = await collect(
 			invocation.continueWithToolResults!({

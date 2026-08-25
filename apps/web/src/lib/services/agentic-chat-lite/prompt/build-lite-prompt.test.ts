@@ -1212,7 +1212,7 @@ describe('buildLitePromptEnvelope', () => {
 			'Keep project status separate from lifecycle stage'
 		);
 		// Containment-edge guidance (2026-04-17 fix for 1af1c70b 9→2 edges regression).
-		expect(envelope.systemPrompt).toContain('Connect the graph');
+		expect(envelope.systemPrompt).toContain('Connect related entities');
 		expect(envelope.systemPrompt).toContain(
 			'emit containment relationships linking every task (child) to that goal (parent)'
 		);
@@ -1484,7 +1484,7 @@ describe('buildLitePromptEnvelope', () => {
 		expect(overlaid.systemPrompt).toBe(envelope.systemPrompt);
 	});
 
-	it('keeps the web-owned compound workflow aligned with its actual tool surface', () => {
+	it('describes one-call project creation without exposing execution architecture', () => {
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'project_create',
 			entityId: null,
@@ -1499,15 +1499,29 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).not.toContain('already preloaded');
 		expect(envelope.systemPrompt).not.toContain('preloaded project_creation workflow');
 		expect(envelope.systemPrompt).toContain(
-			'This web-owned flow creates the project and its minimal initial graph in one create_onto_project call'
+			'create_onto_project creates the project and its initial entities and relationships in one call'
 		);
 		expect(envelope.systemPrompt).not.toContain('the only tool available here');
 		expect(envelope.systemPrompt).toContain('Never use pair arrays or raw temp_id strings');
 		expect(envelope.systemPrompt).not.toContain('(or the array form');
+		for (const internalTerm of [
+			'web-owned',
+			'reviewed flow',
+			'project shell',
+			'bounded surface',
+			'active workflow',
+			'web_compound',
+			'reviewed_shell'
+		]) {
+			expect(envelope.systemPrompt).not.toContain(internalTerm);
+		}
+		expect(envelope.systemPrompt).not.toContain('declare_turn_contract');
+		expect(envelope.systemPrompt).not.toContain('create_onto_goal');
+		expect(envelope.systemPrompt).not.toContain('create_onto_task');
 		expect(envelope.toolsSummary.directTools).toEqual(['create_onto_project']);
 	});
 
-	it('renders a non-conflicting shell-first workflow for the reviewed worker lane', () => {
+	it('renders the multi-step workflow using only concrete available tool names', () => {
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'project_create',
 			entityId: null,
@@ -1518,15 +1532,38 @@ describe('buildLitePromptEnvelope', () => {
 
 		expect(envelope.systemPrompt).toContain('entities: [] and relationships: []');
 		expect(envelope.systemPrompt).toContain(
-			'create_onto_goal for each commissioned outcome and create_onto_task for each commissioned action'
+			'create_onto_goal for each requested outcome and create_onto_task for each requested action'
 		);
 		expect(envelope.systemPrompt).toContain(
-			'The bounded surface does not create plans, documents, milestones, risks, or relationships'
+			'The available creation tools do not create plans, documents, milestones, risks, or relationships'
 		);
-		expect(envelope.systemPrompt).not.toContain('Connect the graph');
+		expect(envelope.systemPrompt).toContain(
+			'First call declare_turn_contract with one project outcome plus each requested goal and task outcome'
+		);
+		expect(envelope.systemPrompt).not.toContain('Connect related entities');
 		expect(envelope.systemPrompt).not.toContain(
 			'initial graph in one create_onto_project call'
 		);
+		for (const internalTerm of [
+			'web-owned',
+			'reviewed flow',
+			'project shell',
+			'bounded surface',
+			'active workflow',
+			'web_compound',
+			'reviewed_shell'
+		]) {
+			expect(envelope.systemPrompt).not.toContain(internalTerm);
+		}
+		expect(envelope.toolsSummary.directTools).toEqual([
+			'declare_turn_contract',
+			'declare_read_only_turn',
+			'request_turn_clarification',
+			'cancel_turn_contract',
+			'create_onto_project',
+			'create_onto_goal',
+			'create_onto_task'
+		]);
 		expect(envelope.sections.map((section) => section.source)).not.toContain(
 			'lite.project_create_domain_profile'
 		);

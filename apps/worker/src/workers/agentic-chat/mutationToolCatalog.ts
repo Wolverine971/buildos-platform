@@ -95,7 +95,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 				enum: ['replace', 'append'],
 				default: 'replace',
 				description:
-					"How to apply content: 'replace' (default) or 'append'. The web-owned merge_llm strategy is not available in the worker."
+					"How to apply content: 'replace' (default) or 'append'. This tool does not support merge_llm."
 			}
 		}
 	},
@@ -249,7 +249,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 				enum: ['ping'],
 				default: 'ping',
 				description:
-					'Must be "ping". Content tagging remains available only in the web-owned flow.'
+					'Must be "ping". This tool notifies mentioned users without editing content.'
 			},
 			mentioned_user_ids: {
 				type: 'array',
@@ -401,21 +401,21 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.project.create',
 		downstreamIdempotencySupported: false,
 		descriptionOverride:
-			'Create one standard project shell and its generated Context document with empty entities and relationships arrays. After creation, use only child tools admitted for this turn; unsupported structure requires a later project-scoped turn. Fiction/living-reference workspaces, custom context documents, clarifications, and compound graphs remain web-only.',
+			'Create one standard project and its generated Context document. Pass empty entities and relationships arrays. After it returns project_id, create requested goals or tasks only with the available tools. This tool does not support fiction/living-reference projects, custom Context documents, clarifications, embedded child records, or relationships.',
 		requiredNames: ['project', 'entities', 'relationships'],
 		reviewedArgumentNames: ['project', 'entities', 'relationships'],
 		propertyOverrides: {
 			project: {
 				type: 'object',
 				additionalProperties: false,
-				description: 'Standard project-shell definition.',
+				description: 'Project fields.',
 				properties: {
 					name: { type: 'string', minLength: 1, description: 'Project name.' },
 					type_key: {
 						type: 'string',
 						pattern: '^project\\.[a-z_]+\\.[a-z_]+(?:\\.[a-z_]+)?$',
 						description:
-							'Canonical project.{realm}.{domain} type key. Fiction types use the web-owned creation flow.'
+							'Use project.{realm}.{domain}[.{variant}]. This tool does not support fiction/living-reference projects.'
 					},
 					description: { type: 'string', description: 'Optional project description.' },
 					state_key: {
@@ -473,7 +473,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 				type: 'array',
 				maxItems: 0,
 				description:
-					'Must be empty for the reviewed worker project-shell path. Create entities separately after the project exists.'
+					'Must be empty. After create_onto_project returns project_id, create requested goals or tasks only when their tools are available.'
 			},
 			relationships: {
 				type: 'array',
@@ -486,7 +486,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 					additionalProperties: false
 				},
 				description:
-					'Must be empty for the reviewed worker project-shell path. Link entities separately after creation.'
+					'Must be empty. This project-creation tool does not create relationships.'
 			}
 		}
 	},

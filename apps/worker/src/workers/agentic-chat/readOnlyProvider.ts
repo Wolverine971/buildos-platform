@@ -4026,7 +4026,7 @@ function projectCreateShellGuidance(
 			.filter((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
 			.map((tool) => tool.function.name)
 	);
-	const supportedChildLabels = [
+	const supportedChildTools = [
 		['create_onto_goal', 'goals'],
 		['create_onto_plan', 'plans'],
 		['create_onto_task', 'tasks'],
@@ -4036,13 +4036,13 @@ function projectCreateShellGuidance(
 		['link_onto_entities', 'relationships']
 	]
 		.filter(([name]) => mutationNames.has(name))
-		.map(([, label]) => label);
+		.map(([name, label]) => `${name} (${label})`);
 	return [
-		'Project-create shell boundary: create_onto_project creates exactly one project plus its generated Context document and requires entities=[] and relationships=[].',
-		'Declare the shell as one outcome with action=create, entity_kind=project, minimum_successful_effects=1, no target_ids, and no required_fields or changes; the independently SHA-reviewed mutation batch binds the exact nested project values.',
-		supportedChildLabels.length > 0
-			? `After the shell returns a project id, execute only separately contracted child operations admitted in this turn: ${supportedChildLabels.join(', ')}. Do not promise or attempt other child structure.`
-			: 'No canonical child-entity creation tool is admitted in this turn. Contract and create the project shell now without asking the user to reconfirm; do not put requested goals, tasks, or relationships into create_onto_project, and disclose after success that those child records require a later project-scoped turn.'
+		'Project creation order: create_onto_project creates exactly one project plus its generated Context document. Pass entities=[] and relationships=[].',
+		'In declare_turn_contract, represent that call as one outcome with action=create, entity_kind=project, minimum_successful_effects=1, no target_ids, and no required_fields or changes. Put the project name, type_key, and other values in the later create_onto_project arguments.',
+		supportedChildTools.length > 0
+			? `After create_onto_project returns project_id, call only these available tools for requested additional records: ${supportedChildTools.join(', ')}. Do not promise records that these tools cannot create.`
+			: 'No goal, task, or relationship creation tool is available in this turn. Create the project now without asking the user to reconfirm. Keep entities and relationships empty, then explain which requested additional records could not be created.'
 	];
 }
 
@@ -4515,7 +4515,7 @@ function validateProjectCreateShellContracts(
 		);
 		if (shellOnly && contract.outcomes.length !== 1) {
 			errors.push(
-				'Invalid turn contract: This project-create surface can execute only one project-shell outcome. Child goals, tasks, documents, and relationships require separately admitted canonical mutation tools after the project exists.'
+				'Invalid turn contract: This turn can execute only one project outcome. Additional records require their named creation tools after create_onto_project succeeds.'
 			);
 		}
 		const unsupportedKinds = Array.from(
@@ -4527,12 +4527,12 @@ function validateProjectCreateShellContracts(
 		);
 		if (unsupportedKinds.length > 0) {
 			errors.push(
-				`Invalid turn contract: This project-create surface does not admit canonical mutations for ${unsupportedKinds.join(', ')} outcomes.`
+				`Invalid turn contract: No available creation tool can create these requested record types: ${unsupportedKinds.join(', ')}.`
 			);
 		}
 		if (projectOutcomes.length !== 1) {
 			errors.push(
-				'Invalid turn contract: Project creation requires exactly one project-shell outcome.'
+				'Invalid turn contract: Project creation requires exactly one outcome with entity_kind=project.'
 			);
 		} else {
 			const outcome = projectOutcomes[0]!;
@@ -4543,12 +4543,12 @@ function validateProjectCreateShellContracts(
 				outcome.targetIds.length > 0
 			) {
 				errors.push(
-					'Invalid turn contract: The project shell must be one action=create, entity_kind=project outcome with minimum_successful_effects=1 and no target_ids.'
+					'Invalid turn contract: The project outcome must use action=create, entity_kind=project, minimum_successful_effects=1, and no target_ids.'
 				);
 			}
 			if (outcome.requiredFields.length > 0 || (outcome.changes?.length ?? 0) > 0) {
 				errors.push(
-					'Invalid turn contract: The project shell outcome must omit required_fields and changes because create_onto_project carries nested project values; the exact payload is independently SHA-reviewed at the mutation boundary.'
+					'Invalid turn contract: The project outcome must omit required_fields and changes because the create_onto_project arguments carry the project values.'
 				);
 			}
 		}

@@ -724,7 +724,7 @@ IMPORTANT: Do not include documents. Documents are flat and managed only via ont
 		type: 'function',
 		function: {
 			name: 'create_onto_project',
-			description: `Create a project through the web-owned ProjectSpec flow; always include project, entities, and relationships (use [] when empty). Reviewed shell-first runtimes replace this description and require empty arrays.
+			description: `Create a project and its optional initial structure; always include project, entities, and relationships (use [] when empty).
 Use project.{realm}.{domain}[.{variant}] for type_key. Entity labels: goal/plan/metric name; task/milestone/document/risk title; requirement text; source uri. Milestones require due_at from an explicit user schedule; use plans or documents for undated phases.
 Project state is planning, active, paused, completed, or cancelled. props.facets.stage is lifecycle only: discovery, planning, execution, launch, maintenance, or complete.
 Infer clear values and start minimal: goals for outcomes, tasks for actions, plans for phases/workstreams, and milestones only for dated markers. Ask one clarification only when critical. Use temp_id + kind in relationships.`,

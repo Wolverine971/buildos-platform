@@ -229,7 +229,7 @@ function normalizeGatewayArguments(input: MutationInput): Record<string, unknown
 		if (args.update_strategy === 'merge_llm') {
 			throw knownFailure(
 				'mutation_arguments_not_admitted',
-				'update_onto_document merge_llm remains on the web-owned model/editor path'
+				'update_onto_document does not support merge_llm in this execution mode'
 			);
 		}
 		if (isRecord(args.props) && Object.keys(args.props).length === 0) {

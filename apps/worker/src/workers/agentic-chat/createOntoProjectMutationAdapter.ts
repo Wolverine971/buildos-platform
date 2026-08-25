@@ -224,7 +224,7 @@ function normalizeProjectShell(args: JsonObject): JsonObject & { name: string } 
 	if (FICTION_PROJECT_TYPE_PATTERN.test(typeKey)) {
 		throw knownFailure(
 			'mutation_arguments_not_admitted',
-			'Fiction project creation requires the web-owned domain-profile flow'
+			'This tool cannot create fiction or living-reference projects'
 		);
 	}
 
@@ -422,7 +422,7 @@ function requireProjectShellReceipt(
 	) {
 		throw uncertainFailure(
 			'create_onto_project_receipt_invalid',
-			'create_onto_project returned counts outside the reviewed project-shell contract'
+			'create_onto_project returned unexpected entity or relationship counts'
 		);
 	}
 	if (!Array.isArray(value.created_entities) || value.created_entities.length !== 2) {

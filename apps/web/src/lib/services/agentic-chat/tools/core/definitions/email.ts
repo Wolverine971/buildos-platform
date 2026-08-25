@@ -134,7 +134,7 @@ export const EMAIL_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					message_id: {
 						type: 'string',
-						description: 'Provider message_id from search_email_messages.'
+						description: 'Exact message_id from search_email_messages.'
 					}
 				},
 				required: ['connection_id', 'message_id']

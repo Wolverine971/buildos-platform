@@ -21,6 +21,12 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { resolveLinkedEntitiesGeneric } from '../../../shared/entity-linked-helpers';
 import { logOntologyApiError } from '../../../shared/error-logging';
+import { requireProjectEntityAccess } from '$lib/server/ontology-api-access';
+import type { Database } from '@buildos/shared-types';
+
+type DocumentWithProject = Database['public']['Tables']['onto_documents']['Row'] & {
+	project: { id: string };
+};
 
 export const GET: RequestHandler = async ({ params, locals, url }) => {
 	const session = await locals.safeGetSession();
@@ -33,93 +39,43 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 	const includeLinkedEntities = url.searchParams.get('include_linked') !== 'false';
 
 	try {
-		const [actorResult, documentResult] = await Promise.all([
-			supabase.rpc('ensure_actor_for_user', {
-				p_user_id: session.user.id
-			}),
-			supabase
-				.from('onto_documents')
-				.select(
-					`
+		const accessResult = await requireProjectEntityAccess<DocumentWithProject>({
+			supabase,
+			user: session.user,
+			loadEntity: () =>
+				supabase
+					.from('onto_documents')
+					.select(
+						`
 						*,
 						project:onto_projects!inner(
 							id
 						)
 					`
-				)
-				.eq('id', documentId)
-				.is('deleted_at', null)
-				.single()
-		]);
-		const { data: actorId, error: actorError } = actorResult;
-		const { data: document, error: documentError } = documentResult;
-		const projectId = document?.project?.id;
-
-		if (actorError || !actorId) {
-			console.error('[Document Full GET] Failed to resolve actor:', actorError);
-			await logOntologyApiError({
-				supabase,
-				error: actorError || new Error('Failed to resolve user actor'),
+					)
+					.eq('id', documentId)
+					.is('deleted_at', null)
+					.single(),
+			requiredAccess: 'read',
+			audit: {
 				endpoint: `/api/onto/documents/${documentId}/full`,
 				method: 'GET',
-				userId: session.user.id,
 				entityType: 'document',
 				entityId: documentId,
-				operation: 'document_actor_resolve'
-			});
-			return ApiResponse.internalError(
-				actorError || new Error('Failed to get user actor'),
-				'Failed to get user actor'
-			);
-		}
+				consoleLabel: 'Document Full GET'
+			},
+			actorOperation: 'document_actor_resolve',
+			entityOperation: 'document_full_fetch',
+			accessOperation: 'document_access_check',
+			tableName: 'onto_documents',
+			notFoundResource: 'Document',
+			forbiddenMessage: 'Access denied',
+			actorFailureMessage: 'Failed to get user actor',
+			accessErrorResponse: () => ApiResponse.error('Failed to check project access', 500)
+		});
+		if (!accessResult.ok) return accessResult.response;
 
-		if (documentError || !document) {
-			if (documentError) {
-				console.error('[Document Full GET] Failed to fetch document:', documentError);
-				await logOntologyApiError({
-					supabase,
-					error: documentError,
-					endpoint: `/api/onto/documents/${documentId}/full`,
-					method: 'GET',
-					userId: session.user.id,
-					projectId,
-					entityType: 'document',
-					entityId: documentId,
-					operation: 'document_full_fetch',
-					tableName: 'onto_documents'
-				});
-				return ApiResponse.databaseError(documentError);
-			}
-			return ApiResponse.notFound('Document');
-		}
-
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_member_access',
-			{
-				p_project_id: document.project.id,
-				p_required_access: 'read'
-			}
-		);
-
-		if (accessError) {
-			console.error('[Document Full GET] Failed to check access:', accessError);
-			await logOntologyApiError({
-				supabase,
-				error: accessError,
-				endpoint: `/api/onto/documents/${documentId}/full`,
-				method: 'GET',
-				userId: session.user.id,
-				projectId,
-				entityType: 'document',
-				entityId: documentId,
-				operation: 'document_access_check'
-			});
-			return ApiResponse.error('Failed to check project access', 500);
-		}
-
-		if (!hasAccess) {
-			return ApiResponse.forbidden('Access denied');
-		}
+		const document = accessResult.entity;
 
 		// Phase 2: Fetch linked entities (can run after auth is verified)
 		const linkedEntities = includeLinkedEntities

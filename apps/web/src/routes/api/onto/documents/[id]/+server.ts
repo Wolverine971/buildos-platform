@@ -53,6 +53,10 @@ import {
 	loadOntoDocumentApiDetail
 } from '@buildos/agentic-chat-runtime/tools';
 import { createWebAgenticChatSharedReadContext } from '$lib/services/agentic-chat/tools/core/executors/web-access-adapter';
+import {
+	requireCurrentActorProjectAccess,
+	requireOntologyActor
+} from '$lib/server/ontology-api-access';
 
 type Locals = App.Locals;
 type ArchiveChildrenMode = 'archive_children' | 'promote_children' | 'unlink_children';
@@ -77,27 +81,20 @@ async function ensureDocumentAccess(
 ): Promise<AccessResult> {
 	const supabase = locals.supabase;
 
-	const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: userId });
-	const { data: actorId, error: actorError } = actorResult;
-	if (actorError || !actorId) {
-		console.error('[Document API] Failed to resolve actor:', actorError);
-		await logOntologyApiError({
-			supabase,
-			error: actorError || new Error('Failed to resolve user actor'),
-			endpoint: `/api/onto/documents/${documentId}`,
-			method,
-			userId,
-			entityType: 'document',
-			entityId: documentId,
-			operation: 'document_actor_resolve'
-		});
-		return {
-			error: ApiResponse.internalError(
-				actorError || new Error('Failed to resolve user actor'),
-				'Failed to resolve user identity'
-			)
-		};
-	}
+	const audit = {
+		endpoint: `/api/onto/documents/${documentId}`,
+		method,
+		entityType: 'document',
+		entityId: documentId,
+		consoleLabel: 'Document API'
+	};
+	const actorResult = await requireOntologyActor({
+		supabase,
+		user: { id: userId },
+		audit,
+		operation: 'document_actor_resolve'
+	});
+	if (!actorResult.ok) return { error: actorResult.response };
 
 	const { data: document, error: documentError } = await supabase
 		.from('onto_documents')
@@ -127,9 +124,14 @@ async function ensureDocumentAccess(
 	}
 
 	const [accessResult, projectResult] = await Promise.all([
-		supabase.rpc('current_actor_has_project_member_access', {
-			p_project_id: document.project_id,
-			p_required_access: requiredAccess
+		requireCurrentActorProjectAccess({
+			supabase,
+			actor: actorResult.actor,
+			projectId: document.project_id,
+			requiredAccess,
+			audit,
+			operation: 'document_access_check',
+			forbiddenMessage: 'You do not have permission to access this document'
 		}),
 		supabase
 			.from('onto_projects')
@@ -139,28 +141,7 @@ async function ensureDocumentAccess(
 			.maybeSingle()
 	]);
 
-	const { data: hasAccess, error: accessError } = accessResult;
-	if (accessError) {
-		console.error('[Document API] Failed to check access:', accessError);
-		await logOntologyApiError({
-			supabase,
-			error: accessError,
-			endpoint: `/api/onto/documents/${documentId}`,
-			method,
-			userId,
-			projectId: document.project_id,
-			entityType: 'document',
-			entityId: documentId,
-			operation: 'document_access_check'
-		});
-		return { error: ApiResponse.internalError(accessError, 'Failed to check project access') };
-	}
-
-	if (!hasAccess) {
-		return {
-			error: ApiResponse.forbidden('You do not have permission to access this document')
-		};
-	}
+	if (!accessResult.ok) return { error: accessResult.response };
 
 	const { data: project, error: projectError } = projectResult;
 	if (projectError) {
@@ -183,7 +164,7 @@ async function ensureDocumentAccess(
 		return { error: ApiResponse.notFound('Project') };
 	}
 
-	return { document, actorId, project };
+	return { document, actorId: actorResult.actor.actorId, project };
 }
 
 function parseArchiveChildrenMode(value: unknown): ArchiveChildrenMode {
@@ -211,27 +192,20 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.badRequest('Document ID required');
 		}
 
-		const { data: actorId, error: actorError } = await locals.supabase.rpc(
-			'ensure_actor_for_user',
-			{ p_user_id: session.user.id }
-		);
-		if (actorError || !actorId) {
-			console.error('[Document API] Failed to resolve actor:', actorError);
-			await logOntologyApiError({
-				supabase: locals.supabase,
-				error: actorError || new Error('Failed to resolve user actor'),
+		const actorResult = await requireOntologyActor({
+			supabase: locals.supabase,
+			user: session.user,
+			audit: {
 				endpoint: `/api/onto/documents/${documentId}`,
 				method: 'GET',
-				userId: session.user.id,
 				entityType: 'document',
 				entityId: documentId,
-				operation: 'document_actor_resolve'
-			});
-			return ApiResponse.internalError(
-				actorError || new Error('Failed to resolve user actor'),
-				'Failed to resolve user identity'
-			);
-		}
+				consoleLabel: 'Document API'
+			},
+			operation: 'document_actor_resolve'
+		});
+		if (!actorResult.ok) return actorResult.response;
+		const actorId = actorResult.actor.actorId;
 
 		const details = await loadOntoDocumentApiDetail(
 			createWebAgenticChatSharedReadContext({

@@ -10,6 +10,7 @@ import type {
 	DocumentSnapshot,
 	DocumentVersionProps
 } from '$lib/services/ontology/versioning.service';
+import { requireProjectEntityAccess } from '$lib/server/ontology-api-access';
 
 type Locals = App.Locals;
 
@@ -35,59 +36,39 @@ interface VersionDetailResponse {
 async function ensureDocumentReadAccess(
 	locals: Locals,
 	documentId: string,
+	versionNumber: number,
 	userId: string
 ): Promise<{ projectId: string } | { error: Response }> {
 	const supabase = locals.supabase;
-
-	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-		p_user_id: userId
+	const accessResult = await requireProjectEntityAccess({
+		supabase,
+		user: { id: userId },
+		loadEntity: () =>
+			supabase
+				.from('onto_documents')
+				.select('id, project_id')
+				.eq('id', documentId)
+				.is('deleted_at', null)
+				.maybeSingle(),
+		requiredAccess: 'read',
+		audit: {
+			endpoint: `/api/onto/documents/${documentId}/versions/${versionNumber}`,
+			method: 'GET',
+			entityType: 'document',
+			entityId: documentId,
+			consoleLabel: 'Version Detail API'
+		},
+		actorOperation: 'document_actor_resolve',
+		entityOperation: 'document_fetch',
+		accessOperation: 'document_access_check',
+		tableName: 'onto_documents',
+		notFoundResource: 'Document',
+		forbiddenMessage: 'You do not have permission to access this document'
 	});
-	if (actorError || !actorId) {
-		console.error('[Version Detail API] Failed to resolve actor:', actorError);
-		return {
-			error: ApiResponse.internalError(
-				actorError || new Error('Failed to resolve user actor'),
-				'Failed to resolve user identity'
-			)
-		};
-	}
 
-	const { data: document, error: documentError } = await supabase
-		.from('onto_documents')
-		.select('id, project_id')
-		.eq('id', documentId)
-		.is('deleted_at', null)
-		.maybeSingle();
-
-	if (documentError) {
-		console.error('[Version Detail API] Failed to fetch document:', documentError);
-		return { error: ApiResponse.databaseError(documentError) };
-	}
-
-	if (!document) {
-		return { error: ApiResponse.notFound('Document') };
-	}
-
-	const { data: hasAccess, error: accessError } = await supabase.rpc(
-		'current_actor_has_project_member_access',
-		{
-			p_project_id: document.project_id,
-			p_required_access: 'read'
-		}
-	);
-
-	if (accessError) {
-		console.error('[Version Detail API] Failed to check access:', accessError);
-		return { error: ApiResponse.internalError(accessError, 'Failed to check project access') };
-	}
-
-	if (!hasAccess) {
-		return {
-			error: ApiResponse.forbidden('You do not have permission to access this document')
-		};
-	}
-
-	return { projectId: document.project_id };
+	return accessResult.ok
+		? { projectId: accessResult.projectId }
+		: { error: accessResult.response };
 }
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -108,7 +89,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.badRequest('Valid version number required');
 		}
 
-		const accessResult = await ensureDocumentReadAccess(locals, documentId, session.user.id);
+		const accessResult = await ensureDocumentReadAccess(
+			locals,
+			documentId,
+			versionNumber,
+			session.user.id
+		);
 
 		if ('error' in accessResult) {
 			return accessResult.error;
