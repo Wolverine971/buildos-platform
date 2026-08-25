@@ -40,7 +40,7 @@ Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes,
 
 1. Choose scope first: user, project, or explicit calendar_id.
 2. For project scope, include exact project_id.
-3. Use timezone-safe ISO 8601 values for start_at and end_at, or supply timezone.
+3. Use timezone-safe ISO 8601 values: `time_min`/`time_max` for reads and `start_at`/`end_at` for writes, or supply timezone.
 4. For project calendar mapping questions, check cal.project.get before assuming a project calendar exists.
 5. For update/delete, discover and pass exact onto_event_id or event_id.
 6. For first-time or complex writes, inspect the existing event and verify the exact scope and fields before calling the paired direct calendar tool.

@@ -10,6 +10,7 @@ export type {
 	LitePromptEnvelope,
 	LitePromptFocus,
 	LitePromptInput,
+	LiteProjectCreateWorkflow,
 	LitePromptRetrievalMap,
 	LitePromptRetrievalMapInput,
 	LitePromptScaffoldOptions,

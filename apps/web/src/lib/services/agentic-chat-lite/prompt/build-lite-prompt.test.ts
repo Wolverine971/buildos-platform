@@ -1172,7 +1172,7 @@ describe('buildLitePromptEnvelope', () => {
 			data: null
 		});
 
-		// project_create fork (prompt audit WP-3, 2026-07-10): one-tool context,
+		// project_create fork (prompt audit WP-3, 2026-07-10): bounded context,
 		// so the skill catalog, discovery-routing strategy, and retrieval
 		// boundaries are gone; a create-scoped strategy + safety core replace
 		// the shared sections.
@@ -1185,7 +1185,7 @@ describe('buildLitePromptEnvelope', () => {
 			'location_loaded_context'
 		]);
 		// The fork carries no skill/discovery routing to contradict the
-		// one-tool surface.
+		// bounded creation surface.
 		expect(envelope.systemPrompt).not.toContain('skill_load');
 		expect(envelope.systemPrompt).not.toContain('tool_search');
 		expect(envelope.systemPrompt).not.toContain('domain_search');
@@ -1464,7 +1464,7 @@ describe('buildLitePromptEnvelope', () => {
 	it('keeps domain signals out of project_create even when sensing matches', () => {
 		// A create prompt like "create a project for my cold email campaign"
 		// matches the cold-email domain; the resulting skill-load gate would
-		// demand a tool that does not exist in this one-tool surface (WP-3).
+		// demand a discovery tool that does not exist in this bounded surface (WP-3).
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'project_create',
 			entityId: null,
@@ -1484,7 +1484,7 @@ describe('buildLitePromptEnvelope', () => {
 		expect(overlaid.systemPrompt).toBe(envelope.systemPrompt);
 	});
 
-	it('states the project_create tool surface and workflow exactly once', () => {
+	it('keeps the web-owned compound workflow aligned with its actual tool surface', () => {
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'project_create',
 			entityId: null,
@@ -1498,9 +1498,46 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).not.toContain('is preloaded');
 		expect(envelope.systemPrompt).not.toContain('already preloaded');
 		expect(envelope.systemPrompt).not.toContain('preloaded project_creation workflow');
-		expect(
-			envelope.systemPrompt.match(/create_onto_project is the only tool available here/g)
-		).toHaveLength(1);
+		expect(envelope.systemPrompt).toContain(
+			'This web-owned flow creates the project and its minimal initial graph in one create_onto_project call'
+		);
+		expect(envelope.systemPrompt).not.toContain('the only tool available here');
+		expect(envelope.systemPrompt).toContain('Never use pair arrays or raw temp_id strings');
+		expect(envelope.systemPrompt).not.toContain('(or the array form');
+		expect(envelope.toolsSummary.directTools).toEqual(['create_onto_project']);
+	});
+
+	it('renders a non-conflicting shell-first workflow for the reviewed worker lane', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project_create',
+			entityId: null,
+			projectId: null,
+			currentUserMessage: 'Create a fantasy novel project with a goal and two tasks.',
+			projectCreateWorkflow: 'reviewed_shell'
+		});
+
+		expect(envelope.systemPrompt).toContain('entities: [] and relationships: []');
+		expect(envelope.systemPrompt).toContain(
+			'create_onto_goal for each commissioned outcome and create_onto_task for each commissioned action'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'The bounded surface does not create plans, documents, milestones, risks, or relationships'
+		);
+		expect(envelope.systemPrompt).not.toContain('Connect the graph');
+		expect(envelope.systemPrompt).not.toContain(
+			'initial graph in one create_onto_project call'
+		);
+		expect(envelope.sections.map((section) => section.source)).not.toContain(
+			'lite.project_create_domain_profile'
+		);
+
+		const overlaid = applyActiveDomainSignalsOverlay(envelope, {
+			currentUserMessage: 'Create a fantasy novel project with a goal and two tasks.',
+			projectCreateWorkflow: 'reviewed_shell'
+		});
+		expect(overlaid.sections.map((section) => section.source)).not.toContain(
+			'lite.project_create_domain_profile'
+		);
 	});
 
 	it('closes the prompt with the final response contract (recency position)', () => {

@@ -445,7 +445,7 @@ class AgentRunCalendarPort implements CalendarPort {
 		if (googleError) warnings.push(googleError);
 		if (defaultsApplied.timeMin || defaultsApplied.timeMax) {
 			warnings.push(
-				`Applied default event window (${DEFAULT_LIST_LOOKBACK_DAYS}d past, ${DEFAULT_LIST_LOOKAHEAD_DAYS}d future). Pass timeMin/timeMax or time_min/time_max for exact range control.`
+				`Applied default event window (${DEFAULT_LIST_LOOKBACK_DAYS}d past, ${DEFAULT_LIST_LOOKAHEAD_DAYS}d future). Pass time_min/time_max for exact range control.`
 			);
 		}
 
@@ -1118,17 +1118,17 @@ class AgentRunCalendarPort implements CalendarPort {
 		const now = Date.now();
 
 		const timeMin = rawTimeMin
-			? parseDateTimeInput(rawTimeMin, 'timeMin')
+			? parseDateTimeInput(rawTimeMin, 'time_min')
 			: new Date(now - DEFAULT_LIST_LOOKBACK_DAYS * DAY_IN_MS).toISOString();
 		const timeMax = rawTimeMax
-			? parseDateTimeInput(rawTimeMax, 'timeMax')
+			? parseDateTimeInput(rawTimeMax, 'time_max')
 			: new Date(now + DEFAULT_LIST_LOOKAHEAD_DAYS * DAY_IN_MS).toISOString();
 
 		defaultsApplied.timeMin = !rawTimeMin;
 		defaultsApplied.timeMax = !rawTimeMax;
 
-		if (Date.parse(timeMax) < Date.parse(timeMin)) {
-			throw new Error('timeMax/time_max must be after timeMin/time_min');
+		if (Date.parse(timeMax) <= Date.parse(timeMin)) {
+			throw new Error('time_max must be after time_min');
 		}
 
 		return { timeMin, timeMax, timezone, defaultsApplied };

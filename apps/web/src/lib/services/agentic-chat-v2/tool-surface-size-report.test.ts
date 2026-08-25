@@ -66,6 +66,11 @@ describe('tool surface size report', () => {
 			contextType: 'project_create_minimal',
 			tools: getGatewaySurfaceForProfile('project_create_minimal')
 		});
+		const webProjectCreate = buildToolSurfaceSizeReport({
+			profile: 'project_create_compound',
+			contextType: 'project_create_compound',
+			tools: getGatewaySurfaceForProfile('project_create_compound')
+		});
 		const projectWrite = buildToolSurfaceSizeReport({
 			profile: 'project_write',
 			contextType: 'project_write',
@@ -87,6 +92,8 @@ describe('tool surface size report', () => {
 		// weaker routed models, not description-bloat. Serializes to ~5772 chars; 6200
 		// keeps ~428 chars of headroom.
 		expect(createProject?.chars).toBeLessThanOrEqual(6200);
+		expect(webProjectCreate.toolCount).toBe(1);
+		expect(webProjectCreate.totalChars).toBeLessThanOrEqual(6200);
 		expect(createTask?.chars).toBeLessThanOrEqual(2500);
 	});
 
@@ -94,12 +101,16 @@ describe('tool surface size report', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 
 		const reports = buildGatewayProfileToolSurfaceSizeReports([
+			'project_create_compound',
 			'project_create_minimal',
 			'global_write',
 			'project_basic',
 			'project_write',
 			'project_write_document'
 		]);
+		const webProjectCreate = reports.find(
+			(report) => report.profile === 'project_create_compound'
+		);
 		const projectCreate = reports.find((report) => report.profile === 'project_create_minimal');
 		const globalWrite = reports.find((report) => report.profile === 'global_write');
 		const projectBasic = reports.find((report) => report.profile === 'project_basic');
@@ -108,33 +119,15 @@ describe('tool surface size report', () => {
 			(report) => report.profile === 'project_write_document'
 		);
 
-		// 2026-08-22: project creation became a contract-first composite flow.
-		// Four semantic controls plus goal/task creation now accompany the shell,
-		// moving the bounded surface to 14,615 chars. The 14,850 cap preserves
-		// headroom while preventing unrelated discovery/relationship tools from
-		// leaking into this latency-sensitive path.
-		expect(projectCreate?.totalChars).toBeLessThanOrEqual(14_850);
-		// 2026-07-07 D1 trim: rare bridge/orchestration tools and full-body document
-		// reads materialize on demand instead of sitting in every launch profile.
-		// Baselines from the pre-trim report: global_write 24,847 chars,
-		// project_basic 15,482, project_write 23,710, project_write_document 25,870.
-		// The 2026-08-15 semantic turn-contract tools intentionally moved the measured
-		// global_write/project_basic/project_write_document profiles to
-		// 20,038/11,074/20,946 chars.
-		// 2026-08-21: making the bounded Gmail read surface available to every
-		// authenticated user moved global_write/project_basic/project_write/
-		// project_write_document to 20,904/11,940/19,507/21,812 chars. These caps
-		// retain 160-196 chars of headroom and remain at least 15.6% below the
-		// pre-trim baselines; do not trim behavior-critical guidance merely to
-		// preserve the older caps.
-		// 2026-08-22: declare_turn_contract gained symbolic `label`/`parent_label`
-		// (create-then-move contracts were unreviewable without them), moving the
-		// four profiles to 21,755/12,791/20,358/22,663 chars. Caps keep ~190 chars
-		// of headroom each.
-		expect(globalWrite?.totalChars).toBeLessThanOrEqual(21_950);
-		expect(projectBasic?.totalChars).toBeLessThanOrEqual(12_980);
-		expect(projectWrite?.totalChars).toBeLessThanOrEqual(20_550);
-		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(22_850);
+		// 2026-08-25 definition audit: concise descriptions and removal of unsupported
+		// read arguments materially reduced every profile. These caps retain bounded
+		// headroom without dropping semantic guidance that changes model behavior.
+		expect(webProjectCreate?.totalChars).toBeLessThanOrEqual(6200);
+		expect(projectCreate?.totalChars).toBeLessThanOrEqual(13_400);
+		expect(globalWrite?.totalChars).toBeLessThanOrEqual(18_500);
+		expect(projectBasic?.totalChars).toBeLessThanOrEqual(10_820);
+		expect(projectWrite?.totalChars).toBeLessThanOrEqual(17_925);
+		expect(projectWriteDocument?.totalChars).toBeLessThanOrEqual(19_880);
 	});
 
 	it('reports complete skill bundles and fails closed on unresolved related ops', () => {

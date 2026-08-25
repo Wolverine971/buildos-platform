@@ -207,11 +207,28 @@ function validateCalendarToolArguments(
 		addErrorOnce(errors, 'Missing required parameter: project_id');
 	}
 	if (
-		(toolName === 'update_calendar_event' || toolName === 'delete_calendar_event') &&
+		(toolName === 'get_calendar_event_details' ||
+			toolName === 'update_calendar_event' ||
+			toolName === 'delete_calendar_event') &&
 		!readNonEmptyString(args.onto_event_id) &&
-		!readNonEmptyString(args.event_id)
+		!readNonEmptyString(args.event_id) &&
+		!readNonEmptyString(args.external_event_id)
 	) {
 		addErrorOnce(errors, 'Missing required parameter: onto_event_id or event_id');
+	}
+	if (
+		toolName === 'update_calendar_event' &&
+		![
+			'title',
+			'start_at',
+			'end_at',
+			'timezone',
+			'description',
+			'location',
+			'sync_to_calendar'
+		].some((key) => Object.prototype.hasOwnProperty.call(args, key))
+	) {
+		addErrorOnce(errors, 'No update fields provided for update_calendar_event');
 	}
 }
 

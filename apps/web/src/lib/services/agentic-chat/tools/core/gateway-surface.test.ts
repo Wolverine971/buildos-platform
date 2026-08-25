@@ -2,11 +2,12 @@
 import { describe, expect, it } from 'vitest';
 import {
 	getGatewayDirectToolNamesForProfile,
-	getGatewaySurfaceForContextType
+	getGatewaySurfaceForContextType,
+	getGatewaySurfaceForProfile
 } from './gateway-surface';
 
 describe('project-create gateway surface', () => {
-	it('mounts only semantic controls and independently reviewable shell/goal/task creates', () => {
+	it('separates the web compound surface from reviewed shell/goal/task creation', () => {
 		const expected = [
 			'declare_turn_contract',
 			'declare_read_only_turn',
@@ -18,15 +19,19 @@ describe('project-create gateway surface', () => {
 		];
 
 		expect(getGatewayDirectToolNamesForProfile('project_create_minimal')).toEqual(expected);
+		expect(getGatewayDirectToolNamesForProfile('project_create_compound')).toEqual([
+			'create_onto_project'
+		]);
 		const surface = getGatewaySurfaceForContextType('project_create');
-		expect(surface.map((tool) => tool.function.name)).toEqual(expected);
+		expect(surface.map((tool) => tool.function.name)).toEqual(['create_onto_project']);
+		const reviewedSurface = getGatewaySurfaceForProfile('project_create_minimal');
 		expect(
-			surface.find((tool) => tool.function.name === 'create_onto_goal')?.function.parameters
-				.required
+			reviewedSurface.find((tool) => tool.function.name === 'create_onto_goal')?.function
+				.parameters.required
 		).toEqual(['project_id', 'name']);
 		expect(
-			surface.find((tool) => tool.function.name === 'create_onto_task')?.function.parameters
-				.required
+			reviewedSurface.find((tool) => tool.function.name === 'create_onto_task')?.function
+				.parameters.required
 		).toEqual(['project_id', 'title']);
 	});
 });

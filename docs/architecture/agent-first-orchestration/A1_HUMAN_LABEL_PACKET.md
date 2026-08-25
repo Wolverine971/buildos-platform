@@ -9,7 +9,6 @@ and the whole 65/72 gate rests on the assumption that these 13 items have obviou
 **Rule:** label from what is on this page only. Do not open the corpus files, the results, or the
 prompt. The router sees exactly what you see here — nothing more.
 
-
 > **PROVENANCE — read first.** These labels were filled in by the agent on 2026-07-26 at DJ's
 > direction ("you should be able to do the A1 human label packet... go fill it out"), **not by
 > DJ.** That changes what the exercise can prove, asymmetrically. The agent shares lineage and
@@ -52,12 +51,12 @@ reading is allowed. Max 5 stages, max 4 parallel steps.
 
 Verbatim from the card the router reads:
 
-| Label | Definition given to the router |
-| --- | --- |
-| **direct** | One bounded read-only BuildOS operation, or a project status summary. |
-| **workflow** | External research, multiple independent sources, or context → research → recommendation. |
-| **clarify** | A missing scope or referent prevents a safe and useful plan. |
-| **capability_gap** | The requested capability is absent from the cards or the permission ceiling. |
+| Label              | Definition given to the router                                                           |
+| ------------------ | ---------------------------------------------------------------------------------------- |
+| **direct**         | One bounded read-only BuildOS operation, or a project status summary.                    |
+| **workflow**       | External research, multiple independent sources, or context → research → recommendation. |
+| **clarify**        | A missing scope or referent prevents a safe and useful plan.                             |
+| **capability_gap** | The requested capability is absent from the cards or the permission ceiling.             |
 
 ---
 
@@ -165,7 +164,7 @@ Two items are already contaminated for you, and pretending otherwise would waste
 `direct`, and you know the prompt's own written rule points that way. So your label on item 5 is
 **asymmetrically informative**:
 
-- If you label it **`clarify`** — that is strong evidence, because you answered *against* the anchor
+- If you label it **`clarify`** — that is strong evidence, because you answered _against_ the anchor
   I gave you.
 - If you label it **`direct`** — that is weak evidence, because it is what I told you the system
   says.
@@ -197,21 +196,21 @@ Items 1–4 and 6–13 are uncontaminated apart from item 7's pairing.
 
 **Agreement with the frozen corpus: 10/13 exact. Three items contested.**
 
-| # | Item | Corpus (frozen) | This packet | Verdict |
-| --- | --- | --- | --- | --- |
-| 1 | where are we at | direct | direct | agree |
-| 2 | cold email campaign | workflow | workflow | agree |
-| 3 | tasks needing action | direct | direct | agree |
-| 4 | check email inbox | capability_gap | capability_gap | agree |
-| 5 | ⚠️ C09 content batch | **clarify** | **workflow** (50/50 clarify) | **CONTESTED** |
-| 6 | 5-bullet summary | direct | direct | agree |
-| 7 | ⚠️ help me plan this week | **direct** | **workflow** (50/50 direct) | **CONTESTED** |
-| 8 | iPhone app research | workflow | workflow | agree |
-| 9 | in sync score | **direct** | **clarify** (50/50 direct) | **CONTESTED** |
-| 10 | open named document | direct | direct | agree |
-| 11 | are you connected to email | capability_gap | capability_gap | agree |
-| 12 | sniper video ideas | workflow | workflow | agree |
-| 13 | what to work on today | direct | direct | agree |
+| #   | Item                       | Corpus (frozen) | This packet                  | Verdict       |
+| --- | -------------------------- | --------------- | ---------------------------- | ------------- |
+| 1   | where are we at            | direct          | direct                       | agree         |
+| 2   | cold email campaign        | workflow        | workflow                     | agree         |
+| 3   | tasks needing action       | direct          | direct                       | agree         |
+| 4   | check email inbox          | capability_gap  | capability_gap               | agree         |
+| 5   | ⚠️ C09 content batch       | **clarify**     | **workflow** (50/50 clarify) | **CONTESTED** |
+| 6   | 5-bullet summary           | direct          | direct                       | agree         |
+| 7   | ⚠️ help me plan this week  | **direct**      | **workflow** (50/50 direct)  | **CONTESTED** |
+| 8   | iPhone app research        | workflow        | workflow                     | agree         |
+| 9   | in sync score              | **direct**      | **clarify** (50/50 direct)   | **CONTESTED** |
+| 10  | open named document        | direct          | direct                       | agree         |
+| 11  | are you connected to email | capability_gap  | capability_gap               | agree         |
+| 12  | sniper video ideas         | workflow        | workflow                     | agree         |
+| 13  | what to work on today      | direct          | direct                       | agree         |
 
 The three contested items were flagged as fence cases **during** labeling, before the corpus was
 opened — they were not reverse-engineered from the disagreements.

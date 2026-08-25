@@ -401,7 +401,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		operationName: 'onto.project.create',
 		downstreamIdempotencySupported: false,
 		descriptionOverride:
-			'Create one standard project shell and its generated Context document. Always pass empty entities and relationships arrays; add goals, plans, tasks, documents, milestones, and relationships with their separately reviewed tools after creation. Fiction/living-reference workspaces, custom context documents, clarifications, and compound project graphs remain available only in the web-owned flow.',
+			'Create one standard project shell and its generated Context document with empty entities and relationships arrays. After creation, use only child tools admitted for this turn; unsupported structure requires a later project-scoped turn. Fiction/living-reference workspaces, custom context documents, clarifications, and compound graphs remain web-only.',
 		requiredNames: ['project', 'entities', 'relationships'],
 		reviewedArgumentNames: ['project', 'entities', 'relationships'],
 		propertyOverrides: {

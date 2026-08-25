@@ -80,7 +80,6 @@ export interface ListOntoPlansArgs {
 export interface ListOntoProjectsArgs {
 	state_key?: string;
 	type_key?: string;
-	archived?: boolean;
 	limit?: number;
 }
 
@@ -90,7 +89,6 @@ export interface SearchOntoProjectsArgs {
 	search?: string;
 	state_key?: string;
 	type_key?: string;
-	archived?: boolean;
 	limit?: number;
 }
 
@@ -316,7 +314,7 @@ export interface CreateOntoDocumentArgs {
 	project_id: string;
 	title: string;
 	description: string;
-	type_key: string;
+	type_key?: string;
 	state_key?: string;
 	/** Markdown content stored in the content column */
 	content?: string;
@@ -529,7 +527,7 @@ export interface UpdateOntoGoalArgs {
 	description?: string;
 	type_key?: string;
 	state_key?: string;
-	priority?: number;
+	priority?: string | number;
 	target_date?: string;
 	measurement_criteria?: string;
 	props?: Record<string, unknown>;

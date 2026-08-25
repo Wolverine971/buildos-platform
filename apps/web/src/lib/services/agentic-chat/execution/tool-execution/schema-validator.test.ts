@@ -149,6 +149,44 @@ describe('schema-validator', () => {
 		).toBe('boolean');
 	});
 
+	it('enforces published string, array, and numeric bounds', () => {
+		const definition = directDefinition('constrained_tool', {
+			code: { type: 'string', maxLength: 5, pattern: '^ok' },
+			email: { type: 'string', format: 'email' },
+			items: { type: 'array', maxItems: 2 },
+			count: { type: 'integer', minimum: 1, maximum: 3 },
+			cost: { type: 'number', exclusiveMinimum: 0, exclusiveMaximum: 1 }
+		});
+
+		expect(
+			validateToolArguments(
+				'constrained_tool',
+				{ code: 'okay', email: 'a@b.co', items: ['a'], count: 2, cost: 0.5 },
+				[definition]
+			)
+		).toEqual({ isValid: true, errors: [] });
+		expect(
+			validateToolArguments(
+				'constrained_tool',
+				{
+					code: 'wrong!',
+					email: 'not-an-email',
+					items: ['a', 'b', 'c'],
+					count: 0,
+					cost: 1
+				},
+				[definition]
+			).errors
+		).toEqual([
+			'Invalid length for parameter code: expected at most 5 characters',
+			'Invalid format for parameter code: must match ^ok',
+			'Invalid format for parameter email: expected email',
+			'Invalid length for parameter items: expected at most 2 items',
+			'Invalid value for parameter count: expected at least 1',
+			'Invalid value for parameter cost: expected less than 1'
+		]);
+	});
+
 	it('preserves UUID and graph-specific validation strings', () => {
 		const updateDefinition = directDefinition('update_onto_task', {
 			task_id: { type: 'string' },
@@ -180,6 +218,34 @@ describe('schema-validator', () => {
 			'Invalid task id at nodes[0]: expected UUID',
 			'Use get_onto_project_graph to fetch entity UUIDs before calling reorganize_onto_project_graph.'
 		]);
+	});
+
+	it('requires an event identity and at least one calendar update field', () => {
+		const getDefinition = directDefinition('get_calendar_event_details', {
+			onto_event_id: { type: 'string' },
+			event_id: { type: 'string' }
+		});
+		const updateDefinition = directDefinition('update_calendar_event', {
+			onto_event_id: { type: 'string' },
+			event_id: { type: 'string' },
+			title: { type: 'string' }
+		});
+
+		expect(
+			validateToolArguments('get_calendar_event_details', {}, [getDefinition]).errors
+		).toEqual(['Missing required parameter: onto_event_id or event_id']);
+		expect(
+			validateToolArguments('update_calendar_event', { event_id: 'google-event' }, [
+				updateDefinition
+			]).errors
+		).toEqual(['No update fields provided for update_calendar_event']);
+		expect(
+			validateToolArguments(
+				'update_calendar_event',
+				{ event_id: 'google-event', title: 'New title' },
+				[updateDefinition]
+			)
+		).toEqual({ isValid: true, errors: [] });
 	});
 
 	it('returns the legacy unknown-tool validation result', () => {

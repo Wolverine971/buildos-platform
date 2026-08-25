@@ -12,6 +12,14 @@ type SchemaProperty = {
 	description?: string;
 	enum?: unknown[];
 	default?: unknown;
+	format?: string;
+	pattern?: string;
+	minimum?: number;
+	exclusiveMinimum?: number;
+	minItems?: number;
+	items?: SchemaProperty;
+	properties?: Record<string, SchemaProperty>;
+	required?: string[];
 };
 
 function formatDirectUsage(toolName: string): string {
@@ -54,23 +62,38 @@ function buildExampleArguments(schema: Record<string, any>): Record<string, unkn
 
 	for (const name of getSchemaRequiredArgs(schema)) {
 		const property = properties[name];
-		const type = Array.isArray(property?.type) ? property?.type[0] : property?.type;
-		if (Array.isArray(property?.enum) && property.enum.length > 0) {
-			args[name] = property.enum[0];
-		} else if (type === 'array') {
-			args[name] = [];
-		} else if (type === 'boolean') {
-			args[name] = false;
-		} else if (type === 'number' || type === 'integer') {
-			args[name] = 0;
-		} else if (name.endsWith('_id')) {
-			args[name] = `<${name}_uuid>`;
-		} else {
-			args[name] = `<${name}>`;
-		}
+		args[name] = buildExampleValue(name, property ?? {});
 	}
 
 	return args;
+}
+
+function buildExampleValue(name: string, property: SchemaProperty): unknown {
+	if (Object.prototype.hasOwnProperty.call(property, 'default')) return property.default;
+	if (Array.isArray(property.enum) && property.enum.length > 0) return property.enum[0];
+
+	const type = Array.isArray(property.type)
+		? (property.type.find((candidate) => candidate !== 'null') ?? property.type[0])
+		: property.type;
+	if (type === 'object') return buildExampleArguments(property as Record<string, any>);
+	if (type === 'array') {
+		if ((property.minItems ?? 0) > 0 && property.items) {
+			return [buildExampleValue('item', property.items)];
+		}
+		return [];
+	}
+	if (type === 'boolean') return false;
+	if (type === 'number' || type === 'integer') {
+		if (typeof property.minimum === 'number') return property.minimum;
+		if (typeof property.exclusiveMinimum === 'number') return property.exclusiveMinimum + 1;
+		return 0;
+	}
+	if (property.format === 'email') return 'user@example.com';
+	if (name.endsWith('_id')) return `<${name}_uuid>`;
+	if (name === 'type_key' && property.pattern?.startsWith('^project')) {
+		return 'project.business.initiative';
+	}
+	return `<${name}>`;
 }
 
 function resolveRegistryEntry(reference: string): RegistryOp | undefined {

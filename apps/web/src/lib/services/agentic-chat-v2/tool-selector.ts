@@ -5,7 +5,8 @@ import {
 	getGatewaySurfaceForProfile,
 	materializeGatewayTools,
 	resolveGatewaySurfaceProfileForContextType,
-	type GatewaySurfaceProfileName
+	type GatewaySurfaceProfileName,
+	type ProjectCreateExecutionWorkflow
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { type FastChatTurnIntent } from './turn-intent';
 import { looksLikeWebResearchTurn } from '$lib/services/agentic-chat-lite/prompt/situational-rules';
@@ -56,6 +57,7 @@ export function selectFastChatTools(params: {
 	turnIntent?: FastChatTurnIntent | null;
 	leanDiscovery?: boolean;
 	allowLegacySurfaceFallback?: boolean;
+	projectCreateWorkflow?: ProjectCreateExecutionWorkflow;
 }): ChatToolDefinition[] {
 	let tools: ChatToolDefinition[];
 	if (params.surfaceProfile) {
@@ -78,11 +80,14 @@ export function selectFastChatTools(params: {
 				});
 	}
 	// Do not let an explicit broader profile or message-shape enrichment expand
-	// the bounded project-create surface. It admits only semantic controls plus
-	// shell/goal/task creation; pasted source material can contain research,
-	// delegation, or relationship language without commissioning those tools.
+	// either project-create lane. Web persists one compound ProjectSpec; the
+	// reviewed worker admits semantic controls plus shell/goal/task creation.
 	if (params.contextType === 'project_create') {
-		return getGatewaySurfaceForProfile('project_create_minimal');
+		return getGatewaySurfaceForProfile(
+			params.projectCreateWorkflow === 'reviewed_shell'
+				? 'project_create_minimal'
+				: 'project_create_compound'
+		);
 	}
 	const crossProjectTools = looksLikeCrossProjectTaskMove(
 		params.contextType,

@@ -13,7 +13,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 	function: {
 		name: 'declare_turn_contract',
 		description:
-			'Declare durable outcomes this turn must complete when reads are needed before writing. Call with the first reads. Do not use for answer-only turns, research that only informs a later possible change, or when a direct write can run immediately. Future context is not a commission to perform that later change now. This records intent, not a mutation. If a required target or value remains ambiguous after reading context, call request_turn_clarification. Otherwise complete every outcome or report the blocker. One outcome per distinct change; targets that receive different values go in separate outcomes.',
+			'Declare durable outcomes when reads must precede writes; call alongside the first reads. Omit for answer-only turns, research for a possible later change, or an immediate direct write. This records intent, not a mutation. After reading, request clarification only for an unresolved required choice; otherwise complete every outcome or report the blocker. Separate outcomes when targets receive different values.',
 		parameters: {
 			type: 'object',
 			properties: {
@@ -27,7 +27,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 					minItems: 1,
 					maxItems: 20,
 					description:
-						'Semantic effects required before this turn may claim completion. Describe outcomes, not implementation steps or tool names. One outcome per distinct change. Never put targets that receive different values in the same outcome: "mark A and B done and make C top priority" is two outcomes (A,B → state_key=done; C → priority=1), not one update with three targets.',
+						'Required durable effects, described as outcomes rather than steps or tool names. Use separate outcomes for targets receiving different values (e.g. A/B state_key=done versus C priority=1).',
 					items: {
 						type: 'object',
 						properties: {
@@ -80,7 +80,7 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 								maxItems: 50,
 								items: { type: 'string' },
 								description:
-									'Known canonical ids of existing entities bounding eligible targets. Omit for create outcomes: a new entity has no id yet, and its containing project is not the created entity target. Omit until existing targets are discovered; minimum_successful_effects applies within this set.'
+									'Known canonical IDs eligible for this outcome. Omit for creates and until targets are discovered; minimum_successful_effects is bounded by this list.'
 							},
 							required_fields: {
 								type: 'array',
@@ -108,21 +108,21 @@ export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 								minimum: 1,
 								maximum: 100,
 								description:
-									'Distinct targets that must change, counted within target_ids and never more than its length: setting several fields on one target is still one effect. Use the full target count when every target must change.'
+									'Distinct targets that must change. Multiple fields on one target count once; never exceed target_ids.length.'
 							},
 							label: {
 								type: 'string',
 								maxLength: 40,
 								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
 								description:
-									'Create outcomes only: a short symbolic name for the one entity this outcome creates (e.g. "meeting-notes"), so later outcomes can reference it before it has an id. A labelled create has minimum_successful_effects 1 and declares its title in changes. Use one labelled create per new parent.'
+									'Create only: symbolic name for one new entity so later outcomes can reference it before it has an ID. Set minimum_successful_effects=1 and declare its title in changes.'
 							},
 							parent_label: {
 								type: 'string',
 								maxLength: 40,
 								pattern: '^[a-z0-9][a-z0-9_-]{0,39}$',
 								description:
-									'Move/organize outcomes only: the destination is the entity created by the outcome in this contract carrying this label. The id is bound by the system after that create executes; this is a resolved destination, not a missing value. Omit when moving into an existing parent (put its id in changes as parent_id) or when grouping by new_parent_title at execution.'
+									'Move/organize only: label of a destination created by this contract. For an existing parent, put its ID in changes as parent_id; omit when using new_parent_title.'
 							}
 						},
 						required: ['action', 'entity_kind', 'minimum_successful_effects']
@@ -159,7 +159,7 @@ export const DECLARE_READ_ONLY_TURN_TOOL_DEFINITION: ChatToolDefinition = {
 	function: {
 		name: 'declare_read_only_turn',
 		description:
-			'Declare that this turn requires no durable data change. Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change. Never use this to replace an action the user commissioned with a proposal or approval request.',
+			'Declare that this turn requires no durable change. Research, comparison, analysis, and advice are read-only when they only inform a possible later change. Never use this to replace a commissioned action.',
 		parameters: {
 			type: 'object',
 			properties: {
@@ -179,7 +179,7 @@ export const REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION: ChatToolDefinition = {
 	function: {
 		name: 'request_turn_clarification',
 		description:
-			'Use when a durable change is commissioned but a required target or value remains ambiguous after reading context. Ask instead of guessing; do not use this to postpone safe work or because informational research will inform a later possible change.',
+			'Ask when a commissioned durable change still has an ambiguous required target or value after reading context. Do not postpone safe work or ask about a merely possible later change.',
 		parameters: {
 			type: 'object',
 			properties: {
@@ -204,12 +204,20 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		type: 'function',
 		function: {
 			name: 'domain_search',
-			description: 'Find subject domains.',
+			description: 'Find BuildOS subject domains for the current task.',
 			parameters: {
 				type: 'object',
 				properties: {
 					query: {
-						type: 'string'
+						type: 'string',
+						description: 'Natural-language domain query.'
+					},
+					limit: {
+						type: 'integer',
+						default: 6,
+						minimum: 1,
+						maximum: 12,
+						description: 'Maximum matches.'
 					}
 				}
 			}
@@ -237,7 +245,7 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'outcome_card_search',
 			description:
-				'Find outcome cards within a domain. Use after domain context is known when the task needs a specialized output lane before choosing skills.',
+				'Find specialized outcome cards after the domain is known and before choosing skills.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -258,7 +266,10 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					limit: {
 						type: 'integer',
-						description: 'Maximum number of matching outcome cards to return.'
+						default: 8,
+						minimum: 1,
+						maximum: 20,
+						description: 'Maximum matches.'
 					}
 				}
 			}
@@ -269,7 +280,7 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'outcome_card_load',
 			description:
-				'Load one compact outcome card. This exposes relevant skills, resource handles, outputs, quality criteria, and tool hints without granting direct write tools.',
+				'Load one outcome card with its skills, resources, outputs, quality criteria, and tool hints.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -309,7 +320,10 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					limit: {
 						type: 'integer',
-						description: 'Maximum number of matching outcome cards to return.'
+						default: 8,
+						minimum: 1,
+						maximum: 20,
+						description: 'Maximum matches.'
 					}
 				}
 			}
@@ -338,15 +352,28 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		type: 'function',
 		function: {
 			name: 'skill_search',
-			description: 'Find BuildOS skills.',
+			description: 'Find BuildOS workflow playbooks relevant to the task.',
 			parameters: {
 				type: 'object',
 				properties: {
 					query: {
-						type: 'string'
+						type: 'string',
+						description: 'Natural-language workflow query.'
 					},
 					domain: {
-						type: 'string'
+						type: 'string',
+						description: 'Optional domain id.'
+					},
+					capability: {
+						type: 'string',
+						description: 'Optional BuildOS capability id.'
+					},
+					limit: {
+						type: 'integer',
+						default: 8,
+						minimum: 1,
+						maximum: 20,
+						description: 'Maximum matches.'
 					}
 				}
 			}
@@ -368,6 +395,13 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					skill: {
 						type: 'string'
+					},
+					limit: {
+						type: 'integer',
+						default: 8,
+						minimum: 1,
+						maximum: 20,
+						description: 'Maximum matches.'
 					}
 				}
 			}
@@ -394,7 +428,7 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'skill_load',
 			description:
-				'Load one BuildOS skill playbook by skill id. Use this when the task is multi-step, stateful, or easy to get wrong and you need workflow guidance before choosing tools. Skills already reported as loaded this session count as loaded — reload one only when this turn needs its full markdown or examples. Root skills are the default depth; load a child skill only when its niche clearly matches.',
+				'Load a BuildOS skill playbook for a multi-step, stateful, or error-prone task before choosing tools. Do not reload a skill already loaded this session unless full markdown or examples are needed. Prefer root skills; load a child only for a clear niche match.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -411,8 +445,9 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					include_examples: {
 						type: 'boolean',
+						default: true,
 						description:
-							'Include examples when available. Request true after a prior failure on the same operation.'
+							'Include examples when available; set false for a leaner response.'
 					}
 				},
 				required: ['skill']
@@ -424,7 +459,7 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'skill_reference_load',
 			description:
-				'Load one reference module declared by a BuildOS skill. Use only after skill_load exposes reference_modules and the current task needs deeper source, template, example, or edge-case detail — niche, mode-specific, or high-context guidance the root playbook defers.',
+				'Load a reference module listed by skill_load when the task needs deferred source, template, example, or edge-case detail.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -448,7 +483,7 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'tool_search',
 			description:
-				'Discover candidate BuildOS tools on demand. Use this only when the exact op is still unknown after context and skill guidance. Never use it to rediscover a direct tool already present in your tool surface; that direct tool definition is already its schema. Search for the operation you need, not workspace data. To browse a whole category, omit query and pass group or entity.',
+				'Discover BuildOS tools only when the exact operation remains unknown after context and skill guidance. Do not rediscover a direct tool already present. Search for an operation, not workspace data; to browse a category, omit query and pass group or entity.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -478,7 +513,10 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					limit: {
 						type: 'integer',
-						description: 'Maximum number of matches to return.'
+						default: 8,
+						minimum: 1,
+						maximum: 25,
+						description: 'Maximum matches.'
 					}
 				}
 			}
@@ -501,10 +539,12 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					include_examples: {
 						type: 'boolean',
+						default: true,
 						description: 'Include example calls when available.'
 					},
 					include_schema: {
 						type: 'boolean',
+						default: true,
 						description: 'Include the full JSON schema for the op arguments.'
 					}
 				},

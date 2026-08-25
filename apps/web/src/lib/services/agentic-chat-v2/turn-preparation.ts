@@ -1,6 +1,9 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-preparation.ts
 import type { ChatContextType, ChatToolDefinition, ProjectFocus } from '@buildos/shared-types';
-import type { GatewaySurfaceProfileName } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import type {
+	GatewaySurfaceProfileName,
+	ProjectCreateExecutionWorkflow
+} from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import {
 	getActiveDomainIds,
 	getActiveOutcomeCardIds,
@@ -64,6 +67,7 @@ type ResolveFastChatTurnPreparationParams = {
 	nowMs?: number;
 	measureNow?: () => number;
 	scaffold?: FastChatScaffoldConfig;
+	projectCreateWorkflow?: ProjectCreateExecutionWorkflow;
 };
 
 function readMetadataRecord(value: unknown): Record<string, unknown> {
@@ -109,7 +113,8 @@ export function resolveFastChatTurnPreparation({
 	contextShiftHintTtlMs,
 	nowMs = Date.now(),
 	measureNow = Date.now,
-	scaffold
+	scaffold,
+	projectCreateWorkflow = 'web_compound'
 }: ResolveFastChatTurnPreparationParams): FastChatTurnPreparation {
 	const sessionMetadata = readMetadataRecord(agentMetadata);
 	const pendingTurnIntent = readFastChatPendingTurnIntent(
@@ -166,18 +171,22 @@ export function resolveFastChatTurnPreparation({
 		| undefined;
 
 	const toolSelectionStartedAtMs = measureNow();
-	const selectedSurfaceProfile = resolveFastChatSurfaceProfileForTurn({
-		contextType,
-		latestUserMessage,
-		turnIntent,
-		allowLegacySurfaceFallback: scaffold?.routing.legacySurfaceFallback
-	});
+	const selectedSurfaceProfile =
+		contextType === 'project_create' && projectCreateWorkflow === 'reviewed_shell'
+			? 'project_create_minimal'
+			: resolveFastChatSurfaceProfileForTurn({
+					contextType,
+					latestUserMessage,
+					turnIntent,
+					allowLegacySurfaceFallback: scaffold?.routing.legacySurfaceFallback
+				});
 	const tools = selectFastChatTools({
 		contextType,
 		surfaceProfile: selectedSurfaceProfile,
 		latestUserMessage,
 		turnIntent,
-		leanDiscovery: scaffold?.routing.leanDiscovery
+		leanDiscovery: scaffold?.routing.leanDiscovery,
+		projectCreateWorkflow
 	});
 	const toolSelectionMs = Math.max(0, measureNow() - toolSelectionStartedAtMs);
 

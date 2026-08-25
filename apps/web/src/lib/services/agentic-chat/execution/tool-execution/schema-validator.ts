@@ -26,7 +26,15 @@ export type SupportedToolSchema = ToolArguments & {
 	properties?: Record<string, SupportedToolSchema>;
 	enum?: unknown[];
 	minLength?: number;
+	maxLength?: number;
+	pattern?: string;
+	format?: 'email';
 	minItems?: number;
+	maxItems?: number;
+	minimum?: number;
+	maximum?: number;
+	exclusiveMinimum?: number;
+	exclusiveMaximum?: number;
 	anyOf?: SupportedToolSchema[];
 	oneOf?: SupportedToolSchema[];
 	allOf?: SupportedToolSchema[];
@@ -165,10 +173,74 @@ function validateSupportedSchema(
 			}
 		}
 
+		if (typeof value === 'string' && typeof propertySchema.maxLength === 'number') {
+			if (value.length > propertySchema.maxLength) {
+				errors.push(
+					`Invalid length for parameter ${key}: expected at most ${propertySchema.maxLength} characters`
+				);
+			}
+		}
+
+		if (typeof value === 'string' && typeof propertySchema.pattern === 'string') {
+			try {
+				if (!new RegExp(propertySchema.pattern).test(value)) {
+					errors.push(
+						`Invalid format for parameter ${key}: must match ${propertySchema.pattern}`
+					);
+				}
+			} catch {
+				// Provider schemas are static application code. Ignore a malformed pattern
+				// here so one metadata bug cannot make every call to the tool fail closed.
+			}
+		}
+
+		if (typeof value === 'string' && propertySchema.format === 'email') {
+			if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+				errors.push(`Invalid format for parameter ${key}: expected email`);
+			}
+		}
+
 		if (Array.isArray(value) && typeof propertySchema.minItems === 'number') {
 			if (value.length < propertySchema.minItems) {
 				errors.push(
 					`Invalid length for parameter ${key}: expected at least ${propertySchema.minItems} items`
+				);
+			}
+		}
+
+		if (Array.isArray(value) && typeof propertySchema.maxItems === 'number') {
+			if (value.length > propertySchema.maxItems) {
+				errors.push(
+					`Invalid length for parameter ${key}: expected at most ${propertySchema.maxItems} items`
+				);
+			}
+		}
+
+		if (typeof value === 'number' && Number.isFinite(value)) {
+			if (typeof propertySchema.minimum === 'number' && value < propertySchema.minimum) {
+				errors.push(
+					`Invalid value for parameter ${key}: expected at least ${propertySchema.minimum}`
+				);
+			}
+			if (typeof propertySchema.maximum === 'number' && value > propertySchema.maximum) {
+				errors.push(
+					`Invalid value for parameter ${key}: expected at most ${propertySchema.maximum}`
+				);
+			}
+			if (
+				typeof propertySchema.exclusiveMinimum === 'number' &&
+				value <= propertySchema.exclusiveMinimum
+			) {
+				errors.push(
+					`Invalid value for parameter ${key}: expected greater than ${propertySchema.exclusiveMinimum}`
+				);
+			}
+			if (
+				typeof propertySchema.exclusiveMaximum === 'number' &&
+				value >= propertySchema.exclusiveMaximum
+			) {
+				errors.push(
+					`Invalid value for parameter ${key}: expected less than ${propertySchema.exclusiveMaximum}`
 				);
 			}
 		}

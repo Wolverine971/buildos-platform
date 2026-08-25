@@ -2,7 +2,7 @@
 
 # A2 blind-scoring proposal — DJ gate 4
 
-**Status:** Approved by DJ; mechanic amended to `phase-a-a2-blind-v2` on 2026-07-25
+**Status:** Approved by DJ; judge panel amended to `phase-a-a2-blind-v3` on 2026-08-13
 **Date:** 2026-07-25
 **Applies to:** C06, C07, and C08 workflow-versus-control comparison
 
@@ -14,8 +14,8 @@ threshold; no extra pairs or selective reruns enter the denominator.
 
 ### Blind packet
 
-- Label outputs A/B using the **counterbalanced** `phase-a-a2-blind-v2` mapping (see the amendment
-  below). Store the mapping outside the judge packet.
+- Label outputs A/B using the **counterbalanced** `phase-a-a2-blind-v3` policy, which preserves the
+  v2 mapping algorithm (see the amendments below). Store the mapping outside the judge packet.
 - Strip lane, model, provider, latency, cost, and tool-trace metadata. Preserve response text,
   citations, and user-visible artifacts exactly.
 - Run the frozen machine acceptance checks before judging. A tie, error, empty response, or
@@ -26,7 +26,7 @@ threshold; no extra pairs or selective reruns enter the denominator.
 Use three exact-pinned judges that are outside every compared execution role:
 
 1. `openai/gpt-5.6-luna`
-2. `x-ai/grok-4.5`
+2. `x-ai/grok-4.6`
 3. `moonshotai/kimi-k3`
 
 Each judge sees the same request, acceptance criteria, and A/B outputs and returns strict JSON at
@@ -112,3 +112,15 @@ before any output generation.
 
 Recommended by [`PHASE_A_AUDIT_2026-07-25.md`](./PHASE_A_AUDIT_2026-07-25.md) S3; DJ authorized
 the audit's recommended changes on 2026-07-25.
+
+## Amendment — Grok 4.6 judge upgrade (`phase-a-a2-blind-v3`)
+
+On 2026-08-13, DJ authorized replacing the exact-pinned `x-ai/grok-4.5` judge with
+`x-ai/grok-4.6`. The prompt, JSON schema, scoring rubric, counterbalanced mapping algorithm,
+aggregation policy, and panel-validation policy are unchanged.
+
+Because the pinned model is part of the mechanic hash, the executable policy is versioned as v3
+rather than silently mutating v2. The new frozen SHA-256 is
+`4e31a42e2ffb330653ee6f10cabd5b4d3867dc300c082594eb84e93a011d1249`. Existing results produced
+under v1 or v2 retain their original policy attribution and are not retroactively mixed with v3
+judgments.

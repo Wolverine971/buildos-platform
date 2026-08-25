@@ -14,7 +14,7 @@ describe('skill loading', () => {
 
 		expect(skill).toBeDefined();
 		expect(skill?.name).toBe('Project Creation');
-		expect(skill?.summary).toContain('smallest valid BuildOS project payload');
+		expect(skill?.summary).toContain('Web-owned compound project creation');
 		expect(skill?.skillType).toBe('procedure');
 		expect(skill?.altitude).toBe('task');
 		expect(skill?.activation).toBe('progressive');
@@ -150,6 +150,8 @@ description: Skill fixture with read, write, and destructive related ops.
 		}) as Record<string, any>;
 
 		expect(payload.destructive_ops).toContain('cal.event.delete');
+		expect(payload.workflow.join(' ')).toContain('`time_min`/`time_max` for reads');
+		expect(payload.workflow.join(' ')).not.toContain('timeMin/timeMax');
 		expect(payload.materialized_tools).toEqual([
 			'create_calendar_event',
 			'delete_calendar_event',
@@ -196,6 +198,10 @@ description: Skill fixture with read, write, and destructive related ops.
 		expect(result.id).toBe('project_creation');
 		expect(typeof result.markdown).toBe('string');
 		expect(result.markdown).toContain('# Project Creation');
+		expect(result.markdown).toContain('web-owned compound flow');
+		expect(result.markdown).toContain(
+			'The reviewed worker flow supplies its own shell-first instructions'
+		);
 		// Canonical block ontology renamed Workflow -> Procedure.
 		expect(result.markdown).toContain('## Procedure');
 		expect(result.markdown).toContain('## Related Tools');

@@ -12,25 +12,18 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		type: 'function',
 		function: {
 			name: 'list_calendar_events',
-			description: `List calendar events for a time range. Merges Google Calendar events with ontology events and dedupes when possible. Use explicit time bounds to inspect future windows.`,
+			description:
+				'List merged, deduplicated Google and ontology events. Pass explicit time_min/time_max for an exact window.',
 			parameters: {
 				type: 'object',
 				properties: {
-					timeMin: {
-						type: 'string',
-						description: 'Start time (ISO 8601 datetime or date-only). Alias: time_min.'
-					},
 					time_min: {
 						type: 'string',
-						description: 'Alias for timeMin.'
-					},
-					timeMax: {
-						type: 'string',
-						description: 'End time (ISO 8601 datetime or date-only). Alias: time_max.'
+						description: 'Window start (ISO 8601 datetime or date).'
 					},
 					time_max: {
 						type: 'string',
-						description: 'Alias for timeMax.'
+						description: 'Window end (ISO 8601 datetime or date).'
 					},
 					timezone: {
 						type: 'string',
@@ -40,22 +33,20 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					query: {
 						type: 'string',
 						description:
-							'Optional text search query. Matches Google event text (q) and ontology event title/description/location.'
-					},
-					q: {
-						type: 'string',
-						description: 'Alias for query.'
+							'Matches Google event text and ontology title, description, or location.'
 					},
 					limit: {
-						type: 'number',
-						description: 'Page size. Default 100, max 200.'
-					},
-					max_results: {
-						type: 'number',
-						description: 'Alias for limit.'
+						type: 'integer',
+						default: 100,
+						minimum: 1,
+						maximum: 200,
+						description: 'Page size.'
 					},
 					offset: {
-						type: 'number',
+						type: 'integer',
+						default: 0,
+						minimum: 0,
+						maximum: 5000,
 						description: 'Zero-based pagination offset for merged results.'
 					},
 					calendar_scope: {
@@ -82,7 +73,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'get_calendar_event_details',
 			description:
-				'Fetch detailed information for a calendar event. Use the onto_event_id UUID from list results for ontology events, or pass the external_event_id value as event_id for Google events.',
+				'Get one event. Pass onto_event_id for an ontology event or event_id with the external_event_id value for a Google event.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -117,7 +108,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'create_calendar_event',
 			description:
-				'Create a calendar event in the ontology and optionally sync to Google Calendar.',
+				'Create an ontology calendar event and optionally sync it to Google Calendar.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -131,7 +122,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 							'Start time (ISO 8601). Include timezone offset or Z unless timezone is provided.'
 					},
 					end_at: {
-						type: 'string',
+						type: ['string', 'null'],
 						description:
 							'End time (ISO 8601). Include timezone offset or Z unless timezone is provided.'
 					},
@@ -184,7 +175,8 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		type: 'function',
 		function: {
 			name: 'update_calendar_event',
-			description: 'Update an existing calendar event (ontology event or Google event).',
+			description:
+				'Update an ontology or Google event. Pass onto_event_id or event_id plus at least one field to change.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -195,12 +187,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					event_id: {
 						type: 'string',
-						description:
-							'Google event id (external_event_id from list results). Alias: external_event_id.'
-					},
-					external_event_id: {
-						type: 'string',
-						description: 'Alias for event_id.'
+						description: 'Google event id (external_event_id from list results).'
 					},
 					calendar_id: {
 						type: 'string',
@@ -225,7 +212,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 							'New start time (ISO 8601). Include timezone offset or Z unless timezone is provided.'
 					},
 					end_at: {
-						type: 'string',
+						type: ['string', 'null'],
 						description:
 							'New end time (ISO 8601). Include timezone offset or Z unless timezone is provided.'
 					},
@@ -235,12 +222,12 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 							'Optional IANA timezone (e.g., America/New_York). Used when start_at/end_at omit timezone.'
 					},
 					description: {
-						type: 'string',
-						description: 'New description'
+						type: ['string', 'null'],
+						description: 'New description, or null to clear.'
 					},
 					location: {
-						type: 'string',
-						description: 'New location'
+						type: ['string', 'null'],
+						description: 'New location, or null to clear.'
 					},
 					sync_to_calendar: {
 						type: 'boolean',
@@ -254,7 +241,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		type: 'function',
 		function: {
 			name: 'delete_calendar_event',
-			description: 'Delete a calendar event (ontology event or Google event).',
+			description: 'Delete an ontology or Google event by onto_event_id or event_id.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -265,12 +252,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					event_id: {
 						type: 'string',
-						description:
-							'Google event id (external_event_id from list results). Alias: external_event_id.'
-					},
-					external_event_id: {
-						type: 'string',
-						description: 'Alias for event_id.'
+						description: 'Google event id (external_event_id from list results).'
 					},
 					calendar_id: {
 						type: 'string',

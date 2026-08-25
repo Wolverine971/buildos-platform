@@ -3186,7 +3186,7 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
-		it('preserves the full author source in a living-fiction structure update', async () => {
+		it('does not infer living-fiction document content from conversation history', async () => {
 			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 			const documentId = '9da52903-4bb5-4c3f-af32-cb4a2c623dec';
 			const source =
@@ -3259,16 +3259,17 @@ describe('ToolExecutionService', () => {
 			expect(result.success).toBe(true);
 			expect(mockToolExecutor).toHaveBeenCalledWith(
 				'update_onto_document',
-				expect.objectContaining({
+				{
 					document_id: documentId,
 					update_strategy: 'append',
-					content: expect.stringContaining(source)
-				}),
+					content:
+						'## Chapter 4\n\nMara interprets Ilyan as loyal.\n\n## Chapter 5\n\nPart II begins the next morning.'
+				},
 				contextLike(updateContext)
 			);
 		});
 
-		it('keeps model content when it arrives under a nested alias in an augmented structure update', async () => {
+		it('hoists a nested document alias without inferring conversation content', async () => {
 			const projectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 			const documentId = '9da52903-4bb5-4c3f-af32-cb4a2c623dec';
 			const source =
@@ -3340,10 +3341,8 @@ describe('ToolExecutionService', () => {
 
 			expect(result.success).toBe(true);
 			const dispatchedArgs = mockToolExecutor.mock.calls.at(-1)?.[1] as Record<string, any>;
-			// The nested alias is hoisted to top-level content, so the canon
-			// augmentation is additive — never a canon-only replacement body.
-			expect(dispatchedArgs.content).toContain('MODEL CONTENT UNDER A NESTED ALIAS');
-			expect(dispatchedArgs.content).toContain(source);
+			expect(dispatchedArgs.content).toBe('MODEL CONTENT UNDER A NESTED ALIAS');
+			expect(dispatchedArgs.content).not.toContain(source);
 		});
 
 		it('blocks a same-title create repeated within one turn', async () => {

@@ -301,9 +301,13 @@ describe('Agentic Chat worker turn preparation', () => {
 		expect(result.args.p_artifact_prepared).not.toHaveProperty('turnIntent');
 		expect(mocks.inspectPreparedPromptAdmissionLineage).not.toHaveBeenCalled();
 		expect(mocks.inspectPreparedPromptForWorkerAdmission).not.toHaveBeenCalled();
+		expect(mocks.resolveFastChatTurnPreparation).toHaveBeenCalledWith(
+			expect.objectContaining({ projectCreateWorkflow: 'reviewed_shell' })
+		);
 		expect(mocks.buildLitePromptEnvelope).toHaveBeenCalledWith(
 			expect.objectContaining({
 				currentUserMessage: 'Ship the next slice',
+				projectCreateWorkflow: 'reviewed_shell',
 				scaffold: expect.objectContaining({ dynamicSkillTools: false })
 			})
 		);
@@ -311,6 +315,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			expect.anything(),
 			expect.objectContaining({
 				domainSensingResult: null,
+				projectCreateWorkflow: 'reviewed_shell',
 				skillGatePreload: null,
 				scaffold: expect.objectContaining({ dynamicSkillTools: false })
 			})
@@ -672,6 +677,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		expect(mocks.buildLitePromptEnvelope).toHaveBeenCalledWith(
 			expect.objectContaining({
 				currentUserMessage: 'Ship the next slice',
+				projectCreateWorkflow: 'reviewed_shell',
 				scaffold: expect.objectContaining({ dynamicSkillTools: false })
 			})
 		);

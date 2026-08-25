@@ -17,12 +17,8 @@ export const ONTOLOGY_WRITE_TOOLS = [
 		type: 'function',
 		function: {
 			name: 'create_onto_task',
-			description: `Create a new task in the ontology system.
-Creates a task within a project and optionally assigns it to a plan and collaborators.
-Use when the user explicitly asks to add/track/remind, or when the item is future human work outside this chat.
-Do not create tasks for research, brainstorming, summarizing, or drafting you can do now; do the work instead.
-Always include project_id and a concrete title. Link to parent/plan/goal/milestone only when known. Use assignees only for known project members.
-Load task_management for complex task flows.`,
+			description:
+				'Create future human work in a project when the user asks to add, track, or remember it. Do the work inline instead for research, brainstorming, summaries, or drafts. Link only known entities and assign only known project members. Load task_management for complex flows.',
 			parameters: {
 				type: 'object',
 				additionalProperties: false,
@@ -42,24 +38,31 @@ Load task_management for complex task flows.`,
 					type_key: {
 						type: 'string',
 						default: 'task.default',
-						description: 'Task type key. Default task.default.'
+						pattern: '^task\\.',
+						description: 'Task type key.'
 					},
 					state_key: {
 						type: 'string',
 						default: 'todo',
-						description: 'Initial state. Valid: todo, in_progress, blocked, done'
+						enum: ['todo', 'in_progress', 'blocked', 'done'],
+						description: 'Initial state.'
 					},
 					priority: {
-						type: 'number',
-						description: 'Priority 1-5. Default 3.'
+						type: 'integer',
+						minimum: 1,
+						maximum: 5,
+						default: 3,
+						description: 'Priority; 1 is highest, 5 lowest.'
 					},
 					assignee_actor_ids: {
 						type: 'array',
-						description: 'Active project member actor UUIDs. Max 10.',
+						maxItems: 10,
+						description: 'Active project member actor UUIDs.',
 						items: { type: 'string' }
 					},
 					assignee_handles: {
 						type: 'array',
+						maxItems: 10,
 						description: 'Active project member handles, e.g. @dj.',
 						items: { type: 'string' }
 					},
@@ -112,18 +115,17 @@ Load task_management for complex task flows.`,
 		type: 'function',
 		function: {
 			name: 'create_onto_goal',
-			description: `Create a new goal in the ontology system.
-Goals define project objectives and success criteria.`,
+			description: 'Create a project objective with optional success criteria.',
 			parameters: {
 				type: 'object',
 				properties: {
 					project_id: {
 						type: 'string',
-						description: 'Project UUID (required)'
+						description: 'Project UUID'
 					},
 					name: {
 						type: 'string',
-						description: 'Goal name (required)'
+						description: 'Goal name'
 					},
 					description: {
 						type: 'string',
@@ -138,7 +140,8 @@ Families: outcome, metric, behavior, learning. Default: goal.outcome.project`
 					state_key: {
 						type: 'string',
 						default: 'draft',
-						description: 'Initial state. Valid: draft, active, achieved, abandoned'
+						enum: ['draft', 'active', 'achieved', 'abandoned'],
+						description: 'Initial state.'
 					},
 					target_date: {
 						type: 'string',
@@ -167,18 +170,17 @@ Families: outcome, metric, behavior, learning. Default: goal.outcome.project`
 		type: 'function',
 		function: {
 			name: 'create_onto_plan',
-			description: `Create a new plan in the ontology system.
-Plans are execution structures that turn a goal or milestone into a taskable timeline.`,
+			description: 'Create an execution plan that turns a goal or milestone into a timeline.',
 			parameters: {
 				type: 'object',
 				properties: {
 					project_id: {
 						type: 'string',
-						description: 'Project UUID (required)'
+						description: 'Project UUID'
 					},
 					name: {
 						type: 'string',
-						description: 'Plan name (required)'
+						description: 'Plan name'
 					},
 					description: {
 						type: 'string',
@@ -198,7 +200,8 @@ Families: timebox, pipeline, campaign, roadmap, process, phase. Default: plan.ph
 					state_key: {
 						type: 'string',
 						default: 'draft',
-						description: 'Initial state (draft, active, completed)'
+						enum: ['draft', 'active', 'completed'],
+						description: 'Initial state.'
 					},
 					start_date: {
 						type: 'string',
@@ -253,23 +256,22 @@ Families: timebox, pipeline, campaign, roadmap, process, phase. Default: plan.ph
 		type: 'function',
 		function: {
 			name: 'create_onto_document',
-			description: `Create a new document in the ontology system.
-Use for briefs, specs, context docs, research artifacts, or creative reference material linked to a project.
-Documents are organized in a hierarchical tree structure. Use parent_id to place the document under a parent folder.`,
+			description:
+				'Create a project document such as a brief, spec, context note, research artifact, or creative reference. Use parent_id for tree placement.',
 			parameters: {
 				type: 'object',
 				properties: {
 					project_id: {
 						type: 'string',
-						description: 'Project UUID (required)'
+						description: 'Project UUID'
 					},
 					title: {
 						type: 'string',
-						description: 'Document title (required)'
+						description: 'Document title'
 					},
 					description: {
 						type: 'string',
-						description: 'Short summary of the document (required)'
+						description: 'Short document summary'
 					},
 					type_key: {
 						type: 'string',
@@ -280,8 +282,8 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 					},
 					state_key: {
 						type: 'string',
-						description:
-							'Document state (draft, in_review, ready, published, archived)',
+						enum: ['draft', 'in_review', 'ready', 'published', 'archived'],
+						description: 'Document state.',
 						default: 'draft'
 					},
 					content: {
@@ -298,7 +300,8 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 							'Parent document ID to place this document under in the tree hierarchy. Null or omitted places at root level.'
 					},
 					position: {
-						type: 'number',
+						type: 'integer',
+						minimum: 0,
 						description: 'Position among siblings (0-indexed). Omit to place at end.'
 					}
 					// Legacy `parent`/`parents` semantic-linking params dropped from
@@ -315,18 +318,17 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 		type: 'function',
 		function: {
 			name: 'create_onto_milestone',
-			description: `Create a new milestone in the ontology system.
-Milestones mark major dates or outcomes and should usually connect to a goal.`,
+			description: 'Create a dated project milestone, usually linked to a goal.',
 			parameters: {
 				type: 'object',
 				properties: {
 					project_id: {
 						type: 'string',
-						description: 'Project UUID (required)'
+						description: 'Project UUID'
 					},
 					title: {
 						type: 'string',
-						description: 'Milestone title (required)'
+						description: 'Milestone title'
 					},
 					goal_id: {
 						type: 'string',
@@ -338,7 +340,8 @@ Milestones mark major dates or outcomes and should usually connect to a goal.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Initial state (pending, in_progress, completed, missed)'
+						enum: ['pending', 'in_progress', 'completed', 'missed'],
+						description: 'Initial state.'
 					},
 					description: {
 						type: 'string',
@@ -396,18 +399,17 @@ Milestones mark major dates or outcomes and should usually connect to a goal.`,
 		type: 'function',
 		function: {
 			name: 'create_onto_risk',
-			description: `Create a new risk in the ontology system.
-Risks capture potential issues and mitigation planning.`,
+			description: 'Create a project risk with optional probability and mitigation.',
 			parameters: {
 				type: 'object',
 				properties: {
 					project_id: {
 						type: 'string',
-						description: 'Project UUID (required)'
+						description: 'Project UUID'
 					},
 					title: {
 						type: 'string',
-						description: 'Risk title (required)'
+						description: 'Risk title'
 					},
 					impact: {
 						type: 'string',
@@ -416,11 +418,14 @@ Risks capture potential issues and mitigation planning.`,
 					},
 					probability: {
 						type: 'number',
+						minimum: 0,
+						maximum: 1,
 						description: 'Probability value between 0 and 1'
 					},
 					state_key: {
 						type: 'string',
-						description: 'Initial state (identified, mitigated, occurred, closed)'
+						enum: ['identified', 'mitigated', 'occurred', 'closed'],
+						description: 'Initial state.'
 					},
 					content: {
 						type: 'string',
@@ -482,21 +487,18 @@ Risks capture potential issues and mitigation planning.`,
 		type: 'function',
 		function: {
 			name: 'move_document_in_tree',
-			description: `Move or insert an existing document within the project's doc_structure.
-Use this to nest existing or unlinked documents under a parent or reorder siblings.
-To group under a parent, prefer new_parent_title with a short name (e.g. "Pricing") — it reuses the existing document with that title or creates the parent. Only pass new_parent_id when you have the parent's exact UUID from a read; NEVER invent a UUID.
-If neither parent field is set, the document is placed at root level.
-Always pass the exact document_id from get_document_tree/list_onto_documents (do not pass document titles as document_id).`,
+			description:
+				'Move, nest, or reorder an existing document in a project tree. Prefer new_parent_title to reuse or create a named parent. Use new_parent_id only with an exact UUID from a read; never pass a title or invented ID. Omit both parent fields to move to root.',
 			parameters: {
 				type: 'object',
 				properties: {
 					project_id: {
 						type: 'string',
-						description: 'Project UUID (required)'
+						description: 'Project UUID'
 					},
 					document_id: {
 						type: 'string',
-						description: 'Document UUID to move (required)'
+						description: 'Exact document UUID from a read.'
 					},
 					new_parent_id: {
 						type: ['string', 'null'],
@@ -509,8 +511,9 @@ Always pass the exact document_id from get_document_tree/list_onto_documents (do
 							'Parent by title: reuses the existing document with this title or creates a new parent document. The reliable way to group documents.'
 					},
 					new_position: {
-						type: 'number',
+						type: 'integer',
 						default: 0,
+						minimum: 0,
 						description: 'Position among siblings (0-indexed). Omit to place at top.'
 					}
 				},
@@ -721,11 +724,10 @@ IMPORTANT: Do not include documents. Documents are flat and managed only via ont
 		type: 'function',
 		function: {
 			name: 'create_onto_project',
-			description: `Create a project from a ProjectSpec. Always include project, entities, relationships; use [] when empty.
-Hard rules: project.type_key starts with project. e.g. project.creative.novel. Entity labels: goal/plan/metric name; task/milestone/document/risk title; requirement text; source uri. A milestone requires due_at grounded in an explicit user schedule; use plans or documents for undated phases and never invent a date.
-Use project.state_key for status values: planning, active, paused, completed, cancelled. Use props.facets.stage only for lifecycle stage: discovery, planning, execution, launch, maintenance, complete. Never put active/paused/completed/cancelled in props.facets.stage.
-Infer name/type_key when clear; ask one clarification only if too vague. Start minimal: one goal for an explicit outcome, tasks for explicit actions, plans for explicit phases or workstreams, and milestones only for explicitly dated project markers.
-Extract concrete details into description/props. Use temp_id + kind refs for relationships.`,
+			description: `Create a project through the web-owned ProjectSpec flow; always include project, entities, and relationships (use [] when empty). Reviewed shell-first runtimes replace this description and require empty arrays.
+Use project.{realm}.{domain}[.{variant}] for type_key. Entity labels: goal/plan/metric name; task/milestone/document/risk title; requirement text; source uri. Milestones require due_at from an explicit user schedule; use plans or documents for undated phases.
+Project state is planning, active, paused, completed, or cancelled. props.facets.stage is lifecycle only: discovery, planning, execution, launch, maintenance, or complete.
+Infer clear values and start minimal: goals for outcomes, tasks for actions, plans for phases/workstreams, and milestones only for dated markers. Ask one clarification only when critical. Use temp_id + kind in relationships.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -739,7 +741,9 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 							},
 							type_key: {
 								type: 'string',
-								description: 'Starts with project.; e.g. project.creative.novel.'
+								pattern: '^project\\.[a-z_]+\\.[a-z_]+(?:\\.[a-z_]+)?$',
+								description:
+									'project.{realm}.{domain}[.{variant}]; realm is creative, technical, business, service, education, or personal.'
 							},
 							description: {
 								type: 'string',
@@ -747,8 +751,9 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 							},
 							state_key: {
 								type: 'string',
+								enum: ['planning', 'active', 'paused', 'completed', 'cancelled'],
 								description:
-									'Initial project status. Valid: planning, active, paused, completed, cancelled. Do not put these values in props.facets.stage.'
+									'Initial project status; distinct from props.facets.stage.'
 							},
 							props: {
 								type: 'object',
@@ -821,6 +826,7 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 										'task',
 										'document',
 										'risk',
+										'requirement',
 										'metric',
 										'source'
 									]
@@ -831,19 +837,21 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 								description: { type: 'string' },
 								target_date: { type: 'string' },
 								measurement_criteria: { type: 'string' },
-								priority: { type: 'number' },
+								priority: {
+									type: ['string', 'number'],
+									description: 'Task: integer 1-5; goal: high, medium, or low.'
+								},
 								due_at: { type: 'string' },
 								start_at: { type: 'string' },
 								start_date: { type: 'string' },
 								end_date: { type: 'string' },
-								body_markdown: { type: 'string' },
 								impact: {
 									type: 'string',
 									description:
 										'Risk severity only; put explanatory prose in content.',
 									enum: ['low', 'medium', 'high', 'critical']
 								},
-								probability: { type: 'number' },
+								probability: { type: 'number', minimum: 0, maximum: 1 },
 								content: { type: 'string' },
 								unit: { type: 'string' },
 								definition: { type: 'string' },
@@ -994,15 +1002,14 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 		type: 'function',
 		function: {
 			name: 'update_onto_task',
-			description: `Update an existing task in the ontology system.
-Can modify title, description, state, priority, assignees, scheduling, and custom properties.
-Only updates fields that are provided - omitted fields remain unchanged.`,
+			description:
+				'Update only the provided task fields: title, description, type, state, priority, assignees, schedule, links, or props.',
 			parameters: {
 				type: 'object',
 				properties: {
 					task_id: {
 						type: 'string',
-						description: 'Task UUID (required)'
+						description: 'Task UUID'
 					},
 					project_id: {
 						type: 'string',
@@ -1024,22 +1031,25 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'New state (todo, in_progress, blocked, done)'
+						enum: ['todo', 'in_progress', 'blocked', 'done'],
+						description: 'New state.'
 					},
 					priority: {
-						type: 'number',
-						description:
-							'New priority (1-5), where 1 is the HIGHEST priority and 5 is the ' +
-							'LOWEST. "Make this top priority" means 1.'
+						type: 'integer',
+						minimum: 1,
+						maximum: 5,
+						description: 'New priority; 1 is highest, 5 lowest.'
 					},
 					assignee_actor_ids: {
 						type: 'array',
+						maxItems: 10,
 						description:
 							'Optional full replacement assignee actor ID list (UUIDs) for active project members only. Prefer assignee_handles unless IDs were just retrieved from project members. Use [] to clear assignees. Max 10.',
 						items: { type: 'string' }
 					},
 					assignee_handles: {
 						type: 'array',
+						maxItems: 10,
 						description:
 							'Optional assignee handles like ["@jim"]. Resolved against active project members by name/email local-part.',
 						items: { type: 'string' }
@@ -1108,16 +1118,15 @@ Archived destinations and tasks with project assets, schedules, or recurrence ar
 		type: 'function',
 		function: {
 			name: 'update_onto_project',
-			description: `Update an existing project in the ontology system.
-Can modify name, description, state, timeline dates, and custom properties.
-Only updates fields that are provided.`,
+			description:
+				'Update only the provided project fields: name, description, state, dates, or props.',
 			parameters: {
 				type: 'object',
 				additionalProperties: false,
 				properties: {
 					project_id: {
 						type: 'string',
-						description: 'Project UUID (required)'
+						description: 'Project UUID'
 					},
 					name: {
 						type: 'string',
@@ -1129,7 +1138,8 @@ Only updates fields that are provided.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'New state (planning, active, completed, cancelled)'
+						enum: ['planning', 'active', 'paused', 'completed', 'cancelled'],
+						description: 'New project state.'
 					},
 					start_at: {
 						type: ['string', 'null'],
@@ -1162,7 +1172,7 @@ Use for edits to goal names, descriptions, priorities, target dates, or metadata
 				properties: {
 					goal_id: {
 						type: 'string',
-						description: 'Goal UUID (required)'
+						description: 'Goal UUID'
 					},
 					name: {
 						type: 'string',
@@ -1179,11 +1189,12 @@ Use for edits to goal names, descriptions, priorities, target dates, or metadata
 					},
 					state_key: {
 						type: 'string',
-						description: 'Goal state (draft, active, achieved, abandoned)'
+						enum: ['draft', 'active', 'achieved', 'abandoned'],
+						description: 'Goal state.'
 					},
 					priority: {
-						type: 'number',
-						description: 'Priority value for the goal'
+						type: ['string', 'number'],
+						description: 'Goal priority, usually high, medium, or low.'
 					},
 					target_date: {
 						type: 'string',
@@ -1215,7 +1226,7 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 				properties: {
 					plan_id: {
 						type: 'string',
-						description: 'Plan UUID (required)'
+						description: 'Plan UUID'
 					},
 					name: {
 						type: 'string',
@@ -1247,7 +1258,8 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Plan state (draft, active, completed)'
+						enum: ['draft', 'active', 'completed'],
+						description: 'Plan state.'
 					},
 					props: {
 						type: 'object',
@@ -1275,7 +1287,7 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 				properties: {
 					document_id: {
 						type: 'string',
-						description: 'Document UUID (required)'
+						description: 'Document UUID'
 					},
 					title: {
 						type: 'string',
@@ -1287,7 +1299,8 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Document state (draft, in_review, ready, published, archived)'
+						enum: ['draft', 'in_review', 'ready', 'published', 'archived'],
+						description: 'Document state.'
 					},
 					content: {
 						type: 'string',
@@ -1383,7 +1396,7 @@ Use for edits to title, due date, state, or metadata.`,
 				properties: {
 					milestone_id: {
 						type: 'string',
-						description: 'Milestone UUID (required)'
+						description: 'Milestone UUID'
 					},
 					title: {
 						type: 'string',
@@ -1395,7 +1408,8 @@ Use for edits to title, due date, state, or metadata.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Milestone state (pending, in_progress, completed, missed)'
+						enum: ['pending', 'in_progress', 'completed', 'missed'],
+						description: 'Milestone state.'
 					},
 					description: {
 						type: 'string',
@@ -1422,7 +1436,7 @@ Use for edits to title, impact, probability, state, or mitigation metadata.`,
 				properties: {
 					risk_id: {
 						type: 'string',
-						description: 'Risk UUID (required)'
+						description: 'Risk UUID'
 					},
 					title: {
 						type: 'string',
@@ -1435,11 +1449,14 @@ Use for edits to title, impact, probability, state, or mitigation metadata.`,
 					},
 					probability: {
 						type: 'number',
+						minimum: 0,
+						maximum: 1,
 						description: 'Probability (0-1)'
 					},
 					state_key: {
 						type: 'string',
-						description: 'Risk state (identified, mitigated, occurred, closed)'
+						enum: ['identified', 'mitigated', 'occurred', 'closed'],
+						description: 'Risk state.'
 					},
 					content: {
 						type: 'string',

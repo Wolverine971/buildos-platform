@@ -347,6 +347,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		agentMetadata,
 		contextShiftHintTtlMs: CONTEXT_SHIFT_HINT_TTL_MS,
 		nowMs,
+		projectCreateWorkflow: 'reviewed_shell',
 		scaffold: SCAFFOLD
 	});
 
@@ -507,6 +508,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		let envelope = buildLitePromptEnvelope({
 			...promptContext,
 			tools: workerPromptTools,
+			projectCreateWorkflow: 'reviewed_shell',
 			productSurface: WORKER_TURNS_ENDPOINT,
 			conversationPosition: `worker admission ${input.command.streamRunId}`,
 			currentUserMessage: messageForModel,
@@ -515,6 +517,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		});
 		envelope = applyActiveDomainSignalsOverlay(envelope, {
 			currentUserMessage: messageForModel,
+			projectCreateWorkflow: 'reviewed_shell',
 			conversationSummary,
 			priorDomainIds: turnPreparation.priorDomainIds,
 			priorOutcomeCardIds: turnPreparation.priorOutcomeCardIds,

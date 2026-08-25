@@ -1,7 +1,7 @@
 ---
 name: Project Creation
-catalog_line: 'Turn a user idea into the smallest valid BuildOS project payload with only the structure the user described.'
-description: Project creation playbook for turning a user idea into the smallest valid BuildOS project payload with inferred name, type_key, props, and only the initial structure the user actually described.
+catalog_line: 'Build the smallest valid web-owned compound ProjectSpec from a user idea.'
+description: Web-owned compound project creation playbook with inferred name, type_key, props, and only the initial structure the user described.
 skill_type: procedure # procedure | reference | strategy | resource | policy | orchestration
 altitude: task # task | domain | meta
 activation: progressive # always_on | progressive | invoked
@@ -23,7 +23,7 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/project_cr
 
 ## Identity
 
-Project creation playbook for turning a user idea into the smallest valid BuildOS project payload with inferred name, type_key, props, and only the initial structure the user actually described. This is a **procedure** skill at **task** altitude: an ordered runbook for emitting the create payload, with a small judgment layer for minimality calls and a per-type props taxonomy in Knowledge.
+Project creation playbook for the web-owned compound flow: turn a user idea into the smallest valid BuildOS project payload with inferred name, type_key, props, and only the initial structure the user actually described. The reviewed worker flow supplies its own shell-first instructions and does not load this skill. This is a **procedure** skill at **task** altitude: an ordered runbook for emitting the create payload, with a small judgment layer for minimality calls and a per-type props taxonomy in Knowledge.
 
 ## Activation
 

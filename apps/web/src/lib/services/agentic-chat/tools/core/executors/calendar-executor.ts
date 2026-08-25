@@ -358,10 +358,10 @@ export class CalendarExecutor extends BaseExecutor {
 		};
 
 		let timeMin = rawTimeMin
-			? this.parseCalendarDateTime(rawTimeMin, timezone, 'timeMin', 'start').iso
+			? this.parseCalendarDateTime(rawTimeMin, timezone, 'time_min', 'start').iso
 			: null;
 		let timeMax = rawTimeMax
-			? this.parseCalendarDateTime(rawTimeMax, timezone, 'timeMax', 'end').iso
+			? this.parseCalendarDateTime(rawTimeMax, timezone, 'time_max', 'end').iso
 			: null;
 
 		const now = Date.now();
@@ -374,8 +374,8 @@ export class CalendarExecutor extends BaseExecutor {
 			timeMax = new Date(now + DEFAULT_LIST_LOOKAHEAD_DAYS * DAY_IN_MS).toISOString();
 		}
 
-		if (Date.parse(timeMax) < Date.parse(timeMin)) {
-			throw new Error('timeMax/time_max must be after timeMin/time_min');
+		if (Date.parse(timeMax) <= Date.parse(timeMin)) {
+			throw new Error('time_max must be after time_min');
 		}
 
 		return {
@@ -764,7 +764,7 @@ export class CalendarExecutor extends BaseExecutor {
 		}
 		if (defaultsApplied.timeMin || defaultsApplied.timeMax) {
 			warnings.push(
-				`Applied default event window (${DEFAULT_LIST_LOOKBACK_DAYS}d past, ${DEFAULT_LIST_LOOKAHEAD_DAYS}d future). Pass timeMin/timeMax or time_min/time_max for exact range control.`
+				`Applied default event window (${DEFAULT_LIST_LOOKBACK_DAYS}d past, ${DEFAULT_LIST_LOOKAHEAD_DAYS}d future). Pass time_min/time_max for exact range control.`
 			);
 		}
 

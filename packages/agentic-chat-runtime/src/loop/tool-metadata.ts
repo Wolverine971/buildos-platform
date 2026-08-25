@@ -282,7 +282,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	list_calendar_events: {
 		summary: 'List calendar events across Google Calendar and ontology events.',
 		capabilities: [
-			'Supports explicit time ranges (timeMin/timeMax or time_min/time_max)',
+			'Supports explicit time ranges with time_min/time_max',
 			'Merges Google + ontology events',
 			'Supports pagination with limit/offset'
 		],
@@ -392,7 +392,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 
 	create_onto_project: {
 		summary:
-			'End-to-end project creation with classified type_key, inferred props, and nested entities.',
+			'Web-owned composite project creation with classified type_key, inferred props, and optional initial graph.',
 		capabilities: ['Supports goals/plans/tasks scaffolding', 'Captures clarifications'],
 		contexts: ['project_create', 'project'],
 		category: 'write'

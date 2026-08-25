@@ -4026,20 +4026,22 @@ function projectCreateShellGuidance(
 			.filter((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
 			.map((tool) => tool.function.name)
 	);
-	const childCreationSupported = [
-		'create_onto_goal',
-		'create_onto_plan',
-		'create_onto_task',
-		'create_onto_document',
-		'create_onto_milestone',
-		'create_onto_risk',
-		'link_onto_entities'
-	].some((name) => mutationNames.has(name));
+	const supportedChildLabels = [
+		['create_onto_goal', 'goals'],
+		['create_onto_plan', 'plans'],
+		['create_onto_task', 'tasks'],
+		['create_onto_document', 'documents'],
+		['create_onto_milestone', 'milestones'],
+		['create_onto_risk', 'risks'],
+		['link_onto_entities', 'relationships']
+	]
+		.filter(([name]) => mutationNames.has(name))
+		.map(([, label]) => label);
 	return [
 		'Project-create shell boundary: create_onto_project creates exactly one project plus its generated Context document and requires entities=[] and relationships=[].',
 		'Declare the shell as one outcome with action=create, entity_kind=project, minimum_successful_effects=1, no target_ids, and no required_fields or changes; the independently SHA-reviewed mutation batch binds the exact nested project values.',
-		childCreationSupported
-			? 'Goals, tasks, documents, milestones, risks, and relationships are separate outcomes executed only with their corresponding canonical mutation tools after the shell returns a project id.'
+		supportedChildLabels.length > 0
+			? `After the shell returns a project id, execute only separately contracted child operations admitted in this turn: ${supportedChildLabels.join(', ')}. Do not promise or attempt other child structure.`
 			: 'No canonical child-entity creation tool is admitted in this turn. Contract and create the project shell now without asking the user to reconfirm; do not put requested goals, tasks, or relationships into create_onto_project, and disclose after success that those child records require a later project-scoped turn.'
 	];
 }

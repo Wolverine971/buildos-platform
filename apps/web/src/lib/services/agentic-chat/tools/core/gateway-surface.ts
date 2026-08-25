@@ -42,10 +42,12 @@ export const GATEWAY_SURFACE_PROFILE_NAMES = [
 	'project_document',
 	'project_write_document',
 	'project_calendar',
+	'project_create_compound',
 	'project_create_minimal'
 ] as const;
 
 export type GatewaySurfaceProfileName = (typeof GATEWAY_SURFACE_PROFILE_NAMES)[number];
+export type ProjectCreateExecutionWorkflow = 'web_compound' | 'reviewed_shell';
 
 export type GatewayToolMaterializationSource =
 	| 'default'
@@ -171,6 +173,10 @@ const PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES = [
 	'create_onto_task'
 ] as const;
 
+// The web executor persists the complete ProjectSpec atomically, so child and
+// semantic-control tools add provider payload without adding capability.
+const PROJECT_CREATE_COMPOUND_DIRECT_TOOL_NAMES = ['create_onto_project'] as const;
+
 const GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE: Record<
 	GatewaySurfaceProfileName,
 	readonly string[]
@@ -182,6 +188,7 @@ const GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE: Record<
 	project_document: PROJECT_DOCUMENT_DIRECT_TOOL_NAMES,
 	project_write_document: PROJECT_WRITE_DOCUMENT_DIRECT_TOOL_NAMES,
 	project_calendar: PROJECT_CALENDAR_DIRECT_TOOL_NAMES,
+	project_create_compound: PROJECT_CREATE_COMPOUND_DIRECT_TOOL_NAMES,
 	project_create_minimal: PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES
 };
 
@@ -230,7 +237,7 @@ export function resolveGatewaySurfaceProfileForContextType(
 			// longer guesses that choice from verb or noun strings.
 			return 'project_write_document';
 		case 'project_create':
-			return 'project_create_minimal';
+			return 'project_create_compound';
 		// The daily brief is an action surface: "bump these tasks, reschedule
 		// that, create a meeting" is the expected workload, and follow-up turns
 		// ("ok did you finish?") carry no mutation keywords for intent routing
@@ -290,8 +297,11 @@ export function getGatewaySurfaceForProfile(
 	profileName: GatewaySurfaceProfileName,
 	options: GatewaySurfaceOptions = {}
 ): ChatToolDefinition[] {
-	if (profileName === 'project_create_minimal') {
-		return materializeGatewayTools([], [...PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES]).tools;
+	if (profileName === 'project_create_minimal' || profileName === 'project_create_compound') {
+		return materializeGatewayTools(
+			[],
+			[...resolveGatewayDirectToolNamesForProfile(profileName)]
+		).tools;
 	}
 
 	const names = [

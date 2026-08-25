@@ -24,8 +24,8 @@ export const ONTOLOGY_READ_TOOLS: ChatToolDefinition[] = [
 		type: 'function',
 		function: {
 			name: 'list_onto_tasks',
-			description: `List tasks from the ontology system (onto_tasks table). Returns abbreviated task information including id, title, state, and type.
-Use this for queries about ontology tasks, plans with tasks, or project task lists.`,
+			description:
+				'List task summaries (id, title, state, and type), optionally filtered by project or state.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -35,23 +35,15 @@ Use this for queries about ontology tasks, plans with tasks, or project task lis
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by state (todo, in_progress, blocked, done)'
-					},
-					type_key: {
-						type: 'string',
-						description: 'Filter by task type key'
+						enum: ['todo', 'in_progress', 'blocked', 'done']
 					},
 					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50,
 						description: 'Maximum tasks to return'
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -62,8 +54,7 @@ Use this for queries about ontology tasks, plans with tasks, or project task lis
 		type: 'function',
 		function: {
 			name: 'list_onto_goals',
-			description: `List goals from the ontology system (onto_goals table). Returns abbreviated goal information.
-Use for queries about project goals or strategic objectives.`,
+			description: 'List goal summaries, optionally filtered by project or archive state.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -71,24 +62,12 @@ Use for queries about project goals or strategic objectives.`,
 						type: 'string',
 						description: 'Filter goals by project ID'
 					},
-					state_key: {
-						type: 'string',
-						description: 'Filter by goal state (draft, active, achieved, abandoned)'
-					},
-					type_key: {
-						type: 'string',
-						description: 'Filter by goal type key'
-					},
 					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -99,8 +78,8 @@ Use for queries about project goals or strategic objectives.`,
 		type: 'function',
 		function: {
 			name: 'list_onto_documents',
-			description: `List documents from the ontology system (onto_documents table). Returns metadata summaries only, not full body content.
-Use get_onto_document_details when full document content is needed.`,
+			description:
+				'List document metadata, not body content. Use get_onto_document_details for a full document.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -115,20 +94,15 @@ Use get_onto_document_details when full document content is needed.`,
 					},
 					state_key: {
 						type: 'string',
-						description:
-							'Filter by document state (draft, in_review, ready, published, archived)'
+						enum: ['draft', 'in_review', 'ready', 'published', 'archived']
 					},
 					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50,
 						description: 'Maximum number of documents to return'
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -138,8 +112,7 @@ Use get_onto_document_details when full document content is needed.`,
 		type: 'function',
 		function: {
 			name: 'list_onto_milestones',
-			description: `List milestones from the ontology system (onto_milestones table). Returns milestone summaries with dates and state.
-Use for project timelines or milestones.`,
+			description: 'List milestone summaries with dates and state.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -149,24 +122,15 @@ Use for project timelines or milestones.`,
 					},
 					state_key: {
 						type: 'string',
-						description:
-							'Filter by milestone state (pending, in_progress, completed, missed)'
-					},
-					type_key: {
-						type: 'string',
-						description: 'Filter by milestone type key'
+						enum: ['pending', 'in_progress', 'completed', 'missed']
 					},
 					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50,
 						description: 'Maximum number of milestones to return'
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -176,8 +140,7 @@ Use for project timelines or milestones.`,
 		type: 'function',
 		function: {
 			name: 'list_onto_risks',
-			description: `List risks from the ontology system (onto_risks table). Returns risk summaries with impact and state.
-Use for risk reviews, mitigation planning, or status updates.`,
+			description: 'List risk summaries with impact and state.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -187,28 +150,19 @@ Use for risk reviews, mitigation planning, or status updates.`,
 					},
 					state_key: {
 						type: 'string',
-						description:
-							'Filter by risk state (identified, mitigated, occurred, closed)'
+						enum: ['identified', 'mitigated', 'occurred', 'closed']
 					},
 					impact: {
 						type: 'string',
-						description: 'Filter by impact level (low, medium, high, critical)'
-					},
-					type_key: {
-						type: 'string',
-						description: 'Filter by risk type key'
+						enum: ['low', 'medium', 'high', 'critical']
 					},
 					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50,
 						description: 'Maximum number of risks to return'
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -219,8 +173,7 @@ Use for risk reviews, mitigation planning, or status updates.`,
 		type: 'function',
 		function: {
 			name: 'list_onto_plans',
-			description: `List plans from the ontology system (onto_plans table). Returns plan summaries.
-Use for queries about execution plans or workflows.`,
+			description: 'List plan summaries, optionally filtered by project or archive state.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -228,24 +181,12 @@ Use for queries about execution plans or workflows.`,
 						type: 'string',
 						description: 'Filter plans by project ID'
 					},
-					state_key: {
-						type: 'string',
-						description: 'Filter by plan state (draft, active, completed)'
-					},
-					type_key: {
-						type: 'string',
-						description: 'Filter by plan type key'
-					},
 					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -256,30 +197,23 @@ Use for queries about execution plans or workflows.`,
 		type: 'function',
 		function: {
 			name: 'list_onto_projects',
-			description: `List projects from the ontology system (onto_projects table). Returns abbreviated project information.
-Use for discovering available projects or getting project overviews.`,
+			description: 'List project summaries for project discovery.',
 			parameters: {
 				type: 'object',
 				properties: {
 					state_key: {
 						type: 'string',
-						description:
-							'Filter by project state (planning, active, completed, cancelled)'
+						enum: ['planning', 'active', 'paused', 'completed', 'cancelled']
 					},
 					type_key: {
 						type: 'string',
 						description: 'Filter by project type'
 					},
-					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -314,17 +248,16 @@ Do not call for plain task metadata updates (title/state/priority) unless docume
 		type: 'function',
 		function: {
 			name: 'search_all_projects',
-			description: `Primary agent search across accessible BuildOS projects. Use this broad search when the project is unknown or the user is asking a cross-project question.
-Returns typed ontology matches with snippets so you can quickly shortlist items before loading details.
-
-QUERY TIP: search the distinctive content terms only (rare nouns, names, IDs). Search terms are AND-combined, so adding extra words — especially the project name — can EXCLUDE the very item you want. To restrict to one project, pass project_id; do NOT put the project name in the query. Example: for "in Aurora Field Notes, find the rockwool doc", call with query="rockwool" and project_id=<that project's id> — not query="Aurora Field Notes rockwool".`,
+			description:
+				'Primary search across accessible projects when the project is unknown or the question is cross-project. Returns typed matches with snippets. Query only distinctive content terms because terms are AND-combined; to scope a known project, pass project_id instead of adding its name to query.',
 			parameters: {
 				type: 'object',
 				properties: {
 					query: {
 						type: 'string',
+						minLength: 1,
 						description:
-							'Distinctive content terms to match (required). Use rare/specific words; omit the project name (pass project_id to scope instead).'
+							'Distinctive content terms; omit the project name when project_id scopes the search.'
 					},
 					project_id: {
 						type: 'string',
@@ -350,10 +283,11 @@ QUERY TIP: search the distinctive content terms only (rare nouns, names, IDs). S
 						}
 					},
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 10,
+						minimum: 1,
 						maximum: 25,
-						description: 'Maximum number of results (capped at 25)'
+						description: 'Maximum results.'
 					}
 				},
 				required: ['query']
@@ -365,8 +299,8 @@ QUERY TIP: search the distinctive content terms only (rare nouns, names, IDs). S
 		type: 'function',
 		function: {
 			name: 'search_project',
-			description: `Primary agent search inside one BuildOS project. Use this when a project_id is known or the chat is already scoped to a project.
-Returns typed ontology matches with snippets so you can quickly shortlist items before loading details.`,
+			description:
+				'Primary search inside a known project. Returns typed matches with snippets for shortlisting before detail reads.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -376,7 +310,8 @@ Returns typed ontology matches with snippets so you can quickly shortlist items 
 					},
 					query: {
 						type: 'string',
-						description: 'Search text to match inside the specified project (required)'
+						minLength: 1,
+						description: 'Search text inside the project.'
 					},
 					types: {
 						type: 'array',
@@ -397,10 +332,11 @@ Returns typed ontology matches with snippets so you can quickly shortlist items 
 						}
 					},
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 10,
+						minimum: 1,
 						maximum: 25,
-						description: 'Maximum number of results (capped at 25)'
+						description: 'Maximum results.'
 					}
 				},
 				required: ['project_id', 'query']
@@ -412,13 +348,14 @@ Returns typed ontology matches with snippets so you can quickly shortlist items 
 		type: 'function',
 		function: {
 			name: 'search_onto_tasks',
-			description: `Keyword search over tasks only, returning concise task matches with project context.
-Prefer search_project (project known) or search_all_projects (project unknown) for relevance-ranked results with snippets. Reach for this task-only tool when you specifically need to filter tasks by state_key/type_key or page through many task matches. Multi-word queries match in any word order; explicit "blog OR instagram" queries match alternatives.`,
+			description:
+				'Task-only keyword search with project context. Prefer search_project/search_all_projects unless task state/archive filters are needed. Multi-word terms match in any order; explicit "A OR B" matches alternatives.',
 			parameters: {
 				type: 'object',
 				properties: {
 					query: {
 						type: 'string',
+						minLength: 1,
 						description:
 							'Keyword query to match against task titles and descriptions. Explicit OR queries such as "blog OR Instagram" are treated as alternatives.'
 					},
@@ -428,23 +365,15 @@ Prefer search_project (project known) or search_all_projects (project unknown) f
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by state (todo, in_progress, blocked, done)'
-					},
-					type_key: {
-						type: 'string',
-						description: 'Filter by task type key'
+						enum: ['todo', 'in_progress', 'blocked', 'done']
 					},
 					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50,
 						description: 'Maximum number of search results'
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -456,34 +385,30 @@ Prefer search_project (project known) or search_all_projects (project unknown) f
 		type: 'function',
 		function: {
 			name: 'search_onto_projects',
-			description: `Keyword search over projects only, by name/description. Prefer search_all_projects for relevance-ranked cross-project discovery with snippets. Reach for this project-only tool when you need to filter projects by state_key/type_key. Multi-word queries match in any word order.`,
+			description:
+				'Project-only name/description search. Prefer search_all_projects unless state/type filters are needed. Multi-word terms match in any order.',
 			parameters: {
 				type: 'object',
 				properties: {
 					query: {
 						type: 'string',
-						description: 'Keyword query to search for (required)'
+						minLength: 1,
+						description: 'Keyword query.'
 					},
 					state_key: {
 						type: 'string',
-						description:
-							'Filter by project state (planning, active, completed, cancelled)'
+						enum: ['planning', 'active', 'paused', 'completed', 'cancelled']
 					},
 					type_key: {
 						type: 'string',
 						description: 'Filter by type_key classification'
 					},
-					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
-						default: 12,
-						maximum: 50,
+						type: 'integer',
+						default: 10,
+						minimum: 1,
+						maximum: 30,
 						description: 'Maximum search matches to return'
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -495,14 +420,15 @@ Prefer search_project (project known) or search_all_projects (project unknown) f
 		type: 'function',
 		function: {
 			name: 'search_onto_documents',
-			description: `Keyword search over documents only (matches title, description, and body content). Returns concise metadata matches, not full body content — use get_onto_document_details for that.
-Prefer search_project (project known) or search_all_projects (project unknown) for relevance-ranked results with snippets. Reach for this document-only tool when you need to filter documents by state_key/type_key. Multi-word queries match in any word order.`,
+			description:
+				'Document-only search across title, description, and body; returns metadata, not full content. Prefer search_project/search_all_projects unless document filters are needed.',
 			parameters: {
 				type: 'object',
 				properties: {
 					query: {
 						type: 'string',
-						description: 'Keyword query to search for (required)'
+						minLength: 1,
+						description: 'Keyword query.'
 					},
 					project_id: {
 						type: 'string',
@@ -514,20 +440,15 @@ Prefer search_project (project known) or search_all_projects (project unknown) f
 					},
 					state_key: {
 						type: 'string',
-						description:
-							'Filter by document state (draft, in_review, ready, published, archived)'
+						enum: ['draft', 'in_review', 'ready', 'published', 'archived']
 					},
 					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50,
 						description: 'Maximum number of search results'
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -540,37 +461,26 @@ Prefer search_project (project known) or search_all_projects (project unknown) f
 		function: {
 			name: 'search_onto_goals',
 			description:
-				'Keyword search over goals only, by name/description. Prefer search_project or search_all_projects for relevance-ranked results with snippets; use this goal-only tool to filter goals by state_key/type_key. Multi-word queries match in any word order.',
+				'Goal-only name/description search with optional project and archive filters.',
 			parameters: {
 				type: 'object',
 				properties: {
 					query: {
 						type: 'string',
-						description: 'Keyword query to search for (required)'
+						minLength: 1,
+						description: 'Keyword query.'
 					},
 					project_id: {
 						type: 'string',
 						description: 'Optional project filter to limit matches'
 					},
-					state_key: {
-						type: 'string',
-						description: 'Filter by goal state (draft, active, achieved, abandoned)'
-					},
-					type_key: {
-						type: 'string',
-						description: 'Filter by goal type key'
-					},
 					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50,
 						description: 'Maximum number of search results'
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -583,37 +493,26 @@ Prefer search_project (project known) or search_all_projects (project unknown) f
 		function: {
 			name: 'search_onto_plans',
 			description:
-				'Keyword search over plans only, by name/description. Prefer search_project or search_all_projects for relevance-ranked results with snippets; use this plan-only tool to filter plans by state_key/type_key. Multi-word queries match in any word order.',
+				'Plan-only name/description search with optional project and archive filters.',
 			parameters: {
 				type: 'object',
 				properties: {
 					query: {
 						type: 'string',
-						description: 'Keyword query to search for (required)'
+						minLength: 1,
+						description: 'Keyword query.'
 					},
 					project_id: {
 						type: 'string',
 						description: 'Optional project filter to limit matches'
 					},
-					state_key: {
-						type: 'string',
-						description: 'Filter by plan state (draft, active, completed)'
-					},
-					type_key: {
-						type: 'string',
-						description: 'Filter by plan type key'
-					},
 					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50,
 						description: 'Maximum number of search results'
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -626,13 +525,14 @@ Prefer search_project (project known) or search_all_projects (project unknown) f
 		function: {
 			name: 'search_onto_milestones',
 			description:
-				'Keyword search over milestones only, by title/description. Prefer search_project or search_all_projects for relevance-ranked results with snippets; use this milestone-only tool to filter milestones by state_key/type_key. Multi-word queries match in any word order.',
+				'Milestone-only title/description search with optional project, state, and archive filters.',
 			parameters: {
 				type: 'object',
 				properties: {
 					query: {
 						type: 'string',
-						description: 'Keyword query to search for (required)'
+						minLength: 1,
+						description: 'Keyword query.'
 					},
 					project_id: {
 						type: 'string',
@@ -640,24 +540,15 @@ Prefer search_project (project known) or search_all_projects (project unknown) f
 					},
 					state_key: {
 						type: 'string',
-						description:
-							'Filter by milestone state (pending, in_progress, completed, missed)'
-					},
-					type_key: {
-						type: 'string',
-						description: 'Filter by milestone type key'
+						enum: ['pending', 'in_progress', 'completed', 'missed']
 					},
 					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50,
 						description: 'Maximum number of search results'
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -670,13 +561,14 @@ Prefer search_project (project known) or search_all_projects (project unknown) f
 		function: {
 			name: 'search_onto_risks',
 			description:
-				'Keyword search over risks only, by title/content. Prefer search_project or search_all_projects for relevance-ranked results with snippets; use this risk-only tool to filter risks by state_key/impact/type_key. Multi-word queries match in any word order.',
+				'Risk-only title/content search with optional project, state, impact, and archive filters.',
 			parameters: {
 				type: 'object',
 				properties: {
 					query: {
 						type: 'string',
-						description: 'Keyword query to search for (required)'
+						minLength: 1,
+						description: 'Keyword query.'
 					},
 					project_id: {
 						type: 'string',
@@ -684,28 +576,19 @@ Prefer search_project (project known) or search_all_projects (project unknown) f
 					},
 					state_key: {
 						type: 'string',
-						description:
-							'Filter by risk state (identified, mitigated, occurred, closed)'
+						enum: ['identified', 'mitigated', 'occurred', 'closed']
 					},
 					impact: {
 						type: 'string',
-						description: 'Filter by impact level (low, medium, high, critical)'
-					},
-					type_key: {
-						type: 'string',
-						description: 'Filter by risk type key'
+						enum: ['low', 'medium', 'high', 'critical']
 					},
 					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50,
 						description: 'Maximum number of search results'
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -724,7 +607,8 @@ Use only when older instructions specifically mention search_ontology.`,
 				properties: {
 					query: {
 						type: 'string',
-						description: 'Search text to match across ontology entities (required)'
+						minLength: 1,
+						description: 'Search text across ontology entities.'
 					},
 					project_id: {
 						type: 'string',
@@ -739,15 +623,11 @@ Use only when older instructions specifically mention search_ontology.`,
 						}
 					},
 					limit: {
-						type: 'number',
+						type: 'integer',
 						default: 20,
+						minimum: 1,
 						maximum: 50,
-						description: 'Maximum number of results (capped at 50)'
-					},
-					offset: {
-						type: 'number',
-						default: 0,
-						description: 'Zero-based pagination offset'
+						description: 'Maximum results.'
 					}
 				},
 				required: ['query']

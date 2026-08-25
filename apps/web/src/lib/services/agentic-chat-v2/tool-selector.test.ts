@@ -328,7 +328,7 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('search_onto_projects');
 	});
 
-	it('keeps bounded project-create controls and child creates unaffected by lean discovery', () => {
+	it('keeps the web compound project-create surface unaffected by lean discovery', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 		vi.stubEnv('FASTCHAT_LEAN_DISCOVERY', 'true');
 
@@ -336,15 +336,7 @@ describe('selectFastChatTools', () => {
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);
 
-		expect(names).toEqual([
-			'declare_turn_contract',
-			'declare_read_only_turn',
-			'request_turn_clarification',
-			'cancel_turn_contract',
-			'create_onto_project',
-			'create_onto_goal',
-			'create_onto_task'
-		]);
+		expect(names).toEqual(['create_onto_project']);
 	});
 
 	it('materializes outcome card gateway tools without preloading them', () => {
@@ -542,10 +534,13 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('create_calendar_event');
 	});
 
-	it('uses the bounded contract-first project-create hot path', () => {
+	it('uses the bounded contract-first project-create hot path for reviewed workers', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
-		const names = selectFastChatTools({ contextType: 'project_create' })
+		const names = selectFastChatTools({
+			contextType: 'project_create',
+			projectCreateWorkflow: 'reviewed_shell'
+		})
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);
 
@@ -561,7 +556,7 @@ describe('selectFastChatTools', () => {
 		expect(names).not.toContain('link_onto_entities');
 	});
 
-	it('does not broaden project-create when an explicit larger profile is supplied', () => {
+	it('does not broaden web compound project-create when a larger profile is supplied', () => {
 		const names = selectFastChatTools({
 			contextType: 'project_create',
 			surfaceProfile: 'project_write_document',
@@ -570,15 +565,7 @@ describe('selectFastChatTools', () => {
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);
 
-		expect(names).toEqual([
-			'declare_turn_contract',
-			'declare_read_only_turn',
-			'request_turn_clarification',
-			'cancel_turn_contract',
-			'create_onto_project',
-			'create_onto_goal',
-			'create_onto_task'
-		]);
+		expect(names).toEqual(['create_onto_project']);
 	});
 
 	it('exposes larger deterministic profiles when requested explicitly', () => {

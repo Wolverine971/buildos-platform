@@ -4838,7 +4838,9 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 		const liveVision = {
 			resolve: vi.fn(async () => ({
 				images: [],
-				failed: [{ attachmentKey: `asset:${attachment.asset_id}`, reason: 'source_missing' }],
+				failed: [
+					{ attachmentKey: `asset:${attachment.asset_id}`, reason: 'source_missing' }
+				],
 				skippedByLimit: 0
 			}))
 		};
@@ -6200,10 +6202,19 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 				(message) =>
 					typeof message.content === 'string' &&
 					message.content.includes(
-						'Goals, tasks, documents, milestones, risks, and relationships are separate outcomes'
+						'admitted in this turn: goals, tasks. Do not promise or attempt other child structure.'
 					)
 			)
 		).toBe(true);
+		expect(client.stream.mock.calls[2]?.[0].messages).not.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					content: expect.stringContaining(
+						'documents, milestones, risks, and relationships'
+					)
+				})
+			])
+		);
 
 		const projectMutationSteps = await collect(
 			invocation.continueWithToolResults!({
@@ -6409,7 +6420,8 @@ describe('AgenticChatReadOnlyProviderAdapter', () => {
 			firstRequest?.messages.some(
 				(message) =>
 					typeof message.content === 'string' &&
-					message.content.includes('Project-create shell boundary')
+					message.content.includes('Project-create shell boundary') &&
+					message.content.includes('No canonical child-entity creation tool is admitted')
 			)
 		).toBe(true);
 
