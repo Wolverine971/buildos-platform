@@ -100,6 +100,25 @@ function chunk<T>(values: T[], size: number): T[][] {
 	return chunks;
 }
 
+function interleaveTargetsByConnection(targets: CalendarTarget[]): CalendarTarget[] {
+	const groups = new Map<string, CalendarTarget[]>();
+	for (const target of targets) {
+		groups.set(target.connectionId, [...(groups.get(target.connectionId) ?? []), target]);
+	}
+	const queues = Array.from(groups.values());
+	const interleaved: CalendarTarget[] = [];
+	for (let index = 0; ; index += 1) {
+		let appended = false;
+		for (const queue of queues) {
+			const target = queue[index];
+			if (!target) continue;
+			interleaved.push(target);
+			appended = true;
+		}
+		if (!appended) return interleaved;
+	}
+}
+
 function eventStart(event: calendar_v3.Schema$Event): string {
 	return event.start?.dateTime ?? event.start?.date ?? event.created ?? '';
 }
@@ -346,7 +365,11 @@ export class GoogleCalendarReadService {
 			.catch(() => null);
 		const clientCache = new Map<string, Promise<unknown>>();
 
-		const targetResults = await this.mapBounded(targets, async (target) => {
+		// A slow credential refresh for one account must not occupy every worker
+		// slot while later accounts wait behind all of its sources. Round-robin the
+		// connections so bounded concurrency gives each account an early chance.
+		const orderedTargets = interleaveTargetsByConnection(targets);
+		const targetResults = await this.mapBounded(orderedTargets, async (target) => {
 			try {
 				const events = await this.listTargetEvents({
 					...params,

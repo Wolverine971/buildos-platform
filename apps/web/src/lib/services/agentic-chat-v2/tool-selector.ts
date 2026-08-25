@@ -119,10 +119,22 @@ export function selectFastChatTools(params: {
 	const webResearchTools = looksLikeWebResearchTurn(params.latestUserMessage)
 		? ['web_search', 'web_visit']
 		: [];
+	// External-account tools are intentionally legacy-only during the worker
+	// cutover. Materialize them at launch when the request is explicit so worker
+	// admission can deterministically renegotiate instead of accepting a turn
+	// whose bounded tool surface cannot satisfy the request.
+	const externalEmailReadTools = looksLikeExternalEmailReadTurn(params.latestUserMessage)
+		? ['list_email_accounts', 'search_email_messages', 'get_email_message']
+		: [];
+	const externalCalendarTools = looksLikeExternalCalendarTurn(params.latestUserMessage)
+		? ['list_calendar_events']
+		: [];
 	return materializeGatewayTools(tools, [
 		...crossProjectTools,
 		...delegatedResearchTools,
-		...webResearchTools
+		...webResearchTools,
+		...externalEmailReadTools,
+		...externalCalendarTools
 	]).tools;
 }
 
@@ -169,6 +181,28 @@ function looksLikeDelegatedResearchTurn(latestUserMessage?: string | null): bool
 		/\bdeep[-\s]?research\b/i.test(text) ||
 		/\b(?:delegate|delegation|sub-?agents?|background agent|research swarm)\b/i.test(text) ||
 		/\b(?:research|investigate|analy[sz]e)\b[\s\S]{0,100}\b(?:in the background|take your time|get back to me|report back)\b/i.test(
+			text
+		)
+	);
+}
+
+function looksLikeExternalEmailReadTurn(latestUserMessage?: string | null): boolean {
+	const text = latestUserMessage?.trim() ?? '';
+	if (!text) return false;
+	if (/\b(?:gmail|inbox|mailbox)\b/i.test(text)) return true;
+	if (!/\be-?mail(?:s|ed|ing)?\b/i.test(text)) return false;
+	return /\b(?:account|connected|search|find|look|check|read|open|list|show|scan|message|inbox|what|who|when)\b/i.test(
+		text
+	);
+}
+
+function looksLikeExternalCalendarTurn(latestUserMessage?: string | null): boolean {
+	const text = latestUserMessage?.trim() ?? '';
+	if (!text) return false;
+	if (/\bcalendar\b/i.test(text)) return true;
+	return (
+		/\b(?:event|appointment)\b/i.test(text) &&
+		/\b(?:schedule|reschedule|move|create|update|cancel|delete|list|show|find|check|today|tomorrow|week|month)\b/i.test(
 			text
 		)
 	);

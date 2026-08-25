@@ -36,6 +36,46 @@ function createTargetService(options: {
 }
 
 describe('GoogleCalendarReadService', () => {
+	it('interleaves accounts so one stalled credential refresh cannot starve another account', async () => {
+		const targets = [
+			target({ calendarSourceId: 'source-a1' }),
+			target({ calendarSourceId: 'source-a2', providerCalendarId: 'a2@example.com' }),
+			target({ calendarSourceId: 'source-a3', providerCalendarId: 'a3@example.com' }),
+			target({
+				connectionId: 'connection-b',
+				calendarSourceId: 'source-b',
+				providerCalendarId: 'b@example.com'
+			})
+		];
+		const targetService = createTargetService({ readTargets: targets });
+		const getAuthenticatedClient = vi.fn(async (_userId: string, connectionId: string) => {
+			if (connectionId === 'connection-a') {
+				return new Promise(() => undefined);
+			}
+			return { connectionId };
+		});
+		const service = new GoogleCalendarReadService({} as any, {
+			targetService,
+			connectionService: { getAuthenticatedClient },
+			createCalendarApi: () =>
+				({
+					events: { list: vi.fn().mockResolvedValue({ data: { items: [] } }) },
+					freebusy: {} as any
+				}) as any
+		});
+
+		const result = await service.listEvents({ userId: 'user-1', budgetMs: 50 });
+
+		expect(result.sourceStatuses).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ calendarSourceId: 'source-b', status: 'success' })
+			])
+		);
+		expect(result.sourceStatuses.filter((status) => status.status === 'timeout')).toHaveLength(
+			3
+		);
+	});
+
 	it('aggregates accounts, reuses clients, and collapses attendee copies without collapsing recurring instances', async () => {
 		const targets = [
 			target(),

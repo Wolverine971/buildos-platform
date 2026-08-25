@@ -19,6 +19,47 @@ afterEach(() => {
 });
 
 describe('selectFastChatTools', () => {
+	it('hot-loads legacy-only Gmail reads for explicit connected-email requests', () => {
+		const names = selectFastChatTools({
+			contextType: 'global',
+			latestUserMessage:
+				'Search my connected Gmail accounts for the contract and open the best message.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).toEqual(
+			expect.arrayContaining([
+				'list_email_accounts',
+				'search_email_messages',
+				'get_email_message'
+			])
+		);
+	});
+
+	it('does not mistake cold-email drafting for a connected-inbox read', () => {
+		const names = selectFastChatTools({
+			contextType: 'global',
+			latestUserMessage: 'Draft a concise cold email to a newsletter creator.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).not.toContain('list_email_accounts');
+		expect(names).not.toContain('search_email_messages');
+	});
+
+	it('hot-loads the legacy-only calendar read surface for explicit calendar requests', () => {
+		const names = selectFastChatTools({
+			contextType: 'global',
+			latestUserMessage: "What's on my calendar tomorrow?"
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).toContain('list_calendar_events');
+	});
+
 	it('mounts living-reference document tools without classifying the message', () => {
 		const baseTools = selectFastChatTools({
 			contextType: 'project',

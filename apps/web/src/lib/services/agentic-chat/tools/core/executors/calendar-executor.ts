@@ -16,6 +16,9 @@ import {
 } from './calendar-datetime';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { createLogger } from '$lib/utils/logger';
+import { env as privateEnv } from '$env/dynamic/private';
+import { GoogleCalendarReadService } from '$lib/server/google-calendar-read.service';
+import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 
 const logger = createLogger('CalendarExecutor');
 
@@ -457,6 +460,13 @@ export class CalendarExecutor extends BaseExecutor {
 		let googleEvents: CalendarEvent[] = [];
 		let googleError: string | null = null;
 		let googleCalendarId: string | null = null;
+		let googleRead = {
+			mode: 'none' as 'none' | 'legacy_single_account' | 'source_aware',
+			source_count: 0,
+			successful_source_count: 0,
+			failed_source_count: 0,
+			partial: false
+		};
 		const requestedCalendarId = this.normalizeCalendarId(
 			this.getStringArg(args.calendar_id, args.calendarId)
 		);
@@ -488,14 +498,64 @@ export class CalendarExecutor extends BaseExecutor {
 
 		if (googleCalendarId) {
 			try {
-				const response = await this.calendarService.getCalendarEvents(this.userId, {
-					calendarId: googleCalendarId,
-					timeMin,
-					timeMax,
-					maxResults: fetchLimit,
-					q: textQuery
-				});
-				googleEvents = response.events ?? [];
+				const multiCalendarEnabled = isMultiCalendarUserAllowed(this.userId, privateEnv);
+				let usedSourceAwareRead = false;
+				try {
+					const response = await new GoogleCalendarReadService(
+						this.getAdminSupabase()
+					).listEvents({
+						userId: this.userId,
+						// An implicit user/primary scope means every enabled read source in
+						// the multi-account model. Explicit/project calendar ids still resolve
+						// to one exact source through the compatibility target resolver.
+						calendarId:
+							scope === 'user' && !requestedCalendarId ? undefined : googleCalendarId,
+						timeMin,
+						timeMax,
+						maxResults: fetchLimit,
+						q: textQuery,
+						timeZone: timezone,
+						// Multi-account fan-out can cover dozens of enabled sources. The
+						// default 4s interactive budget is too short for that bounded set and
+						// can turn every source into a timeout before the first useful read.
+						budgetMs: 20_000
+					});
+					// Migrated users may already own active source rows before the UI
+					// rollout flag is enabled. Those rows are authoritative for reads;
+					// legacy OAuth is only a fallback when no active source exists.
+					if (multiCalendarEnabled || response.sourceStatuses.length > 0) {
+						usedSourceAwareRead = true;
+						googleEvents = response.events as unknown as CalendarEvent[];
+						const successfulSourceCount = response.sourceStatuses.filter(
+							(status) => status.status === 'success'
+						).length;
+						googleRead = {
+							mode: 'source_aware',
+							source_count: response.sourceStatuses.length,
+							successful_source_count: successfulSourceCount,
+							failed_source_count:
+								response.sourceStatuses.length - successfulSourceCount,
+							partial: response.partial
+						};
+						if (response.partial) {
+							googleError = `Calendar read returned partial results for ${response.warnings.length} source(s).`;
+						}
+					}
+				} catch (error) {
+					if (multiCalendarEnabled) throw error;
+				}
+
+				if (!usedSourceAwareRead) {
+					googleRead = { ...googleRead, mode: 'legacy_single_account' };
+					const response = await this.calendarService.getCalendarEvents(this.userId, {
+						calendarId: googleCalendarId,
+						timeMin,
+						timeMax,
+						maxResults: fetchLimit,
+						q: textQuery
+					});
+					googleEvents = response.events ?? [];
+				}
 			} catch (error) {
 				googleError =
 					error instanceof Error ? error.message : 'Failed to load Google events';
@@ -729,6 +789,7 @@ export class CalendarExecutor extends BaseExecutor {
 				default_time_min_applied: defaultsApplied.timeMin,
 				default_time_max_applied: defaultsApplied.timeMax
 			},
+			google_read: googleRead,
 			warnings
 		};
 	}
