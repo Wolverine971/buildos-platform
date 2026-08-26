@@ -311,7 +311,7 @@ import {
 	buildPreparedPromptKey,
 	buildPreparedPromptSurface
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
-import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
+import { ToolExecutionService } from '$lib/services/agentic-chat/legacy-execution/tool-execution-service';
 import { LlmStreamPassTerminalError } from '$lib/services/agentic-chat-v2/stream-orchestrator/llm-pass-runner';
 
 type Row = Record<string, any>;

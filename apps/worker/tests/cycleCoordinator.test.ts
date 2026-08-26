@@ -60,6 +60,9 @@ describe('runDueCycleCoordinator', () => {
 			skippedOverlap: 0,
 			skippedMisfire: 0,
 			failed: 0,
+			oldestScheduledFor: '2026-08-25T13:00:00.000Z',
+			maxDueLatencyMs: 5_000,
+			averageDueLatencyMs: 5_000,
 			errors: []
 		});
 		expect(store.claimDue).toHaveBeenCalledWith({
@@ -96,6 +99,7 @@ describe('runDueCycleCoordinator', () => {
 		const summary = await runDueCycleCoordinator({ store, now, claimToken: CLAIM_TOKEN });
 
 		expect(summary.admitted).toBe(1);
+		expect(summary.maxDueLatencyMs).toBe(0);
 		expect(store.admitClaimed).toHaveBeenCalledWith(
 			expect.objectContaining({
 				executionInput: expect.objectContaining({

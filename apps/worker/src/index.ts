@@ -29,6 +29,7 @@ import { registerEmailTrackingRoute } from './routes/email-tracking';
 import smsScheduledRoutes from './routes/sms/scheduled';
 import { startScheduler } from './scheduler';
 import { logQueueConfiguration, queueConfig } from './config/queueConfig';
+import { CYCLE_COORDINATOR_ENABLED, CYCLE_DAILY_BRIEF_SHADOW_ENABLED } from './config/cycles';
 import { logProjectLoopProviderConfiguration } from './config/projectLoops';
 import {
 	WorkerEventLoopLagMonitor,
@@ -47,6 +48,8 @@ import {
 	type BriefNotificationSuppressionReason,
 	resolveImmediateBriefNotification
 } from './workers/brief/briefNotificationSchedule';
+import { getCycleCoordinatorHealthSnapshot } from './workers/cycle/cycleObservability';
+import { getDailyBriefCycleShadowHealthSnapshot } from './workers/cycle/dailyBriefCycleShadow';
 
 // Log email configuration at startup
 console.log('🚀 Application starting...');
@@ -172,7 +175,13 @@ app.get('/health', (_req, res) => {
 		runtimeState: workerHealth.state,
 		checks,
 		queue: workerHealth.queue,
-		agenticChat: workerHealth.agenticChat
+		agenticChat: workerHealth.agenticChat,
+		cycles: {
+			coordinator: getCycleCoordinatorHealthSnapshot(CYCLE_COORDINATOR_ENABLED),
+			dailyBriefShadow: getDailyBriefCycleShadowHealthSnapshot(
+				CYCLE_DAILY_BRIEF_SHADOW_ENABLED
+			)
+		}
 	});
 });
 

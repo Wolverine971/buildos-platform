@@ -10,7 +10,9 @@ const PROVIDER_ROOT = join(AGENTIC_CHAT_ROOT, 'provider');
 const EXTRACTED_PROVIDER_MODULES = [
 	'contracts.ts',
 	'feedback.ts',
+	'provider-pass.ts',
 	'protocol.ts',
+	'repair-policy.ts',
 	'request-builders.ts',
 	'steps.ts',
 	'stream-tool-calls.ts',
@@ -19,6 +21,7 @@ const EXTRACTED_PROVIDER_MODULES = [
 	'validation.ts',
 	join('review', 'contract-execution.ts'),
 	join('review', 'controls.ts'),
+	join('review', 'decision-completion.ts'),
 	join('review', 'decision-handling.ts'),
 	join('review', 'disposition.ts'),
 	join('review', 'mutation-batch.ts'),
@@ -41,10 +44,12 @@ describe('Agentic Chat provider boundaries', () => {
 			'function buildCandidateGateClarification(',
 			'function buildContractCompletionRequest(',
 			'function buildContractRevisionRequest(',
+			'function buildReviewerMimicryRepairRequest(',
 			'function buildReadOnlyRequest(',
 			'function buildReviewFallbackClarification(',
 			'function buildMutationBatchRevisionRequest(',
 			'function buildTurnContractWriteCarveOutRequest(',
+			'function buildUnavailableSkillRepairRequest(',
 			'function getAdmissionContextUsage(',
 			'function buildPlanningStep(',
 			'function buildPromptSnapshot(',
@@ -60,7 +65,12 @@ describe('Agentic Chat provider boundaries', () => {
 			'function validateCompletedProviderCalls(',
 			'function validateReadFeedback(',
 			'function mutationBatchSha256(',
+			'function completeMutationBatchReviewDecision(',
+			'function completeReadOnlyReviewDecision(',
+			'function completeTurnContractReviewDecision(',
+			'function contextSaturationRepairRank(',
 			'function readOnlyDispositionSha256(',
+			'function streamBufferedProviderPass(',
 			'const TURN_CONTRACT_REVIEW_APPROVAL_TOOL'
 		] as const;
 

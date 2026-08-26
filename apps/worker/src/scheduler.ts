@@ -48,8 +48,18 @@ import {
 	runAgentRunStrandedSweep
 } from './workers/agent-run/agentRunStrandedSweep';
 import { SMS_SENDING_DISABLED_REASON, SMS_SENDING_ENABLED } from './config/sms';
-import { CYCLE_COORDINATOR_ENABLED } from './config/cycles';
+import { CYCLE_COORDINATOR_ENABLED, CYCLE_DAILY_BRIEF_SHADOW_ENABLED } from './config/cycles';
 import { runDueCycleCoordinator } from './workers/cycle/cycleCoordinator';
+import {
+	recordCycleCoordinatorCompleted,
+	recordCycleCoordinatorFailed,
+	recordCycleCoordinatorStarted
+} from './workers/cycle/cycleObservability';
+import {
+	persistCycleCoordinatorMetrics,
+	persistDailyBriefCycleShadowMetrics
+} from './workers/cycle/cycleMetrics';
+import { runDailyBriefCycleShadow } from './workers/cycle/dailyBriefCycleShadow';
 
 export type UserBriefPreference = Database['public']['Tables']['user_brief_preferences']['Row'];
 type AgentOperativeRow = AgentOperativeRowShape;
@@ -81,27 +91,62 @@ const backoffCalculator = new BriefBackoffCalculator();
 let agentRunCostReconciliationInFlight: Promise<void> | null = null;
 let agentRunStrandedSweepInFlight: Promise<void> | null = null;
 let cycleCoordinatorInFlight: Promise<void> | null = null;
+let dailyBriefCycleShadowInFlight: Promise<void> | null = null;
 
 export async function runScheduledCycleCoordinator(): Promise<boolean> {
 	if (cycleCoordinatorInFlight) return false;
 
 	cycleCoordinatorInFlight = (async () => {
-		const summary = await runDueCycleCoordinator();
-		if (summary.claimed > 0 || summary.failed > 0) {
-			console.log(
-				`🔄 Cycle coordinator: claimed=${summary.claimed}, admitted=${summary.admitted}, already=${summary.alreadyAdmitted}, overlap=${summary.skippedOverlap}, misfire=${summary.skippedMisfire}, failed=${summary.failed}`
-			);
-		}
-		for (const error of summary.errors) console.error(`🔄 Cycle coordinator: ${error}`);
-	})()
-		.catch((error) => {
+		const startedAt = new Date();
+		recordCycleCoordinatorStarted(startedAt);
+		try {
+			const summary = await runDueCycleCoordinator();
+			const snapshot = recordCycleCoordinatorCompleted(startedAt, new Date(), summary);
+			await persistCycleCoordinatorMetrics(snapshot);
+			if (summary.claimed > 0 || summary.failed > 0) {
+				console.log(
+					`🔄 Cycle coordinator: claimed=${summary.claimed}, admitted=${summary.admitted}, already=${summary.alreadyAdmitted}, overlap=${summary.skippedOverlap}, misfire=${summary.skippedMisfire}, failed=${summary.failed}, maxDueLatencyMs=${summary.maxDueLatencyMs}, durationMs=${snapshot.lastDurationMs}`
+				);
+			}
+			for (const error of summary.errors) console.error(`🔄 Cycle coordinator: ${error}`);
+		} catch (error) {
+			const snapshot = recordCycleCoordinatorFailed(startedAt, new Date(), error);
+			await persistCycleCoordinatorMetrics(snapshot);
 			console.error('🔄 Cycle coordinator failed:', error);
-		})
-		.finally(() => {
-			cycleCoordinatorInFlight = null;
-		});
+		}
+	})().finally(() => {
+		cycleCoordinatorInFlight = null;
+	});
 
 	await cycleCoordinatorInFlight;
+	return true;
+}
+
+export async function runScheduledDailyBriefCycleShadow(): Promise<boolean> {
+	if (dailyBriefCycleShadowInFlight) return false;
+
+	dailyBriefCycleShadowInFlight = (async () => {
+		try {
+			const summary = await runDailyBriefCycleShadow({
+				calculateLegacyNextRunAt: calculateNextRunTime
+			});
+			await persistDailyBriefCycleShadowMetrics(summary);
+			console.log(
+				`🌓 Daily Brief Cycle shadow: scanned=${summary.scanned}, comparable=${summary.comparable}, matched=${summary.matched}, mismatched=${summary.mismatched}, missing=${summary.missingCycle}, invalid=${summary.invalid}, matchRate=${summary.matchRatePct}%`
+			);
+			for (const example of summary.examples) {
+				console.warn(
+					`🌓 Daily Brief Cycle shadow ${example.reason}: preference=${example.preferenceId}, cycle=${example.cycleId ?? 'missing'}, legacy=${example.legacyNextRunAt ?? 'unavailable'}, cycleNext=${example.cycleNextRunAt ?? 'unavailable'}`
+				);
+			}
+		} catch (error) {
+			console.error('🌓 Daily Brief Cycle shadow failed:', error);
+		}
+	})().finally(() => {
+		dailyBriefCycleShadowInFlight = null;
+	});
+
+	await dailyBriefCycleShadowInFlight;
 	return true;
 }
 
@@ -377,6 +422,13 @@ export function startScheduler() {
 		console.log('🔄 Cycle due-trigger coordinator scheduled (every minute)');
 	}
 
+	if (CYCLE_DAILY_BRIEF_SHADOW_ENABLED) {
+		cron.schedule('7 * * * *', async () => {
+			await runScheduledDailyBriefCycleShadow();
+		});
+		console.log('🌓 Daily Brief Cycle shadow comparison scheduled (hourly at :07)');
+	}
+
 	// Cost reconciliation is opt-in until both ledger migrations have been
 	// deployed. Database leases make this safe across scheduler replicas.
 	if (agentRunCostReconciliationEnabled()) {
@@ -423,6 +475,11 @@ export function startScheduler() {
 		setTimeout(() => {
 			void runScheduledCycleCoordinator();
 		}, 10_000);
+	}
+	if (CYCLE_DAILY_BRIEF_SHADOW_ENABLED) {
+		setTimeout(() => {
+			void runScheduledDailyBriefCycleShadow();
+		}, 20_000);
 	}
 	if (agentRunCostReconciliationEnabled()) {
 		setTimeout(() => {

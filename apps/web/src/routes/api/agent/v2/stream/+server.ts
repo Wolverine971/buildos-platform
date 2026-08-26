@@ -71,7 +71,7 @@ import {
 	checkProjectAccess
 } from '$lib/services/agentic-chat-v2/access-checks';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
-import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
+import { ToolExecutionService } from '$lib/services/agentic-chat/legacy-execution/tool-execution-service';
 import {
 	isSearchTool,
 	searchToolFamily,

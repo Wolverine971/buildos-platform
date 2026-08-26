@@ -34,7 +34,6 @@ import {
 	type AgenticChatProviderPortV1,
 	type AgenticChatProviderStepV1,
 	type AgenticChatProviderUsageV1,
-	type AgenticChatTurnProviderClientEventV1,
 	type AgenticChatTurnProviderClientPortV1,
 	type AgenticChatTurnProviderToolV1,
 	type AgenticChatTurnProviderRequestV1 as ClientRequest
@@ -64,13 +63,15 @@ import {
 } from './review/contract-execution';
 import {
 	type PendingProposalRevision,
-	buildCandidateGateClarification,
 	buildContractRevisionRequest,
 	buildMutationBatchRevisionRequest,
-	buildReviewFallbackClarification,
-	findAmbiguousReferenceCandidates,
 	readProposalRevision
 } from './review/decision-handling';
+import {
+	completeMutationBatchReviewDecision,
+	completeReadOnlyReviewDecision,
+	completeTurnContractReviewDecision
+} from './review/decision-completion';
 import {
 	assertSemanticDispositionCalls,
 	buildPostSemanticDispositionRequest,
@@ -107,6 +108,12 @@ import {
 	providerError,
 	throwIfAborted
 } from './protocol';
+import { streamBufferedProviderPass } from './provider-pass';
+import {
+	buildReviewerMimicryRepairRequest,
+	buildUnavailableSkillRepairRequest,
+	contextSaturationRepairRank
+} from './repair-policy';
 import {
 	appendSystemInstruction,
 	buildBaseProviderRequest,
@@ -117,15 +124,13 @@ import {
 	combineUsage,
 	forceToolFreeRequest,
 	getAdmissionContextUsage,
-	latestToolPayloadChars,
-	providerClientRequest
+	latestToolPayloadChars
 } from './request-builders';
 import {
 	type CompletedProviderToolCall,
 	appendToolCallDelta,
 	assertAllowlistedCall,
 	assertToolCallFinishReason,
-	completeReviewerToolCalls,
 	completeToolCalls,
 	createToolCallAccumulator
 } from './stream-tool-calls';
@@ -155,7 +160,6 @@ import {
 const DEFAULT_MAX_PROVIDER_ROUNDS = 16;
 const MAX_VALIDATION_REPAIR_ROUNDS = 2;
 const MAX_FORCED_SYNTHESIS_RETRIES = 1;
-const MAX_RETRYABLE_PROVIDER_PASS_RETRIES = 1;
 // A reviewer may return a flawed proposal to the acting model at most twice per
 // lane per turn. The review after the last allowed revision offers only
 // approve / read-only / clarify, so a model that cannot correct itself still
@@ -164,8 +168,6 @@ const MAX_RETRYABLE_PROVIDER_PASS_RETRIES = 1;
 // then had nowhere to go but the user.
 const MAX_CONTRACT_REVISIONS_PER_TURN = 2;
 const MAX_MUTATION_BATCH_REVISIONS_PER_TURN = 2;
-const MAX_BUFFERED_PROVIDER_PASS_BYTES = 512 * 1024;
-const UNAVAILABLE_SKILL_REPAIR_TOOL_NAMES = new Set(['skill_load', 'skill_search']);
 
 type PendingToolRound = {
 	calls: readonly NormalizedProviderToolCall[];
@@ -1091,73 +1093,16 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		};
 	}
 
-	/**
-	 * Hold one complete provider pass behind an atomic boundary. OpenRouter can
-	 * only fall back before response headers; once a stream opens, a timeout can
-	 * otherwise leak partial assistant text that cannot be retracted. A single
-	 * retryable failure is discarded and retried with a distinct physical
-	 * attempt identity. The network client records the failed provider in its
-	 * turn-local health map, so the retry excludes that provider when known.
-	 */
-	private async *streamBufferedProviderPass(
+	private providerPass(
 		request: ClientRequest,
 		client: AgenticChatTurnProviderClientPortV1 = this.ports.client
-	): AsyncGenerator<AgenticChatTurnProviderClientEventV1> {
-		const firstAttempt = request.providerAttempt ?? 1;
-		for (
-			let retryCount = 0;
-			retryCount <= MAX_RETRYABLE_PROVIDER_PASS_RETRIES;
-			retryCount += 1
-		) {
-			const providerAttempt = firstAttempt + retryCount;
-			const buffered: AgenticChatTurnProviderClientEventV1[] = [];
-			let bufferedBytes = 0;
-			let retry = false;
-			let terminal = false;
-
-			for await (const event of client.stream(
-				providerClientRequest({ ...request, providerAttempt })
-			)) {
-				throwIfAborted(request.signal);
-				if (event.type === 'reasoning') continue;
-				if (event.type === 'error') {
-					if (event.retryable && retryCount < MAX_RETRYABLE_PROVIDER_PASS_RETRIES) {
-						this.ports.capacity.markTemporarilyUnavailable(
-							request.turnRunId,
-							this.retryableFailureCooldownMs
-						);
-						retry = true;
-						break;
-					}
-					buffered.length = 0;
-					buffered.push(event);
-					terminal = true;
-					break;
-				}
-
-				bufferedBytes += Buffer.byteLength(JSON.stringify(event), 'utf8');
-				if (bufferedBytes > MAX_BUFFERED_PROVIDER_PASS_BYTES) {
-					throw providerError('provider_pass_buffer_exceeded', 'permanent');
-				}
-				buffered.push(event);
-				if (event.type === 'done') {
-					terminal = true;
-					break;
-				}
-			}
-
-			if (retry) continue;
-			if (!terminal) {
-				const incompleteToolCall = buffered.find((event) => event.type === 'tool_call');
-				if (incompleteToolCall) {
-					yield incompleteToolCall;
-					return;
-				}
-				throw providerError('provider_missing_done', 'unknown');
-			}
-			for (const event of buffered) yield event;
-			return;
-		}
+	) {
+		return streamBufferedProviderPass(
+			request,
+			client,
+			this.ports.capacity,
+			this.retryableFailureCooldownMs
+		);
 	}
 
 	private async *streamInitial(
@@ -1180,7 +1125,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			yield* drainSupervisorSteps(state.supervisor);
 			request = await this.resolveLiveVision(request);
 			state.setCurrentRequest(request);
-			for await (const event of this.streamBufferedProviderPass(request)) {
+			for await (const event of this.providerPass(request)) {
 				throwIfAborted(request.signal);
 				if (finished) {
 					throw providerError('provider_event_after_done', 'unknown');
@@ -1491,7 +1436,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					semantic_review: { read_only_disposition_sha256: dispositionReviewSha256 }
 				}
 			};
-			for await (const event of this.streamBufferedProviderPass(reviewRequest, reviewer)) {
+			for await (const event of this.providerPass(reviewRequest, reviewer)) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'reasoning' || event.type === 'text') continue;
@@ -1521,46 +1466,15 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				}
 			}
 
-			let calls: CompletedProviderToolCall[] = [];
-			if (!fallbackReason && finished) {
-				const completion = completeReviewerToolCalls(toolCalls, reviewRequest.tools, {
-					finishedReason: reviewFinishedReason,
-					completionBudgetExhausted: reviewFinishedReason === 'length'
-				});
-				if (completion.rejectionCode) {
-					fallbackReason = `Independent read-only review did not return a readable decision (${completion.rejectionCode}).`;
-				} else {
-					calls = completion.calls;
-				}
-			}
-			if (!fallbackReason) {
-				if (!finished || calls.length !== 1) {
-					fallbackReason =
-						'Independent read-only review did not return exactly one decision.';
-				} else {
-					const call = calls[0]!;
-					const approval = call.name === APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME;
-					const contract = call.name === DECLARE_TURN_CONTRACT_TOOL_NAME;
-					const clarification = call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
-					if (
-						(!approval && !contract && !clarification) ||
-						(approval &&
-							call.arguments.disposition_sha256 !== dispositionReviewSha256) ||
-						validateCompletedProviderCalls(calls, reviewRequest).length > 0
-					) {
-						fallbackReason =
-							'Independent read-only review returned an invalid or unbound decision.';
-					}
-				}
-			}
-
-			if (fallbackReason) {
-				calls = [buildReviewFallbackClarification(request, fallbackReason)];
-			}
-			calls = calls.map((call) => ({
-				...call,
-				decidedBy: call.decidedBy ?? 'read_only_reviewer'
-			}));
+			const calls = completeReadOnlyReviewDecision({
+				actingRequest: request,
+				reviewRequest,
+				toolCalls,
+				finished,
+				finishedReason: reviewFinishedReason,
+				fallbackReason,
+				dispositionReviewSha256
+			});
 			const blockedToolCalls = observeSupervisorToolCalls(state, calls);
 			yield* drainSupervisorSteps(state.supervisor);
 			const normalizedCalls = normalizeCompletedProviderCalls(
@@ -1639,7 +1553,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					semantic_review: { contract_sha256: contractReviewSha256 }
 				}
 			};
-			for await (const event of this.streamBufferedProviderPass(reviewRequest, reviewer)) {
+			for await (const event of this.providerPass(reviewRequest, reviewer)) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'reasoning' || event.type === 'text') continue;
@@ -1669,59 +1583,17 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				}
 			}
 
-			let calls: CompletedProviderToolCall[] = [];
-			if (!fallbackReason && finished) {
-				const completion = completeReviewerToolCalls(toolCalls, reviewRequest.tools, {
-					finishedReason: reviewFinishedReason,
-					completionBudgetExhausted: reviewFinishedReason === 'length'
-				});
-				if (completion.rejectionCode) {
-					fallbackReason = `Independent semantic review did not return a readable decision (${completion.rejectionCode}).`;
-				} else {
-					calls = completion.calls;
-				}
-			}
-			if (!fallbackReason) {
-				if (!finished || calls.length !== 1) {
-					fallbackReason =
-						'Independent semantic review did not return exactly one decision.';
-				} else {
-					const call = calls[0]!;
-					const approval = call.name === APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME;
-					const readOnly = call.name === DECLARE_READ_ONLY_TURN_TOOL_NAME;
-					const clarification = call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
-					const revision = call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME;
-					if (
-						(!approval && !readOnly && !clarification && !revision) ||
-						(revision && !allowRevision) ||
-						(approval && call.arguments.contract_sha256 !== contractReviewSha256) ||
-						validateCompletedProviderCalls(calls, reviewRequest).length > 0
-					) {
-						fallbackReason =
-							'Independent semantic review returned an invalid or unbound decision.';
-					} else if (approval) {
-						// Models propose; code disposes. The reviewer enumerated every
-						// loaded entity that fits each user reference. If it listed several
-						// and the contract targets only some, the choice belongs to the
-						// user regardless of how confident the approval reads.
-						const ambiguity = findAmbiguousReferenceCandidates(
-							call.arguments,
-							contract
-						);
-						if (ambiguity) {
-							calls = [buildCandidateGateClarification(request, ambiguity)];
-						}
-					}
-				}
-			}
-
-			if (fallbackReason) {
-				calls = [buildReviewFallbackClarification(request, fallbackReason)];
-			}
-			calls = calls.map((call) => ({
-				...call,
-				decidedBy: call.decidedBy ?? 'contract_reviewer'
-			}));
+			const calls = completeTurnContractReviewDecision({
+				actingRequest: request,
+				reviewRequest,
+				toolCalls,
+				finished,
+				finishedReason: reviewFinishedReason,
+				fallbackReason,
+				contract,
+				contractReviewSha256,
+				allowRevision
+			});
 			const blockedToolCalls = observeSupervisorToolCalls(state, calls);
 			yield* drainSupervisorSteps(state.supervisor);
 			const normalizedCalls = normalizeCompletedProviderCalls(
@@ -1790,7 +1662,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					semantic_review: { mutation_batch_sha256: pending.batchSha256 }
 				}
 			};
-			for await (const event of this.streamBufferedProviderPass(reviewRequest, reviewer)) {
+			for await (const event of this.providerPass(reviewRequest, reviewer)) {
 				throwIfAborted(pending.request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'reasoning' || event.type === 'text') continue;
@@ -1820,46 +1692,16 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				}
 			}
 
-			let calls: CompletedProviderToolCall[] = [];
-			if (!fallbackReason && finished) {
-				const completion = completeReviewerToolCalls(toolCalls, reviewRequest.tools, {
-					finishedReason: reviewFinishedReason,
-					completionBudgetExhausted: reviewFinishedReason === 'length'
-				});
-				if (completion.rejectionCode) {
-					fallbackReason = `Independent mutation review did not return a readable decision (${completion.rejectionCode}).`;
-				} else {
-					calls = completion.calls;
-				}
-			}
-			if (!fallbackReason) {
-				if (!finished || calls.length !== 1) {
-					fallbackReason =
-						'Independent mutation review did not return exactly one decision.';
-				} else {
-					const call = calls[0]!;
-					const approval = call.name === APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME;
-					const clarification = call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME;
-					const revision = call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME;
-					if (
-						(!approval && !clarification && !revision) ||
-						(revision && !allowRevision) ||
-						(approval && call.arguments.batch_sha256 !== pending.batchSha256) ||
-						validateCompletedProviderCalls(calls, reviewRequest).length > 0
-					) {
-						fallbackReason =
-							'Independent mutation review returned an invalid or unbound decision.';
-					}
-				}
-			}
-
-			if (fallbackReason) {
-				calls = [buildReviewFallbackClarification(pending.request, fallbackReason)];
-			}
-			calls = calls.map((call) => ({
-				...call,
-				decidedBy: call.decidedBy ?? 'mutation_batch_reviewer'
-			}));
+			const calls = completeMutationBatchReviewDecision({
+				actingRequest: pending.request,
+				reviewRequest,
+				toolCalls,
+				finished,
+				finishedReason: reviewFinishedReason,
+				fallbackReason,
+				batchSha256: pending.batchSha256,
+				allowRevision
+			});
 			const blockedToolCalls = observeSupervisorToolCalls(state, calls);
 			yield* drainSupervisorSteps(state.supervisor);
 			const normalizedCalls = normalizeCompletedProviderCalls(
@@ -1930,7 +1772,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		const toolCalls = createToolCallAccumulator();
 		try {
 			yield* drainSupervisorSteps(state.supervisor);
-			for await (const event of this.streamBufferedProviderPass(request)) {
+			for await (const event of this.providerPass(request)) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
@@ -2226,7 +2068,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				let finishedReason = 'stop';
 				let passUsage: AgenticChatProviderUsageV1 | null = null;
 
-				for await (const event of this.streamBufferedProviderPass(currentRequest)) {
+				for await (const event of this.providerPass(currentRequest)) {
 					throwIfAborted(currentRequest.signal);
 					if (finished) throw providerError('provider_event_after_done', 'unknown');
 					if (event.type === 'text') {
@@ -2350,7 +2192,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		let assistantCandidate = '';
 		try {
 			yield* drainSupervisorSteps(state.supervisor);
-			for await (const event of this.streamBufferedProviderPass(request)) {
+			for await (const event of this.providerPass(request)) {
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
@@ -2416,95 +2258,4 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			state.release();
 		}
 	}
-}
-
-function buildUnavailableSkillRepairRequest(
-	request: ClientRequest,
-	calls: readonly CompletedProviderToolCall[],
-	admittedTools: readonly AgenticChatTurnProviderToolV1[]
-): ClientRequest | null {
-	if (request.unavailableSkillRepairAttempted || calls.length === 0) return null;
-	const advertisedNames = new Set(request.tools.map((tool) => tool.function.name));
-	const rejectedCalls = calls.filter((call) => !advertisedNames.has(call.name));
-	if (
-		rejectedCalls.length === 0 ||
-		!rejectedCalls.every((call) => UNAVAILABLE_SKILL_REPAIR_TOOL_NAMES.has(call.name))
-	) {
-		return null;
-	}
-	const rejectedSkillNames = Array.from(new Set(rejectedCalls.map((call) => call.name))).sort();
-	const unavailableSkillDescription =
-		rejectedSkillNames.length === 1
-			? `${rejectedSkillNames[0]} is not callable in this turn and the call was rejected without execution.`
-			: `${rejectedSkillNames.join(', ')} are not callable in this turn and the calls were rejected without execution.`;
-	const restoredRequest: ClientRequest = {
-		...request,
-		tools: admittedTools,
-		toolChoice: 'required',
-		providerRound: 'synthesis',
-		semanticDispositionGate: false
-	};
-	if (!canRequirePreMutationSemanticDisposition(restoredRequest)) return null;
-	return appendSystemInstruction(
-		{
-			...restoredRequest,
-			logicalProviderRound: request.logicalProviderRound + 1,
-			unavailableSkillRepairAttempted: true
-		},
-		[
-			`Unavailable worker skill repair: the previous pass called an unavailable skill tool, but ${unavailableSkillDescription}`,
-			`Do not call ${rejectedSkillNames.join(' or ')} again. The exact admitted worker surface has been restored; use only the tools present in this request.`,
-			'Choose a semantic disposition control before any mutation. Use an available read only when durable context is genuinely missing, and request clarification only when a required user choice remains unresolved.'
-		].join(' ')
-	);
-}
-
-const REVIEWER_ONLY_CONTROL_TOOL_NAMES = new Set([
-	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
-	APPROVE_READ_ONLY_TURN_REVIEW_TOOL_NAME,
-	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	REQUEST_PROPOSAL_REVISION_TOOL_NAME
-]);
-
-/**
- * The acting model sees the reviewer's approvals in its own transcript and
- * sometimes imitates them ("approve_mutation_batch_review" on its own batch).
- * The allowlist rightly refuses; turning that into a permanent stream failure
- * threw away an approved, half-executed contract. One bounded repair restores
- * the current surface and says who approves what.
- */
-function buildReviewerMimicryRepairRequest(
-	request: ClientRequest,
-	calls: readonly CompletedProviderToolCall[]
-): ClientRequest | null {
-	if (request.unavailableSkillRepairAttempted || calls.length === 0) return null;
-	const advertisedNames = new Set(request.tools.map((tool) => tool.function.name));
-	const rejectedCalls = calls.filter((call) => !advertisedNames.has(call.name));
-	if (
-		rejectedCalls.length === 0 ||
-		!rejectedCalls.every((call) => REVIEWER_ONLY_CONTROL_TOOL_NAMES.has(call.name))
-	) {
-		return null;
-	}
-	const names = Array.from(new Set(rejectedCalls.map((call) => call.name))).sort();
-	return appendSystemInstruction(
-		{
-			...request,
-			logicalProviderRound: request.logicalProviderRound + 1,
-			unavailableSkillRepairAttempted: true
-		},
-		[
-			`${names.join(', ')} ${names.length === 1 ? 'is a reviewer-only control and was' : 'are reviewer-only controls and were'} rejected without execution: the independent reviewer calls it, never you.`,
-			'You propose mutation calls; the reviewer approves them. Continue with the tools present in this request: propose the remaining mutations for the approved contract, or finish with your answer if every outcome is already executed.'
-		].join(' ')
-	);
-}
-
-function contextSaturationRepairRank(
-	status: 'open' | 'narrowing' | 'saturated' | 'must_synthesize'
-): number {
-	if (status === 'narrowing') return READ_LOOP_REPAIR_RANK.nudge;
-	if (status === 'saturated') return READ_LOOP_REPAIR_RANK.stop_and_answer;
-	if (status === 'must_synthesize') return READ_LOOP_REPAIR_RANK.must_synthesize;
-	return 0;
 }

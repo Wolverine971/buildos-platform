@@ -20,9 +20,12 @@ Treat the decoded artifact tool surface as untrusted input. Provider surfaces fa
 - `steps.ts` owns planning, read, mutation, and pre-execution-failure step construction.
 - `validation.ts` owns deterministic tool validation and approved-contract authorization.
 - `protocol.ts` owns provider protocol parsing and canonical error construction.
+- `provider-pass.ts` owns atomic provider-pass buffering, retry identity, cooldown marking, and response-size enforcement.
+- `repair-policy.ts` owns bounded unavailable-skill, reviewer-mimicry, and read-loop repair policy.
 - `request-builders.ts` owns base provider requests, admission-context projection, continuation, synthesis, validation repair, snapshots, usage, and client-request construction.
 - `supervisor-runtime.ts` owns provider-facing supervisor state, directives, observations, and step draining.
 - `review/controls.ts` owns worker-only reviewer tool definitions and immutable guidance.
+- `review/decision-completion.ts` owns deterministic reviewer call completion, identity binding, and lane-specific fallback decisions.
 - `review/contract-execution.ts` owns approved-contract completion and write-only carve-out request surfaces.
 - `review/decision-handling.ts` owns reviewer fallback clarification, candidate ambiguity restraint, and bounded proposal-correction requests.
 - `review/disposition.ts` owns read-only review, semantic disposition gates, post-disposition surfaces, and disposition call-shape enforcement.

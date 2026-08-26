@@ -63,6 +63,9 @@ export interface CycleCoordinatorSummary {
 	skippedOverlap: number;
 	skippedMisfire: number;
 	failed: number;
+	oldestScheduledFor: string | null;
+	maxDueLatencyMs: number;
+	averageDueLatencyMs: number;
 	errors: string[];
 }
 
@@ -253,6 +256,12 @@ export async function runDueCycleCoordinator(
 		leaseSeconds: options.leaseSeconds ?? DEFAULT_LEASE_SECONDS,
 		kinds: ['daily_brief']
 	});
+	const scheduledTimes = claims
+		.map((claim) => new Date(claim.scheduled_for).getTime())
+		.filter(Number.isFinite);
+	const dueLatencies = scheduledTimes.map((scheduledAt) =>
+		Math.max(0, now.getTime() - scheduledAt)
+	);
 	const summary: CycleCoordinatorSummary = {
 		claimed: claims.length,
 		admitted: 0,
@@ -260,6 +269,16 @@ export async function runDueCycleCoordinator(
 		skippedOverlap: 0,
 		skippedMisfire: 0,
 		failed: 0,
+		oldestScheduledFor:
+			scheduledTimes.length > 0 ? new Date(Math.min(...scheduledTimes)).toISOString() : null,
+		maxDueLatencyMs: dueLatencies.length > 0 ? Math.max(...dueLatencies) : 0,
+		averageDueLatencyMs:
+			dueLatencies.length > 0
+				? Math.round(
+						dueLatencies.reduce((total, latency) => total + latency, 0) /
+							dueLatencies.length
+					)
+				: 0,
 		errors: []
 	};
 

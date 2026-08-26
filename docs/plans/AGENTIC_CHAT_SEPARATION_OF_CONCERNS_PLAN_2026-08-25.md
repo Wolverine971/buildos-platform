@@ -3,7 +3,7 @@
 # Agentic Chat separation-of-concerns architecture and migration plan
 
 **Date:** 2026-08-25  
-**Status:** Implementation in progress; Phases 0–6A are complete in the current working tree and are not deployed
+**Status:** Implementation complete for the currently actionable scope; Phases 0–6B and the unconditional Phase 7 namespace cleanup are complete in the current working tree and are not deployed. Capability retirement, rollback removal, and DI work remain prerequisite-gated.
 **Scope:** Agentic Chat catalog ownership, web admission, shared contracts, shared operations, queued worker execution, compatibility shims, and production naming  
 **Primary decision:** Move the canonical tool catalog from `apps/web` into a focused `@buildos/agentic-chat-runtime/catalog` package entry point without changing the tool surface or runtime behavior.
 
@@ -634,9 +634,9 @@ Rename exported symbols and tests consistently. Preserve compatibility aliases o
 
 #### Phase 6B — split provider responsibilities
 
-**Implementation status (2026-08-25): in progress in the current working tree, not deployed.** The first decomposition slice folds the former root `providerContract.ts` into `provider/contracts.ts` and extracts streamed tool-call assembly, feedback/memoization, tool-surface projection, provider protocol helpers, provider-step construction, deterministic validation/contract authorization, and immutable reviewer controls. The second slice extracts provider-facing supervisor coordination plus generic continuation, synthesis, validation-repair, prompt-snapshot, usage, and client-request builders. The third slice extracts contract-review requests/schema evidence and SHA-bound mutation-batch review construction into independent review modules. The fourth slice extracts base provider request/admission-context construction, worker semantic mutation ordering, read-only disposition review, semantic disposition gates, post-disposition surfaces, and disposition call-shape enforcement. The fifth slice extracts reviewer fallback clarification, deterministic candidate-ambiguity restraint, bounded proposal-correction requests, approved-contract completion, and write-only carve-out surfaces. A boundary test prevents those responsibilities from returning to the turn coordinator or importing it back. `turn-provider.ts` is reduced from 5,334 to 2,510 lines while the existing provider/executor expectations remain unchanged.
+**Implementation status (2026-08-25): complete in the current working tree, not deployed.** The first decomposition slice folds the former root `providerContract.ts` into `provider/contracts.ts` and extracts streamed tool-call assembly, feedback/memoization, tool-surface projection, provider protocol helpers, provider-step construction, deterministic validation/contract authorization, and immutable reviewer controls. The second slice extracts provider-facing supervisor coordination plus generic continuation, synthesis, validation-repair, prompt-snapshot, usage, and client-request builders. The third slice extracts contract-review requests/schema evidence and SHA-bound mutation-batch review construction into independent review modules. The fourth slice extracts base provider request/admission-context construction, worker semantic mutation ordering, read-only disposition review, semantic disposition gates, post-disposition surfaces, and disposition call-shape enforcement. The fifth slice extracts reviewer fallback clarification, deterministic candidate-ambiguity restraint, bounded proposal-correction requests, approved-contract completion, and write-only carve-out surfaces. The sixth and final slice extracts atomic provider-pass buffering/retry policy, deterministic reviewer-decision completion, and bounded repair policy. A boundary test prevents those responsibilities from returning to the turn coordinator or importing it back. `turn-provider.ts` is reduced from 5,334 to 2,261 lines; its remaining methods own provider-turn lifecycle and round orchestration.
 
-The next slice should separate provider-pass buffering and reviewer-decision completion from turn orchestration, then reassess whether the remaining bounded repair-request helpers justify one final extraction. Keep that work independently reviewable; do not mark Phase 6B complete until the coordinator is primarily round orchestration and the full exit gate below passes.
+Phase 6B stops at the orchestration boundary: initial, continuation, semantic-review, mutation-review, forced-synthesis, supervisor-question, and final-synthesis lanes remain together because they coordinate shared turn state and lease ownership. Live-vision resolution remains a small request-enrichment step on that lifecycle. Further splitting those methods would distribute orchestration state without creating a distinct responsibility.
 
 Suggested seams based on the current file:
 
@@ -645,6 +645,8 @@ A worker-owned `providerContract.ts` already exists at the agentic-chat root. Ei
 ```text
 provider/
 ├── contracts.ts                 # provider messages, tools, events, client port (merge/replace existing providerContract.ts)
+├── provider-pass.ts             # atomic pass buffering, retries, and size policy
+├── repair-policy.ts             # bounded provider repair policy
 ├── turn-provider.ts             # main adapter and round coordinator
 ├── stream-tool-calls.ts         # streamed call assembly and finish validation
 ├── feedback.ts                  # read/write feedback normalization and memoization
@@ -656,6 +658,7 @@ provider/
 └── review/
     ├── controls.ts              # worker-only reviewer tool definitions
     ├── contract-execution.ts    # approved-contract completion and write-only surfaces
+    ├── decision-completion.ts   # reviewer call completion and lane decisions
     ├── decision-handling.ts     # reviewer fallback, ambiguity, and correction handling
     ├── disposition.ts
     ├── turn-contract.ts
@@ -682,6 +685,10 @@ Rollback: renames are separately revertible; decomposition uses pure moves/extra
 ### Phase 7 — web legacy boundary, operational cleanup, and conditional DI work
 
 **Objective:** Finish cleanup only when capability and rollback prerequisites are satisfied.
+
+**Implementation status (2026-08-25): unconditional cleanup complete in the current working tree, not deployed.** The remaining synchronous web runtime now lives under the explicit `legacy-execution/` namespace, its two route consumers use that boundary, and an architecture ratchet prevents the generic `execution/` directory from returning. The web and legacy-root READMEs identify the namespace as a compatibility/capability host rather than a destination for new behavior.
+
+The remaining Phase 7 items are intentionally conditional and are not implementation backlog to perform speculatively. Gmail, Calendar, OAuth handoff, and worker-disabled image execution still rely on the legacy host. The general worker bootstrap and environment gate remain part of the documented rollback path. No catalog-provider DI trigger is present: the current global provider has coverage, no demonstrated import-order leak, and no request-scoped or multi-instance requirement. Those pieces should change only when the capability ports land, rollback is formally retired, or a listed DI trigger is reproduced.
 
 Work:
 
@@ -779,7 +786,7 @@ Add import-boundary scans for:
 
 ### Current audit evidence
 
-Against the current working tree, the focused baseline passed:
+At planning time, the focused baseline passed:
 
 - runtime: 36 files, 268 tests;
 - web admission/schema/surface: 3 files, 28 tests;
@@ -787,7 +794,20 @@ Against the current working tree, the focused baseline passed:
 
 Total: 43 test files and 394 assertions passed.
 
-The operator-facing `report:agentic-tools` command failed while importing a Markdown skill resource and must be repaired in Phase 0.
+At planning time, the operator-facing `report:agentic-tools` command failed while importing a Markdown skill resource. Phase 0 repaired it; the implementation verification below confirms the command now passes.
+
+### Implementation verification (2026-08-25)
+
+The completed implementation has a broader green matrix than the original audit baseline:
+
+- `@buildos/agentic-chat-runtime`: build, typecheck, CJS and ESM catalog import smokes, and 278 tests across 41 files;
+- `@buildos/shared-types`: typecheck and 53 tests across 5 files;
+- `@buildos/shared-agent-ops`: build, typecheck, and 128 tests across 28 files;
+- worker: check, build, and 1,190 tests across 133 files, with the single opt-in workflow evaluation skipped;
+- web: `svelte-check` with zero diagnostics, the catalog surface report, and all 220 legacy-execution tests across 16 files;
+- repository hygiene: staged and unstaged `git diff --check` pass, the retired web path has no production imports, and extracted provider modules do not import the coordinator.
+
+The legacy stream route has 38 passing tests and 7 existing golden mismatches caused solely by the concurrent addition of a `tool_surface_materialized` telemetry event and its shifted sequence indexes. The legacy namespace move does not alter those events; its execution, architecture, and type gates pass independently. Refreshing those unrelated telemetry goldens belongs with the telemetry change.
 
 ## Risks and mitigations
 
