@@ -199,6 +199,19 @@ export interface DataMutationSummary {
 	entityId?: string | null;
 }
 
+/**
+ * Immediate, document-scoped signal emitted when a successful document mutation
+ * is recorded during a turn. This is intentionally narrower than the session-close
+ * DataMutationSummary so an open editor can refresh only the document that changed.
+ */
+export interface DocumentMutationEvent {
+	entityKind: 'document';
+	entityId: string;
+	projectId: string | null;
+	toolName: string;
+	turnId: string | null;
+}
+
 export type AgentChatHeaderActionIntent = 'primary' | 'secondary' | 'danger';
 
 export interface AgentChatHeaderAction {

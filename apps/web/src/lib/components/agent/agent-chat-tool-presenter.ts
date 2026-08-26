@@ -20,7 +20,11 @@
 
 import type { ChatContextType } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-import type { CreatedEntityRef, DataMutationSummary } from './agent-chat.types';
+import type {
+	CreatedEntityRef,
+	DataMutationSummary,
+	DocumentMutationEvent
+} from './agent-chat.types';
 import {
 	extractSkillPathFromSkillLoadArgs,
 	formatSkillActivityContent
@@ -60,6 +64,7 @@ export interface ToolPresenterContext {
 		success: (msg: string) => void;
 		error: (msg: string) => void;
 	};
+	onDocumentMutation?: (event: DocumentMutationEvent) => void;
 	isDev?: boolean;
 }
 
@@ -115,7 +120,8 @@ export interface ToolPresenter {
 		toolName: string | undefined,
 		args: string | Record<string, unknown> | undefined,
 		success: boolean,
-		toolResult?: { result?: any; data?: any }
+		toolResult?: { result?: any; data?: any },
+		metadata?: { turnId?: string | null }
 	): void;
 	resetMutationTracking(): void;
 	buildMutationSummary(
@@ -186,6 +192,13 @@ const MUTATION_TRACKED_TOOLS_SET: ReadonlySet<string> = new Set(
 		.filter(([, entry]) => entry.trackMutation)
 		.map(([name]) => name)
 );
+
+const DOCUMENT_MUTATION_TOOLS = new Set([
+	'create_onto_document',
+	'update_onto_document',
+	'delete_onto_document',
+	'create_task_document'
+]);
 
 // ---------------------------------------------------------------------------
 // Entity-name constants
@@ -1784,6 +1797,33 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		return undefined;
 	}
 
+	function resolveDocumentMutationId(
+		toolName: string,
+		args: Record<string, unknown>,
+		toolResult?: { result?: any; data?: any }
+	): string | undefined {
+		if (!DOCUMENT_MUTATION_TOOLS.has(toolName)) return undefined;
+
+		const payload = toolResult?.result ?? toolResult?.data;
+		const nestedResult =
+			payload?.result && typeof payload.result === 'object' ? payload.result : undefined;
+		const candidates = [
+			args.document_id,
+			args.documentId,
+			payload?.document?.id,
+			payload?.document_id,
+			payload?.entity_id,
+			nestedResult?.document?.id,
+			nestedResult?.document_id
+		];
+
+		for (const candidate of candidates) {
+			const id = normalizeEntityLabel(candidate);
+			if (id) return id;
+		}
+		return undefined;
+	}
+
 	function extractCreatedEntity(
 		toolName: string | undefined,
 		argsJson: string | Record<string, unknown> | undefined,
@@ -1815,7 +1855,8 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		toolName: string | undefined,
 		argsJson: string | Record<string, unknown> | undefined,
 		success: boolean,
-		toolResult?: { result?: any; data?: any }
+		toolResult?: { result?: any; data?: any },
+		metadata?: { turnId?: string | null }
 	): void {
 		if (!toolName || !success || !MUTATION_TRACKED_TOOLS_SET.has(toolName)) return;
 
@@ -1837,6 +1878,18 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		if (projectId) {
 			mutatedProjectIds.add(projectId);
 		}
+
+		const documentId = resolveDocumentMutationId(toolName, args, toolResult);
+		if (documentId) {
+			ctx.onDocumentMutation?.({
+				entityKind: 'document',
+				entityId: documentId,
+				projectId: projectId ?? null,
+				toolName,
+				turnId: metadata?.turnId ?? null
+			});
+		}
+
 		if (toolName === 'move_onto_task') {
 			for (const candidate of [
 				args.expected_source_project_id,
