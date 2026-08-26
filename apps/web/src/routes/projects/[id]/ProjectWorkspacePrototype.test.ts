@@ -486,7 +486,9 @@ describe('ProjectWorkspacePrototype edge states', () => {
 			await within(activity).findByRole('heading', { name: 'Recent chats' })
 		).toBeInTheDocument();
 		expect(
-			within(activity).getByRole('button', { name: 'Reopen chat: Launch positioning review' })
+			await within(activity).findByRole('button', {
+				name: 'Reopen chat: Launch positioning review'
+			})
 		).toBeInTheDocument();
 		expect(within(activity).getAllByText('Change history').length).toBeGreaterThan(0);
 		expect(within(activity).getAllByText('Schedule').length).toBeGreaterThan(0);

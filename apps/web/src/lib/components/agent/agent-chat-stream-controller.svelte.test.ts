@@ -1051,7 +1051,7 @@ describe('AgentChatStreamController', () => {
 		});
 
 		const sendPromise = h.controller.sendMessage();
-		await flushMicrotasks();
+		await vi.waitFor(() => expect(h.streamFetchCalls).toHaveLength(1));
 
 		expect(waitForPreparedPrompt).toHaveBeenCalledWith('cache-key', { timeoutMs: 250 });
 		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
