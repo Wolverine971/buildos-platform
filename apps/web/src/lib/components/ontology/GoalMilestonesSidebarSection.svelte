@@ -9,8 +9,7 @@
 	- Add milestone button
 	- Collapsible completed section
 
-	This is the sidebar-optimized version for modals, distinct from
-	GoalMilestonesSection which is used on goal cards in the project page.
+	This is the sidebar-optimized version used by the goal edit modal.
 
 	Documentation:
 	- Spec: /thoughts/shared/research/2026-01-16_goal-milestone-section-in-modal-spec.md
@@ -18,7 +17,6 @@
 
 	Related Files:
 	- Parent: GoalEditModal.svelte
-	- Project page version: GoalMilestonesSection.svelte
 	- List item: MilestoneListItem.svelte
 -->
 <script lang="ts">
@@ -263,7 +261,6 @@
 				<div class="divide-y divide-border/30">
 					{#each activeMilestones as m (m.id)}
 						{@const StateIcon = getStateIcon(m.state_key)}
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div
 							onclick={() => handleMilestoneClick(m)}
 							onkeydown={(e) => handleKeyDown(e, m)}
@@ -331,7 +328,6 @@
 							>
 								{#each completedMilestones as m (m.id)}
 									{@const StateIcon = getStateIcon(m.state_key)}
-									<!-- svelte-ignore a11y_no_static_element_interactions -->
 									<div
 										onclick={() => handleMilestoneClick(m)}
 										onkeydown={(e) => handleKeyDown(e, m)}

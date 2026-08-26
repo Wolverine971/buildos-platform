@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects-old/[id]/page.server.test.ts
+// apps/web/src/routes/projects/[id]/page.server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { ensureActorIdMock } = vi.hoisted(() => ({
@@ -64,21 +64,7 @@ function createHarness(options: HarnessOptions = {}) {
 		next_step_updated_at: null,
 		access
 	};
-	const bundleData =
-		options.bundleData === undefined
-			? options.pathname?.endsWith('/old')
-				? {
-						...baseBundleData,
-						task_count: 1,
-						document_count: 2,
-						goal_count: 3,
-						plan_count: 4,
-						milestone_count: 5,
-						risk_count: 6,
-						image_count: 7
-					}
-				: baseBundleData
-			: options.bundleData;
+	const bundleData = options.bundleData === undefined ? baseBundleData : options.bundleData;
 
 	const from = vi.fn((table: string) => {
 		operations.push(`from:${table}`);
@@ -86,10 +72,7 @@ function createHarness(options: HarnessOptions = {}) {
 	});
 
 	const rpc = vi.fn((fn: string) => {
-		if (
-			fn === 'get_project_skeleton_with_access' ||
-			fn === 'get_project_skeleton_with_access_v2'
-		) {
+		if (fn === 'get_project_skeleton_with_access_v2') {
 			operations.push(`rpc:${fn}`);
 			return Promise.resolve({
 				data: bundleData,
@@ -199,28 +182,6 @@ describe('projects/[id] +page.server load', () => {
 			ok: false,
 			error: 'Project data is temporarily unavailable'
 		});
-	});
-
-	it('classic route keeps the counted skeleton RPC', async () => {
-		const { event, operations } = createHarness({
-			pathname: `/projects/${PROJECT_ID}/old`
-		});
-
-		const result = await load(event);
-
-		expect(result.counts).toEqual({
-			task_count: 1,
-			document_count: 2,
-			goal_count: 3,
-			plan_count: 4,
-			milestone_count: 5,
-			risk_count: 6,
-			image_count: 7
-		});
-		expect(operations).toEqual([
-			'rpc:get_project_skeleton_with_access',
-			'fetch:project-full-v2'
-		]);
 	});
 
 	it('editor access keeps invite/log visibility without admin', async () => {

@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/invites/token/[token]/accept/server.test.ts
 import { describe, it, expect, vi } from 'vitest';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 import { createHash } from 'crypto';
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({

@@ -15,6 +15,36 @@ import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 
 const contextLike = (context: ServiceContext) => expect.objectContaining(context);
 
+type CanonicalToolCallFixture = {
+	id: string;
+	name: string;
+	arguments: unknown;
+};
+
+function canonicalToolCall({
+	id,
+	name,
+	arguments: rawArguments
+}: CanonicalToolCallFixture): ChatToolCall {
+	return {
+		id,
+		type: 'function',
+		function: {
+			name,
+			arguments:
+				typeof rawArguments === 'string'
+					? rawArguments
+					: (JSON.stringify(rawArguments) ?? 'null')
+		}
+	};
+}
+
+function canonicalToolDefinition(
+	definition: ChatToolDefinition['function']
+): ChatToolDefinition {
+	return { type: 'function', function: definition };
+}
+
 describe('ToolExecutionService', () => {
 	let service: ToolExecutionService;
 	let mockToolExecutor: Mock;
@@ -39,7 +69,7 @@ describe('ToolExecutionService', () => {
 
 		// Setup mock tool definitions
 		mockToolDefinitions = [
-			{
+			canonicalToolDefinition({
 				name: 'list_onto_tasks',
 				description: 'List tasks in a project',
 				parameters: {
@@ -48,8 +78,8 @@ describe('ToolExecutionService', () => {
 						project_id: { type: 'string' }
 					}
 				}
-			},
-			{
+			}),
+			canonicalToolDefinition({
 				name: 'create_onto_task',
 				description: 'Create a new task',
 				parameters: {
@@ -60,8 +90,8 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['title']
 				}
-			},
-			{
+			}),
+			canonicalToolDefinition({
 				name: 'list_onto_projects',
 				description: 'Search for projects',
 				parameters: {
@@ -70,7 +100,7 @@ describe('ToolExecutionService', () => {
 						query: { type: 'string' }
 					}
 				}
-			}
+			})
 		];
 
 		service = new ToolExecutionService(mockToolExecutor, telemetryHook);
@@ -78,11 +108,11 @@ describe('ToolExecutionService', () => {
 
 	describe('executeTool', () => {
 		it('should execute a tool successfully', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_123',
 				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
-			};
+			});
 
 			const expectedResult = {
 				tasks: [
@@ -107,11 +137,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('propagates canonical token counts from executor responses', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_tokens',
 				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({
 				data: { tasks: [] },
@@ -127,11 +157,11 @@ describe('ToolExecutionService', () => {
 		it('rejects a different UUID project_id when the turn is project-scoped', async () => {
 			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 			const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_cross_project',
 				name: 'list_onto_tasks',
 				arguments: { project_id: otherProjectId }
-			};
+			});
 			const scopedContext: ServiceContext = {
 				...mockContext,
 				contextScope: { projectId: scopedProjectId }
@@ -149,11 +179,11 @@ describe('ToolExecutionService', () => {
 
 		it('rejects an invalid explicit project_id instead of replacing it with scoped context', async () => {
 			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_invalid_scoped_project',
 				name: 'list_onto_tasks',
 				arguments: { project_id: 'not-a-uuid' }
-			};
+			});
 			const scopedContext: ServiceContext = {
 				...mockContext,
 				contextScope: { projectId: scopedProjectId }
@@ -173,7 +203,7 @@ describe('ToolExecutionService', () => {
 			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 			const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
 			const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
-			const updateTaskDefinition: ChatToolDefinition = {
+			const updateTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_onto_task',
 				description: 'Update task',
 				parameters: {
@@ -185,7 +215,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['task_id']
 				}
-			};
+			});
 			const scopedContext: ServiceContext = {
 				...mockContext,
 				contextScope: { projectId: scopedProjectId },
@@ -204,11 +234,11 @@ describe('ToolExecutionService', () => {
 					scope: { projectId: otherProjectId }
 				} as any
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_cross_project_task',
 				name: 'update_onto_task',
 				arguments: { task_id: taskId, title: 'Rename task' }
-			};
+			});
 
 			const result = await service.executeTool(toolCall, scopedContext, [
 				updateTaskDefinition
@@ -225,7 +255,7 @@ describe('ToolExecutionService', () => {
 		it('rejects an unknown task_id mutation in a project-scoped turn', async () => {
 			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 			const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
-			const updateTaskDefinition: ChatToolDefinition = {
+			const updateTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_onto_task',
 				description: 'Update task',
 				parameters: {
@@ -237,7 +267,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['task_id']
 				}
-			};
+			});
 			const scopedContext: ServiceContext = {
 				...mockContext,
 				contextScope: { projectId: scopedProjectId },
@@ -248,11 +278,11 @@ describe('ToolExecutionService', () => {
 					scope: { projectId: scopedProjectId }
 				} as any
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_unknown_project_task',
 				name: 'update_onto_task',
 				arguments: { task_id: taskId, title: 'Rename task' }
-			};
+			});
 
 			const result = await service.executeTool(toolCall, scopedContext, [
 				updateTaskDefinition
@@ -282,7 +312,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				} as any
 			};
-			const createGoalDefinition: ChatToolDefinition = {
+			const createGoalDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_goal',
 				description: 'Create goal',
 				parameters: {
@@ -293,8 +323,8 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'name']
 				}
-			};
-			const createTaskDefinition: ChatToolDefinition = {
+			});
+			const createTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_task',
 				description: 'Create task',
 				parameters: {
@@ -306,7 +336,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title']
 				}
-			};
+			});
 			mockToolExecutor
 				.mockResolvedValueOnce({
 					data: { goal: { id: goalId, project_id: projectId, name: 'Validate demand' } }
@@ -318,16 +348,16 @@ describe('ToolExecutionService', () => {
 				});
 
 			const goalResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_goal_same_turn',
 					name: 'create_onto_goal',
 					arguments: { project_id: projectId, name: 'Validate demand' }
-				},
+				}),
 				scopedContext,
 				[createGoalDefinition]
 			);
 			const taskResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_task_for_same_turn_goal',
 					name: 'create_onto_task',
 					arguments: {
@@ -335,7 +365,7 @@ describe('ToolExecutionService', () => {
 						title: 'Interview parents',
 						goal_id: goalId
 					}
-				},
+				}),
 				scopedContext,
 				[createTaskDefinition]
 			);
@@ -352,7 +382,7 @@ describe('ToolExecutionService', () => {
 			const goalId = 'b4724346-2b1b-4e71-a9c8-1e25f1aa9b8e';
 			const inconsistentGoalId = '0848bf8c-b7f4-405d-9d7c-f4d29679943e';
 			const taskId = 'e1038564-6e3e-4e18-aa0a-a460fd2e3f80';
-			const createProjectDefinition: ChatToolDefinition = {
+			const createProjectDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_project',
 				description: 'Create project graph',
 				parameters: {
@@ -364,8 +394,8 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project', 'entities', 'relationships']
 				}
-			};
-			const createTaskDefinition: ChatToolDefinition = {
+			});
+			const createTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_task',
 				description: 'Create task',
 				parameters: {
@@ -377,7 +407,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title']
 				}
-			};
+			});
 			const projectContext: ServiceContext = {
 				...mockContext,
 				contextType: 'project',
@@ -417,7 +447,7 @@ describe('ToolExecutionService', () => {
 				});
 
 			const projectResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_project_with_children',
 					name: 'create_onto_project',
 					arguments: {
@@ -430,12 +460,12 @@ describe('ToolExecutionService', () => {
 						],
 						relationships: []
 					}
-				},
+				}),
 				mockContext,
 				[createProjectDefinition]
 			);
 			const taskResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_task_for_instantiated_goal',
 					name: 'create_onto_task',
 					arguments: {
@@ -443,12 +473,12 @@ describe('ToolExecutionService', () => {
 						title: 'Interview customers',
 						goal_id: goalId
 					}
-				},
+				}),
 				projectContext,
 				[createTaskDefinition]
 			);
 			const inconsistentTaskResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_task_for_inconsistent_instantiated_goal',
 					name: 'create_onto_task',
 					arguments: {
@@ -456,7 +486,7 @@ describe('ToolExecutionService', () => {
 						title: 'Should not execute',
 						goal_id: inconsistentGoalId
 					}
-				},
+				}),
 				projectContext,
 				[createTaskDefinition]
 			);
@@ -487,7 +517,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				} as any
 			};
-			const createGoalDefinition: ChatToolDefinition = {
+			const createGoalDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_goal',
 				description: 'Create goal',
 				parameters: {
@@ -498,8 +528,8 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'name']
 				}
-			};
-			const createTaskDefinition: ChatToolDefinition = {
+			});
+			const createTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_task',
 				description: 'Create task',
 				parameters: {
@@ -511,22 +541,22 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({
 				data: { goal: { id: goalId, project_id: otherProjectId } }
 			});
 
 			const goalResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_inconsistent_goal',
 					name: 'create_onto_goal',
 					arguments: { project_id: projectId, name: 'Validate demand' }
-				},
+				}),
 				scopedContext,
 				[createGoalDefinition]
 			);
 			const taskResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_task_with_inconsistent_goal',
 					name: 'create_onto_task',
 					arguments: {
@@ -534,7 +564,7 @@ describe('ToolExecutionService', () => {
 						title: 'Interview parents',
 						goal_id: goalId
 					}
-				},
+				}),
 				scopedContext,
 				[createTaskDefinition]
 			);
@@ -622,7 +652,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				} as any
 			};
-			const createDefinition: ChatToolDefinition = {
+			const createDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: scenario.createTool,
 				description: `Create ${scenario.kind}`,
 				parameters: {
@@ -636,8 +666,8 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id']
 				}
-			};
-			const updateDefinition: ChatToolDefinition = {
+			});
+			const updateDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: scenario.updateTool,
 				description: `Update ${scenario.kind}`,
 				parameters: {
@@ -650,7 +680,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: [scenario.idArg]
 				}
-			};
+			});
 			mockToolExecutor
 				.mockResolvedValueOnce({
 					data: {
@@ -664,16 +694,16 @@ describe('ToolExecutionService', () => {
 				});
 
 			const createResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: `call_create_same_turn_${scenario.kind}`,
 					name: scenario.createTool,
 					arguments: { project_id: projectId, ...scenario.createArgs }
-				},
+				}),
 				scopedContext,
 				[createDefinition]
 			);
 			const updateResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: `call_update_same_turn_${scenario.kind}`,
 					name: scenario.updateTool,
 					arguments: {
@@ -681,7 +711,7 @@ describe('ToolExecutionService', () => {
 						[scenario.idArg]: entityId,
 						...scenario.updateArgs
 					}
-				},
+				}),
 				scopedContext,
 				[updateDefinition]
 			);
@@ -710,7 +740,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				} as any
 			};
-			const createTaskDocumentDefinition: ChatToolDefinition = {
+			const createTaskDocumentDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_task_document',
 				description: 'Create and link a task document',
 				parameters: {
@@ -723,8 +753,8 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['task_id']
 				}
-			};
-			const updateDocumentDefinition: ChatToolDefinition = {
+			});
+			const updateDocumentDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_onto_document',
 				description: 'Update document',
 				parameters: {
@@ -736,7 +766,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['document_id']
 				}
-			};
+			});
 			mockToolExecutor
 				.mockResolvedValueOnce({
 					data: {
@@ -752,7 +782,7 @@ describe('ToolExecutionService', () => {
 				});
 
 			const createResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_task_document_same_turn',
 					name: 'create_task_document',
 					arguments: {
@@ -761,12 +791,12 @@ describe('ToolExecutionService', () => {
 						description: 'Brief linked to the launch task.',
 						type_key: 'document.default'
 					}
-				},
+				}),
 				scopedContext,
 				[createTaskDocumentDefinition]
 			);
 			const updateResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_update_task_document_same_turn',
 					name: 'update_onto_document',
 					arguments: {
@@ -774,7 +804,7 @@ describe('ToolExecutionService', () => {
 						document_id: documentId,
 						title: 'Updated launch brief'
 					}
-				},
+				}),
 				scopedContext,
 				[updateDocumentDefinition]
 			);
@@ -800,7 +830,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				} as any
 			};
-			const loadGoalDefinition: ChatToolDefinition = {
+			const loadGoalDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'get_onto_goal_details',
 				description: 'Load goal',
 				parameters: {
@@ -808,8 +838,8 @@ describe('ToolExecutionService', () => {
 					properties: { goal_id: { type: 'string' } },
 					required: ['goal_id']
 				}
-			};
-			const createTaskDefinition: ChatToolDefinition = {
+			});
+			const createTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_task',
 				description: 'Create task',
 				parameters: {
@@ -821,7 +851,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title']
 				}
-			};
+			});
 			mockToolExecutor
 				.mockResolvedValueOnce({
 					data: { goal: { id: goalId, project_id: projectId, name: 'Validate demand' } }
@@ -831,20 +861,20 @@ describe('ToolExecutionService', () => {
 				});
 
 			const loadResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_load_goal_scope',
 					name: 'get_onto_goal_details',
 					arguments: { goal_id: goalId }
-				},
+				}),
 				scopedContext,
 				[loadGoalDefinition]
 			);
 			const createResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_for_loaded_goal',
 					name: 'create_onto_task',
 					arguments: { title: 'Interview parents', goal_id: goalId }
-				},
+				}),
 				scopedContext,
 				[createTaskDefinition]
 			);
@@ -870,7 +900,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				} as any
 			};
-			const loadGoalDefinition: ChatToolDefinition = {
+			const loadGoalDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'get_onto_goal_details',
 				description: 'Load goal',
 				parameters: {
@@ -878,8 +908,8 @@ describe('ToolExecutionService', () => {
 					properties: { goal_id: { type: 'string' } },
 					required: ['goal_id']
 				}
-			};
-			const createTaskDefinition: ChatToolDefinition = {
+			});
+			const createTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_task',
 				description: 'Create task',
 				parameters: {
@@ -891,26 +921,26 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({
 				data: { goal: { id: goalId, project_id: otherProjectId } }
 			});
 
 			await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_load_cross_project_goal',
 					name: 'get_onto_goal_details',
 					arguments: { goal_id: goalId }
-				},
+				}),
 				scopedContext,
 				[loadGoalDefinition]
 			);
 			const createResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_for_cross_project_goal',
 					name: 'create_onto_task',
 					arguments: { title: 'Interview parents', goal_id: goalId }
-				},
+				}),
 				scopedContext,
 				[createTaskDefinition]
 			);
@@ -939,7 +969,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				} as any
 			};
-			const searchDefinition: ChatToolDefinition = {
+			const searchDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'search_ontology',
 				description: 'Search ontology',
 				parameters: {
@@ -950,8 +980,8 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['query']
 				}
-			};
-			const createTaskDefinition: ChatToolDefinition = {
+			});
+			const createTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_task',
 				description: 'Create task',
 				parameters: {
@@ -963,7 +993,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title']
 				}
-			};
+			});
 			mockToolExecutor
 				.mockResolvedValueOnce({
 					data: {
@@ -975,20 +1005,20 @@ describe('ToolExecutionService', () => {
 				});
 
 			await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_resolve_goal_scope',
 					name: 'search_ontology',
 					arguments: { query: 'validate demand' }
-				},
+				}),
 				scopedContext,
 				[searchDefinition]
 			);
 			const createResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_for_resolved_goal',
 					name: 'create_onto_task',
 					arguments: { title: 'Interview parents', goal_id: goalId }
-				},
+				}),
 				scopedContext,
 				[createTaskDefinition]
 			);
@@ -1012,7 +1042,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				} as any
 			};
-			const getEventDefinition: ChatToolDefinition = {
+			const getEventDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'get_calendar_event_details',
 				description: 'Get an exact calendar event',
 				parameters: {
@@ -1023,8 +1053,8 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['onto_event_id']
 				}
-			};
-			const deleteEventDefinition: ChatToolDefinition = {
+			});
+			const deleteEventDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'delete_calendar_event',
 				description: 'Delete an exact calendar event',
 				parameters: {
@@ -1035,7 +1065,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['onto_event_id']
 				}
-			};
+			});
 			mockToolExecutor
 				.mockResolvedValueOnce({
 					data: {
@@ -1051,20 +1081,20 @@ describe('ToolExecutionService', () => {
 				});
 
 			const readResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_load_event_scope',
 					name: 'get_calendar_event_details',
 					arguments: { onto_event_id: eventId, project_id: projectId }
-				},
+				}),
 				scopedContext,
 				[getEventDefinition]
 			);
 			const deleteResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_delete_loaded_event',
 					name: 'delete_calendar_event',
 					arguments: { onto_event_id: eventId, project_id: projectId }
-				},
+				}),
 				scopedContext,
 				[deleteEventDefinition]
 			);
@@ -1089,7 +1119,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				} as any
 			};
-			const definition: ChatToolDefinition = {
+			const definition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'delete_calendar_event',
 				description: 'Delete an exact calendar event',
 				parameters: {
@@ -1100,14 +1130,14 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['onto_event_id']
 				}
-			};
+			});
 
 			const result = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_delete_unknown_event',
 					name: 'delete_calendar_event',
 					arguments: { onto_event_id: eventId, project_id: projectId }
-				},
+				}),
 				scopedContext,
 				[definition]
 			);
@@ -1136,7 +1166,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				} as any
 			};
-			const projectDetailsDefinition: ChatToolDefinition = {
+			const projectDetailsDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'get_onto_project_details',
 				description: 'Load project details',
 				parameters: {
@@ -1144,8 +1174,8 @@ describe('ToolExecutionService', () => {
 					properties: { project_id: { type: 'string' } },
 					required: ['project_id']
 				}
-			};
-			const createTaskDefinition: ChatToolDefinition = {
+			});
+			const createTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_task',
 				description: 'Create task',
 				parameters: {
@@ -1157,7 +1187,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title']
 				}
-			};
+			});
 			mockToolExecutor
 				.mockResolvedValueOnce({
 					data: {
@@ -1170,20 +1200,20 @@ describe('ToolExecutionService', () => {
 				});
 
 			await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_load_project_entities',
 					name: 'get_onto_project_details',
 					arguments: { project_id: projectId }
-				},
+				}),
 				scopedContext,
 				[projectDetailsDefinition]
 			);
 			const createResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_for_project_loaded_goal',
 					name: 'create_onto_task',
 					arguments: { title: 'Interview parents', goal_id: goalId }
-				},
+				}),
 				scopedContext,
 				[createTaskDefinition]
 			);
@@ -1208,7 +1238,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				} as any
 			};
-			const loadGoalDefinition: ChatToolDefinition = {
+			const loadGoalDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'get_onto_goal_details',
 				description: 'Load goal',
 				parameters: {
@@ -1216,8 +1246,8 @@ describe('ToolExecutionService', () => {
 					properties: { goal_id: { type: 'string' } },
 					required: ['goal_id']
 				}
-			};
-			const createTaskDefinition: ChatToolDefinition = {
+			});
+			const createTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_task',
 				description: 'Create task',
 				parameters: {
@@ -1229,7 +1259,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title']
 				}
-			};
+			});
 			mockToolExecutor
 				.mockResolvedValueOnce({
 					data: { goal: { id: goalId, project_id: projectId } }
@@ -1240,11 +1270,11 @@ describe('ToolExecutionService', () => {
 
 			for (const [index, expectedProjectId] of [projectId, otherProjectId].entries()) {
 				const loadResult = await service.executeTool(
-					{
+					canonicalToolCall({
 						id: `call_conflicting_goal_load_${index}`,
 						name: 'get_onto_goal_details',
 						arguments: { goal_id: goalId }
-					},
+					}),
 					scopedContext,
 					[loadGoalDefinition]
 				);
@@ -1253,11 +1283,11 @@ describe('ToolExecutionService', () => {
 				});
 			}
 			const createResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_after_conflicting_loads',
 					name: 'create_onto_task',
 					arguments: { title: 'Interview parents', goal_id: goalId }
-				},
+				}),
 				scopedContext,
 				[createTaskDefinition]
 			);
@@ -1285,7 +1315,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				} as any
 			};
-			const deleteGoalDefinition: ChatToolDefinition = {
+			const deleteGoalDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'delete_onto_goal',
 				description: 'Delete goal',
 				parameters: {
@@ -1293,8 +1323,8 @@ describe('ToolExecutionService', () => {
 					properties: { goal_id: { type: 'string' } },
 					required: ['goal_id']
 				}
-			};
-			const createTaskDefinition: ChatToolDefinition = {
+			});
+			const createTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_task',
 				description: 'Create task',
 				parameters: {
@@ -1306,24 +1336,24 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({ data: { success: true } });
 
 			const deleteResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_delete_goal_scope',
 					name: 'delete_onto_goal',
 					arguments: { goal_id: goalId }
-				},
+				}),
 				scopedContext,
 				[deleteGoalDefinition]
 			);
 			const createResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_create_for_deleted_goal',
 					name: 'create_onto_task',
 					arguments: { title: 'Interview parents', goal_id: goalId }
-				},
+				}),
 				scopedContext,
 				[createTaskDefinition]
 			);
@@ -1340,7 +1370,7 @@ describe('ToolExecutionService', () => {
 		it('allows a known task_id from the current project after injecting project_id', async () => {
 			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 			const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
-			const updateTaskDefinition: ChatToolDefinition = {
+			const updateTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_onto_task',
 				description: 'Update task',
 				parameters: {
@@ -1352,7 +1382,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['task_id']
 				}
-			};
+			});
 			const scopedContext: ServiceContext = {
 				...mockContext,
 				contextScope: { projectId: scopedProjectId },
@@ -1371,11 +1401,11 @@ describe('ToolExecutionService', () => {
 					scope: { projectId: scopedProjectId }
 				} as any
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_current_project_task',
 				name: 'update_onto_task',
 				arguments: { task_id: taskId, title: 'Rename task' }
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ data: { task: { id: taskId } } });
 
@@ -1399,7 +1429,7 @@ describe('ToolExecutionService', () => {
 			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
 			const destinationProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
 			const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
-			const moveTaskDefinition: ChatToolDefinition = {
+			const moveTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'move_onto_task',
 				description: 'Move task between projects',
 				parameters: {
@@ -1411,8 +1441,8 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['task_id', 'expected_source_project_id', 'destination_project_id']
 				}
-			};
-			const updateTaskDefinition: ChatToolDefinition = {
+			});
+			const updateTaskDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_onto_task',
 				description: 'Update task',
 				parameters: {
@@ -1424,7 +1454,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['task_id', 'title']
 				}
-			};
+			});
 			const scopedContext: ServiceContext = {
 				...mockContext,
 				contextScope: { projectId: scopedProjectId },
@@ -1437,7 +1467,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId: scopedProjectId }
 				} as any
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_move_task',
 				name: 'move_onto_task',
 				arguments: {
@@ -1445,7 +1475,7 @@ describe('ToolExecutionService', () => {
 					expected_source_project_id: scopedProjectId,
 					destination_project_id: destinationProjectId
 				}
-			};
+			});
 
 			mockToolExecutor
 				.mockResolvedValueOnce({ data: { status: 'moved' } })
@@ -1454,11 +1484,11 @@ describe('ToolExecutionService', () => {
 				});
 			const result = await service.executeTool(toolCall, scopedContext, [moveTaskDefinition]);
 			const staleSourceUpdate = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_update_moved_task_from_source',
 					name: 'update_onto_task',
 					arguments: { task_id: taskId, title: 'Stale source update' }
-				},
+				}),
 				scopedContext,
 				[updateTaskDefinition]
 			);
@@ -1474,11 +1504,11 @@ describe('ToolExecutionService', () => {
 				} as any
 			};
 			const destinationUpdate = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_update_moved_task_from_destination',
 					name: 'update_onto_task',
 					arguments: { task_id: taskId, title: 'Destination update' }
-				},
+				}),
 				destinationContext,
 				[updateTaskDefinition]
 			);
@@ -1503,7 +1533,7 @@ describe('ToolExecutionService', () => {
 			const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
 			const destinationProjectId = '31021625-1377-4715-9fb4-f93102974628';
 			const taskId = 'f914f9dc-a7a7-4f9e-9a3e-477c6975f259';
-			const definition: ChatToolDefinition = {
+			const definition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'move_onto_task',
 				description: 'Move task between projects',
 				parameters: {
@@ -1515,9 +1545,9 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['task_id', 'expected_source_project_id', 'destination_project_id']
 				}
-			};
+			});
 			const result = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_bad_move_source',
 					name: 'move_onto_task',
 					arguments: {
@@ -1525,7 +1555,7 @@ describe('ToolExecutionService', () => {
 						expected_source_project_id: otherProjectId,
 						destination_project_id: destinationProjectId
 					}
-				},
+				}),
 				{ ...mockContext, contextScope: { projectId: scopedProjectId } },
 				[definition]
 			);
@@ -1539,12 +1569,12 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should coerce raw string arguments for web_search into query', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_web_search',
 				name: 'web_search',
 				arguments: 'openai latest news'
-			};
-			const webSearchDefinition: ChatToolDefinition = {
+			});
+			const webSearchDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'web_search',
 				description: 'Web search',
 				parameters: {
@@ -1554,7 +1584,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['query']
 				}
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ results: [] });
 
@@ -1569,12 +1599,12 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should coerce JSON string arguments for web_visit into url', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_web_visit',
 				name: 'web_visit',
 				arguments: '"https://example.com"'
-			};
-			const webVisitDefinition: ChatToolDefinition = {
+			});
+			const webVisitDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'web_visit',
 				description: 'Web visit',
 				parameters: {
@@ -1584,7 +1614,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['url']
 				}
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ ok: true });
 
@@ -1599,12 +1629,12 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should alias query to search when tool schema requires search', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_search_alias',
 				name: 'search_onto_tasks',
 				arguments: { query: 'launch checklist' }
-			};
-			const searchToolDefinition: ChatToolDefinition = {
+			});
+			const searchToolDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'search_onto_tasks',
 				description: 'Search ontology tasks',
 				parameters: {
@@ -1615,7 +1645,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['search']
 				}
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ tasks: [] });
 
@@ -1630,12 +1660,12 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should alias search to query when tool schema requires query', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_query_alias',
 				name: 'web_search',
 				arguments: { search: 'buildos docs' }
-			};
-			const webSearchDefinition: ChatToolDefinition = {
+			});
+			const webSearchDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'web_search',
 				description: 'Web search',
 				parameters: {
@@ -1645,7 +1675,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['query']
 				}
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ results: [] });
 
@@ -1660,12 +1690,12 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should alias q to query for list_calendar_events', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_calendar_query_alias',
 				name: 'list_calendar_events',
 				arguments: { q: 'roadmap' }
-			};
-			const listCalendarDefinition: ChatToolDefinition = {
+			});
+			const listCalendarDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'list_calendar_events',
 				description: 'List calendar events',
 				parameters: {
@@ -1675,7 +1705,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['query']
 				}
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ events: [] });
 
@@ -1692,12 +1722,12 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should validate gateway tools against canonical gateway schemas', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_gateway_missing_op',
 				name: 'tool_schema',
 				arguments: { include_examples: true }
-			};
-			const permissiveSuppliedDefinition: ChatToolDefinition = {
+			});
+			const permissiveSuppliedDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'tool_schema',
 				description: 'Permissive stale schema',
 				parameters: {
@@ -1706,7 +1736,7 @@ describe('ToolExecutionService', () => {
 						include_examples: { type: 'boolean' }
 					}
 				}
-			};
+			});
 
 			const result = await service.executeTool(toolCall, mockContext, [
 				permissiveSuppliedDefinition
@@ -1731,11 +1761,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should execute gateway tools with canonical schemas outside the selected tool list', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_gateway_search',
 				name: 'tool_search',
 				arguments: { query: 'update task', kind: 'write', limit: 1 }
-			};
+			});
 
 			const result = await service.executeTool(toolCall, mockContext, []);
 
@@ -1754,27 +1784,27 @@ describe('ToolExecutionService', () => {
 				expectedData: Record<string, unknown>;
 			}> = [
 				{
-					call: {
+					call: canonicalToolCall({
 						id: 'call_gateway_domain_alias',
 						name: 'domain_load',
 						arguments: { id: 'sales_and_growth.cold_email' }
-					},
+					}),
 					expectedData: { type: 'domain', domain_id: 'sales_and_growth.cold_email' }
 				},
 				{
-					call: {
+					call: canonicalToolCall({
 						id: 'call_gateway_schema_alias',
 						name: 'tool_schema',
 						arguments: { path: 'onto.task.update' }
-					},
+					}),
 					expectedData: { type: 'tool_schema', op: 'onto.task.update' }
 				},
 				{
-					call: {
+					call: canonicalToolCall({
 						id: 'call_gateway_skill_alias',
 						name: 'skill_load',
 						arguments: { id: 'google_calendar', include_examples: false }
-					},
+					}),
 					expectedData: {
 						type: 'skill',
 						id: 'google_calendar',
@@ -1783,14 +1813,14 @@ describe('ToolExecutionService', () => {
 					}
 				},
 				{
-					call: {
+					call: canonicalToolCall({
 						id: 'call_gateway_reference_alias',
 						name: 'skill_reference_load',
 						arguments: {
 							path: 'google_calendar',
 							module: 'google_calendar.public_safe_write_rules'
 						}
-					},
+					}),
 					expectedData: {
 						type: 'skill_reference',
 						skill_id: 'google_calendar',
@@ -1809,11 +1839,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should reject invalid gateway enum values before execution', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_gateway_enum',
 				name: 'tool_search',
 				arguments: { query: 'update task', kind: 'delete' }
-			};
+			});
 
 			const result = await service.executeTool(toolCall, mockContext, []);
 
@@ -1830,11 +1860,11 @@ describe('ToolExecutionService', () => {
 		it('should cancel gateway tools before execution when aborted', async () => {
 			const controller = new AbortController();
 			controller.abort();
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_gateway_aborted',
 				name: 'tool_schema',
 				arguments: { op: 'onto.task.update' }
-			};
+			});
 
 			const result = await service.executeTool(toolCall, mockContext, [], {
 				abortSignal: controller.signal
@@ -1865,7 +1895,7 @@ describe('ToolExecutionService', () => {
 					rel: 'contains'
 				}
 			];
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_create_nested_project_graph',
 				name: 'create_onto_project',
 				arguments: {
@@ -1876,8 +1906,8 @@ describe('ToolExecutionService', () => {
 						relationships: nestedRelationships
 					}
 				}
-			};
-			const createProjectDefinition: ChatToolDefinition = {
+			});
+			const createProjectDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_project',
 				description: 'Create project',
 				parameters: {
@@ -1889,7 +1919,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project', 'entities', 'relationships']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({ data: { project_id: 'project-1' } });
 
 			const result = await service.executeTool(toolCall, createContext, [
@@ -1910,7 +1940,7 @@ describe('ToolExecutionService', () => {
 				contextType: 'project_create',
 				entityId: undefined
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_create_conflicting_project_graph',
 				name: 'create_onto_project',
 				arguments: {
@@ -1922,8 +1952,8 @@ describe('ToolExecutionService', () => {
 					entities: [{ temp_id: 'top-goal', kind: 'goal', name: 'Top goal' }],
 					relationships: []
 				}
-			};
-			const createProjectDefinition: ChatToolDefinition = {
+			});
+			const createProjectDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_project',
 				description: 'Create project',
 				parameters: {
@@ -1935,7 +1965,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project', 'entities', 'relationships']
 				}
-			};
+			});
 
 			const result = await service.executeTool(toolCall, createContext, [
 				createProjectDefinition
@@ -1964,7 +1994,7 @@ describe('ToolExecutionService', () => {
 					} as any
 				]
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_create_fiction_workspace',
 				name: 'create_onto_project',
 				arguments: {
@@ -1976,8 +2006,8 @@ describe('ToolExecutionService', () => {
 					entities: [],
 					relationships: []
 				}
-			};
-			const createProjectDefinition: ChatToolDefinition = {
+			});
+			const createProjectDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_project',
 				description: 'Create project',
 				parameters: {
@@ -1989,7 +2019,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project', 'entities', 'relationships']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({ data: { project_id: 'project-1' } });
 
 			const result = await service.executeTool(toolCall, createContext, [
@@ -2030,7 +2060,7 @@ describe('ToolExecutionService', () => {
 					{ role: 'user', content: 'The Glass Harbor.' } as any
 				]
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_create_after_clarification',
 				name: 'create_onto_project',
 				arguments: {
@@ -2048,8 +2078,8 @@ describe('ToolExecutionService', () => {
 					],
 					relationships: []
 				}
-			};
-			const createProjectDefinition: ChatToolDefinition = {
+			});
+			const createProjectDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_project',
 				description: 'Create project',
 				parameters: {
@@ -2061,7 +2091,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project', 'entities', 'relationships']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({ data: { project_id: 'project-1' } });
 
 			const result = await service.executeTool(toolCall, createContext, [
@@ -2097,7 +2127,7 @@ describe('ToolExecutionService', () => {
 					} as any
 				]
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_create_with_invented_milestone',
 				name: 'create_onto_project',
 				arguments: {
@@ -2115,8 +2145,8 @@ describe('ToolExecutionService', () => {
 					],
 					relationships: []
 				}
-			};
-			const createProjectDefinition: ChatToolDefinition = {
+			});
+			const createProjectDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_project',
 				description: 'Create project',
 				parameters: {
@@ -2128,7 +2158,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project', 'entities', 'relationships']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({ data: { project_id: 'project-1' } });
 
 			const result = await service.executeTool(toolCall, createContext, [
@@ -2156,7 +2186,7 @@ describe('ToolExecutionService', () => {
 					} as any
 				]
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_create_with_invented_goal',
 				name: 'create_onto_project',
 				arguments: {
@@ -2173,8 +2203,8 @@ describe('ToolExecutionService', () => {
 					],
 					relationships: []
 				}
-			};
-			const createProjectDefinition: ChatToolDefinition = {
+			});
+			const createProjectDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_project',
 				description: 'Create project',
 				parameters: {
@@ -2186,7 +2216,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project', 'entities', 'relationships']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({ data: { project_id: 'project-1' } });
 
 			const result = await service.executeTool(toolCall, createContext, [
@@ -2220,7 +2250,7 @@ describe('ToolExecutionService', () => {
 					} as any
 				]
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_create_project_guard',
 				name: 'create_onto_project',
 				arguments: {
@@ -2231,8 +2261,8 @@ describe('ToolExecutionService', () => {
 					entities: [],
 					relationships: []
 				}
-			};
-			const createProjectDefinition: ChatToolDefinition = {
+			});
+			const createProjectDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_project',
 				description: 'Create project',
 				parameters: {
@@ -2244,7 +2274,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project', 'entities', 'relationships']
 				}
-			};
+			});
 
 			const result = await service.executeTool(toolCall, guardedContext, [
 				createProjectDefinition
@@ -2281,15 +2311,15 @@ describe('ToolExecutionService', () => {
 					} as any
 				]
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_context_guard',
 				name: 'change_chat_context',
 				arguments: {
 					target: 'global',
 					reason: 'User wants to create a new blog project'
 				}
-			};
-			const changeContextDefinition: ChatToolDefinition = {
+			});
+			const changeContextDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'change_chat_context',
 				description: 'Change chat context',
 				parameters: {
@@ -2300,7 +2330,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['target']
 				}
-			};
+			});
 
 			const result = await service.executeTool(toolCall, guardedContext, [
 				changeContextDefinition
@@ -2332,7 +2362,7 @@ describe('ToolExecutionService', () => {
 					{ role: 'user', content: 'Yes, create it as a new project.' } as any
 				]
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_confirmed_create_project',
 				name: 'create_onto_project',
 				arguments: {
@@ -2343,8 +2373,8 @@ describe('ToolExecutionService', () => {
 					entities: [],
 					relationships: []
 				}
-			};
-			const createProjectDefinition: ChatToolDefinition = {
+			});
+			const createProjectDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_project',
 				description: 'Create project',
 				parameters: {
@@ -2356,7 +2386,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project', 'entities', 'relationships']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({
 				data: { project_id: '972064c0-c2aa-4c74-a735-313802ffd456' }
 			});
@@ -2381,15 +2411,15 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should alias external_event_id to event_id for calendar update', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_calendar_external_event_alias',
 				name: 'update_calendar_event',
 				arguments: {
 					external_event_id: 'evt_123',
 					title: 'Rescheduled meeting'
 				}
-			};
-			const updateCalendarDefinition: ChatToolDefinition = {
+			});
+			const updateCalendarDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_calendar_event',
 				description: 'Update calendar event',
 				parameters: {
@@ -2400,7 +2430,7 @@ describe('ToolExecutionService', () => {
 						title: { type: 'string' }
 					}
 				}
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ success: true });
 
@@ -2422,7 +2452,7 @@ describe('ToolExecutionService', () => {
 
 		it('should alias id to document_id for move_document_in_tree', async () => {
 			const documentId = '3f4c1f6f-77c6-45ab-9159-686dc2d92bc5';
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_move_doc_alias',
 				name: 'move_document_in_tree',
 				arguments: {
@@ -2430,8 +2460,8 @@ describe('ToolExecutionService', () => {
 					id: documentId,
 					new_position: 2
 				}
-			};
-			const moveDefinition: ChatToolDefinition = {
+			});
+			const moveDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'move_document_in_tree',
 				description: 'Move document in tree',
 				parameters: {
@@ -2443,7 +2473,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'document_id']
 				}
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ ok: true });
 
@@ -2463,14 +2493,14 @@ describe('ToolExecutionService', () => {
 
 		it('should alias nested document.id to document_id for delete_onto_document', async () => {
 			const documentId = '7aa6df76-dd9d-4824-96ed-d6441a8d1644';
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_delete_doc_alias',
 				name: 'delete_onto_document',
 				arguments: {
 					document: { id: documentId }
 				}
-			};
-			const deleteDefinition: ChatToolDefinition = {
+			});
+			const deleteDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'delete_onto_document',
 				description: 'Delete ontology document',
 				parameters: {
@@ -2480,7 +2510,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['document_id']
 				}
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ ok: true });
 
@@ -2496,7 +2526,7 @@ describe('ToolExecutionService', () => {
 
 		it('should reject document append updates with empty props and no content', async () => {
 			const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_bad_doc_append',
 				name: 'update_onto_document',
 				arguments: {
@@ -2505,8 +2535,8 @@ describe('ToolExecutionService', () => {
 					merge_instructions: 'Append under Progress Updates.',
 					props: {}
 				}
-			};
-			const updateDefinition: ChatToolDefinition = {
+			});
+			const updateDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_onto_document',
 				description: 'Update ontology document',
 				parameters: {
@@ -2520,7 +2550,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['document_id']
 				}
-			};
+			});
 
 			const result = await service.executeTool(toolCall, mockContext, [updateDefinition]);
 
@@ -2539,7 +2569,7 @@ describe('ToolExecutionService', () => {
 
 		it('should allow document append updates with content aliases', async () => {
 			const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_good_doc_append',
 				name: 'update_onto_document',
 				arguments: {
@@ -2549,8 +2579,8 @@ describe('ToolExecutionService', () => {
 					merge_instructions: 'Append under Progress Updates.',
 					props: {}
 				}
-			};
-			const updateDefinition: ChatToolDefinition = {
+			});
+			const updateDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_onto_document',
 				description: 'Update ontology document',
 				parameters: {
@@ -2564,7 +2594,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['document_id']
 				}
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ ok: true });
 
@@ -2584,15 +2614,15 @@ describe('ToolExecutionService', () => {
 
 		it('should allow normal markdown angle brackets in durable text', async () => {
 			const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_good_doc_markup',
 				name: 'update_onto_document',
 				arguments: {
 					document_id: documentId,
 					content: 'Use <aside> for notes and keep x < y as an example.'
 				}
-			};
-			const updateDefinition: ChatToolDefinition = {
+			});
+			const updateDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_onto_document',
 				description: 'Update ontology document',
 				parameters: {
@@ -2603,7 +2633,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['document_id']
 				}
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ ok: true });
 
@@ -2621,14 +2651,14 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should preserve schema defaults for get_document_tree', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_get_tree_defaults',
 				name: 'get_document_tree',
 				arguments: {
 					project_id: 'proj_123'
 				}
-			};
-			const treeDefinition: ChatToolDefinition = {
+			});
+			const treeDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'get_document_tree',
 				description: 'Get document tree',
 				parameters: {
@@ -2640,7 +2670,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id']
 				}
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ data: { structure: { root: [] } } });
 
@@ -2659,12 +2689,12 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('applies schema defaults before required-field validation', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_required_default',
 				name: 'defaulted_tool',
 				arguments: {}
-			};
-			const defaultedDefinition: ChatToolDefinition = {
+			});
+			const defaultedDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'defaulted_tool',
 				description: 'Tool with a required defaulted mode',
 				parameters: {
@@ -2674,7 +2704,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['mode']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({ data: { ok: true } });
 
 			const result = await service.executeTool(toolCall, mockContext, [defaultedDefinition]);
@@ -2688,11 +2718,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should trim whitespace in tool names', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_trim',
 				name: '  list_onto_tasks  ',
 				arguments: { project_id: 'proj_123' }
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ tasks: [] });
 
@@ -2708,11 +2738,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should handle tool execution errors', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_456',
 				name: 'create_onto_task',
 				arguments: { title: 'New Task' }
-			};
+			});
 
 			mockToolExecutor.mockRejectedValueOnce(new Error('Database error'));
 
@@ -2724,11 +2754,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should validate required parameters', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_789',
 				name: 'create_onto_task',
 				arguments: { description: 'Missing title' } // Missing required 'title'
-			};
+			});
 
 			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions);
 
@@ -2738,14 +2768,14 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should require onto_event_id or event_id for calendar update', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_calendar_missing_id',
 				name: 'update_calendar_event',
 				arguments: {
 					title: 'Rename only'
 				}
-			};
-			const updateCalendarDefinition: ChatToolDefinition = {
+			});
+			const updateCalendarDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_calendar_event',
 				description: 'Update calendar event',
 				parameters: {
@@ -2756,7 +2786,7 @@ describe('ToolExecutionService', () => {
 						title: { type: 'string' }
 					}
 				}
-			};
+			});
 
 			const result = await service.executeTool(toolCall, mockContext, [
 				updateCalendarDefinition
@@ -2767,11 +2797,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should handle unknown tools', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_unknown',
 				name: 'unknown_tool',
 				arguments: {}
-			};
+			});
 
 			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions);
 
@@ -2781,11 +2811,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should track entities accessed during execution', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_entities',
 				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
-			};
+			});
 
 			const resultWithEntities = {
 				tasks: [{ id: 'task_1' }],
@@ -2801,11 +2831,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should handle null/undefined arguments', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_null',
 				name: 'list_onto_projects',
 				arguments: null as any
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ projects: [] });
 
@@ -2820,11 +2850,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should route virtual tools through provided handler', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_virtual',
 				name: 'agent_create_plan',
 				arguments: { objective: 'Do something' }
-			};
+			});
 
 			const virtualHandler = vi.fn().mockResolvedValue({
 				success: true,
@@ -2859,11 +2889,11 @@ describe('ToolExecutionService', () => {
 		it('propagates cancellation into virtual handlers and returns the standard envelope', async () => {
 			const controller = new AbortController();
 			let capturedSignal: AbortSignal | undefined;
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_virtual_cancelled',
 				name: 'agent_create_plan',
 				arguments: { objective: 'Do something' }
-			};
+			});
 			const virtualHandler: VirtualToolHandler = vi.fn(
 				({ context }: { context: ServiceContext }) =>
 					new Promise<ToolExecutionResult>((_resolve, reject) => {
@@ -2895,11 +2925,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('returns the standard timeout envelope when a virtual handler exceeds its deadline', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_virtual_timeout',
 				name: 'agent_create_plan',
 				arguments: { objective: 'Do something' }
-			};
+			});
 			const virtualHandler: VirtualToolHandler = vi.fn(
 				() => new Promise<ToolExecutionResult>(() => undefined)
 			);
@@ -2920,11 +2950,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('preserves lane-specific classification of handler timeout messages', async () => {
-			const virtualToolCall: ChatToolCall = {
+			const virtualToolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_virtual_timeout_message',
 				name: 'agent_create_plan',
 				arguments: { objective: 'Do something' }
-			};
+			});
 			const virtualHandler: VirtualToolHandler = vi.fn(async () => {
 				throw new Error('dependency timeout');
 			});
@@ -2943,11 +2973,11 @@ describe('ToolExecutionService', () => {
 
 			mockToolExecutor.mockRejectedValueOnce(new Error('dependency timeout'));
 			const coreResult = await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_core_timeout_message',
 					name: 'list_onto_tasks',
 					arguments: { project_id: 'proj_123' }
-				},
+				}),
 				mockContext,
 				mockToolDefinitions
 			);
@@ -2959,7 +2989,7 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should default document title when blank', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_doc',
 				name: 'create_onto_document',
 				arguments: {
@@ -2968,11 +2998,11 @@ describe('ToolExecutionService', () => {
 					description: 'Short summary',
 					type_key: ' '
 				}
-			};
+			});
 
 			const toolDefs = [
 				...mockToolDefinitions,
-				{
+				canonicalToolDefinition({
 					name: 'create_onto_document',
 					description: 'Create a document',
 					parameters: {
@@ -2984,7 +3014,7 @@ describe('ToolExecutionService', () => {
 						},
 						required: ['project_id', 'title', 'type_key']
 					}
-				}
+				})
 			];
 
 			mockToolExecutor.mockResolvedValueOnce({ document: { id: 'doc-1' } });
@@ -3005,7 +3035,7 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should use name as title for documents', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_doc_name',
 				name: 'create_onto_document',
 				arguments: {
@@ -3014,11 +3044,11 @@ describe('ToolExecutionService', () => {
 					description: 'Brief for the new design',
 					type_key: 'document.context.brief'
 				}
-			};
+			});
 
 			const toolDefs = [
 				...mockToolDefinitions,
-				{
+				canonicalToolDefinition({
 					name: 'create_onto_document',
 					description: 'Create a document',
 					parameters: {
@@ -3030,7 +3060,7 @@ describe('ToolExecutionService', () => {
 						},
 						required: ['project_id', 'title', 'type_key']
 					}
-				}
+				})
 			];
 
 			mockToolExecutor.mockResolvedValueOnce({ document: { id: 'doc-2' } });
@@ -3076,7 +3106,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				}
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_duplicate_doc',
 				name: 'create_onto_document',
 				arguments: {
@@ -3086,8 +3116,8 @@ describe('ToolExecutionService', () => {
 					type_key: 'document.creative.character',
 					content: 'New Ilyan detail.'
 				}
-			};
-			const createDocumentDefinition: ChatToolDefinition = {
+			});
+			const createDocumentDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_document',
 				description: 'Create document',
 				parameters: {
@@ -3101,7 +3131,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title', 'description', 'type_key']
 				}
-			};
+			});
 
 			const result = await service.executeTool(toolCall, createContext, [
 				createDocumentDefinition
@@ -3151,12 +3181,12 @@ describe('ToolExecutionService', () => {
 				type_key: 'document.creative.character',
 				content: 'Duplicate content.'
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_explicit_duplicate_doc',
 				name: 'create_onto_document',
 				arguments: args
-			};
-			const createDocumentDefinition: ChatToolDefinition = {
+			});
+			const createDocumentDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_document',
 				description: 'Create document',
 				parameters: {
@@ -3170,7 +3200,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title', 'description', 'type_key']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({ data: { document_id: 'doc-copy' } });
 
 			const result = await service.executeTool(toolCall, createContext, [
@@ -3222,7 +3252,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				}
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_update_structure',
 				name: 'update_onto_document',
 				arguments: {
@@ -3231,8 +3261,8 @@ describe('ToolExecutionService', () => {
 						'## Chapter 4\n\nMara interprets Ilyan as loyal.\n\n## Chapter 5\n\nPart II begins the next morning.',
 					update_strategy: 'append'
 				}
-			};
-			const updateDocumentDefinition: ChatToolDefinition = {
+			});
+			const updateDocumentDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_onto_document',
 				description: 'Update document',
 				parameters: {
@@ -3248,7 +3278,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['document_id']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({ data: { document_id: documentId } });
 
 			const result = await service.executeTool(toolCall, updateContext, [
@@ -3305,7 +3335,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				}
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_update_structure_nested',
 				name: 'update_onto_document',
 				arguments: {
@@ -3313,8 +3343,8 @@ describe('ToolExecutionService', () => {
 					document: { body_markdown: 'MODEL CONTENT UNDER A NESTED ALIAS' },
 					update_strategy: 'append'
 				}
-			};
-			const updateDocumentDefinition: ChatToolDefinition = {
+			});
+			const updateDocumentDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_onto_document',
 				description: 'Update document',
 				parameters: {
@@ -3331,7 +3361,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['document_id']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({ data: { document_id: documentId } });
 
 			const result = await service.executeTool(toolCall, updateContext, [
@@ -3362,7 +3392,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				}
 			};
-			const createDocumentDefinition: ChatToolDefinition = {
+			const createDocumentDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_document',
 				description: 'Create document',
 				parameters: {
@@ -3376,8 +3406,8 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title', 'description', 'type_key']
 				}
-			};
-			const buildCall = (id: string): ChatToolCall => ({
+			});
+			const buildCall = (id: string): ChatToolCall => (canonicalToolCall({
 				id,
 				name: 'create_onto_document',
 				arguments: {
@@ -3387,7 +3417,7 @@ describe('ToolExecutionService', () => {
 					type_key: 'document.creative.character',
 					content: 'Ilyan detail.'
 				}
-			});
+			}));
 			mockToolExecutor.mockResolvedValueOnce({
 				data: { document_id: createdDocumentId }
 			});
@@ -3431,7 +3461,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				}
 			};
-			const createDocumentDefinition: ChatToolDefinition = {
+			const createDocumentDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_document',
 				description: 'Create document',
 				parameters: {
@@ -3445,7 +3475,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title', 'description', 'type_key']
 				}
-			};
+			});
 			const firstExecutor = vi.fn().mockResolvedValue({
 				data: { document_id: '7b1e5f7c-2f4a-4f6e-9d2b-8a1c3e5f7a9b' }
 			});
@@ -3454,7 +3484,7 @@ describe('ToolExecutionService', () => {
 			});
 			const firstService = new ToolExecutionService(firstExecutor);
 			const secondService = new ToolExecutionService(secondExecutor);
-			const buildCall = (id: string): ChatToolCall => ({
+			const buildCall = (id: string): ChatToolCall => (canonicalToolCall({
 				id,
 				name: 'create_onto_document',
 				arguments: {
@@ -3464,7 +3494,7 @@ describe('ToolExecutionService', () => {
 					type_key: 'document.creative.character',
 					content: 'Ilyan detail.'
 				}
-			});
+			}));
 
 			const first = await firstService.executeTool(
 				buildCall('call_first_instance'),
@@ -3513,7 +3543,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				}
 			};
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_negated_duplicate',
 				name: 'create_onto_document',
 				arguments: {
@@ -3523,8 +3553,8 @@ describe('ToolExecutionService', () => {
 					type_key: 'document.creative.character',
 					content: 'Whistle detail.'
 				}
-			};
-			const createDocumentDefinition: ChatToolDefinition = {
+			});
+			const createDocumentDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'create_onto_document',
 				description: 'Create document',
 				parameters: {
@@ -3538,7 +3568,7 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id', 'title', 'description', 'type_key']
 				}
-			};
+			});
 
 			const result = await service.executeTool(toolCall, createContext, [
 				createDocumentDefinition
@@ -3574,7 +3604,7 @@ describe('ToolExecutionService', () => {
 					scope: { projectId }
 				}
 			};
-			const updateDocumentDefinition: ChatToolDefinition = {
+			const updateDocumentDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_onto_document',
 				description: 'Update document',
 				parameters: {
@@ -3586,8 +3616,8 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['document_id']
 				}
-			};
-			const updateProjectDefinition: ChatToolDefinition = {
+			});
+			const updateProjectDefinition: ChatToolDefinition = canonicalToolDefinition({
 				name: 'update_onto_project',
 				description: 'Update project',
 				parameters: {
@@ -3598,11 +3628,11 @@ describe('ToolExecutionService', () => {
 					},
 					required: ['project_id']
 				}
-			};
+			});
 			mockToolExecutor.mockResolvedValue({ data: { ok: true } });
 
 			await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_doc_props',
 					name: 'update_onto_document',
 					arguments: {
@@ -3612,12 +3642,12 @@ describe('ToolExecutionService', () => {
 							reviewed: true
 						}
 					}
-				},
+				}),
 				updateContext,
 				[updateDocumentDefinition]
 			);
 			await service.executeTool(
-				{
+				canonicalToolCall({
 					id: 'call_project_props',
 					name: 'update_onto_project',
 					arguments: {
@@ -3630,7 +3660,7 @@ describe('ToolExecutionService', () => {
 							color: 'blue'
 						}
 					}
-				},
+				}),
 				updateContext,
 				[updateProjectDefinition]
 			);
@@ -3642,7 +3672,7 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should use nested document content when provided', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_doc_nested',
 				name: 'create_onto_document',
 				arguments: {
@@ -3654,11 +3684,11 @@ describe('ToolExecutionService', () => {
 					},
 					type_key: 'document.knowledge.research'
 				}
-			};
+			});
 
 			const toolDefs = [
 				...mockToolDefinitions,
-				{
+				canonicalToolDefinition({
 					name: 'create_onto_document',
 					description: 'Create a document',
 					parameters: {
@@ -3670,7 +3700,7 @@ describe('ToolExecutionService', () => {
 						},
 						required: ['project_id', 'title', 'type_key']
 					}
-				}
+				})
 			];
 
 			mockToolExecutor.mockResolvedValueOnce({ document: { id: 'doc-3' } });
@@ -3702,15 +3732,15 @@ describe('ToolExecutionService', () => {
 				})
 			);
 
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_doc_double',
 				name: 'create_onto_document',
 				arguments: rawArgs
-			};
+			});
 
 			const toolDefs = [
 				...mockToolDefinitions,
-				{
+				canonicalToolDefinition({
 					name: 'create_onto_document',
 					description: 'Create a document',
 					parameters: {
@@ -3722,7 +3752,7 @@ describe('ToolExecutionService', () => {
 						},
 						required: ['project_id', 'title', 'type_key']
 					}
-				}
+				})
 			];
 
 			mockToolExecutor.mockResolvedValueOnce({ document: { id: 'doc-4' } });
@@ -3744,11 +3774,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should emit telemetry data for each execution', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_telemetry',
 				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
-			};
+			});
 
 			mockToolExecutor.mockResolvedValueOnce({ tasks: [] });
 
@@ -3770,11 +3800,11 @@ describe('ToolExecutionService', () => {
 				mockToolExecutor,
 				rejectingTelemetryHook
 			);
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_telemetry_rejection',
 				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
-			};
+			});
 			mockToolExecutor.mockResolvedValueOnce({ data: { tasks: [] } });
 
 			const result = await isolatedService.executeTool(
@@ -3798,11 +3828,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('does not implicitly retry executeTool when retry options are present', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_execute_without_retry',
 				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
-			};
+			});
 			mockToolExecutor.mockRejectedValue(new Error('Transient failure'));
 
 			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions, {
@@ -3824,16 +3854,16 @@ describe('ToolExecutionService', () => {
 	describe('executeMultipleTools', () => {
 		it('should execute multiple tools in sequence', async () => {
 			const toolCalls: ChatToolCall[] = [
-				{
+				canonicalToolCall({
 					id: 'call_1',
 					name: 'list_onto_tasks',
 					arguments: { project_id: 'proj_123' }
-				},
-				{
+				}),
+				canonicalToolCall({
 					id: 'call_2',
 					name: 'create_onto_task',
 					arguments: { title: 'New Task', description: 'Description' }
-				}
+				})
 			];
 
 			mockToolExecutor
@@ -3855,21 +3885,21 @@ describe('ToolExecutionService', () => {
 
 		it('should continue execution even if one tool fails', async () => {
 			const toolCalls: ChatToolCall[] = [
-				{
+				canonicalToolCall({
 					id: 'call_1',
 					name: 'list_onto_tasks',
 					arguments: { project_id: 'proj_123' }
-				},
-				{
+				}),
+				canonicalToolCall({
 					id: 'call_2',
 					name: 'unknown_tool',
 					arguments: {}
-				},
-				{
+				}),
+				canonicalToolCall({
 					id: 'call_3',
 					name: 'list_onto_projects',
 					arguments: { query: 'test' }
-				}
+				})
 			];
 
 			mockToolExecutor
@@ -3902,11 +3932,11 @@ describe('ToolExecutionService', () => {
 
 	describe('batchExecuteTools', () => {
 		it('bounds concurrency while preserving input result order', async () => {
-			const toolCalls: ChatToolCall[] = ['first', 'second', 'third'].map((query) => ({
+			const toolCalls: ChatToolCall[] = ['first', 'second', 'third'].map((query) => (canonicalToolCall({
 				id: `call_${query}`,
 				name: 'list_onto_projects',
 				arguments: { query }
-			}));
+			})));
 			let activeCount = 0;
 			let peakActiveCount = 0;
 			const releases = new Map<string, () => void>();
@@ -3953,11 +3983,11 @@ describe('ToolExecutionService', () => {
 
 	describe('validateToolCall', () => {
 		it('should validate a correct tool call', () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_valid',
 				name: 'create_onto_task',
 				arguments: { title: 'Task', description: 'Desc' }
-			};
+			});
 
 			const validation = service.validateToolCall(toolCall, mockToolDefinitions);
 
@@ -3966,11 +3996,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should detect unknown tools', () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_unknown',
 				name: 'unknown_tool',
 				arguments: {}
-			};
+			});
 
 			const validation = service.validateToolCall(toolCall, mockToolDefinitions);
 
@@ -3979,11 +4009,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should detect missing required parameters', () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_missing',
 				name: 'create_onto_task',
 				arguments: { description: 'No title' }
-			};
+			});
 
 			const validation = service.validateToolCall(toolCall, mockToolDefinitions);
 
@@ -3993,7 +4023,7 @@ describe('ToolExecutionService', () => {
 
 		it('should enforce minItems when provided', () => {
 			const toolDefs: ChatToolDefinition[] = [
-				{
+				canonicalToolDefinition({
 					name: 'reorganize_onto_project_graph',
 					description: 'Reorganize project graph',
 					parameters: {
@@ -4004,14 +4034,14 @@ describe('ToolExecutionService', () => {
 						},
 						required: ['project_id', 'nodes']
 					}
-				}
+				})
 			];
 
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_reorg',
 				name: 'reorganize_onto_project_graph',
 				arguments: { project_id: 'proj_123', nodes: [] }
-			};
+			});
 
 			const validation = service.validateToolCall(toolCall, toolDefs);
 
@@ -4021,7 +4051,7 @@ describe('ToolExecutionService', () => {
 
 		it('should validate UUIDs for reorganize_onto_project_graph nodes', () => {
 			const toolDefs: ChatToolDefinition[] = [
-				{
+				canonicalToolDefinition({
 					name: 'reorganize_onto_project_graph',
 					description: 'Reorganize project graph',
 					parameters: {
@@ -4032,10 +4062,10 @@ describe('ToolExecutionService', () => {
 						},
 						required: ['project_id', 'nodes']
 					}
-				}
+				})
 			];
 
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_reorg_invalid',
 				name: 'reorganize_onto_project_graph',
 				arguments: {
@@ -4048,7 +4078,7 @@ describe('ToolExecutionService', () => {
 						}
 					]
 				}
-			};
+			});
 
 			const validation = service.validateToolCall(toolCall, toolDefs);
 
@@ -4061,7 +4091,7 @@ describe('ToolExecutionService', () => {
 
 		it('should reject document nodes for reorganize_onto_project_graph', () => {
 			const toolDefs: ChatToolDefinition[] = [
-				{
+				canonicalToolDefinition({
 					name: 'reorganize_onto_project_graph',
 					description: 'Reorganize project graph',
 					parameters: {
@@ -4072,10 +4102,10 @@ describe('ToolExecutionService', () => {
 						},
 						required: ['project_id', 'nodes']
 					}
-				}
+				})
 			];
 
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_reorg_document_node',
 				name: 'reorganize_onto_project_graph',
 				arguments: {
@@ -4088,7 +4118,7 @@ describe('ToolExecutionService', () => {
 						}
 					]
 				}
-			};
+			});
 
 			const validation = service.validateToolCall(toolCall, toolDefs);
 
@@ -4100,7 +4130,7 @@ describe('ToolExecutionService', () => {
 
 		it('should reject document connections for reorganize_onto_project_graph', () => {
 			const toolDefs: ChatToolDefinition[] = [
-				{
+				canonicalToolDefinition({
 					name: 'reorganize_onto_project_graph',
 					description: 'Reorganize project graph',
 					parameters: {
@@ -4111,10 +4141,10 @@ describe('ToolExecutionService', () => {
 						},
 						required: ['project_id', 'nodes']
 					}
-				}
+				})
 			];
 
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_reorg_document_conn',
 				name: 'reorganize_onto_project_graph',
 				arguments: {
@@ -4132,7 +4162,7 @@ describe('ToolExecutionService', () => {
 						}
 					]
 				}
-			};
+			});
 
 			const validation = service.validateToolCall(toolCall, toolDefs);
 
@@ -4145,11 +4175,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should validate parameter types', () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_type',
 				name: 'list_onto_tasks',
 				arguments: { project_id: 123 } // Should be string
-			};
+			});
 
 			const validation = service.validateToolCall(toolCall, mockToolDefinitions);
 
@@ -4159,7 +4189,7 @@ describe('ToolExecutionService', () => {
 
 		it('should accept integer schema values and reject non-integers', () => {
 			const toolDefs: ChatToolDefinition[] = [
-				{
+				canonicalToolDefinition({
 					name: 'search_things',
 					description: 'Search things',
 					parameters: {
@@ -4168,18 +4198,18 @@ describe('ToolExecutionService', () => {
 							limit: { type: 'integer' }
 						}
 					}
-				}
+				})
 			];
 
 			expect(
 				service.validateToolCall(
-					{ id: 'call_integer_ok', name: 'search_things', arguments: { limit: 3 } },
+					canonicalToolCall({ id: 'call_integer_ok', name: 'search_things', arguments: { limit: 3 } }),
 					toolDefs
 				).isValid
 			).toBe(true);
 
 			const validation = service.validateToolCall(
-				{ id: 'call_integer_bad', name: 'search_things', arguments: { limit: 2.5 } },
+				canonicalToolCall({ id: 'call_integer_bad', name: 'search_things', arguments: { limit: 2.5 } }),
 				toolDefs
 			);
 
@@ -4191,7 +4221,7 @@ describe('ToolExecutionService', () => {
 
 		it('should reject values outside schema enums', () => {
 			const toolDefs: ChatToolDefinition[] = [
-				{
+				canonicalToolDefinition({
 					name: 'filter_things',
 					description: 'Filter things',
 					parameters: {
@@ -4200,11 +4230,11 @@ describe('ToolExecutionService', () => {
 							kind: { type: 'string', enum: ['read', 'write'] }
 						}
 					}
-				}
+				})
 			];
 
 			const validation = service.validateToolCall(
-				{ id: 'call_enum_bad', name: 'filter_things', arguments: { kind: 'delete' } },
+				canonicalToolCall({ id: 'call_enum_bad', name: 'filter_things', arguments: { kind: 'delete' } }),
 				toolDefs
 			);
 
@@ -4216,7 +4246,7 @@ describe('ToolExecutionService', () => {
 
 		it('should reject invalid project_id for create_calendar_event', () => {
 			const toolDefs: ChatToolDefinition[] = [
-				{
+				canonicalToolDefinition({
 					name: 'create_calendar_event',
 					description: 'Create calendar event',
 					parameters: {
@@ -4229,10 +4259,10 @@ describe('ToolExecutionService', () => {
 						},
 						required: ['title', 'start_at']
 					}
-				}
+				})
 			];
 
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_calendar_invalid_project',
 				name: 'create_calendar_event',
 				arguments: {
@@ -4241,7 +4271,7 @@ describe('ToolExecutionService', () => {
 					calendar_scope: 'project',
 					project_id: 'f'
 				}
-			};
+			});
 
 			const validation = service.validateToolCall(toolCall, toolDefs);
 
@@ -4251,7 +4281,7 @@ describe('ToolExecutionService', () => {
 
 		it('should reject invalid calendar_source_id for create_calendar_event', () => {
 			const toolDefs: ChatToolDefinition[] = [
-				{
+				canonicalToolDefinition({
 					name: 'create_calendar_event',
 					description: 'Create calendar event',
 					parameters: {
@@ -4263,11 +4293,11 @@ describe('ToolExecutionService', () => {
 						},
 						required: ['title', 'start_at']
 					}
-				}
+				})
 			];
 
 			const validation = service.validateToolCall(
-				{
+				canonicalToolCall({
 					id: 'call_calendar_invalid_source',
 					name: 'create_calendar_event',
 					arguments: {
@@ -4275,7 +4305,7 @@ describe('ToolExecutionService', () => {
 						start_at: '2026-08-12T10:00:00Z',
 						calendar_source_id: 'not-a-source-id'
 					}
-				},
+				}),
 				toolDefs
 			);
 
@@ -4289,8 +4319,8 @@ describe('ToolExecutionService', () => {
 			const definition = service.getToolDefinition('list_onto_tasks', mockToolDefinitions);
 
 			expect(definition).toBeDefined();
-			expect(definition?.name).toBe('list_onto_tasks');
-			expect(definition?.description).toContain('List tasks');
+			expect(definition?.function.name).toBe('list_onto_tasks');
+			expect(definition?.function.description).toContain('List tasks');
 		});
 
 		it('should return undefined for unknown tools', () => {
@@ -4300,7 +4330,7 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('does not mutate nested-format definitions (tasker/39 double-serialization regression)', () => {
-			const nestedDefinition = {
+			const nestedDefinition: ChatToolDefinition = {
 				type: 'function',
 				function: {
 					name: 'update_onto_task',
@@ -4311,7 +4341,7 @@ describe('ToolExecutionService', () => {
 						required: ['task_id']
 					}
 				}
-			} as unknown as ChatToolDefinition;
+			};
 			const serializedBefore = JSON.stringify(nestedDefinition);
 
 			const definition = service.getToolDefinition('update_onto_task', [nestedDefinition]);
@@ -4433,18 +4463,18 @@ describe('ToolExecutionService', () => {
 
 	describe('Error Handling', () => {
 		it('should throw ToolExecutionError for critical failures', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_critical',
 				name: 'critical_tool',
 				arguments: {}
-			};
+			});
 
 			// Add critical_tool to definitions
-			const criticalToolDef: ChatToolDefinition = {
+			const criticalToolDef: ChatToolDefinition = canonicalToolDefinition({
 				name: 'critical_tool',
 				description: 'Critical operation',
 				parameters: {}
-			};
+			});
 
 			mockToolExecutor.mockImplementationOnce(() => {
 				throw new Error('Critical system failure');
@@ -4462,11 +4492,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should handle timeout scenarios', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_timeout',
 				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
-			};
+			});
 
 			// Simulate timeout
 			mockToolExecutor.mockImplementationOnce(
@@ -4490,11 +4520,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('should abort the executor context when tool execution times out', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_timeout_abort',
 				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
-			};
+			});
 			let capturedSignal: AbortSignal | undefined;
 
 			mockToolExecutor.mockImplementationOnce(
@@ -4524,11 +4554,11 @@ describe('ToolExecutionService', () => {
 		});
 
 		it('emits telemetry exactly once for every executeWithRetry attempt', async () => {
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_retry_telemetry',
 				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
-			};
+			});
 			mockToolExecutor
 				.mockRejectedValueOnce(new Error('Transient failure one'))
 				.mockRejectedValueOnce(new Error('Transient failure two'))
@@ -4556,11 +4586,11 @@ describe('ToolExecutionService', () => {
 
 		it('should cancel retry waits without starting another attempt', async () => {
 			const controller = new AbortController();
-			const toolCall: ChatToolCall = {
+			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_retry_abort',
 				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
-			};
+			});
 
 			mockToolExecutor.mockImplementationOnce(async () => {
 				controller.abort();

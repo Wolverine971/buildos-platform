@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/landing/public-project-preview/PublicProjectHeader.svelte -->
 <!--
-	Public, read-only mirror of ProjectHeaderCard for the landing example.
+	Public, read-only project header for the landing example.
 	Renders the project icon (or a fallback), title, description, and the
 	"Next step" callout — no settings menu, no back button, no edit.
 -->

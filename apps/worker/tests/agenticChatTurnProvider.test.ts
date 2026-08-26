@@ -6,6 +6,7 @@ import {
 	buildAgenticChatCheckpointResumeSystemMessageV1,
 	canonicalizeAgenticChatJson,
 	type AgenticChatTurnClaimResultV1,
+	type ChatToolDefinition,
 	type JsonObject,
 	type TurnInputArtifactV1
 } from '@buildos/shared-types';
@@ -17,9 +18,12 @@ import {
 	type AgenticChatProviderMutationSynthesisInputV1,
 	type AgenticChatProviderReadSynthesisInputV1,
 	type AgenticChatProviderStepV1,
-	type AgenticChatTurnProviderClientEventV1
+	type AgenticChatTurnProviderClientEventV1,
+	type AgenticChatTurnProviderClientPortV1,
+	type AgenticChatTurnProviderMessageV1
 } from '../src/workers/agentic-chat/provider/contracts';
 import { createStableAgenticChatMutationLogicalOperationIdV1 } from '../src/workers/agentic-chat/effectIdentity';
+import type { AgenticChatLiveVisionResolverPortV1 } from '../src/workers/agentic-chat/liveVision';
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/providerCapacity';
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../src/workers/agentic-chat/readToolIdentity';
 import { AgenticChatTurnProviderAdapter } from '../src/workers/agentic-chat/provider/turn-provider';
@@ -121,7 +125,7 @@ function executionInput(
 
 function clientWith(events: AgenticChatTurnProviderClientEventV1[]) {
 	return {
-		stream: vi.fn(() =>
+		stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() =>
 			(async function* () {
 				for (const event of events) yield event;
 			})()
@@ -131,7 +135,7 @@ function clientWith(events: AgenticChatTurnProviderClientEventV1[]) {
 
 function clientWithRounds(rounds: AgenticChatTurnProviderClientEventV1[][]) {
 	return {
-		stream: vi.fn(() => {
+		stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 			const events = rounds.shift() ?? [];
 			return (async function* () {
 				for (const event of events) yield event;
@@ -157,7 +161,7 @@ function mutationBatchReviewSha256(
 		.digest('hex');
 }
 
-function readToolDefinition(name: string, description = `Read with ${name}.`) {
+function readToolDefinition(name: string, description = `Read with ${name}.`): ChatToolDefinition {
 	return {
 		type: 'function' as const,
 		function: {
@@ -171,7 +175,7 @@ function readToolDefinition(name: string, description = `Read with ${name}.`) {
 	};
 }
 
-function turnContractToolDefinition() {
+function turnContractToolDefinition(): ChatToolDefinition {
 	return {
 		type: 'function' as const,
 		function: {
@@ -191,7 +195,7 @@ function turnContractToolDefinition() {
 	};
 }
 
-function readOnlyTurnToolDefinition() {
+function readOnlyTurnToolDefinition(): ChatToolDefinition {
 	return {
 		type: 'function' as const,
 		function: {
@@ -206,7 +210,7 @@ function readOnlyTurnToolDefinition() {
 	};
 }
 
-function clarificationToolDefinition() {
+function clarificationToolDefinition(): ChatToolDefinition {
 	return {
 		type: 'function' as const,
 		function: {
@@ -238,7 +242,7 @@ function organizationContractArguments(documentId: string): JsonObject {
 	};
 }
 
-function updateTaskToolDefinition() {
+function updateTaskToolDefinition(): ChatToolDefinition {
 	return {
 		type: 'function' as const,
 		function: {
@@ -260,7 +264,7 @@ function updateTaskToolDefinition() {
 	};
 }
 
-function createTaskToolDefinition() {
+function createTaskToolDefinition(): ChatToolDefinition {
 	return {
 		type: 'function' as const,
 		function: {
@@ -283,7 +287,7 @@ function createTaskToolDefinition() {
 	};
 }
 
-function createGoalToolDefinition() {
+function createGoalToolDefinition(): ChatToolDefinition {
 	return {
 		type: 'function' as const,
 		function: {
@@ -303,7 +307,7 @@ function createGoalToolDefinition() {
 	};
 }
 
-function createProjectToolDefinition() {
+function createProjectToolDefinition(): ChatToolDefinition {
 	return {
 		type: 'function' as const,
 		function: {
@@ -322,7 +326,7 @@ function createProjectToolDefinition() {
 	};
 }
 
-function createDocumentToolDefinition() {
+function createDocumentToolDefinition(): ChatToolDefinition {
 	return {
 		type: 'function' as const,
 		function: {
@@ -347,7 +351,7 @@ function createDocumentToolDefinition() {
 	};
 }
 
-function moveDocumentToolDefinition() {
+function moveDocumentToolDefinition(): ChatToolDefinition {
 	return {
 		type: 'function' as const,
 		function: {
@@ -367,7 +371,7 @@ function moveDocumentToolDefinition() {
 	};
 }
 
-function updateDocumentToolDefinition() {
+function updateDocumentToolDefinition(): ChatToolDefinition {
 	return {
 		type: 'function' as const,
 		function: {
@@ -391,6 +395,39 @@ async function collect(stream: AsyncIterable<AgenticChatProviderStepV1>) {
 	const result: AgenticChatProviderStepV1[] = [];
 	for await (const step of stream) result.push(step);
 	return result;
+}
+
+type PreparedArtifactPatch = Partial<
+	Pick<TurnInputArtifactV1['prepared'], 'currentTurn' | 'toolSurface' | 'turnIntent'>
+>;
+
+function withPreparedArtifactPatch(
+	artifact: TurnInputArtifactV1,
+	patch: PreparedArtifactPatch
+): TurnInputArtifactV1 {
+	if (artifact.artifactVersion === AGENTIC_CHAT_INPUT_ARTIFACT_VERSION) {
+		return { ...artifact, prepared: { ...artifact.prepared, ...patch } };
+	}
+	return { ...artifact, prepared: { ...artifact.prepared, ...patch } };
+}
+
+function requireTextContent(
+	message: AgenticChatTurnProviderMessageV1 | undefined,
+	label: string
+): string {
+	if (!message || typeof message.content !== 'string') {
+		throw new Error(`${label} did not contain text content`);
+	}
+	return message.content;
+}
+
+function isJsonObject(value: unknown): value is JsonObject {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function requireJsonObject(value: unknown, label: string): JsonObject {
+	if (!isJsonObject(value)) throw new Error(`${label} was not a JSON object`);
+	return value;
 }
 
 function durableReadFeedback(
@@ -524,25 +561,18 @@ function durableProjectCreateMutationFeedback(input: {
 }
 
 function executionInputWithReadSurface(
-	definitions = [readToolDefinition('get_project_overview')],
+	definitions: ChatToolDefinition[] = [readToolDefinition('get_project_overview')],
 	toolNames = definitions.map((definition) => definition.function.name),
 	version?: 1
 ): AgenticChatWorkerExecutionInputV1 {
 	const input = executionInput();
+	const toolSurface =
+		version === 1
+			? { version, surfaceProfile: 'project_default', toolNames, definitions }
+			: { surfaceProfile: 'project_default', toolNames, definitions };
 	return {
 		...input,
-		artifact: {
-			...input.artifact,
-			prepared: {
-				...input.artifact.prepared,
-				toolSurface: {
-					...(version !== undefined ? { version } : {}),
-					surfaceProfile: 'project_default',
-					toolNames,
-					definitions
-				}
-			}
-		}
+		artifact: withPreparedArtifactPatch(input.artifact, { toolSurface })
 	};
 }
 
@@ -931,7 +961,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 
 	it('observes a pre-execution validation failure only after its durable step resumes', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
-		const definition = {
+		const definition: ChatToolDefinition = {
 			type: 'function' as const,
 			function: {
 				name: 'get_project_overview',
@@ -948,7 +978,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			providerReadRound('repaired-read', { project_id: projectId })
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -1009,7 +1039,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -1101,7 +1131,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -2394,7 +2424,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -2999,7 +3029,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -3111,7 +3141,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = mainStreams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -3543,7 +3573,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -3653,7 +3683,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -3737,7 +3767,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -3815,7 +3845,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -3846,24 +3876,20 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				...baseInput.requestPayload,
 				message: 'Help me get these project documents organized.'
 			},
-			artifact: {
-				...baseInput.artifact,
-				prepared: {
-					...baseInput.artifact.prepared,
-					turnIntent: {
-						version: 1,
-						requiresWrite: true,
-						action: 'organize',
-						entityKind: 'document',
-						operations: [{ action: 'organize', entityKind: 'document' }],
-						source: 'current_message',
-						originalRequestText: 'Help me get these project documents organized.',
-						originatingTurnRunId: null,
-						clearPending: false,
-						expectedWriteToolNames: ['move_document_in_tree']
-					}
+			artifact: withPreparedArtifactPatch(baseInput.artifact, {
+				turnIntent: {
+					version: 1,
+					requiresWrite: true,
+					action: 'organize',
+					entityKind: 'document',
+					operations: [{ action: 'organize', entityKind: 'document' }],
+					source: 'current_message',
+					originalRequestText: 'Help me get these project documents organized.',
+					originatingTurnRunId: null,
+					clearPending: false,
+					expectedWriteToolNames: ['move_document_in_tree']
 				}
-			}
+			})
 		};
 		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
 		const invocation = await new AgenticChatTurnProviderAdapter(
@@ -3993,7 +4019,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -4014,24 +4040,20 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				...baseInput.requestPayload,
 				message: 'Help me get these project documents organized.'
 			},
-			artifact: {
-				...baseInput.artifact,
-				prepared: {
-					...baseInput.artifact.prepared,
-					turnIntent: {
-						version: 1,
-						requiresWrite: true,
-						action: 'organize',
-						entityKind: 'document',
-						operations: [{ action: 'organize', entityKind: 'document' }],
-						source: 'current_message',
-						originalRequestText: 'Help me get these project documents organized.',
-						originatingTurnRunId: null,
-						clearPending: false,
-						expectedWriteToolNames: ['move_document_in_tree']
-					}
+			artifact: withPreparedArtifactPatch(baseInput.artifact, {
+				turnIntent: {
+					version: 1,
+					requiresWrite: true,
+					action: 'organize',
+					entityKind: 'document',
+					operations: [{ action: 'organize', entityKind: 'document' }],
+					source: 'current_message',
+					originalRequestText: 'Help me get these project documents organized.',
+					originatingTurnRunId: null,
+					clearPending: false,
+					expectedWriteToolNames: ['move_document_in_tree']
 				}
-			}
+			})
 		};
 		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
 		const invocation = await new AgenticChatTurnProviderAdapter(
@@ -4213,7 +4235,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			})
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -4308,7 +4330,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -4401,17 +4423,15 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const continuationRequest = client.stream.mock.calls[1]?.[0];
 		expect(
 			continuationRequest.messages
-				.filter((message: { role: string }) => message.role === 'tool')
+				.filter((message) => message.role === 'tool')
 				.slice(-2)
-				.map((message: { tool_call_id?: string }) => message.tool_call_id)
+				.map((message) => message.tool_call_id)
 		).toEqual(['blocked-update', 'accepted-read']);
+		const blockedWriteMessage = continuationRequest.messages.find(
+			(message) => message.tool_call_id === 'blocked-update'
+		);
 		expect(
-			JSON.parse(
-				continuationRequest.messages.find(
-					(message: { tool_call_id?: string }) =>
-						message.tool_call_id === 'blocked-update'
-				)?.content ?? '{}'
-			)
+			JSON.parse(requireTextContent(blockedWriteMessage, 'Blocked write feedback'))
 		).toMatchObject({ supervisor_recovery: { blocked_exact_retry: true } });
 		expect(continuationRequest.messages).toEqual(
 			expect.arrayContaining([
@@ -4445,7 +4465,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			providerReadRound('blocked-retry', mutationArguments, 'update_onto_task')
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -4570,17 +4590,13 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				}
 			]
 		};
-		input.artifact = {
-			...input.artifact,
-			prepared: {
-				...input.artifact.prepared,
-				currentTurn: {
-					message: 'Review this image.',
-					attachmentContextMaxChars: 7000,
-					attachments: [attachment]
-				}
+		input.artifact = withPreparedArtifactPatch(input.artifact, {
+			currentTurn: {
+				message: 'Review this image.',
+				attachmentContextMaxChars: 7000,
+				attachments: [attachment]
 			}
-		};
+		});
 		const client = clientWith([
 			{ type: 'text', content: 'Reviewed.' },
 			{ type: 'done', finishedReason: 'stop' }
@@ -4654,24 +4670,20 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				}
 			]
 		};
-		providerInput.artifact = {
-			...providerInput.artifact,
-			prepared: {
-				...providerInput.artifact.prepared,
-				currentTurn: {
-					message: 'Review this image.',
-					attachmentContextMaxChars: 7000,
-					liveVision: {
-						requested: true,
-						maxImages: 2,
-						maxImageBytes: 8 * 1024 * 1024,
-						renderWidth: 1600,
-						signedUrlTtlSeconds: 900
-					},
-					attachments: [attachment]
-				}
+		providerInput.artifact = withPreparedArtifactPatch(providerInput.artifact, {
+			currentTurn: {
+				message: 'Review this image.',
+				attachmentContextMaxChars: 7000,
+				liveVision: {
+					requested: true,
+					maxImages: 2,
+					maxImageBytes: 8 * 1024 * 1024,
+					renderWidth: 1600,
+					signedUrlTtlSeconds: 900
+				},
+				attachments: [attachment]
 			}
-		};
+		});
 		const callOrder: string[] = [];
 		const liveVision = {
 			resolve: vi.fn(async () => {
@@ -4690,7 +4702,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			})
 		};
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				callOrder.push('provider');
 				return (async function* () {
 					yield { type: 'text' as const, content: 'Reviewed.' };
@@ -4774,7 +4786,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			asset_id: '20000000-0000-4000-8000-000000000001',
 			temporary_attachment_id: null,
 			project_id: '20000000-0000-4000-8000-000000000002',
-			role: 'context' as const,
+			role: 'attachment' as const,
 			display_order: 0,
 			file_name: 'diagram.png',
 			content_type: 'image/png',
@@ -4813,30 +4825,26 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				}
 			]
 		};
-		input.artifact = {
-			...input.artifact,
-			prepared: {
-				...input.artifact.prepared,
-				currentTurn: {
-					message: 'Review this image.',
-					attachmentContextMaxChars: 7000,
-					liveVision: {
-						requested: true,
-						maxImages: 2,
-						maxImageBytes: 8 * 1024 * 1024,
-						renderWidth: 1600,
-						signedUrlTtlSeconds: 900
-					},
-					attachments: [attachment]
-				}
+		input.artifact = withPreparedArtifactPatch(input.artifact, {
+			currentTurn: {
+				message: 'Review this image.',
+				attachmentContextMaxChars: 7000,
+				liveVision: {
+					requested: true,
+					maxImages: 2,
+					maxImageBytes: 8 * 1024 * 1024,
+					renderWidth: 1600,
+					signedUrlTtlSeconds: 900
+				},
+				attachments: [attachment]
 			}
-		};
+		});
 		const client = clientWith([
 			{ type: 'text', content: 'I can see the image.' },
 			{ type: 'done', finishedReason: 'stop' }
 		]);
 		const liveVision = {
-			resolve: vi.fn(async () => ({
+			resolve: vi.fn<AgenticChatLiveVisionResolverPortV1['resolve']>(async () => ({
 				images: [],
 				failed: [
 					{ attachmentKey: `asset:${attachment.asset_id}`, reason: 'source_missing' }
@@ -5004,7 +5012,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -5253,7 +5261,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -5613,32 +5621,34 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		} as const;
 		const compoundFields = ['goal_id', 'milestone_id', 'parent', 'parents', 'connections'];
-		const definitions = Object.entries(reviewedFields).map(([name, fields]) => ({
-			type: 'function' as const,
-			function: {
-				name,
-				description: `Mutate with ${name}.`,
-				parameters: {
-					type: 'object',
-					required: [],
-					properties: Object.fromEntries(
-						[...new Set([...fields, ...compoundFields, 'props'])].map((field) => [
-							field,
-							field === 'update_strategy'
-								? { type: 'string', enum: ['replace', 'append', 'merge_llm'] }
-								: field === 'relationships'
-									? {
-											type: 'array',
-											items: {
-												oneOf: [{ type: 'array' }, { type: 'object' }]
+		const definitions = Object.entries(reviewedFields).map<ChatToolDefinition>(
+			([name, fields]) => ({
+				type: 'function' as const,
+				function: {
+					name,
+					description: `Mutate with ${name}.`,
+					parameters: {
+						type: 'object',
+						required: [],
+						properties: Object.fromEntries(
+							[...new Set([...fields, ...compoundFields, 'props'])].map((field) => [
+								field,
+								field === 'update_strategy'
+									? { type: 'string', enum: ['replace', 'append', 'merge_llm'] }
+									: field === 'relationships'
+										? {
+												type: 'array',
+												items: {
+													oneOf: [{ type: 'array' }, { type: 'object' }]
+												}
 											}
-										}
-									: { type: 'string' }
-						])
-					)
+										: { type: 'string' }
+							])
+						)
+					}
 				}
-			}
-		}));
+			})
+		);
 		const client = clientWith([
 			{
 				type: 'tool_call',
@@ -5778,17 +5788,22 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			})
 		]);
 		const projected = client.stream.mock.calls[0]?.[0].tools ?? [];
-		for (const [name, fields] of Object.entries(reviewedFields)) {
+		const definitionFor = (name: string) => {
 			const definition = projected.find((entry) => entry.function.name === name);
-			expect(definition?.function.parameters.additionalProperties).toBe(false);
-			expect(Object.keys(definition?.function.parameters.properties ?? {}).sort()).toEqual(
-				[...fields].sort()
+			if (!definition) throw new Error(`Expected projected tool definition ${name}`);
+			return definition;
+		};
+		const propertiesFor = (name: string) =>
+			requireJsonObject(
+				definitionFor(name).function.parameters.properties,
+				`${name} parameter properties`
 			);
+		for (const [name, fields] of Object.entries(reviewedFields)) {
+			const definition = definitionFor(name);
+			expect(definition.function.parameters.additionalProperties).toBe(false);
+			expect(Object.keys(propertiesFor(name)).sort()).toEqual([...fields].sort());
 		}
-		const updateDocument = projected.find(
-			(entry) => entry.function.name === 'update_onto_document'
-		);
-		expect(updateDocument?.function.parameters.properties.update_strategy).toMatchObject({
+		expect(propertiesFor('update_onto_document').update_strategy).toMatchObject({
 			enum: ['replace', 'append'],
 			default: 'replace'
 		});
@@ -5816,10 +5831,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			projected.find((entry) => entry.function.name === 'link_onto_entities')?.function
 				.parameters.required
 		).toEqual(['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel']);
-		expect(
-			projected.find((entry) => entry.function.name === 'link_onto_entities')?.function
-				.parameters.properties.src_kind
-		).toMatchObject({
+		expect(propertiesFor('link_onto_entities').src_kind).toMatchObject({
 			enum: ['plan', 'goal', 'milestone', 'task', 'document', 'risk', 'metric', 'source']
 		});
 		expect(
@@ -5830,13 +5842,11 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			projected.find((entry) => entry.function.name === 'create_onto_project')?.function
 				.parameters.required
 		).toEqual(['project', 'entities', 'relationships']);
-		expect(
-			projected.find((entry) => entry.function.name === 'create_onto_project')?.function
-				.parameters.properties.entities
-		).toMatchObject({ maxItems: 0 });
-		const projectedProjectRelationships = projected.find(
-			(entry) => entry.function.name === 'create_onto_project'
-		)?.function.parameters.properties.relationships as JsonObject | undefined;
+		expect(propertiesFor('create_onto_project').entities).toMatchObject({ maxItems: 0 });
+		const projectedProjectRelationships = requireJsonObject(
+			propertiesFor('create_onto_project').relationships,
+			'create_onto_project relationships schema'
+		);
 		expect(projectedProjectRelationships).toMatchObject({
 			type: 'array',
 			maxItems: 0,
@@ -5859,10 +5869,10 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			projected.find((entry) => entry.function.name === 'move_onto_task')?.function.parameters
 				.required
 		).toEqual(['task_id', 'expected_source_project_id', 'destination_project_id']);
-		expect(
-			projected.find((entry) => entry.function.name === 'move_onto_task')?.function.parameters
-				.properties.confirmation_token
-		).toMatchObject({ minLength: 1, maxLength: 128 });
+		expect(propertiesFor('move_onto_task').confirmation_token).toMatchObject({
+			minLength: 1,
+			maxLength: 128
+		});
 		expect(
 			projected.find((entry) => entry.function.name === 'move_onto_task')?.function
 				.description
@@ -5871,14 +5881,15 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			projected.find((entry) => entry.function.name === 'tag_onto_entity')?.function
 				.parameters.required
 		).toEqual(['project_id', 'entity_type', 'entity_id', 'mode', 'mentioned_user_ids']);
-		expect(
-			projected.find((entry) => entry.function.name === 'tag_onto_entity')?.function
-				.parameters.properties.mode
-		).toMatchObject({ enum: ['ping'], default: 'ping' });
-		expect(
-			projected.find((entry) => entry.function.name === 'tag_onto_entity')?.function
-				.parameters.properties.mentioned_user_ids
-		).toMatchObject({ minItems: 1, maxItems: 25, uniqueItems: true });
+		expect(propertiesFor('tag_onto_entity').mode).toMatchObject({
+			enum: ['ping'],
+			default: 'ping'
+		});
+		expect(propertiesFor('tag_onto_entity').mentioned_user_ids).toMatchObject({
+			minItems: 1,
+			maxItems: 25,
+			uniqueItems: true
+		});
 		expect(
 			projected.find((entry) => entry.function.name === 'tag_onto_entity')?.function
 				.description
@@ -5886,7 +5897,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 	});
 
 	it('repairs invalid project relationships before admitting the worker project shell', async () => {
-		const definition = {
+		const definition: ChatToolDefinition = {
 			type: 'function' as const,
 			function: {
 				name: 'create_onto_project',
@@ -6369,7 +6380,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			reason: 'The exact empty-graph shell matches the approved project outcome.',
 			batch_sha256: batchSha256
 		};
-		const projectDefinition = {
+		const projectDefinition: ChatToolDefinition = {
 			type: 'function' as const,
 			function: {
 				name: 'create_onto_project',
@@ -6661,7 +6672,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -6723,7 +6734,10 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: false, activeRequests: 1 });
 
 		const firstModelPayload = JSON.parse(
-			client.stream.mock.calls[1]?.[0].messages.at(-1)?.content ?? ''
+			requireTextContent(
+				client.stream.mock.calls[1]?.[0].messages.at(-1),
+				'First tool feedback'
+			)
 		) as Record<string, unknown>;
 		expect(firstModelPayload).toMatchObject({
 			model_context_source: 'tool_result_untrusted',
@@ -6794,7 +6808,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			] satisfies AgenticChatTurnProviderClientEventV1[]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -6858,7 +6872,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				requiresUserAction: false
 			}
 		});
-		expect(memoStep?.validationFailure).toBeUndefined();
+		if (!memoStep?.memoServed)
+			throw new Error('Expected the repeated read to use the turn memo');
+		expect(memoStep.validationFailure).toBeUndefined();
 
 		await expect(
 			collect(
@@ -6869,7 +6885,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 							providerToolCallId: 'provider-read-2',
 							toolName: 'get_project_overview',
 							arguments: { project_id: projectId },
-							execution: memoStep!.memoServed!
+							execution: memoStep.memoServed
 						}
 					]
 				})
@@ -6878,21 +6894,18 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			{ type: 'text_delta', text: 'The cached evidence is enough.' },
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
+		const repeatedToolMessage = [...client.stream.mock.calls[2]?.[0].messages]
+			.reverse()
+			.find((message) => message.role === 'tool');
 		const repeatedModelPayload = JSON.parse(
-			client.stream.mock.calls[2]?.[0].messages.findLast(
-				(message: { role: string }) => message.role === 'tool'
-			)?.content ?? ''
+			requireTextContent(repeatedToolMessage, 'Repeated read feedback')
 		) as Record<string, unknown>;
 		expect(repeatedModelPayload).toMatchObject({
 			served_from_turn_memo: true,
 			repeat_read_notice: expect.stringContaining('vary the arguments'),
 			project: { id: projectId }
 		});
-		expect(
-			client.stream.mock.calls[2]?.[0].messages.findLast(
-				(message: { role: string }) => message.role === 'tool'
-			)?.tool_call_id
-		).toBe('provider-read-2');
+		expect(repeatedToolMessage?.tool_call_id).toBe('provider-read-2');
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
@@ -6907,7 +6920,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			] satisfies AgenticChatTurnProviderClientEventV1[]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -6982,7 +6995,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				providerReadRound('provider-read-2', scenario.secondArgs)
 			];
 			const client = {
-				stream: vi.fn(() => {
+				stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 					const events = streams.shift() ?? [];
 					return (async function* () {
 						for (const event of events) yield event;
@@ -7034,7 +7047,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 
 	it('exposes a durable validation failure before repairing the provider tool call', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
-		const definition = {
+		const definition: ChatToolDefinition = {
 			type: 'function' as const,
 			function: {
 				name: 'get_project_overview',
@@ -7096,7 +7109,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -7140,14 +7153,14 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			'system'
 		]);
 		const validationPayload = JSON.parse(
-			repairRequest.messages.at(-2)?.content ?? ''
+			requireTextContent(repairRequest.messages.at(-2), 'Validation feedback')
 		) as Record<string, unknown>;
 		expect(validationPayload).toMatchObject({
 			error: expect.stringContaining('Missing required parameter: project_id'),
 			op: 'util.project.overview',
 			help_path: 'util.project.overview'
 		});
-		expect(repairRequest.messages.at(-1)?.content).toContain(
+		expect(requireTextContent(repairRequest.messages.at(-1), 'Validation repair')).toContain(
 			'One or more tool calls failed validation.'
 		);
 
@@ -7183,7 +7196,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 
 	it('repairs a parallel validation failure without crashing the turn', async () => {
 		const projectId = '40000000-0000-4000-8000-000000000004';
-		const definition = {
+		const definition: ChatToolDefinition = {
 			type: 'function' as const,
 			function: {
 				name: 'get_project_overview',
@@ -7388,7 +7401,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			invalidRound('invalid-read-3')
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -7449,7 +7462,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			] satisfies AgenticChatTurnProviderClientEventV1[]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -7524,19 +7537,23 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const forcedRequest = client.stream.mock.calls[4]?.[0];
 		expect(forcedRequest).toMatchObject({ tools: [], toolChoice: 'none' });
 		const continuationMessages = forcedRequest.messages;
-		const systemMessages = continuationMessages.filter(
-			(message: { role: string }) => message.role === 'system'
-		);
-		expect(systemMessages.map((message: { content: string }) => message.content)).toEqual([
+		const systemMessages = continuationMessages.filter((message) => message.role === 'system');
+		expect(
+			systemMessages.map((message) => requireTextContent(message, 'Context system message'))
+		).toEqual([
 			'System prompt\n',
 			expect.stringContaining('Context gathering: narrowing.'),
 			expect.stringContaining('Context gathering: saturated.'),
 			expect.stringContaining('Context gathering: must synthesize.')
 		]);
-		expect(systemMessages.at(-1)?.content).toContain('do not gather more context');
-		expect(systemMessages.some((message) => message.content.includes('Read-loop nudge'))).toBe(
-			false
+		expect(requireTextContent(systemMessages.at(-1), 'Final context system message')).toContain(
+			'do not gather more context'
 		);
+		expect(
+			systemMessages.some((message) =>
+				requireTextContent(message, 'Context system message').includes('Read-loop nudge')
+			)
+		).toBe(false);
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
@@ -7554,7 +7571,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			] satisfies AgenticChatTurnProviderClientEventV1[]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -7610,8 +7627,10 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(finalRequest).toMatchObject({ toolChoice: 'auto' });
 		expect(finalRequest.tools).not.toHaveLength(0);
 		const contextMessages = finalRequest.messages.filter(
-			(message: { role: string; content: string }) =>
-				message.role === 'system' && message.content.startsWith('Context gathering:')
+			(message) =>
+				message.role === 'system' &&
+				typeof message.content === 'string' &&
+				message.content.startsWith('Context gathering:')
 		);
 		expect(contextMessages).toHaveLength(1);
 		expect(contextMessages[0]?.content).toContain('narrowing');
@@ -7647,7 +7666,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			] satisfies AgenticChatTurnProviderClientEventV1[]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -7736,7 +7755,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			] satisfies AgenticChatTurnProviderClientEventV1[]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -7797,7 +7816,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			[{ type: 'done', finishedReason: 'stop' }]
 		] satisfies AgenticChatTurnProviderClientEventV1[][];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -8320,7 +8339,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			]
 		];
 		const client = {
-			stream: vi.fn(() => {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
 				const events = streams.shift() ?? [];
 				return (async function* () {
 					for (const event of events) yield event;
@@ -9234,7 +9253,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				}
 			]
 		};
-		const priorityTaskTool = {
+		const priorityTaskTool: ChatToolDefinition = {
 			type: 'function' as const,
 			function: {
 				name: 'update_onto_task',

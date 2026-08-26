@@ -160,7 +160,8 @@ function readPreviewOperationCount(
 	const text = previewText(preview);
 	if (!text) return null;
 	const explicit = text.match(/\b(\d+)\s+(?:document\s+)?(?:moves?|changes?|operations?)\b/i);
-	return explicit ? Number.parseInt(explicit[1], 10) : null;
+	const count = explicit?.[1];
+	return count ? Number.parseInt(count, 10) : null;
 }
 
 function readTreeState(docStructure: unknown): {
@@ -467,8 +468,7 @@ export async function verifyProjectSuggestionIntegrity(
 
 		const decoded: Array<DecodedLoopOperation & { key: string }> = [];
 		const structuralParts: unknown[] = [];
-		for (let index = 0; index < input.operations.length; index += 1) {
-			const operation = input.operations[index];
+		for (const [index, operation] of input.operations.entries()) {
 			const args = asRecord(operation.args) ?? {};
 			const modelText = modelTextForOperation(operation, input);
 			const targetText = targetTextForOperation(operation, input);

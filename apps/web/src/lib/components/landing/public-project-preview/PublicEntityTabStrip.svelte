@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/landing/public-project-preview/PublicEntityTabStrip.svelte -->
 <!--
-	Public, read-only mirror of project/v2/EntityTabStrip.
+	Public, read-only project entity summary strip.
 
 	Pills wrap onto multiple rows when narrow. Clicking a pill expands it to a
 	full-width body underneath with the read-only entity list. Public projects

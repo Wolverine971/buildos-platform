@@ -21,18 +21,6 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
-			"file": "src/routes/time-blocks/+page.svelte",
-			"type": "page",
-			"components": [
-				"TimeBlockCreateModal",
-				"TimeBlockDetailModal",
-				"CalendarEventDetailModal",
-				"TimeBlockList",
-				"AvailableSlotList",
-				"CalendarConnectionOverlay"
-			]
-		},
-		{
 			"file": "src/routes/today/+page.svelte",
 			"type": "page",
 			"components": [
@@ -43,14 +31,16 @@
 			]
 		},
 		{
-			"file": "src/lib/components/email/EmailManager.svelte",
-			"type": "component",
-			"components": ["EmailComposer", "EmailPreview"]
-		},
-		{
-			"file": "src/lib/components/landing/HomepageV2.svelte",
-			"type": "component",
-			"components": ["Modal", "PublicProjectView"]
+			"file": "src/routes/time-blocks/+page.svelte",
+			"type": "page",
+			"components": [
+				"TimeBlockCreateModal",
+				"TimeBlockDetailModal",
+				"CalendarEventDetailModal",
+				"TimeBlockList",
+				"AvailableSlotList",
+				"CalendarConnectionOverlay"
+			]
 		},
 		{
 			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
@@ -67,6 +57,16 @@
 			"file": "src/lib/components/dashboard/DashboardInboxModal.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/email/EmailManager.svelte",
+			"type": "component",
+			"components": ["EmailComposer", "EmailPreview"]
+		},
+		{
+			"file": "src/lib/components/landing/HomepageV2.svelte",
+			"type": "component",
+			"components": ["Modal", "PublicProjectView"]
 		},
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",
@@ -158,29 +158,14 @@
 			]
 		},
 		{
-			"file": "src/lib/components/project/ProjectAuditTracker.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/lib/components/project/ProjectCalendarSettingsModal.svelte",
 			"type": "component",
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/lib/components/project/ProjectHistorySection.svelte",
-			"type": "component",
-			"components": ["ProjectBriefsPanel", "ProjectActivityLogPanel"]
-		},
-		{
 			"file": "src/lib/components/project/ProjectInboxPanel.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectInsightRail.svelte",
-			"type": "component",
-			"components": ["ImageAssetsPanel"]
 		},
 		{
 			"file": "src/lib/components/project/ProjectModalsHost.svelte",
@@ -217,17 +202,16 @@
 			"components": ["AgentChatModal"]
 		},
 		{
-			"file": "src/routes/projects-old/[id]/+page.svelte",
-			"type": "page",
+			"file": "src/routes/projects/[id]/ProjectWorkspace.svelte",
+			"type": "component",
 			"components": [
-				"AgentChatModal",
-				"ProjectEventsModal",
-				"RecentProjectChatsModal",
-				"ProjectModalsHost",
-				"ProjectAuditTracker",
 				"TaskKanbanBoard",
-				"MobileTaskBoard",
-				"ProjectDocumentsSection"
+				"ProjectDocumentsSection",
+				"TaskCreateModal",
+				"TaskEditModal",
+				"DocumentModal",
+				"ProjectGraphSection",
+				"AgentChatModal"
 			]
 		},
 		{
@@ -257,19 +241,6 @@
 			]
 		},
 		{
-			"file": "src/routes/projects/[id]/ProjectWorkspacePrototype.svelte",
-			"type": "component",
-			"components": [
-				"TaskKanbanBoard",
-				"ProjectDocumentsSection",
-				"TaskCreateModal",
-				"TaskEditModal",
-				"DocumentModal",
-				"ProjectGraphSection",
-				"AgentChatModal"
-			]
-		},
-		{
 			"file": "src/lib/components/admin/chat/SessionFlowVisuals.svelte",
 			"type": "component",
 			"components": ["SessionTimeWaterfall", "SessionCostWaterfall"]
@@ -280,16 +251,6 @@
 			"components": ["OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
-			"file": "src/lib/components/project/v2/EntityTabStrip.svelte",
-			"type": "component",
-			"components": [
-				"ProjectCalendarPanel",
-				"ProjectInboxPanel",
-				"GoalTrackingModal",
-				"BriefChatModal"
-			]
-		},
-		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
 			"type": "page",
 			"components": [
@@ -298,16 +259,6 @@
 				"G6Graph",
 				"GraphControls",
 				"NodeDetailsPanel"
-			]
-		},
-		{
-			"file": "src/routes/projects-old/[id]/old/+page.svelte",
-			"type": "page",
-			"components": [
-				"MobileCommandCenter",
-				"ProjectDocumentsSection",
-				"ProjectInsightRail",
-				"ProjectModalsHost"
 			]
 		},
 		{
@@ -919,42 +870,6 @@
 			"exports": ["workRunsStore", "workRunsLoading", "loadWorkRuns", "mergeWorkRuns"]
 		},
 		{
-			"file": "src/lib/components/admin/adminRoutes.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"CHAT_ADMIN_ROOT",
-				"CHAT_ADMIN_TITLE",
-				"CHAT_ADMIN_NAV_ITEMS",
-				"isChatAdminSubpath"
-			]
-		},
-		{
-			"file": "src/lib/components/chat/project-selector-browser.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_PROJECT_SELECTOR_LIMIT",
-				"MAX_PROJECT_SELECTOR_LIMIT",
-				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
-				"normalizeProjectSelectionSearch",
-				"PROJECT_RECENCY_RECENT_MAX_DAYS",
-				"PROJECT_RECENCY_OLDER_MAX_DAYS",
-				"parseProjectUpdatedAt",
-				"formatRelativeProjectUpdate",
-				"groupProjectsByRecency",
-				"normalizeProjectSelectionLimit",
-				"clearProjectSelectionBrowserCache",
-				"fetchProjectSelectionSummaries"
-			]
-		},
-		{
-			"file": "src/lib/components/inbox/inbox-presentation.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["formatInboxAttentionSummary"]
-		},
-		{
 			"file": "src/lib/components/agent/agent-chat-attachments.svelte.ts",
 			"type": "component",
 			"components": [],
@@ -1143,6 +1058,42 @@
 			]
 		},
 		{
+			"file": "src/lib/components/chat/project-selector-browser.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"DEFAULT_PROJECT_SELECTOR_LIMIT",
+				"MAX_PROJECT_SELECTOR_LIMIT",
+				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
+				"normalizeProjectSelectionSearch",
+				"PROJECT_RECENCY_RECENT_MAX_DAYS",
+				"PROJECT_RECENCY_OLDER_MAX_DAYS",
+				"parseProjectUpdatedAt",
+				"formatRelativeProjectUpdate",
+				"groupProjectsByRecency",
+				"normalizeProjectSelectionLimit",
+				"clearProjectSelectionBrowserCache",
+				"fetchProjectSelectionSummaries"
+			]
+		},
+		{
+			"file": "src/lib/components/admin/adminRoutes.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"CHAT_ADMIN_ROOT",
+				"CHAT_ADMIN_TITLE",
+				"CHAT_ADMIN_NAV_ITEMS",
+				"isChatAdminSubpath"
+			]
+		},
+		{
+			"file": "src/lib/components/inbox/inbox-presentation.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["formatInboxAttentionSummary"]
+		},
+		{
 			"file": "src/lib/components/notifications/notification-preview.ts",
 			"type": "component",
 			"components": [],
@@ -1164,20 +1115,6 @@
 			"type": "component",
 			"components": [],
 			"exports": ["SETTINGS_GROUPS", "getSettingsDestinations", "getSettingsGroupLabel"]
-		},
-		{
-			"file": "src/lib/components/projects/project-list.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_LIST_SCOPE_OPTIONS",
-				"normalizeProjectListScope",
-				"getProjectListScopeLabel",
-				"matchesProjectListScope",
-				"addProjectCollaborationFlags",
-				"formatProjectUpdatedLabel",
-				"formatProjectUpdatedTitle"
-			]
 		},
 		{
 			"file": "src/lib/components/project/project-entity-modal-loader.ts",
@@ -1255,6 +1192,20 @@
 			]
 		},
 		{
+			"file": "src/lib/components/projects/project-list.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_LIST_SCOPE_OPTIONS",
+				"normalizeProjectListScope",
+				"getProjectListScopeLabel",
+				"matchesProjectListScope",
+				"addProjectCollaborationFlags",
+				"formatProjectUpdatedLabel",
+				"formatProjectUpdatedTitle"
+			]
+		},
+		{
 			"file": "src/lib/components/ui/live-transcript-preview.ts",
 			"type": "component",
 			"components": [],
@@ -1269,6 +1220,18 @@
 				"preserveInsertedVoiceSpacing",
 				"canReplaceInsertedVoiceRange",
 				"shouldInsertCapturedVoiceFallback"
+			]
+		},
+		{
+			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"eventIcon",
+				"eventSeverityClasses",
+				"timelineDotClasses",
+				"statusBadge",
+				"libriStatusClasses"
 			]
 		},
 		{
@@ -1318,16 +1281,23 @@
 			]
 		},
 		{
-			"file": "src/lib/components/admin/chat/session-audit-ui.ts",
+			"file": "src/lib/components/profile/cycles/cycle-presenter.ts",
 			"type": "component",
 			"components": [],
 			"exports": [
-				"eventIcon",
-				"eventSeverityClasses",
-				"timelineDotClasses",
-				"statusBadge",
-				"libriStatusClasses"
+				"presentCycleKind",
+				"formatCycleSchedule",
+				"presentCycleCadence",
+				"presentCycleStatus",
+				"formatCycleTimestamp",
+				"presentCycle"
 			]
+		},
+		{
+			"file": "src/lib/components/project/v2/board-a11y.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
 		},
 		{
 			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
@@ -1396,23 +1366,34 @@
 			]
 		},
 		{
-			"file": "src/lib/components/profile/cycles/cycle-presenter.ts",
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 			"type": "component",
 			"components": [],
 			"exports": [
-				"presentCycleKind",
-				"formatCycleSchedule",
-				"presentCycleCadence",
-				"presentCycleStatus",
-				"formatCycleTimestamp",
-				"presentCycle"
+				"fetchLinkedEntities",
+				"fetchAvailableEntities",
+				"createEdges",
+				"linkEntities",
+				"deleteEdge",
+				"unlinkEntity",
+				"filterEntities"
 			]
 		},
 		{
-			"file": "src/lib/components/project/v2/board-a11y.ts",
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 			"type": "component",
 			"components": [],
-			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
+			"exports": [
+				"ALLOWED_LINKS",
+				"canLink",
+				"RELATIONSHIP_MAP",
+				"getRelationship",
+				"getAllowedTargetKinds",
+				"ENTITY_SECTIONS",
+				"getEntityDisplayName",
+				"formatRelationshipLabel",
+				"getFilteredSections"
+			]
 		},
 		{
 			"file": "src/lib/components/ui/codemirror/extensions.ts",
@@ -1463,34 +1444,10 @@
 			]
 		},
 		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 			"type": "component",
 			"components": [],
-			"exports": [
-				"fetchLinkedEntities",
-				"fetchAvailableEntities",
-				"createEdges",
-				"linkEntities",
-				"deleteEdge",
-				"unlinkEntity",
-				"filterEntities"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"ALLOWED_LINKS",
-				"canLink",
-				"RELATIONSHIP_MAP",
-				"getRelationship",
-				"getAllowedTargetKinds",
-				"ENTITY_SECTIONS",
-				"getEntityDisplayName",
-				"formatRelationshipLabel",
-				"getFilteredSections"
-			]
+			"exports": ["prepareAgentRunChatEventDetail"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
@@ -1502,12 +1459,6 @@
 				"getCommander",
 				"formatTimelineYearRange"
 			]
-		},
-		{
-			"file": "src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["prepareAgentRunChatEventDetail"]
 		},
 		{
 			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
@@ -1605,9 +1556,9 @@
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/EventEditModal.svelte"
 		],
-		"src/routes/projects-old/[id]/+page.svelte": [
-			"src/lib/components/project/ProjectModalsHost.svelte",
-			"src/lib/components/project/ProjectAuditTracker.svelte"
+		"src/routes/projects/[id]/ProjectWorkspace.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/DocumentModal.svelte"
 		],
 		"src/routes/projects/[id]/ProjectWorkspaceEntityModals.svelte": [
 			"src/lib/components/ontology/PlanEditModal.svelte",
@@ -1620,17 +1571,6 @@
 		"src/routes/projects/[id]/ProjectWorkspaceOptionsMenu.svelte": [
 			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
-		],
-		"src/routes/projects/[id]/ProjectWorkspacePrototype.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/DocumentModal.svelte"
-		],
-		"src/lib/components/project/v2/EntityTabStrip.svelte": [
-			"src/lib/components/project/ProjectInboxPanel.svelte"
-		],
-		"src/routes/projects-old/[id]/old/+page.svelte": [
-			"src/lib/components/project/ProjectInsightRail.svelte",
-			"src/lib/components/project/ProjectModalsHost.svelte"
 		],
 		"src/routes/projects/[id]/tasks/[task_id]/+page.svelte": [
 			"src/lib/components/ontology/DocumentModal.svelte",
@@ -1651,23 +1591,19 @@
 		]
 	},
 	"unusedComponents": [
-		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
+		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 		"src/lib/components/ontology/DocumentInteractDock.svelte",
-		"src/lib/components/project/ProjectHistorySection.svelte",
+		"src/lib/components/project/ProjectInboxPanel.svelte",
+		"src/routes/projects/[id]/ProjectWorkspace.svelte",
 		"src/routes/projects/[id]/ProjectWorkspaceEntityModals.svelte",
 		"src/routes/projects/[id]/ProjectWorkspaceOptionsMenu.svelte",
-		"src/routes/projects/[id]/ProjectWorkspacePrototype.svelte",
 		"src/lib/components/admin/chat/SessionFlowVisuals.svelte",
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
-		"src/lib/components/project/v2/EntityTabStrip.svelte",
-		"src/lib/components/admin/adminRoutes.ts",
-		"src/lib/components/chat/project-selector-browser.ts",
-		"src/lib/components/inbox/inbox-presentation.ts",
 		"src/lib/components/agent/agent-chat-attachments.svelte.ts",
 		"src/lib/components/agent/agent-chat-client-actions.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
@@ -1687,34 +1623,37 @@
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
+		"src/lib/components/chat/project-selector-browser.ts",
+		"src/lib/components/admin/adminRoutes.ts",
+		"src/lib/components/inbox/inbox-presentation.ts",
 		"src/lib/components/notifications/notification-preview.ts",
 		"src/lib/components/profile/profile-tabs.ts",
 		"src/lib/components/profile/settings-navigation.ts",
-		"src/lib/components/projects/project-list.ts",
 		"src/lib/components/project/project-entity-modal-loader.ts",
 		"src/lib/components/project/project-event-filters.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
+		"src/lib/components/projects/project-list.ts",
 		"src/lib/components/ui/live-transcript-preview.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
+		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
-		"src/lib/components/admin/chat/session-audit-ui.ts",
+		"src/lib/components/profile/cycles/cycle-presenter.ts",
+		"src/lib/components/project/v2/board-a11y.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
 		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
-		"src/lib/components/profile/cycles/cycle-presenter.ts",
-		"src/lib/components/project/v2/board-a11y.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.layout.ts",

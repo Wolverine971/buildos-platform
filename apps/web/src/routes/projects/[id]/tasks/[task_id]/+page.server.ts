@@ -11,7 +11,7 @@
  */
 
 import type { PageServerLoad } from './$types';
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 
 function filterTaskEvents(events: any[], linkedEntities: any, taskId: string) {
 	const linkedEventIds = new Set(
@@ -25,8 +25,9 @@ function filterTaskEvents(events: any[], linkedEntities: any, taskId: string) {
 	);
 }
 
-export const load: PageServerLoad = async ({ params, fetch }) => {
+export const load: PageServerLoad = async ({ params, fetch, locals, url }) => {
 	const { id: projectId, task_id: taskId } = params;
+	const loginRedirect = `/auth/login?redirect=${encodeURIComponent(`${url.pathname}${url.search}`)}`;
 
 	if (!projectId || !taskId) {
 		throw error(400, 'Project ID and Task ID required');
@@ -44,13 +45,46 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 	]);
 
 	if (!projectResponse.ok) {
+		if (projectResponse.status === 401) {
+			throw redirect(303, loginRedirect);
+		}
+		if (projectResponse.status === 403 || projectResponse.status === 404) {
+			const { data: routeAccessState, error: accessStateError } = await (
+				locals.supabase as any
+			).rpc('get_project_route_access_state', {
+				p_project_id: projectId
+			});
+
+			if (accessStateError) {
+				console.error(
+					'[Task Focus Page] Failed to resolve project access:',
+					accessStateError
+				);
+				throw error(500, 'Failed to check project access');
+			}
+			if (routeAccessState === 'forbidden') {
+				throw error(403, 'You do not have access to this project.');
+			}
+			if (routeAccessState === 'unauthenticated') {
+				throw redirect(303, loginRedirect);
+			}
+		}
 		if (projectResponse.status === 404) {
 			throw error(404, 'Project not found');
+		}
+		if (projectResponse.status === 403) {
+			throw error(403, 'You do not have access to this project.');
 		}
 		throw error(500, 'Failed to load project');
 	}
 
 	if (!taskResponse.ok) {
+		if (taskResponse.status === 401) {
+			throw redirect(303, loginRedirect);
+		}
+		if (taskResponse.status === 403) {
+			throw error(403, 'You do not have access to this project.');
+		}
 		if (taskResponse.status === 404) {
 			throw error(404, 'Task not found');
 		}

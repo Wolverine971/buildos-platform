@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/invites/[inviteId]/decline/server.test.ts
 import { describe, it, expect, vi } from 'vitest';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 
 vi.mock('../../../shared/error-logging', () => ({
 	logOntologyApiError: vi.fn()

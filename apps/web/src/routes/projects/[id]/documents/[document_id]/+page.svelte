@@ -502,7 +502,7 @@
 										size="sm"
 										placeholder="State"
 									>
-										{#each DOCUMENT_STATES.filter((state) => state !== 'archived' || isArchivedDocument) as state}
+										{#each DOCUMENT_STATES.filter((state) => state !== 'archived' || isArchivedDocument) as state (state)}
 											<option value={state}>{state.replace('_', ' ')}</option>
 										{/each}
 									</Select>
@@ -752,7 +752,7 @@
 						{#if expandedPanels.events}
 							<div class="border-t border-border max-h-40 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
-									{#each events.slice(0, 8) as event}
+									{#each events.slice(0, 8) as event (event.id)}
 										<li class="px-2.5 py-1.5">
 											<div class="flex items-start gap-2">
 												<Calendar
@@ -806,7 +806,7 @@
 						{#if expandedPanels.documents}
 							<div class="border-t border-border max-h-48 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
-									{#each otherDocuments as doc}
+									{#each otherDocuments as doc (doc.id)}
 										<li>
 											<a
 												href={`/projects/${project?.id}/documents/${doc.id}`}
@@ -852,7 +852,7 @@
 						{#if expandedPanels.tasks}
 							<div class="border-t border-border max-h-40 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
-									{#each tasks.slice(0, 10) as task}
+									{#each tasks.slice(0, 10) as task (task.id)}
 										<li>
 											<a
 												href={`/projects/${project?.id}/tasks/${task.id}`}
@@ -900,7 +900,7 @@
 						{#if expandedPanels.goals}
 							<div class="border-t border-border max-h-32 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
-									{#each goals as goal}
+									{#each goals as goal (goal.id)}
 										<li class="flex items-center gap-2 px-2.5 py-1.5">
 											<Target class="w-3 h-3 text-warning shrink-0" />
 											<span class="text-xs text-foreground truncate"
@@ -941,7 +941,7 @@
 						{#if expandedPanels.plans}
 							<div class="border-t border-border max-h-32 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
-									{#each plans as plan}
+									{#each plans as plan (plan.id)}
 										<li class="flex items-center gap-2 px-2.5 py-1.5">
 											<Calendar class="w-3 h-3 text-info shrink-0" />
 											<span class="text-xs text-foreground truncate"
@@ -985,7 +985,7 @@
 						{#if expandedPanels.milestones}
 							<div class="border-t border-border max-h-32 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
-									{#each milestones as milestone}
+									{#each milestones as milestone (milestone.id)}
 										<li class="flex items-center gap-2 px-2.5 py-1.5">
 											<Flag class="w-3 h-3 text-success shrink-0" />
 											<span class="text-xs text-foreground truncate"
@@ -1026,7 +1026,7 @@
 						{#if expandedPanels.risks}
 							<div class="border-t border-border max-h-32 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
-									{#each risks as risk}
+									{#each risks as risk (risk.id)}
 										<li class="flex items-center gap-2 px-2.5 py-1.5">
 											<AlertTriangle
 												class="w-3 h-3 text-destructive shrink-0"

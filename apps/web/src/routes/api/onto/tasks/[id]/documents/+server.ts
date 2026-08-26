@@ -136,6 +136,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		let document: Record<string, any> | null = null;
 		let version: { number: number; status: 'created' | 'merged' } | null = null;
+		let versionWarning: string | null = null;
 
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
 		const normalizedState = normalizeDocumentStateInput(state_key);
@@ -235,6 +236,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					'[TaskDoc API] Failed to create initial document version:',
 					versionError
 				);
+				versionWarning =
+					'The document was created, but its first version could not be recorded in history.';
 				await logOntologyApiError({
 					supabase,
 					error: versionError,
@@ -246,7 +249,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					entityId: document.id,
 					operation: 'task_document_version_create',
 					tableName: 'onto_document_versions',
-					metadata: { nonFatal: true }
+					metadata: { nonFatal: false, surfacedToClient: true }
 				});
 			}
 		}
@@ -302,7 +305,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				rel: TASK_DOCUMENT_REL,
 				props: edgeProps
 			},
-			version
+			version,
+			versionWarning
 		});
 	} catch (error) {
 		console.error('[TaskDoc API] Unexpected POST error:', error);

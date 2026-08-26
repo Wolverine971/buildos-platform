@@ -1008,7 +1008,7 @@
 											size="sm"
 											placeholder="State"
 										>
-											{#each TASK_STATES as state}
+											{#each TASK_STATES as state (state)}
 												<option value={state}>
 													{state === 'todo'
 														? 'To Do'
@@ -1147,7 +1147,7 @@
 								<div class="border-t border-border max-h-32 overflow-y-auto">
 									{#if connectedDocuments.length > 0}
 										<ul class="divide-y divide-border/80">
-											{#each connectedDocuments as doc}
+											{#each connectedDocuments as doc (doc.document.id)}
 												<li>
 													<button
 														type="button"
@@ -1254,7 +1254,7 @@
 											{#if connectedDocuments.length === 0}
 												<option value="">No documents yet</option>
 											{:else}
-												{#each connectedDocuments as doc}
+												{#each connectedDocuments as doc (doc.document.id)}
 													<option value={doc.document.id}>
 														{doc.document.title || 'Untitled'} ({doc
 															.document.state_key})
@@ -1533,7 +1533,7 @@
 						<div class="border-t border-border max-h-40 overflow-y-auto">
 							{#if events.length > 0}
 								<ul class="divide-y divide-border/80">
-									{#each events.slice(0, 8) as taskEvent}
+									{#each events.slice(0, 8) as taskEvent (taskEvent.id)}
 										<li>
 											<button
 												type="button"
@@ -1610,7 +1610,7 @@
 						{#if expandedPanels.goals}
 							<div class="border-t border-border max-h-32 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
-									{#each goals as goal}
+									{#each goals as goal (goal.id)}
 										<li>
 											<button
 												type="button"
@@ -1657,7 +1657,7 @@
 						{#if expandedPanels.plans}
 							<div class="border-t border-border max-h-32 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
-									{#each plans as plan}
+									{#each plans as plan (plan.id)}
 										<li>
 											<button
 												type="button"
@@ -1706,7 +1706,7 @@
 						{#if expandedPanels.documents}
 							<div class="border-t border-border max-h-32 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
-									{#each documents.slice(0, 8) as doc}
+									{#each documents.slice(0, 8) as doc (doc.id)}
 										<li>
 											<button
 												type="button"
@@ -1763,7 +1763,7 @@
 						{#if expandedPanels.milestones}
 							<div class="border-t border-border max-h-32 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
-									{#each milestones as milestone}
+									{#each milestones as milestone (milestone.id)}
 										<li>
 											<button
 												type="button"
@@ -1820,7 +1820,7 @@
 						{#if expandedPanels.tasks}
 							<div class="border-t border-border max-h-32 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
-									{#each otherTasks.slice(0, 8) as otherTask}
+									{#each otherTasks.slice(0, 8) as otherTask (otherTask.id)}
 										{@const visuals = getTaskVisuals(otherTask.state_key)}
 										{@const OtherTaskIcon = visuals.icon}
 										<li>
@@ -1992,7 +1992,7 @@
 						<span class="text-2xs text-muted-foreground">({events.length})</span>
 					</div>
 					<ul class="divide-y divide-border/50 max-h-40 overflow-y-auto">
-						{#each events.slice(0, 10) as taskEvent}
+						{#each events.slice(0, 10) as taskEvent (taskEvent.id)}
 							<li>
 								<button
 									type="button"
@@ -2039,7 +2039,7 @@
 						<span class="text-2xs text-muted-foreground">({goals.length})</span>
 					</div>
 					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
-						{#each goals as goal}
+						{#each goals as goal (goal.id)}
 							<li>
 								<button
 									type="button"
@@ -2071,7 +2071,7 @@
 						<span class="text-2xs text-muted-foreground">({plans.length})</span>
 					</div>
 					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
-						{#each plans as plan}
+						{#each plans as plan (plan.id)}
 							<li>
 								<button
 									type="button"
@@ -2105,7 +2105,7 @@
 						<span class="text-2xs text-muted-foreground">({documents.length})</span>
 					</div>
 					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
-						{#each documents.slice(0, 10) as doc}
+						{#each documents.slice(0, 10) as doc (doc.id)}
 							<li>
 								<button
 									type="button"
@@ -2144,7 +2144,7 @@
 						<span class="text-2xs text-muted-foreground">({otherTasks.length})</span>
 					</div>
 					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
-						{#each otherTasks.slice(0, 10) as otherTask}
+						{#each otherTasks.slice(0, 10) as otherTask (otherTask.id)}
 							{@const visuals = getTaskVisuals(otherTask.state_key)}
 							{@const OtherTaskIcon = visuals.icon}
 							<li>
@@ -2185,7 +2185,7 @@
 						<span class="text-2xs text-muted-foreground">({milestones.length})</span>
 					</div>
 					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
-						{#each milestones as milestone}
+						{#each milestones as milestone (milestone.id)}
 							<li>
 								<button
 									type="button"

@@ -1,12 +1,12 @@
 <!-- apps/web/src/lib/components/landing/public-project-preview/PublicTaskBoard.svelte -->
 <!--
-	Public, read-only mirror of project/v2/TaskKanbanBoard + MobileTaskBoard.
+	Public, read-only task board for the landing project preview.
 
 	Desktop: 7 columns on a single horizontally-scrolling row.
 	Mobile:  same 7 columns, but stacked into a single vertical column selector
 	         (a chip strip + a list under it).
 
-	Bucket rules mirror the v2 board so visitors see the same shape:
+	Bucket rules match the authenticated project board so visitors see the same shape:
 	  archived  → deleted_at != null  (omitted from public source for now)
 	  done      → state_key === 'done'
 	  overdue   → due_at < now
@@ -179,6 +179,7 @@
 
 	// Mobile selected column
 	let mobileColumn = $state<ColumnKey>('in_progress');
+	const mobileTasks = $derived(tasksByColumn[mobileColumn] ?? []);
 
 	$effect(() => {
 		// If the current selection is empty but another column has tasks,
@@ -235,50 +236,46 @@
 			{/each}
 		</div>
 		<div class="p-2 space-y-1.5 max-h-[55vh] overflow-y-auto">
-			{#each [tasksByColumn[mobileColumn] ?? []] as bucket (mobileColumn)}
-				{#if bucket.length === 0}
-					<p class="text-2xs text-muted-foreground italic px-2 py-3 text-center">
-						No tasks in {COLUMNS.find(
-							(c) => c.key === mobileColumn
-						)?.label.toLowerCase()}.
-					</p>
-				{:else}
-					{#each bucket.slice(0, 10) as t (t.id)}
-						{@const due = dueLabel(t.due_at ?? null)}
-						<div class="bg-background border border-border/60 rounded-md px-2.5 py-2">
-							<p class="text-xs font-medium text-foreground line-clamp-2">
-								{t.title}
-							</p>
-							{#if due || t.priority}
-								<p
-									class="text-2xs text-muted-foreground mt-0.5 flex items-center gap-1.5"
-								>
-									{#if due}
-										<span
-											class={due.isOverdue
-												? 'text-destructive font-medium'
-												: 'text-muted-foreground'}
-										>
-											{due.label}
-										</span>
-									{/if}
-									{#if due && t.priority !== null && t.priority !== undefined}
-										<span class="text-muted-foreground/50">·</span>
-									{/if}
-									{#if t.priority !== null && t.priority !== undefined}
-										<span>P{t.priority}</span>
-									{/if}
-								</p>
-							{/if}
-						</div>
-					{/each}
-					{#if bucket.length > 10}
-						<p class="text-2xs text-muted-foreground italic px-2 py-1 text-center">
-							+ {bucket.length - 10} more
+			{#if mobileTasks.length === 0}
+				<p class="text-2xs text-muted-foreground italic px-2 py-3 text-center">
+					No tasks in {COLUMNS.find((c) => c.key === mobileColumn)?.label.toLowerCase()}.
+				</p>
+			{:else}
+				{#each mobileTasks.slice(0, 10) as t (t.id)}
+					{@const due = dueLabel(t.due_at ?? null)}
+					<div class="bg-background border border-border/60 rounded-md px-2.5 py-2">
+						<p class="text-xs font-medium text-foreground line-clamp-2">
+							{t.title}
 						</p>
-					{/if}
+						{#if due || t.priority}
+							<p
+								class="text-2xs text-muted-foreground mt-0.5 flex items-center gap-1.5"
+							>
+								{#if due}
+									<span
+										class={due.isOverdue
+											? 'text-destructive font-medium'
+											: 'text-muted-foreground'}
+									>
+										{due.label}
+									</span>
+								{/if}
+								{#if due && t.priority !== null && t.priority !== undefined}
+									<span class="text-muted-foreground/50">·</span>
+								{/if}
+								{#if t.priority !== null && t.priority !== undefined}
+									<span>P{t.priority}</span>
+								{/if}
+							</p>
+						{/if}
+					</div>
+				{/each}
+				{#if mobileTasks.length > 10}
+					<p class="text-2xs text-muted-foreground italic px-2 py-1 text-center">
+						+ {mobileTasks.length - 10} more
+					</p>
 				{/if}
-			{/each}
+			{/if}
 		</div>
 	</section>
 {:else}

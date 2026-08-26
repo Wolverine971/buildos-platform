@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/projects/[id]/members/me/role-profile/server.test.ts
 import { describe, it, expect, vi } from 'vitest';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 	ensureActorId: vi.fn().mockResolvedValue('actor-1')

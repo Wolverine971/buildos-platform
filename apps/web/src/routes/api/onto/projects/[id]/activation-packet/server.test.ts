@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/projects/[id]/activation-packet/server.test.ts
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 
 const { requireProjectMemberAccessMock } = vi.hoisted(() => ({
 	requireProjectMemberAccessMock: vi.fn()

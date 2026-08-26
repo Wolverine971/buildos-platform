@@ -9,7 +9,7 @@
 # Document Service: The Switching Bar and Revised Roadmap
 
 **Status:** Direction ratified by DJ 2026-08-26. Scope revised. **P0 trust fix and Step 1.5 WS-1
-implemented 2026-08-26** (§5, §8.1); WS-2 is next.
+implemented 2026-08-26; WS-2 ADR proposed for DJ ratification** (§5, §8.1); WS-3 follows.
 **Supersedes:** the workstream list and phase sequence in §11–§12 of the original vision doc.
 **Preserves:** the domain model (§4), relationship authorities (§5), risks (§15), and non-goals (§17)
 of the original vision doc, which remain correct.
@@ -103,14 +103,14 @@ without something being removed.
 
 ### Tier 0 — Trust: nothing you write is ever lost
 
-| #   | Item                                                         | State                                                                          |
-| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| 0.1 | Version creation is atomic with the document write           | ⚠️ blocking + returned to caller; transaction and visible UI warning owed — §5 |
-| 0.2 | Unique constraint on `(document_id, number)`                 | ✅ present since base ontology migration; collision retry added 2026-08-26     |
-| 0.3 | Sealed revisions are immutable once shown in history         | ✅ **Option A shipped 2026-08-26**                                             |
-| 0.4 | Restore always succeeds and is itself a revision             | ⚠️ exists; needs test coverage                                                 |
-| 0.5 | Concurrent-write conflict is detected, never silently lost   | ✅ compare-and-swap on `updated_at`                                            |
-| 0.6 | Autosave is durable and visibly distinct from "save version" | ⚠️ works; labelling is misleading                                              |
+| #   | Item                                                         | State                                                                      |
+| --- | ------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| 0.1 | Version creation is atomic with the document write           | ⚠️ blocking + visibly warned; transactional coupling still owed — §5       |
+| 0.2 | Unique constraint on `(document_id, number)`                 | ✅ present since base ontology migration; collision retry added 2026-08-26 |
+| 0.3 | Sealed revisions are immutable once shown in history         | ✅ **Option A shipped 2026-08-26**                                         |
+| 0.4 | Restore always succeeds and is itself a revision             | ⚠️ exists; needs test coverage                                             |
+| 0.5 | Concurrent-write conflict is detected, never silently lost   | ✅ compare-and-swap on `updated_at`                                        |
+| 0.6 | Autosave is durable and visibly distinct from "save version" | ⚠️ works; labelling is misleading                                          |
 
 ### Tier 1 — Get in and get out
 
@@ -254,17 +254,18 @@ version-number uniqueness constraint; there is no new index prerequisite to depl
 
 **What shipped:**
 
-| Change                                                                           | File                                                                           |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Existing `unique (document_id, number)` constraint verified                      | `supabase/migrations/20250601000001_ontology_system.sql:303–312`               |
-| Redundant audit index removed (no net schema change)                             | `supabase/migrations/20260826190000_drop_duplicate_document_version_index.sql` |
-| Retry on version-number collision, bounded at 5 attempts                         | `packages/shared-agent-ops/src/ontology/versioning.service.ts`                 |
-| `isVersionWindowOpen()` helper                                                   | same file                                                                      |
-| Version write moved out of background work; failure returned as `versionWarning` | `apps/web/src/routes/api/onto/documents/[id]/+server.ts`                       |
-| Same warning on document create                                                  | `apps/web/src/routes/api/onto/documents/create/+server.ts`                     |
-| `is_open` on the versions listing                                                | `apps/web/src/routes/api/onto/documents/[id]/versions/+server.ts`              |
-| Open window renders as "Now / Editing now — not yet sealed"                      | `apps/web/src/lib/components/ontology/DocumentVersionHistoryPanel.svelte`      |
-| Coverage for collision retry, bounded give-up, and window sealing                | `packages/shared-agent-ops/src/ontology/versioning.service.test.ts`            |
+| Change                                                                           | File                                                                                   |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Existing `unique (document_id, number)` constraint verified                      | `supabase/migrations/20250601000001_ontology_system.sql:303–312`                       |
+| Redundant audit index removed (no net schema change)                             | `supabase/migrations/20260826190000_drop_duplicate_document_version_index.sql`         |
+| Retry on version-number collision, bounded at 5 attempts                         | `packages/shared-agent-ops/src/ontology/versioning.service.ts`                         |
+| `isVersionWindowOpen()` helper                                                   | same file                                                                              |
+| Version write moved out of background work; failure returned as `versionWarning` | `apps/web/src/routes/api/onto/documents/[id]/+server.ts`                               |
+| Same warning on document create                                                  | `apps/web/src/routes/api/onto/documents/create/+server.ts`                             |
+| Same warning on task-scoped create and visible editor toast                      | `apps/web/src/routes/api/onto/tasks/[id]/documents/+server.ts`, `DocumentModal.svelte` |
+| `is_open` on the versions listing                                                | `apps/web/src/routes/api/onto/documents/[id]/versions/+server.ts`                      |
+| Open window renders as "Now / Editing now — not yet sealed"                      | `apps/web/src/lib/components/ontology/DocumentVersionHistoryPanel.svelte`              |
+| Coverage for collision retry, bounded give-up, and window sealing                | `packages/shared-agent-ops/src/ontology/versioning.service.test.ts`                    |
 
 **Deploy note:** the retry path depends on uniqueness, but production already has that guarantee
 through the table constraint in the base ontology migration. `20260826150000` created a redundant
@@ -273,10 +274,10 @@ duplicate while retaining the constraint and its backing index.
 
 **Not yet done — the remaining half of 0.1.** True transactional atomicity between the head write
 and the version write still does not exist. The head commits first, so a version failure cannot be
-rolled back; a warning is now returned to the caller rather than silently swallowed. The current
-editor does not yet visibly render that warning, so user-facing surfacing and the underlying
-transactional coupling both remain. Closing atomicity properly means a Postgres function that
-performs both writes in one transaction, which is the mutation service in original vision §6.3.
+rolled back; a warning is now returned to the caller and visibly surfaced by the editor. The
+underlying transactional coupling remains. Closing atomicity properly means a Postgres function
+that performs both writes in one transaction, which is the mutation service in original vision
+§6.3.
 
 The original analysis of all three defects follows.
 
@@ -408,8 +409,8 @@ first, then rounds — with import and collaboration as the final two rounds per
 **Step 1 — Trust fix (P0). ✅ Done 2026-08-26.** Tier 0.1–0.3. No new uniqueness prerequisite;
 the base constraint was verified and the redundant audit index is removed by the cleanup migration.
 
-**Step 1.5 — Structural prerequisites. 🔄 WS-1 complete; WS-2 and WS-3 remain.** Three things Step 2
-cannot be built on top of, one of which was a live bug. Specified in full in
+**Step 1.5 — Structural prerequisites. 🔄 WS-1 complete; WS-2 proposed; WS-3 remains.** Three things
+Step 2 cannot be built on top of, one of which was a live bug. Specified in full in
 [`STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md`](./STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md);
 summarised in §8.1 below. 2–4 days.
 
@@ -455,11 +456,14 @@ metadata retries are rejected.
 The fix is small: the gateway already read-modify-writes and already has `existingDocument.updated_at`
 in hand at the write site — it just never uses it as a guard.
 
-**WS-2 — A proposal has no stable base.** `onto_documents` has no `head_revision_id` and no
+**WS-2 — A proposal has no stable base. 🟡 ADR proposed 2026-08-26.** `onto_documents` has no `head_revision_id` and no
 `content_hash`; the only token is `updated_at`, which autosave bumps every ~2s of typing. A proposal
 reviewed for thirty seconds would be invalidated by the user's own keystrokes in an unrelated
 paragraph. Whole-document CAS is right for WS-1 and wrong here — proposals need anchor-local hashes.
-This is an ADR to write before any Step 2 code, not a build.
+The proposed
+[`document patch and anchor contract`](../../../../../docs/architecture/decisions/2026-08-26-document-patch-anchor-contract.md)
+chooses hybrid exact-text patches, deterministic local re-anchoring, a generated head content hash,
+and proposal-first interactive edits. It awaits DJ ratification before Step 2 code begins.
 
 **WS-3 — No per-turn document event.** `DocumentInteractDock` only fires `onClose(summary)`, and
 the `projectDataMutations` store is explicitly session-close-scoped and coarse. Step 2's "watch it
@@ -588,17 +592,19 @@ Each row names what happens **if no decision is made**, so work is never blocked
 | **Realtime base version scope** (Step 7)              | Presence + section claims (small, most of the felt benefit) vs. a real CRDT (large). See §4.                                                                                                        | Prototype presence first, no CRDT commitment     | Start of Step 7         |
 | **P0 migration cleanup**                              | Base uniqueness was already present. `20260826190000` removes only the redundant standalone index created by `20260826150000`.                                                                      | No WS-1 prerequisite                             | Closed                  |
 
-### 11.2 Delegated to the WS-2 ADR
+### 11.2 Resolved in the proposed WS-2 ADR
 
-The implementing agent resolves these and writes them up; DJ ratifies the ADR rather than each item.
-See the [Step 1.5 handoff](./STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md) WS-2.
+The implementing agent resolved these in the proposed
+[`document patch and anchor contract`](../../../../../docs/architecture/decisions/2026-08-26-document-patch-anchor-contract.md);
+DJ ratifies the ADR rather than each item. See the
+[Step 1.5 handoff](./STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md) WS-2.
 
-| Decision                            | Note                                                         |
-| ----------------------------------- | ------------------------------------------------------------ |
-| Anchor format                       | Heading path + replaced-text hash + bounded context window   |
-| Revalidation and re-anchor rule     | Including when to give up and surface a conflict             |
-| `content_hash` on the document head | Recommended yes, as a fast path; generated column vs written |
-| Patch representation                | Heading-anchored text, Markdown AST, or hybrid               |
+| Decision                            | Proposed resolution                                                   |
+| ----------------------------------- | --------------------------------------------------------------------- |
+| Anchor format                       | Heading path + UTF-16 range hints + exact text + 256-unit context     |
+| Revalidation and re-anchor rule     | Exact deterministic local search; ambiguity or changed text conflicts |
+| `content_hash` on the document head | Stored generated SHA-256 column used as the unchanged-head fast path  |
+| Patch representation                | Hybrid versioned JSON with anchored exact-text range replacements     |
 
 ### 11.3 Closed
 

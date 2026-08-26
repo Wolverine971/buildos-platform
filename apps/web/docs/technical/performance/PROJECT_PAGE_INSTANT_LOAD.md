@@ -1,9 +1,15 @@
 <!-- apps/web/docs/technical/performance/PROJECT_PAGE_INSTANT_LOAD.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time design record.** Written 2025-12-19. The live implementation now uses the
+> count-free `get_project_skeleton_with_access_v2` RPC and streams the full V2 profile into
+> `ProjectWorkspace.svelte`; verify behavior against the linked current files before changing it.
+
 # Project Page Instant Load - Performance Optimization Specification
 
 **Date:** 2025-12-19
-**Status:** Implementation In Progress
+**Status:** Implemented; retained as a point-in-time design record
 **Author:** Claude Code
 
 ## Overview
@@ -399,17 +405,16 @@ To prevent layout shifts, skeleton components must match final sizing:
 
 ## File Changes Summary
 
-| File                                                               | Change                                 |
-| ------------------------------------------------------------------ | -------------------------------------- |
-| `apps/web/src/lib/stores/project-navigation.store.ts`              | NEW - Navigation data store            |
-| `apps/web/src/lib/components/ontology/InsightPanelSkeleton.svelte` | NEW - Skeleton component               |
-| `supabase/migrations/YYYYMMDD_get_project_skeleton.sql`            | NEW - Skeleton RPC                     |
-| `apps/web/src/routes/projects/[id]/+page.server.ts`                | MODIFY - Skeleton-first loading        |
-| `apps/web/src/routes/projects/[id]/+page.svelte`                   | MODIFY - Client hydration              |
-| `apps/web/src/routes/api/onto/projects/[id]/full/+server.ts`       | NEW - Full data endpoint               |
-| `apps/web/src/routes/projects/+page.svelte`                        | MODIFY - Set navigation state on click |
-| `apps/web/src/lib/components/dashboard/Dashboard.svelte`           | MODIFY - Set navigation state on click |
-| `apps/web/src/routes/+layout.svelte`                               | MODIFY - Add View Transitions          |
+| File                                                                        | Change                                   |
+| --------------------------------------------------------------------------- | ---------------------------------------- |
+| `apps/web/src/lib/stores/project-navigation.store.ts`                       | NEW - Navigation data store              |
+| `apps/web/src/routes/projects/[id]/ProjectWorkspace.svelte`                 | Live workspace hydration and skeleton UI |
+| `supabase/migrations/20260707040000_project_skeleton_v2_without_counts.sql` | Count-free V2 skeleton RPC               |
+| `apps/web/src/routes/projects/[id]/+page.server.ts`                         | MODIFY - Skeleton-first loading          |
+| `apps/web/src/routes/projects/[id]/+page.svelte`                            | MODIFY - Client hydration                |
+| `apps/web/src/routes/api/onto/projects/[id]/full/+server.ts`                | NEW - Full data endpoint                 |
+| `apps/web/src/routes/projects/+page.svelte`                                 | MODIFY - Set navigation state on click   |
+| `apps/web/src/routes/+layout.svelte`                                        | MODIFY - Add View Transitions            |
 
 ## Performance Expectations
 

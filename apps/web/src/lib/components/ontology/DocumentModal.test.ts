@@ -4,6 +4,18 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/sv
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DocumentModal from './DocumentModal.svelte';
 
+const { toastWarningMock } = vi.hoisted(() => ({
+	toastWarningMock: vi.fn()
+}));
+
+vi.mock('$lib/stores/toast.store', () => ({
+	toastService: {
+		error: vi.fn(),
+		success: vi.fn(),
+		warning: toastWarningMock
+	}
+}));
+
 // Start the heavy dynamic import during collection so this test's behavioral
 // timeout measures dock interaction/rendering instead of loaded-suite transform contention.
 const agentChatModalModule = import('$lib/components/agent/AgentChatModal.svelte');
@@ -551,6 +563,54 @@ describe('DocumentModal document loading', () => {
 		);
 		await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
 		expect(screen.getByDisplayValue('Document B edited')).toBeInTheDocument();
+	});
+
+	it('surfaces a version-history warning returned by a successful save', async () => {
+		const warning =
+			'Your change was saved, but this edit could not be added to version history.';
+		const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			if (url.includes('/documents/document-a/full')) {
+				return Promise.resolve(documentResponse('document-a', 'Document A'));
+			}
+			if (url === '/api/onto/documents/document-a' && init?.method === 'PATCH') {
+				return Promise.resolve(
+					jsonResponse({
+						data: {
+							document: {
+								id: 'document-a',
+								updated_at: '2026-01-02T00:00:00.000Z'
+							},
+							versionWarning: warning
+						}
+					})
+				);
+			}
+			if (url.includes('/api/onto/edges/linked?')) {
+				return Promise.resolve(emptyLinkedEntitiesResponse());
+			}
+			if (url.includes('/api/onto/assets?')) {
+				return Promise.resolve(jsonResponse({ data: { assets: [] } }));
+			}
+			return Promise.resolve(jsonResponse({ data: {} }));
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		render(DocumentModal, {
+			props: {
+				projectId: 'project-1',
+				documentId: 'document-a',
+				isOpen: true
+			}
+		});
+
+		await waitFor(() => expect(screen.getByDisplayValue('Document A')).toBeInTheDocument());
+		await fireEvent.input(screen.getByLabelText('Document title'), {
+			target: { value: 'Document A edited' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+		await waitFor(() => expect(toastWarningMock).toHaveBeenCalledWith(warning));
 	});
 
 	it('does not close a replacement document when an obsolete delete resolves', async () => {

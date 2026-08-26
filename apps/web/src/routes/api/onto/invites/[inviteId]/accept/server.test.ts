@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/invites/[inviteId]/accept/server.test.ts
 import { describe, it, expect, vi } from 'vitest';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 
 const { createAdminSupabaseClientMock } = vi.hoisted(() => ({
 	createAdminSupabaseClientMock: vi.fn()

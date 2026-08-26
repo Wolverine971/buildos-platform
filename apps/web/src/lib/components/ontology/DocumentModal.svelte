@@ -1876,6 +1876,11 @@
 			// Update server timestamp from response
 			const updatedDoc = result?.data?.document;
 			const newDocumentId = result?.data?.document?.id ?? result?.data?.id ?? null;
+			const versionWarning =
+				typeof result?.data?.versionWarning === 'string' &&
+				result.data.versionWarning.trim()
+					? result.data.versionWarning.trim()
+					: null;
 			const persistedDocumentId = updatedDoc?.id ?? requestedDocumentId ?? newDocumentId;
 			if (updatedDoc?.updated_at) {
 				serverUpdatedAt = updatedDoc.updated_at;
@@ -1959,6 +1964,11 @@
 					);
 				}
 				onSaved?.();
+			}
+			if (versionWarning) {
+				// History is part of the save trust contract. Surface this even for a silent
+				// autosave so a committed head without a checkpoint is never invisible.
+				toastService.warning(versionWarning);
 			}
 
 			// If we just created a new document, transition to edit mode

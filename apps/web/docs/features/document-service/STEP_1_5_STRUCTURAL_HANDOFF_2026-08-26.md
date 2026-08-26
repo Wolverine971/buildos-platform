@@ -7,7 +7,8 @@
 
 # Step 1.5 — Structural Prerequisites for the Proposal Interaction
 
-**Status:** In progress. **WS-1 implemented 2026-08-26; WS-2 and WS-3 not started.**
+**Status:** In progress. **WS-1 implemented 2026-08-26; WS-2 ADR proposed for DJ ratification;
+WS-3 not started.**
 **Owner:** unassigned (written for an implementing agent).
 **Blocks:** roadmap Step 2 (select → propose → apply → revision).
 **Roadmap:** [`SWITCHING_BAR_AND_REVISED_ROADMAP_2026-08-26.md`](./SWITCHING_BAR_AND_REVISED_ROADMAP_2026-08-26.md) §8.
@@ -243,6 +244,13 @@ anchor decision, and settling that in code first means rewriting Step 2. Write i
 `docs/architecture/decisions/` per this folder's documentation policy, and link it from the
 document-service README.
 
+**Draft result — 2026-08-26:**
+[`2026-08-26-document-patch-anchor-contract.md`](../../../../../docs/architecture/decisions/2026-08-26-document-patch-anchor-contract.md)
+is proposed for DJ ratification. It selects a hybrid exact-text patch, heading and bounded-context
+anchors, deterministic re-anchoring with no fuzzy apply, a stored generated `content_hash`,
+all-or-nothing multi-operation apply, stable conflict reasons, and proposal review for every
+LLM-authored interactive content edit in v1.
+
 ### The problem it must solve
 
 `onto_documents` has **no `head_revision_id` and no `content_hash`.** Verified against
@@ -285,10 +293,10 @@ whole-document CAS is the wrong tool here despite being the right tool for WS-1.
 6. Patch representation — heading-anchored text patches, Markdown AST patches, or hybrid. Original
    vision §14.3.
 
-### Already decided — do not reopen
+### Existing primitive to ratify — do not replace
 
-**Managed-region identity is settled.** `packages/shared-agent-ops/src/ontology/start-here.ts`
-already implements agent-owned regions inside portable Markdown:
+**Agent-owned block identity is settled.** `packages/shared-agent-ops/src/ontology/start-here.ts`
+already implements managed regions inside portable Markdown:
 
 ```text
 <!-- managed:status v=1 -->…<!-- /managed:status -->
@@ -296,8 +304,9 @@ already implements agent-owned regions inside portable Markdown:
 
 with a version field, `renderStartHereManagedRegion` (`:155`), `managedRegionRegex` (`:349`),
 `insertManagedRegion` (`:453`), and tests in `start-here.test.ts`. The ADR should **ratify this as
-the canonical mechanism** for any agent-owned block, not invent a competing one. This closes
-original vision open decision #4.
+the canonical mechanism** for any agent-owned block, not invent a competing one. It does not give
+arbitrary human-authored paragraphs or checklist items durable identity. Stable checklist-item
+identity remains a Step 5 decision.
 
 ---
 

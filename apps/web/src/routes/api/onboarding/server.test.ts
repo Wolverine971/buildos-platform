@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onboarding/server.test.ts
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 
 const { saveIntentAndStakesMock, completeOnboardingV3Mock, ensureActorIdMock } = vi.hoisted(() => ({
 	saveIntentAndStakesMock: vi.fn(),

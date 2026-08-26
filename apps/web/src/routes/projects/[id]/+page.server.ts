@@ -10,9 +10,8 @@
  *
  * 2. COLD LOAD (direct URL, refresh, external link):
  *    - No navigation store data available
- *    - Server calls a skeleton/access RPC (single round-trip that ensures the
- *      actor row and resolves access flags). The classic /old route keeps the
- *      counted skeleton RPC for its count-bearing placeholders.
+ *    - Server calls the count-free v2 skeleton/access RPC (single round-trip
+ *      that ensures the actor row and resolves access flags)
  *    - Server starts the full-data request while the skeleton renders
  *
  * Performance Targets:
@@ -196,18 +195,11 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
 	const supabase = locals.supabase;
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		locals.serverTiming ? locals.serverTiming.measure(name, fn) : fn();
-	const includeSkeletonCounts = url.pathname.endsWith('/old');
-	const skeletonRpcName = includeSkeletonCounts
-		? 'get_project_skeleton_with_access'
-		: 'get_project_skeleton_with_access_v2';
-
 	// Single round-trip: ensures actor, resolves read access, returns skeleton + access.
 	const { data: bundleRaw, error: bundleError } = await measure(
-		includeSkeletonCounts
-			? 'db.project_skeleton_with_access'
-			: 'db.project_skeleton_with_access_v2',
+		'db.project_skeleton_with_access_v2',
 		() =>
-			(supabase as any).rpc(skeletonRpcName, {
+			(supabase as any).rpc('get_project_skeleton_with_access_v2', {
 				p_project_id: id
 			})
 	);

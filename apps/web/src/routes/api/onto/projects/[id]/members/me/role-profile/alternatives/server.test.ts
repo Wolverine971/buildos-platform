@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/projects/[id]/members/me/role-profile/alternatives/server.test.ts
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 
 const { generateTextMock } = vi.hoisted(() => ({
 	generateTextMock: vi.fn()

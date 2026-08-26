@@ -20156,6 +20156,24 @@ export type Database = {
         }
         Returns: Json
       }
+      replace_cycle_triggers: {
+        Args: {
+          p_cycle_id: string
+          p_expected_version: number
+          p_triggers: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      replace_cycle_triggers_impl: {
+        Args: {
+          p_cycle_id: string
+          p_expected_version: number
+          p_triggers: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
       request_account_deletion: {
         Args: { p_user_id: string }
         Returns: {

@@ -1,11 +1,11 @@
-// apps/web/src/routes/projects/[id]/ProjectWorkspacePrototype.test.ts
+// apps/web/src/routes/projects/[id]/ProjectWorkspace.test.ts
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { pushState } from '$app/navigation';
 import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
-import ProjectWorkspacePrototype from './ProjectWorkspacePrototype.svelte';
+import ProjectWorkspace from './ProjectWorkspace.svelte';
 
 vi.mock('$app/navigation', () => ({
 	goto: vi.fn(),
@@ -129,7 +129,7 @@ function plans(count: number) {
 	}));
 }
 
-describe('ProjectWorkspacePrototype edge states', () => {
+describe('ProjectWorkspace edge states', () => {
 	beforeEach(() => {
 		window.history.replaceState({}, '', '/workspace?view=overview');
 		vi.stubGlobal('scrollTo', vi.fn());
@@ -206,7 +206,7 @@ describe('ProjectWorkspacePrototype edge states', () => {
 	});
 
 	it('keeps the persistent shell focused on project identity, the brief, and workspace tabs', async () => {
-		const { container } = render(ProjectWorkspacePrototype, {
+		const { container } = render(ProjectWorkspace, {
 			props: {
 				data: projectData({ context_document: contextDocument() }) as any
 			}
@@ -280,7 +280,7 @@ describe('ProjectWorkspacePrototype edge states', () => {
 
 	it('defaults to Overview when the URL does not select a workspace view', async () => {
 		window.history.replaceState({}, '', '/workspace');
-		render(ProjectWorkspacePrototype, {
+		render(ProjectWorkspace, {
 			props: { data: projectData() as any }
 		});
 
@@ -296,7 +296,7 @@ describe('ProjectWorkspacePrototype edge states', () => {
 	});
 
 	it('restores the original project options without crowding the header', async () => {
-		render(ProjectWorkspacePrototype, {
+		render(ProjectWorkspace, {
 			props: {
 				data: projectData({ context_document: contextDocument() }) as any
 			}
@@ -321,7 +321,7 @@ describe('ProjectWorkspacePrototype edge states', () => {
 	});
 
 	it('constrains long identity text without repeating the brief in Overview', async () => {
-		render(ProjectWorkspacePrototype, {
+		render(ProjectWorkspace, {
 			props: {
 				data: projectData({
 					project: {
@@ -360,7 +360,7 @@ describe('ProjectWorkspacePrototype edge states', () => {
 	});
 
 	it('keeps dense direction lists curated until the user asks for all items', async () => {
-		render(ProjectWorkspacePrototype, {
+		render(ProjectWorkspace, {
 			props: {
 				data: projectData({ goals: goals(12), plans: plans(8) }) as any
 			}
@@ -388,7 +388,7 @@ describe('ProjectWorkspacePrototype edge states', () => {
 	});
 
 	it('keeps an empty Overview compact and free of Brief or Activity content', async () => {
-		render(ProjectWorkspacePrototype, {
+		render(ProjectWorkspace, {
 			props: {
 				data: projectData({
 					context_document: contextDocument(),
@@ -424,7 +424,7 @@ describe('ProjectWorkspacePrototype edge states', () => {
 
 	it('gives documents one full-width hierarchy without a duplicate recent list', async () => {
 		const document = projectDocument();
-		render(ProjectWorkspacePrototype, {
+		render(ProjectWorkspace, {
 			props: {
 				data: projectData({
 					documents: [document],
@@ -455,7 +455,7 @@ describe('ProjectWorkspacePrototype edge states', () => {
 	});
 
 	it('keeps Activity focused on recent chats, change history, and the project schedule', async () => {
-		render(ProjectWorkspacePrototype, {
+		render(ProjectWorkspace, {
 			props: {
 				data: projectData({
 					events: [

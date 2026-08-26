@@ -1,5 +1,5 @@
-// apps/web/src/routes/projects-old/[id]/+page.server.ts
-/** Compatibility route for links created while the V2 workspace was being swapped in. */
+// apps/web/src/routes/projects/[id]/old/+page.server.ts
+/** Temporary compatibility route for bookmarks to the retired classic workspace. */
 
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';

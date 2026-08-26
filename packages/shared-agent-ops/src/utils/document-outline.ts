@@ -104,36 +104,45 @@ export function extractOutline(content: string | null | undefined): DocOutline {
 		return { version: DOC_OUTLINE_VERSION, content_hash: contentHash, nodes: [] };
 	}
 
-	const flat: FlatHeading[] = headingList.map((h, i) => ({
-		level: h.level,
-		text: h.text,
-		anchor: h.id,
-		char_start: headingStarts[i],
-		char_end: text.length, // filled below
-		word_count: 0 // filled below
-	}));
+	const flat: FlatHeading[] = [];
+	for (const [index, heading] of headingList.entries()) {
+		const charStart = headingStarts[index];
+		if (charStart === undefined) {
+			return { version: DOC_OUTLINE_VERSION, content_hash: contentHash, nodes: [] };
+		}
+		flat.push({
+			level: heading.level,
+			text: heading.text,
+			anchor: heading.id,
+			char_start: charStart,
+			char_end: text.length, // filled below
+			word_count: 0 // filled below
+		});
+	}
 
 	// char_end: next heading of equal-or-higher importance (level <= current).
-	for (let i = 0; i < flat.length; i += 1) {
+	for (const [index, current] of flat.entries()) {
 		let end = text.length;
-		for (let j = i + 1; j < flat.length; j += 1) {
-			if (flat[j].level <= flat[i].level) {
-				end = flat[j].char_start;
+		for (const candidate of flat.slice(index + 1)) {
+			if (candidate.level <= current.level) {
+				end = candidate.char_start;
 				break;
 			}
 		}
-		flat[i].char_end = end;
+		current.char_end = end;
 
 		// word_count of own body: from this heading up to its first child (deeper level)
 		// or the section end, whichever comes first. Drop the heading line itself.
-		const firstChild = flat.slice(i + 1).find((h) => h.char_start < flat[i].char_end);
+		const firstChild = flat
+			.slice(index + 1)
+			.find((heading) => heading.char_start < current.char_end);
 		const bodyEnd =
-			firstChild && firstChild.level > flat[i].level
+			firstChild && firstChild.level > current.level
 				? firstChild.char_start
-				: flat[i].char_end;
-		const section = text.slice(flat[i].char_start, bodyEnd);
+				: current.char_end;
+		const section = text.slice(current.char_start, bodyEnd);
 		const body = section.replace(/^[^\n]*\n?/, ''); // strip the heading line
-		flat[i].word_count = countWords(body);
+		current.word_count = countWords(body);
 	}
 
 	// Build the nested tree from the flat list using a level stack.
@@ -148,11 +157,15 @@ export function extractOutline(content: string | null | undefined): DocOutline {
 			char_end: h.char_end,
 			word_count: h.word_count
 		};
-		while (stack.length && stack[stack.length - 1].level >= h.level) stack.pop();
-		if (stack.length === 0) {
+		while (true) {
+			const currentParent = stack.at(-1);
+			if (!currentParent || currentParent.level < h.level) break;
+			stack.pop();
+		}
+		const parent = stack.at(-1);
+		if (!parent) {
 			root.push(node);
 		} else {
-			const parent = stack[stack.length - 1];
 			(parent.children ??= []).push(node);
 		}
 		stack.push(node);
