@@ -101,7 +101,11 @@
 	} from 'lucide-svelte';
 	import { MessageCircle, PanelRightClose, PanelRightOpen } from '$lib/icons/lucide';
 	import { handleRovingTabKeydown } from '$lib/components/project/v2/board-a11y';
-	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
+	import type {
+		DataMutationSummary,
+		DocumentMutationEvent
+	} from '$lib/components/agent/agent-chat.types';
+	import { resolveDocumentAgentMutationAction } from './document-agent-mutation';
 	import {
 		loadDocumentModal,
 		loadGoalEditModal,
@@ -523,6 +527,7 @@
 	let isDocumentInteractOpen = $state(false);
 	let linkedEntityModalSession = $state.raw<DocumentSession | null>(null);
 	let documentInteractSession = $state.raw<DocumentSession | null>(null);
+	let documentInteractObservedMutation = false;
 	let restoreModalSession = $state.raw<DocumentSession | null>(null);
 	let moveModalSession = $state.raw<DocumentSession | null>(null);
 	let imageInsertModalSession = $state.raw<DocumentSession | null>(null);
@@ -553,6 +558,22 @@
 	type MarkdownEditorRef = {
 		insertAtCursor: (markdown: string) => Promise<void>;
 		focus?: () => void;
+		captureViewState: () => {
+			anchor: number;
+			head: number;
+			scrollTop: number;
+			scrollLeft: number;
+			hadFocus: boolean;
+		} | null;
+		restoreViewState: (
+			snapshot: {
+				anchor: number;
+				head: number;
+				scrollTop: number;
+				scrollLeft: number;
+				hadFocus: boolean;
+			} | null
+		) => Promise<void>;
 	};
 	let markdownEditorRef = $state<MarkdownEditorRef | null>(null);
 
@@ -663,6 +684,7 @@
 		linkedEntityModalSession = null;
 		isDocumentInteractOpen = false;
 		documentInteractSession = null;
+		documentInteractObservedMutation = false;
 		showRestoreModal = false;
 		selectedVersionForRestore = null;
 		restoreModalSession = null;
@@ -2340,6 +2362,7 @@
 		activeMobileTab = null;
 		showComments = false;
 		documentInteractSession = captureDocumentSession();
+		documentInteractObservedMutation = false;
 		isDocumentInteractOpen = true;
 	}
 
@@ -2359,6 +2382,9 @@
 		isDocumentInteractOpen = false;
 		documentInteractSession = null;
 
+		// Immediate document events already handled the editor refresh/conflict.
+		// Keep this as a compatibility fallback for older or incomplete event payloads.
+		if (documentInteractObservedMutation) return;
 		if (!summary?.hasChanges || !activeDocumentId) return;
 		if (hasUnsavedChanges || saveStatus === 'dirty' || saveStatus === 'saving') {
 			toastService.warning(
@@ -2367,7 +2393,51 @@
 			return;
 		}
 
+		const editorState = markdownEditorRef?.captureViewState() ?? null;
 		await loadDocument(activeDocumentId);
+		if (!isCurrentDocumentSession(session) || formError) return;
+		await markdownEditorRef?.restoreViewState(editorState);
+		onSaved?.();
+	}
+
+	async function handleDocumentInteractMutation(
+		session: DocumentSession | null,
+		event: DocumentMutationEvent
+	) {
+		if (!session || !isCurrentDocumentSession(session)) return;
+		const requestedDocumentId = activeDocumentId;
+		const action = resolveDocumentAgentMutationAction({
+			event,
+			projectId,
+			documentId: requestedDocumentId,
+			hasUnsavedChanges,
+			saveStatus
+		});
+		if (action === 'ignore') return;
+		documentInteractObservedMutation = true;
+
+		if (action === 'conflict') {
+			clearAutosaveTimers();
+			autosaveQueued = false;
+			saveStatus = 'conflict';
+			toastService.warning(
+				'The agent updated this document while you had local edits. Review the conflict before saving.'
+			);
+			return;
+		}
+
+		if (action === 'close_deleted') {
+			toastService.warning('The agent deleted this document.');
+			onDeleted?.();
+			closeModal();
+			return;
+		}
+
+		if (!requestedDocumentId) return;
+		const editorState = markdownEditorRef?.captureViewState() ?? null;
+		await loadDocument(requestedDocumentId);
+		if (!isCurrentDocumentMutation(session, requestedDocumentId) || formError) return;
+		await markdownEditorRef?.restoreViewState(editorState);
 		onSaved?.();
 	}
 
@@ -3954,6 +4024,8 @@
 							documentId={activeDocumentId}
 							documentTitle={title || 'Untitled Document'}
 							placement="inline"
+							onDocumentMutation={(event) =>
+								void handleDocumentInteractMutation(interactSession, event)}
 							onClose={(summary) =>
 								void handleDocumentInteractClose(interactSession, summary)}
 						/>

@@ -39,9 +39,7 @@ function canonicalToolCall({
 	};
 }
 
-function canonicalToolDefinition(
-	definition: ChatToolDefinition['function']
-): ChatToolDefinition {
+function canonicalToolDefinition(definition: ChatToolDefinition['function']): ChatToolDefinition {
 	return { type: 'function', function: definition };
 }
 
@@ -1522,7 +1520,11 @@ describe('ToolExecutionService', () => {
 			expect(destinationUpdate.success).toBe(true);
 			expect(mockToolExecutor).toHaveBeenCalledWith(
 				'move_onto_task',
-				toolCall.arguments,
+				{
+					task_id: taskId,
+					expected_source_project_id: scopedProjectId,
+					destination_project_id: destinationProjectId
+				},
 				contextLike(scopedContext)
 			);
 			expect(mockToolExecutor).toHaveBeenCalledTimes(2);
@@ -2830,11 +2832,11 @@ describe('ToolExecutionService', () => {
 			expect(result.entitiesAccessed).toEqual(['proj_123', 'task_1']);
 		});
 
-		it('should handle null/undefined arguments', async () => {
+		it('should handle canonical JSON null arguments', async () => {
 			const toolCall: ChatToolCall = canonicalToolCall({
 				id: 'call_null',
 				name: 'list_onto_projects',
-				arguments: null as any
+				arguments: 'null'
 			});
 
 			mockToolExecutor.mockResolvedValueOnce({ projects: [] });
@@ -3407,17 +3409,18 @@ describe('ToolExecutionService', () => {
 					required: ['project_id', 'title', 'description', 'type_key']
 				}
 			});
-			const buildCall = (id: string): ChatToolCall => (canonicalToolCall({
-				id,
-				name: 'create_onto_document',
-				arguments: {
-					project_id: projectId,
-					title: 'Ilyan Rook — Character Sheet',
-					description: 'Character canon',
-					type_key: 'document.creative.character',
-					content: 'Ilyan detail.'
-				}
-			}));
+			const buildCall = (id: string): ChatToolCall =>
+				canonicalToolCall({
+					id,
+					name: 'create_onto_document',
+					arguments: {
+						project_id: projectId,
+						title: 'Ilyan Rook — Character Sheet',
+						description: 'Character canon',
+						type_key: 'document.creative.character',
+						content: 'Ilyan detail.'
+					}
+				});
 			mockToolExecutor.mockResolvedValueOnce({
 				data: { document_id: createdDocumentId }
 			});
@@ -3484,17 +3487,18 @@ describe('ToolExecutionService', () => {
 			});
 			const firstService = new ToolExecutionService(firstExecutor);
 			const secondService = new ToolExecutionService(secondExecutor);
-			const buildCall = (id: string): ChatToolCall => (canonicalToolCall({
-				id,
-				name: 'create_onto_document',
-				arguments: {
-					project_id: projectId,
-					title: 'Ilyan Rook — Character Sheet',
-					description: 'Character canon',
-					type_key: 'document.creative.character',
-					content: 'Ilyan detail.'
-				}
-			}));
+			const buildCall = (id: string): ChatToolCall =>
+				canonicalToolCall({
+					id,
+					name: 'create_onto_document',
+					arguments: {
+						project_id: projectId,
+						title: 'Ilyan Rook — Character Sheet',
+						description: 'Character canon',
+						type_key: 'document.creative.character',
+						content: 'Ilyan detail.'
+					}
+				});
 
 			const first = await firstService.executeTool(
 				buildCall('call_first_instance'),
@@ -3876,11 +3880,10 @@ describe('ToolExecutionService', () => {
 				mockToolDefinitions
 			);
 
-			expect(results).toHaveLength(2);
-			expect(results[0].success).toBe(true);
-			expect(results[0].toolName).toBe('list_onto_tasks');
-			expect(results[1].success).toBe(true);
-			expect(results[1].toolName).toBe('create_onto_task');
+			expect(results.map(({ success, toolName }) => ({ success, toolName }))).toEqual([
+				{ success: true, toolName: 'list_onto_tasks' },
+				{ success: true, toolName: 'create_onto_task' }
+			]);
 		});
 
 		it('should continue execution even if one tool fails', async () => {
@@ -3912,10 +3915,7 @@ describe('ToolExecutionService', () => {
 				mockToolDefinitions
 			);
 
-			expect(results).toHaveLength(3);
-			expect(results[0].success).toBe(true);
-			expect(results[1].success).toBe(false); // Unknown tool
-			expect(results[2].success).toBe(true);
+			expect(results.map(({ success }) => success)).toEqual([true, false, true]);
 		});
 
 		it('should handle empty tool calls array', async () => {
@@ -3932,11 +3932,13 @@ describe('ToolExecutionService', () => {
 
 	describe('batchExecuteTools', () => {
 		it('bounds concurrency while preserving input result order', async () => {
-			const toolCalls: ChatToolCall[] = ['first', 'second', 'third'].map((query) => (canonicalToolCall({
-				id: `call_${query}`,
-				name: 'list_onto_projects',
-				arguments: { query }
-			})));
+			const toolCalls: ChatToolCall[] = ['first', 'second', 'third'].map((query) =>
+				canonicalToolCall({
+					id: `call_${query}`,
+					name: 'list_onto_projects',
+					arguments: { query }
+				})
+			);
 			let activeCount = 0;
 			let peakActiveCount = 0;
 			const releases = new Map<string, () => void>();
@@ -4203,13 +4205,21 @@ describe('ToolExecutionService', () => {
 
 			expect(
 				service.validateToolCall(
-					canonicalToolCall({ id: 'call_integer_ok', name: 'search_things', arguments: { limit: 3 } }),
+					canonicalToolCall({
+						id: 'call_integer_ok',
+						name: 'search_things',
+						arguments: { limit: 3 }
+					}),
 					toolDefs
 				).isValid
 			).toBe(true);
 
 			const validation = service.validateToolCall(
-				canonicalToolCall({ id: 'call_integer_bad', name: 'search_things', arguments: { limit: 2.5 } }),
+				canonicalToolCall({
+					id: 'call_integer_bad',
+					name: 'search_things',
+					arguments: { limit: 2.5 }
+				}),
 				toolDefs
 			);
 
@@ -4234,7 +4244,11 @@ describe('ToolExecutionService', () => {
 			];
 
 			const validation = service.validateToolCall(
-				canonicalToolCall({ id: 'call_enum_bad', name: 'filter_things', arguments: { kind: 'delete' } }),
+				canonicalToolCall({
+					id: 'call_enum_bad',
+					name: 'filter_things',
+					arguments: { kind: 'delete' }
+				}),
 				toolDefs
 			);
 
@@ -4473,7 +4487,7 @@ describe('ToolExecutionService', () => {
 			const criticalToolDef: ChatToolDefinition = canonicalToolDefinition({
 				name: 'critical_tool',
 				description: 'Critical operation',
-				parameters: {}
+				parameters: { type: 'object', properties: {} }
 			});
 
 			mockToolExecutor.mockImplementationOnce(() => {

@@ -432,6 +432,40 @@ describe('agent-chat-tool-presenter — mutation tracking', () => {
 		expect(summary.hasMessagesSent).toBe(true);
 	});
 
+	it('emits a document-scoped event with the turn id when a document mutation lands', () => {
+		const onDocumentMutation = vi.fn();
+		const presenter = createToolPresenter({ ...h.ctx, onDocumentMutation });
+		presenter.recordDataMutation(
+			'update_onto_document',
+			{ document_id: 'document-1', project_id: 'project-1' },
+			true,
+			{ result: { document: { id: 'document-1', project_id: 'project-1' } } },
+			{ turnId: 'turn-1' }
+		);
+
+		expect(onDocumentMutation).toHaveBeenCalledWith({
+			entityKind: 'document',
+			entityId: 'document-1',
+			projectId: 'project-1',
+			toolName: 'update_onto_document',
+			turnId: 'turn-1'
+		});
+	});
+
+	it('does not emit a document event for a failed write', () => {
+		const onDocumentMutation = vi.fn();
+		const presenter = createToolPresenter({ ...h.ctx, onDocumentMutation });
+		presenter.recordDataMutation(
+			'update_onto_document',
+			{ document_id: 'document-1' },
+			false,
+			undefined,
+			{ turnId: 'turn-1' }
+		);
+
+		expect(onDocumentMutation).not.toHaveBeenCalled();
+	});
+
 	it('ignores unsuccessful calls', () => {
 		const presenter = createToolPresenter(h.ctx);
 		presenter.recordDataMutation('create_onto_task', { title: 'x' }, false);

@@ -60,6 +60,7 @@
 		type AgentTimelineItem,
 		type CreatedEntityRef,
 		type DataMutationSummary,
+		type DocumentMutationEvent,
 		type ProjectAction,
 		type ThinkingBlockMessage,
 		type UIMessage
@@ -143,6 +144,8 @@
 		contextType?: ChatContextType;
 		entityId?: string;
 		onClose?: (summary?: DataMutationSummary) => void;
+		/** Immediate successful document mutation for document-scoped hosts. */
+		onDocumentMutation?: (event: DocumentMutationEvent) => void;
 		/** Provided by launch surfaces that can host a hidden keep-alive
 		 * instance (Navigation). When set, minimize parks without teardown. */
 		onParked?: (sessionId: string) => void;
@@ -175,6 +178,7 @@
 		contextType: _initialContextType = 'global',
 		entityId: _initialEntityId,
 		onClose,
+		onDocumentMutation,
 		onParked,
 		autoInitProject = null,
 		initialChatSessionId = null,
@@ -1577,6 +1581,7 @@
 			success: (msg) => toastService.success(msg),
 			error: (msg) => toastService.error(msg)
 		},
+		onDocumentMutation: (event) => onDocumentMutation?.(event),
 		isDev: dev
 	});
 

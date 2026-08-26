@@ -68,6 +68,13 @@
 		isLoading: boolean;
 		variant: VoiceButtonVariant;
 	};
+	type EditorViewState = {
+		anchor: number;
+		head: number;
+		scrollTop: number;
+		scrollLeft: number;
+		hadFocus: boolean;
+	};
 
 	interface Props {
 		value?: string;
@@ -1284,6 +1291,16 @@
 		}
 		editorRef?.insertAtCursor(markdown);
 		editorRef?.focus();
+	}
+
+	export function captureViewState(): EditorViewState | null {
+		return editorRef?.captureViewState() ?? null;
+	}
+
+	export async function restoreViewState(snapshot: EditorViewState | null): Promise<void> {
+		if (!snapshot || mode !== 'edit') return;
+		await tick();
+		editorRef?.restoreViewState(snapshot);
 	}
 </script>
 

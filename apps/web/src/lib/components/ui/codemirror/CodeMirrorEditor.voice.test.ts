@@ -47,4 +47,19 @@ describe('CodeMirrorEditor voice insertion behavior', () => {
 
 		expect(view.state.doc.toString()).toBe('Alpha bravo omega');
 	});
+
+	it('restores selection and scroll state after an external value refresh', async () => {
+		const { component, view } = await renderEditor('Alpha omega');
+		view.dispatch({ selection: { anchor: 2, head: 8 } });
+		view.scrollDOM.scrollTop = 37;
+		view.scrollDOM.scrollLeft = 5;
+		const snapshot = component.captureViewState();
+
+		view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: 'Updated text' } });
+		component.restoreViewState(snapshot);
+
+		expect(view.state.selection.main).toMatchObject({ anchor: 2, head: 8 });
+		expect(view.scrollDOM.scrollTop).toBe(37);
+		expect(view.scrollDOM.scrollLeft).toBe(5);
+	});
 });

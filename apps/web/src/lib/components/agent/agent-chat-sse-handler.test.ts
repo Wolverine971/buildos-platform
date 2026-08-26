@@ -766,6 +766,7 @@ describe('createSSEHandler — tool call + result', () => {
 		});
 		h.handler({
 			type: 'tool_result',
+			turn_run_id: 'turn-run-1',
 			result: {
 				tool_call_id: 'call-1',
 				success: true,
@@ -781,7 +782,13 @@ describe('createSSEHandler — tool call + result', () => {
 		expect(h.calls.updateActivityStatus).toHaveLength(1);
 		expect(h.calls.updateActivityStatus[0]?.toolResult?.result?.task?.id).toBe('task-1');
 		expect(toastSpy).toHaveBeenCalledWith('create_onto_task', { title: 'x' }, true);
-		expect(mutationSpy).toHaveBeenCalled();
+		expect(mutationSpy).toHaveBeenCalledWith(
+			'create_onto_task',
+			{ title: 'x' },
+			true,
+			expect.objectContaining({ tool_call_id: 'call-1' }),
+			{ turnId: 'turn-run-1' }
+		);
 	});
 
 	it('ignores duplicate tool_result events with the same tool_call_id', () => {
@@ -848,6 +855,7 @@ describe('createSSEHandler — tool call + result', () => {
 		h.nextActivityUpdateResult({ matched: false });
 		const resultEvent: Extract<AgentSSEMessage, { type: 'tool_result' }> = {
 			type: 'tool_result',
+			client_turn_id: 'client-turn-late',
 			result: {
 				tool_call_id: 'call-late',
 				tool_name: 'create_onto_task',
@@ -889,6 +897,13 @@ describe('createSSEHandler — tool call + result', () => {
 		expect(toastSpy).toHaveBeenCalledTimes(1);
 		expect(toastSpy).toHaveBeenCalledWith('create_onto_task', { title: 'Late task' }, true);
 		expect(mutationSpy).toHaveBeenCalledTimes(1);
+		expect(mutationSpy).toHaveBeenCalledWith(
+			'create_onto_task',
+			{ title: 'Late task' },
+			true,
+			expect.any(Object),
+			{ turnId: 'client-turn-late' }
+		);
 
 		h.handler({ type: 'done' });
 		expect(h.calls.addCreatedEntitiesMessage).toHaveLength(1);

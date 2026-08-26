@@ -52,11 +52,11 @@ Four questions inside this work are **DJ's calls, not the implementing agent's.*
 default so nothing blocks waiting on an answer — build the default, flag it in the PR description,
 and let DJ overrule. Do not quietly pick differently, and do not stall.
 
-| Question                                                                   | Build this unless told otherwise             |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| Is `updateOntoDocument` live in production? (sets WS-1 urgency)            | Assume yes — do WS-1 first                   |
-| Shared guarded-write helper, or CAS patched into the gateway alone?        | The shared helper, as specified in WS-1      |
-| Should the PATCH route keep allowing writes with no `expected_updated_at`? | Yes — keep it, change nothing                |
+| Question                                                                   | Build this unless told otherwise                                                                           |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Is `updateOntoDocument` live in production? (sets WS-1 urgency)            | Assume yes — do WS-1 first                                                                                 |
+| Shared guarded-write helper, or CAS patched into the gateway alone?        | The shared helper, as specified in WS-1                                                                    |
+| Should the PATCH route keep allowing writes with no `expected_updated_at`? | Yes — keep it, change nothing                                                                              |
 | Which agent edits may skip proposal review (direct-apply threshold)?       | **Decided 2026-08-26: none** — every LLM-authored interactive edit is a proposal in v1 (ratified WS-2 ADR) |
 
 The full ledger, including decisions deferred to later steps, is roadmap §11.

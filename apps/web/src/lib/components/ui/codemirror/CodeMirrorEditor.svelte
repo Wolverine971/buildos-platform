@@ -219,6 +219,45 @@
 		return { from: sel?.from ?? 0, to: sel?.to ?? 0 };
 	}
 
+	/** Capture the interaction state that should survive a server-backed value refresh. */
+	export function captureViewState(): {
+		anchor: number;
+		head: number;
+		scrollTop: number;
+		scrollLeft: number;
+		hadFocus: boolean;
+	} | null {
+		if (!view) return null;
+		const selection = view.state.selection.main;
+		return {
+			anchor: selection.anchor,
+			head: selection.head,
+			scrollTop: view.scrollDOM.scrollTop,
+			scrollLeft: view.scrollDOM.scrollLeft,
+			hadFocus: view.hasFocus
+		};
+	}
+
+	/** Restore a captured selection and scroll position after the document value changes. */
+	export function restoreViewState(
+		snapshot: {
+			anchor: number;
+			head: number;
+			scrollTop: number;
+			scrollLeft: number;
+			hadFocus: boolean;
+		} | null
+	): void {
+		if (!view || !snapshot) return;
+		const docLength = view.state.doc.length;
+		const anchor = Math.min(Math.max(snapshot.anchor, 0), docLength);
+		const head = Math.min(Math.max(snapshot.head, 0), docLength);
+		view.dispatch({ selection: { anchor, head } });
+		view.scrollDOM.scrollTop = snapshot.scrollTop;
+		view.scrollDOM.scrollLeft = snapshot.scrollLeft;
+		if (snapshot.hadFocus) view.focus();
+	}
+
 	// ---------------------------------------------------------------------------
 	// Public API: Voice widget
 	// ---------------------------------------------------------------------------

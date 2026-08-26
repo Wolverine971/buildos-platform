@@ -306,6 +306,7 @@ export interface PendingToolStatus {
 	errorMessage?: string;
 	toolResult?: Record<string, any>;
 	rawToolName?: string;
+	turnId?: string | null;
 	sideEffectsApplied?: boolean;
 }
 
@@ -411,14 +412,15 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		args: string | Record<string, unknown> | undefined;
 		success: boolean;
 		toolResult: Record<string, any> | undefined;
+		turnId?: string | null;
 		showToast?: boolean;
 	}): void {
-		const { toolName, args, success, toolResult, showToast = false } = params;
+		const { toolName, args, success, toolResult, turnId, showToast = false } = params;
 		if (showToast && toolName && args !== undefined) {
 			presenter.showToolResultToast(toolName, args, success);
 		}
 
-		presenter.recordDataMutation(toolName, args, success, toolResult);
+		presenter.recordDataMutation(toolName, args, success, toolResult, { turnId });
 
 		if (success) {
 			const created = presenter.extractCreatedEntity(toolName, args, toolResult);
@@ -436,6 +438,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				args: undefined,
 				success: pendingStatus.status === 'completed',
 				toolResult: pendingStatus.toolResult,
+				turnId: pendingStatus.turnId,
 				showToast: false
 			});
 			pendingStatus.sideEffectsApplied = true;
@@ -537,6 +540,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 						args: resolvedArgs,
 						success: pendingStatus.status === 'completed',
 						toolResult: pendingStatus.toolResult,
+						turnId: pendingStatus.turnId,
 						showToast: Boolean(updateResult.toolName && updateResult.args !== undefined)
 					});
 					pendingStatus.sideEffectsApplied = true;
@@ -588,6 +592,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 					errorMessage: info.toolErrorMessage,
 					toolResult,
 					rawToolName: info.rawResultToolName,
+					turnId: event.turn_run_id ?? event.client_turn_id ?? null,
 					sideEffectsApplied: false
 				});
 				return;
@@ -608,6 +613,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 			args: resolvedArgs,
 			success: info.success,
 			toolResult,
+			turnId: event.turn_run_id ?? event.client_turn_id ?? null,
 			showToast: Boolean(resolvedToolName && resolvedArgs !== undefined)
 		});
 	}

@@ -1,7 +1,10 @@
 <!-- apps/web/src/lib/components/ontology/DocumentInteractDock.svelte -->
 <script lang="ts">
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
+	import type {
+		DataMutationSummary,
+		DocumentMutationEvent
+	} from '$lib/components/agent/agent-chat.types';
 	import { FileText, LoaderCircle, MessageCircle, X } from '$lib/icons/lucide';
 
 	type AgentChatModalComponent =
@@ -15,6 +18,7 @@
 		documentTitle: string;
 		placement?: 'viewport' | 'container' | 'inline';
 		onClose?: (summary?: DataMutationSummary) => void;
+		onDocumentMutation?: (event: DocumentMutationEvent) => void;
 	}
 
 	let {
@@ -24,7 +28,8 @@
 		documentId,
 		documentTitle,
 		placement = 'viewport',
-		onClose
+		onClose,
+		onDocumentMutation
 	}: Props = $props();
 
 	let ChatComponent = $state<AgentChatModalComponent | null>(null);
@@ -123,6 +128,7 @@
 					autoSendVoiceOnStop={true}
 					conversationOnly={true}
 					composerPlaceholder="Ask about or update this document..."
+					{onDocumentMutation}
 					onClose={handleChatClose}
 				/>
 			{:else if loadError}
