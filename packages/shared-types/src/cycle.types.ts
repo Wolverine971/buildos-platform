@@ -170,8 +170,12 @@ export type CycleRunOutcome = CycleRunOutcomeBase &
 
 export type CycleRunOutcomeStatus = CycleRunOutcome['status'];
 
-/** Daily-brief timing belongs to a schedule trigger; v0 adds no duplicate kind-specific knobs. */
-export type DailyBriefCycleConfig = Record<string, never>;
+export const DEFAULT_DAILY_BRIEF_GENERATION_LEAD_MINUTES = 2;
+
+export interface DailyBriefCycleConfig {
+	/** Start generation before the nominal schedule so the artifact can be ready on time. */
+	generation_lead_minutes?: number;
+}
 
 export interface ProjectAuditCycleConfig {
 	depth: 'standard' | 'deep';
@@ -438,7 +442,7 @@ export type AdmitManualCycleRunCommand = {
 }[CycleKind];
 
 export interface CycleRunAdmissionResult {
-	disposition: 'admitted' | 'already_admitted' | 'skipped_overlap';
+	disposition: 'admitted' | 'already_admitted' | 'skipped_overlap' | 'skipped_misfire';
 	cycle_run_id: string;
 	queue_job_record_id: string | null;
 	queue_job_id: string | null;
@@ -618,6 +622,20 @@ export function validateCycleInput(input: CreateCycleInput): CycleValidationIssu
 			path: 'target',
 			code: 'invalid_target',
 			message: 'Daily briefs must target a user.'
+		});
+	}
+
+	if (
+		input.kind === 'daily_brief' &&
+		input.config.generation_lead_minutes !== undefined &&
+		(!Number.isInteger(input.config.generation_lead_minutes) ||
+			input.config.generation_lead_minutes < 0 ||
+			input.config.generation_lead_minutes > 30)
+	) {
+		issues.push({
+			path: 'config.generation_lead_minutes',
+			code: 'invalid_generation_lead',
+			message: 'Daily Brief generation lead must be a whole number from 0 through 30 minutes.'
 		});
 	}
 

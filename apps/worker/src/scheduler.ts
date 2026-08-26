@@ -48,6 +48,8 @@ import {
 	runAgentRunStrandedSweep
 } from './workers/agent-run/agentRunStrandedSweep';
 import { SMS_SENDING_DISABLED_REASON, SMS_SENDING_ENABLED } from './config/sms';
+import { CYCLE_COORDINATOR_ENABLED } from './config/cycles';
+import { runDueCycleCoordinator } from './workers/cycle/cycleCoordinator';
 
 export type UserBriefPreference = Database['public']['Tables']['user_brief_preferences']['Row'];
 type AgentOperativeRow = AgentOperativeRowShape;
@@ -78,6 +80,30 @@ export function isMissedRunSchedulable(
 const backoffCalculator = new BriefBackoffCalculator();
 let agentRunCostReconciliationInFlight: Promise<void> | null = null;
 let agentRunStrandedSweepInFlight: Promise<void> | null = null;
+let cycleCoordinatorInFlight: Promise<void> | null = null;
+
+export async function runScheduledCycleCoordinator(): Promise<boolean> {
+	if (cycleCoordinatorInFlight) return false;
+
+	cycleCoordinatorInFlight = (async () => {
+		const summary = await runDueCycleCoordinator();
+		if (summary.claimed > 0 || summary.failed > 0) {
+			console.log(
+				`🔄 Cycle coordinator: claimed=${summary.claimed}, admitted=${summary.admitted}, already=${summary.alreadyAdmitted}, overlap=${summary.skippedOverlap}, misfire=${summary.skippedMisfire}, failed=${summary.failed}`
+			);
+		}
+		for (const error of summary.errors) console.error(`🔄 Cycle coordinator: ${error}`);
+	})()
+		.catch((error) => {
+			console.error('🔄 Cycle coordinator failed:', error);
+		})
+		.finally(() => {
+			cycleCoordinatorInFlight = null;
+		});
+
+	await cycleCoordinatorInFlight;
+	return true;
+}
 
 export async function runScheduledAgentRunCostReconciliation(): Promise<boolean> {
 	if (agentRunCostReconciliationInFlight) return false;
@@ -342,6 +368,15 @@ export function startScheduler() {
 		await checkAndScheduleAgentOperatives();
 	});
 
+	// Cycle admission stays dark until the Daily Brief migration reaches a
+	// shadow/canary cohort. Database leases make replica concurrency safe.
+	if (CYCLE_COORDINATOR_ENABLED) {
+		cron.schedule('* * * * *', async () => {
+			await runScheduledCycleCoordinator();
+		});
+		console.log('🔄 Cycle due-trigger coordinator scheduled (every minute)');
+	}
+
 	// Cost reconciliation is opt-in until both ledger migrations have been
 	// deployed. Database leases make this safe across scheduler replicas.
 	if (agentRunCostReconciliationEnabled()) {
@@ -384,6 +419,11 @@ export function startScheduler() {
 	setTimeout(() => {
 		checkAndScheduleAgentOperatives();
 	}, 8000);
+	if (CYCLE_COORDINATOR_ENABLED) {
+		setTimeout(() => {
+			void runScheduledCycleCoordinator();
+		}, 10_000);
+	}
 	if (agentRunCostReconciliationEnabled()) {
 		setTimeout(() => {
 			void runScheduledAgentRunCostReconciliation();

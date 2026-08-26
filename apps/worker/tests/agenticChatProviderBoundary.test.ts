@@ -1,3 +1,4 @@
+// apps/worker/tests/agenticChatProviderBoundary.test.ts
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,11 +11,18 @@ const EXTRACTED_PROVIDER_MODULES = [
 	'contracts.ts',
 	'feedback.ts',
 	'protocol.ts',
+	'request-builders.ts',
 	'steps.ts',
 	'stream-tool-calls.ts',
+	'supervisor-runtime.ts',
 	'tool-surface.ts',
 	'validation.ts',
-	join('review', 'controls.ts')
+	join('review', 'contract-execution.ts'),
+	join('review', 'controls.ts'),
+	join('review', 'decision-handling.ts'),
+	join('review', 'disposition.ts'),
+	join('review', 'mutation-batch.ts'),
+	join('review', 'turn-contract.ts')
 ] as const;
 
 describe('Agentic Chat provider boundaries', () => {
@@ -26,11 +34,33 @@ describe('Agentic Chat provider boundaries', () => {
 	it('keeps extracted responsibilities out of the turn coordinator', () => {
 		const coordinator = readFileSync(join(PROVIDER_ROOT, 'turn-provider.ts'), 'utf8');
 		const extractedDeclarations = [
+			'class AgenticChatProviderSupervisorRuntime',
 			'function appendToolCallDelta(',
+			'function buildContinuationRequest(',
+			'function buildBaseProviderRequest(',
+			'function buildCandidateGateClarification(',
+			'function buildContractCompletionRequest(',
+			'function buildContractRevisionRequest(',
+			'function buildReadOnlyRequest(',
+			'function buildReviewFallbackClarification(',
+			'function buildMutationBatchRevisionRequest(',
+			'function buildTurnContractWriteCarveOutRequest(',
+			'function getAdmissionContextUsage(',
 			'function buildPlanningStep(',
+			'function buildPromptSnapshot(',
+			'function buildMutationBatchReviewRequest(',
+			'function buildReadOnlyTurnReviewRequest(',
+			'function buildSemanticTurnDispositionGateRequest(',
+			'function buildTurnContractReviewRequest(',
+			'function buildWorkerSemanticMutationOrdering(',
 			'function productionToolsFor(',
+			'function projectCreateShellGuidance(',
+			'function findAmbiguousReferenceCandidates(',
+			'function readProposalRevision(',
 			'function validateCompletedProviderCalls(',
 			'function validateReadFeedback(',
+			'function mutationBatchSha256(',
+			'function readOnlyDispositionSha256(',
 			'const TURN_CONTRACT_REVIEW_APPROVAL_TOOL'
 		] as const;
 

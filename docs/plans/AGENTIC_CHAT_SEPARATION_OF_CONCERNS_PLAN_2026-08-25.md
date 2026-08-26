@@ -634,9 +634,9 @@ Rename exported symbols and tests consistently. Preserve compatibility aliases o
 
 #### Phase 6B — split provider responsibilities
 
-**Implementation status (2026-08-25): in progress in the current working tree, not deployed.** The first decomposition slice folds the former root `providerContract.ts` into `provider/contracts.ts` and extracts streamed tool-call assembly, feedback/memoization, tool-surface projection, provider protocol helpers, provider-step construction, deterministic validation/contract authorization, and immutable reviewer controls. A boundary test prevents those responsibilities from returning to the turn coordinator or importing it back. `turn-provider.ts` is reduced from 5,334 to 3,876 lines while the existing provider/executor expectations remain unchanged.
+**Implementation status (2026-08-25): in progress in the current working tree, not deployed.** The first decomposition slice folds the former root `providerContract.ts` into `provider/contracts.ts` and extracts streamed tool-call assembly, feedback/memoization, tool-surface projection, provider protocol helpers, provider-step construction, deterministic validation/contract authorization, and immutable reviewer controls. The second slice extracts provider-facing supervisor coordination plus generic continuation, synthesis, validation-repair, prompt-snapshot, usage, and client-request builders. The third slice extracts contract-review requests/schema evidence and SHA-bound mutation-batch review construction into independent review modules. The fourth slice extracts base provider request/admission-context construction, worker semantic mutation ordering, read-only disposition review, semantic disposition gates, post-disposition surfaces, and disposition call-shape enforcement. The fifth slice extracts reviewer fallback clarification, deterministic candidate-ambiguity restraint, bounded proposal-correction requests, approved-contract completion, and write-only carve-out surfaces. A boundary test prevents those responsibilities from returning to the turn coordinator or importing it back. `turn-provider.ts` is reduced from 5,334 to 2,510 lines while the existing provider/executor expectations remain unchanged.
 
-The next slice should extract request builders, supervisor coordination, and the remaining review lanes. Keep that work independently reviewable; do not mark Phase 6B complete until the coordinator is primarily round orchestration and the full exit gate below passes.
+The next slice should separate provider-pass buffering and reviewer-decision completion from turn orchestration, then reassess whether the remaining bounded repair-request helpers justify one final extraction. Keep that work independently reviewable; do not mark Phase 6B complete until the coordinator is primarily round orchestration and the full exit gate below passes.
 
 Suggested seams based on the current file:
 
@@ -655,6 +655,8 @@ provider/
 ├── supervisor-runtime.ts        # worker supervisor coordination
 └── review/
     ├── controls.ts              # worker-only reviewer tool definitions
+    ├── contract-execution.ts    # approved-contract completion and write-only surfaces
+    ├── decision-handling.ts     # reviewer fallback, ambiguity, and correction handling
     ├── disposition.ts
     ├── turn-contract.ts
     └── mutation-batch.ts

@@ -11,3 +11,6 @@ export * from './metrics';
 
 // Logging module
 export * from './logging';
+
+// Cycle scheduling shared by API admission and the worker coordinator.
+export * from './cycles/cycleSchedule';

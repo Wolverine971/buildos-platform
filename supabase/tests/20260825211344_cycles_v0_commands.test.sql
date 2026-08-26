@@ -1,3 +1,4 @@
+-- supabase/tests/20260825211344_cycles_v0_commands.test.sql
 -- PSQL-ONLY / DISPOSABLE DATABASE ONLY. Never run against a linked database.
 
 \set ON_ERROR_STOP on
@@ -5,6 +6,7 @@
 \ir ../migrations/20260825211342_add_run_cycle_queue_type.sql
 \ir ../migrations/20260825211343_cycles_v0_foundation.sql
 \ir ../migrations/20260825211344_cycles_v0_commands.sql
+\ir ../migrations/20260826010526_harden_cycle_service_role_wrappers.sql
 
 CREATE FUNCTION pg_temp.assert_true(p_condition boolean, p_message text)
 RETURNS void
@@ -464,6 +466,34 @@ SELECT pg_temp.assert_true(
 );
 
 RESET ROLE;
+SELECT set_config(
+	'request.jwt.claims',
+	'{"role":"authenticated","sub":"99999999-9999-4999-8999-999999999999"}',
+	false
+);
+DO $$
+BEGIN
+	BEGIN
+		PERFORM public.create_cycle(
+			'99999999-9999-4999-8999-999999999999',
+			'forged-owner-call',
+			'Forged owner call',
+			'task_review',
+			'user',
+			NULL,
+			'{}',
+			'[{"type":"event","event_types":["task.changed"]}]'
+		);
+		RAISE EXCEPTION 'expected internal service-role assertion failure';
+	EXCEPTION WHEN insufficient_privilege THEN
+		IF SQLERRM <> 'cycle_service_role_required' THEN
+			RAISE;
+		END IF;
+	END;
+END;
+$$;
+SELECT set_config('request.jwt.claims', '', false);
+
 SET ROLE authenticated;
 DO $$
 BEGIN
@@ -484,3 +514,28 @@ BEGIN
 END;
 $$;
 RESET ROLE;
+
+SET SESSION AUTHORIZATION service_role;
+SELECT set_config(
+	'request.jwt.claims',
+	'{"role":"service_role"}',
+	false
+);
+SELECT public.create_cycle(
+	'11111111-1111-4111-8111-111111111111',
+	'service-claim-create',
+	'Task Review',
+	'task_review',
+	'user',
+	NULL,
+	'{}',
+	'[{"type":"event","event_types":["task.changed"]}]',
+	'{"overlap":"skip","misfire":"run_once","max_attempts":3}',
+	'exceptions',
+	'paused'
+);
+RESET SESSION AUTHORIZATION;
+SELECT pg_temp.assert_true(
+	(SELECT count(*) = 1 FROM public.cycles WHERE create_request_id = 'service-claim-create'),
+	'a service-role JWT claim must pass the internal role assertion through a non-owner session'
+);

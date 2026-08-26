@@ -701,12 +701,18 @@ importers:
 
   packages/shared-utils:
     dependencies:
+      '@buildos/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
       '@buildos/supabase-client':
         specifier: workspace:*
         version: link:../supabase-client
       date-fns:
-        specifier: ^2.30.0
-        version: 2.30.0
+        specifier: ^4.1.0
+        version: 4.1.0
+      date-fns-tz:
+        specifier: ^3.2.0
+        version: 3.2.0(date-fns@4.1.0)
     devDependencies:
       '@types/node':
         specifier: ^20.11.10

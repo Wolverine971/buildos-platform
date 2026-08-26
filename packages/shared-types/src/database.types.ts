@@ -4368,6 +4368,288 @@ export type Database = {
           },
         ]
       }
+      cycle_runs: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          cycle_id: string
+          cycle_version: number
+          definition_snapshot: Json
+          delivery_intent: Json
+          error_code: string | null
+          error_message: string | null
+          execution_input: Json
+          finished_at: string | null
+          id: string
+          idempotency_key: string
+          kind: string
+          occurrence_key: string
+          outcome: Json | null
+          processing_token: string | null
+          project_id: string | null
+          queue_job_id: string | null
+          queue_job_record_id: string | null
+          queued_at: string | null
+          result: Json | null
+          scheduled_for: string | null
+          started_at: string | null
+          status: string
+          trigger: string
+          trigger_id: string | null
+          trigger_snapshot: Json | null
+          triggered_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          cycle_id: string
+          cycle_version: number
+          definition_snapshot: Json
+          delivery_intent: Json
+          error_code?: string | null
+          error_message?: string | null
+          execution_input: Json
+          finished_at?: string | null
+          id?: string
+          idempotency_key: string
+          kind: string
+          occurrence_key: string
+          outcome?: Json | null
+          processing_token?: string | null
+          project_id?: string | null
+          queue_job_id?: string | null
+          queue_job_record_id?: string | null
+          queued_at?: string | null
+          result?: Json | null
+          scheduled_for?: string | null
+          started_at?: string | null
+          status?: string
+          trigger: string
+          trigger_id?: string | null
+          trigger_snapshot?: Json | null
+          triggered_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          cycle_id?: string
+          cycle_version?: number
+          definition_snapshot?: Json
+          delivery_intent?: Json
+          error_code?: string | null
+          error_message?: string | null
+          execution_input?: Json
+          finished_at?: string | null
+          id?: string
+          idempotency_key?: string
+          kind?: string
+          occurrence_key?: string
+          outcome?: Json | null
+          processing_token?: string | null
+          project_id?: string | null
+          queue_job_id?: string | null
+          queue_job_record_id?: string | null
+          queued_at?: string | null
+          result?: Json | null
+          scheduled_for?: string | null
+          started_at?: string | null
+          status?: string
+          trigger?: string
+          trigger_id?: string | null
+          trigger_snapshot?: Json | null
+          triggered_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cycle_runs_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cycle_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cycle_runs_queue_job_record_id_fkey"
+            columns: ["queue_job_record_id"]
+            isOneToOne: false
+            referencedRelation: "queue_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cycle_runs_trigger_id_fkey"
+            columns: ["trigger_id"]
+            isOneToOne: false
+            referencedRelation: "cycle_triggers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cycle_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cycle_triggers: {
+        Row: {
+          created_at: string
+          cycle_id: string
+          deleted_at: string | null
+          id: string
+          last_fired_at: string | null
+          next_run_at: string | null
+          scheduler_claim_expires_at: string | null
+          scheduler_claim_token: string | null
+          spec: Json
+          state: string
+          trigger_type: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          cycle_id: string
+          deleted_at?: string | null
+          id?: string
+          last_fired_at?: string | null
+          next_run_at?: string | null
+          scheduler_claim_expires_at?: string | null
+          scheduler_claim_token?: string | null
+          spec: Json
+          state?: string
+          trigger_type: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          cycle_id?: string
+          deleted_at?: string | null
+          id?: string
+          last_fired_at?: string | null
+          next_run_at?: string | null
+          scheduler_claim_expires_at?: string | null
+          scheduler_claim_token?: string | null
+          spec?: Json
+          state?: string
+          trigger_type?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cycle_triggers_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cycles: {
+        Row: {
+          attention_policy: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          kind: string
+          label: string
+          last_error: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          next_run_at: string | null
+          policy: Json
+          project_id: string | null
+          state: string
+          target_type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          attention_policy?: string
+          config: Json
+          create_request_fingerprint: string
+          create_request_id: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          kind: string
+          label: string
+          last_error?: string | null
+          last_run_at?: string | null
+          last_run_id?: string | null
+          next_run_at?: string | null
+          policy: Json
+          project_id?: string | null
+          state?: string
+          target_type: string
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          attention_policy?: string
+          config?: Json
+          create_request_fingerprint?: string
+          create_request_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          kind?: string
+          label?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          last_run_id?: string | null
+          next_run_at?: string | null
+          policy?: Json
+          project_id?: string | null
+          state?: string
+          target_type?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cycles_last_run_id_fkey"
+            columns: ["last_run_id"]
+            isOneToOne: false
+            referencedRelation: "cycle_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cycles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cycles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_briefs: {
         Row: {
           brief_date: string
@@ -7985,6 +8267,7 @@ export type Database = {
           actor_user_id: string | null
           correlation_id: string | null
           created_at: string | null
+          cycle_run_id: string | null
           event_source: string
           event_type: string
           id: string
@@ -7996,6 +8279,7 @@ export type Database = {
           actor_user_id?: string | null
           correlation_id?: string | null
           created_at?: string | null
+          cycle_run_id?: string | null
           event_source: string
           event_type: string
           id?: string
@@ -8007,6 +8291,7 @@ export type Database = {
           actor_user_id?: string | null
           correlation_id?: string | null
           created_at?: string | null
+          cycle_run_id?: string | null
           event_source?: string
           event_type?: string
           id?: string
@@ -8020,6 +8305,13 @@ export type Database = {
             columns: ["actor_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_cycle_run_id_fkey"
+            columns: ["cycle_run_id"]
+            isOneToOne: false
+            referencedRelation: "cycle_runs"
             referencedColumns: ["id"]
           },
           {
@@ -17198,6 +17490,45 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admit_claimed_cycle_trigger: {
+        Args: {
+          p_claim_token: string
+          p_delivery_intent: Json
+          p_execution_input: Json
+          p_next_trigger_at: string
+          p_trigger_id: string
+          p_triggered_at?: string
+        }
+        Returns: Json
+      }
+      admit_cycle_run: {
+        Args: {
+          p_cycle_id: string
+          p_delivery_intent: Json
+          p_execution_input: Json
+          p_next_trigger_at?: string
+          p_occurrence_key: string
+          p_scheduled_for?: string
+          p_trigger: string
+          p_trigger_id?: string
+          p_triggered_at?: string
+        }
+        Returns: Json
+      }
+      admit_cycle_run_impl: {
+        Args: {
+          p_cycle_id: string
+          p_delivery_intent: Json
+          p_execution_input: Json
+          p_next_trigger_at?: string
+          p_occurrence_key: string
+          p_scheduled_for?: string
+          p_trigger: string
+          p_trigger_id?: string
+          p_triggered_at?: string
+        }
+        Returns: Json
+      }
       admit_legacy_agentic_chat_turn: {
         Args: {
           p_client_turn_id: string | null
@@ -17221,6 +17552,26 @@ export type Database = {
           p_user_message_content: string
           p_user_message_id: string
           p_user_message_metadata: Json
+        }
+        Returns: Json
+      }
+      admit_manual_cycle_run: {
+        Args: {
+          p_cycle_id: string
+          p_delivery_intent: Json
+          p_execution_input: Json
+          p_request_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      admit_manual_cycle_run_impl: {
+        Args: {
+          p_cycle_id: string
+          p_delivery_intent: Json
+          p_execution_input: Json
+          p_request_id: string
+          p_user_id: string
         }
         Returns: Json
       }
@@ -17499,6 +17850,22 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_cycle_run: {
+        Args: {
+          p_cycle_run_id: string
+          p_processing_token: string
+          p_queue_job_record_id: string
+        }
+        Returns: Json
+      }
+      claim_cycle_run_impl: {
+        Args: {
+          p_cycle_run_id: string
+          p_processing_token: string
+          p_queue_job_record_id: string
+        }
+        Returns: Json
+      }
       claim_due_account_deletions: {
         Args: { p_lease_minutes?: number; p_limit?: number }
         Returns: {
@@ -17525,6 +17892,16 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      claim_due_cycle_triggers: {
+        Args: {
+          p_claim_token: string
+          p_due_through?: string
+          p_kinds?: string[]
+          p_lease_seconds?: number
+          p_limit?: number
+        }
+        Returns: Json
       }
       claim_email_relevance_scan_operation: {
         Args: {
@@ -17704,6 +18081,24 @@ export type Database = {
         }[]
       }
       cleanup_structure_history: { Args: never; Returns: undefined }
+      complete_cycle_run: {
+        Args: {
+          p_cycle_run_id: string
+          p_outcome: Json
+          p_processing_token: string
+          p_result?: Json
+        }
+        Returns: Json
+      }
+      complete_cycle_run_impl: {
+        Args: {
+          p_cycle_run_id: string
+          p_outcome: Json
+          p_processing_token: string
+          p_result?: Json
+        }
+        Returns: Json
+      }
       complete_email_sequence_send: {
         Args: {
           p_branch_key?: string
@@ -17848,6 +18243,38 @@ export type Database = {
         }
         Returns: Json
       }
+      create_cycle: {
+        Args: {
+          p_attention_policy?: string
+          p_config: Json
+          p_kind: string
+          p_label: string
+          p_policy?: Json
+          p_project_id: string
+          p_request_id: string
+          p_state?: string
+          p_target_type: string
+          p_triggers: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      create_cycle_impl: {
+        Args: {
+          p_attention_policy?: string
+          p_config: Json
+          p_kind: string
+          p_label: string
+          p_policy?: Json
+          p_project_id: string
+          p_request_id: string
+          p_state?: string
+          p_target_type: string
+          p_triggers: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
       create_email_relevance_scan_run: {
         Args: {
           p_configuration: Json
@@ -17886,6 +18313,24 @@ export type Database = {
       current_actor_is_project_member: {
         Args: { p_project_id: string }
         Returns: boolean
+      }
+      cycle_definition_payload_is_valid: {
+        Args: {
+          p_attention_policy: string
+          p_config: Json
+          p_kind: string
+          p_policy: Json
+          p_project_id: string
+          p_state: string
+          p_target_type: string
+        }
+        Returns: Json
+      }
+      cycle_trigger_input_is_valid: {
+        Args: {
+          p_trigger: Json
+        }
+        Returns: Json
       }
       decline_project_invite: {
         Args: { p_invite_id: string }
@@ -17931,6 +18376,22 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      delete_cycle: {
+        Args: {
+          p_cycle_id: string
+          p_expected_version: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      delete_cycle_impl: {
+        Args: {
+          p_cycle_id: string
+          p_expected_version: number
+          p_user_id: string
+        }
+        Returns: Json
       }
       delete_old_completed_queue_jobs: {
         Args: {
@@ -18077,6 +18538,26 @@ export type Database = {
       expire_email_relevance_scan_run: {
         Args: { p_run_id: string; p_user_id: string }
         Returns: string
+      }
+      fail_cycle_run: {
+        Args: {
+          p_cycle_run_id: string
+          p_error_code: string
+          p_error_message: string
+          p_processing_token: string
+          p_terminal: boolean
+        }
+        Returns: Json
+      }
+      fail_cycle_run_impl: {
+        Args: {
+          p_cycle_run_id: string
+          p_error_code: string
+          p_error_message: string
+          p_processing_token: string
+          p_terminal: boolean
+        }
+        Returns: Json
       }
       fail_queue_job: {
         Args: {
@@ -19265,6 +19746,22 @@ export type Database = {
         }
         Returns: Json
       }
+      pause_cycle: {
+        Args: {
+          p_cycle_id: string
+          p_expected_version: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      pause_cycle_impl: {
+        Args: {
+          p_cycle_id: string
+          p_expected_version: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
       persist_agentic_chat_execution_observation: {
         Args: {
           p_event_type: string
@@ -19632,6 +20129,13 @@ export type Database = {
         }
         Returns: Json
       }
+      release_cycle_trigger_claim: {
+        Args: {
+          p_claim_token: string
+          p_trigger_id: string
+        }
+        Returns: Json
+      }
       release_migration_platform_lock: {
         Args: { p_run_id: string }
         Returns: boolean
@@ -19668,6 +20172,10 @@ export type Database = {
           p_turn_run_id: string
           p_user_id: string
         }
+        Returns: Json
+      }
+      require_cycle_service_role: {
+        Args: never
         Returns: Json
       }
       reserve_agent_run_cost: {
@@ -19710,6 +20218,22 @@ export type Database = {
       resolve_onto_public_page_slug_prefix: {
         Args: { p_actor_id: string }
         Returns: string
+      }
+      resume_cycle: {
+        Args: {
+          p_cycle_id: string
+          p_expected_version: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      resume_cycle_impl: {
+        Args: {
+          p_cycle_id: string
+          p_expected_version: number
+          p_user_id: string
+        }
+        Returns: Json
       }
       retry_or_fail_email_sequence_send: {
         Args: { p_enrollment_id: string; p_error: string }
@@ -20019,6 +20543,16 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      skip_claimed_cycle_trigger: {
+        Args: {
+          p_claim_token: string
+          p_execution_input: Json
+          p_next_trigger_at: string
+          p_trigger_id: string
+          p_triggered_at?: string
+        }
+        Returns: Json
+      }
       skip_email_sequence_step: {
         Args: {
           p_branch_key?: string
@@ -20102,6 +20636,24 @@ export type Database = {
         Returns: undefined
       }
       unaccent: { Args: { "": string }; Returns: string }
+      update_cycle: {
+        Args: {
+          p_cycle_id: string
+          p_expected_version: number
+          p_patch: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      update_cycle_impl: {
+        Args: {
+          p_cycle_id: string
+          p_expected_version: number
+          p_patch: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
       update_llm_usage_summary: {
         Args: { p_date: string; p_user_id: string }
         Returns: undefined

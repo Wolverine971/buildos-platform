@@ -24,8 +24,10 @@
 		"test:coverage": "vitest run --coverage"
 	},
 	"dependencies": {
+		"@buildos/shared-types": "workspace:*",
 		"@buildos/supabase-client": "workspace:*",
-		"date-fns": "^2.30.0"
+		"date-fns": "^4.1.0",
+		"date-fns-tz": "^3.2.0"
 	},
 	"devDependencies": {
 		"@types/node": "^20.11.10",

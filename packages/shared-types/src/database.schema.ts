@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-25T20:29:56.016Z
+// Generated on: 2026-08-26T01:49:30.826Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1089,6 +1089,75 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
+	cycle_runs: {
+		attempt_count: number;
+		created_at: string;
+		cycle_id: string;
+		cycle_version: number;
+		definition_snapshot: Json;
+		delivery_intent: Json;
+		error_code: string | null;
+		error_message: string | null;
+		execution_input: Json;
+		finished_at: string | null;
+		id: string;
+		idempotency_key: string;
+		kind: string;
+		occurrence_key: string;
+		outcome: Json | null;
+		processing_token: string | null;
+		project_id: string | null;
+		queue_job_id: string | null;
+		queue_job_record_id: string | null;
+		queued_at: string | null;
+		result: Json | null;
+		scheduled_for: string | null;
+		started_at: string | null;
+		status: string;
+		trigger: string;
+		trigger_id: string | null;
+		trigger_snapshot: Json | null;
+		triggered_at: string;
+		updated_at: string;
+		user_id: string;
+	};
+	cycle_triggers: {
+		created_at: string;
+		cycle_id: string;
+		deleted_at: string | null;
+		id: string;
+		last_fired_at: string | null;
+		next_run_at: string | null;
+		scheduler_claim_expires_at: string | null;
+		scheduler_claim_token: string | null;
+		spec: Json;
+		state: string;
+		trigger_type: string;
+		updated_at: string;
+		version: number;
+	};
+	cycles: {
+		attention_policy: string;
+		config: Json;
+		create_request_fingerprint: string;
+		create_request_id: string;
+		created_at: string;
+		deleted_at: string | null;
+		id: string;
+		kind: string;
+		label: string;
+		last_error: string | null;
+		last_run_at: string | null;
+		last_run_id: string | null;
+		next_run_at: string | null;
+		policy: Json;
+		project_id: string | null;
+		state: string;
+		target_type: string;
+		updated_at: string;
+		user_id: string;
+		version: number;
+	};
 	daily_briefs: {
 		brief_date: string;
 		created_at: string;
@@ -2010,6 +2079,7 @@ export type DatabaseSchema = {
 		actor_user_id: string | null;
 		correlation_id: string | null;
 		created_at: string | null;
+		cycle_run_id: string | null;
 		event_source: string;
 		event_type: string;
 		id: string;
@@ -4225,6 +4295,9 @@ export const tableNames = [
 	'chat_turn_stream_state',
 	'cron_logs',
 	'customer_subscriptions',
+	'cycle_runs',
+	'cycle_triggers',
+	'cycles',
 	'daily_briefs',
 	'discount_codes',
 	'domain_research_queue',

@@ -1,3 +1,5 @@
+<!-- apps/worker/src/workers/agentic-chat/README.md -->
+
 # Agentic Chat worker composition
 
 This directory owns queued Agentic Chat execution: artifact loading and validation, provider composition, reviewed read/mutation adapters, cancellation fences, checkpoints, persistence, and queue lifecycle behavior.
@@ -18,6 +20,13 @@ Treat the decoded artifact tool surface as untrusted input. Provider surfaces fa
 - `steps.ts` owns planning, read, mutation, and pre-execution-failure step construction.
 - `validation.ts` owns deterministic tool validation and approved-contract authorization.
 - `protocol.ts` owns provider protocol parsing and canonical error construction.
+- `request-builders.ts` owns base provider requests, admission-context projection, continuation, synthesis, validation repair, snapshots, usage, and client-request construction.
+- `supervisor-runtime.ts` owns provider-facing supervisor state, directives, observations, and step draining.
 - `review/controls.ts` owns worker-only reviewer tool definitions and immutable guidance.
+- `review/contract-execution.ts` owns approved-contract completion and write-only carve-out request surfaces.
+- `review/decision-handling.ts` owns reviewer fallback clarification, candidate ambiguity restraint, and bounded proposal-correction requests.
+- `review/disposition.ts` owns read-only review, semantic disposition gates, post-disposition surfaces, and disposition call-shape enforcement.
+- `review/turn-contract.ts` owns contract-review requests, schema-derived field semantics, and project-create contract guidance.
+- `review/mutation-batch.ts` owns SHA-bound mutation-batch evidence, pending-review state, and final pre-execution review requests.
 
 These modules are worker-private implementation details unless exported through the agentic-chat root. They must not import the turn coordinator back, and structural moves must preserve provider request JSON, prompt text, tool ordering, hashes, usage accounting, and terminal behavior.

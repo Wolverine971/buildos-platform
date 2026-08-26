@@ -33,6 +33,26 @@ describe('cycle contract', () => {
 		expect(validateCycleInput(validDailyBrief)).toEqual([]);
 	});
 
+	it('accepts a bounded Daily Brief generation lead and rejects invalid values', () => {
+		expect(
+			validateCycleInput({
+				...validDailyBrief,
+				config: { generation_lead_minutes: 10 }
+			})
+		).toEqual([]);
+		expect(
+			validateCycleInput({
+				...validDailyBrief,
+				config: { generation_lead_minutes: 31 }
+			})
+		).toContainEqual(
+			expect.objectContaining({
+				path: 'config.generation_lead_minutes',
+				code: 'invalid_generation_lead'
+			})
+		);
+	});
+
 	it('rejects ambiguous or invalid weekly schedule fields', () => {
 		const input = {
 			...validDailyBrief,
