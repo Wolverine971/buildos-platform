@@ -1,4 +1,5 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_PHASE_6_RAILWAY_SERVICE_REVIEW_REPORT_2026-08-20.md -->
+<!-- doc-status: point-in-time -->
 
 # Agentic Chat Worker Phase 6 — independent Railway service review report
 

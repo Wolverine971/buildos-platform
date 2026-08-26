@@ -1,0 +1,80 @@
+{
+	"schemaVersion": 1,
+	"capturedAt": "2026-08-26",
+	"nonCanonicalFilenames": [
+		"20260101_drop_agent_research_tables.sql",
+		"20260102_increment_chat_session_metrics.sql",
+		"20260103_extend_onto_project_logs_entity_types.sql",
+		"20260115_update_chat_context_types.sql",
+		"20260116_get_latest_ontology_daily_briefs.sql",
+		"20260116_ontology_brief_query_indexes.sql",
+		"20260125_add_type_key_to_onto_decisions.sql",
+		"20260126_120000_homework_runs.sql",
+		"20260126_130000_fix_homework_workspace_project_fk.sql",
+		"20260126_140000_homework_workspace_indexes.sql",
+		"20260126_150000_add_homework_chat_type.sql",
+		"20260126_extend_document_state_enum.sql",
+		"20260126_update_get_project_full.sql",
+		"20260127_090000_tree_agent.sql",
+		"20260127_100000_tree_agent_context_columns.sql",
+		"20260127_180000_dashboard_calendar.sql",
+		"20260127_admin_analytics_ontology_updates.sql",
+		"20260128_update_onto_search_entities_soft_delete.sql",
+		"20260129_align_project_calendars_to_onto_projects.sql",
+		"20260130_235500_update_agent_plan_step_rpc_lock.sql",
+		"20260130_235900_add_timing_metrics.sql",
+		"20260204_001_add_project_invite_event_type.sql",
+		"20260205_001_notification_opt_in_defaults.sql",
+		"20260205_002_emit_notification_event_opt_in.sql",
+		"20260205_003_user_notifications_linkage.sql",
+		"20260206_add_chat_message_role_index.sql",
+		"20260207_add_chat_session_last_classified_at.sql",
+		"20260208_120000_fix_calendar_items_user_scope.sql",
+		"20260419_allow_nullable_milestone_due_at.sql"
+	],
+	"duplicateVersions": {
+		"20260116": [
+			"20260116_get_latest_ontology_daily_briefs.sql",
+			"20260116_ontology_brief_query_indexes.sql"
+		],
+		"20260126": [
+			"20260126_120000_homework_runs.sql",
+			"20260126_130000_fix_homework_workspace_project_fk.sql",
+			"20260126_140000_homework_workspace_indexes.sql",
+			"20260126_150000_add_homework_chat_type.sql",
+			"20260126_extend_document_state_enum.sql",
+			"20260126_update_get_project_full.sql"
+		],
+		"20260127": [
+			"20260127_090000_tree_agent.sql",
+			"20260127_100000_tree_agent_context_columns.sql",
+			"20260127_180000_dashboard_calendar.sql",
+			"20260127_admin_analytics_ontology_updates.sql"
+		],
+		"20260130": [
+			"20260130_235500_update_agent_plan_step_rpc_lock.sql",
+			"20260130_235900_add_timing_metrics.sql"
+		],
+		"20260205": [
+			"20260205_001_notification_opt_in_defaults.sql",
+			"20260205_002_emit_notification_event_opt_in.sql",
+			"20260205_003_user_notifications_linkage.sql"
+		],
+		"20260426000014": [
+			"20260426000014_dashboard_projects_perf_phase1.sql",
+			"20260426000014_fix_invite_accept_side_effects_for_viewers.sql"
+		],
+		"20260428000017": [
+			"20260428000017_add_chat_tool_analytics_indexes.sql",
+			"20260428000017_fix_welcome_sequence_legacy_schema.sql"
+		],
+		"20260508000000": [
+			"20260508000000_calendar_items_overlap_ranges.sql",
+			"20260508000000_project_activity_agent_events.sql"
+		],
+		"20260514000000": [
+			"20260514000000_add_paused_project_state.sql",
+			"20260514000000_agentic_chat_multimodal_phase1.sql"
+		]
+	}
+}

@@ -1,4 +1,5 @@
 <!-- tasker/58-agentic-chat-provider-tool-validation-errors.md -->
+<!-- doc-status: point-in-time -->
 
 # 58 — Investigate Agentic Chat provider tool-validation failures
 

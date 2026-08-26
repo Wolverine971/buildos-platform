@@ -9,7 +9,7 @@
  * - Zero layout shift - exact number of skeleton cards rendered from start
  */
 
-import type { PageServerLoad } from '../projects-old/$types';
+import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import {
 	ensureActorId,

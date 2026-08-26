@@ -5,7 +5,7 @@
  */
 
 import { redirect } from '@sveltejs/kit';
-import type { LayoutServerLoad } from '../projects-old/$types';
+import type { LayoutServerLoad } from './$types';
 
 interface OntologyUser {
 	id: string;

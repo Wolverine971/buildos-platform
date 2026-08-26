@@ -1,4 +1,5 @@
 <!-- docs/plans/AGENTIC_CHAT_SEPARATION_OF_CONCERNS_PLAN_2026-08-25.md -->
+<!-- doc-status: point-in-time -->
 
 # Agentic Chat separation-of-concerns architecture and migration plan
 

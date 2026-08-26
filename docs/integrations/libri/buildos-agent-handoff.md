@@ -1,4 +1,5 @@
 <!-- docs/integrations/libri/buildos-agent-handoff.md -->
+<!-- doc-status: point-in-time -->
 
 # BuildOS Libri Integration Agent Handoff
 

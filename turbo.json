@@ -74,6 +74,7 @@
 			"outputs": ["coverage/**"]
 		},
 		"lint": {
+			"dependsOn": ["^build"],
 			"outputs": []
 		},
 		"lint:fix": {
@@ -85,7 +86,7 @@
 			"outputs": []
 		},
 		"typecheck:tests": {
-			"dependsOn": ["^build"],
+			"dependsOn": ["^build", "typecheck"],
 			"outputs": []
 		},
 		"clean": {

@@ -21,7 +21,7 @@
 		"format:changed": "node --import tsx scripts/formatChanged.ts",
 		"clean": "turbo clean",
 		"verify:static": "pnpm run check:doc-health:strict && pnpm run check:migrations && pnpm run check:sql-contracts && pnpm run test:schema-tools && turbo typecheck typecheck:tests lint",
-		"verify": "pnpm run verify:static && turbo test:run build",
+		"verify": "pnpm run verify:static && turbo build && turbo test:run",
 		"pre-push": "pnpm run verify",
 		"gen:types": "node --import tsx scripts/generate-types.ts",
 		"check:supabase-rpc-drift": "node scripts/security/check-supabase-rpc-drift.mjs",

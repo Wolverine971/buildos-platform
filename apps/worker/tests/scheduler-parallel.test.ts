@@ -45,11 +45,18 @@ describe('Scheduler - Batch Parallel Processing', () => {
 				is_active: true
 			}));
 
-			const engagementCallTimes: number[] = [];
+			let activeChecks = 0;
+			let maxConcurrentChecks = 0;
+			let releaseChecks!: () => void;
+			const releaseGate = new Promise<void>((resolve) => {
+				releaseChecks = resolve;
+			});
 
 			mockBackoffCalculator.shouldSendDailyBrief = vi.fn(async (userId: string) => {
-				engagementCallTimes.push(Date.now());
-				await new Promise((resolve) => setTimeout(resolve, 50)); // 50ms per check
+				activeChecks += 1;
+				maxConcurrentChecks = Math.max(maxConcurrentChecks, activeChecks);
+				await releaseGate;
+				activeChecks -= 1;
 				return {
 					shouldSend: true,
 					isReengagement: false,
@@ -59,8 +66,7 @@ describe('Scheduler - Batch Parallel Processing', () => {
 			});
 
 			// Simulate batch engagement checks (from scheduler.ts Phase 1)
-			const startTime = Date.now();
-			const engagementChecks = await Promise.allSettled(
+			const engagementChecksPromise = Promise.allSettled(
 				mockPreferences.map(async (preference) => {
 					if (!preference.user_id) return null;
 					const decision = await mockBackoffCalculator.shouldSendDailyBrief(
@@ -69,21 +75,18 @@ describe('Scheduler - Batch Parallel Processing', () => {
 					return { userId: preference.user_id, decision };
 				})
 			);
-			const totalTime = Date.now() - startTime;
 
-			// Assertions
+			// Every check must be in flight before any one is allowed to complete.
+			// This proves parallel dispatch without relying on wall-clock timing, which
+			// is noisy when Vitest is running the full worker suite concurrently.
 			expect(mockBackoffCalculator.shouldSendDailyBrief).toHaveBeenCalledTimes(10);
+			expect(activeChecks).toBe(10);
+			expect(maxConcurrentChecks).toBe(10);
+
+			releaseChecks();
+			const engagementChecks = await engagementChecksPromise;
 			expect(engagementChecks).toHaveLength(10);
-
-			// Sequential would take 10 × 50ms = 500ms
-			// Parallel should take ~50-100ms
-			expect(totalTime).toBeLessThan(150); // Much faster than 500ms
-			expect(totalTime).toBeGreaterThan(40); // At least as long as one check
-
-			// Verify calls started nearly simultaneously (within 20ms of each other)
-			const callTimeSpread =
-				Math.max(...engagementCallTimes) - Math.min(...engagementCallTimes);
-			expect(callTimeSpread).toBeLessThan(20); // All started at roughly same time
+			expect(activeChecks).toBe(0);
 		});
 
 		it('should handle engagement check failures without blocking other users', async () => {

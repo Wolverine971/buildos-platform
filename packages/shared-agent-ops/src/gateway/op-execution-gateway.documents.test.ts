@@ -1,5 +1,6 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.documents.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { EXTERNAL_OP_HANDLERS } from './op-execution-gateway.core';
 
 const { writeDocumentHeadAndVersionMock, logUpdateAsyncMock, project } = vi.hoisted(() => ({
 	writeDocumentHeadAndVersionMock: vi.fn(),
@@ -137,8 +138,6 @@ describe('agent gateway document concurrency', () => {
 				versionWarning: null,
 				versionError: null
 			});
-		const { EXTERNAL_OP_HANDLERS } = await import('./op-execution-gateway.core');
-
 		const result = await EXTERNAL_OP_HANDLERS['onto.document.update'](
 			buildContext(createAdmin([staleDocument, freshDocument])),
 			{
@@ -165,8 +164,6 @@ describe('agent gateway document concurrency', () => {
 
 	it('does not auto-retry a replace that conflicts', async () => {
 		writeDocumentHeadAndVersionMock.mockResolvedValue({ status: 'conflict' });
-		const { EXTERNAL_OP_HANDLERS } = await import('./op-execution-gateway.core');
-
 		await expect(
 			EXTERNAL_OP_HANDLERS['onto.document.update'](
 				buildContext(createAdmin([staleDocument])),
@@ -183,8 +180,6 @@ describe('agent gateway document concurrency', () => {
 
 	it('does not auto-retry metadata bundled with an append', async () => {
 		writeDocumentHeadAndVersionMock.mockResolvedValue({ status: 'conflict' });
-		const { EXTERNAL_OP_HANDLERS } = await import('./op-execution-gateway.core');
-
 		await expect(
 			EXTERNAL_OP_HANDLERS['onto.document.update'](
 				buildContext(createAdmin([staleDocument])),
