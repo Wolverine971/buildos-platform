@@ -157,6 +157,7 @@ export const AGENTIC_CHAT_PARTIAL_CANCELLATION_GOLDEN_V1: AgenticChatParityRunV1
 		admission: { context_type: 'global', status: 'running', user_message_linked: true },
 		lifecycle_events: [
 			{ event_type: 'turn_intent_resolved', phase: 'prompt' },
+			{ event_type: 'tool_surface_materialized', phase: 'tool' },
 			{ event_type: 'prepared_prompt_cache_checked', phase: 'prompt' },
 			{ event_type: 'turn_outcome_resolved', phase: 'finalize' },
 			{ event_type: 'orchestration_interventions', phase: 'finalize' },

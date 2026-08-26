@@ -3,7 +3,7 @@
 # Agentic Chat separation-of-concerns architecture and migration plan
 
 **Date:** 2026-08-25  
-**Status:** Implementation complete for the currently actionable scope; Phases 0–6B and the unconditional Phase 7 namespace cleanup are complete in the current working tree and are not deployed. Capability retirement, rollback removal, and DI work remain prerequisite-gated.
+**Status:** Phases 0–6B and the Phase 7 namespace cleanup are deployed in production release `7097b47ec154`. Final Phase 7 process-ownership and global-rollback cleanup is implemented and validated in the current working tree, pending deployment. Gmail, Calendar, OAuth handoff, and image capability retirement remains parity-gated; catalog-provider DI remains untriggered.
 **Scope:** Agentic Chat catalog ownership, web admission, shared contracts, shared operations, queued worker execution, compatibility shims, and production naming  
 **Primary decision:** Move the canonical tool catalog from `apps/web` into a focused `@buildos/agentic-chat-runtime/catalog` package entry point without changing the tool surface or runtime behavior.
 
@@ -527,7 +527,7 @@ Rollback: temporary web registry/surface shims point to `/catalog`; restoring im
 
 ### Phase 4 — versioned shared tool-surface contract and reader-first rollout
 
-**Implementation status (2026-08-25): complete in the current working tree, not deployed.** Shared types now provides the V1 builder and one decoder for both V1 and retained unversioned artifacts. The decoder caps surfaces at 256 tools and 512 KiB, validates exact ordered name/definition agreement and JSON-compatible object schemas, and rejects malformed input. All three worker read sites use it; invalid provider surfaces become tool-free and invalid mutation surfaces retain the existing `mutation_tool_not_admitted` fence. Web admission now writes V1 with registry and discovery-policy observability versions. No database migration or additional round trip was introduced.
+**Implementation status (2026-08-25): complete and deployed in release `7097b47ec154`.** Shared types now provides the V1 builder and one decoder for both V1 and retained unversioned artifacts. The decoder caps surfaces at 256 tools and 512 KiB, validates exact ordered name/definition agreement and JSON-compatible object schemas, and rejects malformed input. All three worker read sites use it; invalid provider surfaces become tool-free and invalid mutation surfaces retain the existing `mutation_tool_not_admitted` fence. Web admission now writes V1 with registry and discovery-policy observability versions. No database migration or additional round trip was introduced.
 
 The release order remains reader-first: deploy and verify the backward-compatible worker before deploying the V1 web writer. Legacy decoding must remain until the seven-day artifact-retention window has elapsed and no queued or running legacy artifact remains.
 
@@ -576,7 +576,7 @@ Rollback: stop the web writer from emitting the version field. The backward-comp
 
 ### Phase 5 — consumer cutover and shim deletion
 
-**Implementation status (2026-08-25): complete in the current working tree, not deployed.** All live web production and test consumers now import the runtime's public `catalog` or `loop` entry points. Eighteen zero-consumer compatibility/forwarding files were removed: the former definition tree, registry/config/surface facades, `tool-definitions.ts`, and four small loop-semantic shims. A repository test scans web import specifiers and rejects attempts to restore those legacy paths. Ownership READMEs now live at the web admission, legacy web host, runtime catalog, and worker composition roots.
+**Implementation status (2026-08-25): complete and deployed in release `7097b47ec154`.** All live web production and test consumers now import the runtime's public `catalog` or `loop` entry points. Eighteen zero-consumer compatibility/forwarding files were removed: the former definition tree, registry/config/surface facades, `tool-definitions.ts`, and four small loop-semantic shims. A repository test scans web import specifiers and rejects attempts to restore those legacy paths. Ownership READMEs now live at the web admission, legacy web host, runtime catalog, and worker composition roots.
 
 The cutover also corrected a stale unit-test mock that still targeted `tools.config.ts` after production had moved to the package. Catalog fitness, schema compatibility, prompt-size budgets, surface selection, legacy execution dispatch, runtime import smoke tests, and the affected regression suites remain green.
 
@@ -612,7 +612,7 @@ Do this as two independently reviewable changes.
 
 #### Phase 6A — rename only
 
-**Implementation status (2026-08-25): complete in the current working tree, not deployed.** The nine production modules and their exported symbols now use role-based names, and the three provider/tool modules live under explicit `provider/` and `tools/` namespaces. Eight owning test files moved with them, while the Phase 5 executable evidence ledger now points at the renamed tests. No cross-package consumers required compatibility aliases. Because `consumer.ts` already owns the live consumer API, the older inert `consumer-factory.ts` exposes distinct `AgenticChatConsumerFactory*` names instead of colliding with `AgenticChatConsumer`.
+**Implementation status (2026-08-25): complete and deployed in release `7097b47ec154`.** The nine production modules and their exported symbols now use role-based names, and the three provider/tool modules live under explicit `provider/` and `tools/` namespaces. Eight owning test files moved with them, while the Phase 5 executable evidence ledger now points at the renamed tests. No cross-package consumers required compatibility aliases. Because `consumer.ts` already owns the live consumer API, the older inert `consumer-factory.ts` exposes distinct `AgenticChatConsumerFactory*` names instead of colliding with `AgenticChatConsumer`.
 
 This change is structural only: provider request construction, prompt text, tool order, hashes, usage accounting, runtime error strings, and terminal envelopes are intentionally unchanged. Provider responsibility extraction remains a separate Phase 6B change.
 
@@ -634,7 +634,7 @@ Rename exported symbols and tests consistently. Preserve compatibility aliases o
 
 #### Phase 6B — split provider responsibilities
 
-**Implementation status (2026-08-25): complete in the current working tree, not deployed.** The first decomposition slice folds the former root `providerContract.ts` into `provider/contracts.ts` and extracts streamed tool-call assembly, feedback/memoization, tool-surface projection, provider protocol helpers, provider-step construction, deterministic validation/contract authorization, and immutable reviewer controls. The second slice extracts provider-facing supervisor coordination plus generic continuation, synthesis, validation-repair, prompt-snapshot, usage, and client-request builders. The third slice extracts contract-review requests/schema evidence and SHA-bound mutation-batch review construction into independent review modules. The fourth slice extracts base provider request/admission-context construction, worker semantic mutation ordering, read-only disposition review, semantic disposition gates, post-disposition surfaces, and disposition call-shape enforcement. The fifth slice extracts reviewer fallback clarification, deterministic candidate-ambiguity restraint, bounded proposal-correction requests, approved-contract completion, and write-only carve-out surfaces. The sixth and final slice extracts atomic provider-pass buffering/retry policy, deterministic reviewer-decision completion, and bounded repair policy. A boundary test prevents those responsibilities from returning to the turn coordinator or importing it back. `turn-provider.ts` is reduced from 5,334 to 2,261 lines; its remaining methods own provider-turn lifecycle and round orchestration.
+**Implementation status (2026-08-25): complete and deployed in release `7097b47ec154`.** The first decomposition slice folds the former root `providerContract.ts` into `provider/contracts.ts` and extracts streamed tool-call assembly, feedback/memoization, tool-surface projection, provider protocol helpers, provider-step construction, deterministic validation/contract authorization, and immutable reviewer controls. The second slice extracts provider-facing supervisor coordination plus generic continuation, synthesis, validation-repair, prompt-snapshot, usage, and client-request builders. The third slice extracts contract-review requests/schema evidence and SHA-bound mutation-batch review construction into independent review modules. The fourth slice extracts base provider request/admission-context construction, worker semantic mutation ordering, read-only disposition review, semantic disposition gates, post-disposition surfaces, and disposition call-shape enforcement. The fifth slice extracts reviewer fallback clarification, deterministic candidate-ambiguity restraint, bounded proposal-correction requests, approved-contract completion, and write-only carve-out surfaces. The sixth and final slice extracts atomic provider-pass buffering/retry policy, deterministic reviewer-decision completion, and bounded repair policy. A boundary test prevents those responsibilities from returning to the turn coordinator or importing it back. `turn-provider.ts` is reduced from 5,334 to 2,261 lines; its remaining methods own provider-turn lifecycle and round orchestration.
 
 Phase 6B stops at the orchestration boundary: initial, continuation, semantic-review, mutation-review, forced-synthesis, supervisor-question, and final-synthesis lanes remain together because they coordinate shared turn state and lease ownership. Live-vision resolution remains a small request-enrichment step on that lifecycle. Further splitting those methods would distribute orchestration state without creating a distinct responsibility.
 
@@ -686,15 +686,17 @@ Rollback: renames are separately revertible; decomposition uses pure moves/extra
 
 **Objective:** Finish cleanup only when capability and rollback prerequisites are satisfied.
 
-**Implementation status (2026-08-25): unconditional cleanup complete in the current working tree, not deployed.** The remaining synchronous web runtime now lives under the explicit `legacy-execution/` namespace, its two route consumers use that boundary, and an architecture ratchet prevents the generic `execution/` directory from returning. The web and legacy-root READMEs identify the namespace as a compatibility/capability host rather than a destination for new behavior.
+**Implementation status (2026-08-25): complete.** The namespace cleanup is deployed in release `7097b47ec154`. After that release reported healthy dedicated queue, Realtime, recovery, and mutation-capability state in production, the final operational cleanup was implemented in the current working tree and is pending deployment.
 
-The remaining Phase 7 items are intentionally conditional and are not implementation backlog to perform speculatively. Gmail, Calendar, OAuth handoff, and worker-disabled image execution still rely on the legacy host. The general worker bootstrap and environment gate remain part of the documented rollback path. No catalog-provider DI trigger is present: the current global provider has coverage, no demonstrated import-order leak, and no request-scoped or multi-instance requirement. Those pieces should change only when the capability ports land, rollback is formally retired, or a listed DI trigger is reproduced.
+The general worker now owns only its general queue: it cannot construct the Agentic Chat bootstrap, report chat health, or serve chat capacity. Only `chat-worker.ts` starts the chat consumer and exposes its health/capacity surface. Compatible new turns select worker transport without a global routing flag, the dedicated URL no longer falls back to the general worker URL, and a missing durable session cannot open sessionless legacy execution. `AGENTIC_CHAT_WORKER_ENABLED` is retired because starting the dedicated process is the enablement boundary.
+
+Gmail, Calendar, OAuth handoff, and worker-disabled image execution remain in `legacy-execution/` because they do not yet have reviewed worker parity. They are reachable only through explicit capability renegotiation, not as infrastructure rollback. No catalog-provider DI trigger was found: the current global provider has coverage, no demonstrated import-order leak, and no request-scoped or multi-instance requirement. Phase 7 therefore deliberately makes no DI redesign.
 
 Work:
 
 1. Keep Gmail, Calendar, OAuth handoff, and worker-disabled image execution in the explicit legacy capability host until their reviewed worker ports are complete or the product intentionally retires them.
 2. Group the remaining legacy SSE runtime under an explicit `legacy-execution` namespace after import churn from earlier phases settles.
-3. When rollback support is retired:
+3. With global rollback support retired:
     - remove the Agentic Chat bootstrap from the general worker process;
     - enforce that only `chat-worker.ts` can start the chat consumer in production;
     - remove obsolete environment gates and phase comments;
@@ -704,14 +706,16 @@ Work:
     - two catalog instances must coexist in one process;
     - a host needs request-scoped catalog behavior;
     - composition cannot be made explicit at one root.
-5. If triggered, replace the service locator with a runtime factory or explicit `ToolCatalogPort`. Otherwise leave the known, tested mechanism in place.
+5. If triggered, replace the service locator with a runtime factory or explicit `ToolCatalogPort`. Otherwise leave the known, tested mechanism in place. No trigger was reproduced in this phase.
 
 Exit gate:
 
 - No active capability relies accidentally on deleted legacy code.
-- Rollback documentation matches deployed process ownership.
+- Deployment documentation matches dedicated process ownership and capability-only legacy execution.
+- The general worker has no Agentic Chat bootstrap, health, capacity, or enablement gate.
 - Worker README and package description describe the dedicated Agentic Chat service.
-- Any DI redesign has a demonstrated failing case and an explicit parity test.
+- Compatible turns cannot select legacy because of missing capacity, configuration, network access, or session state.
+- DI remains unchanged unless a demonstrated failing case and explicit parity test justify redesign.
 
 ## Validation matrix
 
@@ -803,11 +807,11 @@ The completed implementation has a broader green matrix than the original audit 
 - `@buildos/agentic-chat-runtime`: build, typecheck, CJS and ESM catalog import smokes, and 278 tests across 41 files;
 - `@buildos/shared-types`: typecheck and 53 tests across 5 files;
 - `@buildos/shared-agent-ops`: build, typecheck, and 128 tests across 28 files;
-- worker: check, build, and 1,190 tests across 133 files, with the single opt-in workflow evaluation skipped;
+- worker: check, build, and 1,189 passing tests across 133 files, with the single opt-in workflow evaluation skipped;
 - web: `svelte-check` with zero diagnostics, the catalog surface report, and all 220 legacy-execution tests across 16 files;
 - repository hygiene: staged and unstaged `git diff --check` pass, the retired web path has no production imports, and extracted provider modules do not import the coordinator.
 
-The legacy stream route has 38 passing tests and 7 existing golden mismatches caused solely by the concurrent addition of a `tool_surface_materialized` telemetry event and its shifted sequence indexes. The legacy namespace move does not alter those events; its execution, architecture, and type gates pass independently. Refreshing those unrelated telemetry goldens belongs with the telemetry change.
+Phase 7 completion reverified the dedicated production service on deployed release `7097b47ec154`, then passed the final source-cleanup gates: worker focused ownership/lifecycle tests 45/45, full worker regression 1,189/1,189 with one opt-in eval skipped, worker check/build, web transport/controller tests 64/64, all 220 legacy-execution tests, legacy stream route 45/45, runtime parity 278/278, full Svelte check with zero diagnostics, the Svelte autofixer with no issues, and the production web build. The seven stale legacy goldens were refreshed for the already-shipped `tool_surface_materialized` event and worker lifecycle parity projection; this changes test evidence only, not runtime execution.
 
 ## Risks and mitigations
 

@@ -1,8 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-turn-capacity.server.ts
 import {
 	PRIVATE_AGENTIC_CHAT_WORKER_URL,
-	PRIVATE_RAILWAY_WORKER_TOKEN,
-	PUBLIC_RAILWAY_WORKER_URL
+	PRIVATE_RAILWAY_WORKER_TOKEN
 } from '$lib/server/railway-worker-env';
 import { createLogger } from '$lib/utils/logger';
 
@@ -111,9 +110,7 @@ export async function observeAgenticChatWorkerCapacity(
 	options: AgenticChatWorkerCapacityObservationOptions = {}
 ): Promise<AgenticChatWorkerCapacityDecisionV1> {
 	const workerUrl =
-		options.workerUrl === undefined
-			? selectAgenticChatWorkerUrl(PRIVATE_AGENTIC_CHAT_WORKER_URL, PUBLIC_RAILWAY_WORKER_URL)
-			: options.workerUrl;
+		options.workerUrl === undefined ? PRIVATE_AGENTIC_CHAT_WORKER_URL : options.workerUrl;
 	const workerToken =
 		options.workerToken === undefined ? PRIVATE_RAILWAY_WORKER_TOKEN : options.workerToken;
 	const capacityUrl = resolveCapacityUrl(workerUrl);
@@ -153,18 +150,6 @@ export async function observeAgenticChatWorkerCapacity(
 	} finally {
 		clearTimeout(timer);
 	}
-}
-
-/**
- * Prefer the physically isolated chat service when its server-only URL is
- * present. An explicitly blank or malformed dedicated value remains selected
- * and fails closed instead of silently drifting back to the combined worker.
- */
-export function selectAgenticChatWorkerUrl(
-	dedicatedUrl: string | undefined,
-	generalWorkerUrl: string | undefined
-): string | undefined {
-	return dedicatedUrl === undefined ? generalWorkerUrl : dedicatedUrl;
 }
 
 export type AgenticChatWorkerCapacityObservationPhase = 'transport_negotiation' | 'turn_admission';

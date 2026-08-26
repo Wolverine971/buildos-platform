@@ -12,7 +12,6 @@ import {
 
 function environment(): NodeJS.ProcessEnv {
 	return {
-		AGENTIC_CHAT_WORKER_ENABLED: 'true',
 		PRIVATE_OPENROUTER_API_KEY: 'provider-secret',
 		AGENTIC_CHAT_OPENROUTER_MODEL: 'provider/primary',
 		AGENTIC_CHAT_OPENROUTER_FALLBACK_MODELS: 'provider/fallback',
@@ -127,32 +126,18 @@ describe('Agentic Chat operational bootstrap', () => {
 		expect(routes[0]?.apiKey).toBe('provider-secret');
 	});
 
-	it('does not construct or touch dependencies while disabled', async () => {
+	it('fails before construction when the dedicated service is not configured', () => {
 		const database = client();
 		const createComposition = vi.fn();
-		const bootstrap = createAgenticChatBootstrap({
-			client: database as never,
-			environment: {
-				AGENTIC_CHAT_WORKER_ENABLED: 'false',
-				PRIVATE_OPENROUTER_API_KEY: 'invalid\nsecret',
-				AGENTIC_CHAT_OPENROUTER_MODEL: ''
-			},
-			createComposition
-		});
+		expect(() =>
+			createAgenticChatBootstrap({
+				client: database as never,
+				environment: {},
+				createComposition
+			})
+		).toThrow('PRIVATE_OPENROUTER_API_KEY');
 
 		expect(createComposition).not.toHaveBeenCalled();
-		expect(bootstrap.getHealth()).toEqual({
-			enabled: false,
-			healthy: true,
-			state: 'disabled',
-			reason: 'disabled',
-			runtime: null,
-			mutationCapabilities: null
-		});
-		await expect(bootstrap.start()).resolves.toBe('disabled');
-		await expect(bootstrap.collectCapacityEvidence()).resolves.toBeNull();
-		await expect(bootstrap.wake()).resolves.toBe(false);
-		await expect(bootstrap.stop()).resolves.toBeUndefined();
 		expect(database.rpc).not.toHaveBeenCalled();
 		expect(database.from).not.toHaveBeenCalled();
 		expect(database.channel).not.toHaveBeenCalled();

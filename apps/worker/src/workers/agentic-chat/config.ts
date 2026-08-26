@@ -56,21 +56,17 @@ type AgenticChatBaseConfig = {
 	maxToolCalls: number;
 };
 
-export type AgenticChatConfig =
-	| (AgenticChatBaseConfig & {
-			enabled: false;
-			provider: null;
-	  })
-	| (AgenticChatBaseConfig & {
-			enabled: true;
-			provider: AgenticChatProviderConfig;
-	  });
+export type AgenticChatConfig = AgenticChatBaseConfig & {
+	enabled: true;
+	provider: AgenticChatProviderConfig;
+};
 
 /**
  * Parse the worker startup envelope without mutating process state.
  *
- * Worker execution remains disabled by default. Once explicitly enabled, the
- * consumer accepts every turn that crossed the web admission and lease gates.
+ * This configuration is constructed only by the dedicated chat-worker
+ * entrypoint. Process ownership is the enablement boundary; missing provider
+ * configuration fails startup instead of creating a healthy disabled service.
  */
 export function loadAgenticChatConfig(
 	environment: NodeJS.ProcessEnv = process.env
@@ -78,11 +74,6 @@ export function loadAgenticChatConfig(
 	if (isProductionProfile(environment.AGENTIC_CHAT_WORKER_PROFILE)) {
 		requireExplicitProductionConfig(environment);
 	}
-	const enabled = parseBoolean(
-		environment.AGENTIC_CHAT_WORKER_ENABLED,
-		false,
-		'AGENTIC_CHAT_WORKER_ENABLED'
-	);
 	const liveVisionEnabled = parseBoolean(
 		environment.AGENT_CHAT_LIVE_VISION_ENABLED,
 		false,
@@ -159,22 +150,6 @@ export function loadAgenticChatConfig(
 		'CHAT_MAX_TOOL_CALLS'
 	);
 
-	if (!enabled) {
-		return {
-			enabled: false,
-			liveVisionEnabled,
-			supervisorEnabled,
-			consumptionBillingEnabled,
-			mutationProviderCapabilities,
-			mutationAdapterCapabilities,
-			consumer,
-			publisher,
-			providerBudgetMs,
-			maxProviderRounds,
-			maxToolCalls,
-			provider: null
-		};
-	}
 	validateAgenticChatDrainTimeout(consumer.drainTimeoutMs);
 
 	return {

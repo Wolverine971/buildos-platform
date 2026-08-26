@@ -11,6 +11,11 @@ import type { Database, Json } from '@buildos/shared-types';
 import { isValidUUID } from '@buildos/shared-types';
 import type { CalendarPort } from '../gateway/op-execution-gateway';
 import { ensureActorId } from '../ontology/ontology-projects.service';
+import {
+	isDateOnlyAgentCalendarInput,
+	normalizeAgentCalendarEventTiming,
+	type NormalizedAgentCalendarEventTiming
+} from './calendar-event-timing';
 
 type SupabaseAdmin = any;
 type CalendarScope = 'user' | 'project' | 'calendar_id';
@@ -512,14 +517,14 @@ class AgentRunCalendarPort implements CalendarPort {
 		}
 
 		const timezone = await this.resolveInputTimezone(args?.timezone);
-		const startAt = parseDateTimeInput(rawStartAt, 'start_at');
 		const rawEndAt = getStringArg(args?.end_at);
-		const endAt = rawEndAt ? parseDateTimeInput(rawEndAt, 'end_at') : null;
-		const googleEndAt =
-			endAt ?? new Date(Date.parse(startAt) + DEFAULT_EVENT_DURATION_MS).toISOString();
-		if (Date.parse(googleEndAt) <= Date.parse(startAt)) {
-			throw new Error('end_at must be after start_at');
-		}
+		const { allDay, startAt, endAt, googleEndAt, providerStartDate, providerEndDate } =
+			normalizeAgentCalendarEventTiming(
+				rawStartAt,
+				rawEndAt ?? null,
+				DEFAULT_EVENT_DURATION_MS,
+				timezone
+			);
 
 		const actorId = await this.getActorId();
 		let projectId = getUuidArg('project_id', args?.project_id, args?.projectId) ?? null;
@@ -580,7 +585,7 @@ class AgentRunCalendarPort implements CalendarPort {
 			created_by: actorId,
 			props: (taskProps ?? {}) as Json,
 			recurrence: {} as Json,
-			all_day: false,
+			all_day: allDay,
 			facet_context: null,
 			facet_scale: null,
 			facet_stage: null,
@@ -612,7 +617,10 @@ class AgentRunCalendarPort implements CalendarPort {
 					location: eventInsert.location,
 					startAt,
 					endAt: googleEndAt,
-					timezone
+					timezone,
+					allDay,
+					providerStartDate,
+					providerEndDate
 				});
 				const externalEventId = externalEvent.id;
 				if (!externalEventId) {
@@ -691,10 +699,27 @@ class AgentRunCalendarPort implements CalendarPort {
 			if (Object.prototype.hasOwnProperty.call(args ?? {}, 'location')) {
 				patch.location = getStringArg(args?.location) ?? null;
 			}
-			if (typeof args?.start_at === 'string') {
+			const hasEndAt = Object.prototype.hasOwnProperty.call(args ?? {}, 'end_at');
+			let allDayTiming: NormalizedAgentCalendarEventTiming | null = null;
+			if (typeof args?.start_at === 'string' && isDateOnlyAgentCalendarInput(args.start_at)) {
+				allDayTiming = normalizeAgentCalendarEventTiming(
+					args.start_at,
+					hasEndAt ? (getStringArg(args?.end_at) ?? null) : null,
+					DEFAULT_EVENT_DURATION_MS,
+					timezone
+				);
+				patch.start_at = allDayTiming.startAt;
+				patch.end_at = allDayTiming.endAt;
+				patch.all_day = true;
+				patch.timezone = timezone;
+			} else if (typeof args?.start_at === 'string') {
 				patch.start_at = parseDateTimeInput(args.start_at, 'start_at');
+				patch.all_day = false;
 			}
-			if (Object.prototype.hasOwnProperty.call(args ?? {}, 'end_at')) {
+			if (hasEndAt && !allDayTiming) {
+				if (typeof args?.end_at === 'string' && isDateOnlyAgentCalendarInput(args.end_at)) {
+					throw new Error('start_at is required when updating an event to date-only');
+				}
 				patch.end_at =
 					typeof args.end_at === 'string' && args.end_at.trim()
 						? parseDateTimeInput(args.end_at, 'end_at')
@@ -712,6 +737,7 @@ class AgentRunCalendarPort implements CalendarPort {
 						? patch.end_at
 						: existing.end_at;
 			const googleEnd =
+				allDayTiming?.googleEndAt ??
 				nextEnd ??
 				new Date(Date.parse(nextStart) + DEFAULT_EVENT_DURATION_MS).toISOString();
 			if (Date.parse(googleEnd) <= Date.parse(nextStart)) {
@@ -752,7 +778,10 @@ class AgentRunCalendarPort implements CalendarPort {
 								Object.prototype.hasOwnProperty.call(patch, 'end_at')
 									? googleEnd
 									: undefined,
-							timezone
+							timezone,
+							allDay: allDayTiming?.allDay,
+							providerStartDate: allDayTiming?.providerStartDate ?? undefined,
+							providerEndDate: allDayTiming?.providerEndDate ?? undefined
 						});
 						await this.upsertEventSync({
 							eventId: updated.id,
@@ -792,12 +821,25 @@ class AgentRunCalendarPort implements CalendarPort {
 			typeof args?.end_at === 'string'
 				? await this.resolveInputTimezone(args?.timezone)
 				: undefined;
-		const startAt =
-			typeof args?.start_at === 'string'
+		let googleAllDayTiming: NormalizedAgentCalendarEventTiming | null = null;
+		if (typeof args?.start_at === 'string' && isDateOnlyAgentCalendarInput(args.start_at)) {
+			googleAllDayTiming = normalizeAgentCalendarEventTiming(
+				args.start_at,
+				getStringArg(args?.end_at) ?? null,
+				DEFAULT_EVENT_DURATION_MS,
+				timezone ?? (await this.resolveInputTimezone(args?.timezone))
+			);
+		} else if (typeof args?.end_at === 'string' && isDateOnlyAgentCalendarInput(args.end_at)) {
+			throw new Error('start_at is required when updating an event to date-only');
+		}
+		const startAt = googleAllDayTiming
+			? googleAllDayTiming.startAt
+			: typeof args?.start_at === 'string'
 				? parseDateTimeInput(args.start_at, 'start_at')
 				: undefined;
-		const endAt =
-			typeof args?.end_at === 'string'
+		const endAt = googleAllDayTiming
+			? googleAllDayTiming.googleEndAt
+			: typeof args?.end_at === 'string'
 				? parseDateTimeInput(args.end_at, 'end_at')
 				: undefined;
 		if (startAt && endAt && Date.parse(endAt) <= Date.parse(startAt)) {
@@ -820,7 +862,10 @@ class AgentRunCalendarPort implements CalendarPort {
 				: undefined,
 			startAt,
 			endAt,
-			timezone
+			timezone,
+			allDay: googleAllDayTiming?.allDay,
+			providerStartDate: googleAllDayTiming?.providerStartDate ?? undefined,
+			providerEndDate: googleAllDayTiming?.providerEndDate ?? undefined
 		});
 
 		return { source: 'google', result: { success: true, event_id: eventId, event: updated } };
@@ -1422,6 +1467,9 @@ class AgentRunCalendarPort implements CalendarPort {
 			startAt: string;
 			endAt: string;
 			timezone: string;
+			allDay: boolean;
+			providerStartDate: string | null;
+			providerEndDate: string | null;
 		}
 	): Promise<calendar_v3.Schema$Event> {
 		const calendar = await this.googleCalendar();
@@ -1431,8 +1479,12 @@ class AgentRunCalendarPort implements CalendarPort {
 				summary: input.title,
 				description: input.description ?? undefined,
 				location: input.location ?? undefined,
-				start: eventTimeFromIso(input.startAt, input.timezone),
-				end: eventTimeFromIso(input.endAt, input.timezone)
+				start: input.allDay
+					? { date: input.providerStartDate ?? undefined }
+					: eventTimeFromIso(input.startAt, input.timezone),
+				end: input.allDay
+					? { date: input.providerEndDate ?? undefined }
+					: eventTimeFromIso(input.endAt, input.timezone)
 			}
 		});
 		return response.data;
@@ -1448,6 +1500,9 @@ class AgentRunCalendarPort implements CalendarPort {
 			startAt?: string;
 			endAt?: string;
 			timezone?: string;
+			allDay?: boolean;
+			providerStartDate?: string;
+			providerEndDate?: string;
 		}
 	): Promise<calendar_v3.Schema$Event> {
 		const requestBody: calendar_v3.Schema$Event = {};
@@ -1455,8 +1510,16 @@ class AgentRunCalendarPort implements CalendarPort {
 		if (input.description !== undefined)
 			requestBody.description = input.description ?? undefined;
 		if (input.location !== undefined) requestBody.location = input.location ?? undefined;
-		if (input.startAt) requestBody.start = eventTimeFromIso(input.startAt, input.timezone);
-		if (input.endAt) requestBody.end = eventTimeFromIso(input.endAt, input.timezone);
+		if (input.startAt) {
+			requestBody.start = input.allDay
+				? { date: input.providerStartDate }
+				: eventTimeFromIso(input.startAt, input.timezone);
+		}
+		if (input.endAt) {
+			requestBody.end = input.allDay
+				? { date: input.providerEndDate }
+				: eventTimeFromIso(input.endAt, input.timezone);
+		}
 
 		const calendar = await this.googleCalendar();
 		const response = await calendar.events.patch({

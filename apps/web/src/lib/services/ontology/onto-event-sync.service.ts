@@ -7,7 +7,10 @@ import { GoogleOAuthConnectionError, GoogleOAuthService } from '$lib/services/go
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { GoogleCalendarProjectResourceService } from '$lib/server/google-calendar-project-resource.service';
-import { GoogleCalendarWriteService } from '$lib/server/google-calendar-write.service';
+import {
+	GoogleCalendarWriteService,
+	type GoogleCalendarMutationSelector
+} from '$lib/server/google-calendar-write.service';
 import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 import { OntoEventService, type OntoEventOwner } from './onto-event.service';
 import { PUBLIC_APP_URL } from '$env/static/public';
@@ -28,6 +31,12 @@ type TaskEventKind = 'range' | 'start' | 'due';
 export type CalendarScope = 'project' | 'user' | 'calendar_id';
 type ProjectCalendarSyncMode = 'actor_projection' | 'member_fanout';
 type ProjectEventSyncAction = 'upsert' | 'delete';
+type ExternalEventMapping = {
+	externalEventId: string;
+	calendarId: string;
+	calendarSourceId?: string;
+	syncRowId?: string;
+};
 
 export interface OntoEventActivityLogOptions {
 	changeSource?: ProjectLogChangeSource;
@@ -585,12 +594,23 @@ export class OntoEventSyncService {
 		if (!existing) {
 			throw new Error('Event not found');
 		}
+		const shouldSyncExternalDelete =
+			request.syncToCalendar !== false &&
+			((existing.onto_event_sync?.length ?? 0) > 0 ||
+				this.hasPriorExternalReference(existing));
+		const deletedAt = new Date().toISOString();
 
 		const { data: updated, error } = await this.supabase
 			.from('onto_events')
 			.update({
-				deleted_at: new Date().toISOString(),
-				updated_at: new Date().toISOString()
+				deleted_at: deletedAt,
+				updated_at: deletedAt,
+				...(shouldSyncExternalDelete
+					? {
+							sync_status: 'pending',
+							sync_error: null
+						}
+					: {})
 			})
 			.eq('id', request.eventId)
 			.select('*')
@@ -1064,11 +1084,7 @@ export class OntoEventSyncService {
 				await this.getCalendarWriter().updateEvent({
 					userId,
 					providerEventId: mapping.externalEventId,
-					selector: mapping.syncRowId
-						? { ontoEventId: event.id }
-						: mapping.calendarSourceId
-							? { calendarSourceId: mapping.calendarSourceId }
-							: undefined,
+					selector: this.buildSourceAwareMutationSelector(event.id, mapping),
 					requestBody: {
 						summary: event.title,
 						description,
@@ -1127,11 +1143,7 @@ export class OntoEventSyncService {
 				await this.getCalendarWriter().deleteEvent({
 					userId,
 					providerEventId: mapping.externalEventId,
-					selector: mapping.syncRowId
-						? { ontoEventId: event.id }
-						: mapping.calendarSourceId
-							? { calendarSourceId: mapping.calendarSourceId }
-							: undefined,
+					selector: this.buildSourceAwareMutationSelector(event.id, mapping),
 					sendUpdates: 'none'
 				});
 			} else {
@@ -1166,12 +1178,7 @@ export class OntoEventSyncService {
 		userId: string,
 		event: OntoEventRow,
 		syncRows: OntoEventSyncRow[]
-	): Promise<{
-		externalEventId: string;
-		calendarId: string;
-		calendarSourceId?: string;
-		syncRowId?: string;
-	} | null> {
+	): Promise<ExternalEventMapping | null> {
 		if (syncRows.length > 0) {
 			const userCandidates = syncRows.filter(
 				(syncRow) => syncRow.user_id === userId || syncRow.user_id == null
@@ -1264,6 +1271,23 @@ export class OntoEventSyncService {
 		}
 
 		return null;
+	}
+
+	private buildSourceAwareMutationSelector(
+		eventId: string,
+		mapping: ExternalEventMapping
+	): GoogleCalendarMutationSelector {
+		if (mapping.syncRowId) {
+			return { ontoEventId: eventId };
+		}
+		if (mapping.calendarSourceId) {
+			return { calendarSourceId: mapping.calendarSourceId };
+		}
+
+		// Legacy ontology imports can have only the provider calendar ID in props.
+		// The source-aware writer resolves this ID to exactly one owned source and
+		// rejects ambiguous matches instead of silently choosing the default account.
+		return { calendarId: mapping.calendarId };
 	}
 
 	private hasPriorExternalReference(event: OntoEventRow): boolean {
@@ -1571,7 +1595,11 @@ export class OntoEventSyncService {
 			};
 		}
 		const eventVersion = event.updated_at ?? event.created_at;
-		if (this.isStaleEventVersion(input.expectedEventUpdatedAt, eventVersion)) {
+		const isRetryingStillDeletedEvent = input.action === 'delete' && Boolean(event.deleted_at);
+		if (
+			this.isStaleEventVersion(input.expectedEventUpdatedAt, eventVersion) &&
+			!isRetryingStillDeletedEvent
+		) {
 			return {
 				outcome: 'skipped',
 				reason: 'stale_event_version'
@@ -1594,11 +1622,7 @@ export class OntoEventSyncService {
 					await this.getCalendarWriter().deleteEvent({
 						userId: input.targetUserId,
 						providerEventId: mapping.externalEventId,
-						selector: mapping.syncRowId
-							? { ontoEventId: event.id }
-							: mapping.calendarSourceId
-								? { calendarSourceId: mapping.calendarSourceId }
-								: undefined,
+						selector: this.buildSourceAwareMutationSelector(event.id, mapping),
 						sendUpdates: 'none'
 					});
 				} else {
@@ -1738,11 +1762,7 @@ export class OntoEventSyncService {
 				await this.getCalendarWriter().updateEvent({
 					userId: input.targetUserId,
 					providerEventId: mapping.externalEventId,
-					selector: mapping.syncRowId
-						? { ontoEventId: event.id }
-						: mapping.calendarSourceId
-							? { calendarSourceId: mapping.calendarSourceId }
-							: undefined,
+					selector: this.buildSourceAwareMutationSelector(event.id, mapping),
 					requestBody: {
 						summary: event.title,
 						description,

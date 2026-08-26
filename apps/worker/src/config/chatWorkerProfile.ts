@@ -1,7 +1,8 @@
+// apps/worker/src/config/chatWorkerProfile.ts
 /**
  * Railway and other production launches must opt into the strict profile.
- * Local development/tests retain the Phase 3 defaults unless they explicitly
- * exercise that profile.
+ * Local development/tests retain bounded defaults unless they explicitly
+ * exercise the strict production profile.
  */
 export function requireDedicatedChatWorkerProductionProfile(environment: NodeJS.ProcessEnv): void {
 	if (!isHostedProduction(environment)) return;

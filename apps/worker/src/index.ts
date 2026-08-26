@@ -20,10 +20,6 @@ import {
 import { isWorkerAuthorized } from './http/auth';
 import { getErrorMessage } from './http/errors';
 import { getSafeTimezone } from './http/timezone';
-import {
-	AGENTIC_CHAT_CAPACITY_PATH,
-	respondWithAgenticChatCapacity
-} from './http/agenticChatCapacity';
 import { jsonParseErrorHandler } from './middleware/jsonError';
 import { registerEmailTrackingRoute } from './routes/email-tracking';
 import smsScheduledRoutes from './routes/sms/scheduled';
@@ -35,13 +31,7 @@ import {
 	WorkerEventLoopLagMonitor,
 	buildWorkerOperationalHealthChecks
 } from './lib/workerOperationalHealth';
-import {
-	collectAgenticChatWorkerCapacityEvidence,
-	getWorkerHealth,
-	queue,
-	shutdownWorker,
-	startWorker
-} from './worker';
+import { getWorkerHealth, queue, shutdownWorker, startWorker } from './worker';
 import type { Server } from 'node:http';
 import { classifyOntologyEntity } from './workers/ontology/ontologyClassifier';
 import {
@@ -175,19 +165,12 @@ app.get('/health', (_req, res) => {
 		runtimeState: workerHealth.state,
 		checks,
 		queue: workerHealth.queue,
-		agenticChat: workerHealth.agenticChat,
 		cycles: {
 			coordinator: getCycleCoordinatorHealthSnapshot(CYCLE_COORDINATOR_ENABLED),
 			dailyBriefShadow: getDailyBriefCycleShadowHealthSnapshot(
 				CYCLE_DAILY_BRIEF_SHADOW_ENABLED
 			)
 		}
-	});
-});
-
-app.get(AGENTIC_CHAT_CAPACITY_PATH, async (req, res) => {
-	await respondWithAgenticChatCapacity(req, res, {
-		collect: collectAgenticChatWorkerCapacityEvidence
 	});
 });
 
@@ -883,7 +866,7 @@ app.post('/queue/cleanup', async (req, res) => {
 
 // Start the server
 async function start() {
-	// Give both runtimes a short, bounded drain before a fatal exit. This is
+	// Give the general queue a short, bounded drain before a fatal exit. This is
 	// shared by process-level crashes and failures after worker startup.
 	const crashExit = async (label: string) => {
 		try {
@@ -898,7 +881,7 @@ async function start() {
 
 	try {
 		// Add global error handlers FIRST to prevent process crashes.
-		// Give both runtimes a short, bounded drain before exiting — the old
+		// Give the general queue a short, bounded drain before exiting — the old
 		// fire-and-forget queue stop killed every
 		// in-flight job mid-write, silently charging each one a retry attempt.
 		process.on('uncaughtException', (error) => {
@@ -982,7 +965,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
 	hardKill.unref();
 
 	try {
-		// 1. Stop both claim loops and mark health/capacity as draining before
+		// 1. Stop the claim loop and mark health as draining before
 		// closing the listener. Attach a rejection handler immediately so a drain
 		// failure cannot become an unhandled rejection while HTTP is closing.
 		const workerShutdown: Promise<{ error: unknown | null }> = shutdownWorker().then(

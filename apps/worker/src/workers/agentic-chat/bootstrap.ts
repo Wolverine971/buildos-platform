@@ -29,10 +29,9 @@ import {
 const OPENROUTER_HTTP_REFERER = 'https://build-os.com';
 const OPENROUTER_APP_NAME = 'BuildOS Agentic Chat Worker';
 
-type EnabledAgenticChatConfig = Extract<AgenticChatConfig, { enabled: true }>;
+type EnabledAgenticChatConfig = AgenticChatConfig;
 
 export type AgenticChatBootstrapState =
-	| 'disabled'
 	| 'ready'
 	| 'starting'
 	| 'running'
@@ -116,19 +115,17 @@ export type AgenticChatBootstrapOptions = {
 	) => AgenticChatBootstrapCompositionPort;
 };
 
-export type AgenticChatBootstrapStartResult = 'disabled' | 'started';
+export type AgenticChatBootstrapStartResult = 'started';
 
 /**
  * Build the production operational boundary without publishing capacity or
- * changing web admission. Disabled configuration constructs no provider,
- * usage logger, composition, queue, or background service.
+ * changing web admission. Only chat-worker.ts constructs this bootstrap, so
+ * incomplete configuration fails the dedicated service startup.
  */
 export function createAgenticChatBootstrap(
 	options: AgenticChatBootstrapOptions
 ): AgenticChatBootstrap {
 	const config = loadAgenticChatConfig(options.environment);
-	if (!config.enabled) return new AgenticChatBootstrap(false, null);
-
 	const mutationCapabilities = summarizeAgenticChatMutationCapabilitiesV1(
 		config.mutationProviderCapabilities,
 		config.mutationAdapterCapabilities
@@ -153,7 +150,7 @@ export function createAgenticChatBootstrap(
 		onUsageError: options.onUsageError,
 		onConsumptionBillingError: options.onConsumptionBillingError
 	});
-	return new AgenticChatBootstrap(true, composition, mutationCapabilities);
+	return new AgenticChatBootstrap(composition, mutationCapabilities);
 }
 
 export class AgenticChatBootstrap {
@@ -163,18 +160,13 @@ export class AgenticChatBootstrap {
 	private lastError: string | null = null;
 
 	constructor(
-		private readonly enabled: boolean,
-		private readonly composition: AgenticChatBootstrapCompositionPort | null,
+		private readonly composition: AgenticChatBootstrapCompositionPort,
 		private readonly mutationCapabilities: AgenticChatMutationCapabilitiesSummaryV1 | null = null
 	) {
-		if (enabled !== (composition !== null)) {
-			throw new Error('Agentic Chat bootstrap enabled state and assembly must agree');
-		}
-		this.state = enabled ? 'ready' : 'disabled';
+		this.state = 'ready';
 	}
 
 	start(): Promise<AgenticChatBootstrapStartResult> {
-		if (!this.enabled) return Promise.resolve('disabled');
 		if ((this.state === 'starting' || this.state === 'running') && this.startPromise) {
 			return this.startPromise;
 		}
@@ -190,20 +182,19 @@ export class AgenticChatBootstrap {
 	}
 
 	stop(): Promise<void> {
-		if (!this.enabled) return Promise.resolve();
 		if (this.stopPromise) return this.stopPromise;
 		this.stopPromise = this.stopRuntime();
 		return this.stopPromise;
 	}
 
 	async wake(): Promise<boolean> {
-		if (this.state !== 'running' || !this.composition) return false;
+		if (this.state !== 'running') return false;
 		await this.composition.runtime.wake();
 		return true;
 	}
 
 	async collectCapacityEvidence(): Promise<AgenticChatWorkerCapacityEvidenceV1 | null> {
-		if (this.state !== 'running' || !this.composition) return null;
+		if (this.state !== 'running') return null;
 		try {
 			if (!this.composition.runtime.getHealth().healthy) return null;
 			return await this.composition.capacity.collect();
@@ -213,17 +204,6 @@ export class AgenticChatBootstrap {
 	}
 
 	getHealth(): AgenticChatBootstrapHealth {
-		if (!this.enabled) {
-			return {
-				enabled: false,
-				healthy: true,
-				state: 'disabled',
-				reason: 'disabled',
-				runtime: null,
-				mutationCapabilities: null
-			};
-		}
-
 		const runtime = this.safeRuntimeHealth();
 		const mutationCapabilities = this.mutationCapabilities;
 		if (this.state === 'running') {
@@ -260,7 +240,7 @@ export class AgenticChatBootstrap {
 
 	private async startRuntime(): Promise<AgenticChatBootstrapStartResult> {
 		try {
-			await this.requireComposition().runtime.start();
+			await this.composition.runtime.start();
 			this.state = 'running';
 			return 'started';
 		} catch (error) {
@@ -277,7 +257,7 @@ export class AgenticChatBootstrap {
 		}
 		this.state = 'stopping';
 		try {
-			await this.requireComposition().runtime.stop();
+			await this.composition.runtime.stop();
 			this.state = 'stopped';
 		} catch (error) {
 			this.lastError = canonicalError(error);
@@ -288,15 +268,10 @@ export class AgenticChatBootstrap {
 
 	private safeRuntimeHealth(): AgenticChatConsumerRuntimeHealth | null {
 		try {
-			return this.composition?.runtime.getHealth() ?? null;
+			return this.composition.runtime.getHealth();
 		} catch {
 			return null;
 		}
-	}
-
-	private requireComposition(): AgenticChatBootstrapCompositionPort {
-		if (!this.composition) throw new Error('Agentic Chat bootstrap assembly is unavailable');
-		return this.composition;
 	}
 }
 

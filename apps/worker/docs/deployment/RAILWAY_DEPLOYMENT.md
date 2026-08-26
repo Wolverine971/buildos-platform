@@ -1,20 +1,28 @@
 <!-- apps/worker/docs/deployment/RAILWAY_DEPLOYMENT.md -->
 
-# Railway Deployment - Worker Service
+# Railway deployment — worker services
 
-Last verified against repo-root config on 2026-07-14.
+Last verified against repo-root config and production process ownership on 2026-08-25.
 
-The worker deploys from the monorepo root. Do not set Railway root directory to
-`apps/worker`.
+Both worker services deploy from the monorepo root. Do not set either Railway
+root directory to `apps/worker`.
 
-## Railway Service Settings
+## Railway service settings
 
-- Root directory: `/`
-- Build config: repo-root `railway.toml` and `nixpacks.toml`
-- Start command: `node apps/worker/dist/index.js`
-- Healthcheck path: `/health`
-- Healthcheck timeout: `30`
-- Restart policy: `ON_FAILURE`, max retries `3`
+Use the same build for two physically isolated services:
+
+| Setting             | General background worker                    | Agentic Chat worker                    |
+| ------------------- | -------------------------------------------- | -------------------------------------- |
+| Root directory      | `/`                                          | `/`                                    |
+| Build config        | repo-root `railway.toml` and `nixpacks.toml` | same                                   |
+| Start command       | `node apps/worker/dist/index.js`             | `node apps/worker/dist/chat-worker.js` |
+| Healthcheck path    | `/health`                                    | `/health`                              |
+| Healthcheck timeout | `30`                                         | `30`                                   |
+| Restart policy      | `ON_FAILURE`, max retries `3`                | `ON_FAILURE`, max retries `3`          |
+
+The repo-root start command is the general-worker default. Configure the
+Agentic Chat service's start-command override explicitly. The general process
+does not start the chat consumer and does not serve `/agentic-chat/capacity`.
 
 Current repo-root config:
 
@@ -55,9 +63,9 @@ nixpacks.toml
 The app-level `apps/worker/railway.toml` and `apps/worker/nixpacks.toml` are
 kept synchronized as fallbacks, but the repo-root files are authoritative.
 
-## Required Variables
+## Required variables
 
-Set these in the Railway worker service:
+Set these shared values in both services:
 
 ```bash
 NODE_ENV=production
@@ -66,16 +74,39 @@ PUBLIC_SUPABASE_URL=
 PRIVATE_SUPABASE_SERVICE_KEY=
 PRIVATE_OPENROUTER_API_KEY=
 PRIVATE_RAILWAY_WORKER_TOKEN=
+```
+
+The general background worker additionally needs its callback configuration:
+
+```bash
 PUBLIC_APP_URL=https://build-os.com
 PRIVATE_BUILDOS_WEBHOOK_SECRET=
+```
 
-# Agentic Chat (required together when enabled)
-AGENTIC_CHAT_WORKER_ENABLED=false
+The dedicated Agentic Chat service always starts the chat runtime. It requires
+an explicit production profile and bounded configuration; there is no separate
+enable flag:
+
+```bash
+AGENTIC_CHAT_WORKER_PROFILE=production
 AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED=false
 PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE=false
 AGENTIC_CHAT_OPENROUTER_MODEL=<provider/model>
+AGENT_CHAT_LIVE_VISION_ENABLED=false
 CHAT_CONCURRENCY=2
+CHAT_POLL_INTERVAL_MS=1000
+CHAT_PROVIDER_BUDGET_MS=270000
+CHAT_WORKER_TIMEOUT_MS=360000
+CHAT_STALLED_TIMEOUT_MS=420000
 CHAT_DRAIN_TIMEOUT_MS=22000
+CHAT_PUBLISHER_TURN_PENDING_SOFT_BYTES=262144
+CHAT_PUBLISHER_TURN_PENDING_HARD_BYTES=1048576
+CHAT_PUBLISHER_WORKER_PENDING_SOFT_BYTES=2097152
+CHAT_PUBLISHER_WORKER_PENDING_HARD_BYTES=8388608
+CHAT_PUBLISHER_TURN_PENDING_SOFT_EVENTS=32
+CHAT_PUBLISHER_TURN_PENDING_HARD_EVENTS=128
+CHAT_PUBLISHER_WORKER_PENDING_SOFT_EVENTS=256
+CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS=1024
 ```
 
 Notes:
@@ -85,16 +116,19 @@ Notes:
   calling the worker.
 - `PRIVATE_BUILDOS_WEBHOOK_SECRET` must match the web app value because worker
   callbacks use it.
-- When `AGENTIC_CHAT_WORKER_ENABLED=true`, the explicit model, provider key,
-  bounded `CHAT_CONCURRENCY` (1–2), and chat drain at or below 22 seconds are all
-  startup requirements. Set the dependent values in the same Railway update as
-  the flag so an intermediate deployment cannot fail health checks.
+- The dedicated service fails startup when its explicit production values are
+  absent or invalid. `CHAT_CONCURRENCY` is bounded to 1–2 and the chat drain must
+  stay at or below 22 seconds.
+- Keep `AGENT_CHAT_LIVE_VISION_ENABLED` identical on Vercel and the dedicated
+  service. When it is `false`, image turns use explicit web capability execution.
 - `AGENTIC_CHAT_WORKER_SUPERVISOR_ENABLED` is independently default-off. Keep it
   false until the P4 checkpoint/clarification slices and their live gate are complete.
 - `PRIVATE_ENABLE_CONSUMPTION_BILLING_GATE` must match the web service. When
   enabled, the worker re-evaluates `evaluate_user_consumption_gate` after an
   execution starts and before terminal finalization; failure is reported but
   never strands terminal turn truth.
+- Mutation provider and adapter capability lists must match the reviewed
+  production surface. A provider capability without its adapter fails startup.
 
 ## Optional Variables
 
@@ -140,25 +174,38 @@ PRIVATE_GOOGLE_CLIENT_SECRET=
 PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY=
 ```
 
-## Web App Variables
+## Web app variables
 
-The web app needs the Railway worker URL and matching token:
+The web app needs distinct service origins and the matching token:
 
 ```bash
-PUBLIC_RAILWAY_WORKER_URL=https://<worker-service>.up.railway.app
+PUBLIC_RAILWAY_WORKER_URL=https://<general-worker-service>.up.railway.app
+PRIVATE_AGENTIC_CHAT_WORKER_URL=https://<agentic-chat-worker-service>.up.railway.app
 PRIVATE_RAILWAY_WORKER_TOKEN=<same value as Railway>
 PRIVATE_BUILDOS_WEBHOOK_SECRET=<same value as Railway>
+AGENTIC_CHAT_TRANSPORT_LEASE_SECRET=<at-least-32-random-bytes>
 ```
+
+Compatible new turns always select worker transport. Gmail, Calendar, browser
+OAuth handoff, and worker-disabled image turns reach synchronous web execution
+only after explicit capability renegotiation. There is no global routing flag
+and no Agentic Chat health/capacity fallback to the general worker.
 
 ## Verification
 
-After deploy:
+After deploying both services:
 
 ```bash
-curl https://<worker-service>.up.railway.app/health
+curl https://<general-worker-service>.up.railway.app/health
+curl https://<agentic-chat-worker-service>.up.railway.app/health
 ```
 
-Authenticated checks:
+The general response reports only general queue health. The dedicated response
+must report service `agentic-chat-worker`, a running/healthy chat runtime,
+Realtime health, active turns, recovery health, and the expected mutation
+capability summary.
+
+Authenticated general-worker checks:
 
 ```bash
 curl -H "Authorization: Bearer $PRIVATE_RAILWAY_WORKER_TOKEN" \
@@ -168,13 +215,19 @@ curl -H "Authorization: Bearer $PRIVATE_RAILWAY_WORKER_TOKEN" \
   "https://<worker-service>.up.railway.app/queue/stale-stats?thresholdHours=24"
 ```
 
+Authenticated dedicated-worker capacity check:
+
+```bash
+curl -H "Authorization: Bearer $PRIVATE_RAILWAY_WORKER_TOKEN" \
+  https://<agentic-chat-worker-service>.up.railway.app/agentic-chat/capacity
+```
+
 Expected startup logs include:
 
-- queue configuration profile
-- registered processors
-- queue processor started
-- scheduler started
-- API server running on the Railway port
+- General service: queue configuration, registered processors, queue processor,
+  scheduler, and API server startup.
+- Agentic Chat service: mutation capability summary, chat consumer startup,
+  Realtime/recovery initialization, and dedicated HTTP service startup.
 
 ## Troubleshooting
 

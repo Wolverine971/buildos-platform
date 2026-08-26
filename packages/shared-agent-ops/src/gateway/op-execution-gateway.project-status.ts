@@ -292,7 +292,7 @@ async function loadProjectStatusEvents(params: {
 		.select('id, project_id, title, state_key, start_at, end_at, location, updated_at')
 		.eq('project_id', params.projectId)
 		.is('deleted_at', null)
-		.gte('start_at', nowIso)
+		.or(`start_at.gte.${nowIso},end_at.gte.${nowIso}`)
 		.lte('start_at', horizonIso)
 		.order('start_at', { ascending: true })
 		.limit(params.eventLimit);

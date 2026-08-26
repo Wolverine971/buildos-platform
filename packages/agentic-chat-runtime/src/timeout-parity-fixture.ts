@@ -122,6 +122,7 @@ export const AGENTIC_CHAT_TIMEOUT_GOLDEN_V1: AgenticChatParityRunV1 = {
 		admission: { context_type: 'global', status: 'running', user_message_linked: true },
 		lifecycle_events: [
 			{ event_type: 'turn_intent_resolved', phase: 'prompt' },
+			{ event_type: 'tool_surface_materialized', phase: 'tool' },
 			{ event_type: 'prepared_prompt_cache_checked', phase: 'prompt' },
 			{ event_type: 'stream_terminal_failure', phase: 'llm' },
 			{ event_type: 'done_emitted', phase: 'finalize' },

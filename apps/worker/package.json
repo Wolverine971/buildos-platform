@@ -1,7 +1,7 @@
 {
 	"name": "@buildos/worker",
 	"version": "1.0.0",
-	"description": "Background worker for generating daily briefs",
+	"description": "General background queues and the dedicated Agentic Chat worker service",
 	"main": "dist/index.js",
 	"scripts": {
 		"build": "node ./node_modules/@typescript/native/bin/tsc",

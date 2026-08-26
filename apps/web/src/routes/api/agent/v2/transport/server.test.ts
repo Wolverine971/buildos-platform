@@ -9,8 +9,7 @@ const mocks = vi.hoisted(() => ({
 	env: {
 		AGENTIC_CHAT_TRANSPORT_LEASE_SECRET:
 			'route-agentic-chat-transport-secret-at-least-32-bytes',
-		AGENTIC_CHAT_WORKER_KILL_EPOCH: '0',
-		AGENTIC_CHAT_WORKER_ROUTING_ENABLED: 'false'
+		AGENTIC_CHAT_WORKER_KILL_EPOCH: '0'
 	},
 	createAdminSupabaseClient: vi.fn(),
 	resolveExistingAgenticChatTransportDecision: vi.fn(),
@@ -80,12 +79,11 @@ describe('POST /api/agent/v2/transport', () => {
 		mocks.env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET =
 			'route-agentic-chat-transport-secret-at-least-32-bytes';
 		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';
-		mocks.env.AGENTIC_CHAT_WORKER_ROUTING_ENABLED = 'false';
 		mocks.createAdminSupabaseClient.mockReturnValue({ from: vi.fn() });
 		mocks.resolveExistingAgenticChatTransportDecision.mockResolvedValue(null);
 		mocks.selectAgenticChatNewTransport.mockResolvedValue({
-			mode: 'legacy_sse',
-			contractVersion: 'legacy_internal_v1'
+			mode: 'worker_realtime',
+			contractVersion: 'agentic_chat_worker_v1'
 		});
 	});
 
@@ -116,8 +114,8 @@ describe('POST /api/agent/v2/transport', () => {
 		expect(response.headers.get('cache-control')).toBe('private, no-store');
 		expect(response.headers.get('vary')).toBe('Authorization');
 		expect(payload.data).toMatchObject({
-			mode: 'legacy_sse',
-			contractVersion: 'legacy_internal_v1'
+			mode: 'worker_realtime',
+			contractVersion: 'agentic_chat_worker_v1'
 		});
 		expect(payload.data.decisionId).toMatch(/^[0-9a-f-]{36}$/);
 		expect(payload.data.token).toMatch(/^actl1\./);
@@ -128,27 +126,32 @@ describe('POST /api/agent/v2/transport', () => {
 		});
 		expect(mocks.selectAgenticChatNewTransport).toHaveBeenCalledWith({
 			supportedModes: body().supportedModes,
-			supportedContractVersions: body().supportedContractVersions,
-			environment: mocks.env
+			supportedContractVersions: body().supportedContractVersions
 		});
 	});
 
-	it('can issue a new worker lease only when server routing policy selects it', async () => {
+	it('issues legacy only when the request and server selection are explicitly legacy', async () => {
 		mocks.selectAgenticChatNewTransport.mockResolvedValueOnce({
-			mode: 'worker_realtime',
-			contractVersion: 'agentic_chat_worker_v1'
+			mode: 'legacy_sse',
+			contractVersion: 'legacy_internal_v1'
 		});
-		const response = await POST(event() as never);
+		const response = await POST(
+			event({
+				body: body({
+					supportedModes: ['legacy_sse'],
+					supportedContractVersions: ['legacy_internal_v1']
+				})
+			}) as never
+		);
 		const payload = await response.json();
 		expect(response.status).toBe(200);
 		expect(payload.data).toMatchObject({
-			mode: 'worker_realtime',
-			contractVersion: 'agentic_chat_worker_v1'
+			mode: 'legacy_sse',
+			contractVersion: 'legacy_internal_v1'
 		});
 	});
 
 	it('returns retryable worker-unavailable when worker routing itself fails', async () => {
-		mocks.env.AGENTIC_CHAT_WORKER_ROUTING_ENABLED = 'true';
 		mocks.selectAgenticChatNewTransport.mockRejectedValueOnce(new Error('routing failed'));
 		const response = await POST(event() as never);
 		const payload = await response.json();
@@ -169,7 +172,11 @@ describe('POST /api/agent/v2/transport', () => {
 		expect(payload.data.decisionId).toMatch(/^[0-9a-f-]{36}$/);
 	});
 
-	it('cannot be client-forced into a new worker lease', async () => {
+	it('rejects a selected transport the client did not advertise', async () => {
+		mocks.selectAgenticChatNewTransport.mockResolvedValueOnce({
+			mode: 'legacy_sse',
+			contractVersion: 'legacy_internal_v1'
+		});
 		const response = await POST(
 			event({
 				body: body({
@@ -215,16 +222,23 @@ describe('POST /api/agent/v2/transport', () => {
 		response = await POST(event() as never);
 		payload = await response.json();
 		expect(response.status).toBe(503);
-		expect(response.headers.get('retry-after')).toBeNull();
-		expect(payload.code).toBe('TRANSPORT_UNAVAILABLE');
+		expect(response.headers.get('retry-after')).toBe('2');
+		expect(payload.code).toBe('WORKER_UNAVAILABLE');
 		expect(JSON.stringify(payload)).not.toContain('too short');
 	});
 
-	it('keeps legacy reachable when routing is off and the decision lookup fails', async () => {
+	it('returns transport-unavailable when a legacy-only decision lookup fails', async () => {
 		mocks.resolveExistingAgenticChatTransportDecision.mockRejectedValueOnce(
 			new Error('temporary database outage')
 		);
-		const response = await POST(event() as never);
+		const response = await POST(
+			event({
+				body: body({
+					supportedModes: ['legacy_sse'],
+					supportedContractVersions: ['legacy_internal_v1']
+				})
+			}) as never
+		);
 		const payload = await response.json();
 
 		expect(response.status).toBe(503);
@@ -232,8 +246,7 @@ describe('POST /api/agent/v2/transport', () => {
 		expect(payload.message).not.toContain('database outage');
 	});
 
-	it('keeps worker-selected failures strict when routing is enabled', async () => {
-		mocks.env.AGENTIC_CHAT_WORKER_ROUTING_ENABLED = 'true';
+	it('keeps compatible-turn decision failures worker-strict', async () => {
 		mocks.resolveExistingAgenticChatTransportDecision.mockRejectedValueOnce(
 			new Error('temporary database outage')
 		);

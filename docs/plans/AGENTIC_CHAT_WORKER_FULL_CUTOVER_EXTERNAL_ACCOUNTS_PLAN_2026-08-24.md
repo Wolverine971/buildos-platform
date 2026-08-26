@@ -6,19 +6,18 @@ Date: 2026-08-24
 
 ## Continuation handoff — start here
 
-**Current state: attachment fallback fixed and deployed; public worker routing remains disabled.**
+**Current state (2026-08-25): public worker routing is active, the dedicated service is healthy, and the global rollback path is being retired.**
 
-- Source: `main` at `44331ee8a` (worker remains unchanged at
-  `e799f2b70ed8cf30a3d5979812b688a62599b7dc`).
-- Railway: deployment `36a1d43b-5486-4b3a-89dd-782afd6e17cc` is successful and `/health`
-  reports that exact release.
-- Vercel: deployment `dpl_A2AuvnKDB57S6czbe6gJR9hR8Uqd` is Ready from commit `44331ee`, serves
-  `build-os.com`, and returned HTTP 200.
-- Safety state: Vercel production still has
-  `AGENTIC_CHAT_WORKER_ROUTING_ENABLED=false`. Do not change it until the remaining canary gates in
-  this document pass.
-- Authoritative detailed evidence: [`tasker/59`](../../tasker/59-agentic-chat-worker-cutover-review.md),
-  especially **Production deployment verification — 2026-08-24**.
+- Deployed source: `main` release `7097b47ec154`.
+- Web: `https://build-os.com` returns HTTP 200.
+- Dedicated Railway service: `https://agentic-chat-worker-production.up.railway.app/health`
+  reports release `7097b47ec154`, a running healthy runtime, connected Realtime, healthy recovery,
+  `activeTurns: 0`, and matching 20-tool provider/adapter mutation surfaces.
+- Phase 7 source cleanup is implemented after that verification and is not part of the deployed
+  release above. It removes the general-worker chat bootstrap/capacity fallback and the global web
+  routing gate. Deploy and verify it as a two-service ownership cleanup, not as a capability cutover.
+- Gmail, Calendar, browser OAuth handoff, and worker-disabled image execution remain available only
+  through explicit capability renegotiation. Their web executor is not the infrastructure rollback.
 
 The release-blocking review in Tasker 59 has been remediated and deployed. The authoritative routing
 model is now:
@@ -36,10 +35,10 @@ available through the declared legacy external-account executor. Moving Gmail re
 is now an optional optimization with an expanded Railway secret boundary, not a cutover correctness
 prerequisite.
 
-WP-1 through WP-5 are code-complete. The ordered Railway/Vercel deployment, shared lease/capability
-preflight, Realtime evidence, and live two-overlapping-turn smoke are complete. Production routing
-now waits only on the authenticated canary and operational checks under **Next-agent execution
-sequence**.
+WP-1 through WP-5, the ordered Railway/Vercel deployment, shared lease/capability preflight,
+Realtime evidence, live two-overlapping-turn smoke, and public worker activation are complete. The
+remaining operational task is to deploy the Phase 7 ownership cleanup and verify that the general
+worker reports only general-queue health while the dedicated service remains healthy.
 
 ### Deployment verification found and fixed two additional blockers
 
@@ -61,28 +60,30 @@ Do not regress this boundary. The relevant sources are:
 
 - `packages/agentic-chat-runtime/src/worker-tool-policy.ts`
 - `apps/web/src/lib/services/agentic-chat-v2/worker-turn-preparation.server.ts`
-- `apps/worker/src/workers/agentic-chat/readOnlyTool.ts`
+- `apps/worker/src/workers/agentic-chat/tools/execution-adapter.ts`
 
-### Production environment state
+### Production environment and Phase 7 source state
 
-| Host    | Variable / capability                             | Current production state                                   |
-| ------- | ------------------------------------------------- | ---------------------------------------------------------- |
-| Vercel  | `AGENTIC_CHAT_WORKER_ROUTING_ENABLED`             | `true` — public worker routing activated 2026-08-25        |
-| Vercel  | `AGENT_CHAT_LIVE_VISION_ENABLED`                  | `false` — attachments must renegotiate to legacy           |
-| Vercel  | `AGENT_CHAT_LEGACY_LIVE_VISION_ENABLED`           | `true` — legacy fallback receives image pixels             |
-| Vercel  | `PRIVATE_AGENTIC_CHAT_WORKER_URL`                 | Present                                                    |
-| Vercel  | `AGENTIC_CHAT_TRANSPORT_LEASE_SECRET`             | Present as encrypted/sensitive; CLI cannot print its value |
-| Vercel  | `PRIVATE_RAILWAY_WORKER_TOKEN`                    | Present as encrypted/sensitive                             |
-| Railway | `AGENTIC_CHAT_WORKER_ENABLED`                     | `true`                                                     |
-| Railway | `AGENT_CHAT_LIVE_VISION_ENABLED`                  | `false`                                                    |
-| Railway | `CHAT_CONCURRENCY`                                | `2`                                                        |
-| Railway | `AGENTIC_CHAT_INTERNAL_USER_IDS`                  | Empty and retired; new source does not enforce a cohort    |
-| Railway | Supabase, OpenRouter, and worker-auth credentials | Present                                                    |
+| Host / boundary           | Variable / capability                             | State                                                                      |
+| ------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------- |
+| Vercel                    | `AGENT_CHAT_LIVE_VISION_ENABLED`                  | `false` — image turns explicitly renegotiate to web capability execution   |
+| Vercel                    | `AGENT_CHAT_LEGACY_LIVE_VISION_ENABLED`           | `true` — capability execution receives image pixels                        |
+| Vercel                    | `PRIVATE_AGENTIC_CHAT_WORKER_URL`                 | Present and dedicated-only; Phase 7 source has no general-worker fallback  |
+| Vercel                    | `AGENTIC_CHAT_TRANSPORT_LEASE_SECRET`             | Present as encrypted/sensitive; CLI cannot print its value                 |
+| Vercel                    | `PRIVATE_RAILWAY_WORKER_TOKEN`                    | Present as encrypted/sensitive                                             |
+| Web source                | Global routing gate                               | Retired; compatible new turns select worker transport unconditionally      |
+| Dedicated Railway process | Start command                                     | `node apps/worker/dist/chat-worker.js`; starting the process is enablement |
+| Dedicated Railway process | `AGENT_CHAT_LIVE_VISION_ENABLED`                  | `false`                                                                    |
+| Dedicated Railway process | `CHAT_CONCURRENCY`                                | `2`                                                                        |
+| Dedicated Railway process | Supabase, OpenRouter, and worker-auth credentials | Present                                                                    |
+| General Railway process   | Agentic Chat bootstrap/health/capacity            | Removed by Phase 7 source cleanup                                          |
 
 The old Vercel `AGENTIC_CHAT_WORKER_ROUTING_USER_IDS` value may still exist as inert platform
-configuration, but the source no longer reads it. Remove it only as cleanup; it is not an activation
-gate. Do not copy Gmail/Google token-decryption credentials to Railway while Gmail and Calendar
-remain worker-unavailable.
+configuration, but the source no longer reads it. The same is true of
+`AGENTIC_CHAT_WORKER_ROUTING_ENABLED` after the Phase 7 deployment. The dedicated source no longer
+reads `AGENTIC_CHAT_WORKER_ENABLED`; remove those stale environment values after deploy verification.
+Do not copy Gmail/Google token-decryption credentials to Railway while Gmail and Calendar remain
+worker-unavailable.
 
 ### Verified release evidence
 
@@ -100,7 +101,24 @@ remain worker-unavailable.
   0 warnings**; production web build passed.
 - `git diff --check` and Prettier verification for this plan and Tasker 59 passed.
 
-### Continuation evidence — 2026-08-25
+### Phase 7 source verification — pending deployment
+
+- Dedicated production health was checked first against deployed release `7097b47ec154`; all chat
+  runtime signals were healthy before removing the redundant general-process fallback.
+- Active source/config scans contain no global routing gate, no dedicated-runtime enable flag, and
+  no Agentic Chat bootstrap, health, or capacity ownership in the general worker.
+- Worker ownership/lifecycle tests passed 45/45; the full worker suite passed 1,189 tests with one
+  opt-in eval skipped; worker check and production build passed.
+- Web transport/controller tests passed 64/64, retained legacy capability execution passed 220/220,
+  and the legacy stream route passed 45/45 after refreshing the already-shipped
+  `tool_surface_materialized` telemetry goldens.
+- Runtime parity passed 278/278, the Svelte autofixer reported no issues, full Svelte check reported
+  zero errors and warnings, and the production web build passed.
+
+### Historical canary evidence — 2026-08-25
+
+The following records the rollout before public activation and Phase 7 cleanup. Routing-flag and
+rollback instructions in this evidence are superseded by the current handoff and cutover rule.
 
 - Realtime recovered from the startup-degraded state after a real isolated worker turn. Post-turn
   health was healthy with `activeTurns: 0`, Realtime connected, zero consecutive Realtime/claim/
@@ -148,12 +166,12 @@ the surrounding working tree.
 
 ## Cutover rule
 
-On the web side, `AGENTIC_CHAT_WORKER_ROUTING_ENABLED=true` means every compatible new user turn is
-offered worker transport while worker capacity is open. The web and worker user-ID cohorts are gone.
-The empty `AGENTIC_CHAT_INTERNAL_USER_IDS` Railway value is now inert and can be removed after the
-cutover; the new worker source does not read or enforce it. Disabling the routing flag and
-redeploying the web app is the emergency rollback. Existing persisted turns retain their immutable
-transport decision.
+Every compatible new user turn selects worker transport. Capacity/configuration/network/session
+uncertainty returns retryable worker-unavailable and never changes transport semantics. Only an
+explicit capability result may renegotiate the same send to synchronous web execution. Existing
+persisted turns retain their immutable decision. Emergency rollback is a release rollback of the
+worker-routing source, not an environment switch inside the current architecture. The dedicated
+service is the only process that starts Agentic Chat or serves its health/capacity surface.
 
 ## Pre-review baseline (superseded)
 

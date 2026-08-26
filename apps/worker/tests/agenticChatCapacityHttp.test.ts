@@ -45,15 +45,17 @@ function responseHarness() {
 }
 
 describe('Agentic Chat worker capacity HTTP boundary', () => {
-	it('keeps the production path private and mounted to the isolated bootstrap evidence', () => {
+	it('keeps the production path private and mounted only on the dedicated service', () => {
 		const indexSource = readFileSync(join(SRC, 'index.ts'), 'utf8');
 		const workerSource = readFileSync(join(SRC, 'worker.ts'), 'utf8');
+		const chatServiceSource = readFileSync(join(SRC, 'lib', 'chatWorkerService.ts'), 'utf8');
 
 		expect(AGENTIC_CHAT_CAPACITY_PATH).toBe('/agentic-chat/capacity');
 		expect(indexSource).toContain("const publicWorkerPaths = new Set(['/health'])");
-		expect(indexSource).toContain('app.get(AGENTIC_CHAT_CAPACITY_PATH');
-		expect(indexSource).toContain('collect: collectAgenticChatWorkerCapacityEvidence');
-		expect(workerSource).toContain('agenticChatBootstrap.collectCapacityEvidence().finally');
+		expect(indexSource).not.toContain('AGENTIC_CHAT_CAPACITY_PATH');
+		expect(workerSource).not.toContain('collectAgenticChatWorkerCapacityEvidence');
+		expect(chatServiceSource).toContain('app.get(AGENTIC_CHAT_CAPACITY_PATH');
+		expect(chatServiceSource).toContain('this.options.bootstrap.collectCapacityEvidence()');
 	});
 
 	it('rejects an unauthorized request before collecting and never permits caching', async () => {

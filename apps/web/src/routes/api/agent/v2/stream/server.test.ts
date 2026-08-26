@@ -1342,31 +1342,36 @@ describe('/api/agent/v2/stream', () => {
 					},
 					{
 						sequence_index: 2,
+						phase: 'tool',
+						event_type: 'tool_surface_materialized'
+					},
+					{
+						sequence_index: 3,
 						phase: 'prompt',
 						event_type: 'prepared_prompt_cache_checked'
 					},
 					{
-						sequence_index: 3,
+						sequence_index: 4,
 						phase: 'stream',
 						event_type: 'turn_phase_changed'
 					},
 					{
-						sequence_index: 4,
+						sequence_index: 5,
 						phase: 'finalize',
 						event_type: 'turn_outcome_resolved'
 					},
 					{
-						sequence_index: 5,
+						sequence_index: 6,
 						phase: 'finalize',
 						event_type: 'orchestration_interventions'
 					},
 					{
-						sequence_index: 6,
+						sequence_index: 7,
 						phase: 'finalize',
 						event_type: 'done_emitted'
 					},
 					{
-						sequence_index: 7,
+						sequence_index: 8,
 						phase: 'prompt',
 						event_type: 'prompt_snapshot_created'
 					}

@@ -243,7 +243,7 @@ export type AgenticChatPreparedProviderInvocationV1 = {
 	/** No network/provider work may begin until the executor calls this after its start fence. */
 	stream(): AsyncIterable<AgenticChatProviderStepV1>;
 	/**
-	 * @deprecated Single-result alias retained for the Phase 3 bounded adapter.
+	 * @deprecated Single-result alias retained for the bounded legacy adapter.
 	 * The executor keeps its one-read fence byte-identical for providers that
 	 * expose only this pass; new adapters implement `continueWithToolResults`.
 	 */
@@ -251,7 +251,7 @@ export type AgenticChatPreparedProviderInvocationV1 = {
 		input: AgenticChatProviderReadSynthesisInputV1
 	): AsyncIterable<AgenticChatProviderStepV1>;
 	/**
-	 * Multi-round continuation (Phase 4 Slice 18 S1). A provider round ends when
+	 * Multi-round continuation. A provider round ends when
 	 * its iterable completes without emitting `finish`; the executor then calls
 	 * this with every successful tool result of that round — each already durable in the
 	 * tool-execution ledger and publicly committed as a `tool_result` event —
@@ -321,8 +321,8 @@ export type AgenticChatProviderToolRoundInputV1 = {
 };
 
 /**
- * Phase 3 providers use `prepare` to validate input and reserve a slot before
- * the execution-start CAS. The legacy `stream` shape remains only for Phase 2
+ * Production providers use `prepare` to validate input and reserve a slot before
+ * the execution-start CAS. The legacy `stream` shape remains only for
  * deterministic fixtures and must not be used by a real provider adapter.
  */
 export type AgenticChatProviderPortV1 = {

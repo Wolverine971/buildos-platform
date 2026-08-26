@@ -1,10 +1,11 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-turn-capacity.test.ts
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import {
 	evaluateAgenticChatWorkerCapacity,
 	observeAgenticChatWorkerCapacity,
 	observeAgenticChatWorkerCapacityWithRetry,
-	selectAgenticChatWorkerUrl,
 	type AgenticChatWorkerCapacityEvidenceV1
 } from './worker-turn-capacity.server';
 
@@ -23,14 +24,14 @@ function evidence(
 }
 
 describe('Agentic Chat worker capacity boundary', () => {
-	it('prefers the server-only chat worker URL and falls back only while it is absent', () => {
-		expect(
-			selectAgenticChatWorkerUrl('https://chat-worker.test', 'https://general-worker.test')
-		).toBe('https://chat-worker.test');
-		expect(selectAgenticChatWorkerUrl(undefined, 'https://general-worker.test')).toBe(
-			'https://general-worker.test'
+	it('uses only the dedicated server-side worker URL', () => {
+		const source = readFileSync(
+			fileURLToPath(new URL('./worker-turn-capacity.server.ts', import.meta.url)),
+			'utf8'
 		);
-		expect(selectAgenticChatWorkerUrl('', 'https://general-worker.test')).toBe('');
+		expect(source).toContain('PRIVATE_AGENTIC_CHAT_WORKER_URL');
+		expect(source).not.toContain('PUBLIC_RAILWAY_WORKER_URL');
+		expect(source).not.toContain('selectAgenticChatWorkerUrl');
 	});
 
 	it('defaults closed until complete live evidence and transport configuration are supplied', async () => {

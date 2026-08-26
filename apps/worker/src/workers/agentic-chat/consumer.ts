@@ -36,12 +36,12 @@ export type AgenticChatConsumerOptions = {
 };
 
 /**
- * Construct the Phase 3 logical chat pool without enabling it.
+ * Construct the dedicated logical chat pool without starting it.
  *
  * The caller must inject a reviewed real executor and explicitly start the
  * returned queue. Keeping construction separate from startup prevents this
- * production-shaped boundary from silently falling back to the Phase 2 fixture
- * executor or registering chat work on the general queue.
+ * production boundary from silently substituting a fixture executor or
+ * registering chat work on the general queue.
  */
 export function createAgenticChatConsumer(
 	executor: AgenticChatTurnExecutorPort,

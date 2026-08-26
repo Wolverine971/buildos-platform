@@ -1000,80 +1000,17 @@ describe('AgentChatStreamController', () => {
 		});
 	});
 
-	it('uses sessionless legacy only when server negotiation explicitly selects rollback', async () => {
-		const calls: string[] = [];
-		const fetchImpl = vi.fn<typeof fetch>(async (input) => {
-			const url = String(input);
-			calls.push(url);
-			if (url === '/api/agent/v2/transport') {
-				return Response.json({
-					success: true,
-					data: {
-						mode: 'legacy_sse',
-						contractVersion: 'legacy_internal_v1',
-						decisionId: 'd3000000-0000-4000-8000-000000000021',
-						token: 'actl1.claims.signature',
-						expiresAt: '2026-08-04T03:00:00.000Z'
-					}
-				});
-			}
-			if (url === '/api/agent/v2/stream') return new Response('', { status: 200 });
-			throw new Error(`unexpected request: ${url}`);
-		});
+	it('never negotiates sessionless legacy when bootstrap fails with a prepared prompt', async () => {
 		const h = createHarness({
 			currentSession: null,
-			inputValue: 'First turn',
-			fetchImpl
-		});
-		h.ensureSessionReady.mockRejectedValueOnce(new Error('session service down'));
-
-		const sendPromise = h.controller.sendMessage();
-		await vi.waitFor(() => expect(calls).toHaveLength(2));
-
-		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
-		expect(h.controller.error).toBeNull();
-		expect(calls).toEqual(['/api/agent/v2/transport', '/api/agent/v2/stream']);
-		expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toMatchObject({
-			sessionId: null
-		});
-		const requestBody = JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body));
-		expect(requestBody).not.toHaveProperty('session_id');
-		expect(requestBody).toMatchObject({
-			message: 'First turn',
-			preparedPromptKey: 'prepared-key'
-		});
-
-		h.streamProcessor.runs[0]!.progress({ type: 'done' });
-		h.streamProcessor.runs[0]!.complete();
-		await sendPromise;
-	});
-
-	it('returns worker-unavailable when session bootstrap fails and routing selects worker', async () => {
-		const fetchImpl = vi.fn<typeof fetch>(async (input) => {
-			if (String(input) === '/api/agent/v2/transport') {
-				return Response.json({
-					success: true,
-					data: {
-						mode: 'worker_realtime',
-						contractVersion: 'agentic_chat_worker_v1',
-						decisionId: 'd3000000-0000-4000-8000-000000000022',
-						token: 'actl1.claims.signature',
-						expiresAt: '2026-08-04T03:00:00.000Z'
-					}
-				});
-			}
-			throw new Error(`unexpected request: ${String(input)}`);
-		});
-		const h = createHarness({
-			currentSession: null,
-			inputValue: 'First turn',
-			fetchImpl
+			inputValue: 'First turn'
 		});
 		h.ensureSessionReady.mockRejectedValueOnce(new Error('session service down'));
 
 		await h.controller.sendMessage();
 
-		expect(fetchImpl).toHaveBeenCalledOnce();
+		expect(h.ensureSessionReady).toHaveBeenCalledOnce();
+		expect(h.defaultFetch).not.toHaveBeenCalled();
 		expect(h.streamProcessor.runs).toHaveLength(0);
 		expect(h.messages).toHaveLength(0);
 		expect(h.inputValue).toBe('First turn');
@@ -1289,24 +1226,18 @@ describe('AgentChatStreamController', () => {
 		);
 	});
 
-	it('fails a non-terminal clean close when no session is available to reconcile', async () => {
+	it('rejects a malformed session bootstrap before transport negotiation', async () => {
 		const h = createHarness({ currentSession: null });
 		h.ensureSessionReady.mockResolvedValueOnce(null);
-		const sendPromise = h.controller.sendMessage();
-		await flushMicrotasks();
 
-		h.streamProcessor.runs[0]!.progress({
-			type: 'agent_state',
-			state: 'thinking',
-			details: 'Accepted before session identity arrived'
-		});
-		h.streamProcessor.runs[0]!.complete();
-		await sendPromise;
+		await h.controller.sendMessage();
 
+		expect(h.defaultFetch).not.toHaveBeenCalled();
+		expect(h.streamProcessor.runs).toHaveLength(0);
 		expect(h.reconcileTurnFromSession).not.toHaveBeenCalled();
-		expect(h.controller.error).toBe('The response ended before completion. Please try again.');
-		expect(h.controller.lastCompletedStreamTiming?.terminalState).toBe('error');
-		expect(h.thinking.finalize).toHaveBeenCalledWith('error');
+		expect(h.messages).toHaveLength(0);
+		expect(h.inputValue).toBe('hello');
+		expect(h.controller.error).toBe('Unable to prepare a chat session right now.');
 	});
 
 	it('surfaces the server error body when the stream POST is rejected (402 freeze)', async () => {

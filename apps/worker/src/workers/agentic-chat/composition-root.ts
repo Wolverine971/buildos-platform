@@ -542,7 +542,7 @@ function disabledToolPort(code: 'mutating_tools_disabled') {
 				new AgenticChatProviderExecutionError(
 					code,
 					'permanent',
-					`${code.replaceAll('_', ' ')} in the Phase 3 read-only slice`
+					`${code.replaceAll('_', ' ')} because mutation capability is not enabled`
 				)
 			);
 		}

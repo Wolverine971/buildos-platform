@@ -40,11 +40,12 @@ Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes,
 
 1. Choose scope first: user, project, or explicit calendar_id.
 2. For project scope, include exact project_id.
-3. Use timezone-safe ISO 8601 values: `time_min`/`time_max` for reads and `start_at`/`end_at` for writes, or supply timezone.
+3. Use timezone-safe ISO 8601 values: `time_min`/`time_max` for reads and `start_at`/`end_at` for writes, or supply timezone. For a date-only event, pass `YYYY-MM-DD`; do not invent midnight UTC or a clock time. Date-only writes are all-day events.
 4. For project calendar mapping questions, check cal.project.get before assuming a project calendar exists.
 5. For update/delete, discover and pass exact onto_event_id or event_id.
-6. For first-time or complex writes, inspect the existing event and verify the exact scope and fields before calling the paired direct calendar tool.
-7. After execution, tell the user what changed and mention sync implications when they matter.
+6. Treat words such as "all", "every", "clean up", or a category like "shooting-related" as an exhaustive lookup request. Do not use a project overview or an upcoming-only list as the candidate set. Query an explicit window broad enough for the user's wording, paginate until exhausted, and include past or in-progress events unless the user limited the request to future events.
+7. For first-time or complex writes, inspect the existing event and verify the exact scope and fields before calling the paired direct calendar tool.
+8. After a bulk update/delete, repeat the same bounded lookup and verify that no active matches remain. Report local deletion and provider-sync status separately; a queued or failed provider sync is not a completed Google Calendar deletion.
 
 ## Contract
 
@@ -54,12 +55,13 @@ After a calendar write, tell the user:
 - Sync implications when they matter — for example that a synced event will propagate to the connected calendar.
 - For reads: the events in the requested window, stated in the user's terms, plus the exact window you queried.
 
-Stop conditions before replying: scope was chosen explicitly before the write; start/end times are timezone-safe; update/delete used an exact `onto_event_id` or `event_id` discovered from a read rather than guessed; you have not claimed an event was created, moved, or cancelled until the tool call returned success.
+Stop conditions before replying: scope was chosen explicitly before the write; start/end times are timezone-safe; update/delete used an exact `onto_event_id` or `event_id` discovered from a read rather than guessed; exhaustive requests were verified with the same full lookup after mutation; you have not claimed an event was created, moved, or cancelled until the local mutation and any claimed provider sync have each reached a confirmed terminal success state.
 
 ## Policy
 
 - Prefer onto_event_id when available for update/delete.
 - If sync status matters, verify with calendar ops instead of guessing.
+- Project overviews are summaries, not exhaustive event search results. Never use them alone to satisfy an "all events" mutation.
 - If a task is clearly the subject of the event, include task_id.
 - If only start_at is known, the backend may default duration; still prefer explicit end_at when the user gave enough detail.
 

@@ -168,6 +168,55 @@ describe('OntoEventSyncService calendar descriptions', () => {
 	});
 });
 
+describe('OntoEventSyncService deletion state', () => {
+	it('marks a provider-backed delete as pending until external sync completes', async () => {
+		let updatePatch: Record<string, unknown> = {};
+		const existing = {
+			id: 'event-provider-backed',
+			project_id: null,
+			updated_at: '2026-08-12T12:00:00.000Z',
+			created_at: '2026-08-12T11:00:00.000Z',
+			deleted_at: null,
+			sync_status: 'synced',
+			sync_error: null,
+			props: {
+				external_event_id: 'google-event-1',
+				external_calendar_id: 'calendar@example.com'
+			},
+			external_link: null,
+			onto_event_sync: []
+		};
+		const query: any = {
+			update: vi.fn((patch: Record<string, unknown>) => {
+				updatePatch = patch;
+				return query;
+			}),
+			eq: vi.fn(() => query),
+			select: vi.fn(() => query),
+			single: vi.fn(async () => ({
+				data: { ...existing, ...updatePatch },
+				error: null
+			}))
+		};
+		const service = new OntoEventSyncService({ from: vi.fn(() => query) } as any);
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue(existing);
+		vi.spyOn(service as any, 'deleteCalendarEvent').mockResolvedValue(undefined);
+
+		const result = await service.deleteEvent('user-1', {
+			eventId: existing.id
+		});
+
+		expect(query.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				deleted_at: expect.any(String),
+				sync_status: 'pending',
+				sync_error: null
+			})
+		);
+		expect(result.sync_status).toBe('pending');
+	});
+});
+
 describe('OntoEventSyncService project sync job version guards', () => {
 	it('skips stale project sync jobs when event has newer update timestamp', async () => {
 		const service = new OntoEventSyncService({} as any);
@@ -200,6 +249,44 @@ describe('OntoEventSyncService project sync job version guards', () => {
 		});
 		expect(updateCalendarEventSpy).not.toHaveBeenCalled();
 		expect(syncEventToCalendarSpy).not.toHaveBeenCalled();
+	});
+
+	it('retries a stale delete job when the event is still deleted', async () => {
+		const service = new OntoEventSyncService({} as any);
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
+			id: 'event-delete-retry',
+			project_id: 'project-1',
+			updated_at: '2026-02-28T12:05:00.000Z',
+			created_at: '2026-02-28T10:00:00.000Z',
+			deleted_at: '2026-02-28T12:00:00.000Z',
+			props: {},
+			onto_event_sync: []
+		});
+		vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue({
+			externalEventId: 'google-event-retry',
+			calendarId: 'project@example.com'
+		});
+		const deleteCalendarEventSpy = vi
+			.spyOn((service as any).calendarService, 'deleteCalendarEvent')
+			.mockResolvedValue({ success: true });
+		vi.spyOn(service as any, 'markEventSynced').mockResolvedValue(undefined);
+
+		await expect(
+			service.processProjectEventSyncJob({
+				action: 'delete',
+				eventId: 'event-delete-retry',
+				projectId: 'project-1',
+				targetUserId: 'user-1',
+				expectedEventUpdatedAt: '2026-02-28T12:00:00.000Z'
+			})
+		).resolves.toEqual({ outcome: 'deleted', reason: 'deleted_external_event' });
+		expect(deleteCalendarEventSpy).toHaveBeenCalledWith(
+			'user-1',
+			expect.objectContaining({
+				event_id: 'google-event-retry',
+				calendar_id: 'project@example.com'
+			})
+		);
 	});
 
 	it('skips upsert when project mapping is missing but prior external reference exists', async () => {
@@ -615,5 +702,47 @@ describe('OntoEventSyncService source-qualified routing', () => {
 			sendUpdates: 'none'
 		});
 		expect(legacyDelete).not.toHaveBeenCalled();
+	});
+
+	it('deletes a legacy imported event through its exact provider calendar id', async () => {
+		const writer = sourceWriter();
+		const service = new OntoEventSyncService({} as any, {
+			calendarWriter: writer as any,
+			sourceRoutingEnabled: () => true
+		});
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
+			id: 'event-legacy',
+			project_id: 'project-1',
+			updated_at: '2026-08-12T13:00:00.000Z',
+			created_at: '2026-08-12T12:00:00.000Z',
+			deleted_at: '2026-08-12T13:00:00.000Z',
+			props: {
+				external_event_id: 'google-event-legacy',
+				external_calendar_id: 'legacy-project@example.com'
+			},
+			external_link: null,
+			onto_event_sync: []
+		});
+		vi.spyOn(service as any, 'resolveProjectCalendar').mockResolvedValue({
+			id: 'project-calendar-legacy',
+			calendar_id: 'legacy-project@example.com',
+			calendar_source_id: null
+		});
+		vi.spyOn(service as any, 'markEventSynced').mockResolvedValue(undefined);
+
+		await expect(
+			service.processProjectEventSyncJob({
+				action: 'delete',
+				eventId: 'event-legacy',
+				projectId: 'project-1',
+				targetUserId: 'user-1'
+			})
+		).resolves.toEqual({ outcome: 'deleted', reason: 'deleted_external_event' });
+		expect(writer.deleteEvent).toHaveBeenCalledWith({
+			userId: 'user-1',
+			providerEventId: 'google-event-legacy',
+			selector: { calendarId: 'legacy-project@example.com' },
+			sendUpdates: 'none'
+		});
 	});
 });

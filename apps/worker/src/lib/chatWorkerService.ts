@@ -1,3 +1,4 @@
+// apps/worker/src/lib/chatWorkerService.ts
 import type { AddressInfo } from 'node:net';
 import { type Server, createServer } from 'node:http';
 import express, { type Express } from 'express';
@@ -7,8 +8,7 @@ import {
 } from '../http/agenticChatCapacity';
 import type {
 	AgenticChatBootstrap,
-	AgenticChatBootstrapHealth,
-	AgenticChatBootstrapStartResult
+	AgenticChatBootstrapHealth
 } from '../workers/agentic-chat/bootstrap';
 import {
 	type WorkerEventLoopLagMonitor,
@@ -163,8 +163,7 @@ export class ChatWorkerService {
 
 	private async startOwnedRuntime(): Promise<void> {
 		try {
-			const result = await this.options.bootstrap.start();
-			assertDedicatedRuntimeStarted(result);
+			await this.options.bootstrap.start();
 			if (this.currentState() !== 'starting') {
 				await this.stopBootstrapOnce();
 				return;
@@ -287,12 +286,6 @@ function listen(app: Express, port: number, host: string): Promise<ChatWorkerHtt
 function assertPort(port: number): void {
 	if (!Number.isSafeInteger(port) || port < 0 || port > 65_535) {
 		throw new Error('Chat worker port must be an integer between 0 and 65535');
-	}
-}
-
-function assertDedicatedRuntimeStarted(result: AgenticChatBootstrapStartResult): void {
-	if (result !== 'started') {
-		throw new Error('Dedicated Agentic Chat worker cannot start while the runtime is disabled');
 	}
 }
 

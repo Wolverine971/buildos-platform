@@ -557,9 +557,9 @@ export class AgentChatStreamController {
 				currentPrewarmKey
 			);
 			let sessionForTurn = this.#deps.getCurrentSession();
-			// Every UI send negotiates worker adoption, so admission needs a durable
-			// session id up front. A prepared prompt remains the emergency sessionless
-			// legacy path when session bootstrap itself is temporarily unavailable.
+			// Every new UI send is worker-owned until admission explicitly proves that
+			// its capability surface requires legacy execution. Both paths need a
+			// durable session id before transport negotiation.
 			if (!sessionForTurn?.id) {
 				try {
 					sessionForTurn = await this.#deps.ensureSessionReady(
@@ -573,17 +573,11 @@ export class AgentChatStreamController {
 					if ((sessionError as DOMException)?.name === 'AbortError') {
 						return;
 					}
-					if (!matchingPreparedPrompt) {
-						throw new AgenticChatWorkerUnavailableResponseError();
-					}
-					// Preserve the prepared prompt, but let server negotiation decide
-					// whether the emergency rollback permits sessionless legacy. A
-					// worker-enabled route must surface this as retryable unavailability.
 					this.#deps.logDebug?.(
 						'[agent-chat] session bootstrap failed before transport negotiation',
 						sessionError
 					);
-					sessionForTurn = null;
+					throw new AgenticChatWorkerUnavailableResponseError();
 				}
 
 				matchingPreparedPrompt = await this.#resolvePreparedPromptForSend(
@@ -592,7 +586,7 @@ export class AgentChatStreamController {
 				);
 			}
 
-			if (!sessionForTurn?.id && !matchingPreparedPrompt) {
+			if (!sessionForTurn?.id) {
 				this.error = 'Unable to prepare a chat session right now.';
 				return;
 			}
@@ -619,7 +613,7 @@ export class AgentChatStreamController {
 				request: {
 					clientTurnId,
 					streamRunId: transportStreamRunId,
-					sessionId: sessionForTurn?.id ?? null,
+					sessionId: sessionForTurn.id,
 					context: transportContext,
 					supportedModes: ['legacy_sse', 'worker_realtime'],
 					supportedContractVersions: ['legacy_internal_v1', 'agentic_chat_worker_v1'],

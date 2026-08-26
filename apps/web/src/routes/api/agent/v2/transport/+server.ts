@@ -84,8 +84,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			? { mode: existing.mode, contractVersion: existing.contractVersion }
 			: await selectAgenticChatNewTransport({
 					supportedModes: parsed.data.supportedModes,
-					supportedContractVersions: parsed.data.supportedContractVersions,
-					environment: env
+					supportedContractVersions: parsed.data.supportedContractVersions
 				});
 		const { mode, contractVersion } = selected;
 		selectedMode = mode;
@@ -135,12 +134,12 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 				)
 			);
 		}
-		// A failure is worker-unavailable only after worker transport was selected,
-		// or when the live routing policy could select it. The emergency rollback
-		// must remain outside the worker lease/database failure domain.
+		// A compatible new turn is worker-owned even if selection or lease issuance
+		// fails. Legacy is available only when the request itself is legacy-only;
+		// infrastructure uncertainty must never change transport semantics.
 		if (
 			selectedMode === 'worker_realtime' ||
-			(selectedMode === null && requestCouldSelectWorker(parsed.data, env))
+			(selectedMode === null && requestCouldSelectWorker(parsed.data))
 		) {
 			return workerUnavailableResponse();
 		}
@@ -148,12 +147,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	}
 };
 
-function requestCouldSelectWorker(
-	request: z.infer<typeof transportRequestSchema>,
-	environment: Record<string, string | undefined>
-): boolean {
+function requestCouldSelectWorker(request: z.infer<typeof transportRequestSchema>): boolean {
 	return (
-		environment.AGENTIC_CHAT_WORKER_ROUTING_ENABLED === 'true' &&
 		request.supportedModes.includes('worker_realtime') &&
 		request.supportedContractVersions.includes('agentic_chat_worker_v1')
 	);

@@ -131,6 +131,7 @@ export function projectAgenticChatWorkerLifecycleObservationsV1(
 	if (input.admissionObserved) {
 		observations.push(
 			{ event_type: 'turn_intent_resolved', phase: 'prompt' },
+			{ event_type: 'tool_surface_materialized', phase: 'tool' },
 			{ event_type: 'prepared_prompt_cache_checked', phase: 'prompt' }
 		);
 	}
