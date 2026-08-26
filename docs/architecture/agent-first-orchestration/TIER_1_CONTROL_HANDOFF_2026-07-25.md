@@ -134,10 +134,11 @@ const FASTCHAT_EVAL_PINNED_MODELS = parseFastChatPinnedModels(
 ```
 
 and passes it as `pinnedModels` at `:2808`. In
-`lib/services/agentic-chat-v2/model-tiering.ts:239-289`, a non-empty `pinnedModels` **overrides all
-tiering** — it short-circuits `useFastInitialPlan`, `useDedicatedForcedSynthesis`, and the
-`modelTieringVariant` reporting, and sets `models` directly. Format is comma-separated
-(`model-tiering.ts:153`).
+`lib/services/agentic-chat-v2/model-tiering.ts`, a non-empty `pinnedModels` **overrides the normal
+routing policy** — it short-circuits the project-create and dedicated forced-synthesis routes and
+sets `models` directly. Format is comma-separated (`parseFastChatPinnedModels`). The initial-plan
+model-tiering experiment mentioned elsewhere in this point-in-time handoff was retired on
+2026-08-21.
 
 **Three landmines, all of which will silently ruin the run:**
 

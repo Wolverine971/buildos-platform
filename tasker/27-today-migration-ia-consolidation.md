@@ -209,9 +209,9 @@ align `message_count >= 1` with the RPC's `>= 3-or-summary` gate.)
   `/admin`-gated route.
 - Delete the `/projects/create` wrapper route (fold its two callers onto the inline modal or
   `/projects`); fix the context-unaware "Head to Projects" toast.
-- Remove the live `/projects/[id]/old/` route (2,309 + ~1,734 lines of old-only components) — park
-  outside `src/routes` if a rollback net is wanted, don't leave it routable. Set a sunset date for
-  the "Classic view" toggle.
+- **Completed 2026-08-26:** removed the live `/projects/[id]/old/` implementation and its confirmed
+  orphan components. `/projects/[id]/old` and `/projects-old/[id]` are now redirect-only compatibility
+  routes to the canonical V2 workspace.
 - Lazy-import `ProjectAuditTracker` behind the `PROJECT_LOOPS_ENABLED` gate
   (`projects/[id]/+page.svelte:44`) so 1,221 lines of dead-in-prod loops UI stop shipping on the
   hot path.

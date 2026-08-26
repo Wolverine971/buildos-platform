@@ -995,10 +995,11 @@ events. Those ideas remain useful, but this V0 is not a revival:
   **orphaned experiment** — a fifth surface linked from nowhere, superseded by Agent Run. It died
   of non-adoption. Hence §2.13: no new end-user surface until the evaluation is won, and adoption
   happens inside the existing chat entry point.
-- Tree Agent's retirement was also incomplete: `tree_agent_*` tables and a dead shared-types
-  module (`packages/shared-types/src/tree-agent.types.ts`) remain in production today. This
-  experiment defines its teardown path (code, types, tables) up front, and the Tree Agent
-  leftovers should be cleaned up before this system cites that removal as precedent.
+- Tree Agent's retirement was also incomplete. The Phase 1 schema lean-up now contains the
+  guarded removal of its empty `tree_agent_*` tables and dead shared-types module; production
+  application is tracked in `docs/operations/security/PHASE1_SCHEMA_LEANUP_2026-07-30.md`.
+  This experiment defines its teardown path (code, types, tables) up front and must not cite
+  Tree Agent removal as precedent until that migration is applied.
 
 ## 18. Open Architecture Questions
 

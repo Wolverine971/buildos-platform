@@ -13,13 +13,30 @@ than restated. Final scored state: A1 mitigation v2 = Change at 61/72; A2 built 
 The architecture hypothesis is neither corroborated nor falsified; the quality question moves to
 the [open-brief instrument](./OPEN_BRIEF_EVAL_METHODOLOGY.md). No durable system exists and Phase
 B is not authorized.
-**Active workstream (2026-07-27):** the first three-lane open-brief cohort — control (v2 chat) vs
-Phase A workflow lane vs single strong agent — ending in a DJ blind pass. Handoff:
-[OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md](./OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md). Corpus
-status: Blocks B/C folded; 3 briefs + 5 label sign-offs + the Tacemus call pending as a DJ veto
-packet (see the corpus file's `pending_from_dj`). Note the control lane is materially stronger
-than during Phase A (deterministic floors + organize-commission fixes + verified prompt
-restructure, 2026-07-26) — a workflow win against it means more.
+**Active workstream (updated 2026-07-29):** the first three-lane open-brief cohort — control (v2
+chat) vs Phase A workflow lane vs single strong agent — ending in a DJ blind pass. Handoff:
+[OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md](./OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md); tracker:
+`tasker/41-open-brief-cohort-1.md`. **In progress — an agent session is executing the handoff as
+of 2026-07-29.** Corpus status: Blocks B/C folded; 3 briefs + 5 label sign-offs + the Tacemus
+call pending as a DJ veto packet (see the corpus file's `pending_from_dj`). Note the control lane
+is materially stronger than during Phase A (deterministic floors + organize-commission fixes +
+verified prompt restructure 2026-07-26, tool-discovery fixes 2026-07-28) — a workflow win against
+it means more.
+
+**Concurrent-thread coordination (2026-07-29).** Two other active threads touch the same
+territory; neither lives in this folder:
+
+- **Agentic Chat Worker + Realtime migration**
+  (`docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md`, Phase 0 local-complete)
+  will eventually extract the v2 stream runtime — which is this experiment's **control lane**.
+  Phase 1 runtime extraction must not land while cohort lane runs are in flight (standing rule:
+  never edit source while a battery runs), and any cohort results doc must record which control
+  build it ran against.
+- **Book-writing / novel-writing evaluation**
+  (`docs/technical/agentic-chat-book-writing-eval-2026-07-29.md`, fiction_story_craft skill, the
+  book-writing-journey e2e scenario) exercises the same v2 chat path but is a separate
+  evaluation; its scenario belongs to the control lane's regression catalog, not to the
+  open-brief instrument.
 
 ## Purpose
 
@@ -562,15 +579,65 @@ gated on Phase A's recorded go/change/stop decision.
 9. **Full parallel evaluation and expansion decision:** all four lanes against the frozen
    corpus; only then plan the planner, staged executor, reviewer, and controlled writes.
 
-## Related Documents
+## Document map (updated 2026-07-29)
 
-- [V0 Architecture Plan](./V0_ARCHITECTURE_PLAN.md)
+Every file in this folder, by status. Files are intentionally **not** moved into archive
+subfolders while the cohort agent is live — handoffs reference these exact paths.
+
+### Active — the open-brief cohort (tasker/41)
+
+- [OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md](./OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md) — the
+  executing handoff: reading order, six work packages, landmines, exit condition
+- [OPEN_BRIEF_EVAL_METHODOLOGY.md](./OPEN_BRIEF_EVAL_METHODOLOGY.md) — the decision instrument
+  (layers L0–L4, clarification policy, swap test, the two design corrections)
+- [corpus/open-brief-v1.json](./corpus/open-brief-v1.json) — the brief corpus and DJ's acceptance
+  bar; `pending_from_dj` tracks the veto-packet items; `corpus/fixtures/` holds the snapshots
+- [BLOCKS_B_C_QUESTIONS_2026-07-25.md](./BLOCKS_B_C_QUESTIONS_2026-07-25.md) — frozen reference:
+  DJ's verbatim answers; the register source for brief drafting
+- [AGENT_SURFACES_FRAMEWORK.md](./AGENT_SURFACES_FRAMEWORK.md) — ratified debugging taxonomy;
+  first law: audit the instrument before the agent
+
+### Foundational — still true; gate Phase B
+
+- [V0 Architecture Plan](./V0_ARCHITECTURE_PLAN.md) — the durable-system skeleton, built only on
+  a recorded win
 - [Audit 2026-07-24](./AUDIT_2026-07-24.md) — pre-implementation audit; source of the Phase A/B
   restructure, the substrate-reuse boundary, and the contract fixes
-- [Phase A Falsification Plan](./PHASE_A_FALSIFICATION_PLAN.md) — the executable first step
-- [Phase A Audit 2026-07-25](./PHASE_A_AUDIT_2026-07-25.md) — independent audit of the built A0–A2
-  work; source of the amended decision rule and the eval-validity fixes
-- [Next Iteration Runbook](./NEXT_ITERATION.md) — the ordered, costed steps that remain
+- [adr/](./adr/) — ADR 0001: evaluation model pins
+
+### Closed — Phase A record (2026-07-24 → 2026-07-26; do not run, do not resurrect)
+
+- [PHASE_A_RESULTS.md](./PHASE_A_RESULTS.md) — **the recorded decision**: routing gate
+  instrument-limited; A1 = Change at 61/72; A2 built, never scored
+- [PHASE_A_FALSIFICATION_PLAN.md](./PHASE_A_FALSIFICATION_PLAN.md) — the closed plan
+- [PHASE_A_AUDIT_2026-07-25.md](./PHASE_A_AUDIT_2026-07-25.md),
+  [PHASE_A_AUDIT_HANDOFF_2026-07-25.md](./PHASE_A_AUDIT_HANDOFF_2026-07-25.md),
+  [PHASE_A_POST_MITIGATION_HANDOFF_2026-07-25.md](./PHASE_A_POST_MITIGATION_HANDOFF_2026-07-25.md)
+  — the audit chain; source of the amended decision rule and eval-validity fixes
+- [A0_CORPUS_REVIEW.md](./A0_CORPUS_REVIEW.md), [A0_CONTRACT_REVIEW.md](./A0_CONTRACT_REVIEW.md),
+  [A1_ROUTE_RESULTS.md](./A1_ROUTE_RESULTS.md),
+  [A1_ROUTE_MITIGATION_V2.md](./A1_ROUTE_MITIGATION_V2.md),
+  [A1_HUMAN_LABEL_PACKET.md](./A1_HUMAN_LABEL_PACKET.md), [A2_PROGRESS.md](./A2_PROGRESS.md),
+  [A2_BLIND_SCORING_PROPOSAL.md](./A2_BLIND_SCORING_PROPOSAL.md) — per-slice records; the A2 lane
+  code in `packages/agent-orchestrator` is live again as the cohort's workflow lane
+- [TIER_1_CONTROL_HANDOFF_2026-07-25.md](./TIER_1_CONTROL_HANDOFF_2026-07-25.md),
+  [TIER_1_RESULTS_2026-07-25.md](./TIER_1_RESULTS_2026-07-25.md),
+  [SCENARIO_AUTHORING_HANDOFF_2026-07-25.md](./SCENARIO_AUTHORING_HANDOFF_2026-07-25.md) — Tier 1
+  breadth: executed; the resulting e2e scenarios are the control lane's regression guard
+- [NEXT_ITERATION.md](./NEXT_ITERATION.md) — **SUPERSEDED**; historical record of the
+  post-mitigation state; nothing in it runs
+
+### Related work that happens to live here
+
+- [PROMPT_INSTRUCTION_ARCHITECTURE_AUDIT_2026-07-26.md](./PROMPT_INSTRUCTION_ARCHITECTURE_AUDIT_2026-07-26.md)
+  — tasker/39 (control-lane prompt restructure), complete; kept here because it changed the
+  control lane the cohort measures against
+- [research/](./research/) — the 55k-word external research dossier; its conclusions are
+  compressed into [research/SYNTHESIS.md](./research/SYNTHESIS.md) and the methodology doc. The
+  cohort handoff explicitly forbids reading it "for context."
+
+### External references
+
 - [Agentic Chat Operating Model](../../specs/agentic-chat-operating-model.md) — existing-system
   control, not a dependency of the new runtime
 - [Tree Agent LLM Orchestration Spec](../../specs/tree-agent/tree-agent-llm-orchestration-spec.md) —

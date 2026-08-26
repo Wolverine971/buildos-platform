@@ -193,16 +193,17 @@ project-only in v1 (§6).
 
 1. ~~`document-from-vague-description` passes **5/5**~~ — **this exit condition was wrong and is
    withdrawn.** It assumed deterministic capture would remove the scenario's remaining failure. It
-   does not: that scenario asserts the *model* authored a real, structured pricing document, while
+   does not: that scenario asserts the _model_ authored a real, structured pricing document, while
    capture writes a raw log of queries and URLs. Capture guarantees research is not **lost**; it
    does not make the model write a good document. Those are different properties.
 
-   That scenario is model-bound and stays so. Measured 2/5 after this work vs 4/5 before, but the
-   comparison is not clean: one of the three failures was an infrastructure stream error, the
-   assertion got legitimately **stricter** (see §9.1), and n=5 cannot separate that from variance.
-   No mechanism links capture to the model's in-turn behavior — capture runs *after* the stream
-   resolves and each run seeds a fresh project, so no Research Log exists while the model is
-   deciding.
+    That scenario is model-bound and stays so. Measured 2/5 after this work vs 4/5 before, but the
+    comparison is not clean: one of the three failures was an infrastructure stream error, the
+    assertion got legitimately **stricter** (see §9.1), and n=5 cannot separate that from variance.
+    No mechanism links capture to the model's in-turn behavior — capture runs _after_ the stream
+    resolves and each run seeds a fresh project, so no Research Log exists while the model is
+    deciding.
+
 2. Log append is idempotent per `stream_run_id`, verified by a unit test that runs finalization twice.
 3. **A new e2e scenario proves read-back**: a note written in one session is retrieved in a later,
    cold session. Without this, §4.2 is untested and §2.1 regresses silently.

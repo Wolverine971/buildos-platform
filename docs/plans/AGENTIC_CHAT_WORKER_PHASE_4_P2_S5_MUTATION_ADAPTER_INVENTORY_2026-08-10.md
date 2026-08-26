@@ -4,7 +4,7 @@
 
 **Prepared:** 2026-08-10
 
-**Status:** P2 exit complete; executable policy partitions all 38 signed writes into 20 reviewed adapters and 18 explicit deferrals; required task SQL hosted; production gates remain OFF
+**Status:** P2 exit complete; current executable policy partitions all 39 signed writes into 20 reviewed adapters and 19 explicit deferrals after the 2026-08-13 Gmail OAuth browser-handoff classification; required task SQL hosted; production gates remain OFF
 
 **Governing plan:** `AGENTIC_CHAT_WORKER_PHASE_4_P2_MUTATION_EFFECT_PARITY_PLAN_2026-08-09.md`
 
@@ -15,17 +15,18 @@ Do not turn it on as a bundle. Admit one bounded adapter only after its exact
 receipt, project fence, downstream idempotency/query behavior, post-commit side
 effects, and uncertain-outcome policy are explicit.
 
-The exhaustive signed write-category union contains **38 tools**:
+The current signed write-category union contains **39 tools**:
 
 - 28 ontology tools;
 - 4 calendar tools;
-- 6 contact, external, or control-plane tools.
+- 7 contact, external, browser-handoff, or control-plane tools.
 
-The shared in-process gateway currently covers **22 of 38**: 18 ontology tools
+The shared in-process gateway currently covers **22 of 39**: 18 ontology tools
 and all 4 calendar tools. Additional worker-callable shared commands now own the
-atomic task move and notification-only entity tag, so 24 of 38 tools have a
-shared implementation. The remaining 14 are web-owned graph, delete, contact,
-external MCP, delegation, staged-commit, or excluded tag-content operations.
+atomic task move and notification-only entity tag, so 24 of 39 tools have a
+shared implementation. The remaining 15 are web-owned graph, delete, contact,
+external MCP, browser handoff, delegation, staged-commit, or excluded
+tag-content operations.
 Shared coverage alone is not worker admission; every tool still needs a
 provider projection, an independently gated adapter, and a recovery
 classification.
@@ -553,3 +554,17 @@ complete for the bounded reviewed surface; the 18 excluded tools require new
 contracts in their owning later packages rather than generic mutation
 admission. Production provider capabilities, adapter capabilities, routing,
 deployment, provider spend, and live mutations remain OFF.
+
+## Post-exit signed-surface drift correction (2026-08-13)
+
+`request_email_account_connection` was added to the shared signed write surface
+after the original 38/20/18 exit packet. It does not grant access or receive
+credentials; it returns a browser `client_action` for a user-clicked Google
+OAuth handoff after explicit consent. The worker has no client-action delivery,
+resume, or reconciliation contract for that boundary, so admitting it as a
+generic mutation would be incorrect.
+
+The executable policy now classifies it as
+`browser_user_action_handoff`. Current inventory is 39 signed writes = 20
+reviewed adapters + 19 explicit deferrals. Provider/adapter gates remain off and
+no SQL or deployment was required.

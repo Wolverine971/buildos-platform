@@ -73,7 +73,7 @@ WITH params AS (
 ),
 activity AS (
   SELECT user_id, created_at, 'agent_chat_session' AS activity_type
-  FROM agent_chat_sessions
+  FROM chat_sessions
 
   UNION ALL
 
@@ -330,7 +330,7 @@ post_send_activity AS (
   FROM (
     SELECT t.user_id, a.created_at
     FROM touch_1_sent t
-    JOIN agent_chat_sessions a
+    JOIN chat_sessions a
       ON a.user_id = t.user_id
      AND a.created_at > t.touch_1_sent_at
 
@@ -510,7 +510,7 @@ cohort_with_anchor AS (
 ),
 activity AS (
   SELECT user_id, created_at, 'chat_session' AS activity_type
-  FROM agent_chat_sessions
+  FROM chat_sessions
 
   UNION ALL
 

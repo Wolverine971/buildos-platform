@@ -7,7 +7,7 @@
 
 # Step 1.5 — Structural Prerequisites for the Proposal Interaction
 
-**Status:** In progress. **WS-1 implemented 2026-08-26; WS-2 ADR proposed for DJ ratification;
+**Status:** In progress. **WS-1 implemented 2026-08-26; WS-2 ADR ratified by DJ 2026-08-26;
 WS-3 not started.**
 **Owner:** unassigned (written for an implementing agent).
 **Blocks:** roadmap Step 2 (select → propose → apply → revision).
@@ -57,7 +57,7 @@ and let DJ overrule. Do not quietly pick differently, and do not stall.
 | Is `updateOntoDocument` live in production? (sets WS-1 urgency)            | Assume yes — do WS-1 first                   |
 | Shared guarded-write helper, or CAS patched into the gateway alone?        | The shared helper, as specified in WS-1      |
 | Should the PATCH route keep allowing writes with no `expected_updated_at`? | Yes — keep it, change nothing                |
-| Which agent edits may skip proposal review (direct-apply threshold)?       | Propose none; every agent edit is a proposal |
+| Which agent edits may skip proposal review (direct-apply threshold)?       | **Decided 2026-08-26: none** — every LLM-authored interactive edit is a proposal in v1 (ratified WS-2 ADR) |
 
 The full ledger, including decisions deferred to later steps, is roadmap §11.
 **If you hit a fifth decision not listed there, stop and add it to §11.1 rather than deciding it.**
@@ -244,9 +244,9 @@ anchor decision, and settling that in code first means rewriting Step 2. Write i
 `docs/architecture/decisions/` per this folder's documentation policy, and link it from the
 document-service README.
 
-**Draft result — 2026-08-26:**
+**Result — ratified by DJ 2026-08-26:**
 [`2026-08-26-document-patch-anchor-contract.md`](../../../../../docs/architecture/decisions/2026-08-26-document-patch-anchor-contract.md)
-is proposed for DJ ratification. It selects a hybrid exact-text patch, heading and bounded-context
+is the governing contract. It selects a hybrid exact-text patch, heading and bounded-context
 anchors, deterministic re-anchoring with no fuzzy apply, a stored generated `content_hash`,
 all-or-nothing multi-operation apply, stable conflict reasons, and proposal review for every
 LLM-authored interactive content edit in v1.

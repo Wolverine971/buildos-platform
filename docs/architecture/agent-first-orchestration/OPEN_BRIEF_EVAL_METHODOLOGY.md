@@ -2,10 +2,13 @@
 
 # Open-Brief Evaluation Methodology
 
-**Status:** Specified, not authorized. Follow-on to Phase A.
-**Date:** 2026-07-25
+**Status:** ACTIVE — this is the decision instrument for the orchestration bet. Phase A closed
+2026-07-26 ([`PHASE_A_RESULTS.md`](./PHASE_A_RESULTS.md)) and Tier 1 breadth ran 2026-07-25
+([`TIER_1_RESULTS_2026-07-25.md`](./TIER_1_RESULTS_2026-07-25.md)); both former blockers are
+resolved. Cohort 1 is being executed per
+[`OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md`](./OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md).
+**Date:** 2026-07-25 (status updated 2026-07-29)
 **Owner:** BuildOS
-**Blocked on:** Phase A reaching a recorded verdict, then Tier 1 breadth (§3).
 **Origin:** [`research/SYNTHESIS.md`](./research/SYNTHESIS.md) §8 — "what this research could not
 answer." DJ authorized the sequencing on 2026-07-25: finish Phase A → Tier 1 breadth → this.
 
@@ -173,8 +176,8 @@ One question per output, 4-point:
 > **Would you execute this?**
 > 1 — no · 2 — after heavy edits · 3 — after light edits · 4 — as-is
 
-> **2026-07-26 (§6.4):** add a second question per output — *did it know whether it could be
-> executed?* — per DJ's C5 answer.
+> **2026-07-26 (§6.4):** add a second question per output — _did it know whether it could be
+> executed?_ — per DJ's C5 answer.
 
 Plus one free-text: _what's missing._ Blind across lanes, counterbalanced ordering, scored before any
 lane identity is revealed. Reuse the existing counterbalanced blind mechanic
@@ -205,6 +208,58 @@ Not "the plan was good." Specifically: L0 clean, **and** grounding ratio ≥ the
 The failure to watch for, and the reason L1/L2 exist: **multi-agent output that reads better — more
 structure, more confidence, more sections — while scoring worse on grounding and specificity.** A
 judge cannot see that. Only code can.
+
+### 4.5 Cohort 1 pre-registration — RECORDED 2026-07-29, before lane execution
+
+This section is frozen before any cohort-1 lane output is generated or scored. Cohort 1 validates
+the instrument and establishes distributions; it cannot authorize Phase B or support a Go-class
+architecture conclusion.
+
+**Run schedule.** Every runnable brief × applicable snapshot cell receives one triplet: control,
+workflow, and single-strong-agent, with the final-writing model held fixed. The two swap-anchor
+cells (`ob-04` × project-alpha and `ob-04` × project-beta) receive three triplets each. This is 12
+triplets / 36 unique outputs: inside DJ's 30–40-output blind-pass budget. The six non-anchor cells
+receive one triplet rather than three; that dropped replication is reported as a power limitation,
+not hidden or backfilled after seeing results.
+
+The blocked `ob-05` cell is one scored output but may take two turns. If a lane asks first and has
+not already produced the commissioned document, the harness gives the same frozen reply in every
+lane: _“use your best judgment based on the project context, but tell me what you are assuming and
+do not pretend you have more direction than you do.”_ The final artifact then receives the ordinary
+L0–L3 checks, while ask-rate is taken from the full two-turn trace. This preserves ask-first as a
+legal behavior without waiving the document contract from patterns in model output.
+
+**Validity and L0 gate.** A lane run with a model-pin mismatch, provider rejection, stream crash,
+missing usage, or another harness failure is infrastructure-invalid and is replaced at most once.
+The same rule applies to every lane. A triplet reaches DJ only when all three runs are
+infrastructure-valid and L0-clean. An excluded triplet remains in the operational ledger with the
+lane-specific reason; it is never silently removed from the attempted denominator.
+
+**Blind scoring.** DJ scores each anonymous output independently on the two frozen questions:
+
+1. `would_you_execute`: 1 no · 2 after heavy edits · 3 after light edits · 4 as-is.
+2. `knew_whether_executable`: yes only when the artifact assesses context sufficiency, difficulty,
+   and what it still needs.
+
+For any two lanes on the same triplet, the higher execute score wins. Equal execute scores are
+broken only when exactly one output receives `knew_whether_executable = yes`; otherwise the pair is
+a tie. This is the cohort-1 definition of a **lane win**. The three-lane packet is counterbalanced:
+across the three swap-anchor repetitions every lane occupies A, B, and C exactly once; the corpus
+hash rotates the starting order for adjacent cells. The sealed mapping is not opened until the
+whole packet is scored.
+
+**Readout.** Report wins / losses / ties for all three pairwise contrasts, with the exact one-sided
+binomial tail `P(X ≥ wins | n, p=0.5)` printed beside every win count; ties remain in the denominator
+as non-wins for that probability. Also report per-lane L0 pass rate, feasibility-check pass rate,
+mean/median DJ execute score, feasibility-awareness yes rate, grounding ratio distribution,
+swap-test overlap, model-only cost, all-in cost, and latency.
+
+**No cohort-1 thresholds for L1 or L2.** Grounding and swap specificity are supporting
+anti-template diagnostics, not the headline decision metric, and cohort 1 sets their distributions.
+A descriptive workflow signal requires workflow to have more wins than losses against both
+baselines, with L0 pass rate and feasibility-awareness yes rate no worse than either baseline. Even
+if that signal appears, the result is “promising / replicate,” never Go: the largest pairwise blind
+denominator is 12, versus the methodology's ~37-pair 80%-power target for a +20pp effect.
 
 ---
 
@@ -317,14 +372,14 @@ and must not be lost:
    calendar framing.
 
 2. **The quality bar is self-assessed feasibility, not specificity.** C5 — "what would make you go
-   *oh, it gets this project*" — turned out to mean: the plan knows whether there is enough context
+   _oh, it gets this project_" — turned out to mean: the plan knows whether there is enough context
    to achieve it, stress-tests itself, weighs its own difficulty, and asks for what it needs.
    Specificity (what L1 grounding ratio and the L2 swap test measure) is a supporting anti-template
    signal, not the bar. Consequences: the instrument needs a feasibility-self-assessment check
    (does the artifact contain an explicit doability/stress-test section; are context requests
    targeted at real gaps), and L3 should ask both "would you execute this?" and "did it know
    whether it could be executed?". Relatedly, C6 confirms unasked judgment calls of Plan B's kind
-   are *wanted* — a rubric that penalizes them trains the wrong behavior.
+   are _wanted_ — a rubric that penalizes them trains the wrong behavior.
 
 Also settled: the output contract (durable one-pager doc + bottom-line-up-front takeaways in chat
 — either alone fails), and the blocked/proceedable line is **snapshot-conditional**: a

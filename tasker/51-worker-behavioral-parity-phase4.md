@@ -3,7 +3,26 @@
 # 51 — Phase 4: full worker behavioral parity
 
 **Created:** 2026-08-07  
-**Status:** P0-P5 COMPLETE (2026-08-13); P6's deterministic matrix is complete, but the hosted quality exit remains closed. The latest authorized six-class x3, zero-retry battery on exact `33b4faec` improved to 11/18 scenario repetitions and 14/21 turn assertions at `$0.11939497`, but two organization turns still emitted deterministic provider errors. Production is independently restored OFF/empty and healthy. The bounded two-file follow-up adds one non-executing unavailable-`skill_search` repair beside `skill_load` and uses the existing buffered forced-synthesis retry after durable clarification. Proof is focused provider 60/60, full worker 1,059 passed plus one intentional skip, clean typecheck, and lint with zero errors. It shipped in aggregate revision `6c73357ae` and exact Railway deployment `2a3c25d5-6621-4445-bea3-cceebafeb9ca`; stale route-promotion tests were corrected in `00246a8fc`, with authoritative CI run `32282265304` green. The deterministic repair has not been paid-retested; any further paid gate requires fresh DJ authorization. **Current handoff: `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_CONTINUATION_HANDOFF_2026-08-18.md`.** Route remediation ledger: `tasker/54-calendar-route-size-guard.md`. Independent review handoff: `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_INDEPENDENT_EVALUATOR_HANDOFF_2026-08-13.md`. P5 plan: `docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_P5_TELEMETRY_BILLING_PLAN_2026-08-13.md`. Master plan: `docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 4 (lines 857–886).
+**Status:** ✅ **PHASE 4 EXITED 2026-08-19 (DJ decision).** P0–P6 complete. The hosted quality gate is
+closed by a **same-day legacy comparator**, not by a perfect score: run against the exact current
+scenario definitions on production, legacy scored **12/18 (66.67%)** and the worker **11/18
+(61.11%)** — one repetition apart, worker ahead on two scenarios, behind on two. The 91.67% bar the
+gate had been enforcing was derived from 2026-07-31 artifacts and is **not achievable by legacy
+itself**; two of the six scenarios were made stricter on 2026-08-15, after that bar was measured.
+DJ ratified exit with the worker marginally behind. Two residuals are tracked separately:
+[55](55-project-organize-contract-review-assertion.md) (`project-organize` asserts a worker-only
+tool, so **both** paths score 0/3 — instrument defect, not parity) and
+[56](56-worker-task-complete-over-clarification.md) (`task-complete-cold-reference`, the one real
+worker regression: legacy 3/3 vs worker 1/3). Comparator evidence:
+`docs/plans/evidence/AGENTIC_CHAT_WORKER_PHASE_4_LEGACY_SAME_DAY_COMPARATOR_2026-08-19.md`
+(artifact SHA-256 `e973464ff64aff43609066d36ed770b51982cf64e7364fb314faa378f046996a`).
+**Next: Phase 5** — reliability verification and operational hardening, per
+`docs/plans/AGENTIC_CHAT_WORKER_REALTIME_MIGRATION_PLAN_2026-07-29.md` §Phase 5 (line 889).
+Carried into Phase 5: latency (measured as a _runtime_ property — legacy turns ran 90–151s in the
+same comparator), the two `research-*` scenarios, `agent_call_session_id` context linkage, and the
+provider long tail. Prior handoff (history + deploy mechanics):
+`docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_CONTINUATION_HANDOFF_2026-08-18.md`.
+
 **Mission:** Make the worker path as capable as the legacy web path — full tool catalog, mutations behind effect reservations, attachments, supervisor, telemetry, billing — proven by differential tests that run legacy and worker against identical fixtures, so routing can eventually stay ON instead of flipping per canary. Internal-only throughout; cohort widening is Phase 6.
 
 ## Why this work exists

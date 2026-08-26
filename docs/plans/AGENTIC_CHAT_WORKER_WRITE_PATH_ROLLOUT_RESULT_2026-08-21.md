@@ -1,4 +1,5 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_WRITE_PATH_ROLLOUT_RESULT_2026-08-21.md -->
+<!-- doc-status: point-in-time -->
 
 # Agentic Chat worker write path — rollout result
 
@@ -16,21 +17,21 @@ through a receipt-isolated workdir (dry run named exactly that file; post-apply 
 
 ## 1. Headline
 
-| Scenario | Before (08-21 morning, writes off) | After (prod worker, zero retries) |
-| --- | ---: | --- |
-| `task-multi-update` | 0/3 | **PASS** on the first turn after the flip |
-| `project-organize` | 0/3 (1 pass in 22 worker turns since 08-15) | **PASS, judge 5/5**, $0.03, 127 s — 4 folders created, 6 moves against code-bound label ids |
-| Six-scenario × 5-rep battery | 11/18 best prior (`33b4faec`) | _(filled in below when the background battery completes)_ |
+| Scenario                     |          Before (08-21 morning, writes off) | After (prod worker, zero retries)                                                           |
+| ---------------------------- | ------------------------------------------: | ------------------------------------------------------------------------------------------- |
+| `task-multi-update`          |                                         0/3 | **PASS** on the first turn after the flip                                                   |
+| `project-organize`           | 0/3 (1 pass in 22 worker turns since 08-15) | **PASS, judge 5/5**, $0.03, 127 s — 4 folders created, 6 moves against code-bound label ids |
+| Six-scenario × 5-rep battery |               11/18 best prior (`33b4faec`) | _(filled in below when the background battery completes)_                                   |
 
 ## 2. What shipped
 
-| Work package | Change | Where |
-| --- | --- | --- |
-| WP3 organize parity | `new_parent_title` admitted on the worker `move_document_in_tree`; gateway returns `parent_id`/`parent_created`; adapter proves placement against the receipt; write ledger records the resolved parent; organize execution nudge appended after approval and in the write carve-out | `mutationToolCatalog.ts`, `gatewayDocumentRelationshipMutationAdapter.ts`, `op-execution-gateway.core.ts`, `write-ledger.ts`, `readOnlyProvider.ts` |
-| WP1 symbolic references | Contract outcomes carry `label` (create) and `parent_label` (move/organize); parser enforces one-labelled-create-per-entity with a declared title; `bindTurnContractLabels` binds by title key (NFKC, alphanumerics only, case-folded) with containment/elimination/title-move fallbacks; worker authorizes a move when `new_parent_id` equals the binding or `new_parent_title` matches the declared title; batch reviewer receives "Resolved contract labels" | `turn-contract.ts`, `gateway.ts` (schema), `readOnlyProvider.ts` |
-| WP2 reviewer | Field-semantics block projected from the advertised tool schemas (so "top priority → 1" is resolved); delegated-organization and postcondition guidance; two revisions per lane; batch reviewer told each tool's required arguments | `readOnlyProvider.ts` |
-| WP4 surface coherence | A contract declared on a surface with no write tool becomes a read-only continuation (no reviewer passes); `/health.agenticChat.mutationCapabilities` reports provider/adapter names and counts and the advertised write tools | `readOnlyProvider.ts`, `phase3Bootstrap.ts` |
-| WP5 harness | `Scenario.requiredMutationTools`; preflight fails closed unless the worker advertises them (`PRIVATE_AGENTIC_CHAT_WORKER_URL`); rejected tool name + advertised tool count retained in provider observations and the evidence artifact; `pnpm compare:agentic-evidence <baseline> <candidate>` | `agentic-e2e/**`, `openRouterReadOnlyClient.ts`, migration, `evidence-report.ts`, `scripts/agentic-e2e/compare-evidence.mjs` |
+| Work package            | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Where                                                                                                                                               |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| WP3 organize parity     | `new_parent_title` admitted on the worker `move_document_in_tree`; gateway returns `parent_id`/`parent_created`; adapter proves placement against the receipt; write ledger records the resolved parent; organize execution nudge appended after approval and in the write carve-out                                                                                                                                                                            | `mutationToolCatalog.ts`, `gatewayDocumentRelationshipMutationAdapter.ts`, `op-execution-gateway.core.ts`, `write-ledger.ts`, `readOnlyProvider.ts` |
+| WP1 symbolic references | Contract outcomes carry `label` (create) and `parent_label` (move/organize); parser enforces one-labelled-create-per-entity with a declared title; `bindTurnContractLabels` binds by title key (NFKC, alphanumerics only, case-folded) with containment/elimination/title-move fallbacks; worker authorizes a move when `new_parent_id` equals the binding or `new_parent_title` matches the declared title; batch reviewer receives "Resolved contract labels" | `turn-contract.ts`, `gateway.ts` (schema), `readOnlyProvider.ts`                                                                                    |
+| WP2 reviewer            | Field-semantics block projected from the advertised tool schemas (so "top priority → 1" is resolved); delegated-organization and postcondition guidance; two revisions per lane; batch reviewer told each tool's required arguments                                                                                                                                                                                                                             | `readOnlyProvider.ts`                                                                                                                               |
+| WP4 surface coherence   | A contract declared on a surface with no write tool becomes a read-only continuation (no reviewer passes); `/health.agenticChat.mutationCapabilities` reports provider/adapter names and counts and the advertised write tools                                                                                                                                                                                                                                  | `readOnlyProvider.ts`, `phase3Bootstrap.ts`                                                                                                         |
+| WP5 harness             | `Scenario.requiredMutationTools`; preflight fails closed unless the worker advertises them (`PRIVATE_AGENTIC_CHAT_WORKER_URL`); rejected tool name + advertised tool count retained in provider observations and the evidence artifact; `pnpm compare:agentic-evidence <baseline> <candidate>`                                                                                                                                                                  | `agentic-e2e/**`, `openRouterReadOnlyClient.ts`, migration, `evidence-report.ts`, `scripts/agentic-e2e/compare-evidence.mjs`                        |
 
 Verification before deploy: worker 1121/1121, shared-agent-ops 118/118, runtime `turn-contract`
 54/54, web harness 55/55, typecheck clean in all four packages.
@@ -62,15 +63,15 @@ Evidence: [`…writepath_smoke_organize_transition_conflict_2026-08-21_4d28b2d1f
 Artifact: [`…writepath_six_scenario_battery_2026-08-21_70cf7f357.json`](./evidence/agentic_chat_worker_writepath_six_scenario_battery_2026-08-21_70cf7f357.json)
 (`$0.36`, 30 turns). Compare: `pnpm compare:agentic-evidence <33b4faec> <this>`.
 
-| Scenario | Best prior worker (`33b4faec`, 3 reps) | This battery (5 reps) |
-| --- | ---: | ---: |
-| `project-catchup-cold` | 3/3 | **5/5** |
-| `restraint-noop-and-ambiguity` | 2/3 | **5/5** (10/10 turns) |
-| `task-complete-cold-reference` | 1/3 | **4/5** |
-| `task-reschedule-cold-reference` | 3/3 | 4/5 |
-| `task-multi-update` | 2/3 | **4/5** |
-| `project-organize` | 0/3 | 1/4 (one rep failed at seed, 5 s) |
-| **Total** | **11/18 (61%)** | **23/30 (77%)** |
+| Scenario                         | Best prior worker (`33b4faec`, 3 reps) |             This battery (5 reps) |
+| -------------------------------- | -------------------------------------: | --------------------------------: |
+| `project-catchup-cold`           |                                    3/3 |                           **5/5** |
+| `restraint-noop-and-ambiguity`   |                                    2/3 |             **5/5** (10/10 turns) |
+| `task-complete-cold-reference`   |                                    1/3 |                           **4/5** |
+| `task-reschedule-cold-reference` |                                    3/3 |                               4/5 |
+| `task-multi-update`              |                                    2/3 |                           **4/5** |
+| `project-organize`               |                                    0/3 | 1/4 (one rep failed at seed, 5 s) |
+| **Total**                        |                        **11/18 (61%)** |                   **23/30 (77%)** |
 
 Every failure, from the database:
 
@@ -100,15 +101,33 @@ Every failure, from the database:
 
 ## 4b. Follow-up runs (all zero retries, clean worktree, captured)
 
-| Release | Run | Result | Finding → fix |
-| --- | --- | --- | --- |
-| `16670602c` | organize, multi-update, task-complete × 3 | multi **3/3**, task-complete **3/3**, organize 1/3 | organize still stopped after the creates — the read-loop escalation is monotonic, so the post-mutation pass was forced tool-free and bypassed the completion continuation → `cdab55003` takes the write-only completion pass on that branch too |
-| `cdab55003` | organize × 3 | 1/3 | the two failures were the **candidate gate** converting reviewer approvals into clarifications (7 listed documents incl. START HERE, contract covered 6) → `24c1d2f7b` gates singular references only |
-| `24c1d2f7b` | organize × 3 + restraint × 3 | organize 2/3 (judge 5/5 ×2), restraint 2/3 | **both failures are harness-side**: turns `33c9a255` (all 4 creates + 6 moves executed, completed 22:28:18Z) and `e8f789cf` (completed 23:00:35Z) finished on the worker but the harness never received the terminal event and reported "did not terminate" after ~1000–1200 s. Restraint's turn-2 clarification behaviour is intact. |
+| Release     | Run                                       | Result                                             | Finding → fix                                                                                                                                                                                                                                                                                                                         |
+| ----------- | ----------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `16670602c` | organize, multi-update, task-complete × 3 | multi **3/3**, task-complete **3/3**, organize 1/3 | organize still stopped after the creates — the read-loop escalation is monotonic, so the post-mutation pass was forced tool-free and bypassed the completion continuation → `cdab55003` takes the write-only completion pass on that branch too                                                                                       |
+| `cdab55003` | organize × 3                              | 1/3                                                | the two failures were the **candidate gate** converting reviewer approvals into clarifications (7 listed documents incl. START HERE, contract covered 6) → `24c1d2f7b` gates singular references only                                                                                                                                 |
+| `24c1d2f7b` | organize × 3 + restraint × 3              | organize 2/3 (judge 5/5 ×2), restraint 2/3         | **both failures are harness-side**: turns `33c9a255` (all 4 creates + 6 moves executed, completed 22:28:18Z) and `e8f789cf` (completed 23:00:35Z) finished on the worker but the harness never received the terminal event and reported "did not terminate" after ~1000–1200 s. Restraint's turn-2 clarification behaviour is intact. |
 
 Artifacts: `…writepath_confirm_three_scenario_2026-08-21_16670602c.json`,
 `…writepath_organize_x3_2026-08-21_cdab55003.json`,
 `…writepath_organize_restraint_x3_2026-08-21_24c1d2f7b.json`.
+
+## 4c. Late terminal-recovery follow-up (local; release pending)
+
+The two apparent transport failures are most consistent with suspension of the local test process,
+not worker or model failure: both the 315 s harness timeout and the 450 s Vitest deadline returned
+roughly 17–20 minutes late while the durable worker rows had already completed. The local recovery
+patch now bounds a reconciliation request at 15 s with retry and gives an overdue terminal deadline
+one final 30 s durable-reconciliation window.
+
+Validation after a second review: 40 surrounding worker transport tests, 10 harness boundary tests,
+Prettier, ESLint, and full web `svelte-check` pass; the production zero-spend preflight passes. A
+zero-retry real-model `project-organize` run passed in 144 seconds with 3 folder creates and all 6
+moves. Durable turn `23e10f36-a39e-4728-be8d-da43e4e21593` used
+`deepseek/deepseek-v4-flash` for acting and `openai/gpt-5.6-luna` for review; all 15 model calls
+succeeded at $0.04252292 total. This run has database evidence but no Phase 0 JSON artifact.
+
+The patch is not yet committed or deployed. Next gate: deploy the web runtime, then run one isolated
+post-deploy organize turn before considering another broad battery.
 
 Handoff for the next agent: [`AGENTIC_CHAT_WORKER_WRITE_PATH_HANDOFF_2026-08-21.md`](./AGENTIC_CHAT_WORKER_WRITE_PATH_HANDOFF_2026-08-21.md).
 

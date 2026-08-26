@@ -1,4 +1,5 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_WRITE_PATH_HANDOFF_2026-08-21.md -->
+<!-- doc-status: point-in-time -->
 
 # Agentic Chat worker write path — handoff
 
@@ -9,15 +10,42 @@
 [`AGENTIC_CHAT_WORKER_ORGANIZE_MULTIUPDATE_FAILURE_INVESTIGATION_2026-08-21.md`](./AGENTIC_CHAT_WORKER_ORGANIZE_MULTIUPDATE_FAILURE_INVESTIGATION_2026-08-21.md)
 (why it was broken). Plan that was executed: `~/.claude/plans/pure-sauteeing-flute.md`.
 
+## 0. Late continuation: terminal recovery fixed locally and real-model organize passed
+
+The two apparent terminal-event failures were most consistent with the local test process being
+suspended: a 315-second harness timeout returned after 1,200,905 ms / 1,017,582 ms, and the
+450-second Vitest deadline was delayed too. Both workers completed while the local Realtime client
+and timers were paused. On resume, the overdue timeout could beat the watchdog reconciliation.
+
+Local, not yet committed or deployed:
+
+- reconciliation requests now have a 15-second bound and retry instead of letting one stuck request
+  pin the watchdog indefinitely;
+- the worker harness gives durable reconciliation one final 30-second recovery window before
+  classifying a missed terminal broadcast as a transport failure;
+- deterministic regressions cover a stuck reconcile request and the deadline/wake recovery path.
+
+Validation: 40 surrounding worker transport tests + 10 harness boundary tests pass; full web
+`svelte-check` has 0 errors / 0 warnings; the zero-spend production preflight passes. A zero-retry
+real-model `project-organize` run then passed in 144 seconds. Durable turn
+`23e10f36-a39e-4728-be8d-da43e4e21593` completed with 3 successful folder creates and all 6 moves;
+all 15 model calls succeeded (`deepseek/deepseek-v4-flash` acting,
+`openai/gpt-5.6-luna` review), total model cost $0.04252292. This run did not enable Phase 0 capture,
+so it has database evidence but no JSON evidence artifact.
+
+**Next:** commit the four code/test files plus this note with explicit pathspecs, deploy the web
+runtime when worker active turns are zero, then run one post-deploy isolated organize turn. A broad
+battery is not warranted until that post-deploy transport check passes.
+
 ## 1. State of the world right now
 
-| Surface | State |
-| --- | --- |
-| `main` | `24c1d2f7b` pushed. Seven commits today: `4816f6769` write path, `4d28b2d1f`, `70cf7f357`, `16670602c`, `cdab55003`, `24c1d2f7b` (all worker/runtime fixes found by live turns), plus a local docs commit (see §6). |
+| Surface                       | State                                                                                                                                                                                                                                                                   |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `main`                        | `24c1d2f7b` pushed. Seven commits today: `4816f6769` write path, `4d28b2d1f`, `70cf7f357`, `16670602c`, `cdab55003`, `24c1d2f7b` (all worker/runtime fixes found by live turns), plus a local docs commit (see §6).                                                     |
 | Railway `agentic-chat-worker` | Serving `24c1d2f7b`, healthy, `AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES` = `…ADAPTER_CAPABILITIES` = **all 20 reviewed capabilities**. `/health.agenticChat.mutationCapabilities` reads back 20/20/20. Cohort unchanged: DJ's canary user + the e2e harness account. |
-| Vercel `build-os.com` | Serving the matching web build (the worker takes `declare_turn_contract`'s schema, now with `label`/`parent_label`, from the web-signed artifact). |
-| Supabase prod | Migration `20260822010000_agentic_chat_execution_observation_rejected_tool.sql` applied (receipt-isolated workdir; remote "up to date"). |
-| Scratch | Clean worktree at `scratchpad/battery-wt` (session scratchpad; disposable). No background processes left running. |
+| Vercel `build-os.com`         | Serving the matching web build (the worker takes `declare_turn_contract`'s schema, now with `label`/`parent_label`, from the web-signed artifact).                                                                                                                      |
+| Supabase prod                 | Migration `20260822010000_agentic_chat_execution_observation_rejected_tool.sql` applied (receipt-isolated workdir; remote "up to date").                                                                                                                                |
+| Scratch                       | Clean worktree at `scratchpad/battery-wt` (session scratchpad; disposable). No background processes left running.                                                                                                                                                       |
 
 **Product outcome on the deployed worker, zero retries:** `task-multi-update` 4/5 then 3/3;
 `project-organize` went from 1 pass in 22 turns to 2/3 judged passes in the last run (the third
@@ -57,14 +85,14 @@ turn executed every create and move too — see §3) with judge scores of 5/5.
 
 ## 3. Evidence trail (all under `docs/plans/evidence/`, newest last)
 
-| Artifact | Result | What it taught |
-| --- | --- | --- |
-| `…writepath_smoke_organize_transition_conflict_2026-08-21_4d28b2d1f.json` | organize ✗ | identical re-declare collided on the review transition id → fixed `70cf7f357` |
-| `…writepath_smoke_organize_pass_2026-08-21_70cf7f357.json` | organize ✓ judge 5 | labels → creates → bound moves, end to end |
-| `…writepath_six_scenario_battery_2026-08-21_70cf7f357.json` | **23/30** vs 11/18 prior | organize stopped after creates (no completion pass); reviewer mimicry; two reviewer nits → `16670602c` |
-| `…writepath_confirm_three_scenario_2026-08-21_16670602c.json` | multi 3/3, task-complete 3/3, organize 1/3 | same stop-after-creates via the forced-synthesis branch → `cdab55003` |
-| `…writepath_organize_x3_2026-08-21_cdab55003.json` | organize 1/3 | candidate gate converted two approvals into clarifications → `24c1d2f7b` |
-| `…writepath_organize_restraint_x3_2026-08-21_24c1d2f7b.json` | organize 2/3, restraint 2/3 | **both failures are harness-side**: turns `33c9a255` (organize: 4 creates + 6 moves executed, completed 22:28:18Z) and `e8f789cf` (restraint, completed 23:00:35Z) finished in the database, but the harness never received the terminal event and reported "did not terminate" after ~1000–1200 s |
+| Artifact                                                                  | Result                                     | What it taught                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `…writepath_smoke_organize_transition_conflict_2026-08-21_4d28b2d1f.json` | organize ✗                                 | identical re-declare collided on the review transition id → fixed `70cf7f357`                                                                                                                                                                                                                      |
+| `…writepath_smoke_organize_pass_2026-08-21_70cf7f357.json`                | organize ✓ judge 5                         | labels → creates → bound moves, end to end                                                                                                                                                                                                                                                         |
+| `…writepath_six_scenario_battery_2026-08-21_70cf7f357.json`               | **23/30** vs 11/18 prior                   | organize stopped after creates (no completion pass); reviewer mimicry; two reviewer nits → `16670602c`                                                                                                                                                                                             |
+| `…writepath_confirm_three_scenario_2026-08-21_16670602c.json`             | multi 3/3, task-complete 3/3, organize 1/3 | same stop-after-creates via the forced-synthesis branch → `cdab55003`                                                                                                                                                                                                                              |
+| `…writepath_organize_x3_2026-08-21_cdab55003.json`                        | organize 1/3                               | candidate gate converted two approvals into clarifications → `24c1d2f7b`                                                                                                                                                                                                                           |
+| `…writepath_organize_restraint_x3_2026-08-21_24c1d2f7b.json`              | organize 2/3, restraint 2/3                | **both failures are harness-side**: turns `33c9a255` (organize: 4 creates + 6 moves executed, completed 22:28:18Z) and `e8f789cf` (restraint, completed 23:00:35Z) finished in the database, but the harness never received the terminal event and reported "did not terminate" after ~1000–1200 s |
 
 To explain any turn, read the database, not the artifact:
 `cd apps/web && node scripts/agentic-e2e/dump-turn-decisions.mjs <artifact.json> out.json [scenarioId] && python3 scripts/agentic-e2e/render-turn-decisions.py out.json`
@@ -72,12 +100,13 @@ To explain any turn, read the database, not the artifact:
 
 ## 4. Open items, ranked
 
-1. **Harness terminal-event miss (instrument).** Two turns in the last run completed on the worker
-   but the harness waited ~17–20 min and failed them. Not seen in the 30-turn battery earlier in
-   the evening. Start with `apps/web/src/lib/tests/agentic-e2e/harness/worker-client.ts`
-   (`WORKER_TURN_TIMEOUT_MS = 315_000` — why did it wait 1200 s?) and the Realtime subscription /
-   reconciliation fallback; compare `chat_turn_events` `done` sequence vs what the client
-   acknowledged. Do not mistake this for a product regression: the database rows are complete.
+1. **Harness terminal-event miss (fixed locally; release pending).** The 1,017–1,201 s observed
+   waits also exceeded the 315 s harness timeout and the 450 s Vitest deadline, making local process
+   suspension the best fit for the evidence. The worker had already completed both turns. The local
+   fix bounds each reconcile request at 15 s with retry and gives an overdue terminal deadline one
+   final 30 s durable-reconciliation window. Deterministic stuck-request and missed-terminal tests,
+   the live preflight, and one zero-retry real-model organize turn pass. Remaining work is the
+   commit/deploy/post-deploy isolated check described in §0.
 2. **Organize remaining behavior nits** (each cost a revision, not a failure): the batch reviewer
    still sometimes returns creates for carrying `content`; the first declare usually omits the
    title `changes` (the parser repairs it in one round). Consider putting the labelled-create shape
@@ -116,9 +145,7 @@ To explain any turn, read the database, not the artifact:
 
 ## 6. Uncommitted / local-only
 
-- Docs + evidence from this session are committed locally with explicit pathspecs (not pushed, to
-  avoid a deploy for docs alone): this file, the result note, the investigation doc, the updated
-  Railway handoff, and the six `writepath_*` evidence artifacts.
-- DJ's pre-staged unrelated work (projects-old renames, schema.md, marketing docs) is untouched
-  and still staged. Always commit with `git commit -- <paths>`.
+- The original docs + evidence commit `43629d776` is now on `origin/main`. The late continuation in
+  §0 and the terminal-recovery code/tests remain uncommitted and undeployed.
+- Unrelated working-tree changes remain. Always stage and commit this work with explicit pathspecs.
 - Memory: `~/.claude/projects/-Users-djwayne-buildos-platform/memory/project_worker_writepath_rollout_2026-08-21.md`.

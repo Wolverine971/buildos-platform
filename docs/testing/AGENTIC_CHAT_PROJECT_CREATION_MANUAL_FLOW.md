@@ -256,11 +256,20 @@ Admin turn_run id:
 Notes:
 ```
 
-## Next Logical Automation Step
+## Automated Regression
 
-Once these manual checks feel stable, the next automation target should be a replayable project creation scenario in the eval harness so we can test:
+PC1 now has a replayable worker regression in
+[`project-create-contract.scenario.ts`](../../apps/web/src/lib/tests/agentic-e2e/scenarios/project-create-contract.scenario.ts).
+It tests:
 
 - creation success
-- clarification behavior
-- context shift
+- no redundant clarification for a fully specified request
+- the requested goal and tasks
+- durable context shift
 - post-create follow-up grounding
+
+Run it with:
+
+```bash
+pnpm --filter @buildos/web test:agentic:project-create:worker
+```

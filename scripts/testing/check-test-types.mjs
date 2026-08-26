@@ -29,15 +29,11 @@ const executable = resolve(
 	'.bin',
 	process.platform === 'win32' ? 'tsc.cmd' : 'tsc'
 );
-const result = spawnSync(
-	executable,
-	['-p', config.tsconfig, '--noEmit', '--pretty', 'false'],
-	{
-		cwd: process.cwd(),
-		encoding: 'utf8',
-		maxBuffer: 64 * 1024 * 1024
-	}
-);
+const result = spawnSync(executable, ['-p', config.tsconfig, '--noEmit', '--pretty', 'false'], {
+	cwd: process.cwd(),
+	encoding: 'utf8',
+	maxBuffer: 64 * 1024 * 1024
+});
 
 if (result.error) {
 	console.error(`Unable to run the ${workspace} test typecheck:`, result.error.message);
@@ -49,7 +45,9 @@ const errorCount = output.match(/error TS\d+:/g)?.length ?? 0;
 
 if (result.status !== 0 && errorCount === 0) {
 	console.error(output.trim());
-	console.error(`${workspace} test typecheck exited ${result.status} without parseable diagnostics.`);
+	console.error(
+		`${workspace} test typecheck exited ${result.status} without parseable diagnostics.`
+	);
 	process.exit(result.status ?? 2);
 }
 
@@ -64,5 +62,7 @@ if (errorCount > config.maxErrors) {
 const improvement = config.maxErrors - errorCount;
 console.log(
 	`${workspace} test type debt: ${errorCount}/${config.maxErrors} errors` +
-		(improvement > 0 ? ` (${improvement} below baseline; lower the baseline)` : ' (at baseline)')
+		(improvement > 0
+			? ` (${improvement} below baseline; lower the baseline)`
+			: ' (at baseline)')
 );

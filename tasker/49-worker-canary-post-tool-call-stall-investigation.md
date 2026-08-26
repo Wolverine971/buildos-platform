@@ -92,7 +92,7 @@ Local verification:
 No migration, model change, prompt change, routing expansion, or cohort expansion is required. The deploy must include both the worker changes and the `@buildos/shared-agent-ops` source changes so the worker receives the propagated abort signal.
 
 1. Deploy the repair while `AGENTIC_CHAT_WORKER_ROUTING_ENABLED` remains exact `false`; wait for the worker deployment to be healthy.
-2. Confirm the worker's `AGENTIC_CHAT_INTERNAL_USER_IDS` remains exactly the single canonical canary user.
+2. Confirm the worker routing flag and current capacity evidence match the intended canary state.
 3. Change only routing to exact `true`, then submit one controlled read request in the established project session. Do not send a second request on failure.
 4. Retain the new canonical `turn_run_id` and run:
 

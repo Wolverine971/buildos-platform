@@ -4,7 +4,7 @@
 # Agentic Chat separation-of-concerns architecture and migration plan
 
 **Date:** 2026-08-25  
-**Status:** Phases 0–6B and the Phase 7 namespace cleanup are deployed in production release `7097b47ec154`. Final Phase 7 process-ownership and global-rollback cleanup is implemented and validated in the current working tree, pending deployment. Gmail, Calendar, OAuth handoff, and image capability retirement remains parity-gated; catalog-provider DI remains untriggered.
+**Status:** Phases 0–7 are deployed and production-verified on release `71585146d472`. Gmail, Calendar, OAuth handoff, and image capability retirement remains parity-gated; catalog-provider DI remains untriggered. A follow-up fix for an intermittent capacity-telemetry timestamp race is implemented and validated locally, pending deployment; durable turn admission does not consume that endpoint.
 **Scope:** Agentic Chat catalog ownership, web admission, shared contracts, shared operations, queued worker execution, compatibility shims, and production naming  
 **Primary decision:** Move the canonical tool catalog from `apps/web` into a focused `@buildos/agentic-chat-runtime/catalog` package entry point without changing the tool surface or runtime behavior.
 
@@ -687,7 +687,7 @@ Rollback: renames are separately revertible; decomposition uses pure moves/extra
 
 **Objective:** Finish cleanup only when capability and rollback prerequisites are satisfied.
 
-**Implementation status (2026-08-25): complete.** The namespace cleanup is deployed in release `7097b47ec154`. After that release reported healthy dedicated queue, Realtime, recovery, and mutation-capability state in production, the final operational cleanup was implemented in the current working tree and is pending deployment.
+**Implementation status (2026-08-26): complete and deployed.** The namespace cleanup shipped in release `7097b47ec154`; the final process-ownership and global-rollback cleanup shipped in release `71585146d472`. Production verification confirmed the dedicated and general services have disjoint operational surfaces and a real worker turn reaches durable completion.
 
 The general worker now owns only its general queue: it cannot construct the Agentic Chat bootstrap, report chat health, or serve chat capacity. Only `chat-worker.ts` starts the chat consumer and exposes its health/capacity surface. Compatible new turns select worker transport without a global routing flag, the dedicated URL no longer falls back to the general worker URL, and a missing durable session cannot open sessionless legacy execution. `AGENTIC_CHAT_WORKER_ENABLED` is retired because starting the dedicated process is the enablement boundary.
 
@@ -813,6 +813,10 @@ The completed implementation has a broader green matrix than the original audit 
 - repository hygiene: staged and unstaged `git diff --check` pass, the retired web path has no production imports, and extracted provider modules do not import the coordinator.
 
 Phase 7 completion reverified the dedicated production service on deployed release `7097b47ec154`, then passed the final source-cleanup gates: worker focused ownership/lifecycle tests 45/45, full worker regression 1,189/1,189 with one opt-in eval skipped, worker check/build, web transport/controller tests 64/64, all 220 legacy-execution tests, legacy stream route 45/45, runtime parity 278/278, full Svelte check with zero diagnostics, the Svelte autofixer with no issues, and the production web build. The seven stale legacy goldens were refreshed for the already-shipped `tool_surface_materialized` event and worker lifecycle parity projection; this changes test evidence only, not runtime execution.
+
+Post-deployment verification on 2026-08-26 confirmed Vercel and both Railway services on exact release `71585146d472`. The general service exposed only general-queue health; the dedicated service exposed healthy queue, Realtime, recovery, and matching 20-tool provider/adapter surfaces. The authenticated zero-spend preflight passed, followed by a full production `project-catchup-cold` worker scenario in 100 seconds with worker contract attribution, durable terminal state, no mutations, and fixture cleanup. Dedicated worker warning/error logs were empty after traffic and health returned to `activeTurns: 0` with zero claim or recovery failures.
+
+Repeated operational capacity probes also exposed a narrow timestamp-ordering defect: the aggregate timestamp was captured immediately before the provider snapshot, so crossing a millisecond boundary made fresh provider evidence appear to come from the future and produced a fast 503. The worker timestamp is now anchored after its synchronous local snapshots, with a regression test covering that clock transition. The fix passes the full worker suite, lint, typecheck, build, and formatting gates and awaits the next deployment. The endpoint is operational telemetry after Phase 7 and is not part of durable turn admission.
 
 ## Risks and mitigations
 

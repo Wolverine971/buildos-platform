@@ -6,7 +6,7 @@
 
 **Status:** Vision written, design-reviewed against production, scope revised, direction ratified
 2026-08-26. **Step 1 is implemented. Step 1.5 WS-1 (shared guarded document writes) is implemented;
-the WS-2 patch/anchor ADR is proposed for DJ ratification, and WS-3 is next.** Steps 2–7 are
+the WS-2 patch/anchor ADR is ratified by DJ (2026-08-26), and WS-3 is next.** Steps 2–7 are
 unstarted. The base ontology migration already contains the canonical `(document_id, number)`
 uniqueness constraint; there is no P0 index prerequisite for WS-1.
 
@@ -24,8 +24,8 @@ true, and the work is safe enough to hold things you cannot afford to lose.
 ## Start here
 
 - [Step 1.5 structural handoff](./STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md) — **the active work
-  item.** WS-1 is complete; ratify the proposed patch/anchor ADR (WS-2), then add per-turn document
-  mutation events (WS-3). Blocks Step 2.
+  item.** WS-1 is complete; the patch/anchor ADR (WS-2) is ratified; per-turn document mutation
+  events (WS-3) are the remaining prerequisite. Blocks Step 2.
 - [Switching Bar and revised roadmap](./SWITCHING_BAR_AND_REVISED_ROADMAP_2026-08-26.md) — **the
   current plan.** Closed 24-item Switching Bar, deferral list, revised 7-step sequence, the P0
   trust fix, the missing-import finding, and the self-migration eval. Supersedes the workstream
@@ -38,7 +38,7 @@ true, and the work is safe enough to hold things you cannot afford to lose.
 ## Existing related material
 
 - [Document patch and anchor contract](../../../../../docs/architecture/decisions/2026-08-26-document-patch-anchor-contract.md)
-  — **proposed for DJ ratification.** Defines the hybrid patch payload, exact re-anchoring rules,
+  — **ratified by DJ 2026-08-26.** Defines the hybrid patch payload, exact re-anchoring rules,
   generated head hash, conflict contract, and proposal-first threshold for Step 2.
 - [Document Interact v0](../../../../../docs/specs/DOCUMENT_INTERACT_V0_2026-08-04.md) — the first
   implemented document-scoped chat and voice interaction slice.
@@ -64,12 +64,11 @@ Ordered by the revised sequence (roadmap §8).
 
 1. ~~**P0 trust fix**~~ — ✅ done 2026-08-26. The canonical uniqueness constraint was verified in
    `20250601000001_ontology_system.sql`; the later add/drop migrations have no net schema effect.
-2. **Step 1.5** — ✅ WS-1 unified document write path; 🟡 **WS-2 patch/anchor ADR is proposed and
-   awaiting DJ ratification**, followed by WS-3 per-turn mutation events. Specified in the handoff
-   doc above.
-3. **Proposal-and-apply contract** — anchors, patch representation, and the direct-apply threshold
-   for the signature select-to-revision interaction (roadmap Step 2). The proposed WS-2 ADR now
-   supplies the technical contract; implementation waits on ratification and WS-3.
+2. **Step 1.5** — ✅ WS-1 unified document write path; ✅ **WS-2 patch/anchor ADR ratified by DJ
+   2026-08-26**; 🟡 WS-3 per-turn mutation events remain. Specified in the handoff doc above.
+3. **Proposal-and-apply contract** — ✅ ratified 2026-08-26. Anchors, patch representation, and the
+   direct-apply threshold (none in v1 — every LLM-authored interactive edit is a proposal) are
+   settled by the WS-2 ADR; implementation waits only on WS-3.
 4. **START HERE index design** — the maintained project README, built on the existing
    `<!-- managed:* -->` region primitive (Step 3).
 5. **Managed-region ratification** is included in the proposed patch/anchor ADR rather than a

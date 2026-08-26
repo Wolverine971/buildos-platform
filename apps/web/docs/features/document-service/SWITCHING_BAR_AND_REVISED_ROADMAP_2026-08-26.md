@@ -9,7 +9,7 @@
 # Document Service: The Switching Bar and Revised Roadmap
 
 **Status:** Direction ratified by DJ 2026-08-26. Scope revised. **P0 trust fix and Step 1.5 WS-1
-implemented 2026-08-26; WS-2 ADR proposed for DJ ratification** (§5, §8.1); WS-3 follows.
+implemented 2026-08-26; WS-2 ADR ratified by DJ 2026-08-26** (§5, §8.1); WS-3 follows.
 **Supersedes:** the workstream list and phase sequence in §11–§12 of the original vision doc.
 **Preserves:** the domain model (§4), relationship authorities (§5), risks (§15), and non-goals (§17)
 of the original vision doc, which remain correct.
@@ -409,7 +409,7 @@ first, then rounds — with import and collaboration as the final two rounds per
 **Step 1 — Trust fix (P0). ✅ Done 2026-08-26.** Tier 0.1–0.3. No new uniqueness prerequisite;
 the base constraint was verified and the redundant audit index is removed by the cleanup migration.
 
-**Step 1.5 — Structural prerequisites. 🔄 WS-1 complete; WS-2 proposed; WS-3 remains.** Three things
+**Step 1.5 — Structural prerequisites. 🔄 WS-1 complete; WS-2 ratified 2026-08-26; WS-3 remains.** Three things
 Step 2 cannot be built on top of, one of which was a live bug. Specified in full in
 [`STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md`](./STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md);
 summarised in §8.1 below. 2–4 days.
@@ -456,14 +456,15 @@ metadata retries are rejected.
 The fix is small: the gateway already read-modify-writes and already has `existingDocument.updated_at`
 in hand at the write site — it just never uses it as a guard.
 
-**WS-2 — A proposal has no stable base. 🟡 ADR proposed 2026-08-26.** `onto_documents` has no `head_revision_id` and no
+**WS-2 — A proposal has no stable base. ✅ ADR ratified 2026-08-26.** `onto_documents` has no `head_revision_id` and no
 `content_hash`; the only token is `updated_at`, which autosave bumps every ~2s of typing. A proposal
 reviewed for thirty seconds would be invalidated by the user's own keystrokes in an unrelated
 paragraph. Whole-document CAS is right for WS-1 and wrong here — proposals need anchor-local hashes.
-The proposed
+The ratified
 [`document patch and anchor contract`](../../../../../docs/architecture/decisions/2026-08-26-document-patch-anchor-contract.md)
 chooses hybrid exact-text patches, deterministic local re-anchoring, a generated head content hash,
-and proposal-first interactive edits. It awaits DJ ratification before Step 2 code begins.
+and proposal-first interactive edits. **DJ ratified it 2026-08-26**; WS-3 is the remaining
+prerequisite before Step 2 code begins.
 
 **WS-3 — No per-turn document event.** `DocumentInteractDock` only fires `onClose(summary)`, and
 the `projectDataMutations` store is explicitly session-close-scoped and coarse. Step 2's "watch it
@@ -586,17 +587,16 @@ Each row names what happens **if no decision is made**, so work is never blocked
 | **Is `updateOntoDocument` live in production?**       | Determines whether Step 1.5 WS-1 is an urgent data-loss fix or routine cleanup. Verified in code that the worker path has no concurrency guard; **not** verified whether the capability is enabled. | Treat as urgent and fix first                    | Before starting WS-1    |
 | **Gateway unification approach**                      | Route the gateway through a shared guarded-write helper (better architecture, gives Step 2 its apply path) vs. patch CAS into the gateway alone (faster, less invasive).                            | Shared helper, as specified in the handoff doc   | Start of WS-1           |
 | **Unguarded PATCH writes**                            | `documents/[id]/+server.ts` currently allows a write when the client sends no `expected_updated_at`. Tightening it is a behavior change with unknown callers.                                       | Keep current permissive behavior; change nothing | During WS-1             |
-| **Direct-apply threshold**                            | Which agent edits are unambiguous enough to skip proposal review. Product judgement, not architecture.                                                                                              | Propose nothing — every agent edit is a proposal | WS-2 ADR review         |
 | **Tier 1.3 paste-path mitigation**                    | A minimal paste-import after Step 2 would restore the §9 migration eval and the §9.1 tripwire years earlier than Step 6. See §8.2.                                                                  | No — import stays whole at Step 6                | After Step 2            |
 | **Full transactional atomicity** (Tier 0.1 remainder) | The Postgres function that makes head + version one transaction. Currently surfaced-not-silent, which removes data loss but not the coupling.                                                       | Defer until a third write path needs it          | When Step 2 apply lands |
 | **Realtime base version scope** (Step 7)              | Presence + section claims (small, most of the felt benefit) vs. a real CRDT (large). See §4.                                                                                                        | Prototype presence first, no CRDT commitment     | Start of Step 7         |
 | **P0 migration cleanup**                              | Base uniqueness was already present. `20260826190000` removes only the redundant standalone index created by `20260826150000`.                                                                      | No WS-1 prerequisite                             | Closed                  |
 
-### 11.2 Resolved in the proposed WS-2 ADR
+### 11.2 Resolved in the ratified WS-2 ADR
 
-The implementing agent resolved these in the proposed
-[`document patch and anchor contract`](../../../../../docs/architecture/decisions/2026-08-26-document-patch-anchor-contract.md);
-DJ ratifies the ADR rather than each item. See the
+The implementing agent resolved these in the
+[`document patch and anchor contract`](../../../../../docs/architecture/decisions/2026-08-26-document-patch-anchor-contract.md),
+which **DJ ratified 2026-08-26** as a whole rather than item by item. See the
 [Step 1.5 handoff](./STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md) WS-2.
 
 | Decision                            | Proposed resolution                                                   |
@@ -611,6 +611,7 @@ DJ ratifies the ADR rather than each item. See the
 | Decision                                | Resolution                                          |
 | --------------------------------------- | --------------------------------------------------- |
 | Revision boundary / open-window display | **Option A**, decided and shipped 2026-08-26 — §5.3 |
+| Direct-apply threshold                  | **Closed** — none in v1; every LLM-authored interactive edit is a proposal. WS-2 ADR ratified by DJ 2026-08-26 |
 | Entity-reference trigger                | **Closed** — `@`-picker leads, syntax follows, §6.2 |
 | Document library scope                  | **Closed** — folded into Tier 2, §4                 |
 

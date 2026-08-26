@@ -4,7 +4,10 @@
 
 **Created 2026-07-27.** Owner: a fresh agent session.
 **Type:** evaluation build + paid cohort. No durable infrastructure.
-**Status:** NOT STARTED. Handoff is complete and self-contained:
+**Status:** IN PROGRESS (started 2026-07-29). The DJ veto packet is prepared and awaiting a
+numbers-only pass. The $0 instrument, corpus-readiness gate, pre-registered 36-output run plan,
+three-lane blind packet/readout, frozen fixtures, and inert production-control runner are built and
+locally verified; workflow + single-agent lane runners and paid execution remain. Handoff remains:
 `docs/architecture/agent-first-orchestration/OPEN_BRIEF_COHORT_HANDOFF_2026-07-27.md` —
 **read it in full before doing anything; it contains the reading order, six work packages,
 landmines, and the exit condition.**

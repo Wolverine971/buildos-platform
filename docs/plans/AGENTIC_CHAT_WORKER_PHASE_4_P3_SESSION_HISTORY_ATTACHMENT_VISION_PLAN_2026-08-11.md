@@ -1,10 +1,15 @@
+<!-- docs/plans/AGENTIC_CHAT_WORKER_PHASE_4_P3_SESSION_HISTORY_ATTACHMENT_VISION_PLAN_2026-08-11.md -->
+
 # Agentic Chat Worker Phase 4 P3 — session, history, attachment, and vision parity
 
-**Status:** P3 S1-S2 complete locally and hosted on 2026-08-11. Migrations
-`20260812000000_agentic_chat_prepared_history_currency_guard.sql` and
-`20260812010000_agentic_chat_history_state_contract.sql` are applied; worker
-routing, provider mutation capabilities, mutation adapters, and cohort widening
-remain off. Next: S3 attachment-reference parity.
+**Status:** P3 S1-S4 complete locally and hosted as of 2026-08-12. Migrations
+`20260812000000_agentic_chat_prepared_history_currency_guard.sql`,
+`20260812010000_agentic_chat_history_state_contract.sql`,
+`20260812030000_agentic_chat_attachment_reference_contract.sql`, and
+`20260812040000_agentic_chat_live_vision_resolution_receipts.sql` are applied.
+Worker routing, worker live vision, provider mutation capabilities, mutation
+adapters, and cohort widening remain off. P3 is complete at its natural
+default-off boundary.
 
 ## Kernel
 
@@ -98,29 +103,88 @@ Local proof:
   contract and the new S2 exact-copy/state contract;
 - shared, worker, and web typechecks clean; Svelte diagnostics 0/0.
 
-### S3 — attachment-reference parity
+### S3 — attachment-reference parity — complete
 
-- Freeze current-turn and history attachment references, ordering, OCR status,
-  extracted-text bounds, checksums, expiry, and ownership evidence in the
-  immutable input contract.
-- Build the same untrusted attachment context on legacy and worker paths.
-- Resolve references only through actor/project-scoped ports; do not give the
-  provider storage credentials or mutable client metadata.
+Attachment state now crosses admission once and remains immutable:
 
-### S4 — live-vision parity
+- current-turn and prepared/admission history references freeze ordering,
+  source identity, project scope, storage reference, OCR/extracted-text bounds,
+  byte size, checksum, and temporary expiry in the hashed input artifact;
+- the request payload and artifact are compared exactly, and the worker user
+  message is linked to the same ordered references in the admission
+  transaction;
+- malformed, duplicate, cross-project, deleted, drifted, expired, or
+  client-only references fail closed at admission;
+- legacy and worker prompts use the same shared bounded untrusted attachment
+  context formatter; the worker reconstructs that context only from the
+  artifact and never reloads history;
+- rolling artifacts without the newly optional evidence remain readable while
+  every new writer emits the contract.
 
-- Resolve eligible frozen image references immediately before the provider
-  call with byte/count/content-type/checksum/expiry limits.
-- Keep raw image bytes ephemeral; keep their immutable identity and validation
-  receipt in the artifact/turn evidence.
-- Add deterministic multimodal request fixtures plus cleanup, expiry,
-  ownership-loss, cancellation, and retry tests before enabling the capability.
+Hosted proof:
+
+- migration `20260812030000_agentic_chat_attachment_reference_contract.sql`;
+- receipt-isolated source/staged SHA-256:
+  `39cc437937905958382709a0644e5e14cdf25c4c737d64b37d0bd6d89a68c54f`;
+- isolated pre-apply dry run named only `20260812030000`; apply succeeded;
+  post-apply dry run was empty; linked local/remote receipts match.
+
+Local proof at the S3 checkpoint: shared 21/21, web 21/21, worker 25/25,
+disposable PostgreSQL green, shared/worker typechecks clean, and Svelte
+diagnostics 0/0.
+
+### S4 — live-vision parity — complete, default off
+
+The live-image boundary is now explicit and ephemeral:
+
+- new artifacts hash a bounded policy for intent, image count, byte cap,
+  render width, and signed-URL TTL; SQL independently validates the same
+  limits while retaining rolling S3 artifacts;
+- `AGENTIC_CHAT_WORKER_LIVE_VISION_ENABLED` is a separate exact-boolean worker
+  gate and defaults false; without the resolver the prompt remains accurately
+  text/OCR-only even if an artifact requested vision;
+- resolution happens inside the first provider stream only after execution
+  start, never during preparation: project assets repeat actor-explicit access
+  checks and exact database identity checks, and temporary assets repeat the
+  frozen user-scoped path/expiry checks;
+- the worker streams the raw object through a bounded SHA-256 check, verifies
+  exact byte size and content type, cancels the reader on interruption, then
+  creates a separate transformed provider URL; raw bytes and both signed URLs
+  remain process-memory-only and expire;
+- the initial user message becomes deterministic OpenRouter multimodal content
+  only after validation. Durable prompt snapshots remain URL-free, and
+  continuations reuse only the invocation's in-memory content;
+- one mandatory, lease/generation-fenced `provider_media_resolved` observation
+  records only policy, attachment identity, content type, byte size, checksum,
+  failures, and limit skips. SQL rejects URLs, storage paths/buckets, malformed
+  items, replay conflicts, and out-of-envelope receipts. Failure to persist the
+  receipt prevents the provider call.
+
+Hosted proof:
+
+- migration `20260812040000_agentic_chat_live_vision_resolution_receipts.sql`;
+- receipt-isolated source/staged SHA-256:
+  `d023535b938e0d82db102b845bf8b8d81fbbbc8f09552cfc38afb366bf9b1e89`;
+- isolated dry run named only `20260812040000`; apply succeeded; post-apply dry
+  run reports the remote database up to date; linked local/remote receipts
+  match exactly.
+
+Final local proof:
+
+- all worker Agentic Chat suites: 40 files, 355/355 tests;
+- focused web/history/attachment/PostgreSQL suites: 30/30;
+- shared types: 27/27 plus successful declaration build;
+- the cumulative disposable PostgreSQL proof covers old provider/tool
+  observations, exact media replay, receipt redaction and ordering, and bounded
+  artifact policy;
+- worker typecheck clean; Svelte diagnostics 0 errors and 0 warnings.
 
 ## Standing boundaries
 
 - Production worker routing remains false between controlled gates.
-- No attachment or vision capability is advertised until its artifact and
-  provider differentials pass.
+- Worker live vision remains disabled until an explicit cohort gate and
+  provider differential are approved; completing S4 did not alter production
+  routing or capability advertisement.
 - Prepared-prompt request-hash lineage remains stable across consumption and
   expiry; currency controls content selection, not idempotency identity.
 - The worker never reloads source history after admission.

@@ -1,4 +1,5 @@
 <!-- docs/technical/reviews/DATABASE_SCHEMA_RPC_AUDIT_2026-07-30.md -->
+<!-- doc-status: point-in-time -->
 
 # BuildOS database schema and RPC audit
 

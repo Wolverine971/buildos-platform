@@ -3,7 +3,7 @@
 # Phase 4 P2 — Mutation / Effect-Reservation Parity Plan
 
 **Prepared:** 2026-08-09
-**Status:** P2 COMPLETE (2026-08-11) for the bounded reviewed surface: 38 signed writes are exhaustively partitioned into 20 independently gated worker adapters and 18 explicit reconciliation deferrals; required SQL is hosted; production capabilities and routing remain OFF. Exit evidence: `evidence/AGENTIC_CHAT_WORKER_PHASE_4_P2_EXIT_EVIDENCE_2026-08-11.md`
+**Status:** P2 COMPLETE (2026-08-11) for the bounded reviewed surface. The original exit packet proves 38/20/18; the current surface is 39 signed writes = 20 independently gated worker adapters + 19 explicit deferrals after the 2026-08-13 browser-only Gmail OAuth handoff classification. Required SQL is hosted; production capabilities and routing remain OFF. Exit evidence: `evidence/AGENTIC_CHAT_WORKER_PHASE_4_P2_EXIT_EVIDENCE_2026-08-11.md`
 **Governing task:** `tasker/51-worker-behavioral-parity-phase4.md` P2
 **Prerequisite:** P1 / Slice 18 complete, live gate 9/9, routing restored OFF
 
@@ -725,7 +725,7 @@ Cross-cutting null-effect telemetry correction completed and hosted on
 - ✅ Every reachable mutating adapter accepts the stable effect identity.
 - ✅ Every reviewed adapter is classified downstream-replayable or
   one-attempt/uncertain, with recovery coverage. The executable surface audit
-  fails closed unless all 38 signed writes are reviewed or explicitly deferred.
+  fails closed unless every current signed write is reviewed or explicitly deferred.
 - ✅ Reserve/begin/cancel/commit/receipt interleavings are covered in TypeScript
   and disposable PostgreSQL.
 - ✅ Tool rows are effect-linked, ordered, terminally attached, and included in

@@ -85,16 +85,16 @@ ratified decision to trust caller counts).
 
 ## Gates (all green, 2026-08-08)
 
-| Gate | Result |
-| --- | --- |
-| Worker suite (`apps/worker pnpm vitest run`) | 776 passed, 1 skipped |
-| Worker native TS7 typecheck | clean |
-| Web `server.test.ts` (exact golden equality) | 40/40 |
-| Web svelte-check | 0 errors, 0 warnings |
-| Runtime package suite + typecheck | 31 passed; clean |
-| Composed disposable-Postgres suite | 8/8 (incl. two-row ledger proof) |
-| Prettier | clean |
-| Other three goldens byte-unchanged | verified (git diff) |
+| Gate                                         | Result                           |
+| -------------------------------------------- | -------------------------------- |
+| Worker suite (`apps/worker pnpm vitest run`) | 776 passed, 1 skipped            |
+| Worker native TS7 typecheck                  | clean                            |
+| Web `server.test.ts` (exact golden equality) | 40/40                            |
+| Web svelte-check                             | 0 errors, 0 warnings             |
+| Runtime package suite + typecheck            | 31 passed; clean                 |
+| Composed disposable-Postgres suite           | 8/8 (incl. two-row ledger proof) |
+| Prettier                                     | clean                            |
+| Other three goldens byte-unchanged           | verified (git diff)              |
 
 New worker tests: two-round differential (`exposes the exact deterministic
 two-round read-only tool parity gaps`), per-round fence mechanics with boundary

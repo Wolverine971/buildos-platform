@@ -192,7 +192,7 @@ Scheduler-Related:
 - QUEUE_BATCH_SIZE=5
 - QUEUE_STALLED_TIMEOUT=300000 (ms)
 - QUEUE_ENABLE_HEALTH_CHECKS=true
-- QUEUE_STATS_UPDATE_INTERVAL=60000 (ms)
+- QUEUE_STATS_UPDATE_INTERVAL=60000 (queue alert-check cadence in ms; legacy name)
 
 SMS-Related:
 

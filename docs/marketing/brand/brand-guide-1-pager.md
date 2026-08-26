@@ -1,6 +1,7 @@
 ---
 title: 'BuildOS Brand Guide'
 created: 2026-03-12
+last_updated: 2026-08-04
 status: current
 owner: DJ Wayne
 related_docs:
@@ -31,6 +32,13 @@ path: docs/marketing/brand/brand-guide-1-pager.md
 ### Moat
 
 **The more context you build, the more useful BuildOS becomes.**
+
+### Strategic Thesis / Why Now
+
+**BuildOS is where humans keep judgment, context, and control as AI makes execution abundant.**
+
+This is the founder, investor, and deep-content thesis behind the public brand. It is not the
+homepage category or first-contact promise.
 
 ### Strategic Enemy
 
@@ -98,6 +106,18 @@ Unlike traditional productivity tools that expect the user to maintain the syste
 
 **The context compounds. The project gets easier to restart.**
 
+### Why-Now Layer
+
+**Execution is becoming cheap. Coherent execution is not.**
+
+Public translation:
+
+**You set direction. Your agents execute. BuildOS keeps the project coherent.**
+
+Creator translation:
+
+**You stay the author. Your agents work from the same project.**
+
 ---
 
 ## What We Are And What We Are Not
@@ -147,6 +167,8 @@ Unlike traditional productivity tools that expect the user to maintain the syste
 - keep claims honest and specific
 - focus on progress and relief
 - do not over-narrate the technology
+- translate judgment into “you decide,” context into “the project remembers,” and control into
+  visible scope, approval, receipts, and revocation
 - start from a real artifact before making the post
 - prefer selective, high-signal proof over constant online presence
 - be raw but not careless

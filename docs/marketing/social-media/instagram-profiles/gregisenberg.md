@@ -11,7 +11,7 @@
 **Relationship Status:** Warm
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-07-20
+**Last Reviewed:** 2026-07-30
 **Last Engaged:** ~2026-03-21 (per 2026-05-09 audit — @build.os commented "'Get real good with AI and start building' is the move..." on Greg's "AI agents could send college grad unemployment over 30%" post; mohdhamoda liked it Mar 31)
 **Source of First Discovery:** `instagram-engagement-targets.md` (Tier 2 watering holes)
 
@@ -71,6 +71,7 @@
 | 2026-07-09 | Reel | Mining surface SWITCHED — `Dac7neeRCVP` retired (aged 71.8h/11c, reach dead) → new on-thesis surface `DaiHmBJxlPP` "3 Claude code plugins to save you tokens" (**23.5h / 40 cmts / 701 likes**). Comments API auth-walled from CLI this run (Chrome extension down) — walk the 40-comment thread in-app at reply time for sub-15K operator commenters. 130,885f. | https://www.instagram.com/reel/DaiHmBJxlPP/ | Mining (in-app walk required) | Pending /instagram-reply — mine the thread for sub-15K operator commenters | NEVER engage Greg directly. Walk the full 40-comment thread in-app (CLI auth-walled this run) to find real builder voices. | Pending | 2026-07-09_instagram-warmup.md |
 | 2026-07-10 | Comment thread (mining) | MINING WALK EXECUTED (first in-app walk since extension outage): DaiHmBJxlPP "3 Claude code plugins" walked at 47.4h/45c — 38 top-level comments captured; 24/38 are "Send" CTA-bait. TWO floor-passing yields: @natecreates (2,302f verified CTO — queued #3 today) + @thecodewhisperer (1,744f, traced from his @jeremyknox.ai digital-twin agent's comment). Sub-floor voices noted: @ch0sbu 445f, @e.izu 1,093f/0 posts, @iamqui.ncy 954f near-floor. Greg's fresh Dal9I7KRA1L "Giant robots" (11.6h/145c/26.7K likes) is viral off-thesis — skip. 131,486f. | https://www.instagram.com/reel/DaiHmBJxlPP/ | Mining walk executed + 2 discoveries | Logged | Reply target = @natecreates comment ("Context engineering > prompt engineering."). Never Greg directly. | Pending | 2026-07-10_instagram-warmup.md |
 | 2026-07-20 | Reel | CONDITIONAL mining slot #6 — `Da_Kkbchzp9` "There will be more AI agents than humans on the internet very soon" **16.7h/9c/322l** — first on-thesis Greg surface in weeks (breaks the decayed-lane pattern). **Comment walk BLOCKED this run** (djwayne3 logged out; sessionless comments API fails). **138,028f** (+33K vs targets-doc 105K listing). | https://www.instagram.com/p/Da_Kkbchzp9/ | Commenter mining (conditional) | Queued (session-gated) | If session restored: walk comments for floor-passing builder voices; reply to a COMMENTER, never Greg directly. | Pending | 2026-07-20_instagram-warmup.md |
+| 2026-07-30 | Grid sweep | Not queued — cadence slowed; freshest `DbLj5VaRHFf` "Wait so AI now designs chips now?" (141.6h/3c/352l — too old/thin to mine). The 7/20 mining surface `Da_Kkbchzp9` aged out of top-5. 140,224f (+2.2K since 7/20). @hamptonfounders takes the mining slot this run. | https://www.instagram.com/gregisenberg/ | Reviewed | Logged | Mine again on next <48h on-thesis thread. | Reviewed | 2026-07-30_instagram-warmup.md |
 
 ## Open Loops
 

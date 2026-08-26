@@ -17,14 +17,31 @@ In agentic chat the user can search their connected Gmail accounts, open message
 provenance and **Open in Gmail** deep links, and receive agent-written reply/new-email drafts as
 **local BuildOS proposals**. No chat tool can send, save to Gmail, or modify Gmail state.
 
+## Status — OUT OF PILOT (DJ, 2026-08-24)
+
+**Gmail read tools are generally available.** Any user may optionally connect a Gmail account and
+use the Tier 1 read tools. The DJ-only cohort restriction is retired; verified 2026-08-24 that no
+user allowlist or kill-switch remains in `gmail-read-gateway.ts`, `tools.config.ts`, or the web
+`.env.example` — the `email` tool group mounts for everyone, and availability is governed by
+whether the user has connected an account at all.
+
+The pre-2026-08-24 text below described a DJ-only production pilot. It is retained as build history
+and is **no longer an accurate description of the deployed gating**.
+
 ## Current gap
 
-Tier 1 is deployed and restricted to DJ's BuildOS user. The live `gmail-read-v2` contract now
-returns an authoritative account-to-message-link map and has been verified across all three pilot
-mailboxes. The remaining gap is no longer Gmail read access: it is a seeded malicious-email live
-fixture, explicit ZDR route enforcement before a wider cohort, and the separately scoped
-local-proposal product. No Gmail send, compose, draft, modify, archive, label, trash, delete, or
-mark-read tool exists.
+The remaining gap is not Gmail read access. It is:
+
+1. **Worker parity.** No Gmail tool is installed in the worker provider catalog or execution
+   adapter, so Gmail turns must route to legacy. This is now the responsibility of the capability
+   check in [59](59-agentic-chat-worker-cutover-review.md) WP-1 — until Gmail tools exist on the
+   worker, the capability check routes them to legacy automatically, with no message-text guessing.
+   Tracked as [59](59-agentic-chat-worker-cutover-review.md) WP-6.
+2. A seeded malicious-email live fixture (prompt-injection resistance).
+3. Explicit ZDR route enforcement for Gmail content.
+4. The separately scoped local-proposal product (WP-3).
+
+No Gmail send, compose, draft, modify, archive, label, trash, delete, or mark-read tool exists.
 
 ## Work packages
 
@@ -41,7 +58,7 @@ no auth on this machine (`--allow-stale` masks the failure). Run `npx supabase l
 `SUPABASE_ACCESS_TOKEN`), rerun `pnpm gen:all`, then swap the mirror's table shapes for re-exports
 per the header comment in `gmail-database.types.ts`. **This does not block the tools work.**
 
-### WP-1 — Tier 1 read tools (P0) — **DONE; DJ-only production pilot**
+### WP-1 — Tier 1 read tools (P0) — **DONE; generally available since 2026-08-24**
 
 `list_email_accounts`, `search_email_messages`, `get_email_message` per the spec: `definitions/
 email.ts`, `EMAIL_OPS` in the tool registry, `email-executor.ts` calling `GmailReadGateway`
@@ -62,7 +79,7 @@ agent-generated labeling, and a **Not sent — proposal only** UI surface with t
 link. Storage/retention decision: proposal payload encrypted, and durable chat history keeps only
 provenance + capped snippet (≤500 chars) of any email body — full text is turn-scoped.
 
-### WP-4 — Safety verification (P0 before broader rollout) — **PILOT GATES COMPLETE; seeded fixture pending**
+### WP-4 — Safety verification — **PILOT GATES COMPLETE; seeded fixture + ZDR enforcement still open at GA**
 
 Prompt-injection suite against the live chat loop with seeded fixture emails (tool-use requests,
 fake system instructions, account-expansion attempts); tenant-isolation and wrong-user connection
@@ -84,28 +101,24 @@ with audit rows confirming chat reads are bounded and content-free in logs.
 
 ## BUILD STATUS — 2026-07-22 (Tier 1 read tools)
 
-**WP-1 + WP-2 read-tool scope BUILT and deployed for DJ only.** Tier 2
-(`propose_email_draft`, WP-3) is not in this rollout. WP-4 unit/registry coverage, live connection
+**WP-1 + WP-2 read-tool scope BUILT.** The initial DJ-only rollout ended on 2026-08-21; the tools
+are now available by default to authenticated users and remain limited to their explicitly
+connected accounts. Tier 2 (`propose_email_draft`, WP-3) is not in this rollout. WP-4 unit/registry coverage, live connection
 listing, three-account search, on-demand message read, and agentic chat discovery/search are
 complete. A true seeded malicious-email fixture remains open because this pass did not send or
 create email.
 
-### Feature flag
+### Default availability
 
-- **Global gate:** `EMAIL_CHAT_TOOLS_ENABLED` (default OFF; accepted true values:
-  `1|true|yes|on`). OFF makes the tools invisible and non-callable across registry discovery,
-  capability lookup, and on-miss materialization. It is the production kill switch.
-- **User gate:** `EMAIL_CHAT_TOOLS_USER_IDS` is a comma-separated exact BuildOS user-ID allowlist.
-  Missing/empty values and wildcard entries fail closed. Every executor method checks it before a
-  provider, rate-limit, or database operation.
-- Production has the global gate on and only DJ's user ID in the allowlist. Profile-tab Gmail UX is
-  independent of both chat-tool gates.
+- Email account discovery, read-only inbox tools, and user-confirmed OAuth handoff are discoverable
+  for every authenticated BuildOS user.
+- Execution remains account-scoped. The Gmail gateway validates connection ownership, active read
+  capability, stored read-only scopes, connection health, and rate limits on each request.
+- Users with no connected Gmail account receive connection guidance; no mailbox content is read
+  until they explicitly connect an account through the existing OAuth flow.
 
 ### Files created
 
-- `apps/web/src/lib/services/agentic-chat/tools/email/config.ts` — the flag gate
-  (`isEmailChatToolsEnabled`, `isEmailToolName`, `configureEmailRuntimeEnv` for tests).
-- `apps/web/src/lib/services/agentic-chat/tools/email/index.ts` — re-export barrel.
 - `apps/web/src/lib/services/agentic-chat/tools/core/definitions/email.ts` — the three Tier 1 tool
   definitions (`EMAIL_TOOL_DEFINITIONS`); descriptions state accounts come from
   `list_email_accounts`, `connection_ids` are required/explicit, results are read-only, and email
@@ -195,10 +208,10 @@ Gmail account (or temporarily disconnect one of DJ's) for the harness user.
    Gmail write scope. This requires a pre-existing fixture or a separately user-created fixture;
    the implementation agent must not send one merely to create test data.
 2. **Harness live run (`pnpm test:agentic`) still separate:** the harness drives the real stream endpoint and
-   needs a running dev server, a connected Gmail account on the test user, and the flag on — not run
-   here (would require a long-lived server). Scenario is written + wired (skipped via
+   needs a running dev server and a connected Gmail account on the test user — not run here (would
+   require a long-lived server). Scenario is written + wired (skipped via
    `AGENTIC_TEST_EMAIL_READY`). To run: start `pnpm dev --filter=@buildos/web`, connect Gmail for the
-   `AGENTIC_TEST_USER`, set `EMAIL_CHAT_TOOLS_ENABLED=true` + `AGENTIC_TEST_EMAIL_READY=true`, then
+   `AGENTIC_TEST_USER`, set `AGENTIC_TEST_EMAIL_READY=true`, then
    `pnpm --filter @buildos/web test:agentic`.
 3. **ZDR route enforcement:** keep the cohort internal until the stream route can fail closed on an
    explicitly approved zero-data-retention model/provider policy.

@@ -1,4 +1,5 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_FULL_CUTOVER_EXTERNAL_ACCOUNTS_PLAN_2026-08-24.md -->
+<!-- doc-status: point-in-time -->
 
 # Agentic Chat worker full-cutover and external-account plan
 
@@ -6,16 +7,15 @@ Date: 2026-08-24
 
 ## Continuation handoff — start here
 
-**Current state (2026-08-25): public worker routing is active, the dedicated service is healthy, and the global rollback path is being retired.**
+**Current state (2026-08-26): public worker routing is active, the dedicated service is healthy, and the global rollback path is retired.**
 
-- Deployed source: `main` release `7097b47ec154`.
+- Deployed source: `main` release `71585146d472`.
 - Web: `https://build-os.com` returns HTTP 200.
 - Dedicated Railway service: `https://agentic-chat-worker-production.up.railway.app/health`
-  reports release `7097b47ec154`, a running healthy runtime, connected Realtime, healthy recovery,
+  reports release `71585146d472`, a running healthy runtime, connected Realtime, healthy recovery,
   `activeTurns: 0`, and matching 20-tool provider/adapter mutation surfaces.
-- Phase 7 source cleanup is implemented after that verification and is not part of the deployed
-  release above. It removes the general-worker chat bootstrap/capacity fallback and the global web
-  routing gate. Deploy and verify it as a two-service ownership cleanup, not as a capability cutover.
+- Phase 7 source cleanup is deployed. The general worker no longer constructs the chat bootstrap,
+  reports chat health, or serves chat capacity; only the dedicated process owns those surfaces.
 - Gmail, Calendar, browser OAuth handoff, and worker-disabled image execution remain available only
   through explicit capability renegotiation. Their web executor is not the infrastructure rollback.
 
@@ -36,9 +36,9 @@ is now an optional optimization with an expanded Railway secret boundary, not a 
 prerequisite.
 
 WP-1 through WP-5, the ordered Railway/Vercel deployment, shared lease/capability preflight,
-Realtime evidence, live two-overlapping-turn smoke, and public worker activation are complete. The
-remaining operational task is to deploy the Phase 7 ownership cleanup and verify that the general
-worker reports only general-queue health while the dedicated service remains healthy.
+Realtime evidence, live two-overlapping-turn smoke, public worker activation, and the Phase 7
+ownership cleanup are complete. Production verification confirms that the general worker reports
+only general-queue health while the dedicated service remains healthy.
 
 ### Deployment verification found and fixed two additional blockers
 
@@ -101,12 +101,22 @@ worker-unavailable.
   0 warnings**; production web build passed.
 - `git diff --check` and Prettier verification for this plan and Tasker 59 passed.
 
-### Phase 7 source verification — pending deployment
+### Phase 7 deployed verification — 2026-08-26
 
-- Dedicated production health was checked first against deployed release `7097b47ec154`; all chat
-  runtime signals were healthy before removing the redundant general-process fallback.
+- Vercel deployment `dpl_54hvPACCDGVwwD74iMMYUznqD9KD` and Railway deployments
+  `959af8c7-c75d-486b-b0d4-a4d3e2b158c7` (dedicated) and
+  `e6fa4c5b-ce88-4a73-a0cd-51c37591061d` (general) all completed successfully from exact release
+  `71585146d472`; the production alias returned HTTP 200.
 - Active source/config scans contain no global routing gate, no dedicated-runtime enable flag, and
   no Agentic Chat bootstrap, health, or capacity ownership in the general worker.
+- Authenticated production preflight passed login, private Realtime subscription, and exact worker
+  lease negotiation. A full `project-catchup-cold` worker scenario then passed in 100 seconds,
+  including durable terminal persistence, read-only enforcement, live-state grounding, and fixture
+  cleanup.
+- Post-traffic dedicated health returned `activeTurns: 0`, connected Realtime, healthy queue and
+  recovery, zero consecutive failures, and matching 20-tool mutation surfaces. The general service
+  remained healthy without an Agentic Chat projection, and dedicated warning/error log queries
+  returned no entries.
 - Worker ownership/lifecycle tests passed 45/45; the full worker suite passed 1,189 tests with one
   opt-in eval skipped; worker check and production build passed.
 - Web transport/controller tests passed 64/64, retained legacy capability execution passed 220/220,
@@ -114,6 +124,12 @@ worker-unavailable.
   `tool_surface_materialized` telemetry goldens.
 - Runtime parity passed 278/278, the Svelte autofixer reported no issues, full Svelte check reported
   zero errors and warnings, and the production web build passed.
+
+Follow-up telemetry note: repeated direct capacity probes found rare fast 503 responses despite
+healthy replicas. The collector captured its aggregate timestamp immediately before the provider
+snapshot and rejected a legitimate snapshot when the wall clock crossed into the next millisecond.
+The timestamp-ordering fix and regression test are validated locally and await a follow-up worker
+deployment. Phase 7 durable turn admission does not consume this operational endpoint.
 
 ### Historical canary evidence — 2026-08-25
 

@@ -401,37 +401,30 @@ graph TD
 
 ---
 
-## Queue Statistics Query
+## Queue Monitoring
 
 ```mermaid
 graph LR
-    A[Worker] -->|Every 5 min| B[get_queue_stats RPC]
-    B --> C{Group By}
-
-    C --> D[Job Type]
-    C --> E[Status]
-
-    D --> F[Count Per Type]
-    E --> G[Count Per Status]
-
-    F --> H[Log to Console]
-    G --> H
+    A[Worker] -->|Every 5 min| B[Actionable alert checks]
+    B --> C[Recent failure spikes]
+    B --> D[Oldest runnable pending job]
+    C --> E[Threshold and cooldown]
+    D --> E
+    E --> F[Error log and optional webhook]
 
     style A fill:#bbf
     style B fill:#f9f
-    style H fill:#9f9
+    style F fill:#9f9
 ```
 
-**Sample Output:**
+The cumulative `queue_jobs_stats` view remains available for on-demand diagnostics. It is not
+dumped into the worker log on every monitoring tick because unchanged lifetime totals do not
+describe current queue health.
+
+**Sample alert:**
 
 ```
-📊 Queue Statistics:
-   generate_daily_brief - pending: 12
-   generate_daily_brief - processing: 3
-   generate_daily_brief - completed: 1,204
-   send_sms - pending: 0
-   send_sms - processing: 1
-   send_sms - completed: 3,456
+🚨 [QUEUE ALERT] CRITICAL failed_jobs:send_sms: 4 send_sms job(s) failed in the last hour (threshold 3)
 ```
 
 ---

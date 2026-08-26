@@ -104,16 +104,16 @@ registry records the blockage explicitly instead.
 
 ## Exit-gate position after this slice (tasker/51 ledger)
 
-| Scenario class | State | Referee |
-| --- | --- | --- |
-| success | Implemented; open gaps = done-event `failure_code`/`status` | registry inventory |
-| read_only_tools | Implemented; same gap inventory | registry inventory |
-| cancellation | Implemented; same gap inventory | registry inventory |
-| provider_error | Implemented; contract tightened from structural to exact inventory | registry inventory |
-| clarification | Blocked on P4 | registry `blockedOn` |
-| mutating_tools | Blocked on P2 (legacy has no effect ledger — asymmetry must be ratified first) | registry `blockedOn` |
-| supervisor_checkpoint | Blocked on P4 | registry `blockedOn` |
-| timeout | Blocked on P6 (golden must be captured from real loop behavior, post-P1) | registry `blockedOn` |
+| Scenario class        | State                                                                          | Referee              |
+| --------------------- | ------------------------------------------------------------------------------ | -------------------- |
+| success               | Implemented; open gaps = done-event `failure_code`/`status`                    | registry inventory   |
+| read_only_tools       | Implemented; same gap inventory                                                | registry inventory   |
+| cancellation          | Implemented; same gap inventory                                                | registry inventory   |
+| provider_error        | Implemented; contract tightened from structural to exact inventory             | registry inventory   |
+| clarification         | Blocked on P4                                                                  | registry `blockedOn` |
+| mutating_tools        | Blocked on P2 (legacy has no effect ledger — asymmetry must be ratified first) | registry `blockedOn` |
+| supervisor_checkpoint | Blocked on P4                                                                  | registry `blockedOn` |
+| timeout               | Blocked on P6 (golden must be captured from real loop behavior, post-P1)       | registry `blockedOn` |
 
 Next slice: P1 (full read loop). The registry is the referee: P1's worker loop
 runs must keep the four implemented scenarios inside their registered

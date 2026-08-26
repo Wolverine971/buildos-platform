@@ -10,6 +10,8 @@ This is the working studio for real marketing compositions. Each project owns it
 | ------------------------ | ------------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------- |
 | Author workflow teardown | [Cold Manuscript Reel](author-workflow-teardown/cold-manuscript-reel/PROJECT.md)      | Final candidate; publishing decisions remain                | `delivery/hyperframes-pilot-reel-silent-final.mp4` |
 | Product education        | [Agentic Chat Save Tutorial](product-education/agentic-chat-save-tutorial/PROJECT.md) | Published externally; URL/platform still needs to be logged | `delivery/buildos-agentic-chat-tutorial.mp4`       |
+| AI explainers            | [Taste Gap LinkedIn Carousel](ai-explainers/taste-gap-linkedin-carousel/PROJECT.md)   | Intake; story capture underway                              | Not started                                        |
+| Brand exploration        | [Brain Dump Identity Iterations](brain-dump-identity-iterations/README.md)            | Four concept directions ready for selection                 | `brain-dump-identity-comparison.png`               |
 
 ## Project shape
 

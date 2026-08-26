@@ -99,7 +99,7 @@ Include users who meet all of the following:
 
 Treat the following as product activity:
 
-- `agent_chat_sessions`
+- `chat_sessions`
 - `onto_braindumps`
 - `onto_project_logs`
 - `ontology_daily_briefs`
@@ -402,7 +402,7 @@ Track all three layers of reactivation.
 
 Use the same product activity sources already used in engagement reporting:
 
-- `agent_chat_sessions`
+- `chat_sessions`
 - `onto_braindumps`
 - `onto_project_logs`
 - `ontology_daily_briefs`

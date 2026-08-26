@@ -1,4 +1,5 @@
 <!-- docs/plans/evidence/AGENTIC_CHAT_WORKER_PHASE_4_LEGACY_COMPARATOR_2026-08-18.md -->
+<!-- doc-status: point-in-time -->
 
 # Agentic Chat Worker Phase 4 — Legacy Judgment Comparator
 

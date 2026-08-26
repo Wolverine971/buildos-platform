@@ -1,0 +1,57 @@
+{
+	"schemaVersion": 1,
+	"generatedAt": "2026-08-23T02:48:50Z",
+	"test": {
+		"id": "PC1",
+		"title": "Fully specified minimal project creation",
+		"baseUrl": "https://build-os.com",
+		"workerRelease": "489aff88c27c3012b2ff60cb9063a44af6e02b8b",
+		"prompt": "Create a project called Agentic Worker PC1 2026-08-22 2232 ET. The goal is to publish the first 3 podcast episodes by September 15, 2026. Tasks I already know about: define the show format, book the first 3 guests, and record the trailer."
+	},
+	"result": {
+		"classification": "behavior_failure",
+		"passed": false,
+		"projectCreated": false,
+		"contextShiftEmitted": false,
+		"postCreateContinuation": "not_reached",
+		"matchingProjectCountAfterTurn": 0,
+		"assistantRequestedConfirmation": true
+	},
+	"durableTurn": {
+		"id": "adfe2221-391a-4aae-8c3f-db019cc0c81f",
+		"sessionId": "903ca0ed-df78-4471-8a8f-5f2a0db02c58",
+		"streamRunId": "4b1492af-3272-4cd2-b875-9f183a08bb4d",
+		"executionMode": "worker_realtime",
+		"transportContractVersion": "agentic_chat_worker_v1",
+		"status": "completed",
+		"finishedReason": "stop",
+		"startedAt": "2026-08-23T02:32:10.829138+00:00",
+		"finishedAt": "2026-08-23T02:33:34.662172+00:00",
+		"durationMs": 83833,
+		"toolCallCount": 2,
+		"toolRoundCount": 2
+	},
+	"modelUsage": {
+		"tokens": 10711,
+		"costUsdApprox": 0.0013
+	},
+	"toolResults": [
+		{
+			"tool": "create_onto_project",
+			"success": false,
+			"createdEntityCount": 0,
+			"error": "Mutation create_onto_project is outside the independently approved turn contract."
+		},
+		{
+			"tool": "create_onto_project",
+			"success": false,
+			"createdEntityCount": 0,
+			"error": "Mutation create_onto_project is outside the independently approved turn contract."
+		}
+	],
+	"notes": [
+		"The worker advertised create_onto_project; this was not a missing-tool or capability-gate failure.",
+		"The fully specified request should have created without clarification, but the acting model attempted the mutation before an independently approved turn contract existed.",
+		"The assistant then asked for confirmation and reported that the write did not persist."
+	]
+}

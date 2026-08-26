@@ -56,7 +56,7 @@ Important repo facts you should anchor on:
 - The welcome sequence is the closest existing pattern for campaign-state tables, step metadata, cron processing, and send logging.
 - user_notification_preferences.email_enabled is the best existing opt-out signal for this pilot.
 - Useful product activity signals already exist in:
-  - agent_chat_sessions
+  - chat_sessions
   - onto_braindumps
   - onto_project_logs
   - ontology_daily_briefs

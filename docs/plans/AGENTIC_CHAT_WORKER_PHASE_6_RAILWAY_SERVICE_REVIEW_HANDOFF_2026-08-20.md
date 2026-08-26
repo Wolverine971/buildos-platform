@@ -1,4 +1,5 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_PHASE_6_RAILWAY_SERVICE_REVIEW_HANDOFF_2026-08-20.md -->
+<!-- doc-status: point-in-time -->
 
 # Agentic Chat Worker Phase 6 Railway service review handoff
 
@@ -154,29 +155,29 @@ reviewer should verify both the import boundary and live startup logs.
 The following non-secret values were read back after deployment
 `4a98a334-5544-43fd-9afc-0f7d5203f522`:
 
-| Variable                                      | Expected value                                               |
-| --------------------------------------------- | ------------------------------------------------------------ |
-| `NODE_ENV`                                    | `production`                                                 |
-| `AGENTIC_CHAT_WORKER_ENABLED`                 | `true`                                                       |
-| `AGENTIC_CHAT_WORKER_PROFILE`                 | `production`                                                 |
-| `AGENTIC_CHAT_INTERNAL_USER_IDS`              | exactly the canary user and the e2e harness account below (2026-08-22: two UUIDs) |
-| `CHAT_CONCURRENCY`                            | `1`                                                          |
-| `CHAT_POLL_INTERVAL_MS`                       | `1000`                                                       |
-| `CHAT_WORKER_TIMEOUT_MS`                      | `360000`                                                     |
-| `CHAT_PROVIDER_BUDGET_MS`                     | `300000`                                                     |
-| `CHAT_STALLED_TIMEOUT_MS`                     | `420000`                                                     |
-| `CHAT_DRAIN_TIMEOUT_MS`                       | `22000`                                                      |
-| `CHAT_PUBLISHER_TURN_PENDING_SOFT_BYTES`      | `262144`                                                     |
-| `CHAT_PUBLISHER_TURN_PENDING_HARD_BYTES`      | `1048576`                                                    |
-| `CHAT_PUBLISHER_WORKER_PENDING_SOFT_BYTES`    | `2097152`                                                    |
-| `CHAT_PUBLISHER_WORKER_PENDING_HARD_BYTES`    | `8388608`                                                    |
-| `CHAT_PUBLISHER_TURN_PENDING_SOFT_EVENTS`     | `32`                                                         |
-| `CHAT_PUBLISHER_TURN_PENDING_HARD_EVENTS`     | `128`                                                        |
-| `CHAT_PUBLISHER_WORKER_PENDING_SOFT_EVENTS`   | `256`                                                        |
-| `CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS`   | `1024`                                                       |
-| `AGENTIC_CHAT_OPENROUTER_MODEL`               | `deepseek/deepseek-v4-flash`                                 |
+| Variable                                      | Expected value                                                                                                 |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                    | `production`                                                                                                   |
+| `AGENTIC_CHAT_WORKER_ENABLED`                 | `true`                                                                                                         |
+| `AGENTIC_CHAT_WORKER_PROFILE`                 | `production`                                                                                                   |
+| `AGENTIC_CHAT_INTERNAL_USER_IDS`              | exactly the canary user and the e2e harness account below (2026-08-22: two UUIDs)                              |
+| `CHAT_CONCURRENCY`                            | `1`                                                                                                            |
+| `CHAT_POLL_INTERVAL_MS`                       | `1000`                                                                                                         |
+| `CHAT_WORKER_TIMEOUT_MS`                      | `360000`                                                                                                       |
+| `CHAT_PROVIDER_BUDGET_MS`                     | `300000`                                                                                                       |
+| `CHAT_STALLED_TIMEOUT_MS`                     | `420000`                                                                                                       |
+| `CHAT_DRAIN_TIMEOUT_MS`                       | `22000`                                                                                                        |
+| `CHAT_PUBLISHER_TURN_PENDING_SOFT_BYTES`      | `262144`                                                                                                       |
+| `CHAT_PUBLISHER_TURN_PENDING_HARD_BYTES`      | `1048576`                                                                                                      |
+| `CHAT_PUBLISHER_WORKER_PENDING_SOFT_BYTES`    | `2097152`                                                                                                      |
+| `CHAT_PUBLISHER_WORKER_PENDING_HARD_BYTES`    | `8388608`                                                                                                      |
+| `CHAT_PUBLISHER_TURN_PENDING_SOFT_EVENTS`     | `32`                                                                                                           |
+| `CHAT_PUBLISHER_TURN_PENDING_HARD_EVENTS`     | `128`                                                                                                          |
+| `CHAT_PUBLISHER_WORKER_PENDING_SOFT_EVENTS`   | `256`                                                                                                          |
+| `CHAT_PUBLISHER_WORKER_PENDING_HARD_EVENTS`   | `1024`                                                                                                         |
+| `AGENTIC_CHAT_OPENROUTER_MODEL`               | `deepseek/deepseek-v4-flash`                                                                                   |
 | `AGENTIC_CHAT_MUTATION_PROVIDER_CAPABILITIES` | all 20 reviewed capability names (enabled 2026-08-21; readback via `/health.agenticChat.mutationCapabilities`) |
-| `AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES`  | same 20 names as the provider list (set both in one `railway variable set` call) |
+| `AGENTIC_CHAT_MUTATION_ADAPTER_CAPABILITIES`  | same 20 names as the provider list (set both in one `railway variable set` call)                               |
 
 Required credentials were present at the last check; values were not printed:
 

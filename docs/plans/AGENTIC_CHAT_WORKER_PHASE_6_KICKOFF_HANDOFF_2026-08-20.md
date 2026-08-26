@@ -1,4 +1,5 @@
 <!-- docs/plans/AGENTIC_CHAT_WORKER_PHASE_6_KICKOFF_HANDOFF_2026-08-20.md -->
+<!-- doc-status: point-in-time -->
 
 # Agentic Chat Worker Phase 6 kickoff handoff
 
