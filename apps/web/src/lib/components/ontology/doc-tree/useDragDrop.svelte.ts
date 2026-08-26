@@ -299,7 +299,7 @@ export function createDragDropState(options: DragDropOptions) {
 		// Detect zone based on mouse position
 		const relativeY = mouseY - elementRect.top;
 		const nodeHeight = elementRect.height;
-		const zoneType = detectZoneType(relativeY, nodeHeight, targetNode);
+		const zoneType = detectZoneType(relativeY, nodeHeight);
 
 		// Build drop zone
 		const dropZone = buildDropZone(zoneType, targetNode);
@@ -339,11 +339,7 @@ export function createDragDropState(options: DragDropOptions) {
 		state.invalidReason = validation.reason ?? null;
 	}
 
-	function detectZoneType(
-		relativeY: number,
-		nodeHeight: number,
-		node: EnrichedDocTreeNode
-	): DropZoneType {
+	function detectZoneType(relativeY: number, nodeHeight: number): DropZoneType {
 		const beforeThreshold = nodeHeight * ZONE_BEFORE_PERCENT;
 		const afterThreshold = nodeHeight * ZONE_AFTER_PERCENT;
 

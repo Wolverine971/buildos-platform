@@ -60,7 +60,6 @@
 	};
 
 	interface Props {
-		userContext?: any; // From previous onboarding inputs
 		onNext: () => void;
 		onProjectsCreated: (
 			projectIds: string[],
@@ -87,7 +86,6 @@
 	}
 
 	let {
-		userContext,
 		onNext,
 		onProjectsCreated,
 		onCalendarAnalyzed,

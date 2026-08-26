@@ -94,6 +94,11 @@ export default defineConfig({
 		environment: 'node', // Use node for server-side tests by default
 		setupFiles: ['./vitest.setup.ts'],
 		include: ['**/*.{test,spec}.{js,ts}'],
+		// The full 600+ file suite can spend several seconds transforming shared
+		// modules before an individual test body runs. Keep genuine hangs bounded
+		// without making otherwise-fast tests fail only under suite contention.
+		testTimeout: 10_000,
+		hookTimeout: 20_000,
 		// IMPORTANT: Exclude LLM tests from regular test runs to avoid API costs
 		exclude: [
 			'**/node_modules/**',

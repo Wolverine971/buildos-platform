@@ -18,7 +18,6 @@
 		ArrowLeft,
 		ArrowRight,
 		BookOpen,
-		Brain,
 		CheckCircle2,
 		Code2,
 		FileText,

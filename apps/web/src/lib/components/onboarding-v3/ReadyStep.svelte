@@ -18,7 +18,6 @@
 	import { fade, scale } from 'svelte/transition';
 
 	interface Props {
-		userId: string;
 		summary: {
 			intent: OnboardingIntent | null;
 			stakes: OnboardingStakes | null;
@@ -31,7 +30,7 @@
 		onboardingStartedAtMs?: number;
 	}
 
-	let { userId, summary, onboardingStartedAtMs }: Props = $props();
+	let { summary, onboardingStartedAtMs }: Props = $props();
 
 	let isCompleting = $state(false);
 

@@ -25,6 +25,11 @@
 			label: 'Dual-write (Projects)',
 			feature: 'migration.dualwrite.projects',
 			description: 'Gates ontology dual-write + migration orchestration per org.'
+		},
+		{
+			label: 'Cycles Settings',
+			feature: 'cycles.profile_settings',
+			description: 'Shows the read-only Cycles preview in user Settings.'
 		}
 	];
 
@@ -99,7 +104,7 @@
 	<AdminCard padding="none" class="overflow-hidden">
 		<!-- Mobile Card View -->
 		<div class="space-y-3 p-4 lg:hidden">
-			{#each data.users as user}
+			{#each data.users as user (user.id)}
 				<div class="rounded-lg border border-border bg-card p-4">
 					<div class="flex items-start justify-between gap-3">
 						<div class="min-w-0">
@@ -113,7 +118,7 @@
 						{/if}
 					</div>
 					<div class="mt-3 space-y-4 border-t border-border pt-3">
-						{#each featureColumns as column}
+						{#each featureColumns as column (column.feature)}
 							{@const flag = getFlag(user, column.feature)}
 							<div class="space-y-2">
 								<div class="flex items-center justify-between gap-2">
@@ -170,13 +175,13 @@
 					>
 						<th class="px-5 py-3">User</th>
 						<th class="px-5 py-3">Email</th>
-						{#each featureColumns as column}
+						{#each featureColumns as column (column.feature)}
 							<th class="px-5 py-3">{column.label}</th>
 						{/each}
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border">
-					{#each data.users as user}
+					{#each data.users as user (user.id)}
 						<tr class="transition-colors hover:bg-muted/50">
 							<td class="px-5 py-4 align-middle">
 								<div class="flex flex-col gap-1.5">
@@ -193,7 +198,7 @@
 							<td class="px-5 py-4 text-sm text-muted-foreground">
 								{user.email}
 							</td>
-							{#each featureColumns as column}
+							{#each featureColumns as column (column.feature)}
 								{@const flag = getFlag(user, column.feature)}
 								<td class="px-5 py-4 align-top">
 									<div class="flex flex-col gap-3">

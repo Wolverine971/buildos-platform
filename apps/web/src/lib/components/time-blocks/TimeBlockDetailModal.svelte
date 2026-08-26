@@ -216,7 +216,7 @@
 			if (end <= start) {
 				errors.push('End time must be after start time');
 			}
-		} catch (error) {
+		} catch {
 			errors.push('Invalid date or time');
 		}
 

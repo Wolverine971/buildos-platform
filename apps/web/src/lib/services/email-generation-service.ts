@@ -134,11 +134,9 @@ export class EmailGenerationService {
 	private llmService: SmartLLMService;
 	private activityLogger: ActivityLogger;
 
-	constructor(supabase: SupabaseClient<Database>, openRouterApiKey?: string) {
+	constructor(supabase: SupabaseClient<Database>) {
 		this.supabase = supabase;
 		this.activityLogger = new ActivityLogger(supabase);
-		// Use provided API key or try to get from environment
-
 		this.llmService = new SmartLLMService({
 			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS Email Service',

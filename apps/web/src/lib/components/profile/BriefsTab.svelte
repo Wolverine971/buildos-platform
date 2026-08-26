@@ -145,7 +145,7 @@
 		if (!briefPreferencesState?.preferences) {
 			try {
 				await briefPreferencesStore.load();
-			} catch (error) {
+			} catch {
 				onerror?.({ message: 'Failed to load brief preferences' });
 			}
 		}
@@ -158,7 +158,7 @@
 		refreshingJobs = true;
 		try {
 			await briefPreferencesStore.loadJobs();
-		} catch (error) {
+		} catch {
 			onerror?.({ message: 'Failed to refresh brief jobs' });
 		} finally {
 			refreshingJobs = false;

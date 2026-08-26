@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/onboarding-v3/ProgressIndicatorV3.svelte -->
 <script lang="ts">
-	import { Check } from 'lucide-svelte';
+	import { ArrowLeft, Check } from 'lucide-svelte';
 
 	interface Props {
 		currentStep: number;
@@ -30,7 +30,17 @@
 	}
 </script>
 
-<div class="max-w-3xl mx-auto w-full">
+<div class="max-w-3xl mx-auto flex w-full items-center gap-3">
+	{#if currentStep > 0 && onBack}
+		<button
+			type="button"
+			onclick={onBack}
+			class="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			aria-label="Go back to the previous step"
+		>
+			<ArrowLeft class="h-4 w-4" />
+		</button>
+	{/if}
 	<div class="relative min-w-0">
 		<!-- Progress track -->
 		<div class="min-w-0">

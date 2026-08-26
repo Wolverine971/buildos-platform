@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/calendar/CalendarDisconnectModal.svelte -->
 <script lang="ts">
-	import { AlertTriangle, Calendar, Clock, Unlink, X, CheckCircle } from 'lucide-svelte';
+	import { AlertTriangle, Calendar, Clock, Unlink, CheckCircle } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { CalendarDependencies } from '$lib/services/calendar-disconnect-service';

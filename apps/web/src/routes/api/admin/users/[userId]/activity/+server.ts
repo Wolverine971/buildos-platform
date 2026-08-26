@@ -118,11 +118,6 @@ const buildChatSessionTitle = (session: ChatSessionRow): string => {
 const getChatSessionLastActivityAt = (session: ChatSessionRow): string | null =>
 	session.last_message_at ?? session.updated_at ?? session.created_at ?? null;
 
-const humanizeLabel = (value: string | null | undefined): string => {
-	if (!value) return 'Unknown';
-	return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-};
-
 const summarizeMessageContent = (content: string | null | undefined): string => {
 	const normalized = (content || '').replace(/\s+/g, ' ').trim();
 	if (!normalized) return 'No message content';

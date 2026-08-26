@@ -28,6 +28,7 @@ export default defineConfig({
 		'src/ontology/relationship-policy.ts',
 		'src/ontology/edge-relationship-resolver.ts',
 		'src/ontology/versioning.service.ts',
+		'src/ontology/document-write.service.ts',
 		'src/ops/update-value-validation.ts',
 		'src/ops/async-activity-logger.ts',
 		'src/ops/tracked-in-app-notification.service.ts',

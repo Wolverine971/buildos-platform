@@ -36,7 +36,7 @@ function handleFocusIn(e: FocusEvent) {
 	window.scrollTo({ top: savedY, behavior: 'instant' });
 }
 
-function handleFocusOut(e: FocusEvent) {
+function handleFocusOut() {
 	if (!inputFocused || lockCount === 0) return;
 	// Check if focus is moving to another input (don't re-lock in that case)
 	// Use setTimeout to let the new focusin fire first

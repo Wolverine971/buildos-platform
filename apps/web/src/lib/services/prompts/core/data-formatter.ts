@@ -40,7 +40,7 @@ export function formatProjectData(params: FullProjectData): string {
 		.slice(0, MAX_TASKS_TO_DISPLAY);
 
 	if (activeTasks.length > 0) {
-		const taskSection = formatTasksForPrompt(activeTasks, 3, 'full'); // Start at ### level
+		const taskSection = formatTasksForPrompt(activeTasks, 3); // Start at ### level
 		sections.push(taskSection);
 	}
 
@@ -51,9 +51,9 @@ export function formatProjectData(params: FullProjectData): string {
  * Format tasks for LLM prompts with proper nesting
  */
 export function formatTasks(tasks: Task[], options: FormatOptions): string {
-	const { mode } = options;
-
 	if (!tasks || tasks.length === 0) return 'No tasks';
+	const descriptionLimit = options.mode === 'summary' ? 120 : 400;
+	const detailsLimit = options.mode === 'summary' ? 240 : 900;
 
 	// Sort tasks by start_date (nulls last)
 	const sortedTasks = [...tasks].sort((a, b) => {
@@ -73,9 +73,6 @@ export function formatTasks(tasks: Task[], options: FormatOptions): string {
 			sections.push(
 				`\n${groupName.toUpperCase().replace('_', ' ')} TASKS (${groupTasks.length}):`
 			);
-			// groupTasks.forEach((task) => {
-			// 	sections.push(formatSingleTask(task, mode));
-			// });
 			const taskData = groupTasks.map((task) => ({
 				id: task.id,
 				title: task.title,
@@ -84,8 +81,10 @@ export function formatTasks(tasks: Task[], options: FormatOptions): string {
 				task_type: task.task_type || 'one_off',
 				...(task.start_date && { start_date: task.start_date }),
 				...(task.duration_minutes && { duration_minutes: task.duration_minutes }),
-				...(task.description && { description: truncateContent(task.description, 400) }),
-				...(task.details && { details: truncateContent(task.details, 900) })
+				...(task.description && {
+					description: truncateContent(task.description, descriptionLimit)
+				}),
+				...(task.details && { details: truncateContent(task.details, detailsLimit) })
 			}));
 
 			sections.push(JSON.stringify(taskData));
@@ -207,52 +206,6 @@ function groupTasks(tasks: Task[]): Record<string, Task[]> {
 	});
 
 	return groups;
-}
-
-function formatSingleTask(task: Task, mode: 'full' | 'summary'): string {
-	const parts: string[] = [];
-
-	// ID and title
-	parts.push(`[${task.id}] ${task.title || 'Untitled'}`);
-
-	// Status and priority indicators
-	const indicators: string[] = [];
-	if (task.status === 'blocked') indicators.push('🚫');
-	if (task.status === 'in_progress') indicators.push('▶️');
-	if (task.priority === 'high') indicators.push('🔴');
-	if (task.start_date) indicators.push(`📅${task.start_date}`);
-	if (task.dependencies?.length) indicators.push(`deps:[${task.dependencies.length}]`);
-
-	if (indicators.length > 0) {
-		parts.push(`(${indicators.join(' ')})`);
-	}
-
-	// Description and details
-	if (task.description || task.details) {
-		const descriptionParts: string[] = [];
-
-		if (task.description) {
-			const desc =
-				mode === 'summary' && task.description.length > 80
-					? task.description.substring(0, 80) + '...'
-					: task.description;
-			descriptionParts.push(desc);
-		}
-
-		if (task.details) {
-			const details =
-				mode === 'summary' && task.details.length > 60
-					? task.details.substring(0, 60) + '...'
-					: task.details;
-			descriptionParts.push(`Details: ${details}`);
-		}
-
-		if (descriptionParts.length > 0) {
-			parts.push(`- ${descriptionParts.join(' | ')}`);
-		}
-	}
-
-	return `- ${parts.join(' ')}`;
 }
 
 /**

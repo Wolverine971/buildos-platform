@@ -11,9 +11,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../../../shared/error-logging';
 import {
-	createOrMergeDocumentVersion,
 	toDocumentSnapshot,
-	type DocumentSnapshot,
 	type DocumentVersionProps
 } from '$lib/services/ontology/versioning.service';
 import type { Json } from '@buildos/shared-types';

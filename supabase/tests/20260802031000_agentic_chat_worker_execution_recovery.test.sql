@@ -92,11 +92,14 @@ BEGIN
 	);
 	INSERT INTO public.chat_turn_input_artifacts (
 		id, turn_run_id, session_id, user_id, artifact_version, history_source,
-		history, prepared, content_hash, history_bytes, content_bytes, retain_until
+		history, prepared, content_hash, history_bytes, content_bytes, created_at,
+		retain_until
 	) VALUES (
 		v_artifact_id, p_turn_id, p_session_id, p_user_id,
 		'agentic_chat_input_v2', 'admission_window', '[]'::jsonb, '{}'::jsonb,
-		repeat('a', 64), 2, 4, now() + p_artifact_retention
+		repeat('a', 64), 2, 4,
+		now() + p_artifact_retention - interval '7 days',
+		now() + p_artifact_retention
 	);
 	UPDATE public.chat_turn_runs
 	SET input_artifact_id = v_artifact_id

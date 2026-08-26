@@ -63,7 +63,7 @@ export const PUT: RequestHandler = async ({ request, cookies, locals: { safeGetS
 		}
 
 		// If current password is verified, proceed with password update
-		const { data, error } = await supabase.auth.updateUser({
+		const { error } = await supabase.auth.updateUser({
 			password: newPassword
 		});
 

@@ -150,6 +150,80 @@ SELECT pg_temp.assert_true(
 	'a coordinator must be able to release work it cannot materialize'
 );
 
+-- Pausing before claim must exclude the trigger. Pausing after claim must
+-- invalidate admission under the Cycle lock, even though the lease itself is
+-- still live. This is the important race at the operator kill-switch boundary.
+SELECT public.pause_cycle(
+	'11111111-1111-4111-8111-111111111111',
+	(SELECT id FROM public.cycles WHERE create_request_id = 'due-daily-brief'),
+	1
+);
+SELECT pg_temp.assert_true(
+	jsonb_array_length(public.claim_due_cycle_triggers(
+		'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+		'2026-08-27T13:01:00Z',
+		25,
+		120,
+		ARRAY['daily_brief']
+	)) = 0,
+	'a paused Cycle must not lease a due trigger'
+);
+
+SELECT public.resume_cycle(
+	'11111111-1111-4111-8111-111111111111',
+	(SELECT id FROM public.cycles WHERE create_request_id = 'due-daily-brief'),
+	2
+);
+TRUNCATE claimed_cycle_triggers;
+INSERT INTO claimed_cycle_triggers (payload)
+SELECT public.claim_due_cycle_triggers(
+	'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+	'2026-08-27T13:01:00Z',
+	25,
+	120,
+	ARRAY['daily_brief']
+);
+SELECT pg_temp.assert_true(
+	(SELECT jsonb_array_length(payload) = 1 FROM claimed_cycle_triggers),
+	'the resumed Cycle must become claimable again'
+);
+
+SELECT public.pause_cycle(
+	'11111111-1111-4111-8111-111111111111',
+	(SELECT id FROM public.cycles WHERE create_request_id = 'due-daily-brief'),
+	3
+);
+DO $$
+BEGIN
+	BEGIN
+		PERFORM public.admit_claimed_cycle_trigger(
+			(SELECT (payload->0->>'trigger_id')::uuid FROM claimed_cycle_triggers),
+			'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+			'{"mode":"scheduled","brief_date":"2026-08-27","timezone":"America/New_York","force_regenerate":false,"use_ontology":true}',
+			'{"mode":"evaluate","not_before":"2026-08-27T13:00:00Z"}',
+			'2026-08-28T13:00:00Z',
+			'2026-08-27T13:00:05Z'
+		);
+		RAISE EXCEPTION 'expected paused Cycle admission failure';
+	EXCEPTION WHEN SQLSTATE '55000' THEN
+		IF SQLERRM <> 'cycle_not_active' THEN
+			RAISE;
+		END IF;
+	END;
+END;
+$$;
+SELECT pg_temp.assert_true(
+	(SELECT count(*) = 1 FROM public.cycle_runs),
+	'pausing after lease but before admission must create no Run or queue work'
+);
+SELECT pg_temp.assert_true(
+	public.release_cycle_trigger_claim(
+		(SELECT (payload->0->>'trigger_id')::uuid FROM claimed_cycle_triggers),
+		'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
+	),
+	'a paused claimed trigger must remain explicitly releasable after rejected admission'
+);
+
 RESET ROLE;
 SELECT set_config(
 	'request.jwt.claims',

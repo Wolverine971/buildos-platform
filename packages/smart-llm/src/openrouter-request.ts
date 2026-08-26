@@ -2,9 +2,11 @@
 
 import {
 	GEMINI_37_FLASH_MODEL,
+	GLM_53_FLASH_MODEL,
 	GPT_56_LUNA_MODEL,
 	KIMI_K3_MODEL
 } from './model-config';
+import type { ReasoningEffort } from './types';
 
 export type OpenRouterChatCompletionBodyParams = {
 	model: string;
@@ -44,6 +46,7 @@ export type OpenRouterModelRequestPolicy = {
 	temperature: 'supported' | 'omit';
 	requiredReasoningEffort?: 'max';
 	minimumReasoningEffort?: 'medium';
+	defaultReasoningEffort?: ReasoningEffort;
 	includeReasoningDetails?: boolean;
 };
 
@@ -60,6 +63,13 @@ export const OPENROUTER_MODEL_REQUEST_POLICIES: Readonly<
 		// Keeping it in a require_parameters request makes the route ineligible.
 		temperature: 'omit' as const,
 		minimumReasoningEffort: 'medium' as const
+	}),
+	[GLM_53_FLASH_MODEL]: Object.freeze({
+		temperature: 'supported' as const,
+		// The model is unusually verbose at its provider default. Low reasoning
+		// retained tool correctness in the BuildOS smoke suite while keeping dev
+		// responses and hidden-token cost bounded.
+		defaultReasoningEffort: 'low' as const
 	}),
 	[GPT_56_LUNA_MODEL]: Object.freeze({
 		temperature: 'omit' as const
@@ -81,28 +91,40 @@ export function resolveOpenRouterFallbackModels(model: string, models?: string[]
 
 function normalizeReasoningForModel(model: string, reasoning: unknown): unknown {
 	const policy = OPENROUTER_MODEL_REQUEST_POLICIES[model];
-	if (!policy?.requiredReasoningEffort && !policy?.minimumReasoningEffort) return reasoning;
+	if (
+		!policy?.requiredReasoningEffort &&
+		!policy?.minimumReasoningEffort &&
+		!policy?.defaultReasoningEffort
+	) {
+		return reasoning;
+	}
 
-	const suppliedReasoning =
+	let normalizedReasoning =
 		reasoning && typeof reasoning === 'object' && !Array.isArray(reasoning)
 			? (reasoning as Record<string, unknown>)
 			: {};
+	if (policy.defaultReasoningEffort && !normalizedReasoning.effort) {
+		normalizedReasoning = {
+			...normalizedReasoning,
+			effort: policy.defaultReasoningEffort
+		};
+	}
 	if (policy.minimumReasoningEffort) {
 		const effortOrder = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
-		const suppliedEffortIndex = effortOrder.indexOf(String(suppliedReasoning.effort ?? ''));
+		const suppliedEffortIndex = effortOrder.indexOf(String(normalizedReasoning.effort ?? ''));
 		const minimumEffortIndex = effortOrder.indexOf(policy.minimumReasoningEffort);
 		if (suppliedEffortIndex < minimumEffortIndex) {
 			return {
-				...suppliedReasoning,
+				...normalizedReasoning,
 				effort: policy.minimumReasoningEffort
 			};
 		}
 	}
 
-	if (!policy.requiredReasoningEffort) return reasoning;
+	if (!policy.requiredReasoningEffort) return normalizedReasoning;
 
 	return {
-		...suppliedReasoning,
+		...normalizedReasoning,
 		effort: policy.requiredReasoningEffort,
 		...(policy.includeReasoningDetails ? { exclude: false } : {})
 	};

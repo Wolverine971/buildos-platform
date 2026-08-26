@@ -238,8 +238,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
-		const actorId = actorResult.data as string;
-
 		// Verify user has access to all referenced entities before creating edges
 		const idsByKind = new Map<string, Set<string>>();
 		for (const edge of resolvedEdges) {

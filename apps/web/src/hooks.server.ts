@@ -2,7 +2,6 @@
 import { json, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import type { Handle, HandleServerError, RequestEvent } from '@sveltejs/kit';
-import { env as privateEnv } from '$env/dynamic/private';
 import { createSupabaseServer } from '$lib/supabase';
 import { createServerTiming } from '$lib/server/server-timing';
 import { dev } from '$app/environment';

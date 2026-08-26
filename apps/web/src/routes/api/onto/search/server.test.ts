@@ -55,8 +55,10 @@ function createSupabase() {
 		in: vi.fn().mockReturnThis(),
 		is: vi.fn().mockReturnThis(),
 		not: vi.fn().mockReturnThis(),
+		or: vi.fn().mockReturnThis(),
 		order: vi.fn().mockReturnThis(),
 		limit: vi.fn().mockReturnThis(),
+		abortSignal: vi.fn().mockReturnThis(),
 		then: vi.fn((resolve) => Promise.resolve({ data: [], error: null }).then(resolve))
 	};
 
@@ -181,6 +183,61 @@ describe('/api/onto/search', () => {
 			search_scope: 'project',
 			project_id: '31021625-1377-4715-9fb4-f93102974628'
 		});
+	});
+
+	it('searches project tasks directly so member-visible tasks are returned promptly', async () => {
+		const event = createEvent({
+			query: 'twitter',
+			project_id: '31021625-1377-4715-9fb4-f93102974628',
+			types: ['task'],
+			limit: 12
+		});
+		event.locals.supabase.taskLookup.then.mockImplementationOnce((resolve: any) =>
+			Promise.resolve({
+				data: [
+					{
+						id: 'twitter-task',
+						project_id: '31021625-1377-4715-9fb4-f93102974628',
+						title: 'Twitter brand kit',
+						description: 'Create three rollout templates.',
+						state_key: 'todo',
+						type_key: 'task.execute',
+						updated_at: '2026-08-25T12:00:00Z'
+					}
+				],
+				error: null
+			}).then(resolve)
+		);
+
+		const response = await POST(event as any);
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(payload.data).toMatchObject({
+			search_scope: 'project',
+			project_id: '31021625-1377-4715-9fb4-f93102974628',
+			total_returned: 1,
+			results: [
+				expect.objectContaining({
+					type: 'task',
+					id: 'twitter-task',
+					title: 'Twitter brand kit',
+					state_key: 'todo'
+				})
+			]
+		});
+		expect(ensureActorIdMock).not.toHaveBeenCalled();
+		expect(event.locals.supabase.rpc).toHaveBeenCalledTimes(1);
+		expect(event.locals.supabase.rpc).toHaveBeenCalledWith(
+			'current_actor_has_project_member_access',
+			expect.objectContaining({ p_required_access: 'read' })
+		);
+		expect(event.locals.supabase.taskLookup.or).toHaveBeenCalledWith(
+			expect.stringContaining('title.ilike')
+		);
+		expect(event.locals.supabase.taskLookup.abortSignal).toHaveBeenCalledWith(
+			event.request.signal
+		);
 	});
 
 	it('rejects project search before querying entities when membership is denied', async () => {

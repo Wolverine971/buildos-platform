@@ -1,7 +1,5 @@
 // apps/web/src/lib/utils/sse-response.ts
 
-import type { RequestEvent } from '@sveltejs/kit';
-
 function sanitizeSSEFieldValue(value: string): string {
 	return value.replace(/[\r\n\0]/g, ' ');
 }

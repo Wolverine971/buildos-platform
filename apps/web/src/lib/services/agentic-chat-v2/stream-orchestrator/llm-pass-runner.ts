@@ -4,7 +4,7 @@ import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 import type { OpenRouterRouteObservation } from '$lib/services/openrouter-v2/types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import { FASTCHAT_LIMITS } from '../limits';
-import type { FastChatLlmPassRole, FastChatPassModelRouting } from '../model-tiering';
+import type { FastChatPassModelRouting } from '../model-tiering';
 import type { FastAgentStreamUsage, FastChatHistoryMessage } from '../types';
 import type { TurnSupervisorObservation } from '../turn-supervisor';
 import { parseToolArguments as parseSupervisorToolArguments } from '../turn-supervisor/digest';

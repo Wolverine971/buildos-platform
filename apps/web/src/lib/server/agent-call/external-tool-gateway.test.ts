@@ -223,9 +223,13 @@ type State = {
 class OntoDocumentsQueryBuilderMock {
 	private action: 'select' | 'insert' | 'update' | null = null;
 	private idFilter: string | null = null;
+	private projectIdFilter: string | null = null;
+	private typeKeyFilter: string | null = null;
 	private projectIdsFilter: string[] | null = null;
 	private deletedAtFilterApplied = false;
 	private archivedAtFilter: 'active' | 'archived' | null = null;
+	private orderBy: { field: keyof DocumentRow; ascending: boolean } | null = null;
+	private rowLimit: number | null = null;
 	private insertPayload: Record<string, unknown> | null = null;
 	private updatePayload: Record<string, unknown> | null = null;
 
@@ -254,6 +258,12 @@ class OntoDocumentsQueryBuilderMock {
 	eq(field: string, value: unknown) {
 		if (field === 'id' && typeof value === 'string') {
 			this.idFilter = value;
+		}
+		if (field === 'project_id' && typeof value === 'string') {
+			this.projectIdFilter = value;
+		}
+		if (field === 'type_key' && typeof value === 'string') {
+			this.typeKeyFilter = value;
 		}
 
 		return this;
@@ -288,8 +298,28 @@ class OntoDocumentsQueryBuilderMock {
 		return this;
 	}
 
+	order(field: keyof DocumentRow, options?: { ascending?: boolean }) {
+		this.orderBy = { field, ascending: options?.ascending !== false };
+		return this;
+	}
+
+	limit(value: number) {
+		this.rowLimit = value;
+		return this;
+	}
+
+	abortSignal() {
+		return this;
+	}
+
 	private matches(row: DocumentRow): boolean {
 		if (this.idFilter !== null && row.id !== this.idFilter) {
+			return false;
+		}
+		if (this.projectIdFilter !== null && row.project_id !== this.projectIdFilter) {
+			return false;
+		}
+		if (this.typeKeyFilter !== null && row.type_key !== this.typeKeyFilter) {
 			return false;
 		}
 
@@ -308,6 +338,21 @@ class OntoDocumentsQueryBuilderMock {
 		}
 
 		return true;
+	}
+
+	private filteredRows() {
+		let rows = this.state.documents.filter((document) => this.matches(document));
+		if (this.orderBy) {
+			const { field, ascending } = this.orderBy;
+			rows = [...rows].sort((left, right) => {
+				const leftValue = String(left[field] ?? '');
+				const rightValue = String(right[field] ?? '');
+				return ascending
+					? leftValue.localeCompare(rightValue)
+					: rightValue.localeCompare(leftValue);
+			});
+		}
+		return this.rowLimit === null ? rows : rows.slice(0, this.rowLimit);
 	}
 
 	private serialize(row: DocumentRow) {
@@ -331,12 +376,27 @@ class OntoDocumentsQueryBuilderMock {
 	}
 
 	maybeSingle() {
-		const row = this.state.documents.find((document) => this.matches(document)) ?? null;
+		const row = this.filteredRows()[0] ?? null;
 
 		return Promise.resolve({
 			data: row ? this.serialize(row) : null,
 			error: null
 		});
+	}
+
+	then<TResult1 = any, TResult2 = never>(
+		onfulfilled?:
+			| ((value: {
+					data: Record<string, unknown>[];
+					error: null;
+			  }) => TResult1 | PromiseLike<TResult1>)
+			| null,
+		onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+	) {
+		return Promise.resolve({
+			data: this.filteredRows().map((row) => this.serialize(row)),
+			error: null
+		}).then(onfulfilled, onrejected);
 	}
 
 	single() {
@@ -1112,6 +1172,7 @@ class OntoEventsQueryBuilderMock {
 	private deletedAtFilterApplied = false;
 	private startAtGte: string | null = null;
 	private startAtLte: string | null = null;
+	private activeWindowStart: string | null = null;
 	private orderBy: { field: string; ascending: boolean } | null = null;
 	private rowLimit: number | null = null;
 
@@ -1134,6 +1195,14 @@ class OntoEventsQueryBuilderMock {
 	is(field: string, value: unknown) {
 		if (field === 'deleted_at' && value === null) {
 			this.deletedAtFilterApplied = true;
+		}
+		return this;
+	}
+
+	or(expression: string) {
+		const activeWindow = expression.match(/^start_at\.gte\.([^,]+),end_at\.gte\.(.+)$/);
+		if (activeWindow?.[1] && activeWindow[1] === activeWindow[2]) {
+			this.activeWindowStart = activeWindow[1];
 		}
 		return this;
 	}
@@ -1186,6 +1255,12 @@ class OntoEventsQueryBuilderMock {
 		if (this.idFilter !== null && row.id !== this.idFilter) return false;
 		if (this.projectIdFilter !== null && row.project_id !== this.projectIdFilter) return false;
 		if (this.deletedAtFilterApplied && row.deleted_at !== null) return false;
+		if (
+			this.activeWindowStart !== null &&
+			row.start_at < this.activeWindowStart &&
+			(row.end_at === null || row.end_at < this.activeWindowStart)
+		)
+			return false;
 		if (this.startAtGte !== null && row.start_at < this.startAtGte) return false;
 		if (this.startAtLte !== null && row.start_at > this.startAtLte) return false;
 		return true;
@@ -1872,6 +1947,7 @@ describe('external tool gateway', () => {
 			op: 'onto.project.status.get',
 			ok: true,
 			result: {
+				start_here: null,
 				project: {
 					id: '44444444-4444-4444-4444-444444444444',
 					name: 'Allowed Project'

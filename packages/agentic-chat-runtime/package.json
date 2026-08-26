@@ -57,6 +57,7 @@
 		"typecheck": "tsc --noEmit --skipLibCheck",
 		"test": "vitest",
 		"test:run": "vitest run",
+		"test:coverage": "vitest run --coverage",
 		"test:catalog-imports": "node scripts/smoke-catalog-import.cjs && node scripts/smoke-catalog-import.mjs"
 	},
 	"dependencies": {

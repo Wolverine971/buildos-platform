@@ -2,22 +2,16 @@
 <script lang="ts">
 	import {
 		DollarSign,
-		TrendingUp,
 		TrendingDown,
 		Calendar,
-		FileText,
 		AlertCircle,
 		Download,
 		RefreshCw,
-		CreditCard,
-		Users,
-		PieChart,
 		BarChart,
 		ArrowUpRight,
 		ArrowDownRight
 	} from 'lucide-svelte';
 	import { browser } from '$app/environment';
-	import type { PageData } from './$types';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -147,12 +141,6 @@
 
 	function formatPercentage(value: number): string {
 		return `${value.toFixed(2)}%`;
-	}
-
-	function getChangeColor(current: number, previous: number): string {
-		if (current > previous) return 'text-success';
-		if (current < previous) return 'text-destructive';
-		return 'text-muted-foreground';
 	}
 
 	function calculateChange(current: number, previous: number): number {

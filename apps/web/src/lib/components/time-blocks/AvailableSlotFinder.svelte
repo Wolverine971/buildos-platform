@@ -1,7 +1,6 @@
 <!-- apps/web/src/lib/components/time-blocks/AvailableSlotFinder.svelte -->
 <script lang="ts">
 	import { timeBlocksStore } from '$lib/stores/timeBlocksStore';
-	import type { SlotFinderConfig } from '$lib/types/time-blocks';
 
 	let {
 		availableSlotsCount = 0

@@ -55,11 +55,6 @@
 			public_status: 'not_public'
 		};
 	}
-
-	// Track which document is being dragged
-	const isDraggingUnlinked = $derived(
-		dragState?.isDragging && documents.some((doc) => doc.id === dragState?.draggedNode?.id)
-	);
 </script>
 
 {#if documents.length > 0}

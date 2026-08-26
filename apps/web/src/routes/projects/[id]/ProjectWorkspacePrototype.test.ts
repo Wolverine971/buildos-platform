@@ -170,6 +170,30 @@ describe('ProjectWorkspacePrototype edge states', () => {
 				if (url.includes(`/api/onto/projects/${PROJECT_ID}/logs?`)) {
 					return apiResponse({ logs: [], total: 0, hasMore: false });
 				}
+				if (url.includes(`/api/onto/projects/${PROJECT_ID}/recent-chats?`)) {
+					return apiResponse({
+						chats: [
+							{
+								id: 'chat-1',
+								title: 'Launch positioning review',
+								summary: 'Compared the launch narrative with customer research.',
+								chat_topics: ['positioning'],
+								context_type: 'project',
+								entity_id: PROJECT_ID,
+								message_count: 8,
+								status: 'completed',
+								focus_label: 'Launch plan',
+								focus_type: 'plan',
+								created_at: '2026-08-20T10:00:00.000Z',
+								updated_at: '2026-08-20T11:00:00.000Z',
+								last_message_at: '2026-08-20T11:00:00.000Z',
+								last_activity_at: '2026-08-20T11:00:00.000Z'
+							}
+						],
+						total: 1,
+						hasMore: false
+					});
+				}
 				throw new Error(`Unexpected fetch: ${url}`);
 			})
 		);
@@ -201,8 +225,8 @@ describe('ProjectWorkspacePrototype edge states', () => {
 		expect(screen.getByTitle('Open project graph')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Project options' })).toBeInTheDocument();
 		expect(screen.getAllByRole('tab').map((tab) => tab.textContent?.trim())).toEqual([
-			'Work 0',
 			'Overview',
+			'Tasks 0',
 			'Docs 0',
 			'Activity'
 		]);
@@ -252,6 +276,23 @@ describe('ProjectWorkspacePrototype edge states', () => {
 		expect(briefUrl).toBeInstanceOf(URL);
 		expect((briefUrl as URL).searchParams.get('entity')).toBe('document');
 		expect((briefUrl as URL).searchParams.get('entity_id')).toBe(CONTEXT_DOCUMENT_ID);
+	});
+
+	it('defaults to Overview when the URL does not select a workspace view', async () => {
+		window.history.replaceState({}, '', '/workspace');
+		render(ProjectWorkspacePrototype, {
+			props: { data: projectData() as any }
+		});
+
+		expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
+			'aria-selected',
+			'true'
+		);
+		expect(screen.getByRole('tab', { name: 'Tasks 0' })).toHaveAttribute(
+			'aria-selected',
+			'false'
+		);
+		expect(screen.getByRole('tabpanel', { name: 'Overview' })).toBeInTheDocument();
 	});
 
 	it('restores the original project options without crowding the header', async () => {
@@ -311,6 +352,11 @@ describe('ProjectWorkspacePrototype edge states', () => {
 		expect(within(overview).queryByText('PROJECT BRIEF')).not.toBeInTheDocument();
 		expect(within(overview).queryByText('STATUS')).not.toBeInTheDocument();
 		expect(within(overview).queryByText('TARGET')).not.toBeInTheDocument();
+		expect(
+			within(overview).getByRole('heading', { name: 'Project trajectory' })
+		).toBeInTheDocument();
+		expect(within(overview).getByText('Task completion')).toBeInTheDocument();
+		expect(within(overview).getByText('Milestone timeline')).toBeInTheDocument();
 	});
 
 	it('keeps dense direction lists curated until the user asks for all items', async () => {
@@ -408,7 +454,7 @@ describe('ProjectWorkspacePrototype edge states', () => {
 		expect(within(docs).queryByText('Quick access')).not.toBeInTheDocument();
 	});
 
-	it('keeps Activity focused on change history and the project schedule', async () => {
+	it('keeps Activity focused on recent chats, change history, and the project schedule', async () => {
 		render(ProjectWorkspacePrototype, {
 			props: {
 				data: projectData({
@@ -434,7 +480,13 @@ describe('ProjectWorkspacePrototype edge states', () => {
 			within(activity).getByRole('heading', { name: 'Project activity' })
 		).toBeInTheDocument();
 		expect(
-			within(activity).getByText('See what changed and what is scheduled.')
+			within(activity).getByText('See recent chats, project changes, and what is scheduled.')
+		).toBeInTheDocument();
+		expect(
+			await within(activity).findByRole('heading', { name: 'Recent chats' })
+		).toBeInTheDocument();
+		expect(
+			within(activity).getByRole('button', { name: 'Reopen chat: Launch positioning review' })
 		).toBeInTheDocument();
 		expect(within(activity).getAllByText('Change history').length).toBeGreaterThan(0);
 		expect(within(activity).getAllByText('Schedule').length).toBeGreaterThan(0);

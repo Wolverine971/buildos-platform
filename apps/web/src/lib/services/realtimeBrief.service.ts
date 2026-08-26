@@ -4,12 +4,7 @@ import { browser } from '$app/environment';
 import { toastService } from '$lib/stores/toast.store';
 import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { briefGenerationCompletedWritable } from '$lib/stores/unifiedBriefGeneration.store';
-import {
-	getCurrentDateInTimezone,
-	formatTimeInTimezone,
-	getRelativeTime,
-	getUserTimezone
-} from '$lib/utils/timezone';
+import { getCurrentDateInTimezone, getRelativeTime, getUserTimezone } from '$lib/utils/timezone';
 
 export interface BriefNotificationStatus {
 	isGenerating: boolean;
@@ -603,7 +598,7 @@ export class RealtimeBriefService {
 	 * Handle daily brief updates
 	 */
 	private static handleBriefUpdate(payload: any): void {
-		const { eventType, new: newRecord } = payload;
+		const newRecord = payload.new;
 
 		// Only process completed briefs
 		if (!newRecord || newRecord.generation_status !== 'completed') {
@@ -648,7 +643,7 @@ export class RealtimeBriefService {
 	 * Handle broadcast brief failure events
 	 */
 	private static handleBriefFailed(payload: any): void {
-		const { error, briefDate } = payload;
+		const { briefDate } = payload;
 
 		// Show error notification
 		toastService.error(`Brief generation failed for ${briefDate || 'today'}`);

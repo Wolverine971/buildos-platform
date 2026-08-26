@@ -5,12 +5,6 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { portal } from '$lib/actions/portal';
 
-	let {
-		onConnect = () => {}
-	}: {
-		onConnect?: () => void;
-	} = $props();
-
 	let isConnecting = $state(false);
 	let hasError = $state(false);
 	let errorMessage = $state('');

@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+// apps/web/src/routes/agent-skills/[slug]/bundle.zip/+server.ts
 import { strToU8, zipSync } from 'fflate';
 import type { RequestHandler } from './$types';
 import { buildPortableAgentSkillBundle } from '$lib/server/agent-skills';

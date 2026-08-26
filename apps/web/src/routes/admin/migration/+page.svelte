@@ -2,12 +2,11 @@
 <!-- Global Migration Dashboard with tabbed navigation -->
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { GitBranch, Globe, User, AlertTriangle, Play, RefreshCw, Users } from 'lucide-svelte';
+	import { GitBranch, Globe, AlertTriangle, Play, RefreshCw, Users } from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
-	import Modal from '$lib/components/ui/Modal.svelte';
 	import ProgressCards from '$lib/components/admin/migration/ProgressCards.svelte';
 	import GlobalProgressBar from '$lib/components/admin/migration/GlobalProgressBar.svelte';
 	import UserList from '$lib/components/admin/migration/UserList.svelte';
@@ -15,14 +14,8 @@
 	import ConfirmationModal from '$lib/components/admin/migration/ConfirmationModal.svelte';
 	import type { PageData } from './$types';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { browser } from '$app/environment';
 	import type { MigrationUserStatus } from '$lib/components/admin/migration/UserList.svelte';
-	import type {
-		GlobalProgress,
-		LockStatus,
-		UserMigrationStats,
-		UserListResponse
-	} from '$lib/services/ontology/migration-stats.service';
+	import type { UserListResponse } from '$lib/services/ontology/migration-stats.service';
 
 	let { data }: { data: PageData } = $props();
 
@@ -489,5 +482,6 @@
 	]}
 	showCostEstimate={true}
 	{costEstimate}
+	{costEstimateLoading}
 	onConfirm={handleStartPlatformMigration}
 />

@@ -3,8 +3,8 @@
 	Project workspace prototype body
 
 	Information architecture:
-	- Work is the default operating surface: the real Kanban board.
-	- Overview is the project map: direction, milestones, and risks.
+	- Overview is the default project map: trajectory, direction, milestones, and risks.
+	- Tasks is the operating surface: the real Kanban board.
 	- Docs gives the real document tree a dedicated, full-width workspace.
 	- Activity owns change history and upcoming events.
 
@@ -51,10 +51,10 @@
 		AlertTriangle,
 		BookOpen,
 		ChevronRight,
-		Columns2,
 		FileText,
 		Flag,
 		LayoutDashboard,
+		ListChecks,
 		LoaderCircle,
 		Network,
 		Pencil,
@@ -64,6 +64,8 @@
 	} from '$lib/icons/lucide';
 	import type { PageData } from './$types';
 	import ProjectBriefHubModal from './ProjectBriefHubModal.svelte';
+	import ProjectProgressOverview from './ProjectProgressOverview.svelte';
+	import ProjectRecentChats from './ProjectRecentChats.svelte';
 	import ProjectWorkspaceEntityModals from './ProjectWorkspaceEntityModals.svelte';
 	import ProjectWorkspaceOptionsMenu from './ProjectWorkspaceOptionsMenu.svelte';
 
@@ -91,7 +93,7 @@
 		currentActorId: null
 	};
 
-	const TAB_ORDER: WorkspaceTab[] = ['work', 'overview', 'docs', 'activity'];
+	const TAB_ORDER: WorkspaceTab[] = ['overview', 'work', 'docs', 'activity'];
 
 	let { data }: { data: PageData } = $props();
 	const initialData = untrack(() => data);
@@ -150,7 +152,7 @@
 		return { structure, documents: documentsById, archived };
 	}
 
-	let activeTab = $state<WorkspaceTab>('work');
+	let activeTab = $state<WorkspaceTab>('overview');
 	let tabButtons = $state<Array<HTMLButtonElement | null>>([]);
 	let isHydrating = $state(initialData.skeleton === true);
 	let hydrationError = $state<string | null>(null);
@@ -206,7 +208,7 @@
 	let editingEntity = $state<WorkspaceEditTarget | null>(null);
 	let showGraphModal = $state(false);
 	let showProjectBriefModal = $state(false);
-	let showAgentChatModal = $state(false);
+	let selectedRecentChatSessionId = $state<string | null>(null);
 	let showAllGoals = $state(false);
 	let showAllPlans = $state(false);
 	let showAllMilestones = $state(false);
@@ -380,6 +382,15 @@
 	function openProjectBrief() {
 		showProjectBriefModal = true;
 		void hydrateContextDocument();
+	}
+
+	function openRecentChat(sessionId: string) {
+		selectedRecentChatSessionId = sessionId;
+	}
+
+	function closeRecentChat() {
+		selectedRecentChatSessionId = null;
+		void refreshProject();
 	}
 
 	function resetEntityEditors() {
@@ -667,7 +678,7 @@
 	<title>{project.name || 'Project'} · BuildOS</title>
 	<meta
 		name="description"
-		content="A focused BuildOS project workspace for work, direction, documents, and activity."
+		content="A focused BuildOS project workspace for overview, tasks, documents, and activity."
 	/>
 </svelte:head>
 
@@ -743,35 +754,35 @@
 					<button
 						bind:this={tabButtons[0]}
 						type="button"
-						id="workspace-tab-work"
-						role="tab"
-						aria-selected={activeTab === 'work'}
-						aria-controls="workspace-work"
-						tabindex={activeTab === 'work' ? 0 : -1}
-						onclick={() => selectTab('work')}
-						onkeydown={(event) => handleTabKeydown(event, 0)}
-						class="workspace-tab {activeTab === 'work' ? 'workspace-tab-active' : ''}"
-					>
-						<Columns2 class="h-4 w-4" />
-						Work
-						<span class="tab-count">{taskCount}</span>
-					</button>
-					<button
-						bind:this={tabButtons[1]}
-						type="button"
 						id="workspace-tab-overview"
 						role="tab"
 						aria-selected={activeTab === 'overview'}
 						aria-controls="workspace-overview"
 						tabindex={activeTab === 'overview' ? 0 : -1}
 						onclick={() => selectTab('overview')}
-						onkeydown={(event) => handleTabKeydown(event, 1)}
+						onkeydown={(event) => handleTabKeydown(event, 0)}
 						class="workspace-tab {activeTab === 'overview'
 							? 'workspace-tab-active'
 							: ''}"
 					>
 						<LayoutDashboard class="h-4 w-4" />
 						Overview
+					</button>
+					<button
+						bind:this={tabButtons[1]}
+						type="button"
+						id="workspace-tab-work"
+						role="tab"
+						aria-selected={activeTab === 'work'}
+						aria-controls="workspace-work"
+						tabindex={activeTab === 'work' ? 0 : -1}
+						onclick={() => selectTab('work')}
+						onkeydown={(event) => handleTabKeydown(event, 1)}
+						class="workspace-tab {activeTab === 'work' ? 'workspace-tab-active' : ''}"
+					>
+						<ListChecks class="h-4 w-4" />
+						Tasks
+						<span class="tab-count">{taskCount}</span>
 					</button>
 					<button
 						bind:this={tabButtons[2]}
@@ -952,6 +963,17 @@
 							See the project's direction, milestones, and risks in one place.
 						</p>
 					</section>
+
+					<ProjectProgressOverview
+						{project}
+						{tasksCoverage}
+						{goals}
+						{plans}
+						{milestones}
+						{risks}
+						onOpenTasks={() => selectTab('work')}
+						onOpenMilestone={(milestoneId) => openEntity('milestone', milestoneId)}
+					/>
 
 					<div
 						class="grid gap-x-8 gap-y-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]"
@@ -1423,7 +1445,7 @@
 					<div>
 						<h2 class="text-base font-semibold">Project activity</h2>
 						<p class="text-sm text-muted-foreground">
-							See what changed and what is scheduled.
+							See recent chats, project changes, and what is scheduled.
 						</p>
 					</div>
 				</div>
@@ -1434,16 +1456,20 @@
 						aria-label="Loading project activity"
 					></div>
 				{:else}
-					<PulseStrip
-						projectId={project.id}
-						{tasks}
-						{milestones}
-						{goals}
-						{events}
-						loadActivity={true}
-						mode="workspace"
-						onOpenEntity={(type, id) => openEntity(type, id)}
-					/>
+					<ProjectRecentChats projectId={project.id} onOpenChat={openRecentChat} />
+
+					<div class="mt-6">
+						<PulseStrip
+							projectId={project.id}
+							{tasks}
+							{milestones}
+							{goals}
+							{events}
+							loadActivity={true}
+							mode="workspace"
+							onOpenEntity={(type, id) => openEntity(type, id)}
+						/>
+					</div>
 				{/if}
 			</div>
 		{/if}
@@ -1585,16 +1611,12 @@
 	</div>
 </Modal>
 
-{#if showAgentChatModal}
+{#if selectedRecentChatSessionId}
 	{#await import('$lib/components/agent/AgentChatModal.svelte') then { default: AgentChatModal }}
 		<AgentChatModal
-			isOpen={showAgentChatModal}
-			contextType="project"
-			entityId={project.id}
-			onClose={() => {
-				showAgentChatModal = false;
-				void refreshProject();
-			}}
+			isOpen={true}
+			initialChatSessionId={selectedRecentChatSessionId}
+			onClose={closeRecentChat}
 		/>
 	{/await}
 {/if}

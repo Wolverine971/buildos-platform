@@ -17,10 +17,8 @@
 	- Goal Creation: /apps/web/src/lib/components/ontology/GoalCreateModal.svelte
 -->
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import {
 		ChevronRight,
-		Loader,
 		AlertTriangle,
 		Save,
 		Shield,

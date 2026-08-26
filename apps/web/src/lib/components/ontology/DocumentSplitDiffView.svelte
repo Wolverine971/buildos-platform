@@ -8,11 +8,7 @@
 -->
 <script lang="ts">
 	import { ChevronDown } from 'lucide-svelte';
-	import type {
-		DocumentDiffLine,
-		DocumentFieldDiff,
-		DiffWordSpan
-	} from '$lib/utils/document-diff';
+	import type { DocumentDiffLine, DocumentFieldDiff } from '$lib/utils/document-diff';
 
 	interface Props {
 		fields: DocumentFieldDiff[];
@@ -92,11 +88,6 @@
 				return 'text-muted-foreground/40';
 		}
 	}
-
-	function renderSpans(spans: DiffWordSpan[] | undefined, content: string): string {
-		// For template use - we render spans inline in the template
-		return content;
-	}
 </script>
 
 {#if fields.length === 0}
@@ -105,7 +96,7 @@
 	</div>
 {:else}
 	<div class="space-y-4">
-		{#each fields as field, fieldIndex (field.field)}
+		{#each fields as field (field.field)}
 			{@const splitRows = splitLines(field.unifiedLines)}
 			<div class="border border-border rounded-lg overflow-hidden shadow-ink">
 				<!-- Field header -->

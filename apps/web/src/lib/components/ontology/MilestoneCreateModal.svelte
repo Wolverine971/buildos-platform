@@ -24,7 +24,6 @@
 	import { untrack } from 'svelte';
 	import {
 		ChevronRight,
-		Loader,
 		Flag,
 		Save,
 		Target,

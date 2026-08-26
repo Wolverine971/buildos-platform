@@ -1,6 +1,4 @@
 // apps/web/src/lib/utils/data-cleaner.ts
-import type { Database } from '@buildos/shared-types';
-
 // --- Validation utilities --------------------------------------------------
 const validators = {
 	uuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,

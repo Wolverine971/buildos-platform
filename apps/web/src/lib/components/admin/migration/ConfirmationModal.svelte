@@ -1,7 +1,15 @@
 <!-- apps/web/src/lib/components/admin/migration/ConfirmationModal.svelte -->
 <!-- Confirmation dialog for destructive actions (platform-wide migration, rollback, etc.) -->
 <script lang="ts">
-	import { AlertTriangle, Info, CheckCircle, DollarSign, Clock, Zap } from 'lucide-svelte';
+	import {
+		AlertTriangle,
+		Info,
+		CheckCircle,
+		DollarSign,
+		Clock,
+		Zap,
+		LoaderCircle
+	} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
@@ -26,6 +34,7 @@
 		details,
 		costEstimate,
 		showCostEstimate = false,
+		costEstimateLoading = false,
 		onConfirm,
 		onCancel
 	}: {
@@ -40,13 +49,16 @@
 		details?: { label: string; value: string | number }[];
 		costEstimate?: CostEstimate | null;
 		showCostEstimate?: boolean;
+		costEstimateLoading?: boolean;
 		onConfirm: () => void;
 		onCancel?: () => void;
 	} = $props();
 
 	let inputValue = $state('');
 
-	const canConfirm = $derived(!confirmText || inputValue === confirmText);
+	const canConfirm = $derived(
+		(!confirmText || inputValue === confirmText) && !(showCostEstimate && costEstimateLoading)
+	);
 
 	function handleConfirm() {
 		if (canConfirm && !isLoading) {
@@ -136,7 +148,14 @@
 		{/if}
 
 		<!-- Cost Estimate -->
-		{#if showCostEstimate && costEstimate}
+		{#if showCostEstimate && costEstimateLoading}
+			<div
+				class="mb-4 flex items-center justify-center gap-2 rounded-lg border border-accent/30 bg-accent/10 p-4 text-sm text-accent"
+			>
+				<LoaderCircle class="h-4 w-4 animate-spin motion-reduce:animate-none" />
+				<span>Calculating LLM cost estimate…</span>
+			</div>
+		{:else if showCostEstimate && costEstimate}
 			<div class="mb-4 rounded-lg border border-accent/30 bg-accent/10 p-3">
 				<div class="flex items-center justify-center gap-2 mb-2">
 					<DollarSign class="h-4 w-4 text-accent" />
@@ -203,7 +222,7 @@
 			<Button
 				variant={getConfirmButtonVariant()}
 				onclick={handleConfirm}
-				disabled={!canConfirm}
+				disabled={!canConfirm || isLoading}
 				loading={isLoading}
 			>
 				{confirmLabel}

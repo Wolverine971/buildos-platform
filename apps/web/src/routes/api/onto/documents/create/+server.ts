@@ -222,6 +222,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.single();
 
 		let version: { number: number; status: 'created' | 'merged' } | null = null;
+		let versionWarning: string | null = null;
 
 		if (insertError) {
 			console.error('[Document API] Failed to create document:', insertError);
@@ -259,6 +260,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				'[Document API] Failed to create initial document version:',
 				versionError
 			);
+			// The document row already committed, so this cannot be rolled back here.
+			// Surface it rather than leaving a document whose history starts empty.
+			versionWarning =
+				'The document was created, but its first version could not be recorded in history.';
 			await logOntologyApiError({
 				supabase,
 				error: versionError,
@@ -270,7 +275,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				entityId: document?.id,
 				operation: 'document_version_create',
 				tableName: 'onto_document_versions',
-				metadata: { nonFatal: true }
+				metadata: { nonFatal: false, surfacedToUser: true }
 			});
 		}
 
@@ -382,6 +387,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.success({
 			document,
 			version,
+			versionWarning,
 			structure,
 			structure_error: structureError
 		});

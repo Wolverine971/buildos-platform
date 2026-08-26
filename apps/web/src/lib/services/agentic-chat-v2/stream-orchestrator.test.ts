@@ -2015,6 +2015,20 @@ describe('streamFastChat direct tool orchestration', () => {
 			history: [],
 			message: 'Set the task named A Safe Write Target back to todo/open.',
 			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'update_onto_task']),
+			initialTurnContract: {
+				version: 1,
+				source: 'declared',
+				outcomes: [
+					{
+						id: 'reopen-task',
+						action: 'update',
+						entityKind: 'task',
+						targetIds: ['task-safe-write-target'],
+						requiredFields: ['state_key'],
+						minimumSuccessfulEffects: 1
+					}
+				]
+			},
 			toolExecutor,
 			onDelta: async () => {}
 		});

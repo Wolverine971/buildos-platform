@@ -85,6 +85,52 @@ function buildWindow(
 }
 
 /**
+ * Is this version's coalescing window still open?
+ *
+ * A version whose window is open can still absorb further edits from the same
+ * actor, which means its snapshot is not final. History surfaces must present
+ * such a version as work in progress rather than as a sealed revision — see
+ * "Option A" in
+ * apps/web/docs/features/document-service/SWITCHING_BAR_AND_REVISED_ROADMAP_2026-08-26.md §5.3.
+ *
+ * Only the newest version of a document can have an open window; callers are
+ * responsible for applying this to the latest row only.
+ */
+export function isVersionWindowOpen(
+	input: {
+		window?: { started_at: string; ended_at: string } | null;
+		createdAt?: string | null;
+	},
+	options: { now?: Date; mergeWindowMinutes?: number } = {}
+): boolean {
+	const now = options.now ?? new Date();
+	const mergeWindowMs =
+		(options.mergeWindowMinutes ?? DEFAULT_DOCUMENT_VERSION_WINDOW_MINUTES) * 60 * 1000;
+
+	const boundary = input.window?.ended_at || input.window?.started_at || input.createdAt;
+	if (!boundary) return false;
+
+	const boundaryMs = new Date(boundary).getTime();
+	if (Number.isNaN(boundaryMs)) return false;
+
+	return now.getTime() - boundaryMs <= mergeWindowMs;
+}
+
+/** Postgres unique-violation SQLSTATE. */
+const UNIQUE_VIOLATION = '23505';
+
+/** Attempts to claim a free version number when writers race for the same one. */
+const MAX_VERSION_NUMBER_ATTEMPTS = 5;
+
+function isUniqueViolation(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		(error as { code?: string }).code === UNIQUE_VIOLATION
+	);
+}
+
+/**
  * Project Knowledge Layer (L0): refresh the derived heading-outline cache.
  *
  * Best-effort and isolated — never let outline maintenance break the version
@@ -222,8 +268,6 @@ export async function createOrMergeDocumentVersion(
 		};
 	}
 
-	const nextNumber = (latestVersionRow?.number ?? 0) + 1;
-
 	const newProps: DocumentVersionProps = {
 		snapshot,
 		snapshot_hash: snapshotHash,
@@ -238,21 +282,49 @@ export async function createOrMergeDocumentVersion(
 		pii_redacted: piiRedacted ?? latestProps.pii_redacted
 	};
 
-	const { data: inserted, error: insertError } = await supabase
-		.from('onto_document_versions')
-		.insert({
-			document_id: documentId,
-			number: nextNumber,
-			storage_uri: INLINE_STORAGE_URI,
-			props: newProps as Json,
-			created_by: actorId
-		})
-		.select('id, number')
-		.single();
+	// Version numbers are derived read-then-write, so two concurrent writers can
+	// pick the same number. `onto_document_versions_document_number_key` turns that
+	// race into a unique violation instead of a corrupted history; retry by
+	// re-reading the current maximum. Bounded — a document under enough contention
+	// to exhaust these attempts has a problem retrying will not solve.
+	let nextNumber = (latestVersionRow?.number ?? 0) + 1;
 
-	if (insertError || !inserted) {
-		throw insertError || new Error('Failed to create document version');
+	for (let attempt = 0; attempt < MAX_VERSION_NUMBER_ATTEMPTS; attempt += 1) {
+		const { data: inserted, error: insertError } = await supabase
+			.from('onto_document_versions')
+			.insert({
+				document_id: documentId,
+				number: nextNumber,
+				storage_uri: INLINE_STORAGE_URI,
+				props: newProps as Json,
+				created_by: actorId
+			})
+			.select('id, number')
+			.single();
+
+		if (!insertError && inserted) {
+			return { status: 'created', versionNumber: inserted.number, versionId: inserted.id };
+		}
+
+		if (!isUniqueViolation(insertError) || attempt === MAX_VERSION_NUMBER_ATTEMPTS - 1) {
+			throw insertError || new Error('Failed to create document version');
+		}
+
+		const { data: contendedLatest, error: rereadError } = await supabase
+			.from('onto_document_versions')
+			.select('number')
+			.eq('document_id', documentId)
+			.order('number', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+
+		if (rereadError) {
+			throw rereadError;
+		}
+
+		nextNumber = (contendedLatest?.number ?? nextNumber) + 1;
 	}
 
-	return { status: 'created', versionNumber: inserted.number, versionId: inserted.id };
+	// Unreachable: the loop either returns or throws on its final attempt.
+	throw new Error('Failed to create document version');
 }

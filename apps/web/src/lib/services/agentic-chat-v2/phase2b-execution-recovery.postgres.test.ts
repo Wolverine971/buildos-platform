@@ -113,7 +113,8 @@ describePostgres('agentic-chat worker Phase 2B execution/recovery PostgreSQL con
 			'20260802030300_agentic_chat_worker_validate_event_identity_indexes.sql',
 			'20260802030400_agentic_chat_worker_drop_legacy_event_sequence.sql',
 			'20260802030500_agentic_chat_worker_terminal_control_rpcs.sql',
-			'20260802031000_agentic_chat_worker_execution_recovery.sql'
+			'20260802031000_agentic_chat_worker_execution_recovery.sql',
+			'20260825161846_agentic_chat_queue_first_admission.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}

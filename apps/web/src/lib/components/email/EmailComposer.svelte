@@ -99,7 +99,6 @@
 	let emailTone: 'professional' | 'friendly' | 'casual' = $state('friendly');
 
 	// UI state
-	let isLoading = $state(false);
 	let isSaving = $state(false);
 	let isSending = $state(false);
 	let showSendModal = $state(false);
@@ -195,7 +194,7 @@
 			onUpdate: ({ editor }) => {
 				emailData.content = editor.getHTML();
 			},
-			onCreate: ({ editor }) => {
+			onCreate: () => {
 				// Editor is ready
 				editorNeedsInit = false;
 			}
@@ -267,7 +266,7 @@
 			onUpdate: ({ editor }) => {
 				aiGeneratedContent = editor.getHTML();
 			},
-			onCreate: ({ editor }) => {
+			onCreate: () => {
 				// Editor is ready
 				aiEditorNeedsInit = false;
 			}
@@ -1049,6 +1048,17 @@
 								title="Italic"
 							>
 								I
+							</button>
+							<button
+								onclick={toggleUnderline}
+								class="w-7 h-7 flex items-center justify-center rounded text-xs underline text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors {editor?.isActive(
+									'underline'
+								)
+									? 'bg-card text-foreground shadow-ink-inner'
+									: ''}"
+								title="Underline"
+							>
+								U
 							</button>
 
 							<div class="w-px h-4 bg-border mx-1"></div>

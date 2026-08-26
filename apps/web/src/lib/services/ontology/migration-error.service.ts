@@ -2,7 +2,7 @@
 // Migration Error Service - Handles error retrieval, categorization, and remediation
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Json } from '@buildos/shared-types';
+import type { Database } from '@buildos/shared-types';
 
 export type ErrorCategory = 'recoverable' | 'data' | 'fatal';
 export type EntityType = 'project' | 'task' | 'phase' | 'calendar';
@@ -367,8 +367,7 @@ export class MigrationErrorService {
 				errorCategory,
 				errorMessage: row.error_message ?? '',
 				entityType,
-				retryCount: row.retry_count ?? 0,
-				metadata
+				retryCount: row.retry_count ?? 0
 			});
 
 			errors.push({
@@ -445,9 +444,8 @@ export class MigrationErrorService {
 		errorMessage: string;
 		entityType: EntityType;
 		retryCount: number;
-		metadata: Record<string, unknown>;
 	}): RemediationSuggestion {
-		const { errorCategory, errorMessage, entityType, retryCount, metadata } = context;
+		const { errorCategory, errorMessage, entityType, retryCount } = context;
 		const messageLower = errorMessage.toLowerCase();
 
 		// If already retried too many times, suggest skip
@@ -515,8 +513,7 @@ export class MigrationErrorService {
 						autoFixAvailable: false,
 						manualFixInstructions: this.generateFixInstructions(
 							errorMessage,
-							entityType,
-							metadata
+							entityType
 						)
 					};
 				}
@@ -551,11 +548,7 @@ export class MigrationErrorService {
 	/**
 	 * Generate specific fix instructions based on error context
 	 */
-	private generateFixInstructions(
-		errorMessage: string,
-		entityType: EntityType,
-		metadata: Record<string, unknown>
-	): string {
+	private generateFixInstructions(errorMessage: string, entityType: EntityType): string {
 		const messageLower = errorMessage.toLowerCase();
 		const instructions: string[] = [];
 
@@ -594,7 +587,7 @@ export class MigrationErrorService {
 		}
 
 		if (instructions.length === 0) {
-			instructions.push('Review the error message and metadata for more details.');
+			instructions.push('Review the error message and source data for more details.');
 		}
 
 		return instructions.join(' ');

@@ -46,6 +46,8 @@
 		change_count: number;
 		change_source: string | null;
 		is_merged: boolean;
+		/** Still absorbing edits — not yet a sealed revision. See is_open in the versions API. */
+		is_open: boolean;
 		is_restore: boolean;
 		restored_by_user_id: string | null;
 		restore_of_version: number | null;
@@ -430,11 +432,15 @@
 							: 'hover:bg-muted/60 border-l-2 border-transparent'}"
 					>
 						<div class="flex items-start gap-2">
-							<!-- Version number -->
+							<!-- Version number. An open coalescing window is still
+							     collecting edits, so it is labelled as in-progress
+							     rather than presented as a sealed revision. -->
 							<span
-								class="shrink-0 text-2xs font-mono font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded"
+								class="shrink-0 text-2xs font-mono font-semibold px-1.5 py-0.5 rounded {version.is_open
+									? 'text-muted-foreground bg-muted'
+									: 'text-accent bg-accent/10'}"
 							>
-								v{version.number}
+								{version.is_open ? 'Now' : `v${version.number}`}
 							</span>
 
 							<!-- Content -->
@@ -459,6 +465,13 @@
 									</span>
 								</div>
 								<div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+									{#if version.is_open}
+										<span
+											class="text-2xs px-1 py-0.5 rounded bg-muted text-muted-foreground"
+										>
+											Editing now — not yet sealed
+										</span>
+									{/if}
 									{#if version.is_merged && version.change_count > 1}
 										<span
 											class="text-2xs px-1 py-0.5 rounded bg-info/10 text-info"

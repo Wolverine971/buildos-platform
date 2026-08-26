@@ -174,7 +174,7 @@
 				class="appearance-none pressable w-full h-9 pl-3 pr-9 text-sm font-medium rounded-lg border border-border bg-card text-foreground shadow-ink hover:border-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
 				value={currentProjectId ?? ''}
 				onchange={handleSelectChange}
-				disabled={isLoadingList || availableProjects.length === 0}
+				disabled={isLoadingList || isLoadingProject || availableProjects.length === 0}
 			>
 				{#if availableProjects.length === 0}
 					<option value="">Loading examples…</option>
@@ -212,6 +212,16 @@
 			<div class="flex items-center gap-2 text-sm text-muted-foreground">
 				<LoaderCircle class="w-5 h-5 animate-spin" />
 				<span>Loading example project…</span>
+			</div>
+		</div>
+	{:else if isLoadingProject}
+		<div
+			class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-12 flex items-center justify-center"
+			aria-live="polite"
+		>
+			<div class="flex items-center gap-2 text-sm text-muted-foreground">
+				<LoaderCircle class="w-5 h-5 animate-spin motion-reduce:animate-none" />
+				<span>Loading selected project…</span>
 			</div>
 		</div>
 	{:else if projectError}

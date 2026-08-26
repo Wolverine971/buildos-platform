@@ -248,14 +248,6 @@
 		showEmailModal = true;
 	}
 
-	// Optional: Add a function to get sort icon component (if you want to refactor the inline SVG)
-	function getSortIcon(column: string) {
-		if (dataViewFilters.sortBy === column) {
-			return dataViewFilters.sortOrder === 'asc' ? ChevronUp : ChevronDown;
-		}
-		return null;
-	}
-
 	// Enhanced function to handle referral source display
 	function formatReferralSource(source: string | null | undefined) {
 		if (!source) return 'Not specified';
@@ -828,7 +820,7 @@
 								<div class="min-w-0">
 									<dt class="text-muted-foreground">Source</dt>
 									<dd class="text-foreground truncate">
-										{signup.referral_source || 'Not specified'}
+										{formatReferralSource(signup.referral_source)}
 									</dd>
 								</div>
 								<div class="min-w-0">
@@ -1136,7 +1128,7 @@
 												<span
 													class="inline-flex px-2 py-1 text-xs bg-info/10 text-info rounded-full"
 												>
-													{signup.referral_source}
+													{formatReferralSource(signup.referral_source)}
 												</span>
 											{:else}
 												<span class="text-muted-foreground text-xs"
@@ -2451,7 +2443,7 @@
 								How they heard about us
 							</div>
 							<p class="text-sm text-foreground">
-								{selectedItem.referral_source}
+								{formatReferralSource(selectedItem.referral_source)}
 							</p>
 						</div>
 					{/if}
@@ -2649,7 +2641,9 @@
 										How they heard about us
 									</div>
 									<p class="text-sm text-foreground">
-										{selectedItem.beta_signups.referral_source}
+										{formatReferralSource(
+											selectedItem.beta_signups.referral_source
+										)}
 									</p>
 								</div>
 							{/if}

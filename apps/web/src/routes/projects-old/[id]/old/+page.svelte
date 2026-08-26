@@ -752,14 +752,6 @@
 		});
 	});
 
-	// Filtered and sorted milestones
-	const filteredMilestones = $derived.by(() => {
-		return filterAndSortInsightEntities(milestones, panelStates.milestones, 'milestones', {
-			currentActorId: currentProjectActorId,
-			taskFocusActorId: taskPersonFocusActorId
-		});
-	});
-
 	// Filtered and sorted risks
 	const filteredRisks = $derived.by(() => {
 		return filterAndSortInsightEntities(risks, panelStates.risks, 'risks', {
@@ -1887,7 +1879,6 @@
 						{#await import('$lib/components/project/MobileCommandCenter.svelte') then { default: MobileCommandCenter }}
 							<MobileCommandCenter
 								goals={filteredGoals}
-								milestones={filteredMilestones}
 								plans={filteredPlans}
 								risks={filteredRisks}
 								events={filteredEvents}
@@ -1910,7 +1901,6 @@
 								onSortChange={updatePanelSort}
 								onToggleChange={updatePanelToggle}
 								onFilterOpen={handleInsightFilterOpen}
-								{taskFilterGroups}
 							/>
 						{:catch}
 							<div

@@ -176,7 +176,6 @@ export class RecurrencePatternBuilder {
 		}
 
 		// Determine pattern type
-		let patternType: RecurrencePattern['type'] = 'daily';
 		const pattern: RecurrencePattern = { type: 'daily' };
 
 		if (params.FREQ === 'DAILY') {
@@ -259,8 +258,6 @@ export class RecurrencePatternBuilder {
 		if (!startDate) return instances;
 
 		let currentDate = new Date(startDate);
-		const startAfterDate = startAfter || new Date();
-
 		// If we have a start after date, find the first occurrence after it
 		if (startAfter && currentDate <= startAfter) {
 			currentDate = this.findNextOccurrenceAfter(config, startAfter) || currentDate;
@@ -434,7 +431,6 @@ export class RecurrencePatternBuilder {
 				return addWeeks(next, 2);
 			case 'monthly':
 				// Handle month-end dates properly
-				const originalDay = current.getDate();
 				const nextMonth = addMonths(next, 1);
 				if (pattern.dayOfMonth && pattern.dayOfMonth > 28) {
 					// Set to last day of month if needed

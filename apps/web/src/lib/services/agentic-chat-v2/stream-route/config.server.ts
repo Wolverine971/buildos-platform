@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat-v2/stream-route/config.server.ts
 import { dev } from '$app/environment';
 import { resolveAgenticChatLegacyLiveVisionEnabled } from '../legacy-live-vision-config';
 import {
@@ -130,10 +131,10 @@ export class FastChatStreamConfig {
 		const pinnedModels = parseFastChatPinnedModels(environment.FASTCHAT_EVAL_PINNED_MODELS);
 		this.routing = Object.freeze({
 			pinnedModels,
-			useDevOxAlphaTrial:
+			useDevGlm53FlashTrial:
 				isDevelopment &&
 				pinnedModels.length === 0 &&
-				enabled(environment.FASTCHAT_DEV_OX_ALPHA_TRIAL_ENABLED),
+				enabled(environment.FASTCHAT_DEV_GLM_53_FLASH_TRIAL_ENABLED),
 			forcedSynthesis: Object.freeze({
 				mode: parseFastChatForcedSynthesisRoutingMode(
 					environment.FASTCHAT_FORCED_SYNTHESIS_ROUTING

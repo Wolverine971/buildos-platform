@@ -39,21 +39,6 @@
 	import type { HistoryItem } from './+page.server';
 	import { compactHistoryCount } from './history-display';
 
-	interface OntoBraindump {
-		id: string;
-		content: string;
-		title: string | null;
-		topics: string[] | null;
-		summary: string | null;
-		status: 'pending' | 'processing' | 'processed' | 'failed';
-		chat_session_id: string | null;
-		metadata: Record<string, unknown> | null;
-		processed_at: string | null;
-		error_message: string | null;
-		created_at: string;
-		updated_at: string;
-	}
-
 	/** Streamed history data structure */
 	interface HistoryDataResult {
 		items: HistoryItem[];
@@ -137,11 +122,6 @@
 	let lastAutoOpenedSelection = $state<string | null>(null);
 	const MIN_SEARCH_LENGTH = 3;
 	const MAX_SEARCH_LENGTH = 120;
-
-	function getBraindumpChatSessionId(item: HistoryItem): string | null {
-		if (item.type !== 'braindump') return null;
-		return ((item.originalData as OntoBraindump)?.chat_session_id as string | null) ?? null;
-	}
 
 	// Open modal if we have a selectedItem from streamed data
 	$effect(() => {

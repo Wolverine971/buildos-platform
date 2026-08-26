@@ -8,7 +8,6 @@ import type {
 	AgenticChatEventSinkPort,
 	AgenticChatRuntimeEvent
 } from '@buildos/agentic-chat-runtime';
-import { extractContextShiftPayload } from '@buildos/agentic-chat-runtime/loop';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { createLogger } from '$lib/utils/logger';
 import type { SkillActivityEvent } from './skill-activity';

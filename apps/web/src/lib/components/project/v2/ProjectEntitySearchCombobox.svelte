@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onDestroy } from 'svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import {
 		AlertTriangle,
 		Calendar,
@@ -58,6 +59,8 @@
 	} = $props();
 
 	const listboxId = 'project-entity-search-results';
+	const SEARCH_DEBOUNCE_MS = 180;
+	const SEARCH_TIMEOUT_MS = 5_000;
 	const SEARCH_TYPES: Record<SearchScope, SearchResultEntityType[]> = {
 		all: ['project', 'document', 'task', 'plan', 'goal', 'milestone', 'risk', 'event'],
 		work: ['task'],
@@ -198,9 +201,14 @@
 		}
 	}
 
-	async function performSearch(searchQuery: string) {
+	async function performSearch(
+		searchQuery: string,
+		currentRequestId: number,
+		searchProjectId: string,
+		activeSearchTypes: SearchResultEntityType[]
+	) {
 		const activeQuery = searchQuery.trim();
-		if (activeQuery.length < 2 || !projectId || disabled) {
+		if (activeQuery.length < 2 || !searchProjectId || disabled) {
 			results = [];
 			totalReturned = 0;
 			maybeMore = false;
@@ -208,10 +216,14 @@
 			return;
 		}
 
-		requestId += 1;
-		const currentRequestId = requestId;
-		abortActiveRequest();
-		abortController = new AbortController();
+		if (currentRequestId !== requestId) return;
+		const controller = new AbortController();
+		abortController = controller;
+		let timedOut = false;
+		const timeoutId = setTimeout(() => {
+			timedOut = true;
+			controller.abort();
+		}, SEARCH_TIMEOUT_MS);
 		loading = true;
 		errorMessage = null;
 		open = true;
@@ -221,11 +233,11 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'same-origin',
-				signal: abortController.signal,
+				signal: controller.signal,
 				body: JSON.stringify({
 					query: activeQuery,
-					project_id: projectId,
-					types: searchTypes,
+					project_id: searchProjectId,
+					types: activeSearchTypes,
 					limit: 12
 				})
 			});
@@ -249,7 +261,13 @@
 			maybeMore = Boolean(data.maybe_more);
 			highlightedIndex = results.length > 0 ? 0 : -1;
 		} catch (error) {
-			if ((error as Error)?.name === 'AbortError' || currentRequestId !== requestId) return;
+			if (currentRequestId !== requestId) return;
+			if ((error as Error)?.name === 'AbortError') {
+				if (timedOut) {
+					errorMessage = 'Search is taking too long. Please try again.';
+				}
+				return;
+			}
 			console.error('[ProjectEntitySearchCombobox] Search failed:', error);
 			results = [];
 			totalReturned = 0;
@@ -257,10 +275,20 @@
 			highlightedIndex = -1;
 			errorMessage = error instanceof Error ? error.message : 'Search failed';
 		} finally {
+			clearTimeout(timeoutId);
+			if (abortController === controller) abortController = null;
 			if (currentRequestId === requestId) {
 				loading = false;
 			}
 		}
+	}
+
+	function retrySearch() {
+		if (!canSearch) return;
+		requestId += 1;
+		const currentRequestId = requestId;
+		abortActiveRequest();
+		void performSearch(normalizedQuery, currentRequestId, projectId, searchTypes);
 	}
 
 	function selectResult(result: ProjectEntitySearchResult) {
@@ -325,7 +353,14 @@
 
 	$effect(() => {
 		if (!browser) return;
-		if (!canSearch) {
+		const searchQuery = normalizedQuery;
+		const searchProjectId = projectId;
+		const activeSearchTypes = searchTypes;
+		requestId += 1;
+		const currentRequestId = requestId;
+		abortActiveRequest();
+		loading = false;
+		if (searchQuery.length < 2 || !searchProjectId || disabled) {
 			results = [];
 			errorMessage = null;
 			maybeMore = false;
@@ -335,7 +370,16 @@
 			return;
 		}
 
-		const timeoutId = setTimeout(() => void performSearch(normalizedQuery), 180);
+		const timeoutId = setTimeout(
+			() =>
+				void performSearch(
+					searchQuery,
+					currentRequestId,
+					searchProjectId,
+					activeSearchTypes
+				),
+			SEARCH_DEBOUNCE_MS
+		);
 		return () => clearTimeout(timeoutId);
 	});
 
@@ -363,6 +407,7 @@
 				aria-controls={listboxId}
 				aria-expanded={showPanel}
 				aria-activedescendant={highlightedResultId}
+				aria-label={placeholder}
 				{placeholder}
 				class="h-11 w-full rounded-lg border border-border-strong pl-9 pr-12 text-base text-foreground transition-colors placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none sm:text-sm {variant ===
 				'toolbar'
@@ -398,8 +443,9 @@
 			class="absolute left-0 right-0 top-full z-50 mt-1 max-h-[50vh] overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
 		>
 			{#if errorMessage}
-				<div class="px-3 py-3 text-sm text-destructive" role="alert">
-					{errorMessage}
+				<div class="flex min-h-[52px] items-center gap-3 px-3 py-2" role="alert">
+					<p class="min-w-0 flex-1 text-sm text-destructive">{errorMessage}</p>
+					<Button variant="ghost" size="sm" onclick={retrySearch}>Try again</Button>
 				</div>
 			{:else if loading && results.length === 0}
 				<div class="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">

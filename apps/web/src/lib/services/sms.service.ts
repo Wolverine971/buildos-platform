@@ -116,21 +116,6 @@ export class SMSService extends ApiService {
 		}
 	}
 
-	/**
-	 * @deprecated This feature (task reminders via SMS) is deprecated and no longer supported.
-	 * Use event reminders or morning/evening briefings instead.
-	 * Will be removed in a future version.
-	 */
-	async sendTaskReminder(taskId: string): Promise<ServiceResponse<{ messageId: string }>> {
-		// Feature deprecated - task_reminders field removed from schema
-		return {
-			success: false,
-			errors: [
-				'Task reminders via SMS are no longer supported. Please use event reminders or daily briefings instead.'
-			]
-		};
-	}
-
 	async verifyPhoneNumber(
 		phoneNumber: string
 	): Promise<ServiceResponse<{ verificationSent: boolean }>> {

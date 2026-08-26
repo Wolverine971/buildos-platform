@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/projects/[id]/icon/generations/[generationId]/select/server.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 import { POST } from './+server';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';

@@ -32,7 +32,6 @@
 		type InsightPanelState,
 		type InsightPanelCounts
 	} from '$lib/components/ontology/insight-panels';
-	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 	import ProjectHistorySection from '$lib/components/project/ProjectHistorySection.svelte';
 
 	type OntoEventWithSync = OntoEvent & {
@@ -449,9 +448,6 @@
 										)}
 										{@const goalMilestones =
 											milestonesByGoalId.get(goal.id) || []}
-										{@const completedCount = goalMilestones.filter(
-											(m) => resolveMilestoneState(m).state === 'completed'
-										).length}
 										<li>
 											<div class="flex items-center min-w-0">
 												<EntityListItem

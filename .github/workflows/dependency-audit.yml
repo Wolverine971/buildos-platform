@@ -1,0 +1,29 @@
+name: Production dependency audit
+
+on:
+    workflow_dispatch:
+    schedule:
+        - cron: '23 12 * * 1'
+
+permissions:
+    contents: read
+
+jobs:
+    audit:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: pnpm/action-setup@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Audit production dependency graph
+              run: pnpm audit --prod

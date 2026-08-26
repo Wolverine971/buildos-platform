@@ -9,8 +9,6 @@ import type {
 	PackDefinition,
 	PublicSkillGalleryMetadata,
 	RuntimeSkillGalleryPreview,
-	RuntimeSkillPreviewMetadata,
-	SkillGalleryCoverage,
 	SkillGalleryMetadata
 } from './skill-gallery-types';
 export type {

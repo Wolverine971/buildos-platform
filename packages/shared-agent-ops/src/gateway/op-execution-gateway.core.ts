@@ -33,6 +33,10 @@ import { normalizeDocumentStateInput } from '../ontology/document-state';
 import { normalizeMarkdownInput } from '../utils/markdown-normalization';
 import { createOrMergeDocumentVersion, toDocumentSnapshot } from '../ontology/versioning.service';
 import {
+	DOCUMENT_VERSION_WRITE_WARNING,
+	writeDocumentHeadAndVersion
+} from '../ontology/document-write.service';
+import {
 	addDocumentToTree,
 	getDocTree,
 	getNodePath,
@@ -543,6 +547,7 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 		);
 	}
 
+	let versionWarning: string | null = null;
 	try {
 		await createOrMergeDocumentVersion({
 			supabase: context.admin,
@@ -556,6 +561,7 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 			'[External Tool Gateway] Failed to record initial document version:',
 			versionError
 		);
+		versionWarning = DOCUMENT_VERSION_WRITE_WARNING;
 	}
 
 	let structure: Record<string, unknown> | null = null;
@@ -624,7 +630,8 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 			project.name
 		),
 		structure,
-		structure_error: structureError
+		structure_error: structureError,
+		version_warning: versionWarning
 	};
 }
 
@@ -640,31 +647,33 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 	}
 
 	const archivedAtUpdate = normalizeArchivedUpdate(args.archived);
-	let existingDocumentQuery = context.admin
-		.from('onto_documents')
-		.select(ONTO_DOCUMENT_SELECT)
-		.eq('id', documentId)
-		.in(
-			'project_id',
-			visible.projects.map((project) => project.id)
-		);
-	if (archivedAtUpdate !== null) {
-		existingDocumentQuery = existingDocumentQuery.is('archived_at', null);
-	}
+	const loadDocumentForWrite = async () => {
+		let query = context.admin
+			.from('onto_documents')
+			.select(ONTO_DOCUMENT_SELECT)
+			.eq('id', documentId)
+			.in(
+				'project_id',
+				visible.projects.map((project) => project.id)
+			);
+		if (archivedAtUpdate !== null) {
+			query = query.is('archived_at', null);
+		}
 
-	const { data: existingDocument, error: existingError } =
-		await existingDocumentQuery.maybeSingle();
+		const { data, error } = await query.maybeSingle();
+		if (error) {
+			throw new ExternalToolGatewayError(
+				'INTERNAL',
+				error.message || 'Failed to load document'
+			);
+		}
+		if (!data) {
+			throw new ExternalToolGatewayError('NOT_FOUND', 'Document not found');
+		}
+		return data;
+	};
 
-	if (existingError) {
-		throw new ExternalToolGatewayError(
-			'INTERNAL',
-			existingError.message || 'Failed to load document'
-		);
-	}
-
-	if (!existingDocument) {
-		throw new ExternalToolGatewayError('NOT_FOUND', 'Document not found');
-	}
+	const existingDocument = await loadDocumentForWrite();
 
 	const project = assertVisibleEntityProject(visible.projectMap, existingDocument.project_id);
 	assertProjectWriteAccess(project, context.scope);
@@ -795,30 +804,114 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		);
 	}
 
-	const { data, error } = await context.admin
-		.from('onto_documents')
-		.update(updateData)
-		.eq('id', documentId)
-		.select(ONTO_DOCUMENT_SELECT)
-		.single();
+	let previousDocument = existingDocument;
+	let writeResult = await writeDocumentHeadAndVersion({
+		supabase: context.admin,
+		documentId,
+		projectId: project.id,
+		update: updateData,
+		expectedUpdatedAt: existingDocument.updated_at,
+		actorId,
+		previousSnapshot: toDocumentSnapshot(existingDocument),
+		changeSource: 'api'
+	});
 
-	if (error || !data) {
+	// A content-only append/merge expresses an intent that can be safely re-applied
+	// to a newer head. Replace, metadata, archive, and props mutations do not:
+	// retrying those automatically could overwrite a concurrent human edit.
+	const canRetryContentIntent =
+		isAppendOrMergeUpdateStrategy(strategy) &&
+		args.title === undefined &&
+		args.description === undefined &&
+		args.type_key === undefined &&
+		args.state_key === undefined &&
+		archivedAtUpdate === undefined &&
+		args.props === undefined;
+	if (writeResult.status === 'conflict' && canRetryContentIntent) {
+		const refreshedDocument = await loadDocumentForWrite();
+		const retryUpdateData: Record<string, unknown> = {
+			...updateData,
+			updated_at: new Date().toISOString()
+		};
+
+		if (documentContentCandidate !== undefined) {
+			const normalizedContent = normalizeMarkdownInput(documentContentCandidate) ?? '';
+			const resolvedContent = await resolveExternalDocumentContentWithStrategy({
+				strategy,
+				newContent: normalizedContent,
+				existingLoader: async () =>
+					typeof refreshedDocument.content === 'string'
+						? refreshedDocument.content
+						: typeof (refreshedDocument.props as Record<string, unknown> | null)
+									?.body_markdown === 'string'
+							? ((refreshedDocument.props as Record<string, unknown>)
+									.body_markdown as string)
+							: ''
+			});
+			const nextTypeKey =
+				typeof retryUpdateData.type_key === 'string'
+					? retryUpdateData.type_key
+					: refreshedDocument.type_key;
+			const nextContent =
+				nextTypeKey === START_HERE_DOCUMENT_TYPE_KEY
+					? preserveCurrentStartHereManagedRegions(
+							typeof refreshedDocument.content === 'string'
+								? refreshedDocument.content
+								: '',
+							resolvedContent
+						)
+					: resolvedContent;
+			assertContentWithinCap(nextContent, 'content');
+			retryUpdateData.content = nextContent;
+
+			const retryProps: Record<string, unknown> = {
+				...((refreshedDocument.props as Record<string, unknown> | null) ?? {}),
+				body_markdown: nextContent
+			};
+			if (args.props !== undefined) {
+				Object.assign(retryProps, normalizeProps(args.props, 'props') ?? {});
+			}
+			retryProps.origin = retryProps.origin ?? 'external_agent';
+			retryUpdateData.props = retryProps;
+		}
+
+		previousDocument = refreshedDocument;
+		writeResult = await writeDocumentHeadAndVersion({
+			supabase: context.admin,
+			documentId,
+			projectId: project.id,
+			update: retryUpdateData,
+			expectedUpdatedAt: refreshedDocument.updated_at,
+			actorId,
+			previousSnapshot: toDocumentSnapshot(refreshedDocument),
+			changeSource: 'api'
+		});
+	}
+
+	if (writeResult.status === 'conflict') {
 		throw new ExternalToolGatewayError(
-			'INTERNAL',
-			error?.message || 'Failed to update document'
+			'CONFLICT',
+			'Document changed while the agent was editing it. Re-read and retry.'
 		);
 	}
 
-	try {
-		await createOrMergeDocumentVersion({
-			supabase: context.admin,
-			documentId: data.id,
-			actorId,
-			snapshot: toDocumentSnapshot(data),
-			changeSource: 'api'
-		});
-	} catch (versionError) {
-		console.warn('[External Tool Gateway] Failed to record document version:', versionError);
+	if (writeResult.status === 'error') {
+		const message =
+			typeof writeResult.error === 'object' &&
+			writeResult.error !== null &&
+			'message' in writeResult.error &&
+			typeof writeResult.error.message === 'string'
+				? writeResult.error.message
+				: 'Failed to update document';
+		throw new ExternalToolGatewayError('INTERNAL', message);
+	}
+
+	const data = writeResult.document;
+	if (writeResult.versionError) {
+		console.warn(
+			'[External Tool Gateway] Document saved without a version:',
+			writeResult.versionError
+		);
 	}
 
 	if (args.title !== undefined || args.description !== undefined) {
@@ -853,11 +946,11 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 				typeof data.content === 'string' ? data.content : null
 			],
 			previousTextValues: [
-				typeof existingDocument.title === 'string' ? existingDocument.title : null,
-				typeof existingDocument.description === 'string'
-					? existingDocument.description
+				typeof previousDocument.title === 'string' ? previousDocument.title : null,
+				typeof previousDocument.description === 'string'
+					? previousDocument.description
 					: null,
-				typeof existingDocument.content === 'string' ? existingDocument.content : null
+				typeof previousDocument.content === 'string' ? previousDocument.content : null
 			]
 		});
 		await notifyEntityMentionsAdded({
@@ -885,9 +978,9 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		'document',
 		String(data.id),
 		{
-			title: existingDocument.title,
-			state_key: existingDocument.state_key,
-			type_key: existingDocument.type_key
+			title: previousDocument.title,
+			state_key: previousDocument.state_key,
+			type_key: previousDocument.type_key
 		},
 		{
 			title: data.title,
@@ -901,7 +994,12 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 	);
 
 	return {
-		document: serializeExternalEntity('document', data as Record<string, unknown>, project.name)
+		document: serializeExternalEntity(
+			'document',
+			data as Record<string, unknown>,
+			project.name
+		),
+		version_warning: writeResult.versionWarning
 	};
 }
 
@@ -1115,6 +1213,7 @@ async function createTaskDocument(context: ToolExecutionContext, args: Record<st
 	const taskAccess = await loadCoreEntityForAccess(context, 'task', args.task_id, 'write');
 	const actorId = await ensureActorId(context.admin, context.userId);
 	let document: Record<string, unknown>;
+	let versionWarning: string | null = null;
 
 	if (args.document_id !== undefined) {
 		const documentAccess = await loadCoreEntityForAccess(
@@ -1199,6 +1298,7 @@ async function createTaskDocument(context: ToolExecutionContext, args: Record<st
 				'[External Tool Gateway] Failed to record task document version:',
 				versionError
 			);
+			versionWarning = DOCUMENT_VERSION_WRITE_WARNING;
 		}
 		await logCreateAsync(
 			context.admin,
@@ -1240,7 +1340,8 @@ async function createTaskDocument(context: ToolExecutionContext, args: Record<st
 	return {
 		document: serializeExternalEntity('document', document, taskAccess.project.name),
 		edge: edgeResult.edge,
-		message: `Linked document "${document.title ?? 'Document'}" to task.`
+		message: `Linked document "${document.title ?? 'Document'}" to task.`,
+		version_warning: versionWarning
 	};
 }
 

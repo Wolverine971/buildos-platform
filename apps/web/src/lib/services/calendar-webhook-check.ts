@@ -241,7 +241,7 @@ export async function batchCheckAndRegisterWebhooks(
 				} else {
 					failures++;
 				}
-			} catch (error) {
+			} catch {
 				failures++;
 			}
 

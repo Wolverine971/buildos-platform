@@ -15,9 +15,6 @@
 		secondaryButtonText?: string;
 		dismissible?: boolean;
 		persistent?: boolean;
-		gradientFrom?: string;
-		gradientVia?: string;
-		gradientTo?: string;
 		showTimeEstimate?: boolean;
 		timeEstimate?: string;
 		storageKey?: string;
@@ -40,9 +37,6 @@
 		secondaryButtonText = 'Maybe Later',
 		dismissible = true,
 		persistent = false,
-		gradientFrom = 'from-accent',
-		gradientVia = 'via-accent',
-		gradientTo = 'to-accent',
 		showTimeEstimate = false,
 		timeEstimate = 'Takes about 5 minutes',
 		storageKey = '',

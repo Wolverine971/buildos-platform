@@ -4,9 +4,6 @@
  * These are reusable building blocks that eliminate duplication across prompts
  */
 
-// Import centralized data models
-import { TaskModels, ProjectModels, PhaseModels } from './data-models';
-
 type DisplayedQuestion = {
 	id: string;
 	question: string;

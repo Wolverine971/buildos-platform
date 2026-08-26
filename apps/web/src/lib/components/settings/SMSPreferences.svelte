@@ -7,17 +7,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
-	import {
-		Phone,
-		Check,
-		Bell,
-		MessageSquare,
-		AlertTriangle,
-		Moon,
-		Sun,
-		Loader,
-		XCircle
-	} from 'lucide-svelte';
+	import { Phone, Check, Bell, AlertTriangle, Moon, Sun, Loader, XCircle } from 'lucide-svelte';
 
 	interface Props {
 		userId: string;
@@ -53,7 +43,6 @@
 	let urgentAlerts = $state(true);
 	let quietHoursStart = $state('22:00');
 	let quietHoursEnd = $state('08:00');
-	let timezone = $state(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 	onMount(async () => {
 		if (smsPreferences === undefined) {
@@ -80,7 +69,6 @@
 		urgentAlerts = prefs.urgent_alerts !== false; // Default to true
 		quietHoursStart = prefs.quiet_hours_start || '22:00';
 		quietHoursEnd = prefs.quiet_hours_end || '08:00';
-		timezone = prefs.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 	}
 
 	async function loadPreferences() {

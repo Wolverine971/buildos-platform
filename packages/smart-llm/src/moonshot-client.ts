@@ -1,7 +1,7 @@
 // packages/smart-llm/src/moonshot-client.ts
 
 import type { OpenRouterResponse } from './types';
-import { LLMRequestTimeoutError } from './errors';
+import { LLMRequestCancelledError, LLMRequestTimeoutError } from './errors';
 
 export class MoonshotClient {
 	private apiKey: string;
@@ -26,6 +26,7 @@ export class MoonshotClient {
 		temperature?: number;
 		max_tokens?: number;
 		timeoutMs?: number;
+		signal?: AbortSignal;
 		response_format?: { type: string };
 		stream?: boolean;
 		tools?: any[];
@@ -66,11 +67,15 @@ export class MoonshotClient {
 
 		try {
 			const timeoutMs = params.timeoutMs ?? 120000;
+			const timeoutSignal = AbortSignal.timeout(timeoutMs);
+			const requestSignal = params.signal
+				? AbortSignal.any([timeoutSignal, params.signal])
+				: timeoutSignal;
 			const response = await this.fetchImpl(this.apiUrl, {
 				method: 'POST',
 				headers,
 				body: JSON.stringify(body),
-				signal: AbortSignal.timeout(timeoutMs)
+				signal: requestSignal
 			});
 
 			if (!response.ok) {
@@ -140,6 +145,18 @@ export class MoonshotClient {
 
 			return data;
 		} catch (error) {
+			if (params.signal?.aborted) {
+				const reason =
+					params.signal.reason instanceof Error
+						? params.signal.reason.message
+						: typeof params.signal.reason === 'string'
+							? params.signal.reason
+							: 'caller cancelled';
+				const cancelledError = new LLMRequestCancelledError(reason);
+				(cancelledError as Error & { cause?: unknown }).cause = error;
+				throw cancelledError;
+			}
+
 			// AbortSignal.timeout() rejects with a DOMException named TimeoutError,
 			// not AbortError. Surface the same typed error as the OpenRouter client so
 			// callers and usage logging classify Moonshot timeouts identically.

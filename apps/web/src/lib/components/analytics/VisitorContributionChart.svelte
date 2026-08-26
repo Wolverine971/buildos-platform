@@ -258,14 +258,10 @@
 		return format(date, 'EEEE, MMMM d, yyyy');
 	}
 
-	function toggleView() {
-		viewMode = viewMode === 'chart' ? 'graph' : 'chart';
-		hoveredDay = null;
-		hoveredPoint = null;
-	}
-
 	// Day labels - only show Mon, Wed, Fri for space
 	const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+	const loadingColumns = [0, 1, 2, 3, 4] as const;
+	const loadingRows = [0, 1, 2, 3, 4, 5, 6] as const;
 
 	// Calculate total visitors and signups - Using $derived for automatic recalculation
 	let totalVisitors = $derived(visitors.reduce((sum, day) => sum + day.visitor_count, 0));
@@ -285,9 +281,9 @@
 	{#if isLoading}
 		<div class="flex items-center justify-center py-8 sm:py-12">
 			<div class="animate-pulse flex space-x-1">
-				{#each Array(5) as _, i}
+				{#each loadingColumns as column (column)}
 					<div class="flex flex-col space-y-1">
-						{#each Array(7) as _, j}
+						{#each loadingRows as row (row)}
 							<div class="w-2 h-2 sm:w-3 sm:h-3 bg-muted rounded-sm"></div>
 						{/each}
 					</div>
@@ -371,7 +367,7 @@
 						class="text-xs sm:text-sm text-muted-foreground dark:!text-muted-foreground mt-1"
 					>
 						{totalVisitors} total visitors • {averageDaily} avg per day • {totalSignups}
-						signups
+						signups ({averageSignups} avg per day)
 					</p>
 				</div>
 				{#if viewMode === 'chart'}
@@ -380,7 +376,7 @@
 					>
 						<span class="hidden sm:inline">Less</span>
 						<div class="flex space-x-1">
-							{#each [0, 1, 2, 3, 4] as level}
+							{#each [0, 1, 2, 3, 4] as level (level)}
 								<div
 									class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-sm"
 									style="background-color: {getVisitorColor(level)}"
@@ -405,7 +401,7 @@
 			{#if weeks.length > 0}
 				<div class="relative h-3 sm:h-4 mb-2">
 					<div class="flex space-x-0.5 sm:space-x-1">
-						{#each weeks as week, weekIndex}
+						{#each weeks as week, weekIndex (week[0]?.date ?? `month-week-${weekIndex}`)}
 							<div class="w-2 sm:w-3 h-3 sm:h-4 relative">
 								{#each monthLabels as month}
 									{#if month.weekIndex === weekIndex}
@@ -440,9 +436,9 @@
 
 				<!-- Contribution grid -->
 				<div class="flex space-x-0.5 sm:space-x-1 min-w-0">
-					{#each weeks as week, weekIndex}
+					{#each weeks as week, weekIndex (week[0]?.date ?? `grid-week-${weekIndex}`)}
 						<div class="flex flex-col space-y-0.5 sm:space-y-1">
-							{#each week as day, dayIndex}
+							{#each week as day, dayIndex (day?.date ?? `empty-${weekIndex}-${dayIndex}`)}
 								<div
 									class="w-2 h-2 sm:w-3 sm:h-3 rounded-sm transition-all duration-200 hover:ring-1 sm:hover:ring-2 hover:ring-info/50 hover:scale-110 cursor-pointer"
 									style="background-color: {getVisitorColor(day?.level || 0)}"

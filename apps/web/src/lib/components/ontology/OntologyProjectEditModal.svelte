@@ -73,7 +73,6 @@
 		onClose?: () => void;
 		onSaved?: (project: Project) => void;
 		onDeleted?: () => void;
-		onOpenIconStudio?: () => void;
 	}
 
 	const FACET_CONTEXT_OPTIONS = [
@@ -106,8 +105,7 @@
 		canManageExternalAgentAccess = false,
 		onClose,
 		onSaved,
-		onDeleted,
-		onOpenIconStudio
+		onDeleted
 	}: Props = $props();
 	const projectEditFormInstanceId = $props.id();
 	const projectEditFormId = `project-edit-form-${projectEditFormInstanceId}`;
@@ -648,11 +646,6 @@
 	function handleChatClose() {
 		showChatModal = false;
 	}
-
-	function handleOpenIconStudio() {
-		if (isSaving || isDeleting || !project) return;
-		onOpenIconStudio?.();
-	}
 </script>
 
 {#snippet headerIcon()}
@@ -660,23 +653,6 @@
 {/snippet}
 
 {#snippet headerActions()}
-	<!--
-		Project image generation is temporarily disabled.
-		Icon Studio trigger intentionally commented out.
-	-->
-	<!--
-	<Button
-		type="button"
-		onclick={handleOpenIconStudio}
-		variant="ghost"
-		size="sm"
-		class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-thread tx-weak"
-		disabled={isSaving || !project}
-		title="Open icon studio"
-	>
-		<Sparkles class="w-4 h-4 sm:w-5 sm:h-5" />
-	</Button>
-	-->
 	<!-- Chat about this project button -->
 	<button
 		type="button"

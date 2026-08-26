@@ -4,7 +4,7 @@
  * Tests the actual update strategy logic without mocking the entire tool executor
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 describe('Update Strategies - Integration Test', () => {
 	describe('Document Content Merging', () => {

@@ -25,7 +25,6 @@
 	import type { Goal, Milestone, Plan, Risk, OntoEvent } from '$lib/types/onto';
 	import {
 		PANEL_CONFIGS,
-		type FilterGroup,
 		type InsightPanelKey,
 		type InsightPanelState
 	} from '$lib/components/ontology/insight-panels';
@@ -42,7 +41,6 @@
 	interface Props {
 		// Entity data arrays
 		goals: Goal[];
-		milestones: Milestone[];
 		plans: Plan[];
 		risks: Risk[];
 		events: OntoEvent[];
@@ -75,15 +73,12 @@
 		) => void;
 		onToggleChange?: (panelKey: InsightPanelKey, toggleId: string, value: boolean) => void;
 		onFilterOpen?: (panelKey: InsightPanelKey) => void | Promise<void>;
-		taskFilterGroups?: FilterGroup[];
-
 		// Permissions
 		canEdit?: boolean;
 	}
 
 	let {
 		goals,
-		milestones,
 		plans,
 		risks,
 		events,
@@ -105,7 +100,6 @@
 		onSortChange,
 		onToggleChange,
 		onFilterOpen,
-		taskFilterGroups,
 		canEdit = true
 	}: Props = $props();
 

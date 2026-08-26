@@ -9,7 +9,6 @@ import {
 } from '$lib/server/billing-ops-monitoring';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 
-type BillingAction = 'manual_unfreeze' | 'set_billing_state';
 type BillingTransitionSource = 'system' | 'admin' | 'user' | 'authenticated' | 'migration';
 
 const BILLING_TRANSITION_SOURCES = new Set<BillingTransitionSource>([

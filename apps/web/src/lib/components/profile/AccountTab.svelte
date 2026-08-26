@@ -71,6 +71,12 @@
 	let usernameLoading = $state(false);
 	let usernameError = $state<string | null>(null);
 
+	function reportOperationError(message: string, toastMessage = message) {
+		errors = [message];
+		toastService.error(toastMessage);
+		onerror?.({ message: toastMessage });
+	}
+
 	onMount(() => {
 		void loadUsername();
 	});
@@ -185,13 +191,12 @@
 				toastService.success('Profile updated successfully');
 				onsuccess?.({ message: result.data.message });
 			} else {
-				errors = [result.error || 'Failed to update profile'];
-				toastService.error(result.error || 'Failed to update profile');
+				const message = result.error || 'Failed to update profile';
+				reportOperationError(message);
 			}
 		} catch (error) {
 			console.error('Profile update error:', error);
-			errors = ['An unexpected error occurred'];
-			toastService.error('Failed to update profile');
+			reportOperationError('An unexpected error occurred', 'Failed to update profile');
 		} finally {
 			loading = false;
 		}
@@ -255,13 +260,12 @@
 				toastService.success('Password updated successfully');
 				onsuccess?.({ message: result.data.message });
 			} else {
-				errors = [result.error || 'Failed to update password'];
-				toastService.error(result.error || 'Failed to update password');
+				const message = result.error || 'Failed to update password';
+				reportOperationError(message);
 			}
 		} catch (error) {
 			console.error('Password update error:', error);
-			errors = ['An unexpected error occurred'];
-			toastService.error('Failed to update password');
+			reportOperationError('An unexpected error occurred', 'Failed to update password');
 		} finally {
 			loading = false;
 		}
@@ -290,13 +294,12 @@
 					window.location.href = '/';
 				}, 1500);
 			} else {
-				errors = [result.error || 'Failed to delete account'];
-				toastService.error(result.error || 'Failed to delete account');
+				const message = result.error || 'Failed to delete account';
+				reportOperationError(message);
 			}
 		} catch (error) {
 			console.error('Account deletion error:', error);
-			errors = ['An unexpected error occurred'];
-			toastService.error('Failed to delete account');
+			reportOperationError('An unexpected error occurred', 'Failed to delete account');
 		} finally {
 			loading = false;
 			showDeleteConfirmation = false;

@@ -470,3 +470,96 @@ Shipped with the established **P12 wide-table fallback**:
 Verification: the focused component suite passes (2 tests), including masked values, all mobile fields,
 the bounded list contract, and preservation of all six desktop columns. `pnpm check` reports 0 errors
 and 0 warnings. Authenticated 320/390 px light/dark screenshots remain pending.
+
+---
+
+## Part 8 — Cycles integration and settings information architecture (2026-08-26)
+
+The Cycles foundation creates a genuine profile-page complexity inflection point. A live desktop and 390 px
+pass found that the page now carries eight equally weighted destinations in one horizontal strip (nine when
+billing is enabled). On phone, the selected tab scrolls into view, but neighboring labels are context-poor and
+one can remain visibly clipped at the edge. The existing Daily Brief task is also split across `Brief Settings`
+and `Notifications`, and its history exposes legacy transport labels such as `generate_daily_brief`.
+
+The product proposal is recorded in
+[`docs/architecture/cycles-v0-data-model.md`](../../../../../../docs/architecture/cycles-v0-data-model.md#product-surface-proposal-cycles-in-profile-settings).
+No production UI was changed during this audit phase.
+
+### Tier 1 — cheap, high-impact
+
+- Rename the page visually from `Profile & Settings` to `Settings`; the route can remain `/profile`. The page
+  contains integrations, agents, notifications, billing, and recurring work—not only profile data. → P6
+- Replace `Brief Settings` with `Cycles` once the Daily Brief cohort is authoritative. “Cycles” is the durable
+  product model and leaves room for Project Audit, Project Review, and Task Review. → P6
+- Replace raw job types and queue-centric copy with normalized Run outcomes (`Completed`, `No changes`,
+  `Needs attention`, `Failed`) and plain next-run language. → P4+P6+P22
+- Keep delivery state visible on a Cycle row (`In-app · Email off`) so users do not need to visit another tab
+  just to understand the configuration. → P4+P8
+
+### Tier 2 — structural within the surface
+
+- Replace the flat desktop tab strip with a grouped left settings rail: **Your BuildOS** (Account, AI
+  Preferences, Cycles, Notifications), **Connections** (Calendar, Email, Agents), and **Data & Plan**
+  (Contacts, Billing). Preserve `?tab=` deep links. → P3+P6+P8+P13
+- On mobile, replace the horizontally scrolling profile tabs with one accessible `Settings section` picker or
+  disclosure. The current scroll strip technically works but sacrifices location awareness as destinations
+  multiply. → P6+P13
+- Make Cycles a compact list of overflow-safe rows, not another stack of full settings cards. Each row shows
+  purpose, cadence/timezone, lifecycle, next run, last normalized outcome, and delivery summary. → P1+P4+P9
+- Put the full kind-aware form in a focused shared modal on desktop and full-width detail state on mobile. Keep
+  the list a scan surface; do not expose a generic trigger/action canvas in v0. → P4+P8+P13
+- Keep Notifications as the global channel/quiet-hours authority, but reuse its scoped delivery controls inside
+  Cycle detail. Turning delivery off must explicitly not pause the Cycle. → P4+P6+P22
+- Do not ship an editable Cycle schedule until child-trigger mutation commands and the legacy/Cycle cohort
+  exclusion gate exist. Never dual-write scheduling intent from the browser. → P20+P22
+
+### Tier 3 — polish
+
+- Use one restrained, reduced-motion-gated row expansion or editor transition; this settings surface does not
+  earn a signature cursor effect. → P11
+- Keep Active/Paused/Needs attention as the only strong row state color. Kind icons and delivery metadata stay
+  neutral so the list remains scannable. → P4+P9+P19
+
+### Recommended approval boundary
+
+Approve the navigation and Cycles list/editor shape before implementing it. The first useful UI slice is the
+grouped settings navigation plus a read-only Cycles list using the existing `/api/cycles` read model. Editing
+Daily Brief cadence follows only after trigger mutation commands and authoritative cohort gating are complete.
+
+### First useful slice shipped (2026-08-26)
+
+- The page and both app-shell entry points now read **Settings**. Desktop uses a three-group left rail; mobile
+  uses one 54 px `Settings section` disclosure with selected state, arrow-key navigation, Escape handling, and
+  focus restoration. Both render from one typed destination model, while URL state still owns deep links and
+  browser history. `Brief Settings` remains visible and editable during legacy authority. → P3+P6+P8+P13
+- `cycles.profile_settings` is an explicit per-user flag managed from the admin feature-flag table. Hidden and
+  unknown destinations resolve to Account without a redirect loop; Stripe continues to own Billing visibility.
+  → P6+P22
+- Flagged users receive a read-only Cycles preview. The pane makes one `/api/cycles` list request and covers
+  loading, empty, recoverable error, populated, no-schedule, paused, attention, long-label, and narrow-screen
+  states. Rows use fixed icon slots, explicit overflow handling, and plain cadence/timezone copy. → P1+P4+P9
+- The server currently returns only `preview` execution authority because the shared legacy/Cycle ownership gate
+  does not exist. Preview rows never render `Active`, `Next`, mutation controls, raw worker errors, or queue job
+  types. Project labels, normalized last outcomes, and delivery summaries remain honestly omitted because the
+  list DTO and notification source cannot provide them without extra requests. → P4+P20+P22
+
+Verification: 6 focused suites / 30 tests pass; `pnpm --filter @buildos/web check` reports 0 errors and
+0 warnings; every changed Svelte component completed the Svelte autofixer with no actionable findings.
+Authenticated browser checks passed at 1440×900, 390×844, and a 720 px effective 200% layout in light and dark
+themes, with 44 px+ targets, Back navigation synchronization, and zero horizontal overflow. The only console
+noise was the local Vite HMR websocket collision on the second dev server, not an application-origin error.
+
+### Atomic trigger-mutation gate shipped (2026-08-26)
+
+The next backend checkpoint now supports owner-scoped, expected-version trigger-set replacement as one
+transaction. It tombstones the previous triggers, clears scheduler leases, installs validated server-materialized
+triggers, recomputes the parent projection, and increments the Cycle version once. Mixed definition/trigger
+patches fail closed so a future editor cannot split one schedule save into two writes. The UI remains read-only:
+the shared legacy/Cycle authoritative-cohort gate is still the release blocker before any schedule control may
+appear. → P20+P22
+
+Verification: 9/9 disposable SQL contracts pass, including stale-version rollback, invalid input, owner
+isolation, lease clearing, and function privileges. The expanded focused web suite passes 45/45. The Svelte
+re-audit reports no actionable issues; the only suggestions are existing form-result effects and deliberate
+focus-management element references. The full web Svelte check reports 0 errors and 0 warnings, and the test
+type gate remains at its existing 882/882-error baseline with no increase.

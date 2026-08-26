@@ -214,9 +214,7 @@
 	// Touch gesture state
 	let isDragging = $state(false);
 	let dragStartY = $state(0);
-	let dragCurrentY = $state(0);
 	let dragTranslateY = $state(0);
-	let touchStartTarget = $state<EventTarget | null>(null);
 
 	// IDs for accessibility. $props.id() is SSR-safe and stable across hydration —
 	// previously this used Math.random(), which mismatched between server and client.
@@ -283,7 +281,6 @@
 	function handleTouchStart(e: TouchEvent) {
 		if (!gesturesEnabled) return;
 
-		touchStartTarget = e.target;
 		const target = e.target as HTMLElement;
 
 		// Walk up from the touch target to find a scrollable container.
@@ -318,7 +315,6 @@
 
 		isDragging = true;
 		dragStartY = firstTouch.clientY;
-		dragCurrentY = dragStartY;
 		dragTranslateY = 0;
 
 		onGestureStart?.();
@@ -340,7 +336,6 @@
 				e.preventDefault();
 			}
 			dragTranslateY = deltaY;
-			dragCurrentY = currentY;
 		}
 	}
 
@@ -360,8 +355,6 @@
 
 		isDragging = false;
 		dragStartY = 0;
-		dragCurrentY = 0;
-		touchStartTarget = null;
 	}
 
 	// Svelte action to attach non-passive touch listeners
@@ -370,7 +363,7 @@
 
 		const touchStartHandler = (e: TouchEvent) => handleTouchStart(e);
 		const touchMoveHandler = (e: TouchEvent) => handleTouchMove(e);
-		const touchEndHandler = (e: TouchEvent) => handleTouchEnd();
+		const touchEndHandler = () => handleTouchEnd();
 
 		// Attach with { passive: false } to allow preventDefault
 		node.addEventListener('touchstart', touchStartHandler, { passive: false });

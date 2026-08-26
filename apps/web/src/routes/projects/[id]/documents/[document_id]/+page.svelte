@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/projects-old/[id]/documents/[document_id]/+page.svelte -->
+<!-- apps/web/src/routes/projects/[id]/documents/[document_id]/+page.svelte -->
 <!--
 	Document Focus Page - dedicated document workspace with project back navigation.
 -->

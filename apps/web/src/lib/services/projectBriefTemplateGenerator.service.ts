@@ -56,8 +56,6 @@ export class ProjectBriefTemplateGeneratorService {
 		templateName,
 		description
 	}: ProjectBriefTemplateGenerationRequest): Promise<GeneratedTemplate> {
-		const startTime = Date.now();
-
 		try {
 			// Fetch project with context
 			const project = await this.fetchProject(projectId, userId);

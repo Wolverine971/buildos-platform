@@ -474,6 +474,7 @@ export class SmartLLMService {
 				temperature,
 				max_tokens: params.max_tokens,
 				timeoutMs: params.timeoutMs,
+				signal: params.signal,
 				response_format: params.response_format,
 				stream: params.stream
 			});
@@ -1663,6 +1664,7 @@ export class SmartLLMService {
 		temperature?: number;
 		maxTokens?: number;
 		timeoutMs?: number;
+		signal?: AbortSignal;
 		userId?: string;
 		operationType?: string;
 		profile?: TextProfile; // Added profile parameter
@@ -1677,6 +1679,7 @@ export class SmartLLMService {
 					temperature?: number;
 					maxTokens?: number;
 					timeoutMs?: number;
+					signal?: AbortSignal;
 					userId?: string;
 					operationType?: string;
 					profile?: TextProfile; // Added profile parameter
@@ -1692,6 +1695,7 @@ export class SmartLLMService {
 						temperature: optionsOrParams.temperature,
 						maxTokens: optionsOrParams.maxTokens,
 						timeoutMs: optionsOrParams.timeoutMs,
+						signal: optionsOrParams.signal,
 						operationType: optionsOrParams.operationType,
 						profile: optionsOrParams.profile // Pass through profile
 					}

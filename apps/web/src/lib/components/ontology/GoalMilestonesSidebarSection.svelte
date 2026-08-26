@@ -34,8 +34,6 @@
 		Check
 	} from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import CardHeader from '$lib/components/ui/CardHeader.svelte';
-	import CardBody from '$lib/components/ui/CardBody.svelte';
 
 	interface Milestone {
 		id: string;
@@ -47,10 +45,7 @@
 
 	interface Props {
 		milestones: Milestone[];
-		goalId: string;
-		goalName: string;
 		goalState: string;
-		projectId: string;
 		canEdit?: boolean;
 		loading?: boolean;
 		onAddMilestone: () => void;
@@ -60,10 +55,7 @@
 
 	let {
 		milestones,
-		goalId,
-		goalName,
 		goalState,
-		projectId,
 		canEdit = true,
 		loading = false,
 		onAddMilestone,

@@ -3,7 +3,6 @@
 import {
 	format,
 	startOfDay,
-	endOfDay,
 	addMinutes,
 	isWithinInterval,
 	getDay,

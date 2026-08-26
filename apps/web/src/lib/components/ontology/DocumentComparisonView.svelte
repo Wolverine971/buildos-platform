@@ -110,22 +110,6 @@
 		toVersionNumber === 'current' ? 'current' : 'previous'
 	);
 
-	const fromLabel = $derived(
-		fromVersion
-			? `v${fromVersion.number} by ${fromVersion.created_by_name || 'Unknown'}`
-			: fromVersionNumber === null
-				? 'Empty baseline'
-				: 'Loading...'
-	);
-
-	const toLabel = $derived(
-		toVersionNumber === 'current'
-			? 'Current document'
-			: toVersion
-				? `v${toVersion.number} by ${toVersion.created_by_name || 'Unknown'}`
-				: 'Loading...'
-	);
-
 	// ============================================================
 	// EFFECTS
 	// ============================================================

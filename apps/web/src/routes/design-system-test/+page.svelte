@@ -18,7 +18,6 @@
 		Layers,
 		Target,
 		Waves,
-		Grid3X3,
 		Link2,
 		Frame,
 		AlignJustify

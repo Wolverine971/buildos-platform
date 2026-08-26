@@ -25,7 +25,11 @@
 	} from '$lib/services/notification-test.service';
 	import { notificationRealDataService } from '$lib/services/notification-real-data.service';
 	import type { UserNotificationContext as NotificationContextType } from '../../../api/admin/users/[id]/notification-context/+server';
-	import type { EventType } from '@buildos/shared-types';
+	import {
+		transformEventPayload,
+		type EventPayload,
+		type EventType
+	} from '@buildos/shared-types';
 	import type {
 		ChannelPayloads,
 		NotificationChannel
@@ -105,6 +109,71 @@
 		selectedEventType = eventType;
 		// Clear real data message when changing event types
 		realDataMessage = null;
+	}
+
+	async function loadRealData() {
+		if (!selectedUser || selectedChannels.length === 0) return;
+
+		loadingRealData = true;
+		error = null;
+		realDataMessage = null;
+		try {
+			const result = await notificationRealDataService.loadRealData(
+				selectedUser.id,
+				selectedEventType
+			);
+			const transformed = transformEventPayload(
+				selectedEventType,
+				result.payload as EventPayload
+			);
+
+			for (const channel of selectedChannels) {
+				switch (channel) {
+					case 'push':
+						channelPayloads.push = {
+							...channelPayloads.push,
+							...transformed,
+							data: result.payload
+						};
+						break;
+					case 'in_app':
+						channelPayloads.in_app = {
+							...channelPayloads.in_app,
+							title: transformed.title,
+							body: transformed.body,
+							action_url: transformed.action_url
+						};
+						break;
+					case 'email':
+						channelPayloads.email = {
+							...channelPayloads.email,
+							title: transformed.title,
+							body: transformed.body,
+							action_url: transformed.action_url,
+							event_type: selectedEventType
+						};
+						break;
+					case 'sms':
+						channelPayloads.sms = {
+							...channelPayloads.sms,
+							title: transformed.title,
+							body: transformed.body,
+							priority: transformed.priority,
+							event_type: selectedEventType,
+							data: result.payload
+						};
+						break;
+				}
+			}
+
+			realDataMessage =
+				result.message ||
+				`Loaded real ${selectedEventType} data for ${selectedUser.email}.`;
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to load real notification data';
+		} finally {
+			loadingRealData = false;
+		}
 	}
 
 	async function sendTestNotification() {
@@ -401,9 +470,39 @@
 
 			<!-- Step 4: Configure Payload -->
 			<div class="admin-panel p-6">
-				<h2 class="text-xl font-semibold text-foreground mb-4">
-					Step 4: Configure Channel Payloads
-				</h2>
+				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+					<div>
+						<h2 class="text-xl font-semibold text-foreground">
+							Step 4: Configure Channel Payloads
+						</h2>
+						{#if notificationRealDataService.canLoadRealData(selectedEventType)}
+							<p class="mt-1 text-sm text-muted-foreground">
+								{notificationRealDataService.getRealDataDescription(
+									selectedEventType
+								)}
+							</p>
+						{/if}
+					</div>
+					{#if notificationRealDataService.canLoadRealData(selectedEventType)}
+						<Button
+							onclick={loadRealData}
+							disabled={loadingRealData || selectedChannels.length === 0}
+							variant="outline"
+							size="sm"
+							icon={loadingRealData ? RotateCw : Database}
+							loading={loadingRealData}
+						>
+							{loadingRealData ? 'Loading real data…' : 'Load real data'}
+						</Button>
+					{/if}
+				</div>
+				{#if realDataMessage}
+					<div
+						class="mb-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success"
+					>
+						{realDataMessage}
+					</div>
+				{/if}
 				<ChannelPayloadEditor {selectedChannels} bind:channelPayloads />
 			</div>
 

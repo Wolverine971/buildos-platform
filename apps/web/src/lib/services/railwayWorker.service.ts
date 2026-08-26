@@ -1,13 +1,7 @@
 // apps/web/src/lib/services/railwayWorker.service.ts
 import { browser } from '$app/environment';
 import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
-import type {
-	QueueJob,
-	DailyBriefQueueJob,
-	OnboardingAnalysisJobMetadata,
-	QueueJobType,
-	ApiResponse
-} from '@buildos/shared-types';
+import type { QueueJob, DailyBriefQueueJob, QueueJobType } from '@buildos/shared-types';
 
 // Legacy type aliases for backward compatibility
 export type BriefGenerationJob = DailyBriefQueueJob;

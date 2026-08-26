@@ -30,7 +30,6 @@ import {
 import {
 	buildRetargetingEmailContent,
 	RETARGETING_DEFAULT_CAMPAIGN_ID,
-	RETARGETING_DEFAULT_VARIANT,
 	RETARGETING_EMAIL_SEQUENCE_KEY,
 	RETARGETING_STEPS,
 	type RetargetingPilotStep,

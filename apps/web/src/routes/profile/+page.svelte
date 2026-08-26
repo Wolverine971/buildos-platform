@@ -7,24 +7,17 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import {
-		User,
-		Users,
 		CircleCheck,
-		Key,
 		Sparkles,
 		Calendar,
-		Coffee,
 		Mail,
 		AlertCircle,
-		Bell,
 		XCircle,
-		CreditCard
-	} from 'lucide-svelte';
+		Settings as SettingsIcon
+	} from '$lib/icons/lucide';
 	import type { PageData } from './$types';
 	import { browser } from '$app/environment';
 	import Button from '$lib/components/ui/Button.svelte';
-	import TabNav from '$lib/components/ui/TabNav.svelte';
-	import type { Tab as TabNavTab } from '$lib/components/ui/TabNav.svelte';
 
 	import BriefsTab from '$lib/components/profile/BriefsTab.svelte';
 	import CalendarTab from '$lib/components/profile/CalendarTab.svelte';
@@ -35,6 +28,14 @@
 	import PreferencesTab from '$lib/components/profile/PreferencesTab.svelte';
 	import AgentKeysTab from '$lib/components/profile/AgentKeysTab.svelte';
 	import BillingTab from '$lib/components/profile/BillingTab.svelte';
+	import CyclesTab from '$lib/components/profile/CyclesTab.svelte';
+	import SettingsNavigation from '$lib/components/profile/SettingsNavigation.svelte';
+	import { getSettingsDestinations } from '$lib/components/profile/settings-navigation';
+	import {
+		resolveProfileTab,
+		type ProfileTabId,
+		type ProfileTabVisibility
+	} from '$lib/components/profile/profile-tabs';
 
 	interface Props {
 		data: PageData;
@@ -45,10 +46,6 @@
 
 	function getInitialOnboardingComplete() {
 		return data.justCompletedOnboarding || false;
-	}
-
-	function getInitialActiveTab() {
-		return data.activeTab || 'account';
 	}
 
 	/** Onboarding categories that still block a "complete" state. */
@@ -64,20 +61,12 @@
 	let saveError = $state(false);
 	let errorMessage = $state('');
 	let showOnboardingComplete = $state(getInitialOnboardingComplete());
-	let activeTab = $state(getInitialActiveTab());
-	const baseProfileTabIds = [
-		'account',
-		'contacts',
-		'preferences',
-		'briefs',
-		'calendar',
-		'email',
-		'notifications',
-		'agent-keys'
-	];
-	let validProfileTabIds = $derived(
-		data.stripeEnabled ? [...baseProfileTabIds, 'billing'] : baseProfileTabIds
-	);
+	let tabVisibility = $derived<ProfileTabVisibility>({
+		cyclesProfileEnabled: data.cyclesProfileEnabled,
+		stripeEnabled: data.stripeEnabled
+	});
+	let activeTab = $derived(resolveProfileTab($page.url.searchParams.get('tab'), tabVisibility));
+	let settingsDestinations = $derived(getSettingsDestinations(tabVisibility));
 
 	/**
 	 * Only drives which label the onboarding button shows ("Complete" vs "Start"),
@@ -101,31 +90,6 @@
 		}
 	});
 
-	// Watch for URL changes to update active tab
-	$effect(() => {
-		const urlTab = $page.url.searchParams.get('tab');
-		if (urlTab && validProfileTabIds.includes(urlTab) && urlTab !== activeTab) {
-			activeTab = urlTab;
-		} else if (!validProfileTabIds.includes(activeTab)) {
-			activeTab = 'account';
-		}
-	});
-
-	let profileTabs = $derived<TabNavTab[]>([
-		{ id: 'account', label: 'Account', icon: User },
-		{ id: 'contacts', label: 'Contacts', icon: Users },
-		{ id: 'preferences', label: 'AI Preferences', icon: Sparkles },
-		// Coffee, not Bell: Notifications owns Bell, and two tabs sharing one icon
-		// made them indistinguishable in the tab bar. Matches the brief icon used
-		// on the activity timeline.
-		{ id: 'briefs', label: 'Brief Settings', icon: Coffee },
-		{ id: 'calendar', label: 'Calendar', icon: Calendar },
-		{ id: 'email', label: 'Email', icon: Mail },
-		{ id: 'notifications', label: 'Notifications', icon: Bell },
-		{ id: 'agent-keys', label: 'Agents', icon: Key },
-		...(data.stripeEnabled ? [{ id: 'billing', label: 'Billing', icon: CreditCard }] : [])
-	]);
-
 	onMount(async () => {
 		// Initialize store with data from page load
 		userContextStore.initialize({
@@ -142,21 +106,18 @@
 	});
 
 	// Function to switch tabs and update URL
-	function switchTab(tab: string) {
-		if (!validProfileTabIds.includes(tab)) {
-			tab = 'account';
-		}
+	function switchTab(tab: ProfileTabId) {
+		const nextTab = resolveProfileTab(tab, tabVisibility);
 
-		activeTab = tab;
-
-		// Update URL without reload
+		// URL state remains shareable and gets a real history entry so browser
+		// back/forward navigation restores the visible Settings destination.
 		const url = new URL($page.url);
-		if (tab === 'account') {
+		if (nextTab === 'account') {
 			url.searchParams.delete('tab');
 		} else {
-			url.searchParams.set('tab', tab);
+			url.searchParams.set('tab', nextTab);
 		}
-		goto(url.toString(), { replaceState: true });
+		void goto(url.toString(), { keepFocus: true, noScroll: true });
 	}
 
 	async function refreshData() {
@@ -219,10 +180,10 @@
 </script>
 
 <svelte:head>
-	<title>Profile & Settings - BuildOS</title>
+	<title>Settings - BuildOS</title>
 	<meta
 		name="description"
-		content="Manage your BuildOS profile, work preferences, notifications, calendar, and connected agents."
+		content="Manage your BuildOS account, preferences, recurring work, notifications, and connections."
 	/>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
@@ -290,35 +251,38 @@
 			</div>
 		{/if}
 
-		<!-- Profile Header -->
+		<!-- Settings Header -->
 		<div
 			class="bg-card rounded-lg shadow-ink border border-border p-3 sm:p-4 mb-4 tx tx-frame tx-weak"
 		>
 			<div class="flex items-center justify-between gap-3">
-				<div class="flex items-center gap-3 min-w-0">
+				<div class="flex min-w-0 flex-1 items-center gap-3">
 					<div
 						class="w-10 h-10 sm:w-12 sm:h-12 bg-accent rounded-full flex items-center justify-center flex-shrink-0 shadow-ink"
 					>
-						<User class="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
+						<SettingsIcon class="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
 					</div>
 					<div class="min-w-0">
-						<h1 class="text-base sm:text-lg font-bold text-foreground truncate">
-							<!--
-								`user.name` (the public.users row) is where the name set on the
-								Account tab actually lands; without it the header reads
-								"Your Profile" for everyone. Matches AccountTab's lookup.
-							-->
-							{data.user?.user_metadata?.name || data.user?.name || 'Your Profile'}
+						<h1 class="text-xl sm:text-2xl font-bold text-foreground truncate">
+							Settings
 						</h1>
+						<p class="hidden text-xs text-muted-foreground sm:block">
+							Manage how BuildOS works for you.
+						</p>
 						<div
 							class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5"
 						>
+							<span class="min-w-0 truncate font-medium text-foreground">
+								{data.user?.user_metadata?.name ||
+									data.user?.name ||
+									'Your account'}
+							</span>
 							<span class="flex items-center gap-1 min-w-0">
 								<Mail class="w-3 h-3 flex-shrink-0" />
 								<span class="truncate">{data.user?.email}</span>
 							</span>
 							{#if data.userContext?.created_at}
-								<span class="flex items-center gap-1">
+								<span class="hidden items-center gap-1 sm:flex">
 									<Calendar class="w-3 h-3 flex-shrink-0" />
 									Member since {new Date(
 										data.userContext.created_at
@@ -350,55 +314,60 @@
 			</div>
 		</div>
 
-		<!-- Tab Navigation -->
-		<div class="bg-card rounded-lg shadow-ink border border-border mb-4 sm:mb-5">
-			<TabNav
-				tabs={profileTabs}
-				{activeTab}
-				onchange={(tabId) => switchTab(tabId)}
-				containerClass="mb-0 border-0"
-				navClass="mx-0 px-3 sm:px-6"
-				ariaLabel="Profile sections"
-			/>
-		</div>
+		<div
+			class="min-w-0 space-y-4 md:grid md:grid-cols-[14rem_minmax(0,1fr)] md:items-start md:gap-5 md:space-y-0"
+		>
+			<div class="min-w-0 md:sticky md:top-4">
+				<SettingsNavigation
+					destinations={settingsDestinations}
+					activeId={activeTab}
+					onchange={switchTab}
+				/>
+			</div>
 
-		<!-- Tab Content -->
-		{#if activeTab === 'account'}
-			<!-- Use the new AccountTab component -->
-			<AccountTab
-				user={data.user}
-				onsuccess={handleComponentSuccess}
-				onerror={handleComponentError}
-			/>
-		{:else if activeTab === 'contacts'}
-			<ContactsTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
-		{:else if activeTab === 'preferences'}
-			<PreferencesTab />
-		{:else if activeTab === 'briefs'}
-			<!-- Use the new BriefsTab component -->
-			<BriefsTab
-				isAdmin={data.isAdmin}
-				initialVoiceNarrationEnabled={data.voiceNarrationEnabled}
-				onsuccess={handleComponentSuccess}
-				onerror={handleComponentError}
-			/>
-		{:else if activeTab === 'calendar'}
-			<!-- Use the new CalendarTab component -->
-			<CalendarTab
-				{data}
-				{form}
-				onsuccess={handleComponentSuccess}
-				onerror={handleComponentError}
-			/>
-		{:else if activeTab === 'email'}
-			<EmailTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
-		{:else if activeTab === 'notifications'}
-			<!-- Use the new NotificationsTab component -->
-			<NotificationsTab userId={data.user.id} />
-		{:else if activeTab === 'agent-keys'}
-			<AgentKeysTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
-		{:else if activeTab === 'billing' && data.stripeEnabled}
-			<BillingTab subscriptionDetails={data.subscriptionDetails} />
-		{/if}
+			<main class="min-w-0" aria-label="Settings content">
+				{#if activeTab === 'account'}
+					<AccountTab
+						user={data.user}
+						onsuccess={handleComponentSuccess}
+						onerror={handleComponentError}
+					/>
+				{:else if activeTab === 'contacts'}
+					<ContactsTab
+						onsuccess={handleComponentSuccess}
+						onerror={handleComponentError}
+					/>
+				{:else if activeTab === 'preferences'}
+					<PreferencesTab />
+				{:else if activeTab === 'cycles' && data.cyclesProfileEnabled}
+					<CyclesTab executionAuthority={data.cyclesExecutionAuthority} />
+				{:else if activeTab === 'briefs'}
+					<BriefsTab
+						isAdmin={data.isAdmin}
+						initialVoiceNarrationEnabled={data.voiceNarrationEnabled}
+						onsuccess={handleComponentSuccess}
+						onerror={handleComponentError}
+					/>
+				{:else if activeTab === 'calendar'}
+					<CalendarTab
+						{data}
+						{form}
+						onsuccess={handleComponentSuccess}
+						onerror={handleComponentError}
+					/>
+				{:else if activeTab === 'email'}
+					<EmailTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
+				{:else if activeTab === 'notifications'}
+					<NotificationsTab userId={data.user.id} />
+				{:else if activeTab === 'agent-keys'}
+					<AgentKeysTab
+						onsuccess={handleComponentSuccess}
+						onerror={handleComponentError}
+					/>
+				{:else if activeTab === 'billing' && data.stripeEnabled}
+					<BillingTab subscriptionDetails={data.subscriptionDetails} />
+				{/if}
+			</main>
+		</div>
 	</div>
 </div>

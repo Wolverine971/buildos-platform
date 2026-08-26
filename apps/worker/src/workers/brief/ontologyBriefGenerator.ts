@@ -25,11 +25,11 @@ import {
 import { formatCalendarSection, formatProjectCalendarItems } from './calendarBriefFormatting.js';
 import type {
 	GoalProgress,
+	OntoProjectWithRelations,
 	OntoTask,
 	OntologyBriefData,
 	OntologyBriefMetadata,
 	OntologyProjectBriefRow,
-	OntoProjectWithRelations,
 	ProjectActivityEntry,
 	ProjectBriefData,
 	ProjectRecentChange
@@ -71,6 +71,13 @@ const ACTIVE_PROJECT_STATES = ['planning', 'active'] as const;
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
+
+function throwIfAborted(signal?: AbortSignal): void {
+	if (!signal?.aborted) return;
+	throw signal.reason instanceof Error
+		? signal.reason
+		: new Error('Daily Brief generation was cancelled.');
+}
 
 function getDateInTimezone(timestamp: string | Date, timezone: string): string {
 	const date = typeof timestamp === 'string' ? parseISO(timestamp) : timestamp;
@@ -572,8 +579,10 @@ async function generateOntologyProjectBrief(
 	project: ProjectBriefData,
 	timezone: string,
 	userId: string,
-	briefDate: string
+	briefDate: string,
+	signal?: AbortSignal
 ): Promise<OntologyProjectBriefRow> {
+	throwIfAborted(signal);
 	const fallbackBriefContent = formatOntologyProjectBrief(project, timezone);
 	let briefContent = fallbackBriefContent;
 	let generationMode: 'llm' | 'deterministic_fallback' = 'deterministic_fallback';
@@ -606,6 +615,7 @@ async function generateOntologyProjectBrief(
 					project
 				}),
 				userId,
+				signal,
 				profile: 'custom',
 				model: PROJECT_BRIEF_MODELS[0],
 				models: [...PROJECT_BRIEF_MODELS],
@@ -633,6 +643,7 @@ async function generateOntologyProjectBrief(
 					llmCost = usage.totalCost;
 				}
 			});
+			throwIfAborted(signal);
 
 			const normalized = normalizeLLMProjectBriefMarkdown(project, response);
 			if (normalized) {
@@ -686,6 +697,7 @@ async function generateOntologyProjectBrief(
 				);
 			}
 		} catch (error) {
+			throwIfAborted(signal);
 			console.warn(
 				`[OntologyBrief] Project brief LLM generation failed for project ${project.project.id}; using deterministic fallback`,
 				error
@@ -729,6 +741,7 @@ async function generateOntologyProjectBrief(
 		calendarUpcoming: project.calendarUpcoming.slice(0, 5)
 	};
 
+	throwIfAborted(signal);
 	const { data: savedBrief, error } = await supabase
 		.from('ontology_project_briefs')
 		.upsert(
@@ -1104,8 +1117,10 @@ export async function generateOntologyDailyBrief(
 	briefDate: string,
 	options: BriefJobData['options'],
 	timezone: string,
-	jobId?: string
+	jobId?: string,
+	signal?: AbortSignal
 ): Promise<OntologyDailyBriefResult> {
+	throwIfAborted(signal);
 	console.log(`[OntologyBrief] Starting generation for user ${userId} on ${briefDate}`);
 
 	// Initialize data loader
@@ -1163,6 +1178,7 @@ export async function generateOntologyDailyBrief(
 	}
 
 	try {
+		throwIfAborted(signal);
 		// Step 1: Load ontology data
 		await updateProgress(dailyBrief.id, { step: 'loading_ontology_data', progress: 10 }, jobId);
 
@@ -1230,9 +1246,11 @@ export async function generateOntologyDailyBrief(
 					project,
 					userTimezone,
 					userId,
-					briefDateInUserTz
+					briefDateInUserTz,
+					signal
 				)
 		);
+		throwIfAborted(signal);
 
 		// Log any failed project briefs for debugging
 		const failedBriefs = projectBriefResults.filter(
@@ -1314,11 +1332,13 @@ export async function generateOntologyDailyBrief(
 				profile: 'quality',
 				temperature: 0.7,
 				maxTokens: 600,
+				signal,
 				systemPrompt: OntologyExecutiveSummaryPrompt.getSystemPrompt()
 			});
 
 			console.log(`[OntologyBrief] Generated executive summary`);
 		} catch (llmError) {
+			throwIfAborted(signal);
 			console.error('[OntologyBrief] Failed to generate executive summary:', llmError);
 
 			// Fallback executive summary
@@ -1381,6 +1401,7 @@ export async function generateOntologyDailyBrief(
 					profile: 'quality',
 					temperature: 0.7,
 					maxTokens: 1200,
+					signal,
 					systemPrompt: OntologyReengagementPrompt.getSystemPrompt(
 						daysSinceLastLogin,
 						reengagementStage
@@ -1402,12 +1423,14 @@ export async function generateOntologyDailyBrief(
 					profile: 'quality',
 					temperature: 0.4,
 					maxTokens: 2000,
+					signal,
 					systemPrompt: OntologyAnalysisPrompt.getSystemPrompt()
 				});
 			}
 
 			console.log(`[OntologyBrief] Generated LLM analysis`);
 		} catch (llmError) {
+			throwIfAborted(signal);
 			console.error('[OntologyBrief] Failed to generate LLM analysis:', llmError);
 
 			// Fallback LLM analysis with key metrics
@@ -1466,6 +1489,7 @@ export async function generateOntologyDailyBrief(
 			engagementStage
 		};
 
+		throwIfAborted(signal);
 		const { data: finalBrief, error: updateError } = await supabase
 			.from('ontology_daily_briefs')
 			.update({

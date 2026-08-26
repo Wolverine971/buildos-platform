@@ -747,7 +747,8 @@ export class TaskTimeSlotFinder {
 				console.warn(
 					`Could not find slot for task "${task.title}" within ${this.maxDaysToLookAhead} days`
 				);
-				const { originalTime, ...originalTask } = task;
+				const originalTask: TaskWithOriginalTime = { ...task };
+				delete originalTask.originalTime;
 				rescheduled.push(originalTask);
 			}
 		}

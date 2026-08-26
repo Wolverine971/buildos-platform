@@ -278,32 +278,6 @@ function applyDocumentDescriptionPolicy(
 	return { ok: true, args };
 }
 
-function findContextDocument(
-	context: ServiceContext,
-	documentId: string
-): Record<string, unknown> | null {
-	const entities = context.ontologyContext?.entities;
-	const directCandidates = [
-		entities?.document,
-		...(Array.isArray(entities?.documents) ? entities.documents : [])
-	];
-	for (const candidate of directCandidates) {
-		if (isRecord(candidate) && candidate.id === documentId) return candidate;
-	}
-
-	const findInTree = (nodes: unknown): Record<string, unknown> | null => {
-		if (!Array.isArray(nodes)) return null;
-		for (const node of nodes) {
-			if (!isRecord(node)) continue;
-			if (node.id === documentId) return node;
-			const childMatch = findInTree(node.children);
-			if (childMatch) return childMatch;
-		}
-		return null;
-	};
-	return findInTree(context.ontologyContext?.metadata?.document_tree?.root);
-}
-
 function hasExplicitDuplicateDocumentIntent(context: ServiceContext): boolean {
 	const message = getLatestUserMessageText(context);
 	if (

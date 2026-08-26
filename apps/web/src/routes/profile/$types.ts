@@ -36,4 +36,6 @@ export interface PageData {
 	activeTab: string;
 	subscriptionDetails: SubscriptionDetails | null;
 	stripeEnabled: boolean;
+	cyclesProfileEnabled: boolean;
+	cyclesExecutionAuthority: 'preview';
 }

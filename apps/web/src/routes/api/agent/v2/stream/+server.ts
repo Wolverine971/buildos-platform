@@ -18,7 +18,7 @@ export const config = {
 
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
-import { OX_ALPHA_MODEL } from '@buildos/smart-llm';
+import { GLM_53_FLASH_MODEL } from '@buildos/smart-llm';
 import { ApiResponse } from '$lib/utils/api-response';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { createLogger } from '$lib/utils/logger';
@@ -1140,10 +1140,10 @@ export const POST: RequestHandler = async ({
 				supabase,
 				httpReferer: request.headers.get('referer') ?? undefined,
 				appName: 'BuildOS Agentic Chat V2',
-				// Local dev trial only. Ox gets a scoped non-ZDR, zero-price route;
-				// production and every fallback retain the normal privacy policy.
-				freeTrialPrimaryModel: STREAM_CONFIG.routing.useDevOxAlphaTrial
-					? OX_ALPHA_MODEL
+				// Local dev experiment only. GLM retains the standard ZDR policy and
+				// falls through to the production DeepSeek-first chain when unavailable.
+				devPrimaryModel: STREAM_CONFIG.routing.useDevGlm53FlashTrial
+					? GLM_53_FLASH_MODEL
 					: undefined
 			});
 			preparedSurfaceProfile = selectedSurfaceProfile;

@@ -167,6 +167,7 @@ function createBriefJob(data: BriefJobData): LegacyJob<BriefJobData> {
 	return {
 		id: 'job-stale-brief',
 		processingToken: 'claim-token',
+		signal: new AbortController().signal,
 		data: {
 			...data,
 			userId: data.userId
@@ -434,7 +435,8 @@ describe('processBriefJob stale daily brief guard', () => {
 			'2026-04-12',
 			expect.objectContaining({ forceRegenerate: true }),
 			'America/New_York',
-			'job-stale-brief'
+			'job-stale-brief',
+			job.signal
 		);
 		expect(mocks.mockUpdates).not.toEqual(
 			expect.arrayContaining([
@@ -523,7 +525,8 @@ describe('processBriefJob stale daily brief guard', () => {
 			'2026-04-12',
 			undefined,
 			'America/New_York',
-			'job-stale-brief'
+			'job-stale-brief',
+			job.signal
 		);
 		expect(mocks.mockUpdates).not.toEqual(
 			expect.arrayContaining([
@@ -561,7 +564,8 @@ describe('processBriefJob stale daily brief guard', () => {
 			'2026-04-12',
 			undefined,
 			'America/New_York',
-			'job-stale-brief'
+			'job-stale-brief',
+			job.signal
 		);
 		expect(mocks.mockUpdates).not.toEqual(
 			expect.arrayContaining([
@@ -601,11 +605,30 @@ describe('processBriefJob stale daily brief guard', () => {
 			'2026-04-12',
 			undefined,
 			'America/New_York',
-			undefined
+			undefined,
+			job.signal
 		);
 		expect(mocks.mockUpdateJobStatus).not.toHaveBeenCalled();
 		expect(mocks.mockBroadcastUserEvent).not.toHaveBeenCalled();
 		expect(mocks.mockCreateServiceClient).not.toHaveBeenCalled();
 		errorLog.mockRestore();
+	});
+
+	it('stops before domain reads or provider work when queue ownership is already aborted', async () => {
+		const controller = new AbortController();
+		controller.abort(new Error('worker timeout'));
+		const job = createBriefJob({
+			userId: 'user-1',
+			briefDate: '2026-04-12',
+			timezone: 'America/New_York'
+		});
+		job.signal = controller.signal;
+
+		await expect(
+			processBriefJob(job, { manageQueueRecord: false, emitFailureEffects: false })
+		).rejects.toThrow('worker timeout');
+		expect(mocks.mockFrom).not.toHaveBeenCalled();
+		expect(mocks.mockGenerateOntologyDailyBrief).not.toHaveBeenCalled();
+		expect(mocks.mockBroadcastUserEvent).not.toHaveBeenCalled();
 	});
 });

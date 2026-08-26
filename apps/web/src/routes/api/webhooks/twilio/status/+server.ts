@@ -27,25 +27,6 @@ const statusMap: Record<string, string> = {
 };
 
 /**
- * Map Twilio status to notification delivery status
- */
-function mapTwilioStatusToDeliveryStatus(twilioStatus: string): string {
-	const deliveryStatusMap: Record<string, string> = {
-		queued: 'pending',
-		accepted: 'pending',
-		sending: 'sent',
-		sent: 'sent',
-		receiving: 'sent',
-		received: 'delivered',
-		delivered: 'delivered',
-		failed: 'failed',
-		undelivered: 'failed',
-		canceled: 'failed'
-	};
-	return deliveryStatusMap[twilioStatus] || 'pending';
-}
-
-/**
  * Categorize Twilio error codes for better handling
  */
 function categorizeErrorCode(errorCode: string | null): {

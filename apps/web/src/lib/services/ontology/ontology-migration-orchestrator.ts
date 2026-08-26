@@ -12,14 +12,9 @@
 import { randomUUID } from 'crypto';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database, Json } from '@buildos/shared-types';
-import {
-	isMigrationDualWriteEnabledForOrg,
-	isMigrationDualWriteEnabledForUser
-} from '$lib/utils/feature-flags';
 import { chunkArray } from '$lib/utils/chunk-array';
 import {
 	ProjectMigrationService,
-	type ProjectMigrationResult,
 	type ProjectMigrationAnalysis
 } from './project-migration.service';
 import { PhaseMigrationService } from './phase-migration.service';
@@ -27,7 +22,10 @@ import { TaskMigrationService } from './task-migration.service';
 import { CalendarMigrationService } from './calendar-migration.service';
 import { PlanGenerationService } from './plan-generation.service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
-import { getLegacyMapping } from './legacy-mapping.service';
+
+// Current migration rollout policy keeps project dual-write globally enabled.
+// The feature-flag helpers are not consulted until rollout gating is re-enabled.
+const MIGRATION_FEATURE_FLAGS = { dualWriteProjects: true } as const;
 import type {
 	MigrationAnalysisOptions,
 	MigrationBatchResult,
@@ -285,10 +283,7 @@ export class OntologyMigrationOrchestrator {
 		const dryRun = options.dryRun ?? false;
 		const now = new Date().toISOString();
 
-		const featureFlags = await this.resolveFeatureFlags(
-			options.orgId ?? null,
-			options.initiatedBy
-		);
+		const featureFlags = MIGRATION_FEATURE_FLAGS;
 
 		await this.logEntries([
 			this.buildLogInsert({
@@ -697,7 +692,7 @@ export class OntologyMigrationOrchestrator {
 		// Pre-fetch all mappings upfront
 		const prefetchedMappings = await this.prefetchMappings(candidates.map((c) => c.id));
 
-		const featureFlags = await this.resolveFeatureFlags(null, initiatedBy);
+		const featureFlags = MIGRATION_FEATURE_FLAGS;
 
 		// Process previews in parallel batches
 		const projectConcurrency = options.projectConcurrency ?? 3;
@@ -925,22 +920,6 @@ export class OntologyMigrationOrchestrator {
 		});
 
 		return { runId };
-	}
-
-	private async resolveFeatureFlags(
-		orgId: string | null,
-		userId: string
-	): Promise<{
-		dualWriteProjects: boolean;
-	}> {
-		const orgFlag = await isMigrationDualWriteEnabledForOrg(this.client, orgId, {
-			fallbackUserId: userId
-		});
-		const userFlag = await isMigrationDualWriteEnabledForUser(this.client, userId);
-
-		return {
-			dualWriteProjects: true //orgFlag || userFlag
-		};
 	}
 
 	private createBatch(scope: Exclude<MigrationScope, 'run'>, total = 0): MigrationBatchResult {

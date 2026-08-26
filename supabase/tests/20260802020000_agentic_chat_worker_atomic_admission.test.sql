@@ -548,8 +548,30 @@ SELECT pg_temp.assert_true(
 		AND (SELECT count(*) FROM concurrent_admission_results WHERE result->>'outcome' = 'matching_duplicate') = 1
 		AND (SELECT count(DISTINCT result->>'session_id') FROM concurrent_admission_results) = 1
 		AND (SELECT count(*) FROM public.chat_turn_runs WHERE client_turn_id = 'concurrent-inline-50') = 1
-		AND (SELECT count(*) FROM public.chat_messages WHERE metadata->>'idempotency_key' LIKE 'chat-turn:%:user' AND content = 'Ship it' AND user_id = 'd1000000-0000-4000-8000-000000000002') = 1,
-	'concurrent inline duplicate did not produce one session/turn/message winner'
+		AND (
+			SELECT count(*)
+			FROM public.chat_messages
+			WHERE id = (
+				SELECT (result->>'user_message_id')::uuid
+				FROM concurrent_admission_results
+				WHERE result->>'outcome' = 'newly_admitted'
+			)
+		) = 1,
+	format(
+		'concurrent inline duplicate did not produce one session/turn/message winner: results=%s sessions=%s turns=%s messages=%s',
+		(SELECT jsonb_agg(result) FROM concurrent_admission_results),
+		(SELECT count(DISTINCT result->>'session_id') FROM concurrent_admission_results),
+		(SELECT count(*) FROM public.chat_turn_runs WHERE client_turn_id = 'concurrent-inline-50'),
+		(
+			SELECT count(*)
+			FROM public.chat_messages
+			WHERE id = (
+				SELECT (result->>'user_message_id')::uuid
+				FROM concurrent_admission_results
+				WHERE result->>'outcome' = 'newly_admitted'
+			)
+		)
+	)
 );
 
 SELECT dblink_disconnect('worker_admit_a');

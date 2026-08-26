@@ -197,7 +197,7 @@ async function sendBetaApprovalNotification(signupData: any) {
 			};
 
 			try {
-				const result = await transporter.sendMail(mailOptions);
+				await transporter.sendMail(mailOptions);
 			} catch (emailError: any) {
 				console.error(
 					`[sendBetaApprovalNotification] ❌ FAILED to send email to ${adminEmail}`
@@ -293,18 +293,6 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 
 		if (!signup_id || !status) {
 			return ApiResponse.badRequest('Signup ID and status are required');
-		}
-
-		// Get the signup data first
-		const { data: signupData, error: fetchError } = await supabase
-			.from('beta_signups')
-			.select('*')
-			.eq('id', signup_id)
-			.single();
-
-		if (fetchError) {
-			console.error('Error fetching signup data:', fetchError);
-			return ApiResponse.internalError(fetchError, 'Failed to fetch signup data');
 		}
 
 		// Update signup status

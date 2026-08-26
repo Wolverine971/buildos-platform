@@ -47,6 +47,15 @@ export interface BriefJobExecutionResult {
 	notificationOutcome?: BriefNotificationOutcome;
 }
 
+function throwIfJobAborted(job: LegacyJob<BriefJobData>): void {
+	// Some direct legacy/test callers predate queue cancellation. Adapter-backed
+	// production jobs always provide the signal.
+	if (!job.signal?.aborted) return;
+	throw job.signal.reason instanceof Error
+		? job.signal.reason
+		: new Error('Daily Brief worker no longer owns this job.');
+}
+
 async function mergeBriefJobMetadata(
 	job: LegacyJob<BriefJobData>,
 	updates: Record<string, unknown>,
@@ -317,6 +326,7 @@ export async function processBriefJob(
 	const emitFailureEffects = options.emitFailureEffects !== false;
 
 	try {
+		throwIfJobAborted(job);
 		// Validate job data immediately to catch errors early
 		validateBriefJobData(job.data);
 
@@ -487,13 +497,16 @@ export async function processBriefJob(
 
 		const useOntology = true;
 		console.log(`🧬 Using ontology-based brief generation for user ${job.data.userId}`);
+		throwIfJobAborted(job);
 		const ontologyBrief = await generateOntologyDailyBrief(
 			job.data.userId,
 			validatedBriefDate,
 			job.data.options,
 			timezone,
-			manageQueueRecord ? job.id : undefined
+			manageQueueRecord ? job.id : undefined,
+			job.signal
 		);
+		throwIfJobAborted(job);
 		const brief: { id: string } = { id: ontologyBrief.id };
 
 		try {
@@ -576,6 +589,9 @@ export async function processBriefJob(
 			);
 		}
 
+		// Never emit delivery effects after timeout/shutdown has transferred
+		// ownership to a retry.
+		throwIfJobAborted(job);
 		// Emit notification event for brief completion
 		let notificationOutcome: BriefNotificationOutcome;
 		if (suppressNotification) {
@@ -631,6 +647,10 @@ export async function processBriefJob(
 
 		if (manageQueueRecord) {
 			await updateJobStatus(job.id, 'failed', 'brief', errorMessage, job.processingToken);
+		}
+
+		if (job.signal?.aborted) {
+			throw error;
 		}
 
 		if (emitFailureEffects) {

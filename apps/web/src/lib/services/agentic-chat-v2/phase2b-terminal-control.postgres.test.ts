@@ -84,6 +84,7 @@ describePostgres('agentic-chat worker Phase 2B terminal control PostgreSQL contr
 		applySqlFile(
 			sqlPath('supabase/tests/fixtures/agentic_chat_worker_phase2b_admission_claim_base.sql')
 		);
+		applySqlFile(sqlPath('supabase/tests/fixtures/agentic_chat_voice_note_group_base.sql'));
 		for (const migration of [
 			'20260731150000_agentic_chat_legacy_atomic_admission.sql',
 			'20260801010000_agentic_chat_worker_phase2a_trust_foundation.sql',
@@ -158,16 +159,9 @@ describePostgres('agentic-chat worker Phase 2B terminal control PostgreSQL contr
 			)
 		);
 
-		// The earlier proofs leave realistic queued/running worker rows for the
-		// terminal package and also protect the cumulative migration chain.
+		// The earlier proofs leave realistic running rows for the terminal package.
 		applySqlFile(
 			sqlPath('supabase/tests/20260731150000_agentic_chat_legacy_atomic_admission.test.sql')
-		);
-		applySqlFile(
-			sqlPath('supabase/tests/20260802020000_agentic_chat_worker_atomic_admission.test.sql')
-		);
-		applySqlFile(
-			sqlPath('supabase/tests/20260802020100_agentic_chat_worker_claim_fencing.test.sql')
 		);
 		applySqlFile(
 			sqlPath(
@@ -192,6 +186,21 @@ describePostgres('agentic-chat worker Phase 2B terminal control PostgreSQL contr
 			sqlPath(
 				'supabase/migrations/20260802030500_agentic_chat_worker_terminal_control_rpcs.sql'
 			)
+		);
+		for (const migration of [
+			'20260802031000_agentic_chat_worker_execution_recovery.sql',
+			'20260824205329_attach_worker_voice_note_groups.sql',
+			'20260825161846_agentic_chat_queue_first_admission.sql'
+		]) {
+			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
+		}
+		// This proof targets the cumulative queue-first contract, so it runs only
+		// after all three functions patched by that migration exist.
+		applySqlFile(
+			sqlPath('supabase/tests/20260802020000_agentic_chat_worker_atomic_admission.test.sql')
+		);
+		applySqlFile(
+			sqlPath('supabase/tests/20260802020100_agentic_chat_worker_claim_fencing.test.sql')
 		);
 		terminalOutput = applySqlFile(
 			sqlPath('supabase/tests/20260802030500_agentic_chat_worker_terminal_control.test.sql')

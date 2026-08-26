@@ -87,8 +87,6 @@ export const PUT: RequestHandler = async ({ params, locals: { supabase, safeGetS
 	} catch (error) {
 		console.error('Error regenerating project brief template:', error);
 
-		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
 		return ApiResponse.internalError(error, 'Failed to regenerate template');
 	}
 };

@@ -1,0 +1,16 @@
+{
+	"schemaVersion": 1,
+	"capturedAt": "2026-08-26",
+	"workspaces": {
+		"web": {
+			"tsconfig": "tsconfig.tests.json",
+			"maxErrors": 602,
+			"note": "Existing web test fixture and generated-route typing debt. Lower this ceiling whenever errors are fixed."
+		},
+		"worker": {
+			"tsconfig": "tsconfig.tests.json",
+			"maxErrors": 468,
+			"note": "Existing worker mock and cross-package test typing debt. Lower this ceiling whenever errors are fixed."
+		}
+	}
+}

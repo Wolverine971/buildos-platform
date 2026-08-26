@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	GEMINI_37_FLASH_MODEL,
+	GLM_53_FLASH_MODEL,
 	GPT_56_LUNA_MODEL,
 	GROK_46_MODEL,
 	KIMI_K3_MODEL
@@ -131,6 +132,28 @@ describe('buildOpenRouterChatCompletionBody', () => {
 	it('preserves explicitly requested Gemini 3.7 reasoning above its medium floor', () => {
 		const body = buildOpenRouterChatCompletionBody({
 			model: GEMINI_37_FLASH_MODEL,
+			messages: [{ role: 'user', content: 'Analyze this deeply.' }],
+			reasoning: { effort: 'high', exclude: false }
+		});
+
+		expect(body.reasoning).toEqual({ effort: 'high', exclude: false });
+	});
+
+	it('defaults GLM 5.3 Flash to low reasoning while preserving visibility policy', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: GLM_53_FLASH_MODEL,
+			messages: [{ role: 'user', content: 'Choose one concise next action.' }],
+			temperature: 0.2,
+			reasoning: { exclude: true }
+		});
+
+		expect(body.temperature).toBe(0.2);
+		expect(body.reasoning).toEqual({ effort: 'low', exclude: true });
+	});
+
+	it('preserves an explicit GLM 5.3 Flash reasoning effort', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: GLM_53_FLASH_MODEL,
 			messages: [{ role: 'user', content: 'Analyze this deeply.' }],
 			reasoning: { effort: 'high', exclude: false }
 		});

@@ -33,11 +33,9 @@
 	interface Props {
 		projectId: string;
 		onNodeClick?: (node: GraphNode) => void;
-		/** @deprecated No longer used — kept for backward compat */
-		embedded?: boolean;
 	}
 
-	let { projectId, onNodeClick, embedded = true }: Props = $props();
+	let { projectId, onNodeClick }: Props = $props();
 
 	// UI State
 	let selectedLayout = $state<string>('cose-bilkent');

@@ -129,7 +129,6 @@ export function formatProjectForPrompt(
 ): string {
 	if (!project) return 'No project data available';
 
-	const headingPrefix = '#'.repeat(baseLevel);
 	const subHeadingPrefix = '#'.repeat(baseLevel + 1);
 	const sections: string[] = [];
 
@@ -305,11 +304,7 @@ export function formatTaskHierarchy(
 /**
  * Format tasks for prompts with proper nesting and grouping
  */
-export function formatTasksForPrompt(
-	tasks: Task[],
-	baseLevel: number = 2,
-	mode: 'full' | 'summary' = 'full'
-): string {
+export function formatTasksForPrompt(tasks: Task[], baseLevel: number = 2): string {
 	if (!tasks || tasks.length === 0) return '';
 
 	// Sort tasks by start_date (nulls last)
@@ -332,11 +327,6 @@ export function formatTasksForPrompt(
 			output += `${subHeadingPrefix} ${groupName.toUpperCase().replace('_', ' ')} (${groupTasks.length})\n\n`;
 
 			output += DataFormatterService.formatExistingTasksForPrompt(groupTasks);
-			// groupTasks.forEach((task) => {
-			// 	output += 'here'
-
-			// 	formatSingleTaskForPrompt(task, mode, baseLevel + 2);
-			// });
 			output += '\n';
 		}
 	});
@@ -428,57 +418,6 @@ function buildTaskMetadata(task: Task, showDependencies: boolean): string[] {
 	}
 
 	return metadata;
-}
-
-function formatSingleTaskForPrompt(
-	task: Task,
-	mode: 'full' | 'summary',
-	baseLevel: number
-): string {
-	const parts: string[] = [];
-
-	// ID and title
-	parts.push(`[${task.id}] ${task.title || 'Untitled'}`);
-
-	// here
-	// Status and priority indicators
-	const indicators: string[] = [];
-	if (task.status === 'blocked') indicators.push('🚫');
-	if (task.status === 'in_progress') indicators.push('▶️');
-	if (task.priority === 'high') indicators.push('🔴');
-	if (task.start_date) indicators.push(`📅${task.start_date}`);
-	if (task.dependencies?.length) indicators.push(`deps:[${task.dependencies.length}]`);
-
-	if (indicators.length > 0) {
-		parts.push(`(${indicators.join(' ')})`);
-	}
-
-	// Description and details
-	if (task.description || task.details) {
-		const descriptionParts: string[] = [];
-
-		if (task.description) {
-			const desc =
-				mode === 'summary' && task.description.length > 80
-					? task.description.substring(0, 80) + '...'
-					: task.description;
-			descriptionParts.push(desc);
-		}
-
-		if (task.details) {
-			const details =
-				mode === 'summary' && task.details.length > 60
-					? task.details.substring(0, 60) + '...'
-					: task.details;
-			descriptionParts.push(`Details: ${details}`);
-		}
-
-		if (descriptionParts.length > 0) {
-			parts.push(`- ${descriptionParts.join(' | ')}`);
-		}
-	}
-
-	return `- ${parts.join(' ')}\n`;
 }
 
 function groupTasks(tasks: Task[]): {

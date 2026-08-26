@@ -1,6 +1,6 @@
 // apps/web/src/lib/stores/unifiedBriefGeneration.store.ts
 import { writable, derived, get } from 'svelte/store';
-import type { StreamingStatus, StreamingBriefData } from '$lib/types/daily-brief';
+import type { StreamingBriefData } from '$lib/types/daily-brief';
 
 export interface UnifiedBriefGenerationState {
 	// Core generation state

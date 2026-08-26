@@ -526,7 +526,8 @@ Compressed summary:`;
 		sessionId: string,
 		messages: ChatMessage[],
 		contextType: string,
-		userId?: string
+		userId?: string,
+		targetTokens: number = 2000
 	): Promise<{
 		compressedMessages: LLMMessage[];
 		metadata: {
@@ -544,58 +545,70 @@ Compressed summary:`;
 		const regularMessages = messages.filter((m) => !m.tool_calls && !m.tool_call_id);
 		const originalTokens = this.estimateTokens(messages);
 
-		// Always preserve tool interactions
-		const preservedTools = toolMessages.map((m) => ({
-			role: m.role as any,
-			content: m.content,
-			tool_calls: m.tool_calls as any,
-			tool_call_id: m.tool_call_id ?? undefined
-		}));
+		const exceedsTarget = originalTokens > targetTokens;
+		const shouldCompressRegular = regularMessages.length > 10 || exceedsTarget;
+		const finalMessages: LLMMessage[] = [];
+		let regularSegment: ChatMessage[] = [];
+		let summarizedGroups = 0;
 
-		// Compress regular messages if needed
-		let compressedRegular: LLMMessage[] = [];
+		const appendRegularSegment = async () => {
+			if (regularSegment.length === 0) return;
+			const segment = regularSegment;
+			regularSegment = [];
 
-		if (regularMessages.length > 10) {
-			// Group messages by topic/time proximity
-			const groups = this.groupMessagesByContext(regularMessages);
+			if (!shouldCompressRegular) {
+				finalMessages.push(
+					...segment.map((message) => ({
+						role: message.role as any,
+						content: message.content
+					}))
+				);
+				return;
+			}
 
-			for (const group of groups) {
-				if (group.length > 3) {
-					// Compress this group
+			for (const group of this.groupMessagesByContext(segment)) {
+				const shouldSummarize = exceedsTarget ? group.length > 0 : group.length > 3;
+				if (shouldSummarize) {
 					const summary = await this.compressMessageGroup(group, contextType, userId);
-					compressedRegular.push({
+					summarizedGroups += 1;
+					finalMessages.push({
 						role: 'system',
 						content: `[Compressed ${group.length} messages]: ${summary}`
 					});
 				} else {
-					// Keep as-is
-					compressedRegular.push(
-						...group.map((m) => ({
-							role: m.role as any,
-							content: m.content
+					finalMessages.push(
+						...group.map((message) => ({
+							role: message.role as any,
+							content: message.content
 						}))
 					);
 				}
 			}
-		} else {
-			compressedRegular = regularMessages.map((m) => ({
-				role: m.role as any,
-				content: m.content
-			}));
-		}
+		};
 
-		// Merge preserved tools and compressed regular messages
-		const finalMessages = this.mergeMessagesChronologically(
-			preservedTools,
-			compressedRegular,
-			messages
-		);
+		// Compress only consecutive regular-message segments. Tool calls stay in
+		// their original positions, so assistant/tool pairs remain valid.
+		for (const message of messages) {
+			if (!message.tool_calls && !message.tool_call_id) {
+				regularSegment.push(message);
+				continue;
+			}
+
+			await appendRegularSegment();
+			finalMessages.push({
+				role: message.role as any,
+				content: message.content,
+				tool_calls: message.tool_calls as any,
+				tool_call_id: message.tool_call_id ?? undefined
+			});
+		}
+		await appendRegularSegment();
 
 		// Calculate metrics
 		const estimatedTokens = this.estimateTokens(
 			finalMessages.map((msg) => ({ content: msg.content }))
 		);
-		const compressionApplied = finalMessages.length < messages.length;
+		const compressionApplied = summarizedGroups > 0;
 
 		if (compressionApplied) {
 			const compressedAt = new Date().toISOString();
@@ -635,7 +648,7 @@ Compressed summary:`;
 			metadata: {
 				originalCount: messages.length,
 				compressedCount: finalMessages.length,
-				compressionRatio: messages.length / finalMessages.length,
+				compressionRatio: estimatedTokens > 0 ? originalTokens / estimatedTokens : 1,
 				preservedToolCalls: toolMessages.length,
 				estimatedTokens,
 				originalTokens,
@@ -719,18 +732,5 @@ Summary (max 100 words):`;
 			// Fallback to simple truncation
 			return messages[0]?.content?.substring(0, 200) + '...' || 'Summary unavailable';
 		}
-	}
-
-	/**
-	 * Merge messages maintaining chronological order
-	 */
-	private mergeMessagesChronologically(
-		toolMessages: LLMMessage[],
-		regularMessages: LLMMessage[],
-		originalMessages: ChatMessage[]
-	): LLMMessage[] {
-		// For now, return a simple concatenation
-		// In production, this would maintain proper chronological ordering
-		return [...regularMessages, ...toolMessages];
 	}
 }

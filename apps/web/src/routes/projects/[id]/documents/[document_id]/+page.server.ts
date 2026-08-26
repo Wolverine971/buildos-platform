@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects-old/[id]/documents/[document_id]/+page.server.ts
+// apps/web/src/routes/projects/[id]/documents/[document_id]/+page.server.ts
 /**
  * Document Focus Page - Server Load Function
  *

@@ -455,7 +455,7 @@
 								</div>
 
 								<div class="divide-y divide-border">
-									{#each documents as doc}
+									{#each documents as doc (doc.id)}
 										{@const status = getStatusIndicator(doc.state_key)}
 										<!-- Desktop row -->
 										<div
@@ -491,11 +491,11 @@
 											</div>
 											<div class="col-span-2 flex items-center gap-1.5">
 												<span
-													class="w-1.5 h-1.5 rounded-full {projectStatus.color}"
+													class="w-1.5 h-1.5 rounded-full {status.color}"
 												></span>
 												<span
 													class="font-mono text-2xs uppercase text-muted-foreground"
-													>{projectStatus.label}</span
+													>{status.label}</span
 												>
 											</div>
 										</div>
@@ -516,7 +516,7 @@
 												</div>
 												<div class="flex items-center gap-1.5 shrink-0">
 													<span
-														class="w-1.5 h-1.5 rounded-full {projectStatus.color}"
+														class="w-1.5 h-1.5 rounded-full {status.color}"
 													></span>
 												</div>
 											</div>

@@ -108,7 +108,6 @@
 	let isDeleting = $state(false);
 	let error = $state('');
 	let showDeleteConfirm = $state(false);
-	let hasChanges = $state(false);
 
 	// Form fields
 	let name = $state('');
@@ -372,13 +371,11 @@
 		selectedDocumentIdForModal = null;
 		// Smart refresh: only reload if changes were made
 		if (wasChanged) {
-			hasChanges = true;
 			loadGoal();
 		}
 	}
 
 	function handleLinksChanged() {
-		hasChanges = true;
 		// Invalidate cached linked entities so component will refetch
 		linkedEntities = undefined;
 	}
@@ -408,7 +405,6 @@
 			}
 
 			// Refresh linked entities to show updated milestone
-			hasChanges = true;
 			loadGoal();
 		} catch (err) {
 			console.error('Error toggling milestone complete:', err);
@@ -425,21 +421,18 @@
 
 	function handleMilestoneCreated() {
 		showMilestoneCreateModal = false;
-		hasChanges = true;
 		loadGoal();
 	}
 
 	function handleMilestoneUpdated() {
 		showMilestoneEditModal = false;
 		editingMilestoneId = null;
-		hasChanges = true;
 		loadGoal();
 	}
 
 	function handleMilestoneDeleted() {
 		showMilestoneEditModal = false;
 		editingMilestoneId = null;
-		hasChanges = true;
 		loadGoal();
 	}
 
@@ -745,10 +738,7 @@
 						<GoalMilestonesSidebarSection
 							{milestones}
 							loading={!linkedEntities}
-							{goalId}
-							goalName={name || goal?.name || 'Goal'}
 							goalState={stateKey}
-							{projectId}
 							canEdit={!isSaving && !isDeleting}
 							onAddMilestone={handleAddMilestone}
 							onEditMilestone={handleEditMilestone}

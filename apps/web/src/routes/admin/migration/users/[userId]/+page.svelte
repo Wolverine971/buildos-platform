@@ -11,7 +11,6 @@
 		AlertTriangle,
 		ExternalLink,
 		Check,
-		XCircle,
 		Clock,
 		Archive
 	} from 'lucide-svelte';
@@ -68,7 +67,6 @@
 
 	// Derived values
 	const pendingProjects = $derived(data.projects.filter((p) => !p.isMigrated));
-	const migratedProjects = $derived(data.projects.filter((p) => p.isMigrated));
 	const hasErrors = $derived(data.errors.length > 0);
 
 	// Handlers
@@ -96,13 +94,10 @@
 	async function handleMigrateProject(projectId: string) {
 		migrateLoading = true;
 		try {
-			const result = await apiPost<{ runId: string; totalProjects: number }>(
-				'/api/admin/migration/start',
-				{
-					projectIds: [projectId],
-					skipCompletedTasks: true
-				}
-			);
+			await apiPost<{ runId: string; totalProjects: number }>('/api/admin/migration/start', {
+				projectIds: [projectId],
+				skipCompletedTasks: true
+			});
 			setSuccess(`Migration started for project`);
 			await invalidateAll();
 		} catch (err) {
@@ -144,7 +139,7 @@
 	async function handleRetryProjectErrors(projectId: string) {
 		retryLoading = true;
 		try {
-			const result = await apiPost<{ retrying: number }>('/api/admin/migration/retry', {
+			await apiPost<{ retrying: number }>('/api/admin/migration/retry', {
 				projectId
 			});
 			setSuccess(`Retry initiated for project errors`);

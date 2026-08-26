@@ -11,7 +11,6 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { ToolExecutionService, type VirtualToolHandler } from './tool-execution-service';
 import type { ServiceContext, ToolExecutionResult } from '../shared/types';
-import { ToolExecutionError } from '../shared/types';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 
 const contextLike = (context: ServiceContext) => expect.objectContaining(context);

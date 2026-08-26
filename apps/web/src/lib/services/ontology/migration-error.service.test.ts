@@ -101,8 +101,7 @@ describe('MigrationErrorService', () => {
 				errorCategory: 'recoverable',
 				errorMessage: 'Connection timeout',
 				entityType: 'project',
-				retryCount: 3,
-				metadata: {}
+				retryCount: 3
 			});
 
 			expect(result.action).toBe('skip');
@@ -114,8 +113,7 @@ describe('MigrationErrorService', () => {
 				errorCategory: 'recoverable',
 				errorMessage: 'Connection timeout',
 				entityType: 'project',
-				retryCount: 0,
-				metadata: {}
+				retryCount: 0
 			});
 
 			expect(result.action).toBe('retry');
@@ -127,8 +125,7 @@ describe('MigrationErrorService', () => {
 				errorCategory: 'data',
 				errorMessage: 'Template match confidence below threshold',
 				entityType: 'project',
-				retryCount: 0,
-				metadata: {}
+				retryCount: 0
 			});
 
 			expect(result.action).toBe('retry_with_fallback');
@@ -141,8 +138,7 @@ describe('MigrationErrorService', () => {
 				errorCategory: 'data',
 				errorMessage: 'Schema validation failed',
 				entityType: 'task',
-				retryCount: 0,
-				metadata: {}
+				retryCount: 0
 			});
 
 			expect(result.action).toBe('retry_with_fallback');
@@ -154,8 +150,7 @@ describe('MigrationErrorService', () => {
 				errorCategory: 'data',
 				errorMessage: 'Foreign key constraint violation',
 				entityType: 'task',
-				retryCount: 0,
-				metadata: {}
+				retryCount: 0
 			});
 
 			expect(result.action).toBe('manual_fix');
@@ -168,8 +163,7 @@ describe('MigrationErrorService', () => {
 				errorCategory: 'fatal',
 				errorMessage: 'Corrupted data',
 				entityType: 'project',
-				retryCount: 0,
-				metadata: {}
+				retryCount: 0
 			});
 
 			expect(result.action).toBe('skip');
@@ -181,8 +175,7 @@ describe('MigrationErrorService', () => {
 				errorCategory: null,
 				errorMessage: 'Unknown error',
 				entityType: 'project',
-				retryCount: 0,
-				metadata: {}
+				retryCount: 0
 			});
 
 			expect(result.action).toBe('retry');
@@ -194,8 +187,7 @@ describe('MigrationErrorService', () => {
 				errorCategory: 'data',
 				errorMessage: 'Template match failed',
 				entityType: 'phase',
-				retryCount: 0,
-				metadata: {}
+				retryCount: 0
 			});
 
 			expect(result.fallbackTemplate).toBe('plan.timebox.sprint');
@@ -206,8 +198,7 @@ describe('MigrationErrorService', () => {
 				errorCategory: 'data',
 				errorMessage: 'Template match failed',
 				entityType: 'calendar',
-				retryCount: 0,
-				metadata: {}
+				retryCount: 0
 			});
 
 			// Calendar has no fallback

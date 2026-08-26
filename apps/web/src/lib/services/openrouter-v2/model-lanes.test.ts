@@ -11,7 +11,7 @@ import {
 	OPENROUTER_V2_TEXT_MODELS,
 	OPENROUTER_V2_TOOL_MODELS,
 	OPENROUTER_V2_TOOL_MODELS_EXACTO,
-	OX_ALPHA_MODEL,
+	GLM_53_FLASH_MODEL,
 	TEXT_PROFILE_MODELS
 } from '@buildos/smart-llm';
 import { resolveLaneModels, resolveLaneReasoning } from './model-lanes';
@@ -61,14 +61,14 @@ describe('resolveLaneModels', () => {
 		);
 	});
 
-	it('allows Ox Alpha only when explicitly selected for a compatible trial lane', () => {
+	it('allows GLM 5.3 Flash when explicitly selected for the dev tool lane', () => {
 		const result = resolveLaneModels({
 			lane: 'tool_calling',
-			model: OX_ALPHA_MODEL
+			model: GLM_53_FLASH_MODEL
 		});
 
-		expect(result[0]).toBe(OX_ALPHA_MODEL);
-		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(OX_ALPHA_MODEL);
+		expect(result[0]).toBe(GLM_53_FLASH_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GLM_53_FLASH_MODEL);
 	});
 
 	it('filters explicit unknown or lane-incompatible models before defaults', () => {

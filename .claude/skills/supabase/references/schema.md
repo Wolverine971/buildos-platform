@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 240 tables, grouped by domain.
+Complete column listing for all 243 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-08-25T18:54:57.108Z
+**Schema generated:** 2026-08-26T21:41:21.629Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -28,7 +28,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [Daily Briefs](#daily-briefs) (5 tables)
 - [Monitoring & Analytics](#monitoring--analytics) (10 tables)
 - [Web & Webhooks](#web--webhooks) (4 tables)
-- [Other](#other) (39 tables)
+- [Other](#other) (42 tables)
 
 ---
 
@@ -536,7 +536,7 @@ attempts `number?` · channel `string` · channel_identifier `string?` · clicke
 
 ### notification_events
 
-actor_user_id `string?` · correlation_id `string?` · created_at `string?` · event_source `string` · event_type `string` · id `string` · metadata `Json?` · payload `Json` · target_user_id `string?`
+actor_user_id `string?` · correlation_id `string?` · created_at `string?` · cycle_run_id `string?` · event_source `string` · event_type `string` · id `string` · metadata `Json?` · payload `Json` · target_user_id `string?`
 
 ### notification_logs
 
@@ -905,6 +905,18 @@ event_type `string` · execution_generation `number` · id `number` · observati
 ### agentic_chat_prepared_prompts
 
 cache_key `string` · consumed_at `string?` · context_cache_version `number` · context_payload `Json` · context_payload_sha256 `string` · context_type `string` · conversation_summary `string?` · created_at `string` · default_surface_profile `string` · entity_id `string?` · expires_at `string` · history_compressed `boolean?` · history_for_model `Json` · history_for_model_count `number?` · history_strategy `string?` · id `string` · nonce_sha256 `string` · prepared_surfaces `Json` · project_focus `Json?` · project_id `string?` · prompt_variant `string` · raw_history_count `number?` · session_id `string?` · updated_at `string` · user_id `string`
+
+### cycle_runs
+
+attempt_count `number` · created_at `string` · cycle_id `string` · cycle_version `number` · definition_snapshot `Json` · delivery_intent `Json` · error_code `string?` · error_message `string?` · execution_input `Json` · finished_at `string?` · id `string` · idempotency_key `string` · kind `string` · occurrence_key `string` · outcome `Json?` · processing_token `string?` · project_id `string?` · queue_job_id `string?` · queue_job_record_id `string?` · queued_at `string?` · result `Json?` · scheduled_for `string?` · started_at `string?` · status `string` · trigger `string` · trigger_id `string?` · trigger_snapshot `Json?` · triggered_at `string` · updated_at `string` · user_id `string`
+
+### cycle_triggers
+
+created_at `string` · cycle_id `string` · deleted_at `string?` · id `string` · last_fired_at `string?` · next_run_at `string?` · scheduler_claim_expires_at `string?` · scheduler_claim_token `string?` · spec `Json` · state `string` · trigger_type `string` · updated_at `string` · version `number`
+
+### cycles
+
+attention_policy `string` · config `Json` · create_request_fingerprint `string` · create_request_id `string` · created_at `string` · deleted_at `string?` · id `string` · kind `string` · label `string` · last_error `string?` · last_run_at `string?` · last_run_id `string?` · next_run_at `string?` · policy `Json` · project_id `string?` · state `string` · target_type `string` · updated_at `string` · user_id `string` · version `number`
 
 ### domain_research_queue
 

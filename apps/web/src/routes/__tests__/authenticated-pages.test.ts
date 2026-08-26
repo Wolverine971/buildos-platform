@@ -112,9 +112,9 @@ describe('Authenticated Pages', () => {
 		});
 	});
 
-	describe('/projects-old page', () => {
+	describe('/projects page', () => {
 		it('returns actorId, projectCount, and streamed projects', async () => {
-			const { load } = await import('../projects-old/+page.server');
+			const { load } = await import('../projects/+page.server');
 			const depends = vi.fn();
 			const countQuery = createCountQuery(3);
 			const supabase = {
@@ -144,7 +144,7 @@ describe('Authenticated Pages', () => {
 		});
 
 		it('rejects unauthenticated users', async () => {
-			const { load } = await import('../projects-old/+page.server');
+			const { load } = await import('../projects/+page.server');
 			await expect(
 				load({
 					locals: {

@@ -39,15 +39,8 @@ export function calculateAvailableSlots(
 		// 2. Get all occupied slots for this day (with buffer applied)
 		const occupied = getOccupiedSlotsForDay(dayDate, blocks, calendarEvents, config.bufferTime);
 
-		// DEBUG: Log Saturday processing
-		const dayName = dayDate.toLocaleDateString('en-US', {
-			weekday: 'short',
-			month: 'short',
-			day: 'numeric'
-		});
-
 		// 3. Clip occupied slots to day boundaries (buffer might extend beyond)
-		const clippedOccupied = clipSlotsToBoundaries(occupied, dayStart, dayEnd, dayName);
+		const clippedOccupied = clipSlotsToBoundaries(occupied, dayStart, dayEnd);
 
 		// 4. Sort by start time for gap detection
 		clippedOccupied.sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -170,8 +163,7 @@ function getOccupiedSlotsForDay(
 function clipSlotsToBoundaries(
 	slots: OccupiedTimeSlot[],
 	dayStart: Date,
-	dayEnd: Date,
-	dayName: string
+	dayEnd: Date
 ): OccupiedTimeSlot[] {
 	const clipped: OccupiedTimeSlot[] = [];
 

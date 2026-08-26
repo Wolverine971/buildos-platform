@@ -4,13 +4,13 @@ import {
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GLM_52_MODEL,
+	GLM_53_FLASH_MODEL,
 	GPT_56_LUNA_MODEL,
 	GROK_46_MODEL,
 	KIMI_CODING_MODEL,
 	KIMI_K3_MODEL,
 	MINIMAX_M3_MODEL,
 	NEX_N2_MINI_MODEL,
-	OX_ALPHA_MODEL,
 	POOLSIDE_LAGUNA_XS_21_MODEL,
 	resolveModelPricingProfile,
 	TENCENT_HY3_MODEL,
@@ -19,21 +19,22 @@ import {
 } from './model-config';
 
 describe('resolveModelPricingProfile', () => {
-	it('catalogs Ox Alpha as a zero-cost explicit-only dev trial', () => {
-		const result = resolveModelPricingProfile(OX_ALPHA_MODEL);
+	it('catalogs GLM 5.3 Flash at its launch-discount price with production capabilities', () => {
+		const result = resolveModelPricingProfile(GLM_53_FLASH_MODEL);
 
-		expect(result?.modelId).toBe(OX_ALPHA_MODEL);
-		expect(result?.profile.cost).toBe(0);
-		expect(result?.profile.outputCost).toBe(0);
+		expect(result?.modelId).toBe(GLM_53_FLASH_MODEL);
+		expect(result?.profile.cost).toBe(0.075);
+		expect(result?.profile.outputCost).toBe(0.25);
 		expect(result?.profile.capabilities).toMatchObject({
 			jsonMode: true,
+			structuredOutputs: true,
 			tools: true,
 			reasoning: true,
 			multimodal: true,
 			longContext: true
 		});
-		expect(result?.profile.limitations).toContain('not-default-production-routing');
-		expect(result?.profile.limitations).toContain('non-zdr-endpoint');
+		expect(result?.profile.limitations).toContain('launch-discount-temporary');
+		expect(result?.profile.limitations).toContain('not-balanced-production-routing');
 	});
 
 	it('normalizes provider date-suffixed model ids for pricing', () => {
@@ -66,6 +67,7 @@ describe('resolveModelPricingProfile', () => {
 
 	it('normalizes newly added OpenRouter endpoint ids for pricing', () => {
 		const glm = resolveModelPricingProfile('z-ai/glm-5.2-20260616');
+		const glmFlash = resolveModelPricingProfile('z-ai/glm-5.3-flash-20260826');
 		const minimax = resolveModelPricingProfile('minimax/minimax-m3-20260531');
 		const mimo = resolveModelPricingProfile('xiaomi/mimo-v2.5-20260422');
 		const hy3 = resolveModelPricingProfile('tencent/hy3-preview-20260421');
@@ -76,6 +78,9 @@ describe('resolveModelPricingProfile', () => {
 		expect(glm?.modelId).toBe(GLM_52_MODEL);
 		expect(glm?.profile.cost).toBe(0.9226);
 		expect(glm?.profile.outputCost).toBe(2.8996);
+		expect(glmFlash?.modelId).toBe(GLM_53_FLASH_MODEL);
+		expect(glmFlash?.profile.cost).toBe(0.075);
+		expect(glmFlash?.profile.outputCost).toBe(0.25);
 		expect(minimax?.modelId).toBe(MINIMAX_M3_MODEL);
 		expect(minimax?.profile.cost).toBe(0.3);
 		expect(minimax?.profile.outputCost).toBe(1.2);

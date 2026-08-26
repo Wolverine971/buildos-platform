@@ -214,21 +214,34 @@ async function fetchLinkedEntities(
 	// Group entity IDs by type with edge info
 	const entityMap = new Map<
 		string,
-		{ kind: EntityKind; edgeId: string; rel: string; direction: 'outgoing' | 'incoming' }
+		{
+			id: string;
+			kind: EntityKind;
+			edgeId: string;
+			rel: string;
+			direction: 'outgoing' | 'incoming';
+		}
 	>();
 
 	const isContainmentRel = (rel: string): boolean =>
 		CONTAINMENT_RELS.includes(rel as (typeof CONTAINMENT_RELS)[number]);
 
 	for (const edge of edges) {
-		const isSource = edge.src_id === sourceId;
+		const matchesSourceEndpoint = edge.src_id === sourceId && edge.src_kind === sourceKind;
+		const matchesDestinationEndpoint = edge.dst_id === sourceId && edge.dst_kind === sourceKind;
+		if (!matchesSourceEndpoint && !matchesDestinationEndpoint) continue;
+
+		const isSource = matchesSourceEndpoint;
 		const linkedId = isSource ? edge.dst_id : edge.src_id;
 		const linkedKind = isSource ? edge.dst_kind : edge.src_kind;
 
 		// Skip self-references and invalid kinds
-		if (linkedId === sourceId || !isValidKind(linkedKind)) continue;
+		if ((linkedId === sourceId && linkedKind === sourceKind) || !isValidKind(linkedKind)) {
+			continue;
+		}
 
-		const existing = entityMap.get(linkedId);
+		const entityKey = `${linkedKind}:${linkedId}`;
+		const existing = entityMap.get(entityKey);
 		if (existing) {
 			const existingIsContainment = isContainmentRel(existing.rel);
 			const nextIsContainment = isContainmentRel(edge.rel);
@@ -237,7 +250,8 @@ async function fetchLinkedEntities(
 			}
 		}
 
-		entityMap.set(linkedId, {
+		entityMap.set(entityKey, {
+			id: linkedId,
 			kind: linkedKind,
 			edgeId: edge.id,
 			rel: edge.rel,
@@ -257,8 +271,8 @@ async function fetchLinkedEntities(
 		requirement: []
 	};
 
-	for (const [id, info] of entityMap) {
-		idsByKind[info.kind].push(id);
+	for (const info of entityMap.values()) {
+		idsByKind[info.kind].push(info.id);
 	}
 
 	// Fetch entity details in parallel
@@ -358,12 +372,18 @@ function mapEntitiesToLinked(
 	entities: any[],
 	entityMap: Map<
 		string,
-		{ kind: EntityKind; edgeId: string; rel: string; direction: 'outgoing' | 'incoming' }
+		{
+			id: string;
+			kind: EntityKind;
+			edgeId: string;
+			rel: string;
+			direction: 'outgoing' | 'incoming';
+		}
 	>,
 	kind: EntityKind
 ): LinkedEntity[] {
 	return entities.map((e) => {
-		const info = entityMap.get(e.id);
+		const info = entityMap.get(`${kind}:${e.id}`);
 		return {
 			id: e.id,
 			name: e.name,

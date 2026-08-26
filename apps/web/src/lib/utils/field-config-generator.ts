@@ -4,9 +4,6 @@ import type { Database } from '@buildos/shared-types';
 // Extract table names from the database
 type TableName = keyof Database['public']['Tables'];
 
-// Extract insert type for a table
-type TableInsertType<T extends TableName> = Database['public']['Tables'][T]['Insert'];
-
 // Field configuration interface
 export interface FieldConfig {
 	type:
@@ -184,13 +181,6 @@ export function generateFieldConfig<T extends TableName>(
 	customOverrides: Partial<Record<string, Partial<FieldConfig>>> = {},
 	operationType: 'create' | 'update' = 'create'
 ): Record<string, FieldConfig> {
-	// Get the insert type for the table (we use Insert type to determine required fields)
-	type InsertType = TableInsertType<T>;
-
-	// For demo purposes, we'll create a sample insert type structure
-	// In practice, you might need to introspect this more carefully
-	const sampleInsertType = {} as InsertType;
-
 	// Get all possible fields from the database schema
 	// This is a simplified approach - you might want to use a more sophisticated type introspection
 	const allFields = getAllFieldsForTable(tableName);

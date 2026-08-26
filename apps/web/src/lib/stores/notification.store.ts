@@ -232,7 +232,7 @@ function createInitialState(): NotificationStoreState {
 // ============================================================================
 
 export function createNotificationStore() {
-	const { subscribe, set, update } = writable<NotificationStoreState>(createInitialState());
+	const { subscribe, update } = writable<NotificationStoreState>(createInitialState());
 
 	// Auto-close timers
 	const autoCloseTimers = new Map<string, ReturnType<typeof setTimeout>>();

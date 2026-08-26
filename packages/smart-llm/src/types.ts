@@ -135,6 +135,8 @@ export interface TextGenerationOptions {
 	temperature?: number;
 	maxTokens?: number;
 	timeoutMs?: number;
+	/** Caller-owned cancellation, combined with the provider timeout. */
+	signal?: AbortSignal;
 	streaming?: boolean;
 	requirements?: {
 		maxLatency?: number;

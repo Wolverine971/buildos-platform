@@ -6,14 +6,16 @@ import {
 	DEFAULT_CYCLE_EXECUTION_POLICY,
 	validateCycleInput,
 	type CreateCycleInput,
+	type CreateCycleTriggerInput,
 	type CycleAttentionPolicy,
 	type CycleDefinition,
 	type CycleExecutionPolicy,
 	type CycleKind,
 	type CycleRun,
-	type CycleRunAdmissionResult
+	type CycleRunAdmissionResult,
+	type CycleTrigger
 } from '@buildos/shared-types';
-import { materializeCycleTriggers } from './cycle-schedule';
+import { calculateNextCycleScheduleAt, materializeCycleTriggers } from './cycle-schedule';
 
 type SupabaseLike = any;
 type UnknownRecord = Record<string, any>;
@@ -158,7 +160,8 @@ const updateCycleSchema = z
 		config: z.record(z.unknown()).optional(),
 		policy: executionPolicySchema.optional(),
 		attention_policy: attentionPolicySchema.optional(),
-		state: cycleStateSchema.optional()
+		state: cycleStateSchema.optional(),
+		triggers: z.array(triggerSchema).min(1).optional()
 	})
 	.strict()
 	.refine(
@@ -432,6 +435,7 @@ export async function updateCycle(params: {
 	userId: string;
 	cycleId: string;
 	payload: unknown;
+	now?: Date;
 }): Promise<CycleDefinition> {
 	if (!cycleIdSchema.safeParse(params.cycleId).success) {
 		throw new CycleServiceError('Cycle ID must be a UUID.', 400, 'INVALID_REQUEST');
@@ -442,26 +446,86 @@ export async function updateCycle(params: {
 
 	const { expected_version: expectedVersion, ...patch } = parsed.data;
 	const patchKeys = Object.keys(patch);
+	const triggerOnly = patchKeys.length === 1 && Array.isArray(patch.triggers);
+	if (patch.triggers && !triggerOnly) {
+		throw new CycleServiceError(
+			'A trigger replacement must be saved as one atomic schedule change.',
+			400,
+			'INVALID_REQUEST'
+		);
+	}
 	const stateOnly = patchKeys.length === 1 && patch.state;
-	const rpcName =
-		stateOnly === 'paused'
+	const rpcName = triggerOnly
+		? 'replace_cycle_triggers'
+		: stateOnly === 'paused'
 			? 'pause_cycle'
 			: stateOnly === 'active'
 				? 'resume_cycle'
 				: 'update_cycle';
+	const replacementTriggers = triggerOnly
+		? materializeCycleTriggers(patch.triggers as CreateCycleTriggerInput[], params.now)
+		: undefined;
+	let triggerProjections: Array<{ trigger_id: string; next_run_at: string }> | undefined;
+	if (rpcName === 'resume_cycle') {
+		const cycle = await getCycle({
+			client: params.readClient,
+			userId: params.userId,
+			cycleId: params.cycleId
+		});
+		const now = params.now ?? new Date();
+		const futureReference = new Date(now.getTime() + 1);
+		triggerProjections = cycle.triggers
+			.filter(
+				(trigger): trigger is Extract<CycleTrigger, { type: 'schedule' | 'relative' }> =>
+					trigger.state === 'active' &&
+					(trigger.type === 'schedule' || trigger.type === 'relative')
+			)
+			.map((trigger) => {
+				if (trigger.type === 'schedule') {
+					return {
+						trigger_id: trigger.id,
+						next_run_at: calculateNextCycleScheduleAt(
+							trigger.schedule,
+							futureReference
+						).toISOString()
+					};
+				}
+				if (
+					trigger.next_run_at &&
+					Date.parse(trigger.next_run_at) > futureReference.getTime()
+				) {
+					return { trigger_id: trigger.id, next_run_at: trigger.next_run_at };
+				}
+				throw new CycleServiceError(
+					'This Cycle needs a fresh relative-trigger projection before it can resume.',
+					409,
+					'CYCLE_TRIGGER_PROJECTION_STALE'
+				);
+			});
+	}
 	const rpcParameters =
-		rpcName === 'update_cycle'
+		rpcName === 'replace_cycle_triggers'
 			? {
 					p_user_id: params.userId,
 					p_cycle_id: params.cycleId,
 					p_expected_version: expectedVersion,
-					p_patch: patch
+					p_triggers: replacementTriggers
 				}
-			: {
-					p_user_id: params.userId,
-					p_cycle_id: params.cycleId,
-					p_expected_version: expectedVersion
-				};
+			: rpcName === 'update_cycle'
+				? {
+						p_user_id: params.userId,
+						p_cycle_id: params.cycleId,
+						p_expected_version: expectedVersion,
+						p_patch: patch
+					}
+				: {
+						p_user_id: params.userId,
+						p_cycle_id: params.cycleId,
+						p_expected_version: expectedVersion,
+						...(rpcName === 'resume_cycle'
+							? { p_trigger_projections: triggerProjections ?? [] }
+							: {})
+					};
 
 	await runRpc<UnknownRecord>(
 		params.commandClient,

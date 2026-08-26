@@ -107,6 +107,11 @@
 			"import": "./dist/ontology/versioning.service.mjs",
 			"require": "./dist/ontology/versioning.service.js"
 		},
+		"./ontology/document-write.service": {
+			"types": "./dist/ontology/document-write.service.d.ts",
+			"import": "./dist/ontology/document-write.service.mjs",
+			"require": "./dist/ontology/document-write.service.js"
+		},
 		"./ops/update-value-validation": {
 			"types": "./dist/ops/update-value-validation.d.ts",
 			"import": "./dist/ops/update-value-validation.mjs",
@@ -268,7 +273,7 @@
 		"marked": "^16.1.1",
 		"marked-gfm-heading-id": "^4.1.3",
 		"posthog-node": "^5.39.2",
-		"undici": "^6.27.0",
+		"undici": "^6.28.0",
 		"zod": "^3.23.0"
 	},
 	"devDependencies": {

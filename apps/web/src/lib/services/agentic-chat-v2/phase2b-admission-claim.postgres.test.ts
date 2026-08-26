@@ -98,7 +98,25 @@ describePostgres('agentic-chat worker Phase 2B admission/claim PostgreSQL contra
 			'20260801041100_agentic_chat_worker_effect_rpcs.sql',
 			'20260802020000_agentic_chat_worker_atomic_admission.sql',
 			'20260802020100_agentic_chat_worker_claim_fencing.sql',
-			'20260824205329_attach_worker_voice_note_groups.sql'
+			'20260802029900_agentic_chat_worker_message_idempotency_guard.sql'
+		]) {
+			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
+		}
+		applySqlFile(
+			sqlPath(
+				'supabase/tests/fixtures/agentic_chat_worker_phase2b_terminal_control_legacy_event.sql'
+			)
+		);
+		for (const migration of [
+			'20260802030000_agentic_chat_worker_event_identity_foundation.sql',
+			'20260802030100_agentic_chat_worker_create_event_generation_index.sql',
+			'20260802030200_agentic_chat_worker_create_event_identity_index.sql',
+			'20260802030300_agentic_chat_worker_validate_event_identity_indexes.sql',
+			'20260802030400_agentic_chat_worker_drop_legacy_event_sequence.sql',
+			'20260802030500_agentic_chat_worker_terminal_control_rpcs.sql',
+			'20260802031000_agentic_chat_worker_execution_recovery.sql',
+			'20260824205329_attach_worker_voice_note_groups.sql',
+			'20260825161846_agentic_chat_queue_first_admission.sql'
 		]) {
 			applySqlFile(sqlPath(`supabase/migrations/${migration}`));
 		}

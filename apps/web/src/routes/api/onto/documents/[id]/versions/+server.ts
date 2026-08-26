@@ -15,6 +15,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { requireProjectEntityAccess } from '$lib/server/ontology-api-access';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { isVersionWindowOpen } from '$lib/services/ontology/versioning.service';
 
 type Locals = App.Locals;
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
@@ -30,6 +31,13 @@ interface VersionListItem {
 	change_count: number;
 	change_source: string | null;
 	is_merged: boolean;
+	/**
+	 * True while this version's coalescing window is still open, meaning further
+	 * edits from the same actor will be absorbed into it and its snapshot is not
+	 * final. Only the newest version can be open. History surfaces present an open
+	 * version as work in progress rather than as a sealed revision — roadmap §5.3.
+	 */
+	is_open: boolean;
 	is_restore: boolean;
 	restored_by_user_id: string | null;
 	restore_of_version: number | null;
@@ -209,10 +217,14 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			}
 		}
 
-		// Transform to response format
-		const transformedVersions: VersionListItem[] = versionList.map((v) => {
+		// Transform to response format. Only the newest version of a document can
+		// still be absorbing edits, and only when the listing starts at the head
+		// (no cursor) — a paginated page never contains it.
+		const now = new Date();
+		const transformedVersions: VersionListItem[] = versionList.map((v, index) => {
 			const props = (v.props ?? {}) as Record<string, unknown>;
 			const window = props.window as { started_at: string; ended_at: string } | undefined;
+			const isNewest = !cursor && index === 0;
 
 			return {
 				id: v.id,
@@ -225,6 +237,8 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 				change_count: (props.change_count as number) ?? 1,
 				change_source: (props.change_source as string) ?? null,
 				is_merged: (props.is_merged as boolean) ?? false,
+				is_open:
+					isNewest && isVersionWindowOpen({ window, createdAt: v.created_at }, { now }),
 				is_restore: Boolean(props.restore_of_version),
 				restored_by_user_id: (props.restored_by_user_id as string) ?? null,
 				restore_of_version: (props.restore_of_version as number) ?? null

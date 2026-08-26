@@ -458,20 +458,4 @@ export class MigrationRollbackService {
 		deadline.setDate(deadline.getDate() + SOFT_DELETE_RECOVERY_DAYS);
 		return deadline.toISOString();
 	}
-
-	/**
-	 * Recover soft-deleted entities (undo soft rollback)
-	 */
-	async recoverSoftDeleted(runId: string): Promise<{
-		recovered: number;
-		mappingsRestored: number;
-	}> {
-		// This would restore soft-deleted entities by clearing deleted_at
-		// For now, return a placeholder - full implementation would need to:
-		// 1. Find entities that were soft-deleted as part of this run
-		// 2. Clear their deleted_at
-		// 3. Restore mappings if needed
-
-		throw new Error('Recovery from soft delete not yet implemented. Contact support.');
-	}
 }

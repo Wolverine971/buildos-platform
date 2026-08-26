@@ -20,6 +20,8 @@ jobs:
         timeout-minutes: 30
         steps:
             - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
             # Reads the pnpm version from the packageManager field in package.json
             - uses: pnpm/action-setup@v4
@@ -32,6 +34,15 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
 
+            # GitHub's runner installs PostgreSQL outside PATH. Add it before
+            # `verify` so every disposable .postgres.test.ts suite actually
+            # runs instead of taking its intentional local skip path.
+            - name: Add PostgreSQL tools to PATH
+              run: |
+                  PG_BIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -n 1)"
+                  test -n "$PG_BIN" || { echo "::error::no postgres binaries on runner"; exit 1; }
+                  echo "$PG_BIN" >> "$GITHUB_PATH"
+
             # SvelteKit $env/static modules need values present at build/test time.
             # CI has no real secrets; the example files provide placeholder values.
             - name: Provide placeholder env
@@ -40,14 +51,10 @@ jobs:
                   cp apps/web/.env.example apps/web/.env
                   cp apps/worker/.env.example apps/worker/.env
 
-            - name: Typecheck
-              run: pnpm turbo typecheck
-
-            - name: Schema tooling tests
-              run: pnpm test:schema-tools
-
-            - name: Lint
-              run: pnpm turbo lint
+            - name: Verify repository contract
+              env:
+                  MIGRATION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+              run: pnpm verify
 
             - name: Test coverage
               run: pnpm turbo test:coverage
@@ -57,11 +64,10 @@ jobs:
             # ship postgres binaries outside PATH; the suite skips gracefully if
             # none are found, so surface the bin dir explicitly.
             - name: Deep-research DB integration tests
-              run: |
-                  PG_BIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -n 1)"
-                  if [ -n "$PG_BIN" ]; then export PATH="$PG_BIN:$PATH"; fi
-                  command -v initdb >/dev/null || { echo "::error::no postgres binaries on runner"; exit 1; }
-                  pnpm --filter @buildos/worker test:deep-research:integration
+              run: pnpm --filter @buildos/worker test:deep-research:integration
+
+            - name: Self-contained Supabase SQL contracts
+              run: pnpm test:sql-contracts
 
             - name: Upload coverage artifacts
               if: always()

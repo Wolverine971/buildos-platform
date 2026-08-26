@@ -237,7 +237,6 @@
 		/>
 	{:else if currentStep === 1}
 		<ProjectsCaptureStep
-			userContext={data.userContext}
 			onNext={handleProjectCaptureDone}
 			onProjectsCreated={handleProjectsCreated}
 			onCalendarAnalyzed={handleCalendarAnalyzed}
@@ -253,10 +252,6 @@
 			onEmailEnabled={handleEmailEnabled}
 		/>
 	{:else if currentStep === 3}
-		<ReadyStep
-			userId={data.user.id}
-			summary={v3Data}
-			onboardingStartedAtMs={onboardingStartTime}
-		/>
+		<ReadyStep summary={v3Data} onboardingStartedAtMs={onboardingStartTime} />
 	{/if}
 </div>

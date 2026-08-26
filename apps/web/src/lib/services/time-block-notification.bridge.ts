@@ -215,13 +215,13 @@ function updateTimeBlockNotification(notificationId: string, block: TimeBlockWit
 	});
 
 	if (status === 'success') {
-		startAutoMinimizeTimer(notificationId, block.id);
+		startAutoMinimizeTimer(notificationId);
 	} else {
 		clearAutoMinimizeTimer(notificationId);
 	}
 }
 
-function startAutoMinimizeTimer(notificationId: string, blockId: string): void {
+function startAutoMinimizeTimer(notificationId: string): void {
 	clearAutoMinimizeTimer(notificationId);
 
 	if (typeof window === 'undefined') return;

@@ -8,6 +8,7 @@ import {
 	GEMINI_31_FLASH_LITE_MODEL,
 	GEMINI_37_FLASH_MODEL,
 	GLM_52_MODEL,
+	GLM_53_FLASH_MODEL,
 	GPT_56_LUNA_MODEL,
 	GROK_46_MODEL,
 	JSON_PROFILE_MODELS,
@@ -258,6 +259,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(GPT_56_LUNA_MODEL);
+		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(GLM_53_FLASH_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(GROK_46_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(KIMI_K3_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
@@ -272,6 +274,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(GEMINI_37_FLASH_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GPT_56_LUNA_MODEL);
+		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GLM_53_FLASH_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GROK_46_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(KIMI_K3_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
@@ -283,6 +286,7 @@ describe('ensureToolCompatibleModels', () => {
 
 		expect(OPENROUTER_V2_TOOL_MODELS[0]).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(GLM_52_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GLM_53_FLASH_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(TENCENT_HY3_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(MINIMAX_M3_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
@@ -298,35 +302,41 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(MINIMAX_M3_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(NEX_N2_MINI_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
+		expect(OPENROUTER_V2_MULTIMODAL_MODELS).not.toContain(GLM_53_FLASH_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).not.toContain('legacy/removed-preview');
 	});
 
 	it('uses stronger specialist models only for quality and maximum profiles', () => {
 		expect(TEXT_PROFILE_MODELS.speed[0]).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(TEXT_PROFILE_MODELS.speed).toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
-		expect(ACTIVE_EXPERIMENT_MODEL).toBe(GPT_56_LUNA_MODEL);
+		expect(ACTIVE_EXPERIMENT_MODEL).toBe(GLM_53_FLASH_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality[0]).toBe(GEMINI_37_FLASH_MODEL);
-		expect(TEXT_PROFILE_MODELS.quality).toContain(GLM_52_MODEL);
+		expect(TEXT_PROFILE_MODELS.quality[1]).toBe(GLM_53_FLASH_MODEL);
+		expect(TEXT_PROFILE_MODELS.quality).not.toContain(GLM_52_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(DEEPSEEK_V4_PRO_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(GPT_56_LUNA_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(GROK_46_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).not.toContain(KIMI_K3_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).not.toContain(KIMI_CODING_MODEL);
-		expect(TEXT_PROFILE_MODELS.creative[0]).toBe(GLM_52_MODEL);
+		expect(TEXT_PROFILE_MODELS.creative[0]).toBe(GLM_53_FLASH_MODEL);
+		expect(TEXT_PROFILE_MODELS.creative).not.toContain(GLM_52_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).toEqual([...MAXIMUM_WORK_MODEL_ORDER]);
 		expect(TEXT_PROFILE_MODELS.maximum[0]).toBe(MAXIMUM_WORK_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).toContain(GPT_56_LUNA_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).toContain(GROK_46_MODEL);
+		expect(TEXT_PROFILE_MODELS.maximum).toContain(GLM_53_FLASH_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).not.toContain(KIMI_CODING_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).not.toContain(KIMI_EXPERIMENT_MODEL);
 
 		expect(JSON_PROFILE_MODELS.fast).not.toContain(DEEPSEEK_V4_PRO_MODEL);
 		expect(JSON_PROFILE_MODELS.fast).toContain(NEX_N2_MINI_MODEL);
 		expect(JSON_PROFILE_MODELS.powerful[0]).toBe(GEMINI_37_FLASH_MODEL);
+		expect(JSON_PROFILE_MODELS.powerful[1]).toBe(GLM_53_FLASH_MODEL);
 		expect(JSON_PROFILE_MODELS.powerful).toContain(GLM_52_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum[0]).toBe(KIMI_K3_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).toContain(GPT_56_LUNA_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).toContain(GROK_46_MODEL);
+		expect(JSON_PROFILE_MODELS.maximum).toContain(GLM_53_FLASH_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).not.toContain(KIMI_CODING_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).not.toContain(TENCENT_HY3_MODEL);
@@ -336,7 +346,7 @@ describe('ensureToolCompatibleModels', () => {
 		const models = selectJSONModels('custom', 'simple', { maxCost: 0.2 });
 
 		expect(models).toContain(NEX_N2_MINI_MODEL);
-		expect(models).toContain(XIAOMI_MIMO_V25_MODEL);
+		expect(models).toContain(GLM_53_FLASH_MODEL);
 		expect(models).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
 		expect(models).not.toContain(TENCENT_HY3_MODEL);
 		expect(models).not.toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
@@ -349,6 +359,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(supportsJsonMode(DEEPSEEK_V4_FLASH_MODEL)).toBe(true);
 		expect(supportsJsonMode(DEEPSEEK_V4_PRO_MODEL)).toBe(true);
 		expect(supportsJsonMode(GLM_52_MODEL)).toBe(true);
+		expect(supportsJsonMode(GLM_53_FLASH_MODEL)).toBe(true);
 		expect(supportsJsonMode(MINIMAX_M3_MODEL)).toBe(true);
 		expect(supportsJsonMode(NEX_N2_MINI_MODEL)).toBe(true);
 		expect(supportsJsonMode(XIAOMI_MIMO_V25_MODEL)).toBe(true);

@@ -87,15 +87,15 @@ INSERT INTO public.chat_turn_events (
 SELECT
 	'de000000-0000-4000-8000-000000000001',
 	turns.id, turns.session_id, turns.user_id, turns.stream_run_id,
-	turns.execution_generation, 1, 'model', 'text_delta',
-	'{"type":"text_delta","delta":"ok"}'::jsonb
-FROM public.chat_turn_runs turns
-WHERE turns.id = 'd4000000-0000-4000-8000-000000000001';
+		turns.execution_generation, 2, 'model', 'text_delta',
+		'{"type":"text_delta","delta":"ok"}'::jsonb
+	FROM public.chat_turn_runs turns
+	WHERE turns.id = 'ce400000-0000-4000-8000-000000000040';
 
 SELECT pg_temp.assert_true(
 	(
 		SELECT events.event_id = events.turn_run_id::text
-			|| ':' || events.execution_generation::text || ':1'
+				|| ':' || events.execution_generation::text || ':2'
 		FROM public.chat_turn_events events
 		WHERE events.id = 'de000000-0000-4000-8000-000000000001'
 	),
@@ -122,7 +122,7 @@ SELECT pg_temp.assert_true(
 				turns.id, turns.session_id, turns.user_id, turns.stream_run_id,
 				turns.execution_generation - 1, 2, 'model', 'text_delta', '{}'::jsonb
 			FROM public.chat_turn_runs turns
-			WHERE turns.id = 'd4000000-0000-4000-8000-000000000001'
+				WHERE turns.id = 'ce400000-0000-4000-8000-000000000040'
 		$test$,
 		'agentic_chat_turn_event_stale_generation'
 	),
@@ -158,11 +158,11 @@ SELECT
 	'test', 'text_delta', '{}'::jsonb
 FROM public.chat_turn_runs turns
 CROSS JOIN (VALUES (41), (42)) AS generations(generation)
-WHERE turns.id = 'd4000000-0000-4000-8000-000000000001';
+WHERE turns.id = 'ce400000-0000-4000-8000-000000000040';
 
 SELECT pg_temp.assert_true(
 	(SELECT count(*) FROM public.chat_turn_events
-	 WHERE turn_run_id = 'd4000000-0000-4000-8000-000000000001'
+		 WHERE turn_run_id = 'ce400000-0000-4000-8000-000000000040'
 		AND sequence_index = 7) = 2,
 	'generation-scoped key still rejected a valid sequence restart'
 );
@@ -177,7 +177,7 @@ SELECT pg_temp.assert_true(
 				turns.stream_run_id, 42, 7, turns.id::text || ':42:7',
 				'test', 'text_delta', '{}'::jsonb
 			FROM public.chat_turn_runs turns
-			WHERE turns.id = 'd4000000-0000-4000-8000-000000000001'
+			WHERE turns.id = 'ce400000-0000-4000-8000-000000000040'
 		$test$,
 		'duplicate key value violates unique constraint'
 	),

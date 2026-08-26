@@ -43,7 +43,6 @@
 		getPreviewSearchText,
 		getPreviewSkillPath,
 		getSearchText,
-		getSkillFamily,
 		getSkillPath,
 		getSkillPromise,
 		getTryInBuildOsPath,

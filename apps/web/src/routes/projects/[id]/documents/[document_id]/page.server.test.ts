@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects-old/[id]/documents/[document_id]/page.server.test.ts
+// apps/web/src/routes/projects/[id]/documents/[document_id]/page.server.test.ts
 import { describe, expect, it, vi } from 'vitest';
 
 import { load } from './+page.server';

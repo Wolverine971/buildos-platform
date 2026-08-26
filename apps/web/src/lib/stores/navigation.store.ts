@@ -1,6 +1,5 @@
 // apps/web/src/lib/stores/navigation.store.ts
 import { writable } from 'svelte/store';
-import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
 
 interface NavigationRequest {
@@ -9,7 +8,7 @@ interface NavigationRequest {
 }
 
 function createNavigationStore() {
-	const { subscribe, set, update } = writable<NavigationRequest | null>(null);
+	const { subscribe, set } = writable<NavigationRequest | null>(null);
 
 	return {
 		subscribe,

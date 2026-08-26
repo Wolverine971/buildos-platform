@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/notification-preferences/server.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { GET, PUT } from './+server';
 import type { RequestEvent } from '@sveltejs/kit';
 

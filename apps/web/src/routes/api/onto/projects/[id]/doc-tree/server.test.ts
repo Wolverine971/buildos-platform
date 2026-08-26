@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/projects/[id]/doc-tree/server.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 
 const loadDocumentTreePayloadMock = vi.fn();
 const updateDocStructureMock = vi.fn();

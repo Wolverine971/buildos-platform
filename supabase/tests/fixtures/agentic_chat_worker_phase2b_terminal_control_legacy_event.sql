@@ -35,6 +35,41 @@ CREATE INDEX idx_chat_turn_events_run_sequence
 CREATE INDEX idx_chat_turn_events_stream_created
 	ON public.chat_turn_events(stream_run_id, created_at DESC);
 
+-- Keep the event-identity fixture independent from the admission proof. The
+-- terminal harness can now apply later migrations before running admission
+-- without relying on a turn created as a side effect of another SQL contract.
+INSERT INTO public.users (id)
+VALUES ('ce100000-0000-4000-8000-000000000040');
+
+INSERT INTO public.chat_sessions (id, user_id, context_type, status)
+VALUES (
+	'ce200000-0000-4000-8000-000000000040',
+	'ce100000-0000-4000-8000-000000000040',
+	'global',
+	'active'
+);
+
+INSERT INTO public.chat_turn_runs (
+	id,
+	session_id,
+	user_id,
+	stream_run_id,
+	client_turn_id,
+	context_type,
+	request_message,
+	status
+)
+VALUES (
+	'ce400000-0000-4000-8000-000000000040',
+	'ce200000-0000-4000-8000-000000000040',
+	'ce100000-0000-4000-8000-000000000040',
+	'legacy-event-stream-40',
+	'legacy-event-client-40',
+	'global',
+	'legacy event fixture',
+	'running'
+);
+
 INSERT INTO public.chat_turn_events (
 	id,
 	turn_run_id,
@@ -57,4 +92,4 @@ SELECT
 	'done',
 	'{"type":"done","legacy":true}'::jsonb
 FROM public.chat_turn_runs turns
-WHERE turns.id = 'd4000000-0000-4000-8000-000000000040';
+WHERE turns.id = 'ce400000-0000-4000-8000-000000000040';

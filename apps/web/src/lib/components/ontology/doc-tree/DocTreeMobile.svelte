@@ -18,7 +18,6 @@
 	import type { DocStructure } from '$lib/types/onto-api';
 
 	interface Props {
-		projectId: string;
 		structure: DocStructure | null;
 		documents: Record<string, OntoDocument>;
 		onOpenDocument: (id: string) => void;
@@ -27,7 +26,6 @@
 	}
 
 	let {
-		projectId,
 		structure,
 		documents,
 		onOpenDocument,

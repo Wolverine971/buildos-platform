@@ -12,6 +12,8 @@ export interface LegacyJob<T> {
 	id: string;
 	processingToken?: string | null;
 	correlationId?: string | null;
+	/** Queue timeout/shutdown cancellation inherited from the owning worker. */
+	signal: AbortSignal;
 	data: T & { userId: string };
 	opts: {
 		priority?: number;
@@ -53,6 +55,7 @@ export class JobAdapter<T> {
 			id: this.processingJob.id,
 			processingToken: this.processingJob.processingToken ?? null,
 			correlationId: this.processingJob.correlationId,
+			signal: this.processingJob.signal,
 			data: {
 				...(this.processingJob.data as T),
 				userId: this.processingJob.userId // Ensure userId is at top level
@@ -145,6 +148,7 @@ export function isProcessingJob(obj: unknown): obj is ProcessingJob {
 		typeof candidate.userId === 'string' &&
 		candidate.data !== undefined &&
 		typeof candidate.attempts === 'number' &&
+		candidate.signal instanceof AbortSignal &&
 		typeof candidate.updateProgress === 'function' &&
 		typeof candidate.log === 'function'
 	);
@@ -161,6 +165,7 @@ export function isLegacyJob(obj: unknown): obj is LegacyJob<unknown> {
 		typeof candidate.id === 'string' &&
 		!!data &&
 		typeof data.userId === 'string' &&
+		candidate.signal instanceof AbortSignal &&
 		typeof candidate.opts === 'object' &&
 		typeof candidate.timestamp === 'number' &&
 		typeof candidate.attemptsMade === 'number' &&

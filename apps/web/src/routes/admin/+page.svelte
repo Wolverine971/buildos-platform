@@ -5,7 +5,6 @@
 		Users,
 		FileText,
 		Activity,
-		TrendingUp,
 		AlertCircle,
 		Zap,
 		Globe,
@@ -45,29 +44,6 @@
 	} from '$lib/services/admin/dashboard-analytics.service';
 	import { onDestroy, untrack, type ComponentType } from 'svelte';
 
-	// Type definitions for better type safety
-	type Tone = 'success' | 'info' | 'brand' | 'muted' | 'warning' | 'danger' | 'default';
-	type MetricCard = {
-		label: string;
-		value: number | string;
-		icon: ComponentType;
-		tone: Tone;
-		footnote?: string;
-		suffix?: string;
-		change?: number;
-		changeDirection?: string;
-		changeLabel?: string;
-	};
-	type NavCard = {
-		title: string;
-		description: string;
-		href: string;
-		icon: ComponentType;
-		stat?: string | null;
-		badge?: string | null;
-		meta?: string;
-		compact?: boolean;
-	};
 	type LeaderboardEntry = { email: string; count: number };
 	type BetaActivityItem = {
 		type: 'signup' | 'feedback';
@@ -172,14 +148,6 @@
 	});
 
 	let dailyActiveUsers = $state<Array<{ date: string; active_users: number }>>([]);
-	let briefGenerationStats = $state<
-		Array<{
-			date: string;
-			total_briefs: number;
-			unique_users: number;
-			avg_briefs_per_user: number;
-		}>
-	>([]);
 	let systemMetrics = $state<
 		Array<{
 			metric_name: string;
@@ -704,7 +672,6 @@
 		if (payload.dailyVisitors) dailyVisitors = payload.dailyVisitors;
 		if (payload.dailySignups) dailySignups = payload.dailySignups;
 		if (payload.dailyActiveUsers) dailyActiveUsers = payload.dailyActiveUsers;
-		if (payload.briefGenerationStats) briefGenerationStats = payload.briefGenerationStats;
 		if (payload.systemMetrics) systemMetrics = payload.systemMetrics;
 		if (payload.recentActivity) recentActivity = payload.recentActivity;
 		if (payload.feedbackOverview) feedbackOverview = payload.feedbackOverview;
@@ -924,7 +891,7 @@
 		return parts.join(' ');
 	}
 
-	function getActivityIcon(entityType: string, action: string) {
+	function getActivityIcon(entityType: string) {
 		switch (entityType) {
 			case 'brief':
 				return FileText;
@@ -2115,10 +2082,7 @@
 					{#if recentActivity.length > 0}
 						<div class="space-y-1.5">
 							{#each recentActivity.slice(0, 6) as activity (`${activity.created_at}-${activity.user_email}-${activity.entity_type}-${activity.action}`)}
-								{@const ActivityIcon = getActivityIcon(
-									activity.entity_type,
-									activity.action
-								)}
+								{@const ActivityIcon = getActivityIcon(activity.entity_type)}
 								<div
 									class="flex items-start gap-1.5 py-1 px-1.5 rounded-md bg-muted/30"
 								>
@@ -2209,10 +2173,7 @@
 				{#if recentActivity.length > 0}
 					<div class="space-y-3">
 						{#each recentActivity.slice(0, 8) as activity (`${activity.created_at}-${activity.user_email}-${activity.entity_type}-${activity.action}`)}
-							{@const ActivityIcon = getActivityIcon(
-								activity.entity_type,
-								activity.action
-							)}
+							{@const ActivityIcon = getActivityIcon(activity.entity_type)}
 							<div class="flex items-start space-x-3">
 								<ActivityIcon
 									class="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1"

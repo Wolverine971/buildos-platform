@@ -183,9 +183,6 @@
 		};
 	});
 
-	// Computed state badge styling
-	const stateBadge = $derived(STATE_OPTIONS.find((o) => o.value === stateKey));
-
 	// Computed due date info
 	function parseDateOnlyToLocal(dateOnly: string): Date | null {
 		const [year, month, day] = dateOnly.split('-').map(Number);

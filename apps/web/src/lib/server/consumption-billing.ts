@@ -1,7 +1,6 @@
 // apps/web/src/lib/server/consumption-billing.ts
 
 export { CONSUMPTION_BILLING_LIMITS } from '@buildos/shared-types';
-import { CONSUMPTION_BILLING_LIMITS } from '@buildos/shared-types';
 
 // Feature flag for staged rollout. Keep disabled until migration + QA are complete.
 export const CONSUMPTION_BILLING_GUARD_ENABLED =

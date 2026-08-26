@@ -52,23 +52,6 @@ function toLegacyTaskStatus(stateKey: string): 'backlog' | 'in_progress' | 'done
 	}
 }
 
-function toTaskState(
-	status: string | null | undefined
-): 'todo' | 'in_progress' | 'done' | 'blocked' {
-	switch ((status || '').toLowerCase()) {
-		case 'in_progress':
-			return 'in_progress';
-		case 'done':
-			return 'done';
-		case 'blocked':
-			return 'blocked';
-		case 'backlog':
-		case 'todo':
-		default:
-			return 'todo';
-	}
-}
-
 function hasProjectWriteAccess(supabase: App.Locals['supabase'], projectId: string) {
 	return supabase.rpc('current_actor_has_project_member_access', {
 		p_project_id: projectId,

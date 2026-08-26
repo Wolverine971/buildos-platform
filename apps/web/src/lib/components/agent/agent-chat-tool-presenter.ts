@@ -20,7 +20,7 @@
 
 import type { ChatContextType } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-import type { ActivityEntry, CreatedEntityRef, DataMutationSummary } from './agent-chat.types';
+import type { CreatedEntityRef, DataMutationSummary } from './agent-chat.types';
 import {
 	extractSkillPathFromSkillLoadArgs,
 	formatSkillActivityContent

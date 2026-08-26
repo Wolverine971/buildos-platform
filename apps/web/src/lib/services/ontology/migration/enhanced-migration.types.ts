@@ -1,6 +1,5 @@
 // apps/web/src/lib/services/ontology/migration/enhanced-migration.types.ts
 import type { Database } from '@buildos/shared-types';
-import type { Facets } from '$lib/types/onto';
 import type { MigrationServiceContext } from '../migration.types';
 
 // Entity scope taxonomy (template-free classification)

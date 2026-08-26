@@ -6,13 +6,13 @@ import {
 	DEEPSEEK_V4_FLASH_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
 	GEMINI_37_FLASH_MODEL,
+	GLM_53_FLASH_MODEL,
 	KIMI_EXPERIMENT_MODEL,
 	NEX_N2_MINI_MODEL,
 	OPENROUTER_V2_JSON_MODELS,
 	OPENROUTER_V2_MULTIMODAL_MODELS,
 	OPENROUTER_V2_TEXT_MODELS,
 	OPENROUTER_V2_TOOL_MODELS,
-	OX_ALPHA_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from '@buildos/smart-llm';
 
@@ -245,7 +245,7 @@ describe('OpenRouterV2Service model routing', () => {
 		});
 	});
 
-	it('uses a scoped non-ZDR zero-price Ox trial and restores ZDR on fallback', async () => {
+	it('uses a ZDR-protected discounted GLM dev primary and restores normal routing on fallback', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
@@ -255,7 +255,7 @@ describe('OpenRouterV2Service model routing', () => {
 			if (requestBodies.length === 1) {
 				return new Response(
 					JSON.stringify({
-						error: { message: 'Ox Alpha is temporarily unavailable.' }
+						error: { message: 'GLM 5.3 Flash is temporarily unavailable.' }
 					}),
 					{ status: 429, headers: { 'content-type': 'application/json' } }
 				);
@@ -263,7 +263,7 @@ describe('OpenRouterV2Service model routing', () => {
 
 			return new Response(
 				JSON.stringify({
-					id: 'chatcmpl-v2-ox-fallback',
+					id: 'chatcmpl-v2-glm-fallback',
 					model: DEEPSEEK_V4_FLASH_MODEL,
 					choices: [
 						{
@@ -281,7 +281,7 @@ describe('OpenRouterV2Service model routing', () => {
 
 		const service = new OpenRouterV2Service({
 			apiKey: 'openrouter-test-key',
-			freeTrialPrimaryModel: OX_ALPHA_MODEL
+			devPrimaryModel: GLM_53_FLASH_MODEL
 		});
 		const result = await service.getJSONResponse<{ ok: boolean }>({
 			systemPrompt: 'Return valid JSON.',
@@ -289,16 +289,16 @@ describe('OpenRouterV2Service model routing', () => {
 		});
 
 		expect(result).toEqual({ ok: true });
-		expect(requestBodies[0]?.model).toBe(OX_ALPHA_MODEL);
-		// The client omits a redundant one-item `models` extension entirely. The
-		// important invariant is that no production fallback shares ox's relaxed
-		// provider policy in this request.
-		expect(requestBodies[0]?.models).toBeUndefined();
+		expect(requestBodies[0]?.model).toBe(GLM_53_FLASH_MODEL);
+		expect(requestBodies[0]?.models).toContain(DEEPSEEK_V4_FLASH_MODEL);
+		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'low', exclude: true });
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true,
 			data_collection: 'deny',
-			max_price: { prompt: 0, completion: 0, request: 0 }
+			zdr: true,
+			order: ['z-ai'],
+			max_price: { prompt: 0.075, completion: 0.25, request: 0 }
 		});
 		expect(requestBodies[1]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(requestBodies[1]?.provider).toEqual({

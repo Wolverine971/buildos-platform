@@ -1,5 +1,5 @@
 // apps/web/src/routes/profile/+page.server.ts
-import { redirect, fail, Actions, type RequestEvent } from '@sveltejs/kit';
+import { redirect, fail, type Actions, type RequestEvent } from '@sveltejs/kit';
 import { CalendarService } from '$lib/services/calendar-service';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import { ActivityLogger } from '$lib/utils/activityLogger';
@@ -8,6 +8,8 @@ import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
 import { CalendarDisconnectService } from '$lib/services/calendar-disconnect-service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { Database } from '@buildos/shared-types';
+import { FEATURE_KEYS, isFeatureEnabled } from '$lib/utils/feature-flags';
+import { resolveProfileTab } from '$lib/components/profile/profile-tabs';
 
 // Type for subscription details
 type SubscriptionDetails = {
@@ -38,26 +40,12 @@ type PageLoadReturn = {
 	activeTab: string;
 	subscriptionDetails: SubscriptionDetails | null;
 	stripeEnabled: boolean;
+	cyclesProfileEnabled: boolean;
+	cyclesExecutionAuthority: 'preview';
 };
 
 function getCalendarReturnPath(): string {
 	return '/profile?tab=calendar&calendar=1';
-}
-
-function getActiveProfileTab(requestedTab: string | null, stripeEnabled: boolean): string {
-	const validTabs = new Set([
-		'account',
-		'contacts',
-		'preferences',
-		'briefs',
-		'calendar',
-		'email',
-		'notifications',
-		'agent-keys',
-		...(stripeEnabled ? ['billing'] : [])
-	]);
-
-	return requestedTab && validTabs.has(requestedTab) ? requestedTab : 'account';
 }
 
 export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
@@ -77,7 +65,7 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 	// Progress is computed inline from userContext below, so we don't need to
 	// fetch it via OnboardingProgressService (would duplicate the user_context
 	// query).
-	const [userContext, userData, subscription] = await Promise.all([
+	const [userContext, userData, subscription, cyclesProfileEnabled] = await Promise.all([
 		// Get user context
 		supabase
 			.from('user_context')
@@ -137,14 +125,21 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 					.limit(1)
 					.maybeSingle()
 					.then(({ data }: { data: any }) => data ?? null)
-			: Promise.resolve(null)
+			: Promise.resolve(null),
+
+		// Visibility is an explicit product cohort and is independent from Cycle rows
+		// or execution authority. Shadow definitions exist for unflagged users too.
+		isFeatureEnabled(supabase, user.id, FEATURE_KEYS.cyclesProfileSettings)
 	]);
 
 	// Check if coming from completed onboarding
 	const justCompletedOnboarding = url.searchParams.get('onboarding') === 'complete';
 
 	// Get active tab from URL params
-	const activeTab = getActiveProfileTab(url.searchParams.get('tab'), stripeEnabled);
+	const activeTab = resolveProfileTab(url.searchParams.get('tab'), {
+		cyclesProfileEnabled,
+		stripeEnabled
+	});
 
 	// Fetch recent invoices once we have the subscription id.
 	let subscriptionDetails: SubscriptionDetails | null = null;
@@ -227,7 +222,11 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 		justCompletedOnboarding,
 		activeTab, // Pass the active tab to the client
 		subscriptionDetails,
-		stripeEnabled
+		stripeEnabled,
+		cyclesProfileEnabled,
+		// No shared legacy/Cycle ownership cohort exists yet. Keep every profile
+		// surface in truthful preview mode until that backend gate ships.
+		cyclesExecutionAuthority: 'preview'
 	};
 };
 

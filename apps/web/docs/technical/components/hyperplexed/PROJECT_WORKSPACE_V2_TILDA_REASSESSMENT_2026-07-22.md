@@ -524,3 +524,73 @@ exposed implementation detail in almost every seeded history row.
   horizontal overflow**.
 - Console findings were limited to the existing Vite websocket collision and development-time
   module-externalization warnings; no Activity application error appeared.
+
+## Overview trajectory and Activity chat reentry — shipped 2026-08-26
+
+The production `/projects/[id]` workspace now makes project progress visible and restores project
+conversation continuity without turning Overview back into a card dashboard.
+
+- Reordered the workspace tabs to `Overview → Tasks → Docs → Activity`, made Overview the default
+  when no `view` query parameter is present, and renamed the visible `Work` label to the literal
+  `Tasks`. The existing `view=work` URL value remains valid for backward-compatible deep links
+  (**P6, P13**).
+- Added one flat `Project trajectory` surface to Overview. It uses the exact task-window bucket
+  totals to render a completion dial and proportional task distribution, so the visual remains
+  truthful even when the task records themselves are progressively loaded (**P4, P20, P22**).
+- Added a derived trajectory signal that reports completed, planning, clear, or needs-attention
+  states from overdue/blocked task totals, missed milestones, and open high-impact risks. It does
+  not claim a forecast or invent a completion date (**P4, P19, P22**).
+- Added a horizontally scrollable milestone timeline that places the task snapshot's current date
+  between project start/target and nearby dated milestones. Milestone points retain 44px-plus
+  targets and open the canonical milestone editor (**P1, P8, P13**).
+- Added a `Recent chats` region to Activity using the existing project-scoped, access-checked recent
+  chats endpoint. Rows show the conversation title, summary, focus, and recency, then reopen the
+  saved session in the existing Agent Chat modal (**P4, P8, P13, P20**).
+
+### Verification
+
+- Official Svelte analyzer: both new components report zero issues or suggestions. The workspace
+  component reports only its existing shallow-history `resolve()` and mature `bind:this`
+  advisories.
+- Focused Vitest: **3 files / 10 tests pass**, covering tab order/default state, exact chart totals,
+  chart and milestone actions, recent-chat summary/reopen behavior, and the existing workspace edge
+  states.
+- `pnpm check`: **0 errors and 0 warnings**. Prettier and `git diff --check` are clean for the
+  implementation pass.
+- Authenticated desktop/phone light/dark visual capture remains owed; this pass verified layout
+  contracts statically and through rendered component tests but did not claim a live screenshot
+  pass.
+
+## Project search responsiveness and correctness — shipped 2026-08-26
+
+The Tasks search could enter a misleadingly permanent loading state and could return no matches for
+tasks already visible on the board. The failure had two independent causes: the debounced Svelte
+effect tracked only whether a query was searchable, so changing one valid query to another did not
+start a new request; and the generic ontology RPC creator-scoped task matches that should instead be
+visible to every project member.
+
+- Made the normalized query, project ID, and active entity types explicit synchronous dependencies
+  of the debounced search effect. Every query change now invalidates and aborts the prior request,
+  preventing stale results or loading state from surviving a new search (**P4, P20, P22**).
+- Added a five-second request deadline with a clear `Try again` action. A delayed backend can no
+  longer leave the compact workspace toolbar spinning indefinitely, and reduced-motion loading
+  behavior remains intact (**P11, P13, P20**).
+- Routed ordinary Tasks-tab text search through a direct, access-checked project task query. This
+  searches member-visible titles and descriptions without the creator-only blind spot or the extra
+  generic ontology work; task-bucket vocabulary still uses the existing ranked bucket search
+  (**P6, P13, P20, P22**).
+- Added an explicit accessible name to the combobox while preserving arrow-key selection, Escape,
+  clear, result badges, and canonical task opening (**P9, P13**).
+
+### Search verification
+
+- Focused Vitest: **2 files / 11 tests pass**, including consecutive valid queries, stalled-request
+  timeout/retry, member-visible task matching, access denial, result ranking, and task-bucket search.
+- Official Svelte analyzer reports zero issues. Its suggestions are the expected debounce/fetch
+  lifecycle assignments inside the component's request effect.
+- Authenticated live verification on the populated BuildOS project returned the correct `twitter`
+  results in **880 ms**, then replaced them with the correct `reactivation` results in **734 ms** in
+  the same field.
+- Scoped ESLint and Prettier checks pass. The full web check reaches an unrelated existing
+  `cycles.profile_settings` `FeatureName` mismatch in `admin/feature-flags/+page.svelte`; the search
+  files introduce no reported diagnostic.

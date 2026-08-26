@@ -32,12 +32,8 @@
 	import UnlinkedDocuments from './UnlinkedDocuments.svelte';
 	import DocTreeUpdateNotification from './DocTreeUpdateNotification.svelte';
 	import DocTreeDragLayer from './DocTreeDragLayer.svelte';
-	import { createDragDropState, type DragDropState } from './useDragDrop.svelte';
-	import {
-		enrichTreeNodes,
-		findNodeById,
-		collectDocIds
-	} from '$lib/services/ontology/doc-structure.service';
+	import { createDragDropState } from './useDragDrop.svelte';
+	import { enrichTreeNodes, collectDocIds } from '$lib/services/ontology/doc-structure.service';
 	import type {
 		DocStructure,
 		OntoDocument,

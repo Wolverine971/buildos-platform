@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/projects/[id]/invites/[inviteId]/resend/server.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 
 const sendEmailMock = vi.fn();
 
@@ -162,8 +162,9 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/resend', () => {
 		expect(updateInvites).toHaveBeenCalled();
 		expect(sendEmailMock).toHaveBeenCalled();
 
-		const emailArgs = sendEmailMock.mock.calls[0][0];
-		expect(emailArgs.to).toBe('invitee@example.com');
+		expect(sendEmailMock.mock.calls.at(0)?.at(0)).toEqual(
+			expect.objectContaining({ to: 'invitee@example.com' })
+		);
 	});
 
 	it('returns accepted when invite is accepted during concurrent resend', async () => {

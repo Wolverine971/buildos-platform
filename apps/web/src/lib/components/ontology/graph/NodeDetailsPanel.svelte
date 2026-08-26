@@ -283,22 +283,6 @@
 		}
 	}
 
-	function formatDateTime(dateStr: string | null | undefined): string {
-		if (!dateStr) return '';
-		try {
-			const date = new Date(dateStr);
-			return date.toLocaleDateString('en-US', {
-				year: 'numeric',
-				month: 'short',
-				day: 'numeric',
-				hour: 'numeric',
-				minute: '2-digit'
-			});
-		} catch {
-			return dateStr;
-		}
-	}
-
 	function truncateText(text: string | null | undefined, maxLength: number): string {
 		if (!text) return '';
 		return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
@@ -366,7 +350,6 @@
 
 	// Document
 	const content = $derived(readString(meta, 'content'));
-	const documentTitle = $derived(readString(meta, 'title'));
 
 	// Risk
 	const probability = $derived(readNumber(meta, 'probability'));

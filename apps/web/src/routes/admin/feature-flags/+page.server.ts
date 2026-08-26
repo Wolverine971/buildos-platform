@@ -1,8 +1,10 @@
 // apps/web/src/routes/admin/feature-flags/+page.server.ts
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { enableFeature, disableFeature } from '$lib/utils/feature-flags';
+import { enableFeature, disableFeature, FEATURE_KEYS } from '$lib/utils/feature-flags';
 import type { FeatureName } from '@buildos/shared-types';
+
+const MANAGED_FEATURES = new Set<FeatureName>(Object.values(FEATURE_KEYS));
 
 type UserFeatureRow = {
 	id: string;
@@ -52,7 +54,7 @@ export const actions: Actions = {
 		const featureName = formData.get('feature_name') as FeatureName | null;
 		const enable = formData.get('enable') === 'true';
 
-		if (!targetUserId || !featureName) {
+		if (!targetUserId || !featureName || !MANAGED_FEATURES.has(featureName)) {
 			return fail(400, { error: 'Missing required parameters' });
 		}
 

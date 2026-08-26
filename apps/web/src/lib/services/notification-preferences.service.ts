@@ -10,8 +10,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
 	EventType,
 	UserNotificationPreferences,
-	NotificationSubscription,
-	PushSubscription
+	NotificationSubscription
 } from '@buildos/shared-types';
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { browser } from '$app/environment';

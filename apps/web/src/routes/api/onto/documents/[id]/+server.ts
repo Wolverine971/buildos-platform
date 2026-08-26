@@ -35,6 +35,10 @@ import {
 	createOrMergeDocumentVersion,
 	toDocumentSnapshot
 } from '$lib/services/ontology/versioning.service';
+import {
+	writeDocumentHeadAndVersion,
+	type OntoDocumentUpdate
+} from '$lib/services/ontology/document-write.service';
 import type { ParentRef } from '$lib/services/ontology/containment-organizer';
 import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
@@ -557,32 +561,30 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.badRequest('No update fields provided');
 		}
 
-		const updateQuery = locals.supabase
-			.from('onto_documents')
-			.update(updatePayload)
-			.eq('id', documentId)
-			.eq('project_id', document.project_id)
-			.is('deleted_at', null);
+		const changeSource = getChangeSourceFromRequest(request);
+		const writeResult = await writeDocumentHeadAndVersion({
+			supabase: locals.supabase,
+			documentId,
+			projectId: document.project_id,
+			update: updatePayload as OntoDocumentUpdate,
+			expectedUpdatedAt: expectedWriteVersion,
+			actorId,
+			previousSnapshot: toDocumentSnapshot(document),
+			changeSource,
+			forceCreateVersion: forceVersion,
+			// Preserve the web route's test seam while the implementation itself is shared.
+			versionWriter: createOrMergeDocumentVersion
+		});
 
-		const guardedUpdateQuery = expectedWriteVersion
-			? updateQuery.eq('updated_at', expectedWriteVersion)
-			: updateQuery;
-
-		const { data: updatedDocument, error: updateError } = await guardedUpdateQuery
-			.select('*')
-			.single();
-
-		const updateMatchedNoRows =
-			!updatedDocument && (!updateError || updateError.code === 'PGRST116');
-		if (expectedWriteVersion && updateMatchedNoRows) {
+		if (writeResult.status === 'conflict') {
 			return ApiResponse.conflict(DOCUMENT_CONFLICT_MESSAGE);
 		}
 
-		if (updateError) {
-			console.error('[Document API] Failed to update document:', updateError);
+		if (writeResult.status === 'error') {
+			console.error('[Document API] Failed to update document:', writeResult.error);
 			await logOntologyApiError({
 				supabase: locals.supabase,
-				error: updateError,
+				error: writeResult.error,
 				endpoint: `/api/onto/documents/${documentId}`,
 				method: 'PATCH',
 				userId: session.user.id,
@@ -592,7 +594,29 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				operation: 'document_update',
 				tableName: 'onto_documents'
 			});
-			return ApiResponse.databaseError(updateError);
+			return ApiResponse.databaseError(writeResult.error);
+		}
+
+		const updatedDocument = writeResult.document;
+		const versionWarning = writeResult.versionWarning;
+		if (writeResult.versionError) {
+			console.error(
+				'[Document API] Failed to create/merge document version:',
+				writeResult.versionError
+			);
+			await logOntologyApiError({
+				supabase: locals.supabase,
+				error: writeResult.versionError,
+				endpoint: `/api/onto/documents/${documentId}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: document.project_id,
+				entityType: 'document',
+				entityId: documentId,
+				operation: 'document_version_create',
+				tableName: 'onto_document_versions',
+				metadata: { nonFatal: false, surfacedToClient: true }
+			});
 		}
 
 		// Connection/parent organization — must stay blocking because
@@ -644,7 +668,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			Object.prototype.hasOwnProperty.call(updatePayload, 'title') ||
 			Object.prototype.hasOwnProperty.call(updatePayload, 'description');
 
-		const changeSource = getChangeSourceFromRequest(request);
 		// Capture session values before the async closure (TypeScript narrowing doesn't persist)
 		const userId = session.user.id;
 		const userName = session.user.name;
@@ -673,35 +696,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		const postSaveWork = async () => {
 			await Promise.all([
-				// Versioning
-				createOrMergeDocumentVersion({
-					supabase: locals.supabase,
-					documentId,
-					actorId,
-					snapshot: toDocumentSnapshot(updatedDocument),
-					previousSnapshot: toDocumentSnapshot(document),
-					changeSource,
-					forceCreateVersion: forceVersion
-				}).catch((versionError) => {
-					console.error(
-						'[Document API] Failed to create/merge document version:',
-						versionError
-					);
-					void logOntologyApiError({
-						supabase: locals.supabase,
-						error: versionError,
-						endpoint: `/api/onto/documents/${documentId}`,
-						method: 'PATCH',
-						userId,
-						projectId: document.project_id,
-						entityType: 'document',
-						entityId: documentId,
-						operation: 'document_version_create',
-						tableName: 'onto_document_versions',
-						metadata: { nonFatal: true }
-					});
-				}),
-
 				// Doc tree metadata sync
 				shouldSyncDocStructure
 					? updateDocNodeMetadata(
@@ -877,7 +871,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 
-		return ApiResponse.success({ document: updatedDocument, publicPageSync });
+		return ApiResponse.success({ document: updatedDocument, publicPageSync, versionWarning });
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);

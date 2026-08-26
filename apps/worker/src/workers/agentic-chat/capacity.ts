@@ -89,11 +89,9 @@ export class AgenticChatWorkerCapacityCollector {
 		}
 	) {}
 
-	/** Missing or malformed dependencies return null so web admission remains closed. */
+	/** Missing or malformed dependencies return null so the operational projection stays closed. */
 	async collect(): Promise<AgenticChatWorkerCapacityEvidenceV1 | null> {
 		try {
-			const nowMs = this.ports.now?.() ?? Date.now();
-			validateTimestampMs(nowMs, 'capacity observation time');
 			const runtime = this.ports.runtime.getHealth();
 			const queue = this.ports.queue.getCapacitySnapshot();
 			if (
@@ -112,6 +110,13 @@ export class AgenticChatWorkerCapacityCollector {
 			}
 
 			const provider = this.ports.provider.getSnapshot();
+			const publisher = this.ports.publisher.getWorkerSnapshot();
+			// Anchor the aggregate observation after taking the synchronous local
+			// snapshots. Provider capacity reads the same wall clock; taking
+			// this timestamp first made a legitimate snapshot from the next millisecond
+			// look like future evidence and intermittently closed the HTTP projection.
+			const nowMs = this.ports.now?.() ?? Date.now();
+			validateTimestampMs(nowMs, 'capacity observation time');
 			if (
 				!validProviderSnapshot(provider, queue.concurrency) ||
 				nowMs - provider.observedAtMs < 0 ||
@@ -119,7 +124,6 @@ export class AgenticChatWorkerCapacityCollector {
 			) {
 				return null;
 			}
-			const publisher = this.ports.publisher.getWorkerSnapshot();
 			if (!validPublisherSnapshot(publisher)) return null;
 			const oldestReadyJobAgeMs = await this.ports.queueAge.observeOldestReadyJobAgeMs(nowMs);
 			if (!Number.isFinite(oldestReadyJobAgeMs) || oldestReadyJobAgeMs < 0) return null;

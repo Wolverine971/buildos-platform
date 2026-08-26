@@ -20223,6 +20223,7 @@ export type Database = {
         Args: {
           p_cycle_id: string
           p_expected_version: number
+          p_trigger_projections: Json
           p_user_id: string
         }
         Returns: Json
@@ -20231,6 +20232,15 @@ export type Database = {
         Args: {
           p_cycle_id: string
           p_expected_version: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      resume_cycle_with_projections_impl: {
+        Args: {
+          p_cycle_id: string
+          p_expected_version: number
+          p_trigger_projections: Json
           p_user_id: string
         }
         Returns: Json

@@ -134,6 +134,33 @@ describe('AgenticChatWorkerCapacityCollector', () => {
 		});
 	});
 
+	it('anchors evidence after local snapshots cross a millisecond boundary', async () => {
+		let clockMs = NOW;
+		const provider = {
+			getSnapshot: vi.fn(() => {
+				clockMs += 1;
+				return {
+					observedAtMs: clockMs,
+					configured: true,
+					available: true,
+					activeRequests: 0,
+					concurrency: 1,
+					degradedUntilMs: null
+				};
+			})
+		};
+		const queueAge = { observeOldestReadyJobAgeMs: vi.fn(async () => 0) };
+		const collector = new AgenticChatWorkerCapacityCollector(
+			collectorPorts({ provider, queueAge, now: () => clockMs }) as never
+		);
+
+		await expect(collector.collect()).resolves.toMatchObject({
+			observedAtMs: NOW + 1,
+			provider: { available: true }
+		});
+		expect(queueAge.observeOldestReadyJobAgeMs).toHaveBeenCalledWith(NOW + 1);
+	});
+
 	it('accepts coherent queue and provider evidence at the reviewed two-slot bound', async () => {
 		const queue = {
 			getCapacitySnapshot: vi.fn(() => ({

@@ -17,11 +17,9 @@
 		ChevronRight,
 		LoaderCircle,
 		Zap,
-		Clock,
 		Sun,
 		Moon,
 		Activity,
-		Bell,
 		Inbox,
 		Bot,
 		CreditCard
@@ -33,7 +31,7 @@
 	import { logout } from '$lib/utils/auth';
 	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
-	import { browser, dev } from '$app/environment';
+	import { browser } from '$app/environment';
 	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
 	import type { ChatContextType, ProjectFocus } from '@buildos/shared-types';
 	import type {
@@ -523,9 +521,7 @@
 		}
 	}
 
-	function handleOpenChat(
-		detailOrEvent?: { projectId: string; chatType: string } | MouseEvent | CustomEvent
-	) {
+	function handleOpenChat() {
 		closeAllMenus();
 		// A parked keep-alive chat exists: the chat button brings it back
 		// exactly where it left off instead of starting over.
@@ -838,7 +834,7 @@
 					<div
 						class="hidden md:ml-3 lg:ml-4 xl:ml-6 2xl:ml-8 md:flex md:gap-0.5 lg:gap-0.5 xl:gap-1"
 					>
-						{#each navItems as item}
+						{#each navItems as item (item.href)}
 							{@const Icon = item.icon}
 
 							<a
@@ -1124,7 +1120,7 @@
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 									>
 										<User class="w-4 h-4 mr-3" />
-										Profile & Settings
+										Settings
 									</a>
 
 									<a
@@ -1343,7 +1339,7 @@
 						</a>
 					{/if}
 
-					{#each navItems as item}
+					{#each navItems as item (item.href)}
 						{@const Icon = item.icon}
 						<a
 							href={item.href}
@@ -1410,7 +1406,7 @@
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
 							<User class="w-5 h-5 mr-3" />
-							Profile & Settings
+							Settings
 						</a>
 
 						<a

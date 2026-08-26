@@ -82,7 +82,7 @@
 		<!-- URL Parameters -->
 		<div class="bg-muted p-4 rounded-lg">
 			<h2 class="font-semibold mb-2">URL Parameters:</h2>
-			<!-- <pre class="text-sm">{JSON.stringify(urlParams, null, 2)}</pre> -->
+			<pre class="overflow-auto text-sm">{JSON.stringify(urlParams, null, 2)}</pre>
 		</div>
 
 		<!-- Server-side Auth State -->

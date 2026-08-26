@@ -1,17 +1,8 @@
 // apps/web/src/lib/services/briefClient.service.ts
-import type {
-	ProjectDailyBrief,
-	DailyBrief,
-	StreamingBriefData,
-	StreamingStatus,
-	StreamEvent
-} from '$lib/types/daily-brief';
+import type { DailyBrief, StreamEvent } from '$lib/types/daily-brief';
 import { get } from 'svelte/store';
 import { browser } from '$app/environment';
-import {
-	PUBLIC_BRIEF_MAX_POLLING_TIME,
-	PUBLIC_BRIEF_POLLING_INTERVAL
-} from '$env/static/public';
+import { PUBLIC_BRIEF_MAX_POLLING_TIME, PUBLIC_BRIEF_POLLING_INTERVAL } from '$env/static/public';
 import { RailwayWorkerService } from './railwayWorker.service';
 import { toastService } from '$lib/stores/toast.store';
 import { RealtimeBriefService } from './realtimeBrief.service';
@@ -83,7 +74,7 @@ export class BriefClientService {
 					options.supabaseClient,
 					userTimezone
 				);
-			} catch (error) {
+			} catch {
 				// Failed to initialize realtime brief service
 				// Continue with generation even if realtime service fails
 			}
@@ -715,7 +706,6 @@ export class BriefClientService {
 			message: 'Generating brief...'
 		};
 
-		const currentState = get(streamingStatus);
 		const completed = job.metadata?.generation_progress?.progress || 0;
 		const total = 100;
 

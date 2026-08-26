@@ -4,7 +4,6 @@ import {
 	AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY,
 	CHAT_TOOL_DEFINITIONS,
 	GATEWAY_SURFACE_PROFILE_NAMES,
-	GATEWAY_TOOL_DEFINITIONS,
 	getGatewayDirectToolNamesForProfile,
 	getGatewaySurfaceForContextType,
 	getGatewaySurfaceForProfile,

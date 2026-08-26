@@ -1,0 +1,26 @@
+{
+	"extends": "./.svelte-kit/tsconfig.json",
+	"compilerOptions": {
+		"strict": true,
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"resolveJsonModule": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"allowJs": false,
+		"noUncheckedIndexedAccess": true,
+		"types": ["node", "vitest/globals", "@testing-library/jest-dom"]
+	},
+	"include": [
+		".svelte-kit/ambient.d.ts",
+		".svelte-kit/non-ambient.d.ts",
+		".svelte-kit/types/**/*.d.ts",
+		"src/**/*.d.ts",
+		"src/**/*.test.ts",
+		"src/**/*.spec.ts",
+		"tests/**/*.ts",
+		"vitest*.ts"
+	],
+	"exclude": ["node_modules", "build", ".svelte-kit/output", "coverage"]
+}

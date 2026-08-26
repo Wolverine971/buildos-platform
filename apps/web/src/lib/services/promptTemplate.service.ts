@@ -277,8 +277,6 @@ Current date: ${today} (all scheduling must respect this baseline)`;
 		includeRecurring: boolean = false,
 		preserveExistingDates: boolean = false
 	): string {
-		const tasksByCategory = this.categorizeTasksForPhasing(tasks, today);
-
 		// Separate recurring and one-off tasks if including recurring
 		const oneOffTasks = includeRecurring
 			? tasks.filter((t) => t.task_type !== 'recurring')
@@ -286,6 +284,7 @@ Current date: ${today} (all scheduling must respect this baseline)`;
 		const recurringTasks = includeRecurring
 			? tasks.filter((t) => t.task_type === 'recurring')
 			: [];
+		const tasksByCategory = this.categorizeTasksForPhasing(oneOffTasks);
 
 		let analysis = `**TASK LANDSCAPE (${tasks.length} total tasks${includeRecurring && recurringTasks.length > 0 ? `, ${recurringTasks.length} recurring` : ''}) - ${schedulingMethod.toUpperCase()} METHOD:**\n`;
 
@@ -364,7 +363,7 @@ Current date: ${today} (all scheduling must respect this baseline)`;
 	 * Build focused project context
 	 */
 	private buildProjectContext(project: Project, today: string, preservedPhases?: any[]): string {
-		const timelineInfo = this.calculateProjectTimeline(project, today, preservedPhases);
+		const timelineInfo = this.calculateProjectTimeline(project, today);
 
 		const preservedPhasesInfo =
 			preservedPhases && preservedPhases.length > 0
@@ -372,7 +371,7 @@ Current date: ${today} (all scheduling must respect this baseline)`;
 
 **PRESERVED HISTORICAL PHASES:**
 The following phases have been completed or are in progress and will be preserved:
-${preservedPhases.map((p, i) => `- Phase ${p.order}: ${p.name} (${p.start_date.split('T')[0]} to ${p.end_date.split('T')[0]})`).join('\n')}
+${preservedPhases.map((p) => `- Phase ${p.order}: ${p.name} (${p.start_date.split('T')[0]} to ${p.end_date.split('T')[0]})`).join('\n')}
 
 Note: You are generating NEW phases that should pick up immediately from ${today.split('T')[0]} onward.`
 				: '';
@@ -392,11 +391,7 @@ ${project.context ? `Background: ${project.context.substring(0, 400)}` : ''}`;
 	/**
 	 * Calculate and format project timeline intelligently
 	 */
-	private calculateProjectTimeline(
-		project: Project,
-		today: string,
-		preservedPhases?: any[]
-	): string {
+	private calculateProjectTimeline(project: Project, today: string): string {
 		const projectStart = project.start_date ? new Date(project.start_date) : null;
 		const projectEnd = project.end_date ? new Date(project.end_date) : null;
 		const todayDate = new Date(today);
@@ -530,7 +525,7 @@ Suggested phase duration guidelines:
 	/**
 	 * Categorize tasks for intelligent phase planning
 	 */
-	private categorizeTasksForPhasing(tasks: Partial<Task>[], today: string) {
+	private categorizeTasksForPhasing(tasks: Partial<Task>[]) {
 		const scheduled = tasks
 			.filter((t) => t.start_date)
 			.sort((a, b) => new Date(a.start_date!).getTime() - new Date(b.start_date!).getTime());
@@ -1121,7 +1116,7 @@ Additional Notes:
 - Task scheduling expectation: ${taskSchedulingExpectation}`;
 }
 
-export function buildTaskOrderingSystemPromptCall2(config: PhaseGenerationConfig): string {
+export function buildTaskOrderingSystemPromptCall2(): string {
 	return `You are an expert operations planner.
 
 Goal: Define execution order for tasks within each phase produced earlier.

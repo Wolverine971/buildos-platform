@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/projects/[id]/doc-tree/move/server.test.ts
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 
 const mocks = vi.hoisted(() => ({
 	moveDocument: vi.fn()

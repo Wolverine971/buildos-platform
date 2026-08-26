@@ -5,9 +5,7 @@
 		GitBranch,
 		Layers,
 		Target,
-		Calendar,
 		ListChecks,
-		Flag,
 		AlertTriangle,
 		ChevronRight,
 		ExternalLink,
@@ -19,7 +17,6 @@
 		Cpu,
 		Activity,
 		Terminal,
-		Box,
 		Hash
 	} from 'lucide-svelte';
 

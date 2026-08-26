@@ -363,6 +363,18 @@ function buildAnalysisPrompt(context: GenerationContext): string {
 		}
 	}
 
+	// Plans describe the active execution approach and should constrain the
+	// recommendation alongside goals and tasks.
+	if (plans.length > 0) {
+		const activePlans = plans.filter((plan) => !isCompletedState(plan.state_key));
+		const plansToShow = activePlans.length > 0 ? activePlans : plans;
+		prompt += `\n## Plans (${plans.length})\n`;
+		for (const plan of plansToShow.slice(0, 5)) {
+			const ref = createEntityReference('plan', plan.id, plan.name);
+			prompt += `- ${ref} (${formatState(plan.state_key)})\n`;
+		}
+	}
+
 	// Recent progress section
 	if (recentCompletedTasks.length > 0 || recentActivity.length > 0) {
 		prompt += `\n## Recent Progress\n`;
@@ -501,6 +513,7 @@ function buildAnalysisPrompt(context: GenerationContext): string {
 	prompt += `- Overdue items: ${overdueTasks.length}\n`;
 	prompt += `- High priority pending: ${highPriorityTasks.length}\n`;
 	prompt += `- Active goals: ${goals.filter((g) => !isCompletedGoal(g)).length}\n`;
+	prompt += `- Active plans: ${plans.filter((plan) => !isCompletedState(plan.state_key)).length}\n`;
 	prompt += `- Recent completed tasks: ${recentCompletedTasks.length}\n`;
 
 	prompt += `\n---\nBased on this analysis, what should be the user's immediate next step? Remember to use [[type:id|text]] format for entity references.`;

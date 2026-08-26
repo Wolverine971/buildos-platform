@@ -135,6 +135,110 @@ describe('Cycle service', () => {
 		});
 	});
 
+	it('materializes and atomically replaces a Cycle trigger set', async () => {
+		const commandClient = { rpc: vi.fn(async () => ({ data: cycleRow(), error: null })) };
+
+		await updateCycle({
+			readClient: createReadClient(cycleRow({ version: 2 })),
+			commandClient,
+			userId: USER_ID,
+			cycleId: CYCLE_ID,
+			payload: {
+				expected_version: 1,
+				triggers: [
+					{
+						type: 'schedule',
+						schedule: {
+							type: 'weekly',
+							days_of_week: [1, 3],
+							time_of_day: '09:30',
+							timezone: 'America/New_York'
+						}
+					}
+				]
+			},
+			now: new Date('2026-08-25T14:00:00.000Z')
+		});
+
+		expect(commandClient.rpc).toHaveBeenCalledWith('replace_cycle_triggers', {
+			p_user_id: USER_ID,
+			p_cycle_id: CYCLE_ID,
+			p_expected_version: 1,
+			p_triggers: [
+				expect.objectContaining({
+					type: 'schedule',
+					next_run_at: '2026-08-26T13:30:00.000Z'
+				})
+			]
+		});
+	});
+
+	it('rejects mixed definition and trigger patches instead of issuing two writes', async () => {
+		const commandClient = { rpc: vi.fn() };
+
+		await expect(
+			updateCycle({
+				readClient: createReadClient(),
+				commandClient,
+				userId: USER_ID,
+				cycleId: CYCLE_ID,
+				payload: {
+					expected_version: 1,
+					label: 'Morning Brief',
+					triggers: validCreatePayload().triggers
+				}
+			})
+		).rejects.toMatchObject({ status: 400, code: 'INVALID_REQUEST' });
+		expect(commandClient.rpc).not.toHaveBeenCalled();
+	});
+
+	it('re-materializes stale schedule projections before atomically resuming', async () => {
+		const triggerId = '33333333-3333-4333-8333-333333333333';
+		const pausedCycle = cycleRow({
+			state: 'paused',
+			triggers: [
+				{
+					id: triggerId,
+					cycle_id: CYCLE_ID,
+					spec: {
+						type: 'schedule',
+						schedule: {
+							type: 'daily',
+							time_of_day: '09:00',
+							timezone: 'America/New_York'
+						}
+					},
+					state: 'active',
+					version: 1,
+					next_run_at: '2020-01-01T14:00:00.000Z',
+					last_fired_at: null,
+					created_at: '2026-08-25T12:00:00.000Z',
+					updated_at: '2026-08-25T12:00:00.000Z',
+					deleted_at: null
+				}
+			]
+		});
+		const commandClient = { rpc: vi.fn(async () => ({ data: pausedCycle, error: null })) };
+
+		await updateCycle({
+			readClient: createReadClient(pausedCycle),
+			commandClient,
+			userId: USER_ID,
+			cycleId: CYCLE_ID,
+			payload: { expected_version: 1, state: 'active' },
+			now: new Date('2026-08-25T14:00:00.000Z')
+		});
+
+		expect(commandClient.rpc).toHaveBeenCalledWith('resume_cycle', {
+			p_user_id: USER_ID,
+			p_cycle_id: CYCLE_ID,
+			p_expected_version: 1,
+			p_trigger_projections: [
+				{ trigger_id: triggerId, next_run_at: '2026-08-26T13:00:00.000Z' }
+			]
+		});
+	});
+
 	it('materializes a Daily Brief manual run from trusted profile timezone', async () => {
 		const commandClient = {
 			rpc: vi.fn(async () => ({

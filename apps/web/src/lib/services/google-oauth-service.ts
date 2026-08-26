@@ -229,7 +229,7 @@ export class GoogleOAuthService {
 					nonce: typeof parsed.nonce === 'string' ? parsed.nonce : null
 				};
 			}
-		} catch (error) {
+		} catch {
 			// Fall back to legacy plain userId state format
 			if (typeof state === 'string' && state.length > 0) {
 				return { userId: state, nonce: null };

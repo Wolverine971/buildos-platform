@@ -3,7 +3,7 @@
  * Centralized date utility functions for consistent UTC date handling
  * All dates from Supabase are in UTC format (timestamptz)
  */
-import { format, parseISO, isToday, isTomorrow, isBefore, startOfDay, addDays } from 'date-fns';
+import { format, parseISO, isBefore, startOfDay, addDays } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
 /**
@@ -723,7 +723,7 @@ export function isWithinLast24Hours(dateString: string | null): boolean {
 		const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
 		return date > twentyFourHoursAgo;
-	} catch (error) {
+	} catch {
 		return false;
 	}
 }
@@ -734,7 +734,7 @@ export function getHoursAgo(dateString: string): number {
 		const now = new Date();
 		const diffMs = now.getTime() - date.getTime();
 		return Math.floor(diffMs / (1000 * 60 * 60));
-	} catch (error) {
+	} catch {
 		return -1;
 	}
 }

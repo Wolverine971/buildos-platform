@@ -55,7 +55,6 @@ class RateLimiter {
 			this.memory.set(key, entry);
 		}
 
-		const remaining = Math.max(0, rule.requests - entry.count);
 		const resetTime = entry.windowStart + rule.windowMs;
 
 		if (entry.count >= rule.requests) {

@@ -2,7 +2,6 @@
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database, Json } from '@buildos/shared-types';
 import rrulePkg from 'rrule';
-import { format } from 'date-fns';
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 
 const { RRule } = rrulePkg;

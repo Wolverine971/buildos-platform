@@ -6,7 +6,6 @@ export const KIMI_EXPERIMENT_MODEL = 'moonshotai/kimi-k2.6' as const;
 export const KIMI_CODING_MODEL = 'moonshotai/kimi-k2.7-code' as const;
 export const KIMI_EXPERIMENT_MODELS = [KIMI_EXPERIMENT_MODEL, KIMI_CODING_MODEL] as const;
 export const KIMI_K3_MODEL = 'moonshotai/kimi-k3' as const;
-export const OX_ALPHA_MODEL = 'stealth/ox-alpha' as const;
 export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
 export const GPT_56_LUNA_MODEL = 'openai/gpt-5.6-luna' as const;
 export const GROK_46_MODEL = 'x-ai/grok-4.6' as const;
@@ -17,12 +16,17 @@ export const XIAOMI_MIMO_V25_MODEL = 'xiaomi/mimo-v2.5' as const;
 export const TENCENT_HY3_PREVIEW_MODEL = 'tencent/hy3-preview' as const;
 export const TENCENT_HY3_MODEL = 'tencent/hy3' as const;
 export const GLM_52_MODEL = 'z-ai/glm-5.2' as const;
+export const GLM_53_FLASH_MODEL = 'z-ai/glm-5.3-flash' as const;
 export const NEX_N2_MINI_MODEL = 'nex-agi/nex-n2-mini' as const;
 export const POOLSIDE_LAGUNA_XS_21_MODEL = 'poolside/laguna-xs-2.1' as const;
 export const GEMINI_37_FLASH_MODEL = 'google/gemini-3.7-flash' as const;
 export const GEMINI_31_FLASH_LITE_MODEL = 'google/gemini-3.1-flash-lite' as const;
-export const ACTIVE_EXPERIMENT_MODEL = GPT_56_LUNA_MODEL;
-export const ACTIVE_EXPERIMENT_MODELS = [GPT_56_LUNA_MODEL, GROK_46_MODEL] as const;
+export const ACTIVE_EXPERIMENT_MODEL = GLM_53_FLASH_MODEL;
+export const ACTIVE_EXPERIMENT_MODELS = [
+	GLM_53_FLASH_MODEL,
+	GPT_56_LUNA_MODEL,
+	GROK_46_MODEL
+] as const;
 export const MAXIMUM_WORK_MODEL = KIMI_K3_MODEL;
 // Universal last-resort fallback used only when lane resolution yields no models.
 // Deliberately decoupled from ACTIVE_EXPERIMENT_MODEL so rotating the current
@@ -33,34 +37,39 @@ export const AGENT_STATE_RECONCILIATION_MODEL = DEEPSEEK_V4_FLASH_MODEL;
 export const AGENT_STATE_RECONCILIATION_MODELS = [AGENT_STATE_RECONCILIATION_MODEL] as const;
 
 export const MODEL_CATALOG: Record<string, ModelProfile> = {
-	[OX_ALPHA_MODEL]: {
-		id: OX_ALPHA_MODEL,
-		name: 'Ox Alpha',
-		speed: 4,
-		smartness: 4.9,
+	[GLM_53_FLASH_MODEL]: {
+		id: GLM_53_FLASH_MODEL,
+		name: 'GLM 5.3 Flash',
+		speed: 3.5,
+		smartness: 5,
 		creativity: 4.6,
-		cost: 0,
-		outputCost: 0,
-		provider: 'stealth',
+		// OpenRouter/Z.AI launch pricing is 50% off the standard $0.15/$0.50
+		// rates. The spend guard's 2x safety multiplier still admits the full-price
+		// endpoint while reserving enough budget if the promotion ends.
+		cost: 0.075,
+		outputCost: 0.25,
+		provider: 'z-ai',
 		bestFor: [
-			'dev-trial',
+			'dev-experiment',
 			'long-horizon-software-engineering',
 			'agentic-workflows',
 			'complex-reasoning',
 			'json-mode',
+			'structured-output',
 			'tool-calling',
 			'multimodal',
-			'1m-context'
+			'1m-context',
+			'quality-value-profile'
 		],
 		limitations: [
-			'alpha-model',
-			'not-default-production-routing',
-			'free-availability-temporary',
-			'non-zdr-endpoint',
-			'always-thinking'
+			'launch-discount-temporary',
+			'provider-price-variable',
+			'reasoning-verbosity',
+			'not-balanced-production-routing'
 		],
 		capabilities: {
 			jsonMode: true,
+			structuredOutputs: true,
 			tools: true,
 			reasoning: true,
 			multimodal: true,
@@ -583,7 +592,7 @@ export function modelSupportsCapability(
 	return MODEL_CATALOG[modelId]?.capabilities?.[capability] === true;
 }
 
-// Reviewed 2026-08-14 against OpenRouter model pages/API and production
+// Reviewed 2026-08-26 against OpenRouter model pages/API and production
 // telemetry. Keep models without response_format out of JSON routes, keep
 // premium candidates out of automatic lanes, and reserve K3 for an explicit
 // maximum profile.
@@ -639,6 +648,7 @@ const JSON_FAST_ROUTE = [
 ] as const;
 const JSON_POWERFUL_ROUTE = [
 	GEMINI_37_FLASH_MODEL,
+	GLM_53_FLASH_MODEL,
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GPT_56_LUNA_MODEL,
@@ -649,6 +659,7 @@ const JSON_MAXIMUM_ROUTE = [
 	KIMI_K3_MODEL,
 	GPT_56_LUNA_MODEL,
 	GROK_46_MODEL,
+	GLM_53_FLASH_MODEL,
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
@@ -662,7 +673,7 @@ const TEXT_SPEED_ROUTE = [
 ] as const;
 const TEXT_QUALITY_ROUTE = [
 	GEMINI_37_FLASH_MODEL,
-	GLM_52_MODEL,
+	GLM_53_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GPT_56_LUNA_MODEL,
 	GROK_46_MODEL,
@@ -670,7 +681,7 @@ const TEXT_QUALITY_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL
 ] as const;
 const TEXT_CREATIVE_ROUTE = [
-	GLM_52_MODEL,
+	GLM_53_FLASH_MODEL,
 	GPT_56_LUNA_MODEL,
 	GROK_46_MODEL,
 	MINIMAX_M3_MODEL,
@@ -680,15 +691,13 @@ const TEXT_MAXIMUM_ROUTE = [
 	KIMI_K3_MODEL,
 	GPT_56_LUNA_MODEL,
 	GROK_46_MODEL,
+	GLM_53_FLASH_MODEL,
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 
 export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(
 	new Set<string>([
-		// Explicit-only dev trial model. It is intentionally absent from every
-		// production route and is excluded from requirement-based selection.
-		OX_ALPHA_MODEL,
 		...OPENROUTER_TEXT_ROUTE,
 		...OPENROUTER_JSON_ROUTE,
 		...OPENROUTER_TOOL_ROUTE,

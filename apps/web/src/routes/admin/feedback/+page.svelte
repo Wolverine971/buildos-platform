@@ -3,7 +3,6 @@
 	import { onMount } from 'svelte';
 	import {
 		MessageSquare,
-		Search,
 		Filter,
 		ChevronLeft,
 		ChevronRight,
@@ -12,10 +11,6 @@
 		Eye,
 		CheckCircle,
 		CheckSquare,
-		Clock,
-		AlertCircle,
-		XCircle,
-		ExternalLink,
 		Mail
 	} from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
@@ -203,17 +198,6 @@
 			closed: 'bg-muted text-foreground dark:text-muted-foreground'
 		};
 		return colors[status as keyof typeof colors] || colors.new;
-	}
-
-	function getStatusIcon(status: string) {
-		const icons = {
-			new: AlertCircle,
-			reviewed: Eye,
-			in_progress: Clock,
-			resolved: CheckCircle,
-			closed: XCircle
-		};
-		return icons[status as keyof typeof icons] || AlertCircle;
 	}
 
 	function getCategoryColor(_category: string): string {

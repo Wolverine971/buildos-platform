@@ -70,16 +70,7 @@ function harness(fetchImpl: typeof fetch = vi.fn()) {
 			): void;
 		}
 	>();
-	const registerTurn = vi.fn(
-		(input: {
-			handle: WorkerTurnHandle;
-			observer: AgenticChatWorkerApplicationObserver;
-			executionGeneration?: number;
-			lastAppliedSequence?: number;
-		}) => {
-			return unregister;
-		}
-	);
+	const registerTurn = vi.fn(() => unregister);
 	const adopted = vi.fn();
 	const released = vi.fn();
 	const errors: unknown[] = [];

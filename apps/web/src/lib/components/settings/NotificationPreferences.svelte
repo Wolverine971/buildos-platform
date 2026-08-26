@@ -41,7 +41,6 @@
 		onSmsPreferencesRefresh
 	}: Props = $props();
 
-	let preferences = $state<UserNotificationPreferences | null>(null);
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let loadError = $state<string | null>(null);
@@ -53,7 +52,6 @@
 	// Daily brief notification preferences
 	let dailyBriefEmailEnabled = $state(false);
 	let dailyBriefSmsEnabled = $state(false);
-	let dailyBriefPrefsLoaded = $state(false);
 
 	// Push notification state
 	let pushSupported = $state(false);
@@ -65,8 +63,6 @@
 
 	// Preference settings for brief.completed (with defaults)
 	let pushEnabled = $state(false);
-	let emailEnabled = $state(false);
-	let smsEnabled = $state(false);
 	let inAppEnabled = $state(false);
 	let quietHoursEnabled = $state(false);
 	let quietHoursStart = $state('22:00');
@@ -102,12 +98,8 @@
 			const prefs = await notificationPreferencesService.get();
 
 			if (prefs) {
-				preferences = prefs;
-
 				// Update state with loaded preferences
 				pushEnabled = prefs.push_enabled;
-				emailEnabled = prefs.email_enabled;
-				smsEnabled = prefs.sms_enabled;
 				inAppEnabled = prefs.in_app_enabled;
 				quietHoursEnabled = prefs.quiet_hours_enabled;
 				quietHoursStart = prefs.quiet_hours_start;
@@ -122,7 +114,6 @@
 				});
 				dailyBriefEmailEnabled = Boolean(prefs.should_email_daily_brief);
 				dailyBriefSmsEnabled = Boolean(prefs.should_sms_daily_brief);
-				dailyBriefPrefsLoaded = true;
 			}
 
 			// Phone verification status — the parent passes `smsPreferences`
@@ -145,13 +136,16 @@
 		}
 	}
 
-	async function saveDailyBriefPreferences() {
+	async function saveDailyBriefPreferences(
+		successMessage = 'Daily brief notification preferences saved'
+	): Promise<boolean> {
 		try {
 			await notificationPreferencesStore.save({
 				should_email_daily_brief: dailyBriefEmailEnabled,
 				should_sms_daily_brief: dailyBriefSmsEnabled
 			});
-			toastService.success('Daily brief notification preferences saved');
+			toastService.success(successMessage);
+			return true;
 		} catch (error) {
 			console.error('Failed to save daily brief preferences:', error);
 			// Store already sets error, but show toast for visibility
@@ -160,6 +154,7 @@
 			);
 			// Reload full preferences to reset state
 			await loadPreferences();
+			return false;
 		}
 	}
 
@@ -179,19 +174,6 @@
 
 		dailyBriefSmsEnabled = enabled;
 		await saveDailyBriefPreferences();
-	}
-
-	async function handleSMSToggle(enabled: boolean) {
-		if (enabled && !phoneVerified) {
-			// Show phone verification modal
-			showPhoneVerificationModal = true;
-			// Revert toggle state until verification is complete
-			smsEnabled = false;
-			return;
-		}
-
-		// If disabled or phone is already verified, update immediately
-		smsEnabled = enabled;
 	}
 
 	async function saveChannelPreferences(
@@ -217,9 +199,10 @@
 		} else {
 			await loadPreferences();
 		}
-		// Enable SMS now that phone is verified
-		smsEnabled = true;
-		toastService.success('Phone verified! SMS notifications enabled.');
+		// The verification flow was opened from the daily-brief SMS toggle,
+		// so complete that original action once verification succeeds.
+		dailyBriefSmsEnabled = true;
+		await saveDailyBriefPreferences('Phone verified! Daily brief SMS enabled.');
 	}
 
 	async function checkPushSubscriptionStatus() {
@@ -413,7 +396,16 @@
 							<p class="text-sm text-muted-foreground mt-0.5">
 								Receive text messages when your brief is ready
 							</p>
-							{#if !phoneVerified}
+							{#if smsPreferencesLoading}
+								<div
+									class="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
+								>
+									<Loader
+										class="w-3.5 h-3.5 animate-spin motion-reduce:animate-none"
+									/>
+									<span>Checking phone verification…</span>
+								</div>
+							{:else if !phoneVerified}
 								<div class="mt-1.5 flex items-center gap-1.5 text-xs text-warning">
 									<AlertCircle class="w-3.5 h-3.5" />
 									<span>Phone verification required</span>
@@ -432,6 +424,7 @@
 							class="sr-only peer"
 							checked={dailyBriefSmsEnabled}
 							onchange={(e) => handleDailyBriefSmsToggle(e.currentTarget.checked)}
+							disabled={smsPreferencesLoading}
 						/>
 						<div
 							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"
@@ -527,7 +520,7 @@
 							class="sr-only peer"
 							checked={pushEnabled}
 							onchange={(e) => handlePushToggle(e.currentTarget.checked)}
-							disabled={!pushSupported}
+							disabled={!pushSupported || isChannelSaving}
 						/>
 						<div
 							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
@@ -560,6 +553,7 @@
 							class="sr-only peer"
 							bind:checked={inAppEnabled}
 							onchange={(e) => handleInAppToggle(e.currentTarget.checked)}
+							disabled={isChannelSaving}
 						/>
 						<div
 							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"

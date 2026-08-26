@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/ontology/migration-llm.service.test.ts
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ACTIVE_EXPERIMENT_MODEL, DEEPSEEK_V4_FLASH_MODEL } from '@buildos/smart-llm';
 import {
 	DEFAULT_MIGRATION_MODEL,

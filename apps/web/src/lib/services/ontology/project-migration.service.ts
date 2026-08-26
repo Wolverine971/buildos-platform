@@ -11,7 +11,7 @@
  * @see /thoughts/shared/research/2025-12-10_migration-system-design.md
  */
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import type { Database, Json } from '@buildos/shared-types';
+import type { Database } from '@buildos/shared-types';
 import type { Facets } from '$lib/types/onto';
 import { ensureActorId } from './ontology-projects.service';
 import type {
@@ -73,7 +73,6 @@ export interface ProjectPropsLLMSummary {
 }
 
 const DEFAULT_PROJECT_TYPE = 'project.migration.generic';
-const CONTEXT_DOCUMENT_TYPE = 'document.context.project';
 
 export class ProjectMigrationService {
 	private readonly enhancedMigrator: EnhancedProjectMigrator;

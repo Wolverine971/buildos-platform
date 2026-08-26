@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/projects-old/[id]/tasks/[task_id]/+page.svelte -->
+<!-- apps/web/src/routes/projects/[id]/tasks/[task_id]/+page.svelte -->
 <!--
 	Task Focus Page - Focused Task Work Area
 

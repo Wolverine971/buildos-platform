@@ -140,16 +140,6 @@ interface LLMClassificationResponse {
 	}>;
 }
 
-/** LLM response for batch property extraction */
-interface LLMBatchExtractionResponse {
-	extractions: Array<{
-		index: number;
-		legacy_id: string;
-		props: Record<string, unknown>;
-		confidence: number;
-	}>;
-}
-
 /** Extraction result for a single task */
 interface TaskExtraction {
 	legacyId: string;

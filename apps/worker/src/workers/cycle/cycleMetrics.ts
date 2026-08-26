@@ -11,6 +11,17 @@ type MetricRow = {
 	recorded_at: string;
 };
 
+async function persistLatestMetricRows(rows: MetricRow[], label: string): Promise<void> {
+	try {
+		const { error } = await supabase
+			.from('system_metrics')
+			.upsert(rows, { onConflict: 'metric_name' });
+		if (error) console.warn(`${label}: ${error.message}`);
+	} catch (error) {
+		console.warn(`${label}: ${error instanceof Error ? error.message : String(error)}`);
+	}
+}
+
 function coordinatorMetricRows(snapshot: CycleCoordinatorHealthSnapshot): MetricRow[] {
 	const recordedAt = snapshot.lastCompletedAt ?? new Date().toISOString();
 	const summary = snapshot.lastSummary;
@@ -59,10 +70,10 @@ function coordinatorMetricRows(snapshot: CycleCoordinatorHealthSnapshot): Metric
 export async function persistCycleCoordinatorMetrics(
 	snapshot: CycleCoordinatorHealthSnapshot
 ): Promise<void> {
-	const { error } = await supabase
-		.from('system_metrics')
-		.upsert(coordinatorMetricRows(snapshot), { onConflict: 'metric_name' });
-	if (error) console.warn(`Cycle coordinator metrics write failed: ${error.message}`);
+	await persistLatestMetricRows(
+		coordinatorMetricRows(snapshot),
+		'Cycle coordinator metrics write failed'
+	);
 }
 
 export async function persistDailyBriefCycleShadowMetrics(
@@ -99,8 +110,5 @@ export async function persistDailyBriefCycleShadowMetrics(
 			recorded_at: summary.completedAt
 		}
 	];
-	const { error } = await supabase.from('system_metrics').upsert(rows, {
-		onConflict: 'metric_name'
-	});
-	if (error) console.warn(`Daily Brief Cycle shadow metrics write failed: ${error.message}`);
+	await persistLatestMetricRows(rows, 'Daily Brief Cycle shadow metrics write failed');
 }

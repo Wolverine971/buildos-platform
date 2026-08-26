@@ -1,5 +1,7 @@
 // apps/web/src/lib/utils/timezone.ts
 
+import { fromZonedTime } from 'date-fns-tz';
+
 /**
  * Get the user's timezone from various sources
  */
@@ -163,27 +165,7 @@ export function getRelativeTime(date: Date | string, timezone: string): string {
 export function parseDateInTimezone(dateString: string, timezone: string): Date {
 	// If it's just a date (YYYY-MM-DD), append midnight in the target timezone
 	if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-		const [yearStr, monthStr, dayStr] = dateString.split('-');
-		const year = Number(yearStr);
-		const month = Number(monthStr);
-		const day = Number(dayStr);
-
-		// Create a date string with timezone info
-		const formatter = new Intl.DateTimeFormat('en-US', {
-			timeZone: timezone,
-			year: 'numeric',
-			month: '2-digit',
-			day: '2-digit',
-			hour: '2-digit',
-			minute: '2-digit',
-			second: '2-digit',
-			hour12: false
-		});
-
-		// Create a date at noon to avoid DST issues
-		const noonDate = new Date(year, month - 1, day, 12, 0, 0);
-
-		return noonDate;
+		return fromZonedTime(`${dateString}T00:00:00`, timezone);
 	}
 
 	// Otherwise, parse normally

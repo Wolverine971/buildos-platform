@@ -64,17 +64,17 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return ApiResponse.internalError(messagesError, 'Failed to fetch messages');
 		}
 
-		if (!messages || messages.length < 10) {
+		if (!messages || messages.length === 0) {
 			return ApiResponse.success({
 				compressed: false,
-				reason: 'Not enough messages to compress',
+				reason: 'No messages to compress',
 				tokensSaved: 0
 			});
 		}
 
 		// Check if compression is needed
 		const compressionService = new ChatCompressionService(supabase);
-		const shouldCompress = await compressionService.shouldCompress(messages);
+		const shouldCompress = await compressionService.shouldCompress(messages, target_tokens);
 
 		if (!shouldCompress) {
 			return ApiResponse.success({
@@ -89,24 +89,33 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			session_id,
 			messages,
 			chatSession.context_type || 'global',
-			userId
+			userId,
+			target_tokens
 		);
+		const tokensSaved = Math.max(
+			result.metadata.originalTokens - result.metadata.compressedTokens,
+			0
+		);
+		const compressed = tokensSaved > 0;
 
 		// Update session with compression metadata
-		await supabase
-			.from('chat_sessions')
-			.update({
-				last_compression_at: new Date().toISOString(),
-				compression_count: ((chatSession as any).compression_count || 0) + 1,
-				updated_at: new Date().toISOString()
-			})
-			.eq('id', session_id);
+		if (compressed) {
+			await supabase
+				.from('chat_sessions')
+				.update({
+					last_compression_at: new Date().toISOString(),
+					compression_count: ((chatSession as any).compression_count || 0) + 1,
+					updated_at: new Date().toISOString()
+				})
+				.eq('id', session_id);
+		}
 
 		return ApiResponse.success({
-			compressed: true,
+			compressed,
+			...(!compressed && { reason: 'Tool context could not be compressed safely' }),
 			metadata: result.metadata,
 			compressionId: session_id,
-			tokensSaved: result.metadata.originalCount * 50 - result.metadata.estimatedTokens // Rough estimate
+			tokensSaved
 		});
 	} catch (err) {
 		console.error('Compression error:', err);
