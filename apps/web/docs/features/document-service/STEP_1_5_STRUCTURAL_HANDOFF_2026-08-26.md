@@ -362,7 +362,7 @@ buffer.
 - [x] A concurrent user edit during an agent write produces a detected conflict, never a silent
       overwrite.
 - [x] Agent `append` under concurrent edit appends to current content after retry.
-- [ ] Patch/anchor ADR written, reviewed, and linked from the document-service README.
+- [x] Patch/anchor ADR written, reviewed, and linked from the document-service README.
 - [ ] A document-scoped mutation event fires per turn, and the close-time broadcast still works.
 - [ ] `pnpm typecheck`, `pnpm lint`, `pnpm test:run` green.
 - [ ] `node scripts/docs/check-doc-health.mjs --strict` green.

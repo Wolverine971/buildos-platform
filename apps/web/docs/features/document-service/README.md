@@ -71,7 +71,7 @@ Ordered by the revised sequence (roadmap §8).
    settled by the WS-2 ADR; implementation waits only on WS-3.
 4. **START HERE index design** — the maintained project README, built on the existing
    `<!-- managed:* -->` region primitive (Step 3).
-5. **Managed-region ratification** is included in the proposed patch/anchor ADR rather than a
+5. **Managed-region ratification** is included in the ratified patch/anchor ADR rather than a
    separate artifact. Per-checklist-item identity remains a separate Step 5 decision.
 6. **Document import contract** — `.md` / `.txt` / `.docx` preview-then-commit, modelled on
    `apps/web/src/routes/api/profile/contacts/import/` (Step 6, per founder sequencing).
