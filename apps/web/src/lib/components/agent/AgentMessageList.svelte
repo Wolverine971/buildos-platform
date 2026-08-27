@@ -4,7 +4,8 @@
 	import { onDestroy } from 'svelte';
 	import ThinkingBlock from './ThinkingBlock.svelte';
 	import CreatedEntityCards from './CreatedEntityCards.svelte';
-	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
+	import { getProseClasses } from '$lib/utils/markdown';
+	import { observeAgentMarkdownTables, renderAgentMarkdown } from './agent-chat-markdown';
 	import type { UIMessage, ThinkingBlockMessage } from './agent-chat.types';
 	import { shouldRenderAsMarkdown, formatTime } from './agent-chat-formatters';
 	import { dev } from '$app/environment';
@@ -95,7 +96,7 @@
 			id: message.id,
 			content,
 			isMarkdown,
-			html: isMarkdown ? renderMarkdown(content) : '',
+			html: isMarkdown ? renderAgentMarkdown(content) : '',
 			parsedAt: Date.now()
 		};
 		return isMarkdown ? streamingParseCache.html : null;
@@ -225,6 +226,7 @@
 -->
 <div
 	bind:this={container}
+	{@attach observeAgentMarkdownTables}
 	onscroll={onScroll}
 	class="agent-chat-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain {compact
 		? 'agent-chat-scroll-compact space-y-2 bg-card p-2 sm:p-3'
@@ -403,7 +405,7 @@
 						<div
 							class="agent-markdown {proseClasses} min-w-0 overflow-x-auto break-words"
 						>
-							{@html renderMarkdown(message.content)}
+							{@html renderAgentMarkdown(message.content)}
 						</div>
 					{:else}
 						<div
@@ -440,7 +442,7 @@
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
 							<div class="agent-markdown {proseClasses} overflow-x-auto break-words">
-								{@html renderMarkdown(message.content)}
+								{@html renderAgentMarkdown(message.content)}
 							</div>
 						{:else}
 							<div class="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
@@ -714,10 +716,63 @@
 		overflow-wrap: normal;
 	}
 
-	.agent-markdown :global(table) {
-		width: 100%;
+	.agent-markdown :global(.agent-markdown-table-shell) {
+		display: flex;
+		flex-direction: column;
 		margin-top: 0.75rem;
 		margin-bottom: 0.75rem;
+	}
+
+	.agent-markdown :global(.agent-markdown-table-scroll) {
+		overflow-x: auto;
+		overscroll-behavior-inline: contain;
+		border-radius: 0.5rem;
+		scrollbar-width: thin;
+	}
+
+	.agent-markdown :global(.agent-markdown-table-scroll:focus-visible) {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: 2px;
+	}
+
+	.agent-markdown :global(.agent-markdown-table-cue) {
+		align-self: flex-end;
+		display: none;
+		order: -1;
+		margin-bottom: 0.35rem;
+		border: 1px solid hsl(var(--foreground) / 0.16);
+		border-radius: 999px;
+		background: hsl(var(--foreground) / 0.08);
+		color: hsl(var(--foreground));
+		font-size: 0.625rem;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		line-height: 1;
+		opacity: 0;
+		padding: 0.3rem 0.45rem;
+		pointer-events: none;
+		text-transform: uppercase;
+		transition: opacity 120ms ease-out;
+	}
+
+	.agent-markdown
+		:global(.agent-markdown-table-shell[data-scrollable='true'] > .agent-markdown-table-cue) {
+		display: inline-flex;
+	}
+
+	.agent-markdown
+		:global(
+			.agent-markdown-table-shell[data-scrollable='true'][data-at-end='false']
+				> .agent-markdown-table-cue
+		) {
+		opacity: 1;
+	}
+
+	.agent-markdown :global(table) {
+		width: max-content;
+		min-width: 100%;
+		max-width: none;
+		margin: 0;
 		border-collapse: separate;
 		border-spacing: 0;
 		overflow: hidden;
@@ -752,6 +807,13 @@
 		min-width: clamp(7rem, 38vw, 18rem);
 	}
 
+	/* A true 2-column table should fit the narrow peer bubble when its content can
+	 wrap; reserve the wider first/second-column heuristics for 3+ column data. */
+	.agent-markdown :global(tr > :first-child:nth-last-child(2)),
+	.agent-markdown :global(tr > :first-child:nth-last-child(2) ~ *) {
+		min-width: clamp(4.5rem, 24vw, 7rem);
+	}
+
 	.agent-markdown :global(th) {
 		background: hsl(var(--muted) / 0.75);
 		color: hsl(var(--foreground));
@@ -784,5 +846,11 @@
 	.agent-markdown :global(th[align='right']),
 	.agent-markdown :global(td[align='right']) {
 		text-align: right;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.agent-markdown :global(.agent-markdown-table-cue) {
+			transition: none;
+		}
 	}
 </style>

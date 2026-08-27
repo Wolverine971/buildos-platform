@@ -1,3 +1,4 @@
+// apps/worker/src/workers/notification/daily-brief-email-template.test.ts
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -26,7 +27,7 @@ describe('buildDailyBriefEmailHtml', () => {
 		const html = buildDailyBriefEmailHtml({
 			subject: 'BuildOS Daily Brief - Wednesday, August 26, 2026',
 			contentHtml: '<h1>Aug 26, 2026</h1><h2>Executive Brief</h2><p>Clear day.</p>',
-			briefUrl: 'https://build-os.com/projects?briefDate=2026-08-26',
+			briefUrl: 'https://build-os.com/briefs?date=2026-08-26&view=single&brief_id=brief-1',
 			managePreferencesUrl: 'https://build-os.com/profile?tab=notifications',
 			unsubscribeUrl: 'https://build-os.com/api/email-tracking/tracking-id/unsubscribe',
 			primaryActionLabel: 'View in BuildOS →',

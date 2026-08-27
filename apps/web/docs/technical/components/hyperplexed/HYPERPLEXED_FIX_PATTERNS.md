@@ -222,6 +222,56 @@ Make the intended event explicit:
 5. Verify momentum scrolling on a physical touch device: scroll up during streaming, then return
    slowly to the bottom and confirm no threshold crossing snaps to the absolute end.
 
+### P28 · Separate disclosure geometry from a hard scroll clamp
+
+**Finding:** a disclosure uses one or more guessed `max-height` ceilings as its animation, often
+with another animated ceiling inside for a compact scroll region. The browser performs layout and
+paint throughout the transition, the authored easing targets the ceiling instead of the content's
+real height, and nested ceilings can clip one another as content streams in.
+
+Give each layer one job:
+
+1. For the natural-height disclosure shell, use `display: grid` with static `0fr` and `1fr` states;
+   put `min-height: 0; overflow: hidden` on the direct child so the closed row can shrink. Do not
+   transition the grid track — it is still a layout property.
+2. If the inner scroll region genuinely needs compact and expanded limits, keep those
+   `max-height` values as static clamps. Do not transition between the clamps.
+3. Put the state feedback on a nearby affordance with `transform`/`opacity`, such as a chevron that
+   rotates in 120–180 ms. Avoid animating width, padding, or border width to reveal counters; mount
+   the counter at its final geometry and animate only transform/opacity if feedback is useful.
+4. Pair the closed state with `visibility: hidden` or `inert` so hidden controls cannot receive
+   focus. If only the affordance animates, visibility can switch with the disclosure state; do not
+   invent a delayed layout transition just to postpone it.
+5. Under `prefers-reduced-motion: reduce`, remove positional movement and preserve only a short
+   opacity cue where it still helps comprehension (P11).
+
+### P29 · Give narrative tables a measured scroll boundary
+
+**Finding:** user-generated markdown tables either clip inside a message bubble, make the whole
+message body scroll, or use a permanent gradient that mismatches one of the surrounding surfaces.
+
+Treat table overflow as its own progressive enhancement:
+
+1. Sanitize the markdown first, then add only application-owned wrapper markup. Never let user or
+   model HTML supply the scroll classes, roles, or cue.
+2. Give each table a dedicated `overflow-x: auto` element. Use `width: max-content` with
+   `min-width: 100%` on the table so intrinsic column width belongs to that scroller rather than
+   clipping inside a 100%-wide table box.
+3. Measure `scrollWidth - clientWidth` after mount and on content/size changes. Only a genuinely
+   overflowing table gets `tabindex="0"`, `role="region"`, and a concise accessible label; fitting
+   tables stay out of the tab order.
+4. Put the visible `Scroll →` cue in reserved space outside the data, never over a header cell. Use
+   foreground-alpha tokens so it remains legible on every bubble/background without a matched
+   gradient, and hide it at the far edge.
+5. Let compact two-column tables wrap and fit when possible; reserve stronger first/second-column
+   minimums for wider data. Verify the split with actual phone-width measurements, not just CSS
+   inspection.
+6. For streamed `{@html}`, observe subtree replacement as well as resize. Put one Svelte attachment
+   on the shared message-list root—not one per bubble—so one observer set owns all table listeners and
+   cleanup follows the list lifecycle.
+
+Keep the cue's opacity transition within 120–180 ms and disable it under reduced motion (P11).
+
 ---
 
 ## Signature effects (use at most one per surface)

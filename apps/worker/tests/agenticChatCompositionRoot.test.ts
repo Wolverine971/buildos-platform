@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	assertAgenticChatMutationAdapterCoverageV1,
 	createAgenticChatCompositionRoot,
+	reportAgenticChatRuntimeTiming,
 	reportAgenticChatStalledRecovery
 } from '../src/workers/agentic-chat/composition-root';
 import { normalizeAgenticChatMutationCapabilitiesV1 } from '../src/workers/agentic-chat/mutationToolCatalog';
@@ -17,6 +18,23 @@ function supabaseClient() {
 }
 
 describe('createAgenticChatCompositionRoot', () => {
+	it('emits bounded structured runtime timing telemetry', () => {
+		const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+		const snapshot = {
+			turnRunId: '30000000-0000-4000-8000-000000000003',
+			executionGeneration: 1,
+			preterminal: { spans: { publisherDrain: { durationMs: 12 } } }
+		};
+
+		reportAgenticChatRuntimeTiming(snapshot as never);
+
+		expect(info).toHaveBeenCalledWith('Agentic Chat runtime timing', {
+			event: 'agentic_chat_runtime_timing',
+			...snapshot
+		});
+		info.mockRestore();
+	});
+
 	it('composes the hosted adapters but remains completely inert', async () => {
 		const providerClient = { stream: vi.fn() };
 		const assembly = createAgenticChatCompositionRoot({

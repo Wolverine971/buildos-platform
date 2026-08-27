@@ -271,11 +271,13 @@ function createHarness(
 	let sequence = 0;
 	const semanticInputs: Array<Record<string, unknown>> = [];
 	const broadcastMessages: Array<Record<string, unknown>> = [];
+	const textFlushBatches: Array<Array<Record<string, unknown>>> = [];
 	const timingSnapshots: AgenticChatRuntimeTimingSnapshotV1[] = [];
 	const log: string[] = [];
 	const timingClockValues = options.timingClockValues ? [...options.timingClockValues] : null;
 	const persistence = {
 		async flushTextBatches(inputs: Array<Record<string, unknown>>) {
+			textFlushBatches.push(inputs);
 			await options.beforeFlushTextBatches?.(inputs);
 			return {
 				outcome: 'flushed',
@@ -801,6 +803,7 @@ function createHarness(
 		cancellationController,
 		semanticInputs,
 		broadcastMessages,
+		textFlushBatches,
 		timingSnapshots,
 		log,
 		getSequence: () => sequence
@@ -823,11 +826,11 @@ describe('AgenticChatTurnExecutor', () => {
 		const harness = createHarness([], {
 			beforeFlushTextBatches: () => persistenceGate
 		});
+		const deltas = Array.from({ length: 40 }, () => 'x');
 		Object.assign(harness.provider, {
 			stream: vi.fn(() =>
 				(async function* () {
-					yield { type: 'text_delta', text: 'first' } as const;
-					yield { type: 'text_delta', text: ' second' } as const;
+					for (const text of deltas) yield { type: 'text_delta', text } as const;
 					providerFinished = true;
 					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
 				})()
@@ -844,8 +847,9 @@ describe('AgenticChatTurnExecutor', () => {
 			terminalStatus: 'completed'
 		});
 		expect(harness.control.finalize).toHaveBeenCalledWith(
-			expect.objectContaining({ assistantText: 'first second' })
+			expect.objectContaining({ assistantText: 'x'.repeat(deltas.length) })
 		);
+		expect(harness.textFlushBatches.flat()).toHaveLength(2);
 		await harness.publisher.stop();
 	});
 
@@ -1119,7 +1123,7 @@ describe('AgenticChatTurnExecutor', () => {
 				{ type: 'text_delta', text: 'timed response' },
 				{ type: 'finish', finishedReason: 'stop', usage: null }
 			],
-			{ timingClockValues: [100, 110, 120, 150, 160, 190] }
+			{ timingClockValues: [100, 110, 120, 150, 150, 150, 160, 190] }
 		);
 
 		await expect(harness.executor.execute(job())).resolves.toMatchObject({
@@ -1132,13 +1136,15 @@ describe('AgenticChatTurnExecutor', () => {
 					admittedAt: executionInput.timingBaseline.admittedAt,
 					executionStartedAt: '2026-08-03T12:00:00.000Z'
 				}),
-				preterminal: {
+				preterminal: expect.objectContaining({
 					providerAuthorityObservedAtMs: 100,
 					firstEventPersistedAt: '2026-08-03T12:00:00.000Z',
 					firstEventPersistenceObservedAtMs: 110,
 					firstResponsePersistedAt: '2026-08-03T12:00:00.000Z',
 					firstResponsePersistenceObservedAtMs: 120,
 					providerFinishedAtMs: 150,
+					publisherDrainStartedAtMs: 150,
+					publisherDrainCompletedAtMs: 150,
 					terminalCallStartedAtMs: 160,
 					durationsMs: {
 						authorityToFirstEventPersistence: 10,
@@ -1147,7 +1153,7 @@ describe('AgenticChatTurnExecutor', () => {
 						authorityToProviderFinish: 50,
 						providerFinishToTerminalCall: 10
 					}
-				},
+				}),
 				postcallTelemetry: {
 					terminalCallCompletedAtMs: 190,
 					terminalCall: 30
@@ -1183,7 +1189,7 @@ describe('AgenticChatTurnExecutor', () => {
 				{ type: 'text_delta', text: 'timed response' },
 				{ type: 'finish', finishedReason: 'stop', usage: null }
 			],
-			{ timingClockValues: [100, 110, 120, 150, 160, 190] }
+			{ timingClockValues: [100, 110, 120, 150, 150, 150, 160, 190] }
 		);
 		harness.control.finalize.mockImplementationOnce(async () => {
 			throw new Error('agentic_chat_terminal_events_finalize_timing_evidence_mismatch');
@@ -1218,7 +1224,7 @@ describe('AgenticChatTurnExecutor', () => {
 				{ type: 'finish', finishedReason: 'stop', usage: null }
 			],
 			{
-				timingClockValues: [100, 110, 120, 150, 160, 190],
+				timingClockValues: [100, 110, 120, 150, 150, 150, 160, 190],
 				recovery: [
 					{
 						outcome: 'queue_reconciled',
@@ -1257,7 +1263,7 @@ describe('AgenticChatTurnExecutor', () => {
 				{ type: 'finish', finishedReason: 'stop', usage: null }
 			],
 			{
-				timingClockValues: [100, 110, 120, 150, 160, 190],
+				timingClockValues: [100, 110, 120, 150, 150, 150, 160, 190],
 				failBroadcastType: 'timing'
 			}
 		);
@@ -1280,7 +1286,7 @@ describe('AgenticChatTurnExecutor', () => {
 				{ type: 'text_delta', text: 'queued response' },
 				{ type: 'finish', finishedReason: 'stop', usage: null }
 			],
-			{ timingClockValues: [200, 210, 220, 250, 260, 290] }
+			{ timingClockValues: [200, 210, 220, 250, 250, 250, 260, 290] }
 		);
 		const queuedInput = {
 			...executionInput,

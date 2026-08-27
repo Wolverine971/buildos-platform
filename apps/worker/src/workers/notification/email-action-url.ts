@@ -15,3 +15,19 @@ export function resolveNotificationActionUrl(
 		return null;
 	}
 }
+
+export function buildDailyBriefUrl(
+	baseUrl: string,
+	briefDate: string | null | undefined,
+	briefId?: string | null
+): string {
+	const url = new URL('/briefs', baseUrl);
+	if (briefDate) {
+		url.searchParams.set('date', briefDate);
+	}
+	url.searchParams.set('view', 'single');
+	if (briefId) {
+		url.searchParams.set('brief_id', briefId);
+	}
+	return url.toString();
+}

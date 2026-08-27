@@ -122,6 +122,10 @@ import {
 	type AgenticChatConsumptionBillingRpcClient,
 	SupabaseAgenticChatConsumptionBillingAdapter
 } from './consumptionBilling';
+import type {
+	AgenticChatRuntimeTimingObserverV1,
+	AgenticChatRuntimeTimingSnapshotV1
+} from './runtimeTiming';
 
 export type AgenticChatCompositionRoot = {
 	consumer: ReturnType<typeof createAgenticChatConsumer>;
@@ -202,6 +206,8 @@ export function createAgenticChatCompositionRoot(options: {
 	onResearchCaptureError?: (error: unknown) => void;
 	onStatedFutureCaptureError?: (error: unknown) => void;
 	onConsumptionBillingError?: (error: unknown) => void;
+	/** Injectable telemetry sink; production emits one bounded structured span summary per turn. */
+	onTimingSnapshot?: AgenticChatRuntimeTimingObserverV1;
 }): AgenticChatCompositionRoot {
 	const consumerConfig: AgenticChatConsumerConfig = {
 		...DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
@@ -430,6 +436,7 @@ export function createAgenticChatCompositionRoot(options: {
 				options.onConsumptionBillingError ??
 				((error) =>
 					console.error('Agentic Chat consumption billing evaluation failed', error)),
+			onTimingSnapshot: options.onTimingSnapshot ?? reportAgenticChatRuntimeTiming,
 			mutation
 		},
 		{
@@ -526,6 +533,13 @@ export function reportAgenticChatStalledRecovery(report: AgenticChatStalledRecov
 		return;
 	}
 	console.info('Agentic Chat stalled recovery completed', payload);
+}
+
+export function reportAgenticChatRuntimeTiming(snapshot: AgenticChatRuntimeTimingSnapshotV1): void {
+	console.info('Agentic Chat runtime timing', {
+		event: 'agentic_chat_runtime_timing',
+		...snapshot
+	});
 }
 
 const STALLED_TURN_ALERT_AGE_MS = 10 * 60_000;

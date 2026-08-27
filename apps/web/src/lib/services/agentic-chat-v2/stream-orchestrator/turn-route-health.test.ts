@@ -15,15 +15,20 @@ const baseRouting: FastChatPassModelRouting = {
 };
 
 describe('turn route health', () => {
-	it('does not override normal tiering after an ordinary successful pass', () => {
+	it('keeps the first successful route sticky while retaining fallbacks', () => {
 		const health = createTurnRouteHealth();
 		observeTurnRouteHealth(health, {
 			status: 'success',
 			model: 'tencent/model',
-			requestedModel: 'tencent/model'
+			requestedModel: 'tencent/model',
+			providerSlug: 'Novita'
 		});
 
-		expect(applyTurnRouteHealth(baseRouting, health).models).toEqual(baseRouting.models);
+		expect(applyTurnRouteHealth(baseRouting, health)).toMatchObject({
+			models: ['tencent/model', 'deepseek/model', 'google/model'],
+			providerOrder: ['novita']
+		});
+		expect(applyTurnRouteHealth(baseRouting, health).allowProviderFallbacks).toBeUndefined();
 	});
 
 	it('keeps an internally resolved fallback sticky even without a surfaced failure', () => {

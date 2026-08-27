@@ -392,6 +392,11 @@ export class AgenticChatTurnExecutor {
 					this.captureRuntimeTiming(runtimeTiming, (timing) =>
 						timing.observePersistedEvent(observation.persistedAt, observation.eventType)
 					);
+				},
+				onDeliveryObserved: (observation) => {
+					this.captureRuntimeTiming(runtimeTiming, (timing) =>
+						timing.observePublisherDelivery(observation)
+					);
 				}
 			});
 			publisherRegistered = true;
@@ -494,6 +499,9 @@ export class AgenticChatTurnExecutor {
 					});
 			while (!finished) {
 				for await (const step of iterateWithAbort(providerStream, combined.signal)) {
+					this.captureRuntimeTiming(runtimeTiming, (timing) =>
+						timing.markSemanticReviewFinishedIfPending()
+					);
 					if (finished) throw new Error('Fixture provider emitted a step after finish');
 					if (step.type === 'text_delta') {
 						if (!step.text) throw new Error('Fixture text delta must be nonempty');
@@ -522,6 +530,11 @@ export class AgenticChatTurnExecutor {
 						);
 						terminalContext.contextShift =
 							extractContextShift(step.eventPayload) ?? terminalContext.contextShift;
+						if (isSemanticReviewStart(step)) {
+							this.captureRuntimeTiming(runtimeTiming, (timing) =>
+								timing.markSemanticReviewStarted()
+							);
+						}
 						continue;
 					}
 					if (step.type === 'supervisor_evaluation') {
@@ -579,9 +592,6 @@ export class AgenticChatTurnExecutor {
 							claim.turnRunId,
 							step.question,
 							combined.signal
-						);
-						this.captureRuntimeTiming(runtimeTiming, (timing) =>
-							timing.markProviderFinished()
 						);
 						finishedReason = step.finishedReason;
 						usage = step.usage;
@@ -833,7 +843,16 @@ export class AgenticChatTurnExecutor {
 			// write inside the provider-authority interval so persisted stream timing
 			// never observes assistant text after authority has been relinquished.
 			this.captureRuntimeTiming(runtimeTiming, (timing) => timing.markProviderFinished());
-			await abortable(this.ports.publisher.flushTurn(claim.turnRunId), combined.signal);
+			this.captureRuntimeTiming(runtimeTiming, (timing) =>
+				timing.markPublisherDrainStarted()
+			);
+			try {
+				await abortable(this.ports.publisher.flushTurn(claim.turnRunId), combined.signal);
+			} finally {
+				this.captureRuntimeTiming(runtimeTiming, (timing) =>
+					timing.markPublisherDrainCompleted()
+				);
+			}
 			await this.captureResearch(executionInput, envelope.processingToken, combined.signal);
 			await this.captureStatedFuture(
 				executionInput,
@@ -3232,6 +3251,13 @@ function canonicalBoundaryLabel(value: unknown, maximum: number): string | null 
 
 function elapsedMs(startedAt: number): number {
 	return Math.min(2_147_483_647, Math.max(0, Date.now() - startedAt));
+}
+
+function isSemanticReviewStart(
+	step: Extract<AgenticChatProviderStepV1, { type: 'semantic' }>
+): boolean {
+	const review = step.eventPayload.semantic_review;
+	return typeof review === 'object' && review !== null && !Array.isArray(review);
 }
 
 function canonicalUuid(value: unknown, label: string): asserts value is string {

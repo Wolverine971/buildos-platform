@@ -48,7 +48,7 @@
 		onExportSupportPacket?: () => void;
 		canExportSupportPacket?: boolean;
 		headerActions?: AgentChatHeaderAction[];
-		/** Bumped each time we shift into a (new) project context — triggers the title glimmer. */
+		/** Bumped each time we shift into a (new) project context — triggers the title cue. */
 		contextShiftPulse?: number;
 	}
 
@@ -215,30 +215,6 @@
 		};
 	}
 
-	// One-shot glimmer when the project context shifts. We key the title on the
-	// pulse so the CSS animation re-fires on every transition, and gate it on
-	// `glimmer` so it never plays on first mount (pulse starts at 0).
-	let glimmer = $state(false);
-	let lastPulse = 0;
-	let glimmerTimer: ReturnType<typeof setTimeout> | null = null;
-
-	$effect(() => {
-		const pulse = contextShiftPulse;
-		if (pulse === lastPulse) return;
-		lastPulse = pulse;
-		if (pulse <= 0) return;
-		glimmer = true;
-		if (glimmerTimer) clearTimeout(glimmerTimer);
-		glimmerTimer = setTimeout(() => {
-			glimmer = false;
-			glimmerTimer = null;
-		}, 1200);
-	});
-
-	$effect(() => () => {
-		if (glimmerTimer) clearTimeout(glimmerTimer);
-	});
-
 	// Determine project URL based on context
 	const projectUrl = $derived(projectId ? `/projects/${projectId}` : null);
 	const exportStepsTitle = $derived.by(() => {
@@ -376,8 +352,10 @@
 		{#if selectedContextType}
 			{#key contextShiftPulse}
 				<h2
-					class="agent-context-title truncate text-sm font-semibold text-foreground"
-					class:agent-context-title--glimmer={glimmer}
+					class="agent-context-title truncate text-sm font-semibold text-foreground {contextShiftPulse >
+					0
+						? 'agent-context-title--shifted'
+						: ''}"
 				>
 					{displayContextLabel}
 				</h2>
@@ -663,91 +641,37 @@
 </div>
 
 <style>
-	/*
-	 * INKPRINT glimmer: when the agent shifts us onto a (new) project, the title
-	 * rises into place while a band of accent "ink" sweeps across the letters and
-	 * the whole title briefly blooms accent — a small, deliberate "this is your
-	 * project now" beat. (No pseudo-element underline: the title is `truncate`, and
-	 * `overflow: hidden` would clip anything drawn outside its box. A `filter`
-	 * glow renders past the clip, so the bloom is the safe way to add presence.)
-	 */
-	.agent-context-title--glimmer {
-		/*
-		 * Mostly-foreground gradient with an accent band at its centre. Sized to
-		 * 300% so the painted image always fully covers the title (the band can
-		 * sweep fully in and out without ever leaving a glyph unpainted — unpainted
-		 * area + text-clip = invisible text).
-		 */
-		background-image: linear-gradient(
-			100deg,
-			hsl(var(--foreground)) 0%,
-			hsl(var(--foreground)) 34%,
-			hsl(var(--accent)) 50%,
-			hsl(var(--foreground)) 66%,
-			hsl(var(--foreground)) 100%
-		);
-		background-size: 300% 100%;
-		background-repeat: no-repeat;
-		/* Resting/end state: window sits on a pure-foreground slice of the gradient. */
-		background-position: 0% 0;
-		-webkit-background-clip: text;
-		background-clip: text;
-		-webkit-text-fill-color: transparent;
-		color: transparent;
+	/* One crisp state cue; the keyed title replays it only after an actual context shift. */
+	.agent-context-title--shifted {
 		transform-origin: left center;
-		animation:
-			agent-context-pop 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-			agent-context-shimmer 1.05s ease-out 0.04s,
-			agent-context-glow 1.15s ease-out;
+		animation: agent-context-shift 180ms cubic-bezier(0.23, 1, 0.32, 1);
 	}
 
-	@keyframes agent-context-pop {
-		0% {
+	@keyframes agent-context-shift {
+		from {
 			opacity: 0;
-			transform: translateY(3px) scale(0.97);
+			transform: translateY(2px) scale(0.97);
 		}
-		60% {
-			opacity: 1;
-		}
-		100% {
+		to {
 			opacity: 1;
 			transform: translateY(0) scale(1);
 		}
 	}
 
-	/* Accent band travels left→right across the letters, then settles off-frame. */
-	@keyframes agent-context-shimmer {
+	@keyframes agent-context-shift-fade {
 		from {
-			background-position: 100% 0;
+			opacity: 0.35;
 		}
 		to {
-			background-position: 0% 0;
+			opacity: 1;
 		}
 	}
 
-	/* The whole title softly blooms accent, then settles (two layers for presence). */
-	@keyframes agent-context-glow {
-		0% {
-			filter: drop-shadow(0 0 0 hsl(var(--accent) / 0));
-		}
-		45% {
-			filter: drop-shadow(0 0 5px hsl(var(--accent) / 0.55))
-				drop-shadow(0 0 12px hsl(var(--accent) / 0.3));
-		}
-		100% {
-			filter: drop-shadow(0 0 0 hsl(var(--accent) / 0));
-		}
-	}
-
-	/* Respect users who prefer reduced motion — keep the moment, drop the movement. */
+	/* Keep the state cue for reduced motion, but remove positional movement. */
 	@media (prefers-reduced-motion: reduce) {
-		.agent-context-title--glimmer {
-			background-image: none;
-			-webkit-text-fill-color: hsl(var(--foreground));
-			color: hsl(var(--foreground));
-			filter: none;
+		.agent-context-title--shifted {
 			transform: none;
-			animation: none;
+			animation: agent-context-shift-fade 120ms cubic-bezier(0.23, 1, 0.32, 1);
 		}
 	}
 </style>

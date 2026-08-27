@@ -738,13 +738,15 @@ export class AgenticChatStreamPublisher {
 					this.metric('text_batch_persisted', state.context.turnRunId);
 				const persistenceObservedAtMs = this.now();
 				const delivery = await this.deliverPersisted(state, result);
-				this.observeDelivery(
-					state,
-					operation,
-					result,
-					persistenceObservedAtMs,
-					delivery
-				);
+				if (result.outcome === 'persisted') {
+					this.observeDelivery(
+						state,
+						operation,
+						result,
+						persistenceObservedAtMs,
+						delivery
+					);
+				}
 				if (state.operations[0] === operation)
 					this.completeOperation(state, operation, delivery);
 			})
@@ -770,13 +772,9 @@ export class AgenticChatStreamPublisher {
 			});
 			const persistenceObservedAtMs = this.now();
 			const delivery = await this.deliverPersisted(state, result);
-			this.observeDelivery(
-				state,
-				operation,
-				result,
-				persistenceObservedAtMs,
-				delivery
-			);
+			if (result.outcome === 'persisted') {
+				this.observeDelivery(state, operation, result, persistenceObservedAtMs, delivery);
+			}
 			if (state.operations[0] === operation)
 				this.completeOperation(state, operation, delivery);
 		} catch (error) {
@@ -850,10 +848,7 @@ export class AgenticChatStreamPublisher {
 	): void {
 		try {
 			const deliveryObservedAtMs = this.now();
-			const queueingMs = nonnegativeElapsed(
-				operation.enqueuedAtMs,
-				persistenceObservedAtMs
-			);
+			const queueingMs = nonnegativeElapsed(operation.enqueuedAtMs, persistenceObservedAtMs);
 			const deliveryDecisionMs = nonnegativeElapsed(
 				persistenceObservedAtMs,
 				deliveryObservedAtMs
@@ -868,10 +863,7 @@ export class AgenticChatStreamPublisher {
 				deliveryDecisionMs,
 				durableAcknowledgementMs:
 					delivery === 'broadcast_acknowledged' ? deliveryDecisionMs : null,
-				totalDeliveryMs: nonnegativeElapsed(
-					operation.enqueuedAtMs,
-					deliveryObservedAtMs
-				)
+				totalDeliveryMs: nonnegativeElapsed(operation.enqueuedAtMs, deliveryObservedAtMs)
 			});
 		} catch {
 			// Observability callbacks cannot change durable publisher delivery.

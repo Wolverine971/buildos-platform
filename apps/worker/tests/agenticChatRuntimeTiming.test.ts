@@ -48,10 +48,12 @@ function tracker(values: number[]) {
 
 describe('AgenticChatRuntimeTimingTracker', () => {
 	it('separates preterminal product sources from post-call terminal telemetry', () => {
-		const timing = tracker([100, 110, 120, 150, 160, 190]);
+		const timing = tracker([100, 110, 120, 150, 152, 158, 160, 190]);
 		timing.observePersistedEvent('2026-08-03T12:00:00.010Z', 'turn_phase');
 		timing.observePersistedEvent('2026-08-03T12:00:00.020Z', 'text_delta');
 		timing.markProviderFinished();
+		timing.markPublisherDrainStarted();
+		timing.markPublisherDrainCompleted();
 		timing.markTerminalCallStarted();
 
 		expect(timing.preterminalSnapshot()).toEqual({
@@ -68,6 +70,8 @@ describe('AgenticChatRuntimeTimingTracker', () => {
 				firstResponsePersistedAt: '2026-08-03T12:00:00.020Z',
 				firstResponsePersistenceObservedAtMs: 120,
 				providerFinishedAtMs: 150,
+				publisherDrainStartedAtMs: 152,
+				publisherDrainCompletedAtMs: 158,
 				terminalCallStartedAtMs: 160,
 				durationsMs: {
 					authorityToFirstEventPersistence: 10,
@@ -75,6 +79,18 @@ describe('AgenticChatRuntimeTimingTracker', () => {
 					firstResponsePersistenceToProviderFinish: 30,
 					authorityToProviderFinish: 50,
 					providerFinishToTerminalCall: 10
+				},
+				spans: {
+					providerExecution: { durationMs: 50 },
+					semanticReview: { count: 0, totalDurationMs: 0, maxDurationMs: 0 },
+					publisherQueueing: { count: 0, totalDurationMs: 0, maxDurationMs: 0 },
+					durableAcknowledgement: {
+						count: 0,
+						totalDurationMs: 0,
+						maxDurationMs: 0
+					},
+					publisherDelivery: { count: 0, totalDurationMs: 0, maxDurationMs: 0 },
+					publisherDrain: { durationMs: 6 }
 				}
 			}
 		});
@@ -96,6 +112,8 @@ describe('AgenticChatRuntimeTimingTracker', () => {
 				firstResponsePersistedAt: '2026-08-03T12:00:00.020Z',
 				firstResponsePersistenceObservedAtMs: 120,
 				providerFinishedAtMs: 150,
+				publisherDrainStartedAtMs: 152,
+				publisherDrainCompletedAtMs: 158,
 				terminalCallStartedAtMs: 160,
 				durationsMs: {
 					authorityToFirstEventPersistence: 10,
@@ -103,6 +121,18 @@ describe('AgenticChatRuntimeTimingTracker', () => {
 					firstResponsePersistenceToProviderFinish: 30,
 					authorityToProviderFinish: 50,
 					providerFinishToTerminalCall: 10
+				},
+				spans: {
+					providerExecution: { durationMs: 50 },
+					semanticReview: { count: 0, totalDurationMs: 0, maxDurationMs: 0 },
+					publisherQueueing: { count: 0, totalDurationMs: 0, maxDurationMs: 0 },
+					durableAcknowledgement: {
+						count: 0,
+						totalDurationMs: 0,
+						maxDurationMs: 0
+					},
+					publisherDelivery: { count: 0, totalDurationMs: 0, maxDurationMs: 0 },
+					publisherDrain: { durationMs: 6 }
 				}
 			},
 			postcallTelemetry: {
@@ -135,7 +165,7 @@ describe('AgenticChatRuntimeTimingTracker', () => {
 		});
 	});
 
-	it('omits the legacy response-generation span when provider finish precedes persistence', () => {
+	it('clamps the legacy response-generation span when provider finish precedes persistence', () => {
 		const timing = tracker([10, 15, 20, 25, 30, 35]);
 		timing.observePersistedEvent('2026-08-03T12:00:00.010Z', 'turn_phase');
 		timing.markProviderFinished();
@@ -148,10 +178,39 @@ describe('AgenticChatRuntimeTimingTracker', () => {
 				providerFinishedAtMs: 20,
 				firstResponsePersistenceObservedAtMs: 25,
 				durationsMs: {
-					firstResponsePersistenceToProviderFinish: null,
+					firstResponsePersistenceToProviderFinish: 0,
 					providerFinishToTerminalCall: 10
 				}
 			}
+		});
+	});
+
+	it('aggregates semantic-review, publisher-queue, and durable-acknowledgement spans', () => {
+		const timing = tracker([100, 110, 135, 150, 160, 180]);
+		timing.markSemanticReviewStarted();
+		timing.markSemanticReviewFinishedIfPending();
+		timing.observePublisherDelivery({
+			turnRunId: '30000000-0000-4000-8000-000000000003',
+			executionGeneration: 1,
+			sequenceIndex: 1,
+			eventType: 'text_delta',
+			delivery: 'broadcast_acknowledged',
+			queueingMs: 8,
+			deliveryDecisionMs: 3,
+			durableAcknowledgementMs: 3,
+			totalDeliveryMs: 11
+		});
+		timing.markProviderFinished();
+		timing.markTerminalCallStarted();
+		timing.markTerminalCallCompleted();
+
+		expect(timing.snapshot().preterminal.spans).toEqual({
+			providerExecution: { durationMs: 50 },
+			semanticReview: { count: 1, totalDurationMs: 25, maxDurationMs: 25 },
+			publisherQueueing: { count: 1, totalDurationMs: 8, maxDurationMs: 8 },
+			durableAcknowledgement: { count: 1, totalDurationMs: 3, maxDurationMs: 3 },
+			publisherDelivery: { count: 1, totalDurationMs: 11, maxDurationMs: 11 },
+			publisherDrain: { durationMs: null }
 		});
 	});
 

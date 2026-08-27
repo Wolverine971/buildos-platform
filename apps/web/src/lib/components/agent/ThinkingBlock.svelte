@@ -467,18 +467,11 @@
 		display: grid;
 		grid-template-rows: 0fr;
 		visibility: hidden;
-		opacity: 0;
-		transition:
-			grid-template-rows 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
-			opacity 140ms ease-out,
-			visibility 0s linear 180ms;
 	}
 
 	.thinking-body-open {
 		grid-template-rows: 1fr;
 		visibility: visible;
-		opacity: 1;
-		transition-delay: 0ms;
 	}
 
 	.thinking-body-inner {
@@ -603,7 +596,6 @@
 			animation: none;
 		}
 
-		.thinking-body,
 		.thinking-log-chevron {
 			transition: none;
 		}

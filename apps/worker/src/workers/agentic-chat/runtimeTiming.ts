@@ -1,6 +1,7 @@
 // apps/worker/src/workers/agentic-chat/runtimeTiming.ts
 import { performance } from 'node:perf_hooks';
 import type { AgenticChatWorkerTimingBaselineV1 } from './executionInput';
+import type { AgenticChatPublisherDeliveryObservationV1 } from './streamPublisher';
 
 export type AgenticChatMonotonicClockV1 = {
 	nowMs(): number;
@@ -19,6 +20,8 @@ export type AgenticChatPreterminalTimingSnapshotV1 = {
 		firstResponsePersistedAt: string | null;
 		firstResponsePersistenceObservedAtMs: number | null;
 		providerFinishedAtMs: number;
+		publisherDrainStartedAtMs: number | null;
+		publisherDrainCompletedAtMs: number | null;
 		terminalCallStartedAtMs: number;
 		durationsMs: {
 			authorityToFirstEventPersistence: number | null;
@@ -27,7 +30,21 @@ export type AgenticChatPreterminalTimingSnapshotV1 = {
 			authorityToProviderFinish: number;
 			providerFinishToTerminalCall: number;
 		};
+		spans: {
+			providerExecution: { durationMs: number };
+			semanticReview: AgenticChatRuntimeTimingAggregateV1;
+			publisherQueueing: AgenticChatRuntimeTimingAggregateV1;
+			durableAcknowledgement: AgenticChatRuntimeTimingAggregateV1;
+			publisherDelivery: AgenticChatRuntimeTimingAggregateV1;
+			publisherDrain: { durationMs: number | null };
+		};
 	};
+};
+
+export type AgenticChatRuntimeTimingAggregateV1 = {
+	count: number;
+	totalDurationMs: number;
+	maxDurationMs: number;
 };
 
 export type AgenticChatRuntimeTimingSnapshotV1 = AgenticChatPreterminalTimingSnapshotV1 & {
@@ -65,7 +82,14 @@ export class AgenticChatRuntimeTimingTracker {
 	private firstEventPersistenceObservedAtMs: number | null = null;
 	private firstResponsePersistedAt: string | null = null;
 	private firstResponsePersistenceObservedAtMs: number | null = null;
+	private semanticReviewStartedAtMs: number | null = null;
+	private readonly semanticReview = timingAggregate();
+	private readonly publisherQueueing = timingAggregate();
+	private readonly durableAcknowledgement = timingAggregate();
+	private readonly publisherDelivery = timingAggregate();
 	private providerFinishedAtMs: number | null = null;
+	private publisherDrainStartedAtMs: number | null = null;
+	private publisherDrainCompletedAtMs: number | null = null;
 	private terminalCallStartedAtMs: number | null = null;
 	private terminalCallCompletedAtMs: number | null = null;
 	private healthy = true;
@@ -131,6 +155,58 @@ export class AgenticChatRuntimeTimingTracker {
 		this.providerFinishedAtMs = this.readClock();
 	}
 
+	markSemanticReviewStarted(): void {
+		if (this.semanticReviewStartedAtMs !== null) {
+			throw new AgenticChatRuntimeTimingError('semantic review start was recorded twice');
+		}
+		this.semanticReviewStartedAtMs = this.readClock();
+	}
+
+	markSemanticReviewFinishedIfPending(): void {
+		if (this.semanticReviewStartedAtMs === null) return;
+		const finishedAtMs = this.readClock();
+		observeDuration(this.semanticReview, finishedAtMs - this.semanticReviewStartedAtMs);
+		this.semanticReviewStartedAtMs = null;
+	}
+
+	observePublisherDelivery(observation: AgenticChatPublisherDeliveryObservationV1): void {
+		if (
+			observation.turnRunId !== this.input.turnRunId ||
+			observation.executionGeneration !== this.input.executionGeneration
+		) {
+			throw new AgenticChatRuntimeTimingError('publisher delivery identity is invalid');
+		}
+		observeDuration(this.publisherQueueing, observation.queueingMs);
+		observeDuration(this.publisherDelivery, observation.totalDeliveryMs);
+		if (observation.durableAcknowledgementMs !== null) {
+			observeDuration(this.durableAcknowledgement, observation.durableAcknowledgementMs);
+		}
+	}
+
+	markPublisherDrainStarted(): void {
+		if (this.providerFinishedAtMs === null) {
+			throw new AgenticChatRuntimeTimingError(
+				'publisher drain started before provider finish'
+			);
+		}
+		if (this.publisherDrainStartedAtMs !== null) {
+			throw new AgenticChatRuntimeTimingError('publisher drain start was recorded twice');
+		}
+		this.publisherDrainStartedAtMs = this.readClock();
+	}
+
+	markPublisherDrainCompleted(): void {
+		if (this.publisherDrainStartedAtMs === null) {
+			throw new AgenticChatRuntimeTimingError('publisher drain completed before it started');
+		}
+		if (this.publisherDrainCompletedAtMs !== null) {
+			throw new AgenticChatRuntimeTimingError(
+				'publisher drain completion was recorded twice'
+			);
+		}
+		this.publisherDrainCompletedAtMs = this.readClock();
+	}
+
 	markTerminalCallStarted(): void {
 		if (this.providerFinishedAtMs === null) {
 			throw new AgenticChatRuntimeTimingError('terminal call started before provider finish');
@@ -173,6 +249,8 @@ export class AgenticChatRuntimeTimingTracker {
 				firstResponsePersistedAt: this.firstResponsePersistedAt,
 				firstResponsePersistenceObservedAtMs: this.firstResponsePersistenceObservedAtMs,
 				providerFinishedAtMs,
+				publisherDrainStartedAtMs: this.publisherDrainStartedAtMs,
+				publisherDrainCompletedAtMs: this.publisherDrainCompletedAtMs,
 				terminalCallStartedAtMs,
 				durationsMs: {
 					authorityToFirstEventPersistence: duration(
@@ -191,6 +269,22 @@ export class AgenticChatRuntimeTimingTracker {
 					authorityToProviderFinish:
 						providerFinishedAtMs - this.providerAuthorityObservedAtMs,
 					providerFinishToTerminalCall: terminalCallStartedAtMs - providerFinishedAtMs
+				},
+				spans: {
+					providerExecution: {
+						durationMs: providerFinishedAtMs - this.providerAuthorityObservedAtMs
+					},
+					semanticReview: { ...this.semanticReview },
+					publisherQueueing: { ...this.publisherQueueing },
+					durableAcknowledgement: { ...this.durableAcknowledgement },
+					publisherDelivery: { ...this.publisherDelivery },
+					publisherDrain: {
+						durationMs: duration(
+							this.publisherDrainStartedAtMs,
+							this.publisherDrainCompletedAtMs,
+							{ requireCausalOrder: true }
+						)
+					}
 				}
 			}
 		};
@@ -259,8 +353,21 @@ function duration(
 	options: { requireCausalOrder?: boolean } = {}
 ): number | null {
 	if (start === null || end === null) return null;
-	if (options.requireCausalOrder && end < start) return null;
+	if (options.requireCausalOrder && end < start) return 0;
 	return end - start;
+}
+
+function timingAggregate(): AgenticChatRuntimeTimingAggregateV1 {
+	return { count: 0, totalDurationMs: 0, maxDurationMs: 0 };
+}
+
+function observeDuration(aggregate: AgenticChatRuntimeTimingAggregateV1, value: number): void {
+	if (!Number.isFinite(value) || value < 0) {
+		throw new AgenticChatRuntimeTimingError('observed duration is invalid');
+	}
+	aggregate.count += 1;
+	aggregate.totalDurationMs += value;
+	aggregate.maxDurationMs = Math.max(aggregate.maxDurationMs, value);
 }
 
 function requiredBoundary(value: number | null, name: string): number {

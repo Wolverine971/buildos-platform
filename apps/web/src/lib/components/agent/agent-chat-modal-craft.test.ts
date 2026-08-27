@@ -45,4 +45,28 @@ describe('agent chat modal craft contracts', () => {
 		expect(composerSource.match(/h-11 w-11/g)).toHaveLength(5);
 		expect(composerSource.match(/sm:h-8 sm:w-8/g)).toHaveLength(5);
 	});
+
+	it('keeps the context-shift cue compositor-safe and brief', () => {
+		const headerSource = componentSource('AgentChatHeader.svelte');
+
+		expect(headerSource).toContain(
+			'animation: agent-context-shift 180ms cubic-bezier(0.23, 1, 0.32, 1);'
+		);
+		expect(headerSource).toContain(
+			'animation: agent-context-shift-fade 120ms cubic-bezier(0.23, 1, 0.32, 1);'
+		);
+		expect(headerSource).not.toMatch(/\bfilter\s*:/);
+		expect(headerSource).not.toContain('background-position');
+		expect(headerSource).not.toContain('glimmerTimer');
+	});
+
+	it('keeps markdown-table overflow inside its dedicated measured scroller', () => {
+		const messageListSource = componentSource('AgentMessageList.svelte');
+
+		expect(messageListSource).toContain('{@attach observeAgentMarkdownTables}');
+		expect(messageListSource).toContain('width: max-content;');
+		expect(messageListSource).toContain('min-width: 100%;');
+		expect(messageListSource).toContain(':first-child:nth-last-child(2)');
+		expect(messageListSource).toContain("[data-scrollable='true'][data-at-end='false']");
+	});
 });

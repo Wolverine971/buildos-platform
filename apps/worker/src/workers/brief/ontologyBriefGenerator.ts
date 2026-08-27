@@ -23,6 +23,12 @@ import {
 	compareProjectsForPromptInclusion
 } from './ontologyPrompts.js';
 import { formatCalendarSection, formatProjectCalendarItems } from './calendarBriefFormatting.js';
+import {
+	type BriefPriorityAction,
+	buildProjectEntityHref,
+	extractPriorityActions,
+	formatPriorityActionMarkdown
+} from './priorityActionFormatting.js';
 import type {
 	GoalProgress,
 	OntoProjectWithRelations,
@@ -775,7 +781,7 @@ function generateMainBriefMarkdown(
 	projectBriefContents: string[],
 	executiveSummary: string,
 	holidays: string[] | null,
-	priorityActions: string[]
+	priorityActions: BriefPriorityAction[]
 ): string {
 	const recentlyPausedProjects = briefData.recentlyPausedProjects ?? [];
 
@@ -832,7 +838,7 @@ function generateMainBriefMarkdown(
 	if (priorityActions.length > 0) {
 		mainBrief += `## Start Here\n\n`;
 		for (const action of priorityActions.slice(0, 3)) {
-			mainBrief += `- **${action}**\n`;
+			mainBrief += `- **${formatPriorityActionMarkdown(action)}**\n`;
 		}
 		mainBrief += '\n';
 	}
@@ -875,7 +881,8 @@ function generateMainBriefMarkdown(
 			const details = [targetSummary, projectLink].filter(Boolean);
 			const detailSuffix = details.length > 0 ? ` - ${details.join(' - ')}` : '';
 			const statusPrefix = statusEmoji ? `${statusEmoji} ` : '';
-			mainBrief += `- ${statusPrefix}**${goal.goal.name}**${detailSuffix}\n`;
+			const goalLink = buildProjectEntityHref(goal.goal.project_id, 'goal', goal.goal.id);
+			mainBrief += `- ${statusPrefix}**[${escapeMarkdownLinkLabel(goal.goal.name)}](${goalLink})**${detailSuffix}\n`;
 		}
 		mainBrief += '\n';
 	}
@@ -912,7 +919,8 @@ function generateMainBriefMarkdown(
 				const projectSuffix = projectName
 					? ` — [${projectName}](/projects/${risk.project_id})`
 					: '';
-				mainBrief += `- **${risk.title}** (Impact: ${risk.impact})${projectSuffix}\n`;
+				const riskLink = buildProjectEntityHref(risk.project_id, 'risk', risk.id);
+				mainBrief += `- **[${escapeMarkdownLinkLabel(risk.title)}](${riskLink})** (Impact: ${risk.impact})${projectSuffix}\n`;
 			}
 			mainBrief += '\n';
 		}
@@ -1062,50 +1070,6 @@ function generateMainBriefMarkdown(
 	}
 
 	return mainBrief;
-}
-
-function extractPriorityActions(briefData: OntologyBriefData): string[] {
-	const actions: string[] = [];
-
-	const taskSort = (a: OntoTask, b: OntoTask): number => {
-		const priorityA = a.priority ?? Number.POSITIVE_INFINITY;
-		const priorityB = b.priority ?? Number.POSITIVE_INFINITY;
-		if (priorityA !== priorityB) return priorityA - priorityB;
-
-		const dueA = a.due_at ? parseISO(a.due_at).getTime() : Number.POSITIVE_INFINITY;
-		const dueB = b.due_at ? parseISO(b.due_at).getTime() : Number.POSITIVE_INFINITY;
-		return dueA - dueB;
-	};
-
-	// High priority tasks (P1/P2), prefer overdue then due today
-	const highPriorityTasks = [...briefData.overdueTasks, ...briefData.todaysTasks]
-		.filter((t) => t.priority !== null && t.priority <= 2 && t.state_key !== 'done')
-		.sort(taskSort)
-		.slice(0, 3);
-	for (const task of highPriorityTasks) {
-		actions.push(task.title);
-	}
-
-	// Unblocking tasks from all projects
-	for (const project of briefData.projects) {
-		for (const task of project.unblockingTasks.slice(0, 2)) {
-			if (actions.length >= 5) break;
-			if (!actions.includes(task.title)) {
-				actions.push(task.title);
-			}
-		}
-	}
-
-	// Goals at risk
-	const goalsAtRisk = briefData.goals
-		.filter((g) => g.status === 'at_risk' || g.status === 'behind')
-		.slice(0, 2);
-	for (const goal of goalsAtRisk) {
-		if (actions.length >= 5) break;
-		actions.push(`Address goal: ${goal.goal.name}`);
-	}
-
-	return actions.slice(0, 5);
 }
 
 // ============================================================================
@@ -1471,15 +1435,16 @@ export async function generateOntologyDailyBrief(
 		await updateProgress(dailyBrief.id, { step: 'finalizing', progress: 90 }, jobId);
 
 		// Extract priority actions first so we can include them in the brief
-		const priorityActions = extractPriorityActions(briefData);
+		const linkedPriorityActions = extractPriorityActions(briefData);
 
 		const mainBriefContent = generateMainBriefMarkdown(
 			briefData,
 			allProjectBriefContents,
 			executiveSummary,
 			holidays,
-			priorityActions
+			linkedPriorityActions
 		);
+		const priorityActions = linkedPriorityActions.map((action) => action.text);
 
 		// Step 8: Update the daily brief with final content
 		const finalMetadata: OntologyBriefMetadata = {

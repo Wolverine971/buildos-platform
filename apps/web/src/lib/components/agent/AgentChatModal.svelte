@@ -204,8 +204,8 @@
 		logFocusActivity: (label, focus) => logFocusActivity(label, focus)
 	});
 	// Bumped whenever the agent shifts us into a (new) project context — drives a
-	// one-shot glimmer on the header title so landing on a freshly created project
-	// feels like a small moment of magic rather than a silent label swap.
+	// one-shot title cue so landing on a freshly created project is not a silent
+	// label swap.
 	let contextShiftPulse = $state(0);
 	let wasOpen = $state(false);
 	// Prewarm state lives in the PrewarmController instance created below,

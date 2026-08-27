@@ -60,6 +60,35 @@ function timingSummary(baseline: AgenticChatWorkerTimingBaselineV1 = IMMEDIATE_B
 }
 
 describe('Agentic Chat asynchronous timing payload', () => {
+	it('keeps timing evidence valid when provider finish precedes first text persistence', () => {
+		const values = [100, 110, 120, 130, 140];
+		const tracker = new AgenticChatRuntimeTimingTracker({
+			turnRunId: '30000000-0000-4000-8000-000000000003',
+			executionGeneration: 1,
+			baseline: IMMEDIATE_BASELINE,
+			executionStartedAt: '2026-08-03T12:00:00.000Z',
+			clock: {
+				nowMs() {
+					const value = values.shift();
+					if (value === undefined) throw new Error('Fixture clock exhausted');
+					return value;
+				}
+			}
+		});
+		tracker.observePersistedEvent('2026-08-03T12:00:00.010Z', 'turn_phase');
+		tracker.markProviderFinished();
+		tracker.observePersistedEvent('2026-08-03T12:00:00.020Z', 'text_delta');
+		tracker.markTerminalCallStarted();
+
+		const draft = buildAgenticChatAsyncTimingDraftV1(tracker.preterminalSnapshot(), 'stop');
+
+		expect(draft.phases).toMatchObject({
+			provider_authority_to_finish_ms: 20,
+			provider_finish_to_terminal_call_ms: 20,
+			response_generation_ms: 0
+		});
+	});
+
 	it('pins the immediate-response product payload without invented preparation fields', () => {
 		const summary = timingSummary();
 

@@ -41,7 +41,7 @@ const sanitizeOptions = {
 		'td'
 	],
 	allowedAttributes: {
-		a: ['href', 'title', 'target'],
+		a: ['href', 'title', 'target', 'rel'],
 		img: ['src', 'alt', 'title', 'width', 'height'],
 		code: ['class'],
 		pre: ['class']

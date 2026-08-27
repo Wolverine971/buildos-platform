@@ -61,7 +61,9 @@ describe('ThinkingBlock', () => {
 	});
 
 	it('does not animate layout ceilings or spacing', () => {
-		expect(source).not.toMatch(/\b(?:max-height|max-width|padding|border-width)\s+\d+ms\b/);
+		expect(source).not.toMatch(
+			/\b(?:grid-template-rows|max-height|max-width|padding|border-width)\s+\d+ms\b/
+		);
 		expect(source).toContain('grid-template-rows: 0fr');
 		expect(source).toContain('grid-template-rows: 1fr');
 		expect(source).toContain('transition: transform 160ms');
@@ -73,7 +75,6 @@ describe('ThinkingBlock', () => {
 		);
 
 		expect(reducedMotion).toContain('.activity-count-badge');
-		expect(reducedMotion).toContain('.thinking-body');
 		expect(reducedMotion).toContain('.thinking-log-chevron');
 		expect(reducedMotion).toContain('transition: none');
 	});

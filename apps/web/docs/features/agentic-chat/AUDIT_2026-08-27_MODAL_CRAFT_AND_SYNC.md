@@ -78,8 +78,34 @@ contract — `AgentSSEMessage` advertises nine event types no server emits and n
 - **Verification:** 7 focused files / 74 tests passing; `@buildos/shared-types` and
   `@buildos/agentic-chat-runtime` typechecks pass; full web `pnpm check`: 0 errors / 0 warnings.
 
-**Still open:** M3, P1 (profile first), and M4 (watch-item). A physical-iOS momentum-scroll
-feel-check plus desktop/phone light/dark captures are still owed.
+### Third fix pass — shipped 2026-08-27
+
+- **M3:** replaced the outer `max-height` ceiling with a true-height `0fr → 1fr` grid disclosure.
+  The compact and expanded log limits remain static clamps, while a 160 ms chevron transform owns
+  the height-state feedback. The panel delays `visibility: hidden` until close completes so hidden
+  controls cannot receive focus. → P11+P28
+- **Adjacent layout motion:** removed the component's `max-width` and padding transitions. The
+  activity counter now mounts at its final geometry and enters with transform/opacity instead of
+  animating width, padding, and border width. → P28
+- **Regression coverage:** `ThinkingBlock.test.ts` exercises compact/expanded semantics and protects
+  the no-layout-transition plus reduced-motion contracts. Focused craft result: 2 files / 6 tests
+  passing; Svelte autofixer reports no issues; full `pnpm check`: 0 errors / 0 warnings.
+
+### Fourth pass — P1 profile gate completed 2026-08-27
+
+- **Production size evidence:** an aggregate-only query across 1,908 sessions (no message content)
+  found message-count p95/p99/max of 11/22/69 and tool-call-count p95/p99/max of 20/32/62.
+- **Streaming-path profile:** the repeatable `pnpm profile:agent-chat-timeline` harness measures the
+  exact derive → merge → export-count chain for 600 frames after 60 warmups. Two runs of the
+  observed-maximum scenario measured p95 0.202–0.207 ms (1.21–1.24% of a 60 fps frame). Even the
+  synthetic restore-API-cap scenario measured p95 1.625–1.888 ms (9.75–11.33%).
+- **Decision:** no runtime optimization. The measured production tail is comfortably below budget,
+  so memoizing on a new content-independent key would add correctness risk without a demonstrated
+  user-visible gain. Keep the harness and revisit only if session sizes or a low-end-device trace
+  materially exceed this baseline.
+
+**Still open:** M4 (watch-item). A physical-iOS momentum-scroll feel-check, an expand/collapse
+feel-check, and desktop/phone light/dark captures are still owed.
 
 ---
 
@@ -224,6 +250,13 @@ short chat it is noise. For a long session with many tool calls it is not. This 
 before it gets fixed — measure first, and only then decide between memoizing the sort on a
 content-independent key or moving `exportableStepCount` off the hot path.
 
+**Profile result — closed without a runtime change (2026-08-27).** Production aggregate sizes peak
+at 69 messages and 62 tool calls. A fixture at that observed maximum measured 0.202–0.207 ms p95
+across repeated 600-frame runs; the much larger 2,405-item restore-cap fixture measured
+1.625–1.888 ms p95. The repeatable harness is `pnpm profile:agent-chat-timeline`. DOM rendering is
+intentionally excluded because this finding names the pure timeline chain; its result remains well
+inside the frame budget, so the profile-first gate rejects a speculative memoization layer.
+
 ---
 
 ### M3 — `max-height` transitions animate layout
@@ -254,6 +287,10 @@ use 280 ms, so the 350 ms here is also internally inconsistent.
 **Fix direction.** For the common case, a grid-rows `0fr → 1fr` transition animates to true content
 height with a correct-feeling curve and no max-height guess. Where a hard clamp is genuinely needed,
 keep `max-height` for the clamp but drive the _motion_ with transform/opacity.
+
+**Implemented 2026-08-27.** The natural-height shell now uses grid rows; the nested log limits are
+static clamps and the state affordance uses a reduced-motion-gated 160 ms transform. The same pass
+removed the adjacent max-width, padding, and counter-geometry transitions. → P11+P28
 
 ---
 
@@ -467,8 +504,8 @@ Leverage = impact ÷ effort.
 3. **M1** — strip `transition-all` from the 17 `pressable` elements. Mechanical, wide, low risk.
 4. **MB1 + MB2** — touch targets to 44 px. Mechanical.
 5. **C2** — prune the nine dead union members, then consider an exhaustiveness check.
-6. **M3** — `max-height` → grid-rows in `ThinkingBlock`. Needs a feel-check on expand/collapse.
-7. **P1** — profile first. Only optimize if a real session shows it.
+6. ~~**M3** — `max-height` → grid-rows in `ThinkingBlock`.~~ Shipped; feel-check still owed.
+7. ~~**P1** — profile first.~~ Measured against production sizes; no optimization warranted.
 8. **M4** — watch-item. Fix if low-end Android shows header stutter on context shift.
 
 Opportunities (§7) are independent of the above and can land any time.

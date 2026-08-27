@@ -17,7 +17,8 @@ import {
 	buildDailyBriefEmailHtml,
 	normalizeDailyBriefMarkdown
 } from './daily-brief-email-template.js';
-import { resolveNotificationActionUrl } from './email-action-url.js';
+import { rewriteLinksForTracking } from './email-link-tracking.js';
+import { buildDailyBriefUrl, resolveNotificationActionUrl } from './email-action-url.js';
 import { checkUserPreferences } from './preferenceChecker.js';
 
 const supabase = createServiceClient();
@@ -143,14 +144,6 @@ function getPostalAddressHtml(): string {
 function getPostalAddressText(): string {
 	const postalAddress = getPostalAddress();
 	return postalAddress ? `\n\nBuildOS mailing address:\n${postalAddress}` : '';
-}
-
-function buildBriefUrl(baseUrl: string, briefDate: string | null | undefined): string {
-	if (!briefDate) {
-		return `${baseUrl}/projects`;
-	}
-
-	return `${baseUrl}/projects?briefDate=${encodeURIComponent(briefDate)}`;
 }
 
 function buildDailyBriefTextFooter(options: {
@@ -285,30 +278,6 @@ export interface DeliveryResult {
 	success: boolean;
 	external_id?: string;
 	error?: string;
-}
-
-/**
- * Rewrite links in HTML for click tracking
- */
-function rewriteLinksForTracking(html: string, trackingId: string): string {
-	const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
-
-	// Rewrite all <a href="..."> tags to go through click tracking
-	return html.replace(
-		/<a\s+([^>]*?)href=["']([^"']+)["']([^>]*)>/gi,
-		(match, before, url, after) => {
-			// Skip if it's already a tracking link or an anchor link
-			if (url.startsWith('#') || url.includes('/api/email-tracking/')) {
-				return match;
-			}
-
-			// Encode the destination URL
-			const encodedUrl = encodeURIComponent(url);
-			const trackingUrl = `${baseUrl}/api/email-tracking/${trackingId}/click?url=${encodedUrl}`;
-
-			return `<a ${before}href="${trackingUrl}"${after}>`;
-		}
-	);
 }
 
 /**
@@ -573,9 +542,10 @@ export async function sendEmailNotification(
 							);
 							const primaryActionLabel =
 								getDailyBriefPrimaryActionLabel(dailyBriefEngagementStage);
-							const briefUrl = buildBriefUrl(
+							const briefUrl = buildDailyBriefUrl(
 								baseUrl,
-								brief.brief_date || dailyBriefDate || briefDate
+								brief.brief_date || dailyBriefDate || briefDate,
+								briefId
 							);
 
 							html = buildDailyBriefEmailHtml({
@@ -659,7 +629,11 @@ export async function sendEmailNotification(
 							);
 							const primaryActionLabel =
 								getDailyBriefPrimaryActionLabel(dailyBriefEngagementStage);
-							const briefUrl = buildBriefUrl(baseUrl, dailyBriefDate || briefDate);
+							const briefUrl = buildDailyBriefUrl(
+								baseUrl,
+								dailyBriefDate || briefDate,
+								briefId
+							);
 
 							html = buildDailyBriefEmailHtml({
 								subject,
@@ -700,7 +674,7 @@ export async function sendEmailNotification(
 		}
 
 		// Rewrite links for click tracking
-		const htmlWithTrackedLinks = rewriteLinksForTracking(html, trackingId);
+		const htmlWithTrackedLinks = rewriteLinksForTracking(html, trackingId, baseUrl);
 
 		// Add tracking pixel to HTML
 		const trackingPixel = `<img src="${baseUrl}/api/email-tracking/${trackingId}" width="1" height="1" style="display:none;" alt="" />`;
