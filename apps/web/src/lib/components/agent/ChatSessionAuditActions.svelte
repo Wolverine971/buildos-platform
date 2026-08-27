@@ -188,7 +188,7 @@
 				href={adminSessionHref}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-2xs font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-2xs font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				title="Open this chat session in admin audit logs"
 			>
 				<ExternalLink class="h-3.5 w-3.5 shrink-0" />
@@ -203,7 +203,7 @@
 					type="button"
 					onclick={() => toggleExportMenu()}
 					disabled={isExporting}
-					class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-2xs font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+					class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-2xs font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
 					title="Export this chat session"
 					aria-haspopup="menu"
 					aria-expanded={exportMenuOpen}
@@ -273,7 +273,7 @@
 			<button
 				type="button"
 				onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
-				class="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				aria-label="Open session actions"
 				aria-haspopup="menu"
 				aria-expanded={mobileMenuOpen}

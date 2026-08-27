@@ -12,7 +12,7 @@
 	editors. It is a live prototype, not a static mock.
 -->
 <script lang="ts">
-	import { onMount, tick, untrack } from 'svelte';
+	import { onDestroy, onMount, tick, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import { pushState, replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -36,9 +36,11 @@
 		fetchProjectFullData,
 		fetchProjectTaskBucket,
 		moveProjectDocument,
+		recoverProjectStartHere,
 		type OntoEventWithSync,
 		type ProjectFullData
 	} from '$lib/components/project/project-page-data-controller';
+	import { parseStartHereStatusRegion } from '@buildos/shared-agent-ops/ontology/start-here';
 	import { parseDocStructure } from '$lib/services/ontology/doc-structure.service';
 	import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
 	import { toastService } from '$lib/stores/toast.store';
@@ -75,6 +77,7 @@
 	type WorkspaceTab = 'work' | 'overview' | 'docs' | 'activity';
 	type WorkspaceCreateKind = 'goal' | 'plan' | 'milestone' | 'risk' | 'event';
 	type WorkspaceEditTarget = Extract<EntityOpenAction, { kind: WorkspaceCreateKind | 'project' }>;
+	const START_HERE_REFRESH_RECHECK_DELAYS_MS = [350, 750, 1500] as const;
 
 	type Access = {
 		canEdit: boolean;
@@ -214,6 +217,11 @@
 	let showMemoryUpdateChatModal = $state(false);
 	let selectedRecentChatSessionId = $state<string | null>(null);
 	let isContextDocumentContentLoading = $state(false);
+	let isCreatingStartHere = $state(false);
+	let startHereRefreshRequest = 0;
+	onDestroy(() => {
+		startHereRefreshRequest += 1;
+	});
 	let showAllGoals = $state(false);
 	let showAllPlans = $state(false);
 	let showAllMilestones = $state(false);
@@ -425,6 +433,73 @@
 			rendered: info.rendered,
 			freshness: info.freshness
 		});
+	}
+
+	function hasRenderedStartHereSnapshot(document: Document): boolean {
+		return Boolean(
+			document.content && parseStartHereStatusRegion(document.content)?.refreshedAt
+		);
+	}
+
+	async function recheckStartHereAfterSnapshot(seedDocument: Document) {
+		if (hasRenderedStartHereSnapshot(seedDocument)) return;
+		const request = ++startHereRefreshRequest;
+
+		for (const delayMs of START_HERE_REFRESH_RECHECK_DELAYS_MS) {
+			await new Promise((resolveDelay) => setTimeout(resolveDelay, delayMs));
+			if (request !== startHereRefreshRequest || contextDocument?.id !== seedDocument.id)
+				return;
+
+			try {
+				const refreshed = await fetchProjectDocument(seedDocument.id);
+				if (!hasRenderedStartHereSnapshot(refreshed)) continue;
+				contextDocument = refreshed;
+				return;
+			} catch {
+				// Best-effort hydration. The canonical document already exists and a
+				// normal project refresh remains the durable fallback.
+			}
+		}
+	}
+
+	async function createStartHere() {
+		if (isCreatingStartHere || contextDocument) return;
+		isCreatingStartHere = true;
+		trackLoopEvent('start_here_recovery_started', 'project', { project_id: project.id });
+		try {
+			const recovery = await recoverProjectStartHere(project.id);
+			contextDocument = recovery.document;
+			trackLoopEvent('start_here_recovery_completed', 'project', {
+				project_id: project.id,
+				document_id: contextDocument.id,
+				created: recovery.created,
+				refresh_queued: recovery.refreshQueued
+			});
+			if (recovery.created && recovery.versionRecorded === false) {
+				toastService.warning(
+					'Project memory was created, but its first history version needs attention.'
+				);
+			} else if (recovery.refreshQueued) {
+				toastService.success(
+					recovery.created
+						? 'Project memory created. Its live status is refreshing.'
+						: 'Project memory found. Its live status is refreshing.'
+				);
+			} else {
+				toastService.warning(
+					recovery.created
+						? 'Project memory was created, but its live refresh is delayed.'
+						: 'Project memory was found, but its live refresh is delayed.'
+				);
+			}
+			if (recovery.refreshQueued) void recheckStartHereAfterSnapshot(recovery.document);
+		} catch (error) {
+			toastService.error(
+				error instanceof Error ? error.message : 'Failed to create project memory'
+			);
+		} finally {
+			isCreatingStartHere = false;
+		}
 	}
 
 	function openRecentChat(sessionId: string) {
@@ -1017,14 +1092,18 @@
 				tabindex="0"
 			>
 				<div class="space-y-5">
-					{#if !isHydrating && contextDocument}
+					{#if !isHydrating}
 						<ProjectMemoryCard
 							document={contextDocument}
 							contentLoading={isContextDocumentContentLoading}
+							creating={isCreatingStartHere}
 							nextStepShort={project.next_step_short ?? null}
 							{canEdit}
 							onOpenStartHere={openStartHereFromMemory}
 							onUpdateProject={openMemoryUpdateChat}
+							onCreateStartHere={['planning', 'active'].includes(project.state_key)
+								? createStartHere
+								: undefined}
 							onShown={handleMemorySnapshotShown}
 						/>
 					{/if}

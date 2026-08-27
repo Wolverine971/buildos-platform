@@ -58,7 +58,7 @@
 					{href}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="entity-card group inline-flex max-w-[15rem] items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-ink transition-all pressable hover:border-accent hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="entity-card group inline-flex max-w-[15rem] items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-ink pressable hover:border-accent hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					title={`Open ${meta.label.toLowerCase()} in a new tab: ${entity.name}`}
 				>
 					<span class="text-accent" aria-hidden="true">

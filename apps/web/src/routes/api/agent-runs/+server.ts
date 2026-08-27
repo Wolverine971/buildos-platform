@@ -11,16 +11,56 @@ import {
 	normalizeAgentRunBudgets
 } from '$lib/server/agent-runs/dispatch';
 
+// The live Run Stack calls this endpoint as a reconciliation heartbeat. Keep
+// that response deliberately narrow: result/change_set/orchestration_state can
+// each be tens of kilobytes and are hydrated from the detail endpoint only when
+// a tracked run reaches review or a terminal state. The Work history requests
+// the full representation explicitly.
+const AGENT_RUN_SUMMARY_SELECT = [
+	'id',
+	'user_id',
+	'project_id',
+	'label',
+	'goal',
+	'instructions',
+	'expected_output',
+	'context_type',
+	'scope_mode',
+	'effort',
+	'run_template',
+	'review_required',
+	'allowed_ops',
+	'budgets',
+	'status',
+	'error',
+	'trigger',
+	'parent_session_id',
+	'created_at',
+	'started_at',
+	'completed_at',
+	'updated_at',
+	'project:onto_projects!agent_runs_project_id_fkey(id, name)'
+].join(',');
+
+const AGENT_RUN_FULL_SELECT = '*, project:onto_projects!agent_runs_project_id_fkey(id, name)';
+
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) return ApiResponse.unauthorized();
 
-	const limit = Math.min(Number(url.searchParams.get('limit') || 50), 200);
+	const requestedLimit = Number(url.searchParams.get('limit') || 50);
+	const limit = Number.isFinite(requestedLimit)
+		? Math.min(Math.max(Math.trunc(requestedLimit), 1), 200)
+		: 50;
 	const status = url.searchParams.get('status');
+	const select =
+		url.searchParams.get('view') === 'summary'
+			? AGENT_RUN_SUMMARY_SELECT
+			: AGENT_RUN_FULL_SELECT;
 
 	let query = supabase
 		.from('agent_runs')
-		.select('*, project:onto_projects!agent_runs_project_id_fkey(id, name)')
+		.select(select)
 		.eq('user_id', user.id)
 		.order('created_at', { ascending: false })
 		.limit(limit);

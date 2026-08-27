@@ -19,6 +19,7 @@ import {
 	fetchProjectTaskBucket,
 	generateProjectNextStep,
 	moveProjectDocument,
+	recoverProjectStartHere,
 	updateProjectMilestoneState,
 	updateProjectNotificationSettings
 } from './project-page-data-controller';
@@ -163,6 +164,46 @@ describe('project-page-data-controller', () => {
 
 		expect(result).toMatchObject({ id: 'doc-1', content: '# Context' });
 		expect(global.fetch).toHaveBeenCalledWith('/api/onto/documents/doc-1', undefined);
+	});
+
+	it('recoverProjectStartHere parses the recovery contract', async () => {
+		(global.fetch as any).mockImplementation(() =>
+			mockJsonResponse({
+				body: successBody({
+					document: { id: 'doc-1', content: '# START HERE' },
+					created: true,
+					version_recorded: true,
+					refresh_queued: true,
+					refresh_job_id: 'snapshot-job-1'
+				})
+			})
+		);
+
+		await expect(recoverProjectStartHere('project-1')).resolves.toEqual({
+			document: { id: 'doc-1', content: '# START HERE' },
+			created: true,
+			versionRecorded: true,
+			refreshQueued: true,
+			refreshJobId: 'snapshot-job-1'
+		});
+		expect(global.fetch).toHaveBeenCalledWith('/api/onto/projects/project-1/start-here', {
+			method: 'POST'
+		});
+	});
+
+	it('recoverProjectStartHere rejects an incomplete recovery contract', async () => {
+		(global.fetch as any).mockImplementation(() =>
+			mockJsonResponse({
+				body: successBody({
+					document: { id: 'doc-1' },
+					created: true
+				})
+			})
+		);
+
+		await expect(recoverProjectStartHere('project-1')).rejects.toThrow(
+			'Invalid project memory response'
+		);
 	});
 
 	it.each([

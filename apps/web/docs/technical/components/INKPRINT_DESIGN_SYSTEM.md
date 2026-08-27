@@ -744,7 +744,7 @@ The GRID texture uses `tiny-grid.png` for a refined graph paper appearance, sema
 <button
 	class="w-full p-4 border border-border rounded-lg
   hover:border-accent hover:bg-accent/5
-  transition-all text-left group
+  text-left group
   shadow-ink pressable"
 >
 	<h3 class="font-semibold text-foreground group-hover:text-accent">Title</h3>
@@ -824,7 +824,8 @@ The GRID texture uses `tiny-grid.png` for a refined graph paper appearance, sema
 .pressable {
 	transition:
 		transform 100ms ease,
-		opacity 100ms ease;
+		opacity 100ms ease,
+		box-shadow 100ms ease;
 }
 .pressable:active {
 	transform: translateY(1px);

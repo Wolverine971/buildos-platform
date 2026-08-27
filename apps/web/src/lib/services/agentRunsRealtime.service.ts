@@ -108,7 +108,18 @@ export const agentWorkAttentionCount = derived(
 	([$working, $needsInput]) => $working + $needsInput
 );
 
-const POLL_INTERVAL_MS = 6000;
+const POLL_INTERVAL_MS = 15_000;
+const HEALTHY_REALTIME_RECONCILE_TICKS = 4;
+const IDLE_FALLBACK_POLL_TICKS = 2;
+
+/**
+ * Realtime is the fast path. Polling only reconciles missed events, with a
+ * faster fallback while a run is active if the channel is unhealthy.
+ */
+export function agentRunPollEveryTicks(realtimeHealthy: boolean, hasActive: boolean): number {
+	if (realtimeHealthy) return HEALTHY_REALTIME_RECONCILE_TICKS;
+	return hasActive ? 1 : IDLE_FALLBACK_POLL_TICKS;
+}
 // Drop terminal rows the bridge has had time to render, so the store does not
 // grow unbounded with history. The bridge auto-minimizes/dismisses on its own
 // timeline; this is just memory hygiene.
@@ -121,8 +132,8 @@ interface ServiceState {
 	isSubscribed: boolean;
 	realtimeHealthy: boolean;
 	pollTimer: ReturnType<typeof setInterval> | null;
-	/** Counts poll ticks skipped while idle (adaptive cadence). */
-	idleSkips: number;
+	/** Counts timer ticks between reconciliation polls. */
+	pollSkips: number;
 	/** runId → epoch ms when it was first observed in a terminal status. */
 	terminalSince: Map<string, number>;
 }
@@ -135,7 +146,7 @@ export class AgentRunsRealtimeService {
 		isSubscribed: false,
 		realtimeHealthy: false,
 		pollTimer: null,
-		idleSkips: 0,
+		pollSkips: 0,
 		terminalSince: new Map()
 	};
 
@@ -236,39 +247,71 @@ export class AgentRunsRealtimeService {
 	}
 
 	/**
-	 * Periodic safety net — the reliable backbone. We poll unconditionally
-	 * (never gated on realtime "health"): a SUBSCRIBED postgres_changes channel
-	 * does NOT guarantee `agent_runs` is actually in the realtime publication, so
-	 * new runs could otherwise never surface. Cadence is adaptive: every tick
-	 * while runs are in flight, every 3rd tick (~18s) when idle to stay cheap
-	 * while still catching newly dispatched runs.
+	 * Periodic safety net. A healthy Realtime channel gets a once-per-minute
+	 * reconciliation. If Realtime is unavailable, active runs fall back to 15s
+	 * polling and idle clients to 30s polling.
 	 */
 	private static async poll(): Promise<void> {
 		const hasActive = get(activeAgentRunCount) > 0;
-		if (hasActive) {
-			this.state.idleSkips = 0;
-		} else {
-			this.state.idleSkips = (this.state.idleSkips + 1) % 3;
-			if (this.state.idleSkips !== 0) {
-				this.pruneTerminal();
-				return;
-			}
+		const everyTicks = agentRunPollEveryTicks(this.state.realtimeHealthy, hasActive);
+		this.state.pollSkips = (this.state.pollSkips + 1) % everyTicks;
+		if (this.state.pollSkips !== 0) {
+			this.pruneTerminal();
+			return;
 		}
 		await this.refresh();
 	}
 
-	/** Fetch the recent run window and merge it into the store. */
+	/** Fetch the compact recent-run window and merge it into the store. */
 	private static async refresh(): Promise<void> {
 		try {
-			const response = await fetch('/api/agent-runs?limit=25', {
+			const response = await fetch('/api/agent-runs?limit=25&view=summary', {
 				headers: { accept: 'application/json' }
 			});
 			if (!response.ok) return;
 			const result = await response.json().catch(() => null);
-			const runs: AgentRunRow[] = result?.data?.runs ?? [];
+			const summaries: AgentRunRow[] = result?.data?.runs ?? [];
+			const current = get(agentRunsStore);
+			const runs = await Promise.all(
+				summaries.map(async (run) => {
+					const previous = current.get(run.id);
+					return this.shouldHydrateRun(previous, run)
+						? await this.fetchRunDetail(run)
+						: run;
+				})
+			);
 			this.mergeRuns(runs);
 		} catch (error) {
 			console.warn('[AgentRunsRealtime] Poll refresh failed', error);
+		}
+	}
+
+	private static shouldHydrateRun(
+		previous: AgentRunRow | undefined,
+		incoming: AgentRunRow
+	): boolean {
+		if (Object.prototype.hasOwnProperty.call(incoming, 'result')) return false;
+		if (incoming.status === 'proposal_ready') return previous?.status !== incoming.status;
+		return Boolean(
+			previous &&
+				isActiveAgentRunStatus(previous.status) &&
+				!isActiveAgentRunStatus(incoming.status)
+		);
+	}
+
+	/** Hydrate heavyweight result fields once, at the lifecycle boundary. */
+	private static async fetchRunDetail(summary: AgentRunRow): Promise<AgentRunRow> {
+		try {
+			const response = await fetch(`/api/agent-runs/${summary.id}?events=0`, {
+				headers: { accept: 'application/json' }
+			});
+			if (!response.ok) return summary;
+			const result = await response.json().catch(() => null);
+			const detail = result?.data?.run as AgentRunRow | undefined;
+			return detail ? mergeAgentRunRows(summary, detail) : summary;
+		} catch (error) {
+			console.warn('[AgentRunsRealtime] Run detail hydration failed', error);
+			return summary;
 		}
 	}
 
@@ -354,7 +397,7 @@ export class AgentRunsRealtimeService {
 			isSubscribed: false,
 			realtimeHealthy: false,
 			pollTimer: null,
-			idleSkips: 0,
+			pollSkips: 0,
 			terminalSince: new Map()
 		};
 		agentRunsStore.set(new Map());

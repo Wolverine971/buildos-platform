@@ -486,6 +486,18 @@ export class SmartLLMService {
 			return { response, route };
 		}
 
+		// OpenRouter's top-level `provider` object supports order, only, ignore,
+		// allow_fallbacks, require_parameters, sort, data_collection, and max_price
+		// (openrouter.ai/docs/features/provider-routing). A stale comment lower in
+		// this file claimed otherwise for months and was deleted 2026-08-27; the
+		// service's own ZDR guarantee below is proof it works, since that is
+		// `data_collection: 'deny'` riding this exact field.
+		//
+		// Prefix caches are per-provider: the same model served by two upstreams
+		// keeps two separate caches. Callers running multi-pass loops should pin
+		// `order` + `allow_fallbacks: false` for the life of a turn so passes 2..N
+		// land on the provider that already holds the prefix.
+		//
 		// Callers may steer among providers, but privacy policy is owned here.
 		// Strip protected keys defensively in case an untyped caller supplies them.
 		const {
@@ -1710,12 +1722,8 @@ export class SmartLLMService {
 	}
 
 	// ============================================
-	// PROVIDER ROUTING PREFERENCES
+	// PERFORMANCE AND COST TRACKING
 	// ============================================
-	// NOTE: These methods are deprecated as OpenRouter does not support
-	// the provider parameter with order/allow_fallbacks/require_parameters/data_collection fields.
-	// Kept for backwards compatibility but not used in API calls.
-	// See: https://openrouter.ai/docs/api-reference/chat/send-chat-completion-request
 
 	private trackPerformance(model: string, duration: number): void {
 		const history = this.performanceMetrics.get(model) || [];

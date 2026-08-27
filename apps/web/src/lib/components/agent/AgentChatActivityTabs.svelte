@@ -173,7 +173,7 @@
 					: undefined}
 				aria-label={count === null ? tab.label : `${tab.label}, ${count} entries`}
 				tabindex={activeTab === tab.id ? 0 : -1}
-				class={`inline-flex min-w-0 items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-2xs font-semibold transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:shrink-0 sm:gap-1.5 sm:rounded-lg sm:px-3 sm:text-xs ${
+				class={`inline-flex min-w-0 items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-2xs font-semibold pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:shrink-0 sm:gap-1.5 sm:rounded-lg sm:px-3 sm:text-xs ${
 					activeTab === tab.id
 						? 'border-accent bg-accent text-accent-foreground shadow-ink'
 						: 'border-border bg-background/70 text-muted-foreground hover:border-accent hover:text-foreground'

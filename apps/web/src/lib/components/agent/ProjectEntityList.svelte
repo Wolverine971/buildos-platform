@@ -281,7 +281,7 @@
 			aria-pressed={isSelected}
 			class={`
 				inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold
-				shadow-ink transition-all duration-200 pressable
+				shadow-ink pressable
 				${
 					isSelected
 						? 'border-accent bg-accent/10 text-accent'
@@ -364,7 +364,7 @@
 				type="button"
 				onclick={() => onSelectEntity(entity, selectedType)}
 				aria-pressed={active}
-				class={`group w-full rounded-lg border p-2.5 text-left shadow-ink transition-all duration-200 pressable sm:p-3 ${
+				class={`group w-full rounded-lg border p-2.5 text-left shadow-ink pressable sm:p-3 ${
 					active
 						? 'border-accent bg-accent/5 ring-1 ring-accent/30'
 						: 'border-border bg-card hover:border-accent hover:bg-muted/50 hover:shadow-ink-strong'

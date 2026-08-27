@@ -23,6 +23,14 @@ export const PROJECT_STATES = ['planning', 'active', 'paused', 'completed', 'can
 export type ProjectState = (typeof PROJECT_STATES)[number];
 export const ProjectStateSchema = z.enum(PROJECT_STATES);
 
+/** Project states that are eligible for active maintenance workers and live projections. */
+export const PROJECT_OPERATIONAL_STATES = ['planning', 'active'] as const;
+export type ProjectOperationalState = (typeof PROJECT_OPERATIONAL_STATES)[number];
+
+export function isProjectOperationalState(value: unknown): value is ProjectOperationalState {
+	return PROJECT_OPERATIONAL_STATES.includes(value as ProjectOperationalState);
+}
+
 /** Plan states: draft → active → completed */
 export const PLAN_STATES = ['draft', 'active', 'completed'] as const;
 export type PlanState = (typeof PLAN_STATES)[number];

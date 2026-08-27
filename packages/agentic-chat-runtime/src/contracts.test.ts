@@ -1,3 +1,4 @@
+// packages/agentic-chat-runtime/src/contracts.test.ts
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import type { AgentSSEMessage, AgentStreamEventV1 } from '@buildos/shared-types';
 import {
@@ -12,13 +13,29 @@ import {
 	type RunAgenticChatTurn
 } from './index';
 
-type UnrepresentableLegacyEvent = AgentSSEMessage extends infer TEvent
+type UnrepresentableRuntimeEvent = AgentSSEMessage extends infer TEvent
 	? TEvent extends { type: string }
 		? AgentStreamEventV1<TEvent> extends AgenticChatStreamEvent
 			? never
 			: TEvent
 		: TEvent
 	: never;
+
+type RetiredAgentSSEMessageType =
+	| 'ontology_loaded'
+	| 'focus_active'
+	| 'focus_changed'
+	| 'clarifying_questions'
+	| 'operation'
+	| 'draft_update'
+	| 'dimension_update'
+	| 'phase_update'
+	| 'queue_update';
+
+type RetiredAgentSSEMessageTypeStillPresent = Extract<
+	AgentSSEMessage['type'],
+	RetiredAgentSSEMessageType
+>;
 
 const legacyHandle: AdmittedTurnHandleV1 = {
 	contractVersion: 'legacy_internal_v1',
@@ -118,8 +135,12 @@ describe('agentic chat runtime contracts', () => {
 		await expect(run(command, createPorts())).resolves.toEqual(outcome);
 	});
 
-	it('represents every legacy SSE payload variant in the runtime stream event', () => {
+	it('represents every public SSE payload variant in the runtime stream event', () => {
 		expectTypeOf<AgenticChatRuntimeEvent>().toEqualTypeOf<AgentSSEMessage>();
-		expectTypeOf<UnrepresentableLegacyEvent>().toEqualTypeOf<never>();
+		expectTypeOf<UnrepresentableRuntimeEvent>().toEqualTypeOf<never>();
+	});
+
+	it('keeps retired, unhandled payloads out of the public SSE contract', () => {
+		expectTypeOf<RetiredAgentSSEMessageTypeStillPresent>().toEqualTypeOf<never>();
 	});
 });

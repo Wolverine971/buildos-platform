@@ -257,7 +257,7 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 			: [
 					buildIdentityMissionSection(),
 					buildCapabilitiesSkillsToolsSection(scaffold),
-					buildOperatingStrategySection(scaffold),
+					buildOperatingStrategySection(scaffold, toolsSummary),
 					buildSafetyDataRulesSection(input.data ?? null, scaffold),
 					buildToolSurfaceDynamicSection(toolsSummary),
 					...(domainSignalSection ? [domainSignalSection] : []),
@@ -923,7 +923,8 @@ function resolveTimelineRenderMode(
 }
 
 function buildOperatingStrategySection(
-	scaffold: Required<LitePromptScaffoldOptions>
+	scaffold: Required<LitePromptScaffoldOptions>,
+	toolsSummary: LitePromptToolsSummary
 ): LitePromptSection {
 	// NOTE: all strategy guidance is kept as a single flat bullet list under one
 	// heading. Earlier versions used sub-sections ("Communication pattern:",
@@ -949,7 +950,19 @@ function buildOperatingStrategySection(
 						'- Open the turn with a 1-2 sentence lead-in saying what you are about to do before calling tools. A lead-in is intent only; outcomes wait for tool results.'
 					]
 				: []),
-			'- Use direct tools first when they fit. Reach for discovery tools (tool_search, tool_schema) when the exact operation or schema is missing.',
+			// Discovery-tool names render from the mounted surface, never a literal
+			// (prompt audit 2026-08-27, F4). This bullet hard-coded
+			// `tool_search, tool_schema` for ~2 months after lean discovery
+			// (2026-06-14) dropped both from the launch surface, so every live turn
+			// named an escape hatch the model could not reach. Providers constrain
+			// function calling to the mounted `tools` array, so the call was never
+			// emittable — it just left the model without a route at the exact moment
+			// it decided the operation it wanted was missing. `skill_search` is the
+			// real hop: its result auto-mounts `skill_load` (skill-search.ts) and the
+			// orchestrator materializes direct tools from tool results.
+			toolsSummary.discoveryTools.length > 0
+				? `- Use direct tools first when they fit. When the operation you need is not on the surface, reach for ${formatInlineToolNames(toolsSummary.discoveryTools)} — the tools they return are mounted for you.`
+				: '- Use direct tools first when they fit. When the operation you need is not on the surface, say what is missing rather than guessing a tool name.',
 			// Dedupe pass (tasker/39 stage 2, 2026-07-26): the domain_search bullet
 			// duplicated the capabilities-section routing pointer; outcome-card /
 			// skill_search / gate / ledger / child-depth coaching moved into the
@@ -2633,6 +2646,15 @@ function formatNullableLabel(name: string | null, id: string | null): string {
 function formatBullets(items: string[], fallback: string): string {
 	if (items.length === 0) return `- ${fallback}`;
 	return items.map((item) => `- ${item}`).join('\n');
+}
+
+/** Inline "`a`", "`a` or `b`", "`a`, `b`, or `c`" for prose that names live tools. */
+function formatInlineToolNames(names: string[]): string {
+	const quoted = names.map((name) => `\`${name}\``);
+	const last = quoted.at(-1) ?? '';
+	if (quoted.length <= 1) return last;
+	const head = quoted.slice(0, -1);
+	return quoted.length === 2 ? `${head[0]} or ${last}` : `${head.join(', ')}, or ${last}`;
 }
 
 function mergeList(defaults: string[], overrides?: string[] | null): string[] {

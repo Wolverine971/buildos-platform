@@ -223,11 +223,43 @@ export async function runLlmStreamPass(params: {
 				...failedProviderSlugsThisPass
 			])
 		);
+		// Provider pin (cache audit 2026-08-27, F3). Passes 2..N of a turn resend
+		// the whole seed prompt plus accumulated tool results, and OpenRouter
+		// prefix caches are per-provider — so landing on a different upstream than
+		// pass 1 re-bills the entire prefix at uncached rates. `providerOrder`
+		// carries the provider that already answered this turn.
+		//
+		// The pin is dropped on the first in-pass retry: a retry means the previous
+		// attempt failed, and re-aiming at the same provider with fallbacks
+		// disabled would just fail again. Retries prefer availability over cache.
+		const attemptPinnedProviderOrder =
+			attempt === 1
+				? (params.modelRouting?.providerOrder ?? []).filter(
+						(slug) => !attemptIgnoredProviderSlugs.includes(slug)
+					)
+				: [];
+		const attemptProviderRouting =
+			attemptPinnedProviderOrder.length > 0
+				? {
+						order: attemptPinnedProviderOrder,
+						...(params.modelRouting?.allowProviderFallbacks === false
+							? { allow_fallbacks: false }
+							: {}),
+						...(attemptIgnoredProviderSlugs.length
+							? { ignore: attemptIgnoredProviderSlugs }
+							: {})
+					}
+				: attemptIgnoredProviderSlugs.length
+					? { ignore: attemptIgnoredProviderSlugs }
+					: undefined;
 		const attemptRoute: LLMStreamAttemptRoute = {
 			attempt,
 			...(attemptModelCandidates?.length ? { models: [...attemptModelCandidates] } : {}),
 			...(attemptIgnoredProviderSlugs.length
 				? { ignoredProviderSlugs: attemptIgnoredProviderSlugs }
+				: {}),
+			...(attemptPinnedProviderOrder.length
+				? { pinnedProviderOrder: attemptPinnedProviderOrder }
 				: {}),
 			maxTokens,
 			...(attemptModelCandidates?.[0] ? { selectedModel: attemptModelCandidates[0] } : {}),
@@ -274,9 +306,7 @@ export async function runLlmStreamPass(params: {
 				clientTurnId: params.clientTurnId ?? undefined,
 				profile: modelProfile,
 				models: attemptModelCandidates,
-				providerRouting: attemptIgnoredProviderSlugs.length
-					? { ignore: attemptIgnoredProviderSlugs }
-					: undefined,
+				providerRouting: attemptProviderRouting,
 				onRouteObserved: (observation) => {
 					populateAttemptRouteObservation(attemptRoute, observation);
 				},

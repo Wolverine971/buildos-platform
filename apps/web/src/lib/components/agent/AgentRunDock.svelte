@@ -94,7 +94,7 @@
 					(run.context_type === 'global' ? 'Workspace' : 'Project')}
 				<button
 					type="button"
-					class="pressable flex min-h-11 w-full items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-left shadow-ink transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none"
+					class="pressable flex min-h-11 w-full items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-left shadow-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
 					aria-label={`Open ${contextLabel}: ${title}. ${agentRunStatusLabel(run.status)}`}
 					onclick={() => onOpen?.(run.id)}
 				>

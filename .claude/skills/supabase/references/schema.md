@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 243 tables, grouped by domain.
+Complete column listing for all 244 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-08-27T01:09:14.744Z
+**Schema generated:** 2026-08-27T14:02:12.012Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -15,7 +15,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 
 - [Users & Auth](#users--auth) (6 tables)
 - [People & Contacts](#people--contacts) (6 tables)
-- [Ontology System](#ontology-system) (39 tables)
+- [Ontology System](#ontology-system) (40 tables)
 - [Projects & Tasks (Legacy)](#projects--tasks-legacy) (21 tables)
 - [Chat & Agents](#chat--agents) (33 tables)
 - [Calendar](#calendar) (13 tables)
@@ -122,13 +122,17 @@ actor_id `string` · entity_id `string` · entity_type `string` · id `string` �
 
 body `string` · body_format `string` · created_at `string` · created_by `string` · deleted_at `string?` · edited_at `string?` · entity_id `string` · entity_type `string` · id `string` · metadata `Json` · parent_id `string?` · project_id `string` · root_id `string` · updated_at `string`
 
+### onto_document_proposals
+
+applied_at `string?` · applied_by_actor_id `string?` · base_content_hash `string` · conflict_reason `string?` · created_at `string` · created_by_actor_id `string` · document_id `string` · id `string` · instruction `string` · patch `Json` · patch_hash `string` · project_id `string` · result_content_hash `string` · status `string` · updated_at `string` · version_warning `string?`
+
 ### onto_document_versions
 
 created_at `string` · created_by `string` · document_id `string` · embedding `string?` · id `string` · number `number` · props `Json` · storage_uri `string`
 
 ### onto_documents
 
-archived_at `string?` · children `Json?` · content `string?` · created_at `string` · created_by `string` · deleted_at `string?` · description `string?` · id `string` · outline `Json?` · project_id `string` · props `Json` · search_vector `unknown` · state_key `string` · title `string` · type_key `string` · updated_at `string`
+archived_at `string?` · children `Json?` · content `string?` · content_hash `string?` · created_at `string` · created_by `string` · deleted_at `string?` · description `string?` · id `string` · outline `Json?` · project_id `string` · props `Json` · search_vector `unknown` · state_key `string` · title `string` · type_key `string` · updated_at `string`
 
 ### onto_edges
 

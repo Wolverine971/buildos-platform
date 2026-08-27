@@ -32,7 +32,9 @@ export type LoopEventName =
 	| 'project_opened'
 	| 'memory_snapshot_shown'
 	| 'start_here_opened'
-	| 'memory_update_started';
+	| 'memory_update_started'
+	| 'start_here_recovery_started'
+	| 'start_here_recovery_completed';
 
 /** Flat values only — nested objects invite content leaking into analytics. */
 export type LoopEventProperties = Record<string, string | number | boolean | null>;

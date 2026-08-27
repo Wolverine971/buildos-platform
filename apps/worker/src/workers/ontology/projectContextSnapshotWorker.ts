@@ -8,6 +8,7 @@ import {
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
 import { ensureActorId } from '@buildos/shared-agent-ops/ontology/ontology-projects.service';
+import { isProjectOperationalState } from '@buildos/shared-agent-ops/ontology/onto';
 import {
 	renderStartHereMapContent,
 	renderStartHereStatusContent
@@ -17,7 +18,6 @@ import { refreshProjectStartHereManagedRegions } from '@buildos/shared-agent-ops
 const SNAPSHOT_VERSION = 1;
 const SNAPSHOT_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const AUTO_ICON_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
-const ACTIVE_PROJECT_STATES = new Set(['planning', 'active']);
 // Keep in sync with COMPLETED_STATE_KEYS in
 // apps/web/src/lib/services/agentic-chat-v2/context-loader.ts so the Start Here
 // status counts ("N open tasks") match what project chat reports.
@@ -618,7 +618,7 @@ export async function processProjectContextSnapshotJob(
 		const projectSkipReason =
 			projectRow.deleted_at || projectRow.archived_at
 				? 'project_archived'
-				: !ACTIVE_PROJECT_STATES.has(String(projectRow.state_key))
+				: !isProjectOperationalState(projectRow.state_key)
 					? `project_${String(projectRow.state_key || 'inactive')}`
 					: null;
 

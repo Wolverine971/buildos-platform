@@ -142,6 +142,14 @@ export type GeneratedProjectNextStep = {
 	next_step_updated_at: string | null;
 };
 
+export type ProjectStartHereRecoveryResult = {
+	document: Document;
+	created: boolean;
+	versionRecorded: boolean | null;
+	refreshQueued: boolean;
+	refreshJobId: string | null;
+};
+
 function isRecord(value: unknown): value is JsonRecord {
 	return typeof value === 'object' && value !== null;
 }
@@ -260,6 +268,29 @@ export async function fetchProjectDocument(documentId: string): Promise<Document
 	);
 	const document = requireRecord(data.document, 'Invalid document response');
 	return document as Document;
+}
+
+export async function recoverProjectStartHere(
+	projectId: string
+): Promise<ProjectStartHereRecoveryResult> {
+	const data = await requestApiDataRecord(
+		`/api/onto/projects/${projectId}/start-here`,
+		'Failed to create project memory',
+		{ method: 'POST' }
+	);
+	const document = requireRecord(data.document, 'Invalid project memory response') as Document;
+	const versionRecorded =
+		data.version_recorded === null
+			? null
+			: requireBoolean(data.version_recorded, 'Invalid project memory response');
+
+	return {
+		document,
+		created: requireBoolean(data.created, 'Invalid project memory response'),
+		versionRecorded,
+		refreshQueued: requireBoolean(data.refresh_queued, 'Invalid project memory response'),
+		refreshJobId: readNullableString(data.refresh_job_id, 'Invalid project memory response')
+	};
 }
 
 export async function fetchProjectTask(taskId: string): Promise<Task> {

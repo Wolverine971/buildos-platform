@@ -9,6 +9,12 @@ export type LLMStreamAttemptRoute = {
 	attempt: number;
 	models?: string[];
 	ignoredProviderSlugs?: string[];
+	/**
+	 * OpenRouter `provider.order` sent for this attempt — the turn route pin that
+	 * keeps passes 2..N on the provider holding the cached prefix. Recorded so
+	 * prompt dumps can correlate a pin against the reported cache hit rate.
+	 */
+	pinnedProviderOrder?: string[];
 	maxTokens: number;
 	selectedModel?: string;
 	provider?: string;

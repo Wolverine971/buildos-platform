@@ -729,6 +729,11 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				return;
 			}
 
+			// Production transports normalize incremental text to text_delta before this handler.
+			// Keep the snapshot spelling explicit so adding a new union member cannot hide in default.
+			case 'text':
+				return;
+
 			case 'text_delta':
 				if (event.content) {
 					deps.bufferAssistantText(event.content);
@@ -761,9 +766,19 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				handleError(event);
 				return;
 
-			default:
-				// Unhandled/legacy event types — silently ignore.
+			// Template creation events remain part of the shared extension contract but are not
+			// rendered by the agent-chat modal. They keep their existing no-op behavior explicitly.
+			case 'template_creation_request':
+			case 'template_creation_status':
+			case 'template_created':
+			case 'template_creation_failed':
 				return;
+
+			default: {
+				const exhaustiveEvent: never = event;
+				void exhaustiveEvent;
+				return;
+			}
 		}
 	} as AgentSSEMessageHandler;
 

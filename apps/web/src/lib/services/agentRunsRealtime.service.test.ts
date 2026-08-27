@@ -5,6 +5,7 @@ import type { AgentRunStatus } from '@buildos/shared-types';
 import {
 	activeAgentRunCount,
 	agentRunNeedsInputCount,
+	agentRunPollEveryTicks,
 	agentRunsStore,
 	agentWorkAttentionCount,
 	mergeAgentRunRows,
@@ -71,5 +72,17 @@ describe('mergeAgentRunRows', () => {
 			id: 'project-1',
 			name: 'New name'
 		});
+	});
+});
+
+describe('agentRunPollEveryTicks', () => {
+	it('reconciles healthy realtime subscriptions once per minute', () => {
+		expect(agentRunPollEveryTicks(true, true)).toBe(4);
+		expect(agentRunPollEveryTicks(true, false)).toBe(4);
+	});
+
+	it('falls back to faster polling when realtime is unhealthy', () => {
+		expect(agentRunPollEveryTicks(false, true)).toBe(1);
+		expect(agentRunPollEveryTicks(false, false)).toBe(2);
 	});
 });

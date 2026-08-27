@@ -70,6 +70,25 @@ function contextDocument() {
 	};
 }
 
+function seededContextDocument() {
+	return {
+		...contextDocument(),
+		content: [
+			'# START HERE - Project',
+			'',
+			'<!-- managed:status v=1 -->',
+			'**State:** Unknown',
+			'**Now:** No project snapshot has been rendered yet.',
+			'**Next step:** Not captured yet.',
+			'<!-- /managed:status -->',
+			'',
+			'## What this is',
+			'This is the canonical project brief.'
+		].join('\n'),
+		updated_at: '2026-08-27T12:00:00.000Z'
+	};
+}
+
 function projectDocument() {
 	return {
 		id: '44444444-4444-4444-8444-444444444444',
@@ -187,6 +206,18 @@ describe('ProjectWorkspace edge states', () => {
 							can_manage_default: true
 						}
 					});
+				}
+				if (url.endsWith(`/api/onto/projects/${PROJECT_ID}/start-here`)) {
+					return apiResponse({
+						document: seededContextDocument(),
+						created: true,
+						version_recorded: true,
+						refresh_queued: true,
+						refresh_job_id: 'snapshot-job-1'
+					});
+				}
+				if (url.endsWith(`/api/onto/documents/${CONTEXT_DOCUMENT_ID}`)) {
+					return apiResponse({ document: contextDocument() });
 				}
 				if (url.includes(`/api/onto/projects/${PROJECT_ID}/logs?`)) {
 					return apiResponse({ logs: [], total: 0, hasMore: false });
@@ -335,6 +366,42 @@ describe('ProjectWorkspace edge states', () => {
 			expect.objectContaining({ source: 'memory_card' })
 		);
 		expect(pushState).toHaveBeenCalledOnce();
+	});
+
+	it('recovers a missing Start Here document from the Overview', async () => {
+		render(ProjectWorkspace, {
+			props: { data: projectData() as any }
+		});
+
+		const memory = await screen.findByRole('region', { name: 'Project memory' });
+		expect(within(memory).getByText('Project memory is missing.')).toBeInTheDocument();
+		await fireEvent.click(within(memory).getByRole('button', { name: 'Create Start Here' }));
+
+		await waitFor(() => {
+			expect(
+				within(memory).getByRole('button', { name: 'Open Start Here' })
+			).toBeInTheDocument();
+		});
+		expect(
+			within(memory).getByText('This is the canonical project brief.')
+		).toBeInTheDocument();
+		expect(fetch).toHaveBeenCalledWith(`/api/onto/projects/${PROJECT_ID}/start-here`, {
+			method: 'POST'
+		});
+		await waitFor(() => {
+			expect(within(memory).getByText('4 open tasks · 1 overdue')).toBeInTheDocument();
+		});
+		expect(fetch).toHaveBeenCalledWith(`/api/onto/documents/${CONTEXT_DOCUMENT_ID}`, undefined);
+		expect(mocks.trackLoopEvent).toHaveBeenCalledWith(
+			'start_here_recovery_completed',
+			'project',
+			expect.objectContaining({
+				project_id: PROJECT_ID,
+				document_id: CONTEXT_DOCUMENT_ID,
+				created: true,
+				refresh_queued: true
+			})
+		);
 	});
 
 	it('defaults to Overview when the URL does not select a workspace view', async () => {

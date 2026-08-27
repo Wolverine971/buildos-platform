@@ -1820,3 +1820,63 @@ describe('prompt clock renders the local date', () => {
 		expect(envelope.systemPrompt).not.toContain('20:17 local time');
 	});
 });
+
+// Prompt audit 2026-08-27, F4. Lean discovery (2026-06-14) dropped
+// tool_search/tool_schema from the launch surface, but the Operating Strategy
+// bullet kept naming them as the escape hatch for ~2 months of live traffic.
+// Providers constrain function calling to the mounted `tools` array, so the
+// call was never emittable — the prompt simply advertised a route that did not
+// exist. These tests bind prompt prose to the mounted surface so the same class
+// of drift fails in CI instead of in production.
+describe('prompt prose never names an unmounted tool', () => {
+	const CONTEXTS = [
+		'global',
+		'project',
+		'project_create',
+		'calendar',
+		'daily_brief',
+		'general',
+		'ontology',
+		'daily_brief_update'
+	] as const;
+
+	function mountedToolNames(envelope: ReturnType<typeof buildLitePromptEnvelope>): Set<string> {
+		return new Set([
+			...envelope.toolsSummary.discoveryTools,
+			...envelope.toolsSummary.directTools
+		]);
+	}
+
+	it.each(CONTEXTS)('never names a retired discovery tool in %s context', (contextType) => {
+		const envelope = buildLitePromptEnvelope({
+			contextType,
+			entityId: contextType === 'project' ? 'project-1' : null,
+			projectId: contextType === 'project' ? 'project-1' : null,
+			now: '2026-08-27T12:00:00Z'
+		});
+
+		// These two are the concrete regression. They are real tools, still
+		// dispatchable, but no longer mounted at launch under lean discovery.
+		for (const retired of ['tool_search', 'tool_schema']) {
+			if (mountedToolNames(envelope).has(retired)) continue;
+			expect(envelope.systemPrompt).not.toContain(retired);
+		}
+	});
+
+	it('renders the discovery hop from the mounted surface, not a literal', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			now: '2026-08-27T12:00:00Z'
+		});
+		const strategy = envelope.sections.find((section) => section.id === 'operating_strategy');
+
+		expect(strategy).toBeDefined();
+		// Whatever mounts, the bullet must name it and only it.
+		for (const name of envelope.toolsSummary.discoveryTools) {
+			expect(strategy?.content).toContain(name);
+		}
+		expect(strategy?.content).not.toContain('tool_search');
+		expect(strategy?.content).not.toContain('tool_schema');
+	});
+});

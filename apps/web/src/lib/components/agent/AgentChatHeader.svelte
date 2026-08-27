@@ -361,7 +361,7 @@
 		<div class="shrink-0 overflow-hidden" out:collapseX>
 			<button
 				type="button"
-				class="inline-flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition touch-manipulation pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="inline-flex h-11 w-11 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				onclick={onBack}
 				disabled={isStreaming}
 				aria-label="Go back"
@@ -470,7 +470,7 @@
 				type="button"
 				onclick={() => void action.onClick()}
 				disabled={action.disabled || action.loading}
-				class={`hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border px-2.5 micro-label font-semibold shadow-ink transition-all touch-manipulation pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${headerActionClass(action)}`}
+				class={`hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border px-2.5 micro-label font-semibold shadow-ink touch-manipulation pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${headerActionClass(action)}`}
 				title={action.title ?? action.label}
 				aria-label={action.title ?? action.label}
 			>
@@ -493,7 +493,7 @@
 				href={projectUrl}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 micro-label font-semibold text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="hidden sm:flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 micro-label font-semibold text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				title="Open project in new tab"
 			>
 				<ExternalLink class="h-3.5 w-3.5 shrink-0" />
@@ -513,7 +513,7 @@
 						desktopExportMenuOpen
 							? closeDesktopExportMenu()
 							: (desktopExportMenuOpen = true)}
-					class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 micro-label font-semibold text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="flex h-7 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 micro-label font-semibold text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					aria-haspopup="menu"
 					aria-expanded={desktopExportMenuOpen}
 				>
@@ -559,7 +559,7 @@
 					bind:this={mobileMenuButton}
 					type="button"
 					onclick={() => (mobileMenuOpen ? closeMobileMenu() : (mobileMenuOpen = true))}
-					class="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					aria-label="More actions"
 					aria-haspopup="menu"
 					aria-expanded={mobileMenuOpen}
@@ -640,7 +640,7 @@
 			<button
 				type="button"
 				onclick={onMinimize}
-				class="flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="flex h-11 w-11 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink touch-manipulation pressable hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				aria-label="Minimize chat"
 				title="Minimize — keeps working in the background"
 			>
@@ -653,7 +653,7 @@
 			<button
 				type="button"
 				onclick={onClose}
-				class="flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="flex h-11 w-11 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink touch-manipulation pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				aria-label="Close modal"
 			>
 				<X class="h-4 w-4" />

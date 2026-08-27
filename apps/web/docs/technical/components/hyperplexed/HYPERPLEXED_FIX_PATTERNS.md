@@ -187,6 +187,41 @@ raw elements. If a control genuinely can't use the primitive, it must replicate 
 widgets (kanban columns, menus, tabs) use `handleRovingTabKeydown` from `board-a11y.ts` — one tab
 stop per widget, arrows within.
 
+### P26 · Let `.pressable` own the transition
+
+**Finding:** a control combines `.pressable` with `transition-all`, another Tailwind transition
+utility, or a `duration-*` utility. Equal-specificity utilities emitted after Inkprint replace the
+token's curated transition list, so border, background, filter, and texture changes can animate
+off-GPU while the 100ms press response silently inherits a slower duration.
+
+Treat `.pressable` as the sole transition owner on that element:
+
+1. Remove `transition-all`, `transition-*`, and `duration-*` from the same class list.
+2. Keep the shared transform/opacity/shadow response in `inkprint.css`; do not re-declare it locally.
+3. If a color transition is genuinely important, put it on a non-pressable child or change the
+   shared token deliberately instead of winning the cascade from one call site.
+4. Preserve `.pressable`'s central hover and reduced-motion gating (P11). Add a source-contract test
+   when a dense surface has many hand-authored controls so future class sweeps cannot reintroduce
+   the conflict.
+
+### P27 · Give scroll synchronization one reactive trigger
+
+**Finding:** a Svelte `$effect` is described as running only when a list gains rows, but a helper
+called inside the effect also reads reactive DOM references or manual-scroll flags. Those transitive
+reads become dependencies, so an ordinary scroll event can re-run synchronization and snap the
+viewport.
+
+Make the intended event explicit:
+
+1. Derive a narrow trigger such as `messages.length` or the newest stable row id.
+2. Read that trigger directly in the effect.
+3. Read the scroll container, stick-to-bottom flag, and other guard state through `untrack()` so
+   they can decide what the effect does without deciding when it runs.
+4. Keep the DOM write synchronous when the effect already runs after the list's DOM update and a
+   requestAnimationFrame would expose a one-frame jump.
+5. Verify momentum scrolling on a physical touch device: scroll up during streaming, then return
+   slowly to the bottom and confirm no threshold crossing snaps to the absolute end.
+
 ---
 
 ## Signature effects (use at most one per surface)

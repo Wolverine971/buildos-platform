@@ -1,3 +1,4 @@
+// apps/web/src/routes/api/agent-runs/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const dispatchMock = vi.hoisted(() => vi.fn());
@@ -42,7 +43,7 @@ function event(supabase: unknown, user: { id: string } | null = { id: 'user-1' }
 describe('GET /api/agent-runs', () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	it('includes the owning project name with each run', async () => {
+	it('keeps the full representation for on-demand history', async () => {
 		const supabase = createSupabaseMock([
 			{
 				id: 'run-1',
@@ -60,6 +61,19 @@ describe('GET /api/agent-runs', () => {
 			'*, project:onto_projects!agent_runs_project_id_fkey(id, name)'
 		);
 		expect(json.data.runs[0].project.name).toBe('Author Training');
+	});
+
+	it('uses a compact projection for the realtime reconciliation heartbeat', async () => {
+		const supabase = createSupabaseMock();
+		const requestEvent = event(supabase);
+		requestEvent.url = new URL('http://localhost/api/agent-runs?limit=25&view=summary');
+
+		await GET(requestEvent);
+
+		const projection = supabase.builder.select.mock.calls[0][0] as string;
+		expect(projection).toBe(
+			'id,user_id,project_id,label,goal,instructions,expected_output,context_type,scope_mode,effort,run_template,review_required,allowed_ops,budgets,status,error,trigger,parent_session_id,created_at,started_at,completed_at,updated_at,project:onto_projects!agent_runs_project_id_fkey(id, name)'
+		);
 	});
 
 	it('requires authentication', async () => {

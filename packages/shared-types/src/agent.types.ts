@@ -404,13 +404,6 @@ export interface ContextUsageSnapshot {
 	} | null;
 }
 
-type LegacyAgentSSEMessage =
-	| { type: 'operation'; operation: ChatOperation | OperationEventPayload }
-	| { type: 'draft_update'; draft: Partial<ProjectDraft> }
-	| { type: 'dimension_update'; dimension: string; content: string }
-	| { type: 'phase_update'; session_phase: AgentSessionPhase; message?: string }
-	| { type: 'queue_update'; operations: ChatOperation[] };
-
 export type SkillActivityEvent = {
 	type: 'skill_activity';
 	action: 'requested' | 'loaded';
@@ -517,10 +510,7 @@ export type AgentSSEMessage = AgentStreamEventMeta &
 	(
 		| { type: 'context_usage'; usage: ContextUsageSnapshot }
 		| { type: 'session'; session?: ChatSession; sessionId?: string }
-		| { type: 'ontology_loaded'; summary: string }
 		| { type: 'last_turn_context'; context: LastTurnContext }
-		| { type: 'focus_active'; focus: ProjectFocus }
-		| { type: 'focus_changed'; focus: ProjectFocus }
 		| {
 				type: 'agent_state';
 				state: 'thinking' | 'waiting_on_user';
@@ -529,7 +519,6 @@ export type AgentSSEMessage = AgentStreamEventMeta &
 				activity_visibility?: 'activity_log';
 		  }
 		| { type: 'turn_phase'; turn_phase: AgentTurnPhase; message: string }
-		| { type: 'clarifying_questions'; questions: string[] }
 		| { type: 'text'; content: string }
 		| { type: 'text_delta'; content: string }
 		| { type: 'tool_call'; tool_call: ChatToolCall }
@@ -554,7 +543,6 @@ export type AgentSSEMessage = AgentStreamEventMeta &
 					| 'deterministic_evidence'
 					| 'precise_no_evidence';
 		  }
-		| LegacyAgentSSEMessage
 	);
 
 // ============================================================================

@@ -52,7 +52,14 @@ describe('Agentic Chat Phase 4 parity projection', () => {
 		const legacy = normalizeAgenticChatParityEventsV1([
 			legacyEvent({ type: 'text_delta', content: 'Hel' }, 1, 'llm'),
 			legacyEvent({ type: 'text', content: 'lo' }, 2, 'llm'),
-			legacyEvent({ type: 'phase_update', session_phase: 'gathering_info' }, 3, 'stream'),
+			legacyEvent(
+				{
+					type: 'phase_update',
+					session_phase: 'gathering_info'
+				} as unknown as AgentSSEMessage,
+				3,
+				'stream'
+			),
 			legacyEvent(
 				{ type: 'turn_phase', turn_phase: 'finalizing', message: 'Finishing' },
 				4,
@@ -63,7 +70,14 @@ describe('Agentic Chat Phase 4 parity projection', () => {
 		const worker = normalizeAgenticChatParityEventsV1([
 			workerEvent({ type: 'text', content: 'H' }, 1, 'llm'),
 			workerEvent({ type: 'text_delta', content: 'ello' }, 2, 'llm'),
-			workerEvent({ type: 'phase_update', session_phase: 'gathering_info' }, 3, 'stream'),
+			workerEvent(
+				{
+					type: 'phase_update',
+					session_phase: 'gathering_info'
+				} as unknown as AgentSSEMessage,
+				3,
+				'stream'
+			),
 			workerEvent(
 				{ type: 'turn_phase', turn_phase: 'finalizing', message: 'Finishing' },
 				4,

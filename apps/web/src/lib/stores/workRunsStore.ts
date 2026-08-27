@@ -18,7 +18,7 @@ export async function loadWorkRuns(limit = 100): Promise<void> {
 	loading = true;
 	workRunsLoading.set(true);
 	try {
-		const res = await fetch(`/api/agent-runs?limit=${limit}`, {
+		const res = await fetch(`/api/agent-runs?limit=${limit}&view=full`, {
 			headers: { accept: 'application/json' }
 		});
 		if (res.ok) {

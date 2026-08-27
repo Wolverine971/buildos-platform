@@ -20,6 +20,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const APPLY = process.argv.includes('--apply');
+// Node runs this one-off script without building workspace packages first, so
+// keep this mirror aligned with PROJECT_OPERATIONAL_STATES in ontology/onto.ts.
+const SNAPSHOT_PROJECT_STATES = new Set(['planning', 'active']);
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const env = Object.fromEntries(
@@ -61,7 +64,7 @@ console.log(`Stale Start Here docs: ${stale.length} across ${projectIds.length} 
 
 if (projectIds.length === 0) process.exit(0);
 
-// 2. Skip deleted/archived projects and resolve a queue user per project.
+// 2. Match the worker's snapshot lifecycle gate and resolve a queue user per project.
 //    onto_projects.created_by is an ACTOR id — resolve to a user via onto_actors,
 //    falling back to any project member actor with a user_id.
 const { data: projects, error: projectsError } = await supabase
@@ -74,10 +77,14 @@ const liveProjects = projects.filter(
 	(project) =>
 		!project.deleted_at &&
 		!project.archived_at &&
-		!['archived', 'cancelled'].includes(project.state_key)
+		SNAPSHOT_PROJECT_STATES.has(project.state_key)
 );
 const skipped = projects.length - liveProjects.length;
-if (skipped > 0) console.log(`Skipping ${skipped} deleted/archived/cancelled projects`);
+if (skipped > 0) {
+	console.log(
+		`Skipping ${skipped} projects outside snapshot lifecycle states (${[...SNAPSHOT_PROJECT_STATES].join(', ')})`
+	);
+}
 
 const actorIds = [...new Set(liveProjects.map((project) => project.created_by).filter(Boolean))];
 const { data: actors, error: actorsError } = await supabase

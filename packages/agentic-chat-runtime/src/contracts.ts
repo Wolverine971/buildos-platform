@@ -1,3 +1,4 @@
+// packages/agentic-chat-runtime/src/contracts.ts
 import type {
 	AgentSSEMessage,
 	AgentStreamEventV1,
@@ -50,7 +51,7 @@ export type AgenticChatTurnOutcome<TMetadata extends JsonObject = JsonObject> = 
 
 /**
  * Runtime event payloads derive from the current public chat union so extraction
- * cannot omit a legacy variant. The generic remains open for a reviewed host
+ * cannot omit a supported wire variant. The generic remains open for a reviewed host
  * extension without weakening the default contract to an untyped record.
  */
 export type AgenticChatRuntimeEvent<TPayload extends { type: string } = AgentSSEMessage> = TPayload;

@@ -1519,11 +1519,13 @@
 	// This prevents constant scroll interruptions during streaming
 	const messageCount = $derived(messages.length);
 
-	// Auto-scroll only when new messages are added, not during streaming content updates
-	// This allows users to scroll freely during streaming without being snapped back
+	// Auto-scroll only when new messages are added, not during streaming content updates or
+	// scroll-position changes. Keep the container and manual-scroll flag out of the effect's
+	// dependency graph so entering the bottom threshold never causes a snap to absolute bottom.
 	$effect(() => {
-		if (messageCount > 0) {
-			scrollToBottomIfNeeded();
+		const count = messageCount;
+		if (count > 0) {
+			untrack(scrollToBottomIfNeeded);
 		}
 	});
 
@@ -2729,7 +2731,7 @@
 				{#if retrySessionId}
 					<button
 						type="button"
-						class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-ink pressable hover:border-accent hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						onclick={() => loadChatSession(retrySessionId)}
 					>
 						Try again

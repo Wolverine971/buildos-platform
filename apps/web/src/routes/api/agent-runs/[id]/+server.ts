@@ -4,7 +4,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 
-export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({
+	params,
+	url,
+	locals: { supabase, safeGetSession }
+}) => {
 	const { user } = await safeGetSession();
 	if (!user) return ApiResponse.unauthorized();
 
@@ -24,6 +28,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		);
 	}
 	if (!run) return ApiResponse.notFound('Agent run');
+	if (url.searchParams.get('events') === '0') {
+		return ApiResponse.success({ run, events: [] });
+	}
 
 	// RLS scopes events to runs the user owns.
 	const { data: events, error: eventsError } = await supabase

@@ -54,6 +54,18 @@ export type FastChatPassModelRouting = {
 	models?: string[];
 	forcedSynthesisRoutingVariant?: FastChatForcedSynthesisRoutingVariant;
 	ignoredProviderSlugs?: string[];
+	/**
+	 * OpenRouter `provider.order` — upstream providers to try first. Set by the
+	 * turn route pin so passes 2..N land on the provider that already holds the
+	 * cached prefix (prefix caches are per-provider; see turn-route-health.ts).
+	 */
+	providerOrder?: string[];
+	/**
+	 * OpenRouter `provider.allow_fallbacks`. Only ever set to `false` alongside a
+	 * `providerOrder` pin; a failure clears the pin and the next attempt routes
+	 * normally with fallbacks back on.
+	 */
+	allowProviderFallbacks?: boolean;
 	maxTokens?: number;
 	retryModelRotation?: boolean;
 };
