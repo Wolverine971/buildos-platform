@@ -290,9 +290,11 @@ describe('prompt observability helpers', () => {
 		expect(breakdown.sections.focus_purpose.chars).toBeGreaterThan(0);
 		expect(breakdown.sections.location_loaded_context.chars).toBeGreaterThan(0);
 		expect(breakdown.sections.context_inventory_retrieval.chars).toBeGreaterThan(0);
-		expect(breakdown.sections.skill_catalog.chars).toBeGreaterThan(0);
-		expect(breakdown.sections.tools_text_block.chars).toBeGreaterThan(0);
-		expect(breakdown.sections.context_payload.chars).toBeGreaterThan(0);
+		expect(breakdown.sections.final_response_contract.chars).toBeGreaterThan(0);
+		expect(breakdown.sections).not.toHaveProperty('skill_catalog');
+		expect(breakdown.sections).not.toHaveProperty('tools_text_block');
+		expect(breakdown.sections).not.toHaveProperty('execution_protocol');
+		expect(breakdown.sections).not.toHaveProperty('agent_behavior');
 	});
 
 	it('extracts canonical tool metadata for schema and direct tool calls', () => {

@@ -76,14 +76,15 @@ const VISIBLE_ASSISTANT_CONTENT_CONTRACT =
 // active_domain_signals overlay at positions 3-4, which cut the cacheable
 // prompt prefix off before operating_strategy/safety on every turn (measured
 // Pass-1 cache hit 40.6%). Statics now run identity → capabilities → strategy
-// → safety; the tool surface and the per-turn overlays follow. The
-// final_response_contract still closes the prompt (WP-6, 2026-07-10) so the
-// write-truth rules sit in the recency position nearest the model's final
-// reply.
+// → final-response contract; mixed safety and the per-turn sections follow. The
+// final_response_contract is part of the contiguous static prefix. Putting it
+// after per-turn context made an otherwise-stable section ineligible for
+// cross-turn prefix caching; pass-local recency does not justify rebilling it.
 export const LITE_PROMPT_SECTION_ORDER: LitePromptSectionId[] = [
 	'identity_mission',
 	'capabilities_skills_tools',
 	'operating_strategy',
+	'final_response_contract',
 	'safety_data_rules',
 	'tool_surface_dynamic',
 	'active_domain_signals',
@@ -93,8 +94,7 @@ export const LITE_PROMPT_SECTION_ORDER: LitePromptSectionId[] = [
 	'location_loaded_context',
 	'project_knowledge_map',
 	'timeline_recent_activity',
-	'context_inventory_retrieval',
-	'final_response_contract'
+	'context_inventory_retrieval'
 ];
 
 const OVERVIEW_GUIDANCE_LITE = [
@@ -258,6 +258,7 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 					buildIdentityMissionSection(),
 					buildCapabilitiesSkillsToolsSection(scaffold),
 					buildOperatingStrategySection(scaffold, toolsSummary),
+					buildFinalResponseContractSection(scaffold),
 					buildSafetyDataRulesSection(input.data ?? null, scaffold),
 					buildToolSurfaceDynamicSection(toolsSummary),
 					...(domainSignalSection ? [domainSignalSection] : []),
@@ -277,8 +278,7 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 					buildLocationLoadedContextSection(focus, input.data),
 					...(knowledgeMapSection ? [knowledgeMapSection] : []),
 					...(timelineSection ? [timelineSection] : []),
-					buildContextInventoryRetrievalSection(contextInventory),
-					buildFinalResponseContractSection(scaffold)
+					buildContextInventoryRetrievalSection(contextInventory)
 				];
 
 	return {
@@ -826,6 +826,7 @@ function buildTimelineRecentActivitySection(
 	projectDigest: LitePromptProjectDigest | null
 ): LitePromptSection {
 	const localClock = describeLocalClock(timeline.generatedAt, timeline.timezone);
+	const promptClockInstant = truncateIsoToMinute(timeline.generatedAt);
 	const frameLines = [
 		'Timeline frame:',
 		`- Current date: ${localClock.localDate}${localClock.weekday ? ` (${localClock.weekday})` : ''}${
@@ -833,7 +834,7 @@ function buildTimelineRecentActivitySection(
 				? `, ${localClock.localTime} local time in ${localClock.timezone}`
 				: ` in ${localClock.timezone}`
 		}`,
-		`- Current time (UTC instant): ${timeline.generatedAt}`,
+		`- Current time (UTC instant, minute precision): ${promptClockInstant}`,
 		`- Timezone: ${localClock.timezone}`,
 		'- Resolve relative dates ("friday", "tomorrow", "end of day") from the local date above. A weekday name means its next occurrence after today; if today is that weekday it means one week from today unless the user says "today".',
 		`- Scope: ${timeline.scope}`
@@ -882,6 +883,18 @@ function buildTimelineRecentActivitySection(
 		},
 		content
 	});
+}
+
+/**
+ * Prompt clocks need enough precision for relative-date reasoning, not a
+ * per-second cache-buster. Floor instead of rounding forward so the prompt
+ * never claims an instant later than the context snapshot.
+ */
+function truncateIsoToMinute(value: string): string {
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return value;
+	date.setUTCSeconds(0, 0);
+	return date.toISOString();
 }
 
 /**
@@ -1694,7 +1707,6 @@ function summarizeContextMeta(contextMeta: Record<string, unknown>): Record<stri
 	const allowedKeys = [
 		'source',
 		'generated_at',
-		'cache_age_seconds',
 		'project_count',
 		'projects_returned',
 		'project_limit',

@@ -697,6 +697,67 @@ describe('AgenticChatOpenRouterClient', () => {
 		});
 	});
 
+	it('does not reinterpret a successful direct fallback as an OpenRouter model pin', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			if (requests.length === 1) {
+				return new Response(
+					JSON.stringify({ error: { message: 'openrouter unavailable' } }),
+					{
+						status: 503,
+						headers: { 'content-type': 'application/json' }
+					}
+				);
+			}
+			return sseResponse([
+				JSON.stringify({
+					model: requests.length === 2 ? 'direct/model' : 'provider/fallback',
+					provider_slug:
+						requests.length === 2 ? 'direct-provider' : 'openrouter-provider',
+					choices: [
+						{ delta: { content: requests.length === 2 ? 'Direct' : 'OpenRouter' } }
+					]
+				}),
+				JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
+				'[DONE]'
+			]);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl, [
+			route({ id: 'openrouter' }),
+			route({
+				id: 'direct',
+				kind: 'openai_compatible',
+				baseUrl: 'https://direct.example/v1',
+				model: 'direct/model',
+				fallbackModels: []
+			})
+		]);
+
+		await expect(collect(test.client.stream(input()))).resolves.toEqual([
+			{ type: 'text', content: 'Direct' },
+			expect.objectContaining({ type: 'done' })
+		]);
+		await expect(
+			collect(
+				test.client.stream({
+					...input(),
+					streamRunId: 'stream-run-2',
+					logicalProviderRound: 2
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text', content: 'OpenRouter' },
+			expect.objectContaining({ type: 'done' })
+		]);
+
+		expect(requests[2]).toMatchObject({
+			model: 'provider/fallback',
+			models: ['provider/primary']
+		});
+		expect(requests[2]?.model).not.toBe('direct/model');
+	});
+
 	it('surfaces a retryable mid-stream error frame without reporting a successful done', async () => {
 		const fetchImpl = vi.fn(async () =>
 			sseResponse([
@@ -807,6 +868,88 @@ describe('AgenticChatOpenRouterClient', () => {
 			string
 		>;
 		expect(firstHeaders['X-OpenRouter-Metadata']).toBe('enabled');
+	});
+
+	it('pins later passes to the first successful model and provider until that route fails', async () => {
+		const requests: Array<Record<string, unknown>> = [];
+		const fetchImpl = vi.fn(async (_url: string | URL | Request, request?: RequestInit) => {
+			requests.push(JSON.parse(String(request?.body)) as Record<string, unknown>);
+			if (requests.length === 2) {
+				return new Response(
+					JSON.stringify({ error: { message: 'pinned route unavailable' } }),
+					{
+						status: 503,
+						headers: { 'content-type': 'application/json' }
+					}
+				);
+			}
+			return sseResponse([
+				JSON.stringify({
+					model:
+						requests.length === 1 ? 'provider/resolved-fallback' : 'provider/primary',
+					provider: requests.length === 1 ? 'Warm Provider' : 'Recovery Provider',
+					provider_slug: requests.length === 1 ? 'warm-provider' : 'recovery-provider',
+					choices: [{ delta: { content: requests.length === 1 ? 'First' : 'Recovered' } }]
+				}),
+				JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
+				'[DONE]'
+			]);
+		}) as unknown as typeof fetch;
+		const test = harness(fetchImpl, [
+			route({
+				model: 'provider/primary',
+				fallbackModels: ['provider/resolved-fallback'],
+				providerRouting: { order: ['default-provider'], allow_fallbacks: true }
+			})
+		]);
+
+		await expect(collect(test.client.stream(input()))).resolves.toEqual([
+			{ type: 'text', content: 'First' },
+			expect.objectContaining({ type: 'done', finishedReason: 'stop' })
+		]);
+		await expect(
+			collect(
+				test.client.stream({
+					...input(),
+					streamRunId: 'stream-run-2',
+					logicalProviderRound: 2
+				})
+			)
+		).resolves.toEqual([
+			{
+				type: 'error',
+				error: 'Agentic Chat provider start failed (503): pinned route unavailable',
+				retryable: true
+			}
+		]);
+		await expect(
+			collect(
+				test.client.stream({
+					...input(),
+					streamRunId: 'stream-run-3',
+					logicalProviderRound: 3
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text', content: 'Recovered' },
+			expect.objectContaining({ type: 'done', finishedReason: 'stop' })
+		]);
+
+		expect(requests[0]).toMatchObject({
+			model: 'provider/primary',
+			models: ['provider/resolved-fallback'],
+			provider: { order: ['default-provider'], allow_fallbacks: true }
+		});
+		expect(requests[1]).toMatchObject({
+			model: 'provider/resolved-fallback',
+			provider: { order: ['warm-provider'], allow_fallbacks: false }
+		});
+		expect(requests[1]).not.toHaveProperty('models');
+		expect(requests[2]).toMatchObject({
+			model: 'provider/primary',
+			models: ['provider/resolved-fallback'],
+			provider: { order: ['default-provider'], allow_fallbacks: true }
+		});
 	});
 
 	it('handles split CRLF frames and completes safely without an explicit DONE marker', async () => {

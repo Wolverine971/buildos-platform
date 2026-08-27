@@ -74,17 +74,17 @@ The fixes are almost all **find-and-replace consolidations**, not redesigns.
       spinners ×2, activity pulse dot), `AgentRunDock` (both `iconFor` spinner variants), and
       `AgentComposer` (attachment hashing/uploading/processing spinner). The one already-gated
       full-pane session spinner in `AgentChatModal.svelte` was left as-is (already correct).
-- **T2-3 — half-shipped 2026-07-01.** Column minimums in `AgentMessageList.svelte` now scale with
+- **T2-3 — SHIPPED 2026-08-27.** Column minimums in `AgentMessageList.svelte` now scale with
   viewport (`clamp()` instead of fixed `rem` floors: general cells `clamp(4.5rem,24vw,7rem)`, first
   column `clamp(6rem,32vw,14rem)`, second column `clamp(7rem,38vw,18rem)`), and the blanket
   `min-width: 46rem` table floor was removed, so a narrow 2-column table no longer forces the same
-  scroll as a wide one. **Not done:** the "visible scroll-edge affordance." The scroll container is
-  `.agent-markdown` itself (`overflow-x-auto` on the whole message body, not a table-specific
-  wrapper), and it renders inside differently-colored bubbles (user vs. assistant vs. system), so a
-  background-matched scroll-shadow risks a color mismatch that can't be confirmed without a live
-  render pass in this environment. Left as an explicit open item rather than shipped-unverified —
-  needs either a dedicated table-wrapper (rehype plugin) or a live design pass to pick a safe
-  affordance.
+  scroll as a wide one. The remaining affordance now ships through `renderAgentMarkdown`: sanitized
+  tables receive a dedicated `overflow-x` wrapper, `width: max-content` + `min-width: 100%` keeps
+  overflow owned by that wrapper, and a Svelte attachment compares `scrollWidth`/`clientWidth` as
+  content streams or resizes. Only an overflowing table becomes a named, focusable region and shows
+  a neutral `Scroll →` label in a reserved row; the label fades at the far edge and never overlays
+  data. A two-column selector relaxes the generic first/second-column minimums when content can wrap.
+  Live 390×844 light/dark and 1440×900 verification confirmed the wide/compact split. → P29
 - Verified (T1-2/T1-4/T2-1/T2-3): Prettier clean; app-wide `svelte-check --diagnostic-sources svelte`
   clean (0 errors, 1 pre-existing unrelated warning on `onboarding/+page.svelte`). Full TS-inclusive
   `svelte-check` OOMs in this environment independent of these changes (confirmed it did so before

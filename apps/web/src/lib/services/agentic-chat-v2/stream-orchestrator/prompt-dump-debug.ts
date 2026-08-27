@@ -276,7 +276,7 @@ function formatPromptCostBreakdown(cost: PromptCostBreakdown): string[] {
 		'user'
 	];
 	const orderedKeys = [
-		...sectionOrder,
+		...sectionOrder.filter((key) => cost.sections[key] !== undefined),
 		...Object.keys(cost.sections)
 			.filter((key) => !sectionOrder.includes(key))
 			.sort((a, b) => a.localeCompare(b))
@@ -341,6 +341,22 @@ export function appendRuntimeMetadataToPromptDump(
 				);
 				lines.push(`  system_fingerprint=${pass.systemFingerprint ?? 'unknown'}`);
 			}
+			const observedPromptTokens = params.llmPasses.reduce(
+				(total, pass) =>
+					total +
+					(typeof pass.promptTokens === 'number' && Number.isFinite(pass.promptTokens)
+						? pass.promptTokens
+						: 0),
+				0
+			);
+			const observedPromptPasses = params.llmPasses.filter(
+				(pass) =>
+					typeof pass.promptTokens === 'number' && Number.isFinite(pass.promptTokens)
+			).length;
+			lines.push('');
+			lines.push(
+				`Prompt cost across passes: ${observedPromptTokens} actual prompt tokens over ${observedPromptPasses}/${params.llmPasses.length} measured passes (pass multiplier: ×${params.llmPasses.length}).`
+			);
 		}
 
 		lines.push('');

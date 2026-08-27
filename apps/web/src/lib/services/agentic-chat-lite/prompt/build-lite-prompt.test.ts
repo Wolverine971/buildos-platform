@@ -106,6 +106,7 @@ describe('buildLitePromptEnvelope', () => {
 				],
 				context_meta: {
 					generated_at: '2026-04-14T19:00:00Z',
+					cache_age_seconds: 37,
 					source: 'rpc',
 					project_count: 3,
 					projects_returned: 1,
@@ -195,6 +196,7 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).not.toContain('## Active Domain Signals');
 		expect(envelope.systemPrompt).toContain('Actionable loaded context index (bounded):');
 		expect(envelope.systemPrompt).not.toContain('Loaded context payload');
+		expect(envelope.systemPrompt).not.toContain('cache_age_seconds');
 		expect(envelope.systemPrompt).not.toContain('"recent_activity": [');
 		expect(envelope.systemPrompt).not.toContain('Product surface: global workspace chat');
 		expect(envelope.systemPrompt).not.toContain(
@@ -1577,19 +1579,22 @@ describe('buildLitePromptEnvelope', () => {
 		);
 	});
 
-	it('closes the prompt with the final response contract (recency position)', () => {
+	it('keeps the final response contract in the contiguous static prefix', () => {
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'global',
 			entityId: null,
 			projectId: null,
 			data: { projects: [] }
 		});
-		const lastSection = envelope.sections[envelope.sections.length - 1];
-		expect(lastSection?.id).toBe('final_response_contract');
-		expect(lastSection?.content).toContain('Pre-tool lead-ins are intent only');
-		expect(envelope.systemPrompt.trimEnd().endsWith(lastSection?.content.trim() ?? '')).toBe(
-			true
+		const sectionIds = envelope.sections.map((section) => section.id);
+		const contractIndex = sectionIds.indexOf('final_response_contract');
+		const firstDynamicIndex = envelope.sections.findIndex(
+			(section) => section.kind !== 'static'
 		);
+		const contract = envelope.sections[contractIndex];
+		expect(contract?.content).toContain('Pre-tool lead-ins are intent only');
+		expect(contractIndex).toBeGreaterThan(sectionIds.indexOf('operating_strategy'));
+		expect(contractIndex).toBeLessThan(firstDynamicIndex);
 	});
 
 	it('renders the skill catalog as a markdown table, not prose', () => {
@@ -1758,7 +1763,9 @@ describe('prompt clock renders the local date', () => {
 		expect(section.content).toContain(
 			'- Current date: 2026-08-20 (Thursday), 20:17 local time in America/New_York'
 		);
-		expect(section.content).toContain('- Current time (UTC instant): 2026-08-21T00:17:43.256Z');
+		expect(section.content).toContain(
+			'- Current time (UTC instant, minute precision): 2026-08-21T00:17:00.000Z'
+		);
 		expect(section.content).toContain('- Timezone: America/New_York');
 		expect(section.content).toContain(
 			'Resolve relative dates ("friday", "tomorrow", "end of day") from the local date above.'
@@ -1769,7 +1776,7 @@ describe('prompt clock renders the local date', () => {
 			weekday: 'Thursday'
 		});
 		// The old frame must be gone — it is what the model read the wrong day from.
-		expect(section.content).not.toContain('- Current time: 2026-08-21T00:17:43.256Z');
+		expect(section.content).not.toContain('2026-08-21T00:17:43.256Z');
 		expect(section.content).not.toContain('Timezone: UTC');
 	});
 

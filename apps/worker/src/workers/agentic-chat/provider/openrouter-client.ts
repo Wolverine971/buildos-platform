@@ -172,6 +172,11 @@ type TurnRouteHealth = {
 	failedModels: Set<string>;
 	failedProviderSlugs: Set<string>;
 	preferredModels: string[];
+	/** First successful route in this turn; released as soon as that route fails. */
+	pin: {
+		model: string;
+		providerSlug: string | null;
+	} | null;
 	updatedAtMs: number;
 };
 
@@ -541,7 +546,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			this.observeTurnRouteSuccess(
 				input.turnRunId,
 				state.modelUsed ?? active.route.model,
-				active.route.model
+				active.route.model,
+				state.providerSlug,
+				active.route.kind === 'openrouter'
 			);
 			await account('success', null, false);
 			yield {
@@ -706,13 +713,28 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		const ignoredProviders = Array.from(
 			new Set([...(route.providerRouting?.ignore ?? []), ...health.failedProviderSlugs])
 		);
+		const pin =
+			health.pin &&
+			!health.failedModels.has(health.pin.model) &&
+			(!health.pin.providerSlug || !ignoredProviders.includes(health.pin.providerSlug))
+				? health.pin
+				: null;
+		const modelPin =
+			pin ??
+			(health.pin && !health.failedModels.has(health.pin.model)
+				? { model: health.pin.model, providerSlug: null }
+				: null);
 		return {
 			...route,
-			model: reordered[0] ?? route.model,
-			fallbackModels: reordered.slice(1),
+			model: modelPin?.model ?? reordered[0] ?? route.model,
+			// Every pass resends the full accumulated prompt. Once a route succeeds,
+			// keep subsequent passes on the model/provider that owns that warm prefix.
+			// A real failure clears the pin below and restores this fallback list.
+			fallbackModels: modelPin ? [] : reordered.slice(1),
 			providerRouting: {
 				...(route.providerRouting ?? {}),
-				...(ignoredProviders.length > 0 ? { ignore: ignoredProviders } : {})
+				...(ignoredProviders.length > 0 ? { ignore: ignoredProviders } : {}),
+				...(pin?.providerSlug ? { order: [pin.providerSlug], allow_fallbacks: false } : {})
 			}
 		};
 	}
@@ -730,15 +752,25 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			);
 		}
 		if (providerSlug) health.failedProviderSlugs.add(providerSlug);
+		if (
+			health.pin &&
+			((model && health.pin.model === model) ||
+				(providerSlug && health.pin.providerSlug === providerSlug))
+		) {
+			health.pin = null;
+		}
 		health.updatedAtMs = Date.now();
 	}
 
 	private observeTurnRouteSuccess(
 		turnRunId: string,
 		model: string,
-		requestedModel: string
+		requestedModel: string,
+		providerSlug: string | null,
+		pinEligible: boolean
 	): void {
 		const health = this.getTurnRouteHealth(turnRunId, true)!;
+		if (pinEligible && !health.pin) health.pin = { model, providerSlug };
 		const recoveredFromFailure =
 			health.failedModels.size > 0 || health.failedProviderSlugs.size > 0;
 		const resolvedFallback = model !== requestedModel;
@@ -769,6 +801,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			failedModels: new Set(),
 			failedProviderSlugs: new Set(),
 			preferredModels: [],
+			pin: null,
 			updatedAtMs: now
 		};
 		this.turnRouteHealth.set(turnRunId, health);

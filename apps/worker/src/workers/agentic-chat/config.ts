@@ -28,6 +28,12 @@ const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 // not use `only`: this route is also cloned for the Gemini semantic reviewer,
 // and a cross-model provider allowlist can force an unrelated fallback model.
 // Mid-stream recovery is owned by the adapter's atomic buffered-pass retry.
+// Decision 2026-08-27: keep DigitalOcean outside the preferred order but do
+// not globally ignore it yet. The audited 18% cache-hit sample predates the
+// per-turn route pin and OpenRouter's endpoint pool is mutable; first measure
+// same-turn hits with the pin, then canary an ignore policy if misses remain.
+// A hard global ignore now would reduce availability without isolating whether
+// provider switching or a provider-internal cache miss caused the cold prefix.
 const DEFAULT_OPENROUTER_PROVIDER_POOL = Object.freeze([
 	'deepinfra',
 	'deepseek',

@@ -154,80 +154,17 @@ function buildLegacyPromptSections(systemPrompt: string): Record<string, string>
 	};
 }
 
-function splitLiteCapabilitiesSection(content: string): {
-	capabilities: string;
-	skillCatalog: string;
-} {
-	// WP-5 (2026-07-10): the capability block collapsed from a "Capabilities:"
-	// bullet list to a single "BuildOS runtime capabilities: ..." line followed
-	// by the routing-signals paragraph.
-	const capabilitiesStart = content.indexOf('BuildOS runtime capabilities:');
-	const rootSkillStart = content.indexOf('Root skill catalog');
-	if (capabilitiesStart < 0 || rootSkillStart < 0 || rootSkillStart <= capabilitiesStart) {
-		return { capabilities: '', skillCatalog: '' };
-	}
-	return {
-		capabilities: content.slice(capabilitiesStart, rootSkillStart).trim(),
-		skillCatalog: content.slice(rootSkillStart).trim()
-	};
-}
-
-function buildLiteCompatibilitySections(
-	liteSections: Record<string, string>
-): Record<string, string> {
-	if (Object.keys(liteSections).length === 0) return {};
-
-	const capabilitiesSplit = splitLiteCapabilitiesSection(
-		liteSections.capabilities_skills_tools ?? ''
-	);
-	const contextSections = [
-		liteSections.focus_purpose,
-		liteSections.location_loaded_context,
-		liteSections.timeline_recent_activity,
-		liteSections.context_inventory_retrieval
-	]
-		.filter((section): section is string => Boolean(section?.trim()))
-		.join('\n\n');
-
-	return {
-		instructions: [
-			liteSections.lite_preamble,
-			liteSections.identity_mission,
-			liteSections.capabilities_skills_tools,
-			liteSections.tool_surface_dynamic,
-			liteSections.operating_strategy,
-			liteSections.safety_data_rules
-		]
-			.filter((section): section is string => Boolean(section?.trim()))
-			.join('\n\n'),
-		context: contextSections,
-		capabilities: capabilitiesSplit.capabilities,
-		skill_catalog: capabilitiesSplit.skillCatalog,
-		tools_text_block: liteSections.tool_surface_dynamic ?? '',
-		execution_protocol: liteSections.operating_strategy ?? '',
-		agent_behavior: liteSections.operating_strategy ?? '',
-		data_rules: liteSections.safety_data_rules ?? '',
-		context_payload: [
-			liteSections.location_loaded_context,
-			liteSections.timeline_recent_activity,
-			liteSections.context_inventory_retrieval
-		]
-			.filter((section): section is string => Boolean(section?.trim()))
-			.join('\n\n')
-	};
-}
-
 function buildPromptSections(systemPrompt: string): Record<string, string> {
 	const legacySections = buildLegacyPromptSections(systemPrompt);
 	if (legacySections.instructions || legacySections.context) {
 		return legacySections;
 	}
 
-	const liteSections = extractLiteMarkdownSections(systemPrompt);
-	return {
-		...buildLiteCompatibilitySections(liteSections),
-		...liteSections
-	};
+	// Lite markdown headings are already canonical and mutually exclusive.
+	// Re-emitting them under legacy compatibility aliases made the diagnostic
+	// section total exceed the actual system prompt by counting the same bytes
+	// two or three times. Legacy XML prompts retain their legacy breakdown above.
+	return extractLiteMarkdownSections(systemPrompt);
 }
 
 function measureSections(sections: Record<string, string>): Record<string, PromptSectionCost> {

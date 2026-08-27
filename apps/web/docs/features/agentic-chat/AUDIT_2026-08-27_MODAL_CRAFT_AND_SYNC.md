@@ -80,10 +80,10 @@ contract — `AgentSSEMessage` advertises nine event types no server emits and n
 
 ### Third fix pass — shipped 2026-08-27
 
-- **M3:** replaced the outer `max-height` ceiling with a true-height `0fr → 1fr` grid disclosure.
-  The compact and expanded log limits remain static clamps, while a 160 ms chevron transform owns
-  the height-state feedback. The panel delays `visibility: hidden` until close completes so hidden
-  controls cannot receive focus. → P11+P28
+- **M3:** replaced the outer `max-height` ceiling with static `0fr`/`1fr` grid states and no
+  transition on the grid track. The compact and expanded log limits also remain static clamps;
+  only the 160 ms chevron transform communicates the state change. The closed body switches to
+  `visibility: hidden` immediately so its controls cannot receive focus. → P11+P28
 - **Adjacent layout motion:** removed the component's `max-width` and padding transitions. The
   activity counter now mounts at its final geometry and enters with transform/opacity instead of
   animating width, padding, and border width. → P28
@@ -104,8 +104,25 @@ contract — `AgentSSEMessage` advertises nine event types no server emits and n
   user-visible gain. Keep the harness and revisit only if session sizes or a low-end-device trace
   materially exceed this baseline.
 
-**Still open:** M4 (watch-item). A physical-iOS momentum-scroll feel-check, an expand/collapse
-feel-check, and desktop/phone light/dark captures are still owed.
+### Fifth fix pass — motion self-review + table overflow completed 2026-08-27
+
+- **M4:** replaced the 1.15 s shimmer/glow stack and its two animated `drop-shadow()` filters with
+  one 180 ms transform/opacity context-shift cue. Reduced motion receives a 120 ms opacity-only cue;
+  the old timer, background-position animation, and filters are gone. → P11
+- **M3 self-review:** removed the residual `grid-template-rows` transition left by the first M3
+  implementation. Disclosure geometry now changes without animation; motion remains solely on the
+  chevron. The regression contract now rejects grid-track transitions as well as `max-height`.
+- **Adjacent T2-3 backlog item:** agent markdown tables now render inside a dedicated measured
+  scroller. Only genuinely overflowing tables become named keyboard regions and show a color-safe
+  `Scroll →` cue in a reserved row; compact two-column tables keep their normal layout and tab order.
+  Streamed HTML additions and resizes resynchronize through one Svelte attachment on the message-list
+  root rather than one observer set per bubble. → P29
+- **Verification:** 3 focused files / 13 tests passing; full web `pnpm check`: 0 errors / 0 warnings.
+  A live 390×844 light/dark and 1440×900 fixture pass confirmed wide-table overflow, cue dismissal
+  at the far edge, non-overlapping geometry, and no cue/focus stop for a fitting two-column table.
+
+**Still open (device/auth evidence, not code findings):** physical-iOS momentum-scroll feel-check
+and authenticated full-modal desktop/phone light/dark captures.
 
 ---
 
@@ -400,6 +417,10 @@ uses `scale(0.97)` (not `scale(0)`) with a proper `cubic-bezier(0.22, 1, 0.36, 1
 So this is a watch-item, not a defect: if the header ever feels sticky on a low-end Android during a
 context shift, this is the cause. Cheaper equivalent is a `box-shadow`/pseudo-element opacity fade.
 
+**Resolution — shipped 2026-08-27.** The watch-item was removed proactively during the final motion
+self-review. The title now uses one 180 ms transform/opacity cue; reduced motion uses a 120 ms
+opacity-only cue. There is no animated filter, text-gradient/background-position pass, or timer.
+
 ---
 
 ### MB2 — Composer buttons 40 px on mobile
@@ -506,6 +527,6 @@ Leverage = impact ÷ effort.
 5. **C2** — prune the nine dead union members, then consider an exhaustiveness check.
 6. ~~**M3** — `max-height` → grid-rows in `ThinkingBlock`.~~ Shipped; feel-check still owed.
 7. ~~**P1** — profile first.~~ Measured against production sizes; no optimization warranted.
-8. **M4** — watch-item. Fix if low-end Android shows header stutter on context shift.
+8. ~~**M4** — watch-item.~~ Shipped as one brief compositor-safe context-shift cue.
 
 Opportunities (§7) are independent of the above and can land any time.

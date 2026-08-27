@@ -12,6 +12,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getGatewaySurfaceForContextType } from '@buildos/agentic-chat-runtime/catalog';
 import { buildPromptCostBreakdown } from '$lib/services/agentic-chat-v2/prompt-cost-breakdown';
+import { buildToolSurfaceSizeReport } from '$lib/services/agentic-chat-v2/tool-surface-size-report';
 import { buildLitePromptEnvelope } from './index';
 
 afterEach(() => {
@@ -167,6 +168,22 @@ describe('total assembled prompt size budget', () => {
 			userMessage: 'What should I focus on today to keep the beta on track?',
 			tools
 		});
+		const toolSurface = buildToolSurfaceSizeReport({
+			profile: 'canonical_project_turn',
+			contextType: 'project',
+			tools
+		});
+		// The audited baseline averaged 2.9 provider passes per turn. Round up so
+		// this guard makes the multiplicative cost visible: every seed/schema token
+		// is billed again on each pass even when the tool surface is unchanged.
+		const budgetedPassesPerTurn = 3;
+		const providerPayloadTokensPerTurn =
+			breakdown.provider_payload_estimate.est_tokens * budgetedPassesPerTurn;
+		const toolSchemaTokensPerTurn = toolSurface.estimatedTokens * budgetedPassesPerTurn;
+		const largestToolSchemaTokens = Math.max(
+			0,
+			...toolSurface.tools.map((tool) => tool.estimatedTokens)
+		);
 
 		expect(breakdown.system_prompt.chars).toBeGreaterThan(0);
 		expect(breakdown.tool_definitions.chars).toBeGreaterThan(0);
@@ -192,5 +209,12 @@ describe('total assembled prompt size budget', () => {
 		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(20_000);
 		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(41_300);
 		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(10_320);
+		// Per-turn multiplier guard: ratchet this down when WP-3 removes the two
+		// read-only disposition/reviewer passes instead of hiding pass-count drift.
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(30_960);
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(15_000);
+		// A single verbose schema can dominate every pass even while the aggregate
+		// surface remains under budget. Keep that failure attributable by tool.
+		expect(largestToolSchemaTokens).toBeLessThanOrEqual(1_600);
 	});
 });
