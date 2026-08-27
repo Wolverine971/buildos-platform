@@ -3,22 +3,13 @@
 
 import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
+import { getErrorMessage } from '../../lib/utils/errors';
 import {
 	BraindumpProcessingJobData,
 	updateJobStatus,
 	validateBraindumpProcessingJobData
 } from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
-
-// Type for onto_braindumps records (before types are regenerated from migration)
-interface OntoBraindump {
-	id: string;
-	content: string;
-	title: string | null;
-	topics: string[] | null;
-	summary: string | null;
-	status: string;
-}
 
 /**
  * Response structure from LLM processing
@@ -91,14 +82,13 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 			job.processingToken
 		);
 
-		// Fetch the captured context record to verify it exists and get content
-		// Note: Using type assertion until types are regenerated from migration
-		const { data: braindump, error: braindumpError } = (await (supabase as any)
+		// Fetch the captured context record to verify it exists and get content.
+		const { data: braindump, error: braindumpError } = await supabase
 			.from('onto_braindumps')
 			.select('id, content, title, topics, summary, status')
 			.eq('id', validatedData.braindumpId)
 			.eq('user_id', validatedData.userId)
-			.single()) as { data: OntoBraindump | null; error: any };
+			.single();
 
 		if (braindumpError || !braindump) {
 			throw new Error(
@@ -129,7 +119,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 		}
 
 		// Mark as processing in the ontology capture table
-		await (supabase as any)
+		await supabase
 			.from('onto_braindumps')
 			.update({ status: 'processing' })
 			.eq('id', validatedData.braindumpId);
@@ -141,7 +131,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 			);
 
 			// Update with default values
-			const { error: updateError } = await (supabase as any)
+			const { error: updateError } = await supabase
 				.from('onto_braindumps')
 				.update({
 					title: 'Quick thought',
@@ -204,7 +194,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 		console.log(`✅ Processing result: "${title}" with topics: [${topics.join(', ')}]`);
 
 		// Update the captured context with processing results
-		const { error: updateError } = await (supabase as any)
+		const { error: updateError } = await supabase
 			.from('onto_braindumps')
 			.update({
 				title,
@@ -238,16 +228,17 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 			summary,
 			contentLength: braindump.content.length
 		};
-	} catch (error: any) {
-		console.error(`❌ Captured context processing job ${job.id} failed:`, error.message);
+	} catch (error) {
+		const errorMessage = getErrorMessage(error, 'Captured context processing failed');
+		console.error(`❌ Captured context processing job ${job.id} failed:`, errorMessage);
 
 		// Mark captured context as failed
 		try {
-			await (supabase as any)
+			await supabase
 				.from('onto_braindumps')
 				.update({
 					status: 'failed',
-					error_message: error.message,
+					error_message: errorMessage,
 					updated_at: new Date().toISOString()
 				})
 				.eq('id', job.data.braindumpId);
@@ -259,7 +250,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 			job.id,
 			'failed',
 			'process_onto_braindump',
-			error.message,
+			errorMessage,
 			job.processingToken
 		);
 		throw error;

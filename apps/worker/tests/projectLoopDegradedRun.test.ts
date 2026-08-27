@@ -117,22 +117,71 @@ const mocks = vi.hoisted(() => {
 			if (name !== 'load_project_graph_context') return { data: null, error: null };
 			return {
 				data: {
+					project: {
+						id: 'project-1',
+						name: 'Launch',
+						description: 'Ship v1',
+						type_key: 'project',
+						state_key: 'active',
+						facet_context: null,
+						facet_scale: null,
+						facet_stage: null,
+						start_at: null,
+						end_at: null,
+						next_step_short: null,
+						next_step_long: null,
+						created_at: '2026-08-22T00:00:00.000Z',
+						updated_at: '2026-08-22T00:00:00.000Z'
+					},
 					documents: [],
-					goals: [{ id: 'goal-1', name: 'Launch', description: 'Ship v1' }],
+					goals: [
+						{
+							id: 'goal-1',
+							name: 'Launch',
+							goal: null,
+							description: 'Ship v1',
+							state_key: 'active',
+							type_key: null,
+							target_date: null,
+							completed_at: null,
+							created_at: '2026-08-22T00:00:00.000Z',
+							updated_at: '2026-08-22T00:00:00.000Z'
+						}
+					],
 					tasks: [
 						{
 							id: 'task-1',
 							title: 'Publish launch',
+							description: null,
 							state_key: 'todo',
+							type_key: 'task',
+							priority: null,
+							start_at: null,
+							due_at: null,
+							completed_at: null,
+							created_at: '2026-08-22T00:00:00.000Z',
 							updated_at: '2026-08-22T00:00:00.000Z'
 						},
 						{
 							id: 'task-2',
 							title: 'Prepare launch announcement',
+							description: null,
 							state_key: 'todo',
+							type_key: 'task',
+							priority: null,
+							start_at: null,
+							due_at: null,
+							completed_at: null,
+							created_at: '2026-08-22T00:00:00.000Z',
 							updated_at: '2026-08-22T00:00:00.000Z'
 						}
 					],
+					plans: [],
+					milestones: [],
+					risks: [],
+					requirements: [],
+					signals: [],
+					insights: [],
 					edges: []
 				},
 				error: null

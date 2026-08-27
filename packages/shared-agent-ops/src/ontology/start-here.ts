@@ -73,6 +73,12 @@ export type StartHereDocumentCandidate = {
 	updated_at?: string | null;
 };
 
+export type StartHereManagedRegionRange = {
+	name: StartHereManagedRegionName;
+	from: number;
+	to: number;
+};
+
 const MANAGED_REGION_PATTERN =
 	/<!--\s*managed:([a-z0-9_-]+)\s+v=(\d+)\s*-->\s*([\s\S]*?)\s*<!--\s*\/managed:\1\s*-->/gi;
 
@@ -497,6 +503,25 @@ export function extractStartHereManagedRegions(
 		regions[name] = (match[3] ?? '').trim();
 	}
 	return regions;
+}
+
+/**
+ * Locate complete machine-owned START HERE blocks, including both comment
+ * fences. Generic document patches use these ranges to fail closed before an
+ * agent-authored proposal can alter managed content.
+ */
+export function findStartHereManagedRegionRanges(body: string): StartHereManagedRegionRange[] {
+	const ranges: StartHereManagedRegionRange[] = [];
+	for (const match of body.matchAll(MANAGED_REGION_PATTERN)) {
+		const name = match[1] as StartHereManagedRegionName;
+		if (!START_HERE_MANAGED_REGION_NAMES.includes(name) || match.index === undefined) continue;
+		ranges.push({
+			name,
+			from: match.index,
+			to: match.index + match[0].length
+		});
+	}
+	return ranges;
 }
 
 export function stripStartHereManagedRegions(body: string): string {

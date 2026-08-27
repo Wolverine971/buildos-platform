@@ -47,12 +47,14 @@ function responseHarness() {
 describe('Agentic Chat worker capacity HTTP boundary', () => {
 	it('keeps the production path private and mounted only on the dedicated service', () => {
 		const indexSource = readFileSync(join(SRC, 'index.ts'), 'utf8');
+		const appSource = readFileSync(join(SRC, 'app.ts'), 'utf8');
 		const workerSource = readFileSync(join(SRC, 'worker.ts'), 'utf8');
 		const chatServiceSource = readFileSync(join(SRC, 'lib', 'chatWorkerService.ts'), 'utf8');
 
 		expect(AGENTIC_CHAT_CAPACITY_PATH).toBe('/agentic-chat/capacity');
-		expect(indexSource).toContain("const publicWorkerPaths = new Set(['/health'])");
+		expect(appSource).toContain("const PUBLIC_WORKER_PATHS = new Set(['/health'])");
 		expect(indexSource).not.toContain('AGENTIC_CHAT_CAPACITY_PATH');
+		expect(appSource).not.toContain('AGENTIC_CHAT_CAPACITY_PATH');
 		expect(workerSource).not.toContain('collectAgenticChatWorkerCapacityEvidence');
 		expect(chatServiceSource).toContain('app.get(AGENTIC_CHAT_CAPACITY_PATH');
 		expect(chatServiceSource).toContain('this.options.bootstrap.collectCapacityEvidence()');

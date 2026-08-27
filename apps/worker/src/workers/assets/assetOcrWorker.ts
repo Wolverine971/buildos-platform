@@ -1,7 +1,6 @@
 // apps/worker/src/workers/assets/assetOcrWorker.ts
-import { logWorkerError } from '../../lib/errorLogger';
-import { supabase } from '../../lib/supabase';
 import {
+	type Database,
 	buildAssetOcrCompleteUpdate,
 	buildAssetOcrFailedUpdate,
 	buildAssetOcrManualPreservedUpdate,
@@ -9,6 +8,8 @@ import {
 	buildAssetOcrSkippedUpdate,
 	shouldPreserveManualExtractedText
 } from '@buildos/shared-types';
+import { logWorkerError } from '../../lib/errorLogger';
+import { supabase } from '../../lib/supabase';
 import type { LegacyJob } from '../shared/jobAdapter';
 
 type AssetOcrJobMetadata = {
@@ -18,20 +19,21 @@ type AssetOcrJobMetadata = {
 	forceOverwrite?: boolean;
 };
 
-type AssetRecord = {
-	id: string;
-	project_id: string;
-	storage_bucket: string;
-	storage_path: string;
-	content_type: string;
-	ocr_status: string | null;
-	ocr_version: number | null;
-	extracted_text: string | null;
-	extracted_text_source: string | null;
-	extraction_summary: string | null;
-	extraction_metadata: Record<string, unknown> | null;
-	deleted_at: string | null;
-};
+type AssetRecord = Pick<
+	Database['public']['Tables']['onto_assets']['Row'],
+	| 'id'
+	| 'project_id'
+	| 'storage_bucket'
+	| 'storage_path'
+	| 'content_type'
+	| 'ocr_status'
+	| 'ocr_version'
+	| 'extracted_text'
+	| 'extracted_text_source'
+	| 'extraction_summary'
+	| 'extraction_metadata'
+	| 'deleted_at'
+>;
 
 type OcrOutput = {
 	extracted_text: string;
@@ -101,16 +103,17 @@ async function extractOcrFromImageUrl(imageUrl: string): Promise<OcrOutput> {
 		throw new Error('OCR model returned empty content');
 	}
 
-	let parsed: any = null;
+	let parsed: unknown;
 	try {
 		parsed = JSON.parse(content);
 	} catch {
 		throw new Error('OCR model returned invalid JSON');
 	}
 
+	const output = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
 	const extractedText =
-		typeof parsed?.extracted_text === 'string' ? parsed.extracted_text.trim() : '';
-	const summary = typeof parsed?.summary === 'string' ? parsed.summary.trim() : '';
+		typeof output.extracted_text === 'string' ? output.extracted_text.trim() : '';
+	const summary = typeof output.summary === 'string' ? output.summary.trim() : '';
 
 	if (!extractedText) {
 		throw new Error('OCR model returned no extracted text');
@@ -119,13 +122,13 @@ async function extractOcrFromImageUrl(imageUrl: string): Promise<OcrOutput> {
 	return {
 		extracted_text: trimToLimit(extractedText, 100000),
 		summary: trimToLimit(summary || 'Image with extracted text', 1000),
-		confidence: typeof parsed?.confidence === 'number' ? parsed.confidence : undefined,
-		language: typeof parsed?.language === 'string' ? parsed.language : undefined
+		confidence: typeof output.confidence === 'number' ? output.confidence : undefined,
+		language: typeof output.language === 'string' ? output.language : undefined
 	};
 }
 
 async function markFailed(params: { assetId: string; message: string }): Promise<void> {
-	await (supabase as any)
+	await supabase
 		.from('onto_assets')
 		.update(buildAssetOcrFailedUpdate(params.message))
 		.eq('id', params.assetId);
@@ -138,13 +141,13 @@ export async function processAssetOcrJob(job: LegacyJob<AssetOcrJobMetadata>) {
 	let startedAt: number | null = Date.now();
 
 	try {
-		const { data: fetched, error: fetchError } = (await (supabase as any)
+		const { data: fetched, error: fetchError } = await supabase
 			.from('onto_assets')
 			.select(
 				'id, project_id, storage_bucket, storage_path, content_type, ocr_status, ocr_version, extracted_text, extracted_text_source, extraction_summary, extraction_metadata, deleted_at'
 			)
 			.eq('id', assetId)
-			.maybeSingle()) as { data: AssetRecord | null; error: any };
+			.maybeSingle();
 
 		if (fetchError || !fetched) {
 			throw new Error(fetchError?.message || 'Asset not found');
@@ -157,7 +160,7 @@ export async function processAssetOcrJob(job: LegacyJob<AssetOcrJobMetadata>) {
 		}
 
 		if (!String(asset.content_type || '').startsWith('image/')) {
-			await (supabase as any)
+			await supabase
 				.from('onto_assets')
 				.update(buildAssetOcrSkippedUpdate('Non-image asset'))
 				.eq('id', assetId);
@@ -165,7 +168,7 @@ export async function processAssetOcrJob(job: LegacyJob<AssetOcrJobMetadata>) {
 		}
 
 		if (shouldPreserveManualExtractedText(asset, forceOverwrite)) {
-			await (supabase as any)
+			await supabase
 				.from('onto_assets')
 				.update(buildAssetOcrManualPreservedUpdate())
 				.eq('id', assetId);
@@ -173,7 +176,7 @@ export async function processAssetOcrJob(job: LegacyJob<AssetOcrJobMetadata>) {
 		}
 
 		const processingAt = new Date().toISOString();
-		await (supabase as any)
+		await supabase
 			.from('onto_assets')
 			.update(buildAssetOcrProcessingUpdate(processingAt))
 			.eq('id', assetId);
@@ -192,7 +195,7 @@ export async function processAssetOcrJob(job: LegacyJob<AssetOcrJobMetadata>) {
 
 		stage = 'persist';
 		const now = new Date().toISOString();
-		await (supabase as any)
+		await supabase
 			.from('onto_assets')
 			.update(
 				buildAssetOcrCompleteUpdate({
@@ -215,7 +218,7 @@ export async function processAssetOcrJob(job: LegacyJob<AssetOcrJobMetadata>) {
 			ocrStatus: 'complete',
 			transcriptLength: ocr.extracted_text.length
 		};
-	} catch (error: any) {
+	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Asset OCR failed';
 		await markFailed({ assetId, message });
 		await logWorkerError(error, {

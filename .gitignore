@@ -13,6 +13,10 @@ build
 
 
 videos/*
+
+# Local generated video-analysis site (standalone nested repository)
+/artifacts/video-analysis-xpqaoeza9y4/
+
 # Environment variables
 .env
 .env.*

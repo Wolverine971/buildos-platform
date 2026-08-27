@@ -1,5 +1,7 @@
 // apps/web/src/lib/server/billing-ops-monitoring.ts
 
+import type { JsonObject } from '@buildos/shared-types';
+
 export const BILLING_OPS_DEFAULT_WINDOW_DAYS = 30;
 export const BILLING_OPS_MAX_WINDOW_DAYS = 180;
 export const BILLING_OPS_DEFAULT_BASELINE_LOOKBACK = 14;
@@ -71,7 +73,7 @@ export type BillingOpsAnomaly = {
 	baselineValue: number | null;
 	deltaValue: number | null;
 	deltaRatio: number | null;
-	details: Record<string, unknown>;
+	details: JsonObject;
 };
 
 function ratio(numerator: number, denominator: number): number {
@@ -349,7 +351,7 @@ function anomaly(
 	metricName: string,
 	observedValue: number,
 	baselineValue: number | null,
-	details: Record<string, unknown>
+	details: JsonObject
 ): BillingOpsAnomaly {
 	const deltaValue = baselineValue == null ? null : observedValue - baselineValue;
 	const deltaRatio =

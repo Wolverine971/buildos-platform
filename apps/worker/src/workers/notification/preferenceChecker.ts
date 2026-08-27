@@ -12,6 +12,7 @@
 import { createServiceClient } from '@buildos/supabase-client';
 import type { NotificationChannel } from '@buildos/shared-types';
 import type { Logger } from '@buildos/shared-utils';
+import { getErrorMessage } from '../../lib/utils/errors.js';
 
 const supabase = createServiceClient();
 
@@ -203,7 +204,7 @@ export async function checkUserPreferences(
 			reason: 'User preferences allow this notification',
 			preferences: prefs
 		};
-	} catch (error: any) {
+	} catch (error) {
 		prefLogger.error('Error checking user preferences', error, {
 			userId,
 			eventType,
@@ -212,7 +213,7 @@ export async function checkUserPreferences(
 		// Fail closed - if we can't check preferences, don't send
 		return {
 			allowed: false,
-			reason: `Error checking preferences: ${error.message}`
+			reason: `Error checking preferences: ${getErrorMessage(error)}`
 		};
 	}
 }

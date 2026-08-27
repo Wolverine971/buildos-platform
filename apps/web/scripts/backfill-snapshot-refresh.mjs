@@ -66,12 +66,15 @@ if (projectIds.length === 0) process.exit(0);
 //    falling back to any project member actor with a user_id.
 const { data: projects, error: projectsError } = await supabase
 	.from('onto_projects')
-	.select('id, name, created_by, deleted_at, state_key')
+	.select('id, name, created_by, deleted_at, archived_at, state_key')
 	.in('id', projectIds);
 if (projectsError) throw projectsError;
 
 const liveProjects = projects.filter(
-	(project) => !project.deleted_at && !['archived', 'cancelled'].includes(project.state_key)
+	(project) =>
+		!project.deleted_at &&
+		!project.archived_at &&
+		!['archived', 'cancelled'].includes(project.state_key)
 );
 const skipped = projects.length - liveProjects.length;
 if (skipped > 0) console.log(`Skipping ${skipped} deleted/archived/cancelled projects`);

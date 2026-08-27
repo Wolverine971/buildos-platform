@@ -51,7 +51,7 @@ const sanitizeOptions = {
 		pre: ['language-*']
 	},
 	transformTags: {
-		a: (tagName: string, attribs: any) => {
+		a: (tagName: string, attribs: sanitizeHtml.Attributes) => {
 			// Make external links open in new tab
 			if (
 				attribs.href &&

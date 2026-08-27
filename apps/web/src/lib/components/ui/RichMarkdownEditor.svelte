@@ -23,7 +23,8 @@
 		MicOff,
 		LoaderCircle,
 		MoreHorizontal,
-		ChevronUp
+		ChevronUp,
+		Sparkles
 	} from 'lucide-svelte';
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
 	import {
@@ -111,6 +112,12 @@
 		onInsertImageRequested?: () => void;
 		/** Called on every document change (replaces onchange/oninput) */
 		onDocChange?: (value: string) => void;
+		/** Launch an agent proposal for the currently selected Markdown. */
+		onProposeSelection?: (selection: {
+			from: number;
+			to: number;
+			markdown: string;
+		}) => void | Promise<void>;
 		// Bindable voice state
 		isRecording?: boolean;
 		isTranscribing?: boolean;
@@ -148,6 +155,7 @@
 		onSave,
 		onInsertImageRequested,
 		onDocChange,
+		onProposeSelection,
 		// Bindable voice state
 		isRecording = $bindable(false),
 		isTranscribing = $bindable(false),
@@ -158,6 +166,7 @@
 	let mode = $state<'edit' | 'preview'>('edit');
 	let editorRef = $state<CodeMirrorEditor | null>(null);
 	let showMoreTools = $state(false);
+	let currentSelection = $state({ from: 0, to: 0 });
 	const generatedId = `rich-markdown-${++richMarkdownIdCounter}`;
 	const editorId = $derived(id ?? generatedId);
 	const voiceClientId = `${generatedId}-voice`;
@@ -236,6 +245,19 @@
 		words: value.trim() ? value.trim().split(/\s+/).length : 0,
 		chars: value.length
 	});
+	const hasProposalSelection = $derived(currentSelection.to > currentSelection.from);
+
+	function handleSelectionChange(selection: { from: number; to: number }) {
+		currentSelection = selection;
+	}
+
+	function handleProposeSelection() {
+		if (!onProposeSelection || !hasProposalSelection) return;
+		void onProposeSelection({
+			...currentSelection,
+			markdown: value.slice(currentSelection.from, currentSelection.to)
+		});
+	}
 
 	const labelSizeClass = $derived(size === 'lg' ? 'text-base' : 'text-sm');
 
@@ -1302,6 +1324,11 @@
 		await tick();
 		editorRef?.restoreViewState(snapshot);
 	}
+
+	export function getSelection(): { from: number; to: number; markdown: string } {
+		const selection = editorRef?.getSelection() ?? currentSelection;
+		return { ...selection, markdown: value.slice(selection.from, selection.to) };
+	}
 </script>
 
 <div class={`${fillHeight ? 'flex flex-col h-full' : 'space-y-2'} ${className}`}>
@@ -1365,6 +1392,23 @@
 					<div
 						class="flex items-center gap-0.5 overflow-x-auto scrollbar-hide flex-1 min-w-0"
 					>
+						{#if onProposeSelection}
+							<button
+								type="button"
+								onmousedown={(event) => event.preventDefault()}
+								onclick={handleProposeSelection}
+								class="mr-0.5 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-accent/30 bg-accent/10 px-2 text-xs font-semibold text-accent transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40 sm:h-7"
+								title={hasProposalSelection
+									? 'Ask the agent to revise this selection'
+									: 'Select text to ask the agent'}
+								aria-label="Ask the agent to revise selected text"
+								disabled={disabled || !hasProposalSelection}
+							>
+								<Sparkles class="h-3.5 w-3.5" />
+								<span>Ask</span>
+							</button>
+							<div class="mx-0.5 h-5 w-px shrink-0 bg-border/50"></div>
+						{/if}
 						{#each primaryToolbarButtons as action (action.id)}
 							{@const ActionIcon = action.icon}
 							<button
@@ -1474,6 +1518,7 @@
 				{fillHeight}
 				{onSave}
 				{onDocChange}
+				onSelectionChange={handleSelectionChange}
 				class={fillHeight ? 'flex-1' : ''}
 			/>
 		{:else}

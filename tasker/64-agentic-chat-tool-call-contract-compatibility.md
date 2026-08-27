@@ -25,9 +25,10 @@ most cases while annotating those fixtures as the canonical shared types. That c
 209 test-type diagnostics and, more importantly, means the broad behavior suite exercises the
 compatibility fallback instead of the primary live ingress shape.
 
-This is not dead code. `apps/web/src/routes/api/agent/v2/stream/+server.ts` still instantiates the
-service, and `tool-execution/call-decoder.ts` plus `tool-execution/schema-validator.ts` deliberately
-read legacy fields with `Reflect.get`.
+This is not dead code. The legacy HTTP stream handler at
+`apps/web/src/lib/services/agentic-chat/legacy-execution/http-stream/handler.server.ts` still
+instantiates the service, and `tool-execution/call-decoder.ts` plus
+`tool-execution/schema-validator.ts` deliberately read legacy fields with `Reflect.get`.
 
 ## Investigation
 
@@ -45,9 +46,10 @@ read legacy fields with `Reflect.get`.
 ## Production trace (2026-08-26)
 
 - `ToolExecutionService` has one production construction site:
-  `apps/web/src/routes/api/agent/v2/stream/+server.ts`. Its single-call adapter passes the
-  orchestrator's `ChatToolCall` directly to `executeTool`; its batch adapter applies
-  `maybeInjectProjectId` and passes the resulting `ChatToolCall[]` to `batchExecuteTools`.
+  `apps/web/src/lib/services/agentic-chat/legacy-execution/http-stream/handler.server.ts`. Its
+  single-call adapter passes the orchestrator's `ChatToolCall` directly to `executeTool`; its batch
+  adapter applies `maybeInjectProjectId` and passes the resulting `ChatToolCall[]` to
+  `batchExecuteTools`.
 - Provider events cross `FastAgentStreamEvent` as canonical `ChatToolCall` values. Before execution,
   `stream-orchestrator/llm-pass-runner.ts` reads and rewrites only
   `toolCall.function.name`/`toolCall.function.arguments`. The live route contract test also asserts

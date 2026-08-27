@@ -1,25 +1,25 @@
+// apps/worker/src/workers/cycle/cycleWorker.ts
 import type {
 	CycleQueueJobMetadata,
 	CycleQueueJobResult,
-	CycleRun,
+	CycleRunClaim,
 	CycleRunOutcome,
 	Json
 } from '@buildos/shared-types';
-import { validateCycleQueueJobMetadata } from '@buildos/shared-types';
+import {
+	parseCycleRunClaim,
+	serializeCycleRunOutcome,
+	validateCycleQueueJobMetadata
+} from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import {
-	classifyQueueError,
 	PermanentQueueError,
-	TransientQueueError
+	TransientQueueError,
+	classifyQueueError
 } from '../../lib/queueErrors';
 import { supabase } from '../../lib/supabase';
 import { CycleHandlerRegistry } from './cycleHandlerRegistry';
 import { processDailyBriefCycle } from './dailyBriefCycleHandler';
-
-export interface CycleRunClaim {
-	disposition: 'claimed' | 'already_terminal';
-	run: CycleRun;
-}
 
 export interface CycleRunStore {
 	claim(input: {
@@ -48,25 +48,20 @@ class SupabaseCycleRunStore implements CycleRunStore {
 		queueJobRecordId: string;
 		processingToken: string;
 	}): Promise<CycleRunClaim> {
-		const { data, error } = await (supabase.rpc as any)('claim_cycle_run', {
+		const { data, error } = await supabase.rpc('claim_cycle_run', {
 			p_cycle_run_id: input.cycleRunId,
 			p_queue_job_record_id: input.queueJobRecordId,
 			p_processing_token: input.processingToken
 		});
 		if (error) throw new Error(`claim_cycle_run failed: ${error.message}`);
-		if (
-			!data ||
-			typeof data !== 'object' ||
-			!['claimed', 'already_terminal'].includes(data.disposition) ||
-			!data.run ||
-			typeof data.run !== 'object'
-		) {
+		try {
+			return parseCycleRunClaim(data);
+		} catch {
 			throw new PermanentQueueError(
 				'cycle_claim_contract_invalid',
 				'claim_cycle_run returned an invalid response.'
 			);
 		}
-		return data as CycleRunClaim;
 	}
 
 	async complete(input: {
@@ -75,10 +70,10 @@ class SupabaseCycleRunStore implements CycleRunStore {
 		outcome: CycleRunOutcome;
 		result: Json | null;
 	}): Promise<boolean> {
-		const { data, error } = await (supabase.rpc as any)('complete_cycle_run', {
+		const { data, error } = await supabase.rpc('complete_cycle_run', {
 			p_cycle_run_id: input.cycleRunId,
 			p_processing_token: input.processingToken,
-			p_outcome: input.outcome,
+			p_outcome: serializeCycleRunOutcome(input.outcome),
 			p_result: input.result
 		});
 		if (error) throw new Error(`complete_cycle_run failed: ${error.message}`);
@@ -92,7 +87,7 @@ class SupabaseCycleRunStore implements CycleRunStore {
 		errorMessage: string;
 		terminal: boolean;
 	}): Promise<boolean> {
-		const { data, error } = await (supabase.rpc as any)('fail_cycle_run', {
+		const { data, error } = await supabase.rpc('fail_cycle_run', {
 			p_cycle_run_id: input.cycleRunId,
 			p_processing_token: input.processingToken,
 			p_error_code: input.errorCode,

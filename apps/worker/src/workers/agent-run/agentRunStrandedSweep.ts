@@ -190,7 +190,7 @@ export function createStrandedSweepStore(): StrandedSweepStore {
 			return error ? { errorMessage: error.message } : {};
 		},
 		async wakeSynthesis(parentRunId) {
-			const { data, error } = await (supabase as any).rpc('queue_deep_research_synthesis', {
+			const { data, error } = await supabase.rpc('queue_deep_research_synthesis', {
 				p_parent_run_id: parentRunId
 			});
 			if (error) return { jobId: null, errorMessage: error.message };

@@ -67,12 +67,13 @@ export function captureWorkerEvent(
 		void logWorkerError(error, {
 			userId: distinctId,
 			operationType: 'posthog_capture',
-			operationPayload: { event, properties } as any,
+			operationPayload: { event },
 			errorType: 'api_error',
 			severity: 'warning',
 			metadata: {
 				analyticsProvider: 'posthog',
 				analyticsEvent: event,
+				propertyKeys: properties ? Object.keys(properties) : [],
 				runtime: 'worker'
 			}
 		});

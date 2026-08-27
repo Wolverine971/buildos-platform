@@ -2,12 +2,14 @@
 
 # Worker Quick Reference
 
-Last verified against code on 2026-07-06.
+Last verified against code on 2026-08-26.
 
 ## Identity
 
 - Package: `@buildos/worker`
-- Process entrypoint: `apps/worker/src/index.ts`
+- Environment entrypoint: `apps/worker/src/index.ts`
+- Process lifecycle: `apps/worker/src/bootstrap.ts`
+- HTTP composition: `apps/worker/src/app.ts` and `apps/worker/src/routes/`
 - Local port: `3001` unless `PORT` is set
 - Production platform: Railway
 - Queue store: Supabase/Postgres `queue_jobs`

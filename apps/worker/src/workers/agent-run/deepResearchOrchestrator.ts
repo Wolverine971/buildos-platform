@@ -124,7 +124,7 @@ export type DeepResearchRoot = Pick<
 	'id' | 'user_id' | 'trigger' | 'goal' | 'context_type' | 'project_id' | 'budgets'
 >;
 
-export interface DeepResearchChildBudgets {
+export interface DeepResearchChildBudgets extends Record<string, Json> {
 	wall_clock_ms: number;
 	max_tokens: number;
 	max_tool_calls: number;
@@ -721,7 +721,7 @@ export function buildDeepResearchChildDispatches(params: {
 function createProductionDispatchPort(userId: string): DeepResearchDispatchPort {
 	return {
 		async upsertChild(row) {
-			const { error } = await (supabase as any)
+			const { error } = await supabase
 				.from('agent_runs')
 				.upsert(row, { onConflict: 'id', ignoreDuplicates: true });
 			if (error) {
@@ -810,7 +810,7 @@ export function selectExpectedResearchChildren<T extends { id: string }>(
 }
 
 export async function maybeQueueDeepResearchParent(parentRunId: string): Promise<void> {
-	const { error } = await (supabase as any).rpc('queue_deep_research_synthesis', {
+	const { error } = await supabase.rpc('queue_deep_research_synthesis', {
 		p_parent_run_id: parentRunId
 	});
 	if (error) {

@@ -2,7 +2,7 @@
 
 # Worker Service Documentation
 
-Last verified against code on 2026-07-14.
+Last verified against code on 2026-08-26.
 
 This is the documentation hub for `apps/worker`, the Railway service that runs
 the worker API, Supabase queue consumer, and scheduler in one Node.js process.
@@ -12,9 +12,10 @@ docs, see `docs/`.
 
 ## What Runs Here
 
-`apps/worker/src/index.ts` starts three subsystems:
+`apps/worker/src/index.ts` loads environment configuration and delegates to
+`apps/worker/src/bootstrap.ts`, which starts three subsystems:
 
-- Express API server on `PORT` (default `3001`)
+- Express API server composed in `apps/worker/src/app.ts` on `PORT` (default `3001`)
 - Supabase-backed queue processor from `apps/worker/src/worker.ts`
 - Cron scheduler from `apps/worker/src/scheduler.ts`
 

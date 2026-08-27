@@ -3,7 +3,7 @@
 
 import { cleanup, render } from '@testing-library/svelte';
 import { tick } from 'svelte';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { shouldInsertCapturedVoiceFallback } from '../rich-markdown-editor-voice';
 import CodeMirrorEditor from './CodeMirrorEditor.svelte';
 
@@ -61,5 +61,20 @@ describe('CodeMirrorEditor voice insertion behavior', () => {
 		expect(view.state.selection.main).toMatchObject({ anchor: 2, head: 8 });
 		expect(view.scrollDOM.scrollTop).toBe(37);
 		expect(view.scrollDOM.scrollLeft).toBe(5);
+	});
+
+	it('publishes UTF-16 selection offsets for the proposal interaction', async () => {
+		const onSelectionChange = vi.fn();
+		const result = render(CodeMirrorEditor, {
+			props: { value: 'A😀B selection', onSelectionChange }
+		});
+		await tick();
+		const view = result.component.getView();
+		if (!view) throw new Error('CodeMirror editor did not mount');
+
+		view.dispatch({ selection: { anchor: 1, head: 3 } });
+
+		expect(onSelectionChange).toHaveBeenLastCalledWith({ from: 1, to: 3 });
+		expect(result.component.getSelection()).toEqual({ from: 1, to: 3 });
 	});
 });

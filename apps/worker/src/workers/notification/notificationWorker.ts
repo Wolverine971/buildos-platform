@@ -11,29 +11,29 @@
 
 import { createServiceClient } from '@buildos/supabase-client';
 import type {
+	Database,
 	EventType,
 	NotificationChannel,
 	NotificationDelivery,
 	NotificationJobMetadata,
+	NotificationJsonObject,
 	NotificationStatus,
 	PushSubscription as PushSubscriptionType
 } from '@buildos/shared-types';
 import {
 	getFallbackPayload,
+	getNotificationString,
+	isNotificationJsonObject,
 	transformEventPayload,
 	validateNotificationPayload
 } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue.js';
+import { getErrorMessage, getErrorStatusCode } from '../../lib/utils/errors.js';
 import webpush from 'web-push';
 import { sendEmailNotification } from './emailAdapter.js';
 import { sendSMSNotification } from './smsAdapter.js';
 import { SMS_SENDING_DISABLED_REASON, SMS_SENDING_ENABLED } from '../../config/sms.js';
-import {
-	type Logger,
-	createLogger,
-	extractCorrelationContext,
-	generateCorrelationId
-} from '@buildos/shared-utils';
+import { type Logger, createLogger, generateCorrelationId } from '@buildos/shared-utils';
 import { checkUserPreferences } from './preferenceChecker.js';
 import { getStaleBriefJobDecision } from '../brief/briefDateGuard.js';
 import { DEFAULT_VAPID_SUBJECT } from '../../config/vapid';
@@ -172,26 +172,12 @@ async function isPushQuietHours(
 	return inQuietHours;
 }
 
-function getStringPayloadValue(payload: Record<string, any>, key: string): string | undefined {
-	const directValue = payload[key];
-	if (typeof directValue === 'string' && directValue.length > 0) {
-		return directValue;
-	}
-
-	const nestedValue = payload.data?.[key];
-	if (typeof nestedValue === 'string' && nestedValue.length > 0) {
-		return nestedValue;
-	}
-
-	return undefined;
-}
-
 async function getBriefPayloadTimezone(
-	payload: Record<string, any>,
+	payload: NotificationJsonObject,
 	recipientUserId: string,
 	jobLogger: Logger
 ): Promise<string> {
-	const payloadTimezone = getStringPayloadValue(payload, 'timezone');
+	const payloadTimezone = getNotificationString(payload, 'timezone');
 	if (payloadTimezone) {
 		return payloadTimezone;
 	}
@@ -226,12 +212,12 @@ async function getBriefPayloadTimezone(
  * @param jobLogger - Logger instance
  */
 async function enrichDeliveryPayload(
-	delivery: NotificationDelivery,
+	delivery: NotificationDelivery<NotificationJsonObject>,
 	eventType: EventType,
 	jobLogger: Logger
 ): Promise<NotificationDelivery> {
 	// If payload already has valid title and body, check if event_type exists
-	if (validateNotificationPayload(delivery.payload as any)) {
+	if (validateNotificationPayload(delivery.payload)) {
 		// If event_type is already in payload, we're done
 		if (delivery.payload.event_type) {
 			jobLogger.debug(
@@ -241,7 +227,7 @@ async function enrichDeliveryPayload(
 					eventType: delivery.payload.event_type
 				}
 			);
-			return delivery;
+			return { ...delivery, payload: delivery.payload };
 		}
 
 		// Payload is valid but missing event_type - add it from job metadata
@@ -288,9 +274,12 @@ async function enrichDeliveryPayload(
 
 	try {
 		// Transform event payload to notification payload
+		if (!isNotificationJsonObject(event.payload)) {
+			throw new TypeError('Notification event payload must be a JSON object');
+		}
 		const transformedPayload = transformEventPayload(
 			event.event_type as EventType,
-			event.payload as any
+			event.payload
 		);
 
 		jobLogger.debug('Transformed event payload for delivery', {
@@ -309,7 +298,7 @@ async function enrichDeliveryPayload(
 				event_type: event.event_type // Always preserve event_type from source event
 			}
 		};
-	} catch (error: any) {
+	} catch (error) {
 		jobLogger.error('Error transforming event payload', error, {
 			notificationDeliveryId: delivery.id,
 			eventType: event.event_type
@@ -365,10 +354,10 @@ async function getUnreadPushCount(
 		}
 
 		return Math.max(0, count);
-	} catch (error: any) {
+	} catch (error) {
 		jobLogger.warn('Unexpected error fetching unread push count', {
 			recipientUserId,
-			error: error?.message || 'Unknown error'
+			error: getErrorMessage(error)
 		});
 		return null;
 	}
@@ -451,13 +440,14 @@ async function sendPushNotification(
 		});
 
 		return { success: true };
-	} catch (error: any) {
+	} catch (error) {
+		const statusCode = getErrorStatusCode(error);
 		// Handle subscription expiration
-		if (error.statusCode === 410 || error.statusCode === 404) {
+		if (statusCode === 410 || statusCode === 404) {
 			pushLogger.warn('Push subscription expired or not found', {
 				notificationDeliveryId: delivery.id,
 				subscriptionId: pushSubscription.id,
-				statusCode: error.statusCode
+				statusCode
 			});
 
 			// Subscription expired - deactivate it
@@ -491,7 +481,7 @@ async function sendPushNotification(
 
 		return {
 			success: false,
-			error: error.message || 'Unknown push notification error'
+			error: getErrorMessage(error, 'Unknown push notification error')
 		};
 	}
 }
@@ -547,7 +537,7 @@ async function sendInAppNotification(
 		});
 
 		return { success: true };
-	} catch (error: any) {
+	} catch (error) {
 		inAppLogger.error('In-app notification failed', error, {
 			notificationDeliveryId: delivery.id,
 			recipientUserId: delivery.recipient_user_id
@@ -555,7 +545,7 @@ async function sendInAppNotification(
 
 		return {
 			success: false,
-			error: error.message || 'Unknown in-app notification error'
+			error: getErrorMessage(error, 'Unknown in-app notification error')
 		};
 	}
 }
@@ -668,10 +658,7 @@ export async function processNotification(
 	const { delivery_id, channel } = job.data;
 
 	// Extract or generate correlation ID for tracking across systems
-	const correlationContext = job.data.correlationId
-		? { correlationId: job.data.correlationId }
-		: extractCorrelationContext(job.data as any);
-	const correlationId = correlationContext.correlationId || generateCorrelationId();
+	const correlationId = job.data.correlationId || generateCorrelationId();
 
 	// Create child logger with correlation ID and job context
 	const jobLogger = logger.child('process', {
@@ -799,11 +786,11 @@ export async function processNotification(
 		}
 
 		// Send notification (status will be updated after send completes)
-		let typedDelivery: NotificationDelivery = {
+		const pendingDelivery: NotificationDelivery<NotificationJsonObject> = {
 			...delivery,
 			channel: delivery.channel as NotificationChannel,
 			status: delivery.status as NotificationStatus,
-			payload: (delivery.payload as Record<string, any>) || {},
+			payload: isNotificationJsonObject(delivery.payload) ? delivery.payload : {},
 			event_id: delivery.event_id, // Required field, validated above
 			subscription_id: delivery.subscription_id || undefined,
 			attempts: delivery.attempts || 0,
@@ -824,20 +811,20 @@ export async function processNotification(
 		// Enrich payload with transformed event data if needed
 		// Pass event_type from job metadata as fallback (with payload fallback for legacy jobs)
 		const payloadEventType =
-			typeof typedDelivery.payload?.event_type === 'string'
-				? typedDelivery.payload.event_type
+			typeof pendingDelivery.payload.event_type === 'string'
+				? pendingDelivery.payload.event_type
 				: undefined;
 		const fallbackEventType = (job.data.event_type || payloadEventType || 'brief.completed') as
 			| EventType
 			| string;
-		typedDelivery = await enrichDeliveryPayload(
-			typedDelivery,
+		const typedDelivery = await enrichDeliveryPayload(
+			pendingDelivery,
 			fallbackEventType as EventType,
 			jobLogger
 		);
 
 		// Validate that we have a proper payload after transformation
-		if (!validateNotificationPayload(typedDelivery.payload as any)) {
+		if (!validateNotificationPayload(typedDelivery.payload)) {
 			jobLogger.error('Invalid payload after transformation', undefined, {
 				payload: typedDelivery.payload
 			});
@@ -851,7 +838,7 @@ export async function processNotification(
 
 		// Suppress missed daily brief notifications from downtime instead of backfilling them.
 		if (eventType === 'brief.completed' || eventType === 'brief.failed') {
-			const briefDate = getStringPayloadValue(typedDelivery.payload, 'brief_date');
+			const briefDate = getNotificationString(typedDelivery.payload, 'brief_date');
 
 			if (briefDate) {
 				const timezone = await getBriefPayloadTimezone(
@@ -1007,7 +994,7 @@ export async function processNotification(
 		const nextAttempts = currentAttempts + 1;
 		const attemptsExhausted = nextAttempts >= maxAttempts;
 
-		const updateData: any = {
+		const updateData: Database['public']['Tables']['notification_deliveries']['Update'] = {
 			attempts: nextAttempts,
 			updated_at: new Date().toISOString()
 		};
@@ -1103,7 +1090,7 @@ export async function processNotification(
 		}
 
 		// Success - job will be marked complete by the queue
-	} catch (error: any) {
+	} catch (error) {
 		jobLogger.error('Error processing notification job', error);
 
 		// Record the failed attempt ONLY if this run didn't already write the
@@ -1146,7 +1133,7 @@ export async function processNotification(
 								...(cleanupExhausted
 									? { failed_at: new Date().toISOString() }
 									: {}),
-								last_error: error.message,
+								last_error: getErrorMessage(error),
 								attempts: cleanupNext,
 								updated_at: new Date().toISOString()
 							},

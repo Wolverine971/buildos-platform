@@ -1,6 +1,6 @@
 // packages/shared-agent-ops/src/ops/tracked-in-app-notification.service.ts
 import { generateCorrelationId } from '@buildos/shared-utils';
-import type { Database } from '@buildos/shared-types';
+import type { Database, NotificationJsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type NotificationEventSource =
@@ -21,9 +21,9 @@ export interface CreateTrackedInAppNotificationInput {
 	expiresAt?: string | null;
 	actorUserId?: string | null;
 	eventSource?: NotificationEventSource;
-	payload?: Record<string, unknown> | null;
-	data?: Record<string, unknown> | null;
-	metadata?: Record<string, unknown> | null;
+	payload?: NotificationJsonObject | null;
+	data?: NotificationJsonObject | null;
+	metadata?: NotificationJsonObject | null;
 	nowIso?: string;
 }
 
@@ -36,7 +36,7 @@ export interface CreateTrackedInAppNotificationResult {
 	error?: string;
 }
 
-function buildCorrelationId(metadata: Record<string, unknown> | null | undefined): string {
+function buildCorrelationId(metadata: NotificationJsonObject | null | undefined): string {
 	const maybeCorrelationId = metadata?.correlationId;
 	if (typeof maybeCorrelationId === 'string' && maybeCorrelationId.trim().length > 0) {
 		return maybeCorrelationId;
@@ -47,14 +47,14 @@ function buildCorrelationId(metadata: Record<string, unknown> | null | undefined
 export async function createTrackedInAppNotification(
 	input: CreateTrackedInAppNotificationInput
 ): Promise<CreateTrackedInAppNotificationResult> {
-	const sb = input.supabase as any;
+	const sb = input.supabase;
 	const nowIso = input.nowIso ?? new Date().toISOString();
 	const correlationId = buildCorrelationId(input.metadata);
 	const notificationType = input.type ?? 'info';
 	const priority = input.priority ?? 'normal';
 	const eventSource = input.eventSource ?? 'api_action';
 
-	const deliveryPayload: Record<string, unknown> = {
+	const deliveryPayload: NotificationJsonObject = {
 		...(input.payload ?? {}),
 		title: input.title,
 		body: input.message,
@@ -66,12 +66,12 @@ export async function createTrackedInAppNotification(
 		...(input.data ? { data: input.data } : {})
 	};
 
-	const eventPayload: Record<string, unknown> = {
+	const eventPayload: NotificationJsonObject = {
 		...deliveryPayload,
 		...(input.data ? { data: input.data } : {})
 	};
 
-	const eventMetadata: Record<string, unknown> = {
+	const eventMetadata: NotificationJsonObject = {
 		...(input.metadata ?? {}),
 		correlationId
 	};

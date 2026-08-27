@@ -7,6 +7,10 @@ import { pushState } from '$app/navigation';
 import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
 import ProjectWorkspace from './ProjectWorkspace.svelte';
 
+const mocks = vi.hoisted(() => ({
+	trackLoopEvent: vi.fn()
+}));
+
 vi.mock('$app/navigation', () => ({
 	goto: vi.fn(),
 	pushState: vi.fn(),
@@ -15,6 +19,10 @@ vi.mock('$app/navigation', () => ({
 
 vi.mock('$app/state', () => ({
 	page: { state: {} }
+}));
+
+vi.mock('$lib/services/loop-telemetry', () => ({
+	trackLoopEvent: mocks.trackLoopEvent
 }));
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
@@ -35,13 +43,26 @@ function apiResponse(data: Record<string, unknown>) {
 }
 
 function contextDocument() {
+	const content = [
+		'# START HERE - Project',
+		'',
+		'<!-- managed:status v=1 -->',
+		'**State:** active · **Stage:** execution',
+		'**Now:** 4 open tasks · 1 overdue',
+		'**Next step:** Ship the launch email.',
+		'_Last refreshed 2026-07-22T12:00:00.000Z from project snapshot._',
+		'<!-- /managed:status -->',
+		'',
+		'## What this is',
+		'This is the canonical project brief.'
+	].join('\n');
 	return {
 		id: CONTEXT_DOCUMENT_ID,
 		project_id: PROJECT_ID,
 		title: 'START HERE - Project',
 		type_key: 'document.context.project',
 		state_key: 'active',
-		content: '# START HERE - Project\n\nThis is the canonical project brief.',
+		content,
 		props: {},
 		created_at: '2026-07-01T12:00:00.000Z',
 		updated_at: '2026-07-22T12:00:00.000Z',
@@ -263,7 +284,9 @@ describe('ProjectWorkspace edge states', () => {
 		);
 
 		await fireEvent.click(screen.getByRole('tab', { name: 'Start Here Document' }));
-		expect(screen.getByText('This is the canonical project brief.')).toBeInTheDocument();
+		expect(
+			within(briefDialog).getByText('This is the canonical project brief.')
+		).toBeInTheDocument();
 		expect(
 			within(briefDialog).queryByText('Canonical project context')
 		).not.toBeInTheDocument();
@@ -277,6 +300,41 @@ describe('ProjectWorkspace edge states', () => {
 		const parsedBriefUrl = new URL(briefUrl as string, window.location.origin);
 		expect(parsedBriefUrl.searchParams.get('entity')).toBe('document');
 		expect(parsedBriefUrl.searchParams.get('entity_id')).toBe(CONTEXT_DOCUMENT_ID);
+	});
+
+	it('surfaces the live Start Here snapshot and deep-links to its canonical document', async () => {
+		render(ProjectWorkspace, {
+			props: {
+				data: projectData({ context_document: contextDocument() }) as any
+			}
+		});
+
+		const memory = await screen.findByRole('region', { name: 'Project memory' });
+		expect(within(memory).getByText('4 open tasks · 1 overdue')).toBeInTheDocument();
+		expect(within(memory).getByText('Ship the launch email.')).toBeInTheDocument();
+		expect(
+			within(memory).getByText('This is the canonical project brief.')
+		).toBeInTheDocument();
+		await waitFor(() => {
+			expect(mocks.trackLoopEvent).toHaveBeenCalledWith(
+				'memory_snapshot_shown',
+				'project',
+				expect.objectContaining({
+					project_id: PROJECT_ID,
+					document_id: CONTEXT_DOCUMENT_ID,
+					rendered: true,
+					freshness: 'refreshed'
+				})
+			);
+		});
+
+		await fireEvent.click(within(memory).getByRole('button', { name: 'Open Start Here' }));
+		expect(mocks.trackLoopEvent).toHaveBeenCalledWith(
+			'start_here_opened',
+			'project',
+			expect.objectContaining({ source: 'memory_card' })
+		);
+		expect(pushState).toHaveBeenCalledOnce();
 	});
 
 	it('defaults to Overview when the URL does not select a workspace view', async () => {

@@ -75,3 +75,4 @@ export * from './ontology/edge-relationship-resolver';
 // Document versioning (takes a supabase client as a param)
 export * from './ontology/versioning.service';
 export * from './ontology/document-write.service';
+export * from './ontology/document-patch';

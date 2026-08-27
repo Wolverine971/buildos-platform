@@ -6,7 +6,6 @@
 		"src/routes/api/admin/users/[userId]/activity/+server.ts",
 		"src/routes/api/agent/chat-attachments/+server.ts",
 		"src/routes/api/agent/v2/prewarm/+server.ts",
-		"src/routes/api/agent/v2/stream/+server.ts",
 		"src/routes/api/auth/register/+server.ts",
 		"src/routes/api/beta/signup/+server.ts",
 		"src/routes/api/chat/sessions/[id]/+server.ts",

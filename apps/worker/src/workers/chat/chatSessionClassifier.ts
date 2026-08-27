@@ -2,9 +2,11 @@
 // Worker processor for classifying chat sessions and generating titles/topics
 // Also handles activity logging and next step generation for project-related sessions
 
+import type { Database } from '@buildos/shared-types';
 import { supabase } from '../../lib/supabase';
 import { logWorkerError } from '../../lib/errorLogger';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
+import { getErrorMessage } from '../../lib/utils/errors';
 import {
 	ChatClassificationJobData,
 	updateJobStatus,
@@ -19,11 +21,13 @@ import { processContactSignals } from './contactSignalProcessor';
 import {
 	type SessionExtractedEntities,
 	emptySessionExtractedEntities,
-	sanitizeSessionExtractedEntities
+	sanitizeSessionExtractedEntities,
+	serializeSessionExtractedEntities
 } from './libriSessionEntities';
 import {
 	type LibriEntityHandoffStatus,
-	handoffLibriSessionEntities
+	handoffLibriSessionEntities,
+	serializeLibriEntityHandoffStatus
 } from './libriEntityHandoffClient';
 
 /**
@@ -333,11 +337,11 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 
 			// Update with default values
 			const classificationTimestamp = latestMessageAtIso ?? new Date().toISOString();
-			const updatePayload: Record<string, any> = {
+			const updatePayload: Database['public']['Tables']['chat_sessions']['Update'] = {
 				auto_title: title,
 				chat_topics: topics,
 				summary,
-				extracted_entities: extractedEntities,
+				extracted_entities: serializeSessionExtractedEntities(extractedEntities),
 				last_classified_at: classificationTimestamp,
 				updated_at: new Date().toISOString()
 			};
@@ -399,11 +403,11 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 					maxRetries: 2
 				}
 			});
-		} catch (llmError: any) {
+		} catch (llmError) {
 			usedFallbackClassification = true;
 			console.warn(
 				`⚠️  LLM classification failed for session ${validatedData.sessionId}, using fallback:`,
-				llmError?.message ?? llmError
+				getErrorMessage(llmError, 'LLM classification failed')
 			);
 			classification = buildFallbackClassification(typedMessages);
 		}
@@ -429,12 +433,12 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 
 		// Update the chat session with classification results
 		const classificationTimestamp = latestMessageAtIso ?? new Date().toISOString();
-		const updatePayload: Record<string, any> = {
+		const updatePayload: Database['public']['Tables']['chat_sessions']['Update'] = {
 			// Preserve any user-provided title; only set the auto title
 			auto_title: title,
 			chat_topics: topics,
 			summary: summary,
-			extracted_entities: extractedEntities,
+			extracted_entities: serializeSessionExtractedEntities(extractedEntities),
 			last_classified_at: classificationTimestamp,
 			updated_at: new Date().toISOString()
 		};
@@ -643,8 +647,9 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			profileSignals: profileSignalResult,
 			contactSignals: contactSignalResult
 		};
-	} catch (error: any) {
-		console.error(`❌ Chat classification job ${job.id} failed:`, error.message);
+	} catch (error) {
+		const errorMessage = getErrorMessage(error, 'Chat classification failed');
+		console.error(`❌ Chat classification job ${job.id} failed:`, errorMessage);
 		await logWorkerError(error, {
 			userId: job.data.userId,
 			tableName: 'chat_sessions',
@@ -659,7 +664,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			job.id,
 			'failed',
 			'chat_classification',
-			error.message,
+			errorMessage,
 			job.processingToken
 		);
 		throw error;
@@ -684,10 +689,10 @@ async function processLibriEntityHandoff(params: {
 
 		if (!status) return null;
 
-		const { error } = await (supabase as any).rpc('merge_chat_session_agent_metadata', {
+		const { error } = await supabase.rpc('merge_chat_session_agent_metadata', {
 			p_session_id: params.sessionId,
 			p_patch: {
-				libri_handoff: status
+				libri_handoff: serializeLibriEntityHandoffStatus(status)
 			}
 		});
 

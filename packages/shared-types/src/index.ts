@@ -49,6 +49,7 @@ export * from './agent-call.types';
 // Export Project Loops (reconciliation suggestions) types
 export * from './project-loops.types';
 export * from './project-audits.types';
+export * from './project-graph-context.types';
 
 // Export Cycles (recurring work definitions and immutable run occurrences)
 export * from './cycle.types';

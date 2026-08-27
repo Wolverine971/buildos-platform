@@ -8997,6 +8997,92 @@ export type Database = {
           },
         ]
       }
+      onto_document_proposals: {
+        Row: {
+          applied_at: string | null
+          applied_by_actor_id: string | null
+          base_content_hash: string
+          conflict_reason: string | null
+          created_at: string
+          created_by_actor_id: string
+          document_id: string
+          id: string
+          instruction: string
+          patch: Json
+          patch_hash: string
+          project_id: string
+          result_content_hash: string
+          status: string
+          updated_at: string
+          version_warning: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by_actor_id?: string | null
+          base_content_hash: string
+          conflict_reason?: string | null
+          created_at?: string
+          created_by_actor_id: string
+          document_id: string
+          id?: string
+          instruction: string
+          patch: Json
+          patch_hash: string
+          project_id: string
+          result_content_hash: string
+          status?: string
+          updated_at?: string
+          version_warning?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by_actor_id?: string | null
+          base_content_hash?: string
+          conflict_reason?: string | null
+          created_at?: string
+          created_by_actor_id?: string
+          document_id?: string
+          id?: string
+          instruction?: string
+          patch?: Json
+          patch_hash?: string
+          project_id?: string
+          result_content_hash?: string
+          status?: string
+          updated_at?: string
+          version_warning?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_document_proposals_applied_by_actor_id_fkey"
+            columns: ["applied_by_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_document_proposals_created_by_actor_id_fkey"
+            columns: ["created_by_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_document_proposals_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "onto_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_document_proposals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_document_versions: {
         Row: {
           created_at: string
@@ -9043,6 +9129,7 @@ export type Database = {
           archived_at: string | null
           children: Json | null
           content: string | null
+          content_hash: string | null
           created_at: string
           created_by: string
           deleted_at: string | null
@@ -9061,6 +9148,7 @@ export type Database = {
           archived_at?: string | null
           children?: Json | null
           content?: string | null
+          content_hash?: string | null
           created_at?: string
           created_by: string
           deleted_at?: string | null
@@ -9079,6 +9167,7 @@ export type Database = {
           archived_at?: string | null
           children?: Json | null
           content?: string | null
+          content_hash?: string | null
           created_at?: string
           created_by?: string
           deleted_at?: string | null

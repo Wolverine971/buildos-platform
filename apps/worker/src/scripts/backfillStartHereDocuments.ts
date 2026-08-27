@@ -36,7 +36,7 @@ async function main() {
 			}
 
 			const result = await ensureProjectStartHereDocument({
-				supabase: supabase as any,
+				supabase,
 				projectId: project.id,
 				actorId: project.created_by,
 				projectName: project.name,

@@ -34,7 +34,15 @@ const DEFAULT_TYPE_KEYS: Record<OntologyEntityType, string> = {
 	document: 'document.default'
 };
 
-const ENTITY_TABLES: Record<OntologyEntityType, string> = {
+type OntologyTableName =
+	| 'onto_tasks'
+	| 'onto_plans'
+	| 'onto_goals'
+	| 'onto_risks'
+	| 'onto_milestones'
+	| 'onto_documents';
+
+const ENTITY_TABLES: Record<OntologyEntityType, OntologyTableName> = {
 	task: 'onto_tasks',
 	plan: 'onto_plans',
 	goal: 'onto_goals',
@@ -58,9 +66,8 @@ const MAX_TAGS = 7;
 const MAX_TAG_LENGTH = 32;
 const MIN_TAG_LENGTH = 2;
 
-function fromOntologyTable(table: string) {
-	// Supabase types do not support dynamic table names with custom selects.
-	return (supabase.from as any)(table);
+function fromOntologyTable(table: OntologyTableName) {
+	return supabase.from(table);
 }
 
 function buildSystemPrompt(entityType: OntologyEntityType): string {
@@ -176,9 +183,10 @@ function isValidTypeKey(entityType: OntologyEntityType, typeKey: string): boolea
 	return parts.length === 2;
 }
 
-function validateClassification(entityType: OntologyEntityType, result: any) {
-	const tags = normalizeTags(result?.tags);
-	const typeKey = typeof result?.type_key === 'string' ? result.type_key.trim() : '';
+function validateClassification(entityType: OntologyEntityType, result: unknown) {
+	const output = result && typeof result === 'object' ? (result as Record<string, unknown>) : {};
+	const tags = normalizeTags(output.tags);
+	const typeKey = typeof output.type_key === 'string' ? output.type_key.trim() : '';
 	const validTypeKey = typeKey ? isValidTypeKey(entityType, typeKey) : false;
 	return { validTypeKey, typeKey, tags };
 }
@@ -259,11 +267,12 @@ async function fetchEntity(entityType: OntologyEntityType, entityId: string) {
 	const { data, error } = await fromOntologyTable(table)
 		.select(fields)
 		.eq('id', entityId)
-		.single();
+		.single()
+		.overrideTypes<OntologyEntityRow, { merge: false }>();
 	if (error || !data) {
 		throw new Error(error?.message || `Entity not found: ${entityId}`);
 	}
-	return data as OntologyEntityRow;
+	return data;
 }
 
 async function updateEntityWithClassification(
@@ -282,7 +291,8 @@ async function updateEntityWithClassification(
 	const { data: existing, error: fetchError } = await fromOntologyTable(table)
 		.select('props, type_key')
 		.eq('id', entityId)
-		.single();
+		.single()
+		.overrideTypes<Pick<OntologyEntityRow, 'props' | 'type_key'>, { merge: false }>();
 
 	if (fetchError || !existing) {
 		throw new Error(`Entity not found: ${entityId}`);

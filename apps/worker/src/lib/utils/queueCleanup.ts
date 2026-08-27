@@ -1,8 +1,25 @@
 // apps/worker/src/lib/utils/queueCleanup.ts
 import { supabase } from '../supabase';
-import type { QueueJobStatus, QueueJobType } from '@buildos/shared-types';
+import type { Database, QueueJobStatus, QueueJobType } from '@buildos/shared-types';
+import { getErrorMessage } from './errors';
 
 const TERMINAL_STATUSES: QueueJobStatus[] = ['completed', 'failed', 'cancelled'];
+
+type QueueJobCleanupDetail = Pick<
+	Database['public']['Tables']['queue_jobs']['Row'],
+	'id' | 'job_type' | 'queue_job_id' | 'status'
+> &
+	Partial<
+		Pick<
+			Database['public']['Tables']['queue_jobs']['Row'],
+			| 'attempts'
+			| 'completed_at'
+			| 'created_at'
+			| 'error_message'
+			| 'max_attempts'
+			| 'scheduled_for'
+		>
+	>;
 
 function isMissingDeleteCompletedJobsRpc(error: { message?: string; details?: string } | null) {
 	if (!error) return false;
@@ -60,9 +77,9 @@ export interface CleanupResult {
 	completedDeleted: number;
 	errors: string[];
 	details: {
-		staleJobs: any[];
-		oldFailedJobs: any[];
-		completedJobs: any[];
+		staleJobs: QueueJobCleanupDetail[];
+		oldFailedJobs: QueueJobCleanupDetail[];
+		completedJobs: QueueJobCleanupDetail[];
 	};
 }
 
@@ -125,7 +142,7 @@ export async function cleanupStaleJobs(options: CleanupOptions = {}): Promise<Cl
 			result.details.staleJobs = staleJobs;
 
 			// Log details about what will be cancelled
-			staleJobs.forEach((job: any) => {
+			staleJobs.forEach((job) => {
 				const age = Math.floor(
 					(Date.now() - new Date(job.scheduled_for).getTime()) / (1000 * 60 * 60)
 				);
@@ -136,7 +153,7 @@ export async function cleanupStaleJobs(options: CleanupOptions = {}): Promise<Cl
 
 			if (!dryRun) {
 				// Cancel the stale jobs
-				const jobIds = staleJobs.map((job: any) => job.id);
+				const jobIds = staleJobs.map((job) => job.id);
 				const { error: cancelError } = await supabase
 					.from('queue_jobs')
 					.update({
@@ -186,7 +203,7 @@ export async function cleanupStaleJobs(options: CleanupOptions = {}): Promise<Cl
 				result.details.oldFailedJobs = oldFailedJobs;
 
 				// Log a sample
-				oldFailedJobs.slice(0, 5).forEach((job: any) => {
+				oldFailedJobs.slice(0, 5).forEach((job) => {
 					const age = Math.floor(
 						(Date.now() - new Date(job.scheduled_for).getTime()) / (1000 * 60 * 60 * 24)
 					);
@@ -389,7 +406,7 @@ export async function cleanupStaleJobs(options: CleanupOptions = {}): Promise<Cl
 							);
 						}
 
-						const completedIds = completedBatch.map((job: any) => job.id);
+						const completedIds = completedBatch.map((job) => job.id);
 						const { error: deleteCompletedError } = await supabase
 							.from('queue_jobs')
 							.delete()
@@ -425,8 +442,8 @@ export async function cleanupStaleJobs(options: CleanupOptions = {}): Promise<Cl
 
 		console.log('🧹 Cleanup complete');
 		return result;
-	} catch (error: any) {
-		const errorMsg = `Unexpected error during cleanup: ${error.message}`;
+	} catch (error) {
+		const errorMsg = `Unexpected error during cleanup: ${getErrorMessage(error)}`;
 		result.errors.push(errorMsg);
 		console.error('❌', errorMsg, error);
 		return result;

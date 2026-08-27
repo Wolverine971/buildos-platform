@@ -3,12 +3,15 @@ import { describe, expect, it } from 'vitest';
 import {
 	DEFAULT_CYCLE_ATTENTION_POLICY_BY_KIND,
 	DEFAULT_CYCLE_EXECUTION_POLICY,
+	parseCycleRunClaim,
+	serializeCycleRunOutcome,
 	validateCycleInput,
 	type CycleRunOutcome,
 	type CreateCycleInputFor
 } from './cycle.types';
 import { validateCycleQueueJobMetadata } from './validation';
 import type { NotificationEvent } from './notification.types';
+import type { Json } from './database.types';
 
 const validDailyBrief = {
 	request_id: 'create-cycle-1',
@@ -211,5 +214,80 @@ describe('cycle contract', () => {
 
 		expect(outcome.attention_level).toBe('decision');
 		expect(event.cycle_run_id).toBe('cycle-run-1');
+	});
+
+	it('decodes a claimed Cycle Run at the JSON RPC boundary', () => {
+		const claim: Json = {
+			disposition: 'claimed',
+			run: {
+				id: 'run-1',
+				cycle_id: 'cycle-1',
+				cycle_version: 1,
+				user_id: 'user-1',
+				project_id: null,
+				kind: 'daily_brief',
+				trigger: 'schedule',
+				trigger_id: 'trigger-1',
+				status: 'running',
+				triggered_at: '2026-08-26T12:58:00.000Z',
+				scheduled_for: '2026-08-26T13:00:00.000Z',
+				occurrence_key: 'schedule:2026-08-26T13:00:00.000Z',
+				idempotency_key: 'cycle-1:schedule:2026-08-26T13:00:00.000Z',
+				definition_snapshot: {
+					kind: 'daily_brief',
+					version: 1,
+					target: { type: 'user', project_id: null },
+					config: {},
+					policy: { overlap: 'skip', misfire: 'run_once', max_attempts: 3 },
+					attention_policy: 'always'
+				},
+				trigger_snapshot: {
+					type: 'schedule',
+					schedule: {
+						type: 'daily',
+						time_of_day: '09:00',
+						timezone: 'America/New_York'
+					}
+				},
+				execution_input: {
+					mode: 'scheduled',
+					brief_date: '2026-08-26',
+					timezone: 'America/New_York',
+					force_regenerate: false
+				},
+				delivery_intent: {
+					mode: 'evaluate',
+					not_before: '2026-08-26T13:00:00.000Z'
+				},
+				queue_job_record_id: 'queue-row-1',
+				queue_job_id: 'run_cycle_queue-row-1',
+				processing_token: 'token-1',
+				attempt_count: 1,
+				outcome: null,
+				result: null,
+				error_code: null,
+				error_message: null,
+				created_at: '2026-08-26T12:58:00.000Z',
+				queued_at: '2026-08-26T12:58:00.000Z',
+				started_at: '2026-08-26T12:58:05.000Z',
+				finished_at: null,
+				updated_at: '2026-08-26T12:58:05.000Z'
+			}
+		};
+
+		const parsed = parseCycleRunClaim(claim);
+		expect(parsed.run.kind).toBe('daily_brief');
+		expect(parsed.run.definition_snapshot.policy.max_attempts).toBe(3);
+	});
+
+	it('serializes a Cycle outcome as explicit JSON', () => {
+		const outcome = {
+			status: 'artifact_created',
+			attention_level: 'minor',
+			summary: 'Brief ready.',
+			artifact_refs: [{ type: 'daily_brief', id: 'brief-1', label: 'Today' }]
+		} satisfies CycleRunOutcome;
+
+		expect(serializeCycleRunOutcome(outcome)).toEqual(outcome);
 	});
 });

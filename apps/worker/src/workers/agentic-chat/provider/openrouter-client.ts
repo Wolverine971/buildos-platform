@@ -1285,7 +1285,7 @@ function resolveProviderUsageCosts(input: {
 	const estimatedOutputCost = pricing
 		? (input.completionTokens / 1_000_000) * pricing.outputCost
 		: 0;
-	if (input.usage === null || input.usage.cost === null) {
+	if (input.usage?.cost === undefined || input.usage.cost === null) {
 		return {
 			inputCost: estimatedInputCost,
 			outputCost: estimatedOutputCost,

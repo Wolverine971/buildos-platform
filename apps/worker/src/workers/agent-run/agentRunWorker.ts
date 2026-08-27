@@ -166,7 +166,7 @@ async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence) {
 		.maybeSingle();
 	if (selectError) throw selectError;
 
-	const mutableSnapshot = {
+	const mutableSnapshot: Database['public']['Tables']['web_page_visits']['Insert'] = {
 		url: page.requestedUrl,
 		final_url: page.finalUrl,
 		canonical_url: null,
@@ -194,7 +194,7 @@ async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence) {
 			.update({
 				...mutableSnapshot,
 				visit_count: visitCount + 1
-			} as any)
+			})
 			.eq('id', id)
 			.select('id')
 			.maybeSingle();
@@ -212,7 +212,7 @@ async function persistAgentRunPageEvidence(page: AgentRunFetchedPageEvidence) {
 				...mutableSnapshot,
 				visit_count: 1,
 				first_visited_at: page.fetchedAt
-			} as any)
+			})
 			.select('id')
 			.maybeSingle();
 		if (error?.code === '23505') {
@@ -605,7 +605,7 @@ async function reconcileSourceProjectSuggestion(params: {
 
 	try {
 		await syncInboxItemForProjectSuggestion({
-			supabase: supabase as any,
+			supabase,
 			suggestion: (updated as unknown as Record<string, unknown> | null) ?? undefined,
 			suggestionId
 		});
@@ -1567,7 +1567,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		if (changeSet) {
 			try {
 				await syncInboxItemForAgentRun({
-					supabase: supabase as any,
+					supabase,
 					run: {
 						...(run as unknown as Record<string, unknown>),
 						status: finalStatus,

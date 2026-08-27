@@ -21,6 +21,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { DocDeleteConfirmModal, DocMoveModal } from '$lib/components/ontology/doc-tree';
 	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
+	import ProjectMemoryCard from '$lib/components/project/ProjectMemoryCard.svelte';
 	import ProjectEntitySearchCombobox from '$lib/components/project/v2/ProjectEntitySearchCombobox.svelte';
 	import PulseStrip from '$lib/components/project/v2/PulseStrip.svelte';
 	import {
@@ -41,6 +42,7 @@
 	import { parseDocStructure } from '$lib/services/ontology/doc-structure.service';
 	import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
 	import { toastService } from '$lib/stores/toast.store';
+	import { trackLoopEvent } from '$lib/services/loop-telemetry';
 	import type { Document, Goal, Milestone, Plan, Project, Risk, Task } from '$lib/types/onto';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import type {
@@ -209,7 +211,9 @@
 	let editingEntity = $state<WorkspaceEditTarget | null>(null);
 	let showGraphModal = $state(false);
 	let showProjectBriefModal = $state(false);
+	let showMemoryUpdateChatModal = $state(false);
 	let selectedRecentChatSessionId = $state<string | null>(null);
+	let isContextDocumentContentLoading = $state(false);
 	let showAllGoals = $state(false);
 	let showAllPlans = $state(false);
 	let showAllMilestones = $state(false);
@@ -335,12 +339,17 @@
 	}
 
 	async function hydrateContextDocument() {
-		if (!contextDocument?.id || contextDocument.content) return;
+		if (!contextDocument?.id || contextDocument.content || isContextDocumentContentLoading) {
+			return;
+		}
+		isContextDocumentContentLoading = true;
 		try {
 			const loaded = await fetchProjectDocument(contextDocument.id);
 			if (contextDocument?.id === loaded.id) contextDocument = loaded;
 		} catch (error) {
 			console.warn('[Project workspace prototype] Failed to load project memory', error);
+		} finally {
+			isContextDocumentContentLoading = false;
 		}
 	}
 
@@ -389,6 +398,33 @@
 	function openProjectBrief() {
 		showProjectBriefModal = true;
 		void hydrateContextDocument();
+	}
+
+	function openStartHereFromMemory(documentId: string) {
+		trackLoopEvent('start_here_opened', 'project', {
+			project_id: project.id,
+			document_id: documentId,
+			source: 'memory_card'
+		});
+		openEntity('document', documentId);
+	}
+
+	function openMemoryUpdateChat() {
+		trackLoopEvent('memory_update_started', 'project', { project_id: project.id });
+		showMemoryUpdateChatModal = true;
+	}
+
+	function handleMemorySnapshotShown(info: {
+		documentId: string;
+		rendered: boolean;
+		freshness: 'authored' | 'refreshed' | 'never';
+	}) {
+		trackLoopEvent('memory_snapshot_shown', 'project', {
+			project_id: project.id,
+			document_id: info.documentId,
+			rendered: info.rendered,
+			freshness: info.freshness
+		});
 	}
 
 	function openRecentChat(sessionId: string) {
@@ -981,6 +1017,18 @@
 				tabindex="0"
 			>
 				<div class="space-y-5">
+					{#if !isHydrating && contextDocument}
+						<ProjectMemoryCard
+							document={contextDocument}
+							contentLoading={isContextDocumentContentLoading}
+							nextStepShort={project.next_step_short ?? null}
+							{canEdit}
+							onOpenStartHere={openStartHereFromMemory}
+							onUpdateProject={openMemoryUpdateChat}
+							onShown={handleMemorySnapshotShown}
+						/>
+					{/if}
+
 					<ProjectProgressOverview
 						{project}
 						{tasksCoverage}
@@ -1598,6 +1646,20 @@
 			isOpen={true}
 			initialChatSessionId={selectedRecentChatSessionId}
 			onClose={closeRecentChat}
+		/>
+	{/await}
+{/if}
+
+{#if showMemoryUpdateChatModal}
+	{#await import('$lib/components/agent/AgentChatModal.svelte') then { default: AgentChatModal }}
+		<AgentChatModal
+			isOpen={true}
+			contextType="project"
+			entityId={project.id}
+			onClose={() => {
+				showMemoryUpdateChatModal = false;
+				void refreshProject();
+			}}
 		/>
 	{/await}
 {/if}

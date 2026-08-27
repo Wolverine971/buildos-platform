@@ -21,6 +21,7 @@ import type {
 	ProjectSuggestionKind,
 	ProposedSuggestion
 } from '@buildos/shared-types';
+import { parseProjectGraphContext } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
@@ -242,7 +243,7 @@ async function loadProjectReviewSynthesisCandidates(
 		const operations = Array.isArray(row.operations) ? (row.operations as LoopOperation[]) : [];
 		let verifiedChangeHeadline: string | null = null;
 		if (operations.length > 0) {
-			const verification = await verifyProjectSuggestionIntegrity(supabase as any, {
+			const verification = await verifyProjectSuggestionIntegrity(supabase, {
 				projectId,
 				operations,
 				title,
@@ -251,7 +252,7 @@ async function loadProjectReviewSynthesisCandidates(
 			});
 			if (!verification.ok) {
 				await quarantineProjectSuggestionInboxItem({
-					supabase: supabase as any,
+					supabase,
 					suggestion: row,
 					diagnostic: verification.diagnostic
 				});
@@ -482,11 +483,11 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	);
 	if (graphError) throw new Error(`Failed to load project graph: ${graphError.message}`);
 
-	const payload = graphData as any;
-	const rawDocsAll: any[] = Array.isArray(payload?.documents) ? payload.documents : [];
-	const rawTasks: any[] = Array.isArray(payload?.tasks) ? payload.tasks : [];
-	const rawGoals: any[] = Array.isArray(payload?.goals) ? payload.goals : [];
-	const rawEdges: any[] = Array.isArray(payload?.edges) ? payload.edges : [];
+	const graph = parseProjectGraphContext(graphData);
+	const rawDocsAll = graph.documents;
+	const rawTasks = graph.tasks;
+	const rawGoals = graph.goals;
+	const rawEdges = graph.edges;
 	const priorDecisions = await loadPriorDecisions(projectId);
 
 	const parentMap = buildProjectLoopParentMap(projectRow.doc_structure);
@@ -494,7 +495,7 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	// degrades to raw UUIDs, but the document list fed into generator prompts is
 	// capped to the most-recently-updated N (audit §6 / Tier 1 #8).
 	const titleById = new Map<string, string>(
-		rawDocsAll.map((d) => [d.id as string, (d.title as string) ?? 'Untitled'])
+		rawDocsAll.map((document) => [document.id, document.title || 'Untitled'])
 	);
 	const rawDocs = [...rawDocsAll]
 		.sort((a, b) => projectLoopDocumentRecencyMs(b) - projectLoopDocumentRecencyMs(a))
@@ -511,10 +512,7 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	}));
 
 	const goalNameById = new Map<string, string>(
-		rawGoals.map((goal) => [
-			goal.id as string,
-			(goal.name as string) ?? (goal.goal as string) ?? 'Untitled goal'
-		])
+		rawGoals.map((goal) => [goal.id, goal.name || goal.goal || 'Untitled goal'])
 	);
 	const goalNamesByTaskId = new Map<string, Set<string>>();
 	for (const edge of rawEdges) {
@@ -682,7 +680,7 @@ async function supersedePendingSuggestionsForFailedRun(params: {
 	for (const suggestion of updatedSuggestions ?? []) {
 		try {
 			await syncInboxItemForProjectSuggestion({
-				supabase: supabase as any,
+				supabase,
 				suggestion: suggestion as unknown as Record<string, unknown>
 			});
 		} catch (syncError) {
@@ -789,7 +787,7 @@ async function rotateUnconfirmedPendingSuggestions(params: {
 			for (const suggestion of confirmedSuggestions ?? []) {
 				try {
 					await syncInboxItemForProjectSuggestion({
-						supabase: supabase as any,
+						supabase,
 						suggestion: suggestion as unknown as Record<string, unknown>
 					});
 				} catch (syncError) {
@@ -834,7 +832,7 @@ async function rotateUnconfirmedPendingSuggestions(params: {
 			for (const suggestion of rotatedSuggestions ?? []) {
 				try {
 					await syncInboxItemForProjectSuggestion({
-						supabase: supabase as any,
+						supabase,
 						suggestion: suggestion as unknown as Record<string, unknown>
 					});
 				} catch (syncError) {
@@ -894,7 +892,7 @@ async function processDebouncedProjectReviewSignalJob(
 		throw new Error('projectId and userId are required for debounced review signal jobs');
 	}
 
-	let query = (supabase as any)
+	let query = supabase
 		.from('project_review_signals')
 		.select('*')
 		.eq('project_id', projectId)
@@ -930,7 +928,7 @@ async function processDebouncedProjectReviewSignalJob(
 	}
 
 	const nowIso = now.toISOString();
-	const { data: claimed, error: claimError } = await (supabase as any)
+	const { data: claimed, error: claimError } = await supabase
 		.from('project_review_signals')
 		.update({ status: 'processing', started_at: nowIso, queue_job_id: job.id })
 		.eq('id', pendingSignal.id)
@@ -963,7 +961,7 @@ async function processDebouncedProjectReviewSignalJob(
 			})
 		]);
 
-		await (supabase as any)
+		await supabase
 			.from('project_review_signals')
 			.update({
 				status: 'completed',
@@ -987,7 +985,7 @@ async function processDebouncedProjectReviewSignalJob(
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Debounced project review signal failed';
-		await (supabase as any)
+		await supabase
 			.from('project_review_signals')
 			.update({
 				status: 'failed',
@@ -1073,13 +1071,10 @@ type AuditChildSuggestionResult = {
 
 type CompleteAuditPacket = ReturnType<typeof buildCompleteAuditPacket>;
 
-type ProjectReviewSignalRow = {
-	id: string;
-	project_id: string;
-	user_id: string;
-	status: string;
-	due_at: string;
-};
+type ProjectReviewSignalRow = Pick<
+	Database['public']['Tables']['project_review_signals']['Row'],
+	'id' | 'project_id' | 'user_id' | 'status' | 'due_at'
+>;
 
 type RawAuditEvidenceRef = {
 	entity_type?: unknown;
@@ -2546,11 +2541,11 @@ async function supersedeOlderReadyAudits(params: {
 	for (const oldAuditId of oldAuditIds) {
 		try {
 			await syncInboxItemForProjectAudit({
-				supabase: supabase as any,
+				supabase,
 				auditId: oldAuditId
 			});
 			await expireInboxItemsForProjectAuditChildSuggestions({
-				supabase: supabase as any,
+				supabase,
 				auditId: oldAuditId,
 				reason: 'Grouped into a superseded complete project audit packet'
 			});
@@ -2616,7 +2611,7 @@ async function supersedeOlderReadyAudits(params: {
 	for (const suggestion of updatedSuggestions ?? []) {
 		try {
 			await syncInboxItemForProjectSuggestion({
-				supabase: supabase as any,
+				supabase,
 				suggestion: suggestion as unknown as Record<string, unknown>
 			});
 		} catch (syncError) {
@@ -2739,7 +2734,7 @@ async function processCompleteProjectAuditJob(
 				chatSessionId: auditChatSessionId,
 				runId,
 				auditId,
-				onUsage: async () => undefined
+				onUsage: () => Promise.resolve()
 			});
 			if (synthesisResult.warning) {
 				await job.log(
@@ -2826,11 +2821,11 @@ async function processCompleteProjectAuditJob(
 			// never sees competing asks from two project managers.
 			await supersedeOlderProjectManagerBriefs({ projectId });
 			await syncInboxItemForProjectAudit({
-				supabase: supabase as any,
+				supabase,
 				auditId
 			});
 			await expireInboxItemsForProjectAuditChildSuggestions({
-				supabase: supabase as any,
+				supabase,
 				auditId,
 				reason: 'Grouped into the complete project audit manager brief'
 			});
@@ -2854,7 +2849,7 @@ async function processCompleteProjectAuditJob(
 
 		try {
 			const budget = await applyProjectAttentionBudget({
-				supabase: supabase as any,
+				supabase,
 				projectId
 			});
 			if (budget.deferredIds.length || budget.promotedIds.length) {
@@ -3039,12 +3034,13 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 	let totalCompletionTokens = 0;
 	let totalTokens = 0;
 	let lastUsage: UsageEvent | null = null;
-	const onUsage = async (event: UsageEvent) => {
+	const onUsage = (event: UsageEvent): Promise<void> => {
 		totalCost += event.totalCost ?? 0;
 		totalPromptTokens += event.promptTokens ?? 0;
 		totalCompletionTokens += event.completionTokens ?? 0;
 		totalTokens += event.totalTokens ?? 0;
 		lastUsage = event;
+		return Promise.resolve();
 	};
 
 	try {
@@ -3411,12 +3407,12 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		try {
 			if (!auditOwnsAttention) {
 				await syncInboxItemForProjectReview({
-					supabase: supabase as any,
+					supabase,
 					runId
 				});
 			}
 			const groupedCount = await expireProjectSuggestionInboxItemsForManagerBrief({
-				supabase: supabase as any,
+				supabase,
 				projectId
 			});
 			if (groupedCount > 0) {

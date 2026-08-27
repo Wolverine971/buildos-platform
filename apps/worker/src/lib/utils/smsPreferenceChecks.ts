@@ -12,6 +12,7 @@
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { format, parseISO } from 'date-fns';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import { getErrorMessage } from './errors';
 
 /**
  * User SMS preferences interface (subset needed for checks)
@@ -110,12 +111,12 @@ export function checkQuietHours(
 			rescheduleTime: rescheduleTimeUTC,
 			reason: `In quiet hours (${quietHoursStart} - ${quietHoursEnd} ${timezone})`
 		};
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error checking quiet hours:', error);
 		// Fail open - if we can't check, allow the SMS
 		return {
 			inQuietHours: false,
-			reason: `Error checking quiet hours: ${error.message}`
+			reason: `Error checking quiet hours: ${getErrorMessage(error)}`
 		};
 	}
 }
@@ -136,7 +137,7 @@ export async function checkAndUpdateRateLimit(
 ): Promise<RateLimitResult> {
 	try {
 		const defaultLimit = smsPrefs.daily_sms_limit || 10;
-		const { data, error } = await (supabase.rpc as any)('check_and_increment_sms_daily_limit', {
+		const { data, error } = await supabase.rpc('check_and_increment_sms_daily_limit', {
 			p_user_id: userId,
 			p_increment: 1,
 			p_default_limit: defaultLimit
@@ -170,7 +171,7 @@ export async function checkAndUpdateRateLimit(
 
 		// Fallback for environments where the migration has not been applied yet.
 		return legacyCheckAndUpdateRateLimit(userId, smsPrefs, supabase);
-	} catch (error: any) {
+	} catch (error) {
 		console.error(`[SMS Rate Limit] Error checking rate limit for user ${userId}:`, error);
 		return legacyCheckAndUpdateRateLimit(userId, smsPrefs, supabase);
 	}
@@ -234,11 +235,11 @@ async function legacyCheckAndUpdateRateLimit(
 			currentCount: currentCount + 1,
 			limit
 		};
-	} catch (error: any) {
+	} catch (error) {
 		console.error(`[SMS Rate Limit] Legacy fallback failed for user ${userId}:`, error);
 		return {
 			allowed: false,
-			reason: `Error checking rate limit: ${error.message}`
+			reason: `Error checking rate limit: ${getErrorMessage(error)}`
 		};
 	}
 }
@@ -327,7 +328,7 @@ export async function performSMSSafetyChecks(
 			.eq('id', userId)
 			.single();
 
-		const timezone = (user as any)?.timezone || 'UTC';
+		const timezone = user?.timezone || 'UTC';
 
 		const quietHoursResult = checkQuietHours(
 			sendTime,
@@ -373,11 +374,11 @@ export async function performSMSSafetyChecks(
 				rateLimit: rateLimitResult
 			}
 		};
-	} catch (error: any) {
+	} catch (error) {
 		console.error(`[SMS Safety Checks] Error for user ${userId}:`, error);
 		return {
 			allowed: false,
-			reason: `Error performing safety checks: ${error.message}`,
+			reason: `Error performing safety checks: ${getErrorMessage(error)}`,
 			checks: {
 				phoneVerification: false,
 				quietHours: { inQuietHours: false },

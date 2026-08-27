@@ -23,6 +23,27 @@ import {
 	type BillingOpsAnomaly
 } from '$lib/server/billing-ops-monitoring';
 import { createTrackedInAppNotification } from '$lib/server/tracked-in-app-notification.service';
+import type { Database, JsonObject } from '@buildos/shared-types';
+
+type PendingBillingOpsAnomaly = Pick<
+	Database['public']['Tables']['billing_ops_anomalies']['Row'],
+	| 'anomaly_key'
+	| 'severity'
+	| 'metric_name'
+	| 'observed_value'
+	| 'baseline_value'
+	| 'delta_value'
+	| 'delta_ratio'
+	| 'details'
+>;
+
+function isJsonObject(value: unknown): value is JsonObject {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseBillingOpsSeverity(value: string): BillingOpsAnomaly['severity'] | null {
+	return value === 'critical' || value === 'warning' || value === 'info' ? value : null;
+}
 
 function metricLabel(metricName: string): string {
 	switch (metricName) {
@@ -196,11 +217,13 @@ export const GET: RequestHandler = async ({ request, url }) => {
 			if (adminRecipients > 0) {
 				const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 				const notificationJobs = (pendingNotificationAnomalies || []).flatMap(
-					(anomaly: any) => {
+					(anomaly: PendingBillingOpsAnomaly) => {
+						const severity = parseBillingOpsSeverity(anomaly.severity);
+						if (!severity) return [];
 						const payload = anomalyNotificationPayload(
 							{
 								anomalyKey: anomaly.anomaly_key,
-								severity: anomaly.severity,
+								severity,
 								metricName: anomaly.metric_name,
 								observedValue: Number(anomaly.observed_value),
 								baselineValue:
@@ -215,7 +238,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 									anomaly.delta_ratio == null
 										? null
 										: Number(anomaly.delta_ratio),
-								details: (anomaly.details || {}) as Record<string, unknown>
+								details: isJsonObject(anomaly.details) ? anomaly.details : {}
 							},
 							snapshot.window_days,
 							snapshot.snapshot_date

@@ -14,12 +14,12 @@ import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { ensureActorId } from '@buildos/shared-agent-ops/ontology/ontology-projects.service';
 import { ensureProjectStartHereDocument } from '@buildos/shared-agent-ops/ontology/start-here.service';
 import {
-	appendStartHereAuthoredSectionUpdates,
-	sanitizeStartHereAuthoredMarkdown,
-	stripStartHereManagedRegions,
 	START_HERE_AUTHORED_SECTION_NAMES,
 	type StartHereAuthoredSectionName,
-	type StartHereAuthoredSectionUpdate
+	type StartHereAuthoredSectionUpdate,
+	appendStartHereAuthoredSectionUpdates,
+	sanitizeStartHereAuthoredMarkdown,
+	stripStartHereManagedRegions
 } from '@buildos/shared-agent-ops/ontology/start-here';
 import { stageGatewayWriteOp } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import { syncInboxItemForAgentRun } from '@buildos/shared-agent-ops';
@@ -220,7 +220,7 @@ async function createProposalRun(params: {
 	if (error) throw error;
 	try {
 		await syncInboxItemForAgentRun({
-			supabase: supabase as any,
+			supabase,
 			run: runRow as unknown as Record<string, unknown>
 		});
 	} catch (syncError) {
@@ -276,9 +276,9 @@ export async function processStartHereCaptureProposals(params: {
 			return { proposed: false, runId: null, updateCount: 0 };
 		}
 
-		const actorId = await ensureActorId(supabase as any, params.userId);
+		const actorId = await ensureActorId(supabase, params.userId);
 		const ensured = await ensureProjectStartHereDocument({
-			supabase: supabase as any,
+			supabase,
 			projectId: params.projectId,
 			actorId,
 			projectName: project.name ?? null,
@@ -317,7 +317,7 @@ export async function processStartHereCaptureProposals(params: {
 			allowed_ops: ['onto.document.update']
 		};
 		const staged = await stageGatewayWriteOp({
-			admin: supabase as any,
+			admin: supabase,
 			userId: params.userId,
 			scope,
 			op: 'onto.document.update',

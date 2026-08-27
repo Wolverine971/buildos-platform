@@ -50,6 +50,7 @@
 	import DocumentVersionRestoreModal from './DocumentVersionRestoreModal.svelte';
 	import DocumentComparisonView from './DocumentComparisonView.svelte';
 	import DocumentInteractDock from './DocumentInteractDock.svelte';
+	import DocumentProposalReview from './DocumentProposalReview.svelte';
 	import DocumentVoiceNotesPanel from './DocumentVoiceNotesPanel.svelte';
 	import DocMoveModal from './doc-tree/DocMoveModal.svelte';
 	import DocDeleteConfirmModal from './doc-tree/DocDeleteConfirmModal.svelte';
@@ -283,6 +284,16 @@
 	let pendingDocumentPageNavigation = $state(false);
 	let editorIsRecording = $state(false);
 	let editorIsTranscribing = $state(false);
+	type DocumentProposalSelection = {
+		session: DocumentSession;
+		documentId: string;
+		baseContent: string;
+		from: number;
+		to: number;
+		markdown: string;
+	};
+	let documentProposalSelection = $state.raw<DocumentProposalSelection | null>(null);
+	let documentProposalApplyLocked = $state(false);
 
 	/** Whether content has changed vs. last-saved snapshot */
 	const hasUnsavedChanges = $derived.by(() => {
@@ -685,6 +696,8 @@
 		isDocumentInteractOpen = false;
 		documentInteractSession = null;
 		documentInteractObservedMutation = false;
+		documentProposalSelection = null;
+		documentProposalApplyLocked = false;
 		showRestoreModal = false;
 		selectedVersionForRestore = null;
 		restoreModalSession = null;
@@ -1486,6 +1499,7 @@
 		pendingDocumentPageNavigation = false;
 		editorIsRecording = false;
 		editorIsTranscribing = false;
+		documentProposalApplyLocked = false;
 	}
 
 	function normalizeDocumentState(state?: string | null): string {
@@ -2438,6 +2452,95 @@
 		await loadDocument(requestedDocumentId);
 		if (!isCurrentDocumentMutation(session, requestedDocumentId) || formError) return;
 		await markdownEditorRef?.restoreViewState(editorState);
+		onSaved?.();
+	}
+
+	async function handleDocumentProposalSelection(selection: {
+		from: number;
+		to: number;
+		markdown: string;
+	}) {
+		if (!activeDocumentId || !selection.markdown || loading) return;
+		if (saveStatus === 'conflict') {
+			toastService.warning('Resolve the document conflict before creating a proposal.');
+			return;
+		}
+
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
+		const baseContent = body;
+		if (hasUnsavedChanges) {
+			if (autosaveTimer) {
+				clearTimeout(autosaveTimer);
+				autosaveTimer = null;
+			}
+			const saved = await performSave({ silent: true, blockingUi: true });
+			if (!saved || !isCurrentDocumentMutation(session, requestedDocumentId)) return;
+			if (body !== baseContent) {
+				toastService.warning(
+					'The document changed while saving. Select the passage again.'
+				);
+				return;
+			}
+		}
+
+		if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
+		documentProposalSelection = {
+			session,
+			documentId: requestedDocumentId,
+			baseContent,
+			from: selection.from,
+			to: selection.to,
+			markdown: selection.markdown
+		};
+	}
+
+	function closeDocumentProposal() {
+		documentProposalSelection = null;
+		documentProposalApplyLocked = false;
+		markdownEditorRef?.focus?.();
+	}
+
+	async function prepareDocumentProposalApply(
+		selection: DocumentProposalSelection
+	): Promise<boolean> {
+		if (!isCurrentDocumentMutation(selection.session, selection.documentId)) return false;
+		if (saveStatus === 'conflict') {
+			toastService.warning('Resolve the document conflict before applying this proposal.');
+			return false;
+		}
+		if (saving || saveStatus === 'saving') {
+			toastService.warning('Wait for the current save to finish, then apply the proposal.');
+			return false;
+		}
+
+		if (autosaveTimer) {
+			clearTimeout(autosaveTimer);
+			autosaveTimer = null;
+		}
+		if (hasUnsavedChanges) {
+			const saved = await performSave({ silent: true, blockingUi: true });
+			if (!saved || !isCurrentDocumentMutation(selection.session, selection.documentId)) {
+				toastService.warning(
+					'Save the latest document changes before applying the proposal.'
+				);
+				return false;
+			}
+		}
+
+		return isCurrentDocumentMutation(selection.session, selection.documentId);
+	}
+
+	async function handleDocumentProposalApplied(selection: DocumentProposalSelection) {
+		if (!isCurrentDocumentMutation(selection.session, selection.documentId)) return;
+		const editorState = markdownEditorRef?.captureViewState() ?? null;
+		documentProposalSelection = null;
+		await loadDocument(selection.documentId);
+		if (!isCurrentDocumentMutation(selection.session, selection.documentId) || formError)
+			return;
+		await markdownEditorRef?.restoreViewState(editorState);
+		versionHistoryPanelRef?.refresh();
+		toastService.success('Proposal applied and added to version history.');
 		onSaved?.();
 	}
 
@@ -3740,12 +3843,16 @@
 											bind:this={markdownEditorRef}
 											bind:value={body}
 											onSave={handleSave}
+											disabled={documentProposalApplyLocked}
 											maxLength={50000}
 											helpText=""
 											fillHeight={true}
 											bind:isRecording={editorIsRecording}
 											bind:isTranscribing={editorIsTranscribing}
 											onInsertImageRequested={openImageInsertModal}
+											onProposeSelection={activeDocumentId
+												? handleDocumentProposalSelection
+												: undefined}
 											voiceNoteSource="document-modal"
 											voiceNoteLinkedEntityType={activeDocumentId
 												? 'document'
@@ -3755,6 +3862,24 @@
 											onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
 										/>
 									</div>
+									{#if documentProposalSelection}
+										{@const proposalSelection = documentProposalSelection}
+										<DocumentProposalReview
+											documentId={proposalSelection.documentId}
+											documentTitle={title || 'Untitled Document'}
+											baseContent={proposalSelection.baseContent}
+											selectionFrom={proposalSelection.from}
+											selectionTo={proposalSelection.to}
+											selectedMarkdown={proposalSelection.markdown}
+											onBeforeApply={() =>
+												prepareDocumentProposalApply(proposalSelection)}
+											onApplyStateChange={(applying) =>
+												(documentProposalApplyLocked = applying)}
+											onApplied={() =>
+												handleDocumentProposalApplied(proposalSelection)}
+											onClose={closeDocumentProposal}
+										/>
+									{/if}
 								</div>
 							{/if}
 

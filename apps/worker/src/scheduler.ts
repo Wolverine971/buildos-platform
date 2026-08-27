@@ -311,7 +311,7 @@ async function queueBriefGeneration(
  */
 async function refreshPublicPage30dViewCounts() {
 	try {
-		const { data, error } = await (supabase as any).rpc('refresh_onto_public_page_30d_counts');
+		const { data, error } = await supabase.rpc('refresh_onto_public_page_30d_counts');
 		if (error) {
 			console.error('Failed to refresh public page 30d view counts:', error);
 			return;
@@ -580,7 +580,7 @@ async function deferOperativeSchedule(
 	message: string,
 	retryAt: Date = addMinutes(new Date(), 15)
 ) {
-	await (supabase as any)
+	await supabase
 		.from('agent_operatives')
 		.update({
 			next_run_at: retryAt.toISOString(),
@@ -657,7 +657,7 @@ async function enqueueScheduledOperativeRun(
 		return { error: message };
 	}
 
-	await (supabase as any)
+	await supabase
 		.from('agent_operatives')
 		.update({
 			last_run_at: scheduledFor.toISOString(),
@@ -674,7 +674,7 @@ async function enqueueScheduledOperativeRun(
 export async function checkAndScheduleAgentOperatives(now: Date = new Date()): Promise<void> {
 	const dueThrough = addMinutes(now, 5);
 	const staleLockThreshold = new Date(now.getTime() - STALE_OPERATIVE_LOCK_MS);
-	const { data: operatives, error } = await (supabase as any)
+	const { data: operatives, error } = await supabase
 		.from('agent_operatives')
 		.select('*')
 		.eq('schedule_enabled', true)
@@ -693,7 +693,11 @@ export async function checkAndScheduleAgentOperatives(now: Date = new Date()): P
 	console.log(`🧭 Found ${operatives.length} scheduled Operative(s) due soon`);
 
 	for (const candidate of operatives as AgentOperativeRow[]) {
-		const scheduledFor = candidate.next_run_at ? new Date(candidate.next_run_at) : now;
+		if (!candidate.next_run_at) {
+			console.warn(`🧭 Skipping Operative ${candidate.id} because next_run_at is missing`);
+			continue;
+		}
+		const scheduledFor = new Date(candidate.next_run_at);
 		const nextRunAt = calculateNextOperativeRunTime(
 			candidate,
 			new Date(Math.max(scheduledFor.getTime(), now.getTime()) + 1000)
@@ -706,7 +710,7 @@ export async function checkAndScheduleAgentOperatives(now: Date = new Date()): P
 		// Match on the schedule_locked_at value we just observed (null or a stale
 		// timestamp) so two scheduler replicas can't both win the claim.
 		const observedLockedAt = candidate.schedule_locked_at;
-		let lockUpdate = (supabase as any)
+		let lockUpdate = supabase
 			.from('agent_operatives')
 			.update({ schedule_locked_at: now.toISOString(), schedule_error: null })
 			.eq('id', candidate.id)
@@ -732,7 +736,7 @@ export async function checkAndScheduleAgentOperatives(now: Date = new Date()): P
 			.from('agent_runs')
 			.select('id', { count: 'exact', head: true })
 			.eq('user_id', candidate.user_id)
-			.in('status', ['queued', 'running', 'paused', 'needs_input', 'proposal_ready'] as any);
+			.in('status', ['queued', 'running', 'paused', 'needs_input', 'proposal_ready']);
 		if (activeError) {
 			await deferOperativeSchedule(
 				candidate.id,
@@ -798,17 +802,13 @@ function numericSummaryValue(summary: Record<string, unknown>, key: string): num
 
 async function runPreparedPromptRetentionCleanup(): Promise<void> {
 	try {
-		const { data, error } = await (supabase as any).rpc(
-			'cleanup_agentic_chat_prompt_artifacts'
-		);
+		const { data, error } = await supabase.rpc('cleanup_agentic_chat_prompt_artifacts');
 		if (error) {
 			console.warn(
 				'⚠️ Scheduled prompt artifact cleanup failed; falling back to prepared prompt cleanup:',
 				error
 			);
-			const fallback = await (supabase as any).rpc(
-				'cleanup_expired_agentic_chat_prepared_prompts'
-			);
+			const fallback = await supabase.rpc('cleanup_expired_agentic_chat_prepared_prompts');
 			if (fallback.error) {
 				console.warn(
 					'⚠️ Scheduled prepared prompt cleanup fallback failed:',
@@ -916,7 +916,7 @@ async function checkAndScheduleBriefs() {
 		// Create timezone and name lookup maps
 		const userTimezoneMap = new Map<string, string>();
 		const userNameMap = new Map<string, string>();
-		(users as any)?.forEach((user: any) => {
+		(users ?? []).forEach((user) => {
 			if (user.id && user.timezone) {
 				userTimezoneMap.set(user.id, user.timezone);
 			}
@@ -995,7 +995,7 @@ async function checkAndScheduleBriefs() {
 
 		// PHASE 2: Calculate next run times and filter users needing briefs
 		const usersToSchedule: Array<{
-			preference: any;
+			preference: UserBriefPreference;
 			nextRunTime: Date;
 			generationStartTime: Date;
 			briefDate: string;

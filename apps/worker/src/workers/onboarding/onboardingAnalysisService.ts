@@ -1,5 +1,6 @@
 // apps/worker/src/workers/onboarding/onboardingAnalysisService.ts
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import type { Database } from '@buildos/shared-types';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { OnboardingAnalysisPrompt } from './prompts';
 
@@ -13,9 +14,18 @@ interface OnboardingAnalysisLLMResponse {
 		source_field: string;
 		triggers?: string[];
 	}>;
-	analysis?: any;
-	insights?: any;
+	analysis?: unknown;
+	insights?: unknown;
 }
+
+type OnboardingUserContext = Partial<
+	Pick<
+		Database['public']['Tables']['user_context']['Row'],
+		'input_challenges' | 'input_help_focus' | 'input_projects' | 'input_work_style'
+	>
+>;
+
+type UserContextUpdate = Database['public']['Tables']['user_context']['Update'];
 
 export type OnboardingQuestionPriority = 'high' | 'medium' | 'low';
 
@@ -24,9 +34,7 @@ export type OnboardingQuestionPriority = 'high' | 'medium' | 'low';
  * advertised "highest", which is not a database value and caused the entire
  * onboarding insert to fail when the model followed that instruction.
  */
-export function normalizeOnboardingQuestionPriority(
-	value: unknown
-): OnboardingQuestionPriority {
+export function normalizeOnboardingQuestionPriority(value: unknown): OnboardingQuestionPriority {
 	if (typeof value !== 'string') return 'medium';
 
 	switch (value.trim().toLowerCase()) {
@@ -56,7 +64,7 @@ export class OnboardingAnalysisService {
 
 	async generateOnboardingQuestions(
 		userId: string,
-		userContext: any,
+		userContext: OnboardingUserContext,
 		options?: { forceRegenerate?: boolean; maxQuestions?: number }
 	) {
 		// Check for existing active questions if not forcing regeneration
@@ -79,10 +87,10 @@ export class OnboardingAnalysisService {
 
 		// Extract relevant fields
 		const onboardingData = {
-			input_projects: userContext.input_projects,
-			input_work_style: userContext.input_work_style,
-			input_challenges: userContext.input_challenges,
-			input_help_focus: userContext.input_help_focus
+			input_projects: userContext.input_projects ?? undefined,
+			input_work_style: userContext.input_work_style ?? undefined,
+			input_challenges: userContext.input_challenges ?? undefined,
+			input_help_focus: userContext.input_help_focus ?? undefined
 		};
 
 		// Generate questions using LLM
@@ -109,16 +117,16 @@ export class OnboardingAnalysisService {
 			: result.questions;
 
 		// Store questions in database
-		const questions = questionsToStore.map((q: any) => ({
+		const questions = questionsToStore.map((question) => ({
 			user_id: userId,
-			question: q.question,
-			category: q.category,
-			priority: normalizeOnboardingQuestionPriority(q.priority),
-			context: q.context,
-			expected_outcome: q.expected_outcome,
+			question: question.question,
+			category: question.category,
+			priority: normalizeOnboardingQuestionPriority(question.priority),
+			context: question.context,
+			expected_outcome: question.expected_outcome,
 			source: 'onboarding' as const,
-			source_field: q.source_field,
-			triggers: q.triggers,
+			source_field: question.source_field,
+			triggers: question.triggers,
 			status: 'active' as const
 		}));
 
@@ -132,7 +140,7 @@ export class OnboardingAnalysisService {
 		}
 
 		// Update user context to mark fields as parsed
-		const updateData: any = {};
+		const updateData: UserContextUpdate = {};
 		if (userContext.input_projects)
 			updateData.last_parsed_input_projects = userContext.input_projects;
 		if (userContext.input_work_style)

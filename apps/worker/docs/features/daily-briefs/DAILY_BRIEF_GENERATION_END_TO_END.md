@@ -2,7 +2,7 @@
 
 # Daily Brief Generation — End-to-End Technical Reference
 
-> **Purpose:** A complete, hand-off-ready map of how a BuildOS daily brief is triggered, generated, persisted, delivered, and displayed — with concrete `file:line` references so an agent can act on any stage without re-deriving the flow. Researched and verified 2026-07-06 against the live code.
+> **Purpose:** A complete, hand-off-ready map of how a BuildOS daily brief is triggered, generated, persisted, delivered, and displayed. Researched and verified 2026-07-06; worker HTTP entrypoint references refreshed 2026-08-26.
 
 ## TL;DR (the one-paragraph version)
 
@@ -41,7 +41,7 @@ An hourly cron in the **worker** (`apps/worker/src/scheduler.ts`) scans active `
    └──────────────┘       │  • next-run in user tz − 2min buffer        │
                           │  • engagement backoff (opt-in)              │
    ┌──────────────┐       │  • queue.add('generate_daily_brief')        │
-   │ WEB app-open │──────►│  POST /queue/brief  (index.ts)              │
+   │ WEB app-open │──────►│  POST /queue/brief  (routes/queue/brief.ts) │
    │ /on-demand   │       │        │                                    │
    └──────────────┘       │        ▼   add_queue_job RPC                │
                           │  ┌──────────────┐                           │
@@ -104,7 +104,7 @@ An hourly cron in the **worker** (`apps/worker/src/scheduler.ts`) scans active `
 | ----------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `apps/worker/src/scheduler.ts`                  | Hourly cron; scans preferences; computes next-run; enqueues jobs.                                   |
 | `apps/worker/src/lib/briefBackoffCalculator.ts` | Engagement-backoff decision engine (opt-in).                                                        |
-| `apps/worker/src/index.ts`                      | `POST /queue/brief` on-demand endpoint (Railway HTTP).                                              |
+| `apps/worker/src/routes/queue/brief.ts`         | `POST /queue/brief` on-demand endpoint (Railway HTTP).                                              |
 | `apps/worker/src/worker.ts`                     | Registers `generate_daily_brief` → `processBrief` and `generate_brief_audio` → `processBriefAudio`. |
 | `apps/worker/src/lib/supabaseQueue.ts`          | `SupabaseQueue.add()` → `add_queue_job` RPC; brief-job cancellation helpers.                        |
 | `apps/worker/src/workers/shared/queueUtils.ts`  | `BriefJobData` payload type; `validateBriefJobData`.                                                |
@@ -234,14 +234,14 @@ Called by `DashboardBriefWidget.initializeWidget()` after the widget fails to fi
 - Otherwise POSTs worker `/queue/brief` with `forceRegenerate:false`, `forceImmediate:true`, `briefDate:today`, `timezone`, and `options.useOntology:true`.
 - Pending jobs intentionally do **not** short-circuit in the web route. They are posted back through `/queue/brief` so the worker/RPC dedup path can return the existing job and, for future scheduled hits, promote it to run now.
 
-### 4.4 On-demand endpoint (`POST /queue/brief`, `index.ts:165`)
+### 4.4 On-demand endpoint (`POST /queue/brief`, `routes/queue/brief.ts`)
 
 Called by the web app (below). Body: `{ userId, scheduledFor?, briefDate?, timezone?, forceImmediate?, forceRegenerate?, options? }`.
 
 - Validates the user, resolves timezone (`requested || users.timezone || 'UTC'`).
-- `forceRegenerate` → atomically cancels existing jobs for that date via `queue.cancelBriefJobsForDate` (`index.ts:216`) and uses a unique dedup key.
+- `forceRegenerate` → atomically cancels existing jobs for that date via `queue.cancelBriefJobsForDate` and uses a unique dedup key.
 - For immediate non-forced requests, computes `notificationScheduledFor` from `user_brief_preferences.time_of_day` + `users.timezone` when the preferred send time is still in the future.
-- Enqueues `generate_daily_brief` with `priority: forceImmediate ? 1 : 10`, `dedupKey: brief-<user>-<date>` (or unique if regenerating) (`index.ts:245-266`).
+- Enqueues `generate_daily_brief` with `priority: forceImmediate ? 1 : 10`, `dedupKey: brief-<user>-<date>` (or unique if regenerating).
 - If a non-forced immediate request dedups onto a future pending job, promotes that job to `scheduled_for=now()` while preserving/merging notification metadata.
 
 ---

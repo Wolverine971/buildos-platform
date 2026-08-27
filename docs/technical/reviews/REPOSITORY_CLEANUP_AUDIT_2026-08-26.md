@@ -2,7 +2,7 @@
 
 # Repository cleanup audit and roadmap
 
-**Status:** Current — P0 and P1.1 implemented and verified 2026-08-26  
+**Status:** Current — P0, P1.1, and P1.2 implemented and verified 2026-08-26
 **Scope:** Web application, worker processes, shared packages, Supabase, repository tooling, CI, documentation, and agent ergonomics  
 **Audit date:** 2026-08-26
 
@@ -115,11 +115,13 @@ The transferred task focus route now matches the document route's login, authori
 
 Coordinate this with `tasker/46-legacy-project-generation-retirement.md`. The route ownership cleanup does not itself authorize dropping legacy database records.
 
-### P1.2 — Finish quarantining the legacy Agentic Chat compatibility host
+### P1.2 — Finish quarantining the legacy Agentic Chat compatibility host — completed
 
 The dedicated Agentic Chat worker cutover is complete and should not be redesigned. Gmail, Calendar, OAuth handoff, and worker-disabled image execution intentionally remain parity-gated.
 
-The remaining 4,000-line web stream endpoint should become a thin HTTP/SSE adapter over an explicit `legacy-execution/http-stream` boundary. Freeze behavior with characterization tests and retire capabilities individually after parity rather than through a blanket rewrite.
+The public web stream endpoint is now a thin HTTP adapter over an explicit `legacy-execution/http-stream` boundary. The existing 45-scenario route suite continues to characterize authentication, authorization, request normalization, SSE delivery, cancellation, provider failures, tool execution, persistence, and supervisor checkpoints. A structural guard prevents execution dependencies from returning to the route, and the route no longer needs an oversized-route exception.
+
+The compatibility handler remains intentionally large but is now physically and conceptually quarantined. Gmail, Calendar, OAuth handoff, and worker-disabled image execution remain parity-gated. Future extraction should proceed one lifecycle seam at a time inside the legacy boundary; capability retirement still requires worker parity or an explicit product decision.
 
 ### P1.3 — Execute the `DocumentModal` decomposition
 
@@ -180,6 +182,6 @@ Do not combine Express 5, Zod 4, Vitest 4, OpenAI 7, Stripe 22, Tailwind 4, and 
 2. Patch the production dependency graph.
 3. Enforce the migration ledger and disposable SQL tests.
 4. ✅ Canonicalize project-route ownership.
-5. Execute the `DocumentModal` and legacy stream decompositions.
+5. ✅ Quarantine the legacy Agentic Chat HTTP/SSE host; execute the `DocumentModal` decomposition.
 6. Decompose worker bootstrap/scheduler ownership.
 7. Standardize package resolution, then ratchet warnings and workflow speed.

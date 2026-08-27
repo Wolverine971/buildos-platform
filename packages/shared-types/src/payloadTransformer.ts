@@ -572,13 +572,17 @@ export function safeTransformEventPayload(
  * @param payload - The notification payload to validate
  * @returns True if valid, false otherwise
  */
-export function validateNotificationPayload(payload: NotificationPayload): boolean {
-	return !!(
-		payload &&
-		typeof payload.title === 'string' &&
-		payload.title.trim().length > 0 &&
-		typeof payload.body === 'string' &&
-		payload.body.trim().length > 0
+export function validateNotificationPayload(payload: unknown): payload is NotificationPayload {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return false;
+	}
+
+	const candidate = payload as Record<string, unknown>;
+	return (
+		typeof candidate.title === 'string' &&
+		candidate.title.trim().length > 0 &&
+		typeof candidate.body === 'string' &&
+		candidate.body.trim().length > 0
 	);
 }
 

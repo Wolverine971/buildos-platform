@@ -259,44 +259,41 @@ async function emitBriefCompletedEvent(params: {
 			`🔗 Generated correlation ID: ${correlationId} for brief.completed notification`
 		);
 
-		// Type assertion needed until database types are regenerated after migration
-		const { data: notificationEventId, error: notificationEventError } = await (
-			serviceClient.rpc as any
-		)('emit_notification_event', {
-			p_event_type: 'brief.completed',
-			p_event_source: 'worker_job',
-			p_target_user_id: userId,
-			p_payload: {
-				brief_id: briefId,
-				brief_date: briefDate,
-				timezone: timezone,
-				task_count: todaysTaskCount, // Keep for backward compatibility
-				todays_task_count: todaysTaskCount,
-				overdue_task_count: overdueTaskCount,
-				upcoming_task_count: upcomingTaskCount,
-				next_seven_days_task_count: nextSevenDaysTaskCount,
-				recently_completed_count: recentlyCompletedCount,
-				blocked_task_count: blockedTaskCount,
-				project_count: projectCount,
-				correlationId, // Add correlation ID to payload
-				is_ontology_brief: useOntology // Flag for downstream consumers
-			},
-			p_metadata: {
-				correlationId, // Add correlation ID to metadata for tracking
-				is_ontology_brief: useOntology,
-				cycle_run_id: params.cycleRunId
-			},
-			p_scheduled_for: notificationScheduledFor?.toISOString() // Schedule at user's preferred time
-		});
+		const { data: notificationEventId, error: notificationEventError } =
+			await serviceClient.rpc('emit_notification_event', {
+				p_event_type: 'brief.completed',
+				p_event_source: 'worker_job',
+				p_target_user_id: userId,
+				p_payload: {
+					brief_id: briefId,
+					brief_date: briefDate,
+					timezone: timezone,
+					task_count: todaysTaskCount, // Keep for backward compatibility
+					todays_task_count: todaysTaskCount,
+					overdue_task_count: overdueTaskCount,
+					upcoming_task_count: upcomingTaskCount,
+					next_seven_days_task_count: nextSevenDaysTaskCount,
+					recently_completed_count: recentlyCompletedCount,
+					blocked_task_count: blockedTaskCount,
+					project_count: projectCount,
+					correlationId, // Add correlation ID to payload
+					is_ontology_brief: useOntology // Flag for downstream consumers
+				},
+				p_metadata: {
+					correlationId, // Add correlation ID to metadata for tracking
+					is_ontology_brief: useOntology,
+					cycle_run_id: params.cycleRunId
+				},
+				p_scheduled_for: notificationScheduledFor?.toISOString() // Schedule at user's preferred time
+			});
 
 		if (notificationEventError) {
 			throw new Error(`emit_notification_event failed: ${notificationEventError.message}`);
 		}
 
 		if (params.cycleRunId && typeof notificationEventId === 'string') {
-			const { error: cycleLinkError } = await (
-				serviceClient.from('notification_events') as any
-			)
+			const { error: cycleLinkError } = await serviceClient
+				.from('notification_events')
 				.update({ cycle_run_id: params.cycleRunId })
 				.eq('id', notificationEventId);
 			if (cycleLinkError) {
@@ -675,7 +672,7 @@ export async function processBriefJob(
 			const serviceClient = createServiceClient();
 			const briefDate = job.data.briefDate || new Date().toISOString().slice(0, 10);
 			const timezone = job.data.timezone || 'UTC';
-			await (serviceClient.rpc as any)('emit_notification_event', {
+			await serviceClient.rpc('emit_notification_event', {
 				p_event_type: 'brief.failed',
 				p_event_source: 'worker_job',
 				p_target_user_id: job.data.userId,

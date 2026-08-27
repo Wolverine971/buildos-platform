@@ -112,6 +112,11 @@
 			"import": "./dist/ontology/document-write.service.mjs",
 			"require": "./dist/ontology/document-write.service.js"
 		},
+		"./ontology/document-patch": {
+			"types": "./dist/ontology/document-patch.d.ts",
+			"import": "./dist/ontology/document-patch.mjs",
+			"require": "./dist/ontology/document-patch.js"
+		},
 		"./ops/update-value-validation": {
 			"types": "./dist/ops/update-value-validation.d.ts",
 			"import": "./dist/ops/update-value-validation.mjs",

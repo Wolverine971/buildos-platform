@@ -1,7 +1,9 @@
 // apps/worker/src/workers/chat/contactSignalProcessor.ts
 import crypto from 'node:crypto';
+import type { Database } from '@buildos/shared-types';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { supabase } from '../../lib/supabase';
+import { getErrorMessage } from '../../lib/utils/errors';
 
 type ChatMessage = {
 	id: string;
@@ -18,15 +20,7 @@ type SessionClassification = {
 
 type ExtractedContactSignal = {
 	display_name: string;
-	method_type?:
-		| 'phone'
-		| 'email'
-		| 'sms'
-		| 'whatsapp'
-		| 'telegram'
-		| 'website'
-		| 'address'
-		| 'other';
+	method_type?: ContactMethodType;
 	method_value?: string;
 	relationship_label?: string;
 	confidence?: number;
@@ -47,18 +41,29 @@ type ContactSignalResult = {
 	mergeCandidateCount: number;
 };
 
-type ContactObservationRow = {
-	id: string;
-	user_id: string;
-	proposed_display_name: string | null;
-	proposed_method_type: string | null;
-	proposed_method_value: string | null;
-	proposed_method_normalized: string | null;
-	proposed_method_hash: string | null;
-	relationship_label: string | null;
-	confidence: number;
-	status: 'pending' | 'applied' | 'needs_confirmation' | 'dismissed';
-};
+type ContactMethodType =
+	| 'phone'
+	| 'email'
+	| 'sms'
+	| 'whatsapp'
+	| 'telegram'
+	| 'website'
+	| 'address'
+	| 'other';
+
+type ContactObservationRow = Pick<
+	Database['public']['Tables']['user_contact_observations']['Row'],
+	| 'id'
+	| 'user_id'
+	| 'proposed_display_name'
+	| 'proposed_method_type'
+	| 'proposed_method_value'
+	| 'proposed_method_normalized'
+	| 'proposed_method_hash'
+	| 'relationship_label'
+	| 'confidence'
+	| 'status'
+>;
 
 const CONTACT_SIGNAL_TIMEOUT_MS = 2500;
 const CONTACT_SIGNAL_MAX_MESSAGES = 40;
@@ -128,20 +133,22 @@ function normalizePhone(value: string | null | undefined): string | null {
 	return `+${digits}`;
 }
 
-function normalizeMethodType(value: string | null | undefined): string | null {
+function normalizeMethodType(value: string | null | undefined): ContactMethodType | null {
 	if (typeof value !== 'string') return null;
 	const normalized = value.trim().toLowerCase();
-	const allowed = new Set([
-		'phone',
-		'email',
-		'sms',
-		'whatsapp',
-		'telegram',
-		'website',
-		'address',
-		'other'
-	]);
-	return allowed.has(normalized) ? normalized : null;
+	switch (normalized) {
+		case 'phone':
+		case 'email':
+		case 'sms':
+		case 'whatsapp':
+		case 'telegram':
+		case 'website':
+		case 'address':
+		case 'other':
+			return normalized;
+		default:
+			return null;
+	}
 }
 
 function normalizeMethodValue(
@@ -240,7 +247,7 @@ function normalizeExtractedContacts(raw: unknown): ExtractedContactSignal[] {
 
 		normalized.push({
 			display_name: displayName,
-			method_type: (methodType as any) ?? undefined,
+			method_type: methodType ?? undefined,
 			method_value: methodValue && methodValue.length > 0 ? methodValue : undefined,
 			relationship_label:
 				relationshipLabel && relationshipLabel.length > 0 ? relationshipLabel : undefined,
@@ -251,8 +258,7 @@ function normalizeExtractedContacts(raw: unknown): ExtractedContactSignal[] {
 }
 
 async function getProfileIdForUser(userId: string): Promise<string | null> {
-	const supabaseAny = supabase as any;
-	const { data, error } = await supabaseAny
+	const { data, error } = await supabase
 		.from('user_profiles')
 		.select('id')
 		.eq('user_id', userId)
@@ -276,8 +282,7 @@ async function createMergeCandidate(params: {
 	const { userId, observationId, primaryContactId, secondaryContactId, reason, score } = params;
 	if (!primaryContactId || !secondaryContactId || primaryContactId === secondaryContactId) return;
 
-	const supabaseAny = supabase as any;
-	const { data: existing } = await supabaseAny
+	const { data: existing } = await supabase
 		.from('user_contact_merge_candidates')
 		.select('id')
 		.eq('user_id', userId)
@@ -288,7 +293,7 @@ async function createMergeCandidate(params: {
 
 	if (Array.isArray(existing) && existing.length > 0) return;
 
-	const { error } = await supabaseAny.from('user_contact_merge_candidates').insert({
+	const { error } = await supabase.from('user_contact_merge_candidates').insert({
 		user_id: userId,
 		observation_id: observationId,
 		primary_contact_id: primaryContactId,
@@ -318,9 +323,7 @@ async function attachMethodIfMissing(params: {
 	const { userId, contactId, methodType, methodRaw, methodNormalized, methodHash, confidence } =
 		params;
 	if (!methodType || !methodRaw || !methodNormalized || !methodHash) return;
-	const supabaseAny = supabase as any;
-
-	const { data: existing, error: existingError } = await supabaseAny
+	const { data: existing, error: existingError } = await supabase
 		.from('user_contact_methods')
 		.select('id')
 		.eq('user_id', userId)
@@ -336,7 +339,7 @@ async function attachMethodIfMissing(params: {
 	}
 	if (existing?.id) return;
 
-	const { error: insertError } = await supabaseAny.from('user_contact_methods').insert({
+	const { error: insertError } = await supabase.from('user_contact_methods').insert({
 		user_id: userId,
 		contact_id: contactId,
 		method_type: methodType,
@@ -362,10 +365,9 @@ async function createContactFromObservation(params: {
 }): Promise<string | null> {
 	const { userId, profileId, observation, normalizedName } = params;
 	if (!observation.proposed_display_name) return null;
-	const supabaseAny = supabase as any;
 	const nowIso = new Date().toISOString();
 
-	const { data, error } = await supabaseAny
+	const { data, error } = await supabase
 		.from('user_contacts')
 		.insert({
 			user_id: userId,
@@ -401,7 +403,7 @@ async function createContactFromObservation(params: {
 		confidence: observation.confidence ?? 0.5
 	});
 
-	return data.id as string;
+	return data.id;
 }
 
 async function markObservationStatus(params: {
@@ -409,8 +411,7 @@ async function markObservationStatus(params: {
 	status: 'pending' | 'applied' | 'needs_confirmation' | 'dismissed';
 	resolvedContactId?: string | null;
 }): Promise<void> {
-	const supabaseAny = supabase as any;
-	const payload: Record<string, unknown> = {
+	const payload: Database['public']['Tables']['user_contact_observations']['Update'] = {
 		status: params.status,
 		resolved_at:
 			params.status === 'applied' || params.status === 'dismissed'
@@ -419,7 +420,7 @@ async function markObservationStatus(params: {
 		resolved_contact_id: params.resolvedContactId ?? null
 	};
 
-	const { error } = await supabaseAny
+	const { error } = await supabase
 		.from('user_contact_observations')
 		.update(payload)
 		.eq('id', params.observationId);
@@ -443,8 +444,6 @@ async function resolveObservation(params: {
 	mergeCandidateCreated: number;
 }> {
 	const { userId, profileId, observation } = params;
-	const supabaseAny = supabase as any;
-
 	const normalizedName = normalizeName(observation.proposed_display_name);
 	if (!normalizedName) {
 		await markObservationStatus({
@@ -466,7 +465,7 @@ async function resolveObservation(params: {
 	let mergeCandidateCreated = 0;
 
 	if (methodType && methodHash) {
-		const { data: methodMatches, error: methodMatchError } = await supabaseAny
+		const { data: methodMatches, error: methodMatchError } = await supabase
 			.from('user_contact_methods')
 			.select('contact_id')
 			.eq('user_id', userId)
@@ -479,16 +478,13 @@ async function resolveObservation(params: {
 		}
 
 		const uniqueMethodContacts = Array.from(
-			new Set(
-				(methodMatches ?? [])
-					.map((row: Record<string, unknown>) => String(row.contact_id))
-					.filter((value: string) => value.length > 0)
-			)
+			new Set((methodMatches ?? []).map((row) => row.contact_id).filter(Boolean))
 		);
 
 		if (uniqueMethodContacts.length === 1) {
-			const contactId = uniqueMethodContacts[0] as string;
-			const { error: touchError } = await supabaseAny
+			const contactId = uniqueMethodContacts[0];
+			if (!contactId) throw new Error('Contact method match did not include a contact ID.');
+			const { error: touchError } = await supabase
 				.from('user_contacts')
 				.update({
 					last_seen_at: new Date().toISOString(),
@@ -525,11 +521,15 @@ async function resolveObservation(params: {
 		}
 
 		if (uniqueMethodContacts.length > 1) {
+			const [primaryContactId, secondaryContactId] = uniqueMethodContacts;
+			if (!primaryContactId || !secondaryContactId) {
+				throw new Error('Ambiguous contact match did not include two contact IDs.');
+			}
 			await createMergeCandidate({
 				userId,
 				observationId: observation.id,
-				primaryContactId: uniqueMethodContacts[0] as string,
-				secondaryContactId: uniqueMethodContacts[1] as string,
+				primaryContactId,
+				secondaryContactId,
 				reason: 'method_hash_collision',
 				score: 0.98
 			});
@@ -547,7 +547,7 @@ async function resolveObservation(params: {
 		}
 	}
 
-	const { data: nameMatches, error: nameMatchError } = await supabaseAny
+	const { data: nameMatches, error: nameMatchError } = await supabase
 		.from('user_contacts')
 		.select('id')
 		.eq('user_id', userId)
@@ -561,9 +561,7 @@ async function resolveObservation(params: {
 		throw new Error(`Failed to query name matches: ${nameMatchError.message}`);
 	}
 
-	const matchedContactIds = (nameMatches ?? [])
-		.map((row: Record<string, unknown>) => String(row.id))
-		.filter((value: string) => value.length > 0);
+	const matchedContactIds = (nameMatches ?? []).map((row) => row.id).filter(Boolean);
 
 	if (matchedContactIds.length === 0) {
 		const createdContactId = await createContactFromObservation({
@@ -598,8 +596,9 @@ async function resolveObservation(params: {
 	}
 
 	if (matchedContactIds.length === 1 && observation.confidence >= 0.9) {
-		const contactId = matchedContactIds[0] as string;
-		const { error: touchError } = await supabaseAny
+		const contactId = matchedContactIds[0];
+		if (!contactId) throw new Error('Name match did not include a contact ID.');
+		const { error: touchError } = await supabase
 			.from('user_contacts')
 			.update({
 				last_seen_at: new Date().toISOString(),
@@ -656,10 +655,13 @@ async function resolveObservation(params: {
 		};
 	}
 
+	const primaryContactId = matchedContactIds[0];
+	if (!primaryContactId)
+		throw new Error('Contact merge candidate is missing its primary contact.');
 	await createMergeCandidate({
 		userId,
 		observationId: observation.id,
-		primaryContactId: matchedContactIds[0] as string,
+		primaryContactId,
 		secondaryContactId: newContactId,
 		reason:
 			matchedContactIds.length > 1
@@ -686,10 +688,9 @@ export async function processContactSignals(params: {
 	messages: ChatMessage[];
 	classification: SessionClassification;
 }): Promise<ContactSignalResult> {
-	const supabaseAny = supabase as any;
 	const { sessionId, userId } = params;
 
-	const { data: profile, error: profileError } = await supabaseAny
+	const { data: profile, error: profileError } = await supabase
 		.from('user_profiles')
 		.select('id, extraction_enabled')
 		.eq('user_id', userId)
@@ -769,10 +770,10 @@ export async function processContactSignals(params: {
 			'contact_signal_extraction'
 		);
 		extractedContacts = normalizeExtractedContacts(extractionResponse);
-	} catch (error: any) {
+	} catch (error) {
 		console.warn(
 			`⚠️ Contact signal extraction failed for session ${sessionId}:`,
-			error?.message ?? error
+			getErrorMessage(error, 'Contact signal extraction failed')
 		);
 		return {
 			skipped: true,
@@ -848,7 +849,7 @@ export async function processContactSignals(params: {
 		};
 	}
 
-	const { data: insertedRows, error: insertError } = await supabaseAny
+	const { data: insertedRows, error: insertError } = await supabase
 		.from('user_contact_observations')
 		.upsert(rows, {
 			onConflict: 'user_id,idempotency_key',
@@ -861,7 +862,7 @@ export async function processContactSignals(params: {
 	}
 
 	const profileId = await getProfileIdForUser(userId);
-	const inserted = (insertedRows ?? []) as ContactObservationRow[];
+	const inserted: ContactObservationRow[] = insertedRows ?? [];
 	let appliedCount = 0;
 	let createdCount = 0;
 	let needsConfirmationCount = 0;
@@ -878,10 +879,10 @@ export async function processContactSignals(params: {
 			if (resolution.created) createdCount += 1;
 			if (resolution.needsConfirmation) needsConfirmationCount += 1;
 			mergeCandidateCount += resolution.mergeCandidateCreated;
-		} catch (resolutionError: any) {
+		} catch (resolutionError) {
 			console.warn(
 				`⚠️ Failed to resolve contact observation ${observation.id}:`,
-				resolutionError?.message ?? resolutionError
+				getErrorMessage(resolutionError, 'Contact observation resolution failed')
 			);
 		}
 	}

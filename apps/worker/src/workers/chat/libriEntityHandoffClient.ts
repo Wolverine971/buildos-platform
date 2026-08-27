@@ -2,6 +2,7 @@
 // Server-side Libri batch handoff client used by chat session synthesis.
 
 import { createHash } from 'node:crypto';
+import type { Json } from '@buildos/shared-types';
 import {
 	type ExtractedLibriEntity,
 	type LibriExtractedEntityType,
@@ -28,6 +29,24 @@ export interface LibriEntityHandoffStatus {
 	results: LibriEntityHandoffResult[];
 	message?: string;
 	http_status?: number;
+}
+
+export function serializeLibriEntityHandoffStatus(status: LibriEntityHandoffStatus): Json {
+	return {
+		status: status.status,
+		attempted_at: status.attempted_at,
+		idempotency_key: status.idempotency_key,
+		results: status.results.map((result) => ({
+			entity_type: result.entity_type,
+			canonical_query: result.canonical_query,
+			status: result.status,
+			resource_key: result.resource_key,
+			job_id: result.job_id,
+			message: result.message
+		})),
+		message: status.message,
+		http_status: status.http_status
+	};
 }
 
 export interface LibriSessionHandoffInput {

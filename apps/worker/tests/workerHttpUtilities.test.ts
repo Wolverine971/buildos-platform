@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { isWorkerAuthorized } from '../src/http/auth';
 import { getErrorMessage } from '../src/http/errors';
+import { mergeQueueMetadata } from '../src/http/queueMetadata';
 import { getSafeTimezone, isValidTimezone } from '../src/http/timezone';
 import { jsonParseErrorHandler } from '../src/middleware/jsonError';
 
@@ -57,6 +58,33 @@ describe('worker timezone utilities', () => {
 		expect(console.warn).toHaveBeenCalledWith(
 			expect.stringContaining('Invalid timezone "Not/A_Timezone"')
 		);
+	});
+});
+
+describe('worker queue metadata utilities', () => {
+	it('preserves existing nested values when request options are undefined', () => {
+		expect(
+			mergeQueueMetadata(
+				{
+					briefDate: '2026-08-26',
+					notificationScheduledFor: '2026-08-26T13:00:00.000Z',
+					options: { suppressNotification: false, keep: true }
+				},
+				{
+					briefDate: '2026-08-27',
+					notificationScheduledFor: undefined,
+					options: { suppressNotification: undefined, forceRegenerate: false }
+				}
+			)
+		).toEqual({
+			briefDate: '2026-08-27',
+			notificationScheduledFor: '2026-08-26T13:00:00.000Z',
+			options: {
+				suppressNotification: false,
+				keep: true,
+				forceRegenerate: false
+			}
+		});
 	});
 });
 

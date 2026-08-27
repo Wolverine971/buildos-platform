@@ -9,8 +9,16 @@
  */
 
 import { createServiceClient } from '@buildos/supabase-client';
-import type { Json, NotificationDelivery } from '@buildos/shared-types';
+import {
+	type Json,
+	type NotificationDelivery,
+	type NotificationJsonObject,
+	getNotificationNumber,
+	getNotificationString,
+	isNotificationJsonObject
+} from '@buildos/shared-types';
 import type { Logger } from '@buildos/shared-utils';
+import { getErrorMessage } from '../../lib/utils/errors.js';
 import { checkUserPreferences } from './preferenceChecker.js';
 import { performSMSSafetyChecks } from '../../lib/utils/smsPreferenceChecks.js';
 
@@ -75,7 +83,7 @@ async function getTemplate(templateKey: string, smsLogger: Logger): Promise<SMST
 		// Cache the result
 		templateCache.set(templateKey, { template: data, timestamp: Date.now() });
 		return data;
-	} catch (error: any) {
+	} catch (error) {
 		smsLogger.error('Error fetching SMS template', error, {
 			templateKey
 		});
@@ -100,7 +108,7 @@ function isValidE164PhoneNumber(phoneNumber: string): boolean {
  */
 function renderTemplate(
 	template: string,
-	variables: Record<string, any>,
+	variables: NotificationJsonObject,
 	smsLogger: Logger
 ): string {
 	return template.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
@@ -118,15 +126,18 @@ function renderTemplate(
 /**
  * Extract template variables from notification payload
  */
-function extractTemplateVars(payload: any, eventType: string): Record<string, any> {
+function extractTemplateVars(
+	payload: NotificationJsonObject,
+	eventType: string
+): NotificationJsonObject {
 	// Flatten the payload structure (handle both direct props and data object)
 	const flatPayload = {
 		...payload,
-		...(payload.data || {})
+		...(isNotificationJsonObject(payload.data) ? payload.data : {})
 	};
 
 	// Common variables available in all templates
-	const vars: Record<string, any> = {
+	const vars: NotificationJsonObject = {
 		event_type: eventType
 	};
 
@@ -269,7 +280,7 @@ async function fetchFreshBriefCounts(
 			overdueTaskCount,
 			upcomingTaskCount
 		};
-	} catch (error: any) {
+	} catch (error) {
 		smsLogger.error('Error fetching fresh brief counts', error, {
 			userId,
 			briefDate
@@ -287,7 +298,10 @@ async function formatSMSMessage(
 	smsLogger: Logger
 ): Promise<string> {
 	const { payload } = delivery;
-	const eventType = payload.event_type || payload.eventType;
+	const eventType =
+		getNotificationString(payload, 'event_type') ??
+		getNotificationString(payload, 'eventType') ??
+		'unknown';
 
 	// Map event type to template key
 	const templateKeyMap: Record<string, string> = {
@@ -312,10 +326,10 @@ async function formatSMSMessage(
 			// This indicates potential data staleness, not a legitimate zero-task scenario
 			if (eventType === 'brief.completed') {
 				const hasProjectsButNoTasks =
-					variables.project_count > 0 &&
-					variables.todays_task_count === 0 &&
-					variables.overdue_task_count === 0 &&
-					variables.upcoming_task_count === 0;
+					(getNotificationNumber(variables, 'project_count') ?? 0) > 0 &&
+					(getNotificationNumber(variables, 'todays_task_count') ?? 0) === 0 &&
+					(getNotificationNumber(variables, 'overdue_task_count') ?? 0) === 0 &&
+					(getNotificationNumber(variables, 'upcoming_task_count') ?? 0) === 0;
 
 				if (hasProjectsButNoTasks) {
 					smsLogger.info(
@@ -329,7 +343,7 @@ async function formatSMSMessage(
 						}
 					);
 
-					const briefDate = payload.brief_date || payload.data?.brief_date;
+					const briefDate = getNotificationString(payload, 'brief_date');
 					const userId = delivery.recipient_user_id;
 
 					if (briefDate && userId) {
@@ -387,14 +401,13 @@ async function formatSMSMessage(
 
 	switch (eventType) {
 		case 'user.signup':
-			return `BuildOS: New user ${payload.user_email || payload.data?.user_email || 'unknown'} signed up via ${payload.signup_method || payload.data?.signup_method || 'web'}`;
+			return `BuildOS: New user ${getNotificationString(payload, 'user_email') ?? 'unknown'} signed up via ${getNotificationString(payload, 'signup_method') ?? 'web'}`;
 
 		case 'brief.completed': {
-			let todaysCount = payload.todays_task_count || payload.data?.todays_task_count || 0;
-			let overdueCount = payload.overdue_task_count || payload.data?.overdue_task_count || 0;
-			let upcomingCount =
-				payload.upcoming_task_count || payload.data?.upcoming_task_count || 0;
-			let projectCount = payload.project_count || payload.data?.project_count || 0;
+			let todaysCount = getNotificationNumber(payload, 'todays_task_count') ?? 0;
+			let overdueCount = getNotificationNumber(payload, 'overdue_task_count') ?? 0;
+			let upcomingCount = getNotificationNumber(payload, 'upcoming_task_count') ?? 0;
+			let projectCount = getNotificationNumber(payload, 'project_count') ?? 0;
 
 			// 🔍 BUGFIX: If we detect suspicious zeros (no projects or all zeros),
 			// fetch fresh data from database to ensure accuracy
@@ -410,7 +423,7 @@ async function formatSMSMessage(
 					payloadUpcomingCount: upcomingCount
 				});
 
-				const briefDate = payload.brief_date || payload.data?.brief_date;
+				const briefDate = getNotificationString(payload, 'brief_date');
 				const userId = delivery.recipient_user_id;
 
 				if (briefDate && userId) {
@@ -462,8 +475,8 @@ async function formatSMSMessage(
 			return 'Your daily brief failed to generate. Please check the app or contact support.';
 
 		case 'task.due_soon': {
-			const taskName = payload.task_name || payload.data?.task_name || 'Task';
-			const dueTime = payload.due_time || payload.data?.due_time || 'soon';
+			const taskName = getNotificationString(payload, 'task_name') ?? 'Task';
+			const dueTime = getNotificationString(payload, 'due_time') ?? 'soon';
 			return `⏰ ${taskName} is due ${dueTime}`;
 		}
 
@@ -560,7 +573,7 @@ async function shortenUrlsInMessage(
 					shortUrl,
 					savedChars
 				});
-			} catch (error: any) {
+			} catch (error) {
 				smsLogger.error('Error shortening URL', error, {
 					url: url.substring(0, 100)
 				});
@@ -576,7 +589,7 @@ async function shortenUrlsInMessage(
 		}
 
 		return result;
-	} catch (error: any) {
+	} catch (error) {
 		smsLogger.error('Error in shortenUrlsInMessage', error);
 		// Return original message if something goes wrong
 		return message;
@@ -793,14 +806,14 @@ export async function sendSMSNotification(
 			external_id: messageId, // Use sms_messages ID as external reference
 			outcome: 'queued'
 		};
-	} catch (error: any) {
+	} catch (error) {
 		smsLogger.error('Failed to send SMS notification', error, {
 			notificationDeliveryId: delivery.id,
 			recipientUserId: delivery.recipient_user_id
 		});
 		return {
 			success: false,
-			error: error.message || 'Unknown error sending SMS'
+			error: getErrorMessage(error, 'Unknown error sending SMS')
 		};
 	}
 }

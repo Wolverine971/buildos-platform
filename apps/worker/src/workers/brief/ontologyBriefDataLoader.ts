@@ -11,9 +11,9 @@ import type { Database } from '@buildos/shared-types';
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { addDays, differenceInDays, parseISO, subDays, subHours } from 'date-fns';
 import {
+	START_HERE_DOCUMENT_TYPE_KEY,
 	buildStartHerePromptExcerpt,
-	pickProjectStartHereDocument,
-	START_HERE_DOCUMENT_TYPE_KEY
+	pickProjectStartHereDocument
 } from '@buildos/shared-agent-ops/ontology/start-here';
 
 // ============================================================================

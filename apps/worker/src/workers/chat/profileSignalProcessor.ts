@@ -1,7 +1,9 @@
 // apps/worker/src/workers/chat/profileSignalProcessor.ts
 import crypto from 'node:crypto';
+import type { Database } from '@buildos/shared-types';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { supabase } from '../../lib/supabase';
+import { getErrorMessage } from '../../lib/utils/errors';
 
 type ChatMessage = {
 	id: string;
@@ -38,37 +40,36 @@ type ProfileSignalResult = {
 	needsReviewCount: number;
 };
 
-type ProfileRow = {
-	id: string;
-	user_id: string;
-	actor_id: string | null;
-	doc_structure: Record<string, unknown> | null;
-	summary: string | null;
-	safe_summary: string | null;
-	extraction_enabled: boolean;
-};
+type ProfileRow = Pick<
+	Database['public']['Tables']['user_profiles']['Row'],
+	| 'id'
+	| 'user_id'
+	| 'actor_id'
+	| 'doc_structure'
+	| 'summary'
+	| 'safe_summary'
+	| 'extraction_enabled'
+>;
 
-type ProfileDocumentRow = {
-	id: string;
-	profile_id: string;
-	title: string;
-	type_key: string;
-	content: string | null;
-};
+type ProfileDocumentRow = Pick<
+	Database['public']['Tables']['profile_documents']['Row'],
+	'id' | 'profile_id' | 'title' | 'type_key' | 'content'
+>;
 
-type ProfileFragmentRow = {
-	id: string;
-	profile_id: string;
-	source_type: string;
-	source_id: string | null;
-	content: string;
-	category: string;
-	sensitivity: 'standard' | 'sensitive';
-	confidence: number;
-	status: 'pending' | 'accepted' | 'dismissed' | 'needs_review';
-	suggested_chapter_id: string | null;
-	suggested_chapter_title: string | null;
-};
+type ProfileFragmentRow = Pick<
+	Database['public']['Tables']['profile_fragments']['Row'],
+	| 'id'
+	| 'profile_id'
+	| 'source_type'
+	| 'source_id'
+	| 'content'
+	| 'category'
+	| 'sensitivity'
+	| 'confidence'
+	| 'status'
+	| 'suggested_chapter_id'
+	| 'suggested_chapter_title'
+>;
 
 type ProfileDocTreeNode = {
 	id: string;
@@ -362,9 +363,8 @@ async function ensureChapterForCategory(params: {
 	category: string;
 	suggestedTitle?: string | null;
 }): Promise<ProfileDocumentRow> {
-	const supabaseAny = supabase as any;
 	const typeKey = CATEGORY_TO_TYPE_KEY[params.category] ?? 'chapter.general';
-	const { data: existing, error: existingError } = await supabaseAny
+	const { data: existing, error: existingError } = await supabase
 		.from('profile_documents')
 		.select('id, profile_id, title, type_key, content')
 		.eq('profile_id', params.profile.id)
@@ -377,11 +377,11 @@ async function ensureChapterForCategory(params: {
 	if (existingError) {
 		throw new Error(`Failed to query profile chapter: ${existingError.message}`);
 	}
-	if (existing) return existing as ProfileDocumentRow;
+	if (existing) return existing;
 
 	const title = params.suggestedTitle?.trim() || TYPE_KEY_TO_TITLE[typeKey] || 'General Profile';
 
-	const { data: created, error: createError } = await supabaseAny
+	const { data: created, error: createError } = await supabase
 		.from('profile_documents')
 		.insert({
 			profile_id: params.profile.id,
@@ -404,7 +404,7 @@ async function ensureChapterForCategory(params: {
 		type: 'doc',
 		title
 	});
-	const { error: structureError } = await supabaseAny
+	const { error: structureError } = await supabase
 		.from('user_profiles')
 		.update({ doc_structure: { ...structure, root: nextRoot }, summary_updated_at: null })
 		.eq('id', params.profile.id);
@@ -415,12 +415,11 @@ async function ensureChapterForCategory(params: {
 		);
 	}
 
-	return created as ProfileDocumentRow;
+	return created;
 }
 
 async function nextDocumentVersionNumber(documentId: string): Promise<number> {
-	const supabaseAny = supabase as any;
-	const { data, error } = await supabaseAny
+	const { data, error } = await supabase
 		.from('profile_document_versions')
 		.select('number')
 		.eq('document_id', documentId)
@@ -438,8 +437,7 @@ async function regenerateProfileSummary(params: {
 	userId: string;
 	llmService: SmartLLMService;
 }): Promise<void> {
-	const supabaseAny = supabase as any;
-	const { data: chapters, error: chapterError } = await supabaseAny
+	const { data: chapters, error: chapterError } = await supabase
 		.from('profile_documents')
 		.select('id, profile_id, title, type_key, content')
 		.eq('profile_id', params.profile.id)
@@ -456,9 +454,9 @@ async function regenerateProfileSummary(params: {
 		return;
 	}
 
-	const chapterRows = (chapters ?? []) as ProfileDocumentRow[];
+	const chapterRows: ProfileDocumentRow[] = chapters ?? [];
 	if (chapterRows.length === 0) {
-		await supabaseAny
+		await supabase
 			.from('user_profiles')
 			.update({
 				summary: null,
@@ -493,7 +491,7 @@ async function regenerateProfileSummary(params: {
 				? summaryResponse.safe_summary.trim()
 				: null;
 
-		const { error: updateError } = await supabaseAny
+		const { error: updateError } = await supabase
 			.from('user_profiles')
 			.update({
 				summary: summary || null,
@@ -504,8 +502,10 @@ async function regenerateProfileSummary(params: {
 		if (updateError) {
 			console.warn('⚠️ Failed to persist profile summary:', updateError.message);
 		}
-	} catch (error: any) {
-		console.warn(`⚠️ Profile summary regeneration failed: ${error?.message ?? error}`);
+	} catch (error) {
+		console.warn(
+			`⚠️ Profile summary regeneration failed: ${getErrorMessage(error, 'Unknown error')}`
+		);
 	}
 }
 
@@ -514,8 +514,7 @@ async function mergePendingFragments(params: {
 	userId: string;
 	llmService: SmartLLMService;
 }): Promise<{ mergedCount: number; needsReviewCount: number }> {
-	const supabaseAny = supabase as any;
-	const { data: pending, error: pendingError } = await supabaseAny
+	const { data: pending, error: pendingError } = await supabase
 		.from('profile_fragments')
 		.select('*')
 		.eq('profile_id', params.profile.id)
@@ -527,7 +526,7 @@ async function mergePendingFragments(params: {
 		throw new Error(`Failed to load pending profile fragments: ${pendingError.message}`);
 	}
 
-	const pendingFragments = (pending ?? []) as ProfileFragmentRow[];
+	const pendingFragments: ProfileFragmentRow[] = pending ?? [];
 	if (pendingFragments.length === 0) {
 		return { mergedCount: 0, needsReviewCount: 0 };
 	}
@@ -542,7 +541,7 @@ async function mergePendingFragments(params: {
 		}
 
 		if (shouldMarkNeedsReview(fragment)) {
-			const { error: reviewError } = await supabaseAny
+			const { error: reviewError } = await supabase
 				.from('profile_fragments')
 				.update({ status: 'needs_review' })
 				.eq('id', fragment.id);
@@ -566,7 +565,7 @@ async function mergePendingFragments(params: {
 
 		let versionId: string | null = null;
 		if (!alreadyPresent) {
-			const { error: docUpdateError } = await supabaseAny
+			const { error: docUpdateError } = await supabase
 				.from('profile_documents')
 				.update({
 					content: nextContent,
@@ -582,7 +581,7 @@ async function mergePendingFragments(params: {
 			}
 
 			const nextVersion = await nextDocumentVersionNumber(chapter.id);
-			const { data: versionRow, error: versionError } = await supabaseAny
+			const { data: versionRow, error: versionError } = await supabase
 				.from('profile_document_versions')
 				.insert({
 					document_id: chapter.id,
@@ -601,18 +600,16 @@ async function mergePendingFragments(params: {
 				);
 				continue;
 			}
-			versionId = versionRow.id as string;
+			versionId = versionRow.id;
 		}
 
 		if (versionId) {
-			const { error: sourceError } = await supabaseAny
-				.from('profile_document_sources')
-				.insert({
-					document_version_id: versionId,
-					fragment_id: fragment.id,
-					source_type: fragment.source_type ?? 'chat',
-					source_id: fragment.source_id
-				});
+			const { error: sourceError } = await supabase.from('profile_document_sources').insert({
+				document_version_id: versionId,
+				fragment_id: fragment.id,
+				source_type: fragment.source_type ?? 'chat',
+				source_id: fragment.source_id
+			});
 			if (sourceError) {
 				console.warn(
 					`⚠️ Failed to store profile source mapping for fragment ${fragment.id}:`,
@@ -621,7 +618,7 @@ async function mergePendingFragments(params: {
 			}
 		}
 
-		const { error: fragmentUpdateError } = await supabaseAny
+		const { error: fragmentUpdateError } = await supabase
 			.from('profile_fragments')
 			.update({
 				status: 'accepted',
@@ -655,10 +652,9 @@ export async function processProfileSignals(params: {
 	messages: ChatMessage[];
 	classification: SessionClassification;
 }): Promise<ProfileSignalResult> {
-	const supabaseAny = supabase as any;
 	const { sessionId, userId } = params;
 
-	const { data: profileData, error: profileError } = await supabaseAny
+	const { data: profileData, error: profileError } = await supabase
 		.from('user_profiles')
 		.select('*')
 		.eq('user_id', userId)
@@ -678,7 +674,7 @@ export async function processProfileSignals(params: {
 		};
 	}
 
-	const profile = profileData as ProfileRow;
+	const profile: ProfileRow = profileData;
 	if (!profile.extraction_enabled) {
 		return {
 			skipped: true,
@@ -735,10 +731,10 @@ export async function processProfileSignals(params: {
 			'profile_signal_extraction'
 		);
 		extractedSignals = normalizeExtractedSignals(extractionResponse);
-	} catch (error: any) {
+	} catch (error) {
 		console.warn(
 			`⚠️ Profile signal extraction failed for session ${sessionId}:`,
-			error?.message ?? error
+			getErrorMessage(error, 'Profile signal extraction failed')
 		);
 		return {
 			skipped: true,
@@ -797,7 +793,7 @@ export async function processProfileSignals(params: {
 		};
 	});
 
-	const { data: inserted, error: insertError } = await supabaseAny
+	const { data: inserted, error: insertError } = await supabase
 		.from('profile_fragments')
 		.upsert(rows, {
 			onConflict: 'profile_id,idempotency_key',
@@ -821,12 +817,14 @@ export async function processProfileSignals(params: {
 		});
 		mergedCount = mergeResult.mergedCount;
 		needsReviewCount = mergeResult.needsReviewCount;
-	} catch (mergeError: any) {
-		console.warn(`⚠️ Profile merge processing failed: ${mergeError?.message ?? mergeError}`);
+	} catch (mergeError) {
+		console.warn(
+			`⚠️ Profile merge processing failed: ${getErrorMessage(mergeError, 'Unknown error')}`
+		);
 	}
 
 	if (insertedCount > 0 && mergedCount === 0) {
-		const { error: staleError } = await supabaseAny
+		const { error: staleError } = await supabase
 			.from('user_profiles')
 			.update({ summary_updated_at: null })
 			.eq('id', profile.id);

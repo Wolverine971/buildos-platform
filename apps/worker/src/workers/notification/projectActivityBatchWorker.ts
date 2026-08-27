@@ -24,12 +24,9 @@ export async function processProjectActivityBatchFlushJob(
 		throw new Error('Missing batch_id in project activity batch flush job');
 	}
 
-	const { data, error } = await (supabase.rpc as any)(
-		'flush_project_activity_notification_batch',
-		{
-			p_batch_id: batchId
-		}
-	);
+	const { data, error } = await supabase.rpc('flush_project_activity_notification_batch', {
+		p_batch_id: batchId
+	});
 
 	if (error) {
 		throw new Error(`Batch flush RPC failed: ${error.message}`);

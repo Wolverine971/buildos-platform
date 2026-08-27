@@ -9,8 +9,8 @@
 		},
 		"worker": {
 			"tsconfig": "tsconfig.tests.json",
-			"maxErrors": 625,
-			"note": "Existing worker mock and cross-package test typing debt after the 2026-08-26 security dependency refresh. Lower this ceiling whenever errors are fixed."
+			"maxErrors": 221,
+			"note": "Remaining worker test fixture debt after provider harness cleanup on 2026-08-26. Lower this ceiling whenever errors are fixed."
 		}
 	}
 }

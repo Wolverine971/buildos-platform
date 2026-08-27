@@ -1,40 +1,24 @@
 // apps/worker/src/workers/chat/libriSessionEntities.ts
 // Sanitization helpers for Libri session-close entity extraction.
 
-export type LibriExtractedEntityType = 'person' | 'book' | 'youtube_video' | 'youtube_channel';
-export type LibriExtractedEntityRelevance = 'primary' | 'supporting' | 'incidental';
-export type LibriExtractedEntityAction = 'resolve_or_enqueue' | 'search_only' | 'ignore';
+import type {
+	ExtractedLibriEntity,
+	IgnoredEntityCandidate,
+	Json,
+	LibriExtractedEntityAction,
+	LibriExtractedEntityRelevance,
+	LibriExtractedEntityType,
+	SessionExtractedEntities
+} from '@buildos/shared-types';
 
-export interface ExtractedLibriEntity {
-	entity_type: LibriExtractedEntityType;
-	display_name: string;
-	canonical_query: string;
-	url?: string;
-	youtube_video_id?: string;
-	authors?: string[];
-	aliases?: string[];
-	confidence: number;
-	relevance: LibriExtractedEntityRelevance;
-	recommended_action: LibriExtractedEntityAction;
-	user_requested_research: boolean;
-	extraction_reason: string;
-	source_message_ids: string[];
-	source_turn_indices: number[];
-	evidence_snippets: string[];
-}
-
-export interface IgnoredEntityCandidate {
-	display_name: string;
-	reason: string;
-	evidence_snippets?: string[];
-}
-
-export interface SessionExtractedEntities {
-	libri_candidates: ExtractedLibriEntity[];
-	ignored_candidates?: IgnoredEntityCandidate[];
-	extraction_version: 'libri_session_synthesis_v1';
-	extracted_at: string;
-}
+export type {
+	ExtractedLibriEntity,
+	IgnoredEntityCandidate,
+	LibriExtractedEntityAction,
+	LibriExtractedEntityRelevance,
+	LibriExtractedEntityType,
+	SessionExtractedEntities
+} from '@buildos/shared-types';
 
 export interface SanitizeSessionExtractedEntitiesOptions {
 	now?: () => Date;
@@ -354,6 +338,35 @@ export function sanitizeSessionExtractedEntities(
 		...(ignoredCandidates.length ? { ignored_candidates: ignoredCandidates } : {}),
 		extraction_version: EXTRACTION_VERSION,
 		extracted_at: empty.extracted_at
+	};
+}
+
+export function serializeSessionExtractedEntities(value: SessionExtractedEntities): Json {
+	return {
+		libri_candidates: value.libri_candidates.map((candidate) => ({
+			entity_type: candidate.entity_type,
+			display_name: candidate.display_name,
+			canonical_query: candidate.canonical_query,
+			url: candidate.url,
+			youtube_video_id: candidate.youtube_video_id,
+			authors: candidate.authors,
+			aliases: candidate.aliases,
+			confidence: candidate.confidence,
+			relevance: candidate.relevance,
+			recommended_action: candidate.recommended_action,
+			user_requested_research: candidate.user_requested_research,
+			extraction_reason: candidate.extraction_reason,
+			source_message_ids: candidate.source_message_ids,
+			source_turn_indices: candidate.source_turn_indices,
+			evidence_snippets: candidate.evidence_snippets
+		})),
+		ignored_candidates: value.ignored_candidates?.map((candidate) => ({
+			display_name: candidate.display_name,
+			reason: candidate.reason,
+			evidence_snippets: candidate.evidence_snippets
+		})),
+		extraction_version: value.extraction_version,
+		extracted_at: value.extracted_at
 	};
 }
 

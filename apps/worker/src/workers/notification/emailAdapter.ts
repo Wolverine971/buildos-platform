@@ -6,8 +6,13 @@
  */
 
 import { createServiceClient } from '@buildos/supabase-client';
-import type { NotificationDelivery } from '@buildos/shared-types';
+import {
+	type NotificationDelivery,
+	getNotificationBoolean,
+	getNotificationString
+} from '@buildos/shared-types';
 import type { Logger } from '@buildos/shared-utils';
+import { getErrorMessage } from '../../lib/utils/errors.js';
 import { resolveNotificationActionUrl } from './email-action-url.js';
 import { checkUserPreferences } from './preferenceChecker.js';
 
@@ -163,7 +168,8 @@ async function findExistingEmailForDelivery(
 	emailLogger: Logger
 ): Promise<ExistingEmailRecord | null> {
 	// ->> expression filter matches idx_emails_template_delivery_id
-	const { data, error } = await (supabase.from('emails') as any)
+	const { data, error } = await supabase
+		.from('emails')
 		.select('id, status, tracking_id, sent_at, created_at')
 		.eq('template_data->>delivery_id', deliveryId)
 		.order('sent_at', { ascending: false, nullsFirst: false })
@@ -493,16 +499,13 @@ export async function sendEmailNotification(
 		let dailyBriefEngagementStage: DailyBriefEngagementStage = 'standard';
 
 		if (isDailyBriefEmail) {
-			const briefId = delivery.payload.data?.brief_id || delivery.payload.brief_id;
+			const briefId = getNotificationString(delivery.payload, 'brief_id');
 			const briefDate =
-				delivery.payload.data?.brief_date ||
-				delivery.payload.brief_date ||
-				new Date().toISOString();
+				getNotificationString(delivery.payload, 'brief_date') ?? new Date().toISOString();
 			dailyBriefId = briefId ?? null;
 			dailyBriefDate = briefDate;
-			const isOntologyBrief = Boolean(
-				delivery.payload.is_ontology_brief || delivery.payload.data?.is_ontology_brief
-			);
+			const isOntologyBrief =
+				getNotificationBoolean(delivery.payload, 'is_ontology_brief') ?? false;
 
 			if (briefId) {
 				if (isOntologyBrief) {
@@ -863,24 +866,24 @@ export async function sendEmailNotification(
 				success: true,
 				external_id: emailRecord.id
 			};
-		} catch (webhookError: any) {
+		} catch (webhookError) {
 			emailLogger.error('Failed to send email via webhook', webhookError, {
 				emailRecordId: emailRecord.id,
 				notificationDeliveryId: delivery.id
 			});
 			return {
 				success: false,
-				error: `Webhook error: ${webhookError.message}`
+				error: `Webhook error: ${getErrorMessage(webhookError)}`
 			};
 		}
-	} catch (error: any) {
+	} catch (error) {
 		emailLogger.error('Failed to send email notification', error, {
 			notificationDeliveryId: delivery.id,
 			recipientUserId: delivery.recipient_user_id
 		});
 		return {
 			success: false,
-			error: error.message || 'Unknown error sending email'
+			error: getErrorMessage(error, 'Unknown error sending email')
 		};
 	}
 }

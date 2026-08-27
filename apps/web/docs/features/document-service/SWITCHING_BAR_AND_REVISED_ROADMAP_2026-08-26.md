@@ -136,14 +136,14 @@ without something being removed.
 
 ### Tier 3 — Where Drive cannot follow
 
-| #   | Item                                                                    | State                                            |
-| --- | ----------------------------------------------------------------------- | ------------------------------------------------ |
-| 3.1 | START HERE as a maintained index: what is here, current, stale, missing | ⚠️ managed regions shipped; index content is not |
-| 3.2 | Documents situated in the ontology (project, tasks, goals, activity)    | ⚠️ edges exist; authoring loop incomplete        |
-| 3.3 | Select → speak or type → anchored proposal diff → apply → revision      | ❌ the signature interaction                     |
-| 3.4 | Agent keeps index and managed regions current as work happens           | ⚠️ partial                                       |
-| 3.5 | Checklist progress derived from the body, promotable to tasks           | ❌ none                                          |
-| 3.6 | Live multi-person editing over the project ontology                     | ❌ Step 7 — see §4                               |
+| #   | Item                                                                    | State                                           |
+| --- | ----------------------------------------------------------------------- | ----------------------------------------------- |
+| 3.1 | START HERE as a maintained index: what is here, current, stale, missing | 🟡 live Overview projection; full index remains |
+| 3.2 | Documents situated in the ontology (project, tasks, goals, activity)    | ⚠️ edges exist; authoring loop incomplete       |
+| 3.3 | Select → speak or type → anchored proposal diff → apply → revision      | 🟡 migrated; visual/E2E rollout pending         |
+| 3.4 | Agent keeps index and managed regions current as work happens           | ⚠️ partial                                      |
+| 3.5 | Checklist progress derived from the body, promotable to tasks           | ❌ none                                         |
+| 3.6 | Live multi-person editing over the project ontology                     | ❌ Step 7 — see §4                              |
 
 **Count: 24 items. Current audited state: 6 shipped, 9 partial, 9 absent.** That is the real size of
 the effort — and it is finishable, which "better than Google Drive" is not.
@@ -415,14 +415,20 @@ were three things Step 2 could not be built on top of, one of which was a live b
 [`STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md`](./STEP_1_5_STRUCTURAL_HANDOFF_2026-08-26.md);
 summarised in §8.1 below. 2–4 days.
 
-**Step 2 — The signature interaction.** Tier 3.3: select → speak or type → anchored proposal diff →
-apply → revision. This is §13 of the original doc, unchanged, and the first slice a stranger can be
-shown. It exercises anchors, bounded agent context, proposal-first mutation, conflict-aware apply,
-and revision boundaries — the highest-risk seams — while being visible. Natural moment to do the
-`DocumentWorkspace` extraction (§4.1), under the pressure of a real feature.
+**Step 2 — The signature interaction. 🟡 Vertical slice implemented and migrated 2026-08-26;
+visual/E2E rollout pending.** Tier 3.3 now has select → typed/voice instruction → immutable anchored proposal → split
+diff → conflict-aware apply → forced revision. It exercises bounded context, deterministic exact
+re-anchoring, proposal-first mutation, autosave/apply coordination, and revision boundaries. The
+three production migrations, generated target types, RLS/grants, hashes, and lifecycle are validated.
+The visual/E2E pass and production observation remain before
+the Switching Bar row becomes shipped. See
+[`STEP_2_SIGNATURE_INTERACTION_HANDOFF_2026-08-26.md`](./STEP_2_SIGNATURE_INTERACTION_HANDOFF_2026-08-26.md).
 
-**Step 3 — START HERE as a live index.** Tier 3.1 and 3.4, built on the managed regions from §6.1.
-The README that Drive does not have.
+**Step 3 — START HERE as a live index. 🟡 Started 2026-08-26.** Tier 3.1 and 3.4, built on the
+managed regions from §6.1. The first visible slice projects START HERE freshness, current state,
+next step, orientation, and update/open actions into the project Overview. Snapshot coverage and
+the structured current/stale/missing index remain. See
+[`STEP_3_START_HERE_LIVE_INDEX_HANDOFF_2026-08-26.md`](./STEP_3_START_HERE_LIVE_INDEX_HANDOFF_2026-08-26.md).
 
 **Step 4 — Find and organize.** Tier 2. Cross-project search surface, the standard views, bulk
 actions, plus the rendering and mobile audits.

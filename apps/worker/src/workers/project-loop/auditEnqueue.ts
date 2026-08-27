@@ -543,7 +543,7 @@ export async function queueProjectAuditFromWorker(params: {
 	};
 }
 
-export async function processProjectAuditTriggerEvaluationJob(params: {
+export function processProjectAuditTriggerEvaluationJob(params: {
 	projectId: string;
 	userId: string;
 	triggerReason: ProjectAuditTriggerReason;

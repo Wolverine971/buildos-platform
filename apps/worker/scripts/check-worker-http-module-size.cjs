@@ -17,6 +17,7 @@ const MAX_LINES = Number.parseInt(process.env.WORKER_HTTP_MODULE_MAX_LINES ?? '3
 const TARGETS = [
 	path.join(SRC_ROOT, 'index.ts'),
 	path.join(SRC_ROOT, 'app.ts'),
+	path.join(SRC_ROOT, 'bootstrap.ts'),
 	path.join(SRC_ROOT, 'routes'),
 	path.join(SRC_ROOT, 'middleware'),
 	path.join(SRC_ROOT, 'http')

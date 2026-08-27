@@ -1,5 +1,10 @@
 // apps/worker/src/workers/ontology/projectContextSnapshotWorker.ts
-import type { Json, ProjectContextSnapshotJobMetadata } from '@buildos/shared-types';
+import {
+	type Json,
+	type ProjectContextSnapshotJobMetadata,
+	type ProjectGraphContext,
+	parseProjectGraphContext
+} from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
 import { ensureActorId } from '@buildos/shared-agent-ops/ontology/ontology-projects.service';
@@ -27,20 +32,6 @@ const COMPLETE_STATE_KEYS = new Set([
 ]);
 const PROJECT_ICON_GENERATION_ENABLED =
 	String(process.env.ENABLE_PROJECT_ICON_GENERATION ?? 'false').toLowerCase() === 'true';
-
-type ProjectGraphDataLight = {
-	project: any;
-	tasks: any[];
-	goals: any[];
-	plans: any[];
-	documents: any[];
-	milestones: any[];
-	risks: any[];
-	requirements: any[];
-	signals: any[];
-	insights: any[];
-	edges: any[];
-};
 
 function asJson(value: unknown): Json {
 	return value as Json;
@@ -245,7 +236,7 @@ const sortByUpdated = <T extends { updated_at?: string | null; created_at?: stri
 	});
 };
 
-const buildProjectHighlights = (graph: ProjectGraphDataLight) => {
+const buildProjectHighlights = (graph: ProjectGraphContext) => {
 	const goals = buildHighlightSection(
 		sortByUpdated(graph.goals)
 			.slice(0, HIGHLIGHT_LIMITS.goals)
@@ -453,7 +444,7 @@ const buildProjectHighlights = (graph: ProjectGraphDataLight) => {
 	};
 };
 
-const buildEntityCounts = (graph: ProjectGraphDataLight) => ({
+const buildEntityCounts = (graph: ProjectGraphContext) => ({
 	project: graph.project ? 1 : 0,
 	tasks: graph.tasks.length,
 	goals: graph.goals.length,
@@ -492,7 +483,7 @@ function parseDateMs(value: unknown): number | null {
 	return Number.isFinite(parsed) ? parsed : null;
 }
 
-function buildStartHereStatusFromGraph(graph: ProjectGraphDataLight): string {
+function buildStartHereStatusFromGraph(graph: ProjectGraphContext): string {
 	const now = Date.now();
 	const openTasks = graph.tasks.filter(
 		(task) => !task.completed_at && !isCompleteState(task.state_key)
@@ -530,13 +521,13 @@ function buildStartHereStatusFromGraph(graph: ProjectGraphDataLight): string {
 async function refreshProjectStartHereDocument(params: {
 	job: ProcessingJob<ProjectContextSnapshotJobMetadata>;
 	projectId: string;
-	graph: ProjectGraphDataLight;
+	graph: ProjectGraphContext;
 	docStructure: unknown;
 }): Promise<void> {
 	try {
-		const actorId = await ensureActorId(supabase as any, params.job.userId);
+		const actorId = await ensureActorId(supabase, params.job.userId);
 		const result = await refreshProjectStartHereManagedRegions({
-			supabase: supabase as any,
+			supabase,
 			projectId: params.projectId,
 			actorId,
 			projectName:
@@ -674,24 +665,7 @@ export async function processProjectContextSnapshotJob(
 			throw new Error(`Failed to load project graph: ${graphError.message}`);
 		}
 
-		const payload = graphData as unknown as ProjectGraphDataLight;
-		if (!payload?.project) {
-			throw new Error('Project not found or access denied');
-		}
-
-		const graph: ProjectGraphDataLight = {
-			project: payload.project,
-			tasks: Array.isArray(payload.tasks) ? payload.tasks : [],
-			goals: Array.isArray(payload.goals) ? payload.goals : [],
-			plans: Array.isArray(payload.plans) ? payload.plans : [],
-			documents: Array.isArray(payload.documents) ? payload.documents : [],
-			milestones: Array.isArray(payload.milestones) ? payload.milestones : [],
-			risks: Array.isArray(payload.risks) ? payload.risks : [],
-			requirements: Array.isArray(payload.requirements) ? payload.requirements : [],
-			signals: Array.isArray(payload.signals) ? payload.signals : [],
-			insights: Array.isArray(payload.insights) ? payload.insights : [],
-			edges: Array.isArray(payload.edges) ? payload.edges : []
-		};
+		const graph = parseProjectGraphContext(graphData);
 
 		const facets = {
 			context: graph.project.facet_context ?? null,
@@ -755,8 +729,8 @@ export async function processProjectContextSnapshotJob(
 				taskCount: graph.tasks.length,
 				goalCount: graph.goals.length,
 				documentCount: graph.documents.length,
-				description: projectRow?.description ?? graph.project.description ?? null,
-				iconSvg: projectRow?.icon_svg ?? graph.project.icon_svg ?? null
+				description: projectRow.description ?? graph.project.description,
+				iconSvg: projectRow.icon_svg
 			});
 			if (autoResult.queued) {
 				await job.log(`Auto icon generation queued (${autoResult.generationId})`);

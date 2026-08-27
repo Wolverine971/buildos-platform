@@ -52,6 +52,8 @@
 		onSave?: () => void;
 		/** Called on every document change */
 		onDocChange?: (value: string) => void;
+		/** Called when the primary selection changes. Offsets are UTF-16 CodeMirror positions. */
+		onSelectionChange?: (selection: { from: number; to: number }) => void;
 		/** Additional CSS classes for the wrapper */
 		class?: string;
 	}
@@ -65,6 +67,7 @@
 		fillHeight = false,
 		onSave,
 		onDocChange,
+		onSelectionChange,
 		class: className = ''
 	}: Props = $props();
 
@@ -86,6 +89,10 @@
 		if (!containerElement) return;
 
 		const updateListener = EditorView.updateListener.of((update) => {
+			if (update.selectionSet) {
+				const selection = update.state.selection.main;
+				onSelectionChange?.({ from: selection.from, to: selection.to });
+			}
 			if (update.docChanged) {
 				updatingFromEditor = true;
 				let newValue = update.state.doc.toString();
@@ -131,6 +138,8 @@
 			state,
 			parent: containerElement
 		});
+		const initialSelection = view.state.selection.main;
+		onSelectionChange?.({ from: initialSelection.from, to: initialSelection.to });
 	});
 
 	onDestroy(() => {

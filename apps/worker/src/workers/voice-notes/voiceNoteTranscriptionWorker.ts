@@ -1,21 +1,33 @@
 // apps/worker/src/workers/voice-notes/voiceNoteTranscriptionWorker.ts
-import type { VoiceNoteTranscriptionJobMetadata } from '@buildos/shared-types';
+import type { Database, Json, VoiceNoteTranscriptionJobMetadata } from '@buildos/shared-types';
 import { logWorkerError } from '../../lib/errorLogger';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { supabase } from '../../lib/supabase';
 import type { LegacyJob } from '../shared/jobAdapter';
 
-type VoiceNoteRecord = {
-	id: string;
-	user_id: string;
-	storage_bucket: string;
-	storage_path: string;
-	mime_type: string | null;
-	transcript: string | null;
-	transcription_status: string | null;
-	metadata: Record<string, unknown> | null;
-	deleted_at: string | null;
-};
+type VoiceNoteRecord = Pick<
+	Database['public']['Tables']['voice_notes']['Row'],
+	| 'id'
+	| 'user_id'
+	| 'storage_bucket'
+	| 'storage_path'
+	| 'mime_type'
+	| 'transcript'
+	| 'transcription_status'
+	| 'metadata'
+	| 'deleted_at'
+>;
+
+type JsonObject = { [key: string]: Json | undefined };
+
+function getJsonObject(value: Json): JsonObject {
+	return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function getTranscriptionSource(metadata: Json): string {
+	const source = getJsonObject(metadata).transcription_source;
+	return typeof source === 'string' && source ? source : 'audio';
+}
 
 const OPENROUTER_API_KEY =
 	process.env.PRIVATE_OPENROUTER_API_KEY?.trim() || process.env.OPENROUTER_API_KEY?.trim();
@@ -72,13 +84,13 @@ export async function processVoiceNoteTranscriptionJob(
 
 		stage = 'fetch';
 		errorType = 'database_error';
-		const { data: fetchedNote, error: fetchError } = (await (supabase as any)
+		const { data: fetchedNote, error: fetchError } = await supabase
 			.from('voice_notes')
 			.select(
 				'id, user_id, storage_bucket, storage_path, mime_type, transcript, transcription_status, metadata, deleted_at'
 			)
 			.eq('id', voiceNoteId)
-			.single()) as { data: VoiceNoteRecord | null; error: any };
+			.single();
 
 		if (fetchError || !fetchedNote) {
 			throw new Error(fetchError?.message || 'Voice note not found');
@@ -148,14 +160,14 @@ export async function processVoiceNoteTranscriptionJob(
 
 		stage = 'update';
 		errorType = 'database_error';
-		const metadata: Record<string, unknown> = {
-			...(voiceNote.metadata || {}),
-			transcription_source: (voiceNote.metadata as any)?.transcription_source || 'audio',
+		const metadata: Json = {
+			...getJsonObject(voiceNote.metadata),
+			transcription_source: getTranscriptionSource(voiceNote.metadata),
 			transcription_service: 'openrouter',
 			transcription_latency_ms: Date.now() - (transcriptionStartTime ?? Date.now())
 		};
 
-		const { error: updateError } = await (supabase as any)
+		const { error: updateError } = await supabase
 			.from('voice_notes')
 			.update({
 				transcript,
@@ -171,16 +183,17 @@ export async function processVoiceNoteTranscriptionJob(
 		}
 
 		return { success: true, voiceNoteId, transcriptLength: transcript.length };
-	} catch (error: any) {
+	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Transcription failed';
-		const fallbackMetadata: Record<string, unknown> = {
-			...(voiceNote?.metadata || {}),
-			transcription_source: (voiceNote?.metadata as any)?.transcription_source || 'audio',
+		const previousMetadata = voiceNote?.metadata ?? {};
+		const fallbackMetadata: Json = {
+			...getJsonObject(previousMetadata),
+			transcription_source: getTranscriptionSource(previousMetadata),
 			transcription_service: 'openrouter'
 		};
 
 		if (voiceNoteId) {
-			await (supabase as any)
+			await supabase
 				.from('voice_notes')
 				.update({
 					transcription_status: 'failed',

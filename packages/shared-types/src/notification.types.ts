@@ -5,6 +5,8 @@
  * Used across web and worker apps for extensible notification system
  */
 
+import type { Json } from './database.types';
+
 // =====================================================
 // EVENT TYPES
 // =====================================================
@@ -120,7 +122,48 @@ export interface UserNotificationPreferences {
   updated_at?: string;
 }
 
-export interface NotificationDelivery {
+export type NotificationJsonObject = { [key: string]: Json | undefined };
+
+export function isNotificationJsonObject(value: unknown): value is NotificationJsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function getNotificationPayloadValue(
+  payload: NotificationJsonObject,
+  key: string,
+): Json | undefined {
+  const direct = payload[key];
+  if (direct !== undefined && direct !== null) return direct;
+  return isNotificationJsonObject(payload.data) ? payload.data[key] : undefined;
+}
+
+export function getNotificationString(
+  payload: NotificationJsonObject,
+  key: string,
+): string | undefined {
+  const value = getNotificationPayloadValue(payload, key);
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+export function getNotificationNumber(
+  payload: NotificationJsonObject,
+  key: string,
+): number | undefined {
+  const value = getNotificationPayloadValue(payload, key);
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+export function getNotificationBoolean(
+  payload: NotificationJsonObject,
+  key: string,
+): boolean | undefined {
+  const value = getNotificationPayloadValue(payload, key);
+  return typeof value === "boolean" ? value : undefined;
+}
+
+export interface NotificationDelivery<
+  TPayload extends NotificationJsonObject = NotificationPayload,
+> {
   id: string;
   event_id: string;
   subscription_id?: string;
@@ -129,7 +172,7 @@ export interface NotificationDelivery {
   channel: NotificationChannel;
   channel_identifier?: string;
   status: NotificationStatus;
-  payload: Record<string, any>;
+  payload: TPayload;
 
   // Tracking
   sent_at?: string;
@@ -257,16 +300,21 @@ export interface CalendarSyncFailedEventPayload {
 // NOTIFICATION PAYLOAD (for delivery)
 // =====================================================
 
-export interface NotificationPayload {
+export interface NotificationPayload extends NotificationJsonObject {
   title: string;
   body: string;
   event_type?: string; // Preserve event type for preference checking
+  /** Legacy camelCase alias still present on older delivery rows. */
+  eventType?: string;
+  type?: string;
   tag?: string; // Push/browser collapse key
   priority?: NotificationPriority;
   action_url?: string;
   icon_url?: string;
   image_url?: string;
-  data?: Record<string, any>;
+  expires_at?: string;
+  correlationId?: string;
+  data?: NotificationJsonObject;
 }
 
 // =====================================================

@@ -133,7 +133,7 @@ export async function broadcastUserEvent(
 				error?: string;
 				trackingId?: string;
 		  },
-	payload?: any
+	payload?: unknown
 ) {
 	try {
 		// Handle both old and new notification formats

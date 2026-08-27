@@ -1,11 +1,11 @@
 // apps/worker/src/workers/question-tree/questionTreeModelAdapter.ts
 import {
+	OpenRouterClient,
+	type OpenRouterResponse,
 	cleanJSONResponse,
 	extractTextFromChoice,
 	isRetryableOpenRouterError,
-	OpenRouterClient,
-	repairTruncatedJSONResponse,
-	type OpenRouterResponse
+	repairTruncatedJSONResponse
 } from '@buildos/smart-llm';
 import { buildNodePrompts, buildSeedPrompts, buildSynthesisPrompts } from './questionTreePrompts';
 import type {

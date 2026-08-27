@@ -2,20 +2,19 @@
 
 # Worker Structure Overview
 
-Last verified against code on 2026-07-06.
+Last verified against code on 2026-08-26.
 
 ## Process Layout
 
-`apps/worker/src/index.ts` is the production entrypoint. It:
+The production entrypoint is split by ownership:
 
-1. Loads environment variables.
-2. Builds the Express app and auth middleware.
-3. Registers email tracking and SMS management routes.
-4. Starts the queue worker through `startWorker()`.
-5. Starts scheduler cron jobs through `startScheduler()`.
-6. Starts the HTTP server.
-7. Handles SIGTERM/SIGINT by closing HTTP, draining queue work, and flushing
-   PostHog before exit.
+1. `src/index.ts` loads environment variables before other worker modules evaluate.
+2. `src/bootstrap.ts` starts the queue worker, scheduler, and HTTP listener.
+3. `src/bootstrap.ts` handles fatal errors and SIGTERM/SIGINT by closing HTTP,
+   draining queue work, and flushing PostHog before exit.
+4. `src/app.ts` builds the Express app, middleware ordering, auth boundary, and
+   route composition without starting process-level resources.
+5. `src/routes/` owns the HTTP handlers by domain.
 
 ## Source Tree
 
@@ -23,6 +22,8 @@ Last verified against code on 2026-07-06.
 apps/worker/
   src/
     index.ts
+    bootstrap.ts
+    app.ts
     worker.ts
     scheduler.ts
     config/
@@ -47,6 +48,12 @@ apps/worker/
       jsonError.ts
     routes/
       email-tracking.ts
+      health.ts
+      ontology-classification.ts
+      queue/
+        brief.ts
+        enqueue.ts
+        inspection.ts
       sms/scheduled.ts
     scripts/
       backfillStartHereDocuments.ts
@@ -82,9 +89,16 @@ locally but are not source documentation targets.
 Files:
 
 - `apps/worker/src/index.ts`
+- `apps/worker/src/bootstrap.ts`
+- `apps/worker/src/app.ts`
 - `apps/worker/src/http/auth.ts`
 - `apps/worker/src/middleware/jsonError.ts`
 - `apps/worker/src/routes/email-tracking.ts`
+- `apps/worker/src/routes/health.ts`
+- `apps/worker/src/routes/ontology-classification.ts`
+- `apps/worker/src/routes/queue/brief.ts`
+- `apps/worker/src/routes/queue/enqueue.ts`
+- `apps/worker/src/routes/queue/inspection.ts`
 - `apps/worker/src/routes/sms/scheduled.ts`
 
 Only `/health` and `/api/email-tracking/:trackingId` are public. Everything

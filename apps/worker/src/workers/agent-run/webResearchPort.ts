@@ -9,6 +9,8 @@ import {
 	NativeSearchDiscoveryError,
 	type NativeSearchDiscoveryResult,
 	type NativeSearchDurableCacheStore,
+	type NativeSearchEvidenceChunkReference,
+	type NativeSearchPageEvidenceReceipt,
 	type NativeSearchResponse,
 	NativeSearchValidationError,
 	type NormalizedNativeSearchRequest,
@@ -17,8 +19,6 @@ import {
 	createNativeSearchDiscoveryCacheEntry,
 	createTavilyDiscoveryAdapter,
 	enrichNativeSearchCandidates,
-	type NativeSearchEvidenceChunkReference,
-	type NativeSearchPageEvidenceReceipt,
 	markNativeSearchResponseCacheStatus,
 	normalizeNativeSearchRequest
 } from '@buildos/shared-agent-ops/web/native-search';

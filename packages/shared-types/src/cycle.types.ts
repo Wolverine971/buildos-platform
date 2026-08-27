@@ -349,6 +349,360 @@ export type CycleRun = {
 	[K in CycleKind]: CycleRunFor<K>;
 }[CycleKind];
 
+export interface CycleRunClaim {
+	disposition: 'claimed' | 'already_terminal';
+	run: CycleRun;
+}
+
+function requireCycleObject(
+	value: Json | undefined,
+	path: string
+): { [key: string]: Json | undefined } {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+		throw new TypeError(`${path} must be a JSON object`);
+	}
+	return value;
+}
+
+function requireCycleString(
+	record: { [key: string]: Json | undefined },
+	key: string,
+	path: string
+): string {
+	const value = record[key];
+	if (typeof value !== 'string') throw new TypeError(`${path}.${key} must be a string`);
+	return value;
+}
+
+function requireCycleNullableString(
+	record: { [key: string]: Json | undefined },
+	key: string,
+	path: string
+): void {
+	const value = record[key];
+	if (value !== null && typeof value !== 'string') {
+		throw new TypeError(`${path}.${key} must be a string or null`);
+	}
+}
+
+function requireCycleNumber(
+	record: { [key: string]: Json | undefined },
+	key: string,
+	path: string
+): number {
+	const value = record[key];
+	if (typeof value !== 'number' || !Number.isFinite(value)) {
+		throw new TypeError(`${path}.${key} must be a finite number`);
+	}
+	return value;
+}
+
+function requireCycleBoolean(
+	record: { [key: string]: Json | undefined },
+	key: string,
+	path: string
+): void {
+	if (typeof record[key] !== 'boolean') {
+		throw new TypeError(`${path}.${key} must be a boolean`);
+	}
+}
+
+function requireCycleStringArray(
+	record: { [key: string]: Json | undefined },
+	key: string,
+	path: string
+): void {
+	const value = record[key];
+	if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+		throw new TypeError(`${path}.${key} must be an array of strings`);
+	}
+}
+
+function requireOptionalCycleString(
+	record: { [key: string]: Json | undefined },
+	key: string,
+	path: string
+): void {
+	const value = record[key];
+	if (value !== undefined && typeof value !== 'string') {
+		throw new TypeError(`${path}.${key} must be a string when present`);
+	}
+}
+
+function requireOptionalCycleNumber(
+	record: { [key: string]: Json | undefined },
+	key: string,
+	path: string
+): void {
+	const value = record[key];
+	if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value))) {
+		throw new TypeError(`${path}.${key} must be a finite number when present`);
+	}
+}
+
+function requireOptionalCycleBoolean(
+	record: { [key: string]: Json | undefined },
+	key: string,
+	path: string
+): void {
+	const value = record[key];
+	if (value !== undefined && typeof value !== 'boolean') {
+		throw new TypeError(`${path}.${key} must be a boolean when present`);
+	}
+}
+
+function parseCycleKindValue(value: string, path: string): CycleKind {
+	if (!(CYCLE_KINDS as readonly string[]).includes(value)) {
+		throw new TypeError(`${path} has an unknown Cycle kind`);
+	}
+	return value as CycleKind;
+}
+
+function validateCycleTargetJson(value: Json | undefined, kind: CycleKind, path: string): void {
+	const target = requireCycleObject(value, path);
+	const type = requireCycleString(target, 'type', path);
+	if (kind === 'daily_brief') {
+		if (type !== 'user' || target.project_id !== null) {
+			throw new TypeError(`${path} must be a user target for a Daily Brief`);
+		}
+		return;
+	}
+	if (type !== 'project' || typeof target.project_id !== 'string') {
+		throw new TypeError(`${path} must be a project target for ${kind}`);
+	}
+}
+
+function validateCyclePolicyJson(value: Json | undefined, path: string): void {
+	const policy = requireCycleObject(value, path);
+	if (policy.overlap !== 'skip' && policy.overlap !== 'allow') {
+		throw new TypeError(`${path}.overlap is invalid`);
+	}
+	if (policy.misfire !== 'skip' && policy.misfire !== 'run_once') {
+		throw new TypeError(`${path}.misfire is invalid`);
+	}
+	const maxAttempts = requireCycleNumber(policy, 'max_attempts', path);
+	if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+		throw new TypeError(`${path}.max_attempts must be a positive integer`);
+	}
+}
+
+function validateCycleConfigJson(value: Json | undefined, kind: CycleKind, path: string): void {
+	const config = requireCycleObject(value, path);
+	if (kind === 'daily_brief') {
+		requireOptionalCycleNumber(config, 'generation_lead_minutes', path);
+	} else if (kind === 'project_audit') {
+		if (config.depth !== 'standard' && config.depth !== 'deep') {
+			throw new TypeError(`${path}.depth is invalid`);
+		}
+	}
+}
+
+function validateCycleExecutionInputJson(
+	value: Json | undefined,
+	kind: CycleKind,
+	path: string
+): void {
+	const input = requireCycleObject(value, path);
+	if (kind === 'daily_brief') {
+		if (!['scheduled', 'catch_up', 'manual', 'regenerate'].includes(String(input.mode))) {
+			throw new TypeError(`${path}.mode is invalid`);
+		}
+		requireCycleString(input, 'brief_date', path);
+		requireCycleString(input, 'timezone', path);
+		requireCycleBoolean(input, 'force_regenerate', path);
+		for (const key of ['include_projects', 'exclude_projects'] as const) {
+			if (input[key] !== undefined) requireCycleStringArray(input, key, path);
+		}
+		requireOptionalCycleString(input, 'custom_template', path);
+		requireOptionalCycleBoolean(input, 'use_ontology', path);
+	} else if (kind === 'project_audit') {
+		if (input.depth !== 'standard' && input.depth !== 'deep') {
+			throw new TypeError(`${path}.depth is invalid`);
+		}
+		requireOptionalCycleString(input, 'reason', path);
+	}
+}
+
+function validateCycleDeliveryIntentJson(value: Json | undefined, path: string): void {
+	const intent = requireCycleObject(value, path);
+	if (intent.mode === 'evaluate') {
+		requireCycleNullableString(intent, 'not_before', path);
+		return;
+	}
+	if (intent.mode === 'suppress') {
+		requireCycleString(intent, 'reason', path);
+		return;
+	}
+	throw new TypeError(`${path}.mode is invalid`);
+}
+
+function validateCycleTriggerSnapshotJson(value: Json | null | undefined, path: string): void {
+	if (value === null) return;
+	const trigger = requireCycleObject(value, path);
+	const type = requireCycleString(trigger, 'type', path);
+	if (type === 'schedule') {
+		const schedule = requireCycleObject(trigger.schedule, `${path}.schedule`);
+		const scheduleType = requireCycleString(schedule, 'type', `${path}.schedule`);
+		if (scheduleType === 'daily' || scheduleType === 'weekly') {
+			requireCycleString(schedule, 'time_of_day', `${path}.schedule`);
+			requireCycleString(schedule, 'timezone', `${path}.schedule`);
+			if (scheduleType === 'weekly') {
+				const days = schedule.days_of_week;
+				if (
+					!Array.isArray(days) ||
+					days.some(
+						(day) =>
+							typeof day !== 'number' ||
+							!Number.isInteger(day) ||
+							day < 0 ||
+							day > 6
+					)
+				) {
+					throw new TypeError(`${path}.schedule.days_of_week is invalid`);
+				}
+			}
+		} else if (scheduleType === 'interval') {
+			requireCycleNumber(schedule, 'every_minutes', `${path}.schedule`);
+			requireCycleString(schedule, 'anchor_at', `${path}.schedule`);
+		} else {
+			throw new TypeError(`${path}.schedule.type is invalid`);
+		}
+	} else if (type === 'event') {
+		requireCycleStringArray(trigger, 'event_types', path);
+		requireOptionalCycleNumber(trigger, 'debounce_minutes', path);
+	} else if (type === 'threshold') {
+		requireCycleString(trigger, 'metric', path);
+		if (trigger.operator !== 'gte' && trigger.operator !== 'lte') {
+			throw new TypeError(`${path}.operator is invalid`);
+		}
+		requireCycleNumber(trigger, 'value', path);
+		requireOptionalCycleNumber(trigger, 'evaluation_window_minutes', path);
+	} else if (type === 'relative') {
+		if (!['calendar_event', 'milestone', 'deadline'].includes(String(trigger.relative_to))) {
+			throw new TypeError(`${path}.relative_to is invalid`);
+		}
+		requireCycleNumber(trigger, 'offset_minutes', path);
+	} else {
+		throw new TypeError(`${path}.type is invalid`);
+	}
+}
+
+function validateCycleOutcomeJson(value: Json | null | undefined, path: string): void {
+	if (value === null) return;
+	const outcome = requireCycleObject(value, path);
+	const status = requireCycleString(outcome, 'status', path);
+	const attentionLevel = requireCycleString(outcome, 'attention_level', path);
+	requireCycleString(outcome, 'summary', path);
+	const refs = outcome.artifact_refs;
+	if (!Array.isArray(refs)) throw new TypeError(`${path}.artifact_refs must be an array`);
+	for (const [index, refValue] of refs.entries()) {
+		const ref = requireCycleObject(refValue, `${path}.artifact_refs[${index}]`);
+		requireCycleString(ref, 'type', `${path}.artifact_refs[${index}]`);
+		requireCycleString(ref, 'id', `${path}.artifact_refs[${index}]`);
+		requireOptionalCycleString(ref, 'label', `${path}.artifact_refs[${index}]`);
+	}
+	const validPair =
+		(status === 'no_change' && attentionLevel === 'none') ||
+		(status === 'artifact_created' && ['none', 'minor'].includes(attentionLevel)) ||
+		(status === 'attention_required' && ['decision', 'urgent'].includes(attentionLevel)) ||
+		(status === 'failed' && ['none', 'minor', 'decision', 'urgent'].includes(attentionLevel));
+	if (!validPair) throw new TypeError(`${path} has an invalid status and attention level pair`);
+}
+
+function parseCycleRun(value: Json | undefined, path: string): CycleRun {
+	const run = requireCycleObject(value, path);
+	const kind = parseCycleKindValue(requireCycleString(run, 'kind', path), `${path}.kind`);
+
+	for (const key of [
+		'id',
+		'cycle_id',
+		'user_id',
+		'triggered_at',
+		'occurrence_key',
+		'idempotency_key',
+		'created_at',
+		'updated_at'
+	] as const) {
+		requireCycleString(run, key, path);
+	}
+	for (const key of [
+		'project_id',
+		'trigger_id',
+		'scheduled_for',
+		'queue_job_record_id',
+		'queue_job_id',
+		'processing_token',
+		'error_code',
+		'error_message',
+		'queued_at',
+		'started_at',
+		'finished_at'
+	] as const) {
+		requireCycleNullableString(run, key, path);
+	}
+	for (const key of ['cycle_version', 'attempt_count'] as const) {
+		const number = requireCycleNumber(run, key, path);
+		if (!Number.isInteger(number) || number < 0) {
+			throw new TypeError(`${path}.${key} must be a non-negative integer`);
+		}
+	}
+	if (!['schedule', 'event', 'threshold', 'relative', 'manual', 'catch_up'].includes(String(run.trigger))) {
+		throw new TypeError(`${path}.trigger is invalid`);
+	}
+	if (!['queued', 'running', 'completed', 'failed', 'cancelled', 'skipped'].includes(String(run.status))) {
+		throw new TypeError(`${path}.status is invalid`);
+	}
+
+	const definition = requireCycleObject(run.definition_snapshot, `${path}.definition_snapshot`);
+	if (requireCycleString(definition, 'kind', `${path}.definition_snapshot`) !== kind) {
+		throw new TypeError(`${path}.definition_snapshot.kind does not match ${path}.kind`);
+	}
+	requireCycleNumber(definition, 'version', `${path}.definition_snapshot`);
+	validateCycleTargetJson(definition.target, kind, `${path}.definition_snapshot.target`);
+	validateCycleConfigJson(definition.config, kind, `${path}.definition_snapshot.config`);
+	validateCyclePolicyJson(definition.policy, `${path}.definition_snapshot.policy`);
+	if (!['silent', 'exceptions', 'always'].includes(String(definition.attention_policy))) {
+		throw new TypeError(`${path}.definition_snapshot.attention_policy is invalid`);
+	}
+
+	validateCycleTriggerSnapshotJson(run.trigger_snapshot, `${path}.trigger_snapshot`);
+	validateCycleExecutionInputJson(run.execution_input, kind, `${path}.execution_input`);
+	validateCycleDeliveryIntentJson(run.delivery_intent, `${path}.delivery_intent`);
+	validateCycleOutcomeJson(run.outcome, `${path}.outcome`);
+	if (!Object.prototype.hasOwnProperty.call(run, 'result')) {
+		throw new TypeError(`${path}.result is missing`);
+	}
+
+	// The complete database row and each structured execution field have been validated above.
+	return run as unknown as CycleRun;
+}
+
+/** Decode the JSON response from claim_cycle_run before worker execution. */
+export function parseCycleRunClaim(value: Json): CycleRunClaim {
+	const claim = requireCycleObject(value, 'cycle claim');
+	if (claim.disposition !== 'claimed' && claim.disposition !== 'already_terminal') {
+		throw new TypeError('cycle claim.disposition is invalid');
+	}
+	return {
+		disposition: claim.disposition,
+		run: parseCycleRun(claim.run, 'cycle claim.run')
+	};
+}
+
+/** Serialize the outcome at the JSON RPC boundary without weakening its domain type. */
+export function serializeCycleRunOutcome(outcome: CycleRunOutcome): Json {
+	return {
+		status: outcome.status,
+		attention_level: outcome.attention_level,
+		summary: outcome.summary,
+		artifact_refs: outcome.artifact_refs.map((ref) => ({
+			type: ref.type,
+			id: ref.id,
+			...(ref.label === undefined ? {} : { label: ref.label })
+		}))
+	};
+}
+
 export type CreateCycleTriggerInput = CycleTriggerSpec & {
 	state?: Exclude<CycleTriggerState, 'deleted'>;
 };

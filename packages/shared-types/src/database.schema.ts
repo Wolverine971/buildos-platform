@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-08-26T22:51:28.302Z
+// Generated on: 2026-08-27T03:28:34.181Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2234,6 +2234,24 @@ export type DatabaseSchema = {
 		root_id: string;
 		updated_at: string;
 	};
+	onto_document_proposals: {
+		applied_at: string | null;
+		applied_by_actor_id: string | null;
+		base_content_hash: string;
+		conflict_reason: string | null;
+		created_at: string;
+		created_by_actor_id: string;
+		document_id: string;
+		id: string;
+		instruction: string;
+		patch: Json;
+		patch_hash: string;
+		project_id: string;
+		result_content_hash: string;
+		status: string;
+		updated_at: string;
+		version_warning: string | null;
+	};
 	onto_document_versions: {
 		created_at: string;
 		created_by: string;
@@ -2248,6 +2266,7 @@ export type DatabaseSchema = {
 		archived_at: string | null;
 		children: Json | null;
 		content: string | null;
+		content_hash: string | null;
 		created_at: string;
 		created_by: string;
 		deleted_at: string | null;
@@ -4361,6 +4380,7 @@ export const tableNames = [
 	'onto_comment_mentions',
 	'onto_comment_read_states',
 	'onto_comments',
+	'onto_document_proposals',
 	'onto_document_versions',
 	'onto_documents',
 	'onto_edges',

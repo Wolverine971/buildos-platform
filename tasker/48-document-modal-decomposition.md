@@ -3,12 +3,17 @@
 # 48 — Decompose `DocumentModal` around a document session controller
 
 **Created:** 2026-08-04  
-**Status:** Open — behavior-preserving Svelte decomposition  
+**Updated:** 2026-08-26  
+**Status:** Deferred by owner direction — ready, but intentionally skipped in the current cleanup pass  
 **Mission:** Make the document editor safe to change by separating document-session state, typed API operations, feature workflows, and presentation while preserving the current component contract and desktop/mobile experience.
+
+> Do not start this task as incidental cleanup. The owner explicitly chose to defer it on
+> 2026-08-26 and continue with worker ownership decomposition. Resume only when
+> `DocumentModal` is selected as its own focused workstream.
 
 ## Why this work exists
 
-`apps/web/src/lib/components/ontology/DocumentModal.svelte` is 4,545 lines with 40 imports, 93 `$state` declarations/usages, 34 `$derived` declarations/usages, five effects, and 19 direct `fetch` calls. Its 2,761-line script currently owns:
+`apps/web/src/lib/components/ontology/DocumentModal.svelte` is 4,561 lines with 43 imports, 91 `$state` declarations/usages, 33 `$derived` declarations/usages, five effects, and 19 direct `fetch` calls. Its script currently owns:
 
 - create/load/save/autosave/conflict/archive/restore/delete document lifecycle;
 - request cancellation and stale-continuation protection using request IDs, `AbortController`, mutation IDs, and a document-session epoch;
@@ -18,7 +23,7 @@
 - dynamic nested task/plan/goal/document/chat modals;
 - the desktop editor/details layout and mobile tabs/panels.
 
-This component also contains good craft that must survive the split. The seven focused tests prove subtle stale-load, close/unmount cancellation, stale-save, stale-delete, and deferred-response behavior. The refactor is successful only if those invariants become easier to see and test—not if the file merely becomes shorter.
+This component also contains good craft that must survive the split. The 11 focused tests prove details-panel behavior, menu portaling, subtle stale-load behavior, close/unmount cancellation, stale-save, version warnings, stale-delete, and deferred-response isolation. The refactor is successful only if those invariants become easier to see and test—not if the file merely becomes shorter.
 
 `DocumentModal` is a shared product boundary loaded from project pages, task pages, the project modal host, document trees, and several entity modals. Its props and callbacks are therefore an API.
 
@@ -55,7 +60,7 @@ The final names and grouping may change. A boundary earns a file when it owns a 
 
 ### W0 — Expand behavioral characterization first
 
-Keep all seven current race/cancellation tests and add coverage for unprotected seams before extraction:
+Keep all 11 current focused tests and add coverage for unprotected seams before extraction:
 
 - create → first save → edit-mode transition and the exact `onSaved`/`onLoaded` behavior;
 - autosave debounce, one-save-at-a-time queuing, saved feedback, and close blocking during a blocking save;
@@ -147,7 +152,7 @@ Land W0 first. W1 can land behind the unchanged modal. Then land W2 and W3 separ
 ## Exit gate
 
 - [ ] Every existing `DocumentModal` caller works through the unchanged component contract.
-- [ ] The original seven stale-request/cancellation tests and the W0 characterization additions pass.
+- [ ] The original 11 focused tests and the W0 characterization additions pass.
 - [ ] Document CRUD, autosave/conflict, public-page, and supporting async actions are session-scoped and independently testable.
 - [ ] `DocumentModal.svelte` contains no direct `fetch` calls and is at most 1,200 lines.
 - [ ] No extracted component/controller/client exceeds 600 lines without a documented cohesive reason.
@@ -171,3 +176,10 @@ Manual smoke at desktop and mobile widths:
 3. Exercise conflict reload/overwrite and discard-on-close.
 4. Publish, copy/open the URL, toggle live sync, trigger review messaging, and unpublish.
 5. Move, compare/restore a version, add an image, open a linked entity/chat, and return to the same document.
+
+## Deferral receipt — 2026-08-26
+
+- Confirmed the public component remains 4,561 lines with 19 direct `fetch` calls.
+- Confirmed the focused suite currently contains 11 behavior tests.
+- Ran the Svelte 5 autofixer against `DocumentModal.svelte`; it reported no findings.
+- Deferred implementation by explicit owner direction in favor of P1.4 worker ownership decomposition.

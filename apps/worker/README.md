@@ -4,9 +4,11 @@
 
 Node.js + Express background worker for BuildOS. Deployed to Railway.
 
-This service runs three things in the same process:
+This service runs three things in the same process. `src/index.ts` loads the
+environment, `src/bootstrap.ts` owns process startup/shutdown, and `src/app.ts`
+composes the HTTP surface.
 
-1. **API server** (`src/index.ts`) — REST endpoints for queueing, inspecting, and cleaning jobs.
+1. **API server** (`src/app.ts` and `src/routes/`) — REST endpoints for queueing, inspecting, and cleaning jobs.
 2. **Worker** (`src/worker.ts`) — long-running consumer that pulls jobs off the Supabase-backed queue and dispatches them to per-domain processors.
 3. **Scheduler** (`src/scheduler.ts`) — cron-driven scheduling of recurring work (timezone-aware daily briefs with engagement backoff, daily SMS windows, ontology/chat maintenance, etc.).
 
@@ -120,7 +122,7 @@ curl http://localhost:3001/health
 From `apps/worker/`:
 
 ```bash
-pnpm dev                # Full process (index.ts): API + worker + scheduler
+pnpm dev                # Full process: index → bootstrap → API + worker + scheduler
 pnpm worker             # Worker loop only
 pnpm scheduler          # Scheduler only
 pnpm build              # native TypeScript 7 -> dist/

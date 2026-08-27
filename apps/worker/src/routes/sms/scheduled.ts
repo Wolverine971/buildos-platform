@@ -10,6 +10,7 @@
 
 import { Request, Response, Router } from 'express';
 import type { Router as ExpressRouter } from 'express';
+import type { Database } from '@buildos/shared-types';
 import { supabase } from '../../lib/supabase';
 import { SMSMessageGenerator } from '../../lib/services/smsMessageGenerator';
 
@@ -57,7 +58,7 @@ router.post('/:id/cancel', async (req: Request, res: Response) => {
 			message: 'Scheduled SMS cancelled successfully',
 			data
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('[API] Error in cancel endpoint:', error);
 		return res.status(500).json({ error: 'Internal server error' });
 	}
@@ -85,7 +86,7 @@ router.patch('/:id/update', async (req: Request, res: Response) => {
 		}
 
 		// Update the scheduled SMS
-		const updateData: any = {
+		const updateData: Database['public']['Tables']['scheduled_sms_messages']['Update'] = {
 			scheduled_for,
 			updated_at: new Date().toISOString()
 		};
@@ -116,7 +117,7 @@ router.patch('/:id/update', async (req: Request, res: Response) => {
 			message: 'Scheduled SMS updated successfully',
 			data
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('[API] Error in update endpoint:', error);
 		return res.status(500).json({ error: 'Internal server error' });
 	}
@@ -196,7 +197,7 @@ router.post('/:id/regenerate', async (req: Request, res: Response) => {
 			data: updated,
 			generation_method: regenerated.generatedVia
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('[API] Error in regenerate endpoint:', error);
 		return res.status(500).json({ error: 'Internal server error' });
 	}
@@ -236,7 +237,7 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
 			count: data?.length || 0,
 			data: data || []
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('[API] Error in list endpoint:', error);
 		return res.status(500).json({ error: 'Internal server error' });
 	}
