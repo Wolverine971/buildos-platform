@@ -205,80 +205,84 @@
 					<span class="thinking-compact-detail truncate">{compactDetail}</span>
 				{/if}
 			</div>
-			<span
-				class="activity-count-badge"
-				class:activity-count-badge-visible={hasDisplayedActivities}
-				aria-hidden={!hasDisplayedActivities}
-			>
-				{activitySummary}
-			</span>
+			{#if hasDisplayedActivities}
+				<span class="activity-count-badge">
+					{activitySummary}
+				</span>
+			{/if}
 		</button>
 
 		<!-- INKPRINT activity log panel -->
 		<div
 			class="thinking-body"
 			class:thinking-body-open={hasDisplayedActivities && !block.isCollapsed}
-			class:thinking-body-expanded={hasDisplayedActivities &&
-				!block.isCollapsed &&
-				isExpanded}
 		>
-			<div class="p-2 sm:p-2.5">
-				<div
-					bind:this={logContainer}
-					onscroll={handleLogScroll}
-					class="thinking-log thinking-log-height space-y-0.5 overflow-y-auto rounded-md bg-background/55 p-1.5 font-mono text-2xs shadow-ink-inner sm:text-2xs"
-					class:thinking-log-expanded={isExpanded}
-					role="log"
-					aria-label="BuildOS thinking log"
-				>
-					{#each displayedActivities as activity (activity.id)}
-						{@const style = getActivityStyle(activity.activityType)}
-						{@const ActivityIcon = style.icon}
-						<div class="py-0.5">
-							<div class="flex items-center gap-1.5 leading-snug">
-								<!-- Icon -->
-								<span class="shrink-0 {style.color}" aria-hidden="true">
-									<ActivityIcon class="h-3 w-3" />
-								</span>
-
-								<!-- Content -->
-								<span
-									class="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-foreground"
-									>{activity.content}</span
-								>
-
-								<!-- Status indicator (for tool calls) -->
-								{#if activity.status === 'pending'}
-									<Loader
-										class="h-2.5 w-2.5 shrink-0 animate-spin text-muted-foreground"
-										aria-label="Loading"
-									/>
-								{:else if activity.status === 'completed'}
-									<Check
-										class="h-2.5 w-2.5 shrink-0 text-success"
-										aria-label="Completed"
-									/>
-								{:else if activity.status === 'failed'}
-									<X
-										class="h-2.5 w-2.5 shrink-0 text-destructive"
-										aria-label="Failed"
-									/>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
-				<!-- Expand/collapse toggle for the log height -->
-				{#if displayedActivityCount > 3}
-					<button
-						type="button"
-						onclick={toggleExpand}
-						class="mt-1 w-full text-center micro-label font-semibold text-muted-foreground transition-colors hover:text-foreground"
-						aria-label={isExpanded ? 'Show less activity' : 'Show more activity'}
+			<div class="thinking-body-inner">
+				<div class="p-2 sm:p-2.5">
+					<div
+						bind:this={logContainer}
+						onscroll={handleLogScroll}
+						class="thinking-log thinking-log-height space-y-0.5 overflow-y-auto rounded-md bg-background/55 p-1.5 font-mono text-2xs shadow-ink-inner sm:text-2xs"
+						class:thinking-log-expanded={isExpanded}
+						role="log"
+						aria-label="BuildOS thinking log"
 					>
-						{isExpanded ? '▲ Show less' : '▼ Show more'}
-					</button>
-				{/if}
+						{#each displayedActivities as activity (activity.id)}
+							{@const style = getActivityStyle(activity.activityType)}
+							{@const ActivityIcon = style.icon}
+							<div class="py-0.5">
+								<div class="flex items-center gap-1.5 leading-snug">
+									<!-- Icon -->
+									<span class="shrink-0 {style.color}" aria-hidden="true">
+										<ActivityIcon class="h-3 w-3" />
+									</span>
+
+									<!-- Content -->
+									<span
+										class="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-foreground"
+										>{activity.content}</span
+									>
+
+									<!-- Status indicator (for tool calls) -->
+									{#if activity.status === 'pending'}
+										<Loader
+											class="h-2.5 w-2.5 shrink-0 animate-spin text-muted-foreground"
+											aria-label="Loading"
+										/>
+									{:else if activity.status === 'completed'}
+										<Check
+											class="h-2.5 w-2.5 shrink-0 text-success"
+											aria-label="Completed"
+										/>
+									{:else if activity.status === 'failed'}
+										<X
+											class="h-2.5 w-2.5 shrink-0 text-destructive"
+											aria-label="Failed"
+										/>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
+					<!-- Expand/collapse toggle for the log height -->
+					{#if displayedActivityCount > 3}
+						<button
+							type="button"
+							onclick={toggleExpand}
+							class="mt-1 flex w-full items-center justify-center gap-1 text-center micro-label font-semibold text-muted-foreground transition-colors hover:text-foreground"
+							aria-label={isExpanded ? 'Show less activity' : 'Show more activity'}
+							aria-expanded={isExpanded}
+						>
+							<ChevronDown
+								class="thinking-log-chevron h-3 w-3 {isExpanded
+									? 'thinking-log-chevron-expanded'
+									: ''}"
+								aria-hidden="true"
+							/>
+							{isExpanded ? 'Show less' : 'Show more'}
+						</button>
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -299,7 +303,6 @@
 		max-width: 100%;
 		border-radius: 0.5rem;
 		transition:
-			max-width 260ms ease,
 			border-radius 260ms ease,
 			border-color 180ms ease,
 			box-shadow 220ms ease,
@@ -341,7 +344,6 @@
 		padding: 0.45rem 0.65rem 0.45rem 0.5rem;
 		text-align: left;
 		transition:
-			padding 220ms ease,
 			background 180ms ease,
 			border-color 180ms ease,
 			border-radius 220ms ease;
@@ -375,33 +377,26 @@
 	}
 
 	.activity-count-badge {
-		max-width: 0;
 		flex: 0 0 auto;
-		overflow: hidden;
 		white-space: nowrap;
-		border: 0 solid hsl(var(--border));
+		border: 1px solid hsl(var(--border));
 		border-radius: 999px;
 		background: hsl(var(--background) / 0.7);
-		padding: 0;
+		padding: 0.125rem 0.375rem;
 		font-family:
 			ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
 			monospace;
 		font-size: 0.62rem;
 		font-weight: 600;
 		color: hsl(var(--muted-foreground));
-		opacity: 0;
-		transition:
-			max-width 220ms ease,
-			opacity 160ms ease,
-			padding 220ms ease,
-			border-width 220ms ease;
+		animation: activity-count-enter 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 	}
 
-	.activity-count-badge-visible {
-		max-width: 7rem;
-		border-width: 1px;
-		padding: 0.125rem 0.375rem;
-		opacity: 1;
+	@keyframes activity-count-enter {
+		from {
+			transform: translateX(0.2rem) scale(0.96);
+			opacity: 0;
+		}
 	}
 
 	.thinking-compact-icon {
@@ -469,27 +464,31 @@
 	}
 
 	.thinking-body {
-		max-height: 0;
-		overflow: hidden;
+		display: grid;
+		grid-template-rows: 0fr;
+		visibility: hidden;
 		opacity: 0;
 		transition:
-			max-height 280ms ease,
-			opacity 180ms ease;
+			grid-template-rows 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+			opacity 140ms ease-out,
+			visibility 0s linear 180ms;
 	}
 
 	.thinking-body-open {
-		max-height: 9rem;
+		grid-template-rows: 1fr;
+		visibility: visible;
 		opacity: 1;
+		transition-delay: 0ms;
 	}
 
-	.thinking-body-expanded {
-		max-height: 22rem;
+	.thinking-body-inner {
+		min-height: 0;
+		overflow: hidden;
 	}
 
-	/* Graduated height: starts compact, smooth transition on expand */
+	/* The scroll clamp changes immediately; motion lives on the disclosure affordance below. */
 	.thinking-log-height {
 		max-height: 5.25rem; /* compact default, enough for a few tool calls */
-		transition: max-height 0.35s ease-in-out;
 	}
 
 	.thinking-log-expanded {
@@ -504,6 +503,14 @@
 		.thinking-log-expanded {
 			max-height: 18rem;
 		}
+	}
+
+	.thinking-log-chevron {
+		transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+
+	.thinking-log-chevron-expanded {
+		transform: rotate(180deg);
 	}
 
 	/* INKPRINT Scrollbar Styling - Terminal aesthetic */
@@ -587,9 +594,18 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+		.activity-count-badge {
+			animation: none;
+		}
+
 		.glowing-hammer,
 		.thinking-dots span {
 			animation: none;
+		}
+
+		.thinking-body,
+		.thinking-log-chevron {
+			transition: none;
 		}
 	}
 </style>

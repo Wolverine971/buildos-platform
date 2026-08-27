@@ -185,7 +185,8 @@ export class AgenticChatRuntimeTimingTracker {
 					),
 					firstResponsePersistenceToProviderFinish: duration(
 						this.firstResponsePersistenceObservedAtMs,
-						providerFinishedAtMs
+						providerFinishedAtMs,
+						{ requireCausalOrder: true }
 					),
 					authorityToProviderFinish:
 						providerFinishedAtMs - this.providerAuthorityObservedAtMs,
@@ -252,8 +253,14 @@ export class AgenticChatRuntimeTimingTracker {
 	}
 }
 
-function duration(start: number | null, end: number | null): number | null {
-	return start === null || end === null ? null : end - start;
+function duration(
+	start: number | null,
+	end: number | null,
+	options: { requireCausalOrder?: boolean } = {}
+): number | null {
+	if (start === null || end === null) return null;
+	if (options.requireCausalOrder && end < start) return null;
+	return end - start;
 }
 
 function requiredBoundary(value: number | null, name: string): number {

@@ -14,6 +14,7 @@
 		"build:analyze": "ANALYZE=true vite build",
 		"preview": "vite preview",
 		"preview:host": "vite preview --host",
+		"profile:agent-chat-timeline": "vite-node scripts/profile-agent-chat-timeline.ts",
 		"check": "svelte-kit sync && NODE_OPTIONS='--max-old-space-size=8192' svelte-check",
 		"check:watch": "svelte-kit sync && NODE_OPTIONS='--max-old-space-size=8192' svelte-check --watch",
 		"typecheck": "pnpm run check",

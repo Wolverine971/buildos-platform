@@ -497,11 +497,11 @@ export class AgenticChatTurnExecutor {
 					if (finished) throw new Error('Fixture provider emitted a step after finish');
 					if (step.type === 'text_delta') {
 						if (!step.text) throw new Error('Fixture text delta must be nonempty');
-						const queued = this.ports.publisher.appendText(claim.turnRunId, step.text);
-						await abortable(queued.delivery, combined.signal);
-						if (queued.pressureRelieved) {
-							await abortable(queued.pressureRelieved, combined.signal);
-						}
+						await this.enqueueAssistantText(
+							claim.turnRunId,
+							step.text,
+							combined.signal
+						);
 						if (!promptSnapshotAttempted) {
 							promptSnapshotAttempted = true;
 							await this.persistPromptSnapshot(
@@ -575,14 +575,11 @@ export class AgenticChatTurnExecutor {
 							buildSupervisorWaitingStep(step),
 							combined.signal
 						);
-						const queued = this.ports.publisher.appendText(
+						await this.enqueueAssistantText(
 							claim.turnRunId,
-							step.question
+							step.question,
+							combined.signal
 						);
-						await abortable(queued.delivery, combined.signal);
-						if (queued.pressureRelieved) {
-							await abortable(queued.pressureRelieved, combined.signal);
-						}
 						this.captureRuntimeTiming(runtimeTiming, (timing) =>
 							timing.markProviderFinished()
 						);
@@ -826,14 +823,11 @@ export class AgenticChatTurnExecutor {
 			});
 			finishedReason = terminalTextIntegrity.finishedReason;
 			if (terminalTextIntegrity.correctionDelta) {
-				const queued = this.ports.publisher.appendText(
+				await this.enqueueAssistantText(
 					claim.turnRunId,
-					terminalTextIntegrity.correctionDelta
+					terminalTextIntegrity.correctionDelta,
+					combined.signal
 				);
-				await abortable(queued.delivery, combined.signal);
-				if (queued.pressureRelieved) {
-					await abortable(queued.pressureRelieved, combined.signal);
-				}
 			}
 			// Terminal text guards can append one deterministic correction. Keep that
 			// write inside the provider-authority interval so persisted stream timing
@@ -2370,6 +2364,26 @@ export class AgenticChatTurnExecutor {
 			});
 		} catch {
 			return null;
+		}
+	}
+
+	/**
+	 * Queue provider text without serializing generation on durable delivery.
+	 * The publisher's soft limits provide bounded backpressure, while flushTurn
+	 * remains the single durability/acknowledgement fence before finalization.
+	 */
+	private async enqueueAssistantText(
+		turnRunId: string,
+		text: string,
+		signal: AbortSignal
+	): Promise<void> {
+		const queued = this.ports.publisher.appendText(turnRunId, text);
+		// A blocked publisher is synchronously visible to a later append or flush.
+		// Handle this detached promise immediately so an early rejection cannot
+		// surface as an unhandled rejection before that authoritative boundary.
+		void queued.delivery.catch(() => undefined);
+		if (queued.pressureRelieved) {
+			await abortable(queued.pressureRelieved, signal);
 		}
 	}
 

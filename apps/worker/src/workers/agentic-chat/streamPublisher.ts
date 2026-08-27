@@ -64,6 +64,7 @@ export type AgenticChatPublisherTurnV1 = {
 	initialSequence?: number;
 	onOverload?: (error: AgenticChatPublisherOverloadError) => void;
 	onPersistenceObserved?: (observation: AgenticChatPublisherPersistenceObservationV1) => void;
+	onDeliveryObserved?: (observation: AgenticChatPublisherDeliveryObservationV1) => void;
 };
 
 export type AgenticChatPublisherPersistenceObservationV1 = {
@@ -73,6 +74,21 @@ export type AgenticChatPublisherPersistenceObservationV1 = {
 	phase: AgentStreamEventPhaseV1;
 	eventType: string;
 	persistedAt: string;
+};
+
+export type AgenticChatPublisherDeliveryObservationV1 = {
+	turnRunId: string;
+	executionGeneration: number;
+	sequenceIndex: number;
+	eventType: string;
+	delivery: AgenticChatPublisherDeliveryV1;
+	/** Time from enqueue until the persistence receipt was observed by the publisher. */
+	queueingMs: number;
+	/** Time from persistence observation through Broadcast and the delivery decision. */
+	deliveryDecisionMs: number;
+	/** Present only when the exact sequence acknowledgement was durably confirmed. */
+	durableAcknowledgementMs: number | null;
+	totalDeliveryMs: number;
 };
 
 export type AgenticChatSemanticPublishInputV1 = {
@@ -189,6 +205,7 @@ type TextOperation = {
 	readyAtMs: number;
 	urgent: boolean;
 	inFlight: boolean;
+	enqueuedAtMs: number;
 	waiters: Deferred<AgenticChatPublisherDeliveryV1>[];
 };
 
@@ -198,6 +215,7 @@ type SemanticOperation = {
 	assistantText: string;
 	bytes: number;
 	inFlight: boolean;
+	enqueuedAtMs: number;
 	waiter: Deferred<AgenticChatPublisherDeliveryV1>;
 };
 
@@ -395,6 +413,7 @@ export class AgenticChatStreamPublisher {
 				readyAtMs: this.now() + this.config.flushIntervalMs,
 				urgent: immediate,
 				inFlight: false,
+				enqueuedAtMs: this.now(),
 				waiters: [waiter]
 			});
 			this.pendingEvents += 1;
@@ -453,6 +472,7 @@ export class AgenticChatStreamPublisher {
 			assistantText: state.assistantText,
 			bytes,
 			inFlight: false,
+			enqueuedAtMs: this.now(),
 			waiter
 		});
 		state.pendingBytes += bytes;
@@ -716,7 +736,15 @@ export class AgenticChatStreamPublisher {
 
 				if (result.outcome === 'persisted')
 					this.metric('text_batch_persisted', state.context.turnRunId);
+				const persistenceObservedAtMs = this.now();
 				const delivery = await this.deliverPersisted(state, result);
+				this.observeDelivery(
+					state,
+					operation,
+					result,
+					persistenceObservedAtMs,
+					delivery
+				);
 				if (state.operations[0] === operation)
 					this.completeOperation(state, operation, delivery);
 			})
@@ -740,7 +768,15 @@ export class AgenticChatStreamPublisher {
 				projection: operation.input.projection,
 				event_payload: operation.input.eventPayload
 			});
+			const persistenceObservedAtMs = this.now();
 			const delivery = await this.deliverPersisted(state, result);
+			this.observeDelivery(
+				state,
+				operation,
+				result,
+				persistenceObservedAtMs,
+				delivery
+			);
 			if (state.operations[0] === operation)
 				this.completeOperation(state, operation, delivery);
 		} catch (error) {
@@ -799,6 +835,43 @@ export class AgenticChatStreamPublisher {
 				phase: receipt.phase,
 				eventType: receipt.event_type,
 				persistedAt: receipt.persisted_at
+			});
+		} catch {
+			// Observability callbacks cannot change durable publisher delivery.
+		}
+	}
+
+	private observeDelivery(
+		state: TurnState,
+		operation: Operation,
+		receipt: PublishableDeliveryReceipt,
+		persistenceObservedAtMs: number,
+		delivery: AgenticChatPublisherDeliveryV1
+	): void {
+		try {
+			const deliveryObservedAtMs = this.now();
+			const queueingMs = nonnegativeElapsed(
+				operation.enqueuedAtMs,
+				persistenceObservedAtMs
+			);
+			const deliveryDecisionMs = nonnegativeElapsed(
+				persistenceObservedAtMs,
+				deliveryObservedAtMs
+			);
+			state.context.onDeliveryObserved?.({
+				turnRunId: state.context.turnRunId,
+				executionGeneration: state.context.executionGeneration,
+				sequenceIndex: receipt.sequence_index,
+				eventType: receipt.event_type,
+				delivery,
+				queueingMs,
+				deliveryDecisionMs,
+				durableAcknowledgementMs:
+					delivery === 'broadcast_acknowledged' ? deliveryDecisionMs : null,
+				totalDeliveryMs: nonnegativeElapsed(
+					operation.enqueuedAtMs,
+					deliveryObservedAtMs
+				)
 			});
 		} catch {
 			// Observability callbacks cannot change durable publisher delivery.
@@ -1212,6 +1285,11 @@ function deferred<T>(): Deferred<T> {
 
 function utf8Bytes(value: string): number {
 	return Buffer.byteLength(value, 'utf8');
+}
+
+function nonnegativeElapsed(startedAtMs: number, finishedAtMs: number): number {
+	if (!Number.isFinite(startedAtMs) || !Number.isFinite(finishedAtMs)) return 0;
+	return Math.max(0, finishedAtMs - startedAtMs);
 }
 
 function isRetryableDatabaseCode(code: string): boolean {

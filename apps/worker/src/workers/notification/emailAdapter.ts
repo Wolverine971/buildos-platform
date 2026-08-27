@@ -13,6 +13,10 @@ import {
 } from '@buildos/shared-types';
 import type { Logger } from '@buildos/shared-utils';
 import { getErrorMessage } from '../../lib/utils/errors.js';
+import {
+	buildDailyBriefEmailHtml,
+	normalizeDailyBriefMarkdown
+} from './daily-brief-email-template.js';
 import { resolveNotificationActionUrl } from './email-action-url.js';
 import { checkUserPreferences } from './preferenceChecker.js';
 
@@ -549,7 +553,9 @@ export async function sendEmailNotification(
 							subject = delivery.payload.title;
 						} else {
 							const { renderMarkdown } = await import('../../lib/utils/markdown.js');
-							const contentHtml = renderMarkdown(briefContent);
+							const normalizedBriefContent =
+								normalizeDailyBriefMarkdown(briefContent);
+							const contentHtml = renderMarkdown(normalizedBriefContent);
 
 							const dateFormatted = new Date(
 								brief.brief_date || briefDate
@@ -572,39 +578,18 @@ export async function sendEmailNotification(
 								brief.brief_date || dailyBriefDate || briefDate
 							);
 
-							const fullContent = `
-	            <div style="margin: 20px 0;">
-	              ${contentHtml}
-            </div>
-
-            <hr style="border: none; border-top: 1px solid #DCD9D1; margin: 32px 0;">
-
-	            <div style="text-align: center; margin-top: 24px;">
-	              <a href="${briefUrl}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">${primaryActionLabel}</a>
-	              <span style="color: #8C8B91; margin: 0 8px;">|</span>
-	              <a href="${managePreferencesUrl}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
-              <span style="color: #8C8B91; margin: 0 8px;">|</span>
-              <a href="${dailyBriefUnsubscribeUrl}" style="color: #6F6E75; text-decoration: none; font-size: 14px;">Turn off daily briefs</a>
-              ${getPostalAddressHtml()}
-            </div>
-          `;
-
-							html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1A1A1D; max-width: 600px; margin: 0 auto; padding: 20px;">
-  ${fullContent}
-</body>
-</html>
-          `.trim();
+							html = buildDailyBriefEmailHtml({
+								subject,
+								contentHtml,
+								briefUrl,
+								managePreferencesUrl,
+								unsubscribeUrl: dailyBriefUnsubscribeUrl,
+								primaryActionLabel,
+								postalAddressHtml: getPostalAddressHtml()
+							});
 
 							text = buildDailyBriefTextFooter({
-								content: briefContent,
+								content: normalizedBriefContent,
 								briefUrl,
 								managePreferencesUrl,
 								unsubscribeUrl: dailyBriefUnsubscribeUrl,
@@ -656,7 +641,9 @@ export async function sendEmailNotification(
 						} else {
 							// Format the full brief email (matching webhook format)
 							const { renderMarkdown } = await import('../../lib/utils/markdown.js');
-							const contentHtml = renderMarkdown(briefContent);
+							const normalizedBriefContent =
+								normalizeDailyBriefMarkdown(briefContent);
+							const contentHtml = renderMarkdown(normalizedBriefContent);
 
 							const dateFormatted = new Date(briefDate).toLocaleDateString('en-US', {
 								timeZone: 'UTC',
@@ -674,40 +661,18 @@ export async function sendEmailNotification(
 								getDailyBriefPrimaryActionLabel(dailyBriefEngagementStage);
 							const briefUrl = buildBriefUrl(baseUrl, dailyBriefDate || briefDate);
 
-							// Inkprint Design System colors
-							const fullContent = `
-            <div style="margin: 20px 0;">
-              ${contentHtml}
-            </div>
-
-            <hr style="border: none; border-top: 1px solid #DCD9D1; margin: 32px 0;">
-
-	            <div style="text-align: center; margin-top: 24px;">
-	              <a href="${briefUrl}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">${primaryActionLabel}</a>
-	              <span style="color: #8C8B91; margin: 0 8px;">|</span>
-	              <a href="${managePreferencesUrl}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
-              <span style="color: #8C8B91; margin: 0 8px;">|</span>
-              <a href="${dailyBriefUnsubscribeUrl}" style="color: #6F6E75; text-decoration: none; font-size: 14px;">Turn off daily briefs</a>
-              ${getPostalAddressHtml()}
-            </div>
-          `;
-
-							html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1A1A1D; max-width: 600px; margin: 0 auto; padding: 20px;">
-  ${fullContent}
-</body>
-</html>
-          `.trim();
+							html = buildDailyBriefEmailHtml({
+								subject,
+								contentHtml,
+								briefUrl,
+								managePreferencesUrl,
+								unsubscribeUrl: dailyBriefUnsubscribeUrl,
+								primaryActionLabel,
+								postalAddressHtml: getPostalAddressHtml()
+							});
 
 							text = buildDailyBriefTextFooter({
-								content: briefContent,
+								content: normalizedBriefContent,
 								briefUrl,
 								managePreferencesUrl,
 								unsubscribeUrl: dailyBriefUnsubscribeUrl,

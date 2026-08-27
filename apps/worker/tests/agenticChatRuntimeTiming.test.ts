@@ -135,6 +135,26 @@ describe('AgenticChatRuntimeTimingTracker', () => {
 		});
 	});
 
+	it('omits the legacy response-generation span when provider finish precedes persistence', () => {
+		const timing = tracker([10, 15, 20, 25, 30, 35]);
+		timing.observePersistedEvent('2026-08-03T12:00:00.010Z', 'turn_phase');
+		timing.markProviderFinished();
+		timing.observePersistedEvent('2026-08-03T12:00:00.020Z', 'text_delta');
+		timing.markTerminalCallStarted();
+		timing.markTerminalCallCompleted();
+
+		expect(timing.snapshot()).toMatchObject({
+			preterminal: {
+				providerFinishedAtMs: 20,
+				firstResponsePersistenceObservedAtMs: 25,
+				durationsMs: {
+					firstResponsePersistenceToProviderFinish: null,
+					providerFinishToTerminalCall: 10
+				}
+			}
+		});
+	});
+
 	it('fails closed if the injected clock moves backwards', () => {
 		const timing = tracker([100, 99, 110]);
 		expect(() =>

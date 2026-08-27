@@ -265,6 +265,7 @@ function createHarness(
 		researchCaptureError?: Error;
 		statedFutureCaptureError?: Error;
 		consumptionBillingError?: Error;
+		beforeFlushTextBatches?: (inputs: Array<Record<string, unknown>>) => Promise<void>;
 	} = {}
 ) {
 	let sequence = 0;
@@ -275,6 +276,7 @@ function createHarness(
 	const timingClockValues = options.timingClockValues ? [...options.timingClockValues] : null;
 	const persistence = {
 		async flushTextBatches(inputs: Array<Record<string, unknown>>) {
+			await options.beforeFlushTextBatches?.(inputs);
 			return {
 				outcome: 'flushed',
 				input_count: inputs.length,
@@ -812,6 +814,41 @@ function streamBroadcastMessages(messages: Array<Record<string, unknown>>) {
 const parityCoverage = createAgenticChatWorkerParityCoverageTrackerV1();
 
 describe('AgenticChatTurnExecutor', () => {
+	it('consumes provider text without waiting for each durable delivery', async () => {
+		let releasePersistence!: () => void;
+		const persistenceGate = new Promise<void>((resolve) => {
+			releasePersistence = resolve;
+		});
+		let providerFinished = false;
+		const harness = createHarness([], {
+			beforeFlushTextBatches: () => persistenceGate
+		});
+		Object.assign(harness.provider, {
+			stream: vi.fn(() =>
+				(async function* () {
+					yield { type: 'text_delta', text: 'first' } as const;
+					yield { type: 'text_delta', text: ' second' } as const;
+					providerFinished = true;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})()
+			)
+		});
+
+		const execution = harness.executor.execute(job());
+		await vi.waitFor(() => expect(providerFinished).toBe(true));
+		expect(harness.control.finalize).not.toHaveBeenCalled();
+
+		releasePersistence();
+		await expect(execution).resolves.toMatchObject({
+			outcome: 'completed',
+			terminalStatus: 'completed'
+		});
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({ assistantText: 'first second' })
+		);
+		await harness.publisher.stop();
+	});
+
 	it('persists one exact prompt snapshot after the first durable response only', async () => {
 		const harness = createHarness(
 			[
